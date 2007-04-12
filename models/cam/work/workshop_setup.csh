@@ -123,6 +123,11 @@ make || exit $n
 
 echo
 echo 'time to run filter here:'
-echo ' for lsf run "bsub < job.simple.csh"'
-echo ' for pbs run "qsub job.simple.csh"'
-echo ' for lam-mpi run "lamboot" once, then "job.simple.csh"'
+echo ' for lsf run "bsub < runme_filter"'
+echo ' for pbs run "qsub runme_filter"'
+echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
+
+echo
+echo 'starting filter with bsub'
+bsub < runme_filter
+

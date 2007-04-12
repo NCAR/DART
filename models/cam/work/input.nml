@@ -1,27 +1,10 @@
-&perfect_model_obs_nml
-   start_from_restart    = .true.,
-   output_restart        = .true.,
-   async                 = 2,
-   init_time_days        = 0,
-   init_time_seconds     = 0,
-   first_obs_days        = -1,
-   first_obs_seconds     = -1,
-   last_obs_days         = -1,
-   last_obs_seconds      = -1,
-   output_interval       = 1,
-   restart_in_file_name  = "perfect_ics",
-   restart_out_file_name = "perfect_restart",
-   obs_seq_in_file_name  = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.out",
-   adv_ens_command       = "./advance_model.csh"  /
-
 &filter_nml
    async                    = 2,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 = 20,
+   ens_size                 = 20, 
    start_from_restart       = .true.,
    output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.out",
+   obs_sequence_in_name     = "obs_seq.in",
    obs_sequence_out_name    = "obs_seq.final",
    restart_in_file_name     = "filter_ic_old",
    restart_out_file_name    = "filter_ic_new", 
@@ -38,35 +21,32 @@
    input_qc_threshold       = 4.0,
    outlier_threshold        = 3.0,
    output_forward_op_errors = .false.,
-   output_timestamps        = .false.,
-   output_inflation         = .true.,
 
-   inf_flavor               = 2,                       0,
-   inf_start_from_restart   = .false.,                 .false.,
-   inf_output_restart       = .true.,                  .true.,
-   inf_deterministic        = .true.,                  .true.,
-   inf_in_file_name         = 'prior_inf_ics',         'post_inf_ics',
-   inf_out_file_name        = 'prior_inf_restart',     'post_inf_restart',
-   inf_diag_file_name       = 'prior_inf_diag',        'post_inf_diag',
-   inf_initial              = 1.02,                    1.00,
-   inf_sd_initial           = 0.1,                     0.0,
-   inf_lower_bound          = 1.0,                     1.0,
-   inf_upper_bound          = 1000000.0,               1000000.0,
-   inf_sd_lower_bound       = 0.0,                     0.0
+   inf_flavor               = 0,                      0,
+   inf_start_from_restart   = .false.,                .false.,
+   inf_output_restart       = .true.,                 .true.,
+   inf_deterministic        = .true.,                 .true.,
+   inf_in_file_name         = 'prior_inf_ic_old',     'post_inf_ic_old',
+   inf_out_file_name        = 'prior_inf_ic_new',     'post_inf_ic_new',
+   inf_diag_file_name       = 'prior_inf_diag',       'post_inf_diag',
+   inf_initial              = 1.00,                   1.00,
+   inf_lower_bound          = 1.0,                    1.0,
+   inf_upper_bound          = 1000000.0,              1000000.0,
+   inf_sd_initial           = 0.1,                    0.1,
+   inf_sd_lower_bound       = 0.0,                    0.0
 /
 ! ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
 
 &smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .false.,
-   restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart'  /
+   num_lags              = 0
+   start_from_restart    = .false.
+   output_restart        = .false.
+   restart_in_file_name  = 'smoother_ics'
+   restart_out_file_name = 'smoother_restart' /
 
 &ensemble_manager_nml
-   single_restart_file_in  = .false.,
-   single_restart_file_out = .false.,
-   perturbation_amplitude  = 0.2  /
+   single_restart_file_in = .false.,
+   single_restart_file_out = .false. /
 
 &assim_tools_nml
    filter_kind                     = 1,
@@ -74,20 +54,74 @@
    sort_obs_inc                    = .true.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
-   adaptive_localization_threshold = 1000,
-   print_every_nth_obs             = 0  /
+   print_every_nth_obs             = 0,
+   adaptive_localization_threshold = -1/
 
 &cov_cutoff_nml
    select_localization = 1  /
 
 &reg_factor_nml
-   select_regression    = 1,
-   input_reg_file       = "time_mean_reg",
+   select_regression = 1,
+   input_reg_file = "time_mean_reg" 
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = "reg_diagnostics"  /
+   reg_diagnostics_file = 'reg_diagnostics' /
 
 &obs_sequence_nml
    write_binary_obs_sequence = .false.  /
+
+&assim_model_nml
+   write_binary_restart_files = .true. /
+
+&model_nml
+   output_state_vector      = .false.,
+   model_version            = '3.1',
+   model_config_file        = 'caminput.nc',
+   state_num_0d             = 0,
+   state_num_1d             = 0,
+   state_num_2d             = 1,
+   state_num_3d             = 6,
+   state_names_2d = 'PS      '
+   state_names_3d = 'T       ','U       ','V       ','Q       ','CLDLIQ  ','CLDICE  '
+   which_vert_1d            = 0,
+   which_vert_2d            = -1,
+   which_vert_3d            = 6*1,
+   pert_names         = '        ',
+   pert_sd           = -888888.0d0,
+   pert_base_vals    = -888888.0d0,
+   highest_obs_pressure_mb   = 100.0,
+   highest_state_pressure_mb = 150.0,
+   max_obs_lat_degree        = 85.0,
+   Time_step_seconds = 21600,
+   Time_step_days = 0    /
+
+! pert_sd < 0. signals pert_base_vals to be used as the values 
+!   for each ensemble member (for 1 field), instead of the value for each field.
+!   DART special value -888888.0d0 can be used for that.
+!   Used by trans_pv_sv_pert0's call to pert_model_state (for parameterization studies).
+! pert_sd > 0 allows each point of the pert_names fields of each ens member 
+!   to be randomly perturbed with a standard deviation of pert_sd.  
+!   Used by filter's call to pert_model_state.
+! pert_base_vals /= -888888.0d0 means that the values of the fields in pert_names
+!   sill be reset to the values in pert_base_vals.  
+
+
+&location_nml
+   horiz_dist_only = .false.,
+   vert_normalization_pressure = 100000.0, 
+   vert_normalization_height = 10000.0,
+   vert_normalization_level = 20.0,
+   approximate_distance = .true.,
+   nlon = 71, 
+   nlat = 36  /
+
+&preprocess_nml
+    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
+   input_files              = '../../../obs_def/obs_def_gps_mod.f90',
+                              '../../../obs_def/obs_def_QuikSCAT_mod.f90',
+                              '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'/
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
@@ -101,62 +135,17 @@
                                 'ACARS_V_WIND_COMPONENT',
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
-   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE' /
+                                'GPSRO_REFRACTIVITY' /
 
-&assim_model_nml
-   write_binary_restart_files = .true.  /
+!   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE' /
 
-&model_nml
-   output_state_vector = .false.,
-   model_version       = '3.1',
-   model_config_file   = 'caminput.nc',
-   state_num_0d        = 0,
-   state_num_1d        = 0,
-   state_num_2d        = 1,
-   state_num_3d        = 6,
-   state_names_0d = 20*'        ',
-   state_names_1d = 20*'        ',
-   state_names_2d = 'PS      ',19*'        ',
-   state_names_3d = 'T       ','U       ','V       ','Q       ','CLDLIQ  ','CLDICE  ',14*'        ',
-   which_vert_1d             =     20*0,
-   which_vert_2d             = -1 ,19*0,
-   which_vert_3d             = 6*1,14*0,
-   state_names_pert          = 20*'        ',
-   state_names_sd            = 20*0.0,
-   highest_obs_pressure_mb   = 150.0,
-   highest_state_pressure_mb = 150.0,
-   max_obs_lat_degree        = 85.0,
-   Time_step_seconds         = 21600,
-   Time_step_days            = 0  /
-
-&location_nml
-   horiz_dist_only             = .false.,
-   vert_normalization_pressure = 100000.0, 
-   vert_normalization_height   = 10000.0,
-   vert_normalization_level    = 20.0,
-   approximate_distance        = .true.,
-   nlon                        = 71,
-   nlat                        = 36,
-   output_box_info             = .false.  /
-
-&preprocess_nml
-    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
-   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
-     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
-    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'  /
 
 &utilities_nml
    TERMLEVEL = 1,
-   logfilename = 'dart_Tprof.out'  /
+   logfilename = 'dart_log.out'  /
 
 &mpi_utilities_nml
    /
-
-&merge_obs_seq_nml 
-   num_input_files = 1,
-   filename_seq = 'obs_seq_bin.out',
-   filename_out  = 'obs_seq_ascii.out'  /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
@@ -173,21 +162,23 @@
    last_bin_center  =  2003, 1, 2, 0, 0, 0 ,
    bin_separation   =     0, 0, 0, 6, 0, 0 ,
    bin_width        =     0, 0, 0, 6, 0, 0 ,
-   time_to_skip     =     0, 0, 0, 0, 0, 0 ,
-   max_num_bins = 1000,
-   plevel       = 500,
-   hlevel       = 5000,
-   mlevel       = 5,
-   obs_select         = 1,
-   rat_cri            = 3.0,
-   input_qc_threshold = 4.0,
+   time_to_skip     =     0, 0, 1, 0, 0, 0 ,
+   max_num_bins  = 1000,
+   plevel     = 500,
+   hlevel     = 5000,
+   obs_select = 1,
    Nregions   = 4,
+   rat_cri    = 3.0,
+   qc_threshold = 4.0,
    lonlim1    =   0.0,   0.0,   0.0, 235.0,
    lonlim2    = 360.0, 360.0, 360.0, 295.0,
    latlim1    =  20.0, -80.0, -20.0,  25.0,
    latlim2    =  80.0, -20.0,  20.0,  55.0,
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
-   print_obs_locations   = .false.,
-   verbose               = .false.  /
+   verbose = .false.  /
 
+&merge_obs_seq_nml 
+   num_input_files = 1,
+   filename_seq = 'obs_seq_bin.out',
+   filename_out  = 'obs_seq_ascii.out'   /
