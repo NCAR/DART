@@ -1,208 +1,45 @@
 # ----------------------------------------------------------------------------
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004-2006, Data Assimilation Research Section
+# Copyright 2004-2007, Data Assimilation Research Section
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
+# <next few lines under version control, do not edit>
+# $URL$
 # $Id$
+# $Revision$
+# $Date$
 #
-# makefile for various mpi test and timing programs
+# Makefile for various mpi test and timing programs
 #
+# This Makefile directly 'include's the mkmf.template file used by the 
+#  mkmf system.  If the mkmf.template is set wrong for this system, 
+#  these builds will fail.  See ../../mkmf/mkmf.template.* for various
+#  compiler and platform settings.
 #
-# This Makefile has compile flags for a variety of systems.
-# To select the right section, set either the Makefile variable
-# or the shell environment variable DART_TARGET to one of the
-# following values.
-#
-# In the Makefile, set it:
-#   DART_TARGET = something_from_below
-# 
-# In your shell, set it:
-#   (csh:)  setenv DART_TARGET something_from_below
-#   (ksh:)  set DART_TARGET=something_from_below
-#
-#
-# ----------------------------------------------------------------------------
 
-# Strategy:  If the user knows what they are doing (or if there
-# are multiple choices on a single machine), do not mess with the target
-# if it is already set.  Otherwise, if we get the machine name and we know
-# what works, set it here.  If we do not recognize the machine, error out.
+include ../../mkmf/mkmf.template
 
-ifeq ($(DART_TARGET),)
-
- # get the actual machine name and switch on that.
- HOST = $(shell uname -n)
-
- ifeq ($(HOST),dart.scd.ucar.edu)
-   DART_TARGET=Linux_dart
- endif
-
- ifeq ($(HOST),fisher.scd.ucar.edu)
-   DART_TARGET=Linux_dart
- endif
-
- ifeq ($(HOST),coral.ucar.edu)
-   DART_TARGET=Linux_coral
- endif
- ifeq ($(HOST),cr0125en)
-   DART_TARGET=Linux_coral
- endif
- ifeq ($(HOST),cr0122en)
-   DART_TARGET=Linux_coral
- endif
-
- ifeq ($(HOST),bv1103en)
-   DART_TARGET=Linux_bluevista
- endif
- ifeq ($(HOST),bv1203en)
-   DART_TARGET=Linux_bluevista
- endif
-
-
- #ifeq ($(HOST),bangkok.cgd.ucar.edu)
- ifeq ($(HOST),bangkok)
-   DART_TARGET=Linux_bangkok
- endif
-
- ifeq ($(HOST),ocotillo)
-   DART_TARGET=Linux_ocotillo
- endif
-
- ifeq ($(HOST),ln0126en)
-   DART_TARGET=Linux_lightning
- endif
- ifeq ($(HOST),ln0127en)
-   DART_TARGET=Linux_lightning
- endif
-
- ifeq ($(HOST),cloud.scd.ucar.edu)
-   DART_TARGET=Darwin_Absoft_Lam
- endif
-
- ifeq ($(HOST),moore.scd.ucar.edu)
-   DART_TARGET=Darwin_Gfortran_Lam
- endif
-
- # If we still got here and the target it unset, it is a machine we do not
- # know.  The user is going to have to help us out.
- ifeq ($(DART_TARGET),)
-   $(error "the environment or makefile variable DART_TARGET must be set")
-  endif
-
-endif
-
-
-# if you want to know what we selected.  if this is annoying, comment it out.
-$(warning "using $(DART_TARGET) for DART_TARGET")
-
-# set default to be run on current node.  in the machine specific sections
-# below, set which kind of batch queue system is on this machine.
-BATCH = "interactive"
-
-# mac laptop with absoft fortran (e.g. cloud)
-ifeq ($(DART_TARGET),Darwin_Absoft_Lam)
-MPI_HOME = /usr/local/lam
-FC = f95
-MPIFC = f95
-# the only wrapper built by the 7.1.2 lam is g77 only.
-# so we have to add the libs by hand.
-#MPIFC = $(MPI_HOME)/bin/mpif77
-#MPIFC = mpif90
-INCS = -I$(MPI_HOME)/include 
-LIBLIST = -llamf77mpi -lmpi -llam -lmpi
-COMFLAGS = -X -bind_at_load
-FMPIFLAGS = $(INCS)
-FMPILIBS = -L$(MPI_HOME)/lib $(LIBLIST)
-FMPILDFLAGS = $(COMFLAGS)
-endif
-
-# mac laptop with g95 open source (e.g. cloud)
-ifeq ($(DART_TARGET),Darwin_G95_Openmpi)
-MPI_HOME = /usr/local/openmpi
-FC = g95
-MPIFC = $(MPI_HOME)/bin/mpif90
-endif
-
-# mac laptop with gfortran open source (e.g. moore)
-ifeq ($(DART_TARGET),Darwin_Gfortran_Lam)
-MPI_HOME = /usr/local/lam
-FC = gfortran
-MPIFC = $(MPI_HOME)/bin/mpif90
-endif
-
-# ocotillo - Intel 8, mpich
-#ifeq ($(DART_TARGET),Linux_Intel_8_Mpich)
-ifeq ($(DART_TARGET),Linux_ocotillo)
-# TODO: not tested yet.  no batch system; ssh only.
-FC = ifort
-MPIFC = mpif90
-MPI_HOME = /usr/local/mpich
-BATCH = nobatch
-endif
-
-# coral - Intel 9, mpich
-#ifeq ($(DART_TARGET),Linux_Intel_9_Mpich)
-ifeq ($(DART_TARGET),Linux_coral)
-FC = ifort
-MPIFC = mpif90
-MPI_HOME = /coral/local/mpich64
-BATCH = lsf
-endif
-
-# dart - Intel 9, lam mpi
-#ifeq ($(DART_TARGET),Linux_Intel_9_Lam)
-ifeq ($(DART_TARGET),Linux_dart)
-FC = ifort
-MPIFC = mpif90
-MPI_HOME = /contrib/lam
-endif
-
-# bangkok - linux cluster, PGI compiler
-#ifeq ($(DART_TARGET),Linux_PGI_9_Mpich)
-ifeq ($(DART_TARGET),Linux_bangkok)
-MPI_HOME = /usr/local/mpich-1.2.6-pgi-hpf-cc-5.2-4
-MPIFC = $(MPI_HOME)/bin/mpif90
-FC = pgf90
-BATCH = pbs
-endif
-
-# lightning
-#ifeq ($(DART_TARGET),Linux_PGI_9_Mpich)
-ifeq ($(DART_TARGET),Linux_lightning)
-MPI_HOME = /usr/local/mpich
-MPIFC = $(MPI_HOME)/bin/mpif90
-FC = pgf90
-BATCH = lsf
-endif
-
-# bluevista
-#ifeq ($(DART_TARGET),Linux_IBM)
-ifeq ($(DART_TARGET),Linux_bluevista)
-MPI_HOME = /usr/lib
-MPIFC = mpxlf
-FC = xlf
-FFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -qfree=f90
-FMPIFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -qfree=f90
-BATCH = lsf
-endif
-
+# the include defines the following makefile variables:
+# MPIFC = 
+# MPILD =
+# FC =
+# LD =
+# NETCDF =
+# INCS = 
+# FFLAGS += -I$(INCS)  
+# LIBS =
+# LDFLAGS += -L$(NETCDF)/lib -lnetcdf
 
 # ----------------------------------------------------------------------------
 
-# common to all platforms
+SRC = ftest_f90.f90 ftest_mpi.f90 ftest_nc.f90 \
+      ftest_stop.f90 ftest_go.f90 ctest.c ctest_mpi.c ctest_nc.c
 
-OPT = -g
-#OPT = -O2
+ALLSRC = $(SRC) Makefile README runme_*
 
-SRC = ftest_f77.f ftest_f90.f90 ftest_mpi.f90 ctest.c ctest_mpi.c \
-      driver.f90 commtest_mod.f90 ftest_nml.f90 
-
-ALLSRC = $(SRC) Makefile README *.nml runme_*
-
-EXE = ftest_f90 ftest_mpi commtest
-ALLEXE = $(EXE) ftest_f77 ctest ctest_mpi ftest_nml \
-         stest stest_mpi stest2a stest2b stest2a_mpi stest2b_mpi
+EXE = ftest_f90 ftest_mpi ftest_nc
+ALLEXE = $(EXE) ftest_stop ftest_go ctest ctest_mpi ctest_nc
 
 # ----------------------------------------------------------------------------
 
@@ -216,74 +53,63 @@ everything: $(ALLEXE)
 
 
 # run the basic executables interactively
-check: 
-	mpirun -np 2 ftest_mpi
-	mpirun -np 4 commtest
+check:  all
+	./ftest_f90
+	./ftest_nc
+	mpirun -np 2 ./ftest_mpi
 
 # submit the jobs to a batch queue
-batch:
-	make run_f run_ct
+batch: ftest_mpi
+	#bsub < runme           # LSF
+	#qsub runme             # PBS
+	./runme                # everything else
 
+# check async=4 mode.  comment in the right line for your batch system.
+async4: ftest_stop ftest_go
+	#bsub < runme_async4      # LSF
+	#qsub runme_async4        # PBS
+	./runme_async4           # everything else
 
 # ----------------------------------------------------------------------------
 
-# very simple f77 test program without mpi 
-ftest_f77: ftest_f77.f
-	$(FC) $(FFLAGS) ftest_f77.f $(FLIBS) -o ftest_f77
 
-# very simple f90 test program without mpi 
+# simple f90 test program without mpi or netcdf
 ftest_f90: ftest_f90.f90
-	$(FC) $(FFLAGS) ftest_f90.f90 -o $(FLIBS) ftest_f90
+	$(FC) $(FFLAGS) ftest_f90.f90 $(LDFLAGS) -o ftest_f90
 
-# f90 program which calls MPI functions
+# f90 test program that calls MPI functions
 ftest_mpi: ftest_mpi.f90
-	$(MPIFC) $(FMPIFLAGS) $(FMPILDFLAGS) ftest_mpi.f90 $(FMPILIBS) -o ftest_mpi
+	$(MPIFC) $(FFLAGS) ftest_mpi.f90 $(LDFLAGS) -o ftest_mpi
 
-# very simple f90 test program with namelist input
-ftest_nml: ftest_nml.f90
-	$(FC) $(FFLAGS) ftest_nml.f90 -o $(FLIBS) ftest_nml
-
-# test of named pipe communication, no mpi 
-stest: stest.f90
-	$(FC) $(FFLAGS) stest.f90 -o $(FLIBS) stest
-
-# test of named pipe communication with mpi
-stest_mpi: stest_mpi.f90
-	$(MPIFC) $(FMPIFLAGS) stest_mpi.f90 -o $(FMPILIBS) stest_mpi
-
-# test of paired programs, no mpi
-stest2a: stest2a.f90
-	$(FC) $(FFLAGS) stest2a.f90 -o $(FLIBS) stest2a
-
-stest2b: stest2b.f90
-	$(FC) $(FFLAGS) stest2b.f90 -o $(FLIBS) stest2b
-
-# test of paired programs with mpi
-stest2a_mpi: stest2a_mpi.f90
-	$(MPIFC) $(FMPIFLAGS) stest2a_mpi.f90 -o $(FMPILIBS) stest2a_mpi
-
-stest2b_mpi: stest2b_mpi.f90
-	$(MPIFC) $(FMPIFLAGS) stest2b_mpi.f90 -o $(FMPILIBS) stest2b_mpi
+# f90 test program that calls netCDF functions
+ftest_nc: ftest_nc.f90
+	$(FC) $(FFLAGS) ftest_nc.f90 $(LDFLAGS) -o ftest_nc
 
 
-# very simple c program without mpi
+# test of named pipe (fifo) communication with mpi
+ftest_stop: ftest_stop.f90
+	$(MPIFC) $(FFLAGS) ftest_stop.f90 $(LDFLAGS) -o ftest_stop
+
+ftest_go: ftest_go.f90
+	$(MPIFC) $(FFLAGS) ftest_go.f90 $(LDFLAGS) -o ftest_go
+
+
+
+# DART uses no C code, but if you want to test whether your system has 
+# working C interfaces for MPI or netCDF, you can use these programs.
+# Edit 'gcc' below, if needed, to reference your own C compiler.
+
+# simple c program without mpi or netcdf
 ctest: ctest.c
 	gcc ctest.c -o ctest
 
-# c program which calls MPI functions
+# c test program that calls MPI functions
 ctest_mpi: ctest_mpi.c
-	mpicc ctest.c -o ctest
+	mpicc ctest_mpi.c -o ctest_mpi
 
-
-# simple model for data assim communication pattern
-commtest: commtest_mod.o driver.o
-	$(MPIFC) $(FMPILDFLAGS) driver.o commtest_mod.o $(FMPILIBS) -o commtest
-
-driver.o: driver.f90
-	$(MPIFC) $(FMPIFLAGS) -c driver.f90
-
-commtest_mod.o: commtest_mod.f90
-	$(MPIFC) $(FMPIFLAGS) -c commtest_mod.f90
+# c test program that calls netCDF functions
+ctest_nc: ctest_nc.c
+	gcc -I$(NETCDF)/include ctest_nc.c -L$(NETCDF)/lib -lnetcdf -o ctest_nc
 
 
 
@@ -306,21 +132,6 @@ commtest_mod.o: commtest_mod.f90
 # batch systems are evil.
 #
 
-run_ct: commtest
-	if [ '$(BATCH)' = 'lsf' ] ; then \
-	    bsub < runme_lsf_ct ;\
-	    echo 'job submitted to LSF batch queue.' ;\
-	elif [ '$(BATCH)' = 'pbs' ]; then \
-	    qsub runme_pbs_ct ;\
-	    echo 'job submitted to PBS batch queue.' ;\
-	elif [ '$(BATCH)' = 'nobatch' ]; then \
-	    mpirun -v -np 4 -nolocal -machinefile ~/machinefile ./commtest > out_ct 2>&1 ;\
-	    echo 'done. output in file out_ct' ;\
-	else \
-	    mpirun -np 4 ./commtest > out_ct 2>&1  ;\
-	    echo 'done. output in file out_ct' ;\
-	fi 
-	
 run_f: ftest_mpi
 	if [ '$(BATCH)' = 'lsf' ] ; then \
 	    ( /bin/tcsh -x -c < ./runme_lsf_f ) ;\
@@ -337,9 +148,15 @@ run_f: ftest_mpi
 	fi
 	
 
+run_s:  ftest_stop ftest_go
+	# needs batch script
+	mpirun ./ftest_stop &
+	sleep 5
+	mpirun ./ftest_go
+
 run_c: ctest_mpi
 	if [ '$(BATCH)' = 'lsf' ] ; then \
-	    bsub < runme_lsf_c ;\
+	    /bin/csh bsub < runme_lsf_c ;\
 	    echo 'job submitted to LSF batch queue.' ;\
 	elif [ '$(BATCH)' = 'pbs' ]; then \
 	    qsub runme_pbs_c ;\
@@ -369,9 +186,6 @@ status:
 # ----------------------------------------------------------------------------
 
 sanity:
-	make ftest_f77
-	./ftest_f77
-	@echo 'PASSED: able to compile an f77 program (no mpi)'
 	make ftest_f90
 	./ftest_f90
 	@echo 'PASSED: able to compile an f90 program (no mpi)'
@@ -384,7 +198,7 @@ sanity:
 # ----------------------------------------------------------------------------
 
 clean:
-	rm -f *.o *.mod $(ALLEXE) out_*
+	rm -f *.o *.mod $(ALLEXE) out_* *testdata.nc
 
 tar:
 	tar -zcvf ~/comm.tar.gz $(ALLSRC)
@@ -392,17 +206,4 @@ tar:
 untar:
 	tar -zxvf ~/comm.tar.gz
 
-ci:
-	ci -l $(ALLSRC) 
-
-co:
-	co -l $(ALLSRC)
-
-# see if there are diffs first; only get outputs on files which
-# are different (this suppresses all the headers from identical files)
-diff:
-	@for i in $(ALLSRC) ;\
-	do  \
-	  ((rcsdiff -q $$i > /dev/null) || rcsdiff $$i) ;\
-	done
 

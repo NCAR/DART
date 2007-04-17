@@ -1,16 +1,26 @@
 /* Data Assimilation Research Testbed -- DART               */
-/* Copyright 2004-2006, Data Assimilation Research Section  */
+/* Copyright 2004-2007, Data Assimilation Research Section  */
 /* University Corporation for Atmospheric Research          */
 /* Licensed under the GPL -- www.gpl.org/licenses/gpl.html  */
 
-/* <next few lines automatically updated by version control software, do not edit> */
-/* $Revision$  */
+/* <next few lines under version control, do not edit> */                    
+/* $URL$ */
+/* $Id$ */                   
+/* $Revision$ */                                                      
 /* $Date$ */
-/* $Id$ */
 
-/* a "c" which calls the MPI parallel communication libraries */
+/* A simple MPI "c" program to test if the c interfaces for MPI work.       */
+/*                                                                          */
+/* DART contains no c code, but if you are having problems with either the  */
+/* MPI or netCDF libraries and you want to diagnose whether the problem is  */
+/* with the entire installation or with just the F90 interfaces, these      */
+/* c programs will allow you to test the c interfaces for mpi and netCDF.   */
+
 
 #include <mpi.h>
+
+#include <stdlib.h>
+#include <stdio.h>
 
 main(int argc, char **argv)
 {

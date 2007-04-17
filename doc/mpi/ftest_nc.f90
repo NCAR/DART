@@ -11,7 +11,7 @@ program ftest_nc
 ! $Revision$
 ! $Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $
 
-! fortran program which uses netcdf.    netcdf 3.6.x and beyond
+! fortran program which uses netcdf (and NOT mpi). netcdf 3.6.x and beyond
 ! comes with a fortran 90 module to define netcdf interfaces and
 ! parameters.  typically the module is found by giving the compiler
 ! a flag pointing to the netcdf include directory, but sometimes 
@@ -23,13 +23,16 @@ program ftest_nc
 ! your template file and set it in your environment:
 !  ksh & related: export NETCDF=xxx
 !  csh & related: setenv NETCDF xxx
+! if your system uses the 'module' command, be sure you have a
+! compatible netCDF module loaded; typically the netCDF installation
+! needs to be compiled with the same Fortran compiler as you are using.
 
 use netCDF
 use typeSizes
 
 implicit none
 
-character(len=32) :: filename = "test.nc"
+character(len=32) :: filename = "ftestdata.nc"
 integer :: ncfileid, istat, i
 integer :: test1_length = 5
 integer :: test1dimid, dataid
@@ -81,7 +84,6 @@ integer :: test1dimid, dataid
 ! Create variables and attributes.
 !-------------------------------------------------------------------------------
 
-!    Copy ID
    istat = nf90_def_var(ncid=ncfileid, name="data", xtype=nf90_int, &
                  dimids=test1dimid, varid=dataid)
    if (istat /= nf90_noerr) call netcdf_error_exit(istat)
