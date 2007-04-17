@@ -83,12 +83,14 @@ nodes; they can only be submitted to a batch system.  If the f90 and nc
 programs run but the mpi program fails, you still might be ok.  Move
 on to 'make batch' before declaring an emergency.
 
-Type:  make batch
+Edit the Makefile and select the proper line (bsub, qsub, or neither).  Then
+type:  make batch
 to submit the test programs to the batch queue.  This will almost certainly
-not work without modifications to the 'runme' script.  Once you have a 
-working script, you can transfer your changes to the model-specific files
-under $DART/models/your-model/work.  You may need to edit this Makefile
-to select the proper batch system.
+not work without modifications to the 'runme' script if you have LSF or PBS.
+(There are directives #LSF and #PBS which select the specific queue, specify
+max runtime, accounting charge code, etc which are very system specific.)  
+Once you have a working script here you can transfer your changes to the 
+model-specific files under $DART/models/your-model/work.
 
 
 WHAT YOU GET:
@@ -215,7 +217,8 @@ library calls.  DART does not have any C code in it, but it is possible
 that the MPI libraries were compiled without the Fortran interfaces.
 If this routine compiles and runs but the Fortran ones do not, that 
 might be a useful clue.  Try: make ctest_mpi (to compile), then:
-make run_c (to execute).
+make run_c (to execute).  You may need to select the proper batch system
+submit command in the Makefile (bsub, qsub, or neither).
 
 ctest_nc.c is a non-MPI C language program which uses the C versions of 
 the netCDF library calls.  Again, DART has no C code in it, but it is

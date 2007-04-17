@@ -54,21 +54,21 @@ everything: $(ALLEXE)
 
 # run the basic executables interactively
 check:  all
-	./ftest_f90
-	./ftest_nc
-	mpirun -np 2 ./ftest_mpi
+	./ftest_f90                   # this should run
+	./ftest_nc                    # this should run
+	mpirun -np 2 ./ftest_mpi      # this may not be allowed on a login node
 
 # submit the jobs to a batch queue
 batch: ftest_mpi
-	#bsub < runme           # LSF
-	#qsub runme             # PBS
-	./runme                # everything else
+	#bsub < runme           # comment this in for LSF
+	#qsub runme             # comment this in for PBS
+	./runme                 # anything else
 
 # check async=4 mode.  comment in the right line for your batch system.
 async4: ftest_stop ftest_go
-	#bsub < runme_async4      # LSF
-	#qsub runme_async4        # PBS
-	./runme_async4           # everything else
+	#bsub < runme_async4      # comment this in for LSF
+	#qsub runme_async4        # comment this in for PBS
+	./runme_async4            # anything else
 
 # ----------------------------------------------------------------------------
 
@@ -115,72 +115,21 @@ ctest_nc: ctest_nc.c
 
 # ----------------------------------------------------------------------------
 
-# lam or mpich w/ or w/o batch system
-#
-# these rules are complicated by the fact that Makefiles run shell commands
-# with sh syntax (because csh/tcsh cannot deal with multiline commands).
-# but running bsub from sh inherits the sh environment and i have not
-# been able to convince it to change to csh and read my .cshrc to get
-# the modules and environment set up right before executing the program.
-#
-# now i am trying to make a csh shell script which invokes bsub -- but somehow
-# it still is not working.  i do not like this approach because it because 
-# adds yet another layer of indirection onto an already confusing setup, but
-# it does work successfully.   this works fine from the command line, but not
-# from inside the makefile.  
-#
-# batch systems are evil.
-#
+# not strictly a DART test; it has no C code.  But if there is a question
+# of whether MPI was built without the F90 interface, this might help
+# diagnose the problem.
+run_c: ctest_mpi
+	#bsub < runme_c      # comment this in for LSF
+	#qsub runme_c        # comment this in for PBS
+	./runme_c            # anything else
 
-run_f: ftest_mpi
-	if [ '$(BATCH)' = 'lsf' ] ; then \
-	    ( /bin/tcsh -x -c < ./runme_lsf_f ) ;\
-	    echo 'job submitted to LSF batch queue.' ;\
-	elif [ '$(BATCH)' = 'pbs' ]; then \
-	    qsub runme_pbs_f ;\
-	    echo 'job submitted to PBS batch queue.' ;\
-	elif [ '$(BATCH)' = 'nobatch' ]; then \
-	    mpirun -v -np 2 -nolocal -machinefile ~/machinefile ./ftest_mpi > out_f 2>&1 ;\
-	    echo 'done. output in file out_f' ;\
-	else \
-	    mpirun -np 2 ./ftest_mpi > out_f 2>&1 ;\
-	    echo 'done. output in file out_f' ;\
-	fi
-	
-
+# interactive test of the stop/go pair.   if you must run with a batch
+# system, use the async4: target instead.
 run_s:  ftest_stop ftest_go
 	# needs batch script
 	mpirun ./ftest_stop &
 	sleep 5
 	mpirun ./ftest_go
-
-run_c: ctest_mpi
-	if [ '$(BATCH)' = 'lsf' ] ; then \
-	    /bin/csh bsub < runme_lsf_c ;\
-	    echo 'job submitted to LSF batch queue.' ;\
-	elif [ '$(BATCH)' = 'pbs' ]; then \
-	    qsub runme_pbs_c ;\
-	    echo 'job submitted to PBS batch queue.' ;\
-	elif [ '$(BATCH)' = 'nobatch' ]; then \
-	    mpirun -v -np 2 -nolocal -machinefile ~/machinefile ./ctest > out_c 2>&1 ;\
-	    echo 'done. output in file out_c' ;\
-	else \
-	    mpirun -np 2 ./ctest > out_c 2>&1 ;\
-	    echo 'done. output in file out_c' ;\
-	fi 
-	
-
-# ----------------------------------------------------------------------------
-
-# these are specific to the lam mpi libs
-setup:
-	lamboot -ssi rpi tcp
-
-takedown:
-	lamhalt
-
-status:
-	lamtask
 
 
 # ----------------------------------------------------------------------------
