@@ -1,15 +1,14 @@
 #!/bin/csh
-#
+
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2007, Data Assimilation Research Section
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next few lines under version control, do not edit>
-# $URL$
+# <next three lines automatically updated by CVS, do not edit>
 # $Id$
-# $Revision$
-# $Date$
+# $Source: /home/thoar/CVS.REPOS/DART/models/cam/shell_scripts/job_mpi.csh,v $
+# $Name:  $
 
 #-----------------------------------------------------------------------------
 # job.csh ... Script to run whole assimilation experiment; multiple obs_seq.out files. 
@@ -82,9 +81,9 @@
 # -W hr:mn   max wallclock time (required on some systems)
 # -b [[mm:]dd:]hh:mm    allow job to run only after this time.
 ##=============================================================================
-#BSUB -J DARTCAM
-#BSUB -o DARTCAM.%J.log
-#BSUB -P xxxxyyyy
+#BSUB -J job_mpi
+#BSUB -o job_mpi.%J.log
+#BSUB -P 86850054
 #BSUB -q share
 #BSUB -W 0:30
 #BSUB -n 1
@@ -102,18 +101,24 @@
 ## -r n   Declare job non-rerunable
 ## -e <arg>  filename for standard error 
 ## -o <arg>  filename for standard out 
-## -q <arg>   Queue name (small, medium, long, verylong)
+## -q <arg>   Queue name (choose the queue that will allow a single processor job
+##                        to execute quickly; share, debug, ...)
 ## -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok 
 ##                     and calgary, there is no way to 'share' the processors 
 ##                     on the node with another job, so you might as well use 
 ##                     them both.  (ppn == Processors Per Node)
 ##=============================================================================
-#PBS -N DARTCAM
+#PBS -N job_mpi
 #PBS -r n
-#PBS -e DARTCAM.err
-#PBS -o DARTCAM.log
-#PBS -q medium
-#PBS -l nodes=1:ppn=2
+#PBS -e job_mpi.err
+#PBS -o job_mpi.log
+#PBS -q debug
+##PBS -l nodes=1:ppn=1
+##PBS -l ncpus=32
+
+#PBS -S /bin/csh
+#PBS -l mem=1GB
+##PBS -W group_list=[group name]
 
 # A common strategy for the beginning is to check for the existence of
 # some variables that get set by the different queuing mechanisms.
@@ -128,7 +133,11 @@ if ($?LS_SUBCWD) then
    set CENTRALDIR = $LS_SUBCWD
    set JOBNAME = $LSB_JOBNAME
 # for multi-thread   
-set run_command = 'mpirun.lsf '
+   set run_command = 'mpirun.lsf '
+   which $run_command
+   if ($status != 0) then
+      exit "no mpirun.lsf found"
+   endif
 # for single-thread (?)
 #    set run_command = ' '
 # NOT USED on blueice
@@ -141,6 +150,13 @@ else if ($?PBS_O_WORKDIR) then
    set CENTRALDIR = $PBS_O_WORKDIR
    set JOBNAME = $PBS_JOBNAME
    set run_command = 'mpirun '
+   which $run_command
+   if ($status == 0) then
+      set run_command = "$run_command -np "
+   else
+      exit "no mpirun found, exiting"
+   endif
+   # The number of processors will be added after it's defined below
    set submit = ' qsub '
 
 else if ($?OCOTILLO_NODEFILE) then
@@ -155,7 +171,7 @@ else if ($?OCOTILLO_NODEFILE) then
    # echo "node3" >> $OCOTILLO_NODEFILE
 
    set CENTRALDIR = `pwd`
-   set JOBNAME = DARTCAM
+   set JOBNAME = job_mpi
    # i think this is what we want, but csh will not let you do multiline
    # executions; this argues for using ksh (line 2 below)...  (and maybe
    # it needs a cd as well?)
@@ -171,7 +187,7 @@ else
    # system ... and set 'submit' accordingly.
 
    set CENTRALDIR = `pwd`
-   set JOBNAME = DARTCAM
+   set JOBNAME = job_mpi
    set submit = 'csh '
    set run_command = ' '
    
@@ -210,9 +226,9 @@ echo "CENTRALDIR is " $CENTRALDIR
 # Directory where output will be kept (relative to '.')
 set resol = T21
 
-set parallel_cam = false
+set parallel_cam = true
 
-set exp = ${resol}_gwd9
+set exp = ${resol}_gwd7b
 
 
 # The "day" of the first obs_seq.out file of the whole experiment
@@ -230,69 +246,60 @@ set obs_seq_freq = 2
 # 'day'/obs_seq.out numbers to assimilate during this job
 # First and last obs seq files. 
 set obs_seq_1 = 1
-set obs_seq_n = 1
+set obs_seq_n = 2
 
 # The month of the obs_seq.out files for this run, and 
 # the month of the first obs_seq.out file for this experiment.
 set mo = 1
 set mo_first = 1
 
-# bluice 
 # set obs_seq_root = /ptmp/dart/raeder/Obs_sets/Allx12_I/obs_seq2003
 # ascii to avoid byteswapping;  
-set obs_seq_root = /ptmp/raeder/Obs_sets/Allx12_I/obs_seq2003
+set obs_seq_root = /ptmp/dart/Obs_sets/Allx12_I_ascii/obs_seq2003
 
-# The number of processors that will be used by the $exp_#.lsf jobs spawned by this script.
-# ? ? ?  what about the Simultaneous Multi-Threading?
-# ? ? ?  do I need a ptile?  
-#        BSUB -n N                N = 2x the # physical processors I want
-#        BSUB -R "span[ptile=2]"  assuming that we're sticking with 1 task/process.
-#        does echo to job_i below need changing, based on this?
-set num_procs = 10
-set queue = economy
+# The number of processors and/or nodes that will be used by the $exp_#.script jobs 
+# spawned by this script.
+set num_procs = 16
+set num_nodes = 1
+# The queue to be used by the actual assimilation run
+set queue = premium
 set wall_clock = 1:00
 
 # DART source code directory trunk, and CAM interface location.
-set DARTDIR = /home/coral/${user}/J/DART
+set DARTDIR = /blhome/${user}/J/DART
 set DARTCAMDIR =          ${DARTDIR}/models/cam
 
 # ICs for obs_seq_first only.  After that the ICs will come from the previous iteration.
 # This copies just the initial conditions for the correct number of ensemble members.
 
 if ($resol == T21) then
-   # set DART_ics_1  = /ptmp/dart/CAM_init/T21/03-01-01/DART_EFG_2._1._MPI
-   set DART_ics_1  = /ptmp/raeder/CAM_init/T21x80/03-01-01/DART_EFG_gwd9_MPI
-   set CAM_ics_1   = /ptmp/raeder/CAM_init/T21x80/03-01-01/CAM/caminput_
-   set CLM_ics_1   = /ptmp/raeder/CAM_init/T21x80/03-01-01/CLM/clminput_
+   set DART_ics_1  = /ptmp/dart/CAM_init/T21/03-01-01/DART_EFG_gwd6_MPI
+   set CAM_ics_1   = /ptmp/dart/CAM_init/T21/03-01-01/CAM/caminput_
+   set CLM_ics_1   = /ptmp/dart/CAM_init/T21/03-01-01/CLM/clminput_
    # -mpi will be attached to this name if parallel_cam = true; don't add it here
-   # set CAMsrc      = /ptmp/dart/CAM/CAMsrc/Cam3/cam3.1/models/atm/cam/bld/T21_3.1-O3_GWD
-   # set CAMsrc      = /blhome/raeder/Cam3/cam3.1/models/atm/cam/bld/T21_3.1-O3_GWD
-   set CAMsrc      = \
-      /home/coral/raeder/Cam3/cam3_0_7_brnchT_assim01/models/atm/cam/bld/T21_3.0.7_ifort-O2
-   set ptile = 2
+   set CAMsrc      = /blhome/raeder/Cam3/cam3_0_7_brnchT_assim01/models/atm/cam/bld/T21-O3_GWD
+   set ptile = 16
 else if ($resol == T42) then
    # T42
-   set DART_ics_1  = /ptmp/raeder/CAM_init/T42/03-01-01/DART_MPI
-   set CAM_ics_1   = /ptmp/raeder/CAM_init/T42/03-01-01/CAM/caminput_
-   set CLM_ics_1   = /ptmp/raeder/CAM_init/T42/03-01-01/CLM/clminput_
+   set DART_ics_1  = /ptmp/dart/CAM_init/T42/03-01-01/DART_MPI
+   set CAM_ics_1   = /ptmp/dart/CAM_init/T42/03-01-01/CAM/caminput_
+   set CLM_ics_1   = /ptmp/dart/CAM_init/T42/03-01-01/CLM/clminput_
    # The CAMsrc directory is MORE than just the location of the executable.
    # There are more support widgets expected in the directory tree.
-   set CAMsrc      = \
-       /ptmp/raeder/CAM/CAMsrc/Cam3/cam3_0_7_brnchT_assim01/models/atm/cam/bld/T42_3.1-O3
-   set ptile = 2
+   # -mpi will be attached to this name if parallel_cam = true; don't add it here
+   set CAMsrc      = /ptmp/dart/CAM/CAMsrc/Cam3/cam3.1/models/atm/cam/bld/T42_3.1-O3
+   set ptile = 16
 else if ($resol == T85) then
    # T85
-   set DART_ics_1  = /ptmp/raeder/CAM_init/T85/03-01-01/DART_MPI
-   set CAM_ics_1   = /ptmp/raeder/CAM_init/T85/03-01-01/CAM/caminput_
-   set CLM_ics_1   = /ptmp/raeder/CAM_init/T85/03-01-01/CLM/clminput_
-   set CAMsrc      = \
-       /ptmp/raeder/CAM/CAMsrc/Cam3/cam3_0_7_brnchT_assim01/models/atm/cam/bld/T85_3.1-O3
-   set ptile = 1
+   set DART_ics_1  = /ptmp/dart/CAM_init/T85/03-01-01/DART_MPI
+   set CAM_ics_1   = /ptmp/dart/CAM_init/T85/03-01-01/CAM/caminput_
+   set CLM_ics_1   = /ptmp/dart/CAM_init/T85/03-01-01/CLM/clminput_
+   # -mpi will be attached to this name if parallel_cam = true; don't add it here
+   set CAMsrc      = /ptmp/dart/CAM/CAMsrc/Cam3/cam3.1/models/atm/cam/bld/T85_3.1-O3
+   set ptile = 16
 endif 
 
 if (${parallel_cam} == true) then
-   # ? ? ?  what about the Simultaneous Multi-Threading?
-   set ptile = 2                                                              
    set CAMsrc = ${CAMsrc}-mpi                                                 
 endif                                                                         
 
@@ -307,13 +314,27 @@ set input = input_
 # CHANGE choice of whether forecasts on caminput_##.nc files should be replaced with
 #        analyses from filter_ic_new.#### at the end of each obs_seq.  See 'stuff' below
 
-# IS currently used
+# Choose which sets of restart files will be backed to up a permanent storage place.
+# Scripts auto_re2ms_LSF.csh and auto_re2ms.csh may need to be modified/replaced on your system.
+# Restarts are backed up when
 #      if ($j % $save_freq == $mod_save) save to mass store
-set save_freq = 4
+# where in the obs_seq loop below j = current obs_seq file - 1
+set save_freq = 400
 set mod_save = 0
 
 # END of run parameters to change
 #==========================================================================================
+
+# Add information to the run_command, based on User set parameters
+if ($?PBS_WORKDIR) then
+   set run_command = "$run_command $num_procs "
+endif
+
+
+# Add information to the run_command, based on User set parameters
+if ($?PBS_WORKDIR) then
+   set run_command = "$run_command $num_procs "
+endif
 
 # try to discover the ensemble size from the input.nml
 # this is some gory shell programming ... all to do 'something simple'
@@ -412,8 +433,8 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo "starting observation sequence file $i at "`date` >> $MASTERLOG
 
 #===================================================================================
-   # Each iteration of this loop will write out a batch job script named $exp_#.lsf
-   setenv job_i ${exp}_${i}.lsf
+   # Each iteration of this loop will write out a batch job script named $exp_#.script
+   setenv job_i ${exp}_${i}.script
 
    if ($?LS_SUBCWD) then
       echo "#\!/bin/csh"                   >!  ${job_i}
@@ -423,14 +444,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo "#BSUB -P 86850054"                 >> ${job_i}
       echo "#BSUB -N -u ${runner} "            >> ${job_i}
       echo "#BSUB -W ${wall_clock}"            >> ${job_i}
-# kluge to deal with inexplicable failure on 2003/1 obs_seq file 49
-# Modified to test varying # procs 2/13/07
-#      if ($i == 31) then
-#         set n_procs = 24
-#         set queue = premium
-#      else
          set n_procs = $num_procs
-#      endif
       echo "#BSUB -q ${queue}"                                 >> ${job_i}
       echo "#BSUB -n ${n_procs}"                               >> ${job_i}
 # exclusive use of the nodes; still allows > process/node
@@ -450,20 +464,21 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo "##==================================================================" >> ${job_i}
 
    else if ($?PBS_O_WORKDIR) then
-      @ num_nodes = num_procs / 2
-      echo "#\!/bin/csh"                        >!  ${job_i}
+      echo "#\!/bin/csh"                                                          >! ${job_i}
       echo "##==================================================================" >> ${job_i}
-      echo "#PBS -N ${exp}_${i}"                >> ${job_i}
-      echo "#PBS -r n"                          >> ${job_i}
-      echo "#PBS -e ${exp}_${i}.err"            >> ${job_i}
-      echo "#PBS -o ${exp}_${i}.log"            >> ${job_i}
-      echo "#PBS -q medium"                     >> ${job_i}
-      echo "#PBS -l nodes=${num_nodes}:ppn=2"   >> ${job_i}
-      # THIS IS NOT CORRECT FOR PBS; just a hook based on LSF
+      echo "#PBS -N ${exp}_${i}"                                                  >> ${job_i}
+      echo "#PBS -e ${exp}_${i}.err"                                              >> ${job_i}
+      echo "#PBS -o ${exp}_${i}.log"                                              >> ${job_i}
+      echo "#PBS -S /bin/csh"                                                     >> ${job_i}
+      echo "#PBS -r n"                                                            >> ${job_i}
+      echo "#PBS -m e"                                                            >> ${job_i}
+      echo "#PBS -M ${runner}"                                                    >> ${job_i}
+      echo "#PBS -q ${queue}"                                                     >> ${job_i}
+      echo "#PBS -l nodes=${num_nodes}:ppn=${ptile}"                              >> ${job_i}
+      echo "#PBS -l mem=3GB"                                                      >> ${job_i}
+      echo "#PBS -W group_list=[your group name]"                                 >> ${job_i}
       if ($i > $obs_seq_1) then
-         @ previousjobnumber = $i - 1
-         set previousjobname = ${exp}_${previousjobnumber}
-         echo "#QSUB -w done($previousjobname)" >> ${job_i}
+         echo "#PBS -W depend=afterok:$previousjobname"                           >> ${job_i}
       endif
       echo "##==================================================================" >> ${job_i}
 
@@ -602,7 +617,11 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
    # transmit info to advance_model.csh
    # The second item echoed must be the directory where CAM is kept
-   echo "$exp $CAMsrc $cam_init $clm_init" >! casemodel.$i
+   echo "$exp "         >! casemodel.$i
+   echo "$CAMsrc "      >> casemodel.$i
+   echo "$cam_init "    >> casemodel.$i
+   echo "$clm_init"     >> casemodel.$i
+   echo "$run_command"  >> casemodel.$i
    # advance_model wants to see a file 'casemodel' and not keep track of which obs_seq it's for
    echo "$REMOVE casemodel"                >> ${job_i}
    echo "$LINK casemodel.$i casemodel "    >> ${job_i}
@@ -705,20 +724,31 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo '  if ( "${todo}" == "finished" ) then           ' >> ${job_i}     
       echo '    echo finished command received from filter. ' >> ${job_i}
       echo '    echo main script: filter done.              ' >> ${job_i}
+     # add this wait to be sure filter task has exited
+     # before starting to clean up the files.
+     echo '    wait                                            ' >> ${job_i}
+     echo '    echo filter finished, removing pipes.           ' >> ${job_i}
+     echo "    rm -f filter_to_model.lock model_to_filter.lock " >> ${job_i}
+
       echo '    break                                       ' >> ${job_i}
       echo " "                                                >> ${job_i}
       echo '  else if ( "${todo}" == "advance" ) then       ' >> ${job_i}
       echo '    echo advance command received from filter.  ' >> ${job_i}
-      echo '    echo calling real advance now:              ' >> ${job_i}
-      echo "    ./advance_model.csh 0 $num_ens filter_control00000  ${parallel_cam}"    >> ${job_i}
+      echo '    echo calling advance_model.csh now:              ' >> ${job_i}
+      echo "    ./advance_model.csh 0 $num_ens filter_control00000  "       >> ${job_i}
+     # do not execute anything here until you have saved
+     # the exit status from the advance model script.
+     echo '    set advance_status = $status                ' >> ${job_i}
+     echo '    echo saved advance_model.csh exit status    ' >> ${job_i}
       echo " "                                                >> ${job_i}
-      echo '    if ($status == 0) then                      ' >> ${job_i}
       echo '       echo restarting filter.  this version of wakeup_filter            ' >> ${job_i}
       echo '       echo includes restarting the main filter program.                  ' >> ${job_i}
       echo "       ${run_command} ./wakeup_filter          " >> ${job_i}
-      echo '    else                                        ' >> ${job_i}
+     echo " "                                                >> ${job_i}
+     echo '    if ($advance_status != 0) then              ' >> ${job_i}
       echo '       echo "Model advance failed"              ' >> ${job_i}
-      echo '       exit                                     ' >> ${job_i}
+     echo '       rm -f filter_lock*                       ' >> ${job_i}
+     echo '       break                                    ' >> ${job_i}
       echo '    endif                                       ' >> ${job_i}
       echo " "                                                >> ${job_i}
       echo '  else                                          ' >> ${job_i}
@@ -730,11 +760,6 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo " "                                                >> ${job_i}
       echo 'end                                             ' >> ${job_i}     
       echo " "                                                >> ${job_i}
-      # add this wait to be sure filter task has exited
-      # before starting to clean up the files.
-      echo 'wait                                            ' >> ${job_i}
-      echo 'echo filter finished, removing pipe.            ' >> ${job_i}
-      echo "rm -f filter_to_model.lock model_to_filter.lock " >> ${job_i}
    else
       # Run the filter in async=2 mode.
       # runs filter, which tells the model to model advance and assimilates obs
@@ -745,8 +770,8 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
    #-----------------
    # When filter.f90 finishes an obs_seq.out file, it creates a file called 'go_end_filter' 
-   # in the CENTRALDIR.  Under the MPI/async=2 scenario this won't be used.  The successfl
-   # completion of the job_#.lsf script will tell the (next) job_[#+1].lsf script to start.
+   # in the CENTRALDIR.  Under the MPI/async=2 scenario this won't be used.  The successful
+   # completion of the $job_# script will tell the (next) $job_[#+1] script to start.
 
 
    #-----------------------------------------------
@@ -982,16 +1007,16 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
 
 # Finally, submit the script that we just created.
-   eval submit ${job_i} >! batchsubmit$$
-#   Works on coral.
-#   blueice; No command is specified. Job not submitted.
+# Doesn't work on blueice
+#   eval submit ${job_i} >! batchsubmit$$
+# The beauty of hard-wiring
+   bsub < ${job_i} >! batchsubmit$$
 
-#   eval ${subm} ${job_i} >! batchsubmit$$
-#   No command is specified. Job not submitted.
 
-#   Doesn't work on coral!  Does on blueice:
-#   eval bsub < ${job_i} >! batchsubmit$$
-
+if ($?PBS_O_WORKDIR) then
+   set previousjobname = `cat batchsubmit$$`
+   set FILTERBATCHID = $previousjobname
+else if ($?LS_SUBCWD) then
    set STRING = "1,$ s#<##g"
    sed -e "$STRING" batchsubmit$$ >! bill$$
    set STRING = "1,$ s#>##g"
@@ -1000,6 +1025,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    set FILTERBATCHID = $STRING[2]
    # set FILTERBATCHID = "none4test"
    ${REMOVE} batchsubmit$$ bill$$
+endif
 
    echo "filter        spawned as job $FILTERBATCHID at "`date`
    echo "filter        spawned as job $FILTERBATCHID at "`date`       >> $MASTERLOG
@@ -1010,7 +1036,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 end # end of the huge "i" loop
 
 # Move the stout from this script to the experiment directory (with a meaningful name)
-# and make a link to it using the old name, so that each of the job_i.lsf scripts
+# and make a link to it using the old name, so that each of the $job_i scripts
 # can write their stout to the same file.
 ${MOVE} ${MASTERLOG} ${exp}/run_job_${obs_seq_1}-${obs_seq_n}.log   
 ${LINK}              ${exp}/run_job_${obs_seq_1}-${obs_seq_n}.log run_job.log

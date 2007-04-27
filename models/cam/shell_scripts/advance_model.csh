@@ -1,15 +1,14 @@
 #!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
+# Copyright 2004-2006, Data Assimilation Research Section 
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next few lines under version control, do not edit>
-# $URL$
+# <next three lines automatically updated by CVS, do not edit>
 # $Id$
-# $Revision$
-# $Date$
+# $Source: /home/thoar/CVS.REPOS/DART/models/cam/shell_scripts/advance_model.csh,v $
+# $Name:  $
 
 #----------------------------------------------------------------------
 # advance_model.csh
@@ -25,25 +24,16 @@
 # belonging to that process, and the name of the filter_control_file for
 # that process
 
-# OLD OLD OLD -- this is no longer true.
-# Has either 3 or 4 input arguments.
 # arg#1  is the name of the CENTRALDIR
-# arg#2  is the ensemble member number
-# arg#3  is the name of the directory that is used to advance this particular 
-#        instance of the model. Each ensemble member (i.e. each execution of CAM)
-#        runs in its own, unique directory that is emptied upon entry.
-# arg#4  is optional, and contains the 'machine file' for multi-threaded 
-#        instances of CAM. 
+# arg#2  is the number of ensemble members 
+# arg#3  is the name of the control file that determines which members will
+#        be advanced on which processors.
 #----------------------------------------------------------------------
 
 set process = $1
 set num_states = $2
 set control_file = $3
 echo "advance_model.csh args = $1 $2 $3"
-
-set parallel = ' '
-if ($#argv == 4) set parallel = $4
-echo "advance_model.csh; parallel = $parallel"
 
 set retry_max = 2
 
@@ -74,21 +64,20 @@ if ( ! $?LINK ) then
   set LINK = 'ln -fs'
 endif
 
-echo "CENTRALDIR is ${CENTRALDIR}"                          >! cam_out_temp
+echo "CENTRALDIR is ${CENTRALDIR}"                          >  cam_out_temp
 echo "temp_dir is $temp_dir"                                >> cam_out_temp
 
 # Get information about this experiment from file "casemodel", 
 # created by the main controlling script (job.csh)
-set caseinfo = `cat ${CENTRALDIR}/casemodel`
 
 # set $case = the case and 
-# $model = the directory name (in the central CAM directory) 
+# $model = the directory name (in the CAM source tree) 
 # where CAM executable will be found. 
 # set locations of the CAM and CLM input files
-set     case = $caseinfo[1]
-set    model = $caseinfo[2]
-set cam_init = $caseinfo[3]
-set clm_init = $caseinfo[4]
+set case        = `head -1 ${CENTRALDIR}/casemodel | tail -1`
+set model       = `head -2 ${CENTRALDIR}/casemodel | tail -1`
+set cam_init    = `head -3 ${CENTRALDIR}/casemodel | tail -1`
+set clm_init    = `head -4 ${CENTRALDIR}/casemodel | tail -1`
 
 # output diagnostic information to the same file as the CAM list-directed output
 echo "case $case model $model"    >> cam_out_temp
@@ -96,11 +85,10 @@ echo "cam init is $cam_init"      >> cam_out_temp
 echo "clm init is $clm_init"      >> cam_out_temp
 
 # Loop through each ensemble this task is responsible for advancing.
-set state_copy = 1
 set ensemble_number_line = 1
-set input_file_line = 2
-set output_file_line = 3
-
+set input_file_line      = 2
+set output_file_line     = 3
+set state_copy = 1
 while($state_copy <= $num_states)
 
    # loop through the control file, extracting lines in groups of 3.
@@ -115,8 +103,6 @@ while($state_copy <= $num_states)
    echo "starting ${myname} for ens member $element at "`date` >> cam_out_temp
 
    # get model state initial conditions for this ensemble member
-   # make sure link target is nonexistent before making the link.
-   ${REMOVE} temp_ic
    ${LINK} ${CENTRALDIR}/$input_file temp_ic
 
    # get filter namelists for use by cam
@@ -182,19 +168,12 @@ while($state_copy <= $num_states)
    ls -ltR >> cam_out_temp
    
    # advance cam 
-   # 'machine_file' is NOT USED by run-pc.csh in single-threaded executions 
-   #if ($#argv == 4) then
-   #   set machine_file = $4
-   #   ${model:h}/run-pc.csh ${case}-$element $model ${CENTRALDIR} $machine_file >>& cam_out_temp
-   #else
    #   echo executing: ${model:h}/run-pc.csh ${case}-$element $model ${CENTRALDIR} >> cam_out_temp
       set retry = 0
       while ($retry < $retry_max)
-         echo executing: ${CENTRALDIR}/run-pc.csh ${case}-$element $model ${CENTRALDIR} $parallel \
+         echo executing: ${CENTRALDIR}/run-pc.csh ${case}-$element $model ${CENTRALDIR} \
               >> cam_out_temp
-         ${CENTRALDIR}/run-pc.csh ${case}-$element $model ${CENTRALDIR} $parallel       \
-              >>& cam_out_temp
-   #endif
+         ${CENTRALDIR}/run-pc.csh ${case}-$element $model ${CENTRALDIR}  >>& cam_out_temp
    
          grep 'END OF MODEL RUN' cam_out_temp > /dev/null
          if ($status == 0) then
