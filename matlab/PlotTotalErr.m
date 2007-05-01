@@ -193,6 +193,46 @@ switch lower(model)
       xlabel(sprintf('model time (%d timesteps)',num_times))
       ylabel('Total Error')
 
+   case {'simple_advection'}
+
+      % if the 'state' variable exists ... then
+      % 'concentration','source', and 'wind' do not.
+
+      if ( isempty(f.state(:)))
+         varlist = {'concentration','source','wind'};
+      else
+         varlist = {'state'};
+      end
+
+      for ivar = 1:length(varlist)
+
+         % Get the appropriate netcdf variables
+         truth  = get_state_copy(pinfo.truth_file, varlist{ivar},     truth_index);
+         ens    = get_state_copy(pinfo.diagn_file, varlist{ivar},  ens_mean_index);
+         spread = get_state_copy(pinfo.diagn_file, varlist{ivar},ens_spread_index);
+         num_vars = size(spread,2);
+
+         % Also need to compute the spread; zero truth for this and
+         % compute distance from 0
+         err        = total_err(truth, ens);
+         err_spread = total_err(zeros(size(spread)), spread);
+         errTotal   = sum(err)/num_times;
+         spreadTotal= sum(err_spread)/num_times;
+         string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
+         string2 = ['time-mean Ensemble Spread Total Error = ' num2str(spreadTotal)];
+
+         figure(ivar); clf(ivar);
+         plot(times,err, 'b', times,err_spread, 'r');
+         legend(string1,string2,0)
+         legend boxoff
+         string1 = sprintf('%s Total Error over all %d variables', model, num_vars);
+         string2 = sprintf('''%s'' %s', varlist{ivar}, pinfo.diagn_file);
+         title({string1,string2},'interpreter','none','fontweight','bold')
+         xlabel(sprintf('model time (%d timesteps)',num_times))
+         ylabel('Total Error')
+
+      end
+
    case 'fms_bgrid'
 
       BgridTotalError( pinfo )

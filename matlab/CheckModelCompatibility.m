@@ -138,6 +138,12 @@ switch lower(modelname)
          y = [dnum_lons dnum_lats dnum_lvls];
       end
 
+   case 'simple_advection'
+      if ( VarExist(ncid,'loc1d')) 
+         y = ncsize(ncid('loc1d'));
+	 x = 1;
+      end
+
    otherwise
 %     disp(sprintf('working with %s',modelname))
       if ( VarExist(ncid,'StateVariable')) 
