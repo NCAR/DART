@@ -32,15 +32,16 @@ public :: KIND_RAW_STATE_VARIABLE, KIND_U_WIND_COMPONENT, &
           KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE, &
           KIND_VERTICAL_VELOCITY, KIND_RAINWATER_MIXING_RATIO, &
           KIND_DEW_POINT_TEMPERATURE, KIND_DENSITY, KIND_VELOCITY, &
-          KIND_1D_INTEGRAL, KIND_RADAR_REFLECTIVITY, &
+          KIND_RADAR_REFLECTIVITY, KIND_1D_INTEGRAL, &
           KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
-          KIND_GPSRO, &
-          KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, &
+          KIND_GPSRO, KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, &
           KIND_CONDENSATIONAL_HEATING, KIND_VAPOR_MIXING_RATIO, &
           KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
           KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
-          KIND_VORTEX_LON, KIND_VORTEX_LAT, KIND_VORTEX_PMIN, KIND_VORTEX_WMAX, &
-          KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION
+          KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION, &
+          KIND_TRACER_SOURCE, KIND_TRACER_CONCENTRATION, &
+          KIND_VORTEX_LON, KIND_VORTEX_LAT, &
+          KIND_VORTEX_PMIN, KIND_VORTEX_WMAX
 
 ! Public access to the observation types is provided here
 ! This is constructed by the preprocessor
@@ -89,6 +90,10 @@ integer, parameter :: KIND_RAW_STATE_VARIABLE          = 0, &
 ! kinds for Gravity Wave Drag (CAM - kevin) 
 integer, parameter :: KIND_GRAV_WAVE_DRAG_EFFIC        = 25, &
                       KIND_GRAV_WAVE_STRESS_FRACTION   = 26
+
+! kinds for simple advection model
+integer, parameter :: KIND_TRACER_SOURCE               = 27, &
+                      KIND_TRACER_CONCENTRATION        = 28
 
 ! kinds for vortex tracking (WRF - yongsheng)
 integer, parameter :: KIND_VORTEX_LON                  = 81, &

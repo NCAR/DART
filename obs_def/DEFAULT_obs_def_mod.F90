@@ -30,8 +30,16 @@ use     obs_kind_mod, only : KIND_RAW_STATE_VARIABLE, KIND_U_WIND_COMPONENT, &
                              KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE, &
                              KIND_VERTICAL_VELOCITY, KIND_RAINWATER_MIXING_RATIO, &
                              KIND_DEW_POINT_TEMPERATURE, KIND_DENSITY, KIND_VELOCITY, &
-                             KIND_1D_INTEGRAL, KIND_RADAR_REFLECTIVITY, &
-                             KIND_POTENTIAL_TEMPERATURE
+                             KIND_RADAR_REFLECTIVITY, KIND_1D_INTEGRAL, &
+                             KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
+                             KIND_GPSRO, KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, &
+                             KIND_CONDENSATIONAL_HEATING, KIND_VAPOR_MIXING_RATIO, &
+                             KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
+                             KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
+                             KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION, &
+                             KIND_TRACER_SOURCE, KIND_TRACER_CONCENTRATION, &
+                             KIND_VORTEX_LON, KIND_VORTEX_LAT, &
+                             KIND_VORTEX_PMIN, KIND_VORTEX_WMAX 
 
 ! DART PREPROCESS USE FOR OBS_KIND_MOD INSERTED HERE
 
