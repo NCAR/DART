@@ -267,7 +267,7 @@ integer,             intent(in) :: itype
 real(r8),           intent(out) :: obs_val
 integer,            intent(out) :: istatus
 
-integer :: lower_index, upper_index, i, offset
+integer :: lower_index, upper_index, offset
 real(r8) :: lctn, lctnfrac
 
 ! All forward operators supported
