@@ -51,7 +51,7 @@ logical, save :: module_initialized = .false.
 
 integer,              parameter :: LocationDims = 1
 character(len = 129), parameter :: LocationName = "loc1d"
-character(len = 129), parameter :: LocationLName = "one-dimensional location"
+character(len = 129), parameter :: LocationLName = "location on unit circle"
 
 interface operator(==); module procedure loc_eq; end interface
 interface operator(/=); module procedure loc_ne; end interface
