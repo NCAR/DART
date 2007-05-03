@@ -80,6 +80,41 @@ switch lower(vars.model)
          varid = struct('var',vrbl,'var_inds',vrbl_inds); 
       end 
 
+   case 'simple_advection'
+
+      % query to see if the defaults are OK ...
+
+      disp(sprintf('\nUsing variable ''%s'' IDs %s ', ...
+                   vars.def_var, num2str(vars.def_state_vars)))
+      disp('If these are OK, <cr>;')
+
+      switch lower(vars.def_var)
+      case 'state'
+         disp(sprintf('If not, enter array of state variable ID''s between %d and %d', ...
+         vars.min_state_var, vars.max_state_var))
+
+      otherwise
+
+         disp('Possible choices of variables are ')
+         for i = 1:vars.num_vars
+            disp(sprintf('%s',vars.vars{i}))
+         end
+
+         disp(sprintf('and a range between %d and %d', vars.min_state_var,  ...
+                                                       vars.max_state_var))
+         disp(sprintf('you can choose something like ''%s 2 5 8 9'', for example.', ...
+                      vars.vars{1}))
+      end
+
+      IDstring = input('(no intervening syntax required)\n','s');
+
+      if isempty(IDstring) 
+         varid = struct('var',vars.def_var,'var_inds',vars.def_state_vars); 
+      else 
+         [vrbl, vrbl_inds] = Parse(IDstring);
+         varid = struct('var',vrbl,'var_inds',vrbl_inds); 
+      end 
+
    case {'lorenz_96','lorenz_04'}
 
       % query to see if these are OK, if not ...
@@ -100,4 +135,23 @@ switch lower(vars.model)
       % ultra low-order models have no choice.
       varid = struct('var',vars.def_var,'var_inds',vars.def_state_vars); 
 
+end
+
+
+function [vrbl, vrbl_inds] = Parse(IDstring)
+% ParseAlphaNumeric    local function 
+% to extricate a variable name from subsequent IDs 
+% str1 = ' X 1 3 4 89'
+% [alpha, numerics] = ParseAlphaNumeric(str1)
+% alpha = 'X'
+% numerics = [1 3 4 89];
+
+inds       = find(IDstring == ',');     % find all commas
+IDstring(inds) = ' ';
+words      = strread(IDstring,'%s');
+nwords     = length(words);
+vrbl       = words{1};
+
+for i = 2:nwords
+   vrbl_inds(i-1) = sscanf(words{i},'%d');
 end
