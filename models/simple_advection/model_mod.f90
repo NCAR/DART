@@ -11,8 +11,8 @@ module model_mod
 ! $Revision: 2722 $
 ! $Date: 2007-03-26 18:38:10 -0600 (Mon, 26 Mar 2007) $
 
-use        types_mod, only : r8
-use time_manager_mod, only : time_type, set_time
+use        types_mod, only : r8, PI
+use time_manager_mod, only : time_type, set_time, get_time
 use     location_mod, only : location_type, set_location, get_location, &
                              LocationDims, LocationName, LocationLName, &
                              get_close_maxdist_init, get_close_obs_init, &
@@ -59,17 +59,34 @@ type(random_seq_type) :: random_seq
 logical :: random_seq_init = .false.
 logical :: verbose = .false.
 
+! Base velocity (expected value over time), in domain_length / hour
+real(r8), parameter :: mean_wind = 0.023_r8
+! Random walk amplitude for wind in domain_length/hour^2
+real(r8)            :: wind_random_amp = mean_wind / 10.0_r8
+! Rate of damping towards mean wind value in percent/hour
+real(r8)            :: wind_damping_rate = 0.01_r8
+
+! Base tracer source rate in amount (unitless) / hour
+real(r8), allocatable :: mean_source(:)
+real(r8), allocatable :: source_phase_offset(:)
+real(r8), allocatable :: source_random_amp(:)
+real(r8), parameter   :: source_damping_rate    = 0.01_r8
+real(r8), parameter   :: source_diurnal_rel_amp = 0.1_r8
 !---------------------------------------------------------------
 ! Namelist with default values
 !
-integer  :: num_grid_points = 10
+integer  :: num_grid_points      = 10
+integer  :: time_step_days       = 0
+integer  :: time_step_seconds    = 3600
 real(r8) :: destruction_rate_pct = 20.0_r8
-logical  :: output_state_vector = .false.
-integer  :: time_step_days = 0
-integer  :: time_step_seconds = 3600
+! est_source_model is set to true if the source model params are to be estimated
+logical  :: est_source_model     = .false.
+logical  :: lagrangian_for_wind  = .true.
+logical  :: output_state_vector  = .false.
 
-namelist /model_nml/ num_grid_points, destruction_rate_pct, &
-                     output_state_vector, time_step_days, time_step_seconds
+namelist /model_nml/ num_grid_points, time_step_days, time_step_seconds, &
+                     destruction_rate_pct, est_source_model, lagrangian_for_wind, &
+                     output_state_vector
 
 !----------------------------------------------------------------
 ! Define the location of the state variables in module storage
@@ -121,6 +138,21 @@ end do
 ! The time_step in terms of a time type must also be initialized.
 time_step = set_time(time_step_seconds, time_step_days)
 
+! Allocate storage for the base tracer source and initialize it
+! Might want to put the source distribution into the namelist somehow?
+allocate(mean_source(num_grid_points), source_phase_offset(num_grid_points), &
+   source_random_amp(num_grid_points))
+
+! Set the base value for the mean source
+mean_source    = 0.0_r8
+mean_source(1) = 1.0_r8
+
+! Set the base value for the diurnal phase offset
+source_phase_offset = 0.0_r8
+
+! Set the amplitude of the random walk for the source in unit/hour^2
+source_random_amp = 0.1 * mean_source
+
 end subroutine static_init_model
 
 
@@ -136,7 +168,7 @@ real(r8), intent(out) :: x(:)
 ! Start by zeroing all
 x = 0.0_r8
 
-! First set of variables is the concentration
+! First set of variables is the concentration; Everybody starts at 0.0
 x(1:num_grid_points) = 0.0_r8
 
 ! Second set of variables is the source.
@@ -147,11 +179,11 @@ x(1:num_grid_points) = 0.0_r8
 !!!x(num_grid_points + 1) = 1.0_r8
 !!!x(num_grid_points + num_grid_points/2 + 1) = -1.0_r8
 
-! Single source, used with destruction
-x(num_grid_points + 1) = 1.0_r8
+! Single source, used with destruction, units source / hour
+x(num_grid_points + 1 : 2*num_grid_points) = mean_source
 
 ! Final set of variables is the u wind; its units are delta_x per time
-x(2*num_grid_points + 1: 3*num_grid_points) = .23_r8
+x(2*num_grid_points + 1: 3*num_grid_points) = mean_wind
 
 end subroutine init_conditions
 
@@ -168,26 +200,31 @@ subroutine adv_1step(x, time)
 real(r8), intent(inout) :: x(:)
 type(time_type), intent(in) :: time
 
-integer :: i, istatus
+integer :: i, istatus, next, prev, seconds, days
 type(location_type) :: this_loc, source_loc
-real(r8) :: lctn, source_location, new_x(size(x))
+real(r8) :: lctn, source_location, new_x(size(x)), old_u_mean, new_u_mean
+real(r8) :: du_dx, dt_hours, percent_destroyed, t_phase, phase, random_src
 
-! State is concentrations (num_grid_points), source(num_grid_points), u
+! State is concentrations (num_grid_points), source(num_grid_points), u(num_grid_points)
+! If source model is included, also have mean_source, source_phase_offset
+! and source_random_amp, all dimensioned num_grid_points.
 
-! For now, no time tendency for source
 
-! For the concentration and u, do a linear interpolated upstream distance
-! Velocity is in domains per time to make this easy
+! For the concentration do a linear interpolated upstream distance
+! Also have an option to do upstream for wind (controlled by namelist)
+! Velocity is in domains per second
+! Need the total time_step in seconds
+dt_hours = time_step_seconds / 3600.0_r8 + time_step_days*24.0_r8
 
 do i = 1, num_grid_points
 
-   ! Find source point location
    ! Find the location of the target point
    call get_state_meta_data(i, this_loc)
    lctn = get_location(this_loc)
 
-   ! Velocity is in grid intervals per timestep
-   source_location = lctn - x(2*num_grid_points + i) / num_grid_points
+   ! Find source point location
+   ! Velocity is in domains per second
+   source_location = lctn - x(2*num_grid_points + i) * dt_hours
 
    if(source_location > 1.0_r8) then
       if (verbose) write(*, *) 'source > 1 ', source_location, &
@@ -204,22 +241,86 @@ do i = 1, num_grid_points
    source_loc = set_location(source_location)
    call model_interpolate(x, source_loc, KIND_TRACER_CONCENTRATION, &
       new_x(i), istatus)  
-   call model_interpolate(x, source_loc, KIND_VELOCITY, &
+   ! Following line does lagangian du
+   if(lagrangian_for_wind) call model_interpolate(x, source_loc, KIND_VELOCITY, &
       new_x(2*num_grid_points + i), istatus)  
 end do
 
-! Now add in the source contribution and put everything back into inout x
+
+!----- Next block is eulerian du for wind, controlled by namelist
+if(.not. lagrangian_for_wind) then
+   ! Use centered for du/dx
+   do i = 1, num_grid_points
+      ! Compute centered difference for du/dx
+      next = i + 1
+      if(next > num_grid_points) next = 1
+      prev = i - 1
+      if(prev < 1) prev = num_grid_points
+      du_dx = (x(2*num_grid_points + next) - x(2*num_grid_points + prev)) / &
+         (2.0_r8 / num_grid_points)
+      new_x(2*num_grid_points + i) = x(2*num_grid_points + i) + &
+         x(2*num_grid_points + i) * du_dx * dt_hours
+   end do
+endif
+!---- End Eulerian block
+
+
+! Now add in the source contribution and put concentration and wind back into inout x
+! Source is in units of .../hour
 do i = 1, num_grid_points
-   x(i) = new_x(i) + x(num_grid_points + i)
+   x(i) = new_x(i) + x(num_grid_points + i) * dt_hours
    ! Also copy over the new velocity
    x(2*num_grid_points + i) = new_x(2*num_grid_points + i)
 end do
 
-! Now do the destruction rate
+! Now do the destruction rate: Units are percent destroyed per hour
+! Compute the percent destroyed per time_step
+percent_destroyed = destruction_rate_pct * dt_hours
+   
 do i = 1, num_grid_points
-   x(i) = x(i) * (1.0_r8 - destruction_rate_pct / 100.0_r8)
+   if(percent_destroyed > 100.0_r8) then
+      x(i) = 0.0_r8
+   else
+      x(i) = x(i) * (1.0_r8 - percent_destroyed/ 100.0_r8)
+   endif
 end do
 
+!----- Following block is random walk plus damping to mean for wind
+! Random walk for the spatial mean velocity
+old_u_mean = sum(x(2*num_grid_points + 1 : 3*num_grid_points)) / num_grid_points
+! Add in a random walk
+new_u_mean = random_gaussian(random_seq, old_u_mean, wind_random_amp * dt_hours)
+! Damp back towards base value
+! Need an error handler call here or earlier
+if(wind_damping_rate*dt_hours > 100.0_r8) stop
+new_u_mean = new_u_mean - wind_damping_rate * dt_hours * (new_u_mean - mean_wind)
+
+! Substitute the new mean wind
+x(2*num_grid_points  + 1 : 3*num_grid_points) = &
+   x(2*num_grid_points + 1 : 3*num_grid_points) - old_u_mean + new_u_mean
+!----- End forced damped wind section
+
+
+!----- Time tendency with diurnal cycle for sources ---
+! Figure out what the time in the model is
+call get_time(time, seconds, days)
+t_phase = (2.0_r8 * PI * seconds / 86400.0_r8) 
+do i = 1, num_grid_points
+   phase = t_phase + source_phase_offset(i)
+   x(num_grid_points + i) = x(num_grid_points + i) &
+      + mean_source(i) * source_diurnal_rel_amp * cos(phase) * dt_hours
+   ! Also add in some random walk
+   random_src = random_gaussian(random_seq, 0.0_r8, source_random_amp(i))
+   x(num_grid_points + i) = x(num_grid_points + i) + random_src * dt_hours
+   if(x(num_grid_points + i) < 0.0_r8) x(num_grid_points + i) = 0.0_r8
+   ! Finally, damp back towards the base value
+   ! Need an error handler call here
+   if(source_damping_rate*dt_hours > 1.0_r8) stop
+   x(num_grid_points + i) = x(num_grid_points + i) - &
+      source_damping_rate*dt_hours * (x(num_grid_points + i) - mean_source(i))
+end do
+
+!----- End sources time tendency -----
 
 end subroutine adv_1step
 
@@ -774,6 +875,7 @@ real(r8), intent(out)  :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
 integer :: i
+real(r8) :: avg_wind
 
 interf_provided = .true.
 
@@ -784,15 +886,26 @@ if(.not. random_seq_init) then
    random_seq_init = .true.
 endif
 
+! Need to make sure perturbed states are not centered on true value
+! This model is too forgiving in such circumstances
 do i = 1, num_grid_points
    ! Perturb the tracer concentration
-   pert_state(i) = random_gaussian(random_seq, state(i), 1.0_r8)
+   pert_state(i) = random_gaussian(random_seq, state(i), state(i))
+   if(pert_state(i) < 0.0_r8) pert_state(i) = 0.0_r8
    ! Perturb the source
-   pert_state(num_grid_points + i) = &
-       random_gaussian(random_seq, state(num_grid_points + i), 1.0_r8)
+   pert_state(num_grid_points + i) = random_gaussian(random_seq, &
+      state(num_grid_points + i), state(num_grid_points + i))
+   if(pert_state(num_grid_points + i) < 0.0_r8) &
+      pert_state(num_grid_points + i) = 0.0_r8
+
    ! Perturb the u field
-   pert_state(2*num_grid_points + i) = &
-       random_gaussian(random_seq, state(2*num_grid_points + i), 1.0_r8)
+   ! Find the average value of the wind field for the base
+   avg_wind = sum(state(2*num_grid_points + i:3*num_grid_points)) / num_grid_points
+   ! Get a random draw to get 
+   pert_state(2*num_grid_points + i) = random_gaussian(random_seq, &
+      0.05_r8, avg_wind)
+   if(pert_state(2*num_grid_points + i) < 0.0_r8) &
+      pert_state(2*num_grid_points + i) = 0.0_r8
 end do 
 
 end subroutine pert_model_state
