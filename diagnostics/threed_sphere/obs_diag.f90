@@ -1371,10 +1371,10 @@ write(iunit,'(''ptop           = '',i6,'';'')')levels_int(nlev+1,VERTISPRESSURE)
 write(iunit,'(''obs_select     = '',i6,'';'')')obs_select
 write(iunit,'(''rat_cri        = '',f9.2,'';'')')rat_cri
 write(iunit,'(''qc_threshold   = '',f9.2,'';'')')input_qc_threshold
-write(iunit,'(''plev     = ['',11(1x,i5),''];'')')levels(:,VERTISPRESSURE)
-write(iunit,'(''plev_int = ['',12(1x,i5),''];'')')levels_int(:,VERTISPRESSURE)
-write(iunit,'(''hlev     = ['',11(1x,i5),''];'')')levels(:,VERTISPRESSURE)
-write(iunit,'(''hlev_int = ['',12(1x,i5),''];'')')levels_int(:,VERTISPRESSURE)
+write(iunit,'(''plev     = ['',11(1x,i7),''];'')')levels(:,VERTISPRESSURE)
+write(iunit,'(''plev_int = ['',12(1x,i7),''];'')')levels_int(:,VERTISPRESSURE)
+write(iunit,'(''hlev     = ['',11(1x,i7),''];'')')levels(:,VERTISHEIGHT)
+write(iunit,'(''hlev_int = ['',12(1x,i7),''];'')')levels_int(:,VERTISHEIGHT)
 write(iunit,'(''lonlim1 = ['',4(1x,f9.2),''];'')')lonlim1
 write(iunit,'(''lonlim2 = ['',4(1x,f9.2),''];'')')lonlim2
 write(iunit,'(''latlim1 = ['',4(1x,f9.2),''];'')')latlim1
@@ -1580,7 +1580,7 @@ AllLevels : do ivar=1,max_obs_kinds
 
 enddo AllLevels
 
-610 format(i5, 4(1x,f13.3,1x,i8) )
+610 format(i7, 4(1x,f13.3,1x,i8) )
 
 !-----------------------------------------------------------------------
 ! Add the observation kind strings to the matlab attribute file
