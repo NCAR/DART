@@ -1445,6 +1445,7 @@ endif
 
 ! If here, then there are a set of observations that are not being used at the end
 ! Delete them from the sequence
+all_gone = .false.
 allocate(keys(num_keys))
 call get_time_range_keys(seq, key_bounds, num_keys, keys)
 
