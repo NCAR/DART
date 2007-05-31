@@ -62,10 +62,7 @@ plotdat.bin1      = datenum(first_bin_center); % a known date in matlab's time u
 plotdat.toff      = plotdat.bin1 - t1;         % determine temporal offset (calendar base)
 plotdat.day1      = datestr(t1+plotdat.toff+iskip,'yyyy-mm-dd HH');
 plotdat.dayN      = datestr(tN+plotdat.toff,'yyyy-mm-dd HH');
-plotdat.psurface  = psurface;
-plotdat.ptop      = ptop;
 plotdat.linewidth = 2.0;
-plotdat.ylabel    = 'Pressure (hPa)';
 plotdat.xlabel    = 'observation count';
 
 %----------------------------------------------------------------------
@@ -89,6 +86,7 @@ for ivar = 1:length(All_Level_Varnames),
 
    plotdat.fname = sprintf('%s_ges_ver_ave.dat',All_Level_Varnames{ivar});
    plotdat.main  = sprintf('%s %s -- %s',string1,plotdat.day1,plotdat.dayN);
+   plotdat       = SetLevels(plotdat);
 
    % plot by region
 
@@ -136,10 +134,8 @@ for ivar = 1:length(All_Level_Varnames),
    legend boxoff
    grid
    ax = axis; 
-   ax(3) = plotdat.ptop; 
-   ax(4) = plotdat.psurface; 
-   axis(ax)
-   set(gca,'YDir', 'reverse')
+   axis([ax(1) ax(2) plotdat.ylims]);
+   set(gca,'YDir', plotdat.ydir)
    title(plotdat.main, 'Interpreter','none','FontSize', 12, 'FontWeight', 'bold')
    ylabel(plotdat.ylabel, 'fontsize', 10)
    xlabel(plotdat.xlabel, 'fontsize', 10)
@@ -166,18 +162,17 @@ end
 regionindex = 3 + 2*(plotdat.region - 1);
 
 datmat = load(plotdat.fname);
+levels = datmat(:,1); 
 obsmat = SqueezeMissing(datmat);
-levels = obsmat(:,1); 
 Nobs   = obsmat(:,regionindex); 
 
 subplot(2,2,plotdat.region)
    plot(Nobs, levels, plotdat.ptype , 'LineWidth', plotdat.linewidth)
    grid
    ax = axis; 
-   ax(3) = plotdat.ptop; 
-   ax(4) = plotdat.psurface; 
-   axis(ax)
-   set(gca,'YDir', 'reverse')
+   axis([ax(1) ax(2) plotdat.ylims])
+   set(gca,'YDir', plotdat.ydir)
+
    title( plotdat.title,  'Interpreter','none','fontsize', 12,'FontWeight','bold')
    ylabel(plotdat.ylabel, 'fontsize', 10)
    xlabel(plotdat.xlabel, 'fontsize', 10)
@@ -220,3 +215,29 @@ set(h,'HorizontalAlignment','center', ...
       'VerticalAlignment','middle',...
       'Interpreter','none',...
       'FontSize',8)
+
+
+
+function plotstruct = SetLevels(plotdat)
+
+if ( exist(plotdat.fname,'file') ~= 2 )
+   error(sprintf('%s does not seem to exist.',plotdat.fname))
+end
+
+plotstruct = plotdat;
+
+datmat = load(plotstruct.fname);
+levels = datmat(:,1); 
+
+plotstruct.top     = levels(1);
+plotstruct.surface = levels(length(levels));
+
+if ( plotstruct.top > plotstruct.surface )
+   plotstruct.ylabel = 'height(m)';
+   plotstruct.ydir   = 'normal';
+   plotstruct.ylims  = [plotstruct.surface plotstruct.top];
+else
+   plotstruct.ylabel = 'Pressure (hPa)';
+   plotstruct.ydir   = 'reverse';
+   plotstruct.ylims  = [plotstruct.surface plotstruct.top];
+end
