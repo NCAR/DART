@@ -155,7 +155,7 @@ yp     = p(:,count);
 ya     = a(:,count);
 
 gmean = mean(yp(isfinite(yp))); gstring = sprintf('guess;    mean=%.3f',gmean);
-amean = mean(ya(isfinite(ya))); astring = sprintf('anaylsis; mean=%.3f',amean);
+amean = mean(ya(isfinite(ya))); astring = sprintf('analysis; mean=%.3f',amean);
 
 subplot(2,2,plotdat.region)
    plot(xp,yp,'k+-',xa,ya,'ro-','LineWidth',1.5)

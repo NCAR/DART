@@ -163,7 +163,7 @@ yp_spread = p(:,count);
 ya_spread = a(:,count);
 
 gmean = mean(yp_spread(isfinite(yp_spread))); gstring = sprintf('guess;    mean=%.3f',gmean);
-amean = mean(ya_spread(isfinite(ya_spread))); astring = sprintf('anaylsis; mean=%.3f',amean);
+amean = mean(ya_spread(isfinite(ya_spread))); astring = sprintf('analysis; mean=%.3f',amean);
 
 subplot(2,2,plotdat.region)
    plot(xp, yp_spread, 'k+-', xa, ya_spread, 'ro-', 'LineWidth', 1.5)
