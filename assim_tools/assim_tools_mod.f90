@@ -755,7 +755,7 @@ else if(filter_kind == 5) then
 else if(filter_kind == 6) then
    call obs_increment_det_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
 else if(filter_kind == 7) then
-   call obs_increment_hybrid(ens, ens_size, obs, obs_var, obs_inc, rel_weights)
+   call obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weights)
 else 
    call error_handler(E_ERR,'obs_increment', &
               'Illegal value of filter_kind in assim_tools namelist [1-7 OK]', &
@@ -1367,119 +1367,171 @@ end subroutine get_correction_from_file
 
 
 
-subroutine obs_increment_hybrid(ens, ens_size, obs, obs_var, obs_inc, rel_weight)
+subroutine obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weight)
 !------------------------------------------------------------------------
 !
-! Observation space only test of hybrid particle ensemble filter strategy
-! devised in San Antonio. Idea is that ensemble is assumed to be associated
-! with a density function as follows. Take the ensemble points. Find the mid-points
-! between each of these. Will now have 2N - 1 points that divide the line
-! into 2N bins. Put 1/2N of the mass into each bin. This will give 1/N mass
-! between each adjacent ensemble pair, and 1/2N in the two exterior bins.
-! The mass between each ensemble member and the adjacent half points is assumed
-! to be associated with that ensemble member. Now, compute the weights for each
-! ensemble member and normalize. Now, multiply the associated mass by the
-! normalized factor (mass should be conserved). Make the new ensemble points
-! to be so that they partition this updated mass appropriately with the original
-! sampling. Compute increments and return.
-
-! DOESN'T MAINTAIN SPREAD. Outer bins should really have twice as much mass as the rest
-! by the standard bin idea. Try this. Compute the mass in each bin at start as
-! 1/(n+1) in the outer bins; 1 / 2(n + 1) in the inner half bins.
-
+! An observation space update that uses a set of boxcar kernels plus two
+! half-gaussians on the wings to represent the prior distribution. If N is
+! the ensemble size, 1/(N+1) of the mass is placed between each ensemble
+! member. This is reminiscent of the ranked historgram approach for 
+! evaluating ensembles. The prior distribution on the wings is 
+! represented by a half gaussian with mean being the outermost ensemble
+! member (left or right) and variance being somewhat arbitrarily chosen
+! as half the total ensemble sample variance. A particle
+! filter like algorithm is then used for the update. The weight associated
+! with each prior ensemble member is computed by evaluating the likelihood.
+! For the interior, the domain for each boxcar is divided in half and each
+! half is associated with the nearest ensemble member. The updated mass in
+! each half box is the product of the prior mass and the ensemble weight.
+! In the wings, the observation likelihood gaussian is convolved with the
+! prior gaussian to get an updated weighted gaussian that is assumed to 
+! represent the posterior outside of the outermost ensemble members. The
+! updated ensemble members are chosen so that 1/(N+1) of the updated
+! mass is between each member and also on the left and right wings. This
+! algorithm is able to deal well with outliers, bimodality and other
+! non-gaussian behavior in observation space. It could also be modified to
+! deal with non-gaussian likelihoods in the future.
 
 integer,  intent(in)  :: ens_size
 real(r8), intent(in)  :: ens(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 real(r8), intent(out) :: rel_weight(ens_size)
 
-integer  :: i, e_ind(ens_size)
-real(r8) :: a, prod_weight, total_mass_right, total_mass_left
-real(r8) :: sx, s_x2, prior_mean, prior_var, prior_sd
-real(r8) :: var_ratio, new_var, new_sd, new_mean
-real(r8) :: mass(2*ens_size), weight(ens_size)
+integer  :: i, e_ind(ens_size), lowest_box, j
+real(r8) :: a
+real(r8) :: sx, prior_mean, prior_var
+real(r8) :: var_ratio, new_var, new_sd, umass, left_weight, right_weight
+real(r8) :: mass(2*ens_size), weight(ens_size), cumul_mass(0:2*ens_size)
+real(r8) :: new_mean_left, new_mean_right, prod_weight_left, prod_weight_right
+real(r8) :: new_ens(ens_size), mass_sum, const_term
+real(r8) :: x(1:2*ens_size - 1), sort_inc(ens_size)
 
 ! The factor a is not defined for this filter for now (could it be???)
 a = -1.0_r8
 
-! Feb. 6 attempt. Use bins in inner, gaussian tails on outer bins.
-! Feb. 15 revision, switch to all ensemble points have equal associated weights
-! by making outermost bins have only 1/2 the weight they had before
-
-! Do an index sort of the ensemble members
+! Do an index sort of the ensemble members; Need sorted ensemble
 call index_sort(ens, e_ind, ens_size)
 
-! So, prior distribution is boxcar in the central bins with 1/(n+1) density
+! Prior distribution is boxcar in the central bins with 1/(n+1) density
 ! in each intermediate bin. BUT, distribution on the wings is a normal with
-! 1/(2*n) assuming the standard deviation of the input distribution.
+! 1/(n + 1) of the mass on each side.
 
-! Begin by computing a weight for each of the prior ensemble members
+! Begin by computing a weight for each of the prior ensemble membersA
+! This is just evaluating the gaussian likelihood
+const_term = 1.0_r8 / (sqrt(2.0_r8 * PI) * sqrt(obs_var))
 do i = 1, ens_size
-   weight(i) = exp(-1.0_r8 * (ens(i) - obs)**2 / (2.0_r8 * obs_var))
+   weight(i) = const_term * exp(-1.0_r8 * (ens(i) - obs)**2 / (2.0_r8 * obs_var))
+end do
+
+! Compute the points that bound all the updated mass boxes; start with ensemble
+do i = 1, ens_size
+   x(2*i - 1) = ens(e_ind(i))
+end do
+! Compute the mid-point interior boundaries; these are halfway between ensembles
+do i = 2, 2*ens_size - 2, 2
+   x(i) = (x(i - 1) + x(i + 1)) / 2.0_r8
 end do
 
 ! Compute the s.d. of the ensemble for getting the gaussian wings
 sx         = sum(ens)
-s_x2       = sum(ens * ens)
 prior_mean = sx / ens_size
 prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
-prior_sd = sqrt(prior_var)
 
-! Need to normalize the wings so they have 1/(2*ens_size) mass outside
-! Use cdf to find out how much mass is left of 1st member, right of last
-total_mass_left = norm_cdf(ens(e_ind(1)), prior_mean, prior_sd)
-total_mass_right = 1.0_r8 - norm_cdf(ens(e_ind(ens_size)), prior_mean, prior_sd)
+! Need to normalize the wings so they have 1/(ens_size + 1) mass outside
+! Since 1/2 of a normal is outside, need to multiply by 2 / (ens_size + 1)
 
-! Find a normalization factor to get tail mass right
-! CAREFUL, THIS DIVISION MIGHT BE UNSTABLE IF total_mass_??? is very small?
-if(total_mass_left > 0.0_r8) then
-   alpha(1) = 1.0_r8 / (total_mass_left * 2.0_r8 * ens_size)
-else
-   alpha(1) = 0.0_r8
-endif
-if(total_mass_right > 0.0_r8) then
-   alpha(2) = 1.0_r8 / (total_mass_right * 2.0_r8 * ens_size)
-else
-   alpha(2) = 0.0_r8
-endif
+! Need some sort of width for the boundary kernel, try 1/2 the VAR for now
+prior_var = prior_var / 2.0_r8
 
-! Compute the product of the obs error gaussian with the fitted prior gaussian (EAKF)
+! Compute the product of the obs error gaussian with the prior gaussian (EAKF)
+! Left wing first
 var_ratio = obs_var / (prior_var + obs_var)
 new_var = var_ratio * prior_var
 new_sd = sqrt(new_var)
-new_mean  = var_ratio * (prior_mean  + prior_var*obs / obs_var)
+new_mean_left  = var_ratio * (ens(e_ind(1))  + prior_var*obs / obs_var)
+new_mean_right  = var_ratio * (ens(e_ind(ens_size))  + prior_var*obs / obs_var)
 ! REMEMBER, this product has an associated weight which must be taken into account
-prod_weight =  2.71828_r8 ** (-0.5_r8 * (prior_mean**2 / prior_var + &
-      obs**2 / obs_var - new_mean**2 / new_var))
+! See Anderson and Anderson for this weight term (or tutorial kernel filter)
+prod_weight_left =  2.71828_r8 ** (-0.5_r8 * (ens(e_ind(1))**2 / prior_var + &
+      obs**2 / obs_var - new_mean_left**2 / new_var)) / sqrt(2.0_r8 * PI)
+
+prod_weight_right =  2.71828_r8 ** (-0.5_r8 * (ens(e_ind(ens_size))**2 / prior_var + &
+      obs**2 / obs_var - new_mean_right**2 / new_var)) / sqrt(2.0_r8 * PI)
 
 ! Split into 2*ens_size domains; mass in each is computed
 ! Start by computing mass in the outermost (gaussian) regions
-mass(1) = norm_cdf(ens(e_ind(1)), new_mean, new_sd) * alpha(1) * prod_weight
-mass(2*ens_size) = (1.0_r8 - norm_cdf(ens(e_ind(ens_size)), new_mean, &
-   new_sd)) * alpha(2) * prod_weight
+mass(1) = norm_cdf(ens(e_ind(1)), new_mean_left, new_sd) * &
+   prod_weight_left * (2.0_r8 / (ens_size + 1.0_r8))
+mass(2*ens_size) = (1.0_r8 - norm_cdf(ens(e_ind(ens_size)), new_mean_right, &
+   new_sd)) * prod_weight_right * (2.0_r8 / (ens_size + 1.0_r8))
 
 ! Compute mass in the inner half boxes that have ensemble point on the left
 do i = 2, 2*ens_size - 2, 2
-   mass(i) = (1.0_r8 / (2.0_r8 * ens_size) ) * weight(e_ind(i/2))
+   mass(i) = (1.0_r8 / (2.0_r8 * (ens_size + 1.0_r8))) * weight(e_ind(i/2))
 end do
 
 ! Now right inner half boxes
 do i = 3, 2*ens_size - 1, 2
-   mass(i) = (1.0_r8 / (2.0_r8 * ens_size)) * weight(e_ind(i/2 + 1))
+   mass(i) = (1.0_r8 / (2.0_r8 * (ens_size + 1.0_r8))) * weight(e_ind(i/2 + 1))
 end do
 
 ! Now normalize the mass in the different bins
-mass = mass / sum(mass)
+mass_sum = sum(mass)
+mass = mass / mass_sum
 
-! Compute the relative weight for each ensemble member (sum of surrounding domains)
-do i = 1, ens_size
-   rel_weight(e_ind(i)) = mass(2*i - 1) + mass(2*i)
+! Find cumulative mass at each box boundary and middle boundary
+cumul_mass(0) = 0.0_r8
+do i = 1, 2*ens_size
+   cumul_mass(i) = cumul_mass(i - 1) + mass(i)
 end do
 
-! Here, go directly to increments from weights
-call update_ens_from_weights(ens, ens_size, rel_weight, obs_inc)
+! Get resampled ensemble, Need 1/(ens_size + 1) between each
+umass = 1.0_r8 / (ens_size + 1.0_r8)
 
-end subroutine obs_increment_hybrid
+! Begin search at bottom of lowest box, but then update for efficiency
+lowest_box = 1
+
+! Find each new ensemble members location
+do i = 1, ens_size
+   ! If it's in the inner or outer range have to use normal
+   if(umass < cumul_mass(1)) then
+      ! In the first normal box
+      left_weight = (1.0_r8 / mass_sum) * prod_weight_left * (2.0_r8 / (ens_size + 1.0_r8))
+      call weighted_norm_inv(left_weight, new_mean_left, new_sd, umass, new_ens(i))
+   else if(umass > cumul_mass(2*ens_size - 1)) then
+      ! In the last normal box; Come in from the outside
+      right_weight = (1.0_r8 / mass_sum) * prod_weight_right * (2.0_r8 / (ens_size + 1.0_r8))
+      call weighted_norm_inv(right_weight, new_mean_right, new_sd, 1.0_r8 - umass, new_ens(i))
+      new_ens(i) = new_mean_right + (new_mean_right - new_ens(i))
+   else
+      ! In one of the inner uniform boxes.
+      FIND_BOX:do j = lowest_box, 2 * ens_size - 2
+         ! Find the box that this mass is in
+         if(umass >= cumul_mass(j) .and. umass <= cumul_mass(j + 1)) then
+            new_ens(i) = x(j) + ((umass - cumul_mass(j)) / (cumul_mass(j+1) - cumul_mass(j))) * &
+               (x(j + 1) - x(j))
+            ! Don't need to search lower boxes again
+            lowest_box = j
+            exit FIND_BOX
+         end if
+      end do FIND_BOX
+   endif
+   ! Want equally partitioned mass in update with exception that outermost boxes have half
+   umass = umass + 1.0_r8 / (ens_size + 1.0_r8)
+end do
+
+! Can now compute sorted increments
+do i = 1, ens_size
+   sort_inc(i) = new_ens(i) - ens(e_ind(i))
+end do
+
+! Now, need to convert to increments for unsorted
+do i = 1, ens_size
+   obs_inc(e_ind(i)) = sort_inc(i)
+end do
+
+end subroutine obs_increment_boxcar
+
 
 
 subroutine update_ens_from_weights(ens, ens_size, rel_weight, ens_inc)
