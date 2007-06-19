@@ -22,7 +22,8 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              logfileunit, find_namelist_in_file,           &
                              check_namelist_read, nc_check, do_output
 
-use     obs_kind_mod, only : KIND_VELOCITY, KIND_TRACER_CONCENTRATION, KIND_TRACER_SOURCE
+use     obs_kind_mod, only : KIND_VELOCITY, KIND_TRACER_CONCENTRATION, &
+                             KIND_TRACER_SOURCE, KIND_MEAN_SOURCE, KIND_SOURCE_PHASE
 
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 
@@ -62,9 +63,9 @@ logical :: verbose = .false.
 ! Base velocity (expected value over time), in domain_length / hour
 real(r8), parameter :: mean_wind = 0.023_r8
 ! Random walk amplitude for wind in domain_length/hour^2
-real(r8)            :: wind_random_amp = mean_wind / 10.0_r8
+real(r8)            :: wind_random_amp = mean_wind / 24.0_r8
 ! Rate of damping towards mean wind value in percent/hour
-real(r8)            :: wind_damping_rate = 0.01_r8
+real(r8)            :: wind_damping_rate = 0.005_r8
 
 ! Base tracer source rate in amount (unitless) / hour
 real(r8), allocatable :: mean_source(:)
@@ -91,14 +92,11 @@ namelist /model_nml/ num_grid_points, time_step_days, time_step_seconds, &
 !----------------------------------------------------------------
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
-type(time_type) :: time_step
+type(time_type)                  :: time_step
 
 !==================================================================
 
 contains
-
-
-
 
 subroutine static_init_model()
 !------------------------------------------------------------------
@@ -107,7 +105,7 @@ subroutine static_init_model()
 ! the time type for the time stepping
 
 real(r8) :: x_loc
-integer  :: i, iunit, io
+integer  :: i, iunit, io, j
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
@@ -125,14 +123,14 @@ write(     *     , nml=model_nml)
 endif
 
 ! Create storage for locations
-allocate(state_loc(3*num_grid_points))
+allocate(state_loc(5*num_grid_points))
 
 ! Define the locations of the model state variables
 do i = 1, num_grid_points
    x_loc = (i - 1.0_r8) / num_grid_points
-   state_loc(i) =  set_location(x_loc)
-   state_loc(num_grid_points + i) = set_location(x_loc)
-   state_loc(2*num_grid_points + i) = set_location(x_loc)
+   do j = 0, 4
+      state_loc(num_grid_points * j + i) = set_location(x_loc)
+   end do
 end do
 
 ! The time_step in terms of a time type must also be initialized.
@@ -179,11 +177,17 @@ x(1:num_grid_points) = 0.0_r8
 !!!x(num_grid_points + 1) = 1.0_r8
 !!!x(num_grid_points + num_grid_points/2 + 1) = -1.0_r8
 
-! Single source, used with destruction, units source / hour
+! Single source, units source / hour
 x(num_grid_points + 1 : 2*num_grid_points) = mean_source
 
-! Final set of variables is the u wind; its units are delta_x per time
+! Third set of variables is the u wind; its units are delta_x per time
 x(2*num_grid_points + 1: 3*num_grid_points) = mean_wind
+
+! Fourth set of variables is the time mean source
+x(3*num_grid_points + 1 : 4*num_grid_points) = mean_source
+
+! Fifth set of variables is the source phase offset (this is a periodic variable)
+x(4*num_grid_points + 1 : 5*num_grid_points) = source_phase_offset
 
 end subroutine init_conditions
 
@@ -288,9 +292,11 @@ end do
 !----- Following block is random walk plus damping to mean for wind
 ! Random walk for the spatial mean velocity
 old_u_mean = sum(x(2*num_grid_points + 1 : 3*num_grid_points)) / num_grid_points
-! Add in a random walk
+
+! Add in a random walk to the mean
 new_u_mean = random_gaussian(random_seq, old_u_mean, wind_random_amp * dt_hours)
-! Damp back towards base value
+
+! Damp the mean back towards base value
 ! Need an error handler call here or earlier
 if(wind_damping_rate*dt_hours > 100.0_r8) stop
 new_u_mean = new_u_mean - wind_damping_rate * dt_hours * (new_u_mean - mean_wind)
@@ -298,6 +304,13 @@ new_u_mean = new_u_mean - wind_damping_rate * dt_hours * (new_u_mean - mean_wind
 ! Substitute the new mean wind
 x(2*num_grid_points  + 1 : 3*num_grid_points) = &
    x(2*num_grid_points + 1 : 3*num_grid_points) - old_u_mean + new_u_mean
+
+! Add some noise into each wind element
+do i = 1, num_grid_points
+   x(2*num_grid_points + i) = random_gaussian(random_seq, x(2*num_grid_points + i), &
+      wind_random_amp * dt_hours)
+end do
+
 !----- End forced damped wind section
 
 
@@ -306,9 +319,9 @@ x(2*num_grid_points  + 1 : 3*num_grid_points) = &
 call get_time(time, seconds, days)
 t_phase = (2.0_r8 * PI * seconds / 86400.0_r8) 
 do i = 1, num_grid_points
-   phase = t_phase + source_phase_offset(i)
+   phase = t_phase + x(4*num_grid_points + i)
    x(num_grid_points + i) = x(num_grid_points + i) &
-      + mean_source(i) * source_diurnal_rel_amp * cos(phase) * dt_hours
+      + x(3*num_grid_points + i) * source_diurnal_rel_amp * cos(phase) * dt_hours
    ! Also add in some random walk
    random_src = random_gaussian(random_seq, 0.0_r8, source_random_amp(i))
    x(num_grid_points + i) = x(num_grid_points + i) + random_src * dt_hours
@@ -317,10 +330,21 @@ do i = 1, num_grid_points
    ! Need an error handler call here
    if(source_damping_rate*dt_hours > 1.0_r8) stop
    x(num_grid_points + i) = x(num_grid_points + i) - &
-      source_damping_rate*dt_hours * (x(num_grid_points + i) - mean_source(i))
+      source_damping_rate*dt_hours * (x(num_grid_points + i) - x(3*num_grid_points + i))
 end do
 
 !----- End sources time tendency -----
+
+! Time tendency for source model variables mean_source and source_phase_offset 
+! is 0 for now. Might want to add in some process noise for filter advance.
+
+
+! Quick add of process noise test for source_phase_offset
+do i = 1, 1
+   x(4*num_grid_points + i) = random_gaussian(random_seq, x(4*num_grid_points + i), &
+      0.01_r8)
+end do
+
 
 end subroutine adv_1step
 
@@ -334,7 +358,7 @@ function get_model_size()
 
 integer :: get_model_size
 
-get_model_size = 3*num_grid_points
+get_model_size = 5*num_grid_points
 
 end function get_model_size
 
@@ -449,8 +473,12 @@ if(present(var_type)) then
       var_type = KIND_TRACER_CONCENTRATION
    else if(var_type_index == 2) then
       var_type = KIND_TRACER_SOURCE
-   else
+   else if(var_type_index == 3) then
       var_type = KIND_VELOCITY
+   else if(var_type_index == 4) then
+      var_type = KIND_MEAN_SOURCE
+   else if(var_type_index == 5) then
+      var_type = KIND_SOURCE_PHASE
    endif
 endif
 
@@ -524,7 +552,7 @@ integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: LocationDimID, LocationVarID
 integer :: StateVarDimID, StateVarVarID
 integer :: StateVarID, MemberDimID, TimeDimID
-integer :: ConcVarId, SourceVarID, WindVarID
+integer :: ConcVarId, SourceVarID, WindVarID, Mean_SourceVarID, Source_PhaseVarID
 
 !--------------------------------------------------------------------
 ! local variables
@@ -665,6 +693,8 @@ else
    ! concentration    (                  1 : 1*num_grid_points)
    ! source           (  num_grid_points+1 : 2*num_grid_points)
    ! wind             (2*num_grid_points+1 : 3*num_grid_points)
+   ! mean_source      (3*num_grid_points+1 : 4*num_grid_points)
+   ! source_phase     (4*num_grid_points+1 : 5*num_grid_points)
    !----------------------------------------------------------------------------
    ! Create the (empty) Variables and the Attributes
    !----------------------------------------------------------------------------
@@ -727,6 +757,26 @@ else
    call nc_check(nf90_put_att(ncFileID, WindVarID, "units",  "gridpoints/timestep"), &
                  'nc_write_model_atts', 'wind:units, '//trim(filename))
 
+   ! Define the prognostic variables - mean_source
+
+   call nc_check(nf90_def_var(ncid=ncFileID,name="mean_source", xtype=nf90_double, &
+                 dimids = (/ LocationDimID, MemberDimID, TimeDimID /), varid=Mean_SourceVarID), &
+                'nc_write_model_atts', 'def_var mean_source, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, Mean_SourceVarID, "long_name", "mean_source"), &
+                 'nc_write_model_atts', 'mean_source:long_name, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, Mean_SourceVarID, "units",  "mass/timestep"), &
+                 'nc_write_model_atts', 'mean_source:units, '//trim(filename))
+
+   ! Define the prognostic variables - source_phase
+
+   call nc_check(nf90_def_var(ncid=ncFileID,name="source_phase", xtype=nf90_double, &
+                 dimids = (/ LocationDimID, MemberDimID, TimeDimID /), varid=Source_PhaseVarID), &
+                'nc_write_model_atts', 'def_var source_phase, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, Source_PhaseVarID, "long_name", "source phase"), &
+                 'nc_write_model_atts', 'source_phase:long_name, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, Source_PhaseVarID, "units",  "radians"), &
+                 'nc_write_model_atts', 'source_phase:units, '//trim(filename))
+
    !--------------------------------------------------------------------
    ! Leave define mode so we can fill
    !--------------------------------------------------------------------
@@ -786,7 +836,7 @@ integer                            :: ierr          ! return value of function
 !--------------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: StateVarID, ConcVarID, SourceVarID, WindVarID
+integer :: StateVarID, ConcVarID, SourceVarID, WindVarID, Mean_SourceVarID, Source_PhaseVarID
 
 !--------------------------------------------------------------------
 ! local variables
@@ -852,6 +902,22 @@ else
                  start=(/ 1, copyindex, timeindex /)),  &
                  'nc_write_model_vars', 'put_var wind, '//trim(filename))
 
+   first = 3*num_grid_points+1
+   last  = 4*num_grid_points
+   call nc_check(NF90_inq_varid(ncFileID, "mean_source", Mean_SourceVarID), & 
+                 'nc_write_model_vars', 'inq_varid mean_source, '//trim(filename))
+   call nc_check(NF90_put_var(ncFileID, Mean_SourceVarID, statevec(first:last),  &
+                 start=(/ 1, copyindex, timeindex /)),  &
+                 'nc_write_model_vars', 'put_var mean_source, '//trim(filename))
+
+   first = 4*num_grid_points+1
+   last  = 5*num_grid_points
+   call nc_check(NF90_inq_varid(ncFileID, "source_phase", Source_PhaseVarID), & 
+                 'nc_write_model_vars', 'inq_varid source_phase, '//trim(filename))
+   call nc_check(NF90_put_var(ncFileID, Source_PhaseVarID, statevec(first:last),  &
+                 start=(/ 1, copyindex, timeindex /)),  &
+                 'nc_write_model_vars', 'put_var source_phase, '//trim(filename))
+
 endif
 
 ! write (*,*)'Finished filling variables ...'
@@ -906,6 +972,20 @@ do i = 1, num_grid_points
       0.05_r8, avg_wind)
    if(pert_state(2*num_grid_points + i) < 0.0_r8) &
       pert_state(2*num_grid_points + i) = 0.0_r8
+
+   ! Perturb the mean_source field
+   ! Need to get this into nameslist, or control stuff at the top
+   ! Make sure that this is positive definite here
+   pert_state(3*num_grid_points + i) = &
+      !!!random_gaussian(random_seq, state(3*num_grid_points + i), 0.2_r8)
+   !!!if(pert_state(3*num_grid_points + i) < 0.0_r8) pert_state(3*num_grid_points + i) = 0.0_r8
+      state(3*num_grid_points + i)
+
+   ! Perturb the source_phase_offset field ONLY if the mean_source is non-zero
+   if(mean_source(i) /= 0.0_r8) pert_state(4*num_grid_points + i) = &
+         random_gaussian(random_seq, state(4*num_grid_points + i), 0.4_r8)
+   
+
 end do 
 
 end subroutine pert_model_state

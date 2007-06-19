@@ -40,6 +40,7 @@ public :: KIND_RAW_STATE_VARIABLE, KIND_U_WIND_COMPONENT, &
           KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
           KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION, &
           KIND_TRACER_SOURCE, KIND_TRACER_CONCENTRATION, &
+          KIND_MEAN_SOURCE, KIND_SOURCE_PHASE, &
           KIND_VORTEX_LON, KIND_VORTEX_LAT, &
           KIND_VORTEX_PMIN, KIND_VORTEX_WMAX
 
@@ -93,7 +94,9 @@ integer, parameter :: KIND_GRAV_WAVE_DRAG_EFFIC        = 25, &
 
 ! kinds for simple advection model
 integer, parameter :: KIND_TRACER_SOURCE               = 27, &
-                      KIND_TRACER_CONCENTRATION        = 28
+                      KIND_TRACER_CONCENTRATION        = 28, &
+                      KIND_MEAN_SOURCE                 = 29, &
+                      KIND_SOURCE_PHASE                = 30
 
 ! kinds for vortex tracking (WRF - yongsheng)
 integer, parameter :: KIND_VORTEX_LON                  = 81, &
