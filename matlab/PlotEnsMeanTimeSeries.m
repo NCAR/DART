@@ -123,7 +123,8 @@ switch lower(d.model)
       ylabel('state variable 2')
       zlabel('state variable 3')
 
-   case {'lorenz_96', 'lorenz_96_2scale', 'lorenz_04', 'forced_lorenz_96', 'ikeda'} 
+   case {'lorenz_96', 'lorenz_96_2scale', 'lorenz_04', 'forced_lorenz_96', ...
+         'ikeda', 'simple_advection'} 
 
       % Plot all variables in own subplot ... might get cluttered.
       figure(1); clf; iplot = 0;

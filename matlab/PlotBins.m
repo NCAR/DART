@@ -81,7 +81,7 @@ switch lower(true_model)
                'interpreter','none','fontweight','bold')
       end
 
-   case 'lorenz_96_2scale'
+   case {'lorenz_96_2scale','simple_advection'}
 
       clf; iplot = 0;
       for ivar = pinfo.state_var_inds,
@@ -95,6 +95,10 @@ switch lower(true_model)
          title(sprintf('%s Variable %s %d for %s', ...
                true_model,pinfo.var, ivar,pinfo.diagn_file), ...
                'interpreter','none','fontweight','bold')
+         ax = axis;
+         ax(1) = 0.5;
+         ax(2) = length(bins)+0.5;
+         axis(ax)
       end
 
    case 'fms_bgrid'

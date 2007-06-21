@@ -126,7 +126,7 @@ switch lower(tmodel)
       end
 
    case {'lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
-	 'lorenz_04','forced_lorenz_96','ikeda'} 
+	 'lorenz_04','forced_lorenz_96','ikeda','simple_advection'} 
       % Get the appropriate copies
       truth      = get_state_copy(pinfo.truth_file, pinfo.var, truth_index);
       ens_mean   = get_state_copy(pinfo.diagn_file, pinfo.var, ens_mean_index );

@@ -48,7 +48,7 @@ end
 switch lower(vars.model)
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
-	 'lorenz_04','forced_lorenz_96','ikeda'} 
+	 'lorenz_04','forced_lorenz_96','ikeda','simple_advection'} 
 
       varid = SetVariableID(vars);      % queries for variable IDs if needed.
       pinfo = struct('truth_file', truth_file, ...

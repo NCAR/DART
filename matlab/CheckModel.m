@@ -159,7 +159,8 @@ switch lower(model)
    case 'simple_advection'
 
       if ( isempty(f{'state'}) )
-         varlist = {'concentration','source','wind'};
+         varlist = {'concentration','source','wind', ...
+                    'mean_source','source_phase'};
       else
          varlist = {'state'};
       end

@@ -199,7 +199,7 @@ switch lower(model)
       % 'concentration','source', and 'wind' do not.
 
       if ( isempty(f.state(:)))
-         varlist = {'concentration','source','wind'};
+         varlist = {'concentration','source','wind','mean_source','source_phase'};
       else
          varlist = {'state'};
       end
