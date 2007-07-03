@@ -38,6 +38,7 @@ use     obs_kind_mod, only : KIND_RAW_STATE_VARIABLE, KIND_U_WIND_COMPONENT, &
                              KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
                              KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION, &
                              KIND_TRACER_SOURCE, KIND_TRACER_CONCENTRATION, &
+                             KIND_MEAN_SOURCE, KIND_SOURCE_PHASE, &
                              KIND_VORTEX_LON, KIND_VORTEX_LAT, &
                              KIND_VORTEX_PMIN, KIND_VORTEX_WMAX 
 
