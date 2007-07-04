@@ -667,6 +667,10 @@ if ( output_state_vector ) then
               'nc_write_model_atts', 'def_var state, '//trim(filename))
    call nc_check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"), &
                  'nc_write_model_atts', 'put_att long_name, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, StateVarID, "_FillValue", NF90_FILL_DOUBLE), &
+                 'nc_write_model_atts', 'put_att fillValue, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, StateVarID, "missing_value", NF90_FILL_DOUBLE), &
+                 'nc_write_model_atts', 'put_att missing, '//trim(filename))
    
    !--------------------------------------------------------------------
    ! Leave define mode so we can fill
@@ -734,6 +738,10 @@ else
                  'nc_write_model_atts', 'conc:units, '//trim(filename))
 !  call nc_check(nf90_put_att(ncFileID, ConcVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)), &
 !                'nc_write_model_atts', 'conc:valid_range, '//trim(filename)) 
+   call nc_check(nf90_put_att(ncFileID, ConcVarID, "_FillValue", NF90_FILL_DOUBLE), &
+                 'nc_write_model_atts', 'conc:fillValue, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ConcVarID, "missing_value", NF90_FILL_DOUBLE), &
+                 'nc_write_model_atts', 'conc:missing, '//trim(filename))
 
    ! Define the prognostic variables - source
 
@@ -746,6 +754,10 @@ else
                  'nc_write_model_atts', 'source:units, '//trim(filename))
 !  call nc_check(nf90_put_att(ncFileID, SourceVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)), &
 !                'nc_write_model_atts', 'source:valid_range, '//trim(filename)) 
+   call nc_check(nf90_put_att(ncFileID, SourceVarID, "_FillValue", NF90_FILL_DOUBLE), &
+                 'nc_write_model_atts', 'source:fillValue, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SourceVarID, "missing_value", NF90_FILL_DOUBLE), &
+                 'nc_write_model_atts', 'source:missing, '//trim(filename))
 
    ! Define the prognostic variables - wind
 
@@ -756,6 +768,10 @@ else
                  'nc_write_model_atts', 'wind:long_name, '//trim(filename))
    call nc_check(nf90_put_att(ncFileID, WindVarID, "units",  "gridpoints/timestep"), &
                  'nc_write_model_atts', 'wind:units, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, WindVarID, "_FillValue", NF90_FILL_DOUBLE), &
+                 'nc_write_model_atts', 'wind:fillValue, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, WindVarID, "missing_value", NF90_FILL_DOUBLE), &
+                 'nc_write_model_atts', 'wind:missing, '//trim(filename))
 
    ! Define the prognostic variables - mean_source
 
@@ -766,6 +782,10 @@ else
                  'nc_write_model_atts', 'mean_source:long_name, '//trim(filename))
    call nc_check(nf90_put_att(ncFileID, Mean_SourceVarID, "units",  "mass/timestep"), &
                  'nc_write_model_atts', 'mean_source:units, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, Mean_SourceVarID, "_FillValue", NF90_FILL_DOUBLE), &
+                 'nc_write_model_atts', 'mean_source:fillValue, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, Mean_SourceVarID, "missing_value", NF90_FILL_DOUBLE), &
+                 'nc_write_model_atts', 'mean_source:missing, '//trim(filename))
 
    ! Define the prognostic variables - source_phase
 
@@ -776,6 +796,10 @@ else
                  'nc_write_model_atts', 'source_phase:long_name, '//trim(filename))
    call nc_check(nf90_put_att(ncFileID, Source_PhaseVarID, "units",  "radians"), &
                  'nc_write_model_atts', 'source_phase:units, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, Source_PhaseVarID, "_FillValue", NF90_FILL_DOUBLE), &
+                 'nc_write_model_atts', 'source_phase:fillValue, '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, Source_PhaseVarID, "missing_value", NF90_FILL_DOUBLE), &
+                 'nc_write_model_atts', 'source_phase:missing, '//trim(filename))
 
    !--------------------------------------------------------------------
    ! Leave define mode so we can fill
