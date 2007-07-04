@@ -101,13 +101,13 @@ switch lower(vars.model)
 
       % really should utilize the defaults ... but its getting late.
       inputstring = input('Input variable and index for axis 1 i.e.  X 5\n','s');
-      [var1name, var1] = ParseAlphaNumeric(inputstring);
+      [var1name, var1] = ParseAlphaNumerics(inputstring);
 
       inputstring = input('Input variable and index for axis 2 i.e.  X 18\n','s');
-      [var2name, var2] = ParseAlphaNumeric(inputstring);
+      [var2name, var2] = ParseAlphaNumerics(inputstring);
 
       inputstring = input('Input variable and index for axis 3 i.e.  X 24\n','s');
-      [var3name, var3] = ParseAlphaNumeric(inputstring);
+      [var3name, var3] = ParseAlphaNumerics(inputstring);
 
       if (exist('ens_mem') ~=1)
          disp('It is necessary to pick an ensemble member to plot.')
@@ -129,11 +129,63 @@ switch lower(vars.model)
                      'ens_mem' , ens_mem  , ...
                      'ltype'   , ltype   );
 
-  %   disp(sprintf('Using file %s, ensemble member %s.',pinfo.fname,pinfo.ens_mem))
-  %   disp(sprintf('Plotting variables %s %d %s %d %s %d with line type %s.', ...
-  %                 pinfo.var1name, pinfo.var1ind, ...
-  %                 pinfo.var2name, pinfo.var2ind, ...
-  %                 pinfo.var3name, pinfo.var3ind, pinfo.ltype))
+  case {'simple_advection'}
+
+      disp('Your choice of variables are:')
+      disp(vars.vars)
+      disp(sprintf('the indices (locations) can range from %d to %d', ...
+           vars.min_state_var, vars.max_state_var))
+
+      str1 = sprintf('Input variable and index for axis 1 <cr> for %s %d\n', ...
+                      vars.def_var,vars.def_state_vars(1));
+      str2 = sprintf('Input variable and index for axis 2 <cr> for %s %d\n', ...
+                      vars.def_var,vars.def_state_vars(2));
+      str3 = sprintf('Input variable and index for axis 2 <cr> for %s %d\n', ...
+                      vars.def_var,vars.def_state_vars(3));
+
+      s1 = input(str1,'s');
+      if isempty(s1)
+         var1name = vars.def_var;
+         var1     = vars.def_state_vars(1);
+      else
+         [var1name, var1] = ParseAlphaNumerics(s1);
+      end
+
+      s1 = input(str2,'s');
+      if isempty(s1)
+         var2name = vars.def_var;
+         var2     = vars.def_state_vars(2);
+      else
+         [var2name, var2] = ParseAlphaNumerics(s1);
+      end
+
+      s1 = input(str3,'s');
+      if isempty(s1)
+         var3name = vars.def_var;
+         var3     = vars.def_state_vars(3);
+      else
+         [var3name, var3] = ParseAlphaNumerics(s1);
+      end
+
+      if (exist('ens_mem') ~=1)
+         disp('It is necessary to pick an ensemble member to plot.')
+         disp('Since we pick it based on the metadata string, it could be:')
+         disp('''true_state'', ''ensemble mean'', ''ensemble member10'' ... you get it.')
+         s1 = input('Input ensemble member metadata STRING. <cr> for ''true state''  ','s');
+         if isempty(s1), ens_mem = 'true state'; else ens_mem = s1; end
+      end 
+
+      if (exist('ltype') ~=1)
+         s1 = input('Input line type string. <cr> for ''k-''  ','s');
+         if isempty(s1), ltype = 'k-'; else ltype = s1; end
+      end 
+
+      pinfo = struct('fname'   , fname    , ...
+                     'var1name', var1name , 'var1ind', var1, ...
+                     'var2name', var2name , 'var2ind', var2, ...
+                     'var3name', var3name , 'var3ind', var3, ...
+                     'ens_mem' , ens_mem  , ...
+                     'ltype'   , ltype   );
 
    case 'fms_bgrid'
 
@@ -168,6 +220,7 @@ switch lower(vars.model)
                      'var2name', vars.def_var, 'var2ind', var2, ...
                      'ens_mem' , ens_mem     , ...
                      'ltype'   , ltype   );
+
 
    otherwise
 

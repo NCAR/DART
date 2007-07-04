@@ -82,8 +82,6 @@ switch lower(model)
 
    case {'ikeda'}   % only two state variables
 
-      pinfo     
-
       ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);  % errors out if no ens_mem 
       
       x = get_var_series(pinfo.fname, pinfo.var1name, ens_mem_id, pinfo.var1ind);
@@ -130,18 +128,16 @@ switch lower(model)
       legend boxoff
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
-	 'lorenz_04','forced_lorenz_96'} 
+	 'lorenz_04','forced_lorenz_96','simple_advection'} 
 
       BulletProof(pinfo,X,Y,Z)          % rudimentary bulletproofing
-
-      pinfo     
 
       ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);  % errors out if no ens_mem 
       
       x = get_var_series(pinfo.fname, pinfo.var1name, ens_mem_id, pinfo.var1ind);
       y = get_var_series(pinfo.fname, pinfo.var2name, ens_mem_id, pinfo.var2ind);
       z = get_var_series(pinfo.fname, pinfo.var3name, ens_mem_id, pinfo.var3ind);
-      
+
       % There is no model-dependent segment ...
       % As long as you have three variables, this works for all models.
       

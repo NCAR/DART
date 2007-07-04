@@ -70,22 +70,41 @@ switch lower(vars.model)
 
       % parsing the result of this one is a bit tricky.
       inputstring = input('Input base variable and index i.e.  X 5\n','s');
-      [pinfo.base_var, pinfo.base_var_index] = ParseAlphaNumeric(inputstring);
+      [pinfo.base_var, pinfo.base_var_index] = ParseAlphaNumerics(inputstring);
 
       inputstring = input( ...
            sprintf('Input time index for base point (between 1 and %d) \n', ...
            vars.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
-
       % parsing the result of this one is a bit tricky.
       inputstring = input('Input variable and index for correlation \n','s');
-      [pinfo.state_var, pinfo.state_var_index] = ParseAlphaNumeric(inputstring);
+      [pinfo.state_var, pinfo.state_var_index] = ParseAlphaNumerics(inputstring);
 
     % disp(sprintf('Using diagnostic file %s',fname))
     % disp(sprintf('Correlating variable %s %d at time %d with variable %s %d.', ...
     %         pinfo.base_var, pinfo.base_var_index, pinfo.base_time, ...
     %         pinfo.state_var, pinfo.state_var_index))
+
+   case {'simple_advection'}
+
+      disp('Your choice of variables are:')
+      disp(vars.vars)
+      disp(sprintf('the indices (locations) can range from %d to %d', ...
+           vars.min_state_var, vars.max_state_var))
+
+      str1 = sprintf('Input base variable and index i.e. %s %d\n', ...
+                      vars.def_var,vars.def_state_vars(1));
+      inputstring = input(str1,'s');
+      [pinfo.base_var, pinfo.base_var_index] = ParseAlphaNumerics(inputstring);
+
+      inputstring = input( ...
+           sprintf('Input time index for base point (between 1 and %d) \n', ...
+           vars.time_series_length),'s');
+      pinfo.base_time = str2num(deblank(inputstring));
+
+      inputstring = input('Input variable and index for correlation \n','s');
+      [pinfo.state_var, pinfo.state_var_index] = ParseAlphaNumerics(inputstring);
 
    case 'fms_bgrid'
 

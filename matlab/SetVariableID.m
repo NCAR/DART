@@ -50,7 +50,7 @@ switch lower(vars.model)
       if isempty(IDstring) 
          varid = struct('var',vars.def_var,'var_inds',vars.def_state_vars); 
       else 
-         [vrbl, vrbl_inds] = ParseAlphaNumeric(IDstring);
+         [vrbl, vrbl_inds] = ParseAlphaNumerics(IDstring);
 
 	 % Must shift the 'forcing' variables by the number of state variables.
          switch lower(vrbl)
@@ -76,8 +76,8 @@ switch lower(vars.model)
       if isempty(IDstring) 
          varid = struct('var',vars.def_var,'var_inds',vars.def_state_vars); 
       else 
-         [vrbl, vrbl_inds] = ParseAlphaNumeric(IDstring);
-         varid = struct('var',vrbl,'var_inds',vrbl_inds); 
+         [vrbl, vrbl_inds] = ParseAlphaNumerics(IDstring);
+         varid = struct('var',upper(vrbl),'var_inds',vrbl_inds); 
       end 
 
    case 'simple_advection'
@@ -96,9 +96,7 @@ switch lower(vars.model)
       otherwise
 
          disp('Possible choices of variables are ')
-         for i = 1:vars.num_vars
-            disp(sprintf('%s',vars.vars{i}))
-         end
+         disp(vars.vars)
 
          disp(sprintf('and a range between %d and %d', vars.min_state_var,  ...
                                                        vars.max_state_var))
@@ -111,7 +109,7 @@ switch lower(vars.model)
       if isempty(IDstring) 
          varid = struct('var',vars.def_var,'var_inds',vars.def_state_vars); 
       else 
-         [vrbl, vrbl_inds] = Parse(IDstring);
+         [vrbl, vrbl_inds] = ParseAlphaNumerics(IDstring);
          varid = struct('var',vrbl,'var_inds',vrbl_inds); 
       end 
 
@@ -135,23 +133,4 @@ switch lower(vars.model)
       % ultra low-order models have no choice.
       varid = struct('var',vars.def_var,'var_inds',vars.def_state_vars); 
 
-end
-
-
-function [vrbl, vrbl_inds] = Parse(IDstring)
-% ParseAlphaNumeric    local function 
-% to extricate a variable name from subsequent IDs 
-% str1 = ' X 1 3 4 89'
-% [alpha, numerics] = ParseAlphaNumeric(str1)
-% alpha = 'X'
-% numerics = [1 3 4 89];
-
-inds       = find(IDstring == ',');     % find all commas
-IDstring(inds) = ' ';
-words      = strread(IDstring,'%s');
-nwords     = length(words);
-vrbl       = words{1};
-
-for i = 2:nwords
-   vrbl_inds(i-1) = sscanf(words{i},'%d');
 end

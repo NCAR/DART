@@ -47,3 +47,7 @@ close(f);
 var_vec = getnc(fname, varname, [-1, copynum, state_var], ...
                                 [-1, copynum, state_var]);
 
+if (sum(isfinite(var_vec)) == 0) 
+   error(sprintf('%s %s copy %d index %d has all missing values ...  exiting.', ...
+        fname,varname,copynum,state_var))
+end
