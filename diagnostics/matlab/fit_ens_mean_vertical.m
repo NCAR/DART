@@ -43,8 +43,8 @@ end
 % Defaults
 %----------------------------------------------------------------------
 
-datafile    = 'ObsDiagAtts';
-ptypes = {'gs-','bd-','ro-','k+-'};    % for each region
+datafile = 'ObsDiagAtts';
+ptypes   = {'gs-','bd-','ro-','k+-'};    % for each region
 
 %----------------------------------------------------------------------
 % Get plotting metadata from obs_diag run.
@@ -72,10 +72,6 @@ plotdat.bin1      = datenum(first_bin_center); % a known date in matlab's time u
 plotdat.toff      = plotdat.bin1 - t1;         % determine temporal offset (calendar base)
 plotdat.day1      = datestr(t1+plotdat.toff+iskip,'yyyy-mm-dd HH');
 plotdat.dayN      = datestr(tN+plotdat.toff,'yyyy-mm-dd HH');
-
-plotdat.psurface  = psurface;
-plotdat.ptop      = ptop;
-plotdat.ylabel    = 'Pressure (hPa)';
 plotdat.xlabel    = 'RMSE';
 plotdat.linewidth = 2.0;
 
@@ -96,13 +92,14 @@ for ivar = 1:length(All_Level_Varnames),
          string1 = sprintf('%s Ens Mean (all data)',     plotdat.varname);
       case 2,
          string1 = sprintf('%s Ens Mean (RaObs)',        plotdat.varname);
-      otherwise, 
+      otherwise,
          string1 = sprintf('%s Ens Mean (ACARS,SATWND)', plotdat.varname);
    end
 
    plotdat.ges  = sprintf('%s_ges_ver_ave.dat',All_Level_Varnames{ivar});
    plotdat.anl  = sprintf('%s_anl_ver_ave.dat',All_Level_Varnames{ivar});
    plotdat.main = sprintf('%s %sZ -- %sZ',string1,plotdat.day1,plotdat.dayN);
+   plotdat      = SetLevels(plotdat);
 
    % plot by region
 
@@ -122,7 +119,6 @@ for ivar = 1:length(All_Level_Varnames),
    psfname = sprintf('%s_vertical.ps',plotdat.varname);
    print(ivar,'-dpsc',psfname);
 
-
 end
 
 path(startpath); % restore MATLABPATH to original setting
@@ -132,20 +128,20 @@ path(startpath); % restore MATLABPATH to original setting
 %----------------------------------------------------------------------
 
 function myplot(plotdat)
-regionindex = 2 + 2*(plotdat.region -1);
-pv = load(plotdat.ges); p_v = SqueezeMissing(pv);
-av = load(plotdat.anl); a_v = SqueezeMissing(av);
-guessY = p_v(:,1);
-analyY = a_v(:,1);
+regionindex = 2 + 2*(plotdat.region - 1);
+pv     = load(plotdat.ges);
+av     = load(plotdat.anl);
+p_v    = SqueezeMissing(pv);
+a_v    = SqueezeMissing(av);
 guessX = p_v(:,regionindex);
 analyX = a_v(:,regionindex);
+levels = plotdat.levels;
 
 % Try to figure out intelligent axis limits
 indmax  = size(p_v,2);
 xdatarr = [p_v(:,2:2:indmax)  a_v(:,2:2:indmax)];  % concatenate all data
 xlims   = [0.0 max(xdatarr(:))];                   % limits of all data
-ylims   = [plotdat.ptop plotdat.psurface];         % from obs_diag.f90 
-axlims  = [floor(xlims(1)) ceil(xlims(2)) ylims];
+axlims  = [floor(xlims(1)) ceil(xlims(2)) plotdat.ylims];
 
 % sometimes there is no valid data, must patch axis limits
 if (~isfinite(axlims(2)))
@@ -153,10 +149,10 @@ if (~isfinite(axlims(2)))
 end
 
 subplot(2,2,plotdat.region)
-   plot(guessX,guessY,'k+-',analyX,analyY,'ro-','LineWidth',plotdat.linewidth)
+   plot(guessX,levels,'k+-',analyX,levels,'ro-','LineWidth',plotdat.linewidth)
    axis(axlims)
    grid
-   set(gca,'YDir', 'reverse')
+   set(gca,'YDir', plotdat.ydir)
    title( plotdat.title, 'Interpreter', 'none', 'FontSize', 12, 'FontWeight', 'bold' )
    ylabel(plotdat.ylabel, 'FontSize', 10)
    xlabel(plotdat.xlabel, 'FontSize', 10)
@@ -205,3 +201,43 @@ set(h,'HorizontalAlignment','center', ...
       'VerticalAlignment','middle',...
       'Interpreter','none',...
       'FontSize',8)
+
+
+
+function plotstruct = SetLevels(plotdat)
+
+if ( exist(plotdat.ges,'file') ~= 2 )
+   error(sprintf('%s does not seem to exist.',plotdat.ges))
+end
+if ( exist(plotdat.anl,'file') ~= 2 )
+   error(sprintf('%s does not seem to exist.',plotdat.anl))
+end
+
+datmat = load(plotdat.ges);
+guess  = datmat(:,1);  
+
+datmat = load(plotdat.anl);
+anl    = datmat(:,1);  
+
+if (sum(abs(guess-anl)) > 0) 
+   str1 = sprintf('levels in %s and %s do not match',plotdat.ges, plotdat.anl)
+   error(str1)
+end
+
+levels = guess; clear guess anl 
+
+plotstruct         = plotdat;
+plotstruct.levels  = levels;
+plotstruct.top     = levels(1);
+plotstruct.surface = levels(length(levels));
+
+if ( plotstruct.top > plotstruct.surface )
+   plotstruct.ylabel = 'height(m)';
+   plotstruct.ydir   = 'normal';
+   plotstruct.ylims  = [plotstruct.surface plotstruct.top];
+else
+   plotstruct.ylabel = 'Pressure (hPa)';
+   plotstruct.ydir   = 'reverse';
+   plotstruct.ylims  = [plotstruct.surface plotstruct.top];
+end
+
