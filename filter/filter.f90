@@ -267,17 +267,17 @@ call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_start_from_restart(2
 ! Initialize the output sequences and state files and set their meta data
 if(my_task_id() == 0) then
    call filter_generate_copy_meta_data(seq, prior_inflate, &
-   PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
-   output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
-   prior_obs_spread_index, posterior_obs_spread_index)
+      PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
+      output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
+      prior_obs_spread_index, posterior_obs_spread_index)
    if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation)
 else
-  output_state_mean_index = 0
-  output_state_spread_index = 0
-  prior_obs_mean_index = 0
-  posterior_obs_mean_index = 0
-  prior_obs_spread_index = 0 
-  posterior_obs_spread_index = 0
+   output_state_mean_index = 0
+   output_state_spread_index = 0
+   prior_obs_mean_index = 0
+   posterior_obs_mean_index = 0
+   prior_obs_spread_index = 0 
+   posterior_obs_spread_index = 0
 endif
 
 ! Need to find first obs with appropriate time, delete all earlier ones
