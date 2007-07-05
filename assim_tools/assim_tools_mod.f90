@@ -1409,6 +1409,12 @@ real(r8) :: x(1:2*ens_size - 1), sort_inc(ens_size)
 ! The factor a is not defined for this filter for now (could it be???)
 a = -1.0_r8
 
+! The relative weights could be used for a multi-dimensional particle-type
+! update using update_ens_from_weights. There are algorithmic challenges
+! with outliers so this is not currently a supported option. For now,
+! rel_weight is simply set to 0 and is unused elsewhere.
+rel_weight = 0.0_r8
+
 ! Do an index sort of the ensemble members; Need sorted ensemble
 call index_sort(ens, e_ind, ens_size)
 
