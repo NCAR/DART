@@ -31,13 +31,11 @@ if (exist('diagn_file') ~=1)
 end
 
 pinfo = struct('truth_file', truth_file, ...
-               'diagn_file', diagn_file);
+               'diagn_file', diagn_file, ...
+               'truth_time', [-1,-1], ...
+               'diagn_time', [-1,-1] );
 
-CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
-
-disp(sprintf('Comparing %s and \n          %s',pinfo.truth_file, pinfo.diagn_file))
-
-pinfo
+disp(sprintf('Comparing %s and \n          %s', truth_file, diagn_file))
 
 PlotTotalErr( pinfo )
 clear pinfo

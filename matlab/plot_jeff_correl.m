@@ -100,7 +100,7 @@ switch lower(vars.model)
 
    case 'fms_bgrid'
 
-      pinfo = GetBgridInfo(fname, 'PlotVarVarCorrel');
+      pinfo = GetBgridInfo(pinfo, fname, 'PlotVarVarCorrel');
 
    otherwise
 

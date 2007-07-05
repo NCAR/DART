@@ -51,11 +51,23 @@ function PlotSawtooth( pinfo )
 % $Revision$
 % $Date$
 
-CheckModelCompatibility(pinfo.prior_file, pinfo.posterior_file)
+% add the fields CMC() needs and save info for later
+pinfo.truth_file_prev = pinfo.truth_file
+pinfo.truth_file = pinfo.prior_file;
+pinfo.diagn_file = pinfo.posterior_file;
+pinfo.truth_time = [-1,-1];
+pinfo.diagn_time = [-1,-1];
+
+
+%pinfo = CheckModelCompatibility(pinfo.prior_file, pinfo.posterior_file)
+pinfo = CheckModelCompatibility(pinfo)
+pinfo.truth_file = pinfo.truth_file_prev
 
 % Get some information from the truth_file, if it exists.
 if ( exist(pinfo.truth_file,'file') == 2 ) 
-   CheckModelCompatibility(pinfo.truth_file, pinfo.posterior_file)
+   %pinfo = CheckModelCompatibility(pinfo.truth_file, pinfo.posterior_file)
+   pinfo.diagn_file = pinfo.posterior_file;
+   pinfo = CheckModelCompatibility(pinfo)
 
    ft = netcdf(pinfo.truth_file);
    truth.model      = ft.model(:);
@@ -66,6 +78,9 @@ if ( exist(pinfo.truth_file,'file') == 2 )
 else
    truth = [];
 end
+
+% set this back
+%pinfo.truth_file = pinfo.prior_file;
 
 % Get some information from the prior_file 
 fpr = netcdf(pinfo.prior_file);

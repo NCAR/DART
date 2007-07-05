@@ -40,7 +40,7 @@ function PlotBins(pinfo)
 % $Revision$
 % $Date$
 
-CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
+pinfo = CheckModelCompatibility(pinfo)
 
 % Get the state for the truth
 truth_index = get_copy_index(pinfo.truth_file,'true state');
@@ -55,8 +55,10 @@ switch lower(true_model)
          figure(i); clf
          for j = 1:3
             ivar = (i - 1)*3 + j;
-            truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
-            ens   = get_ens_series(pinfo.diagn_file, pinfo.var, ivar );
+            truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ...
+                             ivar, pinfo.truth_time(1), pinfo.truth_time(2));
+            ens   = get_ens_series(pinfo.diagn_file, pinfo.var, ivar, ...
+                                   pinfo.diagn_time(1), pinfo.diagn_time(2));
             bins  = rank_hist(ens, truth);
             subplot(3, 1, j);
             bar(bins);
@@ -71,8 +73,10 @@ switch lower(true_model)
       clf; iplot = 0;
       for ivar = pinfo.state_var_inds,
          iplot = iplot + 1;
-         truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
-         ens   = get_ens_series(pinfo.diagn_file, pinfo.var, ivar );
+         truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ...
+                               ivar, pinfo.truth_time(1), pinfo.truth_time(2));
+         ens   = get_ens_series(pinfo.diagn_file, pinfo.var, ivar, ...
+                                   pinfo.diagn_time(1), pinfo.diagn_time(2));
          bins  = rank_hist(ens, truth);
          subplot(length(pinfo.state_var_inds), 1, iplot);
          bar(bins);
@@ -87,8 +91,10 @@ switch lower(true_model)
       for ivar = pinfo.state_var_inds,
          iplot = iplot + 1;
 
-         truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
-         ens   = get_ens_series(pinfo.diagn_file, pinfo.var, ivar );
+         truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ...
+                               ivar, pinfo.truth_time(1), pinfo.truth_time(2));
+         ens   = get_ens_series(pinfo.diagn_file, pinfo.var, ivar, ...
+                                   pinfo.diagn_time(1), pinfo.diagn_time(2));
          bins  = rank_hist(ens, truth);
          subplot(length(pinfo.state_var_inds), 1, iplot);
          bar(bins);
@@ -109,8 +115,10 @@ switch lower(true_model)
 
       clf;
 
-      truth = GetCopy(pinfo.truth_file, truth_index, pinfo);
-      ens   = GetEns( pinfo.diagn_file, pinfo );
+      truth = GetCopy(pinfo.truth_file, truth_index, pinfo, ...
+                      pinfo.truth_time(1), pinfo.truth_time(2));
+      ens   = GetEns( pinfo.diagn_file, pinfo, ...
+                      pinfo.diagn_time(1), pinfo.diagn_time(2));
 
       subplot(2,1,1)
          PlotLocator(pinfo)
@@ -147,17 +155,17 @@ end
 
 
 
-function var = GetCopy(fname, copyindex, pinfo)
+function var = GetCopy(fname, copyindex, pinfo, tstart, tend)
 % Gets a time-series of a single specified copy of a prognostic variable 
 % at a particular 3D location (level, lat, lon)
 
 switch(lower(pinfo.var))
    case {'ps'}
-      corner = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
-      endpnt = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
+      corner = [tstart copyindex                 pinfo.latindex pinfo.lonindex];
+      endpnt = [tend   copyindex                 pinfo.latindex pinfo.lonindex];
    otherwise
-      corner = [-1 copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
-      endpnt = [-1 copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
+      corner = [tstart copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
+      endpnt = [tend   copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
 end
 var = getnc(fname, pinfo.var, corner, endpnt);
 
@@ -166,6 +174,8 @@ function var = get_1Dvar_type_series(fname, copyindex, vrbl, vrbl_ind)
 % Gets a time series of a single specified copy of a prognostic variable 
 % The (spatially-) 1D vars are   (time,copy,location) 
 
+% this seems unused, but if it is called, tstart and tend should be passed
+% in and used instead of the -1 in the corner and endpt below.
 corner = [-1 copyindex vrbl_ind ];
 endpnt = [-1 copyindex vrbl_ind ];
 var = getnc(fname, pinfo.var, corner, endpnt);
@@ -173,7 +183,7 @@ var = getnc(fname, pinfo.var, corner, endpnt);
 
 
 
-function var = GetEns(fname, pinfo)
+function var = GetEns(fname, pinfo, tstart, tend)
 % Gets a time-series of all copies of a prognostic variable 
 % at a particular 3D location (level, lat, lon).
 % Determining just the ensemble members (and not mean, spread ...)
@@ -195,11 +205,11 @@ ens_num     = length(copyindices);
 
 % Get all ensemble members, just return desired ones.
 if strcmp(pinfo.var,'ps')
-   corner = [-1 -1                  pinfo.latindex pinfo.lonindex];
-   endpnt = [-1 -1                  pinfo.latindex pinfo.lonindex];
+   corner = [tstart -1                  pinfo.latindex pinfo.lonindex];
+   endpnt = [tend   -1                  pinfo.latindex pinfo.lonindex];
 else
-   corner = [-1 -1 pinfo.levelindex pinfo.latindex pinfo.lonindex];
-   endpnt = [-1 -1 pinfo.levelindex pinfo.latindex pinfo.lonindex];
+   corner = [tstart -1 pinfo.levelindex pinfo.latindex pinfo.lonindex];
+   endpnt = [tend   -1 pinfo.levelindex pinfo.latindex pinfo.lonindex];
 end
 bob = getnc(fname, pinfo.var, corner, endpnt); % 'bob' is only 2D 
 var = bob(:,copyindices);

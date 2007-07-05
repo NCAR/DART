@@ -46,8 +46,13 @@ function PlotEnsMeanTimeSeries( pinfo )
 % $Revision$
 % $Date$
 
-if (exist(pinfo.truth_file) ==2) 
-   CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
+pinfo.truth_time(1) = -1;
+pinfo.truth_time(2) = -1;
+pinfo.diagn_time(1) = -1;
+pinfo.diagn_time(2) = -1;
+
+if (exist(pinfo.truth_file) == 2) 
+   pinfo = CheckModelCompatibility(pinfo)
    truth_index = get_copy_index(pinfo.truth_file, 'true state' );
    have_truth = 1;
 else
@@ -65,7 +70,11 @@ ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
 % Get some useful plotting arrays
-times = getnc(pinfo.diagn_file,'time');
+if (have_truth)
+  times = getnc(pinfo.diagn_file,'time', pinfo.diagn_time(1), pinfo.diagn_time(2)); 
+else
+  times = getnc(pinfo.diagn_file,'time');
+end
 d.num_times = length(times);
 
 switch lower(d.model)
@@ -79,8 +88,10 @@ switch lower(d.model)
             ivar = (i - 1)*3 + j;
             disp(sprintf('plotting model %s Variable %d ...',d.model,ivar))
             % Get the truth for this variable
-            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
-            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
+            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
+                                         pinfo.truth_time(1), pinfo.truth_time(2));
+            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2));
             subplot(3, 1, j);
             plot(times,truth, 'b',times,ens_mean,'r')
             title(sprintf('%s Variable %d of %s',d.model,ivar,pinfo.diagn_file), ...
@@ -98,8 +109,10 @@ switch lower(d.model)
       for ivar = pinfo.var_inds,
             iplot = iplot + 1;
             % Get the truth for this variable
-            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
-            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
+            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
+                                         pinfo.truth_time(1), pinfo.truth_time(2));
+            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2));
             subplot(length(pinfo.var_inds), 1, iplot);
             plot(times,truth, 'b',times,ens_mean,'r')
             title(sprintf('%s Variable %d of %s',d.model,ivar,pinfo.diagn_file), ...
@@ -110,8 +123,10 @@ switch lower(d.model)
       end
       % as a bonus, plot the mean attractors.
       figure(2); clf
-      ts   = get_state_copy(pinfo.truth_file,pinfo.var, truth_index);
-      ens  = get_state_copy(pinfo.diagn_file,pinfo.var, ens_mean_index);
+      ts   = get_state_copy(pinfo.truth_file,pinfo.var, truth_index, ...
+                            pinfo.truth_time(1), pinfo.truth_time(2));
+      ens  = get_state_copy(pinfo.diagn_file,pinfo.var, ens_mean_index, ...
+                            pinfo.diagn_time(1), pinfo.diagn_time(2));
       plot3(  ts(:,1),  ts(:,2),  ts(:,3), 'b', ...
              ens(:,1), ens(:,2), ens(:,3), 'r')
       title(sprintf('%s Attractors for %s and %s', ...
@@ -131,8 +146,10 @@ switch lower(d.model)
       for ivar = pinfo.var_inds,
             iplot = iplot + 1;
             % Get the truth for this variable
-            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
-            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
+            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
+                                         pinfo.truth_time(1), pinfo.truth_time(2));
+            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2));
             subplot(length(pinfo.var_inds), 1, iplot);
             plot(times,truth, 'b',times,ens_mean,'r')
             title(sprintf('%s Variable %d of %s',d.model,ivar,pinfo.diagn_file), ...
@@ -152,8 +169,10 @@ switch lower(d.model)
       varunits     = ft{pinfo.var}.units(:);
       close(ft);
 
-      truth       = GetCopy(pinfo.truth_file, truth_index,      pinfo );
-      ens_mean    = GetCopy(pinfo.diagn_file, ens_mean_index,   pinfo );
+      truth       = GetCopy(pinfo.truth_file, truth_index,      pinfo , ...
+                            pinfo.truth_time(1), pinfo.truth_time(2)) ;
+      ens_mean    = GetCopy(pinfo.diagn_file, ens_mean_index,   pinfo , ...
+                            pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
 
       subplot(2,1,1)
          PlotLocator(pinfo)
@@ -194,10 +213,14 @@ switch lower(d.model)
          close(fd);
 
          if ( have_truth )
-            truth    = GetCamCopy(pinfo.truth_file, truth_index,      pinfo );
+            truth    = GetCamCopy(pinfo.truth_file, truth_index, pinfo, ...
+                                  pinfo.truth_time(1), pinfo.truth_time(2)) ;
+            ens_mean = GetCamCopy(pinfo.diagn_file, ens_mean_index, pinfo, ...
+                                  pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+         else
+            ens_mean = GetCamCopy(pinfo.diagn_file,ens_mean_index,pinfo,-1,-1);
          end
 
-         ens_mean    = GetCamCopy(pinfo.diagn_file, ens_mean_index,   pinfo );
 
          subplot(2,1,1)
             PlotLocator(pinfo);
@@ -239,28 +262,28 @@ end
 % Subfunctions
 %======================================================================
 
-function var = GetCopy(fname, copyindex, pinfo)
+function var = GetCopy(fname, copyindex, pinfo, tstart, tend)
 % Gets a time-series of a single specified copy of a prognostic variable 
 % at a particular 3D location (level, lat, lon)
 if strcmp(lower(pinfo.var),'ps')
-   corner = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
-   endpnt = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
+   corner = [tstart copyindex                  pinfo.latindex pinfo.lonindex];
+   endpnt = [tend   copyindex                  pinfo.latindex pinfo.lonindex];
 else
-   corner = [-1 copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
-   endpnt = [-1 copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
+   corner = [tstart copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
+   endpnt = [tend   copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
 end
 var = getnc(fname, pinfo.var, corner, endpnt);
 
 
-function var = GetCamCopy(fname, copyindex, pinfo)
+function var = GetCamCopy(fname, copyindex, pinfo, tstart, tend)
 % Gets a time-series of a single specified copy of a prognostic variable 
 % at a particular 3D location (level, lat, lon)
 if strcmp(lower(pinfo.var),'ps')
-   corner = [ 1 copyindex pinfo.latindex pinfo.lonindex];
-   endpnt = [-1 copyindex pinfo.latindex pinfo.lonindex];
+   corner = [tstart copyindex pinfo.latindex pinfo.lonindex];
+   endpnt = [tend   copyindex pinfo.latindex pinfo.lonindex];
 else
-   corner = [ 1 copyindex pinfo.latindex pinfo.lonindex pinfo.levelindex];
-   endpnt = [-1 copyindex pinfo.latindex pinfo.lonindex pinfo.levelindex];
+   corner = [tstart copyindex pinfo.latindex pinfo.lonindex pinfo.levelindex];
+   endpnt = [tend   copyindex pinfo.latindex pinfo.lonindex pinfo.levelindex];
 end
 var = getnc(fname, pinfo.var, corner, endpnt);
 

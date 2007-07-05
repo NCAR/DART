@@ -1,4 +1,4 @@
-function state_vec = get_state_copy(fname, varname, copyindex)
+function state_vec = get_state_copy(fname, varname, copyindex, tstart, tend)
 %GET_STATE_COPY  Gets a particular copy (one ensemble member) of state from netcdf file
 % Retrieves a particular copy of a state vector from a file whose
 % full or relative path is specified in the file argument.
@@ -14,6 +14,11 @@ function state_vec = get_state_copy(fname, varname, copyindex)
 % $Id$
 % $Revision$
 % $Date$
+
+if (nargin == 3)
+  tstart = -1;
+  tend = -1;
+end
 
 % Need to get a copy with the label copy
 copy_meta_data = getnc(fname, 'CopyMetaData');
@@ -37,4 +42,4 @@ end
 % Get only the appropriate copy of the state and return
 % Should have an error check for bad indices
 
-state_vec = getnc(fname, varname, [-1, copyindex, -1], [-1, copyindex, -1]);
+state_vec = getnc(fname, varname, [tstart, copyindex, -1], [tend, copyindex, -1]);

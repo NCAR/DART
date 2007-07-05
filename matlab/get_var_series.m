@@ -1,4 +1,4 @@
-function var_vec = get_var_series(fname, varname, copynum, state_var)
+function var_vec = get_var_series(fname, varname, copynum, state_var, tstart, tend)
 %GET_VAR_SERIES Gets a particular copy of a state variable from netcdf file
 %
 % Retrieves a particular copy of a state variable from a file whose
@@ -22,6 +22,11 @@ function var_vec = get_var_series(fname, varname, copynum, state_var)
 % $Revision$
 % $Date$
 
+if (nargin == 4)
+  tstart = -1;
+  tend = -1;
+end
+
 f = netcdf(fname,'nowrite');
 var_atts   = dim(f{varname});       % cell array of dimensions for the var
 num_copies = length(var_atts{2});
@@ -44,8 +49,8 @@ end
 close(f);
 
 % Get only the appropriate copy of the state and return
-var_vec = getnc(fname, varname, [-1, copynum, state_var], ...
-                                [-1, copynum, state_var]);
+var_vec = getnc(fname, varname, [tstart, copynum, state_var], ...
+                                [tend,   copynum, state_var]);
 
 if (sum(isfinite(var_vec)) == 0) 
    error(sprintf('%s %s copy %d index %d has all missing values ...  exiting.', ...

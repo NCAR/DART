@@ -1,4 +1,4 @@
-function ens = get_ens_series(fname, varname, state_var_index)
+function ens = get_ens_series(fname, varname, state_var_index, tstart, tend)
 %GET_ENS_SERIES: Returns matrix of time series for all members of ensemble for a variable
 %
 % the rows of the matrix correspond to time,
@@ -19,6 +19,11 @@ function ens = get_ens_series(fname, varname, state_var_index)
 % $Id$
 % $Revision$
 % $Date$
+
+if (nargin == 3) 
+  tstart = -1;
+  tend = -1;
+end
 
 f = netcdf(fname);
 model      = f.model(:);
@@ -55,10 +60,11 @@ ens_num     = length(copyindices);
 % ensemble members than "mean" and "spread" (the two members
 % we are NOT interested in for this function).
 
-state_vec = getnc(fname,varname, [-1, -1, state_var_index], ...
-                                 [-1, -1, state_var_index]);
+state_vec = getnc(fname,varname, [tstart, -1, state_var_index], ...
+                                 [tend,   -1, state_var_index]);
 % getnc always squeezes out the singleton last dimension.
 ens       = state_vec(:,copyindices);
 
 disp(sprintf('Read %d ensemble members for variable %d in %s', ...
              ens_num, state_var_index,fname));
+

@@ -44,7 +44,7 @@ if (exist('diagn_file') ~=1)
    end
 end
 
-CheckModelCompatibility(truth_file,diagn_file)
+pinfo = CheckModelCompatibility(truth_file,diagn_file)
 vars  = CheckModel(truth_file);   % also gets default values for this model.
 varid = SetVariableID(vars);      % queries for variable IDs if needed.
 
@@ -53,17 +53,22 @@ switch lower(vars.model)
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
 	 'lorenz_04', 'forced_lorenz_96','ikeda','simple_advection'}
 
-      pinfo = struct( 'truth_file'    , truth_file, ...
-                      'diagn_file'    , diagn_file, ...
-                      'var'           , varid.var , ...
-                      'state_var_inds', varid.var_inds);
+      pinfo = setfield(pinfo, 'truth_file'    , truth_file);
+      pinfo = setfield(pinfo, 'diagn_file'    , diagn_file);
+      pinfo = setfield(pinfo, 'var'           , varid.var);
+      pinfo = setfield(pinfo, 'state_var_inds', varid.var_inds);
+
+      %pinfo = struct( 'truth_file'    , truth_file, ...
+      %                'diagn_file'    , diagn_file, ...
+      %                'var'           , varid.var , ...
+      %                'state_var_inds', varid.var_inds);
 
    %  disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
    %  disp(sprintf('Using Variable %s IDs %s', pinfo.var,num2str(pinfo.state_var_inds)))
 
    case 'fms_bgrid'
 
-      pinfo = GetBgridInfo(diagn_file, 'PlotBins');
+      pinfo = GetBgridInfo(pinfo, diagn_file, 'PlotBins');
       pinfo.truth_file = truth_file;   % since it has been verified to be compatible.
       pinfo.diagn_file = diagn_file;   % since it has been verified to be compatible.
 

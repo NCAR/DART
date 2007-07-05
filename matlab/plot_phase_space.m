@@ -189,7 +189,7 @@ switch lower(vars.model)
 
    case 'fms_bgrid'
 
-      pinfo = GetBgridInfo(fname, 'PlotPhaseSpace');
+      pinfo = GetBgridInfo(pinfo, fname, 'PlotPhaseSpace');
 
    case {'ikeda'}
 

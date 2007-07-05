@@ -153,6 +153,10 @@ function var = GetEns( fname, var, lvlind, latind, lonind)
 metadata    = getnc(fname,'CopyMetaData');           % get all the metadata
 copyindices = strmatch('ensemble member',metadata);  % find all 'member's
 
+% if need to clip by time, add these to arg list
+tstart = -1
+tend   = -1
+
 if ( isempty(copyindices) )
    disp(sprintf('%s has no valid ensemble members',fname))
    disp('To be a valid ensemble member, the CopyMetaData for the member')
@@ -165,11 +169,11 @@ ens_num     = length(copyindices);
 
 % Get all ensemble members, just return desired ones.
 if strcmp(var,'ps')
-   corner = [-1 -1        latind lonind];
-   endpnt = [-1 -1        latind lonind];
+   corner = [tstart -1        latind lonind];
+   endpnt = [tend   -1        latind lonind];
 else
-   corner = [-1 -1 lvlind latind lonind];
-   endpnt = [-1 -1 lvlind latind lonind];
+   corner = [tstart -1 lvlind latind lonind];
+   endpnt = [tend   -1 lvlind latind lonind];
 end
 bob = getnc(fname, var, corner, endpnt); % 'bob' is only 2D 
 var = bob(:,copyindices);

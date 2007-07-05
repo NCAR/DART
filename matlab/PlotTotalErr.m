@@ -33,7 +33,8 @@ function PlotTotalErr( pinfo )
 % $Revision$
 % $Date$
 
-CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
+% this adds the time overlap info to the structure.
+pinfo = CheckModelCompatibility(pinfo)
 
 f = netcdf(pinfo.truth_file,'nowrite');
 model = f.model(:); 
@@ -46,8 +47,9 @@ truth_index      = get_copy_index(pinfo.truth_file, 'true state' );
 ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
-% Get a useful plotting arrays
-times = getnc(pinfo.truth_file,'time');
+% The times are set before from the model compatibility call
+times = getnc(pinfo.truth_file,'time', [pinfo.truth_time(1)], ...
+                                       [pinfo.truth_time(2)]);
 num_times = length(times);
 
 switch lower(model)
@@ -55,9 +57,12 @@ switch lower(model)
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','ikeda'}
 
       % Get the appropriate netcdf variables
-      truth  = get_state_copy(pinfo.truth_file, 'state',     truth_index);
-      ens    = get_state_copy(pinfo.diagn_file, 'state',  ens_mean_index);
-      spread = get_state_copy(pinfo.diagn_file, 'state',ens_spread_index);
+      truth  = get_state_copy(pinfo.truth_file, 'state',     truth_index, ...
+                              pinfo.truth_time(1), pinfo.truth_time(2));
+      ens    = get_state_copy(pinfo.diagn_file, 'state',  ens_mean_index, ...
+                              pinfo.diagn_time(1), pinfo.diagn_time(2));
+      spread = get_state_copy(pinfo.diagn_file, 'state',ens_spread_index, ...
+                              pinfo.diagn_time(1), pinfo.diagn_time(2));
       num_vars = size(spread,2);
 
       % Also need to compute the spread; zero truth for this and
@@ -84,14 +89,20 @@ switch lower(model)
       % Simply going to append X,Y together and treat as above.
 
       % Get the appropriate netcdf variables
-      tim    = get_state_copy(pinfo.truth_file, 'X',     truth_index);
-      tom    = get_state_copy(pinfo.truth_file, 'Y',     truth_index);
+      tim    = get_state_copy(pinfo.truth_file, 'X',     truth_index, ...
+                              pinfo.truth_time(1), pinfo.truth_time(2));
+      tom    = get_state_copy(pinfo.truth_file, 'Y',     truth_index, ...
+                              pinfo.truth_time(1), pinfo.truth_time(2));
       truth  = [tim tom];
-      tim    = get_state_copy(pinfo.diagn_file, 'X',  ens_mean_index);
-      tom    = get_state_copy(pinfo.diagn_file, 'Y',  ens_mean_index);
+      tim    = get_state_copy(pinfo.diagn_file, 'X',  ens_mean_index, ...
+                              pinfo.diagn_time(1), pinfo.diagn_time(2));
+      tom    = get_state_copy(pinfo.diagn_file, 'Y',  ens_mean_index, ...
+                              pinfo.diagn_time(1), pinfo.diagn_time(2));
       ens    = [tim tom]; 
-      tim    = get_state_copy(pinfo.diagn_file, 'X',ens_spread_index);
-      tom    = get_state_copy(pinfo.diagn_file, 'Y',ens_spread_index);
+      tim    = get_state_copy(pinfo.diagn_file, 'X',ens_spread_index, ...
+                              pinfo.diagn_time(1), pinfo.diagn_time(2));
+      tom    = get_state_copy(pinfo.diagn_file, 'Y',ens_spread_index, ...
+                              pinfo.diagn_time(1), pinfo.diagn_time(2));
       spread = [tim tom]; clear tim tom
       num_vars = size(spread,2);
 
@@ -126,9 +137,12 @@ switch lower(model)
 
       % Get the appropriate netcdf variables
 
-      Whole_truth  = get_state_copy(pinfo.truth_file, 'state',     truth_index);
-      Whole_ens    = get_state_copy(pinfo.diagn_file, 'state',  ens_mean_index);
-      Whole_spread = get_state_copy(pinfo.diagn_file, 'state',ens_spread_index);
+      Whole_truth  = get_state_copy(pinfo.truth_file, 'state',     truth_index, ...
+                              pinfo.truth_time(1), pinfo.truth_time(2));
+      Whole_ens    = get_state_copy(pinfo.diagn_file, 'state',  ens_mean_index, ...
+                              pinfo.diagn_time(1), pinfo.diagn_time(2));
+      Whole_spread = get_state_copy(pinfo.diagn_file, 'state',ens_spread_index, ...
+                              pinfo.diagn_time(1), pinfo.diagn_time(2));
       num_vars = size(Whole_spread,2);
 
       %--------------------------------------------------------------------------
@@ -207,9 +221,12 @@ switch lower(model)
       for ivar = 1:length(varlist)
 
          % Get the appropriate netcdf variables
-         truth  = get_state_copy(pinfo.truth_file, varlist{ivar},     truth_index);
-         ens    = get_state_copy(pinfo.diagn_file, varlist{ivar},  ens_mean_index);
-         spread = get_state_copy(pinfo.diagn_file, varlist{ivar},ens_spread_index);
+         truth  = get_state_copy(pinfo.truth_file, varlist{ivar},     truth_index, ...
+                              pinfo.truth_time(1), pinfo.truth_time(2));
+         ens    = get_state_copy(pinfo.diagn_file, varlist{ivar},  ens_mean_index, ...
+                              pinfo.diagn_time(1), pinfo.diagn_time(2));
+         spread = get_state_copy(pinfo.diagn_file, varlist{ivar},ens_spread_index, ...
+                              pinfo.diagn_time(1), pinfo.diagn_time(2));
          num_vars = size(spread,2);
 
          % Also need to compute the spread; zero truth for this and
@@ -255,22 +272,28 @@ close(f)
 function PBL1DTotalError ( pinfo )
 
 % Get some standard plotting arrays
- z_level = getnc(pinfo.truth_file, 'z_level');
-sl_level = getnc(pinfo.truth_file,'sl_level');
-times    = getnc(pinfo.truth_file,    'time'); 
+ z_level = getnc(pinfo.truth_file, 'z_level',[pinfo.truth_time(1)], [pinfo.truth_time(2)]);
+sl_level = getnc(pinfo.truth_file,'sl_level',[pinfo.truth_time(1)], [pinfo.truth_time(2)]);
+times    = getnc(pinfo.truth_file,    'time',[pinfo.truth_time(1)], [pinfo.truth_time(2)]);
 num_times  = length(times );
 
 % Get the indices for the true state, ensemble mean and spread                  
 % The metadata is queried to determine which "copy" is appropriate.             
-truth_index      = get_copy_index(pinfo.truth_file, 'true state' ); 
+truth_index      = get_copy_index(pinfo.truth_file, 'true state');
 ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
 % U variable
 
-truth  = getnc(pinfo.truth_file,'U',[-1      truth_index -1],[-1      truth_index -1]);
-ens    = getnc(pinfo.diagn_file,'U',[-1   ens_mean_index -1],[-1   ens_mean_index -1]);
-spread = getnc(pinfo.diagn_file,'U',[-1 ens_spread_index -1],[-1 ens_spread_index -1]);
+truth  = getnc(pinfo.truth_file,'U', ...
+              [pinfo.truth_time(1)  truth_index -1], ...
+              [pinfo.truth_time(2)  truth_index -1]);
+ens    = getnc(pinfo.diagn_file,'U', ...
+              [pinfo.diagn_time(1)  ens_mean_index -1], ...
+              [pinfo.diagn_time(2)  ens_mean_index -1]);
+spread = getnc(pinfo.diagn_file,'U', ...
+              [pinfo.diagn_time(1)  ens_spread_index -1], ...
+              [pinfo.diagn_time(2)  ens_spread_index -1]);
 
 err        = total_err(              truth,    ens);
 err_spread = total_err(zeros(size(spread)), spread);
@@ -298,18 +321,23 @@ close(ft);
 
 nvars = 4;
 
+tstart = pinfo.truth_time(1);
+tend   = pinfo.truth_time(2);
+dstart = pinfo.diagn_time(1);
+dend   = pinfo.diagn_time(2);
+
 % Since the models are "compatible", get the info from either one.
 tlons    = getnc(pinfo.truth_file,  'TmpI'); num_tlons  = length(tlons );
 tlats    = getnc(pinfo.truth_file,  'TmpJ'); num_tlats  = length(tlats );
 vlons    = getnc(pinfo.truth_file,  'VelI'); num_vlons  = length(vlons );
 vlats    = getnc(pinfo.truth_file,  'VelJ'); num_vlats  = length(vlats );
 levels   = getnc(pinfo.truth_file, 'level'); num_levels = length(levels);
-times    = getnc(pinfo.truth_file,  'time'); num_times  = length(times );
+times    = getnc(pinfo.truth_file,  'time', [tstart], [tend]); num_times  = length(times );
 ens_mems = getnc(pinfo.diagn_file,  'copy'); ens_size   = length(ens_mems);
 
 
 % Try to coordinate "time" ... a poor attempt, needs refining
-ens_times     = getnc(pinfo.diagn_file, 'time'); 
+ens_times     = getnc(pinfo.diagn_file, 'time', [dstart], [dend]); 
 num_ens_times = length(ens_times);
 if num_ens_times < num_times
    times     =     ens_times;
@@ -322,7 +350,7 @@ spread_final = zeros(num_times, nvars, num_levels);
 
 % Get the indices for the true state, ensemble mean and spread                  
 % The metadata is queried to determine which "copy" is appropriate.             
-truth_index      = get_copy_index(pinfo.truth_file, 'true state' ); 
+truth_index      = get_copy_index(pinfo.truth_file, 'true state');
 ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
@@ -341,9 +369,9 @@ disp('Processing surface pressure ...')
 ivar   = 1;
 ilevel = 1;
 
-truth      = GetPS(pinfo.truth_file,      truth_index);
-ens        = GetPS(pinfo.diagn_file,   ens_mean_index);
-spread     = GetPS(pinfo.diagn_file, ens_spread_index);
+truth      = GetPS(pinfo.truth_file,      truth_index, tstart, tend);
+ens        = GetPS(pinfo.diagn_file,   ens_mean_index, dstart, dend);
+spread     = GetPS(pinfo.diagn_file, ens_spread_index, dstart, dend);
 
 err        = total_err(              truth,    ens, twts(:) );
 err_spread = total_err(zeros(size(spread)), spread, twts(:) );
@@ -367,9 +395,9 @@ for ilevel = 1:num_levels,     % Loop through all levels
    %-------------------------------------------------------------------
    ivar   = 2;
 
-   truth  = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel);
-   ens    = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel);
-   spread = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel);
+   truth  = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel, tstart, tend);
+   ens    = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel, dstart, dend);
+   spread = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel, dstart, dend);
 
    err        = total_err(              truth,    ens, twts(:));
    err_spread = total_err(zeros(size(spread)), spread, twts(:));
@@ -382,9 +410,9 @@ for ilevel = 1:num_levels,     % Loop through all levels
    %-------------------------------------------------------------------
    ivar   = 3;
 
-   truth  = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel);
-   ens    = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel);
-   spread = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel);
+   truth  = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel, tstart, tend);
+   ens    = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel, dstart, dend);
+   spread = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel, dstart, dend);
 
    err        = total_err(              truth,    ens, vwts(:));
    err_spread = total_err(zeros(size(spread)), spread, vwts(:));
@@ -397,9 +425,9 @@ for ilevel = 1:num_levels,     % Loop through all levels
    %-------------------------------------------------------------------
    ivar   = 4;
 
-   truth  = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel);
-   ens    = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel);
-   spread = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel);
+   truth  = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel, tstart, tend);
+   ens    = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel, dstart, dend);
+   spread = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel, dstart, dend);
 
    err        = total_err(              truth,    ens, vwts(:));
    err_spread = total_err(zeros(size(spread)), spread, vwts(:));
@@ -508,15 +536,28 @@ figure(4); clf;
 %----------------------------------------------------------------------
 % helper function
 %----------------------------------------------------------------------
-function slice = GetPS(fname,copyindex);
-corner     = [-1, copyindex, -1, -1];
-endpnt     = [-1, copyindex, -1, -1];
+function slice = GetPS(fname,copyindex, tstart, tend);
+
+% this gets a bit funky if tstart == tend; in spite of trying to
+% pass 0 in for the squeeze argument, it seems to squeeze anyway,
+% leaving the dims in the wrong slots.  copyindex will always
+% squeeze out, so try to figure out if you get a 3d or 2d return
+% back from getnc() and then deal with time explicitly.
+% same goes below in GetLevel().
+corner     = [tstart, copyindex, -1, -1];
+endpnt     = [tend,   copyindex, -1, -1];
 ted        = getnc(fname,'ps',corner,endpnt);
-[nt,ny,nx] = size(ted);
+n = ndims(ted);
+if (n == 2)
+   [ny,nx] = size(ted);
+   nt = 1;
+else
+   [nt,ny,nx] = size(ted);
+end
 slice      = reshape(ted,[nt ny*nx]);
 
 
-function slice = GetLevel(fname,ivar,copyindex,ilevel);
+function slice = GetLevel(fname,ivar,copyindex,ilevel,tstart,tend);
 if ivar == 2 
    varstring = 't';
 elseif ivar == 3 
@@ -526,10 +567,18 @@ elseif ivar == 4
 else
    error(sprintf(' variable id %d out of bounds',ivar))
 end
-corner     = [-1, copyindex, ilevel, -1, -1];
-endpnt     = [-1, copyindex, ilevel, -1, -1];
+% see comment above in GetPS() for why the messing around with
+% testing the ndims of the return array.
+corner     = [tstart, copyindex, ilevel, -1, -1];
+endpnt     = [tend,   copyindex, ilevel, -1, -1];
 ted        = getnc(fname,varstring,corner,endpnt);
-[nt,ny,nx] = size(ted);
+n = ndims(ted);
+if (n == 2)
+   [ny,nx] = size(ted);
+   nt = 1;
+else
+   [nt,ny,nx] = size(ted);
+end
 slice      = reshape(ted,[nt ny*nx]);
 
 

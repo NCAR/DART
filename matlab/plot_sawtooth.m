@@ -50,18 +50,26 @@ if (exist('prior_file') ~=1)
    end
 end
 
-CheckModelCompatibility(prior_file, posterior_file)
-pstruct                = CheckModel(posterior_file);   % also gets default values
-pstruct.prior_file     = prior_file;
-pstruct.posterior_file = posterior_file;
-pstruct.diagn_file     = [];
+
+pstruct = CheckModel(posterior_file);   % also gets default values
+
+% initially prior is truth, posterior is diag.  revise if real
+% truth is found
+pstruct.truth_file = prior_file;
+pstruct.truth_time = [-1,-1];
+pstruct.diagn_file = posterior_file;
+pstruct.diagn_time = [-1,-1];
+
+pstruct = CheckModelCompatibility(pstruct);
 
 if ( exist(truth_file) == 2 )
-   CheckModelCompatibility(truth_file, prior_file)
-   pstruct.truth_file  = truth_file;
-else
-   pstruct.truth_file  = [];
+   pstruct.truth_file = truth_file;
+   pstruct.diagn_file = prior_file;
+   pstruct = CheckModelCompatibility(pstruct);
 end
+
+pstruct.prior_file = prior_file;
+pstruct.posterior_file = posterior_file;
 
 
 switch lower(pstruct.model)
@@ -80,7 +88,7 @@ switch lower(pstruct.model)
 
    case 'fms_bgrid'
 
-      pstruct = GetBgridInfo(prior_file, 'PlotSawtooth');
+      pstruct = GetBgridInfo(pstruct, prior_file, 'PlotSawtooth');
       pstruct.prior_file     = prior_file;
       pstruct.posterior_file = posterior_file;
 

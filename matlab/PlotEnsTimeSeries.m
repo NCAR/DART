@@ -44,8 +44,11 @@ function PlotEnsTimeSeries( pinfo )
 % $Date$
 
 
+
+pinfo = setfield(pinfo, 'truth_time', [-1,-1]);
+pinfo = setfield(pinfo, 'diagn_time', [-1,-1]);
 if ( exist(pinfo.truth_file) == 2)
-   CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
+   pinfo = CheckModelCompatibility(pinfo);
    truth_index = get_copy_index(pinfo.truth_file, 'true state' );
    have_truth  = 1;
 else
@@ -64,7 +67,8 @@ close(fd);
 ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 
 % Get some useful plotting arrays
-times = getnc(pinfo.diagn_file,'time');
+times = getnc(pinfo.diagn_file,'time', ...
+              [ pinfo.diagn_time(1) ] , [ pinfo.diagn_time(2) ]);
 
 switch lower(d.model)
 
@@ -76,12 +80,17 @@ switch lower(d.model)
          for j = 1:3
 
             ivar = (i - 1)*3 + j;
-            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
-            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar);  % all members
+            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+
+            % all members
+            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
             nmembers    = size(ens_members,2);
 
             if (have_truth) 
-               truth    = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
+               truth    = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
+                                         pinfo.truth_time(1), pinfo.truth_time(2)) ;
             end
 
             subplot(3, 1, j);
@@ -109,9 +118,13 @@ switch lower(d.model)
       figure(1); clf; iplot = 0;
       for ivar = pinfo.var_inds,
 
-            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
-            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
-            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar);  % all members
+            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
+                                         pinfo.truth_time(1), pinfo.truth_time(2)) ;
+            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+            % all members
+            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
             nmembers    = size(ens_members,2);
 
             iplot = iplot + 1;
@@ -153,9 +166,13 @@ switch lower(d.model)
       figure(1); clf; iplot = 0;
       for ivar = pinfo.var_inds,
 
-            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar);
-            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar);
-            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar);  % all members
+            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
+                                         pinfo.truth_time(1), pinfo.truth_time(2)) ;
+            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+            % all members
+            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
             nmembers    = size(ens_members,2);
 
             iplot = iplot + 1;

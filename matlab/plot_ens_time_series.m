@@ -35,11 +35,11 @@ end
 vars  = CheckModel(diagn_file);   % also gets default values for this model.
 
 if (exist(truth_file)==2)
-   CheckModelCompatibility(truth_file, diagn_file)
-   truth_file = truth_file;
+   pinfo = CheckModelCompatibility(truth_file, diagn_file);
 else
-   truth_file = [];
+   pinfo.truth_file = [];
 end
+truth_file = pinfo.truth_file;
 
 switch lower(vars.model)
 
@@ -47,10 +47,14 @@ switch lower(vars.model)
 	 'forced_lorenz_96','lorenz_04','ikeda','simple_advection'}
 
       varid = SetVariableID(vars);      % queries for variable IDs if needed.
-      pinfo = struct('truth_file', truth_file, ...
-                     'diagn_file', diagn_file, ...
-                     'var'       , varid.var, ...
-                     'var_inds'  , varid.var_inds);
+      pinfo = setfield(pinfo,'truth_file', truth_file);
+      pinfo = setfield(pinfo,'diagn_file', diagn_file);
+      pinfo = setfield(pinfo,'var'       , varid.var);
+      pinfo = setfield(pinfo,'var_inds'  , varid.var_inds);
+      %pinfo = struct('truth_file', truth_file, ...
+      %               'diagn_file', diagn_file, ...
+      %               'var'       , varid.var, ...
+      %               'var_inds'  , varid.var_inds);
 
     % disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
     % disp(sprintf('Using Variable %s IDs %s', pinfo.var,num2str(pinfo.var_inds)))
@@ -58,7 +62,7 @@ switch lower(vars.model)
    case 'fms_bgrid'
 
       varid = SetVariableID(vars);      % queries for variable IDs if needed.
-      pinfo = GetBgridInfo(diagn_file, 'PlotEnsTimeSeries');
+      pinfo = GetBgridInfo(pinfo, diagn_file, 'PlotEnsTimeSeries');
       pinfo.truth_file = truth_file;   % known to be compatible.
       pinfo.diagn_file = diagn_file;   % known to be compatible.
 

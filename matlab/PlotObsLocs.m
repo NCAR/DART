@@ -99,6 +99,14 @@ function PlotObsLocs(in_used, in_box, in_typelist, in_epochlist, in_subset, in_p
 % suggestion - leave the defaults alone and in the next section overwrite
 % the values with alternative values.
 
+% TODO:
+% box should change to box_type, and options are:
+%  world 
+%  CONUS (continental US)
+%  tight (take min/max of data)
+%  user_specified (prompt user for 4 or 6 corners)
+%
+
 arg_used = 1;         % -1 = unused, 0 = both, 1 = used
 arg_box = [];         % [[lon_min, lon_max, lat_min, lat_max], v_min, v_max]
 arg_typelist = [];    % numeric observation type list; if ~[], integer list

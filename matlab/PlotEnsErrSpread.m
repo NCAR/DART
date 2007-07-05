@@ -59,25 +59,31 @@ function PlotEnsErrSpread( pinfo )
 % $Revision$
 % $Date$
 
-CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
+pinfo = CheckModelCompatibility(pinfo)
 
 % Get some information from the truth_file 
 ft = netcdf(pinfo.truth_file);
 tmodel      = ft.model(:);
 tvar_atts   = dim(ft{pinfo.var});      % cell array of dimensions for the var
-tnum_times  = length(tvar_atts{1});    % determine # of output times
+%tnum_times  = length(tvar_atts{1});    % determine # of output times
 tnum_copies = length(tvar_atts{2});    % # of ensemble members
 tnum_vars   = length(tvar_atts{3});    % dimension of desired variable
 close(ft);
+% time might be a subset now of the entire array - compute it instead of
+% assuming the entire size.
+tnum_times = pinfo.truth_time(2) - pinfo.truth_time(1) + 1;
 
 % Get some information from the diagn_file 
 fd = netcdf(pinfo.diagn_file);
 dmodel      = fd.model(:);
 dvar_atts   = dim(fd{pinfo.var});      % cell array of dimensions for the var
-dnum_times  = length(dvar_atts{1});    % determine # of output times
+%dnum_times  = length(dvar_atts{1});    % determine # of output times
 dnum_copies = length(dvar_atts{2});    % # of ensemble members
 dnum_vars   = length(dvar_atts{3});    % dimension of desired variable
 close(fd);
+% time might be a subset now of the entire array - compute it instead of
+% assuming the entire size.
+dnum_times = pinfo.diagn_time(2) - pinfo.diagn_time(1) + 1;
 
 % Get the indices for the true state, ensemble mean and spread
 % The metadata is queried to determine which "copy" is appropriate.
@@ -86,16 +92,20 @@ ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
 % Get some useful plotting arrays
-times = getnc(pinfo.truth_file,'time');
+times = getnc(pinfo.truth_file,'time', ...
+              [ pinfo.truth_time(1) ], [ pinfo.truth_time(2) ]);
 
 switch lower(tmodel)
 
    case '9var'
 
       % Get the appropriate copies
-      truth      = get_state_copy(pinfo.truth_file, pinfo.var, truth_index);
-      ens_mean   = get_state_copy(pinfo.diagn_file, pinfo.var, ens_mean_index );
-      ens_spread = get_state_copy(pinfo.diagn_file, pinfo.var, ens_spread_index );
+      truth      = get_state_copy(pinfo.truth_file, pinfo.var, truth_index, ...
+                                  pinfo.truth_time(1), pinfo.truth_time(2)) ;
+      ens_mean   = get_state_copy(pinfo.diagn_file, pinfo.var, ens_mean_index, ...
+                                  pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+      ens_spread = get_state_copy(pinfo.diagn_file, pinfo.var, ens_spread_index, ...
+                                  pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
 
       % Use three different figures with three subplots each
       for i = 1:3
@@ -128,9 +138,12 @@ switch lower(tmodel)
    case {'lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
 	 'lorenz_04','forced_lorenz_96','ikeda','simple_advection'} 
       % Get the appropriate copies
-      truth      = get_state_copy(pinfo.truth_file, pinfo.var, truth_index);
-      ens_mean   = get_state_copy(pinfo.diagn_file, pinfo.var, ens_mean_index );
-      ens_spread = get_state_copy(pinfo.diagn_file, pinfo.var, ens_spread_index );
+      truth      = get_state_copy(pinfo.truth_file, pinfo.var, truth_index, ...
+                                  pinfo.truth_time(1), pinfo.truth_time(2)) ;
+      ens_mean   = get_state_copy(pinfo.diagn_file, pinfo.var, ens_mean_index, ...
+                                  pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+      ens_spread = get_state_copy(pinfo.diagn_file, pinfo.var, ens_spread_index, ...
+                                  pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
 
       clf; iplot = 0;
       for ivar = pinfo.var_inds,
@@ -157,9 +170,12 @@ switch lower(tmodel)
 
       clf;
 
-      truth      = GetCopy(pinfo.truth_file, truth_index,      pinfo );
-      ens_mean   = GetCopy(pinfo.diagn_file, ens_mean_index,   pinfo );
-      ens_spread = GetCopy(pinfo.diagn_file, ens_spread_index, pinfo );
+      truth      = GetCopy(pinfo.truth_file, truth_index,      pinfo, ...
+                           pinfo.truth_time(1), pinfo.truth_time(2)) ;
+      ens_mean   = GetCopy(pinfo.diagn_file, ens_mean_index,   pinfo, ...
+                           pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+      ens_spread = GetCopy(pinfo.diagn_file, ens_spread_index, pinfo, ...
+                           pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
 
       subplot(2,1,1)
          PlotLocator(pinfo)
@@ -195,15 +211,15 @@ end
 % Subfunctions
 %======================================================================
 
-function var = GetCopy(fname, copyindex, pinfo)
+function var = GetCopy(fname, copyindex, pinfo, tstart, tend)
 % Gets a time-series of a single specified copy of a prognostic variable
 % at a particular 3D location (level, lat, lon)
 if strcmp(pinfo.var,'ps')
-   corner = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
-   endpnt = [-1 copyindex                  pinfo.latindex pinfo.lonindex];
+   corner = [tstart copyindex                  pinfo.latindex pinfo.lonindex];
+   endpnt = [tend   copyindex                  pinfo.latindex pinfo.lonindex];
 else
-   corner = [-1 copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
-   endpnt = [-1 copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
+   corner = [tstart copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
+   endpnt = [tend   copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
 end
 var = getnc(fname, pinfo.var, corner, endpnt);
 

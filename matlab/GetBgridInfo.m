@@ -1,9 +1,10 @@
-function pinfo = GetBgridInfo(fname,routine);
+function pinfo = GetBgridInfo(pinfo_in,fname,routine);
 % GetBgridInfo   prepares a structure of information needed by the subsequent "routine"
 %                The information is gathered via rudimentary "input" routines.
 %
-% pinfo = GetBgridInfo(fname,routine);
+% pinfo = GetBgridInfo(pinfo_in,fname,routine);
 %
+% pinfo_in  Name of existing pinfo struct, e.g. output from CheckModelCompatibility
 % fname     Name of the DART netcdf file
 % routine   name of subsequent plot routine.
 
@@ -18,6 +19,7 @@ function pinfo = GetBgridInfo(fname,routine);
 % $Revision$
 % $Date$
 
+pinfo      = pinfo_in;
 ft         = netcdf(fname);
 model      = ft.model(:);
 close(ft)
@@ -45,12 +47,15 @@ switch lower(deblank(routine))
       [lat  , latind] = GetLatitude( pgvar,TmpJ,VelJ);
       [lon  , lonind] = GetLongitude(pgvar,TmpI,VelI);
 
-      pinfo = struct('model',model, ...
-              'fname',fname, ...
-              'var',pgvar, ...
-              'level'    ,level, 'levelindex',lvlind, ...
-              'longitude',lon  ,   'lonindex',lonind, ...
-              'latitude' ,lat  ,   'latindex',latind);
+      pinfo = setfield(pinfo, 'model', model);
+      pinfo = setfield(pinfo, 'fname', fname);
+      pinfo = setfield(pinfo, 'var', pgvar);
+      pinfo = setfield(pinfo, 'level', level);
+      pinfo = setfield(pinfo, 'levelindex', lvlind);
+      pinfo = setfield(pinfo, 'longitude', lon);
+      pinfo = setfield(pinfo, 'lonindex', lonind);
+      pinfo = setfield(pinfo, 'latitude', lat);
+      pinfo = setfield(pinfo, 'latindex',latind);
 
    case 'plotcorrel'
 
@@ -65,13 +70,20 @@ switch lower(deblank(routine))
        comp_var               = GetVar(prognostic_vars,          base_var);
       [comp_lvl, comp_lvlind] = GetLevel(    comp_var,levels,    base_lvl);
 
-      pinfo = struct('model',model , 'fname'      , fname,       ...
-              'base_var' ,base_var , 'comp_var'   , comp_var,    ...
-              'base_time',base_time, 'base_tmeind', base_tmeind, ...
-              'base_lvl' ,base_lvl , 'base_lvlind', base_lvlind, ...
-              'base_lat' ,base_lat , 'base_latind', base_latind, ...
-              'base_lon' ,base_lon , 'base_lonind', base_lonind, ...
-              'comp_lvl' ,comp_lvl , 'comp_lvlind', comp_lvlind);
+      pinfo = setfield(pinfo, 'model', model);
+      pinfo = setfield(pinfo, 'fname', fname);
+      pinfo = setfield(pinfo, 'base_var', base_var);
+      pinfo = setfield(pinfo, 'comp_var', comp_var);
+      pinfo = setfield(pinfo, 'base_time', base_time);
+      pinfo = setfield(pinfo, 'base_tmeind', base_tmeind);
+      pinfo = setfield(pinfo, 'base_lvl', base_lvl);
+      pinfo = setfield(pinfo, 'base_lvlind', base_lvlind);
+      pinfo = setfield(pinfo, 'base_lat', base_lat);
+      pinfo = setfield(pinfo, 'base_latind', base_latind);
+      pinfo = setfield(pinfo, 'base_lon', base_lon);
+      pinfo = setfield(pinfo, 'base_lonind', base_lonind);
+      pinfo = setfield(pinfo, 'comp_lvl', comp_lvl);
+      pinfo = setfield(pinfo, 'comp_lvlind', comp_lvlind);
 
    case 'plotvarvarcorrel'
 
@@ -88,15 +100,48 @@ switch lower(deblank(routine))
       [comp_lat, comp_latind] = GetLatitude( comp_var,TmpJ,VelJ, base_lat);
       [comp_lon, comp_lonind] = GetLongitude(comp_var,TmpI,VelI, base_lon);
 
-      pinfo = struct('model',model , 'fname'      , fname,       ...
-              'base_var' ,base_var , 'comp_var'   , comp_var,    ...
-              'base_time',base_time, 'base_tmeind', base_tmeind, ...
-              'base_lvl' ,base_lvl , 'base_lvlind', base_lvlind, ...
-              'base_lat' ,base_lat , 'base_latind', base_latind, ...
-              'base_lon' ,base_lon , 'base_lonind', base_lonind, ...
-              'comp_lvl' ,comp_lvl , 'comp_lvlind', comp_lvlind, ...
-              'comp_lat' ,comp_lat , 'comp_latind', comp_latind, ...
-              'comp_lon' ,comp_lon , 'comp_lonind', comp_lonind);
+      pinfo = setfield(pinfo, 'model', model);
+      pinfo = setfield(pinfo, 'fname', fname);
+      pinfo = setfield(pinfo, 'base_var', base_var);
+      pinfo = setfield(pinfo, 'comp_var', comp_var);
+      pinfo = setfield(pinfo, 'base_time', base_time);
+      pinfo = setfield(pinfo, 'base_tmeind', base_tmeind);
+      pinfo = setfield(pinfo, 'base_lvl', base_lvl);
+      pinfo = setfield(pinfo, 'base_lvlind', base_lvlind);
+      pinfo = setfield(pinfo, 'base_lat', base_lat);
+      pinfo = setfield(pinfo, 'base_latind', base_latind);
+      pinfo = setfield(pinfo, 'base_lon', base_lon);
+      pinfo = setfield(pinfo, 'base_lonind', base_lonind);
+      pinfo = setfield(pinfo, 'comp_lvl', comp_lvl);
+      pinfo = setfield(pinfo, 'comp_lvlind', comp_lvlind);
+      pinfo = setfield(pinfo, 'comp_lat', comp_lat);
+      pinfo = setfield(pinfo, 'comp_latind', comp_latind);
+      pinfo = setfield(pinfo, 'comp_lon', comp_lon);
+      pinfo = setfield(pinfo, 'comp_lonind', comp_lonind);
+
+   case 'plotsawtooth'
+
+       pgvar          = GetVar(prognostic_vars);
+      [level, lvlind] = GetLevel(pgvar,levels);   % Determine level and index
+      [lat  , latind] = GetLatitude( pgvar,TmpJ,VelJ);
+      [lon  , lonind] = GetLongitude(pgvar,TmpI,VelI);
+      %[copy , lonind] = GetCopies(pgvar,copy);
+      copyindices     = SetCopyId(fname);
+      copy            = length(copyindices);
+
+      pinfo = setfield(pinfo, 'model'         , model);
+      pinfo = setfield(pinfo, 'var_names'     , pgvar);
+      pinfo = setfield(pinfo, 'truth_file'    , []);
+      %pinfo = setfield(pinfo, 'prior_file'    , pinfo.prior_file);
+      %pinfo = setfield(pinfo, 'posterior_file', pinfo.posterior_file);
+      pinfo = setfield(pinfo, 'level'         , level);
+      pinfo = setfield(pinfo, 'levelindex'    , lvlind);
+      pinfo = setfield(pinfo, 'latitude'      , lat);
+      pinfo = setfield(pinfo, 'latindex'      , latind);
+      pinfo = setfield(pinfo, 'longitude'     , lon);
+      pinfo = setfield(pinfo, 'lonindex'      , lonind);
+      pinfo = setfield(pinfo, 'copies'        , copy);
+      pinfo = setfield(pinfo, 'copyindices'   , copyindices);
 
    case 'plotphasespace'
 
@@ -126,18 +171,31 @@ switch lower(deblank(routine))
       s1 = input('Input line type string. <cr> for ''k-''  ','s');
       if isempty(s1), ltype = 'k-'; else ltype = s1; end
 
-      pinfo = struct('model',model, 'fname' ,fname, ...
-              'var1name' ,var1, 'var2name' ,var2, 'var3name' ,var3, ...
-              'var1_lvl' , var1_lvl, 'var1_lvlind', var1_lvlind, ...
-              'var1_lat' , var1_lat, 'var1_latind', var1_latind, ...
-              'var1_lon' , var1_lon, 'var1_lonind', var1_lonind, ...
-              'var2_lvl' , var2_lvl, 'var2_lvlind', var2_lvlind, ...
-              'var2_lat' , var2_lat, 'var2_latind', var2_latind, ...
-              'var2_lon' , var2_lon, 'var2_lonind', var2_lonind, ...
-              'var3_lvl' , var3_lvl, 'var3_lvlind', var3_lvlind, ...
-              'var3_lat' , var3_lat, 'var3_latind', var3_latind, ...
-              'var3_lon' , var3_lon, 'var3_lonind', var3_lonind, ...
-              'ens_mem'  , ens_mem , 'ltype',ltype);
+      pinfo = setfield(pinfo, 'model',model);
+      pinfo = setfield(pinfo, 'fname' ,fname);
+      pinfo = setfield(pinfo, 'var1name' ,var1);
+      pinfo = setfield(pinfo, 'var2name' ,var2);
+      pinfo = setfield(pinfo, 'var3name' ,var3);
+      pinfo = setfield(pinfo, 'var1_lvl' , var1_lvl);
+      pinfo = setfield(pinfo, 'var1_lvlind', var1_lvlind);
+      pinfo = setfield(pinfo, 'var1_lat' , var1_lat);
+      pinfo = setfield(pinfo, 'var1_latind', var1_latind);
+      pinfo = setfield(pinfo, 'var1_lon' , var1_lon);
+      pinfo = setfield(pinfo, 'var1_lonind', var1_lonind);
+      pinfo = setfield(pinfo, 'var2_lvl' , var2_lvl);
+      pinfo = setfield(pinfo, 'var2_lvlind', var2_lvlind);
+      pinfo = setfield(pinfo, 'var2_lat' , var2_lat);
+      pinfo = setfield(pinfo, 'var2_latind', var2_latind);
+      pinfo = setfield(pinfo, 'var2_lon' , var2_lon);
+      pinfo = setfield(pinfo, 'var2_lonind', var2_lonind);
+      pinfo = setfield(pinfo, 'var3_lvl' , var3_lvl);
+      pinfo = setfield(pinfo, 'var3_lvlind', var3_lvlind);
+      pinfo = setfield(pinfo, 'var3_lat' , var3_lat);
+      pinfo = setfield(pinfo, 'var3_latind', var3_latind);
+      pinfo = setfield(pinfo, 'var3_lon' , var3_lon);
+      pinfo = setfield(pinfo, 'var3_lonind', var3_lonind);
+      pinfo = setfield(pinfo, 'ens_mem'  , ens_mem);
+      pinfo = setfield(pinfo, 'ltype',ltype);
 
    otherwise
 

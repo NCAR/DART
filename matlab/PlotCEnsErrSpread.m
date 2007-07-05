@@ -12,7 +12,8 @@ function PlotCEnsErrSpread( pinfo )
 % $Revision$
 % $Date$
 
-CheckModelCompatibility(pinfo.truth_file,pinfo.diagn_file)
+% this sets start/stop time indices for both truth and diagn file now
+pinfo = CheckModelCompatibility(pinfo.truth_file,pinfo.diagn_file)
 
 ft        = netcdf(pinfo.truth_file);
 model     = ft.model(:); 
@@ -23,16 +24,18 @@ nvars = 4;
 
 % Since the models are "compatible", get the info from either one.
 levels   = getnc(pinfo.truth_file, 'level'); num_levels = length(levels);
-times    = getnc(pinfo.truth_file,  'time'); num_times  = length(times );
 ens_mems = getnc(pinfo.diagn_file,  'copy'); ens_size   = length(ens_mems);
+times    = getnc(pinfo.truth_file,  'time', ...
+                 [ pinfo.truth_time(1) ], [ pinfo.truth_time(2) ]) ;
+num_times  = length(times);
 
 
-% Try to coordinate "time" ... a poor attempt, needs refining
-ens_times     = getnc(pinfo.diagn_file, 'time'); 
+% start/stop indices for the overlapping time region set above
+ens_times     = getnc(pinfo.diagn_file, 'time', ...
+                 [ pinfo.diagn_time(1) ], [ pinfo.diagn_time(2) ]) ;
 num_ens_times = length(ens_times);
-if num_ens_times < num_times
-   times     =     ens_times;
-   num_times = num_ens_times;
+if num_ens_times ~= times
+   error ('Should not happen; CheckModelCompatibility returned incompatible time indices')
 end
 
 % Initialize storage for error averaging
@@ -57,9 +60,12 @@ disp('Processing surface pressure ...')
 ivar   = 1;
 ilevel = 1;
 
-field  = GetPS(pinfo.truth_file,      truth_index);
-ens    = GetPS(pinfo.diagn_file,   ens_mean_index);
-sd     = GetPS(pinfo.diagn_file, ens_spread_index);
+field  = GetPS(pinfo.truth_file,      truth_index, ...
+               pinfo.truth_time(1), pinfo.truth_time(2)) ;
+ens    = GetPS(pinfo.diagn_file,   ens_mean_index, ...
+               pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+sd     = GetPS(pinfo.diagn_file, ens_spread_index, ...
+               pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
 
 % Compute statistics of the UNWEIGHTED error field
 % should weight by the area ...
@@ -84,9 +90,12 @@ for ilevel = 1:num_levels,     % Loop through all levels
    %-------------------------------------------------------------------
    ivar   = 2;
 
-   field      = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel);
-   ens        = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel);
-   sd         = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel);
+   field      = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel, ...
+                         pinfo.truth_time(1), pinfo.truth_time(2)) ;
+   ens        = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel, ...
+                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+   sd         = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel, ...
+                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
 
    % Compute statistics of the UNWEIGHTED error field
    % should weight by the area ...
@@ -100,9 +109,12 @@ for ilevel = 1:num_levels,     % Loop through all levels
    %-------------------------------------------------------------------
    ivar   = 3;
 
-   field      = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel);
-   ens        = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel);
-   sd         = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel);
+   field      = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel, ...
+                         pinfo.truth_time(1), pinfo.truth_time(2)) ;
+   ens        = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel, ...
+                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+   sd         = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel, ...
+                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
 
    % Compute statistics of the UNWEIGHTED error field
    % should weight by the area ...
@@ -116,9 +128,12 @@ for ilevel = 1:num_levels,     % Loop through all levels
    %-------------------------------------------------------------------
    ivar   = 4;
 
-   field      = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel);
-   ens        = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel);
-   sd         = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel);
+   field      = GetLevel(pinfo.truth_file, ivar,      truth_index, ilevel, ...
+                         pinfo.truth_time(1), pinfo.truth_time(2)) ;
+   ens        = GetLevel(pinfo.diagn_file, ivar,   ens_mean_index, ilevel, ...
+                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+   sd         = GetLevel(pinfo.diagn_file, ivar, ens_spread_index, ilevel, ...
+                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
 
    % Compute statistics of the UNWEIGHTED error field
    % should weight by the area ...
@@ -214,15 +229,15 @@ figure(4); clf;
 %----------------------------------------------------------------------
 % helper functions
 %----------------------------------------------------------------------
-function slice = GetPS(fname,copyindex);
-corner     = [-1, copyindex, -1, -1];
-endpnt     = [-1, copyindex, -1, -1];
+function slice = GetPS(fname,copyindex,tstart,tend);
+corner     = [tstart, copyindex, -1, -1];
+endpnt     = [tend,   copyindex, -1, -1];
 ted        = getnc(fname,'ps',corner,endpnt);
 [nt,ny,nx] = size(ted);
 slice      = reshape(ted,[nt ny*nx]);
 
 
-function slice = GetLevel(fname,ivar,copyindex,ilevel);
+function slice = GetLevel(fname,ivar,copyindex,ilevel,tstart,tend);
 if ivar == 2 
    varstring = 't';
 elseif ivar == 3 
@@ -232,8 +247,8 @@ elseif ivar == 4
 else
    error(sprintf(' variable id %d out of bounds',ivar))
 end
-corner     = [-1, copyindex, ilevel, -1, -1];
-endpnt     = [-1, copyindex, ilevel, -1, -1];
+corner     = [tstart, copyindex, ilevel, -1, -1];
+endpnt     = [tend,   copyindex, ilevel, -1, -1];
 ted        = getnc(fname,varstring,corner,endpnt);
 [nt,ny,nx] = size(ted);
 slice      = reshape(ted,[nt ny*nx]);
