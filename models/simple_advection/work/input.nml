@@ -107,9 +107,9 @@
    wind_damping_rate      = 0.000002777778,
    lagrangian_for_wind    = .true.,
    destruction_rate       = 0.00005555556,
-   source_random_amp_frac = 0.00001,
+   source_random_amp_frac = 0.0,
    source_damping_rate    = 0.000002777778,
-   source_diurnal_rel_amp = 0.05,
+   source_diurnal_rel_amp = 0.0,
    source_phase_noise     = 0.0,
    output_state_vector    = .false./
 
