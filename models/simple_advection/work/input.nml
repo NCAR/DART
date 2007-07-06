@@ -69,7 +69,7 @@
 
 &assim_tools_nml
    filter_kind                     = 1,
-   cutoff                          = 100000000.0
+   cutoff                          = 100000000.0,
    sort_obs_inc                    = .true.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
@@ -110,6 +110,7 @@
    source_random_amp_frac = 0.00001,
    source_damping_rate    = 0.000002777778,
    source_diurnal_rel_amp = 0.05,
+   source_phase_noise     = 0.0,
    output_state_vector    = .false./
 
 &utilities_nml
