@@ -103,6 +103,7 @@ real(r8)  :: source_random_amp_frac = 0.00001_r8
 real(r8)  :: source_damping_rate    = 0.000002777778
 ! Relative amplitude of diurnal cycle of source (dimensionless)
 real(r8)  :: source_diurnal_rel_amp = 0.05_r8
+real(r8)  :: source_phase_noise     = 0.0_r8
 
 logical   :: output_state_vector    = .false.
 
@@ -111,7 +112,8 @@ namelist /model_nml/ num_grid_points, grid_spacing_meters, &
                      mean_wind, wind_random_amp, wind_damping_rate, &
                      lagrangian_for_wind, destruction_rate, &
                      source_random_amp_frac, source_damping_rate, &
-                     source_diurnal_rel_amp, output_state_vector
+                     source_diurnal_rel_amp, source_phase_noise, &
+                     output_state_vector
 
 !----------------------------------------------------------------
 
@@ -166,9 +168,15 @@ time_step = set_time(time_step_seconds, time_step_days)
 allocate(mean_source(num_grid_points), source_phase_offset(num_grid_points), &
    source_random_amp(num_grid_points))
 
-! Set the base value for the mean source; This case has a single grid point source
-mean_source    = 0.0_r8
+! Set the base value for the mean source; This case has a single enhanced source
+mean_source    = 0.1_r8
 mean_source(1) = 1.0_r8
+
+! A rapidly varying source
+!!!mean_source = 0.1_r8
+!!!do i = 1, 5, 2
+   !!!mean_source(i) = 1.0_r8
+!!!end do
 
 ! Set the base value for the diurnal phase offset; initially on diurnal cycle
 source_phase_offset = 0.0_r8
@@ -197,15 +205,7 @@ x = 0.0_r8
 ! First set of variables is the concentration; Everybody starts at 0.0
 x(1:num_grid_points) = 0.0_r8
 
-! Second set of variables is the source.
-! Earliest test, fixed source in one half, sink in the other
-!!!x(num_grid_points + 1:num_grid_points + num_grid_points / 2) = -1.0_r8
-!!!x(num_grid_points + num_grid_points/2 + 1 : 2*num_grid_points) = 1.0_r8
-! One source, one sink half domain away
-!!!x(num_grid_points + 1) = 1.0_r8
-!!!x(num_grid_points + num_grid_points/2 + 1) = -1.0_r8
-
-! Single source, units source / second
+! Set initial source to mean_source
 x(num_grid_points + 1 : 2*num_grid_points) = mean_source
 
 ! Third set of variables is the u wind; its units are meters/second
@@ -361,10 +361,10 @@ end do
 ! is 0 for now. Might want to add in some process noise for filter advance.
 
 ! Process noise test for source_phase_offset
-!!!do i = 1, 1
-   !!!x(4*num_grid_points + i) = random_gaussian(random_seq, x(4*num_grid_points + i), &
-      !!!0.01_r8)
-!!!end do
+do i = 1, num_grid_points
+   x(4*num_grid_points + i) = random_gaussian(random_seq, x(4*num_grid_points + i), &
+      source_phase_noise*dt_seconds)
+end do
 
 
 end subroutine adv_1step
