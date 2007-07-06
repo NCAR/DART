@@ -148,8 +148,9 @@ module mpi_utilities_mod
 !-----------------------------------------------------------------------------
 
 use types_mod, only        : r8, digits12
-use utilities_mod, only    : register_module, error_handler, initialize_utilities, & 
-                             E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file
+use utilities_mod, only    : register_module, error_handler,             &
+                             initialize_utilities, get_unit, close_file, & 
+                             E_ERR, E_WARN, E_MSG, E_DBG
 use time_manager_mod, only : time_type, get_time, set_time
 
 
@@ -164,13 +165,11 @@ integer :: total_tasks     ! total mpi tasks/procs
 integer :: my_local_comm   ! duplicate communicator private to this file
 integer :: comm_size       ! if ens count < tasks, only the first N participate
 
-public :: task_count, my_task_id, transpose_array, &
-          initialize_mpi_utilities, finalize_mpi_utilities, &
-          make_pipe, destroy_pipe, read_pipe, write_pipe, exit_all, &
-          block_task, restart_task
-public :: task_sync, array_broadcast, array_distribute, &
-          send_to, receive_from, iam_task0, broadcast_send, broadcast_recv, &
-          shell_execute, sleep_seconds, sum_across_tasks
+public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
+          task_count, my_task_id, block_task, restart_task, exit_all,        &
+          task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
+          broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
+          sum_across_tasks
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -198,16 +197,16 @@ character(len = 129) :: errstring
 ! However, on some platforms the compiler complains if you *do* specify
 ! an interface block.  So, first try leaving this alone.  If you get an error
 ! at link time about an undefined symbol (something like '_system_') then
-! comment this entire block out and try again.
+! comment this interface block in and try again.
 
- ! interface block for getting return code back from system() routine
- interface
-  function system(string)
-   character(len=*) :: string
-   integer :: system
-  end function system
- end interface
- ! end block
+! ! interface block for getting return code back from system() routine
+! interface
+!  function system(string)
+!   character(len=*) :: string
+!   integer :: system
+!  end function system
+! end interface
+! ! end block
 
 
 contains
