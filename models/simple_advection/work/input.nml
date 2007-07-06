@@ -90,7 +90,7 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'TRACER_CONCENTRATION',
-                                'VELOCIY',
+                                'VELOCITY',
    evaluate_these_obs_types   = 'TRACER_SOURCE' /
 
 &assim_model_nml
