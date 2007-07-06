@@ -60,36 +60,61 @@ type(random_seq_type) :: random_seq
 logical :: random_seq_init = .false.
 logical :: verbose = .false.
 
-! Base velocity (expected value over time), in domain_length / hour
-real(r8), parameter :: mean_wind = 0.023_r8
-! Random walk amplitude for wind in domain_length/hour^2
-real(r8)            :: wind_random_amp = mean_wind / 24.0_r8
-! Rate of damping towards mean wind value in percent/hour
-real(r8)            :: wind_damping_rate = 0.005_r8
+! Permanent static initialized information about domain width
+real(r8) :: domain_width_meters 
 
-! Base tracer source rate in amount (unitless) / hour
+
+! Base tracer source rate in amount (unitless) / second
 real(r8), allocatable :: mean_source(:)
 real(r8), allocatable :: source_phase_offset(:)
 real(r8), allocatable :: source_random_amp(:)
-real(r8), parameter   :: source_damping_rate    = 0.01_r8
-real(r8), parameter   :: source_diurnal_rel_amp = 0.1_r8
+
 !---------------------------------------------------------------
+
 ! Namelist with default values
 !
-integer  :: num_grid_points      = 10
-integer  :: time_step_days       = 0
-integer  :: time_step_seconds    = 3600
-real(r8) :: destruction_rate_pct = 20.0_r8
-! est_source_model is set to true if the source model params are to be estimated
-logical  :: est_source_model     = .false.
-logical  :: lagrangian_for_wind  = .true.
-logical  :: output_state_vector  = .false.
+integer  :: num_grid_points         = 10
+integer  :: grid_spacing_meters     = 100.0_r8 * 1000.0_r8
+integer  :: time_step_days          = 0
+integer  :: time_step_seconds       = 3600
 
-namelist /model_nml/ num_grid_points, time_step_days, time_step_seconds, &
-                     destruction_rate_pct, est_source_model, lagrangian_for_wind, &
-                     output_state_vector
+! Namelist parameters associated with wind
+! Base velocity (expected value over time), in meters/second
+real(r8)  :: mean_wind              = 20.0_r8
+! Random walk amplitude for wind in meters / second**2
+!!!real(r8)  :: wind_random_amp        = 1.0_r8 / 3600.0_r8
+real(r8)  :: wind_random_amp        = 0.0002777778
+! Rate of damping towards mean wind value in fraction/second
+!!!real(r8)  :: wind_damping_rate      = 0.01_r8 / 3600.0_r8
+real(r8)  :: wind_damping_rate      = 0.000002777778
+! Can use Eulerian (unstable) or lagrangian (stable)
+logical   :: lagrangian_for_wind    = .true.
+
+! Namelist parameters associated with tracer
+! Tracer destruction rate in fraction per second
+!!!real(r8)  :: destruction_rate       = 0.2_r8 / 3600.0_r8
+real(r8)  :: destruction_rate       = 0.00005555556
+
+! Namelist parameters associated with tracer source model
+! Random walk amplitude for source as fraction of mean source in .../second**2
+real(r8)  :: source_random_amp_frac = 0.00001_r8
+! Damping toward mean source rate in fraction/second
+!!!real(r8)  :: source_damping_rate    = 0.01_r8 / 3600.0_r8
+real(r8)  :: source_damping_rate    = 0.000002777778
+! Relative amplitude of diurnal cycle of source (dimensionless)
+real(r8)  :: source_diurnal_rel_amp = 0.05_r8
+
+logical   :: output_state_vector    = .false.
+
+namelist /model_nml/ num_grid_points, grid_spacing_meters, &
+                     time_step_days, time_step_seconds, &
+                     mean_wind, wind_random_amp, wind_damping_rate, &
+                     lagrangian_for_wind, destruction_rate, &
+                     source_random_amp_frac, source_damping_rate, &
+                     source_diurnal_rel_amp, output_state_vector
 
 !----------------------------------------------------------------
+
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
 type(time_type)                  :: time_step
@@ -141,15 +166,18 @@ time_step = set_time(time_step_seconds, time_step_days)
 allocate(mean_source(num_grid_points), source_phase_offset(num_grid_points), &
    source_random_amp(num_grid_points))
 
-! Set the base value for the mean source
+! Set the base value for the mean source; This case has a single grid point source
 mean_source    = 0.0_r8
 mean_source(1) = 1.0_r8
 
-! Set the base value for the diurnal phase offset
+! Set the base value for the diurnal phase offset; initially on diurnal cycle
 source_phase_offset = 0.0_r8
 
-! Set the amplitude of the random walk for the source in unit/hour^2
-source_random_amp = 0.1 * mean_source
+! Set the amplitude of the random walk for the source in unit/second^2
+source_random_amp = source_random_amp_frac * mean_source
+
+! Compute the width of the domain in meters
+domain_width_meters = num_grid_points * grid_spacing_meters
 
 end subroutine static_init_model
 
@@ -177,16 +205,16 @@ x(1:num_grid_points) = 0.0_r8
 !!!x(num_grid_points + 1) = 1.0_r8
 !!!x(num_grid_points + num_grid_points/2 + 1) = -1.0_r8
 
-! Single source, units source / hour
+! Single source, units source / second
 x(num_grid_points + 1 : 2*num_grid_points) = mean_source
 
-! Third set of variables is the u wind; its units are delta_x per time
+! Third set of variables is the u wind; its units are meters/second
 x(2*num_grid_points + 1: 3*num_grid_points) = mean_wind
 
 ! Fourth set of variables is the time mean source
 x(3*num_grid_points + 1 : 4*num_grid_points) = mean_source
 
-! Fifth set of variables is the source phase offset (this is a periodic variable)
+! Fifth set of variables is the source phase offset 
 x(4*num_grid_points + 1 : 5*num_grid_points) = source_phase_offset
 
 end subroutine init_conditions
@@ -207,18 +235,18 @@ type(time_type), intent(in) :: time
 integer :: i, istatus, next, prev, seconds, days
 type(location_type) :: this_loc, source_loc
 real(r8) :: lctn, source_location, new_x(size(x)), old_u_mean, new_u_mean
-real(r8) :: du_dx, dt_hours, percent_destroyed, t_phase, phase, random_src
+real(r8) :: du_dx, dt_seconds, t_phase, phase, random_src
 
-! State is concentrations (num_grid_points), source(num_grid_points), u(num_grid_points)
-! If source model is included, also have mean_source, source_phase_offset
-! and source_random_amp, all dimensioned num_grid_points.
+! State is concentrations (num_grid_points), source(num_grid_points), u(num_grid_points),
+! mean_source(num_grid_points), and source_phase_offset(num_grid_points)
+! all dimensioned num_grid_points.
 
 
 ! For the concentration do a linear interpolated upstream distance
-! Also have an option to do upstream for wind (controlled by namelist)
-! Velocity is in domains per second
-! Need the total time_step in seconds
-dt_hours = time_step_seconds / 3600.0_r8 + time_step_days*24.0_r8
+! Also have an option to do upstream for wind (controlled by namelist; see below).
+! Velocity is in meters/second. Need time_step in seconds
+dt_seconds = time_step_seconds + time_step_days * 24.0_r8 * 3600.0_r8
+
 
 do i = 1, num_grid_points
 
@@ -226,21 +254,17 @@ do i = 1, num_grid_points
    call get_state_meta_data(i, this_loc)
    lctn = get_location(this_loc)
 
-   ! Find source point location
-   ! Velocity is in domains per second
-   source_location = lctn - x(2*num_grid_points + i) * dt_hours
+   ! Find source point location: Velocity is in meters/second
+   ! Figure out meters to move and then convert to fraction of domain
+    
+   source_location = lctn - x(2*num_grid_points + i) * dt_seconds / &
+      domain_width_meters
 
-   if(source_location > 1.0_r8) then
-      if (verbose) write(*, *) 'source > 1 ', source_location, &
-                        source_location - int(source_location)
+   if(source_location > 1.0_r8) &
       source_location = source_location - int(source_location)
-   endif
 
-   if(source_location < 0.0_r8) then
-      if ( verbose) write(*, *) 'source < 0 ', source_location, &
-                        source_location - int(source_location) + 1.0_r8
+   if(source_location < 0.0_r8) &
       source_location = source_location - int(source_location) + 1.0_r8
-   endif
 
    source_loc = set_location(source_location)
    call model_interpolate(x, source_loc, KIND_TRACER_CONCENTRATION, &
@@ -261,31 +285,28 @@ if(.not. lagrangian_for_wind) then
       prev = i - 1
       if(prev < 1) prev = num_grid_points
       du_dx = (x(2*num_grid_points + next) - x(2*num_grid_points + prev)) / &
-         (2.0_r8 / num_grid_points)
+         (2.0_r8 * grid_spacing_meters)
       new_x(2*num_grid_points + i) = x(2*num_grid_points + i) + &
-         x(2*num_grid_points + i) * du_dx * dt_hours
+         x(2*num_grid_points + i) * du_dx * dt_seconds
    end do
 endif
 !---- End Eulerian block
 
 
 ! Now add in the source contribution and put concentration and wind back into inout x
-! Source is in units of .../hour
+! Source is in units of .../second
 do i = 1, num_grid_points
-   x(i) = new_x(i) + x(num_grid_points + i) * dt_hours
+   x(i) = new_x(i) + x(num_grid_points + i) * dt_seconds
    ! Also copy over the new velocity
    x(2*num_grid_points + i) = new_x(2*num_grid_points + i)
 end do
 
-! Now do the destruction rate: Units are percent destroyed per hour
-! Compute the percent destroyed per time_step
-percent_destroyed = destruction_rate_pct * dt_hours
-   
+! Now do the destruction rate: Units are fraction destroyed per second
 do i = 1, num_grid_points
-   if(percent_destroyed > 100.0_r8) then
+   if(destruction_rate * dt_seconds > 1.0_r8) then
       x(i) = 0.0_r8
    else
-      x(i) = x(i) * (1.0_r8 - percent_destroyed/ 100.0_r8)
+      x(i) = x(i) * (1.0_r8 - destruction_rate*dt_seconds)
    endif
 end do
 
@@ -294,12 +315,12 @@ end do
 old_u_mean = sum(x(2*num_grid_points + 1 : 3*num_grid_points)) / num_grid_points
 
 ! Add in a random walk to the mean
-new_u_mean = random_gaussian(random_seq, old_u_mean, wind_random_amp * dt_hours)
+new_u_mean = random_gaussian(random_seq, old_u_mean, wind_random_amp * dt_seconds)
 
 ! Damp the mean back towards base value
 ! Need an error handler call here or earlier
-if(wind_damping_rate*dt_hours > 100.0_r8) stop
-new_u_mean = new_u_mean - wind_damping_rate * dt_hours * (new_u_mean - mean_wind)
+if(wind_damping_rate*dt_seconds > 1.0_r8) stop
+new_u_mean = new_u_mean - wind_damping_rate * dt_seconds * (new_u_mean - mean_wind)
 
 ! Substitute the new mean wind
 x(2*num_grid_points  + 1 : 3*num_grid_points) = &
@@ -308,7 +329,7 @@ x(2*num_grid_points  + 1 : 3*num_grid_points) = &
 ! Add some noise into each wind element
 do i = 1, num_grid_points
    x(2*num_grid_points + i) = random_gaussian(random_seq, x(2*num_grid_points + i), &
-      wind_random_amp * dt_hours)
+      wind_random_amp * dt_seconds)
 end do
 
 !----- End forced damped wind section
@@ -321,16 +342,17 @@ t_phase = (2.0_r8 * PI * seconds / 86400.0_r8)
 do i = 1, num_grid_points
    phase = t_phase + x(4*num_grid_points + i)
    x(num_grid_points + i) = x(num_grid_points + i) &
-      + x(3*num_grid_points + i) * source_diurnal_rel_amp * cos(phase) * dt_hours
+      + x(3*num_grid_points + i) * source_diurnal_rel_amp * cos(phase)
+      !!!+ x(3*num_grid_points + i) * source_diurnal_rel_amp * cos(phase) * dt_seconds
    ! Also add in some random walk
    random_src = random_gaussian(random_seq, 0.0_r8, source_random_amp(i))
-   x(num_grid_points + i) = x(num_grid_points + i) + random_src * dt_hours
+   x(num_grid_points + i) = x(num_grid_points + i) + random_src * dt_seconds
    if(x(num_grid_points + i) < 0.0_r8) x(num_grid_points + i) = 0.0_r8
    ! Finally, damp back towards the base value
    ! Need an error handler call here
-   if(source_damping_rate*dt_hours > 1.0_r8) stop
+   if(source_damping_rate*dt_seconds > 1.0_r8) stop
    x(num_grid_points + i) = x(num_grid_points + i) - &
-      source_damping_rate*dt_hours * (x(num_grid_points + i) - x(3*num_grid_points + i))
+      source_damping_rate*dt_seconds * (x(num_grid_points + i) - x(3*num_grid_points + i))
 end do
 
 !----- End sources time tendency -----
@@ -338,12 +360,11 @@ end do
 ! Time tendency for source model variables mean_source and source_phase_offset 
 ! is 0 for now. Might want to add in some process noise for filter advance.
 
-
-! Quick add of process noise test for source_phase_offset
-do i = 1, 1
-   x(4*num_grid_points + i) = random_gaussian(random_seq, x(4*num_grid_points + i), &
-      0.01_r8)
-end do
+! Process noise test for source_phase_offset
+!!!do i = 1, 1
+   !!!x(4*num_grid_points + i) = random_gaussian(random_seq, x(4*num_grid_points + i), &
+      !!!0.01_r8)
+!!!end do
 
 
 end subroutine adv_1step
@@ -618,8 +639,8 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate", revdate ), &
               'nc_write_model_atts', 'put_att model_revdate, '//trim(filename))
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "simple_advection"), &
               'nc_write_model_atts', 'put_att model, '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "destruction_rate_pct", destruction_rate_pct ), &
-              'nc_write_model_atts', 'put_att destruction_rate_pct, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "destruction_rate", destruction_rate ), &
+              'nc_write_model_atts', 'put_att destruction_rate, '//trim(filename))
 
 !----------------------------------------------------------------------------
 ! Define either the "state vector" variables -OR- the "prognostic" variables.
@@ -1006,8 +1027,9 @@ do i = 1, num_grid_points
       state(3*num_grid_points + i)
 
    ! Perturb the source_phase_offset field ONLY if the mean_source is non-zero
-   if(mean_source(i) /= 0.0_r8) pert_state(4*num_grid_points + i) = &
-         random_gaussian(random_seq, state(4*num_grid_points + i), 0.4_r8)
+   !!!if(mean_source(i) /= 0.0_r8) pert_state(4*num_grid_points + i) = &
+         !!!random_gaussian(random_seq, state(4*num_grid_points + i), 0.4_r8)
+   pert_state(4*num_grid_points + i) = state(4*num_grid_points + i)
    
 
 end do 
