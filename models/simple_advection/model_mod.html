@@ -68,7 +68,44 @@ this state, find state variables that are close to a given location,
 and do spatial interpolation for model state variables.
 </P>
 <P>
-TODO: JEFF - NEED TEXT ABOUT WHAT IT IS HERE.
+This model is on a periodic one-dimensional domain. A wind field is 
+modeled using Burger's Equation with an upstream semi-lagrangian 
+differencing. This diffusive numerical scheme is stable and forcing
+is provided by adding in random gaussian noise to each wind grid
+variable independently at each timestep. The domain mean value of the 
+wind is relaxed to a constant fixed value set by the namelist parameter
+mean_wind. The random forcing magnitude is set by namelist parameter
+wind_random_amp and the damping of the mean wind is controlled by
+parameter wind_damping_rate. An Eulerian option with centered in 
+space differencing is also provided and can be used by setting namelist
+parameter lagrangian_for_wind to .false. The Eulerian differencing is
+both numerically unstable and subject to shock formation. However, it
+can sometimes be made stable in assimilation mode (see recent work by
+Majda and collaborators). 
+
+The model state includes a single passive tracer that is advected by
+the wind field using semi-lagrangian upstream differencing. The state
+also includes a tracer source value at each gridpoint. At each time
+step, the source is added into the concentration at each gridpoint.
+There is also a constant global destruction of tracer that is controlled
+by the namelist parameter destruction_rate. The appropriate percentage
+of tracer is destroyed at each gridpoint at each timestep. 
+
+The model also includes an associated model for the tracer source rate.
+At each gridpoint, there is a value of the time mean source rate and
+a value of the phase offset for a diurnal component of the source rate.
+The diurnal source rate has an amplitude that is proportional to the
+source rate (this proportion is controlled by namelist parameter
+source_diurnal_rel_amp). At each grid point, the source is the sum
+of the source rate plus the appropriate diurnally varying component.
+The phase_offset at the gridpoint controls the diurnal phase. The
+namelist parameter source_phase_noise controls the amplitude of
+random gaussian noise that is added into the source phase at each
+time step. If source_phase_noise is zero then the phase offset is
+fixed. Finally, the time mean source rate is constant in time in the
+present model version. The time mean source rate controls the 
+amplitude of the diurnal cycle of the tracer source.
+
 </P>
 
 <!--==================================================================-->
@@ -203,7 +240,12 @@ state vector. The location defines where the state variable is located.
 For the simple advection model with the default grid size, variable 1 is at 0.0, 
 variable 2 is at 1/10., variable 3 is at 2/10., etc. on a cyclic [0, 1] domain.  
 The variable type, if specified, is an integer kind between 1 and 5.
-TODO: see ? for the kind list.
+The types are indexed as follows:
+	1. Tracer concentration.
+	2. Tracer source rate.
+	3. Wind velocity.
+	4. Tracer source diurnal phase offset.
+	5. Time mean tracer source value.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -586,7 +628,7 @@ A NULL INTERFACE in this model.
      num_grid_points, grid_spacing_meters, time_step_days, time_step_seconds, &#38
      mean_wind, wind_random_amp, wind_damping_rate, lagrangian_for_wind, &#38
      destruction_rate, source_random_amp_frac, source_damping_rate, &#38
-     source_diurnal_rel_amp, output_state_vector
+     source_diurnal_rel_amp, source_phase_noise, output_state_vector
 </pre>
 </div>
 </P>
@@ -659,8 +701,7 @@ A NULL INTERFACE in this model.
 <TR><!--contents--><TD valign=top>source_random_amp_frac</TD>
     <!--  type  --><TD valign=top>real(r8)              </TD>
     <!--descript--><TD>Random walk amplitude for source as a
-                       fraction of mean source in .../second<sup>2</sup>.
-                       TODO?
+                       fraction of mean source (per second)<sup>2</sup>.
                        Default 0.00001
                     </TD></TR>
 
@@ -674,6 +715,13 @@ A NULL INTERFACE in this model.
     <!--  type  --><TD valign=top>real(r8)              </TD>
     <!--descript--><TD>Relative amplitude of diurnal cycle of
                        source (dimensionless).  Default 0.5
+                    </TD></TR>
+
+<TR><!--contents--><TD valign=top>source_phase_noise</TD>
+    <!--  type  --><TD valign=top>real(r8)              </TD>
+    <!--descript--><TD>Amplitude of gaussian noise to be added
+                       to source phase offset (per second).
+                       Default 0.0
                     </TD></TR>
 
 <TR><!--contents--><TD valign=top>output_state_vector  </TD>
