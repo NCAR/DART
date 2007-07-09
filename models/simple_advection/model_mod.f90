@@ -74,7 +74,8 @@ real(r8), allocatable :: source_random_amp(:)
 ! Namelist with default values
 !
 integer  :: num_grid_points         = 10
-integer  :: grid_spacing_meters     = 100.0_r8 * 1000.0_r8
+!!!integer  :: grid_spacing_meters     = 100 * 1000
+integer  :: grid_spacing_meters     = 100000
 integer  :: time_step_days          = 0
 integer  :: time_step_seconds       = 3600
 
