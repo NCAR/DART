@@ -41,7 +41,7 @@
    output_timestamps        = .false.,
    output_inflation         = .true.,
 
-   inf_flavor               = 2,                       0,
+   inf_flavor               = 0,                       0,
    inf_start_from_restart   = .false.,                 .false.,
    inf_output_restart       = .true.,                  .true.,
    inf_deterministic        = .true.,                  .true.,
