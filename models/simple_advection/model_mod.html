@@ -205,7 +205,7 @@ type(time_type),          intent(in)    :: <em class=code> time </em>
 <P>
 Advances a model for a single time step.
 The time associated with the initial model state is also
-input although is it not used in this model.
+input although it is not used in this model.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -241,11 +241,13 @@ For the simple advection model with the default grid size, variable 1 is at 0.0,
 variable 2 is at 1/10., variable 3 is at 2/10., etc. on a cyclic [0, 1] domain.  
 The variable type, if specified, is an integer kind between 1 and 5.
 The types are indexed as follows:
-	1. Tracer concentration.
-	2. Tracer source rate.
-	3. Wind velocity.
-	4. Tracer source diurnal phase offset.
-	5. Time mean tracer source value.
+<UL type=none> 
+<LI>1 = Tracer concentration.
+<LI>2 = Tracer source rate.
+<LI>3 = Wind velocity.
+<LI>4 = Tracer source diurnal phase offset.
+<LI>5 = Time mean tracer source value.
+</UL>
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
