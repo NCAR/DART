@@ -12,7 +12,8 @@ module obs_model_mod
 ! $Date$
 
 use types_mod,            only : r8
-use utilities_mod,        only : register_module, error_handler, E_ERR, E_MSG, E_WARN, &
+use utilities_mod,        only : register_module, error_handler,     &
+                                 E_ERR, E_MSG, E_WARN,               &
                                  logfileunit, get_unit, file_exist
 use assim_model_mod,      only : aget_closest_state_time_to, get_model_time_step, &
                                  open_restart_write, open_restart_read,           &
@@ -23,9 +24,9 @@ use obs_sequence_mod,     only : obs_sequence_type, obs_type, get_obs_from_key, 
                                  get_num_qc, get_first_obs, get_next_obs_from_key,   &
                                  get_obs_time_range
 use obs_def_mod,          only : obs_def_type, get_obs_def_time
-use time_manager_mod,     only : time_type, operator(/=), operator(>), set_time, get_time, &
-                                 operator(-), operator(/), operator(+), print_time,        &
-                                 operator(<), operator(==)
+use time_manager_mod,     only : time_type, set_time, get_time, print_time,   &
+                                 operator(/=), operator(>), operator(-),      &
+                                 operator(/), operator(+), operator(<), operator(==)
 use ensemble_manager_mod, only : get_ensemble_time, ensemble_type
 use mpi_utilities_mod,    only : my_task_id, task_sync, task_count, block_task, &
                                  sum_across_tasks
@@ -94,8 +95,8 @@ key_bounds(1:2) = -99
 leaving_early   =   0
 
 ! If none of my copies are regular ensemble members no need to advance. 
-! This is true either if I have no copies or if the copies I have are
-! all larger than the ensemble size.  This does assume that ensemble 
+! This is true either if I have no copies or if the copy #s I have are
+! all larger than the ensemble count.  This does assume that ensemble 
 ! copies are in the first ens_size global copies of ensemble and that 
 ! global indices are monotonically increasing in each pes local copies
 ! (note: Violating the private boundaries on ens_handle by direct access)
@@ -401,8 +402,8 @@ integer,             intent(in)    :: async
 integer :: should_block
 
 
-! if async = 0 or 2, no synchronizing needed.  return now.
-if ((async == 0) .or. (async == 2)) return
+! if async = 0, 2, or 5, no synchronizing needed.  return now.
+if ((async == 0) .or. (async == 2) .or. (async == 5)) return
 
 
 ! If only task 0 is handling the advances for all tasks, we have to 
@@ -430,7 +431,7 @@ if (async == 4) then
 endif
 
 ! should not reach here with valid values of async.
-write(errstring,*) 'input.nml - async is ',async,' must be 0, 2, or 4'
+write(errstring,*) 'input.nml - async is ',async,' must be 0, 2, 4 or 5'
 call error_handler(E_ERR, 'work_to_do', errstring, '', '', '')
 
 end subroutine wait_if_needed
