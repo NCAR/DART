@@ -264,12 +264,26 @@ function [x,y] = ModelDimension(ncid,modelname)
 x = 0;
 y = NaN;
 
+%disp(sprintf('working with %s',modelname))
+
 switch lower(modelname)
 
    case 'cam'
-      lonexist = VarExist(ncid,'lon'  );
-      latexist = VarExist(ncid,'lat'  );
+      lonexist = VarExist(ncid,'lon');
+      latexist = VarExist(ncid,'lat');
       lvlexist = VarExist(ncid,'lev');
+      if ( latexist && lonexist && lvlexist )
+         dnum_lons = prod(size(ncid('lon')));
+         dnum_lats = prod(size(ncid('lat')));
+         dnum_lvls = prod(size(ncid('lev')));
+         x = 3;
+         y = [dnum_lons dnum_lats dnum_lvls];
+      end
+
+   case 'pe2lyr'
+      lonexist = VarExist(ncid,'lon');
+      latexist = VarExist(ncid,'lat');
+      lvlexist = VarExist(ncid,'level');
       if ( latexist && lonexist && lvlexist )
          dnum_lons = prod(size(ncid('lon')));
          dnum_lats = prod(size(ncid('lat')));
@@ -297,7 +311,6 @@ switch lower(modelname)
       end
 
    otherwise
-%     disp(sprintf('working with %s',modelname))
       if ( VarExist(ncid,'StateVariable')) 
          y = prod(size(ncid('StateVariable')));
 	 x = 1;
