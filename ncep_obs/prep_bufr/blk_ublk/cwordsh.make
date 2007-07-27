@@ -27,7 +27,7 @@ set -eua
 #  CPLAT - platform type (sgi,linux,aix,sun,hp,cray,etc.)
 #  ------------------------------------------------------------------------
  
-CPLAT=sun
+CPLAT=macosx
 BUFRLIB=../lib/bufrlib.a
  
 #  different platforms use different link name protocols
@@ -49,6 +49,14 @@ then
    cwrbfr=cwrbufr_
    lenmsg=lenm_
    cc=gcc; ff=g77
+elif [ $CPLAT = intel ]
+then
+   openrb=openrb_
+   openwb=openwb_
+   crdbfr=crdbufr_
+   cwrbfr=cwrbufr_
+   lenmsg=lenm_
+   cc=icc; ff=ifort 
 elif [ $CPLAT = aix ]
 then
    openrb=openrb
@@ -73,6 +81,14 @@ then
    cwrbfr=cwrbufr
    lenmsg=lenm
    cc=cc; ff=f77
+elif [ $CPLAT = macosx  ]
+then
+   openrb=openrb_
+   openwb=openwb_
+   crdbfr=crdbufr_
+   cwrbfr=cwrbufr_
+   lenmsg=lenm_
+   cc=gcc; ff=gfortran
 elif [ $CPLAT = cray ]
 then
    openrb=OPENRB
