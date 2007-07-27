@@ -2,7 +2,7 @@ C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
       SUBROUTINE RDMEMM(IMSG,SUBSET,JDATE,IRET)                         
                                                                         
-      PARAMETER (MAXMSG=50000,MAXMEM=8000000)                           
+      PARAMETER (MAXMSG=50000,MAXMEM=16000000)                           
                                                                         
       COMMON /MSGCWD/ NMSG(32),NSUB(32),MSUB(32),INODE(32),IDATE(32)    
       COMMON /BITBUF/ MAXBYT,IBIT,IBAY(5000),MBYT(32),MBAY(5000,32)     

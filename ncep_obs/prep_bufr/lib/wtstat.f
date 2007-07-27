@@ -66,5 +66,5 @@ C  -----------------------
 901   CALL BORT('WTSTAT - BAD LUN                                 ')   
 902   CALL BORT('WTSTAT - BAD IL                                  ')   
 903   CALL BORT('WTSTAT - BAD IM                                  ')   
-905   CALL BORT('WTSTAT - ATTEMPT TO REDEFINE EXISITING FILE UNIT ')   
+905   CALL BORT('WTSTAT - ATTEMPT TO REDEFINE EXISTING FILE UNIT  ')   
       END                                                               

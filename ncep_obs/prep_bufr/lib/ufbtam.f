@@ -2,7 +2,7 @@ C----------------------------------------------------------------------
 C---------------------------------------------------------------------- 
       SUBROUTINE UFBTAM(TAB,I1,I2,IRET,STR)                             
                                                                         
-      PARAMETER (MAXMSG=50000,MAXMEM=8000000)                           
+      PARAMETER (MAXMSG=50000,MAXMEM=16000000)                           
                                                                         
       COMMON /MSGMEM/ MUNIT,MLAST,MSGP(0:MAXMSG),MSGS(MAXMEM)           
       COMMON /MSGCWD/ NMSG(32),NSUB(32),MSUB(32),INODE(32),IDATE(32)    

@@ -2,7 +2,7 @@ C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
       SUBROUTINE UFBRMS(IMSG,ISUB,USR,I1,I2,IRET,STR)                   
                                                                         
-      PARAMETER (MAXMSG=50000,MAXMEM=8000000)                           
+      PARAMETER (MAXMSG=50000,MAXMEM=16000000)                           
                                                                         
       COMMON /MSGMEM/ MUNIT,MLAST,MSGP(0:MAXMSG),MSGS(MAXMEM)           
                                                                         

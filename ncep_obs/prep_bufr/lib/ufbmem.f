@@ -2,7 +2,7 @@ C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
       SUBROUTINE UFBMEM(LUNIT,INEW,IRET,IUNIT)                          
                                                                         
-      PARAMETER (MAXMSG=50000,MAXMEM=8000000)                           
+      PARAMETER (MAXMSG=50000,MAXMEM=16000000)                           
                                                                         
       COMMON /MSGMEM/ MUNIT,MLAST,MSGP(0:MAXMSG),MSGS(MAXMEM)           
       COMMON /HRDWRD/ NBYTW,NBITW,NREV,IORD(8)                          
