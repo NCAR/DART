@@ -85,54 +85,87 @@ just with input parameters.  It may not have the same levels of error detection 
 warning that the rest of DART has, so the user should very careful about checking 
 the end product for correctness.
 
+<H3 class=indent1> Overview of what needs to be built and run</H3>
+
+<P>
+More detailed instructions follow, but this section describes a quick
+overview of what programs you will be building and running.
+</P>
+
+<H4 class=indent1> Building</H4>
+
+<P>
+Running the install.sh script will build the library and main executable.
+You will probably have to edit this script to set which fortran compiler
+is available on your system.
+</P>
+<P>
+If you have raw unblocked BUFR files you will need to convert them
+to blocked format (what prepbufr expects as input).  You will need
+to uncomment the blk/ublk section in the script and build that converter program.
+</P>
+<P>
+If you are running on an Intel (little-endian) based machine, uncomment
+the grabbufr section in the script to build that converter program.
+</P>
+
+<H4 class=indent1> One-shot execution</H4>
+
+<P>
+If you are converting a single obs file, or are walking through the
+process by hand for the first time, you can follow the more detailed
+build instructions below, and then run the prep_bufr.x program by hand.   
+This involves the following steps:
+
+<UL>
+<LI>building the executables.
+<LI>running the blocker if needed (generally not if you have downloaded the blocked format BUFR files).
+<LI>running the binary format converter if you are on an Intel (little-endian) machine.
+<LI>linking the input file to a fixed input filename
+<LI>running prepbufr.x to convert the file
+<LI>copying the fixed output filename to the desired output filename
+</UL>
+
+</P>
+
+<H4 class=indent1> Production mode</H4>
+
+<P>
+If you have multiple days (or months) of observations that you are intending
+to convert, there is a script in the work subdirectory which is set up to
+run the converter on a sequence of raw data files, and concatinate the output
+files together into one output file per day.  
+Edit the work/prepbufr.csh script and set the necessary
+values in the 'USER SET PARAMETERS' section near the top.  This script can
+either be run from the command line, or it can be submitted to a batch
+queue for a long series of conversion runs.
+</P>
+
+
 <H3 class=indent1> Installation of the NCEP BUFR decoding program</H3>
 
 
-This package is currently (as of release J) organized as .../DART/ncep_obs/prep_bufr/...:
+This package is currently (as of the Jamaica release) 
+organized into files under the DART/ncep_obs/prep_bufr directory:
 <PRE>
 src           Source code of the NCEP PREPBUFR decoder
-lib           NCEP PREPBUFR library
-convert_bufr  Source code (grabbufr) to convert the big endian PREPBUFR files to little
-               endian files, and a script to compile the code.
-install       A script to install the NCEP PREPBUFR decoder and the NCEP PREPBUFR library.
+lib           NCEP BUFR library source
+install.sh    A script to install the NCEP PREPBUFR decoder and the NCEP BUFR library.
 exe           Executables of the decoder and converter.
-data          Where the NCEP PREPBUFR files (prepqm****) are loaded into from the NCAR Mass Store.
+data          Where the NCEP BUFR files (prepqm****) could be loaded into
+              from the NCAR Mass Store (the script assumes this is the default location).
 work          Where we run the script to do the decoding.
-docs          Some background information about NCEP PREPBUFR observations.
+convert_bufr  Source code (grabbufr) to convert the binary big-endian BUFR files to 
+              little-endian files, and a script to compile the program.
+blk_ublk      Source code (cwordsh) to convert between blocked and unblocked format.
+docs          Some background information about NCEP BUFR observations.
 </PRE>
 
 
-<H4 class=indent1> Program /convert_bufr/grabbufr.f</H3>
+
+<H4 class=indent1> The decoding program: src/prepbufr.f</H4>
 
 <P>
-The program grabbufr.f is used to convert the big endian format NCEP PREPBUFR
-data into little endian format, when needed for use on the Intel&#174 processors. 
-The grabbufr.f code is written in Fortran 90, and can be compiled with pgf90.
-It has been compiled with gfortran&#174 on an Intel&#174 based Mac&#174.
-</P>
-
-<P>
-This program reads the whole BUFR file into memory, and needs to know the size
-of the file (in bytes).  
-This information is obtained in the section "Use STAT function ..."
-by uncommenting the statements 
-<PRE>
-c        do i = 1,size(JSTAT)
-c           print*,'JSTAT(',i,') = ,'JSTAT(i)
-c        enddo
-c        EXIT(98)
-</PRE>
-the first time this program is run.
-The file size (determined from ls -l) will match one of the elements of JSTAT.
-That element should be assigned to KBYTES in the subsequent runs, which must have 
-the JSTAT print out and STOP commented out again, and which actually convert the 
-BUFR files.
-</P>
-
-
-
-<H4 class=indent1> The decoding program: /src/prepbufr.f</H3>
-
 The program prepbufr.f is used to decode the NCEP reanalysis BUFR data into
 intermediate text files. This program was originally developed by NCEP. 
 It has been modified to output surface pressure, dry temperature, specific humidity, 
@@ -144,9 +177,11 @@ NCEP BUFR files.
 The NCEP quality control indexes for these observations based on NCEP forecasts 
 are also output and used in DART observation sequence files.
 The NCEP PREPBUFR decoding program is written in Fortran 77 and
-can be successfully compiled on
-Linux computers using pgi90, f77 on SGI computers, and xlf on IBM SP systems.
-an Intel&#174 based Mac&#174 with gfortran&#174.
+has been successfully compiled on
+Linux computers using pgi90, SGI&#174 computers with f77, 
+IBM&#174 SP&#174 systems with xlf,
+and Intel&#174 based Mac&#174 with gfortran.
+</P>
 
 <P>
 
@@ -160,21 +195,16 @@ and add the one desired for this package.  For example
 </P>
 
 <P>
-To compile the PREPBUFR libraries and the decoding program, go to the
-install directory .../install.  Set the CPLAT variable in the install.sh to reflect
-the correct platform.  CPLAT = linux is the default.
+To compile the BUFR libraries and the decoding program, 
+set the CPLAT variable in the install.sh script to match the compilers
+available on your system. CPLAT = linux is the default.
 Execute the install.sh script to complete the compilations for the main
-decoding program and the NCEP PREPBUFR library.
+decoding program and the NCEP BUFR library.
 </P>
 
 <P>
-For platforms with little endian format, go to
-/convert_bufr/ and run convert_bufr.csh to compile the converting code (grabbufr).
-</P>
-
-<P>
-The executables (i.e., prepbufr.x, prepbufr_03Z.x and grabbufr.x) 
-are placed in .../prep_bufr/exe. 
+The executables (i.e., prepbufr.x, prepbufr_03Z.x) are placed in
+the ../exe directory.
 </P>
 
 <P>
@@ -188,10 +218,72 @@ The code has been tested on NCAR systems:
     </UL>
 </P>
 
+<H4 class=indent1> The byte-swapping program convert_bufr/grabbufr.f</H4>
+
+<P>
+For platforms with little-endian binary file format 
+(e.g. Intel, AMD&#174, and non-MIPS SGI processors)
+the program grabbufr.f is used to convert the big-endian format NCEP BUFR
+data into little-endian format.
+The grabbufr.f code is written in Fortran 90, and has been compiled
+can be compiled with the pgf90 compiler on a Linux system, 
+with gfortran on an Intel based Mac, and the ifort compiler
+on other Linux machines.
+Instructions for building it can be found in convert_bufr/README, but 
+basically go to the convert_bufr subdirectory, edit covert_bufr.csh
+to set your compiler, and run it to compile the converter code (grabbufr).
+</P>
+
+<P>
+This program reads the whole BUFR file into memory, and needs to know the size
+of the file (in bytes).  Unfortunately, the system call STAT() returns this size
+as one number in an array, and the index into that array differs depending on
+the system and sometimes the bit size (32 vs 64) of the compiler.  To test that
+the program is using the right offset into this array, you can compile and run
+the stat_test.f program.  It takes a single filename argument and prints out information
+about that file.  One of the numbers will be the file size in bytes.
+Compare this to the size you see with the 'ls -l' command for that same file.
+If the numbers do not agree, find the right index and edit the grabbufr.f source file.  
+Look for the INDEXVAL line near the first section of executable code.
+</P>
+
+<P>
+If grabbufr.f does not compile because the getarg() or iargc() subroutines are
+not found or not available, then either use the arg_test.f program to debug how
+to get command line arguments into a fortran program on your system, or simply
+go into the grabbufr.f source and comment out the section which tries to parse
+command line arguments and comment in the hardcoded input and output filenames.
+Now to run this program you must either rename the data files to these predetermined
+filenames, or you can use links to temporarily give the files the names needed.
+</P>
+
+<H4 class=indent1> The blocking program blk_ublk/cwordsh</H4>
+
+<P>
+The prepbufr.x program expects to read a blocked input file, which is generally
+what is available for download.  However, if you have an unblocked file that you
+need to convert, there is a conversion program.  Change directories into the
+blk_ublk subdirectory and edit the cwordsh.make file and edit it to match your system.
+Execute it and it will build a cwordsh.x executable, which can be run with the
+shell-script wrapper program cwordsh.
+</P>
+
+<P>
+The shell scripts in this directory actually create both a .c and .f
+file (which did not exist before), then compile them, then remove them.  If you
+have problems with the compile, comment out the remove at the end of the make
+script so you can see the files it is actually trying to compile.  
+</P>
+
+<P>
+Note that if you can get the blocked file formats to begin with, this
+program is not needed.
+</P>
+
 <H3 class=indent1> Getting the NCEP Reanalysis BUFR format data from NCAR MSS.  </H3>
 
 <P>
-The NCEP PREPBUFR files (prepqmYYMMDDHH) can be found within the NCEP reanalysis
+The NCEP BUFR files (prepqmYYMMDDHH) can be found within the NCEP reanalysis
 dataset, ds090.0, on NCAR Mass Store System (MSS).
 </P>
 
@@ -210,27 +302,31 @@ To find the files:
 </P>
 
 <P>
-The prepqm file will be grouped with others in a weekly tar file. 
+The prepqm file will be grouped with others in a weekly (monthly after 2003) tar file. 
 Each tar file has a unique file number like "A#####".
 For example, for January of 2003, the 4 MSS TAR files are: A21899, A21900,
-A21901, A21902. These are unblocked files.
-The decoding program requires blocked version of the files. The corresponding
-blocked files are A21899.blk, A21900.blk, A21901.blk, and A21902.blk.
+A21901, A21902. Before 2004 these are unblocked files.
+The decoding program requires blocked version of the files. 
+The corresponding blocked files are A21899.blk, A21900.blk, A21901.blk, and A21902.blk.
 These names don't appear in the web page, but are found on the mass store.
-Each is about 400 Mb
+Each is about 400 Mb.
+After 2003 the files without ".blk" are blocked and can be used.
+They are about 1.7 Gb.
 </P>
 
 <P>
+Change directories into the prep_bufr/data subdirectory.
 From a machine with access to the MSS use
-<UL><LI> msread -fbi filename.tar /DSS/A#####.blk </L> </UL>
+<UL><LI> msread -fbi data.tar /DSS/A##### </L> </UL>
+or
+<UL><LI> msread -fbi data.tar /DSS/A#####.blk </L> </UL>
 where ##### is the data set number, to read the NCEP BUFR data tar files.
-Put the filename.tar in subdirectory prep_bufr/data
 <P>
 
 <P>
 Then
-<UL><LI> tar -xvf filename.tar </L> </UL>
-will yield individual 6-hourly NCEP PREPBUFR data files for the observations 
+<UL><LI> tar -xvf data.tar </L> </UL>
+will yield individual 6-hourly NCEP BUFR data files for the observations 
 in the +/- 3-hours time window of 00Z,  06Z, 12Z, and 18Z of each day.
 Note that DART obs_seq files are organized such that a 24 hour file with
 4 observation times would contain observations from 3:01Z to 3:00Z of the
@@ -241,7 +337,7 @@ Then, in order to make a full day intermediate file incorporating all the
 required obs from the "next" day, you'll need the BUFR files through 6Z
 of the day after the last day of interest.
 For example, to generate the observation sequence for Jan 1, 2003, the decoded
-NCEP PREPBUFR text files for Jan 1 and 2, 2003 are needed, and hence the
+NCEP BUFR text files for Jan 1 and 2, 2003 are needed, and hence the
 BUFR files 
 <UL> 
 <LI> prepqm03010106 </LI>
@@ -267,11 +363,11 @@ It has code for running in the LSF batch environment, but not PBS.
 </P>
 
 <P>
-Currently, the script generates daily decoded PREPBUFR text data which contains the
+Currently, the script generates daily decoded BUFR text data which contains the
 observations within the time window of 3:01Z of the day to 3:00Z of next day.
 These daily output text files are named as temp_obs.yyyymmdd.  
-These text PREPBUFR data files can then be read by
-DART/ncep_obs/<A HREF="../create_real_obs.html" > create_real_obs </A>.
+These text BUFR data files can then be read by
+DART/ncep_obs/work/<A HREF="../create_real_obs.html" > create_real_obs </A>.
 to generate the DART daily observation
 sequence files.
 </P>
@@ -303,7 +399,7 @@ utilities_mod
 <P>
 The prepbufr package doesn't use any namelists, but
 prepbufr.prm contains some parameters, while 
-other parameters are set in .../prep_bufr/work/prepbufr.csh
+other parameters are set in work/prepbufr.csh
 
 <!-- <div class=namelist><pre>
 <em class=call>namelist /    / </em> &
@@ -335,7 +431,7 @@ other parameters are set in .../prep_bufr/work/prepbufr.csh
 <A NAME="References"></A>
 <BR><HR><BR>
 <H2>REFERENCES</H2>
-.../DART/ncep_obs/prep_bufr/docs/*  (NCEP text files describing the BUFR files)
+DART/ncep_obs/prep_bufr/docs/*  (NCEP text files describing the BUFR files)
 
 <!--==================================================================-->
 <!-- Describe the bugs.                                               -->
