@@ -1,17 +1,21 @@
 
 
+======================================================================
+WARNING:
 
+The user documentation for compiling and running the prep_bufr program 
+is NOT here - read the instructions in the prep_bufr.html file.
+======================================================================
 
-The first document you should read is prep_bufr.html.
 
 
 
 ======================================================================
-The rest of this document is development comments.
+Developer comments/info:
 ======================================================================
 
 
-How to generate decoded NCEP PREPBUFR inter-mediate text data 
+How to generate decoded NCEP PREPBUFR intermediate text data 
 As well as DART observation sequence files (daily)
 kdr; only daily?
 
@@ -20,7 +24,7 @@ x kdr; add section about what files we're starting with, and what's necessary
      to translate them?  Refer to .../docs
 
   This document describes how to generate decoded NCEP reanalysis PREPBUFR 
-inter-mediate text data as well as use of the text files to generate DART daily 
+intermediate text data as well as use of the text files to generate DART daily 
 observation sequence files. 
 
    The decoding package is available as a tar file, prepbufr.tar. 
@@ -53,8 +57,6 @@ kdr; are more types of obs available? (PS, radiances, ?)
      How much work to get them?
 
 Program /convert_bufr/grabbufr.f
-
-kdr; I see CVS directory in there; should it still be under DART control?
 
  The program grabbufr.f is used to convert the big endian format NCEP PREPBUFR 
 data into little endian format for use on the LINUX computers only. For SGI, IBM 
@@ -224,9 +226,4 @@ also contain the observations at 3:00Z of the next day).
 NCEP PREPBUFR text files for Jan 1 and 2, 2003 are needed.
 
 ==================================================================
-Notes about documenting this and/or making sure all of it is in repository.
-
-   DART/ncep_obs/read_bufr.f  is almost identical to 
-Obs/prepbufr/src/prepbufr.f   read_bufr.f has more reads (adiag...) and writes of something 
-prep_bufr.f wants an input file 'prepqm.little' (endian) instead of 'prepqm'
 
