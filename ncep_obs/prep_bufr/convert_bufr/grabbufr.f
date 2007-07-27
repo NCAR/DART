@@ -46,7 +46,7 @@ C$$$
       CHARACTER(len=80) :: infile,outfile
       character(len=4) :: bufr='BUFR',ctemp,csec0
       INTEGER(4)       narg,iargc,JSTAT(100)
-      integer findbufr, i
+      integer findbufr, i, INDEXVAL
       character*1 byte(8)
  
       data i1/11/,i2/51/,newed/2/
@@ -56,23 +56,30 @@ C
 c liu 03/16/2005
 C  GET Filename ARGUMENTS
 C
-c     NARG=IARGC()
-c     IF(NARG.NE.2) THEN
-c       PRINT *,'grabbufr:  Incorrect usage'
-c       PRINT *,'Usage: grabbufr inputBUFRfile ouputBUFRfile'
-c       CALL EXIT(2)
-c     ENDIF
+C  if your machine does not support the iargc or getarg functions
+C  comment this section out and use the hardcoded filenames below.
+      NARG=IARGC()
+      IF(NARG.NE.2) THEN
+        PRINT *,'grabbufr:  Incorrect usage'
+        PRINT *,'Usage: grabbufr inputBUFRfile ouputBUFRfile'
+        CALL EXIT(2)
+      ENDIF
 
-c     call getarg(1,infile)
-c     infile = TRIM(infile)//CHAR(0)
-c     call getarg(2,outfile)
-c
-c     outfile = TRIM(outfile)//CHAR(0)
+      call getarg(1,infile)
+      infile = TRIM(infile)//CHAR(0)
+      call getarg(2,outfile)
+      outfile = TRIM(outfile)//CHAR(0)
 
-      infile = 'prepqm.bigendian'
-      outfile = 'prepqm.littleendian'
+C  hardcoded filenames are the alternative to getting the filenames from
+C  the command line.
+c     infile = 'prepqm.bigendian'
+c     outfile = 'prepqm.littleendian'
 c
 c liu 03/16/2005
+C
+      PRINT*,'INPUT FILE',infile
+      PRINT*,'OUTPUT FILE',outfile
+
 C
 C  Use STAT function to get size of input BUFR file
 C
@@ -80,23 +87,20 @@ C
          PRINT *,'ERROR IN FUNCTION STAT GETTING FILE STATS'
          CALL EXIT(99)
       ELSE
-c        The following line need to be changed for different machines
-c        and compilers (even in 32 and 64 bytes versions)
-c        use the following print and find the number of JSTAT which is 
-c        the same as the actual size of the bufr input file and use the
-c        index in the JSTAT(?).
+c        If this program has an error, or if the output files are missing data
+c        run the stat_test program in this same directory and see if the
+c        indexval is correct for this machine/compiler.  fix and recompile
+c        if not.
 c
-c        do i = 1,size(JSTAT)
-c           print*,'JSTAT(',i,') = ',JSTAT(i)
-c        enddo
-c        EXIT(98)
+c        The following line may need to be changed for different machines
+c        and compilers (and sometimes even between 32 and 64 bit versions of
+c        the same compiler).
+         INDEXVAL = 8       ! for gfortran on Macs, 32 bit ifort on linux
+c        INDEXVAL = 12      ! for pgf90 32 bytes, (ifort 64 bit?)
+c        INDEXVAL = 13      ! for pgf90 64 bytes
 
-c        KBYTES = JSTAT(8)          ! for gfortran on Macs. . .
-         KBYTES = JSTAT(12)         ! for pgf90 32 bytes, (ifort 64 bit . . .?)
-c        KBYTES = JSTAT(13)         ! for pgf90 64 bytes
-
-
-      PRINT *,'NUMBER OF BYTES IN INPUT FILE = ',KBYTES
+         KBYTES = JSTAT(INDEXVAL)
+         PRINT *,'NUMBER OF BYTES IN INPUT FILE = ',KBYTES
       ENDIF
 C
 C  Allocate array cbuf to store input file in memory.
