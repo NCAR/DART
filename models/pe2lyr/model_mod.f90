@@ -25,6 +25,8 @@ use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use     location_mod, only : location_type, get_location, set_location, get_dist, &
                              LocationDims, LocationName, LocationLName, &
                              get_close_maxdist_init, get_close_obs_init, get_close_obs
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
+                             KIND_GEOPOTENTIAL_HEIGHT
 
 
 use  pe2lyr_mod, only : modelvars, modelvars_init, rk4
@@ -46,7 +48,6 @@ public :: get_model_size, &
           static_init_model,  &
           init_time, &
           init_conditions, &
-          TYPE_u, TYPE_v, TYPE_z, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_state, &
@@ -60,8 +61,6 @@ character(len=128), parameter :: &
    revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
-! Public definition of variable types
-integer, parameter :: TYPE_u = 1, TYPE_v = 2, TYPE_z = 901
 
 type(time_type) :: time_step
 type (modelvars):: model_dat
@@ -99,9 +98,9 @@ do i = 1,nlats
     ug(j,i,1)=x(mm) 
     ug(j,i,2)=x(nlats*nlons+mm) 
     vg(j,i,1)=x(2*nlats*nlons+mm) 
-    vg(j,i,2)  =x(3*nlats*nlons+mm) 
-    zg(j,i,1) =x(4*nlats*nlons+mm) 
-    zg(j,i,2) = x(5*nlats*nlons+mm) 
+    vg(j,i,2)=x(3*nlats*nlons+mm) 
+    zg(j,i,1)=x(4*nlats*nlons+mm) 
+    zg(j,i,2)=x(5*nlats*nlons+mm) 
     mm = mm+1
   enddo
 enddo 
@@ -160,7 +159,7 @@ end subroutine adv_1step
 
 subroutine static_init_model()
 
-! INitializes class data for a pe2lyr model (all the stuff that needs to
+! Initializes class data for a pe2lyr model (all the stuff that needs to
 ! be done once.
 
 implicit none
@@ -226,10 +225,10 @@ zg(:,:,1)=  (theta1/g)*(cp - (delpig(:,:,2)+model_dat%pitop+delpig(:,:,1)))
 mm =1
 do i = 1,nlats
   do j=1, nlons
-    x(mm) = ug(j,i,1)
-    x(nlats*nlons+mm) = ug(j,i,2)
-    x(2*nlats*nlons+mm) =  vg(j,i,1)
-    x(3*nlats*nlons+mm) =  vg(j,i,2)  
+    x(mm)               = ug(j,i,1)
+    x(  nlats*nlons+mm) = ug(j,i,2)
+    x(2*nlats*nlons+mm) = vg(j,i,1)
+    x(3*nlats*nlons+mm) = vg(j,i,2)  
     x(4*nlats*nlons+mm) = zg(j,i,1)
     x(5*nlats*nlons+mm) = zg(j,i,2)
     mm = mm+1
@@ -285,23 +284,21 @@ u_indxmax = 2*nlats*nlons
 v_indxmax = 4*nlats*nlons
 z_indxmax = 6*nlats*nlons
 
-!! interface height obs type = 901 
-!! ( a big number so no conflict in future ))
 if(indx <= u_indxmax) then
    lev_index =  (indx-1)/(nlats*nlons) +1
    lat_index = ((indx-1) - ((lev_index-1)*nlats*nlons)) / nlons +1
    lon_index =  (indx-1) - ((lev_index-1)*nlats*nlons) - ((lat_index-1)*nlons) +1
-   if(present(var_type)) var_type = TYPE_u
+   if(present(var_type)) var_type = KIND_U_WIND_COMPONENT
 else if(indx <= v_indxmax) then
    lev_index =  (indx-u_indxmax-1)/(nlats*nlons) +1
    lat_index = ((indx-u_indxmax-1) - ((lev_index-1)*nlats*nlons)) / nlons +1
    lon_index =  (indx-u_indxmax-1) - ((lev_index-1)*nlats*nlons) - ((lat_index-1)*nlons) +1
-   if(present(var_type)) var_type = TYPE_v
+   if(present(var_type)) var_type = KIND_V_WIND_COMPONENT
 else
    lev_index =  (indx-v_indxmax-1)/(nlats*nlons) +1
    lat_index = ((indx-v_indxmax-1) - ((lev_index-1)*nlats*nlons)) / nlons +1
    lon_index =  (indx-v_indxmax-1) - ((lev_index-1)*nlats*nlons) - ((lat_index-1)*nlons) +1
-   if(present(var_type)) var_type = TYPE_z
+   if(present(var_type)) var_type = KIND_GEOPOTENTIAL_HEIGHT
 endif 
  
 ! With the threed_sphere location module ... you specify that the 
@@ -424,11 +421,11 @@ integer :: indx
 
 
 ! order is u,v,z 
-if(type == TYPE_u) then
+if(type == KIND_U_WIND_COMPONENT) then
    indx = (level-1)*nlats*nlons+(lat_index-1)*nlons + lat_index
-else if(type == TYPE_v) then
+else if(type == KIND_V_WIND_COMPONENT) then
    indx = 2*nlats*nlons+(level-1)*nlats*nlons+(lat_index-1)*nlons + lon_index
-else if(type == TYPE_z) then
+else if(type == KIND_GEOPOTENTIAL_HEIGHT) then
    indx = 4*nlats*nlons+(level-1)*nlats*nlons+(lat_index-1)*nlons + lon_index
 endif
    
@@ -580,8 +577,8 @@ call check(nf90_put_att(ncFileID, vVarID, "units", "m/s"))
 call check(nf90_def_var(ncid=ncFileID, name="z", xtype=nf90_real, &
          dimids = (/ lonDimID, latDimID, levDimID, MemberDimID, unlimitedDimID /), &
          varid  = zVarID))
-call check(nf90_put_att(ncFileID, vVarID, "long_name", "surface/interface height"))
-call check(nf90_put_att(ncFileID, vVarID, "units", "meters"))
+call check(nf90_put_att(ncFileID, zVarID, "long_name", "surface/interface height"))
+call check(nf90_put_att(ncFileID, zVarID, "units", "meters"))
 
 call check(nf90_enddef(ncfileID))
 
