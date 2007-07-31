@@ -36,7 +36,11 @@ FC = ifort
 LD = ifort
 NETCDF = /usr/local
 INCS = ${NETCDF}/include
+# for Intel 9.x:
 FFLAGS = -I$(INCS) -O2 
-LIBS = -L${NETCDF}/lib -lnetcdf
 LDFLAGS = -I$(INCS) -Wl,-stack_size,10000000 $(LIBS)
+# for Intel 10.x:
+#FFLAGS = -I$(INCS) -O2 -m64 -heap-arrays
+#LDFLAGS = -I$(INCS) $(LIBS)
+LIBS = -L${NETCDF}/lib -lnetcdf
 
