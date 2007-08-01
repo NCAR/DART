@@ -59,7 +59,7 @@ LD = pgf90
 NETCDF = /usr/local/netcdf-pgi
 INCS = -I$(NETCDF)/include
 
-FFLAGS = -O2 -$(INCS)
+FFLAGS = -O2 $(INCS)
 LIBS = -L$(NETCDF)/lib -lnetcdf
 LDFLAGS = $(INCS) $(LIBS)
 
