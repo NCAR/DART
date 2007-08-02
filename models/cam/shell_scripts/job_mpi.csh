@@ -224,11 +224,11 @@ echo "CENTRALDIR is " $CENTRALDIR
 # User set run parameters to change
 
 # Directory where output will be kept (relative to '.')
-set resol = T21
+set resol = T85
 
 set parallel_cam = true
 
-set exp = ${resol}_gwd7b
+set exp = ${resol}_12
 
 
 # The "day" of the first obs_seq.out file of the whole experiment
@@ -257,13 +257,15 @@ set mo_first = 1
 # ascii to avoid byteswapping;  
 set obs_seq_root = /ptmp/dart/Obs_sets/Allx12_I_ascii/obs_seq2003
 
-# The number of processors and/or nodes that will be used by the $exp_#.script jobs 
-# spawned by this script.
-set num_procs = 16
-set num_nodes = 1
-# The queue to be used by the actual assimilation run
-set queue = premium
-set wall_clock = 1:00
+# The number of processors that will be used by the $exp_#.lsf jobs spawned by this script.
+# ? ? ?  what about the Simultaneous Multi-Threading?
+# ? ? ?  do I need a ptile?  
+#        BSUB -n N                N = 2x the # physical processors I want
+#        BSUB -R "span[ptile=2]"  assuming that we're sticking with 1 task/process.
+#        does echo to job_i below need changing, based on this?
+set num_procs = 32
+set queue = standby
+set wall_clock = 6:00
 
 # DART source code directory trunk, and CAM interface location.
 set DARTDIR = /blhome/${user}/J/DART
@@ -273,11 +275,11 @@ set DARTCAMDIR =          ${DARTDIR}/models/cam
 # This copies just the initial conditions for the correct number of ensemble members.
 
 if ($resol == T21) then
-   set DART_ics_1  = /ptmp/dart/CAM_init/T21/03-01-01/DART_EFG_gwd6_MPI
+   set DART_ics_1  = /ptmp/dart/CAM_init/T21/03-01-01/DART_MPI
    set CAM_ics_1   = /ptmp/dart/CAM_init/T21/03-01-01/CAM/caminput_
    set CLM_ics_1   = /ptmp/dart/CAM_init/T21/03-01-01/CLM/clminput_
    # -mpi will be attached to this name if parallel_cam = true; don't add it here
-   set CAMsrc      = /blhome/raeder/Cam3/cam3_0_7_brnchT_assim01/models/atm/cam/bld/T21-O3_GWD
+   set CAMsrc      = /ptmp/dart/CAM/CAMsrc/Cam3/cam3.1/models/atm/cam/bld/T21_3.1-O3
    set ptile = 16
 else if ($resol == T42) then
    # T42
@@ -300,6 +302,7 @@ else if ($resol == T85) then
 endif 
 
 if (${parallel_cam} == true) then
+   set ptile = 16                                                              
    set CAMsrc = ${CAMsrc}-mpi                                                 
 endif                                                                         
 
@@ -319,8 +322,8 @@ set input = input_
 # Restarts are backed up when
 #      if ($j % $save_freq == $mod_save) save to mass store
 # where in the obs_seq loop below j = current obs_seq file - 1
-set save_freq = 400
-set mod_save = 0
+set save_freq = 4
+set mod_save = 1
 
 # END of run parameters to change
 #==========================================================================================
@@ -329,13 +332,6 @@ set mod_save = 0
 if ($?PBS_WORKDIR) then
    set run_command = "$run_command $num_procs "
 endif
-
-
-# Add information to the run_command, based on User set parameters
-if ($?PBS_WORKDIR) then
-   set run_command = "$run_command $num_procs "
-endif
-
 # try to discover the ensemble size from the input.nml
 # this is some gory shell programming ... all to do 'something simple'
 
@@ -371,10 +367,11 @@ if (! -x filter) then
    ${COPY} ${DARTCAMDIR}/work/trans_time                 .
 endif
 if (! -e advance_model.csh) then
-   ${COPY} ${DARTCAMDIR}/shell_scripts/advance_model.csh .
-   ${COPY} ${DARTCAMDIR}/shell_scripts/run-pc.csh        .
-   ${COPY} ${DARTCAMDIR}/shell_scripts/auto_re2ms*.csh     . 
-   ${COPY} ${DARTCAMDIR}/shell_scripts/diags.csh     . 
+   ${COPY} ${DARTCAMDIR}/shell_scripts/advance_model.csh     .
+   ${COPY} ${DARTCAMDIR}/shell_scripts/run-pc.csh            .
+   ${COPY} ${DARTCAMDIR}/shell_scripts/auto_re2ms*.csh       . 
+   ${COPY} ${DARTCAMDIR}/shell_scripts/diags.csh             . 
+   ${COPY} ${DARTCAMDIR}/shell_scripts/auto_diag2ms_LSF.csh  . 
 endif
 
 set days_in_mo = (31 28 31 30 31 30 31 31 30 31 30 31)
@@ -464,7 +461,8 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo "##==================================================================" >> ${job_i}
 
    else if ($?PBS_O_WORKDIR) then
-      echo "#\!/bin/csh"                                                          >! ${job_i}
+      @ num_nodes = num_procs / 2
+      echo "#\!/bin/csh"                        >!  ${job_i}
       echo "##==================================================================" >> ${job_i}
       echo "#PBS -N ${exp}_${i}"                                                  >> ${job_i}
       echo "#PBS -e ${exp}_${i}.err"                                              >> ${job_i}
@@ -564,11 +562,15 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 #      @ hour = (($seq % $obs_seq_freq) - 1) * 24 / $obs_seq_freq 
 #      if ($hour < 10) then
 # orig      
-      @ hour = ($seq % $obs_seq_freq) * 24 / $obs_seq_freq 
-      if ($hour == 0) then
-         set hour = 24
-      else if ($hour < 10) then
-         set hour = 0$hour
+      if ($obs_seq_freq == 1) then
+         set hour = ' '
+      else
+         @ hour = ($seq % $obs_seq_freq) * 24 / $obs_seq_freq 
+         if ($hour == 0) then
+            set hour = 24
+         else if ($hour < 10) then
+            set hour = 0$hour
+         endif
       endif
 
       set OBS_SEQ = ${obs_seq_root}${month}${day}${hour}
@@ -703,7 +705,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    # runs filter, which tells the model to model advance and assimilates obs
    echo " "                                                  >> ${job_i}
    if (${parallel_cam} == true) then
-      echo "${COPY} ${CENTRALDIR}/wakeup_filter .                       " >> ${job_i}
+      echo "${COPY} ${CENTRALDIR}/wakeup_filter  .                       " >> ${job_i}
       echo " "                                                             >> ${job_i}
       echo "rm -f  filter_to_model.lock model_to_filter.lock "             >> ${job_i}
       echo "mkfifo filter_to_model.lock model_to_filter.lock "             >> ${job_i}
@@ -735,22 +737,22 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo '  else if ( "${todo}" == "advance" ) then       ' >> ${job_i}
       echo '    echo advance command received from filter.  ' >> ${job_i}
       echo '    echo calling advance_model.csh now:              ' >> ${job_i}
-      echo "    ./advance_model.csh 0 $num_ens filter_control00000  "       >> ${job_i}
+     echo "    ./advance_model.csh 0 $num_ens filter_control00000  ${parallel_cam}" >> ${job_i}
      # do not execute anything here until you have saved
      # the exit status from the advance model script.
      echo '    set advance_status = $status                ' >> ${job_i}
      echo '    echo saved advance_model.csh exit status    ' >> ${job_i}
-      echo " "                                                >> ${job_i}
-      echo '       echo restarting filter.  this version of wakeup_filter            ' >> ${job_i}
-      echo '       echo includes restarting the main filter program.                  ' >> ${job_i}
-      echo "       ${run_command} ./wakeup_filter          " >> ${job_i}
+     echo " "                                                >> ${job_i}
+     echo '    echo restarting filter.  this version of wakeup_filter ' >> ${job_i}
+     echo '    echo includes restarting the main filter program.      ' >> ${job_i}
+     echo "    ${run_command} ./wakeup_filter              " >> ${job_i}
      echo " "                                                >> ${job_i}
      echo '    if ($advance_status != 0) then              ' >> ${job_i}
-      echo '       echo "Model advance failed"              ' >> ${job_i}
+     echo '       echo "Model advance failed"              ' >> ${job_i}
      echo '       rm -f filter_lock*                       ' >> ${job_i}
      echo '       break                                    ' >> ${job_i}
-      echo '    endif                                       ' >> ${job_i}
-      echo " "                                                >> ${job_i}
+     echo '    endif                                       ' >> ${job_i}
+     echo " "                                                >> ${job_i}
       echo '  else                                          ' >> ${job_i}
       echo " "                                                >> ${job_i}
       echo '    echo main script: unexpected value received.' >> ${job_i}
@@ -978,6 +980,13 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
          echo 'echo "Removing restart from '${exp}/${out_prev} '" >> $MASTERLOG '           >> ${job_i}
          echo 'echo "Removing restart from '${exp}/${out_prev} '"'                          >> ${job_i}
       endif
+#     Diagnostics files
+      echo "eval bsub < ../../auto_diag2ms_LSF.csh  >>& " ' $MASTERLOG '                     >> ${job_i}
+      echo 'echo "Backing up diagnostics '${exp}/${out_prev}' to mass store; >> $MASTERLOG"' >> ${job_i}
+      echo 'echo "    in separate batch job"  >> $MASTERLOG  '                               >> ${job_i}
+      echo 'echo "Backing up diagnostics '${exp}/${out_prev}' to mass store; "'              >> ${job_i}
+      echo 'echo "    in separate batch job"  '                                              >> ${job_i}
+
       echo "cd ../.. "                                                                      >> ${job_i}
    else
       echo "NO ./auto_re2ms_LSF.csh FOUND, so NO BACKUP OF ${out_prev} " >> ${MASTERLOG}
