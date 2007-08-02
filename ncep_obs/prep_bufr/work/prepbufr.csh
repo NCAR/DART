@@ -22,10 +22,23 @@
 #BSUB -o prepbufr.out
 #BSUB -e prepbufr.err
 #BSUB -J prepbufr
-#BSUB -q regular
+#BSUB -q share
+#BSUB -W 4:00
 #BSUB -P 86850054
 #BSUB -n 1
 
+
+if ($?LS_SUBCWD) then
+   cd $LS_SUBCWD
+endif
+
+#
+#--------------------------------------------------------------
+#
+#  This script is used to generate daily (3:01Z to 3:00Z of next day) decoded 
+#  NCEP reanalysis PREPBUFR text/ascii data.
+#  It should be run only for days within a single month.
+#
 #--------------------------------------------------------------
 # USER SET PARAMETERS
 
@@ -43,6 +56,12 @@ set beginday = 30
 #          month is necessary for endday = last day of a month.)
 #
 set endday = 31
+
+# Location of BUFR files (named prepqmYYYYMMDDHH)
+# are assumed to be in subdirectories named YYYYMM of the path listed here.
+# Those subdirectory names will be constructed below.
+set BUFR_dir = /ptmp/raeder/Obs_sets/NCEP-BUFR
+set get_year = $year
 
 # END USER SET PARAMETERS
 #--------------------------------------------------------------
@@ -75,7 +94,7 @@ while ( $day <= $last )
       echo ' '
       @ h  = $h + 6
       @ hh = $h % 24
-      @ dd = $day + $h / 24
+      @ dd = $day + ($h / 24)
       @ yy = $year % 100
       set mm = $month
 
@@ -91,7 +110,8 @@ while ( $day <= $last )
             if ($mm > 12) then
                # next year
                set mm = 1
-               @ yy = ($year + 1) % 100
+               @ get_year = $get_year++
+               @ yy = $get_year % 100
             endif
          endif
       endif
@@ -103,17 +123,20 @@ while ( $day <= $last )
       if ($hh < 10) set hh = 0$hh
 
       # link(big endian) or make(little endian) input file 'prepqm' for prepbufr.x
-      if (! -e ../data/prepqm${yy}${mm}${dd}${hh}) then
-         echo "MISSING FILE ../data/prepqm${yy}${mm}${dd}${hh} and aborting"
+      set BUFR_loc = ${BUFR_dir}/${get_year}${mm}
+      if (! -e ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh}) then
+         echo "MISSING FILE ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh} and aborting"
          exit
       endif
 
       if ($convert == 'yes') then
-         ln -f -s  ../data/prepqm${yy}${mm}${dd}${hh} prepqm.bigendian
+         echo "linking bigendian to ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh}"
+         ln -f -s  ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh} prepqm.bigendian
          ../exe/grabbufr.x
          mv prepqm.littleendian prepqm.in
       else
-         ln -f -s  ../data/prepqm${yy}${mm}${dd}${hh} prepqm.in
+         echo "linking prepqm.in to ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh}"
+         ln -f -s  ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh} prepqm.in
       endif
 
       if ($h == 30) then
@@ -132,7 +155,7 @@ while ( $day <= $last )
    set mm = $month
    if ($mm < 10) set mm = 0$mm
 
-   mv -v temp_obs   temp_obs.${year}${mm}${dd}
+   mv -v temp_obs   ${BUFR_dir}/${year}${mm}/temp_obs.${year}${mm}${dd}
 
    @ day++
 end
