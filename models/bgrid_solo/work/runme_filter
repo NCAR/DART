@@ -1,9 +1,18 @@
-#!/bin/tcsh 
+#!/bin/csh 
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2007, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next few lines under version control, do not edit>
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
 
-# start at a generic run script for the mpi version.  this should probably
-# end up in the shell scripts directory - but it is here for now.  nsc.
+# start at a generic run script for the mpi version.
 
-# this code shamelessly stolen from tim.
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system
 # LSF is used on the IBM   Linux cluster 'lightning'
@@ -24,28 +33,27 @@
 ##=============================================================================
 #BSUB -J filter
 #BSUB -o filter.%J.log
-#BSUB -q regular
-#BSUB -n 4
+#BSUB -q economy
+#BSUB -n 6
 #BSUB -W 0:30
-#
-#
-##=============================================================================
-## This block of directives constitutes the preamble for the PBS queuing system
-## PBS is used on the CGD   Linux cluster 'bangkok'
-## PBS is used on the CGD   Linux cluster 'calgary'
-## 
-## the normal way to submit to the queue is:    qsub runme_filter
-## 
-## an explanation of the most common directives follows:
-## -N     Job name
-## -r n   Declare job non-rerunable
-## -e <arg>  filename for standard error
-## -o <arg>  filename for standard out 
-## -q <arg>   Queue name (small, medium, long, verylong)
-## -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok 
-##                     and calgary, there is no way to 'share' the processors
-##                     on the node with another job, so you might as well use
-##                     them both.  (ppn == Processors Per Node)
+
+#=============================================================================
+# This block of directives constitutes the preamble for the PBS queuing system
+# PBS is used on the CGD   Linux cluster 'bangkok'
+# PBS is used on the CGD   Linux cluster 'calgary'
+# 
+# the normal way to submit to the queue is:    qsub runme_filter
+# 
+# an explanation of the most common directives follows:
+# -N     Job name
+# -r n   Declare job non-rerunable
+# -e <arg>  filename for standard error
+# -o <arg>  filename for standard out 
+# -q <arg>   Queue name (small, medium, long, verylong)
+# -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok 
+#                     and calgary, there is no way to 'share' the processors
+#                     on the node with another job, so you might as well use
+#                     them both.  (ppn == Processors Per Node)
 ##=============================================================================
 #PBS -N filter
 #PBS -r n
