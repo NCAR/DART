@@ -100,27 +100,35 @@ end
 
 #----------------------------------------------------------------------
 # to enable an MPI parallel version of filter for this model, 
-# uncomment the following block:
+# Turn ON the following block (by fixing the logical expression)
 #----------------------------------------------------------------------
 
-# @ n = $n + 1
-#\rm *.o *.mod filter
-#
-#csh mkmf_filter -mpi
-#make
-#
-#if ($status != 0) then
-#   echo
-#   echo "If this died in mpi_utilities_mod, see code comments"
-#   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
-#   echo
-#   exit $n
-#endif
+if ( 1 == 2 ) then
+
+   @ n = $n + 1
+
+   echo
+   echo "---------------------------------------------------"
+   echo "${MODEL} build number ${n} is MPI-enabled filter" 
+
+   \rm *.o *.mod filter
+   csh mkmf_filter -mpi
+   make
+
+   if ($status != 0) then
+      echo
+      echo "If this died in mpi_utilities_mod, see code comments"
+      echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
+      echo
+      exit $n
+   endif
+
+endif
 
 if ( -e using_mpi_for_filter ) then
    # mpirun -np 4 ./filter   || exit $n
    # or one of these:
-   bsub < runme_filter       || exit $n
-   # qsub runme_filter       || exit $n
+   bsub < ../shell_scripts/runme_filter  || exit $n
+   # qsub ../shell_scripts/runme_filter  || exit $n
 endif
 
