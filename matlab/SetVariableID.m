@@ -32,7 +32,7 @@ switch lower(vars.model)
    case 'pe2lyr'
 
       %  model has no choice.
-      varid = vars.def_state_vars;
+      varid = vars.vars;
 
    case 'forced_lorenz_96'
 
@@ -88,21 +88,13 @@ switch lower(vars.model)
                    vars.def_var, num2str(vars.def_state_vars)))
       disp('If these are OK, <cr>;')
 
-      switch lower(vars.def_var)
-      case 'state'
-         disp(sprintf('If not, enter array of state variable ID''s between %d and %d', ...
-         vars.min_state_var, vars.max_state_var))
+      disp('Possible choices of variables are ')
+      disp(vars.vars)
 
-      otherwise
-
-         disp('Possible choices of variables are ')
-         disp(vars.vars)
-
-         disp(sprintf('and a range between %d and %d', vars.min_state_var,  ...
-                                                       vars.max_state_var))
-         disp(sprintf('you can choose something like ''%s 2 5 8 9'', for example.', ...
-                      vars.vars{1}))
-      end
+      disp(sprintf('and a range between %d and %d', vars.min_state_var,  ...
+                                                    vars.max_state_var))
+      disp(sprintf('you can choose something like ''%s %d %d'', for example.', ...
+                   vars.vars{1},vars.def_state_vars(1),vars.def_state_vars(2)))
 
       IDstring = input('(no intervening syntax required)\n','s');
 
