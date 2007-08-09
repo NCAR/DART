@@ -43,34 +43,33 @@ function PlotEnsTimeSeries( pinfo )
 % $Revision$
 % $Date$
 
+pinfo.truth_time = [-1 -1];
+pinfo.diagn_time = [-1 -1];
 
+% Get the indices for the ensemble mean.
+% The metadata is queried to determine which "copy" is appropriate.
+ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 
-pinfo = setfield(pinfo, 'truth_time', [-1,-1]);
-pinfo = setfield(pinfo, 'diagn_time', [-1,-1]);
+% Get some useful plotting arrays
+times = getnc(pinfo.diagn_file,'time', pinfo.diagn_time(1), pinfo.diagn_time(2));
+num_times = length(times);
+
+% If the truth is known, great.
 if ( exist(pinfo.truth_file) == 2)
-   pinfo = CheckModelCompatibility(pinfo);
-   truth_index = get_copy_index(pinfo.truth_file, 'true state' );
    have_truth  = 1;
+   truth_index = get_copy_index(pinfo.truth_file, 'true state' );
+   vars        = CheckModelCompatibility(pinfo);
+   pinfo       = CombineStructs(pinfo,vars);
 else
    have_truth  = 0;
 end
 
 % Get some information from the diagn_file 
 fd = netcdf(pinfo.diagn_file);
-d.model      = fd.model(:);
 d.num_copies = length(fd('copy')); % determine # of ensemble members
-d.num_times  = length(fd('time')); % determine # of output times
 close(fd);
 
-% Get the indices for the ensemble mean
-% The metadata is queried to determine which "copy" is appropriate.
-ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
-
-% Get some useful plotting arrays
-times = getnc(pinfo.diagn_file,'time', ...
-              [ pinfo.diagn_time(1) ] , [ pinfo.diagn_time(2) ]);
-
-switch lower(d.model)
+switch lower(pinfo.model)
 
    case '9var'
 
@@ -78,37 +77,39 @@ switch lower(d.model)
       for i = 1:3
          figure(i); clf
          for j = 1:3
-
             ivar = (i - 1)*3 + j;
+            disp(sprintf('plotting model %s Variable %d ...',pinfo.model,ivar))
+            subplot(3, 1, j);
+
+            if (have_truth) 
+               truth    = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
+                                         pinfo.truth_time(1), pinfo.truth_time(2));
+               plot(times, truth,'b','LineWidth',2.0); hold on;
+               legendstr = 'True State';
+            end
+
             ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
                                          pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
-
-            % all members
             ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar, ...
                                          pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
             nmembers    = size(ens_members,2);
 
-            if (have_truth) 
-               truth    = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
-                                         pinfo.truth_time(1), pinfo.truth_time(2)) ;
+            plot(times,   ens_mean,'r','LineWidth',2.0); hold on;
+            plot(times,ens_members,'g');
+            if (exist('legendstr')) 
+                legend(legendstr, 'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
+               plot(times,   truth,'b','LineWidth',2); % again, to put 'on top'
+            else
+               legend(           'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
             end
+            plot(times,   ens_mean,'r','LineWidth',2.0);
 
-            subplot(3, 1, j);
-               % This is a bit wasteful, but we plot everything once to define
-               % the color order for the legend and then again for visibility
-               plot(times,      truth,'b','LineWidth',2.0); hold on;
-               plot(times,   ens_mean,'r','LineWidth',2.0); hold on;
-               plot(times,ens_members,'g');
-               legend('True State','Ensemble Mean', ...
-                      sprintf('Ensemble Members (%d)',nmembers),0)
-
-               legend boxoff
-               plot(times,   truth,'b','LineWidth',2.0); % plot again - on top
-               plot(times,ens_mean,'r','LineWidth',2.0); %      again - on top
-               title(sprintf('%s Variable %d Ensemble Members of %s',...
-                     d.model, ivar, pinfo.diagn_file), ...
-                     'interpreter','none','fontweight','bold')
-               xlabel(sprintf('model time (%d timesteps)',d.num_times))
+            title(sprintf('%s Variable %d Ensemble Members of %s',...
+                     pinfo.model, ivar, pinfo.diagn_file), ...
+                     'interpreter','none','fontweight','bold');
+            xlabel(sprintf('model time (%d timesteps)',num_times));
+            legend boxoff
+            hold off;
          end
       end
 
@@ -118,46 +119,64 @@ switch lower(d.model)
       figure(1); clf; iplot = 0;
       for ivar = pinfo.var_inds,
 
-            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
-                                         pinfo.truth_time(1), pinfo.truth_time(2)) ;
-            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
-                                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
-            % all members
-            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar, ...
-                                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
-            nmembers    = size(ens_members,2);
-
             iplot = iplot + 1;
             subplot(length(pinfo.var_inds), 1, iplot);
-               % This is a bit wasteful, but we plot everything once to define
-               % the color order for the legend and then again for visibility
-               plot(times,      truth,'b','LineWidth',1.0); hold on;
-               plot(times,   ens_mean,'r','LineWidth',1.0);
-               plot(times,ens_members,'g');
-               legend('True State','Ensemble Mean', ...
-                      sprintf('Ensemble Members (%d)',nmembers),0)
-               legend boxoff
-               plot(times,   truth,'b','LineWidth',1.0); % plot again - on top
-               plot(times,ens_mean,'r','LineWidth',1.0); %      again - on top
-               title(sprintf('%s Variable %d Ensemble Members of %s',...
-                     d.model, ivar, pinfo.diagn_file), ...
-                     'interpreter','none','fontweight','bold')
-               xlabel(sprintf('model time (%d timesteps)',d.num_times))
+
+            if (have_truth)
+               truth    = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
+                                         pinfo.truth_time(1), pinfo.truth_time(2));
+               plot(times,      truth,'b','LineWidth',2.0); hold on;
+               legendstr = 'True State';
+            end
+
+            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2));
+            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2));
+            nmembers    = size(ens_members,2);
+
+            plot(times,   ens_mean,'r','LineWidth',2.0); hold on;
+            plot(times,ens_members,'g');
+            if (exist('legendstr'))
+               legend(legendstr, 'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
+               plot(times,   truth,'b','LineWidth',2); % again, to put 'on top'
+            else
+               legend(           'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
+            end
+            plot(times,   ens_mean,'r','LineWidth',2.0); % again, to put 'on top'
+
+            title(sprintf('%s Variable %d Ensemble Members of %s', ...
+                  pinfo.model, ivar, pinfo.diagn_file), ...
+                  'interpreter','none','fontweight','bold');
+            xlabel(sprintf('model time (%d timesteps)',num_times));
+            legend boxoff
+            hold off;
       end
+
       % as a bonus, plot the mean attractors.
       figure(2); clf
-      ts   = get_state_copy(pinfo.truth_file,pinfo.var, truth_index);
+
+      if (have_truth)
+         ts   = get_state_copy(pinfo.truth_file,pinfo.var, truth_index);
+         plot3( ts(:,1), ts(:,2), ts(:,3), 'b'); hold on;
+         legendstr = 'True State';
+      end
+
       ens  = get_state_copy(pinfo.diagn_file,pinfo.var, ens_mean_index);
-      plot3(  ts(:,1),  ts(:,2),  ts(:,3), 'b', ...
-             ens(:,1), ens(:,2), ens(:,3), 'r')
-      title(sprintf('%s Attractors for %s and %s', ...
-                 d.model, pinfo.truth_file, pinfo.diagn_file), ...    
-                 'interpreter','none','fontweight','bold')
-      legend('True State','Ensemble Mean',0)
+      plot3(ens(:,1), ens(:,2), ens(:,3), 'r');
+      title(sprintf('%s Attractors for %s', pinfo.model, pinfo.diagn_file), ...    
+                 'interpreter','none','fontweight','bold');
+
+      if (exist('legendstr'))
+         legend(legendstr,'Ensemble Mean',0);
+      else
+         legend(          'Ensemble Mean',0);
+      end
+
+      xlabel('state variable 1');
+      ylabel('state variable 2');
+      zlabel('state variable 3');
       legend boxoff
-      xlabel('state variable 1')
-      ylabel('state variable 2')
-      zlabel('state variable 3')
 
    case {'lorenz_96', 'lorenz_96_2scale', 'forced_lorenz_96', 'lorenz_04', ...
          'ikeda', 'simple_advection'}
@@ -165,73 +184,85 @@ switch lower(d.model)
       % Use one figure with subplots 
       figure(1); clf; iplot = 0;
       for ivar = pinfo.var_inds,
-
-            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
-                                         pinfo.truth_time(1), pinfo.truth_time(2)) ;
-            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
-                                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
-            % all members
-            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar, ...
-                                         pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
-            nmembers    = size(ens_members,2);
-
             iplot = iplot + 1;
             subplot(length(pinfo.var_inds), 1, iplot);
-               % This is a bit wasteful, but we plot everything once to define
-               % the color order for the legend and then again for visibility
-               plot(times,      truth,'b','LineWidth',2); hold on;
-               plot(times,   ens_mean,'r','LineWidth',2);
-               plot(times,ens_members,'g');
-               legend('True State','Ensemble Mean', ...
-                      sprintf('Ensemble Members (%d)',nmembers),0)
-               legend boxoff
-               plot(times,   truth,'b','LineWidth',2); % plot again - on top
-               plot(times,ens_mean,'r','LineWidth',2); %      again - on top
-               title(sprintf('%s %s varnum %d Ensemble Members of %s',...
-                     d.model, pinfo.var, ivar, pinfo.diagn_file), ...
+
+            if (have_truth)
+               truth    = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
+                                         pinfo.truth_time(1), pinfo.truth_time(2));
+               plot(times, truth,'b','LineWidth',2); hold on;
+               legendstr = 'True State';
+            end
+
+            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2));
+            ens_members = get_ens_series(pinfo.diagn_file, pinfo.var, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2));
+            nmembers    = size(ens_members,2);
+
+            plot(times,   ens_mean,'r','LineWidth',2); hold on;
+            plot(times,ens_members,'g');
+
+            if (exist('legendstr'))
+               legend(legendstr, 'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
+               plot(times,   truth,'b','LineWidth',2); % again, to put 'on top'
+            else
+               legend(           'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
+            end
+            plot(times,   ens_mean,'r','LineWidth',2.0); % again, to put 'on top'
+
+            title(sprintf('%s %s varnum %d Ensemble Members of %s',...
+                     pinfo.model, pinfo.var, ivar, pinfo.diagn_file), ...
                      'interpreter','none','fontweight','bold')
-               xlabel(sprintf('model time (%d timesteps)',d.num_times))
+            xlabel(sprintf('model time (%d timesteps)',num_times));
+            legend boxoff
       end
 
-   case 'fms_bgrid'
+   case {'fms_bgrid','pe2lyr'}
 
       clf;
 
-      ft = netcdf(pinfo.truth_file);
-      d.model      = fd.model(:);
+      ft = netcdf(pinfo.fname);
       timeunits    = ft{'time'}.units(:);
       varunits     = ft{pinfo.var}.units(:);
       close(ft);
-
-      truth       = GetCopy(pinfo.truth_file, truth_index,      pinfo );
-      ens_mean    = GetCopy(pinfo.diagn_file, ens_mean_index,   pinfo );
-      ens_members = GetEns( pinfo.diagn_file,                   pinfo );
-      nmembers    = size(ens_members,2);
 
       subplot(2,1,1)
          PlotLocator(pinfo)
 
       subplot(2,1,2)
 
-         % This is a bit wasteful, but we plot everything once to define
-         % the color order for the legend and then again for visibility
-         plot(times,      truth,'b','LineWidth',2); hold on;
-         plot(times,   ens_mean,'r','LineWidth',2);
-         plot(times,ens_members,'g');
-         legend('True State','Ensemble Mean', ...
-                      sprintf('Ensemble Members (%d)',nmembers),0)
-         legend boxoff
-         plot(times,   truth,'b','LineWidth',2); % plot again - on top
-         plot(times,ens_mean,'r','LineWidth',2); %      again - on top
+         if ( have_truth )
+            truth    = GetCopy(pinfo.truth_file, truth_index,      pinfo );
+            plot(times,   truth,'b','LineWidth',2); hold on;
+            legendstr = 'True State';
+            s1 = sprintf('%s model ''%s'' Truth and %s Ensemble Members ', ...
+                            pinfo.model, pinfo.var, pinfo.diagn_file);
+         end
 
-         s1 = sprintf('%s model ''%s'' Truth and %s Ensemble Members ', ...
-                            d.model, pinfo.var, pinfo.diagn_file);
+         ens_mean    = GetCopy(pinfo.diagn_file, ens_mean_index,   pinfo );
+         ens_members = GetEns( pinfo.diagn_file,                   pinfo );
+         nmembers    = size(ens_members,2);
+
+         plot(times,   ens_mean,'r','LineWidth',2); hold on;
+         plot(times,ens_members,'g');
+
+         if (exist('legendstr'))
+            legend(legendstr, 'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
+            plot(times,   truth,'b','LineWidth',2); % again, to put 'on top'
+         else
+            legend(           'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
+         end
+         plot(times,   ens_mean,'r','LineWidth',2); % again, to put 'on top'
+
+         s1 = sprintf('%s model ''%s'' %s Ensemble Members ', ...
+                            pinfo.model, pinfo.var, pinfo.diagn_file);
          s2 = sprintf('level %d lat %.2f lon %.2f', ...
                     pinfo.level, pinfo.latitude, pinfo.longitude);
-         title({s1,s2},'interpreter','none','fontweight','bold')
-
-         xlabel(sprintf('time (%s) %d timesteps',timeunits, d.num_times))
-         ylabel(varunits)
+         title({s1,s2},'interpreter','none','fontweight','bold');
+         xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times));
+         ylabel(varunits);
+         legend boxoff
 
    case 'cam'
 
@@ -249,55 +280,49 @@ switch lower(d.model)
          pinfo.var  = var_names{ivar};
 
          fd         = netcdf(pinfo.diagn_file);
-         model      = fd.model(:);
          timeunits  = fd{'time'}.units(:);
          varunits   = fd{pinfo.var}.units(:);
          close(fd);
-
-         if ( have_truth )
-            truth    = GetCamCopy(pinfo.truth_file, truth_index,      pinfo );
-         end
-
-         ens_mean    = GetCamCopy(pinfo.diagn_file, ens_mean_index,   pinfo );
-         ens_members = GetCamEns( pinfo.diagn_file,                   pinfo );
-         nmembers    = size(ens_members,2);
 
          subplot(2,1,1)
             PlotLocator(pinfo);
 
          subplot(2,1,2)
-            % This is a bit wasteful, but we plot everything once to define
-            % the color order for the legend and then again for visibility
-            if (have_truth)
-               plot(times,      truth,'b','LineWidth',2); hold on;
-               plot(times,   ens_mean,'r','LineWidth',2);
-               plot(times,ens_members,'g');
-               legend('True State','Ensemble Mean', ...
-                            sprintf('Ensemble Members (%d)',nmembers),0);
-               plot(times,   truth,'b','LineWidth',2); % plot again - on top
-               s1 = sprintf('%s model ''%s'' Truth and %s Ensemble Members ', ...
-                               model, pinfo.var, pinfo.diagn_file);
-            else
-               plot(times,   ens_mean,'r','LineWidth',2); hold on;
-               plot(times,ens_members,'g');
-               legend('Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers),0)
-               s1 = sprintf('%s model ''%s'' %s Ensemble Members ', ...
-                               model, pinfo.var, pinfo.diagn_file);
-            end
-            legend boxoff
-            plot(times,ens_mean,'r','LineWidth',2); %      again - on top
 
+            if ( have_truth )
+               truth    = GetCamCopy(pinfo.truth_file, truth_index,      pinfo );
+               plot(times, truth,'b','LineWidth',2); hold on;
+               legendstr = 'True State';
+            end
+
+            ens_mean    = GetCamCopy(pinfo.diagn_file, ens_mean_index,   pinfo );
+            ens_members = GetCamEns( pinfo.diagn_file,                   pinfo );
+            nmembers    = size(ens_members,2);
+
+            plot(times,   ens_mean,'r','LineWidth',2); hold on;
+            plot(times,ens_members,'g'); 
+
+            if (exist('legendstr'))
+               legend(legendstr, 'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
+               plot(times,   truth,'b','LineWidth',2); % again, to put 'on top'
+            else
+               legend(           'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
+            end
+
+            s1 = sprintf('%s model ''%s'' %s Ensemble Members ', ...
+                               pinfo.model, pinfo.var, pinfo.diagn_file);
             s2 = sprintf('level index %d lat %.2f lon %.2f', ...
                        pinfo.levelindex, pinfo.latitude, pinfo.longitude);
-            title({s1,s2},'interpreter','none','fontweight','bold')
-
-            xlabel(sprintf('time (%s) %d timesteps',timeunits, d.num_times))
-            ylabel(varunits)
+            title({s1,s2},'interpreter','none','fontweight','bold');
+            xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times));
+            ylabel(varunits);
+            legend boxoff
+            hold off;
       end
 
    otherwise
 
-      error(sprintf('model %s unknown.',d.model))
+      error(sprintf('model %s unknown.',pinfo.model))
 
 end
 
@@ -402,7 +427,7 @@ var = bob(:,copyindices);
 
 
 function PlotLocator(pinfo)
-   plot(pinfo.longitude,pinfo.latitude,'pg','MarkerSize',12,'MarkerFaceColor','g');
+   plot(pinfo.longitude,pinfo.latitude,'pb','MarkerSize',12,'MarkerFaceColor','b');
    axis([0 360 -90 90])
    worldmap;
    axis image

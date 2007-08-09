@@ -39,11 +39,12 @@ end
 vars  = CheckModel(diagn_file);   % also gets default values for this model.
 
 if (exist(truth_file)==2)
-   pinfo = CheckModelCompatibility(truth_file, diagn_file)
+   pinfo = CheckModelCompatibility(truth_file, diagn_file);
 else
    pinfo.truth_file = [];
 end
 truth_file = pinfo.truth_file;
+pinfo.model = vars.model;
 
 
 switch lower(vars.model)
@@ -82,13 +83,17 @@ switch lower(vars.model)
       pinfo.truth_file    = truth_file;
       pinfo.diagn_file    = diagn_file;
 
+   case 'pe2lyr'
+
+      pinfo = GetPe2lyrInfo(pinfo, diagn_file, 'PlotEnsMeanTimeSeries');
+      pinfo.truth_file = truth_file;   % since it has been verified to be compatible.
+      pinfo.diagn_file = diagn_file;   % since it has been verified to be compatible.
+
    otherwise
 
       error(sprintf('model %s not implemented yet', vars.model))
 
 end
-
-pinfo % echo for posterity.
 
 PlotEnsMeanTimeSeries( pinfo )
 clear vars varid

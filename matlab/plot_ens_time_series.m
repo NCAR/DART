@@ -40,6 +40,7 @@ else
    pinfo.truth_file = [];
 end
 truth_file = pinfo.truth_file;
+pinfo.model = vars.model;
 
 switch lower(vars.model)
 
@@ -75,6 +76,13 @@ switch lower(vars.model)
       pinfo               = GetCamInfo(vars, 'PlotEnsTimeSeries');
       pinfo.truth_file    = truth_file;
       pinfo.diagn_file    = diagn_file;
+
+   case 'pe2lyr'
+
+      varid = SetVariableID(vars);      % queries for variable IDs if needed.
+      pinfo = GetPe2lyrInfo(pinfo, diagn_file, 'PlotEnsTimeSeries');
+      pinfo.truth_file = truth_file;   % known to be compatible.
+      pinfo.diagn_file = diagn_file;   % known to be compatible.
 
    otherwise
       error(sprintf('model %s not implemented yet', vars.model))

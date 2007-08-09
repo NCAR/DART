@@ -1,6 +1,5 @@
 function PlotEnsMeanTimeSeries( pinfo )
-% PlotEnsMeanTimeSeries : plots time series of ensemble members, mean and
-% truth, if the truth exists.
+% PlotEnsMeanTimeSeries : plots time series of ensemble members, mean and truth, if the truth exists.
 %
 % PlotEnsMeanTimeSeries is intended to be called by 'plot_ens_mean_time_series'
 % The only input argument is a structure with model-dependent
@@ -18,7 +17,7 @@ function PlotEnsMeanTimeSeries( pinfo )
 %
 %
 % Example 1  (9variable model)
-%%-------------------------------------------------------------
+%-------------------------------------------------------------
 % pinfo.truth_file  = 'True_State.nc';
 % pinfo.diagn_file = 'Prior_Diag.nc';
 % pinfo.var         = 'state';
@@ -26,7 +25,7 @@ function PlotEnsMeanTimeSeries( pinfo )
 % PlotEnsMeanTimeSeries( pinfo )
 %
 % Example 2 (FMS BGrid model)
-%%--------------------------------------------------------
+%--------------------------------------------------------
 % pinfo.truth_file = 'True_State.nc';
 % pinfo.diagn_file = 'Prior_Diag.nc';
 % pinfo.var        = 'u';
@@ -46,38 +45,29 @@ function PlotEnsMeanTimeSeries( pinfo )
 % $Revision$
 % $Date$
 
-pinfo.truth_time(1) = -1;
-pinfo.truth_time(2) = -1;
-pinfo.diagn_time(1) = -1;
-pinfo.diagn_time(2) = -1;
+pinfo.truth_time = [-1 -1];
+pinfo.diagn_time = [-1 -1];
 
-if (exist(pinfo.truth_file) == 2) 
-   pinfo = CheckModelCompatibility(pinfo)
-   truth_index = get_copy_index(pinfo.truth_file, 'true state' );
-   have_truth = 1;
-else
-   have_truth = 0;
-end
-
-% Get some information from the diagn_file 
-fd = netcdf(pinfo.diagn_file);
-d.model      = fd.model(:);
-close(fd);
-
-% Get the indices for the true state, ensemble mean and spread
+% Get the indices for the ensemble mean and spread.
 % The metadata is queried to determine which "copy" is appropriate.
 ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
 % Get some useful plotting arrays
-if (have_truth)
-  times = getnc(pinfo.diagn_file,'time', pinfo.diagn_time(1), pinfo.diagn_time(2)); 
-else
-  times = getnc(pinfo.diagn_file,'time');
-end
-d.num_times = length(times);
+times = getnc(pinfo.diagn_file,'time', pinfo.diagn_time(1), pinfo.diagn_time(2)); 
+num_times = length(times);
 
-switch lower(d.model)
+% If the truth is known, great.
+if (exist(pinfo.truth_file) == 2) 
+   have_truth  = 1;
+   truth_index = get_copy_index(pinfo.truth_file, 'true state');
+   vars        = CheckModelCompatibility(pinfo);
+   pinfo       = CombineStructs(pinfo,vars);
+else
+   have_truth  = 0;
+end
+
+switch lower(pinfo.model)
 
    case '9var'
 
@@ -86,18 +76,23 @@ switch lower(d.model)
          figure(i); clf
          for j = 1:3,
             ivar = (i - 1)*3 + j;
-            disp(sprintf('plotting model %s Variable %d ...',d.model,ivar))
-            % Get the truth for this variable
-            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
-                                         pinfo.truth_time(1), pinfo.truth_time(2));
-            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
-                                         pinfo.diagn_time(1), pinfo.diagn_time(2));
+            disp(sprintf('plotting model %s Variable %d ...',pinfo.model,ivar))
             subplot(3, 1, j);
-            plot(times,truth, 'b',times,ens_mean,'r')
-            title(sprintf('%s Variable %d of %s',d.model,ivar,pinfo.diagn_file), ...
+            ens_mean = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
+                                      pinfo.diagn_time(1), pinfo.diagn_time(2));
+            plot(times,ens_mean,'r')
+            legend('Ensemble Mean',0)
+
+            if ( have_truth )
+               truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
+                                      pinfo.truth_time(1), pinfo.truth_time(2));
+               hold on; plot(times,truth,'b'); hold off;
+               legend('Ensemble Mean','True State',0)
+            end
+
+            title(sprintf('%s Variable %d of %s',pinfo.model,ivar,pinfo.diagn_file), ...
                      'interpreter','none','fontweight','bold')
-               xlabel(sprintf('model time (%d timesteps)',d.num_times))
-            legend('True State','Ensemble Mean',0)
+            xlabel(sprintf('model time (%d timesteps)',num_times))
             legend boxoff
          end
       end
@@ -107,36 +102,49 @@ switch lower(d.model)
       % Use one figure with three(usually) subplots
       figure(1); clf; iplot = 0;
       for ivar = pinfo.var_inds,
+
             iplot = iplot + 1;
-            % Get the truth for this variable
-            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
-                                         pinfo.truth_time(1), pinfo.truth_time(2));
+            subplot(length(pinfo.var_inds), 1, iplot);
+
             ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
                                          pinfo.diagn_time(1), pinfo.diagn_time(2));
-            subplot(length(pinfo.var_inds), 1, iplot);
-            plot(times,truth, 'b',times,ens_mean,'r')
-            title(sprintf('%s Variable %d of %s',d.model,ivar,pinfo.diagn_file), ...
+            plot(times,ens_mean,'r');
+            legend('Ensemble Mean',0);
+
+            % If the truth is known ...
+            if ( have_truth )
+               truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
+                                      pinfo.truth_time(1), pinfo.truth_time(2));
+               hold on; plot(times,truth,'b'); hold off;
+               legend('Ensemble Mean','True State',0);
+            end
+
+            title(sprintf('%s Variable %d of %s',pinfo.model,ivar,pinfo.diagn_file), ...
                      'interpreter','none','fontweight','bold')
-               xlabel(sprintf('model time (%d timesteps)',d.num_times))
-            legend('True State','Ensemble Mean',0)
+            xlabel(sprintf('model time (%d timesteps)',num_times))
             legend boxoff
       end
       % as a bonus, plot the mean attractors.
       figure(2); clf
-      ts   = get_state_copy(pinfo.truth_file,pinfo.var, truth_index, ...
-                            pinfo.truth_time(1), pinfo.truth_time(2));
       ens  = get_state_copy(pinfo.diagn_file,pinfo.var, ens_mean_index, ...
                             pinfo.diagn_time(1), pinfo.diagn_time(2));
-      plot3(  ts(:,1),  ts(:,2),  ts(:,3), 'b', ...
-             ens(:,1), ens(:,2), ens(:,3), 'r')
-      title(sprintf('%s Attractors for %s and %s', ...
-                 d.model, pinfo.truth_file, pinfo.diagn_file), ...    
-                 'interpreter','none','fontweight','bold')
-      legend('True State','Ensemble Mean',0)
-      legend boxoff
+      plot3(ens(:,1), ens(:,2), ens(:,3), 'r')
+      legend('Ensemble Mean',0)
+
+      if (have_truth)
+         ts= get_state_copy(pinfo.truth_file,pinfo.var, truth_index, ...
+                            pinfo.truth_time(1), pinfo.truth_time(2));
+         hold on; plot3(  ts(:,1),  ts(:,2),  ts(:,3), 'b'); hold off;
+         legend('Ensemble Mean','True State',0)
+      end
+
+      title(sprintf('%s Attractors for %s', ...
+              pinfo.model, pinfo.diagn_file), ...    
+              'interpreter','none','fontweight','bold')
       xlabel('state variable 1')
       ylabel('state variable 2')
       zlabel('state variable 3')
+      legend boxoff
 
    case {'lorenz_96', 'lorenz_96_2scale', 'lorenz_04', 'forced_lorenz_96', ...
          'ikeda', 'simple_advection'} 
@@ -145,50 +153,60 @@ switch lower(d.model)
       figure(1); clf; iplot = 0;
       for ivar = pinfo.var_inds,
             iplot = iplot + 1;
-            % Get the truth for this variable
-            truth       = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
-                                         pinfo.truth_time(1), pinfo.truth_time(2));
-            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
-                                         pinfo.diagn_time(1), pinfo.diagn_time(2));
             subplot(length(pinfo.var_inds), 1, iplot);
-            plot(times,truth, 'b',times,ens_mean,'r')
-            title(sprintf('%s Variable %d of %s',d.model,ivar,pinfo.diagn_file), ...
+            ens_mean = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
+                                         pinfo.diagn_time(1), pinfo.diagn_time(2));
+            plot(times,ens_mean,'r')
+            legend('Ensemble Mean',0)
+
+            % Get the truth for this variable
+            if (have_truth)
+               truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
+                                      pinfo.truth_time(1), pinfo.truth_time(2));
+               hold on; plot(times,truth,'b'); hold off;
+               legend('Ensemble Mean','True State',0)
+            end
+            title(sprintf('%s Variable %d of %s',pinfo.model,ivar,pinfo.diagn_file), ...
                      'interpreter','none','fontweight','bold')
-               xlabel(sprintf('model time (%d timesteps)',d.num_times))
-            legend('True State','Ensemble Mean',0)
+            xlabel(sprintf('model time (%d timesteps)',num_times))
             legend boxoff
       end
 
-   case 'fms_bgrid'
+   case {'fms_bgrid','pe2lyr'}
 
       clf;
 
       % Get some plotting information from the truth_file 
-      ft = netcdf(pinfo.truth_file);
+      ft = netcdf(pinfo.diagn_file);
       timeunits    = ft{'time'}.units(:);
       varunits     = ft{pinfo.var}.units(:);
       close(ft);
 
-      truth       = GetCopy(pinfo.truth_file, truth_index,      pinfo , ...
-                            pinfo.truth_time(1), pinfo.truth_time(2)) ;
-      ens_mean    = GetCopy(pinfo.diagn_file, ens_mean_index,   pinfo , ...
-                            pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
-
       subplot(2,1,1)
          PlotLocator(pinfo)
 
-      subplot(2,1,2)
-         plot(times,truth, 'b', times,ens_mean, 'r');
+      ens_mean    = GetCopy(pinfo.diagn_file, ens_mean_index,   pinfo , ...
+                            pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
 
-         s1 = sprintf('%s ''%s'' -- Truth and %s Ensemble Mean', ...
-                            d.model, pinfo.var, pinfo.diagn_file);
+      subplot(2,1,2)
+         plot(times,ens_mean,'r');
+         legend('Ensemble Mean',0)
+
+         s1 = sprintf('%s ''%s'' -- %s Ensemble Mean', ...
+                            pinfo.model, pinfo.var, pinfo.diagn_file);
          s2 = sprintf('level %d lat %.2f lon %.2f', ...
                     pinfo.level, pinfo.latitude, pinfo.longitude);
          title({s1,s2},'interpreter','none','fontweight','bold')
 
-         legend('True State','Ensemble Mean',0)
+         if (have_truth)
+            truth = GetCopy(pinfo.truth_file, truth_index,      pinfo , ...
+                            pinfo.truth_time(1), pinfo.truth_time(2)) ;
+            hold on; plot(times,truth,'b'); hold off;
+            legend('Ensemble Mean','True State',0)
+         end
+
          legend boxoff
-         xlabel(sprintf('time (%s) %d timesteps',timeunits, d.num_times))
+         xlabel(sprintf('time (%s) %d timesteps',timeunits, num_times))
          ylabel(varunits)
 
    case 'cam'
@@ -205,55 +223,43 @@ switch lower(d.model)
          figure(iplot); clf;
 
          pinfo.var  = var_names{ivar};
-
          fd         = netcdf(pinfo.diagn_file);
-         model      = fd.model(:);
          timeunits  = fd{'time'}.units(:);
          varunits   = fd{pinfo.var}.units(:);
          close(fd);
 
-         if ( have_truth )
-            truth    = GetCamCopy(pinfo.truth_file, truth_index, pinfo, ...
-                                  pinfo.truth_time(1), pinfo.truth_time(2)) ;
-            ens_mean = GetCamCopy(pinfo.diagn_file, ens_mean_index, pinfo, ...
-                                  pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
-         else
-            ens_mean = GetCamCopy(pinfo.diagn_file,ens_mean_index,pinfo,-1,-1);
-         end
-
-
          subplot(2,1,1)
             PlotLocator(pinfo);
 
+         ens_mean = GetCamCopy(pinfo.diagn_file, ens_mean_index, pinfo, ...
+                               pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
          subplot(2,1,2)
-            % This is a bit wasteful, but we plot everything once to define
-            % the color order for the legend and then again for visibility
-            if (have_truth)
-               plot(times,      truth,'b','LineWidth',2); hold on;
-               plot(times,   ens_mean,'r','LineWidth',2);
-               legend('True State','Ensemble Mean',0);
-               plot(times,   truth,'b','LineWidth',2); % plot again - on top
-               s1 = sprintf('%s model ''%s'' %s Truth and Ensemble Mean ', ...
-                               model, pinfo.var, pinfo.diagn_file);
-            else
-               plot(times,   ens_mean,'r','LineWidth',2);
-               legend('Ensemble Mean', 0)
-               s1 = sprintf('%s model ''%s'' %s Ensemble Mean ', ...
-                               model, pinfo.var, pinfo.diagn_file);
-            end
-            legend boxoff
-            plot(times,ens_mean,'r','LineWidth',2); %      again - on top
-
+            plot(times,ens_mean,'r','LineWidth',2);
+            legend('Ensemble Mean', 0)
+            s1 = sprintf('%s model ''%s'' %s Ensemble Mean ', ...
+                 pinfo.model, pinfo.var, pinfo.diagn_file);
             s2 = sprintf('level index %d lat %.2f lon %.2f', ...
                        pinfo.levelindex, pinfo.latitude, pinfo.longitude);
-            title({s1,s2},'interpreter','none','fontweight','bold')
 
-            xlabel(sprintf('time (%s) %d timesteps',timeunits, d.num_times))
+            if ( have_truth )
+               truth    = GetCamCopy(pinfo.truth_file, truth_index, pinfo, ...
+                                     pinfo.truth_time(1), pinfo.truth_time(2)) ;
+               hold on; plot(times,truth,'b','LineWidth',2); hold off;
+               legend('Ensemble Mean','True State',0);
+               s1 = sprintf('%s model ''%s'' %s Truth and Ensemble Mean ', ...
+                               pinfo.model, pinfo.var, pinfo.diagn_file);
+            end
+
+            %plot(times,ens_mean,'r','LineWidth',2); %      again - on top
+
+            title({s1,s2},'interpreter','none','fontweight','bold')
+            xlabel(sprintf('time (%s) %d timesteps',timeunits, num_times))
             ylabel(varunits)
+            legend boxoff
       end
 
    otherwise
-      error(sprintf('model %s unknown.',d.model))
+      error(sprintf('model %s unknown.',pinfo.model))
 
 end
 
@@ -289,7 +295,7 @@ var = getnc(fname, pinfo.var, corner, endpnt);
 
 
 function PlotLocator(pinfo)
-   plot(pinfo.longitude,pinfo.latitude,'pg','MarkerSize',12,'MarkerFaceColor','g');
+   plot(pinfo.longitude,pinfo.latitude,'pb','MarkerSize',12,'MarkerFaceColor','b');
    axis([0 360 -90 90])
    worldmap;
    axis image
