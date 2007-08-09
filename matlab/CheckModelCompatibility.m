@@ -304,6 +304,16 @@ switch lower(modelname)
          y = [dnum_lons dnum_lats dnum_lvls];
       end
 
+   case 'lorenz_96_2scale'
+      Xexist = VarExist(ncid,'Xdim');
+      Yexist = VarExist(ncid,'Ydim');
+      if ( Xexist && Yexist ) 
+         dnum_X = prod(size(ncid('Xdim')));
+         dnum_Y = prod(size(ncid('Ydim')));
+	 x = 2;
+         y = [dnum_X dnum_Y];
+      end
+
    case 'simple_advection'
       if ( VarExist(ncid,'loc1d')) 
          y = prod(size(ncid('loc1d')));

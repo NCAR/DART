@@ -97,7 +97,7 @@ switch lower(model)
       delta_t           = f.model_delta_t(:);
       time_step_days    = f.model_time_step_days(:);
       time_step_seconds = f.model_time_step_seconds(:);
-      num_model_vars    = f.model_num_state_vars(:);  % ACTUAL state vars, not
+      num_model_vars    = cast(f.model_num_state_vars(:),'double');  % ACTUAL state vars, not
 
       atts = dim(f{'StateVariable'}); num_vars  = length(atts{1}); % # of state varbls
       if (prod(size(num_vars)) > 1 ) 
@@ -158,20 +158,17 @@ switch lower(model)
 
    case 'simple_advection'
 
-      if ( isempty(f{'state'}) )
-         varlist = {'concentration','source','wind', ...
-                    'mean_source','source_phase'};
-      else
-         varlist = {'state'};
-      end
-
       loc1d = getnc(fname,'loc1d');
       num_locs = length(loc1d);
 
-      % The only trick is to pick an equally-spaced subset of state 
-      % variables for the default.
-
-      def_inds = round([1 , num_locs/3 , 2*num_locs/3]);
+      if ( isempty(f{'state'}) )
+         varnames = {'concentration','source','wind', ...
+                    'mean_source','source_phase'};
+         def_inds = round([1 , num_locs/3 , 2*num_locs/3]);
+      else
+         varnames = {'state'};
+         def_inds = [1 13 27];
+      end
 
       vars = struct('model'       ,model, ...
               'loc1d'             ,loc1d, ...
@@ -179,32 +176,33 @@ switch lower(model)
               'min_ens_mem'       ,min(copy), ...
               'max_ens_mem'       ,max(copy), ...
               'time_series_length',num_times, ...
-              'model_size'        ,length(varlist)*length(loc1d), ...
-              'def_var'           ,varlist{1}, ...
+              'model_size'        ,length(varnames)*length(loc1d), ...
+              'def_var'           ,varnames{1}, ...
               'min_state_var'     ,1, ...
               'max_state_var'     ,num_locs, ...
               'def_state_vars'    ,def_inds, ...
-              'num_vars'          ,length(varlist));
-      vars.vars = varlist;
+              'num_vars'          ,length(varnames));
+      vars.vars = varnames;
 
    case 'fms_bgrid'
 
       % A more robust way would be to use the netcdf low-level ops:
-      % bob = var(f);     % bob is a cell array of ncvars
+      % bob = var(f);      % bob is a cell array of ncvars
       % name(bob{1})       % is the variable name string
       % bob{1}(:)          % is the value of the netcdf variable  (no offset/scale)
 
-      num_vars  = 4; % ps, t, u, v
+      varnames  = {'ps','t','u','v'};
+      num_vars = length(varnames);
       nlevels   = ncsize(f('lev')); % determine # of state variables
       if (prod(size(nlevels)) > 1 ) 
          error(sprintf('%s has no ''lev'' dimension.',fname))
       end
-      times  = getnc(fname,'time');
-      TmpI   = getnc(fname,'TmpI');    % longitude
-      TmpJ   = getnc(fname,'TmpJ');    % latitude
-      levels = getnc(fname,'level');
-      VelI   = getnc(fname,'VelI');    % longitude
-      VelJ   = getnc(fname,'VelJ');    % latitude
+%     times  = getnc(fname,'time');
+%     TmpI   = getnc(fname,'TmpI');    % longitude
+%     TmpJ   = getnc(fname,'TmpJ');    % latitude
+%     levels = getnc(fname,'level');
+%     VelI   = getnc(fname,'VelI');    % longitude
+%     VelJ   = getnc(fname,'VelJ');    % latitude
 
       vars = struct('model',model, ...
               'num_state_vars',num_vars, ...
@@ -212,6 +210,8 @@ switch lower(model)
               'time_series_length',num_times, ...
               'min_ens_mem',min(copy), ...
               'max_ens_mem',max(copy));
+
+      vars.vars = varnames;
 
    case 'cam'
 
@@ -227,8 +227,6 @@ switch lower(model)
       if (prod(size(nlevels)) > 1 ) 
           error(sprintf('%s has no ''lev'' dimension.',fname))
       end
-
-      atts = dim(f{'time'}); num_times  = length(atts{1}); % determine # of output times
 
       vars = struct('model',model, ...
               'num_state_vars',num_vars, ...
@@ -264,6 +262,23 @@ switch lower(model)
               'max_ens_mem',max(copy));
 
    case 'pe2lyr'
+
+      % Since this is a 3D model, only the most rudimentary information
+      % is gathered here. Each plot requires different information,
+      % so there is a separate function (GetPe2lyrInfo.m) that gets
+      % the information for each specific plot type.
+
+      varnames  = {'u','v','z'};
+      num_vars  = length(varnames);
+
+      vars = struct('model',model, ...
+              'num_state_vars',num_vars, ...
+              'num_ens_members',num_copies, ...
+              'time_series_length',num_times, ...
+              'min_ens_mem',min(copy), ...
+              'max_ens_mem',max(copy) );
+
+      vars.vars = varnames;
 
    otherwise
 
