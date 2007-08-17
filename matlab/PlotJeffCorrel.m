@@ -9,6 +9,7 @@ function PlotJeffCorrel( pinfo )
 %
 % USAGE: PlotVarVarCorrel(fname, base_var_index, base_time, state_var_index)
 %
+% pinfo is a structure with the following necessary components:
 % fname
 % base_var_index    index of one of the state variables to correlate  
 % base_time         index of the time of interest (timestep)
@@ -49,7 +50,7 @@ close(f);
 
 switch lower(model)
 
-   case 'fms_bgrid'
+   case {'fms_bgrid','pe2lyr'}
 
       clf;
 
@@ -74,7 +75,7 @@ switch lower(model)
 
       s2 = sprintf('with ''%s'', lvl = %d, lat = %.2f, lon= %.2f, %d ensemble members -- %s', ...
           pinfo.comp_var, pinfo.comp_lvl, pinfo.comp_lat, pinfo.comp_lon, ...
-          nmembers,pinfo.fname); 
+          nmembers, pinfo.fname); 
 
       title({s1,s2},'interpreter','none','fontweight','bold')
       xlabel(sprintf('time (%s) %d timesteps',timeunits, num_times))
@@ -115,15 +116,15 @@ switch lower(model)
       % Get 'standard' ensemble series 
        base_var = get_ens_series(pinfo.fname, pinfo.base_var,  pinfo.base_var_index);
       state_var = get_ens_series(pinfo.fname, pinfo.state_var, pinfo.state_var_index);
-       nmembers = size(state_var,2);
-      
+      nmembers  = size(state_var,2);
+
       % perform a single correlation
       correl = jeff_correl(base_var, pinfo.base_time, state_var);
       
       clf; plot(correl);
       
-      s1 = sprintf('%s Correlation of %s %d, T = %d, with %s %d', ...
-               model, pinfo.base_var,  pinfo.base_var_index, pinfo.base_time, ...
+      s1 = sprintf('%s Correlation of variable %s %d, T = %d, with variable %s %d', ...
+               model, pinfo.base_var, pinfo.base_var_index, pinfo.base_time, ...
                       pinfo.state_var, pinfo.state_var_index);
       s2 = sprintf('%d ensemble members -- %s', nmembers, pinfo.fname); 
       title({s1,s2},'interpreter','none','fontweight','bold')
@@ -154,6 +155,10 @@ function var = GetEns( fname, var, lvlind, latind, lonind)
 metadata    = getnc(fname,'CopyMetaData');           % get all the metadata
 copyindices = strmatch('ensemble member',metadata);  % find all 'member's
 
+% if need to clip by time, add these to arg list
+tstart = -1;
+tend   = -1;
+
 if ( isempty(copyindices) )
    disp(sprintf('%s has no valid ensemble members',fname))
    disp('To be a valid ensemble member, the CopyMetaData for the member')
@@ -166,20 +171,23 @@ ens_num     = length(copyindices);
 
 % Get all ensemble members, just return desired ones.
 if strcmp(var,'ps')
-   corner = [-1 -1        latind lonind];
-   endpnt = [-1 -1        latind lonind];
+   corner = [tstart -1        latind lonind];
+   endpnt = [tend   -1        latind lonind];
 else
-   corner = [-1 -1 lvlind latind lonind];
-   endpnt = [-1 -1 lvlind latind lonind];
+   corner = [tstart -1 lvlind latind lonind];
+   endpnt = [tend   -1 lvlind latind lonind];
 end
 bob = getnc(fname, var, corner, endpnt); % 'bob' is only 2D 
 var = bob(:,copyindices);
 
 
 function PlotLocator(pinfo)
-   plot(pinfo.base_lon, pinfo.base_lat,'pg','MarkerSize',12,'MarkerFaceColor','g');
-   axis([0 360 -90 90])
-   worldmap
+   plot(pinfo.base_lon, pinfo.base_lat,'pb','MarkerSize',12,'MarkerFaceColor','b');
+   hold on;
+   plot(pinfo.comp_lon, pinfo.comp_lat,'pr','MarkerSize',12,'MarkerFaceColor','r');
+   hold off;
+   axis([0 360 -90 90]);
+   worldmap;
    axis image
    grid on
 

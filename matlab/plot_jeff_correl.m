@@ -43,17 +43,17 @@ switch lower(vars.model)
       pinfo.state_var = vars.def_var;
 
       inputstring = input( ...
-           sprintf('Input index for base variable (between %d and %d)  ', ...
+           sprintf('Input index for base variable (between %d and %d, inclusive)  ', ...
            vars.min_state_var, vars.max_state_var), 's');
       pinfo.base_var_index = str2num(deblank(inputstring));
 
       inputstring = input( ...
-           sprintf('Input time index for base point (between 1 and %d)  ', ...
+           sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
            vars.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
       inputstring = input( ...
-           sprintf('Input variable index for correlation (between %d and %d)  ', ...
+           sprintf('Input variable index for correlation (between %d and %d, inclusive)  ', ...
            vars.min_state_var, vars.max_state_var), 's');
       pinfo.state_var_index = str2num(deblank(inputstring));
 
@@ -71,7 +71,7 @@ switch lower(vars.model)
       [pinfo.base_var, pinfo.base_var_index] = ParseAlphaNumerics(inputstring);
 
       inputstring = input( ...
-           sprintf('Input time index for base point (between 1 and %d) \n', ...
+           sprintf('Input time index for base point (between 1 and %d, inclusive) \n', ...
            vars.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
@@ -82,7 +82,7 @@ switch lower(vars.model)
 
       disp('Your choice of variables are:')
       disp(vars.vars)
-      disp(sprintf('the indices (locations) can range from %d to %d', ...
+      disp(sprintf('the indices (locations) can range from %d to %d, inclusive', ...
            vars.min_state_var, vars.max_state_var))
 
       str1 = sprintf('Input base variable and index i.e. %s %d\n', ...
@@ -91,7 +91,7 @@ switch lower(vars.model)
       [pinfo.base_var, pinfo.base_var_index] = ParseAlphaNumerics(inputstring);
 
       inputstring = input( ...
-           sprintf('Input time index for base point (between 1 and %d)  ', ...
+           sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
            vars.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
@@ -102,6 +102,10 @@ switch lower(vars.model)
 
       pinfo = GetBgridInfo(pinfo, fname, 'PlotVarVarCorrel');
 
+   case 'pe2lyr'
+
+      pinfo = GetPe2lyrInfo(pinfo, fname, 'PlotVarVarCorrel');
+
    otherwise
 
       error(sprintf('model %s not implemented yet', vars.model))
@@ -109,8 +113,6 @@ switch lower(vars.model)
 end
 
 % could/should check input for valid range, etc.
-
-pinfo
 
 PlotJeffCorrel( pinfo )
 clear vars inputstring fname
