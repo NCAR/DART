@@ -43,17 +43,20 @@ if (exist('fname') ~=1)
       fname = 'True_State.nc';
    end                                                                          
 else
+   if isempty(fname), fname = 'True_State.nc'; end
    s1 = input(sprintf('Input name of netCDF file. <cr> for  %s ',fname),'s');
-   if ~isempty(s1), fname = str2num(deblank(s1)); end
+   if ~isempty(s1), fname = s1; end
 end 
 
-pinfo.fname = fname;
+pinfo.fname = strtrim(fname)
 
 vars  = CheckModel(fname);   % also gets default values for this model.
 
 switch lower(vars.model)
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04','forced_lorenz_96'}
+
+      if (ishold), clear var1 var2 var3 ens_mem ltype; end
 
       str1 = sprintf('[%d - %d]',vars.min_state_var, vars.max_state_var);
 
@@ -95,6 +98,8 @@ switch lower(vars.model)
 
    case {'lorenz_96_2scale'}
 
+      if (ishold), clear var1 var2 var3 ens_mem ltype; end
+
       disp(sprintf('Your choice of variables is ''X'' or ''Y'''))
       disp(sprintf('''X'' can range from %d to %d', vars.min_X_var, vars.max_X_var))
       disp(sprintf('''Y'' can range from %d to %d', vars.min_Y_var, vars.max_Y_var))
@@ -130,6 +135,8 @@ switch lower(vars.model)
                      'ltype'   , ltype   );
 
   case {'simple_advection'}
+
+      if (ishold), clear var1 var2 var3 ens_mem ltype; end
 
       disp('Your choice of variables are:')
       disp(vars.vars)
@@ -191,7 +198,13 @@ switch lower(vars.model)
 
       pinfo = GetBgridInfo(pinfo, fname, 'PlotPhaseSpace');
 
+   case 'pe2lyr'
+
+      pinfo = GetPe2lyrInfo(pinfo, fname, 'PlotPhaseSpace');
+
    case {'ikeda'}
+
+      if (ishold), clear var1 var2 var3 ens_mem ltype; end
 
       str1 = sprintf('[%d - %d]',vars.min_state_var, vars.max_state_var);
 
@@ -221,14 +234,11 @@ switch lower(vars.model)
                      'ens_mem' , ens_mem     , ...
                      'ltype'   , ltype   );
 
-
    otherwise
 
       error(sprintf('model %s not implemented yet', vars.model))
 
 end
-
-pinfo
 
 PlotPhaseSpace( pinfo );
 clear s1

@@ -177,7 +177,7 @@ switch lower(model)
       end
       legend boxoff
 
-   case 'fms_bgrid'
+   case {'fms_bgrid','pe2lyr'}
 
       disp(sprintf('PlotPhaseSpace'))
       pinfo
