@@ -110,13 +110,15 @@ switch lower(vars.model)
 
       pinfo = GetBgridInfo(pinfo, fname, 'PlotVarVarCorrel');
 
+   case 'pe2lyr'
+
+      pinfo = GetPe2lyrInfo(pinfo, fname, 'PlotVarVarCorrel');
+
    otherwise
 
       error(sprintf('model %s not implemented yet', vars.model))
 
 end
-
-pinfo
 
 PlotVarVarCorrel( pinfo )
 clear vars inputstring

@@ -48,7 +48,7 @@ close(f);
 
 switch lower(model)
 
-   case 'fms_bgrid'
+   case {'fms_bgrid','pe2lyr'}
 
       clf;
 
@@ -154,8 +154,8 @@ metadata    = getnc(fname,'CopyMetaData');           % get all the metadata
 copyindices = strmatch('ensemble member',metadata);  % find all 'member's
 
 % if need to clip by time, add these to arg list
-tstart = -1
-tend   = -1
+tstart = -1;
+tend   = -1;
 
 if ( isempty(copyindices) )
    disp(sprintf('%s has no valid ensemble members',fname))
@@ -180,9 +180,12 @@ var = bob(:,copyindices);
 
 
 function PlotLocator(pinfo)
-   plot(pinfo.base_lon, pinfo.base_lat,'pg','MarkerSize',12,'MarkerFaceColor','g');
-   axis([0 360 -90 90])
-   worldmap
+   plot(pinfo.base_lon, pinfo.base_lat,'pb','MarkerSize',12,'MarkerFaceColor','b');
+   hold on;
+   plot(pinfo.comp_lon, pinfo.comp_lat,'pr','MarkerSize',12,'MarkerFaceColor','r');
+   hold off;
+   axis([0 360 -90 90]);
+   worldmap;
    axis image
    grid on
 
