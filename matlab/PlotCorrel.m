@@ -136,6 +136,7 @@ switch(lower(model))
                     pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
       comp_ens = GetEnsLevel( pinfo.fname,       pinfo.comp_var, ...
                               pinfo.base_tmeind, pinfo.comp_lvlind);
+      nmembers = size(comp_ens,1);
 
       corr = zeros(nxny,1);
 
@@ -153,17 +154,70 @@ switch(lower(model))
            model, pinfo.base_var, pinfo.base_lvl, ...
              pinfo.base_lat, pinfo.base_lon, pinfo.base_time, pinfo.fname);
 
-      % num_copies-2 not correct when inflation values are output.
-
       s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
-               pinfo.comp_var, pinfo.comp_lvl, num_copies-2); 
+               pinfo.comp_var, pinfo.comp_lvl, nmembers); 
       title({s1,s2},'interpreter','none','fontweight','bold')
       xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
       ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
       worldmap;
       axis image
       h = colorbar; 
-      ax = get(h,'Position'); set(h,'Position',[ax(1) ax(2) ax(3)/2 ax(4)]);
+      ax = get(h,'Position');
+     %set(h,'Position',[ax(1) ax(2) ax(3)/2 ax(4)]);
+
+   case 'pe2lyr'
+
+      % We are going to correlate one var/time/lvl/lat/lon  with
+      % all other lats/lons for a var/time/lvl   
+
+      clf;
+
+      lats       = getnc(pinfo.fname,'lat'); ny = length(lats);
+      lons       = getnc(pinfo.fname,'lon'); nx = length(lons);
+      times      = getnc(pinfo.fname,'time');
+      f          = netcdf(pinfo.fname,'nowrite');
+      timeunits  = f{'time'}.units(:);
+      latunits   = f{'lat'}.units(:);
+      lonunits   = f{'lon'}.units(:);
+
+      num_times  = ncsize(f('time')); % determine # of output times
+      num_copies = ncsize(f('copy')); % determine # of ensemble members
+      close(f)
+
+      nxny = nx*ny;
+
+      base_mem = Get1Ens( pinfo.fname, pinfo.base_var,    pinfo.base_tmeind, ... 
+                    pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
+      comp_ens = GetEnsLevel( pinfo.fname,       pinfo.comp_var, ...
+                              pinfo.base_tmeind, pinfo.comp_lvlind);
+      nmembers = size(comp_ens,1);
+
+      corr = zeros(nxny,1);
+
+      for i = 1:nxny,
+         x = corrcoef(base_mem, comp_ens(:, i));
+         corr(i) = x(1, 2);
+      end 
+
+      corrslice = reshape(corr,[ny nx]);
+
+      contour(lons,lats,corrslice,[-1:0.2:1]); hold on;
+      plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
+                 'MarkerSize',12,'MarkerFaceColor','k');
+      s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f of %s', ...
+           model, pinfo.base_var, pinfo.base_lvl, ...
+             pinfo.base_lat, pinfo.base_lon, pinfo.base_time, pinfo.fname);
+
+      s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
+               pinfo.comp_var, pinfo.comp_lvl, nmembers); 
+      title({s1,s2},'interpreter','none','fontweight','bold')
+      xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
+      ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
+      worldmap;
+      axis image
+      h = colorbar; 
+      % ax = get(h,'Position');
+      % set(h,'Position',[ax(1) ax(2) ax(3)/2 ax(4)]);
 
    otherwise
 
@@ -249,7 +303,7 @@ ted        = bob(copyindices,:,:);
 slice      = reshape(ted,[nm ny*nx]);
 
 function PlotLocator(pinfo)
-   plot(pinfo.base_lon, pinfo.base_lat,'pg','MarkerSize',12,'MarkerFaceColor','g');
+   plot(pinfo.base_lon, pinfo.base_lat,'pb','MarkerSize',12,'MarkerFaceColor','b');
    axis([0 360 -90 90])
    worldmap
    axis image

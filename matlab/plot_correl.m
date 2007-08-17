@@ -37,12 +37,12 @@ switch lower(vars.model)
       pinfo.base_var = vars.def_var;
 
       inputstring = input( ...
-           sprintf('Input index for base variable (between %d and %d)  ', ...
+           sprintf('Input index for base variable (between %d and %d, inclusive)  ', ...
            vars.min_state_var,vars.max_state_var),'s');
       pinfo.base_var_index = str2num(deblank(inputstring));
 
       inputstring = input( ...
-           sprintf('Input time index for base point (between 1 and %d)  ', ...
+           sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
            vars.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
@@ -61,7 +61,7 @@ switch lower(vars.model)
       [pinfo.base_var, pinfo.base_var_index] = ParseAlphaNumerics(inputstring);
 
       inputstring = input( ...
-           sprintf('Input time index for base point (between 1 and %d)  ', ...
+           sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
            vars.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
@@ -73,7 +73,7 @@ switch lower(vars.model)
 
       disp('Your choice of variables are:')
       disp(vars.vars)
-      disp(sprintf('the indices (locations) can range from %d to %d', ...
+      disp(sprintf('the indices (locations) can range from %d to %d, inclusive', ...
            vars.min_state_var, vars.max_state_var))
 
       str1 = sprintf('Input base variable and index i.e. %s %d\n', ...
@@ -82,7 +82,7 @@ switch lower(vars.model)
       [pinfo.base_var, pinfo.base_var_index] = ParseAlphaNumerics(inputstring);
 
       inputstring = input( ...
-           sprintf('Input time index for base point (between 1 and %d)  ', ...
+           sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
            vars.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
@@ -94,13 +94,15 @@ switch lower(vars.model)
 
       pinfo = GetBgridInfo(pinfo, diagn_file, 'PlotCorrel');
 
+   case 'pe2lyr'
+
+      pinfo = GetPe2lyrInfo(pinfo, diagn_file, 'PlotCorrel');
+
    otherwise
 
       error(sprintf('model %s not implemented yet', vars.model))
 
 end
-
-pinfo
 
 PlotCorrel( pinfo );
 clear vars inputstring inds str1 vrbl vrbl_inds
