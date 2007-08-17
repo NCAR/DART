@@ -126,7 +126,7 @@ switch lower(deblank(routine))
       [lat  , latind] = GetLatitude( pgvar,TmpJ,VelJ);
       [lon  , lonind] = GetLongitude(pgvar,TmpI,VelI);
       %[copy , lonind] = GetCopies(pgvar,copy);
-      copyindices     = SetCopyId(fname);
+      copyindices     = SetCopyID(fname);
       copy            = length(copyindices);
 
       pinfo = setfield(pinfo, 'model'         , model);
