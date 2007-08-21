@@ -215,7 +215,7 @@ integer,             intent(in) :: kind1, kind2
 real(r8)                        :: get_dist
 logical, optional,   intent(in)  :: no_vert
 
-real(r8) :: lon_dif, vert_dist
+real(r8) :: lon_dif, vert_dist, rtemp
 integer  :: lat1_ind, lat2_ind, lon_ind, temp  ! indexes into lookup tables
 logical  :: comp_h_only
 
@@ -241,8 +241,17 @@ else
       lon_dif == 0.0_r8) then
       get_dist = abs(loc2%lat - loc1%lat)
    else
-      get_dist = acos(sin(loc2%lat) * sin(loc1%lat) + &
-         cos(loc2%lat) * cos(loc1%lat) * cos(lon_dif))
+      ! This test is for apparent roundoff error which may be a result of
+      ! running r8 == r4. 
+      rtemp = sin(loc2%lat) * sin(loc1%lat) + &
+         cos(loc2%lat) * cos(loc1%lat) * cos(lon_dif)
+      if (rtemp < -1.0_r8) then
+         get_dist = PI
+      else if (rtemp > 1.0_r8) then
+         get_dist = 0.0_r8
+      else
+         get_dist = acos(rtemp)
+      endif
    endif
 endif
 
@@ -874,10 +883,10 @@ do blat_ind = 1, nlat
             ! Compute the lon offset directly by inverting distance
             cos_del_lon = (cos(gc%maxdist) - sin(base_lat(bj)) * sin(target_lat(tj))) / &
                (cos(base_lat(bj)) * cos(target_lat(tj)))
-            if(cos_del_lon < -1) then
+            if(cos_del_lon < -1.0_r8) then
                del_lon = PI
-            else if(cos_del_lon > 1) then
-               del_lon = 0
+            else if(cos_del_lon > 1.0_r8) then
+               del_lon = 0.0_r8
             else
                del_lon = acos(cos_del_lon)
             endif
@@ -899,10 +908,17 @@ end do
 gc%count = 0
 do i = 1, num
    lon_box(i) = get_lon_box(gc, obs(i)%lon)
-   lat_box(i) = floor((obs(i)%lat - gc%bot_lat) / gc%lat_width) + 1
+   if(lon_box(i) < 0 .or. lon_box(i) > nlon) then
+      write(errstring, *) 'Contact Dart Developers: this error should not happen'
+      call error_handler(E_MSG, 'get_close_obs_init', errstring, source, revision, revdate)
+      write(errstring, *) 'obs outside grid boxes, index value:',  lon_box(i)
+      call error_handler(E_ERR, 'get_close_obs_init', errstring, source, revision, revdate)
+   endif
 
+   lat_box(i) = floor((obs(i)%lat - gc%bot_lat) / gc%lat_width) + 1
    if(lat_box(i) > nlat) lat_box(i) = nlat
    if(lat_box(i) < 1) lat_box(i) = 1
+
    gc%count(lon_box(i), lat_box(i)) = gc%count(lon_box(i), lat_box(i)) + 1
 end do
 
@@ -1380,7 +1396,11 @@ if(get_lon_box > nlon) then
    if(gc%lon_cyclic) then
       get_lon_box = 1
    else
-      if(gc%lon_cyclic) get_lon_box = -1
+      if(get_lon_box == nlon+1) then
+         get_lon_box = nlon
+      else
+         get_lon_box = -1
+      endif
    endif
 endif
 
