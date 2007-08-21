@@ -960,6 +960,9 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
             else
                forward_op_ens_handle%vars(j, k) = -2
             endif
+         else if (istatus < 0) then
+            write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
+            call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
          else
             forward_op_ens_handle%vars(j, k) = istatus
          endif
