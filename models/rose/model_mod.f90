@@ -521,6 +521,11 @@ call check(nf90_put_att(ncFileID, levVarID, "positive", "down")) !check
 !----------------------------------------------------------------------------
 ! Create attributes for the state vector
 !----------------------------------------------------------------------------
+! TJH NOTE: the 'other' 3D models have netcdf variables that
+! are allocated  
+!      dimids = (/ lonDimID, latDimID, levDimID, MemberDimID, unlimitedDimID /), &
+! which is consistent with the Fortran convention of having the 
+! fastest-moving index on the left.
 
 call check(nf90_def_var(ncid=ncFileID, name="u1", xtype=nf90_real, &
        dimids = (/ levDimID, lonDimID, latDimID, MemberDimID, unlimitedDimID /), &
@@ -770,6 +775,9 @@ character(len=129) :: errstring
 ! Do order as ps, t, u, v, q, tracers to be consistent with b-grid
 
 ! Start copying fields to straight vector
+! TJH NOTE: the 'other' 3D models have variables that
+! are allocated  [lon,lat,lev ...] which is consistent with the Fortran
+! convention of having the fastest-moving index on the left.
 indx = 0
 do i = 1, nx !longitude
    do j = 1, ny !latitude
@@ -804,6 +812,9 @@ integer :: i, j, k, nf, indx
 character(len=129) :: errstring
 
 ! Start copying fields from straight vector
+! TJH NOTE: the 'other' 3D models have variables that
+! are allocated  [lon,lat,lev ...] which is consistent with the Fortran
+! convention of having the fastest-moving index on the left.
 indx = 0
 do i = 1, nx ! longitude
    do j = 1, ny ! latitude
@@ -834,8 +845,14 @@ subroutine init_model_instance(var)
 type(model_type), intent(out) :: var
 
 ! Initialize the storage space and return
+! TJH NOTE: the 'other' 3D models have variables that
+! are allocated  [lon,lat,lev ...] which is consistent with the Fortran
+! convention of having the fastest-moving index on the left.
 
 allocate(var%vars_3d(nz, nx, ny, state_num_3d))
+
+
+
 
 end subroutine init_model_instance
 
