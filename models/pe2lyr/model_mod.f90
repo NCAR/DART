@@ -19,7 +19,7 @@ module model_mod
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
-use    utilities_mod, only : file_exist, open_file, close_file, &
+use    utilities_mod, only : file_exist, open_file, close_file, nc_check, &
                              register_module, error_handler, E_ERR, E_MSG
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 use     location_mod, only : location_type, get_location, set_location, get_dist, &
@@ -63,11 +63,10 @@ character(len=128), parameter :: &
 !-----------------------------------------------------------------------
 
 type(time_type) :: time_step
-type (modelvars):: model_dat
-type (sphere) :: sphere_dat
-!real(r8), allocatable :: lons(:), lats(:)
+type(modelvars) :: model_dat
+type(sphere)    :: sphere_dat
 
-integer :: levs(2)
+integer  :: levs(2)
 real :: lons(nlons), lats(nlats)
 
 contains
@@ -89,14 +88,13 @@ type(time_type), intent(in) :: Time
 integer :: i,j,mm,k
 real, dimension(nlons,nlats,2) :: ug,vg,zg,delpig
 
-
 !! update model_dat from X
 
 mm =1
 do i = 1,nlats
   do j=1, nlons
-    ug(j,i,1)=x(mm) 
-    ug(j,i,2)=x(nlats*nlons+mm) 
+    ug(j,i,1)=x(              mm) 
+    ug(j,i,2)=x(  nlats*nlons+mm) 
     vg(j,i,1)=x(2*nlats*nlons+mm) 
     vg(j,i,2)=x(3*nlats*nlons+mm) 
     zg(j,i,1)=x(4*nlats*nlons+mm) 
@@ -139,10 +137,10 @@ zg(:,:,1)=  (theta1/g)*(cp - (delpig(:,:,1)+model_dat%pitop+delpig(:,:,2)))
 mm =1
 do i = 1,nlats
   do j=1, nlons
-    x(mm) = ug(j,i,1)
-    x(nlats*nlons+mm) = ug(j,i,2)
-    x(2*nlats*nlons+mm) =  vg(j,i,1)
-    x(3*nlats*nlons+mm) =  vg(j,i,2)  
+    x(              mm) = ug(j,i,1)
+    x(  nlats*nlons+mm) = ug(j,i,2)
+    x(2*nlats*nlons+mm) = vg(j,i,1)
+    x(3*nlats*nlons+mm) = vg(j,i,2)  
     x(4*nlats*nlons+mm) = zg(j,i,1)
     x(5*nlats*nlons+mm) = zg(j,i,2)
     mm = mm+1
@@ -163,7 +161,7 @@ subroutine static_init_model()
 ! be done once.
 
 implicit none
-integer :: i
+integer  :: i
 real :: pi
 
 time_step =  set_time(int(dt),0)
@@ -186,8 +184,8 @@ do i = 1, nlats
 end do
 
 
-levs(1) =1
-levs(2) =2
+levs(1) = 1
+levs(2) = 2
 
 end subroutine static_init_model
 
@@ -225,7 +223,7 @@ zg(:,:,1)=  (theta1/g)*(cp - (delpig(:,:,2)+model_dat%pitop+delpig(:,:,1)))
 mm =1
 do i = 1,nlats
   do j=1, nlons
-    x(mm)               = ug(j,i,1)
+    x(              mm) = ug(j,i,1)
     x(  nlats*nlons+mm) = ug(j,i,2)
     x(2*nlats*nlons+mm) = vg(j,i,1)
     x(3*nlats*nlons+mm) = vg(j,i,2)  
@@ -275,8 +273,8 @@ integer, intent(out), optional :: var_type
 
 !integer :: indx
 
-integer :: lat_index, lon_index,lev_index
-integer :: u_indxmax,v_indxmax,z_indxmax
+integer  :: lat_index, lon_index,lev_index
+integer  :: u_indxmax,v_indxmax,z_indxmax
 real(r8) :: lon, lat, lev
 
 !print *,'get_state_meta_data'
@@ -314,18 +312,18 @@ end subroutine get_state_meta_data
 
 !#######################################################################
 
-subroutine model_interpolate(x, location, type, obs_val, istatus)
+subroutine model_interpolate(x, location, mytype, obs_val, istatus)
 
 implicit none
 
 
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer,             intent(in) :: type
+integer,             intent(in) :: mytype
 real(r8),           intent(out) :: obs_val
 integer,            intent(out) :: istatus
 
-integer :: lon_below, lon_above, lat_below, lat_above, i
+integer  :: lon_below, lon_above, lat_below, lat_above, i
 real :: bot_lon, top_lon, delta_lon, bot_lat, top_lat
 real :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
 real :: lon, lat, level, lon_lat_lev(3)
@@ -337,11 +335,11 @@ lon_lat_lev = get_location(location)
 lon = lon_lat_lev(1); lat = lon_lat_lev(2); level = lon_lat_lev(3)
 
 ! Get lon and lat grid specs are globally defined for pe2lyr
-   bot_lon = lons(1)
-   top_lon = lons(nlons)
+     bot_lon = lons(1)
+     top_lon = lons(nlons)
    delta_lon = lons(2) - lons(1)
-   bot_lat = lats(1)
-   top_lat = lats(nlats)
+     bot_lat = lats(1)
+     top_lat = lats(nlats)
 
 ! Compute bracketing lon indices
 if(lon >= bot_lon .and. lon <= top_lon) then
@@ -391,10 +389,10 @@ endif
 
 ! Now, need to find the values for the four corners
 20 continue
-val(1, 1) =  get_val(x, lon_below, lat_below, int(level), type)
-val(1, 2) =  get_val(x, lon_below, lat_above, int(level), type)
-val(2, 1) =  get_val(x, lon_above, lat_below, int(level), type)
-val(2, 2) =  get_val(x, lon_above, lat_above, int(level), type)
+val(1, 1) =  get_val(x, lon_below, lat_below, int(level), mytype)
+val(1, 2) =  get_val(x, lon_below, lat_above, int(level), mytype)
+val(2, 1) =  get_val(x, lon_above, lat_below, int(level), mytype)
+val(2, 2) =  get_val(x, lon_above, lat_above, int(level), mytype)
 
 ! Do the weighted average for interpolation
 !write(*, *) 'fracts ', lon_fract, lat_fract
@@ -409,23 +407,23 @@ end subroutine model_interpolate
 
 !#######################################################################
 
-function get_val(x, lon_index, lat_index, level, type)
+function get_val(x, lon_index, lat_index, level, mytype)
 
 implicit none
 
 real :: get_val
 real(r8), intent(in) :: x(:)
-integer, intent(in) :: lon_index, lat_index, level, type
+integer,  intent(in) :: lon_index, lat_index, level, mytype
 
 integer :: indx
 
 
 ! order is u,v,z 
-if(type == KIND_U_WIND_COMPONENT) then
+if(mytype == KIND_U_WIND_COMPONENT) then
    indx = (level-1)*nlats*nlons+(lat_index-1)*nlons + lat_index
-else if(type == KIND_V_WIND_COMPONENT) then
+else if(mytype == KIND_V_WIND_COMPONENT) then
    indx = 2*nlats*nlons+(level-1)*nlats*nlons+(lat_index-1)*nlons + lon_index
-else if(type == KIND_GEOPOTENTIAL_HEIGHT) then
+else if(mytype == KIND_GEOPOTENTIAL_HEIGHT) then
    indx = 4*nlats*nlons+(level-1)*nlats*nlons+(lat_index-1)*nlons + lon_index
 endif
    
@@ -457,9 +455,9 @@ i_time = set_time(0, 0)
 end subroutine init_time
 
 
-!#############################################################
-function nc_write_model_atts( ncFileID ) result (ierr)
 
+
+function nc_write_model_atts( ncFileID ) result (ierr)
 use typeSizes
 use netcdf
 implicit none
@@ -487,13 +485,25 @@ character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=NF90_MAX_NAME) :: str1
+character(len=128) :: filename
 
 ierr = 0                      ! assume normal termination
+
+!--------------------------------------------------------------------
+! we only have a netcdf handle here so we do not know the filename
+! or the fortran unit number.  but construct a string with at least
+! the netcdf handle, so in case of error we can trace back to see
+! which netcdf file is involved.
+!--------------------------------------------------------------------
+
+write(filename, '(a, i3)') 'ncFileID', ncFileID
+
 !--------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file 
 !--------------------------------------------------------------------
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
-call check(nf90_Redef(ncFileID))
+call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID), &
+         "nc_write_model_atts",'Inquire, '//trim(filename))
+call nc_check(nf90_Redef(ncFileID),"nc_write_model_atts",'Redef, '//trim(filename))
 
 !--------------------------------------------------------------------
 ! Determine ID's from stuff already in the netCDF file
@@ -501,18 +511,21 @@ call check(nf90_Redef(ncFileID))
 
 ! make sure time is unlimited dimid
 
-call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID))
-call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID))
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID), &
+                           "nc_write_model_atts",'copy inquire, '//trim(filename))
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID), &
+                           "nc_write_model_atts",'time inquire, '//trim(filename))
 
 if ( TimeDimID /= unlimitedDimId ) then
-   write(errstring,*)'Time Dimension ID ',TimeDimID,' should equal Unlimited Dimension ID',unlimitedDimID
-   call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
+   write(errstring,*)'Time Dimension ID ',TimeDimID, &
+  ' should equal Unlimited Dimension ID',unlimitedDimID
+   call error_handler(E_ERR,"nc_write_model_atts", errstring, source, revision, revdate)
 endif
 !--------------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
 !--------------------------------------------------------------------
-call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                        len=model_size, dimid = StateVarDimID))
+call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable", len=model_size, &
+  dimid = StateVarDimID),"nc_write_model_atts",'StateVariable def_dim'//trim(filename))
 
 !--------------------------------------------------------------------
 ! Write Global Attributes 
@@ -521,93 +534,140 @@ call DATE_AND_TIME(crdate,crtime,crzone,values)
 write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
                   values(1), values(2), values(3), values(5), values(6), values(7)
 
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source",source))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","pe2lyr"))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date" ,str1    ), &
+                    "nc_write_model_atts",'put_att creation_date, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source"  ,source  ), &
+                    "nc_write_model_atts",'put_att model_source, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision), &
+                    "nc_write_model_atts",'put_att model_revision, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate ), &
+                    "nc_write_model_atts",'put_att model_revdate, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model"         ,"pe2lyr"), &
+                    "nc_write_model_atts",'put_att model, '//trim(filename))
 
 !--------------------------------------------------------------------
 ! Define the new dimensions IDs
 !--------------------------------------------------------------------
 
-call check(nf90_def_dim(ncid=ncFileID, name="lat",   len = nlats,   dimid = latDimID)) 
-call check(nf90_def_dim(ncid=ncFileID, name="lon",   len = nlons,   dimid = lonDimID)) 
-call check(nf90_def_dim(ncid=ncFileID, name="lev",   len = nlevs,   dimid = levDimID)) 
+call nc_check(nf90_def_dim(ncid=ncFileID, name="lat", len = nlats, dimid = latDimID), &
+                 "nc_write_model_atts",'def_dim lat, '//trim(filename)) 
+call nc_check(nf90_def_dim(ncid=ncFileID, name="lon", len = nlons, dimid = lonDimID), &
+                 "nc_write_model_atts",'def_dim lon, '//trim(filename)) 
+call nc_check(nf90_def_dim(ncid=ncFileID, name="lev", len = nlevs, dimid = levDimID), &
+                 "nc_write_model_atts",'def_dim lev, '//trim(filename)) 
 
 !--------------------------------------------------------------------
 ! Create the (empty) Variables and the Attributes
 !--------------------------------------------------------------------
 
-! Temperature Grid Longitudes
-call check(nf90_def_var(ncFileID, name="lon", xtype=nf90_double, &
-                                               dimids=lonDimID, varid=lonVarID) )
-call check(nf90_put_att(ncFileID, lonVarID, "long_name", "longitude"))
-call check(nf90_put_att(ncFileID, lonVarID, "cartesian_axis", "X"))
-call check(nf90_put_att(ncFileID, lonVarID, "units", "degrees_east"))
-call check(nf90_put_att(ncFileID, lonVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)))
 
-call check(nf90_def_var(ncFileID, name="lat", xtype=nf90_double, &
-                                               dimids=latDimID, varid=latVarID) )
-call check(nf90_put_att(ncFileID, latVarID, "long_name", "latitude"))
-call check(nf90_put_att(ncFileID, latVarID, "cartesian_axis", "Y"))
-call check(nf90_put_att(ncFileID, latVarID, "units", "degrees_north"))
-call check(nf90_put_att(ncFileID, latVarID, "valid_range", (/  -90.0_r8, 90.0_r8 /)))
+call nc_check(nf90_def_var(ncFileID, name="lon", xtype=nf90_double, &
+     dimids=lonDimID, varid=lonVarID), &
+            "nc_write_model_atts",'def_var lon, '//trim(filename) )
 
-call check(nf90_def_var(ncFileID, name="level", xtype=nf90_int, &
-                                                dimids=levDimID, varid=levVarID) )
-call check(nf90_put_att(ncFileID, levVarID, "long_name", "level"))
-call check(nf90_put_att(ncFileID, levVarID, "cartesian_axis", "Z"))
-call check(nf90_put_att(ncFileID, levVarID, "units", " "))
-call check(nf90_put_att(ncFileID, levVarID, "positive", "down"))
+call nc_check(nf90_put_att(ncFileID, lonVarID, "long_name" , "longitude"), &
+             "nc_write_model_atts",'put_att lon:long_name, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, lonVarID, "cartesian_axis", "X"), &
+             "nc_write_model_atts",'put_att lon:cartesian_axis, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, lonVarID, "units", "degrees_east"), &
+             "nc_write_model_atts",'put_att lon:units, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, lonVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)), &
+             "nc_write_model_atts",'put_att lon:valid_range, '//trim(filename))
 
 
-call check(nf90_def_var(ncid=ncFileID, name="u", xtype=nf90_real, &
+call nc_check(nf90_def_var(ncFileID, name="lat", xtype=nf90_double, &
+     dimids=latDimID, varid=latVarID), &
+            "nc_write_model_atts",'def_var lat, '//trim(filename) )
+
+call nc_check(nf90_put_att(ncFileID, latVarID, "long_name", "latitude"), &
+             "nc_write_model_atts",'put_att lat:long_name, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, latVarID, "cartesian_axis", "Y"), &
+             "nc_write_model_atts",'put_att lat:cartesian_axis, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, latVarID, "units", "degrees_north"), &
+             "nc_write_model_atts",'put_att lat:units, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, latVarID, "valid_range", (/  -90.0_r8, 90.0_r8 /)), &
+             "nc_write_model_atts",'put_att lat:valid_range, '//trim(filename))
+
+
+call nc_check(nf90_def_var(ncFileID, name="lev", xtype=nf90_int, &
+     dimids=levDimID, varid=levVarID), &
+            "nc_write_model_atts",'def_var lev'//trim(filename) )
+
+call nc_check(nf90_put_att(ncFileID, levVarID, "long_name", "level"), &
+           "nc_write_model_atts",'put_att lev:long_name, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, levVarID, "cartesian_axis", "Z"), &
+           "nc_write_model_atts",'put_att lev:cartesian_axis, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, levVarID, "units", " "), &
+           "nc_write_model_atts",'put_att lev:units, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, levVarID, "positive", "down"), &
+           "nc_write_model_atts",'put_att lev:positive, '//trim(filename))
+
+
+call nc_check(nf90_def_var(ncid=ncFileID, name="u", xtype=nf90_real, &
          dimids = (/ lonDimID, latDimID, levDimID, MemberDimID, unlimitedDimID /), &
-         varid  = uVarID))
-call check(nf90_put_att(ncFileID, uVarID, "long_name", "zonal wind component"))
-call check(nf90_put_att(ncFileID, uVarID, "units", "m/s"))
+         varid  = uVarID),"nc_write_model_atts",'def_var u, '//trim(filename))
 
-call check(nf90_def_var(ncid=ncFileID, name="v", xtype=nf90_real, &
+call nc_check(nf90_put_att(ncFileID, uVarID, "long_name", "zonal wind component"), &
+             "nc_write_model_atts",'put_att u:long_name, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, uVarID, "units", "m/s"), &
+             "nc_write_model_atts",'put_att u:units, '//trim(filename)) 
+call nc_check(nf90_put_att(ncFileID, uVarID, "_FillValue", NF90_FILL_REAL), &
+             "nc_write_model_atts", 'put_att u:FillValue, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, uVarID, "missing_value", NF90_FILL_REAL), &
+             "nc_write_model_atts",'put_att u:missing_value, '//trim(filename))
+
+
+call nc_check(nf90_def_var(ncid=ncFileID, name="v", xtype=nf90_real, &
          dimids = (/ lonDimID, latDimID, levDimID, MemberDimID, unlimitedDimID /), &
-         varid  = vVarID))
-call check(nf90_put_att(ncFileID, vVarID, "long_name", "meridional wind component"))
-call check(nf90_put_att(ncFileID, vVarID, "units", "m/s"))
+         varid  = vVarID),"nc_write_model_atts",'def_var v, '//trim(filename))
 
-call check(nf90_def_var(ncid=ncFileID, name="z", xtype=nf90_real, &
+call nc_check(nf90_put_att(ncFileID, vVarID, "long_name", "meridional wind component"), &
+             "nc_write_model_atts",'put_att v:long_name, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, vVarID, "units", "m/s"), &
+             "nc_write_model_atts",'put_att v:units, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, vVarID, "_FillValue", NF90_FILL_REAL), &
+             "nc_write_model_atts", 'put_att v:FillValue, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, vVarID, "missing_value", NF90_FILL_REAL), &
+             "nc_write_model_atts",'put_att v:missing_value, '//trim(filename))
+
+
+call nc_check(nf90_def_var(ncid=ncFileID, name="z", xtype=nf90_real, &
          dimids = (/ lonDimID, latDimID, levDimID, MemberDimID, unlimitedDimID /), &
-         varid  = zVarID))
-call check(nf90_put_att(ncFileID, zVarID, "long_name", "surface/interface height"))
-call check(nf90_put_att(ncFileID, zVarID, "units", "meters"))
+         varid  = zVarID),"nc_write_model_atts",'def_var z, '//trim(filename))
 
-call check(nf90_enddef(ncfileID))
+call nc_check(nf90_put_att(ncFileID, zVarID, "long_name", "interface height"), &
+             "nc_write_model_atts",'put_att z:long_name, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, zVarID, "units", "meters"),&
+             "nc_write_model_atts",'put_att z:units, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, zVarID, "_FillValue", NF90_FILL_REAL), &
+             "nc_write_model_atts", 'put_att z:FillValue, '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, zVarID, "missing_value", NF90_FILL_REAL), &
+             "nc_write_model_atts",'put_att z:missing_value, '//trim(filename))
+
+call nc_check(nf90_enddef(ncfileID),"nc_write_model_atts",'enddef, '//trim(filename))
 
 !--------------------------------------------------------------------
 ! Fill the variables
 !--------------------------------------------------------------------
 
-call check(nf90_put_var(ncFileID,   lonVarID, lons(:) ))
-call check(nf90_put_var(ncFileID,   latVarID, lats(:) ))
-call check(nf90_put_var(ncFileID,    levVarID, (/ (i,i=1,   nlevs) /) ))
+call nc_check(nf90_put_var(ncFileID, lonVarID, lons(:) ), &
+                "nc_write_model_atts",'put_var lons, '//trim(filename))
+call nc_check(nf90_put_var(ncFileID, latVarID, lats(:) ), &
+                "nc_write_model_atts",'put_var lats, '//trim(filename))
+call nc_check(nf90_put_var(ncFileID, levVarID, (/ (i,i=1,nlevs) /) ), &
+                "nc_write_model_atts",'put_var lev, '//trim(filename))
 
 !--------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !--------------------------------------------------------------------
-call check(nf90_sync(ncFileID))
+call nc_check(nf90_sync(ncFileID),"nc_write_model_atts",'sync, '//trim(filename))
 write(errstring,*)'netCDF file ',ncFileID,' is synched ...'
 call error_handler(E_MSG,'nc_write_model_atts',errstring,source,revision, revdate)
 
-contains
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-    if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_atts', &
-         trim(nf90_strerror(istatus)), source, revision, revdate)
-  end subroutine check
 end function nc_write_model_atts
 
-!##########################################################
+
+
 
 function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
 use typeSizes
@@ -620,69 +680,73 @@ integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
 integer                            :: ierr          
 
-
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: uVarID,vVarID,zVarID
-
-integer :: mm,i,j
-real, dimension(nlons,nlats,2) :: ug,vg,zg
-!integer :: i
-real, dimension(SIZE(statevec)) :: x
-
 !--------------------------------------------------------------------
 ! local variables
 !--------------------------------------------------------------------
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+integer :: uVarID,vVarID,zVarID
+integer :: mm,i,j
+real(r8), dimension(nlons,nlats,2) :: ug,vg,zg
+character(len=128) :: filename
 
 ierr = 0                      ! assume normal termination
+
+!--------------------------------------------------------------------
+! we only have a netcdf handle here so we do not know the filename
+! or the fortran unit number.  but construct a string with at least
+! the netcdf handle, so in case of error we can trace back to see
+! which netcdf file is involved.
+!--------------------------------------------------------------------
+
+write(filename, '(a, i3)') 'ncFileID', ncFileID
+
+!--------------------------------------------------------------------
+! unpack the state vector into prognostic variables
+!--------------------------------------------------------------------
+
+mm =1
+do i = 1,nlats
+  do j=1, nlons
+    ug(j,i,1) = statevec(              mm) 
+    ug(j,i,2) = statevec(  nlats*nlons+mm) 
+    vg(j,i,1) = statevec(2*nlats*nlons+mm) 
+    vg(j,i,2) = statevec(3*nlats*nlons+mm) 
+    zg(j,i,1) = statevec(4*nlats*nlons+mm) 
+    zg(j,i,2) = statevec(5*nlats*nlons+mm) 
+    mm = mm+1
+  enddo
+enddo 
 
 !--------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file
 !--------------------------------------------------------------------
 
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID), &
+     "nc_write_model_vars", 'Inquire, '//trim(filename))
 
-x = statevec
+call nc_check(NF90_inq_varid(ncFileID,  "u",  uVarID), &
+       "nc_write_model_vars", 'inq_varid u, '//trim(filename))
+call nc_check(nf90_put_var( ncFileID,  uVarId, ug( :, :, : ), &
+                            start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+               "nc_write_model_vars", 'put_var ug, '//trim(filename))
 
-mm =1
-do i = 1,nlats
-  do j=1, nlons
-    ug(j,i,1)=x(mm) 
-    ug(j,i,2)=x(nlats*nlons+mm) 
-    vg(j,i,1)=x(2*nlats*nlons+mm) 
-    vg(j,i,2)  =x(3*nlats*nlons+mm) 
-    zg(j,i,1) =x(4*nlats*nlons+mm) 
-    zg(j,i,2) = x(5*nlats*nlons+mm) 
-    mm = mm+1
-  enddo
-enddo 
+call nc_check(NF90_inq_varid(ncFileID,  "v",  vVarID), &
+       "nc_write_model_vars", 'inq_varid v, '//trim(filename))
+call nc_check(nf90_put_var( ncFileID,  vVarId, vg( :, :, : ), &
+                            start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+               "nc_write_model_vars", 'put_var vg, '//trim(filename))
 
-
-call check(NF90_inq_varid(ncFileID,  "u",  uVarID))
-call check(nf90_put_var( ncFileID,  uVarId, ug( :, :, : ), &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
-
-call check(NF90_inq_varid(ncFileID,  "v",  vVarID))
-call check(nf90_put_var( ncFileID,  vVarId, vg( :, :, : ), &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
-
-call check(NF90_inq_varid(ncFileID,  "z",  zVarID))
-call check(nf90_put_var( ncFileID,  zVarId, zg( :, :, : ), &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
+call nc_check(NF90_inq_varid(ncFileID,  "z",  zVarID), &
+       "nc_write_model_vars", 'inq_varid z, '//trim(filename))
+call nc_check(nf90_put_var( ncFileID,  zVarId, zg( :, :, : ), &
+                            start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+               "nc_write_model_vars", 'put_var zg, '//trim(filename))
 
 !--------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !--------------------------------------------------------------------
 
-call check(nf90_sync(ncFileID))
-
-contains
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-    if(istatus /= nf90_noerr) call error_handler(E_ERR,'nc_write_model_vars', &
-            trim(nf90_strerror(istatus)), source, revision,revdate)
-  end subroutine check
+call nc_check(nf90_sync(ncFileID),"nc_write_model_vars",'sync, '//trim(filename))
 
 end function nc_write_model_vars
 
