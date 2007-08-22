@@ -30,7 +30,7 @@ end
 
 copy   = getnc(fname,'copy');
 times  = getnc(fname,'time');
-levels = getnc(fname,'level');
+levels = getnc(fname,'lev');
 lons   = getnc(fname,'lon');
 lats   = getnc(fname,'lat');
 
@@ -72,15 +72,15 @@ switch lower(deblank(routine))
       pinfo = setfield(pinfo, 'fname', fname);
       pinfo = setfield(pinfo, 'base_var', base_var);
       pinfo = setfield(pinfo, 'comp_var', comp_var);
-      pinfo = setfield(pinfo, 'base_time', base_time);
+      pinfo = setfield(pinfo, 'base_time',   base_time);
       pinfo = setfield(pinfo, 'base_tmeind', base_tmeind);
-      pinfo = setfield(pinfo, 'base_lvl', base_lvl);
+      pinfo = setfield(pinfo, 'base_lvl',    base_lvl);
       pinfo = setfield(pinfo, 'base_lvlind', base_lvlind);
-      pinfo = setfield(pinfo, 'base_lat', base_lat);
+      pinfo = setfield(pinfo, 'base_lat',    base_lat);
       pinfo = setfield(pinfo, 'base_latind', base_latind);
-      pinfo = setfield(pinfo, 'base_lon', base_lon);
+      pinfo = setfield(pinfo, 'base_lon',    base_lon);
       pinfo = setfield(pinfo, 'base_lonind', base_lonind);
-      pinfo = setfield(pinfo, 'comp_lvl', comp_lvl);
+      pinfo = setfield(pinfo, 'comp_lvl',    comp_lvl);
       pinfo = setfield(pinfo, 'comp_lvlind', comp_lvlind);
 
    case 'plotvarvarcorrel'

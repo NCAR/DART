@@ -50,27 +50,14 @@ if (exist('prior_file') ~=1)
    end
 end
 
-
-pstruct = CheckModel(posterior_file);   % also gets default values
-
-% initially prior is truth, posterior is diag.  revise if real
-% truth is found
-pstruct.truth_file = prior_file;
-pstruct.truth_time = [-1,-1];
-pstruct.diagn_file = posterior_file;
-pstruct.diagn_time = [-1,-1];
-
-pstruct = CheckModelCompatibility(pstruct);
-
-if ( exist(truth_file) == 2 )
-   pstruct.truth_file = truth_file;
-   pstruct.diagn_file = prior_file;
-   pstruct = CheckModelCompatibility(pstruct);
-end
-
-pstruct.prior_file = prior_file;
+CheckModelCompatibility(prior_file, posterior_file);
+pstruct                = CheckModel(posterior_file);   % also gets default values
+pstruct.prior_file     = prior_file;
 pstruct.posterior_file = posterior_file;
-
+pstruct.diagn_file     = prior_file;
+pstruct.diagn_time     = [-1 -1];
+pstruct.truth_file     = truth_file;
+pstruct.truth_time     = [-1 -1];
 
 switch lower(pstruct.model)
 
@@ -92,6 +79,12 @@ switch lower(pstruct.model)
       pstruct.prior_file     = prior_file;
       pstruct.posterior_file = posterior_file;
 
+   case 'pe2lyr'
+
+      pstruct = GetPe2lyrInfo(pstruct, prior_file, 'PlotSawtooth');
+      pstruct.prior_file     = prior_file;
+      pstruct.posterior_file = posterior_file;
+
    case 'cam'
 
       pstruct = GetCamInfo(pstruct,'PlotSawtooth');
@@ -103,8 +96,6 @@ switch lower(pstruct.model)
       error(sprintf('model %s not implemented yet', pstruct.model))
 
 end
-
-pstruct
 
 PlotSawtooth( pstruct )
 clear pstruct pinfo
