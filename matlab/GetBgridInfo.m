@@ -30,7 +30,7 @@ end
 
 copy   = getnc(fname,'copy');
 times  = getnc(fname,'time');
-levels = getnc(fname,'level');
+levels = getnc(fname,'lev');
 TmpI   = getnc(fname,'TmpI');    % temperature/pressure grid longitude
 TmpJ   = getnc(fname,'TmpJ');    % temperature/pressure grid latitude
 VelI   = getnc(fname,'VelI');    % velocity grid longitude
