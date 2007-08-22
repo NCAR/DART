@@ -1674,12 +1674,12 @@ call check(nf90_put_att(ncFileID, TmpJVarID, "valid_range", (/ -90.0_r8, 90.0_r8
                                  "TmpJ valid_range")
 
 ! (Common) grid levels
-call check(nf90_def_var(ncFileID, name="level", &
-              xtype=nf90_int, dimids=levDimID, varid=levVarID) ,    "level def_var")
-call check(nf90_put_att(ncFileID, levVarID, "long_name", "level"),  "level long_name")
-call check(nf90_put_att(ncFileID, levVarID, "cartesian_axis", "Z"), "level cartesian_axis")
-call check(nf90_put_att(ncFileID, levVarID, "units", "hPa"),        "level units")
-call check(nf90_put_att(ncFileID, levVarID, "positive", "down"),    "level positive")
+call check(nf90_def_var(ncFileID, name="lev", &
+              xtype=nf90_int, dimids=levDimID, varid=levVarID) ,    "lev def_var")
+call check(nf90_put_att(ncFileID, levVarID, "long_name", "level"),  "lev long_name")
+call check(nf90_put_att(ncFileID, levVarID, "cartesian_axis", "Z"), "lev cartesian_axis")
+call check(nf90_put_att(ncFileID, levVarID, "units", "hPa"),        "lev units")
+call check(nf90_put_att(ncFileID, levVarID, "positive", "down"),    "lev positive")
 
 ! Velocity Grid Longitudes
 call check(nf90_def_var(ncFileID, name="VelI", &
@@ -1692,9 +1692,9 @@ call check(nf90_put_att(ncFileID, VelIVarID, "valid_range", (/ 0.0_r8, 360.1_r8 
 
 ! Velocity Grid Latitudes
 call check(nf90_def_var(ncFileID, name="VelJ", &
-              xtype=nf90_double, dimids=VelJDimID, varid=VelJVarID) , "VelJ def_var")
-call check(nf90_put_att(ncFileID, VelJVarID, "long_name", "latitude"),"VelJ long_name")
-call check(nf90_put_att(ncFileID, TmpIVarID, "cartesian_axis", "Y"), "VelJ cartesian_axis")
+              xtype=nf90_double, dimids=VelJDimID, varid=VelJVarID) ,   "VelJ def_var")
+call check(nf90_put_att(ncFileID, VelJVarID, "long_name", "latitude"),  "VelJ long_name")
+call check(nf90_put_att(ncFileID, VelJVarID, "cartesian_axis", "Y"),    "VelJ cartesian_axis")
 call check(nf90_put_att(ncFileID, VelJVarID, "units", "degrees_north"), "VelJ units")
 call check(nf90_put_att(ncFileID, VelJVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)), &
                                  "VelJ valid_range")
