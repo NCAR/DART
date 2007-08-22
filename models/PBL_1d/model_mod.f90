@@ -2041,8 +2041,20 @@ else
 
   call check(NF90_def_var(ncFileID, name="z_level", xtype=nf90_int, &
                 dimids = ZVarDimID, varid=ZVarVarID) )
+  call check(nf90_put_att(ncFileID, ZVarVarID, "long_name", "atmospheric vertical level"))
+  call check(nf90_put_att(ncFileID, ZVarVarID, "cartesian_axis", "Z"))
+  call check(nf90_put_att(ncFileID, ZVarVarID, "positive", "up"))
+  call check(nf90_put_att(ncFileID, ZVarVarID, "units", "indexical"))
+  call check(nf90_put_att(ncFileID, ZVarVarID, "comment", "z_level = 1 is closest to the surface"))
+
   call check(NF90_def_var(ncFileID, name="sl_level", xtype=nf90_int, &
                 dimids = SLVarDimID, varid=SLVarVarID) )
+  call check(nf90_put_att(ncFileID, SLVarVarID, "long_name", "soil vertical level"))
+  call check(nf90_put_att(ncFileID, SLVarVarID, "cartesian_axis", "Z"))
+  call check(nf90_put_att(ncFileID, SLVarVarID, "positive", "down"))
+  call check(nf90_put_att(ncFileID, SLVarVarID, "units", "indexical"))
+  call check(nf90_put_att(ncFileID, SLVarVarID, "comment", "sl_level = 1 is closest to the surface"))
+
   call check(nf90_def_var(ncid=ncFileID, name="U", xtype=nf90_double, &
            dimids = (/ ZVarDimID, MemberDimID, TimeDimID /), varid=ZVarID(1)))
   call check(nf90_put_att(ncFileID, ZVarID(1), "long_name", "Zonal Wind"))
