@@ -44,8 +44,10 @@ switch lower(whichfile)
       fname = pinfo.posterior_file;
    case 'truth'
       fname = pinfo.truth_file;
-   otherwise
+   case 'diagn'
       fname = pinfo.diagn_file;
+   otherwise
+      fname = pinfo.fname;
 end
 
 corner = [];

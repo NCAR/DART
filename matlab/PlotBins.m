@@ -65,6 +65,13 @@ switch lower(true_model)
             title(sprintf('%s Variable %d for %s', ...
                   true_model,ivar,pinfo.diagn_file), ...
                   'interpreter','none','fontweight','bold')
+            xlabel('rank')
+            ylabel('occurrence')
+            ax = axis;
+            ax(1) = 0.5;
+            ax(2) = length(bins)+0.5;
+            axis(ax)
+            axis tight
          end
       end
 
@@ -83,6 +90,13 @@ switch lower(true_model)
          title(sprintf('%s Variable %d for %s', ...
                true_model,ivar,pinfo.diagn_file), ...
                'interpreter','none','fontweight','bold')
+         xlabel('rank')
+         ylabel('occurrence')
+         ax = axis;
+         ax(1) = 0.5;
+         ax(2) = length(bins)+0.5;
+         axis(ax)
+         axis tight
       end
 
    case {'lorenz_96_2scale','simple_advection'}
@@ -101,17 +115,19 @@ switch lower(true_model)
          title(sprintf('%s Variable %s %d for %s', ...
                true_model,pinfo.var, ivar,pinfo.diagn_file), ...
                'interpreter','none','fontweight','bold')
+         xlabel('rank')
+         ylabel('occurrence')
          ax = axis;
          ax(1) = 0.5;
          ax(2) = length(bins)+0.5;
          axis(ax)
+         axis tight
       end
 
-   case 'fms_bgrid'
+   case {'fms_bgrid','pe2lyr'}
 
-      % need to know which prognostic variable  1=ps 2=t 3=u 4=v
-      % which level 1<=ps<=1     1<= t,u,v <= nlevel
-      % which location
+      % It is intended that all 3D models have all the required information
+      % set in the corresponding Get<model>Info.m script.
 
       clf;
 
@@ -130,10 +146,17 @@ switch lower(true_model)
         sprintf('%s ''%s'' for %s ', true_model, pinfo.var, pinfo.diagn_file), ...
         sprintf('level %d lat %.2f lon %.2f',pinfo.level, pinfo.latitude, ...
                  pinfo.longitude)}, 'interpreter','none','fontweight','bold')
+      xlabel('rank')
+      ylabel('occurrence')
+      ax = axis;
+      ax(1) = 0.5;
+      ax(2) = length(bins)+0.5;
+      axis(ax)
+      axis tight
 
    otherwise
 
-      error(sprintf('model %s unknown',model))
+      error(sprintf('model %s unknown',true_model))
 
 end
 
@@ -170,6 +193,7 @@ end
 var = getnc(fname, pinfo.var, corner, endpnt);
 
 
+
 function var = get_1Dvar_type_series(fname, copyindex, vrbl, vrbl_ind)
 % Gets a time series of a single specified copy of a prognostic variable 
 % The (spatially-) 1D vars are   (time,copy,location) 
@@ -179,7 +203,6 @@ function var = get_1Dvar_type_series(fname, copyindex, vrbl, vrbl_ind)
 corner = [-1 copyindex vrbl_ind ];
 endpnt = [-1 copyindex vrbl_ind ];
 var = getnc(fname, pinfo.var, corner, endpnt);
-
 
 
 
@@ -204,19 +227,20 @@ end
 ens_num     = length(copyindices);
 
 % Get all ensemble members, just return desired ones.
-if strcmp(pinfo.var,'ps')
-   corner = [tstart -1                  pinfo.latindex pinfo.lonindex];
-   endpnt = [tend   -1                  pinfo.latindex pinfo.lonindex];
-else
-   corner = [tstart -1 pinfo.levelindex pinfo.latindex pinfo.lonindex];
-   endpnt = [tend   -1 pinfo.levelindex pinfo.latindex pinfo.lonindex];
-end
-bob = getnc(fname, pinfo.var, corner, endpnt); % 'bob' is only 2D 
+% This makes fewer assumptions about variable shape.
+[corner, endpnt] = GetNCindices(pinfo,'diagn',pinfo.var);
+corner(1) = tstart;
+endpnt(1) = tend;
+corner(2) = -1;
+endpnt(2) = -1;
+
+bob = getnc(fname, pinfo.var, corner, endpnt); % 'bob' is only 2D time-X-copy
 var = bob(:,copyindices);
 
 
+
 function PlotLocator(pinfo)
-   plot(pinfo.longitude,pinfo.latitude,'pg','MarkerSize',12,'MarkerFaceColor','g');
-   axis([0 360 -90 90])
-   worldmap
+   plot(pinfo.longitude,pinfo.latitude,'pb','MarkerSize',12,'MarkerFaceColor','b');
+   axis([0 360 -90 90]);
+   worldmap;
    
