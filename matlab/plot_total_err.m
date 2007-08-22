@@ -30,12 +30,13 @@ if (exist('diagn_file') ~=1)
    end
 end
 
-pinfo = struct('truth_file', truth_file, ...
-               'diagn_file', diagn_file, ...
-               'truth_time', [-1,-1], ...
-               'diagn_time', [-1,-1] );
-
 disp(sprintf('Comparing %s and \n          %s', truth_file, diagn_file))
 
-PlotTotalErr( pinfo )
+pinfo = CheckModel(diagn_file);
+pinfo.truth_file = truth_file;
+pinfo.diagn_file = diagn_file;
+pinfo.truth_time = [-1,-1];
+pinfo.diagn_time = [-1,-1];
+
+PlotTotalErr( pinfo );
 clear pinfo
