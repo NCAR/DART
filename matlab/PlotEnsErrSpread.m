@@ -166,7 +166,7 @@ switch lower(tmodel)
                ylabel('distance')
       end
 
-   case 'fms_bgrid'
+   case {'fms_bgrid','pe2lyr'}
 
       clf;
 
@@ -178,7 +178,7 @@ switch lower(tmodel)
                            pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
 
       subplot(2,1,1)
-         PlotLocator(pinfo)
+         PlotLocator(pinfo);
 
       subplot(2,1,2)
          err         = total_err(ens_mean, truth);  
@@ -190,18 +190,18 @@ switch lower(tmodel)
          plot(times,err, 'b', times,ens_spread, 'r');
          s1 = sprintf('%s model Var %s Ensemble Error Spread for %s', ...
                             tmodel, pinfo.var, pinfo.diagn_file);
-         title(s1,'interpreter','none','fontweight','bold')
+         title(s1,'interpreter','none','fontweight','bold');
 
       title({ ...
         sprintf('Ensemble Mean Error, Ensemble Spread  %s ''%s'' for %s', ...
                 tmodel, pinfo.var, pinfo.diagn_file), ...
         sprintf('level %d lat %.2f lon %.2f',pinfo.level, pinfo.latitude, ...
-                 pinfo.longitude)}, 'interpreter','none','fontweight','bold')
+                 pinfo.longitude)}, 'interpreter','none','fontweight','bold');
 
-         legend(string1,string2,0)
+         legend(string1,string2,0);
          legend boxoff
-         xlabel(sprintf('model time (%d timesteps)',tnum_times))
-         ylabel('distance')
+         xlabel(sprintf('model time (%d timesteps)',tnum_times));
+         ylabel('distance');
 
    otherwise
       error(sprintf('model %s unknown.',tmodel))
@@ -225,8 +225,8 @@ var = getnc(fname, pinfo.var, corner, endpnt);
 
 
 function PlotLocator(pinfo)
-   plot(pinfo.longitude,pinfo.latitude,'pg','MarkerSize',12,'MarkerFaceColor','g');
+   plot(pinfo.longitude,pinfo.latitude,'pb','MarkerSize',12,'MarkerFaceColor','b');
    axis([0 360 -90 90])
-   worldmap
+   worldmap;
    axis image
    grid on
