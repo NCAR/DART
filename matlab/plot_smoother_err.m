@@ -16,44 +16,56 @@
 % $Revision: 2691 $
 % $Date: 2007-03-11 12:18:09 -0600 (Sun, 11 Mar 2007) $
 
-% pattern for how lag files are written out
-lag_file   = 'Lag_%05d_Diag.nc';
+lag_file   = 'Lag_%05d_Diag.nc'; % pattern for lag file names
 
-num_lags = 10000
+if (exist('num_lags')   ~= 1), num_lags = 10000; end
+if (exist('truth_file') == 1), 
+   def_true = truth_file;
+else
+   def_true = 'True_State.nc';
+end
+
+disp('Input name of True State file;')
+truth_file = input(sprintf('<cr> for %s\n',def_true),'s');
+if isempty(truth_file)
+     truth_file = def_true;
+end
+
+% Loop over all possible lags, if the corresponding netCDF file 
+% does not exist, we automatically terminate.
 
 for lag=1:num_lags
+
+  def_diag = sprintf(lag_file, lag);
   
-  if (exist(truth_file) ~= 2)
-     disp('Input name of Truth State file;')
-     truth_file = input('<cr> for True_State.nc\n','s');
-     if isempty(truth_file)
-        truth_file = 'True_State.nc';
-     end
+  disp('Input name of smoother lag diagnostics file;')
+  diagn_file = input(sprintf('<cr> for %s\n', def_diag),'s');
+  if isempty(diagn_file)
+     diagn_file = def_diag;
   end
 
-  diagn_file = sprintf(lag_file, lag)
-  prompt = sprintf('<cr> for %s\n', diagn_file);
-  
-  if (exist(diagn_file) ~=2)
-     disp('Input name of smoother lag diagnostics file;')
-     diagn_file = input(prompt,'s');
-     if isempty(diagn_file)
-        return    % nothing more to do
-     end
+  if (exist(diagn_file) ~= 2)
+     disp('file does not exist. Must be done.')
+     return
   end
-  
-  
-  pinfo = CheckModelCompatibility(truth_file, diagn_file)
-  
+
+  pinfo = CheckModel(diagn_file);
+  pinfo.truth_file = truth_file;
+  pinfo.diagn_file = diagn_file;
+
+  bob = CheckModelCompatibility(truth_file, diagn_file);
+  pinfo.truth_time = bob.truth_time;
+  pinfo.diagn_time = bob.diagn_time;
+
+  clear bob
+
   disp(sprintf('Comparing %s and \n          %s', ...
                 pinfo.truth_file, pinfo.diagn_file))
   
-  %disp('in main after return')
-  %pinfo
-  
   PlotTotalErr( pinfo );
 
-  input('Hit return to continue');
+  disp(' ')
+
 end
 
 clear pinfo
