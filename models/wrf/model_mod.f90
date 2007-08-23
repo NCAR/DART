@@ -1107,10 +1107,9 @@ if (obs_kind > 0) then
    if(vert_is_surface(location)) surf_var = .true.
    if(zloc == missing_r8) then
      if(xyz_loc(3) < v_h(0)) then
-      zloc = 1.0_r8
-      istatus = -1                      ! Lower than the model terrain
-      surf_var = .true.                 ! Let's estimate U,V,T,and Q from the model sfc states.
-     else                               !
+      zloc = 1.0_r8         ! Lower than the model terrain.
+      surf_var = .true.     ! Estimate U,V,T,and Q from the model sfc states.
+     else                
       obs_val = missing_r8
       istatus = 1
       deallocate(v_h, v_p)
@@ -1139,7 +1138,8 @@ if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) th
       if(  i_u >= 1 .and. i_u < wrf%dom(id)%var_size(1,TYPE_U) .and. &
            j   >= 1 .and. j   < wrf%dom(id)%var_size(2,TYPE_U) .and. &
            i   >= 1 .and. i   < wrf%dom(id)%var_size(1,TYPE_V) .and. &
-           j_v >= 1 .and. j_v < wrf%dom(id)%var_size(2,TYPE_V)) then
+           j_v >= 1 .and. j_v < wrf%dom(id)%var_size(2,TYPE_V) .and. &
+           k   >= 1 .and. k   < wrf%dom(id)%var_size(3,TYPE_U)) then
 
          do k2=1,2
 
@@ -1155,10 +1155,10 @@ if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) th
             ugrid = dym*( dxm_u*x(i1) + dx_u*x(i1+1) ) + dy*( dxm_u*x(i2) + dx_u*x(i2+1) )
 
 !!$            i1 = get_wrf_index(i,j_v  ,k+k2-1,TYPE_V,id)
-!!$            i2 = get_wrf_index(i,j_v+1,k+k2-1,TYPE_V,id) 
+!!$            i2 = get_wrf_index(i,j_v+1,k+k2-1,TYPE_V,id)
 
             i1 = wrf%dom(id)%dart_ind(i,j_v  ,k+k2-1,TYPE_V)
-            i2 = wrf%dom(id)%dart_ind(i,j_v+1,k+k2-1,TYPE_V) 
+            i2 = wrf%dom(id)%dart_ind(i,j_v+1,k+k2-1,TYPE_V)
 
             vgrid = dym_v*( dxm*x(i1) + dx*x(i1+1) ) + dy_v*( dxm*x(i2) + dx*x(i2+1) )
 
@@ -1216,10 +1216,11 @@ if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) th
 
 else if( obs_kind == KIND_TEMPERATURE ) then
 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+   if(.not. vert_is_surface(location) .or. .not. surf_var) then
 
-     if(.not. vert_is_surface(location) .or. .not. surf_var) then
+      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+         k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
 
 !!$         i1 = get_wrf_index(i,j  ,k,TYPE_T,id)
 !!$         i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
@@ -1247,37 +1248,40 @@ else if( obs_kind == KIND_TEMPERATURE ) then
 
       else
 
-         if(wrf%dom(id)%surf_obs) then
-
-!!$            i1 = get_wrf_index(i,j,1,TYPE_T2,id)
-!!$            i2 = get_wrf_index(i,j+1,1,TYPE_T2,id)
-            i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_T2)
-            i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_T2)
-            fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-         else
-
-            fld(1) = missing_r8
-
-         endif
+         fld(:) = missing_r8
 
       endif
 
    else
 
-      fld(:) = missing_r8
+      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+         wrf%dom(id)%surf_obs) then
+
+!!$         i1 = get_wrf_index(i,j,1,TYPE_T2,id)
+!!$         i2 = get_wrf_index(i,j+1,1,TYPE_T2,id)
+         i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_T2)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_T2)
+         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+      else
+
+         fld(1) = missing_r8
+
+      endif
 
    endif
 
 else if( obs_kind == KIND_POTENTIAL_TEMPERATURE ) then
 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+   if(.not. vert_is_surface(location) .or. .not. surf_var) then
 
-!     Note:  T is perturbation potential temperature (potential temperature - ts0)
-!            TH2 is potential temperature at 2 m
+      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+         k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
 
-      if(.not. vert_is_surface(location)) then
+!        Note:  T is perturbation potential temperature (potential temperature - ts0)
+!               TH2 is potential temperature at 2 m
 
 !!$         i1 = get_wrf_index(i,j  ,k,TYPE_T,id)
 !!$         i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
@@ -1293,33 +1297,36 @@ else if( obs_kind == KIND_POTENTIAL_TEMPERATURE ) then
 
       else
 
-         if(wrf%dom(id)%surf_obs) then
-
-!!$            i1 = get_wrf_index(i,j,1,TYPE_TH2,id)
-!!$            i2 = get_wrf_index(i,j+1,1,TYPE_TH2,id)
-            i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_TH2)
-            i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_TH2)
-            fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-         else
-
-            fld(1) = missing_r8
-
-         endif
+         fld(:) = missing_r8
 
       endif
 
    else
 
-      fld(:) = missing_r8
+      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+         wrf%dom(id)%surf_obs) then
+
+!!$         i1 = get_wrf_index(i,j,1,TYPE_TH2,id)
+!!$         i2 = get_wrf_index(i,j+1,1,TYPE_TH2,id)
+         i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_TH2)
+         i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_TH2)
+         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+      else
+
+         fld(1) = missing_r8
+
+      endif
 
    endif
 
 else if( obs_kind == KIND_DENSITY ) then
 
-   ! Rho calculated at mass points, and so is like "TYPE_T" 
+   ! Rho calculated at mass points, and so is like "TYPE_T"
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
 
       ! calculate full rho at corners of interp box
       ! and interpolate to desired horizontal location
@@ -1348,7 +1355,8 @@ else if( obs_kind == KIND_VERTICAL_VELOCITY ) then
    k = max(1,int(zloc))
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_W) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_W)) then
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_W) .and. &
+      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_W)) then
 
 !!$      i1 = get_wrf_index(i,j  ,k,TYPE_W,id)
 !!$      i2 = get_wrf_index(i,j+1,k,TYPE_W,id)
@@ -1372,12 +1380,14 @@ else if( obs_kind == KIND_SPECIFIC_HUMIDITY ) then
 
 !  Convert water vapor mixing ratio to specific humidity:
 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+   if ( wrf%dom(id)%n_moist >= 1) then
 
-      if ( wrf%dom(id)%n_moist >= 1) then
+      if(.not. vert_is_surface(location) .or. .not. surf_var) then
 
-         if(.not. vert_is_surface(location) .or. .not. surf_var) then
+         if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+            j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+            k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
+
 
 !!$            i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
 !!$            i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
@@ -1395,39 +1405,42 @@ else if( obs_kind == KIND_SPECIFIC_HUMIDITY ) then
 
          else
 
-            if(wrf%dom(id)%surf_obs) then
-
-!!$               i1 = get_wrf_index(i,j,1,TYPE_Q2,id)
-!!$               i2 = get_wrf_index(i,j+1,1,TYPE_Q2,id)
-               i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_Q2)
-               i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_Q2)
-               fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-               fld(1) = fld(1) / (1.0_r8 + fld(1))
-
-            else
-
-               fld(1) = missing_r8
-
-            endif
+            fld(:) = missing_r8
 
          endif
 
       else
 
-         fld(:) = 0.0_r8
+         if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+            j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+            wrf%dom(id)%surf_obs) then
+
+!!$            i1 = get_wrf_index(i,j,1,TYPE_Q2,id)
+!!$            i2 = get_wrf_index(i,j+1,1,TYPE_Q2,id)
+            i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_Q2)
+            i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_Q2)
+            fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+            fld(1) = fld(1) / (1.0_r8 + fld(1))
+
+         else
+
+            fld(1) = missing_r8
+
+         endif
 
       endif
 
    else
 
-      fld(:) = missing_r8
+      fld(:) = 0.0_r8
 
    endif
 
 else if( obs_kind == KIND_RAINWATER_MIXING_RATIO) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
 
       if( wrf%dom(id)%n_moist >= 3) then
 
@@ -1461,7 +1474,8 @@ else if( obs_kind == KIND_RAINWATER_MIXING_RATIO) then
 else if( obs_kind == KIND_GRAUPEL_MIXING_RATIO) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
 
       if( wrf%dom(id)%n_moist >= 6) then
 
@@ -1490,7 +1504,8 @@ else if( obs_kind == KIND_GRAUPEL_MIXING_RATIO) then
 else if( obs_kind == KIND_SNOW_MIXING_RATIO) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
 
       if( wrf%dom(id)%n_moist >= 5) then
 
@@ -1519,7 +1534,8 @@ else if( obs_kind == KIND_SNOW_MIXING_RATIO) then
 else if( obs_kind == KIND_PRESSURE) then
 
    if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
 
       pres1 = model_pressure_t(i  ,j  ,k,id,x)
       pres2 = model_pressure_t(i+1,j  ,k,id,x)
@@ -1581,8 +1597,9 @@ else if( obs_kind == KIND_VORTEX_LAT .or. &
          obs_kind == KIND_VORTEX_PMIN .or. &
          obs_kind == KIND_VORTEX_WMAX) then
 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T)  .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)  .and. &
+      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
 
 !!   define a search box bounded by center_track_***
      center_search_half_size = nint(center_search_half_length/wrf%dom(id)%dx)
@@ -1618,12 +1635,12 @@ else if( obs_kind == KIND_VORTEX_LAT .or. &
 !!   compute sea-level pressure
      do i1 = center_track_xmin, center_track_xmax
      do i2 = center_track_ymin, center_track_ymax
-        do k = 1,wrf%dom(id)%var_size(3,TYPE_T)
-           p1d(k) = model_pressure_t(i1,i2,k,id,x)
-           t1d(k) = ts0 + x(wrf%dom(id)%dart_ind(i1,i2,k,TYPE_T))
-           qv1d(k)= x(wrf%dom(id)%dart_ind(i1,i2,k,TYPE_QV))
-           z1d(k) = ( x(wrf%dom(id)%dart_ind(i1,i2,k,TYPE_GZ))+wrf%dom(id)%phb(i1,i2,k) + &
-                      x(wrf%dom(id)%dart_ind(i1,i2,k+1,TYPE_GZ))+wrf%dom(id)%phb(i1,i2,k+1) &
+        do k2 = 1,wrf%dom(id)%var_size(3,TYPE_T)
+           p1d(k2) = model_pressure_t(i1,i2,k2,id,x)
+           t1d(k2) = ts0 + x(wrf%dom(id)%dart_ind(i1,i2,k2,TYPE_T))
+           qv1d(k2)= x(wrf%dom(id)%dart_ind(i1,i2,k2,TYPE_QV))
+           z1d(k2) = ( x(wrf%dom(id)%dart_ind(i1,i2,k2,TYPE_GZ))+wrf%dom(id)%phb(i1,i2,k2) + &
+                      x(wrf%dom(id)%dart_ind(i1,i2,k2+1,TYPE_GZ))+wrf%dom(id)%phb(i1,i2,k2+1) &
                     )*0.5_r8/gravity
         enddo
         call compute_seaprs(wrf%dom(id)%bt, z1d, t1d, p1d, qv1d, &
