@@ -99,6 +99,7 @@ integer, parameter  :: QC_MAX_PRIOR     = 3
 integer, parameter  :: QC_MAX_POSTERIOR = 1
 integer, dimension(0:QC_MAX) :: qc_counter = 0
 real(r8), allocatable :: qc(:)
+real(r8), allocatable :: copyvals(:)
 
 !-----------------------------------------------------------------------
 ! We are treating winds as a vector pair, but we are handling the
@@ -295,7 +296,7 @@ levels_int(1:12,VERTISHEIGHT  ) = (/    0, 1500, 2500, 3500,  4500,  5500,  &
                                      6500, 7500, 8500, 9500, 10500, 11500 /)
 
 scale_factor = 1.0_r8
-which_vert   = VERTISUNDEF   ! set all of them to an 'undefined' value 
+which_vert   = VERTISSURFACE   ! set all of them to 'SURFACE' value 
 
 ! The surface pressure in the obs_sequence is in Pa, we want to convert
 ! from Pa to hPa for plotting. The specific humidity is a similar thing.
@@ -346,6 +347,7 @@ write(    *      ,nml=obs_diag_nml)
 
 ! Open file for histogram of innovations, as a function of standard deviation.
 nsigmaUnit = open_file('nsigma.dat',form='formatted',action='rewind')
+write(nsigmaUnit,*)'Any observations flagged as bad are dumped into the last bin.'
 write(nsigmaUnit,'(a)') '   day   secs    lon      lat    level         obs         guess   ratio   key   kind'
 !----------------------------------------------------------------------
 ! Now that we have input, do some checking and setup
@@ -526,7 +528,8 @@ ObsFileLoop : do ifile=1, Nepochs*4
    call init_obs(observation, num_copies, num_qc)   ! current obs
    call init_obs(   next_obs, num_copies, num_qc)   ! duh ...
 
-   if (num_qc > 0) allocate( qc(num_qc) )
+   if (num_qc     > 0) allocate( qc(num_qc) )
+   if (num_copies > 0) allocate( copyvals(num_copies) )
 
    if ( 1 == 2 ) then
       write(logfileunit,*)'num_copies          is ',num_copies
@@ -789,6 +792,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
          ! like to track. Maybe tomorrow ...
  
          ! nsc -- are these ignored?
+         ! TJH -- identity obs are intentionally ignored.
          if (flavor < 0) then
             Nidentity = Nidentity + 1
             cycle ObservationLoop
@@ -812,7 +816,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
          if(vert_is_surface(obs_loc)) then    ! use closest height equivalent 
             level_index        = 1
             ivert              = 1
-            which_vert(flavor) = VERTISSURFACE
+         !  which_vert(flavor) = VERTISSURFACE
             obslevel           = 1
 
          elseif(vert_is_level(obs_loc)) then
@@ -874,6 +878,43 @@ ObsFileLoop : do ifile=1, Nepochs*4
             call get_obs_values(observation, posterior_spread, posterior_spread_index)
 
          !--------------------------------------------------------------
+         ! Check to see if there are any observations with wild values
+         ! and a DART QC flag that is inconsistent. I checked it once
+         ! with qc_integer < 4 and found that ONLY the posterior values
+         ! were bad. While the underlying bug is being fixed, the workaround
+         ! is to simply manually set the DART QC value such that the
+         ! posterior is flagged as bad.  I cannot acutally tell if the
+         ! observation is supposed to have been assimilated or just evaluated,
+         ! so I erred on the conservative side. TJH 24 Aug 2007
+         !--------------------------------------------------------------
+
+         ! integer, parameter  :: QC_MAX = 7
+         ! integer, parameter  :: QC_MAX_PRIOR     = 3
+         ! integer, parameter  :: QC_MAX_POSTERIOR = 1
+
+         if ( verbose ) then
+         call get_obs_values(observation, copyvals)
+     !   if (any(copyvals < -87.0) .and. ( qc_integer < (QC_MAX_PRIOR+1) ) ) then
+         if (any(copyvals < -87.0) .and. ( qc_integer < (QC_MAX_PRIOR-1) ) ) then
+              write(*,*)
+              write(*,*)'Observation ',keys(obsindex),' has some bad stuff.'
+              write(*,*)'flavor                 is',flavor
+              write(*,*)'obs              value is',obs(1)
+              write(*,*)'prior_mean       value is',prior_mean(1)
+              write(*,*)'posterior_mean   value is',posterior_mean(1)
+              write(*,*)'prior_spread     value is',prior_spread(1)
+              write(*,*)'posterior_spread value is',posterior_spread(1)
+              write(*,*)'DART QC          value was',qc_integer
+              qc_integer = QC_MAX_PRIOR - 1
+              write(*,*)'DART QC          value is now',qc_integer
+              do i= 1,num_copies 
+                 write(*,*)copyvals(i),trim(get_copy_meta_data(seq,i))
+              enddo
+              write(*,*)
+         endif
+         endif
+
+         !--------------------------------------------------------------
          ! Scale the quantities so they plot sensibly.
          !--------------------------------------------------------------
 
@@ -928,7 +969,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
             cycle ObservationLoop
          endif
 
-         if( qc_index > 0) then
+         if( qc_index > 0 ) then
             if (qc(qc_index) >= input_qc_threshold ) then
             !  write(*,*)'obs ',obsindex,' rejected by qc ',qc(qc_index)
                NbadQC = NbadQC + 1
@@ -949,10 +990,10 @@ ObsFileLoop : do ifile=1, Nepochs*4
          indx         = min(int(ratio), MaxSigmaBins)
          nsigma(indx) = nsigma(indx) + 1
 
-         ! Individual observations that are very far away get individually
+         ! Individual (valid) observations that are very far away get
          ! logged to a separate file.
 
-         if(ratio > 10.0_r8) then
+         if( (ratio > 10.0_r8) .and. (qc_integer <= QC_MAX_PRIOR) ) then
             call get_time(obs_time,seconds,days)
 
             write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f8.2,i7,1x,2f13.2,f8.1,2i7)') &
@@ -1472,6 +1513,8 @@ enddo OneLevel
 
 ! Actually print the histogram of innovations as a function of standard deviation. 
 close(nsigmaUnit)
+write(*,*)
+write(*,*)'last bin contains all (flagged) bad observations'
 do i=0,MaxSigmaBins
    if(nsigma(i) /= 0) write(*,*)'innovations in stdev bin ',i+1,' = ',nsigma(i)
 enddo
