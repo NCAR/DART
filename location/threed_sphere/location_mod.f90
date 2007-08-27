@@ -1118,7 +1118,7 @@ integer,              intent(in)    :: num
 type(location_type),  intent(in)    :: obs(num)
 
 real(r8) :: min_lat, max_lat, beg_box_lon, end_box_lon, first_obs_lon, last_obs_lon
-real(r8) :: longitude_range
+real(r8) :: longitude_range, degrees
 integer  :: i, indx, gap_start, gap_end, gap_length
 logical  :: lon_box_full(360)
 
@@ -1142,11 +1142,23 @@ if(COMPARE_TO_CORRECT) write(*, *) 'min and max lat and width', gc%bot_lat, gc%t
 ! Would like to do this without sorting if possible at low-cost
 ! First, partition into 360 1-degree boxes and find the biggest gap
 do i = 1, num
-   indx = floor(obs(i)%lon * 180.0_r8 / PI) + 1
-   ! Look out for roundoff error (assume that things are really supposed to be 0->2PI)
-   if(indx > 360) indx = 360
-   if(indx <   1)   indx = 1
-   lon_box_full(indx) = .true.
+   degrees = obs(i)%lon * 180.0_r8 / PI
+   ! If the value of the longitude is very close to an integer number of degrees
+   ! a roundoff can occur that leads to an assignment in the wrong box.  We avoid this
+   ! by first testing to see if this is possible and then setting both boxes to full.
+   ! If this is not the case, then we fill the box the observation is in.
+   if (abs(degrees - nint(degrees)) < 0.00001_r8) then
+      indx = nint(degrees)
+      if(indx <   1) indx = 360
+      lon_box_full(indx) = .true.
+
+      indx = nint(degrees) + 1
+      if(indx > 360) indx = 1
+      lon_box_full(indx) = .true.
+   else
+      indx = floor(degrees) + 1
+      lon_box_full(indx) = .true.
+   endif
 end do
 
 ! Find the longest sequence of empty boxes
