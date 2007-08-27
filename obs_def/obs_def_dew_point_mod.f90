@@ -48,7 +48,7 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use     location_mod, only : location_type, set_location, get_location , write_location, &
                              read_location
 use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE
+use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_VAPOR_MIXING_RATIO, KIND_PRESSURE
 
 implicit none
 private
@@ -85,8 +85,7 @@ real(r8),            intent(out) :: td               ! dewpoint (K)
 integer,             intent(out) :: istatus
 
 integer  :: ipres
-real(r8) :: qv                            ! specific humidity
-real(r8) :: rv                            ! water vapor mixing ratio (kg/kg)
+real(r8) :: qv                            ! water vapor mixing ratio (kg/kg)
 real(r8) :: e_mb                          ! water vapor pressure (mb)
 real(r8), PARAMETER :: e_min = 0.001_r8   ! threshold for minimum vapor pressure (mb),
                                           !   to avoid problems near zero in Bolton's equation
@@ -112,8 +111,8 @@ if (istatus /= 0) then
    td = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_SPECIFIC_HUMIDITY, qv, istatus)
-if (istatus /= 0) then
+call interpolate(state_vector, location, KIND_VAPOR_MIXING_RATIO, qv, istatus)
+if (istatus /= 0 .or. qv >= 1.0_r8 .or. qv < 0.0_r8) then
    td = missing_r8
    return
 endif
@@ -122,17 +121,9 @@ endif
 !  Compute water vapor pressure.
 !------------------------------------------------------------------------------
 
-if (qv >= 1.0_r8) then
-   write(errstring,*)'invalid qv value ', qv
-   call error_handler(E_ERR,'get_expected_dew_point', errstring, &
-        source, revision, revdate)
-else
-   rv = qv / (1.0_r8 - qv)
-endif
-
 p_mb = p_Pa * 0.01_r8
 
-e_mb = rv * p_mb / (0.622_r8 + rv)
+e_mb = qv * p_mb / (0.622_r8 + qv)
 e_mb = max(e_mb, e_min)
 
 !------------------------------------------------------------------------------

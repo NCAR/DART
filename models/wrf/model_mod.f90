@@ -1389,6 +1389,63 @@ else if( obs_kind == KIND_SPECIFIC_HUMIDITY ) then
             k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
 
 
+!!$            i1 = get_wrf_index(i,j ,k,TYPE_QV,id)
+!!$            i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
+            i1 = wrf%dom(id)%dart_ind(i,j ,k,TYPE_QV)
+            i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QV)
+            a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+            fld(1) = a1 /(1.0_r8 + a1)
+
+!!$            i1 = get_wrf_index(i,j ,k+1,TYPE_QV,id)
+!!$            i2 = get_wrf_index(i,j+1,k+1,TYPE_QV,id)
+            i1 = wrf%dom(id)%dart_ind(i,j ,k+1,TYPE_QV)
+            i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QV)
+            a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+            fld(2) = a1 /(1.0_r8 + a1)
+
+         else
+
+            fld(:) = missing_r8
+
+         endif
+
+      else
+
+         if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+            j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+            wrf%dom(id)%surf_obs) then
+
+!!$            i1 = get_wrf_index(i,j,1,TYPE_Q2,id)
+!!$            i2 = get_wrf_index(i,j+1,1,TYPE_Q2,id)
+            i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_Q2)
+            i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_Q2)
+            fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+            fld(1) = fld(1) / (1.0_r8 + fld(1))
+
+         else
+
+            fld(1) = missing_r8
+
+         endif
+
+      endif
+
+   else
+
+      fld(:) = 0.0_r8
+
+   endif
+
+else if( obs_kind == KIND_VAPOR_MIXING_RATIO ) then
+
+   if ( wrf%dom(id)%n_moist >= 1) then
+
+      if(.not. vert_is_surface(location) .or. .not. surf_var) then
+
+         if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+            j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
+            k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
+
 !!$            i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
 !!$            i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
             i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QV)
