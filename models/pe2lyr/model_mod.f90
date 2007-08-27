@@ -65,6 +65,7 @@ character(len=128), parameter :: &
 type(time_type) :: time_step
 type(modelvars) :: model_dat
 type(sphere)    :: sphere_dat
+character(len=129) :: errstring
 
 integer  :: levs(2)
 real :: lons(nlons), lats(nlats)
@@ -282,6 +283,12 @@ u_indxmax = 2*nlats*nlons
 v_indxmax = 4*nlats*nlons
 z_indxmax = 6*nlats*nlons
 
+! avoid out-of-range queries
+if (indx > z_indxmax) then
+   write(errstring,*)'indx ',indx,' must be between 1 and ', z_indxmax
+   call error_handler(E_ERR,'model_mod:get_state_meta_data', errstring, source, revision, revdate)
+endif
+
 if(indx <= u_indxmax) then
    lev_index =  (indx-1)/(nlats*nlons) +1
    lat_index = ((indx-1) - ((lev_index-1)*nlats*nlons)) / nlons +1
@@ -417,6 +424,13 @@ integer,  intent(in) :: lon_index, lat_index, level, mytype
 
 integer :: indx
 
+! the set_location() call does simple error checks for out of range vals
+! for lat and lon, but cannot know what valid levels are.  make sure the
+! index numbers computed here are within range.
+if (level < 1 .or. level > 2) then
+   write(errstring,*)'level ',level,' must be 1 or 2'
+   call error_handler(E_ERR,'model_mod:get_val', errstring, source, revision, revdate)
+endif
 
 ! order is u,v,z 
 if(mytype == KIND_U_WIND_COMPONENT) then
@@ -427,7 +441,16 @@ else if(mytype == KIND_GEOPOTENTIAL_HEIGHT) then
    indx = 4*nlats*nlons+(level-1)*nlats*nlons+(lat_index-1)*nlons + lon_index
 endif
    
+!! should not be possible now; but this error check can be commented back in.
+!! (it is out for performance reasons, but if you get any strange values, this
+!! is a good first check to reenable.)
+!if (indx < 1 .or. indx > size(x)) then
+!   write(errstring,*)'index ',indx,' not between 1 and ', size(x), ' (should not be possible)'
+!   call error_handler(E_ERR,'model_mod:get_val', errstring, source, revision, revdate)
+!endif
+
 get_val = x(indx)
+
 
 end function get_val
 !########################################################
@@ -479,7 +502,6 @@ integer :: i
 !--------------------------------------------------------------------
 ! local variables
 !--------------------------------------------------------------------
-character(len=129) :: errstring
 character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
