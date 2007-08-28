@@ -49,9 +49,9 @@
 <A NAME="HEADER"></A>
 <TABLE summary="">
 <TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision: 2801 $ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL: http://subversion.ucar.edu/DAReS/DART/trunk/utilities/restsart_file_utility.html $ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date: 2007-04-04 22:11:48 -0600 (Wed, 04 Apr 2007) $ </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision: 3084 $ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL: http://subversion.ucar.edu/DAReS/DART/trunk/utilities/restart_file_utility.html $ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date: 2007-08-28 15:03:53 -0600 (Tue, 28 Aug 2007) $ </TD></TR>
 <TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
 </TABLE>
 
@@ -64,14 +64,14 @@
 <P>
 Utility program to alter the data timestamp in a DART restart file,
 to add or remove a model-advance time, to convert from ascii to binary 
-or back, and to either split or combine single ensemble restarts into 
+or back, and to either split or combine ensemble restarts into 
 one or multiple files.
 </P>
 
 <P>
 DART restart files contain a single timestamp with the model
 time at which the data was generated, followed by the model data.  
-Each file can be ASCII or binary format, and can contain the 
+Each file can be ASCII or binary format, and can contain a
 timestamp and data for a single ensemble member or repeated 
 timestamp/data blocks for multiple ensemble members.  
 </P>
@@ -79,10 +79,11 @@ timestamp/data blocks for multiple ensemble members.
 <P>
 The files named <em class=code>temp_ic</em> or 
 <em class=code>assim_model_state_ic00001</em> contain the same
-contents as a normal restart file but also contain an additional
+information as a normal restart file but the data for each
+ensemble is preceeded by an additional
 timestamp which indicates to the model advance code how far in time
 the model needs to run.  This program can add or remove these
-timestamps, in addition to alterning the normal data timestamps.
+timestamps, in addition to altering the normal data timestamps.
 </P>
 
 <P>
