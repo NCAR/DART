@@ -69,10 +69,11 @@ one or multiple files.
 </P>
 
 <P>
-Normal DART restart files contain only a single timestamp; the model
-time at which the data was generated.  Each file can be ASCII or
-binary format, and can contain the time and data for a single ensemble
-member or repeated time/data blocks for all ensemble members.  
+DART restart files contain a single timestamp with the model
+time at which the data was generated, followed by the model data.  
+Each file can be ASCII or binary format, and can contain the 
+timestamp and data for a single ensemble member or repeated 
+timestamp/data blocks for multiple ensemble members.  
 </P>
 
 <P>
@@ -80,8 +81,8 @@ The files named <em class=code>temp_ic</em> or
 <em class=code>assim_model_state_ic00001</em> contain the same
 contents as a normal restart file but also contain an additional
 timestamp which indicates to the model advance code how far in time
-the model needs to advance.  This program can add or remove these
-timestamps, in addition to the normal data timestamps.
+the model needs to run.  This program can add or remove these
+timestamps, in addition to alterning the normal data timestamps.
 </P>
 
 <P>
