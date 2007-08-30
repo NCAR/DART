@@ -585,6 +585,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
       call destroy_obs(next_obs)
       call destroy_obs_sequence(seq)
       if (allocated(qc)) deallocate( qc )
+      if (allocated(copyvals)) deallocate( copyvals )
       cycle ObsFileLoop
    else
       if (verbose) write(*,*)'seqTN > TimeMin ... using ',trim(adjustl(obs_seq_in_file_name))
@@ -602,6 +603,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
       call destroy_obs(next_obs)
       call destroy_obs_sequence(seq)
       if (allocated(qc)) deallocate( qc )
+      if (allocated(copyvals)) deallocate( copyvals )
       exit ObsFileLoop
    else
       if (verbose) write(*,*)'seqT1 < TimeMax ... using ',trim(adjustl(obs_seq_in_file_name))
@@ -1381,6 +1383,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
    call destroy_obs(next_obs)
    call destroy_obs_sequence(seq)
    if (allocated(qc)) deallocate( qc )
+   if (allocated(copyvals)) deallocate( copyvals )
 
 enddo ObsFileLoop
 
