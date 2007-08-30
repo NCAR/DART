@@ -1202,8 +1202,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
             endif DesiredLevel
 
-
-            if (vert_is_surface(obs_loc)) cycle Areas
+            if (which_vert(flavor) == VERTISSURFACE) cycle Areas
 
             !-----------------------------------------------------------
             ! end of time series statistics
