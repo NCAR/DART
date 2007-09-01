@@ -230,7 +230,13 @@ if(num_output_state_members > ens_size) num_output_state_members = ens_size
 if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 
 ! Initialize the obs_sequence; every pe gets a copy for now
+if (output_timestamps) then
+   if (do_output()) call timestamp("Before observation setup", pos='debug')
+endif
 call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, DART_qc_index)
+if (output_timestamps) then
+   if (do_output()) call timestamp("After observation setup", pos='debug')
+endif
 
 ! Allocate model size storage and ens_size storage for metadata for outputting ensembles
 model_size = get_model_size()
@@ -953,7 +959,7 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
          ! in the forward operator evaluation field
 !!!WATCH ASSUMPTIONS ABOUT INDEXING
          if(istatus == 0) then
-            if ((assimilate_this_ob .or. evaluate_this_ob) and. (thisvar(1) == missing_r8)) then
+            if ((assimilate_this_ob .or. evaluate_this_ob) .and. (thisvar(1) == missing_r8)) then
                write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
                call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
             endif
