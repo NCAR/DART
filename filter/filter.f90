@@ -953,6 +953,10 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
          ! in the forward operator evaluation field
 !!!WATCH ASSUMPTIONS ABOUT INDEXING
          if(istatus == 0) then
+            if ((assimilate_this_ob .or. evaluate_this_ob) and. (thisvar(1) == missing_r8)) then
+               write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
+               call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+            endif
             if(assimilate_this_ob) then
                forward_op_ens_handle%vars(j, k) = 0
             else if(evaluate_this_ob) then
@@ -1090,8 +1094,8 @@ do j = 1, obs_ens_handle%my_num_vars
       endif
 
    else
-      ! For posterior, only check for failed forward operator if prior successful
-      if(forward_min == 0 .and. forward_max > 0) then
+      ! For failed posterior, only update qc if prior successful
+      if(forward_max > 0) then
          ! Both the following 2 tests and assignments were on single executable lines,
          ! but one compiler (gfortran) was confused by this, so they were put in
          ! if/endif blocks.
@@ -1178,10 +1182,12 @@ function input_qc_ok(input_qc)
 logical              :: input_qc_ok
 real(r8), intent(in) :: input_qc
 
+! Do checks on input_qc value with namelist control
 ! Should eventually go in qc module
 
-! Do checks on input_qc value with namelist control
-! For test always return true for now
+! To exclude negative qc values, comment in the following line instead
+! of the existing code.
+! if((input_qc < input_qc_threshold) .and. (input_qc >= 0)) then
 if(input_qc < input_qc_threshold) then
    input_qc_ok = .true.
 else
