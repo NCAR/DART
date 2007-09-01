@@ -112,8 +112,13 @@ if (istatus /= 0) then
    return
 endif
 call interpolate(state_vector, location, KIND_VAPOR_MIXING_RATIO, qv, istatus)
-if (istatus /= 0 .or. qv >= 1.0_r8 .or. qv < 0.0_r8) then
+if (istatus /= 0) then
    td = missing_r8
+   return
+endif
+if (qv < 0.0_r8 .or. qv >= 1.0_r8) then
+   td = missing_r8
+   if (istatus == 0) istatus = 1
    return
 endif
 
