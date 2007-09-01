@@ -2629,7 +2629,11 @@ s_type_01d = state_num_0d + state_num_1d
 s_type_2d = s_type - s_type_01d
 s_type_3d = s_type_2d - state_num_2d 
 if (s_type <= state_num_0d + state_num_1d) then
-   ! error; can't deal with have observed variables that are 0 or 1D in model_mod.
+   ! error; can't deal with observed variables that are 0 or 1D in model_mod.
+   istatus = 3
+   interp_val = 0._r8
+   write(*,*) 'Cannot handle 0 or 1d state vars, s_type = ', s_type
+   return
 elseif (s_type_2d > 0 .and. s_type_2d <= state_num_2d) then
    lon_name = dim_names(s_dimid_2d(1,s_type_2d))
    lat_name = dim_names(s_dimid_2d(2,s_type_2d))
@@ -2638,6 +2642,11 @@ elseif (s_type_3d > 0 .and. s_type_3d <= state_num_3d) then
    lon_name = dim_names(s_dimid_3d(2,s_type_3d))
    lat_name = dim_names(s_dimid_3d(3,s_type_3d))
    lev_name = dim_names(s_dimid_3d(1,s_type_3d))
+else
+   istatus = 3
+   interp_val = 0._r8
+   write(*,*) 'Unexpected state type value, s_type = ', s_type
+   return
 end if
 
 !------------------------------------------------------------------------------
@@ -3487,6 +3496,10 @@ rank_kind = cam_kind
 if (rank_kind <= state_num_0d) then
    call coord_index('lon     ', old_array(1), lon_index)
    call coord_index('lat     ', old_array(2), lat_index)
+   ! fix for non-CAM obs
+   lon_which_dimid = 1
+   lat_which_dimid = 2
+   ! end non-CAM obs
    go to 10
 else
    rank_kind = rank_kind - state_num_0d
