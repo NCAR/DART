@@ -19,12 +19,14 @@
 #
 #--------------------------------------------------------------
 
+# you may need additional options to submit this job to LSF;
+# e.g. -P project charge code, different queue name, etc.
+
 #BSUB -o prepbufr.out
 #BSUB -e prepbufr.err
 #BSUB -J prepbufr
 #BSUB -q share
-#BSUB -W 4:00
-#BSUB -P 86850054
+#BSUB -W 6:00
 #BSUB -n 1
 
 
@@ -47,9 +49,9 @@ endif
 # Convert from big-endian BUFR files to little-endian for Intel chip systems.
 # ('yes' or whatever)
 set  convert = yes 
-set     year = 1997
-set    month = 12      
-set beginday = 30
+set     year = 2007
+set    month = 7      
+set beginday = 31
 #
 # end day (up to and including the last day of the month.  Leap year Februaries are OK.
 #          Remember that the prepqm###### file for hour 0 of the first day of the next
@@ -130,13 +132,15 @@ while ( $day <= $last )
       endif
 
       if ($convert == 'yes') then
-         echo "linking bigendian to ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh}"
-         ln -f -s  ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh} prepqm.bigendian
+         echo "copying bigendian to ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh}"
+         cp ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh} prepqm.bigendian
+         ls -l prepqm.bigendian
          ../exe/grabbufr.x
          mv prepqm.littleendian prepqm.in
+         rm prepqm.bigendian
       else
-         echo "linking prepqm.in to ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh}"
-         ln -f -s  ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh} prepqm.in
+         echo "copying prepqm.in to ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh}"
+         cp ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh} prepqm.in
       endif
 
       if ($h == 30) then
