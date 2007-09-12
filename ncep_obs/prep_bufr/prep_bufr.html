@@ -133,7 +133,7 @@ This involves the following steps:
 <P>
 If you have multiple days (or months) of observations that you are intending
 to convert, there is a script in the work subdirectory which is set up to
-run the converter on a sequence of raw data files, and concatinate the output
+run the converter on a sequence of raw data files, and concatenate the output
 files together into one output file per day.  
 Edit the work/prepbufr.csh script and set the necessary
 values in the 'USER SET PARAMETERS' section near the top.  This script can
@@ -230,7 +230,7 @@ can be compiled with the pgf90 compiler on a Linux system,
 with gfortran on an Intel based Mac, and the ifort compiler
 on other Linux machines.
 Instructions for building it can be found in convert_bufr/README, but 
-basically go to the convert_bufr subdirectory, edit covert_bufr.csh
+basically go to the convert_bufr subdirectory, edit convert_bufr.csh
 to set your compiler, and run it to compile the converter code (grabbufr).
 </P>
 
@@ -238,7 +238,7 @@ to set your compiler, and run it to compile the converter code (grabbufr).
 This program reads the whole BUFR file into memory, and needs to know the size
 of the file (in bytes).  Unfortunately, the system call STAT() returns this size
 as one number in an array, and the index into that array differs depending on
-the system and sometimes the bit size (32 vs 64) of the compiler.  To test that
+the system and sometimes the word size (32 vs 64) of the compiler.  To test that
 the program is using the right offset into this array, you can compile and run
 the stat_test.f program.  It takes a single filename argument and prints out information
 about that file.  One of the numbers will be the file size in bytes.
