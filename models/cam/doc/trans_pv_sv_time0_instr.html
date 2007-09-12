@@ -1,0 +1,79 @@
+<HTML>
+<HEAD>
+<TITLE>trans_pv_sv_time0 </TITLE>
+<link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css"></link>
+</HEAD>
+<BODY>
+<!--
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                                       !!
+!!                   GNU General Public License                          !!
+!!                                                                       !!
+!! This file is part of the Data Assimilation Research Testbed (DART).   !!
+!!                                                                       !!
+!! DART is free software; you can redistribute it and/or modify          !!
+!! it and are expected to follow the terms of the GNU General Public     !!
+!! License as published by the Free Software Foundation.                 !!
+!!                                                                       !!
+!! DART is distributed in the hope that it will be useful,               !!
+!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
+!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
+!! GNU General Public License for more details.                          !!
+!!                                                                       !!
+!! You should have received a copy of the GNU General Public License     !!
+!! along with DART; if not, write to:                                    !!
+!!          Free Software Foundation, Inc.                               !!
+!!          59 Temple Place, Suite 330                                   !!
+!!          Boston, MA  02111-1307  USA                                  !!
+!! or see:                                                               !!
+!!          http://www.gnu.org/licenses/gpl.txt                          !!
+!!                                                                       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+<P>
+You can make filter_ic files from caminput_#.nc files using the program
+.../DART/models/cam/trans_pv_sv_time0.f90.
+This is compiled in .../DART/models/cam/work by default if you use workshop_setup.csh.
+Trans_pv_sv_time0 needs to be run for each caminput file. 
+So far there is not a robust script for running trans_pv_sv_time0, 
+but you can write your own. 
+
+You'll need to have several files in the directory where trans_pv_sv_time0 is run:
+
+<UL>
+   <LI> input.nml containing perfect_model_nml, which provides the Gregorian timestamp for the
+        filter_ic file in variables
+        <PRE>
+           init_time_days    = 146827,
+           init_time_seconds = 0,
+        </PRE>
+        This date can be generated using 
+	<A HREF="./trans_date_to_dart_instr.html"> 
+	.../DART/models/cam/trans_date_to_dart.f90</A>.  
+   </LI>
+   <LI> 'topog_file.nc' for your resolution. 
+        A copy of this should be in with the rest of the CAM
+	input files that are listed in the CAM "namelistin" in variable bnd_topo.  
+	It will be named similarly to 
+        .../something/else/more/topo-from-cami_0000-09-01_64x128_L26_c030918.nc 
+   </LI>
+   <LI> link or copy your CAM initial file caminput_#.nc to 'caminput.nc',
+        which is the name trans_pv_sv_time0 wants to see.
+   </LI>
+</UL>
+
+</P>
+
+<P>
+Each run of trans_pv_sv_time0 will create a 'temp_ud' file, 
+which should be renamed filter_ic.####, where #### = 1,...,num_ens, padded with 0s
+is taken from the caminput_#.nc used as input.
+You might want to put these new filter_ic files in a directory that has MPI
+in the name, so that you know whether they work with Jamaica (new state vector order)
+or Iceland (old).
+</P>
+
+<HR>
+</BODY>
+</HTML>
