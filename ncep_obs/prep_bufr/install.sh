@@ -20,8 +20,8 @@ set -eua
 #  CPLAT - platform type (linux, sgi, aix, sun, macosx)
 #  ------------------------------------------------------------------------
  
-CPLAT=macosx
-#CPLAT=linux
+#CPLAT=macosx
+CPLAT=linux
 
 #  set up the compilers to use
 #  -----------------------------------------------------
@@ -31,7 +31,8 @@ then
    cc=cc; ff=f77
 elif [ $CPLAT = linux ]
 then
-   cc=cc; ff=pgf90
+#   cc=cc; ff=pgf90
+   cc=cc; ff=ifort
 elif [ $CPLAT = aix ]
 then
    cc=cc; ff=f77
@@ -69,10 +70,10 @@ $ff prepbufr_03Z.f ../lib/bufrlib.a -o ../exe/prepbufr_03Z.x
 #  Compile the binary format converter program
 #  ---------------------------------------
  
-#echo 'Compiling the grabbufr converter program'
+echo 'Compiling the grabbufr converter program'
  
-#cd ../convert_bufr
-#$ff grabbufr.f ../lib/bufrlib.a -o ../exe/grabbufr.x
+cd ../convert_bufr
+$ff grabbufr.f ../lib/bufrlib.a -o ../exe/grabbufr.x
  
  
 #  Compile the block/unblock converter program
