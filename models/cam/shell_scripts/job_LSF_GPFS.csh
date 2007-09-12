@@ -30,7 +30,6 @@
 #
 #BSUB -J DARTCAM
 #BSUB -o DARTCAM.%J.log
-#BSUB -P 86850054
 #BSUB -q standby
 #BSUB -n 1
 

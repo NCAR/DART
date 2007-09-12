@@ -38,8 +38,8 @@ endif
 set num_ens = $1
 set num_per_batch = $2
 
-# set proj_num = 86850054
-set proj_num = 86850054
+# fix this for your local system accounting
+set proj_num = 1234
 set ret_period = 1000
 set write_pass = da$$
 echo "with write password $write_pass" > saved_restart

@@ -25,7 +25,6 @@
 #
 #BSUB -J restart2ms
 #BSUB -o restart2ms.%J.log
-#BSUB -P 86850054
 #BSUB -q standby
 #BSUB -W 1:00
 #BSUB -n 1
@@ -38,7 +37,7 @@ pwd
 cd $LS_SUBCWD
 
 set num_ens = 1
-while (-s CAM/caminput_${num_ens}.nc)
+while (-e CAM/caminput_${num_ens}.nc && ! -z CAM/caminput_${num_ens}.nc)
    @ num_ens++
 end
 @ num_ens = $num_ens - 1

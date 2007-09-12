@@ -28,7 +28,7 @@
 #BSUB -J auto_diag2ms
 #BSUB -o auto_diag2ms.%J.log
 #BSUB -e auto_diag2ms.%J.err
-#BSUB -P 86850054
+#BSUB -P account_number
 #BSUB -q premium
 #BSUB -W 3:00
 #BSUB -n 1
@@ -40,7 +40,7 @@
 setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:/usr/local/dcs/lib
 
 set compress = true
-set proj_num = 86850054
+set proj_num = 12345678
 
 set diag_name = diagnostics.tar
 set saved = saved_diagnostics

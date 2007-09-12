@@ -27,7 +27,6 @@
 #
 #BSUB -J filter
 #BSUB -o filter.%J.log
-#BSUB -P 86850054
 #BSUB -q economy 
 #BSUB -n 1
 #xxxx -x

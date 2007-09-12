@@ -15,10 +15,10 @@
 #
 # Script to advance one ensemble member one filter "time step"
 # when the model advance is executed as a separate process.
-# Called by filter_server.csh.
+# Called by the filter executable.
 # Calls run-pc.csh, the CAM execution script.
 # Calls 3 translation routines to translate time and model state.
-# Runs on one of the compute nodes allotted to filter_server.csh.
+# Runs on one of the compute nodes allotted to the filter executable
 #
 # Arguments are the process number of caller, the number of state copies
 # belonging to that process, and the name of the filter_control_file for

@@ -27,8 +27,6 @@
 #
 #BSUB -J diags2ms
 #BSUB -o diags2ms.%J.log
-###BSUB -P 86850054
-#BSUB -P 39510050
 #BSUB -q standby
 #BSUB -n 1
 #xxxx -x

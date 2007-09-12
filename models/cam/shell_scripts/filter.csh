@@ -57,7 +57,6 @@
 #BSUB -o filter.%J.log
 #BSUB -q economy
 #BSUB -n 1
-#BSUB -P 868500xx
 
 ##=============================================================================
 ## This block of directives constitutes the preamble for the PBS queuing system 
