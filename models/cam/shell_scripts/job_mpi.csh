@@ -84,7 +84,6 @@
 ##=============================================================================
 #BSUB -J job_mpi
 #BSUB -o job_mpi.%J.log
-#BSUB -P 86850054
 #BSUB -q share
 #BSUB -W 0:30
 #BSUB -n 1
@@ -118,7 +117,7 @@
 ##PBS -l ncpus=32
 
 #PBS -S /bin/csh
-#PBS -l mem=1GB
+##PBS -l mem=1GB
 ##PBS -W group_list=[group name]
 
 # A common strategy for the beginning is to check for the existence of
@@ -221,7 +220,7 @@ echo "Running $JOBNAME on host "`hostname`
 echo "Initialized at "`date`
 echo "CENTRALDIR is " $CENTRALDIR
 
-#==========================================================================================
+#========================================================================================
 # User set run parameters to change
 
 # Directory where output will be kept (relative to '.')
@@ -236,12 +235,12 @@ set exp = ${resol}_12
 # (if it's not 1, then script changes may be required, esp defining OBS_SEQ)
 # Branching a run; easiest to either copy all the desired ICs into the 
 # new experiment "previous" output directory and set obs_seq_first = 1,
-# OR point to the ICs where they are (DART_ics_1 etc) set obs_Seq_first = 
+# OR point to the ICs where they are (DART_ics_1 etc) set obs_seq_first = 
 # the current obs_seq to start with, and copy input_n.nml(continuation) 
 # into input_#.nml
 set obs_seq_first = 1
 
-# number of obs_seqs / day
+# number of obs_seq *files* / day  (not timeslots)
 set obs_seq_freq = 2
 
 # 'day'/obs_seq.out numbers to assimilate during this job
@@ -255,33 +254,44 @@ set mo = 1
 set mo_first = 1
 
 # set obs_seq_root = /ptmp/dart/raeder/Obs_sets/Allx12_I/obs_seq2003
-# ascii to avoid byteswapping;  
+# ascii to avoid byteswapping;  but beware of machines filling in extra/missing
+# digits, causing locations with latitude > 90 degrees.
 set obs_seq_root = /ptmp/dart/Obs_sets/Allx12_I_ascii/obs_seq2003
-
-# The number of processors that will be used by the $exp_#.lsf jobs spawned by this script.
-# ? ? ?  what about the Simultaneous Multi-Threading?
-# ? ? ?  do I need a ptile?  
-#        BSUB -n N                N = 2x the # physical processors I want
-#        BSUB -R "span[ptile=2]"  assuming that we're sticking with 1 task/process.
-#        does echo to job_i below need changing, based on this?
-set num_procs = 32
-set queue = standby
-set wall_clock = 6:00
 
 # DART source code directory trunk, and CAM interface location.
 set DARTDIR = /blhome/${user}/J/DART
 set DARTCAMDIR =          ${DARTDIR}/models/cam
 
+# The maximum number of processors that will be used by 
+# the $exp_#.script jobs spawned by this script.  
+# (FV core jobs may use less, depending on the domain decomposition)
+# ptile is the number of processors/node on this machine.  
+# It has no bearing on whether CAM is MPI or not, as long as filter is MPI.
+set max_num_procs = 32
+set ptile = 16
+
+# accounting code used for batch jobs (if no accounting needed, you may need
+# to remove the -P lines in the script generation sections below.
+set proj_num = 12345678
+
+# The queue to which the $exp_#.script scripts will be submitted,
+# and the requested time in that queue.
+set queue = standby
+set wall_clock = 6:00
+   
 # ICs for obs_seq_first only.  After that the ICs will come from the previous iteration.
 # This copies just the initial conditions for the correct number of ensemble members.
-
+# num_lons, num_lats and num_levs are needed for the FV CAM domain decomposition algorithm,
+# in order to use larger numbers of processors.
+set num_levs  = 26
 if ($resol == T21) then
    set DART_ics_1  = /ptmp/dart/CAM_init/T21/03-01-01/DART_MPI
    set CAM_ics_1   = /ptmp/dart/CAM_init/T21/03-01-01/CAM/caminput_
    set CLM_ics_1   = /ptmp/dart/CAM_init/T21/03-01-01/CLM/clminput_
    # -mpi will be attached to this name if parallel_cam = true; don't add it here
    set CAMsrc      = /ptmp/dart/CAM/CAMsrc/Cam3/cam3.1/models/atm/cam/bld/T21_3.1-O3
-   set ptile = 16
+   set num_lons  = 64
+   set num_lats  = 32
 else if ($resol == T42) then
    # T42
    set DART_ics_1  = /ptmp/dart/CAM_init/T42/03-01-01/DART_MPI
@@ -291,7 +301,8 @@ else if ($resol == T42) then
    # There are more support widgets expected in the directory tree.
    # -mpi will be attached to this name if parallel_cam = true; don't add it here
    set CAMsrc      = /ptmp/dart/CAM/CAMsrc/Cam3/cam3.1/models/atm/cam/bld/T42_3.1-O3
-   set ptile = 16
+   set num_lons  = 128
+   set num_lats  = 64
 else if ($resol == T85) then
    # T85
    set DART_ics_1  = /ptmp/dart/CAM_init/T85/03-01-01/DART_MPI
@@ -299,11 +310,29 @@ else if ($resol == T85) then
    set CLM_ics_1   = /ptmp/dart/CAM_init/T85/03-01-01/CLM/clminput_
    # -mpi will be attached to this name if parallel_cam = true; don't add it here
    set CAMsrc      = /ptmp/dart/CAM/CAMsrc/Cam3/cam3.1/models/atm/cam/bld/T85_3.1-O3
-   set ptile = 16
+   set num_lons  = 256
+   set num_lats  = 128
+else if ($resol == FV4x5) then
+   set DART_ics_1  = /ptmp/dart/CAM_init/FV4x5/03-01-01/DART_MPI
+   set CAM_ics_1   = /ptmp/dart/CAM_init/FV4x5/03-01-01/CAM/caminput_
+   set CLM_ics_1   = /ptmp/dart/CAM_init/FV4x5/03-01-01/CLM/clminput_
+   # -mpi will be attached to this name if parallel_cam = true; don't add it here
+   set CAMsrc      = /ptmp/dart/CAM/CAMsrc/Cam3/cam3.5/models/atm/cam/bld/FV4x5-O2
+   set num_lons  = 72
+   set num_lats  = 46
+else if ($resol == FV2x2.5) then
+   set DART_ics_1  = /ptmp/dart/CAM_init/FV2x2.5/03-01-01/DART_MPI
+   set CAM_ics_1   = /ptmp/dart/CAM_init/FV2x2.5/03-01-01/CAM/caminput_
+   set CLM_ics_1   = /ptmp/dart/CAM_init/FV2x2.5/03-01-01/CLM/clminput_
+   # -mpi will be attached to this name if parallel_cam = true; don't add it here
+   set CAMsrc      = /ptmp/dart/CAM/CAMsrc/Cam3/cam3.5/models/atm/cam/bld/FV2x2.5-O2
+   set num_lons  = 144
+   set num_lats  = 91
+# If another FV resolution is added, then another qualifier is needed in the
+# domain decomposition section below.
 endif 
 
 if (${parallel_cam} == true) then
-   set ptile = 16                                                              
    set CAMsrc = ${CAMsrc}-mpi                                                 
 endif                                                                         
 
@@ -319,22 +348,15 @@ set input = input_
 #        analyses from filter_ic_new.#### at the end of each obs_seq.  See 'stuff' below
 
 # Choose which sets of restart files will be backed to up a permanent storage place.
-# Scripts auto_re2ms_LSF.csh and auto_re2ms.csh may need to be modified/replaced on your system.
+# Scripts auto_re2ms*.csh and auto_diag2ms_LSF.csh may need to be modified/replaced on your system.
 # Restarts are backed up when
-#      if ($j % $save_freq == $mod_save) save to mass store
+#      if (previous_obs_seq % $save_freq == $mod_save) save to mass store
 # where in the obs_seq loop below j = current obs_seq file - 1
 set save_freq = 4
 set mod_save = 1
 
 # END of run parameters to change
 #==========================================================================================
-
-# Add information to the run_command, based on User set parameters
-if ($?PBS_WORKDIR) then
-   set run_command = "$run_command $num_procs "
-endif
-# try to discover the ensemble size from the input.nml
-# this is some gory shell programming ... all to do 'something simple'
 
 # This is the CENTRAL directory for whole filter job
 #    jobs submitted to batch queues from here
@@ -345,6 +367,9 @@ set myname = $0                              # this is the name of this script
 set MASTERLOG = ${CENTRALDIR}/run_job.log    # Set Variable for a 'master' logfile 
 ${REMOVE} ${MASTERLOG}                       # clean up old links
 
+#----------------------------------------------------------
+# try to discover the ensemble size from the input.nml
+# this is some gory shell programming ... all to do 'something simple'
 grep ens_size input_${obs_seq_first}.nml >! ensstring.$$
 set  STRING = "1,$ s#,##g"
 set ensstring = `sed -e "$STRING" ensstring.$$`
@@ -357,6 +382,69 @@ echo "There are ${num_ens} ensemble members."
 # echo "There are ${num_ens} ensemble members."  >> $MASTERLOG
 echo "There are ${num_ens} ensemble members."  > $MASTERLOG
 
+#----------------------------------------------------------
+# Figure out CAMs domain decomposition and usable number of processors, 
+# if it's an FV core.  This information is passed to run-pc.csh via casemodel.
+# run-pc.csh uses it in the creation of the CAM namelists.
+# User can ignore this 'if' block, unless new resolution is being added
+if ($resol == 'FV4x5' || $resol == 'FV2x2.5' ) then
+   @ lat_blocks = $num_lats / 3
+   if ($lat_blocks >= $max_num_procs) then
+      # 1D (lat only) decomposition will work
+      set keep_lat_blocks = 0
+      set keep_lev_blocks = 0
+      set num_procs = $max_num_procs
+      echo "Will use $num_procs procs.  Domain decomposed by latitude only "
+   else
+      # 2D decomposition needed to use available processes
+      # lev_blocks = 1 was handled in previous if block
+      # This minimizes lev_blocks and maximizes lat_blocks.  Optimal?
+      set lev_blocks = 2
+      set max_cam_procs = 0
+      @ max_lev_blocks = $num_levs / 3
+      set done = no
+      while ($lev_blocks <= $max_lev_blocks && $done == 'no')
+         @ lat_blocks = $num_lats / 3
+         @ cam_procs = $lat_blocks * $lev_blocks 
+         while ($cam_procs > $max_num_procs && $lat_blocks > 1)
+            @ lat_blocks--
+            @ cam_procs = $lat_blocks * $lev_blocks
+         end
+         if ($cam_procs == $max_num_procs) then
+            # Good enough; found a combo that uses all available processes
+            set done = yes
+            set keep_lat_blocks = $lat_blocks
+            set keep_lev_blocks = $lev_blocks
+         else if ($cam_procs > $max_cam_procs) then
+            # test vs previous best number max_CAM_procs
+            set max_cam_procs = $cam_procs
+            set keep_lat_blocks = $lat_blocks
+            set keep_lev_blocks = $lev_blocks
+            # not necessarily done
+         else
+            # Loser; continue looking through possible lev_blocks
+         endif
+         echo "lev_blocks, lat_blocks, cam_procs = $lev_blocks $lat_blocks $cam_procs "
+
+         @ lev_blocks++
+      end
+
+      @ num_procs = $keep_lat_blocks * $keep_lev_blocks
+      # CAM likes the following
+      set keep_lon_blocks = $keep_lev_blocks 
+      echo "Will use $num_procs procs decomposed into "
+      echo "    $keep_lat_blocks lat blocks and "
+      echo "    $keep_lev_blocks lev blocks for $resol CAM"
+   endif
+else
+   set num_procs = $max_num_procs
+   echo "Will use $num_procs procs.  Domain decomposed by latitude only "
+endif
+
+# Add information to the run_command, based on User set parameters
+if ($?PBS_O_WORKDIR) then
+   set run_command = "$run_command $num_procs "
+endif
 
 #---------------------------------------------------------
 # Get executable programs and scripts from DART-CAM directories
@@ -366,6 +454,7 @@ if (! -x filter) then
    ${COPY} ${DARTCAMDIR}/work/trans_pv_sv                .
    ${COPY} ${DARTCAMDIR}/work/trans_sv_pv                .
    ${COPY} ${DARTCAMDIR}/work/trans_time                 .
+   ${COPY} ${DARTCAMDIR}/work/wakeup_filter              .
 endif
 if (! -e advance_model.csh) then
    ${COPY} ${DARTCAMDIR}/shell_scripts/advance_model.csh     .
@@ -439,7 +528,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo "##==================================================================" >> ${job_i}
       echo "#BSUB -J ${exp}_${i}"              >> ${job_i}
       echo "#BSUB -o ${exp}_${i}.%J.log"       >> ${job_i}
-      echo "#BSUB -P 86850054"                 >> ${job_i}
+      echo "#BSUB -P ${proj_num}"              >> ${job_i}
       echo "#BSUB -N -u ${runner} "            >> ${job_i}
       echo "#BSUB -W ${wall_clock}"            >> ${job_i}
          set n_procs = $num_procs
@@ -462,19 +551,21 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo "##==================================================================" >> ${job_i}
 
    else if ($?PBS_O_WORKDIR) then
-      @ num_nodes = num_procs / 2
-      echo "#\!/bin/csh"                        >!  ${job_i}
+   
+      echo "#\!/bin/csh"                                                          >! ${job_i}
       echo "##==================================================================" >> ${job_i}
       echo "#PBS -N ${exp}_${i}"                                                  >> ${job_i}
       echo "#PBS -e ${exp}_${i}.err"                                              >> ${job_i}
       echo "#PBS -o ${exp}_${i}.log"                                              >> ${job_i}
+      echo "#PBS -l walltime=${wall_clock}"                                       >> ${job_i}
       echo "#PBS -S /bin/csh"                                                     >> ${job_i}
       echo "#PBS -r n"                                                            >> ${job_i}
       echo "#PBS -m e"                                                            >> ${job_i}
       echo "#PBS -M ${runner}"                                                    >> ${job_i}
       echo "#PBS -q ${queue}"                                                     >> ${job_i}
-      echo "#PBS -l nodes=${num_nodes}:ppn=${ptile}"                              >> ${job_i}
-      echo "#PBS -l mem=3GB"                                                      >> ${job_i}
+      echo "#PBS -l ncpus=${num_procs}"                                           >> ${job_i}
+#      echo "#PBS -l nodes=${num_nodes}:ppn=${ptile}"                              >> ${job_i}
+#      echo "#PBS -l mem=3GB"                                                      >> ${job_i}
       echo "#PBS -W group_list=[your group name]"                                 >> ${job_i}
       if ($i > $obs_seq_1) then
          echo "#PBS -W depend=afterok:$previousjobname"                           >> ${job_i}
@@ -620,11 +711,12 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
    # transmit info to advance_model.csh
    # The second item echoed must be the directory where CAM is kept
-   echo "$exp "         >! casemodel.$i
-   echo "$CAMsrc "      >> casemodel.$i
-   echo "$cam_init "    >> casemodel.$i
-   echo "$clm_init"     >> casemodel.$i
-   echo "$run_command"  >> casemodel.$i
+   echo "$exp "                                            >! casemodel.$i
+   echo "$CAMsrc "                                         >> casemodel.$i
+   echo "$cam_init "                                       >> casemodel.$i
+   echo "$clm_init"                                        >> casemodel.$i
+   echo "$run_command"                                     >> casemodel.$i
+   echo "$num_procs $keep_lev_blocks $keep_lat_blocks "    >> casemodel.$i
    # advance_model wants to see a file 'casemodel' and not keep track of which obs_seq it's for
    echo "$REMOVE casemodel"                >> ${job_i}
    echo "$LINK casemodel.$i casemodel "    >> ${job_i}
@@ -660,7 +752,8 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    #-----------------------------------------------------------------------------
    # link local CAM input files to generic names in CENTRALDIR.  
    # These just provide grid info to filter, not state info.
-   # CAM namelist input file; will be augmented with model advance time info by run-pc.csh
+   # CAM namelist input file; will be augmented with model advance time and
+   # domain decomposition info by run-pc.csh
    #-----------------------------------------------------------------------------
    echo " " >> ${job_i}
    echo "${REMOVE} caminput.nc clminput.nc "                 >> ${job_i}
