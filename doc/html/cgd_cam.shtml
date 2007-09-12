@@ -75,7 +75,8 @@
        <P>
        In addition to the standard DART package there is a collection 
        of initial condition files at the large file website
-       <A href="/pub/DART/CAM">(http://www.image.ucar.edu/pub/DART/CAM)</A> 
+       <A href="http://www.image.ucar.edu/pub/DART/CAM">
+                http://www.image.ucar.edu/pub/DART/CAM </A> 
        that are helpful for interfacing CAM with DART. More information 
        and instructions for setting up assimilation experiments are 
        available in the <em class=file>DART/models/cam/model_mod.html</em> 
@@ -83,9 +84,11 @@
        <BR><BR>
        Sample sets of observations, which can be used with DART-CAM 
        assimilations, can be found at 
-       <A href="/pub/DART/Obs_sets/">http://www.image.ucar.edu/pub/DART/Obs_sets/</A> 
+       <A href="http://www.image.ucar.edu/pub/DART/Obs_sets"> 
+                http://www.image.ucar.edu/pub/DART/Obs_sets/ </A> 
        of which the 
-       <A href="/pub/DART/Obs_sets/NCEP_BUFR">NCEP BUFR observations</A> 
+       <A href="http://www.image.ucar.edu/pub/DART/Obs_sets/NCEP_BUFR">
+          NCEP BUFR observations </A> 
        are the most widely used. More information and instructions for 
        setting up assimilation experiments are available in the 
        <em class=file>DART/models/cam/model_mod.html</em> documentation and links.
@@ -95,8 +98,8 @@
        to make sure your run-time environment has the following:
        </P>
 
-       <pre>limit stacksize unlimited
-limit datasize unlimited</pre> 
+       <pre>limit stacksize unlimited</pre>
+       <pre>limit datasize unlimited</pre> 
 
       <!--#include virtual="/common/footernav.html"-->
       <!--#include virtual="/common/footer.html"-->
