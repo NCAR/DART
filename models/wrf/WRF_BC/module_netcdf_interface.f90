@@ -516,7 +516,7 @@ subroutine put_time_cdf( fname, time_name, char, itime, debug )
 
   integer,            intent(in)  :: itime
   character (len=80), intent(in)  :: fname, time_name
-  character (len=19), intent(out) :: char
+  character (len=19), intent(in)  :: char
   logical,            intent(in)  :: debug
 
   integer            :: cdfid, id_time
