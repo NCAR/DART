@@ -398,13 +398,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! What gets broadcast depends on what kind of inflation is being done
       if(local_varying_ss_inflate) then
          call broadcast_send(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
-            orig_obs_prior_var, scalar1=obs_qc)
+            orig_obs_prior_var, net_a, scalar1=obs_qc)
 
       else if(local_single_ss_inflate .or. local_obs_inflate) then
-         call broadcast_send(owner, obs_prior, obs_inc, scalar1=my_inflate, &
-           scalar2=my_inflate_sd, scalar3=obs_qc)
+         call broadcast_send(owner, obs_prior, obs_inc, net_a, &
+           scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc)
       else
-         call broadcast_send(owner, obs_prior, obs_inc, scalar1=obs_qc)
+         call broadcast_send(owner, obs_prior, obs_inc, net_a, scalar1=obs_qc)
       endif
 
    ! Next block is done by processes that do NOT own this observation
@@ -414,12 +414,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Also get qc and inflation information if needed
       if(local_varying_ss_inflate) then
          call broadcast_recv(owner, obs_prior, obs_inc, orig_obs_prior_mean, &
-            orig_obs_prior_var, scalar1=obs_qc)
+            orig_obs_prior_var, net_a, scalar1=obs_qc)
       else if(local_single_ss_inflate .or. local_obs_inflate) then
-         call broadcast_recv(owner, obs_prior, obs_inc, scalar1=my_inflate, &
-            scalar2=my_inflate_sd, scalar3=obs_qc)
+         call broadcast_recv(owner, obs_prior, obs_inc, net_a, &
+            scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc)
       else
-         call broadcast_recv(owner, obs_prior, obs_inc, scalar1=obs_qc)
+         call broadcast_recv(owner, obs_prior, obs_inc, net_a, scalar1=obs_qc)
       endif
    endif
    !-----------------------------------------------------------------------
