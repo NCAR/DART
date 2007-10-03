@@ -876,24 +876,31 @@ do blat_ind = 1, nlat
          target_lat(j) = gc%bot_lat + (tlat_ind - 2 + j) * gc%lat_width
       end do
 
-      ! Find the maximum longitude offset for the different possible latitudes edges
-      max_del_lon = 0.0_r8
-      do tj = 1, 2
-         do bj = 1, 2
-            ! Compute the lon offset directly by inverting distance
-            cos_del_lon = (cos(gc%maxdist) - sin(base_lat(bj)) * sin(target_lat(tj))) / &
-               (cos(base_lat(bj)) * cos(target_lat(tj)))
-            if(cos_del_lon < -1.0_r8) then
-               del_lon = PI
-            else if(cos_del_lon > 1.0_r8) then
-               del_lon = 0.0_r8
-            else
-               del_lon = acos(cos_del_lon)
-            endif
-            if(del_lon > max_del_lon) max_del_lon = del_lon
-         
+      ! If the max distance > PI, then everybody is close.
+      ! Do a test for something slightly less than PI to avoid round-off error.
+      ! Set max_del_lon to something much larger than PI since it doesn't matter.
+      if(gc%maxdist > PI - 0.0001_r8) then
+         max_del_lon = 2.0 * PI
+      else
+         ! Find the maximum longitude offset for the different possible latitudes edges
+         max_del_lon = 0.0_r8
+         do tj = 1, 2
+            do bj = 1, 2
+               ! Compute the lon offset directly by inverting distance
+               cos_del_lon = (cos(gc%maxdist) - sin(base_lat(bj)) * sin(target_lat(tj))) / &
+                  (cos(base_lat(bj)) * cos(target_lat(tj)))
+               if(cos_del_lon < -1.0_r8) then
+                  del_lon = PI
+               else if(cos_del_lon > 1.0_r8) then
+                  del_lon = 0.0_r8
+               else
+                  del_lon = acos(cos_del_lon)
+               endif
+               if(del_lon > max_del_lon) max_del_lon = del_lon
+            
+            end do
          end do
-      end do
+      endif
       
       ! Compute the number of boxes to search in longitude for maximum del_lon
       gc%lon_offset(blat_ind, tlat_ind) = floor(max_del_lon / gc%lon_width) + 1
