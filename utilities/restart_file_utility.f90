@@ -28,8 +28,6 @@ use assim_model_mod,     only : static_init_assim_model, get_model_size,   &
                                 awrite_state_restart, aread_state_restart, &
                                 close_restart
 
-use obs_model_mod,        only : advance_state
-
 use ensemble_manager_mod, only : init_ensemble_manager, ensemble_type,     &
                                  put_copy, get_copy
 
