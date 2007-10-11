@@ -459,7 +459,7 @@ function get_model_time_step()
 !------------------------------------------------------------------
 ! function get_model_time_step()
 !
-! Returns the the time step of the model. In the long run should be repalced
+! Returns the the time step of the model. In the long run should be replaced
 ! by a more general routine that returns details of a general time-stepping
 ! capability.
 
