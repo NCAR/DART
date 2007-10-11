@@ -81,5 +81,5 @@ LIBS = -L$(NETCDF)/lib -lnetcdf
 LDFLAGS = $(INCS) $(LIBS)
 
 # for development or debugging, use this for flags:
-FFLAGS = -O0 -Ktrap=fp -pc 64 $(INCS)
+#FFLAGS = -O0 -Ktrap=fp -pc 64 $(INCS)
 
