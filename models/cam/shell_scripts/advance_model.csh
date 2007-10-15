@@ -5,10 +5,11 @@
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
+# <next few lines under version control, do not edit>
+# $URL$
 # $Id$
-# $Source: /home/thoar/CVS.REPOS/DART/models/cam/shell_scripts/advance_model.csh,v $
-# $Name:  $
+# $Revision$
+# $Date$
 
 #----------------------------------------------------------------------
 # advance_model.csh
