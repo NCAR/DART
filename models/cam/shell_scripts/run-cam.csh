@@ -5,11 +5,11 @@
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
-# $Id: run-pc.csh 2883 2007-04-27 22:13:29Z nancy $
-# $Source: /home/thoar/CVS.REPOS/DART/models/cam/shell_scripts/run-pc.csh,v $
-# $Name:  $
-#
+# <next few lines under version control, do not edit>
+# $URL: $
+# $Id: $
+# $Revision: $
+# $Date: $
 
 # #sl marks streamlining of 8/31/05; whole thing is rewritten
 
@@ -21,10 +21,10 @@
 ##------------
 
 if ($#argv == 0) then
-   echo 'Usage:  run-pc.csh CASE MODEL CENTRALDIR, '
-   echo '        where the namelist is in $CENTRALDIR/namelist'
-   echo '        CASE and MODEL are set in long_run.csh or file casemodel'
-   echo '        and CENTRALDIR is passed from advance_ens.csh'
+   echo 'Usage:  run-cam.csh CASE MODEL CENTRALDIR, '
+   echo '        where '
+   echo '        CASE and MODEL are set in job_mpi.csh or file casemodel'
+   echo '        and CENTRALDIR is passed from advance_model.csh'
    exit
 endif
 
@@ -91,10 +91,10 @@ else
 endif
 
 set times = `cat $wrkdir/times`
-echo run-pc times $times
+echo run-cam times $times
 # Can't use \ in the middle of a string and then add more to the string later.
 # The \ doesn't appear in the string, but the "" become unbalanced.
-set namelist_string = "&camexp START_YMD=$times[3] START_TOD=$times[4] "
+set namelist_string =         "&camexp START_YMD=$times[3] START_TOD=$times[4] "
 set namelist_string = "$namelist_string STOP_YMD=$times[1]  STOP_TOD=$times[2] NHTFRQ=$times[5] " 
 
 #--------------------------------------------------------------
@@ -127,9 +127,15 @@ if  ($ensstring[1] <= 2)                         set cam_version = single-nameli
 #--------------------------------------------------------------
 ls -lt 
 
+# Figure out the 2D CAM domain decomposition for this number of processors.
+# lat/height and lon/lat decomp pairs npr_yz == (npr_y, npr_z, nprxy_x, nprxy_y) 
+# must satisfy                        nprocs =  npr_y*npr_z = nprxy_x*nprxy_y,
+# and helps to have                    npr_y =  nprxy_y     and  npr_z = nprxy_x
+# job_mpi.csh has calculated num_procs to make nprocs be correct,
+# and the helpful condition is satisfied in the namelist below.
 set length_casemodel = `wc -l ${CENTRALDIR}/casemodel`
-if ($length_casemodel[1] == 6) then
-   set list = `head -6 ${CENTRALDIR}/casemodel | tail -1`
+if ($length_casemodel[1] == 7) then
+   set list = `head -7 ${CENTRALDIR}/casemodel | tail -1`
    set num_procs  = $list[1]
    set lev_blocks = $list[2]
    set lat_blocks = $list[3]
@@ -151,12 +157,6 @@ if ($cam_version == 'single-namelist') then
      || echo   "build-namelist failed" && exit 1
 else if ($cam_version == 'multi-namelist') then
    # This builds all the *_in namelists CAM3.5 needs
-   # Figure out the 2D CAM domain decomposition for this number of processors.
-   # lat/height and lon/lat decomp pairs npr_yz == (npr_y, npr_z, nprxy_x, nprxy_y) 
-   # must satisfy                        nprocs =  npr_y*npr_z = nprxy_x*nprxy_y,
-   # and helps to have                    npr_y =  nprxy_y     and  npr_z = nprxy_x
-   # job_mpi.csh has calculated num_procs to make nprocs be correct,
-   # and the helpful condition is satisfied in the namelist below.
 
    $cfgdir/build-namelist -v 2 \
      -case     ${camroot:t}-$case \
@@ -171,8 +171,16 @@ endif
 
 echo "finished build-namelist ..."
 
-## Run CAM
-set run_command = `head -5 ${CENTRALDIR}/casemodel | tail -1`
+# Run CAM
+# run_command is how *filter* is run, and may not be how CAM is run.
+set parallel_cam = `head -5 ${CENTRALDIR}/casemodel | tail -1`
+if ($parallel_cam == true) then
+   # async=4;  filter is parallel and CAM is too
+   set run_command = `head -6 ${CENTRALDIR}/casemodel | tail -1`
+else
+   # async=2;  filter is run parallel, but CAM is not
+   set run_command = ' '
+endif
 echo "running CAM in $wrkdir"
 
 if ($cam_version == 'single-namelist') then
