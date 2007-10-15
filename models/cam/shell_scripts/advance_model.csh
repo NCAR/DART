@@ -16,7 +16,7 @@
 # Script to advance one ensemble member one filter "time step"
 # when the model advance is executed as a separate process.
 # Called by the filter executable.
-# Calls run-pc.csh, the CAM execution script.
+# Calls run-cam.csh, the CAM execution script.
 # Calls 3 translation routines to translate time and model state.
 # Runs on one of the compute nodes allotted to the filter executable
 #
@@ -168,12 +168,12 @@ while($state_copy <= $num_states)
    ls -ltR >> cam_out_temp
    
    # advance cam 
-   #   echo executing: ${model:h}/run-pc.csh ${case}-$element $model ${CENTRALDIR} >> cam_out_temp
+   #   echo executing: ${model:h}/run-cam.csh ${case}-$element $model ${CENTRALDIR} >> cam_out_temp
       set retry = 0
       while ($retry < $retry_max)
-         echo executing: ${CENTRALDIR}/run-pc.csh ${case}-$element $model ${CENTRALDIR} \
+         echo executing: ${CENTRALDIR}/run-cam.csh ${case}-$element $model ${CENTRALDIR} \
               >> cam_out_temp
-         ${CENTRALDIR}/run-pc.csh ${case}-$element $model ${CENTRALDIR}  >>& cam_out_temp
+         ${CENTRALDIR}/run-cam.csh ${case}-$element $model ${CENTRALDIR}  >>& cam_out_temp
    
          grep 'END OF MODEL RUN' cam_out_temp > /dev/null
          if ($status == 0) then
