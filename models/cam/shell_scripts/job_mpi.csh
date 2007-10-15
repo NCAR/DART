@@ -1,5 +1,5 @@
 #!/bin/csh
-#
+
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2007, Data Assimilation Research Section
 # University Corporation for Atmospheric Research
@@ -84,6 +84,7 @@
 ##=============================================================================
 #BSUB -J job_mpi
 #BSUB -o job_mpi.%J.log
+#BSUB -P ########
 #BSUB -q share
 #BSUB -W 0:30
 #BSUB -n 1
@@ -134,12 +135,12 @@ if ($?LS_SUBCWD) then
    set JOBNAME = $LSB_JOBNAME
 # for multi-thread   
    set run_command = 'mpirun.lsf '
-   which $run_command
-   if ($status != 0) then
-      exit "no mpirun.lsf found"
-   endif
 # for single-thread (?)
 #    set run_command = ' '
+   which $run_command
+   if ($status != 0 && $run_command != ' ') then
+      exit "run_command $run_command not found"
+   endif
 # NOT USED on blueice
    alias submit ' bsub < \!* '
    
@@ -224,11 +225,11 @@ echo "CENTRALDIR is " $CENTRALDIR
 # User set run parameters to change
 
 # Directory where output will be kept (relative to '.')
-set resol = T85
+set resol = FV1.9x2.5
 
-set parallel_cam = true
+set parallel_cam = false
 
-set exp = ${resol}_12
+set exp = ${resol}_ICs
 
 
 # The "day" of the first obs_seq.out file of the whole experiment
@@ -240,8 +241,13 @@ set exp = ${resol}_12
 # into input_#.nml
 set obs_seq_first = 1
 
-# number of obs_seq *files* / day  (not timeslots)
-set obs_seq_freq = 2
+# Time spacing of obs_seq files
+# freq >  0      number of obs_seq *files* / day  (not timeslots)
+# freq = 0       set OBS_SEQ = ${CENTRALDIR}/obs_seq.out
+# -15 < freq < 0 that number of days from one to the next (3 means 20070101, 20070104, ...)
+# freq = -15     look for the first and 15th of each month
+# freq < -15     look for the first of each month
+set obs_seq_freq = -15
 
 # 'day'/obs_seq.out numbers to assimilate during this job
 # First and last obs seq files. 
@@ -250,13 +256,17 @@ set obs_seq_n = 2
 
 # The month of the obs_seq.out files for this run, and 
 # the month of the first obs_seq.out file for this experiment.
-set mo = 1
-set mo_first = 1
+# This will be a misnomer for the spin-up run that has obs_seq files
+# only at the first day of the month; the 'days' will refer to months
+# and this mo can be thought of as the year (2001).
+set mo = 2
+set mo_first = 2
 
 # set obs_seq_root = /ptmp/dart/raeder/Obs_sets/Allx12_I/obs_seq2003
 # ascii to avoid byteswapping;  but beware of machines filling in extra/missing
 # digits, causing locations with latitude > 90 degrees.
-set obs_seq_root = /ptmp/dart/Obs_sets/Allx12_I_ascii/obs_seq2003
+# set obs_seq_root = /ptmp/dart/Obs_sets/Allx12_I_ascii/obs_seq2007
+set obs_seq_root = ${CENTRALDIR}/obs_seq2002
 
 # DART source code directory trunk, and CAM interface location.
 set DARTDIR = /blhome/${user}/J/DART
@@ -267,16 +277,16 @@ set DARTCAMDIR =          ${DARTDIR}/models/cam
 # (FV core jobs may use less, depending on the domain decomposition)
 # ptile is the number of processors/node on this machine.  
 # It has no bearing on whether CAM is MPI or not, as long as filter is MPI.
-set max_num_procs = 32
+set max_num_procs = 80
 set ptile = 16
 
 # accounting code used for batch jobs (if no accounting needed, you may need
 # to remove the -P lines in the script generation sections below.
-set proj_num = 12345678
+set proj_num = ########
 
 # The queue to which the $exp_#.script scripts will be submitted,
 # and the requested time in that queue.
-set queue = standby
+set queue = economy
 set wall_clock = 6:00
    
 # ICs for obs_seq_first only.  After that the ICs will come from the previous iteration.
@@ -305,11 +315,12 @@ else if ($resol == T42) then
    set num_lats  = 64
 else if ($resol == T85) then
    # T85
-   set DART_ics_1  = /ptmp/dart/CAM_init/T85/03-01-01/DART_MPI
-   set CAM_ics_1   = /ptmp/dart/CAM_init/T85/03-01-01/CAM/caminput_
-   set CLM_ics_1   = /ptmp/dart/CAM_init/T85/03-01-01/CLM/clminput_
+   set DART_ics_1  = /ptmp/dart/CAM_init/T85_3.5/Jul_1/DART
+   set CAM_ics_1   = /ptmp/dart/CAM_init/T85_3.5/Jul_1/CAM/caminput_
+   set CLM_ics_1   = /ptmp/dart/CAM_init/T85_3.5/Jul_1/CLM/clminput_
    # -mpi will be attached to this name if parallel_cam = true; don't add it here
-   set CAMsrc      = /ptmp/dart/CAM/CAMsrc/Cam3/cam3.1/models/atm/cam/bld/T85_3.1-O3
+   set CAMsrc      = /blhome/raeder/Cam3/cam3.5/models/atm/cam/bld/T85-O3
+   # set CAMsrc      = /ptmp/dart/CAM/CAMsrc/Cam3/cam3.1/models/atm/cam/bld/T85_3.1-O3
    set num_lons  = 256
    set num_lats  = 128
 else if ($resol == FV4x5) then
@@ -328,6 +339,17 @@ else if ($resol == FV2x2.5) then
    set CAMsrc      = /ptmp/dart/CAM/CAMsrc/Cam3/cam3.5/models/atm/cam/bld/FV2x2.5-O2
    set num_lons  = 144
    set num_lats  = 91
+else if ($resol == FV1.9x2.5) then
+   set DART_ics_1  = ${CENTRALDIR}
+   set CAM_ics_1   = ${CENTRALDIR}/caminput_
+   set CLM_ics_1   = ${CENTRALDIR}/clminput_
+   # set DART_ics_1  = /ptmp/dart/CAM_init/FV1.9x2.5/03-01-01/DART_MPI
+   # set CAM_ics_1   = /ptmp/dart/CAM_init/FV1.9x2.5/03-01-01/CAM/caminput_
+   # set CLM_ics_1   = /ptmp/dart/CAM_init/FV1.9x2.5/03-01-01/CLM/clminput_
+   # -mpi will be attached to this name if parallel_cam = true; don't add it here
+   set CAMsrc      = /blhome/raeder/Cam3/cam3.5/models/atm/cam/bld/FV1.9x2.5-O3
+   set num_lons  = 144
+   set num_lats  = 96
 # If another FV resolution is added, then another qualifier is needed in the
 # domain decomposition section below.
 endif 
@@ -358,6 +380,7 @@ set mod_save = 1
 # END of run parameters to change
 #==========================================================================================
 
+
 # This is the CENTRAL directory for whole filter job
 #    jobs submitted to batch queues from here
 #    I/O between filter and advance_model and assim_region goes through here.
@@ -384,10 +407,11 @@ echo "There are ${num_ens} ensemble members."  > $MASTERLOG
 
 #----------------------------------------------------------
 # Figure out CAMs domain decomposition and usable number of processors, 
-# if it's an FV core.  This information is passed to run-pc.csh via casemodel.
-# run-pc.csh uses it in the creation of the CAM namelists.
+# if it's an FV core.  This information is passed to run-cam.csh via casemodel.
+# run-cam.csh uses it in the creation of the CAM namelists.
 # User can ignore this 'if' block, unless new resolution is being added
-if ($resol == 'FV4x5' || $resol == 'FV2x2.5' ) then
+if ($parallel_cam == true &&  \
+    ($resol == 'FV4x5' || $resol == 'FV2x2.5' || $resol == 'FV1.9x2.5') ) then
    @ lat_blocks = $num_lats / 3
    if ($lat_blocks >= $max_num_procs) then
       # 1D (lat only) decomposition will work
@@ -424,7 +448,7 @@ if ($resol == 'FV4x5' || $resol == 'FV2x2.5' ) then
          else
             # Loser; continue looking through possible lev_blocks
          endif
-         echo "lev_blocks, lat_blocks, cam_procs = $lev_blocks $lat_blocks $cam_procs "
+         echo "lev_blocks, lat_blocks, cam_procs = $lev_blocks $lat_blocks $cam_procs " >> ${MASTERLOG}
 
          @ lev_blocks++
       end
@@ -432,13 +456,13 @@ if ($resol == 'FV4x5' || $resol == 'FV2x2.5' ) then
       @ num_procs = $keep_lat_blocks * $keep_lev_blocks
       # CAM likes the following
       set keep_lon_blocks = $keep_lev_blocks 
-      echo "Will use $num_procs procs decomposed into "
-      echo "    $keep_lat_blocks lat blocks and "
-      echo "    $keep_lev_blocks lev blocks for $resol CAM"
+      echo "Will use $num_procs procs decomposed into "                   >> ${MASTERLOG}
+      echo "    $keep_lat_blocks lat blocks and "                         >> ${MASTERLOG}
+      echo "    $keep_lev_blocks lev blocks for $resol CAM"               >> ${MASTERLOG}
    endif
 else
    set num_procs = $max_num_procs
-   echo "Will use $num_procs procs.  Domain decomposed by latitude only "
+   echo "Will use $num_procs procs.  Domain decomposed by latitude only " >> ${MASTERLOG}
 endif
 
 # Add information to the run_command, based on User set parameters
@@ -458,7 +482,7 @@ if (! -x filter) then
 endif
 if (! -e advance_model.csh) then
    ${COPY} ${DARTCAMDIR}/shell_scripts/advance_model.csh     .
-   ${COPY} ${DARTCAMDIR}/shell_scripts/run-pc.csh            .
+   ${COPY} ${DARTCAMDIR}/shell_scripts/run-cam.csh            .
    ${COPY} ${DARTCAMDIR}/shell_scripts/auto_re2ms*.csh       . 
    ${COPY} ${DARTCAMDIR}/shell_scripts/diags.csh             . 
    ${COPY} ${DARTCAMDIR}/shell_scripts/auto_diag2ms_LSF.csh  . 
@@ -638,7 +662,27 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    set seq = $i
    if ($seq == 0) then
       set OBS_SEQ = ${CENTRALDIR}/obs_seq.out
-   else
+   else if ($obs_seq_freq < -15) then
+      @ month = $i + 1
+      set day = 01
+      
+      set OBS_SEQ = ${obs_seq_root}${month}${day}
+
+   else if ($obs_seq_freq == -15) then
+      @ month =  ($i / 2) + 1
+      @ day   = (($i % 2) * 14) + 1
+      if ($month > 12) then
+         set month = $month % 12
+         set obs_seq_root = ${CENTRALDIR}/obs_seq2002
+      endif
+      if ($month < 10) set month = 0$month
+      if ($day   < 10) set day   = 0$day
+      
+      set OBS_SEQ = ${obs_seq_root}${month}${day}
+
+      echo "obs_seq, root, month, day = $i $obs_seq_root $month $day " >> $MASTERLOG
+
+   else if ($obs_seq_freq > 0) then
       @ month = $mo - 1
       while ($month >= $mo_first)
           @ seq = $seq - $days_in_mo[$month] * $obs_seq_freq
@@ -715,11 +759,19 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo "$CAMsrc "                                         >> casemodel.$i
    echo "$cam_init "                                       >> casemodel.$i
    echo "$clm_init"                                        >> casemodel.$i
+   echo "$parallel_cam"                                    >> casemodel.$i
    echo "$run_command"                                     >> casemodel.$i
-   echo "$num_procs $keep_lev_blocks $keep_lat_blocks "    >> casemodel.$i
+   # Only write the 7th record if it's FV and run-cam.csh needs the decomposition info
+   if ($?keep_lev_blocks) then
+      echo "$num_procs $keep_lev_blocks $keep_lat_blocks "    >> casemodel.$i
+   endif
    # advance_model wants to see a file 'casemodel' and not keep track of which obs_seq it's for
-   echo "$REMOVE casemodel"                >> ${job_i}
-   echo "$LINK casemodel.$i casemodel "    >> ${job_i}
+   echo "$REMOVE casemodel"                                           >> ${job_i}
+   echo "if (-e casemodel.$i) then                                    >> ${job_i}
+   echo "   $LINK casemodel.$i casemodel "                            >> ${job_i}
+   echo "else "                                                       >> ${job_i}
+   echo '   echo "casemodel.$i is not found; exiting" >> $MASTERLOG'  >> ${job_i}
+   echo "endif"                                                       >> ${job_i}
 
    # adaptive inflation ic files may (not) exist
    # Should query input.nml to learn whether to get them?
@@ -753,7 +805,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    # link local CAM input files to generic names in CENTRALDIR.  
    # These just provide grid info to filter, not state info.
    # CAM namelist input file; will be augmented with model advance time and
-   # domain decomposition info by run-pc.csh
+   # domain decomposition info by run-cam.csh
    #-----------------------------------------------------------------------------
    echo " " >> ${job_i}
    echo "${REMOVE} caminput.nc clminput.nc "                 >> ${job_i}
@@ -1083,7 +1135,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
       echo "cd ../.. "                                                                      >> ${job_i}
    else
-      echo "NO ./auto_re2ms_LSF.csh FOUND, so NO BACKUP OF ${out_prev} " >> ${MASTERLOG}
+      echo "NO ./auto_re2ms_LSF.csh FOUND or prev obs_seq = 0, so NO BACKUP OF ${out_prev} " >> ${MASTERLOG}
    endif
 
 
@@ -1110,7 +1162,6 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
 
 # Finally, submit the script that we just created.
-# Doesn't work on blueice
 #   eval submit ${job_i} >! batchsubmit$$
 # The beauty of hard-wiring
    bsub < ${job_i} >! batchsubmit$$
