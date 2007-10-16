@@ -273,10 +273,7 @@ subroutine finalize_mpi_utilities(callfinalize, async)
 ! after calling this routine.
 
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'finalize_mpi_utilities', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 
 end subroutine finalize_mpi_utilities
@@ -287,14 +284,12 @@ end subroutine finalize_mpi_utilities
 function task_count()
 
 ! Return the total number of MPI tasks.  e.g. if the number of tasks is 4,
-! it returns 4.  (The actual task numbers are 0-3.)
+! it returns 4.  (The actual task numbers are 0-3.)  For the null mpi utils,
+! this always returns 1.
 
 integer :: task_count
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'task_count', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 task_count = total_tasks
 
@@ -306,14 +301,11 @@ end function task_count
 function my_task_id()
 
 ! Return my unique task id.  Values run from 0 to N-1 (where N is the
-! total number of MPI tasks.
+! total number of MPI tasks.  For the null mpi utils, this is always 0.
 
 integer :: my_task_id
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'my_task_id', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 my_task_id = myrank
 
@@ -327,10 +319,7 @@ subroutine task_sync()
 ! Synchronize all tasks.  This subroutine does not return until all tasks
 ! execute this line of code.
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'task_sync', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 
 end subroutine task_sync
@@ -349,10 +338,7 @@ subroutine send_to(dest_id, srcarray, time)
 ! called receive to accept the data.  If the send_to/receive_from calls are 
 ! not paired correctly the code will hang.
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 ! simple idiotproofing
 if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
@@ -382,10 +368,7 @@ subroutine receive_from(src_id, destarray, time)
 ! sent the data.  If the send_to/receive_from calls are not paired correctly 
 ! the code will hang.
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 ! simple idiotproofing
 if ((src_id < 0) .or. (src_id >= total_tasks)) then
@@ -426,10 +409,7 @@ subroutine transpose_array
 
 ! not implemented here yet.  will have arguments -- several of them.
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'transpose_array', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 write(errstring, *) 'not implemented yet'
 call error_handler(E_ERR,'transpose_array', errstring, source, revision, revdate)
@@ -450,10 +430,7 @@ subroutine array_broadcast(array, root)
 ! root array in their own arrays.  Thus 'array' is intent(in) on root, and
 ! intent(out) on all other tasks.
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 ! simple idiotproofing
 if ((root < 0) .or. (root >= total_tasks)) then
@@ -489,10 +466,7 @@ subroutine array_distribute(srcarray, root, dstarray, dstcount, how, which)
 
 integer :: i
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'array_distribute', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 ! simple idiotproofing
 if ((root < 0) .or. (root >= total_tasks)) then
@@ -518,10 +492,7 @@ function iam_task0()
 
 logical :: iam_task0
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'iam_task0', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 iam_task0 = (myrank == 0)
 
@@ -541,10 +512,7 @@ subroutine broadcast_send(from, array1, array2, array3, array4, array5, &
 ! intent(in) here, but they call a routine which is intent(inout) so they
 ! must be the same here.
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'broadcast_send', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 ! simple idiotproofing
 if (from /= myrank) then
@@ -574,10 +542,7 @@ subroutine broadcast_recv(from, array1, array2, array3, array4, array5, &
 ! intent(out) here, but they call a routine which is intent(inout) so they
 ! must be the same here.
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'broadcast_recv', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 ! simple idiotproofing
 if (from == myrank) then
@@ -600,10 +565,7 @@ subroutine sum_across_tasks(addend, sum)
 
 ! cover routine for MPI all-reduce
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 sum = addend
 
@@ -618,10 +580,7 @@ end subroutine sum_across_tasks
 subroutine block_task()
 
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
  
  
 end subroutine block_task
@@ -630,10 +589,7 @@ end subroutine block_task
 subroutine restart_task()
    
    
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'sum_across_tasks', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 
 end subroutine restart_task
@@ -674,10 +630,7 @@ character(len=128) :: fname
 character(len=11) :: format
 integer :: rc
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'make_pipe', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 write(fname, "(a,i4.4)") trim(pipename)//".", myrank
 print *, "fname now = ", trim(fname)
@@ -723,10 +676,7 @@ subroutine destroy_pipe(iunit)
 character(len=128) :: pipename
 integer :: ios, rc
 
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'destroy_pipe', errstring, source, revision, revdate)
-endif
+if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 write(errstring, *) 'not implemented yet'
 call error_handler(E_ERR,'destroy_pipe', errstring, source, revision, revdate)
