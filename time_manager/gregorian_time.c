@@ -1,11 +1,6 @@
 /*
  * convert gregorian days/seconds to and from year/month/day/hr/min/sec
  *
- * WARNING!!  THIS IS NOT ACCURATE YET.  first failing test case:
- *  148756, 50400 == 2008/04/13 14:00:00
- *
- *  but this prog does not compute it correctly.
- *
  * nsc 12sep2007
  *     17oct2007
  */
@@ -57,6 +52,7 @@ main(int argc, char **argv)
         fprintf(stderr, "\n");
         fprintf(stderr, "usage: %s days seconds\n", argv[0]);
         fprintf(stderr, "   or  %s year month day hour min sec\n", argv[0]);
+        fprintf(stderr, "\n");
         exit (-1);
     }
 
