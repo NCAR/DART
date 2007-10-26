@@ -42,7 +42,7 @@ use     utilities_mod, only : file_exist, open_file, close_file, &
 
 use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
-                              KIND_SPECIFIC_HUMIDITY, &
+                              KIND_SPECIFIC_HUMIDITY, KIND_SURFACE_ELEVATION, &
                               KIND_PRESSURE, KIND_VERTICAL_VELOCITY, &
                               KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, &
                               KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
@@ -56,6 +56,7 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
 use         map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
                               PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
                               ij_to_latlon, gridwind_to_truewind
+
 use netcdf
 use typesizes
 
@@ -76,7 +77,8 @@ public ::  get_model_size,                    &
            get_close_obs,                     &
            ens_mean_for_model,                &
            get_close_maxdist_init,            &
-           get_close_obs_init
+           get_close_obs_init,                &
+           get_domain_info
 
 
 !  public stubs 
@@ -1321,6 +1323,49 @@ else if( obs_kind == KIND_POTENTIAL_TEMPERATURE ) then
 
    endif
 
+else if( obs_kind == KIND_GEOPOTENTIAL_HEIGHT ) then
+
+   if(.not. vert_is_surface(location) .or. .not. surf_var) then
+
+      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
+         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_GZ) .and. &
+         k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_GZ)) then
+
+!!$         i1 = get_wrf_index(i,j  ,k,TYPE_GZ,id)
+!!$         i2 = get_wrf_index(i,j+1,k,TYPE_GZ,id)
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_GZ) / gravity
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_GZ) / gravity
+         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+!!$         i1 = get_wrf_index(i,j  ,k+1,TYPE_GZ,id)
+!!$         i2 = get_wrf_index(i,j+1,k+1,TYPE_GZ,id)
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_GZ) / gravity
+         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_GZ) / gravity
+         fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+      else
+
+         fld(:) = missing_r8
+
+      endif
+
+   else
+
+      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
+         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_GZ)) then
+
+         i1 = wrf%dom(id)%dart_ind(i,j,  1,TYPE_GZ) / gravity
+         i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_GZ) / gravity
+         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+
+      else
+
+         fld(1) = missing_r8
+
+      endif
+
+   endif
+
 else if( obs_kind == KIND_DENSITY ) then
 
    ! Rho calculated at mass points, and so is like "TYPE_T"
@@ -1635,6 +1680,23 @@ else if( obs_kind == KIND_SURFACE_PRESSURE) then
       fld(1) = missing_r8
 
    endif
+
+else if( obs_kind == KIND_SURFACE_ELEVATION) then
+
+   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
+      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) ) then
+
+      fld(1) = dym*( dxm*wrf%dom(id)%hgt(i  ,j  ) + &
+                      dx*wrf%dom(id)%hgt(i+1,j  ) ) + &
+                dy*( dxm*wrf%dom(id)%hgt(i  ,j+1) + &
+                      dx*wrf%dom(id)%hgt(i+1,j+1) )
+
+   else
+
+      fld(1) = missing_r8
+
+   endif
+
 
 !!-------------------------------------------------------------------------
 !! find vortex center location and with minimum sea level pressure
