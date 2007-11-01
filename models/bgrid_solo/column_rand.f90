@@ -18,6 +18,7 @@ program column_rand
 use      types_mod, only : r8, PI
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 use  utilities_mod, only : get_unit
+use   location_mod, only : VERTISSURFACE, VERTISLEVEL
 
 implicit none
 
@@ -69,16 +70,16 @@ do i = 1, num_cols
    lon = random_uniform(r) * 360.0
 
    ! Latitude must be area weighted
-   lat = asin(random_uniform(r) * 2.0 - 1.0)
+   lat = asin(random_uniform(r) * 2.0_r8 - 1.0_r8)
 
    ! Now convert from radians to degrees latitude
-   lat = lat * 360.0 / (2.0 * pi)
+   lat = lat * 360.0_r8 / (2.0_r8 * pi)
 
    ! Do ps ob
    write(iunit, *) 0
    ! Kind for surface pressure
    write(iunit, *) 'RADIOSONDE_SURFACE_PRESSURE'
-   write(iunit, *) 1
+   write(iunit, *) VERTISSURFACE
    ! Level is -1 for ps
    write(iunit, *) -1
    write(iunit, *) lon
@@ -93,7 +94,7 @@ do i = 1, num_cols
       ! Write out the t observation
       ! Kind for t
       write(iunit, *) 'RADIOSONDE_TEMPERATURE'
-      write(iunit, *) 1
+      write(iunit, *) VERTISLEVEL
       write(iunit, *) level
       write(iunit, *) lon
       write(iunit, *) lat
@@ -104,7 +105,7 @@ do i = 1, num_cols
       ! Write out the u observation
       ! Kind for u is 
       write(iunit, *) 'RADIOSONDE_U_WIND_COMPONENT'
-      write(iunit, *) 1
+      write(iunit, *) VERTISLEVEL
       write(iunit, *) level
       write(iunit, *) lon
       write(iunit, *) lat
@@ -115,7 +116,7 @@ do i = 1, num_cols
       ! Write out the v observation
       ! Kind for v is 
       write(iunit, *) 'RADIOSONDE_V_WIND_COMPONENT'
-      write(iunit, *) 1
+      write(iunit, *) VERTISLEVEL
       write(iunit, *) level
       write(iunit, *) lon
       write(iunit, *) lat

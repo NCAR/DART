@@ -63,7 +63,7 @@ use        hs_forcing_mod, only: hs_forcing_init, hs_forcing
 use          location_mod, only: location_type, get_location, set_location, &
                                  vert_is_level, query_location, &
                                  LocationDims, LocationName, LocationLName, &
-                                 vert_is_pressure, &
+                                 vert_is_pressure, vert_is_surface, &
                                  get_close_maxdist_init, get_close_obs_init, get_close_obs
 
 
@@ -1170,6 +1170,9 @@ if(vert_is_level(location)) then
    level = lon_lat_lev(3)
 else if(vert_is_pressure(location)) then
    pressure = lon_lat_lev(3)
+else if(vert_is_surface(location)) then
+   ! level is not used for surface pressure observations
+   level = -1
 else
    call error_handler(E_ERR,'model_interpolate', &
       'Bgrid can only handle pressure or model level for obs vertical coordinate', &
@@ -1237,7 +1240,7 @@ else
 endif
 
 ! Case 1: model level specified in vertical
-if(vert_is_level(location)) then
+if(vert_is_level(location) .or. vert_is_surface(location)) then
 ! Now, need to find the values for the four corners
    val(1, 1) =  get_val(x, lon_below, lat_below, nint(level), itype)
    val(1, 2) =  get_val(x, lon_below, lat_above, nint(level), itype)

@@ -57,9 +57,9 @@ do i = 1, model_size
 
    ! Output the appropriate observational error variance
    if(var_type == TYPE_PS) then
-   write(iunit, *)  10000.0
+   write(iunit, *)  10000.0_r8
    else
-      write(iunit, *) 1.0
+      write(iunit, *) 1.0_r8
    endif
 
 end do

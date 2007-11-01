@@ -14,6 +14,7 @@ program ps_rand_local
 use      types_mod, only : r8, PI
 use  utilities_mod, only : get_unit, error_handler, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
+use   location_mod, only : VERTISSURFACE
 
 implicit none
 
@@ -73,7 +74,7 @@ do while(num_done < num)
    write(iunit, *) 'RADIOSONDE_SURFACE_PRESSURE'
 
    ! Put this on model level -1
-   write(iunit, *) 1
+   write(iunit, *) VERTISSURFACE
    write(iunit, *) level
 
    ! Want randomly located in horizontal
