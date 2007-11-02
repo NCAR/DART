@@ -11,6 +11,7 @@ program id_set_def_stdin
 ! $Revision$
 ! $Date$
 
+use     types_mod, only : r8
 use  location_mod, only : location_type
 use utilities_mod, only : get_unit
 use     model_mod, only : static_init_model, get_model_size, &
