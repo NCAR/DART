@@ -125,6 +125,8 @@ case (5) ;
    nmoist = 2
 case (6) ;
    nmoist = 6
+case (8)
+   nmoist = 7
 case (98) ;
    nmoist = 3
 case (99) ;
