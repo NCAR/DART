@@ -82,15 +82,28 @@ while($state_copy <= $num_states)
    
    # Copy or link the required files to the temp directory
    
-   ln -s ${CENTRALDIR}/input.nml .
-   
-   ln -s ${CENTRALDIR}/RRTM_DATA .
-   ln -s ${CENTRALDIR}/LANDUSE.TBL .
-   ln -s ${CENTRALDIR}/VEGPARM.TBL .
-   ln -s ${CENTRALDIR}/SOILPARM.TBL .
-   ln -s ${CENTRALDIR}/GENPARM.TBL .
-   ln -s ${CENTRALDIR}/wrf.exe .
-   ln -s ${CENTRALDIR}/gribmap.txt .
+   ln -sf ${CENTRALDIR}/input.nml .
+ 
+   ln -sf ${CENTRALDIR}/CAM_ABS_DATA .
+   ln -sf ${CENTRALDIR}/CAM_AEROPT_DATA .
+   ln -sf ${CENTRALDIR}/ETAMPNEW_DATA .
+   ln -sf ${CENTRALDIR}/ETAMPNEW_DATA_DBL .
+   ln -sf ${CENTRALDIR}/GENPARM.TBL .
+   ln -sf ${CENTRALDIR}/grib2map.tbl .
+   ln -sf ${CENTRALDIR}/gribmap.txt .
+   ln -sf ${CENTRALDIR}/LANDUSE.TBL .
+   ln -sf ${CENTRALDIR}/ozone.formatted .
+   ln -sf ${CENTRALDIR}/ozone_lat.formatted .
+   ln -sf ${CENTRALDIR}/ozone_plev.formatted .
+   ln -sf ${CENTRALDIR}/RRTM_DATA .
+   ln -sf ${CENTRALDIR}/RRTM_DATA_DBL .
+   ln -sf ${CENTRALDIR}/SOILPARM.TBL .
+   ln -sf ${CENTRALDIR}/tr49t67 .
+   ln -sf ${CENTRALDIR}/tr49t85 .
+   ln -sf ${CENTRALDIR}/tr67t85 .
+   ln -sf ${CENTRALDIR}/urban_param.tbl .
+   ln -sf ${CENTRALDIR}/VEGPARM.TBL .
+   ln -sf ${CENTRALDIR}/wrf.exe .
    
    # nfile is required when using mpi to run wrf.exe
    # nfile is machine specific; ideally, it should be
@@ -103,7 +116,7 @@ while($state_copy <= $num_states)
                       # Provides auxilliary info not avail. from DART state vector
    
    if (  -e ${CENTRALDIR}/assim_model_state_ic_mean ) then
-      ln -s ${CENTRALDIR}/assim_model_state_ic_mean dart_wrf_vector
+      ln -sf ${CENTRALDIR}/assim_model_state_ic_mean dart_wrf_vector
       echo ".true." | ${CENTRALDIR}/dart_tf_wrf >& out.dart_to_wrf_mean
       ${COPY} wrfinput_d01 wrfinput_mean
    endif
@@ -351,7 +364,7 @@ EOF
       endif
    
       ${ADV_MOD_COMMAND} >>& rsl.out.integration
-   
+      ${COPY} rsl.out.integration ${CENTRALDIR}/wrf.out_${targdays}_${targsecs}_${element}  
       sleep 1
    
       set SUCCESS = `grep "wrf: SUCCESS COMPLETE WRF" rsl.* | cat | wc -l`
