@@ -333,6 +333,7 @@ do id=1,num_domains
    if(debug) write(*,*) ' cen_lat is ',wrf%dom(id)%cen_lat
 
    call check( nf90_get_att(ncid, nf90_global, 'CEN_LON', wrf%dom(id)%cen_lon) )
+   if(debug) write(*,*) ' cen_lon is ',wrf%dom(id)%cen_lon
 
    call check( nf90_get_att(ncid, nf90_global, 'TRUELAT1', truelat1) )
    if(debug) write(*,*) ' truelat1 is ',truelat1
@@ -341,6 +342,7 @@ do id=1,num_domains
    if(debug) write(*,*) ' truelat2 is ',truelat2
 
    call check( nf90_get_att(ncid, nf90_global, 'STAND_LON', stdlon) )
+   if(debug) write(*,*) ' standlon is ',stdlon
 
    call check( nf90_inq_varid(ncid, "P_TOP", var_id) )
    call check( nf90_get_var(ncid, var_id, wrf%dom(id)%p_top) )
@@ -2290,7 +2292,7 @@ integer, dimension(num_domains) :: weDimID, weStagDimID, snDimID, snStagDimID, &
      btDimID, btStagDimID, slSDimID
 
 integer :: MemberDimID, DomDimID
-integer :: DXVarID, DYVarID, TRUELAT1VarID, TRUELAT2VarID
+integer :: DXVarID, DYVarID, TRUELAT1VarID, TRUELAT2VarID, STDLONVarID
 integer :: CEN_LATVarID, CEN_LONVarID, MAP_PROJVarID
 
 integer, dimension(num_domains) :: DNVarID, ZNUVarID, DNWVarID, phbVarID, &
@@ -2415,6 +2417,13 @@ call check(nf90_put_att(ncFileID, TRUELAT2VarID, "long_name", &
      "second standard parallel"))
 call check(nf90_put_att(ncFileID, TRUELAT2VarID, "units", &
      "degrees, negative is south"))
+
+call check(nf90_def_var(ncFileID, name="STAND_LON", xtype=nf90_real, &
+     dimids= DomDimID, varid=STDLONVarID) )
+call check(nf90_put_att(ncFileID, STDLONVarID, "long_name", &
+     "standard longitude"))
+call check(nf90_put_att(ncFileID, STDLONVarID, "units", &
+     "degrees, negative is west"))
 
 call check(nf90_def_var(ncFileID, name="CEN_LAT", xtype=nf90_real, &
      dimids= DomDimID, varid=CEN_LATVarID) )
@@ -2933,6 +2942,7 @@ call check(nf90_put_var(ncFileID,       DXVarID, wrf%dom(1:num_domains)%dx      
 call check(nf90_put_var(ncFileID,       DYVarID, wrf%dom(1:num_domains)%dy        ))
 call check(nf90_put_var(ncFileID, TRUELAT1VarID, wrf%dom(1:num_domains)%proj%truelat1  ))
 call check(nf90_put_var(ncFileID, TRUELAT2VarID, wrf%dom(1:num_domains)%proj%truelat2  ))
+call check(nf90_put_var(ncFileID,   STDLONVarID, wrf%dom(1:num_domains)%proj%stdlon    ))
 call check(nf90_put_var(ncFileID,  CEN_LATVarID, wrf%dom(1:num_domains)%cen_lat   ))
 call check(nf90_put_var(ncFileID,  CEN_LONVarID, wrf%dom(1:num_domains)%cen_lon   ))
 call check(nf90_put_var(ncFileID, MAP_PROJVarID, wrf%dom(1:num_domains)%map_proj  ))
