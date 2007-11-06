@@ -289,10 +289,12 @@ dataset, ds090.0, on NCAR Mass Store System (MSS).
 
 <P>
 <!-- kdr; How would I launch another window for the data web site? 
+          (fixed -- added target option to href section)
           How to change bullets to '>' prompts for commands?        -->
 To find the files:
 <UL>
-<LI>go to the <A HREF=http://dss.ucar.edu/pub/reanalysis/> NCAR/NCEP reanalysis archive.</A> </LI>
+<LI>go to the <A HREF=http://dss.ucar.edu/pub/reanalysis/ target="_blank">
+    NCAR/NCEP reanalysis archive.</A> </LI>
 <LI>Click "Data Archive Summary" </LI>
 <LI>Click "Complete Tar list of Table of Contents of All VSN's" </LI>
 <LI>Look at the years you want and click on the ds090.0 next to the year mark.  </LI>
@@ -327,7 +329,7 @@ where ##### is the data set number, to read the NCEP BUFR data tar files.
 Then
 <UL><LI> tar -xvf data.tar </L> </UL>
 will yield individual 6-hourly NCEP BUFR data files for the observations 
-in the +/- 3-hours time window of 00Z,  06Z, 12Z, and 18Z of each day.
+in the +/- 3-hour time windows of 00Z,  06Z, 12Z, and 18Z of each day.
 Note that DART obs_seq files are organized such that a 24 hour file with
 4 observation times would contain observations from 3:01Z to 3:00Z of the
 next day, centered on 6Z, 12Z, 18Z and "24Z".  
@@ -363,13 +365,12 @@ It has code for running in the LSF batch environment, but not PBS.
 </P>
 
 <P>
-Currently, the script generates daily decoded BUFR text data which contains the
-observations within the time window of 3:01Z of the day to 3:00Z of next day.
-These daily output text files are named as temp_obs.yyyymmdd.  
-These text BUFR data files can then be read by
-DART/ncep_obs/work/<A HREF="../create_real_obs.html" > create_real_obs </A>.
-to generate the DART daily observation
-sequence files.
+Currently, the script generates decoded BUFR text data each six hours which 
+contains the observations within the time window of -3:01 hours to +3:00Z within each 
+six-hour synoptic time.  These daily output text files are named as 
+temp_obs.yyyymmddhh.  These text BUFR data files can then be read by
+DART/ncep_obs/work/<A HREF="../create_real_obs.html" > create_real_obs </A>
+to generate the DART daily observation sequence files.
 </P>
 
 
@@ -395,11 +396,64 @@ utilities_mod
 
 <A NAME="Namelist"></A>
 <BR><HR><BR>
-<H2>INCLUDE file </H2>
-<P>
-The prepbufr package doesn't use any namelists, but
-prepbufr.prm contains some parameters, while 
-other parameters are set in work/prepbufr.csh
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&#38;' and terminating with a slash '/'.
+<div class=namelist><pre>
+<em class=call>namelist / prep_bufr_nml / </em> &#38;
+obs_window, obs_window_cw, otype_use, qctype_use, land_temp_error, 
+land_wind_error, land_moist_error
+</pre></div>
+
+<H3 class=indent1>Discussion</H3>
+
+<P>This namelist is read in a file called <em class=file>input.nml</em>
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+
+<TR><!--contents--><TD valign=top>obs_window                      </TD>
+    <!--  type  --><TD valign=top>real                            </TD>
+    <!--descript--><TD valign=top>Window of time to include observations 
+                       (hours).  Default is 0.8 hours</TD></TR>
+
+<TR><!--contents--><TD valign=top>obs_window_cw                   </TD>
+    <!--  type  --><TD valign=top>real                            </TD>
+    <!--descript--><TD valign=top>Window of time to include cloud wind 
+                       observations (hours).  Default is 1.5 hours.</TD></TR>
+
+<TR><!--contents--><TD valign=top>otype_use                       </TD>
+    <!--  type  --><TD valign=top>real                            </TD>
+    <!--descript--><TD valign=top>Report Types to extract from bufr 
+                       file.  Default is none.</TD></TR>
+
+<TR><!--contents--><TD valign=top>qctype_use                       </TD>
+    <!--  type  --><TD valign=top>integer                          </TD>
+    <!--descript--><TD valign=top>QC types to include from the bufr 
+                       file.  Default is none.</TD></TR>
+
+<TR><!--contents--><TD valign=top>land_temp_error                  </TD>
+    <!--  type  --><TD valign=top>real                             </TD>
+    <!--descript--><TD valign=top>observation error for land surface 
+                       temperature observations when none is in the 
+                       file.  Default is 2.5 K.</TD></TR>
+
+<TR><!--contents--><TD valign=top>land_wind_error                  </TD>
+    <!--  type  --><TD valign=top>real                             </TD>
+    <!--descript--><TD valign=top>observation error for land surface
+                       wind observations when none is in the file.
+                       Default is 3.5 m/s.</TD></TR>
+
+<TR><!--contents--><TD valign=top>land_moisture_error              </TD>
+    <!--  type  --><TD valign=top>real                             </TD>
+    <!--descript--><TD valign=top>observation error for land surface
+                       moisture observations when none is in the 
+                       file.  Default is 20%.</TD></TR>
+
+</TABLE>
 
 <!-- <div class=namelist><pre>
 <em class=call>namelist /    / </em> &
@@ -420,7 +474,7 @@ other parameters are set in work/prepbufr.csh
         little-endian is to be done.  Input to prepbufr if not.
     <LI>intermediate (binary) prepqm.little; output from grabbufr, 
 	input to prepbufr.
-    <LI>intermediate (text) file(s) "temp_obs.yyyymmdd"; output from prepbufr,
+    <LI>intermediate (text) file(s) "temp_obs.yyyymmddhh"; output from prepbufr,
 	input to create_real_obs
 </UL>
 

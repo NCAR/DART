@@ -1,54 +1,78 @@
-c    This is the 4nd version of the BUFR preparation program for the
+c    This is the 5th version of the BUFR preparation program for the
 c    newly revised DART version. Ps and moisture obs are outputed as well.
-c     06/22/2004.  the time is outputed 
 c     
-c     A bug with the radiosonde T events selection j2 is fixed at 04/06/2005.
-c     and surface data are removed from this version.
-c     For radiosonde T: T of Pc=1 and 6 is dry T; T of pc=8 is virtual T.
-c     For Aircraft T: No moistuerobs and all T are dry T
-c     For Surface obs, the T of pc=1 is already virtual T.
+c    A bug with the radiosonde T events selection j2 is fixed at 04/06/2005.
+c    and surface data is included in this version.
+c    For radiosonde T: T of Pc=1 and 6 is dry T; T of pc=8 is virtual T.
+c    For Aircraft T: No moistuerobs and all T are dry T
+c    For Surface obs, the T of pc=1 is already virtual T.
 c
-        REAL*8     R8BFMS
-        PARAMETER ( R8BFMS = 10.0E10 )
+      REAL*8     R8BFMS
+      PARAMETER ( R8BFMS = 10.0E10 )
 C                                      "Missing" value for BUFR data
-        PARAMETER ( MXR8PM = 10 )
+      PARAMETER ( MXR8PM = 10 )
 C                                      Maximum number of BUFR parameters
-        PARAMETER ( MXR8LV = 400 )
+      PARAMETER ( MXR8LV = 400 )
 C                                      Maximum number of BUFR levels
-        PARAMETER ( MXR8VN = 10 )
+      PARAMETER ( MXR8VN = 10 )
 C                                      Maximum number of BUFR event sequences
-        PARAMETER ( MXR8VT = 6 )
+      PARAMETER ( MXR8VT = 6 )
 C                                      Maximum number of BUFR variable types
-        PARAMETER ( MXSTRL = 80 )
+      PARAMETER ( MXSTRL = 80 )
 C                                      Maximum size of a string
 C
-        REAL*8 hdr (MXR8PM), evns(MXR8PM, MXR8LV, MXR8VN, MXR8VT)
+      REAL*8 hdr (MXR8PM), evns(MXR8PM, MXR8LV, MXR8VN, MXR8VT)
 C
-        COMMON /PREPBC/ hdr, evns, nlev
+      COMMON /PREPBC/ hdr, evns, nlev
 
-        PARAMETER (STRLN = 180)
-        CHARACTER  outstg*(200), subset*8, inf*19 , outf*20
-        CHARACTER  var(MXR8VT)/'P','Q','T','Z','U','V'/
+      PARAMETER (STRLN = 180)
+
+      INTEGER, PARAMETER :: max_otype=300, max_qctype=15 
+      REAL, PARAMETER    :: MISSING = -9999.
+      CHARACTER  outstg*(200), subset*8, inf*19 , outf*20
+      CHARACTER  var(MXR8VT)/'P','Q','T','Z','U','V'/
 C
-        PARAMETER  ( NFILO = 15 )
-        INTEGER  iunso ( NFILO )
+      character (len=9),  parameter :: infile  = 'prepqm.in'
+      character (len=10), parameter :: outfile = 'prepqm.out'
+
+      PARAMETER  ( NFILO = 15 )
+      INTEGER  iunso ( NFILO )
      +          /   51,   52,   53,   54,   55,
      +              56,   57,   58,   59,   60,
      +              61,   62,   63,   64,   65  /
-        CHARACTER*6     filo ( NFILO )
+      CHARACTER*6     filo ( NFILO )
      +          / 'ADPUPA', 'AIRCAR', 'AIRCFT', 'SATWND', 'PROFLR',
      +            'VADWND', 'SATBOG', 'SATEMP', 'ADPSFC', 'SFCSHP',
      +            'SFCBOG', 'SPSSMI', 'SYNDAT', 'ERS1DA', 'GOESND'  /
 
       dimension tdata(8), udata(8), vdata(8), qdata(8), pdata(8)
-      integer wtype, ptype, qtype, ttype
-      integer pc_t, pc_q, pc_u, pc_p
-      integer tqm, pqm, qqm, uqm, vqm
-C
-        LOGICAL  found
+      integer :: wtype, ptype, qtype, ttype
+      integer :: pc_t, pc_q, pc_u, pc_v, pc_p
+      integer :: tqm, pqm, qqm, uqm, vqm, qctype_use(max_otype)
+      logical :: found, uotype, uqcflag, use_this_data_real, 
+     +            use_this_data_int
+      logical :: debug = .false.
 
-C----------------------------------
-c    for calculation of saturated water vapor for qobs error
+c    Namelist Parameters
+c----------------------------------------------------------------------
+
+      real :: otype_use(max_otype),    ! report types to use
+     +        obs_window = 0.8,        ! observation time window (hours)
+     +        obs_window_cw = 1.5,     ! cloud wind observation time window (hours)
+     +        land_temp_error = 2.5,   ! assumed error for surface temp. observations (K)
+     +        land_wind_error = 3.5,   ! assumed error for surface wind observations (m/s)
+     +        land_moist_error = 0.2   ! assumed error for surface moist. observations (%)
+
+      namelist /prep_bufr_nml/ obs_window,
+     +                         obs_window_cw,
+     +                         otype_use,
+     +                         qctype_use,
+     +                         land_temp_error,
+     +                         land_wind_error,
+     +                         land_moist_error
+
+c    constants needed to compute saturation water vapor for qobs
+c----------------------------------------------------------------------
       real*8  l0
 
       eps= .622
@@ -62,375 +86,472 @@ c    for calculation of saturated water vapor for qobs error
       fact2 = (l0 + (cl - cpv) * t0) / rv
       fact3 = 1. / t0
       omeps = 1.-eps
-c----------------------------------
 
-        inf='prepqm.little'
-        outf='prepqm.out'
+c    read the prep_bufr_nml namelist from input.nml
+c----------------------------------------------------------------------
+       
+      otype_use(:) = MISSING;  qctype_use(:) = MISSING
+      inml_unit = 15
+      open(inml_unit,file='input.nml', status='old',
+     &        access='sequential', form='formatted')
+      read(inml_unit, nml = prep_bufr_nml)
+      close(inml_unit)
 
-        iprof = 0
-        lunobs=210
-        open(unit=lunobs, file = outf, form='formatted')
+      inum_otype=0
+      do i = 1, max_otype
+      if ( otype_use(i) .eq. MISSING ) exit
+        inum_otype = inum_otype + 1
+      enddo
 
-        ibufr_unit = 11 
-        OPEN  ( UNIT = ibufr_unit, FILE = inf, FORM = 'UNFORMATTED' )
-        CALL OPENBF  ( ibufr_unit, 'IN', ibufr_unit )
-        CALL DATELEN  ( 10 )
-C
-C      Get the next station report from the input file.
-C
-  10    CALL READPB  ( ibufr_unit, subset, idate, ierrpb )
+      inum_qctype=0
+      do i = 1, max_qctype
+      if ( qctype_use(i) .eq. MISSING ) exit
+        inum_qctype = inum_qctype + 1
+      enddo
+
+c    open the input bufr file and the output text file
+c----------------------------------------------------------------------
+
+      iprof = 0
+      lunobs=210
+      open(unit=lunobs, file = outfile, form='formatted')
+
+      ibufr_unit = 11 
+      OPEN  ( UNIT = ibufr_unit, FILE = infile, FORM = 'UNFORMATTED' )
+      CALL OPENBF  ( ibufr_unit, 'IN', ibufr_unit )
+      CALL DATELEN  ( 10 )
+
+c    read the next station report from the input bufr file
+c----------------------------------------------------------------------
+
+10    CALL READPB  ( ibufr_unit, subset, idate, ierrpb )
  
-        idate00 = idate/100
-        hour01 = idate - idate00*100
-        if(hour01 .eq. 0.0 ) hour01 = 24
-c       print*, 'idate= ', idate, idate00, hour01
+      idate00 = idate/100
+      hour01 = idate - idate00*100
+      if( hour01 .eq. 0.0 ) hour01 = 24
+      if ( debug ) print*, 'idate= ', idate, idate00, hour01
 
-        IF ( ierrpb .eq. -1 )  STOP
+      IF ( ierrpb .eq. -1 )  STOP
 
-        iprof = iprof + 1    !! station number
-C
-C      Set the appropriate output file unit number.
-C
-        ii = 1
-        found = .false.
-        DO WHILE  ( ( .not. found ) .and. ( ii .le. NFILO ) )
-          IF( subset(1:6) .eq. filo ( ii ) )  THEN
-                found = .true.
-                iuno = iunso ( ii )
+      iprof = iprof + 1    !! station number
 
-c     OPEN (UNIT = iunso(ii),FILE= 'readpb.out.'//filo(ii) )
-c     OPEN (UNIT = iuno,FILE= 'adiag.'//filo(ii) )
+c    set the appropriate output file unit number
+c----------------------------------------------------------------------
 
-C      Print the HDR data for this station report. 
-cliu
-       time0 = hdr(4)
-       stat_elv = hdr(5)
+      ii = 1
+      found = .false.
+      DO WHILE  ( ( .not. found ) .and. ( ii .le. NFILO ) )
+        IF( subset(1:6) .eq. filo ( ii ) )  THEN
+          found = .true.
+          iuno = iunso ( ii )
 
-c  07/06/2004 for output of exact time
-c       print*, 'idate= ', idate, idate00, hour01, time0
-         hour01 =  hour01 + time0
-c  07/06/2004 for output of exact time
+          time0 = hdr(4)
+          stat_elv = hdr(5)
 
-c   modified 04/07/2005
-      if(hdr(6) .eq. 120.0 .or. hdr(6) .eq. 130.0 .or. 
-     &   hdr(6) .eq. 131.0 .or. hdr(6) .eq. 132.0 .or. 
-     &   hdr(6) .eq. 133.0 .or. 
-     &   hdr(6) .eq. 220.0 .or. hdr(6) .eq. 221.0 .or. 
-     &   hdr(6) .eq. 230.0 .or. hdr(6) .eq. 231.0 .or. 
-     &   hdr(6) .eq. 232.0 .or. hdr(6) .eq. 233.0 .or. 
-     &   hdr(6) .eq. 242.0 .or. hdr(6) .eq. 243.0 .or. 
-     &   hdr(6) .eq. 245.0 .or. hdr(6) .eq. 246.0 .or.
-     &   hdr(6) .eq. 252.0 .or. hdr(6) .eq. 253.0 .or. 
-     &   hdr(6) .eq. 255.0 ) then   
-c
-c liu
-c       WRITE  ( UNIT = iuno, FMT = '("#", 132("-") )' )
-c       WRITE  ( UNIT = iuno, FMT = '("#", A3,6x,a6,1x,a6,3x,
-c    +             a5,5x,a4,3x,a5,4x,a4,3x,a4,1x,a3,1x,a3,2x,a6,
-c    +             6x,a3,6x,a3,4x,a5,1x,a8,2x,a7,6x,a3 )' )
-c    +           'SID', 'XOB', 'YOB','DHR','ELV','TYP','T29','ITP',
-c    +           'lev','var','OB','qm', 'pc', 'rc', 'fc', 'an', 'err'
+          if ( debug ) print*, 'idate= ', idate, idate00, hour01, time0
+          hour01 =  hour01 + time0
 
-c       WRITE  ( UNIT = iuno, FMT = '("#", 132("-") )' )
-c liu
-       endif
-c liu
+          if ( USE_THIS_DATA_REAL(hdr(6),otype_use,inum_otype) .and. 
+     &                    debug ) then  !  print data read in
 
-         ELSE
-                ii = ii + 1
-         END IF
-        END DO
+            WRITE  ( UNIT = iuno, FMT = '("#", 132("-") )' )
+            WRITE  ( UNIT = iuno, FMT = '("#", A3,6x,a6,1x,a6,3x,
+     &             a5,5x,a4,3x,a5,4x,a4,3x,a4,1x,a3,1x,a3,2x,a6,
+     &             6x,a3,6x,a3,4x,a5,1x,a8,2x,a7,6x,a3 )' )
+     &             'SID', 'XOB', 'YOB','DHR','ELV','TYP','T29','ITP',
+     &             'lev','var','OB','qm', 'pc', 'rc', 'fc', 'an', 'err'
 
-        IF ( ( .not. found ) .and. ( ierrpb .eq. 0 ) )  GO TO 10
+            WRITE  ( UNIT = iuno, FMT = '("#", 132("-") )' )
+          
+          endif
 
-C      Print the EVNS data for this station report.
-c
-       if( hdr(2) .ge. 360.0) hdr(2)=hdr(2) - 360.0
-       if( hdr(2) .lt.   0.0) hdr(2)=hdr(2) + 360.0
+        ELSE
 
-       d2r = 3.1415926/180.0
-       alon = hdr(2)*d2r
-       alat = hdr(3)*d2r
-       time = hdr(4)
+          ii = ii + 1
 
-       tdata(2) = alon
-       tdata(3) = alat
-       tdata(6) = 0
-       tdata(7) = iprof + 1000000
-       tdata(8) = hour01
-          ttype = hdr(6)
+        END IF
 
-       pdata(2) = alon
-       pdata(3) = alat
-       pdata(6) = 0
-       pdata(7) = iprof + 3000000
-       pdata(8) = hour01
-          ptype = hdr(6)
+      END DO
 
-       qdata(2) = alon
-       qdata(3) = alat
-       qdata(6) = 0
-       qdata(7) = iprof + 5000000
-       qdata(8) = hour01
-          qtype = hdr(6)
+c    check the observation time, skip if outside obs. window
+c----------------------------------------------------------------------
 
-       udata(2) = alon
-       udata(3) = alat
-       udata(7) = iprof + 2000000
-       udata(8) = hour01           !! time
+      IF ( ( .not. found ) .and. ( ierrpb .eq. 0 ) )  GO TO 10
+      IF ( subset(1:6).eq.'SATWND' ) then
+        IF ( hour01 .gt. obs_window_cw ) GO TO 10
+      ELSE
+        IF ( hour01 .gt. obs_window ) GO TO 10
+      END IF
 
-c      U, V are merged to T array and has same type with T in BUFR file
-      if(subset(1:6) .eq. 'SATWND' .or. hdr(6) .eq. 221.0 .or. 
-     &  hdr(6) .eq. 280.0 .or. hdr(6) .eq. 230.0 .or. 
-     &                         hdr(6) .eq. 231.0) then
-       wtype=hdr(6)
-       else
-       wtype=hdr(6)+100  
-       endif   
-c     !! wind type = t type in other categry.
+c    place the location data in the appropriate array
+c----------------------------------------------------------------------
+ 
+      if( hdr(2) .ge. 360.0) hdr(2) = hdr(2) - 360.0
+      if( hdr(2) .lt.   0.0) hdr(2) = hdr(2) + 360.0
 
-       vdata(2) = alon
-       vdata(3) = alat
-       vdata(7) = iprof + 9000000
-       vdata(8) = hour01
+      time = hdr(4)
 
-c   modified 04/07/2005
-      if(hdr(6) .eq. 120.0 .or. hdr(6) .eq. 130.0 .or. 
-     &   hdr(6) .eq. 131.0 .or. hdr(6) .eq. 132.0 .or. 
-     &   hdr(6) .eq. 133.0 .or. 
-     &   hdr(6) .eq. 220.0 .or. hdr(6) .eq. 221.0 .or. 
-     &   hdr(6) .eq. 230.0 .or. hdr(6) .eq. 231.0 .or. 
-     &   hdr(6) .eq. 232.0 .or. hdr(6) .eq. 233.0 .or. 
-     &   hdr(6) .eq. 242.0 .or. hdr(6) .eq. 243.0 .or. 
-     &   hdr(6) .eq. 245.0 .or. hdr(6) .eq. 246.0 .or.
-     &   hdr(6) .eq. 252.0 .or. hdr(6) .eq. 253.0 .or. 
-     &   hdr(6) .eq. 255.0 ) then   
-c
-       DO 200 lv = 1, nlev
+      tdata(2) = hdr(2)
+      tdata(3) = hdr(3)
+      tdata(6) = 0
+      tdata(7) = iprof + 1000000
+      tdata(8) = hour01
+         ttype = hdr(6)
 
-c   find out the event before virtural T and Q check step (pc=8.0)
+      pdata(2) = hdr(2)
+      pdata(3) = hdr(3)
+      pdata(6) = 0
+      pdata(7) = iprof + 3000000
+      pdata(8) = hour01
+         ptype = hdr(6)
+
+      qdata(2) = hdr(2)
+      qdata(3) = hdr(3)
+      qdata(6) = 0
+      qdata(7) = iprof + 5000000
+      qdata(8) = hour01
+         qtype = hdr(6)
+
+      udata(2) = hdr(2)
+      udata(3) = hdr(3)
+      udata(7) = iprof + 2000000
+      udata(8) = hour01           !! time
+
+      vdata(2) = hdr(2)
+      vdata(3) = hdr(3)
+      vdata(7) = iprof + 9000000
+      vdata(8) = hour01
+
+c    u and v wind data are merged with T array for some obs. 
+c    types.  Account for this and place in appropriate reports
+c----------------------------------------------------------------------
+
+      if ( hdr(6) .eq. 120.0 .or. hdr(6) .eq. 130.0 .or.
+     &     hdr(6) .eq. 131.0 .or. hdr(6) .eq. 132.0 .or. 
+     &     hdr(6) .eq. 133.0 ) then 
+        wtype=hdr(6)+100
+      else
+        wtype=hdr(6)  
+      endif   
+
+c    check to see if this observation type is desired 
+      if ( .NOT. USE_THIS_DATA_REAL(real(hdr(6)),otype_use,inum_otype) 
+     &         ) GO TO 10
+
+      DO 200 lv = 1, nlev  !  loop over all levels in the report
+
+c    find out the event before virtural T and Q check step (pc=8.0)
+c----------------------------------------------------------------------
+
         j2t = 1
         do ievent =1, MXR8VN
-        if(evns(3,lv,ievent, 3) .lt. 8.0) then
-         j2t = ievent
-         go to 201
-        endif
+          if(evns(3,lv,ievent, 3) .lt. 8.0) then
+            j2t = ievent
+            exit 
+          endif
         enddo
-  201  continue
 
         j2q = 1
         do ievent =1, MXR8VN
-        if(evns(3,lv,ievent, 2) .lt. 8.0) then
-         j2q = ievent
-         go to 202
-        endif
+          if(evns(3,lv,ievent, 2) .lt. 8.0) then
+            j2q = ievent
+            exit
+          endif
         enddo
-  202  continue
 
-         DO kk = 1, MXR8VT
+        DO kk = 1, MXR8VT
 
 c     for T & Q, the events (pc>=8) are virtual T step. The events (pc=6, 1) are dry T
 c     set qm of j2t/j2q event according to 1st event
 c
-          if(subset(1:6) .eq. 'ADPUPA' .and. var(kk) .eq. 'T') then
-           if(j2t.ne.1) evns(7,lv, j2t, kk) = evns(7,lv, 1, kk) 
-           jj = j2t
-          else if(subset(1:6) .eq. 'ADPUPA' .and. var(kk) .eq. 'Q') then
-           if(j2q.ne.1) evns(7,lv, j2q, kk) = evns(7,lv, 1, kk) 
-           jj = j2q
+          if((subset(1:6).eq.'ADPUPA' .or. subset(1:6).eq.'ADPSFC' .or.
+     &        subset(1:6).eq.'SFCSHP') .and.   var(kk).eq. 'T') then
+            if(j2t.ne.1) evns(7,lv, j2t, kk) = evns(7,lv, 1, kk) 
+            jj = j2t
+          else if((subset(1:6).eq.'ADPUPA' .or. subset(1:6).eq.'ADPSFC'
+     &      .or.   subset(1:6).eq.'SFCSHP') .and.  var(kk).eq.'Q') then
+            if(j2q.ne.1) evns(7,lv, j2q, kk) = evns(7,lv, 1, kk) 
+            jj = j2q
           else
-           jj = 1                              
-c                   ! select 1st event for other
+            jj = 1                              
           endif
 c
-        WRITE( UNIT = outstg, FMT = '( A8, 1X,  
-     &         2F7.2, 1X, F7.3, 1X, 2F8.1, 1X, F7.1, 1X, 
-     &         F6.1, I4, 1X, A2, 7(1X,F8.1) )' )
+          WRITE( UNIT = outstg, FMT = '( A8, 1X,  
+     &          2F7.2, 1X, F7.3, 1X, 2F8.1, 1X, F7.1, 1X, 
+     &          F6.1, I4, 1X, A2, 7(1X,F8.1) )' )
      &     (hdr(ii), ii =1, 8),lv, var(kk), (evns(ii,lv,jj,kk), ii=1,7)
 
-               DO mm = 1, 200 
-                IF  ( outstg (mm:mm) .eq. '*' ) outstg (mm:mm) = ' '
-               END DO
+          DO mm = 1, 200 
+            IF  ( outstg (mm:mm) .eq. '*' ) outstg (mm:mm) = ' '
+          END DO
 
-               IF ( outstg (90:154) .ne. ' ') THEN
-c               WRITE (UNIT = iuno, FMT= '(A150)' ) outstg
-               ENDIF
+        END DO
+
+c    set up the temperature observation data, use the j2t event or 1 if T
+c----------------------------------------------------------------------
+        if(subset(1:6).eq.'ADPUPA' .or. subset(1:6).eq.'ADPSFC' .or.
+     &     subset(1:6).eq.'SFCSHP' ) then
+
+           toe = evns(7, lv, j2t, 3)
+           tob = evns(1, lv, j2t, 3) + 273.16
+           tqm = evns(2, lv, j2t, 3) 
+          pc_t = evns(3, lv, j2t, 3)
+
+        else  ! use the first event
+
+           toe = evns(7, lv, 1, 3)
+           tob = evns(1, lv, 1, 3) + 273.16
+           tqm = evns(2, lv, 1, 3) 
+          pc_t = evns(3, lv, 1, 3)
+
+        endif
+        if(tqm .eq. 0) toe = toe*0.9
+        if(tqm .eq. 3) toe = toe*1.2
+
+c    set up the moisture observation data, use the j2t event for RH and 
+c     compute specific humidity in g/kg
+c----------------------------------------------------------------------
+
+        if(subset(1:6).eq.'ADPUPA' .or. subset(1:6).eq.'ADPSFC' .or.
+     &     subset(1:6).eq.'SFCSHP' ) then
+
+          qoe  = evns(7, lv, j2q, 2) * 0.1     ! g/kg   
+          qob  = evns(1, lv, j2q, 2) * 1.0e-3  ! g/kg
+          qqm  = evns(2, lv, j2q, 2) 
+          pc_q = evns(3, lv, j2q, 2)
+
+        else
+
+          qoe  = evns(7, lv, 1, 2) * 0.1       ! g/kg    
+          qob  = evns(1, lv, 1, 2) * 1.0e-3    ! g/kg
+          qqm  = evns(2, lv, 1, 2) 
+          pc_q = evns(3, lv, 1, 2)
+
+        endif
+        if(qqm .eq. 0) qoe = qoe*0.9
+        if(qqm .eq. 3) qoe = qoe*1.2
+
+c    set up the pressure observation data, units are mb
+c----------------------------------------------------------------------
+
+        poe  = evns(7, lv, 1, 1)     
+        pob  = evns(1, lv, 1, 1)     
+        pqm  = evns(2, lv, 1, 1) 
+        pc_p = evns(3, lv, 1, 1)
+
+        if(pqm .eq. 0) poe = poe*0.9
+        if(pqm .eq. 3) poe = poe*1.2
+        ppb = evns(1, lv, 1, 1)            ! mb
+        zob = evns(1, lv, 1, 4)            ! m
+
+c    set up the wind observation data, units are m/s
+c----------------------------------------------------------------------
+
+        uoe  = evns(7, lv, 1, 5)
+        uob  = evns(1, lv, 1, 5)
+        uqm  = evns(2, lv, 1, 5) 
+        pc_u = evns(3, lv, 1, 5)
+        if(uqm .eq. 0) uoe = uoe*0.9
+        if(uqm .eq. 3) uoe = uoe*1.2
+
+        voe  = evns(7, lv, 1, 6)
+        vob  = evns(1, lv, 1, 6) 
+        vqm  = evns(2, lv, 1, 6)
+        pc_v = evns(3, lv, 1, 6) 
+        if(vqm .eq. 0) voe = voe*0.9
+        if(vqm .eq. 3) voe = voe*1.2
+
+c    write out temperature observation from ADPUPA, AIRCAR, AIRCFT
+c----------------------------------------------------------------------
+        if (subset(1:6).eq.'ADPUPA' .or. subset(1:6).eq.'AIRCAR' .or.
+     &                                   subset(1:6).eq.'AIRCFT') then
+          if (use_this_data_int(tqm,qctype_use,inum_qctype) .and. 
+     &        use_this_data_int(pqm,qctype_use,inum_qctype) .and. 
+     &        toe .lt. 1.e9 .and. tob .lt. 1.e9                  ) then
+
+            tdata(1) = toe
+            tdata(4) = ppb
+            tdata(5) = tob
+
+            write(lunobs, 800) tdata, ttype, tqm, subset(1:6), pc_t
+
+          endif
+        endif
+
+c    write out temperature observation of SFCSHP, ADPSFC
+c----------------------------------------------------------------------
+
+        if (subset(1:6).eq.'SFCSHP' .or. subset(1:6).eq.'ADPSFC') then
+
+          if (use_this_data_int(tqm,qctype_use,inum_qctype) .and.
+     &        use_this_data_int(pqm,qctype_use,inum_qctype) .and. 
+     &        tob .lt. 1.0e9 ) then
+ 
+            if ( ttype .gt. 200 )  ttype = ttype - 100
+            if ( ttype .eq. 184 )  ttype = 183
+ 
+            tdata(1) = toe
+            if ( toe .ge. 1.e9 ) tdata(1) = land_temp_error
+            tdata(4) = zob
+            tdata(5) = tob
+
+            write(lunobs, 800) tdata, ttype, tqm, subset(1:6), pc_t
+
+          endif
+   
+        endif
+
+c    write out moisture observationis from ADPUPA
+c----------------------------------------------------------------------
+
+        if ( subset(1:6) .eq. 'ADPUPA' ) then
+
+          if (use_this_data_int(qqm,qctype_use,inum_qctype) .and.
+     &        use_this_data_int(pqm,qctype_use,inum_qctype) .and.
+     &        qoe .lt. 1.e9 .and. qob .lt. 1.e9             ) then
+
+c           compute the error of specific moisture based on RH obs error
+
+            es   = es0 * (tob / t0) ** fact1 * exp(fact2*(fact3-1./tob))
+            qsat = eps * es / (pob - omeps * es)
+            qoe  = max(0.1, qoe * qsat * 1000.0) ! to g/kg, set min value
+
+            if ( debug ) print*, 'es= ', es, tob-273.16, qoe
+
+            if( .not. use_this_data_int(tqm,qctype_use,inum_qctype))then
+              print*, 'upa bad = ', qoe  ! the T obs cannot be used for qoe
+              qoe = 1.0e10
+            endif
+
+            qdata(1) = qoe
+            qdata(4) = ppb
+            qdata(5) = qob
+
+            if (qoe .lt. 9.9) then  ! skip large qoe obs.
+              write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
+            endif
+
+          endif
+
+        endif
+
+c    write out moisture observation from SFCSHP ADPSFC
+c----------------------------------------------------------------------
+
+        if (subset(1:6).eq.'SFCSHP' .or. subset(1:6).eq.'ADPSFC') then
+
+          if (use_this_data_int(qqm,qctype_use,inum_qctype) .and.
+     &        use_this_data_int(pqm,qctype_use,inum_qctype) .and.
+     &        qob .lt. 1.0e9                                ) then
+
+            es   = es0 * (tob / t0) ** fact1 * exp(fact2*(fact3-1./tob))
+            qsat = eps * es / (pob - omeps * es)
+            qoe  = max(0.1, qoe * qsat * 1000.0) ! to g/kg, set min value
+
+           if( .not. use_this_data_int(tqm,qctype_use,inum_qctype)) then
+             print*, 'surface bad = ', qoe  ! the T obs cannot be used for qoe
+             qoe = 1.0e10
+           endif
+
+           if ( qtype .gt. 200 )  qtype = qtype - 100
+           if ( qtype .eq. 184 )  qtype = 183
+
+           qdata(1) = qoe
+           qdata(4) = zob
+           qdata(5) = qob
+
+           if(qoe .lt. 9.9) then   ! skip large qoe obs
+             write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
+           endif
+
+          endif
+      
+        endif
+
+c    write out surface pressure observations
+c----------------------------------------------------------------------
+
+        if (subset(1:6).eq.'ADPUPA' .or. 
+     &      subset(1:6).eq.'SFCSHP' .or. subset(1:6).eq.'ADPSFC') then
+
+          if(use_this_data_int(pqm,qctype_use,inum_qctype) .and. 
+     &       poe.lt.1.e9 .and. pob.lt.1.e9 .and. stat_elv.eq.zob) then
+
+            if ( ptype .gt. 200 )  ptype = ptype - 100
+            if ( ptype .eq. 184 )  ptype = 183
+
+            pdata(1) = poe
+            pdata(4) = zob
+            pdata(5) = pob
+
+            write(lunobs, 800) pdata, ptype, pqm, subset(1:6), pc_p
+
+          endif
+
+        endif
+
+c    write out wind observation of ADPUPA, AIRcraft, SATWND
+c----------------------------------------------------------------------
+
+        if (subset(1:6).eq.'ADPUPA' .or. subset(1:6).eq.'AIRCAR' .or.
+     &      subset(1:6).eq.'AIRCFT' .or. subset(1:6).eq.'SATWND') then
+
+          if(use_this_data_int(uqm,qctype_use,inum_qctype) .and. 
+     &       use_this_data_int(pqm,qctype_use,inum_qctype) .and. 
+     &       uoe .lt. 1.e9 .and. uob .lt. 1.e9             ) then
+
+            udata(1) = uoe
+            udata(4) = ppb
+            udata(5) = uob
+            udata(6) = vob
+ 
+            vdata(1) = voe
+            vdata(4) = ppb
+            vdata(5) = vob
+            vdata(6) = uob
+
+            write(lunobs, 800) udata, wtype, uqm, subset(1:6), pc_u
+            write(lunobs, 800) vdata, wtype, vqm, subset(1:6), pc_v
+
+          endif
   
-         END DO
-cliu
-c-------------------------------------------
-       if(subset(1:6).eq.'ADPUPA') then
-c            use the j2t event of pc =6 or 1 if there is T report
-         toe = evns ( 7, lv, j2t, 3)
-         tob = evns ( 1, lv, j2t, 3) + 273.16
-         tqm = evns ( 2, lv, j2t, 3) 
-         pc_t = evns (3, lv, j2t, 3)
-
-        else
-c            use the 1st event
-         toe = evns ( 7, lv, 1, 3)
-         tob = evns ( 1, lv, 1, 3) + 273.16
-         tqm = evns ( 2, lv, 1, 3) 
-         pc_t = evns (3, lv, 1, 3)
-       endif
-
-          if(tqm .eq. 0) toe = toe*0.9
-          if(tqm .eq. 3) toe = toe*1.2
-
-c-------------------------------------------
-c    for moisture obs from ADPUPA, use j2q event 
-c     to decimal error for RH (0.2) and mg/kg to g/kg (CAM needs kg/kg)
-       if(subset(1:6).eq.'ADPUPA') then
-         qoe = evns(7, lv, j2q, 2) * 0.1       
-         qob = evns(1, lv, j2q, 2) * 1.0e-3    
-         qqm = evns(2, lv, j2q, 2) 
-        pc_q = evns(3, lv, j2q, 2)
-        else
-         qoe = evns(7, lv, 1, 2) * 0.1       
-         qob = evns(1, lv, 1, 2) * 1.0e-3    
-         qqm = evns(2, lv, 1, 2) 
-        pc_q = evns(3, lv, 1, 2)
-       endif
-          if(qqm .eq. 0) qoe = qoe*0.9
-          if(qqm .eq. 3) qoe = qoe*1.2
-c
-c     For Pressure       ! mb (need to convert to Pa in CAM)
-         poe = evns ( 7, lv, 1, 1)     
-         pob = evns ( 1, lv, 1, 1)     
-         pqm = evns ( 2, lv, 1, 1) 
-         pc_p = evns(3, lv, 1, 1)
-
-          if(pqm .eq. 0) poe = poe*0.9
-          if(pqm .eq. 3) poe = poe*1.2
-         ppb = evns ( 1, lv, 1, 1)            ! mb
-         zob = evns ( 1, lv, 1, 4)            ! m
-
-c    for wind
-         uoe = evns (7, lv, 1, 5)
-         uob = evns (1, lv, 1, 5)
-         uqm = evns (2, lv, 1, 5) 
-         pc_u = evns(3, lv, 1, 5)
-          if(uqm .eq. 0) uoe = uoe*0.9
-          if(uqm .eq. 3) uoe = uoe*1.2
-
-         voe = evns ( 7, lv, 1, 6)
-         vob = evns ( 1, lv, 1, 6) 
-         vqm = evns ( 2, lv, 1, 6) 
-          if(vqm .eq. 0) voe = voe*0.9
-          if(vqm .eq. 3) voe = voe*1.2
-
-c----------------------------------------------
-
-       if( abs(hour01 - 3.0) .gt. 0.001)  go to 3333
-       tdata(8) = hour01 + 24.0
-       pdata(8) = hour01 + 24.0
-       qdata(8) = hour01 + 24.0
-       udata(8) = hour01 + 24.0          !! time
-       vdata(8) = hour01 + 24.0
-
-c   write out temperature observation of ADPUPA, AIRCAR, AIRCFT.
-c
-      if(subset(1:6) .eq. 'ADPUPA' .or. subset(1:6) .eq. 'AIRCAR' .or.
-     &                                  subset(1:6) .eq. 'AIRCFT' )then
-        if(toe .lt. 1.e9 .and. tob .lt. 1.e9 ) then
-         if(tqm .lt.4 .and. pqm .lt. 4) then
-
-          tdata(1) = toe
-          tdata(4) = ppb
-          tdata(5) = tob
-
-          write(lunobs, 800) tdata, ttype, tqm,subset(1:6), pc_t
-         endif
-        endif
-       endif
-c
-c   write out moisture observation from ADPUPA.
-c
-
-      if(subset(1:6) .eq. 'ADPUPA' ) then
-c
-c   compute the error of specific moisture from the fixed RH obs error(20%)
-c
-      es   = es0 * (tob / t0) ** fact1 * exp( fact2 * (fact3 - 1./tob))
-      qsat = eps * es / (pob - omeps * es)
-      qoe  = qoe * qsat * 1000.0                 ! to g/kg
-c   keep the error > 0.1 g/kg as in NCEP SSI.
-      qoe = max(0.1, qoe)
-
-c       print*, 'es= ', es, tob-273.16, qoe
-
-        if(qoe .lt. 1.e9 .and. qob .lt. 1.e9 ) then
-!        if(qqm .lt.4 .and. pqm .lt. 4) then
-         if(qqm >=0.0 .and. qqm .lt.4 .and. pqm .lt. 4) then
-
-        if( tqm .ge. 4) then       ! the T obs is not good for use to calculate qoe
-        print*, 'bad = ', qoe
-        qoe = 1.0e10
         endif
 
-         qdata(1) = qoe
-         qdata(4) = ppb
-         qdata(5) = qob
+c    write out wind observation of SFCSHP ADPSFC
+c----------------------------------------------------------------------
 
-         if(qoe .lt. 9.9) then      !! skip few large qoe obs.
-         write(lunobs, 800) qdata, qtype, qqm,subset(1:6), pc_q
-         endif
+        if (subset(1:6).eq.'SFCSHP' .or. subset(1:6).eq.'ADPSFC' ) then
 
-         endif
+          if (use_this_data_int(uqm,qctype_use,inum_qctype) .and.
+     &        use_this_data_int(pqm,qctype_use,inum_qctype) .and. 
+     &        uob .lt. 1.e9                                 ) then
+
+            udata(1) = uoe
+            if ( uoe .ge. 1.e9 ) udata(1) = land_wind_error
+            udata(4) = zob
+            udata(5) = uob
+            udata(6) = vob
+
+            vdata(1) = voe
+            if ( voe .ge. 1.e9 ) vdata(1) = land_wind_error
+            vdata(4) = zob
+            vdata(5) = vob
+            vdata(6) = uob
+
+            write(lunobs, 800) udata, wtype, uqm, subset(1:6), pc_u
+            write(lunobs, 800) vdata, wtype, vqm, subset(1:6), pc_v
+
+          endif
+
         endif
-       endif
 
-c   write out Ps observation of ADPUPA
-c
-       if(subset(1:6).eq.'ADPUPA' ) then
-        if(poe .lt. 1.e9 .and. pob .lt. 1.e9 ) then
-         if(pqm .lt.4 .and. stat_elv .eq. zob) then
+200   continue
 
-         pdata(1) = poe
-         pdata(4) = zob
-         pdata(5) = pob
+      IF ( ierrpb .eq. 0 )  GO TO 10
 
-         write(lunobs, 800) pdata, ptype, pqm,subset(1:6),pc_p
-         endif
-        endif
-       endif
-c
-c   write out wind observation of ADPUPA, AIRcraft, SATWND
-c
-       if(subset(1:6) .eq.'ADPUPA' .or. subset(1:6) .eq. 'AIRCAR' .or.
-     &    subset(1:6) .eq.'AIRCFT' .or. subset(1:6) .eq. 'SATWND' )then
-        if(uoe .lt. 1.e9 .and. uob .lt. 1.e9 ) then
-         if(uqm .lt.4 .and. pqm .lt. 4) then
-
-         udata(1) = uoe
-         udata(4) = ppb
-         udata(5) = uob
-         udata(6) = vob
-
-         vdata(1) = voe
-         vdata(4) = ppb
-         vdata(5) = vob
-         vdata(6) = vob
-
-          write(lunobs, 800) udata, wtype, uqm,subset(1:6),pc_u
-          write(lunobs, 800) vdata, wtype, vqm,subset(1:6),pc_u
-         endif
-        endif
-       endif
-cliu
-
- 3333  continue
-
-  200  continue
-
-       endif
-
-        IF ( ierrpb .eq. 0 )  GO TO 10
-c
-c 800  format(f4.2, 2f7.3, e12.5, f7.2, f7.2, f9.0, f7.3, f5.0, i3)
-  800  format(f4.2,2f7.3,e12.5,f7.2,f7.2,f9.0,f7.3,i4,i2,1x,a6,i2)
-        STOP
-        END
+800   format(f4.2,2f9.4,e12.5,f7.2,f7.2,f9.0,f7.3,i4,i2,1x,a6,i2)
+      STOP
+      END
 C-----------------------------------------------------------------------
         SUBROUTINE READPB  ( lunit, subset, idate, iret )
 C
@@ -517,7 +638,8 @@ C
 
 cliu   select data type
        if(subset .ne. 'ADPUPA' .and. subset .ne. 'AIRCAR' .and.
-     &    subset .ne. 'SATWND' .and. subset .ne. 'AIRCFT' ) go to 1000
+     &    subset .ne. 'SATWND' .and. subset .ne. 'AIRCFT' .and. 
+     &    subset .ne. 'ADPSFC' .and. subset .ne. 'SFCSHP') go to 1000
 cliu
         ELSE
             subset = subst2
@@ -547,7 +669,8 @@ cliu
 
 cliu   select data type
        if(subst2.ne. 'ADPUPA' .and. subst2.ne. 'AIRCAR' .and. 
-     &    subst2.ne. 'SATWND' .and. subst2.ne. 'AIRCFT' ) go to 2000
+     &    subst2.ne. 'SATWND' .and. subst2.ne. 'AIRCFT' .and.
+     &    subst2.ne. 'ADPSFC' .and. subst2.ne. 'SFCSHP') go to 2000
 c        ! careful about 2000
 cliu
         CALL UFBINT  ( lunit, hdr2, MXR8PM, 1, jret, head )
@@ -620,5 +743,44 @@ C
             END DO
    10   END DO
 C
+        RETURN
+        END
+
+C-----------------------------------------------------------------------
+        FUNCTION USE_THIS_DATA_INT(ifld, ufld, nfld)
+
+        integer, intent(in) :: nfld, ifld, ufld(nfld)
+
+        integer             :: nn
+        logical             :: use_this_data_int
+
+        use_this_data_int = .FALSE.
+        DO nn = 1, nfld
+          IF ( ifld .eq. ufld(nn) ) THEN
+            use_this_data_int = .TRUE.
+            RETURN
+          END IF
+        END DO
+
+        RETURN
+        END
+
+C-----------------------------------------------------------------------
+        FUNCTION USE_THIS_DATA_REAL(rfld, ufld, nfld)
+
+        integer, intent(in) :: nfld
+        real, intent(in)    :: rfld, ufld(nfld)
+
+        integer             :: nn
+        logical             :: USE_THIS_DATA_REAL
+
+        USE_THIS_DATA_REAL = .FALSE.
+        DO nn = 1, nfld
+          IF ( rfld .eq. ufld(nn) ) THEN
+            USE_THIS_DATA_REAL = .TRUE.
+            RETURN
+          END IF
+        END DO
+
         RETURN
         END
