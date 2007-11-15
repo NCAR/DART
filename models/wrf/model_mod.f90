@@ -37,7 +37,7 @@ use      location_mod, only : location_type, get_location, set_location, &
                               get_close_obs_init, loc_get_close_obs => get_close_obs
 
 use     utilities_mod, only : file_exist, open_file, close_file, &
-                              register_module, error_handler, E_ERR, &
+                              register_module, error_handler, E_ERR, E_WARN, &
                               E_MSG, logfileunit, find_namelist_in_file, check_namelist_read
 
 use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
@@ -53,9 +53,14 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_VORTEX_LAT, KIND_VORTEX_LON, &
                               KIND_VORTEX_PMIN, KIND_VORTEX_WMAX
 
+
+!nc -- module_map_utils split the declarations of PROJ_* into a separate module called
+!nc --   misc_definitions_module 
 use         map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
-                              PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
                               ij_to_latlon, gridwind_to_truewind
+
+use misc_definitions_module, only : PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, PROJ_CASSINI, &
+                                    PROJ_CYL
 
 use netcdf
 use typesizes
@@ -63,12 +68,15 @@ use typesizes
 implicit none
 private
 
-!  public routines and data for the WRF model
+
+!-----
+! DART requires 16 specific public interfaces from model_mod.f90 -- Note
+!   that the last four are simply "stubs" since WRF currently requires use
+!   of system called shell scripts to advance the model.
 
 public ::  get_model_size,                    &
            get_state_meta_data,               &
            model_interpolate,                 &
-           vert_interpolate,                  &
            get_model_time_step,               &
            static_init_model,                 &
            pert_model_state,                  &
@@ -77,16 +85,20 @@ public ::  get_model_size,                    &
            get_close_obs,                     &
            ens_mean_for_model,                &
            get_close_maxdist_init,            &
-           get_close_obs_init,                &
-           get_domain_info
-
+           get_close_obs_init
 
 !  public stubs 
-
 public ::  adv_1step,       &
            end_model,       &
            init_time,       &
            init_conditions
+
+!-----
+! Here is the appropriate place for other users to make additional routines
+!   contained within model_mod available for public use:
+public ::  get_domain_info
+
+
 
 !-----------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
@@ -116,6 +128,9 @@ real (kind=r8) :: center_search_half_length = 500000.0_r8
 integer :: center_search_half_size
 integer :: center_spline_grid_scale = 10
 integer :: vert_localization_coord = VERTISHEIGHT
+!nc -- we are adding these to the model.nml until they appear in the NetCDF files
+logical :: polar = .true.
+logical :: periodic_x = .true.
 
 real(r8), allocatable :: ens_mean(:)
 
@@ -123,13 +138,16 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      adv_mod_command, assimilation_period_seconds, &
                      vert_localization_coord, &
-                     center_search_half_length, center_spline_grid_scale
+                     center_search_half_length, center_spline_grid_scale, &
+                     polar, periodic_x
 
 !-----------------------------------------------------------------------
 
 ! Private definition of domain map projection use by WRF
 
+!nc -- added in CASSINI and CYL according to module_map_utils convention
 integer, parameter :: map_sphere = 0, map_lambert = 1, map_polar_stereo = 2, map_mercator = 3
+integer, parameter :: map_cassini = 6, map_cyl = 5
 
 ! Private definition of model variable types
 
@@ -146,9 +164,13 @@ integer, parameter :: num_model_var_types = 24
 real (kind=r8), PARAMETER    :: kappa = 2.0_r8/7.0_r8 ! gas_constant / cp
 real (kind=r8), PARAMETER    :: ts0 = 300.0_r8        ! Base potential temperature for all levels.
 
+! Private logical parameter controlling behavior within subroutine model_interpolate
+logical, parameter  :: allow_obs_below_surf = .false.
+
 !---- private data ----
 
-logical :: surf_var             = .false.
+! Got rid of surf_var as global private variable for model_mod and just defined it locally
+!   within model_interpolate
 
 TYPE wrf_static_data_for_dart
 
@@ -158,13 +180,21 @@ TYPE wrf_static_data_for_dart
    real(r8) :: cen_lat,cen_lon
    type(proj_info) :: proj
 
+   ! Boundary conditions -- hopefully one day these will be in the global attributes of the
+   !   input NetCDF file ("periodic_x" and "polar" are namelist items in the &bdy_control
+   !   section of a standard WRF "namelist.input" file), but for now we have included them
+   !   in the "model_nml" group of DART's own "input.nml".  Above, their default values are
+   !   both set to .true. (indicating a global domain). 
+   logical  :: periodic_x
+   logical  :: polar
+
    integer  :: n_moist
    logical  :: surf_obs
    logical  :: soil_data
    integer  :: vert_coord
    real(r8), dimension(:),     pointer :: znu, dn, dnw, zs
    real(r8), dimension(:,:),   pointer :: mub, latitude, longitude, hgt
-   real(r8), dimension(:,:),   pointer :: mapfac_m, mapfac_u, mapfac_v
+!   real(r8), dimension(:,:),   pointer :: mapfac_m, mapfac_u, mapfac_v
    real(r8), dimension(:,:,:), pointer :: phb
 
    integer :: number_of_wrf_variables
@@ -203,7 +233,7 @@ logical, parameter    :: debug = .false.
 integer               :: var_id, ind, i, j, k, id, dart_index, model_type
 
 integer  :: proj_code
-real(r8) :: stdlon,truelat1,truelat2,dt
+real(r8) :: stdlon,truelat1,truelat2,dt,latinc,loninc
 character(len=129) :: errstring
 
 !----------------------------------------------------------------------
@@ -342,7 +372,34 @@ do id=1,num_domains
    if(debug) write(*,*) ' truelat2 is ',truelat2
 
    call check( nf90_get_att(ncid, nf90_global, 'STAND_LON', stdlon) )
-   if(debug) write(*,*) ' standlon is ',stdlon
+   if(debug) write(*,*) ' stdlon is ',stdlon
+
+
+!nc -- fill in the boundary conditions (periodic_x and polar) here.  This will
+!        need to be changed once these are taken from the NetCDF input instead
+!        of the model namelist
+!      NOTE :: because NetCDF cannot handle logicals, these boundary conditions
+!        are likely to be read in as integers.  The agreed upon strategy is to 
+!        test whether the integers are equal to 0 (for .false.) or 1 (for .true.)
+!        and set the wrf%dom(id)% values to logicals to be used internally within
+!        model_mod.f90.
+!
+!      Jeff Anderson points out that not everyone will convert to wrf3.0 and this
+!        global attribute convention may not be backward-compatible.  So we should
+!        test for existence of attributes and have defaults (from model_mod 
+!        namelist) ready if they do not exist.  Note that defaults are currently 
+!        true (as of 24 Oct 2007), but once the attributes arrive, the defaults
+!        should be false.
+   if ( id == 1 ) then
+      wrf%dom(id)%periodic_x = periodic_x
+      wrf%dom(id)%polar = polar
+   else
+      wrf%dom(id)%periodic_x = .false.
+      wrf%dom(id)%polar = .false.      
+   end if
+   if(debug) write(*,*) ' periodic_x ',wrf%dom(id)%periodic_x
+   if(debug) write(*,*) ' polar ',wrf%dom(id)%polar
+
 
    call check( nf90_inq_varid(ncid, "P_TOP", var_id) )
    call check( nf90_get_var(ncid, var_id, wrf%dom(id)%p_top) )
@@ -409,21 +466,24 @@ do id=1,num_domains
            wrf%dom(id)%longitude(wrf%dom(id)%we,wrf%dom(id)%sn)
    end if
 
-   allocate(wrf%dom(id)%mapfac_m(1:wrf%dom(id)%we,1:wrf%dom(id)%sn))
-   call check( nf90_inq_varid(ncid, "MAPFAC_M", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%mapfac_m) )
+!nc -- eliminated the reading in of MAPFACs since global WRF will have different 
+!nc --   MAPFACs in the x and y directions
+
+!   allocate(wrf%dom(id)%mapfac_m(1:wrf%dom(id)%we,1:wrf%dom(id)%sn))
+!   call check( nf90_inq_varid(ncid, "MAPFAC_M", var_id) )
+!   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%mapfac_m) )
 
    allocate(wrf%dom(id)%hgt(1:wrf%dom(id)%we,1:wrf%dom(id)%sn))
    call check( nf90_inq_varid(ncid, "HGT", var_id) )
    call check( nf90_get_var(ncid, var_id, wrf%dom(id)%hgt) )
 
-   allocate(wrf%dom(id)%mapfac_u(1:wrf%dom(id)%wes,1:wrf%dom(id)%sn))
-   call check( nf90_inq_varid(ncid, "MAPFAC_U", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%mapfac_u) )
+!   allocate(wrf%dom(id)%mapfac_u(1:wrf%dom(id)%wes,1:wrf%dom(id)%sn))
+!   call check( nf90_inq_varid(ncid, "MAPFAC_U", var_id) )
+!   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%mapfac_u) )
 
-   allocate(wrf%dom(id)%mapfac_v(1:wrf%dom(id)%we,1:wrf%dom(id)%sns))
-   call check( nf90_inq_varid(ncid, "MAPFAC_V", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%mapfac_v) )
+!   allocate(wrf%dom(id)%mapfac_v(1:wrf%dom(id)%we,1:wrf%dom(id)%sns))
+!   call check( nf90_inq_varid(ncid, "MAPFAC_V", var_id) )
+!   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%mapfac_v) )
 
 ! get 3D base state geopotential
 
@@ -451,7 +511,16 @@ do id=1,num_domains
 
 ! Populate the map projection structure
 
+!nc -- added in case structures for CASSINI and CYL
+!nc -- global wrfinput_d01 has truelat1 = 1.e20, so we need to change it where needed
+!nc -- for PROJ_LATLON stdlon and truelat1 have different meanings -- 
+!nc --   stdlon --> loninc  and  truelat1 --> latinc
+   latinc = 180.0_r8/wrf%dom(id)%sn
+   loninc = 360.0_r8/wrf%dom(id)%we
+
    if(wrf%dom(id)%map_proj == map_sphere) then
+      truelat1 = latinc
+      stdlon = loninc
       proj_code = PROJ_LATLON
    elseif(wrf%dom(id)%map_proj == map_lambert) then
       proj_code = PROJ_LC
@@ -459,13 +528,70 @@ do id=1,num_domains
       proj_code = PROJ_PS
    elseif(wrf%dom(id)%map_proj == map_mercator) then
       proj_code = PROJ_MERC
+   elseif(wrf%dom(id)%map_proj == map_cyl) then
+      proj_code = PROJ_CYL
+   elseif(wrf%dom(id)%map_proj == map_cassini) then
+      proj_code = PROJ_CASSINI
    else
       call error_handler(E_ERR,'static_init_model', &
         'Map projection no supported.', source, revision, revdate)
    endif
 
-   call map_set(proj_code,wrf%dom(id)%latitude(1,1),wrf%dom(id)%longitude(1,1), &
-        1.0_r8,1.0_r8,wrf%dom(id)%dx,stdlon,truelat1,truelat2,wrf%dom(id)%proj)
+!nc -- new version of module_map_utils has optional arguments.  PROJ_CASSINI is the
+!        map projection we are dealing with.  According to map_set, the required 
+!        inputs are:
+!          latinc, loninc, lat1, lon1, knowni, knownj, lat0, lon0, stdlon
+!      Hence, we will need a dummy dx (or so it seems)
+!
+! OLD version -- all arguments required
+!  SUBROUTINE map_set(proj_code,lat1,lon1,knowni,knownj,dx,stdlon,truelat1,truelat2,proj)
+!
+! NEW version -- all arguments optional after "proj"
+!  SUBROUTINE map_set(proj_code, proj, lat1, lon1, lat0, lon0, knowni, knownj, dx, latinc, &
+!                      loninc, stdlon, truelat1, truelat2, nlat, nlon, ixdim, jydim, &
+!                      stagger, phi, lambda, r_earth)
+!
+!   call map_set(proj_code,wrf%dom(id)%latitude(1,1),wrf%dom(id)%longitude(1,1), &
+!        1.0_r8,1.0_r8,wrf%dom(id)%dx,stdlon,truelat1,truelat2,wrf%dom(id)%proj)
+
+!nc -- sufficiently specified inputs for PROJ_CASSINI, however, insufficient for other
+!        map projections (see below for more general)
+!   call map_set( proj_code=proj_code, &
+!                 proj=wrf%dom(id)%proj, &
+!                 lat1=wrf%dom(id)%latitude(1,1), &
+!                 lon1=wrf%dom(id)%longitude(1,1), &
+!                 lat0=90.0_r8, &
+!                 lon0=0.0_r8, &
+!                 knowni=1.0_r8, &
+!                 knownj=1.0_r8, &
+!                 latinc=latinc, &
+!                 loninc=loninc, &
+!                 stdlon=stdlon )
+
+!nc -- specified inputs to hopefully handle ALL map projections -- hopefully map_set will
+!        just ignore the inputs it doesn't need for its map projection of interest (?)
+!     
+!   NOTE:: We are NOT yet supporting the Gaussian grid or the Rotated Lat/Lon, so we
+!            are going to skip the entries:  nlon, nlat, ixdim, jydim, stagger, phi, lambda
+!
+!      + Gaussian grid uses nlat & nlon
+!      + Rotated Lat/Lon uses ixdim, jydim, stagger, phi, & lambda
+!
+   call map_set( proj_code=proj_code, &
+                 proj=wrf%dom(id)%proj, &
+                 lat1=wrf%dom(id)%latitude(1,1), &
+                 lon1=wrf%dom(id)%longitude(1,1), &
+                 lat0=90.0_r8, &
+                 lon0=0.0_r8, &
+                 knowni=1.0_r8, &
+                 knownj=1.0_r8, &
+                 dx=wrf%dom(id)%dx, &
+                 latinc=latinc, &
+                 loninc=loninc, &
+                 stdlon=stdlon, &
+                 truelat1=truelat1, &
+                 truelat2=truelat2  )
+
 
 !  build the map into the 1D DART vector for WRF data
 
@@ -964,8 +1090,8 @@ if(present(id_out)) id_out = id
 
 end subroutine get_state_meta_data
 
-!#######################################################################
 
+!#######################################################################
 
 subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
 
@@ -987,19 +1113,30 @@ subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
 
 ! modified 26 June 2006 to accomodate vortex attributes
 ! modified 13 December 2006 to accomodate changes for the mpi version
+! modified 22 October 2007 to accomodate global WRF (3.0)
 
+! arguments
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer,             intent(in) :: obs_kind
 real(r8),           intent(out) :: obs_val
 integer,            intent(out) :: istatus
 
+! local
 logical, parameter  :: debug = .false.
+logical, parameter  :: restrict_polar = .false.
+!logical, parameter  :: restrict_polar = .true.
 real(r8)            :: xloc, yloc, zloc, xloc_u, yloc_v, xyz_loc(3)
-integer             :: i, i_u, j, j_v, k, k2, i1,i2
+integer             :: i, i_u, j, j_v, k, k2
 real(r8)            :: dx,dy,dz,dxm,dym,dzm,dx_u,dxm_u,dy_v,dym_v
 real(r8)            :: a1,utrue,vtrue,ugrid,vgrid
 integer             :: id
+logical             :: surf_var
+
+
+! from getCorners
+integer, dimension(2) :: ll, lr, ul, ur, ll_v, lr_v, ul_v, ur_v
+integer            :: rc, ill, ilr, iul, iur, i1, i2
 
 character(len=129) :: errstring
 
@@ -1022,28 +1159,60 @@ real(r8)            :: rho1 , rho2 , rho3, rho4
 real(r8)            :: pres1, pres2, pres3, pres4, pres
 
 
+! Initialize stuff
 istatus = 0
+fld(:) = missing_r8
 obs_val = missing_r8
 
 
-! - - - - - - - - - !
+! If identity observation (obs_kind < 0), then no need to interpolate
+if ( obs_kind < 0 ) then
 
-! This part determines model i,j,k from ob lon,lat,z (location).
-! This information is only needed if this is not an identity ob.
-! For an identity ob, (absolute) obs_kind is directly the index
-! into the state vector.
+   ! identity observation -> -(obs_kind)=DART state vector index
+   ! obtain state value directly from index
+   obs_val = x(-1*obs_kind)
+ 
+! Otherwise, we need to do interpolation
+else
 
-xyz_loc = get_location(location)
+   ! Unravel location_type information
+   xyz_loc = get_location(location)
 
-if (obs_kind > 0) then
+   !----------------------------------
+   ! 0. Prelude to Interpolation
+   !----------------------------------
+   
+   ! 0.a Horizontal stuff
+
    ! first obtain domain id, and mass points (i,j)
    call get_domain_info(xyz_loc(1),xyz_loc(2),id,xloc,yloc)
-
+    
+   ! check that we obtained a valid domain id number
    if (id==0) then
       istatus = 1
       return
    endif
+   
+   !*****************************************************************************
+   ! Check polar-b.c. constraints -- if restrict_polar = .true., then we are not 
+   !   processing observations poleward of the 1st or last mass grid points.
+   ! If we have tried to pass a polar observation, then exit with istatus = 10
+   if ( wrf%dom(id)%polar .and. restrict_polar ) then
+      if ( yloc < 1.0_r8 .or. yloc >= real(wrf%dom(id)%sn,r8) ) then
 
+         ! Perhaps write to dart_log.out?
+         write(errstring,*)'Obs cannot be polar with restrict_polar on: yloc = ',yloc
+         call error_handler(E_WARN,'model_interpolate', errstring, &
+              source, revision, revdate)
+
+         istatus = 10  ! istatus 10, if it's not used, will mean the observation is too polar
+         print*, 'model_mod.f90 :: model_interpolate :: No polar observations!  istatus = ', istatus
+         return
+      end if
+   end if
+   !*****************************************************************************
+   
+   ! print info if debugging
    if(debug) then
       i = xloc
       j = yloc
@@ -1057,16 +1226,24 @@ if (obs_kind > 0) then
            wrf%dom(id)%longitude(i,j+1), &
            wrf%dom(id)%longitude(i+1,j+1)
    endif
-
-   allocate(v_h(0:wrf%dom(id)%bt), v_p(0:wrf%dom(id)%bt))
-
+   
    ! get integer (west/south) grid point and distances to neighboring grid points
    ! distances are used as weights to carry out horizontal interpolations
    call toGrid(xloc,i,dx,dxm)
    call toGrid(yloc,j,dy,dym)
+   
+
+   ! 0.b Vertical stuff
+
+   ! Allocate both a vertical height and vertical pressure coordinate -- 0:bt
+   allocate(v_h(0:wrf%dom(id)%bt), v_p(0:wrf%dom(id)%bt))
+
+   ! Set surf_var to .false. and then change in vert_is_surface section if necessary
+   surf_var = .false.
 
    ! Determine corresponding model level for obs location
    ! This depends on the obs vertical coordinate
+   !   From this we get a meaningful z-direction real-valued index number
    if(vert_is_level(location)) then
       ! Ob is by model level
       zloc = xyz_loc(3)
@@ -1077,27 +1254,51 @@ if (obs_kind > 0) then
       call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
       ! get pressure vertical co-ordinate
       call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
-      if(debug.and.obs_kind /= KIND_SURFACE_PRESSURE) &
+      if(debug .and. obs_kind /= KIND_SURFACE_PRESSURE) &
                 print*,' obs is by pressure and zloc =',zloc
       if(debug) print*,'model pressure profile'
       if(debug) print*,v_p
       
+      !nc -- If location is below model terrain (and therefore has a missing_r8 value), 
+      !        then push its location back to the level of model terrain.  This is only
+      !        permitted if the user has set the logical parameter allow_obs_below_surf to
+      !        be .true. (its default is .false.).
+      if ( allow_obs_below_surf ) then
+         if ( zloc == missing_r8 .and. xyz_loc(3) > v_p(0) ) then
+            zloc = 1.0_r8         ! Higher pressure than p_surf (lower than model terrain)
+            surf_var = .true.     ! Estimate U,V,T,and Q from the model sfc states.
+         end if
+      end if
+         
    elseif(vert_is_height(location)) then
       ! Ob is by height: get corresponding mass level zloc from
       ! computed column height profile
       call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
-      if(debug) print*,'model height profile'
-      if(debug) print*,v_h
       ! get height vertical co-ordinate
       call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc)
       if(debug) print*,' obs is by height and zloc =',zloc
+      if(debug) print*,'model height profile'
+      if(debug) print*,v_h
+
+      !nc -- If location is below model terrain (and therefore has a missing_r8 value), 
+      !        then push its location back to the level of model terrain.  This is only
+      !        permitted if the user has set the logical parameter allow_obs_below_surf to
+      !        be .true. (its default is .false.).
+      if ( allow_obs_below_surf ) then
+         if ( zloc == missing_r8 .and. xyz_loc(3) < v_h(0) ) then
+            zloc = 1.0_r8         ! Lower than the model terrain.
+            surf_var = .true.     ! Estimate U,V,T,and Q from the model sfc states.
+         end if
+      end if
    
    elseif(vert_is_surface(location)) then
       zloc = 1.0_r8
+      surf_var = .true.
       if(debug) print*,' obs is at the surface = ', xyz_loc(3)
 
    elseif(vert_is_undef(location)) then
       zloc  = missing_r8
+      if(debug) print*,' obs height is undefined -- ignoring observation is imminent'
 
    else
       write(errstring,*) 'wrong option for which_vert ', &
@@ -1107,617 +1308,885 @@ if (obs_kind > 0) then
 
    endif
 
-   surf_var = .false.
-   if(vert_is_surface(location)) surf_var = .true.
+
+   ! Deal with undefined / missing vertical coordinates -- return with istatus .ne. 0
+   !   NOTE: observations with vert_is_undef == .true. will be ignored!
    if(zloc == missing_r8) then
-     if(xyz_loc(3) < v_h(0)) then
-      zloc = 1.0_r8         ! Lower than the model terrain.
-      surf_var = .true.     ! Estimate U,V,T,and Q from the model sfc states.
-     else                
       obs_val = missing_r8
       istatus = 1
       deallocate(v_h, v_p)
       return
-     endif
    endif
 
+   ! Set a working integer k value -- if (int(zloc) < 1), then k = 1
    k = max(1,int(zloc))
 
-endif
 
-! - - - - - - - - - !
+   !----------------------------------
+   ! 1. Horizontal Interpolation 
+   !----------------------------------
 
-! This part is the forward operator -- compute desired model state value for given point.
+   ! This part is the forward operator -- compute desired model state value for given point.
 
-! Get the desired field to be interpolated
-if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) then   ! U, V
+   ! Strategy is to do the horizontal interpolation on two different levels in the
+   !   vertical, and then to do the vertical interpolation afterwards, since it depends on
+   !   what the vertical coordinate is
 
-   if(.not. vert_is_surface(location) .or. .not. surf_var) then
+   ! Large if-structure to select on obs_kind of desired field....
+   ! Table of Contents:
+   ! a. U, V, U10, V10 -- Horizontal Winds
+   ! b. T, T2 -- Sensible Temperature
+   ! c. TH, TH2 -- Potential Temperature
+   ! d. Rho -- Density
+   ! e. W -- Vertical Wind
+   ! f. SH, SH2 -- Specific Humidity
+   ! g. QV, Q2 -- Vapor Mixing Ratio
+   ! h. QR -- Rainwater Mixing Ratio
+   ! i. QG -- Graupel Mixing Ratio
+   ! j. QS -- Snow Mixing Ratio
+   ! k. P -- Pressure
+   ! l. PS -- Surface Pressure
+   ! m. Vortex Center Stuff (Yongsheng)
+   ! n. GZ -- Geopotential Height (Ryan Torn)
+   ! o. HGT -- Surface Elevation (Ryan Torn)
 
-      xloc_u = xloc + 0.5
-      yloc_v = yloc + 0.5
-      call toGrid(xloc_u,i_u,dx_u,dxm_u)
-      call toGrid(yloc_v,j_v,dy_v,dym_v)
+   ! NOTE: the previous version of this code checked for surface observations with the syntax:
+   !          "if(.not. vert_is_surface(location) .or. .not. surf_var) then"
+   !   We identified this as redundant because surf_var is changed from .false. only by
+   !     the above code (section 0.b), which must be traced through before one can arrive
+   !     at the following forward operator code.  Hence, we can remove the call to 
+   !     vert_is_surface.
 
-      if(  i_u >= 1 .and. i_u < wrf%dom(id)%var_size(1,TYPE_U) .and. &
-           j   >= 1 .and. j   < wrf%dom(id)%var_size(2,TYPE_U) .and. &
-           i   >= 1 .and. i   < wrf%dom(id)%var_size(1,TYPE_V) .and. &
-           j_v >= 1 .and. j_v < wrf%dom(id)%var_size(2,TYPE_V) .and. &
-           k   >= 1 .and. k   < wrf%dom(id)%var_size(3,TYPE_U)) then
+   !-----------------------------------------------------
+   ! 1.a Horizontal Winds (U, V, U10, V10)
 
-         do k2=1,2
+   ! We need one case structure for both U & V because they comprise a vector which could need
+   !   transformation depending on the map projection (hence, the call to gridwind_to_truewind)
+   if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) then   ! U, V
 
-            ! For memory economy over speed, dart_ind should be removed from
-            ! the wrf structure and get_wrf_index reactivated.
+      ! This is for 3D wind fields -- surface winds later
+      if(.not. surf_var) then
 
-!!$            i1 = get_wrf_index(i_u,j  ,k+k2-1,TYPE_U,id)
-!!$            i2 = get_wrf_index(i_u,j+1,k+k2-1,TYPE_U,id)
+         ! xloc and yloc are indices on mass-grid.  If we are on a periodic longitude domain,
+         !   then xloc can range from [1 wes).  This means that simply adding 0.5 to xloc has
+         !   the potential to render xloc_u out of the valid mass-grid index bounds (>wes).
+         !   To remedy this, we can either do periodicity check on xloc_u value, or we can
+         !   leave it to a subroutine or function to alter xloc to xloc_u if the observation
+         !   type requires it.
+         xloc_u = xloc + 0.5_r8
+         yloc_v = yloc + 0.5_r8
 
-            i1 = wrf%dom(id)%dart_ind(i_u,j  ,k+k2-1,TYPE_U)
-            i2 = wrf%dom(id)%dart_ind(i_u,j+1,k+k2-1,TYPE_U)
+         ! Check periodicity if necessary -- but only subtract 'we' because the U-grid
+         !   cannot have an index < 1 (i.e., U(wes) = U(1) ).
+         if ( wrf%dom(id)%periodic_x .and. xloc_u > real(wrf%dom(id)%wes,r8) ) &
+              xloc_u = xloc_u - real(wrf%dom(id)%we,r8)
 
-            ugrid = dym*( dxm_u*x(i1) + dx_u*x(i1+1) ) + dy*( dxm_u*x(i2) + dx_u*x(i2+1) )
+         ! Get South West gridpoint indices for xloc_u and yloc_v
+         call toGrid(xloc_u,i_u,dx_u,dxm_u)
+         call toGrid(yloc_v,j_v,dy_v,dym_v)
 
-!!$            i1 = get_wrf_index(i,j_v  ,k+k2-1,TYPE_V,id)
-!!$            i2 = get_wrf_index(i,j_v+1,k+k2-1,TYPE_V,id)
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i_u, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_U ) .and. &
+              boundsCheck( i,   wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_V ) .and. &
+              boundsCheck( j,   wrf%dom(id)%polar,      id, dim=2, type=TYPE_U ) .and. &
+              boundsCheck( j_v, wrf%dom(id)%polar,      id, dim=2, type=TYPE_V ) .and. &
+              boundsCheck( k,   .false.,                id, dim=3, type=TYPE_U ) ) then
 
-            i1 = wrf%dom(id)%dart_ind(i,j_v  ,k+k2-1,TYPE_V)
-            i2 = wrf%dom(id)%dart_ind(i,j_v+1,k+k2-1,TYPE_V)
+            ! Need to get grid cell corners surrounding observation location -- with
+            !   periodicity, this could be non-consecutive (i.e., NOT necessarily i and i+1);
+            !   Furthermore, it could be different for the U-grid and V-grid.  Remember, for 
+            !   now, we are disallowing observations to be located poleward of the 1st and 
+            !   last mass points.
+            
+            call getCorners(i_u, j, id, TYPE_U, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners U rc = ', rc
+            
+            call getCorners(i, j_v, id, TYPE_V, ll_v, ul_v, lr_v, ur_v, rc ) 
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners V rc = ', rc
+            
+            ! Now we want to get the corresponding DART state vector indices, and then
+            !   interpolate horizontally on TWO different vertical levels (so that we can
+            !   do the vertical interpolation properly later)
+            do k2 = 1, 2
 
-            vgrid = dym_v*( dxm*x(i1) + dx*x(i1+1) ) + dy_v*( dxm*x(i2) + dx*x(i2+1) )
+               ! Interpolation for the U field
+               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+k2-1, TYPE_U)
+               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+k2-1, TYPE_U)
+               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+k2-1, TYPE_U)
+               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+k2-1, TYPE_U)
 
-            call gridwind_to_truewind(xyz_loc(1), wrf%dom(id)%proj, ugrid, vgrid, &
-                 utrue, vtrue)
+               ugrid = dym*( dxm_u*x(ill) + dx_u*x(ilr) ) + dy*( dxm_u*x(iul) + dx_u*x(iur) )
 
+               ! Interpolation for the V field
+               ill = wrf%dom(id)%dart_ind(ll_v(1), ll_v(2), k+k2-1, TYPE_V)
+               iul = wrf%dom(id)%dart_ind(ul_v(1), ul_v(2), k+k2-1, TYPE_V)
+               ilr = wrf%dom(id)%dart_ind(lr_v(1), lr_v(2), k+k2-1, TYPE_V)
+               iur = wrf%dom(id)%dart_ind(ur_v(1), ur_v(2), k+k2-1, TYPE_V)
+               
+               vgrid = dym_v*( dxm*x(ill) + dx*x(ilr) ) + dy_v*( dxm*x(iul) + dx*x(iur) )
+
+               ! Certain map projections have wind on grid different than true wind (on map)
+               !   subroutine gridwind_to_truewind is in module_map_utils.f90
+               call gridwind_to_truewind(xyz_loc(1), wrf%dom(id)%proj, ugrid, vgrid, &
+                    utrue, vtrue)
+               
+               ! Figure out which field was the actual desired observation and store that
+               !   field as one of the two elements of "fld" (the other element is the other
+               !   k-level)
+               if( obs_kind == KIND_U_WIND_COMPONENT) then                  
+                  fld(k2) = utrue                  
+               else   ! must want v                  
+                  fld(k2) = vtrue                  
+               end if
+               
+            end do
+
+         ! If the boundsCheck functions return an unsatisfactory integer index, then set
+         !   fld as missing data
+         else
+
+            fld(:) = missing_r8
+
+         end if
+
+      ! This is for surface wind fields -- NOTE: surface winds are on Mass grid (therefore,
+      !   TYPE_T), not U-grid & V-grid.  Also, there doesn't seem to be a need to call
+      !   gridwind_to_truewind for surface winds (is that right?)
+      ! Also, because surface winds are at a given single vertical level, only fld(1) will
+      !   be filled.
+      ! (U10 & V10, which are added to dart_ind if surf_obs = .true.)
+      else
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+              wrf%dom(id)%surf_obs ) then
+
+            ! U10 (U at 10 meters)
             if( obs_kind == KIND_U_WIND_COMPONENT) then
 
-               fld(k2) = utrue
+               call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+               if ( rc .ne. 0 ) &
+                    print*, 'model_mod.f90 :: model_interpolate :: getCorners U10 rc = ', rc
 
-            else   ! must want v
+               ! Interpolation for the U10 field
+               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, TYPE_U10)
+               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, TYPE_U10)
+               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, TYPE_U10)
+               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, TYPE_U10)
 
-               fld(k2) = vtrue
+            ! V10 (V at 10 meters)
+            else
 
-            endif
+               call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+               if ( rc .ne. 0 ) &
+                    print*, 'model_mod.f90 :: model_interpolate :: getCorners V10 rc = ', rc
 
-         enddo
+               ! Interpolation for the V10 field
+               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, TYPE_V10)
+               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, TYPE_V10)
+               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, TYPE_V10)
+               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, TYPE_V10)
 
-      else
+            end if
 
-         fld(:) = missing_r8
-
-      endif
-
-   else
-
-      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-         wrf%dom(id)%surf_obs) then
-
-         if( obs_kind == KIND_U_WIND_COMPONENT) then
-
-!!$            i1 = get_wrf_index(i,j,1,TYPE_U10,id)
-!!$            i2 = get_wrf_index(i,j+1,1,TYPE_U10,id)
-            i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_U10)
-            i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_U10)
-
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+         ! If the boundsCheck functions return an unsatisfactory integer index, then set
+         !   fld as missing data
          else
-!!$            i1 = get_wrf_index(i,j,1,TYPE_V10,id)
-!!$            i2 = get_wrf_index(i,j+1,1,TYPE_V10,id)
-            i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_V10)
-            i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_V10)
 
-         endif
+            fld(1) = missing_r8
 
-         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+         end if
+      end if
 
-      else
 
-         fld(1) = missing_r8
+   !-----------------------------------------------------
+   ! 1.b Sensible Temperature (T, T2)
 
-      endif
+   elseif ( obs_kind == KIND_TEMPERATURE ) then
 
-   endif
+      ! This is for 3D temperature field -- surface temps later
+      if(.not. surf_var) then
 
-else if( obs_kind == KIND_TEMPERATURE ) then
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=TYPE_T ) ) then
 
-   if(.not. vert_is_surface(location) .or. .not. surf_var) then
+            call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners T rc = ', rc
+            
+            ! Interpolation for T field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, TYPE_T)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, TYPE_T)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, TYPE_T)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, TYPE_T)
 
-      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-         k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
+            ! In terms of perturbation potential temperature
+            a1 = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-!!$         i1 = get_wrf_index(i,j  ,k,TYPE_T,id)
-!!$         i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_T)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_T)
-         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-         pres1 = model_pressure_t(i  ,j  ,k,id,x)
-         pres2 = model_pressure_t(i+1,j  ,k,id,x)
-         pres3 = model_pressure_t(i  ,j+1,k,id,x)
-         pres4 = model_pressure_t(i+1,j+1,k,id,x)
-         pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
-         fld(1) = (ts0 + a1)*(pres/ps0)**kappa
+            pres1 = model_pressure_t(ll(1), ll(2), k, id, x)
+            pres2 = model_pressure_t(lr(1), lr(2), k, id, x)
+            pres3 = model_pressure_t(ul(1), ul(2), k, id, x)
+            pres4 = model_pressure_t(ur(1), ur(2), k, id, x)
+            
+            ! Pressure at location
+            pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
-!!$         i1 = get_wrf_index(i,j  ,k+1,TYPE_T,id)
-!!$         i2 = get_wrf_index(i,j+1,k+1,TYPE_T,id)
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_T)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_T)
-         a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-         pres1 = model_pressure_t(i  ,j  ,k+1,id,x)
-         pres2 = model_pressure_t(i+1,j  ,k+1,id,x)
-         pres3 = model_pressure_t(i  ,j+1,k+1,id,x)
-         pres4 = model_pressure_t(i+1,j+1,k+1,id,x)
-         pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
-         fld(2) = (ts0 + a1)*(pres/ps0)**kappa
+            ! Full sensible temperature field
+            fld(1) = (ts0 + a1)*(pres/ps0)**kappa
 
-      else
 
-         fld(:) = missing_r8
+            ! Interpolation for T field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, TYPE_T)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, TYPE_T)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, TYPE_T)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, TYPE_T)
 
-      endif
+            ! In terms of perturbation potential temperature
+            a1 = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-   else
+            pres1 = model_pressure_t(ll(1), ll(2), k+1, id, x)
+            pres2 = model_pressure_t(lr(1), lr(2), k+1, id, x)
+            pres3 = model_pressure_t(ul(1), ul(2), k+1, id, x)
+            pres4 = model_pressure_t(ur(1), ur(2), k+1, id, x)
+            
+            ! Pressure at location
+            pres = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
-      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-         wrf%dom(id)%surf_obs) then
+            ! Full sensible temperature field
+            fld(2) = (ts0 + a1)*(pres/ps0)**kappa
 
-!!$         i1 = get_wrf_index(i,j,1,TYPE_T2,id)
-!!$         i2 = get_wrf_index(i,j+1,1,TYPE_T2,id)
-         i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_T2)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_T2)
-         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-      else
-
-         fld(1) = missing_r8
-
-      endif
-
-   endif
-
-else if( obs_kind == KIND_POTENTIAL_TEMPERATURE ) then
-
-   if(.not. vert_is_surface(location) .or. .not. surf_var) then
-
-      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-         k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
-
-!        Note:  T is perturbation potential temperature (potential temperature - ts0)
-!               TH2 is potential temperature at 2 m
-
-!!$         i1 = get_wrf_index(i,j  ,k,TYPE_T,id)
-!!$         i2 = get_wrf_index(i,j+1,k,TYPE_T,id)
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_T)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_T)
-         fld(1) = ts0 + dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-!!$         i1 = get_wrf_index(i,j  ,k+1,TYPE_T,id)
-!!$         i2 = get_wrf_index(i,j+1,k+1,TYPE_T,id)
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_T)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_T)
-         fld(2) = ts0 + dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-      else
-
-         fld(:) = missing_r8
-
-      endif
-
-   else
-
-      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-         wrf%dom(id)%surf_obs) then
-
-!!$         i1 = get_wrf_index(i,j,1,TYPE_TH2,id)
-!!$         i2 = get_wrf_index(i,j+1,1,TYPE_TH2,id)
-         i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_TH2)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_TH2)
-         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-      else
-
-         fld(1) = missing_r8
-
-      endif
-
-   endif
-
-else if( obs_kind == KIND_GEOPOTENTIAL_HEIGHT ) then
-
-   if(.not. vert_is_surface(location) .or. .not. surf_var) then
-
-      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
-         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_GZ) .and. &
-         k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_GZ)) then
-
-!!$         i1 = get_wrf_index(i,j  ,k,TYPE_GZ,id)
-!!$         i2 = get_wrf_index(i,j+1,k,TYPE_GZ,id)
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_GZ) / gravity
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_GZ) / gravity
-         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-!!$         i1 = get_wrf_index(i,j  ,k+1,TYPE_GZ,id)
-!!$         i2 = get_wrf_index(i,j+1,k+1,TYPE_GZ,id)
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_GZ) / gravity
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_GZ) / gravity
-         fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-      else
-
-         fld(:) = missing_r8
-
-      endif
-
-   else
-
-      if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
-         j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_GZ)) then
-
-         i1 = wrf%dom(id)%dart_ind(i,j,  1,TYPE_GZ) / gravity
-         i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_GZ) / gravity
-         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-      else
-
-         fld(1) = missing_r8
-
-      endif
-
-   endif
-
-else if( obs_kind == KIND_DENSITY ) then
-
-   ! Rho calculated at mass points, and so is like "TYPE_T"
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
-
-      ! calculate full rho at corners of interp box
-      ! and interpolate to desired horizontal location
-
-      rho1 = model_rho_t(i  ,j  ,k,id,x)
-      rho2 = model_rho_t(i+1,j  ,k,id,x)
-      rho3 = model_rho_t(i  ,j+1,k,id,x)
-      rho4 = model_rho_t(i+1,j+1,k,id,x)
-      fld(1) = dym*( dxm*rho1 + dx*rho2 ) + dy*( dxm*rho3 + dx*rho4 )
-
-      rho1 = model_rho_t(i  ,j  ,k+1,id,x)
-      rho2 = model_rho_t(i+1,j  ,k+1,id,x)
-      rho3 = model_rho_t(i  ,j+1,k+1,id,x)
-      rho4 = model_rho_t(i+1,j+1,k+1,id,x)
-      fld(2) = dym*( dxm*rho1 + dx*rho2 ) + dy*( dxm*rho3 + dx*rho4 )
-
-   else
-
-      fld(:) = missing_r8
-
-   endif
-
-else if( obs_kind == KIND_VERTICAL_VELOCITY ) then
-
-   zloc = zloc + 0.5_r8
-   k = max(1,int(zloc))
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_W) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_W) .and. &
-      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_W)) then
-
-!!$      i1 = get_wrf_index(i,j  ,k,TYPE_W,id)
-!!$      i2 = get_wrf_index(i,j+1,k,TYPE_W,id)
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_W)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_W)
-      fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-!!$      i1 = get_wrf_index(i,j  ,k+1,TYPE_W,id)
-!!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_W,id)
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_W)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_W)
-      fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-   else
-
-      fld(:) = missing_r8
-
-   endif
-
-else if( obs_kind == KIND_SPECIFIC_HUMIDITY ) then
-
-!  Convert water vapor mixing ratio to specific humidity:
-
-   if ( wrf%dom(id)%n_moist >= 1) then
-
-      if(.not. vert_is_surface(location) .or. .not. surf_var) then
-
-         if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-            j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-            k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
-
-
-!!$            i1 = get_wrf_index(i,j ,k,TYPE_QV,id)
-!!$            i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
-            i1 = wrf%dom(id)%dart_ind(i,j ,k,TYPE_QV)
-            i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QV)
-            a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-            fld(1) = a1 /(1.0_r8 + a1)
-
-!!$            i1 = get_wrf_index(i,j ,k+1,TYPE_QV,id)
-!!$            i2 = get_wrf_index(i,j+1,k+1,TYPE_QV,id)
-            i1 = wrf%dom(id)%dart_ind(i,j ,k+1,TYPE_QV)
-            i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QV)
-            a1 = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-            fld(2) = a1 /(1.0_r8 + a1)
-
+         ! If the boundsCheck functions return an unsatisfactory integer index, then set
+         !   fld as missing data
          else
 
             fld(:) = missing_r8
 
-         endif
+         end if
 
+      ! This is for surface temperature (T2, which is added to dart_ind if surf_obs = .true.)
+      else
+         
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+              wrf%dom(id)%surf_obs ) then
+
+            call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners T2 rc = ', rc
+
+            ! Interpolation for the T2 field
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, TYPE_T2)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, TYPE_T2)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, TYPE_T2)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, TYPE_T2)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+         ! If the boundsCheck functions return an unsatisfactory integer index, then set
+         !   fld as missing data
+         else
+
+            fld(1) = missing_r8
+
+         end if
+      end if
+
+
+   !-----------------------------------------------------
+   ! 1.c Potential Temperature (Theta, TH2)
+
+   ! Note:  T is perturbation potential temperature (potential temperature - ts0)
+   !   TH2 is potential temperature at 2 m
+   elseif ( obs_kind == KIND_POTENTIAL_TEMPERATURE ) then
+
+      ! This is for 3D potential temperature field -- surface pot temps later
+      if(.not. surf_var) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=TYPE_T ) ) then
+      
+            call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners Theta rc = ', rc
+            
+            ! Interpolation for Theta field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, TYPE_T)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, TYPE_T)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, TYPE_T)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, TYPE_T)
+
+            fld(1) = ts0 + dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Interpolation for Theta field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, TYPE_T)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, TYPE_T)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, TYPE_T)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, TYPE_T)
+
+            fld(2) = ts0 + dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+         ! If the boundsCheck functions return an unsatisfactory integer index, then set
+         !   fld as missing data
+         else
+
+            fld(:) = missing_r8
+
+         end if
+
+      ! This is for surface potential temperature (TH2, which is added to dart_ind 
+      !   if surf_obs = .true.)
+      else
+         
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+              wrf%dom(id)%surf_obs ) then
+
+            call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners TH2 rc = ', rc
+
+            ! Interpolation for the TH2 field
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, TYPE_TH2)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, TYPE_TH2)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, TYPE_TH2)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, TYPE_TH2)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+         ! If the boundsCheck functions return an unsatisfactory integer index, then set
+         !   fld as missing data
+         else
+
+            fld(1) = missing_r8
+
+         end if
+      end if
+
+
+   !-----------------------------------------------------
+   ! 1.d Density (Rho)
+
+   ! Rho calculated at mass points, and so is like "TYPE_T" -- KIND_DENSITY apparently only
+   !   refers to full 3D density field (i.e., no surface fields!)
+   elseif ( obs_kind == KIND_DENSITY ) then
+      
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+           boundsCheck( k, .false.,                id, dim=3, type=TYPE_T ) ) then
+         
+         call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+         if ( rc .ne. 0 ) &
+              print*, 'model_mod.f90 :: model_interpolate :: getCorners Rho rc = ', rc
+      
+         ! calculate full rho at corners of interp box
+         ! and interpolate to desired horizontal location
+
+         ! Hmmm, it does not appear that Rho is part of the DART state vector, so there
+         !   is not a reference to wrf%dom(id)%dart_ind -- we'll have to go right from
+         !   the corner indices
+
+         ! Interpolation for the Rho field at level k
+         rho1 = model_rho_t(ll(1), ll(2), k, id, x)
+         rho2 = model_rho_t(lr(1), lr(2), k, id, x)
+         rho3 = model_rho_t(ul(1), ul(2), k, id, x)
+         rho4 = model_rho_t(ur(1), ur(2), k, id, x)
+
+         fld(1) = dym*( dxm*rho1 + dx*rho2 ) + dy*( dxm*rho3 + dx*rho4 )
+
+         ! Interpolation for the Rho field at level k+1
+         rho1 = model_rho_t(ll(1), ll(2), k+1, id, x)
+         rho2 = model_rho_t(lr(1), lr(2), k+1, id, x)
+         rho3 = model_rho_t(ul(1), ul(2), k+1, id, x)
+         rho4 = model_rho_t(ur(1), ur(2), k+1, id, x)
+
+         fld(2) = dym*( dxm*rho1 + dx*rho2 ) + dy*( dxm*rho3 + dx*rho4 )
+
+      ! If the boundsCheck functions return an unsatisfactory integer index, then set
+      !   fld as missing data
       else
 
-         if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-            j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-            wrf%dom(id)%surf_obs) then
+         fld(:) = missing_r8
 
-!!$            i1 = get_wrf_index(i,j,1,TYPE_Q2,id)
-!!$            i2 = get_wrf_index(i,j+1,1,TYPE_Q2,id)
-            i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_Q2)
-            i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_Q2)
-            fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-            fld(1) = fld(1) / (1.0_r8 + fld(1))
+      end if
+
+
+   !-----------------------------------------------------
+   ! 1.e Vertical Wind (W)
+
+   elseif ( obs_kind == KIND_VERTICAL_VELOCITY ) then
+
+      ! Adjust zloc for staggered ZNW grid (or W-grid, as compared to ZNU or M-grid)
+      zloc = zloc + 0.5_r8
+      k = max(1,int(zloc))
+      
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_W ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_W ) .and. &
+           boundsCheck( k, .false.,                id, dim=3, type=TYPE_W ) ) then
+
+         call getCorners(i, j, id, TYPE_W, ll, ul, lr, ur, rc )
+         if ( rc .ne. 0 ) &
+              print*, 'model_mod.f90 :: model_interpolate :: getCorners W rc = ', rc
+         
+         ! Interpolation for W field at level k
+         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, TYPE_W)
+         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, TYPE_W)
+         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, TYPE_W)
+         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, TYPE_W)
+         
+         fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+         
+         ! Interpolation for W field at level k+1
+         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, TYPE_W)
+         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, TYPE_W)
+         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, TYPE_W)
+         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, TYPE_W)
+         
+         fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+      
+      ! If the boundsCheck functions return an unsatisfactory integer index, then set
+      !   fld as missing data
+      else
+
+         fld(:) = missing_r8
+
+      end if
+
+
+   !-----------------------------------------------------
+   ! 1.f Specific Humidity (SH, SH2)
+
+   ! Convert water vapor mixing ratio to specific humidity:
+   else if( obs_kind == KIND_SPECIFIC_HUMIDITY ) then
+
+      ! First confirm that vapor mixing ratio is in the DART state vector
+      if ( wrf%dom(id)%n_moist >= 1 ) then
+      
+         ! This is for 3D specific humidity -- surface spec humidity later
+         if(.not. surf_var) then
+
+            ! Check to make sure retrieved integer gridpoints are in valid range
+            if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+                 boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+                 boundsCheck( k, .false.,                id, dim=3, type=TYPE_T ) ) then
+      
+               call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+               if ( rc .ne. 0 ) &
+                    print*, 'model_mod.f90 :: model_interpolate :: getCorners SH rc = ', rc
+               
+               ! Interpolation for SH field at level k
+               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, TYPE_QV)
+               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, TYPE_QV)
+               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, TYPE_QV)
+               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, TYPE_QV)
+               
+               a1 = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               fld(1) = a1 /(1.0_r8 + a1)
+               
+               ! Interpolation for SH field at level k+1
+               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, TYPE_QV)
+               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, TYPE_QV)
+               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, TYPE_QV)
+               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, TYPE_QV)
+               
+               a1 = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               fld(2) = a1 /(1.0_r8 + a1)
+
+            ! If the boundsCheck functions return an unsatisfactory integer index, then set
+            !   fld as missing data
+            else
+            
+               fld(:) = missing_r8
+            
+            end if
+
+         ! This is for surface specific humidity (calculated from Q2, which is added to 
+         !   dart_ind if surf_obs = .true.)
+         else
+         
+            ! Check to make sure retrieved integer gridpoints are in valid range
+            if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+                 boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+                 wrf%dom(id)%surf_obs ) then
+               
+               call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+               if ( rc .ne. 0 ) &
+                    print*, 'model_mod.f90 :: model_interpolate :: getCorners SH2 rc = ', rc
+
+               ! Interpolation for the SH2 field
+               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, TYPE_Q2)
+               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, TYPE_Q2)
+               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, TYPE_Q2)
+               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, TYPE_Q2)
+               
+               a1 = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               fld(1) = a1 /(1.0_r8 + a1)
+
+            ! If the boundsCheck functions return an unsatisfactory integer index, then set
+            !   fld as missing data
+            else
+            
+               fld(1) = missing_r8
+            
+            end if
+         end if
+         
+      ! If not in the state vector, then set to 0 (?)
+      else
+
+         fld(:) = 0.0_r8
+
+      end if
+
+
+   !-----------------------------------------------------
+   ! 1.g Vapor Mixing Ratio (QV, Q2)
+   else if( obs_kind == KIND_VAPOR_MIXING_RATIO ) then
+
+      ! First confirm that vapor mixing ratio is in the DART state vector
+      if ( wrf%dom(id)%n_moist >= 1 ) then
+      
+         ! This is for 3D vapor mixing ratio -- surface QV later
+         if(.not. surf_var) then
+
+            ! Check to make sure retrieved integer gridpoints are in valid range
+            if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+                 boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+                 boundsCheck( k, .false.,                id, dim=3, type=TYPE_T ) ) then
+      
+               call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+               if ( rc .ne. 0 ) &
+                    print*, 'model_mod.f90 :: model_interpolate :: getCorners QV rc = ', rc
+               
+               ! Interpolation for QV field at level k
+               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, TYPE_QV)
+               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, TYPE_QV)
+               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, TYPE_QV)
+               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, TYPE_QV)
+               
+               fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+               ! Interpolation for QV field at level k+1
+               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, TYPE_QV)
+               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, TYPE_QV)
+               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, TYPE_QV)
+               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, TYPE_QV)
+               
+               fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! If the boundsCheck functions return an unsatisfactory integer index, then set
+            !   fld as missing data
+            else
+            
+               fld(:) = missing_r8
+            
+            end if
+
+         ! This is for surface QV (Q2, which is added to dart_ind if surf_obs = .true.)
+         else
+         
+            ! Check to make sure retrieved integer gridpoints are in valid range
+            if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+                 boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+                 wrf%dom(id)%surf_obs ) then
+               
+               call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+               if ( rc .ne. 0 ) &
+                    print*, 'model_mod.f90 :: model_interpolate :: getCorners QV2 rc = ', rc
+
+               ! Interpolation for the SH2 field
+               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, TYPE_Q2)
+               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, TYPE_Q2)
+               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, TYPE_Q2)
+               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, TYPE_Q2)
+               
+               fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! If the boundsCheck functions return an unsatisfactory integer index, then set
+            !   fld as missing data
+            else
+            
+               fld(1) = missing_r8
+            
+            end if
+         end if
+         
+      ! If not in the state vector, then set to 0 (?)
+      else
+
+         fld(:) = 0.0_r8
+
+      end if
+
+
+   !-----------------------------------------------------
+   ! 1.h Rainwater Mixing Ratio (QR)
+   else if( obs_kind == KIND_RAINWATER_MIXING_RATIO ) then
+
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+           boundsCheck( k, .false.,                id, dim=3, type=TYPE_T ) ) then
+      
+         ! Confirm that QR is in the DART state vector
+         if ( wrf%dom(id)%n_moist >= 3 ) then
+
+            call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners QR rc = ', rc
+               
+            ! Interpolation for QR field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, TYPE_QR)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, TYPE_QR)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, TYPE_QR)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, TYPE_QR)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+            ! Interpolation for QR field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, TYPE_QR)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, TYPE_QR)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, TYPE_QR)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, TYPE_QR)
+               
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+            
+            ! Don't accept negative rain amounts (?)
+            fld = max(0.0_r8, fld)
+
+         ! If QR is not in state vector, then zero-out the retrieved field -- is this 
+         !   right?  should we instead keep it as missing?
+         else
+
+            fld(:) = 0.0_r8
+
+         end if
+
+      ! If the boundsCheck functions return an unsatisfactory integer index, then set
+      !   fld as missing data
+      else
+            
+         fld(:) = missing_r8
+            
+      end if
+   
+
+   !-----------------------------------------------------
+   ! 1.i Graupel Mixing Ratio (QG)
+   else if( obs_kind == KIND_GRAUPEL_MIXING_RATIO ) then
+
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+           boundsCheck( k, .false.,                id, dim=3, type=TYPE_T ) ) then
+         
+         ! Confirm that QG is in the DART state vector
+         if ( wrf%dom(id)%n_moist >= 6 ) then
+
+            call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners QG rc = ', rc
+               
+            ! Interpolation for QG field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, TYPE_QG)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, TYPE_QG)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, TYPE_QG)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, TYPE_QG)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+            ! Interpolation for QG field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, TYPE_QG)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, TYPE_QG)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, TYPE_QG)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, TYPE_QG)
+               
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Don't accept negative rain amounts (?)
+            fld = max(0.0_r8, fld)
+            
+         ! If QG is not in state vector, then zero-out the retrieved field -- is this 
+         !   right?  should we instead keep it as missing?
+         else
+
+            fld(:) = 0.0_r8
+
+         end if
+
+      ! If the boundsCheck functions return an unsatisfactory integer index, then set
+      !   fld as missing data
+      else
+            
+            fld(:) = missing_r8
+            
+      end if
+   
+
+  !-----------------------------------------------------
+  ! 1.j Snow Mixing Ratio (QS)
+   else if( obs_kind == KIND_SNOW_MIXING_RATIO ) then
+
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+           boundsCheck( k, .false.,                id, dim=3, type=TYPE_T ) ) then
+         
+         ! Confirm that QS is in the DART state vector
+         if ( wrf%dom(id)%n_moist >= 5 ) then
+
+            call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners QS rc = ', rc
+               
+            ! Interpolation for QS field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, TYPE_QS)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, TYPE_QS)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, TYPE_QS)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, TYPE_QS)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+            ! Interpolation for QS field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, TYPE_QS)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, TYPE_QS)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, TYPE_QS)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, TYPE_QS)
+               
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Don't accept negative rain amounts (?)
+            fld = max(0.0_r8, fld)
+            
+         ! If QS is not in state vector, then zero-out the retrieved field -- is this 
+         !   right?  should we instead keep it as missing?
+         else
+
+            fld(:) = 0.0_r8
+
+         end if
+
+      ! If the boundsCheck functions return an unsatisfactory integer index, then set
+      !   fld as missing data
+      else
+            
+            fld(:) = missing_r8
+            
+      end if
+   
+
+   !-----------------------------------------------------
+   ! 1.k Pressure (P)
+   else if( obs_kind == KIND_PRESSURE ) then
+
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+           boundsCheck( k, .false.,                id, dim=3, type=TYPE_T ) ) then
+
+         call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+         if ( rc .ne. 0 ) &
+              print*, 'model_mod.f90 :: model_interpolate :: getCorners P rc = ', rc
+      
+         ! Hmmm, it does not appear that P is part of the DART state vector, so there
+         !   is not a reference to wrf%dom(id)%dart_ind -- we'll have to go right from
+         !   the corner indices
+
+         ! Interpolation for the P field at level k
+         pres1 = model_pressure_t(ll(1), ll(2), k, id, x)
+         pres2 = model_pressure_t(lr(1), lr(2), k, id, x)
+         pres3 = model_pressure_t(ul(1), ul(2), k, id, x)
+         pres4 = model_pressure_t(ur(1), ur(2), k, id, x)
+
+         fld(1) = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+         ! Interpolation for the P field at level k+1
+         pres1 = model_pressure_t(ll(1), ll(2), k+1, id, x)
+         pres2 = model_pressure_t(lr(1), lr(2), k+1, id, x)
+         pres3 = model_pressure_t(ul(1), ul(2), k+1, id, x)
+         pres4 = model_pressure_t(ur(1), ur(2), k+1, id, x)
+
+         fld(2) = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+      ! If the boundsCheck functions return an unsatisfactory integer index, then set
+      !   fld as missing data
+      else
+
+         fld(:) = missing_r8
+
+      end if
+
+
+   !-----------------------------------------------------
+   ! 1.l Surface Pressure (PS, add to dart_ind if surf_obs = .true.)
+   else if( obs_kind == KIND_SURFACE_PRESSURE ) then
+
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+           wrf%dom(id)%surf_obs ) then
+
+         call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+         if ( rc .ne. 0 ) &
+              print*, 'model_mod.f90 :: model_interpolate :: getCorners PS rc = ', rc
+
+         ! Interpolation for the PS field
+         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, TYPE_PS)
+         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, TYPE_PS)
+         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, TYPE_PS)
+         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, TYPE_PS)
+            
+         ! I'm not quite sure where this comes from, but I will trust them on it....
+         if ( x(ill) /= 0.0_r8 .and. x(ilr) /= 0.0_r8 .and. x(iul) /= 0.0_r8 .and. &
+              x(iur) /= 0.0_r8 ) then
+
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
          else
 
             fld(1) = missing_r8
 
-         endif
+         end if
 
-      endif
-
-   else
-
-      fld(:) = 0.0_r8
-
-   endif
-
-else if( obs_kind == KIND_VAPOR_MIXING_RATIO ) then
-
-   if ( wrf%dom(id)%n_moist >= 1) then
-
-      if(.not. vert_is_surface(location) .or. .not. surf_var) then
-
-         if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-            j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-            k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
-
-!!$            i1 = get_wrf_index(i,j  ,k,TYPE_QV,id)
-!!$            i2 = get_wrf_index(i,j+1,k,TYPE_QV,id)
-            i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QV)
-            i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QV)
-            fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-!!$            i1 = get_wrf_index(i,j  ,k+1,TYPE_QV,id)
-!!$            i2 = get_wrf_index(i,j+1,k+1,TYPE_QV,id)
-            i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QV)
-            i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QV)
-            fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-         else
-
-            fld(:) = missing_r8
-
-         endif
-
-      else
-
-         if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-            j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-            wrf%dom(id)%surf_obs) then
-
-!!$            i1 = get_wrf_index(i,j,1,TYPE_Q2,id)
-!!$            i2 = get_wrf_index(i,j+1,1,TYPE_Q2,id)
-            i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_Q2)
-            i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_Q2)
-            fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-         else
-
-            fld(1) = missing_r8
-
-         endif
-
-      endif
-
-   else
-
-      fld(:) = 0.0_r8
-
-   endif
-
-else if( obs_kind == KIND_RAINWATER_MIXING_RATIO) then
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
-
-      if( wrf%dom(id)%n_moist >= 3) then
-
-!!$      i1 = get_wrf_index(i,j  ,k,TYPE_QR,id)
-!!$      i2 = get_wrf_index(i,j+1,k,TYPE_QR,id)
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QR)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QR)
-         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-!!$      i1 = get_wrf_index(i,j  ,k+1,TYPE_QR,id)
-!!$      i2 = get_wrf_index(i,j+1,k+1,TYPE_QR,id)
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QR)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QR)
-         fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-         fld = max(0.0_r8, fld)
-
-      else
-
-         fld(:) = 0.0_r8
-
-      endif
-
-
-   else
-
-      fld(:) = missing_r8
-
-   endif
-
-else if( obs_kind == KIND_GRAUPEL_MIXING_RATIO) then
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
-
-      if( wrf%dom(id)%n_moist >= 6) then
-
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QG)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QG)
-         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QG)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QG)
-         fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-         fld = max(0.0_r8, fld)
-
-      else
-
-         fld(:) = 0.0_r8
-
-      endif
-
-
-   else
-
-      fld(:) = missing_r8
-
-   endif
-
-else if( obs_kind == KIND_SNOW_MIXING_RATIO) then
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
-
-      if( wrf%dom(id)%n_moist >= 5) then
-
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k,TYPE_QS)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_QS)
-         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-         i1 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_QS)
-         i2 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_QS)
-         fld(2) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
-         fld = max(0.0_r8, fld)
-
-      else
-
-         fld(:) = 0.0_r8
-
-      endif
-
-   else
-
-      fld(:) = missing_r8
-
-   endif
-
-else if( obs_kind == KIND_PRESSURE) then
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
-
-      pres1 = model_pressure_t(i  ,j  ,k,id,x)
-      pres2 = model_pressure_t(i+1,j  ,k,id,x)
-      pres3 = model_pressure_t(i  ,j+1,k,id,x)
-      pres4 = model_pressure_t(i+1,j+1,k,id,x)
-      fld(1) = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
-
-      pres1 = model_pressure_t(i  ,j  ,k+1,id,x)
-      pres2 = model_pressure_t(i+1,j  ,k+1,id,x)
-      pres3 = model_pressure_t(i  ,j+1,k+1,id,x)
-      pres4 = model_pressure_t(i+1,j+1,k+1,id,x)
-      fld(2) = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
-
-   else
-
-      fld(:) = missing_r8
-
-   endif
-
-else if( obs_kind == KIND_SURFACE_PRESSURE) then
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) .and. &
-      wrf%dom(id)%surf_obs) then
-
-!!$      i1 = get_wrf_index(i,j,1,TYPE_PS,id)
-!!$      i2 = get_wrf_index(i,j+1,1,TYPE_PS,id)
-      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_PS)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_PS)
-      if(x(i1) /= 0.0_r8 .and. x(i1+1) /= 0.0_r8 .and. &
-           x(i2) /= 0.0_r8 .and. x(i2+1) /= 0.0_r8) then
-
-         fld(1) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
-
+      ! If the boundsCheck functions return an unsatisfactory integer index, then set
+      !   fld as missing data
       else
 
          fld(1) = missing_r8
 
-      endif
-
-   else
-
-      fld(1) = missing_r8
-
-   endif
-
-else if( obs_kind == KIND_SURFACE_ELEVATION) then
-
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T) ) then
-
-      fld(1) = dym*( dxm*wrf%dom(id)%hgt(i  ,j  ) + &
-                      dx*wrf%dom(id)%hgt(i+1,j  ) ) + &
-                dy*( dxm*wrf%dom(id)%hgt(i  ,j+1) + &
-                      dx*wrf%dom(id)%hgt(i+1,j+1) )
-
-   else
-
-      fld(1) = missing_r8
-
-   endif
+      end if
 
 
-!!-------------------------------------------------------------------------
-!! find vortex center location and with minimum sea level pressure
-!! steps: 1) define a search box centered at the obs. location (i,j)
-!!        2) compute sea-level pressure (slp)
-!!        3) spline-interpolation of slp within the refined search box 
-!!           -- by a factor of center_spline_grid_scale (default=10)
-!!        4) find the minimum slp and grid point location 
-!!           (default=1/10 precision)
-!!        5) return the minimum slp and lat/lon of this grid point
-!!-------------------------------------------------------------------------
-else if( obs_kind == KIND_VORTEX_LAT .or. &
-         obs_kind == KIND_VORTEX_LON .or. &
-         obs_kind == KIND_VORTEX_PMIN .or. &
-         obs_kind == KIND_VORTEX_WMAX) then
+   !-----------------------------------------------------
+   ! 1.m Vortex Center Stuff from Yongsheng
 
-   if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T)  .and. &
-      j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)  .and. &
-      k >= 1 .and. k < wrf%dom(id)%var_size(3,TYPE_T)) then
+   else if ( obs_kind == KIND_VORTEX_LAT .or. &
+             obs_kind == KIND_VORTEX_LON .or. &
+             obs_kind == KIND_VORTEX_PMIN .or. &
+             obs_kind == KIND_VORTEX_WMAX ) then
+
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+           boundsCheck( k, .false.,                id, dim=3, type=TYPE_T ) ) then
+
+!*****************************************************************************         
+! NOTE :: with the exception of changing the original if-structure to calls of the 
+!   function boundsCheck, the below is Yongsheng's original verbatim ---
+!   *** THERE IS NO GUARANTEE THAT THIS WILL CONTINUE TO WORK WITH GLOBAL WRF ***
+!*****************************************************************************         
 
 !!   define a search box bounded by center_track_***
      center_search_half_size = nint(center_search_half_length/wrf%dom(id)%dx)
@@ -1826,46 +2295,165 @@ else if( obs_kind == KIND_VORTEX_LAT .or. &
       fld(1) = missing_r8
 
    endif
+!*****************************************************************************         
+! END OF VERBATIM BIT
+!*****************************************************************************         
 
-elseif (obs_kind < 0) then
 
-   ! identity observation -> -(obs_kind)=DART state vector index
-   ! obtain state value directly from index
-   fld(1) = x(-1*obs_kind)
+   !-----------------------------------------------------
+   ! 1.n Geopotential Height (GZ)
 
-else
+   ! Geopotential Height has been added by Ryan Torn to accommodate altimeter observations.
+   !   GZ is on the ZNW grid (bottom_top_stagger), so its bottom-most level is defined to
+   !   be at eta = 1 (the surface).  Thus, we have a 3D variable that contains a surface
+   !   variable; the same is true for W as well.  If one wants to observe the surface value
+   !   of either of these variables, then one can simply operate on the full 3D field 
+   !   (toGrid below should return dz ~ 0 and dzm ~ 1) 
+   else if( obs_kind == KIND_GEOPOTENTIAL_HEIGHT ) then
 
-   write(errstring,*)'Obs kind not recognized for following kind: ',obs_kind
-   call error_handler(E_ERR,'model_interpolate', errstring, &
-        source, revision, revdate)
+      ! Adjust zloc for staggered ZNW grid (or W-grid, as compared to ZNU or M-grid)
+      zloc = zloc + 0.5_r8
+      k = max(1,int(zloc))
 
-end if
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_GZ ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_GZ ) .and. &
+           boundsCheck( k, .false.,                id, dim=3, type=TYPE_GZ ) ) then
+         
+         call getCorners(i, j, id, TYPE_GZ, ll, ul, lr, ur, rc )
+         if ( rc .ne. 0 ) &
+              print*, 'model_mod.f90 :: model_interpolate :: getCorners GZ rc = ', rc
+         
+         ! Interpolation for GZ field at level k
+         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, TYPE_GZ) / gravity
+         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, TYPE_GZ) / gravity
+         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, TYPE_GZ) / gravity
+         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, TYPE_GZ) / gravity
+         
+         fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+         
+         ! Interpolation for GZ field at level k+1
+         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, TYPE_GZ) / gravity
+         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, TYPE_GZ) / gravity
+         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, TYPE_GZ) / gravity
+         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, TYPE_GZ) / gravity
+         
+         fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-! Do vertical interpolation (only for non-surface, non-indetity obs)
-if ((.not. vert_is_surface(location)).and.(obs_kind > 0).and. .not. surf_var) then
+      ! If the boundsCheck functions return an unsatisfactory integer index, then set
+      !   fld as missing data
+      else
 
-   call toGrid(zloc, k, dz, dzm)
+         fld(:) = missing_r8
+         
+      end if
 
-   if( k >= 1 ) then
-      obs_val = dzm*fld(1) + dz*fld(2)
-   elseif( k == 0 ) then
-      obs_val = fld(1) - (fld(2)-fld(1))*dzm
+
+   !-----------------------------------------------------
+   ! 1.o Surface Elevation (HGT)
+
+   ! Surface Elevation has been added by Ryan Torn to accommodate altimeter observations.
+   !   HGT is not in the dart_ind vector, so get it from wrf%dom(id)%hgt.
+   else if( obs_kind == KIND_SURFACE_ELEVATION ) then
+
+      ! Check to make sure retrieved integer gridpoints are in valid range -- since the 
+      !   altimeter obs_def code has calls to surface pressure is it, then surf_obs must
+      !   equal to .true. in order to use altimeter obs.
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+           wrf%dom(id)%surf_obs ) then
+      
+         call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+         if ( rc .ne. 0 ) &
+              print*, 'model_mod.f90 :: model_interpolate :: getCorners HGT rc = ', rc
+         
+         ! Interpolation for the HGT field -- HGT is NOT part of state vector x, but rather
+         !   in the associated domain meta data
+         fld(1) = dym*( dxm*wrf%dom(id)%hgt(ll(1), ll(2)) + &
+                         dx*wrf%dom(id)%hgt(lr(1), lr(2)) ) + &
+                   dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
+                         dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
+
+      ! If the boundsCheck functions return an unsatisfactory integer index, then set
+      !   fld as missing data
+      else
+
+         fld(1) = missing_r8
+
+      end if
+
+
+   !-----------------------------------------------------
+   ! If obs_kind is not negative (for identity obs), or if it is not one of the above 15
+   !   explicitly checked-for kinds, then return error message.
    else
+
+      write(errstring,*)'Obs kind not recognized for following kind: ',obs_kind
+      call error_handler(E_ERR,'model_interpolate', errstring, &
+           source, revision, revdate)
+
+   end if
+
+
+   !----------------------------------
+   ! 2. Vertical Interpolation 
+   !----------------------------------
+
+   ! Do vertical interpolation -- only for non-surface, non-indetity obs.  
+
+   ! The previous section (1. Horizontal Interpolation) has produced a variable called
+   !   "fld", which nominally has two entries in it.  3D fields have hopefully produced
+   !   2 non-zero entries, whereas surface fields only have filled the first entry.
+   ! If a full 3D field, then do vertical interpolation between sandwiched model levels
+   !   (k and k+1).
+
+   ! Check to make sure that we did something sensible in the Horizontal Interpolation 
+   !   section above.  All valid obs_kinds will have changed fld(1).
+   if ( fld(1) == missing_r8 ) then
+
       obs_val = missing_r8
-   endif
 
-else
+   ! We purposefully changed fld(1), so continue onward
+   else
 
-   obs_val = fld(1)
+      ! If a surface variable, then no need to do any vertical interpolation
+      if ( surf_var ) then 
 
-endif
+         obs_val = fld(1)
 
-if(obs_val == missing_r8) istatus = 1
+      ! If an interior variable, then we DO need to do vertical interpolation
+      else
 
+         ! First make sure fld(2) is no longer a missing value
+         if ( fld(2) == missing_r8 ) then
+
+            obs_val = missing_r8
+
+         ! Do vertical interpolation -- I believe this assumes zloc is well-defined and
+         !   >= 1.0_r8.
+         else
+
+            ! Get fractional distances between grid points
+            call toGrid(zloc, k, dz, dzm)
+
+            ! Linearly interpolate between grid points
+            obs_val = dzm*fld(1) + dz*fld(2)
+            
+         end if
+      end if
+   end if
+
+end if  ! end of "if ( obs_kind < 0 )"
+
+
+! Now that we are done, check to see if a missing value somehow made it through
+if ( obs_val == missing_r8 ) istatus = 1
+
+! Pring the observed value if in debug mode
 if(debug) print*,' interpolated value= ',obs_val
 
+! Deallocate variables before exiting
 deallocate(v_h, v_p)
-
 
 end subroutine model_interpolate
 
@@ -1902,8 +2490,9 @@ type(location_type), intent(inout) :: location
 integer,             intent(out)   :: istatus
 
 real(r8)            :: xloc, yloc, zloc, xyz_loc(3), zvert
-integer             :: id, i, j, k
+integer             :: id, i, j, k, rc
 real(r8)            :: dx,dy,dz,dxm,dym,dzm
+integer, dimension(2) :: ll, lr, ul, ur
 
 character(len=129) :: errstring
 
@@ -1955,61 +2544,88 @@ if(vert_is_level(location)) then
    ! convert obs vert coordinate to desired coordinate type
    if (wrf%dom(id)%vert_coord == VERTISPRESSURE) then
       call toGrid(zloc,k,dz,dzm)
-      if ( ((k<1) .or. (k>=wrf%dom(id)%bt)) .or. &
-           ((j<1) .or. (j>=wrf%dom(id)%sn)) .or. &
-           ((i<1) .or. (i>=wrf%dom(id)%we)) ) then
-         zloc  = missing_r8
-         zvert = missing_r8
-      else
+
+      ! Check that integer indices of Mass grid are in valid ranges for the given
+      !   boundary conditions (i.e., periodicity)
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+           boundsCheck( k, .false.,                id, dim=3, type=TYPE_T ) ) then
+
+         ! Get indices of corners (i,i+1,j,j+1), which depend on periodicities
+         call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+         if ( rc .ne. 0 ) &
+              print*, 'model_mod.f90 :: vert_interpolate :: getCorners rc = ', rc
+
          ! need to compute pressure at all neighboring mass points
          ! and interpolate
-         presa = model_pressure_t(i  ,j  ,k  ,id,x)
-         presb = model_pressure_t(i  ,j  ,k+1,id,x)
+         presa = model_pressure_t(ll(1), ll(2), k  ,id,x)
+         presb = model_pressure_t(ll(1), ll(2), k+1,id,x)
          pres1 = dzm*presa + dz*presb
-         presa = model_pressure_t(i+1,j  ,k  ,id,x)
-         presb = model_pressure_t(i+1,j  ,k+1,id,x)
+         presa = model_pressure_t(lr(1), lr(2), k  ,id,x)
+         presb = model_pressure_t(lr(1), lr(2), k+1,id,x)
          pres2 = dzm*presa + dz*presb
-         presa = model_pressure_t(i  ,j+1,k  ,id,x)
-         presb = model_pressure_t(i  ,j+1,k+1,id,x)
+         presa = model_pressure_t(ul(1), ul(2), k  ,id,x)
+         presb = model_pressure_t(ul(1), ul(2), k+1,id,x)
          pres3 = dzm*presa + dz*presb
-         presa = model_pressure_t(i+1,j+1,k  ,id,x)
-         presb = model_pressure_t(i+1,j+1,k+1,id,x)
+         presa = model_pressure_t(ur(1), ur(2), k  ,id,x)
+         presb = model_pressure_t(ur(1), ur(2), k+1,id,x)
          pres4 = dzm*presa + dz*presb
          zvert = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
-      endif
+
+      ! If the boundsCheck functions return an unsatisfactory integer index, then set
+      !   fld as missing data
+      else
+         zloc  = missing_r8
+         zvert = missing_r8
+      end if
+
    elseif (wrf%dom(id)%vert_coord == VERTISHEIGHT) then
       ! need to add half a grid to get to staggered vertical coordinate
       call toGrid(zloc+0.5,k,dz,dzm)
-      if ( ((k<1) .or. (k>=wrf%dom(id)%bts)) .or. &
-           ((j<1) .or. (j>=wrf%dom(id)%sn )) .or. &
-           ((i<1) .or. (i>=wrf%dom(id)%we )) ) then
-         zloc  = missing_r8
-         zvert = missing_r8
-      else
-         ! need to compute height at all neighboring vertically staggered points
+
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+           boundsCheck( k, .false.,                id, dim=3, type=TYPE_GZ ) ) then
+
+         ! Get indices of corners (i,i+1,j,j+1), which depend on periodicities
+         call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+         if ( rc .ne. 0 ) &
+              print*, 'model_mod.f90 :: vert_interpolate :: getCorners rc = ', rc
+
+         ! need to compute pressure at all neighboring mass points
          ! and interpolate
-         hgta = model_height_w(i  ,j  ,k  ,id,x)
-         hgtb = model_height_w(i  ,j  ,k+1,id,x)
+         hgta = model_height_w(ll(1), ll(2), k  ,id,x)
+         hgtb = model_height_w(ll(1), ll(2), k+1,id,x)
          hgt1 = dzm*hgta + dz*hgtb
-         hgta = model_height_w(i+1,j  ,k  ,id,x)
-         hgtb = model_height_w(i+1,j  ,k+1,id,x)
+         hgta = model_height_w(lr(1), lr(2), k  ,id,x)
+         hgtb = model_height_w(lr(1), lr(2), k+1,id,x)
          hgt2 = dzm*hgta + dz*hgtb
-         hgta = model_height_w(i  ,j+1,k  ,id,x)
-         hgtb = model_height_w(i  ,j+1,k+1,id,x)
+         hgta = model_height_w(ul(1), ul(2), k  ,id,x)
+         hgtb = model_height_w(ul(1), ul(2), k+1,id,x)
          hgt3 = dzm*hgta + dz*hgtb
-         hgta = model_height_w(i+1,j+1,k  ,id,x)
-         hgtb = model_height_w(i+1,j+1,k+1,id,x)
+         hgta = model_height_w(ur(1), ur(2), k  ,id,x)
+         hgtb = model_height_w(ur(1), ur(2), k+1,id,x)
          hgt4 = dzm*hgta + dz*hgtb
          zvert = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
-      endif
-   else
-      if ((zloc<1.0).or.(zloc>=real(wrf%dom(id)%bt))) then
+
+      ! If the boundsCheck functions return an unsatisfactory integer index, then set
+      !   fld as missing data
+      else
          zloc  = missing_r8
          zvert = missing_r8
-      else
+      end if
+
+   ! If not VERTISPRESSURE or VERTISHEIGHT, then either return missing value or set
+   !   set zvert equal to zloc if zloc is legally defined (is this right?)
+   else
+      if ( boundsCheck( k, .false., id, dim=3, type=TYPE_T ) ) then
          zvert = zloc
-      endif
-   endif
+      else
+         zloc  = missing_r8
+         zvert = missing_r8
+      end if
+   end if
 
 elseif(vert_is_pressure(location)) then
    ! If obs is by pressure: get corresponding mass level zk,
@@ -2029,33 +2645,45 @@ elseif(vert_is_pressure(location)) then
          ! adding 0.5 to get to the staggered vertical grid
          ! because height is on staggered vertical grid
          call toGrid(zloc+0.5,k,dz,dzm)
-         if ( ((k<1) .or. (k>=wrf%dom(id)%bts)) .or. &
-              ((j<1) .or. (j>=wrf%dom(id)%sn )) .or. &
-              ((i<1) .or. (i>=wrf%dom(id)%we )) ) then
-            zloc  = missing_r8
-            zvert = missing_r8
-         else
-            ! need to compute height at all neighboring vertically staggered points
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=TYPE_GZ ) ) then
+
+            ! Get indices of corners (i,i+1,j,j+1), which depend on periodicities
+            call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: vert_interpolate :: getCorners rc = ', rc
+
+            ! need to compute pressure at all neighboring mass points
             ! and interpolate
-            hgta = model_height_w(i  ,j  ,k  ,id,x)
-            hgtb = model_height_w(i  ,j  ,k+1,id,x)
+            hgta = model_height_w(ll(1), ll(2), k  ,id,x)
+            hgtb = model_height_w(ll(1), ll(2), k+1,id,x)
             hgt1 = dzm*hgta + dz*hgtb
-            hgta = model_height_w(i+1,j  ,k  ,id,x)
-            hgtb = model_height_w(i+1,j  ,k+1,id,x)
+            hgta = model_height_w(lr(1), lr(2), k  ,id,x)
+            hgtb = model_height_w(lr(1), lr(2), k+1,id,x)
             hgt2 = dzm*hgta + dz*hgtb
-            hgta = model_height_w(i  ,j+1,k  ,id,x)
-            hgtb = model_height_w(i  ,j+1,k+1,id,x)
+            hgta = model_height_w(ul(1), ul(2), k  ,id,x)
+            hgtb = model_height_w(ul(1), ul(2), k+1,id,x)
             hgt3 = dzm*hgta + dz*hgtb
-            hgta = model_height_w(i+1,j+1,k  ,id,x)
-            hgtb = model_height_w(i+1,j+1,k+1,id,x)
+            hgta = model_height_w(ur(1), ur(2), k  ,id,x)
+            hgtb = model_height_w(ur(1), ur(2), k+1,id,x)
             hgt4 = dzm*hgta + dz*hgtb
             zvert = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
-         endif
+            
+         ! If the boundsCheck functions return an unsatisfactory integer index, then set
+         !   fld as missing data
+         else
+            zloc  = missing_r8
+            zvert = missing_r8
+         end if
+
       else
          ! take pressure directly
          zvert  = xyz_loc(3)
-      endif
-   endif
+      end if
+   end if
 
 elseif(vert_is_height(location)) then
    ! If obs is by height: get corresponding mass level zk,
@@ -2073,35 +2701,52 @@ elseif(vert_is_height(location)) then
          zvert = zloc
       elseif (wrf%dom(id)%vert_coord == VERTISPRESSURE) then
          call toGrid(zloc,k,dz,dzm)
-         if ( ((k<1) .or. (k>=wrf%dom(id)%bt)) .or. &
-              ((j<1) .or. (j>=wrf%dom(id)%sn)) .or. &
-              ((i<1) .or. (i>=wrf%dom(id)%we)) ) then
-            zloc  = missing_r8
-            zvert = missing_r8
-         else
+
+         ! Check that integer indices of Mass grid are in valid ranges for the given
+         !   boundary conditions (i.e., periodicity)
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=TYPE_T ) ) then
+
+            ! Get indices of corners (i,i+1,j,j+1), which depend on periodicities
+            call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: vert_interpolate :: getCorners rc = ', rc
+
             ! need to compute pressure at all neighboring mass points
             ! and interpolate
-            presa = model_pressure_t(i  ,j  ,k  ,id,x)
-            presb = model_pressure_t(i  ,j  ,k+1,id,x)
+            presa = model_pressure_t(ll(1), ll(2), k  ,id,x)
+            presb = model_pressure_t(ll(1), ll(2), k+1,id,x)
             pres1 = dzm*presa + dz*presb
-            presa = model_pressure_t(i+1,j  ,k  ,id,x)
-            presb = model_pressure_t(i+1,j  ,k+1,id,x)
+            presa = model_pressure_t(lr(1), lr(2), k  ,id,x)
+            presb = model_pressure_t(lr(1), lr(2), k+1,id,x)
             pres2 = dzm*presa + dz*presb
-            presa = model_pressure_t(i  ,j+1,k  ,id,x)
-            presb = model_pressure_t(i  ,j+1,k+1,id,x)
+            presa = model_pressure_t(ul(1), ul(2), k  ,id,x)
+            presb = model_pressure_t(ul(1), ul(2), k+1,id,x)
             pres3 = dzm*presa + dz*presb
-            presa = model_pressure_t(i+1,j+1,k  ,id,x)
-            presb = model_pressure_t(i+1,j+1,k+1,id,x)
+            presa = model_pressure_t(ur(1), ur(2), k  ,id,x)
+            presb = model_pressure_t(ur(1), ur(2), k+1,id,x)
             pres4 = dzm*presa + dz*presb
             zvert = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
-         endif
+
+         ! If the boundsCheck functions return an unsatisfactory integer index, then set
+         !   fld as missing data
+         else
+            zloc  = missing_r8
+            zvert = missing_r8
+         end if
+
       else
          ! take height directly
          zvert  = xyz_loc(3)
-      endif
-   endif
+      end if
+   end if
 
-elseif(vert_is_surface(location) .or. surf_var) then
+!nc -- got rid of ".or. surf_var" from elseif statement here because it can potentially be outdated
+!        in its value.  assim_tools_mod calls get_close_obs, which in turn calls vert_interpolate.
+!        This calling order can potentially cut model_interpolate out of the loop, and it is only
+!        within model_interpolate where surf_var can change its value.
+elseif(vert_is_surface(location)) then
    zloc = 1.0_r8
    ! convert obs vert coordinate to desired coordinate type
    if (wrf%dom(id)%vert_coord == VERTISLEVEL) then
@@ -2109,10 +2754,14 @@ elseif(vert_is_surface(location) .or. surf_var) then
    elseif (wrf%dom(id)%vert_coord == VERTISPRESSURE) then
       ! need to compute surface pressure at all neighboring mass points
       ! and interpolate
-      pres1 = model_pressure_s(i  ,j  ,id,x)
-      pres2 = model_pressure_s(i+1,j  ,id,x)
-      pres3 = model_pressure_s(i  ,j+1,id,x)
-      pres4 = model_pressure_s(i+1,j+1,id,x)
+      call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+      if ( rc .ne. 0 ) &
+           print*, 'model_mod.f90 :: vert_interpolate :: getCorners rc = ', rc
+
+      pres1 = model_pressure_s(ll(1), ll(2), id,x)
+      pres2 = model_pressure_s(lr(1), lr(2), id,x)
+      pres3 = model_pressure_s(ul(1), ul(2), id,x)
+      pres4 = model_pressure_s(ur(1), ur(2), id,x)
       zvert = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
    else
       ! a surface ob is assumed to have height as vertical coordinate...
@@ -2160,12 +2809,18 @@ integer :: in
 
 character(len=129) :: errstring
 
+write(errstring,*)'function get_wrf_index should not be called -- still needs updating!'
+call error_handler(E_ERR,'get_wrf_index', errstring, &
+     source, revision, revdate)
+
 do in = 1, wrf%dom(id)%number_of_wrf_variables
    if(var_type == wrf%dom(id)%var_type(in) ) then
       exit
    endif
 enddo
 
+! If one decides to use get_wrf_index, then the following test should be updated
+!   to take periodicity into account at the boundaries -- or should it?
 if(i >= 1 .and. i <= wrf%dom(id)%var_size(1,in) .and. &
    j >= 1 .and. j <= wrf%dom(id)%var_size(2,in) .and. &
    k >= 1 .and. k <= wrf%dom(id)%var_size(3,in)) then
@@ -2289,11 +2944,12 @@ integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: StateVarDimID, StateVarVarID, StateVarID, TimeDimID
 
 integer, dimension(num_domains) :: weDimID, weStagDimID, snDimID, snStagDimID, &
-     btDimID, btStagDimID, slSDimID
+     btDimID, btStagDimID, slSDimID, tmp
 
 integer :: MemberDimID, DomDimID
-integer :: DXVarID, DYVarID, TRUELAT1VarID, TRUELAT2VarID, STDLONVarID
+integer :: DXVarID, DYVarID, TRUELAT1VarID, TRUELAT2VarID
 integer :: CEN_LATVarID, CEN_LONVarID, MAP_PROJVarID
+integer :: PERIODIC_XVarID, POLARVarID
 
 integer, dimension(num_domains) :: DNVarID, ZNUVarID, DNWVarID, phbVarID, &
      MubVarID, LonVarID, LatVarID, ilevVarID, XlandVarID, &
@@ -2418,13 +3074,6 @@ call check(nf90_put_att(ncFileID, TRUELAT2VarID, "long_name", &
 call check(nf90_put_att(ncFileID, TRUELAT2VarID, "units", &
      "degrees, negative is south"))
 
-call check(nf90_def_var(ncFileID, name="STAND_LON", xtype=nf90_real, &
-     dimids= DomDimID, varid=STDLONVarID) )
-call check(nf90_put_att(ncFileID, STDLONVarID, "long_name", &
-     "standard longitude"))
-call check(nf90_put_att(ncFileID, STDLONVarID, "units", &
-     "degrees, negative is west"))
-
 call check(nf90_def_var(ncFileID, name="CEN_LAT", xtype=nf90_real, &
      dimids= DomDimID, varid=CEN_LATVarID) )
 call check(nf90_put_att(ncFileID, CEN_LATVarID, "long_name", &
@@ -2444,7 +3093,27 @@ call check(nf90_def_var(ncFileID, name="MAP_PROJ", xtype=nf90_real, &
 call check(nf90_put_att(ncFileID, MAP_PROJVarID, "long_name", &
      "domain map projection"))
 call check(nf90_put_att(ncFileID, MAP_PROJVarID, "units", &
-     "0=none, 1=Lambert, 2=polar, 3=Mercator"))
+     "0=none, 1=Lambert, 2=polar, 3=Mercator, 5=Cylindrical, 6=Cassini"))
+
+!nc -- we need to add in code here to report the domain values for the 
+!        boundary condition flags periodic_x and polar.  Since these are
+!        carried internally as logicals, they will first need to be 
+!        converted back to integers.
+call check(nf90_def_var(ncFileID, name="PERIODIC_X", xtype=nf90_int, &
+     dimids= DomDimID, varid=PERIODIC_XVarID) )
+call check(nf90_put_att(ncFileID, PERIODIC_XVarID, "long_name", &
+     "Longitudinal periodic b.c. flag"))
+call check(nf90_put_att(ncFileID, PERIODIC_XVarID, "units", &
+     "logical: 1 = .true., 0 = .false."))
+
+call check(nf90_def_var(ncFileID, name="POLAR", xtype=nf90_int, &
+     dimids= DomDimID, varid=POLARVarID) )
+call check(nf90_put_att(ncFileID, POLARVarID, "long_name", &
+     "Polar periodic b.c. flag"))
+call check(nf90_put_att(ncFileID, POLARVarID, "units", &
+     "logical: 1 = .true., 0 = .false."))
+
+
 
 do id=1,num_domains
    write( idom , '(I1)') id
@@ -2528,38 +3197,41 @@ do id=1,num_domains
    call check(nf90_put_att(ncFileID, XlandVarID(id), "description", &
         "1 = LAND, 2 = WATER"))
 
+!nc -- eliminated the reading in of MAPFACs since global WRF will have different 
+!nc --   MAPFACs in the x and y directions
+
 ! Map Scale Factor on m-grid
 !    float MAPFAC_M(Time, south_north, west_east) ;
 !            MAPFAC_M:FieldType = 104 ;
 !            MAPFAC_M:MemoryOrder = "XY " ;
 !            MAPFAC_M:stagger = "" ;
-   call check(nf90_def_var(ncFileID, name="MAPFAC_M_d0"//idom, xtype=nf90_real, &
-        dimids= (/ weDimID(id), snDimID(id) /), varid=MapFacMVarID(id)) )
-   call check(nf90_put_att(ncFileID, MapFacMVarID(id), "long_name", &
-        "Map scale factor on mass grid"))
-   call check(nf90_put_att(ncFileID, MapFacMVarID(id), "units", "dimensionless"))
+!   call check(nf90_def_var(ncFileID, name="MAPFAC_M_d0"//idom, xtype=nf90_real, &
+!        dimids= (/ weDimID(id), snDimID(id) /), varid=MapFacMVarID(id)) )
+!   call check(nf90_put_att(ncFileID, MapFacMVarID(id), "long_name", &
+!       "Map scale factor on mass grid"))
+!   call check(nf90_put_att(ncFileID, MapFacMVarID(id), "units", "dimensionless"))
 
 ! Map Scale Factor on u-grid
 !    float MAPFAC_U(Time, south_north, west_east_stag) ;
 !            MAPFAC_U:FieldType = 104 ;
 !            MAPFAC_U:MemoryOrder = "XY " ;
 !            MAPFAC_U:stagger = "X" ;
-   call check(nf90_def_var(ncFileID, name="MAPFAC_U_d0"//idom, xtype=nf90_real, &
-        dimids= (/ weStagDimID(id), snDimID(id) /), varid=MapFacUVarID(id)) )
-   call check(nf90_put_att(ncFileID, MapFacUVarID(id), "long_name", &
-        "Map scale factor on u-grid"))
-   call check(nf90_put_att(ncFileID, MapFacUVarID(id), "units", "dimensionless"))
+!   call check(nf90_def_var(ncFileID, name="MAPFAC_U_d0"//idom, xtype=nf90_real, &
+!        dimids= (/ weStagDimID(id), snDimID(id) /), varid=MapFacUVarID(id)) )
+!   call check(nf90_put_att(ncFileID, MapFacUVarID(id), "long_name", &
+!        "Map scale factor on u-grid"))
+!   call check(nf90_put_att(ncFileID, MapFacUVarID(id), "units", "dimensionless"))
 
 ! Map Scale Factor on v-grid
 !    float MAPFAC_V(Time, south_north_stag, west_east) ;
 !            MAPFAC_V:FieldType = 104 ;
 !            MAPFAC_V:MemoryOrder = "XY " ;
 !            MAPFAC_V:stagger = "Y" ;
-   call check(nf90_def_var(ncFileID, name="MAPFAC_V_d0"//idom, xtype=nf90_real, &
-        dimids= (/ weDimID(id), snStagDimID(id) /), varid=MapFacVVarID(id)) )
-   call check(nf90_put_att(ncFileID, MapFacVVarID(id), "long_name", &
-        "Map scale factor on v-grid"))
-   call check(nf90_put_att(ncFileID, MapFacVVarID(id), "units", "dimensionless"))
+!   call check(nf90_def_var(ncFileID, name="MAPFAC_V_d0"//idom, xtype=nf90_real, &
+!        dimids= (/ weDimID(id), snStagDimID(id) /), varid=MapFacVVarID(id)) )
+!   call check(nf90_put_att(ncFileID, MapFacVVarID(id), "long_name", &
+!        "Map scale factor on v-grid"))
+!   call check(nf90_put_att(ncFileID, MapFacVVarID(id), "units", "dimensionless"))
 
 ! PHB
 !    float PHB(Time, bottom_top_stag, south_north, west_east) ;
@@ -2570,7 +3242,7 @@ do id=1,num_domains
         dimids= (/ weDimID(id), snDimID(id), btStagDimID(id) /), varid=phbVarId(id)) )
    call check(nf90_put_att(ncFileID, phbVarId(id), "long_name", &
         "base-state geopotential"))
-   call check(nf90_put_att(ncFileID, phbVarId(id), "units", "m^2/s^2"))
+   call check(nf90_put_att(ncFileID, phbVarId(id), "units", "m2/s2"))
    call check(nf90_put_att(ncFileID, phbVarId(id), "units_long_name", "m{2} s{-2}"))
 
    call check(nf90_def_var(ncFileID, name="HGT_d0"//idom, xtype=nf90_real, &
@@ -2712,7 +3384,7 @@ do id=1,num_domains
          unlimitedDimID /), varid  = var_id))
    call check(nf90_put_att(ncFileID, var_id, "long_name", &
         "perturbation geopotential"))
-   call check(nf90_put_att(ncFileID, var_id, "units", "m^2/s^2"))
+   call check(nf90_put_att(ncFileID, var_id, "units", "m2/s2"))
    call check(nf90_put_att(ncFileID, var_id, "units_long_name", "m{2} s{-2}"))
 
 
@@ -2942,10 +3614,29 @@ call check(nf90_put_var(ncFileID,       DXVarID, wrf%dom(1:num_domains)%dx      
 call check(nf90_put_var(ncFileID,       DYVarID, wrf%dom(1:num_domains)%dy        ))
 call check(nf90_put_var(ncFileID, TRUELAT1VarID, wrf%dom(1:num_domains)%proj%truelat1  ))
 call check(nf90_put_var(ncFileID, TRUELAT2VarID, wrf%dom(1:num_domains)%proj%truelat2  ))
-call check(nf90_put_var(ncFileID,   STDLONVarID, wrf%dom(1:num_domains)%proj%stdlon    ))
 call check(nf90_put_var(ncFileID,  CEN_LATVarID, wrf%dom(1:num_domains)%cen_lat   ))
 call check(nf90_put_var(ncFileID,  CEN_LONVarID, wrf%dom(1:num_domains)%cen_lon   ))
 call check(nf90_put_var(ncFileID, MAP_PROJVarID, wrf%dom(1:num_domains)%map_proj  ))
+
+!nc -- convert internally logical boundary condition variables into integers before filling
+do id=1,num_domains
+   if ( wrf%dom(id)%periodic_x ) then
+      tmp(id) = 1
+   else
+      tmp(id) = 0
+   end if
+end do
+call check(nf90_put_var(ncFileID, PERIODIC_XVarID, tmp(1:num_domains) ))
+
+do id=1,num_domains
+   if ( wrf%dom(id)%polar ) then
+      tmp(id) = 1
+   else
+      tmp(id) = 0
+   end if
+end do
+call check(nf90_put_var(ncFileID, POLARVarID, tmp(1:num_domains) ))
+
 
 do id=1,num_domains
 
@@ -2960,9 +3651,9 @@ do id=1,num_domains
    call check(nf90_put_var(ncFileID,      LatVarID(id), wrf%dom(id)%latitude  ))
    call check(nf90_put_var(ncFileID,     ilevVarID(id), (/ (i,i=1,wrf%dom(id)%bt) /) ))
    call check(nf90_put_var(ncFileID,    XlandVarID(id), wrf%dom(id)%land      ))
-   call check(nf90_put_var(ncFileID,  MapFacMVarID(id), wrf%dom(id)%mapfac_m  ))
-   call check(nf90_put_var(ncFileID,  MapFacUVarID(id), wrf%dom(id)%mapfac_u  ))
-   call check(nf90_put_var(ncFileID,  MapFacVVarID(id), wrf%dom(id)%mapfac_v  ))
+!   call check(nf90_put_var(ncFileID,  MapFacMVarID(id), wrf%dom(id)%mapfac_m  ))
+!   call check(nf90_put_var(ncFileID,  MapFacUVarID(id), wrf%dom(id)%mapfac_u  ))
+!   call check(nf90_put_var(ncFileID,  MapFacVVarID(id), wrf%dom(id)%mapfac_v  ))
    call check(nf90_put_var(ncFileID,      phbVarID(id), wrf%dom(id)%phb       ))
    call check(nf90_put_var(ncFileID,      hgtVarID(id), wrf%dom(id)%hgt       ))
 
@@ -3551,37 +4242,45 @@ real(r8), intent(in)  :: dx,dy,dxm,dym
 real(r8), intent(in)  :: x(:)
 real(r8), intent(out) :: v_p(0:n)
 
-integer  :: i1,i2,k
+integer, dimension(2) :: ll, lr, ul, ur
+integer  :: ill,ilr,iul,iur,k, rc
 real(r8) :: pres1, pres2, pres3, pres4
 
-if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
-   j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_T)) then
+if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+     boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) ) then
+
+   call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+   if ( rc .ne. 0 ) &
+        print*, 'model_mod.f90 :: get_model_pressure_profile :: getCorners rc = ', rc
 
    do k=1,n
-      pres1 = model_pressure_t(i  ,j  ,k,id,x)
-      pres2 = model_pressure_t(i+1,j  ,k,id,x)
-      pres3 = model_pressure_t(i  ,j+1,k,id,x)
-      pres4 = model_pressure_t(i+1,j+1,k,id,x)
+      pres1 = model_pressure_t(ll(1), ll(2), k,id,x)
+      pres2 = model_pressure_t(lr(1), lr(2), k,id,x)
+      pres3 = model_pressure_t(ul(1), ul(2), k,id,x)
+      pres4 = model_pressure_t(ur(1), ur(2), k,id,x)
       v_p(k) = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
    enddo
 
-   if(wrf%dom(id)%surf_obs ) then
+   if( wrf%dom(id)%surf_obs ) then
 
-!!$      i1 = get_wrf_index(i,j,1,TYPE_PS,id)
-!!$      i2 = get_wrf_index(i,j+1,1,TYPE_PS,id)
-      i1 = wrf%dom(id)%dart_ind(i,j,1,TYPE_PS)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,1,TYPE_PS)
-      if(x(i1) /= 0.0_r8 .and. x(i1+1) /= 0.0_r8 .and. &
-           x(i2) /= 0.0_r8 .and. x(i2+1) /= 0.0_r8) then
+      ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, TYPE_PS)
+      iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, TYPE_PS)
+      ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, TYPE_PS)
+      iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, TYPE_PS)
 
-         v_p(0) = dym*( dxm*x(i1) + dx*x(i1+1) ) + dy*( dxm*x(i2) + dx*x(i2+1) )
+      ! I'm not quite sure where this comes from, but I will trust them on it....
+      if ( x(ill) /= 0.0_r8 .and. x(ilr) /= 0.0_r8 .and. x(iul) /= 0.0_r8 .and. &
+           x(iur) /= 0.0_r8 ) then
+
+         v_p(0) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
       else
 
-         pres1 = model_pressure_t(i  ,j  ,2,id,x)
-         pres2 = model_pressure_t(i+1,j  ,2,id,x)
-         pres3 = model_pressure_t(i  ,j+1,2,id,x)
-         pres4 = model_pressure_t(i+1,j+1,2,id,x)
+         pres1 = model_pressure_t(ll(1), ll(2), 2,id,x)
+         pres2 = model_pressure_t(lr(1), lr(2), 2,id,x)
+         pres3 = model_pressure_t(ul(1), ul(2), 2,id,x)
+         pres4 = model_pressure_t(ur(1), ur(2), 2,id,x)
+
          v_p(0) = (3.0_r8*v_p(1) - &
               dym*( dxm*pres1 + dx*pres2 ) - dy*( dxm*pres3 + dx*pres4 ))/2.0_r8
 
@@ -3589,10 +4288,11 @@ if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_T) .and. &
 
    else
 
-      pres1 = model_pressure_t(i  ,j  ,2,id,x)
-      pres2 = model_pressure_t(i+1,j  ,2,id,x)
-      pres3 = model_pressure_t(i  ,j+1,2,id,x)
-      pres4 = model_pressure_t(i+1,j+1,2,id,x)
+      pres1 = model_pressure_t(ll(1), ll(2), 2,id,x)
+      pres2 = model_pressure_t(lr(1), lr(2), 2,id,x)
+      pres3 = model_pressure_t(ul(1), ul(2), 2,id,x)
+      pres4 = model_pressure_t(ur(1), ur(2), 2,id,x)
+
       v_p(0) = (3.0_r8*v_p(1) - &
            dym*( dxm*pres1 + dx*pres2 ) - dy*( dxm*pres3 + dx*pres4 ))/2.0_r8
 
@@ -3617,11 +4317,13 @@ integer,  intent(in)  :: i,j,k,id,var_type
 real(r8), intent(in)  :: x(:)
 real(r8)              :: model_pressure
 
-integer  :: ips, imu
+integer  :: ips, imu, off
 real(r8) :: pres1, pres2
 
 model_pressure = missing_r8
 
+! If W-grid (on ZNW levels), then we need to average in vertical, unless
+!   we are at the upper or lower boundary in which case we will extrapolate.
 if( (var_type == type_w) .or. (var_type == type_gz) ) then
 
    if( k == 1 ) then
@@ -3644,19 +4346,47 @@ if( (var_type == type_w) .or. (var_type == type_gz) ) then
 
    endif
 
+! If U-grid, then pressure is defined between U points, so average --
+!   averaging depends on longitude periodicity
 elseif( var_type == type_u ) then
 
    if( i == wrf%dom(id)%var_size(1,TYPE_U) ) then
 
-      pres1 = model_pressure_t(i-1,j,k,id,x)
-      pres2 = model_pressure_t(i-2,j,k,id,x)
-      model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+      ! Check to see if periodic in longitude
+      if ( wrf%dom(id)%periodic_x ) then
+
+         ! We are at seam in longitude, take first and last M-grid points
+         pres1 = model_pressure_t(i-1,j,k,id,x)
+         pres2 = model_pressure_t(1,j,k,id,x)
+         model_pressure = (pres1 + pres2)/2.0_r8
+         
+      else
+
+         ! If not periodic, then try extrapolating
+         pres1 = model_pressure_t(i-1,j,k,id,x)
+         pres2 = model_pressure_t(i-2,j,k,id,x)
+         model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+      end if
 
    elseif( i == 1 ) then
 
-      pres1 = model_pressure_t(i,j,k,id,x)
-      pres2 = model_pressure_t(i+1,j,k,id,x)
-      model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+      ! Check to see if periodic in longitude
+      if ( wrf%dom(id)%periodic_x ) then
+
+         ! We are at seam in longitude, take first and last M-grid points
+         pres1 = model_pressure_t(i,j,k,id,x)
+         pres2 = model_pressure_t(wrf%dom(id)%we,j,k,id,x)
+         model_pressure = (pres1 + pres2)/2.0_r8
+         
+      else
+
+         ! If not periodic, then try extrapolating
+         pres1 = model_pressure_t(i,j,k,id,x)
+         pres2 = model_pressure_t(i+1,j,k,id,x)
+         model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+      end if
 
    else
 
@@ -3666,19 +4396,53 @@ elseif( var_type == type_u ) then
 
    endif
 
+! If V-grid, then pressure is defined between V points, so average --
+!   averaging depends on polar periodicity
 elseif( var_type == type_v ) then
 
    if( j == wrf%dom(id)%var_size(2,TYPE_V) ) then
 
-      pres1 = model_pressure_t(i,j-1,k,id,x)
-      pres2 = model_pressure_t(i,j-2,k,id,x)
-      model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+      ! Check to see if periodic in latitude (polar)
+      if ( wrf%dom(id)%polar ) then
+
+         ! The upper corner is 180 degrees of longitude away
+         off = i + wrf%dom(id)%we/2
+         if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
+
+         pres1 = model_pressure_t(off,j-1,k,id,x)
+         pres2 = model_pressure_t(i  ,j-1,k,id,x)
+         model_pressure = (pres1 + pres2)/2.0_r8
+
+      ! If not periodic, then try extrapolating
+      else
+
+         pres1 = model_pressure_t(i,j-1,k,id,x)
+         pres2 = model_pressure_t(i,j-2,k,id,x)
+         model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+      end if
 
    elseif( j == 1 ) then
 
-      pres1 = model_pressure_t(i,j,k,id,x)
-      pres2 = model_pressure_t(i,j+1,k,id,x)
-      model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+      ! Check to see if periodic in latitude (polar)
+      if ( wrf%dom(id)%polar ) then
+
+         ! The lower corner is 180 degrees of longitude away
+         off = i + wrf%dom(id)%we/2
+         if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
+
+         pres1 = model_pressure_t(off,j,k,id,x)
+         pres2 = model_pressure_t(i,j,k,id,x)
+         model_pressure = (pres1 + pres2)/2.0_r8
+
+      ! If not periodic, then try extrapolating
+      else
+
+         pres1 = model_pressure_t(i,j,k,id,x)
+         pres2 = model_pressure_t(i,j+1,k,id,x)
+         model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+      end if
 
    else
 
@@ -3817,31 +4581,41 @@ real(r8), intent(in)  :: x(:)
 real(r8), intent(out) :: v_h(0:n)
 
 real(r8)  :: fll(n+1)
-integer   :: i1,i2,k
+integer   :: ill,iul,ilr,iur,k, rc
+integer, dimension(2) :: ll, lr, ul, ur
 
-if(i >= 1 .and. i < wrf%dom(id)%var_size(1,TYPE_GZ) .and. &
-   j >= 1 .and. j < wrf%dom(id)%var_size(2,TYPE_GZ)) then
+if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_GZ ) .and. &
+     boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_GZ ) ) then
+
+   call getCorners(i, j, id, TYPE_GZ, ll, ul, lr, ur, rc )
+   if ( rc .ne. 0 ) &
+        print*, 'model_mod.f90 :: get_model_height_profile :: getCorners rc = ', rc
 
    do k = 1, wrf%dom(id)%var_size(3,TYPE_GZ)
-!!$      i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
-!!$      i2 = get_wrf_index(i,j+1,k,TYPE_GZ,id)
-      i1 = wrf%dom(id)%dart_ind(i,j,k,TYPE_GZ)
-      i2 = wrf%dom(id)%dart_ind(i,j+1,k,TYPE_GZ)
-      fll(k) = (dym*( dxm*(wrf%dom(id)%phb(i,j,k)+x(i1)) + &
-           dx*(wrf%dom(id)%phb(i+1,j,k)+x(i1+1))) + &
-           dy*(dxm*(wrf%dom(id)%phb(i,j+1,k)+x(i2)) + &
-           dx*(wrf%dom(id)%phb(i+1,j+1,k)+x(i2+1)) ))/gravity
+
+      ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, TYPE_GZ)
+      iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, TYPE_GZ)
+      ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, TYPE_GZ)
+      iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, TYPE_GZ)
+
+      fll(k) = ( dym*( dxm*( wrf%dom(id)%phb(ll(1),ll(2),k) + x(ill) ) + &
+                        dx*( wrf%dom(id)%phb(lr(1),lr(2),k) + x(ilr) ) ) + &
+                  dy*( dxm*( wrf%dom(id)%phb(ul(1),ul(2),k) + x(iul) ) + &
+                        dx*( wrf%dom(id)%phb(ur(1),ur(2),k) + x(iur) ) ) )/gravity
+
    end do
 
    do k=1,n
       v_h(k) = 0.5_r8*(fll(k) + fll(k+1) )
    end do
 
-   v_h(0) = dym*( dxm*wrf%dom(id)%hgt(i  ,j  ) + &
-                   dx*wrf%dom(id)%hgt(i+1,j  ) ) + &
-             dy*( dxm*wrf%dom(id)%hgt(i  ,j+1) + &
-                   dx*wrf%dom(id)%hgt(i+1,j+1) )
+   v_h(0) = dym*( dxm*wrf%dom(id)%hgt(ll(1), ll(2)) + &
+                   dx*wrf%dom(id)%hgt(lr(1), lr(2)) ) + &
+             dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
+                   dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
 
+! If the boundsCheck functions return an unsatisfactory integer index, then set
+!   fld as missing data
 else
 
    print*,'Not able the get height_profile'
@@ -3862,41 +4636,84 @@ integer,  intent(in)  :: i,j,k,id,var_type
 real(r8), intent(in)  :: x(:)
 real(r8)              :: model_height
 
-integer   :: i1, i2, i3, i4
+integer   :: i1, i2, i3, i4, off
 
 model_height = missing_r8
 
+! If W-grid (on ZNW levels), then we are fine because it is native to GZ
 if( (var_type == type_w) .or. (var_type == type_gz) ) then
 
 !!$   i1 = get_wrf_index(i,j,k,TYPE_GZ,id)
    i1 = wrf%dom(id)%dart_ind(i,j,k,TYPE_GZ)
    model_height = (wrf%dom(id)%phb(i,j,k)+x(i1))/gravity
 
+! If U-grid, then height is defined between U points, both in horizontal 
+!   and in vertical, so average -- averaging depends on longitude periodicity
 elseif( var_type == type_u ) then
 
    if( i == wrf%dom(id)%var_size(1,TYPE_U) ) then
 
+      ! Check to see if periodic in longitude
+      if ( wrf%dom(id)%periodic_x ) then
+
+         ! We are at the seam in longitude, so take first and last mass points
+         i1 = wrf%dom(id)%dart_ind(i-1,j,k  ,TYPE_GZ)
+         i2 = wrf%dom(id)%dart_ind(i-1,j,k+1,TYPE_GZ)
+         i3 = wrf%dom(id)%dart_ind(1,j,k  ,TYPE_GZ)
+         i4 = wrf%dom(id)%dart_ind(1,j,k+1,TYPE_GZ)
+
+         model_height = ( ( wrf%dom(id)%phb(i-1,j,k  ) + x(i1) ) &
+                         +( wrf%dom(id)%phb(i-1,j,k+1) + x(i2) ) &
+                         +( wrf%dom(id)%phb(1  ,j,k  ) + x(i3) ) &
+                         +( wrf%dom(id)%phb(1  ,j,k+1) + x(i4) ) )/(4.0_r8*gravity)
+         
+      else
+
 !!$      i1 = get_wrf_index(i-1,j,k  ,TYPE_GZ,id)
 !!$      i2 = get_wrf_index(i-1,j,k+1,TYPE_GZ,id)
-      i1 = wrf%dom(id)%dart_ind(i-1,j,k  ,TYPE_GZ)
-      i2 = wrf%dom(id)%dart_ind(i-1,j,k+1,TYPE_GZ)
 
-      model_height = ( 3.0_r8*(wrf%dom(id)%phb(i-1,j,k  )+x(i1)) &
-                      +3.0_r8*(wrf%dom(id)%phb(i-1,j,k+1)+x(i2)) &
-                             -(wrf%dom(id)%phb(i-2,j,k  )+x(i1-1)) &
-                             -(wrf%dom(id)%phb(i-2,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
+         ! If not periodic, then try extrapolating
+         i1 = wrf%dom(id)%dart_ind(i-1,j,k  ,TYPE_GZ)
+         i2 = wrf%dom(id)%dart_ind(i-1,j,k+1,TYPE_GZ)
+
+         model_height = ( 3.0_r8*(wrf%dom(id)%phb(i-1,j,k  )+x(i1)) &
+                         +3.0_r8*(wrf%dom(id)%phb(i-1,j,k+1)+x(i2)) &
+                                -(wrf%dom(id)%phb(i-2,j,k  )+x(i1-1)) &
+                                -(wrf%dom(id)%phb(i-2,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
+      end if
 
    elseif( i == 1 ) then
 
+      ! Check to see if periodic in longitude
+      if ( wrf%dom(id)%periodic_x ) then
+
+         ! We are at the seam in longitude, so take first and last mass points
+         off = wrf%dom(id)%we
+         i1 = wrf%dom(id)%dart_ind(i  ,j,k  ,TYPE_GZ)
+         i2 = wrf%dom(id)%dart_ind(i  ,j,k+1,TYPE_GZ)
+         i3 = wrf%dom(id)%dart_ind(off,j,k  ,TYPE_GZ)
+         i4 = wrf%dom(id)%dart_ind(off,j,k+1,TYPE_GZ)
+
+         model_height = ( ( wrf%dom(id)%phb(i  ,j,k  ) + x(i1) ) &
+                         +( wrf%dom(id)%phb(i  ,j,k+1) + x(i2) ) &
+                         +( wrf%dom(id)%phb(off,j,k  ) + x(i3) ) &
+                         +( wrf%dom(id)%phb(off,j,k+1) + x(i4) ) )/(4.0_r8*gravity)
+         
+      else
+
 !!$      i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
 !!$      i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
-      i1 = wrf%dom(id)%dart_ind(i,j,k  ,TYPE_GZ)
-      i2 = wrf%dom(id)%dart_ind(i,j,k+1,TYPE_GZ)
 
-      model_height = ( 3.0_r8*(wrf%dom(id)%phb(i  ,j,k  )+x(i1)) &
-                      +3.0_r8*(wrf%dom(id)%phb(i  ,j,k+1)+x(i2)) &
-                             -(wrf%dom(id)%phb(i+1,j,k  )+x(i1+1)) &
-                             -(wrf%dom(id)%phb(i+1,j,k+1)+x(i2+1)) )/(4.0_r8*gravity)
+         ! If not periodic, then try extrapolating
+         i1 = wrf%dom(id)%dart_ind(i,j,k  ,TYPE_GZ)
+         i2 = wrf%dom(id)%dart_ind(i,j,k+1,TYPE_GZ)
+         
+         model_height = ( 3.0_r8*(wrf%dom(id)%phb(i  ,j,k  )+x(i1)) &
+                         +3.0_r8*(wrf%dom(id)%phb(i  ,j,k+1)+x(i2)) &
+                                -(wrf%dom(id)%phb(i+1,j,k  )+x(i1+1)) &
+                                -(wrf%dom(id)%phb(i+1,j,k+1)+x(i2+1)) )/(4.0_r8*gravity)
+
+      end if
 
    else
 
@@ -3912,39 +4729,87 @@ elseif( var_type == type_u ) then
 
    endif
 
+! If V-grid, then pressure is defined between V points, both in horizontal 
+!   and in vertical, so average -- averaging depends on polar periodicity
 elseif( var_type == type_v ) then
 
    if( j == wrf%dom(id)%var_size(2,TYPE_V) ) then
+
+      ! Check to see if periodic in latitude (polar)
+      if ( wrf%dom(id)%polar ) then
+
+         ! The upper corner is 180 degrees of longitude away
+         off = i + wrf%dom(id)%we/2
+         if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
+
+         i1 = wrf%dom(id)%dart_ind(off,j-1,k  ,TYPE_GZ)
+         i2 = wrf%dom(id)%dart_ind(off,j-1,k+1,TYPE_GZ)
+         i3 = wrf%dom(id)%dart_ind(i  ,j-1,k  ,TYPE_GZ)
+         i4 = wrf%dom(id)%dart_ind(i  ,j-1,k+1,TYPE_GZ)
+
+         model_height = ( (wrf%dom(id)%phb(off,j-1,k  )+x(i1)) &
+                         +(wrf%dom(id)%phb(off,j-1,k+1)+x(i2)) &
+                         +(wrf%dom(id)%phb(i  ,j-1,k  )+x(i3)) &
+                         +(wrf%dom(id)%phb(i  ,j-1,k+1)+x(i4)) )/(4.0_r8*gravity)
+         
+      else
 
 !!$      i1 = get_wrf_index(i,j-1,k  ,TYPE_GZ,id)
 !!$      i2 = get_wrf_index(i,j-1,k+1,TYPE_GZ,id)
 !!$      i3 = get_wrf_index(i,j-2,k  ,TYPE_GZ,id)
 !!$      i4 = get_wrf_index(i,j-2,k+1,TYPE_GZ,id)
-      i1 = wrf%dom(id)%dart_ind(i,j-1,k  ,TYPE_GZ)
-      i2 = wrf%dom(id)%dart_ind(i,j-1,k+1,TYPE_GZ)
-      i3 = wrf%dom(id)%dart_ind(i,j-2,k  ,TYPE_GZ)
-      i4 = wrf%dom(id)%dart_ind(i,j-2,k+1,TYPE_GZ)
 
-      model_height = ( 3.0_r8*(wrf%dom(id)%phb(i,j-1,k  )+x(i1)) &
-                      +3.0_r8*(wrf%dom(id)%phb(i,j-1,k+1)+x(i2)) &
-                             -(wrf%dom(id)%phb(i,j-2,k  )+x(i3)) &
-                             -(wrf%dom(id)%phb(i,j-2,k+1)+x(i4)) )/(4.0_r8*gravity)
+         ! If not periodic, then try extrapolating
+         i1 = wrf%dom(id)%dart_ind(i,j-1,k  ,TYPE_GZ)
+         i2 = wrf%dom(id)%dart_ind(i,j-1,k+1,TYPE_GZ)
+         i3 = wrf%dom(id)%dart_ind(i,j-2,k  ,TYPE_GZ)
+         i4 = wrf%dom(id)%dart_ind(i,j-2,k+1,TYPE_GZ)
+
+         model_height = ( 3.0_r8*(wrf%dom(id)%phb(i,j-1,k  )+x(i1)) &
+                         +3.0_r8*(wrf%dom(id)%phb(i,j-1,k+1)+x(i2)) &
+                                -(wrf%dom(id)%phb(i,j-2,k  )+x(i3)) &
+                                -(wrf%dom(id)%phb(i,j-2,k+1)+x(i4)) )/(4.0_r8*gravity)
+
+      end if
 
    elseif( j == 1 ) then
+
+      ! Check to see if periodic in latitude (polar)
+      if ( wrf%dom(id)%polar ) then
+
+         ! The lower corner is 180 degrees of longitude away
+         off = i + wrf%dom(id)%we/2
+         if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
+
+         i1 = wrf%dom(id)%dart_ind(off,j,k  ,TYPE_GZ)
+         i2 = wrf%dom(id)%dart_ind(off,j,k+1,TYPE_GZ)
+         i3 = wrf%dom(id)%dart_ind(i  ,j,k  ,TYPE_GZ)
+         i4 = wrf%dom(id)%dart_ind(i  ,j,k+1,TYPE_GZ)
+
+         model_height = ( (wrf%dom(id)%phb(off,j,k  )+x(i1)) &
+                         +(wrf%dom(id)%phb(off,j,k+1)+x(i2)) &
+                         +(wrf%dom(id)%phb(i  ,j,k  )+x(i3)) &
+                         +(wrf%dom(id)%phb(i  ,j,k+1)+x(i4)) )/(4.0_r8*gravity)
+         
+      else
 
 !!$      i1 = get_wrf_index(i,j  ,k  ,TYPE_GZ,id)
 !!$      i2 = get_wrf_index(i,j  ,k+1,TYPE_GZ,id)
 !!$      i3 = get_wrf_index(i,j+1,k  ,TYPE_GZ,id)
 !!$      i4 = get_wrf_index(i,j+1,k+1,TYPE_GZ,id)
-      i1 = wrf%dom(id)%dart_ind(i,j  ,k  ,TYPE_GZ)
-      i2 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_GZ)
-      i3 = wrf%dom(id)%dart_ind(i,j+1,k  ,TYPE_GZ)
-      i4 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_GZ)
 
-      model_height = ( 3.0_r8*(wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
-                      +3.0_r8*(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
-                             -(wrf%dom(id)%phb(i,j+1,k  )+x(i3)) &
-                             -(wrf%dom(id)%phb(i,j+1,k+1)+x(i4)) )/(4.0_r8*gravity)
+         ! If not periodic, then try extrapolating
+         i1 = wrf%dom(id)%dart_ind(i,j  ,k  ,TYPE_GZ)
+         i2 = wrf%dom(id)%dart_ind(i,j  ,k+1,TYPE_GZ)
+         i3 = wrf%dom(id)%dart_ind(i,j+1,k  ,TYPE_GZ)
+         i4 = wrf%dom(id)%dart_ind(i,j+1,k+1,TYPE_GZ)
+
+         model_height = ( 3.0_r8*(wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
+                         +3.0_r8*(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
+                                 -(wrf%dom(id)%phb(i,j+1,k  )+x(i3)) &
+                                 -(wrf%dom(id)%phb(i,j+1,k+1)+x(i4)) )/(4.0_r8*gravity)
+
+      end if
 
    else
 
@@ -4046,7 +4911,13 @@ integer, dimension(3) :: dx, dy, ztop, grid_id, parent_id
 integer, dimension(3) :: i_parent_start, j_parent_start, parent_grid_ratio
 integer, dimension(3) :: parent_time_step_ratio
 integer :: io, iunit, id
+integer :: num_metgrid_levels, p_top_requested, nproc_x, nproc_y
 
+!nc -- we added "num_metgrid_levels" to the domains nml to make all well with the
+!        namelist.input file belonging to global WRF,
+!        also "p_top_requested" in domains nml
+!        also "nproc_x" & "nproc_y"
+!nc -- we notice that "ztop" is unused in code -- perhaps get rid of later?
 namelist /domains/ time_step, time_step_fract_num, time_step_fract_den
 namelist /domains/ max_dom
 namelist /domains/ s_we, e_we, s_sn, e_sn, s_vert, e_vert
@@ -4054,7 +4925,7 @@ namelist /domains/ dx, dy, ztop, grid_id, parent_id
 namelist /domains/ i_parent_start, j_parent_start, parent_grid_ratio
 namelist /domains/ parent_time_step_ratio
 namelist /domains/ feedback, smooth_option
-
+namelist /domains/ num_metgrid_levels, p_top_requested, nproc_x, nproc_y
 
 ! Begin by reading the namelist input
 call find_namelist_in_file("namelist.input", "domains", iunit)
@@ -4390,14 +5261,46 @@ do while (.not. dom_found)
        (wrf%dom(id)%proj%hemi == -1.0_r8 .and. obslat ==  90.0_r8) .or. &
        (wrf%dom(id)%proj%code == PROJ_MERC .and. abs(obslat) >= 90.0_r8) ) then
 
+!nc -- strange that there is nothing in this if-case structure
+print*, 'model_mod.f90 :: subroutine get_domain_info :: in empty if-case'
+
    else
       call latlon_to_ij(wrf%dom(id)%proj,obslat,obslon,iloc,jloc)
-      if ( (iloc >= 1 .and. iloc <= wrf%dom(id)%we .and. &
-           jloc >= 1 .and. jloc <= wrf%dom(id)%sn) ) then
-         dom_found = .true.
-      endif
 
-   endif
+      ! Array bound checking depends on whether periodic or not -- these are
+      !   real-valued indices here, so we cannot use boundsCheck  :( 
+
+      if ( wrf%dom(id)%periodic_x  ) then
+         if ( wrf%dom(id)%polar ) then        
+            !   Periodic     X & M_grid ==> [1 we+1)    
+            !   Periodic     Y & M_grid ==> [0.5 sn+0.5]
+            if ( iloc >= 1.0_r8 .and. iloc <  real(wrf%dom(id)%we,r8)+1.0_r8 .and. &
+                 jloc >= 0.5_r8 .and. jloc <= real(wrf%dom(id)%sn,r8)+0.5_r8 ) &
+                 dom_found = .true.     
+         else
+            !   Periodic     X & M_grid ==> [1 we+1)    
+            !   NOT Periodic Y & M_grid ==> [1 sn]
+            if ( iloc >= 1.0_r8 .and. iloc <  real(wrf%dom(id)%we,r8)+1.0_r8 .and. &
+                 jloc >= 1.0_r8 .and. jloc <= real(wrf%dom(id)%sn,r8) ) &
+                 dom_found = .true.
+         end if
+      else
+         if ( wrf%dom(id)%polar ) then        
+            !   NOT Periodic X & M_grid ==> [1 we]    
+            !   Periodic     Y & M_grid ==> [0.5 sn+0.5]
+            if ( iloc >= 1.0_r8 .and. iloc <= real(wrf%dom(id)%we,r8) .and. &
+                 jloc >= 0.5_r8 .and. jloc <= real(wrf%dom(id)%sn,r8)+0.5_r8 ) &
+                 dom_found = .true.     
+         else
+            !   NOT Periodic X & M_grid ==> [1 we]    
+            !   NOT Periodic Y & M_grid ==> [1 sn]
+            if ( iloc >= 1.0_r8 .and. iloc <= real(wrf%dom(id)%we,r8) .and. &
+                 jloc >= 1.0_r8 .and. jloc <= real(wrf%dom(id)%sn,r8) ) &
+                 dom_found = .true.
+         end if 
+      end if
+
+   end if
 
    if (.not. dom_found) then
       id = id - 1
@@ -4505,6 +5408,521 @@ endif
 
 end subroutine get_close_obs
 
+!#######################################################################
+!nc -- additional function from Greg Lawson & Nancy Collins
+!
+!  logical function boundsCheck determines whether real-valued location indices are
+!    within a sensible range based on the assumed (un)staggered grid and based on 
+!    whether the domain is assumed to be periodic in a given direction.
+
+function boundsCheck ( ind, periodic, id, dim, type )
+
+  integer,  intent(in)  :: ind, id, dim, type
+  logical,  intent(in)  :: periodic
+
+  logical :: boundsCheck  
+!  logical, parameter :: restrict_polar = .true.
+  logical, parameter :: restrict_polar = .false.
+
+  ! Consider cases in REAL-VALUED indexing:
+  !
+  ! I. Longitude -- x-direction
+  !    A. PERIODIC (period_x = .true.)
+  !
+  !       Consider Mass-grid (& V-grid) longitude grid with 4 west-east gridpoints
+  !         Values  ::  [ -135 -45  45 135 ] .. {225}
+  !         Indices ::  [   1   2   3   4  ] .. {1,5}
+  !       Complementary U-grid
+  !         Values  ::  [ -180 -90  0  90  180 ]
+  !         Indices ::  [   1   2   3   4   5  ]
+  !
+  !       What are the allowable values for a real-valued index on each of these grids?
+  !       1. M-grid  --->  [1 5)       ---> [1 we+1)
+  !                  --->  [-135 225)  
+  !       2. U-grid  --->  [1 5)       ---> [1 wes)
+  !                  --->  [-180 180)
+  !       [Note that above "allowable values" reflect that one should be able to have
+  !        an observation anywhere on a given longitude circle -- the information 
+  !        exists in order to successfully interpolate to anywhere over [0 360).]
+  !
+  !       It is up to the routine calling "boundsCheck" to have handled the 0.5 offset
+  !         in indices between the M-grid & U-grid.  Hence, two examples: 
+  !          a. If there is an observation location at -165 longitude, then:
+  !             * An observation of TYPE_T (on the M-grid) would have ind = 4.667
+  !             * An observation of TYPE_U (on the U-grid) would have ind = 1.167
+  !          b. If there is an observation location at 0 longitude, then:
+  !             * An observation of TYPE_T (on the M-grid) would have ind = 2.5
+  !             * An observation of TYPE_U (on the U-grid) would have ind = 3.0
+  !
+  !    B. NOT periodic (period_x = .false.)
+  !
+  !       Consider Mass-grid (& V-grid) longitude grid with 4 west-east gridpoints
+  !         Values  ::  [  95  105 115 125 ] 
+  !         Indices ::  [   1   2   3   4  ] 
+  !       Complementary U-grid
+  !         Values  ::  [  90  100 110 120 130 ]
+  !         Indices ::  [   1   2   3   4   5  ]
+  !
+  !       What are the allowable values for a real-valued index on each of these grids?
+  !       1. M-grid  --->  [1 4]       ---> [1 we]
+  !                  --->  [95 125]  
+  !       2. U-grid  --->  [1.5 4.5]       ---> [1.5 we+0.5]
+  !                  --->  [95 125]
+  !       [Note that above "allowable values" reflect that one should only be able to
+  !        have an observation within the M-grid, since that is the only way to  
+  !        guarantee that the necessary information exists in order to successfully 
+  !        interpolate to a specified location.]
+  !
+  !       It is up to the routine calling "boundsCheck" to have handled the 0.5 offset
+  !         in indices between the M-grid & U-grid.  Hence, two examples: 
+  !          a. If there is an observation location at 96 longitude, then:
+  !             * An observation of TYPE_T (on the M-grid) would have ind = 1.1
+  !             * An observation of TYPE_U (on the U-grid) would have ind = 1.6
+  !          b. If there is an observation location at 124 longitude, then:
+  !             * An observation of TYPE_T (on the M-grid) would have ind = 3.9
+  !             * An observation of TYPE_U (on the U-grid) would have ind = 4.4
+  !
+  ! II. Latitude -- y-direction
+  !    A. PERIODIC (polar = .true.)
+  !
+  !       Consider Mass-grid (& U-Grid) latitude grid with 4 south-north gridpoints
+  !         Values  :: [ -67.5 -22.5  22.5  67.5 ] 
+  !         Indices :: [   1     2     3     4   ] 
+  !       Complementary V-grid 
+  !         Values  :: [ -90   -45     0    45    90 ] 
+  !         Indices :: [   1     2     3     4     5 ] 
+  !
+  !       What are the allowable values for a real-valued index on each of these grids?
+  !       1. M-grid  --->  [0.5 4.5]   ---> [0.5 sn+0.5]
+  !                  --->  [-90 90]  
+  !       2. U-grid  --->  [1 5]       ---> [1 sns]
+  !                  --->  [-90 90]
+  !       [Note that above "allowable values" reflect that one should be able to have
+  !        an observation anywhere along a give latitude circle -- the information 
+  !        exists in order to successfully interpolate to anywhere over [-90 90]; 
+  !        however, in latitude this poses a special challenge since the seams join
+  !        two separate columns of data over the pole, as opposed to in longitude
+  !        where the seam wraps back on a single row of data.]  
+  !
+  !       It is up to the routine calling "boundsCheck" to have handled the 0.5 offset
+  !         in indices between the M-grid & V-grid.  Hence, two examples: 
+  !          a. If there is an observation location at -75 latitude, then:
+  !             * An observation of TYPE_T (on the M-grid) would have ind = 0.833
+  !             * An observation of TYPE_V (on the V-grid) would have ind = 1.333
+  !          b. If there is an observation location at 0 latitude, then:
+  !             * An observation of TYPE_T (on the M-grid) would have ind = 2.5
+  !             * An observation of TYPE_V (on the V-grid) would have ind = 3.0
+  !
+  !    B. NOT periodic (polar = .false.)
+  !
+  !       Consider Mass-grid (& U-Grid) latitude grid with 4 south-north gridpoints
+  !         Values  :: [ 10  20  30  40 ] 
+  !         Indices :: [  1   2   3   4 ] 
+  !       Complementary V-grid 
+  !         Values  :: [  5  15  25  35  45 ] 
+  !         Indices :: [  1   2   3   4   5 ] 
+  !
+  !       What are the allowable values for a real-valued index on each of these grids?
+  !       1. M-grid  --->  [1 4]   ---> [1 sn]
+  !                  --->  [10 40]  
+  !       2. U-grid  --->  [1.5 4.5]       ---> [1.5 sn+0.5]
+  !                  --->  [10 40]
+  !       [Note that above "allowable values" reflect that one should only be able to
+  !        have an observation within the M-grid, since that is the only way to  
+  !        guarantee that the necessary information exists in order to successfully 
+  !        interpolate to a specified location.]
+  !
+  !       It is up to the routine calling "boundsCheck" to have handled the 0.5 offset
+  !         in indices between the M-grid & V-grid.  Hence, two examples: 
+  !          a. If there is an observation location at 11 latitude, then:
+  !             * An observation of TYPE_T (on the M-grid) would have ind = 1.1
+  !             * An observation of TYPE_V (on the V-grid) would have ind = 1.6
+  !          b. If there is an observation location at 25 latitude, then:
+  !             * An observation of TYPE_T (on the M-grid) would have ind = 2.5
+  !             * An observation of TYPE_V (on the V-grid) would have ind = 3.0
+  ! 
+  ! III. Vertical -- z-direction (periodicity not an issue)
+  !    
+  !    Consider Mass vertical grid with 4 bottom-top gridpoints
+  !      Values  :: [ 0.875 0.625 0.375 0.125 ]
+  !      Indices :: [   1     2     3     4   ]
+  !    Complementary W-grid
+  !      Values  :: [   1   0.75  0.50  0.25    0   ]
+  !      Indices :: [   1     2     3     4     5   ]
+  !
+  !    What are the allowable values for a real-valued index on each of these grids?
+  !    1. M-grid  --->  [1 4]           ---> [1 bt]
+  !               --->  [0.875 0.125]  
+  !    2. W-grid  --->  [1.5 4.5]       ---> [1.5 bt+0.5]
+  !               --->  [0.875 0.125]
+  !
+  !    [Note that above "allowable values" reflect that one should only be able to
+  !     have an observation within the M-grid, since that is the only way to  
+  !     guarantee that the necessary information exists in order to successfully 
+  !     interpolate to a specified location.]
+  !
+
+  ! Summary of Allowable REAL-VALUED Index Values ==> INTEGER Index Values 
+  !
+  ! In longitude (x) direction
+  !   Periodic     & M_grid ==> [1 we+1)       ==> [1 wes)
+  !   Periodic     & U_grid ==> [1 wes)        ==> [1 wes)
+  !   NOT Periodic & M_grid ==> [1 we]         ==> [1 we)
+  !   NOT Periodic & U_grid ==> [1.5 we+0.5]   ==> [1 wes)
+  ! In latitude (y) direction
+  !   Periodic     & M_grid ==> [0.5 sn+0.5]   ==> [0 sns) *though in practice, [1 sn)*
+  !   Periodic     & V_grid ==> [1 sns]        ==> [1 sns) *though allowable range, [1.5 sn+.5]*
+  !   NOT Periodic & M_grid ==> [1 sn]         ==> [1 sn)
+  !   NOT Periodic & V_grid ==> [1.5 sn+0.5]   ==> [1 sns)
+  ! In vertical (z) direction
+  !                  M_grid ==> [1 bt]         ==> [1 bt)
+  !                  W_grid ==> [1.5 bt+0.5]   ==> [1 bts)
+  
+
+  ! Assume boundsCheck is false unless we can prove otherwise
+  boundsCheck = .false.
+
+  ! First check direction (dimension)
+  !   Longitude (x-direction) has dim == 1
+  if ( dim == 1 ) then
+
+     ! Next check periodicity
+     if ( periodic ) then
+        
+        ! If periodic in longitude, then no need to check staggering because both
+        !   M and U grids allow integer indices from [1 wes)
+        if ( ind >= 1 .and. ind < wrf%dom(id)%wes ) boundsCheck = .true.
+
+     else
+
+        ! If NOT periodic in longitude, then we need to check staggering because
+        !   M and U grids allow different index ranges
+
+        ! Check staggering by comparing var_size(dim,type) to the staggered dimension 
+        !   for dim == 1 stored in wrf%dom(id)
+        if ( wrf%dom(id)%var_size(dim,type) == wrf%dom(id)%wes ) then
+           ! U-grid allows integer range of [1 wes)
+           if ( ind >= 1 .and. ind < wrf%dom(id)%wes ) boundsCheck = .true.
+        else  
+           ! M & V-grid allow [1 we)
+           if ( ind >= 1 .and. ind < wrf%dom(id)%we ) boundsCheck = .true.
+        end if
+
+     end if
+
+   !   Latitude (y-direction) has dim == 2
+   elseif ( dim == 2 ) then
+
+     ! Next check periodicity
+     if ( periodic ) then
+        
+        ! We need to check staggering because M and V grids allow different indices
+
+!*** NOTE: For now are disallowing observation locations that occur poleward of the 
+!            first and last M-grid gridpoints.  This means that this function will 
+!            return false for polar observations.  This need not be the case because
+!            the information should be available for proper interpolation across the
+!            poles, but it will require more clever thinking.  Hopefully this can 
+!            be added in later.  
+
+        ! Check staggering by comparing var_size(dim,type) to the staggered dimension 
+        !   for dim == 2 stored in wrf%dom(id)
+        if ( wrf%dom(id)%var_size(dim,type) == wrf%dom(id)%sns ) then
+           ! V-grid allows integer range [1 sns)
+           if ( ind >= 1 .and. ind < wrf%dom(id)%sns ) boundsCheck = .true.
+        else  
+           ! For now we will set a logical flag to more restrictively check the array
+           !   bounds under our no-polar-obs assumptions
+           if ( restrict_polar ) then
+              ! M & U-grid allow integer range [1 sn) in practice (though properly, [0 sns) )
+              if ( ind >= 1 .and. ind < wrf%dom(id)%sn ) boundsCheck = .true.
+           else
+              ! M & U-grid allow integer range [0 sns) in unrestricted circumstances
+              if ( ind >= 0 .and. ind < wrf%dom(id)%sns ) boundsCheck = .true.
+           end if
+        end if
+        
+     else
+
+        ! We need to check staggering because M and V grids allow different indices
+        if ( wrf%dom(id)%var_size(dim,type) == wrf%dom(id)%sns ) then
+           ! V-grid allows [1 sns)
+           if ( ind >= 1 .and. ind < wrf%dom(id)%sns ) boundsCheck = .true.
+        else 
+           ! M & U-grid allow [1 sn)
+           if ( ind >= 1 .and. ind < wrf%dom(id)%sn ) boundsCheck = .true.
+        end if
+
+     end if
+
+  elseif ( dim == 3 ) then
+
+     ! No periodicity to worry about in the vertical!  However, we still need to check
+     !   staggering because the ZNU and ZNW grids allow different index ranges
+     if ( wrf%dom(id)%var_size(dim,type) == wrf%dom(id)%bts ) then
+        ! W vertical grid allows [1 bts)
+        if ( ind >= 1 .and. ind < wrf%dom(id)%bts ) boundsCheck = .true.
+     else
+        ! M vertical grid allows [1 bt)
+        if ( ind >= 1 .and. ind < wrf%dom(id)%bt ) boundsCheck = .true.
+     end if
+  
+  else
+
+     print*, 'model_mod.f90 :: function boundsCheck :: dim must equal 1, 2, or 3!'
+
+  end if
+
+
+end function boundsCheck
+
+!#######################################################################
+! getCorners takes in an i and j index, information about domain and grid staggering, 
+!   and then returns the four cornering gridpoints' 2-element integer indices. 
+subroutine getCorners(i, j, id, type, ll, ul, lr, ur, rc)
+
+  implicit none
+
+  integer, intent(in)  :: i, j, id, type
+  integer, dimension(2), intent(out) :: ll, ul, lr, ur
+  integer, intent(out) :: rc
+
+!  logical, parameter :: restrict_polar = .true.
+  logical, parameter :: restrict_polar = .false.
+
+  ! set return code to 0, and change this if necessary
+  rc = 0
+
+  !----------------
+  ! LOWER LEFT
+  !----------------
+
+  ! i and j are the lower left (ll) corner already
+  !
+  ! NOTE :: once we allow for polar periodicity, the incoming j index could actually 
+  !           be 0, which would imply a ll(2) value of 1, with a ll(1) value 180 degrees
+  !           of longitude away from the incoming i index!  But we have not included 
+  !           this possibility yet.  
+
+  ! As of 22 Oct 2007, this option is not allowed!
+  !   Note that j = 0 can only happen if we are on the M (or U) wrt to latitude
+  if ( wrf%dom(id)%polar .and. j == 0 .and. .not. restrict_polar ) then
+
+     ! j = 0 should be mapped to j = 1 (ll is on other side of globe)
+     ll(2) = 1
+     
+     ! Need to map i index 180 degrees away
+     ll(1) = i + wrf%dom(id)%we/2
+     
+     ! Check validity of bounds & adjust by periodicity if necessary
+     if ( ll(1) > wrf%dom(id)%we ) ll(1) = ll(1) - wrf%dom(id)%we
+
+     ! We shouldn't be able to get this return code if restrict_polar = .true.
+!     rc = 1
+!     print*, 'model_mod.f90 :: getCorners :: Tried to do polar bc -- rc = ', rc
+
+  else
+     
+     ll(1) = i
+     ll(2) = j
+
+  end if
+
+
+  !----------------
+  ! LOWER RIGHT
+  !----------------
+
+  ! Most of the time, the lower right (lr) corner will simply be (i+1,j), but we need to check
+  ! Summary of x-direction corners:
+  !   Periodic     & M_grid has ind = [1 wes)
+  !     ind = [1 we)    ==> ind_p_1 = ind + 1
+  !     ind = [we wes)  ==> ind_p_1 = 1
+  !   Periodic     & U_grid has ind = [1 wes)
+  !     ind = [1 we)    ==> ind_p_1 = ind + 1
+  !     ind = [we wes)  ==> ind_p_1 = wes       ( keep in mind that U(1) = U(wes) if periodic )
+  !   NOT Periodic & M_grid has ind = [1 we)
+  !     ind = [1 we-1)  ==> ind_p_1 = ind + 1
+  !     ind = [we-1 we) ==> ind_p_1 = we
+  !   NOT Periodic & U_grid has ind = [1 wes)
+  !     ind = [1 we)    ==> ind_p_1 = ind + 1
+  !     ind = [we wes)  ==> ind_p_1 = wes 
+
+  if ( wrf%dom(id)%periodic_x ) then
+    
+     ! Check to see what grid we have, M vs. U
+     if ( wrf%dom(id)%var_size(1,type) == wrf%dom(id)%wes ) then
+        ! U-grid is always i+1 -- do this in reference to already adjusted ll points
+        lr(1) = ll(1) + 1
+        lr(2) = ll(2)
+     else
+        ! M-grid is i+1 except if we <= ind < wes, in which case it's 1
+        if ( i < wrf%dom(id)%we ) then
+           lr(1) = ll(1) + 1
+        else
+           lr(1) = 1
+        end if
+        lr(2) = ll(2)
+     end if
+
+  else
+
+     ! Regardless of grid, NOT Periodic always has i+1
+     lr(1) = ll(1) + 1
+     lr(2) = ll(2)
+
+  end if
+        
+
+  !----------------
+  ! UPPER LEFT
+  !----------------
+
+!*** NOTE: For now are disallowing observation locations that occur poleward of the 
+!            first and last M-grid gridpoints.  This need not be the case because
+!            the information should be available for proper interpolation across the
+!            poles, but it will require more clever thinking.  Hopefully this can 
+!            be added in later.
+
+  ! Most of the time, the upper left (ul) corner will simply be (i,j+1), but we need to check
+  ! Summary of y-direction corners:
+  !   Periodic     & M_grid has ind = [0 sns)  *though in practice, [1 sn)*
+  !     ind = [1 sn-1)  ==> ind_p_1 = ind + 1
+  !     ind = [sn-1 sn) ==> ind_p_1 = sn
+  !   Periodic     & V_grid has ind = [1 sns) 
+  !     ind = [1 sn)    ==> ind_p_1 = ind + 1
+  !     ind = [sn sns)  ==> ind_p_1 = sns  
+  !   NOT Periodic & M_grid has ind = [1 sn)
+  !     ind = [1 sn-1)  ==> ind_p_1 = ind + 1
+  !     ind = [sn-1 sn) ==> ind_p_1 = sn
+  !   NOT Periodic & V_grid has ind = [1 sns)
+  !     ind = [1 sn)    ==> ind_p_1 = ind + 1
+  !     ind = [sn sns)  ==> ind_p_1 = sns 
+  !
+  ! Hence, with our current polar obs restrictions, all four possible cases DO map into
+  !   ul = (i,j+1).  But this will not always be the case.
+  
+  if ( wrf%dom(id)%polar ) then
+
+     ! Check to see what grid we have, M vs. V
+     if ( wrf%dom(id)%var_size(2,type) == wrf%dom(id)%sns ) then
+        ! V-grid is always j+1, even if we allow for full [1 sns) range
+        ul(1) = ll(1)
+        ul(2) = ll(2) + 1
+     else
+        ! M-grid changes depending on polar restriction
+        if ( restrict_polar ) then 
+           ! If restricted, then we can simply add 1
+           ul(1) = ll(1)
+           ul(2) = ll(2) + 1
+        else
+           ! If not restricted, then we can potentially wrap over the north pole, which 
+           !   means that ul(2) is set to sn and ul(1) is shifted by 180 deg.
+
+           if ( j == wrf%dom(id)%sn ) then
+              ! j > sn should be mapped to j = sn (ul is on other side of globe)
+              ul(2) = wrf%dom(id)%sn
+     
+              ! Need to map i index 180 degrees away
+              ul(1) = ll(1) + wrf%dom(id)%we/2
+     
+              ! Check validity of bounds & adjust by periodicity if necessary
+              if ( ul(1) > wrf%dom(id)%we ) ul(1) = ul(1) - wrf%dom(id)%we
+
+              ! We shouldn't be able to get this return code if restrict_polar = .true.
+!              rc = 1
+!              print*, 'model_mod.f90 :: getCorners :: Tried to do polar bc -- rc = ', rc
+
+           elseif ( j == 0 ) then
+              ! In this case, we have place ll on the other side of the globe, so we 
+              !   cannot reference ul to ll
+              ul(1) = i
+              ul(2) = 1
+
+           else
+              ! We can confidently set to j+1
+              ul(1) = ll(1)
+              ul(2) = ll(2) + 1
+           end if
+
+        end if
+     end if
+
+  else
+
+     ! Regardless of grid, NOT Periodic always has j+1
+     ul(1) = ll(1) 
+     ul(2) = ll(2) + 1
+
+  end if
+     
+
+  !----------------
+  ! UPPER RIGHT
+  !----------------
+
+!*** NOTE: For now are disallowing observation locations that occur poleward of the 
+!            first and last M-grid gridpoints.  This need not be the case because
+!            the information should be available for proper interpolation across the
+!            poles, but it will require more clever thinking.  Hopefully this can 
+!            be added in later.
+
+  ! Most of the time, the upper right (ur) corner will simply be (i+1,j+1), but we need to check
+  !   In fact, we can largely get away with ur = (lr(1),ul(2)).  Where this will NOT work is
+  !   where we have had to re-map the i index to the other side of the globe (180 deg) due to 
+  !   the polar boundary condition.  There are no situations where ur(2) will not be equal to
+  !   ul(2).  
+
+  ur(2) = ul(2)
+
+  ! Need to check if ur(1) .ne. lr(1)
+  if ( wrf%dom(id)%polar .and. .not. restrict_polar ) then
+
+     ! Only if j == 0 or j == sn
+     if ( j == 0 .or. j ==  wrf%dom(id)%sn) then
+        ! j == 0 means that ll(1) = i + 180 deg, so we cannot use lr(1) -- hence, we will
+        !   add 1 to ul(1), unless doing so spans the longitude seam point.
+        ! j == sn means that ul(1) = i + 180 deg.  Here we cannot use lr(1) either because
+        !   it will be half a domain away from ul(1)+1.  Be careful of longitude seam point.
+
+        !   Here we need to check longitude periodicity and the type of grid
+        if ( wrf%dom(id)%periodic_x ) then
+    
+           ! Check to see what grid we have, M vs. U
+           if ( wrf%dom(id)%var_size(1,type) == wrf%dom(id)%wes ) then
+              ! U-grid is always i+1 -- do this in reference to already adjusted ll points
+              ur(1) = ul(1) + 1
+           else
+              ! M-grid is i+1 except if we <= ind < wes, in which case it's 1
+              if ( ul(1) < wrf%dom(id)%we ) then
+                 ur(1) = ul(1) + 1
+              else
+                 ur(1) = 1
+              end if
+           end if
+
+        else
+
+           ! Regardless of grid, NOT Periodic always has i+1
+           ur(1) = ul(1) + 1
+
+        end if
+
+     ! If not a special j value, then we are set for the ur(1) = lr(1)
+     else
+
+        ur(1) = lr(1)
+
+     end if
+
+  ! If not an unrestricted polar periodic domain, then we have nothing to worry about
+  else
+
+     ur(1) = lr(1)
+
+  end if
+
+end subroutine getCorners
 
 
 end module model_mod
