@@ -1,5 +1,11 @@
 function indx = get_obs_copy_index(fid,copystring)
-% 
+% get_obs_copy_index(fid,copystring)
+% fid is the result of the 'netcdf' command 
+% copystring is the desired copy 
+%
+% EXAMPLE:
+% fid = netcdf('obs_seq.final.nc','nowrite');
+% indx = get_obs_copy_index(fid,'bias');
 %
 
 % Data Assimilation Research Testbed -- DART
