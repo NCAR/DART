@@ -2499,7 +2499,7 @@ character(len=129) :: errstring
 real(r8), allocatable, dimension(:) :: v_h, v_p
 
 ! local vars, used in calculating pressure and height
-real(r8)            :: pres1, pres2, pres3, pres4, pres
+real(r8)            :: pres1, pres2, pres3, pres4
 real(r8)            :: presa, presb
 real(r8)            :: hgt1, hgt2, hgt3, hgt4, hgta, hgtb
 
@@ -2952,8 +2952,12 @@ integer :: CEN_LATVarID, CEN_LONVarID, MAP_PROJVarID
 integer :: PERIODIC_XVarID, POLARVarID
 
 integer, dimension(num_domains) :: DNVarID, ZNUVarID, DNWVarID, phbVarID, &
-     MubVarID, LonVarID, LatVarID, ilevVarID, XlandVarID, &
-     MapFacMVarID, MapFacUVarID, MapFacVVarID, hgtVarID
+     MubVarID, LonVarID, LatVarID, ilevVarID, XlandVarID, hgtVarID 
+
+! currently unused, but if needed could be added back in.  these fields
+! only appear to be supported in certain projections, so the code should
+! test to be sure they exist before trying to read them from the netcdf file.
+!integer, dimension(num_domains) :: MapFacMVarID, MapFacUVarID, MapFacVVarID
 
 integer :: var_id
 integer :: i, id
@@ -4317,7 +4321,7 @@ integer,  intent(in)  :: i,j,k,id,var_type
 real(r8), intent(in)  :: x(:)
 real(r8)              :: model_pressure
 
-integer  :: ips, imu, off
+integer  :: off
 real(r8) :: pres1, pres2
 
 model_pressure = missing_r8

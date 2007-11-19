@@ -43,7 +43,7 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date: $"
 
-integer                 :: iunit, model_size, io, member, slot
+integer                 :: iunit, model_size, io, member
 type(ensemble_type)     :: ens_handle
 character(len = 128)    :: ifile, ofile
 logical                 :: one_by_one

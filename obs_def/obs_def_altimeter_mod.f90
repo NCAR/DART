@@ -73,8 +73,6 @@ integer,             intent(out) :: istatus
 real(r8) :: psfc                ! surface pressure value   (Pa)
 real(r8) :: hsfc                ! surface elevation level  (m above SL)
 
-character(len=129) :: errstring
-
 if ( .not. module_initialized ) call initialize_module
 
 !  interpolate the surface pressure to the desired location

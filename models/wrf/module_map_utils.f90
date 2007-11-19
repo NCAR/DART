@@ -1857,7 +1857,7 @@ MODULE map_utils
 
 
 !!! Added next line as a Kludge - not yet understood why needed
-	if (ncol .le. 0) ncol=ncol-1
+      if (ncol .le. 0) ncol=ncol-1
 
       jj = nrow
       ii = ncol/2
