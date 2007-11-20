@@ -176,7 +176,7 @@ The output files look like "obs_seq200301dd", with dd = 1,...,31.
 <em class=call>namelist / ncepobs_nml / </em> &#38;
 year, month, day, tot_days, max_num, select_obs, ObsBase, 
       ADPUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, 
-      obs_U, obs_V, obs_T, obs_PS, obs_QV
+      obs_U, obs_V, obs_T, obs_PS, obs_QV, lat1, lat2, lon1, lon2
 </pre></div>
 
 <H3 class=indent1>Discussion</H3>
@@ -218,10 +218,11 @@ year, month, day, tot_days, max_num, select_obs, ObsBase,
                        <UL><LI>true = 24 hour spans (3:01Z to 3:00Z of 
 		               the next day). Filenames have the form 
 			       obs_seqYYYYMMDD.  Default.</LI>
-		           <LI>false = 12 hour spans (3:01Z to 15:00Z 
-			       and 15:01Z to 3:00Z of the next day.
-			       Such files have HH = 12 or 24 appended 
-			       to their names.</LI>
+		           <LI>false = 6 hour spans (3:01Z to 9:00Z,
+                               9:01Z to 15:00Z, 15:01Z to 21:00Z, 
+			       and 21:01Z to 3:00Z of the next day.
+			       Such files have HH = 06, 12, 18, and 24 
+                               appended to their names.</LI>
 		       </UL>
                        </TD></TR>
 
@@ -237,7 +238,7 @@ year, month, day, tot_days, max_num, select_obs, ObsBase,
                        which includes land and ship launched radiosondes 
                        and pibals as well as a few  profile dropsonde. This 
                        involves,  at 00Z and 12Z, about 650 - 1000 stations,
-                        and at 06Z and 18Z  (which are mostly pibals), about 
+                       and at 06Z and 18Z  (which are mostly pibals), about 
                        150 - 400 stations. 
                        Default is .false.</TD></TR>
 
@@ -292,7 +293,8 @@ year, month, day, tot_days, max_num, select_obs, ObsBase,
 
 <TR><!--contents--><TD valign=top>obs_T         </TD>
     <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select temperature observation. Default is .false.</TD></TR>
+    <!--descript--><TD>Select temperature observation. 
+                       Default is .false.</TD></TR>
 
 <TR><!--contents--><TD valign=top>obs_PS        </TD>
     <!--  type  --><TD valign=top>logical       </TD>
@@ -303,6 +305,26 @@ year, month, day, tot_days, max_num, select_obs, ObsBase,
     <!--  type  --><TD valign=top>logical       </TD>
     <!--descript--><TD>Select specific humidity observation. 
                        Default is .false.</TD></TR>
+
+<TR><!--contents--><TD valign=top>lon1          </TD>
+    <!--  type  --><TD valign=top>real          </TD>
+    <!--descript--><TD>lower longitude bound of observations to keep
+                       Default is 0.0</TD></TR>
+
+<TR><!--contents--><TD valign=top>lon2          </TD>
+    <!--  type  --><TD valign=top>real          </TD>
+    <!--descript--><TD>upper longitude bound of observations to keep
+                       Default is 360.0</TD></TR>
+
+<TR><!--contents--><TD valign=top>lat1          </TD>
+    <!--  type  --><TD valign=top>real          </TD>
+    <!--descript--><TD>lower latitude bound of observations to keep
+                       Default is -89.0</TD></TR>
+
+<TR><!--contents--><TD valign=top>lat2          </TD>
+    <!--  type  --><TD valign=top>real          </TD>
+    <!--descript--><TD>upper latitude bound of observations to keep
+                       Default is 89.0</TD></TR>
 
 </TABLE>
 

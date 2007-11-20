@@ -78,16 +78,20 @@ while ($n <= $dayn)
    set d = $n
    if ($n < 10) set d = 0$d
    
+   set base = obs_seq${year}${mo}${d}
    if ($daily_file == .true.) then
-      set obs_seq = (obs_seq${year}${mo}${d})
+      set obs_seq = ( ${base} )
    else
-      set obs_seq = (obs_seq${year}${mo}${d}12 obs_seq${year}${mo}${d}24)
+      # originally this script created 2 files per day, 12 and 24.  changes
+      # in the create_real_obs executable have it creating 4 per day now.
+      # if you change it back, change the next line to have only 2 files.
+      set obs_seq = ( ${base}06 ${base}12 ${base}18 ${base}24 )
    endif
    foreach obs ($obs_seq)
       if ($binary == .false.) then
          if (-e $obs) then
-            echo "fixing $obs pole locations"                    >> create_obs_seq.out
-            sed -e 's/1.57079632679490/1.57079632679488/' $obs   >! fixed_pole
+            echo "fixing $obs pole locations"                      >> create_obs_seq.out
+            sed -e 's/ 1.57079632679490/ 1.57079632679488/' $obs   >! fixed_pole
          else
             exit
          endif

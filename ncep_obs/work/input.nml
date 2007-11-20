@@ -1,64 +1,44 @@
+
 &ncepobs_nml
-   year = 1997,
-   month = 12,
-   day = 30,
-   tot_days = 2,
-   max_num = 700000,
-   ObsBase = '~/Pre-J/DART/ncep_obs/prep_bufr/work/temp_obs.',
+   year = 2006,
+   month = 1,
+   day = 1,
+   tot_days = 1,
+   max_num = 1000000,
+   ObsBase = '../prep_bufr/work/temp_obs.',
    select_obs  = 1,
-   ADPUPA = .true., 
-   AIRCAR = .true., 
-   AIRCFT = .true., 
-   SATEMP = .false., 
-   SFCSHP = .false., 
-   ADPSFC = .false., 
+   ADPUPA = .true.,
+   AIRCAR = .true.,
+   AIRCFT = .true.,
+   SATEMP = .false.,
+   SFCSHP = .false.,
+   ADPSFC = .false.,
    SATWND = .true.,
-   obs_U  = .true., 
-   obs_V  = .true., 
+   obs_U  = .true.,
+   obs_V  = .true.,
    obs_T  = .true.,
    obs_PS = .false.,
    obs_QV = .true.,
-   daily_file = .true.  /
+   daily_file = .false.,
+   lat1 = -89.0,
+   lat2 =  89.0,
+   lon1 =   0.0,
+   lat2 = 360.0 /
 
 &obs_sequence_nml
    write_binary_obs_sequence = .false.  /
 
-&obs_kind_nml
-   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
-                                'RADIOSONDE_U_WIND_COMPONENT',
-                                'RADIOSONDE_V_WIND_COMPONENT'
-   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE'  /
+&obs_kind_nml 
+ /
 
 &assim_model_nml
    write_binary_restart_files = .true.  /
 
-&model_nml
-   output_state_vector      = .false.,
-   model_version            = '3.1',
-   model_config_file        = 'caminput.nc',
-   highest_obs_pressure_mb  = 30.0,
-   highest_obs_height_m     = 40000.0,
-   max_obs_lat_degree       = 90.0,
-   state_num_0d             = 0,
-   state_num_1d             = 0,
-   state_num_2d             = 1,
-   state_num_3d             = 6,
-   state_names_2d = 'PS      ',19*'        ',
-   state_names_3d = 'T       ','U       ','V       ','Q       ','CLDLIQ  ','CLDICE  ',14*'        ',
-   which_vert_1d            =     20*0,
-   which_vert_2d            = -1 ,19*0,
-   which_vert_3d            = 6*1,14*0,
-   state_names_pert         = 20*'        ',
-   state_names_sd           = 20*0,
-   Time_step_seconds = 21600,
-   Time_step_days    = 0  /
+&model_nml    
+ /
 
-&location_nml
-   horiz_dist_only             = .true.,
-   vert_normalization_pressure = 100000.0, 
-   vert_normalization_height   = 10000.0,
-   vert_normalization_level    = 20.0,
-   approximate_distance        = .false.  /
+&location_nml 
+ /
 
 &utilities_nml
    TERMLEVEL = 1,

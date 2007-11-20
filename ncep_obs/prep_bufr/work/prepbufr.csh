@@ -48,29 +48,32 @@ endif
 
 # Convert from big-endian BUFR files to little-endian for Intel chip systems.
 # ('yes' or whatever)
+set    daily = no
 set  convert = yes 
-set     year = 2007
-set    month = 7      
-set beginday = 31
+set     year = 2006
+set    month = 1      
+set beginday = 1
 #
 # end day (up to and including the last day of the month.  Leap year Februaries are OK.
 #          Remember that the prepqm###### file for hour 0 of the first day of the next
 #          month is necessary for endday = last day of a month.)
 #
-set endday = 31
+set endday = 1
 
 # Location of BUFR files (named prepqmYYYYMMDDHH)
 # are assumed to be in subdirectories named YYYYMM of the path listed here.
 # Those subdirectory names will be constructed below.
-set BUFR_dir = /ptmp/raeder/Obs_sets/NCEP-BUFR
+set BUFR_dir = ../data/
 set get_year = $year
 
 # END USER SET PARAMETERS
 #--------------------------------------------------------------
 
 set days_in_mo = (31 28 31 30 31 30 31 31 30 31 30 31)
-# leap years 
-if (($year % 4) == 0) @ days_in_mo[2] = $days_in_mo[2] + 1
+# leap years - year 2000 makes this matter that you do the centuries right
+if (($year %   4) == 0) @ days_in_mo[2] = $days_in_mo[2] + 1
+if (($year % 100) == 0) @ days_in_mo[2] = $days_in_mo[2] - 1
+if (($year % 400) == 0) @ days_in_mo[2] = $days_in_mo[2] + 1
 
 if ( $?LS_SUBCWD ) then
    cd $LS_SUBCWD
@@ -89,7 +92,8 @@ while ( $day <= $last )
    rm temp_obs
 
    # convert 1 "day"s worth (data from '6z to 6z of the next day) of BUFR files 
-   #    into a single intermediate file.
+   #    into a single intermediate file if 'daily' is set to true; 4 6-hour files
+   #    otherwise.
    set h = 0
    set next_day = not
    while ($h < 30)
@@ -135,7 +139,7 @@ while ( $day <= $last )
          echo "copying bigendian to ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh}"
          cp ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh} prepqm.bigendian
          ls -l prepqm.bigendian
-         ../exe/grabbufr.x
+         ../exe/grabbufr.x prepqm.bigendian prepqm.littleendian
          mv prepqm.littleendian prepqm.in
          rm prepqm.bigendian
       else
@@ -144,22 +148,30 @@ while ( $day <= $last )
       endif
 
       if ($h == 30) then
-         # scavenge a few stragglers from 6Z of the next day using a special prepbufr program
+         # scavenge a few stragglers from 6Z of the next day 
+         # using a special prepbufr program
          ../exe/prepbufr_03Z.x
       else
          ../exe/prepbufr.x
       endif
-      cat prepqm.out >>   temp_obs
-      rm prepqm.out
+
+      if ($daily == 'yes') then
+         cat prepqm.out >> temp_obs
+         rm prepqm.out
+      else
+         mv -v prepqm.out ${BUFR_dir}/${year}${mm}/temp_obs.${year}${mm}${dd}${hh}
+      endif
    end
 
-   set dd = $day
-   if ($dd < 10) set dd = 0$dd
+   if ($daily == 'yes') then
+      set dd = $day
+      if ($dd < 10) set dd = 0$dd
 
-   set mm = $month
-   if ($mm < 10) set mm = 0$mm
-
-   mv -v temp_obs   ${BUFR_dir}/${year}${mm}/temp_obs.${year}${mm}${dd}
+      set mm = $month
+      if ($mm < 10) set mm = 0$mm
+   
+      mv -v temp_obs   ${BUFR_dir}/${year}${mm}/temp_obs.${year}${mm}${dd}
+   endif
 
    @ day++
 end
