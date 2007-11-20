@@ -1,8 +1,12 @@
 /*
  * convert gregorian days/seconds to and from year/month/day/hr/min/sec
  *
+ * usage:  gregorian_time  days  seconds
+ *    or:  gregorian_time  year month day hour minute seconds
+ *
  * nsc 12sep2007
  *     17oct2007
+ *     20nov2007
  */
 
 #include <stdio.h>
