@@ -141,7 +141,7 @@ levels = plotdat.levels;
 indmax  = size(p_v,2);
 xdatarr = [p_v(:,2:2:indmax)  a_v(:,2:2:indmax)];  % concatenate all data
 xlims   = [0.0 max(xdatarr(:))];                   % limits of all data
-axlims  = [floor(xlims(1)) ceil(xlims(2)) plotdat.ylims];
+axlims  = [floor(xlims(1)) ceil(xlims(2)) min(plotdat.ylims) max(plotdat.ylims)];
 
 % sometimes there is no valid data, must patch axis limits
 if (~isfinite(axlims(2)))

@@ -134,7 +134,7 @@ for ivar = 1:length(All_Level_Varnames),
    legend boxoff
    grid
    ax = axis; 
-   axis([ax(1) ax(2) plotdat.ylims]);
+   axis([ax(1) ax(2) min(plotdat.ylims) max(plotdat.ylims)])
    set(gca,'YDir', plotdat.ydir)
    title(plotdat.main, 'Interpreter','none','FontSize', 12, 'FontWeight', 'bold')
    ylabel(plotdat.ylabel, 'fontsize', 10)
@@ -170,7 +170,7 @@ subplot(2,2,plotdat.region)
    plot(Nobs, levels, plotdat.ptype , 'LineWidth', plotdat.linewidth)
    grid
    ax = axis; 
-   axis([ax(1) ax(2) plotdat.ylims])
+   axis([ax(1) ax(2) min(plotdat.ylims) max(plotdat.ylims)])
    set(gca,'YDir', plotdat.ydir)
 
    title( plotdat.title,  'Interpreter','none','fontsize', 12,'FontWeight','bold')
