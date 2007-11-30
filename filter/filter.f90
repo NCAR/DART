@@ -76,7 +76,8 @@ integer, parameter :: PRIOR_DIAG = 0, POSTERIOR_DIAG = 2
 ! Namelist input with default values
 !
 integer  :: async = 0, ens_size = 20
-logical  :: start_from_restart = .false., output_restart = .false.
+logical  :: start_from_restart = .false.
+logical  :: output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
 integer  :: init_time_days    = 0
@@ -108,7 +109,8 @@ character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
 ! Inflation namelist entries follow, first entry for prior, second for posterior
 ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
 integer              :: inf_flavor(2)             = 0
-logical              :: inf_start_from_restart(2) = .false.
+logical              :: inf_initial_from_restart(2)    = .false.
+logical              :: inf_sd_initial_from_restart(2) = .false.
 logical              :: inf_output_restart(2)     = .false.
 logical              :: inf_deterministic(2)      = .true.
 character(len = 129) :: inf_in_file_name(2)       = 'not_initialized',    &
@@ -128,7 +130,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       last_obs_seconds, num_output_state_members, &
                       num_output_obs_members, output_interval, num_groups, outlier_threshold, &
                       input_qc_threshold, output_forward_op_errors, output_timestamps, &
-                      inf_flavor, inf_start_from_restart, &
+                      inf_flavor, inf_initial_from_restart, inf_sd_initial_from_restart, &
                       inf_output_restart, inf_deterministic, inf_in_file_name, &
                       inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial, &
                       inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation
@@ -261,14 +263,16 @@ if(ds) then
 endif
 
 ! Initialize the adaptive inflation module
-call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_start_from_restart(1), &
-   inf_output_restart(1), inf_deterministic(1), inf_in_file_name(1), inf_out_file_name(1), &
-   inf_diag_file_name(1), inf_initial(1), inf_sd_initial(1), inf_lower_bound(1), &
-   inf_upper_bound(1), inf_sd_lower_bound(1), ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
-call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_start_from_restart(2), &
-   inf_output_restart(2), inf_deterministic(2), inf_in_file_name(2), inf_out_file_name(2), &
-   inf_diag_file_name(2), inf_initial(2), inf_sd_initial(2), inf_lower_bound(2), &
-   inf_upper_bound(2), inf_sd_lower_bound(2), ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
+   inf_sd_initial_from_restart(1), inf_output_restart(1), inf_deterministic(1),       &
+   inf_in_file_name(1), inf_out_file_name(1), inf_diag_file_name(1), inf_initial(1),  &
+   inf_sd_initial(1), inf_lower_bound(1), inf_upper_bound(1), inf_sd_lower_bound(1),  &
+   ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, 'Prior')
+call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart(2),  &
+   inf_sd_initial_from_restart(2), inf_output_restart(2), inf_deterministic(2),       &
+   inf_in_file_name(2), inf_out_file_name(2), inf_diag_file_name(2), inf_initial(2),  &
+   inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2), inf_sd_lower_bound(2),  &
+   ens_handle, POST_INF_COPY, POST_INF_SD_COPY, 'Posterior')
 
 ! Initialize the output sequences and state files and set their meta data
 if(my_task_id() == 0) then

@@ -53,6 +53,8 @@ module utilities_mod
 !                       handler routine.  Two optional strings allow the caller
 !                       to provide the subroutine name and some context.
 !
+!      write_time       Writes a timestamp in a standard format.
+!
 ! nsc start 31jan07
 !   idea - add some unit number routine here?
 !   you can extract the filename associated with a fortran unit number
@@ -108,8 +110,9 @@ integer, save :: logfileunit = -1
 ! Namelist input with default values
 integer  :: TERMLEVEL = E_ERR     ! E_ERR All warnings/errors are assumed fatal.
 character(len=129) :: logfilename = 'dart_log.out'
+logical  :: module_details = .true.  ! print svn details about each module
 
-namelist /utilities_nml/TERMLEVEL, logfilename
+namelist /utilities_nml/ TERMLEVEL, logfilename, module_details
 
 contains
 
@@ -122,10 +125,6 @@ contains
    ! integer :: logfileunit -- public module variable
    integer :: iunit, io
 
-   character(len= 8) :: cdate
-   character(len=10) :: ctime
-   character(len= 5) :: zone
-   integer, dimension(8) :: values
    character(len=129) :: lname
 
 
@@ -190,23 +189,16 @@ contains
 
          ! Log the run-time 
 
-         call DATE_AND_TIME(cdate, ctime, zone, values)
-
          if (do_output_flag) then
-         write(logfileunit,*)
-         write(logfileunit,*)'--------------------------------------'
          if ( present(progname) ) then
-            write(logfileunit,*)'Starting program ',trim(adjustl(progname)),&
-                                         '... at YYYY MM DD HH MM SS = '
+               call write_time (logfileunit, label='Starting ', &
+                                string1='Program '//trim(progname))
+               call write_time (             label='Starting ', &
+                                string1='Program '//trim(progname))
          else
-            write(logfileunit,*)'Running  ... at YYYY MM DD HH MM SS = '
+               call write_time (logfileunit, label='Starting ')
+               call write_time (             label='Starting ')
          endif 
-         write(logfileunit,'(17x,i4,5(1x,i2))') values(1), values(2), &
-                           values(3),  values(5), values(6), values(7)
-         if ( values(4) /= -HUGE(0) ) &
-         write(logfileunit,*)'time zone offset is ',values(4),' minutes.'
-         write(logfileunit,*)'--------------------------------------'
-         write(logfileunit,*)
          endif
 
          ! Check to make sure termlevel is set to a reasonable value
@@ -281,6 +273,7 @@ contains
 
       if ( .not. module_initialized ) call initialize_utilities
       if ( .not. do_output_flag) return
+      if ( .not. module_details) return
 
 
       write(logfileunit,*)
@@ -318,54 +311,22 @@ contains
       character(len=*), optional, intent(in) :: string3
       character(len=*),           intent(in) :: pos
 
-      character(len= 8) :: cdate
-      character(len=10) :: ctime
-      character(len= 5) :: zone
       integer, dimension(8) :: values
 
       if ( .not. module_initialized ) call initialize_utilities
       if ( .not. do_output_flag) return
 
-      call DATE_AND_TIME(cdate, ctime, zone, values)
+      if (trim(adjustl(pos)) == 'end') then
+         call write_time (logfileunit, label='Finished ', &
+                          string1=string1, string2=string2, string3=string3)
+         call write_time (             label='Finished ', &
+                          string1=string1, string2=string2, string3=string3)
 
-      ! check to see if values are valid on this system
-
-      if ( any(values /= -HUGE(0)) ) then ! at least one is valid
-
-         SELECT CASE ( pos )
-
-            CASE ( 'end' )
-
-               write(logfileunit,*)
-               write(logfileunit,*)'--------------------------------------'
-               write(logfileunit,*)'Finished ... at YYYY MM DD HH MM SS = '
-               write(logfileunit,'(17x,i4,5(1x,i2))') values(1), values(2), &
-                           values(3),  values(5), values(6), values(7)
-
-               if(present(string1)) write(logfileunit,*)trim(string1)
-               if(present(string2)) write(logfileunit,*)trim(string2)
-               if(present(string3)) write(logfileunit,*)trim(string3)
-               write(logfileunit,*)'--------------------------------------'
-
-               call finalize_utilities
-         
-            CASE DEFAULT
-
-               write(logfileunit,*)
-               write(logfileunit,*)'--------------------------------------'
-               write(logfileunit,*)'Time is YYYY MM DD HH MM SS = '
-               write(logfileunit,'(9x,i4,5(1x,i2))') values(1), values(2), &
-                           values(3),  values(5), values(6), values(7)
-
-               if(present(string1)) write(logfileunit,*)trim(string1)
-               if(present(string2)) write(logfileunit,*)trim(string2)
-               if(present(string3)) write(logfileunit,*)trim(string3)
-
-               if ( values(4) /= -HUGE(0) ) &
-               write(logfileunit,*)'time zone offset is ',values(4),' minutes.'
-               write(logfileunit,*)'--------------------------------------'
-
-         END SELECT
+         call finalize_utilities()
+      else
+         call write_time (logfileunit, & 
+                          string1=string1, string2=string2, string3=string3)
+         call write_time (string1=string1, string2=string2, string3=string3)
           
       endif
 
@@ -784,6 +745,66 @@ end subroutine error_handler
 
 !#######################################################################
 
+   subroutine write_time (unit, label, string1, string2, string3, tz)
+
+! ***  Write the current time to a log file or standard output ***
+!
+!    in: unit number (default is * if not specified)
+!    in: label (default is  "Time is" if not specified)
+!    in: string1,2,3 (no defaults)
+
+   integer,          optional, intent(in) :: unit
+   character(len=*), optional, intent(in) :: label
+   character(len=*), optional, intent(in) :: string1
+   character(len=*), optional, intent(in) :: string2
+   character(len=*), optional, intent(in) :: string3
+   logical,          optional, intent(in) :: tz
+
+
+   integer :: lunit
+   character(len= 8) :: cdate
+   character(len=10) :: ctime
+   character(len= 5) :: zone
+   integer, dimension(8) :: values
+
+   if (present(unit)) then
+      lunit = unit
+   else
+      lunit = 6   ! this should be *
+   endif
+
+   call DATE_AND_TIME(cdate, ctime, zone, values)
+
+   ! give up if no good values were returned
+   if (.not. any(values /= -HUGE(0)) ) return 
+
+   ! ok to proceed
+   write(lunit,*)
+   write(lunit,*)'--------------------------------------'
+   if ( present(label) ) then
+      write(lunit,*) label // '... at YYYY MM DD HH MM SS = '
+   else
+      write(lunit,*) 'Time is  ... at YYYY MM DD HH MM SS = '
+   endif 
+   write(lunit,'(17x,i4,5(1x,i2))') values(1), values(2), &
+                     values(3),  values(5), values(6), values(7)
+
+   if(present(string1)) write(lunit,*)trim(string1)
+   if(present(string2)) write(lunit,*)trim(string2)
+   if(present(string3)) write(lunit,*)trim(string3)
+
+   if (present(tz)) then
+      if ( values(4) /= -HUGE(0) .and. tz) &
+         write(lunit,*)'time zone offset is ',values(4),' minutes.'
+   endif
+
+   write(lunit,*)'--------------------------------------'
+   write(lunit,*)
+
+   end subroutine write_time
+
+!#######################################################################
+
    subroutine set_output (doflag)
 
 ! *** set whether output is written to a log file or simply ignored ***
@@ -996,6 +1017,13 @@ else
       endif
    else
       ! Didn't fall off end so bad entry in the middle of namelist
+      ! TEMP HELP FOR USERS; remove after next release
+      if ((nml_name(1:10) == 'filter_nml') .and. (index(nml_string,'inf_start_from_restart') > 0)) then
+         write(err_string, *) 'inf_start_from_restart obsolete'
+         call error_handler(E_MSG, 'filter_nml: ', err_string, "", "", "")
+         write(err_string, *) 'use inf_initial_from_restart and inf_sd_initial_from_restart'
+         call error_handler(E_MSG, 'filter_nml: ', err_string, "", "", "")
+      endif 
       write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
       if(write_to_logfile) then
          call error_handler(E_ERR, 'check_namelist_read', err_string, &

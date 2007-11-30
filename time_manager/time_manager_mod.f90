@@ -2512,7 +2512,9 @@ type(time_type)   :: read_time
 integer           :: secs, days, ios
 character(len=32) :: fileformat
 
-character(len=128) :: str1
+character(len=128) :: str1, filename
+logical :: is_named
+integer :: rc
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -2534,9 +2536,14 @@ if ( ios /= 0 ) then
       return
    endif
 
+   ! try to extract filename associated with unit to give context
+   ! for which file we are trying to read from.
+   inquire(file_unit, named=is_named, name=filename, iostat=rc)
+   if ((rc /= 0) .or. (.not. is_named)) filename = 'unknown'
+
    ! Otherwise, read error is fatal, print message and stop
    call dump_unit_attributes(file_unit)   ! TJH DEBUG statement
-   write(str1,*)'read status is',ios
+   write(str1,*)'read returned status ', ios, 'from input file ', trim(filename)
    call error_handler(E_ERR,'read_time',str1,source,revision,revdate)
 else
    read_time = set_time(secs, days)
@@ -2547,34 +2554,60 @@ end function read_time
 
 
 
-subroutine write_time(file_unit, time, form)
+subroutine write_time(file_unit, time, form, ios)
 !------------------------------------------------------------------------
 ! The time is expected to be written as either 
 ! an unformatted binary (form == "unformatted")
 ! or free-format ascii (form /= "unformatted")
+! If ios is specified, do not call error handler here, but return so
+! a better context message can be generated.
 
 implicit none
 
-integer,          intent(in)           :: file_unit
-type(time_type),  intent(in)           :: time
-character(len=*), intent(in), optional :: form
+integer,          intent(in)            :: file_unit
+type(time_type),  intent(in)            :: time
+character(len=*), intent(in), optional  :: form
+integer,          intent(out), optional :: ios
 
-integer           :: secs, days
+integer           :: secs, days, io
 character(len=32) :: fileformat
+character(len=129) :: errstring, filename
+logical :: is_named
+integer :: rc
 
 if ( .not. module_initialized ) call time_manager_init
 
 fileformat = "ascii"   ! supply default
 if (present(form)) fileformat = trim(adjustl(form))
+io = 0
 
 call get_time(time, secs, days)
 
 SELECT CASE (fileformat)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
-      write(file_unit) secs, days
+      write(file_unit, iostat = io) secs, days
    CASE DEFAULT
-      write(file_unit,'(i6,1x,i10)') secs, days
+      write(file_unit,'(i6,1x,i10)', iostat = io) secs, days
 END SELECT
+
+! return code for write.  0 = good, anything else bad.
+if (present(ios)) then
+   ios = io
+endif
+
+! if the caller is not asking for the return code, error out here.
+! otherwise, return so caller can print out a better error message
+! about which time it is trying to write.
+if ((io /= 0) .and. (.not. present(ios))) then
+
+   ! try to extract filename associated with unit to give context
+   ! for which file we are trying to write to.
+   inquire(file_unit, named=is_named, name=filename, iostat=rc)
+   if ((rc /= 0) .or. (.not. is_named)) filename = 'unknown'
+
+   write(errstring,*)'write returned status ', io, 'from file ', trim(filename)
+   call error_handler(E_ERR,'write_time',errstring,source,revision,revdate)
+endif
 
 end subroutine write_time
 

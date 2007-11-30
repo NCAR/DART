@@ -166,7 +166,8 @@ smoother_mod
    output_inflation,
      
    inf_flavor,
-   inf_start_from_restart,
+   inf_initial_from_restart,
+   inf_sd_initial_from_restart,
    inf_output_restart,
    inf_deterministic,
    inf_in_file_name,
@@ -314,9 +315,22 @@ being for the posterior inflation.
                         3&nbsp;=&nbsp;fixed&nbsp;state&nbsp;space. 
                         Default: (/0, 0/)</TD></TR>
 
- <TR><!--contents--><TD valign=top>inf_start_from_restart</TD>
+ <TR><!--contents--><TD valign=top>inf_initial_from_restart</TD>
      <!--  type  --><TD>logical array (len=2)</TD>
-     <!--descript--><TD>If true, get initial values for inflation from restart file.
+     <!--descript--><TD>If true, get initial mean values for inflation from restart file.
+                        (Replaces inf_start_from_restart, which applied to
+                        both mean and standard deviation.  
+                        They are now individually controllable)
+                        If false, use the corresponding namelist value inf_initial.
+                        Default: (/.false., .false /)</TD></TR>
+
+ <TR><!--contents--><TD valign=top>inf_sd_initial_from_restart</TD>
+     <!--  type  --><TD>logical array (len=2)</TD>
+     <!--descript--><TD>If true, get initial standard deviation values for inflation from restart file.
+                        (Replaces inf_start_from_restart, which applied to
+                        both mean and standard deviation.  
+                        They are now individually controllable.)
+                        If false, use the corresponding namelist value inf_sd_initial.
                         Default: (/.false., .false /)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_output_restart</TD>
@@ -400,6 +414,11 @@ being for the posterior inflation.
      <!--  type  --><TD><b>defunct</b></TD>
      <!--descript--><TD>The ensemble spread is now always in the 
                         output observation sequence file.</TD></TR>
+
+ <TR><!--contents--><TD valign=top>inf_start_from_restart</TD>
+     <!--  type  --><TD><b>defunct</b></TD>
+     <!--descript--><TD>The mean and standard deviation now have separate
+                        namelist controls.</TD></TR>
  </TABLE>
 
  <P>

@@ -50,7 +50,7 @@ type adaptive_inflate_type
    private
    ! Flavor can be 0:none, 1:obs_inflate, 2:varying_ss_inflate, 3:single_ss_inflate
    integer               :: inflation_flavor, obs_diag_unit
-   logical               :: start_from_restart, output_restart, deterministic
+   logical               :: output_restart, deterministic
    character(len = 129)  :: in_file_name, out_file_name, diag_file_name
    real(r8)              :: inflate, sd, sd_lower_bound, inf_lower_bound, inf_upper_bound
    ! Include a random sequence type in case non-deterministic inflation is used
@@ -69,16 +69,17 @@ contains
 
 !------------------------------------------------------------------
 
-subroutine adaptive_inflate_init(inflate_handle, inf_flavor, start_from_restart, &
-   output_restart, deterministic, in_file_name, out_file_name, diag_file_name, &
-   inf_initial, sd_initial, inf_lower_bound, inf_upper_bound, sd_lower_bound, &
-   ens_handle, ss_inflate_index, ss_inflate_sd_index)
+subroutine adaptive_inflate_init(inflate_handle, inf_flavor, mean_from_restart, &
+   sd_from_restart, output_restart, deterministic, in_file_name, out_file_name, &
+   diag_file_name, inf_initial, sd_initial, inf_lower_bound, inf_upper_bound, &
+   sd_lower_bound, ens_handle, ss_inflate_index, ss_inflate_sd_index, label)
 
 ! Initializes an adaptive_inflate_type 
 
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
 integer,                     intent(in)    :: inf_flavor
-logical,                     intent(in)    :: start_from_restart
+logical,                     intent(in)    :: mean_from_restart
+logical,                     intent(in)    :: sd_from_restart
 logical,                     intent(in)    :: output_restart
 logical,                     intent(in)    :: deterministic
 character(len = *),          intent(in)    :: in_file_name
@@ -86,15 +87,58 @@ character(len = *),          intent(in)    :: out_file_name
 character(len = *),          intent(in)    :: diag_file_name
 real(r8),                    intent(in)    :: inf_initial, sd_initial
 real(r8),                    intent(in)    :: inf_lower_bound, inf_upper_bound
-real(r8),                    intent(in)    ::  sd_lower_bound
+real(r8),                    intent(in)    :: sd_lower_bound
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
+character(len = *),          intent(in)    :: label
 
-integer :: restart_unit
+character(len = 128) :: det, tadapt, sadapt, akind
+integer :: restart_unit, io
+
+! Write to log file what kind of inflation is being used.
+if(deterministic) then
+  det = 'spread,'
+else
+  det = 'random-noise,'
+endif
+if (sd_initial > inf_lower_bound) then
+   det = trim(det) // ' covariance adaptive,'
+endif
+if (inf_lower_bound < 1.0_r8) then
+endif
+if (sd_initial /= 0.0_r8) then
+  tadapt = ' time-adaptive,'
+else
+  tadapt = ' time-constant,'
+endif
+
+select case(inf_flavor)
+   case (0)
+      det = ''
+      tadapt = ''
+      sadapt = ''
+      akind = 'No '
+   case (1)
+      sadapt = ''
+      akind = ' observation-space'
+   case (2)
+      sadapt = ' spatially-varying,'
+      akind = ' state-space '
+   case (3)
+      sadapt = ' spatially-constant,'
+      akind = ' state-space'
+   case default
+      write(errstring, *) 'Illegal inflation value for ', label
+      call error_handler(E_ERR, 'adaptive_inflate_init', errstring, source, revision, revdate)
+end select
+! once this is vetted to be correct, uncomment these lines.  the intent is to say
+! in plain english what kind of inflation was selected.
+!write(errstring, '(6A)') &
+!   trim(det), trim(tadapt), trim(sadapt), trim(akind), ' inflation used for ', trim(label)
+!call error_handler(E_MSG, 'adaptive_inflate_init:', errstring, source, revision, revdate)
 
 ! Load up the structure first to keep track of all details of this inflation type
 inflate_handle%inflation_flavor   = inf_flavor
-inflate_handle%start_from_restart = start_from_restart
 inflate_handle%output_restart     = output_restart
 inflate_handle%deterministic      = deterministic
 inflate_handle%in_file_name       = in_file_name
@@ -141,14 +185,21 @@ if(inf_flavor >= 2) then
    endif
 
    ! Read in initial values from file OR get from subroutine arguments
-   if(start_from_restart) then
+   ! If either mean, sd, or both are to be read from the restart file, read them in.
+   ! Then test to see if either are to be overwritten, and do it.
+   if(mean_from_restart .or. sd_from_restart) then
+      ! the .true. below is 'start_from_restart', which tells the read routine to
+      ! read in the full number of ensemble members requested (as opposed to reading
+      ! in one and perturbing it).
       call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
-         start_from_restart, in_file_name, force_single_file = .true.)
-   else
+         .true., in_file_name, force_single_file = .true.)
+   endif
+   ! If one or both are false, we need to transpose and then set the values
+   if (.not. mean_from_restart .or. .not. sd_from_restart) then
       ! Get initial values from higher level; requires pe's to have all copies of some vars
       call all_vars_to_all_copies(ens_handle)
-      ens_handle%copies(ss_inflate_index, :)    = inf_initial
-      ens_handle%copies(ss_inflate_sd_index, :) =  sd_initial
+      if (.not. mean_from_restart) ens_handle%copies(ss_inflate_index, :)    = inf_initial
+      if (.not.   sd_from_restart) ens_handle%copies(ss_inflate_sd_index, :) = sd_initial
       call all_copies_to_all_vars(ens_handle)
    endif
 
@@ -159,13 +210,29 @@ else if(inf_flavor == 1) then
 
    ! Initialize observation space inflation values from restart files
    ! Only values are inflation, inflation_sd
-   if(start_from_restart) then
+   if(mean_from_restart .or. sd_from_restart) then
       ! Open the file
       restart_unit = get_unit()
-      open(unit = restart_unit, file = in_file_name, action = 'read', form = 'formatted')
-      read(restart_unit, *) inflate_handle%inflate, inflate_handle%sd
+      open(unit = restart_unit, file = in_file_name, action = 'read', &
+           form = 'formatted', iostat = io)
+      if (io /= 0) then
+         write(errstring, *) 'unable to open inflation restart file ', &
+                              trim(in_file_name), ' for reading'
+         call error_handler(E_ERR, 'adaptive_inflate_init', &
+            errstring, source, revision, revdate)
+      endif
+      read(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
+      if (io /= 0) then
+         write(errstring, *) 'unable to read inflation restart values from ', &
+                              trim(in_file_name)
+         call error_handler(E_ERR, 'adaptive_inflate_init', &
+            errstring, source, revision, revdate)
+      endif
       close(restart_unit)
    endif
+   ! If using the namelist values, set (or overwrite) them here.
+   if (.not. mean_from_restart) inflate_handle%inflate = inf_initial
+   if (.not.   sd_from_restart) inflate_handle%sd      = sd_initial
 
 endif
 
@@ -180,7 +247,7 @@ type(adaptive_inflate_type), intent(in)    :: inflate_handle
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
 
-integer :: restart_unit
+integer :: restart_unit, io
 
 if(inflate_handle%output_restart) then
    ! Use the ensemble manager to output restart for state space (flavors 2 or 3)
@@ -202,8 +269,20 @@ if(inflate_handle%output_restart) then
       ! Open the restart file
       restart_unit = get_unit()
       open(unit = restart_unit, file = inflate_handle%out_file_name, &
-         action = 'write', form = 'formatted')
-      write(restart_unit, *) inflate_handle%inflate, inflate_handle%sd
+         action = 'write', form = 'formatted', iostat = io)
+      if (io /= 0) then
+         write(errstring, *) 'unable to open inflation restart file ', &
+                              trim(inflate_handle%out_file_name), ' for writing'
+         call error_handler(E_ERR, 'adaptive_inflate_end', &
+            errstring, source, revision, revdate)
+      endif
+      write(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
+      if (io /= 0) then
+         write(errstring, *) 'unable to write into inflation restart file ', &
+                              trim(inflate_handle%out_file_name)
+         call error_handler(E_ERR, 'adaptive_inflate_end', &
+            errstring, source, revision, revdate)
+      endif
       close(unit = restart_unit)
    endif
 endif

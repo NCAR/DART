@@ -262,10 +262,10 @@ call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revdate", re
               'init_diag_output', 'put_att assim_model_revdate '//trim(ncFileID%fname))
 
 if (present(lagID)) then
-   call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "lag", lagID ), 'init_diag_output', &
-                 'put_att lag '//trim(ncFileID%fname))
+   call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "lag", lagID ), &
+                 'init_diag_output', 'put_att lag '//trim(ncFileID%fname))
 
-write(*,*)'Got this far ... lag is present'
+   write(*,*)'init_diag_output detected Lag is present'
 
 endif 
 
@@ -347,9 +347,9 @@ endif
 call nc_check(nf90_sync(ncFileID%ncid), 'init_diag_output', 'sync '//trim(ncFileID%fname))               
 !-------------------------------------------------------------------------------
 
-write(logfileunit,*)trim(ncFileID%fname), ' is ncid ',ncFileID%ncid
-write(logfileunit,*)'ncFileID%NtimesMAX is ',ncFileID%NtimesMAX
-write(logfileunit,*)'ncFileID%Ntimes    is ',ncFileID%Ntimes
+!write(logfileunit,*)trim(ncFileID%fname), ' is ncid ',ncFileID%ncid
+!write(logfileunit,*)'ncFileID%NtimesMAX is ',ncFileID%NtimesMAX
+!write(logfileunit,*)'ncFileID%Ntimes    is ',ncFileID%Ntimes
 
 end function init_diag_output
 
@@ -385,20 +385,41 @@ function init_diag_input(file_name, global_meta_data, model_size, copies_of_fiel
 
 implicit none
 
-integer :: init_diag_input
+integer :: init_diag_input, io
 character(len = *), intent(in)  :: file_name
 character(len = *), intent(out) :: global_meta_data
 integer,            intent(out) :: model_size, copies_of_field_per_time
 
 init_diag_input = get_unit()
-open(unit = init_diag_input, file = file_name)
-read(init_diag_input, *) global_meta_data
+open(unit = init_diag_input, file = file_name, action = 'read', iostat = io)
+if (io /= 0) then
+   write(msgstring,*) 'unable to open diag input file ', trim(file_name), ' for reading'
+   call error_handler(E_ERR,'init_diag_input',msgstring,source,revision,revdate)
+endif
+
+! Read meta data
+read(init_diag_input, *, iostat = io) global_meta_data
+if (io /= 0) then
+   write(msgstring,*) 'unable to read expected character string from diag input file ', &
+                       trim(file_name), ' for global_meta_data'
+   call error_handler(E_ERR,'init_diag_input',msgstring,source,revision,revdate)
+endif
 
 ! Read the model size
-read(init_diag_input, *) model_size
+read(init_diag_input, *, iostat = io) model_size
+if (io /= 0) then
+   write(msgstring,*) 'unable to read expected integer from diag input file ', &
+                       trim(file_name), ' for model_size'
+   call error_handler(E_ERR,'init_diag_input',msgstring,source,revision,revdate)
+endif
 
 ! Read the number of copies of field per time
-read(init_diag_input, *) copies_of_field_per_time
+read(init_diag_input, *, iostat = io) copies_of_field_per_time
+if (io /= 0) then
+   write(msgstring,*) 'unable to read expected integer from diag input file ', &
+                       trim(file_name), ' for copies_of_field_per_time'
+   call error_handler(E_ERR,'init_diag_input',msgstring,source,revision,revdate)
+endif
 
 end function init_diag_input
 
@@ -419,20 +440,30 @@ type(location_type), intent(out) :: location(model_size_out)
 character(len = *) :: meta_data_per_copy(num_copies)
 
 character(len=129) :: header
-integer :: i, j
+integer :: i, j, io
 
 ! Should have space checks, etc here
 ! Read the meta data associated with each copy
 do i = 1, num_copies
-   read(file_id, *) j, meta_data_per_copy(i)
+   read(file_id, *, iostat = io) j, meta_data_per_copy(i)
+   if (io /= 0) then
+      write(msgstring,*) 'error reading metadata for copy ', i, ' from diag file'
+      call error_handler(E_ERR,'get_diag_input_copy_meta_data', &
+                         msgstring,source,revision,revdate)
+   endif
 end do
 
 ! Will need other metadata, too; Could be as simple as writing locations
-read(file_id, *) header
+read(file_id, *, iostat = io) header
+if (io /= 0) then
+   write(msgstring,*) 'error reading header from diag file'
+   call error_handler(E_ERR,'get_diag_input_copy_meta_data', &
+                      msgstring,source,revision,revdate)
+endif
 if(header /= 'locat') then
    write(msgstring,*)'expected to read "locat" got ',trim(adjustl(header))
    call error_handler(E_ERR,'get_diag_input_copy_meta_data', &
-        msgstring, source, revision, revdate)
+                      msgstring, source, revision, revdate)
 endif
 
 ! Read in the locations
@@ -696,25 +727,49 @@ real(r8),        intent(in)           :: model_state(:)
 integer,         intent(in)           :: funit
 type(time_type), optional, intent(in) :: target_time
 
-integer :: i
+integer :: i, io, rc
 character(len = 16) :: open_format
+character(len=128) :: filename
+logical :: is_named
 
 ! Figure out whether the file is opened FORMATTED or UNFORMATTED
 inquire(funit, FORM=open_format)
 
+! assume success
+io = 0
+
 ! Write the state vector
 SELECT CASE (open_format)
    CASE ("unf","UNF","unformatted","UNFORMATTED")
-      if(present(target_time)) call write_time(funit, target_time, "unformatted")
-      call write_time(funit, model_time, "unformatted")
-      write(funit) model_state
+      if(present(target_time)) call write_time(funit, target_time, "unformatted", ios=io)
+      if (io /= 0) goto 10
+      call write_time(funit, model_time, "unformatted", ios=io)
+      if (io /= 0) goto 10
+      write(funit, iostat = io) model_state
+      if (io /= 0) goto 10
    CASE DEFAULT
-      if(present(target_time)) call write_time(funit, target_time)
-      call write_time(funit, model_time)
+      if(present(target_time)) call write_time(funit, target_time, ios=io)
+      if (io /= 0) goto 10
+      call write_time(funit, model_time, ios=io)
+      if (io /= 0) goto 10
       do i = 1, size(model_state)
-         write(funit, *) model_state(i)
+         write(funit, *, iostat = io) model_state(i)
+         if (io /= 0) goto 10
       end do
 END SELECT  
+
+! come directly here on error. 
+10 continue
+
+! if error, use inquire function to extract filename associated with
+! this fortran unit number and use it to give the error message context.
+if (io /= 0) then
+   inquire(funit, named=is_named, name=filename, iostat=rc)
+   if ((rc /= 0) .or. (.not. is_named)) filename = 'unknown file'
+   write(msgstring,*) 'error writing to restart file ', trim(filename)
+   call error_handler(E_ERR,'awrite_state_restart',msgstring,source,revision,revdate)
+endif
+
 
 end subroutine awrite_state_restart
 
@@ -773,7 +828,7 @@ SELECT CASE (open_format)
       read(funit,*,iostat=ios) model_state
 END SELECT  
 
-! If the read fails ... dump diagnostics.
+! If the model_state read fails ... dump diagnostics.
 if ( ios /= 0 ) then
    write(msgstring,*)'dimension of model state is ',size(model_state)
    call error_handler(E_MSG,'aread_state_restart',msgstring,source,revision,revdate)
@@ -810,13 +865,18 @@ function open_restart_write(file_name, override_write_format)
 character(len = *), intent(in) :: file_name
 character(len = *), optional, intent(in) :: override_write_format
 
-integer :: open_restart_write
+integer :: open_restart_write, io
 
 open_restart_write = get_unit()
 if(present(override_write_format)) then
-   open(unit = open_restart_write, file = file_name, form = override_write_format)
+   open(unit = open_restart_write, file = file_name, form = override_write_format, &
+        iostat = io)
 else
-open(unit = open_restart_write, file = file_name, form = write_format)
+   open(unit = open_restart_write, file = file_name, form = write_format, iostat = io)
+endif
+if (io /= 0) then
+   write(msgstring,*) 'unable to open restart file ', trim(file_name), ' for writing'
+   call error_handler(E_ERR,'open_restart_write',msgstring,source,revision,revdate)
 endif
 
 end function open_restart_write

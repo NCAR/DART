@@ -115,9 +115,9 @@ if ( .not. module_initialized ) call static_init_smoother()
 
 ! Initialize a null adaptive_inflate type since inflation is not done at lags
 ! NOTE: Using ens_handle here (not lag_handle) so it doesn't die for 0 lag choice
-if(num_lags > 0) call adaptive_inflate_init(lag_inflate, 0, .false., .false., .true., &
-   'no_lag_inflate', 'no_lag_inflate', 'no_lag_inflate', 1.0_r8, 0.0_r8, 1.0_r8, &
-   1.0_r8, 0.0_r8, ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+if(num_lags > 0) call adaptive_inflate_init(lag_inflate, 0, .false., .false., .false., &
+   .true., 'no_lag_inflate', 'no_lag_inflate', 'no_lag_inflate', 1.0_r8, 0.0_r8,       &
+   1.0_r8, 1.0_r8, 0.0_r8, ens_handle, POST_INF_COPY, POST_INF_SD_COPY, "Lag")
 
 end subroutine init_smoother
 
