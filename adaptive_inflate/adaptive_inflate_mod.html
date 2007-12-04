@@ -348,14 +348,15 @@ are written with calls from filter.f90.
  <A NAME="adaptive_inflate_init"></A>
  <P></P><HR><P></P>
  <div class=routine>
- <em class=call> call adaptive_inflate_init(inflate_handle,inf_flavor,start_from_restart,
-output_restart,deterministic,in_file_name,out_file_name,diag_file_name,inf_initial,
-sd_initial,inf_lower_bound,inf_upper_bound,sd_lower_bound,
-ens_handle,ss_inflate_index,ss_inflate_sd_index) </em>
+ <em class=call> call adaptive_inflate_init(inflate_handle, inf_flavor, mean_from_restart, 
+   sd_from_restart, output_restart, deterministic, in_file_name, out_file_name, 
+   diag_file_name, inf_initial, sd_initial, inf_lower_bound, inf_upper_bound, 
+   sd_lower_bound, ens_handle, ss_inflate_index, ss_inflate_sd_index, label) </em>
  <pre>
  type(adaptive_inflate_type), intent(inout) :: <em class=code>inflate_handle</em>
  integer, intent(in)                        :: <em class=code>inf_flavor</em>
- logical, intent(in)                        :: <em class=code>start_from_restart</em>
+ logical, intent(in)                        :: <em class=code>mean_from_restart</em>
+ logical, intent(in)                        :: <em class=code>sd_from_restart</em>
  logical, intent(in)                        :: <em class=code>output_restart</em>
  logical, intent(in)                        :: <em class=code>deterministic</em>
  character(len=*), intent(in)               :: <em class=code>in_file_name</em>
@@ -369,6 +370,7 @@ ens_handle,ss_inflate_index,ss_inflate_sd_index) </em>
  type(ensemble_type), intent(inout)         :: <em class=code>ens_handle</em>
  integer, intent(in)                        :: <em class=code>ss_inflate_index</em>
  integer, intent(in)                        :: <em class=code>ss_inflate_sd_index</em>
+ character(len=*), intent(in)               :: <em class=code>label</em>
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
@@ -379,10 +381,12 @@ ens_handle,ss_inflate_index,ss_inflate_sd_index) </em>
      <TD>Handle for the inflation descriptor being initialized.</TD></TR>
  <TR><TD valign=top><em class=code>inf_flavor&nbsp; &nbsp; </em></TD>
      <TD>Type of inflation, 1=obs_inflate, 2=varying_ss_inflate, 3=single_ss_inflate.</TD></TR>
- <TR><TD valign=top><em class=code>start_from_restart&nbsp; &nbsp; </em></TD>
-     <TD>True if inflation values to be read from restart file.</TD></TR>
+ <TR><TD valign=top><em class=code>mean_from_restart&nbsp; &nbsp; </em></TD>
+     <TD>True if inflation mean values to be read from restart file.</TD></TR>
+ <TR><TD valign=top><em class=code>sd_from_restart&nbsp; &nbsp; </em></TD>
+     <TD>True if inflation standard deviation values to be read from restart file.</TD></TR>
  <TR><TD valign=top><em class=code>output_restart&nbsp; &nbsp; </em></TD>
-     <TD>True if an inflatio restart file is to be output.</TD></TR>
+     <TD>True if an inflation restart file is to be output.</TD></TR>
  <TR><TD valign=top><em class=code>deterministic&nbsp; &nbsp; </em></TD>
      <TD>True if deterministic inflation is to be done.</TD></TR>
  <TR><TD valign=top><em class=code>in_file_name&nbsp; &nbsp; </em></TD>
@@ -407,6 +411,8 @@ ens_handle,ss_inflate_index,ss_inflate_sd_index) </em>
      <TD>Index op copy in ensemble storage for inflation value.</TD></TR>
  <TR><TD valign=top><em class=code>ss_inflate_sd_index&nbsp; &nbsp; </em></TD>
      <TD>Index of copy in ensemble storage for inflation standard deviation.</TD></TR>
+ <TR><TD valign=top><em class=code>label&nbsp; &nbsp; </em></TD>
+     <TD>Character label to be used in diagnostic output (e.g. 'Prior', 'Posterior').</TD></TR>
  </TABLE>
  <P>
  <!--================================================================-->
