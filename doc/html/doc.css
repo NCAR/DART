@@ -1,6 +1,7 @@
 body{background:white;
-      margin-left :7%;
-      margin-right:7%;
+      margin-left :5%;
+      margin-right:5%;
+      font-family: Verdana, Arial, Helvetica, sans-serif;
       font-weight:normal;}
 
 h1,h2,h3,h4,h5,h6 { margin-left: -4%; color:Black;}
