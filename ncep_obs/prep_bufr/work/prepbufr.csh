@@ -156,7 +156,7 @@ while ( $day <= $last )
       endif
 
       if ($daily == 'yes') then
-         cat prepqm.out >> temp_obs
+         cat prepqm.out >>! temp_obs
          rm prepqm.out
       else
          mv -v prepqm.out ${BUFR_dir}/${year}${mm}/temp_obs.${year}${mm}${dd}${hh}
