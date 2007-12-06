@@ -1,0 +1,41 @@
+&prep_bufr_nml 
+ obs_window     = 24.0,
+ obs_window_cw  = 24.0,
+/
+
+
+! obs_window     = 0.80,
+! obs_window     = 1.50,
+! otype_use      = 120.0, 130.0, 131.0, 132.0, 133.0, 180.0,
+!                  181.0, 182.0, 220.0, 221.0, 230.0, 231.0,
+!                  232.0, 233.0, 242.0, 243.0, 245.0, 246.0,
+!                  252.0, 253.0, 255.0, 280.0, 281.0, 282.0,
+! qctype_use     = 1, 2, 3, 4, 9, 15  /
+
+&ncepobs_nml
+   year = 2006,
+   month = 08,
+   day = 1,
+   tot_days = 31,
+   max_num = 1000000,
+   ObsBase = 'temp_obs.',
+   select_obs  = 0,
+   ADPUPA = .true.,
+   AIRCAR = .true.,
+   AIRCFT = .true.,
+   SATEMP = .true.,
+   SFCSHP = .true.,
+   ADPSFC = .true.,
+   SATWND = .true.,
+   obs_U  = .true.,
+   obs_V  = .true.,
+   obs_T  = .true.,
+   obs_PS = .true.,
+   obs_QV = .true.,
+   daily_file = .true.,
+   lat1 = -89.99,
+   lat2 =  89.99,
+   lon1 =   0.0,
+   lat2 = 360.0 /
+
+
