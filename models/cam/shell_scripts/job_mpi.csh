@@ -1162,7 +1162,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 #   eval submit ${job_i} >! batchsubmit$$
 # The beauty of hard-wiring
    echo "before bsub job_i = $job_i"                 >> $MASTERLOG
-   #bsub < ${job_i} >! batchsubmit$$
+   bsub < ${job_i} >! batchsubmit$$
 
 
 if ($?PBS_O_WORKDIR) then
