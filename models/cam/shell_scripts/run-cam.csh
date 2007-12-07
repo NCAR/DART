@@ -6,10 +6,10 @@
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next few lines under version control, do not edit>
-# $URL: $
-# $Id: $
-# $Revision: $
-# $Date: $
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
 
 # #sl marks streamlining of 8/31/05; whole thing is rewritten
 
@@ -198,6 +198,7 @@ ls -l *.i.*
 # in DART caminput and clminput need to be saved for each "element" of the ensemble
 mv *cam2.i.* $wrkdir/caminput.nc
 mv *clm2.i.* $wrkdir/clminput.nc
+# mv *.h0.* ${CENTRALDIR}/cam_phis_good.nc
 rm *.h* *.r*
 echo ' '
 ls -l *input*
