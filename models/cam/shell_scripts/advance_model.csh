@@ -16,7 +16,7 @@
 #
 # Script to advance one ensemble member one filter "time step"
 # when the model advance is executed as a separate process.
-# Called by the filter executable.
+# Called by the filter executable (for async=2 or 4)
 # Calls run-cam.csh, the CAM execution script.
 # Calls 3 translation routines to translate time and model state.
 # Runs on one of the compute nodes allotted to the filter executable
@@ -147,17 +147,17 @@ while($state_copy <= $num_states)
        ${COPY} ${clm_init}0.nc clminput.nc
    endif
    
-   ${LINK} ${CENTRALDIR}/topog_file.nc .
+   ${LINK} ${CENTRALDIR}/cam_phis.nc .
 
    # create 'times' file for CAM from DART times in assim_model_state_ic#
    # This info is passed to CAM through the creation of its namelist
    if (-e temp_ic && -e ${CENTRALDIR}/trans_time) then
       echo 'advance_model; executing trans_time '`date` >> cam_out_temp
       ${CENTRALDIR}/trans_time                          >> cam_out_temp
-      ls -lt >> cam_out_temp
+      ls -lt                                            >> cam_out_temp
       ${COPY} times ${CENTRALDIR}
    else
-      echo "ERROR: either ic file $element or trans_time not available for trans_time"
+      echo "ERROR: either ic file $element or trans_time not available for trans_time" >> cam_out_temp
       exit 1
    endif
    
