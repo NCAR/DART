@@ -11,6 +11,121 @@ module model_mod
 ! $Revision$
 ! $Date$
  
+!----------------------------------------------------------------------
+! purpose: interface between CAM and DART
+!              Translate to/from state_vector and caminput.nc,
+!              Initialize model,
+!              Write out CAM fields to Prior and Posterior_Diag.nc,
+!              Generate expected obs from model state (model_interpolate)
+!              Find state variables (or obs) that are close to a given base observation.
+!                  (get_close_obs)
+!              Provide randomly perturbed fields for initial ensemble in filter.(pert_model_state)
+
+!
+! method: trans_pv_sv reads CAM 'initial' file (netCDF format),
+!         reforms fields into a state vector.
+!         DART assimilates obs, modifying the values of the state vector.
+!         This requires get_close_obs to find state variables to be modified by each ob.
+!         Reform state vector back into CAM fields via trans_sv_pv.
+!         Replace those fields on the CAM initial file with the new values,
+!         preserving all other information on the file.
+!         Also read hybrid coordinate coefficients from CAM input file (for plevs_cam)
+!
+! author: Kevin Raeder 2/14/03  and 8/1/03
+!         based on prog_var_to_vector and vector_to_prog_var by Jeff Anderson
+!
+! modified: Tim Hoar 02 Sep 03 
+!         nc_write_model_atts, nc_write_model_vars now write out "prognostic"
+!         files instead of a nondescript state variable vector glom
+!
+! augmented; Kevin Raeder 7/1/04 for CAM3.0 and to use namelist input for
+!         lists of fields to include in state vector.
+!         'CAM3' marks changes
+!         Later;?
+!         Also; read field attributes from netcdf file and write them out 
+!         from nc_write_model_atts, instead of hard-coded there.
+!
+! augmented; Kevin Raeder (code from Hui Liu and CAM) 4/2006 to add vertical interpolation
+!         in height.  Also add checks of requested fields for interpolation.
+!
+! mostly rewritten: Kevin Raeder  9-10/2006 to merge FV and eulerian versions,
+!         and lay groundwork for future, non-rectangular coordinate systems.
+!         Also adapt to MPI mode of DART.
+
+!     OVERVIEW; 
+!     
+!     This module interfaces with the MPI version of DART.  
+!
+!        model_get_close_states has been replaced with new interfaces, including get_close_obs, 
+!     which uses location_mod:get_close_obs.  This allows model_mod to use the 
+!     "generic efficient search algorithm" in DART to find the obs/state variables that
+!     are close to the given base obs, and to modify the distances according to any desired 
+!     criteria (obs_kinds, height above a threshold, etc).  
+!
+!     During the assimilation stage, only a piece of the state vector is available to each 
+!     process, and each process calls parts of model_mod.  In order to handle the conversion 
+!     of vertical coordinates of obs and/or state variables into a consistent coordinate, 
+!     an entire state vector is needed, so the ensemble mean is passed to model_mod before 
+!     the assimilation starts.  This is NOT done for model_interpolate; the whole vector is
+!     available, and should be used.  All locations are now converted to a standard coordinate 
+!     (pressure), instead of always converting the state vertical location to that of the ob.
+!     The highest_obs_level and ..._height_m variables are derived from highest_obs_pressure_mb
+!     namelist variable.
+!     
+!     This module has been rewritten to handle both the eulerian and finite volume core versions 
+!     of CAM (they have different grids), and hopefully the semi-lagrangian dynamics core, 
+!     and even lay some groundwork for future dynamical cores (such as HOMME) which are column 
+!     oriented, with irregular horizontal grids.
+!     
+!     The coordinate orders of fields stored in various forms have also been simplified.
+!     For example; various vintages of CAM 3D fields may be read in with (lon, lat, lev) or 
+!     (lon, lev, lat).  These are uniformly converted to (lev, lon, lat) for use in model_mod.
+!     This latter form is different than pre MPI model_mods.  Then such fields are stored in
+!     the state vector with the same coordinate order.  They are converted back to the modern
+!     CAM coordinate order when written to caminput.nc files.
+!     
+!     The organization of the state vector has been changed from the B-grid style to a field 
+!     and column oriented form; see prog_var_to_vector and vector_to_prog_var.  This allows 
+!     each field to have different dimensions than all the others.  The fields are still grouped 
+!     by the rank of the array used to store them in CAM form; 0d, 1d, 2d, and 3d.  In the 3d case 
+!     all the values of a field for one column are stored contiguously, to speed up vertical 
+!     interpolations and calculations of heights on model levels.  The dimensions of each field 
+!     are stored in globally available arrays ([sf]_dim_#d) and there are functions and subroutines 
+!     for accessing the needed information (see ./model_mod.html).
+!     
+!     Observations on pressure levels or heights require various pieces of the state vector
+!     in order to calculate the expected observation.  Just the surface pressure is needed for 
+!     the former, while PS plus the temperature and moisture profiles are needed for the heights.  
+!     These may be needed on the regular A-grid (thermodynamic variables) and grids staggered 
+!     relative to the A-grid.   Currently, PS for the A-grid and the 2 staggered grids is 
+!     stored for global access and pressures and heights on model levels are (re)calculated
+!     as needed.  In the future it may be deemed worthwhile to store the 3d pressures and 
+!     heights on the 3 grids, but for now that seemed like too much memory to be worthwhile.
+!
+!     It also corrects a misuse of TYPE_s from pre-MPI versions; those model_mod specific 
+!     identifiers are no longer passed back to filter through get_state_meta_data.  Instead, 
+!     DART KIND_ identifiers are used.  If a user wants to add new TYPE_s to the state vector, 
+!     then more KIND_s may be needed in the obs_kind_mod and the 'use obs_kind_mod' statement.
+
+!     The coordinates of CAM (lats, lons, etc.) and their dimensions  and attributes are 
+!     now read into globally accessible data structures (see grid_1d_type).
+!     
+!     MODULE ORGANIZATION (search for the following strings to find the corresponding section)
+!    
+!         'use' statements
+!          Global storage for describing cam model class
+!          Namelist variables with default values 
+!          Derived parameters
+!          static_init_model section
+!          Module I/O to/from DART and files
+!          model_interpolate section
+!          Vector-field translations
+!          get_close_obs section
+!          Utility routines; called by several main subroutines
+!          Stubs not used by cam/model_mod (this is not all of them)
+
+!==============================================================================================
+! TO DO 
 !--------------------------------------------------------------------
 ! DISTRIBUTION;
 ! > instructions for use
@@ -19,7 +134,7 @@ module model_mod
 !      list of files that script/model_mod needs; 
 !          trans_pv_sv_time0  (the executable)
 !          input.nml:perfect_model_nml (with the date+time to put in the filter_ics files)
-!          topog_file.nc  (for static_init_model to get PHIS)
+!          cam_phis.nc  (for static_init_model to get PHIS)
 !          caminput_#.nc  (to convert into filter_ic.####)
 
 !--------------------------------------------------------------------
@@ -78,20 +193,28 @@ module model_mod
 !          so far violate this assumption.  It would have to be a synthetic/perfect_model obs, 
 !          like some sort of average or parameter value.  
 
+! ISSUE; In convert_vert, if a 2D field has dimensions (lev, lat) then how is p_surf defined?
+!        I've set it to P0, but is this correct or meaningful?
+
 ! ISSUE; The KIND_ list from obs_def_mod must be updated when new fields are added to state vector.
 !        This could be done by the preprocessor when it inserts the code bits corresponding to the
 !        lists of observation types, but it currently (10/06) does not.  Document accordingly.
 
-! ISSUE; In convert_vert, if a 2D field has dimensions (lev, lat) then how is p_surf defined?
-!        I've set it to P0, but is this correct or meaningful?
-
 ! ISSUE: Should get_val_xxxx return MISSING_VALUE instead of 0 for istat = 1 cases?
 
 ! ISSUE: The CCM code (and Hui's packaging) for geopotentials and heights  use different
-!        values of the physical constants than DARTS.  In one case Shea changed g from
+!        values of the physical constants than DART's.  In one case Shea changed g from
 !        9.81 to 9.80616, to get agreement with CCM(?...), so it may be important.
 !        Also, matching with Hui's tests may require using his values;  change to DART
 !        after verifying?
+
+! ISSUE: It's possible to figure out the model_version from the NetCDF file
+!        itself, rather than have that be user-provided (sometimes incorrect and hard
+!        to debug) meta-data.  model_version is also misnamed; it's really the
+!        caminput.nc model version.  The actual model might be a different version(?)
+!        The problem with removing it from the namelist is that the scripts need it
+!        too, so some rewriting there would be needed.
+
 
 ! "Pobs" marks changes for providing expected obs of P
 !        break from past philosophy; P is not a native CAM variable (but is already calced here)
@@ -100,118 +223,6 @@ module model_mod
 ! i.e. GWD parameters.
 
 
-!----------------------------------------------------------------------
-! purpose: interface between CAM and DART
-!              Translate to/from state_vector and caminput.nc,
-!              Initialize model,
-!              Write out CAM fields to Prior and Posterior_Diag.nc,
-!              Generate expected obs from model state (model_interpolate)
-!              Find state variables (or obs) that are close to a given base observation.
-!                  (get_close_obs)
-!              Provide randomly perturbed fields for initial ensemble in filter.(pert_model_state)
-
-!
-! method: trans_pv_sv reads CAM 'initial' file (netCDF format).
-!         Reform fields into a state vector.
-!         DART assimilates obs, modifying the values of the state vector.
-!         This requires get_close_obs to find state variables to be modified by each ob.
-!         Reform state vector back into CAM fields.
-!         Replace those fields on the CAM initial file with the new values,
-!         preserving all other information on the file.
-!         Also read hybrid coordinate coefficients from CAM input file (for plevs_cam)
-!
-! author: Kevin Raeder 2/14/03  and 8/1/03
-!         based on prog_var_to_vector and vector_to_prog_var by Jeff Anderson
-!
-! modified: Tim Hoar 02 Sep 03 
-!         nc_write_model_atts, nc_write_model_vars now write out "prognostic"
-!         files instead of a nondescript state variable vector glom
-!
-! augmented; Kevin Raeder 7/1/04 for CAM3.0 and to use namelist input for
-!         lists of fields to include in state vector.
-!         'CAM3' marks changes
-!         Later;?
-!         Also; read field attributes from netcdf file and write them out 
-!         from nc_write_model_atts, instead of hard-coded there.
-!
-! augmented; Kevin Raeder (code from Hui Liu and CAM) 4/2006 to add vertical interpolation
-!         in height.  Also add checks of requested fields for interpolation.
-!
-! mostly rewritten: Kevin Raeder  9-10/2006 
-
-!     OVERVIEW; 
-!     
-!     This module interfaces with the MPI version of DART.  
-!
-!        model_get_close_states has been replaced with new interfaces, including get_close_obs, 
-!     which uses location_mod:get_close_obs.  This allows model_mod to use the 
-!     "generic efficient search algorithm" in DART to find the obs/state variables that
-!     are close to the given base obs, and to modify the distances according to any desired 
-!     criteria (obs_kinds, height above a threshold, etc).  
-!
-!     During the assimilation stage, only a piece of the state vector is available to each 
-!     process, and each process calls parts of model_mod.  In order to handle the conversion 
-!     of vertical coordinates of obs and/or state variables into a consistent coordinate, 
-!     an entire state vector is needed, so the ensemble mean is passed to model_mod before 
-!     the assimilation starts.  This is NOT done for model_interpolate; the whole vector is
-!     available, and should be used.  All locations are now converted to a standard coordinate 
-!     (pressure), instead of always converting the state vertical location to that of the ob.
-!     The highest_obs_level and ..._height_m variables are derived from highest_obs_pressure_mb
-!     namelist variable.
-!     
-!     This module has been rewritten to handle both the eulerian and finite volume core versions 
-!     of CAM (they have different grids), and hopefully the semi-lagrangian dynamics core, 
-!     and even lay some groundwork for future dynamical cores (such as HOMME) which are column 
-!     oriented, with irregular horizontal grids.
-!     
-!     The coordinate orders of fields stored in various forms have also been simplified.
-!     For example; various vintages of CAM 3D fields may be read in with (lon, lat, lev) or 
-!     (lon, lev, lat).  These are uniformly converted to (lev, lon, lat) for use in model_mod.
-!     This latter form is different than pre MPI model_mods.  Then such fields are stored in
-!     the state vector with the same coordinate order.  They are converted back to the modern
-!     CAM coordinate order when written to caminput.nc files.
-!     
-!     The organization of the state vector has been changed from the B-grid style to a field 
-!     and column oriented form; see prog_var_to_vector and vector_to_prog_var.  This allows 
-!     each field to have different dimensions than all the others.  The fields are still grouped 
-!     by the rank of the array used to store them in CAM form; 0d, 1d, 2d, and 3d.  In the 3d case 
-!     all the values of a field for one column are stored continguously, to speed up vertical 
-!     interpolations and calculations of heights on model levels.  The dimensions of each field 
-!     are stored in globally available arrays and there are functions and subroutines for 
-!     accessing the needed information.
-!     
-!     Observations on pressure levels or heights require various pieces of the state vector
-!     in order to calculate the expected observation.  Just the surface pressure is needed for 
-!     the former, while PS plus the temperature and moisture profiles are needed for the heights.  
-!     These may be needed on the regular A-grid (thermodynamic variables) and grids staggered 
-!     relative to the A-grid.   Currently, PS for the A-grid and the 2 staggered grids is 
-!     stored for global access and pressures and heights on model levels are (re)calculated
-!     as needed.  In the future it may be deemed worthwhile to store the 3d pressures and 
-!     heights on the 3 grids, but for now that seemed like too much memory to be worthwhile.
-!
-!     It also corrects a misuse of TYPE_s from pre MPI versions; those model_mod specific 
-!     identifiers are no longer passed back to filter through get_state_meta_data.  Instead, 
-!     DART KIND_ identifiers are used.  If a user wants to add more TYPE_s to the state vector, 
-!     then more KIND_s will be needed in the obs_kind_mod and the 'use obs_kind_mod' statement.
-
-!     The coordinates of CAM (lats, lons, etc.) and their dimensions  and attributes are 
-!     now read into globally accessible data structures (see grid_1d_type).
-!     
-!     MODULE ORGANIZATION
-!    
-!         'use' statements
-!          Global storage for describing cam model class
-!          Namelist variables with default values follow
-!          derived parameters
-!          static_init_model section
-!          module I/O to/from DART and files
-!          model_interpolate section
-!          vector-field translations
-!          get_close_obs section
-!          End of get_close_obs section
-!          Utility routines; called by several main subroutines
-!          Stubs not used by cam/model_mod (this is not all of them)
-
 
 !==============================================================================================
 !  USE statements
@@ -219,7 +230,7 @@ module model_mod
 use netcdf
 use typeSizes
 
-use types_mod,         only : r8, MISSING_I, MISSING_R8
+use types_mod,         only : r8, MISSING_I, MISSING_R8, gravity_const => gravity
 !          add after verification against Hui's tests;  gas_constant_v,gas_constant,ps0,PI,DEG2RAD
 
 use time_manager_mod,  only : time_type, set_time, print_time, set_calendar_type,                &
@@ -244,8 +255,10 @@ use location_mod,      only : location_type, get_location, set_location, query_l
 !-----------------------------------------------------------------------------
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT,                    &
                              KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
-                             KIND_PRESSURE, KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE           &
-                            ,KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION
+                             KIND_PRESSURE, KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE,          &
+                             KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION,       &
+                             KIND_SURFACE_ELEVATION
+
 ! Other possibilities (names have changed with various CAM versions):
 ! Atmos
 !    CLOUD:       "Cloud fraction" ;
@@ -379,7 +392,9 @@ integer,                       allocatable :: dim_sizes(:)
 character (len=NF90_MAX_NAME), allocatable :: dim_names(:)
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-! Grid fields 
+! Grid fields
+! These structures are used by nc_write_model_atts.
+! They are dimensioned in init_grid_1D_instance and filled in read_cam_coord
 type grid_1d_type 
    private
    character (len=8)            :: label
@@ -427,7 +442,7 @@ logical :: output_state_vector = .false.
 ! File where basic info about model configuration can be found
 character(len = 128) :: model_config_file = 'caminput.nc', &
                         model_version     = '3.0',         &
-                        topog_file        = 'topog_file.nc'
+                        cam_phis          = 'cam_phis.nc'    ! was 'topog_file.nc'
 
 
 ! Define location restrictions on which observations are assimilated
@@ -497,7 +512,7 @@ namelist /model_nml/ output_state_vector , model_version , model_config_file &
 
 !---- end of namelist (found in file input.nml) ----
 !----------------------------------------------------------------------
-! derived parameters
+! Derived parameters
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 type(time_type) :: Time_step_atmos
@@ -734,12 +749,12 @@ call nc_check(nf90_close(ncfileid), &
 !------------------------------------------------------------------------
 ! height
 ! Get lons and _lats from a new netcdf file and test for consistency.
-! This subroutines also opens the file for reading fields.
+! This subroutine also opens the file for reading fields.
 ! read CAM 'initial' file domain info
-if (file_exist(topog_file)) then
-   call nc_check(nf90_open(path = trim(topog_file), mode = nf90_nowrite, ncid = ncfileid), &
-              'static_init_model', 'opening '//trim(topog_file))
-   if (do_out) write(*, *) 'file_name for surface geopotential height is ', trim(topog_file)
+if (file_exist(cam_phis)) then
+   call nc_check(nf90_open(path = trim(cam_phis), mode = nf90_nowrite, ncid = ncfileid), &
+              'static_init_model', 'opening '//trim(cam_phis))
+   if (do_out) write(*, *) 'file_name for surface geopotential height is ', trim(cam_phis)
 
    call read_topog_size(ncfileid, topog_lons, topog_lats)
    ! debug
@@ -754,11 +769,11 @@ if (file_exist(topog_file)) then
       call error_handler(E_ERR, 'static_init_model', trim(errstring), source, revision, revdate)
    end if
 else
-   write(errstring,'(A)') 'topog_file.nc is missing; check for bnd_topo in namelistin' 
+   write(errstring,'(2A)') cam_phis,' is missing; find a CAM history file (h0) to provide PHIS' 
    call error_handler(E_ERR, 'static_init_model', trim(errstring), source, revision, revdate)
 end if
 
-! Read surface geopotential from topog_file for use in vertical interpolation in height.
+! Read surface geopotential from cam_phis for use in vertical interpolation in height.
 ! Coordinate order not affected by CAM model version.
 
 if (alloc_phis) allocate (phis(topog_lons, topog_lats))
@@ -773,7 +788,7 @@ allocate(ens_mean(model_size))
 
 call read_cam_horiz (ncfileid, phis , topog_lons, topog_lats, 'PHIS    ')
 
-call nc_check(nf90_close(ncfileid), 'static_init_model', 'closing '//trim(topog_file))
+call nc_check(nf90_close(ncfileid), 'static_init_model', 'closing '//trim(cam_phis))
 
 !------------------------------------------------------------------------
 ! arrays for the linking of obs_kinds (KIND_) to model field TYPE_s; 
@@ -790,6 +805,7 @@ end subroutine static_init_model
 !
 ! Gets the number, names, and sizes of field dimensions from a CAM init netcdf file
 ! in file_name (regardless of dynamical core).
+! Called by static_init_model (only).
 
 integer,  intent(in)  :: ncfileid
 
@@ -1201,10 +1217,8 @@ end subroutine nc_read_model_atts
 !=======================================================================
 ! subroutine read_cam_coord(ncfileid, var , cfield)
 !
-! read CAM 'initial' file domain info
-! should be called with cfield = one of :
-!          (/'lat     ','lon     ','gw      '
-!           ,'hyai    ','hybi    ','hyam    ','hybm    '/)
+! read CAM 'initial' file coordinate, i.e. 'lat     ','lon     ','gw      '
+!           ,'hyai    ',...
 
 !----------------------------------------------------------------------
 integer,            intent(in)  :: ncfileid   ! file and field IDs
@@ -1257,7 +1271,7 @@ do i=1,num_atts
    call nc_check(nf90_inq_attname(ncfileid, ncfldid, i, att_name), &
                  'read_cam_coord', 'inq_attname '//trim(att_name))
 
-! FV initial files have coordinates with attributes that are numerical, not character.
+! CAM FV initial files have coordinates with attributes that are numerical, not character.
 ! (_FillValue).  These are not used because the coordinates are dimensioned exactly
 ! the right size.  I'll test for the type of att, and if it's not char, I'll ignore it
 ! and reduce the num_atts by 1.
@@ -1407,10 +1421,6 @@ do i=1,state_num_2d
    if (state_names_2d(i) == 'TBOT    ') TYPE_TBOT  = nfld
    if (state_names_2d(i) == 'TS      ') TYPE_TS    = nfld
    if (state_names_2d(i) == 'TSOCN   ') TYPE_TSOCN = nfld
-! These are on topog file, not initial file anymore
-!   if (state_names_2d(i) == 'PHIS    ') TYPE_PHIS  = nfld
-!   if (state_names_2d(i) == 'SGH     ') TYPE_SGH   = nfld
-!   if (state_names_2d(i) == 'PBLH    ') TYPE_PBLH  = nfld
 end do
 
 ! 3D fields (including q)
@@ -1537,7 +1547,7 @@ end subroutine map_kinds
 ! End of static_init_model section
 !#######################################################################
 
-! module I/O to/from DART and files
+! Module I/O to/from DART and files
 
    subroutine read_cam_init(file_name, var)
 !=======================================================================
@@ -1610,7 +1620,7 @@ do i= 1, state_num_2d
 ! done in trans_coord already
 !   call check(nf90_inquire_variable(ncfileid, ncfldid, dimids=f_dimid_2d(1:3,i)))
    if (do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
-   ! fields on file are 3D; lon, lat, (ususally) and then  TIME(=1)
+   ! fields on file are 3D; lon, lat, (usually) and then  TIME(=1)
    ! Need to use temp_Nd here too; I am coding for not knowing what 2 of the 3 dimensions the
    ! 2d fields will have.
    call nc_check(nf90_get_var(ncfileid, ncfldid, temp_2d(1:f_dim_2d(1,i), 1:f_dim_2d(2,i))  &
@@ -1646,7 +1656,7 @@ do i=1, state_num_3d
              ,count=(/  f_dim_3d(1,i),   f_dim_3d(2,i),   f_dim_3d(3,i),1 /) ), &
              'read_cam_init', 'get_var '//trim(cflds(ifld)))
 ! read into dummy variable, then repackage depending on coord_order
-! put it into lon,lev,lat order for continuity with Tim's/historical.
+! put it into lev,lon,lat order.
    if (coord_order == 1) then
 !     lon,lev,lat as in original CAM
       do n=1,s_dim_3d(3,i)  ! lats
@@ -1825,6 +1835,9 @@ do i = 1, state_num_3d
       do m=1,s_dim_3d(2,i)
       do k=1,s_dim_3d(1,i)
          temp_3d(m,n,k) = var%vars_3d(k,m,n,i)
+         ! Meagher added this for quality control when assim cloud properties
+         ! if((cflds(ifld)=='CLOUD   ').and.(temp_3d(m,n,k)<0)) temp_3d(m,n,k)=0
+         ! if((cflds(ifld)=='CLOUD   ').and.(temp_3d(m,n,k)>1)) temp_3d(m,n,k)=1
       end do
       end do
       end do
@@ -1877,7 +1890,8 @@ character(len=8)   :: dim_name
 
 ! In order to find what variable this is, and its location, I must subtract the individual 
 ! components of the state vector, since they may have varying sizes.
-! Save the original index.   index_in will be < 0 if it's an identity obs (called from convert_vert)
+! Save the original index.   
+! index_in will be < 0 if it's an identity obs (called from convert_vert)
 indx = abs(index_in)
 which_vert = MISSING_I
 index_1 = 0; index_2 = 0; index_3 = 0; nfld = 0
@@ -1962,7 +1976,7 @@ do i=1,state_num_3d
       ! We've found the desired field. 
       ! Now find lat and/or lon and/or lev of indx if called by assim_tools_mod:filter_assim
 
-         ! # (first x second dimension) slices to subtract off in order to find the current slice
+         ! # of (first x second dimension) slices to subtract off in order to find the current slice
          ! debug; try printing out all this index info when there's just 1 obs to be processed.
          slice = s_dim_3d(1,i) * s_dim_3d(2,i)
          index_3 = (indx -1) / slice         ! temporary value used to find index_2 and index_1
@@ -1975,12 +1989,12 @@ do i=1,state_num_3d
    !     Return index_1 as the vertical location
          lev_val = real(index_1)
 
-         ! index_2 of the variable in question is one more than the number subtracted of to get index_1
+         ! index_2 of the variable in question is one more than the number subtracted off to get index_1
          index_2 = index_2 + 1
          dim_name = dim_names(s_dimid_3d(2,i))
          call coord_val(dim_name, index_2, lon_val, lat_val, lev_val)
 
-         ! index_3 of the variable in question is one more than the number subtracted of to get index_1
+         ! index_3 of the variable in question is one more than the number subtracted off to get index_1
          index_3 = index_3 + 1
          dim_name = dim_names(s_dimid_3d(3,i))
          call coord_val(dim_name, index_3, lon_val, lat_val, lev_val)
@@ -1993,7 +2007,7 @@ end do
 
 10 continue
 
-! This will malfunction for fields that are with MISSING_r8 for lat_val or lon_val.
+! This will malfunction for fields that are filled with MISSING_r8 for lat_val or lon_val.
 if (lon_val == MISSING_r8 .or. lat_val == MISSING_r8 ) then
    write(errstring, *) 'Field ',cflds(nfld),' has no lon or lat dimension.  ', &
          'What should be specified for it in the call to location?'
@@ -2005,10 +2019,10 @@ endif
 ! If the type is wanted, return it
 if (present(var_kind)) then
    if (index_in < 0) then
-      ! used by 
+      ! used by convert_vert which wants the CAM field index, not the DART KIND_ 
       var_kind = nfld
    else if (index_in > 0) then
-      ! used by call from assim_tools_mod:filter_assim
+      ! used by call from assim_tools_mod:filter_assim, which wants the DART KIND_
       var_kind = cam_to_dart_kinds(nfld)
    end if
 end if
@@ -2160,7 +2174,7 @@ if (do_out) write(*,*) ' dimens,       name,  size, cam dim_id, P[oste]rior id'
 do i = 1,num_dims
    if (trim(dim_names(i)) /= 'time')  then
       call nc_check(nf90_def_dim (ncid=ncFileID, name=trim(dim_names(i)), len=dim_sizes(i),  &
-                               dimid=P_id(i)), 'nc_write_model_atts','def_dim '//trim(dim_names(i)))
+                    dimid=P_id(i)), 'nc_write_model_atts','def_dim '//trim(dim_names(i)))
    else
      P_id(i) = 0
    endif
@@ -2178,6 +2192,8 @@ call nc_check(nf90_def_dim(ncid=ncFileID, name="scalar",   len = 1,   dimid = Sc
 ! It's used to write coordinates.  dim_ids keeps track of the dimensions of coordinates 
 ! and fields on caminput.nc files.  There's some overlap of names, unfortunately.
 ! The argument after the 'xxx    ' label is a structure with all the relevant info in it.
+! The structures are defined in "Grid fields" and filled by calls to init_grid_1d_instance
+! in read_cam_coord.
 
 grid_id = MISSING_I
 
@@ -2480,7 +2496,7 @@ else
                     'nc_write_model_vars ','inq_varid 0d '//cfield)
       call nc_check(nf90_put_var(ncFileID, ncfldid, Var%vars_0d(i),             &
                                  start=(/ copyindex, timeindex /) ),            &
-                    'nc_write_model_vars ','inq_varid 0d '//cfield)
+                    'nc_write_model_vars ','put_var 0d '//cfield)
 !, &
 !                 count=(/1, 1/) ))
    end do ZeroDVars
@@ -2496,7 +2512,7 @@ else
                     Var%vars_1d(1:s_dim_1d(  i), i),                                              &
                     start=   (/ 1              ,copyindex, timeindex /),                          &
                     count=   (/   s_dim_1d(  i),1        , 1/) ),                                 &
-                    'nc_write_model_vars ','inq_varid 1d '//cfield)
+                    'nc_write_model_vars ','put_var 1d '//cfield)
    end do OneDVars
 
    ! Write out 2D variables as 2 of (lev,lon,lat), in that order, regardless of caminput.nc 
@@ -2512,7 +2528,7 @@ else
                     Var%vars_2d(1:s_dim_2d(1,i),1:s_dim_2d(2,i), i),                              &
                     start=   (/ 1              ,1              , copyindex, timeindex /),         &
                     count=   (/   s_dim_2d(1,i),  s_dim_2d(2,i), 1        , 1/) ),                &
-                    'nc_write_model_vars ','inq_varid 2d '//cfield)
+                    'nc_write_model_vars ','put_var 2d '//cfield)
    end do TwoDVars
 
    ! Write out 3D variables as (lev,lon,lat) regardless of caminput.nc coordinate order
@@ -2525,7 +2541,7 @@ else
                  Var%vars_3d(1:s_dim_3d(1,i),1:s_dim_3d(2,i),1:s_dim_3d(3,i),i)                   &
                  ,start=   (/1              ,1              ,1              ,copyindex,timeindex/)&
                  ,count=   (/  s_dim_3d(1,i),  s_dim_3d(2,i),  s_dim_3d(3,i),1        ,1/) ),     &
-                    'nc_write_model_vars ','inq_varid 3d '//cfield)
+                    'nc_write_model_vars ','put_var 3d '//cfield)
    end do ThreeDVars
 
 end if
@@ -2546,7 +2562,7 @@ call end_model_instance(Var)   ! should avoid any memory leaking
 end function nc_write_model_vars
 
 
-! End of module I/O
+! End of Module I/O
 
 !#######################################################################
 
@@ -2585,7 +2601,7 @@ character (len=8) :: lon_name, lat_name, lev_name
 ! 3         unfamiliar obs type      no                     no
 
 ! These are fields which were observed, and will have 3d locations, but the 
-! corresponding state-vector component could, concievably, be missing one of the dimensions.
+! corresponding state-vector component could, conceivably, be missing one of the dimensions.
 ! The only use for such fields I have thought of is parameterization tuning.
 ! Such fields would not have observations associated with them.
 ! for now I will assume that observed fields are not missing any dimensions.
@@ -2614,7 +2630,8 @@ lon_lat_lev = get_location(location)
 ! but can be calculated for CAM, so obs_type = KIND_PRESSURE is acceptable.
 s_type = dart_to_cam_kinds(obs_type) 
 
-if (s_type == MISSING_I .and. obs_type .ne. KIND_PRESSURE) then
+if (s_type == MISSING_I .and. &
+   (obs_type .ne. KIND_PRESSURE) .and.  (obs_type .ne. KIND_SURFACE_ELEVATION)) then
    istatus = 3
    interp_val = 0._r8
 ! check
@@ -2623,12 +2640,31 @@ if (s_type == MISSING_I .and. obs_type .ne. KIND_PRESSURE) then
 end if
 
 ! Get lon and lat grid specs
+
+! Set [lon,lat,lev] names to a default, which will be overwritten for variables
+! in the state vector, but not for other acceptable variables (3D pressure, surface
+! elevation, ...?)
+lon_name = 'lon     '
+lat_name = 'lat     '
+! ? How to separate the 3D from 2D 'other' variables?
+!   Can't do it automatically/generically because they're not part of state vector
+!   and that info isn't coming from DART.
+if (obs_type .eq. KIND_SURFACE_ELEVATION) then
+   lev_name = 'none    '
+elseif (obs_type .eq. KIND_PRESSURE) then
+   lev_name = 'lev     '
+endif
+
 ! There can't be any 0d or 1d ob fields, so lump them together for elimination in this search.
 s_type_01d = state_num_0d + state_num_1d
 ! Positions within the rank 2 and 3 fields
 s_type_2d = s_type - s_type_01d
 s_type_3d = s_type_2d - state_num_2d 
-if (s_type <= state_num_0d + state_num_1d) then
+
+if (s_type == MISSING_I .and. &
+   (obs_type .eq. KIND_PRESSURE) .or.  (obs_type .eq. KIND_SURFACE_ELEVATION)) then
+   ! use defaults set above
+elseif (s_type <= state_num_0d + state_num_1d) then
    ! error; can't deal with observed variables that are 0 or 1D in model_mod.
    istatus = 3
    interp_val = 0._r8
@@ -2722,7 +2758,18 @@ end if
 !          The state vector may have fields for which this isn't true, but no obs we've seen
 !          so far violate this assumption.  It would have to be a synthetic obs, like some
 !          sort of average.  
-if (vert_is_level(location)) then
+if (obs_type == KIND_SURFACE_ELEVATION) then
+   ! Acceptable KIND that's not in the state vector
+   ! convert from geopotential height to real height in meters
+   vals(1,1) = phis(lon_ind_below, lat_ind_below) / gravity_const
+   vals(1,2) = phis(lon_ind_below, lat_ind_above) / gravity_const
+   vals(2,1) = phis(lon_ind_above, lat_ind_below) / gravity_const
+   vals(2,2) = phis(lon_ind_above, lat_ind_above) / gravity_const
+
+elseif (obs_type == KIND_PRESSURE) then
+   ! Calculate pressures from surface pressures and A and B coeffs.
+
+elseif (vert_is_level(location)) then
    ! Case 1: model level specified in vertical
    ! Pobs
    level = lon_lat_lev(3)
@@ -3171,7 +3218,7 @@ end subroutine get_val
 
 !#######################################################################
 
-! vector-field translations
+! Vector-field translations
 
 
    subroutine prog_var_to_vector(var, x)
@@ -3190,7 +3237,7 @@ character(len=129) :: errstring
 ! This is completely different than the B-grid organization, which loaded all the fields
 ! at a point before moving on to the next point.  The motivations for this change are:
 ! 1) This easily allows fields with the same rank, but different sizes to be loaded into
-!    the vector (i.e. Ustaggered  and T in the cam-fv)
+!    the vector (i.e. U_staggered  and T in the cam-fv)
 ! 2) The dominant form of access into the state vector is vertical interpolations in
 !    get_expected_val and computation of columns of virtual temperature from T and Q
 !    in model_heights.  model_get_close_states, which searched for all variables close
@@ -3323,7 +3370,7 @@ end subroutine vector_to_prog_var
 
 
 
-! End of vector-field translations
+! End of Vector-field translations
 
 !#######################################################################
 
@@ -3398,12 +3445,14 @@ do k = 1, num_close
    obs_array = get_location(obs_loc(t_ind))
    obs_which = nint(query_location(obs_loc(t_ind)))
 
-   if (obs_which == VERTISPRESSURE .or. horiz_dist_only) then
+   if (obs_which == VERTISPRESSURE ) then
       ! put the vertical (pressure) of the state/ob in local storage
       local_obs_array(3) = obs_array(3)
       local_obs_which    = obs_which
    else
-      ! convert vertical coordinate of obs_loc to pressure.
+      ! Convert vertical coordinate of obs_loc to pressure.
+      ! If horiz_dist_only is true, the vertical location and which vert aren't used by get_dist, 
+      ! but need to be defined for set_loc and are used in the damping section below no matter what.
       call convert_vert(obs_array, obs_which, local_obs_array, local_obs_which, obs_kind(t_ind))
 
       ! obs_which = -2 (VERTISUNDEF) mean this ob is vertically close to base_obs, no matter what.
@@ -3411,7 +3460,6 @@ do k = 1, num_close
          local_obs_array(3) = local_base_array(3)
          local_obs_which = local_base_which
       end if
-
    end if
 
    local_obs_loc = set_location(obs_array(1), obs_array(2), local_obs_array(3), &
@@ -3419,9 +3467,9 @@ do k = 1, num_close
 
    dist(k) = get_dist(local_base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
 
-   ! Damp the influence of obs below the namelist variable highest_state_pressure_mb on
-   ! variables above that level.  
-   ! This could also change the distance based on the KIND_s of the base_obs and obs.
+   ! Damp the influence of obs (below the namelist variable highest_obs_pressure_mb) 
+   ! on variables above highest_state_pressure_mb.  
+   ! This section could also change the distance based on the KIND_s of the base_obs and obs.
 
    ! dist = 0 for some for synthetic obs.
    ! Additive increase, based on height above threshold, works better than multiplicative
@@ -3491,12 +3539,15 @@ end if
 ! Find the index of this kind within its group of same-rank fields
 rank_kind = cam_kind
 
-! Figure out what rank CAM field this corresponds to, so that vertical coordinate can be determined
+! Figure out what rank CAM field this corresponds to, 
+! so that vertical coordinate can be determined
 ! Also need lon and lat indices to select ps for calc of p_col for vertical conversion.
+! Note that this is an approximation; the CAM lat/lon pair closest to the obs is chosen, 
+! rather than doing an interpolation of the 4 closest lat/lons.
 if (rank_kind <= state_num_0d) then
    call coord_index('lon     ', old_array(1), lon_index)
    call coord_index('lat     ', old_array(2), lat_index)
-   ! fix for non-CAM obs
+   ! fix for non-CAM obs 
    lon_which_dimid = 1
    lat_which_dimid = 2
    ! end non-CAM obs
@@ -3639,21 +3690,26 @@ elseif (old_which == VERTISHEIGHT) then
    ! by a call from filter_assim to ens_mean_for_model.
    call model_heights(ens_mean, p_surf, lon_index, lat_index, num_levs, stagr_lon, stagr_lat,  &
                       model_h, istatus)
+
    ! Search down through heights
    ! This assumes linear relationship of pressure to height over each model layer, 
    ! when really it's exponential.  How bad is that?
-   do i = 2, num_levs 
-      if (old_array(3) > model_h(i)) then
-         top_lev = i -1
-         bot_lev = i
-         frac = (old_array(3) - model_h(i)) / (model_h(i-1) - model_h(i))
-         goto 21
-      end if
+
+   bot_lev = 2
+   do while (old_array(3) <= model_h(bot_lev) .and. bot_lev <= num_levs)
+      bot_lev = bot_lev + 1
    end do
+   top_lev = bot_lev - 1
 
 !  write error message if not found within model level heights.
-
-   21 continue
+   if (bot_lev <= num_levs) then
+      frac = (old_array(3) - model_h(bot_lev)) / (model_h(top_lev) - model_h(bot_lev))
+   else
+      frac = 0.
+      write(errstring, *) 'ob height ',old_array(3),' outside range of CAM levels at ' &
+                          ,old_array(1) ,old_array(2) 
+      call error_handler(E_MSG, 'convert_vert', errstring,source,revision,revdate)
+   endif
 
    new_array(3) = (1.0_r8 - frac) * p_col(bot_lev) + frac * p_col(top_lev)
    new_which    = 2
@@ -4363,8 +4419,8 @@ integer   :: k, lon_index_local, vec_ind
 ! Staggered latitudes  have indices the same as the next southward (-) unstaggered lats.
 ! The indices called for here look wierd, but think of it this way;
 !    a point which is staggered from the usual grid has the same indices as the unstaggered point
-!    to it's southeast.  The northwest corner is then one higher latitude, and one less (westward)
-!    longitude.
+!    to it's southeast.  The northwest corner of the box is then one higher latitude, 
+!    and one less (westward) longitude.
 ! Pole points should be handled in the calling routine by passing the correct stagr_xx, 
 ! so that this program can count on having values for all the lat and lon indices referenced.
 
@@ -4750,6 +4806,8 @@ end subroutine adv_1step
 
 ! release the local copy of the ensemble means.
 deallocate(ens_mean)
+
+! Deallocate other variables?
 
 end subroutine end_model
 
