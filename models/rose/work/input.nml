@@ -78,6 +78,9 @@
    adaptive_localization_threshold = -1,
    print_every_nth_obs             = 0  /
 
+&model_nml
+   state_num_3d = 6 /
+
 &cov_cutoff_nml
    select_localization = 1  /
 
