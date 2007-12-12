@@ -150,7 +150,20 @@ for ivar = 1:plotdat.nvars,
    title(plotdat.main,'Interpreter', 'none', ...
        'FontSize', 12, 'FontWeight', 'bold')
    ylabel(plotdat.ylabel, 'fontsize', 10)
-   datetick('x',1)
+
+   % a slightly better way to annotate dates, etc.
+   ttot = max(xax) - min(xax) + 1;
+   if ((plotdat.bin1 > 1000) && (ttot > 32));
+      datetick('x',6,'keeplimits','keepticks');
+      monstr = datestr(xax(1),28);
+      xlabel(sprintf('month/day - %s start',monstr))
+   elseif (plotdat.bin1 > 1000);
+      datetick('x',7);
+      monstr = datestr(xax(1),28);
+      xlabel(sprintf('day of month - %s start',monstr))
+   else
+      xlabel('days')
+   end
 
    BottomAnnotation(plotdat.fname)
 
@@ -176,20 +189,34 @@ offset = 5;  % columns 1,2 are time, 3=mean, 4=spread, 5=numobs
 count  = offset+(plotdat.region-1)*3;
 yp_num = p(:,count);
 
-subplot(2,2,plotdat.region)
+
+if ( plotdat.nregions > 2 )
+   subplot(2,2,plotdat.region)
+else
+   subplot(plotdat.nregions,1,plotdat.region)
+end
+
    plot(xp,yp_num,plotdat.ptype,'LineWidth',2.0)
    axis([min(xp) max(xp) -Inf Inf])
    grid
-
-   if (plotdat.bin1 > 1000);
-      datetick('x',1);
-   else
-      xlabel('days')
-   end
-   
    ylabel(plotdat.ylabel, 'FontSize', 10) ;
    title(plotdat.title,'Interpreter', 'none', ...
         'FontSize', 12, 'FontWeight', 'bold')
+
+   % a slightly better way to annotate dates, etc.
+   ttot = max(xp) - min(xp) + 1;
+   if ((plotdat.bin1 > 1000) && (ttot > 32));
+      datetick('x',6,'keeplimits','keepticks');
+      monstr = datestr(xp(1),28);
+      xlabel(sprintf('month/day - %s start',monstr))
+   elseif (plotdat.bin1 > 1000);
+      datetick('x',7);
+      monstr = datestr(xp(1),28);
+      xlabel(sprintf('day of month - %s start',monstr))
+   else
+      xlabel('days')
+   end
+
 
 
 function y = SqueezeMissing(x)

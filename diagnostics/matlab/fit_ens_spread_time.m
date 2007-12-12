@@ -165,21 +165,34 @@ ya_spread = a(:,count);
 gmean = mean(yp_spread(isfinite(yp_spread))); gstring = sprintf('guess;    mean=%.3f',gmean);
 amean = mean(ya_spread(isfinite(ya_spread))); astring = sprintf('analysis; mean=%.3f',amean);
 
-subplot(2,2,plotdat.region)
+if ( plotdat.nregions > 2 )
+   subplot(2,2,plotdat.region)
+else
+   subplot(plotdat.nregions,1,plotdat.region)
+end
+
    plot(xp, yp_spread, 'k+-', xa, ya_spread, 'ro-', 'LineWidth', 1.5)
    grid
    ax = axis; ax(3) = 0.0; axis(ax)
-
-   if (plotdat.bin1 > 1000); 
-      datetick('x',1);
-   else
-      xlabel('days')
-   end
-
    ylabel(plotdat.ylabel, 'fontsize', 10)
    title(plotdat.title,'Interpreter', 'none', 'fontsize', 12, 'FontWeight', 'bold')
    h = legend(gstring, astring);
    legend(h,'boxoff')
+
+   % a slightly better way to annotate dates, etc.
+   ttot = max(xp) - min(xp) + 1;
+   if ((plotdat.bin1 > 1000) && (ttot > 32));
+      datetick('x',6,'keeplimits','keepticks');
+      monstr = datestr(xp(1),28);
+      xlabel(sprintf('month/day - %s start',monstr))
+   elseif (plotdat.bin1 > 1000);
+      datetick('x',7);
+      monstr = datestr(xp(1),28);
+      xlabel(sprintf('day of month - %s start',monstr))
+   else
+      xlabel('days')
+   end
+
 
 
 

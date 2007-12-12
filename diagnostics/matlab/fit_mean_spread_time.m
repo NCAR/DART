@@ -165,7 +165,12 @@ for itime = 1:size(p,1)
    ens_spread(2*itime  ) = a(itime,counts);
 end
 
-subplot(2,2,plotdat.region)
+if ( plotdat.nregions > 2 )
+   subplot(2,2,plotdat.region)
+else
+   subplot(plotdat.nregions,1,plotdat.region)
+end
+
    % Since the mean and the spread are getting plotted
    % on the same figure, we should have two axes ... 
    % bias on left, spread on right, for example. no time now ...
@@ -178,17 +183,25 @@ subplot(2,2,plotdat.region)
    plot(x,ens_mean,'k+-',x,ens_spread,'ro-','LineWidth',1.5)
    grid
    ylabel(plotdat.ylabel, 'fontsize', 10);
-
-   if (plotdat.bin1 > 1000);
-      datetick('x',1);
-   else
-      xlabel('days')
-   end
-
    title(plotdat.title, 'Interpreter', 'none', ...
          'Fontsize', 12, 'FontWeight', 'bold')
    h = legend(gstring, astring);
    legend(h,'boxoff')
+
+   % a slightly better way to annotate dates, etc.
+   ttot = max(x) - min(x) + 1;
+   if ((plotdat.bin1 > 1000) && (ttot > 32));
+      datetick('x',6,'keeplimits','keepticks');
+      monstr = datestr(x(1),28);
+      xlabel(sprintf('month/day - %s start',monstr))
+   elseif (plotdat.bin1 > 1000);
+      datetick('x',7);
+      monstr = datestr(x(1),28);
+      xlabel(sprintf('day of month - %s start',monstr))
+   else
+      xlabel('days')
+   end
+
 
 
 function y = SqueezeMissing(x)
