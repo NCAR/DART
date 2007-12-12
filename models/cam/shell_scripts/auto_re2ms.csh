@@ -25,7 +25,7 @@ echo $LD_LIBRARY_PATH
 
 if ($#argv < 2) then
    echo "usage; from case/experiment/obs_seq directory; "
-   echo "       restart2ms num_ens_members num_per_batch compress(optnl)"
+   echo "       auto_re2ms.csh num_ens_members num_per_batch compress(optnl)"
    echo "       Compresses caminput and clminput files."
    echo "       tars ensemble members together into batches"
    exit
@@ -39,10 +39,10 @@ set num_ens = $1
 set num_per_batch = $2
 
 # fix this for your local system accounting
-set proj_num = 1234
+set proj_num = NNNNN
 set ret_period = 1000
 set write_pass = da$$
-echo "with write password $write_pass" > saved_restart
+echo "with write password $write_pass" >! saved_restart
 
 if ($num_per_batch > $num_ens) exit "restart2ms; num_per_batch > num_ens"
 
@@ -59,7 +59,38 @@ set direct = `pwd`
 set case = $direct:t
 
 cd ${exp_dir}/${obs_seq}
+
+# New section for archiving initial ensembles from a spin-up
+# set months = (Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
+# echo $obs_seq >! obs_seq_name
+
+# # This section implemented for set of ICs 2x per MONTH.
+# set STRING = "1,$ s#_# #g"
+# set parts = `sed -e "$STRING" obs_seq_name`
+# \rm obs_seq_name 
+# set nick = $parts[2]
+# # This assumes 2 obs_seqs / month
+# @ month = ($nick / 2) + 1
+# @ month = $month % 12
+# @ day   = (($nick % 2) * 14) + 1
+# set date = $months[$month]_$day
+
+# # For ICs every 5 days
+# set STRING = "1,$ s#-# #g"
+# set parts = `sed -e "$STRING" obs_seq_name`
+# \rm obs_seq_name 
+# set month = $parts[1]
+# set day   = $parts[2]
+# set date = $months[$month]_$day
+# END of spin-up section
+
+# orig
 set ms_root = /RAEDER/DAI/$case/${exp_dir}/${obs_seq}/${1}x${2}
+# A year of ICs goes somewhere else
+# 2x monthly from somewhere besides CAM_init
+# set ms_root = /RAEDER/DAI/CAM_init/$case/${exp_dir}/${date}/${1}x${2}
+# 5 day series
+# set ms_root = /RAEDER/DAI/CAM_init/$case/${date}/${1}x${2}
 set ms_dir = mss:$ms_root
 echo "files will be written to ${ms_root}/batch#" >> saved_restart
 echo "files will be written to ${ms_root}/batch#" 
@@ -68,7 +99,11 @@ echo "files will be written to ${ms_root}/batch#"
 @ nbatch = $num_ens / $num_per_batch
 if ($num_ens % $num_per_batch != 0 ) @ nbatch++
 
-set msrcp_opts = "-pe $ret_period -pr $proj_num -wpwd $write_pass"
+set opts = "-pe $ret_period -pr $proj_num -wpwd $write_pass"
+set p1 = ' -comment "write password '
+set p2 = ' "'
+set msrcp_opts = "$opts $p1 $write_pass $p2" 
+echo $msrcp_opts >> saved_restart
 
 set ok_to_remove = true
 
@@ -77,27 +112,27 @@ set ok_to_remove = true
 set DART_list = ' '
 set num_files = 0
 set do_filter = false
-if (-e DART/assim_tools_ics) then
-   set DART_list = ($DART_list assim_tools_ics)
-   @ num_files++
-endif
-if (-e DART/prior_inf_ic)    then
-   set DART_list = ($DART_list prior_inf_ic)
-   @ num_files++
-endif
-if (-e DART/post_inf_ic)     then
-   set DART_list = ($DART_list post_inf_ic)
-   @ num_files++
-endif
-if (-e DART/filter_ic) then
-   set DART_list = ($DART_list filter_ic)
-   @ num_files++
-else if (-e DART/filter_ic*0$num_ens || -e DART/filter_ic*.$num_ens) then
-   set do_filter = true
-else
-   echo 'NOT ENOUGH ENSEMBLE MEMBERS IN .../DART' >> saved_restart
-   exit
-endif
+   if (-e DART/assim_tools_ics) then
+      set DART_list = ($DART_list assim_tools_ics)
+      @ num_files++
+   endif
+   if (-e DART/prior_inf_ic)    then
+      set DART_list = ($DART_list prior_inf_ic)
+      @ num_files++
+   endif
+   if (-e DART/post_inf_ic)     then
+      set DART_list = ($DART_list post_inf_ic)
+      @ num_files++
+   endif
+   if (-e DART/filter_ic) then
+      set DART_list = ($DART_list filter_ic)
+      @ num_files++
+   else if (-e DART/filter_ic*0$num_ens || -e DART/filter_ic*.$num_ens) then
+      set do_filter = true
+   else
+      echo 'NOT ENOUGH ENSEMBLE MEMBERS IN .../DART' >> saved_restart
+      exit
+   endif
 
 echo "DART_list = ($DART_list) " >> saved_restart
 echo "DART_list = ($DART_list) "
@@ -115,17 +150,18 @@ else
 endif
 
 if ($DART_files != 'none' && do_filter == false) then
-   tar c -f ic_files.tar DART/{$DART_files}
+   tar -c -f ic_files.tar DART/{$DART_files}
    msrcp $msrcp_opts ic_files.tar ${ms_dir}/DART/ic_files.tar &
 endif
 
 # Do this here, manually, or within tar; -z not available on tempest
 # also, not effective to compress filter_ic files (big and dense)
-if ($comp != ' ') then
+set fil = CAM/caminput_1.*
+if ($comp != ' ' &&  $fil:e != 'gz') then
    gzip -r CAM
    gzip -r CLM
+   echo "compressed CAM and CLM" >> saved_restart
 endif
-echo "compressed CAM and CLM"
 
 set batch = 1
 while($batch <= $nbatch)
@@ -143,18 +179,18 @@ while($batch <= $nbatch)
       # if (-e DART/assim_tools_ics && $member <= $base) then
       if ($DART_files != 'none' && $member <= $base) then
 # won't work for $member < $base?            
-        tar c -f batch${batch}${comp} CAM/caminput_$member.nc* \
+        tar -c -f batch${batch}${comp} CAM/caminput_$member.nc* \
                  CLM/clminput_$member.nc* DART/filter_ic*[.0]$member DART/{$DART_files}
-        echo "tar c -f batch${batch}${comp} CAM/caminput_$member.nc* \
+        echo "tar -c -f batch${batch}${comp} CAM/caminput_$member.nc* \
                  CLM/clminput_$member.nc* DART/filter_ic*[.0]$member DART/{$DART_files} "
       else
-        tar c -f batch${batch}${comp} CAM/caminput_$member.nc* \
+        tar -c -f batch${batch}${comp} CAM/caminput_$member.nc* \
                  CLM/clminput_$member.nc* DART/filter_ic*[.0]$member
-        echo "tar c -f batch${batch}${comp} CAM/caminput_$member.nc* \
+        echo "tar -c -f batch${batch}${comp} CAM/caminput_$member.nc* \
                  CLM/clminput_$member.nc* DART/filter_ic*[.0]$member "
       endif
    else
-        tar c -f batch${batch}${comp} CAM/caminput_$member.nc* CLM/clminput_$member.nc*
+        tar -c -f batch${batch}${comp} CAM/caminput_$member.nc* CLM/clminput_$member.nc*
    endif
    # tack on additional ens members until this batch is complete
    set n = 2
@@ -167,12 +203,12 @@ while($batch <= $nbatch)
         @ n = $num_per_batch + 1
      else
         if ($do_filter == true) then
-           tar r -f batch${batch}${comp} CAM/caminput_$member.nc* \
+           tar -r -f batch${batch}${comp} CAM/caminput_$member.nc* \
                CLM/clminput_$member.nc* DART/filter_ic*[.0]$member
-           echo "tar r -f batch${batch}${comp} CAM/caminput_$member.nc* \
+           echo "tar -r -f batch${batch}${comp} CAM/caminput_$member.nc* \
                CLM/clminput_$member.nc* DART/filter_ic*[.0]$member "
         else
-           tar r -f batch${batch}${comp} CAM/caminput_$member.nc* CLM/clminput_$member.nc*
+           tar -r -f batch${batch}${comp} CAM/caminput_$member.nc* CLM/clminput_$member.nc*
         endif
      endif
      @ n++
@@ -183,15 +219,14 @@ while($batch <= $nbatch)
 
    @ batch++
 end
-# correct batch back to value of last batch, for use below.
+# Correct batch back to value of last batch, for use below.
 @ batch = $batch - 1
 
-# msrcp $msrcp_opts batch*${comp} ${ms_dir}
-mscomment -R -wpwd $write_pass -c "write password $write_pass" ${ms_root}
+msrcp $msrcp_opts batch*${comp} ${ms_dir}
 
 wait
 
-# check to see if it's okay to remove DART directory
+# Check to see if it's okay to remove DART directory
 if ($do_filter != true) then
    set list = `ls -l DART/filter_ic`
    set local_size = $list[5]
@@ -201,7 +236,7 @@ if ($do_filter != true) then
    if ($local_size != $ms_size) set ok_to_remove = false
 endif
 
-# check to see if it's okay to remove CAM/CLM directories
+# Check to see if it's okay to remove CAM/CLM directories
 set list = `ls -l batch${batch}${comp}`
 set local_size = $list[5]
 set list = `msls -l ${ms_root}/batch${batch}${comp}`
