@@ -256,8 +256,14 @@ set obs_seq_freq = 1
 set obs_seq_1 = 1
 set obs_seq_n = 7
 
-
-# make obs_seq_1 execution dependent on previous batch of obs_seqs
+# if obs_seq_1 above is the very first obs_seq file for an entire
+# experiment, set the depend line below 'false'.  if obs_seq_1 is
+# the sequence number of a new batch of jobs but is really part of
+# a longer series of seq files (e.g. the entire job is seq numbers
+# 1-30, but this script is only going to queue up jobs 6-12)
+# then it to 'true'.  it controls whether it is going to clean out
+# old cam/clm input files, and whether it is going to queue up the
+# job to depend on the previous job step completing.
 set obs_seq_1_depend = false
 
 # The month of the obs_seq.out files for this run, and 
@@ -386,7 +392,7 @@ set input = input_
 # Scripts auto_re2ms*.csh and auto_diag2ms_LSF.csh may need to be modified/replaced on your system.
 # Restarts are backed up when
 #      if (previous_obs_seq % $save_freq == $mod_save) save to mass store
-# where in the obs_seq loop below j = current obs_seq file - 1
+# where in the obs_seq loop below previous_obs_seq = current obs_seq file - 1
 set save_freq = 4
 set mod_save = 1
 
@@ -519,19 +525,21 @@ echo "DART_ics_1 is $DART_ics_1"                           >> $MASTERLOG
 
 # clean up old CAM inputs that may be laying around
 
-if (-e caminput_1.nc) then
-   ${REMOVE} clminput_[1-9]*.nc 
-   ${REMOVE} caminput_[1-9]*.nc 
-endif
+if ( obs_seq_1_depend == false ) then
+   if (-e caminput_1.nc) then
+      ${REMOVE} clminput_[1-9]*.nc 
+      ${REMOVE} caminput_[1-9]*.nc 
+   endif
 
-# Remove any possibly stale CAM surface files
-rm cam_phis.nc
-if (-e $CAM_phis) then
-   ${COPY} $CAM_phis cam_phis.nc
-else
-   echo "ERROR ... need a topog file from CAM h0 history file." >> $MASTERLOG
-   echo "ERROR ... need a topog file from CAM h0 history file."
-   exit 99
+   # Remove any possibly stale CAM surface files
+   rm cam_phis.nc
+   if (-e $CAM_phis) then
+      ${COPY} $CAM_phis cam_phis.nc
+   else
+      echo "ERROR ... need a topog file from CAM h0 history file." >> $MASTERLOG
+      echo "ERROR ... need a topog file from CAM h0 history file."
+      exit 99
+   endif
 endif
 
 # Ensure the experiment directory exists
@@ -704,12 +712,12 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo "obs_seq, root, month, day = $i $obs_seq_root $month $day " >> $MASTERLOG
 
    else if ($obs_seq_freq > 0) then
-      @ month = $mo - 1
-      while ($month >= $mo_first)
-          @ seq = $seq - $days_in_mo[$month] * $obs_seq_freq
+      @ month = $mo 
+      while ($month > $mo_first)
           @ month = $month - 1
+          @ seq = $seq - $days_in_mo[$month] * $obs_seq_freq
       end
-      @ month = $month + 1
+      @ month = $mo
       if ($month < 10) set month = 0$month
 
       @ day = (($seq - 1) / $obs_seq_freq) + 1
@@ -732,7 +740,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
       set OBS_SEQ = ${obs_seq_root}${month}${day}${hour}
 
-      echo "obs_seq, day, hour = $i $day $hour " >> $MASTERLOG
+      echo "obs_seq, month, day, hour = $i $month $day $hour " >> $MASTERLOG
    endif
 
    if (  -e ${OBS_SEQ} && ! -z ${OBS_SEQ}) then    
@@ -831,9 +839,12 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    # get name of file containing PHIS from the CAM namelist.  This will be used by
    # static_init_model to read in the PHIS field, which is used for height obs.
    #-----------------------------------------------------------------------------
-   ${REMOVE} namelistin
-   ${LINK} ${CAM_src}/namelistin namelistin
-   sleep 1 
+   if (obs_seq_1_depend == false) then
+      ${REMOVE} namelistin
+      ${LINK} ${CAM_src}/namelistin namelistin
+      sleep 1 
+   endif
+
    if (! -e namelistin ) then
       echo "ERROR ... need a namelistin file." >> $MASTERLOG
       echo "ERROR ... need a namelistin file."
