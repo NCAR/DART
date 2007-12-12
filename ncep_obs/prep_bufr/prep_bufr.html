@@ -315,7 +315,11 @@ requires blocked version of the files.  The corresponding blocked files
 are A21899.blk, A21900.blk, A21901.blk, and A21902.blk.  These names don't
 appear in the web page, but are found on the mass store.  Each is about
 400 Mb.  After 2003 the files without ".blk" are blocked and can be used.
-They are about 1.7 Gb.
+They are about 1.7 Gb.  Also, after September, 2003, these files include
+AIRCRAFT data (airplane readings taken at cruising elevation) but not
+ACARS data (airplane readings taken during takeoff and landing).  There
+are different datasets which include ACARS data but their use is restricted
+and you must contact the DSS group to get access.
 </P>
 
 <P>
@@ -326,6 +330,11 @@ or
 <UL><LI> msread -fbi data.tar /DSS/A#####.blk </L> </UL>
 where ##### is the data set number, to read the NCEP BUFR data tar files.
 <P>
+If you use the 'msrcp' command instead of 'msread', you must run
+the 'cosconvert' program afterwards to convert the file into a
+readable tar file.   The files which include ACARS data have a read
+password; to specify that to the 'msread' command, add the '-r passwd' 
+argument.
 
 <P>
 Then 
