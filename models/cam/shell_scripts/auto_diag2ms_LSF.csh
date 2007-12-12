@@ -88,8 +88,8 @@ endif
 echo "files will be written to ${ms_dir}/${diag_name}" >> $saved
 echo "with write password $write_pass" >> $saved
 
-msrcp -pe 1000 -pr $proj_num -wpwd $write_pass ${diag_name} mss:${ms_dir}/${diag_name} >>& $saved
-mscomment -wpwd $write_pass -c "write password $write_pass" ${ms_dir}/${diag_name} >>& $saved
+msrcp -pe 1000 -pr $proj_num -wpwd $write_pass -comment "write password $write_pass" \
+      ${diag_name} mss:${ms_dir}/${diag_name} >>& $saved
 
 
 # check to see if it's okay to remove diagnostics.tar and P*.nc (leave obs_seq.final)
