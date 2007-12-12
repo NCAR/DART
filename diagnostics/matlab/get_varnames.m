@@ -51,6 +51,7 @@ for i = 1:length(variables)
       if (strcmp( varname , name(coordvars{j}))), isatmosvar = 0; end 
       if (strcmp( varname ,      'time_bounds')), isatmosvar = 0; end 
       if (strcmp( varname ,     'region_names')), isatmosvar = 0; end 
+      if (strcmp( varname ,     'CopyMetaData')), isatmosvar = 0; end 
    end
 
    if (isatmosvar > 0)
