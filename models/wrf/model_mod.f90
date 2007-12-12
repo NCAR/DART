@@ -129,8 +129,8 @@ integer :: center_search_half_size
 integer :: center_spline_grid_scale = 10
 integer :: vert_localization_coord = VERTISHEIGHT
 !nc -- we are adding these to the model.nml until they appear in the NetCDF files
-logical :: polar = .true.
-logical :: periodic_x = .true.
+logical :: polar = .false.
+logical :: periodic_x = .false.
 
 real(r8), allocatable :: ens_mean(:)
 

@@ -3,18 +3,29 @@
 #     1 = model level
 #     2 = pressure
 #     3 = height
+# (2) see below for explanations of polar and periodic_x
 
 &model_nml
-   output_state_vector = .false.,
-   num_moist_vars      = 3,
-   num_domains         = 1,
-   calendar_type       = 3,
-   surf_obs            = .true.,
-   soil_data           = .true.,
-   h_diab              = .false.,
+   output_state_vector         = .false.,
+   num_moist_vars              = 3,
+   num_domains                 = 1,
+   calendar_type               = 3,
+   surf_obs                    = .true.,
+   soil_data                   = .true.,
+   h_diab                      = .false.,
    assimilation_period_seconds = 21600,
    adv_mod_command             = './wrf.exe',
    vert_localization_coord     = 3,
    center_search_half_length   = 500000.,
-   center_spline_grid_scale    = 10  /
+   center_spline_grid_scale    = 10,
+   polar                       = .false.,
+   periodic_x                  = .false.  /
 
+
+# polar and periodic_x are used in global wrf.  if polar is true, the 
+# grid interpolation routines will wrap over the north & south poles.  
+# if periodic_x is true, when the east and west edges of the grid are
+# reached the interpolation will wrap.  note this is a separate issue
+# from regional models which cross the GMT line; those grids are marked
+# as having a negative offset and do not need to wrap; this flag controls
+# what happens when the edges of the grid are reached.
