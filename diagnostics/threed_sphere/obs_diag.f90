@@ -296,6 +296,7 @@ num_obs_kinds = grok_observation_names(my_obs_kind_names)
 !enddo
 
 allocate(which_vert(num_obs_kinds), scale_factor(num_obs_kinds))
+which_vert = VERTISUNDEF
 
 !----------------------------------------------------------------------
 ! Read the namelist
@@ -1075,6 +1076,13 @@ enddo ObsFileLoop
 ! We have read all possible files, and stuffed the observations into the
 ! appropriate bins. Time to normalize.
 !-----------------------------------------------------------------------
+
+if (verbose) then
+   do ivar   = 1,SIZE(which_vert)
+      write(logfileunit,*)'which_vert(',ivar,' of ',num_obs_kinds,') = ',which_vert(ivar)
+      write(     *     ,*)'which_vert(',ivar,' of ',num_obs_kinds,') = ',which_vert(ivar)
+   enddo
+endif
 
 if (verbose) then
    write(logfileunit,*)'Normalizing time-level-region-variable quantities.'
