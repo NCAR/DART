@@ -269,7 +269,6 @@ type(time_type) :: obs_time, skip_time
 
 character(len = 129) :: ncName, locName, msgstring
 character(len = stringlength) :: str1, str2, str3
-!character(len =   6) :: day_num 
 
 integer  :: Nidentity  = 0   ! identity observations
 
@@ -289,11 +288,6 @@ call static_init_obs_sequence()  ! Initialize the obs sequence module
 !----------------------------------------------------------------------
 
 num_obs_kinds = grok_observation_names(my_obs_kind_names)
-
-! TJH - check of grok - OK 12Dec07
-!do indx = 1,num_obs_kinds
-!   write(*,*)'obs kind ',indx, 'is ',my_obs_kind_names(indx)
-!enddo
 
 allocate(which_vert(num_obs_kinds), scale_factor(num_obs_kinds))
 which_vert = VERTISUNDEF
@@ -500,18 +494,13 @@ write(nsigmaUnit,'(a)') '   day   secs    lon      lat    level         obs    g
 ObsFileLoop : do ifile=1, Nepochs*4
 !-----------------------------------------------------------------------
 
-   ! TODO:  consider opening obs_sequence_name directly relative to the
-   ! current directory, and only if it is not found then start prepending
-   ! 01_01, 01_02, etc to the name.  or better -- allow some pattern character 
-   ! in the filename (e.g. obs_seq.final.MMDD) and substitute for the string
-   ! for each successive filename.  this has the advantage that you could
-   ! make the default filename MM_DD/obs_seq.final and it would be backwards 
-   ! compatible.  nsc 2007/01/24
+   ! TODO: NextFile only handles relative filenames (as of 12/20/2007).
+   ! The assumption is that the file are organized  obs_0001/obs_seq.final   
+   ! NextFile finds the first slash instead of the last slash. If everything
+   ! were slaved off the last slash I suspect relative and absolute would work.
+   ! TJH 2007/12/20
 
    obs_seq_in_file_name = NextFile(obs_sequence_name,ifile)
-
- !  write(day_num, '(i2.2,''_'',i2.2,''/'')') first_bin_center(2), ifile 
- !  write(obs_seq_in_file_name,*)trim(adjustl(day_num))//trim(adjustl(obs_sequence_name))
 
    if ( file_exist(trim(obs_seq_in_file_name)) ) then
       write(msgstring,*)'opening ', trim(obs_seq_in_file_name)
@@ -533,10 +522,6 @@ ObsFileLoop : do ifile=1, Nepochs*4
              num_copies, num_qc, num_obs, max_num_obs, &
              obs_seq_file_id, obs_seq_read_format, pre_I_format, &
              close_the_file = .true.)
-
-   ! Compare this file to previous files to ensure compatibility
-
-   ! TJH - must create - call CompareHeader()
 
    ! Initialize some (individual) observation variables
 
@@ -780,7 +765,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
          ! integer, parameter  :: QC_MAX_PRIOR     = 3
          ! integer, parameter  :: QC_MAX_POSTERIOR = 1
 
-         if ( verbose ) then
+         if ( 1 == 2 ) then
          call get_obs_values(observation, copyvals)
      !   if (any(copyvals < -87.0) .and. ( qc_integer < (QC_MAX_PRIOR+1) ) ) then
          if (any(copyvals < -87.0) .and. ( qc_integer < (QC_MAX_PRIOR-1) ) ) then
@@ -793,8 +778,8 @@ ObsFileLoop : do ifile=1, Nepochs*4
               write(*,*)'prior_spread     value is',prior_spread(1)
               write(*,*)'posterior_spread value is',posterior_spread(1)
               write(*,*)'DART QC          value is',qc_integer
-     !        qc_integer = QC_MAX_PRIOR - 1
-     !        write(*,*)'DART QC          value is now',qc_integer
+         !    qc_integer = QC_MAX_PRIOR - 1
+         !    write(*,*)'DART QC          value is now',qc_integer
               do i= 1,num_copies 
                  write(*,*)copyvals(i),trim(get_copy_meta_data(seq,i))
               enddo
@@ -1763,9 +1748,10 @@ CONTAINS
    real(r8), dimension(:), intent(  out) :: midpoints
 
    logical :: increasing
-   logical, dimension(SIZE(levels)) :: logicarray
    integer :: n, i
+   integer :: dummyindxs(1)
    integer, dimension(SIZE(levels)) :: indxs
+   logical, dimension(SIZE(levels)) :: logicarray
 
    Rmidpoints2edges = SIZE(levels,1)
    if (Rmidpoints2edges > MaxLevels) then
@@ -1773,12 +1759,11 @@ CONTAINS
       call error_handler(E_ERR,'obs_diag:Rmidpoints2edges', msgstring,source,revision,revdate)
    endif
 
-   ! find length of levels array
-
+   ! find length of useful portion of levels array
    indxs      = (/ (i,i=1,SIZE(levels)) /) 
    logicarray = levels > MISSING_R8
-   indxs      = maxloc(indxs, logicarray)
-   n          = indxs(1)
+   dummyindxs = maxloc(indxs, logicarray)
+   n          = dummyindxs(1)
 
    Rmidpoints2edges = n
 
@@ -1824,12 +1809,12 @@ CONTAINS
    integer :: Imidpoints2edges
    integer, dimension(:), intent(inout) :: levels
 
-
    logical :: increasing
-   logical, dimension(SIZE(levels)) :: logicarray
    integer :: n, i
-   integer, dimension(SIZE(levels)) :: indxs
-   real(r8), dimension(SIZE(levels)):: midpoints ! used for the 'sort' routine
+   integer :: dummyindxs(1)
+   integer,  dimension(SIZE(levels)) :: indxs
+   logical,  dimension(SIZE(levels)) :: logicarray
+   real(r8), dimension(SIZE(levels)) :: midpoints ! used for the 'sort' routine
 
    Imidpoints2edges = SIZE(levels,1)
    if (Imidpoints2edges > MaxLevels) then
@@ -1839,12 +1824,11 @@ CONTAINS
 
    midpoints = levels
 
-   ! ensure monotonicity - up or down - 
-
+   ! find length of useful portion of levels array
    indxs      = (/ (i,i=1,SIZE(levels)) /) 
    logicarray = levels > nint(MISSING_R8)
-   indxs      = maxloc(indxs, logicarray)
-   n          = indxs(1)
+   dummyindxs = maxloc(indxs, logicarray)
+   n          = dummyindxs(1)
    Imidpoints2edges = n
 
    ! single-level case 
@@ -1863,9 +1847,6 @@ CONTAINS
       midpoints(1:n) = nint(sort(midpoints(1:n)))
       levels(1:n)    = midpoints(n:1:-1)
    endif
-
-!  levels(1) = max(1,levels(1))
-!  levels(n) = min(n,levels(n))
 
    end Function Imidpoints2edges
 
