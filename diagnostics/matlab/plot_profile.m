@@ -41,12 +41,17 @@ plotdat.fname         = fname;
 plotdat.copystring    = copystring;
 plotdat.bincenters    = getnc(fname,'time');
 plotdat.binedges      = getnc(fname,'time_bounds');
-plotdat.region_names  = getnc(fname,'region_names');
 plotdat.mlevel        = getnc(fname,'mlevel');
 plotdat.plevel        = getnc(fname,'plevel');
 plotdat.plevel_edges  = getnc(fname,'plevel_edges');
 plotdat.hlevel        = getnc(fname,'hlevel');
 plotdat.hlevel_edges  = getnc(fname,'hlevel_edges');
+plotdat.nregions      = getnc(fname,'region');
+plotdat.region_names  = getnc(fname,'region_names');
+
+if (plotdat.nregions == 1)
+   plotdat.region_names = deblank(plotdat.region_names');
+end
 
 f = netcdf(fname,'nowrite');
 plotdat.binseparation      = f.bin_separation(:);
@@ -79,7 +84,6 @@ plotdat.toff       = plotdat.bincenters(1) + iskip;
 plotdat.day1      = datestr(plotdat.toff,'yyyy-mm-dd HH');
 plotdat.dayN      = datestr(plotdat.bincenters(plotdat.Nbins),'yyyy-mm-dd HH');
 plotdat.xlabel    = sprintf('%s',copystring);
-plotdat.nregions  = size(plotdat.region_names,1);
 plotdat.linewidth = 2.0;
 
 [plotdat.allvarnames, plotdat.allvardims] = get_varsNdims(f);
@@ -134,6 +138,20 @@ for ivar = 1:plotdat.nvars
    guess = getnc(fname, plotdat.guessvar,-1,-1,-1,-1,-1,-1,0);  
    analy = getnc(fname, plotdat.analyvar,-1,-1,-1,-1,-1,-1,0); 
    
+   % Check for one region ... if the last dimension is a singleton 
+   % dimension, it is auto-squeezed  - which is bad.
+   % We want these things to be 3D.
+
+   n = size(guess);
+   if ( length(n) < 3 )
+       bob = NaN*ones(n(1),n(2),2);
+       ted = NaN*ones(n(1),n(2),2);
+       bob(:,:,1) = guess;
+       ted(:,:,1) = analy;
+       guess = bob; clear bob
+       analy = ted; clear ted
+   end
+   
    % check to see if there is anything to plot
    nposs = sum(guess(plotdat.Npossindex,:,:));
 
@@ -141,19 +159,15 @@ for ivar = 1:plotdat.nvars
       disp(sprintf('No obs for %s...  skipping', plotdat.varnames{ivar}))
       continue
    end
-   
-   % here is where you have to check for one region ... the last
-   % dimension (if it is a singleton dimension) is auto-squeezed ... 
 
    plotdat.ges_copy   = guess(plotdat.copyindex,  :, :);
    plotdat.anl_copy   = analy(plotdat.copyindex,  :, :);
-
    plotdat.ges_Nposs  = guess(plotdat.Npossindex, :, :);
    plotdat.anl_Nposs  = analy(plotdat.Npossindex, :, :);
    plotdat.ges_Nused  = guess(plotdat.Nusedindex, :, :);
    plotdat.anl_Nused  = guess(plotdat.Nusedindex, :, :);
    plotdat.Xrange     = FindRange(plotdat);
-      
+
    % plot by region
 
    if (plotdat.nregions > 2)
@@ -343,8 +357,6 @@ for j = 1:length(i)
     y{j} = basenames{j};
 ydims{j} = basedims{j};
 end
-
-
 
 
 
