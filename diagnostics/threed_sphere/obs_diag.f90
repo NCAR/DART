@@ -1249,7 +1249,7 @@ endif
 ! Open netCDF output file 
 !----------------------------------------------------------------------
 
-ncName = trim(adjustl(obs_sequence_name))//".nc"
+ncName = 'obs_diag_output.nc'
   
 call WriteNetCDF(ncName)
 
