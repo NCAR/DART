@@ -10,11 +10,11 @@ function plotdat = plot_bias_xxx_profile(fname,copystring)
 % copystring :  'copy' string == quantity of interest. These
 %            can be any of the ones available in the netcdf 
 %            file 'CopyMetaData' variable.
-%            (ncdump -v CopyMetaData obs_seq.final.nc)
+%            (ncdump -v CopyMetaData obs_diag_output.nc)
 %
 % EXAMPLE:
 %
-% fname = 'obs_seq.final.nc';   % netcdf file produced by 'obs_diag'
+% fname = 'obs_diag_output.nc';   % netcdf file produced by 'obs_diag'
 % copystring = 'totalspread';   % 'copy' string == quantity of interest
 % plotdat = plot_bias_xxx_profile(fname,copystring);
 
