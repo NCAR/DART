@@ -74,8 +74,6 @@ plotdat.toff       = plotdat.bincenters(1) + iskip;
 
 % set up a structure with all static plotting components
 
-plotdat.day1      = datestr(plotdat.toff,'yyyy-mm-dd HH');
-plotdat.dayN      = datestr(plotdat.bincenters(plotdat.Nbins),'yyyy-mm-dd HH');
 plotdat.nregions  = size(plotdat.region_names,1);
 plotdat.linewidth = 2.0;
 

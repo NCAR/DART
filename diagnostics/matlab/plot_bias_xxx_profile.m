@@ -81,8 +81,6 @@ plotdat.toff       = plotdat.bincenters(1) + iskip;
 
 % set up a structure with all static plotting components
 
-plotdat.day1      = datestr(plotdat.toff,'yyyy-mm-dd HH');
-plotdat.dayN      = datestr(plotdat.bincenters(plotdat.Nbins),'yyyy-mm-dd HH');
 plotdat.xlabel    = sprintf('bias (%s) and %s',plotdat.biasconv,copystring);
 plotdat.linewidth = 2.0;
 
