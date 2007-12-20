@@ -46,7 +46,7 @@ plotdat.plevel        = getnc(fname,'plevel');
 plotdat.plevel_edges  = getnc(fname,'plevel_edges');
 plotdat.hlevel        = getnc(fname,'hlevel');
 plotdat.hlevel_edges  = getnc(fname,'hlevel_edges');
-plotdat.nregions      = getnc(fname,'region');
+plotdat.nregions      = length(getnc(fname,'region'));
 plotdat.region_names  = getnc(fname,'region_names');
 
 if (plotdat.nregions == 1)

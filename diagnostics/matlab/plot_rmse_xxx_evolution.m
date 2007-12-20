@@ -40,12 +40,17 @@ plotdat.fname         = fname;
 plotdat.copystring    = copystring;
 plotdat.bincenters    = getnc(fname,'time');
 plotdat.binedges      = getnc(fname,'time_bounds');
-plotdat.region_names  = getnc(fname,'region_names');
 plotdat.mlevel        = getnc(fname,'mlevel');
 plotdat.plevel        = getnc(fname,'plevel');
 plotdat.plevel_edges  = getnc(fname,'plevel_edges');
 plotdat.hlevel        = getnc(fname,'hlevel');
 plotdat.hlevel_edges  = getnc(fname,'hlevel_edges');
+plotdat.nregions      = length(getnc(fname,'region'));
+plotdat.region_names  = getnc(fname,'region_names');
+
+if (plotdat.nregions == 1)
+   plotdat.region_names = deblank(plotdat.region_names');
+end
 
 f = netcdf(fname,'nowrite');
 plotdat.binseparation      = f.bin_separation(:);
@@ -76,7 +81,6 @@ plotdat.toff       = plotdat.bincenters(1) + iskip;
 % set up a structure with all static plotting components
 
 plotdat.ylabel    = sprintf('rmse and %s',copystring);
-plotdat.nregions  = size(plotdat.region_names,1);
 plotdat.linewidth = 2.0;
 
 [plotdat.allvarnames, plotdat.allvardims] = get_varsNdims(f);
