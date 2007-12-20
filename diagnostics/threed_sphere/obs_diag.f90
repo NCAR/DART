@@ -2120,6 +2120,8 @@ CONTAINS
    !----------------------------------------------------------------------
 
    ! ... spread is computed via sqrt(ensemble_spread**2 + observation_error**2).  
+   ! however, dart stores the variance, not the error, so we do not need
+   ! to square it here.
    ! If you are verifying the ensemble against imperfect (real) observations, 
    ! it is necessary to account for the observation error when computing the 
    ! spread.  Since the observation error is not included as output from 
@@ -2155,8 +2157,8 @@ CONTAINS
       postbias       =  pospeed - obsspeed
       priorspred     = prsprd**2 + uprsprd**2
       postspred      = posprd**2 + uposprd**2
-      priorspredplus = prsprd**2 + obserrvar**2 + uprsprd**2 + uobserrvar**2
-      postspredplus  = posprd**2 + obserrvar**2 + uposprd**2 + uobserrvar**2
+      priorspredplus = prsprd**2 + obserrvar + uprsprd**2 + uobserrvar
+      postspredplus  = posprd**2 + obserrvar + uposprd**2 + uobserrvar
 
    else if ( any(optionals) ) then
       call error_handler(E_ERR,'Bin4D','wrong number of optional arguments', &
@@ -2168,8 +2170,8 @@ CONTAINS
       postbias       =  pomean - obsval
       priorspred     = prsprd**2
       postspred      = posprd**2
-      priorspredplus = prsprd**2 + obserrvar**2
-      postspredplus  = posprd**2 + obserrvar**2
+      priorspredplus = prsprd**2 + obserrvar
+      postspredplus  = posprd**2 + obserrvar
    endif
 
    !----------------------------------------------------------------------
@@ -2262,8 +2264,8 @@ CONTAINS
       postbias       =  pospeed - obsspeed
       priorspred     = prsprd**2 + uprsprd**2
       postspred      = posprd**2 + uposprd**2
-      priorspredplus = prsprd**2 + obserrvar**2 + uprsprd**2 + uobserrvar**2
-      postspredplus  = posprd**2 + obserrvar**2 + uposprd**2 + uobserrvar**2
+      priorspredplus = prsprd**2 + obserrvar + uprsprd**2 + uobserrvar
+      postspredplus  = posprd**2 + obserrvar + uposprd**2 + uobserrvar
       
    else if ( any(optionals) ) then
       call error_handler(E_ERR,'Bin3D','wrong number of optional arguments', &
@@ -2275,8 +2277,8 @@ CONTAINS
       postbias       =  pomean - obsval
       priorspred     = prsprd**2
       postspred      = posprd**2
-      priorspredplus = prsprd**2 + obserrvar**2
-      postspredplus  = posprd**2 + obserrvar**2
+      priorspredplus = prsprd**2 + obserrvar
+      postspredplus  = posprd**2 + obserrvar
 
    endif
 
