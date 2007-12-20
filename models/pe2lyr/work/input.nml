@@ -161,7 +161,6 @@
    plevel       = 1013,
    hlevel       = 5000,
    mlevel       = 2,
-   obs_select         = 1,
    rat_cri            = 3.0,
    input_qc_threshold = 4.0,
    Nregions   = 4,
