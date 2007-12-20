@@ -1063,13 +1063,6 @@ enddo ObsFileLoop
 !-----------------------------------------------------------------------
 
 if (verbose) then
-   do ivar   = 1,SIZE(which_vert)
-      write(logfileunit,*)'which_vert(',ivar,' of ',num_obs_kinds,') = ',which_vert(ivar)
-      write(     *     ,*)'which_vert(',ivar,' of ',num_obs_kinds,') = ',which_vert(ivar)
-   enddo
-endif
-
-if (verbose) then
    write(logfileunit,*)'Normalizing time-level-region-variable quantities.'
    write(     *     ,*)'Normalizing time-level-region-variable quantities.'
 endif
@@ -3034,16 +3027,17 @@ CONTAINS
          splitindex = index(dir_name,'_')
 
          if (splitindex <= 0) then
-            write(*,*)'ERROR - no _ in name - cannot determine increment'
-            stop
+            write(msgstring,*)'cannot find _ in ', trim(dir_name)
+            call error_handler(E_ERR,'NextFile',msgstring,source,revision,revdate)
          endif
+
          dir_base   = dir_name(1:splitindex-1)
          dir_ext    = dir_name(splitindex+1:slashindex-1)
          dir_prec   = slashindex - splitindex - 1
 
-         write(*,*)'base is ',trim(dir_base)
-         write(*,*)'ext  is ',trim(dir_ext)
-         write(*,*)'prec is ',dir_prec
+         ! write(*,*)'base is ',trim(dir_base)
+         ! write(*,*)'ext  is ',trim(dir_ext)
+         ! write(*,*)'prec is ',dir_prec
 
          read(dir_ext,*) filenum   ! TJH - needs error handling
 
@@ -3068,11 +3062,11 @@ CONTAINS
          write(NextFile,'(a,''_'',i4.4,''/'',a)') trim(dir_base),filenum,trim(filename)
          endif
 
-         write(*,*)'base is ',trim(dir_base)
-         write(*,*)'ext  is ',trim(dir_ext)
-         write(*,*)'prec is ',dir_prec
-         write(*,*)'ext  is ',filenum
-         write(*,*)'newfile ',trim(NextFile)
+      !  write(*,*)'base is ',trim(dir_base)
+      !  write(*,*)'ext  is ',trim(dir_ext)
+      !  write(*,*)'prec is ',dir_prec
+      !  write(*,*)'ext  is ',filenum
+      !  write(*,*)'newfile ',trim(NextFile)
 
       endif
 
