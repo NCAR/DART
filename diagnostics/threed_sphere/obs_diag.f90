@@ -1063,6 +1063,13 @@ enddo ObsFileLoop
 !-----------------------------------------------------------------------
 
 if (verbose) then
+   do ivar   = 1,SIZE(which_vert)
+      write(logfileunit,*)'which_vert(',ivar,' of ',num_obs_kinds,') = ',which_vert(ivar)
+      write(     *     ,*)'which_vert(',ivar,' of ',num_obs_kinds,') = ',which_vert(ivar)
+   enddo
+endif
+
+if (verbose) then
    write(logfileunit,*)'Normalizing time-level-region-variable quantities.'
    write(     *     ,*)'Normalizing time-level-region-variable quantities.'
 endif
@@ -1916,9 +1923,9 @@ CONTAINS
       else if ( level_in > top     ) then
          ClosestLevel = 100 + Nhlevels
       else
-         dx = abs(level_in - hlevel(1:Nhlevels))
-         a  = minloc(dx)
-         ClosestLevel = a(1)
+         dx(1:Nhlevels) = abs(level_in - hlevel(1:Nhlevels))
+         a              = minloc(dx(1:Nhlevels))
+         ClosestLevel   = a(1)
       endif
 
    else if (levind == VERTISLEVEL) then   ! we have model levels
@@ -1949,9 +1956,9 @@ CONTAINS
       else if ( level_in < top     ) then
          ClosestLevel = 100 + Nplevels
       else
-         dx = abs(level_in - plevel(1:Nplevels))
-         a  = minloc(dx)
-         ClosestLevel = a(1)
+         dx(1:Nplevels) = abs(level_in - plevel(1:Nplevels))
+         a              = minloc(dx(1:Nplevels))
+         ClosestLevel   = a(1)
       endif
 
    endif
