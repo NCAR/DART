@@ -2041,7 +2041,7 @@ real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
 ! Some compilers require an assignment to intent(out) arguments
-pert_state = 0.0
+!!!pert_state = 0.0
 interf_provided = .false.
 
 end subroutine pert_model_state
