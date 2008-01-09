@@ -195,7 +195,7 @@ obsloop:  do
    endif
 
    lonc = lon
-   if (lon2 > (2.0_r8 * PI) .and. lon < PI) lonc = lon + 2.0_r8 * PI
+   if (lon2 > 360.0_r8 .and. lon < 180.0_r8) lonc = lon + 360.0_r8
 
    ! reject observations outside the bounding box
    if(lat < lat1 .or. lat > lat2 .or. lonc < lon1 .or. lonc > lon2) then
