@@ -194,110 +194,111 @@ being for the posterior inflation.
      <TH align=left>Description </TH></TR>
 
  <TR><!--contents--><TD valign=top>async</TD>
-     <!--  type  --><TD>integer</TD>
+     <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>Controls method for advancing model: 
-                        0&nbsp;is&nbsp;subroutine&nbsp;call, 
-                        2&nbsp;is&nbsp;shell&nbsp;command. 
+                        0 is subroutine call, 
+                        2 is shell command, 
+                        4 is mpi-job script. 
                         Default: 0</TD></TR>
 
  <TR><!--contents--><TD valign=top>adv_ens_command</TD>
-     <!--  type  --><TD>character(len=129)</TD>
+     <!--  type  --><TD valign=top>character(len=129)</TD>
      <!--descript--><TD>Command sent to shell if async is 2. 
                         Default: ./advance_model.csh</TD></TR>
 
  <TR><!--contents--><TD valign=top>ens_size</TD>
-     <!--  type  --><TD>integer</TD>
+     <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>Size of ensemble.
                         Default: 20</TD></TR>
 
  <TR><!--contents--><TD valign=top>start_from_restart</TD>
-     <!--  type  --><TD>logical</TD>
+     <!--  type  --><TD valign=top>logical</TD>
      <!--descript--><TD>True means start from a restart file, false means 
                         perturb a single state vector in restart file. 
                         Default: .false.</TD></TR>
 
  <TR><!--contents--><TD valign=top>output_restart</TD>
-     <!--  type  --><TD>logical</TD>
+     <!--  type  --><TD valign=top>logical</TD>
      <!--descript--><TD>True means output a restart file. 
                         Default: .false.</TD></TR>
 
  <TR><!--contents--><TD valign=top>obs_sequence_in_name</TD>
-     <!--  type  --><TD>character(len=129)</TD>
+     <!--  type  --><TD valign=top>character(len=129)</TD>
      <!--descript--><TD>File name from which to read an observation sequence. 
                         Default: obs_seq.out</TD></TR>
 
  <TR><!--contents--><TD valign=top>obs_sequence_out_name</TD>
-     <!--  type  --><TD>character(len=129)</TD>
+     <!--  type  --><TD valign=top>character(len=129)</TD>
      <!--descript--><TD>File name to which to write output observation sequence. 
                         Default: obs_seq.final</TD></TR>
 
  <TR><!--contents--><TD valign=top>restart_in_file_name</TD>
-     <!--  type  --><TD>character(len=129)</TD>
+     <!--  type  --><TD valign=top>character(len=129)</TD>
      <!--descript--><TD>File containing state restart vectors. 
                         Default: filter_ics</TD></TR>
 
  <TR><!--contents--><TD valign=top>restart_out_file_name</TD>
-     <!--  type  --><TD>character(len=129)</TD>
+     <!--  type  --><TD valign=top>character(len=129)</TD>
      <!--descript--><TD>File to which to write restart state vectors. 
                         Default: filter_restart</TD></TR>
 
  <TR><!--contents--><TD valign=top>init_time_days</TD>
-     <!--  type  --><TD>integer</TD>
+     <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>If negative, don't use. If non-negative, override the initial 
                         days read from state restart. 
                         Default: 0</TD></TR>
 
  <TR><!--contents--><TD valign=top>init_time_seconds</TD>
-     <!--  type  --><TD>integer</TD>
+     <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>If negative don't use. If non-negative, override the initial
                         seconds read from state restart. 
                         Default: 0</TD></TR>
 
  <TR><!--contents--><TD valign=top>num_output_state_members</TD>
-     <!--  type  --><TD>integer</TD>
+     <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>Number of ensemble members to be included in the state 
                         diagnostic output. Default: 0</TD></TR>
 
  <TR><!--contents--><TD valign=top>num_output_obs_members</TD>
-     <!--  type  --><TD>integer</TD>
+     <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>Number of ensemble members to be included in the 
                         observation sequence file. Default: 0</TD></TR>
 
  <TR><!--contents--><TD valign=top>output_interval</TD>
-     <!--  type  --><TD>integer</TD>
+     <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>Output state and observation diagnostics every 'N'th 
                         assimilation time, N is output_interval. Default: 1</TD></TR>
 
  <TR><!--contents--><TD valign=top>num_groups</TD>
-     <!--  type  --><TD>integer</TD>
+     <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>Number of groups for hierarchical filter. Default: 1</TD></TR>
 
  <TR><!--contents--><TD valign=top>outlier_threshold</TD>
-     <!--  type  --><TD>real(r8)</TD>
+     <!--  type  --><TD valign=top>real(r8)</TD>
      <!--descript--><TD>Reject observation if prior mean is more than this many 
                         sd's from observation. Negative means no check. 
                         Default: -1.0_r8</TD></TR>
 
  <TR><!--contents--><TD valign=top>input_qc_threshold</TD>
-     <!--  type  --><TD>real(r8)</TD>
+     <!--  type  --><TD valign=top>real(r8)</TD>
      <!--descript--><TD>Reject observation if incoming QC value exceeds
                         'input_qc_threshold' value. Incoming observations have a
                         QC value (usually set by NCEP). 
                         Default: 4.0_r8</TD></TR>
 
  <TR><!--contents--><TD valign=top>output_forward_op_errors</TD>
-     <!--  type  --><TD>logical</TD>
+     <!--  type  --><TD valign=top>logical</TD>
      <!--descript--><TD>True means output errors from forward observation operators.
                         Default: .false.</TD></TR>
 
  <TR><!--contents--><TD valign=top>output_timestamps</TD>
-     <!--  type  --><TD>logical</TD>
+     <!--  type  --><TD valign=top>logical</TD>
      <!--descript--><TD>True means output timestamps before and after the model advance
                         and the observation assimilation phases.
                         Default: .false.</TD></TR>
 
  <TR><!--contents--><TD valign=top>output_inflation</TD>
-     <!--  type  --><TD>logical</TD>
+     <!--  type  --><TD valign=top>logical</TD>
      <!--descript--><TD>True means output inflation values in the prior and posterior
                         diagnostic files.  False omits them.
                         Default: .true.</TD></TR>
@@ -307,16 +308,18 @@ being for the posterior inflation.
                    for the posterior</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_flavor</TD>
-     <!--  type  --><TD>integer array (len=2)</TD>
+     <!--  type  --><TD valign=top>integer array (len=2)</TD>
      <!--descript--><TD>Inflation flavor for [prior, posterior]<br>
                         0&nbsp;=&nbsp;none,
                         1&nbsp;=&nbsp;obs_space, 
-                        2&nbsp;=&nbsp;varying&nbsp;state&nbsp;space,
-                        3&nbsp;=&nbsp;fixed&nbsp;state&nbsp;space. 
+                        2&nbsp;=&nbsp;spatially-varying&nbsp;state&nbsp;space,
+                        3&nbsp;=&nbsp;spatially-fixed&nbsp;state&nbsp;space. 
+                        (See sd_initial below for how to set the time
+                        evolution options.)
                         Default: (/0, 0/)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_initial_from_restart</TD>
-     <!--  type  --><TD>logical array (len=2)</TD>
+     <!--  type  --><TD valign=top>logical array (len=2)</TD>
      <!--descript--><TD>If true, get initial mean values for inflation from restart file.
                         (Replaces inf_start_from_restart, which applied to
                         both mean and standard deviation.  
@@ -325,8 +328,9 @@ being for the posterior inflation.
                         Default: (/.false., .false /)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_sd_initial_from_restart</TD>
-     <!--  type  --><TD>logical array (len=2)</TD>
-     <!--descript--><TD>If true, get initial standard deviation values for inflation from restart file.
+     <!--  type  --><TD valign=top>logical array (len=2)</TD>
+     <!--descript--><TD>If true, get initial standard deviation values for 
+                        inflation from restart file.
                         (Replaces inf_start_from_restart, which applied to
                         both mean and standard deviation.  
                         They are now individually controllable.)
@@ -334,55 +338,59 @@ being for the posterior inflation.
                         Default: (/.false., .false /)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_output_restart</TD>
-     <!--  type  --><TD>logical array (len=2)</TD>
+     <!--  type  --><TD valign=top>logical array (len=2)</TD>
      <!--descript--><TD>Output an inflation restart file if true. 
                         Default: (/.false., .false./)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_deterministic</TD>
-     <!--  type  --><TD>logical array (len=2)</TD>
+     <!--  type  --><TD valign=top>logical array (len=2)</TD>
      <!--descript--><TD>True means determinstic inflation, false means stochastic. 
                         Default: (/.true., .true./)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_in_file_name</TD>
-     <!--  type  --><TD>character(len=129) by two</TD>
+     <!--  type  --><TD valign=top>character(len=129) by two</TD>
      <!--descript--><TD>Name from which to read inflation restart. 
                         Default: (/'not_initialized', 'not_initialized'/)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_out_file_name</TD>
-     <!--  type  --><TD>character(len=129) by two</TD>
+     <!--  type  --><TD valign=top>character(len=129) by two</TD>
      <!--descript--><TD>File to which to write inflation restart file. 
                         Default: (/'not_initialized', 'not_initialized'/)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_diag_file_name</TD>
-     <!--  type  --><TD>character(len=129) by two</TD>
+     <!--  type  --><TD valign=top>character(len=129) by two</TD>
      <!--descript--><TD>File to which to write output diagnostics for observation 
                         space inflation. 
                         Default: (/'not_initialized', 'not_initialized'/)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_initial</TD>
-     <!--  type  --><TD>real(r8) (len=2)</TD>
+     <!--  type  --><TD valign=top>real(r8) (len=2)</TD>
      <!--descript--><TD>Initial value of inflation if not read from restart file. 
                         Default: (/1.0_r8, 1.0_r8/)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_sd_initial</TD>
-     <!--  type  --><TD>real(r8) (len=2)</TD>
+     <!--  type  --><TD valign=top>real(r8) (len=2)</TD>
      <!--descript--><TD>Initial value of inflation standard deviation if not read 
-                        from restart file.
+                        from restart file.  If negative, do not update the inflation
+                        values, so they are time-constant.  If positive, the inflation
+                        values will adapt through time, so they are time-varying.
                         Default: (/0.0_r8, 0.0_r8/)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_lower_bound</TD>
-     <!--  type  --><TD>real(r8) (len=2)</TD>
+     <!--  type  --><TD valign=top>real(r8) (len=2)</TD>
      <!--descript--><TD>Lower bound for inflation value.
                         Default: (/1.0_r8, 1.0_r8/)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_upper_bound</TD>
-     <!--  type  --><TD>real(r8) (len=2)</TD>
+     <!--  type  --><TD valign=top>real(r8) (len=2)</TD>
      <!--descript--><TD>Upper bound on inflation value.
                         Default: (/1000000.0_r8, 1000000.0_r8/)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_sd_lower_bound</TD>
-     <!--  type  --><TD>real(r8) (len=2)</TD>
+     <!--  type  --><TD valign=top>real(r8) (len=2)</TD>
      <!--descript--><TD>Lower bound for inflation standard deviation. 
+                        If using a negative value for sd_initial, this should also
+                        be negative to preserve the setting.
                         Default: (/0.0_r8, 0.0_r8/)</TD></TR>
  </TABLE>
 
