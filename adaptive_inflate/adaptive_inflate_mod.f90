@@ -92,12 +92,12 @@ type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
 character(len = *),          intent(in)    :: label
 
-character(len = 128) :: det, tadapt, sadapt, akind
+character(len = 128) :: det, tadapt, sadapt, akind, rsread, nmread
 integer :: restart_unit, io
 
 ! Write to log file what kind of inflation is being used.
 if(deterministic) then
-  det = 'spread,'
+  det = 'deterministic,'
 else
   det = 'random-noise,'
 endif
@@ -105,8 +105,9 @@ if (sd_initial > inf_lower_bound) then
    det = trim(det) // ' covariance adaptive,'
 endif
 if (inf_lower_bound < 1.0_r8) then
+   det = trim(det) // ' deflation permitted,'
 endif
-if (sd_initial /= 0.0_r8) then
+if (sd_initial > 0.0_r8) then
   tadapt = ' time-adaptive,'
 else
   tadapt = ' time-constant,'
@@ -117,7 +118,7 @@ select case(inf_flavor)
       det = ''
       tadapt = ''
       sadapt = ''
-      akind = 'No '
+      akind = 'None '
    case (1)
       sadapt = ''
       akind = ' observation-space'
@@ -131,11 +132,41 @@ select case(inf_flavor)
       write(errstring, *) 'Illegal inflation value for ', label
       call error_handler(E_ERR, 'adaptive_inflate_init', errstring, source, revision, revdate)
 end select
-! once this is vetted to be correct, uncomment these lines.  the intent is to say
-! in plain english what kind of inflation was selected.
-!write(errstring, '(6A)') &
-!   trim(det), trim(tadapt), trim(sadapt), trim(akind), ' inflation used for ', trim(label)
-!call error_handler(E_MSG, 'adaptive_inflate_init:', errstring, source, revision, revdate)
+! say in plain english what kind of inflation was selected.
+write(errstring, '(4A)') &
+   trim(det), trim(tadapt), trim(sadapt), trim(akind)
+call error_handler(E_MSG, trim(label) // ' inflation:', errstring, source, revision, revdate)
+
+! more information for users to document what they selected in the nml:
+! if flavor > 0, look at read_from_restart for both mean and sd.
+! print the actual value used if from namelist, or say
+! what restart file is used if reading from file.
+if (inf_flavor > 0) then
+   if (mean_from_restart .and. sd_from_restart) then 
+      rsread = 'both mean and sd read from this restart file: ' // trim(in_file_name)
+      call error_handler(E_MSG, trim(label) // ' inflation:', trim(rsread), &
+         source, revision, revdate)
+   else if (mean_from_restart) then
+      rsread = 'mean read from this restart file: ' // trim(in_file_name)
+      write(nmread, '(A, F12.6)') 'sd read from namelist as ', sd_initial
+      call error_handler(E_MSG, trim(label) // ' inflation:', trim(rsread), &
+         source, revision, revdate)
+      call error_handler(E_MSG, trim(label) // ' inflation:', trim(nmread), &
+         source, revision, revdate)
+   else if (sd_from_restart) then
+      write(nmread, '(A, F12.6)') 'mean read from namelist as ', inf_initial
+      rsread = 'sd read from this restart file: ' // trim(in_file_name)
+      call error_handler(E_MSG, trim(label) // ' inflation:', trim(nmread), &
+         source, revision, revdate)
+      call error_handler(E_MSG, trim(label) // ' inflation:', trim(rsread), &
+         source, revision, revdate)
+   else
+      write(nmread, '(A, F12.6, 1X, F12.6)') 'mean and sd read from namelist as ', &
+         inf_initial, sd_initial
+      call error_handler(E_MSG, trim(label) // ' inflation:', trim(nmread), &
+         source, revision, revdate)
+   endif
+endif
 
 ! Load up the structure first to keep track of all details of this inflation type
 inflate_handle%inflation_flavor   = inf_flavor
@@ -201,6 +232,14 @@ if(inf_flavor >= 2) then
       if (.not. mean_from_restart) ens_handle%copies(ss_inflate_index, :)    = inf_initial
       if (.not.   sd_from_restart) ens_handle%copies(ss_inflate_sd_index, :) = sd_initial
       call all_copies_to_all_vars(ens_handle)
+   endif
+   
+   ! Inflation type 3 is spatially-constant.  Make sure the entire array is set to that
+   ! value; the computation only uses index 1, but the diagnostics write out the entire
+   ! array and it will be misleading if not constant.
+   if(inf_flavor == 3) then
+      ens_handle%copies(ss_inflate_index, :)    = ens_handle%copies(ss_inflate_index, 1) 
+      ens_handle%copies(ss_inflate_sd_index, :) = ens_handle%copies(ss_inflate_sd_index, 1) 
    endif
 
 !------ Block for obs. space inflation initialization ------

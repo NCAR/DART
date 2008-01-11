@@ -494,35 +494,41 @@ AdvanceTime : do
  
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
 
-      ! Ship the ensemble mean to the model; some models need this for computing distances
-      ! Who stores the ensemble mean copy
-      call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
-      ! Broadcast it to everybody else
-      if(my_task_id() == mean_owner) then
-         ens_mean = ens_handle%vars(:, mean_owners_index)
-         call broadcast_send(mean_owner, ens_mean)
-      else
-         call broadcast_recv(mean_owner, ens_mean)
-      endif
-   
-      ! Now send the mean to the model in case it's needed
-      call ens_mean_for_model(ens_mean)
+      ! If not reading the sd values from a restart file and the namelist initial
+      !  sd < 0, then bypass this entire code block altogether for speed.
+      if ((inf_sd_initial(2) >= 0.0_r8) .or. inf_sd_initial_from_restart(2)) then
 
-      ! Need obs to be copy complete for assimilation: IS NEXT LINE REQUIRED???
-      call all_vars_to_all_copies(obs_ens_handle)
-      if (output_timestamps) then
-         if (do_output()) call timestamp("Before posterior inflation", pos='debug')
-      endif
-      call filter_assim(ens_handle, obs_ens_handle, seq, keys, ens_size, num_groups, &
-         obs_val_index, post_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
-         POST_INF_COPY, POST_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-         OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
-         OBS_PRIOR_VAR_END, inflate_only = .true.)
-      if (output_timestamps) then
-         if (do_output()) call timestamp("After posterior inflation", pos='debug')
-      endif
-      call all_copies_to_all_vars(ens_handle)
-   endif
+         ! Ship the ensemble mean to the model; some models need this for computing distances
+         ! Who stores the ensemble mean copy
+         call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
+         ! Broadcast it to everybody else
+         if(my_task_id() == mean_owner) then
+            ens_mean = ens_handle%vars(:, mean_owners_index)
+            call broadcast_send(mean_owner, ens_mean)
+         else
+            call broadcast_recv(mean_owner, ens_mean)
+         endif
+
+         ! Now send the mean to the model in case it's needed
+         call ens_mean_for_model(ens_mean)
+  
+         ! Need obs to be copy complete for assimilation: IS NEXT LINE REQUIRED???
+         call all_vars_to_all_copies(obs_ens_handle)
+         if (output_timestamps) then
+            if (do_output()) call timestamp("Before posterior inflation", pos='debug')
+         endif
+         call filter_assim(ens_handle, obs_ens_handle, seq, keys, ens_size, num_groups, &
+            obs_val_index, post_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
+            POST_INF_COPY, POST_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+            OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
+            OBS_PRIOR_VAR_END, inflate_only = .true.)
+         if (output_timestamps) then
+            if (do_output()) call timestamp("After posterior inflation", pos='debug')
+         endif
+         call all_copies_to_all_vars(ens_handle)
+
+      endif  ! sd >= 0 or sd from restart file
+   endif  ! if doing state space posterior inflate
 
 !-------- End of posterior  inflate ----------------
 
