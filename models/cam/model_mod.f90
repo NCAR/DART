@@ -769,7 +769,7 @@ if (file_exist(cam_phis)) then
       call error_handler(E_ERR, 'static_init_model', trim(errstring), source, revision, revdate)
    end if
 else
-   write(errstring,'(2A)') cam_phis,' is missing; find a CAM history file (h0) to provide PHIS' 
+   write(errstring,'(2A)') trim(cam_phis),' is missing; find a CAM history file (h0) to provide PHIS' 
    call error_handler(E_ERR, 'static_init_model', trim(errstring), source, revision, revdate)
 end if
 
