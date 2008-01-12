@@ -525,7 +525,7 @@ echo "DART_ics_1 is $DART_ics_1"                           >> $MASTERLOG
 
 # clean up old CAM inputs that may be laying around
 
-if ( obs_seq_1_depend == false ) then
+if ( $obs_seq_1_depend == false ) then
    if (-e caminput_1.nc) then
       ${REMOVE} clminput_[1-9]*.nc 
       ${REMOVE} caminput_[1-9]*.nc 
