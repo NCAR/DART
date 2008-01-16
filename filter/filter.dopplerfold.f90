@@ -76,7 +76,8 @@ integer, parameter :: PRIOR_DIAG = 0, POSTERIOR_DIAG = 2
 ! Namelist input with default values
 !
 integer  :: async = 0, ens_size = 20
-logical  :: start_from_restart = .false., output_restart = .false.
+logical  :: start_from_restart = .false.
+logical  :: output_restart = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
 integer  :: init_time_days    = 0
@@ -108,7 +109,8 @@ character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
 ! Inflation namelist entries follow, first entry for prior, second for posterior
 ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
 integer              :: inf_flavor(2)             = 0
-logical              :: inf_start_from_restart(2) = .false.
+logical              :: inf_initial_from_restart(2)    = .false.
+logical              :: inf_sd_initial_from_restart(2) = .false.
 logical              :: inf_output_restart(2)     = .false.
 logical              :: inf_deterministic(2)      = .true.
 character(len = 129) :: inf_in_file_name(2)       = 'not_initialized',    &
@@ -128,7 +130,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       last_obs_seconds, num_output_state_members, &
                       num_output_obs_members, output_interval, num_groups, outlier_threshold, &
                       input_qc_threshold, output_forward_op_errors, output_timestamps, &
-                      inf_flavor, inf_start_from_restart, &
+                      inf_flavor, inf_initial_from_restart, inf_sd_initial_from_restart, &
                       inf_output_restart, inf_deterministic, inf_in_file_name, &
                       inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial, &
                       inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation
@@ -234,7 +236,13 @@ if(num_output_state_members > ens_size) num_output_state_members = ens_size
 if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 
 ! Initialize the obs_sequence; every pe gets a copy for now
+if (output_timestamps) then
+   if (do_output()) call timestamp("Before observation setup", pos='debug')
+endif
 call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, DART_qc_index)
+if (output_timestamps) then
+   if (do_output()) call timestamp("After observation setup", pos='debug')
+endif
 
 ! Allocate model size storage and ens_size storage for metadata for outputting ensembles
 model_size = get_model_size()
@@ -259,14 +267,16 @@ if(ds) then
 endif
 
 ! Initialize the adaptive inflation module
-call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_start_from_restart(1), &
-   inf_output_restart(1), inf_deterministic(1), inf_in_file_name(1), inf_out_file_name(1), &
-   inf_diag_file_name(1), inf_initial(1), inf_sd_initial(1), inf_lower_bound(1), &
-   inf_upper_bound(1), inf_sd_lower_bound(1), ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
-call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_start_from_restart(2), &
-   inf_output_restart(2), inf_deterministic(2), inf_in_file_name(2), inf_out_file_name(2), &
-   inf_diag_file_name(2), inf_initial(2), inf_sd_initial(2), inf_lower_bound(2), &
-   inf_upper_bound(2), inf_sd_lower_bound(2), ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
+   inf_sd_initial_from_restart(1), inf_output_restart(1), inf_deterministic(1),       &
+   inf_in_file_name(1), inf_out_file_name(1), inf_diag_file_name(1), inf_initial(1),  &
+   inf_sd_initial(1), inf_lower_bound(1), inf_upper_bound(1), inf_sd_lower_bound(1),  &
+   ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, 'Prior')
+call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart(2),  &
+   inf_sd_initial_from_restart(2), inf_output_restart(2), inf_deterministic(2),       &
+   inf_in_file_name(2), inf_out_file_name(2), inf_diag_file_name(2), inf_initial(2),  &
+   inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2), inf_sd_lower_bound(2),  &
+   ens_handle, POST_INF_COPY, POST_INF_SD_COPY, 'Posterior')
 
 ! Initialize the output sequences and state files and set their meta data
 if(my_task_id() == 0) then
@@ -490,6 +500,10 @@ AdvanceTime : do
  
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
 
+      ! If not reading the sd values from a restart file and the namelist initial
+      !  sd < 0, then bypass this entire code block altogether for speed.
+      if ((inf_sd_initial(2) >= 0.0_r8) .or. inf_sd_initial_from_restart(2)) then
+
       ! Ship the ensemble mean to the model; some models need this for computing distances
       ! Who stores the ensemble mean copy
       call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
@@ -518,7 +532,9 @@ AdvanceTime : do
          if (do_output()) call timestamp("After posterior inflation", pos='debug')
       endif
       call all_copies_to_all_vars(ens_handle)
-   endif
+
+      endif  ! sd >= 0 or sd from restart file
+   endif  ! if doing state space posterior inflate
 
 !-------- End of posterior  inflate ----------------
 
@@ -959,6 +975,10 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
          ! in the forward operator evaluation field
 !!!WATCH ASSUMPTIONS ABOUT INDEXING
          if(istatus == 0) then
+            if ((assimilate_this_ob .or. evaluate_this_ob) .and. (thisvar(1) == missing_r8)) then
+               write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
+               call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+            endif
             if(assimilate_this_ob) then
                forward_op_ens_handle%vars(j, k) = 0
             else if(evaluate_this_ob) then
@@ -966,6 +986,9 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
             else
                forward_op_ens_handle%vars(j, k) = -2
             endif
+         else if (istatus < 0) then
+            write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
+            call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
          else
             forward_op_ens_handle%vars(j, k) = istatus
          endif
@@ -983,14 +1006,13 @@ end do ALL_OBSERVATIONS
 end subroutine get_obs_ens
 
 !-------------------------------------------------------------------------
+
 subroutine obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, &
    seq, keys, prior_post, num_output_members, members_index, &
    obs_val_index, OBS_KEY_COPY, &                       ! new
    ens_mean_index, ens_spread_index, num_obs_in_set, &
    OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
    OBS_ERR_VAR_COPY, DART_qc_index)
-
-
 
 ! Do prior observation space diagnostics on the set of obs corresponding to keys
 
@@ -1108,8 +1130,8 @@ do j = 1, obs_ens_handle%my_num_vars
       endif
 
    else
-      ! For posterior, only check for failed forward operator if prior successful
-      if(forward_min == 0 .and. forward_max > 0) then
+      ! For failed posterior, only update qc if prior successful
+      if(forward_max > 0) then
          ! Both the following 2 tests and assignments were on single executable lines,
          ! but one compiler (gfortran) was confused by this, so they were put in
          ! if/endif blocks.
@@ -1196,10 +1218,12 @@ function input_qc_ok(input_qc)
 logical              :: input_qc_ok
 real(r8), intent(in) :: input_qc
 
+! Do checks on input_qc value with namelist control
 ! Should eventually go in qc module
 
-! Do checks on input_qc value with namelist control
-! For test always return true for now
+! To exclude negative qc values, comment in the following line instead
+! of the existing code.
+! if((input_qc < input_qc_threshold) .and. (input_qc >= 0)) then
 if(input_qc < input_qc_threshold) then
    input_qc_ok = .true.
 else
