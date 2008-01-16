@@ -96,7 +96,10 @@ public ::  adv_1step,       &
 !-----
 ! Here is the appropriate place for other users to make additional routines
 !   contained within model_mod available for public use:
-public ::  get_domain_info
+public ::  get_domain_info,      &
+           get_number_domains,   &
+           get_state_size,       &
+           get_state_components
 
 
 
@@ -944,6 +947,47 @@ end function get_model_size
 
 !#######################################################################
 
+function get_number_domains()
+
+integer :: get_number_domains
+
+get_number_domains = num_domains
+
+end function get_number_domains
+
+!#######################################################################
+
+subroutine get_state_size(id, we, sn, bt, sls)
+
+integer, intent(in)  :: id
+integer, intent(out) :: we, sn, bt, sls
+
+we  = wrf%dom(id)%we
+sn  = wrf%dom(id)%sn
+bt  = wrf%dom(id)%bt
+sls = wrf%dom(id)%sls
+
+return
+end subroutine get_state_size
+
+!#######################################################################
+
+subroutine get_state_components(id, n_moist, surf_obs, soil_data, h_db)
+
+integer, intent(in)  :: id
+integer, intent(out) :: n_moist
+logical, intent(out) :: surf_obs, soil_data, h_db
+
+n_moist   = wrf%dom(id)%n_moist
+surf_obs  = wrf%dom(id)%surf_obs
+soil_data = wrf%dom(id)%soil_data
+h_db      = h_diab
+
+return
+end subroutine get_state_components
+
+!#######################################################################
+
 function get_model_time_step()
 !------------------------------------------------------------------------
 ! function get_model_time_step()
@@ -1464,36 +1508,35 @@ else
               boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
               wrf%dom(id)%surf_obs ) then
 
+            call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners U10, V10 rc = ', rc
+
+            ! Interpolation for the U10 field
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, TYPE_U10)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, TYPE_U10)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, TYPE_U10)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, TYPE_U10)
+            ugrid = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) ) 
+
+            ! Interpolation for the V10 field
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, TYPE_V10)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, TYPE_V10)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, TYPE_V10)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, TYPE_V10)
+            vgrid = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            call gridwind_to_truewind(xyz_loc(1), wrf%dom(id)%proj, ugrid, vgrid, &
+                 utrue, vtrue)
+
             ! U10 (U at 10 meters)
             if( obs_kind == KIND_U_WIND_COMPONENT) then
-
-               call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
-               if ( rc .ne. 0 ) &
-                    print*, 'model_mod.f90 :: model_interpolate :: getCorners U10 rc = ', rc
-
-               ! Interpolation for the U10 field
-               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, TYPE_U10)
-               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, TYPE_U10)
-               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, TYPE_U10)
-               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, TYPE_U10)
-
+               fld(1) = utrue
             ! V10 (V at 10 meters)
             else
-
-               call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
-               if ( rc .ne. 0 ) &
-                    print*, 'model_mod.f90 :: model_interpolate :: getCorners V10 rc = ', rc
-
-               ! Interpolation for the V10 field
-               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, TYPE_V10)
-               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, TYPE_V10)
-               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, TYPE_V10)
-               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, TYPE_V10)
-
+               fld(1) = vtrue
             end if
 
-            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
-               
          ! If the boundsCheck functions return an unsatisfactory integer index, then set
          !   fld as missing data
          else
