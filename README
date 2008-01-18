@@ -5,7 +5,8 @@ Welcome to DART, the Data Assimilation Research Testbed.
 Documentation is in HTML format in the doc subdirectory.
 
 Tutorial materials are in PDF and Framemaker format in the
-tutorial subdirectory.
+tutorial subdirectory.  Start with the index file which
+explains what each subsection covers.
 
 
 Quick-start for the impatient:
