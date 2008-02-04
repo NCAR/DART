@@ -1412,12 +1412,14 @@ MODULE map_utils
       TYPE(proj_info),INTENT(IN)    :: proj
       REAL(r8),INTENT(OUT)              :: i
       REAL(r8),INTENT(OUT)              :: j
-      REAL(r8)                          :: deltalon
+      REAL(r8)                          :: deltalon, i2
 
       deltalon = lon - proj%lon1
       IF (deltalon .LT. -180.0_r8) deltalon = deltalon + 360.0_r8
       IF (deltalon .GT. 180.0_r8) deltalon = deltalon - 360.0_r8
       i = proj%knowni + (deltalon/(proj%dlon*deg_per_rad))
+      i2 = proj%knowni + ((deltalon+360.0_r8)/(proj%dlon*deg_per_rad))
+      if ( i < 0.0_r8 ) i = i2
       j = proj%knownj + (LOG(TAN(0.50_r8*((lat + 90.0_r8) * rad_per_deg)))) / &
              proj%dlon - proj%rsw
 
@@ -2292,7 +2294,46 @@ MODULE map_utils
 
     RETURN
   END SUBROUTINE gridwind_to_truewind
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!         
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!nc -- This subroutine was in the original module_map_utils.f90 (before PROJ_CASSINI), and
+!   the model_mod.f90 would still like it to be, hence we are including it.
+  SUBROUTINE truewind_to_gridwind(lon,proj,utrue,vtrue,ugrid,vgrid)
+      
+    ! Subroutine to compute grid-relative u/v wind components from the earth-
+    ! relative values for a given projection.
 
+    IMPLICIT NONE
+
+    ! Arguments
+    REAL(r8), INTENT(IN)       :: lon     ! Longitude of point in degrees
+    TYPE(proj_info),INTENT(IN) :: proj    ! Projection info structure
+    REAL(r8), INTENT(IN)       :: utrue   ! U-component, earth-relative
+    REAL(r8), INTENT(IN)       :: vtrue   ! V-component, earth-relative
+    REAL(r8), INTENT(OUT)      :: ugrid   ! U-component, grid-relative
+    REAL(r8), INTENT(OUT)      :: vgrid   ! V-component, grid-relative
+
+    ! Locals
+    REAL(r8)                   :: alpha
+    REAL(r8)                   :: diff
+
+    IF ((proj%code .EQ. PROJ_PS).OR.(proj%code .EQ. PROJ_LC))THEN
+
+      diff = proj%stdlon - lon
+      IF (diff .GT. 180.0_r8) diff = diff - 360.0_r8
+      IF (diff .LT.-180.0_r8) diff = diff + 360.0_r8
+      alpha = diff * proj%cone * rad_per_deg * SIGN(1.0_r8,proj%truelat1)
+      ugrid = vtrue * SIN(alpha) + utrue * COS(alpha)
+      vgrid = vtrue * COS(alpha) - utrue * SIN(alpha)
+!nc -- we added in a case structure for CASSINI and CYL
+    ELSEIF ((proj%code .EQ. PROJ_MERC).OR.(proj%code .EQ. PROJ_LATLON) &
+            .OR.(proj%code .EQ. PROJ_CASSINI).OR.(proj%code .EQ. PROJ_CYL))THEN
+      ugrid = utrue
+      vgrid = vtrue
+    ELSE
+      PRINT '(A)', 'Unrecognized map projection.'
+      STOP 'TRUEWIND_TO_GRIDWIND'
+    ENDIF
+    RETURN
+  END SUBROUTINE truewind_to_gridwind
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 END MODULE map_utils
-
