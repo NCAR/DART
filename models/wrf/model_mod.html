@@ -730,6 +730,17 @@ state is always to be provided from input files.
 	    'mpirun -np number-of-prcessors wrf.exe' (this depends on the
 	    platform). Defaults to 'wrf.exe'</TD></TR>
 
+<TR><!--contents--><TD valign=top>allow_obs_below_vol          </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
+    <!--descript--><TD>If an observation with a vertical coordinate of
+            pressure or height (e.g. not one marked as a surface observation)
+            is below the lowest 3d sigma level, it is outside the
+            volume and the interpolation routine marks it as invalid.
+            If this is set to .true. and the observation is above the surface
+            elevation but below the lowest volume level, the code will
+            extrapolate downward from data values at levels 1 and 2.  
+	    Defaults to .false.</TD></TR>
+
 <TR><!--contents--><TD valign=top>center_search_half_length    </TD>
     <!--  type  --><TD valign=top>real(r8)                     </TD>
     <!--descript--><TD>Half length (in meter) of a square box for searching 
