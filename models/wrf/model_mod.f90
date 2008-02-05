@@ -96,11 +96,9 @@ public ::  adv_1step,       &
 !-----
 ! Here is the appropriate place for other users to make additional routines
 !   contained within model_mod available for public use:
-public ::  get_domain_info,      &
-           get_number_domains,   &
-           get_state_size,       &
-           get_state_components
-
+public ::  get_number_domains,       &
+           wrf_static_data_for_dart, &
+           get_wrf_static_data
 
 
 !-----------------------------------------------------------------------
@@ -131,6 +129,12 @@ real (kind=r8) :: center_search_half_length = 500000.0_r8
 integer :: center_search_half_size
 integer :: center_spline_grid_scale = 10
 integer :: vert_localization_coord = VERTISHEIGHT
+! Allow (or not) observations above the surface but below the lowest
+! sigma level.
+logical :: allow_obs_below_vol = .false.
+! Max height a surface obs can be away from the actual model surface
+! and still be accepted (in meters)
+!real (kind=r8) :: max_surface_delta = 500.0
 !nc -- we are adding these to the model.nml until they appear in the NetCDF files
 logical :: polar = .false.
 logical :: periodic_x = .false.
@@ -140,7 +144,7 @@ real(r8), allocatable :: ens_mean(:)
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      adv_mod_command, assimilation_period_seconds, &
-                     vert_localization_coord, &
+                     allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
                      polar, periodic_x
 
@@ -166,9 +170,6 @@ integer, parameter :: num_model_var_types = 24
 
 real (kind=r8), PARAMETER    :: kappa = 2.0_r8/7.0_r8 ! gas_constant / cp
 real (kind=r8), PARAMETER    :: ts0 = 300.0_r8        ! Base potential temperature for all levels.
-
-! Private logical parameter controlling behavior within subroutine model_interpolate
-logical, parameter  :: allow_obs_below_surf = .false.
 
 !---- private data ----
 
@@ -957,34 +958,16 @@ end function get_number_domains
 
 !#######################################################################
 
-subroutine get_state_size(id, we, sn, bt, sls)
+function get_wrf_static_data(dom_num)
 
-integer, intent(in)  :: id
-integer, intent(out) :: we, sn, bt, sls
+integer, intent(in)  :: dom_num
 
-we  = wrf%dom(id)%we
-sn  = wrf%dom(id)%sn
-bt  = wrf%dom(id)%bt
-sls = wrf%dom(id)%sls
+type(wrf_static_data_for_dart) :: get_wrf_static_data
+
+get_wrf_static_data = wrf%dom(dom_num)
 
 return
-end subroutine get_state_size
-
-!#######################################################################
-
-subroutine get_state_components(id, n_moist, surf_obs, soil_data, h_db)
-
-integer, intent(in)  :: id
-integer, intent(out) :: n_moist
-logical, intent(out) :: surf_obs, soil_data, h_db
-
-n_moist   = wrf%dom(id)%n_moist
-surf_obs  = wrf%dom(id)%surf_obs
-soil_data = wrf%dom(id)%soil_data
-h_db      = h_diab
-
-return
-end subroutine get_state_components
+end function get_wrf_static_data
 
 !#######################################################################
 
@@ -1201,6 +1184,7 @@ integer :: center_track_xmin, center_track_ymin, &
 ! local vars, used in calculating density, pressure, height
 real(r8)            :: rho1 , rho2 , rho3, rho4
 real(r8)            :: pres1, pres2, pres3, pres4, pres
+logical             :: lev0
 
 
 ! Initialize stuff
@@ -1297,48 +1281,58 @@ else
       ! computed column pressure profile
       call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
       ! get pressure vertical co-ordinate
-      call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
+      call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc,lev0)
       if(debug .and. obs_kind /= KIND_SURFACE_PRESSURE) &
-                print*,' obs is by pressure and zloc =',zloc
+                print*,' obs is by pressure and zloc,lev0 =',zloc, lev0
       if(debug) print*,'model pressure profile'
       if(debug) print*,v_p
       
-      !nc -- If location is below model terrain (and therefore has a missing_r8 value), 
-      !        then push its location back to the level of model terrain.  This is only
-      !        permitted if the user has set the logical parameter allow_obs_below_surf to
-      !        be .true. (its default is .false.).
-      if ( allow_obs_below_surf ) then
-         if ( zloc == missing_r8 .and. xyz_loc(3) > v_p(0) ) then
-            zloc = 1.0_r8         ! Higher pressure than p_surf (lower than model terrain)
-            surf_var = .true.     ! Estimate U,V,T,and Q from the model sfc states.
-         end if
-      end if
+      ! If location is above model surface but below the lowest sigma level,
+      ! the default is to reject it.  But if the namelist value is true, then
+      ! accept the observation and later on extrapolate the values from levels
+      ! 1 and 2 downward.
+      if (lev0 == .true.) then
+         ! the pres_to_zk() routine has returned a valid zloc in case we
+         ! want to use it.  the default is to reject the observation and so
+         ! we overwrite it with missing -- but, if the namelist value is set
+         ! to true, leave zloc alone.
+         if (.not. allow_obs_below_vol) zloc = missing_r8
+         if (debug .and. .not. allow_obs_below_vol) print*, 'setting zloc missing'
+
+         ! else need to set a qc here?
+      endif
          
    elseif(vert_is_height(location)) then
       ! Ob is by height: get corresponding mass level zloc from
       ! computed column height profile
       call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
       ! get height vertical co-ordinate
-      call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc)
-      if(debug) print*,' obs is by height and zloc =',zloc
+      call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc,lev0)
+      if(debug) print*,' obs is by height and zloc,lev0 =',zloc, lev0
       if(debug) print*,'model height profile'
       if(debug) print*,v_h
 
-      !nc -- If location is below model terrain (and therefore has a missing_r8 value), 
-      !        then push its location back to the level of model terrain.  This is only
-      !        permitted if the user has set the logical parameter allow_obs_below_surf to
-      !        be .true. (its default is .false.).
-      if ( allow_obs_below_surf ) then
-         if ( zloc == missing_r8 .and. xyz_loc(3) < v_h(0) ) then
-            zloc = 1.0_r8         ! Lower than the model terrain.
-            surf_var = .true.     ! Estimate U,V,T,and Q from the model sfc states.
-         end if
-      end if
+      ! If location is above model surface but below the lowest sigma level,
+      ! the default is to reject it.  But if the namelist value is true, then
+      ! accept the observation and later on extrapolate the values from levels
+      ! 1 and 2 downward.
+      if (lev0 == .true.) then
+         ! the height_to_zk() routine has returned a valid zloc in case we
+         ! want to use it.  the default is to reject the observation and so
+         ! we overwrite it with missing.  but if the namelist value is set
+         ! to true, leave zloc alone.
+         if (.not. allow_obs_below_vol) zloc = missing_r8
+         if (debug .and. .not. allow_obs_below_vol) print*, 'setting zloc missing'
+         ! else need to set a qc here?
+      endif
    
    elseif(vert_is_surface(location)) then
       zloc = 1.0_r8
       surf_var = .true.
       if(debug) print*,' obs is at the surface = ', xyz_loc(3)
+      ! if you want to have a distance check to see if the station height
+      ! is too far away from the model surface height, here is the place to
+      ! reject the observation.
 
    elseif(vert_is_undef(location)) then
       zloc  = missing_r8
@@ -2368,20 +2362,28 @@ else
               print*, 'model_mod.f90 :: model_interpolate :: getCorners GZ rc = ', rc
          
          ! Interpolation for GZ field at level k
-         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, TYPE_GZ) / gravity
-         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, TYPE_GZ) / gravity
-         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, TYPE_GZ) / gravity
-         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, TYPE_GZ) / gravity
+         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, TYPE_GZ)
+         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, TYPE_GZ)
+         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, TYPE_GZ)
+         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, TYPE_GZ)
          
-         fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+         fld(1) = ( dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) ) + &
+                    dym*( dxm*wrf%dom(id)%phb(ll(1), ll(2), k)   + &
+                          dx *wrf%dom(id)%phb(lr(1), lr(2), k) ) + &
+                    dy *( dxm*wrf%dom(id)%phb(ul(1), ul(2), k)   + &
+                          dx *wrf%dom(id)%phb(ur(1), ur(2), k) ) )  / gravity
          
          ! Interpolation for GZ field at level k+1
-         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, TYPE_GZ) / gravity
-         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, TYPE_GZ) / gravity
-         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, TYPE_GZ) / gravity
-         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, TYPE_GZ) / gravity
+         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, TYPE_GZ)
+         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, TYPE_GZ)
+         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, TYPE_GZ)
+         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, TYPE_GZ)
          
-         fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+         fld(2) = ( dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) ) + &
+                    dym*( dxm*wrf%dom(id)%phb(ll(1), ll(2), k+1)   + &
+                          dx *wrf%dom(id)%phb(lr(1), lr(2), k+1) ) + &
+                    dy *( dxm*wrf%dom(id)%phb(ul(1), ul(2), k+1)   + &
+                          dx *wrf%dom(id)%phb(ur(1), ur(2), k+1) ) )  / gravity
 
       ! If the boundsCheck functions return an unsatisfactory integer index, then set
       !   fld as missing data
@@ -2472,15 +2474,29 @@ else
 
             obs_val = missing_r8
 
-         ! Do vertical interpolation -- I believe this assumes zloc is well-defined and
-         !   >= 1.0_r8.
+         ! Do vertical interpolation -- at this point zloc is >= 1 unless
+         ! the namelist value allow_obs_below_vol is true, in which case
+         ! it is >= 0, and < 1 is a request to extrapolate.  
          else
 
             ! Get fractional distances between grid points
             call toGrid(zloc, k, dz, dzm)
+            if (debug) print*, 'zloc, k, dz, dzm = ', zloc, k, dz, dzm
+            if (debug) print*, 'fld(1), fld(2) = ', fld(1), fld(2)
 
-            ! Linearly interpolate between grid points
-            obs_val = dzm*fld(1) + dz*fld(2)
+            ! If you get here and zloc < 1.0, then k will be 0, and
+            ! we should extrapolate.  fld(1) and fld(2) where computed
+            ! at levels 1 and 2.
+
+            if (k >= 1) then
+               ! Linearly interpolate between grid points
+               obs_val = dzm*fld(1) + dz*fld(2)
+               if (debug) print*, 'interpolated obs_val = ', obs_val
+            else
+               ! Extrapolate below first level.
+               obs_val = fld(1) - (fld(2)-fld(1))*dzm
+               if (debug) print*, 'extrapolated obs_val = ', obs_val
+            endif
             
          end if
       end if
@@ -2493,7 +2509,7 @@ end if  ! end of "if ( obs_kind < 0 )"
 if ( obs_val == missing_r8 ) istatus = 1
 
 ! Pring the observed value if in debug mode
-if(debug) print*,' interpolated value= ',obs_val
+if(debug) print*,'model_interpolate() return value= ',obs_val
 
 ! Deallocate variables before exiting
 deallocate(v_h, v_p)
@@ -2545,6 +2561,7 @@ real(r8), allocatable, dimension(:) :: v_h, v_p
 real(r8)            :: pres1, pres2, pres3, pres4
 real(r8)            :: presa, presb
 real(r8)            :: hgt1, hgt2, hgt3, hgt4, hgta, hgtb
+logical             :: lev0
 
 
 istatus = 0
@@ -2677,7 +2694,7 @@ elseif(vert_is_pressure(location)) then
    ! get model pressure profile
    call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
    ! get pressure vertical co-ordinate
-   call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc)
+   call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc,lev0)
    ! convert obs vert coordinate to desired coordinate type
    if (zloc==missing_r8) then
       zvert = missing_r8
@@ -2735,7 +2752,7 @@ elseif(vert_is_height(location)) then
    ! get model height profile
    call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
    ! get height vertical co-ordinate
-   call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc)
+   call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc,lev0)
    ! convert obs vert coordinate to desired coordinate type
    if (zloc==missing_r8) then
       zvert = missing_r8
@@ -4225,7 +4242,7 @@ end subroutine toGrid
 
 !#######################################################################
 
-subroutine pres_to_zk(pres, mdl_v, n3, zk)
+subroutine pres_to_zk(pres, mdl_v, n3, zk, lev0)
 
 ! Calculate the model level "zk" on half (mass) levels,
 ! corresponding to pressure "pres".
@@ -4234,14 +4251,27 @@ subroutine pres_to_zk(pres, mdl_v, n3, zk)
   real(r8), intent(in)  :: pres
   real(r8), intent(in)  :: mdl_v(0:n3)
   real(r8), intent(out) :: zk
+  logical,  intent(out) :: lev0
 
   integer  :: k
 
   zk = missing_r8
+  lev0 = .false.
 
+  ! if out of range completely, return missing_r8 and lev0 false
   if (pres > mdl_v(0) .or. pres < mdl_v(n3)) return
 
-  do k = 0,n3-1
+  ! if above surface but below lowest sigma level, return the
+  ! sigma value but set lev0 true
+  if(pres <= mdl_v(0) .and. pres > mdl_v(1)) then
+    lev0 = .true.
+    zk = (mdl_v(0) - pres)/(mdl_v(0) - mdl_v(1))
+    return
+   endif
+
+  ! find the 2 sigma levels the value is between and return that
+  ! as a real number, including the fraction between the levels.
+  do k = 1,n3-1
      if(pres <= mdl_v(k) .and. pres >= mdl_v(k+1)) then
         zk = real(k) + (mdl_v(k) - pres)/(mdl_v(k) - mdl_v(k+1))
         exit
@@ -4252,7 +4282,7 @@ end subroutine pres_to_zk
 
 !#######################################################################
 
-subroutine height_to_zk(obs_v, mdl_v, n3, zk)
+subroutine height_to_zk(obs_v, mdl_v, n3, zk, lev0)
 
 ! Calculate the model level "zk" on half (mass) levels,
 ! corresponding to height "obs_v".
@@ -4261,14 +4291,27 @@ subroutine height_to_zk(obs_v, mdl_v, n3, zk)
   integer,  intent(in)  :: n3
   real(r8), intent(in)  :: mdl_v(0:n3)
   real(r8), intent(out) :: zk
+  logical,  intent(out) :: lev0
 
   integer   :: k
 
   zk = missing_r8
+  lev0 = .false.
 
+  ! if out of range completely, return missing_r8 and lev0 false
   if (obs_v < mdl_v(0) .or. obs_v > mdl_v(n3)) return
 
-  do k = 0,n3-1
+  ! if above surface but below lowest 3-d height level, return the
+  ! height value but set lev0 true
+  if(obs_v >= mdl_v(0) .and. obs_v < mdl_v(1)) then
+    lev0 = .true.
+    zk = (mdl_v(0) - obs_v)/(mdl_v(0) - mdl_v(1))
+    return
+  endif
+
+  ! find the 2 height levels the value is between and return that
+  ! as a real number, including the fraction between the levels.
+  do k = 1,n3-1
      if(obs_v >= mdl_v(k) .and. obs_v <= mdl_v(k+1)) then
         zk = real(k) + (mdl_v(k) - obs_v)/(mdl_v(k) - mdl_v(k+1))
         exit
@@ -4292,6 +4335,7 @@ real(r8), intent(out) :: v_p(0:n)
 integer, dimension(2) :: ll, lr, ul, ur
 integer  :: ill,ilr,iul,iur,k, rc
 real(r8) :: pres1, pres2, pres3, pres4
+logical  :: debug = .false.
 
 if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
      boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) ) then
@@ -4307,6 +4351,9 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
       pres4 = model_pressure_t(ur(1), ur(2), k,id,x)
       v_p(k) = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
    enddo
+
+   if (debug) &
+        print*, 'model_mod.f90 :: get_model_pressure_profile :: n, v_p() ', n, v_p(1:n)
 
    if( wrf%dom(id)%surf_obs ) then
 
@@ -4345,6 +4392,8 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
 
    endif
 
+   if (debug) &
+        print*, 'model_mod.f90 :: get_model_pressure_profile :: v_p(0) ', v_p(0)
 else
 
    v_p(:) = missing_r8
@@ -4630,6 +4679,7 @@ real(r8), intent(out) :: v_h(0:n)
 real(r8)  :: fll(n+1)
 integer   :: ill,iul,ilr,iur,k, rc
 integer, dimension(2) :: ll, lr, ul, ur
+logical   :: debug = .false.
 
 if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_GZ ) .and. &
      boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_GZ ) ) then
@@ -4661,6 +4711,12 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_GZ ) .and. &
              dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
                    dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
 
+   if (debug) &
+        print*, 'model_mod.f90 :: get_model_height_profile :: n, v_h() ', n, v_h(1:n)
+
+   if (debug) &
+        print*, 'model_mod.f90 :: get_model_height_profile :: v_h(0) ', v_h(0)
+ 
 ! If the boundsCheck functions return an unsatisfactory integer index, then set
 !   fld as missing data
 else
