@@ -48,6 +48,6 @@ FC = xlf90_r
 LD = xlf90_r
 CFLAGS = -q64
 INCS = -I/usr/local/lib64/r4i4 -I/usr/local/include
-FFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -qarch=auto -qmaxmem=-1 -O0 -C $(INCS)
+FFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -qarch=auto -qmaxmem=-1 -O2 $(INCS)
 LIBS = -L/usr/local/lib64/r4i4 -lnetcdf
 LDFLAGS = -q64 -b64  -bmaxdata:2000000000 -bmaxstack:2000000000 $(LIBS)
