@@ -1184,7 +1184,7 @@ integer :: center_track_xmin, center_track_ymin, &
 ! local vars, used in calculating density, pressure, height
 real(r8)            :: rho1 , rho2 , rho3, rho4
 real(r8)            :: pres1, pres2, pres3, pres4, pres
-logical             :: lev0
+logical             :: is_lev0
 
 
 ! Initialize stuff
@@ -1281,9 +1281,9 @@ else
       ! computed column pressure profile
       call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
       ! get pressure vertical co-ordinate
-      call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc,lev0)
+      call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc,is_lev0)
       if(debug .and. obs_kind /= KIND_SURFACE_PRESSURE) &
-                print*,' obs is by pressure and zloc,lev0 =',zloc, lev0
+                print*,' obs is by pressure and zloc,lev0 =',zloc, is_lev0
       if(debug) print*,'model pressure profile'
       if(debug) print*,v_p
       
@@ -1291,7 +1291,7 @@ else
       ! the default is to reject it.  But if the namelist value is true, then
       ! accept the observation and later on extrapolate the values from levels
       ! 1 and 2 downward.
-      if (lev0 == .true.) then
+      if (is_lev0) then
          ! the pres_to_zk() routine has returned a valid zloc in case we
          ! want to use it.  the default is to reject the observation and so
          ! we overwrite it with missing -- but, if the namelist value is set
@@ -1307,8 +1307,8 @@ else
       ! computed column height profile
       call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
       ! get height vertical co-ordinate
-      call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc,lev0)
-      if(debug) print*,' obs is by height and zloc,lev0 =',zloc, lev0
+      call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc,is_lev0)
+      if(debug) print*,' obs is by height and zloc,lev0 =',zloc, is_lev0
       if(debug) print*,'model height profile'
       if(debug) print*,v_h
 
@@ -1316,7 +1316,7 @@ else
       ! the default is to reject it.  But if the namelist value is true, then
       ! accept the observation and later on extrapolate the values from levels
       ! 1 and 2 downward.
-      if (lev0 == .true.) then
+      if (is_lev0) then
          ! the height_to_zk() routine has returned a valid zloc in case we
          ! want to use it.  the default is to reject the observation and so
          ! we overwrite it with missing.  but if the namelist value is set
