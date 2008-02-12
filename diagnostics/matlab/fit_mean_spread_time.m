@@ -116,7 +116,7 @@ for ivar = 1:plotdat.nvars,
 
    % plot by region
 
-   figure(ivar); clf;
+   figure(ivar); orient tall; clf; wysiwyg
 
    for iregion = 1:plotdat.nregions,
       plotdat.title  = Regions{iregion};
@@ -165,11 +165,7 @@ for itime = 1:size(p,1)
    ens_spread(2*itime  ) = a(itime,counts);
 end
 
-if ( plotdat.nregions > 2 )
-   subplot(2,2,plotdat.region)
-else
-   subplot(plotdat.nregions,1,plotdat.region)
-end
+subplot(plotdat.nregions,1,plotdat.region)
 
    % Since the mean and the spread are getting plotted
    % on the same figure, we should have two axes ... 

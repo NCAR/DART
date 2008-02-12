@@ -92,7 +92,7 @@ for ivar = 1:length(All_Level_Varnames),
 
    page1 = 2*(ivar-1)+1;
    page2 = 2*(ivar-1)+2;
-   figure(page1); clf;
+   figure(page1); orient landscape; clf; wysiwyg
 
    for iregion = 1:length(Regions),
       plotdat.title  = Regions{iregion};

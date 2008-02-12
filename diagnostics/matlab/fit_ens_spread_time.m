@@ -119,7 +119,7 @@ for ivar = 1:plotdat.nvars,
 
    % plot each region
 
-   figure(ivar); clf;
+   figure(ivar); orient tall; clf; wysiwyg
 
    for iregion = 1:length(Regions),
       plotdat.title   = Regions{iregion};
@@ -165,11 +165,7 @@ ya_spread = a(:,count);
 gmean = mean(yp_spread(isfinite(yp_spread))); gstring = sprintf('guess;    mean=%.3f',gmean);
 amean = mean(ya_spread(isfinite(ya_spread))); astring = sprintf('analysis; mean=%.3f',amean);
 
-if ( plotdat.nregions > 2 )
-   subplot(2,2,plotdat.region)
-else
-   subplot(plotdat.nregions,1,plotdat.region)
-end
+subplot(plotdat.nregions,1,plotdat.region)
 
    plot(xp, yp_spread, 'k+-', xa, ya_spread, 'ro-', 'LineWidth', 1.5)
    grid

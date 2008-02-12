@@ -108,7 +108,7 @@ for ivar = 1:plotdat.nvars,
 
    page1 = 2*(ivar-1)+1;
    page2 = 2*(ivar-1)+2;
-   figure(page1); clf;
+   figure(page1); orient tall; clf; wysiwyg
 
    for iregion = 1:plotdat.nregions,
       plotdat.title  = Regions{iregion};
@@ -190,11 +190,7 @@ count  = offset+(plotdat.region-1)*3;
 yp_num = p(:,count);
 
 
-if ( plotdat.nregions > 2 )
-   subplot(2,2,plotdat.region)
-else
-   subplot(plotdat.nregions,1,plotdat.region)
-end
+subplot(plotdat.nregions,1,plotdat.region)
 
    plot(xp,yp_num,plotdat.ptype,'LineWidth',2.0)
    axis([min(xp) max(xp) -Inf Inf])

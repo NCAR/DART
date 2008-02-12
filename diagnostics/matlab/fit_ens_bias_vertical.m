@@ -107,7 +107,7 @@ for ivar = 1:length(All_Level_Varnames),
 
    % plot by region
 
-   figure(ivar); clf;
+   figure(ivar); orient landscape; clf; wysiwyg
 
    for iregion = 1:length(Regions),
       plotdat.title  = Regions{iregion};
