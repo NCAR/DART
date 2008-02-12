@@ -14,6 +14,15 @@ function h = SimpleMap(fname,var,time,copystring,level)
 % copy   = 'ensemble mean';  % anything from ncdump -v CopyMetaData
 % level  = 1;        % index into level array
 % h = SimpleMap(fname,var,time,copy,level);
+%
+% EXAMPLE:
+%
+% fname  = '/project/dart/raeder/CSL/Groups2/PriorDiag.nc';
+% var    = 'T';      % 'PS','T','US','VS','Q','CLDLIQ','CLDICE' ...
+% time   = 1;        % index into time array
+% copy   = 'ensemble mean';  % anything from ncdump -v CopyMetaData
+% level  = 1;        % index into level array
+% h = SimpleMap(fname,var,time,copy,level);
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004-2007, Data Assimilation Research Section
@@ -74,11 +83,20 @@ title(sprintf('%s ''%s''',plotdat.model,var))
 t0 = subplot('position',[0.1 0.05 0.8 0.25]);
 t1 = plot([0 1],[0 1],'.','Visible','off');
 axis off
-text(0.0, 0.6, sprintf('%s %s',plotdat.model,fname),'Interpreter','none');
-text(0.0, 0.4, timestring);
-text(0.0, 0.2, sprintf('%s %s %s', copystring, var, plotdat.varlname));
-text(0.0, 0.0, sprintf('level index %d at timestep %d', level, time));
 
+dimstring = [];
+for i = 1:length(plotdat.dimnames)
+   dimstring = sprintf('%s %s',dimstring,plotdat.dimnames{i});
+end
+
+text(0.0, 0.65, sprintf('%s %s',plotdat.model,fname),'Interpreter','none');
+text(0.0, 0.50, timestring);
+text(0.0, 0.35, sprintf('%s ''%s'' %s [%s]', ...
+               copystring, var, plotdat.varlname, dimstring));
+text(0.0, 0.20, sprintf('level %.2f (index %d) at timestep %d', ...
+                         plotdat.levels(level), level, time));
+
+annotate(plotdat)
 
 % helper function(s) follow ...
 
@@ -107,11 +125,11 @@ for i = 1:length(plotdat.dimcells)
          plotdat.latdimname = plotdat.dimnames{i};
          plotdat.lats       = getnc(fname,plotdat.dimnames{i});
          plotdat.latunits   = dimstring;
-      case 'levels'
+      case 'level'
          plotdat.levdimname = plotdat.dimnames{i};
          plotdat.levels     = getnc(fname,plotdat.dimnames{i});
          plotdat.levunits   = dimstring;
-
+         plotdat.levlname   = ft{plotdat.dimnames{i}}.long_name(:);
       otherwise
 
    end
@@ -121,9 +139,34 @@ close(ft)
 
 % Surface variables generally do not have a 'level'
 
-if ( ~exist('plotdat.levdimname','var') )
-   plotdat.levdimname = 'no level dimension';
+if ( ~isfield(plotdat,'levdimname') )
+   plotdat.levdimname = 'none';
    plotdat.levels     = 1;
    plotdat.levunits   = 'no level units';
 end
 
+
+function annotate(plotdat)
+
+nlevels = length(plotdat.levels);
+
+if (nlevels == 1) 
+   return
+end
+
+stride = 4;
+
+dx = 1.0/ceil(nlevels/stride);
+
+text(0, 0.05,'level index','FontSize',8)
+text(0,-0.05,'level value','FontSize',8)
+text(0,-0.15,plotdat.levlname,'FontSize',8)
+
+itrip = 1;
+for i = 1:stride:nlevels
+   h1 = text(dx*itrip, 0.05,sprintf('%d',                  i ));
+   h2 = text(dx*itrip,-0.05,sprintf('%9.2f',plotdat.levels(i)));
+   itrip = itrip + 1;
+   set(h1,'FontSize',8,'HorizontalAlignment','right')
+   set(h2,'FontSize',8,'HorizontalAlignment','right')
+end
