@@ -1178,8 +1178,8 @@ write(     *    ,'(''last bin contains all (flagged) bad observations'')')
 write(nsigmaUnit,'(''last bin contains all (flagged) bad observations'')')
 do i=0,MaxSigmaBins
    if(nsigma(i) /= 0) then
-      write(     *    ,'(''(prior) innovations in stdev bin '',i3,'' = '',i10)'),i+1,nsigma(i)
-      write(nsigmaUnit,'(''(prior) innovations in stdev bin '',i3,'' = '',i10)'),i+1,nsigma(i)
+      write(     *    ,'(''(prior) innovations in stdev bin '',i3,'' = '',i10)')i+1,nsigma(i)
+      write(nsigmaUnit,'(''(prior) innovations in stdev bin '',i3,'' = '',i10)')i+1,nsigma(i)
    endif
 enddo
 close(nsigmaUnit)
