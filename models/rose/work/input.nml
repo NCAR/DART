@@ -156,7 +156,7 @@
 # in which case last_bin_center should be safely in the future.
 #
 # Acceptable latitudes range from  [-90,  90]
-# Acceptable longitudes range from [  0, 360]
+# Acceptable longitudes range from [  0, Inf]
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
@@ -165,10 +165,7 @@
    bin_separation   =     0, 0, 0, 6, 0, 0 ,
    bin_width        =     0, 0, 0, 6, 0, 0 ,
    time_to_skip     =     0, 0, 0, 6, 0, 0 ,
-   max_num_bins = 1000,
-   plevel       = 500,
-   hlevel       = 5000,
-   mlevel       = 5,
+   max_num_bins     = 1000,
    rat_cri            = 3.0,
    input_qc_threshold = 4.0,
    Nregions   = 4,

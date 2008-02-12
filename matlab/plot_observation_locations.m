@@ -26,6 +26,7 @@
 % the PlotObsLocs routine to use the default values.   
  
 plotd       = 'default';
+ncfname     = 'default';
 used        = 'default';
 typelist    = 'default';
 box         = 'default';
@@ -44,12 +45,18 @@ invertz     = 'default';
 done = 0;
 disp('Plot observations at their proper locations.  Many subsetting options exist.');
 disp('Hitting <cr> to answer the questions will use the default value,');
-disp('or once you have made a selection, reuse the previous value.');
+disp('or - once you have made a selection - reuse the previous value.');
 disp(' '); 
 disp('The default plotting options are:');
 disp('  2D plot, full world map, all obs types, all times, ');
 disp('  no file output, Z axis increases up.');
 disp(' '); 
+
+   % What file has the metadata 
+   reply = input('Enter the netCDF file name with the metadata:  ');
+   if (~isempty(reply))
+      ncfname = reply;
+   end
 
 % loop and keep the previous default until the user says to quit
 while done == 0
@@ -59,14 +66,27 @@ while done == 0
    if (~isempty(reply))
       plotd = reply;
    end
+
     
    % plot used, unused, or both
-   reply = input('Input -1=unused obs, 0=both, 1=used:  ');
+   disp('')
+   disp('DART QC Values ... 0 == all OK')
+   disp('DART QC Values ... 1 == Evaluated only')
+   disp('DART QC Values ... 2 == OK but posterior forward operator failed')
+   disp('DART QC Values ... 3 == Evaluated only, BUT posterior forward operator failed')
+   disp('DART QC Values ... 4 == prior forward operator failed')
+   disp('DART QC Values ... 5 == not used because of namelist control')
+   disp('DART QC Values ... 6 == prior qc rejected')
+   disp('DART QC Values ... 7 == outlier rejected')
+   disp('   a negative value means everything ''up to'' that value, i.e.')
+   disp('    -3 == 0, 1, 2, and 3          -99 == everything');
+   reply = input('Input DART QC val:  ');
    if (~isempty(reply))
       used = reply;
    end
    
    % restrict observations to a particular observation type?
+   disp('')
    reply = input('Input [obs type list] to plot only some obs types, ''default'' to reset:  ');
    if (~isempty(reply))
       typelist = reply;

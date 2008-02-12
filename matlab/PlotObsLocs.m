@@ -1,4 +1,6 @@
-function PlotObsLocs(in_used, in_box, in_typelist, in_epochlist, in_subset, in_plotd, in_world, in_invertz, in_writeplot, in_legend2dloc, in_legend3dloc, in_viewlist)
+function phandle = PlotObsLocs(in_dartqc, in_box, in_typelist, in_epochlist, ...
+                    in_subset, in_plotd, in_world, in_invertz, in_writeplot, ...
+                    in_legend2dloc, in_legend3dloc, in_viewlist)
 % PLOTOBSLOCS - Plot an observation_locations.NNN.dat file as output from the latest obs_diag program in DART.
 % (You must enable an obs_diag_nml namelist entry to get the output files; 
 % they are not created by default.)
@@ -8,15 +10,22 @@ function PlotObsLocs(in_used, in_box, in_typelist, in_epochlist, in_subset, in_p
 % replaced by the character string 'default' to use the internal defaults.
 %
 % usage:
-% PlotObsLocs(in_used, in_box, in_typelist, in_epochlist, in_subset, 
+% PlotObsLocs(in_dartqc, in_box, in_typelist, in_epochlist, in_subset, 
 %             in_plotd, in_world, in_invertz, in_writeplot, 
 %             in_legend2dloc, in_legend3dloc, in_viewlist)
 %
 % where:
 %
-% in_used =  0 to plot both used and unused observations
-%         = -1 for unused obs only
-%         =  1 for used obs only  (default)
+% in_dartqc = 0  all OK (default)
+%             1  Evaluated only
+%             2  OK but posterior forward operator failed
+%             3  Evaluated only, BUT posterior forward operator failed.
+%             4  prior forward operator failed
+%             5  not used because of namelist control
+%             6  prior qc rejected
+%             7  outlier rejected
+%             a  negative value means everything "up to" that value, i.e.
+%                   -3 == 0, 1, 2, and 3
 % 
 % in_box = optional bounding box [xmin xmax ymin ymax] for 2d or 
 %          [xmin xmax ymin ymax zmin zmax] for 3d.  default is max extent of 
@@ -107,7 +116,7 @@ function PlotObsLocs(in_used, in_box, in_typelist, in_epochlist, in_subset, in_p
 %  user_specified (prompt user for 4 or 6 corners)
 %
 
-arg_used = 1;         % -1 = unused, 0 = both, 1 = used
+arg_used = 0;         % dart QC values to use ... see in_dartqc table above
 arg_box = [];         % [[lon_min, lon_max, lat_min, lat_max], v_min, v_max]
 arg_typelist = [];    % numeric observation type list; if ~[], integer list
 arg_epochlist = [];   % list of epochs to process; if ~[], integer list
@@ -123,11 +132,11 @@ arg_viewlist = [10  10;  10  80; ];
                       % default viewpoints for 3D plots.
                       % [90 0], [0 90] and [0 0] are also good.
 
-
+ ncfname = 'obs_diag_output.nc';
 
 % get the values from the arguments and fill them in:
-if (~isa(in_used,'char'))
-  arg_used = in_used;
+if (~isa(in_dartqc,'char'))
+  arg_used = in_dartqc;
 end
 if (~isa(in_box,'char'))
   arg_box = in_box;
@@ -153,10 +162,10 @@ end
 if (~isa(in_writeplot,'char'))
   arg_writeplot = in_writeplot;
 end
-if (in_legend2dloc ~= 'default')
+if (~strcmp(in_legend2dloc,'default'))
   arg_legend2dloc = in_legend2dloc;
 end
-if (in_legend3dloc ~= 'default')
+if (~strcmp(in_legend3dloc,'default'))
   arg_legend3dloc = in_legend3dloc;
 end
 if (~isa(in_viewlist,'char'))
@@ -168,14 +177,14 @@ end
 
 
 % if user specified an epoch list, use only those.
-% else, set it to a huge number and bail when we
-% run out of files to open.
+% else, get the number from the netcdf file
 if (~isequal(arg_epochlist,[]))
   epochlist = arg_epochlist;
 else
-  epochlist = 1 : 100000;
+  epochtime = getnc(ncfname,'time');
+  epochbnds = getnc(ncfname,'time_bounds');
+  epochlist = 1:length(epochtime);
 end
-
 
 % for each epoch file given or that we find:
 for epoch = epochlist
@@ -212,20 +221,19 @@ for epoch = epochlist
  % in the 'Observation_Kind()' array.  (this file is produced by
  % running obs_diag -- full name is ObsDiagAtts.m)
  
- ObsDiagAtts;
- 
- % up to 36 different observation types, using a different marker
- % and color for each.
- markers = { 
-  'r.', 'b.', 'g.', 'c.', 'm.', 'y.', 
-  'r+', 'b+', 'g+', 'c+', 'm+', 'y+', 
-  'r*', 'b*', 'g*', 'c*', 'm*', 'y*', 
-  'ro', 'bo', 'go', 'co', 'mo', 'yo', 
-  'rx', 'bx', 'gx', 'cx', 'mx', 'yx', 
-  'rd', 'bd', 'gd', 'cd', 'md', 'yd', 
- };
- 
- 
+ Observation_Kind = getnc(ncfname,'ObservationTypes');
+
+ % Use a different marker and color for each observation type
+ % (12*6) = 72 combinations at the moment. Could extend these
+ % by cycling through the 'fillable' symbols and filling ...
+ symbols = [double('o'),double('s'),double('d'),double('v'), ...
+            double('^'),double('<'),double('>'),double('p'), ...
+            double('h'),double('x'),double('+'),double('*')];
+ colors  = [double('b'),double('r'),double('c'), ...
+            double('m'),double('g'),double('k')];
+ [smat,cmat] = meshgrid(symbols,colors);
+ markers     = strcat([cmat(:) smat(:)]);
+
  % setup before looping over observations:
  mobs = max(s(:,4));       % max obs type number found in file
  nobstypes = 0;            % running count of obs types found
@@ -239,6 +247,12 @@ for epoch = epochlist
    obslist = arg_typelist;
  else
    obslist = 1 : mobs;
+ end
+
+ if (length(obslist) > length(markers))
+    disp(sprintf('There are %d observation types',length(obslist)))
+    disp(sprintf('There are %d marker symbols',length(markers)))
+    error('Too many observation types to uniquely identify ... stopping.')
  end
  
  % loop over observation types, plotting each in 2d or 3d with
@@ -260,10 +274,10 @@ for epoch = epochlist
    if (size(l, 1) ~= 0) 
      if (arg_plotd == 2) 
        % 2d plot of (lon,lat):
-       phandle = plot(l(:,1),l(:,2),markers{obs}); 
+       phandle = plot(l(:,1),l(:,2),markers(obs,:)); 
      else
        % 3D plot of (lon,lat,level):
-       phandle = plot3(l(:,1),l(:,2),l(:,3),markers{obs});
+       phandle = plot3(l(:,1),l(:,2),l(:,3),markers(obs,:));
        thismax = max(l(:,3));
        lmax = max(lmax, thismax);    % save overall max height for axis
      end
@@ -272,7 +286,8 @@ for epoch = epochlist
  
      % add this observation type to the legend string array
      nobstypes = nobstypes + 1;
-     obs_labels(nobstypes) = Observation_Kind(obs) ;
+
+     obs_labels{nobstypes} = deblank(Observation_Kind(obs,:));
  
    end    % if data of this observation type exists
  
@@ -321,15 +336,11 @@ for epoch = epochlist
     end
  end
  
- % get a handle to the axes graphics object
- % ahandle = axes
-
  % if we actually set something, use it to constrain the axis limits.
  if (~isequal(use_box, []))
      axis(use_box);
- else
-     axis tight;
  end
+ axis image;  % set aspect ratio dx ~= dy ... cylindrical equidistant
     
  % set legend, and try to shrink the original size of the legend bounding box
  % because it is pretty large by default.   a 'good' location depends on the
@@ -342,10 +353,14 @@ for epoch = epochlist
  end
 
  % If you have Matlab v6.5 or before, this must be split into 2 lines
- %h = legend( obs_labels );
- %legend( h, 'Location', legendloc, 'Interpreter', 'none', 'FontSize', 8);
  % Matlab v7.0+ requires it all in one go.  Anyone know a way which works for both?
- legend( obs_labels , 'Location', legendloc, 'Interpreter', 'none', 'FontSize', 8);
+ myversion = ver('matlab');
+ if (str2num(myversion.Version) <= 6.5)
+    h = legend( obs_labels );
+    legend( h, 'Location', legendloc, 'Interpreter', 'none', 'FontSize', 8);
+ else
+    legend( obs_labels , 'Location', legendloc, 'Interpreter', 'none', 'FontSize', 8);
+ end
  
  % example of how to escape only underscores if we still want to use tex
  % in the strings. (instead of turning the interpreter off completely).
@@ -358,7 +373,7 @@ for epoch = epochlist
     worldmap(lmax);
     
     % these plots are generally longer than high, and add 3d-box.
-    orient landscape;
+  % orient landscape;
     set(gca, 'Box', 'on');
 
     % various attempts to make the x/y axis have the same spacing per degree
@@ -382,20 +397,20 @@ for epoch = epochlist
      zlabel('Third coordinate', 'FontSize', 14);
    end
  end
-    
+
  % add input filename somewhere?
  % text()
 
  % make it look roughly like it will when printed.
  wysiwyg;
- 
- 
+
+
  if (arg_used < 0)
-   tstring = sprintf('Unused Observation Locations at Epoch %d', epoch);
- elseif (arg_used > 0)
-   tstring = sprintf('Used Observation Locations at Epoch %d', epoch);
- else
-   tstring = sprintf('Used + Unused Observation Locations at Epoch %d', epoch);
+   tstring = sprintf('Obs Locs for Epoch %d with DART QC values <= %d', ...
+                       epoch, abs(arg_used));
+ elseif (arg_used >= 0)
+   tstring = sprintf('Obs Locs for Epoch %d with DART QC value == %d', ...
+                       epoch, arg_used);
  end
 
  if (arg_subset > 0)
@@ -404,8 +419,8 @@ for epoch = epochlist
  end
 
  title(tstring, 'FontSize', 16);
- 
- 
+
+
  % if 3d plot, turn on grid and view for interactive look
  if (arg_plotd == 3)
    grid on;
@@ -417,7 +432,8 @@ for epoch = epochlist
       pause;
    end
  else
-   disp('Pausing.  Hit any key to continue');
+   disp(sprintf('Pausing on epoch %d of %d. Hit any key to continue ...', ...
+          epoch,length(epochlist)));
    pause;
  end
  
@@ -462,14 +478,12 @@ if (isequal(raw, []))
   return
 end
 
-
-% select used, unused, or all observations (column 6)
+% select based on dart QC flag
+% -99 implies everything, -3 implies 0,1,2,3 
 if (used < 0)
-  data = raw(raw(:,6)<1, :);
-elseif (used > 0)
-  data = raw(raw(:,6)>0, :);
-else
-  data = raw;
+  data = raw(raw(:,6) <= abs(used),:);
+elseif (used >= 0)
+  data = raw(raw(:,6) ==     used ,:);
 end
 
 if (isequal(data, []))

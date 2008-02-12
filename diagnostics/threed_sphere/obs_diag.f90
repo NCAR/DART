@@ -60,7 +60,6 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
 
@@ -108,6 +107,7 @@ integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
 integer :: num_obs_kinds
 character(len=129) :: obs_seq_read_format
 logical :: pre_I_format
+logical :: only_print_locations = .false.
 
 integer,  dimension(2) :: key_bounds
 real(r8), dimension(1) :: obs
@@ -138,7 +138,7 @@ logical :: out_of_range, is_there_one, keeper
 ! 8+    reserved for future use
 
 integer             :: qc_index, dart_qc_index
-integer             :: qc_integer
+integer             :: qc_integer, my_qc_integer
 integer, parameter  :: QC_MAX = 7
 integer, parameter  :: QC_MAX_PRIOR     = 3
 integer, parameter  :: QC_MAX_POSTERIOR = 1
@@ -281,9 +281,9 @@ call register_module(source,revision,revdate)
 call static_init_obs_sequence()  ! Initialize the obs sequence module 
 
 !----------------------------------------------------------------------
-! Define/Append the 'wind speed' obs_kinds to supplant the list declared
+! Define/Append the 'wind velocity' obs_kinds to supplant the list declared
 ! in obs_kind_mod.f90 i.e. if there is a RADIOSONDE_U_WIND_COMPONENT
-! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_WIND_SPEED
+! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_WIND_VELOCITY
 ! Replace calls to 'get_obs_kind_name' with variable 'my_obs_kind_names'
 !----------------------------------------------------------------------
 
@@ -309,6 +309,7 @@ write(    *      ,nml=obs_diag_nml)
 ! Now that we have input, do some checking and setup
 !----------------------------------------------------------------------
 
+call ObsLocationsExist( print_obs_locations )
 call set_calendar_type(GREGORIAN)
 call Convert2Time(beg_time, end_time, skip_time, binsep, binwidth, halfbinwidth)
 call ActOnNamelist( Nregions )
@@ -334,7 +335,7 @@ if (verbose) then
    write(*,*)'height   interfaces = ',hlevel_edges(1:Nhlevels+1)
    write(*,*)'model    levels     = ',mlevel(    1:Nmlevels)
    do i = 1,Nregions
-      write(*,'(''Region '',i02,1x,a32,'' (EWSN): '',4(f10.4,1x))') i, &
+      write(*,'(''Region '',i02,1x,a32,'' (WESN): '',4(f10.4,1x))') i, &
              reg_names(i), lonlim1(i),lonlim2(i),latlim1(i),latlim2(i)
    enddo
 endif
@@ -472,8 +473,8 @@ analyAVG%num_variables = num_obs_kinds
 !----------------------------------------------------------------------
 ! Open file for histogram of innovations, as a function of standard deviation.
 !----------------------------------------------------------------------
-nsigmaUnit = open_file('nsigma.dat',form='formatted',action='rewind')
-write(nsigmaUnit,*)'Any observations flagged as bad are dumped into the last bin.'
+nsigmaUnit = open_file('LargeInnov.txt',form='formatted',action='rewind')
+write(nsigmaUnit,'(a)')'Any observations flagged as bad are dumped into the last bin.'
 write(nsigmaUnit,'(a)') '   day   secs    lon      lat    level         obs    guess   zscore   key   kind'
 !-----------------------------------------------------------------------
 ! We must assume the observation sequence files span an unknown amount
@@ -576,11 +577,17 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
    call print_time(seqT1,'First observation time',logfileunit)
    call print_time(seqTN,'Last  observation time',logfileunit)
+   call print_date(seqT1,'First observation date',logfileunit)
+   call print_date(seqTN,'Last  observation date',logfileunit)
    if ( verbose ) then
       call print_time(seqT1,'First observation time')
       call print_time(seqTN,'Last  observation time')
       call print_time(TimeMin,'TimeMin ')
       call print_time(TimeMax,'TimeMax ')
+      call print_date(seqT1,'First observation date')
+      call print_date(seqTN,'Last  observation date')
+      call print_date(TimeMin,'TimeMin ')
+      call print_date(TimeMax,'TimeMax ')
    endif
 
    !--------------------------------------------------------------------
@@ -630,10 +637,23 @@ ObsFileLoop : do ifile=1, Nepochs*4
    !--------------------------------------------------------------------
    ! Find the index of obs, ensemble mean, spread ... etc.
    !--------------------------------------------------------------------
+   ! Only require obs_index to be present; this allows the program
+   ! to be run on obs_seq.in files which have no means or spreads.
+   ! You can still plot locations, but that's it.
+   !--------------------------------------------------------------------
 
    call SetIndices( obs_index, qc_index, dart_qc_index, &
             prior_mean_index,   posterior_mean_index,   &
             prior_spread_index, posterior_spread_index  )
+
+   if ( any( (/ prior_mean_index,     prior_spread_index, &
+            posterior_mean_index, posterior_spread_index /) < 0) ) then
+      only_print_locations = .true.
+      msgstring = 'observation sequence has no prior/posterior information'
+      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   else
+      only_print_locations = .false.
+   endif
 
    !====================================================================
    EpochLoop : do iepoch = 1, Nepochs
@@ -660,8 +680,12 @@ ObsFileLoop : do ifile=1, Nepochs*4
       if (print_obs_locations) then
           ! Append epoch number to name
           write(locName,'(a,i3.3,a)') 'observation_locations.', iepoch, '.dat'
-          lunit = open_file(trim(adjustl(locName)),form='formatted',action='rewind')
-          write(lunit, '(a)') '   lon      lat    lev     kind   key    used'
+          if (file_exist(locName)) then
+             lunit = open_file(trim(adjustl(locName)),form='formatted',action='append')
+          else
+             lunit = open_file(trim(adjustl(locName)),form='formatted',action='rewind')
+             write(lunit, '(a)') '     lon         lat      lev       kind     key   QCval'
+          endif
       endif
 
       allocate(keys(num_obs_in_epoch))
@@ -713,6 +737,10 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
          level_index = ParseLevel(obs_loc, obslevel, flavor, which_vert)
 
+         if ( 1 == 2 ) then
+            write(8,*)'obsindx ',obsindex, keys(obsindex), obsloc3(3), level_index
+         endif
+
          !--------------------------------------------------------------
          ! Convert the DART QC data to an integer and create histogram 
          !--------------------------------------------------------------
@@ -723,13 +751,36 @@ ObsFileLoop : do ifile=1, Nepochs*4
             qc_integer = min( nint(qc(dart_qc_index)), QC_MAX )
             qc_counter(qc_integer) = qc_counter(qc_integer) + 1  ! histogram
          else
-            ! Provide backwards compatibility. If no dart_qc in obs_seq,
-            ! put qc_integer to 0 to replicate logic to be unable to treat 
-            ! prior and posterior separately. 
-            qc_integer = 0
-            msgstring = 'cannot find DART QC metatdata'
-            call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
+            ! If there is no dart_qc in obs_seq, make sure the observation
+            ! is never used. This must be a case where we are interested
+            ! only in getting the location information.
+            qc_integer = QC_MAX + 9999
          endif
+
+         !--------------------------------------------------------------
+         ! Write location of observation if namelist item is true
+         !--------------------------------------------------------------
+
+         if (print_obs_locations) then
+
+            if (dart_qc_index > 0) then 
+               my_qc_integer =      nint(qc(dart_qc_index))
+            elseif  (qc_index > 0) then
+               my_qc_integer = -1 * nint(qc(     qc_index))
+            else
+               my_qc_integer = -99
+            endif
+
+            write(lunit, FMT='(3(f10.2,1x),3(i7,1x))') &
+               obslon, obslat, obslevel, flavor, keys(obsindex), my_qc_integer
+         endif
+
+         !--------------------------------------------------------------
+         ! Early exit from the observation loop if the observation 
+         ! does not have all the required copies (attributes).
+         !--------------------------------------------------------------
+
+         if (only_print_locations) cycle ObservationLoop
 
          !--------------------------------------------------------------
          ! retrieve observation prior and posterior means and spreads
@@ -768,9 +819,9 @@ ObsFileLoop : do ifile=1, Nepochs*4
          if ( 1 == 2 ) then
          call get_obs_values(observation, copyvals)
      !   if (any(copyvals < -87.0) .and. ( qc_integer < (QC_MAX_PRIOR+1) ) ) then
-         if (any(copyvals < -87.0) .and. ( qc_integer < (QC_MAX_PRIOR-1) ) ) then
+         if ( obsindex == 311 ) then
               write(*,*)
-              write(*,*)'Observation ',keys(obsindex),' has some suspicious stuff.'
+              write(*,*)'Observation index 311 is ',keys(obsindex),' and has:'
               write(*,*)'flavor                 is',flavor
               write(*,*)'obs              value is',obs(1)
               write(*,*)'prior_mean       value is',prior_mean(1)
@@ -778,8 +829,6 @@ ObsFileLoop : do ifile=1, Nepochs*4
               write(*,*)'prior_spread     value is',prior_spread(1)
               write(*,*)'posterior_spread value is',posterior_spread(1)
               write(*,*)'DART QC          value is',qc_integer
-         !    qc_integer = QC_MAX_PRIOR - 1
-         !    write(*,*)'DART QC          value is now',qc_integer
               do i= 1,num_copies 
                  write(*,*)copyvals(i),trim(get_copy_meta_data(seq,i))
               enddo
@@ -814,13 +863,12 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
          !--------------------------------------------------------------
          ! update the histogram of the magnitude of the innovation,
-         ! where each bin is a single standard deviation. This is 
-         ! a one-sided histogram. The innovation can only be calculated
-         ! if the prior_mean is valid.
+         ! where each bin is a single standard deviation. 
+         ! This is a one-sided histogram. 
          !--------------------------------------------------------------
 
-         pr_zscore = InnovZscore(obs(1), pr_mean, pr_sprd, obs_err_var, qc_integer)
-         po_zscore = InnovZscore(obs(1), po_mean, po_sprd, obs_err_var, qc_integer)
+         pr_zscore = InnovZscore(obs(1), pr_mean, pr_sprd, obs_err_var, qc_integer, QC_MAX_PRIOR)
+         po_zscore = InnovZscore(obs(1), po_mean, po_sprd, obs_err_var, qc_integer, QC_MAX_POSTERIOR)
 
          indx         = min(int(pr_zscore), MaxSigmaBins)
          nsigma(indx) = nsigma(indx) + 1
@@ -828,7 +876,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
          ! Individual (valid) observations that are very far away get
          ! logged to a separate file.
 
-         if( (pr_zscore > 10.0_r8) .and. (qc_integer <= QC_MAX_PRIOR) ) then
+         if( (pr_zscore > 3.0_r8) .and. (qc_integer <= QC_MAX_PRIOR) ) then
             call get_time(obs_time,seconds,days)
 
             write(nsigmaUnit,FMT='(i7,1x,i5,1x,2f8.2,i7,1x,2f13.2,f8.1,2i7)') &
@@ -859,13 +907,6 @@ ObsFileLoop : do ifile=1, Nepochs*4
             U_qc          = qc_integer
 
          endif
-
-         !--------------------------------------------------------------
-         ! Print out location of observation if namelist item is true
-         !--------------------------------------------------------------
-
-         if (print_obs_locations) write(lunit, FMT='(3(f10.2,1x),3(i7,1x))') &
-                    obslon, obslat, obslevel, flavor, keys(obsindex), qc_integer
 
          !--------------------------------------------------------------
          ! We have Nregions of interest
@@ -951,12 +992,12 @@ ObsFileLoop : do ifile=1, Nepochs*4
                   ! since we don't have the necessary covariance between U,V
                   ! we will reject if either univariate z score is bad 
 
-                  zscoreU = InnovZscore(U_obs, U_pr_mean, U_pr_sprd, U_obs_err_var, U_qc)
+                  zscoreU = InnovZscore(U_obs, U_pr_mean, U_pr_sprd, U_obs_err_var, U_qc, QC_MAX_PRIOR)
                   if( (pr_zscore > rat_cri) .or. (zscoreU > rat_cri) )  then
                      call IPE(guess%NbadIZ(iepoch,level_index,iregion,wflavor), 1)
                   endif
 
-                  zscoreU = InnovZscore(U_obs, U_po_mean, U_po_sprd, U_obs_err_var, U_qc)
+                  zscoreU = InnovZscore(U_obs, U_po_mean, U_po_sprd, U_obs_err_var, U_qc, QC_MAX_POSTERIOR)
                   if( (po_zscore > rat_cri) .or. (zscoreU > rat_cri) )  then
                      call IPE(analy%NbadIZ(iepoch,level_index,iregion,wflavor), 1)
                   endif
@@ -1010,12 +1051,12 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
                   ierr = ParseLevel(obs_loc, obslevel, wflavor, which_vert)
 
-                  zscoreU = InnovZscore(U_obs, U_pr_mean, U_pr_sprd, U_obs_err_var, U_qc)
+                  zscoreU = InnovZscore(U_obs, U_pr_mean, U_pr_sprd, U_obs_err_var, U_qc, QC_MAX_PRIOR)
                   if( (pr_zscore > rat_cri) .or. (zscoreU > rat_cri) )  then
                      call IPE(guessAVG%NbadIZ(level_index,iregion,wflavor), 1)
                   endif
 
-                  zscoreU = InnovZscore(U_obs, U_po_mean, U_po_sprd, U_obs_err_var, U_qc)
+                  zscoreU = InnovZscore(U_obs, U_po_mean, U_po_sprd, U_obs_err_var, U_qc, QC_MAX_POSTERIOR)
                   if( (po_zscore > rat_cri) .or. (zscoreU > rat_cri) )  then
                      call IPE(analyAVG%NbadIZ(level_index,iregion,wflavor), 1)
                   endif
@@ -1038,14 +1079,14 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
       deallocate(keys)
 
+      if (print_obs_locations) close(lunit)
+
    enddo EpochLoop
 
    if (verbose) then
       write(logfileunit,*)'End of EpochLoop for ',trim(adjustl(obs_seq_in_file_name))
       write(     *     ,*)'End of EpochLoop for ',trim(adjustl(obs_seq_in_file_name))
    endif
-
-   if (print_obs_locations) close(lunit)
 
    call destroy_obs(obs1)
    call destroy_obs(obsN)
@@ -1131,12 +1172,17 @@ enddo
 enddo
 
 ! Actually print the histogram of innovations as a function of standard deviation. 
-close(nsigmaUnit)
-write(*,*)
-write(*,*)'last bin contains all (flagged) bad observations'
+write(     *    ,*)
+write(nsigmaUnit,*)
+write(     *    ,'(''last bin contains all (flagged) bad observations'')')
+write(nsigmaUnit,'(''last bin contains all (flagged) bad observations'')')
 do i=0,MaxSigmaBins
-   if(nsigma(i) /= 0) write(*,*)'innovations in stdev bin ',i+1,' = ',nsigma(i)
+   if(nsigma(i) /= 0) then
+      write(     *    ,'(''(prior) innovations in stdev bin '',i3,'' = '',i10)'),i+1,nsigma(i)
+      write(nsigmaUnit,'(''(prior) innovations in stdev bin '',i3,'' = '',i10)'),i+1,nsigma(i)
+   endif
 enddo
+close(nsigmaUnit)
 
 !-----------------------------------------------------------------------
 ! temporal average of the vertical statistics
@@ -1577,7 +1623,14 @@ CONTAINS
       reg_names(4) = 'North America       '
    else
 
- !   TJH - confirm - anything that needs to be done ?
+      ! If lonlim2 < lonlim1 ... we add 360.0 to lonlim2 in anticipation
+      ! that you are going 'the long way around'
+      ! e.g.    300E to  25E  is a perfectly valid domain ... which
+      ! is also 300E to 385E
+
+      do i = 1,Nregions
+         if (lonlim2(i) < lonlim1(i)) lonlim2(i) = lonlim2(i) + 360.0_r8
+      enddo
 
    endif
 
@@ -1654,10 +1707,6 @@ CONTAINS
    ! Make sure we find an index for each of them.
    !--------------------------------------------------------------------
 
-   if ( obs_index              < 0 ) then
-      write(msgstring,*)'metadata:observation not found'
-      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
-   endif
    if ( prior_mean_index       < 0 ) then
       write(msgstring,*)'metadata:prior ensemble mean not found'
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
@@ -1682,14 +1731,13 @@ CONTAINS
       write(msgstring,*)'metadata:DART quality control not found' 
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
-   !if ( any( (/obs_index, prior_mean_index, posterior_mean_index, qc_index, & 
-   !            prior_spread_index, posterior_spread_index /) < 0) ) then
+
    ! Only require obs_index to be present; this allows the program
-   ! to be run on obs_seq.in files which have no means or spread.  You can get
-   ! less info from them, but for plotting locations, etc, there are reasons
-   ! you might want to run diags on them.
-   if ( any( (/ obs_index /) < 0) ) then
-      write(msgstring,*)'observation metadata incomplete'
+   ! to be run on obs_seq.in files which have no means or spread.  You get
+   ! less info from them, but you can still plot locations, etc.
+
+   if ( obs_index < 0 ) then
+      write(msgstring,*)'metadata:observation not found'
       call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
    endif
 
@@ -1967,12 +2015,7 @@ CONTAINS
 
 
 
-
-
-
-
-
-   Function InnovZscore(obsval, prmean, prspred, errvar, qcval)
+   Function InnovZscore(obsval, prmean, prspred, errvar, qcval, qcmaxval)
 
    ! This function tries to get a handle on the magnitude of the innovations.
    ! If the ratio of the observation to the prior mean is 'big', it is an outlier. 
@@ -1982,11 +2025,11 @@ CONTAINS
 
    real(r8)             :: InnovZscore
    real(r8), intent(in) :: obsval, prmean, prspred, errvar
-   integer,  intent(in) :: qcval
+   integer,  intent(in) :: qcval, qcmaxval
 
    real(r8) :: numer, denom
 
-   if ( qcval <= QC_MAX_PRIOR ) then ! QC indicates a valid obs 
+   if ( qcval <= qcmaxval ) then ! QC indicates a valid obs 
       numer = abs(prmean - obsval)
       denom = sqrt( prspred**2 + errvar )
       InnovZscore = numer / denom
@@ -1999,13 +2042,26 @@ CONTAINS
 
 
    Function InRegion( lon, lat, lon1, lon2, lat1, lat2 )
+   ! InRegion handles regions that 'wrap' in longitude
+   ! if the easternmost longitude of the region is > 360.0
+   ! For example; lon1 == 320, lon = 10, lon2 == 380 --> .true.
+   ! 
    logical :: InRegion
    real(r8), intent(in) :: lon, lat, lon1, lon2, lat1, lat2
+   real(r8) :: mylon
 
    InRegion = .false.
 
-   if( (lon .ge. lon1) .and. (lon .le. lon2) .and. &
-       (lat .ge. lat1) .and. (lat .le. lat2) ) InRegion = .true.
+   if( (lon >= lon1) .and. (lon <= lon2) .and. &
+       (lat >= lat1) .and. (lat <= lat2) ) InRegion = .true.
+
+   if( lon2 > 360.0_r8 ) then ! checking the wraparound case
+      mylon = lon + 360.0_r8
+      if( (mylon >= lon1) .and. (mylon <= lon2) .and. &
+          (  lat >= lat1) .and. (  lat <= lat2) ) then
+         InRegion = .true.
+      endif
+   endif
 
    end Function InRegion
 
@@ -2069,9 +2125,9 @@ CONTAINS
    endif
 
    if (indx1 > 0) then ! must be _?_WIND_COMPONENT
-      str3 = str1(1:indx1)//'_WIND_SPEED'
+      str3 = str1(1:indx1)//'_WIND_VELOCITY'
    else                ! must be _?_10_METER_WIND_SPEED
-      str3 = str1(1:indx2)//'_WIND_SPEED'
+      str3 = str1(1:indx2)//'_WIND_VELOCITY'
       indx1 = indx2
    endif
 
@@ -2129,21 +2185,16 @@ CONTAINS
    real(r8) :: postspred       ! POSTERIOR (spread,variance)
    real(r8) :: postspredplus   ! POSTERIOR (spread,variance**)
    logical, dimension(6) :: optionals
-   real(r8) :: obsspeed, pospeed, prspeed
 
    optionals = (/ present(uobs), present(uobserrvar), present(uprmean), &
                   present(uprsprd), present(upomean), present(uposprd) /)
 
    if ( all(optionals) ) then
 
-      obsspeed   = sqrt(    uobs**2 + obsval**2 )
-      prspeed    = sqrt( uprmean**2 + prmean**2 )
-      pospeed    = sqrt( upomean**2 + pomean**2 )
-
-      priorsqerr     = (prspeed - obsspeed)**2
-      postsqerr      = (pospeed - obsspeed)**2
-      priorbias      =  prspeed - obsspeed
-      postbias       =  pospeed - obsspeed
+      priorsqerr     = (prmean - obsval)**2 + (uprmean - uobs)**2
+      postsqerr      = (pomean - obsval)**2 + (upomean - uobs)**2
+      priorbias      = (prmean - obsval)    + (uprmean - uobs) 
+      postbias       = (pomean - obsval)    + (upomean - uobs)
       priorspred     = prsprd**2 + uprsprd**2
       postspred      = posprd**2 + uposprd**2
       priorspredplus = prsprd**2 + obserrvar + uprsprd**2 + uobserrvar
@@ -2226,6 +2277,7 @@ CONTAINS
    real(r8), intent(in)           :: obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd
    real(r8), intent(in), optional ::   uobs, uobserrvar, uprmean, uprsprd, upomean, uposprd
 
+   real(r8) :: obsspeed       ! PRIOR     Squared Error
    real(r8) :: priorsqerr     ! PRIOR     Squared Error
    real(r8) :: priorbias      ! PRIOR     simple bias
    real(r8) :: priorspred     ! PRIOR     (spread,variance)
@@ -2236,26 +2288,27 @@ CONTAINS
    real(r8) :: postspredplus  ! POSTERIOR (spread,variance**)
    logical, dimension(6) :: optionals
 
-   real(r8) :: obsspeed, pospeed, prspeed
-
    optionals = (/ present(uobs), present(uobserrvar), present(uprmean), &
                   present(uprsprd), present(upomean), present(uposprd) /)
 
    if ( all(optionals) ) then
+      priorsqerr     = (prmean - obsval)**2 + (uprmean - uobs)**2
+      postsqerr      = (pomean - obsval)**2 + (upomean - uobs)**2
 
-      obsspeed   = sqrt(    uobs**2 + obsval**2 )
-      prspeed    = sqrt( uprmean**2 + prmean**2 )
-      pospeed    = sqrt( upomean**2 + pomean**2 )
+      ! This calculation is the bias in the wind vector  
+      priorbias      = (prmean - obsval)    + (uprmean - uobs) 
+      postbias       = (pomean - obsval)    + (upomean - uobs)
 
-      priorsqerr     = (prspeed - obsspeed)**2
-      postsqerr      = (pospeed - obsspeed)**2
-      priorbias      =  prspeed - obsspeed
-      postbias       =  pospeed - obsspeed
+      ! This calculation is the bias in the wind speed
+      obsspeed       = sqrt(uobs**2 + obsval**2)
+      priorbias      = obsspeed - sqrt(prmean**2 + uprmean**2) 
+      postbias       = obsspeed - sqrt(pomean**2 + upomean**2) 
+
       priorspred     = prsprd**2 + uprsprd**2
       postspred      = posprd**2 + uposprd**2
       priorspredplus = prsprd**2 + obserrvar + uprsprd**2 + uobserrvar
       postspredplus  = posprd**2 + obserrvar + uposprd**2 + uobserrvar
-      
+
    else if ( any(optionals) ) then
       call error_handler(E_ERR,'Bin3D','wrong number of optional arguments', &
                          source,revision,revdate)
@@ -2339,7 +2392,8 @@ CONTAINS
    integer ::  HlevelDimID,  HlevelVarID
    integer ::  SlevelDimID
    integer ::    TimeDimID,    TimeVarID
-   integer ::    CopyDimID,    CopyVarID, CopyMetaVarID
+   integer ::    CopyDimID,    CopyVarID,  CopyMetaVarID
+   integer ::   TypesDimID,   TypesVarID, TypesMetaVarID
    integer :: PlevIntDimID, PlevIntVarID
    integer :: HlevIntDimID, HlevIntVarID
    integer ::  BoundsDimID,  BoundsVarID  
@@ -2430,7 +2484,8 @@ CONTAINS
 
    ! write all 'known' observation types
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "comment", &
-              'all known observation types follow' ), &
+              'All known observation types follow. &
+              &Also see ObservationTypes variable.' ), &
               'WriteNetCDF', 'put_att latlim2 '//trim(fname))
    do ivar = 1,max_obs_kinds
      call nc_check(nf90_put_att(ncid, NF90_GLOBAL, &
@@ -2445,6 +2500,10 @@ CONTAINS
    call nc_check(nf90_def_dim(ncid=ncid, &
               name="copy", len = Ncopies,            dimid = CopyDimID), &
               'WriteNetCDF', 'copy:def_dim '//trim(fname))
+
+   call nc_check(nf90_def_dim(ncid=ncid, &
+              name="obstypes", len = max_obs_kinds,  dimid = TypesDimID), &
+              'WriteNetCDF', 'types:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
               name="region", len = Nregions,         dimid = RegionDimID), &
@@ -2490,6 +2549,14 @@ CONTAINS
              'WriteNetCDF', 'copy:def_var')
    call nc_check(nf90_put_att(ncid, CopyVarID, "explanation", 'see CopyMetaData'), &
              'WriteNetCDF', 'copy:explanation')
+
+   ! Define the observation types - needed to be a coordinate variable
+
+   call nc_check(nf90_def_var(ncid=ncid, name="obstypes", xtype=nf90_int, &
+             dimids=TypesDimID, varid=TypesVarID), &
+             'WriteNetCDF', 'types:def_var')
+   call nc_check(nf90_put_att(ncid, TypesVarID, "explanation", 'see ObservationTypes'), &
+             'WriteNetCDF', 'types:explanation')
 
    ! Define the regions coordinate variable and attributes
 
@@ -2617,6 +2684,15 @@ CONTAINS
    call nc_check(nf90_put_att(ncid, CopyMetaVarID, "long_name", "quantity names"), &
              'WriteNetCDF', 'copymeta:long_name')
 
+   call nc_check(nf90_def_var(ncid=ncid, name="ObservationTypes", xtype=nf90_char, &
+             dimids=(/ StringDimID, TypesDimID /), varid=TypesMetaVarID), &
+             'WriteNetCDF', 'typesmeta:def_var')
+   call nc_check(nf90_put_att(ncid, TypesMetaVarID, "long_name", "DART observation types"), &
+             'WriteNetCDF', 'typesmeta:long_name')
+   call nc_check(nf90_put_att(ncid, TypesMetaVarID, "comment", &
+         "table relating integer to observation type string"), &
+             'WriteNetCDF', 'typesmeta:comment')
+
    ! Set nofill mode - supposed to be performance gain
  
    call nc_check(nf90_set_fill(ncid, NF90_NOFILL, i),  &
@@ -2637,6 +2713,12 @@ CONTAINS
 
    call nc_check(nf90_put_var(ncid, CopyMetaVarID, copy_names), &
               'WriteNetCDF', 'copymeta:put_var')
+
+   call nc_check(nf90_put_var(ncid, TypesVarId, (/ (i,i=1,max_obs_kinds) /) ), &
+              'WriteNetCDF', 'types:put_var')
+
+   call nc_check(nf90_put_var(ncid, TypesMetaVarID, my_obs_kind_names(1:max_obs_kinds)), &
+              'WriteNetCDF', 'typesmeta:put_var')
 
    call nc_check(nf90_put_var(ncid, RegionVarID, (/ (i,i=1,Nregions) /) ), &
               'WriteNetCDF', 'region:put_var')
@@ -2845,7 +2927,7 @@ CONTAINS
 
 
 
-   Function FindVertical(ncid, flav,dimid)
+   Function FindVertical(ncid, flav, dimid)
       integer, intent(in)  :: ncid, flav
       integer, intent(out) :: dimid
       integer              :: FindVertical
@@ -2875,6 +2957,8 @@ CONTAINS
                                        'FindVertical', 'vertisheight')
 
       else if ( which_vert(flav) == VERTISUNDEF   ) then
+         write(msgstring,*)flav,trim(my_obs_kind_names(flav)),' has undefined vertical.'
+         call error_handler(E_MSG,'FindVertical',msgstring,source,revision,revdate)
          call error_handler(E_ERR,'FindVertical','vertical undefined not implemented', &
                     source,revision,revdate)
       else 
@@ -2888,9 +2972,9 @@ CONTAINS
 
    Function grok_observation_names(my_names)
    !----------------------------------------------------------------------
-   ! Define/Append the 'wind speed' obs_kinds to supplant the list declared
+   ! Define/Append the 'wind velocity' obs_kinds to supplant the list declared
    ! in obs_kind_mod.f90 i.e. if there is a RADIOSONDE_U_WIND_COMPONENT
-   ! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_WIND_SPEED
+   ! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_WIND_VELOCITY
    ! Replace calls to 'get_obs_kind_name' with variable 'my_obs_kind_names'
    !----------------------------------------------------------------------
 
@@ -2902,7 +2986,7 @@ CONTAINS
    character(len=stringlength), dimension(2*max_obs_kinds) :: names
 
    ! Initially, the array of obs_kind_names is exactly 'max_num_obs' in length.
-   ! This block finds the U,V wind pairs and searches for pre-existing wind_speed
+   ! This block finds the U,V wind pairs and searches for pre-existing wind_velocity
    ! equivalents. Depending on the number of unique wind pairs - we can allocate
    ! space, copy the existing names into that array, and append the new unique ones.
    ! easy ...
@@ -2944,7 +3028,7 @@ CONTAINS
 
          if (indxN > 0) then ! we know they are matching kinds
             nwinds = nwinds + 1
-            str3   = str1(1:indx2)//'_WIND_SPEED'
+            str3   = str1(1:indx2)//'_WIND_VELOCITY'
             names(max_obs_kinds + nwinds) = str3
 
          !  write(*,*)'Seems like ',str1(1:indx1N),' matches ',str2(1:indx2N)
@@ -2971,7 +3055,7 @@ CONTAINS
          indxN = index(str1(1:indx1),str2(1:indx2))
          if (indxN > 0) then ! we know they are matching kinds
             nwinds = nwinds + 1
-            str3   = str1(1:indx2)//'_10_METER_WIND_SPEED'
+            str3   = str1(1:indx2)//'_10_METER_WIND_VELOCITY'
             names(max_obs_kinds + nwinds) = str3
          endif
       endif
@@ -3080,5 +3164,40 @@ CONTAINS
    endif
 
    end Function NextFile
+
+  
+ 
+   Subroutine ObsLocationsExist( printswitch )
+
+   ! This routine checks for the existence of observation location files.
+   ! Each epoch writes out its own observation location file - and since
+   ! it is possible that multiple observation sequence files contribute
+   ! to the same epoch ... opening and appending is not a well-posed 
+   ! strategy. Furthermore, some people do not start close enough to the
+   ! beginning of their epoch definition to ensure that epoch 1 exists.
+   ! So ... we check for any of observation_locations.00[1-4].dat
+   ! Completely arbitrary.
+
+   logical :: printswitch
+   integer :: i
+
+   ! locname, msgstring, source, revision, and revdate are globally-scoped
+
+   if (printswitch) then
+
+      do i = 1,4
+      write(locName,'(a,i3.3,a)') 'observation_locations.', i, '.dat'
+   
+      if (file_exist(locName)) then
+         write(msgstring,*)'please remove file(s) like ', trim(locName)
+         call error_handler(E_MSG,'ObsLocationsExist',msgstring,source,revision,revdate)
+         write(msgstring,*)'Cannot have pre-existing obs location output files. Stopping.'
+         call error_handler(E_ERR,'ObsLocationsExist',msgstring,source,revision,revdate)
+      endif
+      enddo
+
+   endif
+
+   end Subroutine ObsLocationsExist
 
 end program obs_diag
