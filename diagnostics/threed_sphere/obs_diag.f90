@@ -3080,9 +3080,10 @@ CONTAINS
 
    Function NextFile(fname,ifile)
    !----------------------------------------------------------------------
-   ! The file name can take one of two forms:
-   ! obs_0001/obs_seq.final     -or- 
-   ! obs_seq.final
+   ! The file name can take one of three forms:
+   ! /absolute/path/to/nirvana/obs_001/obs_seq.final   (absolute path)
+   ! obs_0001/obs_seq.final    (relative path)
+   ! obs_seq.final      (no path ... local)
    !
    ! If there is a '/' in the file name, we grab the portion before the
    ! slash and look for an underscore. Anything following the underscore
@@ -3103,19 +3104,39 @@ CONTAINS
    character(len=stringlength), SAVE :: dir_ext
 
    character(len=129) :: dir_name
-   integer :: slashindex, splitindex
+   integer :: slashindex, splitindex, i, strlen
 
    if (ifile == 1) then ! First time through ... find things.
 
+      ! Start looking (right-to-left) for the 'slash'.
+      ! Anything to the right of it must be a filename.
+      ! Anything to the left must be the part that gets incremented.
+
       filename   = adjustl(fname)
       NextFile   = trim(filename)
-      slashindex = index(filename,'/')
+      strlen     = len_trim(filename)
+      slashindex = 0
+
+      SlashLoop : do i = strlen,1,-1
+      if ( NextFile(i:i) == '/' ) then
+         slashindex = i
+         exit SlashLoop
+      endif
+      enddo SlashLoop
 
       if (slashindex > 0) then ! we have a directory structure
 
          dir_name   = trim(fname(1:slashindex-1))
          filename   = trim(fname(slashindex+1:129))
-         splitindex = index(dir_name,'_')
+         strlen     = len_trim(dir_name)
+         splitindex = 0
+
+         SplitLoop : do i = strlen,1,-1
+         if ( dir_name(i:i) == '_' ) then
+            splitindex = i
+            exit SplitLoop
+         endif
+         enddo SplitLoop
 
          if (splitindex <= 0) then
             write(msgstring,*)'cannot find _ in ', trim(dir_name)
@@ -3126,11 +3147,7 @@ CONTAINS
          dir_ext    = dir_name(splitindex+1:slashindex-1)
          dir_prec   = slashindex - splitindex - 1
 
-         ! write(*,*)'base is ',trim(dir_base)
-         ! write(*,*)'ext  is ',trim(dir_ext)
-         ! write(*,*)'prec is ',dir_prec
-
-         read(dir_ext,*) filenum   ! TJH - needs error handling
+         read(dir_ext,*) filenum
 
       else ! we have one single file - on the first trip through
 
@@ -3145,19 +3162,17 @@ CONTAINS
       else
 
          filenum = filenum + 1
-         if (dir_prec == 2) then
+         if (dir_prec == 1) then
+         write(NextFile,'(a,''_'',i1.1,''/'',a)') trim(dir_base),filenum,trim(filename)
+         elseif (dir_prec == 2) then
          write(NextFile,'(a,''_'',i2.2,''/'',a)') trim(dir_base),filenum,trim(filename)
          elseif (dir_prec == 3) then
          write(NextFile,'(a,''_'',i3.3,''/'',a)') trim(dir_base),filenum,trim(filename)
-         else
+         elseif (dir_prec == 4) then
          write(NextFile,'(a,''_'',i4.4,''/'',a)') trim(dir_base),filenum,trim(filename)
+         else
+         write(NextFile,'(a,''_'',i5.5,''/'',a)') trim(dir_base),filenum,trim(filename)
          endif
-
-      !  write(*,*)'base is ',trim(dir_base)
-      !  write(*,*)'ext  is ',trim(dir_ext)
-      !  write(*,*)'prec is ',dir_prec
-      !  write(*,*)'ext  is ',filenum
-      !  write(*,*)'newfile ',trim(NextFile)
 
       endif
 
