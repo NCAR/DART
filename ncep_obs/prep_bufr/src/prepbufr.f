@@ -29,6 +29,7 @@ C
 
       INTEGER, PARAMETER :: max_otype=300, max_qctype=15 
       REAL, PARAMETER    :: MISSING = -9999.
+      INTEGER, PARAMETER :: I_MISSING = -9999
       CHARACTER  outstg*(200), subset*8, inf*19 , outf*20
       CHARACTER  var(MXR8VT)/'P','Q','T','Z','U','V'/
 C
@@ -90,7 +91,7 @@ c----------------------------------------------------------------------
 c    read the prep_bufr_nml namelist from input.nml
 c----------------------------------------------------------------------
        
-      otype_use(:) = MISSING;  qctype_use(:) = MISSING
+      otype_use(:) = MISSING;  qctype_use(:) = I_MISSING
       inml_unit = 15
       open(inml_unit,file='input.nml', status='old',
      &        access='sequential', form='formatted')
@@ -401,7 +402,7 @@ c----------------------------------------------------------------------
    
         endif
 
-c    write out moisture observationis from ADPUPA
+c    write out moisture observation from ADPUPA
 c----------------------------------------------------------------------
 
         if ( subset(1:6) .eq. 'ADPUPA' ) then
@@ -748,12 +749,25 @@ C
 
 C-----------------------------------------------------------------------
         FUNCTION USE_THIS_DATA_INT(ifld, ufld, nfld)
-
+C
+C       ifld is the integer value to test, ufld is an array of
+C       integers 'nfld' long.  if ifld is found in any of the
+C       ufld entries, this function returns true, else false.
+C       if nfld is 0, it bypasses the search and always
+C       returns true; accepting any value.
+C
         integer, intent(in) :: nfld, ifld, ufld(nfld)
 
         integer             :: nn
         logical             :: use_this_data_int
 
+C       bypass test - always return true
+        if (nfld == 0) then
+          use_this_data_int = .TRUE.
+          return
+        endif
+        
+C       normal search code, look for match in list
         use_this_data_int = .FALSE.
         DO nn = 1, nfld
           IF ( ifld .eq. ufld(nn) ) THEN
@@ -767,6 +781,13 @@ C-----------------------------------------------------------------------
 
 C-----------------------------------------------------------------------
         FUNCTION USE_THIS_DATA_REAL(rfld, ufld, nfld)
+C
+C       ifld is the real value to test, ufld is an array of
+C       reals 'nfld' long.  if ifld is found in any of the
+C       ufld entries, this function returns true, else false.
+C       if nfld is 0, it bypasses the search and always
+C       returns true; accepting any value.
+C
 
         integer, intent(in) :: nfld
         real, intent(in)    :: rfld, ufld(nfld)
@@ -774,6 +795,13 @@ C-----------------------------------------------------------------------
         integer             :: nn
         logical             :: USE_THIS_DATA_REAL
 
+C       bypass test - always return true
+        if (nfld == 0) then
+          use_this_data_real = .TRUE.
+          return
+        endif
+        
+C       normal search code, look for match in list
         USE_THIS_DATA_REAL = .FALSE.
         DO nn = 1, nfld
           IF ( rfld .eq. ufld(nn) ) THEN
