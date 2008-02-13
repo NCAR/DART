@@ -297,21 +297,11 @@ contains
 !#######################################################################
 
    subroutine timestamp(string1,string2,string3,pos)
-      ! values(1) year
-      ! values(2) month
-      ! values(3) day
-      ! values(4) minutes diff from UTC
-      ! values(5) hour
-      ! values(6) minutes
-      ! values(7) seconds
-      ! values(8) milliseconds
 
       character(len=*), optional, intent(in) :: string1
       character(len=*), optional, intent(in) :: string2
       character(len=*), optional, intent(in) :: string3
       character(len=*),           intent(in) :: pos
-
-      integer, dimension(8) :: values
 
       if ( .not. module_initialized ) call initialize_utilities
       if ( .not. do_output_flag) return
