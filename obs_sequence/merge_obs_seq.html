@@ -59,16 +59,35 @@
 <H2>OVERVIEW</H2>
 
 <P>
-This program can merge two or more compatible observation sequences 
-and create a single observation sequence file with the 
-combined observations. The number of input files, their filenames,
-and the output filename are read from the namelist file.
+This program merges one or more compatible observation sequences 
+into a single observation sequence file.
+The number of input files, their filenames,
+and the output filename are read from the
+<em class=code>&#38;merge_obs_seq_nml</em> namelist 
+in file <em class=file>input.nml</em>.
 <BR><BR>
-This program is also a convenient way to convert observation sequence
-files from ASCII to (more compact) binary, or vice-versa. Simply specify
-that there is 1 input file. The output format is specified by the 
+The observations copied to the output file can be restricted in
+time by setting the namelist items for first and last observation
+timestamps (in Gregorian days and seconds).
+All observations before the start time and 
+after the last time will be removed before merging. 
+It is ok for some of the input
+files to have no observations in the requested time range, and 
+the files can have overlapping time ranges.
+<BR><BR>
+<em class=unix>merge_obs_seq</em> does several things which can
+be useful even when there is only a single input file.
+The program will always sort the output observation
+sequence in increasing time order, and will not copy
+any unreferenced observations from the input sequence. 
+It can also be used to convert an observation sequence file from
+ASCII to (more compact) binary, or vice-versa. 
+The output format is specified by the 
 <em class=code>&#38;obs_sequence_nml</em> namelist 
 in file <em class=file>input.nml</em>.
+To process a single input file,
+set the number of input files to 1, and merge from an existing filename
+into a new file.
 <BR><BR>
 This routine also uses a MUCH faster insertion method than the
 versions that used only two input files. A test on
@@ -78,13 +97,6 @@ sequences are linked lists ordered by time, simply keeping track of
 where you inserted the last one greatly simplifies the logic of where
 one starts looking to insert the next observation. Consequently, inserting
 and appending are now equally fast. Snappy!
-<BR><BR>
-<em class=unix>merge_obs_seq</em> can be used to sort observations in an
-observation sequence as well as physically delete broken nodes from 
-the sequence. The only trick is to merge with an empty 
-<em class=file>obs_seq</em> file. The empty <em class=file>obs_seq</em> 
-must be specified first in the list of files to merge, it has to have a header, 
-and first = last = -1. Pretty Sneaky.
 </P>
 
 
@@ -108,7 +120,8 @@ obs_sequence_mod
  '&#38;' and terminating with a slash '/'.
  </P>
  <div class=namelist><pre>
- <em class=call>namelist / merge_obs_seq / </em> num_input_files, filename_seq, filename_out
+ <em class=call>namelist / merge_obs_seq_nml / </em> num_input_files, filename_seq,
+  filename_out, first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds
  </pre></div>
 
  <H3 class=indent1>Discussion</H3>
@@ -143,6 +156,28 @@ obs_sequence_mod
      <!--  type  --><TD>character(len=129)</TD>
      <!--descript--><TD>The name of the resulting (merged) observation sequence file.
                         Default: 'obs_seq.merged'</TD></TR>
+ <TR><!--contents--><TD valign=top>first_obs_days</TD>
+     <!--  type  --><TD>integer</TD>
+     <!--descript--><TD>If non-negative, restrict the timestamps of the observations
+                        copied to the merged file to be equal to or after this date
+                        (specified in the Gregorian calendar; day number since 1600).
+                        Default: -1, merge all observations</TD></TR>
+ <TR><!--contents--><TD valign=top>first_obs_seconds</TD>
+     <!--  type  --><TD>integer</TD>
+     <!--descript--><TD>If non-negative, restrict the timestamps of the observations
+                        copied to the merged file to be equal to or after this time.
+                        Default: -1, merge all observations</TD></TR>
+ <TR><!--contents--><TD valign=top>last_obs_days</TD>
+     <!--  type  --><TD>integer</TD>
+     <!--descript--><TD>If non-negative, restrict the timestamps of the observations
+                        copied to the merged file to be equal to or before this date
+                        (specified in the Gregorian calendar; day number since 1600).
+                        Default: -1, merge all observations</TD></TR>
+ <TR><!--contents--><TD valign=top>last_obs_seconds</TD>
+     <!--  type  --><TD>integer</TD>
+     <!--descript--><TD>If non-negative, restrict the timestamps of the observations
+                        copied to the merged file to be equal to or before this time.
+                        Default: -1, merge all observations</TD></TR>
  </TABLE>
  
 

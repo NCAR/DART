@@ -1075,6 +1075,38 @@ observation sequence.
  </TABLE>
  <BR>
 
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <A NAME="get_num_key_range"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> var = get_num_key_range(seq, key1, key2) </em>
+ <pre>
+ integer                             :: <em class=code>get_num_key_range</em>
+ type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+ integer, optional,       intent(in) :: <em class=code>key1, key2</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Returns the number of observations between the two given keys.
+The default key numbers are the first and last in the sequence file.
+This routine can be used to count the actual number of observations
+in a sequence and will be accurate even if the sequence has been
+trimmed with delete_seq_head() or delete_seq_tail().
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
+     <TD>Number of unique times for observations in a sequence</TD></TR>
+ <TR><TD valign=top><em class=code>seq&nbsp; &nbsp; </em></TD>
+     <TD>An observation sequence</TD></TR>
+ <TR><TD valign=top><em class=code>key1&nbsp; &nbsp; </em></TD>
+     <TD>The starting key number.  Defaults to the first observation
+         in the sequence.</TD></TR>
+ <TR><TD valign=top><em class=code>key2&nbsp; &nbsp; </em></TD>
+     <TD>The ending key number.  Defaults to the last observation
+         in the sequence.</TD></TR>
+ </TABLE>
+ <BR>
+
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="static_init_obs_sequence"></A>
  <P></P><HR><P></P>

@@ -1,6 +1,6 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2007, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
+! Data Assimilation Research Testbed -- DART 
+! Copyright 2004-2008, Data Assimilation Research Section 
+! University Corporation for Atmospheric Research 
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module obs_sequence_mod
@@ -32,9 +32,9 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
 use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
                              operator(/=), set_time, operator(-), operator(+), &
                              operator(==)
-use    utilities_mod, only : get_unit, close_file, find_namelist_in_file, check_namelist_read, &
-                             register_module, error_handler, E_ERR, E_WARN, E_MSG, logfileunit, &
-                             do_output
+use    utilities_mod, only : get_unit, close_file, register_module, error_handler, &
+                             find_namelist_in_file, check_namelist_read, &
+                             E_ERR, E_WARN, E_MSG, logfileunit, do_output
 use     obs_kind_mod, only : write_obs_kind, read_obs_kind
 
 
@@ -50,10 +50,12 @@ public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    get_num_copies, get_num_qc, get_num_obs, get_max_num_obs, get_copy_meta_data, &
    get_qc_meta_data, get_next_obs, get_prev_obs, insert_obs_in_seq, &
    delete_obs_from_seq, set_copy_meta_data, set_qc_meta_data, get_first_obs, &
-   get_last_obs, add_copies, add_qc, write_obs_seq, read_obs_seq, &
-   append_obs_to_seq, get_obs_from_key, get_obs_time_range, set_obs, get_time_range_keys, &
-   get_num_times, static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header, &
-   get_expected_obs, delete_seq_head, delete_seq_tail, get_next_obs_from_key, get_prev_obs_from_key
+   get_last_obs, add_copies, add_qc, write_obs_seq, read_obs_seq, set_obs, &
+   append_obs_to_seq, get_obs_from_key, get_obs_time_range, get_time_range_keys, &
+   get_num_times, get_num_key_range, &
+   static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header, &
+   get_expected_obs, delete_seq_head, delete_seq_tail, &
+   get_next_obs_from_key, get_prev_obs_from_key
 
 ! Public interfaces for obs
 public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
@@ -75,11 +77,15 @@ type obs_sequence_type
    integer :: num_qc
    integer :: num_obs
    integer :: max_num_obs
-   character(len = 129), pointer :: copy_meta_data(:)
+! F95 allows pointers to be initialized to a known value
+   !character(len = 129), pointer :: copy_meta_data(:)  => NULL()
+   !character(len = 129), pointer :: qc_meta_data(:)    => NULL()
+   character(len = 129), pointer :: copy_meta_data(:) 
    character(len = 129), pointer :: qc_meta_data(:)
    integer :: first_time
    integer :: last_time
 !   integer :: first_avail_time, last_avail_time
+   !type(obs_type), pointer :: obs(:)   => NULL()
    type(obs_type), pointer :: obs(:) 
 ! What to do about groups
 end type obs_sequence_type
@@ -90,6 +96,8 @@ type obs_type
 ! Do I want to enforce the identity of the particular obs_sequence?
    integer :: key
    type(obs_def_type) :: def
+   !real(r8), pointer :: values(:)  => NULL()
+   !real(r8), pointer :: qc(:)      => NULL()
    real(r8), pointer :: values(:) 
    real(r8), pointer :: qc(:)
 ! Put sort indices directly into the data structure
@@ -146,7 +154,7 @@ end subroutine static_init_obs_sequence
 !--------------------------------------------------------------
 
 !WHAT ABOUT PASS THROUGHS TO THE OBS_DEF???
-! WhAT ABOUT copy_obs_sequence similar to read.
+! WHAT ABOUT copy_obs_sequence similar to read.
 !-------------------------------------------------
 subroutine init_obs_sequence(seq, num_copies, num_qc, &
    expected_max_num_obs)
@@ -205,16 +213,28 @@ integer :: i
 
 if ( seq%max_num_obs > 0 ) then
 
-   if (associated(seq%copy_meta_data)) deallocate(seq%copy_meta_data)
-   if (associated(seq%qc_meta_data))   deallocate(seq%qc_meta_data)
+   if (associated(seq%copy_meta_data)) then
+      deallocate(seq%copy_meta_data)
+      nullify(seq%copy_meta_data)
+   endif
+   if (associated(seq%qc_meta_data)) then
+      deallocate(seq%qc_meta_data)
+      nullify(seq%qc_meta_data)
+   endif
           
    do i = 1, seq%max_num_obs
+   ! seq%obs is a derived type, not a pointer.
    !    if (associated(seq%obs(i))) call destroy_obs( seq%obs(i) )
-                                  call destroy_obs( seq%obs(i) )
+      call destroy_obs( seq%obs(i) )
    end do
 
    ! Also free up the obs storage in the sequence
-   if(associated(seq%obs)) deallocate(seq%obs)
+   if(associated(seq%obs)) then 
+      deallocate(seq%obs)
+      nullify(seq%obs)
+   else
+      print *, 'destroy_obs_sequence called but seq%obs not associated'
+   endif
 
    seq%first_time  = -1
    seq%last_time   = -1
@@ -1364,9 +1384,18 @@ if(out_of_range) then
       ! Whole sequence is after
       all_gone = .false.
    else
-      ! Whole sequence is before
+      ! Whole sequence is before; but sequence is not altered?
       all_gone = .true.
    endif
+   ! Destroy temp storage and return
+   call destroy_obs(obs)
+   return
+endif
+
+! compare num_keys with all possible keys in file; if equal, you have
+! also removed all obs and should return all_gone = .true.  
+if (num_keys == get_num_key_range(seq)) then
+   all_gone = .true.
    ! Destroy temp storage and return
    call destroy_obs(obs)
    return
@@ -1443,6 +1472,15 @@ if(out_of_range) then
    return
 endif
 
+! compare num_keys with all possible keys in file; if equal, you have
+! also removed all obs and should return all_gone = .true.  
+if (num_keys == get_num_key_range(seq)) then
+   all_gone = .true.
+   ! Destroy temp storage and return
+   call destroy_obs(obs)
+   return
+endif
+
 ! If here, then there are a set of observations that are not being used at the end
 ! Delete them from the sequence
 all_gone = .false.
@@ -1460,7 +1498,6 @@ deallocate(keys)
 call destroy_obs(obs)
 
 end subroutine delete_seq_tail
-
 
 
 !=================================================
@@ -1490,19 +1527,17 @@ subroutine copy_obs(obs1, obs2)
 
 ! To be overloaded with =
 
-type(obs_type), intent(out) :: obs1
+!type(obs_type), intent(out) :: obs1
+type(obs_type), intent(inout) :: obs1
 type(obs_type), intent(in) :: obs2
 
 obs1%key = obs2%key
 call copy_obs_def(obs1%def, obs2%def)
 
-!write(*, *) 'in copy obs'
-!write(*, *) 'size of obs1, obs2 ', size(obs1%values), size(obs2%values)
 if (.not.associated(obs1%values) .or. .not.associated(obs1%qc) .or. &
     size(obs1%values) /= size(obs2%values) .or. size(obs1%qc) /= size(obs2%qc)) then
    if (associated(obs1%values)) deallocate(obs1%values)
    if (associated(obs1%qc)) deallocate(obs1%qc)
-   !write(*, *) 'allocating in copy_obs'
    allocate(obs1%values(size(obs2%values)), obs1%qc(size(obs2%qc)))
 endif
 obs1%values = obs2%values
@@ -1510,8 +1545,6 @@ obs1%qc = obs2%qc
 obs1%prev_time = obs2%prev_time
 obs1%next_time = obs2%next_time
 obs1%cov_group = obs2%cov_group
-
-!write(*, *) 'done with copy_obs'
 
 end subroutine copy_obs
 
@@ -1522,7 +1555,16 @@ subroutine destroy_obs(obs)
 ! Free up allocated storage in an observation type
 type(obs_type), intent(inout) :: obs
 
-deallocate(obs%values, obs%qc)
+if (associated(obs%values)) then
+   deallocate(obs%values)
+   nullify(obs%values)
+endif
+if (associated(obs%qc)) then
+   deallocate(obs%qc)
+   nullify(obs%qc)
+endif
+!if pointers are nullified() then this is safe (and simpler).
+!deallocate(obs%values, obs%qc)
 call destroy_obs_def(obs%def)
 
 end subroutine destroy_obs
@@ -1541,7 +1583,7 @@ end subroutine get_obs_def
 !-------------------------------------------------
 subroutine set_obs_def(obs, obs_def)
 
-type(obs_type), intent(out) :: obs
+type(obs_type), intent(inout) :: obs
 type(obs_def_type), intent(in) :: obs_def
 
 call copy_obs_def(obs%def, obs_def)
@@ -1854,6 +1896,52 @@ do while (next /= -1)
 end do
 
 end function get_num_times
+
+!---------------------------------------------------------
+
+function get_num_key_range(seq, key1, key2)
+
+! Returns number of observations between the two given keys
+
+type(obs_sequence_type), intent(in) :: seq
+integer, optional, intent(in) :: key1, key2
+integer :: get_num_key_range
+
+integer :: next, last
+
+
+if (present(key1)) then
+   if (key1 < seq%first_time .or. key1 > seq%last_time) then
+      write(msg_string, *) 'Bad value for key1, must be between ', &
+                            seq%first_time, ' and ', seq%last_time
+      call error_handler(E_ERR, 'get_num_key_range', msg_string, &
+         source, revision, revdate)
+   endif
+   next = key1
+else
+   next = seq%first_time
+endif
+if (present(key2)) then
+   if (key2 < seq%first_time .or. key2 > seq%last_time) then
+      write(msg_string, *) 'Bad value for key2, must be between ', &
+                            seq%first_time, ' and ', seq%last_time
+      call error_handler(E_ERR, 'get_num_key_range', msg_string, &
+         source, revision, revdate)
+   endif
+   last = key2
+else
+   last = seq%last_time
+endif
+
+! count them up
+get_num_key_range = 0
+do while (next /= -1)
+   get_num_key_range = get_num_key_range + 1
+   if (next == last) exit
+   next = seq%obs(next)%next_time
+end do
+
+end function get_num_key_range
 
 
 !-------------------------------------------------
