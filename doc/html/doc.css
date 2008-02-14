@@ -164,6 +164,11 @@ em.changed{
     font-style:typewriter; 
     background-color: #FFCCFF}
 
+em.removed{
+    color:blue; 
+    font-style:typewriter; 
+    text-decoration:line-through}
+
 em.call{
     color:blue; 
     font-style:typewriter; 
