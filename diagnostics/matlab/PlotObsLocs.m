@@ -1,6 +1,7 @@
 function phandle = PlotObsLocs(in_dartqc, in_box, in_typelist, in_epochlist, ...
                     in_subset, in_plotd, in_world, in_invertz, in_writeplot, ...
-                    in_legend2dloc, in_legend3dloc, in_viewlist)
+                    in_legend2dloc, in_legend3dloc, in_viewlist, ...
+                    in_ncfname, in_orientation, in_plotname)
 % PLOTOBSLOCS - Plot an observation_locations.NNN.dat file as output from the latest obs_diag program in DART.
 % (You must enable an obs_diag_nml namelist entry to get the output files; 
 % they are not created by default.)
@@ -12,7 +13,8 @@ function phandle = PlotObsLocs(in_dartqc, in_box, in_typelist, in_epochlist, ...
 % usage:
 % PlotObsLocs(in_dartqc, in_box, in_typelist, in_epochlist, in_subset, 
 %             in_plotd, in_world, in_invertz, in_writeplot, 
-%             in_legend2dloc, in_legend3dloc, in_viewlist)
+%             in_legend2dloc, in_legend3dloc, in_viewlist,
+%             in_ncfname, in_orientation, in_plotname)
 %
 % where:
 %
@@ -79,6 +81,20 @@ function phandle = PlotObsLocs(in_dartqc, in_box, in_typelist, in_epochlist, ...
 %               printed in the lower left corner during the rotation; these
 %               views can be used to create .ps files if you are saving the 
 %               plots to a file or if you want the same viewpoints reused.
+%
+% in_ncfname = 'obs_diag_output.nc' by default - the netcdf file created by
+%              the obs_diag program.  It contains the mapping between the
+%              observation type numbers and the string labels identifying them.
+%
+% in_orientation = 'landscape' but can be 'portrait' or 'tall'.  The best
+%                   use of page space depends sharply on the aspect ratio of
+%                   the area you are plotting.  'landscape' works well for
+%                   a whole-earth 2d plot; 'portrait' is good for CONUS.
+%
+% in_plotname = name of output postscript file if writeplot is 1.  The default
+%               filename is generated as 'Nd_locations_epochNNN.ps', but
+%               subsequent plots will overwrite earlier ones, so this input
+%               can be used to customize the name.
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004-2007, Data Assimilation Research Section
@@ -92,7 +108,7 @@ function phandle = PlotObsLocs(in_dartqc, in_box, in_typelist, in_epochlist, ...
 % $Date$
 
 % data subset selections:
-%  used vs unused (or both) obs
+%  dart QC values - whether assimilated or not
 %  subregions - lon, lat, height min/max
 %  obs type list
 %  random subset to thin data
@@ -116,7 +132,8 @@ function phandle = PlotObsLocs(in_dartqc, in_box, in_typelist, in_epochlist, ...
 %  user_specified (prompt user for 4 or 6 corners)
 %
 
-arg_used = 0;         % dart QC values to use ... see in_dartqc table above
+arg_ncfname = 'obs_diag_output.nc';  % default file to use for obs info
+arg_dartqc = 0;         % dart QC values to use ... see in_dartqc table above
 arg_box = [];         % [[lon_min, lon_max, lat_min, lat_max], v_min, v_max]
 arg_typelist = [];    % numeric observation type list; if ~[], integer list
 arg_epochlist = [];   % list of epochs to process; if ~[], integer list
@@ -127,16 +144,17 @@ arg_invertz = 0;      % for 3d plot, 1=z axis plots N to 0, 0 = 0 to N
 arg_writeplot = 0;    % write out postscript plot files (1=yes)
 arg_legend2dloc = 'SouthWest';  % where on the plot to plop the 2d legend box
 arg_legend3dloc = 'NorthWest';  % where on the plot to plop the 3d legend box
-                              % see matlab doc for alternatives
+                                % see matlab doc for alternatives
+arg_orientation = 'landscape';  % could be portrait, tall
 arg_viewlist = [10  10;  10  80; ];
                       % default viewpoints for 3D plots.
                       % [90 0], [0 90] and [0 0] are also good.
+arg_plotname = 'default';  % default is Nd_locations_epoch00N.ps
 
- ncfname = 'obs_diag_output.nc';
 
 % get the values from the arguments and fill them in:
 if (~isa(in_dartqc,'char'))
-  arg_used = in_dartqc;
+  arg_dartqc = in_dartqc;
 end
 if (~isa(in_box,'char'))
   arg_box = in_box;
@@ -171,6 +189,15 @@ end
 if (~isa(in_viewlist,'char'))
   arg_viewlist = in_viewlist;
 end
+if (~strcmp(in_ncfname,'default'))
+  arg_ncfname = in_ncfname;
+end
+if (~strcmp(in_orientation,'default'))
+  arg_orientation = in_orientation;
+end
+if (~strcmp(in_plotname,'default'))
+  arg_plotname = in_plotname;
+end
 
 
 %-----------
@@ -181,8 +208,8 @@ end
 if (~isequal(arg_epochlist,[]))
   epochlist = arg_epochlist;
 else
-  epochtime = getnc(ncfname,'time');
-  epochbnds = getnc(ncfname,'time_bounds');
+  epochtime = getnc(arg_ncfname,'time');
+  epochbnds = getnc(arg_ncfname,'time_bounds');
   epochlist = 1:length(epochtime);
 end
 
@@ -209,7 +236,7 @@ for epoch = epochlist
  end
  
  % format of the data in these files must be:
- %   lon  lat  ivert  flavor  key  used
+ %   lon  lat  ivert  flavor  key  dartqc
  t = reshape(r, 6, []);
  s = transpose(t);
  
@@ -221,7 +248,7 @@ for epoch = epochlist
  % in the 'Observation_Kind()' array.  (this file is produced by
  % running obs_diag -- full name is ObsDiagAtts.m)
  
- Observation_Kind = getnc(ncfname,'ObservationTypes');
+ Observation_Kind = getnc(arg_ncfname,'ObservationTypes');
 
  % Use a different marker and color for each observation type
  % (12*6) = 72 combinations at the moment. Could extend these
@@ -267,8 +294,8 @@ for epoch = epochlist
  
    % select the rows we want to plot, optionally with a variety
    % of subsetting.  function form is:
-   %   out = select_subset(rawdata_in, used/unused, boundingbox, subset_count)
-   l = select_subset(thisobs, arg_used, arg_box, arg_subset);
+   %   out = select_subset(rawdata_in, dartqc, boundingbox, subset_count)
+   l = select_subset(thisobs, arg_dartqc, arg_box, arg_subset);
  
    % if there are any of this obs type left, plot them
    if (size(l, 1) ~= 0) 
@@ -369,28 +396,31 @@ for epoch = epochlist
  % whole world in (lon, lat) degree coords
  if (arg_world)
  
-    % add a 2D plot of the world continent outlines
-    worldmap(lmax);
+   % add a 2D plot of the world continent outlines
+   worldmap(lmax);
     
-    % these plots are generally longer than high, and add 3d-box.
-  % orient landscape;
-    set(gca, 'Box', 'on');
+   % set the default orientation
+   orient(arg_orientation);
+   set(gca, 'Box', 'on');
 
-    % various attempts to make the x/y axis have the same spacing per degree
-    % but shrink the vertical because it can be much larger.  but all these
-    % did strange things to the viewpoint so i am giving up on them for now.
-    %axis equal;
+   % various attempts to make the x/y axis have the same spacing per degree
+   % but shrink the vertical because it can be much larger.  but all these
+   % did strange things to the viewpoint so i am giving up on them for now.
+   %axis equal;
 
-    %vert = lmax / 100;
-    %set(gca, 'DataAspectRatio', [1 1 vert], 'PlotBoxAspectRatio', [1 1 vert], 'Box', 'on');
-    %set(gca, 'DataAspectRatio', [1 1 10], 'Box', 'on');
+   %vert = lmax / 100;
+   %set(gca, 'DataAspectRatio', [1 1 vert], 'PlotBoxAspectRatio', [1 1 vert], 'Box', 'on');
+   %set(gca, 'DataAspectRatio', [1 1 10], 'Box', 'on');
  
    xlabel('Longitude (degrees)', 'FontSize', 14);
-   ylabel('Latitude (degrees)', 'FontSize', 14);
+   ylabel('Latitude (degrees)',  'FontSize', 14);
    if (arg_plotd == 3)
      zlabel('Height (units = ?)', 'FontSize', 14);
    end
  else
+   % set the default orientation
+   orient(arg_orientation);
+
    xlabel('First coordinate', 'FontSize', 14);
    ylabel('Second coordinate', 'FontSize', 14);
    if (arg_plotd == 3)
@@ -405,12 +435,12 @@ for epoch = epochlist
  wysiwyg;
 
 
- if (arg_used < 0)
+ if (arg_dartqc < 0)
    tstring = sprintf('Obs Locs for Epoch %d with DART QC values <= %d', ...
-                       epoch, abs(arg_used));
- elseif (arg_used >= 0)
+                       epoch, abs(arg_dartqc));
+ elseif (arg_dartqc >= 0)
    tstring = sprintf('Obs Locs for Epoch %d with DART QC value == %d', ...
-                       epoch, arg_used);
+                       epoch, arg_dartqc);
  end
 
  if (arg_subset > 0)
@@ -441,18 +471,27 @@ for epoch = epochlist
  % view angles -- you can set a list and get multiple plots out.
  if (arg_writeplot) 
     if (arg_plotd == 2)
-      fname = sprintf('2d_locations_epoch%.03d.ps', epoch);
-      print('-dpsc', fname);
+       if (~strcmp(arg_plotname,'default'))
+          fname = sprintf('%s_epoch%.03d.ps', arg_plotname, epoch);
+       else
+          fname = sprintf('2d_locations_epoch%.03d.ps', epoch);
+       end
+       print('-dpsc', fname);
     else
-
-      % set up viewlist as: arg_viewlist = [ az el; az el; ... ];
-      for v = 1 : size(arg_viewlist, 1)
-         view(arg_viewlist(v, :));
-         fname = sprintf('3d_locations%d_epoch%.03d.ps', v, epoch);
-         print('-dpsc', fname);
-      end
+  
+          % set up viewlist as: arg_viewlist = [ az el; az el; ... ];
+          for v = 1 : size(arg_viewlist, 1)
+             view(arg_viewlist(v, :));
+             if (~strcmp(arg_plotname,'default'))
+                fname = sprintf('%s_view%.02d_epoch%.03d.ps', arg_plotname, v, epoch);
+             else
+                fname = sprintf('3d_locations_view%.02d_epoch%.03d.ps', v, epoch);
+             end
+             print('-dpsc', fname);
+          end
 
     end   % 2d vs 3d
+    disp('Plot(s) written to disk.');
  end  % create .ps files?
  
 end  % for epoch  (main loop)
@@ -466,7 +505,7 @@ end  % function PlotObsLoc3D
 % given a raw data array and possible selectors, return
 % the subset of rows which match.
 
-function out = select_subset(raw, used, box, number)
+function out = select_subset(raw, dartqc, box, number)
 
 % default is to assume we found no data.  set it at the
 % end if we get there.
@@ -480,14 +519,14 @@ end
 
 % select based on dart QC flag
 % -99 implies everything, -3 implies 0,1,2,3 
-if (used < 0)
-  data = raw(raw(:,6) <= abs(used),:);
-elseif (used >= 0)
-  data = raw(raw(:,6) ==     used ,:);
+if (dartqc < 0)
+  data = raw(raw(:,6) <= abs(dartqc),:);
+elseif (dartqc >= 0)
+  data = raw(raw(:,6) ==     dartqc ,:);
 end
 
 if (isequal(data, []))
-  fprintf('all observations removed after used/unused selection\n');
+  fprintf('all observations removed after DART QC selection\n');
   return
 end
 
@@ -526,7 +565,7 @@ end
 
 out = data;
 
-end % function out = select_subset(raw, used, box, number)
+end % function out = select_subset(raw, dartqc, box, number)
 
 %------------------------------------------------------
 % generate a list of R random numbers between 1 and N

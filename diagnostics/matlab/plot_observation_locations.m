@@ -25,9 +25,9 @@
 % setup all args to be the string 'default', which will be interpreted by 
 % the PlotObsLocs routine to use the default values.   
  
-plotd       = 'default';
 ncfname     = 'default';
-used        = 'default';
+plotd       = 'default';
+dartqc      = 'default';
 typelist    = 'default';
 box         = 'default';
 epochs      = 'default';
@@ -36,11 +36,15 @@ world       = 'default';
 writeplot   = 'default';
 loc2dstring = 'default';
 loc3dstring = 'default';
+orientation = 'default';
 viewlist    = 'default';
 invertz     = 'default';
- 
+plotname    = 'default';
+
 % what the arg list looks like:
-%PlotObsLocs(in_used, in_box, in_typelist, in_epochlist, in_subset, in_plotd, in_world, in_invertz, in_writeplot, in_legend2dloc, in_legend_3dloc, in_viewlist)
+%PlotObsLocs(in_dartqc, in_box, in_typelist, in_epochlist, in_subset, in_plotd, 
+%             in_world, in_invertz, in_writeplot, in_legend2dloc, in_legend_3dloc, 
+%             in_viewlist, in_ncfname, in_orientation, in_plotname)
 
 done = 0;
 disp('Plot observations at their proper locations.  Many subsetting options exist.');
@@ -53,7 +57,7 @@ disp('  no file output, Z axis increases up.');
 disp(' '); 
 
    % What file has the metadata 
-   reply = input('Enter the netCDF file name with the metadata:  ');
+   reply = input('Enter the netCDF file name with the metadata (default: ''obs_diag_output.nc''):  ');
    if (~isempty(reply))
       ncfname = reply;
    end
@@ -62,13 +66,13 @@ disp(' ');
 while done == 0
 
    % 2D or 3D plot?
-   reply = input('Input 2 for 2D plot, 3 for 3D plot:  ');
+   reply = input('Input 2 for 2D plot, 3 for 3D plot (default: 2D):  ');
    if (~isempty(reply))
       plotd = reply;
    end
 
     
-   % plot used, unused, or both
+   % plot selecting on dart QC value
    disp('')
    disp('DART QC Values ... 0 == all OK')
    disp('DART QC Values ... 1 == Evaluated only')
@@ -80,9 +84,9 @@ while done == 0
    disp('DART QC Values ... 7 == outlier rejected')
    disp('   a negative value means everything ''up to'' that value, i.e.')
    disp('    -3 == 0, 1, 2, and 3          -99 == everything');
-   reply = input('Input DART QC val:  ');
+   reply = input('Input DART QC val (default: 0):  ');
    if (~isempty(reply))
-      used = reply;
+      dartqc = reply;
    end
    
    % restrict observations to a particular observation type?
@@ -111,18 +115,34 @@ while done == 0
    end
     
    % plot world map beneath?
-   reply = input('Input 0 to remove world map, 1 to restore it:  ');
+   reply = input('Input 0 to remove world map, 1 to restore it (default: 1):  ');
    if (~isempty(reply))
       world = reply;
    end
     
    % write out .ps files?
-   reply = input('Input 1 to write .ps files for each plot, 0 to reset:  ');
+   reply = input('Input 1 to write .ps files for each plot, 0 to reset (default: 0):  ');
    if (~isempty(reply))
       writeplot = reply;
    end
     
+   % output plot filename
+   if (writeplot == 1)
+      reply = input('Set output plot filename, ''default'' to reset:  ');
+      if (~isempty(reply))
+         plotname = reply;
+      end
+   end
+    
    % legendloc
+   disp('Examples of valid legend strings:');
+   disp(' ''North'' : inside plot box near top');
+   disp(' ''South'',''East'',''West'',''NorthEast'', etc');
+   disp(' ''NorthOutside'' : outside plot box near top');
+   disp(' ''SouthOutside'', ''NorthEastOutside'', etc');
+   disp(' ''Best'' : least conflict with data in plot');
+   disp(' ''BestOutside'' : least unused space outside plot');
+   disp(' defaults to: ''SouthWest'' for 2D plots; ''NorthWest'' for 3D plots');
    reply = input('Input Matlab string for legend location, ''default'' to reset:  ');
    if (~isempty(reply))
       if (plotd == 3)
@@ -130,6 +150,13 @@ while done == 0
       else
          loc2dstring = reply;
       end
+   end
+    
+   % page orientation
+   disp('Possible page orientations: ''landscape'', ''portrait'', ''tall'' ');
+   reply = input('Input Matlab string for page orientation, ''default'' to reset (default: ''landscape''):  ');
+   if (~isempty(reply))
+      orientation = reply;
    end
     
    % viewlist and invert z axis
@@ -146,7 +173,8 @@ while done == 0
       end
    end
     
-   PlotObsLocs(used, box, typelist, epochs, subset, plotd, world, invertz, writeplot, loc2dstring, loc3dstring, viewlist)
+   PlotObsLocs(dartqc, box, typelist, epochs, subset, plotd, world, invertz, writeplot, ...
+               loc2dstring, loc3dstring, viewlist, ncfname, orientation, plotname);
    
    reply = input('Quit now or plot again? 1 = quit, <cr> plots again:  ');
    if (~isempty(reply))
