@@ -48,7 +48,7 @@
 <H1>PROGRAM obs_diag</H1>
 <A NAME="HEADER"></A>
 <TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Tim Hoar, Hui Liu  </TD></TR>
+<TR><TD>Contact:       </TD><TD> Tim Hoar </TD></TR>
 <TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
@@ -63,59 +63,123 @@
 
 <P>
    Main program for evaluating filter performance in observation space. 
-   That is, the models expected observations are compared against the actual
-   observations in various ways.  
+   There is also the ability to ingest an observation sequence file and 
+   simply output the observation locations - more on that later.  
+   The models "expected" observations are compared against the actual
+   observations in various ways.
+   Each ensemble member applies a forward operator to the state to compute
+   the "expected" value of an observation. Given multiple estimates of 
+   the observation, several quantities can be calculated. It is possible to
+   compute the expected observations from the state vector before 
+   assimilating (the "guess", "forecast", or "prior") or after the
+   assimilation (the "analysis", or "posterior").<BR>
+   <img src="../../doc/html/obs_diag_evolution_example.png" width="375">
+   <img src="../../doc/html/obs_diag_profile_example.png" width="375">
    <BR>
-   <BR>
-   Identity observations are already explored with state-space diagnostics,
-   so <em class=program>obs_diag </em> simply skips them.
-   <BR>
-   <BR>
-   It produces matlab-compatible text files for each observation kind 
-   (i.e. RADIOSONDE, ACARS, ...), for each variable (i.e. T, WIND, ...), for
-   domains specified in the <em class=code>obs_diag</em> namelist.
-   The text files contain:
-   <UL>
-       <LI> time series of RMS error and spread (at a specified vertical level) 
-            for Prior and Posterior fields (separately),
-       <LI> vertical profiles of RMS error and bias averaged over 
-	    specified assimilation times,
-       <LI> time series and profiles of numbers of observations used,
-   </UL>
-   These data files can then be loaded and displayed using the 
-   Matlab&#174; scripts in 
-   <em class=file>.../DART/diagnostics/matlab</em>
-   (or, in some cases, <em class=file>.../DART/matlab</em>).
-</P>
-
-<P>There are two versions of this program, one for high-order models that have
+   There are two versions of this program, one for high-order models that have
    real observations and another for low-order models. Since this program
    is fundamentally interested in the response as a function of region, the 
    division was made if the model has a threed_sphere or a oned 
    <em class=file>location_mod.f90</em>. It did not make sense to ask the 
    <em class=program>lorenz_96</em> model what part of North America you'd like
-   to investigate.
-   This program provides a number of options that are driven from its namelist. 
-   <BR><BR>
-   With the post-iceland release of DART, <em class=program>obs_diag</em> can 
-   also handle observations on (up to 10) model levels. 
-   Good luck getting observations on model levels.
+   to investigate. The low-order models output simple text files instead of
+   netCDF files - the intent is to move these toward netCDF files in the near
+   future.
+   <BR>
+   <BR>
+   Identity observations (only possible from "perfect model experiments") 
+   are already explored with state-space diagnostics,
+   so <em class=program>obs_diag</em> simply skips them.
+   <BR>
+   <BR>
+   <em class=program>obs_diag</em> reads <em class=file>obs_seq.final</em>
+   files and calculates the following quantities for an arbitrary number of
+   regions and levels:
+   <BR>
+   <BR>
+   <table width="90%">
+   <tr><td valign="top"><b>rmse</b></td>
+       <td>The root-mean-squared error (the horizontal wind components 
+           are also used to calculate the vector wind velocity 
+           and its RMS error).</td></tr>
+   <tr><td valign="top"><b>bias</b></td>
+       <td>The simple sum of forecast - observation. The bias of the 
+           horizontal wind speed (not velocity) is also computed.</td></tr>
+   <tr><td valign="top"><b>spread</b></td>
+       <td>The variance for univariate obs.
+           DART does not exploit the bivariate nature of U,V winds
+           and so the spread of the horizontal wind is defined as
+           the sum of the spreads of the U and V components.</td></tr>
+   <tr><td valign="top"><b>totalspread</b></td>
+       <td>The spread of the estimated observation plus the observation 
+           error variance.</td></tr>
+   <tr><td valign="top"><b>Nposs</b></td>
+       <td>The number of observations available to be assimilated.</td></tr>
+   <tr><td valign="top"><b>Nused</b></td>
+       <td>The number of observations that were assimilated.</td></tr>
+   </table>
+   <BR>
+
+   The temporal evolution of the above quantities for every observation 
+   type (RADIOSONDE_U_WIND_COMPONENT, AIRCRAFT_SPECIFIC_HUMIDITY, ...) is 
+   recorded in the output netCDF file - 
+   <em class="file"><b>obs_diag_output.nc</b></em>.
+   This netCDF file can then be loaded and displayed using the 
+   Matlab&#174; scripts in 
+   <em class=file>..../DART/diagnostics/matlab</em>.
+   (which may depend on functions in <em class=file>..../DART/matlab</em>).
+   The temporal, geographic, and vertical binning are under namelist
+   control.
+   Temporal averages of the above quantities are also stored in the netCDF
+   file. Normally, it is useful to skip the 'burn-in' period - the amount
+   of time to skip is under namelist control.
 </P>
+
+   <H3 class="indent1">What's new ... as of r3180 ... 19 Dec 2007</H3>
+<P>First, the routine for low-order models,
+   <em class=program>DART/diagnostics/oned/obs_diag</em>, has not changed at
+all. The changes discussed here apply ONLY to 
+   <em class=program>DART/diagnostics/threed_sphere/obs_diag</em>.
+   <BR>
+   The 'new' <em class=program>obs_diag</em> has:
+   <OL><LI>
+   an improved capacity for reading multiple <em class=file>obs_seq.final</em> 
+   files (that don't require an arcane naming convention),</LI>
+
+   <LI>a greatly expanded namelist control (including multiple, user-defined 
+   levels),</LI>
+
+   <LI>(one) netCDF output file <em class="file">obs_diag_output.nc</em>
+   (instead of MANY impenetrable plain text files) -- complete with all 
+   the metadata needed to make sensible, accurate graphics,</LI>
+
+   <LI>removed the <em class="removed">obs_select</em> namelist variable,</LI>
+
+   <LI>better reporting of the times/dates it encounters in the input files, 
+   making it easier to set the namelist parameters 
+   <em class=code>first_bin_center, last_bin_center</em>,</LI>
+
+   <LI>regions that can "wrap" in longitude,</LI>
+
+   <LI>the ability to output a text file of the locations of the observations
+       to facilitate scatterplots of observation density by type and QC value,</LI>
+
+   <LI>discontinued the rejection of observations based on the 
+   <em class=code>rat_cri</em> or <em class=code>input_qc_threshold</em> 
+   namelist variables (the counts of these are available in the 
+   netCDF file as <b>NbadQC</b> and <b>NbadIZ</b>, respectively).</LI>
+
+   </OL>
+
+</P>
+
 
 <P>
-   The <em class=program>obs_diag</em> program performs an outlier test on 
-   observations, which can be more restrictive than the outlier test in the 
-   filter, but not less 
-   (see <em class=code>outlier_threshold</em> in <em class=code>filter_nml</em> 
-   and <em class=code>rat_cri</em> here).
-</P>
-
-<P><em class='new'>
-   The J release of DART also implements a DART QC flag that provides
+   The Jamaica release of DART also implements a DART QC flag that provides
    information about how the observation was or was not assimilated.
    The DART QC flag is intended to provide information about whether the
    observation was assimilated, evaluated only, whether the assimilation resulted
-   in a 'good' observation, etc. Here is the table that should explain things: </em>
+   in a 'good' observation, etc. Here is the table that should explain things:
 </P> 
 
 <table width="80%">
@@ -163,6 +227,7 @@ location_mod
 types_mod
 time_manager_mod
 utilities_mod
+sort_mod
 </PRE>
 
 
@@ -178,7 +243,7 @@ utilities_mod
    <em class=call>namelist / obs_diag_nml / </em> &#38;
       obs_sequence_name, first_bin_center, last_bin_center, &#38;
       bin_separation, bin_width, time_to_skip, max_num_bins, &#38;
-      plevel, hlevel, <em class=changed>mlevel</em>, obs_select, rat_cri, <em class=changed>input_qc_threshold</em>, &#38;
+      plevel, hlevel, mlevel, <em class=removed>obs_select</em>, rat_cri, input_qc_threshold, &#38;
       Nregions, lonlim1, lonlim2, latlim1, latlim2, &#38;
       reg_names, print_mismatched_locs, print_obs_locations, verbose
    </pre></div>
@@ -190,7 +255,7 @@ utilities_mod
    The date-time integer arrays in this namelist have the form 
    (YYYY,&nbsp;MO,&nbsp;DA,&nbsp;HR,&nbsp;MIN,&nbsp;SEC). <BR>
    The allowable ranges for the region boundaries are: latitude [-90.,90], 
-   longitude [0.,360.]
+   longitude [0.,Inf.]
 </P>
 
 
@@ -201,14 +266,31 @@ utilities_mod
 
 <TR><!--contents--><TD valign=top>   obs_sequence_name </TD>
     <!--  type  --><TD valign=top>   character         </TD>
-    <!--descript--><TD>Name of the obs files in subdirectories. <BR>
+    <!--descript--><TD>Name of the observation sequence files. <BR>
+            This may be a relative or absolute filename. If the filename
+            contains a '/', the filename is considered to be comprised of
+	    everything to the right, and a directory structure to the left.
+	    The directory structure is then queried to see if it can be
+	    incremented to handle a sequence of observation files.
+	    The default behavior of <em class="program">obs_diag</em> 
+	    is to look for additional files to include until the files 
+	    are exhausted or an <em class=file>obs_seq.final</em> file 
+	    is found that contains observations beyond the timeframe of 
+	    interest.<BR>e.g. 'obsdir_001/obs_seq.final' will cause
+	    <em class="program">obs_diag</em> to look for
+	    'obsdir_002/obs_seq.final', and so on.<BR>
 	    Default 'obs_seq.final'</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   first_bin_center </TD>
     <!--  type  --><TD valign=top>  integer, dimension(6) </TD>
     <!--descript--><TD>first timeslot of the first obs_seq.final file to process.
 	    The six integers are: year, month, day, hour, hour, minute, 
-	    second -- in that order<BR>
+	    second -- in that order. <em class="program">obs_diag</em> has
+	    improved run-time output that reports the time and date of the 
+	    first and last observations in every observation sequence file. 
+	    Look for the string 'First observation date' in the logfile. 
+	    If the <em class="code">verbose</em> is 'true', it is also 
+	    written to the screen.<BR>
             Default: 2003, 1, 1, 0, 0, 0</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   last_bin_center  </TD>
@@ -216,7 +298,12 @@ utilities_mod
     <!--descript--><TD>last timeslot of interest.
 	    (reminder: the last timeslot of day 1 is hour 0 of day 2) 
 	    The six integers are: year, month, day, hour, hour, minute, 
-	    second -- in that order<BR>
+	    second -- in that order. This does not need to be exact,
+            the values from <em class=code>first_bin_center</em> and 
+	    <em class=code>bin_separation</em> are used to populate the time 
+	    array and stop on or before the time defined by 
+	    <em class=code>last_bin_center</em>. 
+	    See also <em class=code>max_num_bins</em>.<BR>
             Default: 2003, 1, 2, 0, 0, 0</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   bin_separation       </TD>
@@ -244,88 +331,104 @@ utilities_mod
 
 <TR><!--contents--><TD valign=top>   max_num_bins  </TD>
     <!--  type  --><TD valign=top>   integer       </TD>
-    <!--descript--><TD>For dimensioning arrays to accommodate your 
-	    assimilation timeslots.<BR>
+    <!--descript--><TD>This provides an alternative way to declare the 
+            <em class=code>last_bin_center</em>. 
+	    If <em class=code>max_num_bins</em> is set to '10', only
+	    10 timesteps will be output - provided 
+	    <em class=code>last_bin_center</em> is set to some later date. 
+	    <BR>
             Default: 1000000</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   plevel     </TD>
-    <!--  type  --><TD valign=top>   integer    </TD>
-    <!--descript--><TD>The RMS error, spread, and number of observations at 
-	    this pressure (hPa) will be calculated.<BR>
-            Default: 500</TD></TR>  
+    <!--  type  --><TD valign=top> integer, <em class="new">dimension(50)</em></TD>
+    <!--descript--><TD>The midpoints defining the pressure levels for the 
+            vertical binning. There is no specification of bin width - a 
+	    continuum is used. If a single midpoint value is entered, the 
+	    bin edges are +/- 10% of the midpoint value. If you'd like to 
+	    change that ... see the routine 
+	    <em class="routine">Rmidpoints2edges()</em>.<BR>
+            Default: (1000, 925, 850, 700, 500, 400, 300, 
+	    250, 200, 150, 100)</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   hlevel     </TD>
-    <!--  type  --><TD valign=top>   integer    </TD>
+    <!--  type  --><TD valign=top> integer, <em class="new">dimension(50)</em></TD>
     <!--descript--><TD>Same, but for observations that have height(m) as the 
 	    vertical coordinate.<BR>
-            Default: 5000</TD></TR>  
+            Default: (1000, 2000, 3000, 4000, 5000, 6000,
+	    7000, 8000, 9000, 10000, 11000)</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   mlevel     </TD>
-    <!--  type  --><TD valign=top>   integer    </TD>
-    <!--descript--><TD>Observations on model level (perfect model observations)
-	    at which the rms error, spread, and num_obs time series will 
-	    be calculated.<BR>
-            Default: 5</TD></TR>  
+    <!--  type  --><TD valign=top> integer, <em class="new">dimension(50)</em></TD>
+    <!--descript--><TD>Same, but for observations on model level 
+            (good luck getting them).<BR>
+            Default: (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)</TD></TR>  
 
-<TR><!--contents--><TD valign=top>   obs_select </TD>
+<TR><!--contents--><TD valign=top><em class="removed">obs_select </em></TD>
     <!--  type  --><TD valign=top>   integer    </TD>
-    <!--descript--><TD>Which obs subset to use; all(1), radiosonde only(2),
-	    everything but radiosondes(3).<BR>
-            Default: 1</TD></TR>  
+    <!--descript--><TD><em class="removed">Which obs subset to use; all(1), 
+            radiosonde only(2), everything but radiosondes(3).</em> 
+	    Removed because all observations are independently processed.<BR>
+            </TD></TR>  
 
 <TR><!--contents--><TD valign=top>   rat_cri    </TD>
     <!--  type  --><TD valign=top>   real       </TD>
-    <!--descript--><TD>Critical ratio of distance of the value of observation 
-	    from the ensemble mean to the standard deviation of the 
-	    ensemble.
-	    Since we don't have all the ensemble members (in general) we cannot
+    <!--descript--><TD>Ratio of 'distance' of the ensemble mean to the observation 
+	    in terms of the standard deviation of the ensemble and
+	    observational error.<br>
+	    <em class="code">abs(prior_mean-obsval) / sqrt(prior_spread+obs_error_variance)</em><br>
+	    Since we generally don't have all the ensemble members (in the
+	    <em class="file">obs_seq.final</em> file) we cannot
 	    calculate the covariance term that should be in the denominator, 
-	    so it is not really the normalized distance<br>
-	    abs(prior_mean - obsval) / sqrt( prior_spread + obs error variance)<br>
-	    abs(prior_mean&nbsp;-&nbsp;obsval)&nbsp;/&nbsp;sqrt(&nbsp;prior_spread&nbsp;+&nbsp;obs&nbsp;error&nbsp;variance).<br>
-	    
-	    If this ratio is too large then the observation is 
-	    suspect and will be ignored.  If this value is larger than the 
-	    corresponding one in the filter, then it does nothing; that obs 
-	    has already been excluded by the filter. A histogram of the values of
-	    the distance ratio is saved in <em class="file">nsigma.dat</em><BR>
-            Default: 3.0</TD></TR>  
+	    so it is not really the normalized distance. If this ratio is 
+	    larger than <em class="code">rat_cri</em> then the observation 
+	    <em class="removed">is suspect and will be ignored</em> will
+	    simply be counted in <b>NbadIZ</b>. 
+	    A histogram of the ratios is saved in <em
+	    class="file">LargeInnov.txt</em>, as are individual observations
+	    that have a large ratio (i.e. the outliers)<BR>
+            Default: 5000.0</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   input_qc_threshold </TD>
     <!--  type  --><TD valign=top>   real         </TD>
     <!--descript--><TD>Observations with quality control values greater than this
-	    will be excluded from the diagnostics.<BR>
+	    <em class="removed">will be excluded from the diagnostics</em>
+	    will be counted in <b>NbadQC</b>.<BR>
             Default: 4.0</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   Nregions   </TD>
     <!--  type  --><TD valign=top>   integer    </TD>
     <!--descript--><TD>Number of regions of the globe for which you'd like
-	    obs space diagnostics.<BR>
+	    obs space diagnostics. Must be between [1,50].<BR>
 	    Default: 4</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   lonlim1    </TD>
-    <!--  type  --><TD valign=top>   real       </TD>
-    <!--descript--><TD>Westernmost longitudes of the regions.<BR>
+    <!--  type  --><TD valign=top>   real, <em class="new">dimension(50)</em></TD>
+    <!--descript--><TD>Westernmost longitudes of each of the regions.<BR>
 	    Default: 0.0, 0.0, 0.0, 235.0</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   lonlim2    </TD>
-    <!--  type  --><TD valign=top>   real       </TD>
-    <!--descript--><TD>Easternmost longitudes of the regions.<BR>
+    <!--  type  --><TD valign=top>   real, <em class="new">dimension(50)</em></TD>
+    <!--descript--><TD>Easternmost longitudes of each of the regions.
+            <em class="new">If any of these values is <b>less than</b>
+	    the westernmost values, it defines a region that spans the 
+	    prime meridian. No problem.</em> It is perfectly acceptable 
+	    to specify lonlim1 = 330 , lonlim2 = 50 to identify a region
+	    like "Africa".<BR>
 	    Default: 360.0, 360.0, 360.0, 295.0</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   latlim1    </TD>
-    <!--  type  --><TD valign=top>   real       </TD>
+    <!--  type  --><TD valign=top>   real, <em class="new">dimension(50)</em></TD>
     <!--descript--><TD>Southernmost latitudes of the regions.<BR>
 	    Default: 20.0, -80.0, -20.0, 25.0</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   latlim2    </TD>
-    <!--  type  --><TD valign=top>   real       </TD>
+    <!--  type  --><TD valign=top>   real, <em class="new">dimension(50)</em></TD>
     <!--descript--><TD>Northernmost latitudes of the regions.<BR>
 	    Default: 80.0, -20.0, 20.0, 55.0</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   reg_names  </TD>
-    <!--  type  --><TD valign=top>   character  </TD>
-    <!--descript--><TD>Array of names of the regions to be analyzed.<BR>
+    <!--  type  --><TD valign=top>   character(len=129), <em class="new">dimension(50)</em>  </TD>
+    <!--descript--><TD>Array of names for the regions to be analyzed.<BR>
 	    Default: 'Northern&nbsp;Hemisphere','Southern&nbsp;Hemisphere',
 	    'Tropics','North&nbsp;America'</TD></TR>  
 
@@ -338,7 +441,15 @@ utilities_mod
 <TR><!--contents--><TD valign=top>   print_obs_locations </TD>
     <!--  type  --><TD valign=top>   logical             </TD>
     <!--descript--><TD>Create additional output files with the lat/lon
-            location of each observation plus obs type.<BR>
+            location of each observation, obs type, and QC value. These
+	    files are named <em
+	    class="file">observation_locations.xxx.dat</em> and may be
+	    plotted with <em
+	    class="file">DART/diagnostics/matlab/plot_observation_locations.m</em>.
+	    There is one output file per temporal bin.
+	    For pathological reasons, these files cannot exist prior to execution.
+	    If they do, an error will result, and execution halts..
+	    <BR>
 	    Default: .false. </TD></TR>  
 
 <TR><!--contents--><TD valign=top>   verbose   </TD>
@@ -355,22 +466,117 @@ utilities_mod
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL><LI>output observation space diagnostic file from 
-	filter_nml;obs_sequence_out_name</LI>
-    <LI>model initial file</LI>
-    <LI>obs_diag_nml in <em class="file">input.nml</em></LI>
-    <LI>Matlab&#174; input files; OBS_TYPE_VARIABLE_diagnostic.dat</LI>
+<UL><LI><em class="file">input.nml</em> is used for 
+        <em class="code">obs_diag_nml</em></LI>
+    <LI><em class="file">obs_diag_output.nc</em> is the 
+        netCDF output file</LI>
+    <LI>the oned version of <em class="program">obs_diag</em> outputs many
+    files of the form "OBS_TYPE_VARIABLE_diagnostic.dat" and one text file 
+    <em class="file">obsDiagAtts.m</em> containing the metadata</LI>
     <LI><em class="file">dart_log.out</em> list directed output 
         from the obs_diag.</LI>
-    <LI><em class="file">nsigma.dat</em> contains the distance ratio 
+    <LI><em class="file">LargeInnov.txt</em> contains the distance ratio 
 	histogram -- useful for estimating rat_cri.</LI>
+    <LI><em class="file">observation_locations.xxx.dat</em> contains the
+    locations for all the observation in temporal bin "xxx". These are 
+    only created if the namelist variable 
+    <em class="code">print_obs_locations</em> is set to 
+    <em class="code">.true.</em> 
+	</LI>
 </UL>
+<P>
+Obs_diag may require a model input file from which to get grid information, 
+metadata, and links to modules providing the models expected observations.
+It all depends on what's needed by the <em class="file">model_mod.f90</em> 
+</P>
+
+<H3 class=indent1>Discussion of obs_diag_output.nc variables</H3>
+<P>
+Every observation type encountered in the observation sequence file is 
+tracked separately, and aggregated into temporal and 3D spatial bins.
+There are two main efforts to this program. One is to track the temporal
+evolution of any of the quantities available in the netCDF file for any
+possible observation type: 
+<div class="unix">ncdump -v CopyMetaData,ObservationTypes obs_diag_output.nc</div>
+The other is to explore the vertical profile of a particular observation
+kind. By default, each observation kind has a 'guess/prior' value and
+an 'analysis/posterior' value - which shed some insight into the 
+innovations.
+</P>
+<H4 class=indent1>temporal evolution</H4>
+<P>
+The <em class="file">obs_diag_output.nc</em> output file has all the
+metadata I could think of, as well as separate variables for every
+observation type in the observation sequence file. Furthermore, there
+is a separate variable for the 'guess/prior' and 'analysis/posterior'
+estimate of the observation. To distinguish between the two, a suffix
+is appended to the variable name.  An example seems appropriate:
+<pre>
+  ...
+  char CopyMetaData(copy, stringlength) ;
+          CopyMetaData:long_name = "quantity names" ;
+  char ObservationTypes(obstypes, stringlength) ;
+          ObservationTypes:long_name = "DART observation types" ;
+          ObservationTypes:comment = "table relating integer to observation type string" ;
+  float RADIOSONDE_U_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+          RADIOSONDE_U_WIND_COMPONENT_guess:_FillValue = -888888.f ;
+          RADIOSONDE_U_WIND_COMPONENT_guess:missing_value = -888888.f ;
+  float RADIOSONDE_V_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+          RADIOSONDE_V_WIND_COMPONENT_guess:_FillValue = -888888.f ;
+          RADIOSONDE_V_WIND_COMPONENT_guess:missing_value = -888888.f ;
+  ...
+  float MARINE_SFC_ALTIMETER_guess(time, copy, surface, region) ;
+          MARINE_SFC_ALTIMETER_guess:_FillValue = -888888.f ;
+          MARINE_SFC_ALTIMETER_guess:missing_value = -888888.f ;
+  ...
+  float RADIOSONDE_WIND_VELOCITY_guess(time, copy, plevel, region) ;
+          RADIOSONDE_WIND_VELOCITY_guess:_FillValue = -888888.f ;
+          RADIOSONDE_WIND_VELOCITY_guess:missing_value = -888888.f ;
+  ...
+  float RADIOSONDE_U_WIND_COMPONENT_analy(time, copy, plevel, region) ;
+          RADIOSONDE_U_WIND_COMPONENT_analy:_FillValue = -888888.f ;
+          RADIOSONDE_U_WIND_COMPONENT_analy:missing_value = -888888.f ;
+  float RADIOSONDE_V_WIND_COMPONENT_analy(time, copy, plevel, region) ;
+          RADIOSONDE_V_WIND_COMPONENT_analy:_FillValue = -888888.f ;
+          RADIOSONDE_V_WIND_COMPONENT_analy:missing_value = -888888.f ;
+  ...
+</pre>
+There are several things to note:<br>
+1) the 'WIND_VELOCITY' component is nowhere 'near' the corresponding U,V components.<br>
+2) all of the 'guess' variables come before the matching 'analy' variables.<br>
+3) surface variables (i.e. <tt>MARINE_SFC_ALTIMETER</tt> have a
+coordinate called 'surface' as opposed to 'plevel' for the others in
+this example).
+</P>
+<H4 class=indent1>vertical profiles</H4>
+<P>
+Believe it or not, there are another set of netCDF variables specifically 
+for the vertical profiles, essentially duplicating the previous
+variables but <b>without the 'time' dimension</b>. These are
+distinguished by the suffix added to the observation kind - 'VPguess'
+and 'VPanaly' - 'VP' for Vertical Profile. 
+<pre>
+  ...
+  float SAT_WIND_VELOCITY_VPguess(copy, plevel, region) ;
+          SAT_WIND_VELOCITY_VPguess:_FillValue = -888888.f ;
+          SAT_WIND_VELOCITY_VPguess:missing_value = -888888.f ;
+  float RADIOSONDE_U_WIND_COMPONENT_VPanaly(copy, plevel, region) ;
+          RADIOSONDE_U_WIND_COMPONENT_VPanaly:_FillValue = -888888.f ;
+          RADIOSONDE_U_WIND_COMPONENT_VPanaly:missing_value = -888888.f ;
+  ...
+</pre>
+Observations flagged as 'surface' do not participate in the vertical
+profiles (Because surface variables cannot exist on any other level,
+there's not much to plot!). Observations on the lowest level DO 
+participate. There's a difference!
+</P>
 
 <!--==================================================================-->
 <!-- Discuss  typical usage of obs_diag.                              -->
 <!--==================================================================-->
 
-<H3 class=indent1>Discussion</H3>
+
+
 <A NAME="Usage"></A>
 <BR><HR><BR>
 <H2>USAGE</H2>
@@ -380,34 +586,79 @@ Obs_diag is built in .../DART/models/your_model/work, in the same way
 as the other DART components.
 </P>
 
-<P>
-Obs_diag assumes an organization of the assimilation output which has been
-found to be clear and useful&nbsp;;^)
-<BR><BR>
-All the output to be saved is moved from the
-directory where the assimilation occurs to an Experiment directory (named by you).  
-Experiment should be populated with subdirectories - one for each obs_seq.out(input!) 
-file of the assimilation - containing observation space output files, 
-typically "obs_seq.final".
-Obs_diag assumes the names of the subdirectories where the obs_seq.final 
-files are found are of the form  mm_##.
-At one point, the first 2 characters of the subdirectory names referred to 'month'.
-This number will be read from the obs_seq_nml variable first_bin_center(2).  
-The second pair of digits ## define sequentially numbered directories,
-corresponding to the obs_seq.out files used to run the filter. 
-The ##s that are used will be determined based on the time span specified in 
-obs_seq_nml and the available obs_seq.final files.
-Obs_diag searches in these subdirectories for the obs_seq.final files  
-which contain dates and times corresponding to those specified in its namelist.  
-For obs_seq.final file numbers &#60; 10 the subdirectory name will be padded with
-a 0, to make it a 2 character number.
-The Iceland version of obs_diag won't handle ## &#62; 99.
-</P>
+   <H3 class=indent1>multiple observation sequence files</H3>
+   <P>
+   Perhaps the most user-friendly enhancement is the strategy for processing
+   a series of observation sequence files. Everything keys off the 
+   <em class=code>obs_sequence_name</em> namelist variable. Several examples
+   might be the most effective description.
+   <table width="100%">
+   <TR><TH>value</TH><TH>effect</TH></TR>
 
-<P>
-Obs_diag may require a model input file from which to get grid information, 
-metadata, and links to modules providing the models expected observations.
-</P>
+   <TR><TD valign="top">"obs_seq.final"</TD>
+       <TD>A single file is processed.
+           The file must exist in the current directory.</TD></TR>
+
+   <TR><TD valign="top">"/path_to/nirvana/obs_seq.final"</TD>
+       <TD>A single file is processed.
+           The file must exist where you said it exists.</TD></TR>
+
+   <TR><TD valign="top">"../nirvana/obs_seq.final"</TD>
+       <TD>A single file is processed.
+           Relative pathnames work just fine.</TD></TR>
+
+   <TR><TD valign="top">"/path_to/nirvana_001/obs_seq.final"</TD>
+       <TD>A single file is processed, and more are expected.
+           Because the directory name contains an underscore ("_") and the 
+           portion of the directory to the right of the (rightmost) 
+           underscore can be incremented, <em class="program">obs_diag</em> 
+	   will try to look for the next directory in the sequence, i.e.
+           "/path_to/nirvana_002/obs_seq.final". The tricky part is that 
+	   the number of digits in the directory numbering must remain
+	   constant. Most (all?) of the DART scripts that produce these
+	   directories have historically used a constant number of digits
+	   so they alphabetically and numerically 'list' identically.
+	   <em class="program">obs_diag</em> will stop when it runs out
+	   of files to ingest, or if it encounters an observation sequence
+	   file whose first time is beyond the timeframe of interest.</TD></TR>
+   </table>
+   </P>
+  
+   <H3 class=indent1>plotting locations</H3>
+   <P>
+   <em class="program">obs_diag</em> does not plot your locations.
+   Since <em class="program">obs_diag</em> already reads observation
+   sequences, it is a tiny extension to write out files that contain 
+   rudimentary location information. 
+   If you set the value of the namelist parameter <em class="code">
+   print_obs_locations</em> to <tt>.true.</tt>, you can create
+   output files (of the form
+   <em class="file">observation_locations.xxx.dat</em>) which may then be plotted 
+   with just about anything ... the first line of the file (they are 
+   plain text, despite the .dat suffix) explains it all. One of the 
+   columns in the output files is the observation type - which can 
+   be decoded by using the key in <em class="file">obs_diag_output.nc</em> -
+   specifically, try the unix command:
+   <div class="unix">ncdump -v ObservationTypes obs_diag_output.nc</div>
+   <BR>
+   <BR>
+   <table width="100%">
+   <TR><TD>
+   <img src="../../doc/html/obs_diag_location_example.png" width="500"
+        alt="map of the world with altimeter observation locations
+	plotted"></TD>
+    <TD>The matlab script <em class="file">plot_observation_locations.m</em>
+    automatically decodes the observation types and creates a legend. 
+    It also allows plotting of observations with select QC values. 
+    So, for example, you can plot the location of all the observations 
+    that WERE NOT assimilated successfully.<BR>
+    Sometimes it is useful to plot observation sequence files that have
+    not yet been assimilated, so they have no ensemble estimates. The
+    rest of <em class="program">obs_diag</em> is pretty useless, but 
+    you can still output the observation locations.</TD></TR>
+   </table>
+   </P>
+
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
@@ -440,8 +691,9 @@ metadata, and links to modules providing the models expected observations.
 </TR>
 <TR><!-- routine --><TD VALIGN=top>obs_diag</TD>
     <!-- message --><TD VALIGN=top>metadata incomplete</TD>
-    <!-- comment --><TD VALIGN=top>Couldn't find the indices on the obs_seq.final file
-                                   of the Posterior/Prior mean/spread, or the obs index"</TD>
+    <!-- comment --><TD VALIGN=top>Couldn't find the index for the
+    observatoin value in the observation sequence file. It is the only
+    one that is required.</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>filter_get_obs_info</TD>
     <!-- message --><TD VALIGN=top>Vertical coordinate not recognized</TD>
@@ -451,6 +703,15 @@ metadata, and links to modules providing the models expected observations.
     <!-- message --><TD VALIGN=top>namelist parameter out-of-bounds. Fix and try again</TD>
     <!-- comment --><TD VALIGN=top>bin_width, bin_separation, and time_to_skip must have 
                                    year = 0 and month = 0</TD>
+</TR>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>ObsLocationsExist</TD>
+    <!-- message --><TD VALIGN=top>Cannot have pre-existing obs location
+    output files. Stopping.</TD>
+    <!-- comment --><TD VALIGN=top>It is far easier to implement the
+    logic to output these files if they don't exist in the first place.
+    Remove anything/everything like "observation_locations.xxx.dat" from
+    the current directory and try again.</TD>
 </TR>
 
 </TABLE>
@@ -483,10 +744,9 @@ none at this time
 <BR><HR><BR>
 <H2>FUTURE PLANS</H2>
 <P>
-Make subdirectory names (containing obs_seq.final files) into simple sequential
-numbers, independent of months, days, etc.<BR>
-What about no_vert vertical coordinate variables?<BR>
-Remove the need for max_num_bins<BR>
+The RMSE of the vector wind velocity is being used.
+The bias is actually the bias of the wind speed, with no regard to
+direction. Seems like this is not consistent ... 
 </P>
 
 <!--==================================================================-->
