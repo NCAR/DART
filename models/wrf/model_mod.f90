@@ -3007,7 +3007,7 @@ integer, dimension(num_domains) :: weDimID, weStagDimID, snDimID, snStagDimID, &
      btDimID, btStagDimID, slSDimID, tmp
 
 integer :: MemberDimID, DomDimID
-integer :: DXVarID, DYVarID, TRUELAT1VarID, TRUELAT2VarID
+integer :: DXVarID, DYVarID, TRUELAT1VarID, TRUELAT2VarID, STAND_LONVarID
 integer :: CEN_LATVarID, CEN_LONVarID, MAP_PROJVarID
 integer :: PERIODIC_XVarID, POLARVarID
 
@@ -3137,6 +3137,13 @@ call check(nf90_put_att(ncFileID, TRUELAT2VarID, "long_name", &
      "second standard parallel"))
 call check(nf90_put_att(ncFileID, TRUELAT2VarID, "units", &
      "degrees, negative is south"))
+
+call check(nf90_def_var(ncFileID, name="STAND_LON", xtype=nf90_real, &
+     dimids= DomDimID, varid=STAND_LONVarID) )
+call check(nf90_put_att(ncFileID, STAND_LONVarID, "long_name", &
+     "standard longitude"))
+call check(nf90_put_att(ncFileID, STAND_LONVarID, "units", &
+     "degrees, negative is west"))
 
 call check(nf90_def_var(ncFileID, name="CEN_LAT", xtype=nf90_real, &
      dimids= DomDimID, varid=CEN_LATVarID) )
@@ -3674,13 +3681,14 @@ endif
 !-----------------------------------------------------------------
 call check(nf90_enddef(ncfileID))
 
-call check(nf90_put_var(ncFileID,       DXVarID, wrf%dom(1:num_domains)%dx        ))
-call check(nf90_put_var(ncFileID,       DYVarID, wrf%dom(1:num_domains)%dy        ))
-call check(nf90_put_var(ncFileID, TRUELAT1VarID, wrf%dom(1:num_domains)%proj%truelat1  ))
-call check(nf90_put_var(ncFileID, TRUELAT2VarID, wrf%dom(1:num_domains)%proj%truelat2  ))
-call check(nf90_put_var(ncFileID,  CEN_LATVarID, wrf%dom(1:num_domains)%cen_lat   ))
-call check(nf90_put_var(ncFileID,  CEN_LONVarID, wrf%dom(1:num_domains)%cen_lon   ))
-call check(nf90_put_var(ncFileID, MAP_PROJVarID, wrf%dom(1:num_domains)%map_proj  ))
+call check(nf90_put_var(ncFileID,        DXVarID, wrf%dom(1:num_domains)%dx))
+call check(nf90_put_var(ncFileID,        DYVarID, wrf%dom(1:num_domains)%dy))
+call check(nf90_put_var(ncFileID,  TRUELAT1VarID, wrf%dom(1:num_domains)%proj%truelat1))
+call check(nf90_put_var(ncFileID,  TRUELAT2VarID, wrf%dom(1:num_domains)%proj%truelat2))
+call check(nf90_put_var(ncFileID, STAND_LONVarID, wrf%dom(1:num_domains)%proj%stdlon))
+call check(nf90_put_var(ncFileID,   CEN_LATVarID, wrf%dom(1:num_domains)%cen_lat))
+call check(nf90_put_var(ncFileID,   CEN_LONVarID, wrf%dom(1:num_domains)%cen_lon))
+call check(nf90_put_var(ncFileID,  MAP_PROJVarID, wrf%dom(1:num_domains)%map_proj))
 
 !nc -- convert internally logical boundary condition variables into integers before filling
 do id=1,num_domains
