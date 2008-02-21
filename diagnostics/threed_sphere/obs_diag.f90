@@ -56,9 +56,9 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+   source   = '$URL$', &
+   revision = '$Revision$', &
+   revdate  = '$Date$'
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
@@ -150,7 +150,7 @@ real(r8), allocatable, dimension(:) :: copyvals
 ! Namelist with (some scalar) default values
 !-----------------------------------------------------------------------
 
-character(len = 129) :: obs_sequence_name = "obs_seq.final"
+character(len = 129) :: obs_sequence_name = 'obs_seq.final'
 integer, dimension(6) :: first_bin_center = (/ 2003, 1, 1, 0, 0, 0 /)
 integer, dimension(6) :: last_bin_center  = (/ 2003, 1, 2, 0, 0, 0 /)
 integer, dimension(6) :: bin_separation   = (/    0, 0, 0, 6, 0, 0 /)
@@ -281,9 +281,9 @@ call register_module(source,revision,revdate)
 call static_init_obs_sequence()  ! Initialize the obs sequence module 
 
 !----------------------------------------------------------------------
-! Define/Append the 'wind velocity' obs_kinds to supplant the list declared
+! Define/Append the 'horizontal wind' obs_kinds to supplant the list declared
 ! in obs_kind_mod.f90 i.e. if there is a RADIOSONDE_U_WIND_COMPONENT
-! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_WIND_VELOCITY
+! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_HORIZONTAL_WIND
 ! Replace calls to 'get_obs_kind_name' with variable 'my_obs_kind_names'
 !----------------------------------------------------------------------
 
@@ -296,9 +296,9 @@ which_vert = VERTISUNDEF
 ! Read the namelist
 !----------------------------------------------------------------------
 
-call find_namelist_in_file("input.nml", "obs_diag_nml", iunit)
+call find_namelist_in_file('input.nml', 'obs_diag_nml', iunit)
 read(iunit, nml = obs_diag_nml, iostat = io)
-call check_namelist_read(iunit, io, "obs_diag_nml")
+call check_namelist_read(iunit, io, 'obs_diag_nml')
 
 ! Record the namelist values used for the run ...
 call error_handler(E_MSG,'obs_diag','obs_diag_nml values are',' ',' ',' ')
@@ -394,7 +394,7 @@ guess%NbadIZ = 0
 guess%NbadUV = 0
 guess%NbadLV = 0
 
-guess%string        = "guess"
+guess%string        = 'guess'
 guess%num_times     = Nepochs
 guess%num_levels    = Nlevels
 guess%num_regions   = Nregions
@@ -411,7 +411,7 @@ analy%NbadIZ = 0
 analy%NbadUV = 0
 analy%NbadLV = 0
 
-analy%string        = "analy"
+analy%string        = 'analy'
 analy%num_times     = Nepochs
 analy%num_levels    = Nlevels
 analy%num_regions   = Nregions
@@ -449,7 +449,7 @@ guessAVG%NbadIZ = 0
 guessAVG%NbadUV = 0
 guessAVG%NbadLV = 0
 
-guessAVG%string        = "VPguess"
+guessAVG%string        = 'VPguess'
 guessAVG%num_levels    = Nlevels
 guessAVG%num_regions   = Nregions
 guessAVG%num_variables = num_obs_kinds
@@ -465,7 +465,7 @@ analyAVG%NbadIZ = 0
 analyAVG%NbadUV = 0
 analyAVG%NbadLV = 0
 
-analyAVG%string        = "VPanaly"
+analyAVG%string        = 'VPanaly'
 analyAVG%num_levels    = Nlevels
 analyAVG%num_regions   = Nregions
 analyAVG%num_variables = num_obs_kinds
@@ -961,7 +961,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
                      obs(1), obs_err_var, pr_mean, pr_sprd, po_mean, po_sprd)
 
             !-----------------------------------------------------------
-            ! Additional work for wind speed (given U,V)
+            ! Additional work for horizontal wind (given U,V)
             !-----------------------------------------------------------
 
             ObsIsWindCheck: if ( get_obs_kind_var_type(flavor) == KIND_V_WIND_COMPONENT ) then
@@ -981,7 +981,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
                   call IPE(analy%NbadUV(iepoch,level_index,iregion,wflavor), 1)
                else
 
-                  ! The next big assumption is that the 'wind speed' flavors
+                  ! The next big assumption is that the 'horizontal wind' flavors
                   ! need to have their which_vert explicitly set so the netcdf
                   ! files know what sort of vertical coordinate to use. The only
                   ! way I know of is to use the observation of that type to tell us.
@@ -1039,7 +1039,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
             call Bin3D(qc_integer, level_index,   iregion,    flavor, &
                    obs(1),  obs_err_var,  pr_mean,   pr_sprd,   po_mean,   po_sprd  )
 
-            ! Handle wind speed given U,V components 
+            ! Handle horizontal wind given U,V components 
 
             if ( get_obs_kind_var_type(flavor) == KIND_V_WIND_COMPONENT ) then
 
@@ -2071,7 +2071,7 @@ CONTAINS
 
    ! This routine ensures that the U,V components of wind
    ! are from the same observation location so we can convert
-   ! them to wind speed. I suppose I _could_ also check the time,
+   ! them to a horizontal wind. I suppose I _could_ also check the time,
    ! but a mismatch there is supremely unlikely.
 
    integer,             intent(in)  :: flavor1, flavor2
@@ -2111,8 +2111,8 @@ CONTAINS
 
    ! must be matching wind components ... 
    ! must figure out what the obs_kind_name should be ...
-   ! There are only two viable wind component strings:
-   ! '_?_WIND_COMPONENT' and '_?_10_METER_WIND_SPEED'
+   ! There are only two viable wind component strings (see obs_def_mod.f90):
+   ! '_?_WIND_COMPONENT' and '_?_10_METER_WIND'
 
    str1  = get_obs_kind_name(flavor1)
    str2  = get_obs_kind_name(flavor2)
@@ -2125,9 +2125,9 @@ CONTAINS
    endif
 
    if (indx1 > 0) then ! must be _?_WIND_COMPONENT
-      str3 = str1(1:indx1)//'_WIND_VELOCITY'
-   else                ! must be _?_10_METER_WIND_SPEED
-      str3 = str1(1:indx2)//'_WIND_VELOCITY'
+      str3 = str1(1:indx1)//'_HORIZONTAL_WIND'
+   else                ! must be _?_10_METER_WIND
+      str3 = str1(1:indx2)//'_HORIZONTAL_WIND'
       indx1 = indx2
    endif
 
@@ -2158,8 +2158,8 @@ CONTAINS
    ! This function simply accumulates the appropriate sums. 
    ! The normalization occurrs after all the data has been read, naturally.
    !
-   ! Wind measurements are bivariate - so we are collapsing them to 
-   ! scalar speed. The optional arguments specify the U components
+   ! Wind measurements are vector quantities - so we are collapsing them to 
+   ! scalar speed for the bias. The optional arguments specify the U components
    ! while the mandatory arguments specify the V components.
    ! Its an 'all-or-nothing' optional argument situation.
    !----------------------------------------------------------------------
@@ -2176,6 +2176,7 @@ CONTAINS
    real(r8), intent(in)           :: obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd
    real(r8), intent(in), optional ::   uobs, uobserrvar, uprmean, uprsprd, upomean, uposprd
 
+   real(r8) :: obsspeed
    real(r8) :: priorsqerr      ! PRIOR     Squared Error
    real(r8) :: priorbias       ! PRIOR     simple bias
    real(r8) :: priorspred      ! PRIOR     (spread,variance)
@@ -2190,11 +2191,14 @@ CONTAINS
                   present(uprsprd), present(upomean), present(uposprd) /)
 
    if ( all(optionals) ) then
-
       priorsqerr     = (prmean - obsval)**2 + (uprmean - uobs)**2
       postsqerr      = (pomean - obsval)**2 + (upomean - uobs)**2
-      priorbias      = (prmean - obsval)    + (uprmean - uobs) 
-      postbias       = (pomean - obsval)    + (upomean - uobs)
+
+      ! This calculation is the bias in the wind speed (F-O)
+      obsspeed       = sqrt(uobs**2 + obsval**2)
+      priorbias      = sqrt(prmean**2 + uprmean**2) - obsspeed
+      postbias       = sqrt(pomean**2 + upomean**2) - obsspeed
+
       priorspred     = prsprd**2 + uprsprd**2
       postspred      = posprd**2 + uposprd**2
       priorspredplus = prsprd**2 + obserrvar + uprsprd**2 + uobserrvar
@@ -2277,7 +2281,7 @@ CONTAINS
    real(r8), intent(in)           :: obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd
    real(r8), intent(in), optional ::   uobs, uobserrvar, uprmean, uprsprd, upomean, uposprd
 
-   real(r8) :: obsspeed       ! PRIOR     Squared Error
+   real(r8) :: obsspeed
    real(r8) :: priorsqerr     ! PRIOR     Squared Error
    real(r8) :: priorbias      ! PRIOR     simple bias
    real(r8) :: priorspred     ! PRIOR     (spread,variance)
@@ -2295,14 +2299,10 @@ CONTAINS
       priorsqerr     = (prmean - obsval)**2 + (uprmean - uobs)**2
       postsqerr      = (pomean - obsval)**2 + (upomean - uobs)**2
 
-      ! This calculation is the bias in the wind vector  
-      priorbias      = (prmean - obsval)    + (uprmean - uobs) 
-      postbias       = (pomean - obsval)    + (upomean - uobs)
-
-      ! This calculation is the bias in the wind speed
+      ! This calculation is the bias in the wind speed (F-O)
       obsspeed       = sqrt(uobs**2 + obsval**2)
-      priorbias      = obsspeed - sqrt(prmean**2 + uprmean**2) 
-      postbias       = obsspeed - sqrt(pomean**2 + upomean**2) 
+      priorbias      = sqrt(prmean**2 + uprmean**2) - obsspeed
+      postbias       = sqrt(pomean**2 + upomean**2) - obsspeed
 
       priorspred     = prsprd**2 + uprsprd**2
       postspred      = posprd**2 + uposprd**2
@@ -2424,45 +2424,63 @@ CONTAINS
    call DATE_AND_TIME(crdate,crtime,crzone,values)
    write(msgstring,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
                   values(1), values(2), values(3), values(5), values(6), values(7)
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "creation_date", trim(msgstring) ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'creation_date', trim(msgstring) ), &
               'WriteNetCDF', 'put_att creation_date '//trim(fname))
 
-!  call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "title", global_meta_data), &
+!  call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'title', global_meta_data), &
 !             'WriteNetCDF', 'put_att title '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "obs_diag_source", source ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_diag_source', source ), &
               'WriteNetCDF', 'put_att obs_diag_source '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "obs_diag_revision", revision ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_diag_revision', revision ), &
               'WriteNetCDF', 'put_att obs_diag_revision '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "obs_diag_revdate", revdate ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_diag_revdate', revdate ), &
               'WriteNetCDF', 'put_att obs_diag_revdate '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "bias_convention", "forecast - observation" ), &
-              'WriteNetCDF', 'put_att bias '//trim(fname))
+
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'bias_convention', &
+              'forecast - observation' ), 'WriteNetCDF', 'put_att bias '//trim(fname))
+
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'horizontal_wind', &
+              'vector wind derived from U,V components' ), &
+              'WriteNetCDF', 'put_att wind '//trim(fname))
+
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'horizontal_wind_bias', &
+              'definition : sum[sqrt(u**2 + v**2) - obsspeed]/nobs' ), &
+              'WriteNetCDF', 'put_att wind bias '//trim(fname))
+
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'horizontal_wind_rmse', &
+              'definition : sqrt(sum[(u-uobs)**2 + (v-vobs)**2]/nobs)' ), &
+              'WriteNetCDF', 'put_att wind rmse '//trim(fname))
+
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'horizontal_wind_spread', &
+              'definition : sqrt(sum[var(u) + var(v)]/nobs)' ), &
+              'WriteNetCDF', 'put_att wind spread '//trim(fname))
+
 
    ! write all namelist quantities 
 
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "first_bin_center", first_bin_center ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'first_bin_center', first_bin_center ), &
               'WriteNetCDF', 'put_att first_bin_center '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "last_bin_center", last_bin_center ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'last_bin_center', last_bin_center ), &
               'WriteNetCDF', 'put_att last_bin_center '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "bin_separation", bin_separation ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'bin_separation', bin_separation ), &
               'WriteNetCDF', 'put_att bin_separation '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "bin_width", bin_width ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'bin_width', bin_width ), &
               'WriteNetCDF', 'put_att bin_width '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "time_to_skip", time_to_skip ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'time_to_skip', time_to_skip ), &
               'WriteNetCDF', 'put_att time_to_skip '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "max_num_bins", max_num_bins ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'max_num_bins', max_num_bins ), &
               'WriteNetCDF', 'put_att max_num_bins '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "rat_cri", rat_cri ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'rat_cri', rat_cri ), &
               'WriteNetCDF', 'put_att rat_cri '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "input_qc_threshold", input_qc_threshold ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'input_qc_threshold', input_qc_threshold ), &
               'WriteNetCDF', 'put_att input_qc_threshold '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "lonlim1", lonlim1(1:Nregions) ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'lonlim1', lonlim1(1:Nregions) ), &
               'WriteNetCDF', 'put_att lonlim1 '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "lonlim2", lonlim2(1:Nregions) ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'lonlim2', lonlim2(1:Nregions) ), &
               'WriteNetCDF', 'put_att lonlim2 '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "latlim1", latlim1(1:Nregions) ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'latlim1', latlim1(1:Nregions) ), &
               'WriteNetCDF', 'put_att latlim1 '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "latlim2", latlim2(1:Nregions) ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'latlim2', latlim2(1:Nregions) ), &
               'WriteNetCDF', 'put_att latlim2 '//trim(fname))
 
    ! write all observation sequence files used
@@ -2479,11 +2497,11 @@ CONTAINS
 
    enddo FILEloop
 
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "NumIdentityObs", Nidentity ), &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'NumIdentityObs', Nidentity ), &
               'WriteNetCDF', 'put_att identity '//trim(fname))
 
    ! write all 'known' observation types
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, "comment", &
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'comment', &
               'All known observation types follow. &
               &Also see ObservationTypes variable.' ), &
               'WriteNetCDF', 'put_att latlim2 '//trim(fname))
@@ -2498,199 +2516,199 @@ CONTAINS
    !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name="copy", len = Ncopies,            dimid = CopyDimID), &
+              name='copy', len = Ncopies,            dimid = CopyDimID), &
               'WriteNetCDF', 'copy:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name="obstypes", len = max_obs_kinds,  dimid = TypesDimID), &
+              name='obstypes', len = max_obs_kinds,  dimid = TypesDimID), &
               'WriteNetCDF', 'types:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name="region", len = Nregions,         dimid = RegionDimID), &
+              name='region', len = Nregions,         dimid = RegionDimID), &
               'WriteNetCDF', 'region:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name="surface", len = 1,               dimid = SlevelDimID), &
+              name='surface', len = 1,               dimid = SlevelDimID), &
               'WriteNetCDF', 'slevel:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name="mlevel", len = Nmlevels,         dimid = MlevelDimID), &
+              name='mlevel', len = Nmlevels,         dimid = MlevelDimID), &
               'WriteNetCDF', 'mlevel:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name="plevel", len = Nplevels,         dimid = PlevelDimID), &
+              name='plevel', len = Nplevels,         dimid = PlevelDimID), &
               'WriteNetCDF', 'plevel:def_dim '//trim(fname))
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name="plevel_edges", len = Nplevels+1, dimid = PlevIntDimID), &
+              name='plevel_edges', len = Nplevels+1, dimid = PlevIntDimID), &
               'WriteNetCDF', 'plevel_edges:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name="hlevel", len = Nhlevels,         dimid = HlevelDimID), &
+              name='hlevel', len = Nhlevels,         dimid = HlevelDimID), &
               'WriteNetCDF', 'hlevel:def_dim '//trim(fname))
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name="hlevel_edges", len = Nhlevels+1, dimid = HlevIntDimID), &
+              name='hlevel_edges', len = Nhlevels+1, dimid = HlevIntDimID), &
               'WriteNetCDF', 'hlevel_edges:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name="time",   len = NF90_UNLIMITED,   dimid = TimeDimID), &
+              name='time',   len = NF90_UNLIMITED,   dimid = TimeDimID), &
               'WriteNetCDF', 'time:def_dim '//trim(fname))
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name="bounds",   len = 2,  dimid = BoundsDimID), &
+              name='bounds',   len = 2,  dimid = BoundsDimID), &
               'WriteNetCDF', 'bounds:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name="stringlength", len = stringlength, dimid = StringDimID), &
+              name='stringlength', len = stringlength, dimid = StringDimID), &
               'WriteNetCDF', 'stringlength:def_dim '//trim(fname))
 
    ! Define the types of derived quantities - aka - 'copies'
 
-   call nc_check(nf90_def_var(ncid=ncid, name="copy", xtype=nf90_int, &
+   call nc_check(nf90_def_var(ncid=ncid, name='copy', xtype=nf90_int, &
              dimids=CopyDimID, varid=CopyVarID), &
              'WriteNetCDF', 'copy:def_var')
-   call nc_check(nf90_put_att(ncid, CopyVarID, "explanation", 'see CopyMetaData'), &
+   call nc_check(nf90_put_att(ncid, CopyVarID, 'explanation', 'see CopyMetaData'), &
              'WriteNetCDF', 'copy:explanation')
 
    ! Define the observation types - needed to be a coordinate variable
 
-   call nc_check(nf90_def_var(ncid=ncid, name="obstypes", xtype=nf90_int, &
+   call nc_check(nf90_def_var(ncid=ncid, name='obstypes', xtype=nf90_int, &
              dimids=TypesDimID, varid=TypesVarID), &
              'WriteNetCDF', 'types:def_var')
-   call nc_check(nf90_put_att(ncid, TypesVarID, "explanation", 'see ObservationTypes'), &
+   call nc_check(nf90_put_att(ncid, TypesVarID, 'explanation', 'see ObservationTypes'), &
              'WriteNetCDF', 'types:explanation')
 
    ! Define the regions coordinate variable and attributes
 
-   call nc_check(nf90_def_var(ncid=ncid, name="region", xtype=nf90_int, &
+   call nc_check(nf90_def_var(ncid=ncid, name='region', xtype=nf90_int, &
              dimids=RegionDimID, varid=RegionVarID), 'WriteNetCDF', 'region:def_var')
-   call nc_check(nf90_put_att(ncid, RegionVarID, "long_name", "model region"), &
+   call nc_check(nf90_put_att(ncid, RegionVarID, 'long_name', 'model region'), &
              'WriteNetCDF', 'region:long_name')
-   call nc_check(nf90_put_att(ncid, RegionVarID, "units",     "nondimensional"), &
+   call nc_check(nf90_put_att(ncid, RegionVarID, 'units',     'nondimensional'), &
              'WriteNetCDF', 'region:units')
-   call nc_check(nf90_put_att(ncid, RegionVarID, "valid_range", (/1,Nregions/)), &
+   call nc_check(nf90_put_att(ncid, RegionVarID, 'valid_range', (/1,Nregions/)), &
              'WriteNetCDF', 'region:valid_range')
 
    ! Define the model level coordinate variable and attributes
 
-   call nc_check(nf90_def_var(ncid=ncid, name="mlevel", xtype=nf90_int, &
+   call nc_check(nf90_def_var(ncid=ncid, name='mlevel', xtype=nf90_int, &
              dimids=MlevelDimID, varid=MlevelVarID), 'WriteNetCDF', 'mlevel:def_var')
-   call nc_check(nf90_put_att(ncid, MlevelVarID, "long_name", "model level"), &
+   call nc_check(nf90_put_att(ncid, MlevelVarID, 'long_name', 'model level'), &
              'WriteNetCDF', 'mlevel:long_name')
-   call nc_check(nf90_put_att(ncid, MlevelVarID, "units",     "nondimensional"), &
+   call nc_check(nf90_put_att(ncid, MlevelVarID, 'units',     'nondimensional'), &
              'WriteNetCDF', 'mlevel:units')
-   call nc_check(nf90_put_att(ncid, MlevelVarID, "valid_range", (/1,Nmlevels/)), &
+   call nc_check(nf90_put_att(ncid, MlevelVarID, 'valid_range', (/1,Nmlevels/)), &
              'WriteNetCDF', 'mlevel:valid_range')
 
    ! Define the pressure level coordinate variable and attributes
 
-   call nc_check(nf90_def_var(ncid=ncid, name="plevel", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncid=ncid, name='plevel', xtype=nf90_real, &
              dimids=PlevelDimID, varid=PlevelVarID), 'WriteNetCDF', 'plevel:def_var')
-   call nc_check(nf90_put_att(ncid, PlevelVarID, "long_name", "pressure bin midpoints"), &
+   call nc_check(nf90_put_att(ncid, PlevelVarID, 'long_name', 'pressure bin midpoints'), &
              'WriteNetCDF', 'plevel:long_name')
-   call nc_check(nf90_put_att(ncid, PlevelVarID, "units",     "hPa"), &
+   call nc_check(nf90_put_att(ncid, PlevelVarID, 'units',     'hPa'), &
              'WriteNetCDF', 'plevel:units')
-   call nc_check(nf90_put_att(ncid, PlevelVarID, "valid_range", &
+   call nc_check(nf90_put_att(ncid, PlevelVarID, 'valid_range', &
       (/ minval(plevel(1:Nplevels)), maxval(plevel(1:Nplevels)) /)), &
              'WriteNetCDF', 'plevel:valid_range')
 
    ! Define the pressure level interface coordinate variable and attributes
 
-   call nc_check(nf90_def_var(ncid=ncid, name="plevel_edges", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncid=ncid, name='plevel_edges', xtype=nf90_real, &
              dimids=PlevIntDimID, varid=PlevIntVarID), 'WriteNetCDF', 'plevel_edges:def_var')
-   call nc_check(nf90_put_att(ncid, PlevIntVarID, "long_name", "pressure bin edges"), &
+   call nc_check(nf90_put_att(ncid, PlevIntVarID, 'long_name', 'pressure bin edges'), &
              'WriteNetCDF', 'plevel_edges:long_name')
-   call nc_check(nf90_put_att(ncid, PlevIntVarID, "units",     "hPa"), &
+   call nc_check(nf90_put_att(ncid, PlevIntVarID, 'units',     'hPa'), &
              'WriteNetCDF', 'plevel_edges:units')
-   call nc_check(nf90_put_att(ncid, PlevIntVarID, "valid_range", &
+   call nc_check(nf90_put_att(ncid, PlevIntVarID, 'valid_range', &
       (/ minval(plevel_edges(1:Nplevels+1)), maxval(plevel_edges(1:Nplevels+1)) /)), &
              'WriteNetCDF', 'plevel_edges:valid_range')
 
    ! Define the height level coordinate variable and attributes
 
-   call nc_check(nf90_def_var(ncid=ncid, name="hlevel", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncid=ncid, name='hlevel', xtype=nf90_real, &
            dimids=HlevelDimID, varid=HlevelVarID), 'WriteNetCDF', 'hlevel:def_var')
-   call nc_check(nf90_put_att(ncid, HlevelVarID, "long_name", "height bin midpoints"), &
+   call nc_check(nf90_put_att(ncid, HlevelVarID, 'long_name', 'height bin midpoints'), &
              'WriteNetCDF', 'hlevel:long_name')
-   call nc_check(nf90_put_att(ncid, HlevelVarID, "units",     "m"), &
+   call nc_check(nf90_put_att(ncid, HlevelVarID, 'units',     'm'), &
              'WriteNetCDF', 'hlevel:units')
-   call nc_check(nf90_put_att(ncid, HlevelVarID, "valid_range", &
+   call nc_check(nf90_put_att(ncid, HlevelVarID, 'valid_range', &
       (/ minval(hlevel(1:Nhlevels)), maxval(hlevel(1:Nhlevels)) /)), &
              'WriteNetCDF', 'hlevel:valid_range')
 
    ! Define the height level interface coordinate variable and attributes
 
-   call nc_check(nf90_def_var(ncid=ncid, name="hlevel_edges", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncid=ncid, name='hlevel_edges', xtype=nf90_real, &
            dimids=HlevIntDimID, varid=HlevIntVarID), 'WriteNetCDF', 'hlevel_edges:def_var')
-   call nc_check(nf90_put_att(ncid, HlevIntVarID, "long_name", "height bin edges"), &
+   call nc_check(nf90_put_att(ncid, HlevIntVarID, 'long_name', 'height bin edges'), &
              'WriteNetCDF', 'hlevel_edges:long_name')
-   call nc_check(nf90_put_att(ncid, HlevIntVarID, "units",     "m"), &
+   call nc_check(nf90_put_att(ncid, HlevIntVarID, 'units',     'm'), &
              'WriteNetCDF', 'hlevel_edges:units')
-   call nc_check(nf90_put_att(ncid, HlevIntVarID, "valid_range", &
+   call nc_check(nf90_put_att(ncid, HlevIntVarID, 'valid_range', &
       (/ minval(hlevel_edges(1:Nhlevels+1)), maxval(hlevel_edges(1:Nhlevels+1)) /)), &
              'WriteNetCDF', 'hlevel_edges:valid_range')
 
-   ! Define "bounds" dimension
+   ! Define 'bounds' dimension
 
-   call nc_check(nf90_def_var(ncid=ncid, name="bounds", xtype=nf90_int, &
+   call nc_check(nf90_def_var(ncid=ncid, name='bounds', xtype=nf90_int, &
              dimids=BoundsDimID, varid=BoundsVarID), 'WriteNetCDF', 'bounds:def_var')
-   call nc_check(nf90_put_att(ncid, BoundsVarID, "valid_range", (/1,2/)), &
+   call nc_check(nf90_put_att(ncid, BoundsVarID, 'valid_range', (/1,2/)), &
              'WriteNetCDF', 'bounds:valid_range')
 
    ! Define the time coordinate variable and attributes
 
-   call nc_check(nf90_def_var(ncid=ncid, name="time", xtype=nf90_double, &
+   call nc_check(nf90_def_var(ncid=ncid, name='time', xtype=nf90_double, &
              dimids=TimeDimID, varid=TimeVarID), 'WriteNetCDF', 'time:def_var')
-   call nc_check(nf90_put_att(ncid, TimeVarID, "standard_name",    "time"), &
+   call nc_check(nf90_put_att(ncid, TimeVarID, 'standard_name',    'time'), &
              'WriteNetCDF', 'time:standard_name')
-   call nc_check(nf90_put_att(ncid, TimeVarID, "long_name", "temporal bin midpoints"), &
+   call nc_check(nf90_put_att(ncid, TimeVarID, 'long_name', 'temporal bin midpoints'), &
              'WriteNetCDF', 'time:long_name')
-   call nc_check(nf90_put_att(ncid, TimeVarID, "units",     "days since 1601-1-1"), &
+   call nc_check(nf90_put_att(ncid, TimeVarID, 'units',     'days since 1601-1-1'), &
              'WriteNetCDF', 'time:units')
-   call nc_check(nf90_put_att(ncid, TimeVarID, "calendar",    "Gregorian"), &
+   call nc_check(nf90_put_att(ncid, TimeVarID, 'calendar',    'Gregorian'), &
              'WriteNetCDF', 'time:calendar')
-   call nc_check(nf90_put_att(ncid, TimeVarID, "axis",    "T"), &
+   call nc_check(nf90_put_att(ncid, TimeVarID, 'axis',    'T'), &
              'WriteNetCDF', 'time:axis')
-   call nc_check(nf90_put_att(ncid, TimeVarID, "bounds",    "time_bounds"), &
+   call nc_check(nf90_put_att(ncid, TimeVarID, 'bounds',    'time_bounds'), &
              'WriteNetCDF', 'time:bounds')
-   call nc_check(nf90_put_att(ncid, TimeVarID, "valid_range", &
+   call nc_check(nf90_put_att(ncid, TimeVarID, 'valid_range', &
              (/ epoch_center(1), epoch_center(Nepochs) /)), &
              'WriteNetCDF', 'time:valid_range')
 
    ! Define the time edges coordinate variable and attributes
 
-   call nc_check(nf90_def_var(ncid=ncid, name="time_bounds", xtype=nf90_double, &
+   call nc_check(nf90_def_var(ncid=ncid, name='time_bounds', xtype=nf90_double, &
              dimids=(/ BoundsDimID, TimeDimID/), varid=TimeBoundsVarID), &
                'WriteNetCDF', 'time_bounds:def_var')
-   call nc_check(nf90_put_att(ncid, TimeBoundsVarID, "long_name", "temporal bin edges"), &
+   call nc_check(nf90_put_att(ncid, TimeBoundsVarID, 'long_name', 'temporal bin edges'), &
              'WriteNetCDF', 'time_bounds:long_name')
-   call nc_check(nf90_put_att(ncid, TimeBoundsVarID, "units",     "days since 1601-1-1"), &
+   call nc_check(nf90_put_att(ncid, TimeBoundsVarID, 'units',     'days since 1601-1-1'), &
              'WriteNetCDF', 'time_bounds:units')
-   call nc_check(nf90_put_att(ncid, TimeBoundsVarID, "calendar",  "Gregorian"), &
+   call nc_check(nf90_put_att(ncid, TimeBoundsVarID, 'calendar',  'Gregorian'), &
              'WriteNetCDF', 'time_bounds:calendar')
-   call nc_check(nf90_put_att(ncid, TimeBoundsVarID, "valid_range", &
+   call nc_check(nf90_put_att(ncid, TimeBoundsVarID, 'valid_range', &
              (/ epoch_edges(1,1), epoch_edges(2,Nepochs) /)), &
              'WriteNetCDF', 'time_bounds:valid_range')
 
    ! Define the regions variable ... an unusual coordinate variable IMHO
 
-   call nc_check(nf90_def_var(ncid=ncid, name="region_names", xtype=nf90_char, &
+   call nc_check(nf90_def_var(ncid=ncid, name='region_names', xtype=nf90_char, &
              dimids=(/ StringDimID, RegionDimID /), varid=RegionNamesVarID), &
              'WriteNetCDF', 'region:def_var')
-   call nc_check(nf90_put_att(ncid, RegionNamesVarID, "long_name", "region names"), &
+   call nc_check(nf90_put_att(ncid, RegionNamesVarID, 'long_name', 'region names'), &
              'WriteNetCDF', 'region:long_name')
 
-   call nc_check(nf90_def_var(ncid=ncid, name="CopyMetaData", xtype=nf90_char, &
+   call nc_check(nf90_def_var(ncid=ncid, name='CopyMetaData', xtype=nf90_char, &
              dimids=(/ StringDimID, CopyDimID /), varid=CopyMetaVarID), &
              'WriteNetCDF', 'copymeta:def_var')
-   call nc_check(nf90_put_att(ncid, CopyMetaVarID, "long_name", "quantity names"), &
+   call nc_check(nf90_put_att(ncid, CopyMetaVarID, 'long_name', 'quantity names'), &
              'WriteNetCDF', 'copymeta:long_name')
 
-   call nc_check(nf90_def_var(ncid=ncid, name="ObservationTypes", xtype=nf90_char, &
+   call nc_check(nf90_def_var(ncid=ncid, name='ObservationTypes', xtype=nf90_char, &
              dimids=(/ StringDimID, TypesDimID /), varid=TypesMetaVarID), &
              'WriteNetCDF', 'typesmeta:def_var')
-   call nc_check(nf90_put_att(ncid, TypesMetaVarID, "long_name", "DART observation types"), &
+   call nc_check(nf90_put_att(ncid, TypesMetaVarID, 'long_name', 'DART observation types'), &
              'WriteNetCDF', 'typesmeta:long_name')
-   call nc_check(nf90_put_att(ncid, TypesMetaVarID, "comment", &
-         "table relating integer to observation type string"), &
+   call nc_check(nf90_put_att(ncid, TypesMetaVarID, 'comment', &
+         'table relating integer to observation type string'), &
              'WriteNetCDF', 'typesmeta:comment')
 
    ! Set nofill mode - supposed to be performance gain
@@ -2972,9 +2990,9 @@ CONTAINS
 
    Function grok_observation_names(my_names)
    !----------------------------------------------------------------------
-   ! Define/Append the 'wind velocity' obs_kinds to supplant the list declared
+   ! Define/Append the 'horizontal wind' obs_kinds to supplant the list declared
    ! in obs_kind_mod.f90 i.e. if there is a RADIOSONDE_U_WIND_COMPONENT
-   ! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_WIND_VELOCITY
+   ! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_HORIZONTAL_WIND
    ! Replace calls to 'get_obs_kind_name' with variable 'my_obs_kind_names'
    !----------------------------------------------------------------------
 
@@ -2986,7 +3004,7 @@ CONTAINS
    character(len=stringlength), dimension(2*max_obs_kinds) :: names
 
    ! Initially, the array of obs_kind_names is exactly 'max_num_obs' in length.
-   ! This block finds the U,V wind pairs and searches for pre-existing wind_velocity
+   ! This block finds the U,V wind pairs and creates the 'horizontal_wind'
    ! equivalents. Depending on the number of unique wind pairs - we can allocate
    ! space, copy the existing names into that array, and append the new unique ones.
    ! easy ...
@@ -3028,7 +3046,7 @@ CONTAINS
 
          if (indxN > 0) then ! we know they are matching kinds
             nwinds = nwinds + 1
-            str3   = str1(1:indx2)//'_WIND_VELOCITY'
+            str3   = str1(1:indx2)//'_HORIZONTAL_WIND'
             names(max_obs_kinds + nwinds) = str3
 
          !  write(*,*)'Seems like ',str1(1:indx1N),' matches ',str2(1:indx2N)
@@ -3055,7 +3073,7 @@ CONTAINS
          indxN = index(str1(1:indx1),str2(1:indx2))
          if (indxN > 0) then ! we know they are matching kinds
             nwinds = nwinds + 1
-            str3   = str1(1:indx2)//'_10_METER_WIND_VELOCITY'
+            str3   = str1(1:indx2)//'_10_METER_HORIZONTAL_WIND'
             names(max_obs_kinds + nwinds) = str3
          endif
       endif
