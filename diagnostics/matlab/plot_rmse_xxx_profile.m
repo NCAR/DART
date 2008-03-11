@@ -1,5 +1,5 @@
 function plotdat = plot_rmse_xxx_profile(fname,copystring)
-% plot_rmse_xxx_profile plots the vertical profile of the observation-space quantities for all possible levels, all possible variables.
+% plot_rmse_xxx_profile plots the vertical profile of the observation-space RMSE and any other quantity for all possible levels, all possible variables.
 % Part of the observation-space diagnostics routines.
 %
 % 'obs_diag' produces a netcdf file containing the diagnostics.
@@ -12,7 +12,7 @@ function plotdat = plot_rmse_xxx_profile(fname,copystring)
 %            file 'CopyMetaData' variable.
 %            (ncdump -v CopyMetaData obs_diag_output.nc)
 %
-% EXAMPLE:
+% EXAMPLE: plot the rmse and totalspread on the same axis:
 %
 % fname = 'obs_diag_output.nc';   % netcdf file produced by 'obs_diag'
 % copystring = 'totalspread';   % 'copy' string == quantity of interest
