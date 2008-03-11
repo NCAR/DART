@@ -1,5 +1,5 @@
 function plotdat = plot_rmse_xxx_evolution(fname,copystring)
-% plot_rmse_xxx_evolution plots the temporal evolution of the observation-space quantities for all possible levels, all possible variables.
+% plot_rmse_xxx_evolution plots the temporal evolution of the observation-space quantity RMSE and any other for all possible levels, all possible variables.
 % Part of the observation-space diagnostics routines.
 %
 % 'obs_diag' produces a netcdf file containing the diagnostics.
@@ -12,7 +12,7 @@ function plotdat = plot_rmse_xxx_evolution(fname,copystring)
 %            file 'CopyMetaData' variable.
 %            (ncdump -v CopyMetaData obs_diag_output.nc)
 %
-% EXAMPLE:
+% EXAMPLE: plot the RMSE and totalspread on the same axis.
 %
 % fname = 'obs_diag_output.nc';   % netcdf file produced by 'obs_diag'
 % copystring = 'totalspread';   % 'copy' string == quantity of interest
@@ -154,7 +154,11 @@ for ivar = 1:plotdat.nvars
       
       % plot by region
 
-      figure(ivar); clf; orient tall; wysiwyg
+      if (plotdat.nregions > 2)
+         clf; orient tall
+      else 
+         clf; orient landscape
+      end
 
       for iregion = 1:plotdat.nregions
 
@@ -169,7 +173,7 @@ for ivar = 1:plotdat.nvars
       end
 
       % create a postscript file
-      print(ivar,'-dpsc','-append',psfname);
+      print(gcf,'-dpsc','-append',psfname);
 
    end
 end
@@ -239,6 +243,7 @@ function myplot(plotdat)
 
    switch lower(plotdat.copystring)
       case 'bias'
+         % plot a zero-bias line
          h4 = line(t,0*t, 'Color','r','Parent',ax1);
          set(h4,'LineWidth',1.5,'LineSTyle',':')
          plotdat.ylabel = sprintf('%s (%s) and rmse',plotdat.copystring,plotdat.biasconv);
@@ -286,7 +291,7 @@ function myplot(plotdat)
    yticks = ylimits(1):yinc:ylimits(2);
    niceyticks = round(10*yticks')/10;
    set(ax2,'XTick',get(ax1,'XTick'),'XTicklabel',get(ax1,'XTicklabel'), ...
-           'YTick',          yticks,'YTickLabel',niceyticks)
+           'YTick',          yticks,'YTicklabel',num2str(niceyticks))
        
    set(get(ax2,'Ylabel'),'String','# of obs : o=poss, +=used')
    set(get(ax1,'Ylabel'),'String',plotdat.ylabel)
