@@ -44,7 +44,7 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
                              operator(>), operator(<), operator(/), &
                              operator(/=), operator(<=)
 use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
-                             file_exist, error_handler, E_ERR, E_MSG, &
+                             file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, logfileunit, timestamp, &
                              find_namelist_in_file, check_namelist_read, nc_check
 use         sort_mod, only : sort
@@ -250,6 +250,7 @@ integer  :: seconds, days, Nepochs
 
 integer,  allocatable, dimension(:) :: which_vert ! relates kind of level for each obs kind
 real(r8), allocatable, dimension(:) :: scale_factor ! to convert to plotting units
+integer,  allocatable, dimension(:) :: ob_defining_vert ! obs index defining vert coord type
 
 character(len = stringlength), pointer, dimension(:) :: my_obs_kind_names
 
@@ -289,8 +290,12 @@ call static_init_obs_sequence()  ! Initialize the obs sequence module
 
 num_obs_kinds = grok_observation_names(my_obs_kind_names)
 
-allocate(which_vert(num_obs_kinds), scale_factor(num_obs_kinds))
-which_vert = VERTISUNDEF
+allocate( which_vert(num_obs_kinds), &
+        scale_factor(num_obs_kinds), &
+    ob_defining_vert(num_obs_kinds))
+which_vert       = VERTISUNDEF
+scale_factor     = 1.0_r8
+ob_defining_vert = -1
 
 !----------------------------------------------------------------------
 ! Read the namelist
@@ -650,7 +655,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
             posterior_mean_index, posterior_spread_index /) < 0) ) then
       only_print_locations = .true.
       msgstring = 'observation sequence has no prior/posterior information'
-      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+      call error_handler(E_WARN,'obs_diag',msgstring,source,revision,revdate)
    else
       only_print_locations = .false.
    endif
@@ -732,10 +737,15 @@ ObsFileLoop : do ifile=1, Nepochs*4
                        scale_factor(flavor)
 
          !--------------------------------------------------------------
+         ! Check consistency of the vertical coordinate system 
+         !--------------------------------------------------------------
+         call CheckVertical(obs_loc, flavor) 
+
+         !--------------------------------------------------------------
          ! Figure out which level the observation relates to ...
          !--------------------------------------------------------------
 
-         level_index = ParseLevel(obs_loc, obslevel, flavor, which_vert)
+         level_index = ParseLevel(obs_loc, obslevel, flavor)
 
          if ( 1 == 2 ) then
             write(8,*)'obsindx ',obsindex, keys(obsindex), obsloc3(3), level_index
@@ -976,7 +986,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
                ierr = CheckMate(flavor, U_flavor, obs_loc, U_obs_loc, wflavor ) 
 
                if ( ierr /= 0 ) then
-                  write(*,*)'time series ... V with no matching U ...'
+                  write(*,*)'time series : V with no U obs index ', keys(obsindex)
                   call IPE(guess%NbadUV(iepoch,level_index,iregion,wflavor), 1)
                   call IPE(analy%NbadUV(iepoch,level_index,iregion,wflavor), 1)
                else
@@ -987,7 +997,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
                   ! way I know of is to use the observation of that type to tell us.
                   ! (over and over and over ... last one wins!)
 
-                  ierr = ParseLevel(obs_loc, obslevel, wflavor, which_vert)
+                  ierr = ParseLevel(obs_loc, obslevel, wflavor)
 
                   ! since we don't have the necessary covariance between U,V
                   ! we will reject if either univariate z score is bad 
@@ -1049,7 +1059,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
                   call IPE(analyAVG%NbadUV(level_index,iregion,wflavor), 1)
                else
 
-                  ierr = ParseLevel(obs_loc, obslevel, wflavor, which_vert)
+                  ierr = ParseLevel(obs_loc, obslevel, wflavor)
 
                   zscoreU = InnovZscore(U_obs, U_pr_mean, U_pr_sprd, U_obs_err_var, U_qc, QC_MAX_PRIOR)
                   if( (pr_zscore > rat_cri) .or. (zscoreU > rat_cri) )  then
@@ -1514,21 +1524,21 @@ CONTAINS
    if ( (bin_separation(1) /= 0) .or. (bin_separation(2) /= 0) ) then
       write(msgstring,*)'bin_separation:year,month must both be zero, they are ', &
       bin_separation(1),bin_separation(2)
-      call error_handler(E_MSG,'obs_diag:Convert2Time',msgstring,source,revision,revdate)
+      call error_handler(E_WARN,'obs_diag:Convert2Time',msgstring,source,revision,revdate)
       error_out = .true.
    endif
 
    if ( (bin_width(1) /= 0) .or. (bin_width(2) /= 0) ) then
       write(msgstring,*)'bin_width:year,month must both be zero, they are ', &
       bin_width(1),bin_width(2)
-      call error_handler(E_MSG,'obs_diag:Convert2Time',msgstring,source,revision,revdate)
+      call error_handler(E_WARN,'obs_diag:Convert2Time',msgstring,source,revision,revdate)
       error_out = .true.
    endif
 
    if ( (time_to_skip(1) /= 0) .or. (time_to_skip(2) /= 0) ) then
       write(msgstring,*)'time_to_skip:year,month must both be zero, they are ', &
       time_to_skip(1),time_to_skip(2)
-      call error_handler(E_MSG,'obs_diag:Convert2Time',msgstring,source,revision,revdate)
+      call error_handler(E_WARN,'obs_diag:Convert2Time',msgstring,source,revision,revdate)
       error_out = .true.
    endif
 
@@ -1899,47 +1909,106 @@ CONTAINS
    end Function Imidpoints2edges
 
 
- 
-   Function ParseLevel(obslocation, obslevel, flavor, whichvert )
+
+   Subroutine CheckVertical(obslocation, flavor)
+
+   ! It is not allowed to have one observation flavor exist on multiple
+   ! types of vertical coordinate systems. If the flavor has been
+   ! initialized (ob_defining_vert(flavor) > 0) then it is an
+   ! error to change the type of vertical coordinate system 
+   ! {tracked in which_vert()}.
+
+   type(location_type),   intent(in) :: obslocation
+   integer,               intent(in) :: flavor
+
+!  integer, dimension(:), intent(in) :: which_vert       GLOBAL SCOPE
+!  integer, dimension(:), intent(in) :: ob_defining_vert GLOBAL SCOPE
+
+   if (vert_is_surface(obslocation)               .and. &
+      (      which_vert(flavor) /= VERTISSURFACE) .and. &
+      (ob_defining_vert(flavor)  >     0        ) ) then
+           write(msgstring,'(''obs '', i8, '' type '', i3, &
+           &  '' changing from '', i2, '' to surface - def by obs '',i8)') &
+           keys(obsindex), flavor, which_vert(flavor), ob_defining_vert(flavor)
+      call error_handler(E_WARN,'CheckVertical',msgstring,source,revision,revdate)
+   endif
+
+   if (vert_is_level(obslocation)               .and. &
+      (      which_vert(flavor) /= VERTISLEVEL) .and. &
+      (ob_defining_vert(flavor)  >     0      ) ) then
+           write(msgstring,'(''obs '', i8, '' type '', i3, &
+           & '' changing from '', i2, '' to level - def by obs '',i8)') &
+           keys(obsindex), flavor, which_vert(flavor), ob_defining_vert(flavor)
+      call error_handler(E_WARN,'CheckVertical',msgstring,source,revision,revdate)
+   endif
+
+   if (vert_is_pressure(obslocation)               .and. &
+      (      which_vert(flavor) /= VERTISPRESSURE) .and. &
+      (ob_defining_vert(flavor)  >     0         ) ) then
+           write(msgstring,'(''obs '', i8, '' type '', i3, &
+           & '' changing from '', i2, '' to pressure - def by obs '',i8)') &
+           keys(obsindex), flavor, which_vert(flavor), ob_defining_vert(flavor)
+      call error_handler(E_WARN,'CheckVertical',msgstring,source,revision,revdate)
+   endif
+
+   if (vert_is_height(obslocation)               .and. &
+      (      which_vert(flavor) /= VERTISHEIGHT) .and. &
+      (ob_defining_vert(flavor)  >     0       ) ) then
+           write(msgstring,'(''obs '', i8, '' type '', i3, &
+           & '' changing from '', i2, '' to height - def by obs '',i8)') &
+           keys(obsindex), flavor, which_vert(flavor), ob_defining_vert(flavor)
+      call error_handler(E_WARN,'CheckVertical',msgstring,source,revision,revdate)
+   endif
+
+   end Subroutine CheckVertical
+
+
+
+   Function ParseLevel(obslocation, obslevel, flavor)
 
    type(location_type),   intent(in   ) :: obslocation
    real(r8),              intent(inout) :: obslevel
    integer,               intent(in   ) :: flavor
-   integer, dimension(:), intent(inout) :: whichvert
    integer :: ParseLevel
+
+!  integer, dimension(:), intent(inout) :: which_vert        GLOBAL SCOPE
+!  logical, dimension(:), intent(inout) :: ob_defining_vert  GLOBAL SCOPE
    character(len=8) :: bob
 
    if(vert_is_surface(obslocation)) then
-      obslevel = 1
-      bob = 'surface'
-      ParseLevel        = 1
-      whichvert(flavor) = VERTISSURFACE
+      obslevel           = 1
+      bob                = 'surface'
+      ParseLevel         = 1
+      which_vert(flavor) = VERTISSURFACE
 
    elseif(vert_is_level(obslocation)) then
       ! at one point, negative (model) levels were used to indicate
       ! surface observations - ancient history ...
-      bob = 'level'
       if (obslevel < 1.0_r8 ) obslevel = 1.0_r8  ! TJH negative model level
-      ParseLevel        = ClosestLevel(obslevel, VERTISLEVEL)
-      whichvert(flavor) = VERTISLEVEL
+      bob                = 'level'
+      ParseLevel         = ClosestLevel(obslevel, VERTISLEVEL)
+      which_vert(flavor) = VERTISLEVEL
 
    elseif(vert_is_pressure(obslocation)) then
-      bob = 'pressure'
+      bob                = 'pressure'
       ParseLevel         = ClosestLevel(obslevel, VERTISPRESSURE)
-      whichvert(flavor) = VERTISPRESSURE
+      which_vert(flavor) = VERTISPRESSURE
 
    elseif(vert_is_height(obslocation)) then
-      bob = 'height'
+      bob                = 'height'
       ParseLevel         = ClosestLevel(obslevel, VERTISHEIGHT)
-      whichvert(flavor) = VERTISHEIGHT
+      which_vert(flavor) = VERTISHEIGHT
    else
       call error_handler(E_ERR,'obs_diag','Vertical coordinate not recognized', &
            source,revision,revdate)
    endif
 
+   ob_defining_vert(flavor) = keys(obsindex)
+
    if ( 1 == 2 ) then ! TJH debug statement
-      write(*,'(i6,'' obslevel '',f10.4,'', level index '',i3,1x,(a8))') &
-         obsindex, obslevel, ParseLevel, bob
+      write(*,'(''obskey '',i6, '' counter '', i6,'' level '', f10.4, &
+          &  '' level index '',i3,1x,(a8))') &
+         keys(obsindex), obsindex, obslevel, ParseLevel, bob
    endif
 
    end Function ParseLevel
@@ -2079,12 +2148,13 @@ CONTAINS
    integer,             intent(out) :: flavor
    integer                         :: CheckMate
 
-   character(len=stringlength) :: str1, str2
+   character(len=stringlength) :: str1, str2, str3
 
    integer :: mykind1, mykind2
    integer :: indx1,indx2
 
    CheckMate = -1 ! Assume no match ... till proven otherwise
+   flavor    = -1 ! bad flavor
 
    mykind1 = get_obs_kind_var_type(flavor1)
    mykind2 = get_obs_kind_var_type(flavor2)
@@ -2094,14 +2164,19 @@ CONTAINS
                mykind1 == KIND_V_WIND_COMPONENT) .or. &
               (mykind1 == KIND_U_WIND_COMPONENT .and. &
                mykind2 == KIND_V_WIND_COMPONENT)) ) then
-      write(*,*) 'flavors not complementary ...',flavor1, flavor2
+      write(msgstring,*) 'around OBS ', keys(obsindex), &
+              'flavors not complementary ...',flavor1, flavor2
+      call error_handler(E_WARN,'CheckMate',msgstring,source,revision,revdate)
       flavor = -flavor1
       return
    endif
 
    if ( obsloc1 /= obsloc2 ) then
       if ( print_mismatched_locs ) then
-         write(*,*) 'locations do not match ...'
+         write(msgstring,*) 'around OBS ', keys(obsindex), 'locations do not match ...'
+         call error_handler(E_WARN,'CheckMate',msgstring,source,revision,revdate)
+         call write_location(logfileunit,obsloc1,'FORMATTED')
+         call write_location(logfileunit,obsloc2,'FORMATTED')
          call write_location(6,obsloc1,'FORMATTED')
          call write_location(6,obsloc2,'FORMATTED')
          flavor = -flavor1
@@ -2109,42 +2184,75 @@ CONTAINS
       return
    endif
 
-   ! must be matching wind components ... 
-   ! must figure out what the obs_kind_name should be ...
+   ! By now, they must be co-located wind components but need not be taken
+   ! be the same observation platform.  Protect against matching
+   ! 'QKSWND_U_WIND_COMPONENT' and a 'PROFILER_V_WIND_COMPONENT'
+   !
    ! There are only two viable wind component strings (see obs_def_mod.f90):
    ! '_?_WIND_COMPONENT' and '_?_10_METER_WIND'
 
    str1  = get_obs_kind_name(flavor1)
    str2  = get_obs_kind_name(flavor2)
+
+   if (len_trim(str1) /= len_trim(str2)) then
+      write(logfileunit,*)'wind component 1 ',trim(str1)
+      write(logfileunit,*)'wind component 2 ',trim(str2)
+      write(     *     ,*)'wind component 1 ',trim(str1)
+      write(     *     ,*)'wind component 2 ',trim(str2)
+      write(msgstring,*) 'around OBS ', keys(obsindex), 'adjacent U,V winds not matching'
+      call error_handler(E_WARN,'CheckMate',msgstring,source,revision,revdate)
+      flavor = -flavor2
+      return
+   endif
+
+   ! Focus on getting the platform name 
+
    indx1 = index(str1,'_WIND_COMPONENT') - 3
    indx2 = index(str1, '_10_METER_WIND') - 3
 
    if ( (indx1 < 1) .and. (indx2 < 1) ) then
-      write(*,*)'IMPOSSIBLE ... to be CheckMated. har har'
+      write(msgstring,*) 'around OBS ', keys(obsindex), 'not a known wind name ...'
+      call error_handler(E_WARN,'CheckMate',msgstring,source,revision,revdate)
       flavor = -flavor2
+      return
    endif
 
    if (indx1 > 0) then ! must be _?_WIND_COMPONENT
       str3 = str1(1:indx1)//'_HORIZONTAL_WIND'
    else                ! must be _?_10_METER_WIND
-      str3 = str1(1:indx2)//'_HORIZONTAL_WIND'
+      str3 = str1(1:indx2)//'_10_METER_HORIZONTAL_WIND'
       indx1 = indx2
    endif
 
+   ! So now we have the platform name for one of the observations
+   ! and that (1:indx1) defines the platform name in a matching scenario.
+   ! str1(1:indx1) and str2(1:indx1) should be the wind name - 
+   ! 'RADIOSONDE_' or 'SHIP_' or 'AIREP_' or ...
+
    if (index(str1, str2(1:indx1)) < 1) then
-      msgstring = 'observation types not compatible.'
-      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+      write(msgstring,*) 'around OBS ', keys(obsindex), 'observation types not compatible.'
+      call error_handler(E_WARN,'obs_diag',msgstring,source,revision,revdate)
    endif
 
+   ! Find the derived type in our augmented list.
+
    MyKind : do ivar = 1,num_obs_kinds
-      indx1 = index(str3,my_obs_kind_names(ivar))
+      indx1 = index(str3, my_obs_kind_names(ivar))
       if (indx1 > 0) then
          flavor = ivar
+         CheckMate = 0
          exit MyKind
       endif
    enddo MyKind
 
-   CheckMate = 0
+   ! If we have checked all the types and not found a match ... 
+
+   if (CheckMate /= 0) then
+      write(     *     ,*) 'around OBS ', keys(obsindex), trim(str1), ' ', trim(str2)
+      write(logfileunit,*) 'around OBS ', keys(obsindex), trim(str1), ' ', trim(str2)
+      write(  msgstring,*) 'around OBS ', keys(obsindex), 'observation types not known.'
+      call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
+   endif
 
    end Function CheckMate
 
