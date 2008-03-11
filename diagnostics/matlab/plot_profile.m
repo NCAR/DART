@@ -121,11 +121,15 @@ for ivar = 1:plotdat.nvars
       disp(sprintf('%s is a surface field.',plotdat.guessvar))
       error('Cannot display a surface field this way.')
    else
-      plotdat.level = getnc(fname, guessdims{2});
-      plotdat.level_units = f{guessdims{2}}.units(:);
-      plotdat.nlevels = length(f{guessdims{2}});
+      plotdat.level         = sort(getnc(fname, guessdims{2}));
+      plotdat.level_units   = f{guessdims{2}}.units(:);
+      plotdat.nlevels       = length(f{guessdims{2}});
+      edgename              = sprintf('%s_edges',guessdims{2});
+      plotdat.level_edges   = sort(getnc(fname,edgename));
+      plotdat.level_strings = GenLevelString(plotdat.level, plotdat.level_edges);
+      plotdat.Yrange        = [min(plotdat.level_edges) max(plotdat.level_edges)];
    end
-   
+  
    switch plotdat.level_units
        case 'hPa', 
             plotdat.YDir = 'reverse';
@@ -168,13 +172,7 @@ for ivar = 1:plotdat.nvars
 
    % plot by region
 
-   if (plotdat.nregions > 2)
-      figure(ivar); clf; orient tall; wysiwyg
-   elseif (plotdat.nregions > 1)
-      figure(ivar); clf; orient landscape; wysiwyg
-   else 
-      figure(ivar); clf; orient portrait; wysiwyg
-   end
+   clf; orient tall
 
    for iregion = 1:plotdat.nregions
       plotdat.region = iregion;  
@@ -189,7 +187,7 @@ for ivar = 1:plotdat.nvars
    % BottomAnnotation(ges)
 
    % create a postscript file
-   print(ivar,'-dpsc','-append',psfname);
+   print(gcf,'-dpsc','-append',psfname);
 
 end
 
@@ -233,7 +231,7 @@ function myplot(plotdat)
    % axis labelling, so we manually set some values that normally
    % don't need to be set.
    
-   % if more then 4 regions, this will not work  ... 
+   % if more then 4 regions, this will not work (well) ... 
    if ( plotdat.nregions > 2 )
        ax1 = subplot(2,2,plotdat.region);
    else
@@ -243,22 +241,24 @@ function myplot(plotdat)
        set(ax1,'Position',axpos);
    end
 
+   Stripes(plotdat.Xrange, plotdat.level_edges);
+   hold on;
    h1 = plot(cg,plotdat.level,'k+-',ca,plotdat.level,'k+:');
+   hold off;
    set(h1,'LineWidth',plotdat.linewidth);
-   h = legend(str_other_pr, str_other_po);
+   h = legend(h1,str_other_pr, str_other_po);
    legend(h,'boxoff')
 
-   axlims = axis;
-   axlims = [plotdat.Xrange axlims(3:4)];
+   axlims = [plotdat.Xrange plotdat.Yrange];
    axis(axlims)
    set(gca,'YDir', plotdat.YDir)
    switch plotdat.copystring
       case 'bias'
-         hold on; plot([0 0],[axlims(3) axlims(4)],'k-')
+         hold on; plot([0 0], plotdat.Yrange,'k-')
          plotdat.xlabel = sprintf('bias (%s)',plotdat.biasconv);
       otherwise
    end
-   
+   set(gca,'YTick',plotdat.level,'Ylim',plotdat.Yrange)
    ylabel(plotdat.level_units)
    
    % use same X,Y limits for all plots in this region
@@ -274,6 +274,7 @@ function myplot(plotdat)
            'YAxisLocation','right',...
            'Color','none',...
            'XColor','b','YColor','b',...
+           'YLim',plotdat.Yrange, ...
            'YDir',plotdat.YDir);
    h2 = line(nobs_poss,plotdat.level,'Color','b','Parent',ax2);
    h3 = line(nobs_used,plotdat.level,'Color','b','Parent',ax2);
@@ -281,13 +282,13 @@ function myplot(plotdat)
    set(h3,'LineStyle','none','Marker','+');   
 
    % use same number of X ticks and the same Y ticks
-   
+  
    xlimits = get(ax2,'XLim');
    xinc   = (xlimits(2)-xlimits(1))/(nXticks-1);
    xticks = xlimits(1):xinc:xlimits(2);
    nicexticks = round(10*xticks')/10;
-   set(ax2,'YTick',get(ax1,'YTick'),'YTicklabel',get(ax1,'YTicklabel'), ...
-           'XTick',          xticks,'XTickLabel',nicexticks)
+   set(ax2,'YTick',get(ax1,'YTick'),'YTicklabel',[], ...
+           'XTick',          xticks,'XTicklabel',num2str(nicexticks))
        
    set(get(ax2,'Xlabel'),'String','# of obs (dashed) o=poss, +=used')
    set(get(ax1,'Xlabel'),'String',plotdat.xlabel)
@@ -395,3 +396,33 @@ else
    x = [0 1];
 end
 
+
+
+function str = GenLevelString(m,e)
+
+if ( (length(m)+1) ~= length(e) )
+error(sprintf('%d vertical midpoints and %d edges',length(m),length(e)))
+end
+
+nstrings = length(m);
+
+str = cell(nstrings,1);
+for i = 1:nstrings 
+  str{i} =  sprintf('(%.0f - %.0f)',e(i),e(i+1));
+end
+
+
+function Stripes(x,edges)
+% EraseMode: [ {normal} | background | xor | none ]
+
+
+xc = [ x(1) x(2) x(2) x(1) x(1) ];
+
+hold on;
+for i = 1:2:length(edges)
+  yc = [ edges(i) edges(i) edges(i+1) edges(i+1) edges(i) ];
+  h = fill(xc,yc,[0.8 0.8 0.8], ...
+  'EraseMode','background','EdgeColor','none');
+end
+hold off;
+%get(h)
