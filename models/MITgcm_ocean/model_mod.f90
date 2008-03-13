@@ -18,19 +18,20 @@ use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type,      get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, set_location
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit
-                           ! find_namelist_in_file, check_namelist_read
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+                             logfileunit, &
+                             find_namelist_in_file, check_namelist_read
 
 use     obs_kind_mod, only : KIND_TEMPERATURE
+
+implicit none
+private
 
 ! FIXME: these belong in obs_kind 
 integer, parameter :: KIND_U_CURRENT_COMPONENT = 90
 integer, parameter :: KIND_V_CURRENT_COMPONENT = 91
 integer, parameter :: KIND_SALINITY = 92
 integer, parameter :: KIND_SEA_SURFACE_HEIGHT = 93
-
-implicit none
-private
 
 public :: get_model_size,         &
           adv_1step,              &
@@ -131,7 +132,7 @@ integer, parameter :: Nr = 512
 !--   Time stepping parameters variable declarations
 real(r8) :: nIter0, nTimeSteps, nEndIter, pickupSuff, &
       deltaT, deltaTClock, deltaTmom, &
-      deltaTtracer, dTtracerLev(Nr), deltaTfreesurf
+      deltaTtracer, dTtracerLev(Nr), deltaTfreesurf, &
       abEps, alph_AB, beta_AB, &
       tauCD, rCD, &
       baseTime, startTime, endTime, chkPtFreq, &
@@ -150,7 +151,7 @@ logical :: forcing_In_AB, &
 !--   Gridding parameters variable declarations 
 logical :: usingCartesianGrid, usingCylindricalGrid, &
            usingSphericalPolarGrid, usingCurvilinearGrid, &
-           deepAtmosphere, &
+           deepAtmosphere
 real(r8) :: dxSpacing, dySpacing, delX(Nx), delY(Ny), &
             phiMin, thetaMin, rSphere, &
             Ro_SeaLevel, delZ, delP, delR(Nr), delRc(Nr+1), &
@@ -160,7 +161,7 @@ character(len=MAX_LEN_FNAM) :: delXFile, delYFile, &
                       horizGridFile
 
 !--   Input files variable declarations 
-character(len=MAX_LEN_FNAM) ::
+character(len=MAX_LEN_FNAM) :: &
       bathyFile, topoFile, shelfIceFile, &
       hydrogThetaFile, hydrogSaltFile, diffKrFile, &
       zonalWindFile, meridWindFile, &
@@ -198,7 +199,7 @@ integer, parameter :: V_index   = 4
 integer, parameter :: SSH_index = 5
 
 ! grid counts for each field
-integer :: nx(nfields), ny(nfields), nz(nfields)
+integer :: num_x(nfields), num_y(nfields), num_z(nfields)
 integer :: start_index(nfields)
 
 ! location information - these grids can either be regularly
@@ -240,6 +241,7 @@ subroutine static_init_model()
 ! Called to do one time initialization of the model. In this case,
 ! it reads in the grid information and then the model data.
 
+integer :: iunit, io
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
