@@ -17,7 +17,8 @@ module model_mod
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type,      get_close_maxdist_init, &
-                             get_close_obs_init, get_close_obs, set_location
+                             get_close_obs_init, get_close_obs, set_location, &
+                             VERTISHEIGHT
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              logfileunit, &
                              find_namelist_in_file, check_namelist_read
@@ -243,34 +244,6 @@ subroutine static_init_model()
 
 integer :: iunit, io
 
-! Print module information to log file and stdout.
-call register_module(source, revision, revdate)
-
-! Read the DART namelist for this model
-call find_namelist_in_file("input.nml", "model_nml", iunit)
-read(iunit, nml = model_nml, iostat = io)
-call check_namelist_read(iunit, io, "model_nml")
-
-! Record the namelist values used for the run
-call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-write(logfileunit, nml=model_nml)
-write(     *     , nml=model_nml)
-
-! Read in the MITgcm namelists from the 'data' file
-call find_namelist_in_file("data", "PARM03", iunit)
-read(iunit, nml = PARM03, iostat = io)
-call check_namelist_read(iunit, io, "PARM03")
-
-call find_namelist_in_file("data", "PARM04", iunit)
-read(iunit, nml = PARM04, iostat = io)
-call check_namelist_read(iunit, io, "PARM04")
-
-call find_namelist_in_file("data", "PARM05", iunit)
-read(iunit, nml = PARM05, iostat = io)
-call check_namelist_read(iunit, io, "PARM05")
-
-
-
 ! The Plan:
 !
 !   read the standard MITgcm namelist file 'data' for the
@@ -291,15 +264,55 @@ call check_namelist_read(iunit, io, "PARM05")
 !   set the grid location info
 !
 
-! for now, here's an example:
-! the data files are all 256 x 225 for simplicity, but with
-! the staggering, the actual counts of valid data values are:
-!  S,T = 255 x 224 x 70
-!  U   = 256 x 224 x 70
-!  V   = 255 x 225 x 70
-!  SSH = 255 x 224
+! Print module information to log file and stdout.
+call register_module(source, revision, revdate)
 
-model_size = 255*224*70 + 255*224*70 + 256*224*70 + 225*225*70 + 255*224
+! Read the DART namelist for this model
+call find_namelist_in_file("input.nml", "model_nml", iunit)
+read(iunit, nml = model_nml, iostat = io)
+call check_namelist_read(iunit, io, "model_nml")
+
+! Record the namelist values used for the run
+call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
+write(logfileunit, nml=model_nml)
+write(     *     , nml=model_nml)
+
+! Read in the MITgcm namelists from the 'data' file
+call find_namelist_in_file("data", "PARM03", iunit)
+read(iunit, nml = PARM03, iostat = io)
+call check_namelist_read(iunit, io, "PARM03")
+
+! depths are going to be in this namelist
+call find_namelist_in_file("data", "PARM04", iunit)
+read(iunit, nml = PARM04, iostat = io)
+call check_namelist_read(iunit, io, "PARM04")
+
+call find_namelist_in_file("data", "PARM05", iunit)
+read(iunit, nml = PARM05, iostat = io)
+call check_namelist_read(iunit, io, "PARM05")
+
+! for reading/writing the restart files, tim is writing
+! some utility routines which will look like this:
+!
+! call read_snapshot('XC', array(:,:), data_time)
+! call read_snapshot('XG', array(:,:), data_time)
+! call read_snapshot('YC', array(:,:), data_time)
+! call read_snapshot('YG', array(:,:), data_time)
+! 
+! we pass in a filename (without the .meta and the .data)
+! and an unallocated array of the right dimensionality.
+! it returns the allocated, filled array, along with the timestamp.
+
+! when we are done, drop_snapshot() frees the space for symmetry
+
+
+! for now, here's a hard-coded example to get this compiling:
+! in spite of the staggering, all grids are the same size
+! and offset by half a grid cell.  4 are 3D and 1 is 2D.
+!  S,T,U,V = 256 x 225 x 70
+!  SSH = 256 x 225
+
+model_size = 4 * (256*225*70) + (256*225)
 
 ! Create storage for locations
 allocate(state_vector(model_size))
@@ -410,6 +423,8 @@ integer,             intent(in) :: itype
 real(r8),           intent(out) :: obs_val
 integer,            intent(out) :: istatus
 
+! FIXME: we need to put interp code here.
+
 ! Default for successful return
 istatus = 0
 
@@ -448,7 +463,7 @@ integer,             intent(out), optional :: var_type
 
 if (index_in < start_index(S_index+1)) then
    var_type = KIND_SALINITY  
-   !location = 
+   !location = set_location(lon, lat, depth, VERTISHEIGHT)
 else if (index_in < start_index(T_index+1)) then
    var_type = KIND_TEMPERATURE  
    !location =
