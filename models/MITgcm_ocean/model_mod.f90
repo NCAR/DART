@@ -19,8 +19,8 @@ use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type,      get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, set_location, &
                              VERTISHEIGHT
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
-                             logfileunit, &
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
+                             logfileunit, get_unit, &
                              find_namelist_in_file, check_namelist_read
 
 use     obs_kind_mod, only : KIND_TEMPERATURE
@@ -49,7 +49,8 @@ public :: get_model_size,         &
           get_close_maxdist_init, &
           get_close_obs_init,     &
           get_close_obs,          &
-          ens_mean_for_model
+          ens_mean_for_model,     &
+          MIT_meta_type, read_meta
 
 
 ! version controlled file description for error handling, do not edit
@@ -58,6 +59,7 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date: 2007-04-03 16:44:36 -0600 (Tue, 03 Apr 2007) $"
 
+character(len=128) :: msgstring
 
 !------------------------------------------------------------------
 !
@@ -229,6 +231,16 @@ integer :: model_size
 logical  :: output_state_vector = .true.
 namelist /model_nml/ output_state_vector
 
+! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
+type MIT_meta_type
+!  private
+   integer :: nDims
+   integer :: dimList(3)
+   character(len=32) :: dataprec
+   integer :: reclen
+   integer :: nrecords
+   integer :: timeStepNumber    ! optional
+end type MIT_meta_type
 
 contains
 
@@ -863,6 +875,216 @@ subroutine ens_mean_for_model(ens_mean)
 real(r8), intent(in) :: ens_mean(:)
 
 end subroutine ens_mean_for_model
+
+
+
+
+  function read_meta(fbase, vartype)
+!------------------------------------------------------------------
+! function read_meta(fbase,vartype)
+!
+! Reads the meta files associated with each 'snapshot'
+! and fills the appropriate parts of the output structure.
+!
+! I believe  pkg/mdsio/mdsio_write_meta.F writes the .meta files 
+!
+! The files look something like: 
+!
+! nDims = [   2 ];
+! dimList = [
+!   256,    1,  256,
+!   225,    1,  225
+! ];
+! dataprec = [ 'float32' ];
+! nrecords = [     1 ];
+! timeStepNumber = [          0 ];
+!
+! USAGE:
+! metadata = read_meta('U.0000000024')
+! ... or ...
+! metadata = read_meta('0000000024','U')
+
+character(len=*),           intent(in) :: fbase
+character(len=*), OPTIONAL, intent(in) :: vartype
+type(MIT_meta_type)                    :: read_meta
+
+character(len=128) :: filename, charstring
+integer :: iunit, io
+integer :: i, j, indx, nlines, dim1, dimN
+
+if (present(vartype)) then
+   filename = vartype//'.'//trim(fbase)//'.meta'
+else
+   filename = trim(fbase)//'.meta'
+endif
+
+! Initialize to bogus values
+
+read_meta%nDims = 0
+read_meta%dimList = (/ 0, 0, 0 /)
+read_meta%dataprec = 'null'
+read_meta%reclen = 0
+read_meta%nrecords = 0
+read_meta%timeStepNumber = 0
+
+! Get next available unit number and open the file
+
+iunit = get_unit()
+open(unit=iunit, file=filename, action='read', form='formatted', iostat = io)
+if (io /= 0) then
+   write(msgstring,*) 'unable to open file ', trim(filename), ' for reading'
+   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+endif
+
+! Read every line looking for the nDims entry
+! Count the lines just to make future loops more sensible.
+! nDims = [   2 ];
+
+nlines = 0
+ReadnDims: do i = 1,1000 
+   read(iunit,'(a)', iostat = io)charstring
+   if (io /= 0) exit ReadnDims
+   nlines = nlines + 1
+
+   indx = index(charstring,'nDims = [')
+   if (indx > 0) then
+      read(charstring(indx+9:),*,iostat=io)read_meta%nDims
+      if (io /= 0 )then
+         write(msgstring,*)'unable to parse line ',nlines,' from ', trim(filename)
+         call error_handler(E_ERR,'model_mod:read_meta:nDims',msgstring,source,revision,revdate)
+      endif
+   endif
+enddo ReadnDims
+
+if (read_meta%nDims < 1) then
+   write(msgstring,*) 'unable to determine nDims from ', trim(filename)
+   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+endif
+
+! Read every line looking for the dimList entry
+! dimList = [
+!   256,    1,  256,
+!   225,    1,  225
+! ];
+
+rewind(iunit)
+ReaddimList: do i = 1,nlines 
+   
+   read(iunit,'(a)', iostat = io)charstring
+   if (io /= 0) then
+      write(msgstring,*) 'unable to read line ',i,' of ', trim(filename)
+      call error_handler(E_ERR,'model_mod:read_meta:dimList',msgstring,source,revision,revdate)
+   endif
+
+   indx = index(charstring,'dimList = [')
+
+   if (indx > 0) then
+      do j = 1,read_meta%nDims
+         read(iunit,*,iostat=io)read_meta%dimList(j),dim1,dimN
+         if (io /= 0) then
+            write(msgstring,*)'unable to parse dimList(',j, ') from ', trim(filename)
+            call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+         endif
+      enddo
+      exit ReaddimList
+   endif
+enddo ReaddimList
+
+if (all(read_meta%dimList < 1)) then
+   write(msgstring,*) 'unable to determine dimList from ', trim(filename)
+   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+endif
+
+
+! Read every line looking for the dataprec entry
+! dataprec = [ 'float32' ];
+
+rewind(iunit)
+Readdataprec: do i = 1,nlines 
+
+   read(iunit,'(a)', iostat = io)charstring
+   if (io /= 0) then
+      write(msgstring,*) 'unable to read line ',i,' of ', trim(filename)
+      call error_handler(E_ERR,'model_mod:read_meta:dataprec',msgstring,source,revision,revdate)
+   endif
+
+   indx = index(charstring,'dataprec = [')
+
+   if (indx > 0) then
+      read(charstring(indx+12:),*,iostat=io)read_meta%dataprec
+      if (io /= 0) then
+         write(msgstring,*)'unable to parse dataprec from ', trim(filename)
+         call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+      endif
+      exit Readdataprec
+   endif
+enddo Readdataprec
+
+if (index(read_meta%dataprec,'null') > 0) then
+   write(msgstring,*) 'unable to determine dataprec from ', trim(filename)
+   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+endif
+
+
+! Read every line looking for the nrecords entry
+! nrecords = [     1 ];
+
+rewind(iunit) 
+Readnrecords: do i = 1,nlines 
+   read(iunit,'(a)', iostat = io)charstring
+   if (io /= 0) then
+      call error_handler(E_ERR,'model_mod:read_meta','message',source,revision,revdate)
+   endif
+
+   indx = index(charstring,'nrecords = [')
+
+   if (indx > 0) then
+      read(charstring(indx+12:),*,iostat=io)read_meta%nrecords
+      if (io /= 0) then
+         write(msgstring,*)'unable to parse nrecords from ', trim(filename)
+         call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+      endif
+      exit Readnrecords
+   endif
+enddo Readnrecords
+
+if (read_meta%nrecords < 1) then
+   write(msgstring,*) 'unable to determine nrecords from ', trim(filename)
+   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+endif
+
+
+! Read every line looking for the timeStepNumber entry
+! timeStepNumber = [          0 ];
+
+rewind(iunit)
+ReadtimeStepNumber: do i = 1,nlines 
+   read(iunit,'(a)', iostat = io)charstring
+   if (io /= 0) then
+      call error_handler(E_ERR,'model_mod:read_meta','message',source,revision,revdate)
+   endif
+
+   indx = index(charstring,'timeStepNumber = [')
+   if (indx > 0) then
+      read(charstring(indx+18:),*,iostat=io)read_meta%timeStepNumber
+      if (io /= 0) then
+         write(msgstring,*)'unable to parse timeStepNumber from ', trim(filename)
+         call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+      endif
+      exit ReadtimeStepNumber
+
+   endif
+enddo ReadtimeStepNumber
+
+if (read_meta%nrecords < 1) then
+   write(msgstring,*) 'unable to determine timeStepNumber from ', trim(filename)
+   call error_handler(E_WARN,'model_mod:read_meta',msgstring,source,revision,revdate)
+endif
+
+end function read_meta
+
+
+
 
 
 
