@@ -34,6 +34,8 @@ integer, parameter :: KIND_V_CURRENT_COMPONENT = 91
 integer, parameter :: KIND_SALINITY = 92
 integer, parameter :: KIND_SEA_SURFACE_HEIGHT = 93
 
+! these routines must be public and you cannot change
+! the arguments - they will be called *from* the DART code.
 public :: get_model_size,         &
           adv_1step,              &
           get_state_meta_data,    &
@@ -49,9 +51,14 @@ public :: get_model_size,         &
           get_close_maxdist_init, &
           get_close_obs_init,     &
           get_close_obs,          &
-          ens_mean_for_model,     &
-          prog_var_to_vector,     &
-          MIT_meta_type, read_meta, read_snapshot, drop_snapshot
+          ens_mean_for_model
+
+! generally useful routines for various support purposes.
+! the interfaces here can be changed as appropriate.
+public :: prog_var_to_vector, vector_to_prog_var, &
+          MIT_meta_type, read_meta, write_meta, &
+          read_snapshot, drop_snapshot, write_snapshot, &
+          snapshot_files_to_sv, sv_to_snapshot_files
 
 
 
@@ -219,9 +226,6 @@ integer :: start_index(nfields)
 ! for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 
-! temp space to hold data while we are reading it
-real(r4), allocatable :: data_2d_array(:,:), data_3d_array(:,:,:)
-
 ! location information - these grids can either be regularly
 ! spaced or the spacing along each axis can vary.
 
@@ -239,14 +243,20 @@ integer :: time_step_days      = 0
 integer :: time_step_seconds   = 900
 
 
-! The real state vector and its length
-real(r8), allocatable :: state_vector(:)
+! do we need a copy of this here?  dart will allocate one
+! internally and pass it in whenever we need it...
+!real(r8), allocatable :: state_vector(:)
+
+! the state vector length
 integer :: model_size
 
 ! Skeleton of a model_nml that would be in input.nml
 ! This is where dart-related model parms could be set.
 logical  :: output_state_vector = .true.
-namelist /model_nml/ output_state_vector
+! do we need these in the namelist or is fixed right now ok?
+character(len=128) :: prior_file_prefix, post_file_prefix
+
+namelist /model_nml/ output_state_vector 
 
 ! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
 type MIT_meta_type
@@ -269,6 +279,11 @@ INTERFACE drop_snapshot
       MODULE PROCEDURE drop_2d_snapshot
 END INTERFACE
 
+INTERFACE write_snapshot
+      MODULE PROCEDURE write_2d_snapshot
+      MODULE PROCEDURE write_3d_snapshot
+END INTERFACE
+
 
 
 contains
@@ -284,7 +299,8 @@ subroutine static_init_model()
 ! it reads in the grid information and then the model data.
 
 integer :: iunit, io
-integer :: i, j, k, indx
+integer :: i, j, k
+real(r4), allocatable :: data_2d_array(:,:)
 
 ! The Plan:
 !
@@ -383,7 +399,13 @@ enddo
 call drop_snapshot(data_2d_array)
 
 ! compute ZC and ZG here based on delZ from the namelist
+ZC(1) = 0.0_r8
+do i=2, Nz
+ ZC(i) = ZC(i-1) - delZ(i)
+enddo
 
+! for now, leave ZG undefined
+ZG(:) = 0.0_r8
 
 ! record where in the state vector the data type changes
 ! from one type to another, by computing the starting
@@ -403,7 +425,7 @@ start_index(SSH_index) = start_index(V_index) + (Nx * Ny * Nz)
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 
 ! Create storage for model data
-allocate(state_vector(model_size))
+!allocate(state_vector(model_size))
 
 ! The time_step in terms of a time type must also be initialized.
 time_step = set_time(time_step_seconds, time_step_days)
@@ -415,7 +437,6 @@ end subroutine static_init_model
 
 subroutine init_conditions(x)
 !------------------------------------------------------------------
-! subroutine init_conditions(x)
 !
 ! Returns a model state vector, x, that is some sort of appropriate
 ! initial condition for starting up a long integration of the model.
@@ -434,7 +455,6 @@ end subroutine init_conditions
 
 subroutine adv_1step(x, time)
 !------------------------------------------------------------------
-! subroutine adv_1step(x, time)
 !
 ! Does a single timestep advance of the model. The input value of
 ! the vector x is the starting condition and x is updated to reflect
@@ -1068,7 +1088,10 @@ end subroutine pert_model_state
 
 subroutine ens_mean_for_model(ens_mean)
 !------------------------------------------------------------------
-! Not used in low-order models
+! If needed by the model interface, this is the current mean
+! for all state vector items across all ensembles. It is up to this
+! code to allocate space and save a copy if it is going to be used
+! later on.  For now, we are ignoring it.
 
 real(r8), intent(in) :: ens_mean(:)
 
@@ -1077,9 +1100,8 @@ end subroutine ens_mean_for_model
 
 
 
-  function read_meta(fbase, vartype)
+function read_meta(fbase, vartype)
 !------------------------------------------------------------------
-! function read_meta(fbase,vartype)
 !
 ! Reads the meta files associated with each 'snapshot'
 ! and fills the appropriate parts of the output structure.
@@ -1279,13 +1301,56 @@ if (read_meta%nrecords < 1) then
    call error_handler(E_WARN,'model_mod:read_meta',msgstring,source,revision,revdate)
 endif
 
+close(iunit)
+
 end function read_meta
 
 
-
-  subroutine read_2d_snapshot(fbase, x, timestep, vartype)
+subroutine write_meta(metadata, filebase)
 !------------------------------------------------------------------
-! subroutine read_2d_snapshot(fbase, x, timestep, vartype)
+!
+type(MIT_meta_type), intent(in) :: metadata
+character(len=*), intent(in) :: filebase
+
+integer :: iunit, io, i
+character(len=128) :: filename
+
+filename = trim(filebase)//'.meta'
+
+iunit = get_unit()
+open(unit=iunit, file=filename, action='write', form='formatted', iostat = io)
+if (io /= 0) then
+   write(msgstring,*) 'unable to open file ', trim(filename), ' for writing'
+   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+endif
+
+write(iunit, "(A,I,A)") "nDims = [ ", metadata%nDims, " ];"
+write(iunit, "(A)")     "dimList = [ "
+do i=1, metadata%nDims-1
+  write(iunit, "(3(I,A))") metadata%dimList(i), ',', &
+                           1, ',', &
+                           metadata%dimList(i), ','
+enddo
+write(iunit, "(3(I,A))") metadata%dimList(i), ',', &
+                         1, ',', &
+                         metadata%dimList(i), ' '
+
+write(iunit, "(A)") "];"
+
+write(iunit, "(3A)") "dataprec = [ ", trim(metadata%dataprec), " ];"
+
+write(iunit, "(A,I,A)") "nrecords = [ ", metadata%nrecords, " ];"
+
+if (metadata%timeStepNumber /= 0) then
+   write(iunit, "(A,I,A)") "timeStepNumber = [ ", metadata%timeStepNumber, " ];"
+endif
+
+close(iunit)
+
+end subroutine write_meta
+
+subroutine read_2d_snapshot(fbase, x, timestep, vartype)
+!------------------------------------------------------------------
 !
 ! This routine reads the Fortran direct access binary files ... eg
 ! U.nnnnnnnnnn.data    by getting the dimension information from
@@ -1353,13 +1418,14 @@ if (io /= 0) then
    call error_handler(E_ERR,'read_2d_snapshot',msgstring,source,revision,revdate)
 endif
 
+close(iunit)
+
 end subroutine read_2d_snapshot
 
 
 
-  subroutine read_3d_snapshot(fbase, x, timestep, vartype)
+subroutine read_3d_snapshot(fbase, x, timestep, vartype)
 !------------------------------------------------------------------
-! subroutine read_3d_snapshot(fbase, x, timestep, vartype)
 !
 ! This routine reads the Fortran direct access binary files ... eg
 ! U.nnnnnnnnnn.data    by getting the dimension information from
@@ -1422,27 +1488,276 @@ if (io /= 0) then
    call error_handler(E_ERR,'read_3d_snapshot',msgstring,source,revision,revdate)
 endif
 
+close(iunit)
+
 end subroutine read_3d_snapshot
 
 
 
 subroutine drop_3d_snapshot(x)
+!------------------------------------------------------------------
+!
 real(r4), allocatable, intent(inout) :: x(:,:,:)
 deallocate(x)
 end subroutine drop_3d_snapshot
 
 subroutine drop_2d_snapshot(x)
+!------------------------------------------------------------------
+!
 real(r4), allocatable, intent(inout) :: x(:,:)
 deallocate(x)
 end subroutine drop_2d_snapshot
 
 
+subroutine write_2d_snapshot(x, fbase)
+!------------------------------------------------------------------
+!
+! This routine writes the Fortran direct access binary files ... eg
+! U.nnnnnnnnnn.data    and
+! U.nnnnnnnnnn.meta
+!
+! As it stands now ... the .data files appear to be big-endian.
+
+real(r4), dimension(:,:), intent(in)  :: x
+character(len=*), intent(in) :: fbase
+
+character(len=128) :: metafilename, datafilename
+type(MIT_meta_type) :: metadata
+integer :: iunit, io, indx
+integer :: reclen
+
+metafilename = trim(fbase)//'.meta'
+datafilename = trim(fbase)//'.data'
+
+metadata%nDims = 2
+metadata%dimList(:) = (/ Nx, Ny, 0 /)
+metadata%dataprec = "float32"
+metadata%reclen = Nx * Ny 
+metadata%nrecords = 1
+! FIXME: make this an optional input and if(present()) write it
+metadata%timeStepNumber = 0
+
+call write_meta(metadata, fbase)
+
+reclen = metadata%reclen
+
+iunit = get_unit()
+open(unit=iunit, file=datafilename, action='write', access='direct', recl=reclen, iostat=io)
+if (io /= 0) then
+   write(msgstring,*) 'cannot open file ', trim(datafilename),' for reading.'
+   call error_handler(E_ERR,'model_mod:write_2d_snapshot',msgstring,source,revision,revdate)
+endif
+
+write(iunit, rec=1, iostat = io) x
+if (io /= 0) then
+   write(msgstring,*) 'unable to read snapshot file ', trim(datafilename)
+   call error_handler(E_ERR,'write_2d_snapshot',msgstring,source,revision,revdate)
+endif
+
+close(iunit)
+
+end subroutine write_2d_snapshot
 
 
-subroutine prog_var_to_vector(s,t,u,v,ssh,svector)
+subroutine write_3d_snapshot(x, fbase)
+!------------------------------------------------------------------
+!
+! This routine writes the Fortran direct access binary files ... eg
+! U.nnnnnnnnnn.data  and the associated
+! U.nnnnnnnnnn.meta 
+!
+! As it stands now ... the .data files appear to be big-endian.
+
+real(r4), dimension(:,:,:), intent(in)  :: x
+character(len=*), intent(in) :: fbase
+
+character(len=128) :: metafilename, datafilename
+type(MIT_meta_type) :: metadata
+integer :: iunit, io, indx
+integer :: reclen
+
+metafilename = trim(fbase)//'.meta'
+datafilename = trim(fbase)//'.data'
+
+metadata%nDims = 3
+metadata%dimList(:) = (/ Nx, Ny, Nz /)
+metadata%dataprec = "float32"
+metadata%reclen = Nx * Ny * Nz
+metadata%nrecords = 1
+! FIXME: make this an optional input and if(present()) write it
+metadata%timeStepNumber = 0
+
+call write_meta(metadata, fbase)
+
+reclen = metadata%reclen
+
+! Get next available unit number, write file.
+
+iunit = get_unit()
+open(unit=iunit, file=datafilename, action='write', access='direct', recl=reclen, iostat=io)
+if (io /= 0) then
+   write(msgstring,*) 'cannot open file ', trim(datafilename),' for writing.'
+   call error_handler(E_ERR,'model_mod:write_3d_snapshot',msgstring,source,revision,revdate)
+endif
+
+write(iunit, rec=1, iostat = io) x
+if (io /= 0) then
+   write(msgstring,*) 'unable to write snapshot file ', trim(datafilename)
+   call error_handler(E_ERR,'write_3d_snapshot',msgstring,source,revision,revdate)
+endif
+
+close(iunit)
+
+end subroutine write_3d_snapshot
+
+
+subroutine snapshot_files_to_sv(basename, timestepcount, state_vector)
+!------------------------------------------------------------------
+!
+ character(len=*), intent(in) :: basename
+ integer, intent(in) :: timestepcount 
+ real(r8), intent(inout) :: state_vector(:)
+
+! temp space to hold data while we are reading it
+real(r4), allocatable :: data_2d_array(:,:), data_3d_array(:,:,:)
+integer :: i, j, k, l, indx, timestepcount_out
+
+! These must be a fixed number and in a fixed order.
+character(len=128) :: names_3d(n3dfields), names_2d(n2dfields)
+character(len=128)  :: prefixstring
+
+names_3d(S_index) = 'S'
+names_3d(T_index) = 'T'
+names_3d(U_index) = 'U'
+names_3d(V_index) = 'V'
+names_2d(SSH_index) = 'SSH'
+
+
+! start counting up and filling the state vector
+! one item at a time, linearizing the 3d arrays into a single
+! 1d list of numbers.
+indx = 1
+
+! fill S, T, U, V in that order
+do l=1, n3dfields
+
+   ! the filenames are going to be constructed here and assumed to be:
+   !  Varable.Basename.Timestep.data  and .meta
+   ! e.g. S.Prior.0000000672.data
+   !      S.Prior.0000000672.meta
+   write(prefixstring, "(A,I10.10)") &
+         trim(names_3d(l))//'.'//trim(basename)//'.', timestepcount
+
+   call read_snapshot(prefixstring, data_3d_array, timestepcount_out)
+   do k = 1, Nz
+      do j = 1, Ny
+         do i = 1, Nx
+            state_vector(indx) = data_3d_array(i, j, k)
+            indx = indx + 1
+         enddo
+      enddo
+   enddo
+   call drop_snapshot(data_3d_array)
+
+enddo
+
+! and finally, SSH
+do l=1, n2dfields
+
+   write(prefixstring, "(A,I10.10)") &
+         trim(names_2d(l))//'.'//trim(basename)//'.', timestepcount
+
+   call read_snapshot(prefixstring, data_2d_array, timestepcount_out)
+   do j = 1, Ny
+      do i = 1, Nx
+         state_vector(indx) = data_2d_array(i, j)
+         indx = indx + 1
+      enddo
+   enddo
+   call drop_snapshot(data_2d_array)
+
+enddo
+
+end subroutine snapshot_files_to_sv
+
+subroutine sv_to_snapshot_files(state_vector, basename, timestepcount)
+!------------------------------------------------------------------
+!
+ real(r8), intent(in) :: state_vector(:)
+ character(len=*), intent(in) :: basename
+ integer, intent(in) :: timestepcount 
+
+! temp space to hold data while we are writing it
+real(r4), allocatable :: data_2d_array(:,:), data_3d_array(:,:,:)
+integer :: i, j, k, l, indx, timestepcount_out
+
+! These must be a fixed number and in a fixed order.
+character(len=128) :: names_3d(n3dfields), names_2d(n2dfields)
+character(len=128)  :: prefixstring
+
+names_3d(S_index) = 'S'
+names_3d(T_index) = 'T'
+names_3d(U_index) = 'U'
+names_3d(V_index) = 'V'
+names_2d(SSH_index) = 'SSH'
+
+
+! start counting up and filling the state vector
+! one item at a time, linearizing the 3d arrays into a single
+! 1d list of numbers.
+indx = 1
+
+! fill S, T, U, V in that order
+do l=1, n3dfields
+
+   ! the filenames are going to be constructed here and assumed to be:
+   !  Varable.Basename.Timestep.data  and .meta
+   ! e.g. S.Prior.0000000672.data
+   !      S.Prior.0000000672.meta
+   write(prefixstring, "(A,I10.10)") &
+         trim(names_3d(l))//'.'//trim(basename)//'.', timestepcount
+
+   allocate(data_3d_array(Nx, Ny, Nz))
+   do k = 1, Nz
+      do j = 1, Ny
+         do i = 1, Nx
+            data_3d_array(i, j, k) = state_vector(indx)
+            indx = indx + 1
+         enddo
+      enddo
+   enddo
+   call write_snapshot(data_3d_array, prefixstring)
+   deallocate(data_3d_array)
+
+enddo
+
+! and finally, SSH
+do l=1, n2dfields
+
+   write(prefixstring, "(A,I10.10)") &
+         trim(names_2d(l))//'.'//trim(basename)//'.', timestepcount
+
+   allocate(data_2d_array(Nx, Ny))
+   do j = 1, Ny
+      do i = 1, Nx
+         data_2d_array(i, j) = state_vector(indx)
+         indx = indx + 1
+      enddo
+   enddo
+   call write_snapshot(data_2d_array, prefixstring)
+   deallocate(data_2d_array)
+
+enddo
+
+end subroutine sv_to_snapshot_files
+
+
+subroutine prog_var_to_vector(s,t,u,v,ssh,x)
+!------------------------------------------------------------------
+!
 real(r4), dimension(:,:,:), intent(in)  :: s,t,u,v
 real(r4), dimension(:,:),   intent(in)  :: ssh
-real(r8), dimension(:),     intent(out) :: svector
+real(r8), dimension(:),     intent(out) :: x
 
 integer :: i,j,k,ii
 
@@ -1487,7 +1802,7 @@ do k = 1,Nz   ! vertical
 do j = 1,Ny   ! latitudes
 do i = 1,Nx   ! longitudes
    ii = ii + 1
-   svector(ii) = s(i,j,k)
+   x(ii) = s(i,j,k)
 enddo
 enddo
 enddo
@@ -1497,7 +1812,7 @@ do k = 1,Nz   ! vertical
 do j = 1,Ny   ! latitudes
 do i = 1,Nx   ! longitudes
    ii = ii + 1
-   svector(ii) = t(i,j,k)
+   x(ii) = t(i,j,k)
 enddo
 enddo
 enddo
@@ -1507,7 +1822,7 @@ do k = 1,Nz   ! vertical
 do j = 1,Ny   ! latitudes
 do i = 1,Nx   ! longitudes
    ii = ii + 1
-   svector(ii) = u(i,j,k)
+   x(ii) = u(i,j,k)
 enddo
 enddo
 enddo
@@ -1517,7 +1832,7 @@ do k = 1,Nz   ! vertical
 do j = 1,Ny   ! latitudes
 do i = 1,Nx   ! longitudes
    ii = ii + 1
-   svector(ii) = v(i,j,k)
+   x(ii) = v(i,j,k)
 enddo
 enddo
 enddo
@@ -1526,7 +1841,7 @@ enddo
 do j = 1,Ny   ! latitudes
 do i = 1,Nx   ! longitudes
    ii = ii + 1
-   svector(ii) = ssh(i,j)
+   x(ii) = ssh(i,j)
 enddo
 enddo
 
@@ -1538,6 +1853,114 @@ endif
 
 end subroutine prog_var_to_vector
 
+
+subroutine vector_to_prog_var(x,s,t,u,v,ssh)
+!------------------------------------------------------------------
+!
+real(r8), intent(in) :: x(:)
+real(r4), allocatable, dimension(:,:,:), intent(out)  :: s,t,u,v
+real(r4), allocatable, dimension(:,:),   intent(out)  :: ssh
+
+integer :: i,j,k,ii
+
+! check shapes
+
+if (size(s,1) /= Nx) then
+   write(msgstring,*),'dim 1 of S /= Nx ',size(s,1),Nx
+   call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
+                      msgstring,source,revision,revdate) 
+endif
+
+if (size(s,2) /= Ny) then
+   write(msgstring,*),'dim 2 of S /= Nx ',size(s,2),Nx
+   call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
+                      msgstring,source,revision,revdate) 
+endif
+
+if (size(s,3) /= Nz) then
+   write(msgstring,*),'dim 3 of S /= Nx ',size(s,3),Nx
+   call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
+                      msgstring,source,revision,revdate) 
+endif
+
+if (size(ssh,1) /= Nx) then
+   write(msgstring,*),'dim 1 of SSH /= Nx ',size(ssh,1),Nx
+   call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
+                      msgstring,source,revision,revdate) 
+endif
+
+if (size(ssh,2) /= Nx) then
+   write(msgstring,*),'dim 2 of SSH /= Nx ',size(ssh,2),Nx
+   call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
+                      msgstring,source,revision,revdate) 
+endif
+
+! Should check sizes of T,U,V against that of S
+
+! make these the right size
+allocate(s(Nx,Ny,Nz))
+allocate(t(Nx,Ny,Nz))
+allocate(u(Nx,Ny,Nz))
+allocate(v(Nx,Ny,Nz))
+allocate(ssh(Nx,Ny))
+
+ii = 0
+
+! Salinity
+do k = 1,Nz   ! vertical
+do j = 1,Ny   ! latitudes
+do i = 1,Nx   ! longitudes
+   ii = ii + 1
+   s(i,j,k) = x(ii)
+enddo
+enddo
+enddo
+
+! Temperature
+do k = 1,Nz   ! vertical
+do j = 1,Ny   ! latitudes
+do i = 1,Nx   ! longitudes
+   ii = ii + 1
+   t(i,j,k) = x(ii)
+enddo
+enddo
+enddo
+
+! E-W 
+do k = 1,Nz   ! vertical
+do j = 1,Ny   ! latitudes
+do i = 1,Nx   ! longitudes
+   ii = ii + 1
+   u(i,j,k) = x(ii)
+enddo
+enddo
+enddo
+
+! N-S
+do k = 1,Nz   ! vertical
+do j = 1,Ny   ! latitudes
+do i = 1,Nx   ! longitudes
+   ii = ii + 1
+   v(i,j,k) = x(ii)
+enddo
+enddo
+enddo
+
+! Sea Surface Height
+do j = 1,Ny   ! latitudes
+do i = 1,Nx   ! longitudes
+   ii = ii + 1
+   ssh(i,j) = x(ii)
+enddo
+enddo
+
+if (ii /= get_model_size()) then
+   write(msgstring,*)'data size ',ii,' /= ',get_model_size(),' model size'
+   call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
+                      msgstring,source,revision,revdate) 
+endif
+
+end subroutine vector_to_prog_var
 
 
 !===================================================================
