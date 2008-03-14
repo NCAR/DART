@@ -50,7 +50,8 @@ public :: get_model_size,         &
           get_close_obs_init,     &
           get_close_obs,          &
           ens_mean_for_model,     &
-          MIT_meta_type, read_meta, read_snapshot
+          prog_var_to_vector,     &
+          MIT_meta_type, read_meta, read_snapshot, drop_snapshot
 
 
 
@@ -78,11 +79,12 @@ character(len=128) :: msgstring
 ! must match the value in EEPARAMS.h
 integer, parameter :: MAX_LEN_FNAM = 512
 
-! these come from SIZE.h and can vary.  should they be namelist
-! controlled?
-integer, parameter :: Nx = 1024
-integer, parameter :: Ny = 1024
-integer, parameter :: Nr = 512
+! these come from SIZE.h and can vary.  
+! should they be namelist controlled?
+integer, parameter :: max_nx = 1024
+integer, parameter :: max_ny = 1024
+integer, parameter :: max_nz = 512
+integer, parameter :: max_nr = 512
 
 ! must match lists declared in ini_parms.f
 
@@ -136,7 +138,7 @@ integer, parameter :: Nr = 512
 !--   Time stepping parameters variable declarations
 real(r8) :: nIter0, nTimeSteps, nEndIter, pickupSuff, &
       deltaT, deltaTClock, deltaTmom, &
-      deltaTtracer, dTtracerLev(Nr), deltaTfreesurf, &
+      deltaTtracer, dTtracerLev(max_nr), deltaTfreesurf, &
       abEps, alph_AB, beta_AB, &
       tauCD, rCD, &
       baseTime, startTime, endTime, chkPtFreq, &
@@ -156,9 +158,9 @@ logical :: forcing_In_AB, &
 logical :: usingCartesianGrid, usingCylindricalGrid, &
            usingSphericalPolarGrid, usingCurvilinearGrid, &
            deepAtmosphere
-real(r8) :: dxSpacing, dySpacing, delX(Nx), delY(Ny), &
+real(r8) :: dxSpacing, dySpacing, delX(max_nx), delY(max_ny), &
             phiMin, thetaMin, rSphere, &
-            Ro_SeaLevel, delZ, delP, delR(Nr), delRc(Nr+1), &
+            Ro_SeaLevel, delZ(max_nz), delP, delR(max_nr), delRc(max_nr+1), &
             rkFac, groundAtK1
 character(len=MAX_LEN_FNAM) :: delXFile, delYFile, &
                       delRFile, delRcFile, &
@@ -195,6 +197,8 @@ character(len=MAX_LEN_FNAM) :: &
 ! standard MITgcm namelist and filled in here.
 
 integer, parameter :: nfields   = 5
+integer, parameter :: n3dfields = 4
+integer, parameter :: n2dfields = 1
 
 integer, parameter :: S_index   = 1
 integer, parameter :: T_index   = 2
@@ -202,23 +206,35 @@ integer, parameter :: U_index   = 3
 integer, parameter :: V_index   = 4
 integer, parameter :: SSH_index = 5
 
+! FIXME: put the input/restart data filenames into an array
+! so we can loop over all 3d arrays and then 2d arrays as we
+! fill the state vector.
+
+
 ! grid counts for each field
-integer :: num_x(nfields), num_y(nfields), num_z(nfields)
+integer :: Nx, Ny, Nz
 integer :: start_index(nfields)
+
+! locations of the cell centers (C) and cell faces (grid?) (G)
+! for each axis.
+real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
+
+! temp space to hold data while we are reading it
+real(r4), allocatable :: data_2d_array(:,:), data_3d_array(:,:,:)
 
 ! location information - these grids can either be regularly
 ! spaced or the spacing along each axis can vary.
 
-real(r8) :: lat_origin, lon_origin
-logical :: regular_lat, regular_lon, regular_depth
-real(r8) :: delta_lat, delta_lon, delta_depth
-real(r8), allocatable :: lat_grid(:), lon_grid(:), depth_grid(:)
-real(r8), allocatable :: data_2d_array(:,:), data_3d_array(:,:,:)
+!real(r8) :: lat_origin, lon_origin
+!logical :: regular_lat, regular_lon, regular_depth
+!real(r8) :: delta_lat, delta_lon, delta_depth
+!real(r8), allocatable :: lat_grid(:), lon_grid(:), depth_grid(:)
 
 
 ! What is the natural model timestep?
 real(r8) :: model_timestep
 type(time_type) :: time_step
+integer :: timestepcount
 integer :: time_step_days      = 0
 integer :: time_step_seconds   = 900
 
@@ -248,6 +264,11 @@ INTERFACE read_snapshot
       MODULE PROCEDURE read_3d_snapshot
 END INTERFACE
 
+INTERFACE drop_snapshot
+      MODULE PROCEDURE drop_3d_snapshot
+      MODULE PROCEDURE drop_2d_snapshot
+END INTERFACE
+
 
 
 contains
@@ -263,6 +284,7 @@ subroutine static_init_model()
 ! it reads in the grid information and then the model data.
 
 integer :: iunit, io
+integer :: i, j, k, indx
 
 ! The Plan:
 !
@@ -302,6 +324,8 @@ call find_namelist_in_file("data", "PARM03", iunit)
 read(iunit, nml = PARM03, iostat = io)
 call check_namelist_read(iunit, io, "PARM03")
 
+delZ(:) = 0.0_r4
+
 ! depths are going to be in this namelist
 call find_namelist_in_file("data", "PARM04", iunit)
 read(iunit, nml = PARM04, iostat = io)
@@ -311,30 +335,74 @@ call find_namelist_in_file("data", "PARM05", iunit)
 read(iunit, nml = PARM05, iostat = io)
 call check_namelist_read(iunit, io, "PARM05")
 
-! for reading/writing the restart files, tim is writing
-! some utility routines which will look like this:
-!
-! call read_snapshot('XC', array(:,:), data_time)
-! call read_snapshot('XG', array(:,:), data_time)
-! call read_snapshot('YC', array(:,:), data_time)
-! call read_snapshot('YG', array(:,:), data_time)
-! 
 ! we pass in a filename (without the .meta and the .data)
 ! and an unallocated array of the right dimensionality.
-! it returns the allocated, filled array, along with the timestamp.
+! it returns the allocated, filled array, along with the timestep count.
+! when we are done, drop_snapshot() frees the space.
 
-! when we are done, drop_snapshot() frees the space for symmetry
+! first, X (longitude)
+call read_snapshot('XC', data_2d_array, timestepcount)
+Nx = size(data_2d_array, 1)
+Ny = size(data_2d_array, 2)
+do i=1, Nx
+  XC(i) = data_2d_array(i, 1)
+enddo
+call drop_snapshot(data_2d_array)
+
+call read_snapshot('XG', data_2d_array, timestepcount)
+if (size(data_2d_array, 1) /= Nx) then
+  ! call error handler, files are inconsistent sizes
+endif
+if (size(data_2d_array, 2) /= Ny) then
+  ! call error handler, files are inconsistent sizes
+endif
+do i=1, Nx
+  XG(i) = data_2d_array(i, 1)
+enddo
+call drop_snapshot(data_2d_array)
+
+! then Y (latitude)
+call read_snapshot('YC', data_2d_array, timestepcount)
+Nx = size(data_2d_array, 1)
+Ny = size(data_2d_array, 2)
+do i=1, Ny
+  YC(i) = data_2d_array(i, 1)
+enddo
+call drop_snapshot(data_2d_array)
+
+call read_snapshot('YG', data_2d_array, timestepcount)
+if (size(data_2d_array, 1) /= Nx) then
+  ! call error handler, files are inconsistent sizes
+endif
+if (size(data_2d_array, 2) /= Ny) then
+  ! call error handler, files are inconsistent sizes
+endif
+do i=1, Ny
+  YG(i) = data_2d_array(i, 1)
+enddo
+call drop_snapshot(data_2d_array)
+
+! compute ZC and ZG here based on delZ from the namelist
 
 
-! for now, here's a hard-coded example to get this compiling:
+! record where in the state vector the data type changes
+! from one type to another, by computing the starting
+! index for each block of data.
+start_index(S_index)   = 1
+start_index(T_index)   = start_index(S_index) + (Nx * Ny * Nz)
+start_index(U_index)   = start_index(T_index) + (Nx * Ny * Nz)
+start_index(V_index)   = start_index(U_index) + (Nx * Ny * Nz)
+start_index(SSH_index) = start_index(V_index) + (Nx * Ny * Nz)
+
+
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 1 is 2D.
-!  S,T,U,V = 256 x 225 x 70
-!  SSH = 256 x 225
+!  e.g. S,T,U,V = 256 x 225 x 70
+!  e.g. SSH = 256 x 225
 
-model_size = 4 * (256*225*70) + (256*225)
+model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 
-! Create storage for locations
+! Create storage for model data
 allocate(state_vector(model_size))
 
 ! The time_step in terms of a time type must also be initialized.
@@ -1123,6 +1191,9 @@ endif
 
 metadata = read_meta(fbase,vartype)
 
+write(*,*)'nDims   ',metadata%nDims
+write(*,*)'dimList ',metadata%dimList
+
 ! check to make sure storage modes match
 ! somehow have to pair the string with the fortran kind
 ! and protect against the redefinition of 'r4' ...
@@ -1140,6 +1211,8 @@ endif
 ! good to go 
 
 allocate(x(metadata%dimList(1), metadata%dimList(2)))
+
+write(*,*)'shape   ',shape(x)
 
 reclen = product(shape(x))
 
@@ -1228,6 +1301,120 @@ if (io /= 0) then
 endif
 
 end subroutine read_3d_snapshot
+
+
+
+subroutine drop_3d_snapshot(x)
+real(r4), allocatable, intent(inout) :: x(:,:,:)
+deallocate(x)
+end subroutine drop_3d_snapshot
+
+subroutine drop_2d_snapshot(x)
+real(r4), allocatable, intent(inout) :: x(:,:)
+deallocate(x)
+end subroutine drop_2d_snapshot
+
+
+
+
+subroutine prog_var_to_vector(s,t,u,v,ssh,svector)
+real(r4), dimension(:,:,:), intent(in)  :: s,t,u,v
+real(r4), dimension(:,:),   intent(in)  :: ssh
+real(r8), dimension(:),     intent(out) :: svector
+
+integer :: i,j,k,ii
+
+! check shapes
+
+if (size(s,1) /= Nx) then
+   write(msgstring,*),'dim 1 of S /= Nx ',size(s,1),Nx
+   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
+                      msgstring,source,revision,revdate) 
+endif
+
+if (size(s,2) /= Ny) then
+   write(msgstring,*),'dim 2 of S /= Nx ',size(s,2),Nx
+   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
+                      msgstring,source,revision,revdate) 
+endif
+
+if (size(s,3) /= Nz) then
+   write(msgstring,*),'dim 3 of S /= Nx ',size(s,3),Nx
+   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
+                      msgstring,source,revision,revdate) 
+endif
+
+if (size(ssh,1) /= Nx) then
+   write(msgstring,*),'dim 1 of SSH /= Nx ',size(ssh,1),Nx
+   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
+                      msgstring,source,revision,revdate) 
+endif
+
+if (size(ssh,2) /= Nx) then
+   write(msgstring,*),'dim 2 of SSH /= Nx ',size(ssh,2),Nx
+   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
+                      msgstring,source,revision,revdate) 
+endif
+
+! Should check sizes of T,U,V against that of S
+
+ii = 0
+
+! Salinity
+do k = 1,Nz   ! vertical
+do j = 1,Ny   ! latitudes
+do i = 1,Nx   ! longitudes
+   ii = ii + 1
+   svector(ii) = s(i,j,k)
+enddo
+enddo
+enddo
+
+! Temperature
+do k = 1,Nz   ! vertical
+do j = 1,Ny   ! latitudes
+do i = 1,Nx   ! longitudes
+   ii = ii + 1
+   svector(ii) = t(i,j,k)
+enddo
+enddo
+enddo
+
+! E-W 
+do k = 1,Nz   ! vertical
+do j = 1,Ny   ! latitudes
+do i = 1,Nx   ! longitudes
+   ii = ii + 1
+   svector(ii) = u(i,j,k)
+enddo
+enddo
+enddo
+
+! N-S
+do k = 1,Nz   ! vertical
+do j = 1,Ny   ! latitudes
+do i = 1,Nx   ! longitudes
+   ii = ii + 1
+   svector(ii) = v(i,j,k)
+enddo
+enddo
+enddo
+
+! Sea Surface Height
+do j = 1,Ny   ! latitudes
+do i = 1,Nx   ! longitudes
+   ii = ii + 1
+   svector(ii) = ssh(i,j)
+enddo
+enddo
+
+if (ii /= get_model_size()) then
+   write(msgstring,*)'data size ',ii,' /= ',get_model_size(),' model size'
+   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
+                      msgstring,source,revision,revdate) 
+endif
+
+end subroutine prog_var_to_vector
 
 
 
