@@ -99,6 +99,12 @@ integer, parameter :: KIND_TRACER_SOURCE               = 28, &
                       KIND_MEAN_SOURCE                 = 30, &
                       KIND_SOURCE_PHASE                = 31
 
+! kinds for the MITgcm ocean model
+integer, parameter :: KIND_SALINITY                    = 50, &
+                      KIND_U_CURRENT_COMPONENT         = 51, &
+                      KIND_V_CURRENT_COMPONENT         = 52, &
+                      KIND_SEA_SURFACE_HEIGHT          = 53, &
+
 ! kinds for vortex tracking (WRF - yongsheng)
 integer, parameter :: KIND_VORTEX_LON                  = 81, &
                       KIND_VORTEX_LAT                  = 82, &
