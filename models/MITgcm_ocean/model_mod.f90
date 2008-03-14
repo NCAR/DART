@@ -14,7 +14,7 @@ module model_mod
 ! This is the interface between the MITgcm ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r8
+use        types_mod, only : r4, r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type,      get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, set_location, &
@@ -50,7 +50,8 @@ public :: get_model_size,         &
           get_close_obs_init,     &
           get_close_obs,          &
           ens_mean_for_model,     &
-          MIT_meta_type, read_meta
+          MIT_meta_type, read_meta, read_snapshot
+
 
 
 ! version controlled file description for error handling, do not edit
@@ -241,6 +242,13 @@ type MIT_meta_type
    integer :: nrecords
    integer :: timeStepNumber    ! optional
 end type MIT_meta_type
+
+INTERFACE read_snapshot
+      MODULE PROCEDURE read_2d_snapshot
+      MODULE PROCEDURE read_3d_snapshot
+END INTERFACE
+
+
 
 contains
 
@@ -1085,6 +1093,141 @@ end function read_meta
 
 
 
+  subroutine read_2d_snapshot(fbase, x, timestep, vartype)
+!------------------------------------------------------------------
+! subroutine read_2d_snapshot(fbase, x, timestep, vartype)
+!
+! This routine reads the Fortran direct access binary files ... eg
+! U.nnnnnnnnnn.data    by getting the dimension information from
+! U.nnnnnnnnnn.meta
+!
+! As it stands now ... the .data files appear to be big-endian.
+
+character(len=*),                        intent(in)  :: fbase
+real(r4), allocatable, dimension(:,:),   intent(out) :: x
+integer,                                 intent(out) :: timestep
+character(len=*), optional,              intent(in)  :: vartype
+
+character(len=128) :: metafilename, datafilename
+type(MIT_meta_type):: metadata
+integer :: iunit, io, indx
+integer :: reclen
+
+if (present(vartype)) then
+   metafilename = vartype//'.'//trim(fbase)//'.meta'
+   datafilename = vartype//'.'//trim(fbase)//'.data'
+else
+   metafilename = trim(fbase)//'.meta'
+   datafilename = trim(fbase)//'.data'
+endif
+
+metadata = read_meta(fbase,vartype)
+
+! check to make sure storage modes match
+! somehow have to pair the string with the fortran kind
+! and protect against the redefinition of 'r4' ...
+! This code is not robust as it stands ...
+
+if     ( index(metadata%dataprec,'float32') > 0 ) then
+   ! r4 is probably OK
+else if( index(metadata%dataprec,'real*4') > 0 ) then
+   ! r4 is probably OK
+else
+   write(msgstring,*) 'storage mode mismatch for ', trim(datafilename)
+   call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
+endif
+
+! good to go 
+
+allocate(x(metadata%dimList(1), metadata%dimList(2)))
+
+reclen = product(shape(x))
+
+! Get next available unit number, read file.
+
+iunit = get_unit()
+open(unit=iunit, file=datafilename, action='read', access='direct', recl=reclen, iostat=io)
+if (io /= 0) then
+   write(msgstring,*) 'cannot open file ', trim(datafilename),' for reading.'
+   call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
+endif
+
+read(iunit, rec=1, iostat = io) x
+if (io /= 0) then
+   write(msgstring,*) 'unable to read snapshot file ', trim(datafilename)
+   call error_handler(E_ERR,'read_2d_snapshot',msgstring,source,revision,revdate)
+endif
+
+end subroutine read_2d_snapshot
+
+
+
+  subroutine read_3d_snapshot(fbase, x, timestep, vartype)
+!------------------------------------------------------------------
+! subroutine read_3d_snapshot(fbase, x, timestep, vartype)
+!
+! This routine reads the Fortran direct access binary files ... eg
+! U.nnnnnnnnnn.data    by getting the dimension information from
+! U.nnnnnnnnnn.meta
+!
+! As it stands now ... the .data files appear to be big-endian.
+
+character(len=*),                        intent(in)  :: fbase
+real(r4), allocatable, dimension(:,:,:), intent(out) :: x
+integer,                                 intent(out) :: timestep
+character(len=*), optional,              intent(in)  :: vartype
+
+character(len=128) :: metafilename, datafilename
+type(MIT_meta_type):: metadata
+integer :: iunit, io, indx
+integer :: reclen
+
+if (present(vartype)) then
+   metafilename = vartype//'.'//trim(fbase)//'.meta'
+   datafilename = vartype//'.'//trim(fbase)//'.data'
+else
+   metafilename = trim(fbase)//'.meta'
+   datafilename = trim(fbase)//'.data'
+endif
+
+metadata = read_meta(fbase,vartype)
+
+! check to make sure storage modes match
+! somehow have to pair the string with the fortran kind
+! and protect against the redefinition of 'r4' ...
+! This code is not robust as it stands ...
+
+if     ( index(metadata%dataprec,'float32') > 0 ) then
+   ! r4 is probably OK
+else if( index(metadata%dataprec,'real*4') > 0 ) then
+   ! r4 is probably OK
+else
+   write(msgstring,*) 'storage mode mismatch for ', trim(datafilename)
+   call error_handler(E_ERR,'model_mod:read_3d_snapshot',msgstring,source,revision,revdate)
+endif
+
+! good to go 
+
+allocate(x(metadata%dimList(1), metadata%dimList(2), metadata%dimList(3)))
+
+reclen = product(shape(x))
+
+! Get next available unit number, read file.
+
+iunit = get_unit()
+open(unit=iunit, file=datafilename, action='read', access='direct', recl=reclen, iostat=io)
+if (io /= 0) then
+   write(msgstring,*) 'cannot open file ', trim(datafilename),' for reading.'
+   call error_handler(E_ERR,'model_mod:read_3d_snapshot',msgstring,source,revision,revdate)
+endif
+
+read(iunit, rec=1, iostat = io) x
+if (io /= 0) then
+   write(msgstring,*) 'unable to read snapshot file ', trim(datafilename)
+   call error_handler(E_ERR,'read_3d_snapshot',msgstring,source,revision,revdate)
+endif
+
+end subroutine read_3d_snapshot
 
 
 
