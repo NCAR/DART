@@ -30,8 +30,8 @@
 !            call interpolate(state, location, KIND_U_CURRENT_COMPONENT, obs_val, istatus)         
 !         case(V_CURRENT_COMPONENT)
 !            call interpolate(state, location, KIND_V_CURRENT_COMPONENT, obs_val, istatus)         
-!         case(GEOPOTENTIAL_HEIGHT)
-!            call interpolate(state, location, KIND_GEOPOTENTIAL_HEIGHT, obs_val, istatus)
+!         case(SEA_SURFACE_HEIGHT)
+!            call interpolate(state, location, KIND_SEA_SURFACE_HEIGHT, obs_val, istatus)
 !
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
