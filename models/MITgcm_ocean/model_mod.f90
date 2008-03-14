@@ -22,17 +22,11 @@ use     location_mod, only : location_type,      get_close_maxdist_init, &
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              logfileunit, get_unit, nc_check, &
                              find_namelist_in_file, check_namelist_read
-
-use     obs_kind_mod, only : KIND_TEMPERATURE
+use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COMPONENT, &
+                             KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT
 
 implicit none
 private
-
-! FIXME: these belong in obs_kind 
-integer, parameter :: KIND_U_CURRENT_COMPONENT = 90
-integer, parameter :: KIND_V_CURRENT_COMPONENT = 91
-integer, parameter :: KIND_SALINITY = 92
-integer, parameter :: KIND_SEA_SURFACE_HEIGHT = 93
 
 ! these routines must be public and you cannot change
 ! the arguments - they will be called *from* the DART code.
