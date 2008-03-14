@@ -1,8 +1,8 @@
 function pinfo = GetCamInfo(pstruct,routine);
-% GetBgridInfo   prepares a structure of information needed by the subsequent "routine"
+% GetCamInfo   prepares a structure of information needed by the subsequent "routine"
 %                The information is gathered via rudimentary "input" routines.
 %
-% pinfo = GetBgridInfo(fname,routine);
+% pinfo = GetCamInfo(fname,routine);
 %
 % fname     Name of the DART netcdf file
 % routine   name of subsequent plot routine.
@@ -222,7 +222,7 @@ time    = times(timeind);
 function [level, lvlind] = GetLevel(pgvar, levels, deflevel)
 %----------------------------------------------------------------------
 % level and lvlind will not be equal for all models, (and probably
-% shouldn't for the bgrid ... but for future expansion ...
+% shouldn't for cam ... but for future expansion ...
 if (nargin == 3), lvlind = deflevel; else lvlind = 1; end
 
 if strcmp(lower(pgvar),'ps') ==1 
