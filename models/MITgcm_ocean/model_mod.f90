@@ -18,7 +18,7 @@ use        types_mod, only : r4, r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type,      get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, set_location, &
-                             VERTISHEIGHT
+                             VERTISHEIGHT, get_location, vert_is_height
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              logfileunit, get_unit, nc_check, &
                              find_namelist_in_file, check_namelist_read
@@ -243,10 +243,6 @@ integer :: time_step_days      = 0
 integer :: time_step_seconds   = 900
 
 
-! do we need a copy of this here?  dart will allocate one
-! internally and pass it in whenever we need it...
-!real(r8), allocatable :: state_vector(:)
-
 ! the state vector length
 integer :: model_size
 
@@ -424,9 +420,6 @@ start_index(SSH_index) = start_index(V_index) + (Nx * Ny * Nz)
 
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 
-! Create storage for model data
-!allocate(state_vector(model_size))
-
 ! The time_step in terms of a time type must also be initialized.
 time_step = set_time(time_step_seconds, time_step_days)
 
@@ -510,33 +503,396 @@ end subroutine init_time
 
 
 
-subroutine model_interpolate(x, location, itype, obs_val, istatus)
-!------------------------------------------------------------------
+subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
+!=======================================================================
 !
-! Given a state vector, a location, and a model state variable type,
-! interpolates the state variable field to that location and returns
-! the value in obs_val. The istatus variable should be returned as
-! 0 unless there is some problem in computing the interpolation in
-! which case an alternate value should be returned. The itype variable
-! is a model specific integer that specifies the type of field (for
-! instance temperature, zonal wind component, etc.). In low order
-! models that have no notion of types of variables, this argument can
-! be ignored. For applications in which only perfect model experiments
-! with identity observations (i.e. only the value of a particular
-! state variable is observed), this can be a NULL INTERFACE.
 
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
-integer,             intent(in) :: itype
-real(r8),           intent(out) :: obs_val
+integer,             intent(in) :: obs_type
+real(r8),           intent(out) :: interp_val
 integer,            intent(out) :: istatus
 
-! FIXME: we need to put interp code here.
+! Model interpolate will interpolate any state variable (S, T, U, V, SSH) to
+! the given location given a state vector. The type of the variable being
+! interpolated is obs_type since normally this is used to find the expected
+! value of an observation at some location. The interpolated value is 
+! returned in interp_val and istatus is 0 for success.
 
-! Default for successful return
+! Local storage
+real(r8)       :: loc_array(3), llon, llat, lheight
+integer        :: base_offset, offset
+integer        :: hgt_bot, hgt_top
+real(r8)       :: hgt_fract
+real(r8)       :: top_val, bot_val
+integer        :: hstatus
+
+
+! Successful istatus is 0
 istatus = 0
 
+! Get the individual locations values; make sure the vertical is height
+! Might want to support model level in the vertical at some point
+loc_array = get_location(location)
+llon = loc_array(1)
+llat = loc_array(2)
+lheight = loc_array(3)
+
+! Only know how to work with height vertical coordinate for now
+if(.not. vert_is_height(location)) then
+   istatus = 1
+   return
+endif
+
+! Do horizontal interpolations for the appropriate levels
+! Find the basic offset of this field
+if(obs_type == KIND_SALINITY) then
+   base_offset = start_index(1)
+else if(obs_type == KIND_TEMPERATURE) then
+   base_offset = start_index(2)
+else if(obs_type == KIND_U_CURRENT_COMPONENT) then
+   base_offset = start_index(3)
+else if(obs_type == KIND_V_CURRENT_COMPONENT) then
+   base_offset = start_index(4)
+else if(obs_type == KIND_SEA_SURFACE_HEIGHT) then
+   base_offset = start_index(5)
+else
+   ! Not a legal type for interpolation, return istatus error
+   istatus = 5
+   return
+endif
+
+! For Sea Surface Height don't need the vertical coordinate
+if(obs_type /= KIND_SEA_SURFACE_HEIGHT) then
+   ! Get the bounding vertical levels and the fraction between bottom and top
+   call height_bounds(lheight, nz, zc, hgt_bot, hgt_top, hgt_fract, hstatus)
+   if(hstatus /= 0) then
+      istatus = 2
+      return
+   endif
+else
+! Sea Surface Height only has one level, no vertical interpolation
+   call lat_lon_interpolate(x(base_offset:), llon, llat, obs_type, interp_val, istatus)
+   return
+endif
+
+
+! Find the base location for the top height and interpolate horizontally on this level
+offset = base_offset + (hgt_top - 1) * nx * ny
+call lat_lon_interpolate(x(offset:), llon, llat, obs_type, top_val, istatus)
+! Failed istatus from interpolate means give up
+if(istatus /= 0) return
+
+! Find the base location for the bottom height and interpolate horizontally on this level
+offset = base_offset + (hgt_bot - 1) * nx * ny
+call lat_lon_interpolate(x(offset:), llon, llat, obs_type, bot_val, istatus)
+! Failed istatus from interpolate means give up
+if(istatus /= 0) return
+
+! Then weight them by the fraction and return
+interp_val = bot_val + hgt_fract * (top_val - bot_val)
+
 end subroutine model_interpolate
+
+
+
+subroutine height_bounds(lheight, nheights, hgt_array, bot, top, fract, istatus)
+!=======================================================================
+!
+real(r8),             intent(in) :: lheight
+integer,              intent(in) :: nheights
+real(r8),             intent(in) :: hgt_array(nheights)
+integer,             intent(out) :: bot, top
+real(r8),            intent(out) :: fract
+integer,             intent(out) :: istatus
+
+! Local variables
+integer   :: i
+
+! Succesful istatus is 0
+istatus = 0
+
+! The zc array contains the depths of the center of the vertical grid boxes
+
+! It is assumed that the top box is shallow and any observations shallower
+! than the depth of this boxes center are just given the value of the
+! top box.
+if(lheight > hgt_array(1)) then
+   top = 1
+   bot = 2
+   ! NOTE: the fract definition is the relative distance from bottom to top
+   ! ??? Make sure this is consistent with the interpolation
+   fract = 1.0_r8 
+endif
+
+! Search through the boxes
+do i = 2, nheights
+   ! If the location is shallower than this entry, it must be in this box
+   if(lheight >= hgt_array(i)) then
+      top = i -1
+      bot = i
+      fract = (lheight - hgt_array(bot)) / (hgt_array(top) - hgt_array(bot))
+      return
+   endif
+end do
+
+! Falling off the end means the location is lower than the deepest height
+! Fail with istatus 2 in this case
+istatus = 2
+
+end subroutine height_bounds
+
+
+subroutine lat_lon_interpolate(x, llon, llat, var_type, interp_val, istatus)
+!=======================================================================
+!
+
+! Subroutine to interpolate to a lat lon location given that portion of state
+! vector. 
+! NOTE: Using array sections to pas in the x array may be inefficient on some
+! compiler/platform setups. Might want to pass in the entire array with a base
+! offset value instead of the section if this is an issue.
+
+real(r8),            intent(in) :: x(:)
+real(r8),            intent(in) :: llon, llat
+integer,             intent(in) :: var_type
+integer,            intent(out) :: istatus
+real(r8),           intent(out) :: interp_val
+
+! Local storage
+real(r8) :: lat_array(ny), lon_array(nx)
+integer  :: lat_bot, lat_top, lon_bot, lon_top
+real(r8) :: lat_fract, lon_fract
+real(r8) :: pa, pb, pc, pd, xbot, xtop
+integer  :: lat_status, lon_status
+logical  :: masked
+
+! Succesful return has istatus of 0
+istatus = 0
+
+! Failed return values for istatus are ?????
+
+! Find out what latitude box and fraction
+! The latitude grid being used depends on the variable type
+! V is on the YG latitude grid
+if(var_type == KIND_V_CURRENT_COMPONENT) then
+   lat_array = yg
+   call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
+else 
+   ! SSH, U, T and S are on the YC latitude grid
+   lat_array = yc
+   call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
+endif
+
+! Check for error on the latitude interpolation
+if(lat_status /= 0) then 
+   istatus = 1
+   return
+endif
+
+! Find out what longitude box and fraction
+if(var_type == KIND_U_CURRENT_COMPONENT) then
+   ! U velocity is on the XG grid
+   lon_array = xg
+   call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
+else
+   ! SSH, V, T, and S are on the XC grid
+   lon_array = xc
+   call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
+endif
+
+! Check for error on the longitude interpolation
+if(lat_status /= 0) then 
+   istatus = 2
+   return
+endif
+
+! Vector is laid out with lat outermost loop, lon innermost loop
+! Find the bounding points for the lat lon box
+! NOTE: For now, it is assumed that a real(r8) value of exactly 0.0 indicates
+! that a particular gridded quantity is masked and not available. This is not
+! the most robust way to do this, but may be sufficient since exact 0's are
+! expected to happen rarely. Jeff Anderson believes that the only implication
+! will be that an observation whos forward operator requires interpolating
+! from a point that has exactly 0.0 (but is not masked) will not be 
+! assimilated.
+pa = get_val(lon_bot, lat_bot, nx, x, masked)
+if(masked) then
+   istatus = 3
+   return
+endif
+pb = get_val(lon_top, lat_bot, nx, x, masked)
+if(masked) then
+   istatus = 3
+   return
+endif
+pc = get_val(lon_bot, lat_top, nx, x, masked)
+if(masked) then
+   istatus = 3
+   return
+endif
+pd = get_val(lon_top, lat_top, nx, x, masked)
+if(masked) then
+   istatus = 3
+   return
+endif
+
+! Finish bi-linear interpolation 
+! First interpolate in longitude
+xbot = pa + lon_fract * (pb - pa)
+xtop = pc + lon_fract * (pd - pc)
+! Now interpolate in latitude
+interp_val = xbot + lat_fract * (xtop - xbot)
+
+end subroutine lat_lon_interpolate
+
+
+
+
+subroutine lat_bounds(llat, nlats, lat_array, bot, top, fract, istatus)
+
+!=======================================================================
+!
+
+! Given a latitude llat, the array of latitudes for grid boundaries, and the
+! number of latitudes in the grid, returns the indices of the latitude
+! below and above the location latitude and the fraction of the distance
+! between. istatus is returned as 0 unless the location latitude is 
+! south of the southernmost grid point (1 returned) or north of the 
+! northernmost (2 returned). If one really had lots of polar obs would 
+! want to worry about interpolating around poles.
+
+real(r8),          intent(in) :: llat
+integer,           intent(in) :: nlats
+real(r8),          intent(in) :: lat_array(nlats)
+integer,          intent(out) :: bot, top
+real(r8),         intent(out) :: fract
+integer,          intent(out) :: istatus
+
+! Local storage
+integer    :: i
+
+! Default is success
+istatus = 0
+
+! Check for too far south or north
+if(llat < lat_array(1)) then
+   istatus = 1
+   return
+else if(llat > lat_array(nlats)) then
+   istatus = 2
+   return
+endif
+
+! In the middle, search through
+do i = 2, nlats
+   if(llat <= lat_array(i)) then
+      bot = i - 1
+      top = i
+      fract = (llat - lat_array(bot)) / (lat_array(top) - lat_array(bot))
+      return
+   endif
+end do
+
+end subroutine lat_bounds
+
+
+
+subroutine lon_bounds(llon, nlons, lon_array, bot, top, fract, istatus)
+
+!=======================================================================
+!
+
+! Given a longitude llon, the array of longitudes for grid boundaries, and the
+! number of longitudes in the grid, returns the indices of the longitude
+! below and above the location longitude and the fraction of the distance
+! between. istatus is returned as 0 unless the location longitude is 
+! not between any of the longitude box boundaries. This should be modified
+! for global wrap-around grids.
+! Algorithm fails for a silly grid that
+! has only two longitudes separated by 180 degrees.
+
+real(r8),          intent(in) :: llon
+integer,           intent(in) :: nlons
+real(r8),          intent(in) :: lon_array(nlons)
+integer,          intent(out) :: bot, top
+real(r8),         intent(out) :: fract
+integer,          intent(out) :: istatus
+
+! Local storage
+integer  :: i
+real(r8) :: dist_bot, dist_top
+
+! Default is success
+istatus = 0
+
+! This is inefficient, someone could clean it up
+! Plus, it doesn't work for a global model that wraps around
+do i = 2, nlons
+   dist_bot = lon_dist(llon, lon_array(i - 1))
+   dist_top = lon_dist(llon, lon_array(i))
+   if(dist_bot >= 0 .and. dist_top < 0) then
+      bot = i - 1
+      top = i
+      fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
+      return
+   endif
+end do
+
+! Falling off the end means its in between. Add the wraparound check.
+! For now, return istatus 1
+istatus = 1
+
+end subroutine lon_bounds
+
+
+
+function lon_dist(lon1, lon2)
+!=======================================================================
+!
+
+! Returns the smallest signed distance between lon1 and lon2 on the sphere
+! If lon1 is less than 180 degrees east of lon2 the distance is negative
+! If lon1 is less than 180 degrees west of lon2 the distance is positive
+
+real(r8), intent(in) :: lon1, lon2
+real(r8)             :: lon_dist
+
+lon_dist = lon1 - lon2
+if(lon_dist >= -180.0_r8 .and. lon_dist <= 180.0_r8) then 
+   return
+else if(lon_dist < -180.0_r8) then
+   lon_dist = lon_dist + 360.0_r8
+else
+   lon_dist = lon_dist - 360.0_r8
+endif
+
+end function lon_dist
+
+
+function get_val(lat_index, lon_index, nlon, x, masked)
+!=======================================================================
+!
+
+! Returns the value from a single level array given the lat and lon indices
+integer,     intent(in) :: lat_index, lon_index, nlon
+real(r8),    intent(in) :: x(:)
+logical,    intent(out) :: masked
+real(r8)                :: get_val
+
+! Layout has lons varying most rapidly
+get_val = x((lat_index - 1) * nlon + lon_index)
+
+! Masked returns false if the value is masked
+! A grid variable is assumed to be masked if its value is exactly 0.
+! See discussion in lat_lon_interpolate.
+if(get_val == 0.0_r8) then
+   masked = .true.
+else
+   masked = .false.
+endif
+
+end function get_val
 
 
 
@@ -1145,7 +1501,7 @@ read_meta%dimList = (/ 0, 0, 0 /)
 read_meta%dataprec = 'null'
 read_meta%reclen = 0
 read_meta%nrecords = 0
-read_meta%timeStepNumber = 0
+read_meta%timeStepNumber = -999
 
 ! Get next available unit number and open the file
 
@@ -1296,7 +1652,7 @@ ReadtimeStepNumber: do i = 1,nlines
    endif
 enddo ReadtimeStepNumber
 
-if (read_meta%nrecords < 1) then
+if (read_meta%timeStepNumber < 1) then
    write(msgstring,*) 'unable to determine timeStepNumber from ', trim(filename)
    call error_handler(E_WARN,'model_mod:read_meta',msgstring,source,revision,revdate)
 endif
@@ -1341,9 +1697,7 @@ write(iunit, "(3A)") "dataprec = [ ", trim(metadata%dataprec), " ];"
 
 write(iunit, "(A,I,A)") "nrecords = [ ", metadata%nrecords, " ];"
 
-if (metadata%timeStepNumber /= 0) then
-   write(iunit, "(A,I,A)") "timeStepNumber = [ ", metadata%timeStepNumber, " ];"
-endif
+write(iunit, "(A,I,A)") "timeStepNumber = [ ", metadata%timeStepNumber, " ];"
 
 close(iunit)
 
@@ -1377,6 +1731,8 @@ else
 endif
 
 metadata = read_meta(fbase,vartype)
+
+timestep = metadata%timeStepNumber
 
 write(*,*)'nDims   ',metadata%nDims
 write(*,*)'dimList ',metadata%dimList
@@ -1452,6 +1808,8 @@ else
 endif
 
 metadata = read_meta(fbase,vartype)
+
+timestep = metadata%timeStepNumber
 
 ! check to make sure storage modes match
 ! somehow have to pair the string with the fortran kind
@@ -1630,7 +1988,7 @@ names_3d(S_index) = 'S'
 names_3d(T_index) = 'T'
 names_3d(U_index) = 'U'
 names_3d(V_index) = 'V'
-names_2d(SSH_index) = 'SSH'
+names_2d(1) = 'SSH'
 
 
 ! start counting up and filling the state vector
@@ -1699,7 +2057,7 @@ names_3d(S_index) = 'S'
 names_3d(T_index) = 'T'
 names_3d(U_index) = 'U'
 names_3d(V_index) = 'V'
-names_2d(SSH_index) = 'SSH'
+names_2d(1) = 'SSH'
 
 
 ! start counting up and filling the state vector
