@@ -1008,11 +1008,13 @@ else
    else
       ! Didn't fall off end so bad entry in the middle of namelist
       ! TEMP HELP FOR USERS; remove after next release
-      if ((nml_name(1:10) == 'filter_nml') .and. (index(nml_string,'inf_start_from_restart') > 0)) then
-         write(err_string, *) 'inf_start_from_restart obsolete'
-         call error_handler(E_MSG, 'filter_nml: ', err_string, "", "", "")
-         write(err_string, *) 'use inf_initial_from_restart and inf_sd_initial_from_restart'
-         call error_handler(E_MSG, 'filter_nml: ', err_string, "", "", "")
+      if (len(nml_name) >= 10) then
+         if ((nml_name(1:10) == 'filter_nml') .and. (index(nml_string,'inf_start_from_restart') > 0)) then
+            write(err_string, *) 'inf_start_from_restart obsolete'
+            call error_handler(E_MSG, 'filter_nml: ', err_string, "", "", "")
+            write(err_string, *) 'use inf_initial_from_restart and inf_sd_initial_from_restart'
+            call error_handler(E_MSG, 'filter_nml: ', err_string, "", "", "")
+         endif 
       endif 
       write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
       if(write_to_logfile) then
