@@ -122,21 +122,28 @@ for ivar = 1:plotdat.nvars
       disp(sprintf('%s is a surface field.',plotdat.guessvar))
       error('Cannot display a surface field this way.')
    else
-      plotdat.level         = sort(getnc(fname, guessdims{2}));
+      plotdat.level_org     = getnc(fname, guessdims{2});
       plotdat.level_units   = f{guessdims{2}}.units(:);
       plotdat.nlevels       = length(f{guessdims{2}});
       edgename              = sprintf('%s_edges',guessdims{2});
-      plotdat.level_edges   = sort(getnc(fname,edgename));
-      plotdat.level_strings = GenLevelString(plotdat.level, plotdat.level_edges);
+      plotdat.level_edges   = getnc(fname,edgename);
       plotdat.Yrange        = [min(plotdat.level_edges) max(plotdat.level_edges)];
    end
-   
-   switch plotdat.level_units
-       case 'hPa', 
-            plotdat.YDir = 'reverse';
-       otherwise, 
-            plotdat.YDir = 'normal';
+
+   % Matlab likes strictly ASCENDING order for things to be plotted,
+   % then you can impose the direction. The data is stored in the original
+   % order, so the sort indices are saved to reorder the data.
+
+   if (plotdat.level_org(1) > plotdat.level_org(plotdat.nlevels))
+      plotdat.YDir = 'reverse';
+   else
+      plotdat.YDir = 'normal';
    end
+   [levels, indices]   = sort(plotdat.level_org);
+   plotdat.level       = levels;
+   plotdat.indices     = indices;
+   level_edges         = sort(plotdat.level_edges);
+   plotdat.level_edges = level_edges;
    
    guess = getnc(fname, plotdat.guessvar,-1,-1,-1,-1,-1,-1,0);  
    analy = getnc(fname, plotdat.analyvar,-1,-1,-1,-1,-1,-1,0); 
@@ -203,29 +210,30 @@ function myplot(plotdat)
 
    % Interlace the [ges,anl] to make a sawtooth plot.
    % By this point, the middle two dimensions are singletons.
-   cg = plotdat.ges_copy(:,:,plotdat.region);
-   ca = plotdat.anl_copy(:,:,plotdat.region);
+   % The data must be sorted to match the order of the levels.
+   cg = plotdat.ges_copy(:,:,plotdat.region); CG = cg(plotdat.indices);
+   ca = plotdat.anl_copy(:,:,plotdat.region); CA = ca(plotdat.indices);
 
-   mg = plotdat.ges_rmse(:,:,plotdat.region);
-   ma = plotdat.anl_rmse(:,:,plotdat.region);
+   mg = plotdat.ges_rmse(:,:,plotdat.region); MG = mg(plotdat.indices);
+   ma = plotdat.anl_rmse(:,:,plotdat.region); MA = ma(plotdat.indices);
 
-   g = plotdat.ges_Nposs(:,:,plotdat.region);
-   a = plotdat.anl_Nposs(:,:,plotdat.region);
-   nobs_poss   = g;
-   nposs_delta = g - a;
+   g = plotdat.ges_Nposs(:,:,plotdat.region); G = g(plotdat.indices);
+   a = plotdat.anl_Nposs(:,:,plotdat.region); A = a(plotdat.indices);
+   nobs_poss   = G;
+   nposs_delta = G - A;
 
-   g = plotdat.ges_Nused(:,:,plotdat.region);
-   a = plotdat.anl_Nused(:,:,plotdat.region);
-   nobs_used   = g;
-   nused_delta = g - a;
+   g = plotdat.ges_Nused(:,:,plotdat.region); G = g(plotdat.indices);
+   a = plotdat.anl_Nused(:,:,plotdat.region); A = a(plotdat.indices);
+   nobs_used   = G;
+   nused_delta = G - A;
 
    % Determine some quantities for the legend
    nobs = sum(nobs_used);
    if ( nobs > 1 )
-      rmse_guess  = mean(mg(isfinite(mg)));   
-      rmse_analy  = mean(ma(isfinite(ma)));   
-      other_guess = mean(cg(isfinite(cg))); 
-      other_analy = mean(ca(isfinite(ca))); 
+      rmse_guess  = mean(MG(isfinite(MG)));   
+      rmse_analy  = mean(MA(isfinite(MA)));   
+      other_guess = mean(CG(isfinite(CG))); 
+      other_analy = mean(CA(isfinite(CA))); 
    else
       rmse_guess  = NaN;
       rmse_analy  = NaN;
@@ -256,18 +264,22 @@ function myplot(plotdat)
 
    Stripes(plotdat.Xrange, plotdat.level_edges);
    hold on;
-   h1 = plot(mg,plotdat.level,'k+-',ma,plotdat.level,'k+:', ...
-             cg,plotdat.level,'ro-',ca,plotdat.level,'ro:');
+   h1 = plot(MG,plotdat.level,'k+-',MA,plotdat.level,'k+:', ...
+             CG,plotdat.level,'ro-',CA,plotdat.level,'ro:');
    hold off;
    set(h1,'LineWidth',plotdat.linewidth);
-   h = legend(h1, str_rmse_pr, str_rmse_po, str_other_pr, str_other_po);
+   h = legend(h1, str_rmse_pr, str_rmse_po, str_other_pr, str_other_po, ...
+          'Location','East');
    legend(h,'boxoff')
 
    axlims = [plotdat.Xrange plotdat.Yrange];
    axis(axlims)
    set(gca,'YDir', plotdat.YDir)
    hold on; plot([0 0],plotdat.Yrange,'k-')
-   
+
+%   disp(plotdat.myregion)
+%   [plotdat.level CG' CA' MG' MA' ma' mg' ca' cg' plotdat.level_org]
+
    set(gca,'YTick',plotdat.level,'Ylim',plotdat.Yrange)
    ylabel(plotdat.level_units)
    
@@ -292,7 +304,7 @@ function myplot(plotdat)
    set(h3,'LineStyle','none','Marker','+');   
 
    % use same number of X ticks and the same Y ticks
-   
+  
    xlimits = get(ax2,'XLim');
    xinc   = (xlimits(2)-xlimits(1))/(nXticks-1);
    xticks = xlimits(1):xinc:xlimits(2);
@@ -408,23 +420,8 @@ end
 
 
 
-function str = GenLevelString(m,e)
-
-if ( (length(m)+1) ~= length(e) )
-error(sprintf('%d vertical midpoints and %d edges',length(m),length(e)))
-end
-
-nstrings = length(m);
-
-str = cell(nstrings,1);
-for i = 1:nstrings 
-  str{i} =  sprintf('(%.0f - %.0f)',e(i),e(i+1));
-end
-
-
 function Stripes(x,edges)
 % EraseMode: [ {normal} | background | xor | none ]
-
 
 xc = [ x(1) x(2) x(2) x(1) x(1) ];
 
@@ -435,4 +432,3 @@ for i = 1:2:length(edges)
   'EraseMode','background','EdgeColor','none');
 end
 hold off;
-%get(h)
