@@ -404,7 +404,7 @@ call drop_snapshot(data_2d_array)
 Nz = -1
 do i=2, max_nz
   if (delZ(i) == 0.0_r4) then
-     nZ = i
+     nZ = i-1
      exit
   endif
 enddo
@@ -438,7 +438,12 @@ start_index(SSH_index) = start_index(V_index) + (Nx * Ny * Nz)
 !  e.g. S,T,U,V = 256 x 225 x 70
 !  e.g. SSH = 256 x 225
 
+print *, 'model_size computation: '
+print *, '  Nx, Ny, Nz = ', Nx, Ny, Nz
+print *, ' 3d field size: ', n3dfields * (Nx * Ny * Nz)
+print *, ' 2d field size: ', n2dfields * (Nx * Ny)
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
+print *, 'model_size = ', model_size
 
 ! The time_step in terms of a time type must also be initialized.
 time_step = set_time(time_step_seconds, time_step_days)
