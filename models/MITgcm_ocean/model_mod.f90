@@ -413,15 +413,34 @@ if (Nz == -1) then
    call exit(99)
 endif
 
+! the namelist contains a list of thicknesses of each
+! depth level; the ZC array is a list of the depths of
+! each cell center, so they must be computed.
 allocate(ZC(Nz))
-ZC(1) = 0.0_r8
+ZC(1) = -0.5 * delZ(1)
 do i=2, Nz
- ZC(i) = ZC(i-1) - delZ(i)
+ ZC(i) = ZC(i-1) - (0.5 * delZ(i-1) + 0.5 * delZ(i)) 
 enddo
 
-! for now, leave ZG undefined
+! DEBUG: since we are computing these, check to be sure
+! they look right.
+do i=1, Nz
+ print *, 'i, delZ(i), ZC(i) = ', i, delZ(i), ZC(i)
+enddo
+
+! for now, leave ZG undefined.  it really does have one
+! more depth than we read in, so it isn't clear how to
+! handle this.
 allocate(ZG(Nz))
 ZG(:) = 0.0_r8
+! if we did need depth faces, here is how to compute them.
+! the delZ array are each cell width.
+!allocate(ZG(Nz+1))
+!ZG(1) = 0.0_r8
+!do i=2, Nz+1
+! ZG(i) = ZG(i-1) - delZ(i-1)
+!enddo
+
 
 ! record where in the state vector the data type changes
 ! from one type to another, by computing the starting
@@ -2171,8 +2190,8 @@ if (size(ssh,1) /= Nx) then
                       msgstring,source,revision,revdate) 
 endif
 
-if (size(ssh,2) /= Nx) then
-   write(msgstring,*),'dim 2 of SSH /= Nx ',size(ssh,2),Nx
+if (size(ssh,2) /= Ny) then
+   write(msgstring,*),'dim 2 of SSH /= Ny ',size(ssh,2),Ny
    call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
                       msgstring,source,revision,revdate) 
 endif
