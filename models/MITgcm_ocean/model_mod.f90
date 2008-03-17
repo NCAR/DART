@@ -87,49 +87,6 @@ integer, parameter :: max_ny = 1024
 integer, parameter :: max_nz = 512
 integer, parameter :: max_nr = 512
 
-! must match lists declared in ini_parms.f
-
-!--   Time stepping parameters namelist
-      NAMELIST /PARM03/ &
-      nIter0, nTimeSteps, nEndIter, pickupSuff, &
-      deltaT, deltaTClock, deltaTmom, &
-      deltaTtracer, dTtracerLev, deltaTfreesurf, &
-      forcing_In_AB, momForcingOutAB, tracForcingOutAB, &
-      momDissip_In_AB, doAB_onGtGs, &
-      abEps, alph_AB, beta_AB, startFromPickupAB2, &
-      tauCD, rCD, &
-      baseTime, startTime, endTime, chkPtFreq, &
-      dumpFreq, dumpInitAndLast, adjDumpFreq, taveFreq, tave_lastIter, &
-      diagFreq, monitorFreq, adjMonitorFreq, pChkPtFreq, cAdjFreq, &
-      outputTypesInclusive, &
-      tauThetaClimRelax, tauSaltClimRelax, latBandClimRelax, &
-      tauThetaClimRelax3Dim, tauSaltClimRelax3Dim, tauTr1ClimRelax, &
-      periodicExternalForcing, externForcingPeriod, externForcingCycle, &
-      calendarDumps
-
-!--   Gridding parameters namelist
-      NAMELIST /PARM04/ &
-      usingCartesianGrid, usingCylindricalGrid, &
-      dxSpacing, dySpacing, delX, delY, delXFile, delYFile, &
-      usingSphericalPolarGrid, phiMin, thetaMin, rSphere, &
-      usingCurvilinearGrid, horizGridFile, deepAtmosphere, &
-      Ro_SeaLevel, delZ, delP, delR, delRc, delRFile, delRcFile, &
-      rkFac, groundAtK1
-
-!--   Input files namelist
-      NAMELIST /PARM05/ &
-      bathyFile, topoFile, shelfIceFile, &
-      hydrogThetaFile, hydrogSaltFile, diffKrFile, &
-      zonalWindFile, meridWindFile, &
-      thetaClimFile, saltClimFile, &
-      surfQfile, surfQnetFile, surfQswFile, EmPmRfile, saltFluxFile, &
-      lambdaThetaFile, lambdaSaltFile, &
-      uVelInitFile, vVelInitFile, pSurfInitFile, &
-      dQdTFile, ploadFile,tCylIn,tCylOut, &
-      eddyTauxFile, eddyTauyFile, &
-      mdsioLocalDir, &
-      the_run_name
-
 !-- FIXME: i have not been able to find all of these in the
 !-- original source code.  the ones we're using have been
 !-- checked that they are the right type.  the others might
@@ -169,6 +126,49 @@ character(len=MAX_LEN_FNAM) :: delXFile, delYFile, &
 
 !--   Input files variable declarations 
 character(len=MAX_LEN_FNAM) :: &
+      bathyFile, topoFile, shelfIceFile, &
+      hydrogThetaFile, hydrogSaltFile, diffKrFile, &
+      zonalWindFile, meridWindFile, &
+      thetaClimFile, saltClimFile, &
+      surfQfile, surfQnetFile, surfQswFile, EmPmRfile, saltFluxFile, &
+      lambdaThetaFile, lambdaSaltFile, &
+      uVelInitFile, vVelInitFile, pSurfInitFile, &
+      dQdTFile, ploadFile,tCylIn,tCylOut, &
+      eddyTauxFile, eddyTauyFile, &
+      mdsioLocalDir, &
+      the_run_name
+
+! must match lists declared in ini_parms.f
+
+!--   Time stepping parameters namelist
+      NAMELIST /PARM03/ &
+      nIter0, nTimeSteps, nEndIter, pickupSuff, &
+      deltaT, deltaTClock, deltaTmom, &
+      deltaTtracer, dTtracerLev, deltaTfreesurf, &
+      forcing_In_AB, momForcingOutAB, tracForcingOutAB, &
+      momDissip_In_AB, doAB_onGtGs, &
+      abEps, alph_AB, beta_AB, startFromPickupAB2, &
+      tauCD, rCD, &
+      baseTime, startTime, endTime, chkPtFreq, &
+      dumpFreq, dumpInitAndLast, adjDumpFreq, taveFreq, tave_lastIter, &
+      diagFreq, monitorFreq, adjMonitorFreq, pChkPtFreq, cAdjFreq, &
+      outputTypesInclusive, &
+      tauThetaClimRelax, tauSaltClimRelax, latBandClimRelax, &
+      tauThetaClimRelax3Dim, tauSaltClimRelax3Dim, tauTr1ClimRelax, &
+      periodicExternalForcing, externForcingPeriod, externForcingCycle, &
+      calendarDumps
+
+!--   Gridding parameters namelist
+      NAMELIST /PARM04/ &
+      usingCartesianGrid, usingCylindricalGrid, &
+      dxSpacing, dySpacing, delX, delY, delXFile, delYFile, &
+      usingSphericalPolarGrid, phiMin, thetaMin, rSphere, &
+      usingCurvilinearGrid, horizGridFile, deepAtmosphere, &
+      Ro_SeaLevel, delZ, delP, delR, delRc, delRFile, delRcFile, &
+      rkFac, groundAtK1
+
+!--   Input files namelist
+      NAMELIST /PARM05/ &
       bathyFile, topoFile, shelfIceFile, &
       hydrogThetaFile, hydrogSaltFile, diffKrFile, &
       zonalWindFile, meridWindFile, &
@@ -232,7 +232,9 @@ real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 ! What is the natural model timestep?
 real(r8) :: model_timestep
 type(time_type) :: time_step
-integer :: timestepcount
+! FIXME: just for testing
+!integer :: timestepcount
+integer :: timestepcount = 40992
 integer :: time_step_days      = 0
 integer :: time_step_seconds   = 900
 
@@ -350,6 +352,7 @@ call check_namelist_read(iunit, io, "PARM05")
 call read_snapshot('XC', data_2d_array, timestepcount)
 Nx = size(data_2d_array, 1)
 Ny = size(data_2d_array, 2)
+allocate(XC(Nx))
 do i=1, Nx
   XC(i) = data_2d_array(i, 1)
 enddo
@@ -362,6 +365,7 @@ endif
 if (size(data_2d_array, 2) /= Ny) then
   ! call error handler, files are inconsistent sizes
 endif
+allocate(XG(Nx))
 do i=1, Nx
   XG(i) = data_2d_array(i, 1)
 enddo
@@ -371,6 +375,7 @@ call drop_snapshot(data_2d_array)
 call read_snapshot('YC', data_2d_array, timestepcount)
 Nx = size(data_2d_array, 1)
 Ny = size(data_2d_array, 2)
+allocate(YC(Ny))
 do i=1, Ny
   YC(i) = data_2d_array(i, 1)
 enddo
@@ -383,18 +388,39 @@ endif
 if (size(data_2d_array, 2) /= Ny) then
   ! call error handler, files are inconsistent sizes
 endif
+allocate(YG(Ny))
 do i=1, Ny
   YG(i) = data_2d_array(i, 1)
 enddo
 call drop_snapshot(data_2d_array)
 
 ! compute ZC and ZG here based on delZ from the namelist
+! FIXME:
+! right now the only way i know to compute the number of
+! levels is that i set the default value of delZ to 0.0
+! before reading the namelist.  now loop until you get back
+! to zero and that is the end of the list.  not a very
+! satisfying solution, but maybe good enough for now?
+Nz = -1
+do i=2, max_nz
+  if (delZ(i) == 0.0_r4) then
+     nZ = i
+     exit
+  endif
+enddo
+if (Nz == -1) then
+   print *, 'could not figure out number of depth levels'
+   call exit(99)
+endif
+
+allocate(ZC(Nz))
 ZC(1) = 0.0_r8
 do i=2, Nz
  ZC(i) = ZC(i-1) - delZ(i)
 enddo
 
 ! for now, leave ZG undefined
+allocate(ZG(Nz))
 ZG(:) = 0.0_r8
 
 ! record where in the state vector the data type changes
@@ -1648,7 +1674,7 @@ enddo ReadtimeStepNumber
 
 if (read_meta%timeStepNumber < 1) then
    write(msgstring,*) 'unable to determine timeStepNumber from ', trim(filename)
-   call error_handler(E_WARN,'model_mod:read_meta',msgstring,source,revision,revdate)
+   call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
 endif
 
 close(iunit)
@@ -1769,6 +1795,7 @@ if (io /= 0) then
 endif
 
 close(iunit)
+
 
 end subroutine read_2d_snapshot
 
