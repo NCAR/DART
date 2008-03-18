@@ -62,12 +62,13 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date: 2007-04-03 16:44:36 -0600 (Tue, 03 Apr 2007) $"
 
-character(len=128) :: msgstring
+character(len=129) :: msgstring, errstring
+
 
 !! FIXME: on ifort, this must be 1
 !!        on xlf,   this must be 4
 !! see the comments in the read_2d_snapshot code for more info
-integer, parameter :: item_size_direct_read = 4
+integer, parameter :: item_size_direct_read = 1
 
 !------------------------------------------------------------------
 !
@@ -91,6 +92,49 @@ integer, parameter :: max_nx = 1024
 integer, parameter :: max_ny = 1024
 integer, parameter :: max_nz = 512
 integer, parameter :: max_nr = 512
+
+! must match lists declared in ini_parms.f
+
+!--   Time stepping parameters namelist
+      NAMELIST /PARM03/ &
+      nIter0, nTimeSteps, nEndIter, pickupSuff, &
+      deltaT, deltaTClock, deltaTmom, &
+      deltaTtracer, dTtracerLev, deltaTfreesurf, &
+      forcing_In_AB, momForcingOutAB, tracForcingOutAB, &
+      momDissip_In_AB, doAB_onGtGs, &
+      abEps, alph_AB, beta_AB, startFromPickupAB2, &
+      tauCD, rCD, &
+      baseTime, startTime, endTime, chkPtFreq, &
+      dumpFreq, dumpInitAndLast, adjDumpFreq, taveFreq, tave_lastIter, &
+      diagFreq, monitorFreq, adjMonitorFreq, pChkPtFreq, cAdjFreq, &
+      outputTypesInclusive, &
+      tauThetaClimRelax, tauSaltClimRelax, latBandClimRelax, &
+      tauThetaClimRelax3Dim, tauSaltClimRelax3Dim, tauTr1ClimRelax, &
+      periodicExternalForcing, externForcingPeriod, externForcingCycle, &
+      calendarDumps
+
+!--   Gridding parameters namelist
+      NAMELIST /PARM04/ &
+      usingCartesianGrid, usingCylindricalGrid, &
+      dxSpacing, dySpacing, delX, delY, delXFile, delYFile, &
+      usingSphericalPolarGrid, phiMin, thetaMin, rSphere, &
+      usingCurvilinearGrid, horizGridFile, deepAtmosphere, &
+      Ro_SeaLevel, delZ, delP, delR, delRc, delRFile, delRcFile, &
+      rkFac, groundAtK1
+
+!--   Input files namelist
+      NAMELIST /PARM05/ &
+      bathyFile, topoFile, shelfIceFile, &
+      hydrogThetaFile, hydrogSaltFile, diffKrFile, &
+      zonalWindFile, meridWindFile, &
+      thetaClimFile, saltClimFile, &
+      surfQfile, surfQnetFile, surfQswFile, EmPmRfile, saltFluxFile, &
+      lambdaThetaFile, lambdaSaltFile, &
+      uVelInitFile, vVelInitFile, pSurfInitFile, &
+      dQdTFile, ploadFile,tCylIn,tCylOut, &
+      eddyTauxFile, eddyTauyFile, &
+      mdsioLocalDir, &
+      the_run_name
 
 !-- FIXME: i have not been able to find all of these in the
 !-- original source code.  the ones we're using have been
@@ -131,49 +175,6 @@ character(len=MAX_LEN_FNAM) :: delXFile, delYFile, &
 
 !--   Input files variable declarations 
 character(len=MAX_LEN_FNAM) :: &
-      bathyFile, topoFile, shelfIceFile, &
-      hydrogThetaFile, hydrogSaltFile, diffKrFile, &
-      zonalWindFile, meridWindFile, &
-      thetaClimFile, saltClimFile, &
-      surfQfile, surfQnetFile, surfQswFile, EmPmRfile, saltFluxFile, &
-      lambdaThetaFile, lambdaSaltFile, &
-      uVelInitFile, vVelInitFile, pSurfInitFile, &
-      dQdTFile, ploadFile,tCylIn,tCylOut, &
-      eddyTauxFile, eddyTauyFile, &
-      mdsioLocalDir, &
-      the_run_name
-
-! must match lists declared in ini_parms.f
-
-!--   Time stepping parameters namelist
-      NAMELIST /PARM03/ &
-      nIter0, nTimeSteps, nEndIter, pickupSuff, &
-      deltaT, deltaTClock, deltaTmom, &
-      deltaTtracer, dTtracerLev, deltaTfreesurf, &
-      forcing_In_AB, momForcingOutAB, tracForcingOutAB, &
-      momDissip_In_AB, doAB_onGtGs, &
-      abEps, alph_AB, beta_AB, startFromPickupAB2, &
-      tauCD, rCD, &
-      baseTime, startTime, endTime, chkPtFreq, &
-      dumpFreq, dumpInitAndLast, adjDumpFreq, taveFreq, tave_lastIter, &
-      diagFreq, monitorFreq, adjMonitorFreq, pChkPtFreq, cAdjFreq, &
-      outputTypesInclusive, &
-      tauThetaClimRelax, tauSaltClimRelax, latBandClimRelax, &
-      tauThetaClimRelax3Dim, tauSaltClimRelax3Dim, tauTr1ClimRelax, &
-      periodicExternalForcing, externForcingPeriod, externForcingCycle, &
-      calendarDumps
-
-!--   Gridding parameters namelist
-      NAMELIST /PARM04/ &
-      usingCartesianGrid, usingCylindricalGrid, &
-      dxSpacing, dySpacing, delX, delY, delXFile, delYFile, &
-      usingSphericalPolarGrid, phiMin, thetaMin, rSphere, &
-      usingCurvilinearGrid, horizGridFile, deepAtmosphere, &
-      Ro_SeaLevel, delZ, delP, delR, delRc, delRFile, delRcFile, &
-      rkFac, groundAtK1
-
-!--   Input files namelist
-      NAMELIST /PARM05/ &
       bathyFile, topoFile, shelfIceFile, &
       hydrogThetaFile, hydrogSaltFile, diffKrFile, &
       zonalWindFile, meridWindFile, &
@@ -337,12 +338,15 @@ call find_namelist_in_file("data", "PARM03", iunit)
 read(iunit, nml = PARM03, iostat = io)
 call check_namelist_read(iunit, io, "PARM03")
 
+delX(:) = 0.0_r4
+delY(:) = 0.0_r4
 delZ(:) = 0.0_r4
 
 ! depths are going to be in this namelist
 call find_namelist_in_file("data", "PARM04", iunit)
 read(iunit, nml = PARM04, iostat = io)
 call check_namelist_read(iunit, io, "PARM04")
+
 
 call find_namelist_in_file("data", "PARM05", iunit)
 read(iunit, nml = PARM05, iostat = io)
@@ -353,12 +357,46 @@ call check_namelist_read(iunit, io, "PARM05")
 ! it returns the allocated, filled array, along with the timestep count.
 ! when we are done, drop_snapshot() frees the space.
 
+Nx = -1
+do i=1, size(delX)
+ if (delX(i) == 0.0_r4) then
+    Nx = i-1
+    exit
+ endif
+enddo
+if (Nx == -1) then
+   write(errstring,*)'could not figure out number of longitudes'
+   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
+endif
+
+Ny = -1
+do i=1, size(delY)
+ if (delY(i) == 0.0_r4) then
+    Ny = i-1
+    exit
+ endif
+enddo
+if (Ny == -1) then
+   write(errstring,*)'could not figure out number of latitudes'
+   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
+endif
+
+
 ! first, X (longitude)
 call read_snapshot('XC', data_2d_array, timestepcount)
-Nx = size(data_2d_array, 1)
-Ny = size(data_2d_array, 2)
+if (size(data_2d_array, 1) /= Nx) then
+   write(errstring,*)'XC.meta size for dim 1 does not match delX grid size in namelist'
+   write(errstring,*)'delX grid size in namelist does not match XC.meta size, dim 1'
+   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
+endif
+if (size(data_2d_array, 2) /= Ny) then
+   write(errstring,*)'XC.meta size for dim 2 does not match delY grid size in namelist'
+   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
+endif
 allocate(XC(Nx))
+!print *, 'XC data:'
 do i=1, Nx
+!  print *, i, data_2d_array(i, 1)
   XC(i) = data_2d_array(i, 1)
 enddo
 call drop_snapshot(data_2d_array)
@@ -366,9 +404,13 @@ call drop_snapshot(data_2d_array)
 call read_snapshot('XG', data_2d_array, timestepcount)
 if (size(data_2d_array, 1) /= Nx) then
   ! call error handler, files are inconsistent sizes
+   write(errstring,*)'XG.meta size for dim 1 does not match delX grid size in namelist'
+   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
 if (size(data_2d_array, 2) /= Ny) then
   ! call error handler, files are inconsistent sizes
+   write(errstring,*)'XG.meta size for dim 2 does not match delY grid size in namelist'
+   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
 allocate(XG(Nx))
 do i=1, Nx
@@ -378,8 +420,16 @@ call drop_snapshot(data_2d_array)
 
 ! then Y (latitude)
 call read_snapshot('YC', data_2d_array, timestepcount)
-Nx = size(data_2d_array, 1)
-Ny = size(data_2d_array, 2)
+if (size(data_2d_array, 1) /= Nx) then
+  ! call error handler, files are inconsistent sizes
+   write(errstring,*)'YC.meta size for dim 1 does not match delX grid size in namelist'
+   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
+endif
+if (size(data_2d_array, 2) /= Ny) then
+  ! call error handler, files are inconsistent sizes
+   write(errstring,*)'YC.meta size for dim 2 does not match delY grid size in namelist'
+   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
+endif
 allocate(YC(Ny))
 do i=1, Ny
   YC(i) = data_2d_array(i, 1)
@@ -389,9 +439,13 @@ call drop_snapshot(data_2d_array)
 call read_snapshot('YG', data_2d_array, timestepcount)
 if (size(data_2d_array, 1) /= Nx) then
   ! call error handler, files are inconsistent sizes
+   write(errstring,*)'YG.meta size for dim 1 does not match delX grid size in namelist'
+   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
 if (size(data_2d_array, 2) /= Ny) then
   ! call error handler, files are inconsistent sizes
+   write(errstring,*)'YG.meta size for dim 2 does not match delY grid size in namelist'
+   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
 allocate(YG(Ny))
 do i=1, Ny
@@ -414,8 +468,8 @@ do i=2, max_nz
   endif
 enddo
 if (Nz == -1) then
-   print *, 'could not figure out number of depth levels'
-   call exit(99)
+   write(errstring,*)'could not figure out number of depth levels from delZ in namelist'
+   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
 
 ! the namelist contains a list of thicknesses of each
@@ -427,8 +481,8 @@ do i=2, Nz
  ZC(i) = ZC(i-1) - (0.5 * delZ(i-1) + 0.5 * delZ(i)) 
 enddo
 
-! DEBUG: since we are computing these, check to be sure
-! they look right.
+!! DEBUG: since we are computing these, check to be sure
+!! they look right.
 !do i=1, Nz
 ! print *, 'i, delZ(i), ZC(i) = ', i, delZ(i), ZC(i)
 !enddo
@@ -464,10 +518,10 @@ start_index(SSH_index) = start_index(V_index) + (Nx * Ny * Nz)
 
 print *, 'model_size computation: '
 print *, '  Nx, Ny, Nz = ', Nx, Ny, Nz
-print *, ' 3d field size: ', n3dfields * (Nx * Ny * Nz)
-print *, ' 2d field size: ', n2dfields * (Nx * Ny)
+!print *, ' 3d field size: ', n3dfields * (Nx * Ny * Nz)
+!print *, ' 2d field size: ', n2dfields * (Nx * Ny)
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
-print *, 'model_size = ', model_size
+!print *, 'model_size = ', model_size
 
 ! The time_step in terms of a time type must also be initialized.
 time_step = set_time(time_step_seconds, time_step_days)
@@ -490,6 +544,7 @@ subroutine init_conditions(x)
 
 real(r8), intent(out) :: x(:)
 
+x = 0.0_r8
 
 end subroutine init_conditions
 
@@ -1113,8 +1168,6 @@ integer :: SVarID, TVarID, UVarID, VVarID, SSHVarID
 ! local variables 
 !----------------------------------------------------------------------
 
-character(len=129)    :: errstring
-
 ! we are going to need these to record the creation date in the netCDF file.
 ! This is entirely optional, but nice.
 
@@ -1514,6 +1567,7 @@ real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
 interf_provided = .false.
+pert_state(1) = state(1)
 
 end subroutine pert_model_state
 
