@@ -64,6 +64,11 @@ character(len=128), parameter :: &
 
 character(len=128) :: msgstring
 
+!! FIXME: on ifort, this must be 1
+!!        on xlf,   this must be 4
+!! see the comments in the read_2d_snapshot code for more info
+integer, parameter :: item_size_direct_read = 4
+
 !------------------------------------------------------------------
 !
 ! MITgcm namelist section:  we want to share the 'data' namelist file
@@ -424,9 +429,9 @@ enddo
 
 ! DEBUG: since we are computing these, check to be sure
 ! they look right.
-do i=1, Nz
- print *, 'i, delZ(i), ZC(i) = ', i, delZ(i), ZC(i)
-enddo
+!do i=1, Nz
+! print *, 'i, delZ(i), ZC(i) = ', i, delZ(i), ZC(i)
+!enddo
 
 ! for now, leave ZG undefined.  it really does have one
 ! more depth than we read in, so it isn't clear how to
@@ -969,24 +974,53 @@ integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
+real(R8) :: lat, lon, depth
+integer :: var_num, offset, lon_index, lat_index, depth_index
+
+print *, 'asking for meta data about index ', index_in
+
 if (index_in < start_index(S_index+1)) then
-   var_type = KIND_SALINITY  
-   !location = set_location(lon, lat, depth, VERTISHEIGHT)
+   if (present(var_type)) var_type = KIND_SALINITY  
+   var_num = S_index
 else if (index_in < start_index(T_index+1)) then
-   var_type = KIND_TEMPERATURE  
-   !location =
+   if (present(var_type)) var_type = KIND_TEMPERATURE  
+   var_num = T_index
 else if (index_in < start_index(U_index+1)) then
-   var_type = KIND_U_CURRENT_COMPONENT
-   !location =
+   if (present(var_type)) var_type = KIND_U_CURRENT_COMPONENT
+   var_num = U_index
 else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_V_CURRENT_COMPONENT
-   !location =
+   if (present(var_type)) var_type = KIND_V_CURRENT_COMPONENT
+   var_num = V_index
 else 
-   var_type = KIND_SEA_SURFACE_HEIGHT
-   !location =
+   if (present(var_type)) var_type = KIND_SEA_SURFACE_HEIGHT
+   var_num = SSH_index
 endif
 
-! something bad happened
+print *, 'var num = ', var_num
+
+! local offset into this var array
+offset = index_in - start_index(var_num)
+
+print *, 'offset = ', offset
+
+if (var_num == SSH_index) then
+  depth = 0.0
+  depth_index = 1
+else
+  depth_index = (offset / (Nx * Ny)) + 1
+  depth = ZC(depth_index)
+endif
+
+lat_index = (offset - ((depth_index-1)*Nx*Ny)) / Nx + 1
+lon_index = offset - ((depth_index-1)*Nx*Ny) - ((lat_index-1)*Nx) + 1
+
+print *, 'lon, lat, depth index = ', lon_index, lat_index, depth_index
+lon = XC(lon_index)
+lat = YC(lat_index)
+
+print *, 'lon, lat, depth = ', lon, lat, depth
+
+location = set_location(lon, lat, depth, VERTISHEIGHT)
 
 end subroutine get_state_meta_data
 
@@ -1724,14 +1758,14 @@ if (io /= 0) then
    call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
 endif
 
-write(iunit, "(A,I,A)") "nDims = [ ", metadata%nDims, " ];"
+write(iunit, "(A,I5,A)") "nDims = [ ", metadata%nDims, " ];"
 write(iunit, "(A)")     "dimList = [ "
 do i=1, metadata%nDims-1
-  write(iunit, "(3(I,A))") metadata%dimList(i), ',', &
+  write(iunit, "(3(I5,A))") metadata%dimList(i), ',', &
                            1, ',', &
                            metadata%dimList(i), ','
 enddo
-write(iunit, "(3(I,A))") metadata%dimList(i), ',', &
+write(iunit, "(3(I5,A))") metadata%dimList(i), ',', &
                          1, ',', &
                          metadata%dimList(i), ' '
 
@@ -1739,9 +1773,9 @@ write(iunit, "(A)") "];"
 
 write(iunit, "(3A)") "dataprec = [ ", trim(metadata%dataprec), " ];"
 
-write(iunit, "(A,I,A)") "nrecords = [ ", metadata%nrecords, " ];"
+write(iunit, "(A,I5,A)") "nrecords = [ ", metadata%nrecords, " ];"
 
-write(iunit, "(A,I,A)") "timeStepNumber = [ ", metadata%timeStepNumber, " ];"
+write(iunit, "(A,I8,A)") "timeStepNumber = [ ", metadata%timeStepNumber, " ];"
 
 close(iunit)
 
@@ -1801,7 +1835,9 @@ allocate(x(metadata%dimList(1), metadata%dimList(2)))
 
 write(*,*)'shape   ',shape(x)
 
-reclen = product(shape(x))
+!! FIXME: on the ibms this must be times the item size;
+!!  on the ifort compiler it is just the number of items
+reclen = product(shape(x)) * item_size_direct_read
 
 ! Get next available unit number, read file.
 
@@ -1812,8 +1848,10 @@ if (io /= 0) then
    call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
 endif
 
+print *, 'ready to read 2d snapshot, reclen = ', reclen
 read(iunit, rec=1, iostat = io) x
 if (io /= 0) then
+print *, 'failed read, iostat = ', io
    write(msgstring,*) 'unable to read snapshot file ', trim(datafilename)
    call error_handler(E_ERR,'read_2d_snapshot',msgstring,source,revision,revdate)
 endif
@@ -1874,7 +1912,7 @@ endif
 
 allocate(x(metadata%dimList(1), metadata%dimList(2), metadata%dimList(3)))
 
-reclen = product(shape(x))
+reclen = product(shape(x)) * item_size_direct_read
 
 ! Get next available unit number, read file.
 
@@ -1942,7 +1980,7 @@ metadata%timeStepNumber = 0
 
 call write_meta(metadata, fbase)
 
-reclen = metadata%reclen
+reclen = metadata%reclen * item_size_direct_read
 
 iunit = get_unit()
 open(unit=iunit, file=datafilename, action='write', access='direct', recl=reclen, iostat=io)
@@ -1992,7 +2030,7 @@ metadata%timeStepNumber = 0
 
 call write_meta(metadata, fbase)
 
-reclen = metadata%reclen
+reclen = metadata%reclen * item_size_direct_read
 
 ! Get next available unit number, write file.
 
@@ -2167,31 +2205,31 @@ integer :: i,j,k,ii
 ! check shapes
 
 if (size(s,1) /= Nx) then
-   write(msgstring,*),'dim 1 of S /= Nx ',size(s,1),Nx
+   write(msgstring,*) 'dim 1 of S /= Nx ',size(s,1),Nx
    call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
                       msgstring,source,revision,revdate) 
 endif
 
 if (size(s,2) /= Ny) then
-   write(msgstring,*),'dim 2 of S /= Nx ',size(s,2),Nx
+   write(msgstring,*) 'dim 2 of S /= Ny ',size(s,2),Ny
    call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
                       msgstring,source,revision,revdate) 
 endif
 
 if (size(s,3) /= Nz) then
-   write(msgstring,*),'dim 3 of S /= Nx ',size(s,3),Nx
+   write(msgstring,*) 'dim 3 of S /= Nz ',size(s,3),Nz
    call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
                       msgstring,source,revision,revdate) 
 endif
 
 if (size(ssh,1) /= Nx) then
-   write(msgstring,*),'dim 1 of SSH /= Nx ',size(ssh,1),Nx
+   write(msgstring,*) 'dim 1 of SSH /= Nx ',size(ssh,1),Nx
    call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
                       msgstring,source,revision,revdate) 
 endif
 
 if (size(ssh,2) /= Ny) then
-   write(msgstring,*),'dim 2 of SSH /= Ny ',size(ssh,2),Ny
+   write(msgstring,*) 'dim 2 of SSH /= Ny ',size(ssh,2),Ny
    call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
                       msgstring,source,revision,revdate) 
 endif
@@ -2269,31 +2307,31 @@ integer :: i,j,k,ii
 ! check shapes
 
 if (size(s,1) /= Nx) then
-   write(msgstring,*),'dim 1 of S /= Nx ',size(s,1),Nx
+   write(msgstring,*) 'dim 1 of S /= Nx ',size(s,1),Nx
    call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
                       msgstring,source,revision,revdate) 
 endif
 
 if (size(s,2) /= Ny) then
-   write(msgstring,*),'dim 2 of S /= Nx ',size(s,2),Nx
+   write(msgstring,*) 'dim 2 of S /= Ny ',size(s,2),Ny
    call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
                       msgstring,source,revision,revdate) 
 endif
 
 if (size(s,3) /= Nz) then
-   write(msgstring,*),'dim 3 of S /= Nx ',size(s,3),Nx
+   write(msgstring,*) 'dim 3 of S /= Nz ',size(s,3),Nz
    call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
                       msgstring,source,revision,revdate) 
 endif
 
 if (size(ssh,1) /= Nx) then
-   write(msgstring,*),'dim 1 of SSH /= Nx ',size(ssh,1),Nx
+   write(msgstring,*) 'dim 1 of SSH /= Nx ',size(ssh,1),Nx
    call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
                       msgstring,source,revision,revdate) 
 endif
 
-if (size(ssh,2) /= Nx) then
-   write(msgstring,*),'dim 2 of SSH /= Nx ',size(ssh,2),Nx
+if (size(ssh,2) /= Ny) then
+   write(msgstring,*) 'dim 2 of SSH /= Ny ',size(ssh,2),Ny
    call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
                       msgstring,source,revision,revdate) 
 endif
