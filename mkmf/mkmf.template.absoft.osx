@@ -30,6 +30,8 @@
 #                sizes (such as REAL (KIND=4) or COMPLEX (KIND=4)).  
 #      -f free   instructs compiler to accept source code written in the 
 #                format for Fortran 90/95 Free Source Form.
+#      -reclen32 Causes the library to interpret the value specified for 
+#                RECL= in an OPEN statement as 32-bit words instead of bytes. 
 #
 # FFLAGS   used all the time
 #     -YEXT_NAMES=LCS          lower case symbols
