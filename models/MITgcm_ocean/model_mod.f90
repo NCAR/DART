@@ -347,7 +347,6 @@ call find_namelist_in_file("data", "PARM04", iunit)
 read(iunit, nml = PARM04, iostat = io)
 call check_namelist_read(iunit, io, "PARM04")
 
-
 call find_namelist_in_file("data", "PARM05", iunit)
 read(iunit, nml = PARM05, iostat = io)
 call check_namelist_read(iunit, io, "PARM05")
@@ -357,6 +356,13 @@ call check_namelist_read(iunit, io, "PARM05")
 ! it returns the allocated, filled array, along with the timestep count.
 ! when we are done, drop_snapshot() frees the space.
 
+! FIXME:
+! right now the only way i know to compute the number of
+! levels/lats/lons is that i set the default value of delZ to 0.0
+! before reading the namelist.  now loop until you get back
+! to zero and that is the end of the list.  not a very
+! satisfying solution, but maybe good enough for now?
+
 Nx = -1
 do i=1, size(delX)
  if (delX(i) == 0.0_r4) then
@@ -365,7 +371,7 @@ do i=1, size(delX)
  endif
 enddo
 if (Nx == -1) then
-   write(errstring,*)'could not figure out number of longitudes'
+   write(errstring,*)'could not figure out number of longitudes from delX in namelist'
    call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
 
@@ -377,12 +383,24 @@ do i=1, size(delY)
  endif
 enddo
 if (Ny == -1) then
-   write(errstring,*)'could not figure out number of latitudes'
+   write(errstring,*)'could not figure out number of latitudes from delY in namelist'
    call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
 
+Nz = -1
+do i=1, size(delZ)
+ if (delZ(i) == 0.0_r4) then
+    Nz = i-1
+    exit
+ endif
+enddo
+if (Nz == -1) then
+   write(errstring,*)'could not figure out number of depth levels from delZ in namelist'
+   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
+endif
 
-! first, X (longitude)
+! determine longitudes 
+
 call read_snapshot('XC', data_2d_array, timestepcount)
 if (size(data_2d_array, 1) /= Nx) then
    write(errstring,*)'XC.meta size for dim 1 does not match delX grid size in namelist'
@@ -394,21 +412,17 @@ if (size(data_2d_array, 2) /= Ny) then
    call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
 allocate(XC(Nx))
-!print *, 'XC data:'
 do i=1, Nx
-!  print *, i, data_2d_array(i, 1)
   XC(i) = data_2d_array(i, 1)
 enddo
 call drop_snapshot(data_2d_array)
 
 call read_snapshot('XG', data_2d_array, timestepcount)
 if (size(data_2d_array, 1) /= Nx) then
-  ! call error handler, files are inconsistent sizes
    write(errstring,*)'XG.meta size for dim 1 does not match delX grid size in namelist'
    call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
 if (size(data_2d_array, 2) /= Ny) then
-  ! call error handler, files are inconsistent sizes
    write(errstring,*)'XG.meta size for dim 2 does not match delY grid size in namelist'
    call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
@@ -418,15 +432,14 @@ do i=1, Nx
 enddo
 call drop_snapshot(data_2d_array)
 
-! then Y (latitude)
+! determine latitudes
+
 call read_snapshot('YC', data_2d_array, timestepcount)
 if (size(data_2d_array, 1) /= Nx) then
-  ! call error handler, files are inconsistent sizes
    write(errstring,*)'YC.meta size for dim 1 does not match delX grid size in namelist'
    call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
 if (size(data_2d_array, 2) /= Ny) then
-  ! call error handler, files are inconsistent sizes
    write(errstring,*)'YC.meta size for dim 2 does not match delY grid size in namelist'
    call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
@@ -438,12 +451,10 @@ call drop_snapshot(data_2d_array)
 
 call read_snapshot('YG', data_2d_array, timestepcount)
 if (size(data_2d_array, 1) /= Nx) then
-  ! call error handler, files are inconsistent sizes
    write(errstring,*)'YG.meta size for dim 1 does not match delX grid size in namelist'
    call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
 if (size(data_2d_array, 2) /= Ny) then
-  ! call error handler, files are inconsistent sizes
    write(errstring,*)'YG.meta size for dim 2 does not match delY grid size in namelist'
    call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
 endif
@@ -453,32 +464,14 @@ do i=1, Ny
 enddo
 call drop_snapshot(data_2d_array)
 
-! compute ZC and ZG here based on delZ from the namelist
-! FIXME:
-! right now the only way i know to compute the number of
-! levels is that i set the default value of delZ to 0.0
-! before reading the namelist.  now loop until you get back
-! to zero and that is the end of the list.  not a very
-! satisfying solution, but maybe good enough for now?
-Nz = -1
-do i=2, max_nz
-  if (delZ(i) == 0.0_r4) then
-     nZ = i-1
-     exit
-  endif
-enddo
-if (Nz == -1) then
-   write(errstring,*)'could not figure out number of depth levels from delZ in namelist'
-   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
-endif
-
 ! the namelist contains a list of thicknesses of each
 ! depth level; the ZC array is a list of the depths of
 ! each cell center, so they must be computed.
+
 allocate(ZC(Nz))
-ZC(1) = -0.5 * delZ(1)
+ZC(1) = -0.5_r8 * delZ(1)
 do i=2, Nz
- ZC(i) = ZC(i-1) - (0.5 * delZ(i-1) + 0.5 * delZ(i)) 
+ ZC(i) = ZC(i-1) - (0.5_r8 * delZ(i-1) + 0.5_r8 * delZ(i)) 
 enddo
 
 !! DEBUG: since we are computing these, check to be sure
@@ -510,14 +503,15 @@ start_index(U_index)   = start_index(T_index) + (Nx * Ny * Nz)
 start_index(V_index)   = start_index(U_index) + (Nx * Ny * Nz)
 start_index(SSH_index) = start_index(V_index) + (Nx * Ny * Nz)
 
-
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 1 is 2D.
 !  e.g. S,T,U,V = 256 x 225 x 70
 !  e.g. SSH = 256 x 225
 
-print *, 'model_size computation: '
-print *, '  Nx, Ny, Nz = ', Nx, Ny, Nz
+write(logfileunit, *) 'Using grid size : '
+write(logfileunit, *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
+write(     *     , *) 'Using grid size : '
+write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 !print *, ' 3d field size: ', n3dfields * (Nx * Ny * Nz)
 !print *, ' 2d field size: ', n2dfields * (Nx * Ny)
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
@@ -1158,8 +1152,8 @@ integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
 !----------------------------------------------------------------------
 
 ! for the dimensions and coordinate variables
-integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID
-integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID
+integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID, ZCDimID
+integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID, ZCVarID
 
 ! for the prognostic variables
 integer :: SVarID, TVarID, UVarID, VVarID, SSHVarID 
@@ -1298,6 +1292,8 @@ else
           len = Ny, dimid = YCDimID),"nc_write_model_atts", "YC def_dim "//trim(filename))
    call nc_check(nf90_def_dim(ncid=ncFileID, name="ZG", &
           len = Nz, dimid = ZGDimID),"nc_write_model_atts", "ZG def_dim "//trim(filename))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="ZC", &
+          len = Nz, dimid = ZCDimID),"nc_write_model_atts", "ZC def_dim "//trim(filename))
    
    !----------------------------------------------------------------------------
    ! Create the (empty) Coordinate Variables and the Attributes
@@ -1318,7 +1314,7 @@ else
    ! S,T,V,SSH Grid Longitudes
    call nc_check(nf90_def_var(ncFileID,name="XC",xtype=nf90_real,dimids=XCDimID,varid=XCVarID),&
                  "nc_write_model_atts", "XC def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, XCVarID, "long_name", "longitude grid edges"), &
+   call nc_check(nf90_put_att(ncFileID, XCVarID, "long_name", "longitude grid centroids"), &
                  "nc_write_model_atts", "XC long_name "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, XCVarID, "cartesian_axis", "X"),   &
                  "nc_write_model_atts", "XC cartesian_axis "//trim(filename))
@@ -1342,7 +1338,7 @@ else
    ! S,T,U,SSH Grid Latitudes
    call nc_check(nf90_def_var(ncFileID,name="YC",xtype=nf90_real,dimids=YCDimID,varid=YCVarID), &
                  "nc_write_model_atts", "YC def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, YCVarID, "long_name", "latitude grid edges"), &
+   call nc_check(nf90_put_att(ncFileID, YCVarID, "long_name", "latitude grid centroids"), &
                  "nc_write_model_atts", "YC long_name "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, YCVarID, "cartesian_axis", "Y"),   &
                  "nc_write_model_atts", "YC cartesian_axis "//trim(filename))
@@ -1351,45 +1347,83 @@ else
    call nc_check(nf90_put_att(ncFileID, YCVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)), &
                  "nc_write_model_atts", "YC valid_range "//trim(filename))
 
+   ! Depths
+   call nc_check(nf90_def_var(ncFileID,name="ZG",xtype=nf90_real,dimids=ZGDimID,varid=ZGVarID), &
+                 "nc_write_model_atts", "ZG def_var "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, "long_name", "depth at grid edges"), &
+                 "nc_write_model_atts", "ZG long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, "cartesian_axis", "Z"),   &
+                 "nc_write_model_atts", "ZG cartesian_axis "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, "units", "meters"),  &
+                 "nc_write_model_atts", "ZG units "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, "positive", "up"),  &
+                 "nc_write_model_atts", "ZG units "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, "comment", &
+                  "more negative is closer to the center of the earth"),  &
+                 "nc_write_model_atts", "ZG comment "//trim(filename))
+
+   ! Depths
+   call nc_check(nf90_def_var(ncFileID,name="ZC",xtype=nf90_real,dimids=ZCDimID,varid=ZCVarID), &
+                 "nc_write_model_atts", "ZC def_var "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, "long_name", "depth at grid centroids"), &
+                 "nc_write_model_atts", "ZC long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, "cartesian_axis", "Z"),   &
+                 "nc_write_model_atts", "ZC cartesian_axis "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, "units", "meters"),  &
+                 "nc_write_model_atts", "ZC units "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, "positive", "down"),  &
+                 "nc_write_model_atts", "ZC units "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, "comment", &
+                  "more negative is closer to the center of the earth"),  &
+                 "nc_write_model_atts", "ZC comment "//trim(filename))
+
    !----------------------------------------------------------------------------
    ! Create the (empty) Prognostic Variables and the Attributes
    !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncFileID, name="S", xtype=nf90_real, &
-         dimids = (/XCDimID,YCDimID,ZGDimID,MemberDimID,unlimitedDimID/),varid=SVarID),&
+         dimids = (/XCDimID,YCDimID,ZCDimID,MemberDimID,unlimitedDimID/),varid=SVarID),&
          "nc_write_model_atts", "S def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, SVarID, "long_name", "salinity"), &
          "nc_write_model_atts", "S long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SVarID, "_FillValue", NF90_FILL_REAL), &
+         "nc_write_model_atts", "S fill "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, SVarID, "units", "psu"), &
          "nc_write_model_atts", "S units "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, SVarID, "units_long_name", "practical salinity units"), &
          "nc_write_model_atts", "S units_long_name "//trim(filename))
 
    call nc_check(nf90_def_var(ncid=ncFileID, name="T", xtype=nf90_real, &
-         dimids=(/XCDimID,YCDimID,ZGDimID,MemberDimID,unlimitedDimID/),varid=TVarID),&
+         dimids=(/XCDimID,YCDimID,ZCDimID,MemberDimID,unlimitedDimID/),varid=TVarID),&
          "nc_write_model_atts", "T def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, TVarID, "long_name", "Temperature"), &
          "nc_write_model_atts", "T long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, TVarID, "_FillValue", NF90_FILL_REAL), &
+         "nc_write_model_atts", "T fill "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, TVarID, "units", "C"), &
          "nc_write_model_atts", "T units "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, TVarID, "units_long_name", "degrees celsius"), &
          "nc_write_model_atts", "T units_long_name "//trim(filename))
 
    call nc_check(nf90_def_var(ncid=ncFileID, name="U", xtype=nf90_real, &
-         dimids=(/XGDimID,YCDimID,ZGDimID,MemberDimID,unlimitedDimID/),varid=UVarID),&
+         dimids=(/XGDimID,YCDimID,ZCDimID,MemberDimID,unlimitedDimID/),varid=UVarID),&
          "nc_write_model_atts", "U def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, UVarID, "long_name", "Zonal Velocity"), &
          "nc_write_model_atts", "U long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, UVarID, "_FillValue", NF90_FILL_REAL), &
+         "nc_write_model_atts", "U fill "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, UVarID, "units", "m/s"), &
          "nc_write_model_atts", "U units "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, UVarID, "units_long_name", "meters per second"), &
          "nc_write_model_atts", "U units_long_name "//trim(filename))
 
    call nc_check(nf90_def_var(ncid=ncFileID, name="V", xtype=nf90_real, &
-         dimids=(/XCDimID,YGDimID,ZGDimID,MemberDimID,unlimitedDimID/),varid=VVarID),&
+         dimids=(/XCDimID,YGDimID,ZCDimID,MemberDimID,unlimitedDimID/),varid=VVarID),&
          "nc_write_model_atts", "V def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, VVarID, "long_name", "Meridional Velocity"), &
          "nc_write_model_atts", "V long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, VVarID, "_FillValue", NF90_FILL_REAL), &
+         "nc_write_model_atts", "V fill "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, VVarID, "units", "m/s"), &
          "nc_write_model_atts", "V units "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, VVarID, "units_long_name", "meters per second"), &
@@ -1400,6 +1434,8 @@ else
          "nc_write_model_atts", "SSH def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, SSHVarID, "long_name", "sea surface height"), &
          "nc_write_model_atts", "SSH long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SSHVarID, "_FillValue", NF90_FILL_REAL), &
+         "nc_write_model_atts", "SSH fill "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, SSHVarID, "units", "meters"), &
          "nc_write_model_atts", "SSH units "//trim(filename))
 
@@ -1421,6 +1457,8 @@ else
                 "nc_write_model_atts", "YC put_var "//trim(filename))
    call nc_check(nf90_put_var(ncFileID, ZGVarID, ZG ), &
                 "nc_write_model_atts", "ZG put_var "//trim(filename))
+   call nc_check(nf90_put_var(ncFileID, ZCVarID, ZC ), &
+                "nc_write_model_atts", "ZC put_var "//trim(filename))
 
 endif
 
@@ -1469,11 +1507,12 @@ integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: VarID
+integer :: VarID, i, j, k
 
 real(r4), allocatable, dimension(:,:,:) :: s,t,u,v
 real(r4), allocatable, dimension(:,:)   :: ssh
 character(len=128)  :: filename
+!real(r4), dimension(4) :: mask
 
 ierr = -1 ! assume things go poorly
 
@@ -1507,6 +1546,65 @@ else
    !----------------------------------------------------------------------------
 
    call vector_to_prog_var(statevec,s,t,u,v,ssh) ! arrays allocated internally
+
+   ! Replace missing values (0.0) with netcdf missing value.
+   ! Staggered grid causes some logistical problems.
+   ! Hopefully, the conversion between r8 and r4 still preserves 'hard' zeros.
+
+!  do j = 1,Ny   ! latitudes
+!  do i = 1,Nx   ! longitudes
+
+!     ! These three live on the same grid (the centers) ... if these are missing
+!     ! at the surface, they are truly missing.
+
+!     if ((  s(i,j,1) == 0.0_r4) .and. &
+!         (  t(i,j,1) == 0.0_r4) .and. &
+!         (ssh(i,j  ) == 0.0_r4)) then
+!            s(i,j,:) = NF90_FILL_REAL
+!            t(i,j,:) = NF90_FILL_REAL
+!          ssh(i,j  ) = NF90_FILL_REAL
+!     endif
+!  enddo
+!  enddo
+
+   ! Check for other ways to be missing (dry bottom)
+
+!  do k = 2,Nz   ! vertical
+!  do j = 1,Ny   ! latitudes
+!  do i = 1,Nx   ! longitudes
+!     if ((s(i,j,k) == 0.0_r4) .and. (t(i,j,k) == 0.0_r4)) then
+!          s(i,j,k) = NF90_FILL_REAL
+!          t(i,j,k) = NF90_FILL_REAL
+!     endif
+!  enddo
+!  enddo
+!  enddo
+
+   ! U,V live on staggered grids ... no way to hedge against errant zeros 
+
+   Ver: do k = 1,Nz   ! vertical
+   Lat: do j = 1,Ny   ! latitudes
+   Lon: do i = 1,Nx   ! longitudes
+
+      if (s(i,j,k) == 0.0_r4) s(i,j,k) = NF90_FILL_REAL
+      if (t(i,j,k) == 0.0_r4) t(i,j,k) = NF90_FILL_REAL
+      if (u(i,j,k) == 0.0_r4) u(i,j,k) = NF90_FILL_REAL
+      if (v(i,j,k) == 0.0_r4) v(i,j,k) = NF90_FILL_REAL
+      if (ssh(i,j) == 0.0_r4) ssh(i,j) = NF90_FILL_REAL
+
+!     mask(1) =   s(i,j,k)
+!     mask(2) =   t(i,j,k)
+!     mask(3) =   u(i,j,k)
+!     mask(4) =   v(i,j,k)
+
+!     if (any(mask) .and. .not. all(mask)) then
+!        not sure this works on a staggered grid ...
+!     endif
+  
+
+   enddo Lon
+   enddo Lat
+   enddo Ver
 
    call nc_check(NF90_inq_varid(ncFileID, "S", VarID), &
                 "nc_write_model_vars", "S inq_varid "//trim(filename))
@@ -1641,7 +1739,10 @@ iunit = get_unit()
 open(unit=iunit, file=filename, action='read', form='formatted', iostat = io)
 if (io /= 0) then
    write(msgstring,*) 'unable to open file ', trim(filename), ' for reading'
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+   call error_handler(E_WARN,'model_mod:read_meta',msgstring,source,revision,revdate)
+   return
+else
+   ! Use the namelist values as the defaults ??? unable to determin 2D or 3D file
 endif
 
 ! Read every line looking for the nDims entry
@@ -2358,45 +2459,10 @@ real(r4), allocatable, dimension(:,:),   intent(out)  :: ssh
 
 integer :: i,j,k,ii
 
-! check shapes
-
-if (size(s,1) /= Nx) then
-   write(msgstring,*) 'dim 1 of S /= Nx ',size(s,1),Nx
-   call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
-                      msgstring,source,revision,revdate) 
-endif
-
-if (size(s,2) /= Ny) then
-   write(msgstring,*) 'dim 2 of S /= Ny ',size(s,2),Ny
-   call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
-                      msgstring,source,revision,revdate) 
-endif
-
-if (size(s,3) /= Nz) then
-   write(msgstring,*) 'dim 3 of S /= Nz ',size(s,3),Nz
-   call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
-                      msgstring,source,revision,revdate) 
-endif
-
-if (size(ssh,1) /= Nx) then
-   write(msgstring,*) 'dim 1 of SSH /= Nx ',size(ssh,1),Nx
-   call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
-                      msgstring,source,revision,revdate) 
-endif
-
-if (size(ssh,2) /= Ny) then
-   write(msgstring,*) 'dim 2 of SSH /= Ny ',size(ssh,2),Ny
-   call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
-                      msgstring,source,revision,revdate) 
-endif
-
-! Should check sizes of T,U,V against that of S
-
-! make these the right size
-allocate(s(Nx,Ny,Nz))
-allocate(t(Nx,Ny,Nz))
-allocate(u(Nx,Ny,Nz))
-allocate(v(Nx,Ny,Nz))
+allocate(  s(Nx,Ny,Nz))
+allocate(  t(Nx,Ny,Nz))
+allocate(  u(Nx,Ny,Nz))
+allocate(  v(Nx,Ny,Nz))
 allocate(ssh(Nx,Ny))
 
 ii = 0
