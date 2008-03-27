@@ -29,7 +29,7 @@ use    utilities_mod, only : get_unit, file_exist, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, finalize_utilities, &
                              error_handler
 use        model_mod, only : MIT_meta_type, read_meta, read_snapshot, &
-                             drop_snapshot, prog_var_to_vector, static_init_model, &
+                             prog_var_to_vector, static_init_model, &
                              get_model_size
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
                              init_assim_model, get_model_size, set_model_state_vector, &
