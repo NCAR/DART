@@ -51,9 +51,8 @@ public :: get_model_size,         &
 ! the interfaces here can be changed as appropriate.
 public :: prog_var_to_vector, vector_to_prog_var, &
           MIT_meta_type, read_meta, write_meta, &
-          read_snapshot, drop_snapshot, write_snapshot, &
+          read_snapshot, write_snapshot, &
           snapshot_files_to_sv, sv_to_snapshot_files
-
 
 
 ! version controlled file description for error handling, do not edit
@@ -62,7 +61,7 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date: 2007-04-03 16:44:36 -0600 (Tue, 03 Apr 2007) $"
 
-character(len=129) :: msgstring, errstring
+character(len=129) :: msgstring
 
 
 !! FIXME: on ifort, this must be 1
@@ -93,54 +92,13 @@ integer, parameter :: max_ny = 1024
 integer, parameter :: max_nz = 512
 integer, parameter :: max_nr = 512
 
-! must match lists declared in ini_parms.f
-
-!--   Time stepping parameters namelist
-      NAMELIST /PARM03/ &
-      nIter0, nTimeSteps, nEndIter, pickupSuff, &
-      deltaT, deltaTClock, deltaTmom, &
-      deltaTtracer, dTtracerLev, deltaTfreesurf, &
-      forcing_In_AB, momForcingOutAB, tracForcingOutAB, &
-      momDissip_In_AB, doAB_onGtGs, &
-      abEps, alph_AB, beta_AB, startFromPickupAB2, &
-      tauCD, rCD, &
-      baseTime, startTime, endTime, chkPtFreq, &
-      dumpFreq, dumpInitAndLast, adjDumpFreq, taveFreq, tave_lastIter, &
-      diagFreq, monitorFreq, adjMonitorFreq, pChkPtFreq, cAdjFreq, &
-      outputTypesInclusive, &
-      tauThetaClimRelax, tauSaltClimRelax, latBandClimRelax, &
-      tauThetaClimRelax3Dim, tauSaltClimRelax3Dim, tauTr1ClimRelax, &
-      periodicExternalForcing, externForcingPeriod, externForcingCycle, &
-      calendarDumps
-
-!--   Gridding parameters namelist
-      NAMELIST /PARM04/ &
-      usingCartesianGrid, usingCylindricalGrid, &
-      dxSpacing, dySpacing, delX, delY, delXFile, delYFile, &
-      usingSphericalPolarGrid, phiMin, thetaMin, rSphere, &
-      usingCurvilinearGrid, horizGridFile, deepAtmosphere, &
-      Ro_SeaLevel, delZ, delP, delR, delRc, delRFile, delRcFile, &
-      rkFac, groundAtK1
-
-!--   Input files namelist
-      NAMELIST /PARM05/ &
-      bathyFile, topoFile, shelfIceFile, &
-      hydrogThetaFile, hydrogSaltFile, diffKrFile, &
-      zonalWindFile, meridWindFile, &
-      thetaClimFile, saltClimFile, &
-      surfQfile, surfQnetFile, surfQswFile, EmPmRfile, saltFluxFile, &
-      lambdaThetaFile, lambdaSaltFile, &
-      uVelInitFile, vVelInitFile, pSurfInitFile, &
-      dQdTFile, ploadFile,tCylIn,tCylOut, &
-      eddyTauxFile, eddyTauyFile, &
-      mdsioLocalDir, &
-      the_run_name
-
 !-- FIXME: i have not been able to find all of these in the
 !-- original source code.  the ones we're using have been
 !-- checked that they are the right type.  the others might
 !-- cause problems since i don't have a namelist file i can
 !-- examine that has the full set of values specified.
+!-- 
+!-- must match lists declared in ini_parms.f
 
 !--   Time stepping parameters variable declarations
 real(r8) :: nIter0, nTimeSteps, nEndIter, pickupSuff, &
@@ -187,6 +145,46 @@ character(len=MAX_LEN_FNAM) :: &
       mdsioLocalDir, &
       the_run_name
 
+!--   Time stepping parameters namelist
+NAMELIST /PARM03/ &
+      nIter0, nTimeSteps, nEndIter, pickupSuff, &
+      deltaT, deltaTClock, deltaTmom, &
+      deltaTtracer, dTtracerLev, deltaTfreesurf, &
+      forcing_In_AB, momForcingOutAB, tracForcingOutAB, &
+      momDissip_In_AB, doAB_onGtGs, &
+      abEps, alph_AB, beta_AB, startFromPickupAB2, &
+      tauCD, rCD, &
+      baseTime, startTime, endTime, chkPtFreq, &
+      dumpFreq, dumpInitAndLast, adjDumpFreq, taveFreq, tave_lastIter, &
+      diagFreq, monitorFreq, adjMonitorFreq, pChkPtFreq, cAdjFreq, &
+      outputTypesInclusive, &
+      tauThetaClimRelax, tauSaltClimRelax, latBandClimRelax, &
+      tauThetaClimRelax3Dim, tauSaltClimRelax3Dim, tauTr1ClimRelax, &
+      periodicExternalForcing, externForcingPeriod, externForcingCycle, &
+      calendarDumps
+
+!--   Gridding parameters namelist
+NAMELIST /PARM04/ &
+      usingCartesianGrid, usingCylindricalGrid, &
+      dxSpacing, dySpacing, delX, delY, delXFile, delYFile, &
+      usingSphericalPolarGrid, phiMin, thetaMin, rSphere, &
+      usingCurvilinearGrid, horizGridFile, deepAtmosphere, &
+      Ro_SeaLevel, delZ, delP, delR, delRc, delRFile, delRcFile, &
+      rkFac, groundAtK1
+
+!--   Input files namelist
+NAMELIST /PARM05/ &
+      bathyFile, topoFile, shelfIceFile, &
+      hydrogThetaFile, hydrogSaltFile, diffKrFile, &
+      zonalWindFile, meridWindFile, &
+      thetaClimFile, saltClimFile, &
+      surfQfile, surfQnetFile, surfQswFile, EmPmRfile, saltFluxFile, &
+      lambdaThetaFile, lambdaSaltFile, &
+      uVelInitFile, vVelInitFile, pSurfInitFile, &
+      dQdTFile, ploadFile,tCylIn,tCylOut, &
+      eddyTauxFile, eddyTauyFile, &
+      mdsioLocalDir, &
+      the_run_name
 
 !------------------------------------------------------------------
 !
@@ -200,12 +198,9 @@ character(len=MAX_LEN_FNAM) :: &
 !
 !------------------------------------------------------------------
 
-! Grid parameters that we define - the values will be read from a
-! standard MITgcm namelist and filled in here.
-
-integer, parameter :: nfields   = 5
 integer, parameter :: n3dfields = 4
 integer, parameter :: n2dfields = 1
+integer, parameter :: nfields   = n3dfields + n2dfields
 
 integer, parameter :: S_index   = 1
 integer, parameter :: T_index   = 2
@@ -213,14 +208,17 @@ integer, parameter :: U_index   = 3
 integer, parameter :: V_index   = 4
 integer, parameter :: SSH_index = 5
 
-! FIXME: put the input/restart data filenames into an array
-! so we can loop over all 3d arrays and then 2d arrays as we
-! fill the state vector.
+! (the absoft compiler likes them to all be the same length during declaration)
+! we trim the blanks off before use anyway, so ...
+character(len=128) :: progvarnames(nfields) = (/'S  ','T  ','U  ','V  ','SSH'/)
 
+integer :: start_index(nfields)
+
+! Grid parameters - the values will be read from a
+! standard MITgcm namelist and filled in here.
 
 ! grid counts for each field
 integer :: Nx, Ny, Nz
-integer :: start_index(nfields)
 
 ! locations of the cell centers (C) and cell faces (grid?) (G)
 ! for each axis.
@@ -234,7 +232,6 @@ real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 !real(r8) :: delta_lat, delta_lon, delta_depth
 !real(r8), allocatable :: lat_grid(:), lon_grid(:), depth_grid(:)
 
-
 ! What is the natural model timestep?
 real(r8) :: model_timestep
 type(time_type) :: time_step
@@ -243,7 +240,6 @@ type(time_type) :: time_step
 integer :: timestepcount = 40992
 integer :: time_step_days      = 0
 integer :: time_step_seconds   = 900
-
 
 ! the state vector length
 integer :: model_size
@@ -272,16 +268,15 @@ INTERFACE read_snapshot
       MODULE PROCEDURE read_3d_snapshot
 END INTERFACE
 
-INTERFACE drop_snapshot
-      MODULE PROCEDURE drop_3d_snapshot
-      MODULE PROCEDURE drop_2d_snapshot
-END INTERFACE
-
 INTERFACE write_snapshot
       MODULE PROCEDURE write_2d_snapshot
       MODULE PROCEDURE write_3d_snapshot
 END INTERFACE
 
+INTERFACE vector_to_prog_var
+      MODULE PROCEDURE vector_to_2d_prog_var
+      MODULE PROCEDURE vector_to_3d_prog_var
+END INTERFACE
 
 
 contains
@@ -297,7 +292,7 @@ subroutine static_init_model()
 ! it reads in the grid information and then the model data.
 
 integer :: iunit, io
-integer :: i, j, k
+integer :: i
 real(r4), allocatable :: data_2d_array(:,:)
 
 ! The Plan:
@@ -371,8 +366,8 @@ do i=1, size(delX)
  endif
 enddo
 if (Nx == -1) then
-   write(errstring,*)'could not figure out number of longitudes from delX in namelist'
-   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
+   write(msgstring,*)'could not figure out number of longitudes from delX in namelist'
+   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
 endif
 
 Ny = -1
@@ -383,8 +378,8 @@ do i=1, size(delY)
  endif
 enddo
 if (Ny == -1) then
-   write(errstring,*)'could not figure out number of latitudes from delY in namelist'
-   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
+   write(msgstring,*)'could not figure out number of latitudes from delY in namelist'
+   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
 endif
 
 Nz = -1
@@ -395,104 +390,52 @@ do i=1, size(delZ)
  endif
 enddo
 if (Nz == -1) then
-   write(errstring,*)'could not figure out number of depth levels from delZ in namelist'
-   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
+   write(msgstring,*)'could not figure out number of depth levels from delZ in namelist'
+   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
 endif
+
+! We know enough to allocate grid variables. 
+! 'read_snapshot' checks the ".meta" files for agreeable dimensions.
+
+allocate(XC(Nx), YC(Ny), ZC(Nz))
+allocate(XG(Nx), YG(Ny), ZG(Nz))
+allocate(data_2d_array(Nx,Ny))
 
 ! determine longitudes 
 
 call read_snapshot('XC', data_2d_array, timestepcount)
-if (size(data_2d_array, 1) /= Nx) then
-   write(errstring,*)'XC.meta size for dim 1 does not match delX grid size in namelist'
-   write(errstring,*)'delX grid size in namelist does not match XC.meta size, dim 1'
-   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
-endif
-if (size(data_2d_array, 2) /= Ny) then
-   write(errstring,*)'XC.meta size for dim 2 does not match delY grid size in namelist'
-   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
-endif
-allocate(XC(Nx))
 do i=1, Nx
   XC(i) = data_2d_array(i, 1)
 enddo
-call drop_snapshot(data_2d_array)
 
 call read_snapshot('XG', data_2d_array, timestepcount)
-if (size(data_2d_array, 1) /= Nx) then
-   write(errstring,*)'XG.meta size for dim 1 does not match delX grid size in namelist'
-   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
-endif
-if (size(data_2d_array, 2) /= Ny) then
-   write(errstring,*)'XG.meta size for dim 2 does not match delY grid size in namelist'
-   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
-endif
-allocate(XG(Nx))
 do i=1, Nx
   XG(i) = data_2d_array(i, 1)
 enddo
-call drop_snapshot(data_2d_array)
 
 ! determine latitudes
 
 call read_snapshot('YC', data_2d_array, timestepcount)
-if (size(data_2d_array, 1) /= Nx) then
-   write(errstring,*)'YC.meta size for dim 1 does not match delX grid size in namelist'
-   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
-endif
-if (size(data_2d_array, 2) /= Ny) then
-   write(errstring,*)'YC.meta size for dim 2 does not match delY grid size in namelist'
-   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
-endif
-allocate(YC(Ny))
 do i=1, Ny
-  YC(i) = data_2d_array(i, 1)
+  YC(i) = data_2d_array(1, i)
 enddo
-call drop_snapshot(data_2d_array)
 
 call read_snapshot('YG', data_2d_array, timestepcount)
-if (size(data_2d_array, 1) /= Nx) then
-   write(errstring,*)'YG.meta size for dim 1 does not match delX grid size in namelist'
-   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
-endif
-if (size(data_2d_array, 2) /= Ny) then
-   write(errstring,*)'YG.meta size for dim 2 does not match delY grid size in namelist'
-   call error_handler(E_ERR,"static_init_model", errstring, source, revision, revdate)
-endif
-allocate(YG(Ny))
 do i=1, Ny
-  YG(i) = data_2d_array(i, 1)
+  YG(i) = data_2d_array(1, i)
 enddo
-call drop_snapshot(data_2d_array)
 
-! the namelist contains a list of thicknesses of each
-! depth level; the ZC array is a list of the depths of
-! each cell center, so they must be computed.
+deallocate(data_2d_array)
 
-allocate(ZC(Nz))
+! the namelist contains a list of thicknesses of each depth level (delZ)
+! ZG (the grid edges) and ZC (the grid centroids) must be computed.
+
+ZG(1) = 0.0_r8
 ZC(1) = -0.5_r8 * delZ(1)
 do i=2, Nz
- ZC(i) = ZC(i-1) - (0.5_r8 * delZ(i-1) + 0.5_r8 * delZ(i)) 
+ ZG(i) = ZG(i-1) - delZ(i-1)
+ ZC(i) = ZC(i-1) - 0.5_r8 * delZ(i-1) - 0.5_r8 * delZ(i) 
 enddo
-
-!! DEBUG: since we are computing these, check to be sure
-!! they look right.
-!do i=1, Nz
-! print *, 'i, delZ(i), ZC(i) = ', i, delZ(i), ZC(i)
-!enddo
-
-! for now, leave ZG undefined.  it really does have one
-! more depth than we read in, so it isn't clear how to
-! handle this.
-allocate(ZG(Nz))
-ZG(:) = 0.0_r8
-! if we did need depth faces, here is how to compute them.
-! the delZ array are each cell width.
-!allocate(ZG(Nz+1))
-!ZG(1) = 0.0_r8
-!do i=2, Nz+1
-! ZG(i) = ZG(i-1) - delZ(i-1)
-!enddo
-
 
 ! record where in the state vector the data type changes
 ! from one type to another, by computing the starting
@@ -1206,9 +1149,9 @@ call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID), &
                            "nc_write_model_atts", "time dimid "//trim(filename))
 
 if ( TimeDimID /= unlimitedDimId ) then
-   write(errstring,*)"Time Dimension ID ",TimeDimID, &
+   write(msgstring,*)"Time Dimension ID ",TimeDimID, &
              " should equal Unlimited Dimension ID",unlimitedDimID
-   call error_handler(E_ERR,"nc_write_model_atts", errstring, source, revision, revdate)
+   call error_handler(E_ERR,"nc_write_model_atts", msgstring, source, revision, revdate)
 endif
 
 !-------------------------------------------------------------------------------
@@ -1507,12 +1450,11 @@ integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: VarID, i, j, k
+integer :: VarID
 
-real(r4), allocatable, dimension(:,:,:) :: s,t,u,v
-real(r4), allocatable, dimension(:,:)   :: ssh
+real(r4), dimension(Nx,Ny,Nz) :: data_3d
+real(r4), dimension(Nx,Ny)    :: data_2d
 character(len=128)  :: filename
-!real(r4), dimension(4) :: mask
 
 ierr = -1 ! assume things go poorly
 
@@ -1543,95 +1485,45 @@ else
 
    !----------------------------------------------------------------------------
    ! We need to process the prognostic variables.
-   !----------------------------------------------------------------------------
-
-   call vector_to_prog_var(statevec,s,t,u,v,ssh) ! arrays allocated internally
-
    ! Replace missing values (0.0) with netcdf missing value.
    ! Staggered grid causes some logistical problems.
    ! Hopefully, the conversion between r8 and r4 still preserves 'hard' zeros.
+   !----------------------------------------------------------------------------
 
-!  do j = 1,Ny   ! latitudes
-!  do i = 1,Nx   ! longitudes
-
-!     ! These three live on the same grid (the centers) ... if these are missing
-!     ! at the surface, they are truly missing.
-
-!     if ((  s(i,j,1) == 0.0_r4) .and. &
-!         (  t(i,j,1) == 0.0_r4) .and. &
-!         (ssh(i,j  ) == 0.0_r4)) then
-!            s(i,j,:) = NF90_FILL_REAL
-!            t(i,j,:) = NF90_FILL_REAL
-!          ssh(i,j  ) = NF90_FILL_REAL
-!     endif
-!  enddo
-!  enddo
-
-   ! Check for other ways to be missing (dry bottom)
-
-!  do k = 2,Nz   ! vertical
-!  do j = 1,Ny   ! latitudes
-!  do i = 1,Nx   ! longitudes
-!     if ((s(i,j,k) == 0.0_r4) .and. (t(i,j,k) == 0.0_r4)) then
-!          s(i,j,k) = NF90_FILL_REAL
-!          t(i,j,k) = NF90_FILL_REAL
-!     endif
-!  enddo
-!  enddo
-!  enddo
-
-   ! U,V live on staggered grids ... no way to hedge against errant zeros 
-
-   Ver: do k = 1,Nz   ! vertical
-   Lat: do j = 1,Ny   ! latitudes
-   Lon: do i = 1,Nx   ! longitudes
-
-      if (s(i,j,k) == 0.0_r4) s(i,j,k) = NF90_FILL_REAL
-      if (t(i,j,k) == 0.0_r4) t(i,j,k) = NF90_FILL_REAL
-      if (u(i,j,k) == 0.0_r4) u(i,j,k) = NF90_FILL_REAL
-      if (v(i,j,k) == 0.0_r4) v(i,j,k) = NF90_FILL_REAL
-      if (ssh(i,j) == 0.0_r4) ssh(i,j) = NF90_FILL_REAL
-
-!     mask(1) =   s(i,j,k)
-!     mask(2) =   t(i,j,k)
-!     mask(3) =   u(i,j,k)
-!     mask(4) =   v(i,j,k)
-
-!     if (any(mask) .and. .not. all(mask)) then
-!        not sure this works on a staggered grid ...
-!     endif
-  
-
-   enddo Lon
-   enddo Lat
-   enddo Ver
-
+   call vector_to_prog_var(statevec,S_index,data_3d)
+   where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
    call nc_check(NF90_inq_varid(ncFileID, "S", VarID), &
                 "nc_write_model_vars", "S inq_varid "//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,s,start=(/1,1,1,copyindex,timeindex/)),&
+   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 "nc_write_model_vars", "S put_var "//trim(filename))
 
+   call vector_to_prog_var(statevec,T_index,data_3d)
+   where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
    call nc_check(NF90_inq_varid(ncFileID, "T", VarID), &
                 "nc_write_model_vars", "T inq_varid "//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,t,start=(/1,1,1,copyindex,timeindex/)),&
+   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 "nc_write_model_vars", "T put_var "//trim(filename))
 
+   call vector_to_prog_var(statevec,U_index,data_3d)
+   where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
    call nc_check(NF90_inq_varid(ncFileID, "U", VarID), &
                 "nc_write_model_vars", "U inq_varid "//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,u,start=(/1,1,1,copyindex,timeindex/)),&
+   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 "nc_write_model_vars", "U put_var "//trim(filename))
 
+   call vector_to_prog_var(statevec,V_index,data_3d)
+   where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
    call nc_check(NF90_inq_varid(ncFileID, "V", VarID), &
                 "nc_write_model_vars", "V inq_varid "//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,v,start=(/1,1,1,copyindex,timeindex/)),&
+   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 "nc_write_model_vars", "V put_var "//trim(filename))
 
+   call vector_to_prog_var(statevec,SSH_index,data_2d)
+   where (data_2d == 0.0_r4) data_2d = NF90_FILL_REAL
    call nc_check(NF90_inq_varid(ncFileID, "SSH", VarID), &
                 "nc_write_model_vars", "SSH inq_varid "//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,ssh,start=(/1,1,copyindex,timeindex/)),&
+   call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
                 "nc_write_model_vars", "SSH put_var "//trim(filename))
-
-   deallocate(s,t,u,v,ssh)
 
 endif
 
@@ -1936,6 +1828,8 @@ close(iunit)
 
 end subroutine write_meta
 
+
+
 subroutine read_2d_snapshot(fbase, x, timestep, vartype)
 !------------------------------------------------------------------
 !
@@ -1945,14 +1839,14 @@ subroutine read_2d_snapshot(fbase, x, timestep, vartype)
 !
 ! As it stands now ... the .data files appear to be big-endian.
 
-character(len=*),                        intent(in)  :: fbase
-real(r4), allocatable, dimension(:,:),   intent(out) :: x
-integer,                                 intent(out) :: timestep
-character(len=*), optional,              intent(in)  :: vartype
+character(len=*),           intent(in)  :: fbase
+real(r4), dimension(:,:),   intent(out) :: x
+integer,                    intent(out) :: timestep
+character(len=*), optional, intent(in)  :: vartype
 
 character(len=128) :: metafilename, datafilename
 type(MIT_meta_type):: metadata
-integer :: iunit, io, indx
+integer :: iunit, io
 integer :: reclen
 
 if (present(vartype)) then
@@ -1963,8 +1857,10 @@ else
    datafilename = trim(fbase)//'.data'
 endif
 
-metadata = read_meta(fbase,vartype)
+! If the companion ".meta" file exists, it is used. 
+! Otherwise, the namelist variables are used.
 
+metadata = read_meta(fbase,vartype)
 timestep = metadata%timeStepNumber
 
 write(*,*)'nDims   ',metadata%nDims
@@ -1984,14 +1880,25 @@ else
    call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
 endif
 
-! good to go 
+! Check dimensions
 
-allocate(x(metadata%dimList(1), metadata%dimList(2)))
+if (size(x, 1) /= metadata%dimList(1) ) then
+   write(msgstring,*)trim(metafilename),' dim 1 does not match delX grid size from namelist'
+   call error_handler(E_MSG,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
+   write(msgstring,*)'expected ',size(x,1),' got ',metadata%dimList(1)
+   call error_handler(E_ERR,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
+endif
 
-write(*,*)'shape   ',shape(x)
+if (size(x, 2) /= metadata%dimList(2)) then
+   write(msgstring,*)trim(metafilename),' dim 2 does not match delY grid size from namelist'
+   call error_handler(E_MSG,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
+   write(msgstring,*)'expected ',size(x,2),' got ',metadata%dimList(2)
+   call error_handler(E_ERR,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
+endif
 
-!! FIXME: on the ibms this must be times the item size;
-!!  on the ifort compiler it is just the number of items
+!! FIXME: This is horrid ... 'reclen' is machine-dependent.
+!! IBM XLF -- item_size_direct_read == 4   (number of bytes)
+!! IFORT   -- item_size_direct_read == 1   (number of 32bit words)
 reclen = product(shape(x)) * item_size_direct_read
 
 ! Get next available unit number, read file.
@@ -2003,16 +1910,13 @@ if (io /= 0) then
    call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
 endif
 
-print *, 'ready to read 2d snapshot, reclen = ', reclen
 read(iunit, rec=1, iostat = io) x
 if (io /= 0) then
-print *, 'failed read, iostat = ', io
    write(msgstring,*) 'unable to read snapshot file ', trim(datafilename)
-   call error_handler(E_ERR,'read_2d_snapshot',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
 endif
 
 close(iunit)
-
 
 end subroutine read_2d_snapshot
 
@@ -2027,14 +1931,14 @@ subroutine read_3d_snapshot(fbase, x, timestep, vartype)
 !
 ! As it stands now ... the .data files appear to be big-endian.
 
-character(len=*),                        intent(in)  :: fbase
-real(r4), allocatable, dimension(:,:,:), intent(out) :: x
-integer,                                 intent(out) :: timestep
-character(len=*), optional,              intent(in)  :: vartype
+character(len=*),           intent(in)  :: fbase
+real(r4), dimension(:,:,:), intent(out) :: x
+integer,                    intent(out) :: timestep
+character(len=*), optional, intent(in)  :: vartype
 
 character(len=128) :: metafilename, datafilename
 type(MIT_meta_type):: metadata
-integer :: iunit, io, indx
+integer :: iunit, io
 integer :: reclen
 
 if (present(vartype)) then
@@ -2045,8 +1949,10 @@ else
    datafilename = trim(fbase)//'.data'
 endif
 
-metadata = read_meta(fbase,vartype)
+! If the companion ".meta" file exists, it is used. 
+! Otherwise, the namelist variables are used.
 
+metadata = read_meta(fbase,vartype)
 timestep = metadata%timeStepNumber
 
 ! check to make sure storage modes match
@@ -2063,9 +1969,28 @@ else
    call error_handler(E_ERR,'model_mod:read_3d_snapshot',msgstring,source,revision,revdate)
 endif
 
-! good to go 
+! Check dimensions
 
-allocate(x(metadata%dimList(1), metadata%dimList(2), metadata%dimList(3)))
+if (size(x, 1) /= metadata%dimList(1) ) then
+   write(msgstring,*)trim(metafilename),' dim 1 does not match delX grid size from namelist'
+   call error_handler(E_MSG,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
+   write(msgstring,*)'expected ',size(x,1),' got ',metadata%dimList(1)
+   call error_handler(E_ERR,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
+endif
+
+if (size(x, 2) /= metadata%dimList(2)) then
+   write(msgstring,*)trim(metafilename),' dim 2 does not match delY grid size from namelist'
+   call error_handler(E_MSG,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
+   write(msgstring,*)'expected ',size(x,2),' got ',metadata%dimList(2)
+   call error_handler(E_ERR,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
+endif
+
+if (size(x, 3) /= metadata%dimList(3)) then
+   write(msgstring,*)trim(metafilename),' dim 3 does not match delZ grid size from namelist'
+   call error_handler(E_MSG,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
+   write(msgstring,*)'expected ',size(x,3),' got ',metadata%dimList(3)
+   call error_handler(E_ERR,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
+endif
 
 reclen = product(shape(x)) * item_size_direct_read
 
@@ -2081,28 +2006,13 @@ endif
 read(iunit, rec=1, iostat = io) x
 if (io /= 0) then
    write(msgstring,*) 'unable to read snapshot file ', trim(datafilename)
-   call error_handler(E_ERR,'read_3d_snapshot',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'model_mod:read_3d_snapshot',msgstring,source,revision,revdate)
 endif
 
 close(iunit)
 
 end subroutine read_3d_snapshot
 
-
-
-subroutine drop_3d_snapshot(x)
-!------------------------------------------------------------------
-!
-real(r4), allocatable, intent(inout) :: x(:,:,:)
-deallocate(x)
-end subroutine drop_3d_snapshot
-
-subroutine drop_2d_snapshot(x)
-!------------------------------------------------------------------
-!
-real(r4), allocatable, intent(inout) :: x(:,:)
-deallocate(x)
-end subroutine drop_2d_snapshot
 
 
 subroutine write_2d_snapshot(x, fbase)
@@ -2119,7 +2029,7 @@ character(len=*), intent(in) :: fbase
 
 character(len=128) :: metafilename, datafilename
 type(MIT_meta_type) :: metadata
-integer :: iunit, io, indx
+integer :: iunit, io
 integer :: reclen
 
 metafilename = trim(fbase)//'.meta'
@@ -2169,7 +2079,7 @@ character(len=*), intent(in) :: fbase
 
 character(len=128) :: metafilename, datafilename
 type(MIT_meta_type) :: metadata
-integer :: iunit, io, indx
+integer :: iunit, io
 integer :: reclen
 
 metafilename = trim(fbase)//'.meta'
@@ -2215,19 +2125,11 @@ subroutine snapshot_files_to_sv(basename, timestepcount, state_vector)
  real(r8), intent(inout) :: state_vector(:)
 
 ! temp space to hold data while we are reading it
-real(r4), allocatable :: data_2d_array(:,:), data_3d_array(:,:,:)
+real(r4) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
 integer :: i, j, k, l, indx, timestepcount_out
 
 ! These must be a fixed number and in a fixed order.
-character(len=128) :: names_3d(n3dfields), names_2d(n2dfields)
 character(len=128)  :: prefixstring
-
-names_3d(S_index) = 'S'
-names_3d(T_index) = 'T'
-names_3d(U_index) = 'U'
-names_3d(V_index) = 'V'
-names_2d(1) = 'SSH'
-
 
 ! start counting up and filling the state vector
 ! one item at a time, linearizing the 3d arrays into a single
@@ -2242,39 +2144,39 @@ do l=1, n3dfields
    ! e.g. S.Prior.0000000672.data
    !      S.Prior.0000000672.meta
    write(prefixstring, "(A,I10.10)") &
-         trim(names_3d(l))//'.'//trim(basename)//'.', timestepcount
+         trim(progvarnames(l))//'.'//trim(basename)//'.', timestepcount
 
    call read_snapshot(prefixstring, data_3d_array, timestepcount_out)
    do k = 1, Nz
-      do j = 1, Ny
-         do i = 1, Nx
-            state_vector(indx) = data_3d_array(i, j, k)
-            indx = indx + 1
-         enddo
-      enddo
+   do j = 1, Ny
+   do i = 1, Nx
+      state_vector(indx) = data_3d_array(i, j, k)
+      indx = indx + 1
    enddo
-   call drop_snapshot(data_3d_array)
+   enddo
+   enddo
 
 enddo
 
-! and finally, SSH
-do l=1, n2dfields
+! and finally, SSH (and any other 2d fields)
+do l=(n3dfields+1), (n3dfields+n2dfields)
 
    write(prefixstring, "(A,I10.10)") &
-         trim(names_2d(l))//'.'//trim(basename)//'.', timestepcount
+         trim(progvarnames(l))//'.'//trim(basename)//'.', timestepcount
 
    call read_snapshot(prefixstring, data_2d_array, timestepcount_out)
    do j = 1, Ny
-      do i = 1, Nx
-         state_vector(indx) = data_2d_array(i, j)
-         indx = indx + 1
-      enddo
+   do i = 1, Nx
+      state_vector(indx) = data_2d_array(i, j)
+      indx = indx + 1
    enddo
-   call drop_snapshot(data_2d_array)
+   enddo
 
 enddo
 
 end subroutine snapshot_files_to_sv
+
+
 
 subroutine sv_to_snapshot_files(state_vector, basename, timestepcount)
 !------------------------------------------------------------------
@@ -2284,19 +2186,11 @@ subroutine sv_to_snapshot_files(state_vector, basename, timestepcount)
  integer, intent(in) :: timestepcount 
 
 ! temp space to hold data while we are writing it
-real(r4), allocatable :: data_2d_array(:,:), data_3d_array(:,:,:)
+real(r4) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
 integer :: i, j, k, l, indx, timestepcount_out
 
 ! These must be a fixed number and in a fixed order.
-character(len=128) :: names_3d(n3dfields), names_2d(n2dfields)
 character(len=128)  :: prefixstring
-
-names_3d(S_index) = 'S'
-names_3d(T_index) = 'T'
-names_3d(U_index) = 'U'
-names_3d(V_index) = 'V'
-names_2d(1) = 'SSH'
-
 
 ! start counting up and filling the state vector
 ! one item at a time, linearizing the 3d arrays into a single
@@ -2311,49 +2205,46 @@ do l=1, n3dfields
    ! e.g. S.Prior.0000000672.data
    !      S.Prior.0000000672.meta
    write(prefixstring, "(A,I10.10)") &
-         trim(names_3d(l))//'.'//trim(basename)//'.', timestepcount
+         trim(progvarnames(l))//'.'//trim(basename)//'.', timestepcount
 
-   allocate(data_3d_array(Nx, Ny, Nz))
    do k = 1, Nz
-      do j = 1, Ny
-         do i = 1, Nx
-            data_3d_array(i, j, k) = state_vector(indx)
-            indx = indx + 1
-         enddo
-      enddo
+   do j = 1, Ny
+   do i = 1, Nx
+      data_3d_array(i, j, k) = state_vector(indx)
+      indx = indx + 1
+   enddo
+   enddo
    enddo
    call write_snapshot(data_3d_array, prefixstring)
-   deallocate(data_3d_array)
 
 enddo
 
-! and finally, SSH
-do l=1, n2dfields
+! and finally, SSH (and any other 2d fields)
+do l=(n3dfields+1), (n3dfields+n2dfields)
 
    write(prefixstring, "(A,I10.10)") &
-         trim(names_2d(l))//'.'//trim(basename)//'.', timestepcount
+         trim(progvarnames(l))//'.'//trim(basename)//'.', timestepcount
 
-   allocate(data_2d_array(Nx, Ny))
    do j = 1, Ny
-      do i = 1, Nx
-         data_2d_array(i, j) = state_vector(indx)
-         indx = indx + 1
-      enddo
+   do i = 1, Nx
+      data_2d_array(i, j) = state_vector(indx)
+      indx = indx + 1
+   enddo
    enddo
    call write_snapshot(data_2d_array, prefixstring)
-   deallocate(data_2d_array)
 
 enddo
 
 end subroutine sv_to_snapshot_files
 
 
+
 subroutine prog_var_to_vector(s,t,u,v,ssh,x)
 !------------------------------------------------------------------
 !
-real(r4), dimension(:,:,:), intent(in)  :: s,t,u,v
-real(r4), dimension(:,:),   intent(in)  :: ssh
-real(r8), dimension(:),     intent(out) :: x
+real(r4), dimension(Nx,Ny,Nz), intent(in)  :: s,t,u,v
+real(r4), dimension(Nx,Ny),    intent(in)  :: ssh
+real(r8), dimension(:),        intent(out) :: x
 
 integer :: i,j,k,ii
 
@@ -2450,78 +2341,87 @@ endif
 end subroutine prog_var_to_vector
 
 
-subroutine vector_to_prog_var(x,s,t,u,v,ssh)
+
+subroutine vector_to_2d_prog_var(x, varindex, data_2d_array)
 !------------------------------------------------------------------
 !
-real(r8), intent(in) :: x(:)
-real(r4), allocatable, dimension(:,:,:), intent(out)  :: s,t,u,v
-real(r4), allocatable, dimension(:,:),   intent(out)  :: ssh
+real(r8), dimension(:),   intent(in)  :: x
+integer,                  intent(in)  :: varindex
+real(r4), dimension(:,:), intent(out) :: data_2d_array
 
-integer :: i,j,k,ii
+integer :: i,j,ii
+integer :: dim1,dim2
+character(len=128) :: varname
 
-allocate(  s(Nx,Ny,Nz))
-allocate(  t(Nx,Ny,Nz))
-allocate(  u(Nx,Ny,Nz))
-allocate(  v(Nx,Ny,Nz))
-allocate(ssh(Nx,Ny))
+dim1 = size(data_2d_array,1)
+dim2 = size(data_2d_array,2)
 
-ii = 0
+varname = progvarnames(varindex)
 
-! Salinity
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   s(i,j,k) = x(ii)
-enddo
-enddo
-enddo
-
-! Temperature
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   t(i,j,k) = x(ii)
-enddo
-enddo
-enddo
-
-! E-W 
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   u(i,j,k) = x(ii)
-enddo
-enddo
-enddo
-
-! N-S
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   v(i,j,k) = x(ii)
-enddo
-enddo
-enddo
-
-! Sea Surface Height
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   ssh(i,j) = x(ii)
-enddo
-enddo
-
-if (ii /= get_model_size()) then
-   write(msgstring,*)'data size ',ii,' /= ',get_model_size(),' model size'
-   call error_handler(E_ERR,'model_mod:vector_to_prog_var', &
-                      msgstring,source,revision,revdate) 
+if (dim1 /= Nx) then
+   write(msgstring,*)trim(varname),' 2d array dim 1 ',dim1,' /= ',Nx
+   call error_handler(E_ERR,'model_mod:vector_to_prog_var',msgstring,source,revision,revdate) 
+endif
+if (dim2 /= Ny) then
+   write(msgstring,*)trim(varname),' 2d array dim 2 ',dim2,' /= ',Ny
+   call error_handler(E_ERR,'model_mod:vector_to_prog_var',msgstring,source,revision,revdate) 
 endif
 
-end subroutine vector_to_prog_var
+ii = start_index(varindex)
+
+do j = 1,Ny   ! latitudes
+do i = 1,Nx   ! longitudes
+   data_2d_array(i,j) = x(ii)
+   ii = ii + 1
+enddo
+enddo
+
+end subroutine vector_to_2d_prog_var
+
+
+
+subroutine vector_to_3d_prog_var(x, varindex, data_3d_array)
+!------------------------------------------------------------------
+!
+real(r8), dimension(:),     intent(in)  :: x
+integer,                    intent(in)  :: varindex
+real(r4), dimension(:,:,:), intent(out) :: data_3d_array
+
+integer :: i,j,k,ii
+integer :: dim1,dim2,dim3
+character(len=128) :: varname
+
+dim1 = size(data_3d_array,1)
+dim2 = size(data_3d_array,2)
+dim3 = size(data_3d_array,3)
+
+varname = progvarnames(varindex)
+
+if (dim1 /= Nx) then
+   write(msgstring,*)trim(varname),' 3d array dim 1 ',dim1,' /= ',Nx
+   call error_handler(E_ERR,'model_mod:vector_to_prog_var',msgstring,source,revision,revdate) 
+endif
+if (dim2 /= Ny) then
+   write(msgstring,*)trim(varname),' 3d array dim 2 ',dim2,' /= ',Ny
+   call error_handler(E_ERR,'model_mod:vector_to_prog_var',msgstring,source,revision,revdate) 
+endif
+if (dim3 /= Nz) then
+   write(msgstring,*)trim(varname),' 3d array dim 3 ',dim3,' /= ',Nz
+   call error_handler(E_ERR,'model_mod:vector_to_prog_var',msgstring,source,revision,revdate) 
+endif
+
+ii = start_index(varindex)
+
+do k = 1,Nz   ! vertical
+do j = 1,Ny   ! latitudes
+do i = 1,Nx   ! longitudes
+   data_3d_array(i,j,k) = x(ii)
+   ii = ii + 1
+enddo
+enddo
+enddo
+
+end subroutine vector_to_3d_prog_var
 
 
 !===================================================================
