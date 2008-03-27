@@ -30,7 +30,7 @@ use    utilities_mod, only : get_unit, file_exist, E_ERR, E_WARN, E_MSG, &
                              error_handler
 use        model_mod, only : MIT_meta_type, read_meta, read_snapshot, &
                              prog_var_to_vector, static_init_model, &
-                             get_model_size
+                             get_model_size, get_gridsize
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
                              init_assim_model, get_model_size, set_model_state_vector, &
                              write_state_restart, set_model_time, open_restart_read, &
@@ -76,7 +76,7 @@ real(r4), allocatable  :: SSH(:,:)
 real(r8), allocatable  :: x_state(:)
 
 integer                :: file_unit, x_size
-
+integer                :: Nx, Ny, Nz
 type(MIT_meta_type) :: mitmeta
 
 !
@@ -100,9 +100,18 @@ call init_assim_model(x)
 
 write(*,*)'model size is ',get_model_size()
 
+! figure out the size the model code thinks the grid is
+call get_gridsize(Nx, Ny, Nz)
+
 ! Read the [meta,data] files 
 
 mitmeta = read_meta(file_base,'U')
+
+allocate(S(Nx,Ny,Nz)) 
+allocate(T(Nx,Ny,Nz))
+allocate(U(Nx,Ny,Nz))
+allocate(V(Nx,Ny,Nz))
+allocate(SSH(Nx,Ny))
 
 call read_snapshot(file_base,S,timestep,'S')
 call read_snapshot(file_base,T,timestep,'T')
@@ -128,6 +137,8 @@ allocate(x_state(x_size))
 
 ! transform fields into state vector for DART
 call prog_var_to_vector(S,T,U,V,SSH,x_state)
+
+deallocate(S,T,U,V,SSH)
 
 ! use the MIT namelist and timestepcount in the meta file to construct
 ! the current time.  we do not have a restart file to read; this program

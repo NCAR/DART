@@ -30,7 +30,7 @@ use    utilities_mod, only : get_unit, file_exist, E_ERR, E_WARN, E_MSG, &
                              error_handler
 use        model_mod, only : MIT_meta_type, read_meta, read_snapshot, &
                              prog_var_to_vector, static_init_model, &
-                             get_model_size
+                             get_model_size, get_gridsize
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
                              init_assim_model, get_model_size, set_model_state_vector, &
                              write_state_restart, set_model_time, open_restart_read, &
@@ -74,7 +74,7 @@ real(r4), allocatable  :: SSH(:,:)
 real(r8), allocatable  :: x_state(:)
 
 integer                :: file_unit, x_size, timestep
-
+integer                :: Nx,Ny,Nz
 type(MIT_meta_type) :: mitmeta
 
 !
@@ -101,6 +101,8 @@ call init_assim_model(x)
 write(*,*)'dimensions are ',shape(SSH)
 write(*,*)'model size is ',get_model_size()
 
+print *, ' !! THIS FILE IS NOT DONE -- IT WAS A COPY OF PV -> SV'
+print *, ' !! IN REALITY IT NEEDS TO GO SV -> PV'
 stop
 
 ! Read the [meta,data] files 
@@ -108,11 +110,17 @@ stop
 mitmeta = read_meta(file_base,'U')
 write(*,*)'timestep is ',timestep
 
+allocate(S(Nx,Ny,Nz))
+allocate(T(Nx,Ny,Nz))
+allocate(U(Nx,Ny,Nz))
+allocate(V(Nx,Ny,Nz))
+allocate(SSH(Nx,Ny))
+
 call read_snapshot(file_base,S,timestep,'S')
 call read_snapshot(file_base,T,timestep,'T')
 call read_snapshot(file_base,U,timestep,'U')
 call read_snapshot(file_base,V,timestep,'V')
-call read_snapshot(file_base,SSH,timestep,'SSH')
+call read_snapshot(file_base,SSH,timestep,'ETA')
 
 ! matlab debug messages
 ! write(8)mitmeta%dimList
