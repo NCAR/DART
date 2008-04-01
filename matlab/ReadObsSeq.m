@@ -45,15 +45,14 @@ if (nargin < 1 )
    fname = 'obs_seq.final';
 end
 
-
 % Determine if the file is an ascii file:
 
 fid    = fopen(fname,'rt');
 aline  = fgetl(fid);
-values = sscanf(aline,'%*s %d %*s %d');
+values = sscanf(aline,'%s');
 fclose(fid);
 
-if ~ isempty(values) 
+if (strcmp(values,'obs_sequence'))
    flavor = 'ASCII';
 end
 
