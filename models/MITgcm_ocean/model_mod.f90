@@ -15,13 +15,16 @@ module model_mod
 
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8
-use time_manager_mod, only : time_type, set_time
+use time_manager_mod, only : time_type, set_time, set_date, set_calendar_type, &
+                             operator(*),  operator(+), operator(-), &
+                             operator(>),  operator(<), operator(/), &
+                             operator(/=), operator(<=), GREGORIAN
 use     location_mod, only : location_type,      get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, set_location, &
                              VERTISHEIGHT, get_location, vert_is_height, &
                              vert_is_level
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
-                             logfileunit, nmfileunit, get_unit, nc_check, &
+                             logfileunit, get_unit, nc_check, &
                              find_namelist_in_file, check_namelist_read
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COMPONENT, &
                              KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT
@@ -53,8 +56,8 @@ public :: get_model_size,         &
 public :: prog_var_to_vector, vector_to_prog_var, &
           MIT_meta_type, read_meta, write_meta, &
           read_snapshot, write_snapshot, get_gridsize, &
-          snapshot_files_to_sv, sv_to_snapshot_files
-
+          snapshot_files_to_sv, sv_to_snapshot_files, &
+          MITtime_to_DARTtime
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -63,6 +66,7 @@ character(len=128), parameter :: &
    revdate  = "$Date: 2007-04-03 16:44:36 -0600 (Tue, 03 Apr 2007) $"
 
 character(len=129) :: msgstring
+logical,save :: module_initialized = .false.
 
 
 !! FIXME: on ifort, this must be 1
@@ -78,10 +82,25 @@ integer, parameter :: item_size_direct_read = 8
 ! values are unused in this model_mod code; only a few are needed and
 ! those are indicated in comments below.
 !
+!------------------------------------------------------------------
+! The time manager namelist variables
+! some types/etc come from   <mitsource>/pkg/cal/cal.h
+! some useful insight from   cal_set.F, cal_convdate.F
+!
+! startDate_1 (integer) yyyymmdd   "start date of the integration"
+! startDate_2 (integer) hhmmss
+!------------------------------------------------------------------
+
+character(len=9) :: TheCalendar = 'gregorian'
+! integration start date follows: yyyymmddhhmmss
+integer          :: startDate_1 = 19530101
+integer          :: startDate_2 =          60000
+logical          :: calendarDumps = .false.
+
+NAMELIST /CAL_NML/ TheCalendar, startDate_1, startDate_2, calendarDumps
+
 ! FIXME: these namelists should probably be in a separate file, and only
 ! the actual values needed should be made public, so this isn't so messy.
-!
-!------------------------------------------------------------------
 
 ! must match the value in EEPARAMS.h
 integer, parameter :: MAX_LEN_FNAM = 512
@@ -102,7 +121,7 @@ integer, parameter :: max_nr = 512
 !-- must match lists declared in ini_parms.f
 
 !--   Time stepping parameters variable declarations
-real(r8) :: nIter0, nTimeSteps, nEndIter, pickupSuff, &
+real(r8) :: pickupSuff, &
       deltaT, deltaTClock, deltaTmom, &
       deltaTtracer, dTtracerLev(max_nr), deltaTfreesurf, &
       abEps, alph_AB, beta_AB, &
@@ -113,9 +132,8 @@ real(r8) :: nIter0, nTimeSteps, nEndIter, pickupSuff, &
       outputTypesInclusive, &
       tauThetaClimRelax, tauSaltClimRelax, latBandClimRelax, &
       tauThetaClimRelax3Dim, tauSaltClimRelax3Dim, tauTr1ClimRelax, &
-      periodicExternalForcing, externForcingPeriod, externForcingCycle, &
-      calendarDumps
-integer :: momForcingOutAB, tracForcingOutAB
+      periodicExternalForcing, externForcingPeriod, externForcingCycle
+integer :: nIter0, nTimeSteps, nEndIter, momForcingOutAB, tracForcingOutAB
 logical :: forcing_In_AB, &
       momDissip_In_AB, doAB_onGtGs, &
       startFromPickupAB2
@@ -174,6 +192,7 @@ NAMELIST /PARM04/ &
       rkFac, groundAtK1
 
 !--   Input files namelist
+! FIXME ... does DART even need these files?
 NAMELIST /PARM05/ &
       bathyFile, topoFile, shelfIceFile, &
       hydrogThetaFile, hydrogSaltFile, diffKrFile, &
@@ -218,38 +237,30 @@ integer :: start_index(nfields)
 ! Grid parameters - the values will be read from a
 ! standard MITgcm namelist and filled in here.
 
-! grid counts for each field
-integer :: Nx, Ny, Nz
+integer :: Nx, Ny, Nz    ! grid counts for each field
 
-! locations of the cell centers (C) and cell faces (grid?) (G)
-! for each axis.
+! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 
 ! location information - these grids can either be regularly
 ! spaced or the spacing along each axis can vary.
 
 !real(r8) :: lat_origin, lon_origin
-!logical :: regular_lat, regular_lon, regular_depth
+!logical  :: regular_lat, regular_lon, regular_depth
 !real(r8) :: delta_lat, delta_lon, delta_depth
 !real(r8), allocatable :: lat_grid(:), lon_grid(:), depth_grid(:)
 
-! What is the natural model timestep?
-real(r8) :: model_timestep
-type(time_type) :: time_step
-! FIXME: just for testing
-!integer :: timestepcount
-integer :: timestepcount = 40992
-integer :: time_step_days      = 0
-integer :: time_step_seconds   = 900
+! fixme The natural model timestep?
+real(r8)        :: timestep = 900.0_r4
+!integer         :: timestepcount = 40992
+integer         :: timestepcount = 0
+type(time_type) :: model_time, model_timestep
 
-! the state vector length
-integer :: model_size
+integer :: model_size    ! the state vector length
 
 ! Skeleton of a model_nml that would be in input.nml
 ! This is where dart-related model parms could be set.
 logical  :: output_state_vector = .true.
-! do we need these in the namelist or is fixed right now ok?
-character(len=128) :: prior_file_prefix, post_file_prefix
 
 namelist /model_nml/ output_state_vector 
 
@@ -292,24 +303,20 @@ subroutine static_init_model()
 ! Called to do one time initialization of the model. In this case,
 ! it reads in the grid information and then the model data.
 
-integer :: iunit, io
-integer :: i
+integer :: i, iunit, io, bogus
 real(r4), allocatable :: data_2d_array(:,:)
 
 ! The Plan:
 !
-!   read the standard MITgcm namelist file 'data' for the
-!   file info, the time step size, and maybe some grid info
-!   (e.g. projection type)
+!   read the standard MITgcm namelist file 'data.cal' for the calendar info
 !
-!   open the individual files, one at a time, and read in
-!   the meta files for the array sizes.  add them up as you go
-!   to compute the total model size
+!   read the standard MITgcm namelist file 'data' for the
+!   time stepping info, the grid info, and 
+!   (not that we need them,) the files for the boundary conditions, etc.
 !
 !   open the grid data files to get the actual grid coordinates
 !
-!   open the S,T,U,V,SSH files to read in the data values
-!   into the state vector
+!   Compute the model size.
 !
 !   set the index numbers where the field types change
 !
@@ -319,6 +326,10 @@ real(r4), allocatable :: data_2d_array(:,:)
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
 
+! Since this routine calls other routines that could call this routine
+! we'll say we've been initialized pretty dang early.
+module_initialized = .true.
+
 ! Read the DART namelist for this model
 call find_namelist_in_file("input.nml", "model_nml", iunit)
 read(iunit, nml = model_nml, iostat = io)
@@ -326,23 +337,57 @@ call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-write(nmfileunit, nml=model_nml)
-write(    *     , nml=model_nml)
+write(logfileunit, nml=model_nml)
+write(     *     , nml=model_nml)
 
-! Read in the MITgcm namelists from the 'data' file
+! MIT calendar information
+call find_namelist_in_file("data.cal", "CAL_NML", iunit)
+read(iunit, nml = CAL_NML, iostat = io)
+call check_namelist_read(iunit, io, "CAL_NML")
+
+if (index(TheCalendar,'g') > 0 ) then
+   call set_calendar_type(GREGORIAN)
+elseif (index(TheCalendar,'G') > 0 )then
+   call set_calendar_type(GREGORIAN)
+else
+   write(msgstring,*)"namelist data.cal indicates a ",trim(TheCalendar)," calendar."
+   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
+   write(msgstring,*)"only have support for Gregorian"
+   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
+endif
+
+! Time stepping parameters are in PARM03
 call find_namelist_in_file("data", "PARM03", iunit)
 read(iunit, nml = PARM03, iostat = io)
 call check_namelist_read(iunit, io, "PARM03")
 
+if ((deltaTmom   == deltaTtracer) .and. &
+    (deltaTmom   == deltaTClock ) .and. &
+    (deltaTClock == deltaTtracer)) then
+   ! FIXME ... what happens with deltaTmom > 86400 ? 
+   ! The time_step in terms of a time type must also be initialized.
+   model_timestep = set_time(nint(deltaTmom), 0)
+   timestep       = deltaTmom
+else
+   write(msgstring,*)"namelist PARM03 has deltaTmom /= deltaTtracer /= deltaTClock"
+   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
+   write(msgstring,*)"values were ",deltaTmom, deltaTtracer, deltaTClock
+   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
+   write(msgstring,*)"At present, DART only supports equal values."
+   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
+endif
+
+model_time = MITtime_to_DARTtime(timestepcount)
+
+! Grid-related variables are in PARM04
 delX(:) = 0.0_r4
 delY(:) = 0.0_r4
 delZ(:) = 0.0_r4
-
-! depths are going to be in this namelist
 call find_namelist_in_file("data", "PARM04", iunit)
 read(iunit, nml = PARM04, iostat = io)
 call check_namelist_read(iunit, io, "PARM04")
 
+! Input datasets are in PARM05
 call find_namelist_in_file("data", "PARM05", iunit)
 read(iunit, nml = PARM05, iostat = io)
 call check_namelist_read(iunit, io, "PARM05")
@@ -403,24 +448,24 @@ allocate(data_2d_array(Nx,Ny))
 
 ! determine longitudes 
 
-call read_snapshot('XC', data_2d_array, timestepcount)
+call read_snapshot('XC', data_2d_array, bogus)
 do i=1, Nx
   XC(i) = data_2d_array(i, 1)
 enddo
 
-call read_snapshot('XG', data_2d_array, timestepcount)
+call read_snapshot('XG', data_2d_array, bogus)
 do i=1, Nx
   XG(i) = data_2d_array(i, 1)
 enddo
 
 ! determine latitudes
 
-call read_snapshot('YC', data_2d_array, timestepcount)
+call read_snapshot('YC', data_2d_array, bogus)
 do i=1, Ny
   YC(i) = data_2d_array(1, i)
 enddo
 
-call read_snapshot('YG', data_2d_array, timestepcount)
+call read_snapshot('YG', data_2d_array, bogus)
 do i=1, Ny
   YG(i) = data_2d_array(1, i)
 enddo
@@ -460,8 +505,6 @@ write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 !print *, 'model_size = ', model_size
 
-! The time_step in terms of a time type must also be initialized.
-time_step = set_time(time_step_seconds, time_step_days)
 !print *, 'end of static init model'
 
 end subroutine static_init_model
@@ -482,6 +525,8 @@ subroutine init_conditions(x)
 
 real(r8), intent(out) :: x(:)
 
+if ( .not. module_initialized ) call static_init_model
+ 
 x = 0.0_r8
 
 end subroutine init_conditions
@@ -507,6 +552,8 @@ subroutine adv_1step(x, time)
 real(r8),        intent(inout) :: x(:)
 type(time_type), intent(in)    :: time
 
+if ( .not. module_initialized ) call static_init_model
+
 end subroutine adv_1step
 
 
@@ -518,6 +565,8 @@ function get_model_size()
 ! applications.
 
 integer :: get_model_size
+
+if ( .not. module_initialized ) call static_init_model
 
 get_model_size = model_size
 
@@ -537,6 +586,8 @@ subroutine init_time(time)
 ! this can be a NULL INTERFACE.
 
 type(time_type), intent(out) :: time
+
+if ( .not. module_initialized ) call static_init_model
 
 ! for now, just set to 0
 time = set_time(0,0)
@@ -569,6 +620,7 @@ real(r8)       :: hgt_fract
 real(r8)       :: top_val, bot_val
 integer        :: hstatus
 
+if ( .not. module_initialized ) call static_init_model
 
 ! Successful istatus is 0
 istatus = 0
@@ -668,6 +720,8 @@ integer,             intent(out) :: istatus
 ! Local variables
 integer   :: i
 
+if ( .not. module_initialized ) call static_init_model
+
 ! Succesful istatus is 0
 istatus = 0
 
@@ -725,6 +779,8 @@ real(r8) :: lat_fract, lon_fract
 real(r8) :: pa, pb, pc, pd, xbot, xtop
 integer  :: lat_status, lon_status
 logical  :: masked
+
+if ( .not. module_initialized ) call static_init_model
 
 ! Succesful return has istatus of 0
 istatus = 0
@@ -844,6 +900,8 @@ integer,          intent(out) :: istatus
 ! Local storage
 integer    :: i
 
+if ( .not. module_initialized ) call static_init_model
+
 ! Default is success
 istatus = 0
 
@@ -895,6 +953,8 @@ integer,          intent(out) :: istatus
 integer  :: i
 real(r8) :: dist_bot, dist_top
 
+if ( .not. module_initialized ) call static_init_model
+
 ! Default is success
 istatus = 0
 
@@ -937,6 +997,8 @@ function lon_dist(lon1, lon2)
 real(r8), intent(in) :: lon1, lon2
 real(r8)             :: lon_dist
 
+if ( .not. module_initialized ) call static_init_model
+
 lon_dist = lon1 - lon2
 if(lon_dist >= -180.0_r8 .and. lon_dist <= 180.0_r8) then 
    return
@@ -958,6 +1020,8 @@ integer,     intent(in) :: lon_index, lat_index, nlon
 real(r8),    intent(in) :: x(:)
 logical,    intent(out) :: masked
 real(r8)                :: get_val
+
+if ( .not. module_initialized ) call static_init_model
 
 ! Layout has lons varying most rapidly
 !print *, 'lat_index, lon_index, nlon', lat_index, lon_index, nlon
@@ -988,7 +1052,9 @@ function get_model_time_step()
 
 type(time_type) :: get_model_time_step
 
-get_model_time_step = time_step
+if ( .not. module_initialized ) call static_init_model
+
+get_model_time_step = model_timestep
 
 end function get_model_time_step
 
@@ -1011,7 +1077,9 @@ integer,             intent(out), optional :: var_type
 real(R8) :: lat, lon, depth
 integer :: var_num, offset, lon_index, lat_index, depth_index
 
-!print *, 'asking for meta data about index ', index_in
+if ( .not. module_initialized ) call static_init_model
+
+print *, 'asking for meta data about index ', index_in
 
 if (index_in < start_index(S_index+1)) then
    if (present(var_type)) var_type = KIND_SALINITY  
@@ -1068,6 +1136,8 @@ subroutine end_model()
 
 ! good style ... perhaps you could deallocate stuff (from static_init_model?).
 ! deallocate(state_loc)
+
+if ( .not. module_initialized ) call static_init_model
 
 end subroutine end_model
 
@@ -1158,6 +1228,8 @@ character(len=NF90_MAX_NAME) :: str1
 
 integer :: i
 character(len=128)  :: filename
+
+if ( .not. module_initialized ) call static_init_model
 
 ierr = -1 ! assume things go poorly
 
@@ -1498,6 +1570,8 @@ real(r4), dimension(Nx,Ny,Nz) :: data_3d
 real(r4), dimension(Nx,Ny)    :: data_2d
 character(len=128)  :: filename
 
+if ( .not. module_initialized ) call static_init_model
+
 ierr = -1 ! assume things go poorly
 
 !--------------------------------------------------------------------
@@ -1598,6 +1672,8 @@ real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
+if ( .not. module_initialized ) call static_init_model
+
 interf_provided = .false.
 pert_state(1) = state(1)
 
@@ -1614,6 +1690,8 @@ subroutine ens_mean_for_model(ens_mean)
 ! later on.  For now, we are ignoring it.
 
 real(r8), intent(in) :: ens_mean(:)
+
+if ( .not. module_initialized ) call static_init_model
 
 end subroutine ens_mean_for_model
 
@@ -1652,6 +1730,8 @@ character(len=128) :: filename, charstring
 integer :: iunit, io
 integer :: i, j, indx, nlines, dim1, dimN
 
+if ( .not. module_initialized ) call static_init_model
+
 if (present(vartype)) then
    filename = vartype//'.'//trim(fbase)//'.meta'
 else
@@ -1665,7 +1745,7 @@ read_meta%dimList = (/ 0, 0, 0 /)
 read_meta%dataprec = 'null'
 read_meta%reclen = 0
 read_meta%nrecords = 0
-read_meta%timeStepNumber = -999
+read_meta%timeStepNumber = timestepcount
 
 ! Get next available unit number and open the file
 
@@ -1838,6 +1918,8 @@ character(len=*), intent(in) :: filebase
 integer :: iunit, io, i
 character(len=128) :: filename
 
+if ( .not. module_initialized ) call static_init_model
+
 filename = trim(filebase)//'.meta'
 
 iunit = get_unit()
@@ -1891,6 +1973,8 @@ type(MIT_meta_type):: metadata
 integer :: iunit, io
 integer :: reclen
 
+if ( .not. module_initialized ) call static_init_model
+
 if (present(vartype)) then
    metafilename = vartype//'.'//trim(fbase)//'.meta'
    datafilename = vartype//'.'//trim(fbase)//'.data'
@@ -1904,9 +1988,6 @@ endif
 
 metadata = read_meta(fbase,vartype)
 timestep = metadata%timeStepNumber
-
-write(*,*)'nDims   ',metadata%nDims
-write(*,*)'dimList ',metadata%dimList
 
 ! check to make sure storage modes match
 ! somehow have to pair the string with the fortran kind
@@ -1943,22 +2024,26 @@ endif
 !! IFORT   -- item_size_direct_read == 1   (number of 32bit words)
 reclen = product(shape(x)) * item_size_direct_read
 
+write(logfileunit,*)'item_size is ',item_size_direct_read, ' reclen is ',reclen
+write(     *     ,*)'item_size is ',item_size_direct_read, ' reclen is ',reclen
+
 ! Get next available unit number, read file.
 
 iunit = get_unit()
 open(unit=iunit, file=datafilename, action='read', access='direct', recl=reclen, iostat=io)
 if (io /= 0) then
-   write(msgstring,*) 'cannot open file ', trim(datafilename),' for reading.'
+   write(msgstring,*) 'cannot open (',io,') file ', trim(datafilename),' for reading.'
    call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
 endif
 
 read(iunit, rec=1, iostat = io) x
 if (io /= 0) then
-   write(msgstring,*) 'unable to read snapshot file ', trim(datafilename)
+   write(msgstring,*) 'unable to read (',io,') snapshot file ', trim(datafilename)
    call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
 endif
 
 close(iunit)
+
 
 end subroutine read_2d_snapshot
 
@@ -1982,6 +2067,8 @@ character(len=128) :: metafilename, datafilename
 type(MIT_meta_type):: metadata
 integer :: iunit, io
 integer :: reclen
+
+if ( .not. module_initialized ) call static_init_model
 
 if (present(vartype)) then
    metafilename = vartype//'.'//trim(fbase)//'.meta'
@@ -2074,6 +2161,8 @@ type(MIT_meta_type) :: metadata
 integer :: iunit, io
 integer :: reclen
 
+if ( .not. module_initialized ) call static_init_model
+
 metafilename = trim(fbase)//'.meta'
 datafilename = trim(fbase)//'.data'
 
@@ -2124,6 +2213,8 @@ type(MIT_meta_type) :: metadata
 integer :: iunit, io
 integer :: reclen
 
+if ( .not. module_initialized ) call static_init_model
+
 metafilename = trim(fbase)//'.meta'
 datafilename = trim(fbase)//'.data'
 
@@ -2159,12 +2250,11 @@ close(iunit)
 end subroutine write_3d_snapshot
 
 
-subroutine snapshot_files_to_sv(basename, timestepcount, state_vector)
+subroutine snapshot_files_to_sv(timestepcount, state_vector)
 !------------------------------------------------------------------
 !
- character(len=*), intent(in) :: basename
- integer, intent(in) :: timestepcount 
- real(r8), intent(inout) :: state_vector(:)
+integer,  intent(in)    :: timestepcount 
+real(r8), intent(inout) :: state_vector(:)
 
 ! temp space to hold data while we are reading it
 real(r4) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
@@ -2172,6 +2262,8 @@ integer :: i, j, k, l, indx, timestepcount_out
 
 ! These must be a fixed number and in a fixed order.
 character(len=128)  :: prefixstring
+
+if ( .not. module_initialized ) call static_init_model
 
 ! start counting up and filling the state vector
 ! one item at a time, linearizing the 3d arrays into a single
@@ -2181,12 +2273,11 @@ indx = 1
 ! fill S, T, U, V in that order
 do l=1, n3dfields
 
-   ! the filenames are going to be constructed here and assumed to be:
-   !  Varable.Basename.Timestep.data  and .meta
-   ! e.g. S.Prior.0000000672.data
-   !      S.Prior.0000000672.meta
-   write(prefixstring, "(A,I10.10)") &
-         trim(progvarnames(l))//'.'//trim(basename)//'.', timestepcount
+   ! the filenames are constructed here and assumed to be:
+   !  Variable.Timestep.[data,.meta]
+   ! e.g. S.0000000672.data
+   !      S.0000000672.meta
+   write(prefixstring, '(A,''.'',I10.10)') trim(progvarnames(l)),timestepcount
 
    call read_snapshot(prefixstring, data_3d_array, timestepcount_out)
    do k = 1, Nz
@@ -2203,8 +2294,7 @@ enddo
 ! and finally, SSH (and any other 2d fields)
 do l=(n3dfields+1), (n3dfields+n2dfields)
 
-   write(prefixstring, "(A,I10.10)") &
-         trim(progvarnames(l))//'.'//trim(basename)//'.', timestepcount
+   write(prefixstring, '(A,''.'',I10.10)') trim(progvarnames(l)), timestepcount
 
    call read_snapshot(prefixstring, data_2d_array, timestepcount_out)
    do j = 1, Ny
@@ -2233,6 +2323,8 @@ integer :: i, j, k, l, indx, timestepcount_out
 
 ! These must be a fixed number and in a fixed order.
 character(len=128)  :: prefixstring
+
+if ( .not. module_initialized ) call static_init_model
 
 ! start counting up and filling the state vector
 ! one item at a time, linearizing the 3d arrays into a single
@@ -2289,6 +2381,8 @@ real(r4), dimension(:,:),   intent(in)  :: ssh
 real(r8), dimension(:),     intent(out) :: x
 
 integer :: i,j,k,ii
+
+if ( .not. module_initialized ) call static_init_model
 
 ! check shapes
 
@@ -2395,6 +2489,8 @@ integer :: i,j,ii
 integer :: dim1,dim2
 character(len=128) :: varname
 
+if ( .not. module_initialized ) call static_init_model
+
 dim1 = size(data_2d_array,1)
 dim2 = size(data_2d_array,2)
 
@@ -2433,6 +2529,8 @@ integer :: i,j,k,ii
 integer :: dim1,dim2,dim3
 character(len=128) :: varname
 
+if ( .not. module_initialized ) call static_init_model
+
 dim1 = size(data_3d_array,1)
 dim2 = size(data_3d_array,2)
 dim3 = size(data_3d_array,3)
@@ -2464,6 +2562,63 @@ enddo
 enddo
 
 end subroutine vector_to_3d_prog_var
+
+
+
+function MITtime_to_DARTtime(TimeStepIndex)
+!
+! The MITtime is composed of an offset to a fixed time base.
+! The base time is derived from the namelist in 'date.cal',
+! the model timestep (deltaT) is from the namelist 'PARM03',
+! and the timestepindex is the middle portion of the filename
+! of the MIT files   [S,T,U,V,SSH].nnnnnnnnnn.dat 
+!
+! (namelist) startDate_1  yyyymmdd (year/month/day)
+! (namelist) startDate_2    hhmmss (hours/minutes/seconds)
+! (namelist) deltaTmom   aka 'timestep' ... r4 ... implies roundoff nuances
+!
+integer, intent(in) :: TimeStepIndex
+type(time_type)     :: MITtime_to_DARTtime
+
+integer         :: yy,mn,dd,hh,mm,ss
+integer         :: modeloffset, maxtimestep
+type(time_type) :: offset
+
+if ( .not. module_initialized ) call static_init_model
+
+offset = set_time(0,0)
+
+! Calculate how many seconds/days are represented by the 
+! timestepindex and timestepdeltaT .... the offset.
+! the timestepindex can be a 10 digit integer ... potential overflow
+! when multiplied by a large deltaT
+
+maxtimestep = HUGE(modeloffset)/timestep
+
+if (TimeStepIndex >= maxtimestep) then
+   write(msgstring,*)' timestepindex (',TimeStepIndex, &
+                     ') * timestep (',timestep,') overflows.'
+   call error_handler(E_ERR,'model_mod:MITtime_to_DARTtime',msgstring,source,revision,revdate) 
+endif
+
+modeloffset = nint(TimeStepIndex * timestep)
+dd          = modeloffset /    (24*60*60)   ! use integer arithmetic 
+ss          = modeloffset - (dd*24*60*60)
+offset      = set_time(ss,dd)
+
+! Calculate the DART time_type for the MIT base time.
+
+yy =     startDate_1/10000
+mn = mod(startDate_1/100,100)
+dd = mod(startDate_1,100)
+
+hh =     startDate_2/10000 
+mm = mod(startDate_2/100,100)
+ss = mod(startDate_2,100)
+
+MITtime_to_DARTtime =  set_date(yy,mn,dd,hh,mm,ss) + offset
+
+end function MITtime_to_DARTtime
 
 
 subroutine get_gridsize(num_x, num_y, num_z)
