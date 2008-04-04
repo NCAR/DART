@@ -1,0 +1,15 @@
+#!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2007, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next few lines under version control, do not edit>
+# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/cam/work/mkmf_trans_pv_sv $
+# $Id: mkmf_trans_pv_sv 2691 2007-03-11 18:18:09Z thoar $
+# $Revision: 2691 $
+# $Date: 2007-03-11 14:18:09 -0400 (Sun, 11 Mar 2007) $
+#
+../../../mkmf/mkmf -p trans_pv_sv -t ../../../mkmf/mkmf.template -c "-Duse_netCDF" \
+ -a "../../.." path_names_trans_pv_sv

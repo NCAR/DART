@@ -1,0 +1,58 @@
+ obs_sequence
+obs_kind_definitions
+          27
+           1 RADIOSONDE_U_WIND_COMPONENT     
+           2 RADIOSONDE_V_WIND_COMPONENT     
+           3 RADIOSONDE_SURFACE_PRESSURE     
+           4 RADIOSONDE_TEMPERATURE          
+           5 RADIOSONDE_SPECIFIC_HUMIDITY    
+           6 AIRCRAFT_U_WIND_COMPONENT       
+           7 AIRCRAFT_V_WIND_COMPONENT       
+           8 AIRCRAFT_TEMPERATURE            
+           9 ACARS_U_WIND_COMPONENT          
+          10 ACARS_V_WIND_COMPONENT          
+          11 ACARS_TEMPERATURE               
+          12 MARINE_SFC_U_WIND_COMPONENT     
+          13 MARINE_SFC_V_WIND_COMPONENT     
+          14 MARINE_SFC_TEMPERATURE          
+          15 MARINE_SFC_SPECIFIC_HUMIDITY    
+          16 LAND_SFC_U_WIND_COMPONENT       
+          17 LAND_SFC_V_WIND_COMPONENT       
+          18 LAND_SFC_TEMPERATURE            
+          19 LAND_SFC_SPECIFIC_HUMIDITY      
+          20 SAT_U_WIND_COMPONENT            
+          21 SAT_V_WIND_COMPONENT            
+          22 ATOV_TEMPERATURE                
+          23 AIRS_TEMPERATURE                
+          24 AIRS_SPECIFIC_HUMIDITY          
+          25 CLOUD_FRACTION                  
+          26 CLOUD_LIQUID_WATER              
+          27 CLOUD_ICE                       
+  num_copies:            6  num_qc:            2
+  num_obs:            1  max_num_obs:            1
+observations                                                                                                                     
+truth                                                                                                                            
+prior ensemble mean                                                                                                              
+posterior ensemble mean                                                                                                          
+prior ensemble spread                                                                                                            
+posterior ensemble spread                                                                                                        
+qc                                                                                                                               
+DART quality control                                                                                                             
+  first:            1  last:            1
+ OBS            1
+   286.317960048181     
+   286.354248046875     
+   284.875158691406     
+   286.317181401990     
+   1.36086789971284     
+  3.161424241919221E-002
+  0.000000000000000E+000
+  0.000000000000000E+000
+          -1          -1          -1
+obdef
+loc3d
+       3.03250957534015      -0.54713129922808      23.00000000000000        1
+kind
+     -736941
+     0     139338
+  1.000000000000000E-003
