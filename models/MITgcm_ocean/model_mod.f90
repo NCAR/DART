@@ -18,9 +18,10 @@ use        types_mod, only : r4, r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type,      get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, set_location, &
-                             VERTISHEIGHT, get_location, vert_is_height
+                             VERTISHEIGHT, get_location, vert_is_height, &
+                             vert_is_level
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
-                             logfileunit, get_unit, nc_check, &
+                             logfileunit, nmfileunit, get_unit, nc_check, &
                              find_namelist_in_file, check_namelist_read
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COMPONENT, &
                              KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT
@@ -51,7 +52,7 @@ public :: get_model_size,         &
 ! the interfaces here can be changed as appropriate.
 public :: prog_var_to_vector, vector_to_prog_var, &
           MIT_meta_type, read_meta, write_meta, &
-          read_snapshot, write_snapshot, &
+          read_snapshot, write_snapshot, get_gridsize, &
           snapshot_files_to_sv, sv_to_snapshot_files
 
 
@@ -65,9 +66,9 @@ character(len=129) :: msgstring
 
 
 !! FIXME: on ifort, this must be 1
-!!        on xlf,   this must be 4
+!!        on xlf,   this must be 4 or 8?
 !! see the comments in the read_2d_snapshot code for more info
-integer, parameter :: item_size_direct_read = 1
+integer, parameter :: item_size_direct_read = 8
 
 !------------------------------------------------------------------
 !
@@ -325,8 +326,8 @@ call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-write(logfileunit, nml=model_nml)
-write(     *     , nml=model_nml)
+write(nmfileunit, nml=model_nml)
+write(    *     , nml=model_nml)
 
 ! Read in the MITgcm namelists from the 'data' file
 call find_namelist_in_file("data", "PARM03", iunit)
@@ -347,9 +348,8 @@ read(iunit, nml = PARM05, iostat = io)
 call check_namelist_read(iunit, io, "PARM05")
 
 ! we pass in a filename (without the .meta and the .data)
-! and an unallocated array of the right dimensionality.
-! it returns the allocated, filled array, along with the timestep count.
-! when we are done, drop_snapshot() frees the space.
+! and an allocated array of the right dimensionality.
+! it returns the filled array, along with the timestep count.
 
 ! FIXME:
 ! right now the only way i know to compute the number of
@@ -462,6 +462,7 @@ model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 
 ! The time_step in terms of a time type must also be initialized.
 time_step = set_time(time_step_seconds, time_step_days)
+!print *, 'end of static init model'
 
 end subroutine static_init_model
 
@@ -572,6 +573,7 @@ integer        :: hstatus
 ! Successful istatus is 0
 istatus = 0
 
+!print *, 'top of model interpolate'
 ! Get the individual locations values; make sure the vertical is height
 ! Might want to support model level in the vertical at some point
 loc_array = get_location(location)
@@ -579,10 +581,18 @@ llon = loc_array(1)
 llat = loc_array(2)
 lheight = loc_array(3)
 
+!print *, 'lon, lat, height = ', llon, llat, lheight
+
 ! Only know how to work with height vertical coordinate for now
 if(.not. vert_is_height(location)) then
-   istatus = 1
-   return
+   if (vert_is_level(location)) then 
+      ! should range check first
+      lheight = zc(nint(loc_array(3)))
+!print *, 'setting height to ', lheight
+   else
+      istatus = 1
+      return
+   endif
 endif
 
 ! Do horizontal interpolations for the appropriate levels
@@ -603,6 +613,8 @@ else
    return
 endif
 
+!print *, 'base offset now ', base_offset
+
 ! For Sea Surface Height don't need the vertical coordinate
 if(obs_type /= KIND_SEA_SURFACE_HEIGHT) then
    ! Get the bounding vertical levels and the fraction between bottom and top
@@ -617,21 +629,27 @@ else
    return
 endif
 
+!print *, 'height top, bot = ', hgt_top, hgt_bot
 
 ! Find the base location for the top height and interpolate horizontally on this level
 offset = base_offset + (hgt_top - 1) * nx * ny
+!print *, 'relative top height offset = ', offset - base_offset
+!print *, 'absolute top height offset = ', offset
 call lat_lon_interpolate(x(offset:), llon, llat, obs_type, top_val, istatus)
 ! Failed istatus from interpolate means give up
 if(istatus /= 0) return
 
 ! Find the base location for the bottom height and interpolate horizontally on this level
 offset = base_offset + (hgt_bot - 1) * nx * ny
+!print *, 'relative bot height offset = ', offset - base_offset
+!print *, 'absolute bot height offset = ', offset
 call lat_lon_interpolate(x(offset:), llon, llat, obs_type, bot_val, istatus)
 ! Failed istatus from interpolate means give up
 if(istatus /= 0) return
 
 ! Then weight them by the fraction and return
 interp_val = bot_val + hgt_fract * (top_val - bot_val)
+!print *, 'model_interp: interp val = ',interp_val
 
 end subroutine model_interpolate
 
@@ -757,22 +775,29 @@ endif
 ! will be that an observation whos forward operator requires interpolating
 ! from a point that has exactly 0.0 (but is not masked) will not be 
 ! assimilated.
+!print *, 'lon_bot, lon_top = ', lon_bot, lon_top
+!print *, 'lat_bot, lat_top = ', lat_bot, lat_top
+
 pa = get_val(lon_bot, lat_bot, nx, x, masked)
+!print *, 'pa = ', pa
 if(masked) then
    istatus = 3
    return
 endif
 pb = get_val(lon_top, lat_bot, nx, x, masked)
+!print *, 'pb = ', pb
 if(masked) then
    istatus = 3
    return
 endif
 pc = get_val(lon_bot, lat_top, nx, x, masked)
+!print *, 'pc = ', pc
 if(masked) then
    istatus = 3
    return
 endif
 pd = get_val(lon_top, lat_top, nx, x, masked)
+!print *, 'pd = ', pd
 if(masked) then
    istatus = 3
    return
@@ -780,10 +805,16 @@ endif
 
 ! Finish bi-linear interpolation 
 ! First interpolate in longitude
+!print *, 'bot lon_fract, delta = ', lon_fract, (pb-pa)
 xbot = pa + lon_fract * (pb - pa)
+!print *, 'xbot = ', xbot
+!print *, 'top lon_fract, delta = ', lon_fract, (pd-pc)
 xtop = pc + lon_fract * (pd - pc)
+!print *, 'xtop = ', xtop
 ! Now interpolate in latitude
+!print *, 'lat_fract, delta = ', lat_fract, (xtop - xbot)
 interp_val = xbot + lat_fract * (xtop - xbot)
+!print *, 'lat_lon_interp: interp_val = ', interp_val
 
 end subroutine lat_lon_interpolate
 
@@ -867,15 +898,22 @@ real(r8) :: dist_bot, dist_top
 ! Default is success
 istatus = 0
 
+!print *, 'computing bounds for = ', llon
 ! This is inefficient, someone could clean it up
 ! Plus, it doesn't work for a global model that wraps around
 do i = 2, nlons
    dist_bot = lon_dist(llon, lon_array(i - 1))
    dist_top = lon_dist(llon, lon_array(i))
+!print *, 'dist top, bot = ', dist_top, dist_bot
    if(dist_bot >= 0 .and. dist_top < 0) then
       bot = i - 1
       top = i
-      fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
+!print *, 'bot, top = ', bot, top
+!print *, 'numerator = ',  dist_bot
+!print *, 'denomenator = ', dist_bot + abs(dist_top)
+      fract = dist_bot / (dist_bot + abs(dist_top))
+      ! orig: fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
+!print *, 'fract = ', fract
       return
    endif
 end do
@@ -911,18 +949,21 @@ endif
 end function lon_dist
 
 
-function get_val(lat_index, lon_index, nlon, x, masked)
+function get_val(lon_index, lat_index, nlon, x, masked)
 !=======================================================================
 !
 
 ! Returns the value from a single level array given the lat and lon indices
-integer,     intent(in) :: lat_index, lon_index, nlon
+integer,     intent(in) :: lon_index, lat_index, nlon
 real(r8),    intent(in) :: x(:)
 logical,    intent(out) :: masked
 real(r8)                :: get_val
 
 ! Layout has lons varying most rapidly
+!print *, 'lat_index, lon_index, nlon', lat_index, lon_index, nlon
+!print *, 'computing index val ', (lat_index - 1) * nlon + lon_index
 get_val = x((lat_index - 1) * nlon + lon_index)
+!print *, 'get_val = ', get_val
 
 ! Masked returns false if the value is masked
 ! A grid variable is assumed to be masked if its value is exactly 0.
@@ -933,6 +974,7 @@ else
    masked = .false.
 endif
 
+!print *, 'masked is ', masked
 end function get_val
 
 
@@ -969,7 +1011,7 @@ integer,             intent(out), optional :: var_type
 real(R8) :: lat, lon, depth
 integer :: var_num, offset, lon_index, lat_index, depth_index
 
-print *, 'asking for meta data about index ', index_in
+!print *, 'asking for meta data about index ', index_in
 
 if (index_in < start_index(S_index+1)) then
    if (present(var_type)) var_type = KIND_SALINITY  
@@ -988,12 +1030,12 @@ else
    var_num = SSH_index
 endif
 
-print *, 'var num = ', var_num
+!print *, 'var num = ', var_num
 
 ! local offset into this var array
 offset = index_in - start_index(var_num)
 
-print *, 'offset = ', offset
+!print *, 'offset = ', offset
 
 if (var_num == SSH_index) then
   depth = 0.0
@@ -1006,11 +1048,11 @@ endif
 lat_index = (offset - ((depth_index-1)*Nx*Ny)) / Nx + 1
 lon_index = offset - ((depth_index-1)*Nx*Ny) - ((lat_index-1)*Nx) + 1
 
-print *, 'lon, lat, depth index = ', lon_index, lat_index, depth_index
+!print *, 'lon, lat, depth index = ', lon_index, lat_index, depth_index
 lon = XC(lon_index)
 lat = YC(lat_index)
 
-print *, 'lon, lat, depth = ', lon, lat, depth
+!print *, 'lon, lat, depth = ', lon, lat, depth
 
 location = set_location(lon, lat, depth, VERTISHEIGHT)
 
@@ -2242,9 +2284,9 @@ end subroutine sv_to_snapshot_files
 subroutine prog_var_to_vector(s,t,u,v,ssh,x)
 !------------------------------------------------------------------
 !
-real(r4), dimension(Nx,Ny,Nz), intent(in)  :: s,t,u,v
-real(r4), dimension(Nx,Ny),    intent(in)  :: ssh
-real(r8), dimension(:),        intent(out) :: x
+real(r4), dimension(:,:,:), intent(in)  :: s,t,u,v
+real(r4), dimension(:,:),   intent(in)  :: ssh
+real(r8), dimension(:),     intent(out) :: x
 
 integer :: i,j,k,ii
 
@@ -2423,6 +2465,17 @@ enddo
 
 end subroutine vector_to_3d_prog_var
 
+
+subroutine get_gridsize(num_x, num_y, num_z)
+!------------------------------------------------------------------
+!
+ integer, intent(out) :: num_x, num_y, num_z
+
+ num_x = Nx
+ num_y = Ny
+ num_z = Nz
+
+end subroutine get_gridsize
 
 !===================================================================
 ! End of model_mod
