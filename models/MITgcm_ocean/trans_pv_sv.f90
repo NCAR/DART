@@ -52,7 +52,7 @@ character (len = 128) :: msgstring
 ! eg. [S,T,U,V,Eta].0000040992.[data,meta]
 integer :: timestep = 40992
 character (len = 128) :: file_base = '0000040992'
-character (len = 128) :: file_out  = 'temp_ud'
+character (len = 128) :: file_out  = 'assim_model_state_ud'
 
 integer                :: io, iunit, x_size
 integer                :: Nx, Ny, Nz
