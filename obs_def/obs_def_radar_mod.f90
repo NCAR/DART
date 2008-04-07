@@ -434,12 +434,17 @@ subroutine interactive_rad_vel(velkey)
 
 implicit none
 
-integer, intent(inout) :: velkey
+integer, intent(out) :: velkey
+
 real(r8)             :: orientation(3)
 type(location_type)  :: location
 real(r8)             :: nyquistv
 
 if ( .not. module_initialized ) call initialize_module
+
+! increment local key counter and set velkey
+velkeycount = velkeycount + 1
+velkey = velkeycount
 
 !Make sure enough space is allocated
 if(velkey >= max_rad_vel_obs) then
@@ -457,8 +462,12 @@ endif
 
 write(*, *)
 write(*, *) 'Beginning to inquire information on radar location.'
-write(*, *) 'Make sure that you select 3 (height) for vertical coordinate'
-write(*, *) 'option and enter height in units gpm.'
+write(*, *)
+write(*, *) 'WARNING!! Make sure that you select 3 (height) for the vertical'
+write(*, *) 'coordinate option and enter height in units gpm.  This location'
+write(*, *) 'question will be repeated again later for this same observation,'
+write(*, *) 'and you must enter the same longitude, latitude, and height'
+write(*, *) 'as you enter here.'
 write(*, *)
 
 call interactive_location(location)
@@ -475,10 +484,7 @@ write(*, *)
 
 call interactive_nyquistvel(nyquistv)
 
-call set_rad_vel(velkey+1, location, orientation, nyquistv)
-
-! Finally increment velkey to keep track of specialized obs
-velkey = velkey + 1
+call set_rad_vel(velkey, location, orientation, nyquistv)
 
 write(*, *)
 write(*, *) 'End of specialized section for radial velocity.'
@@ -502,9 +508,13 @@ subroutine interactive_rad_ref(refkey)
 
 implicit none
 
-integer, intent(inout) :: refkey
+integer, intent(out) :: refkey
 
 if ( .not. module_initialized ) call initialize_module
+
+! generate a unique local key number
+refkeycount = refkeycount + 1
+refkey = refkeycount
 
 !Make sure enough space is allocated
 if(refkey >= max_rad_ref_obs) then
@@ -528,8 +538,6 @@ write(*, *)
 ! subroutine to read that metadata interactively (and write the subroutine
 ! that goes with it!)
 
-! Finally increment refkey to keep track of specialized obs
-refkey = refkey + 1
 
 write(*, *)
 write(*, *) 'End of specialized section for radial velocity.'
