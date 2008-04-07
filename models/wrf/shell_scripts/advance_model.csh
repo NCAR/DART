@@ -110,14 +110,14 @@ while($state_copy <= $num_states)
    # constructed by the script advance_ens.csh
    
    hostname >! nfile
-   hostname >> nfile
+   hostname >>! nfile
    ###ln -s  ${CENTRALDIR}/nfile$element nfile
    ${COPY} ${CENTRALDIR}/wrfinput_d0? .
                       # Provides auxilliary info not avail. from DART state vector
    
    if (  -e ${CENTRALDIR}/assim_model_state_ic_mean ) then
       ln -sf ${CENTRALDIR}/assim_model_state_ic_mean dart_wrf_vector
-      echo ".true." | ${CENTRALDIR}/dart_tf_wrf >& out.dart_to_wrf_mean
+      echo ".true." | ${CENTRALDIR}/dart_tf_wrf >&! out.dart_to_wrf_mean
       ${COPY} wrfinput_d01 wrfinput_mean
    endif
    
@@ -125,7 +125,7 @@ while($state_copy <= $num_states)
    
    # Convert DART to wrfinput
    
-   echo ".true." | ${CENTRALDIR}/dart_tf_wrf >& out.dart_to_wrf
+   echo ".true." | ${CENTRALDIR}/dart_tf_wrf >&! out.dart_to_wrf
    
    ${REMOVE} dart_wrf_vector
    
@@ -167,18 +167,18 @@ while($state_copy <= $num_states)
    set SPEC_BC = `grep specified ${CENTRALDIR}/namelist.input | grep true | cat | wc -l`
    
    if ($SPEC_BC > 0) then
-      ls ${CENTRALDIR}/WRF/wrfbdy_*_$element > bdy.list
+      ls ${CENTRALDIR}/WRF/wrfbdy_*_$element >! bdy.list
    else
-      echo ${CENTRALDIR}/WRF/wrfbdy_${targdays}_${targsecs}_$element > bdy.list
+      echo ${CENTRALDIR}/WRF/wrfbdy_${targdays}_${targsecs}_$element >! bdy.list
    endif
    
-   echo ${CENTRALDIR}/WRF/wrfbdy_ > str.name
-   sed 's/\//\\\//g' < str.name > str.name2
+   echo ${CENTRALDIR}/WRF/wrfbdy_ >! str.name
+   sed 's/\//\\\//g' < str.name >! str.name2
    set STRNAME = `cat str.name2`
    set COMMAND = s/`echo ${STRNAME}`//
    
-   sed $COMMAND < bdy.list > bdy.list2
-   sed 's/_/ /g' < bdy.list2 > bdy.list
+   sed $COMMAND < bdy.list >! bdy.list2
+   sed 's/_/ /g' < bdy.list2 >! bdy.list
    set num_files = `cat bdy.list | wc -l`
    set items = `cat bdy.list`
    set ifile = 1
@@ -187,7 +187,7 @@ while($state_copy <= $num_states)
    if ( -e keys ) ${REMOVE} keys
    while ( $ifile <= $num_files )
       set key = `echo "$items[$iday] * 86400 + $items[$isec]" | bc`
-      echo $key >> keys
+      echo $key >>! keys
       set ifile = `expr $ifile \+ 1`
       set iday = `expr $iday \+ 3`
       set isec = `expr $isec \+ 3`
@@ -312,7 +312,7 @@ while($state_copy <= $num_states)
    #-----------------------------------------------------------------------
    
    ${REMOVE} script.sed
-   cat > script.sed << EOF
+   cat >! script.sed << EOF
     /run_hours/c\
     run_hours                  = ${RUN_HOURS}
     /run_minutes/c\
@@ -353,28 +353,28 @@ while($state_copy <= $num_states)
 EOF
    
     sed -f script.sed \
-       ${CENTRALDIR}/namelist.input > namelist.input
+       ${CENTRALDIR}/namelist.input >! namelist.input
    
    # Update boundary conditions
    
-      echo $infl | ${CENTRALDIR}/update_wrf_bc >& out.update_wrf_bc
+      echo $infl | ${CENTRALDIR}/update_wrf_bc >&! out.update_wrf_bc
    
       if ( -e rsl.out.integration ) then
          ${REMOVE} rsl.*
       endif
    
-      ${ADV_MOD_COMMAND} >>& rsl.out.integration
+      ${ADV_MOD_COMMAND} >>&! rsl.out.integration
       ${COPY} rsl.out.integration ${CENTRALDIR}/wrf.out_${targdays}_${targsecs}_${element}  
       sleep 1
    
       set SUCCESS = `grep "wrf: SUCCESS COMPLETE WRF" rsl.* | cat | wc -l`
       if ($SUCCESS == 0) then
-         echo $element >> ${CENTRALDIR}/blown_${targdays}_${targsecs}.out
+         echo $element >>! ${CENTRALDIR}/blown_${targdays}_${targsecs}.out
       endif
 
    if ( -e ${CENTRALDIR}/extract ) then
       if ( $element == 1 ) then
-         ls wrfout_d0${MY_NUM_DOMAINS}_* > wrfout.list
+         ls wrfout_d0${MY_NUM_DOMAINS}_* >! wrfout.list
          if ( -e ${CENTRALDIR}/psfc.nc ) then
             ${COPY} ${CENTRALDIR}/psfc.nc .
          endif
@@ -407,7 +407,7 @@ EOF
    ##############################################
    
    # create new input to DART (taken from "wrfinput")
-   echo ".false." | ${CENTRALDIR}/dart_tf_wrf >& out.wrf_to_dart
+   echo ".false." | ${CENTRALDIR}/dart_tf_wrf >&! out.wrf_to_dart
    
    ${MOVE} dart_wrf_vector ${CENTRALDIR}/$output_file
 
