@@ -48,6 +48,7 @@ integer :: assimilation_period_seconds = 21600
 logical :: surf_obs             = .true.
 logical :: soil_data            = .true.
 logical :: h_diab               = .false.
+logical :: allow_obs_below_vol  = .false.
 character(len = 72) :: adv_mod_command = './wrf.exe'
 real (kind=r8) :: center_search_half_length = 500000.0_r8
 integer :: center_spline_grid_scale = 10
@@ -56,7 +57,7 @@ integer :: vert_localization_coord  =  3  ! 1,2,3 == level,pressure,height
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      adv_mod_command, assimilation_period_seconds, &
-                     vert_localization_coord, &
+                     vert_localization_coord, allow_obs_below_vol, &
                      center_search_half_length, center_spline_grid_scale
 
 !-------------------------------------------------------------

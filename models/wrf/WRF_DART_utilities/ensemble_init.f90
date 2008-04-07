@@ -67,6 +67,7 @@ integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
 logical :: surf_obs             = .true.
 logical :: h_diab               = .false.
+logical :: allow_obs_below_vol  = .false.
 integer :: assimilation_period_seconds = 21600
 character(len = 72) :: adv_mod_command = './wrf.exe'
 integer :: center_search_size       = 25
@@ -76,7 +77,7 @@ integer :: vert_localization_coord  =  3  ! 1,2,3 == level,pressure,height
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, h_diab, &
                      adv_mod_command, assimilation_period_seconds, &
-                     vert_localization_coord, &
+                     vert_localization_coord, allow_obs_below_vol, &
                      center_search_size, center_spline_grid_scale
 
 !-----------------------------------------------------------------------
