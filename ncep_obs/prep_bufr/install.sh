@@ -21,7 +21,8 @@ set -eua
 #  ------------------------------------------------------------------------
  
 #CPLAT=macosx
-CPLAT=linux
+#CPLAT=linux
+CPLAT=aix
 
 #  set up the compilers to use
 #  -----------------------------------------------------
@@ -51,6 +52,7 @@ echo 'Compiling the Bufr library'
 
 cd lib
 $ff -c *.f
+$cc -c *.c
 ar crv bufrlib.a *.o
 rm *.o
  
