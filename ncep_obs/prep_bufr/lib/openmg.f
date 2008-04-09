@@ -1,62 +1,100 @@
-      SUBROUTINE OPENMG(LUNIT,SUBSET,JDATE)                             
+      SUBROUTINE OPENMG(LUNIT,SUBSET,JDATE)
 
-C************************************************************************
-C* OPENMG								*
-C*									*
-C* This subroutine should only be called when logical unit LUNIT has	*
-C* been opened for output operations.  Like subroutine OPENMB, it opens	*
-C* and initializes a new BUFR message within memory; however, unlike	*
-C* subroutine OPENMB, it does so regardless of the values of SUBSET and	*
-C* JDATE.  If there is already a BUFR message open within memory for	*
-C* this	LUNIT, then that message will be closed and flushed to LUNIT	*
-C* before opening the new one.						*
-C*									*
-C* OPENMG  ( LUNIT, SUBSET, JDATE )					*
-C*									*
-C* Input parameters:							*
-C*	LUNIT		INTEGER		FORTRAN logical unit number	*
-C*	SUBSET		CHARACTER*8	Table A mnemonic for type of	*
-C*					BUFR message to be opened	*
-C*	JDATE		INTEGER		Date-time to be stored within	*
-C*					Section 1 of BUFR message,	*
-C*					in format of either YYMMDDHH	*
-C*					or YYYYMMDDHH			*
-C**									*
-C* Log:									*
-C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation			*
-C************************************************************************
-                                                                        
-      COMMON /MSGCWD/ NMSG(32),NSUB(32),MSUB(32),INODE(32),IDATE(32)    
-                                                                        
-      CHARACTER*(*) SUBSET                                              
-                                                                        
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    OPENMG
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1994-01-06
+C
+C ABSTRACT: THIS SUBROUTINE OPENS AND INITIALIZES A NEW BUFR MESSAGE
+C   WITHIN MEMORY.  IT SHOULD ONLY BE CALLED WHEN LOGICAL UNIT LUNIT
+C   HAS BEEN OPENED FOR OUTPUT OPERATIONS.  IT IS SIMILAR TO BUFR
+C   ARCHIVE LIBRARY SUBROUTINE OPENMB, HOWEVER UNLIKE OPENMB, IT WILL
+C   ALWAYS OPEN A NEW MESSAGE REGARDLESS OF THE VALUES OF SUBSET AND
+C   JDATE.  IF THERE IS ALREADY A BUFR MESSAGE OPEN WITHIN MEMORY FOR
+C   THIS LUNIT, THEN THAT MESSAGE WILL BE CLOSED AND FLUSHED TO LUNIT
+C   BEFORE OPENING THE NEW ONE.
+C
+C PROGRAM HISTORY LOG:
+C 1994-01-06  J. WOOLLEN -- ORIGINAL AUTHOR
+C 1998-07-08  J. WOOLLEN -- REPLACED CALL TO CRAY LIBRARY ROUTINE
+C                           "ABORT" WITH CALL TO NEW INTERNAL BUFRLIB
+C                           ROUTINE "BORT"; MODIFIED TO MAKE Y2K
+C                           COMPLIANT
+C 1999-11-18  J. WOOLLEN -- THE NUMBER OF BUFR FILES WHICH CAN BE
+C                           OPENED AT ONE TIME INCREASED FROM 10 TO 32
+C                           (NECESSARY IN ORDER TO PROCESS MULTIPLE
+C                           BUFR FILES UNDER THE MPI)
+C 2003-11-04  J. ATOR    -- ADDED DOCUMENTATION
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF; ADDED HISTORY
+C                           DOCUMENTATION; OUTPUTS MORE COMPLETE
+C                           DIAGNOSTIC INFO WHEN ROUTINE TERMINATES
+C                           ABNORMALLY
+C
+C USAGE:    CALL OPENMG (LUNIT, SUBSET, JDATE)
+C   INPUT ARGUMENT LIST:
+C     LUNIT    - INTEGER: FORTRAN LOGICAL UNIT NUMBER FOR BUFR FILE
+C     SUBSET   - CHARACTER*(*): TABLE A MNEMONIC FOR TYPE OF BUFR MESSAGE
+C                BEING OPENED
+C     JDATE    - INTEGER: DATE-TIME STORED WITHIN SECTION 1 OF BUFR
+C                MESSAGE BEING OPENED, IN FORMAT OF EITHER YYMMDDHH OR
+C                YYYYMMDDHH, DEPENDING ON DATELEN() VALUE
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        BORT     CLOSMG   I4DY     MSGINI
+C                               NEMTBA   STATUS   USRTPL   WTSTAT
+C    THIS ROUTINE IS CALLED BY: None
+C                               Normally called only by application
+C                               programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
+
+      INCLUDE 'bufrlib.prm'
+
+      COMMON /MSGCWD/ NMSG(NFILES),NSUB(NFILES),MSUB(NFILES),
+     .                INODE(NFILES),IDATE(NFILES)
+
+      CHARACTER*(*) SUBSET
+
 C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
-                                                                        
-C  CHECK THE FILE STATUS                                                
-C  ---------------------                                                
-                                                                        
-      CALL STATUS(LUNIT,LUN,IL,IM)                                      
-      IF(IL.EQ.0) GOTO 900                                              
-      IF(IL.LT.0) GOTO 901                                              
-      IF(IM.NE.0) CALL CLOSMG(LUNIT)                                    
-      CALL WTSTAT(LUNIT,LUN,IL, 1)                                      
-                                                                        
-C  GET SOME SUBSET PARTICULARS                                          
-C  ---------------------------                                          
-                                                                        
-      CALL NEMTBA(LUN,SUBSET,MTYP,MSTB,INOD)                            
-      INODE(LUN) = INOD                                                 
+
+C  CHECK THE FILE STATUS
+C  ---------------------
+
+      CALL STATUS(LUNIT,LUN,IL,IM)
+      IF(IL.EQ.0) GOTO 900
+      IF(IL.LT.0) GOTO 901
+      IF(IM.NE.0) CALL CLOSMG(LUNIT)
+      CALL WTSTAT(LUNIT,LUN,IL, 1)
+
+C  GET SOME SUBSET PARTICULARS
+C  ---------------------------
+
+c  .... Given SUBSET, returns MTYP,MSTB,INOD
+      CALL NEMTBA(LUN,SUBSET,MTYP,MSTB,INOD)
+c  .... Set pos. index for new Tbl A mnem.
+      INODE(LUN) = INOD
+c  .... Set date for new message
       IDATE(LUN) = I4DY(JDATE)
-                                                                        
-C  INITIALIZE THE OPEN MESSAGE                                          
-C  ---------------------------                                          
-                                                                        
-      CALL MSGINI(LUN)                                                  
-      CALL USRTPL(LUN,1,1)                                              
-                                                                        
-      RETURN                                                            
-900   CALL BORT('OPENMG - FILE IS CLOSED            ')                 
-901   CALL BORT('OPENMG - FILE IS OPEN FOR INPUT    ')                 
-      END                                                               
+
+C  INITIALIZE THE OPEN MESSAGE
+C  ---------------------------
+
+      CALL MSGINI(LUN)
+      CALL USRTPL(LUN,1,1)
+
+C  EXITS
+C  -----
+
+      RETURN
+900   CALL BORT('BUFRLIB: OPENMG - OUTPUT BUFR FILE IS CLOSED, IT '//
+     . 'MUST BE OPEN FOR OUTPUT')
+901   CALL BORT('BUFRLIB: OPENMG - OUTPUT BUFR FILE IS OPEN FOR '//
+     . 'INPUT, IT MUST BE OPEN FOR OUTPUT')
+      END

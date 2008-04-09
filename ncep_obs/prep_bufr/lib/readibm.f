@@ -1,66 +1,92 @@
-C-----------------------------------------------------------------------
-C-----------------------------------------------------------------------
       SUBROUTINE READIBM(LUNIT,SUBSET,JDATE,IRET)
- 
-      COMMON /HRDWRD/ NBYTW,NBITW,NREV,IORD(8)
-      COMMON /MSGCWD/ NMSG(32),NSUB(32),MSUB(32),INODE(32),IDATE(32)
-      COMMON /BITBUF/ MAXBYT,IBIT,IBAY(5000),MBYT(32),MBAY(5000,32)
- 
-      CHARACTER*8 SEC0,SUBSET
-      CHARACTER*4 BUFR
-      CHARACTER*1 CBAY(8*5000)
-      DIMENSION   JBAY(5000)
-      EQUIVALENCE (CBAY(1),JBAY(1))
-      EQUIVALENCE (CBAY(1),SEC0)
- 
+
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    READIBM
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1999-11-18
+C
+C ABSTRACT:  THIS SUBROUTINE CALLS BUFR ARCHIVE LIBRARY SUBROUTINE
+C   READMG.  IT IS CONSIDERED OBSOLETE AND MAY BE REMOVED FROM THE BUFR
+C   ARCHIVE LIBRARY IN A FUTURE VERSION.  USERS SHOULD MIGRATE TO THE
+C   DIRECT USE OF READMG (AS SHOWN BELOW).
+C
+C PROGRAM HISTORY LOG:
+C 1999-11-18  J. WOOLLEN -- ORIGINAL AUTHOR
+C 2000-09-19  J. WOOLLEN -- REMOVED MESSAGE DECODING LOGIC THAT HAD
+C                           BEEN REPLICATED IN THIS AND OTHER READ
+C                           ROUTINES AND CONSOLIDATED IT INTO A NEW
+C                           ROUTINE CKTABA, CALLED HERE, WHICH IS
+C                           ENHANCED TO ALLOW COMPRESSED AND STANDARD
+C                           BUFR MESSAGES TO BE READ (ROUTINE UNCMPS,
+C                           WHICH HAD BEEN CALLED BY THIS AND OTHER
+C                           ROUTINES IS NOW OBSOLETE AND HAS BEEN
+C                           REMOVED FROM THE BUFRLIB; MAXIMUM MESSAGE
+C                           LENGTH INCREASED FROM 10,000 TO 20,000
+C                           BYTES
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF; ADDED
+C                           DOCUMENTATION (INCLUDING HISTORY); OUTPUTS
+C                           MORE COMPLETE DIAGNOSTIC INFO WHEN ROUTINE
+C                           TERMINATES ABNORMALLY
+C 2004-08-18  J. ATOR    -- MODIFIED 'BUFR' STRING TEST FOR PORTABILITY
+C                           TO EBCDIC MACHINES; MAXIMUM MESSAGE LENGTH
+C                           INCREASED FROM 20,000 TO 50,000 BYTES
+C 2005-11-29  J. ATOR    -- MARKED AS OBSOLETE AND ADDED PRINT
+C                           NOTIFICATION
+C
+C USAGE:    CALL READIBM (LUNIT, SUBSET, JDATE, IRET)
+C   INPUT ARGUMENT LIST:
+C     LUNIT    - INTEGER: FORTRAN LOGICAL UNIT NUMBER FOR BUFR FILE
+C
+C   OUTPUT ARGUMENT LIST:
+C     SUBSET   - CHARACTER*8: TABLE A MNEMONIC FOR TYPE OF BUFR MESSAGE
+C                BEING READ
+C     JDATE    - INTEGER: DATE-TIME STORED WITHIN SECTION 1 OF BUFR
+C                MESSAGE BEING READ, IN FORMAT OF EITHER YYMMDDHH OR
+C                YYYYMMDDHH, DEPENDING ON DATELEN() VALUE
+C     IRET     - INTEGER: RETURN CODE:
+C                       0 = normal return
+C                      -1 = there are no more BUFR messages in LUNIT
+C
+C   INPUT FILES:
+C     UNIT "LUNIT" - BUFR FILE
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        READMG
+C    THIS ROUTINE IS CALLED BY: IREADIBM
+C                               Also called by application programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
+      COMMON /QUIET / IPRT
+
+      CHARACTER*8 SUBSET
+
+      DATA IFIRST/0/
+
+      SAVE IFIRST
+
 C-----------------------------------------------------------------------
-      LBMG(SEC0) = IUPM(SEC0(5:7),24)
 C-----------------------------------------------------------------------
- 
-      IRET = 0
- 
-C  CHECK THE FILE STATUS
-C  ---------------------
- 
-      CALL STATUS(LUNIT,LUN,IL,IM)
-      IF(IL.EQ.0) GOTO 900
-      IF(IL.GT.0) GOTO 901
-      CALL WTSTAT(LUNIT,LUN,IL,1)
- 
-C  READ A MESSAGE INTO A MESSAGE BUFFER - SKIP DX MESSAGES
-C  -------------------------------------------------------
- 
-1     SEC0 = ' '
-      READ(LUNIT,ERR=902,END=100) SEC0,(CBAY(I),I=9,LBMG(SEC0))
-      DO I=1,8
-      CBAY(I) = SEC0(I:I)
-      ENDDO
-      DO I=1,LMSG(SEC0)
-      MBAY(I,LUN) = JBAY(I)
-      ENDDO
- 
-C  PARSE THE MESSAGE SECTION CONTENTS
-C  ----------------------------------
- 
-      CALL CKTABA(LUN,SUBSET,JDATE,IRET)
-      IF(IRET.NE.0) GOTO 1
+
+      IF(IFIRST.EQ.0) THEN
+         IF(IPRT.GE.0) THEN
+      PRINT*
+      PRINT*,'+++++++++++++++++BUFR ARCHIVE LIBRARY++++++++++++++++++++'
+      PRINT 101
+101   FORMAT(' BUFRLIB: READIBM - THIS SUBROUTINE IS NOW OBSOLETE; ',
+     . 'USE SUBROUTINE READMG INSTEAD')
+      PRINT*,'+++++++++++++++++BUFR ARCHIVE LIBRARY++++++++++++++++++++'
+      PRINT*
+         ENDIF
+         IFIRST = 1
+      ENDIF
+
+      CALL READMG(LUNIT,SUBSET,JDATE,IRET)
+
       RETURN
- 
-C  EOF ON ATTEMPTED READ
-C  ---------------------
- 
-100   CALL WTSTAT(LUNIT,LUN,IL,0)
-      INODE(LUN) = 0
-      IDATE(LUN) = 0
-      SUBSET = ' '
-      JDATE = 0
-      IRET = -1
-      RETURN
- 
-C  ERROR EXITS
-C  -----------
- 
-900   CALL BORT('READIBM - FILE IS CLOSED                       ')
-901   CALL BORT('READIBM - FILE IS OPEN FOR OUTPUT              ')
-902   CALL BORT('READIBM - I/O ERROR READING MESSAGE            ')
       END

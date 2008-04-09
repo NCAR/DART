@@ -1,63 +1,80 @@
-C----------------------------------------------------------------------
-C  REVERSE A WEIRD INTEGER
-C----------------------------------------------------------------------
-
       FUNCTION IREV(N)
 
-C************************************************************************
-C* IREV									*
-C*									*
-C* By definition (within WMO Manual 306), a BUFR message is a stream of	*
-C* individual octets (i.e. bytes) that is independent of any particular	*
-C* machine representation.  However, the BUFRLIB software often needs	*
-C* to interpret two or more adjacent bytes as an integer; therefore,	*
-C* when doing so, it is critical to know whether the local machine uses	*
-C* the "big-endian" (i.e. left->right) or "little-endian" (right->left)	*
-C* scheme for numbering the bytes within a machine word!  By default,	*
-C* BUFRLIB decodes multi-byte integers according to the "big-endian"	*
-C* numbering scheme; thus, if the local machine is "little-endian"	*
-C* instead, then this function IREV will return a copy of the input	*
-C* integer field with the bytes reversed so that it can be properly	*
-C* read or written (depending on whether input or output operations,	*
-C* respectively, are being performed!).  If, on the other hand, the	*
-C* local machine is already "big-endian", then no such reversal is	*
-C* necessary and the function simply returns a copy of the same integer	*
-C* that was input.							*
-C*									*
-C* IREV  ( N )								*
-C*									*
-C* Input parameters:							*
-C*	N		INTEGER		Integer (to possibly reverse)	*
-C*									*
-C* Output parameters:							*
-C*	IREV		INTEGER		(Possibly reversed) copy of N	*
-C*									*
-C**									*
-C* Log:									*
-C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation			*
-C************************************************************************
- 
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    IREV
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1994-01-06
+C
+C ABSTRACT: THIS FUNCTION WILL, WHEN THE LOCAL MACHINE IS "LITTLE-
+C   ENDIAN" (I.E., USES A RIGHT TO LEFT SCHEME FOR NUMBERING THE BYTES
+C   WITHIN A MACHINE WORD), RETURN A COPY OF AN INPUT INTEGER WORD WITH
+C   THE BYTES REVERSED.  ALTHOUGH, BY DEFINITION (WITHIN WMO MANUAL
+C   306), A BUFR MESSAGE IS A STREAM OF INDIVIDUAL OCTETS (I.E., BYTES)
+C   THAT IS INDEPENDENT OF ANY PARTICULAR MACHINE REPRESENTATION, THE
+C   BUFR ARCHIVE LIBRARY SOFTWARE OFTEN NEEDS TO INTERPRET ALL OR PARTS
+C   OF TWO OR MORE ADJACENT BYTES IN ORDER TO CONSTRUCT AN INTEGER
+C   WORD.  BY DEFAULT, THE SOFTWARE USES THE "BIG-ENDIAN" (LEFT TO
+C   RIGHT) SCHEME FOR NUMBERING BYTES.  BY REVERSING THE BYTES, IREV
+C   ALLOWS THE INTEGER WORD TO BE PROPERLY READ OR WRITTEN (DEPENDING
+C   ON WHETHER INPUT OR OUTPUT OPERATIONS, RESPECTIVELY, ARE BEING
+C   PERFORMED) ON LITTLE-ENDIAN MACHINES.  IF THE LOCAL MACHINE IS
+C   BIG-ENDIAN, IREV SIMPLY RETURNS A COPY OF THE SAME INTEGER THAT WAS
+C   INPUT.
+C
+C PROGRAM HISTORY LOG:
+C 1994-01-06  J. WOOLLEN -- ORIGINAL AUTHOR
+C 2003-11-04  J. ATOR    -- ADDED DOCUMENTATION
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF; ADDED HISTORY
+C                           DOCUMENTATION
+C
+C USAGE:    IREV (N)
+C   INPUT ARGUMENT LIST:
+C     N        - INTEGER: INTEGER WORD WITH BYTES ORDERED ACCORDING TO
+C                THE "BIG-ENDIAN" NUMBERING SCHEME
+C
+C   OUTPUT ARGUMENT LIST:
+C     IREV     - INTEGER: INTEGER WORD WITH BYTES ORDERED ACCORDING TO
+C                THE NUMBERING SCHEME OF THE LOCAL MACHINE (EITHER
+C                "BIG-ENDIAN" OR "LITTLE-ENDIAN", IF "BIG-ENDIAN THEN
+C                THIS IS JUST A DIRECT COPY OF N)
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        None
+C    THIS ROUTINE IS CALLED BY: IPKM     IUPM     PKB      PKC
+C                               UPB      UPBB
+C                               Normally not called by any application
+C                               programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
+
       COMMON /HRDWRD/ NBYTW,NBITW,NREV,IORD(8)
- 
+
       CHARACTER*8 CINT,DINT
       EQUIVALENCE(CINT,INT)
       EQUIVALENCE(DINT,JNT)
- 
+
 C----------------------------------------------------------------------
 C----------------------------------------------------------------------
- 
+
 C     Note that the value of NREV is set within subroutine WRDLEN.
 
       IF(NREV.EQ.0) THEN
+c  .... big-endian
          IREV = N
       ELSE
+c  .... little-endian
          INT = N
          DO I=1,NBYTW
          DINT(I:I) = CINT(IORD(I):IORD(I))
          ENDDO
          IREV = JNT
       ENDIF
- 
+
       RETURN
       END

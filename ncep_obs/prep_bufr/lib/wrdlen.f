@@ -1,91 +1,172 @@
       SUBROUTINE WRDLEN
 
-C************************************************************************
-C* WRDLEN								*
-C*									*
-C* This subroutine is called only one time (during the first call to	*
-C* subroutine OPENBF) in order to figure out some important information	*
-C* about the local machine on which the BUFRLIB software is being run.	*
-C* Such information includes determining the number of bits and number	*
-C* of bytes in a machine word as well as determining whether the machine*
-C* uses the ASCII or EBCDIC character set and whether it uses the	*
-C* "big-endian" or "little-endian" scheme for numbering the bytes	*
-C* within a machine word.						*
-C*									*
-C**									*
-C* Log:									*
-C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation			*
-C************************************************************************
- 
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    WRDLEN
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1994-01-06
+C
+C ABSTRACT: THIS SUBROUTINE FIGURES OUT SOME IMPORTANT INFORMATION
+C   ABOUT THE LOCAL MACHINE ON WHICH THE BUFR ARCHIVE LIBRARY SOFTWARE
+C   IS BEING RUN AND STORES THIS INTO COMMON BLOCK /HRDWRD/.  SUCH
+C   INFORMATION INCLUDES DETERMINING THE NUMBER OF BITS AND THE NUMBER
+C   OF BYTES IN A MACHINE WORD AS WELL AS DETERMINING WHETHER THE
+C   MACHINE USES THE ASCII OR EBCDIC CHARACTER SET AND WHETHER IT USES
+C   THE "BIG-ENDIAN" OR "LITTLE-ENDIAN" SCHEME FOR NUMBERING THE BYTES
+C   WITHIN A MACHINE WORD.
+C
+C   NOTE: IT IS ONLY NECESSARY FOR THIS SUBROUTINE TO BE CALLED ONCE,
+C   AND THIS IS NORMALLY DONE DURING THE FIRST CALL TO BUFR ARCHIVE
+C   LIBRARY SUBROUTINE OPENBF.  HOWEVER, THE SUBROUTINE DOES KEEP TRACK
+C   OF WHETHER IT HAS ALREADY BEEN CALLED; THUS, IF IT IS CALLED AGAIN
+C   LATER BY A DIFFERENT BUFR ARCHIVE LIBRARY SUBROUTINE, IT WILL JUST
+C   QUIETLY RETURN WITHOUT (RE)COMPUTING ALL OF THE INFORMATION WITHIN
+C   COMMON BLOCK /HRDWRD/.
+C
+C PROGRAM HISTORY LOG:
+C 1994-01-06  J. WOOLLEN -- ORIGINAL AUTHOR
+C 1998-07-08  J. WOOLLEN -- REPLACED CALL TO CRAY LIBRARY ROUTINE
+C                           "ABORT" WITH CALL TO NEW INTERNAL BUFRLIB
+C                           ROUTINE "BORT"
+C 2003-11-04  J. ATOR    -- ADDED DOCUMENTATION
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF; ADDED HISTORY
+C                           DOCUMENTATION; OUTPUTS MORE COMPLETE
+C                           DIAGNOSTIC INFO WHEN ROUTINE TERMINATES
+C                           ABNORMALLY OR FOR INFORMATIONAL PURPOSES;
+C                           NBYTW INITIALIZED AS ZERO THE FIRST TIME
+C                           THIS ROUTINE IS CALLED (BEFORE WAS
+C                           UNDEFINED WHEN FIRST REFERENCED)
+C 2004-08-18  J. ATOR    -- ADDED SAVE FOR IFIRST FLAG AND IMMEDIATE
+C                           RETURN IF IFIRST=1
+C
+C USAGE:    CALL WRDLEN
+C
+C   OUTPUT FILES:
+C     UNIT 06  - STANDARD OUTPUT PRINT
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        BORT     IUPM
+C    THIS ROUTINE IS CALLED BY: COBFL    COPYBF   DATEBF   DATELEN
+C                               DUMPBF   IUPBS01  IUPBS1   MESGBC
+C                               MESGBF   OPENBF   OVRBS1   UPDS3
+C                               Normally not called by any application
+C                               programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
+
       COMMON /HRDWRD/ NBYTW,NBITW,NREV,IORD(8)
       COMMON /CHARAC/ IASCII,IATOE(0:255),IETOA(0:255)
       COMMON /QUIET / IPRT
- 
-      CHARACTER*8 CINT,DINT
-      EQUIVALENCE (CINT,INT)
-      EQUIVALENCE (DINT,JNT)
-      LOGICAL     PRINT
- 
+
+      CHARACTER*128 BORT_STR
+      CHARACTER*8   CINT,DINT
+      CHARACTER*6   CNDIAN,CLANG
+      EQUIVALENCE   (CINT,INT)
+      EQUIVALENCE   (DINT,JNT)
+      LOGICAL       PRINT
+
+      DATA IFIRST/0/
+
+      SAVE IFIRST
+
 C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
- 
-      PRINT = NBYTW.EQ.0 .AND. IPRT.EQ.1
- 
+
+C     HAS THIS SUBROUTINE ALREADY BEEN CALLED?
+
+      IF(IFIRST.EQ.0) THEN
+
+C        NO, SO CHECK WHETHER DIAGNOSTIC INFORMATION SHOULD BE PRINTED
+C        AND THEN PROCEED THROUGH THE REST OF THE SUBROUTINE.
+
+         PRINT = IPRT.GE.1
+         IFIRST = 1
+      ELSE
+
+C        YES, SO THERE IS NO NEED TO PROCEED ANY FURTHER.
+
+         RETURN
+      ENDIF
+
 C  COUNT THE BITS IN A WORD - MAX 64 ALLOWED
 C  -----------------------------------------
- 
+
       INT = 1
       DO I=1,65
       INT = ISHFT(INT,1)
       IF(INT.EQ.0) GOTO 10
       ENDDO
+c  .... DK: Can the below ever happen since upper loop bounds is 65?
 10    IF(I.GE.65)       GOTO 900
       IF(MOD(I,8).NE.0) GOTO 901
+
+C  NBITW is no. of bits in a word, NBYTW is no. of bytes in a word
+C  ---------------------------------------------------------------
+
       NBITW = I
       NBYTW = I/8
- 
+
 C  INDEX THE BYTE STORAGE ORDER -  HIGH BYTE TO LOW BYTE
 C  -----------------------------------------------------
- 
+
       JNT = 0
+
+C  Initialize IORD to 9999
+C  -----------------------
+
+      DO I = 1,8
+         IORD(I) = 9999
+      ENDDO
+
       DO I=1,NBYTW
-      INT = ISHFT(1,(NBYTW-I)*8)
-      DO J=1,NBYTW
-      IF(CINT(J:J).NE.DINT(J:J)) GOTO 20
+         INT = ISHFT(1,(NBYTW-I)*8)
+         DO J=1,NBYTW
+            IF(CINT(J:J).NE.DINT(J:J)) GOTO 20
+         ENDDO
+c  .... DK: Can the below ever happen since upper loop bounds is NBYTW?
+20       IF(J.GT.NBYTW) GOTO 902
+         IORD(I) = J
       ENDDO
-20    IF(J.GT.NBYTW) GOTO 902
-      IORD(I) = J
-      ENDDO
- 
+
 C  SET THE NOREVERSE FLAG - 0=NOREVERSE;1=REVERSE
 C  ----------------------------------------------
 
 C     i.e. set NREV = 0 if the machine is "big-endian"
 C          set NREV = 1 if the machine is "little-endian"
- 
+
       NREV = 0
+      CNDIAN = '  BIG '
       DO I=1,NBYTW
-      IF(IORD(I).NE.I) NREV = 1
-      ENDDO
- 
-C  SETUP AN ASCII/EBCDIC TRANSALTOR AND DETERMINE WHICH IS NATIVE
-C  --------------------------------------------------------------
- 
- 
-      IF(IUPM('A',8).EQ. 65) THEN
-         IASCII = 1
-      ELSEIF(IUPM('A',8).EQ.193) THEN
-         IASCII = 0
-      ELSE
-         CALL BORT('WRDLEN - CANT DETERMINE NATIVE LANGUAGE')
+      IF(IORD(I).NE.I) THEN
+         NREV = 1
+         CNDIAN = 'LITTLE'
       ENDIF
- 
+      ENDDO
+
+C  SETUP AN ASCII/EBCDIC TRANSLATOR AND DETERMINE WHICH IS NATIVE
+C  --------------------------------------------------------------
+
+      IA = IUPM('A',8)
+      IF(IA.EQ. 65) THEN
+         IASCII = 1
+         CLANG  = 'ASCII '
+      ELSEIF(IA.EQ.193) THEN
+         IASCII = 0
+         CLANG  = 'EBCDIC'
+      ELSE
+         GOTO 903
+      ENDIF
+
       DO I=0,255
       IETOA(I) = 0
       IATOE(I) = 0
       ENDDO
- 
+
       IETOA(  1) =   1
       IATOE(  1) =   1
       IETOA(  2) =   2
@@ -364,19 +445,38 @@ C  --------------------------------------------------------------
       IATOE( 56) = 248
       IETOA(249) =  57
       IATOE( 57) = 249
- 
+
 C  SHOW SOME RESULTS
 C  -----------------
- 
+
       IF(PRINT) THEN
-         PRINT100,NBYTW,NBITW,NREV,(IORD(I),I=1,NBYTW)
-         IF(IASCII.EQ.0) PRINT*,'EBCDIC IS NATIVE LANGUAGE'
-         IF(IASCII.EQ.1) PRINT*,'ASCII  IS NATIVE LANGUAGE'
+         PRINT 100, NBYTW,NBITW,CNDIAN,NREV,IORD,CLANG
+100   FORMAT(/15('='),' WELCOME TO BUFR ARCHIVE LIBRARY ',15('=')/
+     . 'MACHINE CHARACTERISTICS: NUMBER OF BYTES PER WORD =',I2,
+     . ', NUMBER OF BITS PER WORD =',I3,','/25X,'BYTE ORDER IS ',A6,
+     . ' ENDIAN (NREV=',I2,', IORD=',8I1,'), '/25X,A6,' IS THE NATIVE ',
+     . 'LANGUAGE'/14('='),' "UNIFIED" VERSION: 2004-08-18 ',
+     . 14('=')/)
       ENDIF
-100   FORMAT(' WRDLEN:NBYTW=',I1,' NBITW=',I2,' IREV=',I1,' IORD=',8I1)
- 
+
+C  EXITS
+C  -----
+
       RETURN
-900   CALL BORT('WRDLEN - A WORD IS MORE THAN 64 BITS')
-901   CALL BORT('WRDLEN - A WORD IS NOT MADE OF BYTES')
-902   CALL BORT('WRDLEN - BYTE ORDER CHECKING MISTAKE')
+900   WRITE(BORT_STR,'("BUFRLIB: WRDLEN - MACHINE WORD LENGTH IS '//
+     . 'LIMITED TO 64 BITS (THIS MACHINE APPARENTLY HAS",I4," BIT '//
+     . 'WORDS!)")') I
+      CALL BORT(BORT_STR)
+901   WRITE(BORT_STR,'("BUFRLIB: WRDLEN - MACHINE WORD LENGTH (",I4,"'//
+     . ') IS NOT A MULTIPLE OF 8 (THIS MACHINE HAS WORDS NOT ON WHOLE'//
+     . ' BYTE BOUNDARIES!)")') I
+      CALL BORT(BORT_STR)
+902   WRITE(BORT_STR,'("BUFRLIB: WRDLEN - BYTE ORDER CHECKING MISTAKE'//
+     . ', LOOP INDEX J (HERE =",I3,") IS .GT. NO. OF BYTES PER WORD '//
+     . 'ON THIS MACHINE (",I3,")")') J,NBYTW
+      CALL BORT(BORT_STR)
+903   WRITE(BORT_STR,'("BUFRLIB: WRDLEN - CAN''T DETERMINE MACHINE '//
+     . 'NATIVE LANGUAGE (CHAR. A UNPACKS TO INT.",I4," NEITHER ASCII '//
+     . ' (65) NOR EBCDIC (193)")') IA
+      CALL BORT(BORT_STR)
       END

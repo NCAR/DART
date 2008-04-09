@@ -1,43 +1,85 @@
-      SUBROUTINE WRITSB(LUNIT)                                          
+      SUBROUTINE WRITSB(LUNIT)
 
-C************************************************************************
-C* WRITSB								*
-C*									*
-C* This subroutine should only be called when logical unit LUNIT has	*
-C* been opened for output operations.  It packs up the current subset	*
-C* within memory and then tries to add it to the BUFR message that is	*
-C* currently open within memory for this LUNIT.  If the subset will not	*
-C* fit into the currently open message (as determined via a call to	*
-C* subroutine MSGUPD), then that message is flushed to LUNIT and a new	*
-C* one is created in order to hold the current subset.			*
-C*									*
-C* WRITSB  ( LUNIT )							*
-C*									*
-C* Input parameters:							*
-C*	LUNIT		INTEGER		FORTRAN logical unit number	*
-C*									*
-C**									*
-C* Log:									*
-C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation			*
-C************************************************************************
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    WRITSB
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1994-01-06
+C
+C ABSTRACT: THIS SUBROUTINE SHOULD ONLY BE CALLED WHEN LOGICAL UNIT
+C   LUNIT HAS BEEN OPENED FOR OUTPUT OPERATIONS.  IT PACKS UP THE
+C   CURRENT SUBSET WITHIN MEMORY AND THEN TRIES TO ADD IT TO THE 
+C   BUFR MESSAGE THAT IS CURRENTLY OPEN WITHIN MEMORY FOR THIS LUNIT.
+C   THE DETERMINATION AS TO WHETHER OR NOT THE SUBSET CAN BE ADDED TO
+C   THE MESSAGE IS MADE VIA AN INTERNAL CALL TO ONE OF THE BUFR ARCHIVE
+C   LIBRARY SUBROUTINES WRCMPS OR MSGUPD, DEPENDING UPON WHETHER OR NOT 
+C   THE MESSAGE IS COMPRESSED.  IF IT TURNS OUT THAT THE SUBSET CANNOT
+C   BE ADDED TO THE CURRENTLY OPEN MESSAGE, THEN THAT MESSAGE IS
+C   FLUSHED TO LUNIT AND A NEW ONE IS CREATED IN ORDER TO HOLD THE
+C   SUBSET.
+C
+C PROGRAM HISTORY LOG:
+C 1994-01-06  J. WOOLLEN -- ORIGINAL AUTHOR
+C 1998-07-08  J. WOOLLEN -- REPLACED CALL TO CRAY LIBRARY ROUTINE
+C                           "ABORT" WITH CALL TO NEW INTERNAL BUFRLIB
+C                           ROUTINE "BORT"
+C 2003-11-04  J. ATOR    -- ADDED DOCUMENTATION
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF; ADDED HISTORY
+C                           DOCUMENTATION; OUTPUTS MORE COMPLETE
+C                           DIAGNOSTIC INFO WHEN ROUTINE TERMINATES
+C                           ABNORMALLY
+C 2005-03-09  J. ATOR    -- ADDED CAPABILITY FOR COMPRESSED MESSAGES
+C
+C USAGE:    CALL WRITSB (LUNIT)
+C   INPUT ARGUMENT LIST:
+C     LUNIT    - INTEGER: FORTRAN LOGICAL UNIT NUMBER FOR BUFR FILE
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        BORT     MSGUPD   STATUS   WRCMPS
+C                               WRTREE
+C    THIS ROUTINE IS CALLED BY: COPYSB   WRITCP
+C                               Also called by application programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
 
-C  CHECK THE FILE STATUS                                                
-C  ---------------------                                                
-                                                                        
-      CALL STATUS(LUNIT,LUN,IL,IM)                                      
-      IF(IL.EQ.0) GOTO 900                                              
-      IF(IL.LT.0) GOTO 901                                              
-      IF(IM.EQ.0) GOTO 902                                              
-                                                                        
-C  PACK UP THE SUBSET AND PUT IT INTO THE MESSAGE                       
-C  ----------------------------------------------                       
-                                                                        
-      CALL WRTREE(LUN)                                                  
-      CALL MSGUPD(LUNIT,LUN)                                            
-                                                                        
-      RETURN                                                            
-900   CALL BORT('WRITSB - FILE IS CLOSED                     ')        
-901   CALL BORT('WRITSB - FILE IS OPEN FOR INPUT             ')        
-902   CALL BORT('WRITSB - NO MESSAGE OPEN                    ')        
-      END                                                               
+      COMMON /MSGCMP/ CCMF
+
+      CHARACTER*1 CCMF
+
+C-----------------------------------------------------------------------
+C-----------------------------------------------------------------------
+
+C  CHECK THE FILE STATUS
+C  ---------------------
+
+      CALL STATUS(LUNIT,LUN,IL,IM)
+      IF(IL.EQ.0) GOTO 900
+      IF(IL.LT.0) GOTO 901
+      IF(IM.EQ.0) GOTO 902
+
+C  PACK UP THE SUBSET AND PUT IT INTO THE MESSAGE
+C  ----------------------------------------------
+
+      CALL WRTREE(LUN)
+      IF( CCMF.EQ.'Y' ) THEN
+          CALL WRCMPS(LUNIT)
+      ELSE
+          CALL MSGUPD(LUNIT,LUN)
+      ENDIF
+
+C  EXITS
+C  -----
+
+      RETURN
+900   CALL BORT('BUFRLIB: WRITSB - OUTPUT BUFR FILE IS CLOSED, IT '//
+     . 'MUST BE OPEN FOR OUTPUT')
+901   CALL BORT('BUFRLIB: WRITSB - OUTPUT BUFR FILE IS OPEN FOR '//
+     . 'INPUT, IT MUST BE OPEN FOR OUTPUT')
+902   CALL BORT('BUFRLIB: WRITSB - A MESSAGE MUST BE OPEN IN OUTPUT '//
+     . 'BUFR FILE, NONE ARE')
+      END

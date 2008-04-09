@@ -1,83 +1,112 @@
       SUBROUTINE NEMTBD(LUN,ITAB,NSEQ,NEMS,IRPS,KNTS)
 
-C************************************************************************
-C* NEMTBD								*
-C*									*
-C* Given a Table D sequence mnemonic (i.e. a "parent mnemonic"), this	*
-C* subroutine returns a list of the mnemonics contained within that	*
-C* sequence (i.e. the "child mnemonics").  This information should have	*
-C* been packed into the internal BUFR table D entry for the parent	*
-C* mnemonic via previous calls to subroutine PKTDD.  Note that this	*
-C* subroutine (i.e. NEMTBD) does *not* recursively resolve child	*
-C* mnemonics which are themselves Table D sequence mnemonics; rather,	*
-C* such resolution must be done via separate subsequent calls to this	*
-C* subroutine.								*
-C*									*
-C* NEMTBD  ( LUN, ITAB, NSEQ, NEMS, IRPS, KNTS )			*
-C*									*
-C* Input parameters:							*
-C*	LUN		INTEGER		I/O stream index of parent	*
-C*					mnemonic within internal BUFR	*
-C*					Table D array TABD(*,*)		*
-C*	ITAB		INTEGER		Positional index of parent	*
-C*					mnemonic within internal BUFR	*
-C*					Table D array TABD(*,*)		*
-C*									*
-C* Output parameters:							*
-C*	NSEQ		INTEGER		Total number of child mnemonics	*
-C*					for the parent mnemonic given	*
-C*					by TABD(ITAB,LUN)		*
-C*	NEMS(NSEQ)	CHARACTER*8	Child mnemonics			*
-C*	IRPS(NSEQ)	INTEGER		Return value:			*
-C*				      /               \			*
-C*	      ------------------------                 ---------------	*
-C* 		The interpretation of the return value IRPS(I) depends	*
-C*		upon the type of descriptor corresponding to NEMS(I),	*
-C*		as follows:						*
-C*									*
-C*		IF ( NEMS(I) corresponds to an F=1 regular		*
-C*		     (i.e. non-delayed) replication descriptor ) THEN	*
-C*		    IRPS(I) = 1						*
-C*		ELSE IF ( NEMS(I) corresponds to a delayed replicator	*
-C*			  or replication factor descriptor )  THEN	*
-C*		    IRPS(I) = positional index of corresponding		*
-C*			      descriptor within internal replication	*
-C*			      array IDNR(*,*)				*
-C*		ELSE							*
-C*		    IRPS(I) = 0						*
-C*		END IF							*
-C*	      --------------------------------------------------------	*
-C*									*
-C*	KNTS(NSEQ)	INTEGER		Return value:			*
-C*				      /               \			*
-C*	      ------------------------                 ---------------	*
-C* 		The interpretation of the return value KNTS(I) depends	*
-C*		upon the type of descriptor corresponding to NEMS(I),	*
-C*		as follows:						*
-C*									*
-C*		IF ( NEMS(I) corresponds to an F=1 regular		*
-C*		     (i.e. non-delayed) replication descriptor ) THEN	*
-C*		    KNTS(I) = number of replications			*
-C*		ELSE							*
-C*		    KNTS(I) = 0						*
-C*		END IF							*
-C*	      --------------------------------------------------------	*
-C**									*
-C* Log:									*
-C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation				*
-C************************************************************************
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    NEMTBD
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1994-01-06
+C
+C ABSTRACT: THIS SUBROUTINE RETURNS A LIST OF THE MNEMONICS (I.E.,
+C   "CHILD" MNEMONICS) CONTAINED WITHIN A TABLE D SEQUENCE MNEMONIC
+C   (I.E., A "PARENT MNEMONIC").  THIS INFORMATION SHOULD HAVE BEEN
+C   PACKED INTO THE INTERNAL BUFR TABLE D ENTRY FOR THE PARENT MNEMONIC
+C   (IN COMMON BLOCK /TABABD/) VIA PREVIOUS CALLS TO BUFR ARCHIVE
+C   LIBRARY SUBROUTINE PKTDD.  NOTE THAT NEMTBD DOES NOT RECURSIVELY
+C   RESOLVE CHILD MNEMONICS WHICH ARE THEMSELVES TABLE D SEQUENCE
+C   MNEMONICS; RATHER, SUCH RESOLUTION MUST BE DONE VIA SEPARATE
+C   SUBSEQUENT CALLS TO THIS SUBROUTINE.
+C
+C PROGRAM HISTORY LOG:
+C 1994-01-06  J. WOOLLEN -- ORIGINAL AUTHOR
+C 1995-06-28  J. WOOLLEN -- INCREASED THE SIZE OF INTERNAL BUFR TABLE
+C                           ARRAYS IN ORDER TO HANDLE BIGGER FILES
+C 1998-07-08  J. WOOLLEN -- REPLACED CALL TO CRAY LIBRARY ROUTINE
+C                           "ABORT" WITH CALL TO NEW INTERNAL BUFRLIB
+C                           ROUTINE "BORT"
+C 1999-11-18  J. WOOLLEN -- THE NUMBER OF BUFR FILES WHICH CAN BE
+C                           OPENED AT ONE TIME INCREASED FROM 10 TO 32
+C                           (NECESSARY IN ORDER TO PROCESS MULTIPLE
+C                           BUFR FILES UNDER THE MPI)
+C 2000-09-19  J. WOOLLEN -- MUST NOW CHECK FOR TABLE C (OPERATOR
+C                           DESCRIPTOR) MNEMONICS SINCE THE CAPABILITY
+C                           HAS NOW BEEN ADDED TO ENCODE AND DECODE
+C                           THESE
+C 2003-11-04  J. ATOR    -- ADDED DOCUMENTATION
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF; ADDED HISTORY
+C                           DOCUMENTATION; OUTPUTS MORE COMPLETE
+C                           DIAGNOSTIC INFO WHEN ROUTINE TERMINATES
+C                           ABNORMALLY
+C
+C USAGE:    CALL NEMTBD (LUN, ITAB, NSEQ, NEMS, IRPS, KNTS)
+C   INPUT ARGUMENT LIST:
+C     LUN      - INTEGER: I/O STREAM INDEX INTO INTERNAL MEMORY ARRAYS
+C     ITAB     - INTEGER: POSITIONAL INDEX OF PARENT MNEMONIC WITHIN
+C                INTERNAL BUFR TABLE D ARRAY TABD(*,*)
+C
+C   OUTPUT ARGUMENT LIST:
+C     NSEQ     - INTEGER: TOTAL NUMBER OF CHILD MNEMONICS FOR THE
+C                PARENT MNEMONIC GIVEN BY TABD(ITAB,LUN)
+C     NEMS     - CHARACTER*8: (NSEQ)-WORD ARRAY OF CHILD MNEMONICS
+C     IRPS     - INTEGER: (NSEQ)-WORD RETURN VALUE ARRAY (SEE REMARKS)
+C     KNTS     - INTEGER: (NSEQ)-WORD RETURN VALUE ARRAY (SEE REMARKS)
+C
+C REMARKS:
+C    VALUE FOR OUTPUT ARGUMENT IRPS:
+C       The interpretation of the return value IRPS(I) depends upon the
+C       type of descriptor corresponding to NEMS(I), as follows:
+C
+C       IF ( NEMS(I) corresponds to an F=1 regular (i.e. non-delayed)
+C            replication descriptor ) THEN
+C          IRPS(I) = 1
+C       ELSE IF ( NEMS(I) corresponds to a delayed replicator or
+C                 replication factor descriptor )  THEN
+C          IRPS(I) = positional index of corresponding descriptor
+C                    within internal replication array IDNR(*,*)
+C       ELSE
+C          IRPS(I) = 0
+C       END IF
+C
+C
+C    VALUE FOR OUTPUT ARGUMENT KNTS:
+C       The interpretation of the return value KNTS(I) depends upon the
+C       type of descriptor corresponding to NEMS(I), as follows:
+C
+C       IF ( NEMS(I) corresponds to an F=1 regular (i.e. non-delayed)
+C            replication descriptor ) THEN
+C          KNTS(I) = number of replications
+C       ELSE
+C          KNTS(I) = 0
+C       END IF
+C
+C
+C    THIS ROUTINE CALLS:        BORT     IFXY     NUMTAB   RSVFVM
+C                               UPTDD
+C    THIS ROUTINE IS CALLED BY: CHEKSTAB DXDUMP   GETABDB  TABSUB
+C                               Normally not called by any application
+C                               programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
 
-      COMMON /TABABD/ NTBA(0:32),NTBB(0:32),NTBD(0:32),MTAB(50,32),
-     .                IDNA(50,32,2),IDNB(250,32),IDND(250,32),
-     .                TABA(50,32),TABB(250,32),TABD(250,32)
+      INCLUDE 'bufrlib.prm'
+
+      COMMON /TABABD/ NTBA(0:NFILES),NTBB(0:NFILES),NTBD(0:NFILES),
+     .                MTAB(MAXTBA,NFILES),IDNA(MAXTBA,NFILES,2),
+     .                IDNB(MAXTBB,NFILES),IDND(MAXTBD,NFILES),
+     .                TABA(MAXTBA,NFILES),TABB(MAXTBB,NFILES),
+     .                TABD(MAXTBD,NFILES)
 
       CHARACTER*600 TABD
       CHARACTER*128 TABB
       CHARACTER*128 TABA
+      CHARACTER*128 BORT_STR
       CHARACTER*8   NEMO,NEMS,NEMT,NEMF
       CHARACTER*1   TAB
-      DIMENSION     NEMS(250),IRPS(250),KNTS(250)
+      DIMENSION     NEMS(MAXCD),IRPS(MAXCD),KNTS(MAXCD)
       LOGICAL       REP
 
 C-----------------------------------------------------------------------
@@ -92,7 +121,7 @@ C  -----------------------
 
       NSEQ = 0
 
-      DO I=1,250
+      DO I=1,MAXCD
       NEMS(I) = ' '
       IRPS(I) = 0
       KNTS(I) = 0
@@ -107,33 +136,34 @@ C  -----------------------
 
       IF(IDSC.LT.IFXY('300000')) GOTO 901
       IF(IDSC.GT.IFXY('363255')) GOTO 901
-C     IF(NDSC.LE.0             ) GOTO 902
-
+cccc  IF(NDSC.LE.0             ) GOTO 902
 
 C     Loop through each child mnemonic.
 
+c  .... DK: What happens here if NDSC=0 ?
       DO J=1,NDSC
-      IF(NSEQ+1.GT.250) GOTO 903
+      IF(NSEQ+1.GT.MAXCD) GOTO 903
       CALL UPTDD(ITAB,LUN,J,IDSC)
+c  .... get NEMT from IDSC
       CALL NUMTAB(LUN,IDSC,NEMT,TAB,IRET)
       IF(TAB.EQ.'R') THEN
          IF(REP) GOTO 904
          REP = .TRUE.
          IF(IRET.LT.0) THEN
 
-C	    F=1 regular (i.e. non-delayed) replication.
+C           F=1 regular (i.e. non-delayed) replication.
 
             IRPS(NSEQ+1) = 1
             KNTS(NSEQ+1) = ABS(IRET)
          ELSEIF(IRET.GT.0) THEN
 
-C	    Delayed replication.
+C           Delayed replication.
 
             IRPS(NSEQ+1) = IRET
          ENDIF
       ELSEIF(TAB.EQ.'F') THEN
 
-C	    Replication factor.
+C            Replication factor.
 
          IF(.NOT.REP) GOTO 904
          IRPS(NSEQ+1) = IRET
@@ -147,9 +177,10 @@ C	    Replication factor.
          NSEQ = NSEQ+1
          IF(NEMT(1:1).EQ.'.') THEN
 
-C	    This is a "following value" mnemonic.
+C            This is a "following value" mnemonic.
 
             CALL UPTDD(ITAB,LUN,J+1,IDSC)
+c  .... get NEMF from IDSC
             CALL NUMTAB(LUN,IDSC,NEMF,TAB,IRET)
             CALL RSVFVM(NEMT,NEMF)
             IF(TAB.NE.'B') GOTO 906
@@ -160,12 +191,32 @@ C	    This is a "following value" mnemonic.
       ENDIF
       ENDDO
 
+C  EXITS
+C  -----
+
       RETURN
-900   CALL BORT('NEMTBD - ITAB NOT IN TABLE D   '                )
-901   CALL BORT('NEMTBD - BAD DESCRIPTOR VALUE: '          //NEMO)
-902   CALL BORT('NEMTBD - ZERO LENGTH SEQUENCE: '          //NEMO)
-903   CALL BORT('NEMTBD - TOO MANY DESCRIPTORS IN SEQ: '   //NEMO)
-904   CALL BORT('NEMTBD - REPLICATOR OUT OF ORDER IN SEQ: '//NEMO)
-905   CALL BORT('NEMTBD - BAD DESCRIPTOR IN SEQUENCE: '    //NEMO)
-906   CALL BORT('NEMTBD - FOLLOWING VALUE NOT FROM TABLEB:'//NEMF)
+900   WRITE(BORT_STR,'("BUFRLIB: NEMTBD - ITAB (",I7,") NOT FOUND IN '//
+     . 'TABLE D")') ITAB
+      CALL BORT(BORT_STR)
+901   WRITE(BORT_STR,'("BUFRLIB: NEMTBD - INTEGER REPRESENTATION OF '//
+     . 'DESCRIPTOR FOR TABLE D MNEMONIC ",A," (",I7,") IS OUTSIDE '//
+     . 'RANGE 0-65535 (65535 -> 3-63-255)")') NEMO,IDSC
+      CALL BORT(BORT_STR)
+902   WRITE(BORT_STR,'("BUFRLIB: NEMTBD - TABLE D MNEMONIC ",A," IS A'//
+     . ' ZERO LENGTH SEQUENCE")') NEMO
+      CALL BORT(BORT_STR)
+903   WRITE(BORT_STR,'("BUFRLIB: NEMTBD - THERE ARE MORE THAN '//
+     . '(",I4,") DESCRIPTORS (THE LIMIT) IN TABLE D SEQUENCE '//
+     . 'MNEMONIC ",A)') MAXCD, NEMO
+      CALL BORT(BORT_STR)
+904   WRITE(BORT_STR,'("BUFRLIB: NEMTBD - REPLICATOR IS OUT OF ORDER '//
+     . 'IN TABLE D SEQUENCE MNEMONIC ",A)') NEMO
+      CALL BORT(BORT_STR)
+905   WRITE(BORT_STR,'("BUFRLIB: NEMTBD - UNRECONGIZED DESCRIPTOR '//
+     . '(INTEGER=",I7,") IN TABLE D SEQUENCE MNEMONIC ",A)') IDSC,NEMO
+      CALL BORT(BORT_STR)
+906   WRITE(BORT_STR,'("BUFRLIB: NEMTBD - A ''FOLLOWING VALUE'' '//
+     . 'MNEMONIC (",A,") IS FROM TABLE ",A,", IT MUST BE FROM TABLE B'//
+     . '")') NEMF,TAB
+      CALL BORT(BORT_STR)
       END

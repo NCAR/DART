@@ -1,32 +1,48 @@
-      SUBROUTINE CHRTRN(STR,CHR,N)                                      
+      SUBROUTINE CHRTRN(STR,CHR,N)
 
-C************************************************************************
-C* CHRTRN								*
-C*									*
-C* This subroutine copies a specified number of characters from a	*
-C* character array into a character string.				*
-C*									*
-C* CHRTRN  ( STR, CHR, N )						*
-C*									*
-C* Input parameters:							*
-C*	CHR		CHARACTER(N)	Character array			*
-C*	N		INTEGER		Number of characters to copy	*
-C*									*
-C* Output parameters:							*
-C*	STR		CHARACTER*(N)	Character string		*
-C**									*
-C* Log:									*
-C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation				*
-C************************************************************************
-                                                                        
-      CHARACTER*(*) STR                                                 
-      CHARACTER*1   CHR(N)                                              
-                                                                        
-C---------------------------------------------------------------------- 
-C---------------------------------------------------------------------- 
-      DO I=1,N                                                          
-      STR(I:I) = CHR(I)                                                 
-      ENDDO                                                             
-      RETURN                                                            
-      END                                                               
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    CHRTRN
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1994-01-06
+C
+C ABSTRACT: THIS SUBROUTINE COPIES A SPECIFIED NUMBER OF CHARACTERS
+C   FROM A CHARACTER ARRAY INTO A CHARACTER STRING.
+C
+C PROGRAM HISTORY LOG:
+C 1994-01-06  J. WOOLLEN -- ORIGINAL AUTHOR
+C 2003-11-04  J. ATOR    -- ADDED DOCUMENTATION
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF; ADDED HISTORY
+C                           DOCUMENTATION
+C
+C USAGE:    CALL CHRTRN (STR, CHR, N)
+C   INPUT ARGUMENT LIST:
+C     CHR      - CHARACTER*1: N-WORD CHARACTER ARRAY
+C     N        - INTEGER: NUMBER OF CHARACTERS TO COPY
+C
+C   OUTPUT ARGUMENT LIST:
+C     STR      - CHARACTER*(*): CHARACTER STRING
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        None
+C    THIS ROUTINE IS CALLED BY: RDBFDX
+C                               Normally not called by any application
+C                               programs but it could be.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
+
+      CHARACTER*(*) STR
+      CHARACTER*1   CHR(N)
+
+C----------------------------------------------------------------------
+C----------------------------------------------------------------------
+      DO I=1,N
+      STR(I:I) = CHR(I)
+      ENDDO
+      RETURN
+      END

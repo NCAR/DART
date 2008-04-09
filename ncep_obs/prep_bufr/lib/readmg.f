@@ -1,123 +1,163 @@
-      SUBROUTINE READMG(LUNIT,SUBSET,JDATE,IRET)
+      SUBROUTINE READMG(LUNXX,SUBSET,JDATE,IRET)
 
-C************************************************************************
-C* READMG								*
-C*									*
-C* This subroutine reads (into memory) the next BUFR message from	*
-C* logical unit number LUNIT, which should itself have already been	*
-C* opened for input operations.						*
-C*									*
-C* READMG  ( LUNIT, SUBSET, JDATE, IRET )				*
-C*									*
-C* Input parameters:							*
-C*	LUNIT		INTEGER		FORTRAN logical unit number	*
-C*									*
-C* Output parameters:							*
-C*	SUBSET		CHARACTER*8	Table A mnemonic for		*
-C*					BUFR message			*
-C*	JDATE		INTEGER		Date-time from Section 1 of	*
-C*					BUFR message, in format of	*
-C*					either YYMMDDHH or YYYYMMDDHH,	*
-C*					depending on DATELEN() value	*
-C*	IRET		INTEGER		Return code:			*
-C*					  0 = normal return		*
-C*					 -1 = there are no more BUFR	*
-C*					      messages in LUNIT		*
-C**									*
-C* Log:									*
-C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation			*
-C************************************************************************
- 
-      COMMON /HRDWRD/ NBYTW,NBITW,NREV,IORD(8)
-      COMMON /MSGCWD/ NMSG(32),NSUB(32),MSUB(32),INODE(32),IDATE(32)
-      COMMON /BITBUF/ MAXBYT,IBIT,IBAY(5000),MBYT(32),MBAY(5000,32)
-      COMMON /DATELN/ LENDAT
- 
-      CHARACTER*8 SEC0,SUBSET
-      CHARACTER*4 BUFR
-      DIMENSION   IEC0(2)
-      EQUIVALENCE (SEC0,IEC0)
- 
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    READMG
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1994-01-06
+C
+C ABSTRACT: THIS SUBROUTINE READS THE NEXT BUFR MESSAGE FROM LOGICAL
+C   UNIT NUMBER ABS(LUNXX) INTO AN INTERNAL MESSAGE BUFFER (I.E. ARRAY
+C   MBAY IN COMMON BLOCK /BITBUF/).  ABS(LUNXX) SHOULD ALREADY BE OPENED
+C   FOR INPUT OPERATIONS.  IF LUNXX < 0, THEN A READ ERROR FROM
+C   ABS(LUNXX) IS TREATED THE SAME AS THE END-OF-FILE (EOF) CONDITION;
+C   OTHERWISE, BUFR ARCHIVE LIBRARY SUBROUTINE BORT IS NORMALLY CALLED
+C   IN SUCH SITUATIONS.
+C
+C PROGRAM HISTORY LOG:
+C 1994-01-06  J. WOOLLEN -- ORIGINAL AUTHOR
+C 1996-11-25  J. WOOLLEN -- MODIFIED TO EXIT GRACEFULLY WHEN THE BUFR
+C                           FILE IS POSITIONED AFTER AN "END-OF-FILE"
+C 1998-07-08  J. WOOLLEN -- REPLACED CALL TO CRAY LIBRARY ROUTINE
+C                           "ABORT" WITH CALL TO NEW INTERNAL BUFRLIB
+C                           ROUTINE "BORT"; MODIFIED TO MAKE Y2K
+C                           COMPLIANT
+C 1999-11-18  J. WOOLLEN -- THE NUMBER OF BUFR FILES WHICH CAN BE
+C                           OPENED AT ONE TIME INCREASED FROM 10 TO 32
+C                           (NECESSARY IN ORDER TO PROCESS MULTIPLE
+C                           BUFR FILES UNDER THE MPI); MODIFIED WITH
+C                           SEMANTIC ADJUSTMENTS TO AMELIORATE COMPILER
+C                           COMPLAINTS FROM LINUX BOXES (INCREASES
+C                           PORTABILITY)
+C 2000-09-19  J. WOOLLEN -- REMOVED MESSAGE DECODING LOGIC THAT HAD
+C                           BEEN REPLICATED IN THIS AND OTHER READ
+C                           ROUTINES AND CONSOLIDATED IT INTO A NEW
+C                           ROUTINE CKTABA, CALLED HERE, WHICH IS
+C                           ENHANCED TO ALLOW COMPRESSED AND STANDARD
+C                           BUFR MESSAGES TO BE READ; MAXIMUM MESSAGE
+C                           LENGTH INCREASED FROM 10,000 TO 20,000
+C                           BYTES
+C 2002-05-14  J. WOOLLEN -- REMOVED ENTRY POINT DATELEN (IT BECAME A
+C                           SEPARATE ROUTINE IN THE BUFRLIB TO INCREASE
+C                           PORTABILITY TO OTHER PLATFORMS)
+C 2003-11-04  J. ATOR    -- ADDED DOCUMENTATION
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF; ADDED HISTORY
+C                           DOCUMENTATION; OUTPUTS MORE COMPLETE
+C                           DIAGNOSTIC INFO WHEN ROUTINE TERMINATES
+C                           ABNORMALLY
+C 2004-08-09  J. ATOR    -- MAXIMUM MESSAGE LENGTH INCREASED FROM
+C                           20,000 TO 50,000 BYTES
+C 2005-11-29  J. ATOR    -- ADDED RDMSGW AND RDMSGB CALLS TO SIMULATE
+C                           READIBM; ADDED LUNXX < 0 OPTION TO SIMULATE
+C                           READFT
+C
+C USAGE:    CALL READMG (LUNIT, SUBSET, JDATE, IRET)
+C   INPUT ARGUMENT LIST:
+C     LUNXX    - INTEGER: ABSOLUTE VALUE IS FORTRAN LOGICAL UNIT NUMBER
+C                FOR BUFR FILE (IF LUNXX IS LESS THAN ZERO, THEN READ
+C                ERRORS FROM ABS(LUNXX) ARE TREATED THE SAME AS EOF)
+C
+C   OUTPUT ARGUMENT LIST:
+C     SUBSET   - CHARACTER*8: TABLE A MNEMONIC FOR TYPE OF BUFR MESSAGE
+C                BEING READ
+C     JDATE    - INTEGER: DATE-TIME STORED WITHIN SECTION 1 OF BUFR
+C                MESSAGE BEING READ, IN FORMAT OF EITHER YYMMDDHH OR
+C                YYYYMMDDHH, DEPENDING ON DATELEN() VALUE
+C     IRET     - INTEGER: RETURN CODE:
+C                       0 = normal return
+C                      -1 = there are no more BUFR messages in LUNIT
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        BORT     CKTABA   RDMSGB   RDMSGW
+C                               STATUS   WTSTAT
+C    THIS ROUTINE IS CALLED BY: IREADMG  READFT   READIBM  READNS
+C                               RDMGSB   UFBINX   UFBPOS
+C                               Also called by application programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
+
+      INCLUDE 'bufrlib.prm'
+
+      COMMON /MSGCWD/ NMSG(NFILES),NSUB(NFILES),MSUB(NFILES),
+     .                INODE(NFILES),IDATE(NFILES)
+      COMMON /BITBUF/ MAXBYT,IBIT,IBAY(MXMSGLD4),MBYT(NFILES),
+     .                MBAY(MXMSGLD4,NFILES)
+      COMMON /MSGFMT/ MGWRDS(NFILES)
+
+      CHARACTER*8 SUBSET
+
 C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
- 
+
       IRET = 0
- 
+      LUNIT = ABS(LUNXX)
+
 C  CHECK THE FILE STATUS
 C  ---------------------
- 
+
       CALL STATUS(LUNIT,LUN,IL,IM)
       IF(IL.EQ.0) GOTO 900
       IF(IL.GT.0) GOTO 901
       CALL WTSTAT(LUNIT,LUN,IL,1)
-      IMSG = 8/NBYTW+1
- 
-C  READ A MESSAGE INTO A MESSAGE BUFFER - SKIP DX MESSAGES
-C  -------------------------------------------------------
- 
-1     SEC0 = ' '
-      READ(LUNIT,ERR=902,END=100) SEC0,(MBAY(I,LUN),I=IMSG,LMSG(SEC0))
 
-C     Confirm that the first 4 bytes of SEC0 contain 'BUFR' encoded in
-C     CCITT IA5 (i.e. ASCII).
+C  READ A MESSAGE INTO THE INTERNAL MESSAGE BUFFER
+C  -----------------------------------------------
 
-      CALL CHRTRNA(BUFR,SEC0,4)
-      IF(BUFR.NE.'BUFR') GOTO 100
+1     IF(MGWRDS(LUN).EQ.0) THEN
 
-C     Copy SEC0 into the front of MBAY so that MBAY now contains the
-C     entire BUFR message.
+C       Read the next message as an array of integer words.
 
-      DO I=1,IMSG-1
-      MBAY(I,LUN) = IEC0(I)
-      ENDDO
- 
+        CALL RDMSGW(LUNIT,MBAY(1,LUN),IER)
+        IF(IER.EQ.-1) GOTO 200
+        IF(IER.EQ.-2) THEN
+
+C         Backspace and try reading again as an array of bytes.
+
+          BACKSPACE LUNIT
+          MGWRDS(LUN) = 1
+          GOTO 1
+        ENDIF
+      ELSE
+
+C       Read the next message as an array of bytes.
+
+        CALL RDMSGB(LUNIT,MBAY(1,LUN),IER)
+        IF(IER.EQ.-1) GOTO 200
+        IF(IER.EQ.-2) THEN
+          IF(LUNXX.LT.0) GOTO 200
+          GOTO 902
+        ENDIF
+      ENDIF
+
 C  PARSE THE MESSAGE SECTION CONTENTS
 C  ----------------------------------
- 
+
       CALL CKTABA(LUN,SUBSET,JDATE,IRET)
       IF(IRET.NE.0) GOTO 1
-      RETURN
- 
+      GOTO 100
+
 C  EOF ON ATTEMPTED READ
 C  ---------------------
- 
-100   CALL WTSTAT(LUNIT,LUN,IL,0)
+
+200   CALL WTSTAT(LUNIT,LUN,IL,0)
       INODE(LUN) = 0
       IDATE(LUN) = 0
       SUBSET = ' '
       JDATE = 0
       IRET = -1
-      RETURN
 
-C  ENTRY DATELEN SETS THE LENGTH OF THE DATE INTEGER RETURN FROM READS
-C  -------------------------------------------------------------------
+C  EXITS
+C  -----
 
-      ENTRY DATELEN(LEN)
-C************************************************************************
-C* DATELEN								*
-C*									*
-C* This entry point is used to specify the length of date-time values	*
-C* that will be output by future calls to any of the subroutines which	*
-C* read BUFR messages (e.g. READMG, READERM, READFT, READTJ, etc.).	*
-C* Possible values are 8 (which is the default) and 10.			*
-C*									*
-C* DATELEN  ( LEN )							*
-C*									*
-C* Input parameters:							*
-C*	LEN		INTEGER		Length of date-time values to	*
-C*					be output by read subroutines:	*
-C*					  8 =   YYMMDDHH (2-digit year)	*
-C*					 10 = YYYYMMDDHH (4-digit year)	*
-C************************************************************************
-      IF(LEN.NE.8 .AND. LEN.NE.10) CALL BORT('DATELEN - BAD LEN')
-      LENDAT = LEN
-      RETURN
- 
-C  ERROR EXITS
-C  -----------
- 
-900   CALL BORT('READMG - FILE IS CLOSED                       ')
-901   CALL BORT('READMG - FILE IS OPEN FOR OUTPUT              ')
-902   CALL BORT('READMG - I/O ERROR READING MESSAGE            ')
+100   RETURN
+900   CALL BORT('BUFRLIB: READMG - INPUT BUFR FILE IS CLOSED, IT MUST'//
+     . ' BE OPEN FOR INPUT')
+901   CALL BORT('BUFRLIB: READMG - INPUT BUFR FILE IS OPEN FOR OUTPUT'//
+     . ', IT MUST BE OPEN FOR INPUT')
+902   CALL BORT('BUFRLIB: READMG - ERROR READING A BUFR MESSAGE')
       END

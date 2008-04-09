@@ -1,63 +1,104 @@
-      SUBROUTINE NEMTBA(LUN,NEMO,MTYP,MSBT,INOD)                        
+      SUBROUTINE NEMTBA(LUN,NEMO,MTYP,MSBT,INOD)
 
-C************************************************************************
-C* NEMTBA								*
-C*									*
-C* This subroutine searches for mnemonic NEMO within the internal BUFR	*
-C* table A arrays and, if found, returns information about that	mnemonic*
-C* from within these arrays.						*
-C*									*
-C* NEMTBA  ( LUN, NEMO, MTYP, MSBT, INOD )				*
-C*									*
-C* Input parameters:							*
-C*	LUN		INTEGER		I/O stream index into internal	*
-C*					BUFR table arrays		*
-C*	NEMO		CHARACTER*(*)	Table A mnemonic to search for	*
-C*									*
-C* Output parameters:							*
-C*	MTYP		INTEGER		Message type corresponding	*
-C*					to NEMO				*
-C*	MSBT		INTEGER		Message subtype corresponding	*
-C*					to NEMO				*
-C*	INOD		INTEGER		Positional index of NEMO within	*
-C*					internal jump/link table	*
-C**									*
-C* Log:									*
-C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation			*
-C************************************************************************
-                                                                        
-      COMMON /TABABD/ NTBA(0:32),NTBB(0:32),NTBD(0:32),MTAB(50,32),     
-     .                IDNA(50,32,2),IDNB(250,32),IDND(250,32),          
-     .                TABA(50,32),TABB(250,32),TABD(250,32)             
-                                                                        
-      CHARACTER*(*) NEMO                                                
-      CHARACTER*600 TABD                                                
-      CHARACTER*128 TABB                                                
-      CHARACTER*128 TABA                                                
-      CHARACTER*20  NEMT                                                
-                                                                        
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    NEMTBA
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1994-01-06
+C
+C ABSTRACT: THIS SUBROUTINE SEARCHES FOR MNEMONIC NEMO WITHIN THE
+C  INTERNAL TABLE A ARRAYS HOLDING THE DICTIONARY TABLE (ARRAYS IN
+C  COMMON BLOCK /TABABD/) AND, IF FOUND, RETURNS INFORMATION ABOUT THAT
+C  MNEMONIC FROM WITHIN THESE ARRAYS.  IT IS IDENTICAL TO BUFR ARCHIVE
+C  LIBRARY SUBROUTINE NEMTBAX EXCEPT IF NEMO IS NOT FOUND, THIS
+C  SUBROUTINE MAKES AN APPROPRIATE CALL TO BUFR ARCHIVE LIBRARY
+C  SUBROUTINE BORT.
+C
+C PROGRAM HISTORY LOG:
+C 1994-01-06  J. WOOLLEN -- ORIGINAL AUTHOR
+C 1995-06-28  J. WOOLLEN -- INCREASED THE SIZE OF INTERNAL BUFR TABLE
+C                           ARRAYS IN ORDER TO HANDLE BIGGER FILES
+C 1998-07-08  J. WOOLLEN -- REPLACED CALL TO CRAY LIBRARY ROUTINE
+C                           "ABORT" WITH CALL TO NEW INTERNAL BUFRLIB
+C                           ROUTINE "BORT"
+C 1999-11-18  J. WOOLLEN -- THE NUMBER OF BUFR FILES WHICH CAN BE
+C                           OPENED AT ONE TIME INCREASED FROM 10 TO 32
+C                           (NECESSARY IN ORDER TO PROCESS MULTIPLE
+C                           BUFR FILES UNDER THE MPI)
+C 2003-11-04  J. ATOR    -- ADDED DOCUMENTATION
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF; ADDED HISTORY
+C                           DOCUMENTATION; OUTPUTS MORE COMPLETE
+C                           DIAGNOSTIC INFO WHEN ROUTINE TERMINATES
+C                           ABNORMALLY
+C
+C USAGE:    CALL NEMTBA (LUN, NEMO, MTYP, MSBT, INOD)
+C   INPUT ARGUMENT LIST:
+C     LUN      - INTEGER: I/O STREAM INDEX INTO INTERNAL MEMORY ARRAYS
+C     NEMO     - CHARACTER*(*): TABLE A MNEMONIC TO SEARCH FOR
+C
+C   OUTPUT ARGUMENT LIST:
+C     MTYP     - INTEGER: MESSAGE TYPE CORRESPONDING TO NEMO
+C     MSBT     - INTEGER: MESSAGE SUBTYPE CORRESPONDING TO NEMO
+C     INOD     - INTEGER: POSITIONAL INDEX OF NEMO WITHIN INTERNAL
+C                JUMP/LINK TABLE
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        BORT
+C    THIS ROUTINE IS CALLED BY: CMSGINI  COPYMG   CPYMEM   MSGINI
+C                               OPENMB   OPENMG 
+C                               Normally not called by any application
+C                               programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
+
+      INCLUDE 'bufrlib.prm'
+
+      COMMON /TABABD/ NTBA(0:NFILES),NTBB(0:NFILES),NTBD(0:NFILES),
+     .                MTAB(MAXTBA,NFILES),IDNA(MAXTBA,NFILES,2),
+     .                IDNB(MAXTBB,NFILES),IDND(MAXTBD,NFILES),
+     .                TABA(MAXTBA,NFILES),TABB(MAXTBB,NFILES),
+     .                TABD(MAXTBD,NFILES)
+
+      CHARACTER*(*) NEMO
+      CHARACTER*600 TABD
+      CHARACTER*128 BORT_STR
+      CHARACTER*128 TABB
+      CHARACTER*128 TABA
+
 C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
-                                                                        
-      NEMT = NEMO                                                       
-      IRET = 0                                                          
-                                                                        
-C  LOOK FOR NEMO IN TABLE A                                             
-C  ------------------------                                             
-                                                                        
-      DO I=1,NTBA(LUN)                                                  
-      IF(TABA(I,LUN)(4:11).EQ.NEMO) THEN                                
-         MTYP = IDNA(I,LUN,1)                                           
-         MSBT = IDNA(I,LUN,2)                                           
-         INOD = MTAB(I,LUN)                                             
-         IF(MTYP.LT.0 .OR. MTYP.GT.255) GOTO 900                        
-         IF(MSBT.LT.0 .OR. MSBT.GT.255) GOTO 901                        
-         RETURN                                                         
-      ENDIF                                                             
-      ENDDO                                                             
-                                                                        
-      CALL BORT('NEMTBA - CANT FIND '//NEMT)                           
-900   CALL BORT('NEMTBA - BAD MTYP  '//NEMT)                           
-901   CALL BORT('NEMTBA - BAD MSBT  '//NEMT)                           
-      END                                                               
+
+C  LOOK FOR NEMO IN TABLE A
+C  ------------------------
+
+      DO I=1,NTBA(LUN)
+      IF(TABA(I,LUN)(4:11).EQ.NEMO) THEN
+         MTYP = IDNA(I,LUN,1)
+         MSBT = IDNA(I,LUN,2)
+         INOD = MTAB(I,LUN)
+         IF(MTYP.LT.0 .OR. MTYP.GT.255) GOTO 901
+         IF(MSBT.LT.0 .OR. MSBT.GT.255) GOTO 902
+         GOTO 100
+      ENDIF
+      ENDDO
+      GOTO 900
+
+C  EXITS
+C  -----
+
+100   RETURN
+900   WRITE(BORT_STR,'("BUFRLIB: NEMTBA - CAN''T FIND MNEMONIC ",A)')
+     . NEMO
+      CALL BORT(BORT_STR)
+901   WRITE(BORT_STR,'("BUFRLIB: NEMTBA - INVALID MESSAGE TYPE (",I4,'//
+     . '") RETURNED FOR MENMONIC ",A)') MTYP,NEMO
+      CALL BORT(BORT_STR)
+902   WRITE(BORT_STR,'("BUFRLIB: NEMTBA - INVALID MESSAGE SUBTYPE (",'//
+     . 'I4,") RETURNED FOR MENMONIC ",A)') MSBT,NEMO
+      CALL BORT(BORT_STR)
+      END

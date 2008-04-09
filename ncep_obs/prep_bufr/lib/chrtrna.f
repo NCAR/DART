@@ -1,48 +1,64 @@
-      SUBROUTINE CHRTRNA(STR,CHR,N)                                     
+      SUBROUTINE CHRTRNA(STR,CHR,N)
 
-C************************************************************************
-C* CHRTRNA								*
-C*									*
-C* This subroutine copies a specified number of characters from a	*
-C* character array into a character string.  The difference between	*
-C* this subroutine and subroutine CHRTRN is that, in this subroutine,	*
-C* the input character array is assumed to be in ASCII; thus, for cases	*
-C* where the native machine is EBCDIC, an ASCII -> EBCDIC translation	*
-C* is done on the final string before it is output.			*
-C*									*
-C* CHRTRNA  ( STR, CHR, N )						*
-C*									*
-C* Input parameters:							*
-C*	CHR		CHARACTER(N)	Character array	in ASCII	*
-C*	N		INTEGER		Number of characters to copy	*
-C*									*
-C* Output parameters:							*
-C*	STR		CHARACTER*(N)	Character string in ASCII or	*
-C*					EBCDIC, depending on native	*
-C*					machine				*
-C**									*
-C* Log:									*
-C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation			*
-C************************************************************************
-                                                                        
-      COMMON /CHARAC/ IASCII,IATOE(0:255),IETOA(0:255)                  
-                                                                        
-      CHARACTER*(*) STR                                                 
-      CHARACTER*1   CHR(N)                                              
-                                                                        
-C---------------------------------------------------------------------- 
-C---------------------------------------------------------------------- 
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    CHRTRNA
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1994-01-06
+C
+C ABSTRACT: THIS SUBROUTINE COPIES A SPECIFIED NUMBER OF CHARACTERS
+C   FROM A CHARACTER ARRAY INTO A CHARACTER STRING.  THE DIFFERENCE
+C   BETWEEN THIS SUBROUTINE AND BUFR ARCHIVE LIBRARY SUBROUTINE CHRTRN
+C   IS THAT, IN THIS SUBROUTINE, THE INPUT CHARACTER ARRAY IS ASSUMED
+C   TO BE IN ASCII; THUS, FOR CASES WHERE THE NATIVE MACHINE IS EBCDIC,
+C   AN ASCII TO EBCDIC TRANSLATION IS DONE ON THE FINAL STRING BEFORE
+C   IT IS OUTPUT.
+C
+C PROGRAM HISTORY LOG:
+C 1994-01-06  J. WOOLLEN -- ORIGINAL AUTHOR
+C 2003-11-04  J. ATOR    -- ADDED DOCUMENTATION
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF; ADDED HISTORY
+C                           DOCUMENTATION
+C
+C USAGE:    CALL CHRTRNA (STR, CHR, N)
+C   INPUT ARGUMENT LIST:
+C     CHR      - CHARACTER*1: N-WORD CHARACTER ARRAY IN ASCII
+C     N        - INTEGER: NUMBER OF CHARACTERS TO COPY
+C
+C   OUTPUT ARGUMENT LIST:
+C     STR      - CHARACTER*(*): CHARACTER STRING IN ASCII OR EBCDIC,
+C                DEPENDING ON NATIVE MACHINE
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        IPKM     IUPM
+C    THIS ROUTINE IS CALLED BY: ICHKSTR  RDBFDX
+C                               Normally not called by any application
+C                               programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
+
+      COMMON /CHARAC/ IASCII,IATOE(0:255),IETOA(0:255)
+
+      CHARACTER*(*) STR
+      CHARACTER*1   CHR(N)
+
+C----------------------------------------------------------------------
+C----------------------------------------------------------------------
 
 C     Loop on N characters of CHR
 
-      DO I=1,N                                                          
-      STR(I:I) = CHR(I)                                                 
+      DO I=1,N
+      STR(I:I) = CHR(I)
 
 C     If this is an EBCDIC machine, then translate the character
 C     from ASCII -> EBCDIC.
 
-      IF(IASCII.EQ.0) CALL IPKM(STR(I:I),1,IATOE(IUPM(STR(I:I),8)))     
-      ENDDO                                                             
-      RETURN                                                            
-      END                                                               
+      IF(IASCII.EQ.0) CALL IPKM(STR(I:I),1,IATOE(IUPM(STR(I:I),8)))
+      ENDDO
+      RETURN
+      END

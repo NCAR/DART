@@ -1,50 +1,90 @@
-C---------------------------------------------------------------------- 
-C  REAL NUMBER FROM A STRING                                            
-C---------------------------------------------------------------------- 
+      FUNCTION VALX(STR)
 
-      FUNCTION VALX(STR)                                                
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    VALX
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1994-01-06
+C
+C ABSTRACT: THIS FUNCTION DECODES A REAL NUMBER FROM A CHARACTER
+C   STRING.  IF THE DECODE FAILS, THEN THE VALUE BMISS (10E10) IS
+C   RETURNED.  NOTE THAT, UNLIKE FOR SUBROUTINE STRNUM, THE INPUT
+C   STRING MAY CONTAIN A LEADING SIGN CHARACTER (E.G. '+', '-').
+C
+C PROGRAM HISTORY LOG:
+C 1994-01-06  J. WOOLLEN -- ORIGINAL AUTHOR
+C 1998-07-08  J. WOOLLEN -- REPLACED CALL TO CRAY LIBRARY ROUTINE
+C                           "ABORT" WITH CALL TO NEW INTERNAL BUFRLIB
+C                           ROUTINE "BORT"
+C 1999-11-18  J. WOOLLEN -- RENAMED THIS FUNCTION FROM "VAL$" TO "VALX"
+C                           TO REMOVE THE POSSIBILITY OF THE "$" SYMBOL
+C                           CAUSING PROBLEMS ON OTHER PLATFORMS
+C 2003-11-04  J. ATOR    -- ADDED DOCUMENTATION
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF; ADDED HISTORY
+C                           DOCUMENTATION; OUTPUTS MORE COMPLETE
+C                           DIAGNOSTIC INFO WHEN ROUTINE TERMINATES
+C                           ABNORMALLY; CHANGED CALL FROM BORT TO BORT2
+C
+C USAGE:    VALX (STR)
+C   INPUT ARGUMENT LIST:
+C     STR      - CHARACTER*(*): STRING CONTAINING ENCODED REAL VALUE
+C
+C   OUTPUT ARGUMENT LIST:
+C     VALX     - REAL: DECODED VALUE
+C
+C   OUTPUT FILES:
+C     UNIT 06  - STANDARD OUTPUT PRINT
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        BORT2    RJUST
+C    THIS ROUTINE IS CALLED BY: NEMTBB   UPFTBV
+C                               Normally not called by any application
+C                               programs but it could be.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
 
-C************************************************************************
-C* VALX									*
-C*									*
-C* This function decodes a real number from a string.  If the decode	*
-C* fails, then the value BMISS (=10E10) is returned.  Note that, unlike	*
-C* for subroutine STRNUM, the input string may contain a leading sign	*
-C* character (e.g. '+', '-').						*
-C*									*
-C* VALX  ( STR )							*
-C*									*
-C* Input parameters:							*
-C*	STR		CHARACTER*(*)	String containing encoded	*
-C*					real value			*
-C*									*
-C* Output parameters:							*
-C*	VALX		REAL		Decoded real value		*
-C**									*
-C* Log:									*
-C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation			*
-C************************************************************************
-                                                                        
       CHARACTER*(*) STR
+      CHARACTER*128 BORT_STR1,BORT_STR2
       CHARACTER*99  BSTR
       CHARACTER*8   FMT
-      REAL*8        BMISS                                           
-                                                                        
+      REAL*8        BMISS
+
+      COMMON /QUIET / IPRT
+
       DATA BMISS /10E10/
-      data noinline /0/                                                 
-                                                                        
-C---------------------------------------------------------------------- 
-C---------------------------------------------------------------------- 
-                                                                        
+
+C----------------------------------------------------------------------
+C----------------------------------------------------------------------
+
       LENS = LEN(STR)
-      IF(LENS.GT.99) CALL BORT('VALX - ARG TOO LONG')
-      BSTR(1:LENS) = STR            
+      IF(LENS.GT.99) GOTO 900
+      BSTR(1:LENS) = STR
       RJ = RJUST(BSTR(1:LENS))
-      WRITE(FMT,'(''(F'',I2,''.0)'')') LENS                             
-      READ(BSTR,FMT,ERR=900) VAL
-      VALX = VAL                                                        
-      RETURN                                                            
-900   VALX = BMISS                                                      
-      RETURN                                                            
-      END                                                               
+      WRITE(FMT,'(''(F'',I2,''.0)'')') LENS
+      VALX = BMISS
+      READ(BSTR,FMT,ERR=800) VAL
+      VALX = VAL
+      GOTO 100
+800   IF(IPRT.GE.0) THEN
+      PRINT*
+      PRINT*,'+++++++++++++++++++++++WARNING+++++++++++++++++++++++++'
+      PRINT*,'BUFRLIB: VALX - ERROR READING STRING ',BSTR(1:LENS)
+      PRINT*,'                RETURN WITH VALX = MISSING (10E10)'
+      PRINT*,'+++++++++++++++++++++++WARNING+++++++++++++++++++++++++'
+      PRINT*
+      ENDIF
+
+C  EXITS
+C  -----
+
+100   RETURN
+900   WRITE(BORT_STR1,'("STRING IS: ",A)') STR
+      WRITE(BORT_STR2,'("BUFRLIB: VALX - STRING LENGTH EXCEEDS LIMIT '//
+     . ' OF 99 CHARACTERS")')
+      CALL BORT2(BORT_STR1,BORT_STR2)
+      END

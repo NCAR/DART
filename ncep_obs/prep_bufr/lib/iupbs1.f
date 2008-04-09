@@ -1,48 +1,63 @@
-      FUNCTION IUPBS1  ( MBAY, NBYT )
+      FUNCTION IUPBS1(MBAY,NBYT)
 
-C************************************************************************
-C* IUPBS1								*
-C*									*
-C* Given a BUFR message	contained within array MBAY, this function	*
-C* unpacks and returns the binary integer contained within byte NBYT	*
-C* of Section 1 of the BUFR message.  Note that the start of the BUFR	*
-C* message (i.e. "BUFR") must be aligned on the first 4 bytes of MBAY.	*
-C*									*
-C* IUPBS1  ( MBAY, NBYT )						*
-C*									*
-C* Input parameters:							*
-C*	MBAY(*)		INTEGER		Array containing BUFR message	*
-C*	NBYT		INTEGER		Byte within Section 1 of BUFR	*
-C*					message to be unpacked		*
-C*									*
-C* Output parameters:							*
-C*	IUPBS1		INTEGER		Unpacked integer		*
-C**									*
-C* Log:									*
-C* J. Ator/NCEP		05/01						*
-C************************************************************************
- 
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    IUPBS1
+C   PRGMMR: ATOR             ORG: NP12       DATE: 2003-11-04
+C
+C ABSTRACT: THIS FUNCTION UNPACKS AND RETURNS THE BINARY INTEGER WORD
+C   CONTAINED WITHIN BYTE NBYT OF SECTION 1 (OR BYTE 8 OF SECTION 0,
+C   IF NBYT = 0) OF THE BUFR MESSAGE STORED IN ARRAY MBAY.  THE START
+C   OF THE BUFR MESSAGE (I.E., THE STRING "BUFR") MUST BE ALIGNED ON
+C   THE FIRST FOUR BYTES OF MBAY.  NOTE THAT THIS FUNCTION IS CONSIDERED
+C   OBSOLETE AND MAY BE REMOVED FROM THE BUFR ARCHIVE LIBRARY IN A
+C   FUTURE VERSION; USERS SHOULD INSTEAD MIGRATE TO THE USE OF BUFR
+C   ARCHIVE LIBRARY FUNCTION IUPBS01.
+C
+C PROGRAM HISTORY LOG:
+C 2003-11-04  J. ATOR    -- ORIGINAL AUTHOR (WAS IN DECODER VERSION)
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF
+C 2004-08-18  J. ATOR    -- REMOVED IFIRST CHECK, SINCE WRDLEN NOW
+C                           KEEPS TRACK OF WHETHER IT HAS BEEN CALLED
+C 2005-11-29  J. ATOR    -- MARKED AS OBSOLETE
+C
+C USAGE:    IUPBS1 (MBAY, NBYT)
+C   INPUT ARGUMENT LIST:
+C     MBAY     - INTEGER: *-WORD PACKED BINARY ARRAY CONTAINING BUFR
+C                MESSAGE
+C     NBYT     - INTEGER: BYTE TO UNPACK WITHIN SECTION 1 OF BUFR MSG
+C                       0 = UNPACK BYTE 8 OF SECTION 0
+C
+C   OUTPUT ARGUMENT LIST:
+C     IUPBS1   - INTEGER: UNPACKED INTEGER WORD
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        IUPB     WRDLEN
+C    THIS ROUTINE IS CALLED BY: IUPVS1
+C                               Also called by application programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
+
       DIMENSION MBAY(*)
 
-      DATA IFIRST / 0 /
-                                                                        
 C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
 
-C     If this is the first call to this subroutine, then call subroutine
-C     WRDLEN to initialize some important information about the local
-C     machine, just in case subroutine OPENBF hasn't been called yet!
-                                                                        
-      IF ( IFIRST .EQ. 0 ) THEN
-         CALL WRDLEN                                                    
-         IFIRST = 1                                                     
-      ENDIF                                                             
- 
+C     CALL SUBROUTINE WRDLEN TO INITIALIZE SOME IMPORTANT INFORMATION
+C     ABOUT THE LOCAL MACHINE, JUST IN CASE SUBROUTINE OPENBF HASN'T
+C     BEEN CALLED YET.
 
-C     Note that there are 8 bytes within Section 0 that must be skipped.
+      CALL WRDLEN
 
-      IUPBS1 = IUPB ( MBAY, NBYT+8, 8 )
+C     NOTE THAT THERE ARE 8 BYTES WITHIN SECTION 0 THAT MUST BE SKIPPED.
 
+      IUPBS1 = IUPB(MBAY,NBYT+8,8)
 
       RETURN
       END

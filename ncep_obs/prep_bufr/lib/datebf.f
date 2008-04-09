@@ -1,48 +1,138 @@
-C-----------------------------------------------------------------------
-C-----------------------------------------------------------------------
-      SUBROUTINE DATEBF(LUNIT,MEAR,MMON,MDAY,MOUR,IDATE)                        
-                                                                        
-      COMMON /DATELN/ LENDAT
+      SUBROUTINE DATEBF(LUNIT,MEAR,MMON,MDAY,MOUR,IDATE)
 
-      CHARACTER*26  MSTR                                                
-                                                                        
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    DATEBF
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1994-01-06
+C
+C ABSTRACT: THIS SUBROUTINE RETURNS THE SECTION 1 DATE IN THE FIRST
+C   NON-DICTIONARY BUFR MESSAGE IN LOGICAL UNIT LUNIT, REGARDLESS OF
+C   THE NUMBER OF SUBSETS IN THE MESSAGE.  LUNIT SHOULD NOT BE
+C   PREVIOUSLY OPENED TO THE BUFR INTERFACE.
+C
+C PROGRAM HISTORY LOG:
+C 1994-01-06  J. WOOLLEN -- ORIGINAL AUTHOR
+C 1998-07-08  J. WOOLLEN -- REPLACED CALL TO CRAY LIBRARY ROUTINE
+C                           "ABORT" WITH CALL TO NEW INTERNAL BUFRLIB
+C                           ROUTINE "BORT"; MODIFIED TO MAKE Y2K
+C                           COMPLIANT
+C 1998-08-31  J. WOOLLEN -- MODIFIED TO CORRECT AN ERROR WHICH LEAD TO
+C                           THE YEAR BEING RETURNED IN "MEAR" AS 2-
+C                           DIGIT YEAR WHEN A 4-DIGIT YEAR WAS
+C                           REQUESTED VIA A PRIOR CALL TO DATELEN (THE
+C                           CENTER DATE RETURNED IN "IDATE", IN THE
+C                           FORM YYYYMMDDHH, WAS CORRECT IN THE
+C                           PREVIOUS VERSION OF THIS ROUTINE
+C 1998-10-27  J. WOOLLEN -- MODIFIED TO CORRCT PROBLEMS CAUSED BY IN-
+C                           LINING CODE WITH FPP DIRECTIVES
+C 2003-05-19  M. SHIREY  -- REPLACED CALLS TO FORTRAN INSRINSIC
+C                           FUNCTION ICHAR WITH THE NCEP W3LIB C-
+C                           FUNCTION MOVA2I BECAUSE ICHAR DOES NOT WORK
+C                           PROPERLY ON SOME MACHINES (E.G., IBM FROST/
+C                           SNOW) (NOTE: ON 2003-??-??, MOVA2I WAS
+C                           ADDED TO THE BUFRLIB AS A FORTRAN FUNCTION)
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- MODIFIED DATE CALCULATIONS TO NO LONGER
+C                           USE FLOATING POINT ARITHMETIC SINCE THIS
+C                           CAN LEAD TO ROUND OFF ERROR AND AN IMPROPER
+C                           RESULTING DATE ON SOME MACHINES (E.G., NCEP
+C                           IBM FROST/SNOW), INCREASES PORTABILITY;
+C                           UNIFIED/PORTABLE FOR WRF; ADDED
+C                           DOCUMENTATION (INCLUDING HISTORY); OUTPUTS
+C                           MORE COMPLETE DIAGNOSTIC INFO WHEN ROUTINE
+C                           TERMINATES ABNORMALLY OR UNUSUAL THINGS
+C                           HAPPEN
+C 2004-08-18  J. ATOR    -- MODIFIED 'BUFR' STRING TEST FOR PORTABILITY
+C                           TO EBCDIC MACHINES
+C 2004-12-20  D. KEYSER  -- CALLS WRDLEN TO INITIALIZE LOCAL MACHINE
+C                           INFORMATION (IN CASE IT HAS NOT YET BEEN
+C                           CALLED), THIS ROUTINE DOES NOT REQUIRE IT
+C                           BUT 2004-08-18 CHANGE CALLS OTHER ROUTINES
+C                           THAT DO REQUIRE IT
+C 2005-11-29  J. ATOR    -- USE IGETDATE, IUPBS01 AND RDMSGW
+C
+C USAGE:    CALL  DATEBF (LUNIT, MEAR, MMON, MDAY, MOUR, IDATE)
+C   INPUT ARGUMENT LIST:
+C     LUNIT    - INTEGER: FORTRAN LOGICAL UNIT NUMBER FOR BUFR FILE
+C
+C   OUTPUT ARGUMENT LIST:
+C     MEAR     - INTEGER: SECTION 1 YEAR (YYYY OR YY, DEPENDING ON
+C                DATELEN() VALUE
+C     MMON     - INTEGER: SECTION 1 MONTH MM
+C     MDAY     - INTEGER: SECTION 1 DAY DD
+C     MOUR     - INTEGER: SECTION 1 HOUR HH
+C     IDATE    - INTEGER: DATE-TIME FROM SECTION 1 OF BUFR MESSAGE IN
+C                FORMAT OF EITHER YYMMDDHH OR YYYYMMDDHH, DEPENDING ON
+C                DATELEN() VALUE; OR -1 IF SECTION 1 DATE COULD NOT BE
+C                LOCATED
+C
+C   INPUT FILES:
+C     UNIT "LUNIT" - BUFR FILE
+C
+C   OUTPUT FILES:
+C     UNIT 06  - STANDARD OUTPUT PRINT
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        BORT     IGETDATE  IUPBS01  RDMSGW
+C                               STATUS   WRDLEN
+C    THIS ROUTINE IS CALLED BY: None
+C                               Normally called only by application
+C                               programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
+
+      INCLUDE 'bufrlib.prm'
+
+      COMMON /QUIET / IPRT
+
+      DIMENSION     MBAY(MXMSGLD4)
+
 C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
-                                                                        
-      IDATE = -1                                                        
-                                                                        
-C  SEE IF THE FILE IS ALREADY OPEN TO BUFR INTERFACE (A NO-NO)          
-C  -----------------------------------------------------------          
-                                                                        
-      CALL STATUS(LUNIT,LUN,JL,JM)                                      
-      IF(JL.NE.0) CALL BORT('DATEBF - FILE ALREADY OPEN')              
-                                                                        
-C  CHECK FOR NO BUFR DATA OR NO DATA AT ALL                             
-C  ----------------------------------------                             
-                                                                        
-      REWIND LUNIT                                                      
-      READ(LUNIT,END=100,ERR=100) MSTR                                  
-      IF(MSTR(1:4).NE.'BUFR') GOTO 100                                  
-                                                                        
-C  READ TO A DATA MESSAGE AND PICK OUT THE DATE                         
-C  --------------------------------------------                         
-                                                                        
-1     READ(LUNIT,END=100,ERR=100) MSTR                                  
-      IF(ICHAR(MSTR(17:17)).EQ.11) GOTO 1                               
-      MEAR = MOD(ICHAR(MSTR(21:21)),100)                                      
-      MMON = ICHAR(MSTR(22:22))                                           
-      MDAY = ICHAR(MSTR(23:23))                                           
-      MOUR = ICHAR(MSTR(24:24))                                           
-      MMIN = ICHAR(MSTR(25:25))                                           
-      MCEN = MAX(0,ICHAR(MSTR(26:26))-MIN(MEAR,1))                              
-                                                                        
-      IF(LENDAT.EQ.10) THEN
-         IDATE = MCEN*10**8+MEAR*10**6+MMON*10**4+MDAY*10**2+MOUR               
-         IDATE = I4DY(IDATE)
-         MEAR  = IDATE/10**6
-      ELSE
-         IDATE = MEAR*10**6+MMON*10**4+MDAY*10**2+MOUR               
+
+C  CALL SUBROUTINE WRDLEN TO INITIALIZE SOME IMPORTANT INFORMATION
+C  ABOUT THE LOCAL MACHINE (IN CASE IT HAS NOT YET BEEN CALLED)
+C  ---------------------------------------------------------------
+
+      CALL WRDLEN
+
+      IDATE = -1
+
+C  SEE IF THE FILE IS ALREADY OPEN TO BUFR INTERFACE (A NO-NO)
+C  -----------------------------------------------------------
+
+      CALL STATUS(LUNIT,LUN,JL,JM)
+      IF(JL.NE.0) GOTO 900
+
+C  READ TO A DATA MESSAGE AND PICK OUT THE DATE
+C  --------------------------------------------
+
+      REWIND LUNIT
+
+1     CALL RDMSGW(LUNIT,MBAY,IER)
+      IF(IER.LT.0) GOTO 100
+      IF(IUPBS01(MBAY,'MTYP').EQ.11) GOTO 1
+
+      IDATE = IGETDATE(MBAY,MEAR,MMON,MDAY,MOUR)
+
+100   IF(IPRT.GE.1 .AND. IDATE.EQ.-1) THEN
+      PRINT*
+      PRINT*,'+++++++++++++++++++++++WARNING+++++++++++++++++++++++++'
+         PRINT*, 'BUFRLIB: DATEBF - SECTION 1 DATE COULD NOT BE ',
+     .    'LOCATED - RETURN WITH IDATE = -1'
+      PRINT*,'+++++++++++++++++++++++WARNING+++++++++++++++++++++++++'
+      PRINT*
       ENDIF
 
-100   RETURN                                                            
-      END                                                               
+C  EXITS
+C  -----
+
+      RETURN
+900   CALL BORT
+     . ('BUFRLIB: DATEBF - INPUT BUFR FILE IS OPEN, IT MUST BE CLOSED')
+      END

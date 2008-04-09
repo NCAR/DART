@@ -1,79 +1,74 @@
-      SUBROUTINE UPDS3  ( MBAY, CDS3, NDS3 )
+      SUBROUTINE UPDS3(MBAY,CDS3,NDS3)
 
-C************************************************************************
-C* UPDS3								*
-C*									*
-C* Given a BUFR message	contained within array MBAY, this subroutine	*
-C* unpacks and returns the descriptors contained within Section 3 of	*
-C* the BUFR message.  Note that the start of the BUFR message		*
-C* (i.e. "BUFR") must be aligned on the first 4 bytes of MBAY.		*
-C* Note also that this subroutine does not recursively resolve sequence	*
-C* descriptors that appear within Section 3; rather, what is returned	*
-C* is the exact list of descriptors as it appears within Section 3.	*
-C*									*
-C* UPDS3  ( MBAY, CDS3, NDS3 )						*
-C*									*
-C* Input parameters:							*
-C*	MBAY(*)		INTEGER		Array containing BUFR message	*
-C*									*
-C* Output parameters:							*
-C*	CDS3(*)		CHARACTER*6	Unpacked list of descriptors	*
-C*	NDS3		INTEGER		Number of descriptors returned	*
-C*					within CDS3(*)			*
-C**									*
-C* Log:									*
-C* J. Ator/NCEP		05/01						*
-C************************************************************************
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    UPDS3
+C   PRGMMR: ATOR             ORG: NP12       DATE: 2003-11-04
+C
+C ABSTRACT: THIS SUBROUTINE UNPACKS AND RETURNS THE DESCRIPTORS
+C   CONTAINED WITHIN SECTION 3 OF A BUFR MESSAGE STORED IN ARRAY MBAY.
+C   THE START OF THE BUFR MESSAGE (I.E. THE STRING "BUFR") MUST BE
+C   ALIGNED ON THE FIRST FOUR BYTES OF MBAY.  NOTE ALSO THAT THIS
+C   SUBROUTINE DOES NOT RECURSIVELY RESOLVE SEQUENCE DESCRIPTORS THAT
+C   APPEAR WITHIN SECTION 3; RATHER, WHAT IS RETURNED IS THE EXACT LIST
+C   OF DESCRIPTORS AS IT APPEARS WITHIN SECTION 3.
+C
+C PROGRAM HISTORY LOG:
+C 2003-11-04  J. ATOR    -- ORIGINAL AUTHOR (WAS IN DECODER VERSION)
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF
+C 2004-08-18  J. ATOR    -- REMOVED IFIRST CHECK, SINCE WRDLEN NOW
+C                           KEEPS TRACK OF WHETHER IT HAS BEEN CALLED
+C 2005-11-29  J. ATOR    -- USE GETLENS
+C
+C USAGE:    CALL UPDS3 (MBAY, CDS3, NDS3)
+C   INPUT ARGUMENT LIST:
+C     MBAY     - INTEGER: *-WORD PACKED BINARY ARRAY CONTAINING BUFR
+C                MESSAGE
+C
+C   OUTPUT ARGUMENT LIST:
+C     CDS3     - CHARACTER*6: *-WORD ARRAY CONTAINING UNPACKED LIST OF
+C                DESCRIPTORS (FIRST NDS3 WORDS FILLED)
+C     NDS3     - INTEGER: NUMBER OF DESCRIPTORS RETURNED
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        ADN30    IUPB     GETLENS  WRDLEN
+C    THIS ROUTINE IS CALLED BY: None
+C                               Normally called only by application
+C                               programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
 
       DIMENSION MBAY(*)
-                                                                        
+
       CHARACTER*6 CDS3(*), ADN30
-                                                                        
-      DATA IFIRST / 0 /
-                                                                        
+
 C-----------------------------------------------------------------------
 C-----------------------------------------------------------------------
 
-C     If this is the first call to this subroutine, then call subroutine
-C     WRDLEN to initialize some important information about the local
-C     machine, just in case subroutine OPENBF hasn't been called yet!
-                                                                        
-      IF ( IFIRST .EQ. 0 ) THEN
-         CALL WRDLEN                                                    
-         IFIRST = 1                                                     
-      ENDIF                                                             
- 
+C     CALL SUBROUTINE WRDLEN TO INITIALIZE SOME IMPORTANT INFORMATION
+C     ABOUT THE LOCAL MACHINE, JUST IN CASE SUBROUTINE OPENBF HASN'T
+C     BEEN CALLED YET.
 
-C     Skip Section 0.
+      CALL WRDLEN
 
-      IPT = 8
+C     SKIP TO THE BEGINNING OF SECTION 3.
 
+      CALL GETLENS(MBAY,3,LEN0,LEN1,LEN2,LEN3,L4,L5)
+      IPT = LEN0 + LEN1 + LEN2
 
-C     Skip Section 1, but check for existence of Section 2.
-
-      ISC2 = IUPB ( MBAY, IPT + 8,  1 )
-
-      IPT = IPT + IUPB ( MBAY, IPT + 1, 24 )
- 
- 
-C     Skip Section 2 if it exists.
- 
-      IPT = IPT + ( IUPB ( MBAY, IPT + 1, 24 ) * ISC2 )
- 
-
-C     Get the length of Section 3.
- 
-      LEN3 = IUPB ( MBAY, IPT + 1 , 24 )
-
-
-C     Unpack the Section 3 descriptors.
+C     UNPACK THE SECTION 3 DESCRIPTORS.
 
       NDS3 = 0
-      DO JJ = 8, ( LEN3 - 1 ), 2
+      DO JJ = 8,(LEN3-1),2
          NDS3 = NDS3 + 1
-         CDS3 (NDS3) = ADN30 ( IUPB ( MBAY, IPT + JJ, 16 ), 6 )
+         CDS3(NDS3) = ADN30(IUPB(MBAY,IPT+JJ,16),6)
       ENDDO
- 
 
       RETURN
       END

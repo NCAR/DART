@@ -1,37 +1,52 @@
-C----------------------------------------------------------------------
-C  UNPACK UP AN INTEGER FROM A PACKED INTEGER ARRAY (FUNCTION)
-C----------------------------------------------------------------------
-
       FUNCTION IUPB(MBAY,NBYT,NBIT)
 
-C************************************************************************
-C* IUPB									*
-C*									*
-C* This function unpacks and returns a binary integer contained within	*	
-C* NBIT bits of MBAY, starting with the first bit of byte NBYT.		*
-C*									*
-C* IUPB  ( MBAY, NBYT, NBIT )						*
-C*									*
-C* Input parameters:							*
-C*	MBAY		INTEGER(*)	Packed binary array		*
-C*	NBYT		INTEGER		Byte within MBAY at whose first	*
-C*					bit to begin unpacking		*
-C*	NBIT		INTEGER		Number of bits within MBAY to	*
-C*					be unpacked			*
-C*									*
-C* Output parameters:							*
-C*	IUPB		INTEGER		Unpacked integer		*
-C**									*
-C* Log:									*
-C* J. Woollen/NCEP	??/??						*
-C* J. Ator/NCEP		05/01	Added documentation			*
-C************************************************************************
- 
+C$$$  SUBPROGRAM DOCUMENTATION BLOCK
+C
+C SUBPROGRAM:    IUPB
+C   PRGMMR: WOOLLEN          ORG: NP20       DATE: 1994-01-06
+C
+C ABSTRACT: THIS FUNCTION UNPACKS AND RETURNS A BINARY INTEGER WORD
+C   CONTAINED WITHIN NBIT BITS OF A BUFR MESSAGE PACKED INTO THE
+C   INTEGER ARRAY MBAY, STARTING WITH THE FIRST BIT OF BYTE NBYT.
+C
+C PROGRAM HISTORY LOG:
+C 1994-01-06  J. WOOLLEN -- ORIGINAL AUTHOR
+C 2003-11-04  J. ATOR    -- ADDED DOCUMENTATION
+C 2003-11-04  S. BENDER  -- ADDED REMARKS/BUFRLIB ROUTINE
+C                           INTERDEPENDENCIES
+C 2003-11-04  D. KEYSER  -- UNIFIED/PORTABLE FOR WRF; ADDED HISTORY
+C                           DOCUMENTATION
+C
+C USAGE:    IUPB (MBAY, NBYT, NBIT)
+C   INPUT ARGUMENT LIST:
+C     MBAY     - INTEGER: *-WORD PACKED BINARY ARRAY CONTAINING BUFR
+C                MESSAGE
+C     NBYT     - INTEGER: BYTE WITHIN MBAY AT WHOSE FIRST BIT TO BEGIN
+C                UNPACKING
+C     NBIT     - INTEGER: NUMBER OF BITS WITHIN MBAY TO BE UNPACKED
+C
+C   OUTPUT ARGUMENT LIST:
+C     IUPB     - INTEGER: UNPACKED INTEGER WORD
+C
+C REMARKS:
+C    THIS ROUTINE CALLS:        UPB
+C    THIS ROUTINE IS CALLED BY: CKTABA   CPYUPD   DUMPBF   GETLENS
+C                               IUPBS01  IUPBS1   MSGUPD   MSGWRT
+C                               RDMEMS   STNDRD   SUBUPD   UPDS3
+C                               Normally not called by any application
+C                               programs.
+C
+C ATTRIBUTES:
+C   LANGUAGE: FORTRAN 77
+C   MACHINE:  PORTABLE TO ALL PLATFORMS
+C
+C$$$
+
       DIMENSION MBAY(*)
- 
+
 C----------------------------------------------------------------------
 C----------------------------------------------------------------------
- 
+
       MBIT = (NBYT-1)*8
       CALL UPB(IRET,NBIT,MBAY,MBIT)
       IUPB = IRET
