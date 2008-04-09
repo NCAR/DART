@@ -137,6 +137,8 @@ endif
 
 if (leaving_early > 0) then
    call wait_if_needed(async)
+   ! need to destroy obs here before returning
+   call destroy_obs(observation)
    return
 endif
 
