@@ -21,7 +21,7 @@ use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), 
                              get_date, set_time
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, &
-                             E_ERR, E_MSG
+                             E_ERR, E_MSG, timestamp
 use     location_mod, only : location_type, set_location, VERTISPRESSURE, VERTISSURFACE
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, set_qc, obs_sequence_type, obs_type, &
@@ -75,14 +75,19 @@ character(len=128), parameter :: &
    revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
+! set this to true if you want to print out the current time
+! after each N observations are processed, for benchmarking.
+logical :: print_timestamps = .false.
+integer :: print_every_Nth  = 10000
 !-------------------------------------------------
 
 contains
 
 
-  function real_obs_sequence (year, month, day, hourt, max_num, select_obs, &
-           ObsBase, ADDUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
-           obs_U, obs_V, obs_T, obs_PS, obs_QV, bin_beg, bin_end, lon1, lon2, lat1, lat2)
+function real_obs_sequence (year, month, day, hourt, max_num, select_obs, &
+          ObsBase, ADDUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
+          obs_U, obs_V, obs_T, obs_PS, obs_QV, bin_beg, bin_end,           &
+          lon1, lon2, lat1, lat2)
 !------------------------------------------------------------------------------
 !  this function is to prepare NCEP decoded BUFR data to DART sequence format
 !
@@ -111,7 +116,7 @@ real (r8) :: vloc, obs_value, aqc, var2, lon2c, lonc
 real (r8) :: bin_beg, bin_end
 
 character(len = 8 ) :: obsdate
-character(len = 80) :: obsfile
+character(len = 80) :: obsfile, label
 character(len = 129) :: copy_meta_data, qc_meta_data
 character(len = 6 ) :: subset
 logical :: pass
@@ -154,7 +159,7 @@ current_day = set_date(year, month, day, hour, imin, sec)
 call get_time(current_day, sec0, day0)
 
 !   output the day and sec.
-print*, 'day, sec= ', sec0, day0
+print*, 'processing data for day, sec= ', day0, sec0
 
 ! open NCEP observation data file
 
@@ -162,10 +167,10 @@ write(obsdate, '(i4.4,i2.2,i2.2)') year, month, day
 obsfile   = trim(adjustl(ObsBase))//obsdate//hourt
 obs_unit  = get_unit()
 open(unit = obs_unit, file = obsfile, form='formatted', status='old')
-print*, 'file opened= ', obsfile
+print*, 'input file opened= ', trim(obsfile)
 rewind (obs_unit)
 
-print*, 'ncep obsdates = ', obsdate
+!print*, 'ncep obsdates = ', obsdate
 
 obs_num = 0
 iskip   = 0
@@ -182,6 +187,7 @@ obsloop:  do
 
 !   A 'day' is from 03:01Z of one day through 03Z of the next.
 !   skip the observations at exact 03Z of the beginning of the day
+!   (obs at 03Z the next day have a time of 27.)
 !------------------------------------------------------------------------------
    if(time == 3.0_r8) then
       iskip = iskip + 1
@@ -190,6 +196,14 @@ obsloop:  do
 
    !  select the obs for the time window
    if(time < bin_beg .or. time > bin_end) then
+      iskip = iskip + 1
+      cycle obsloop
+   endif
+
+   ! verify the location is not outside valid limits
+   if((lon > 360.0_r8) .or. (lon <   0.0_r8) .or.  &
+      (lat >  90.0_r8) .or. (lat < -90.0_r8)) then
+      write(*,*) 'invalid location.  lon,lat = ', lon, lat
       iskip = iskip + 1
       cycle obsloop
    endif
@@ -264,15 +278,15 @@ obsloop:  do
 !   check to see if this observation is desired
 !------------------------------------------------------------------------------
 
-   if(select_obs == 0) then
+   ! if select_obs is 0, we are going to include all observations
+   ! and we skip the selection code below.
+   if(select_obs /= 0) then
 
-      pass = .false.
-
-   else
- 
+      ! assume we are going to ignore this obs, unless it is
+      ! specifically included by one of the selections below.
       pass = .true.
 
-      !    select the specific NCEP obs types
+      ! select the specific NCEP obs types
       if( (ADDUPA .and. (subset =='ADPUPA')) .or. &
           (AIRCAR .and. (subset =='AIRCAR')) .or. &
           (AIRCFT .and. (subset =='AIRCFT')) .or. &
@@ -292,33 +306,39 @@ obsloop:  do
 
       endif
      
+      ! if pass is still true, we want to ignore this obs.
+      if(pass) then
+         iskip = iskip + 1
+         cycle obsloop 
+      endif
+
    endif
 
-   if(pass) then
-      iskip = iskip + 1
-      cycle obsloop 
-   endif
-
-!   this observation has passed all tests, process it 
+!   process this observation
 !------------------------------------------------------------------------------
 
    obs_num = obs_num + 1
-   if(mod(obs_num, 1000) ==0) print*, 'doing obs = ', obs_num
+
+   ! print a reassuring message after every Nth processed obs.
+   ! if requested, print in the form of a timestamp.  
+   ! the default is just a plain string with the current obs count.
+   if(mod(obs_num, print_every_Nth) == 0) then
+       write(label, *) 'obs count = ', obs_num
+       if (print_timestamps) then
+          call timestamp(string1=label, pos='')
+       else
+          write(*,*) trim(label)
+       endif
+   endif
    if(obs_num == max_num) then
-      print*, 'max_num for obs is reached'
+      print*, 'Max limit for observation count reached.  Increase value in namelist'
       stop
    endif
    
-   ! set up observation location
-   if(lon >= 360.0_r8) lon = 360.0_r8
-   if(lon <=   0.0_r8) lon =   0.0_r8
-   if(lat >=  90.0_r8) lat =  90.0_r8
-   if(lat <= -90.0_r8) lat = -90.0_r8
-
    ! set vertical coordinate for upper-air observations
    if (subset == 'AIRCAR' .or. subset == 'AIRCFT' .or. &
        subset == 'SATWND' .or. subset == 'ADPUPA' ) then
-       vloc = lev*100.0_r8         ! (transfer Pressure coordinate from mb to Pascal) 
+       vloc = lev*100.0_r8          ! convert from mb to Pascal
        which_vert = VERTISPRESSURE
    endif
 
@@ -330,8 +350,8 @@ obsloop:  do
    endif
 
    ! set obs value and error if necessary
-   if ( obs_kind == LAND_SFC_ALTIMETER .or. obs_kind == MARINE_SFC_ALTIMETER .or. &
-        obs_kind == RADIOSONDE_SURFACE_ALTIMETER ) then
+   if ( obs_kind == LAND_SFC_ALTIMETER .or. obs_kind == MARINE_SFC_ALTIMETER &
+        .or. obs_kind == RADIOSONDE_SURFACE_ALTIMETER ) then
       vloc = lev                  ! station height, not used now for Ps obs
       which_vert = VERTISSURFACE
       obs_value  = compute_altimeter(zob, vloc)  !  altimeter is hPa
@@ -388,7 +408,8 @@ end do obsloop
 
 close(obs_unit)
 
-print*, 'obs_num= ',obs_num,' skipped= ',obsdate,iskip
+print*, 'date ', obsdate, ' obs used = ', obs_num, ' obs skipped = ', iskip
+!print*, 'obs_num= ',obs_num,' skipped= ',obsdate,iskip
 
 end function real_obs_sequence
 

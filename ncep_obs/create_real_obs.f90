@@ -15,8 +15,9 @@ use types_mod,        only : r8, deg2rad, PI
 use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              static_init_obs_sequence, destroy_obs_sequence 
 use     real_obs_mod, only : real_obs_sequence
-use    utilities_mod, only : initialize_utilities, register_module, do_output, &
-                             error_handler, timestamp, E_ERR, E_MSG, logfileunit, &
+use    utilities_mod, only : initialize_utilities, register_module, &
+                             do_output, logfileunit, &
+                             error_handler, timestamp, E_ERR, E_MSG, &
                              find_namelist_in_file, check_namelist_read
 
 implicit none
@@ -47,24 +48,24 @@ data bin_end/ 9.00_r8, 15.00_r8, 21.00_r8, 27.00_r8, 27.00_r8/
 integer :: year = 2003, month =1, day =1, tot_days = 31
 integer :: max_num = 800000, select_obs = 0
 character(len = 129) :: ObsBase = 'temp_obs.'
-logical :: ADPUPA = .false., AIRCAR = .false., AIRCFT = .false., SATWND = .false., &
-           SATEMP = .false., SFCSHP = .false., ADPSFC = .false.
+logical :: ADPUPA = .false., AIRCAR = .false., AIRCFT = .false., &
+           SATWND = .false., SATEMP = .false., SFCSHP = .false., &
+           ADPSFC = .false.
 
 logical :: obs_U  = .false., obs_V  = .false., obs_T  = .false. , &
            obs_PS = .false., obs_QV = .false., daily_file = .true.
 
-real(r8) :: lon1 = 0.0_r8,    &   !  lower longitude bound
+real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lon2 = 360.0_r8,  &   !  upper longitude bound 
-            lat1 = -89.0_r8,  &   !  lower latitude bound
-            lat2 = 89.0_r8        !  upper latitude bound
+            lat1 = -90.0_r8,  &   !  lower latitude bound
+            lat2 =  90.0_r8       !  upper latitude bound
 
-namelist /ncepobs_nml/year, month, day, tot_days, max_num, select_obs, ObsBase, &
-        ADPUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
+namelist /ncepobs_nml/ year, month, day, tot_days, max_num, select_obs,  &
+        ObsBase, ADPUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
         obs_U, obs_V, obs_T, obs_PS, obs_QV, daily_file, lon1, lon2, lat1, lat2
 
 ! ----------------------------------------------------------------------
-! Select observation types using NCEP categories (when select_obs \= 0).
-!
+! Select observation types using NCEP categories (when select_obs /= 0).
 !  ADPUPA: upper-air reports (mostly radiosonde plus few dropsonde, PIBAL)
 !  AIRCFT: Conv. (AIREP, PIREP) and ASDAR aircraft reports
 !  AIRCAR: ACARS sircraft reports
@@ -73,9 +74,11 @@ namelist /ncepobs_nml/year, month, day, tot_days, max_num, select_obs, ObsBase, 
 !  ADPSFC: SURFACE LAND SYNOPTIC STATION reports
 !  SATWND: Satellite derived wind reports
 ! ----------------------------------------------------------------------
-
-!  Select variables of U, V, T, QV, PS using the logicals:
+! Select variables of U, V, T, QV, PS using the logicals:
 !  obs_U   obs_V   obs_PS   obs_T   obs_QV  
+! ----------------------------------------------------------------------
+
+! start of executable program code
 
 call initialize_utilities('create_real_obs')
 call register_module(source,revision,revdate)
@@ -144,3 +147,4 @@ enddo
 call timestamp(source,revision,revdate,'end') ! close the log file.
 
 end program create_real_obs
+
