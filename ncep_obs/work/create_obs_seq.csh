@@ -1,4 +1,4 @@
-#!/bin/csh
+#!/bin/csh 
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2007, Data Assimilation Research Section
@@ -23,19 +23,18 @@
 # you might need other options set for LSF on your system; 
 #  e.g. -P project_charge_code, a different queue name, etc.
 
-#BSUB -o create_obs_seq.out
-#BSUB -e create_obs_seq.err
-#BSUB -J create_obs_seq
+set locallog = obs_seq.log
+#BSUB -J obsseq
+#BSUB -W 2:00
+
+#BSUB -o obs_seq.out
+#BSUB -e obs_seq.err
 #BSUB -q share
-#BSUB -W 6:00
+#BSUB -P NNNNNNNN
 #BSUB -n 1
 
 
-if ($?LS_SUBCWD) then
-   cd $LS_SUBCWD
-endif
-
-touch create_obs_seq.out
+touch $locallog
 
 set  STRING = "1,$ s#,##g"
 
@@ -46,6 +45,7 @@ set year = $ensstring[3]
 grep month input.nml >! ensstring.$$
 set ensstring = `sed -e "$STRING" ensstring.$$`
 set mo = $ensstring[3]
+if ($mo < 10) set mo = 0$mo
 
 grep day input.nml >! ensstring.$$
 set ensstring = `sed -e "$STRING" ensstring.$$`
@@ -68,8 +68,10 @@ grep daily_file input.nml >! ensstring.$$
 set ensstring = `sed -e "$STRING" ensstring.$$`
 set daily_file = $ensstring[3]
 
-echo "year, mo, day1, dayn, binary = " $year $mo $day1 $dayn $binary >> create_obs_seq.out
-echo ObsBase = $ObsBase                                              >> create_obs_seq.out
+rm -f ensstring.$$
+
+echo "year, mo, day1, dayn, binary = " $year $mo $day1 $dayn $binary >> $locallog
+echo ObsBase = $ObsBase                                              >> $locallog
 
 ./create_real_obs
 
@@ -82,22 +84,27 @@ while ($n <= $dayn)
    if ($daily_file == .true.) then
       set obs_seq = ( ${base} )
    else
-      # originally this script created 2 files per day, 12 and 24.  changes
-      # in the create_real_obs executable have it creating 4 per day now.
-      # if you change it back, change the next line to have only 2 files.
+      # originally, if not doing daily files, the default was 2 files per day.
+      # now the default matches the ncep data file blocking; 4 files per day,
+      # 6 hours per file.  if you want to go back to 2 files per day, you will
+      # have to modify the following line to have only 12 and 24.
       set obs_seq = ( ${base}06 ${base}12 ${base}18 ${base}24 )
    endif
    foreach obs ($obs_seq)
       if ($binary == .false.) then
          if (-e $obs) then
-            echo "fixing $obs pole locations"                      >> create_obs_seq.out
-            sed -e 's/ 1.57079632679490/ 1.57079632679488/' $obs   >! fixed_pole
+            # on at least one platform (ibm power5), this value is read in
+            # and rounded to be 1 bit in the least significant digit larger
+            # than 90.000 in degrees, which causes errors in the location module.
+            # drop these values just slightly so they read in as 90/-90 exactly.
+            echo " fixing $obs pole locations"                     >> $locallog
+            sed -e 's/ 1.57079632679490/ 1.57079632679488/' \
+                -e 's/-1.57079632679490/-1.57079632679488/' $obs   >! fixed_pole${n}
          else
             exit
          endif
-         mv fixed_pole $obs
+         mv fixed_pole${n} $obs
       endif
-      mv $obs $Obs_base:h &
    end
    @ n++
 end
