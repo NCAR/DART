@@ -61,7 +61,7 @@ set endday = 31
 # Location of BUFR files (named prepqmYYYYMMDDHH)
 # are assumed to be in subdirectories named YYYYMM of the path listed here.
 # Those subdirectory names will be constructed below.
-set BUFR_dir = 198812
+set BUFR_dir = ../data/
 set get_year = $year
 
 # END USER SET PARAMETERS
