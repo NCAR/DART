@@ -1,4 +1,4 @@
-#!/bin/csh
+#!/bin/csh 
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2007, Data Assimilation Research Section
@@ -26,13 +26,10 @@
 #BSUB -e prepbufr.err
 #BSUB -J prepbufr
 #BSUB -q share
-#BSUB -W 6:00
+#BSUB -W 2:00
+#BSUB -P NNNNNNNN
 #BSUB -n 1
 
-
-if ($?LS_SUBCWD) then
-   cd $LS_SUBCWD
-endif
 
 #
 #--------------------------------------------------------------
@@ -48,22 +45,23 @@ endif
 
 # Convert from big-endian BUFR files to little-endian for Intel chip systems.
 # ('yes' or whatever)
-set    daily = no
-set  convert = yes 
-set     year = 2006
-set    month = 1      
+set    daily = yes
+set  convert = no 
+set     year = 1988
+set    month = 12
 set beginday = 1
 #
-# end day (up to and including the last day of the month.  Leap year Februaries are OK.
-#          Remember that the prepqm###### file for hour 0 of the first day of the next
-#          month is necessary for endday = last day of a month.)
+# end day (up to and including the last day of the month.  
+#  Leap year Februaries are OK.
+#  Remember that the prepqm###### file for hour 0 of the first day of the next
+#  month is necessary for endday = last day of a month.)
 #
-set endday = 1
+set endday = 31
 
 # Location of BUFR files (named prepqmYYYYMMDDHH)
 # are assumed to be in subdirectories named YYYYMM of the path listed here.
 # Those subdirectory names will be constructed below.
-set BUFR_dir = ../data/
+set BUFR_dir = 198812
 set get_year = $year
 
 # END USER SET PARAMETERS
@@ -75,11 +73,7 @@ if (($year %   4) == 0) @ days_in_mo[2] = $days_in_mo[2] + 1
 if (($year % 100) == 0) @ days_in_mo[2] = $days_in_mo[2] - 1
 if (($year % 400) == 0) @ days_in_mo[2] = $days_in_mo[2] + 1
 
-if ( $?LS_SUBCWD ) then
-   cd $LS_SUBCWD
-endif
-
-rm prepqm.out temp_obs  *.err *.out
+rm -f prepqm.out *.err *.out
 
 # Loop over days
 
@@ -89,11 +83,11 @@ while ( $day <= $last )
    echo '-------------------------------------- '
 
    # clear any old intermediate (text) BUFR file
-   rm temp_obs
+   rm -f temp_obs
 
-   # convert 1 "day"s worth (data from '6z to 6z of the next day) of BUFR files 
-   #    into a single intermediate file if 'daily' is set to true; 4 6-hour files
-   #    otherwise.
+   # convert 1 "day"s worth (data from '3z to 3z of the next day) of BUFR files 
+   # into a single intermediate file if 'daily' is set to true; 4 6-hour files
+   # otherwise.
    set h = 0
    set next_day = not
    while ($h < 30)
@@ -114,9 +108,11 @@ while ( $day <= $last )
             set dd = 1
             @ mm++
             if ($mm > 12) then
+               if ($mm > 12 && $hh == 0) then
+                 @ get_year ++
+               endif
                # next year
                set mm = 1
-               @ get_year = $get_year++
                @ yy = $get_year % 100
             endif
          endif
@@ -128,7 +124,8 @@ while ( $day <= $last )
       if ($dd < 10) set dd = 0$dd
       if ($hh < 10) set hh = 0$hh
 
-      # link(big endian) or make(little endian) input file 'prepqm' for prepbufr.x
+      # link(big endian) or make(little endian) input file 'prepqm' 
+      # for prepbufr.x
       set BUFR_loc = ${BUFR_dir}/${get_year}${mm}
       if (! -e ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh}) then
          echo "MISSING FILE ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh} and aborting"
@@ -143,8 +140,8 @@ while ( $day <= $last )
          mv prepqm.littleendian prepqm.in
          rm prepqm.bigendian
       else
-         echo "copying prepqm.in to ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh}"
-         cp ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh} prepqm.in
+         echo "linking prepqm.in to ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh}"
+         ln -f ${BUFR_loc}/prepqm${yy}${mm}${dd}${hh} prepqm.in
       endif
 
       if ($h == 30) then
