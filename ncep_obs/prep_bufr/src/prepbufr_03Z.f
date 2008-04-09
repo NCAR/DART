@@ -374,6 +374,8 @@ c----------------------------------------------------------------------
             tdata(4) = ppb
             tdata(5) = tob
 
+c    see comment in prepbufr.f
+            if (pc_t > 99) pc_t = 99
             write(lunobs, 800) tdata, ttype, tqm, subset(1:6), pc_t
 
           endif
@@ -396,6 +398,7 @@ c----------------------------------------------------------------------
             tdata(4) = zob
             tdata(5) = tob
 
+            if (pc_t > 99) pc_t = 99
             write(lunobs, 800) tdata, ttype, tqm, subset(1:6), pc_t
 
           endif
@@ -429,6 +432,7 @@ c           compute the error of specific moisture based on RH obs error
             qdata(5) = qob
 
             if (qoe .lt. 9.9) then  ! skip large qoe obs.
+              if (pc_q > 99) pc_q = 99
               write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
             endif
 
@@ -462,6 +466,7 @@ c----------------------------------------------------------------------
            qdata(5) = qob
 
            if(qoe .lt. 9.9) then   ! skip large qoe obs
+             if (pc_q > 99) pc_q = 99
              write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
            endif
 
@@ -485,6 +490,7 @@ c----------------------------------------------------------------------
             pdata(4) = zob
             pdata(5) = pob
 
+            if (pc_p > 99) pc_p = 99
             write(lunobs, 800) pdata, ptype, pqm, subset(1:6), pc_p
 
           endif
@@ -511,6 +517,8 @@ c----------------------------------------------------------------------
             vdata(5) = vob
             vdata(6) = uob
 
+            if (pc_u > 99) pc_u = 99
+            if (pc_v > 99) pc_v = 99
             write(lunobs, 800) udata, wtype, uqm, subset(1:6), pc_u
             write(lunobs, 800) vdata, wtype, vqm, subset(1:6), pc_v
 
@@ -539,6 +547,8 @@ c----------------------------------------------------------------------
             vdata(5) = vob
             vdata(6) = uob
 
+            if (pc_u > 99) pc_u = 99
+            if (pc_v > 99) pc_v = 99
             write(lunobs, 800) udata, wtype, uqm, subset(1:6), pc_u
             write(lunobs, 800) vdata, wtype, vqm, subset(1:6), pc_v
 
