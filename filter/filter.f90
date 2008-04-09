@@ -21,7 +21,8 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
                                  set_qc_meta_data, get_expected_obs, get_first_obs,          &
                                  get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
-                                 delete_seq_tail, replace_obs_values, replace_qc
+                                 delete_seq_tail, replace_obs_values, replace_qc,            &
+                                 destroy_obs_sequence
 use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                  operator(-)
@@ -576,8 +577,9 @@ endif
 ! Master task must close the log file
 if(my_task_id() == 0) call timestamp(source,revision,revdate,'end')
 
-! Free up the observation kind
+! Free up the observation kind and obs sequence
 call destroy_obs(observation)
+call destroy_obs_sequence(seq)
 
 if(ds) call smoother_end()
 
