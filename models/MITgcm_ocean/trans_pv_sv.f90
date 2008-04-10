@@ -34,7 +34,7 @@ use        types_mod, only : r4, r8
 use    utilities_mod, only : E_ERR, E_WARN, E_MSG, error_handler, logfileunit, &
                              initialize_utilities, finalize_utilities
 use        model_mod, only : snapshot_files_to_sv, static_init_model, &
-                             get_model_size, MITtime_to_DARTtime
+                             get_model_size, timestep_to_DARTtime
 use  assim_model_mod, only : awrite_state_restart, open_restart_write, close_restart
 use time_manager_mod, only : time_type, print_time, print_date
 
@@ -51,12 +51,11 @@ character (len = 128) :: msgstring
 ! Reading from stdin 
 ! eg. [S,T,U,V,Eta].0000040992.[data,meta]
 integer :: timestep = 40992
-character (len = 128) :: file_base = '0000040992'
+character (len = 128) :: file_base
 character (len = 128) :: file_out  = 'assim_model_state_ud'
 
 integer                :: io, iunit, x_size
-integer                :: Nx, Ny, Nz
-type(time_type)        :: model_time, adv_to_time
+type(time_type)        :: model_time
 real(r8), allocatable  :: statevector(:)
 
 !----------------------------------------------------------------------
@@ -89,11 +88,11 @@ write(*,*)'Trying to read files like yyy.'//trim(file_base)//'.data'
 ! Use the MIT namelist and timestepcount in the meta file to construct
 ! the current time, allocate the local state vector, and fill
 
-!model_time = MITtime_to_DARTtime(0)
+!model_time = timestep_to_DARTtime(0)
 !call print_time(model_time,'time for timestep 0')
 !call print_date(model_time,'time for timestep 0')
 
-model_time = MITtime_to_DARTtime(timestep)
+model_time = timestep_to_DARTtime(timestep)
 
 call print_time(model_time,'time for '//file_base)
 call print_date(model_time,'time for '//file_base)
@@ -103,6 +102,8 @@ x_size = get_model_size()
 allocate(statevector(x_size))
 call snapshot_files_to_sv(timestep, statevector) ! model_mod() knows all this
 
+! could also compare the timestep from the snapshot file to model_time ...
+! extra layer of bulletproofing.
 
 iunit = open_restart_write(file_out)
 call awrite_state_restart(model_time, statevector, iunit)

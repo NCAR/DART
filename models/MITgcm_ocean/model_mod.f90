@@ -15,10 +15,11 @@ module model_mod
 
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8
-use time_manager_mod, only : time_type, set_time, set_date, set_calendar_type, &
+use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
+                             set_calendar_type, GREGORIAN, print_time, print_date, &
                              operator(*),  operator(+), operator(-), &
                              operator(>),  operator(<), operator(/), &
-                             operator(/=), operator(<=), GREGORIAN
+                             operator(/=), operator(<=)
 use     location_mod, only : location_type,      get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, set_location, &
                              VERTISHEIGHT, get_location, vert_is_height, &
@@ -57,7 +58,8 @@ public :: prog_var_to_vector, vector_to_prog_var, &
           MIT_meta_type, read_meta, write_meta, &
           read_snapshot, write_snapshot, get_gridsize, &
           snapshot_files_to_sv, sv_to_snapshot_files, &
-          MITtime_to_DARTtime
+          timestep_to_DARTtime, DARTtime_to_MITtime, &
+          DARTtime_to_timestepindex
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -69,10 +71,10 @@ character(len=129) :: msgstring
 logical,save :: module_initialized = .false.
 
 
-!! FIXME: on ifort, this must be 1
-!!        on xlf,   this must be 4 or 8?
-!! see the comments in the read_2d_snapshot code for more info
-integer, parameter :: item_size_direct_read = 8
+!! FIXME: This is horrid ... 'reclen' is machine-dependent.
+!! IBM XLF -- item_size_direct_access == 4,8
+!! IFORT   -- item_size_direct_access == 1   (number of 32bit words)
+integer, parameter :: item_size_direct_access = 1
 
 !------------------------------------------------------------------
 !
@@ -192,7 +194,6 @@ NAMELIST /PARM04/ &
       rkFac, groundAtK1
 
 !--   Input files namelist
-! FIXME ... does DART even need these files?
 NAMELIST /PARM05/ &
       bathyFile, topoFile, shelfIceFile, &
       hydrogThetaFile, hydrogSaltFile, diffKrFile, &
@@ -237,7 +238,7 @@ integer :: start_index(nfields)
 ! Grid parameters - the values will be read from a
 ! standard MITgcm namelist and filled in here.
 
-integer :: Nx, Ny, Nz    ! grid counts for each field
+integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
 
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
@@ -250,9 +251,7 @@ real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 !real(r8) :: delta_lat, delta_lon, delta_depth
 !real(r8), allocatable :: lat_grid(:), lon_grid(:), depth_grid(:)
 
-! fixme The natural model timestep?
 real(r8)        :: timestep = 900.0_r4
-!integer         :: timestepcount = 40992
 integer         :: timestepcount = 0
 type(time_type) :: model_time, model_timestep
 
@@ -355,6 +354,8 @@ else
    write(msgstring,*)"only have support for Gregorian"
    call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
 endif
+write(*,*)'model_mod:namelist cal_NML',startDate_1,startDate_2
+write(*,nml=CAL_NML)
 
 ! Time stepping parameters are in PARM03
 call find_namelist_in_file("data", "PARM03", iunit)
@@ -364,10 +365,8 @@ call check_namelist_read(iunit, io, "PARM03")
 if ((deltaTmom   == deltaTtracer) .and. &
     (deltaTmom   == deltaTClock ) .and. &
     (deltaTClock == deltaTtracer)) then
-   ! FIXME ... what happens with deltaTmom > 86400 ? 
-   ! The time_step in terms of a time type must also be initialized.
-   model_timestep = set_time(nint(deltaTmom), 0)
-   timestep       = deltaTmom
+   model_timestep = set_time(nint(deltaTmom), 0) ! works with deltaTmom > 86400
+   timestep       = deltaTmom                    ! need a time_type version
 else
    write(msgstring,*)"namelist PARM03 has deltaTmom /= deltaTtracer /= deltaTClock"
    call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
@@ -377,7 +376,7 @@ else
    call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
 endif
 
-model_time = MITtime_to_DARTtime(timestepcount)
+model_time = timestep_to_DARTtime(timestepcount)
 
 ! Grid-related variables are in PARM04
 delX(:) = 0.0_r4
@@ -1738,11 +1737,11 @@ else
    filename = trim(fbase)//'.meta'
 endif
 
-! Initialize to bogus values
+! Initialize to (mostly) bogus values
 
 read_meta%nDims = 0
-read_meta%dimList = (/ 0, 0, 0 /)
-read_meta%dataprec = 'null'
+read_meta%dimList = (/ Nx, Ny, Nz /)
+read_meta%dataprec = 'float32'
 read_meta%reclen = 0
 read_meta%nrecords = 0
 read_meta%timeStepNumber = timestepcount
@@ -1926,7 +1925,7 @@ iunit = get_unit()
 open(unit=iunit, file=filename, action='write', form='formatted', iostat = io)
 if (io /= 0) then
    write(msgstring,*) 'unable to open file ', trim(filename), ' for writing'
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'model_mod:write_meta',msgstring,source,revision,revdate)
 endif
 
 write(iunit, "(A,I5,A)") "nDims = [ ", metadata%nDims, " ];"
@@ -1942,7 +1941,7 @@ write(iunit, "(3(I5,A))") metadata%dimList(i), ',', &
 
 write(iunit, "(A)") "];"
 
-write(iunit, "(3A)") "dataprec = [ ", trim(metadata%dataprec), " ];"
+write(iunit, "(3A)") "dataprec = [ '", trim(metadata%dataprec), "' ];"
 
 write(iunit, "(A,I5,A)") "nrecords = [ ", metadata%nrecords, " ];"
 
@@ -2019,13 +2018,10 @@ if (size(x, 2) /= metadata%dimList(2)) then
    call error_handler(E_ERR,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
 endif
 
-!! FIXME: This is horrid ... 'reclen' is machine-dependent.
-!! IBM XLF -- item_size_direct_read == 4   (number of bytes)
-!! IFORT   -- item_size_direct_read == 1   (number of 32bit words)
-reclen = product(shape(x)) * item_size_direct_read
+reclen = product(shape(x)) * item_size_direct_access
 
-write(logfileunit,*)'item_size is ',item_size_direct_read, ' reclen is ',reclen
-write(     *     ,*)'item_size is ',item_size_direct_read, ' reclen is ',reclen
+write(logfileunit,*)'item_size is ',item_size_direct_access, ' reclen is ',reclen
+write(     *     ,*)'item_size is ',item_size_direct_access, ' reclen is ',reclen
 
 ! Get next available unit number, read file.
 
@@ -2121,7 +2117,7 @@ if (size(x, 3) /= metadata%dimList(3)) then
    call error_handler(E_ERR,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
 endif
 
-reclen = product(shape(x)) * item_size_direct_read
+reclen = product(shape(x)) * item_size_direct_access
 
 ! Get next available unit number, read file.
 
@@ -2144,7 +2140,7 @@ end subroutine read_3d_snapshot
 
 
 
-subroutine write_2d_snapshot(x, fbase)
+subroutine write_2d_snapshot(x, fbase, timestepindex)
 !------------------------------------------------------------------
 !
 ! This routine writes the Fortran direct access binary files ... eg
@@ -2153,8 +2149,9 @@ subroutine write_2d_snapshot(x, fbase)
 !
 ! As it stands now ... the .data files appear to be big-endian.
 
-real(r4), dimension(:,:), intent(in)  :: x
-character(len=*), intent(in) :: fbase
+real(r4), dimension(:,:), intent(in) :: x
+character(len=*),         intent(in) :: fbase
+integer, optional,        intent(in) :: timestepindex
 
 character(len=128) :: metafilename, datafilename
 type(MIT_meta_type) :: metadata
@@ -2171,12 +2168,15 @@ metadata%dimList(:) = (/ Nx, Ny, 0 /)
 metadata%dataprec = "float32"
 metadata%reclen = Nx * Ny 
 metadata%nrecords = 1
-! FIXME: make this an optional input and if(present()) write it
-metadata%timeStepNumber = 0
+if (present(timestepindex)) then
+   metadata%timeStepNumber = timestepindex
+else
+   metadata%timeStepNumber = 0
+endif
 
 call write_meta(metadata, fbase)
 
-reclen = metadata%reclen * item_size_direct_read
+reclen = metadata%reclen * item_size_direct_access
 
 iunit = get_unit()
 open(unit=iunit, file=datafilename, action='write', access='direct', recl=reclen, iostat=io)
@@ -2196,7 +2196,7 @@ close(iunit)
 end subroutine write_2d_snapshot
 
 
-subroutine write_3d_snapshot(x, fbase)
+subroutine write_3d_snapshot(x, fbase, timestepindex)
 !------------------------------------------------------------------
 !
 ! This routine writes the Fortran direct access binary files ... eg
@@ -2205,8 +2205,9 @@ subroutine write_3d_snapshot(x, fbase)
 !
 ! As it stands now ... the .data files appear to be big-endian.
 
-real(r4), dimension(:,:,:), intent(in)  :: x
-character(len=*), intent(in) :: fbase
+real(r4), dimension(:,:,:), intent(in) :: x
+character(len=*),           intent(in) :: fbase
+integer, optional,          intent(in) :: timestepindex
 
 character(len=128) :: metafilename, datafilename
 type(MIT_meta_type) :: metadata
@@ -2220,15 +2221,18 @@ datafilename = trim(fbase)//'.data'
 
 metadata%nDims = 3
 metadata%dimList(:) = (/ Nx, Ny, Nz /)
-metadata%dataprec = "float32"
+metadata%dataprec = "float32"     ! FIXME depends on defn of 'r4' 
 metadata%reclen = Nx * Ny * Nz
 metadata%nrecords = 1
-! FIXME: make this an optional input and if(present()) write it
-metadata%timeStepNumber = 0
+if (present(timestepindex)) then
+   metadata%timeStepNumber = timestepindex
+else
+   metadata%timeStepNumber = 0
+endif
 
 call write_meta(metadata, fbase)
 
-reclen = metadata%reclen * item_size_direct_read
+reclen = metadata%reclen * item_size_direct_access
 
 ! Get next available unit number, write file.
 
@@ -2310,12 +2314,11 @@ end subroutine snapshot_files_to_sv
 
 
 
-subroutine sv_to_snapshot_files(state_vector, basename, timestepcount)
+subroutine sv_to_snapshot_files(state_vector, date1, date2)
 !------------------------------------------------------------------
 !
- real(r8), intent(in) :: state_vector(:)
- character(len=*), intent(in) :: basename
- integer, intent(in) :: timestepcount 
+real(r8), intent(in) :: state_vector(:)
+integer,  intent(in) :: date1, date2 
 
 ! temp space to hold data while we are writing it
 real(r4) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
@@ -2335,11 +2338,10 @@ indx = 1
 do l=1, n3dfields
 
    ! the filenames are going to be constructed here and assumed to be:
-   !  Varable.Basename.Timestep.data  and .meta
+   !  Variable.Basename.Timestep.data  and .meta
    ! e.g. S.Prior.0000000672.data
    !      S.Prior.0000000672.meta
-   write(prefixstring, "(A,I10.10)") &
-         trim(progvarnames(l))//'.'//trim(basename)//'.', timestepcount
+   write(prefixstring, '(A,''.'',I8.8,''.'',I6.6)') trim(progvarnames(l)),date1,date2
 
    do k = 1, Nz
    do j = 1, Ny
@@ -2349,15 +2351,14 @@ do l=1, n3dfields
    enddo
    enddo
    enddo
-   call write_snapshot(data_3d_array, prefixstring)
+   call write_snapshot(data_3d_array, prefixstring, timestepcount)
 
 enddo
 
 ! and finally, SSH (and any other 2d fields)
 do l=(n3dfields+1), (n3dfields+n2dfields)
 
-   write(prefixstring, "(A,I10.10)") &
-         trim(progvarnames(l))//'.'//trim(basename)//'.', timestepcount
+   write(prefixstring, '(A,''.'',I8.8,''.'',I6.6)') trim(progvarnames(l)),date1,date2
 
    do j = 1, Ny
    do i = 1, Nx
@@ -2365,7 +2366,7 @@ do l=(n3dfields+1), (n3dfields+n2dfields)
       indx = indx + 1
    enddo
    enddo
-   call write_snapshot(data_2d_array, prefixstring)
+   call write_snapshot(data_2d_array, prefixstring, timestepcount)
 
 enddo
 
@@ -2498,11 +2499,11 @@ varname = progvarnames(varindex)
 
 if (dim1 /= Nx) then
    write(msgstring,*)trim(varname),' 2d array dim 1 ',dim1,' /= ',Nx
-   call error_handler(E_ERR,'model_mod:vector_to_prog_var',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'model_mod:vector_to_2d__prog_var',msgstring,source,revision,revdate) 
 endif
 if (dim2 /= Ny) then
    write(msgstring,*)trim(varname),' 2d array dim 2 ',dim2,' /= ',Ny
-   call error_handler(E_ERR,'model_mod:vector_to_prog_var',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'model_mod:vector_to__2d_prog_var',msgstring,source,revision,revdate) 
 endif
 
 ii = start_index(varindex)
@@ -2539,15 +2540,15 @@ varname = progvarnames(varindex)
 
 if (dim1 /= Nx) then
    write(msgstring,*)trim(varname),' 3d array dim 1 ',dim1,' /= ',Nx
-   call error_handler(E_ERR,'model_mod:vector_to_prog_var',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'model_mod:vector_to_3d_prog_var',msgstring,source,revision,revdate) 
 endif
 if (dim2 /= Ny) then
    write(msgstring,*)trim(varname),' 3d array dim 2 ',dim2,' /= ',Ny
-   call error_handler(E_ERR,'model_mod:vector_to_prog_var',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'model_mod:vector_to_3d_prog_var',msgstring,source,revision,revdate) 
 endif
 if (dim3 /= Nz) then
    write(msgstring,*)trim(varname),' 3d array dim 3 ',dim3,' /= ',Nz
-   call error_handler(E_ERR,'model_mod:vector_to_prog_var',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'model_mod:vector_to_3d_prog_var',msgstring,source,revision,revdate) 
 endif
 
 ii = start_index(varindex)
@@ -2565,7 +2566,7 @@ end subroutine vector_to_3d_prog_var
 
 
 
-function MITtime_to_DARTtime(TimeStepIndex)
+function timestep_to_DARTtime(TimeStepIndex)
 !
 ! The MITtime is composed of an offset to a fixed time base.
 ! The base time is derived from the namelist in 'date.cal',
@@ -2578,7 +2579,7 @@ function MITtime_to_DARTtime(TimeStepIndex)
 ! (namelist) deltaTmom   aka 'timestep' ... r4 ... implies roundoff nuances
 !
 integer, intent(in) :: TimeStepIndex
-type(time_type)     :: MITtime_to_DARTtime
+type(time_type)     :: timestep_to_DARTtime
 
 integer         :: yy,mn,dd,hh,mm,ss
 integer         :: modeloffset, maxtimestep
@@ -2598,7 +2599,7 @@ maxtimestep = HUGE(modeloffset)/timestep
 if (TimeStepIndex >= maxtimestep) then
    write(msgstring,*)' timestepindex (',TimeStepIndex, &
                      ') * timestep (',timestep,') overflows.'
-   call error_handler(E_ERR,'model_mod:MITtime_to_DARTtime',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'model_mod:timestep_to_DARTtime',msgstring,source,revision,revdate) 
 endif
 
 modeloffset = nint(TimeStepIndex * timestep)
@@ -2616,9 +2617,78 @@ hh =     startDate_2/10000
 mm = mod(startDate_2/100,100)
 ss = mod(startDate_2,100)
 
-MITtime_to_DARTtime =  set_date(yy,mn,dd,hh,mm,ss) + offset
+timestep_to_DARTtime =  set_date(yy,mn,dd,hh,mm,ss) + offset
 
-end function MITtime_to_DARTtime
+end function timestep_to_DARTtime
+
+
+
+subroutine DARTtime_to_MITtime(darttime,date1,date2)
+!
+! The MITtime is composed of an offset to a fixed time base.
+! The base time is derived from the namelist in 'date.cal',
+! the model timestep (deltaT) is from the namelist 'PARM03',
+! and the timestepindex is the middle portion of the filename
+! of the MIT files   [S,T,U,V,SSH].nnnnnnnnnn.dat 
+!
+! (namelist) startDate_1  yyyymmdd (year/month/day)
+! (namelist) startDate_2    hhmmss (hours/minutes/seconds)
+! (namelist) deltaTmom   aka 'timestep' ... r4 ... implies roundoff nuances
+!
+type(time_type), intent(in)  :: darttime
+integer,         intent(out) :: date1, date2
+
+integer         :: yy,mn,dd,hh,mm,ss
+
+if ( .not. module_initialized ) call static_init_model
+
+write(*,*)'DART2MIT ',startDate_1,startDate_2
+
+call print_date(darttime,'DART2MIT dart model time')
+
+call get_date(darttime,yy,mn,dd,hh,mm,ss)
+
+date1 = yy*10000 + mn*100 + dd
+date2 = hh*10000 + mm*100 + ss
+
+end subroutine DARTtime_to_MITtime
+
+
+
+function DARTtime_to_timestepindex(mytime)
+!
+! The MITtime is composed of an offset to a fixed time base.
+! The base time is derived from the namelist in 'date.cal',
+! the model timestep (deltaT) is from the namelist 'PARM03',
+! and the timestepindex is the middle portion of the filename
+! of the MIT files   [S,T,U,V,SSH].nnnnnnnnnn.dat 
+!
+! (namelist) startDate_1  yyyymmdd (year/month/day)
+! (namelist) startDate_2    hhmmss (hours/minutes/seconds)
+! (namelist) deltaTmom   aka 'timestep' ... r4 ... implies roundoff nuances
+!
+type(time_type), intent(in)  :: mytime
+integer                      :: DARTtime_to_timestepindex
+
+integer :: dd,ss
+type(time_type) :: timeorigin, offset
+
+if ( .not. module_initialized ) call static_init_model
+
+timeorigin = timestep_to_DARTtime(0)
+offset     = mytime - timeorigin
+call get_time(offset,ss,dd)
+
+if (dd >= (HUGE(dd)/86400)) then   ! overflow situation
+   call print_time(mytime,'DART time is',logfileunit)
+   write(msgstring,*)'Trying to convert DART time to MIT timestep overflows'
+   call error_handler(E_ERR,'model_mod:DARTtime_to_timestepindex',msgstring,source,revision,revdate) 
+endif
+
+DARTtime_to_timestepindex = nint((dd*86400+ss) / timestep)
+
+end function DARTtime_to_timestepindex
+
 
 
 subroutine get_gridsize(num_x, num_y, num_z)
