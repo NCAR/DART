@@ -35,6 +35,7 @@
 #     -fpp     run Fortran preprocessor on source files prior to compilation
 #     -free    interpret source as free-format, regardless of file extension
 #     -r8      specify default real size ...
+#     -convert big_endian         useful if you're on the wrong architecture
 #
 # FFLAGS   useful for debugging
 #     -C       (partially) enable extensive runtime error checking
@@ -88,8 +89,10 @@ MPIFC = mpif90
 MPILD = mpif90
 FC = ifort
 LD = ifort
+
 # this will probably need to be customized for your machine.
-NETCDF = /contrib/netcdf
+#NETCDF = /contrib/netcdf
+
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
 FFLAGS  = -O2 -mp -fpe0 $(INCS)
