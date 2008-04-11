@@ -1175,7 +1175,7 @@ real(r8), allocatable, dimension(:)   :: t1d, p1d, qv1d, z1d
 real(r8), allocatable, dimension(:,:) :: psea, pp, pd
 real(r8), allocatable, dimension(:)   :: x1d,y1d,xx1d,yy1d
 integer  :: xlen, ylen, xxlen, yylen, ii1, ii2
-real(r8) :: clat, clon, cxmin, cymin
+real(r8) :: clat, clon, cxmin, cymin, maxwspd
 
 ! center_track_*** used to define center search area
 integer :: center_track_xmin, center_track_ymin, &
@@ -2255,73 +2255,94 @@ else
      allocate(y1d(ylen))
      allocate(xx1d(xxlen))
      allocate(yy1d(yylen))
+     maxwspd = missing_r8
 
-!!   compute sea-level pressure
-     do i1 = center_track_xmin, center_track_xmax
-     do i2 = center_track_ymin, center_track_ymax
-        do k2 = 1,wrf%dom(id)%var_size(3,TYPE_T)
-           p1d(k2) = model_pressure_t(i1,i2,k2,id,x)
-           t1d(k2) = ts0 + x(wrf%dom(id)%dart_ind(i1,i2,k2,TYPE_T))
-           qv1d(k2)= x(wrf%dom(id)%dart_ind(i1,i2,k2,TYPE_QV))
-           z1d(k2) = ( x(wrf%dom(id)%dart_ind(i1,i2,k2,TYPE_GZ))+wrf%dom(id)%phb(i1,i2,k2) + &
-                      x(wrf%dom(id)%dart_ind(i1,i2,k2+1,TYPE_GZ))+wrf%dom(id)%phb(i1,i2,k2+1) &
-                    )*0.5_r8/gravity
-        enddo
-        call compute_seaprs(wrf%dom(id)%bt, z1d, t1d, p1d, qv1d, &
-                          psea(i1-center_track_xmin+1,i2-center_track_ymin+1),debug)
-     enddo
-     enddo
+!!   compute sea-level pressure and max wind speed
+     if ( obs_kind == KIND_VORTEX_WMAX ) then
 
-!!   spline-interpolation
-     do i1 = 1,xlen
-        x1d(i1) = (i1-1)+center_track_xmin
-     enddo
-     do i2 = 1,ylen
-        y1d(i2) = (i2-1)+center_track_ymin
-     enddo
-     do ii1 = 1,xxlen
-        xx1d(ii1) = center_track_xmin+real(ii1-1,r8)*1_r8/real(center_spline_grid_scale,r8)
-     enddo
-     do ii2 = 1,yylen
-        yy1d(ii2) = center_track_ymin+real(ii2-1,r8)*1_r8/real(center_spline_grid_scale,r8)
-     enddo
+       do i1 = center_track_xmin, center_track_xmax
+       do i2 = center_track_ymin, center_track_ymax
 
-     call splie2(x1d,y1d,psea,xlen,ylen,pd)
+         if ( wrf%dom(id)%surf_obs ) then
+           maxwspd = max(maxwspd, sqrt( x(wrf%dom(id)%dart_ind(i1,i2,1,TYPE_U10)) ** 2 + &
+                                        x(wrf%dom(id)%dart_ind(i1,i2,1,TYPE_V10)) ** 2 ))
+         else
+           maxwspd = max(maxwspd,sqrt((0.5_r8*(x(wrf%dom(id)%dart_ind(i1,  i2,1,TYPE_U)) + &
+                                               x(wrf%dom(id)%dart_ind(i1+1,i2,1,TYPE_U))))**2 + &
+                                      (0.5_r8*(x(wrf%dom(id)%dart_ind(i1,i2,  1,TYPE_V)) + &
+                                               x(wrf%dom(id)%dart_ind(i1,i2+1,1,TYPE_V))))**2))
+         end if
 
-     pres1 = 1.e20
-     cxmin = -1
-     cymin = -1
-     do ii1=1,xxlen
-     do ii2=1,yylen
-        call splin2(x1d,y1d,psea,pd,xlen,ylen,xx1d(ii1),yy1d(ii2),pp(ii1,ii2))
-        if (pres1 .gt. pp(ii1,ii2)) then
-           pres1=pp(ii1,ii2)
-           cxmin=xx1d(ii1)
-           cymin=yy1d(ii2)
-        endif
-     enddo
-     enddo
+       enddo
+       enddo
+       fld(1) = maxwspd
 
-!!   if too close to the edge of the box, reset to observed center
-     if( cxmin-xx1d(1) < 1_r8 .or. xx1d(xxlen)-cxmin < 1_r8 .or.  &
-         cymin-yy1d(1) < 1_r8 .or. yy1d(yylen)-cymin < 1_r8 ) then
-       cxmin = xloc
-       cymin = yloc
-       call splin2(x1d,y1d,psea,pd,xlen,ylen,cxmin,cymin,pres1)
-     endif
+     else
 
-     call ij_to_latlon(wrf%dom(id)%proj, cxmin, cymin, clat, clon)
+       do i1 = center_track_xmin, center_track_xmax
+       do i2 = center_track_ymin, center_track_ymax
+          do k2 = 1,wrf%dom(id)%var_size(3,TYPE_T)
+             p1d(k2) = model_pressure_t(i1,i2,k2,id,x)
+             t1d(k2) = ts0 + x(wrf%dom(id)%dart_ind(i1,i2,k2,TYPE_T))
+             qv1d(k2)= x(wrf%dom(id)%dart_ind(i1,i2,k2,TYPE_QV))
+             z1d(k2) = ( x(wrf%dom(id)%dart_ind(i1,i2,k2,TYPE_GZ))+wrf%dom(id)%phb(i1,i2,k2) + &
+                         x(wrf%dom(id)%dart_ind(i1,i2,k2+1,TYPE_GZ))+wrf%dom(id)%phb(i1,i2,k2+1) &
+                       )*0.5_r8/gravity
+          enddo
+          call compute_seaprs(wrf%dom(id)%bt, z1d, t1d, p1d, qv1d, &
+                            psea(i1-center_track_xmin+1,i2-center_track_ymin+1),debug)
+       enddo
+       enddo
 
-     if( obs_kind == KIND_VORTEX_LAT ) then
-        fld(1) = clat
-     else if( obs_kind == KIND_VORTEX_LON ) then
-        fld(1) = clon
-     else if( obs_kind == KIND_VORTEX_PMIN ) then
-        fld(1) = pres1
-     else if( obs_kind == KIND_VORTEX_WMAX ) then
-        fld(1) = missing_r8
-        ! not implemented yet
-     endif
+!!     spline-interpolation
+       do i1 = 1,xlen
+          x1d(i1) = (i1-1)+center_track_xmin
+       enddo
+       do i2 = 1,ylen
+          y1d(i2) = (i2-1)+center_track_ymin
+       enddo
+       do ii1 = 1,xxlen
+          xx1d(ii1) = center_track_xmin+real(ii1-1,r8)*1_r8/real(center_spline_grid_scale,r8)
+       enddo
+       do ii2 = 1,yylen
+          yy1d(ii2) = center_track_ymin+real(ii2-1,r8)*1_r8/real(center_spline_grid_scale,r8)
+       enddo
+
+       call splie2(x1d,y1d,psea,xlen,ylen,pd)
+
+       pres1 = 1.e20
+       cxmin = -1
+       cymin = -1
+       do ii1=1,xxlen
+       do ii2=1,yylen
+          call splin2(x1d,y1d,psea,pd,xlen,ylen,xx1d(ii1),yy1d(ii2),pp(ii1,ii2))
+          if (pres1 .gt. pp(ii1,ii2)) then
+             pres1=pp(ii1,ii2)
+             cxmin=xx1d(ii1)
+             cymin=yy1d(ii2)
+          endif
+       enddo
+       enddo
+
+!!     if too close to the edge of the box, reset to observed center
+       if( cxmin-xx1d(1) < 1_r8 .or. xx1d(xxlen)-cxmin < 1_r8 .or.  &
+           cymin-yy1d(1) < 1_r8 .or. yy1d(yylen)-cymin < 1_r8 ) then
+         cxmin = xloc
+         cymin = yloc
+         call splin2(x1d,y1d,psea,pd,xlen,ylen,cxmin,cymin,pres1)
+       endif
+
+       call ij_to_latlon(wrf%dom(id)%proj, cxmin, cymin, clat, clon)
+
+       if( obs_kind == KIND_VORTEX_LAT ) then
+          fld(1) = clat
+       else if( obs_kind == KIND_VORTEX_LON ) then
+          fld(1) = clon
+       else if( obs_kind == KIND_VORTEX_PMIN ) then
+           fld(1) = pres1
+       endif
+
+     endif 
 
      deallocate(p1d, t1d, qv1d, z1d)
      deallocate(psea,pd,pp,x1d,y1d,xx1d,yy1d)
