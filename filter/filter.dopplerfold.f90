@@ -21,7 +21,8 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
                                  set_qc_meta_data, get_expected_obs, get_first_obs,          &
                                  get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
-                                 delete_seq_tail, replace_obs_values, replace_qc
+                                 delete_seq_tail, replace_obs_values, replace_qc,            &
+                                 destroy_obs_sequence
 use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                  operator(-)
@@ -118,6 +119,7 @@ character(len = 129) :: inf_in_file_name(2)       = 'not_initialized',    &
                         inf_diag_file_name(2)     = 'not_initialized'
 real(r8)             :: inf_initial(2)            = 1.0_r8
 real(r8)             :: inf_sd_initial(2)         = 0.0_r8
+real(r8)             :: inf_damping(2)            = 1.0_r8
 real(r8)             :: inf_lower_bound(2)        = 1.0_r8
 real(r8)             :: inf_upper_bound(2)        = 1000000.0_r8
 real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
@@ -131,7 +133,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       num_output_obs_members, output_interval, num_groups, outlier_threshold, &
                       input_qc_threshold, output_forward_op_errors, output_timestamps, &
                       inf_flavor, inf_initial_from_restart, inf_sd_initial_from_restart, &
-                      inf_output_restart, inf_deterministic, inf_in_file_name, &
+                      inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping, &
                       inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial, &
                       inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation
 
@@ -209,6 +211,10 @@ do i = 1, 2
       write(msgstring, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3 '
       call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
    endif
+   if(inf_damping(i) < 0.0_r8 .or. inf_damping(i) > 1.0_r8) then
+      write(msgstring, *) 'inf_damping=', inf_damping(i), ' Must be 0.0 <= d <= 1.0'
+      call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+   endif
 end do
 
 ! Observation space inflation for posterior not currently supported
@@ -281,17 +287,17 @@ call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart
 ! Initialize the output sequences and state files and set their meta data
 if(my_task_id() == 0) then
    call filter_generate_copy_meta_data(seq, prior_inflate, &
-   PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
-   output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
-   prior_obs_spread_index, posterior_obs_spread_index)
+      PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
+      output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
+      prior_obs_spread_index, posterior_obs_spread_index)
    if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation)
 else
-  output_state_mean_index = 0
-  output_state_spread_index = 0
-  prior_obs_mean_index = 0
-  posterior_obs_mean_index = 0
-  prior_obs_spread_index = 0 
-  posterior_obs_spread_index = 0
+   output_state_mean_index = 0
+   output_state_spread_index = 0
+   prior_obs_mean_index = 0
+   posterior_obs_mean_index = 0
+   prior_obs_spread_index = 0 
+   posterior_obs_spread_index = 0
 endif
 
 ! Need to find first obs with appropriate time, delete all earlier ones
@@ -381,6 +387,11 @@ AdvanceTime : do
    call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
+      if (inf_damping(1) /= 1.0_r8) then
+         ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
+            inf_damping(1) * (ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8) 
+      endif
+
       call filter_ensemble_inflate(ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
       ! Recompute the the mean and spread as required for diagnostics
       call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -455,6 +466,11 @@ AdvanceTime : do
 !-------- Test of posterior inflate ----------------
 
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
+      if (inf_damping(2) /= 1.0_r8) then
+         ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
+            inf_damping(2) * (ens_handle%copies(POST_INF_COPY, :) - 1.0_r8) 
+      endif
+
       call filter_ensemble_inflate(ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY) 
       ! Recompute the mean or the mean and spread as required for diagnostics
       call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -504,34 +520,34 @@ AdvanceTime : do
       !  sd < 0, then bypass this entire code block altogether for speed.
       if ((inf_sd_initial(2) >= 0.0_r8) .or. inf_sd_initial_from_restart(2)) then
 
-      ! Ship the ensemble mean to the model; some models need this for computing distances
-      ! Who stores the ensemble mean copy
-      call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
-      ! Broadcast it to everybody else
-      if(my_task_id() == mean_owner) then
-         ens_mean = ens_handle%vars(:, mean_owners_index)
-         call broadcast_send(mean_owner, ens_mean)
-      else
-         call broadcast_recv(mean_owner, ens_mean)
-      endif
-   
-      ! Now send the mean to the model in case it's needed
-      call ens_mean_for_model(ens_mean)
+         ! Ship the ensemble mean to the model; some models need this for computing distances
+         ! Who stores the ensemble mean copy
+         call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
+         ! Broadcast it to everybody else
+         if(my_task_id() == mean_owner) then
+            ens_mean = ens_handle%vars(:, mean_owners_index)
+            call broadcast_send(mean_owner, ens_mean)
+         else
+            call broadcast_recv(mean_owner, ens_mean)
+         endif
 
-      ! Need obs to be copy complete for assimilation: IS NEXT LINE REQUIRED???
-      call all_vars_to_all_copies(obs_ens_handle)
-      if (output_timestamps) then
-         if (do_output()) call timestamp("Before posterior inflation", pos='debug')
-      endif
-      call filter_assim(ens_handle, obs_ens_handle, seq, keys, ens_size, num_groups, &
-         obs_val_index, post_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
-         POST_INF_COPY, POST_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-         OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
-         OBS_PRIOR_VAR_END, inflate_only = .true.)
-      if (output_timestamps) then
-         if (do_output()) call timestamp("After posterior inflation", pos='debug')
-      endif
-      call all_copies_to_all_vars(ens_handle)
+         ! Now send the mean to the model in case it's needed
+         call ens_mean_for_model(ens_mean)
+  
+         ! Need obs to be copy complete for assimilation: IS NEXT LINE REQUIRED???
+         call all_vars_to_all_copies(obs_ens_handle)
+         if (output_timestamps) then
+            if (do_output()) call timestamp("Before posterior inflation", pos='debug')
+         endif
+         call filter_assim(ens_handle, obs_ens_handle, seq, keys, ens_size, num_groups, &
+            obs_val_index, post_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
+            POST_INF_COPY, POST_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+            OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
+            OBS_PRIOR_VAR_END, inflate_only = .true.)
+         if (output_timestamps) then
+            if (do_output()) call timestamp("After posterior inflation", pos='debug')
+         endif
+         call all_copies_to_all_vars(ens_handle)
 
       endif  ! sd >= 0 or sd from restart file
    endif  ! if doing state space posterior inflate
@@ -582,8 +598,9 @@ endif
 ! Master task must close the log file
 if(my_task_id() == 0) call timestamp(source,revision,revdate,'end')
 
-! Free up the observation kind
+! Free up the observation kind and obs sequence
 call destroy_obs(observation)
+call destroy_obs_sequence(seq)
 
 if(ds) call smoother_end()
 

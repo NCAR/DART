@@ -175,6 +175,7 @@ smoother_mod
    inf_diag_file_name,
    inf_initial,
    inf_sd_initial,
+   inf_damping,
    inf_lower_bound,
    inf_upper_bound,
    inf_sd_lower_bound
@@ -375,6 +376,17 @@ being for the posterior inflation.
                         values, so they are time-constant.  If positive, the inflation
                         values will adapt through time, so they are time-varying.
                         Default: (/0.0_r8, 0.0_r8/)</TD></TR>
+
+ <TR><!--contents--><TD valign=top>inf_damping</TD>
+     <!--  type  --><TD valign=top>real(r8) (len=2)</TD>
+     <!--descript--><TD>Damping factor for inflation mean values.
+                        The difference between the current inflation value and 1.0
+                        is multiplied by this factor before the next assimilation cycle.
+                        The value should be between 0.0 and 1.0.
+                        0.0 turns all inflation off (by clamping the inflation value to 1.0).
+                        1.0 turns inflation damping off (leaving the original inflation
+                        value unchanged).
+                        Default: (/1.0_r8, 1.0_r8/)</TD></TR>
 
  <TR><!--contents--><TD valign=top>inf_lower_bound</TD>
      <!--  type  --><TD valign=top>real(r8) (len=2)</TD>

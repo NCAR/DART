@@ -119,6 +119,7 @@ character(len = 129) :: inf_in_file_name(2)       = 'not_initialized',    &
                         inf_diag_file_name(2)     = 'not_initialized'
 real(r8)             :: inf_initial(2)            = 1.0_r8
 real(r8)             :: inf_sd_initial(2)         = 0.0_r8
+real(r8)             :: inf_damping(2)            = 1.0_r8
 real(r8)             :: inf_lower_bound(2)        = 1.0_r8
 real(r8)             :: inf_upper_bound(2)        = 1000000.0_r8
 real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
@@ -132,7 +133,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, start_from_restart, &
                       num_output_obs_members, output_interval, num_groups, outlier_threshold, &
                       input_qc_threshold, output_forward_op_errors, output_timestamps, &
                       inf_flavor, inf_initial_from_restart, inf_sd_initial_from_restart, &
-                      inf_output_restart, inf_deterministic, inf_in_file_name, &
+                      inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping, &
                       inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial, &
                       inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation
 
@@ -204,6 +205,10 @@ ds = do_smoothing()
 do i = 1, 2
    if(inf_flavor(i) < 0 .or. inf_flavor(i) > 3) then
       write(msgstring, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3 '
+      call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+   endif
+   if(inf_damping(i) < 0.0_r8 .or. inf_damping(i) > 1.0_r8) then
+      write(msgstring, *) 'inf_damping=', inf_damping(i), ' Must be 0.0 <= d <= 1.0'
       call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
    endif
 end do
@@ -378,6 +383,11 @@ AdvanceTime : do
    call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
+      if (inf_damping(1) /= 1.0_r8) then
+         ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
+            inf_damping(1) * (ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8) 
+      endif
+
       call filter_ensemble_inflate(ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
       ! Recompute the the mean and spread as required for diagnostics
       call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -451,6 +461,11 @@ AdvanceTime : do
 !-------- Test of posterior inflate ----------------
 
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
+      if (inf_damping(2) /= 1.0_r8) then
+         ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
+            inf_damping(2) * (ens_handle%copies(POST_INF_COPY, :) - 1.0_r8) 
+      endif
+
       call filter_ensemble_inflate(ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY) 
       ! Recompute the mean or the mean and spread as required for diagnostics
       call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
