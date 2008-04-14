@@ -1,4 +1,4 @@
-#!/bin/csh 
+#!/bin/csh
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2007, Data Assimilation Research Section
@@ -23,18 +23,16 @@
 # you might need other options set for LSF on your system; 
 #  e.g. -P project_charge_code, a different queue name, etc.
 
-set locallog = obs_seq.log
-#BSUB -J obsseq
-#BSUB -W 2:00
-
-#BSUB -o obs_seq.out
-#BSUB -e obs_seq.err
+#BSUB -o create_obs_seq.out
+#BSUB -e create_obs_seq.err
+#BSUB -J create_obs_seq
 #BSUB -q share
+#BSUB -W 2:00
 #BSUB -P NNNNNNNN
 #BSUB -n 1
 
 
-touch $locallog
+touch create_obs_seq.log
 
 set  STRING = "1,$ s#,##g"
 
@@ -70,8 +68,8 @@ set daily_file = $ensstring[3]
 
 rm -f ensstring.$$
 
-echo "year, mo, day1, dayn, binary = " $year $mo $day1 $dayn $binary >> $locallog
-echo ObsBase = $ObsBase                                              >> $locallog
+echo "year, mo, day1, dayn, binary = " $year $mo $day1 $dayn $binary >> create_obs_seq.log
+echo ObsBase = $ObsBase                                              >> create_obs_seq.log
 
 ./create_real_obs
 
@@ -97,14 +95,15 @@ while ($n <= $dayn)
             # and rounded to be 1 bit in the least significant digit larger
             # than 90.000 in degrees, which causes errors in the location module.
             # drop these values just slightly so they read in as 90/-90 exactly.
-            echo " fixing $obs pole locations"                     >> $locallog
+            echo " fixing $obs pole locations"                     >> create_obs_seq.log
             sed -e 's/ 1.57079632679490/ 1.57079632679488/' \
                 -e 's/-1.57079632679490/-1.57079632679488/' $obs   >! fixed_pole${n}
          else
             exit
          endif
-         mv fixed_pole${n} $obs
+         mv -f fixed_pole${n} $obs
       endif
+      mv $obs $Obs_base:h &
    end
    @ n++
 end
