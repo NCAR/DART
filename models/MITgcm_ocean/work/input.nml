@@ -107,7 +107,8 @@
 
 # model specific namelist info
 
- &model_nml
+&model_nml
+   model_perturbation_amplitude  = 0.2, 
      output_state_vector = .false. /
 
 

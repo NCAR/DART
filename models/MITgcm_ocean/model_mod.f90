@@ -29,6 +29,9 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MS
                              find_namelist_in_file, check_namelist_read
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COMPONENT, &
                              KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT
+use mpi_utilities_mod, only: my_task_id
+use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
+
 
 implicit none
 private
@@ -68,11 +71,15 @@ character(len=128), parameter :: &
    revdate  = "$Date: 2007-04-03 16:44:36 -0600 (Tue, 03 Apr 2007) $"
 
 character(len=129) :: msgstring
-logical,save :: module_initialized = .false.
+logical, save :: module_initialized = .false.
+
+! Storage for a random sequence for perturbing a single initial state
+type(random_seq_type) :: random_seq
 
 
 !! FIXME: This is horrid ... 'reclen' is machine-dependent.
 !! IBM XLF -- item_size_direct_access == 4,8
+!! gfortran -- item_size_direct_access == 4
 !! IFORT   -- item_size_direct_access == 1   (number of 32bit words)
 integer, parameter :: item_size_direct_access = 1
 
@@ -260,8 +267,9 @@ integer :: model_size    ! the state vector length
 ! Skeleton of a model_nml that would be in input.nml
 ! This is where dart-related model parms could be set.
 logical  :: output_state_vector = .true.
+real(r8) :: model_perturbation_amplitude = 0.2
 
-namelist /model_nml/ output_state_vector 
+namelist /model_nml/ output_state_vector, model_perturbation_amplitude
 
 ! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
 type MIT_meta_type
@@ -1078,7 +1086,7 @@ integer :: var_num, offset, lon_index, lat_index, depth_index
 
 if ( .not. module_initialized ) call static_init_model
 
-print *, 'asking for meta data about index ', index_in
+!print *, 'asking for meta data about index ', index_in
 
 if (index_in < start_index(S_index+1)) then
    if (present(var_type)) var_type = KIND_SALINITY  
@@ -1671,10 +1679,29 @@ real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
+integer :: i
+logical, save :: random_seq_init = .false.
+
 if ( .not. module_initialized ) call static_init_model
 
-interf_provided = .false.
-pert_state(1) = state(1)
+interf_provided = .true.
+
+!write(*, *) 'in pert_model_state'
+
+! Initialize my random number sequence
+if(.not. random_seq_init) then
+   call init_random_seq(random_seq, my_task_id())
+   random_seq_init = .true.
+endif
+
+! only perturb the non-zero values.  0 is a flag for missing
+! ocean cells (e.g. land or under the sea floor)
+do i=1,size(state)
+   if (state(i) /= 0.0_r8) &
+      pert_state(i) = random_gaussian(random_seq, state(i), &
+                                      model_perturbation_amplitude)
+enddo
+
 
 end subroutine pert_model_state
 
