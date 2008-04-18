@@ -1335,8 +1335,11 @@ else
       ! reject the observation.
 
    elseif(vert_is_undef(location)) then
-      zloc  = missing_r8
-      if(debug) print*,' obs height is undefined -- ignoring observation is imminent'
+      ! the zloc value should not be used since there is no actual vertical
+      ! location for this observation, but give zloc a valid value to avoid
+      ! the error checks below for missing_r8
+      zloc  = 0.0_r8
+      if(debug) print*,' obs height is intentionally undefined'
 
    else
       write(errstring,*) 'wrong option for which_vert ', &
@@ -1347,8 +1350,7 @@ else
    endif
 
 
-   ! Deal with undefined / missing vertical coordinates -- return with istatus .ne. 0
-   !   NOTE: observations with vert_is_undef == .true. will be ignored!
+   ! Deal with missing vertical coordinates -- return with istatus .ne. 0
    if(zloc == missing_r8) then
       obs_val = missing_r8
       istatus = 1
@@ -2465,7 +2467,7 @@ else
    ! 2. Vertical Interpolation 
    !----------------------------------
 
-   ! Do vertical interpolation -- only for non-surface, non-indetity obs.  
+   ! Do vertical interpolation -- only for non-surface, non-identity obs.  
 
    ! The previous section (1. Horizontal Interpolation) has produced a variable called
    !   "fld", which nominally has two entries in it.  3D fields have hopefully produced
@@ -2482,8 +2484,9 @@ else
    ! We purposefully changed fld(1), so continue onward
    else
 
-      ! If a surface variable, then no need to do any vertical interpolation
-      if ( surf_var ) then 
+      ! If a surface variable, or a variable with no particular vertical location
+      ! (basically the entire column) then no need to do any vertical interpolation
+      if ( surf_var .or. vert_is_undef(location) ) then 
 
          obs_val = fld(1)
 
@@ -2584,7 +2587,7 @@ real(r8)            :: presa, presb
 real(r8)            :: hgt1, hgt2, hgt3, hgt4, hgta, hgtb
 logical             :: lev0
 
-
+! assume success.
 istatus = 0
 
 ! first off, check if ob is identity ob
@@ -2592,6 +2595,10 @@ if (obs_kind < 0) then
    call get_state_meta_data(obs_kind,location)
    return
 endif
+
+! for observations/state vars without a specific defined vertical location,
+! return OK without altering location.
+if(vert_is_undef(location)) return
 
 xyz_loc = get_location(location)
 
@@ -2606,7 +2613,6 @@ if (id==0) then
    return
 endif
 
-allocate(v_h(0:wrf%dom(id)%bt), v_p(0:wrf%dom(id)%bt))
 
 ! get integer (west/south) grid point and distances to neighboring grid points
 ! distances are used as weights to carry out horizontal interpolations
@@ -2712,10 +2718,12 @@ elseif(vert_is_pressure(location)) then
    ! If obs is by pressure: get corresponding mass level zk,
    ! then get neighboring mass level indices
    ! and compute weights to zloc
+   allocate(v_p(0:wrf%dom(id)%bt))
    ! get model pressure profile
    call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
    ! get pressure vertical co-ordinate
    call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc,lev0)
+   deallocate(v_p)
    ! convert obs vert coordinate to desired coordinate type
    if (zloc==missing_r8) then
       zvert = missing_r8
@@ -2770,10 +2778,12 @@ elseif(vert_is_height(location)) then
    ! If obs is by height: get corresponding mass level zk,
    ! then get neighboring mass level indices
    ! and compute weights to zloc
+   allocate(v_h(0:wrf%dom(id)%bt))
    ! get model height profile
    call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
    ! get height vertical co-ordinate
    call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc,lev0)
+   deallocate(v_h)
    ! convert obs vert coordinate to desired coordinate type
    if (zloc==missing_r8) then
       zvert = missing_r8
@@ -2857,9 +2867,8 @@ elseif(vert_is_surface(location)) then
       !             dx*wrf%dom(id)%hgt(i+1,j+1) )
    endif
 
-elseif(vert_is_undef(location)) then
-   zloc  = missing_r8
-   zvert = missing_r8
+! original code had a test for undefined vertical here.  now tested for
+! and returned at start of routine.
 
 else
    write(errstring,*) 'Vertical coordinate not recognized: ',nint(query_location(location,'which_vert'))
@@ -2867,8 +2876,6 @@ else
         source, revision, revdate)
 
 endif
-
-deallocate(v_h, v_p)
 
 if(zvert == missing_r8) istatus = 1
 
