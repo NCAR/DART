@@ -25,7 +25,7 @@ use     location_mod, only : location_type,      get_close_maxdist_init, &
                              VERTISHEIGHT, get_location, vert_is_height, &
                              vert_is_level
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
-                             logfileunit, get_unit, nc_check, &
+                             logfileunit, get_unit, nc_check, do_output, &
                              find_namelist_in_file, check_namelist_read
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COMPONENT, &
                              KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT
@@ -78,9 +78,9 @@ type(random_seq_type) :: random_seq
 
 
 !! FIXME: This is horrid ... 'reclen' is machine-dependent.
-!! IBM XLF -- item_size_direct_access == 4,8
+!! IBM XLF  -- item_size_direct_access == 4,8
 !! gfortran -- item_size_direct_access == 4
-!! IFORT   -- item_size_direct_access == 1   (number of 32bit words)
+!! IFORT    -- item_size_direct_access == 1   (number of 32bit words)
 integer, parameter :: item_size_direct_access = 1
 
 !------------------------------------------------------------------
@@ -344,8 +344,8 @@ call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-write(logfileunit, nml=model_nml)
-write(     *     , nml=model_nml)
+if (do_output()) write(logfileunit, nml=model_nml)
+if (do_output()) write(     *     , nml=model_nml)
 
 ! MIT calendar information
 call find_namelist_in_file("data.cal", "CAL_NML", iunit)
@@ -362,8 +362,8 @@ else
    write(msgstring,*)"only have support for Gregorian"
    call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
 endif
-write(*,*)'model_mod:namelist cal_NML',startDate_1,startDate_2
-write(*,nml=CAL_NML)
+if (do_output()) write(*,*)'model_mod:namelist cal_NML',startDate_1,startDate_2
+if (do_output()) write(*,nml=CAL_NML)
 
 ! Time stepping parameters are in PARM03
 call find_namelist_in_file("data", "PARM03", iunit)
@@ -503,14 +503,14 @@ start_index(SSH_index) = start_index(V_index) + (Nx * Ny * Nz)
 !  e.g. S,T,U,V = 256 x 225 x 70
 !  e.g. SSH = 256 x 225
 
-write(logfileunit, *) 'Using grid size : '
-write(logfileunit, *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
-write(     *     , *) 'Using grid size : '
-write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
+if (do_output()) write(logfileunit, *) 'Using grid size : '
+if (do_output()) write(logfileunit, *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
+if (do_output()) write(     *     , *) 'Using grid size : '
+if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 !print *, ' 3d field size: ', n3dfields * (Nx * Ny * Nz)
 !print *, ' 2d field size: ', n2dfields * (Nx * Ny)
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
-!print *, 'model_size = ', model_size
+if (do_output()) write(*,*) 'model_size = ', model_size
 
 !print *, 'end of static init model'
 
@@ -630,6 +630,7 @@ integer        :: hstatus
 if ( .not. module_initialized ) call static_init_model
 
 ! Successful istatus is 0
+interp_val = 0.0_r8
 istatus = 0
 
 !print *, 'top of model interpolate'
@@ -865,6 +866,8 @@ if(masked) then
    istatus = 3
    return
 endif
+
+!print *, 'pa,b,c,d = ', pa, pb, pc, pd
 
 ! Finish bi-linear interpolation 
 ! First interpolate in longitude
@@ -1686,7 +1689,7 @@ if ( .not. module_initialized ) call static_init_model
 
 interf_provided = .true.
 
-!write(*, *) 'in pert_model_state'
+!if (do_output()) write(*, *) 'in pert_model_state'
 
 ! Initialize my random number sequence
 if(.not. random_seq_init) then
@@ -2047,8 +2050,8 @@ endif
 
 reclen = product(shape(x)) * item_size_direct_access
 
-write(logfileunit,*)'item_size is ',item_size_direct_access, ' reclen is ',reclen
-write(     *     ,*)'item_size is ',item_size_direct_access, ' reclen is ',reclen
+if (do_output()) write(logfileunit,*)'item_size is ',item_size_direct_access, ' reclen is ',reclen
+if (do_output()) write(     *     ,*)'item_size is ',item_size_direct_access, ' reclen is ',reclen
 
 ! Get next available unit number, read file.
 
@@ -2592,7 +2595,6 @@ enddo
 end subroutine vector_to_3d_prog_var
 
 
-
 function timestep_to_DARTtime(TimeStepIndex)
 !
 ! The MITtime is composed of an offset to a fixed time base.
@@ -2669,9 +2671,9 @@ integer         :: yy,mn,dd,hh,mm,ss
 
 if ( .not. module_initialized ) call static_init_model
 
-write(*,*)'DART2MIT ',startDate_1,startDate_2
+if (do_output()) write(*,*)'DART2MIT ',startDate_1,startDate_2
 
-call print_date(darttime,'DART2MIT dart model time')
+if (do_output()) call print_date(darttime,'DART2MIT dart model time')
 
 call get_date(darttime,yy,mn,dd,hh,mm,ss)
 
