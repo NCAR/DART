@@ -36,6 +36,7 @@
 #     -free    interpret source as free-format, regardless of file extension
 #     -r8      specify default real size ...
 #     -convert big_endian         useful if you're on the wrong architecture
+#     -assume  byterecl ... more 'industry-standard' direct-access behavior
 #
 # FFLAGS   useful for debugging
 #     -C       (partially) enable extensive runtime error checking

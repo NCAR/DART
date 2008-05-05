@@ -48,6 +48,10 @@
 #
 # NOTE: 'noieee' "... produces results that differ from the correctly rounded 
 #                     result by no more than 3 units in the last place."
+#                            
+# DIRECT ACCESS ... reclen ... should be in units of 'bytes'. 
+#                   If runtime environment parameter FTNOPT is set to "vaxio",
+#                   the units are number of words.
 #
 # If you add the -Mprof=func flag to get profiling information, you must
 # add it to both FFLAGS and LDFLAGS.

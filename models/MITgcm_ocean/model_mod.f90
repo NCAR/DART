@@ -77,11 +77,10 @@ logical, save :: module_initialized = .false.
 type(random_seq_type) :: random_seq
 
 
-!! FIXME: This is horrid ... 'reclen' is machine-dependent.
+!! FIXME: This is horrid ... 'reclen' is compiler-dependent.
 !! IBM XLF  -- item_size_direct_access == 4,8
-!! gfortran -- item_size_direct_access == 4
-!! IFORT    -- item_size_direct_access == 1   (number of 32bit words)
-integer, parameter :: item_size_direct_access = 1
+!! IFORT    -- needs compile switch "-assume byterecl"
+integer, parameter :: item_size_direct_access = 4
 
 !------------------------------------------------------------------
 !
