@@ -257,7 +257,7 @@ if(days_in >= huge(days_in) - time%days) then
 endif
 
 if(seconds >= huge(seconds) - time%seconds) then
-   write(errstring,*)'integer overflow (',seconds, time%seconds,') in days'
+   write(errstring,*)'integer overflow (',seconds, time%seconds,') in seconds'
    call error_handler(E_ERR,'increment_time',errstring,source,revision,revdate)
 endif
 
