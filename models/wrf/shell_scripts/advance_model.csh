@@ -23,7 +23,7 @@
 # It is then used in update_wrf_bc the calculate the deviation from the mean.
 # This deviation from the mean is then added at the end of the interval to
 # calculate new boundary tendencies. The magnitude of the perturbation added
-# at the end of the interval is controled by infl. The purpose is to increase
+# at the end of the interval is controlled by infl. The purpose is to increase
 # time correlation at the lateral boundaries.
 
 # Arguments are the process number of caller, the number of state copies
@@ -162,6 +162,10 @@ while($state_copy <= $num_states)
    endif
    
    # Find all BC's file available and sort them with "keys".
+   # NOTE: this needs a fix for the idealized wrf case in which there are no
+   # boundary files (also same for global wrf).  right now some of the
+   # commands below give errors, which are ok to ignore in the idealized case
+   # but it is not good form to generate spurious error messages.
    
    #--1st, check if LBCs are "specified" (in which case wrfbdy files are req'd)
    set SPEC_BC = `grep specified ${CENTRALDIR}/namelist.input | grep true | cat | wc -l`
@@ -363,6 +367,7 @@ EOF
          ${REMOVE} rsl.*
       endif
    
+      # run WRF here
       ${ADV_MOD_COMMAND} >>&! rsl.out.integration
       ${COPY} rsl.out.integration ${CENTRALDIR}/wrf.out_${targdays}_${targsecs}_${element}  
       sleep 1
@@ -370,18 +375,22 @@ EOF
       set SUCCESS = `grep "wrf: SUCCESS COMPLETE WRF" rsl.* | cat | wc -l`
       if ($SUCCESS == 0) then
          echo $element >>! ${CENTRALDIR}/blown_${targdays}_${targsecs}.out
+         echo "Model failure! Check file " ${CENTRALDIR}/blown_${targdays}_${targsecs}.out
+         echo "for a list of failed elements, and check here for the individual output files:"
+         echo " ${CENTRALDIR}/wrf.out_${targdays}_${targsecs}_elementnumber  "
+         exit -1
       endif
 
-   if ( -e ${CENTRALDIR}/extract ) then
-      if ( $element == 1 ) then
-         ls wrfout_d0${MY_NUM_DOMAINS}_* >! wrfout.list
-         if ( -e ${CENTRALDIR}/psfc.nc ) then
-            ${COPY} ${CENTRALDIR}/psfc.nc .
+      if ( -e ${CENTRALDIR}/extract ) then
+         if ( $element == 1 ) then
+            ls wrfout_d0${MY_NUM_DOMAINS}_* >! wrfout.list
+            if ( -e ${CENTRALDIR}/psfc.nc ) then
+               ${COPY} ${CENTRALDIR}/psfc.nc .
+            endif
+            echo `cat wrfout.list | wc -l` | ${CENTRALDIR}/extract
+            ${MOVE} psfc.nc ${CENTRALDIR}/.
          endif
-         echo `cat wrfout.list | wc -l` | ${CENTRALDIR}/extract
-         ${MOVE} psfc.nc ${CENTRALDIR}/.
       endif
-   endif
    
       set dn = 1
       while ( $dn <= $MY_NUM_DOMAINS )
