@@ -1,4 +1,15 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2007, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 module obs_def_altimeter_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! RADIOSONDE_SURFACE_ALTIMETER, KIND_SURFACE_PRESSURE
@@ -43,11 +54,11 @@ private
 
 public :: get_expected_altimeter, compute_altimeter
 
-! CVS Generated file description for error handling, do not edit
+! <next few lines under version control, do not edit>
 character(len=128) :: &
-source   = "$Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_altimeter_mod.f90,v $", &
-revision = "$Revision: 3093 $", &
-revdate  = "$Date: 2007-09-01 16:01:48 -0600 (Sat, 01 Sep 2007) $"
+source   = "$URL$", &
+revision = "$Revision$", &
+revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 

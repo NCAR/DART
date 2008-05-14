@@ -5,7 +5,7 @@
  
 program barot_obs_file
 
-! <next five lines automatically updated by CVS, do not edit>
+! <next few lines under version control, do not edit>
 ! $URL$
 ! $Id$
 ! $Revision$

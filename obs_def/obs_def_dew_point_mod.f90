@@ -5,12 +5,11 @@
 
 module obs_def_dew_point_mod
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_dew_point_mod.f90,v $
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name:  $
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! DEW_POINT_TEMPERATURE, KIND_DEW_POINT_TEMPERATURE
@@ -55,9 +54,9 @@ private
 
 public :: get_expected_dew_point
 
-! CVS Generated file description for error handling, do not edit
+! version controlled file description for error handling, do not edit
 character(len=128) :: &
-source   = "$Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_dew_point_mod.f90,v $", &
+source   = "$URL$", &
 revision = "$Revision$", &
 revdate  = "$Date$"
 
