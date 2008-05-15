@@ -25,18 +25,18 @@ module model_mod
   use types_mod,         only : r8
   use time_manager_mod,  only : time_type, set_time, print_time, set_calendar_type, GREGORIAN
   use utilities_mod,     only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
-								register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
-								logfileunit, do_output, nc_check
+                                register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
+                                logfileunit, do_output, nc_check
   use mpi_utilities_mod, only : my_task_id, task_count
   use location_mod,      only : location_type,      get_close_maxdist_init, &
                                 get_close_obs_init, get_close_obs, set_location, &
                                 get_location, vert_is_level, vert_is_pressure
   use obs_kind_mod,      only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT,  &
-							    KIND_SURFACE_PRESSURE, KIND_TEMPERATURE,       &
-							    KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE,         &
-							    KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE,       &
-							    ! We'll need to add a kind_cloud_fraction to correspond to AM2 prog var
-							    get_obs_kind_index, get_obs_kind_var_type
+                                KIND_SURFACE_PRESSURE, KIND_TEMPERATURE,       &
+                                KIND_SPECIFIC_HUMIDITY,                        &
+                                KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE,       &
+                                ! We'll need to add a kind_cloud_fraction to correspond to AM2 prog var
+                                get_obs_kind_index, get_obs_kind_var_type
   use location_mod,      only: VERTISSURFACE, VERTISLEVEL
 
   implicit none
@@ -81,11 +81,11 @@ module model_mod
     ! "Prognostic variables" 
     !   Surface pressure may be computed from pressure thickness (delp) on the fly
     !
-	real, pointer, dimension(:, :)       :: ps => null()
-	real, pointer, dimension(:, :, :)    :: u => null(), v => null(), T => null(), delp => null()
-	! Tracers; could generalize to 2D and 3D collections 
-	real, pointer, dimension(:, :, :, :) :: tracers => null()
-	real, pointer, dimension(:)          :: tracerTypes  => null() ! Dart obs type associated with each tracer
+    real, pointer, dimension(:, :)       :: ps => null()
+    real, pointer, dimension(:, :, :)    :: u => null(), v => null(), T => null(), delp => null()
+    ! Tracers; could generalize to 2D and 3D collections 
+    real, pointer, dimension(:, :, :, :) :: tracers => null()
+    real, pointer, dimension(:)          :: tracerTypes  => null() ! Dart obs type associated with each tracer
   end type model_type
   
   !----------------------------------------------------------------------
@@ -142,11 +142,11 @@ module model_mod
   !
   integer, parameter :: num_3d_prog_vars = 3, num_2d_prog_vars = 1
   character(len = 1), dimension(num_3d_prog_vars), parameter :: &
-		 names_3d_prog_vars = (/ "U", "V", "T" /)
+         names_3d_prog_vars = (/ "U", "V", "T" /)
   character(len = 2), dimension(num_2d_prog_vars), parameter :: &
-		 names_2d_prog_vars = (/ "PS" /)
+         names_2d_prog_vars = (/ "PS" /)
   integer, dimension(num_3d_prog_vars),            parameter :: &
-		 kinds_3d_prog_vars = (/ KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_TEMPERATURE /)
+         kinds_3d_prog_vars = (/ KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_TEMPERATURE /)
   integer, dimension(num_2d_prog_vars),            parameter ::  &
          kinds_2d_prog_vars = (/ KIND_SURFACE_PRESSURE /)
    
@@ -173,9 +173,9 @@ module model_mod
   character(len=128) :: version = "$Revision$"
   character(len=128) :: tag = "$Id: model_mod.f90 3163 2007-12-07 20:39:48Z nancy $"
   character(len=128), parameter :: &
-	 source   = "$URL$", &
-	 revision = "$Revision$", &
-	 revdate  = "$Date: 2007-12-07 15:39:48 -0500 (Fri, 07 Dec 2007) $"
+     source   = "$URL$", &
+     revision = "$Revision$", &
+     revdate  = "$Date: 2007-12-07 15:39:48 -0500 (Fri, 07 Dec 2007) $"
   !-----------------------------------------------------------------------
 
 contains
@@ -252,17 +252,17 @@ contains
     !
     allocate(surface_geopotential(num_lons, num_lats), ak(num_levels + 1), bk(num_levels + 1), &
              akmid(num_levels), bkmid(num_levels))
-	
-	call nc_check(nf90_inq_varid(ncfileid, 'ak', ncvarid), 'static_init_model', 'looking for varid of ak')
-	call nc_check(nf90_get_var(ncfileid, ncvarid, ak),     'static_init_model', 'reading ak')
-	
-	call nc_check(nf90_inq_varid(ncfileid, 'bk', ncvarid), 'static_init_model', 'looking for varid of bk')
-	call nc_check(nf90_get_var(ncfileid, ncvarid, bk),     'static_init_model', 'reading bk')
-	
-	call nc_check(nf90_inq_varid(ncfileid,  'Surface_geopotential', ncvarid), &
-				 'static_init_model', 'looking for varid of Surface_geopotential')
-	call nc_check(nf90_get_var(ncfileid, ncvarid, surface_geopotential), &
-				 'static_init_model', 'reading Surface_geopotential')
+    
+    call nc_check(nf90_inq_varid(ncfileid, 'ak', ncvarid), 'static_init_model', 'looking for varid of ak')
+    call nc_check(nf90_get_var(ncfileid, ncvarid, ak),     'static_init_model', 'reading ak')
+    
+    call nc_check(nf90_inq_varid(ncfileid, 'bk', ncvarid), 'static_init_model', 'looking for varid of bk')
+    call nc_check(nf90_get_var(ncfileid, ncvarid, bk),     'static_init_model', 'reading bk')
+    
+    call nc_check(nf90_inq_varid(ncfileid,  'Surface_geopotential', ncvarid), &
+                 'static_init_model', 'looking for varid of Surface_geopotential')
+    call nc_check(nf90_get_var(ncfileid, ncvarid, surface_geopotential), &
+                 'static_init_model', 'reading Surface_geopotential')
 
     !
     ! Compute akmid, bkmid for computing pressure at layers
@@ -275,16 +275,19 @@ contains
     !   has a corresponding file to read the tracer from
     !
     num_tracers = count(len_trim(tracer_names) > 0)
-	if(count(len_trim(tracer_files) > 0) /= num_tracers) &
-	  call error_handler(E_ERR, 'static_model_init', "Different number of model tracer names, tracer files provided", source, revision, revdate)
-	if(count(len_trim(tracer_obs_kind_names) > 0) /= num_tracers) &
-	  call error_handler(E_ERR, 'static_model_init', "Different number of model tracer names, tracer kinds provided", source, revision, revdate)    
+    if(count(len_trim(tracer_files) > 0) /= num_tracers) &
+      call error_handler(E_ERR, 'static_model_init', &
+           "Different number of model tracer names, tracer files provided", source, revision, revdate)
+    if(count(len_trim(tracer_obs_kind_names) > 0) /= num_tracers) &
+      call error_handler(E_ERR, 'static_model_init', &
+           "Different number of model tracer names, tracer kinds provided", source, revision, revdate)    
     do i = 1, num_tracers
       index = get_obs_kind_index(tracer_obs_kind_names(i))
       if(index > 0) then
         tracer_obs_kinds(i) = get_obs_kind_var_type(index)
       else
-	    call error_handler(E_ERR, 'static_model_init', "Tracer type " // trim(tracer_obs_kind_names(i)) // " unknown" , source, revision, revdate)    
+        call error_handler(E_ERR, 'static_model_init', &
+           "Tracer type " // trim(tracer_obs_kind_names(i)) // " unknown" , source, revision, revdate)    
       end if 
     end do 
 
@@ -305,13 +308,13 @@ contains
   ! ----------------------------------------------------------------------------
 
   subroutine get_state_meta_data(index_in, location, var_type)
-	integer,             intent(in)  :: index_in
-	type(location_type), intent(out) :: location
-	integer,             intent(out), optional :: var_type
-	!------------------------------------------------------------------
-	!
-	! Given an integer index into the state vector structure, returns the
-	! associated location and DART observation kind
+    integer,             intent(in)  :: index_in
+    type(location_type), intent(out) :: location
+    integer,             intent(out), optional :: var_type
+    !------------------------------------------------------------------
+    !
+    ! Given an integer index into the state vector structure, returns the
+    ! associated location and DART observation kind
   
     integer  :: i, start, finish, field_number, local_type, &
                 local_index, lat_index, lon_index, level_index, &
@@ -329,31 +332,39 @@ contains
     !
     do i = 1, num_2d_prog_vars
       finish = start + (num_lons * num_lats) - 1
+      if(index_in >= start .and. index_in <= finish) then
+         field_number = i
+         local_type = kinds_2d_prog_vars(i)
+         local_index = index_in - start + 1
+         exit
+      end if
+      start = finish + 1
+    end do
 
     if(field_number <= 0) then 
-	  do i = 1, num_3d_prog_vars
-		finish = start + (num_levels * num_lons * num_lats) - 1
-		if(index_in >= start .and. index_in <= finish) then 
-		  field_number = num_2d_prog_vars + i
+      do i = 1, num_3d_prog_vars
+        finish = start + (num_levels * num_lons * num_lats) - 1
+        if(index_in >= start .and. index_in <= finish) then 
+          field_number = num_2d_prog_vars + i
           local_type = kinds_3d_prog_vars(i)
-		  local_index = index_in - start + 1
-		  exit 
-		end if 
-		start = finish + 1
-	  end do 
+          local_index = index_in - start + 1
+          exit 
+        end if 
+        start = finish + 1
+      end do 
     end if 
 
     if(field_number <= 0) then 
-	  do i = 1, num_tracers
-		finish = start + (num_levels * num_lons * num_lats) - 1
-		if(index_in >= start .and. index_in <= finish) then 
-		  field_number = num_2d_prog_vars + num_3d_prog_vars + i
+      do i = 1, num_tracers
+        finish = start + (num_levels * num_lons * num_lats) - 1
+        if(index_in >= start .and. index_in <= finish) then 
+          field_number = num_2d_prog_vars + num_3d_prog_vars + i
           local_type = tracer_obs_kinds(i)
-		  local_index = index_in - start + 1
-		  exit 
-		end if 
-		start = finish + 1
-	  end do 
+          local_index = index_in - start + 1
+          exit 
+        end if 
+        start = finish + 1
+      end do 
     end if 
 
     ! Should we check here to ensure we've found a match?
@@ -363,10 +374,10 @@ contains
     !   (or lon, lat for 2D fields)
     !
     if(field_number <= num_2d_prog_vars) then 
-	  lat_index = (local_index-1)/num_lons + 1
-	  lon_index = mod(local_index-1, num_lons) + 1
-	  level_index = 0
-	  which_vert = VERTISSURFACE
+      lat_index = (local_index-1)/num_lons + 1
+      lon_index = mod(local_index-1, num_lons) + 1
+      level_index = 0
+      which_vert = VERTISSURFACE
     else
       lat_index = (local_index-1)/(num_lons * num_levels) + 1
       local_index = mod(local_index-1, num_lons * num_levels) + 1
@@ -374,10 +385,10 @@ contains
       level_index = mod(local_index-1, num_levels) + 1
       which_vert = VERTISLEVEL
     end if 
-	if(lat_index < 0 .or. lat_index > num_lats) &
-	  call error_handler(E_ERR,'get_state_meta_data', "Lat calculation out of bounds", source, revision, revdate)
-	if(lon_index < 0 .or. lon_index > num_lons) &
-	  call error_handler(E_ERR,'get_state_meta_data', "Lon calculation out of bounds", source, revision, revdate)
+    if(lat_index < 0 .or. lat_index > num_lats) &
+      call error_handler(E_ERR,'get_state_meta_data', "Lat calculation out of bounds", source, revision, revdate)
+    if(lon_index < 0 .or. lon_index > num_lons) &
+      call error_handler(E_ERR,'get_state_meta_data', "Lon calculation out of bounds", source, revision, revdate)
     !
     ! Convert indexes to lat, lon, level values
     !
@@ -391,167 +402,167 @@ contains
   ! ----------------------------------------------------------------------------
 
   function nc_write_model_atts( ncFileID ) result (ierr)
-	! Writes model-specific attributes to a netCDF file.
-	! TJH Fri Aug 29 MDT 2003
-	! Modified for AM2 by Robert Pincus, Dec. 2007
-	!
-	integer, intent(in)  :: ncFileID      ! netCDF file identifier
-	integer              :: ierr          ! return value of function
-	!-----------------------------------------------------------------------------------------
-	integer :: unlimitedDimID
-	integer :: MemberDimID, StateVarDimID, TimeDimID, & ! ScalarDimID, &
-	           LatDimId, LatuDimId, LonDimId, LonvDimId, pfullDimId, phalfDimId
-	integer :: StateVarID, StateVarVarID 
-	integer :: configFileId, configVarId, diagVarId, dim
-	integer :: i, tracer, trcrFileId
-	character(len=129)    :: errstring 
-	character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
-	character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
-	character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
-	integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
-	character(len=NF90_MAX_NAME) :: str1
-	!-------------------------------------------------------------------------------
-	
-	ierr = -1     ! assume it's not going to work 
-	
+    ! Writes model-specific attributes to a netCDF file.
+    ! TJH Fri Aug 29 MDT 2003
+    ! Modified for AM2 by Robert Pincus, Dec. 2007
     !
-	! Make sure ncFileID refers to an open netCDF file, and then put into define mode.
-	!    More dimensions, variables and attributes will be added in this routine.
-	!
-	write(errstring,'(I4)') ncFileID
-	call nc_check(nf90_Inquire(ncFileID, unlimitedDimID = unlimitedDimID), &
-				  'nc_write_model_atts', 'Inquire '// trim(errstring))
-	call nc_check(nf90_Redef(ncFileID), 'nc_write_model_atts', 'Redef '// trim(errstring))
-	
+    integer, intent(in)  :: ncFileID      ! netCDF file identifier
+    integer              :: ierr          ! return value of function
+    !-----------------------------------------------------------------------------------------
+    integer :: unlimitedDimID
+    integer :: MemberDimID, StateVarDimID, TimeDimID, & ! ScalarDimID, &
+               LatDimId, LatuDimId, LonDimId, LonvDimId, pfullDimId, phalfDimId
+    integer :: StateVarID, StateVarVarID 
+    integer :: configFileId, configVarId, diagVarId, dim
+    integer :: i, tracer, trcrFileId
+    character(len=129)    :: errstring 
+    character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
+    character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
+    character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
+    integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
+    character(len=NF90_MAX_NAME) :: str1
+    !-------------------------------------------------------------------------------
+    
+    ierr = -1     ! assume it's not going to work 
+    
     !
-	! Write DART rev info and current date & time as global attributes
-	!
-	call DATE_AND_TIME(crdate,crtime,crzone,values)
-	write(str1,'("YYYY MM DD HH MM SS = ",i4, 5(1x,i2.2))') &
-					  values(1), values(2), values(3), values(5), values(6), values(7)
-	
-	call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1),        &
-				  'nc_write_model_atts', 'put_att creation_date'//trim(str1))
-	call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision),   &
-				  'nc_write_model_atts', 'put_att model_revision'//trim(revision))
-	call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate),     &
-				  'nc_write_model_atts', 'put_att model_revdate'//trim(revdate))
-	call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","AM2"),               &
-				  'nc_write_model_atts','put_att model AM2')
-	
-	!
-	! Dimension ids for existing dimensions so we can define variables properly
-	!
-	call nc_check(nf90_inq_dimid(ncid = ncFileID, name = "copy", dimid = MemberDimID), &
-				  'nc_write_model_atts', 'inq_dimid copy')
-	call nc_check(nf90_inq_dimid(ncid = ncFileID, name = "time", dimid =   TimeDimID), &
-				  'nc_write_model_atts', 'inq_dimid time')
-	if ( TimeDimID /= unlimitedDimId ) then
-	  write(errstring, *)'Time dimension ID ', TimeDimID, 'must match Unlimited Dimension ID ', unlimitedDimId
-	  call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
-	end if
-	
+    ! Make sure ncFileID refers to an open netCDF file, and then put into define mode.
+    !    More dimensions, variables and attributes will be added in this routine.
     !
-	! Define the new dimensions IDs
-	!
-				  
-	if ( output_state_vector ) then
-	  !
-	  ! Create a dimension that corresponds to the length of the state vector
-	  !
-	  call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable",  &
-							  len=model_size, dimid = StateVarDimID),  &
-					'nc_write_model_atts', 'def_dim StateVariable')
-	  !
-	  ! Define the state vector coordinate variable and its attributes
-	  ! 
-	  call nc_check(nf90_def_var(ncid=ncFileID, name="StateVariable", xtype=nf90_int,          &
-				 dimids=StateVarDimID, varid=StateVarVarID),                                   &
-					'nc_write_model_atts','def_var  state vector')
-	  call nc_check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"),   &
-					'nc_write_model_atts','put_att long_name state vector ')
-	  call nc_check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical"),           &
-					'nc_write_model_atts','put_att units state vector ' )
-	  call nc_check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)), &
-					'nc_write_model_atts','put_att valid range state vector ')
-	else
-	  !
-	  ! We'll copy the dimension definitions (including all the attributes) for the num_dims
-	  !   dimensions we're using from the config file into the diagnostics file. 
-	  ! Variable dim_names holds the dimension names
-	  ! We could also do this by looping over all the dimensions in the config file, skipping time
-	  !
-	  call nc_check(nf90_open(path = trim(model_config_file), mode = nf90_nowrite, ncid = configFileId), &
-				   'nc_write_model_atts', 'opening '// trim(model_config_file) ) 
-	  do dim = 1, num_dims
-	    call copy_dim_var_pair(ncFileId, trim(dim_names(dim)), dim_lens(dim), configFileId, 'nc_write_model_atts')
+    write(errstring,'(I4)') ncFileID
+    call nc_check(nf90_Inquire(ncFileID, unlimitedDimID = unlimitedDimID), &
+                  'nc_write_model_atts', 'Inquire '// trim(errstring))
+    call nc_check(nf90_Redef(ncFileID), 'nc_write_model_atts', 'Redef '// trim(errstring))
+    
+    !
+    ! Write DART rev info and current date & time as global attributes
+    !
+    call DATE_AND_TIME(crdate,crtime,crzone,values)
+    write(str1,'("YYYY MM DD HH MM SS = ",i4, 5(1x,i2.2))') &
+                      values(1), values(2), values(3), values(5), values(6), values(7)
+    
+    call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1),        &
+                  'nc_write_model_atts', 'put_att creation_date'//trim(str1))
+    call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision),   &
+                  'nc_write_model_atts', 'put_att model_revision'//trim(revision))
+    call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate),     &
+                  'nc_write_model_atts', 'put_att model_revdate'//trim(revdate))
+    call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","AM2"),               &
+                  'nc_write_model_atts','put_att model AM2')
+    
+    !
+    ! Dimension ids for existing dimensions so we can define variables properly
+    !
+    call nc_check(nf90_inq_dimid(ncid = ncFileID, name = "copy", dimid = MemberDimID), &
+                  'nc_write_model_atts', 'inq_dimid copy')
+    call nc_check(nf90_inq_dimid(ncid = ncFileID, name = "time", dimid =   TimeDimID), &
+                  'nc_write_model_atts', 'inq_dimid time')
+    if ( TimeDimID /= unlimitedDimId ) then
+      write(errstring, *)'Time dimension ID ', TimeDimID, 'must match Unlimited Dimension ID ', unlimitedDimId
+      call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
+    end if
+    
+    !
+    ! Define the new dimensions IDs
+    !
+                  
+    if ( output_state_vector ) then
+      !
+      ! Create a dimension that corresponds to the length of the state vector
+      !
+      call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable",  &
+                              len=model_size, dimid = StateVarDimID),  &
+                    'nc_write_model_atts', 'def_dim StateVariable')
+      !
+      ! Define the state vector coordinate variable and its attributes
+      ! 
+      call nc_check(nf90_def_var(ncid=ncFileID, name="StateVariable", xtype=nf90_int,          &
+                 dimids=StateVarDimID, varid=StateVarVarID),                                   &
+                    'nc_write_model_atts','def_var  state vector')
+      call nc_check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"),   &
+                    'nc_write_model_atts','put_att long_name state vector ')
+      call nc_check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical"),           &
+                    'nc_write_model_atts','put_att units state vector ' )
+      call nc_check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)), &
+                    'nc_write_model_atts','put_att valid range state vector ')
+    else
+      !
+      ! We'll copy the dimension definitions (including all the attributes) for the num_dims
+      !   dimensions we're using from the config file into the diagnostics file. 
+      ! Variable dim_names holds the dimension names
+      ! We could also do this by looping over all the dimensions in the config file, skipping time
+      !
+      call nc_check(nf90_open(path = trim(model_config_file), mode = nf90_nowrite, ncid = configFileId), &
+                   'nc_write_model_atts', 'opening '// trim(model_config_file) ) 
+      do dim = 1, num_dims
+        call copy_dim_var_pair(ncFileId, trim(dim_names(dim)), dim_lens(dim), configFileId, 'nc_write_model_atts')
       end do
-	end if
-	
+    end if
+    
     !
     ! Create the variables and their attributes
-	!
-	if ( output_state_vector ) then
-	  !
-	  ! Define the state vector and its attributes
-	  !
-	  call nc_check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real,                 &
-				 dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), varid=StateVarID), &
-					'nc_write_model_atts','def_var state vector')
-	  call nc_check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"),   &
-					'nc_write_model_atts','put_att long_name model state or fcopy ')
-	  call nc_check(nf90_put_att(ncFileID, StateVarId, "vector_to_prog_var","AM2"),            &
-					'nc_write_model_atts','put_att vector_to_prog_var AM2 ')
-	else
-	  !
-	  ! We'll need all the dimension ids except phalf
-	  !
-	  call nc_check(nf90_inq_dimid(ncFileId, 'lon',   LonDimId),   'nc_write_model_atts', 'finding dimid for lon')
-	  call nc_check(nf90_inq_dimid(ncFileId, 'lonv',  LonvDimId),  'nc_write_model_atts', 'finding dimid for lonv')
-	  call nc_check(nf90_inq_dimid(ncFileId, 'lat',   LatDimId),   'nc_write_model_atts', 'finding dimid for lat')
-	  call nc_check(nf90_inq_dimid(ncFileId, 'latu',  LatuDimId),  'nc_write_model_atts', 'finding dimid for latu')
-	  call nc_check(nf90_inq_dimid(ncFileId, 'pfull', pfullDimId), 'nc_write_model_atts', 'finding dimid for pfull')
-	  
-	  !
-	  ! We'l write out surface pressure regardless of whether the model is using delp or ps internally
-	  !    Then there are three more prognostic variables (u, v, t) and tracers
-	  !    Coordinate order in the diagnostic file is [lev], lon, lat, copy, time
-	  !
-	  ! -------------------
-	  !
-	  ! Surface pressure - copy units from delp field, write long name, and ignore any other attributes
-	  !
-	  call nc_check(nf90_def_var(ncFileID, "PS", nf90_real,              &
-					(/ lonDimId, latDimId, MemberDimID, TimeDimId /),  diagVarId), &
-					'nc_write_model_atts','def_var PS')
-	  call nc_check(nf90_inq_varid(configFileId, "DELP", configVarId),  &
-					'nc_write_model_atts', 'getting varid from config file for DELP' )
-	  call nc_check(nf90_copy_att(configFileId, configVarId, "units", ncFileId, diagVarId),  &
-					'nc_write_model_atts', 'copying units attribute for DELP')
-	  call nc_check(nf90_put_att(ncFileId, diagVarId, "long_name", "Surface pressure"),  &
-					'nc_write_model_atts', 'writing long_name attribute for DELP' )
-	  ! -------------------
-	  !
-	  ! The other prognostic variables (T, U, V) 
-	  !
-	  call define_3d_real_var(ncFileId, configFileId, &
-							  "U", (/ pfullDimId, lonDimId, latuDimId, MemberDimID, TimeDimId /), &
-							  'nc_write_model_atts')
-	  call define_3d_real_var(ncFileId, configFileId, &
-							  "V", (/ pfullDimId, lonvDimId, latDimId, MemberDimID, TimeDimId /), &
-							  'nc_write_model_atts')
-	  call define_3d_real_var(ncFileId, configFileId, &
-							  "T", (/ pfullDimId, lonDimId,  latDimId, MemberDimID, TimeDimId /), &
-							  'nc_write_model_atts')
+    !
+    if ( output_state_vector ) then
+      !
+      ! Define the state vector and its attributes
+      !
+      call nc_check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real,                 &
+                 dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), varid=StateVarID), &
+                    'nc_write_model_atts','def_var state vector')
+      call nc_check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"),   &
+                    'nc_write_model_atts','put_att long_name model state or fcopy ')
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "vector_to_prog_var","AM2"),            &
+                    'nc_write_model_atts','put_att vector_to_prog_var AM2 ')
+    else
+      !
+      ! We'll need all the dimension ids except phalf
+      !
+      call nc_check(nf90_inq_dimid(ncFileId, 'lon',   LonDimId),   'nc_write_model_atts', 'finding dimid for lon')
+      call nc_check(nf90_inq_dimid(ncFileId, 'lonv',  LonvDimId),  'nc_write_model_atts', 'finding dimid for lonv')
+      call nc_check(nf90_inq_dimid(ncFileId, 'lat',   LatDimId),   'nc_write_model_atts', 'finding dimid for lat')
+      call nc_check(nf90_inq_dimid(ncFileId, 'latu',  LatuDimId),  'nc_write_model_atts', 'finding dimid for latu')
+      call nc_check(nf90_inq_dimid(ncFileId, 'pfull', pfullDimId), 'nc_write_model_atts', 'finding dimid for pfull')
+      
+      !
+      ! We'l write out surface pressure regardless of whether the model is using delp or ps internally
+      !    Then there are three more prognostic variables (u, v, t) and tracers
+      !    Coordinate order in the diagnostic file is [lev], lon, lat, copy, time
+      !
+      ! -------------------
+      !
+      ! Surface pressure - copy units from delp field, write long name, and ignore any other attributes
+      !
+      call nc_check(nf90_def_var(ncFileID, "PS", nf90_real,              &
+                    (/ lonDimId, latDimId, MemberDimID, TimeDimId /),  diagVarId), &
+                    'nc_write_model_atts','def_var PS')
+      call nc_check(nf90_inq_varid(configFileId, "DELP", configVarId),  &
+                    'nc_write_model_atts', 'getting varid from config file for DELP' )
+      call nc_check(nf90_copy_att(configFileId, configVarId, "units", ncFileId, diagVarId),  &
+                    'nc_write_model_atts', 'copying units attribute for DELP')
+      call nc_check(nf90_put_att(ncFileId, diagVarId, "long_name", "Surface pressure"),  &
+                    'nc_write_model_atts', 'writing long_name attribute for DELP' )
+      ! -------------------
+      !
+      ! The other prognostic variables (T, U, V) 
+      !
+      call define_3d_real_var(ncFileId, configFileId, &
+                              "U", (/ pfullDimId, lonDimId, latuDimId, MemberDimID, TimeDimId /), &
+                              'nc_write_model_atts')
+      call define_3d_real_var(ncFileId, configFileId, &
+                              "V", (/ pfullDimId, lonvDimId, latDimId, MemberDimID, TimeDimId /), &
+                              'nc_write_model_atts')
+      call define_3d_real_var(ncFileId, configFileId, &
+                              "T", (/ pfullDimId, lonDimId,  latDimId, MemberDimID, TimeDimId /), &
+                              'nc_write_model_atts')
 
           call nc_check(nf90_close(configFileId), &
-				   'nc_write_model_atts', 'closing '// trim(model_config_file))
-	  ! -------------------
-	  !
-	  ! Tracers, which we assume are all defined on levels (not interfaces) and 
-	  !   on the regular (not staggered) grid
-	  !
-	  do tracer = 1, num_tracers
+                   'nc_write_model_atts', 'closing '// trim(model_config_file))
+      ! -------------------
+      !
+      ! Tracers, which we assume are all defined on levels (not interfaces) and 
+      !   on the regular (not staggered) grid
+      !
+      do tracer = 1, num_tracers
              call nc_check(nf90_open(path = trim(tracer_config_files(tracer)), mode = nf90_nowrite, &
                   ncid = trcrFileId),'nc_write_model_atts', 'opening '// trim(tracer_config_files(tracer)))
 
@@ -560,48 +571,48 @@ contains
 
              call nc_check(nf90_close(trcrFileId),'nc_write_model_atts', &
                   'closing' // trim(tracer_config_files(tracer)))                
-	  end do 
-	  ! -------------------
-	 
-	end if
-	
-	call nc_check(nf90_enddef(ncfileID), 'nc_write_model_atts','enddef ')
-	
+      end do 
+      ! -------------------
+     
+    end if
+    
+    call nc_check(nf90_enddef(ncfileID), 'nc_write_model_atts','enddef ')
+    
     !
-	! Fill the coordinate variables
+    ! Fill the coordinate variables
     !
     if ( output_state_vector ) then 
       ! Fill the state variable coordinate variable
-	  call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ), &
-					'nc_write_model_atts','put_var StateVar ')
-	else
+      call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ), &
+                    'nc_write_model_atts','put_var StateVar ')
+    else
       call write_1D_values(ncFileId, "pfull", pfull, 'nc_write_model_atts')
       call write_1D_values(ncFileId, "phalf", phalf, 'nc_write_model_atts')
       call write_1D_values(ncFileId, "lat",   lat,   'nc_write_model_atts')
       call write_1D_values(ncFileId, "latu",  latu,  'nc_write_model_atts')
       call write_1D_values(ncFileId, "lon",   lon,   'nc_write_model_atts')
       call write_1D_values(ncFileId, "lonv",  lonv,  'nc_write_model_atts')
-	end if
-	
+    end if
+    
     !
-	! Flush the buffer and leave netCDF file open
+    ! Flush the buffer and leave netCDF file open
     !
-	call nc_check(nf90_sync(ncFileID),'nc_write_model_atts', 'sync ')
-	write (*, *) 'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...' 
-	
-	ierr = 0
-	
+    call nc_check(nf90_sync(ncFileID),'nc_write_model_atts', 'sync ')
+    write (*, *) 'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...' 
+    
+    ierr = 0
+    
   end function nc_write_model_atts
 
   ! ----------------------------------------------------------------------------
 
   integer function nc_write_model_vars(ncFileID, statevec, copyindex, timeindex ) result (ierr)         
-	!
-	! Writes the state vector to a diagnostics netcdf file.
-	!
-	integer,                intent(in) :: ncFileID      ! netCDF file identifier
-	real(r8), dimension(:), intent(in) :: statevec
-	integer,                intent(in) :: copyindex, timeindex
+    !
+    ! Writes the state vector to a diagnostics netcdf file.
+    !
+    integer,                intent(in) :: ncFileID      ! netCDF file identifier
+    real(r8), dimension(:), intent(in) :: statevec
+    integer,                intent(in) :: copyindex, timeindex
   
     integer :: varId, start, finish, i
     !
@@ -616,47 +627,49 @@ contains
     allTrue(:, :, :) = .true. 
     ierr = -1 ! Assume the worst
     if ( output_state_vector ) then
-	   call nc_check(NF90_inq_varid(ncFileID, "state", varId), "nc_write_model_vars", "getting varid for state vector"  )
-	   call nc_check(NF90_put_var(ncFileID, varId, statevec,  start=(/ 1, copyindex, timeindex /)), &
-	              "nc_write_model_vars", "writing state vector")                   
+       call nc_check(NF90_inq_varid(ncFileID, "state", varId), "nc_write_model_vars", "getting varid for state vector"  )
+       call nc_check(NF90_put_var(ncFileID, varId, statevec,  start=(/ 1, copyindex, timeindex /)), &
+                  "nc_write_model_vars", "writing state vector")                   
     else
-	  !
-	  ! The unpacking code is copied from vector_to_prog_var 
-	  !
-	  ! 2D field - surface pressure
-	  !
-	  start = 1; finish = start + (num_lons * num_lats) - 1
-	  tempField(1, :, :) = unpack(statevec(start:finish), allTrue(1, :, :), field = 0._r8)
+      !
+      ! The unpacking code is copied from vector_to_prog_var 
+      !
+      ! 2D field - surface pressure
+      !
+      start = 1; finish = start + (num_lons * num_lats) - 1
+      tempField(1, :, :) = unpack(statevec(start:finish), allTrue(1, :, :), field = 0._r8)
       call nc_check(nf90_inq_varid(ncFileID, "PS", varID), "nc_write_model_vars", "Getting varid for PS")
       call nc_check(nf90_put_var(ncFileID, varID, tempField(1, :, :),start=(/ 1, 1, copyindex, &
 timeindex /)), "nc_write_model_vars", "Writing PS")
      
-	  !
-	  ! 3D fields - u, v, and T
-	  !   These were stored in dim order level, lon, lat in the state vector and need 
-	  !   to be mapped back to lon, lat, level
-	  !
-	  do i = 1, num_3d_prog_vars
-		start = finish + 1; finish = start + (num_levels * num_lons * num_lats) - 1
-		tempField(:, :, :) = unpack(statevec(start:finish), allTrue, field = 0._r8)
-        call nc_check(nf90_inq_varid(ncFileID, names_3d_prog_vars(i), varID), "nc_write_model_vars", "Getting varid for " // names_3d_prog_vars(i))
+      !
+      ! 3D fields - u, v, and T
+      !   These were stored in dim order level, lon, lat in the state vector and need 
+      !   to be mapped back to lon, lat, level
+      !
+      do i = 1, num_3d_prog_vars
+        start = finish + 1; finish = start + (num_levels * num_lons * num_lats) - 1
+        tempField(:, :, :) = unpack(statevec(start:finish), allTrue, field = 0._r8)
+        call nc_check(nf90_inq_varid(ncFileID, names_3d_prog_vars(i), varID), &
+            "nc_write_model_vars", "Getting varid for " // names_3d_prog_vars(i))
         call nc_check(nf90_put_var(ncFileID, varID, tempField,start=(/1,1,1,copyindex,timeindex/)), &
-"nc_write_model_vars", "Writing " // names_3d_prog_vars(i))
+            "nc_write_model_vars", "Writing " // names_3d_prog_vars(i))
       end do 
       
-	  !
-	  ! Tracers 
-	  !   These were stored in dim order level, lon, lat, tracer_num in the state vector and need 
-	  !   to be mapped back to lon, lat, level, tracer_num
-	  !
-	  do i = 1, num_tracers     
-		start = finish + 1; finish =  start + (num_levels * num_lons * num_lats ) - 1
-		tempField(:, :, :) = unpack(statevec(start:finish), allTrue, field = 0._r8)
-        call nc_check(nf90_inq_varid(ncFileID, tracer_names(i), varID), "nc_write_model_vars", "Getting varid for " // tracer_names(i))
+      !
+      ! Tracers 
+      !   These were stored in dim order level, lon, lat, tracer_num in the state vector and need 
+      !   to be mapped back to lon, lat, level, tracer_num
+      !
+      do i = 1, num_tracers     
+        start = finish + 1; finish =  start + (num_levels * num_lons * num_lats ) - 1
+        tempField(:, :, :) = unpack(statevec(start:finish), allTrue, field = 0._r8)
+        call nc_check(nf90_inq_varid(ncFileID, tracer_names(i), varID), "nc_write_model_vars", &
+             "Getting varid for " // tracer_names(i))
         call nc_check(nf90_put_var(ncFileID, varID, tempField,start=(/1,1,1,copyindex,timeindex/)), &
-"nc_write_model_vars", "Writing " // tracer_names(i))
-	  end do
-	end if 
+             "nc_write_model_vars", "Writing " // tracer_names(i))
+      end do
+    end if 
     ierr = 0
   end function nc_write_model_vars 
   
@@ -667,89 +680,89 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
   ! ----------------------------------------------------------------------------
 
   subroutine adv_1step(x, time)
-	real(r8),        intent(inout) :: x(:)
-	type(time_type), intent(in)    :: time
-	!
-	! Does a single timestep advance of the model. The input value of
-	! the vector x is the starting condition and x is updated to reflect
-	! the changed state after a timestep. The time argument is intent
-	! in and is used for models that need to know the date/time to 
-	! compute a timestep, for instance for radiation computations.
-	! This interface is only called if the namelist parameter
-	! async is set to 0 in perfect_model_obs of filter or if the 
-	! program integrate_model is to be used to advance the model
-	! state as a separate executable. If one of these options
-	! is not going to be used (the model will only be advanced as
-	! a separate model-specific executable), this can be a 
-	! NULL INTERFACE.
-	!
-	
+    real(r8),        intent(inout) :: x(:)
+    type(time_type), intent(in)    :: time
+    !
+    ! Does a single timestep advance of the model. The input value of
+    ! the vector x is the starting condition and x is updated to reflect
+    ! the changed state after a timestep. The time argument is intent
+    ! in and is used for models that need to know the date/time to 
+    ! compute a timestep, for instance for radiation computations.
+    ! This interface is only called if the namelist parameter
+    ! async is set to 0 in perfect_model_obs of filter or if the 
+    ! program integrate_model is to be used to advance the model
+    ! state as a separate executable. If one of these options
+    ! is not going to be used (the model will only be advanced as
+    ! a separate model-specific executable), this can be a 
+    ! NULL INTERFACE.
+    !
+    
   
   end subroutine adv_1step
 
   ! ----------------------------------------------------------------------------
 
   subroutine init_time(time)
-	type(time_type), intent(out) :: time
-	!
-	! Companion interface to init_conditions. Returns a time that is somehow 
-	! appropriate for starting up a long integration of the model.
-	! At present, this is only used if the namelist parameter 
-	! start_from_restart is set to .false. in the program perfect_model_obs.
-    !	
-	
-	! for now, just set to 0
-	time = set_time(0, 0)
-	
+    type(time_type), intent(out) :: time
+    !
+    ! Companion interface to init_conditions. Returns a time that is somehow 
+    ! appropriate for starting up a long integration of the model.
+    ! At present, this is only used if the namelist parameter 
+    ! start_from_restart is set to .false. in the program perfect_model_obs.
+    !    
+    
+    ! for now, just set to 0
+    time = set_time(0, 0)
+    
   end subroutine init_time
   
   ! ----------------------------------------------------------------------------
 
   subroutine init_conditions(x)
-	real(r8), intent(out) :: x(:)
-	!
-	! Returns a model state vector, x, that is some sort of appropriate
-	! initial condition for starting up a long integration of the model.
-	! At present, this is only used if the namelist parameter 
-	! start_from_restart is set to .false. in the program perfect_model_obs.
-	!
-	
+    real(r8), intent(out) :: x(:)
+    !
+    ! Returns a model state vector, x, that is some sort of appropriate
+    ! initial condition for starting up a long integration of the model.
+    ! At present, this is only used if the namelist parameter 
+    ! start_from_restart is set to .false. in the program perfect_model_obs.
+    !
+    
   end subroutine init_conditions
 
   ! ----------------------------------------------------------------------------
   
   subroutine model_interpolate(x, location, itype, obs_val, istatus)
-	real(r8),            intent(in) :: x(:)
-	type(location_type), intent(in) :: location
-	integer,             intent(in) :: itype
-	real(r8),           intent(out) :: obs_val
-	integer,            intent(out) :: istatus
-	!
-	! Given a state vector, a location, and a model state variable type,
-	! interpolates the state variable field to that location and returns
-	! the value in obs_val. The istatus variable should be returned as
-	! 0 unless there is some problem in computing the interpolation in
-	! which case an alternate value should be returned. The itype variable
-	! is a model specific integer that specifies the type of field (for
-	! instance temperature, zonal wind component, etc.). 
-	!
-	! As per CAM model_mod: 
-	!
-	! istatus   meaning                  return expected obs?   assimilate?
-	! 0         obs and model are fine;  yes                    yes
-	! 1         fatal problem;           no                     no
-	! 2         exclude valid obs        yes                    no
-	! 3         unfamiliar obs type      no                     no
-	
-	integer :: variableStart, lat_index, lon_index, height_index
-	integer :: i, j, k
-	real(kind = r8)                  :: lon_weight, lat_weight
-	real(kind = r8), dimension(3)    :: lon_lat_height
-	real(kind = r8), dimension(2, 2) :: cornerValues, psurf, weights ! Dimension order lon, lat
-	integer        , dimension(2, 2) :: cornerStarts
-	real(kind = r8), dimension(:), &
-	                  allocatable    :: theseLons, theseLats 
-	
+    real(r8),            intent(in) :: x(:)
+    type(location_type), intent(in) :: location
+    integer,             intent(in) :: itype
+    real(r8),           intent(out) :: obs_val
+    integer,            intent(out) :: istatus
+    !
+    ! Given a state vector, a location, and a model state variable type,
+    ! interpolates the state variable field to that location and returns
+    ! the value in obs_val. The istatus variable should be returned as
+    ! 0 unless there is some problem in computing the interpolation in
+    ! which case an alternate value should be returned. The itype variable
+    ! is a model specific integer that specifies the type of field (for
+    ! instance temperature, zonal wind component, etc.). 
+    !
+    ! As per CAM model_mod: 
+    !
+    ! istatus   meaning                  return expected obs?   assimilate?
+    ! 0         obs and model are fine;  yes                    yes
+    ! 1         fatal problem;           no                     no
+    ! 2         exclude valid obs        yes                    no
+    ! 3         unfamiliar obs type      no                     no
+    
+    integer :: variableStart, lat_index, lon_index, height_index
+    integer :: i, j, k
+    real(kind = r8)                  :: lon_weight, lat_weight
+    real(kind = r8), dimension(3)    :: lon_lat_height
+    real(kind = r8), dimension(2, 2) :: cornerValues, psurf, weights ! Dimension order lon, lat
+    integer        , dimension(2, 2) :: cornerStarts
+    real(kind = r8), dimension(:), &
+                      allocatable    :: theseLons, theseLats 
+    
     !
     ! Notes after talking to Jeff A
     !   We interpolate the KINDS we have: U, V, T, tracers, and PS; we also allow for surface height
@@ -820,12 +833,12 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
       ! There's no doubt a smart way to interpolate at the poles, but I'm going to punt
       !
       if(lon_lat_height(2) < theseLats(1) .or. lon_lat_height(2) >= theseLats(num_lats)) then
-		!
-		! Latitude is out of bounds
-		!
-		lat_index = -1 
-		istatus = 3
-		obs_val = -huge(obs_val)
+        !
+        ! Latitude is out of bounds
+        !
+        lat_index = -1 
+        istatus = 3
+        obs_val = -huge(obs_val)
       else
         lat_index = findIndex(lon_lat_height(2), theseLats(:)) 
         lat_weight = 1._r8 - (lon_lat_height(2) - theselats(lat_index)) / (theselats(lat_index + 1) - theselats(lat_index))
@@ -833,85 +846,85 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
       deallocate(theseLons, theseLats)
       
       if(lat_index > 0) then 
-		weights(1, 1) =          lon_weight  *          lat_weight
-		weights(2, 1) = (1._r8 - lon_weight) *          lat_weight
-		weights(1, 2) =          lon_weight  * (1._r8 - lat_weight)
-		weights(2, 2) = (1._r8 - lon_weight) * (1._r8 - lat_weight)
+        weights(1, 1) =          lon_weight  *          lat_weight
+        weights(2, 1) = (1._r8 - lon_weight) *          lat_weight
+        weights(1, 2) =          lon_weight  * (1._r8 - lat_weight)
+        weights(2, 2) = (1._r8 - lon_weight) * (1._r8 - lat_weight)
 
-		!
-		! We don't always need psurf for the interpolation but it's cheap enough to compute
-		!
-		psurf(1, 1) = x(1 + (lat_index - 1) * num_lons + lon_index - 1)
-		psurf(2, 1) = x(1 + (lat_index    ) * num_lons + lon_index - 1)
-		psurf(1, 2) = x(1 + (lat_index - 1) * num_lons + lon_index    )
-		psurf(2, 2) = x(1 + (lat_index    ) * num_lons + lon_index    )
+        !
+        ! We don't always need psurf for the interpolation but it's cheap enough to compute
+        !
+        psurf(1, 1) = x(1 + (lat_index - 1) * num_lons + lon_index - 1)
+        psurf(2, 1) = x(1 + (lat_index    ) * num_lons + lon_index - 1)
+        psurf(1, 2) = x(1 + (lat_index - 1) * num_lons + lon_index    )
+        psurf(2, 2) = x(1 + (lat_index    ) * num_lons + lon_index    )
 
-		!
-		! Find the four values that bracket the observation location in the horizontal
-		!   Storage order is level, lon, lat
-		!
-		if(itype == KIND_SURFACE_PRESSURE) then
-		  cornerValues(:, :) = psurf(:, :) 
-		else
-		  !
-		  ! Find the four starting locations of the 4 columns that bracket the observation location 
-		  !   and interpolate within each column 
-		  ! 
-		  cornerStarts(1, 1) = (variableStart + (lat_index - 1) * (num_lons * num_levels) + (lon_index - 1) * num_levels)
-		  cornerStarts(2, 1) = (variableStart + (lat_index - 1) * (num_lons * num_levels) + (lon_index    ) * num_levels)
-		  cornerStarts(1, 2) = (variableStart + (lat_index    ) * (num_lons * num_levels) + (lon_index - 1) * num_levels)
-		  cornerStarts(2, 2) = (variableStart + (lat_index    ) * (num_lons * num_levels) + (lon_index    ) * num_levels)
+        !
+        ! Find the four values that bracket the observation location in the horizontal
+        !   Storage order is level, lon, lat
+        !
+        if(itype == KIND_SURFACE_PRESSURE) then
+          cornerValues(:, :) = psurf(:, :) 
+        else
+          !
+          ! Find the four starting locations of the 4 columns that bracket the observation location 
+          !   and interpolate within each column 
+          ! 
+          cornerStarts(1, 1) = (variableStart + (lat_index - 1) * (num_lons * num_levels) + (lon_index - 1) * num_levels)
+          cornerStarts(2, 1) = (variableStart + (lat_index - 1) * (num_lons * num_levels) + (lon_index    ) * num_levels)
+          cornerStarts(1, 2) = (variableStart + (lat_index    ) * (num_lons * num_levels) + (lon_index - 1) * num_levels)
+          cornerStarts(2, 2) = (variableStart + (lat_index    ) * (num_lons * num_levels) + (lon_index    ) * num_levels)
    
-	      !
-	      ! We know how to interpolate vertically in level and pressure - are we missing any possibilities? 
-	      !
-	      if(vert_is_level(location)) then
-			forall(i = 1:2, j = 1:2) 
-				cornerValues(i, j) = interpolate1D(desiredLocation = lon_lat_height(3),                                &
-												   values = x(cornerStarts(i, j):cornerStarts(i, j) + num_levels - 1), & 
-												   locations = (/ (real(k, kind = r8), k = 1, num_levels) /) )
-			end forall 
-		  else if (vert_is_pressure(location)) then 
-			!
-			! Better be sure this is in the right units
-			!                    
-			forall(i = 1:2, j = 1:2) 
-			    cornerValues(i, j) = interpolate1D(desiredLocation = lon_lat_height(3),                                &
-												   values = x(cornerStarts(i, j):cornerStarts(i, j) + num_levels - 1), & 
-												   ! Compute pressure at layer midpoints in this column on the fly
+          !
+          ! We know how to interpolate vertically in level and pressure - are we missing any possibilities? 
+          !
+          if(vert_is_level(location)) then
+            forall(i = 1:2, j = 1:2) 
+                cornerValues(i, j) = interpolate1D(desiredLocation = lon_lat_height(3),                                &
+                                                   values = x(cornerStarts(i, j):cornerStarts(i, j) + num_levels - 1), & 
+                                                   locations = (/ (real(k, kind = r8), k = 1, num_levels) /) )
+            end forall 
+          else if (vert_is_pressure(location)) then 
+            !
+            ! Better be sure this is in the right units
+            !                    
+            forall(i = 1:2, j = 1:2) 
+                cornerValues(i, j) = interpolate1D(desiredLocation = lon_lat_height(3),                                &
+                                                   values = x(cornerStarts(i, j):cornerStarts(i, j) + num_levels - 1), & 
+                                                   ! Compute pressure at layer midpoints in this column on the fly
                                                                                   
-												   locations = akmid(:) + bkmid(:) * psurf(i, j) ) 
-			    
-			end forall
-	      else 
-	        !
-	        ! The requested vertical coordinate isn't a pressure or a level 
-	        !
-	        cornerValues(:, :) = -huge(cornerValues) 
-		    istatus = 1
-		  end if ! Interpolate in level or pressure
-		end if ! Surface pressure or 3D variable  
-		
-		if(any(cornerValues(:, :) <= -huge(cornerValues))) then 
-		  !
-		  ! One or more of our horizontal values isn't valid 
-		  !   Likely the vertical location isn't within the range of pressures
-		  !
-		  obs_val = -huge(cornerValues)
-		  istatus = 1
-		else
-  		  obs_val = sum(weights(:, :) * cornerValues(:, :))
-		  !
-		  ! Set istatus to ensure we want to assimilate this obs
-		  ! 
-		  if(vert_is_pressure(location) .and.                             &
-		     (lon_lat_height(3) < highest_obs_pressure_mb * mb_to_pa .or. &
-		      abs(lon_lat_height(2)) > max_obs_lat_degree) )  then 
-		    istatus = 2 
-		  else
-		    istatus = 0
-		  end if
-		end if
+                                                   locations = akmid(:) + bkmid(:) * psurf(i, j) ) 
+                
+            end forall
+          else 
+            !
+            ! The requested vertical coordinate isn't a pressure or a level 
+            !
+            cornerValues(:, :) = -huge(cornerValues) 
+            istatus = 1
+          end if ! Interpolate in level or pressure
+        end if ! Surface pressure or 3D variable  
+        
+        if(any(cornerValues(:, :) <= -huge(cornerValues))) then 
+          !
+          ! One or more of our horizontal values isn't valid 
+          !   Likely the vertical location isn't within the range of pressures
+          !
+          obs_val = -huge(cornerValues)
+          istatus = 1
+        else
+            obs_val = sum(weights(:, :) * cornerValues(:, :))
+          !
+          ! Set istatus to ensure we want to assimilate this obs
+          ! 
+          if(vert_is_pressure(location) .and.                             &
+             (lon_lat_height(3) < highest_obs_pressure_mb * mb_to_pa .or. &
+              abs(lon_lat_height(2)) > max_obs_lat_degree) )  then 
+            istatus = 2 
+          else
+            istatus = 0
+          end if
+        end if
       end if ! Check for valid latitude
     end if ! Check for valid variable
     
@@ -922,59 +935,59 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
   ! ----------------------------------------------------------------------------
 
   function get_model_time_step()
-	type(time_type) :: get_model_time_step
-	!
-	! Returns the the time step of the model; the smallest increment
-	! in time that the model is capable of advancing the state in a given
-	! implementation. This interface is required for all applications.
-	!
-	
-	
-	! Time_step_atmos is global static storage
-	get_model_time_step =  Time_step_atmos
+    type(time_type) :: get_model_time_step
+    !
+    ! Returns the the time step of the model; the smallest increment
+    ! in time that the model is capable of advancing the state in a given
+    ! implementation. This interface is required for all applications.
+    !
+    
+    
+    ! Time_step_atmos is global static storage
+    get_model_time_step =  Time_step_atmos
 
   end function get_model_time_step
 
   ! ----------------------------------------------------------------------------
 
   subroutine end_model()
-	!------------------------------------------------------------------
-	!
-	! Does any shutdown and clean-up needed for model. Can be a NULL
-	! INTERFACE if the model has no need to clean up storage, etc.
-	
-	! good style ... perhaps you could deallocate stuff (from static_init_model?).
-	! deallocate(state_loc)
+    !------------------------------------------------------------------
+    !
+    ! Does any shutdown and clean-up needed for model. Can be a NULL
+    ! INTERFACE if the model has no need to clean up storage, etc.
+    
+    ! good style ... perhaps you could deallocate stuff (from static_init_model?).
+    ! deallocate(state_loc)
   
   end subroutine end_model
 
   ! ----------------------------------------------------------------------------
 
   subroutine pert_model_state(state, pert_state, interf_provided)
-	real(r8), intent(in)  :: state(:)
-	real(r8), intent(out) :: pert_state(:)
-	logical,  intent(out) :: interf_provided
-	!------------------------------------------------------------------
-	!
-	! Perturbs a model state for generating initial ensembles.
-	! The perturbed state is returned in pert_state.
-	! A model may choose to provide a NULL INTERFACE by returning
-	! .false. for the interf_provided argument. This indicates to
-	! the filter that if it needs to generate perturbed states, it
-	! may do so by adding an O(0.1) magnitude perturbation to each
-	! model state variable independently. The interf_provided argument
-	! should be returned as .true. if the model wants to do its own
-	! perturbing of states.
-	
-	
-	interf_provided = .false.
+    real(r8), intent(in)  :: state(:)
+    real(r8), intent(out) :: pert_state(:)
+    logical,  intent(out) :: interf_provided
+    !------------------------------------------------------------------
+    !
+    ! Perturbs a model state for generating initial ensembles.
+    ! The perturbed state is returned in pert_state.
+    ! A model may choose to provide a NULL INTERFACE by returning
+    ! .false. for the interf_provided argument. This indicates to
+    ! the filter that if it needs to generate perturbed states, it
+    ! may do so by adding an O(0.1) magnitude perturbation to each
+    ! model state variable independently. The interf_provided argument
+    ! should be returned as .true. if the model wants to do its own
+    ! perturbing of states.
+    
+    
+    interf_provided = .false.
   
   end subroutine pert_model_state
 
   ! ----------------------------------------------------------------------------
 
   subroutine ens_mean_for_model(ens_mean)
-	real(r8), intent(in) :: ens_mean(:)
+    real(r8), intent(in) :: ens_mean(:)
   
   end subroutine ens_mean_for_model
 
@@ -985,12 +998,12 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
   ! ----------------------------------------------------------------------------
   
   subroutine init_model_instance(var)
-	type(model_type), intent(out) :: var
-	!
-	! Initializes an instance of a model state variable
-	!   In our case this means storage allocation
-	!
-	
+    type(model_type), intent(out) :: var
+    !
+    ! Initializes an instance of a model state variable
+    !   In our case this means storage allocation
+    !
+    
     call end_model_instance(var)
     allocate(var%u   (num_lons, num_lats, num_levels), &
              var%v   (num_lons, num_lats, num_levels), &
@@ -1005,27 +1018,27 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
   ! ----------------------------------------------------------------------------
 
    subroutine end_model_instance(var)
-	 type(model_type), intent(inout) :: var
-	 !
-	 ! Ends an instance of a model state variable
-	 !   i.e. frees allocated storage
-	 !
-	 
-	 if(associated(var%ps  )) deallocate(var%ps)
-	 if(associated(var%u   )) deallocate(var%u)
-	 if(associated(var%v   )) deallocate(var%v)
-	 if(associated(var%T   )) deallocate(var%T)
-	 if(associated(var%delp)) deallocate(var%delp)
-	 if(associated(var%tracers))     deallocate(var%tracers)
-	 if(associated(var%tracerTypes)) deallocate(var%tracerTypes)
+     type(model_type), intent(inout) :: var
+     !
+     ! Ends an instance of a model state variable
+     !   i.e. frees allocated storage
+     !
+     
+     if(associated(var%ps  )) deallocate(var%ps)
+     if(associated(var%u   )) deallocate(var%u)
+     if(associated(var%v   )) deallocate(var%v)
+     if(associated(var%T   )) deallocate(var%T)
+     if(associated(var%delp)) deallocate(var%delp)
+     if(associated(var%tracers))     deallocate(var%tracers)
+     if(associated(var%tracerTypes)) deallocate(var%tracerTypes)
   
   end subroutine end_model_instance
 
   ! ----------------------------------------------------------------------------
 
   subroutine read_model_init(rst_file_name, var)
-	character(len = *), intent(in)  :: rst_file_name
-	type(model_type),   intent(inout) :: var
+    character(len = *), intent(in)  :: rst_file_name
+    type(model_type),   intent(inout) :: var
 
         integer :: ncfileid, delpvarid, uvarid, vvarid, tvarid
         integer :: ncfileid_t, varID, i
@@ -1053,7 +1066,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
                 "inquiring varid for " // tracer_names(i))
            call nc_check(nf90_get_var(ncfileid_t, varID, var%tracers(:,:,:,i)), "read_model_init", &
                 "getting " // tracer_names(i))
-	end do
+    end do
 
         !Close files
         call nc_check(nf90_close(ncfileid),'read_model_init','closing restart file')
@@ -1064,12 +1077,12 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
   ! ----------------------------------------------------------------------------
 
   subroutine write_model_init(file_name, var)
-	character(len = *), intent(in) :: file_name
-	type(model_type),   intent(in) :: var
+    character(len = *), intent(in) :: file_name
+    type(model_type),   intent(in) :: var
 
         integer :: ncfileid, delpvarid, uvarid, vvarid, tvarid
         integer :: ncfileid_t, varID, i
-	
+    
         call nc_check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid), &
                       'write_model_init', 'opening ' // trim(file_name))
 
@@ -1092,7 +1105,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
                 "inquiring varid for " // tracer_names(i))
            call nc_check(nf90_put_var(ncfileid_t, varID, var%tracers(:,:,:,i)), "write_model_init", &
                 "putting " // tracer_names(i))
-	end do
+    end do
 
         !Close files
         call nc_check(nf90_close(ncfileid),'write_model_init','closing restart file')
@@ -1103,35 +1116,35 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
   ! ----------------------------------------------------------------------------
 
   subroutine prog_var_to_vector(model_var, state_vector)
-	type(model_type),              intent(in ) :: model_var
-	real(kind = r8), dimension(:), intent(out) :: state_vector
-	
-	! -----------------------------------------------
-	real, dimension(:, :), allocatable :: psurf
-	!
-	! See note on reordering below. This could be generalized
-	!
-	integer, dimension(3) :: shape, order = (/ 3, 1, 2 /) 
-	! -----------------------------------------------
-	
+    type(model_type),              intent(in ) :: model_var
+    real(kind = r8), dimension(:), intent(out) :: state_vector
+    
+    ! -----------------------------------------------
+    real, dimension(:, :), allocatable :: psurf
+    !
+    ! See note on reordering below. This could be generalized
+    !
+    integer, dimension(3) :: shape, order = (/ 3, 1, 2 /) 
+    ! -----------------------------------------------
+    
         real, dimension(:,:,:),   allocatable :: uvar, vvar, tvar
         real, dimension(:,:,:,:), allocatable :: trcs
         integer :: i,j,k
 
-	shape = (/ num_levels, num_lons, num_lats /)
-	
-	if(size(state_vector) /= model_size)       &
-	  call error_handler(E_ERR, 'prog_var_to_vector', "State vector is incorrect size for model_type", source, revision, revdate)
+    shape = (/ num_levels, num_lons, num_lats /)
+    
+    if(size(state_vector) /= model_size)       &
+      call error_handler(E_ERR, 'prog_var_to_vector', "State vector is incorrect size for model_type", source, revision, revdate)
    
-	allocate(psurf(num_lons, num_lats))
+    allocate(psurf(num_lons, num_lats))
 
-	if (associated(model_var%ps)) then
-	  psurf(:, :) = model_var%ps
-	else if (associated(model_var%delp)) then 
-	  psurf(:, :) = sum(model_var%delp, dim = 3) + model_top_pressure
-	else
-	  call error_handler(E_ERR, 'prog_var_to_vector', "Neither delp nor ps is present in model_var", source, revision, revdate)
-	end if 
+    if (associated(model_var%ps)) then
+      psurf(:, :) = model_var%ps
+    else if (associated(model_var%delp)) then 
+      psurf(:, :) = sum(model_var%delp, dim = 3) + model_top_pressure
+    else
+      call error_handler(E_ERR, 'prog_var_to_vector', "Neither delp nor ps is present in model_var", source, revision, revdate)
+    end if 
 
         allocate(uvar(num_levels,num_lons,num_lats),vvar(num_levels,num_lons,num_lats), &
                     tvar(num_levels,num_lons,num_lats))
@@ -1143,92 +1156,92 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
               tvar(i,j,k)   = model_var%t(j,k,i)
               trcs(i,j,k,1:3) = model_var%tracers(j,k,i,1:3)
         end forall
-	!
-	! 2D field ps is ordered lon, lat; 3D fields are ordered lon, lat, level but are 
-	!   reordered to level, lon, lat before packing into vectors
-	! Tracers are ordered lon, lat, level, tracer_num, pack as level, lon, lat, tracer_num.
-	if(num_tracers > 0) then
-	  state_vector(:) = (/ pack(psurf, .true.), &
+    !
+    ! 2D field ps is ordered lon, lat; 3D fields are ordered lon, lat, level but are 
+    !   reordered to level, lon, lat before packing into vectors
+    ! Tracers are ordered lon, lat, level, tracer_num, pack as level, lon, lat, tracer_num.
+    if(num_tracers > 0) then
+      state_vector(:) = (/ pack(psurf, .true.), &
                                pack(uvar,  .true.), &
-			       pack(vvar,  .true.), &
-			       pack(tvar,  .true.), &
-			       pack(trcs,  .true.)  /)
-	else    
-	  state_vector(:) = (/ pack(psurf, .true.), &
-			       pack(uvar,  .true.), &
-			       pack(vvar,  .true.), &
-			       pack(tvar,  .true.)  /)
-	end if
-	deallocate(psurf,uvar,vvar,tvar,trcs) 
+                   pack(vvar,  .true.), &
+                   pack(tvar,  .true.), &
+                   pack(trcs,  .true.)  /)
+    else    
+      state_vector(:) = (/ pack(psurf, .true.), &
+                   pack(uvar,  .true.), &
+                   pack(vvar,  .true.), &
+                   pack(tvar,  .true.)  /)
+    end if
+    deallocate(psurf,uvar,vvar,tvar,trcs) 
   end subroutine prog_var_to_vector
 
    ! ----------------------------------------------------------------------------
 
   subroutine vector_to_prog_var(state_vector, model_var) 
-	real(kind = r8), dimension(:), intent(in ) :: state_vector
-	type(model_type),              intent(inout) :: model_var
-	
-	! -----------------------------------------------
-	!
-	! Local variables
-	!
-	real,    dimension(:, :),    allocatable :: psurf
-	logical, dimension(:, :, :), allocatable :: allTrue
-	integer :: start, finish, k 
-	!
-	! See note on reordering below. This could be generalized
-	!
-	integer, dimension(3) :: shape, order = (/ 2, 3, 1 /)
+    real(kind = r8), dimension(:), intent(in ) :: state_vector
+    type(model_type),              intent(inout) :: model_var
+    
+    ! -----------------------------------------------
+    !
+    ! Local variables
+    !
+    real,    dimension(:, :),    allocatable :: psurf
+    logical, dimension(:, :, :), allocatable :: allTrue
+    integer :: start, finish, k 
+    !
+    ! See note on reordering below. This could be generalized
+    !
+    integer, dimension(3) :: shape, order = (/ 2, 3, 1 /)
 
         real, dimension(:,:,:),   allocatable :: uvar, vvar, tvar
         real, dimension(:,:,:,:), allocatable :: trcs
         integer :: i, j, m
-							  
-	! -----------------------------------------------
-	
-	if(size(state_vector) /= model_size)       &
-	  call error_handler(E_ERR, 'prog_var_to_vector', "State vector is incorrect size for model_type", source, revision, revdate)
-	
-	allocate(allTrue(num_levels, num_lons, num_lats))
-	allTrue(:, :, :) = .true. 
-	shape = (/ num_lons, num_lats, num_levels /)
-	
-	allocate(psurf(num_lons, num_lats))
-	!
-	! 2D field - surface pressure (may be mapped to delp) 
-	!
-	start = 1; finish = start + (num_lons * num_lats) - 1
-	psurf = unpack(state_vector(start:finish), allTrue(1, :, :), field = 0._r8)
-	if (associated(model_var%ps)) then
-	  model_var%ps = psurf(:, :)
-	else if (associated(model_var%delp)) then 
-	  !
-	  ! Compute delp from fixed ak and bk terms and surface pressure
-	  !
-	  do k = 1, num_levels
-		model_var%delp(:, :, k) =  (ak(k+1) - ak(k)) + (bk(k+1) - bk(k)) * psurf(:, :)
-	  end do 
-	else
-	  call error_handler(E_ERR, 'vector_to_prog_var', "Neither delp nor ps is present in model_var", source, revision, revdate)
-	end if
-	
-	!
-	! 3D fields - u, v, and T
-	!   These were stored in dim order level, lon, lat in the state vector and need 
-	!   to be mapped back to lon, lat, level
-	!
+                              
+    ! -----------------------------------------------
+    
+    if(size(state_vector) /= model_size)       &
+      call error_handler(E_ERR, 'prog_var_to_vector', "State vector is incorrect size for model_type", source, revision, revdate)
+    
+    allocate(allTrue(num_levels, num_lons, num_lats))
+    allTrue(:, :, :) = .true. 
+    shape = (/ num_lons, num_lats, num_levels /)
+    
+    allocate(psurf(num_lons, num_lats))
+    !
+    ! 2D field - surface pressure (may be mapped to delp) 
+    !
+    start = 1; finish = start + (num_lons * num_lats) - 1
+    psurf = unpack(state_vector(start:finish), allTrue(1, :, :), field = 0._r8)
+    if (associated(model_var%ps)) then
+      model_var%ps = psurf(:, :)
+    else if (associated(model_var%delp)) then 
+      !
+      ! Compute delp from fixed ak and bk terms and surface pressure
+      !
+      do k = 1, num_levels
+        model_var%delp(:, :, k) =  (ak(k+1) - ak(k)) + (bk(k+1) - bk(k)) * psurf(:, :)
+      end do 
+    else
+      call error_handler(E_ERR, 'vector_to_prog_var', "Neither delp nor ps is present in model_var", source, revision, revdate)
+    end if
+    
+    !
+    ! 3D fields - u, v, and T
+    !   These were stored in dim order level, lon, lat in the state vector and need 
+    !   to be mapped back to lon, lat, level
+    !
 
         allocate(uvar(num_levels,num_lons,num_lats),vvar(num_levels,num_lons,num_lats),&
                  tvar(num_levels,num_lons,num_lats))
 
-	start = finish + 1; finish = start + (num_levels * num_lons * num_lats) - 1
-	uvar = unpack(state_vector(start:finish), allTrue, field = 0._r8)
-						  
-	start = finish + 1; finish = start + (num_levels * num_lons * num_lats) - 1
-	vvar = unpack(state_vector(start:finish), allTrue, field = 0._r8)
-						  
-	start = finish + 1; finish = start + (num_levels * num_lons * num_lats) - 1
-	tvar = unpack(state_vector(start:finish), allTrue, field = 0._r8)
+    start = finish + 1; finish = start + (num_levels * num_lons * num_lats) - 1
+    uvar = unpack(state_vector(start:finish), allTrue, field = 0._r8)
+                          
+    start = finish + 1; finish = start + (num_levels * num_lons * num_lats) - 1
+    vvar = unpack(state_vector(start:finish), allTrue, field = 0._r8)
+                          
+    start = finish + 1; finish = start + (num_levels * num_lons * num_lats) - 1
+    tvar = unpack(state_vector(start:finish), allTrue, field = 0._r8)
 
         !Fill model_var components
         forall(i = 1:num_lons, j=1:num_lats,m=1:num_levels)
@@ -1237,17 +1250,17 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
               model_var%t(i,j,m) = tvar(m,i,j)
         end forall
 
-	!
-	! Tracers 
-	!   These were stored in dim order level, lon, lat, tracer_num in the state vector and need 
-	!   to be mapped back to lon, lat, level, tracer_num
-	!
+    !
+    ! Tracers 
+    !   These were stored in dim order level, lon, lat, tracer_num in the state vector and need 
+    !   to be mapped back to lon, lat, level, tracer_num
+    !
         allocate(trcs(num_levels,num_lons,num_lats,num_tracers))
-	if(num_tracers > 0) then 
-	  start = finish + 1; finish =  start + (num_levels * num_lons * num_lats * num_tracers) - 1
-	  if(finish /= model_size) &
-		call error_handler(E_ERR, 'vector_to_prog_var', "Mismatch between model size and state vector", source, revision, revdate)
-	  trcs = unpack(state_vector(start:finish), &
+    if(num_tracers > 0) then 
+      start = finish + 1; finish =  start + (num_levels * num_lons * num_lats * num_tracers) - 1
+      if(finish /= model_size) &
+        call error_handler(E_ERR, 'vector_to_prog_var', "Mismatch between model size and state vector", source, revision, revdate)
+      trcs = unpack(state_vector(start:finish), &
                         spread(allTrue, dim = 4, nCopies = num_tracers),field = 0._r8)
 
           !Fill model_var%tracers
@@ -1255,9 +1268,9 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
               model_var%tracers(i,j,m,1:3) = trcs(m,i,j,1:3)
            end forall
           
-	end if
+    end if
 
-	deallocate(allTrue)
+    deallocate(allTrue)
         deallocate(psurf,uvar,vvar,tvar,trcs)
   end subroutine vector_to_prog_var
 
@@ -1276,42 +1289,44 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
     integer, dimension(num_dims) :: dim_ids
     
     do i = 1, num_dims
-	  call nc_check(nf90_inq_dimid(ncfileid, trim(dim_names(i)), dim_ids(i)), &
-				   'static_init_model', 'looking for dimension id for '// trim(dim_names(i)))
-	  call nc_check(nf90_Inquire_Dimension(ncfileid,  dim_ids(i), len = dim_lens(i)), &
-				   'static_init_model', 'looking for size of '// trim(dim_names(i)))
-	  call nc_check(nf90_inq_varid(ncfileid, trim(dim_names(i)), dim_var_ids(i)), &
-				   'static_init_model', 'looking for variable id for '// trim(dim_names(i)))
+      call nc_check(nf90_inq_dimid(ncfileid, trim(dim_names(i)), dim_ids(i)), &
+                   'static_init_model', 'looking for dimension id for '// trim(dim_names(i)))
+      call nc_check(nf90_Inquire_Dimension(ncfileid,  dim_ids(i), len = dim_lens(i)), &
+                   'static_init_model', 'looking for size of '// trim(dim_names(i)))
+      call nc_check(nf90_inq_varid(ncfileid, trim(dim_names(i)), dim_var_ids(i)), &
+                   'static_init_model', 'looking for variable id for '// trim(dim_names(i)))
     end do 
     
     do i = 1, size(dim_names)
-	  if(all(trim(dim_names(i)) /= (/ 'lat', 'latu', 'lon', 'lonv', 'pfull', 'phalf' /)) ) &
-		 call error_handler(E_ERR, 'read_dimension_info', "Mapping between dim names and variables is messed up", source, revision, revdate)
+      if(all(trim(dim_names(i)) /= (/ 'lat', 'latu', 'lon', 'lonv', 'pfull', 'phalf' /)) ) &
+         call error_handler(E_ERR, 'read_dimension_info', &
+            "Mapping between dim names and variables is messed up", source, revision, revdate)
     end do
     if(dim_lens(1) /= dim_lens(2) .or. dim_lens(3) /= dim_lens(4) .or. dim_lens(5) /= dim_lens(6) - 1) &
-       call error_handler(E_ERR, 'read_dimension_info', "Dimension sizes aren't what we expect", source, revision, revdate)
+       call error_handler(E_ERR, 'read_dimension_info', &
+           "Dimension sizes aren't what we expect", source, revision, revdate)
     
     
     num_lats = dim_lens(1) 
     allocate(lat(num_lats), latu(num_lats))
-	call nc_check(nf90_get_var(ncfileid, dim_var_ids(1), lat), &
-				  'static_init_model', 'reading values of '// trim(dim_names(1)))
-	call nc_check(nf90_get_var(ncfileid, dim_var_ids(2), latu), &
-				  'static_init_model', 'reading values of '// trim(dim_names(2)))
+    call nc_check(nf90_get_var(ncfileid, dim_var_ids(1), lat), &
+                  'static_init_model', 'reading values of '// trim(dim_names(1)))
+    call nc_check(nf90_get_var(ncfileid, dim_var_ids(2), latu), &
+                  'static_init_model', 'reading values of '// trim(dim_names(2)))
  
-	num_lons = dim_lens(3) 
-	allocate(lon(num_lons), lonv(num_lons))
-	call nc_check(nf90_get_var(ncfileid, dim_var_ids(3), lon), &
-				  'static_init_model', 'reading values of '// trim(dim_names(3)))
-	call nc_check(nf90_get_var(ncfileid, dim_var_ids(4), lonv), &
-				  'static_init_model', 'reading values of '// trim(dim_names(4)))
+    num_lons = dim_lens(3) 
+    allocate(lon(num_lons), lonv(num_lons))
+    call nc_check(nf90_get_var(ncfileid, dim_var_ids(3), lon), &
+                  'static_init_model', 'reading values of '// trim(dim_names(3)))
+    call nc_check(nf90_get_var(ncfileid, dim_var_ids(4), lonv), &
+                  'static_init_model', 'reading values of '// trim(dim_names(4)))
     
-	num_levels = dim_lens(5) 
-	allocate(pfull(num_levels), phalf(num_levels + 1))
-	call nc_check(nf90_get_var(ncfileid, dim_var_ids(5), pfull), &
-				  'static_init_model', 'reading values of '// trim(dim_names(5)))
-	call nc_check(nf90_get_var(ncfileid, dim_var_ids(6), phalf), &
-				  'static_init_model', 'reading values of '// trim(dim_names(6)))
+    num_levels = dim_lens(5) 
+    allocate(pfull(num_levels), phalf(num_levels + 1))
+    call nc_check(nf90_get_var(ncfileid, dim_var_ids(5), pfull), &
+                  'static_init_model', 'reading values of '// trim(dim_names(5)))
+    call nc_check(nf90_get_var(ncfileid, dim_var_ids(6), phalf), &
+                  'static_init_model', 'reading values of '// trim(dim_names(6)))
 
   end subroutine read_dimension_info
 
@@ -1327,24 +1342,24 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
   
     integer :: att, num_atts, newDimId, oldVarId, newVarId
     character(len = NF90_MAX_NAME) :: attName
-	
-	call nc_check(nf90_def_dim(newFileId, trim(dimName), dimLength, newDimId),  &
-				  trim(routineName), 'def_dim ' // trim(dimName) )
-	call nc_check(nf90_def_var(newFileId, trim(dimName), nf90_double, newDimId, newVarId),  &
-				  trim(routineName), 'def_var ' // trim(dimName) )
-	!
-	! Copy over all the attributes from the old file to the newnostics file
-	! 
-	call nc_check(nf90_inq_varid(oldFileId, trim(dimName), oldVarId),  &
-				  trim(routineName), 'getting varid from old file for ' // trim(dimName) )
-	call nc_check(nf90_inquire_variable(oldFileId, oldVarId, nAtts = num_atts),  &
-				  trim(routineName), 'reading number of attributes from ' // trim(dimName) )
-	do att = 1, num_atts
-	  call nc_check(nf90_inq_attname(oldFileId, oldVarId, att, attName),  &
-					trim(routineName), 'reading number of attributes from ' // trim(dimName) )
-	  call nc_check(nf90_copy_att(oldFileId, oldVarId, trim(attName), newFileId, newVarId),  &
-					trim(routineName), 'copying attribute ' // trim(attName) // ' for variable ' // trim(dimName) )
-	end do 
+    
+    call nc_check(nf90_def_dim(newFileId, trim(dimName), dimLength, newDimId),  &
+                  trim(routineName), 'def_dim ' // trim(dimName) )
+    call nc_check(nf90_def_var(newFileId, trim(dimName), nf90_double, newDimId, newVarId),  &
+                  trim(routineName), 'def_var ' // trim(dimName) )
+    !
+    ! Copy over all the attributes from the old file to the newnostics file
+    ! 
+    call nc_check(nf90_inq_varid(oldFileId, trim(dimName), oldVarId),  &
+                  trim(routineName), 'getting varid from old file for ' // trim(dimName) )
+    call nc_check(nf90_inquire_variable(oldFileId, oldVarId, nAtts = num_atts),  &
+                  trim(routineName), 'reading number of attributes from ' // trim(dimName) )
+    do att = 1, num_atts
+      call nc_check(nf90_inq_attname(oldFileId, oldVarId, att, attName),  &
+                    trim(routineName), 'reading number of attributes from ' // trim(dimName) )
+      call nc_check(nf90_copy_att(oldFileId, oldVarId, trim(attName), newFileId, newVarId),  &
+                    trim(routineName), 'copying attribute ' // trim(attName) // ' for variable ' // trim(dimName) )
+    end do 
   end subroutine copy_dim_var_pair
 
   ! ----------------------------------------------------------------------------
@@ -1361,19 +1376,19 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
     integer :: att, num_atts, oldVarId, newVarId
     character(len = NF90_MAX_NAME) :: attName
     
-	call nc_check(nf90_def_var(newFileId, trim(varName), nf90_real, dimIds, newVarId), &
-				  trim(routineName),'def_var ' // trim(varName))
+    call nc_check(nf90_def_var(newFileId, trim(varName), nf90_real, dimIds, newVarId), &
+                  trim(routineName),'def_var ' // trim(varName))
 
-	call nc_check(nf90_inq_varid(oldFileId, trim(varName), oldVarId),  &
-				  trim(routineName), 'getting varid from old file for ' // trim(varName) )
-	call nc_check(nf90_inquire_variable(oldFileId, oldVarId, nAtts = num_atts),  &
-				  trim(routineName), 'reading number of attributes from ' // trim(varName) )
-	do att = 1, num_atts
-	  call nc_check(nf90_inq_attname(oldFileId, oldVarId, att, attName),  &
-					trim(routineName), 'reading attributes from ' // trim(varName) )
-	  call nc_check(nf90_copy_att(oldFileId, oldVarId, trim(attName), newFileId, newVarId),  &
-					trim(routineName), 'copying attribute ' // trim(attName) // ' for variable ' // trim(varName) )
-	end do 
+    call nc_check(nf90_inq_varid(oldFileId, trim(varName), oldVarId),  &
+                  trim(routineName), 'getting varid from old file for ' // trim(varName) )
+    call nc_check(nf90_inquire_variable(oldFileId, oldVarId, nAtts = num_atts),  &
+                  trim(routineName), 'reading number of attributes from ' // trim(varName) )
+    do att = 1, num_atts
+      call nc_check(nf90_inq_attname(oldFileId, oldVarId, att, attName),  &
+                    trim(routineName), 'reading attributes from ' // trim(varName) )
+      call nc_check(nf90_copy_att(oldFileId, oldVarId, trim(attName), newFileId, newVarId),  &
+                    trim(routineName), 'copying attribute ' // trim(attName) // ' for variable ' // trim(varName) )
+    end do 
    
   end subroutine define_3d_real_var
 
@@ -1386,8 +1401,8 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
   
     integer :: varId
     
-	call nc_check(nf90_inq_varid(ncFileId, trim(varName), varId), trim(routineName), 'getting varid for ' // trim(varName) )
-	call nc_check(nf90_put_var(ncFileId, varId, values), trim(routineName), 'writing ' // trim(varName) )
+    call nc_check(nf90_inq_varid(ncFileId, trim(varName), varId), trim(routineName), 'getting varid for ' // trim(varName) )
+    call nc_check(nf90_put_var(ncFileId, varId, values), trim(routineName), 'writing ' // trim(varName) )
     
   end subroutine write_1D_values
 
