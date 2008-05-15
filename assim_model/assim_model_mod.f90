@@ -843,7 +843,7 @@ if ( ios /= 0 ) then
    write(msgstring,*)'model_time (secs/days) : ',int1,int2
    call error_handler(E_MSG,'aread_state_restart',msgstring,source,revision,revdate)
 
-   write(msgstring,'(''modl max/min/first is'',3(1x,E12.6) )') &
+   write(msgstring,'(''model max/min/first is'',3(1x,E12.6) )') &
             maxval(model_state), minval(model_state), model_state(1)
    call error_handler(E_MSG,'aread_state_restart',msgstring,source,revision,revdate)
 
