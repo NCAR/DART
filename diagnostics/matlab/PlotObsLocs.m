@@ -364,10 +364,10 @@ for epoch = epochlist
  end
  
  % if we actually set something, use it to constrain the axis limits.
+ axis image;  % set aspect ratio dx ~= dy ... cylindrical equidistant
  if (~isequal(use_box, []))
      axis(use_box);
  end
- axis image;  % set aspect ratio dx ~= dy ... cylindrical equidistant
     
  % set legend, and try to shrink the original size of the legend bounding box
  % because it is pretty large by default.   a 'good' location depends on the
