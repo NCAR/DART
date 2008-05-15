@@ -38,7 +38,8 @@ use      location_mod, only : location_type, get_location, set_location, &
 
 use     utilities_mod, only : file_exist, open_file, close_file, &
                               register_module, error_handler, E_ERR, E_WARN, &
-                              E_MSG, logfileunit, find_namelist_in_file, check_namelist_read
+                              E_MSG, logfileunit, do_output, &
+                              find_namelist_in_file, check_namelist_read
 
 use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
@@ -301,11 +302,14 @@ call read_dt_from_wrf_nml()
 
 do id=1,num_domains
 
-   write( idom , '(I1)') id
+   ! only print this once, no matter how many parallel tasks are running
+   if (do_output()) then
+      write( idom , '(I1)') id
 
-   write(*,*) '******************'
-   write(*,*) '**  DOMAIN # ',idom,'  **'
-   write(*,*) '******************'
+      write(*,*) '******************'
+      write(*,*) '**  DOMAIN # ',idom,'  **'
+      write(*,*) '******************'
+   endif
 
    if(file_exist('wrfinput_d0'//idom)) then
 

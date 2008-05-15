@@ -42,6 +42,12 @@ use  wrf_data_module, only : wrf_data, wrf_bdy_data, &
                              wrf_dealloc, wrfbdy_dealloc, &
                              wrf_io, wrfbdy_io, &
                              set_wrf_date
+use      location_mod, only : location_type, get_location, set_location, & 
+                              vert_is_surface, vert_is_level, vert_is_pressure, vert_is_height, &
+                              VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
+                              VERTISHEIGHT
+                             
+
 use    utilities_mod, only : get_unit, file_exist, open_file, &
                              close_file, error_handler, E_ERR, E_MSG, initialize_utilities, &
                              register_module, logfileunit, timestamp, &
@@ -61,24 +67,36 @@ character(len=128), parameter :: &
 ! Model namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-logical :: output_state_vector  = .false.  ! state vs. prognostic format
+logical :: output_state_vector  = .false.     ! output prognostic variables
 integer :: num_moist_vars       = 3
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
-logical :: surf_obs             = .true.
-logical :: h_diab               = .false.
-logical :: allow_obs_below_vol  = .false.
 integer :: assimilation_period_seconds = 21600
+logical :: surf_obs             = .true.      
+logical :: soil_data            = .true.      
+logical :: h_diab               = .false.     
 character(len = 72) :: adv_mod_command = './wrf.exe'
-integer :: center_search_size       = 25
-integer :: center_spline_grid_scale = 10
-integer :: vert_localization_coord  =  3  ! 1,2,3 == level,pressure,height
+real (kind=r8) :: center_search_half_length = 500000.0_r8
+integer :: center_search_half_size            
+integer :: center_spline_grid_scale = 10      
+integer :: vert_localization_coord = VERTISHEIGHT
+! Allow (or not) observations above the surface but below the lowest
+! sigma level.
+logical :: allow_obs_below_vol = .false.
+! Max height a surface obs can be away from the actual model surface
+! and still be accepted (in meters)
+!real (kind=r8) :: max_surface_delta = 500.0
+!nc -- we are adding these to the model.nml until they appear in the NetCDF files
+logical :: polar = .false.  
+logical :: periodic_x = .false.
+
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
-                     num_domains, calendar_type, surf_obs, h_diab, &
+                     num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      adv_mod_command, assimilation_period_seconds, &
-                     vert_localization_coord, allow_obs_below_vol, &
-                     center_search_size, center_spline_grid_scale
+                     allow_obs_below_vol, vert_localization_coord, &
+                     center_search_half_length, center_spline_grid_scale, &
+                     polar, periodic_x
 
 !-----------------------------------------------------------------------
 
