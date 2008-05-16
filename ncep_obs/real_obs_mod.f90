@@ -18,7 +18,7 @@ use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
                              set_obs_def_error_variance, set_obs_def_location
 use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
                              operator(/=), set_date, set_calendar_type, get_time, &
-                             get_date, set_time
+                             get_date, set_time, GREGORIAN
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, &
                              E_ERR, E_MSG, timestamp
@@ -148,7 +148,7 @@ call init_obs(obs, num_copies, num_qc)
 call init_obs(prev_obs, num_copies, num_qc)
 
 ! set observation time type
-calender_type = 3
+calender_type = GREGORIAN
 call set_calendar_type(calender_type)
 
 ! get the time (seconds & days) for 00Z of current day (year,month,day)
