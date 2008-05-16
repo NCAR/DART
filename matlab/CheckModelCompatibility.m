@@ -304,6 +304,18 @@ switch lower(modelname)
          y = [dnum_lons dnum_lats dnum_lvls];
       end
 
+   case 'mitgcm_ocean'
+      lonexist = VarExist(ncid,'XG'  );
+      latexist = VarExist(ncid,'YG'  );
+      lvlexist = VarExist(ncid,'ZG');
+      if ( latexist && lonexist && lvlexist )
+         dnum_lons = prod(size(ncid('XG')));
+         dnum_lats = prod(size(ncid('YG')));
+         dnum_lvls = prod(size(ncid('ZG')));
+         x = 3;
+         y = [dnum_lons dnum_lats dnum_lvls];
+      end
+
    case 'lorenz_96_2scale'
       Xexist = VarExist(ncid,'Xdim');
       Yexist = VarExist(ncid,'Ydim');

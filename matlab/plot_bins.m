@@ -46,29 +46,34 @@ end
 
 pinfo = CheckModelCompatibility(truth_file,diagn_file);
 vars  = CheckModel(truth_file);   % also gets default values for this model.
-varid = SetVariableID(vars);      % queries for variable IDs if needed.
 
 switch lower(vars.model)
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
 	 'lorenz_04', 'forced_lorenz_96','ikeda','simple_advection'}
 
+      varid = SetVariableID(vars);      % queries for variable IDs
       pinfo = setfield(pinfo, 'truth_file'    , truth_file);
       pinfo = setfield(pinfo, 'diagn_file'    , diagn_file);
       pinfo = setfield(pinfo, 'var'           , varid.var);
       pinfo = setfield(pinfo, 'state_var_inds', varid.var_inds);
+      clear varid
 
    case 'fms_bgrid'
 
       pinfo = GetBgridInfo(pinfo, diagn_file, 'PlotBins');
-      pinfo.truth_file = truth_file;
-      pinfo.diagn_file = diagn_file;
+
+   case 'cam'
+
+      pinfo = GetCamInfo(pinfo, diagn_file, 'PlotBins');
 
    case 'pe2lyr'
 
       pinfo = GetPe2lyrInfo(pinfo, diagn_file, 'PlotBins');
-      pinfo.truth_file = truth_file;
-      pinfo.diagn_file = diagn_file;
+
+   case 'mitgcm_ocean'
+
+      pinfo = GetMITgcm_oceanInfo(pinfo, diagn_file, 'PlotBins');
 
    otherwise
 
@@ -77,4 +82,4 @@ switch lower(vars.model)
 end
 
 PlotBins(pinfo);
-clear vars varid
+clear vars

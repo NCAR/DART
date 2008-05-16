@@ -50,7 +50,7 @@ close(f);
 
 switch lower(model)
 
-   case {'fms_bgrid','pe2lyr'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean'}
 
       clf;
 
@@ -170,12 +170,13 @@ end
 ens_num     = length(copyindices);
 
 % Get all ensemble members, just return desired ones.
-if strcmp(var,'ps')
-   corner = [tstart -1        latind lonind];
-   endpnt = [tend   -1        latind lonind];
-else
-   corner = [tstart -1 lvlind latind lonind];
-   endpnt = [tend   -1 lvlind latind lonind];
+switch lower(var)
+   case {'ps','ssh'}
+      corner = [tstart -1        latind lonind];
+      endpnt = [tend   -1        latind lonind];
+   otherwise
+      corner = [tstart -1 lvlind latind lonind];
+      endpnt = [tend   -1 lvlind latind lonind];
 end
 bob = getnc(fname, var, corner, endpnt); % 'bob' is only 2D 
 var = bob(:,copyindices);

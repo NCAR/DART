@@ -91,6 +91,12 @@ switch lower(pstruct.model)
       pstruct.copyindices = SetCopyID2(pstruct.prior_file);
       pstruct.copies      = length(pstruct.copyindices);
 
+   case 'mitgcm_ocean'
+
+      pstruct = GetMITgcm_oceanInfo(pstruct, prior_file, 'PlotSawtooth');
+      pstruct.copyindices = SetCopyID2(pstruct.prior_file);
+      pstruct.copies      = length(pstruct.copyindices);
+
    otherwise
 
       error(sprintf('model %s not implemented yet', pstruct.model))

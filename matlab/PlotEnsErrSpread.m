@@ -166,7 +166,7 @@ switch lower(tmodel)
                ylabel('distance')
       end
 
-   case {'fms_bgrid','pe2lyr'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean'}
 
       clf;
 

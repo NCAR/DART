@@ -41,13 +41,13 @@ end
 
 pinfo = CheckModelCompatibility(truth_file, diagn_file);
 vars  = CheckModel(truth_file);   % also gets default values for this model.
-varid = SetVariableID(vars);      % queries for variable IDs if needed.
 
 switch lower(vars.model)
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
 	 'lorenz_04','forced_lorenz_96','ikeda','simple_advection'}
 
+      varid = SetVariableID(vars);
       pinfo = setfield(pinfo,'truth_file', truth_file);
       pinfo = setfield(pinfo,'diagn_file', diagn_file);
       pinfo = setfield(pinfo,'var'       , varid.var);
@@ -59,6 +59,7 @@ switch lower(vars.model)
 
       disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
       disp(sprintf('Using Variable %s IDs %s', pinfo.var,num2str(pinfo.var_inds)))
+      clear varid
 
    case 'fms_bgrid'
 
@@ -66,9 +67,21 @@ switch lower(vars.model)
       pinfo.truth_file = truth_file;
       pinfo.diagn_file = diagn_file;
 
+   case 'cam'
+
+      pinfo = GetCamInfo(pinfo, truth_file, 'PlotEnsErrSpread');
+      pinfo.truth_file = truth_file;
+      pinfo.diagn_file = diagn_file;
+
    case 'pe2lyr'
 
       pinfo = GetPe2lyrInfo(pinfo, truth_file, 'PlotEnsErrSpread');
+      pinfo.truth_file = truth_file;
+      pinfo.diagn_file = diagn_file;
+
+   case 'mitgcm_ocean'
+
+      pinfo = GetMITgcm_oceanInfo(pinfo, truth_file, 'PlotEnsErrSpread');
       pinfo.truth_file = truth_file;
       pinfo.diagn_file = diagn_file;
 
@@ -80,4 +93,4 @@ end
 
 PlotEnsErrSpread( pinfo )
 
-clear vars varid
+clear vars

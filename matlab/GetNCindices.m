@@ -117,5 +117,5 @@ for i = 1:ndims
 
 end
 
-ncmex('CLOSE',fname);
+ncmex('CLOSE',cdfid);
 

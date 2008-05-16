@@ -124,7 +124,7 @@ switch lower(true_model)
          axis tight
       end
 
-   case {'fms_bgrid','pe2lyr'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean'}
 
       % It is intended that all 3D models have all the required information
       % set in the corresponding Get<model>Info.m script.
@@ -183,7 +183,7 @@ function var = GetCopy(fname, copyindex, pinfo, tstart, tend)
 % at a particular 3D location (level, lat, lon)
 
 switch(lower(pinfo.var))
-   case {'ps'}
+   case {'ps','ssh'}
       corner = [tstart copyindex                 pinfo.latindex pinfo.lonindex];
       endpnt = [tend   copyindex                 pinfo.latindex pinfo.lonindex];
    otherwise

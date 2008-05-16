@@ -38,7 +38,7 @@ elseif ( nargin == 3 )
 
       d  = (pred(i,:) - verif(i,:)).^2;
 
-      err(i) = sqrt( sum( d(:) .* w ) );
+      err(i) = sqrt( sum( d .* w ) );
    end
 
 else

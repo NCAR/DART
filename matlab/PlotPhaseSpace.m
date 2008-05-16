@@ -177,7 +177,7 @@ switch lower(model)
       end
       legend boxoff
 
-   case {'fms_bgrid','pe2lyr'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean'}
 
       disp(sprintf('PlotPhaseSpace'))
       pinfo
@@ -246,12 +246,13 @@ end
 function var = Get1Copy(fname, copyindex, var, lvlind, latind, lonind)                                            
 % Gets a time-series of a single specified copy of a prognostic variable                   
 % at a particular 3D location (level, lat, lon)                                            
-if strcmp(var,'ps')                                                                  
-   corner = [-1 copyindex        latind lonind];                 
-   endpnt = [-1 copyindex        latind lonind];                 
-else                                                                                       
-   corner = [-1 copyindex lvlind latind lonind];                 
-   endpnt = [-1 copyindex lvlind latind lonind];                 
+switch lower(var)
+   case{'ps','ssh'}
+      corner = [-1 copyindex        latind lonind];                 
+      endpnt = [-1 copyindex        latind lonind];                 
+   otherwise                                                                                       
+      corner = [-1 copyindex lvlind latind lonind];                 
+      endpnt = [-1 copyindex lvlind latind lonind];                 
 end                                                                                        
 var = getnc(fname, var, corner, endpnt);
 

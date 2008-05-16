@@ -280,6 +280,30 @@ switch lower(model)
 
       vars.vars = varnames;
 
+   case 'mitgcm_ocean'
+
+      % A more robust way would be to use the netcdf low-level ops:
+      % bob = var(f);     % bob is a cell array of ncvars
+      % name(bob{1})       % is the variable name string
+      % bob{1}(:)          % is the value of the netcdf variable  (no offset/scale)
+      % have not yet figured out a way to only use non-coordinate variables.
+
+      varnames = {'S','T','U','V','SSH'};
+      num_vars = length(varnames);
+      nlevels  = ncsize(f('ZG')); % determine # of state variables
+      if (prod(size(nlevels)) > 1 ) 
+          error(sprintf('%s has no ''ZG'' dimension.',fname))
+      end
+
+      vars = struct('model',model, ...
+              'num_state_vars',num_vars, ...
+              'num_ens_members',num_copies, ...
+              'time_series_length',num_times, ...
+              'min_ens_mem',min(copy), ...
+              'max_ens_mem',max(copy) );
+
+       vars.vars = varnames;
+
    otherwise
 
       error(sprintf('model %s unknown',model))

@@ -110,9 +110,17 @@ switch lower(vars.model)
 
       pinfo = GetBgridInfo(pinfo, fname, 'PlotVarVarCorrel');
 
+   case 'cam'
+
+      pinfo = GetCamInfo(pinfo, fname, 'PlotVarVarCorrel');
+
    case 'pe2lyr'
 
       pinfo = GetPe2lyrInfo(pinfo, fname, 'PlotVarVarCorrel');
+
+   case 'mitgcm_ocean'
+
+      pinfo = GetMITgcm_oceanInfo(pinfo, fname, 'PlotVarVarCorrel');
 
    otherwise
 

@@ -27,23 +27,23 @@ if (exist('diagn_file') ~=1)
    end
 end 
 
-vars = CheckModel(diagn_file);
+pinfo = CheckModel(diagn_file); 
 pinfo.fname = diagn_file;
 
-switch lower(vars.model)
+switch lower(pinfo.model)
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04', ...
 	 'forced_lorenz_96','ikeda'}
 
-      pinfo.base_var = vars.def_var;
+      pinfo.base_var = pinfo.def_var;
 
       inputstring = input( ...
            sprintf('Input index for base variable (between %d and %d, inclusive)  ', ...
-           vars.min_state_var,vars.max_state_var),'s');
+           pinfo.min_state_var,pinfo.max_state_var),'s');
       pinfo.base_var_index = str2num(deblank(inputstring));
 
       inputstring = input( ...
            sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
-           vars.time_series_length),'s');
+           pinfo.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
       disp(sprintf('Using diagnostic file %s',diagn_file))
@@ -53,8 +53,8 @@ switch lower(vars.model)
    case {'lorenz_96_2scale'}
 
       disp(sprintf('Your choice of variables is ''X'' or ''Y'''))
-      disp(sprintf('''X'' can range from %d to %d', vars.min_X_var, vars.max_X_var))
-      disp(sprintf('''Y'' can range from %d to %d', vars.min_Y_var, vars.max_Y_var))
+      disp(sprintf('''X'' can range from %d to %d', pinfo.min_X_var, pinfo.max_X_var))
+      disp(sprintf('''Y'' can range from %d to %d', pinfo.min_Y_var, pinfo.max_Y_var))
 
       % parsing the result of this one is a bit tricky.
       inputstring = input('Input base variable and index i.e.  X 5\n','s');
@@ -62,7 +62,7 @@ switch lower(vars.model)
 
       inputstring = input( ...
            sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
-           vars.time_series_length),'s');
+           pinfo.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
       disp(sprintf('Using diagnostic file %s',diagn_file))
@@ -72,18 +72,18 @@ switch lower(vars.model)
    case {'simple_advection'}
 
       disp('Your choice of variables are:')
-      disp(vars.vars)
+      disp(pinfo.vars)
       disp(sprintf('the indices (locations) can range from %d to %d, inclusive', ...
-           vars.min_state_var, vars.max_state_var))
+           pinfo.min_state_var, pinfo.max_state_var))
 
       str1 = sprintf('Input base variable and index i.e. %s %d\n', ...
-                      vars.def_var,vars.def_state_vars(1));
+                      pinfo.def_var,pinfo.def_state_vars(1));
       inputstring = input(str1,'s');
       [pinfo.base_var, pinfo.base_var_index] = ParseAlphaNumerics(inputstring);
 
       inputstring = input( ...
            sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
-           vars.time_series_length),'s');
+           pinfo.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
       disp(sprintf('Using diagnostic file %s',diagn_file))
@@ -94,15 +94,23 @@ switch lower(vars.model)
 
       pinfo = GetBgridInfo(pinfo, diagn_file, 'PlotCorrel');
 
+   case 'cam'
+
+      pinfo = GetCamInfo(pinfo, diagn_file, 'PlotCorrel');
+
    case 'pe2lyr'
 
       pinfo = GetPe2lyrInfo(pinfo, diagn_file, 'PlotCorrel');
 
+   case 'mitgcm_ocean'
+
+      pinfo = GetMITgcm_oceanInfo(pinfo, diagn_file, 'PlotCorrel');
+
    otherwise
 
-      error(sprintf('model %s not implemented yet', vars.model))
+      error(sprintf('model %s not implemented yet', pinfo.model))
 
 end
 
 PlotCorrel( pinfo );
-clear vars inputstring inds str1 vrbl vrbl_inds
+clear inputstring inds str1 vrbl vrbl_inds

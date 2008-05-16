@@ -57,13 +57,10 @@ switch lower(vars.model)
       pinfo = setfield(pinfo, 'diagn_file', diagn_file);
       pinfo = setfield(pinfo, 'var'       , varid.var);
       pinfo = setfield(pinfo, 'var_inds'  , varid.var_inds);
-      %pinfo = struct('truth_file', truth_file, ...
-      %               'diagn_file', diagn_file, ...
-      %               'var'       , varid.var, ...
-      %               'var_inds'  , varid.var_inds);
 
       disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
       disp(['Using State Variable IDs ', num2str(pinfo.var_inds)])
+      clear varid
 
    case 'fms_bgrid'
 
@@ -86,8 +83,14 @@ switch lower(vars.model)
    case 'pe2lyr'
 
       pinfo = GetPe2lyrInfo(pinfo, diagn_file, 'PlotEnsMeanTimeSeries');
-      pinfo.truth_file = truth_file;   % since it has been verified to be compatible.
-      pinfo.diagn_file = diagn_file;   % since it has been verified to be compatible.
+      pinfo.truth_file = truth_file;
+      pinfo.diagn_file = diagn_file;
+
+   case 'mitgcm_ocean'
+
+      pinfo = GetMITgcm_oceanInfo(pinfo, diagn_file, 'PlotEnsMeanTimeSeries');
+      pinfo.truth_file = truth_file;
+      pinfo.diagn_file = diagn_file;
 
    otherwise
 
@@ -96,4 +99,4 @@ switch lower(vars.model)
 end
 
 PlotEnsMeanTimeSeries( pinfo )
-clear vars varid
+clear vars

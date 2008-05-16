@@ -84,6 +84,13 @@ switch lower(vars.model)
       pinfo.truth_file = truth_file;   % known to be compatible.
       pinfo.diagn_file = diagn_file;   % known to be compatible.
 
+   case 'mitgcm_ocean'
+
+      varid = SetVariableID(vars);      % queries for variable IDs if needed.
+      pinfo = GetPe2lyrInfo(pinfo, diagn_file, 'PlotEnsTimeSeries');
+      pinfo.truth_file = truth_file;   % known to be compatible.
+      pinfo.diagn_file = diagn_file;   % known to be compatible.
+
    otherwise
       error(sprintf('model %s not implemented yet', vars.model))
 

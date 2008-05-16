@@ -198,9 +198,17 @@ switch lower(vars.model)
 
       pinfo = GetBgridInfo(pinfo, fname, 'PlotPhaseSpace');
 
+   case 'cam'
+
+      pinfo = GetCamInfo(pinfo, fname, 'PlotPhaseSpace');
+
    case 'pe2lyr'
 
       pinfo = GetPe2lyrInfo(pinfo, fname, 'PlotPhaseSpace');
+
+   case 'mitgcm_ocean'
+
+      pinfo = GetMITgcm_oceanInfo(pinfo, fname, 'PlotPhaseSpace');
 
    case {'ikeda'}
 
