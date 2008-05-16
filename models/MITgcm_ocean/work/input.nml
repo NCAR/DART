@@ -2,8 +2,8 @@
    start_from_restart    = .true.,
    output_restart        = .true.,
    async                 = 0,
-   init_time_days        = 0,
-   init_time_seconds     = 0,
+   init_time_days        = -1,
+   init_time_seconds     = -1,
    first_obs_days        = -1,
    first_obs_seconds     = -1,
    last_obs_days         = -1,
@@ -18,20 +18,20 @@
 &filter_nml
    async                    = 0,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 = 20,
-   start_from_restart       = .true.,
+   ens_size                 = 4,
+   start_from_restart       = .false.,
    output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ics",
+   restart_in_file_name     = "perfect_ics",
    restart_out_file_name    = "filter_restart",
-   init_time_days           = 0,
-   init_time_seconds        = 0,
+   init_time_days           = -1,
+   init_time_seconds        = -1,
    first_obs_days           = -1,
    first_obs_seconds        = -1,
    last_obs_days            = -1,
    last_obs_seconds         = -1,
-   num_output_state_members = 0,
+   num_output_state_members = 4,
    num_output_obs_members   = 0,
    output_interval          = 1,
    num_groups               = 1,
@@ -91,9 +91,11 @@
    write_binary_obs_sequence = .false.  /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'TEMPERATURE',
+   assimilate_these_obs_types = 'SALINITY',
+                                'TEMPERATURE',
                                 'U_CURRENT_COMPONENT',
-                                'V_CURRENT_COMPONENT' /
+                                'V_CURRENT_COMPONENT',
+                                'SEA_SURFACE_HEIGHT'  /
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
@@ -120,7 +122,7 @@
    approximate_distance        = .true.,
    nlon                        = 71,
    nlat                        = 36,
-   output_box_info             = .false.  /
+   output_box_info             = .true.  /
 
 &utilities_nml
    TERMLEVEL = 1,
@@ -132,7 +134,7 @@
    ens_size                     =  1,
    single_restart_file_in       = .true.,
    single_restart_file_out      = .true.,
-   write_binary_restart_files   = .true.,
+   write_binary_restart_files   = .false.,
    overwrite_data_time          = .false.,
    new_data_days                =  -1,
    new_data_secs                =  -1,

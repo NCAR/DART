@@ -95,7 +95,7 @@ write(*,*)'Trying to read files like yyy.'//trim(file_base)//'.data'
 model_time = timestep_to_DARTtime(timestep)
 
 call print_time(model_time,'time for '//file_base)
-call print_date(model_time,'time for '//file_base)
+call print_date(model_time,'date for '//file_base)
 
 
 x_size = get_model_size()

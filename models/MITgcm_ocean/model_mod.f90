@@ -547,18 +547,22 @@ subroutine adv_1step(x, time)
 ! the changed state after a timestep. The time argument is intent
 ! in and is used for models that need to know the date/time to 
 ! compute a timestep, for instance for radiation computations.
-! This interface is only called if the namelist parameter
-! async is set to 0 in perfect_model_obs of filter or if the 
+! This interface is only called IF the namelist parameter
+! async is set to 0 in perfect_model_obs or filter -OR- if the 
 ! program integrate_model is to be used to advance the model
-! state as a separate executable. If one of these options
-! is not going to be used (the model will only be advanced as
-! a separate model-specific executable), this can be a 
-! NULL INTERFACE.
+! state as a separate executable. If none of these options
+! are used (the model will only be advanced as a separate 
+! model-specific executable), this can be a NULL INTERFACE.
 
 real(r8),        intent(inout) :: x(:)
 type(time_type), intent(in)    :: time
 
 if ( .not. module_initialized ) call static_init_model
+
+if (do_output()) then
+   call print_time(time,'NULL interface adv_1step (no advance) DART time is')
+   call print_time(time,'NULL interface adv_1step (no advance) DART time is',logfileunit)
+endif
 
 end subroutine adv_1step
 

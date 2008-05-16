@@ -12,8 +12,7 @@ program column_rand
 ! $Date: 2007-11-01 17:21:49 -0600 (Thu, 01 Nov 2007) $
 
 ! Allows creation of input file for generating a set of randomly located
-! observation stations with full column of obs for b-grid model. Should be
-! nearly identical to similar thing for CAM, etc.
+! observation stations with full column of obs.
 
 use      types_mod, only : r8, PI
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
