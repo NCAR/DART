@@ -252,9 +252,9 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-write(logfileunit, nml=model_nml)
-write(     *     , nml=model_nml)
+if (do_output()) call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
+if (do_output()) write(logfileunit, nml=model_nml)
+if (do_output()) write(     *     , nml=model_nml)
 
 allocate(wrf%dom(num_domains))
 
@@ -303,9 +303,8 @@ call read_dt_from_wrf_nml()
 do id=1,num_domains
 
    ! only print this once, no matter how many parallel tasks are running
+   write( idom , '(I1)') id
    if (do_output()) then
-      write( idom , '(I1)') id
-
       write(*,*) '******************'
       write(*,*) '**  DOMAIN # ',idom,'  **'
       write(*,*) '******************'
@@ -359,8 +358,8 @@ do id=1,num_domains
    call check( nf90_get_att(ncid, nf90_global, 'DX', wrf%dom(id)%dx) )
    call check( nf90_get_att(ncid, nf90_global, 'DY', wrf%dom(id)%dy) )
    call check( nf90_get_att(ncid, nf90_global, 'DT', dt) )
-   print*,'dt from wrfinput is: ',dt
-   print*,'Using dt from namelist.input: ',wrf%dom(id)%dt
+   if (do_output()) print*,'dt from wrfinput is: ',dt
+   if (do_output()) print*,'Using dt from namelist.input: ',wrf%dom(id)%dt
    if(debug) write(*,*) ' dx, dy, dt are ',wrf%dom(id)%dx, &
         wrf%dom(id)%dy, wrf%dom(id)%dt
 
@@ -5076,9 +5075,9 @@ read(iunit, nml = domains, iostat = io)
 call check_namelist_read(iunit, io, "domains")
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'read_dt_from_wrf_nml','domains namelist values are',' ',' ',' ')
-write(logfileunit, nml=domains)
-write(     *     , nml=domains)
+if (do_output()) call error_handler(E_MSG,'read_dt_from_wrf_nml','domains namelist values are',' ',' ',' ')
+if (do_output()) write(logfileunit, nml=domains)
+if (do_output()) write(     *     , nml=domains)
 
 if (max_dom /= num_domains) then
 
