@@ -1,0 +1,106 @@
+#!/bin/tcsh 
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2008, Data Assimilation Research Section, 
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# $Id: runmodel_1x 2799 2007-04-04 23:17:51Z thoar $
+#
+#=============================================================================
+# This block of directives constitutes the preamble for the LSF queuing system
+#
+# the normal way to submit to the queue is:    bsub < runmodel_1x
+#
+# an explanation of the most common directives follows:
+# -J Job name
+# -o STDOUT filename
+# -e STDERR filename
+# -P account
+# -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
+# -n number of processors  (really)
+##=============================================================================
+#BSUB -J mitgcmuv
+#BSUB -o mitgcmuv.%J.log
+#BSUB -q regular
+#BSUB -n 20
+#BXXX -P nnnnnnnn
+#BSUB -W 12:00
+#
+##=============================================================================
+## This block of directives constitutes the preamble for the PBS queuing system
+## PBS is used on the CGD   Linux cluster 'bangkok'
+## PBS is used on the CGD   Linux cluster 'calgary'
+## 
+## the normal way to submit to the queue is:    qsub runmodel_1x
+## 
+## an explanation of the most common directives follows:
+## -N     Job name
+## -r n   Declare job non-rerunable
+## -e <arg>  filename for standard error
+## -o <arg>  filename for standard out 
+## -q <arg>   Queue name (small, medium, long, verylong)
+## -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok 
+##                     and calgary, there is no way to 'share' the processors
+##                     on the node with another job, so you might as well use
+##                     them both.  (ppn == Processors Per Node)
+##=============================================================================
+#PBS -N mitgcmuv
+#PBS -r n
+#PBS -e mitgcmuv.err
+#PBS -o mitgcmuv.log
+#PBS -q medium
+#PBS -l nodes=10:ppn=2
+
+# A common strategy for the beginning is to check for the existence of
+# some variables that get set by the different queuing mechanisms.
+# This way, we know which queuing mechanism we are working with,
+# and can set 'queue-independent' variables for use for the remainder
+# of the script.
+
+if ($?LS_SUBCWD) then
+
+   # LSF has a list of processors already in a variable (LSB_HOSTS)
+   
+   mpirun.lsf ./mitgcmuv
+       
+else if ($?PBS_O_WORKDIR) then
+
+   # PBS has a list of processors in a file whose name is (PBS_NODEFILE)
+
+   mpirun ./mitgcmuv
+       
+else if ($?MYNODEFILE) then
+
+   # If you have a linux cluster with no queuing software, use this
+   # section.  The list of computational nodes is given to the mpirun
+   # command and it assigns them as they appear in the file.  In some
+   # cases it seems to be necessary to wrap the command in a small
+   # script that changes to the current directory before running.
+
+   echo "running with no queueing system"
+
+   # before running this script, do this once.  the syntax is
+   # node name : how many tasks you can run on it
+   #setenv MYNODEFILE  ~/nodelist
+   #echo "node7:2" >! $MYNODEFILE
+   #echo "node5:2" >> $MYNODEFILE
+   #echo "node3:2" >> $MYNODEFILE
+   #echo "node1:2" >> $MYNODEFILE
+
+   setenv NUM_PROCS 8
+   echo "running with $NUM_PROCS nodes specified from $MYNODEFILE"
+
+   mpirun -np $NUM_PROCS -nolocal -machinefile $MYNODEFILE ./mitgcmuv
+       
+else
+
+   # interactive - assume you are using 'lam-mpi' and that you have
+   # already run 'lamboot' once to start the lam server, or that you
+   # are running with a machine that has mpich installed.
+
+   echo "running interactively"
+   mpirun -np 2 ./mitgcmuv
+
+endif
+
