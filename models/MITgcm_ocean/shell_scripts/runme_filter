@@ -59,20 +59,19 @@
 #PBS -q medium
 #PBS -l nodes=16:ppn=2
 
-
-# if async=2, e.g. you are going to run './wrf.exe', single process
-# (or possibly 'mpirun -np 1 ./wrf.exe'), so each processor advances 
+# if async=2, e.g. you are going to run './mitgcmuv', single process
+# (or possibly 'mpirun -np 1 ./mitgcmuv'), so each processor advances 
 # one ensemble independently of the others, leave this as false.
 #
-# if async=4, e.g.  all the processors advance each wrf.exe in turn with
-# mpirun -np 64 wrf.exe (or whatever) for as many ensembles as you have,
+# if async=4, e.g.  all the processors advance each mitgcmuv in turn with
+# mpirun -np 64 mitgcmuv (or whatever) for as many ensembles as you have,
 # set this to "true"
 
 # if async=4, also check that the call to advance_model.csh
 # has the right number of ensemble members below; it must match
 # the input.nml number.
 
-set parallel_model = "false"
+set parallel_model = "true"
 
 set num_ens = 16
 
@@ -95,11 +94,11 @@ if ($?LS_SUBCWD) then
    else
    
    # filter runs in parallel until time to do a model advance,
-   # and then this script starts up the wrf.exe jobs, each one
+   # and then this script starts up the mitgcmuv jobs, each one
    # running in parallel.  then it runs wakeup_filter to wake
    # up filter so it can continue.
    
-     rm -f model_to_filter.lock filter_to_model.lock
+     rm  -f model_to_filter.lock filter_to_model.lock
      mkfifo model_to_filter.lock filter_to_model.lock
 
      set filterhome = ~/.filter
@@ -113,10 +112,10 @@ if ($?LS_SUBCWD) then
      while ( -e filter_to_model.lock )
        
        set todo=`( echo $< ) < filter_to_model.lock`
-       echo todo received, value = ${todo}
+       echo "todo received, value = ${todo}"
        
        if ( "${todo}" == "finished" ) then
-         echo main script: filter done.
+         echo "main script: filter done."
          wait
          break                                
 
@@ -127,22 +126,22 @@ if ($?LS_SUBCWD) then
          # command must have -np N with N equal to the number
          # of processors this job is using.
    
-         echo calling model advance now:                
-         ./advance_model.csh 0 ${num_ens} filter_control00000  true
+         echo "calling model advance now:"
+         ./advance_model.csh 0 ${num_ens} filter_control00000
          
-         echo restarting filter.     
-         mpirun.lsf  ./wakeup_filter
+         echo "restarting filter."
+         mpirun.lsf ./wakeup_filter
        
        else
          
-         echo main script: unexpected value received.
+         echo "main script: unexpected value received."
          break
        
        endif
       
      end
       
-     echo filter finished, removing pipes.
+     echo "filter finished, removing pipes."
      rm -f model_to_filter.lock filter_to_model.lock
    
      if ( -d $filterhome) rmdir $filterhome
@@ -162,11 +161,11 @@ else if ($?PBS_O_WORKDIR) then
    else
    
    # filter runs in parallel until time to do a model advance,
-   # and then this script starts up the wrf.exe jobs, each one
+   # and then this script starts up the mitgcmuv jobs, each one
    # running in parallel.  then it runs wakeup_filter to wake
    # up filter so it can continue.
    
-     rm -f model_to_filter.lock filter_to_model.lock
+     rm  -f model_to_filter.lock filter_to_model.lock
      mkfifo model_to_filter.lock filter_to_model.lock
 
      set filterhome = ~/.filter
@@ -180,10 +179,10 @@ else if ($?PBS_O_WORKDIR) then
      while ( -e filter_to_model.lock )
        
        set todo=`( echo $< ) < filter_to_model.lock`
-       echo todo received, value = ${todo}
+       echo "todo received, value = ${todo}"
        
        if ( "${todo}" == "finished" ) then
-         echo main script: filter done.
+         echo "main script: filter done."
          wait
          break                                
 
@@ -194,62 +193,61 @@ else if ($?PBS_O_WORKDIR) then
          # command must have -np N with N equal to the number
          # of processors this job is using.
    
-         echo calling model advance now:                
-         ./advance_model.csh 0 ${num_ens} filter_control00000  true
+         echo "calling model advance now:"
+         ./advance_model.csh 0 ${num_ens} filter_control00000
          
-         echo restarting filter.     
+         echo "restarting filter."
          mpirun  ./wakeup_filter
        
        else
          
-         echo main script: unexpected value received.
+         echo "main script: unexpected value received."
          break
        
        endif
       
      end
       
-     echo filter finished, removing pipes.
+     echo "filter finished, removing pipes."
      rm -f model_to_filter.lock filter_to_model.lock
    
      if ( -d $filterhome) rmdir $filterhome
    endif
    
-else if ($?OCOTILLO_MPINODES) then
+else if ($?MYNODEFILE) then
 
    # If you have a linux cluster with no queuing software, use this
    # section.  The list of computational nodes is given to the mpirun
    # command and it assigns them as they appear in the file.  In some
    # cases it seems to be necessary to wrap the command in a small
    # script that changes to the current directory before running.
-   # (ocotillo is a local ncar cluster, and also a type of desert tree)
 
-   echo "running on ocotillo"
+   echo "running with no queueing system"
 
    # before running this script, do this once.  the syntax is
    # node name : how many tasks you can run on it
-   #setenv OCOTILLO_MPINODES  ~/nodelist
-   #echo "node7:2" >! $OCOTILLO_MPINODES
-   #echo "node5:2" >> $OCOTILLO_MPINODES
-   #echo "node3:2" >> $OCOTILLO_MPINODES
-   #echo "node1:2" >> $OCOTILLO_MPINODES
+   #setenv MYNODEFILE  ~/nodelist
+   #echo "node7:2" >! $MYNODEFILE
+   #echo "node5:2" >> $MYNODEFILE
+   #echo "node3:2" >> $MYNODEFILE
+   #echo "node1:2" >> $MYNODEFILE
 
    setenv NUM_PROCS 8
-   echo "running with $NUM_PROCS nodes specified from $OCOTILLO_MPINODES"
+   echo "running with $NUM_PROCS nodes specified from $MYNODEFILE"
 
    # each filter task advances the ensembles, each running on 1 proc.
    if ( "$parallel_model" == "false" ) then
 
-      mpirun -np $NUM_PROCS -nolocal -machinefile $OCOTILLO_MPINODES ./filter
+      mpirun -np $NUM_PROCS -nolocal -machinefile $MYNODEFILE ./filter
 
    else
 
    # filter runs in parallel until time to do a model advance,
-   # and then this script starts up the wrf.exe jobs, each one
+   # and then this script starts up the mitgcmuv jobs, each one
    # running in parallel.  then it runs wakeup_filter to wake
    # up filter so it can continue.
    
-     rm -f model_to_filter.lock filter_to_model.lock
+     rm  -f model_to_filter.lock filter_to_model.lock
      mkfifo model_to_filter.lock filter_to_model.lock
 
      set filterhome = ~/.filter
@@ -259,15 +257,15 @@ else if ($?OCOTILLO_MPINODES) then
      # this script immediately.
       
      (setenv HOME $filterhome; \
-      mpirun -np $NUM_PROCS -nolocal -machinefile $OCOTILLO_MPINODES ./filter ) &
+      mpirun -np $NUM_PROCS -nolocal -machinefile $MYNODEFILE ./filter ) &
        
      while ( -e filter_to_model.lock )
        
        set todo=`( echo $< ) < filter_to_model.lock`
-       echo todo received, value = ${todo}
+       echo "todo received, value = ${todo}"
        
        if ( "${todo}" == "finished" ) then
-         echo main script: filter done.
+         echo "main script: filter done."
          wait
          break                                
 
@@ -278,22 +276,22 @@ else if ($?OCOTILLO_MPINODES) then
          # command must have -np N with N equal to the number
          # of processors this job is using.
    
-         echo calling model advance now:                
-         ./advance_model.csh 0 ${num_ens} filter_control00000  true
+         echo "calling model advance now:"
+         ./advance_model.csh 0 ${num_ens} filter_control00000
          
-         echo restarting filter.     
-         mpirun -np $NUM_PROCS -nolocal -machinefile $OCOTILLO_MPINODES ./wakeup_filter
+         echo "restarting filter."
+         mpirun -np $NUM_PROCS -nolocal -machinefile $MYNODEFILE ./wakeup_filter
        
        else
          
-         echo main script: unexpected value received.
+         echo "main script: unexpected value received."
          break
        
        endif
       
      end
       
-     echo filter finished, removing pipes.
+     echo "filter finished, removing pipes."
      rm -f model_to_filter.lock filter_to_model.lock
    
      if ( -d $filterhome) rmdir $filterhome
