@@ -29,7 +29,7 @@ otherwise
    mitO  = rdmds(sprintf('%s/Eta.0000040992',mitbase));
    [nx ny] = size(mitO);
    nz = 1;
-   varname = 'SSH';
+   varname = 'Eta';
 end
 
 levels = getnc('True_State.nc','ZC');

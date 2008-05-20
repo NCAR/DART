@@ -35,8 +35,15 @@ set temp_dir = 'advance_temp'${process}
 mkdir -p $temp_dir
 cd       $temp_dir
 
-# Get input.nml ... is it used by trans_sv_pv ...?
-cp ../input.nml .
+# Get files needed to run the ocean model
+cp -p ../eedata ../topog.bin ../theta.bin ../salt.bin ../SST.bin ../SSS.bin .  || exit 1
+
+# Get namelist files controlling run-time behavior
+cp -p ../data ../data.cal ../data.exf ../data.kpp \
+                         ../data.obcs ../data.pkg . || exit 2
+
+# Get files needed to run DART input.nml ... is it used by trans_sv_pv ...?
+cp ../input.nml . || exit 3
 
 # Loop through each state
 set state_copy = 1
@@ -49,26 +56,80 @@ while($state_copy <= $num_states)
    set input_file      = `head -$input_file_line      ../$control_file | tail -1`
    set output_file     = `head -$output_file_line     ../$control_file | tail -1`
    
-   # Get the ics file for this state_copy
-   # or ... run trans_sv_pv ... muck about with MIT namelists for model control
+   # Get the ics file for this state_copy and
+   # convert them to the form needed to cold-start the ocean model
+   # trans_sv_pv  creates the following files:
+   #   S.YYYYMMDD.HHMMSS.[data,meta],
+   #   T.YYYYMMDD.HHMMSS.[data,meta],
+   #   U.YYYYMMDD.HHMMSS.[data,meta],
+   #   V.YYYYMMDD.HHMMSS.[data,meta],
+   # Eta.YYYYMMDD.HHMMSS.[data,meta], and 
+   # data.cal.new  ... which contains the appropriate startdate_1, startdate_2
+   # so data&PARM05 will specify the input data files.
    mv ../$input_file assim_model_state_ic
 
    ../trans_sv_pv
 
-   move the new MIT namelist output ... 
+   # Update the MIT namelist output ... 
+   # and rename the input files to those defined in the data&PARM05 namelist.
+
+   mv data.cal.new data.cal
+
+   set FNAME = `grep -i hydrogSaltFile data | sed -e "s#=##"`
+   set FNAME = `echo  $FNAME | sed -e "s#hydrogSaltFile##"`
+   set FNAME = `echo  $FNAME | sed -e "s#,##g"`
+   set FNAME = `echo  $FNAME | sed -e "s#'##g"`
+   mv -v S.*.*.data $FNAME
+
+   set FNAME = `grep -i hydrogThetaFile data | sed -e "s#=##"`
+   set FNAME = `echo  $FNAME | sed -e "s#hydrogThetaFile##"`
+   set FNAME = `echo  $FNAME | sed -e "s#,##g"`
+   set FNAME = `echo  $FNAME | sed -e "s#'##g"`
+   mv -v T.*.*.data $FNAME
+
+   set FNAME = `grep -i uVelInitFile data | sed -e "s#=##"`
+   set FNAME = `echo  $FNAME | sed -e "s#uVelInitFile##"`
+   set FNAME = `echo  $FNAME | sed -e "s#,##g"`
+   set FNAME = `echo  $FNAME | sed -e "s#'##g"`
+   mv -v U.*.*.data $FNAME
+
+   set FNAME = `grep -i vVelInitFile data | sed -e "s#=##"`
+   set FNAME = `echo  $FNAME | sed -e "s#vVelInitFile##"`
+   set FNAME = `echo  $FNAME | sed -e "s#,##g"`
+   set FNAME = `echo  $FNAME | sed -e "s#'##g"`
+   mv -v V.*.*.data $FNAME
+
+   set FNAME = `grep -i hydrogSaltFile data | sed -e "s#=##"`
+   set FNAME = `echo  $FNAME | sed -e "s#hydrogSaltFile##"`
+   set FNAME = `echo  $FNAME | sed -e "s#,##g"`
+   set FNAME = `echo  $FNAME | sed -e "s#'##g"`
+   mv -v Eta.*.*.data $FNAME
+
+#  set  hydrogSaltFile=`sed -n -e  's/hydrogSaltFile=.\(.*\).,/\1/p' data`
+#  set hydrogThetaFile=`sed -n -e 's/hydrogThetaFile=.\(.*\).,/\1/p' data`
+#  set    uVelInitFile=`sed -n -e    's/uVelInitFile=.\(.*\).,/\1/p' data`
+#  set    vVelInitFile=`sed -n -e    's/vVelInitFile=.\(.*\).,/\1/p' data`
+#  set   thetaClimFile=`sed -n -e   's/thetaClimFile=.\(.*\).,/\1/p' data`
+#  mv   S.*.*.data  $hydrogSaltFile
+#  mv   T.*.*.data  $hydrogThetaFile
+#  mv   U.*.*.data  $uVelInitFile
+#  mv   V.*.*.data  $vVelInitFile
+#  mv Eta.*.*.data  $thetaClimFile
 
    # Advance the model saving standard out
-   # integrate_model is hardcoded to expect input in temp_ic and it creates
-   # temp_ud as output.
-   ./integrate_model >! integrate_model_out_temp
+   ./mitgcmuv >! integrate_model_out_temp
 
-   echo "some time index relating to the expected [S.xxxxxxxxxx.data]" | ../trans_pv_sv
+   # Extract the timestep from the ocean model output files.
+   set TIMESTEP = `ls -1 S.*.data`
+   set TIMESTEP = $TIMESTEP:r
+   set TIMESTEP = $TIMESTEP:e
+
+   echo $TIMESTEP | ../trans_pv_sv
 
    # Append the output from the advance to the file in the working directory
    #cat integrate_model_out_temp >> ../integrate_model_out_temp$process
 
-   # Move the updated state vector back up
-   # (temp_ud was created by integrate_model.)
+   # Move the updated state vector back to 'centraldir'
    mv assim_model_state_ud ../$output_file
 
    @ state_copy++

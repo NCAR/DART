@@ -215,13 +215,13 @@ NAMELIST /PARM05/ &
 
 !------------------------------------------------------------------
 !
-! The DART state vector (control vector) will consist of:  S, T, U, V, SSH
+! The DART state vector (control vector) will consist of:  S, T, U, V, Eta
 ! (Salinity, Temperature, U velocity, V velocity, Sea Surface Height).
 ! S, T are 3D arrays, located at cell centers.  U is staggered in X
 ! and V is staggered in Y (meaning the points are located on the cell
 ! faces) but the grids are offset by half a cell, so there are actually
 ! the same number of points in each grid. 
-! SSH is a 2D field (X,Y only).  The Z direction is downward.
+! Eta is a 2D field (X,Y only).  The Z direction is downward.
 !
 !------------------------------------------------------------------
 
@@ -233,11 +233,11 @@ integer, parameter :: S_index   = 1
 integer, parameter :: T_index   = 2
 integer, parameter :: U_index   = 3
 integer, parameter :: V_index   = 4
-integer, parameter :: SSH_index = 5
+integer, parameter :: Eta_index = 5
 
 ! (the absoft compiler likes them to all be the same length during declaration)
 ! we trim the blanks off before use anyway, so ...
-character(len=128) :: progvarnames(nfields) = (/'S  ','T  ','U  ','V  ','SSH'/)
+character(len=128) :: progvarnames(nfields) = (/'S  ','T  ','U  ','V  ','Eta'/)
 
 integer :: start_index(nfields)
 
@@ -495,12 +495,12 @@ start_index(S_index)   = 1
 start_index(T_index)   = start_index(S_index) + (Nx * Ny * Nz)
 start_index(U_index)   = start_index(T_index) + (Nx * Ny * Nz)
 start_index(V_index)   = start_index(U_index) + (Nx * Ny * Nz)
-start_index(SSH_index) = start_index(V_index) + (Nx * Ny * Nz)
+start_index(Eta_index) = start_index(V_index) + (Nx * Ny * Nz)
 
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 1 is 2D.
 !  e.g. S,T,U,V = 256 x 225 x 70
-!  e.g. SSH = 256 x 225
+!  e.g. Eta = 256 x 225
 
 if (do_output()) write(logfileunit, *) 'Using grid size : '
 if (do_output()) write(logfileunit, *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
@@ -616,7 +616,7 @@ integer,             intent(in) :: obs_type
 real(r8),           intent(out) :: interp_val
 integer,            intent(out) :: istatus
 
-! Model interpolate will interpolate any state variable (S, T, U, V, SSH) to
+! Model interpolate will interpolate any state variable (S, T, U, V, Eta) to
 ! the given location given a state vector. The type of the variable being
 ! interpolated is obs_type since normally this is used to find the expected
 ! value of an observation at some location. The interpolated value is 
@@ -805,7 +805,7 @@ if(var_type == KIND_V_CURRENT_COMPONENT) then
    lat_array = yg
    call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
 else 
-   ! SSH, U, T and S are on the YC latitude grid
+   ! Eta, U, T and S are on the YC latitude grid
    lat_array = yc
    call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
 endif
@@ -822,7 +822,7 @@ if(var_type == KIND_U_CURRENT_COMPONENT) then
    lon_array = xg
    call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
 else
-   ! SSH, V, T, and S are on the XC grid
+   ! Eta, V, T, and S are on the XC grid
    lon_array = xc
    call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
 endif
@@ -1108,7 +1108,7 @@ else if (index_in < start_index(V_index+1)) then
    var_num = V_index
 else 
    if (present(var_type)) var_type = KIND_SEA_SURFACE_HEIGHT
-   var_num = SSH_index
+   var_num = Eta_index
 endif
 
 !print *, 'var num = ', var_num
@@ -1118,7 +1118,7 @@ offset = index_in - start_index(var_num)
 
 !print *, 'offset = ', offset
 
-if (var_num == SSH_index) then
+if (var_num == Eta_index) then
   depth = 0.0
   depth_index = 1
 else
@@ -1224,7 +1224,7 @@ integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID, ZCDimID
 integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID, ZCVarID
 
 ! for the prognostic variables
-integer :: SVarID, TVarID, UVarID, VVarID, SSHVarID 
+integer :: SVarID, TVarID, UVarID, VVarID, EtaVarID 
 
 !----------------------------------------------------------------------
 ! local variables 
@@ -1381,7 +1381,7 @@ else
    call nc_check(nf90_put_att(ncFileID,  XGVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)), &
                  "nc_write_model_atts", "XG valid_range "//trim(filename))
 
-   ! S,T,V,SSH Grid Longitudes
+   ! S,T,V,Eta Grid Longitudes
    call nc_check(nf90_def_var(ncFileID,name="XC",xtype=nf90_real,dimids=XCDimID,varid=XCVarID),&
                  "nc_write_model_atts", "XC def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, XCVarID, "long_name", "longitude grid centroids"), &
@@ -1405,7 +1405,7 @@ else
    call nc_check(nf90_put_att(ncFileID,YGVarID,"valid_range",(/-90.0_r8,90.0_r8 /)), &
                  "nc_write_model_atts", "YG valid_range "//trim(filename))
 
-   ! S,T,U,SSH Grid Latitudes
+   ! S,T,U,Eta Grid Latitudes
    call nc_check(nf90_def_var(ncFileID,name="YC",xtype=nf90_real,dimids=YCDimID,varid=YCVarID), &
                  "nc_write_model_atts", "YC def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, YCVarID, "long_name", "latitude grid centroids"), &
@@ -1499,15 +1499,15 @@ else
    call nc_check(nf90_put_att(ncFileID, VVarID, "units_long_name", "meters per second"), &
          "nc_write_model_atts", "V units_long_name "//trim(filename))
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="SSH", xtype=nf90_real, &
-         dimids=(/XCDimID,YCDimID,MemberDimID,unlimitedDimID/),varid=SSHVarID), &
-         "nc_write_model_atts", "SSH def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SSHVarID, "long_name", "sea surface height"), &
-         "nc_write_model_atts", "SSH long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SSHVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "SSH fill "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SSHVarID, "units", "meters"), &
-         "nc_write_model_atts", "SSH units "//trim(filename))
+   call nc_check(nf90_def_var(ncid=ncFileID, name="Eta", xtype=nf90_real, &
+         dimids=(/XCDimID,YCDimID,MemberDimID,unlimitedDimID/),varid=EtaVarID), &
+         "nc_write_model_atts", "Eta def_var "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, EtaVarID, "long_name", "sea surface height"), &
+         "nc_write_model_atts", "Eta long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, EtaVarID, "_FillValue", NF90_FILL_REAL), &
+         "nc_write_model_atts", "Eta fill "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, EtaVarID, "units", "meters"), &
+         "nc_write_model_atts", "Eta units "//trim(filename))
 
    ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
@@ -1647,12 +1647,12 @@ else
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 "nc_write_model_vars", "V put_var "//trim(filename))
 
-   call vector_to_prog_var(statevec,SSH_index,data_2d)
+   call vector_to_prog_var(statevec,Eta_index,data_2d)
    where (data_2d == 0.0_r4) data_2d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "SSH", VarID), &
-                "nc_write_model_vars", "SSH inq_varid "//trim(filename))
+   call nc_check(NF90_inq_varid(ncFileID, "Eta", VarID), &
+                "nc_write_model_vars", "Eta inq_varid "//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
-                "nc_write_model_vars", "SSH put_var "//trim(filename))
+                "nc_write_model_vars", "Eta put_var "//trim(filename))
 
 endif
 
@@ -2328,7 +2328,7 @@ do l=1, n3dfields
 
 enddo
 
-! and finally, SSH (and any other 2d fields)
+! and finally, Eta (and any other 2d fields)
 do l=(n3dfields+1), (n3dfields+n2dfields)
 
    write(prefixstring, '(A,''.'',I10.10)') trim(progvarnames(l)), timestepcount
@@ -2388,7 +2388,7 @@ do l=1, n3dfields
 
 enddo
 
-! and finally, SSH (and any other 2d fields)
+! and finally, Eta (and any other 2d fields)
 do l=(n3dfields+1), (n3dfields+n2dfields)
 
    write(prefixstring, '(A,''.'',I8.8,''.'',I6.6)') trim(progvarnames(l)),date1,date2
@@ -2407,11 +2407,11 @@ end subroutine sv_to_snapshot_files
 
 
 
-subroutine prog_var_to_vector(s,t,u,v,ssh,x)
+subroutine prog_var_to_vector(s,t,u,v,eta,x)
 !------------------------------------------------------------------
 !
 real(r4), dimension(:,:,:), intent(in)  :: s,t,u,v
-real(r4), dimension(:,:),   intent(in)  :: ssh
+real(r4), dimension(:,:),   intent(in)  :: eta
 real(r8), dimension(:),     intent(out) :: x
 
 integer :: i,j,k,ii
@@ -2438,14 +2438,14 @@ if (size(s,3) /= Nz) then
                       msgstring,source,revision,revdate) 
 endif
 
-if (size(ssh,1) /= Nx) then
-   write(msgstring,*) 'dim 1 of SSH /= Nx ',size(ssh,1),Nx
+if (size(eta,1) /= Nx) then
+   write(msgstring,*) 'dim 1 of Eta /= Nx ',size(eta,1),Nx
    call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
                       msgstring,source,revision,revdate) 
 endif
 
-if (size(ssh,2) /= Ny) then
-   write(msgstring,*) 'dim 2 of SSH /= Ny ',size(ssh,2),Ny
+if (size(eta,2) /= Ny) then
+   write(msgstring,*) 'dim 2 of Eta /= Ny ',size(eta,2),Ny
    call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
                       msgstring,source,revision,revdate) 
 endif
@@ -2498,7 +2498,7 @@ enddo
 do j = 1,Ny   ! latitudes
 do i = 1,Nx   ! longitudes
    ii = ii + 1
-   x(ii) = ssh(i,j)
+   x(ii) = eta(i,j)
 enddo
 enddo
 
@@ -2604,7 +2604,7 @@ function timestep_to_DARTtime(TimeStepIndex)
 ! The base time is derived from the namelist in 'date.cal',
 ! the model timestep (deltaT) is from the namelist 'PARM03',
 ! and the timestepindex is the middle portion of the filename
-! of the MIT files   [S,T,U,V,SSH].nnnnnnnnnn.dat 
+! of the MIT files   [S,T,U,V,Eta].nnnnnnnnnn.dat 
 !
 ! (namelist) startDate_1  yyyymmdd (year/month/day)
 ! (namelist) startDate_2    hhmmss (hours/minutes/seconds)
@@ -2661,7 +2661,7 @@ subroutine DARTtime_to_MITtime(darttime,date1,date2)
 ! The base time is derived from the namelist in 'date.cal',
 ! the model timestep (deltaT) is from the namelist 'PARM03',
 ! and the timestepindex is the middle portion of the filename
-! of the MIT files   [S,T,U,V,SSH].nnnnnnnnnn.dat 
+! of the MIT files   [S,T,U,V,Eta].nnnnnnnnnn.dat 
 !
 ! (namelist) startDate_1  yyyymmdd (year/month/day)
 ! (namelist) startDate_2    hhmmss (hours/minutes/seconds)
@@ -2693,7 +2693,7 @@ function DARTtime_to_timestepindex(mytime)
 ! The base time is derived from the namelist in 'date.cal',
 ! the model timestep (deltaT) is from the namelist 'PARM03',
 ! and the timestepindex is the middle portion of the filename
-! of the MIT files   [S,T,U,V,SSH].nnnnnnnnnn.dat 
+! of the MIT files   [S,T,U,V,Eta].nnnnnnnnnn.dat 
 !
 ! (namelist) startDate_1  yyyymmdd (year/month/day)
 ! (namelist) startDate_2    hhmmss (hours/minutes/seconds)
