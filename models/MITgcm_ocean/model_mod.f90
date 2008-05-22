@@ -450,33 +450,48 @@ endif
 
 allocate(XC(Nx), YC(Ny), ZC(Nz))
 allocate(XG(Nx), YG(Ny), ZG(Nz))
-allocate(data_2d_array(Nx,Ny))
+!allocate(data_2d_array(Nx,Ny))
 
 ! determine longitudes 
+! XG (the grid edges) and XC (the grid centroids) must be computed.
 
-call read_snapshot('XC', data_2d_array, bogus)
-do i=1, Nx
-  XC(i) = data_2d_array(i, 1)
+XG(1) = thetaMin
+XC(1) = thetaMin + 0.5_r8 * delX(1)
+do i=2, Nx
+ XG(i) = XG(i-1) + delX(i-1)
+ XC(i) = XC(i-1) + 0.5_r8 * delX(i-1) + 0.5_r8 * delX(i) 
 enddo
 
-call read_snapshot('XG', data_2d_array, bogus)
-do i=1, Nx
-  XG(i) = data_2d_array(i, 1)
+!call read_snapshot('XC', data_2d_array, bogus)
+!do i=1, Nx
+!  write(*,*)'XC(',i,') = ',XC(i),data_2d_array(i, 1)
+!enddo
+
+!call read_snapshot('XG', data_2d_array, bogus)
+!do i=1, Nx
+!  write(*,*)'XG(',i,') = ',XG(i),data_2d_array(i, 1)
+!enddo
+
+! YG (the grid edges) and YC (the grid centroids) must be computed.
+
+YG(1) = phiMin
+YC(1) = phiMin + 0.5_r8 * delY(1)
+do i=2, Ny
+ YG(i) = YG(i-1) + delY(i-1)
+ YC(i) = YC(i-1) + 0.5_r8 * delY(i-1) + 0.5_r8 * delY(i) 
 enddo
 
-! determine latitudes
+!call read_snapshot('YC', data_2d_array, bogus)
+!do i=1, Ny
+!  write(*,*)'YC(',i,') = ',YC(i),data_2d_array(1, i)
+!enddo
 
-call read_snapshot('YC', data_2d_array, bogus)
-do i=1, Ny
-  YC(i) = data_2d_array(1, i)
-enddo
+!call read_snapshot('YG', data_2d_array, bogus)
+!do i=1, Ny
+!  write(*,*)'YG(',i,') = ',YG(i),data_2d_array(1, i)
+!enddo
 
-call read_snapshot('YG', data_2d_array, bogus)
-do i=1, Ny
-  YG(i) = data_2d_array(1, i)
-enddo
-
-deallocate(data_2d_array)
+!deallocate(data_2d_array)
 
 ! the namelist contains a list of thicknesses of each depth level (delZ)
 ! ZG (the grid edges) and ZC (the grid centroids) must be computed.
