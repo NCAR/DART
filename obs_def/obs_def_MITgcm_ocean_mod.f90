@@ -10,8 +10,8 @@
 ! $Date: $
 
 ! BEGIN DART PREPROCESS KIND LIST
-!TEMPERATURE,            KIND_TEMPERATURE
 !SALINITY,               KIND_SALINITY
+!TEMPERATURE,            KIND_TEMPERATURE
 !U_CURRENT_COMPONENT,    KIND_U_WIND_COMPONENT
 !V_CURRENT_COMPONENT,    KIND_V_WIND_COMPONENT
 !SEA_SURFACE_HEIGHT,     KIND_SEA_SURFACE_HEIGHT
@@ -22,14 +22,14 @@
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
-!         case(TEMPERATURE)
-!            call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)         
 !         case(SALINITY)
 !            call interpolate(state, location, KIND_SALINITY, obs_val, istatus)         
+!         case(TEMPERATURE)
+!            call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)         
 !         case(U_CURRENT_COMPONENT)
-!            call interpolate(state, location, KIND_U_CURRENT_COMPONENT, obs_val, istatus)         
+!            call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
 !         case(V_CURRENT_COMPONENT)
-!            call interpolate(state, location, KIND_V_CURRENT_COMPONENT, obs_val, istatus)         
+!            call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
 !         case(SEA_SURFACE_HEIGHT)
 !            call interpolate(state, location, KIND_SEA_SURFACE_HEIGHT, obs_val, istatus)
 !
