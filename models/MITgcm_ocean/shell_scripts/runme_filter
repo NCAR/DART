@@ -28,11 +28,11 @@
 ##=============================================================================
 #BSUB -J filter
 #BSUB -o filter.%J.log
-#BSUB -q regular
-#BSUB -n 16
-##BSUB -P nnnnnnnn
-#BSUB -W 1:00
-#
+#BSUB -q dedicated
+#BSUB -n 20
+#BXXX -P 868500xx
+#BSUB -W 12:00
+#BSUB -N -u ${USER}@ucar.edu
 #
 ##=============================================================================
 ## This block of directives constitutes the preamble for the PBS queuing system
@@ -56,8 +56,8 @@
 #PBS -r n
 #PBS -e filter.err
 #PBS -o filter.log
-#PBS -q medium
-#PBS -l nodes=16:ppn=2
+#PBS -q dedicated
+#PBS -l nodes=10:ppn=2
 
 # if async=2, e.g. you are going to run './mitgcmuv', single process
 # (or possibly 'mpirun -np 1 ./mitgcmuv'), so each processor advances 
@@ -73,7 +73,7 @@
 
 set parallel_model = "true"
 
-set num_ens = 16
+set num_ens = 20
 
 # A common strategy for the beginning is to check for the existence of
 # some variables that get set by the different queuing mechanisms.
