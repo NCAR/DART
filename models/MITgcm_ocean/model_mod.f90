@@ -372,7 +372,7 @@ call check_namelist_read(iunit, io, "PARM03")
 if ((deltaTmom   == deltaTtracer) .and. &
     (deltaTmom   == deltaTClock ) .and. &
     (deltaTClock == deltaTtracer)) then
-   model_timestep = set_time(nint(deltaTmom), 0) ! works with deltaTmom > 86400
+   model_timestep = set_time(86400, 0) ! works with deltaTmom > 86400
    timestep       = deltaTmom                    ! need a time_type version
 else
    write(msgstring,*)"namelist PARM03 has deltaTmom /= deltaTtracer /= deltaTClock"
