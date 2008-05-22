@@ -111,8 +111,8 @@ ${COPY} ${MITDATADIR}/*                               inputs
 ${COPY} ${DARTMITDIR}/work/obs_seq.out                .
 ${COPY} ${DARTMITDIR}/work/filter_ics                 .
 ${COPY} ${DARTMITDIR}/work/input.nml                  .
-cp -pv inputs/data                                    .
-cp -pv inputs/data.cal                                .
+${COPY} inputs/data                                   .
+${COPY} inputs/data.cal                               .
 
 #-----------------------------------------------------------------------------
 # Ensure the (output) experiment directory exists

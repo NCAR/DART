@@ -1,7 +1,7 @@
 &perfect_model_obs_nml
    start_from_restart    = .true.,
    output_restart        = .true.,
-   async                 = 0,
+   async                 = 4,
    init_time_days        = -1,
    init_time_seconds     = -1,
    first_obs_days        = -1,
@@ -12,27 +12,27 @@
    restart_in_file_name  = "perfect_ics",
    restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.out",
+   obs_seq_out_file_name = "obs_seq.perfect",
    adv_ens_command       = "./advance_model.csh"  /
 
 &filter_nml
-   async                    = 0,
+   async                    = 4,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 = 4,
-   start_from_restart       = .false.,
+   ens_size                 = 20,
+   start_from_restart       = .true.,
    output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "perfect_ics",
+   restart_in_file_name     = "filter_ics",
    restart_out_file_name    = "filter_restart",
-   init_time_days           = -1,
-   init_time_seconds        = -1,
-   first_obs_days           = -1,
-   first_obs_seconds        = -1,
-   last_obs_days            = -1,
-   last_obs_seconds         = -1,
+   init_time_days           = 144270,
+   init_time_seconds        =  43200,
+   first_obs_days           = 144270,
+   first_obs_seconds        =      0,
+   last_obs_days            = 144271,
+   last_obs_seconds         =  86400,
    num_output_state_members = 4,
-   num_output_obs_members   = 0,
+   num_output_obs_members   = 20,
    output_interval          = 1,
    num_groups               = 1,
    input_qc_threshold       =  4.0,
@@ -113,7 +113,6 @@
    model_perturbation_amplitude  = 0.2, 
      output_state_vector = .false. /
 
-
 &location_nml
    horiz_dist_only             = .true.,
    vert_normalization_pressure = 100000.0, 
@@ -160,23 +159,23 @@
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
-   first_bin_center =  1601, 1, 1, 0, 0, 0 ,
-   last_bin_center  =  1601, 1, 1, 3, 0, 0 ,
-   bin_separation   =     0, 0, 0, 0, 3, 0 ,
-   bin_width        =     0, 0, 0, 0, 3, 0 ,
+   first_bin_center =  1996, 1, 1,12, 0, 0 ,
+   last_bin_center  =  1996, 1,14,12, 0, 0 ,
+   bin_separation   =     0, 0, 1, 0, 0, 0 ,
+   bin_width        =     0, 0, 1, 0, 0, 0 ,
    time_to_skip     =     0, 0, 0, 0, 0, 0 ,
    max_num_bins     = 1000,
    rat_cri            = 3.0,
    input_qc_threshold = 4.0,
-   Nregions   = 4,
-   lonlim1    =   0.0,   0.0,   0.0, 235.0,
-   lonlim2    = 360.0, 360.0, 360.0, 295.0,
+   Nregions   = 1,
+   lonlim1    = 250.0,   0.0,   0.0, 235.0,
+   lonlim2    = 300.0, 360.0, 360.0, 295.0,
    latlim1    =  20.0, -80.0, -20.0,  25.0,
-   latlim2    =  80.0, -20.0,  20.0,  55.0,
-   reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
+   latlim2    =  40.0, -20.0,  20.0,  55.0,
+   reg_names  = 'Gulf of Mexico', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
-   print_obs_locations   = .true.,
-   verbose               = .false.  /
+   print_obs_locations   = .false.,
+   verbose               = .true.  /
 
 &ocean_obs_nml
    year     = 1996, 

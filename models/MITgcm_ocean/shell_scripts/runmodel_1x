@@ -1,4 +1,4 @@
-#!/bin/tcsh 
+#!/bin/tcsh
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2008, Data Assimilation Research Section, 
@@ -20,12 +20,13 @@
 # -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
 # -n number of processors  (really)
 ##=============================================================================
-#BSUB -J mitgcmuv
-#BSUB -o mitgcmuv.%J.log
-#BSUB -q regular
+#BSUB -J testrun
+#BSUB -o testrun.%J.log
+#BSUB -q dedicated
+#BSUB -N -u ${USER}@ucar.edu
 #BSUB -n 20
-#BXXX -P nnnnnnnn
 #BSUB -W 12:00
+#BXXX -P nnnnnnnn
 #
 ##=============================================================================
 ## This block of directives constitutes the preamble for the PBS queuing system
@@ -45,10 +46,10 @@
 ##                     on the node with another job, so you might as well use
 ##                     them both.  (ppn == Processors Per Node)
 ##=============================================================================
-#PBS -N mitgcmuv
+#PBS -N testrun
 #PBS -r n
-#PBS -e mitgcmuv.err
-#PBS -o mitgcmuv.log
+#PBS -e testrun.err
+#PBS -o testrun.log
 #PBS -q medium
 #PBS -l nodes=10:ppn=2
 
@@ -61,14 +62,25 @@
 if ($?LS_SUBCWD) then
 
    # LSF has a list of processors already in a variable (LSB_HOSTS)
-   
-   mpirun.lsf ./mitgcmuv
+
+   setenv JOBNAME     $LSB_OUTPUTFILE:ar
+   setenv CENTRALDIR  $LS_SUBCWD
+   setenv TMPDIR      /ptmp/${user}
+endif
+   setenv SRCDIR      /fs/image/home/${user}/SVN/DART/models/MITgcm_ocean
+
+   set advance_command = 'mpirun.lsf ./mitgcmuv_20p'
        
 else if ($?PBS_O_WORKDIR) then
 
+   setenv JOBNAME     $PBS_JOBNAME
+   setenv CENTRALDIR  $PBS_O_WORKDIR
+   setenv TMPDIR      /ptmp/${user}
+   setenv SRCDIR      /fs/image/home/${user}/SVN/DART/models/MITgcm_ocean
+
    # PBS has a list of processors in a file whose name is (PBS_NODEFILE)
 
-   mpirun ./mitgcmuv
+   set advance_command = 'mpirun ./mitgcmuv_20p'
        
 else if ($?MYNODEFILE) then
 
@@ -91,7 +103,12 @@ else if ($?MYNODEFILE) then
    setenv NUM_PROCS 8
    echo "running with $NUM_PROCS nodes specified from $MYNODEFILE"
 
-   mpirun -np $NUM_PROCS -nolocal -machinefile $MYNODEFILE ./mitgcmuv
+   setenv JOBNAME     Oceans
+   setenv CENTRALDIR  `pwd`
+   setenv TMPDIR      /ptmp/${user}
+   setenv SRCDIR      /fs/image/home/${user}/SVN/DART/models/MITgcm_ocean
+
+   set advance_command = "mpirun -np $NUM_PROCS -nolocal -machinefile $MYNODEFILE ./mitgcmuv_20p"
        
 else
 
@@ -99,8 +116,56 @@ else
    # already run 'lamboot' once to start the lam server, or that you
    # are running with a machine that has mpich installed.
 
-   echo "running interactively"
-   mpirun -np 2 ./mitgcmuv
+   echo "running interactively ... NOT"
+   # mpirun -np 2 ./mitgcmuv_20p
 
 endif
+
+mkdir -p ${TMPDIR}/${JOBNAME}
+cd       ${TMPDIR}/${JOBNAME}
+
+# Copy the namelist files - these are small, so we really copy them
+foreach FILE ( data data.cal data.exf data.kpp \
+               data.obcs data.pkg eedata )
+   cp -p ${SRCDIR}/inputs/$FILE .
+end
+
+# link the files used by data&PARM05 - input datasets
+foreach FILE ( bathymetry.bin gom_H_199601.bin gom_S_199601.bin \
+             gom_T_199601.bin gom_U_199601.bin gom_V_199601.bin )
+   ln -sf ${SRCDIR}/inputs/$FILE .
+end
+
+# link the files used by data.exf&EXF_NML_02 - external forcings
+foreach FILE ( lev05_monthly_sss_relax.bin \
+               lev05_monthly_sst_relax.bin \
+               run-off.bin_1x1             \
+               ncep_air_19960101.bin       \
+               ncep_dlwrf_19960101.bin     \
+               ncep_dswrf_19960101.bin     \
+               ncep_nswrs_19960101.bin     \
+               ncep_prate_19960101.bin     \
+               ncep_shum_19960101.bin      \
+               ncep_uwnd_19960101.bin      \
+               ncep_vwnd_19960101.bin      )
+   ln -sf ${SRCDIR}/inputs/$FILE .
+end
+
+# link the files used by data.obcs&OBCS_PARM01 - open boundaries
+foreach FILE ( Rs_SobcsE_52_01_nPx1.bin    Rs_SobcsN_52_01_nPy1.bin \
+               Rs_TobcsE_52_01_nPx1.bin    Rs_TobcsN_52_01_nPy1.bin \
+               Rs_UobcsE_52_01_nPx1_c1.bin Rs_UobcsN_52_01_nPy1.bin \
+               Rs_VobcsE_52_01_nPx1.bin    Rs_VobcsN_52_01_nPy1_c1.bin)
+   ln -sf ${SRCDIR}/inputs/$FILE .
+end
+
+cp -p ${SRCDIR}/work/mitgcmuv_20p .
+
+eval ${advance_command} 
+
+set OUTPUTDIR = ${CENTRALDIR}/work/${JOBNAME}
+mkdir -p                 ${OUTPUTDIR}
+mv -f *.data *.meta STD* ${OUTPUTDIR}
+
+ls -al
 

@@ -31,7 +31,7 @@
 #BSUB -q dedicated
 #BSUB -n 20
 #BXXX -P 868500xx
-#BSUB -W 12:00
+#BSUB -W 2:00
 #BSUB -N -u ${USER}@ucar.edu
 #
 ##=============================================================================
@@ -98,10 +98,10 @@ if ($?LS_SUBCWD) then
    # running in parallel.  then it runs wakeup_filter to wake
    # up filter so it can continue.
    
-     rm  -f model_to_filter.lock filter_to_model.lock
-     mkfifo model_to_filter.lock filter_to_model.lock
+     \rm  -f model_to_filter.lock filter_to_model.lock
+     mkfifo  model_to_filter.lock filter_to_model.lock
 
-     set filterhome = ~/.filter
+     set filterhome = ~/.filter$$
      if ( ! -e $filterhome) mkdir $filterhome
    
      # this starts filter but also returns control back to

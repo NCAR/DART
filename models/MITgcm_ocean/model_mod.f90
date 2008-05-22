@@ -372,7 +372,6 @@ call check_namelist_read(iunit, io, "PARM03")
 if ((deltaTmom   == deltaTtracer) .and. &
     (deltaTmom   == deltaTClock ) .and. &
     (deltaTClock == deltaTtracer)) then
-   model_timestep = set_time(86400, 0) ! works with deltaTmom > 86400
    timestep       = deltaTmom                    ! need a time_type version
 else
    write(msgstring,*)"namelist PARM03 has deltaTmom /= deltaTtracer /= deltaTClock"
@@ -383,7 +382,8 @@ else
    call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
 endif
 
-model_time = timestep_to_DARTtime(timestepcount)
+model_timestep = set_time(nint(endTime), 0) ! works with deltaTmom > 86400
+model_time     = timestep_to_DARTtime(timestepcount)
 
 ! Grid-related variables are in PARM04
 delX(:) = 0.0_r4

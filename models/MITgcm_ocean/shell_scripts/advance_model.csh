@@ -1,4 +1,4 @@
-#!/bin/tcsh
+#!/bin/tcsh -v
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2007, Data Assimilation Research Section
@@ -41,14 +41,15 @@ cd       $temp_dir
 # Copy the namelist files - these are small, so we really copy them
 foreach FILE ( data data.cal data.exf data.kpp \
                data.obcs data.pkg eedata )
-   cp -pv ../inputs/$FILE .
+   cp -pv ../inputs/$FILE . || exit 1
 end
 
 # copy the files used by data&PARM05 - input datasets
 # These get overwritten ... so maybe we dont actually copy them
-foreach FILE ( bathymetry.bin gom_H_199601.bin gom_S_199601.bin \
-             gom_T_199601.bin gom_U_199601.bin gom_V_199601.bin )
-#   cp -pv ../inputs/$FILE .
+#foreach FILE ( bathymetry.bin gom_H_199601.bin gom_S_199601.bin \
+#             gom_T_199601.bin gom_U_199601.bin gom_V_199601.bin )
+foreach FILE ( bathymetry.bin )
+    cp -pv ../inputs/$FILE . || exit 2
 end
 
 # link the files used by data.exf&EXF_NML_02 - external forcings
@@ -63,7 +64,7 @@ foreach FILE ( lev05_monthly_sss_relax.bin \
                ncep_shum_19960101.bin      \
                ncep_uwnd_19960101.bin      \
                ncep_vwnd_19960101.bin      )
-   ln -sf ../inputs/$FILE .
+   ln -sf ../inputs/$FILE . || exit 3
 end
 
 # link the files used by data.obcs&OBCS_PARM01 - open boundaries
@@ -103,46 +104,42 @@ while($state_copy <= $num_states)
    # data.cal.new  ... which contains the appropriate startdate_1, startdate_2
    # so data&PARM05 will specify the input data files.
 
-   mv -v ../$input_file assim_model_state_ic
+   mv -v ../$input_file assim_model_state_ic || exit 4
 
    ../trans_sv_pv
 
    # Update the MIT namelist output ... 
    # and rename the input files to those defined in the data&PARM05 namelist.
-   # FIXME - somehow the last ensemble member needs to copy the 
-   # data.cal.new back to the CENTRALDIR ... I think
-
-   mv data.cal.new data.cal
 
    set FNAME = `grep -i hydrogSaltFile data | sed -e "s#=##"`
    set FNAME = `echo  $FNAME | sed -e "s#hydrogSaltFile##"`
    set FNAME = `echo  $FNAME | sed -e "s#,##g"`
    set FNAME = `echo  $FNAME | sed -e "s#'##g"`
-   mv -v S.*.*.data $FNAME
+   mv -v S.*.*.data $FNAME  || exit 5
 
    set FNAME = `grep -i hydrogThetaFile data | sed -e "s#=##"`
    set FNAME = `echo  $FNAME | sed -e "s#hydrogThetaFile##"`
    set FNAME = `echo  $FNAME | sed -e "s#,##g"`
    set FNAME = `echo  $FNAME | sed -e "s#'##g"`
-   mv -v T.*.*.data $FNAME
+   mv -v T.*.*.data $FNAME  || exit 5
 
    set FNAME = `grep -i uVelInitFile data | sed -e "s#=##"`
    set FNAME = `echo  $FNAME | sed -e "s#uVelInitFile##"`
    set FNAME = `echo  $FNAME | sed -e "s#,##g"`
    set FNAME = `echo  $FNAME | sed -e "s#'##g"`
-   mv -v U.*.*.data $FNAME
+   mv -v U.*.*.data $FNAME  || exit 5
 
    set FNAME = `grep -i vVelInitFile data | sed -e "s#=##"`
    set FNAME = `echo  $FNAME | sed -e "s#vVelInitFile##"`
    set FNAME = `echo  $FNAME | sed -e "s#,##g"`
    set FNAME = `echo  $FNAME | sed -e "s#'##g"`
-   mv -v V.*.*.data $FNAME
+   mv -v V.*.*.data $FNAME  || exit 5
 
    set FNAME = `grep -i pSurfInitFile data | sed -e "s#=##"`
    set FNAME = `echo  $FNAME | sed -e "s#pSurfInitFile##"`
    set FNAME = `echo  $FNAME | sed -e "s#,##g"`
    set FNAME = `echo  $FNAME | sed -e "s#'##g"`
-   mv -v Eta.*.*.data $FNAME
+   mv -v Eta.*.*.data $FNAME  || exit 5
 
 # set pattern="s/.*'\(.*\)'.*/\1/"
 # set zfilename=`echo $zoneline |  sed -e $pattern`
@@ -161,6 +158,11 @@ while($state_copy <= $num_states)
    # Advance the model saving standard out
    mpirun.lsf ../mitgcmuv_20p
 
+   # Remove the snapshot file at time zero.
+   # We are interested in the snapshot file at the end of the advance.
+   # Daily advances ... with a timestep of 900 seconds  86400/900 = 96
+   rm *.0000000000.*
+
    # Extract the timestep from the ocean model output files.
    set TIMESTEP = `ls -1 S.*.data`
    set TIMESTEP = $TIMESTEP:r
@@ -169,7 +171,7 @@ while($state_copy <= $num_states)
    echo $TIMESTEP | ../trans_pv_sv
 
    # Move the updated state vector back to 'centraldir'
-   mv assim_model_state_ud ../$output_file
+   mv assim_model_state_ud ../$output_file  || exit 5
 
    @ state_copy++
    @ ensemble_member_line = $ensemble_member_line + 3
@@ -177,10 +179,11 @@ while($state_copy <= $num_states)
    @ output_file_line = $output_file_line + 3
 end
 
+mv data.cal.new ../data.cal
+
 # Change back to original directory and get rid of temporary directory
-ls -l > ../directory_contents_$ensemble_member
 cd ..
-\rm -rf $temp_dir
+# \rm -rf $temp_dir
 
 # Remove the filter_control file to signal completion
 # Is there a need for any sleeps to avoid trouble on completing moves here?
