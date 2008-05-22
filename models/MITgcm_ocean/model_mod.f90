@@ -1931,7 +1931,7 @@ ReadtimeStepNumber: do i = 1,nlines
    endif
 enddo ReadtimeStepNumber
 
-if (read_meta%timeStepNumber < 1) then
+if (read_meta%timeStepNumber < 0) then
    write(msgstring,*) 'unable to determine timeStepNumber from ', trim(filename)
    call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
 endif
