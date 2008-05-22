@@ -37,7 +37,7 @@ type(obs_sequence_type) :: seq
 
 character(len = 129) :: output_name
 character(len = 8 ) :: obsdate
-integer :: iunit, io, ii, day1, kkk, kbeg, kend
+integer :: iunit, io, day1
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters

@@ -2355,7 +2355,7 @@ integer,  intent(in) :: date1, date2
 
 ! temp space to hold data while we are writing it
 real(r4) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
-integer :: i, j, k, l, indx, timestepcount_out
+integer :: i, j, k, l, indx
 
 ! These must be a fixed number and in a fixed order.
 character(len=128)  :: prefixstring

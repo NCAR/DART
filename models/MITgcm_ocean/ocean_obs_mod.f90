@@ -82,17 +82,15 @@ integer :: yy, mn, dd, hh, mm, ss
 integer :: startdate1, startdate2
 integer :: obs_num, calender_type, iskip
 integer :: obs_unit
-integer :: obs_prof, obs_kind, obs_kind_gen, which_vert, obstype
+integer :: obs_kind, obs_kind_gen, which_vert, obstype
 
-real (r8) :: obs_err, lon, lat, vloc, obs_value
-real (r8) :: aqc, var2, lon2c, lonc
+real (r8) :: lon, lat, vloc, obs_value
+real (r8) :: aqc, var2, lonc
 type(time_type) :: time, pre_time
 
 character(len = 8 ) :: obsdate
 character(len = 80) :: label
 character(len = 129) :: copy_meta_data, qc_meta_data
-character(len = 6 ) :: subset
-logical :: pass
 
 if ( .not. module_initialized ) call initialize_module
 
