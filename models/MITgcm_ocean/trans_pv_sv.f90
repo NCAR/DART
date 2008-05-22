@@ -93,6 +93,7 @@ write(*,*)'Trying to read files like yyy.'//trim(file_base)//'.data'
 !call print_date(model_time,'time for timestep 0')
 
 model_time = timestep_to_DARTtime(timestep)
+!model_time = timestep_to_DARTtime(0)   ! ignore ... to generate restarts
 
 call print_time(model_time,'time for '//file_base)
 call print_date(model_time,'date for '//file_base)
