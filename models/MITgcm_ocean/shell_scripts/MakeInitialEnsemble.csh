@@ -59,7 +59,7 @@ foreach FILE ( T.*.data )
 
    if ( $memcount < 10 ) then
       set OFNAME = ens_mem_00$memcount
-   else if ( $memcount < 10 ) then
+   else if ( $memcount < 100 ) then
       set OFNAME = ens_mem_0$memcount
    else
       set OFNAME = ens_mem_$memcount
