@@ -5,9 +5,9 @@
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: $
+! $Id$
 ! $Revision$
-! $Date: $
+! $Date$
 
 ! BEGIN DART PREPROCESS KIND LIST
 !U_WIND_COMPONENT,    KIND_U_WIND_COMPONENT

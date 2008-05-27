@@ -5,9 +5,9 @@
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: obs_def_gts_mod.f90 2713 2007-03-26 04:09:04Z thoar $
+! $Id$
 ! $Revision$
-! $Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $
+! $Date$
 
 ! BEGIN DART PREPROCESS KIND LIST
 !BUOY_U_WIND_COMPONENT,        KIND_U_WIND_COMPONENT
