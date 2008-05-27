@@ -7,9 +7,9 @@ program restart_file_utility
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: $
+! $Id$
 ! $Revision$
-! $Date: $
+! $Date$
 
 ! Program to overwrite the time on each ensemble in a restart file.
 
@@ -41,7 +41,7 @@ implicit none
 character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
-   revdate  = "$Date: $"
+   revdate  = "$Date$"
 
 integer                 :: iunit, model_size, io, member
 type(ensemble_type)     :: ens_handle
