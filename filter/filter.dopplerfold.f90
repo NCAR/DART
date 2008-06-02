@@ -27,9 +27,9 @@ use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_o
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                  operator(-)
 use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
-                                 initialize_utilities, logfileunit, timestamp, do_output,    &
-                                 find_namelist_in_file, check_namelist_read, open_file,      &
-                                 close_file
+                                 initialize_utilities, logfileunit, nmlfileunit, timestamp,  &
+                                 do_output, find_namelist_in_file, check_namelist_read,      &
+                                 open_file, close_file
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   & 
                                  aoutput_diagnostics, ens_mean_for_model
@@ -192,8 +192,7 @@ read(iunit, nml = filter_nml, iostat = io)
 call check_namelist_read(iunit, io, "filter_nml")
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'filter_main','filter_nml values are',' ',' ',' ')
-if (do_output()) write(logfileunit, nml=filter_nml)
+if (do_output()) write(nmlfileunit, nml=filter_nml)
 if (do_output()) write(     *     , nml=filter_nml)
 
 ! Make sure ensemble size is at least 2 (NEED MANY OTHER CHECKS)
@@ -384,6 +383,7 @@ AdvanceTime : do
 
    ! Compute mean and spread for inflation and state diagnostics
    call all_vars_to_all_copies(ens_handle)
+
    call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
@@ -589,22 +589,25 @@ if(output_restart) &
 if(ds) call smoother_write_restart(1, ens_size)
 call end_ensemble_manager(ens_handle)
 
-if(my_task_id() == 0) then 
-   write(logfileunit,*)'FINISHED filter.'
-   write(logfileunit,*)
-endif
-
-
-! Master task must close the log file
-if(my_task_id() == 0) call timestamp(source,revision,revdate,'end')
-
 ! Free up the observation kind and obs sequence
 call destroy_obs(observation)
 call destroy_obs_sequence(seq)
 
 if(ds) call smoother_end()
 
-! Make this the last thing done, especially for SGI systems.
+if(my_task_id() == 0) then 
+   write(logfileunit,*)'FINISHED filter.'
+   write(logfileunit,*)
+endif
+
+! Master task must close the log file; the magic 'end'
+! flag does that in the timestamp routine.
+if(my_task_id() == 0) call timestamp(source,revision,revdate,'end')
+
+! Make this the very last thing done, especially for SGI systems.
+! It shuts down MPI, and if you try to write after that, they can
+! can discard output that is written after mpi is finalized, or 
+! worse, the processes can hang.
 call finalize_mpi_utilities(async=async)
 
 end subroutine filter_main

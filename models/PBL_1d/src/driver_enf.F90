@@ -51,8 +51,7 @@ PROGRAM driver_enf
                              operator(-), operator(+)
   USE  utilities_mod, only : file_exist, open_file, close_file, &
                              find_namelist_in_file, check_namelist_read, &
-                             register_module, error_handler, E_ERR, E_MSG, &
-                             logfileunit
+                             register_module, error_handler, E_ERR, E_MSG
 
   IMPLICIT NONE
 

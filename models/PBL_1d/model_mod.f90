@@ -26,7 +26,7 @@ use     location_mod, only : location_type, get_dist, set_location, &
 
 use    utilities_mod, only : file_exist, open_file, close_file, &
                              find_namelist_in_file, check_namelist_read, &
-                             register_module, error_handler, E_ERR, E_MSG, logfileunit
+                             register_module, error_handler, E_ERR, E_MSG, nmlfileunit
 use         sort_mod, only : sort   
 use   random_seq_mod, only : random_seq_type, random_gaussian, &
                              init_random_seq, random_uniform
@@ -304,14 +304,13 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-write(logfileunit, nml=model_nml)
-write(     *     , nml=model_nml)
+if (do_output()) write(nmlfileunit, nml=model_nml)
+if (do_output()) write(     *     , nml=model_nml)
 
 ! Begin by reading the namelist input
 if(file_exist('wrf1d_namelist.input')) then
    unit_nml = open_file(fname = 'wrf1d_namelist.input', action = 'read')
-   call do_namelist_wrf1d(unit_nml,logfileunit)
+   call do_namelist_wrf1d(unit_nml,nmlfileunit)
    close(unit_nml)
 endif
 

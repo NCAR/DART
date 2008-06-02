@@ -22,9 +22,9 @@ use time_manager_mod, only : time_type, get_time, read_time, write_time,        
                              operator(<), operator(>), operator(+), operator(-),        &
                              operator(/), operator(*), operator(==), operator(/=),      &
                              get_calendar_type, print_time
-use utilities_mod, only : get_unit, close_file, register_module, error_handler, &
-                          E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, do_output,  &
-                          dump_unit_attributes, find_namelist_in_file,          &
+use utilities_mod, only : get_unit, close_file, register_module, error_handler,    &
+                          E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, nmlfileunit,   &
+                          do_output, dump_unit_attributes, find_namelist_in_file,  &
                           check_namelist_read, nc_check
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
                           get_model_time_step, model_interpolate, init_conditions, &
@@ -152,8 +152,7 @@ read(iunit, nml = assim_model_nml, iostat = io)
 call check_namelist_read(iunit, io, "assim_model_nml")
 
 ! Record the namelist values used for the run ... 
-call error_handler(E_MSG,'static_init_assim_model','assim_model_nml values are',' ',' ',' ')
-if (do_output()) write(logfileunit, nml=assim_model_nml)
+if (do_output()) write(nmlfileunit, nml=assim_model_nml)
 if (do_output()) write(     *     , nml=assim_model_nml)
 
 ! Set the write format for restart files

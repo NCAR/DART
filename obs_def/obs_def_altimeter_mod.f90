@@ -1,20 +1,14 @@
 ! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2007, Data Assimilation Research Section
+! Copyright 2004-2008, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 module obs_def_altimeter_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
 ! BEGIN DART PREPROCESS KIND LIST
 ! RADIOSONDE_SURFACE_ALTIMETER, KIND_SURFACE_PRESSURE
-! MARINE_SFC_ALTIMETER, KIND_SURFACE_PRESSURE
-! LAND_SFC_ALTIMETER, KIND_SURFACE_PRESSURE
+! MARINE_SFC_ALTIMETER,         KIND_SURFACE_PRESSURE
+! LAND_SFC_ALTIMETER,           KIND_SURFACE_PRESSURE
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -41,6 +35,8 @@ module obs_def_altimeter_mod
 !            continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
+! BEGIN DART PREPROCESS MODULE CODE
+module obs_def_altimeter_mod
 
 use        types_mod, only : r8, missing_r8, t_kelvin
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
@@ -131,3 +127,4 @@ end function compute_altimeter
 !----------------------------------------------------------------------------
 
 end module obs_def_altimeter_mod
+! END DART PREPROCESS MODULE CODE

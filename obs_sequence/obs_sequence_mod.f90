@@ -34,8 +34,8 @@ use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), 
                              operator(==)
 use    utilities_mod, only : get_unit, close_file, register_module, error_handler, &
                              find_namelist_in_file, check_namelist_read, &
-                             E_ERR, E_WARN, E_MSG, logfileunit, do_output
-use     obs_kind_mod, only : write_obs_kind, read_obs_kind
+                             E_ERR, E_WARN, E_MSG, nmlfileunit, do_output
+use     obs_kind_mod, only : write_obs_kind, read_obs_kind, max_obs_kinds
 
 
 implicit none 
@@ -77,16 +77,15 @@ type obs_sequence_type
    integer :: num_qc
    integer :: num_obs
    integer :: max_num_obs
-! F95 allows pointers to be initialized to a known value
-   !character(len = 129), pointer :: copy_meta_data(:)  => NULL()
-   !character(len = 129), pointer :: qc_meta_data(:)    => NULL()
-   character(len = 129), pointer :: copy_meta_data(:) 
-   character(len = 129), pointer :: qc_meta_data(:)
+   ! F95 allows pointers to be initialized to a known value.
+   ! However, if you get an error on the following lines from your
+   ! compiler, remove the => NULL() from the end of the 5 lines below.
+   character(len = 129), pointer :: copy_meta_data(:)  => NULL()
+   character(len = 129), pointer :: qc_meta_data(:)    => NULL()
    integer :: first_time
    integer :: last_time
 !   integer :: first_avail_time, last_avail_time
-   !type(obs_type), pointer :: obs(:)   => NULL()
-   type(obs_type), pointer :: obs(:) 
+   type(obs_type), pointer :: obs(:)   => NULL()
 ! What to do about groups
 end type obs_sequence_type
 
@@ -96,11 +95,9 @@ type obs_type
 ! Do I want to enforce the identity of the particular obs_sequence?
    integer :: key
    type(obs_def_type) :: def
-   !real(r8), pointer :: values(:)  => NULL()
-   !real(r8), pointer :: qc(:)      => NULL()
-   real(r8), pointer :: values(:) 
-   real(r8), pointer :: qc(:)
-! Put sort indices directly into the data structure
+   real(r8), pointer :: values(:)  => NULL()
+   real(r8), pointer :: qc(:)      => NULL()
+   ! Put sort indices directly into the data structure
    integer :: prev_time, next_time
    integer :: cov_group
 end type obs_type
@@ -145,8 +142,7 @@ call find_namelist_in_file("input.nml", "obs_sequence_nml", iunit)
 read(iunit, nml = obs_sequence_nml, iostat = io)
 call check_namelist_read(iunit, io, "obs_sequence_nml")
 
-call error_handler(E_MSG,'static_init_obs_sequence','obs_sequence_nml values are',' ',' ',' ')
-if (do_output()) write(logfileunit,nml=obs_sequence_nml)
+if (do_output()) write(nmlfileunit,nml=obs_sequence_nml)
 if (do_output()) write(     *     ,nml=obs_sequence_nml)
 
 end subroutine static_init_obs_sequence
@@ -299,6 +295,8 @@ do i = 1, max_num_obs
    endif
 end do
 
+call destroy_obs(obs)
+
 end function interactive_obs_sequence
 
 
@@ -351,7 +349,8 @@ do i = 1, num_obs
    endif
 end do
 
-! Need to destroy this obs to free up allocated space
+! need to free any observation specific storage that
+! might have been allocated.
 call destroy_obs(obs)
 
 end subroutine get_expected_obs
@@ -812,6 +811,9 @@ else
 
 endif
 
+! free any space allocated at init time.
+call destroy_obs(obs)
+
 end subroutine append_obs_to_seq
 
 !---------------------------------------------------------------
@@ -1047,6 +1049,12 @@ character(len = 129),    intent(in) :: file_name
 
 integer :: i, file_id
 character(len=129) :: myfilename
+integer :: have(max_obs_kinds)
+
+
+! Figure out which of the total possible kinds (really types) exist in this
+! sequence, and set the array values to 0 for no, 1 for yes.
+call set_used_kinds(seq, have)
 
 ! Open the file
 file_id = get_unit()
@@ -1056,22 +1064,24 @@ if(write_binary_obs_sequence) then
    open(unit = file_id, file = file_name, form = "unformatted")
    ! Write the initial string for help in figuring out binary
    write(file_id) 'obs_sequence'
-   call write_obs_kind(file_id, 'unformatted')
+   call write_obs_kind(file_id, 'unformatted', have)
 else
    write(msg_string, *) 'opening formatted file ',trim(file_name)
    call error_handler(E_MSG,'write_obs_seq',msg_string,source,revision,revdate)
    open(unit = file_id, file = file_name)
    ! Write the initial string for help in figuring out binary
    write(file_id, *) 'obs_sequence'
-   call write_obs_kind(file_id)
+   call write_obs_kind(file_id, use_list=have)
 endif
 
-! First inefficient ugly pass at writing an obs sequence, need to update for storage size
+! First inefficient ugly pass at writing an obs sequence, need to 
+! update for storage size.  CHANGE - use num_obs for the max_num_obs, to
+! limit the amount of memory needed when this sequence is read in.
 if(write_binary_obs_sequence) then
-   write(file_id) seq%num_copies, seq%num_qc, seq%num_obs, seq%max_num_obs
+   write(file_id) seq%num_copies, seq%num_qc, seq%num_obs, seq%num_obs
 else
    write(file_id, *) ' num_copies: ',seq%num_copies, ' num_qc: ',     seq%num_qc
-   write(file_id, *) ' num_obs: ',   seq%num_obs,    ' max_num_obs: ',seq%max_num_obs
+   write(file_id, *) ' num_obs: ',   seq%num_obs,    ' max_num_obs: ',seq%num_obs
 endif 
 
 do i = 1, seq%num_copies
@@ -1500,6 +1510,111 @@ call destroy_obs(obs)
 end subroutine delete_seq_tail
 
 
+!------------------------------------------------------------------
+! Figure out which of the total possible kinds (really types) exist in this
+! sequence, and set the array values to 0 for no, 1 for yes.
+
+subroutine set_used_kinds(seq, have)
+type(obs_sequence_type), intent(in) :: seq
+integer, intent(out) :: have(:)
+
+integer :: i, num_copies, num_qc
+integer :: num_obs
+type(obs_type) :: obs
+type(obs_def_type) :: obs_def
+integer :: obs_kind_ind
+
+! Get existing header info
+num_copies  = get_num_copies(seq)
+num_qc      = get_num_qc(seq)
+num_obs     = get_num_obs(seq)
+
+call init_obs(obs, num_copies, num_qc)
+
+! start with no types
+have(:) = 0
+do i=1, num_obs
+   ! cheating here, i know.  iterate the list in order the obs occur in
+   ! the file, not linked list order.  i just want to know about the type
+   ! of each obs, nothing about time or anything else.
+   call get_obs_from_key(seq, i, obs)
+   call get_obs_def(obs, obs_def)
+   obs_kind_ind = get_obs_kind(obs_def)
+   have(obs_kind_ind) = 1
+enddo
+
+call destroy_obs(obs)
+
+end subroutine set_used_kinds
+
+
+!------------------------------------------------------------------
+! Follow the linked list entries to copy only the linked observations
+! from one sequence to the other.
+
+subroutine copy_obs_seq(oldseq, newseq, time1, time2)
+
+type(obs_sequence_type),   intent(in)  :: oldseq
+type(obs_sequence_type),   intent(out) :: newseq
+type(time_type), optional, intent(in)  :: time1, time2
+
+integer :: i, num_copies, num_qc, max_num_obs
+integer :: num_obs, num_real_obs, num_keys, key_bounds(2)
+integer, pointer :: keylist(:)
+type(obs_type) :: obs
+type(time_type) :: first_time, last_time
+logical :: out_of_range
+
+! Get existing header info
+num_copies  = get_num_copies(oldseq)
+num_qc      = get_num_qc(oldseq)
+num_obs     = get_num_obs(oldseq)
+max_num_obs = get_max_num_obs(oldseq)
+
+
+! Really count how many obs are in the linked list, with
+! optional time starts and ends.
+if (present(time1)) then
+   first_time = time1
+else
+   call get_obs_from_key(oldseq, oldseq%first_time, obs)
+   first_time = get_obs_def_time(obs%def)
+endif
+if (present(time2)) then
+   last_time = time2
+else
+   call get_obs_from_key(oldseq, oldseq%last_time, obs)
+   last_time = get_obs_def_time(obs%def)
+endif
+
+call get_obs_time_range(oldseq, first_time, last_time, &
+                        key_bounds, num_keys, out_of_range)
+if (out_of_range) then
+   write(msg_string, *) 'All keys out of range'
+   call error_handler(E_ERR, 'copy_obs_seq', msg_string, &
+                      source, revision, revdate)
+endif
+
+
+call init_obs_sequence(newseq, num_copies, num_qc, num_keys)
+
+allocate(keylist(num_keys))
+call get_time_range_keys(oldseq, key_bounds, num_keys, keylist)
+
+call init_obs(obs, num_copies, num_qc)
+
+do i=1, num_keys
+   call get_obs_from_key(oldseq, keylist(i), obs)
+   call set_obs(newseq, obs, i)
+enddo
+
+! Release the temp storage
+deallocate(keylist)
+call destroy_obs(obs)
+
+end subroutine copy_obs_seq
+
+
 !=================================================
 
 ! Functions for the obs_type
@@ -1525,7 +1640,7 @@ end subroutine init_obs
 
 subroutine copy_obs(obs1, obs2)
 
-! To be overloaded with =
+! This routine is overloaded with the = operator
 
 !type(obs_type), intent(out) :: obs1
 type(obs_type), intent(inout) :: obs1
@@ -1534,12 +1649,24 @@ type(obs_type), intent(in) :: obs2
 obs1%key = obs2%key
 call copy_obs_def(obs1%def, obs2%def)
 
-if (.not.associated(obs1%values) .or. .not.associated(obs1%qc) .or. &
-    size(obs1%values) /= size(obs2%values) .or. size(obs1%qc) /= size(obs2%qc)) then
-   if (associated(obs1%values)) deallocate(obs1%values)
-   if (associated(obs1%qc)) deallocate(obs1%qc)
-   allocate(obs1%values(size(obs2%values)), obs1%qc(size(obs2%qc)))
+if (associated(obs1%values)) then
+   if (size(obs1%values) /= size(obs2%values)) then
+      deallocate(obs1%values)
+      allocate(obs1%values(size(obs2%values)))
+   endif
+else
+   allocate(obs1%values(size(obs2%values)))
 endif
+
+if (associated(obs1%qc)) then
+   if (size(obs1%qc) /= size(obs2%qc)) then
+      deallocate(obs1%qc)
+      allocate(obs1%qc(size(obs2%qc)))
+   endif
+else
+   allocate(obs1%qc(size(obs2%qc)))
+endif
+
 obs1%values = obs2%values
 obs1%qc = obs2%qc
 obs1%prev_time = obs2%prev_time

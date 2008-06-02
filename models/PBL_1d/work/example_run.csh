@@ -1,0 +1,126 @@
+#!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2007, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next few lines under version control, do not edit>
+# $URL$
+# $Id: workshop_setup.csh 2852 2007-04-12 02:01:30Z thoar $
+# $Revision$
+# $Date: 2007-04-11 20:01:30 -0600 (Wed, 11 Apr 2007) $
+
+# Script to manage the compilation of all components for this model;
+# executes a known "perfect model" experiment using an existing
+# observation sequence file (obs_seq.in) and initial conditions appropriate 
+# for both 'perfect_model_obs' (perfect_ics) and 'filter' (filter_ics).
+# There are enough initial conditions for 80 ensemble members in filter.
+# Use ens_size = 81 and it WILL bomb. Guaranteed.
+# The 'input.nml' file controls all facets of this execution.
+#
+# 'create_obs_sequence' and 'create_fixed_network_sequence' were used to
+# create the observation sequence file 'obs_seq.in' - this defines 
+# what/where/when we want observations. This script does not run these 
+# programs - intentionally. 
+#
+# 'perfect_model_obs' results in a True_State.nc file that contains 
+# the true state, and obs_seq.out - a file that contains the "observations"
+# that will be assimilated by 'filter'.
+#
+# 'filter' results in three files (at least): Prior_Diag.nc - the state 
+# of all ensemble members prior to the assimilation (i.e. the forecast), 
+# Posterior_Diag.nc - the state of all ensemble members after the 
+# assimilation (i.e. the analysis), and obs_seq.final - the ensemble 
+# members' estimate of what the observations should have been.
+#
+# Once 'perfect_model_obs' has advanced the model and harvested the 
+# observations for the assimilation experiment, 'filter' may be run 
+# over and over by simply changing the namelist parameters in input.nml.
+#
+# The result of each assimilation can be explored in model-space with
+# matlab scripts that directly read the netCDF output, or in observation-space.
+# 'obs_diag' is a program that will create observation-space diagnostics
+# for any result of 'filter' and results in a couple data files that can
+# be explored with yet more matlab scripts.
+#
+#----------------------------------------------------------------------
+# 'preprocess' is a program that culls the appropriate sections of the
+# observation module for the observations types in 'input.nml'; the 
+# resulting source file is used by all the remaining programs, 
+# so this MUST be run first.
+#----------------------------------------------------------------------
+#
+# If you get a ton of compile ERRORS (not warnings) read on ...
+#
+# Since a lot of the code is inherited from wrf, it comes with a .F 
+# extension even though it is free-format. This makes it necessary to
+# compile with flags that force interpretation of free-format.
+# One way around this is to rename the files and the references in 
+# the path_names_xxxxx files - which is done by ChangeExtensions.csh
+# in the PBL_1d/shell_scripts directory, or try to hunt down the right
+# flag for the compiler you are using. Your choice.
+#
+# The code also relies on the autopromotion flag that coerces all 
+# 'real' variables to be 8byte real variables.
+#
+# Intel     -free -r8
+# gfortran  -ffree-form -fdefault-real-8
+# pathscale -freeform -r8
+# pgi       -Mfree -Mr8
+# absoft    -ffree  (see the mkmf.template for absoft for more on r8)
+#----------------------------------------------------------------------
+
+set MODEL = "PBL_1d"
+
+#----------------------------------------------------------------------
+# Build all the single-threaded targets
+#----------------------------------------------------------------------
+echo
+echo "Building this model requires the real*8 override flag be added to the"
+echo "default mkmf.template rules. If the following compile fails read the"
+echo "comments in the workshop_setup.csh script for more help."
+echo
+
+./quickbuild.csh
+
+
+#----------------------------------------------------------------------
+# check for the input data files.  they are large ( > 90Mb ) and
+# so are not part of the default distribution.  they need to be 
+# downloaded separately and put in $DART/models/PBL_1d/indata.
+
+if ( ! -f ../indata/wrfrt_2006.nc ) then
+    echo
+    echo "NOTE:"
+    echo "This model requires some large data files as input which are"
+    echo "not packaged as part of the DART distribution. To run this model"
+    echo "contact thoar at ucar dot edu for more information on how"
+    echo "to get a copy of the data."
+    echo
+    exit
+endif
+
+./perfect_model_obs  || exit 20
+\mv perfect_restart filter_ics
+./filter             || exit 21
+
+#----------------------------------------------------------------------
+# The observation-space diagnostics program is not fully developed yet.
+# In order to match the bahavior of the other models that use the threed_sphere
+# location module, the obs_diag.final  file must exist in a directory.
+# We're hardcoding that here. Clearly suboptimal.
+#
+# The wrf boundary conditions and obs_seq.in are valid for May 2003 
+
+if (! -d 05_01) then
+   mkdir 05_01
+endif
+
+if ( -e 05_01/obs_seq.final ) then
+     mv -v 05_01/obs_seq.final 05_01/obs_seq.final.old
+endif
+
+\cp -p obs_seq.final 05_01/obs_seq.final
+
+./obs_diag   || exit 99

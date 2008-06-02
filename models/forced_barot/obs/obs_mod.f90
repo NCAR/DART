@@ -21,7 +21,7 @@ use    obs_tools_mod, only : conv_state_to_obs, obs_def_type, def_single_obs
 use loc_and_dist_mod, only : loc_type, set_loc, get_loc
 use    utilities_mod, only : file_exist, open_file, close_file,            &
                              register_module, error_handler, E_ERR, E_MSG, &
-                             logfileunit, find_namelist_in_file,           &
+                             nmlfileunit, find_namelist_in_file,           &
                              check_namelist_read, nc_check, do_output
 
 implicit none
@@ -97,9 +97,8 @@ call check_namelist_read(iunit, io, "obs_nml")
 
 ! Record the namelist values used for the run ...
 if (do_output()) then
-call error_handler(E_MSG,'init_obs','obs_nml values are',' ',' ',' ')
-write(logfileunit, nml=obs_nml)
-write(     *     , nml=obs_nml)
+   write(nmlfileunit, nml=obs_nml)
+   write(     *     , nml=obs_nml)
 endif
 
 ! Initialization for identity observations

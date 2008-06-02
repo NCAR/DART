@@ -3,8 +3,6 @@
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-module obs_def_radar_mod
-
 ! <next few lines under version control, do not edit>
 ! $URL$
 ! $Id$
@@ -51,10 +49,13 @@ module obs_def_radar_mod
 !         call interactive_rad_ref(obs_def%key)
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
+! BEGIN DART PREPROCESS MODULE CODE
+module obs_def_radar_mod
+
 use        types_mod, only : r8, missing_r8, ps0, PI, gravity, DEG2RAD
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              check_namelist_read, find_namelist_in_file, &
-                             logfileunit, do_output
+                             nmlfileunit, do_output
 use     location_mod, only : location_type, write_location, read_location, &
                              interactive_location
 use  assim_model_mod, only : interpolate
@@ -170,9 +171,7 @@ read(iunit, nml = obs_def_radar_mod_nml, iostat = io)
 call check_namelist_read(iunit, io, "obs_def_radar_mod_nml")
 
 ! Record the namelist values used for the run ... 
-if (do_output()) call error_handler(E_MSG,'obs_def_radar_mod:initialize_module',&
-                         'obs_def_radar_mod_nml values are',' ',' ',' ')
-if (do_output()) write(logfileunit, nml=obs_def_radar_mod_nml)
+if (do_output()) write(nmlfileunit, nml=obs_def_radar_mod_nml)
 if (do_output()) write(     *     , nml=obs_def_radar_mod_nml)
 
 ! This is temporary as it is not clear how to assimilate Z
@@ -1044,5 +1043,5 @@ END SELECT
 end function read_reftype
 
 
-
 end module obs_def_radar_mod
+! END DART PREPROCESS MODULE CODE

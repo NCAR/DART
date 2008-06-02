@@ -7,9 +7,9 @@
 #
 # <next few lines under version control, do not edit>
 # $URL$
-# $Id$
+# $Id: workshop_setup.csh 2852 2007-04-12 02:01:30Z thoar $
 # $Revision$
-# $Date$
+# $Date: 2007-04-11 20:01:30 -0600 (Wed, 11 Apr 2007) $
 
 # Script to manage the compilation of all components for this model;
 # executes a known "perfect model" experiment using an existing
@@ -50,12 +50,32 @@
 # resulting source file is used by all the remaining programs, 
 # so this MUST be run first.
 #----------------------------------------------------------------------
+#
+# If you get a ton of compile ERRORS (not warnings) read on ...
+#
+# Since a lot of the code is inherited from wrf, it comes with a .F 
+# extension even though it is free-format. This makes it necessary to
+# compile with flags that force interpretation of free-format.
+# One way around this is to rename the files and the references in 
+# the path_names_xxxxx files - which is done by ChangeExtensions.csh
+# in the PBL_1d/shell_scripts directory, or try to hunt down the right
+# flag for the compiler you are using. Your choice.
+#
+# The code also relies on the autopromotion flag that coerces all 
+# 'real' variables to be 8byte real variables.
+#
+# Intel     -free -r8
+# gfortran  -ffree-form -fdefault-real-8
+# pathscale -freeform -r8
+# pgi       -Mfree -Mr8
+# absoft    -ffree  (see the mkmf.template for absoft for more on r8)
+#----------------------------------------------------------------------
 
 \rm -f preprocess *.o *.mod
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
-set MODEL = "null_model"
+set MODEL = "PBL_1d"
 
 @ n = 1
 
@@ -72,6 +92,11 @@ make || exit $n
 #----------------------------------------------------------------------
 # Build all the single-threaded targets
 #----------------------------------------------------------------------
+echo
+echo "Building this model requires the real*8 override flag be added to the"
+echo "default mkmf.template rules. If the following compile fails read the"
+echo "comments in the workshop_setup.csh script for more help."
+echo
 
 foreach TARGET ( mkmf_* )
 
@@ -92,9 +117,61 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
-@ n = $n + 1
-./perfect_model_obs || exit $n
+if ( $#argv == 1 && "$1" == "-mpi" ) then
+  echo "Success: All single task DART programs compiled."  
+  echo "Script now compiling MPI parallel versions of the DART programs."
+else if ( $#argv == 1 && "$1" == "-nompi" ) then
+  echo "Success: All single task DART programs compiled."  
+  echo "Script is exiting without building the MPI version of the DART programs."
+  exit 0
+else
+  echo ""
+  echo "Success: All DART programs compiled."
+  echo "Script is exiting before building the MPI version of the DART programs."
+  echo "Run the quickbuild.csh script with a -mpi argument or"
+  echo "edit the quickbuild.csh script and remove the exit line"
+  echo "to compile with MPI to run in parallel on multiple cpus."
+  echo ""
+  exit 0
+endif
+
+#----------------------------------------------------------------------
+# to enable an MPI parallel version of filter for this model, 
+# call this script with the -mpi argument, or if you are going to build
+# with MPI all the time, remove or comment out the entire section above.
+#----------------------------------------------------------------------
+
+\rm -f *.o *.mod filter wakeup_filter
 
 @ n = $n + 1
-./filter            || exit $n
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_filter"
+csh   mkmf_filter -mpi
+make
+
+if ($status != 0) then
+   echo
+   echo "If this died in mpi_utilities_mod, see code comment"
+   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
+   echo
+   exit $n
+endif
+
+@ n = $n + 1
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_wakeup_filter"
+csh  mkmf_wakeup_filter -mpi
+make || exit $n
+
+\rm -f *.o *.mod
+
+echo
+echo 'time to run filter here:'
+echo ' for lsf run "bsub < runme_filter"'
+echo ' for pbs run "qsub runme_filter"'
+echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
+echo ' for mpich run "mpd" once, then "runme_filter"'
+
 

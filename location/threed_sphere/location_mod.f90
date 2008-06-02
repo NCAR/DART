@@ -26,7 +26,7 @@ module location_mod
 
 use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
 use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
-                           logfileunit, find_namelist_in_file,           &
+                           logfileunit, nmlfileunit, find_namelist_in_file, &
                            check_namelist_read, do_output
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
@@ -125,6 +125,8 @@ logical  :: approximate_distance        = .false.
 integer  :: nlon                        = 71
 integer  :: nlat                        = 36
 logical  :: output_box_info             = .false.
+! should be a namelist item at some point
+integer  :: print_box_level             = 0
 
 namelist /location_nml/ horiz_dist_only, vert_normalization_pressure,         &
    vert_normalization_height, vert_normalization_level, approximate_distance, &
@@ -155,8 +157,7 @@ call check_namelist_read(iunit, io, "location_nml")
 
 ! Write the namelist values to the log file
 
-if(do_output()) call error_handler(E_MSG,'initialize_module','location_nml values',' ',' ',' ')
-if(do_output()) write(logfileunit, nml=location_nml)
+if(do_output()) write(nmlfileunit, nml=location_nml)
 if(do_output()) write(     *     , nml=location_nml)
 
 ! Make sure that the number of longitudes, nlon, for get_close_obs is odd
@@ -711,9 +712,16 @@ else if(location%which_vert == VERTISHEIGHT ) then
    write(*, *) 'Vertical co-ordinate height (in gpm)'
    read(*, *) location%vloc
 else if(location%which_vert == VERTISSURFACE ) then
+   ! my understanding is that most of our users want height as
+   ! the actual data value if the type of vert is surface.  but
+   ! the original code was asking for pressure.  until i get a
+   ! consensus, i will leave this alone. but it could be easily
+   ! changed by commenting out the first and fourth lines below,
+   ! and commenting in the second line (third line remains):
    write(*, *) 'Vertical co-ordinate surface pressure (in hPa)'
+   !write(*, *) 'Vertical co-ordinate height (in gpm)'
    read(*, *) location%vloc
-   location%vloc = 100.0 * location%vloc
+   location%vloc = 100.0 * location%vloc  ! only applies to pressure
 else
    write(*, *) 'Wrong choice of which_vert try again between ',VERTISUNDEF, &
                ' and ',VERTISHEIGHT
@@ -945,12 +953,10 @@ do i = 1, num
    tstart(lon_box(i), lat_box(i)) = tstart(lon_box(i), lat_box(i)) + 1
 end do
 
-! info on how well the boxes are working.  by default print brief info
-! on number of filled boxes and how full they are on average.  to see
-! way more detail, set 'output_box_info' to .true. in the namelist.  
-! to see a dump of the entire structure, go into print_get_close_type()
-! and set 'howmuch' from 1 to 2 at the start.
-if (do_output()) call print_get_close_type(gc, output_box_info)
+! info on how well the boxes are working.  by default print nothing.
+! set print_box_level to higher values to get more and more detail.
+! user info should be level 1; 2 and 3 should be for debug only.
+if (output_box_info .and. do_output()) call print_get_close_type(gc, print_box_level)
 
 end subroutine get_close_obs_init
 
@@ -1428,30 +1434,30 @@ end function get_lon_box
 
 !----------------------------------------------------------------------------
 
-subroutine print_get_close_type(gc, all)
+subroutine print_get_close_type(gc, amount)
 
 type(get_close_type), intent(in) :: gc
-logical, intent(in), optional    :: all
+integer, intent(in), optional    :: amount
 
 integer :: i, j, k, first, index
-integer :: sample, nfull, nempty, total, howmuch, maxcount, maxi, maxj
+integer :: sample, nfull, nempty, howmuch, total, maxcount, maxi, maxj
 logical :: tickmark(gc%num)
 
-! second arg should probably be an int, not logical, and mean:
+! second arg is now an int, not logical, and means:
 ! 0 = very terse, only box summary (default).  
 ! 1 = structs and first part of arrays.
 ! 2 = all parts of all arrays.
 
-! by default do not print all the obs_box or start contents (it can be
-! very long).  but give an option, which if true, forces an
+! by default do not print all the obs_box or start contents (it can
+! be very long).  but give an option, which if true, forces an
 ! entire contents dump.  'sample' is the number to print for
 ! the short version.  (this value prints about 5-6 lines of data.)
 ! to get a full dump, change howmuch to 2 below.
 howmuch = 0
 sample = 39
 
-if (present(all)) then
-   if (all) howmuch = 1
+if (present(amount)) then
+   howmuch = amount
 endif
 
 ! print the get_close_type derived type values

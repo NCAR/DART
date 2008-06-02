@@ -46,13 +46,6 @@
 
 <H1>MODULE obs_kind_mod</H1>
 <A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 
@@ -60,52 +53,68 @@
 <HR>
 <H2>OVERVIEW</H2>
 <P>
-Provides definitions of observation types and generic variable kinds and
+Provides definitions of observation types and generic variable kinds, and
 tools for determining how to use observations available in an observation 
 sequence file.
-
+</P>
+<P>
 Generic kinds can be associated with an observation type or with a model
-state variable. An example is U_WIND_COMPONENT. State variables in a model
-can be associated with this generic kind. Similarly, many different observation
+state variable. An example kind is 
+<em class="unix">KIND_U_WIND_COMPONENT</em>. 
+State variables in a model
+can be associated with this generic kind. 
+Additionally, multiple different specific observation
 types can be associated with this generic kind, for instance 
-RADIOSONDE_U_WIND_COMPONENT and ACARS_U_WIND_COMPONENT. Generic kinds are
+<em class="unix">RADIOSONDE_U_WIND_COMPONENT</em> and 
+<em class="unix">ACARS_U_WIND_COMPONENT</em>. 
+Generic kinds are
 defined via an integer parameter statement at the start of this module. As
 new generic kinds are needed, they can be added to this list. Generic kind
-integer parameters are required to start with KIND_ and observation types
-are NOT allowed to start with KIND_.
+integer parameters are required to start with 
+<em class="unix">KIND_</em> and observation types
+are NOT allowed to start with <em class="unix">KIND_</em>.
 </P>
-
-
 <P>
-Beginning with the I-release of DART, a more flexible. powerful (and complicated)
-mechanism for incorporating new types of observations is part of DART. The
-obs_kind module being described here is created by the program preprocess.f90
-from two kinds of input files. First, a DEFAULT obs_kind module (normally called
-DEFAULT_obs_kind_mod.F90 and documented in this directory) is used as a template
-into which the preprocessor incorporates information from zero or more special
-obs_def modules (such as obs_def_1d_state_mod.f90 or obs_def_reanalyis_bufr_mod.f90)
-which are also documented in the obs_def directory. If no special obs_def files are 
-included in the preprocessor namelist, a minimal obs_kind_mod.f90 is created which
-can only support identity forward observation operators.
+To add an additional kind, edit the
+<em class="file">obs_kind/DEFAULT_obs_kind_mod.F90</em> file and
+add a unique number to the table of generic kinds at the top of the file.
+Then run the <em class="file">preprocess</em> program to generate the
+<em class="file">obs_kind/obs_kind_mod.f90</em> file which will then be
+used by the rest of the DART system.
+Typically the kinds are used by model-specific 
+<em class="file">model_mod.f90</em> files, and observation-specific
+<em class="file">obs_def/obs_def_xx_mod.f90</em> files.
 </P>
-
 <P>
-The obs_kind module contains a table, the obs_kind_info table, that 
+Beginning with the I-release of DART, a more flexible, powerful (and
+complicated) mechanism for incorporating new types of observations is part of
+DART. The obs_kind module being described here is created by the program
+<em class="file">preprocess</em> from two kinds of input files. 
+First, a DEFAULT obs_kind
+module (normally called 
+<em class="file">DEFAULT_obs_kind_mod.F90</em> and documented in this
+directory) is used as a template into which the preprocessor incorporates
+information from zero or more special obs_def modules (such as
+<em class="file">obs_def_1d_state_mod.f90</em> or 
+<em class="file">obs_def_reanalysis_bufr_mod.f90</em>) which are
+documented in the obs_def directory. If no special obs_def files are included
+in the preprocessor namelist, a minimal 
+<em class="file">obs_kind_mod.f90</em> is created which can
+only support identity forward observation operators.
+</P>
+<P>
+The obs_kind module contains an automatically-generated table, 
+<em class="unix">obs_kind_info</em>, that 
 defines the details of each observation type that has been created by the 
 preprocess program. Each table entry contains the integer index of the
-observation type which is associated with an integer parameter declaration.
-Also associated with each table entry are the name of the observation type 
-(this string is identical to the F90 identifier associated with the
-integer index via the parameter statement), the integer index of the 
-associated associated generic kind, and two logicals indicating whether this
+observation type, the string name of the observation type
+(which is identical to the F90 identifier), the integer index of the
+associated generic kind, and two logicals indicating whether this
 observation type is to be assimilated, evaluated only (forward operator is
-computed but not assimilated), or ignored entirely. These logicals can be
-set via the namelist and have defaults values that cause an observation
-type to be ignored.
+computed but not assimilated), or ignored entirely. These logicals
+initially default to .false. (type is ignored) and are set via the 
+<em class="unix">&amp;obs_kind_nml</em> namelist.
 </P>
-
-<P>
-<BR>
 
 <!--==================================================================-->
 
@@ -596,6 +605,15 @@ in the obs_kind_info table.
 
 <!--==================================================================-->
 
-<HR>
+<BR><HR><BR>
+
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
 </BODY>
 </HTML>

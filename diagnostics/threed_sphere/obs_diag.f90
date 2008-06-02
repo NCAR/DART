@@ -29,8 +29,7 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                              get_obs_def_location,  get_obs_kind, get_obs_name
 use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_var_type, get_obs_kind_name, &
-                             KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
-                             KIND_SURFACE_PRESSURE, KIND_SPECIFIC_HUMIDITY
+                             KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=),     &
                              vert_is_undef,    VERTISUNDEF,    &
@@ -43,9 +42,9 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
                              operator(*), operator(+), operator(-), &
                              operator(>), operator(<), operator(/), &
                              operator(/=), operator(<=)
-use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
+use    utilities_mod, only : open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
-                             initialize_utilities, logfileunit, timestamp, &
+                             initialize_utilities, logfileunit, nmlfileunit, timestamp, &
                              find_namelist_in_file, check_namelist_read, nc_check
 use         sort_mod, only : sort
 
@@ -306,9 +305,8 @@ read(iunit, nml = obs_diag_nml, iostat = io)
 call check_namelist_read(iunit, io, 'obs_diag_nml')
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'obs_diag','obs_diag_nml values are',' ',' ',' ')
-write(logfileunit,nml=obs_diag_nml)
-write(    *      ,nml=obs_diag_nml)
+write(nmlfileunit, nml=obs_diag_nml)
+write(    *      , nml=obs_diag_nml)
 
 !----------------------------------------------------------------------
 ! Now that we have input, do some checking and setup
@@ -655,7 +653,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
             posterior_mean_index, posterior_spread_index /) < 0) ) then
       only_print_locations = .true.
       msgstring = 'observation sequence has no prior/posterior information'
-      call error_handler(E_WARN,'obs_diag',msgstring,source,revision,revdate)
+      call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    else
       only_print_locations = .false.
    endif

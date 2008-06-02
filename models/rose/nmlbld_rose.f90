@@ -13,7 +13,7 @@ program nmlbld_rose
 
    use     types_mod, only: r8, pi
    use utilities_mod, only: open_file, close_file,  &
-                            error_handler, E_ERR, E_MSG, E_WARN, logfileunit, &
+                            error_handler, E_ERR, E_MSG, E_WARN,   &
                             initialize_utilities, register_module, &
                             find_namelist_in_file, check_namelist_read
 

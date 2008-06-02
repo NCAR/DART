@@ -22,7 +22,7 @@ module ensemble_manager_mod
 use types_mod,         only : r8, MISSING_R8
 use utilities_mod,     only : register_module, &
                               error_handler, E_ERR, E_MSG, do_output, &
-                              logfileunit, find_namelist_in_file, check_namelist_read
+                              nmlfileunit, find_namelist_in_file, check_namelist_read
 use assim_model_mod,   only : aread_state_restart, awrite_state_restart, open_restart_read, &
                               open_restart_write, close_restart, &
                               pert_model_state
@@ -129,9 +129,8 @@ if ( .not. module_initialized ) then
    read(iunit, nml = ensemble_manager_nml, iostat = io)
    call check_namelist_read(iunit, io, "ensemble_manager_nml")
 
-   call error_handler(E_MSG,'init_ensemble_manager','ensemble_manager_nml values are',' ',' ',' ')
-   if (do_output()) write(logfileunit,nml=ensemble_manager_nml)
-   if (do_output()) write(     *     ,nml=ensemble_manager_nml)
+   if (do_output()) write(nmlfileunit, nml=ensemble_manager_nml)
+   if (do_output()) write(     *     , nml=ensemble_manager_nml)
 
    ! Get mpi information for this process; it's stored in module storage
    num_pes = task_count()

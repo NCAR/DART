@@ -3,8 +3,6 @@
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-module obs_def_1d_state_mod
-
 ! <next few lines under version control, do not edit>
 ! $URL$
 ! $Id$
@@ -12,7 +10,7 @@ module obs_def_1d_state_mod
 ! $Date$
 
 ! BEGIN DART PREPROCESS KIND LIST
-! RAW_STATE_VARIABLE,    KIND_RAW_STATE_VARIABLE
+! RAW_STATE_VARIABLE,    KIND_RAW_STATE_VARIABLE, COMMON_CODE
 ! RAW_STATE_1D_INTEGRAL, KIND_1D_INTEGRAL
 ! END DART PREPROCESS KIND LIST
 
@@ -22,32 +20,27 @@ module obs_def_1d_state_mod
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
-!         case(RAW_STATE_VARIABLE)                                                            
-!         call interpolate(state, location, 1, obs_val, istatus)                              
 !         case(RAW_STATE_1D_INTEGRAL)                                                         
 !            call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus)  
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
-!      case(RAW_STATE_VARIABLE)
-!         continue
 !      case(RAW_STATE_1D_INTEGRAL)
 !         call read_1d_integral(obs_def%key, ifile, fileformat)
 ! END DART PREPROCESS READ_OBS_DEF
 
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
-!      case(RAW_STATE_VARIABLE)
-!         continue
 !      case(RAW_STATE_1D_INTEGRAL)
 !         call write_1d_integral(obs_def%key, ifile, fileformat)
 ! END DART PREPROCESS WRITE_OBS_DEF
 
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
-!      case(RAW_STATE_VARIABLE)
-!         continue
 !      case(RAW_STATE_1D_INTEGRAL)
 !         call interactive_1d_integral(obs_def%key)
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
+
+! BEGIN DART PREPROCESS MODULE CODE
+module obs_def_1d_state_mod
 
 use        types_mod, only : r8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
@@ -290,3 +283,4 @@ end subroutine get_expected_1d_integral
 !----------------------------------------------------------------------
 
 end module obs_def_1d_state_mod
+! END DART PREPROCESS MODULE CODE

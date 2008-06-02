@@ -27,7 +27,7 @@ program trans_pv_sv_pert0
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
-use    utilities_mod, only : logfileunit, error_handler, E_ERR, E_MSG, find_namelist_in_file, &
+use    utilities_mod, only : nmlfileunit, error_handler, E_ERR, E_MSG, find_namelist_in_file, &
                              check_namelist_read, initialize_utilities, finalize_utilities
 use        model_mod, only : model_type, init_model_instance, read_cam_init, &
                              prog_var_to_vector, pert_model_state
@@ -123,8 +123,7 @@ read(iunit, nml = perfect_model_obs_nml, iostat = io)
 call check_namelist_read(iunit, io, "perfect_model_obs_nml")
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'trans_pv_sv_pert0','perfect_model_obs_nml values are',' ',' ',' ')
-write(logfileunit, nml=perfect_model_obs_nml)
+write(nmlfileunit, nml=perfect_model_obs_nml)
 write(     *     , nml=perfect_model_obs_nml)
 
 

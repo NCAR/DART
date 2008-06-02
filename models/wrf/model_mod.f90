@@ -38,7 +38,7 @@ use      location_mod, only : location_type, get_location, set_location, &
 
 use     utilities_mod, only : file_exist, open_file, close_file, &
                               register_module, error_handler, E_ERR, E_WARN, &
-                              E_MSG, logfileunit, do_output, &
+                              E_MSG, nmlfileunit, do_output, &
                               find_namelist_in_file, check_namelist_read
 
 use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
@@ -252,8 +252,7 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
-if (do_output()) call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-if (do_output()) write(logfileunit, nml=model_nml)
+if (do_output()) write(nmlfileunit, nml=model_nml)
 if (do_output()) write(     *     , nml=model_nml)
 
 allocate(wrf%dom(num_domains))
@@ -302,8 +301,9 @@ call read_dt_from_wrf_nml()
 
 do id=1,num_domains
 
-   ! only print this once, no matter how many parallel tasks are running
    write( idom , '(I1)') id
+
+   ! only print this once, no matter how many parallel tasks are running
    if (do_output()) then
       write(*,*) '******************'
       write(*,*) '**  DOMAIN # ',idom,'  **'
@@ -5075,8 +5075,7 @@ read(iunit, nml = domains, iostat = io)
 call check_namelist_read(iunit, io, "domains")
 
 ! Record the namelist values used for the run ...
-if (do_output()) call error_handler(E_MSG,'read_dt_from_wrf_nml','domains namelist values are',' ',' ',' ')
-if (do_output()) write(logfileunit, nml=domains)
+if (do_output()) write(nmlfileunit, nml=domains)
 if (do_output()) write(     *     , nml=domains)
 
 if (max_dom /= num_domains) then

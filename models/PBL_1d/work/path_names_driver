@@ -38,6 +38,7 @@ models/PBL_1d/src/module_wrf_error.F90
 common/types_mod.f90
 time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90
+mpi_utilities/null_mpi_utilities_mod.f90
 models/PBL_1d/src/module_init_soil_real_fluxforce.F90
 models/PBL_1d/src/module_sf_gfs_fluxforce.F90
 models/PBL_1d/src/module_sf_myjsfc_fluxforce.F90

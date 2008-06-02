@@ -3,8 +3,6 @@
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-module obs_def_vortex_mod
-
 ! <next few lines under version control, do not edit>
 ! $URL$
 ! $Id$
@@ -66,6 +64,9 @@ module obs_def_vortex_mod
 !         continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
+! BEGIN DART PREPROCESS MODULE CODE
+module obs_def_vortex_mod
+
 use        types_mod, only : r8, missing_r8, ps0, PI, gravity
 use    utilities_mod, only : register_module, error_handler, E_ERR
 use     location_mod, only : location_type, write_location, read_location
@@ -73,7 +74,6 @@ use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_TEMPERATURE, KIND_VERTICAL_VELOCITY, &
                              KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, &
-                             KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
                              KIND_VORTEX_LAT, KIND_VORTEX_LON, KIND_VORTEX_PMIN, &
                              KIND_VORTEX_WMAX
 
@@ -142,3 +142,4 @@ endif
 end subroutine get_expected_vortex_info
 
 end module obs_def_vortex_mod
+! END DART PREPROCESS MODULE CODE

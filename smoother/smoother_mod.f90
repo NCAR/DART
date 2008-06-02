@@ -17,7 +17,7 @@ use      types_mod,       only : r8
 use  mpi_utilities_mod,   only : my_task_id
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output, &
                                  find_namelist_in_file, register_module, error_handler, &
-                                 E_ERR, E_MSG, logfileunit
+                                 E_ERR, E_MSG, nmlfileunit
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, read_ensemble_restart, &
                                  write_ensemble_restart, all_vars_to_all_copies, &
                                  duplicate_ens, compute_copy_mean, compute_copy_mean_sd, &
@@ -91,8 +91,7 @@ if ( .not. module_initialized ) then
    read(iunit, nml = smoother_nml, iostat = io)
    call check_namelist_read(iunit, io, "smoother_nml")
 
-   call error_handler(E_MSG,'init_smoother','smoother_nml values are',' ',' ',' ')
-   if (do_output()) write(logfileunit, nml=smoother_nml)
+   if (do_output()) write(nmlfileunit, nml=smoother_nml)
    if (do_output()) write(     *     , nml=smoother_nml)
 
    ! Allocate space for lag_size storage

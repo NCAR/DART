@@ -17,7 +17,7 @@ program integrate_model
 use types_mod,           only : r8
 use time_manager_mod,    only : time_type, operator(<)
 use utilities_mod,       only : initialize_utilities, register_module,              &
-                                error_handler, logfileunit, E_MSG, E_ERR, timestamp
+                                error_handler, E_MSG, E_ERR, timestamp
                                 
 use assim_model_mod,     only : static_init_assim_model, get_model_size,              &
                                 open_restart_read, open_restart_write, close_restart, &

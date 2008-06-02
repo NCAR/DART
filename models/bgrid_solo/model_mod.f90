@@ -72,7 +72,7 @@ use             types_mod, only: r8, pi
 ! combined duplicate use lines for utilities_mod; the intel 8.x compiler
 ! was unhappy about the repetition.  nsc 11apr06
 use        utilities_mod, only : open_file, error_handler, E_ERR, E_MSG, &
-                                 logfileunit, register_module, &
+                                 nmlfileunit, register_module, &
                                  find_namelist_in_file, check_namelist_read
 
 use          obs_kind_mod, only: KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
@@ -401,9 +401,8 @@ end subroutine init_conditions
 
    !----- write namelist to logfile -----
 
-   call error_handler(E_MSG,'atmos_model_init','model_nml values are',' ',' ',' ')
    call write_version_number (version,tag)
-   write (logfileunit, nml=model_nml)
+   write (nmlfileunit, nml=model_nml)
    write (stdlog(),    nml=model_nml)
 
    if(dt_atmos == 0) then
@@ -530,10 +529,9 @@ call check_namelist_read(iunit, io, "atmosphere_nml")
 
 !----- write version and namelist to log file -----
 
-   call error_handler(E_MSG,'atmosphere_init','atmosphere_nml values are',' ',' ',' ') 
    call write_version_number ( version, tag )
    write (stdlog(),    nml=atmosphere_nml)
-   write (logfileunit, nml=atmosphere_nml)
+   write (nmlfileunit, nml=atmosphere_nml)
 
 !---- compute physics/atmos time step in seconds ----
 

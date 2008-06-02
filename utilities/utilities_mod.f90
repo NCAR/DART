@@ -55,6 +55,9 @@ module utilities_mod
 !
 !      write_time       Writes a timestamp in a standard format.
 !
+!      logfileunit      Global integer unit numbers for the log file and
+!      nmlfileunit      for the namelist file (which defaults to the same as log)
+!
 ! nsc start 31jan07
 !   idea - add some unit number routine here?
 !   you can extract the filename associated with a fortran unit number
@@ -91,11 +94,24 @@ integer, parameter :: E_DBG = -1,   E_MSG = 0,  E_WARN = 1, E_ERR = 2
 integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 
 public :: file_exist, get_unit, open_file, timestamp, set_tasknum, &
-       close_file, register_module, error_handler, logfileunit, nc_check, &
+       close_file, register_module, error_handler, &
+       nc_check, logfileunit, nmlfileunit, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
        find_namelist_in_file, check_namelist_read, do_output, set_output, &
        E_DBG, E_MSG, E_WARN, E_ERR, & 
        DEBUG, MESSAGE, WARNING, FATAL
+
+! this routine is either in the null_mpi_utilities_mod.f90, or in
+! the mpi_utilities_mod.f90 file, but it is not a module subroutine.
+! the mpi files use this module, and you cannot have circular module
+! references.  the point of this call is that in the mpi multi-task
+! case, you want to call MPI_Abort() to kill the other tasks associated
+! with this job when you exit.  in the non-mpi case, it just calls exit.
+interface
+ subroutine exit_all(exitval)
+  integer :: exitval
+ end subroutine exit_all
+end interface
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -105,14 +121,16 @@ character(len=128), parameter :: &
 
 logical, save :: module_initialized = .false.
 integer, save :: logfileunit = -1
+integer, save :: nmlfileunit = -1
 
 !----------------------------------------------------------------
 ! Namelist input with default values
 integer  :: TERMLEVEL = E_ERR     ! E_ERR All warnings/errors are assumed fatal.
 character(len=129) :: logfilename = 'dart_log.out'
+character(len=129) :: nmlfilename = 'dart_log.nml'
 logical  :: module_details = .true.  ! print svn details about each module
 
-namelist /utilities_nml/ TERMLEVEL, logfilename, module_details
+namelist /utilities_nml/ TERMLEVEL, logfilename, module_details, nmlfilename
 
 contains
 
@@ -162,7 +180,7 @@ contains
          if ( logfileunit < 0 ) then
             write(*,*)'   unable to get a unit to use for the logfile.'
             write(*,*)'   stopping.'
-            stop 99
+            call exit_all(77)
          endif
 
          if (present(alternatename)) then
@@ -184,21 +202,21 @@ contains
             write(*,*)'   unable to open the logfile.'
             write(*,*)'   the intended file name was <',trim(lname),'>'
             write(*,*)'   stopping.'
-            stop 99
+            call exit_all(77)
          endif
 
          ! Log the run-time 
 
          if (do_output_flag) then
-         if ( present(progname) ) then
+            if ( present(progname) ) then
                call write_time (logfileunit, label='Starting ', &
                                 string1='Program '//trim(progname))
                call write_time (             label='Starting ', &
                                 string1='Program '//trim(progname))
-         else
+            else
                call write_time (logfileunit, label='Starting ')
                call write_time (             label='Starting ')
-         endif 
+            endif 
          endif
 
          ! Check to make sure termlevel is set to a reasonable value
@@ -207,9 +225,41 @@ contains
          ! Echo the module information using normal mechanism
          call register_module(source, revision, revdate)
 
+         ! If nmlfilename != logfilename, open it.  otherwise set nmlfileunit
+         ! to be same as logunit.
+         if (trim(adjustl(nmlfilename)) /= trim(adjustl(lname))) then
+            if (do_output_flag) &
+             write(*,*)'Trying to open namelist log ', trim(adjustl(nmlfilename))
+    
+            nmlfileunit = nextunit()
+            if (nmlfileunit < 0) &
+               call error_handler(E_ERR,'initialize_utilities', &
+                 'Cannot get unit for nm log file', source, revision, revdate)
+
+            open(nmlfileunit, file=trim(adjustl(nmlfilename)), form='formatted', &
+                 position='append', iostat = io )
+            if ( io /= 0 ) then
+               call error_handler(E_ERR,'initialize_utilities', &
+                   'Cannot open nm log file', source, revision, revdate)
+            endif
+    
+         else
+           nmlfileunit = logfileunit
+         endif
+
          ! Echo the namelist values for this module using normal mechanism
-         if (do_output_flag) write(logfileunit, nml=utilities_nml)
-         if (do_output_flag) write(     *     , nml=utilities_nml)
+         ! including a separator line for this run.
+         if (do_output_flag) then
+            if (nmlfileunit /= logfileunit) then
+               if ( present(progname) ) then
+                  write(nmlfileunit, *) '!Starting Program '//trim(progname)
+               else
+                  write(nmlfileunit, *) '!Starting Program '
+               endif 
+            endif
+            write(nmlfileunit, nml=utilities_nml)
+            write(    *     , nml=utilities_nml)
+         endif
 
       endif
 
@@ -261,7 +311,14 @@ contains
    subroutine finalize_utilities
    ! integer :: logfileunit -- private module variable
 
+      if (do_output_flag) then
+         if (nmlfileunit /= logfileunit) then
+            write(nmlfileunit, *) '!Ending Program '
+         endif 
+      endif
+
       close(logfileunit)
+      if (nmlfileunit /= logfileunit) close(nmlfileunit)
 
    end subroutine finalize_utilities
 
@@ -518,7 +575,7 @@ contains
              case default
                 print *, ' ERROR in ',routine(1:len_trim(routine))
                 print *, ' ',message(1:len_trim(message))
-                stop 99
+                call exit_all(99)
           end select
 
 !         --------------------------------------------
@@ -535,8 +592,8 @@ contains
 implicit none
 
 integer, intent(in) :: level
-character(len = *), intent(in) :: routine, text, src, rev, rdate
-character(len = *), intent(in), OPTIONAL :: aut
+character(len = *), intent(in) :: routine, text
+character(len = *), intent(in), optional :: src, rev, rdate, aut
 
 character(len = 8) :: taskstr
 
@@ -616,7 +673,7 @@ select case(level)
 end select
 
 ! TERMLEVEL gets set in the namelist
-if( level >= TERMLEVEL ) call exit( 99 ) 
+if( level >= TERMLEVEL ) call exit_all( 99 ) 
 
 end subroutine error_handler
 
@@ -929,7 +986,7 @@ if(file_exist(trim(namelist_file_name))) then
             write(*,*)'  ',trim(source)
             write(*,*)'  ',trim(revision)
             write(*,*)'  ',trim(revdate)
-            stop 
+            call exit_all(88) 
          endif
       else
          if(trim(adjustl(nml_string)) == trim(adjustl(test_string))) then
@@ -951,7 +1008,7 @@ else
       write(*,*)'  ',trim(source)
       write(*,*)'  ',trim(revision)
       write(*,*)'  ',trim(revdate)
-      stop 
+      call exit_all(88) 
    endif
 endif
 
@@ -1003,7 +1060,7 @@ else
          write(*,*)'  ',trim(source)
          write(*,*)'  ',trim(revision)
          write(*,*)'  ',trim(revdate)
-         stop 
+         call exit_all(66) 
       endif
    else
       ! Didn't fall off end so bad entry in the middle of namelist
@@ -1027,7 +1084,7 @@ else
          write(*,*)'  ',trim(source)
          write(*,*)'  ',trim(revision)
          write(*,*)'  ',trim(revdate)
-         stop 
+         call exit_all(66) 
       endif
    endif
 endif

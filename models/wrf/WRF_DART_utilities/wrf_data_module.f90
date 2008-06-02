@@ -23,9 +23,12 @@ public :: wrf_data, wrf_bdy_data, wrf_open_and_alloc, wrfbdy_open_and_alloc, &
           wrf_dealloc, wrfbdy_dealloc, wrf_io, wrfbdy_io, set_wrf_date, get_wrf_date
 
 ! version controlled file description for error handling, do not edit
+! split into separate lines; getting too long for the absoft compiler
 character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
+   source   = "$URL$"
+character(len=128), parameter :: &
+   revision = "$Revision$"
+character(len=128), parameter :: &
    revdate  = "$Date$"
 
 TYPE wrf_data

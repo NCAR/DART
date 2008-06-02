@@ -133,10 +133,10 @@ p.head{
     margin-left: 5%;
     font-weight: normal; }
 
-li{ font-size: 1.1em }
+li{ font-size: 1.0em; }
 
-a.optionalcode{ color:red;  font-style:typewriter }
-a.code   {      color:blue; font-style:typewriter }
+a.optionalcode{ color:red;  font-style:typewriter; }
+a.code   {      color:blue; font-style:typewriter; }
 a:link   { color: rgb(  0,   0, 153) } /* for unvisited links */
 a:visited{ color: rgb(153,   0, 153) } /* for visited links */
 a:active { color: rgb(255,   0, 102) } /* when link is clicked */
@@ -172,7 +172,7 @@ em.removed{
 em.call{
     color:blue; 
     font-style:typewriter; 
-    font-size:1.5em}
+    font-size:1.5em;}
 
 em.input{
     color:magenta; 

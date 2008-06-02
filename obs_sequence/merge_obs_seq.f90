@@ -3,6 +3,19 @@
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
+!! NOTE: this version has the start of restricting the obs types
+!!  by a list of specific type names.  it has the namelist section
+!!  set up, but the counting routines only count all types so the
+!!  two-pass part which figures out the exact size and allocates
+!!  only that amount of space is going to be wrong (too large; which
+!!  is not a fatal error, but means if only a few obs are going to
+!!  be extracted from a big file, it is going to waste a lot of memory
+!!  when it is read in).  the code to actually select on obs type
+!!  is not there; it affects which obs is the 'first' to be inserted.
+!!  the loop to copy over the 'next obs' seems easier; if restricting
+!!  just skip ones of the wrong types.  needs a type matching subroutine
+!!  for clean code, i think.
+
 program merge_obs_seq
 
 ! <next few lines under version control, do not edit>
@@ -14,7 +27,7 @@ program merge_obs_seq
 use        types_mod, only : r8
 use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
-                             error_handler, E_ERR, E_MSG, logfileunit
+                             error_handler, E_ERR, E_MSG, nmlfileunit
 use time_manager_mod, only : time_type, operator(>), print_time, set_time
 use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
                              init_obs, init_obs_sequence, static_init_obs_sequence, &
@@ -53,6 +66,12 @@ character(len = 129)    :: msgstring
 integer  :: max_num_input_files, num_input_files
 parameter( max_num_input_files = 50) 
 
+! lazy, pick a big number
+integer, parameter :: max_obs_input_types = 5000
+character(len = 32) :: obs_input_types(max_obs_input_types)
+logical :: restrict_by_obs_type
+integer :: num_obs_input_types
+
 character(len = 129) :: filename_seq(max_num_input_files)
 character(len = 129) :: filename_out  = 'obs_seq.merged'
 logical              :: process_file(max_num_input_files)
@@ -65,9 +84,9 @@ integer  :: last_obs_days     = -1
 integer  :: last_obs_seconds  = -1
 type(time_type) :: first_obs_time, last_obs_time
 
-
 namelist /merge_obs_seq_nml/ num_input_files, filename_seq, filename_out, &
-         first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds
+         first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds, &
+         obs_input_types
 
 !----------------------------------------------------------------
 ! Start of the routine.
@@ -80,9 +99,12 @@ namelist /merge_obs_seq_nml/ num_input_files, filename_seq, filename_out, &
 
 call merge_obs_seq_modules_used()
 
-! Initialize input obs_seq filenames
+! Initialize input obs_seq filenames and obs_types
 do i = 1, max_num_input_files
    filename_seq(i) = ""
+enddo
+do i = 1, max_obs_input_types
+   obs_input_types(i) = ""
 enddo
 
 ! Read the namelist entry
@@ -97,9 +119,21 @@ if(num_input_files .gt. max_num_input_files) then
 endif
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'merge_obs_seq','merge_obs_seq_nml values are',' ',' ',' ')
-write(logfileunit, nml=merge_obs_seq_nml)
+write(nmlfileunit, nml=merge_obs_seq_nml)
 write(     *     , nml=merge_obs_seq_nml)
+
+! See if the user is restricting the obs types to be merged, and set up
+! the values if so.
+num_obs_input_types = 0
+do i = 1, max_obs_input_types
+   if ( len(obs_input_types(i)) .eq. 0 .or. obs_input_types(i) .eq. "" ) exit
+   num_obs_input_types = i
+enddo
+if (num_obs_input_types == 0) then
+   restrict_by_obs_type = .false.
+else
+   restrict_by_obs_type = .true.
+endif
 
 ! Read header information for the sequences to see if we need
 ! to accomodate additional copies or qc values from subsequent sequences.
@@ -221,11 +255,11 @@ do i = 1, num_input_files
    if (first_seq < 0) then
       call init_obs_sequence(seq_out, num_copies_out, num_qc_out, size_seq_out) 
       do j=1, num_copies_out
-         meta_data = get_copy_meta_data(seq_in, j) 
+	 meta_data = get_copy_meta_data(seq_in, j) 
          call set_copy_meta_data(seq_out, j, meta_data)
       enddo 
       do j=1, num_qc_out
-         meta_data = get_qc_meta_data(seq_in, j) 
+	 meta_data = get_qc_meta_data(seq_in, j) 
          call set_qc_meta_data(seq_out, j, meta_data)
       enddo 
       first_seq = i

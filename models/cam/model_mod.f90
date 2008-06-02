@@ -237,7 +237,7 @@ use time_manager_mod,  only : time_type, set_time, print_time, set_calendar_type
                               THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR
 use utilities_mod,     only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
                               register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
-                              logfileunit, do_output, nc_check
+                              logfileunit, nmlfileunit, do_output, nc_check
 use mpi_utilities_mod, only : my_task_id, task_count
 
 !-------------------------------------------------------------------------
@@ -253,11 +253,18 @@ use location_mod,      only : location_type, get_location, set_location, query_l
 ! to the initial distance calcs), but will need subroutine pointers like get_close_obs.
 
 !-----------------------------------------------------------------------------
+! these PREPROCESS comment lines are not currently used, but are one
+! proposed way to automatically extract the kinds needed by a model. 
+! the idea is that only those actually in use will be defined 
+! in obs_kind_mod.f90.
+! BEGIN DART PREPROCESS USED KINDS
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT,                    &
                              KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
                              KIND_PRESSURE, KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE,          &
                              KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION,       &
                              KIND_SURFACE_ELEVATION
+! END DART PREPROCESS USED KINDS
+
 
 ! Other possibilities (names have changed with various CAM versions):
 ! Atmos
@@ -669,7 +676,7 @@ else
 end if
 
 ! Record the namelist values 
-if (do_out) write(logfileunit, nml=model_nml)
+if (do_out) write(nmlfileunit, nml=model_nml)
 
 ! Set the model minimum time step from the namelist seconds and days input
 Time_step_atmos = set_time(Time_step_seconds, Time_step_days)

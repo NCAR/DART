@@ -50,7 +50,7 @@ use      location_mod, only : location_type, get_location, set_location, &
 
 use    utilities_mod, only : get_unit, file_exist, open_file, &
                              close_file, error_handler, E_ERR, E_MSG, initialize_utilities, &
-                             register_module, logfileunit, timestamp, &
+                             register_module, logfileunit, nmlfileunit, timestamp, &
                              find_namelist_in_file, check_namelist_read
 
 use netcdf
@@ -129,8 +129,7 @@ call find_namelist_in_file("input.nml", "model_nml", iunit)
 read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
-call error_handler(E_MSG,'ensemble_init','model_nml values are',' ',' ',' ')
-write(logfileunit, nml=model_nml)
+write(nmlfileunit, nml=model_nml)
 write(     *     , nml=model_nml)
 
 call set_calendar_type(calendar_type)

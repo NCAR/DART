@@ -14,7 +14,7 @@ module obs_model_mod
 use types_mod,            only : r8
 use utilities_mod,        only : register_module, error_handler,     &
                                  E_ERR, E_MSG, E_WARN,               &
-                                 logfileunit, get_unit, file_exist
+                                 get_unit, file_exist
 use assim_model_mod,      only : aget_closest_state_time_to, get_model_time_step, &
                                  open_restart_write, open_restart_read,           &
                                  awrite_state_restart, close_restart, adv_1step,  &
@@ -270,7 +270,7 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
    !-------------- Block for calling shell to advance model -------------------
 
       ! Can only handle up to 10000 ensemble members
-      if(global_ens_index > 10000) then
+      if(global_ens_index >= 10000) then
          write(errstring,*)'Trying to use ', ens_size,' model states -- too many.'
          call error_handler(E_WARN,'advance_state',errstring,source,revision,revdate)
          call error_handler(E_ERR,'advance_state','Use less than 10000 member ensemble.', &
@@ -278,8 +278,8 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
       endif
 
       ! Create file names for input and output state files for this copy
-      write(ic_file_name(i), '("assim_model_state_ic", i5.5)') global_ens_index
-      write(ud_file_name(i), '("assim_model_state_ud", i5.5)') global_ens_index
+      write(ic_file_name(i), '("assim_model_state_ic.", i4.4)') global_ens_index
+      write(ud_file_name(i), '("assim_model_state_ud.", i4.4)') global_ens_index
 
 
       ! Open a restart file and write state following a target time
@@ -298,7 +298,7 @@ end do ENSEMBLE_MEMBERS
 ! Following is for async options that use shell to advance model
 SHELL_ADVANCE_METHODS: if(async /= 0) then
    ! Get a unique name for the control file; use process id
-   if(my_task_id() > 10000) call error_handler(E_ERR, 'advance_state', &
+   if(my_task_id() >= 10000) call error_handler(E_ERR, 'advance_state', &
       'Can only have 10000 processes', source, revision, revdate)
    write(control_file_name, '("filter_control", i5.5)') my_task_id()
 
@@ -341,8 +341,8 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
          ! if it needs to create unique filenames for its own use.
          do i = 1, ens_size
             write(control_unit, '(i5)') i
-            write(control_unit, '("assim_model_state_ic", i5.5)') i
-            write(control_unit, '("assim_model_state_ud", i5.5)') i
+            write(control_unit, '("assim_model_state_ic.", i4.4)') i
+            write(control_unit, '("assim_model_state_ud.", i4.4)') i
          end do
          close(control_unit)
       endif

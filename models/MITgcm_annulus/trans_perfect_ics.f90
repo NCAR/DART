@@ -21,7 +21,8 @@ use time_manager_mod, only : time_type, write_time, read_time, get_date,  &
 use    utilities_mod, only : get_unit, error_handler,  &
                              E_ERR, E_MSG, initialize_utilities,          &
                              finalize_utilities, register_module,         &
-                             logfileunit, find_namelist_in_file, check_namelist_read
+                             find_namelist_in_file, check_namelist_read,  &
+                             logfileunit, nmlfileunit 
 
 implicit none
 
@@ -91,12 +92,10 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'trans_perfect_ics:','assim_model_nml values are',' ',' ',' ')
-write(logfileunit, nml=assim_model_nml)
+write(nmlfileunit, nml=assim_model_nml)
 write(     *     , nml=assim_model_nml)
 
-call error_handler(E_MSG,'trans_perfect_ics:','model_nml values are',' ',' ',' ')
-write(logfileunit, nml=model_nml)
+write(nmlfileunit, nml=model_nml)
 write(     *     , nml=model_nml)
 
 

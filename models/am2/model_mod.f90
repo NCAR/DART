@@ -26,7 +26,7 @@ module model_mod
   use time_manager_mod,  only : time_type, set_time, print_time, set_calendar_type, GREGORIAN
   use utilities_mod,     only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
                                 register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
-                                logfileunit, do_output, nc_check
+                                nmlfileunit, do_output, nc_check
   use mpi_utilities_mod, only : my_task_id, task_count
   use location_mod,      only : location_type,      get_close_maxdist_init, &
                                 get_close_obs_init, get_close_obs, set_location, &
@@ -231,7 +231,8 @@ contains
     end if
     
     ! Record the namelist values 
-    if (do_out) write(logfileunit, nml = model_nml)
+    if (do_out) write(nmlfileunit, nml = model_nml)
+    if (do_out) write(    *      , nml = model_nml)
     
     ! Set the model minimum time step from the namelist seconds and days input
     Time_step_atmos = set_time(Time_step_seconds, Time_step_days)

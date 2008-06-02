@@ -25,8 +25,8 @@ use     location_mod, only : location_type, get_close_maxdist_init, &
                              set_location, get_location, &
                              query_location, get_dist  
 use    utilities_mod, only : file_exist, open_file, close_file, &       
-                             error_handler, E_ERR, E_MSG, E_WARN, logfileunit, &
-                             find_namelist_in_file, check_namelist_read
+                             error_handler, E_ERR, E_MSG, E_WARN, nmlfileunit, &
+                             do_output, find_namelist_in_file, check_namelist_read
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 ! ROSE Modules
 !use params, only : nx, ny, nz, nbcon
@@ -141,9 +141,8 @@ call find_namelist_in_file("rose.nml", "rose_nml", iunit)
 read(iunit, nml = rose_nml, iostat = io)
 call check_namelist_read(iunit, io, "rose_nml")
 
-call error_handler(E_MSG,'static_init_model','rose_nml values are',source,revision,revdate)
-write(logfileunit,nml=rose_nml)
-write(     *     ,nml=rose_nml)
+if (do_output()) write(nmlfileunit, nml=rose_nml)
+if (do_output()) write(     *     , nml=rose_nml)
 
 
 ! Read the namelist entry for model_mod from file input.nml
@@ -151,9 +150,8 @@ call find_namelist_in_file("input.nml", "model_nml", iunit)
 read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
-call error_handler(E_MSG,'static_init_model','model_nml values are',source,revision,revdate)
-write(logfileunit,nml=model_nml)
-write(     *     ,nml=model_nml)
+if (do_output()) write(nmlfileunit, nml=model_nml)
+if (do_output()) write(     *     , nml=model_nml)
 
 ! Compute overall model size and put in global storage
 model_size = nx * ny * nz * state_num_3d

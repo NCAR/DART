@@ -7,9 +7,9 @@
 #
 # <next few lines under version control, do not edit>
 # $URL$
-# $Id$
+# $Id: workshop_setup.csh 3325 2008-04-30 20:17:26Z nancy $
 # $Revision$
-# $Date$
+# $Date: 2008-04-30 14:17:26 -0600 (Wed, 30 Apr 2008) $
 
 # Script to manage the compilation of all components for this model;
 # executes a known "perfect model" experiment using an existing
@@ -50,32 +50,12 @@
 # resulting source file is used by all the remaining programs, 
 # so this MUST be run first.
 #----------------------------------------------------------------------
-#
-# If you get a ton of compile ERRORS (not warnings) read on ...
-#
-# Since a lot of the code is inherited from wrf, it comes with a .F 
-# extension even though it is free-format. This makes it necessary to
-# compile with flags that force interpretation of free-format.
-# One way around this is to rename the files and the references in 
-# the path_names_xxxxx files - which is done by ChangeExtensions.csh
-# in the PBL_1d/shell_scripts directory, or try to hunt down the right
-# flag for the compiler you are using. Your choice.
-#
-# The code also relies on the autopromotion flag that coerces all 
-# 'real' variables to be 8byte real variables.
-#
-# Intel     -free -r8
-# gfortran  -ffree-form -fdefault-real-8
-# pathscale -freeform -r8
-# pgi       -Mfree -Mr8
-# absoft    -ffree  (see the mkmf.template for absoft for more on r8)
-#----------------------------------------------------------------------
 
 \rm -f preprocess *.o *.mod
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
-set MODEL = "PBL_1d"
+set MODEL = "wrf"
 
 @ n = 1
 
@@ -92,11 +72,6 @@ make || exit $n
 #----------------------------------------------------------------------
 # Build all the single-threaded targets
 #----------------------------------------------------------------------
-echo
-echo "Building this model requires the real*8 override flag be added to the"
-echo "default mkmf.template rules. If the following compile fails read the"
-echo "comments in the workshop_setup.csh script for more help."
-echo
 
 foreach TARGET ( mkmf_* )
 
@@ -117,42 +92,61 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
-#----------------------------------------------------------------------
-# check for the input data files.  they are large ( > 90Mb ) and
-# so are not part of the default distribution.  they need to be 
-# downloaded separately and put in $DART/models/PBL_1d/indata.
-
-if ( ! -f ../indata/wrfrt_2006.nc ) then
-    echo
-    echo "NOTE:"
-    echo "This model requires some large data files as input which are"
-    echo "not packaged as part of the DART distribution. To run this model"
-    echo "contact thoar at ucar dot edu for more information on how"
-    echo "to get a copy of the data."
-    echo
-    exit
+if ( $#argv == 1 && "$1" == "-mpi" ) then
+  echo "Success: All single task DART programs compiled."  
+  echo "Script now compiling MPI parallel versions of the DART programs."
+else if ( $#argv == 1 && "$1" == "-nompi" ) then
+  echo "Success: All single task DART programs compiled."  
+  echo "Script is exiting without building the MPI version of the DART programs."
+  exit 0
+else
+  echo ""
+  echo "Success: All single task DART programs compiled."  
+  echo "Script now compiling MPI parallel versions of the DART programs."
+  echo "Run the quickbuild.csh script with a -nompi argument or"
+  echo "edit the quickbuild.csh script and add an exit line"
+  echo "to bypass compiling with MPI to run in parallel on multiple cpus."
+  echo ""
 endif
-
-./perfect_model_obs  || exit 20
-\mv perfect_restart filter_ics
-./filter             || exit 21
 
 #----------------------------------------------------------------------
-# The observation-space diagnostics program is not fully developed yet.
-# In order to match the bahavior of the other models that use the threed_sphere
-# location module, the obs_diag.final  file must exist in a directory.
-# We're hardcoding that here. Clearly suboptimal.
-#
-# The wrf boundary conditions and obs_seq.in are valid for May 2003 
+# to disable an MPI parallel version of filter for this model, 
+# call this script with the -nompi argument, or if you are never going to
+# build with MPI, add an exit before the entire section above.
+#----------------------------------------------------------------------
 
-if (! -d 05_01) then
-   mkdir 05_01
+#----------------------------------------------------------------------
+# Build the MPI-enabled target(s) 
+#----------------------------------------------------------------------
+
+\rm -f *.o *.mod filter wakeup_filter
+
+@ n = $n + 1
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_filter"
+csh   mkmf_filter -mpi
+make
+
+if ($status != 0) then
+   echo
+   echo "If this died in mpi_utilities_mod, see code comment"
+   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
+   echo
+   exit $n
 endif
 
-if ( -e 05_01/obs_seq.final ) then
-     mv -v 05_01/obs_seq.final 05_01/obs_seq.final.old
-endif
+@ n = $n + 1
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_wakeup_filter"
+csh  mkmf_wakeup_filter -mpi
+make || exit $n
 
-\cp -p obs_seq.final 05_01/obs_seq.final
+\rm -f *.o *.mod
 
-./obs_diag   || exit 99
+echo
+echo 'time to run filter here:'
+echo ' for lsf run "bsub < runme_filter"'
+echo ' for pbs run "qsub runme_filter"'
+echo ' for lam-mpi run "lamboot" once, then "runme_filter"'

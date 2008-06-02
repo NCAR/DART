@@ -3,7 +3,6 @@
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-module obs_def_dew_point_mod
 
 ! <next few lines under version control, do not edit>
 ! $URL$
@@ -13,7 +12,7 @@ module obs_def_dew_point_mod
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! DEW_POINT_TEMPERATURE, KIND_DEW_POINT_TEMPERATURE
-! DEW_POINT_2_METER, KIND_DEW_POINT_TEMPERATURE
+! DEW_POINT_2_METER,     KIND_DEW_POINT_TEMPERATURE
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -41,6 +40,9 @@ module obs_def_dew_point_mod
 !         case(DEW_POINT_TEMPERATURE, DEW_POINT_2_METER)
 !            continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
+
+! BEGIN DART PREPROCESS MODULE CODE
+module obs_def_dew_point_mod
 
 use        types_mod, only : r8, missing_r8, t_kelvin
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
@@ -141,3 +143,4 @@ end subroutine get_expected_dew_point
 !----------------------------------------------------------------------------
 
 end module obs_def_dew_point_mod
+! END DART PREPROCESS MODULE CODE

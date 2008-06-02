@@ -47,10 +47,10 @@
    inf_out_file_name        = 'prior_inf_ic_new',     'post_inf_ic_new',
    inf_diag_file_name       = 'prior_inf_diag',       'post_inf_diag',
    inf_initial              = 1.00,                   1.00,
+   inf_sd_initial           = 0.1,                    0.1,
+   inf_damping              = 1.00,                   1.00,
    inf_lower_bound          = 1.0,                    1.0,
    inf_upper_bound          = 1000000.0,              1000000.0,
-   inf_damping              = 1.0,                    1.0,
-   inf_sd_initial           = 0.1,                    0.1,
    inf_sd_lower_bound       = 0.0,                    0.0
 /
 ! ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
@@ -128,8 +128,7 @@
      input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
     output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
    input_files              = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
-			                  '../../../obs_def/obs_def_cloudfrac_mod.f90', 
-			                  '../../../obs_def/obs_def_clw_mod.f90' /
+                              '../../../obs_def/obs_def_cloud_mod.f90' /
 
 !'../../../obs_def/obs_def_gps_mod.f90',
 !'../../../obs_def/obs_def_QuikSCAT_mod.f90',
@@ -156,7 +155,9 @@
 
 &utilities_nml
    TERMLEVEL = 1,
-   logfilename = 'dart_log.out'  /
+   module_details = .true.,
+   logfilename = 'dart_log.out',
+   nmlfilename = 'dart_log.nml'  /
 
 &mpi_utilities_nml
    /
@@ -168,7 +169,7 @@
 # in which case last_bin_center should be safely in the future.
 #
 # Acceptable latitudes range from  [-90,  90]
-# Acceptable longitudes range from [  0, 360]
+# Acceptable longitudes range from [  0, Inf]
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
@@ -178,9 +179,6 @@
    bin_width        =     0, 0, 0, 6, 0, 0 ,
    time_to_skip     =     0, 0, 1, 0, 0, 0 ,
    max_num_bins  = 1000,
-   plevel     = 500,
-   hlevel     = 5000,
-   obs_select = 1,
    Nregions   = 4,
    rat_cri    = 3.0,
    input_qc_threshold = 4.0,

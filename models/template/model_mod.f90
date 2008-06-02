@@ -22,8 +22,8 @@ use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type,      get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, set_location
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit
-                           ! find_namelist_in_file, check_namelist_read
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+             ! nmlfileunit, do_output, find_namelist_in_file, check_namelist_read
 
 
 implicit none
@@ -93,9 +93,8 @@ call register_module(source, revision, revdate)
 
 
 ! Record the namelist values used for the run ...
-!call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-!write(logfileunit, nml=model_nml)
-!write(     *     , nml=model_nml)
+!if (do_output()) write(nmlfileunit, nml=model_nml)
+!if (do_output()) write(     *     , nml=model_nml)
 
 ! Create storage for locations
 allocate(state_loc(model_size))
@@ -105,7 +104,9 @@ allocate(state_loc(model_size))
 ! set_location() is different for 1D vs. 3D models, not surprisingly.
 do i = 1, model_size
    x_loc = (i - 1.0_r8) / model_size
-   state_loc(i) =  set_location(x_loc)
+   ! must do one of these:
+   !state_loc(i) =  set_location(x_loc)
+   !state_loc(i) =  set_location(x_loc,y_loc,v_loc,v_type)
 end do
 
 ! The time_step in terms of a time type must also be initialized.

@@ -3,9 +3,10 @@
 <html>
 <head>
       <!-- $Id$ -->
-      <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+      <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
       <title>Data Assimilation Research Testbed -- DART</title>
-      <link href="doc.css" rel="stylesheet" type="text/css"></link>
+      <link href="dart.ico" rel="shortcut icon" />
+      <link href="doc.css"  rel="stylesheet" type="text/css" />
       <style type="text/css">
                 <!--
                 @import url(/styles/fontsizer.css);
@@ -41,8 +42,17 @@ ensemble members"><br>
    <h2 align="center">Welcome to the home page for the
    <b>D</b>ata <b>A</b>ssimilation <b>R</b>esearch <b>T</b>estbed (<b>DART</b>).</h2>
 
-   <ul>
-      <li>We have some <a href="ensemble_data_assimilation.html">introductory material</a>      on the general concepts of Data Assimilation.</li>
+   <P align="center">
+   <b>If you are using DART</b>:
+   <a href="#BigChanges">you need to know about recent (30May2008) changes</a>.
+   </P>
+
+   <A NAME="index"></A>
+   <h2>Overview Topics</h2>
+   <ul> 
+
+      <li>We have some <a href="ensemble_data_assimilation.html">introductory material</a>
+      on the general concepts of Data Assimilation.</li>
 
       <li>You can <a href="#learn">explore</a> the example models and 
       observations which are included with the DART software distribution.</li>
@@ -64,7 +74,7 @@ ensemble members"><br>
       <li>You want to <a href="#contact">contact our group</a> for more information.
    </ul>
 
-   <a name="learn"></a>
+   <A NAME="learn"></A>
    <h2>Getting Started</h2>
    <P>
    The DART software provides a flexible, extensible framework for conducting
@@ -86,7 +96,7 @@ ensemble members"><br>
    and look at the results.
    </P>
 
-   <a name="requirements"></a>
+   <A NAME="requirements"></A>
    <h2>DART requirements</h2>
    <p>
    DART is intended to be highly portable but has a strong Unix/Linux preference. 
@@ -259,11 +269,11 @@ ensemble members"><br>
 	  </TR>
    </TABLE>
 
-      <a name="download"></a>
+      <A NAME="download"></A>
       <H1>DART code distributions</H1>
       <P>
       DART is distributed primarily through an anonymous-access readonly 
-      <b>SVN</b> repository.  This makes updates and 
+      Subversion (<b>SVN</b>) repository.  This makes updates and 
       comparisons between your sandbox and the latest, greatest version of the 
       code trivially easy. The same cannot be said with a TAR file.
       If you are not familiar with SVN (the client application of subversion),
@@ -291,7 +301,7 @@ ensemble members"><br>
       <TABLE summary="">     
       <TR><TD>Revision:    </TD><TD>Revision:&nbsp;2857</TD></TR>
       <TR><TD>Source:      </TD><TD>URL:&nbsp;http://subversion.ucar.edu/DAReS/DART/trunk/doc/html/index.shtml </TD></TR>
-      <TR><TD>Change Date: </TD><TD> Date:&nbsp;2007-04-12&nbsp;10:44:44&nbsp;-0600&nbsp;(Thu,&nbsp;12&nbsp;Apr&nbsp;2007)&nbsp;</TD></TR>
+      <TR><TD>Change Date:   </TD><TD> $Date:&nbsp;2007-04-12&nbsp;10:44:44&nbsp;-0600&nbsp;(Thu,&nbsp;12&nbsp;Apr&nbsp;2007)&nbsp;$ </TD></TR>
       </TABLE>
       </P>
       <TABLE border=0 cellpadding=2 width=100%>
@@ -300,6 +310,12 @@ ensemble members"><br>
           <TH align="left" width="15%">instructions</TH>
           <TH align="left">most noteable change(s)</TH>
       </TR>
+
+      <TR><!--version--><TD valign=top><A HREF="/DAReS/DART/DART_download">trunk</A></TD>
+          <!--   date--><TD valign=top>today</TD>
+          <!--instruc--><TD valign=top>included in distrib.</TD>
+	  <!-- change--><TD>varies, see next section below for details
+                            </TD></TR>
 
       <TR><!--version--><TD valign=top><A HREF="/DAReS/DART/DART_download">jamaica</A></TD>
           <!--   date--><TD valign=top>12&nbsp;Apr&nbsp;2007</TD>
@@ -375,8 +391,79 @@ ensemble members"><br>
       </TABLE>
       <BR>
 
-      <a name="teach">
-      <H2>DART Tutorial Materials and Presentations</H2></A>
+      <A NAME="BigChanges"></A>
+      <H2>User-Visible changes to the TRUNK (circa 30 May 2008)</H2>
+      <P>
+      Some ideas are just too good to postpone till the next major release.  The following
+      changes to the DART trunk code may require you to take additional action after an update:
+      </P>
+      <ol>
+         <li>Additional function added to the <em type="unix">preprocess</em> program also
+             means that you now only
+             need to have <em type="file">obs_def_mod.f90</em> in your
+             <em type="file">path_names_*</em> files and it will include the code 
+             for all other <em type="file">obs_def_*</em> modules automatically.  
+             If you have additional obs_def lines for gps, altimeter, or other 
+             specialized obs_def files, they must be removed or you will get an
+             error similar to this:
+             <div class=unix>
+AMBIGUOUS: Module obs_def_gps_mod is associated with ../../../obs_def/obs_def_gps_mod.f90 as well as ../../../obs_def/obs_def_mod.f90.
+             </div>
+             Adding and removing various obs_def files now only involves changing the
+             <em type="unix">&preprocess_nml:input_files</em> namelist item in the
+             <em type="file">input.nml</em> file.
+             We will update all <em type="file">path_names_*</em> files
+             in the DART subversion (svn) repository; this only applies to files you have
+             that are not under svn control.</li><br>
+            
+         <li>All model work directories now have a <em type="file">quickbuild.csh</em> script
+             instead of <em type="file">workshop_setup.csh</em>.  The workshop script still
+             exists in some model directories, but may change in upcoming releases to accomodate
+             DART tutorial workshops.  The quickbuild script recompiles all the programs;
+             it does not try to run any of them.  By default it builds all small models without
+             MPI, and builds the large models (CAM, WRF, AM2) with MPI.  It takes 
+             <em type="code">-mpi</em> and <em type="code">-nompi</em> arguments.</li><br>
+  
+         <li>The MPI version of <em type="file">filter</em> would sometimes not kill the
+             entire job if one task failed.  This resulted in jobs hanging and using up computing
+             resources unnecessarily.  We added a new routine to the 
+             <em type="file">utilities_mod.f90</em> called
+             <em type="unix">exit_all()</em>.  For MPI-enabled jobs it calls
+             <em type="unix">MPI_Abort()</em> to inform all other tasks that one 
+             has failed. This should cause an MPI job to exit immediately on error.
+             Nothing new happens for programs which do not use MPI. 
+             However, this change requires adding the 
+             <em type="file">mpi_utilities/null_mpi_utilities_mod.f90</em> file to many of the 
+             <em type="file">path_names_*</em> files where it was not required before.
+             It might also require adding <em type="unix">time_manager/time_manager.f90</em>
+             if it is not already there.
+             We will update all <em type="file">path_names_*</em> files
+             in the DART subversion repository, but you may have programs of your own that use 
+             <em type="unix">utilities_mod</em> routines - in which case your programs 
+             will now need to link with <em type="unix">null_mpi_utilities_mod</em>.
+             Without it, the error you see will be similar to this:
+             <div class=unix>
+               /usr/bin/ld: Undefined symbols:<br>
+               _exit_all_
+             </div>
+             </li><br>
+            
+         <li>The default mpi interface utility code should now compile as-is
+             for every supported compiler <em class="italic">except</em> gfortran.  
+             (You should no longer need to go into the code and edit the interface 
+             block for the system function.)
+             If you are using the gfortran compiler,
+             in the <em class="file">$DART/mpi_utilities</em>
+             directory you will find a script called <em class="file">fixsystem</em>
+             that you can run to make the file compile without having to edit it
+             by hand.
+             </li><br>
+            
+      </ol>
+
+
+      <A NAME="teach"></A>
+      <H2>DART Tutorial Materials and Presentations</H2>
       <P>
       The DART system comes with an extensive set of tutorial materials, working
       models of several different levels of complexity, and data to be assimilated.

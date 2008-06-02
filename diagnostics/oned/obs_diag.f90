@@ -35,8 +35,8 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
                              operator(>), operator(<), operator(/), &
                              operator(/=)
 use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
-                             file_exist, error_handler, E_ERR, E_MSG, &
-                             initialize_utilities, logfileunit, timestamp, &
+                             file_exist, error_handler, E_ERR, E_MSG, timestamp, &
+                             initialize_utilities, logfileunit, nmlfileunit, &
                              find_namelist_in_file, check_namelist_read, do_output
 
 implicit none
@@ -211,8 +211,7 @@ call check_namelist_read(iunit, io, "obs_diag_nml")
 
 ! Record the namelist values used for the run ...
 if (do_output()) then
-call error_handler(E_MSG,'obs_diag','obs_diag_nml values are',' ',' ',' ')
-write(logfileunit, nml=obs_diag_nml)
+write(nmlfileunit, nml=obs_diag_nml)
 write(     *     , nml=obs_diag_nml)
 endif
 
@@ -807,7 +806,7 @@ enddo
 
 if (verbose) then
    write(logfileunit,*)'Normalizing time-region-variable quantities for desired level.'
-   write(     *     ,*)'Normalizing time-region-variable quantities for desired level.'
+   write(    *      ,*)'Normalizing time-region-variable quantities for desired level.'
 endif
 
 ivarcount = 0

@@ -16,11 +16,11 @@ program restart_file_utility
 use types_mod,           only : r8
 use time_manager_mod,    only : time_type, operator(<), operator(==), &
                                 set_time_missing, set_time,           &
-                                operator(/=), print_time
+                                operator(/=), print_time, print_date
 
-use utilities_mod,       only : initialize_utilities, register_module,     &
-                                error_handler, logfileunit, E_MSG, E_ERR,  &
-                                timestamp, find_namelist_in_file,          &
+use utilities_mod,       only : initialize_utilities, register_module,    &
+                                error_handler, nmlfileunit, E_MSG, E_ERR,  &
+                                timestamp, find_namelist_in_file,         &
                                 check_namelist_read, do_output
                                 
 use assim_model_mod,     only : static_init_assim_model, get_model_size,   &
@@ -100,8 +100,7 @@ call find_namelist_in_file("input.nml", "restart_file_utility_nml", iunit)
 read(iunit, nml = restart_file_utility_nml, iostat = io)
 call check_namelist_read(iunit, io, "restart_file_utility_nml")
 
-call error_handler(E_MSG,'restart_file_utility','restart_file_utility_nml values are',' ',' ',' ')
-if (do_output()) write(logfileunit, nml=restart_file_utility_nml)
+if (do_output()) write(nmlfileunit, nml=restart_file_utility_nml)
 if (do_output()) write(     *     , nml=restart_file_utility_nml)
 
 ! ens_size is in the filter namelist, and the single restart file flags
@@ -302,14 +301,22 @@ else
 endif
 
 
-if (old_advance_time .ne. set_time_missing()) &
+if (old_advance_time .ne. set_time_missing()) then
    call print_time(old_advance_time,  "input file had an advance_time, which was ")
-if ((advance_time .ne. set_time_missing()) .and. output_is_model_advance_file) &
+   call print_date(old_advance_time,  "input file had an advance_time, which was ")
+endif
+if ((advance_time .ne. set_time_missing()) .and. output_is_model_advance_file) then
    call print_time(advance_time,  "output file advance_time is now set to ")
-if (old_data_time .ne. set_time_missing()) &
+   call print_date(advance_time,  "output file advance_time is now set to ")
+endif
+if (old_data_time .ne. set_time_missing()) then
    call print_time(old_data_time,  "input file data_time was ")
-if ((data_time .ne. set_time_missing()) .or. overwrite_data_time) &
+   call print_date(old_data_time,  "input file data_time was ")
+endif
+if ((data_time .ne. set_time_missing()) .or. overwrite_data_time) then
    call print_time(data_time,  "output file data_time is now set to ")
+   call print_date(data_time,  "output file data_time is now set to ")
+endif
 
 call timestamp(source,revision,revdate,'end') ! closes the log file.
 

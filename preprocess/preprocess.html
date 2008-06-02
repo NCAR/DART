@@ -47,13 +47,6 @@
 
 <H1>PROGRAM preprocess</H1>
 <A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 
@@ -62,38 +55,58 @@
 <H2>OVERVIEW</H2>
 
 <P>
-Program to create observation kind and observation defintion modules (normally
-obs_kind_mod.f90 and obs_def_mod.f90) from a set of other extended format Fortran90 
-files. There are three kinds of input files: a default template for the obs_kind_mod
-normally DEFAULT_obs_kind_mod.F90 in the obs_kind directory; a default template of the
-obs_def_mod, normally DEFAULT_obs_def_mod.F90 in the obs_def directory; 0 or more
-special obs_def modules such as obs_def_mod_reanalysis_bufr_mod.f90 found in the
-obs_def directory. The DEFAULT_obs_kind_mod.F90 and DEFAULT_obs_def_mod.F90 are
-used as templates into which required information from all specified 
-special obs_def modules is inserted. If no special obs_def modules are specified
-by the namelist, then the DEFAULT_obs_kind_mod.F90 and DEFAULT_obs_def_mod.F90 are 
-copied directly to the final obs_kind and obs_def modules, normally obs_kind_mod.f90
-in the obs_kind directory and obs_def_mod.f90 in the obs_def directory. In this
-default case, only identity observations can be used by the filter (i.e. the
-state variable values are directly observed; forward operator is an identity).
+Preprocess is a DART-supplied preprocessor program which
+creates observation kind and observation definition modules from a set of
+other specially formatted Fortran 90 files.
+The output files are normally named 
+<em class="file">obs_kind/obs_kind_mod.f90</em> and 
+<em class="file">obs_def/obs_def_mod.f90</em>, but can
+be renamed by namelist control if needed.
+</P>
 <P>
-If one or more special obs_def files are specified, information from these files
-is incorporated into the output obs_def and obs_kind modules and the observation
-types specified in the special obs_def files will be available for use by the
-filter programs.
+There are three kinds of input files: 
+<ol>
+<li>A default template for the obs_kind_mod (normally 
+<em class="file">obs_kind/DEFAULT_obs_kind_mod.F90</em>).
+<li>A default template of the obs_def_mod (normally
+<em class="file">obs_def/DEFAULT_obs_def_mod.F90</em>). 
+<li>0 or more special obs_def modules which contain
+observation specific types and code, such as
+<em class="file">obs_def_mod_reanalysis_bufr_mod.f90</em>.
+By convention these files are in the <em class="file">obs_def</em> directory. 
+</ol>
+The DEFAULT files contain specially formatted comment lines which are
+used as markers to insert additional information into the templates
+and create the output files.
+</P>
 <P>
-The special obs_def files must contain a number of sections of specially formatted
-F90 comments. They can also contain F90 code required for implementing operations
-needed for the observations. These sections are described in the documentation for
-the special obs_def modules, especially see obs_def_1d_state_mod.f90.
-<P> The DEFAULT obs_kind and obs_def modules also require specially commented
-sections to indicate where code from the special obs_def modules is to be 
-inserted. See the documentation for the DEFAULT_obs_kind_mod.F90 and
-the DEFAULT_obs_def_mod.F90 for details.
-
-
-
-
+If one or more special obs_def files are specified, information from these
+files is incorporated into the output obs_def and obs_kind modules and the
+observation types specified in the special obs_def files will be available
+for use by the filter programs.
+</P>
+<P>
+The special obs_def files must contain a number of sections of specially
+formatted F90 comments. They can also contain F90 code required for
+implementing operations needed for the observations. These sections are
+described in the documentation for the special obs_def modules, especially see
+<em class="file">obs_def_1d_state_mod.f90</em>.
+</P>
+<P> 
+The DEFAULT obs_kind and obs_def templates also require specially commented
+sections to indicate where code from the special obs_def modules is to be
+inserted. See the documentation for the DEFAULT_obs_kind_mod.F90 and the
+DEFAULT_obs_def_mod.F90 for details.
+</P>
+<P>
+Although uncommon, it is possible to list no obs_def modules
+in the namelist, which results in 
+<em class="file">DEFAULT_obs_kind_mod.F90</em> and
+<em class="file">DEFAULT_obs_def_mod.F90</em> being
+copied directly to the final obs_kind and obs_def modules.
+In this case, only identity observations can be used by
+the filter (i.e. the state variable values are directly observed; 
+forward operator is an identity).
 </P>
 
 <!--==================================================================-->
@@ -315,8 +328,16 @@ must be read from file <em class=file>input.nml</em>.
 </P>
 
 <!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
-<!--==================================================================-->
+
+<BR><HR><BR>
+
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 

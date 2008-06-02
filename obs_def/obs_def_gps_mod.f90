@@ -3,7 +3,6 @@
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-module obs_def_gps_mod
 
 ! <next few lines under version control, do not edit>
 ! $URL$
@@ -12,7 +11,10 @@ module obs_def_gps_mod
 ! $Date$
 
 ! BEGIN DART PREPROCESS KIND LIST
-! GPSRO_REFRACTIVITY,  KIND_GPSRO
+! TEMPERATURE,        KIND_TEMPERATURE,        COMMON_CODE
+! SPECIFIC_HUMIDITY,  KIND_SPECIFIC_HUMIDITY,  COMMON_CODE
+! PRESSURE,           KIND_PRESSURE,           COMMON_CODE
+! GPSRO_REFRACTIVITY, KIND_GPSRO
 ! END DART PREPROCESS KIND LIST
 
 
@@ -46,9 +48,12 @@ module obs_def_gps_mod
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
 
+! BEGIN DART PREPROCESS MODULE CODE
+module obs_def_gps_mod
+
 use        types_mod, only : r8, missing_r8, RAD2DEG, DEG2RAD, PI
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, file_exist, &
-                             open_file, logfileunit, close_file
+                             open_file, close_file
 use     location_mod, only : location_type, set_location, get_location , write_location, &
                              read_location
 use time_manager_mod, only : time_type, read_time, write_time, set_time, set_time_missing, &
@@ -502,3 +507,4 @@ s3    = s3 * RAD2DEG
 end  subroutine carte2geo
 
 end module obs_def_gps_mod
+! END DART PREPROCESS MODULE CODE

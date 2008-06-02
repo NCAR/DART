@@ -16,7 +16,7 @@ module adaptive_inflate_mod
 use types_mod,            only : r8, PI
 use time_manager_mod,     only : time_type, get_time, set_time
 use utilities_mod,        only : file_exist, get_unit, register_module, &
-                                 error_handler, E_ERR, E_MSG, logfileunit
+                                 error_handler, E_ERR, E_MSG
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq, &
                                  random_uniform
 use ensemble_manager_mod, only : ensemble_type, all_vars_to_all_copies, all_copies_to_all_vars, &

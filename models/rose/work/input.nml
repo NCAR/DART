@@ -124,7 +124,9 @@
 
 &utilities_nml
    TERMLEVEL = 1,
-   logfilename = 'dart_log.out'  /
+   module_details = .true.,
+   logfilename = 'dart_log.out',
+   nmlfilename = 'dart_log.nml'  /
 
 &mpi_utilities_nml
    /

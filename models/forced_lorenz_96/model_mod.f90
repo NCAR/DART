@@ -17,8 +17,8 @@ use     location_mod, only : location_type, set_location, get_location, &
                              LocationDims, LocationName, LocationLName, &
                              get_close_maxdist_init, get_close_obs_init, get_close_obs
 
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, logfileunit, &
-                             find_namelist_in_file, check_namelist_read
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, nmlfileunit, &
+                             do_output, find_namelist_in_file, check_namelist_read
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
@@ -99,9 +99,8 @@ call check_namelist_read(iunit, io, "model_nml")
 model_size = 2 * num_state_vars
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-write(logfileunit, nml=model_nml)
-write(     *     , nml=model_nml)
+if (do_output()) write(nmlfileunit, nml=model_nml)
+if (do_output()) write(     *     , nml=model_nml)
 
 ! Create storage for locations
 allocate(state_loc(model_size))

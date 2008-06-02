@@ -1,0 +1,56 @@
+#!/bin/ksh
+
+for f in mpi_utilities_mod.f90 null_mpi_utilities_mod.f90
+do
+
+# save original copy for backup.  should this test first and if the orig
+# is still there, not do the copy?
+if [[ ! -f ${f}.orig ]]; then
+ cp -p ${f} ${f}.orig
+fi
+
+# door 1: flip flop back and forth between commented in and out
+# door 2: give this an argument to ask for it in or out explicitly
+# door 3: look at an env var for what to set.  (could be in mkmf.template)
+
+# door 1:
+export bline=`fgrep SYSTEM_BLOCK_EDIT ${f} | grep START`
+
+if [[ "`echo $bline | grep COMMENTED_OUT`" != ""  ]]; then
+  echo Was no interface block for system in ${f}
+  export do=in
+elif [[ "`echo $bline | grep COMMENTED_IN`" != ""  ]]; then
+  echo Interface block was present in ${f}
+  export do=out
+else
+  echo ${f} not found, or does not have the right comment string to
+  echo automatically change the system interface block via script.
+  echo Please restore original file from the subversion repository
+  echo and try again.
+fi
+
+# in any case, here are the 4 possible command lines to use.
+
+# removing comments, code enabled
+if [[ $do == in ]]; then
+ echo removing comments, enabling interface block in ${f}
+ mv ${f} tempfile
+ sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_OUT/,/SYSTEM_BLOCK_EDIT END COMMENTED_OUT/s/^!//' -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_OUT/s//\1 COMMENTED_IN/' tempfile > ${f}
+fi
+
+# adding comments, code disabled
+if [[ $do == out ]]; then
+ echo adding comment chars, disabling interface block in ${f}
+ mv ${f} tempfile
+ sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_IN/,/SYSTEM_BLOCK_EDIT END COMMENTED_IN/s/^/!/' -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' tempfile > ${f}
+fi
+
+# for testing only
+## trying to remove comments not there; should be noop
+#sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_OUT/,/SYSTEM_BLOCK_EDIT END COMMENTED_OUT/s/^!//' -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_OUT/s//\1 COMMENTED_IN/' new > new3
+#
+## trying to add comments already there; should be noop
+#sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_IN/,/SYSTEM_BLOCK_EDIT END COMMENTED_IN/s/^/!/' -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' new2 > new4
+#
+
+done

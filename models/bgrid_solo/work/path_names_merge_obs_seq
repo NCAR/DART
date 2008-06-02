@@ -10,6 +10,7 @@ random_seq/random_seq_mod.f90
 random_nr/random_nr_mod.f90
 time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90
+mpi_utilities/null_mpi_utilities_mod.f90
 models/bgrid_solo/fms_src/atmos_bgrid/driver/solo/atmosphere.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_advection.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_conserve_energy.f90

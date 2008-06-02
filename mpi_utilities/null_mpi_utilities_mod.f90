@@ -151,12 +151,30 @@ use types_mod, only        : r8, digits12
 use utilities_mod, only    : register_module, error_handler,             &
                              initialize_utilities, get_unit, close_file, & 
                              E_ERR, E_WARN, E_MSG, E_DBG
-use time_manager_mod, only : time_type, get_time, set_time
+use time_manager_mod, only : time_type, set_time
 
 
 implicit none
 private
 
+
+! BUILD TIP 
+! Some compilers require an interface block for the system() function;
+! some fail if you define one.  If you get an error at link time (something
+! like 'undefined symbol _system_') try running the fixsystem script in
+! this directory.  It is a sed script that comments in and out the interface
+! block below.  Please leave the BLOCK comment lines unchanged.
+
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)    
+   character(len=*) :: string
+   integer :: system         
+  end function system
+ end interface
+ ! end block                 
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
 !   ---- private data for mpi_utilities ----
 
@@ -166,7 +184,7 @@ integer :: my_local_comm   ! duplicate communicator private to this file
 integer :: comm_size       ! if ens count < tasks, only the first N participate
 
 public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
-          task_count, my_task_id, block_task, restart_task, exit_all,        &
+          task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
           sum_across_tasks
@@ -183,30 +201,6 @@ character(len = 129) :: errstring
 
 ! Namelist input - placeholder for now; no options yet in this module.
 !namelist /mpi_utilities_nml/ x
-
-
-! BUILD TIP 
-! On some platforms the compiler will complain unless the system() function
-! is declared here.  We are trying to get a return code back from the
-! function by calling it:
-!  rc = system()
-! If we had been just trying to execute it and did not care about the return
-! code (and detecting failures), doing this:
-!  call system()
-! does not seem to need this interface block.
-! However, on some platforms the compiler complains if you *do* specify
-! an interface block.  So, first try leaving this alone.  If you get an error
-! at link time about an undefined symbol (something like '_system_') then
-! comment this interface block in and try again.
-
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
 
 
 contains
@@ -387,17 +381,6 @@ if (present(time)) time = set_time(0, 0)
 
 end subroutine receive_from
 
-
-!-----------------------------------------------------------------------------
-
-subroutine exit_all(exit_code)
- integer, intent(in) :: exit_code
-
-! Call exit with the specified code.
-
-   call exit(exit_code)
-
-end subroutine exit_all
 
 
 !-----------------------------------------------------------------------------
@@ -787,3 +770,20 @@ end subroutine sleep_seconds
 
 end module mpi_utilities_mod
 
+!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------
+! NOTE -- non-module code, so this subroutine can be called from the
+!  utilities module, which this module uses (and cannot have circular refs)
+!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------------
+
+subroutine exit_all(exit_code)
+ integer, intent(in) :: exit_code
+
+! Call exit with the specified code.
+
+   call exit(exit_code)
+
+end subroutine exit_all

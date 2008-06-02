@@ -117,13 +117,16 @@
    nlat = 36  /
 
 &preprocess_nml
-    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
-   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
-     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
-    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_gps_mod.f90',
-                              '../../../obs_def/obs_def_QuikSCAT_mod.f90',
-                              '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'/
+   input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
+  output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
+    input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
+   output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
+  input_files              = '../../../obs_def/obs_def_gps_mod.f90',
+                             '../../../obs_def/obs_def_QuikSCAT_mod.f90',
+                             '../../../obs_def/obs_def_GWD_mod.f90',
+                             '../../../obs_def/obs_def_altimeter_mod.f90',
+                             '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'
+   /
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
@@ -142,12 +145,14 @@
 !   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE' /
 
 
-&mpi_utilities_nml
-   /
-
 &utilities_nml
    TERMLEVEL = 1,
-   logfilename = 'dart_log.out'  /
+   module_details = .true.,
+   logfilename = 'dart_log.out',
+   nmlfilename = 'dart_log.nml'  /
+
+&mpi_utilities_nml
+   /
 
 &restart_file_utility_nml
    input_file_name              = "filter_restart",
@@ -165,10 +170,10 @@
    new_advance_days             =  -1,
    new_advance_secs             =  -1   /
 
-&merge_obs_seq_nml 
-   num_input_files = 1,
-   filename_seq = 'obs_seq_bin.out',
-   filename_out  = 'obs_seq_ascii.out'   /
+&merge_obs_seq_nml
+   num_input_files = 2,
+   filename_seq    = 'obs_seq.one', 'obs_seq.two',
+   filename_out    = 'obs_seq.merged'   /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:

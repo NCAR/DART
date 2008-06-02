@@ -15,10 +15,18 @@ set SNAME = $0
 set clobber
 
 switch ( $#argv )
+   case 0:
+      # supplying no args - default is 'TestDir'
+      # The results of each run-time test will be stored in this directory.
+      # This will facilitate checks across platforms.
+
+      set BASEOUTPUTDIR = TestDir
+      breaksw
    case 1:
       # supplying one argument -- the base output directory.
       # The results of each run-time test will be stored in this directory.
       # This will facilitate checks across platforms.
+      set BASEOUTPUTDIR = $1
 
       breaksw
    default:
@@ -93,7 +101,7 @@ switch ( ${OSTYPE} )
       setenv   MOVE 'mv -f'
       breaksw
    default:
-      setenv REMOVE 'rm -rvf'
+      setenv REMOVE 'rm -rf'
       setenv   COPY 'cp -vp'
       setenv   MOVE 'mv -fv'
       breaksw
@@ -122,6 +130,19 @@ else
    endif
 endif
 
+#----------------------------------------------------------------------
+# set the environment variable MPI to anything in order to enable the
+# MPI builds and tests.  set the argument to the build scripts so it
+# knows which ones to build.
+if ( $?MPI ) then
+  echo "Will be building with MPI enabled"
+  setenv QUICKBUILD_ARG -mpi
+else
+  echo "Will NOT be building with MPI enabled"
+  setenv QUICKBUILD_ARG -nompi
+endif
+#----------------------------------------------------------------------
+
 echo "Running DART test on $host"
 
 #----------------------------------------------------------------------
@@ -140,56 +161,28 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
     lorenz_04 forced_lorenz_96 null_model ikeda bgrid_solo pe2lyr cam wrf ) 
     # PBL_1d MITgcm_annulus )
     
-    @ makenum  = 1
-
     echo "=================================================================="
     echo "Compiling $MODEL at "`date`
     echo ""
 
     cd ${DARTHOME}/models/${MODEL}/work
 
-    ${REMOVE} ../../../obs_def/obs_def_mod.f90 
-    ${REMOVE} ../../../obs_kind/obs_kind_mod.f90
-    ${REMOVE} *.o *.mod preprocess 
+    ./quickbuild.csh ${QUICKBUILD_ARG} || exit 3
 
-    echo
-    echo
-    echo "---------------------------------------------------------------"
-    echo "${MODEL} build number ${makenum} is preprocess"
-
-    csh mkmf_preprocess
-    make || exit $makenum
-    ./preprocess
-
-    foreach TARGET ( mkmf_* )
-
-       @ makenum  = $makenum  + 1
-       set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
-
-       echo
-       echo
-       echo "---------------------------------------------------------------"
-       echo "${MODEL} build number ${makenum} is ${PROG}"
-   
-       ${REMOVE} ${PROG} Makefile input.nml.${PROG}_default .cppdefs
-
-       csh mkmf_${PROG}  || exit $makenum
-       make              || exit $makenum
-
-    #  ${REMOVE} ${PROG} Makefile input.nml.${PROG}_default .cppdefs
-       ${REMOVE} ${PROG} Makefile                           .cppdefs
-
-    end   # end of foreach PROG
-
-    echo "Removing the following newly-built objects ..."
+    echo "Removing the newly-built objects ..."
     ${REMOVE} *.o *.mod 
+    ${REMOVE} Makefile input.nml.*_default .cppdefs
+    foreach TARGET ( mkmf_* )
+      set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+      ${REMOVE} $PROG
+    end
 
-   @ modelnum = $modelnum + 1
+    @ modelnum = $modelnum + 1
 end
 endif
 
 #----------------------------------------------------------------------
-# Lots of tests for L96
+# Lots of tests for L96, and one for bgrid_solo (for the 3d loc stuff)
 #----------------------------------------------------------------------
 
 cd ${DARTHOME}
@@ -225,6 +218,8 @@ if ( $MatlabExists == 0 ) then
    if ($MatlabResult != 0) then
       set MatlabExists = -1
       echo "Matlab can not be run, see $fname"
+   else
+      ${REMOVE} $fname
    endif
 
 endif
@@ -233,14 +228,63 @@ echo
 echo
 echo
 echo "=================================================================="
+echo "Testing single-threaded bgrid_solo at "`date`
+echo "=================================================================="
+echo
+
+set MODEL = bgrid_solo
+
+cd ${DARTHOME}/models/${MODEL}/work
+
+# Save the 'original' files so we can reinstate them as needed
+
+${COPY} input.nml     input.nml.$$
+${COPY} obs_seq.in   obs_seq.in.$$
+${COPY} perfect_ics perfect_ics.$$
+${COPY} filter_ics   filter_ics.$$
+
+# Begin by compiling all programs; need to stop if an error is detected
+./quickbuild.csh -nompi || exit 91
+
+ 
+# Run the perfect model and the filter
+./perfect_model_obs  || exit 92
+./filter             || exit 93
+
+echo "Removing the newly-built objects ..."
+${REMOVE} filter_restart perfect_restart
+${REMOVE} input.nml perfect_ics filter_ics
+${REMOVE} obs_seq.in obs_seq.out obs_seq.final
+${REMOVE} True_State.nc Prior_Diag.nc Posterior_Diag.nc
+${REMOVE} *.o *.mod 
+${REMOVE} Makefile input.nml.*_default .cppdefs
+foreach TARGET ( mkmf_* )
+  set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+  ${REMOVE} $PROG
+end
+
+# Reinstate the 'original' files so we can run this again if we need to.
+
+${MOVE}   input.nml.$$   input.nml
+${MOVE}  obs_seq.in.$$ obs_seq.in
+${MOVE} perfect_ics.$$ perfect_ics
+${MOVE}  filter_ics.$$  filter_ics
+
+echo
+echo "=================================================================="
+echo "Single-threaded testing of bgrid_solo complete at "`date`
+echo "=================================================================="
+echo
+
+echo
+echo "=================================================================="
 echo "Testing single-threaded lorenz_96 (L96) at "`date`
 echo "=================================================================="
 echo
 
-setenv MODEL lorenz_96
-@ makenum  = 1
+set MODEL = lorenz_96
 
-cd ${DARTHOME}/models/lorenz_96/work
+cd ${DARTHOME}/models/${MODEL}/work
 
 # Save the 'original' files so we can reinstate them as needed
 
@@ -252,7 +296,6 @@ ${COPY} filter_ics   filter_ics.$$
 
 # The results of each run-time test will be stored in this directory.
 
-set BASEOUTPUTDIR = $1
 if ( ! -d ${BASEOUTPUTDIR} ) then
    mkdir -p ${BASEOUTPUTDIR}
 endif
@@ -266,38 +309,7 @@ foreach TEST ( spun_up 10hour 10hour.mres baseline async2 \
 end
 
 # Begin by compiling all programs; need to stop if an error is detected
-
-${REMOVE} ../../../obs_def/obs_def_mod.f90 
-${REMOVE} ../../../obs_kind/obs_kind_mod.f90
-${REMOVE} *.o *.mod preprocess 
-
-echo
-echo
-echo "---------------------------------------------------------------"
-echo "${MODEL} build number ${makenum} is preprocess"
-
-csh mkmf_preprocess
-make || exit $makenum
-./preprocess
-
-foreach TARGET ( mkmf_* )
-
-   @ makenum  = $makenum  + 1
-   set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
-
-   echo
-   echo
-   echo "---------------------------------------------------------------"
-   echo "${MODEL} build number ${makenum} is ${PROG}"
-   
-   ${REMOVE} Makefile .cppdefs ${PROG}
-
-   csh mkmf_${PROG}  || exit $makenum
-   make              || exit $makenum
-
-   ${REMOVE} Makefile .cppdefs input.nml.${PROG}_default
-
-end   # end of foreach PROG
+./quickbuild.csh -nompi || exit 29
 
 ${REMOVE} *.o *.mod 
 
@@ -932,31 +944,42 @@ echo "Single-threaded testing of lorenz_96 complete at "`date`
 echo "=================================================================="
 echo
 
+echo "=================================================================="
+echo "cleaning up ... and restoring original input.nml, ics ... "
+${REMOVE} filter_restart.*
+${REMOVE} input.nml perfect_ics perfect_ics.spun_up perfect_ics.10hour
+${REMOVE} obs_seq.in filter_ics  filter_ics.spun_up  filter_ics.10hour
+${REMOVE} obs_seq.out set_def.out  True_State.nc input.nml.previous
+${REMOVE} *.o *.mod 
+${REMOVE} Makefile input.nml.*_default .cppdefs
+foreach TARGET ( mkmf_* )
+  set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
+  ${REMOVE} $PROG
+end
+
+# Reinstate the 'original' files so we can run this again if we need to.
+
+${MOVE}   input.nml.$$   input.nml
+${MOVE}  obs_seq.in.$$ obs_seq.in
+${MOVE} obs_seq.out.$$ obs_seq.out
+${MOVE} perfect_ics.$$ perfect_ics
+${MOVE}  filter_ics.$$  filter_ics
+
+echo "=================================================================="
+
 if ! ( $?MPI ) then
 
    echo "MPI not enabled ... stopping."
-   echo "=================================================================="
-   echo "cleaning up ... and restoring original input.nml, ics ... "
 
-   ${REMOVE} filter_restart.*
-   ${REMOVE} input.nml perfect_ics perfect_ics.spun_up perfect_ics.10hour
-   ${REMOVE} obs_seq.in filter_ics  filter_ics.spun_up  filter_ics.10hour
-   ${REMOVE} obs_seq.out set_def.out  True_State.nc input.nml.previous
+else
 
-   # Reinstate the 'original' files so we can run this again if we need to.
+   echo "No MPI tests yet ... stopping."
 
-   ${MOVE}   input.nml.$$   input.nml
-   ${MOVE}  obs_seq.in.$$ obs_seq.in
-   ${MOVE} obs_seq.out.$$ obs_seq.out
-   ${MOVE} perfect_ics.$$ perfect_ics
-   ${MOVE}  filter_ics.$$  filter_ics
-
-   exit
+   #echo "=================================================================="
+   #echo "testing MPI complete  at "`date`
+   #echo "=================================================================="
+   #echo
 
 endif
 
-echo "=================================================================="
-echo "testing MPI complete  at "`date`
-echo "=================================================================="
-echo
-
+exit 0

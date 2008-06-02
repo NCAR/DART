@@ -640,10 +640,24 @@ lead to termination (be careful doing this).
      <TH align=left>Description </TH></TR>
  <TR><!--contents--><TD valign=top>TERMLEVEL</TD>
      <!--  type  --><TD>integer</TD>
- <!--descript--><TD>Level at which calls to error manager terminate program. Default: E_ERR</TD></TR>
+     <!--descript--><TD>Level at which calls to error
+                        manager terminate program. Default: E_ERR</TD></TR>
  <TR><!--contents--><TD valign=top>logfilename</TD>
      <!--  type  --><TD>character(len=129)</TD>
- <!--descript--><TD>File to which the logfile is written. Default: dart_log.out</TD></TR>
+     <!--descript--><TD>File to which the logfile is written. 
+                        Default: dart_log.out</TD></TR>
+ <TR><!--contents--><TD valign=top>nmlfilename</TD>
+     <!--  type  --><TD>character(len=129)</TD>
+     <!--descript--><TD>File to which the namelist output is written. 
+                        Can be the same name as the logfile.
+                        Default: dart_log.nml</TD></TR>
+ <TR><!--contents--><TD valign=top>module_details</TD>
+     <!--  type  --><TD>logical</TD>
+     <!--descript--><TD>Each source code module can write out the
+                        repository version number and filename to the logfile.
+                        Verbose, but useful for knowing what version of the
+                        code was used during the run.
+                        Default: .true.</TD></TR>
  </TABLE>
  <BR>
 

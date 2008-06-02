@@ -13,13 +13,13 @@ module model_mod
 
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
-use     location_mod, only : location_type, set_location, get_location, &
-                             LocationDims, LocationName, LocationLName, &
+use     location_mod, only : location_type, set_location, get_location,  &
+                             LocationDims, LocationName, LocationLName,  &
                              get_close_maxdist_init, get_close_obs_init, &
                              get_close_obs
 
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
-                             logfileunit, find_namelist_in_file,           &
+                             nmlfileunit, find_namelist_in_file,           &
                              check_namelist_read, nc_check, do_output
 
 implicit none
@@ -89,9 +89,8 @@ call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
 if (do_output()) then
-call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-write(logfileunit, nml=model_nml)
-write(     *     , nml=model_nml)
+   write(nmlfileunit, nml=model_nml)
+   write(     *     , nml=model_nml)
 endif
 
 ! Create storage for locations

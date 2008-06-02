@@ -7,16 +7,16 @@
 #
 # <next few lines under version control, do not edit>
 # $URL$
-# $Id$
+# $Id: workshop_setup.csh 2752 2007-03-30 22:12:18Z thoar $
 # $Revision$
-# $Date$
+# $Date: 2007-03-30 16:12:18 -0600 (Fri, 30 Mar 2007) $
 
+#----------------------------------------------------------------------
 # Script to manage the compilation of all components for this model;
 # executes a known "perfect model" experiment using an existing
 # observation sequence file (obs_seq.in) and initial conditions appropriate 
 # for both 'perfect_model_obs' (perfect_ics) and 'filter' (filter_ics).
-# There are enough initial conditions for 80 ensemble members in filter.
-# Use ens_size = 81 and it WILL bomb. Guaranteed.
+# There are enough initial conditions for 500 ensemble members.
 # The 'input.nml' file controls all facets of this execution.
 #
 # 'create_obs_sequence' and 'create_fixed_network_sequence' were used to
@@ -55,7 +55,7 @@
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
-set MODEL = "pe2lyr"
+set MODEL = "lorenz_04"
 
 @ n = 1
 
@@ -92,9 +92,61 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
-@ n = $n + 1
-./perfect_model_obs || exit $n
+if ( $#argv == 1 && "$1" == "-mpi" ) then
+  echo "Success: All single task DART programs compiled."  
+  echo "Script now compiling MPI parallel versions of the DART programs."
+else if ( $#argv == 1 && "$1" == "-nompi" ) then
+  echo "Success: All single task DART programs compiled."  
+  echo "Script is exiting without building the MPI version of the DART programs."
+  exit 0
+else
+  echo ""
+  echo "Success: All DART programs compiled."
+  echo "Script is exiting before building the MPI version of the DART programs."
+  echo "Run the quickbuild.csh script with a -mpi argument or"
+  echo "edit the quickbuild.csh script and remove the exit line"
+  echo "to compile with MPI to run in parallel on multiple cpus."
+  echo ""
+  exit 0
+endif
+
+#----------------------------------------------------------------------
+# to enable an MPI parallel version of filter for this model, 
+# call this script with the -mpi argument, or if you are going to build
+# with MPI all the time, remove or comment out the entire section above.
+#----------------------------------------------------------------------
+
+\rm -f *.o *.mod filter wakeup_filter
 
 @ n = $n + 1
-./filter            || exit $n
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_filter"
+csh   mkmf_filter -mpi
+make
+
+if ($status != 0) then
+   echo
+   echo "If this died in mpi_utilities_mod, see code comment"
+   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
+   echo
+   exit $n
+endif
+
+@ n = $n + 1
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_wakeup_filter"
+csh  mkmf_wakeup_filter -mpi
+make || exit $n
+
+\rm -f *.o *.mod
+
+echo
+echo 'time to run filter here:'
+echo ' for lsf run "bsub < runme_filter"'
+echo ' for pbs run "qsub runme_filter"'
+echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
+echo ' for mpich run "mpd" once, then "runme_filter"'
+
 

@@ -46,13 +46,6 @@
 
 <H1>MODULE obs_def_1d_state_mod</H1>
 <A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 
@@ -60,12 +53,18 @@
 <HR>
 <H2>OVERVIEW</H2>
 <P>
-Beginning with the I-release of DART, a more flexible. powerful (and complicated)
+Beginning with the I-release of DART, a more flexible, powerful (and complicated)
 mechanism for incorporating new types of observations is part of DART. The
-speical obs_def module being described here is used by the program preprocess.f90
+special obs_def module being described here is used by the program 
+<em class="unix">preprocess</em>
 to insert appropriate code sections into a DEFAULT_obs_def module and a 
-DEFAULT_obs_kind module to generate the obs_def_mod.f90 and obs_kind_mod.f90
-that are used by filer programs.
+DEFAULT_obs_kind module to generate the 
+<em class="file">obs_def_mod.f90</em> and 
+<em class="file">obs_kind_mod.f90</em>
+that are used by 
+<em class="unix">filter</em> and other DART programs.
+This module is intended to provide a prototype for those
+developing more complicated specialized observation definition modules.
 
 <P>
 This is an extended format Fortran90 module that provides the definition
@@ -74,7 +73,7 @@ that use the 1D location module and can be thought of as having a state
 vector that is equally spaced on a 1D cyclic domain. The two observation types
 are: a straight linear interpolation to a point on a [0,1] domain called
 a RAW_STATE_VARIABLE; an area-weighted 'integral' of the state variable
-over some part of the cylic 1D domain. The second type can be used to
+over some part of the cyclic 1D domain. The second type can be used to
 do idealized studies related to remote sensing observations that are
 best thought of as weighted integrals of some quantity over a finite volume.
 
@@ -92,92 +91,130 @@ computing the integral by quadrature.
 <P> This module was partly motivated to provide a prototype for those
 developing more complicated specialized observation definition modules.
 Special observation modules like this contain Fortran90 code PLUS additional
-specially formatted commented code that is used to guide the preprocessor
+specially formatted commented code that is used to guide the preprocess program
 in constructing the obs_def_mod.f90 and obs_kind_mod.f90. These specially
 formatted comments are most conveniently placed at the beginning of the module
-and comprise six sections, each beginning and ending with a special F90
-comment line that must be included VERBATIM. The six sections and there
-specific instance for the 1d_raw_state_mod are:
+and comprise seven sections, each beginning and ending with a special F90
+comment line that must be included VERBATIM. The seven sections and their
+specific instances for the 1d_raw_state_mod are:
 
-<P>
-1. A list of all observation kinds defined by this module and their associated
+<OL>
+<li>
+A list of all observation types defined by this module and their associated
 generic kinds (see obs_kind module). The header line is followed by lines
-that have the observation kind name (an all caps Fortran 90 identifier) and
-their associated generic kind identifier from the obs_kind module.<BR>
-<P>
-! BEGIN DART PREPROCESS KIND LIST <BR>
-! RAW_STATE_VARIABLE,    KIND_RAW_STATE_VARIABLE <BR>
-! RAW_STATE_1D_INTEGRAL, KIND_1D_INTEGRAL <BR>
-! END DART PREPROCESS KIND LIST <BR>
+that have the observation type name (an all caps Fortran 90 identifier) and
+their associated generic kind identifier from the obs_kind module.
+If there is no special processing needed for an observation type,
+and no additional data needed beyond the standard contents of an observation,
+then a third word on the line, the <em class="unix">COMMON_CODE</em> will
+instruct the preprocess program to automatically generate all stubs and
+code needed for this type.  For observation types needing any special code
+or additional data, this word should not be specified and the user must
+supply the code manually.
+</P>
+<pre>
+! BEGIN DART PREPROCESS KIND LIST 
+! RAW_STATE_VARIABLE,    KIND_RAW_STATE_VARIABLE,   COMMON_CODE
+! RAW_STATE_1D_INTEGRAL, KIND_1D_INTEGRAL 
+! END DART PREPROCESS KIND LIST 
+</pre>
+</li><br>
 
-<P>
-2. A list of all the use statements that the completed obs_def_mod.f90
+<li>
+A list of all the use statements that the completed obs_def_mod.f90
 must have in order to use the public interfaces provided by this special
-obs_def module. <BR>
-<P>
-! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE <BR>
+obs_def module.  This is optional if there are no external interfaces.
+<pre>
+! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE 
 !   use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral, 
-!                                     interactive_1d_integral, get_expected_1d_integral <BR>
-! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE <BR>
+!                                    interactive_1d_integral, get_expected_1d_integral 
+! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE 
+</pre>
+</li><br>
 
-<P>
-3. Case statement entries for each observation kind defined by this special
-obs_def module stating how to compute the forward observation operator.  Note that 
+<li>
+Case statement entries for each observation type defined by this special
+obs_def module stating how to compute the forward observation operator.
+Not required if COMMON_CODE was specified, otherwise
 there must be a case statement entry for each
-type obs observation defined even if no special action (just put in a
-continue) is required.
-<BR>
-<P>
-! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF <BR>
-!         case(RAW_STATE_VARIABLE) <BR>
-!         call interpolate(state, location, 1, obs_val, istatus) <BR>
-!         case(RAW_STATE_1D_INTEGRAL) <BR>
-!            call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus) <BR>
-! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF <BR>
+type of observation.
+</P>
+<pre>
+! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
+!         case(RAW_STATE_1D_INTEGRAL) 
+!            call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus) 
+! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF 
+</pre>
+</li><br>
 
-<P>
-4. Case statement entries for each observation kind defined by this special
+<li>
+Case statement entries for each observation type defined by this special
 obs_def module stating how to read any extra required information from an
-obs sequence file. Note that there must be a case statement entry for each
-type obs observation defined even if no special action (just put in a
-continue) is required. <BR>
-<P>
-! BEGIN DART PREPROCESS READ_OBS_DEF <BR>
-!      case(RAW_STATE_VARIABLE) <BR>
-!         continue <BR>
-!      case(RAW_STATE_1D_INTEGRAL) <BR>
-!         call read_1d_integral(obs_def%key, ifile, fileformat) <BR>
-! END DART PREPROCESS READ_OBS_DEF <BR>
-<P>
-5. Case statement entries for each observation kind defined by this special
+obs sequence file.  
+Not required if COMMON_CODE was specified, otherwise
+there must be a case statement entry for each
+type of observation defined even if no special action is required
+(just put in a continue.) 
+</P>
+<pre>
+! BEGIN DART PREPROCESS READ_OBS_DEF 
+!      case(RAW_STATE_1D_INTEGRAL) 
+!         call read_1d_integral(obs_def%key, ifile, fileformat) 
+! END DART PREPROCESS READ_OBS_DEF 
+</pre>
+</li><br>
+
+<li>
+Case statement entries for each observation type defined by this special
 obs_def module stating how to write any extra required information to an
-obs sequence file. Note that there must be a case statement entry for each
-type obs observation defined even if no special action (just put in a
-continue) is required. <BR>
-! BEGIN DART PREPROCESS WRITE_OBS_DEF <BR>
-!      case(RAW_STATE_VARIABLE) <BR>
-!         continue <BR>
-!      case(RAW_STATE_1D_INTEGRAL) <BR>
-!         call write_1d_integral(obs_def%key, ifile, fileformat) <BR>
-! END DART PREPROCESS WRITE_OBS_DEF <BR>
+obs sequence file.
+Not required if COMMON_CODE was specified, otherwise
+there must be a case statement entry for each
+type of observation defined even if no special action is required
+(just put in a continue.) 
+</P>
+<pre>
+! BEGIN DART PREPROCESS WRITE_OBS_DEF 
+!      case(RAW_STATE_1D_INTEGRAL) 
+!         call write_1d_integral(obs_def%key, ifile, fileformat) 
+! END DART PREPROCESS WRITE_OBS_DEF 
+</pre>
+</li><br>
 
-<P>
-6. Case statement entries for each observation kind defined by this special
+<li>
+Case statement entries for each observation type defined by this special
 obs_def module stating how to interactively create any extra required information.
-Note that there must be a case statement entry for each
-type obs observation defined even if no special action (just put in a
-continue) is required. <BR>
-<P>
-! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF <BR>
-!      case(RAW_STATE_VARIABLE) <BR>
-!         continue <BR>
-!      case(RAW_STATE_1D_INTEGRAL) <BR>
-!         call interactive_1d_integral(obs_def%key) <BR>
-! END DART PREPROCESS INTERACTIVE_OBS_DEF <BR>
+Not required if COMMON_CODE was specified, otherwise
+there must be a case statement entry for each
+type of observation defined even if no special action is required
+(just put in a continue.) 
+</P>
+<pre>
+! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF 
+!      case(RAW_STATE_1D_INTEGRAL) 
+!         call interactive_1d_integral(obs_def%key) 
+! END DART PREPROCESS INTERACTIVE_OBS_DEF 
+</pre>
+</li><br>
 
 
+<li>
+Any executable F90 module code must be tagged with the following
+comments.  All lines between these markers will be copied, verbatim,
+to obs_def_mod.f90.  This section is not required if there are no
+observation-specific subroutines.
+</P>
+<pre>
+! BEGIN DART PREPROCESS MODULE CODE
+module obs_def_1d_state_mod
 
-<P>
+... (module executable code)
+
+end module obs_def_1d_state_mod
+! END DART PREPROCESS MODULE CODE
+</pre>
+</li><br>
+</ol>
 
 <BR>
 
@@ -407,6 +444,15 @@ Computes the forward observation operator for a 1d integral observation.
 
 <!--==================================================================-->
 
-<HR>
+<BR><HR>
+
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
 </BODY>
 </HTML>

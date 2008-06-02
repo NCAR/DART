@@ -92,8 +92,9 @@ module mpi_utilities_mod
 !                         See filter and wakeup_filter for examples
 !                         of a program pair which uses these calls.
 ! 
-!    # finished_task()    Called from finalize_mpi_utilities, if async=4 writes
-!                         out a string to the model pipe to tell it filter is exiting.
+!    # finished_task()    Called from finalize_mpi_utilities, if async=4 
+!                         writes out a string to the model pipe to tell it 
+!                         filter is exiting.
 !
 !  *** make_pipe()        Function that creates a named pipe (fifo), opens it,
 !                         and returns the unit number.  Ok to call if the pipe
@@ -162,13 +163,12 @@ use utilities_mod, only : register_module, error_handler, &
 use time_manager_mod, only : time_type, get_time, set_time
 
 ! BUILD TIP 1
-! Some MPI installations have an MPI module; if one is present, use that.
-! (i.e. 'use mpi')
+! Many MPI installations have an MPI module; if one is present, use it.
+! ('use mpi')
 ! If not, there will be an MPI include file which defines the parameters.
-! (i.e. 'include mpif.h')
-! Use one but not both.   Plus, the placement relative to the 'implicit none' 
-! and 'private' lines matters - the 'use' must be first, 'include' after.  
-! Go figure.
+! ('include mpif.h')
+! Use one but not both.   The 'use' line must be before the 'implicit none' 
+! and 'private' lines, 'include' must come after.  Go figure.
 ! For more help on compiling a module which uses MPI see the 
 ! $DART/doc/mpi directory. 
 
@@ -179,6 +179,24 @@ private
 
 !include "mpif.h"
 
+
+! BUILD TIP 2
+! Some compilers require an interface block for the system() function;
+! some fail if you define one.  If you get an error at link time (something
+! like 'undefined symbol _system_') try running the fixsystem script in
+! this directory.  It is a sed script that comments in and out the interface
+! block below.  Please leave the BLOCK comment lines unchanged.
+
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)
+   character(len=*) :: string
+   integer :: system
+  end function system
+ end interface
+ ! end block
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
 
 !   ---- private data for mpi_utilities ----
@@ -191,7 +209,7 @@ integer :: datasize        ! which MPI type corresponds to our r8 definition
 
 
 public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
-          task_count, my_task_id, block_task, restart_task, exit_all,        &
+          task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
           sum_across_tasks
@@ -209,29 +227,6 @@ character(len = 129) :: errstring
 
 ! Namelist input - placeholder for now.  mpi_utilities has no options.
 !namelist /mpi_utilities_nml/ x
-
-! BUILD TIP 2
-! On some platforms the compiler will complain unless the system() function 
-! is declared here.  We are trying to get a return code back from the 
-! function by calling it:
-!  rc = system()
-! If we had been just trying to execute it and did not care about the return
-! code (and detecting failures), doing this:
-!  call system() 
-! does not seem to need this interface block.
-! However, on some platforms the compiler complains if you *do* specify 
-! an interface block.  So, first try leaving this alone.  If you get an error 
-! at link time about an undefined symbol (something like '_system_') then
-! comment this interface block in and try again.
- 
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
 
 contains
 
@@ -644,24 +639,6 @@ if (verbose) write(*,*) "PE", myrank, ": end of receive_from "
 
 end subroutine receive_from
 
-
-!-----------------------------------------------------------------------------
-
-subroutine exit_all(exit_code)
- integer, intent(in) :: exit_code
-
-! In case of error, call this instead of the fortran intrinsic exit().
-! It will signal the other MPI tasks that something bad happened and they
-! should also exit.
-
-integer :: ierror
-
-! do not bother testing here if the init code was called; we are trying 
-! to exit in case of error and we want to take the other tasks down with us.
-
-   call MPI_Abort(my_local_comm, exit_code, ierror)
-
-end subroutine exit_all
 
 
 !-----------------------------------------------------------------------------
@@ -1444,4 +1421,27 @@ end subroutine sleep_seconds
 !-----------------------------------------------------------------------------
 
 end module mpi_utilities_mod
+
+!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------
+! NOTE -- non-module code, so this subroutine can be called from the
+!  utilities module, which this module uses (and cannot have circular refs)
+!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------
+
+subroutine exit_all(exit_code)
+ integer, intent(in) :: exit_code
+
+! In case of error, call this instead of the fortran intrinsic exit().
+! It will signal the other MPI tasks that something bad happened and they
+! should also exit.
+
+integer :: ierror
+
+! do not bother testing here if the init code was called; we are trying 
+! to exit in case of error and we want to take the other tasks down with us.
+
+   call MPI_Abort(my_local_comm, exit_code, ierror)
+
+end subroutine exit_all
 
