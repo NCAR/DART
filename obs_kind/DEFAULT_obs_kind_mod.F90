@@ -75,7 +75,11 @@ integer, parameter, public :: &
    KIND_TRACER_CONCENTRATION        = 29, &
    KIND_MEAN_SOURCE                 = 30, &
    KIND_SOURCE_PHASE                = 31
-                      
+
+! missing kind for the am2 model
+integer, parameter, public :: &
+   KIND_CLOUD_FRACTION              = 35
+
 ! kinds for the MITgcm ocean model
 integer, parameter, public :: &
    KIND_SALINITY                    = 50, &
