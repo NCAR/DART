@@ -44,15 +44,18 @@ ensemble members"><br>
 
    <P align="center">
    <b>If you are using DART</b>:
-   <a href="#BigChanges">you need to know about recent (30May2008) changes</a>.
+   <a href="#BigChanges">you need to know about recent (2Jun2008) changes</a>.
    </P>
 
    <A NAME="index"></A>
    <h2>Overview Topics</h2>
    <ul> 
 
-      <li>We have some <a href="ensemble_data_assimilation.html">introductory material</a>
-      on the general concepts of Data Assimilation.</li>
+      <li>Here is some 
+      <a href="http://en.wikipedia.org/wiki/Data_assimilation">introductory 
+      material</a> on the general concepts of Data Assimilation.</li>
+      <!-- should be ensemble_data_assimilation.html eventually with
+           local lore, but for now, use wikipedia. -->
 
       <li>You can <a href="#learn">explore</a> the example models and 
       observations which are included with the DART software distribution.</li>
@@ -392,7 +395,7 @@ ensemble members"><br>
       <BR>
 
       <A NAME="BigChanges"></A>
-      <H2>User-Visible changes to the TRUNK (circa 30 May 2008)</H2>
+      <H2>User-Visible changes to the TRUNK (circa 2 Jun 2008)</H2>
       <P>
       Some ideas are just too good to postpone till the next major release.  The following
       changes to the DART trunk code may require you to take additional action after an update:
