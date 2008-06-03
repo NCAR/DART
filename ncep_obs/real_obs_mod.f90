@@ -219,8 +219,13 @@ obsloop:  do
 
    obs_prof = rcount/1000000
 
+
 !   assign each observation the correct observation type
 !------------------------------------------------------------------------------
+
+   ! make sure we do not fall through the code below without setting
+   ! a valid obs kind (e.g. the obstype is one not listed)
+   obs_kind = -1
 
    if(obs_prof == 1) then
      obs_kind_gen = KIND_TEMPERATURE
@@ -273,6 +278,17 @@ obsloop:  do
     if(obstype == 255                    ) obs_kind = SAT_V_WIND_COMPONENT
     if(obstype == 280 .or. obstype == 282) obs_kind = MARINE_SFC_V_WIND_COMPONENT
     if(obstype == 281 .or. obstype == 284) obs_kind = LAND_SFC_V_WIND_COMPONENT
+   endif
+
+   if (obs_kind < 0) then
+      ! the "real" fix here if the record type is not found might actually be to
+      ! accept all record types here within valid ranges, and depend on the first
+      ! preprocessing steps (in the prepbufr converter) to remove obs record
+      ! types which are not desired.  for now, avoid giving them the wrong type
+      ! and quietly loop.
+      !print *, 'unrecognized obs_prof or obstype, skipping', obs_prof, obstype
+      iskip = iskip + 1
+      cycle obsloop 
    endif
 
 !   check to see if this observation is desired
