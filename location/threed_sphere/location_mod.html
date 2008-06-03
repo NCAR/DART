@@ -280,10 +280,11 @@ use of the integer unit number.
 <A NAME="get_dist"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> var = get_dist( loc1, loc2, no_vert)</em>
+<em class=call> var = get_dist( loc1, loc2, kind1, kind2, no_vert)</em>
 <pre>
 real(r8)                             :: <em class=code> get_dist </em>
 type(location_type),     intent(in)  :: <em class=code> loc1, loc2 </em>
+integer,                 intent(in)  :: <em class=code> kind1, kind2 </em>
 logical, optional                    :: <em class=code> no_vert </em>
 </pre></div>
 
@@ -301,6 +302,13 @@ is present, it overrides the value in the namelist and controls whether
 vertical distance is included or not.
 </P>
 
+<P>
+The kind arguments are not used by the default location code, but
+are available to any user-supplied distance routines which want to
+do specialized calculations based on the types associated with each
+of the two locations.
+</P>
+
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
 <TR><TD valign=top><em class=code>loc1 &nbsp; &nbsp; </em></TD>
@@ -308,6 +316,12 @@ vertical distance is included or not.
 
 <TR><TD valign=top><em class=code>loc2</em></TD>
     <TD>second location.</TD></TR>
+
+<TR><TD valign=top><em class=code>kind1</em></TD>
+    <TD>DART kind associated with the first location.</TD></TR>
+
+<TR><TD valign=top><em class=code>kind2</em></TD>
+    <TD>DART kind associated with the second location.</TD></TR>
 
 <TR><TD valign=top><em class=code>no_vert</em></TD>
     <TD>If true, no vertical component to distance. If false, vertical
