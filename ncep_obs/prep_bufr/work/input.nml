@@ -1,7 +1,13 @@
 &prep_bufr_nml 
  obs_window     = 24.0,
- obs_window_cw  = 24.0,
- qctype_use     = 1, 2, 3, 4  /
+ obs_window_cw  = 24.0, 
+ otype_use      = 120.0, 130.0, 131.0, 132.0, 133.0, 180.0,
+                  181.0, 182.0, 220.0, 221.0, 230.0, 231.0,
+                  232.0, 233.0, 242.0, 243.0, 245.0, 246.0,
+                  252.0, 253.0, 255.0, 280.0, 281.0, 282.0,
+ qctype_use = 1,2,3,4,9,15
+ /
+
 
 ! the above are suggested settings.  the full set of
 ! namelist items (and defaults) are here:

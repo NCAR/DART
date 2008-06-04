@@ -7,6 +7,19 @@ c    For radiosonde T: T of Pc=1 and 6 is dry T; T of pc=8 is virtual T.
 c    For Aircraft T: No moistuerobs and all T are dry T
 c    For Surface obs, the T of pc=1 is already virtual T.
 c
+c    I tried to remove the code in the READPB() routine which selects
+c    obs based on the string name, since we have a namelist control for
+c    the numeric observation report type (which identifies specific
+c    satellites and data sources, and can be matched to the obs used
+c    in NCEP assimilations).  But when I tried to run that way, I got
+c    a read error from the original BUFR file.  My guess is that some
+c    of the records (SATBOG or SFCBOG in particular) have some different
+c    requirements for reading that I do not understand yet.
+c    Assuming the string name allows the obs to be read, then the
+c    record types that will be output are now set by namelist.
+c    See the prepdecode/docs directory for the key to all the bufr codes.
+c
+c
       REAL*8     R8BFMS
       PARAMETER ( R8BFMS = 10.0E10 )
 C                                      "Missing" value for BUFR data
@@ -48,11 +61,13 @@ C
 
       dimension tdata(8), udata(8), vdata(8), qdata(8), pdata(8)
       integer :: wtype, ptype, qtype, ttype
-c     what are the pc_x values?
+c    The pc values are the 'program codes' that tell you what processing
+c    was done on this observation.  As of now, these are unused, but could
+c    be used for selection or diagnosis.
       integer :: pc_t, pc_q, pc_u, pc_v, pc_p 
       integer :: tqm, pqm, qqm, uqm, vqm, qctype_use(max_otype)
       logical :: found, uotype, uqcflag, use_this_data_real, 
-     +            use_this_data_int
+     +           use_this_data_int, processed
       logical :: debug = .false.
 
 c    Namelist Parameters
@@ -60,10 +75,10 @@ c----------------------------------------------------------------------
 
       real :: otype_use(max_otype),    ! report types to use
      +        obs_window = 0.8,        ! observation time window (hours)
-     +        obs_window_cw = 1.5,     ! cloud wind observation time window (hours)
-     +        land_temp_error = 2.5,   ! assumed error for surface temp. observations (K)
-     +        land_wind_error = 3.5,   ! assumed error for surface wind observations (m/s)
-     +        land_moist_error = 0.2   ! assumed error for surface moist. observations (%)
+     +        obs_window_cw = 1.5,     ! cloud wind obs time window (hours)
+     +        land_temp_error = 2.5,   ! assumed err surface temp. obs (K)
+     +        land_wind_error = 3.5,   ! assumed err surface wind obs (m/s)
+     +        land_moist_error = 0.2   ! assumed err surface moist. obs (%)
 
       namelist /prep_bufr_nml/ obs_window,
      +                         obs_window_cw,
@@ -101,13 +116,13 @@ c----------------------------------------------------------------------
 
       inum_otype=0
       do i = 1, max_otype
-      if ( otype_use(i) .eq. MISSING ) exit
+        if ( otype_use(i) .eq. MISSING ) exit
         inum_otype = inum_otype + 1
       enddo
 
       inum_qctype=0
       do i = 1, max_qctype
-      if ( qctype_use(i) .eq. MISSING ) exit
+        if ( qctype_use(i) .eq. MISSING ) exit
         inum_qctype = inum_qctype + 1
       enddo
 
@@ -128,6 +143,8 @@ c----------------------------------------------------------------------
 
 10    CALL READPB  ( ibufr_unit, subset, idate, ierrpb )
  
+      if ( debug ) print *, 'next obs type: ', subset(1:6)
+
       idate00 = idate/100
       hour01 = idate - idate00*100
       if( hour01 .eq. 0.0 ) hour01 = 24
@@ -176,13 +193,28 @@ c----------------------------------------------------------------------
       END DO
 
 c    check the observation time, skip if outside obs. window
+c    THE ONLY DIFFERENCE BETWEEN THE 03Z VERSION AND THE ORIGINAL
+c    IS THE TEST FOR hour01 .gt. obs_win (03Z file) vs 
+c    abs(time0) .gt. obs_win (plain version) in 4 (four) PLACES BELOW.
 c----------------------------------------------------------------------
-
-      IF ( ( .not. found ) .and. ( ierrpb .eq. 0 ) )  GO TO 10
+      IF ( ( .not. found ) .and. ( ierrpb .eq. 0 ) )  THEN
+        if ( debug ) print*, 'record found w/no label match, val was: ',
+     &            subset(1:6)
+        GO TO 10
+      ENDIF
       IF ( subset(1:6).eq.'SATWND' ) then
-        IF ( abs(time0) .gt. obs_window_cw ) GO TO 10
+        IF ( abs(time0) .gt. obs_window_cw ) then
+          if (debug) print*, 'satwnd outside time window, diff was: ',
+     &              abs(time0)
+          GO TO 10
+        ENDIF 
       ELSE
-        IF ( abs(time0) .gt. obs_window ) GO TO 10
+        IF ( abs(time0) .gt. obs_window ) THEN 
+         if ( debug ) print*, 
+     &              'non-satwind outside time window, diff was: ',
+     &              abs(time0)
+          GO TO 10
+        ENDIF
       END IF
 
 c    place the location data in the appropriate array
@@ -238,9 +270,12 @@ c----------------------------------------------------------------------
 
 c    check to see if this observation type is desired 
       if ( .NOT. USE_THIS_DATA_REAL(real(hdr(6)),otype_use,inum_otype) 
-     &         ) GO TO 10
+     &         ) then
+        if ( debug ) print *, 'this obs type not in use-list, num was: ', hdr(6)
+        GO TO 10
+      endif
 
-      DO 200 lv = 1, nlev  !  loop over all levels in the report
+      DO lv = 1, nlev  !  loop over all levels in the report
 
 c    find out the event before virtural T and Q check step (pc=8.0)
 c----------------------------------------------------------------------
@@ -287,7 +322,10 @@ c
             IF  ( outstg (mm:mm) .eq. '*' ) outstg (mm:mm) = ' '
           END DO
 
+          if (debug) write(iuno, '(A)') trim(outstg)
         END DO
+
+        processed = .false. 
 
 c    set up the temperature observation data, use the j2t event or 1 if T
 c----------------------------------------------------------------------
@@ -380,7 +418,11 @@ c    and it seems to be unused in converting to an obs_seq so
 c    i feel ok setting it to something that will fit in an I2 field.
             if (pc_t > 99) pc_t = 99
             write(lunobs, 800) tdata, ttype, tqm, subset(1:6), pc_t
+            processed = .true.
 
+          else
+            if ( debug ) print *, 'skip temp, toe,tob,tqm,pqm = ',
+     &           toe, tob, tqm, pqm
           endif
         endif
 
@@ -403,9 +445,12 @@ c----------------------------------------------------------------------
 
             if (pc_t > 99) pc_t = 99
             write(lunobs, 800) tdata, ttype, tqm, subset(1:6), pc_t
+            processed = .true.
 
-          endif
-   
+           else
+             if ( debug ) print *, 'skip temp; tob,tqm,pqm = ',
+     &        tob, tqm, pqm
+           endif
         endif
 
 c    write out moisture observation from ADPUPA
@@ -426,7 +471,7 @@ c           compute the error of specific moisture based on RH obs error
             if ( debug ) print*, 'es= ', es, tob-273.16, qoe
 
             if( .not. use_this_data_int(tqm,qctype_use,inum_qctype))then
-              print*, 'upa bad = ', qoe  ! the T obs cannot be used for qoe
+              if ( debug ) print*, 'upa bad = ', qoe  ! the T obs cannot be used for qoe
               qoe = 1.0e10
             endif
 
@@ -437,10 +482,14 @@ c           compute the error of specific moisture based on RH obs error
             if (qoe .lt. 9.9) then  ! skip large qoe obs.
               if (pc_q > 99) pc_q = 99
               write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
+              processed = .true.
+            else
+               if ( debug ) print *, 'skip moist, qoe,qob,qqm,pqm = ',
+     &          qoe, qpb, qqm, pqm
             endif
 
           endif
-
+  
         endif
 
 c    write out moisture observation from SFCSHP ADPSFC
@@ -457,7 +506,8 @@ c----------------------------------------------------------------------
             qoe  = max(0.1, qoe * qsat * 1000.0) ! to g/kg, set min value
 
            if( .not. use_this_data_int(tqm,qctype_use,inum_qctype)) then
-             print*, 'surface bad = ', qoe  ! the T obs cannot be used for qoe
+             if ( debug ) print*, 'surface bad = ', qoe  
+c             ! the T obs cannot be used for qoe
              qoe = 1.0e10
            endif
 
@@ -471,8 +521,12 @@ c----------------------------------------------------------------------
            if(qoe .lt. 9.9) then   ! skip large qoe obs
              if (pc_q > 99) pc_q = 99
              write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
+             processed = .true.
            endif
 
+          else
+               if ( debug ) print *, 'skip moist, qob,qqm,pqm = ',
+     &          qob, qqm, pqm
           endif
       
         endif
@@ -495,7 +549,11 @@ c----------------------------------------------------------------------
 
             if (pc_p > 99) pc_p = 99
             write(lunobs, 800) pdata, ptype, pqm, subset(1:6), pc_p
-
+            processed = .true.
+    
+           else
+             if ( debug ) print *, 'skip press, poe,pob,pqm,z,s = ',
+     &          poe, pob, pqm, zob, stat_elev
           endif
 
         endif
@@ -524,7 +582,11 @@ c----------------------------------------------------------------------
             if (pc_v > 99) pc_v = 99
             write(lunobs, 800) udata, wtype, uqm, subset(1:6), pc_u
             write(lunobs, 800) vdata, wtype, vqm, subset(1:6), pc_v
+            processed = .true.
 
+          else
+             if ( debug ) print *, 'skip wind, uoe,uob,uqm,pqm = ',
+     &          uoe, uob, uqm, pqm
           endif
   
         endif
@@ -554,12 +616,23 @@ c----------------------------------------------------------------------
             if (pc_v > 99) pc_v = 99
             write(lunobs, 800) udata, wtype, uqm, subset(1:6), pc_u
             write(lunobs, 800) vdata, wtype, vqm, subset(1:6), pc_v
+            processed = .true.
 
+          else
+             if ( debug ) print *, 'skip wind, uob,uqm,pqm = ',
+     &          uob, uqm, pqm
           endif
 
         endif
 
-200   continue
+c----------------------------------------------------------------------
+       if (.not. processed) then
+         if (debug)print*, 'bot of loop w/o processing, obs was: ',
+     &              subset(1:6), ' lv =', lv
+       endif
+
+      enddo 
+200    continue
 
       IF ( ierrpb .eq. 0 )  GO TO 10
 
@@ -632,9 +705,9 @@ C
         SAVE            match, subst2, idate2
 C-----------------------------------------------------------------------
 
-cliu
+Cnsc
  1000   continue
-cliu
+Cnsc
 
         iret = 0
 C
@@ -655,14 +728,15 @@ cliu   select data type
      &    subset .ne. 'SATWND' .and. subset .ne. 'AIRCFT' .and. 
      &    subset .ne. 'ADPSFC' .and. subset .ne. 'SFCSHP') go to 1000
 cliu
+
         ELSE
             subset = subst2
             idate = idate2
         END IF
-C*
-C*      Read the HDR and EVNS data for the subset that is currently
-C*      being pointed to.
-C*
+C
+C      Read the HDR and EVNS data for the subset that is currently
+C      being pointed to.
+C
         CALL UFBINT  ( lunit, hdr, MXR8PM, 1, jret, head )
         DO ii = 1, MXR8VT
           CALL UFBEVN ( lunit, evns ( 1, 1, 1, ii ), MXR8PM, MXR8LV,
@@ -672,21 +746,22 @@ C
 C      Now, advance the subset pointer to the following subset and
 C      read its HDR data.
 C
-cliu
+Cnsc
  2000   continue
-cliu
+Cnsc
         CALL READNS  ( lunit, subst2, idate2, jret )
         IF  ( jret .ne. 0 )  THEN
             iret = 1
             RETURN
         END IF
-
+C
 cliu   select data type
        if(subst2.ne. 'ADPUPA' .and. subst2.ne. 'AIRCAR' .and. 
      &    subst2.ne. 'SATWND' .and. subst2.ne. 'AIRCFT' .and.
      &    subst2.ne. 'ADPSFC' .and. subst2.ne. 'SFCSHP') go to 2000
 c        ! careful about 2000
 cliu
+
         CALL UFBINT  ( lunit, hdr2, MXR8PM, 1, jret, head )
 C 
 C      Check whether these two subsets have identical SID, YOB, XOB,
