@@ -812,7 +812,7 @@ else
 endif
 
 ! free any space allocated at init time.
-call destroy_obs(obs)
+call destroy_obs(last_obs)
 
 end subroutine append_obs_to_seq
 
