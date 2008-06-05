@@ -91,8 +91,12 @@ if (($year % 400) == 0) @ days_in_mo[2] = $days_in_mo[2] + 1
 
 rm -f prepqm.out 
 
-# Loop over days
 
+# save original year in case we roll over the year
+set oyear = $year
+@ oyy = $year % 100
+
+# Loop over days
 set day = $beginday
 set last = $endday
 while ( $day <= $last )
@@ -100,6 +104,15 @@ while ( $day <= $last )
 
    # clear any old intermediate (text) BUFR file
    rm -f temp_obs
+
+   # save a copy of the original day and month, in case we roll over below,
+   # in both single/double digit format and guarenteed 2 digit format.
+   set oday = $day
+   set odd  = $day
+   if ($odd < 10) set odd = 0$odd
+   set omonth = $month
+   set omm    = $month
+   if ($omm < 10) set omm = 0$omm
 
    # convert 1 "day"s worth (data from '3z to 3z of the next day) of BUFR files 
    # into a single intermediate file if 'daily' is set to true; 4 6-hour files
@@ -133,17 +146,17 @@ while ( $day <= $last )
          endif
       endif
 
-      # format the date for filename
+      # format the date for filename construction, guarenteed 2 digits
       if ($yy < 10) set yy = 0$yy
       if ($mm < 10) set mm = 0$mm
       if ($dd < 10) set dd = 0$dd
       if ($hh < 10) set hh = 0$hh
 
+
       # link(big endian) or make(little endian) input file 'prepqm' 
       # for prepbufr.x.  if the pattern for the prepqm files is different,
       # fix the BUFR_file below to match.
       set BUFR_file = ${BUFR_dir}/${year}${mm}/prepqm${yy}${mm}${dd}${hh}
-      set BUFR_out  = ${BUFR_dir}/${year}${mm}/temp_obs.${year}${mm}${dd}
       if (! -e ${BUFR_file}) then
          echo "MISSING FILE ${BUFR_file} and aborting"
          exit
@@ -172,18 +185,16 @@ while ( $day <= $last )
          cat prepqm.out >>! temp_obs
          rm prepqm.out
       else
-         echo "moving output to ${BUFR_out}${hh}"
-         mv -v prepqm.out ${BUFR_out}${hh}
+         # use the dates that can roll over at month/year end, with hours
+         set BUFR_out = ${BUFR_dir}/${year}${mm}/temp_obs.${year}${mm}${dd}${hh}
+         echo "moving output to ${BUFR_out}"
+         mv -v prepqm.out ${BUFR_out}
       endif
    end
 
    if ($daily == 'yes') then
-      set dd = $day
-      if ($dd < 10) set dd = 0$dd
-
-      set mm = $month
-      if ($mm < 10) set mm = 0$mm
-
+      # use the original dates without rollover
+      set BUFR_out = ${BUFR_dir}/${oyear}${omm}/temp_obs.${oyear}${omm}${odd}
       echo "moving output to ${BUFR_out}"
       mv -v temp_obs ${BUFR_out}
    endif
