@@ -297,7 +297,10 @@ endif
 
 dart_index = 1
 
-call read_dt_from_wrf_nml()
+! the agreement amongst the dart/wrf users was that there was no need to
+! read the wrf namelist, since the only thing it was extracting was the
+! timestep, which is part of the wrf input netcdf file.
+! call read_dt_from_wrf_nml()
 
 do id=1,num_domains
 
@@ -357,9 +360,8 @@ do id=1,num_domains
 
    call check( nf90_get_att(ncid, nf90_global, 'DX', wrf%dom(id)%dx) )
    call check( nf90_get_att(ncid, nf90_global, 'DY', wrf%dom(id)%dy) )
-   call check( nf90_get_att(ncid, nf90_global, 'DT', dt) )
-   if (do_output()) print*,'dt from wrfinput is: ',dt
-   if (do_output()) print*,'Using dt from namelist.input: ',wrf%dom(id)%dt
+   call check( nf90_get_att(ncid, nf90_global, 'DT', wrf%dom(id)%dt) )
+   if (do_output()) print*,'dt from wrfinput file is: ', wrf%dom(id)%dt
    if(debug) write(*,*) ' dx, dy, dt are ',wrf%dom(id)%dx, &
         wrf%dom(id)%dy, wrf%dom(id)%dt
 
@@ -629,6 +631,21 @@ do id=1,num_domains
    wrf%dom(id)%dart_kind(6) = KIND_PRESSURE
    wrf%dom(id)%var_type(7)  = TYPE_TSK
    wrf%dom(id)%dart_kind(7) = KIND_TEMPERATURE
+
+   ! WARNING: the following code assumes that by reading in the number of
+   !  moist variables (from the dart model_nml namelist), you know what
+   ! hydrometeor variables should be read in. Instead, this code should
+   ! look in the wrf input netcdf file and query to see which ones are there
+   ! and allocate space for only those which exist.  This still must be
+   ! in sync with whatever created the dart binary restart files, which 
+   ! presumably is either dart_tf_wrf and uses the same netcdf files and so
+   ! is consistent, or is a previous run of wrf with consistent input files.
+   ! additionally, if users want to restrict some of these vars, in the case
+   ! that they are present in the input file but the user does not want to
+   ! make them part of the dart state vector, a namelist item in the dart
+   ! input.nml could restrict which variables are updated by assimilation.
+   ! This has been added to the dart to-do list, but should be fixed by a
+   ! wrf user when someone has the time and energy to do it.    nancy 5jun08.
 
    ind = 7
    if( wrf%dom(id)%n_moist >= 1) then
@@ -5041,63 +5058,68 @@ pert_state = state
 end subroutine pert_model_state
 
 !#######################################################
-
-subroutine read_dt_from_wrf_nml()
-
-real(r8) :: dt
-
-integer :: time_step, time_step_fract_num, time_step_fract_den
-integer :: max_dom, feedback, smooth_option
-integer, dimension(3) :: s_we, e_we, s_sn, e_sn, s_vert, e_vert
-integer, dimension(3) :: dx, dy, ztop, grid_id, parent_id
-integer, dimension(3) :: i_parent_start, j_parent_start, parent_grid_ratio
-integer, dimension(3) :: parent_time_step_ratio
-integer :: io, iunit, id
-integer :: num_metgrid_levels, p_top_requested, nproc_x, nproc_y
-
-!nc -- we added "num_metgrid_levels" to the domains nml to make all well with the
-!        namelist.input file belonging to global WRF,
-!        also "p_top_requested" in domains nml
-!        also "nproc_x" & "nproc_y"
-!nc -- we notice that "ztop" is unused in code -- perhaps get rid of later?
-namelist /domains/ time_step, time_step_fract_num, time_step_fract_den
-namelist /domains/ max_dom
-namelist /domains/ s_we, e_we, s_sn, e_sn, s_vert, e_vert
-namelist /domains/ dx, dy, ztop, grid_id, parent_id
-namelist /domains/ i_parent_start, j_parent_start, parent_grid_ratio
-namelist /domains/ parent_time_step_ratio
-namelist /domains/ feedback, smooth_option
-namelist /domains/ num_metgrid_levels, p_top_requested, nproc_x, nproc_y
-
-! Begin by reading the namelist input
-call find_namelist_in_file("namelist.input", "domains", iunit)
-read(iunit, nml = domains, iostat = io)
-call check_namelist_read(iunit, io, "domains")
-
-! Record the namelist values used for the run ...
-if (do_output()) write(nmlfileunit, nml=domains)
-if (do_output()) write(     *     , nml=domains)
-
-if (max_dom /= num_domains) then
-
-   write(*,*) 'max_dom in namelist.input = ',max_dom
-   write(*,*) 'num_domains in input.nml  = ',num_domains
-   call error_handler(E_ERR,'read_dt_from_wrf_nml', &
-        'Make them consistent.', source, revision,revdate)
-
-endif
-
-if (time_step_fract_den /= 0) then
-   dt = real(time_step) + real(time_step_fract_num) / real(time_step_fract_den)
-else
-   dt = real(time_step)
-endif
-
-do id=1,num_domains
-   wrf%dom(id)%dt = dt / real(parent_time_step_ratio(id))
-enddo
-
-end subroutine read_dt_from_wrf_nml
+! !WARNING:: at the moment, this code is *not* called
+! !so there is no requirement to have a wrf namelist in
+! !the current directory.  the only thing it was extracting
+! !was the dt, and that exists in the wrf input netcdf file
+! !and is now read from there.
+! 
+! subroutine read_dt_from_wrf_nml()
+! 
+! real(r8) :: dt
+! 
+! integer :: time_step, time_step_fract_num, time_step_fract_den
+! integer :: max_dom, feedback, smooth_option
+! integer, dimension(3) :: s_we, e_we, s_sn, e_sn, s_vert, e_vert
+! integer, dimension(3) :: dx, dy, ztop, grid_id, parent_id
+! integer, dimension(3) :: i_parent_start, j_parent_start, parent_grid_ratio
+! integer, dimension(3) :: parent_time_step_ratio
+! integer :: io, iunit, id
+! integer :: num_metgrid_levels, p_top_requested, nproc_x, nproc_y
+! 
+! !nc -- we added "num_metgrid_levels" to the domains nml to make all well with the
+! !        namelist.input file belonging to global WRF,
+! !        also "p_top_requested" in domains nml
+! !        also "nproc_x" & "nproc_y"
+! !nc -- we notice that "ztop" is unused in code -- perhaps get rid of later?
+! namelist /domains/ time_step, time_step_fract_num, time_step_fract_den
+! namelist /domains/ max_dom
+! namelist /domains/ s_we, e_we, s_sn, e_sn, s_vert, e_vert
+! namelist /domains/ dx, dy, ztop, grid_id, parent_id
+! namelist /domains/ i_parent_start, j_parent_start, parent_grid_ratio
+! namelist /domains/ parent_time_step_ratio
+! namelist /domains/ feedback, smooth_option
+! namelist /domains/ num_metgrid_levels, p_top_requested, nproc_x, nproc_y
+! 
+! ! Begin by reading the namelist input
+! call find_namelist_in_file("namelist.input", "domains", iunit)
+! read(iunit, nml = domains, iostat = io)
+! call check_namelist_read(iunit, io, "domains")
+! 
+! ! Record the namelist values used for the run ...
+! if (do_output()) write(nmlfileunit, nml=domains)
+! if (do_output()) write(     *     , nml=domains)
+! 
+! if (max_dom /= num_domains) then
+! 
+!    write(*,*) 'max_dom in namelist.input = ',max_dom
+!    write(*,*) 'num_domains in input.nml  = ',num_domains
+!    call error_handler(E_ERR,'read_dt_from_wrf_nml', &
+!         'Make them consistent.', source, revision,revdate)
+! 
+! endif
+! 
+! if (time_step_fract_den /= 0) then
+!    dt = real(time_step) + real(time_step_fract_num) / real(time_step_fract_den)
+! else
+!    dt = real(time_step)
+! endif
+! 
+! do id=1,num_domains
+!    wrf%dom(id)%dt = dt / real(parent_time_step_ratio(id))
+! enddo
+! 
+! end subroutine read_dt_from_wrf_nml
 
 
 
