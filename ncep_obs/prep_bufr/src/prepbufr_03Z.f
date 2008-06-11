@@ -55,9 +55,14 @@ C
      +              56,   57,   58,   59,   60,
      +              61,   62,   63,   64,   65  /
       CHARACTER*6     filo ( NFILO )
+C     original list:
      +          / 'ADPUPA', 'AIRCAR', 'AIRCFT', 'SATWND', 'PROFLR',
      +            'VADWND', 'SATBOG', 'SATEMP', 'ADPSFC', 'SFCSHP',
      +            'SFCBOG', 'SPSSMI', 'SYNDAT', 'ERS1DA', 'GOESND'  /
+C    updated list if you want to handle quikscat winds.
+C     +          / 'ADPUPA', 'AIRCAR', 'AIRCFT', 'SATWND', 'PROFLR',
+C     +            'VADWND', 'SATEMP', 'ADPSFC', 'SFCSHP', 'SFCBOG',
+C     +            'SPSSMI', 'SYNDAT', 'ERS1DA', 'GOESND', 'QKSWND'/
 
       dimension tdata(8), udata(8), vdata(8), qdata(8), pdata(8)
       integer :: wtype, ptype, qtype, ttype
@@ -193,9 +198,7 @@ c----------------------------------------------------------------------
       END DO
 
 c    check the observation time, skip if outside obs. window
-c    THE ONLY DIFFERENCE BETWEEN THE 03Z VERSION AND THE ORIGINAL
-c    IS THE TEST FOR hour01 .gt. obs_win (03Z file) vs 
-c    abs(time0) .gt. obs_win (plain version) in 4 (four) PLACES BELOW.
+c    the prepbufr.f version tests abs(time0), this one tests hour01
 c----------------------------------------------------------------------
       IF ( ( .not. found ) .and. ( ierrpb .eq. 0 ) )  THEN
         if ( debug ) print*, 'record found w/no label match, val was: ',
@@ -400,6 +403,21 @@ c----------------------------------------------------------------------
         pc_v = evns(3, lv, 1, 6) 
         if(vqm .eq. 0) voe = voe*0.9
         if(vqm .eq. 3) voe = voe*1.2
+
+c----------------------------------------------------------------------
+c    this version of the code only selects observations at 3Z, and
+c    adds 24 hours to the time.  this is the critical difference
+c    between this file and prepbufr.f.  it is intended to be run only
+c    on bufr files marked 06Z (which contain data from 3Z to 9Z) to
+c    allow obs_seq files from 03:01Z to 03:00Z+1day to be created.
+
+        if( abs(hour01 - 3.0) .gt. 0.001)  go to 200 
+        tdata(8) = hour01 + 24.0
+        pdata(8) = hour01 + 24.0
+        qdata(8) = hour01 + 24.0
+        udata(8) = hour01 + 24.0          !! time
+        vdata(8) = hour01 + 24.0
+
 
 c    write out temperature observation from ADPUPA, AIRCAR, AIRCFT
 c----------------------------------------------------------------------

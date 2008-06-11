@@ -55,9 +55,14 @@ C
      +              56,   57,   58,   59,   60,
      +              61,   62,   63,   64,   65  /
       CHARACTER*6     filo ( NFILO )
+C     original list:
      +          / 'ADPUPA', 'AIRCAR', 'AIRCFT', 'SATWND', 'PROFLR',
      +            'VADWND', 'SATBOG', 'SATEMP', 'ADPSFC', 'SFCSHP',
      +            'SFCBOG', 'SPSSMI', 'SYNDAT', 'ERS1DA', 'GOESND'  /
+C    updated list if you want to handle quikscat winds.
+C     +          / 'ADPUPA', 'AIRCAR', 'AIRCFT', 'SATWND', 'PROFLR',
+C     +            'VADWND', 'SATEMP', 'ADPSFC', 'SFCSHP', 'SFCBOG',
+C     +            'SPSSMI', 'SYNDAT', 'ERS1DA', 'GOESND', 'QKSWND'/
 
       dimension tdata(8), udata(8), vdata(8), qdata(8), pdata(8)
       integer :: wtype, ptype, qtype, ttype
@@ -193,9 +198,7 @@ c----------------------------------------------------------------------
       END DO
 
 c    check the observation time, skip if outside obs. window
-c    THE ONLY DIFFERENCE BETWEEN THE 03Z VERSION AND THE ORIGINAL
-c    IS THE TEST FOR hour01 .gt. obs_win (03Z file) vs 
-c    abs(time0) .gt. obs_win (plain version) in 4 (four) PLACES BELOW.
+c    the prepbufr_03Z.f version tests hour01, this one tests abs(time0)
 c----------------------------------------------------------------------
       IF ( ( .not. found ) .and. ( ierrpb .eq. 0 ) )  THEN
         if ( debug ) print*, 'record found w/no label match, val was: ',
