@@ -1540,6 +1540,7 @@ do i=1, num_obs
    call get_obs_from_key(seq, i, obs)
    call get_obs_def(obs, obs_def)
    obs_kind_ind = get_obs_kind(obs_def)
+   if (obs_kind_ind < 0) cycle   ! ignore identity obs
    have(obs_kind_ind) = 1
 enddo
 
