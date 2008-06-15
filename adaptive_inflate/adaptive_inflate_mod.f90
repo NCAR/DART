@@ -29,7 +29,7 @@ public :: update_inflation,           adaptive_inflate_end,          do_obs_infl
           do_varying_ss_inflate,      do_single_ss_inflate,          inflate_ens,        &
           adaptive_inflate_init,      adaptive_inflate_type,         get_inflate,        &
           get_sd,                     set_inflate,                   set_sd,             &
-          output_inflate_diagnostics, deterministic_inflate
+          output_inflate_diagnostics, deterministic_inflate,         solve_quadratic
 
 
 ! version controlled file description for error handling, do not edit

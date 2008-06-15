@@ -44,7 +44,8 @@ use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,    
 use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,                   &
                                  do_varying_ss_inflate, get_inflate, set_inflate,         &
                                  get_sd, set_sd, update_inflation,                        &
-                                 inflate_ens, adaptive_inflate_type, deterministic_inflate
+                                 inflate_ens, adaptive_inflate_type,                      &
+                                 deterministic_inflate, solve_quadratic
 
 use time_manager_mod,     only : time_type
 
@@ -755,6 +756,8 @@ else if(filter_kind == 6) then
    call obs_increment_det_kf(ens, ens_size, prior_mean, prior_var, obs, obs_var, obs_inc)
 else if(filter_kind == 7) then
    call obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weights)
+else if(filter_kind == 8) then
+   call obs_increment_boxcar2(ens, ens_size, obs, obs_var, obs_inc)
 else 
    call error_handler(E_ERR,'obs_increment', &
               'Illegal value of filter_kind in assim_tools namelist [1-7 OK]', &
@@ -1536,6 +1539,240 @@ do i = 1, ens_size
 end do
 
 end subroutine obs_increment_boxcar
+
+
+
+subroutine obs_increment_boxcar2(ens, ens_size, obs, obs_var, obs_inc)
+!------------------------------------------------------------------------
+!
+! Initiated 4 June, 2008
+! Attempt to clean up, improve and simplify original boxcar filter idea.
+! This will be less like a particle filter. Idea is that prior is represented
+! in the same way. In the interior boxes it is locally uniform. In the tail
+! boxes it is a gaussian although this will be defined slightly differently.
+! The likelihood is assumed gaussian here although it would be possible to
+! extend to something non-Guassian if desired for certain types of obs
+! error.
+! The product is taken over each of the interior boxes by computing the mass
+! of the likelihood funtion that fits in that box.
+! The product for the tails is trickier...
+! 
+! This code is under development. Please contact Jeff Anderson (jla@ucar.edu)
+! if you want to try it out. 
+
+
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: ens(ens_size), obs, obs_var
+real(r8), intent(out) :: obs_inc(ens_size)
+
+integer  :: i, e_ind(ens_size), lowest_box, j
+real(r8) :: prior_mean, prior_var
+real(r8) :: var_ratio, new_var, umass, left_mass, right_mass
+real(r8) :: left_sd, left_var, right_sd, right_var
+real(r8) :: new_mean, temp_mean, temp_var
+real(r8) :: mass(ens_size + 1), like(ens_size), cumul_mass(0:ens_size + 1)
+real(r8) :: nmass(ens_size + 1)
+real(r8) :: new_mean_left, new_mean_right, prod_weight_left, prod_weight_right
+real(r8) :: new_var_left, new_var_right, new_sd_left, new_sd_right
+real(r8) :: new_ens(ens_size), mass_sum, const_term
+real(r8) :: x(ens_size), sort_inc(ens_size)
+real(r8) :: like_dense(2:ens_size), height(2:ens_size)
+real(r8) :: dist_to_first, dist_to_last, lower_sd, upper_sd, dist_for_unit_sd
+real(r8) :: a, b, c, hright, hleft, r1, r2, adj_r1, adj_r2
+
+! Do an index sort of the ensemble members; Will want to do this very efficiently
+call index_sort(ens, e_ind, ens_size)
+! The boundaries of the interior bins are just the sorted ensemble members
+do i = 1, ens_size
+   x(i) = ens(e_ind(i))
+end do
+
+! Prior distribution is boxcar in the central bins with 1/(n+1) density
+! in each intermediate bin. BUT, distribution on the tails is a normal with
+! 1/(n + 1) of the mass on each side.
+
+! Compute likelihood for each ensemble member; just evaluate the gaussian
+const_term = 1.0_r8 / sqrt(2.0_r8 * PI * obs_var)
+do i = 1, ens_size
+   like(i) = const_term * exp(-1.0_r8 * (x(i) - obs)**2 / (2.0_r8 * obs_var))
+end do
+
+! Can now compute the mean likelihood density in each interior bin
+do i = 2, ens_size
+   like_dense(i) = ((like(i - 1) + like(i)) / 2.0_r8)
+end do
+
+! Compute the s.d. of the ensemble for getting the gaussian tails
+prior_mean = sum(ens) / ens_size
+! prior_var only used for diagnostic evaluation during development
+prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
+
+
+! Compute standard deviation of lower and upper tail gaussians
+! Mean of tail distributions is ensemble mean
+! Standard deviation is selected so that exactly 1/(n+1) of mass lies
+! outside the outermost ensemble members.
+! Computing the sd for the lower tail distribution
+dist_to_first = prior_mean - x(1)
+! For unit normal, find distance from mean to where cdf is 1/(n+1)
+! Lots of this can be done once in first call and then saved
+call weighted_norm_inv(1.0_r8, 0.0_r8, 1.0_r8, &
+   1.0_r8 / (ens_size + 1.0_r8), dist_for_unit_sd)
+dist_for_unit_sd = -1.0_r8 * dist_for_unit_sd
+! Proportion to find sd so that first ensemble member is where cdf is 1/(n + 1)
+left_sd = dist_to_first / dist_for_unit_sd
+left_var = left_sd**2
+
+! Get sd for the upper tail distribution
+dist_to_last = x(ens_size) - prior_mean
+! Proportion to find sd so that first ensemble member is where cdf is 1/(n + 1)
+right_sd = dist_to_last / dist_for_unit_sd
+right_var = right_sd**2
+
+! Compute the product of the obs likelihood gaussian with the priors
+! Left tail gaussian first
+var_ratio = obs_var / (left_var + obs_var)
+new_var_left = var_ratio * left_var
+new_sd_left = sqrt(new_var_left)
+new_mean_left  = var_ratio * (prior_mean  + left_var*obs / obs_var)
+! REMEMBER, this product has an associated weight which must be taken into account
+! See Anderson and Anderson for this weight term (or tutorial kernel filter)
+prod_weight_left =  exp(-0.5_r8 * (prior_mean**2 / left_var + &
+      obs**2 / obs_var - new_mean_left**2 / new_var_left)) / &
+      sqrt(2.0_r8 * PI * (left_var + obs_var))
+
+! Now the right tail
+var_ratio = obs_var / (right_var + obs_var)
+new_var_right = var_ratio * right_var
+new_sd_right = sqrt(new_var_right)
+new_mean_right  = var_ratio * (prior_mean  + right_var*obs / obs_var)
+prod_weight_right =  exp(-0.5_r8 * (prior_mean**2 / right_var + &
+      obs**2 / obs_var - new_mean_right**2 / new_var_right)) / &
+      sqrt(2.0_r8 * PI * (right_var + obs_var))
+
+
+! Determine how much mass is in the updated tails by computing gaussian cdf
+mass(1) = norm_cdf(x(1), new_mean_left, new_sd_left) * prod_weight_left
+mass(ens_size + 1) = (1.0_r8 - norm_cdf(x(ens_size), new_mean_right, &
+   new_sd_right)) * prod_weight_right
+
+! The mass in each interior box is the height times the width
+! The height of the likelihood is like_dense
+! For the prior, mass is 1/(n+1),   and mass = height x width so...
+! The height of the prior is 1 / ((n+1) width);   multiplying by width leaves 1/(n+1)
+
+! In prior, have 1/(n+1) mass in each bin, multiply by mean likelihood density
+! to get approximate mass in updated bin
+do i = 2, ens_size
+   mass(i) = like_dense(i) / (ens_size + 1.0_r8)
+   ! Height of prior in this bin is mass/width
+   height(i) = 1.0_r8 / ((ens_size + 1.0_r8) * (x(i) - x(i-1)))
+end do
+
+! Now normalize the mass in the different bins to get a pdf
+mass_sum = sum(mass)
+nmass = mass / mass_sum
+
+! Get the weight for the final normalized tail gaussians
+left_mass = prod_weight_left / mass_sum
+right_mass = prod_weight_right / mass_sum
+
+! Find cumulative mass at each box boundary and middle boundary
+cumul_mass(0) = 0.0_r8
+do i = 1, ens_size + 1
+   cumul_mass(i) = cumul_mass(i - 1) + nmass(i)
+end do
+
+! Begin intenal box search at bottom of lowest box, update for efficiency
+lowest_box = 1
+
+! Find each new ensemble members location
+do i = 1, ens_size
+   ! Each update ensemble member has 1/(n+1) mass before it
+   umass = (1.0_r8 * i) / (ens_size + 1.0_r8)
+
+   ! If it is in the inner or outer range have to use normal
+   if(umass < cumul_mass(1)) then
+      ! It's in the left tail
+      ! Get position of x in weighted gaussian where the cdf has value umass
+      call weighted_norm_inv(left_mass, new_mean_left, new_sd_left, &
+         umass, new_ens(i))
+
+   else if(umass > cumul_mass(ens_size)) then
+      ! It's in the right tail
+      ! Get position of x in weighted gaussian where the cdf has value umass
+      call weighted_norm_inv(right_mass, new_mean_right, new_sd_right, &
+         1.0_r8 - umass, new_ens(i))
+      ! Coming in from the right, use symmetry after pretending its on left
+      new_ens(i) = new_mean_right + (new_mean_right - new_ens(i))
+   else
+      ! In one of the inner uniform boxes.
+      FIND_BOX:do j = lowest_box, ens_size - 1
+         ! Find the box that this mass is in
+         if(umass >= cumul_mass(j) .and. umass <= cumul_mass(j + 1)) then
+
+            !!! Commented block does rectangular quadrature
+            !!! Without this comment does trapezoidal quadrature
+            !!! Linearly interpolate in mass
+            !!! new_ens(i) = x(j) + ((umass - cumul_mass(j)) / &
+               !!! (cumul_mass(j+1) - cumul_mass(j))) * (x(j + 1) - x(j))
+            !!!if(1 == 1) goto 1213
+
+            ! Assume that mass has linear profile, quadratic interpolation
+            ! Height on left side and right side
+            hleft = height(j + 1) * like(j) / mass_sum
+            hright = height(j + 1) * like(j + 1) / mass_sum
+            ! Will solve a quadratic for desired x-x(j)
+            ! a is 0.5(hright - hleft) / (x(j+1) - x(j))
+            a = 0.5_r8 * (hright - hleft) / (x(j+1) - x(j))
+            ! b is hleft
+            b = hleft
+            ! c is cumul_mass(j) - umass
+            c = cumul_mass(j) - umass
+            ! Use stable quadratic solver
+            call solve_quadratic(a, b, c, r1, r2)
+            adj_r1 = r1 + x(j)
+            adj_r2 = r2 + x(j)
+           if(adj_r1 >= x(j) .and. adj_r1 <= x(j+1)) then
+               new_ens(i) = adj_r1
+            elseif (adj_r2 >= x(j) .and. adj_r2 <= x(j+1)) then
+               new_ens(i) = adj_r2
+            else
+               write(*, *) 'Did not get a satisfactory quadratic root'
+               write(*, *) 'j is ', j
+               write(*, *) 'Adjusted roots are ', adj_r1, adj_r2
+               write(*, *) 'bounds on update ', x(j), x(j+1)
+               write(*, *) 'hleft, hright ', hleft, hright
+               write(*, *) 'cumul mass ', cumul_mass(j), cumul_mass(j + 1)
+               write(*, *) 'umass ', umass
+               write(*, *) 'mass in box ', cumul_mass(j+1) - cumul_mass(j)
+               write(*, *) 'comp mass ', (x(j+1) - x(j)) * (hleft + hright) / 2.0_r8
+               write(*, *) 'mass_sum', mass_sum
+               stop
+            endif
+
+            1213 continue
+
+            ! Don't need to search lower boxes again
+            lowest_box = j
+            exit FIND_BOX
+         end if
+      end do FIND_BOX
+   endif
+end do
+
+! Can now compute sorted increments
+do i = 1, ens_size
+   sort_inc(i) = new_ens(i) - x(i)
+end do
+
+! Now, need to convert to increments for unsorted
+do i = 1, ens_size
+   obs_inc(e_ind(i)) = sort_inc(i)
+end do
+
+end subroutine obs_increment_boxcar2
+
 
 
 
