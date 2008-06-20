@@ -53,10 +53,6 @@ MODULE module_uvg_force
   REAL,    DIMENSION(npvars)     :: missingVals ! associated netCDF missing flags 
   INTEGER               :: nrecords
 
-  INTEGER, DIMENSION(2)               :: control_index
-
-  REAL                                :: control_w
-
 ! I have to define the relevant things for WRF eofs and WRF uvg 
   public :: uvg_ruc_f_dims, uvg_wrf_f_dims, uvg_ruc_f_bc, uvg_wrf_f_bc
 
@@ -280,7 +276,8 @@ CONTAINS
     INTEGER, DIMENSION(3) :: vec, lenvec
 
     INTEGER :: nmix, imix
-    REAL :: rtran
+    INTEGER, DIMENSION(2) :: control_index
+    REAL :: rtran,control_w
     
    
     REAL, ALLOCATABLE, DIMENSION(:,:,:,:) :: work
@@ -395,6 +392,9 @@ CONTAINS
 
       print*,'Getting requested uvg forcing valid at date: '
       call print_date(requested_snd_time+offset_snd)
+      
+      ! need to set nmix back to two if we want a centered mix
+      if ( rnd_init == 4 ) nmix = 2
 
    ENDIF ! want a specific sounding
 
@@ -413,7 +413,7 @@ CONTAINS
 
 ! choose a random record and get the data
 ! NEED A WAY TO GET THE SAME DATE HERE FOR RND
-         IF ( nmix == 1 ) THEN
+         IF ( imix == 1 ) THEN
             itran = requested_snd_index
          ELSE
             rtran = ran1(idum)*(nrecords-nt) + 1.
@@ -520,7 +520,7 @@ CONTAINS
                    ntimes_f_flux,nsplinetimes_flux, splinetimes_flux, &
                    init_f_type, &
                    idum, ims,ime,jms,jme,kms,kme,ncid_eofs_forc, &
-                   itran1,itran2,control_w,gasdo,nz_stag,nrecords)
+                   control_index,rnd_sign,control_w,gasdo,nz_stag,nrecords)
 
     USE module_nr_procedures
 
@@ -533,8 +533,9 @@ CONTAINS
 ! arguments
 
 !DO I add here to pass from init routine 
-     INTEGER, INTENT(in) :: itran1, itran2
-     REAL, INTENT(in) :: control_w
+     INTEGER, DIMENSION(2), INTENT(in) :: control_index
+     INTEGER, INTENT(in) :: rnd_sign
+     REAL, DIMENSION(2), INTENT(in) :: control_w
      REAL, DIMENSION(:), INTENT(in):: gasdo
 
     INTEGER, INTENT(inout) :: ncid, ncid_eofs_forc
@@ -557,7 +558,7 @@ CONTAINS
 ! DO I add here some WRF stuff
     INTEGER :: nt_wrf_uvg
 ! local
-    INTEGER :: i,k,kkl,kkr,imem, itran
+    INTEGER :: i,k,kkl,kkr,imem, itran1,itran2
     INTEGER :: ierr, timeid, iwrf_err
     INTEGER, DIMENSION(3) :: vec, lenvec
 
@@ -598,6 +599,9 @@ CONTAINS
     INTEGER::i1,j1,it
 
 
+    itran1 = control_index(1)
+    itran2 = control_index(2)
+   
    IF(rnd_force==3)THEN
 
      call uvg_eof_f_dims(ncid_eofs_forc)
@@ -643,7 +647,7 @@ CONTAINS
 ! forcings using WRF data
 
 ! use requested sounding or random?
-! DO. rnd_init changed to integer. 1=undated random mixture, 2=dated perfect mode, 3=dated eofs.
+! DO. rnd_force changed to integer. 1=undated random mixture, 2=dated perfect mode, 3=dated eofs, 4 = dated random mixture, centered
     IF ( rnd_force /= 1) THEN
 ! DO this option means that we chose dated initialization    
        requested_f_index = -9999
@@ -723,7 +727,7 @@ CONTAINS
   glw = glw_init
   gsw = gsw_init
 
-  IF ( rnd_force == 1 ) THEN
+  IF ( rnd_force == 1 .or. rnd_force == 4 ) THEN
     ierr=nf_get_vara_double(ncid,pid_wrf(1),(/1,1,itran2/),(/nz,nt_wrfin,1/),ug(:,:,2))
     ierr=nf_get_vara_double(ncid,pid_wrf(2),(/1,1,itran2/),(/nz,nt_wrfin,1/),vg(:,:,2))
     ierr=nf_get_vara_double(ncid,pid_wrf(3),(/1,1,itran2/),(/nz_stag,nt_wrfin,1/),zg(:,:,2))
@@ -824,26 +828,36 @@ CONTAINS
 ! zg,ug,vg,and pzt, put, pvt
 ! DO here I have z in staggered levels, z_agl will be in non-staggered levels
 
-   IF ( rnd_force==1 )THEN
-!         z(:,1:nt) = zg(:,wrf_ind:wrf_end_ind,1)*control_w + &
-!                     zg(:,wrf_ind:wrf_end_ind,2)*(1.0-control_w)
-         z(:,1:nt) = MAX(0.,&
-                     zg(:,wrf_ind:wrf_end_ind,1)*control_w + &
-                     zg(:,wrf_ind:wrf_end_ind,2)*(1.0-control_w)&
-                     -terrain)
+   IF ( rnd_force==1 .or. rnd_force == 4 )THEN
+         ! second term depends on whether the the ensemble is centered on 
+         ! climo (1) or centered on today (4)
+      if ( rnd_force == 4 ) then
+        zg(:,wrf_ind:wrf_end_ind,2) = rnd_sign *                         &
+           abs(zg(:,wrf_ind:wrf_end_ind,2) - zg(:,wrf_ind:wrf_end_ind,1))
+        ug(:,wrf_ind:wrf_end_ind,2) = rnd_sign *                         &
+           abs(ug(:,wrf_ind:wrf_end_ind,2) - ug(:,wrf_ind:wrf_end_ind,1))
+        vg(:,wrf_ind:wrf_end_ind,2) = rnd_sign *                         &
+           abs(vg(:,wrf_ind:wrf_end_ind,2) - vg(:,wrf_ind:wrf_end_ind,1))
+      endif
+
+      z(:,1:nt) = MAX(0.,                                                &
+                  zg(:,wrf_ind:wrf_end_ind,1)*control_w(1)             + &
+                  zg(:,wrf_ind:wrf_end_ind,2)*control_w(2)               &
+                  -terrain)
      
       DO k=1,nz
-       z_agl(k,1:nt)=.5*(&
-             (zg(k,wrf_ind:wrf_end_ind,1)+zg(k+1,wrf_ind:wrf_end_ind,1))&
-             *control_w & 
+         z_agl(k,1:nt)=.5*(&
+             (zg(k,wrf_ind:wrf_end_ind,1)+zg(k+1,wrf_ind:wrf_end_ind,1)) & 
+             *control_w(1)                                               & 
              +(zg(k,wrf_ind:wrf_end_ind,2)+zg(k+1,wrf_ind:wrf_end_ind,2))&
-             *(1.0-control_w))-terrain
+             *control_w(2))-terrain
       ENDDO       
                      
-         u(:,1:nt) = ug(:,wrf_ind:wrf_end_ind,1)*control_w + &
-                     ug(:,wrf_ind:wrf_end_ind,2)*(1.0-control_w)
-         v(:,1:nt) = vg(:,wrf_ind:wrf_end_ind,1)*control_w + &
-                     vg(:,wrf_ind:wrf_end_ind,2)*(1.0-control_w)
+         u(:,1:nt) = ug(:,wrf_ind:wrf_end_ind,1)*control_w(1) +          &
+                     ug(:,wrf_ind:wrf_end_ind,2)*control_w(2)
+         v(:,1:nt) = vg(:,wrf_ind:wrf_end_ind,1)*control_w(1) +          &
+                     vg(:,wrf_ind:wrf_end_ind,2)*control_w(2)
+
    ELSEIF ( rnd_force==2 )THEN
          z(:,1:nt) = MAX(0.,zg(:,wrf_ind:wrf_end_ind,1)-terrain)
 

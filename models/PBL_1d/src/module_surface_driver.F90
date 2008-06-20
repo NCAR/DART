@@ -21,7 +21,7 @@ CONTAINS
      &          ,ct,tke_myj                                           &
      &          ,albbck,lh,sh2o,shdmax,shdmin,z0                      &
      &          ,flqc,flhc,psfc,sst,sst_update,t2,emiss               &
-     &          ,sf_sfclay_physics,sf_surface_physics,ra_lw_physics   &
+     &          ,sf_sfclay_physics,sf_surface_physics,ra_lw_physics_i &
      &,bl_pbl_physics&
             !  Optional urban 
      &          ,declin_urb,cosz_urb2d,omg_urb2d,xlat_urb2d           & !I urban
@@ -210,7 +210,7 @@ CONTAINS
    CHARACTER(len=15) :: sf_sfclay_physics,sf_surface_physics,bucket_model
    CHARACTER(len=15) :: bl_pbl_physics
 
-   INTEGER, INTENT(IN) :: ra_lw_physics,sst_update
+   INTEGER, INTENT(IN) :: ra_lw_physics_i,sst_update
 
    REAL ::   ts_ref,ps_ref,dtamplitude_ref,mavail_ref,time
 
@@ -509,7 +509,7 @@ CONTAINS
   myj = .false.
   frpcpn = .false.
 
-  IF (ra_lw_physics .gt. 0) radiation = .true.
+  IF (ra_lw_physics_i .gt. 0) radiation = .true.
 
 !---- 
 ! CALCULATE CONSTANT

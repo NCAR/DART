@@ -1,0 +1,19 @@
+
+
+This directory should have a group of netcdf data files in it, but they are
+too large to commit to the subversion repository.   Instead, you will need to
+get them from the DART web site:
+
+http://www.image.ucar.edu/pub/DART/PBL_1d/
+
+Download indata.tgz to this directory and unpack it with:
+
+tar -xvzf indata.tgz
+
+or if your version of tar does not support the z option
+(automatic uncompress) then you need to do it in two stages:
+
+unzip indata.tgz
+tar -xvf indata.tar
+
+

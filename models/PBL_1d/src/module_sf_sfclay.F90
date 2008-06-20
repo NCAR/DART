@@ -451,8 +451,10 @@ CONTAINS
 !       VCONV = max(vconv,VCONVC*SQRT(DTHVM))
 ! VCONV comes from Beljaars only
         VSGD = 0.32 * (max(dx/5000.-1.,0.))**.33
+
         WSPD(I)=SQRT(WSPD(I)*WSPD(I)+VCONV*VCONV+vsgd*vsgd)
         WSPD(I)=AMAX1(WSPD(I),0.1)
+
 !print*,VCONV,WSPD,PBLH,FLUXC
         BR(I)=GOVRTH(I)*ZA(I)*DTHVDZ/(WSPD(I)*WSPD(I))                        
 !  IF PREVIOUSLY UNSTABLE, DO NOT LET INTO REGIMES 1 AND 2
@@ -743,7 +745,6 @@ CONTAINS
                /XKA+2.0/ZL)-PSIH2(I))
          CHS2(I)=UST(I)*KARMAN/(GZ2OZ0(I)-PSIH2(I))
       ENDDO
-                                                                        
   410 CONTINUE                                                                   
 !jdf
 !      DO I=its,ite

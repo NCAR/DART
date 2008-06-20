@@ -170,7 +170,7 @@ CONTAINS
 ! if the year is negative we get a random one valid at the
 ! same time of day, otherwise the specified sfces
 
-   IF ( rnd_init ) THEN
+   IF ( rnd_init /= 2 ) THEN
       nmix = 2
    ELSE
       nmix = 1

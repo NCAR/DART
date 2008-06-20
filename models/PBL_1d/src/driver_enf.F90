@@ -46,12 +46,13 @@ PROGRAM driver_enf
   USE types_mod
   USE time_manager_mod, only : time_type, set_time, get_time, &
                              increment_time, print_time, set_date, &
-                             set_calendar_type, GREGORIAN, &
+                             set_calendar_type, GREGORIAN, get_date, &
                              operator(==), operator(<=), &
-                             operator(-), operator(+)
+                             operator(-), operator(+), julian_day 
   USE  utilities_mod, only : file_exist, open_file, close_file, &
                              find_namelist_in_file, check_namelist_read, &
-                             register_module, error_handler, E_ERR, E_MSG
+                             register_module, error_handler, E_ERR, E_MSG, &
+                             logfileunit
 
   IMPLICIT NONE
 
@@ -74,8 +75,6 @@ real   , dimension(10) :: pert_param_max  = 0.99999
 logical                :: maintain_initial_spread = .false.
 character(len=4), dimension(10) :: dist_shape = 'logn'
 
-! Define the location of the state variables in module storage
-type(time_type) :: time_step, initialization_time, current_time
 
 ! Private definition of model variable types
 
@@ -98,7 +97,9 @@ integer, parameter :: TYPE_UF = 103,       TYPE_VF = 104, &   !2D...
 
 integer, parameter :: TYPE_TH_UPSTREAM_X = 107, TYPE_TH_UPSTREAM_Y = 108, &
                       TYPE_QV_UPSTREAM_X = 109, TYPE_QV_UPSTREAM_Y = 110, &
-                      TYPE_TAU_U = 111,        TYPE_TAU_V = 112
+                      TYPE_U_UPSTREAM_X = 111, TYPE_U_UPSTREAM_Y = 112, &
+                      TYPE_V_UPSTREAM_X = 113, TYPE_V_UPSTREAM_Y = 114, &
+                      TYPE_TAU_U = 115,        TYPE_TAU_V = 116
 
 ! far away types that we may want to add to the state vector at some
 ! point
@@ -137,8 +138,6 @@ integer, parameter ::  TYPE_EMISS = 600, TYPE_ALBEDO = 601, &
                        TYPE_Z0    = 602, TYPE_THC    = 603, &
                        TYPE_MAVAIL= 604
 
-integer, parameter :: calendar_type = GREGORIAN
-
 ! these are parameters that will be stuffed in the the meta data type
 ! soil variables in state vector to dart
 integer, parameter  ::   number_of_soil_variables = 1
@@ -154,9 +153,11 @@ integer, parameter  ::   number_of_1d_f =                3
                          ! (GSWF, GLWF)
 integer, parameter  ::   number_of_2d_f =               4
                          !(UF, VF, PF, P8WF
-integer, parameter  ::   number_of_2d_advection =        6
+integer, parameter  ::   number_of_2d_advection =        10
                          ! T_UPSTREAM_X, T_UPSTREAM_Y
-                         ! T_UPSTREAM_X, T_UPSTREAM_Y
+                         ! QV_UPSTREAM_X, QV_UPSTREAM_Y
+                         ! U_UPSTREAM_X, U_UPSTREAM_Y
+                         ! V_UPSTREAM_X, V_UPSTREAM_Y
                          ! TAU_U, TAU_V
 ! profile variables NOT in state vector to dart
 integer, parameter  ::   number_noassim_profiles =         4
@@ -233,8 +234,6 @@ real(r8), dimension(:), allocatable :: wrf_state
        &outlogfile='wrf1d_log.out'
   INTEGER  :: unit_nml=151,unit_log=152
   LOGICAL :: is_it_there = .FALSE.
-  INTEGER :: sim_days, sim_seconds, seconds, days
-  real(digits12) :: realtime
 
   INTEGER :: wrf_rnd_seed,itime ! equivalent to itimestep in module_wrf.F
 
@@ -250,6 +249,13 @@ real(r8), dimension(:), allocatable :: wrf_state
   integer :: nc_time_index
   
   LOGICAL :: allocate_wrf = .TRUE.
+  INTEGER :: seconds, days
+  INTEGER                  :: sim_seconds,sim_days
+  INTEGER :: iyr,imo,idy,ihr,imm,iss,seconds_in_day
+  REAL(digits12) :: realtime
+  TYPE(time_type) :: initialization_time, time_step, &
+                     sim_time, current_time
+  integer, parameter :: calendar_type = GREGORIAN
 
   INQUIRE ( FILE = namelistfile , EXIST = is_it_there )
 
@@ -300,6 +306,7 @@ real(r8), dimension(:), allocatable :: wrf_state
 
 ! main time loop in model
   nc_time_index = 1
+  current_time = initialization_time
   DO itime=1,ntime+1
 
      call print_time(current_time,"Taking time step at: ")
@@ -310,15 +317,29 @@ real(r8), dimension(:), allocatable :: wrf_state
      nc_time_index = nc_time_index + 1
 
      IF (init_f) THEN
-        sim_days=INT(REAL(REAL(itime-1)*dt+start_seconds)/86400.)
-        sim_seconds=NINT(REAL(itime-1)*dt-REAL(sim_days*86400))+&
-             &start_seconds
+        sim_time = current_time - initialization_time
+        call get_time(sim_time,sim_seconds,sim_days)
+        call get_date(current_time,iyr,imo,idy,ihr,imm,iss)
+        current_time = increment_time(current_time,int(dt),0)
+
      ELSE
         sim_days=0
         sim_seconds=(itime-1)*dt
      ENDIF
+     IF ( forecast_length == 0 ) stop '0 time steps'
+     IF ( init_f ) THEN
+       seconds_in_day = iss + 60*imm + 3600 * ihr
+       CALL wrf(sim_seconds,sim_days,julian_day(iyr,imo,idy),seconds_in_day)
+     ELSE
+       iyr = 1970
+       imo = 1
+       idy = 0
+       seconds_in_day = 0
+       CALL wrf(sim_seconds,sim_days,julian_day(iyr,imo,idy),seconds_in_day)
+!       CALL wrf(dart_seconds,dart_days)
+     ENDIF
      if ( forecast_length == 0 ) stop '0 time steps'
-     CALL wrf(sim_seconds,sim_days)
+     CALL wrf(sim_seconds,sim_days,julian_day(iyr,imo,idy),seconds_in_day)
 !     CALL output_wrf_profiles()
     current_time = current_time + time_step
   ENDDO
@@ -790,6 +811,14 @@ subroutine wrf_to_vector(x)
           x(k) = qv_upstream_x_f(iz,ispline) 
         case (TYPE_QV_UPSTREAM_Y)
           x(k) = qv_upstream_y_f(iz,ispline) 
+        case (TYPE_U_UPSTREAM_X)
+          x(k) = u_upstream_x_f(iz,ispline) 
+        case (TYPE_U_UPSTREAM_Y)
+          x(k) = u_upstream_y_f(iz,ispline) 
+        case (TYPE_V_UPSTREAM_X)
+          x(k) = v_upstream_x_f(iz,ispline) 
+        case (TYPE_V_UPSTREAM_Y)
+          x(k) = v_upstream_y_f(iz,ispline) 
         case (TYPE_TAU_U)
           x(k) = tau_u_f(iz,ispline) 
         case (TYPE_TAU_V)
@@ -1185,6 +1214,14 @@ subroutine vector_to_wrf(x)
           qv_upstream_x_f(iz,ispline) = x(k)
         case (TYPE_QV_UPSTREAM_Y)
           qv_upstream_y_f(iz,ispline) = x(k)
+        case (TYPE_U_UPSTREAM_X)
+          u_upstream_x_f(iz,ispline) = x(k)
+        case (TYPE_U_UPSTREAM_Y)
+          u_upstream_y_f(iz,ispline) = x(k)
+        case (TYPE_V_UPSTREAM_X)
+          v_upstream_x_f(iz,ispline) = x(k)
+        case (TYPE_V_UPSTREAM_Y)
+          v_upstream_y_f(iz,ispline) = x(k)
         case (TYPE_TAU_U)
           tau_u_f(iz,ispline) = x(k)
         case (TYPE_TAU_V)

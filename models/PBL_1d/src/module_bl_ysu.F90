@@ -322,17 +322,17 @@ contains
       real,     dimension( ims:ime, kms:kme )                    , &
                 intent(in   )   ::                             tx, &
                                                                qx, &
-						  	      qcx, &
- 		 				              qix, &
-							      p2d
+                                                              qcx, &
+                                                              qix, &
+                                                              p2d
 !
       real,     dimension( ims:ime, kms:kme )                    , &
                 intent(inout)   ::                           utnp, &
-							     vtnp, &
-							     ttnp, &
-							     qtnp, &
-							    qctnp, &
-							    qitnp
+                                                             vtnp, &
+                                                             ttnp, &
+                                                             qtnp, &
+                                                            qctnp, &
+                                                            qitnp
 !
       real,     dimension( ims:ime )                             , &
                 intent(inout)   ::                            hol, &

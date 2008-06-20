@@ -134,9 +134,9 @@ contains
          write(*,*)'Initializing the utilities module.'
 
          ! Read the namelist entry
-         call find_namelist_in_file("input.nml", "utilities_nml", iunit, .false.)
-         read(iunit, nml = utilities_nml, iostat = io)
-         call check_namelist_read(iunit, io, "utilities_nml", .false.)
+!         call find_namelist_in_file("input.nml", "utilities_nml", iunit, .false.)
+!         read(iunit, nml = utilities_nml, iostat = io)
+!         call check_namelist_read(iunit, io, "utilities_nml", .false.)
 
          ! Open the log file with the name from the namelist 
          logfileunit = nextunit()

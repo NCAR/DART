@@ -14,6 +14,7 @@ module model_mod
 use        types_mod, only : r8, missing_r8
 use time_manager_mod, only : time_type, set_time, get_time, &
                              increment_time, print_time, set_date, &
+                             get_date, julian_day, &
                              set_calendar_type, GREGORIAN, &
                              operator(==), operator(<=), &
                              operator(-), operator(+)
@@ -26,7 +27,7 @@ use     location_mod, only : location_type, get_dist, set_location, &
 
 use    utilities_mod, only : file_exist, open_file, close_file, &
                              find_namelist_in_file, check_namelist_read, &
-                             register_module, error_handler, E_ERR, E_MSG, nmlfileunit
+                             register_module, error_handler, E_ERR, E_MSG, logfileunit
 use         sort_mod, only : sort   
 use   random_seq_mod, only : random_seq_type, random_gaussian, &
                              init_random_seq, random_uniform
@@ -34,10 +35,10 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
                              KIND_V_WIND_COMPONENT, &
                              KIND_SURFACE_PRESSURE, &
                              KIND_TEMPERATURE, &
-                             KIND_SPECIFIC_HUMIDITY 
-use        map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
-                             PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
-                             gridwind_to_truewind
+                             KIND_SPECIFIC_HUMIDITY
+!use        map_utils, only : proj_info, map_init, map_set, latlon_to_ij, &
+!                             PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, &
+!                             gridwind_to_truewind
 
 !---- WRF modules
 use module_model_constants
@@ -59,6 +60,7 @@ public :: get_model_size, &
           static_init_model, &
           init_time, &
           init_conditions, &
+          model_get_close_states, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           nc_read_model_vars, &
@@ -90,15 +92,21 @@ integer, dimension(10) :: pert_init_beta_2 = -1.0
 real   , dimension(10) :: pert_param_min  = 0.00001
 real   , dimension(10) :: pert_param_max  = 0.99999
 logical                :: maintain_initial_spread = .false.
+logical                :: increment_psfc = .false. 
+logical                :: increment_tsk = .false. 
+logical                :: increment_smois = .false. 
+logical                :: increment_sh2o  = .false. 
+logical                :: increment_tslb  = .true. 
 character(len=4), dimension(10) :: dist_shape = 'logn'
-integer                :: real_obs_period = 1800
-integer                :: start_real_obs  = 1800
+
+integer                :: real_obs_period, start_real_obs
 
 namelist /model_nml/ num_est_params, est_param_types, pert_param_sd, &
          pert_init_sd, pert_init_beta_1, pert_init_beta_2, &
          maintain_initial_spread, dist_shape, pert_param_min, &
-         pert_param_max, real_obs_period, start_real_obs
-
+         pert_param_max, real_obs_period, start_real_obs, &
+         increment_smois, increment_sh2o, increment_tslb, &
+         increment_tsk, increment_psfc
 
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
@@ -108,29 +116,39 @@ type(time_type) :: time_step, initialization_time
 
 integer, parameter :: TYPE_U   = 1,   TYPE_V   = 2,  TYPE_W  = 3,  &
                       TYPE_GZ  = 4,   TYPE_T   = 5,  TYPE_MU = 6,  &
-                      TYPE_QV  = 7,   TYPE_QC  = 8,  TYPE_QR = 9,  &
-                      TYPE_QI  = 10,  TYPE_QS  = 11, TYPE_QG = 12, &
-                      TYPE_U10 = 13,  TYPE_V10 = 14, TYPE_T2 = 15, &
-                      TYPE_Q2  = 16,  TYPE_PSFC= 17, TYPE_TSLB = 18, &
-                      TYPE_TSK = 19,  TYPE_TH = 20,  TYPE_TKE = 21 , &
-                      TYPE_P   = 22
+                      TYPE_QV  = 7,   TYPE_U10 = 8,  TYPE_V10 = 9,  &
+                      TYPE_T2 = 10,   TYPE_Q2  = 11,  TYPE_PSFC= 12,  &
+                      TYPE_TSK = 13, TYPE_TH = 14,   TYPE_TKE = 15 , &
+                      TYPE_P   = 16
+
+! whether these are included is determined from the model_nml
+integer, parameter :: TYPE_SMOIS = 50, TYPE_SH2O = 51, TYPE_TSLB = 52
 
 ! additional "far away" types that will not be part of the assimilation
-! GROUP THESE BY SIZE OF ARRAYS!  this will make life easier below
+! GROUP THESE BY SHAPE OF ARRAYS!  this will make life easier below
 integer, parameter :: TYPE_GSWF  = 100,    TYPE_GLWF = 101, & !1D       
                       TYPE_PRECIPF = 102
 
-integer, parameter :: TYPE_UF = 103,       TYPE_VF = 104, &   !2D...
-                      TYPE_PF = 105,       TYPE_P8WF = 106
+integer, parameter :: TYPE_CBH = 110, TYPE_LWP = 111,       & !1D stochastic
+                      TYPE_YN = 112
 
-integer, parameter :: TYPE_TH_UPSTREAM_X = 107, TYPE_TH_UPSTREAM_Y = 108, &
-                      TYPE_QV_UPSTREAM_X = 109, TYPE_QV_UPSTREAM_Y = 110, &
-                      TYPE_TAU_U = 111,        TYPE_TAU_V = 112
+integer, parameter :: TYPE_UF = 120,       TYPE_VF = 121, &   !2D...
+                      TYPE_PF = 122,       TYPE_P8WF = 123
+
+integer, parameter :: TYPE_TH_UPSTREAM_X = 130, TYPE_TH_UPSTREAM_Y = 131, &
+                      TYPE_QV_UPSTREAM_X = 132, TYPE_QV_UPSTREAM_Y = 133, &
+                      TYPE_U_UPSTREAM_X = 134,  TYPE_U_UPSTREAM_Y = 135,  &
+                      TYPE_V_UPSTREAM_X = 136,  TYPE_V_UPSTREAM_Y = 137,  &
+                      TYPE_TAU_U = 138,         TYPE_TAU_V = 139, &
+                      TYPE_QC_UPSTREAM_X = 140, TYPE_QC_UPSTREAM_Y = 141, &
+                      TYPE_QR_UPSTREAM_X = 142, TYPE_QR_UPSTREAM_Y = 143, &
+                      TYPE_QI_UPSTREAM_X = 144, TYPE_QI_UPSTREAM_Y = 145, &
+                      TYPE_QG_UPSTREAM_X = 146, TYPE_QG_UPSTREAM_Y = 147
+! don't add any more here without dealing with optional moisture vars
 
 ! far away types that we may want to add to the state vector at some
 ! point
-integer, parameter :: TYPE_SMOIS = 200,      TYPE_KEEPFR3DFLAG = 201, & ! nsoil
-                      TYPE_SMFR3D = 202,     TYPE_SH2O = 203
+integer, parameter :: TYPE_KEEPFR3DFLAG = 200, TYPE_SMFR3D = 201
 
 integer, parameter :: TYPE_UZ0 = 300,        TYPE_VZ0 = 301, &   !scalars
                       TYPE_THZ0 = 302,       TYPE_QZ0 = 303, &
@@ -138,17 +156,19 @@ integer, parameter :: TYPE_UZ0 = 300,        TYPE_VZ0 = 301, &   !scalars
                       TYPE_QCG  = 306,       TYPE_QSFC = 307, &
                       TYPE_AKMS = 308,       TYPE_AKHS = 309, &
                       TYPE_HOL = 310,        TYPE_MOL = 311, &
-                      TYPE_GRDFLX = 312,     TYPE_HFX = 313, &
-                      TYPE_QFX = 314,        TYPE_PSHLTR = 315, &
-                      TYPE_QSHLTR = 316,     TYPE_FLHC = 317, &
-                      TYPE_FLQC = 318,       TYPE_Q10 = 319, &
-                      TYPE_UDRUNOFF = 320,   TYPE_ACSNOM = 321, &
-                      TYPE_ACSNOW = 322,     TYPE_UST = 323, &
-                      TYPE_PBLH = 324,       TYPE_TMN = 325, &
-                      TYPE_CS = 326,         TYPE_ERATE = 327, &
-                      TYPE_MAXM = 328,       TYPE_MINM = 329
-integer, parameter :: TYPE_RMOL = 330,       TYPE_ZNT = 331, &
-                      TYPE_GAMMA = 332
+                      TYPE_GSW = 312,        TYPE_GLW = 313, &
+                      TYPE_GRDFLX = 314,     TYPE_HFX = 315, &
+                      TYPE_QFX = 316,        TYPE_PSHLTR = 317, &
+                      TYPE_QSHLTR = 318,     TYPE_FLHC = 319, &
+                      TYPE_FLQC = 320,       TYPE_Q10 = 321, &
+                      TYPE_UDRUNOFF = 322,   TYPE_ACSNOM = 323, &
+                      TYPE_ACSNOW = 324,     TYPE_UST = 325, &
+                      TYPE_PBLH = 326,       TYPE_TMN = 327, &
+                      TYPE_CS = 328,         TYPE_ERATE = 329, &
+                      TYPE_MAXM = 330,       TYPE_MINM = 331
+integer, parameter :: TYPE_RMOL = 332,       TYPE_ZNT = 333, &
+                      TYPE_GAMMA = 334,      TYPE_RAINNC = 335, &
+                      TYPE_RAINNCV = 336
 
 ! parameter section - first some strange ones
 integer, parameter :: TYPE_VEGFRA = 400
@@ -156,13 +176,21 @@ integer, parameter :: TYPE_VEGFRA = 400
 ! far away profiles may or may not be part of the external forcing - perhaps
 ! diagnostic (U_G and V_G are only for output - redundant)
 integer, parameter :: TYPE_RHO = 500, TYPE_U_G  = 501, &
-                      TYPE_V_G  = 502, TYPE_EL = 503
+                      TYPE_V_G  = 502, TYPE_EL = 503, &
+                      TYPE_QC  = 504,  TYPE_QR = 505, &
+                      TYPE_QI = 506,   TYPE_QG = 507
+! don't add any more here without dealing with optional moisture vars
+
+! optional soil forcing
+integer, parameter :: TYPE_TSLB_F = 550, TYPE_SMOIS_F = 551
 
 ! parameter section - some out of state (constant) and are far away
 ! others are in-state and will be assigned a true location
 integer, parameter ::  TYPE_EMISS = 600, TYPE_ALBEDO = 601, &
                        TYPE_Z0    = 602, TYPE_THC    = 603, &
-                       TYPE_MAVAIL= 604
+                       TYPE_MAVAIL= 604, TYPE_TADV_SCALE   = 605, &
+                       TYPE_QADV_SCALE = 606, TYPE_UADV_SCALE = 607, &
+                       TYPE_VADV_SCALE = 608
 
 integer, parameter :: calendar_type = GREGORIAN
 integer            :: internal_ensemble_counter = 0
@@ -170,8 +198,10 @@ integer            :: number_ensemble_members = 0
 
 ! these are parameters that will be stuffed in the the meta data type
 ! soil variables in state vector to dart
-integer, parameter  ::   number_of_soil_variables = 1 
-                         ! (TSLB)
+integer, parameter  ::   number_of_soil_variables = 0 
+                         ! (none right now, all optioal)
+integer, parameter  ::   number_of_optional_soil_variables = 3 
+                         ! (SMOIS, SH2O, TSLB)
 ! the usual profile variables in state to dart
 integer, parameter  ::   number_of_profile_variables =     8 
                          ! (U, V, Z, T, QV, TH, TKE,P)
@@ -180,35 +210,49 @@ integer, parameter  ::   number_of_scalars =               6
                          ! (U10, V10, T2, Q2, TSK, PSFC) 
 ! external forcing
 integer, parameter  ::   number_of_1d_f =                3
-                         ! (GSWF, GLWF)
+                         ! (GSWF, GLWF, PRECIPF)
+integer, parameter  ::   number_of_soil_f =                2
+                         ! (SMOIS_F, TSLB_F)
+integer, parameter  ::   number_of_1d_stochastic_f =     3 ! added ...RT
+                         ! (YN, CBH, LWP)
 integer, parameter  ::   number_of_2d_f =               4 
                          !(UF, VF, PF, P8WF
-integer, parameter  ::   number_of_2d_advection =        6
-                         ! T_UPSTREAM_X, T_UPSTREAM_Y
+integer, parameter  ::   number_of_2d_advection =        10
+                         ! TH_UPSTREAM_X, TH_UPSTREAM_Y
+                         ! QV_UPSTREAM_X, QV_UPSTREAM_Y
+                         ! U_UPSTREAM_X, U_UPSTREAM_Y
+                         ! V_UPSTREAM_X, V_UPSTREAM_Y
                          ! TAU_U, TAU_V
+          !optionally    ! QC_UPSTREAM_X, QC_UPSTREAM_Y
+                         ! QR_UPSTREAM_X, QR_UPSTREAM_Y
+                         ! QI_UPSTREAM_X, QI_UPSTREAM_Y
+                         ! QG_UPSTREAM_X, QG_UPSTREAM_Y
+
 ! profile variables NOT in state vector to dart
 integer, parameter  ::   number_noassim_profiles =         4
-                         ! RHO, U_G, V_G
+                         ! RHO, U_G, V_G, EL, 
+                         ! QC, QR, QI, QG depend on WRF namelist
+                         ! and are added in-line
 ! soil variables NOT in state vector to dart
-integer, parameter  ::   number_noassim_soil_vars =        4 
-                         ! (SMOIS, KEEPFR3DFLAG, 
-                         !  SMFR3D, SH2O)
+integer, parameter  ::   number_noassim_soil_vars =        2 
+                         ! (KEEPFR3DFLAG, SMFR3D)
 ! scalars NOT in state vector to dart
-integer, parameter  ::   number_noassim_scalars = 33
+integer, parameter  ::   number_noassim_scalars = 37 
                          ! (UZ0, VZ0, THZ0, QZ0, 
                          !  QVG, QSG, QCG, QSFC, 
                          ! AKMS, AKHS, HOL, MOL, 
+                         ! GSW, GLW,              ! added...RT
                          ! GRDFLX, HFX, QFX, 
                          ! PSHLTR, QSHLTR, 
                          ! FLQC, FLHC, Q10, UDRUNOFF, 
                          ! ACSNOM, ACSNOW, UST, PBLH, TMN,
-                         ! RMOL, ZNT, GAMMA)
+                         ! RMOL, ZNT, GAMMA, RAINNC, RAINNCV)
 
 ! parameters that depend on initialization date
 integer, parameter  ::   number_dependent_params = 1
                          ! (VEGFRA)
 ! parameters that are independent, and MAY be in the state
-integer, parameter  ::   number_total_params = 5
+integer, parameter  ::   number_total_params = 9
                          ! (EMISS, ALBEDO, Z0, THC, MAVAIL)
 
 TYPE state_vector_meta_data
@@ -217,12 +261,16 @@ TYPE state_vector_meta_data
    integer             ::   total_number_of_vars
 ! soil variables in state vector to dart
    integer             ::   number_of_soil_variables   
+! soil variables maybe in state vector to dart
+   integer             ::   number_of_optional_soil_variables   
 ! the usual profile variables in state to dart
    integer             ::   number_of_profile_variables
 ! screen height vars in state vector to dart
    integer             ::   number_of_scalars         
 ! external forcing
    integer             ::   number_of_1d_f 
+   integer             ::   number_of_soil_f 
+   integer             ::   number_of_1d_stochastic_f !added...RT 
    integer             ::   number_of_2d_f 
    integer             ::   number_of_2d_advection 
 ! profile variables NOT in state vector to dart
@@ -259,7 +307,7 @@ end TYPE domain_static_data
 
 type(state_vector_meta_data)    :: wrf_meta
 
-type(proj_info)                 :: my_projection
+!type(proj_info)                 :: my_projection
 
 type(domain_static_data)        :: column
 
@@ -285,15 +333,17 @@ subroutine static_init_model()
 ! the time type for the time stepping (is this general enough for time???)
 implicit none
 
-integer  :: io, iunit
+integer  :: io, iunit, k_adv
 real(r8) :: x_loc
-integer :: dart_index, var_cnt, k, bot, top, unit_nml, vcnt, projcode
+integer :: dart_index, var_cnt, k, bot, top, unit_nml, vcnt !, projcode
 LOGICAL :: is_it_there = .FALSE.
 REAL :: timeo,timetot
     
-real(r8) :: center_i, center_j, truelat1, truelat2
-real(r8) :: sw_corner_lat, sw_corner_lon, dx, stdlon
+!real(r8) :: center_i, center_j, truelat1, truelat2
+!real(r8) :: sw_corner_lat, sw_corner_lon, dx, stdlon
 real(r8) :: long_far
+
+integer :: nbtimestep ! ...RT: for stochastic cloud forcing assumed available @ every time step
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
@@ -304,13 +354,14 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
-if (do_output()) write(nmlfileunit, nml=model_nml)
-if (do_output()) write(     *     , nml=model_nml)
+call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
+write(logfileunit, nml=model_nml)
+write(     *     , nml=model_nml)
 
 ! Begin by reading the namelist input
 if(file_exist('wrf1d_namelist.input')) then
    unit_nml = open_file(fname = 'wrf1d_namelist.input', action = 'read')
-   call do_namelist_wrf1d(unit_nml,nmlfileunit)
+   call do_namelist_wrf1d(unit_nml,logfileunit)
    close(unit_nml)
 endif
 
@@ -332,38 +383,91 @@ call init_time(initialization_time)
 wrf_meta%number_of_scalars = number_of_scalars
 wrf_meta%number_of_profile_variables = number_of_profile_variables
 wrf_meta%number_of_soil_variables = number_of_soil_variables
-wrf_meta%number_of_1d_f = number_of_1d_f
-wrf_meta%number_of_2d_f = number_of_2d_f
-wrf_meta%number_of_2d_advection = number_of_2d_advection
+wrf_meta%number_of_optional_soil_variables = number_of_optional_soil_variables
+wrf_meta%number_of_1d_f =  0
+wrf_meta%number_of_soil_f =  0
+wrf_meta%number_of_1d_stochastic_f = number_of_1d_stochastic_f 
+wrf_meta%number_of_2d_f = 0
+wrf_meta%number_of_2d_advection = 0
 wrf_meta%number_noassim_profiles = number_noassim_profiles
 wrf_meta%number_noassim_soil_vars = number_noassim_soil_vars
 wrf_meta%number_noassim_scalars = number_noassim_scalars
 wrf_meta%number_dependent_params = number_dependent_params
 wrf_meta%number_state_params = num_est_params !from namelist
 
+if ( init_f .eqv. .true. ) then
+   wrf_meta%number_of_1d_f = number_of_1d_f
+   wrf_meta%number_of_2d_f = number_of_2d_f
+   wrf_meta%number_of_2d_advection = number_of_2d_advection
+endif
+
+if ( force_soil .eqv. .true. ) then
+   wrf_meta%number_of_soil_f = number_of_soil_f
+endif
+
+! add moisture variables as needed
+if ( P_QC > 1 ) then
+   wrf_meta%number_noassim_profiles = wrf_meta%number_noassim_profiles + 1
+   if ( qc_advection .eqv. .true. ) then
+     wrf_meta%number_of_2d_advection = wrf_meta%number_of_2d_advection + 2
+   endif
+endif
+if ( P_QR > 1 ) then
+   wrf_meta%number_noassim_profiles = wrf_meta%number_noassim_profiles + 1
+   if ( qr_advection .eqv. .true. ) then
+     wrf_meta%number_of_2d_advection = wrf_meta%number_of_2d_advection + 2
+   endif
+endif
+if ( P_QI > 1 ) then
+   wrf_meta%number_noassim_profiles = wrf_meta%number_noassim_profiles + 1
+   if ( qi_advection .eqv. .true. ) then
+     wrf_meta%number_of_2d_advection = wrf_meta%number_of_2d_advection + 2
+   endif
+endif
+if ( P_QG > 1 ) then
+   wrf_meta%number_noassim_profiles = wrf_meta%number_noassim_profiles + 1
+   if ( qg_advection .eqv. .true. ) then
+     wrf_meta%number_of_2d_advection = wrf_meta%number_of_2d_advection + 2
+   endif
+endif
+
 ! these are not appended or retained in memory because they are constant
 wrf_meta%number_independent_params = number_total_params - num_est_params 
                                          
+nbtimestep = int(forecast_length/dt) !...added by RT
 
 ! compute the model size
-wrf_meta%model_size = num_soil_layers * wrf_meta%number_of_soil_variables  &
+wrf_meta%model_size = num_soil_layers * wrf_meta%number_of_soil_variables    &
+                    + num_soil_layers *                                      &
+                      wrf_meta%number_of_optional_soil_variables             &
                     + nz              * wrf_meta%number_of_profile_variables &
-                    + 1               * wrf_meta%number_of_scalars &
-                    + nz*nsplinetimes * wrf_meta%number_of_2d_f &
-                    + nz*nsplinetimes_advection * &
-                         wrf_meta%number_of_2d_advection &
-                    + n1dsplines                                & 
-                    + nz              * wrf_meta%number_noassim_profiles &
-                    + num_soil_layers * wrf_meta%number_noassim_soil_vars &
-                    + 1               * wrf_meta%number_noassim_scalars &
-                    + 1               * wrf_meta%number_dependent_params &
-                    + 1               * wrf_meta%number_state_params
+                    + 1               * wrf_meta%number_of_scalars           &
+                    + nz*nsplinetimes * wrf_meta%number_of_2d_f              &
+                    + nz*nsplinetimes_advection *                            &
+                         wrf_meta%number_of_2d_advection                     &
+                    + nz              * wrf_meta%number_noassim_profiles     &
+                    + num_soil_layers * wrf_meta%number_noassim_soil_vars    &
+                    + 1               * wrf_meta%number_noassim_scalars      &
+                    + 1               * wrf_meta%number_dependent_params     &
+                    + 1               * wrf_meta%number_state_params         
+
+! need space for 1D forcing (GLW_F GSW_F PRECIPF)
+if ( init_f .eqv. .true.) wrf_meta%model_size = wrf_meta%model_size + n1dsplines
+! need space for soil forcing (SMOIS_F, TSLB_F) if asked
+if ( force_soil .eqv. .true. ) wrf_meta%model_size = wrf_meta%model_size +  & 
+             wrf_meta%number_of_soil_f*nsplinetimes_soil*num_soil_layers
+
+! need space for cloud info if using
+if ( forc_stochastic_cloud ) wrf_meta%model_size = wrf_meta%model_size       &
+                        + nbtimestep * number_of_1d_stochastic_f            
 
 ! state vector locations and wrf grid meta data
 wrf_meta%total_number_of_vars = wrf_meta%number_of_scalars &
                               + wrf_meta%number_of_profile_variables &
                               + wrf_meta%number_of_soil_variables &
+                              + wrf_meta%number_of_optional_soil_variables &
                               + wrf_meta%number_of_1d_f &
+                              + wrf_meta%number_of_soil_f &
                               + wrf_meta%number_of_2d_f &
                               + wrf_meta%number_of_2d_advection &
                               + wrf_meta%number_noassim_profiles &
@@ -371,6 +475,9 @@ wrf_meta%total_number_of_vars = wrf_meta%number_of_scalars &
                               + wrf_meta%number_noassim_scalars &
                               + wrf_meta%number_dependent_params &
                               + wrf_meta%number_state_params
+
+if ( forc_stochastic_cloud ) wrf_meta%total_number_of_vars = &
+   wrf_meta%total_number_of_vars  + wrf_meta%number_of_1d_stochastic_f 
 
 allocate(wrf_meta%est_param_types(wrf_meta%number_state_params))
 allocate(wrf_meta%pert_init_sd(wrf_meta%number_state_params))
@@ -447,8 +554,9 @@ wrf_meta%var_size(var_cnt) = nz
 wrf_meta%var_index(var_cnt) = dart_index
 bot = wrf_meta%var_index(var_cnt)
 top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
+! JPH put T far and TH close - update T in WRF
 do k = bot,top
-  state_loc(k) = set_location(column%longitude,column%latitude,z_grid(k - bot + 1),3)
+  state_loc(k) = set_location(long_far,column%latitude,z_grid(k - bot + 1),3)
 enddo
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
@@ -528,7 +636,53 @@ var_cnt = var_cnt + 1
 wrf_meta%var_type(var_cnt) = TYPE_PSFC
 wrf_meta%var_size(var_cnt) = 1
 wrf_meta%var_index(var_cnt) = dart_index
-state_loc(dart_index) = set_location(column%longitude,column%latitude,0.0_r8,3)
+if ( increment_psfc .eqv. .true. ) then 
+  state_loc(dart_index) = set_location(column%longitude,column%latitude,0.0_r8,3)
+else
+  state_loc(dart_index) = set_location(long_far,column%latitude,0.0_r8,3)
+endif
+dart_index = dart_index + wrf_meta%var_size(var_cnt)
+var_cnt = var_cnt + 1
+
+wrf_meta%var_type(var_cnt) = TYPE_TSK
+wrf_meta%var_size(var_cnt) = 1
+wrf_meta%var_index(var_cnt) = dart_index
+if ( increment_tsk .eqv. .true. ) then 
+  state_loc(dart_index) = set_location(column%longitude,column%latitude,0.0_r8,3)
+else
+  state_loc(dart_index) = set_location(long_far,column%latitude,0.0_r8,3)
+endif
+dart_index = dart_index + wrf_meta%var_size(var_cnt)
+var_cnt = var_cnt + 1
+
+! optional soil variables (always included but maybe far away)
+wrf_meta%var_type(var_cnt) = TYPE_SMOIS
+wrf_meta%var_size(var_cnt) = num_soil_layers
+wrf_meta%var_index(var_cnt) = dart_index
+bot = wrf_meta%var_index(var_cnt)
+top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
+do k = bot,top
+  if ( increment_smois ) then
+    state_loc(k) = set_location(column%longitude,column%latitude,-zs(k-bot+1),3)
+  else
+    state_loc(k) = set_location(long_far,column%latitude,-zs(k-bot+1),3)
+  endif
+enddo
+dart_index = dart_index + wrf_meta%var_size(var_cnt)
+var_cnt = var_cnt + 1
+
+wrf_meta%var_type(var_cnt) = TYPE_SH2O 
+wrf_meta%var_size(var_cnt) = num_soil_layers
+wrf_meta%var_index(var_cnt) = dart_index
+bot = wrf_meta%var_index(var_cnt)
+top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
+do k = bot,top
+  if ( increment_sh2o  ) then
+    state_loc(k) = set_location(column%longitude,column%latitude,-zs(k-bot+1),3)
+  else
+    state_loc(k) = set_location(long_far,column%latitude,-zs(k-bot+1),3)
+  endif
+enddo
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
 
@@ -538,15 +692,12 @@ wrf_meta%var_index(var_cnt) = dart_index
 bot = wrf_meta%var_index(var_cnt)
 top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
 do k = bot,top
-  state_loc(k) = set_location(column%longitude,column%latitude,0.0_r8,3)
+  if ( increment_tslb  ) then
+    state_loc(k) = set_location(column%longitude,column%latitude,-zs(k-bot+1),3)
+  else
+    state_loc(k) = set_location(long_far,column%latitude,-zs(k-bot+1),3)
+  endif
 enddo
-dart_index = dart_index + wrf_meta%var_size(var_cnt)
-var_cnt = var_cnt + 1
-
-wrf_meta%var_type(var_cnt) = TYPE_TSK
-wrf_meta%var_size(var_cnt) = 1
-wrf_meta%var_index(var_cnt) = dart_index
-state_loc(dart_index) = set_location(column%longitude,column%latitude,0.0_r8,3)
 dart_index = dart_index + wrf_meta%var_size(var_cnt)
 var_cnt = var_cnt + 1
 
@@ -580,21 +731,62 @@ do vcnt = 1, wrf_meta%number_of_1d_f
   bot = wrf_meta%var_index(var_cnt)
   top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
   do k = bot,top
-    state_loc(k) = set_location(long_far,column%latitude,(10000.0_r8+k),-1)
+    state_loc(k) = set_location(long_far,column%latitude,(100000.0_r8+k),-1)
   enddo
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
 enddo
 
+! soil F vars (num_soil_layers,nsplinetimes_soil)
+if ( force_soil .eqv. .true. ) then
+  do vcnt = 1, wrf_meta%number_of_soil_f
+    wrf_meta%var_type(var_cnt) = 550 + vcnt - 1 !TYPE_TSLB ... TYPE_SMOIS
+    wrf_meta%var_size(var_cnt) = nsplinetimes_soil*num_soil_layers
+    wrf_meta%var_index(var_cnt) = dart_index
+    bot = wrf_meta%var_index(var_cnt)
+    top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
+    do k = bot,top
+      state_loc(k) = set_location(long_far,column%latitude,(100000.0_r8+k),-1)
+    enddo
+    dart_index = dart_index + wrf_meta%var_size(var_cnt)
+    var_cnt = var_cnt + 1
+  enddo
+endif
+
+if ( forc_stochastic_cloud ) then
+  do vcnt = 1, wrf_meta%number_of_1d_stochastic_f
+    wrf_meta%var_type(var_cnt) = 110 + vcnt - 1 !TYPE_CBH ... TYPE_YN
+    select case ( wrf_meta%var_type(var_cnt) )
+      case ( TYPE_CBH ) 
+        wrf_meta%var_size(var_cnt) = nbtimestep
+      case ( TYPE_LWP )
+        wrf_meta%var_size(var_cnt) = nbtimestep
+      case ( TYPE_YN ) 
+        wrf_meta%var_size(var_cnt) = nbtimestep
+      case default
+        call error_handler(E_ERR, 'static_init_model', &
+         'cannot size 1-d forcing type', source, revision, revdate)
+    end select
+    wrf_meta%var_index(var_cnt) = dart_index
+    bot = wrf_meta%var_index(var_cnt)
+    top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
+    do k = bot,top
+      state_loc(k) = set_location(long_far,column%latitude,(100000.0_r8+k),-1)
+    enddo
+    dart_index = dart_index + wrf_meta%var_size(var_cnt)
+    var_cnt = var_cnt + 1
+  enddo
+endif
+
 ! 2d F vars (nz,nsplinetimes)
 do vcnt = 1, wrf_meta%number_of_2d_f
-  wrf_meta%var_type(var_cnt) = 100 + wrf_meta%number_of_1d_f + vcnt - 1 !TYPE_UF ... TYPE_P8WF
+  wrf_meta%var_type(var_cnt) = 120 + vcnt - 1 !TYPE_UF ... TYPE_P8WF
   wrf_meta%var_size(var_cnt) = nsplinetimes*nz
   wrf_meta%var_index(var_cnt) = dart_index
   bot = wrf_meta%var_index(var_cnt)
   top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
   do k = bot,top
-    state_loc(k) = set_location(long_far,column%latitude,(10000.0_r8+k),-1)
+    state_loc(k) = set_location(long_far,column%latitude,(100000.0_r8+k),-1)
   enddo
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
@@ -602,14 +794,24 @@ enddo
 
 ! 2d advection-related vars (nz,nsplinetimes_advection)
 do vcnt = 1, wrf_meta%number_of_2d_advection
-  wrf_meta%var_type(var_cnt) = 100 + wrf_meta%number_of_1d_f &
-          + wrf_meta%number_of_2d_f + vcnt - 1 !TYPE_TH_UPSTREAM_X...TYPE_TAU_V
+  wrf_meta%var_type(var_cnt) = 130 + vcnt - 1 !TYPE_TH_UPSTREAM_X...TYPE_TAU_V
   wrf_meta%var_size(var_cnt) = nsplinetimes_advection*nz
   wrf_meta%var_index(var_cnt) = dart_index
   bot = wrf_meta%var_index(var_cnt)
   top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
+  k_adv = 1
   do k = bot,top
-    state_loc(k) = set_location(long_far,column%latitude,(10000.0_r8+k),-1)
+!    state_loc(k) = set_location(long_far,column%latitude,(100000.0_r8+k),-1)
+    if ( wrf_meta%var_type(var_cnt) <= 137 ) then
+    state_loc(k) = set_location(column%longitude,column%latitude,z_grid(k_adv),3)
+    else
+    state_loc(k) = set_location(long_far,column%latitude,(100000.0_r8+k),-1)
+    endif
+
+    k_adv = k_adv + 1
+    if ( k_adv > nz ) then
+      k_adv = 1
+    endif
   enddo
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
@@ -617,13 +819,13 @@ enddo
 
 ! noassim profile vars (nz)
 do vcnt = 1, wrf_meta%number_noassim_profiles
-  wrf_meta%var_type(var_cnt) = 500 + vcnt - 1 !RHO...EL
+  wrf_meta%var_type(var_cnt) = 500 + vcnt - 1 !RHO...QG
   wrf_meta%var_size(var_cnt) = nz
   wrf_meta%var_index(var_cnt) = dart_index
   bot = wrf_meta%var_index(var_cnt)
   top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
   do k = bot,top
-    state_loc(k) = set_location(long_far,column%latitude,(10000.0_r8+k),1)
+    state_loc(k) = set_location(long_far,column%latitude,(100000.0_r8+k),1)
   enddo
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
@@ -631,7 +833,7 @@ enddo
 
 ! noassim soil vars (num_soil_layers)
 do vcnt = 1, wrf_meta%number_noassim_soil_vars
-  wrf_meta%var_type(var_cnt) = 200 + vcnt - 1 !TYPE_SMOIS ... TYPE_SH2O
+  wrf_meta%var_type(var_cnt) = 200 + vcnt - 1 !TYPE_KEEPFR3D ... TYPE_SMFR3D
   wrf_meta%var_size(var_cnt) = num_soil_layers
   wrf_meta%var_index(var_cnt) = dart_index
   bot = wrf_meta%var_index(var_cnt)
@@ -645,10 +847,10 @@ enddo
 
 ! scalars (might want these in the assimilation vector)
 do vcnt = 1, wrf_meta%number_noassim_scalars
-  wrf_meta%var_type(var_cnt) = 300 + vcnt - 1 !TYPE_UZ0 ... TYPE_GAMMA
+  wrf_meta%var_type(var_cnt) = 300 + vcnt - 1 !TYPE_UZ0 ... TYPE_RAINNCV
   wrf_meta%var_size(var_cnt) = 1
   wrf_meta%var_index(var_cnt) = dart_index
-  state_loc(dart_index) = set_location(long_far,column%latitude,10000.0_r8,-1)
+  state_loc(dart_index) = set_location(long_far,column%latitude,100000.0_r8,-1)
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
 enddo
@@ -658,31 +860,31 @@ do vcnt = 1, wrf_meta%number_dependent_params
   wrf_meta%var_type(var_cnt) = 400 + vcnt - 1 !TYPE_VEGFRA...?
   wrf_meta%var_size(var_cnt) = 1
   wrf_meta%var_index(var_cnt) = dart_index
-  state_loc(dart_index) = set_location(long_far,column%latitude,10000.0_r8,-1)
+  state_loc(dart_index) = set_location(long_far,column%latitude,100000.0_r8,-1)
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
 enddo
 
 ! map information 
 
-call map_init(my_projection)
+!call map_init(my_projection)
 
-select case (init_f_type)
+!select case (init_f_type)
 
-   case ('WRF')
-      call get_projection(projcode,sw_corner_lat, sw_corner_lon,&
-           center_i, center_j, &
-           dx, stdlon, truelat1, truelat2)
+!   case ('WRF')
+!      call get_projection(projcode,sw_corner_lat, sw_corner_lon,&
+!           center_i, center_j, &
+!           dx, stdlon, truelat1, truelat2)
 
-      call map_set(projcode, sw_corner_lat, sw_corner_lon, center_i, center_j, &
-                   dx, stdlon, truelat1, truelat2, my_projection)
+!      call map_set(projcode, sw_corner_lat, sw_corner_lon, center_i, center_j, &
+!                   dx, stdlon, truelat1, truelat2, my_projection)
 
-   case ('OBS')
-      print*,'Map information set to trivial for init type ',init_f_type
-      my_projection%code = PROJ_LATLON
+!   case ('OBS')
+!      print*,'Map information set to trivial for init type ',init_f_type
+!      my_projection%code = PROJ_LATLON
       
-   case default
-end select
+!   case default
+!end select
 
 END SUBROUTINE static_init_model
 
@@ -697,6 +899,8 @@ subroutine init_conditions(x)
   integer :: i
 
   call init_wrf(wrf_rnd_seed)
+
+  call output_wrf_profiles()
 
   call wrf_to_vector(x)
 
@@ -831,19 +1035,31 @@ subroutine wrf_to_vector(x)
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
 
-! tslb
-  bot = wrf_meta%var_index(var_cnt)
-  top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
-  do k = bot,top
-    x(k) = tslb(1,k-bot+1,1)
-  enddo
-  dart_index = dart_index + wrf_meta%var_size(var_cnt)
-  var_cnt = var_cnt + 1
-
 ! tsk
   x(wrf_meta%var_index(var_cnt)) = tsk(1,1)
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
+
+! smois...tslb (optional soil vars)
+  do vcnt = 1,wrf_meta%number_of_optional_soil_variables
+    bot = wrf_meta%var_index(var_cnt)
+    top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
+    do k = bot,top
+      select case (wrf_meta%var_type(var_cnt))
+        case (TYPE_SMOIS)
+          x(k) = smois(1,k-bot+1,1)
+        case (TYPE_SH2O)
+          x(k) = sh2o(1,k-bot+1,1)
+        case (TYPE_TSLB)
+          x(k) = tslb(1,k-bot+1,1)
+        case default
+          call error_handler(E_ERR, 'wrf_to_vector', &
+           'problem with optional_soil unroll', source, revision, revdate)
+      end select
+    enddo
+    dart_index = dart_index + wrf_meta%var_size(var_cnt)
+    var_cnt = var_cnt + 1
+  enddo
 
 ! parameters
   do vcnt = 1, wrf_meta%number_state_params
@@ -859,6 +1075,14 @@ subroutine wrf_to_vector(x)
         dartparam = thc(1,1)
       case (TYPE_MAVAIL)
         dartparam = mavail(1,1)
+      case (TYPE_TADV_SCALE)
+        dartparam = tadvection_scale(1,1)
+      case (TYPE_QADV_SCALE)
+        dartparam = qadvection_scale(1,1)
+      case (TYPE_UADV_SCALE)
+        dartparam = uadvection_scale(1,1)
+      case (TYPE_VADV_SCALE)
+        dartparam = vadvection_scale(1,1)
       case default
         call error_handler(E_ERR, 'wrf_to_vector', &
          'problem with est_param unroll', source, revision, revdate)
@@ -896,6 +1120,57 @@ subroutine wrf_to_vector(x)
     dart_index = dart_index + wrf_meta%var_size(var_cnt)
     var_cnt = var_cnt + 1
   enddo
+
+! tslb_f, smois_f
+  if ( force_soil .eqv. .true. ) then
+    do vcnt = 1, wrf_meta%number_of_soil_f
+      bot = wrf_meta%var_index(var_cnt)
+      top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
+      ispline = 1
+      iz      = 1
+      do k = bot,top
+        select case (wrf_meta%var_type(var_cnt))
+          case (TYPE_TSLB_F)
+            x(k) = tslb_f(iz,ispline) 
+          case (TYPE_SMOIS_F)
+            x(k) = smois_f(iz,ispline) 
+          case default
+            call error_handler(E_ERR, 'wrf_to_vector', &
+             'problem with soil gen unroll', source, revision, revdate)
+        end select
+        iz = iz + 1
+        if ( iz > num_soil_layers ) then
+          ispline = ispline + 1
+          iz = 1
+        endif
+      enddo
+      dart_index = dart_index + wrf_meta%var_size(var_cnt)
+      var_cnt = var_cnt + 1
+    enddo
+  endif
+
+! cbh...yn
+  if ( forc_stochastic_cloud ) then
+  do vcnt = 1, wrf_meta%number_of_1d_stochastic_f
+    bot = wrf_meta%var_index(var_cnt)
+    top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
+    do k = bot,top
+      select case (wrf_meta%var_type(var_cnt))
+        case (TYPE_CBH)
+          x(k) = stoch_cbh(k-bot+1) 
+        case (TYPE_LWP)
+          x(k) = stoch_lwp(k-bot+1) 
+        case (TYPE_YN)
+          x(k) = stoch_yn(k-bot+1) 
+        case default
+          call error_handler(E_ERR, 'wrf_to_vector', &
+           'problem with 1d gen unroll', source, revision, revdate)
+      end select
+    enddo
+    dart_index = dart_index + wrf_meta%var_size(var_cnt)
+    var_cnt = var_cnt + 1
+  enddo
+  endif
 
 ! u_g_f...p8w_f
   do vcnt = 1, wrf_meta%number_of_2d_f
@@ -943,10 +1218,34 @@ subroutine wrf_to_vector(x)
           x(k) = qv_upstream_x_f(iz,ispline) 
         case (TYPE_QV_UPSTREAM_Y)
           x(k) = qv_upstream_y_f(iz,ispline) 
+        case (TYPE_U_UPSTREAM_X)
+          x(k) = u_upstream_x_f(iz,ispline) 
+        case (TYPE_U_UPSTREAM_Y)
+          x(k) = u_upstream_y_f(iz,ispline) 
+        case (TYPE_V_UPSTREAM_X)
+          x(k) = v_upstream_x_f(iz,ispline) 
+        case (TYPE_V_UPSTREAM_Y)
+          x(k) = v_upstream_y_f(iz,ispline) 
         case (TYPE_TAU_U)
           x(k) = tau_u_f(iz,ispline) 
         case (TYPE_TAU_V)
           x(k) = tau_v_f(iz,ispline) 
+        case (TYPE_QC_UPSTREAM_X)
+          x(k) = qc_upstream_x_f(iz,ispline) 
+        case (TYPE_QC_UPSTREAM_Y)
+          x(k) = qc_upstream_y_f(iz,ispline) 
+        case (TYPE_QR_UPSTREAM_X)
+          x(k) = qr_upstream_x_f(iz,ispline) 
+        case (TYPE_QR_UPSTREAM_Y)
+          x(k) = qr_upstream_y_f(iz,ispline) 
+        case (TYPE_QI_UPSTREAM_X)
+          x(k) = qi_upstream_x_f(iz,ispline) 
+        case (TYPE_QI_UPSTREAM_Y)
+          x(k) = qi_upstream_y_f(iz,ispline) 
+        case (TYPE_QG_UPSTREAM_X)
+          x(k) = qg_upstream_x_f(iz,ispline) 
+        case (TYPE_QG_UPSTREAM_Y)
+          x(k) = qg_upstream_y_f(iz,ispline) 
         case default
           call error_handler(E_ERR, 'wrf_to_vector', &
            'problem with 2d gen unroll', source, revision, revdate)
@@ -957,6 +1256,8 @@ subroutine wrf_to_vector(x)
         iz = 1
       endif
     enddo
+!print*,'W2V: ',minval(th_upstream_x_f),maxval(th_upstream_x_f)
+!print*,'W2V: ',minval(tau_u_f),maxval(tau_u_f)
     dart_index = dart_index + wrf_meta%var_size(var_cnt)
     var_cnt = var_cnt + 1
   enddo
@@ -976,6 +1277,14 @@ subroutine wrf_to_vector(x)
           x(k) = v_g(k-bot+1)
         case (TYPE_EL)
           x(k) = el_myj(1,k-bot+1,1)
+        case (TYPE_QC)
+          x(k) = moist(1,k-bot+1,1,P_QC)
+        case (TYPE_QR)
+          x(k) = moist(1,k-bot+1,1,P_QR)
+        case (TYPE_QI)
+          x(k) = moist(1,k-bot+1,1,P_QI)
+        case (TYPE_QG)
+          x(k) = moist(1,k-bot+1,1,P_QG)
         case default
           call error_handler(E_ERR, 'wrf_to_vector', &
            'problem with nossim_profile unroll', source, revision, revdate)
@@ -985,20 +1294,16 @@ subroutine wrf_to_vector(x)
     var_cnt = var_cnt + 1
   enddo
 
-! smois...sh2o
+! keepfr3d...smfr3d
   do vcnt = 1,wrf_meta%number_noassim_soil_vars
     bot = wrf_meta%var_index(var_cnt)
     top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
     do k = bot,top
       select case (wrf_meta%var_type(var_cnt))
-        case (TYPE_SMOIS)
-          x(k) = smois(1,k-bot+1,1)
         case (TYPE_KEEPFR3DFLAG)
           x(k) = keepfr3dflag(1,k-bot+1,1)
         case (TYPE_SMFR3D)
           x(k) = smfr3d(1,k-bot+1,1)
-        case (TYPE_SH2O)
-          x(k) = sh2o(1,k-bot+1,1)
         case default
           call error_handler(E_ERR, 'wrf_to_vector', &
            'problem with nossim_soil unroll', source, revision, revdate)
@@ -1037,6 +1342,10 @@ subroutine wrf_to_vector(x)
         x(wrf_meta%var_index(var_cnt)) = mol(1,1)
       case (TYPE_RMOL)
         x(wrf_meta%var_index(var_cnt)) = rmol(1,1)
+      case (TYPE_GSW)                              ! added ...RT
+        x(wrf_meta%var_index(var_cnt)) = gsw(1,1)  ! added ...RT
+      case (TYPE_GLW)                              ! added ...RT
+        x(wrf_meta%var_index(var_cnt)) = glw(1,1)  ! added ...RT
       case (TYPE_GRDFLX)
         x(wrf_meta%var_index(var_cnt)) = grdflx(1,1)
       case (TYPE_HFX)
@@ -1077,6 +1386,10 @@ subroutine wrf_to_vector(x)
         x(wrf_meta%var_index(var_cnt)) = znt(1,1)
       case (TYPE_GAMMA)
         x(wrf_meta%var_index(var_cnt)) = h_gamma
+      case (TYPE_RAINNC)
+        x(wrf_meta%var_index(var_cnt)) = rainnc(1,1)
+      case (TYPE_RAINNCV)
+        x(wrf_meta%var_index(var_cnt)) = rainncv(1,1)
       case default
         call error_handler(E_ERR, 'wrf_to_vector', &
          'problem with noassim_scalar unroll', source, revision, revdate)
@@ -1120,8 +1433,9 @@ subroutine adv_1step(x, dart_time)
    real(r8), intent(inout) :: x(:)
    type(time_type), intent(inout) :: dart_time
 
-   type(time_type)          :: time_into_forecast
-   integer                  :: dart_seconds,dart_days
+   type(time_type)          :: sim_time
+   integer                  :: sim_seconds,sim_days
+   integer :: iyr,imo,idy,ihr,imm,iss,seconds_in_day
 
 ! perturb the parameters at every time step
    call pert_params_time(x)
@@ -1130,14 +1444,13 @@ subroutine adv_1step(x, dart_time)
 
    call vector_to_wrf(x)
 
-   time_into_forecast = dart_time - initialization_time
-   call get_time(time_into_forecast,dart_seconds,dart_days)
+   sim_time = dart_time - initialization_time
+   call get_time(sim_time,sim_seconds,sim_days)
+   
+   call get_date(dart_time,iyr,imo,idy,ihr,imm,iss)
 
-! figure out what time step we are at
-   call wrf(dart_seconds,dart_days)
-
-!   call output_wrf_profiles()
-!   print*,t2,t_phy(1,1,1),t_phy(1,10,1),t_phy(1,20,1)
+   seconds_in_day = iss + 60*imm + 3600*ihr
+   call wrf(sim_seconds,sim_days,julian_day(iyr,imo,idy),seconds_in_day)
 
    call wrf_to_vector(x)
 
@@ -1261,19 +1574,32 @@ subroutine vector_to_wrf(x)
   var_cnt = var_cnt + 1
   where (q2 < 0.0_r8) q2 = 0.0_r8
 
-! tslb
-  bot = wrf_meta%var_index(var_cnt)
-  top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
-  do k = bot,top
-    tslb(1,k-bot+1,1) = x(k)
-  enddo
-  dart_index = dart_index + wrf_meta%var_size(var_cnt)
-  var_cnt = var_cnt + 1
-
 ! tsk
   tsk(1,1) = x(wrf_meta%var_index(var_cnt))
   dart_index = dart_index + wrf_meta%var_size(var_cnt)
   var_cnt = var_cnt + 1
+
+! smois...tslb
+  do vcnt = 1,wrf_meta%number_of_optional_soil_variables
+    bot = wrf_meta%var_index(var_cnt)
+    top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
+    do k = bot,top
+      select case (wrf_meta%var_type(var_cnt))
+        case (TYPE_SMOIS)
+          smois(1,k-bot+1,1) = x(k)
+        case (TYPE_SH2O)
+          sh2o(1,k-bot+1,1) = x(k)
+        case (TYPE_TSLB)
+          tslb(1,k-bot+1,1) = x(k)
+        case default
+          call error_handler(E_ERR, 'vector_to_wrf', &
+           'problem with optional_soil roll', source, revision, revdate)
+      end select
+    enddo
+    dart_index = dart_index + wrf_meta%var_size(var_cnt)
+    var_cnt = var_cnt + 1
+  enddo
+
 
 ! parameters
   do vcnt = 1, wrf_meta%number_state_params
@@ -1297,6 +1623,14 @@ subroutine vector_to_wrf(x)
         thc(1,1)    = wrfparam
       case (TYPE_MAVAIL)
         mavail(1,1) = wrfparam
+      case (TYPE_TADV_SCALE)
+        tadvection_scale(1,1) = wrfparam
+      case (TYPE_QADV_SCALE)
+        qadvection_scale(1,1) = wrfparam
+      case (TYPE_UADV_SCALE)
+        uadvection_scale(1,1) = wrfparam
+      case (TYPE_VADV_SCALE)
+        vadvection_scale(1,1) = wrfparam
       case default
         call error_handler(E_ERR, 'vector_to_wrf', &
          'problem with est_param roll', source, revision, revdate)
@@ -1328,6 +1662,56 @@ subroutine vector_to_wrf(x)
     var_cnt = var_cnt + 1
   enddo
 
+! tslb_f, smois_f
+  if ( force_soil .eqv. .true. ) then
+    do vcnt = 1, wrf_meta%number_of_soil_f
+      bot = wrf_meta%var_index(var_cnt)
+      top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
+      ispline = 1
+      iz      = 1
+      do k = bot,top
+        select case (wrf_meta%var_type(var_cnt))
+          case (TYPE_TSLB_F)
+            tslb_f(iz,ispline) = x(k)
+          case (TYPE_SMOIS_F)
+            smois_f(iz,ispline) = x(k)
+          case default
+            call error_handler(E_ERR, 'vector_to_wrf', &
+             'problem with 2d f roll', source, revision, revdate)
+        end select
+        iz = iz + 1
+        if ( iz > num_soil_layers ) then
+          ispline = ispline + 1
+          iz = 1
+        endif
+      enddo
+      dart_index = dart_index + wrf_meta%var_size(var_cnt)
+      var_cnt = var_cnt + 1
+    enddo
+  endif
+
+! cbh...yn
+  if ( forc_stochastic_cloud ) then
+  do vcnt = 1, wrf_meta%number_of_1d_stochastic_f
+    bot = wrf_meta%var_index(var_cnt)
+    top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
+    do k = bot,top
+      select case (wrf_meta%var_type(var_cnt))
+        case (TYPE_CBH)
+          stoch_cbh(k-bot+1) = x(k)
+        case (TYPE_LWP)
+          stoch_lwp(k-bot+1) = x(k)
+        case (TYPE_YN)
+          stoch_yn(k-bot+1) = x(k)
+        case default
+          call error_handler(E_ERR, 'vector_to_wrf', &
+           'problem with 1d gen roll', source, revision, revdate)
+      end select
+    enddo
+    dart_index = dart_index + wrf_meta%var_size(var_cnt)
+    var_cnt = var_cnt + 1
+  enddo
+  endif
 ! u_g_f...p8w_f
   do vcnt = 1, wrf_meta%number_of_2d_f
     bot = wrf_meta%var_index(var_cnt)
@@ -1374,10 +1758,34 @@ subroutine vector_to_wrf(x)
           qv_upstream_x_f(iz,ispline) = x(k)
         case (TYPE_QV_UPSTREAM_Y)
           qv_upstream_y_f(iz,ispline) = x(k)
+        case (TYPE_U_UPSTREAM_X)
+          u_upstream_x_f(iz,ispline) = x(k)
+        case (TYPE_U_UPSTREAM_Y)
+          u_upstream_y_f(iz,ispline) = x(k)
+        case (TYPE_V_UPSTREAM_X)
+          v_upstream_x_f(iz,ispline) = x(k)
+        case (TYPE_V_UPSTREAM_Y)
+          v_upstream_y_f(iz,ispline) = x(k)
         case (TYPE_TAU_U)
           tau_u_f(iz,ispline) = x(k)
         case (TYPE_TAU_V)
           tau_v_f(iz,ispline) = x(k)
+        case (TYPE_QC_UPSTREAM_X)
+          qc_upstream_x_f(iz,ispline) = x(k)
+        case (TYPE_QC_UPSTREAM_Y)
+          qc_upstream_y_f(iz,ispline) = x(k)
+        case (TYPE_QR_UPSTREAM_X)
+          qr_upstream_x_f(iz,ispline) = x(k)
+        case (TYPE_QR_UPSTREAM_Y)
+          qr_upstream_y_f(iz,ispline) = x(k)
+        case (TYPE_QI_UPSTREAM_X)
+          qi_upstream_x_f(iz,ispline) = x(k)
+        case (TYPE_QI_UPSTREAM_Y)
+          qi_upstream_y_f(iz,ispline) = x(k)
+        case (TYPE_QG_UPSTREAM_X)
+          qg_upstream_x_f(iz,ispline) = x(k)
+        case (TYPE_QG_UPSTREAM_Y)
+          qg_upstream_y_f(iz,ispline) = x(k)
         case default
           call error_handler(E_ERR, 'vector_to_wrf', &
            'problem with 2d f roll', source, revision, revdate)
@@ -1388,6 +1796,8 @@ subroutine vector_to_wrf(x)
         iz = 1
       endif
     enddo
+!print*,'V2W: ',minval(th_upstream_x_f),maxval(th_upstream_x_f)
+!print*,'V2W: ',minval(tau_u_f),maxval(tau_u_f)
     dart_index = dart_index + wrf_meta%var_size(var_cnt)
     var_cnt = var_cnt + 1
   enddo
@@ -1406,6 +1816,14 @@ subroutine vector_to_wrf(x)
           v_g(k-bot+1) = x(k)
         case (TYPE_EL)
           el_myj(1,k-bot+1,1) = x(k)
+        case (TYPE_QC)
+          moist(1,k-bot+1,1,P_QC) = x(k)
+        case (TYPE_QR)
+          moist(1,k-bot+1,1,P_QR) = x(k)
+        case (TYPE_QI)
+          moist(1,k-bot+1,1,P_QI) = x(k)
+        case (TYPE_QG)
+          moist(1,k-bot+1,1,P_QG) = x(k)
         case default
           call error_handler(E_ERR, 'vector_to_wrf', &
            'problem with nossim_profile roll', source, revision, revdate)
@@ -1414,6 +1832,7 @@ subroutine vector_to_wrf(x)
     dart_index = dart_index + wrf_meta%var_size(var_cnt)
     var_cnt = var_cnt + 1
   enddo
+  where (moist < 0.0_r8) moist = 0.0_r8
 
 ! smois...sh2o
   do vcnt = 1,wrf_meta%number_noassim_soil_vars
@@ -1421,14 +1840,10 @@ subroutine vector_to_wrf(x)
     top = wrf_meta%var_index(var_cnt) + wrf_meta%var_size(var_cnt) - 1
     do k = bot,top
       select case (wrf_meta%var_type(var_cnt))
-        case (TYPE_SMOIS)
-          smois(1,k-bot+1,1) = x(k)
         case (TYPE_KEEPFR3DFLAG)
           keepfr3dflag(1,k-bot+1,1) = x(k)
         case (TYPE_SMFR3D)
           smfr3d(1,k-bot+1,1) = x(k)
-        case (TYPE_SH2O)
-          sh2o(1,k-bot+1,1) = x(k)
         case default
           call error_handler(E_ERR, 'vector_to_wrf', &
            'problem with nossim_soil roll', source, revision, revdate)
@@ -1467,6 +1882,10 @@ subroutine vector_to_wrf(x)
         mol(1,1) = x(wrf_meta%var_index(var_cnt))
       case (TYPE_RMOL)
         rmol(1,1) = x(wrf_meta%var_index(var_cnt))
+      case (TYPE_GSW)                              ! added...RT
+        gsw(1,1) = x(wrf_meta%var_index(var_cnt))  ! added...RT
+      case (TYPE_GLW)                              ! added...RT
+        glw(1,1) = x(wrf_meta%var_index(var_cnt))  ! added...RT
       case (TYPE_GRDFLX)
         grdflx(1,1) = x(wrf_meta%var_index(var_cnt))
       case (TYPE_HFX)
@@ -1507,6 +1926,10 @@ subroutine vector_to_wrf(x)
         znt(1,1) = x(wrf_meta%var_index(var_cnt))
       case (TYPE_GAMMA)
         h_gamma = x(wrf_meta%var_index(var_cnt))
+      case (TYPE_RAINNC)
+        rainnc(1,1) = x(wrf_meta%var_index(var_cnt))
+      case (TYPE_RAINNCV)
+        rainncv(1,1) = x(wrf_meta%var_index(var_cnt))
       case default
         call error_handler(E_ERR, 'vector_to_wrf', &
          'problem with noassim_scalar roll', source, revision, revdate)
@@ -1569,7 +1992,7 @@ select case ( init_f_type )
       time = set_date(start_year_f, start_month_f,&
                       start_day_f, start_hour_f+int(start_forecast/3600), &
                       start_minute_f,0)
-   case ('OBS')
+   case ('OBS' , 'SFC')
       time = set_date(start_year_f, start_month_f,&
                       start_day_f, start_hour_f, &
                       start_minute_f,0)
@@ -1601,15 +2024,12 @@ integer,            intent(out) :: istatus
 logical, parameter  :: debug = .false.
 real(r8)            :: zloc_ind, zloc_val, xyz_loc(3)
 integer             :: k, k1, k2
-real(r8)            :: dz,dzm,lon_ref_deg
-real(r8)            :: a1,utrue,vtrue,ugrid,vgrid
+real(r8)            :: dz,dzm
+real(r8)            :: a1,utrue,vtrue
 integer             :: in, ii, my_type
 character(len=129)  :: errstring
 
 real(r8), dimension(2) :: fld
-
-! radians to degrees
-lon_ref_deg = lon_ref / DEGRAD
 
 ! All forward operators supported   
 istatus = 0
@@ -1680,10 +2100,10 @@ if ( my_type .ne. TYPE_U10 .and. my_type .ne. TYPE_V10 .and. &
   if ( my_type == TYPE_U .or. my_type == TYPE_V ) then
      do k2 = 1,2
 
-       ugrid = x(get_wrf_index(k+k2-1,TYPE_U))
-       vgrid = x(get_wrf_index(k+k2-1,TYPE_V))
-
-       call gridwind_to_truewind(lon_ref_deg,my_projection,ugrid,vgrid,utrue,vtrue)
+       utrue = x(get_wrf_index(k+k2-1,TYPE_U))
+       vtrue = x(get_wrf_index(k+k2-1,TYPE_V))
+!      model now all true rotation so no need to do this!
+!       call gridwind_to_truewind(lon_ref_deg,my_projection,ugrid,vgrid,utrue,vtrue)
 
        if ( my_type == TYPE_U ) then
          fld(k2) = utrue
@@ -1717,10 +2137,11 @@ if ( my_type .ne. TYPE_U10 .and. my_type .ne. TYPE_V10 .and. &
 
 elseif ( my_type == TYPE_U10 .or. my_type == TYPE_V10 ) then !screen U,V
 
- ugrid = x(get_wrf_index(k,TYPE_U10))
- vgrid = x(get_wrf_index(k,TYPE_V10))
+ utrue = x(get_wrf_index(k,TYPE_U10))
+ vtrue = x(get_wrf_index(k,TYPE_V10))
 
- call gridwind_to_truewind(lon_ref_deg,my_projection,ugrid,vgrid,utrue,vtrue)
+!      model now all true rotation so no need to do this!
+! call gridwind_to_truewind(lon_ref_deg,my_projection,ugrid,vgrid,utrue,vtrue)
 
  if ( my_type == TYPE_U10 ) then
    obs_val = utrue
@@ -1865,6 +2286,59 @@ subroutine end_model()
 end subroutine end_model
 
 
+subroutine model_get_close_states(o_loc, radius, inum, indices, dist, x)
+!------------------------------------------------------------------
+!
+! Gets all states within radius of o_loc
+   
+implicit none
+
+type(location_type), intent(in) :: o_loc
+real(r8), intent(in) :: radius  
+integer, intent(out) :: inum, indices(:)
+real(r8), intent(out) :: dist(:)
+real(r8), intent(in) :: x(:)
+
+integer               :: i
+integer               :: which_vert
+real(r8)              :: obs_location(3)
+real(r8)              :: state_location(3)
+real(r8)              :: dist_tmp
+
+
+which_vert = query_location(o_loc,'which_vert')
+if ( which_vert > 1 ) then
+     call error_handler(E_ERR, 'model_get_close_states; column', &
+         'which_vert is invalid', source, revision, revdate)
+endif
+
+obs_location(:) = get_location(o_loc)
+
+! Only two possibilities here: in the column or out of it.  Distance
+! is entirely dependent on vertical location if it is in the column.
+! Horizontal location is allowed a small tolerance to account for 
+! precision.
+
+inum = 0
+do i = 1, wrf_meta%model_size
+  state_location(:) = get_location(state_loc(i))
+   if ( abs(obs_location(1) - state_location(1)) < 0.001 .and. (obs_location(2) - state_location(2)) < 0.001 ) then
+      if ( which_vert == -1 ) then ! surface
+        dist_tmp = state_location(3)
+      elseif ( which_vert == 1 ) then ! model level
+        dist_tmp = abs(obs_location(3)-state_location(3))
+      endif
+      if ( dist_tmp <= radius ) then
+        inum = inum + 1
+        indices(inum) = i
+        dist(inum) = dist_tmp
+      endif
+   endif
+
+enddo
+
+end subroutine model_get_close_states
+
 
 function nc_write_model_atts( ncFileID ) result (ierr)
 !------------------------------------------------------------------
@@ -1914,12 +2388,14 @@ integer :: StateVarID, MemberDimID, TimeDimID
 !------------------------------------------
 ! same for physical space
 !------------------------------------------
-integer :: ZVarVarID, SLVarVarID, PVarVarID
-integer :: ZVarDimID, SLVarDimID, PVarDimID
-integer :: ZVarID(10), &
-           SLVarID(2), ScrVarID(5), SkinVarID(5), SclrVarID(4)
+integer :: ZVarVarID, SLVarVarID 
+integer :: ZVarDimID, SLVarDimID, AVarDimID
+integer :: ZVarID(14), &
+           SLVarID(2), ScrVarID(5), SkinVarID(7), SclrVarID(7)
 ! U, V, Z, T, RHO, QV, TKE, P, U_G, V_G
 integer :: PVarID(wrf_meta%number_state_params) 
+! advection vars (big)
+integer :: AVarID(wrf_meta%number_of_2d_advection) 
 
 !--------------------------------------------------------------------
 ! local variables
@@ -1932,7 +2408,7 @@ integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=NF90_MAX_NAME) :: str1,str2
 
 ! strings for parameters
-character(len=10)     :: pName, pUnits      
+character(len=15)     :: pName, pUnits      
 character(len=30)     :: pLongName      
 character(len=129)   :: errstring
 
@@ -1972,6 +2448,8 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "PBL_1D"))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "PBL_type", bl_pbl_physics ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "sfclay_physics", sf_sfclay_physics ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "surface_physics", sf_surface_physics ))
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "ra_lw_physics", ra_lw_physics )) !...RT
+call check(nf90_put_att(ncFileID, NF90_GLOBAL, "ra_sw_physics", ra_sw_physics )) !...RT
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "dt", dt ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "dx", dx ))
 call check(nf90_put_att(ncFileID, NF90_GLOBAL, "deep_soil_moisture", deep_soil_moisture ))
@@ -2001,6 +2479,8 @@ call check(nf90_def_dim(ncid=ncFileID, name="z_level", &
                       len=nz, dimid = ZVarDimID))
 call check(nf90_def_dim(ncid=ncFileID, name="sl_level", &
                       len=num_soil_layers, dimid = SLVarDimID))
+call check(nf90_def_dim(ncid=ncFileID, name="advection_times", &
+                      len=nsplinetimes_advection, dimid = AVarDimID))
 
 !--------------------------------------------------------------------
 ! Define the Location Variable and add Attributes
@@ -2040,20 +2520,8 @@ else
 
   call check(NF90_def_var(ncFileID, name="z_level", xtype=nf90_int, &
                 dimids = ZVarDimID, varid=ZVarVarID) )
-  call check(nf90_put_att(ncFileID, ZVarVarID, "long_name", "atmospheric vertical level"))
-  call check(nf90_put_att(ncFileID, ZVarVarID, "cartesian_axis", "Z"))
-  call check(nf90_put_att(ncFileID, ZVarVarID, "positive", "up"))
-  call check(nf90_put_att(ncFileID, ZVarVarID, "units", "indexical"))
-  call check(nf90_put_att(ncFileID, ZVarVarID, "comment", "z_level = 1 is closest to the surface"))
-
   call check(NF90_def_var(ncFileID, name="sl_level", xtype=nf90_int, &
                 dimids = SLVarDimID, varid=SLVarVarID) )
-  call check(nf90_put_att(ncFileID, SLVarVarID, "long_name", "soil vertical level"))
-  call check(nf90_put_att(ncFileID, SLVarVarID, "cartesian_axis", "Z"))
-  call check(nf90_put_att(ncFileID, SLVarVarID, "positive", "down"))
-  call check(nf90_put_att(ncFileID, SLVarVarID, "units", "indexical"))
-  call check(nf90_put_att(ncFileID, SLVarVarID, "comment", "sl_level = 1 is closest to the surface"))
-
   call check(nf90_def_var(ncid=ncFileID, name="U", xtype=nf90_double, &
            dimids = (/ ZVarDimID, MemberDimID, TimeDimID /), varid=ZVarID(1)))
   call check(nf90_put_att(ncFileID, ZVarID(1), "long_name", "Zonal Wind"))
@@ -2095,6 +2563,22 @@ else
   call check(nf90_put_att(ncFileID, ZVarID(10), "long_name", "V Forcing"))
   call check(nf90_put_att(ncFileID, ZVarID(10), "units", "m/s"))
 
+  call check(nf90_def_var(ncid=ncFileID, name="RADHR", xtype=nf90_double, &
+           dimids = (/ ZVarDimID, MemberDimID, TimeDimID /), varid=ZVarID(11)))
+  call check(nf90_put_att(ncFileID, ZVarID(11), "long_name", "Rad. heating rate"))
+  call check(nf90_put_att(ncFileID, ZVarID(11), "units", "K/s"))
+  call check(nf90_def_var(ncid=ncFileID, name="RADHRLW", xtype=nf90_double, &
+           dimids = (/ ZVarDimID, MemberDimID, TimeDimID /), varid=ZVarID(12)))
+  call check(nf90_put_att(ncFileID, ZVarID(12), "long_name", "Rad. heating rate(LW)"))
+  call check(nf90_put_att(ncFileID, ZVarID(12), "units", "K/s"))
+
+  if ( P_QC > 1 ) then
+  call check(nf90_def_var(ncid=ncFileID, name="QC", xtype=nf90_double, &
+           dimids = (/ ZVarDimID, MemberDimID, TimeDimID /), varid=ZVarID(13)))
+  call check(nf90_put_att(ncFileID, ZVarID(13), "long_name", "Cld water MR"))
+  call check(nf90_put_att(ncFileID, ZVarID(13), "units", "kg/kg"))
+  endif
+
   call check(nf90_def_var(ncid=ncFileID, name="TSLB", xtype=nf90_double, &
            dimids = (/ SLVarDimID, MemberDimID, TimeDimID /), varid=SLVarID(1)))
   call check(nf90_put_att(ncFileID, SLVarID(1), "long_name", "Soil Temperature"))
@@ -2115,7 +2599,7 @@ else
   call check(nf90_def_var(ncid=ncFileID, name="T2", xtype=nf90_double, &
            dimids = (/ MemberDimID, TimeDimID /), varid=ScrVarID(3)))
   call check(nf90_put_att(ncFileID, ScrVarID(3), "long_name", "2-m T"))
-  call check(nf90_put_att(ncFileID, ScrVarID(3), "units", "m/s"))
+  call check(nf90_put_att(ncFileID, ScrVarID(3), "units", "K"))
   call check(nf90_def_var(ncid=ncFileID, name="Q2", xtype=nf90_double, &
            dimids = (/ MemberDimID, TimeDimID /), varid=ScrVarID(4)))
   call check(nf90_put_att(ncFileID, ScrVarID(4), "long_name", "2-m Mixing Ratio"))
@@ -2146,6 +2630,15 @@ else
   call check(nf90_put_att(ncFileID, SkinVarID(5), "long_name", "Accumulated precip"))
   call check(nf90_put_att(ncFileID, SkinVarID(5), "units", "m"))
 
+  call check(nf90_def_var(ncid=ncFileID, name="GSW", xtype=nf90_double, &
+           dimids = (/ MemberDimID, TimeDimID /), varid=SkinVarID(6)))
+  call check(nf90_put_att(ncFileID, SkinVarID(6), "long_name", "surface net SW radiative flux"))
+  call check(nf90_put_att(ncFileID, SkinVarID(6), "units", "W/m^2"))
+  call check(nf90_def_var(ncid=ncFileID, name="GLW", xtype=nf90_double, &
+           dimids = (/ MemberDimID, TimeDimID /), varid=SkinVarID(7)))
+  call check(nf90_put_att(ncFileID, SkinVarID(7), "long_name", "surface net LW radiative flux"))
+  call check(nf90_put_att(ncFileID, SkinVarID(7), "units", "W/m^2"))
+
   call check(nf90_def_var(ncid=ncFileID, name="PBLH", xtype=nf90_double, &
            dimids = (/ MemberDimID, TimeDimID /), varid=SclrVarID(1)))
   call check(nf90_put_att(ncFileID, SclrVarID(1), "long_name", "PBL height"))
@@ -2163,6 +2656,22 @@ else
            dimids = (/ MemberDimID, TimeDimID /), varid=SclrVarID(4)))
   call check(nf90_put_att(ncFileID, SclrVarID(4), "long_name", "Surface roughness for moisture"))
   call check(nf90_put_att(ncFileID, SclrVarID(4), "units", "m"))
+
+
+  if ( forc_stochastic_cloud ) then
+    call check(nf90_def_var(ncid=ncFileID, name="cld_flag", xtype=nf90_int, &
+             dimids = (/ MemberDimID, TimeDimID /), varid=SclrVarID(5)))
+    call check(nf90_put_att(ncFileID, SclrVarID(5), "long_name", "Flag for existence of a cloud"))
+    call check(nf90_put_att(ncFileID, SclrVarID(5), "units", "none"))
+    call check(nf90_def_var(ncid=ncFileID, name="cld_cbh", xtype=nf90_double, &
+             dimids = (/ MemberDimID, TimeDimID /), varid=SclrVarID(6)))
+    call check(nf90_put_att(ncFileID, SclrVarID(6), "long_name", "Cloud base height"))
+    call check(nf90_put_att(ncFileID, SclrVarID(6), "units", "km"))
+    call check(nf90_def_var(ncid=ncFileID, name="cld_lwp", xtype=nf90_double, &
+             dimids = (/ MemberDimID, TimeDimID /), varid=SclrVarID(7)))
+    call check(nf90_put_att(ncFileID, SclrVarID(7), "long_name", "Cloud liquid water path"))
+    call check(nf90_put_att(ncFileID, SclrVarID(7), "units", "g/m^2"))
+  endif
 
   ! and state parameters
   do i = 1, wrf_meta%number_state_params
@@ -2186,7 +2695,23 @@ else
         pName = "MAVAIL"
         pLongName = "Surface moisture availability"
         pUnits = ""
-      case default
+      case (TYPE_TADV_SCALE)
+        pName = "TADV_SCALE"
+        pLongName = "Temperature Advection scaling"
+        pUnits = ""
+      case (TYPE_UADV_SCALE)
+        pName = "UADV_SCALE"
+        pLongName = "U-wind Advection scaling"
+        pUnits = ""
+      case (TYPE_VADV_SCALE)
+        pName = "VADV_SCALE"
+        pLongName = "V-wind Advection scaling"
+        pUnits = ""
+      case (TYPE_QADV_SCALE)
+        pName = "QADV_SCALE"
+        pLongName = "Specific Humidity Advection scaling"
+        pUnits = ""
+       case default
         write(errstring,*) "No such parameter in the state vector"
         call error_handler(E_ERR,'nc_write_model_atts', errstring, &
            source, revision, revdate)
@@ -2196,6 +2721,93 @@ else
     call check(nf90_put_att(ncFileID, PVarID(i), "long_name", trim(pLongName)))
     call check(nf90_put_att(ncFileID, PVarID(i), "units", trim(pUnits)))
   enddo
+
+  ! and state parameters
+!  do i = 1, wrf_meta%number_of_2d_advection
+!    select case (130+i-1)
+!      case (TYPE_TH_UPSTREAM_X)
+!        pName = "TH_UPSTREAM_X"
+!        pLongName = "Upstream theta x-advection term"
+!        pUnits = ""
+!      case (TYPE_TH_UPSTREAM_Y)
+!        pName = "TH_UPSTREAM_Y"
+!        pLongName = "Upstream theta y-advection term"
+!        pUnits = ""
+!      case (TYPE_QV_UPSTREAM_X)
+!        pName = "QV_UPSTREAM_X"
+!        pLongName = "Upstream qv x-advection term"
+!        pUnits = ""
+!      case (TYPE_QV_UPSTREAM_Y)
+!        pName = "QV_UPSTREAM_Y"
+!        pLongName = "Upstream qv y-advection term"
+!        pUnits = ""
+!      case (TYPE_QC_UPSTREAM_X)
+!        pName = "QC_UPSTREAM_X"
+!        pLongName = "Upstream qc x-advection term"
+!        pUnits = ""
+!      case (TYPE_QC_UPSTREAM_Y)
+!        pName = "QC_UPSTREAM_Y"
+!        pLongName = "Upstream qc y-advection term"
+!        pUnits = ""
+!      case (TYPE_QR_UPSTREAM_X)
+!        pName = "QR_UPSTREAM_X"
+!        pLongName = "Upstream qr x-advection term"
+!        pUnits = ""
+!      case (TYPE_QR_UPSTREAM_Y)
+!        pName = "QR_UPSTREAM_Y"
+!        pLongName = "Upstream qr y-advection term"
+!        pUnits = ""
+!      case (TYPE_QI_UPSTREAM_X)
+!        pName = "QI_UPSTREAM_X"
+!        pLongName = "Upstream qi x-advection term"
+!        pUnits = ""
+!      case (TYPE_QI_UPSTREAM_Y)
+!        pName = "QI_UPSTREAM_Y"
+!        pLongName = "Upstream qi y-advection term"
+!        pUnits = ""
+!      case (TYPE_QG_UPSTREAM_X)
+!        pName = "QG_UPSTREAM_X"
+!        pLongName = "Upstream qg x-advection term"
+!        pUnits = ""
+!      case (TYPE_QG_UPSTREAM_Y)
+!        pName = "QG_UPSTREAM_Y"
+!        pLongName = "Upstream qg y-advection term"
+!        pUnits = ""
+!      case (TYPE_U_UPSTREAM_X)
+!        pName = "U_UPSTREAM_X"
+!        pLongName = "Upstream u x-advection term"
+!        pUnits = ""
+!      case (TYPE_U_UPSTREAM_Y)
+!        pName = "U_UPSTREAM_Y"
+!        pLongName = "Upstream u y-advection term"
+!        pUnits = ""
+!      case (TYPE_V_UPSTREAM_X)
+!        pName = "V_UPSTREAM_X"
+!        pLongName = "Upstream v x-advection term"
+!        pUnits = ""
+!      case (TYPE_V_UPSTREAM_Y)
+!        pName = "V_UPSTREAM_Y"
+!        pLongName = "Upstream v y-advection term"
+!        pUnits = ""
+!      case (TYPE_TAU_U)
+!        pName = "TAU_U"
+!        pLongName = "U-wind advective time scale"
+!        pUnits = ""
+!      case (TYPE_TAU_V)
+!        pName = "TAU_V"
+!        pLongName = "V-wind advective time scale"
+!        pUnits = ""
+!      case default
+!        write(errstring,*) "No such parameter in the state vector"
+!        call error_handler(E_ERR,'nc_write_model_atts', errstring, &
+!           source, revision, revdate)
+!    end select
+!    call check(nf90_def_var(ncid=ncFileID, name=trim(pName), xtype=nf90_double,&
+!             dimids = (/ ZVarDimID, AVarDimID, MemberDimID, TimeDimID /), &
+!             varid=AVarID(i)))
+!    call check(nf90_put_att(ncFileID, AVarID(i), "long_name", trim(pLongName)))
+!    call check(nf90_put_att(ncFileID, AVarID(i), "units", trim(pUnits)))
+!  enddo
 
 endif
 
@@ -2282,16 +2894,17 @@ integer                            :: ierr          ! return value of function
 !-------------------------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: StateVarID, ZVarID(10), &
-           ScrVarID(5), SLVarID(2), SkinVarID(5), SclrVarID(4)
+integer :: StateVarID, ZVarID(14), &
+           ScrVarID(5), SLVarID(2), SkinVarID(7), SclrVarID(7)
 integer :: PVarID(wrf_meta%number_state_params)
+integer :: AVarID(wrf_meta%number_of_2d_advection)
 
 !-------------------------------------------------------------------------------
 ! local variables
 !-------------------------------------------------------------------------------
 
 character(len=129)   :: errstring
-character(len=10)  :: pName
+character(len=15)  :: pName
 ierr = 0                      ! assume normal termination
 
 !-------------------------------------------------------------------------------
@@ -2307,6 +2920,7 @@ if ( output_state_vector ) then
                start=(/ 1, copyindex, timeindex /)))
 else
   call vector_to_wrf(statevec)
+  t_phy=th_phy*pi_phy
 
   call check(NF90_inq_varid(ncFileID, "U", ZVarID(1)) )
   call check(NF90_put_var(ncFileID, ZVarID(1), u_phy(1,:,1),  &
@@ -2338,6 +2952,19 @@ else
   call check(NF90_inq_varid(ncFileID, "V_G", ZVarID(10)) )
   call check(NF90_put_var(ncFileID, ZVarID(10), v_g(:),  &
                start=(/ 1, copyindex, timeindex /)))
+
+  call check(NF90_inq_varid(ncFileID, "RADHR", ZVarID(11)) )
+  call check(NF90_put_var(ncFileID, ZVarID(11), rthraten(1,:,1),  &
+               start=(/ 1, copyindex, timeindex /)))
+  call check(NF90_inq_varid(ncFileID, "RADHRLW", ZVarID(12)) )
+  call check(NF90_put_var(ncFileID, ZVarID(12), rthratenlw(1,:,1),  &
+               start=(/ 1, copyindex, timeindex /)))
+
+  if ( P_QC > 1 ) then
+    call check(NF90_inq_varid(ncFileID, "QC", ZVarID(14)) )
+    call check(NF90_put_var(ncFileID, ZVarID(14), moist(1,:,1,P_QC),  &
+               start=(/ 1, copyindex, timeindex /)))
+  endif
 
   call check(NF90_inq_varid(ncFileID, "TSLB", SLVarID(1)) )
   call check(NF90_put_var(ncFileID, SLVarID(1), tslb(1,:,1),  &
@@ -2378,6 +3005,13 @@ else
   call check(NF90_put_var(ncFileID, SkinVarID(5), rainncv,  &
                start=(/ copyindex, timeindex /)))
 
+  call check(NF90_inq_varid(ncFileID, "GSW", SkinVarID(6)) )
+  call check(NF90_put_var(ncFileID, SkinVarID(6), gsw,  &
+               start=(/ copyindex, timeindex /)))
+  call check(NF90_inq_varid(ncFileID, "GLW", SkinVarID(7)) )
+  call check(NF90_put_var(ncFileID, SkinVarID(7), glw,  &
+               start=(/ copyindex, timeindex /)))
+
   call check(NF90_inq_varid(ncFileID, "PBLH", SclrVarID(1)) )
   call check(NF90_put_var(ncFileID, SclrVarID(1), pblh(1,1),  &
                start=(/ copyindex, timeindex /)))
@@ -2390,6 +3024,20 @@ else
   call check(NF90_inq_varid(ncFileID, "z_q", SclrVarID(4)) )
   call check(NF90_put_var(ncFileID, SclrVarID(4), z_q,  &
                start=(/ copyindex, timeindex /)))
+
+  if ( forc_stochastic_cloud ) then
+
+     call check(NF90_inq_varid(ncFileID, "cld_flag", SclrVarID(5)) )
+     call check(NF90_put_var(ncFileID, SclrVarID(5), stoch_yn(itimestep),  &
+               start=(/ copyindex, timeindex /)))
+     call check(NF90_inq_varid(ncFileID, "cld_cbh", SclrVarID(6)) )
+     call check(NF90_put_var(ncFileID, SclrVarID(6), stoch_cbh(itimestep),  &
+               start=(/ copyindex, timeindex /)))
+     call check(NF90_inq_varid(ncFileID, "cld_lwp", SclrVarID(7)) )
+     call check(NF90_put_var(ncFileID, SclrVarID(7), stoch_lwp(itimestep),  &
+               start=(/ copyindex, timeindex /)))
+
+  endif
 
   ! and state parameters
   do i = 1, wrf_meta%number_state_params
@@ -2419,6 +3067,26 @@ else
         call check(NF90_inq_varid(ncFileID, trim(pName), PVarID(i)) )
         call check(NF90_put_var(ncFileID, PVarID(i), mavail(1,1),  &
                      start=(/ copyindex, timeindex /)))
+      case (TYPE_TADV_SCALE)
+        pName = "TADV_SCALE"
+        call check(NF90_inq_varid(ncFileID, trim(pName), PVarID(i)) )
+        call check(NF90_put_var(ncFileID, PVarID(i), tadvection_scale(1,1),  &
+                     start=(/ copyindex, timeindex /)))
+      case (TYPE_QADV_SCALE)
+        pName = "QADV_SCALE"
+        call check(NF90_inq_varid(ncFileID, trim(pName), PVarID(i)) )
+        call check(NF90_put_var(ncFileID, PVarID(i), qadvection_scale(1,1),  &
+                     start=(/ copyindex, timeindex /)))
+      case (TYPE_UADV_SCALE)
+        pName = "UADV_SCALE"
+        call check(NF90_inq_varid(ncFileID, trim(pName), PVarID(i)) )
+        call check(NF90_put_var(ncFileID, PVarID(i), uadvection_scale(1,1),  &
+                     start=(/ copyindex, timeindex /)))
+      case (TYPE_VADV_SCALE)
+        pName = "VADV_SCALE"
+        call check(NF90_inq_varid(ncFileID, trim(pName), PVarID(i)) )
+        call check(NF90_put_var(ncFileID, PVarID(i), vadvection_scale(1,1),  &
+                     start=(/ copyindex, timeindex /)))
       case default
         write(errstring,*) "No such parameter in the state vector"
         call error_handler(E_ERR,'nc_write_model_vars', errstring, &
@@ -2426,6 +3094,105 @@ else
     end select
  enddo
 
+! and advection variables
+! do i = 1, wrf_meta%number_of_2d_advection
+!    select case (130+i-1)
+!      case (TYPE_TH_UPSTREAM_X)
+!        pName = "TH_UPSTREAM_X"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), th_upstream_x_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_TH_UPSTREAM_Y)
+!        pName = "TH_UPSTREAM_Y"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), th_upstream_y_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_QV_UPSTREAM_X)
+!        pName = "QV_UPSTREAM_X"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), qv_upstream_x_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_QV_UPSTREAM_Y)
+!        pName = "QV_UPSTREAM_Y"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), qv_upstream_y_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_QC_UPSTREAM_X)
+!        pName = "QC_UPSTREAM_X"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), qc_upstream_x_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_QC_UPSTREAM_Y)
+!        pName = "QC_UPSTREAM_Y"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), qc_upstream_y_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_QR_UPSTREAM_X)
+!        pName = "QR_UPSTREAM_X"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), qr_upstream_x_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_QR_UPSTREAM_Y)
+!        pName = "QR_UPSTREAM_Y"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), qr_upstream_y_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_QI_UPSTREAM_X)
+!        pName = "QI_UPSTREAM_X"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), qi_upstream_x_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_QI_UPSTREAM_Y)
+!        pName = "QI_UPSTREAM_Y"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), qi_upstream_y_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_QG_UPSTREAM_X)
+!        pName = "QG_UPSTREAM_X"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), qg_upstream_x_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_QG_UPSTREAM_Y)
+!        pName = "QG_UPSTREAM_Y"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), qg_upstream_y_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_U_UPSTREAM_X)
+!        pName = "U_UPSTREAM_X"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), u_upstream_x_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_U_UPSTREAM_Y)
+!        pName = "U_UPSTREAM_Y"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), u_upstream_y_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_V_UPSTREAM_X)
+!        pName = "V_UPSTREAM_X"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), v_upstream_x_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_V_UPSTREAM_Y)
+!        pName = "V_UPSTREAM_Y"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), v_upstream_y_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_TAU_U)
+!        pName = "TAU_U"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), tau_u_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case (TYPE_TAU_V)
+!        pName = "TAU_V"
+!        call check(NF90_inq_varid(ncFileID, trim(pName), AVarID(i)) )
+!        call check(NF90_put_var(ncFileID, AVarID(i), tau_v_f,  &
+!                     start=(/ 1, 1, copyindex, timeindex /)))
+!      case default
+!        write(errstring,*) "Variable "//pName//" not found in the state vector"
+!        call error_handler(E_ERR,'nc_write_model_vars', errstring, &
+!           source, revision, revdate)
+!    end select
+! enddo
 endif
 
 ! write (*,*)'Finished filling variables ...'
@@ -2464,8 +3231,8 @@ integer                            :: ierr          ! return value of function
 !-------------------------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: StateVarID, ZVarID(10), &
-           ScrVarID(5),SLVarID(2),SkinVarID(4),SclrVarID(4)
+integer :: StateVarID, ZVarID(13), &
+           ScrVarID(5),SLVarID(2),SkinVarID(7),SclrVarID(4)
 
 !-------------------------------------------------------------------------------
 ! local variables
@@ -2516,6 +3283,16 @@ else
   call check(NF90_get_var(ncFileID, ZVarID(10), v_g(:),  &
                start=(/ 1, copyindex, timeindex /)))
 
+  call check(NF90_inq_varid(ncFileID, "RADHR", ZVarID(11)) )
+  call check(NF90_get_var(ncFileID, ZVarID(11), rthraten(1,:,1),  &
+               start=(/ 1, copyindex, timeindex /)))
+  call check(NF90_inq_varid(ncFileID, "RADHRLW", ZVarID(12)) )
+  call check(NF90_get_var(ncFileID, ZVarID(12), rthratenlw(1,:,1),  &
+               start=(/ 1, copyindex, timeindex /)))
+  call check(NF90_inq_varid(ncFileID, "QC", ZVarID(13)) )
+  call check(NF90_get_var(ncFileID, ZVarID(13), moist(1,:,1,P_QC),  &
+               start=(/ 1, copyindex, timeindex /)))
+
   call check(NF90_inq_varid(ncFileID, "TSLB", SLVarID(1)) )
   call check(NF90_get_var(ncFileID, SLVarID(1), tslb(1,:,1),  &
                start=(/ 1, copyindex, timeindex /)))
@@ -2550,6 +3327,13 @@ else
                start=(/ copyindex, timeindex /)))
   call check(NF90_inq_varid(ncFileID, "QVG", SkinVarID(4)) )
   call check(NF90_get_var(ncFileID, SkinVarID(4), qvg(1,1),  &
+               start=(/ copyindex, timeindex /)))
+
+  call check(NF90_inq_varid(ncFileID, "GSW", SkinVarID(6)) )
+  call check(NF90_get_var(ncFileID, SkinVarID(6), gsw(1,1),  &
+               start=(/ copyindex, timeindex /)))
+  call check(NF90_inq_varid(ncFileID, "GLW", SkinVarID(7)) )
+  call check(NF90_get_var(ncFileID, SkinVarID(7), glw(1,1),  &
                start=(/ copyindex, timeindex /)))
 
   call check(NF90_inq_varid(ncFileID, "PBLH", SclrVarID(1)) )
@@ -2603,46 +3387,6 @@ call init_conditions(pert_state)
 
 end subroutine pert_model_state
 
-SUBROUTINE get_projection(projcode,sw_corner_lat, sw_corner_lon, &
-                          center_i, center_j, &
-                          dx, stdlon, truelat1, truelat2)
-
-   use netcdf
-! Gets grid-related global attributes from input file
-
-   integer, intent(out)  :: projcode
-   real(r8), intent(out) :: center_i, center_j, truelat1, truelat2
-   real(r8), intent(out) :: sw_corner_lat, sw_corner_lon, dx, stdlon
-
-   integer  :: istatus, ncID
-
-   ! these are unknown and unnecessary
-   center_i = -999.
-   center_j = -999.
-
-   ! get the rest from the file
-   call check(nf90_open(trim(indir)//'/'//init_f_file,NF90_NOWRITE,ncID))
- 
-   call check(nf90_get_att(ncid,NF90_GLOBAL,'MAP_PROJ',projcode))
-   call check(nf90_get_att(ncid,NF90_GLOBAL,'SW_LAT',sw_corner_lat))
-   call check(nf90_get_att(ncid,NF90_GLOBAL,'SW_LON',sw_corner_lon))
-   call check(nf90_get_att(ncid,NF90_GLOBAL,'DX',dx))
-   call check(nf90_get_att(ncid,NF90_GLOBAL,'CEN_LON',stdlon))
-   call check(nf90_get_att(ncid,NF90_GLOBAL,'TRUELAT1',truelat1))
-   call check(nf90_get_att(ncid,NF90_GLOBAL,'TRUELAT2',truelat2))
-   call check(nf90_close(ncid))
-
-   RETURN
-   contains
-   ! Internal subroutine - checks error status after each netcdf, prints
-   !                       text message each time an error code is returned.
-   subroutine check(istatus)
-      integer, intent ( in) :: istatus
-      if(istatus /= nf90_noerr) call error_handler(E_ERR,'get_projection',&
-         trim(nf90_strerror(istatus)), source, revision, revdate)
-   end subroutine check
-END SUBROUTINE get_projection
-
 !----------------------------------------------------------------------
 !************* Miscellaneous functions/subroutines to do specific jobs
 !----------------------------------------------------------------------
@@ -2672,6 +3416,7 @@ subroutine init_params(x)
 
          case ( 'norm' )
             x(xloc) = x(xloc)+random_gaussian(param_ran_seq,0.0,wrf_meta%pert_init_sd(iP))
+
          case ( 'logn' )
 
             x(xloc) = dexp(x(xloc))
@@ -2696,6 +3441,14 @@ subroutine init_params(x)
                 mP = thc(1,1)    
               case (TYPE_MAVAIL)
                 mP = mavail(1,1) 
+              case (TYPE_TADV_SCALE)
+                mP = tadvection_scale(1,1) 
+              case (TYPE_QADV_SCALE)
+                mP = qadvection_scale(1,1) 
+              case (TYPE_UADV_SCALE)
+                mP = uadvection_scale(1,1) 
+              case (TYPE_VADV_SCALE)
+                mP = vadvection_scale(1,1) 
               case default
                 call error_handler(E_ERR, 'init_params', &
                  'problem initializing parameter', source, revision, revdate)

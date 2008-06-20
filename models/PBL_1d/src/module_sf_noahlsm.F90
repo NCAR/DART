@@ -1,5 +1,6 @@
 MODULE module_sf_noahlsm
  
+  USE module_misc
   USE module_model_constants
 
 !-------------------------------
@@ -41,10 +42,6 @@ MODULE module_sf_noahlsm
 CONTAINS
 !
 
-
-  LOGICAL FUNCTION wrf_dm_on_monitor()
-    wrf_dm_on_monitor = .TRUE.
-  END FUNCTION wrf_dm_on_monitor
 
 
 !----------------------------------------------------------------
@@ -436,6 +433,8 @@ CONTAINS
      REAL :: CHS2_URB
      REAL :: UST_URB
 
+     real :: f, fup, res
+
 ! ----------------------------------------------------------------------
 ! DECLARATIONS END - urban
 ! ----------------------------------------------------------------------
@@ -655,7 +654,6 @@ CONTAINS
                  SMCWLT,SMCDRY,SMCREF,SMCMAX,NROOT)
 
 
-
           IF(IPRINT) THEN 
        print*, 'AFTER SFLX, in Noahlsm_driver'
        print*, 'ICE', ICE, 'DT',DT, 'ZLVL',ZLVL, 'NSOIL', NSOIL,   &
@@ -707,6 +705,16 @@ CONTAINS
            SH2O(I,NS,J)=SWC(NS)
    80     CONTINUE                                                      
 !       ENDIF                                                           
+!     print*,'albedo, emiss, stbolt ',albedo,emiss,stbolt
+!    print*,'tsk ',tsk
+!     print*,'components ',gsw,-albedo*gsw,emiss*glw,-emiss*stbolt*tsk**4,-lh,-hfx,grdflx
+     f = gsw(1,1) + lwdn
+     fup = emissi * STBOLT * (t1**4)
+     res = f - sheat + ssoil - eta - fup - flx1 - flx2 - flx3
+     print*,res
+!     print*,'residual ',gsw(1,1) + lwdn - emissi * STBOLT * (t1**4) - sheat + ssoil - eta
+
+
 
         IF (UCMCALL == 1 ) THEN                                              ! Beginning of UCM CALL if block
 !--------------------------------------
@@ -909,6 +917,7 @@ CONTAINS
   100 CONTINUE                                                          ! of I loop
 
    ENDDO                                                                ! of J loop
+
 !------------------------------------------------------
    END SUBROUTINE lsm
 !------------------------------------------------------
@@ -2040,7 +2049,6 @@ CONTAINS
       REAL, INTENT(IN)  ::  ALB, SNOALB, SHDFAC, SHDMIN, SNCOVR, TSNOW                
       REAL, INTENT(OUT) ::  ALBEDO
       ALBEDO = ALB + (1.0- (SHDFAC - SHDMIN))* SNCOVR * (SNOALB - ALB)           
-                                                                                 
 !     BASE FORMULATION (DICKINSON ET AL., 1986, COGLEY ET AL., 1990)             
 !          IF (TSNOW.LE.263.16) THEN                                             
 !            ALBEDO=SNOALB                                                       
@@ -2282,7 +2290,6 @@ CONTAINS
 ! ALLOW FOR THE DIRECT-EVAP-REDUCING EFFECT OF SHADE                             
 ! ----------------------------------------------------------------------         
       EDIR = FX * ( 1.0- SHDFAC ) * ETP1                                         
-                                                                                 
 ! ----------------------------------------------------------------------         
   END SUBROUTINE DEVAP                                                           
 ! ----------------------------------------------------------------------         

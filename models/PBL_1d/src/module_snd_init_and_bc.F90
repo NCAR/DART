@@ -18,7 +18,7 @@ MODULE module_snd_init_and_bc
                                    lat_ref, lon_ref, julday_ref, mminlu_ref,&
                                    init_flux_file, init_soil_file, &
                                    rnd_init, start_forecast, init_smos_file, &
-                                   force_uvg
+                                   force_uvg, init_f_type
   USE module_interpolations, only: linear
 
   IMPLICIT NONE
@@ -91,7 +91,7 @@ CONTAINS
    INTEGER              :: ierr
 
 ! some error checking on the namelist choices
-   IF ( .not. force_uvg ) THEN
+   IF ( .not. force_uvg .and. trim(init_f_type) .ne. 'SFC' ) THEN
    IF (mod(forecast_length,interval_f) /= 0) THEN
       print*,'Please choose forecast_length and hour_inteval such that'
       print*,'a profile is available at both init and end times'
@@ -279,7 +279,7 @@ CONTAINS
     REAL, ALLOCATABLE, DIMENSION(:,:,:,:) :: work, work_soil
     REAL, ALLOCATABLE, DIMENSION(:,:,:)   :: work_flux, work_smos
     INTEGER, ALLOCATABLE, DIMENSION(:):: time_snd, time_list, days_list, &
-                                         secs_list
+                                         secs_list, secs_smos,days_smos
     INTEGER                           :: timediff
     REAL, ALLOCATABLE, DIMENSION(:)   :: time_flux, time_soil, time_smos
     REAL, ALLOCATABLE, DIMENSION(:,:) :: offset_snd
@@ -300,7 +300,7 @@ CONTAINS
                                                   req_smos_days
     REAL                                       :: missingVal
     TYPE(time_type)                            :: requested_snd_time
-    TYPE(time_type), ALLOCATABLE, DIMENSION(:) :: snd_times
+    TYPE(time_type), ALLOCATABLE, DIMENSION(:) :: snd_times, smos_times
     TYPE(time_type)                            :: time_tolerance
     TYPE(time_type)                            :: epoch_time
     TYPE(time_type)                            :: req_flux_time
@@ -341,8 +341,9 @@ CONTAINS
 
 ! get the times
    ALLOCATE(time_list(nrecords), days_list(nrecords), secs_list(nrecords))
-   ALLOCATE(snd_times(nrecords))
-   ALLOCATE(time_flux(nflux_file), time_soil(nsoil_file), time_smos(nsmos_file))
+   ALLOCATE(snd_times(nrecords), smos_times(nsmos_file))
+   ALLOCATE(time_flux(nflux_file), time_soil(nsoil_file))
+   ALLOCATE(time_smos(nsmos_file), days_smos(nsmos_file), secs_smos(nsmos_file))
 
    ierr= nf_get_vara_int(ncid,ptid(1),(/1/),(/nrecords/),time_list(:))
    ierr= nf_get_att_double(ncid, ptid(2), "missing_value", missingVal)
@@ -359,14 +360,27 @@ CONTAINS
                                      set_time(secs_list(i),days_list(i))
    ENDDO
 
+   ierr= nf_get_vara_double(ncid_smos,smtid(1),(/1/),(/nsmos_file/),time_smos)
+
+   WHERE (time_smos < 0)
+     time_smos = missingVal
+   ELSE WHERE
+     secs_smos = mod(int(time_smos),86400)
+     days_smos = (int(time_smos) - secs_smos) / 86400 
+   END WHERE
+
+   DO i = 1, nsmos_file
+     IF (int(time_smos(i)) /= missingVal) smos_times(i) = epoch_time + &
+                                     set_time(secs_smos(i),days_smos(i))
+   ENDDO
+
    ierr= nf_get_vara_double(ncid_flux,fltid(1),(/1/),(/nflux_file/),time_flux)
    ierr= nf_get_vara_double(ncid_soil,sltid(1),(/1/),(/nsoil_file/),time_soil)
-   ierr= nf_get_vara_double(ncid_smos,smtid(1),(/1/),(/nsmos_file/),time_smos)
 
 ! if the year is negative we get a random one valid at the
 ! same time of day, otherwise the specified sounding
 
-   IF ( rnd_init ) THEN
+   IF ( rnd_init /= 2 ) THEN
 print*, 'CANNOT CHOOSE RANDOM OBS YET!'
 stop 'snd_init_and_bc'
       nmix = 2
@@ -379,6 +393,10 @@ stop 'snd_init_and_bc'
       requested_snd_time = set_date(start_year_f, start_month_f, &
                                     start_day_f, start_hour_f,   &
                                     start_minute_f, 0)
+
+      !------------------------------------------------------
+      IF ( trim(init_f_type) /= 'SFC' ) THEN ! key off sounding
+
       DO i = 1, nrecords
          IF ( snd_times(i) >= (requested_snd_time-time_tolerance) .and. &
               snd_times(i) <= (requested_snd_time+time_tolerance) ) THEN
@@ -390,7 +408,7 @@ stop 'snd_init_and_bc'
          print*
          print*,'Could not find requested input sounding: '
          call print_date(requested_snd_time)
-         stop 'module_snd_init_and_bc'
+         if ( trim(init_f_type) /= 'SFC' ) stop 'module_snd_init_and_bc'
       ENDIF
       IF ( .not. force_uvg ) THEN
       do i = 0, nt-2
@@ -403,15 +421,16 @@ stop 'snd_init_and_bc'
          print*,timediff
          print*,'This could be caused by either a missing sounding or ', &
                 'an incorrect namelist value'
-         stop 'module_snd_init_and_bc'
+         if ( trim(init_f_type) /= 'SFC' ) stop 'module_snd_init_and_bc'
          ENDIF
       enddo
-      ENDIF
+      ENDIF ! init_type = SFC
+
       IF ( time_list(requested_snd_index) == missingVal ) THEN
          print*
          print*,'Requested input sounding is missing in the input file: '
          call print_date(requested_snd_time)
-         stop 'module_snd_init_and_bc'
+         if ( trim(init_f_type) /= 'SFC' ) stop 'module_snd_init_and_bc'
       ENDIF
       IF ( .not. force_uvg ) THEN
       IF ( minval(time_list(requested_snd_index:requested_snd_index+nt-1)) &
@@ -419,7 +438,7 @@ stop 'snd_init_and_bc'
          print*
          print*,'A missing sounding prevents a simulation of ',&
                  forecast_length,' seconds'
-         stop 'module_snd_init_and_bc'
+         if ( trim(init_f_type) /= 'SFC' ) stop 'module_snd_init_and_bc'
       ENDIF
       ENDIF
 
@@ -430,10 +449,69 @@ stop 'snd_init_and_bc'
              ' for the obs_sequence is near'
       call print_time(requested_snd_time)
 
+      call find_matching_index(int(time_smos),time_list(requested_snd_index), &
+                           requested_smos_index, &
+                           req_smos_secs, req_smos_days)
+
+      IF ( requested_smos_index < 0 ) THEN
+         print*
+         print*,'Could not find requested input surface met: '
+         CALL print_date(requested_snd_time)
+         stop 'module_snd_init_and_bc'
+      ENDIF
+
+      !------------------------------------------------------
+      ELSE ! key off smos (only care about sfc obs)
+
+      DO i = 1, nsmos_file
+         IF ( smos_times(i) >= (requested_snd_time-time_tolerance) .and. &
+              smos_times(i) <= (requested_snd_time+time_tolerance) ) THEN
+            requested_smos_index = i 
+         ENDIF
+      ENDDO
+      IF ( requested_smos_index < 0 ) THEN
+         print*
+         print*,'Could not find requested input smos data: '
+         call print_date(requested_snd_time)
+         stop 'module_snd_init_and_bc'
+      ENDIF
+
+      req_smos_secs = secs_smos(requested_smos_index)
+      req_smos_days = days_smos(requested_smos_index)
+
+      ENDIF
+!  if we are running to get the obs out only (init_f_type == 'SFC') then
+!  use the smos times directly and ignore everything else
+   
+
+      IF (time_smos(requested_smos_index+1) - time_smos(requested_smos_index) &
+          /= interval_smos ) THEN
+         print*
+         print*,'The interval in the smos file does not agree with ',&
+                'your namelist interval_f_soil: ',interval_smos
+         print*,time_smos(requested_smos_index+1)-time_smos(requested_smos_index)
+         stop 'module_snd_init_and_bc'
+      ENDIF
+ 
+      req_smos_time = epoch_time + set_time(req_smos_secs,req_smos_days)
+      print*,'Using corresponding SMOS date: '
+      call print_date(req_smos_time)
+
    ! and the specific flux to go with it
+      IF ( trim(init_f_type)  /= 'SFC' ) THEN
+
       CALL find_matching_index(INT(time_flux),time_list(requested_snd_index), &
                            requested_flux_index, &
                            req_flux_secs, req_flux_days)
+ 
+      ELSE
+
+      CALL find_matching_index(INT(time_flux), &
+                           INT(time_smos(requested_smos_index)), &
+                           requested_flux_index, &
+                           req_flux_secs, req_flux_days)
+
+      ENDIF
 
       IF ( requested_flux_index < 0 ) THEN
          print*
@@ -455,9 +533,20 @@ stop 'snd_init_and_bc'
       call print_date(req_flux_time)
 
    ! and the specific soil info to go with it
+      IF ( trim(init_f_type)  /= 'SFC' ) THEN
+
       CALL find_matching_index(INT(time_soil),time_list(requested_snd_index), &
                            requested_soil_index, &
                            req_soil_secs, req_soil_days)
+
+      ELSE
+
+      CALL find_matching_index(INT(time_soil),  &
+                           INT(time_smos(requested_smos_index)), &
+                           requested_soil_index, &
+                           req_soil_secs, req_soil_days)
+
+      ENDIF
 
       IF ( requested_soil_index < 0 ) THEN
          print*
@@ -477,31 +566,6 @@ stop 'snd_init_and_bc'
       req_soil_time = epoch_time + set_time(req_soil_secs,req_soil_days)
       print*,'Using corresponding SOIL date: '
       call print_date(req_soil_time)
-
-   ! and the specific smos to go with it
-      CALL find_matching_index(INT(time_smos),time_list(requested_snd_index), &
-                           requested_smos_index, &
-                           req_smos_secs, req_smos_days)
-
-      IF ( requested_smos_index < 0 ) THEN
-         print*
-         print*,'Could not find requested input surface met: '
-         call print_date(requested_snd_time)
-         stop 'module_snd_init_and_bc'
-      ENDIF
-
-      IF (time_smos(requested_smos_index+1) - time_smos(requested_smos_index) &
-          /= interval_smos ) THEN
-         print*
-         print*,'The interval in the smos file does not agree with ',&
-                'your namelist interval_f_soil: ',interval_smos
-         print*,time_smos(requested_smos_index+1)-time_smos(requested_smos_index)
-         stop 'module_snd_init_and_bc'
-      ENDIF
- 
-      req_smos_time = epoch_time + set_time(req_smos_secs,req_smos_days)
-      print*,'Using corresponding SMOS date: '
-      call print_date(req_smos_time)
 
    ENDIF ! want a specific sounding
 
@@ -648,7 +712,12 @@ print*,'got them all? ',got_all_soundings
          print*
          print*,'Missing data prevents a simulation of ',&
                  forecast_length,' seconds'
-         stop 'module_snd_init_and_bc'
+        
+         if ( trim(init_f_type) == 'SFC' ) then
+           got_all_soundings = .true.
+         else
+           stop 'module_snd_init_and_bc'
+         endif
       ELSEIF ( .not. got_all_soundings ) THEN
          print*,'Trying again to get full forcing profiles'
       ENDIF
@@ -893,6 +962,7 @@ print*,'got them all? ',got_all_soundings
 !------------------------------------------------------------------------
   REAL FUNCTION get_qv(p,e)
 
+! returns water vapor mixing ratio
 ! p, e should be in the same units.  output in g/g
   IMPLICIT NONE
 

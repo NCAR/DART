@@ -95,7 +95,7 @@ make || exit $n
 echo
 echo "Building this model requires the real*8 override flag be added to the"
 echo "default mkmf.template rules. If the following compile fails read the"
-echo "comments in the workshop_setup.csh script for more help."
+echo "comments in the quickbuild.csh script for more help."
 echo
 
 foreach TARGET ( mkmf_* )

@@ -1,5 +1,7 @@
 MODULE module_interpolations
 
+public spline, linear, seval
+private
 CONTAINS
 
   SUBROUTINE spline (n, x, y, b, c, d)
@@ -155,7 +157,7 @@ CONTAINS
     RETURN
   END FUNCTION seval
 
-  FUNCTION linear(x,y,n,xi)
+  REAL FUNCTION linear(x,y,n,xi)
 
 !.....performs linear interpolation for function y given at points x
 !.....for points xi, result is output as yi
@@ -164,15 +166,20 @@ CONTAINS
 
     IMPLICIT NONE
 
-    REAL :: linear
+!    REAL :: linear
     INTEGER :: i,n
-    REAL :: x(n),y(n)
+    REAL, intent(in), dimension(n) :: x,y
     REAL :: xi
     INTEGER :: j, nx
 
+    real, dimension(n) :: xtmp,ytmp
+
+    xtmp = x
+    ytmp = y
+
     IF ( n > 1 ) THEN
        i = 1
-       DO WHILE ( x(i) < xi .and. i < n ) 
+       DO WHILE ( xtmp(i) < xi .and. i < n ) 
          i = i+1
        ENDDO
        nx = i! + 1
@@ -181,25 +188,25 @@ CONTAINS
     ENDIF
 
     DO i=2,nx
-       IF (x(i) < x(i-1)) THEN
-          IF (ABS(x(i)-x(i-1)) < 1.e-4) THEN
-             x(i)=x(i-1)+1.e-4
-             y(i)=y(i-1)
+       IF (xtmp(i) < xtmp(i-1)) THEN
+          IF (ABS(xtmp(i)-xtmp(i-1)) < 1.e-4) THEN
+             xtmp(i)=xtmp(i-1)+1.e-4
+             ytmp(i)=ytmp(i-1)
           ELSE
-             PRINT *,'x in not increasing order',x(i),x(i-1)
+             PRINT *,'x is not increasing order',xtmp(i-1),xtmp(i)
              STOP
           ENDIF
        ENDIF
     ENDDO
     
-    IF (ABS(xi-x(1)) < 1.e-4) THEN
-       linear=y(1)
+    IF (ABS(xi-xtmp(1)) < 1.e-4) THEN
+       linear=ytmp(1)
        RETURN
     ENDIF
     
-    IF (xi < x(1)) THEN
+    IF (xi < xtmp(1)) THEN
        PRINT *,'need to extrapolate, -9999. assigned'
-       PRINT *, 'xi less than x(1) ',xi,x(1)
+       PRINT *, 'xi less than x(1) ',xi,xtmp(1)
        PRINT*
        PRINT *,'NOTE: This will cause the model to crash and is only ',&
                'appropriate for outputting the analyis'
@@ -210,25 +217,24 @@ CONTAINS
 !       STOP
     ENDIF
     
-    IF (xi > x(nx)) THEN
+    IF (xi > xtmp(nx)) THEN
 !       PRINT *,'need to extrapolate 99999. assigned'
-       PRINT *, 'xi greater than x(n) ',xi,x(n)
+       PRINT *, 'xi greater than x(n) ',xi,xtmp(n)
        PRINT *,'Stopping in linear'
        STOP
     ENDIF
     
     j=1
-    DO WHILE (x(j) < xi)
+    DO WHILE (xtmp(j) < xi)
        j=j+1
-       IF (ABS(xi-x(j)) < 1.e-4) THEN
-          linear=y(j)
+       IF (ABS(xi-xtmp(j)) < 1.e-4) THEN
+          linear=ytmp(j)
           RETURN
        ENDIF
     ENDDO
 
-    linear=y(j)-(x(j)-xi)*(y(j)-y(j-1))/(x(j)-x(j-1))
-    
-1000 CONTINUE
+    linear=ytmp(j)-(xtmp(j)-xi)*(ytmp(j)-ytmp(j-1))/(xtmp(j)-xtmp(j-1))
+    RETURN
     
   END FUNCTION linear
   

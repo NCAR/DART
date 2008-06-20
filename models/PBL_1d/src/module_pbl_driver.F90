@@ -5,8 +5,8 @@ MODULE module_pbl_driver
 CONTAINS
 
 !------------------------------------------------------------------
-   SUBROUTINE pbl_driver(bl_pbl_physics,sf_surface_physics,ra_lw_physics,&
-                  itimestep,dt,u_frame,v_frame                     &
+   SUBROUTINE pbl_driver(bl_pbl_physics,sf_surface_physics         &
+                 ,ra_lw_physics_i,itimestep,dt,u_frame,v_frame     &
                  ,rublten,rvblten,rthblten                         &
                  ,tsk,xland,znt,ht                                 &
                  ,ust,pblh,hfx,qfx,grdflx                          &
@@ -187,7 +187,7 @@ CONTAINS
 
    CHARACTER(len=15) :: bl_pbl_physics,sf_surface_physics
 
-   INTEGER,    INTENT(IN   )    :: ra_lw_physics
+   INTEGER,    INTENT(IN   )    :: ra_lw_physics_i
 
    INTEGER,    INTENT(IN   )    ::     ids,ide, jds,jde, kds,kde, &
                                        ims,ime, jms,jme, kms,kme, &
@@ -343,7 +343,7 @@ CONTAINS
   IF (itimestep .eq. 1 .or. mod(itimestep,STEPBL) .eq. 0) THEN
 
   radiation = .false.
-  IF (ra_lw_physics .gt. 0) radiation = .true.
+  IF (ra_lw_physics_i .gt. 0) radiation = .true.
 
 !---- 
 ! CALCULATE CONSTANT

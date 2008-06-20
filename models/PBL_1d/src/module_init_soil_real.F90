@@ -518,6 +518,7 @@ SUBROUTINE init_soil_real_snd(julday, lu_index, ivgtyp, &
             EXIT
          ENDIF
       ENDDO
+
       IF (tmn(1,1) < 0.) THEN
          PRINT *,'WARNING: No soil temperature found using reference ',&
               &'for deep soil temperature'
@@ -593,6 +594,7 @@ SUBROUTINE init_soil_real_snd(julday, lu_index, ivgtyp, &
    ELSEIF (sf_surface_physics=='LSMSCHEME') THEN
 
       CALL init_soil_depth_2 ( zs , dzs , num_soil_layers )
+print*,tslb_init_f(:,itime_f)
 
       IF (tslb_init_f(1,itime_f) < 0.) THEN
          PRINT *,'WARNING: No soil temperature found using reference',&
@@ -629,7 +631,7 @@ SUBROUTINE init_soil_real_snd(julday, lu_index, ivgtyp, &
          ENDIF
          sm_input(1,1,3)=smois_init_f(kns_f_m,itime_f)
       ENDIF
-      
+
       CALL init_soil_2_real ( tsk , tmn , smois , tslb , &
            st_input , sm_input , landmask_input , sst_input , &
            zs , dzs , &
