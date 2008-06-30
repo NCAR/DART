@@ -9,9 +9,9 @@
 #
 # <next few lines under version control, do not edit>
 # $URL$
-# $Id: mkmf.template.pgf90.ghotiol 2713 2007-03-26 04:09:04Z thoar $
+# $Id$
 # $Revision$
-# $Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $
+# $Date$
 
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...

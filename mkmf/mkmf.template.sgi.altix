@@ -9,9 +9,9 @@
 #
 # <next few lines under version control, do not edit>
 # $URL$
-# $Id: mkmf.template.ifort.linuxcluster 2691 2007-03-11 18:18:09Z thoar $
+# $Id$
 # $Revision$
-# $Date: 2007-03-11 12:18:09 -0600 (Sun, 11 Mar 2007) $
+# $Date$
 
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
