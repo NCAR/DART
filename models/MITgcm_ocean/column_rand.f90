@@ -7,9 +7,9 @@ program column_rand
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: column_rand.f90 3131 2007-11-01 23:21:49Z thoar $
+! $Id$
 ! $Revision$
-! $Date: 2007-11-01 17:21:49 -0600 (Thu, 01 Nov 2007) $
+! $Date$
 
 ! Allows creation of input file for generating a set of randomly located
 ! observation stations with full column of obs.
@@ -25,7 +25,7 @@ implicit none
 character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
-   revdate  = "$Date: 2007-11-01 17:21:49 -0600 (Thu, 01 Nov 2007) $"
+   revdate  = "$Date$"
 
 integer  :: level, num_cols, num_levs, i, iunit
 real(r8) :: lat, lon, t_err_var, uv_err_var, ps_err_var

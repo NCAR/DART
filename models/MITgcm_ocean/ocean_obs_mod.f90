@@ -6,10 +6,10 @@
 module ocean_obs_mod
 
 ! <next few lines under version control, do not edit>
-! $URL: http://subversion.ucar.edu/DAReS/DART/trunk/ncep_obs/ocean_obs_mod.f90 $
-! $Id: ocean_obs_mod.f90 3349 2008-05-16 19:35:31Z thoar $
-! $Revision: 3349 $
-! $Date: 2008-05-16 13:35:31 -0600 (Fri, 16 May 2008) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 use types_mod,        only : r8, rad2deg, PI
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
@@ -46,9 +46,9 @@ public :: real_obs_sequence
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL: http://subversion.ucar.edu/DAReS/DART/trunk/ncep_obs/ocean_obs_mod.f90 $", &
-   revision = "$Revision: 3349 $", &
-   revdate  = "$Date: 2008-05-16 13:35:31 -0600 (Fri, 16 May 2008) $"
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 

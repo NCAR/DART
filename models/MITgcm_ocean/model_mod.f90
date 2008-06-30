@@ -7,9 +7,9 @@ module model_mod
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: model_mod.f90 2786 2007-04-03 22:44:36Z nancy $
+! $Id$
 ! $Revision$
-! $Date: 2007-04-03 16:44:36 -0600 (Tue, 03 Apr 2007) $
+! $Date$
 
 ! This is the interface between the MITgcm ocean model and DART.
 
@@ -68,7 +68,7 @@ public :: prog_var_to_vector, vector_to_prog_var, &
 character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
-   revdate  = "$Date: 2007-04-03 16:44:36 -0600 (Tue, 03 Apr 2007) $"
+   revdate  = "$Date$"
 
 character(len=129) :: msgstring
 logical, save :: module_initialized = .false.

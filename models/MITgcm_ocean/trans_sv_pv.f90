@@ -16,10 +16,10 @@ program trans_sv_pv
 !----------------------------------------------------------------------
 
 ! <next few lines under version control, do not edit>
-! $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/MITgcm_ocean/trans_sv_pv.f90 $
-! $Id: trans_sv_pv.f90 3258 2008-03-14 15:58:36Z thoar $
-! $Revision: 3258 $
-! $Date: 2008-03-14 09:58:36 -0600 (Fri, 14 Mar 2008) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 use        types_mod, only : r4, r8
 use    utilities_mod, only : E_ERR, E_WARN, E_MSG, error_handler, open_file, &
@@ -36,9 +36,9 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/MITgcm_ocean/trans_sv_pv.f90 $", &
-   revision = "$Revision: 3258 $", &
-   revdate  = "$Date: 2008-03-14 09:58:36 -0600 (Fri, 14 Mar 2008) $"
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 character (len = 128) :: file_in  = 'assim_model_state_ic'
 

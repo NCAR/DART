@@ -6,10 +6,10 @@
 program create_ocean_obs
 
 ! <next few lines under version control, do not edit>
-! $URL: http://subversion.ucar.edu/DAReS/DART/trunk/ncep_obs/create_ocean_obs.f90 $
-! $Id: create_ocean_obs.f90 3304 2008-04-09 22:20:02Z nancy $
-! $Revision: 3304 $
-! $Date: 2008-04-09 16:20:02 -0600 (Wed, 09 Apr 2008) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 ! Initial program to read the raw ocean observations and insert them
 ! into an observation sequence. To make things easy ... we will mandate
@@ -29,9 +29,9 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL: http://subversion.ucar.edu/DAReS/DART/trunk/ncep_obs/create_ocean_obs.f90 $", &
-   revision = "$Revision: 3304 $", &
-   revdate  = "$Date: 2008-04-09 16:20:02 -0600 (Wed, 09 Apr 2008) $"
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
 
