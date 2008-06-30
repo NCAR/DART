@@ -7,9 +7,9 @@ program trans_pv_sv
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: trans_pv_sv.f90 2713 2007-03-26 04:09:04Z thoar $
+! $Id$
 ! $Revision$
-! $Date: 2007-03-26 00:09:04 -0400 (Mon, 26 Mar 2007) $
+! $Date$
 
 !----------------------------------------------------------------------
 ! purpose: interface between CAM and DART
@@ -42,7 +42,7 @@ implicit none
 character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
-   revdate  = "$Date: 2007-03-26 00:09:04 -0400 (Mon, 26 Mar 2007) $"
+   revdate  = "$Date$"
 
 ! character (len = 128) :: file_name = 'caminput.nc', file_out = 'temp_ic'
 ! Guam; move time stripping from script into here

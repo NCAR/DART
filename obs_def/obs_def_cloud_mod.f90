@@ -11,7 +11,7 @@
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: $
+! $Id$
 ! $Revision$
-! $Date: $
+! $Date$
 

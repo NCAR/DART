@@ -7,9 +7,9 @@
 #
 # <next few lines under version control, do not edit>
 # $URL$
-# $Id: check_model.csh 2691 2007-03-11 18:18:09Z thoar $
+# $Id$
 # $Revision$
-# $Date: 2007-03-11 11:18:09 -0700 (Sun, 11 Mar 2007) $
+# $Date$
 
 if ($#argv < 1) then
    echo "usage; check_cam num_ens_members"

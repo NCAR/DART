@@ -7,9 +7,9 @@ program trans_date_to_dart
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: trans_date_to_dart.f90 2713 2007-03-26 04:09:04Z thoar $
+! $Id$
 ! $Revision$
-! $Date: 2007-03-26 00:09:04 -0400 (Mon, 26 Mar 2007) $
+! $Date$
 
 !----------------------------------------------------------------------
 ! purpose: generate a Gregorian/DART date & time from standard date and time
@@ -33,7 +33,7 @@ implicit none
 character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
-   revdate  = "$Date: 2007-03-26 00:09:04 -0400 (Mon, 26 Mar 2007) $"
+   revdate  = "$Date$"
 
 integer               :: calendar_type = GREGORIAN
 integer               :: file_unit, seconds, &

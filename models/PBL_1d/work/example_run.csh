@@ -7,9 +7,9 @@
 #
 # <next few lines under version control, do not edit>
 # $URL$
-# $Id: workshop_setup.csh 2852 2007-04-12 02:01:30Z thoar $
+# $Id$
 # $Revision$
-# $Date: 2007-04-11 20:01:30 -0600 (Wed, 11 Apr 2007) $
+# $Date$
 
 # Script to manage the compilation of all components for this model;
 # executes a known "perfect model" experiment using an existing

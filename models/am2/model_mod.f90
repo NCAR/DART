@@ -7,9 +7,9 @@ module model_mod
   
   ! <next few lines under version control, do not edit>
   ! $URL$
-  ! $Id:  $
+  ! $Id$
   ! $Revision$
-  ! $Date:  $
+  ! $Date$
   
   !----------------------------------------------------------------------
   ! purpose: interface between AM2 and DART
@@ -171,11 +171,11 @@ module model_mod
   !-----------------------------------------------------------------------
   ! version controlled file description for error handling, do not edit
   character(len=128) :: version = "$Revision$"
-  character(len=128) :: tag = "$Id: model_mod.f90 3163 2007-12-07 20:39:48Z nancy $"
+  character(len=128) :: tag = "$Id$"
   character(len=128), parameter :: &
      source   = "$URL$", &
      revision = "$Revision$", &
-     revdate  = "$Date: 2007-12-07 15:39:48 -0500 (Fri, 07 Dec 2007) $"
+     revdate  = "$Date$"
   !-----------------------------------------------------------------------
 
 contains

@@ -6,10 +6,10 @@
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next few lines under version control, do not edit>
-# $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/lorenz_96/work/workshop_setup.csh $
-# $Id: workshop_setup.csh 2752 2007-03-30 22:12:18Z thoar $
-# $Revision: 2752 $
-# $Date: 2007-03-30 16:12:18 -0600 (Fri, 30 Mar 2007) $
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
 
 # Script to manage the compilation of all components for this model;
 # executes a known "perfect model" experiment using an existing

@@ -7,9 +7,9 @@ program ftest_nc
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: ftest_f90.f90 2713 2007-03-26 04:09:04Z thoar $
+! $Id$
 ! $Revision$
-! $Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $
+! $Date$
 
 ! fortran program which uses netcdf (and NOT mpi). netcdf 3.6.x and beyond
 ! comes with a fortran 90 module to define netcdf interfaces and

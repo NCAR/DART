@@ -7,9 +7,9 @@
 #
 # <next few lines under version control, do not edit>
 # $URL$
-# $Id: advance_model.csh 3116 2007-10-15 17:56:07Z nancy $
+# $Id$
 # $Revision$
-# $Date: 2007-10-15 10:56:07 -0700 (Mon, 15 Oct 2007) $
+# $Date$
 
 #----------------------------------------------------------------------
 # advance_model.csh

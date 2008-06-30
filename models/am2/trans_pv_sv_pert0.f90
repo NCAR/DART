@@ -7,9 +7,9 @@ program trans_pv_sv_pert0
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: trans_pv_sv_time0.f90 2713 2007-03-26 04:09:04Z thoar $
+! $Id$
 ! $Revision$
-! $Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $
+! $Date$
 
 !----------------------------------------------------------------------
 ! purpose: interface between CAM and DART, 
@@ -45,7 +45,7 @@ implicit none
 character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
-   revdate  = "$Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $"
+   revdate  = "$Date$"
 
 character (len = 128) :: file_name = 'caminput.nc', file_out = 'temp_ud'
 ! Hawaii;                          file_time = 'temp_ic'

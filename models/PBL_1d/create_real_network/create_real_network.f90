@@ -7,9 +7,9 @@ program create_real_network_seq
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: create_real_network.f90 2713 2007-03-26 04:09:04Z thoar $
+! $Id$
 ! $Revision$
-! $Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $
+! $Date$
 
 ! JPH
 ! This code originated from create_fixed_network.  It uses module_wrf to get
@@ -55,7 +55,7 @@ implicit none
 character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
-   revdate  = "$Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $"
+   revdate  = "$Date$"
 
 
 type(obs_sequence_type) :: seq, seq_in, seq_out

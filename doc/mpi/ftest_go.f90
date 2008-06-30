@@ -7,9 +7,9 @@ program ftest_go
 
 ! <next few lines under version control, do not edit>
 ! $URL$
-! $Id: ftest_mpi.f90 2713 2007-03-26 04:09:04Z thoar $
+! $Id$
 ! $Revision$
-! $Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $
+! $Date$
 
 ! test using named pipes to synchronize two separate executables.
 ! used in the async=4 mode of running a parallel filter and running
