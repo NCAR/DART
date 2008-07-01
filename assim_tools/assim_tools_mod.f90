@@ -1401,8 +1401,9 @@ real(r8), intent(out) :: rel_weight(ens_size)
 
 integer  :: i, e_ind(ens_size), lowest_box, j
 real(r8) :: a
-real(r8) :: sx, prior_mean, prior_var
+real(r8) :: sx, prior_mean, prior_var, prior_var_d2
 real(r8) :: var_ratio, new_var, new_sd, umass, left_weight, right_weight
+real(r8) :: new_mean, temp_mean, temp_var
 real(r8) :: mass(2*ens_size), weight(ens_size), cumul_mass(0:2*ens_size)
 real(r8) :: new_mean_left, new_mean_right, prod_weight_left, prod_weight_right
 real(r8) :: new_ens(ens_size), mass_sum, const_term
@@ -1449,21 +1450,21 @@ prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 ! Since 1/2 of a normal is outside, need to multiply by 2 / (ens_size + 1)
 
 ! Need some sort of width for the boundary kernel, try 1/2 the VAR for now
-prior_var = prior_var / 2.0_r8
+prior_var_d2 = prior_var / 2.0_r8
 
 ! Compute the product of the obs error gaussian with the prior gaussian (EAKF)
 ! Left wing first
-var_ratio = obs_var / (prior_var + obs_var)
-new_var = var_ratio * prior_var
+var_ratio = obs_var / (prior_var_d2 + obs_var)
+new_var = var_ratio * prior_var_d2
 new_sd = sqrt(new_var)
-new_mean_left  = var_ratio * (ens(e_ind(1))  + prior_var*obs / obs_var)
-new_mean_right  = var_ratio * (ens(e_ind(ens_size))  + prior_var*obs / obs_var)
+new_mean_left  = var_ratio * (ens(e_ind(1))  + prior_var_d2*obs / obs_var)
+new_mean_right  = var_ratio * (ens(e_ind(ens_size))  + prior_var_d2*obs / obs_var)
 ! REMEMBER, this product has an associated weight which must be taken into account
 ! See Anderson and Anderson for this weight term (or tutorial kernel filter)
-prod_weight_left =  2.71828_r8 ** (-0.5_r8 * (ens(e_ind(1))**2 / prior_var + &
+prod_weight_left =  2.71828_r8 ** (-0.5_r8 * (ens(e_ind(1))**2 / prior_var_d2 + &
       obs**2 / obs_var - new_mean_left**2 / new_var)) / sqrt(2.0_r8 * PI)
 
-prod_weight_right =  2.71828_r8 ** (-0.5_r8 * (ens(e_ind(ens_size))**2 / prior_var + &
+prod_weight_right =  2.71828_r8 ** (-0.5_r8 * (ens(e_ind(ens_size))**2 / prior_var_d2 + &
       obs**2 / obs_var - new_mean_right**2 / new_var)) / sqrt(2.0_r8 * PI)
 
 ! Split into 2*ens_size domains; mass in each is computed
@@ -1544,7 +1545,7 @@ end subroutine obs_increment_boxcar
 
 subroutine obs_increment_boxcar2(ens, ens_size, obs, obs_var, obs_inc)
 !------------------------------------------------------------------------
-!
+! 
 ! Initiated 4 June, 2008
 ! Attempt to clean up, improve and simplify original boxcar filter idea.
 ! This will be less like a particle filter. Idea is that prior is represented
@@ -1552,7 +1553,7 @@ subroutine obs_increment_boxcar2(ens, ens_size, obs, obs_var, obs_inc)
 ! boxes it is a gaussian although this will be defined slightly differently.
 ! The likelihood is assumed gaussian here although it would be possible to
 ! extend to something non-Guassian if desired for certain types of obs
-! error.
+! error. 
 ! The product is taken over each of the interior boxes by computing the mass
 ! of the likelihood funtion that fits in that box.
 ! The product for the tails is trickier...
@@ -1566,9 +1567,9 @@ real(r8), intent(in)  :: ens(ens_size), obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 
 integer  :: i, e_ind(ens_size), lowest_box, j
-real(r8) :: prior_mean, prior_var
+real(r8) :: prior_mean, prior_var, prior_sd
 real(r8) :: var_ratio, new_var, umass, left_mass, right_mass
-real(r8) :: left_sd, left_var, right_sd, right_var
+real(r8) :: left_sd, left_var, right_sd, right_var, left_mean, right_mean
 real(r8) :: new_mean, temp_mean, temp_var
 real(r8) :: mass(ens_size + 1), like(ens_size), cumul_mass(0:ens_size + 1)
 real(r8) :: nmass(ens_size + 1)
@@ -1606,38 +1607,67 @@ end do
 prior_mean = sum(ens) / ens_size
 ! prior_var only used for diagnostic evaluation during development
 prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
+prior_sd = sqrt(prior_var)
 
 
 ! Compute standard deviation of lower and upper tail gaussians
 ! Mean of tail distributions is ensemble mean
-! Standard deviation is selected so that exactly 1/(n+1) of mass lies
+! Standard deviation is selected so that exactly 1/(n+1) of mass lies 
 ! outside the outermost ensemble members.
-! Computing the sd for the lower tail distribution
-dist_to_first = prior_mean - x(1)
+! Computing the sd for the lower tail distribution 
 ! For unit normal, find distance from mean to where cdf is 1/(n+1)
 ! Lots of this can be done once in first call and then saved
 call weighted_norm_inv(1.0_r8, 0.0_r8, 1.0_r8, &
    1.0_r8 / (ens_size + 1.0_r8), dist_for_unit_sd)
 dist_for_unit_sd = -1.0_r8 * dist_for_unit_sd
-! Proportion to find sd so that first ensemble member is where cdf is 1/(n + 1)
-left_sd = dist_to_first / dist_for_unit_sd
-left_var = left_sd**2
 
+
+!*********** Following block is original from early June 2008 **************
+! This one uses the distance from the prior mean to the 1st ensemble member
+! to design a tail that is N(prior_mean, left_var) so that first ensemble 
+! member is where cdf is 1/(n + 1). For small ensembles this has a tendency
+! to lose variance on the tails through sampling error.
+!!!dist_to_first = prior_mean - x(1)
+!!!left_mean = prior_mean
+!!!left_sd = dist_to_first / dist_for_unit_sd
+!!!left_var = left_sd**2
+!*********** End block *****************************************************
+
+!*********** CANDIDATE REPLACEMENT BLOCK July 2008 *************************
+! Have variance of tails just be sample prior variance
+! Mean is adjusted so that 1/(n+1) is outside
+left_mean = x(1) + dist_for_unit_sd * prior_sd
+left_var = prior_var
+left_sd = prior_sd
+!*********** END BLOCK ***********************************
+
+!*********** Following block is original from early June 2008 **************
 ! Get sd for the upper tail distribution
-dist_to_last = x(ens_size) - prior_mean
+!!!dist_to_last = x(ens_size) - prior_mean
 ! Proportion to find sd so that first ensemble member is where cdf is 1/(n + 1)
-right_sd = dist_to_last / dist_for_unit_sd
-right_var = right_sd**2
+!!!right_mean = prior_mean
+!!!right_sd = dist_to_last / dist_for_unit_sd
+!!!right_var = right_sd**2
+!*********** End block ****************************************************
 
-! Compute the product of the obs likelihood gaussian with the priors
+!*********** CANDIDATE REPLACEMENT BLOCK ***********************************
+! Have variance of tails just be sample prior variance
+! Mean is adjusted so that 1/(n+1) is outside
+right_mean = x(ens_size) - dist_for_unit_sd * prior_sd
+right_var = prior_var
+right_sd = prior_sd
+!*********** END BLOCK ***********************************
+
+
+! Compute the product of the obs likelihood gaussian with the priors 
 ! Left tail gaussian first
 var_ratio = obs_var / (left_var + obs_var)
 new_var_left = var_ratio * left_var
 new_sd_left = sqrt(new_var_left)
-new_mean_left  = var_ratio * (prior_mean  + left_var*obs / obs_var)
+new_mean_left  = var_ratio * (left_mean  + left_var*obs / obs_var)
 ! REMEMBER, this product has an associated weight which must be taken into account
 ! See Anderson and Anderson for this weight term (or tutorial kernel filter)
-prod_weight_left =  exp(-0.5_r8 * (prior_mean**2 / left_var + &
+prod_weight_left =  exp(-0.5_r8 * (left_mean**2 / left_var + &
       obs**2 / obs_var - new_mean_left**2 / new_var_left)) / &
       sqrt(2.0_r8 * PI * (left_var + obs_var))
 
@@ -1645,8 +1675,8 @@ prod_weight_left =  exp(-0.5_r8 * (prior_mean**2 / left_var + &
 var_ratio = obs_var / (right_var + obs_var)
 new_var_right = var_ratio * right_var
 new_sd_right = sqrt(new_var_right)
-new_mean_right  = var_ratio * (prior_mean  + right_var*obs / obs_var)
-prod_weight_right =  exp(-0.5_r8 * (prior_mean**2 / right_var + &
+new_mean_right  = var_ratio * (right_mean  + right_var*obs / obs_var)
+prod_weight_right =  exp(-0.5_r8 * (right_mean**2 / right_var + &
       obs**2 / obs_var - new_mean_right**2 / new_var_right)) / &
       sqrt(2.0_r8 * PI * (right_var + obs_var))
 
@@ -1662,7 +1692,7 @@ mass(ens_size + 1) = (1.0_r8 - norm_cdf(x(ens_size), new_mean_right, &
 ! The height of the prior is 1 / ((n+1) width);   multiplying by width leaves 1/(n+1)
 
 ! In prior, have 1/(n+1) mass in each bin, multiply by mean likelihood density
-! to get approximate mass in updated bin
+! to get approximate mass in updated bin 
 do i = 2, ens_size
    mass(i) = like_dense(i) / (ens_size + 1.0_r8)
    ! Height of prior in this bin is mass/width
@@ -1712,7 +1742,7 @@ do i = 1, ens_size
          if(umass >= cumul_mass(j) .and. umass <= cumul_mass(j + 1)) then
 
             !!! Commented block does rectangular quadrature
-            !!! Without this comment does trapezoidal quadrature
+            !!! Block below does trapezoidal quadrature that is more accurate
             !!! Linearly interpolate in mass
             !!! new_ens(i) = x(j) + ((umass - cumul_mass(j)) / &
                !!! (cumul_mass(j+1) - cumul_mass(j))) * (x(j + 1) - x(j))
@@ -1733,7 +1763,7 @@ do i = 1, ens_size
             call solve_quadratic(a, b, c, r1, r2)
             adj_r1 = r1 + x(j)
             adj_r2 = r2 + x(j)
-           if(adj_r1 >= x(j) .and. adj_r1 <= x(j+1)) then
+            if(adj_r1 >= x(j) .and. adj_r1 <= x(j+1)) then
                new_ens(i) = adj_r1
             elseif (adj_r2 >= x(j) .and. adj_r2 <= x(j+1)) then
                new_ens(i) = adj_r2
@@ -1750,8 +1780,8 @@ do i = 1, ens_size
                write(*, *) 'mass_sum', mass_sum
                stop
             endif
-
-            1213 continue
+            
+           1213 continue 
 
             ! Don't need to search lower boxes again
             lowest_box = j
