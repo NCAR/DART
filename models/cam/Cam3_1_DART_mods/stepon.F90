@@ -9,10 +9,10 @@
 #endif
 
 ! <next few lines under version control, do not edit>
-! $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/cam/model_mod.f90 $
-! $Id: model_mod.f90 2721 2007-03-27 00:08:01Z thoar $
-! $Revision: 2721 $
-! $Date: 2007-03-26 18:08:01 -0600 (Mon, 26 Mar 2007) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 subroutine stepon
 !----------------------------------------------------------------------- 

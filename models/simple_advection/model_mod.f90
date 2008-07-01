@@ -6,10 +6,10 @@
 module model_mod
 
 ! <next few lines under version control, do not edit>
-! $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/lorenz_96/model_mod.f90 $
-! $Id: model_mod.f90 2722 2007-03-27 00:38:10Z thoar $
-! $Revision: 2722 $
-! $Date: 2007-03-26 18:38:10 -0600 (Mon, 26 Mar 2007) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 use        types_mod, only : r8, PI
 use time_manager_mod, only : time_type, set_time, get_time
@@ -49,9 +49,9 @@ public :: get_model_size, &
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/lorenz_96/model_mod.f90 $", &
-   revision = "$Revision: 2722 $", &
-   revdate  = "$Date: 2007-03-26 18:38:10 -0600 (Mon, 26 Mar 2007) $"
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 ! Simplest 1D advection model with spatially-constant wind
 

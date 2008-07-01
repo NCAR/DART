@@ -10,10 +10,10 @@
 module history
 
 ! <next few lines under version control, do not edit>
-! $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/cam/model_mod.f90 $
-! $Id: model_mod.f90 2721 2007-03-27 00:08:01Z thoar $
-! $Revision: 2721 $
-! $Date: 2007-03-26 18:08:01 -0600 (Mon, 26 Mar 2007) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 !----------------------------------------------------------------------- 
 ! 
@@ -2263,8 +2263,8 @@ CONTAINS
 !
 ! Initialize history file handler
 !
-! $Id: history.F90,v 1.26.2.64 2005/03/16 00:59:52 pworley Exp $
-! $Author: pworley $
+! $Id$
+! $Author$
 !
    call scm_histfield_ini()
 !
@@ -3394,7 +3394,7 @@ end subroutine scm_intht
       call wrap_put_att_text (nfid(T), NF_GLOBAL, 'Version', &
            '$Name: cam3_1_brnchT_release01 $')
       call wrap_put_att_text (nfid(T), NF_GLOBAL, 'revision_Id', &
-           '$Id: history.F90,v 1.26.2.64 2005/03/16 00:59:52 pworley Exp $')
+           '$Id$')
       call wrap_put_att_text (nfid(T), NF_GLOBAL, 'initial_file', ncdata)
       call wrap_put_att_text (nfid(T), NF_GLOBAL, 'topography_file', bnd_topo)
       call wrap_put_att_text (nfid(T), NF_GLOBAL, 'sst_file', bndtvs)

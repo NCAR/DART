@@ -8,10 +8,10 @@
 module inicFileMod
 
 ! <next few lines under version control, do not edit>
-! $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/cam/model_mod.f90 $
-! $Id: model_mod.f90 2721 2007-03-27 00:08:01Z thoar $
-! $Revision: 2721 $
-! $Date: 2007-03-26 18:08:01 -0600 (Mon, 26 Mar 2007) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 !-----------------------------------------------------------------------
 !BOP
@@ -173,7 +173,7 @@ contains
           str = '$Name: cam3_1_brnchT_release01 $' 
           call check_ret(nf_put_att_text(ncid, NF_GLOBAL, 'version', len_trim(str), trim(str)), subname)
           
-          str = '$Id: inicFileMod.F90,v 1.10.10.18 2005/03/10 21:02:14 rosinski Exp $'
+          str = '$Id$'
           call check_ret(nf_put_att_text(ncid, NF_GLOBAL, 'revision_id', len_trim(str), trim(str)), subname)
 
           str = ctitle

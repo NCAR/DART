@@ -168,10 +168,10 @@ MODULE map_utils
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! <next few lines under version control, do not edit>
-! $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/PBL_1d/module_map_utils.f90 $
-! $Id: module_map_utils.f90 2713 2007-03-26 04:09:04Z thoar $
-! $Revision: 2713 $
-! $Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 
   use         types_mod, only : r8

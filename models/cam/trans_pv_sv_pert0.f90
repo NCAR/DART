@@ -6,10 +6,10 @@
 program trans_pv_sv_pert0
 
 ! <next few lines under version control, do not edit>
-! $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/cam/trans_pv_sv_time0.f90 $
-! $Id: trans_pv_sv_time0.f90 2713 2007-03-26 04:09:04Z thoar $
-! $Revision: 2713 $
-! $Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 !----------------------------------------------------------------------
 ! purpose: interface between CAM and DART, 
@@ -43,9 +43,9 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/cam/trans_pv_sv_time0.f90 $", &
-   revision = "$Revision: 2713 $", &
-   revdate  = "$Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $"
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 character (len = 128) :: file_name = 'caminput.nc', file_out = 'temp_ud'
 ! Hawaii;                          file_time = 'temp_ic'
