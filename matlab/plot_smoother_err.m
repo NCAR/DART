@@ -11,10 +11,10 @@
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
 % <next few lines under version control, do not edit>
-% $URL: http://subversion.ucar.edu/DAReS/DART/trunk/matlab/plot_total_err.m $
-% $Id: plot_total_err.m 2691 2007-03-11 18:18:09Z thoar $
-% $Revision: 2691 $
-% $Date: 2007-03-11 12:18:09 -0600 (Sun, 11 Mar 2007) $
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
 lag_file   = 'Lag_%05d_Diag.nc'; % pattern for lag file names
 

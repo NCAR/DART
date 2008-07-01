@@ -4,10 +4,10 @@
 /* Licensed under the GPL -- www.gpl.org/licenses/gpl.html       */
 
 /* <next few lines under version control, do not edit> */
-/* $URL: http://subversion.ucar.edu/DAReS/DART/trunk/doc/mpi/ctest_nc.c $ */
-/* $Id: ftest_f90.f90 2713 2007-03-26 04:09:04Z thoar $ */
-/* $Revision: 2875 $ */
-/* $Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $ */
+/* $URL$ */
+/* $Id$ */
+/* $Revision$ */
+/* $Date$ */
 
 /* A simple netCDF "c" program to test that the netCDF c interfaces work.   */
 /*                                                                          */

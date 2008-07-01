@@ -6,10 +6,10 @@
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next few lines under version control, do not edit>
-# $URL: http://subversion.ucar.edu/DAReS/DART/trunk/ncep_obs/prep_bufr/work/prepbufr.csh $
-# $Id: prepbufr.csh 3042 2007-08-02 22:03:02Z thoar $
-# $Revision: 3042 $
-# $Date: 2007-08-02 16:03:02 -0600 (Thu, 02 Aug 2007) $
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
 
 #--------------------------------------------------------------
 # DESCRIPTION:

@@ -4,10 +4,10 @@
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
 ! <next few lines under version control, do not edit>
-! $URL: http://subversion.ucar.edu/DAReS/DART/trunk/obs_def/obs_def_simple_advection_mod.f90 $
-! $Id: obs_def_simple_advection_mod.f90 2713 2007-03-26 04:09:04Z thoar $
-! $Revision: 2713 $
-! $Date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 ! BEGIN DART PREPROCESS KIND LIST
 !VELOCITY,                     KIND_VELOCITY,              COMMON_CODE

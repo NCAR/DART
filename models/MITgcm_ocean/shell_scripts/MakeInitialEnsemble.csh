@@ -5,7 +5,7 @@
 # University Corporation for Atmospheric Research
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# $Id: runmodel_1x 2799 2007-04-04 23:17:51Z thoar $
+# $Id$
 #
 #=============================================================================
 # So the background is that we ran the model for 14 days with a 900 second

@@ -1,10 +1,10 @@
 #!/bin/sh 
 #
 # <next few lines under version control, do not edit>
-# $URL: http://subversion.ucar.edu/DAReS/DART/trunk/ncep_obs/prep_bufr/install/install.sh $
-# $Id: install.sh 2691 2007-03-11 18:18:09Z thoar $
-# $Revision: 2691 $
-# $Date: 2007-03-11 12:18:09 -0600 (Sun, 11 Mar 2007) $
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
 
 #  ------------------------------------------------------------------------
 #  This script will make executables which extract data
