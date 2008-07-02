@@ -127,7 +127,7 @@ CONTAINS
 
       LOGICAL :: calc_ust
 
-      REAL :: z_o,z_t,z_q
+      REAL  :: z_o,z_t,z_q
 
 !--------------------------- LOCAL VARS ------------------------------
 
@@ -413,9 +413,9 @@ CONTAINS
       real(kind=kind_phys) rsmax(13), rgl(13),  rsmin(13), hs(13),      &
      &                     smmax(9),  smdry(9), smref(9),  smwlt(9)
 
-      REAL(kind=kind_phys), OPTIONAL  :: z_o,z_t,z_q
+      REAL, OPTIONAL  :: z_o,z_t,z_q
 
-      REAL(kind=kind_phys) :: hfx(im),qfx(im)
+      REAL :: hfx(im),qfx(im)
 
       REAL :: zeta,zeta2,zeta10, molength,x,y,rhox
       REAL, PARAMETER :: alphastable= 5., alphaunstable=16.,&

@@ -708,10 +708,10 @@ CONTAINS
 !     print*,'albedo, emiss, stbolt ',albedo,emiss,stbolt
 !    print*,'tsk ',tsk
 !     print*,'components ',gsw,-albedo*gsw,emiss*glw,-emiss*stbolt*tsk**4,-lh,-hfx,grdflx
-     f = gsw(1,1) + lwdn
-     fup = emissi * STBOLT * (t1**4)
-     res = f - sheat + ssoil - eta - fup - flx1 - flx2 - flx3
-     print*,res
+!     f = gsw(1,1) + lwdn
+!     fup = emissi * STBOLT * (t1**4)
+!     res = f - sheat + ssoil - eta - fup - flx1 - flx2 - flx3
+!     print*,res
 !     print*,'residual ',gsw(1,1) + lwdn - emissi * STBOLT * (t1**4) - sheat + ssoil - eta
 
 

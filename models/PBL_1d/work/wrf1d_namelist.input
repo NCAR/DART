@@ -1,7 +1,7 @@
 &record1
  init_f = .true.
- rnd_init = 2
- rnd_force = 2
+ rnd_init = 4
+ rnd_force = 4
  init_f_type = 'WRF'   ! this should be OBS | WRF
  force_f_type = 'WRF' ! this should be OBS | WRF | RUC
  nudge_f_type = 'NONE' ! this should be OBS | WRF | NONE
@@ -63,10 +63,10 @@
  output_state_vector = .false.,
  start_year_f=2003
  start_month_f=7
- start_day_f=12
+ start_day_f=14
  start_hour_f=0
  start_minute_f=0
- start_forecast=0 ! seconds after forcing date to start column
+ start_forecast=43200 ! seconds after forcing date to start column
  forecast_length=86400,
  interval_f=3600
  interval_uvg=3600 
