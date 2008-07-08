@@ -2773,8 +2773,10 @@ if (obs_type == KIND_SURFACE_ELEVATION) then
    vals(2,1) = phis(lon_ind_above, lat_ind_below) / gravity_const
    vals(2,2) = phis(lon_ind_above, lat_ind_above) / gravity_const
 
-elseif (obs_type == KIND_PRESSURE) then
-   ! Calculate pressures from surface pressures and A and B coeffs.
+! Move this to the end of the block?  It's no good here; short circuits GPS
+! which asks for pressures on heights
+! elseif (obs_type == KIND_PRESSURE) then
+!    ! Calculate pressures from surface pressures and A and B coeffs.
 
 elseif (vert_is_level(location)) then
    ! Case 1: model level specified in vertical
@@ -2822,6 +2824,8 @@ elseif (vert_is_surface(location)) then
    if (vstatus /= 1) call get_val(vals(1,2),x, lon_ind_below, lat_ind_above, 1, obs_type, vstatus)
    if (vstatus /= 1) call get_val(vals(2,1),x, lon_ind_above, lat_ind_below, 1, obs_type, vstatus)
    if (vstatus /= 1) call get_val(vals(2,2),x, lon_ind_above, lat_ind_above, 1, obs_type, vstatus)
+
+! Need option for vert_is_undefined
 
 end if
 
