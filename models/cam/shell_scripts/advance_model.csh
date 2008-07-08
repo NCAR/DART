@@ -19,22 +19,18 @@
 # Called by the filter executable (for async=2 or 4)
 # Calls run-cam.csh, the CAM execution script.
 # Calls 3 translation routines to translate time and model state.
-# Runs on one of the compute nodes allotted to the filter executable
+# Runs on one of the compute nodes allotted to the filter executable.
 #
-# Arguments are the process number of caller, the number of state copies
-# belonging to that process, and the name of the filter_control_file for
-# that process
+# Arguments are 
+# arg#1  the process number of caller
+# arg#2  the number of state copies belonging to that process
+# arg#3  the name of the filter_control_file for that process
 
-# arg#1  is the name of the CENTRALDIR
-# arg#2  is the number of ensemble members 
-# arg#3  is the name of the control file that determines which members will
-#        be advanced on which processors.
 #----------------------------------------------------------------------
 
 set process = $1
 set num_states = $2
 set control_file = $3
-echo "advance_model.csh args = $1 $2 $3"
 
 set retry_max = 2
 
@@ -65,7 +61,8 @@ if ( ! $?LINK ) then
   set LINK = 'ln -fs'
 endif
 
-echo "CENTRALDIR is ${CENTRALDIR}"                          >  cam_out_temp
+echo "advance_model.csh args = $1 $2 $3"                    >  cam_out_temp
+echo "CENTRALDIR is ${CENTRALDIR}"                          >> cam_out_temp
 echo "temp_dir is $temp_dir"                                >> cam_out_temp
 
 # Get information about this experiment from file "casemodel", 
@@ -185,6 +182,20 @@ while($state_copy <= $num_states)
             echo 'Executing trans_pv_sv'       >> cam_out_temp
             ${CENTRALDIR}/trans_pv_sv       >> cam_out_temp
    
+      # Save CLM and CAM files for storage of analyses in CAM initial file format (mean2cam_init)
+            if ($element == 1) then
+               # get the forecast time, which is the time of this CLM initial file
+               set seconds = (`head -1 times`)
+               if ($seconds[2] == 0) then
+                  set hour = 24
+               else
+                  @ hour = $seconds[2] / 3600
+               endif
+               if ($hour < 10) set hour = 0$hour
+               ${COPY} clminput.nc ${CENTRALDIR}/clm_init_memb${element}_H${hour}.nc
+               ${COPY} caminput.nc ${CENTRALDIR}/cam_init_memb${element}_H${hour}.nc
+            endif
+
       # Move updated state vector and new CAM/CLM initial files back to experiment
       # directory for use by filter and the next advance.
             ${MOVE} temp_ud     ${CENTRALDIR}/$output_file
@@ -197,6 +208,9 @@ while($state_copy <= $num_states)
          else
             @ retry++
             if ($retry < $retry_max) then
+# Add section to make CAM write out something every time step during this retry.
+# Could be added to casemodel, but be careful of how run-cam.csh uses the number of
+# lines in casemodel.
                echo "WARNING - CAM $element stopped abnormally; will be retried"
                echo "WARNING - CAM $element stopped abnormally; will be retried" >> cam_out_temp
                echo "===========================================================" >> cam_out_temp
