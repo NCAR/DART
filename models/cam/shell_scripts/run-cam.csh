@@ -11,8 +11,6 @@
 # $Revision$
 # $Date$
 
-# #sl marks streamlining of 8/31/05; whole thing is rewritten
-
 #  code added to specify an arbitrary forecast duration
 #  using [START,STOP]_[YMD,TOD] passed as a -namelist argument
 
@@ -33,38 +31,30 @@ limit stacksize unlimited
 
 ## Default namelist settings:
 ## $case is the case identifier for this run. It will be placed in the namelist.
-# initialize the datasets for iteration by starting with standard CAM data 
-# in namelist ~raeder/CamPathRel/Caminput/${case}/namelist0, 
-# (but use case = $case, no '0'; must move namelists around)
 
-set case         = $1
-
+set case  = $1
 echo case = $case 
 
-# sl
 ## ROOT OF CAM DISTRIBUTION 
 # Directory which contains the CAM configuration to be used
 # (resolution, optimization, etc); has files cam and config_cache.xml
 # Should be full pathname, passed from advance_model.csh
 # ie /gpfs/lightning/raeder/Cam3/cam3_0_7_brnchT_assim01/models/atm/cam/bld/T85-O1
-set camroot      = $2
+set camroot  = $2
 echo camroot = $camroot 
 
-# work directory (on anchorage, not nodes) where filter is run
-# sl; changed name from PBS_O_WORKDIR
-set CENTRALDIR = $3
+# work directory where filter is run
+set CENTRALDIR  = $3
 echo CENTRALDIR = $CENTRALDIR 
 
-## ROOT OF CAM DATA DISTRIBUTION - needs to be customized unless running at NCAR.
-## Contains the initial and boundary data for the CAM distribution.
-## (the root directory contains the subdirectories "atm" and "lnd")
-# Orig setenv CSMDATA     /fs/cgd/csm/inputdata
-# This works for me for some reason;  setenv CSMDATA     $PWD
-# sl
-# This does not need to be set because build-namelist gets an input namelist
-#    argument, which has full pathnames of all the CAM input files.
+# ROOT OF CAM DATA DISTRIBUTION - needs to be customized unless running at NCAR.
+# Contains the initial and boundary data for the CAM distribution.
+# (the root directory contains the subdirectories "atm" and "lnd")
+# Up through 3.5.30 this does not need to be set if build-namelist gets an input namelist
+#    argument (namelistin), which has full pathnames of all the CAM input files.
+# After 3.5.30 it seems that the variable needs to be set, regardless of namelistin.
+setenv CSMDATA     /fis/cgd/cseg/csm/inputdata
 
-# sl
 ## $wrkdir is a working directory where the model will be built and run.
 #  DART; it's the temp directory in which advance_model runs.
 # set wrkdir       = $PWD       
@@ -79,6 +69,7 @@ echo cfgdir  = $cfgdir
 # obtain cam executable and matching config_cache.xml
 if ( ! -x cam ) then
     if ( -x $camroot/cam ) then
+#      camroot is in the call, so don't need to copy every time
 #       cp $camroot/cam .
        cp $camroot/config_cache.xml .
        echo 'use cam and config_cache.xml from ' $camroot
@@ -121,8 +112,37 @@ set  STRING = "1,$ s#\.# #g"
 set ensstring = `sed -e "$STRING" ensstring.$$`
 
 set cam_version = multi-namelist
-if (($ensstring[1] == 3) && ($ensstring[2] < 5)) set cam_version = single-namelist
-if  ($ensstring[1] <= 2)                         set cam_version = single-namelist
+set verbosity = ''
+if ($ensstring[1] == 3) then
+   if ($ensstring[2] < 5) then
+      set cam_version = single-namelist
+      set verbosity = 2
+      echo 'version < 3.5'
+   else if ($ensstring[2] == 5 && $#ensstring == 3 ) then
+      if ($ensstring[3] < 30) then
+         set verbosity = 2
+         echo 'version < 3.5.30'
+      else
+         if (! $?CSMDATA ) then
+            echo "run-cam.csh; CSMDATA must be defined in here for > Cam3.5.30"
+            exit
+         endif
+         if (! -d $CSMDATA ) then
+            echo "run-cam.csh; CSMDATA = $CSMDATA must exist for > Cam3.5.30"
+            exit
+         endif
+      endif
+      echo 'version 3.5.x'
+   endif
+endif
+if ($ensstring[1] <= 2) then
+   set cam_version = single-namelist
+   set verbosity = 2
+endif
+rm ensstring.$$
+
+
+echo "multi namelist? $cam_version"
 
 #--------------------------------------------------------------
 ls -lt 
@@ -158,7 +178,7 @@ if ($cam_version == 'single-namelist') then
 else if ($cam_version == 'multi-namelist') then
    # This builds all the *_in namelists CAM3.5 needs
 
-   $cfgdir/build-namelist -v 2 \
+   $cfgdir/build-namelist -v $verbosity \
      -case     ${camroot:t}-$case \
      -runtype  startup \
      -d        $wrkdir \
@@ -194,12 +214,13 @@ endif
 ls -lt 
 
 # Iter; these are in the run directory;
-ls -l *.i.*
+ls -l *.[hir]*.nc
 # in DART caminput and clminput need to be saved for each "element" of the ensemble
 mv *cam2.i.* $wrkdir/caminput.nc
-mv *clm2.i.* $wrkdir/clminput.nc
+mv *clm2.r.*.nc $wrkdir/clminput.nc
 # mv *.h0.* ${CENTRALDIR}/cam_phis_good.nc
-rm *.h* *.r*
+# rm *.h* *cam*.r* *clm*.i*
+rm *.[hir]*.nc
 echo ' '
 ls -l *input*
 exit 0
