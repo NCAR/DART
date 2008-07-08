@@ -79,6 +79,13 @@
 # excluded; cr0139en 
 # echo $nodelist
 
+# Better method for excluding a node(s?)
+# #BSUB -R "select[hname != bl0605en]"
+# So set a wordlist here, and use it below (differently than nodelist was used)
+# set exclude_nodes = (be0512en)
+# echo "exclude_nodes = " $exclude_nodes
+
+
 # -W hr:mn   max wallclock time (required on some systems)
 # -b [[mm:]dd:]hh:mm    allow job to run only after this time.
 ##=============================================================================
@@ -133,15 +140,28 @@ if ($?LS_SUBCWD) then
 
    set CENTRALDIR = $LS_SUBCWD
    set JOBNAME = $LSB_JOBNAME
-# for multi-thread   
+   #  Variable to abort further assimilations if too many archiving jobs are
+   #  waiting in the queue, meaning that /ptmp is filling up.
+   set max_pend_archive = 5   
+
+   # Bluefire
+   #set run_command = 'export TARGET_CPU_LIST="-1"; mpirun.lsf /usr/local/bin/launch '
+   # Wei's suggestion to fix ntbl windows problems
+   #set run_command = '/contrib/mpiruns/mpirun.lsf '
+   # For multi-thread   
    set run_command = 'mpirun.lsf '
-# for single-thread (?)
-#    set run_command = ' '
-   which $run_command
-   if ($status != 0 && $run_command != ' ') then
-      exit "run_command $run_command not found"
-   endif
-# NOT USED on blueice
+   # For single-thread (?)
+   #set run_command = ' '
+
+
+# Doesn't work with complicated bluefire run_command
+  if ($run_command != ' ') then
+     which $run_command
+     if ($status != 0 ) then
+        exit "run_command $run_command not found"
+     endif
+  endif
+
    alias submit ' bsub < \!* '
    
 else if ($?PBS_O_WORKDIR) then
@@ -221,12 +241,13 @@ echo "Running $JOBNAME on host "`hostname`
 echo "Initialized at "`date`
 echo "CENTRALDIR is " $CENTRALDIR
 
-#========================================================================================
+#===============================================================================
 # User set run parameters to change
 
 # Directory where output will be kept (relative to '.')
 set resol = FV1.9x2.5
 
+# If true, the directory where the CAM executable lives should end with '-mpi'
 set parallel_cam = false
 
 # Change this for each new experiment.
@@ -251,31 +272,33 @@ set obs_seq_first = 1
 # freq < -15     look for the first of each month
 set obs_seq_freq = 1
 
-# 'day'/obs_seq.out numbers to assimilate during this job
-# First and last obs seq files. 
+# If there is a currently running job and the first batch of the new
+# jobs should wait for it, set this to true.  If all jobs have exited
+# the queue, or this is the very first run of an experiment, set this to false.
+# (It makes the job submission depend/wait for the previously numbered
+# job to exit before starting.)
+
+set obs_seq_1_depend = false
+
+# 'day'/obs_seq.out numbers to assimilate during this batch of jobs.
+# First and last obs seq files for this run. 
 set obs_seq_1 = 1
 set obs_seq_n = 7
 
-# if obs_seq_1 above is the very first obs_seq file for an entire
-# experiment, set the depend line below 'false'.  if obs_seq_1 is
-# the sequence number of a new batch of jobs but is really part of
-# a longer series of seq files (e.g. the entire job is seq numbers
-# 1-30, but this script is only going to queue up jobs 6-12)
-# then it to 'true'.  it controls whether it is going to clean out
-# old cam/clm input files, and whether it is going to queue up the
-# job to depend on the previous job step completing.
-set obs_seq_1_depend = false
-
-# The month of the obs_seq.out files for this run, and 
-# the month of the first obs_seq.out file for this experiment.
-# This will be a misnomer for the spin-up run that has obs_seq files
+# Month number of first obs_seq.out of entire experiment.  
+# All other runs will be counted from here.
+set mo_first = 7
+# The month and year of the obs_seq.out files for this batch of obs_seq.out files.
+set mo = 7
+set year = 2007
+# These can be used differently for different values of obs_seq_freq,
+# as when doing a long spin-up run that has obs_seq files
 # only at the first day of the month; the 'days' will refer to months
 # and this mo can be thought of as the year (2001).
-set mo = 1
-set mo_first = 1
+
 
 # Location of input observation files
-set obs_seq_root = ${CENTRALDIR}/obs_seq2003
+set obs_seq_root = ${CENTRALDIR}/obs_seq2006
 
 # DART source code directory trunk, and CAM interface location.
 set DARTDIR =     ~${user}/DART
@@ -284,6 +307,10 @@ set DARTCAMDIR =   ${DARTDIR}/models/cam
 # The maximum number of processors that will be used by 
 # the $exp_#.script jobs spawned by this script.  
 # (FV core jobs may use less, depending on the domain decomposition)
+# (async = 2 jobs may need to use less, if memory is a constraint for
+#  having so many CAMs running on 1 node.  See LSB_PJL_TASK_GEOMETRY.
+#  On IBM Power5 parallel_cam = false will require using less than 16 procs/node 
+#  for FV1.9x2.5 and higher resol. )
 # ptile is the number of processors/node on this machine.  
 # It has no bearing on whether CAM is MPI or not, as long as filter is MPI.
 set max_num_procs = 80
@@ -361,11 +388,14 @@ else if ($resol == FV1.9x2.5) then
    # set DART_ics_1  = ${CENTRALDIR}
    # set CAM_ics_1   = ${CENTRALDIR}/caminput_
    # set CLM_ics_1   = ${CENTRALDIR}/clminput_
-   set DART_ics_1  = /ptmp/raeder/CAM_init/FV1.9x2.5_cam3.5/Jan_1/DART_MPI
-   set CAM_ics_1   = /ptmp/raeder/CAM_init/FV1.9x2.5_cam3.5/Jan_1/CAM/caminput_
-   set CLM_ics_1   = /ptmp/raeder/CAM_init/FV1.9x2.5_cam3.5/Jan_1/CLM/clminput_
-   # -mpi will be attached to CAM_src if parallel_cam = true; don't add it here
-   set CAM_src   = /home/coral/raeder/Cam3/cam3.5.06/models/atm/cam/bld/FV1.9x2.5-O1
+   set DART_ics_1  = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.5/Jul_1/DART_MPI
+   set CAM_ics_1   = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.5/Jul_1/CAM/caminput_
+   set CLM_ics_1   = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.5/Jul_1/CLM/clminput_
+   # -mpi will be attached to this name if parallel_cam = true; don't add it here
+   # set CAM_src     = /blhome/raeder/Cam3/cam3.5/models/atm/cam/bld/FV1.9x2.5_ALT_PFT-O3
+   set CAM_src     = /blhome/raeder/Cam3/cam3.5/models/atm/cam/bld/FV2deg_Tmix_fire
+   # set CAM_src   = /blhome/raeder/Cam3/cam3.5/models/atm/cam/bld/FV1.9x2.5-O3
+# NOTE; namelistin section is commented out; uncomment if you want namelistin from CAM_src
    set CAM_phis  = $CAM_src/cam_phis.nc
    set num_lons  = 144
    set num_lats  = 96
@@ -421,8 +451,8 @@ ${REMOVE} ensstring.$$
 
 echo "There are ${num_ens} ensemble members."
 # blueice requires the file to exist in order to append to it
-# echo "There are ${num_ens} ensemble members."  >> $MASTERLOG
-echo "There are ${num_ens} ensemble members."  > $MASTERLOG
+touch $MASTERLOG
+echo "There are ${num_ens} ensemble members."  >> $MASTERLOG
 
 #----------------------------------------------------------
 # Figure out CAMs domain decomposition and usable number of processors, 
@@ -503,16 +533,15 @@ endif
 if (! -e advance_model.csh) then
    ${COPY} ${DARTCAMDIR}/shell_scripts/advance_model.csh     .
    ${COPY} ${DARTCAMDIR}/shell_scripts/run-cam.csh            .
-   ${COPY} ${DARTCAMDIR}/shell_scripts/auto_re2ms*.csh       . 
-   ${COPY} ${DARTCAMDIR}/shell_scripts/diags.csh             . 
-   ${COPY} ${DARTCAMDIR}/shell_scripts/auto_diag2ms_LSF.csh  . 
+   ${COPY} ${DARTCAMDIR}/full_experiment/auto_re2ms*.csh       . 
+   ${COPY} ${DARTCAMDIR}/full_experiment/diags.csh             . 
+   ${COPY} ${DARTCAMDIR}/full_experiment/auto_diag2ms_LSF.csh  . 
 endif
 
 set days_in_mo = (31 28 31 30 31 30 31 31 30 31 30 31)
-# leap years (but year not defined here);   
-#    if (($year % 4) == 0) @ days_in_mo[2] = $days_in_mo[2] + 1
-# leap year every 4 years except for century marks, but include centuries divisible by 400
+# leap years every 4 years except for century marks, but include centuries divisible by 400
 #    So, all modern years divisible by 4 are leap years.
+if (($year % 4) == 0) @ days_in_mo[2] = $days_in_mo[2] + 1
 
 #----------------------------------------------------------
 echo "exp num_ens obs_seq_1 obs_seq_n obs_seq_first"
@@ -524,7 +553,6 @@ echo "$exp $num_ens $obs_seq_1 $obs_seq_n $obs_seq_first"  >> $MASTERLOG
 echo "DART_ics_1 is $DART_ics_1"                           >> $MASTERLOG
 
 # clean up old CAM inputs that may be laying around
-
 if ( $obs_seq_1_depend == false ) then
    if (-e caminput_1.nc) then
       ${REMOVE} clminput_[1-9]*.nc 
@@ -536,8 +564,8 @@ if ( $obs_seq_1_depend == false ) then
    if (-e $CAM_phis) then
       ${COPY} $CAM_phis cam_phis.nc
    else
-      echo "ERROR ... need a topog file from CAM h0 history file." >> $MASTERLOG
-      echo "ERROR ... need a topog file from CAM h0 history file."
+      echo "ERROR ... need a cam_phis file from CAM h0 history file." >> $MASTERLOG
+      echo "ERROR ... need a cam_phis file from CAM h0 history file."
       exit 99
    endif
 endif
@@ -554,11 +582,11 @@ else
 endif
 
 # Subdirectory name root, where output from each obs_seq iteration will be kept.
-# obs_diag looks for obs_seq.final files in directories of the form xx_##[#].
-# where xx_  = output_root  signifies the month OF THE OBS_SEQ_FIRST.
-# and ##[#]# signifies the 2+ digit obs_seq number within this experiment.
-set output_root = ${mo_first}_
-if (${mo_first} < 10) set output_root = 0${output_root}
+# obs_diag looks for obs_seq.final files in directories of the form xx_####.
+# where xx_  = output_root  is now always 'obs' (was $mo_first in earlier DARTs)
+# and #### signifies the 4 digit obs_seq number within this experiment.
+# (was 2 digit in earlier DARTs)
+set output_root = obs
 
 #============================================================================================
 # Have an overall outer loop over obs_seq.out files
@@ -587,14 +615,20 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
          set n_procs = $num_procs
       echo "#BSUB -q ${queue}"                                 >> ${job_i}
       echo "#BSUB -n ${n_procs}"                               >> ${job_i}
-# exclusive use of the nodes; still allows > process/node
+# Exclusive use of the nodes; still allows > 1 process/node
       echo "#BSUB -x "                                         >> ${job_i}
+      echo '#BSUB -R "span[ptile='$ptile']"'                   >> ${job_i}
+
+# Select subset of all possible computational nodes here
 #      echo '#BSUB -m "'$nodelist '"'           >> ${job_i}
 #      if ($?nodelist) echo '#BSUB -m "'$nodelist '"'           >> ${job_i}
-      echo '#BSUB -R "span[ptile='$ptile']"'                   >> ${job_i}
-# all possible computational nodes; select your subset here
+# OR exclude misbehaving nodes.
+      if ($?exclude_nodes) then
+         foreach node ($exclude_nodes)
+            echo '#BSUB -R "select[hname != '$node']" '        >> ${job_i}
+         end
+      endif
 
-# add this to your other bsub lines
 
       if ($i > $obs_seq_1 || ($i == $obs_seq_1 && $obs_seq_1_depend == true)) then
          @ previousjobnumber = $i - 1
@@ -638,20 +672,43 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo "##==================================================================" >> ${job_i}
    endif
 
+   if ($parallel_cam == 'false' && $?LS_SUBCWD) then
+      # This environment variable tells how many processors on each node to use
+      # which will depend on the per-processor memory, the model memory high-water mark
+      # the ensemble size and other things.
+      # The following numbers are for bluefire (IBM Power6 chip) with ~2 Gb memory /processor
+      # and 32 processors/node.
+      if ($num_procs == 96) then
+         # want 80 members = 1*28 + 2*26
+         echo "setenv LSB_PJL_TASK_GEOMETRY \"                                                         >> ${job_i}
+         echo ' "{(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27)\ '       >> ${job_i}
+         echo " (28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53)\ "     >> ${job_i}
+         echo ' (54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79)}" '    >> ${job_i}
+      else if ($num_procs == 32) then
+         # I want 20 = 1*20
+         echo "setenv LSB_PJL_TASK_GEOMETRY \"                  >> ${job_i}
+         echo ' "{(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)}"'            >> ${job_i}
+      else
+         echo "parallel_cam is false, but num_procs is not 96 or 48 or 32" >> $MASTERLOG
+         exit
+      endif
+
+   endif
+
    echo "set myname = "'$0'"     # this is the name of this script"            >> ${job_i}
    echo "set CENTRALDIR =  ${CENTRALDIR} "                                     >> ${job_i}
    echo "cd ${CENTRALDIR}"                                                     >> ${job_i}
-   echo "set MASTERLOG = ${CENTRALDIR}/run_job.log"                            >> ${job_i}
+   echo "set MASTERLOG = ${MASTERLOG} "                                        >> ${job_i}
    echo 'set start_time = `date  +%s`'                                         >> ${job_i}
    echo ' echo "host is " `hostname` '                                         >> ${job_i}
+   echo 'touch $MASTERLOG '                                                    >> ${job_i}
 
 #===================================================================================
 
    # Construct directory name of location of restart files
    @ j = $i - 1
-   set out_prev = ${output_root}
-   if ($j < 10) set out_prev = ${output_root}0
-   set out_prev = ${out_prev}$j
+   set out_prev = `printf "%s_%04d" ${output_root} $j`
+   set out_prev = ${exp}/$out_prev
 
 
    #-----------------------
@@ -713,8 +770,9 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
    else if ($obs_seq_freq > 0) then
       @ month = $mo 
-      while ($month > $mo_first)
+      while ($month != $mo_first)
           @ month = $month - 1
+          if ($month == 0) @ month = $month + 12
           @ seq = $seq - $days_in_mo[$month] * $obs_seq_freq
       end
       @ month = $mo
@@ -769,9 +827,9 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       set  clm_init = ${CLM_ics_1}
    else
       # Get initial files from result of previous experiment.
-      set from_root = `pwd`/$exp/${out_prev}/DART
-      set cam_init =  `pwd`/$exp/${out_prev}/CAM/caminput_
-      set clm_init =  `pwd`/$exp/${out_prev}/CLM/clminput_
+      set from_root = `pwd`/${out_prev}/DART
+      set cam_init =  `pwd`/${out_prev}/CAM/caminput_
+      set clm_init =  `pwd`/${out_prev}/CLM/clminput_
    endif
 
    # transmit info to advance_model.csh
@@ -783,27 +841,28 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo "$parallel_cam"                                    >> casemodel.$i
    echo "$run_command"                                     >> casemodel.$i
    # Only write the 7th record if it's FV and run-cam.csh needs the decomposition info
-   if ($keep_lev_blocks > -1) then
+   # if ($keep_lev_blocks > -1) then
+   if ($keep_lev_blocks > 0) then
       echo "$num_procs $keep_lev_blocks $keep_lat_blocks "    >> casemodel.$i
    endif
    # advance_model wants to see a file 'casemodel' and not keep track of which obs_seq it's for
-   echo "$REMOVE casemodel"                                       >> ${job_i}
-   echo "if (-e casemodel.$i) then "                              >> ${job_i}
-   echo "   $LINK casemodel.$i casemodel "                        >> ${job_i}
-   echo "else "                                                   >> ${job_i}
-   echo '   echo "casemodel.$i not found; exiting" >> $MASTERLOG' >> ${job_i}
-   echo '   echo "casemodel.$i not found; exiting" '              >> ${job_i}
-   echo "   exit 124 "                                            >> ${job_i}
-   echo "endif "                                                  >> ${job_i}
+   echo "$REMOVE casemodel"                                                 >> ${job_i}
+   echo "if (-e casemodel.$i) then "                                        >> ${job_i}
+   echo "   $LINK casemodel.$i casemodel "                                  >> ${job_i}
+   echo "else "                                                             >> ${job_i}
+   echo '   echo "job '$i'; casemodel.$i not found; exiting" >> $MASTERLOG' >> ${job_i}
+   echo '   echo "casemodel.$i not found; exiting" '                        >> ${job_i}
+   echo "   exit 124 "                                                      >> ${job_i}
+   echo "endif "                                                            >> ${job_i}
 
    # adaptive inflation ic files may (not) exist
    # Should query input.nml to learn whether to get them?
-   echo " "                                                      >> ${job_i}
-   echo "${REMOVE} *_inf_ic* "                                   >> ${job_i}
-   echo "if (-e ${from_root}/prior_inf_ic) \"                    >> ${job_i}
-   echo " ${LINK} ${from_root}/prior_inf_ic prior_inf_ic_old "   >> ${job_i}
-   echo "if (-e ${from_root}/post_inf_ic)  \"                    >> ${job_i}
-   echo " ${LINK} ${from_root}/post_inf_ic  post_inf_ic_old "    >> ${job_i}
+   echo " "                                                        >> ${job_i}
+   echo "${REMOVE} *_inf_ic* "                                     >> ${job_i}
+   echo "if (-e   ${from_root}/prior_inf_ic) \"                    >> ${job_i}
+   echo " ${LINK} ${from_root}/prior_inf_ic prior_inf_ic_old "     >> ${job_i}
+   echo "if (-e   ${from_root}/post_inf_ic)  \"                    >> ${job_i}
+   echo " ${LINK} ${from_root}/post_inf_ic  post_inf_ic_old "      >> ${job_i}
 
 #? MPI too?
    # link to filter_ic file(s), so that filter can copy them to a compute node
@@ -832,24 +891,57 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    #-----------------------------------------------------------------------------
    echo " " >> ${job_i}
    echo "${REMOVE} caminput.nc clminput.nc "                 >> ${job_i}
-   echo "${LINK} ${CAM_src}/caminput.nc caminput.nc"          >> ${job_i}
-   echo "${LINK} ${CAM_src}/clminput.nc clminput.nc"          >> ${job_i}
+   if (-e ${CAM_src}/caminput.nc) then
+      echo "${LINK} ${CAM_src}/caminput.nc caminput.nc"          >> ${job_i}
+      echo "${LINK} ${CAM_src}/clminput.nc clminput.nc"          >> ${job_i}
+   else
+      echo "${CAM_src}/caminput.nc is missing; exiting job_mpi.csh" 
+      exit
+   endif
+   
    
    #-----------------------------------------------------------------------------
    # get name of file containing PHIS from the CAM namelist.  This will be used by
    # static_init_model to read in the PHIS field, which is used for height obs.
    #-----------------------------------------------------------------------------
-   if (obs_seq_1_depend == false) then
+   # Commented out to use real SSTs (in CAM_src)
+   if ($obs_seq_1 == $obs_seq_first) then
       ${REMOVE} namelistin
       ${LINK} ${CAM_src}/namelistin namelistin
       sleep 1 
    endif
-
    if (! -e namelistin ) then
       echo "ERROR ... need a namelistin file." >> $MASTERLOG
       echo "ERROR ... need a namelistin file."
       exit 89
    endif
+# Check contents of namelistin for proper CLM file output
+   set killit = false
+   grep restart_option namelistin | head -1 >! restart_option
+   if ($status != 0 ) then
+      set killit = true
+   else
+      set STRING = "1,$ s#'##g"
+      sed -e "$STRING" restart_option >! restart_string
+      set STRING = `cat restart_string`
+      if ($STRING[3] != nsteps) then
+         set killit = true
+      endif
+   endif
+   if ($killit == true) then
+      echo "namelistin:camcpl6_inparm must contain "              >> $MASTERLOG
+      echo "           restart_option = 'nsteps'"                 >> $MASTERLOG
+      echo "           restart_n = # models steps in forecast"    >> $MASTERLOG
+      echo "exiting"                                              >> $MASTERLOG
+      echo "namelistin:camcpl6_inparm must contain "              
+      echo "           restart_option = 'nsteps'"                 
+      echo "           restart_n = # models steps in forecast"    
+      echo "exiting"                                              
+      $KILLCOMMAND
+   endif
+
+   ${REMOVE} restart_[os]*
+   
    echo "if (! -e ${exp}/namelistin) ${COPY} namelistin ${exp}/namelistin  "       >> ${job_i}
 
 
@@ -873,53 +965,53 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo 'while ( -e filter_to_model.lock )          '                   >> ${job_i}
       # read from the fifo file.  this is *not* a busy wait; it puts the
       # job to sleep in the kernel waiting for input.
-      echo " "                                                >> ${job_i}
-      echo '  set todo = `( echo $< ) < filter_to_model.lock` ' >> ${job_i}
-      echo '  echo todo received, value = ${todo}           ' >> ${job_i}
-      echo " "                                                >> ${job_i}
-      echo '  if ( "${todo}" == "finished" ) then           ' >> ${job_i}     
-      echo '    echo finished command received from filter. ' >> ${job_i}
-      echo '    echo main script: filter done.              ' >> ${job_i}
+      echo " "                                                     >> ${job_i}
+      echo '  set todo = `( echo $< ) < filter_to_model.lock` '    >> ${job_i}
+      echo '  echo todo received, value = ${todo}           '      >> ${job_i}
+      echo " "                                                     >> ${job_i}
+      echo '  if ( "${todo}" == "finished" ) then           '      >> ${job_i}     
+      echo '    echo finished command received from filter. '      >> ${job_i}
+      echo '    echo main script: filter done.              '      >> ${job_i}
      # add this wait to be sure filter task has exited
      # before starting to clean up the files.
-     echo '    wait                                            ' >> ${job_i}
-     echo '    echo filter finished, removing pipes.           ' >> ${job_i}
-     echo "    rm -f filter_to_model.lock model_to_filter.lock " >> ${job_i}
+      echo '    wait                                            '  >> ${job_i}
+      echo '    echo filter finished, removing pipes.           '  >> ${job_i}
+      echo "    rm -f filter_to_model.lock model_to_filter.lock "  >> ${job_i}
 
-      echo '    break                                       ' >> ${job_i}
-      echo " "                                                >> ${job_i}
-      echo '  else if ( "${todo}" == "advance" ) then       ' >> ${job_i}
-      echo '    echo advance command received from filter.  ' >> ${job_i}
-      echo '    echo calling advance_model.csh now:              ' >> ${job_i}
-     echo "    ./advance_model.csh 0 $num_ens filter_control00000  ${parallel_cam}" >> ${job_i}
+      echo '    break                                       '      >> ${job_i}
+      echo " "                                                     >> ${job_i}
+      echo '  else if ( "${todo}" == "advance" ) then       '      >> ${job_i}
+      echo '    echo advance command received from filter.  '      >> ${job_i}
+      echo '    echo calling advance_model.csh now:             '  >> ${job_i}
+      echo "    ./advance_model.csh 0 $num_ens filter_control00000  ${parallel_cam}" >> ${job_i}
      # do not execute anything here until you have saved
      # the exit status from the advance model script.
-     echo '    set advance_status = $status                ' >> ${job_i}
-     echo '    echo saved advance_model.csh exit status    ' >> ${job_i}
-     echo " "                                                >> ${job_i}
-     echo '    echo restarting filter.  this version of wakeup_filter ' >> ${job_i}
-     echo '    echo includes restarting the main filter program.      ' >> ${job_i}
-     echo "    ${run_command} ./wakeup_filter              " >> ${job_i}
-     echo " "                                                >> ${job_i}
-     echo '    if ($advance_status != 0) then              ' >> ${job_i}
-     echo '       echo "Model advance failed"              ' >> ${job_i}
-     echo '       rm -f filter_lock*                       ' >> ${job_i}
-     echo '       break                                    ' >> ${job_i}
-     echo '    endif                                       ' >> ${job_i}
-     echo " "                                                >> ${job_i}
-      echo '  else                                          ' >> ${job_i}
-      echo " "                                                >> ${job_i}
-      echo '    echo main script: unexpected value received.' >> ${job_i}
-      echo '    break                                       ' >> ${job_i}
-      echo " "                                                >> ${job_i}
-      echo '  endif                                         ' >> ${job_i}
-      echo " "                                                >> ${job_i}
-      echo 'end                                             ' >> ${job_i}     
-      echo " "                                                >> ${job_i}
+      echo '    set advance_status = $status                '            >> ${job_i}
+      echo '    echo saved advance_model.csh exit status    '            >> ${job_i}
+      echo " "                                                           >> ${job_i}
+      echo '    echo restarting filter.  this version of wakeup_filter ' >> ${job_i}
+      echo '    echo includes restarting the main filter program.      ' >> ${job_i}
+      echo "    ${run_command} ./wakeup_filter              "            >> ${job_i}
+      echo " "                                                           >> ${job_i}
+      echo '    if ($advance_status != 0) then              '            >> ${job_i}
+      echo '       echo "Model advance failed"              '            >> ${job_i}
+      echo '       rm -f filter_lock*                       '            >> ${job_i}
+      echo '       break                                    '            >> ${job_i}
+      echo '    endif                                       '            >> ${job_i}
+      echo " "                                                           >> ${job_i}
+      echo '  else                                          '            >> ${job_i}
+      echo " "                                                           >> ${job_i}
+      echo '    echo main script: unexpected value received.'            >> ${job_i}
+      echo '    break                                       '            >> ${job_i}
+      echo " "                                                           >> ${job_i}
+      echo '  endif                                         '            >> ${job_i}
+      echo " "                                                           >> ${job_i}
+      echo 'end                                             '            >> ${job_i}     
+      echo " "                                                           >> ${job_i}
    else
       # Run the filter in async=2 mode.
       # runs filter, which tells the model to model advance and assimilates obs
-      echo "${run_command} ./filter "                        >> ${job_i}
+      echo "${run_command} ./filter "                                    >> ${job_i}
    endif
 
    set KILLCOMMAND = "touch BOMBED; exit"
@@ -956,19 +1048,18 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 # All the  CLM-related files will get put in ${exp}/${output_dir}/CLM
 # All the DART-related files will get put in ${exp}/${output_dir}/DART
 #-----------------------------------------------------------------------------
-   set output_dir = ${output_root}
-   if ($i < 10) set output_dir = ${output_root}0
-   set output_dir = ${output_dir}$i
+   set output_dir = `printf "%s_%04d" ${output_root} $i`
+   set out_full = ${exp}/${output_dir}
 
    echo " " >> ${job_i}
-   echo "mkdir -p ${exp}/${output_dir}/{CAM,CLM,DART} "                               >> ${job_i}
+   echo "mkdir -p ${out_full}/{CAM,CLM,DART} "                                        >> ${job_i}
 
    echo " " >> ${job_i}
    echo "foreach FILE ( Prior_Diag.nc Posterior_Diag.nc obs_seq.final )"              >> ${job_i}
    echo '   if ( -e $FILE && ! -z $FILE) then '                                       >> ${job_i}
-   echo "      ${MOVE} "'$FILE'" ${exp}/${output_dir} "                               >> ${job_i}
+   echo "      ${MOVE} "'$FILE'" ${out_full} "                                        >> ${job_i}
    echo "      if ( ! "'$status'" == 0 ) then "                                       >> ${job_i}
-   echo '         echo "failed moving ${CENTRALDIR}/$FILE" >> $MASTERLOG '            >> ${job_i}
+   echo '         echo "job '$i'; failed moving ${CENTRALDIR}/$FILE" >> $MASTERLOG '  >> ${job_i}
    echo '         echo "failed moving ${CENTRALDIR}/$FILE" '                          >> ${job_i}
    echo "         $KILLCOMMAND "                                                      >> ${job_i}
    echo "      endif           "                                                      >> ${job_i}
@@ -984,31 +1075,31 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    # so don't die if it's missing.  We'd have to query input.nml to learn if it should exist.
 
    echo " " >> ${job_i}
-   echo "foreach FILE ( prior_inf_diag post_inf_diag ) "                              >> ${job_i}
-   echo '   if ( -e ${FILE} && ! -z $FILE) then '                                     >> ${job_i}
-   echo "      ${MOVE} "'${FILE}'" ${exp}/${output_dir}  "                            >> ${job_i}
-   echo '      if ( ! $status == 0 ) then '                                           >> ${job_i}
-   echo '         echo "failed moving ${CENTRALDIR}/${FILE} " >> $MASTERLOG '         >> ${job_i}
-   echo '         echo "failed moving ${CENTRALDIR}/${FILE} " '                       >> ${job_i}
-   echo "         $KILLCOMMAND "                                                      >> ${job_i}
-   echo "      endif "                                                                >> ${job_i}
-   echo "   endif "                                                                   >> ${job_i}
-   echo "end "                                                                        >> ${job_i}
+   echo "foreach FILE ( prior_inf_diag post_inf_diag ) "                                >> ${job_i}
+   echo '   if ( -e ${FILE} && ! -z $FILE) then '                                       >> ${job_i}
+   echo "      ${MOVE} "'${FILE}'" ${out_full}  "                                       >> ${job_i}
+   echo '      if ( ! $status == 0 ) then '                                             >> ${job_i}
+   echo '         echo "job '$i'; failed moving ${CENTRALDIR}/${FILE} " >> $MASTERLOG ' >> ${job_i}
+   echo '         echo "failed moving ${CENTRALDIR}/${FILE} " '                         >> ${job_i}
+   echo "         $KILLCOMMAND "                                                        >> ${job_i}
+   echo "      endif "                                                                  >> ${job_i}
+   echo "   endif "                                                                     >> ${job_i}
+   echo "end "                                                                          >> ${job_i}
 
    # Move the filter restart file(s) to the storage subdirectory
    echo " " >> ${job_i}
-   echo 'echo "moving filter_ic_newS to '${exp}/${output_dir}'/DART/filter_icS" '     >> ${job_i}
+   echo 'echo "moving filter_ic_newS to '${out_full}'/DART/filter_icS" '              >> ${job_i}
    echo "if (-e filter_ic_new) then "                                                 >> ${job_i}
-   echo "   ${MOVE} filter_ic_new ${exp}/${output_dir}/DART/filter_ic "               >> ${job_i}
+   echo "   ${MOVE} filter_ic_new ${out_full}/DART/filter_ic "                        >> ${job_i}
    echo "   if (! "'$status'" == 0 ) then "                                           >> ${job_i}
-   echo '      echo "failed moving filter_ic_new to '${exp}/${output_dir}'/DART/filter_ic" ' >> ${job_i}
+   echo '      echo "failed moving filter_ic_new to '${out_full}'/DART/filter_ic" '   >> ${job_i}
    echo "      $KILLCOMMAND "                                                         >> ${job_i}
    echo "   endif "                                                                   >> ${job_i}
    echo "else if (-e filter_ic_new.0001) then "                                       >> ${job_i}
    echo "   set n = 1 "                                                               >> ${job_i}
    echo "   while("'$n'" <= ${num_ens}) "                                             >> ${job_i}
    echo '        set from = filter_ic_new*[.0]$n'                                     >> ${job_i}
-   echo "        set dest = ${exp}/${output_dir}/DART/filter_ic."'$from:e'            >> ${job_i}
+   echo "        set dest = ${out_full}/DART/filter_ic."'$from:e'                     >> ${job_i}
 
    # stuff analyses into CAM initial files using 
    # echo " " >> ${job_i}
@@ -1038,9 +1129,9 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo " " >> ${job_i}
    echo "foreach FILE (prior_inf_ic post_inf_ic)  "                                   >> ${job_i}
    echo '   if (-e ${FILE}_new ) then '                                               >> ${job_i}
-   echo "      ${MOVE} "'${FILE}_new'" ${exp}/${output_dir}/DART/"'${FILE} '          >> ${job_i}
+   echo "      ${MOVE} "'${FILE}_new'" ${out_full}/DART/"'${FILE} '                   >> ${job_i}
    echo '      if (! $status == 0 ) then '                                            >> ${job_i}
-   echo '         echo "failed moving ${FILE}_new to '${exp}/${output_dir}/DART/'${FILE}s "' >> ${job_i}
+   echo '         echo "failed moving ${FILE}_new to '${out_full}/DART/'${FILE}s "'   >> ${job_i}
    echo "         $KILLCOMMAND "                                                      >> ${job_i}
    echo "      endif "                                                                >> ${job_i}
    echo "   endif "                                                                   >> ${job_i}
@@ -1054,7 +1145,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
    echo " "                                                                           >> ${job_i}
    echo '   if ( -e $CAMINPUT && ! -z $CAMINPUT) then '                               >> ${job_i}
-   echo "      ${MOVE} "'$CAMINPUT'" ${exp}/${output_dir}/CAM  "                      >> ${job_i}
+   echo "      ${MOVE} "'$CAMINPUT'" ${out_full}/CAM  "                               >> ${job_i}
    echo '      if (! $status == 0 ) then '                                            >> ${job_i}
    echo '         echo "failed moving ${CENTRALDIR}/$CAMINPUT " '                     >> ${job_i}
    echo "         $KILLCOMMAND "                                                      >> ${job_i}
@@ -1068,7 +1159,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
    echo " "                                                                           >> ${job_i}
    echo '   if ( -e $CLMINPUT && ! -z $CLMINPUT) then '                               >> ${job_i}
-   echo "      ${MOVE} "'$CLMINPUT'" ${exp}/${output_dir}/CLM "                       >> ${job_i}
+   echo "      ${MOVE} "'$CLMINPUT'" ${out_full}/CLM "                                >> ${job_i}
    echo '      if (! $status == 0 ) then '                                            >> ${job_i}
    echo '         echo "failed moving ${CENTRALDIR}/$CLMINPUT " '                     >> ${job_i}
    echo "         $KILLCOMMAND "                                                      >> ${job_i}
@@ -1084,13 +1175,43 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo "   @ n++ "                                                                   >> ${job_i}
    echo "end "                                                                        >> ${job_i}
 
-   echo "if (! -e times  && ! -e ${exp}/${output_dir}/CAM/caminput_1.nc) then  "      >> ${job_i}
+# save the CLM initial files from intermediate times, for analyses in CAM initial file format
+   echo " "                                                                           >> ${job_i}
+   echo 'foreach clm (`ls clm_init_memb*.nc`) '                                       >> ${job_i}
+   echo '   if (! -z $clm) then '                                                     >> ${job_i}
+   echo "      ${MOVE} "'$clm'" ${out_full}"                                          >> ${job_i}
+   echo '      if (! $status == 0 ) then '                                            >> ${job_i}
+   echo '         echo "failed moving ${CENTRALDIR}/$clm " '                          >> ${job_i}
+   echo "         $KILLCOMMAND "                                                      >> ${job_i}
+   echo "      endif "                                                                >> ${job_i}
+   echo "   else "                                                                    >> ${job_i}
+   echo '      echo "failed moving ${CENTRALDIR}/$clm because of size 0" '            >> ${job_i}
+   echo "   endif "                                                                   >> ${job_i}
+   echo "end"                                                                         >> ${job_i}
+   echo " "                                                                           >> ${job_i}
+# save the CAM initial files from intermediate times, for analyses in CAM initial file format
+   echo " "                                                                           >> ${job_i}
+   echo 'foreach cam (`ls cam_init_memb*.nc`) '                                       >> ${job_i}
+   echo '   if (! -z $cam) then '                                                     >> ${job_i}
+   echo "      ${MOVE} "'$cam'" ${out_full}"                                          >> ${job_i}
+   echo '      if (! $status == 0 ) then '                                            >> ${job_i}
+   echo '         echo "failed moving ${CENTRALDIR}/$cam " '                          >> ${job_i}
+   echo "         $KILLCOMMAND "                                                      >> ${job_i}
+   echo "      endif "                                                                >> ${job_i}
+   echo "   else "                                                                    >> ${job_i}
+   echo '      echo "failed moving ${CENTRALDIR}/$cam because of size 0" '            >> ${job_i}
+   echo "   endif "                                                                   >> ${job_i}
+   echo "end"                                                                         >> ${job_i}
+   echo " "                                                                           >> ${job_i}
+
+
+   echo "if (! -e times  && ! -e ${out_full}/CAM/caminput_1.nc) then  "               >> ${job_i}
    echo "   # There may have been no advance; "                                       >> ${job_i}
    echo "   # use the CAM_ics_1 as the CAM ics for this time  "                       >> ${job_i}
    echo "   set ens = 1  "                                                            >> ${job_i}
    echo '   while ($ens <= '$num_ens" )  "                                            >> ${job_i}
-   echo "      cp ${CAM_ics_1}"'${ens}'".nc ${exp}/${output_dir}/CAM  "               >> ${job_i}
-   echo "      cp ${CLM_ics_1}"'${ens}'".nc ${exp}/${output_dir}/CLM  "               >> ${job_i}
+   echo "      cp ${CAM_ics_1}"'${ens}'".nc ${out_full}/CAM  "                        >> ${job_i}
+   echo "      cp ${CLM_ics_1}"'${ens}'".nc ${out_full}/CLM  "                        >> ${job_i}
    echo "      @ ens++  "                                                             >> ${job_i}
    echo "   end  "                                                                    >> ${job_i}
    echo "endif  "                                                                     >> ${job_i}
@@ -1102,13 +1223,13 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo "     ! -z $exp/${output_dir}/DART/filter_ic   )    ||        \"              >> ${job_i}
    echo "    (  -e $exp/${output_dir}/DART/filter_ic.*${num_ens}  &&  \"              >> ${job_i}
    echo "     ! -z $exp/${output_dir}/DART/filter_ic.*${num_ens}) ) then "            >> ${job_i}
-   echo '    echo "it is OK to proceed with next obs_seq at "`date` >> $MASTERLOG '   >> ${job_i}
+   echo '    echo "job '$i'; it is OK to proceed with next obs_seq at "`date` >> $MASTERLOG '   >> ${job_i}
    echo '    echo "it is OK to proceed with next obs_seq at "`date` '                 >> ${job_i}
    echo 'else '                                                                       >> ${job_i}
    echo '    echo "RETRIEVE filter_ic files from filter temp directory ?" '           >> ${job_i}
    echo '    echo "Then remove temp and cam advance temps" '                          >> ${job_i}
-   echo '    echo "RETRIEVE filter_ic files from filter temp directory ?" >> $MASTERLOG ' >> ${job_i}
-   echo '    echo "Then remove temp and cam advance temps" >> $MASTERLOG '            >> ${job_i}
+   echo '    echo "job '$i'; RETRIEVE filter_ic files from filter temp directory ?" >> $MASTERLOG ' >> ${job_i}
+   echo '    echo "job '$i'; Then remove temp and cam advance temps" >> $MASTERLOG '  >> ${job_i}
    echo '    exit '                                                                   >> ${job_i}
    echo 'endif '                                                                      >> ${job_i}
 
@@ -1116,79 +1237,117 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
    # Compress and archive older output which we won't need immediately
    echo " " >> ${job_i}
-   if (($j > 0) && (-e auto_re2ms_LSF.csh)) then
-      echo "cd ${exp}/${out_prev} "                                                         >> ${job_i}
-      # echo "if ( $j > $obs_seq_first ) then "                                            >> ${job_i}
-      if ($j % $save_freq == $mod_save) then
-# Not on blueice
-#         echo "alias submit ' bsub < \\!* '"                                                >> ${job_i}
-#         echo "alias | grep submit "                                                        >> ${job_i}
-#         echo "eval submit ../../auto_re2ms_LSF.csh  >>& " ' $MASTERLOG '                   >> ${job_i}
-         echo "eval bsub < ../../auto_re2ms_LSF.csh  >>& " ' $MASTERLOG '                   >> ${job_i}
-         echo 'echo "Backing up restart '${exp}/${out_prev}' to mass store; >> $MASTERLOG"' >> ${job_i}
-         echo 'echo "    in separate batch job"  >> $MASTERLOG  '                           >> ${job_i}
-         echo 'echo "Backing up restart '${exp}/${out_prev}' to mass store; "'              >> ${job_i}
-         echo 'echo "    in separate batch job"  '                                          >> ${job_i}
+   if (($j >= $obs_seq_first) ) then
+      echo "cd $out_prev "                                                             >> ${job_i}
+
+      if (-e auto_diag2ms_LSF.csh) then
+#     Diagnostics file
+#     Need to do this before handling restarts because mean2cam_init needs clminput_1.nc
+#     Change CLM initial file strategy; they (*$i* vertions) are saved during model advance
+#        and should already be in $out_prev
+         echo "bsub < ../../auto_diag2ms_LSF.csh  >>& " ' $MASTERLOG '                 >> ${job_i}
+         echo 'echo "job '$i'; Backing up diagnostics '${out_prev}' >> $MASTERLOG"'    >> ${job_i}
+         echo 'echo "    to mass store in separate batch job"  >> $MASTERLOG  '        >> ${job_i}
+         echo 'echo "job '$i'; Backing up diagnostics '${out_prev}' to mass store; "'  >> ${job_i}
+         echo 'echo "    in separate batch job"  '                                     >> ${job_i}
       else
-         echo "${REMOVE} DART CAM CLM & "                                                   >> ${job_i}   
-         echo 'echo "Removing restart from '${exp}/${out_prev} '" >> $MASTERLOG '           >> ${job_i}
-         echo 'echo "Removing restart from '${exp}/${out_prev} '"'                          >> ${job_i}
+         echo "MISSING auto_diag2ms_LSF.csh; NO diagnostic backup "        >> $MASTERLOG
       endif
-#     Diagnostics files
-      echo "eval bsub < ../../auto_diag2ms_LSF.csh  >>& " ' $MASTERLOG '                     >> ${job_i}
-      echo 'echo "Backing up diagnostics '${exp}/${out_prev}' to mass store; >> $MASTERLOG"' >> ${job_i}
-      echo 'echo "    in separate batch job"  >> $MASTERLOG  '                               >> ${job_i}
-      echo 'echo "Backing up diagnostics '${exp}/${out_prev}' to mass store; "'              >> ${job_i}
-      echo 'echo "    in separate batch job"  '                                              >> ${job_i}
+      # echo "if ( $j > $obs_seq_first ) then "                                            >> ${job_i}
+      if (-e auto_re2ms_LSF.csh) then
+         if ($j % $save_freq == $mod_save) then
+# Not on blueX
+#         echo "alias submit ' bsub < \\!* '"                                            >> ${job_i}
+#         echo "alias | grep submit "                                                    >> ${job_i}
+#         echo "eval submit ../../auto_re2ms_LSF.csh  >>& " ' $MASTERLOG '               >> ${job_i}
+            echo "bsub < ../../auto_re2ms_LSF.csh  >>& " ' $MASTERLOG '                 >> ${job_i}
+            echo 'echo "job '$i'; Backing up restart '${out_prev}' >> $MASTERLOG"'      >> ${job_i}
+            echo 'echo "    to mass store in separate batch job"  >> $MASTERLOG  '      >> ${job_i}
+            echo 'echo "Backing up restart '${out_prev}' to mass store; "'              >> ${job_i}
+            echo 'echo "    in separate batch job"  '                                   >> ${job_i}
+         else
+            echo "${REMOVE} DART CAM CLM & "                                            >> ${job_i}   
+            echo 'echo "job '$i'; Removing restart from '${out_prev} '" >> $MASTERLOG ' >> ${job_i}
+            echo 'echo "Removing restart from '${out_prev} '"'                          >> ${job_i}
+         endif
+      else
+         echo "NO ./auto_re2ms_LSF.csh FOUND or prev obs_seq = 0, so NO BACKUP OF ${out_prev} " >> ${MASTERLOG}
+      endif
 
       echo "cd ../.. "                                                                      >> ${job_i}
-   else
-      echo "NO ./auto_re2ms_LSF.csh FOUND or prev obs_seq = 0, so NO BACKUP OF ${out_prev} " >> ${MASTERLOG}
    endif
 
 
 # save a representative model advance 
    echo " " >> ${job_i}
-   echo "${MOVE} input.nml           ${exp}/${output_dir} "                           >> ${job_i}
-   echo "${MOVE} casemodel.$i        ${exp}/${output_dir} "                           >> ${job_i}
+   echo "${MOVE} input.nml           ${out_full} "                           >> ${job_i}
+   echo "${MOVE} casemodel.$i        ${out_full} "                           >> ${job_i}
 # stdout   from filter.f90 
-   echo "${MOVE} run_filter.stout    ${exp}/${output_dir} "                           >> ${job_i}
-   echo "${MOVE} dart_log.out        ${exp}/${output_dir} "                           >> ${job_i}
-   echo "${MOVE} ${job_i}            ${exp}/${output_dir} "                           >> ${job_i}
-   echo "${MOVE} cam_out_temp1       ${exp}/${output_dir} "                           >> ${job_i}
-   echo "${MOVE} namelist            ${exp}"                                          >> ${job_i}
-   echo "${REMOVE} cam_out_temp* *_ud* *_ic[0-9]* *_ic_old* "                         >> ${job_i}
-   echo "set nonomatch"                                                               >> ${job_i}
-   if ($i != $obs_seq_first) then
-      @ j = $i - 1
-#     This will fail if >1 file satisfies the existence
-      echo "if (-e ${exp}_${j}.*.log) ${MOVE} ${exp}_${j}.*.log  ${exp}/${out_prev} " >> ${job_i}
-   endif
-   echo 'set end_time = `date  +%s`'                                     >> ${job_i}
-   echo '@ length_time = $end_time - $start_time'                        >> ${job_i}
-   echo 'echo "duration = $length_time" '                                >> ${job_i}
+   echo "${MOVE} run_filter.stout    ${out_full} "                           >> ${job_i}
+   echo "${MOVE} dart_log.out        ${out_full} "                           >> ${job_i}
+   echo "${MOVE} ${job_i}            ${out_full} "                           >> ${job_i}
+   echo "${MOVE} cam_out_temp1       ${out_full} "                           >> ${job_i}
+   echo "${MOVE} namelist            ${exp}"                                 >> ${job_i}
+   echo "${REMOVE} cam_out_temp* *_ud* *_ic[0-9]* *_ic_old* "                >> ${job_i}
+# It's really stupid that this doesn't work on blueX, even with nonomatch
+#   echo "set nonomatch"                                                     >> ${job_i}
+#   if ($i != $obs_seq_first) then
+#      @ j = $i - 1
+##     This will fail if >1 file satisfies the existence
+#      echo "if (-e ${exp}_${j}.*.log) ${MOVE} ${exp}_${j}.*.log  ${out_prev} " >> ${job_i}
+#   endif
+# SO,
+   echo "ls -1 ${exp}_${j}.*.log > logs"                                         >> ${job_i}
+   echo "set num_logs = `wc -l logs`"                                            >> ${job_i}
+   echo 'if ($num_logs[1] > 0)' "${MOVE} ${exp}_${j}.*.log  ${out_prev} "        >> ${job_i}
+   echo "rm logs"                                                                >> ${job_i}
+# END of trying to move log files.  Phew.
 
+
+   echo "chmod -R g+w   ${out_full} "                           >> ${job_i}
+   echo 'set end_time = `date  +%s`'                            >> ${job_i}
+   echo '@ length_time = $end_time - $start_time'               >> ${job_i}
+   echo 'echo "duration = $length_time" '                       >> ${job_i}
+
+   #  Abort further assimilations if too many archiving jobs are
+   #  waiting in the queue, meaning that /ptmp is filling up.
+   if ($?LS_SUBCWD) then
+      echo " bjobs -w | grep auto_diag2ms | grep PEND >! num_arch_jobs"             >> ${job_i}
+      echo " bjobs -w | grep restart2ms   | grep PEND >> num_arch_jobs"             >> ${job_i}
+      echo ' set num_pending = `wc -l num_arch_jobs` '                              >> ${job_i}
+      echo ' if ($num_pending[1] '"> $max_pend_archive) then"                       >> ${job_i}
+      echo '    echo "EXITING with error condition to prevent next assimilation" '  >> ${job_i}
+      echo '    echo "        due to $num_pending[1] pending archiving jobs" '      >> ${job_i}
+      echo '    echo "Output of THIS job is OK" '                                   >> ${job_i}
+# Merely exiting doesn't work; LSF exit status is 'done'
+#      echo "    exit 57 "                                                           >> ${job_i}
+# Single quotes are needed to make LSB_JOBID expand in Exper_#.script, not here.
+      echo '    touch MS_CLOGGED; bkill $LSB_JOBID '                                >> ${job_i}
+      echo " endif  "                                                               >> ${job_i}
+   else if ($?PBS_O_WORKDIR) then
+      # Stub for similar solution on PBS systems
+   endif
 
 # Finally, submit the script that we just created.
 #   eval submit ${job_i} >! batchsubmit$$
-# The beauty of hard-wiring
+# The beauty of hard-wiring; it works
    echo "before bsub job_i = $job_i"                 >> $MASTERLOG
    bsub < ${job_i} >! batchsubmit$$
 
 
-if ($?PBS_O_WORKDIR) then
-   set previousjobname = `cat batchsubmit$$`
-   set FILTERBATCHID = $previousjobname
-else if ($?LS_SUBCWD) then
-   set STRING = "1,$ s#<##g"
-   sed -e "$STRING" batchsubmit$$ >! bill$$
-   set STRING = "1,$ s#>##g"
-   sed -e "$STRING" bill$$ >! batchsubmit$$
-   set STRING = `cat batchsubmit$$`
-   set FILTERBATCHID = $STRING[2]
-   # set FILTERBATCHID = "none4test"
-   ${REMOVE} batchsubmit$$ bill$$
-endif
+   if ($?PBS_O_WORKDIR) then
+      set previousjobname = `cat batchsubmit$$`
+      set FILTERBATCHID = $previousjobname
+   else if ($?LS_SUBCWD) then
+      set STRING = "1,$ s#<##g"
+      sed -e "$STRING" batchsubmit$$ >! bill$$
+      set STRING = "1,$ s#>##g"
+      sed -e "$STRING" bill$$ >! batchsubmit$$
+      set STRING = `cat batchsubmit$$`
+      set FILTERBATCHID = $STRING[2]
+      # set FILTERBATCHID = "none4test"
+      ${REMOVE} batchsubmit$$ bill$$
+   endif
 
    echo "filter        spawned as job $FILTERBATCHID at "`date`
    echo "filter        spawned as job $FILTERBATCHID at "`date`       >> $MASTERLOG
@@ -1206,4 +1365,3 @@ ${LINK}              ${exp}/run_job_${obs_seq_1}-${obs_seq_n}.log run_job.log
 
 # actual namelist used by CAM for most recent model advance
 ${REMOVE} ~/lnd.*.rpointer
-
