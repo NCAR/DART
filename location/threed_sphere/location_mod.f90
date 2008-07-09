@@ -722,6 +722,9 @@ else if(location%which_vert == VERTISSURFACE ) then
    !write(*, *) 'Vertical co-ordinate height (in gpm)'
    read(*, *) location%vloc
    location%vloc = 100.0 * location%vloc  ! only applies to pressure
+else if(location%which_vert == VERTISUNDEF ) then
+   ! a valid floating point value, but should be unused.
+   location%vloc = MISSING_R8
 else
    write(*, *) 'Wrong choice of which_vert try again between ',VERTISUNDEF, &
                ' and ',VERTISHEIGHT
