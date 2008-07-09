@@ -29,7 +29,7 @@ character(len=128), parameter :: &
 
 ! Gives ability to generate unique repeatable sequences of random numbers
 ! using random congruential package. Needed to allow different assim algorithms 
-! that ! require random numbers to see identical observational sequences.
+! that require random numbers to see identical observational sequences.
 
 ! Used to give different sequences a different but repeatable start
 ! There may be problems with incestuous series here; be cautious of this
