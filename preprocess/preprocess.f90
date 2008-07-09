@@ -564,9 +564,9 @@ ITEMS: do i = 1, 8
             'use obs_kind_mod, only : ' // trim(type_string(k))
       end do
       write(obs_def_out_unit, 21) blank_line
-      do k = 1, num_types_found
+      do k = 1, num_kinds_found
          write(obs_def_out_unit, 21) &
-            'use obs_kind_mod, only : ' // trim(kind_string(kind_index(k)))
+            'use obs_kind_mod, only : ' // trim(kind_string(k))
       end do
       write(obs_def_out_unit, 21) blank_line
       write(obs_def_out_unit, 21) separator_line
