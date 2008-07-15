@@ -117,6 +117,9 @@ for ivar = 1:plotdat.nvars
    if ( findstr('surface',guessdims{3}) > 0 )
       plotdat.level = 1;
       plotdat.level_units = 'surface';
+   elseif ( findstr('undef',guessdims{3}) > 0 )
+      plotdat.level = 1;
+      plotdat.level_units = 'undefined';
    else
       plotdat.level = getnc(fname, guessdims{3});
       plotdat.level_units = f{guessdims{3}}.units(:);

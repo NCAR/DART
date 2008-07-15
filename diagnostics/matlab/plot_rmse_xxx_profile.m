@@ -121,6 +121,9 @@ for ivar = 1:plotdat.nvars
    if ( findstr('surface',guessdims{2}) > 0 )
       disp(sprintf('%s is a surface field.',plotdat.guessvar))
       error('Cannot display a surface field this way.')
+   elseif ( findstr('undef',guessdims{2}) > 0 )
+      disp(sprintf('%s has no vertical definition.',plotdat.guessvar))
+      error('Cannot display this field this way.')
    else
       plotdat.level_org     = getnc(fname, guessdims{2});
       plotdat.level_units   = f{guessdims{2}}.units(:);

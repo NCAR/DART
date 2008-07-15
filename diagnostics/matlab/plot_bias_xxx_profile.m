@@ -90,7 +90,7 @@ plotdat.linewidth = 2.0;
 plotdat.nvars = length(plotdat.varnames);
 
 plotdat.copyindex   = get_copy_index(fname,copystring); 
-plotdat.biasindex    = get_copy_index(fname,'bias');
+plotdat.biasindex   = get_copy_index(fname,'bias');
 plotdat.Npossindex  = get_copy_index(fname,'Nposs');
 plotdat.Nusedindex  = get_copy_index(fname,'Nused');
 
@@ -121,18 +121,32 @@ for ivar = 1:plotdat.nvars
    if ( findstr('surface',guessdims{2}) > 0 )
       disp(sprintf('%s is a surface field.',plotdat.guessvar))
       error('Cannot display a surface field this way.')
+   elseif ( findstr('undef',guessdims{2}) > 0 )
+      disp(sprintf('%s has no vertical definition.',plotdat.guessvar))
+      error('Cannot display this field this way.')
    else
-      plotdat.level = getnc(fname, guessdims{2});
-      plotdat.level_units = f{guessdims{2}}.units(:);
-      plotdat.nlevels = length(f{guessdims{2}});
+      plotdat.level_org     = getnc(fname, guessdims{2});
+      plotdat.level_units   = f{guessdims{2}}.units(:);
+      plotdat.nlevels       = length(f{guessdims{2}});
+      edgename              = sprintf('%s_edges',guessdims{2});
+      plotdat.level_edges   = getnc(fname,edgename);
+      plotdat.Yrange        = [min(plotdat.level_edges) max(plotdat.level_edges)];
    end
-   
-   switch plotdat.level_units
-       case 'hPa', 
-            plotdat.YDir = 'reverse';
-       otherwise, 
-            plotdat.YDir = 'normal';
+
+   % Matlab likes strictly ASCENDING order for things to be plotted,
+   % then you can impose the direction. The data is stored in the original
+   % order, so the sort indices are saved to reorder the data.
+
+   if (plotdat.level_org(1) > plotdat.level_org(plotdat.nlevels))
+      plotdat.YDir = 'reverse';
+   else
+      plotdat.YDir = 'normal';
    end
+   [levels, indices]   = sort(plotdat.level_org);
+   plotdat.level       = levels;
+   plotdat.indices     = indices;
+   level_edges         = sort(plotdat.level_edges);
+   plotdat.level_edges = level_edges;
    
    guess = getnc(fname, plotdat.guessvar,-1,-1,-1,-1,-1,-1,0);  
    analy = getnc(fname, plotdat.analyvar,-1,-1,-1,-1,-1,-1,0); 
@@ -172,13 +186,7 @@ for ivar = 1:plotdat.nvars
 
    % plot by region
 
-   if (plotdat.nregions > 2)
-      figure(ivar); clf; orient tall; wysiwyg
-   elseif (plotdat.nregions > 1)
-      figure(ivar); clf; orient landscape; wysiwyg
-   else 
-      figure(ivar); clf; orient portrait; wysiwyg
-   end
+   clf; orient tall
 
    for iregion = 1:plotdat.nregions
       plotdat.region = iregion;  
@@ -193,7 +201,7 @@ for ivar = 1:plotdat.nvars
    % BottomAnnotation(ges)
 
    % create a postscript file
-   print(ivar,'-dpsc','-append',psfname);
+   print(gcf,'-dpsc','-append',psfname);
 
 end
 
@@ -205,29 +213,30 @@ function myplot(plotdat)
 
    % Interlace the [ges,anl] to make a sawtooth plot.
    % By this point, the middle two dimensions are singletons.
-   cg = plotdat.ges_copy(:,:,plotdat.region);
-   ca = plotdat.anl_copy(:,:,plotdat.region);
+   % The data must be sorted to match the order of the levels.
+   cg = plotdat.ges_copy(:,:,plotdat.region); CG = cg(plotdat.indices);
+   ca = plotdat.anl_copy(:,:,plotdat.region); CA = ca(plotdat.indices);
 
-   mg = plotdat.ges_bias(:,:,plotdat.region);
-   ma = plotdat.anl_bias(:,:,plotdat.region);
+   mg = plotdat.ges_bias(:,:,plotdat.region); MG = mg(plotdat.indices);
+   ma = plotdat.anl_bias(:,:,plotdat.region); MA = ma(plotdat.indices);
 
-   g = plotdat.ges_Nposs(:,:,plotdat.region);
-   a = plotdat.anl_Nposs(:,:,plotdat.region);
-   nobs_poss   = g;
-   nposs_delta = g - a;
+   g = plotdat.ges_Nposs(:,:,plotdat.region); G = g(plotdat.indices);
+   a = plotdat.anl_Nposs(:,:,plotdat.region); A = a(plotdat.indices);
+   nobs_poss   = G;
+   nposs_delta = G - A;
 
-   g = plotdat.ges_Nused(:,:,plotdat.region);
-   a = plotdat.anl_Nused(:,:,plotdat.region);
-   nobs_used   = g;
-   nused_delta = g - a;
+   g = plotdat.ges_Nused(:,:,plotdat.region); G = g(plotdat.indices);
+   a = plotdat.anl_Nused(:,:,plotdat.region); A = a(plotdat.indices);
+   nobs_used   = G;
+   nused_delta = G - A;
 
    % Determine some quantities for the legend
    nobs = sum(nobs_used);
    if ( nobs > 1 )
-      bias_guess  = mean(mg(isfinite(mg)));   
-      bias_analy  = mean(ma(isfinite(ma)));   
-      other_guess = mean(cg(isfinite(cg))); 
-      other_analy = mean(ca(isfinite(ca))); 
+      bias_guess  = mean(MG(isfinite(MG)));   
+      bias_analy  = mean(MA(isfinite(MA)));   
+      other_guess = mean(CG(isfinite(CG))); 
+      other_analy = mean(CA(isfinite(CA))); 
    else
       bias_guess  = NaN;
       bias_analy  = NaN;
@@ -246,7 +255,7 @@ function myplot(plotdat)
    % axis labelling, so we manually set some values that normally
    % don't need to be set.
    
-   % if more then 4 regions, this will not work  ... 
+   % if more then 4 regions, this will not work (well) ... 
    if ( plotdat.nregions > 2 )
        ax1 = subplot(2,2,plotdat.region);
    else
@@ -256,18 +265,22 @@ function myplot(plotdat)
        set(ax1,'Position',axpos);
    end
 
-   h1 = plot(mg,plotdat.level,'k+-',ma,plotdat.level,'k+:', ...
-             cg,plotdat.level,'ro-',ca,plotdat.level,'ro:');
+   Stripes(plotdat.Xrange, plotdat.level_edges);
+   hold on;
+   h1 = plot(MG,plotdat.level,'k+-',MA,plotdat.level,'k+:', ...
+             CG,plotdat.level,'ro-',CA,plotdat.level,'ro:');
+   hold off;
    set(h1,'LineWidth',plotdat.linewidth);
-   h = legend(str_bias_pr, str_bias_po, str_other_pr, str_other_po);
+   h = legend(h1, str_bias_pr, str_bias_po, str_other_pr, str_other_po, ...
+          'Location','East');
    legend(h,'boxoff')
 
-   axlims = axis;
-   axlims = [plotdat.Xrange axlims(3:4)];
+   axlims = [plotdat.Xrange plotdat.Yrange];
    axis(axlims)
    set(gca,'YDir', plotdat.YDir)
-   hold on; plot([0 0],[axlims(3) axlims(4)],'k-')
-   
+   hold on; plot([0 0],plotdat.Yrange,'k-')
+
+   set(gca,'YTick',plotdat.level,'Ylim',plotdat.Yrange)
    ylabel(plotdat.level_units)
    
    % use same X,Y limits for all plots in this region
@@ -283,6 +296,7 @@ function myplot(plotdat)
            'YAxisLocation','right',...
            'Color','none',...
            'XColor','b','YColor','b',...
+           'YLim',plotdat.Yrange, ...
            'YDir',plotdat.YDir);
    h2 = line(nobs_poss,plotdat.level,'Color','b','Parent',ax2);
    h3 = line(nobs_used,plotdat.level,'Color','b','Parent',ax2);
@@ -290,13 +304,13 @@ function myplot(plotdat)
    set(h3,'LineStyle','none','Marker','+');   
 
    % use same number of X ticks and the same Y ticks
-   
+  
    xlimits = get(ax2,'XLim');
    xinc   = (xlimits(2)-xlimits(1))/(nXticks-1);
    xticks = xlimits(1):xinc:xlimits(2);
    nicexticks = round(10*xticks')/10;
-   set(ax2,'YTick',get(ax1,'YTick'),'YTicklabel',get(ax1,'YTicklabel'), ...
-           'XTick',          xticks,'XTickLabel',nicexticks)
+   set(ax2,'YTick',get(ax1,'YTick'),'YTicklabel',[], ...
+           'XTick',          xticks,'XTicklabel',num2str(nicexticks))
        
    set(get(ax2,'Xlabel'),'String','# of obs (dashed) o=poss, +=used')
    set(get(ax1,'Xlabel'),'String',plotdat.xlabel)
@@ -404,3 +418,17 @@ else
    x = [0 1];
 end
 
+
+
+function Stripes(x,edges)
+% EraseMode: [ {normal} | background | xor | none ]
+
+xc = [ x(1) x(2) x(2) x(1) x(1) ];
+
+hold on;
+for i = 1:2:length(edges)
+  yc = [ edges(i) edges(i) edges(i+1) edges(i+1) edges(i) ];
+  h = fill(xc,yc,[0.8 0.8 0.8], ...
+  'EraseMode','background','EdgeColor','none');
+end
+hold off;
