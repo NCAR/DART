@@ -1021,7 +1021,8 @@ ObsFileLoop : do ifile=1, Nepochs*4
             ! end of time series statistics
             !-----------------------------------------------------------
 
-            if (which_vert(flavor) == VERTISSURFACE) cycle Areas
+            if ((which_vert(flavor) == VERTISSURFACE) .or. &
+                (which_vert(flavor) == VERTISUNDEF)) cycle Areas
 
             if ( obs_time < skip_time ) cycle Areas
 
@@ -1996,6 +1997,11 @@ CONTAINS
       bob                = 'height'
       ParseLevel         = ClosestLevel(obslevel, VERTISHEIGHT)
       which_vert(flavor) = VERTISHEIGHT
+   elseif(vert_is_undef(obslocation)) then
+      obslevel           = 1
+      bob                = 'undef'
+      ParseLevel         = 1
+      which_vert(flavor) = VERTISUNDEF
    else
       call error_handler(E_ERR,'obs_diag','Vertical coordinate not recognized', &
            source,revision,revdate)
@@ -2496,7 +2502,7 @@ CONTAINS
    integer ::  MlevelDimID,  MlevelVarID
    integer ::  PlevelDimID,  PlevelVarID
    integer ::  HlevelDimID,  HlevelVarID
-   integer ::  SlevelDimID
+   integer ::  SlevelDimID,  UlevelDimID
    integer ::    TimeDimID,    TimeVarID
    integer ::    CopyDimID,    CopyVarID,  CopyMetaVarID
    integer ::   TypesDimID,   TypesVarID, TypesMetaVarID
@@ -2636,6 +2642,10 @@ CONTAINS
    call nc_check(nf90_def_dim(ncid=ncid, &
               name='surface', len = 1,               dimid = SlevelDimID), &
               'WriteNetCDF', 'slevel:def_dim '//trim(fname))
+
+   call nc_check(nf90_def_dim(ncid=ncid, &
+              name='undef', len = 1,                 dimid = UlevelDimID), &
+              'WriteNetCDF', 'ulevel:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
               name='mlevel', len = Nmlevels,         dimid = MlevelDimID), &
@@ -3062,6 +3072,11 @@ CONTAINS
          call nc_check(nf90_inq_dimid(ncid, 'surface', dimid), &
                                        'FindVertical', 'vertissurface')
 
+      else if ( which_vert(flav) == VERTISUNDEF   ) then
+         FindVertical = 1
+         call nc_check(nf90_inq_dimid(ncid, 'undef', dimid), &
+                                       'FindVertical', 'vertisundef')
+
       else if ( which_vert(flav) == VERTISLEVEL   ) then
 
          FindVertical = Nmlevels
@@ -3080,11 +3095,6 @@ CONTAINS
          call nc_check(nf90_inq_dimid(ncid, 'hlevel', dimid), &
                                        'FindVertical', 'vertisheight')
 
-      else if ( which_vert(flav) == VERTISUNDEF   ) then
-         write(msgstring,*)flav,trim(my_obs_kind_names(flav)),' has undefined vertical.'
-         call error_handler(E_MSG,'FindVertical',msgstring,source,revision,revdate)
-         call error_handler(E_ERR,'FindVertical','vertical undefined not implemented', &
-                    source,revision,revdate)
       else 
          call error_handler(E_ERR,'FindVertical','unknown vertical', &
                     source,revision,revdate)
@@ -3263,15 +3273,13 @@ CONTAINS
          enddo SplitLoop
 
          if (splitindex <= 0) then
-            write(msgstring,*)'cannot find _ in ', trim(dir_name)
-            call error_handler(E_ERR,'NextFile',msgstring,source,revision,revdate)
+            filenum  = -1 ! indicates no next file
+         else
+            dir_base   = dir_name(1:splitindex-1)
+            dir_ext    = dir_name(splitindex+1:slashindex-1)
+            dir_prec   = slashindex - splitindex - 1
+            read(dir_ext,*) filenum
          endif
-
-         dir_base   = dir_name(1:splitindex-1)
-         dir_ext    = dir_name(splitindex+1:slashindex-1)
-         dir_prec   = slashindex - splitindex - 1
-
-         read(dir_ext,*) filenum
 
       else ! we have one single file - on the first trip through
 
