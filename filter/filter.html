@@ -64,6 +64,15 @@
    Main program for driving ensemble filter assimilations. 
 </P>
 
+<P>
+   NOTE: The different types of assimilation algorithms 
+   (EAKF, ENKF, Kernel filter, Particle filter, etc.) are determined
+   by the <em class=code>&#38;assim_tools_nml:filter_kind</em> entry,
+   described in <a href="../assim_tools/assim_tools_mod.html">assim_tools_mod.html</a>.
+   Despite having 'filter' in the name, they are assimilation algorithms
+   and so are implemented in <em class=file>assim_tools_mod.f90</em>.
+</P>
+
 <P> This program 
    provides a number of options that are driven from its namelist. The
    number of assimilation steps to be done are controlled by the input
