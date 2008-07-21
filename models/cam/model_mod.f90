@@ -664,8 +664,10 @@ if (file_exist('element')) then
    close(99)
    do_out = .false.
    if (ens_member == 1) do_out = .true.
+   write(*,*) 'do_out = ',do_out
 else
    do_out = do_output()
+   write(*,*) 'do_out = ',do_out
    ! static_init_model is called once(?) for each task(?).
    ! There may be more or fewer ensemble members than tasks.
    ! No problem if there are fewer.
@@ -2621,7 +2623,7 @@ character (len=8) :: lon_name, lat_name, lev_name
 ! Start with no errors in 
 istatus = 0
 vstatus = 0
-vals = 0.0_r8
+vals = MISSING_R8
 
 ! Always fill the ps arrays with the state vector here, since most obs and vertical locations
 !    will need that info.  "Always" allows ens_mean_for_model to set ps arrays once for all
@@ -2640,7 +2642,8 @@ s_type = dart_to_cam_kinds(obs_type)
 if (s_type == MISSING_I .and. &
    (obs_type .ne. KIND_PRESSURE) .and.  (obs_type .ne. KIND_SURFACE_ELEVATION)) then
    istatus = 3
-   interp_val = 0._r8
+! should be MISSING_R8 ?
+   interp_val = MISSING_R8
 ! check
    write(*,*) 'Wrong type of obs = ', obs_type
    return
@@ -2670,11 +2673,11 @@ s_type_3d = s_type_2d - state_num_2d
 
 if (s_type == MISSING_I .and. &
    (obs_type .eq. KIND_PRESSURE) .or.  (obs_type .eq. KIND_SURFACE_ELEVATION)) then
-   ! use defaults set above
+   ! use defaults lon_name and lat_name set above
 elseif (s_type <= state_num_0d + state_num_1d) then
    ! error; can't deal with observed variables that are 0 or 1D in model_mod.
    istatus = 3
-   interp_val = 0._r8
+   interp_val = MISSING_R8 
    write(*,*) 'Cannot handle 0 or 1d state vars, s_type = ', s_type
    return
 elseif (s_type_2d > 0 .and. s_type_2d <= state_num_2d) then
@@ -2687,7 +2690,7 @@ elseif (s_type_3d > 0 .and. s_type_3d <= state_num_3d) then
    lev_name = dim_names(s_dimid_3d(1,s_type_3d))
 else
    istatus = 3
-   interp_val = 0._r8
+   interp_val = MISSING_R8 
    write(*,*) 'Unexpected state type value, s_type = ', s_type
    return
 end if
@@ -2816,6 +2819,7 @@ elseif (vert_is_height(location)) then
    if (vstatus /= 1) call get_val_height   &
       (vals(2, 2), x, lon_ind_above, lat_ind_above, height, obs_type, vstatus)
 
+
 elseif (vert_is_surface(location)) then
    ! location_mod:interactive_location asks for surface obs to have vertical coord = ps(hPa)
    ! The 'lev' argument is set to 1 because there is no level for these types, and 'lev' will be
@@ -2826,25 +2830,26 @@ elseif (vert_is_surface(location)) then
    if (vstatus /= 1) call get_val(vals(2,2),x, lon_ind_above, lat_ind_above, 1, obs_type, vstatus)
 
 ! Need option for vert_is_undefined
+else
+   write(*,*) '   No vert option chosen!'
 
 end if
 
 ! lat is already converted to degrees by get_location
 if (abs(lon_lat_lev(2)) > max_obs_lat_degree .and. vstatus /= 1) then
-   istatus = 2
+   istatus = 4
 else
    istatus = vstatus
 end if
 
 ! indices of vals are (longitude, latitude)
-if (istatus /= 1) then
+ if (istatus /= 1) then
    do i = 1, 2
       a(i) = lon_fract * vals(2, i) + (1.0_r8 - lon_fract) * vals(1, i)
    end do
    interp_val = lat_fract * a(2) + (1.0_r8 - lat_fract) * a(1)
 else
-   ! ? Should this return MISSING_R8?
-   interp_val = 0.0_r8
+   interp_val = MISSING_R8
 end if
 
 ! Set the element of ps that's tested elsewhere back to MISSING_R8, to signal
@@ -2889,8 +2894,7 @@ num_levs = dim_sizes(find_name('lev     ',dim_names))
 if (level > num_levs .or. level < 1) then
    ! Exclude obs below the model's lowest level and above the highest level
    istatus = 1
-   ! Should this be MISSING_r8?
-   val = 0._r8
+   val = MISSING_R8
 else 
    if (highest_obs_level == MISSING_R8) then
       ! To do this completely right; p_surf would depend on whether obs_kind was on a staggered grid
@@ -2920,7 +2924,7 @@ else
       ! ps is on A-grid, so no need to check for staggered grids
       call get_val(p_surf, x, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, vstatus)
       if (vstatus > 0) then
-         val = 0._r8
+         val = MISSING_R8
          istatus = 1
          return
       end if
@@ -2934,7 +2938,7 @@ else
 
    if (vstatus /= 0) then
       istatus = 1
-      val = 0._r8
+      val = MISSING_R8
    end if
 end if
 
@@ -2989,7 +2993,7 @@ else
    p_surf = ps(lon_index, lat_index)
 end if
 !   if (vstatus > 0) then
-!      val = 0.0_r8
+!      val = MISSING_R8
 !      istatus = 1
 !      return
 !   end if
@@ -3005,7 +3009,7 @@ if (pressure <= p_col(1) .or. pressure >= p_col(num_levs)) then
    ! Exclude obs below the model's lowest level and above the highest level
    ! We *could* possibly use ps and p(num_levs) to interpolate for points below the lowest level.
    istatus = 1
-   val = 0._r8
+   val = MISSING_R8
 else 
    ! Interpolate in vertical to get two bounding levels
    if (pressure < highest_obs_pressure_mb * 100.0_r8) then
@@ -3050,7 +3054,7 @@ else
          val = (1.0_r8 - frac) * bot_val + frac * top_val
       else
          istatus = 1
-         val = 0._r8
+         val = MISSING_R8
       end if
    end if
    ! Pobs
@@ -3116,14 +3120,19 @@ end if
 call model_heights(vec, p_surf, lon_index, lat_index, num_levs, stagr_lon, stagr_lat, & 
                    model_h, vstatus)
 
-! check
+! debug
+! write(logfileunit,'(A,6F7.0,/(10F7.0))') 'heights = ',(model_h(i), i=1,num_levs)
 
 ! Interpolate in vertical to get two bounding levels
 if (height >= model_h(1) .or. height <= model_h(num_levs)) then
    ! Exclude obs below the model's lowest level and above the highest level
    istatus = 1
-   val = 0._r8
-! check
+   val = MISSING_R8
+! debug
+      if (do_out) &
+      write(logfileunit,'(A,I3,1x,3F12.2)') 'get_val_height; ens_member, height, model_h(1,num_levs) = ', &
+           ens_member, height, model_h(1),model_h(num_levs)
+! debug
 else 
 ! This should be redefined every time(?), not just for the first (arbitrary) entry.
 !   if (highest_obs_height_m == MISSING_R8) then
@@ -3140,10 +3149,10 @@ else
       ! Exclude from assimilation the obs above a user specified level
       ! but still calculate the expected obs.
       istatus = 2
-! check
+! debug
 !      if (do_out) &
-!      write(*,'(A,2F12.2)') 'get_val_height; height, highest_obs_height_m = ', &
-!           height, highest_obs_height_m
+!      write(*,'(A,I3,1x,2F12.2)') 'get_val_height; ens_member, height, highest_obs_height_m = ', &
+!           ens_member, height, highest_obs_height_m
    else
       istatus = 0
    end if
@@ -3167,6 +3176,7 @@ else
    if (obs_kind == KIND_PRESSURE) then
       ! Observing a pressure on a height surface sounds silly.  But for completeness:
       ! get_val_height is called for 4 different columns, which will have different p_cols for each.
+      ! It's also requested by obs_def_gps_mod.
 
       ! Next, get the values on the levels for this ps
       ! ps is on A-grid, so no need to check for staggered grids
@@ -3185,7 +3195,7 @@ else
       val = (1.0_r8 - frac) * bot_val + frac * top_val
    else
       istatus = 1
-      val = 0._r8
+      val = MISSING_R8
    end if
 end if
 
@@ -4348,6 +4358,8 @@ hybb(1,1) = hybi%vals(k)
 !   This element is referenced below, but not ultimately used.
 hyba(1,2) = 0.0_r8
 hybb(1,2) = 1.0_r8
+! hybX go from bottom to top; b coeffs multiply sigma, and coord is pure sigma
+!      at the bottom, so hybb = 1.0 there.
 
 ! mid-points=2; note that hyXm(num_levs + 1) is not defined (= MISSING_R8)
 do k = 2,num_levs +1
