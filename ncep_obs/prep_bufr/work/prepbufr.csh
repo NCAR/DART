@@ -119,7 +119,9 @@ while ( $day <= $last )
    # otherwise.
    set h = 0
    set next_day = not
-   while ($h < 30)
+   # daily files need to pull out observations at exactly 3Z from the next day.
+   # non-daily files should just process up to hour 24, one for one with the inputs.
+   while ( (($h < 30) && ($daily == yes)) || (($h < 24) && ($daily == no)) )
       @ h  = $h + 6
       @ hh = $h % 24
       @ dd = $day + ($h / 24)
@@ -151,6 +153,8 @@ while ( $day <= $last )
       if ($mm < 10) set mm = 0$mm
       if ($dd < 10) set dd = 0$dd
       if ($hh < 10) set hh = 0$hh
+      set oh = $h   # hour not modulo 24
+      if ($h < 10)  set oh = 0$h
 
 
       # link(big endian) or make(little endian) input file 'prepqm' 
@@ -159,7 +163,7 @@ while ( $day <= $last )
       set BUFR_file = ${BUFR_dir}/${year}${mm}/prepqm${yy}${mm}${dd}${hh}
       if (! -e ${BUFR_file}) then
          echo "MISSING FILE ${BUFR_file} and aborting"
-         exit
+         exit -1
       endif
 
       if ($convert == 'yes') then
@@ -174,8 +178,15 @@ while ( $day <= $last )
       endif
 
       if ($h == 30) then
-         # get any obs between 0Z and 3Z from the 6Z file of the next day 
-         # using a slightly modified prepbufr program
+         # get any obs exactly at 3Z from the 6Z file of the next day using a
+         # modified prepbufr program, since 6 hour assimilation windows 
+         # centered on 6Z, 12Z, etc would be 03:01Z-09:00Z, 09:01Z-15:00Z, etc.
+         # obs exactly at 03Z need to be part of the same file which spans 
+         # 21:01Z-03:00Z.   both of these prepbufr programs also add 24h to 
+         # any time after midnight, so the hours in the output files run
+         # from 3.016 hours to 27.000 hours.  (the ascii intermediate files
+         # do not contain day numbers, but probably should and then the hours
+         # can run from a normal 0Z to 23:50Z.
          ../exe/prepbufr_03Z.x
       else
          ../exe/prepbufr.x
@@ -185,8 +196,8 @@ while ( $day <= $last )
          cat prepqm.out >>! temp_obs
          rm prepqm.out
       else
-         # use the dates that can roll over at month/year end, with hours
-         set BUFR_out = ${BUFR_dir}/${year}${mm}/temp_obs.${year}${mm}${dd}${hh}
+         # use the dates that do not roll over at month/year end, with hours
+         set BUFR_out = ${BUFR_dir}/${oyear}${omm}/temp_obs.${oyear}${omm}${odd}${oh}
          echo "moving output to ${BUFR_out}"
          mv -v prepqm.out ${BUFR_out}
       endif
@@ -202,4 +213,4 @@ while ( $day <= $last )
    @ day++
 end
 
-exit
+exit 0
