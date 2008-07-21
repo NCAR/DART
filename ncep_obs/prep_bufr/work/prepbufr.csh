@@ -80,6 +80,10 @@ set endday   = 7
 
 set BUFR_dir = ../data
 
+# directory where DART ncep observation programs are located
+
+set DART_exec_dir = ../exe
+
 # END USER SET PARAMETERS
 #--------------------------------------------------------------
 
@@ -120,7 +124,7 @@ while ( $day <= $last )
    set h = 0
    set next_day = not
    # daily files need to pull out observations at exactly 3Z from the next day.
-   # non-daily files should just process up to hour 24, one for one with the inputs.
+   # non-daily files should process up to hour 24, one for one with the inputs.
    while ( (($h < 30) && ($daily == yes)) || (($h < 24) && ($daily == no)) )
       @ h  = $h + 6
       @ hh = $h % 24
@@ -161,20 +165,30 @@ while ( $day <= $last )
       # for prepbufr.x.  if the pattern for the prepqm files is different,
       # fix the BUFR_file below to match.
       set BUFR_file = ${BUFR_dir}/${year}${mm}/prepqm${yy}${mm}${dd}${hh}
-      if (! -e ${BUFR_file}) then
-         echo "MISSING FILE ${BUFR_file} and aborting"
+      if (! -e ${BUFR_file} && ! -e ${BUFR_file}.gz ) then
+         echo "MISSING FILE ${BUFR_file} - will abort now."
          exit -1
       endif
 
       if ($convert == 'yes') then
          echo "converting ${BUFR_file} to littleendian prepqm.in"
-         cp -f ${BUFR_file} prepqm.bigendian
-         ../exe/grabbufr.x prepqm.bigendian prepqm.littleendian
+         if ( -e ${BUFR_file}.gz ) then
+           cp -f ${BUFR_file}.gz prepqm.bigendian.gz
+           gunzip -f prepqm.bigendian.gz
+         else
+           ln -sf ${BUFR_file} prepqm.bigendian
+         endif
+         ${DART_exec_dir}/grabbufr.x prepqm.bigendian prepqm.littleendian
          mv prepqm.littleendian prepqm.in
          rm prepqm.bigendian
       else
          echo "linking ${BUFR_file} to prepqm.in"
-         ln -f ${BUFR_file} prepqm.in
+         if ( -e ${BUFR_file}.gz ) then
+           cp -f ${BUFR_file}.gz prepqm.in.gz
+           gunzip -f prepqm.in.gz
+         else
+           ln -sf ${BUFR_file} prepqm.in
+         endif
       endif
 
       if ($h == 30) then
@@ -186,10 +200,10 @@ while ( $day <= $last )
          # any time after midnight, so the hours in the output files run
          # from 3.016 hours to 27.000 hours.  (the ascii intermediate files
          # do not contain day numbers, but probably should and then the hours
-         # can run from a normal 0Z to 23:50Z.
-         ../exe/prepbufr_03Z.x
+         # can run from a normal 0Z to 23:50Z.)
+         ${DART_exec_dir}/prepbufr_03Z.x
       else
-         ../exe/prepbufr.x
+         ${DART_exec_dir}/prepbufr.x
       endif
 
       if ($daily == 'yes') then
