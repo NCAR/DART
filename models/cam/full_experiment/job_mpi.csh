@@ -145,7 +145,7 @@ if ($?LS_SUBCWD) then
    set max_pend_archive = 5   
 
    # Bluefire
-   #set run_command = 'export TARGET_CPU_LIST="-1"; mpirun.lsf /usr/local/bin/launch '
+   #set run_command = 'setenv TARGET_CPU_LIST "-1"; mpirun.lsf /usr/local/bin/launch '
    # Wei's suggestion to fix ntbl windows problems
    #set run_command = '/contrib/mpiruns/mpirun.lsf '
    # For multi-thread   
@@ -681,8 +681,8 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       if ($num_procs == 96) then
          # want 80 members = 1*28 + 2*26
          echo "setenv LSB_PJL_TASK_GEOMETRY \"                                                         >> ${job_i}
-         echo ' "{(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27) \'       >> ${job_i}
-         echo " (28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53) \"     >> ${job_i}
+         echo ' "{(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27)\'        >> ${job_i}
+         echo " (28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53)\"      >> ${job_i}
          echo ' (54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79)}" '    >> ${job_i}
       else if ($num_procs == 32) then
          # I want 20 = 1*20
@@ -846,14 +846,14 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo "$num_procs $keep_lev_blocks $keep_lat_blocks "    >> casemodel.$i
    endif
    # advance_model wants to see a file 'casemodel' and not keep track of which obs_seq it's for
-   echo "$REMOVE casemodel"                                                 >> ${job_i}
-   echo "if (-e casemodel.$i) then "                                        >> ${job_i}
-   echo "   $LINK casemodel.$i casemodel "                                  >> ${job_i}
-   echo "else "                                                             >> ${job_i}
-   echo '   echo "job '$i'; casemodel.$i not found; exiting" >> $MASTERLOG' >> ${job_i}
-   echo '   echo "casemodel.$i not found; exiting" '                        >> ${job_i}
-   echo "   exit 124 "                                                      >> ${job_i}
-   echo "endif "                                                            >> ${job_i}
+   echo "$REMOVE casemodel"                                                   >> ${job_i}
+   echo "if (-e casemodel.$i) then "                                          >> ${job_i}
+   echo "   $LINK casemodel.$i casemodel "                                    >> ${job_i}
+   echo "else "                                                               >> ${job_i}
+   echo '   echo "job '$i'; casemodel.'$i' not found; exiting" >> $MASTERLOG' >> ${job_i}
+   echo '   echo "casemodel.'$i' not found; exiting" '                        >> ${job_i}
+   echo "   exit 124 "                                                        >> ${job_i}
+   echo "endif "                                                              >> ${job_i}
 
    # adaptive inflation ic files may (not) exist
    # Should query input.nml to learn whether to get them?
