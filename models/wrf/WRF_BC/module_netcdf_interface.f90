@@ -27,7 +27,8 @@ public :: get_dims_cdf,      &
         put_var_3d_real_cdf, &
         put_var_2d_real_cdf, &
         get_times_cdf,       &
-        put_time_cdf
+        put_time_cdf,        & 
+        variable_exist
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -544,5 +545,35 @@ contains
   end subroutine check
 
 end subroutine put_time_cdf
+
+function variable_exist( fname, var_name )
+
+  implicit none
+
+  character(len=*), intent(in) :: fname, var_name
+
+  integer :: cdfid, var_id, rcode
+  logical :: variable_exist
+
+  variable_exist = .false.
+  call check( nf90_open(fname, nf90_nowrite, cdfid) )
+  rcode = nf90_inq_varid(cdfid, var_name, var_id)
+  call check( nf90_close(cdfid) )
+  if ( rcode == nf90_noerr )  variable_exist = .true.
+  return 
+ 
+contains
+
+  ! Internal subroutine - checks error status after each netcdf, prints
+  !                       text message each time an error code is returned.
+  subroutine check(istatus)
+    integer, intent (in) :: istatus
+
+    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'variable_exist', &
+       trim(nf90_strerror(istatus)), source, revision, revdate)
+
+  end subroutine check
+
+end function variable_exist
 
 END MODULE module_netcdf_interface

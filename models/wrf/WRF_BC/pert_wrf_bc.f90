@@ -22,11 +22,11 @@ use               types_mod, only : r8
 use           utilities_mod, only : file_exist, open_file, close_file, &
                                     initialize_utilities, finalize_utilities, &
                                     register_module, error_handler, E_ERR, &
-                                    logfileunit, nmlfileunit, timestamp
+                                    logfileunit, timestamp
 use module_netcdf_interface, only : get_dims_cdf, get_gl_att_real_cdf, put_gl_att_real_cdf, &
                                     get_var_3d_real_cdf, get_var_2d_real_cdf, &
                                     put_var_3d_real_cdf, put_var_2d_real_cdf, &
-                                    get_times_cdf, put_time_cdf
+                                    get_times_cdf, put_time_cdf, variable_exist
 use        module_couple_uv
 use         module_timediff, only : time_diff, find_time_index
 
@@ -37,14 +37,6 @@ character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
-
-!-----------------------------------------------------------------------
-! Model namelist parameters with default values.
-!-----------------------------------------------------------------------
-
-integer :: mp_physics = 4
-
-namelist /physics/ mp_physics
 
 !-----------------------------------------------------------------------
 
@@ -87,7 +79,7 @@ real(r8), allocatable, dimension(:,  :) :: mu, mu_next, mub, msfu, msfv, msfm
 
 integer :: east_end, north_end
 
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 
 real(r8) :: bdyfrq_old, bdyfrq, dtnext
 
@@ -97,43 +89,6 @@ integer :: io, iunit
 
 call initialize_utilities('pert_wrf_bc')
 call register_module(source, revision, revdate)
-
-! Reading the namelist input
-if(file_exist('namelist.input')) then
-
-   iunit = open_file('namelist.input', action = 'read')
-   read(iunit, nml = physics, iostat = io )
-   call close_file(iunit)
-
-endif
-
-write(nmlfileunit, nml=physics)
-write(     *     , nml=physics)
-
-select case(mp_physics)
-case (0) ;
-   nmoist = 1
-case (1) ;
-   nmoist = 3
-case (2) ;
-   nmoist = 6
-case (3) ;
-   nmoist = 3
-case (4) ;
-   nmoist = 5
-case (5) ;
-   nmoist = 2
-case (6) ;
-   nmoist = 6
-case (8)
-   nmoist = 7
-case (98) ;
-   nmoist = 3
-case (99) ;
-   nmoist = 5
-case default ;
-   print *, 'Microphysics package unknown. mp_physics = ', mp_physics
-end select
 
 wrf_input_current_file='wrfinput_this'
 wrf_input_next_file='wrfinput_next'
@@ -159,7 +114,8 @@ tenname(3)='_BTYS'
 tenname(4)='_BTYE'
 
 !--3D need update
-num3d = 5 + nmoist
+nmoist = 7 
+num3d  = 5 + nmoist
 var3d(1)='U'
 var3d(2)='V'
 var3d(3)='W'
@@ -484,7 +440,11 @@ endif
 !---------------------------------------------------------------------
 !--For 3D variables
 
-   do n=1,num3d
+   loop3d : do n = 1, num3d
+
+      if ( .not. variable_exist(wrf_input_current_file, trim(var3d(n))) ) cycle loop3d
+      write(6,*) 'Processing',trim(var3d(n))
+
       call get_dims_cdf( wrf_input_current_file, trim(var3d(n)), dims, ndims, debug )
 
       allocate(full3d(dims(1), dims(2), dims(3)))
@@ -624,7 +584,8 @@ endif
 
       deallocate(full3d)
       deallocate(full3d_next)
-   enddo
+
+   enddo loop3d
 
    deallocate(mu)
    deallocate(mu_next)
