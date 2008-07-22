@@ -209,7 +209,7 @@ if ($cam_version == 'single-namelist') then
 else if ($cam_version == 'multi-namelist') then
    # CAM 3.5 explicitly opens the files?  No redirect needed?
    echo "with command $run_command $camroot/cam  (no < namelist)"
-   $run_command $camroot/cam 
+   eval $run_command $camroot/cam  
 endif
 ls -lt 
 
