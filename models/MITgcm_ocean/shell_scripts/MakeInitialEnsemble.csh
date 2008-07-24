@@ -20,42 +20,192 @@
 # how much spread we will have to start. There must be SOME ...
 # depends on the nonlinearity of the model.
 #
-# I modified trans_pv_sv.f90 to ignore the timestamps 
-#
 # Repeatedly call trans_pv_sv to turn each snapshot into a 
-# DART initial condition. The first (line - for ascii files) or 
-# (4+4+4+4 = 16 bytes - for binary files) contain the timestamp.
-# We need the timestamp for the first one to be saved and used for all
-# subsequent 'members'. Simply 'cat' them together at the end.
-# There is no problem with having more ensemble members in a DART
-# initial condition file ... but there is a big problem if you don't have
-# enough ...
+# DART initial condition file. Each DART initial conditions file 
+# starts with a timestamp that reflects the valid time for the ensuing 
+# model state. To generate an ensemble of initial conditions files
+# from successive snapshot files ... we will need to overwrite this
+# timestamp so that ALL the DART initial conditions files reflect 
+# the same timestamp rather than the true timestamp.
+#
+# The call to restart_file_utility changes the time tag in the file
+# to be whatever is in the namelist. In this case, we want the time
+# tag to be 1996 01 01 00Z ... in DART-speak ... 144270 days 0 seconds.
 #
 # TJH - 21 May 2008
 
+# WARNING: You should run this in an 'empty' directory
+# WARNING: You should run this in an 'empty' directory
+# WARNING: You should run this in an 'empty' directory
+
+# Get input for this execution
+
+set SNAPSHOTDIR = /fs/image/home/thoar/SVN/DART/models/MITgcm_ocean/run1
+set     DARTEXE = /fs/image/home/thoar/SVN/DART/models/MITgcm_ocean/work
+set     DARTNML = /fs/image/home/thoar/SVN/DART/models/MITgcm_ocean/work/input.nml
+
+# Check to see if all the pieces exist
+
+set checkstat = 0
+
+if ( -d ${SNAPSHOTDIR} ) then
+   echo "Using snapshot files from ${SNAPSHOTDIR}"
+else
+   echo "ERROR:snapshot files directory ${SNAPSHOTDIR} does not exist."
+   set checkstat = 1
+endif
+
+if ( -f ${SNAPSHOTDIR}/data ) then
+   echo "Using ${SNAPSHOTDIR}/data"
+else
+   echo "ERROR: ${SNAPSHOTDIR}/data does not exist."
+   set checkstat = 1
+endif
+
+if ( -f ${SNAPSHOTDIR}/data.cal ) then
+   echo "Using ${SNAPSHOTDIR}/data.cal"
+else
+   echo "ERROR: ${SNAPSHOTDIR}/data.cal does not exist."
+   set checkstat = 1
+endif
+
+if ( -f ${DARTNML} ) then
+   echo "Using ${DARTNML}"
+else
+   echo "ERROR: ${DARTNML} does not exist."
+   set checkstat = 1
+endif
+
+if ( -f ${DARTEXE}/trans_pv_sv ) then
+   echo "Using DART trans_pv_sv from ${DARTEXE}"
+else
+   echo "ERROR: ${DARTEXE}/trans_pv_sv does not exist."
+   set checkstat = 1
+endif
+
+if ( -f ${DARTEXE}/restart_file_utility ) then
+   echo "Using DART restart_file_utility from ${DARTEXE}"
+else
+   echo "ERROR: ${DARTEXE}/restart_file_utility does not exist."
+   set checkstat = 1
+endif
+
+if ( $checkstat > 0 ) then
+   echo "ERROR: required input failure."
+   exit 9
+endif
+
+#-------------------------------------------------------------------------
+# The whole operation relies on the fact that there is a directory
+# somewhere that has the snapshot files and the corresponding input
+# files: data, data.cal - as well as (potentially) another directory
+# that has the DART namelists and executables.
+#
+# We will create a little subdirectory off the DARTEXE directory to
+# contain the DART restart files, etc.
+#-------------------------------------------------------------------------
 # trans_pv_sv needs three namelist files:  data, data.cal and input.nml
 
-set DARTROOT = /fs/image/home/thoar/SVN/DART/models/MITgcm_ocean
-cp -p ${DARTROOT}/inputs/data      .
-cp -p ${DARTROOT}/inputs/data.cal  .
-cp -p ${DARTROOT}/work/input.nml   .
+cp -p ${SNAPSHOTDIR}/data        .
+cp -p ${SNAPSHOTDIR}/data.cal    .
+cp -p ${DARTNML}                 .
+
+#-------------------------------------------------------------------------
+# Ensure the namelists have the right values.
+#-------------------------------------------------------------------------
+# We need to run the editor in batch mode.  If you have 'vim' it needs
+# one flag; if you have only the older vanilla 'vi' you need another.
+# On several systems 'vi' is a link to 'vim' and uses the newer syntax
+# so you cannot distinguish which flag will be needed based only on name.
+# First try to run 'vim' by full name and then back off to plain 'vi'
+# if it is not found.  Punt if neither is found.
+#-------------------------------------------------------------------------
+set VI_EXE = `which vim`
+if ( -x "${VI_EXE}" ) then
+   setenv VI 'vim -e'
+else
+   set VI_EXE = `which vi`
+   if ( -x "${VI_EXE}" ) then
+      setenv VI 'vi -s'
+   else
+      echo ""
+      echo "Neither the vim nor the vi editor were found.  This script"
+      echo "cannot continue unless it can use one of them to update"
+      echo "the test input namelist files."
+      echo ""
+      exit 2
+   endif
+endif
+
+# Need to modify rest of input.nml for test run
+# Essentially, we want the namelist block to look like:
+#&restart_file_utility_nml
+#   input_file_name              = "assim_model_state_ud",
+#   output_file_name             = "filter_updated_restart",
+#   ens_size                     =  1,
+#   single_restart_file_in       = .true.,
+#   single_restart_file_out      = .true.,
+#   write_binary_restart_files   = .true.,
+#   overwrite_data_time          = .true.,
+#   new_data_days                =  144270,
+#   new_data_secs                =       0,
+#   input_is_model_advance_file  = .false.,
+#   output_is_model_advance_file = .false.,
+#   overwrite_advance_time       = .false.,
+#   new_advance_days             =  -1,
+#   new_advance_secs             =  -1   /
+
+echo ':0'                                      >! vi_script
+echo '/restart_file_utility_nml'               >> vi_script
+echo '/input_file_name'                        >> vi_script
+echo ':s/filter_restart/assim_model_state_ud/' >> vi_script
+echo '/write_binary_restart_files'             >> vi_script
+echo ':s/.false./.true./'                      >> vi_script
+echo '/overwrite_data_time'                    >> vi_script
+echo ':s/.false./.true./'                      >> vi_script
+echo '/new_data_days'                          >> vi_script
+echo ':s/-1/144270/'                           >> vi_script
+echo '/new_data_secs'                          >> vi_script
+echo ':s/-1/0/'                                >> vi_script
+echo ':wq'                                     >> vi_script
+
+( ${VI} input.nml < vi_script)
+
+\rm -f vi_script
+
+#-------------------------------------------------------------------------
+# Loop over all the snapshot files.
+#-------------------------------------------------------------------------
 
 @ memcount = 0
 
-foreach FILE ( T.*.data )
-   @ memcount = $memcount + 1
+foreach FILE ( ${SNAPSHOTDIR}/T.*.data )
 
-   set FILEBASE = $FILE:r
+   set FILENAME = $FILE:t
+   set FILEBASE = $FILENAME:r
    set TIMESTEP = $FILEBASE:e
+
+   ln -s ${SNAPSHOTDIR}/*.${TIMESTEP}.*   .
+
    echo "Converting snapshot timestep $TIMESTEP ..."
 
-   echo $TIMESTEP | ${DARTROOT}/work/trans_pv_sv
+   #----------------------------------------------------------------------
+   # Convert each snapshot file to a (single) DART restart file that has the 
+   # timetag for the state ... which we want to overwrite with a generic one.
+   #----------------------------------------------------------------------
 
-   if ( $memcount == 1) then
-   #  head -1 assim_model_state_ud >! timestamp
-   else
-   #  set nlines = `wc -l assim_model_state_ud`
-   endif
+   echo $TIMESTEP | ${DARTEXE}/trans_pv_sv
+
+   #----------------------------------------------------------------------
+   # Use the input.nml:restart_file_utility_nml value for the 'valid time'
+   #----------------------------------------------------------------------
+
+   ${DARTEXE}/restart_file_utility 
+
+   #----------------------------------------------------------------------
+   # Rename 'generic' output file to reflect the ensemble member number.
+   #----------------------------------------------------------------------
+   @ memcount = $memcount + 1
 
    if ( $memcount < 10 ) then
       set OFNAME = ens_mem_00$memcount
@@ -65,5 +215,26 @@ foreach FILE ( T.*.data )
       set OFNAME = ens_mem_$memcount
    endif
 
-   mv assim_model_state_ud $OFNAME
+   mv filter_updated_restart $OFNAME
+
+   #----------------------------------------------------------------------
+   # remove input files to prep for next iteration
+   #----------------------------------------------------------------------
+
+   \rm -f *.${TIMESTEP}.* assim_model_state_ud
+
 end
+
+#-------------------------------------------------------------------------
+# Convert snapshot files to a (single) DART restart file.
+#-------------------------------------------------------------------------
+
+cat ens_mem_* >! filter_ics
+
+#-------------------------------------------------------------------------
+# Clean out the big files that are no longer needed.
+#-------------------------------------------------------------------------
+
+\rm -f ens_mem_*
+
+
