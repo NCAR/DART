@@ -21,8 +21,11 @@ set mo_first = 8
 set mo_last  = 8
 set input_root = obs_
 set digits = 4
+set obs_seq_freq = 1
 # set input_root = 08_
 # set digits = 2
+# set obs_seq_freq = 2
+
 set saved = saved_obs_seq_${mo_first}-${mo_last}
 
 set remove_finals = true
@@ -84,7 +87,7 @@ while($mo <= $mo_num)
    if ($leap == 0) set mo_days[2] = 29
 
    @ obs_seq_1 = $obs_seq_n + 1
-   @ obs_seq_n = ($obs_seq_1 + $mo_days[${mo_cal}]) - 1
+   @ obs_seq_n = ($obs_seq_1 + ($mo_days[${mo_cal}] * $obs_seq_freq)) - 1
 
    # create the tar file using the first obs_seq/day of this month
    set obs_seq = $obs_seq_1
@@ -93,7 +96,12 @@ while($mo <= $mo_num)
    set out_file = $months[${mo_cal}]_obs_seq.tar 
    echo "out_file and input_dir = "$out_file $input_dir >> $saved
 
-   tar -c -f $out_file ${input_dir}/{obs_seq.final,input.nml}
+   if (-e ${input_dir}/obs_seq.final) then
+      tar -c -f $out_file ${input_dir}/{obs_seq.final,input.nml}
+   else
+      echo "${input_dir}/obs_seq.final does not exist; exiting" >> $saved
+      exit
+   endif
 
    # tack on additional ens members until this month is complete
    @ obs_seq++
