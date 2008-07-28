@@ -51,25 +51,27 @@
  &
 
 # Time stepping parameters
-# dumpFreq           = 86400.,
-# taveFreq           = 86400.,
-# to get 20 ensemble members ... from a 14 day run ... 
-# I'm going to dump more often than every day.
-# endTime            = 1209600.,  14 days
-# endTime            = 172800., two days
-#dumpFreq           = 43200.,
-#taveFreq           = 43200.,
+# endTime           =  172800.,   2 days
+# endTime           = 1209600.,  14 days
+# endTime           = 1728000.,  20 days
+# to get N ensemble members ... from a 20 day run ... 
+# simply change the output frequency to generate the appropriate number
+# of snapshot files and then use MakeInitialEnsemble.csh
+# dumpFreq          = 86400.,   (daily assimilation cycle)
+# taveFreq          = 86400.,   (daily assimilation cycle)
+# dumpFreq          = 43200.,   (12-hourly assimilation cycle)
+# taveFreq          = 43200.,   (12-hourly assimilation cycle)
  &PARM03
  startTime          = 0.,
- endTime            = 172800.,
+ endTime            = 86400.,
  deltaTmom          = 900.,
  deltaTtracer       = 900.,
  deltaTClock        = 900.,
  abEps              = 0.1,
  chkptFreq          = 0.,
  pChkptFreq         = 1209600.,
- dumpFreq           = 172800.,
- taveFreq           = 172800.,
+ dumpFreq           = 86400.,
+ taveFreq           = 86400.,
  tauThetaClimRelax  = 0.,
  tauSaltClimRelax   = 2592000.,
  monitorFreq=259200000.0,

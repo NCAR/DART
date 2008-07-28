@@ -8,12 +8,14 @@
 # $Id$
 #
 #=============================================================================
-# So the background is that we ran the model for 14 days with a 900 second
-# timestep - starting 1996 01 01 ??Z 
+# So the background is that I want 40 snapshot files to create an initial
+# conditions file with 40 ensemble members. 
 #
-# I wanted 20 ensemble members.
+# For lack of a better idea: I ran the model starting from 1996 01 01 ??Z 
+# for 20 days with a 900 second timestep and a dumpFreq of 12 hours.
+# This actually generates 41 snapshot files, but who's counting.
+# I just deleted the LAST snapshot before running this script.
 #
-# I output snapshot files every 12 hours to generate 29 sets of snapshots.
 # We're just going to make the first snapshot into ensemble member 1. 
 # Second snapshot will be ensemble member 2 ... I'm just not going to use
 # the last snapshots. This may not be the greatest idea - I don't know
@@ -32,7 +34,7 @@
 # to be whatever is in the namelist. In this case, we want the time
 # tag to be 1996 01 01 00Z ... in DART-speak ... 144270 days 0 seconds.
 #
-# TJH - 21 May 2008
+# TJH - 28 July 2008
 
 # WARNING: You should run this in an 'empty' directory
 # WARNING: You should run this in an 'empty' directory
@@ -40,7 +42,7 @@
 
 # Get input for this execution
 
-set SNAPSHOTDIR = /fs/image/home/thoar/SVN/DART/models/MITgcm_ocean/run1
+set SNAPSHOTDIR = /ptmp/thoar/MITgcm/nodart/fortnight
 set     DARTEXE = /fs/image/home/thoar/SVN/DART/models/MITgcm_ocean/work
 set     DARTNML = /fs/image/home/thoar/SVN/DART/models/MITgcm_ocean/work/input.nml
 
@@ -80,6 +82,7 @@ if ( -f ${DARTEXE}/trans_pv_sv ) then
    echo "Using DART trans_pv_sv from ${DARTEXE}"
 else
    echo "ERROR: ${DARTEXE}/trans_pv_sv does not exist."
+   echo " Build ${DARTEXE}/trans_pv_sv"
    set checkstat = 1
 endif
 
@@ -87,6 +90,7 @@ if ( -f ${DARTEXE}/restart_file_utility ) then
    echo "Using DART restart_file_utility from ${DARTEXE}"
 else
    echo "ERROR: ${DARTEXE}/restart_file_utility does not exist."
+   echo " Build ${DARTEXE}/restart_file_utility"
    set checkstat = 1
 endif
 
@@ -236,5 +240,3 @@ cat ens_mem_* >! filter_ics
 #-------------------------------------------------------------------------
 
 \rm -f ens_mem_*
-
-
