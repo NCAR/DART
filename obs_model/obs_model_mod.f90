@@ -175,6 +175,7 @@ call error_handler(E_MSG, 'move_ahead', errstring, source, revision, revdate)
 ! If the next observation is not in the window, then have an error
 if(next_time < start_time .or. next_time > end_time) then
    ! Is this test still really needed?
+   call get_time(next_time,   sec, day)
    write(errstring, *) 'next obs time not in model time window: day=', day, ', sec=', sec
    call error_handler(E_ERR, 'move_ahead', errstring, source, revision, revdate)
 endif
