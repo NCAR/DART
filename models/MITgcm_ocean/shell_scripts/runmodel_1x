@@ -20,9 +20,9 @@
 # -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
 # -n number of processors  (really)
 ##=============================================================================
-#BSUB -J testrun
-#BSUB -o testrun.%J.log
-#BSUB -q dedicated
+#BSUB -J fortnight
+#BSUB -o fortnight.%J.log
+#BSUB -q regular
 #BSUB -N -u ${USER}@ucar.edu
 #BSUB -n 20
 #BSUB -W 12:00
@@ -66,7 +66,6 @@ if ($?LS_SUBCWD) then
    setenv JOBNAME     $LSB_OUTPUTFILE:ar
    setenv CENTRALDIR  $LS_SUBCWD
    setenv TMPDIR      /ptmp/${user}
-endif
    setenv SRCDIR      /fs/image/home/${user}/SVN/DART/models/MITgcm_ocean
 
    set advance_command = 'mpirun.lsf ./mitgcmuv_20p'

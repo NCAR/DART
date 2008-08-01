@@ -14,31 +14,24 @@
 #-----------------------------------------------------------------------------
 # job.simple.csh ... Top level script to run a single assimilation experiment.
 #
-#  Unlike the more complex job.csh, this script only processes a single 
-#  observation file.  Still fairly complex; requires a raft of
-#  data files and most of them are in hardcoded locations.
+# Unlike the more complex job.csh, this script only processes a single 
+# observation file.  Still fairly complex; requires a raft of
+# data files and most of them are in hardcoded locations.
 #
-# You need to know which of several batch systems you are using.  The most
-# common one is LSF.   PBS is also common.  (POE is another but is
-# not supported directly by this script.  It is not recommended that you have a
-# parallel cluster without a batch system (it schedules which nodes are assigned
-# to which processes) but it is possible to run that way -- you have to do
-# more work to get the information about which nodes are involved to the 
-# parallel tasks -- but anyway, there is a section below that uses ssh and no
-# batch.
+# This script is designed to be run from the command line (as a single thread)
+# and should only take a few seconds to a minute to complete, depending on
+# the filesystem performance and data file size.
 #
-# How to submit this job:
-#  1. Look at the #BSUB or #PBS sections below and adjust any of the parameters
-#     on your cluster.  Queue names are very system specific; some systems 
-#     require wall-clock limits; some require an explicit charge code.
-#  2. Submit this script to the queue:
-#        LSF:   bsub < job.simple.csh
-#        PBS:   qsub job.simple.csh
-#       NONE:   job.simple.csh
+# The script moves the necessary files to the current directory - in DART
+# nomenclature, this will be called CENTRALDIR. 
+# After everything is confirmed to have been assembled, it is possible
+# to edit the data, data.cal, and input.nml files for the specifics of 
+# the experiment; as well as allow final configuration of a 'nodelist' file.
 #
-# The script moves the necessary files to the current directory and then
-# starts 'filter' as a parallel job on all nodes; each of these tasks will 
-# call some a separate model_advance.csh when necessary.
+# Once the 'table is set', all that remains is to start/submit the 
+# 'runme_filter' script. That script will spawn 'filter' as a 
+# parallel job on the appropriate nodes; each of these tasks will 
+# call a separate model_advance.csh when necessary.
 #
 # The central directory is where the scripts reside and where script and 
 # program I/O are expected to happen.
@@ -129,6 +122,13 @@ endif
 mkdir -p ${experiment}/{MIT,DART}
 
 #-----------------------------------------------------------------------------
+# Early exit just to check that everything moved OK, and the table is set.
+# Gives us a chance to edit the local input.nml, data.cal, etc. if needed.
+#-----------------------------------------------------------------------------
+
+exit
+
+#-----------------------------------------------------------------------------
 # Runs filter which integrates the results of model advances  (async=4).
 #-----------------------------------------------------------------------------
 
@@ -152,6 +152,7 @@ echo "Listing contents of CENTRALDIR before archiving"
 ls -l
 
 ${MOVE} *.data *.meta         ${experiment}/MIT
+${MOVE} data data.cal         ${experiment}/MIT
 ${MOVE} STD*                  ${experiment}/MIT
 
 ${MOVE} filter_restart*            ${experiment}/DART
