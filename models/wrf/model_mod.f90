@@ -137,8 +137,11 @@ logical :: allow_obs_below_vol = .false.
 ! and still be accepted (in meters)
 !real (kind=r8) :: max_surface_delta = 500.0
 !nc -- we are adding these to the model.nml until they appear in the NetCDF files
-logical :: polar = .false.
-logical :: periodic_x = .false.
+logical :: polar = .false.         ! wrap over the poles
+logical :: periodic_x = .false.    ! wrap in longitude or x
+logical :: periodic_y = .false.    ! used for single column model, wrap in y
+!JPH -- single column model flag 
+logical :: scm        = .false.    ! using the single column model
 
 real(r8), allocatable :: ens_mean(:)
 
@@ -147,14 +150,15 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
                      adv_mod_command, assimilation_period_seconds, &
                      allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
-                     polar, periodic_x
+                     polar, periodic_x, periodic_y, scm
 
 !-----------------------------------------------------------------------
 
 ! Private definition of domain map projection use by WRF
 
 !nc -- added in CASSINI and CYL according to module_map_utils convention
-integer, parameter :: map_sphere = 0, map_lambert = 1, map_polar_stereo = 2, map_mercator = 3
+!JPH -- change variable name from map_sphere to more general map_latlon
+integer, parameter :: map_latlon = 0, map_lambert = 1, map_polar_stereo = 2, map_mercator = 3
 integer, parameter :: map_cassini = 6, map_cyl = 5
 
 ! Private definition of model variable types
@@ -191,7 +195,9 @@ TYPE wrf_static_data_for_dart
    !   in the "model_nml" group of DART's own "input.nml".  Above, their default values are
    !   both set to .true. (indicating a global domain). 
    logical  :: periodic_x
+   logical  :: periodic_y
    logical  :: polar
+   logical  :: scm
 
    integer  :: n_moist
    logical  :: surf_obs
@@ -401,13 +407,19 @@ do id=1,num_domains
 !        should be false.
    if ( id == 1 ) then
       wrf%dom(id)%periodic_x = periodic_x
+      wrf%dom(id)%periodic_y = periodic_y
       wrf%dom(id)%polar = polar
+      wrf%dom(id)%scm = scm
    else
       wrf%dom(id)%periodic_x = .false.
+      wrf%dom(id)%periodic_y = .false.
       wrf%dom(id)%polar = .false.      
+      wrf%dom(id)%scm = .false.      
    end if
    if(debug) write(*,*) ' periodic_x ',wrf%dom(id)%periodic_x
+   if(debug) write(*,*) ' periodic_y ',wrf%dom(id)%periodic_y
    if(debug) write(*,*) ' polar ',wrf%dom(id)%polar
+   if(debug) write(*,*) ' scm   ',wrf%dom(id)%scm   
 
 
    call check( nf90_inq_varid(ncid, "P_TOP", var_id) )
@@ -524,10 +536,18 @@ do id=1,num_domains
 !nc -- global wrfinput_d01 has truelat1 = 1.e20, so we need to change it where needed
 !nc -- for PROJ_LATLON stdlon and truelat1 have different meanings -- 
 !nc --   stdlon --> loninc  and  truelat1 --> latinc
-   latinc = 180.0_r8/wrf%dom(id)%sn
-   loninc = 360.0_r8/wrf%dom(id)%we
+!JPH --- this latinc/loninc calculations are only valid for global domains
 
-   if(wrf%dom(id)%map_proj == map_sphere) then
+   if ( wrf%dom(id)%scm ) then
+! JPH -- set to zero which should cause the map utils to return NaNs if called
+      latinc = 0.0_r8 
+      loninc = 0.0_r8 
+   else
+      latinc = 180.0_r8/wrf%dom(id)%sn
+      loninc = 360.0_r8/wrf%dom(id)%we
+   endif
+
+   if(wrf%dom(id)%map_proj == map_latlon) then
       truelat1 = latinc
       stdlon = loninc
       proj_code = PROJ_LATLON
@@ -1233,7 +1253,14 @@ else
    ! 0.a Horizontal stuff
 
    ! first obtain domain id, and mass points (i,j)
-   call get_domain_info(xyz_loc(1),xyz_loc(2),id,xloc,yloc)
+! JPH --- scm is only defined for d1
+   if ( .not. scm ) then
+      call get_domain_info(xyz_loc(1),xyz_loc(2),id,xloc,yloc)
+   else
+      id = 1
+      xloc = 2.0_r8
+      yloc = 2.0_r8
+   endif
     
    ! check that we obtained a valid domain id number
    if (id==0) then
@@ -1512,17 +1539,18 @@ else
          end if
 
       ! This is for surface wind fields -- NOTE: surface winds are on Mass grid (therefore,
-      !   TYPE_T), not U-grid & V-grid.  Also, there doesn't seem to be a need to call
-      !   gridwind_to_truewind for surface winds (is that right?)
+      !   TYPE_T), not U-grid & V-grid.  
       ! Also, because surface winds are at a given single vertical level, only fld(1) will
       !   be filled.
       ! (U10 & V10, which are added to dart_ind if surf_obs = .true.)
       else
 
+! JPH -- should test this for doubly periodic
+! JPH -- does not pass for SCM config, so just do it below
          ! Check to make sure retrieved integer gridpoints are in valid range
-         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+         if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
               boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
-              wrf%dom(id)%surf_obs ) then
+              wrf%dom(id)%surf_obs ) .or. wrf%dom(id)%scm ) then
 
             call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
             if ( rc .ne. 0 ) &
@@ -1633,9 +1661,9 @@ else
       else
          
          ! Check to make sure retrieved integer gridpoints are in valid range
-         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+         if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
               boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
-              wrf%dom(id)%surf_obs ) then
+              wrf%dom(id)%surf_obs ) .or. wrf%dom(id)%scm ) then
 
             call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
             if ( rc .ne. 0 ) &
@@ -1707,9 +1735,9 @@ else
       else
          
          ! Check to make sure retrieved integer gridpoints are in valid range
-         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+         if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
               boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
-              wrf%dom(id)%surf_obs ) then
+              wrf%dom(id)%surf_obs ) .or. wrf%dom(id)%scm ) then
 
             call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
             if ( rc .ne. 0 ) &
@@ -1876,9 +1904,9 @@ else
          else
          
             ! Check to make sure retrieved integer gridpoints are in valid range
-            if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+            if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
                  boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
-                 wrf%dom(id)%surf_obs ) then
+                 wrf%dom(id)%surf_obs ) .or. wrf%dom(id)%scm ) then
                
                call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
                if ( rc .ne. 0 ) &
@@ -1957,9 +1985,9 @@ else
          else
          
             ! Check to make sure retrieved integer gridpoints are in valid range
-            if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+            if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
                  boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
-                 wrf%dom(id)%surf_obs ) then
+                 wrf%dom(id)%surf_obs ) .or. wrf%dom(id)%scm ) then
                
                call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
                if ( rc .ne. 0 ) &
@@ -2193,9 +2221,9 @@ else
    else if( obs_kind == KIND_SURFACE_PRESSURE ) then
 
       ! Check to make sure retrieved integer gridpoints are in valid range
-      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
+      if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=TYPE_T ) .and. &
            boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=TYPE_T ) .and. &
-           wrf%dom(id)%surf_obs ) then
+           wrf%dom(id)%surf_obs ) .or. wrf%dom(id)%scm ) then
 
          call getCorners(i, j, id, TYPE_T, ll, ul, lr, ur, rc )
          if ( rc .ne. 0 ) &
@@ -2213,6 +2241,10 @@ else
 
             fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
+         ! JPH special treatment for scm configuration, where PS is not defined
+         ! on the boundaries and the weights are already 1,0
+         elseif ( wrf%dom(id)%scm ) then
+            fld(1) = x(ill)
          else
 
             fld(1) = missing_r8
@@ -2623,8 +2655,14 @@ if(vert_is_undef(location)) return
 xyz_loc = get_location(location)
 
 ! first obtain domain id, and mass points (i,j)
-call get_domain_info(xyz_loc(1),xyz_loc(2),id,xloc,yloc)
-
+if ( .not. scm ) then
+   call get_domain_info(xyz_loc(1),xyz_loc(2),id,xloc,yloc)
+else
+   id = 1
+   xloc = 2.0_r8
+   yloc = 2.0_r8
+endif
+ 
 if (id==0) then
    ! Note: need to reset location using the namelist variable directly because
    ! wrf%dom(id)%vert_coord is not defined for id=0
@@ -5433,7 +5471,7 @@ print*, 'model_mod.f90 :: subroutine get_domain_info :: in empty if-case'
       ! Array bound checking depends on whether periodic or not -- these are
       !   real-valued indices here, so we cannot use boundsCheck  :( 
 
-      if ( wrf%dom(id)%periodic_x  ) then
+      if ( wrf%dom(id)%periodic_x .and. .not. wrf%dom(id)%periodic_y  ) then
          if ( wrf%dom(id)%polar ) then        
             !   Periodic     X & M_grid ==> [1 we+1)    
             !   Periodic     Y & M_grid ==> [0.5 sn+0.5]
@@ -5447,6 +5485,14 @@ print*, 'model_mod.f90 :: subroutine get_domain_info :: in empty if-case'
                  jloc >= 1.0_r8 .and. jloc <= real(wrf%dom(id)%sn,r8) ) &
                  dom_found = .true.
          end if
+
+      elseif ( wrf%dom(id)%periodic_x .and. wrf%dom(id)%periodic_y ) then
+            !   Periodic     X & M_grid ==> [1 we+1)    
+            !   Periodic     Y & M_grid ==> [1 sn+1]
+            if ( iloc >= 1.0_r8 .and. iloc <  real(wrf%dom(id)%we,r8)+1.0_r8 .and. &
+                 jloc >= 1.0_r8 .and. jloc <= real(wrf%dom(id)%sn,r8)+1.0_r8 ) &
+                 dom_found = .true.
+
       else
          if ( wrf%dom(id)%polar ) then        
             !   NOT Periodic X & M_grid ==> [1 we]    

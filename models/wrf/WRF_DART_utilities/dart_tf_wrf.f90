@@ -53,9 +53,12 @@ character(len = 72) :: adv_mod_command = './wrf.exe'
 real (kind=r8) :: center_search_half_length = 500000.0_r8
 integer :: center_spline_grid_scale = 10
 integer :: vert_localization_coord  =  3  ! 1,2,3 == level,pressure,height
-!nc -- we are adding these to the model.nml until they appear in the NetCDF files
-logical :: polar = .false.
-logical :: periodic_x = .false.
+! candidates for including in the WRF netcdf files:
+logical :: polar = .false.         ! wrap over the poles
+logical :: periodic_x = .false.    ! wrap in longitude or x
+logical :: periodic_y = .false.    ! used for single column model, wrap in y
+!JPH -- single column model flag 
+logical :: scm        = .false.    ! using the single column model
 
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
@@ -63,7 +66,7 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
                      adv_mod_command, assimilation_period_seconds, &
                      allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
-                     polar, periodic_x
+                     polar, periodic_x, periodic_y, scm
 
 !-------------------------------------------------------------
 

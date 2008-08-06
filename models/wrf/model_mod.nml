@@ -3,7 +3,8 @@
 #     1 = model level
 #     2 = pressure
 #     3 = height
-# (2) see below for explanations of polar and periodic_x
+# (2) see below for explanations of polar, periodic_x,
+#     periodic_y, and scm
 
 &model_nml
    output_state_vector         = .false.,
@@ -20,8 +21,9 @@
    center_search_half_length   = 500000.,
    center_spline_grid_scale    = 10,
    polar                       = .false.,
-   periodic_x                  = .false.  /
-
+   periodic_x                  = .false.,
+   periodic_y                  = .false.,
+   scm                         = .false.  /
 
 # polar and periodic_x are used in global wrf.  if polar is true, the 
 # grid interpolation routines will wrap over the north & south poles.  
@@ -30,3 +32,9 @@
 # from regional models which cross the GMT line; those grids are marked
 # as having a negative offset and do not need to wrap; this flag controls
 # what happens when the edges of the grid are reached.
+
+# the scm flag is used for the 'single column model' version of WRF.
+# it needs the periodic_x and periodic_y flags set to true, in which
+# case the X and Y directions are periodic; no collapsing of the grid
+# into a single location like the 3d-spherical polar flag implies.
+

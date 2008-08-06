@@ -86,9 +86,12 @@ logical :: allow_obs_below_vol = .false.
 ! Max height a surface obs can be away from the actual model surface
 ! and still be accepted (in meters)
 !real (kind=r8) :: max_surface_delta = 500.0
-!nc -- we are adding these to the model.nml until they appear in the NetCDF files
-logical :: polar = .false.  
-logical :: periodic_x = .false.
+! candidates for adding to the WRF netcdf files:
+logical :: polar = .false.         ! wrap over the poles
+logical :: periodic_x = .false.    ! wrap in longitude or x
+logical :: periodic_y = .false.    ! used for single column model, wrap in y
+!JPH -- single column model flag 
+logical :: scm        = .false.    ! using the single column model
 
 
 namelist /model_nml/ output_state_vector, num_moist_vars, &
@@ -96,7 +99,7 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
                      adv_mod_command, assimilation_period_seconds, &
                      allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
-                     polar, periodic_x
+                     polar, periodic_x, periodic_y, scm
 
 !-----------------------------------------------------------------------
 
