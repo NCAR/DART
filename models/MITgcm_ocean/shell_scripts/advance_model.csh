@@ -110,6 +110,7 @@ while($state_copy <= $num_states)
 
    # Update the MIT namelist output ... 
    # and rename the input files to those defined in the data&PARM05 namelist.
+   # This is pretty gory, but it works.
 
    set FNAME = `grep -i hydrogSaltFile data | sed -e "s#=##"`
    set FNAME = `echo  $FNAME | sed -e "s#hydrogSaltFile##"`
@@ -141,22 +142,59 @@ while($state_copy <= $num_states)
    set FNAME = `echo  $FNAME | sed -e "s#'##g"`
    mv -v Eta.*.*.data $FNAME  || exit 5
 
-# set pattern="s/.*'\(.*\)'.*/\1/"
-# set zfilename=`echo $zoneline |  sed -e $pattern`
-#
-#  set  hydrogSaltFile=`sed -n -e  's/hydrogSaltFile=.\(.*\).,/\1/p' data`
-#  set hydrogThetaFile=`sed -n -e 's/hydrogThetaFile=.\(.*\).,/\1/p' data`
-#  set    uVelInitFile=`sed -n -e    's/uVelInitFile=.\(.*\).,/\1/p' data`
-#  set    vVelInitFile=`sed -n -e    's/vVelInitFile=.\(.*\).,/\1/p' data`
-#  set   pSurfInitFile=`sed -n -e   's/pSurfInitFile=.\(.*\).,/\1/p' data`
-#  mv   S.*.*.data  $hydrogSaltFile
-#  mv   T.*.*.data  $hydrogThetaFile
-#  mv   U.*.*.data  $uVelInitFile
-#  mv   V.*.*.data  $vVelInitFile
-#  mv Eta.*.*.data  $pSurfInitFile
+   # Update the MIT namelist output ... 
+   # and rename the input files to those defined in the data&PARM05 namelist.
+   # This is succinct, but it does not work.
 
-   # Advance the model saving standard out
-   mpirun.lsf ../mitgcmuv_20p
+   # set pattern="s/.*'\(.*\)'.*/\1/"
+   # set zfilename=`echo $zoneline |  sed -e $pattern`
+   #
+   #  set  hydrogSaltFile=`sed -n -e  's/hydrogSaltFile=.\(.*\).,/\1/p' data`
+   #  set hydrogThetaFile=`sed -n -e 's/hydrogThetaFile=.\(.*\).,/\1/p' data`
+   #  set    uVelInitFile=`sed -n -e    's/uVelInitFile=.\(.*\).,/\1/p' data`
+   #  set    vVelInitFile=`sed -n -e    's/vVelInitFile=.\(.*\).,/\1/p' data`
+   #  set   pSurfInitFile=`sed -n -e   's/pSurfInitFile=.\(.*\).,/\1/p' data`
+   #  mv   S.*.*.data  $hydrogSaltFile
+   #  mv   T.*.*.data  $hydrogThetaFile
+   #  mv   U.*.*.data  $uVelInitFile
+   #  mv   V.*.*.data  $vVelInitFile
+   #  mv Eta.*.*.data  $pSurfInitFile
+
+   # Must determine if we are running in a queueing environment or not
+   # so we know the form of the advance command.
+
+   if ($?LS_SUBCWD) then
+
+      mpirun.lsf ../mitgcmuv
+   
+   else if ($?PBS_O_WORKDIR) then
+
+      mpirun     ../mitgcmuv
+
+   else
+
+      # This is a (temporary) violation of the DART standard of separating
+      # the architecture-specific quantities and the model-specific things.
+      # At some point in the future, the MPIRUN variable should not be hardwired
+      # to an architecture-specific value.
+
+      if ( -e nodelist ) then
+         setenv NUM_PROCS `cat nodelist | wc -l`
+         set MYNODEFILE = nodelist
+         set MPIRUN = /opt/mpich/myrinet/pgi/bin/mpirun
+
+         $MPIRUN -np $NUM_PROCS -nolocal -machinefile $MYNODEFILE ../mitgcmuv
+
+      else
+         echo "ERROR - there is no $MYNODEFILE for this execution."
+         echo "ERROR - there is no $MYNODEFILE for this execution."
+         echo "        The current working directory is: "`pwd`
+         echo "        The contents of the directory are: "
+         ls -l
+         exit 6
+      endif
+
+   endif
 
    # Remove the snapshot file at time zero.
    # We are interested in the snapshot file at the end of the advance.
@@ -171,7 +209,7 @@ while($state_copy <= $num_states)
    echo $TIMESTEP | ../trans_pv_sv
 
    # Move the updated state vector back to 'centraldir'
-   mv assim_model_state_ud ../$output_file  || exit 5
+   mv assim_model_state_ud ../$output_file  || exit 7
 
    @ state_copy++
    @ ensemble_member_line = $ensemble_member_line + 3
