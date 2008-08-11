@@ -15,9 +15,11 @@
 % initial value that gives nice plots
 randn('state', 0);
 
-
 % Printing gums up things here, have to use print_count to get later figures
 print_count = 13;
+
+% set this to 0 if you do not want to pause before each figure
+wait = 1;
 
 % Set the size and position of the figure box on the screen
 set(gcf, 'Units', 'Inches');
@@ -81,7 +83,7 @@ set(r2, 'Xticklabel', []);
 set(r2, 'yticklabel', []);
 hold on;
 
-% Compute the regression line, 
+% Compute the regression line,
 s_correl = corrcoef(rnum(1, :), rnum(2, :));
 s_var(1) = var(rnum(1, :));
 s_var(2) = var(rnum(2, :));
@@ -113,7 +115,8 @@ axis([[0 1] get(r2, 'ylim')]);
 set(r1, 'xticklabel', []);
 h_y_label = ylabel('Unobserved State Variable');
 
-pause;
+if (wait > 0), pause, end;
+
 % Setup the printing characteristics
 set(gcf, 'PaperPositionMode', 'auto');
 set(gcf, 'PaperOrientation', 'landscape');
@@ -131,32 +134,32 @@ h_y_label = ylabel('Unobs.');
 subplot(r3);
 hold on;
 % Do a simple update scheme in the marginal window
-% Generate a random sample of the prior                                                  
+% Generate a random sample of the prior
 x_prior = rnum(1, :);
-                                                                                         
-% Plot a gaussian fit to ensemble                                                        
-x = -5:0.01:5;                                                                           
-prior = normpdf(x, mean(x_prior), std(x_prior));                                                           
-obs = normpdf(x, 2.3, 0.6);                                                              
-product = prior .* obs;                                                                  
+
+% Plot a gaussian fit to ensemble
+x = -5:0.01:5;
+prior = normpdf(x, mean(x_prior), std(x_prior));
+obs = normpdf(x, 2.3, 0.6);
+product = prior .* obs;
 h_prior = plot(x, prior, 'g', 'linewidth', 3)
 set(h_prior, 'color', [0 0.73 0]);
-%text(-3.0, 0.3, 'Prior PDF', 'fontsize', 24);                                            
-pause;                                                                                   
+%text(-3.0, 0.3, 'Prior PDF', 'fontsize', 24);
+if (wait > 0), pause, end;
 print -depsc s11f02.eps;
-                                                                                        
-h_obs = plot(x, obs, 'r', 'linewidth', 3)                                                        
-%text(1.6, 0.4, 'Obs. Likelihood', 'fontsize', 24);                                       
-pause;                                                                                   
+
+h_obs = plot(x, obs, 'r', 'linewidth', 3)
+%text(1.6, 0.4, 'Obs. Likelihood', 'fontsize', 24);
+if (wait > 0), pause, end;
 print -depsc s11f03.eps;
 
-% Need to get integrated value of the observed value, y2                                 
-pb = (sum(product) * 0.01);                                                              
-posterior = product./pb;                                                                 
-h_posterior = plot(x, posterior, 'b', 'linewidth', 3)                                                  
-%text(-1.9, 0.55, 'Posterior PDF', 'fontsize', 24);      
+% Need to get integrated value of the observed value, y2
+pb = (sum(product) * 0.01);
+posterior = product./pb;
+h_posterior = plot(x, posterior, 'b', 'linewidth', 3)
+%text(-1.9, 0.55, 'Posterior PDF', 'fontsize', 24);
 
-pause;
+if (wait > 0), pause, end;
 print -depsc s11f04.eps;
 
 % Plot a random sample from the update (cheat and take it from
@@ -167,7 +170,7 @@ h_post_plot = plot(x_posterior, y_posterior, 'b*');
 set(h_post_plot, 'markersize', 12)
 set(h_post_plot, 'linewidth', 2);
 
-pause
+if (wait > 0), pause, end;
 print -depsc s11f05.eps;
 
 % Plot the increment vectors
@@ -177,7 +180,7 @@ for i = 1:5
    arr2 = [x_posterior(i), 0.15 + 0.175 * (i-1)];
    h_arrow(i) = arrow(arr1, arr2, 4.0);
    set(h_arrow(i), 'linewidth', 3);
-   pause
+   if (wait > 0), pause, end;
    outfile = ['s11f0', num2str(5 + i), '.eps'];
    print (gcf, '-depsc', outfile);
 
@@ -202,7 +205,7 @@ for i = 1:5
    set(h_posterior(i), 'linewidth', 2);
 end
 
-pause
+if (wait > 0), pause, end;
 print -depsc s11f11.eps;
 
 % Position the marginal and joint plot boxes
@@ -221,7 +224,7 @@ s_mean(2) = mean(rnum(2, :));
 %Move the label for the squeeze
 set(h_inc, 'position', [-1.5 0.82 0]);
 
-pause
+if (wait > 0), pause, end;
 print -depsc s11f12.eps;
 
 % Plot best fit line through this mess; just uses the standard deviations?
@@ -233,9 +236,10 @@ y_point(1) = s_mean(2) + (x_point(1) - s_mean(1)) * slope;
 y_point(2) = s_mean(2) + (x_point(2) - s_mean(1)) * slope;
 plot(x_point, y_point, 'r', 'linewidth', 3);
 
-pause
+if (wait > 0), pause, end;
 if(print_count == 13)
    print -depsc s11f13.eps;
+   print_count = print_count+1;
 end
 
 % Plot the un-normalized increment vectors
@@ -252,10 +256,11 @@ for i = 1:5
    y_delta(i) = (x_posterior(i) - x_prior(i)) * slope
    y_inc = [rnum(2, i), rnum(2, i) + (x_posterior(i) - x_prior(i)) * slope];
    h_slope(i) = plot(x_inc, y_inc, 'b', 'linewidth', 3);
-   pause
+   if (wait > 0), pause, end;
    outfile = ['s11f', num2str(13 + i), '.eps'];
    if(print_count == 13 + i)
       print (gcf, '-depsc', outfile);
+      print_count = print_count+1;
    end
 
    subplot(r3)
@@ -286,18 +291,13 @@ for i = 1:5
    yv = [rnum(2, i), rnum(2, i) + y_delta(i)];
    subplot(r1);
    h_full_dist(i) = plot(xv, yv);
-   if(i == 1) 
-      pause
-      if(print_count == 19)
-        print -depsc s11f19.eps;
-      end
-   end
    yvc = [rnum(2, i), rnum(2, i) + y_delta(i) * s_correl(1, 2)];
    h_part_dist(i) = plot(xv, yvc, 'linewidth', 3);
-   pause
+   if (wait > 0), pause, end;
    outfile = ['s11f', num2str(18 + i), '.eps'];
-   if(print_count == 18 + i) 
+   if(print_count == 18 + i)
       print (gcf, '-depsc', outfile);
+      print_count = print_count+1;
    end
 
    subplot(r3)
@@ -336,9 +336,10 @@ for i = 1:5
    set(h_state_prior(i), 'xdata', [0.05]);
 end
 
-pause;
-if(print_count == 24) 
+if (wait > 0), pause, end;
+if(print_count == 24)
    print -depsc s11f24.eps;
+   print_count = print_count+1;
 end
 
 % Get 1000 points from bottom of axis to top of axis
@@ -350,12 +351,13 @@ prior_std = std(rnum(2, :));
 x_final_pts = normpdf(y_final_pts, prior_mean, prior_std);
 hhh = plot(x_final_pts, y_final_pts, 'g', 'linewidth', 3);
 set(hhh, 'color', [0 0.73 0]);
-text(0.4, 3.3, 'Prior State Fit', 'fontsize', 24);                                            
+text(0.4, 3.3, 'Prior State Fit', 'fontsize', 24);
 
 
-pause
+if (wait > 0), pause, end;
 if(print_count == 25)
    print -depsc s11f25.eps;
+   print_count = print_count+1;
 end
 
 % Plot the posterior fit
@@ -363,7 +365,7 @@ final_mean = mean(final_state);
 final_std = std(final_state);
 x_final_pts = normpdf(y_final_pts, final_mean, final_std);
 plot(x_final_pts, y_final_pts, 'linewidth', 3);
-text(0.55, 4.9, 'Posterior Fit', 'fontsize', 24);                                            
+text(0.55, 4.9, 'Posterior Fit', 'fontsize', 24);
 if(print_count == 26)
    print -depsc s11f26.eps;
 end
