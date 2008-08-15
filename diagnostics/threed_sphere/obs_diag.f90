@@ -824,12 +824,16 @@ ObsFileLoop : do ifile=1, Nepochs*4
          ! integer, parameter  :: QC_MAX_PRIOR     = 3
          ! integer, parameter  :: QC_MAX_POSTERIOR = 1
 
+         ! debug section for strange looking observations:
          if ( 1 == 2 ) then
          call get_obs_values(observation, copyvals)
-     !   if (any(copyvals < -87.0) .and. ( qc_integer < (QC_MAX_PRIOR+1) ) ) then
-         if ( obsindex == 311 ) then
+     ! add your own if test here and turn 1 == 2 into 1 == 1 above:
+     !   if ( obsindex == 311 ) then
+     !   if (any(copyvals < -87.0).and.( qc_integer < (QC_MAX_PRIOR+1) ) ) then
+     !   if (abs(prior_mean(1)) > 1000 .and. qc_integer < 4) then
+         if (.true.) then
               write(*,*)
-              write(*,*)'Observation index 311 is ',keys(obsindex),' and has:'
+              write(*,*)'Observation index is ',keys(obsindex),' and has:'
               write(*,*)'flavor                 is',flavor
               write(*,*)'obs              value is',obs(1)
               write(*,*)'prior_mean       value is',prior_mean(1)
@@ -1010,7 +1014,8 @@ ObsFileLoop : do ifile=1, Nepochs*4
                      call IPE(analy%NbadIZ(iepoch,level_index,iregion,wflavor), 1)
                   endif
 
-                  call Bin4D(qc_integer, iepoch, level_index, iregion, wflavor, &
+                  call Bin4D(maxval( (/qc_integer, U_qc/) ), &
+                       iepoch, level_index, iregion, wflavor, &
                        obs(1),  obs_err_var,   pr_mean,   pr_sprd,   po_mean,   po_sprd,  &
                        U_obs, U_obs_err_var, U_pr_mean, U_pr_sprd, U_po_mean, U_po_sprd   )
                endif
