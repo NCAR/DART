@@ -1,0 +1,13 @@
+#!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next three lines automatically updated by CVS, do not edit>
+# $Id: mkmf_preprocess,v 1.1 2005/06/07 20:30:25 jla Exp $
+# $Source: /home/thoar/CVS.REPOS/DART/models/lorenz_63/work/mkmf_preprocess,v $
+# $Name: post_iceland $
+#
+../../../mkmf/mkmf -p preprocess -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+ -a "../../.." path_names_preprocess

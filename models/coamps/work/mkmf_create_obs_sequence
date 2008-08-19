@@ -1,0 +1,13 @@
+#!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next three lines automatically updated by CVS, do not edit>
+# $Id: mkmf_create_obs_sequence,v 1.2 2005/02/26 06:14:20 thoar Exp $
+# $Source: /home/thoar/CVS.REPOS/DART/models/MITgcm_annulus/work/mkmf_create_obs_sequence,v $
+# $Name: hawaii $
+#
+../../../mkmf/mkmf -p create_obs_sequence -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+ -a "../../.." path_names_create_obs_sequence

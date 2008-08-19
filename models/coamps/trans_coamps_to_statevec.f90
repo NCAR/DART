@@ -1,0 +1,51 @@
+! trans_coamps_to_statevec
+! ------------------------
+! This program pulls pieces out of the large COAMPS restart file,
+! then assembles them into a state vector that can be used to show
+! what DART is seeing for easier reading into programs like MATLAB
+! or debugging.  This program is almost identical to the
+! trans_coamps_to_dart program but does not output time.
+program trans_coamps_to_statevec
+
+  use coamps_translate_mod, only : initialize_translator,         &
+                                   generate_restart_filenames,    &
+                                   open_coamps_files,             &
+                                   coamps_restart_read_all_fields,&
+                                   convert_coamps_state_to_dart,  &
+                                   set_dart_current_time,         &
+                                   open_dart_file, dart_write,    &
+                                   finalize_translator
+
+  implicit none
+
+  ! Modified automatically by Subversion
+  character(len=128) :: &
+       source = "$URL$",&
+       revision = "$Revision$", &
+       revdate = "$Date$"
+
+  ! The translation module uses internal flags for whether it's
+  ! reading or writing - these are just aliases so it's clearer
+  ! what the calls are saying
+  logical, parameter :: READING_COAMPS_RESTART = .false.
+  logical, parameter :: WRITING_DART_RESTART   = .true.
+  logical, parameter :: DONT_WRITE_TIME        = .true.     
+ 
+  ! Make sure translation module has everything it needs
+  call initialize_translator()
+  call generate_restart_filenames(.false.)
+
+  ! Open up the COAMPS restart file(s)
+  call open_coamps_files(READING_COAMPS_RESTART)
+  
+  ! Read in and COAMPS convert state vector
+  call coamps_restart_read_all_fields()
+  call convert_coamps_state_to_dart()
+
+  ! Put this in DART, but don't write the file time
+  call open_dart_file(WRITING_DART_RESTART)
+  call dart_write(DONT_WRITE_TIME)
+
+  ! Clean up
+  call finalize_translator()
+end program trans_coamps_to_statevec
