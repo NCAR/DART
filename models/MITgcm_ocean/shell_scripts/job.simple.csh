@@ -85,7 +85,7 @@ ${COPY} ${DARTMITDIR}/work/filter                     .
 ${COPY} ${DARTMITDIR}/work/wakeup_filter              .
 ${COPY} ${DARTMITDIR}/work/trans_pv_sv                .
 ${COPY} ${DARTMITDIR}/work/trans_sv_pv                .
-${COPY} ${DARTMITDIR}/work/mitgcmuv_20p               .
+${COPY} ${DARTMITDIR}/work/mitgcmuv_20p               mitgcmuv
 ${COPY} ${DARTMITDIR}/shell_scripts/advance_model.csh .
 ${COPY} ${DARTMITDIR}/shell_scripts/runme_filter      .
 
