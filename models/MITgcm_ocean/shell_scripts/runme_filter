@@ -247,7 +247,10 @@ else
 
     setenv NUM_PROCS `cat nodelist | wc -l`
     set MYNODEFILE = nodelist
-    set MPIRUN = /opt/mpich/myrinet/pgi/bin/mpirun
+#   for atlas
+    set MPIRUN = /share/apps/mpich1/pgi/bin/mpirun
+#   for compas
+#   set MPIRUN = /opt/mpich/myrinet/pgi/bin/mpirun
 
     echo "running with $NUM_PROCS nodes specified from $MYNODEFILE"
 
