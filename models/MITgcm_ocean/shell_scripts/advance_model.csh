@@ -1,4 +1,4 @@
-#!/bin/tcsh -v
+#!/bin/tcsh
 #
 # Data Assimilation Research Testbed -- DART
 # Copyright 2004-2007, Data Assimilation Research Section
@@ -38,10 +38,16 @@ echo "temp_dir is $temp_dir"
 mkdir -p $temp_dir
 cd       $temp_dir
 
-# Copy the namelist files - these are small, so we really copy them
-foreach FILE ( data data.cal data.exf data.kpp \
-               data.obcs data.pkg eedata )
+# Copy the unchanging namelist files - these are small, so we really copy them
+foreach FILE ( data.exf data.kpp data.obcs data.pkg eedata )
    cp -pv ../inputs/$FILE . || exit 1
+end
+
+# Get the 'changing' namelist files from CENTRALDIR
+# Only the namelists in CENTRALDIR have the updated information about
+# the state of the model partway through an assimilation experiment.
+foreach FILE ( data data.cal input.nml )
+   cp -pv ../$FILE . || exit 1
 end
 
 # copy the files used by data&PARM05 - input datasets
@@ -76,8 +82,6 @@ foreach FILE ( Rs_SobcsE_52_01_nPx1.bin    Rs_SobcsN_52_01_nPy1.bin \
 end
 
 
-# Get files needed to run DART
-cp ../input.nml .
 
 echo 'listing now that the table has been set ...'
 ls -l
@@ -107,6 +111,8 @@ while($state_copy <= $num_states)
    mv -v ../$input_file assim_model_state_ic || exit 4
 
    ../trans_sv_pv
+
+   cp -v data.cal.new data.cal
 
    # Update the MIT namelist output ... 
    # and rename the input files to those defined in the data&PARM05 namelist.
@@ -163,6 +169,8 @@ while($state_copy <= $num_states)
    # Must determine if we are running in a queueing environment or not
    # so we know the form of the advance command.
 
+   env | sort
+
    if ($?LS_SUBCWD) then
 
       mpirun.lsf ../mitgcmuv
@@ -178,16 +186,15 @@ while($state_copy <= $num_states)
       # At some point in the future, the MPIRUN variable should not be hardwired
       # to an architecture-specific value.
 
-      if ( -e nodelist ) then
-         setenv NUM_PROCS `cat nodelist | wc -l`
-         set MYNODEFILE = nodelist
+      if ( -e ../nodelist ) then
+         setenv NUM_PROCS `cat ../nodelist | wc -l`
          set MPIRUN = /opt/mpich/myrinet/pgi/bin/mpirun
 
-         $MPIRUN -np $NUM_PROCS -nolocal -machinefile $MYNODEFILE ../mitgcmuv
+         $MPIRUN -np $NUM_PROCS -nolocal -machinefile ../nodelist ../mitgcmuv
 
       else
-         echo "ERROR - there is no $MYNODEFILE for this execution."
-         echo "ERROR - there is no $MYNODEFILE for this execution."
+         echo "ERROR - there is no CENTRALDIR/nodelist for this execution."
+         echo "ERROR - there is no CENTRALDIR/nodelist for this execution."
          echo "        The current working directory is: "`pwd`
          echo "        The contents of the directory are: "
          ls -l
@@ -217,7 +224,14 @@ while($state_copy <= $num_states)
    @ output_file_line = $output_file_line + 3
 end
 
-mv data.cal.new ../data.cal
+echo "old data.cal is"
+cat ../data.cal
+echo ""
+echo "new data.cal is"
+cat data.cal.new
+echo ""
+ 
+cp -pv data.cal.new ../data.cal
 
 # Change back to original directory and get rid of temporary directory
 cd ..
