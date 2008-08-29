@@ -15,6 +15,7 @@
    obs_seq_out_file_name = "obs_seq.perfect",
    adv_ens_command       = "./advance_model.csh"  /
 
+#  trace_execution          = .true.,
 &filter_nml
    async                    = 4,
    adv_ens_command          = "./advance_model.csh",
@@ -31,7 +32,7 @@
    first_obs_seconds        =      0,
    last_obs_days            = 144271,
    last_obs_seconds         =  86400,
-   num_output_state_members = 4,
+   num_output_state_members = 20,
    num_output_obs_members   = 20,
    output_interval          = 1,
    num_groups               = 1,
@@ -64,9 +65,10 @@
    restart_in_file_name  = 'smoother_ics',
    restart_out_file_name = 'smoother_restart'  /
 
+# cutoff of 0.03 (radians) is about 200km
 &assim_tools_nml
    filter_kind                     = 1,
-   cutoff                          = 0.20,
+   cutoff                          = 0.03,
    sort_obs_inc                    = .true.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
@@ -118,7 +120,7 @@
    vert_normalization_pressure = 100000.0, 
    vert_normalization_height   = 10000.0,
    vert_normalization_level    = 20.0,
-   approximate_distance        = .true.,
+   approximate_distance        = .false.,
    nlon                        = 71,
    nlat                        = 36,
    output_box_info             = .true.  /
@@ -147,8 +149,8 @@
 
 &merge_obs_seq_nml
    num_input_files = 2,
-   filename_seq    = 'obs_seq.one', 'obs_seq.two',
-   filename_out    = 'obs_seq.merged'  /
+   filename_seq    = '../observations/obs_seq.gliders_t_pseudo.out', '../observations/obs_seq.gliders_s_pseudo.out',
+   filename_out    = 'obs_seq.out'  /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
@@ -178,6 +180,16 @@
    print_mismatched_locs = .false.,
    print_obs_locations   = .false.,
    verbose               = .true.  /
+
+# These are Ibrahims synthetic observations - isolated by platform.
+#  fname    = '../observations/adcp_u_pseudo.txt',
+#  fname    = '../observations/adcp_v_pseudo.txt',
+#  fname    = '../observations/drifters_u_pseudo.txt',
+#  fname    = '../observations/drifters_v_pseudo.txt',
+#  fname    = '../observations/gliders_s_pseudo.txt',
+#  fname    = '../observations/gliders_t_pseudo.txt',
+#  fname    = '../observations/ssh_pseudo.txt',
+#  fname    = '../observations/tmi_pseudo.txt',
 
 &ocean_obs_nml
    year     = 1996, 
