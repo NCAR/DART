@@ -462,6 +462,7 @@ call ref_local(state_vector, location, height, lat, lon, ref_perigee, istatus0)
 if(istatus0 > 0) then
    istatus = istatus0
    ro_ref = missing_r8
+   return
 endif
 
 choose: if(gps_data(gpskey)%gpsro_ref_form == 'GPSREF') then 
