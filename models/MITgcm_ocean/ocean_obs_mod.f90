@@ -18,26 +18,17 @@ use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
                              set_obs_def_error_variance, set_obs_def_location
 use time_manager_mod, only : time_type, get_date, set_time, GREGORIAN, &
                              set_date, set_calendar_type, get_time, &
-                             operator(==)
+                             print_date, print_time, operator(==)
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, &
                              E_ERR, E_MSG, timestamp
 use     location_mod, only : location_type, set_location, VERTISHEIGHT, VERTISSURFACE
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, set_qc, obs_sequence_type, obs_type, &
-                             copy_obs, set_copy_meta_data, set_qc_meta_data, set_obs_def
+                             copy_obs, set_copy_meta_data, set_qc_meta_data, set_obs_def, &
+                             get_first_obs, get_last_obs, get_obs_def
 
-use     obs_kind_mod, only : KIND_SALINITY, &
-                             KIND_TEMPERATURE, &
-                             KIND_U_WIND_COMPONENT, &
-                             KIND_V_WIND_COMPONENT, &
-                             KIND_SEA_SURFACE_HEIGHT
-
-use obs_kind_mod, only : SALINITY
-use obs_kind_mod, only : TEMPERATURE
-use obs_kind_mod, only : U_CURRENT_COMPONENT
-use obs_kind_mod, only : V_CURRENT_COMPONENT
-use obs_kind_mod, only : SEA_SURFACE_HEIGHT
+use     obs_kind_mod, only : get_obs_kind_index
 
 implicit none
 private
@@ -62,19 +53,18 @@ contains
 !-------------------------------------------------
 
 function real_obs_sequence (obsfile, year, month, day, max_num, &
-          ADCP, DRIFTERS, GLIDERS, TMI, SSH, &
           lon1, lon2, lat1, lat2)
 !------------------------------------------------------------------------------
 !  this function is to prepare data to DART sequence format
 !
 character(len=129), intent(in) :: obsfile
 integer,            intent(in) :: year, month, day, max_num
-logical,            intent(in) :: ADCP, DRIFTERS, GLIDERS, TMI, SSH
 real(r8),           intent(in) :: lon1, lon2, lat1, lat2
 
 type(obs_sequence_type) :: real_obs_sequence
 
 
+type(obs_def_type) :: obs_def
 type(obs_type) :: obs, prev_obs
 integer :: i, num_copies, num_qc
 integer :: days, seconds
@@ -82,13 +72,13 @@ integer :: yy, mn, dd, hh, mm, ss
 integer :: startdate1, startdate2
 integer :: obs_num, calender_type, iskip
 integer :: obs_unit
-integer :: obs_kind, obs_kind_gen, which_vert, obstype
+integer :: obs_kind, which_vert, obstype
 
 real (r8) :: lon, lat, vloc, obs_value
 real (r8) :: aqc, var2, lonc
 type(time_type) :: time, pre_time
 
-character(len = 8 ) :: obsdate
+character(len = 32) :: obs_kind_name
 character(len = 80) :: label
 character(len = 129) :: copy_meta_data, qc_meta_data
 
@@ -129,8 +119,6 @@ open(unit = obs_unit, file = obsfile, form='formatted', status='old')
 print*, 'input file opened= ', trim(obsfile)
 rewind (obs_unit)
 
-!print*, 'ncep obsdates = ', obsdate
-
 obs_num = 0
 iskip   = 0
 
@@ -140,7 +128,14 @@ iskip   = 0
 obsloop:  do
 
    read(obs_unit,*,end=200) lon, lat, vloc, obs_value, which_vert, var2, aqc, &
-                              obstype, startdate1, startdate2
+                              obs_kind_name, startdate1, startdate2
+
+  !print*,''
+  !print*,' Observation ', obs_num+1
+  !print*,' lon lat vloc obs_value ',lon, lat, vloc, obs_value
+  !print*,' which_vert var2 aqc ',which_vert, var2, aqc
+  !print*,' obs_kind_name ',obs_kind_name
+  !print*,' date1 date2 ',startdate1, startdate2
 
    ! Calculate the DART time from the observation time 
    yy =     startdate1/10000
@@ -169,25 +164,13 @@ obsloop:  do
      cycle obsloop
    endif
 
-!   assign each observation the correct observation type
-   if(obstype == 1) then
-     obs_kind_gen = KIND_TEMPERATURE
-     obs_kind     =      TEMPERATURE
-   elseif(obstype == 2) then
-    obs_kind_gen = KIND_SALINITY
-    obs_kind     =      SALINITY
-   elseif(obstype == 3) then
-    obs_kind_gen = KIND_U_WIND_COMPONENT
-    obs_kind     =      U_CURRENT_COMPONENT
-   elseif(obstype == 4) then
-    obs_kind_gen = KIND_V_WIND_COMPONENT
-    obs_kind     =      V_CURRENT_COMPONENT
-   elseif(obstype == 5) then
-    obs_kind_gen = KIND_SEA_SURFACE_HEIGHT
-    obs_kind     =      SEA_SURFACE_HEIGHT
-   else
-      print*, 'unknown observation type ... skipping ...'
+   ! assign each observation the correct observation type
+   obstype = get_obs_kind_index(obs_kind_name)
+   if(obstype < 1) then
+      print*, 'unknown observation type [',trim(obs_kind_name),'] ... skipping ...'
       cycle obsloop
+   else
+      print*,trim(obs_kind_name),' is ',obstype
    endif
 
    obs_num = obs_num + 1
@@ -212,7 +195,7 @@ obsloop:  do
 !------------------------------------------------------------------------------
    
    call real_obs(num_copies, num_qc, obs, lon, lat, vloc, obs_value, &
-                 var2, aqc, obs_kind, which_vert, seconds, days)
+                 var2, aqc, obstype, which_vert, seconds, days)
    
    if(obs_num == 1) then ! for the first observation 
 
@@ -244,8 +227,21 @@ end do obsloop
 
 close(obs_unit)
 
-print*, 'date ', obsdate, ' obs used = ', obs_num, ' obs skipped = ', iskip
-!print*, 'obs_num= ',obs_num,' skipped= ',obsdate,iskip
+! Print a little summary
+print*, 'obs used = ', obs_num, ' obs skipped = ', iskip
+
+if ( get_first_obs(real_obs_sequence, obs) ) then
+   call get_obs_def(obs, obs_def)
+   pre_time = get_obs_def_time(obs_def)
+   call print_time(pre_time,' first time in sequence is ')
+   call print_date(pre_time,' first date in sequence is ')
+endif
+if( get_last_obs(real_obs_sequence, obs)) then
+   call get_obs_def(obs, obs_def)
+   time = get_obs_def_time(obs_def)
+   call print_time(time,' last  time in sequence is ')
+   call print_date(time,' last  date in sequence is ')
+endif
 
 end function real_obs_sequence
 

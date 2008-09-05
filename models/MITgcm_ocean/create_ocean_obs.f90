@@ -35,8 +35,6 @@ character(len=128), parameter :: &
 
 type(obs_sequence_type) :: seq
 
-character(len = 129) :: output_name
-character(len = 8 ) :: obsdate
 integer :: iunit, io, day1
 
 ! ----------------------------------------------------------------------
@@ -46,9 +44,7 @@ integer :: iunit, io, day1
 integer :: year = 1996, month =1, day =1, tot_days = 31
 integer :: max_num = 800000
 character(len = 129) :: fname = 'raw_ocean_obs.txt'
-
-logical :: ADCP = .false., DRIFTERS = .false., GLIDERS = .false., &
-           TMI = .false., SSH = .false.
+character(len = 129) :: output_name = 'raw_ocean_obs_seq.out'
 
 real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lon2 = 360.0_r8,  &   !  upper longitude bound 
@@ -56,20 +52,11 @@ real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lat2 =  90.0_r8       !  upper latitude bound
 
 namelist /ocean_obs_nml/ year, month, day, tot_days, max_num, &
-        fname, ADCP, DRIFTERS, GLIDERS, TMI, SSH, &
-        lon1, lon2, lat1, lat2
+        fname, output_name, lon1, lon2, lat1, lat2
 
 ! ----------------------------------------------------------------------
-!  ADPUPA: upper-air reports (mostly radiosonde plus few dropsonde, PIBAL)
-!  AIRCFT: Conv. (AIREP, PIREP) and ASDAR aircraft reports
-!  AIRCAR: ACARS sircraft reports
-!  SATEMP: ATOVS retrived temperature
-!  SFCSHP: SURFACE MARINE reports
-!  ADPSFC: SURFACE LAND SYNOPTIC STATION reports
-!  SATWND: Satellite derived wind reports
-! ----------------------------------------------------------------------
-
 ! start of executable program code
+! ----------------------------------------------------------------------
 
 call initialize_utilities('create_ocean_obs')
 call register_module(source,revision,revdate)
@@ -92,18 +79,13 @@ lon1 = min(max(lon1,0.0_r8),360.0_r8)
 lon2 = min(max(lon2,0.0_r8),360.0_r8)
 if ( lon1 > lon2 ) lon2 = lon2 + 360.0_r8
 
-  ! define observation filename
-  write(obsdate, '(i4.4,i2.2)') year, month
+! The file is read and parsed into a DART observation sequence linked list
+seq = real_obs_sequence(fname, year, month, day1, max_num, &
+                         lon1, lon2, lat1, lat2)
 
-  seq = real_obs_sequence(fname, year, month, day1, max_num, &
-        ADCP, DRIFTERS, GLIDERS, TMI, SSH, &
-        lon1, lon2, lat1, lat2)
+call write_obs_seq(seq, output_name)
 
-  output_name = 'obs_seq'//obsdate
-  call write_obs_seq(seq, output_name)
-
-  ! release the memory of the seq.
-  call destroy_obs_sequence(seq)
+call destroy_obs_sequence(seq) ! release the memory of the seq.
 
 call timestamp(source,revision,revdate,'end') ! close the log file.
 
