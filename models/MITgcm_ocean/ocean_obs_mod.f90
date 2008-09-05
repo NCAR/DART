@@ -169,8 +169,8 @@ obsloop:  do
    if(obstype < 1) then
       print*, 'unknown observation type [',trim(obs_kind_name),'] ... skipping ...'
       cycle obsloop
-   else
-      print*,trim(obs_kind_name),' is ',obstype
+  !else
+  !   print*,trim(obs_kind_name),' is ',obstype
    endif
 
    obs_num = obs_num + 1
@@ -242,6 +242,7 @@ if( get_last_obs(real_obs_sequence, obs)) then
    call print_time(time,' last  time in sequence is ')
    call print_date(time,' last  date in sequence is ')
 endif
+print*, ''
 
 end function real_obs_sequence
 
