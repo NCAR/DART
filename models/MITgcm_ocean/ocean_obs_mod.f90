@@ -72,7 +72,7 @@ integer :: yy, mn, dd, hh, mm, ss
 integer :: startdate1, startdate2
 integer :: obs_num, calender_type, iskip
 integer :: obs_unit
-integer :: obs_kind, which_vert, obstype
+integer :: which_vert, obstype
 
 real (r8) :: lon, lat, vloc, obs_value
 real (r8) :: aqc, var2, lonc
