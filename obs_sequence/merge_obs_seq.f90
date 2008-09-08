@@ -255,11 +255,11 @@ do i = 1, num_input_files
    if (first_seq < 0) then
       call init_obs_sequence(seq_out, num_copies_out, num_qc_out, size_seq_out) 
       do j=1, num_copies_out
-	 meta_data = get_copy_meta_data(seq_in, j) 
+         meta_data = get_copy_meta_data(seq_in, j) 
          call set_copy_meta_data(seq_out, j, meta_data)
       enddo 
       do j=1, num_qc_out
-	 meta_data = get_qc_meta_data(seq_in, j) 
+         meta_data = get_qc_meta_data(seq_in, j) 
          call set_qc_meta_data(seq_out, j, meta_data)
       enddo 
       first_seq = i
