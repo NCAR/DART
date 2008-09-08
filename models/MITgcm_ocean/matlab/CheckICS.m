@@ -15,17 +15,18 @@ function CheckICS()
 % $Date$
 
 %-------------------------------------------------------------------------------
-dsize = [256 225 40];
+dsize   = [256 225 40];
+ncopies = 40;
 %-------------------------------------------------------------------------------
 
-mitbase = '/ptmp/thoar/MITgcm/ics';
-fname   = sprintf('%s/filter_ics',mitbase);
-ic00    = rdinit(fname,dsize);
-orgmask = find( ic00.data == 0.0 ); % should be dry locations
-
-if ( 1 == 1 )
+if ( 1 == 2 )
    
-   for i = 1:40
+   mitbase = '/ptmp/thoar/MITgcm/ics';
+   fname   = sprintf('%s/filter_ics',mitbase);
+   ic00    = rdinit(fname,dsize);
+   orgmask = find( ic00.data == 0.0 ); % should be dry locations
+
+   for i = 1:ncopies
       fname = sprintf('%s/ens_mem_%03d',mitbase,i);
       copy  = rdinit(fname,dsize);
       dry   = copy.data(orgmask);     % should all be dry ... 0.0
@@ -35,7 +36,7 @@ if ( 1 == 1 )
       mymask = find(copy.data == 0.0);
       disp(sprintf('mask %i length %06d mask 1 length %06d',i,length(orgmask),length(mymask)))
       if (length(orgmask) ~= length(mymask)) 
-         error(sprintf('mask %i length unequal to mask 1 length',i))
+         error('mask %i length unequal to mask 1 length',i)
       end
    
 %     bob = copy.data(:) - ic00.data(:);
@@ -47,7 +48,96 @@ if ( 1 == 1 )
    
 else
 
+   mitbase = '/ptmp/thoar/MITgcm/ics';
+   fname   = sprintf('%s/filter_ics',mitbase);
+   fid     = fopen(fname,'rb','ieee-be');
 
+   for i = 1:ncopies
+
+      % Read the time stamp for each ensemble member
+      h1        = fread(fid,1,'int32');
+      T         = fread(fid,2,'int32');
+      h2        = fread(fid,1,'int32');
+      
+      if ( h1 ~= h2 )
+          error('copy %02d time record lengths %d = %d',i,h1,h2)
+      else
+          disp(sprintf('Copy %02d timestamp is days,seconds %d,%d',i,T(2),T(1)))
+      end
+
+      % Parse the state vector
+      h3  = fread(fid,    1,'int32');
+      s   = fread(fid,prod(dsize),'float64');
+      t   = fread(fid,prod(dsize),'float64');
+      u   = fread(fid,prod(dsize),'float64');
+      v   = fread(fid,prod(dsize),'float64');
+      eta = fread(fid,prod(dsize(1:2)),'float64');
+      h4  = fread(fid,    1,'int32');
+      if ( h3 ~= h4 )
+          error('copy %02d data record lengths %d = %d',i,h3,h4)
+      end
+
+      % Plot salinity for each ensemble member
+      Y         = reshape(s, dsize);
+      Y(Y==0.0) = NaN;
+
+      for ilev = 1:size(Y,3)
+         imagesc(squeeze(Y(:,:,ilev)'))
+         set(gca,'YDir','normal')
+         title(sprintf('S copy %02d level %03d day %d sec %d\n',i,ilev,T(2),T(1)))
+         colorbar;
+         pause(0.1)
+      end
+
+      % Plot temperature for each ensemble member
+      Y         = reshape(t, dsize);
+      Y(Y==0.0) = NaN;
+
+      for ilev = 1:size(Y,3)
+         imagesc(squeeze(Y(:,:,ilev)'))
+         set(gca,'YDir','normal')
+         title(sprintf('T copy %02d level %03d day %d sec %d\n',i,ilev,T(2),T(1)))
+         colorbar;
+         pause(0.1)
+      end
+
+      % Read the U current component for each ensemble member
+      Y         = reshape(u, dsize);
+      Y(Y==0.0) = NaN;
+
+      for ilev = 1:size(Y,3)
+         imagesc(squeeze(Y(:,:,ilev)'))
+         set(gca,'YDir','normal')
+         title(sprintf('U copy %02d level %03d day %d sec %d\n',i,ilev,T(2),T(1)))
+         colorbar;
+         pause(0.1)
+      end
+
+      % Read the V current component for each ensemble member
+      Y         = reshape(v, dsize);
+      Y(Y==0.0) = NaN;
+
+      for ilev = 1:size(Y,3)
+         imagesc(squeeze(Y(:,:,ilev)'))
+         set(gca,'YDir','normal')
+         title(sprintf('V copy %02d level %03d day %d sec %d\n',i,ilev,T(2),T(1)))
+         colorbar;
+         pause(0.1)
+      end
+
+      % Read the sea surface height component for each ensemble member
+      Y         = reshape(eta, dsize(1:2));
+      Y(Y==0.0) = NaN;
+
+      imagesc(Y')
+      set(gca,'YDir','normal')
+      title(sprintf('SSH copy %02d level %03d day %d sec %d\n',i,ilev,T(2),T(1)))
+      colorbar;
+      pause(0.1)
+
+   end
+
+   fclose(fid);
 end
 
 %======================================================================
@@ -65,10 +155,16 @@ fid       = fopen(fname,'rb','ieee-be');
 h1        = fread(fid,1,'int32');
 t         = fread(fid,2,'int32');
 h2        = fread(fid,1,'int32');
+if ( h1 ~= h2 )
+    error('time record lengths %d = %d',h1,h2)
+end
 
 h3        = fread(fid,    1,'int32');
 [x count] = fread(fid,prod(dsize),'float64');
 h4        = fread(fid,    1,'int32');
+if ( h3 ~= h4 )
+    error('data record lengths %d = %d',h3,h4)
+end
 fclose(fid);
 
 if (count ~= prod(dsize))
