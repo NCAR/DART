@@ -41,12 +41,11 @@ character(len=128), parameter :: &
 integer, parameter   :: max_types = 5000, max_kinds = 5000
 character(len = 256) :: line, test, test2, type_string(max_types), &
                         kind_string(max_kinds), t_string, temp_type, temp_kind
-integer              :: iunit, ierr, io, i, j, k, l
+integer              :: iunit, ierr, io, i, j, k
 integer              :: l_string, l2_string, total_len, linenum
 integer              :: num_types_found, num_kinds_found, kind_index(max_types)
 logical              :: duplicate, usercode(max_types), temp_user
 character(len = 169) :: err_string
-character(len = 128) :: err_array(10)
 
 ! specific marker strings
 character(len = 33) :: kind_start_string = '! BEGIN DART PREPROCESS KIND LIST'
