@@ -1560,7 +1560,7 @@ type(obs_sequence_type),   intent(out) :: newseq
 type(time_type), optional, intent(in)  :: time1, time2
 
 integer :: i, num_copies, num_qc, max_num_obs
-integer :: num_obs, num_real_obs, num_keys, key_bounds(2)
+integer :: num_obs, num_keys, key_bounds(2)
 integer, pointer :: keylist(:)
 type(obs_type) :: obs
 type(time_type) :: first_time, last_time
