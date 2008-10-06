@@ -23,7 +23,7 @@ use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, 
 use     location_mod, only : location_type,      get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, set_location, &
                              VERTISHEIGHT, get_location, vert_is_height, &
-                             vert_is_level
+                             vert_is_level, vert_is_surface
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              logfileunit, get_unit, nc_check, do_output, &
                              find_namelist_in_file, check_namelist_read
@@ -309,16 +309,14 @@ subroutine static_init_model()
 ! Called to do one time initialization of the model. In this case,
 ! it reads in the grid information and then the model data.
 
-integer :: i, iunit, io, bogus
-real(r4), allocatable :: data_2d_array(:,:)
+integer :: i, iunit, io
 
 ! The Plan:
 !
 !   read the standard MITgcm namelist file 'data.cal' for the calendar info
 !
 !   read the standard MITgcm namelist file 'data' for the
-!   time stepping info, the grid info, and 
-!   (not that we need them,) the files for the boundary conditions, etc.
+!   time stepping info and the grid info.
 !
 !   open the grid data files to get the actual grid coordinates
 !
@@ -398,16 +396,11 @@ call find_namelist_in_file("data", "PARM05", iunit)
 read(iunit, nml = PARM05, iostat = io)
 call check_namelist_read(iunit, io, "PARM05")
 
-! we pass in a filename (without the .meta and the .data)
-! and an allocated array of the right dimensionality.
-! it returns the filled array, along with the timestep count.
-
-! FIXME:
-! right now the only way i know to compute the number of
-! levels/lats/lons is that i set the default value of delZ to 0.0
+! The only way I know to compute the number of
+! levels/lats/lons is to set the default value of delZ to 0.0
 ! before reading the namelist.  now loop until you get back
-! to zero and that is the end of the list.  not a very
-! satisfying solution, but maybe good enough for now?
+! to zero and that is the end of the list.
+! Not a very satisfying/robust solution ...
 
 Nx = -1
 do i=1, size(delX)
@@ -446,13 +439,10 @@ if (Nz == -1) then
 endif
 
 ! We know enough to allocate grid variables. 
-! 'read_snapshot' checks the ".meta" files for agreeable dimensions.
 
 allocate(XC(Nx), YC(Ny), ZC(Nz))
 allocate(XG(Nx), YG(Ny), ZG(Nz))
-!allocate(data_2d_array(Nx,Ny))
 
-! determine longitudes 
 ! XG (the grid edges) and XC (the grid centroids) must be computed.
 
 XG(1) = thetaMin
@@ -462,16 +452,6 @@ do i=2, Nx
  XC(i) = XC(i-1) + 0.5_r8 * delX(i-1) + 0.5_r8 * delX(i) 
 enddo
 
-!call read_snapshot('XC', data_2d_array, bogus)
-!do i=1, Nx
-!  write(*,*)'XC(',i,') = ',XC(i),data_2d_array(i, 1)
-!enddo
-
-!call read_snapshot('XG', data_2d_array, bogus)
-!do i=1, Nx
-!  write(*,*)'XG(',i,') = ',XG(i),data_2d_array(i, 1)
-!enddo
-
 ! YG (the grid edges) and YC (the grid centroids) must be computed.
 
 YG(1) = phiMin
@@ -480,18 +460,6 @@ do i=2, Ny
  YG(i) = YG(i-1) + delY(i-1)
  YC(i) = YC(i-1) + 0.5_r8 * delY(i-1) + 0.5_r8 * delY(i) 
 enddo
-
-!call read_snapshot('YC', data_2d_array, bogus)
-!do i=1, Ny
-!  write(*,*)'YC(',i,') = ',YC(i),data_2d_array(1, i)
-!enddo
-
-!call read_snapshot('YG', data_2d_array, bogus)
-!do i=1, Ny
-!  write(*,*)'YG(',i,') = ',YG(i),data_2d_array(1, i)
-!enddo
-
-!deallocate(data_2d_array)
 
 ! the namelist contains a list of thicknesses of each depth level (delZ)
 ! ZG (the grid edges) and ZC (the grid centroids) must be computed.
@@ -525,8 +493,6 @@ if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 !print *, ' 2d field size: ', n2dfields * (Nx * Ny)
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 if (do_output()) write(*,*) 'model_size = ', model_size
-
-!print *, 'end of static init model'
 
 end subroutine static_init_model
 
@@ -639,7 +605,7 @@ integer,            intent(out) :: istatus
 
 ! Local storage
 real(r8)       :: loc_array(3), llon, llat, lheight
-integer        :: base_offset, offset
+integer        :: base_offset, offset, ind
 integer        :: hgt_bot, hgt_top
 real(r8)       :: hgt_fract
 real(r8)       :: top_val, bot_val
@@ -651,26 +617,28 @@ if ( .not. module_initialized ) call static_init_model
 interp_val = 0.0_r8
 istatus = 0
 
-!print *, 'top of model interpolate'
-! Get the individual locations values; make sure the vertical is height
-! Might want to support model level in the vertical at some point
+! Get the individual locations values
 loc_array = get_location(location)
-llon = loc_array(1)
-llat = loc_array(2)
+llon    = loc_array(1)
+llat    = loc_array(2)
 lheight = loc_array(3)
 
-!print *, 'lon, lat, height = ', llon, llat, lheight
-
-! Only know how to work with height vertical coordinate for now
-if(.not. vert_is_height(location)) then
-   if (vert_is_level(location)) then 
-      ! should range check first
-      lheight = zc(nint(loc_array(3)))
-!print *, 'setting height to ', lheight
+if( vert_is_height(location) ) then
+   ! Nothing to do 
+elseif ( vert_is_surface(location) ) then
+   ! Nothing to do 
+elseif (vert_is_level(location)) then
+   ! convert the level index to an actual depth 
+   ind = nint(loc_array(3))
+   if ( (ind < 1) .or. (ind > size(zc)) ) then 
+      lheight = zc(ind)
    else
       istatus = 1
       return
    endif
+else   ! if pressure or undefined, we don't know what to do
+   istatus = 7
+   return
 endif
 
 ! Do horizontal interpolations for the appropriate levels
@@ -694,20 +662,17 @@ endif
 !print *, 'base offset now ', base_offset
 
 ! For Sea Surface Height don't need the vertical coordinate
-if(obs_type /= KIND_SEA_SURFACE_HEIGHT) then
-   ! Get the bounding vertical levels and the fraction between bottom and top
-   call height_bounds(lheight, nz, zc, hgt_bot, hgt_top, hgt_fract, hstatus)
-   if(hstatus /= 0) then
-      istatus = 2
-      return
-   endif
-else
-! Sea Surface Height only has one level, no vertical interpolation
+if( vert_is_surface(location) ) then
    call lat_lon_interpolate(x(base_offset:), llon, llat, obs_type, interp_val, istatus)
    return
 endif
 
-!print *, 'height top, bot = ', hgt_top, hgt_bot
+! Get the bounding vertical levels and the fraction between bottom and top
+call height_bounds(lheight, nz, zc, hgt_bot, hgt_top, hgt_fract, hstatus)
+if(hstatus /= 0) then
+   istatus = 2
+   return
+endif
 
 ! Find the base location for the top height and interpolate horizontally on this level
 offset = base_offset + (hgt_top - 1) * nx * ny
@@ -788,7 +753,7 @@ subroutine lat_lon_interpolate(x, llon, llat, var_type, interp_val, istatus)
 
 ! Subroutine to interpolate to a lat lon location given that portion of state
 ! vector. 
-! NOTE: Using array sections to pas in the x array may be inefficient on some
+! NOTE: Using array sections to pass in the x array may be inefficient on some
 ! compiler/platform setups. Might want to pass in the entire array with a base
 ! offset value instead of the section if this is an issue.
 
@@ -1173,29 +1138,9 @@ end subroutine end_model
 
 function nc_write_model_atts( ncFileID ) result (ierr)
 !------------------------------------------------------------------
-! TJH 24 Oct 2006 -- Writes the model-specific attributes to a netCDF file.
+! TJH -- Writes the model-specific attributes to a netCDF file.
 !     This includes coordinate variables and some metadata, but NOT
-!     the model state vector. We do have to allocate SPACE for the model
-!     state vector, but that variable gets filled as the model advances.
-!
-! As it stands, this routine will work for ANY model, with no modification.
-!
-! The simplest possible netCDF file would contain a 3D field
-! containing the state of 'all' the ensemble members. This requires
-! three coordinate variables -- one for each of the dimensions 
-! [model_size, ensemble_member, time]. A little metadata is useful, 
-! so we can also create some 'global' attributes. 
-! This is what is implemented here.
-!
-! Once the simplest case is working, this routine (and nc_write_model_vars)
-! can be extended to create a more logical partitioning of the state vector,
-! fundamentally creating a netCDF file with variables that are easily 
-! plotted. The bgrid model_mod is perhaps a good one to view, keeping
-! in mind it is complicated by the fact it has two coordinate systems. 
-! There are stubs in this template, but they are only stubs.
-!
-! TJH 29 Jul 2003 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
+!     the model state vector.
 !
 ! assim_model_mod:init_diag_output uses information from the location_mod
 !     to define the location dimension and variable ID. All we need to do
@@ -1776,6 +1721,7 @@ type(MIT_meta_type)                    :: read_meta
 character(len=128) :: filename, charstring
 integer :: iunit, io
 integer :: i, j, indx, nlines, dim1, dimN
+logical :: fexist
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1794,16 +1740,25 @@ read_meta%reclen = 0
 read_meta%nrecords = 0
 read_meta%timeStepNumber = timestepcount
 
+iunit = get_unit()
+
+! See if the file exists ... typically not the case for a cold start.
+! If the file does not exist, we must use the namelist values as parsed.
+
+inquire(file=filename, exist=fexist, iostat=io)
+if ((io /= 0) .or. (.not. fexist)) then 
+   write(msgstring,*) trim(filename), ' does not exist, using namelist values'
+   call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
+   return
+endif
+
 ! Get next available unit number and open the file
 
-iunit = get_unit()
 open(unit=iunit, file=filename, action='read', form='formatted', iostat = io)
 if (io /= 0) then
-   write(msgstring,*) 'unable to open file ', trim(filename), ' for reading'
-   call error_handler(E_WARN,'model_mod:read_meta',msgstring,source,revision,revdate)
+   write(msgstring,*) 'cannot open ', trim(filename), ', using namelist values'
+   call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
    return
-else
-   ! Use the namelist values as the defaults ??? unable to determin 2D or 3D file
 endif
 
 ! Read every line looking for the nDims entry
