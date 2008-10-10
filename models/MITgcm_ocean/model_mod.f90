@@ -1636,8 +1636,8 @@ subroutine pert_model_state(state, pert_state, interf_provided)
 ! A model may choose to provide a NULL INTERFACE by returning
 ! .false. for the interf_provided argument. This indicates to
 ! the filter that if it needs to generate perturbed states, it
-! may do so by adding an O(0.1) magnitude perturbation to each
-! model state variable independently. The interf_provided argument
+! may do so by adding a perturbation to each model state 
+! variable independently. The interf_provided argument
 ! should be returned as .true. if the model wants to do its own
 ! perturbing of states.
 
@@ -1651,8 +1651,6 @@ logical, save :: random_seq_init = .false.
 if ( .not. module_initialized ) call static_init_model
 
 interf_provided = .true.
-
-!if (do_output()) write(*, *) 'in pert_model_state'
 
 ! Initialize my random number sequence
 if(.not. random_seq_init) then
