@@ -132,6 +132,47 @@
    namelist value.  DART then communicates the start/stop times to the 
    ocean model.  
 
+   <a name="InitialEnsemble"></a>
+   <BR>
+   <h4 class="indent1">Generating the initial ensemble</h4>
+   The MITgcm_ocean model cannot (as of Oct 2008) take one single model state 
+   and generate its own ensemble (typically done with 
+   <a href="#pert_model_state">pert_model_state</a>). This means I don't really
+   know how to perform a 'perfect model' experiment until I find a way to
+   correctly perturb a single state to create an ensemble.
+   <BR>
+   <BR>
+   The ensemble has to come from 'somewhere else'. I ran the model forward 
+   (outside the DART framework) for 14 days and output snapshot files ever 12 hours.
+   One state vector can be generated from a set of snapshot files using 
+   <em class="program">trans_pv_sv</em>.
+   I called this my 'initial ensemble' - it's better than nothing, but it is ENTIRELY
+   unknown if this creates an intial ensemble with sufficient spread. Just for
+   comparison, the initial ensemble for the atmospheric models is derived from
+   'climatological' values. If they need an 80-member ensemble for July 14, 2008;
+   they use the July 1 estimates of the atmosphere from 1900 to 1979. By the time
+   they assimilate (every 6 hours) for several days, things are on-track.
+   <BR>
+   <BR>
+   There is a <em class="file">shell_scripts/MakeInitialEnsemble.csh</em> script
+   that was intended to automate this process - with modest success. It does 
+   illustrate the steps needed to convert each snapshot file to a DART initial
+   conditions file and then run the
+   <a href="../../../utilities/restart_file_utility.f90">restart_file_utility</a> 
+   to overwrite the timestep in the header of the initial conditions file. After
+   you have created all the initial conditions files, you can simply 'cat' them
+   all together.  Even if the script doesn't work <em>out-of-the-box</em>, it 
+   should be readable enough to be some help.
+
+   <a name="BigEndian"></a>
+   <BR>
+   <h4 class="indent1">Fortran direct-access big-endian data files</h4>
+   The MITgcm_ocean model uses Fortran direct-access big-endian data files.
+   It is up to you to determine the proper compiler flags to compile DART 
+   such that DART can read and write these files. Every compiler/architecture
+   is different, but we have put notes in each <em class="file">mkmf.template</em>
+   if we know how to achieve this.
+
    <a name="ModelTimestepping"></a>
    <BR>
    <h4 class="indent1">Controlling the model advances</h4>
@@ -158,81 +199,61 @@
    observation sequence file is exhausted) or 2) the time specified by 
    <em class="file">input.nml</em><em class="code">&#38;filter_nml:last_obs_days,last_obs_seconds</em> 
    has been reached.
-</P>
+
+   <a name="GettingStarted"></a>
+   <BR>
+   <h4 class="indent1">Getting Started</h4>
+   I always like running something akin to a 'perfect model' experiment to start.
+   Since I have not come up with a good way to perturb a single model state to
+   generate an ensemble, here's the next best thing. Please keep in mind that the
+   details for running each program are covered in their own documentation.
    
    <ol>
-      <li>create a set of initial conditions for DART</li>
-      <li>create a set of observations</li>
+      <li>create a set of initial conditions for DART as described in 
+      <a href="#InitialEnsemble">Generating the intial ensemble</a> and keep a copy
+      of the 'middle' snapshot - then use it as the initial condition
+      for <em class="program">perfect_model_obs</em>.</li>
+      <li>create a TINY set of 'perfect' observations in the normal fashion:
+      <a href="../../../obs_sequence/create_obs_sequence.html">create_obs_sequence.f90</a>
+      and then 
+      <a href="../../../obs_sequence/create_fixed_network_seq.html">create_fixed_network_seq.f90</a>
+      to create an empty observation sequence file (usually called 
+      <em class="file">obs_seq.in</em>) 
+      </li>
       <li>modify <em class="file">data</em>, 
                  <em class="file">data.cal</em>, and
                  <em class="file">input.nml</em> to control
-          the experiment</li>
+          the experiment and populate the observation sequence file by
+          running <a href="../../../perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>
+      </li>
+      <li>Now use the full ensemble of initial conditions from Step 1 and run 
+          <a href="../../../filter/filter.html">filter</a></li>
    </ol>
 
-<P>
-The first step would be to run a 'perfect model' experiment, which is the
-same for the low-order models as it is for MITgcm_ocean.
-<BR>
+   A perfectly sensible approach to get to know the system would be to try to 
+   <ol>
+     <li>assimilate data for the first assimilation period and stop. Do not advance
+         the model at all. The filter namelist can control all of this and you do
+         not need to have a working <em class="program">advance_model.csh</em>
+         script, or even a working ocean model (as long as you have input data files).</li>
+     <li>advance the model first and then assimilate data for the first assimilation 
+         period and stop.</li>
+     <li>advance, assimilate and advance again. This tests the whole DART facility.</li>
+   </ol>
 
-1) create_obs_sequence
-<BR>
-2) create_fixed_network_seq,
-<BR>
-3) perfect_model_obs,
-<BR>
-4) filter
-<BR>
-<BR>
-
-Steps 1,2 are required to create an (empty) observation sequence file,
-usually called 'obs_seq.in'. It has the locations and times and 'what' you want
-to observe (S, T, U, V, Eta) ... but no actual values. perfect_model_obs starts from
-one state vector (in perfect_ics) and advances a single instance of the ocean model
-to the appropriate time and then performs the forward operator to extract the expected
-value of the observation - and stuffs it into the observation sequence. When all the 
-observations have been harvested, the fully-populated observation sequence file
-(obs_seq.out)
-is written. You should choose the 'ascii' format for this to ensure the values are
-sensible.
-
-   <a name="InitialEnsemble"></a>
-   <BR>
-   <h4 class="indent1">Generating the initial ensemble</h4>
-   The MITgcm_ocean model cannot (as of Oct 2008) take one single model state 
-   and generate its own ensemble (typically done with 
-   <a href="#pert_model_state">pert_model_state</a>). This means I don't really
-   know how to perform a 'perfect model' experiment until I find a way to
-   correctly perturb a single state to create an ensemble.
-   <BR>
-   <BR>
-   The ensemble has to come from 'somewhere else'. I ran the model forward 
-   (outside the DART framework) for 14 days and output snapshot files ever 12 hours.
-   One state vector can be generated from a set of snapshot files using 'trans_pv_sv'.
-   I called this my 'initial ensemble' - it's better than nothing, but it is ENTIRELY
-   unknown if this creates an intial ensemble with sufficient spread. Just for
-   comparison, the initial ensemble for the atmospheric models is derived from
-   'climatological' values. If they need an 80-member ensemble for July 14, 2008;
-   they use the July 1 estimates of the atmosphere from 1900 to 1979. By the time
-   they assimilate (every 6 hours) for several days, things are on-track.
-   <BR>
-   <BR>
-   There is a <em class="file">shell_scripts/MakeInitialEnsemble.csh</em> script
-   that was intended to automate this process - with modest success. It does 
-   illustrate the steps needed to convert each snapshot file to a DART initial
-   conditions file and then run the
-   <a href="../../../utilities/restart_file_utility.f90">restart_file_utility</a> 
-   to overwrite the timestep in the header of the initial conditions file. After
-   you have created all the initial conditions files, you can simply 'cat' them
-   all together. 
-
-   <a name="BigEndian"></a>
-   <BR>
-   <h4 class="indent1">Fortran direct-access big-endian data files</h4>
-   The MITgcm_ocean model uses Fortran direct-access big-endian data files.
-   It is up to you to determine the proper compiler flags to compile DART 
-   such that DART can read and write these files. Every compiler/architecture
-   is different, but we have put notes in each <em class="file">mkmf.template</em>
-   if we know how to achieve this.
+   <a name="ExploringOutput"></a>
+   <h4 class="indent1">Exploring the Output</h4>
+   Is pretty much like any other model. The netCDF files have the model
+   prognostic variables before and after the assimilation. There are Matlab&#174;
+   scripts for perusing the netCDF files in the <em class="file">DART/matlab</em>
+   directory. There are Matlab&#174; scripts for exploring the performance of the
+   assimilation in observation-space (after running 
+   <a href="../../../diagnostics/threed_sphere/obs_diag.html">obs_diag.f90</a> to 
+   explore the <em class="file">obs_seq.final</em> file) - use the scripts starting
+   with 'plot_', i.e. <em class="file">DART/diagnostics/matlab/plot_*.m</em>.  
+   As always, there are some model-specific item you should know about in
+   <em class="file">DART/models/MITgcm_ocean/matlab</em>, and 
+   <em class="file">DART/models/MITgcm_ocean/shell_scripts</em>.
 
 </P>
 
@@ -1084,7 +1105,10 @@ real(r8), dimension(:),     intent(out) :: <em class="code">x</em>
 <em class="code">prog_var_to_vector</em>
 packs the prognostic variables [S,T,U,V,Eta] read from the snapshot files 
 into a DART vector. The DART vector is simply a 1D vector that includes all
-the 'dry' cells as well as the 'wet' ones. 
+the 'dry' cells as well as the 'wet' ones. This routine is not presently
+used (since we never have [S,T,U,V,Eta] as such in memory). See
+<a href="#snapshot_files_to_sv">snapshot_files_to_sv</a>.
+ 
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1941,10 +1965,16 @@ i.e., we can overwrite them and change them during the course of an experiment.
 <A NAME="FilesUsed"></A>
 <BR><HR><BR>
 <H2>FILES</H2>
-<UL><LI>inputfile1</LI>
-    <LI>namelistfile</LI>
-    <LI>outputfile</LI>
+<UL>
+    <LI>input namelist files: <em class="file">data, data.cal, input.nml</em></LI>
+    <LI>input data file: <em class="file">filter_ics, perfect_ics</em></LI>
+    <LI>output data files:
+       <em class="file">[S,T,U,V,Eta].YYYYMMDD.HHMMSS.[data,meta]</em></LI>
 </UL>
+<P class="indent1">
+Please note that there are <strong>many</strong> more files needed to 
+advance the ocean model, none of which are discussed here.
+</P>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
@@ -1964,18 +1994,179 @@ i.e., we can overwrite them and change them during the course of an experiment.
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class="errors">
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+<TR><TH>Routine</TH><TH width="50%">Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>xxxx</TD>
-    <!-- message --><TD VALIGN=top>size of [argument] is incorrect</TD>
-    <!-- comment --><TD VALIGN=top>The size of [argument] must be 1 and 4</TD>
+<TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
+    <!-- message --><TD VALIGN=top>... At present, DART only supports equal
+values.</TD>
+    <!-- comment --><TD VALIGN=top>namelist PARM03 has deltaTmom /=
+deltaTtracer /= deltaTClock</TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>xxxx</TD>
-    <!-- message --><TD VALIGN=top>yyyyy</TD>
-    <!-- comment --><TD VALIGN=top>bad judgement<BR>
-                        What were you thinking?</TD>
+<TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
+    <!-- message --><TD VALIGN=top>could not figure out number of
+longitudes from delX in namelist</TD>
+    <!-- comment --><TD VALIGN=top>Every entry in PARM04:delX is a perfect
+zero [the default value] ... indicating there are no longitudes. That can't be good.</TD>
 </TR>
+
+<TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
+    <!-- message --><TD VALIGN=top>could not figure out number of
+latitudes from delY in namelist</TD>
+    <!-- comment --><TD VALIGN=top>Every entry in PARM04:delY is a perfect
+zero [the default value] ... indicating there are no latitudes.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
+    <!-- message --><TD VALIGN=top>could not figure out number of
+depth levelss from delZ in namelist</TD>
+    <!-- comment --><TD VALIGN=top>Every entry in PARM04:delZ is a perfect
+zero [the default value] ... indicating there are no depth levels.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
+    <!-- message --><TD VALIGN=top>unable to parse line &#60;*&#62; 
+                                   from &#60;some_file&#62;  </TD>
+    <!-- comment --><TD VALIGN=top>unable to match character string
+'nDims&nbsp;=&nbsp;[' in the snapshot metadata file.
+</TD>
+
+<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
+    <!-- message --><TD VALIGN=top>unable to determine nDims
+                                   from &#60;some_file&#62;  </TD>
+    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
+'nDims&nbsp;=&nbsp;[' but the value cannot be understood.
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
+    <!-- message --><TD VALIGN=top>unable to read line &#60;*&#62; 
+                                   from &#60;some_file&#62;  </TD>
+    <!-- comment --><TD VALIGN=top>no comment.
+</TD>
+
+<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
+    <!-- message --><TD VALIGN=top>unable to parse dimList(&#60;*&#62;)
+                                   from &#60;some_file&#62; </TD>
+    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
+'dimList&nbsp;=&nbsp;[' but the value cannot be understood.
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
+    <!-- message --><TD VALIGN=top>unable to determine dimList
+                                   from &#60;some_file&#62; </TD>
+    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
+'dimList&nbsp;=&nbsp;[' but the values are all nonsensical.
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
+    <!-- message --><TD VALIGN=top>unable to parse dataprec
+                                   from &#60;some_file&#62; </TD>
+    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
+'dataprec&nbsp;=&nbsp;[' but the value cannot be understood.
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
+    <!-- message --><TD VALIGN=top>unable to determine dataprec
+                                   from &#60;some_file&#62; </TD>
+    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
+'dataprec&nbsp;=&nbsp;[' but the values are all nonsensical.
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
+    <!-- message --><TD VALIGN=top>unable to parse nrecords
+                                   from &#60;some_file&#62; </TD>
+    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
+'nrecords&nbsp;=&nbsp;[' but the value cannot be understood.
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
+    <!-- message --><TD VALIGN=top>unable to determine nrecords
+                                   from &#60;some_file&#62; </TD>
+    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
+'nrecords&nbsp;=&nbsp;[' but the values are all nonsensical.
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
+    <!-- message --><TD VALIGN=top>unable to parse timeStepNumber
+                                   from &#60;some_file&#62; </TD>
+    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
+'timeStepNumber&nbsp;=&nbsp;[' but the value cannot be understood.
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
+    <!-- message --><TD VALIGN=top>unable to determine timeStepNumber
+                                   from &#60;some_file&#62; </TD>
+    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
+'timeStepNumber&nbsp;=&nbsp;[' but the values are all nonsensical.
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>write_meta</TD>
+    <!-- message --><TD VALIGN=top>unable to open file
+                                   &#60;some_file&#62; for writing</TD>
+    <!-- comment --><TD VALIGN=top>no comment.
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_Nd_snapshot</TD>
+    <!-- message --><TD VALIGN=top>storage mode mismatch for
+                                   &#60;some_file&#62; </TD>
+    <!-- comment --><TD VALIGN=top>DART is expecting a 32bit float in the
+snapshot file. This is tricky to check, since it is possible to
+redefine the <em class="unix">r4</em> storage type (in <em
+class="file">common/types_mod.f90</em>) to be a 64bit float, in which case
+you don't want to get a 32bit float. This check must be manually disabled
+by editing the logic in <em class="code">read_Nd_snapshot</em> to handle
+the case where the snapshot file storage is 64bit.
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_Nd_snapshot</TD>
+    <!-- message --><TD VALIGN=top>dim 1 does not match delX grid size
+                    from namelist ...  </TD>
+    <!-- comment --><TD VALIGN=top>the snapshot file metadata does not
+match the number of longitudes inferred from PARM04:delX
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_Nd_snapshot</TD>
+    <!-- message --><TD VALIGN=top>dim 2 does not match delY grid size
+                    from namelist ...  </TD>
+    <!-- comment --><TD VALIGN=top>the snapshot file metadata does not
+match the number of latitudes inferred from PARM04:delY
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_Nd_snapshot</TD>
+    <!-- message --><TD VALIGN=top>dim 3 does not match delZ grid size
+                    from namelist ...  </TD>
+    <!-- comment --><TD VALIGN=top>the snapshot file metadata does not
+match the number of depths inferred from PARM04:delZ
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_Nd_snapshot</TD>
+    <!-- message --><TD VALIGN=top>cannot open (&#60;*&#62;) 
+                                   &#60;some_file&#62; for reading</TD>
+    <!-- comment --><TD VALIGN=top>the (&#60;*&#62;) is the Fortran error code 
+</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_Nd_snapshot</TD>
+    <!-- message --><TD VALIGN=top>unable to read (&#60;*&#62;) snapshot file
+                                   &#60;some_file&#62;</TD>
+    <!-- comment --><TD VALIGN=top>the (&#60;*&#62;) is the Fortran error code 
+</TD>
+</TR>
+
 </TABLE>
 </div>
 

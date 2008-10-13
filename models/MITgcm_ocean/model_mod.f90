@@ -2377,7 +2377,8 @@ end subroutine sv_to_snapshot_files
 
 subroutine prog_var_to_vector(s,t,u,v,eta,x)
 !------------------------------------------------------------------
-!
+! deprecated in favor of snapshot_files_to_sv
+
 real(r4), dimension(:,:,:), intent(in)  :: s,t,u,v
 real(r4), dimension(:,:),   intent(in)  :: eta
 real(r8), dimension(:),     intent(out) :: x
