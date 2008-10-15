@@ -107,6 +107,10 @@ p.changed {
     border-left-width: thin;
     border-color: red; }
 
+.indent1{
+    margin-left: 4%;
+    margin-right:4%; }
+
 p.indent1{
     margin-left: 4%;
     margin-right:4%;
