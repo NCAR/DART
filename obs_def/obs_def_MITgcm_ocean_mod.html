@@ -1,0 +1,239 @@
+<HTML>
+<HEAD>
+<TITLE>module obs_def_MITgcm_ocean_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+</HEAD>
+<BODY>
+<!--
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                                       !!
+!!                   GNU General Public License                          !!
+!!                                                                       !!
+!! This file is part of the Data Assimilation Research Testbed (DART).   !!
+!!                                                                       !!
+!! DART is free software; you can redistribute it and/or modify          !!
+!! it and are expected to follow the terms of the GNU General Public     !!
+!! License as published by the Free Software Foundation.                 !!
+!!                                                                       !!
+!! DART is distributed in the hope that it will be useful,               !!
+!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
+!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
+!! GNU General Public License for more details.                          !!
+!!                                                                       !!
+!! You should have received a copy of the GNU General Public License     !!
+!! along with DART; if not, write to:                                    !!
+!!          Free Software Foundation, Inc.                               !!
+!!          59 Temple Place, Suite 330                                   !!
+!!          Boston, MA  02111-1307  USA                                  !!
+!! or see:                                                               !!
+!!          http://www.gnu.org/licenses/gpl.txt                          !!
+!!                                                                       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-->
+
+<DIV ALIGN=CENTER>
+<A HREF="#Interface">INTERFACE</A> / 
+<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
+<A HREF="#Namelist">NAMELIST</A> / 
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#KnownBugs">BUGS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+</DIV>
+
+<!--==================================================================-->
+
+<H1>MODULE obs_def_MITgcm_ocean_mod</H1>
+<A NAME="HEADER"></A>
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Tim Hoar     </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+<A NAME="OVERVIEW"></A>
+<HR>
+<H2>OVERVIEW</H2>
+<P class="indent1">
+DART includes a flexible, powerful, and (unfortunately) complicated mechanism 
+for incorporating new types of observations. The
+<em class="file">obs_def_MITgcm_ocean_mod</em> module 
+being described here is used by the program 
+<em class="unix">preprocess</em>
+to insert appropriate definitions of ocean observations into the 
+<em class="file">DEFAULT_obs_def_mod.f90</em> template and 
+generate the source files
+<em class="file">obs_def_mod.f90</em> and 
+<em class="file">obs_kind_mod.f90</em>
+that are used by 
+<em class="unix">filter</em> and other DART programs.
+<br><br>
+There are no code segments in this module, only definitions of observation types
+that map specific observation types to generic observation kinds. DART contains
+logic that supports a limited inheritance of attributes. If you need to interpolate 
+observations of 'FLOAT_TEMPERATURE', DART will check to see if a specific routine 
+is provided for that type, if none exists, the interpolation routine for the
+generic 'KIND_TEMPERATURE' will be used; that way one interpolation routine may
+support many observation types.
+<BR><BR>
+The mandatory header line is followed by lines
+that have the observation type name (an all caps Fortran 90 identifier) and
+their associated generic kind identifier from the obs_kind module.
+If there is no special processing needed for an observation type,
+and no additional data needed beyond the standard contents of an observation,
+then a third word on the line, the <em class="unix">COMMON_CODE</em> will
+instruct the preprocess program to automatically generate all stubs and
+code needed for this type.  For observation types needing any special code
+or additional data, this word should not be specified and the user must
+supply the code manually. One of the future extensions of this module will
+be to support acoustic tomographic observations, which will
+necessitate specific support routines.
+</P>
+<H3 class="indent1">ocean variable types and their corresponding kinds</H3>
+<pre class="indent1">
+! BEGIN DART PREPROCESS KIND LIST
+!SALINITY,                      KIND_SALINITY,              COMMON_CODE
+!TEMPERATURE,                   KIND_TEMPERATURE,           COMMON_CODE
+!U_CURRENT_COMPONENT,           KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!V_CURRENT_COMPONENT,           KIND_V_CURRENT_COMPONENT,   COMMON_CODE
+!SEA_SURFACE_HEIGHT,            KIND_SEA_SURFACE_HEIGHT,    COMMON_CODE
+!ARGO_U_CURRENT_COMPONENT,      KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!ARGO_V_CURRENT_COMPONENT,      KIND_V_CURRENT_COMPONENT,   COMMON_CODE
+!ARGO_SALINITY,                 KIND_SALINITY,              COMMON_CODE
+!ARGO_TEMPERATURE,              KIND_TEMPERATURE,           COMMON_CODE
+!ADCP_U_CURRENT_COMPONENT,      KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!ADCP_V_CURRENT_COMPONENT,      KIND_V_CURRENT_COMPONENT,   COMMON_CODE
+!ADCP_SALINITY,                 KIND_SALINITY,              COMMON_CODE
+!ADCP_TEMPERATURE,              KIND_TEMPERATURE,           COMMON_CODE
+!FLOAT_SALINITY,                KIND_SALINITY,              COMMON_CODE
+!FLOAT_TEMPERATURE,             KIND_TEMPERATURE,           COMMON_CODE
+!DRIFTER_U_CURRENT_COMPONENT,   KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!DRIFTER_V_CURRENT_COMPONENT,   KIND_V_CURRENT_COMPONENT,   COMMON_CODE
+!DRIFTER_SALINITY,              KIND_SALINITY,              COMMON_CODE
+!DRIFTER_TEMPERATURE,           KIND_TEMPERATURE,           COMMON_CODE
+!GLIDER_U_CURRENT_COMPONENT,    KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!GLIDER_V_CURRENT_COMPONENT,    KIND_V_CURRENT_COMPONENT,   COMMON_CODE
+!GLIDER_SALINITY,               KIND_SALINITY,              COMMON_CODE
+!GLIDER_TEMPERATURE,            KIND_TEMPERATURE,           COMMON_CODE
+!MOORING_U_CURRENT_COMPONENT,   KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!MOORING_V_CURRENT_COMPONENT,   KIND_V_CURRENT_COMPONENT,   COMMON_CODE
+!MOORING_SALINITY,              KIND_SALINITY,              COMMON_CODE
+!MOORING_TEMPERATURE,           KIND_TEMPERATURE,           COMMON_CODE
+!SATELLITE_MICROWAVE_SST,       KIND_TEMPERATURE,           COMMON_CODE
+!SATELLITE_INFRARED_SST,        KIND_TEMPERATURE,           COMMON_CODE
+!SATELLITE_SSH,                 KIND_SEA_SURFACE_HEIGHT,    COMMON_CODE
+!SATELLITE_SSS,                 KIND_SALINITY,              COMMON_CODE
+! END DART PREPROCESS KIND LIST
+</pre>
+<P class="indent1">
+New observation types may be added to this list with no loss of generality.
+Supporting the observations and actually <strong>assimilating</strong> them 
+are somewhat different and is controlled by the 
+<em class="file">input.nml</em><em class="unix">&#38;obs_kind_nml</em>
+<a href="../obs_kind/obs_kind_mod.html#Namelist">assimilate_these_obs_types</a>
+variable.  This provides the flexibility to have an observation sequence file 
+containing many different observation types and being able to selectively 
+choose what types will be assimilated.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="OTHER MODULES USED"></A>
+<BR><HR>
+<H2>OTHER MODULES USED</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+
+<A NAME="Interface"></A>
+<BR><HR>
+<H2>PUBLIC INTERFACE</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+
+<A NAME="PublicEntities"></A>
+<BR><HR>
+<H2>PUBLIC COMPONENTS</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+</P>
+<A NAME="FilesUsed"></A>
+<BR><HR>
+<H2>FILES</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<BR><HR>
+<H2>REFERENCES</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<HR>
+<H2>ERROR CODES and CONDITIONS</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<BR><HR>
+<H2>KNOWN BUGS</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                            -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<BR><HR>
+<H2>FUTURE PLANS</H2>
+<UL class="indent1">
+<LI>support acoustic tomography observations - similar to GPS soundings
+in the atmosphere. 
+Take a look at <a href="obs_def_gps_mod.f90">obs_def_gps_mod.f90</a></li>
+</UL>
+
+<!--==================================================================-->
+
+<BR><HR>
+
+</BODY>
+</HTML>
