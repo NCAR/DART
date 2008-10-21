@@ -217,7 +217,7 @@
 #  fname    = '../observations/ssh_pseudo.txt',
 #  fname    = '../observations/tmi_pseudo.txt',
 
-&ocean_obs_nml
+&create_ocean_obs_nml
    year     = 1996, 
    month    = 1, 
    day      = 1, 

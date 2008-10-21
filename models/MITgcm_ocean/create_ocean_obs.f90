@@ -51,7 +51,7 @@ real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lat1 = -90.0_r8,  &   !  lower latitude bound
             lat2 =  90.0_r8       !  upper latitude bound
 
-namelist /ocean_obs_nml/ year, month, day, tot_days, max_num, &
+namelist /create_ocean_obs_nml/ year, month, day, tot_days, max_num, &
         fname, output_name, lon1, lon2, lat1, lat2
 
 ! ----------------------------------------------------------------------
@@ -66,14 +66,14 @@ call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 ! Read the namelist entry
-call find_namelist_in_file("input.nml", "ocean_obs_nml", iunit)
-read(iunit, nml = ocean_obs_nml, iostat = io)
-call check_namelist_read(iunit, io, "ocean_obs_nml")
+call find_namelist_in_file("input.nml", "create_ocean_obs_nml", iunit)
+read(iunit, nml = create_ocean_obs_nml, iostat = io)
+call check_namelist_read(iunit, io, "create_ocean_obs_nml")
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'create_ocean_obs','ocean_obs_nml values are',' ',' ',' ')
-if (do_output()) write(logfileunit, nml=ocean_obs_nml)
-if (do_output()) write(     *     , nml=ocean_obs_nml)
+call error_handler(E_MSG,'create_ocean_obs','create_ocean_obs_nml values are',' ',' ',' ')
+if (do_output()) write(logfileunit, nml=create_ocean_obs_nml)
+if (do_output()) write(     *     , nml=create_ocean_obs_nml)
 
 lon1 = min(max(lon1,0.0_r8),360.0_r8)
 lon2 = min(max(lon2,0.0_r8),360.0_r8)
