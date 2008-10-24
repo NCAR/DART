@@ -528,7 +528,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                obs_prior_var(group), obs_inc(grp_bot:grp_top), &
                ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
                increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
-         else
+            else
             call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
                obs_prior_var(group), obs_inc(grp_bot:grp_top), &
                ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
@@ -757,10 +757,11 @@ else if(filter_kind == 6) then
 else if(filter_kind == 7) then
    call obs_increment_boxcar(ens, ens_size, obs, obs_var, obs_inc, rel_weights)
 else if(filter_kind == 8) then
-   call obs_increment_boxcar2(ens, ens_size, obs, obs_var, obs_inc)
+   call obs_increment_boxcar2(ens, ens_size, prior_mean, prior_var, &
+      obs, obs_var, obs_inc)
 else 
    call error_handler(E_ERR,'obs_increment', &
-              'Illegal value of filter_kind in assim_tools namelist [1-7 OK]', &
+              'Illegal value of filter_kind in assim_tools namelist [1-8 OK]', &
               source, revision, revdate)
 endif
 
@@ -1542,7 +1543,8 @@ end subroutine obs_increment_boxcar
 
 
 
-subroutine obs_increment_boxcar2(ens, ens_size, obs, obs_var, obs_inc)
+subroutine obs_increment_boxcar2(ens, ens_size, prior_mean, prior_var, &
+   obs, obs_var, obs_inc)
 !------------------------------------------------------------------------
 ! 
 ! Initiated 4 June, 2008
@@ -1562,40 +1564,36 @@ subroutine obs_increment_boxcar2(ens, ens_size, obs, obs_var, obs_inc)
 
 
 integer,  intent(in)  :: ens_size
-real(r8), intent(in)  :: ens(ens_size), obs, obs_var
+real(r8), intent(in)  :: ens(ens_size), prior_mean, prior_var, obs, obs_var
 real(r8), intent(out) :: obs_inc(ens_size)
 
 integer  :: i, e_ind(ens_size), lowest_box, j
-real(r8) :: prior_mean, prior_var, prior_sd
-real(r8) :: var_ratio, umass, left_mass, right_mass
+real(r8) :: prior_sd, var_ratio, umass, left_amp, right_amp
 real(r8) :: left_sd, left_var, right_sd, right_var, left_mean, right_mean
 real(r8) :: mass(ens_size + 1), like(ens_size), cumul_mass(0:ens_size + 1)
 real(r8) :: nmass(ens_size + 1)
 real(r8) :: new_mean_left, new_mean_right, prod_weight_left, prod_weight_right
 real(r8) :: new_var_left, new_var_right, new_sd_left, new_sd_right
-real(r8) :: new_ens(ens_size), mass_sum, const_term
+real(r8) :: new_ens(ens_size), mass_sum
 real(r8) :: x(ens_size), sort_inc(ens_size)
 real(r8) :: like_dense(2:ens_size), height(2:ens_size)
-!real(r8) :: dist_to_first, dist_to_last, lower_sd, upper_sd
-real(r8) :: dist_for_unit_sd
+real(r8) :: dist_to_first, dist_to_last, dist_for_unit_sd
 real(r8) :: a, b, c, hright, hleft, r1, r2, adj_r1, adj_r2
 
 ! Do an index sort of the ensemble members; Will want to do this very efficiently
 call index_sort(ens, e_ind, ens_size)
-! The boundaries of the interior bins are just the sorted ensemble members
+
 do i = 1, ens_size
+   ! The boundaries of the interior bins are just the sorted ensemble members
    x(i) = ens(e_ind(i))
+   ! Compute likelihood for each ensemble member; just evaluate the gaussian
+   ! No need to compute the constant term since relative likelihood is what matters
+   like(i) = exp(-1.0_r8 * (x(i) - obs)**2 / (2.0_r8 * obs_var))
 end do
 
 ! Prior distribution is boxcar in the central bins with 1/(n+1) density
 ! in each intermediate bin. BUT, distribution on the tails is a normal with
 ! 1/(n + 1) of the mass on each side.
-
-! Compute likelihood for each ensemble member; just evaluate the gaussian
-const_term = 1.0_r8 / sqrt(2.0_r8 * PI * obs_var)
-do i = 1, ens_size
-   like(i) = const_term * exp(-1.0_r8 * (x(i) - obs)**2 / (2.0_r8 * obs_var))
-end do
 
 ! Can now compute the mean likelihood density in each interior bin
 do i = 2, ens_size
@@ -1603,25 +1601,20 @@ do i = 2, ens_size
 end do
 
 ! Compute the s.d. of the ensemble for getting the gaussian tails
-prior_mean = sum(ens) / ens_size
-! prior_var only used for diagnostic evaluation during development
-prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 prior_sd = sqrt(prior_var)
 
-
-! Compute standard deviation of lower and upper tail gaussians
-! Mean of tail distributions is ensemble mean
-! Standard deviation is selected so that exactly 1/(n+1) of mass lies 
-! outside the outermost ensemble members.
-! Computing the sd for the lower tail distribution 
 ! For unit normal, find distance from mean to where cdf is 1/(n+1)
 ! Lots of this can be done once in first call and then saved
 call weighted_norm_inv(1.0_r8, 0.0_r8, 1.0_r8, &
    1.0_r8 / (ens_size + 1.0_r8), dist_for_unit_sd)
 dist_for_unit_sd = -1.0_r8 * dist_for_unit_sd
 
-
 !*********** Following block is original from early June 2008 **************
+! Compute standard deviation of lower and upper tail gaussians
+! Mean of tail distributions is ensemble mean
+! Standard deviation is selected so that exactly 1/(n+1) of mass lies 
+! outside the outermost ensemble members.
+! Computing the sd for the lower tail distribution 
 ! This one uses the distance from the prior mean to the 1st ensemble member
 ! to design a tail that is N(prior_mean, left_var) so that first ensemble 
 ! member is where cdf is 1/(n + 1). For small ensembles this has a tendency
@@ -1657,33 +1650,49 @@ right_var = prior_var
 right_sd = prior_sd
 !*********** END BLOCK ***********************************
 
-
+!*************** Block to do Gaussian-Gaussian on tail **************
 ! Compute the product of the obs likelihood gaussian with the priors 
 ! Left tail gaussian first
-var_ratio = obs_var / (left_var + obs_var)
-new_var_left = var_ratio * left_var
-new_sd_left = sqrt(new_var_left)
-new_mean_left  = var_ratio * (left_mean  + left_var*obs / obs_var)
+!!!var_ratio = obs_var / (left_var + obs_var)
+!!!new_var_left = var_ratio * left_var
+!!!new_sd_left = sqrt(new_var_left)
+!!!new_mean_left  = var_ratio * (left_mean  + left_var*obs / obs_var)
 ! REMEMBER, this product has an associated weight which must be taken into account
 ! See Anderson and Anderson for this weight term (or tutorial kernel filter)
-prod_weight_left =  exp(-0.5_r8 * (left_mean**2 / left_var + &
-      obs**2 / obs_var - new_mean_left**2 / new_var_left)) / &
-      sqrt(2.0_r8 * PI * (left_var + obs_var))
-
-! Now the right tail
-var_ratio = obs_var / (right_var + obs_var)
-new_var_right = var_ratio * right_var
-new_sd_right = sqrt(new_var_right)
-new_mean_right  = var_ratio * (right_mean  + right_var*obs / obs_var)
-prod_weight_right =  exp(-0.5_r8 * (right_mean**2 / right_var + &
-      obs**2 / obs_var - new_mean_right**2 / new_var_right)) / &
-      sqrt(2.0_r8 * PI * (right_var + obs_var))
-
-
+!!!prod_weight_left =  exp(-0.5_r8 * (left_mean**2 / left_var + &
+      !!!obs**2 / obs_var - new_mean_left**2 / new_var_left)) / &
+      !!!sqrt(2.0_r8 * PI * (left_var + obs_var))
 ! Determine how much mass is in the updated tails by computing gaussian cdf
-mass(1) = norm_cdf(x(1), new_mean_left, new_sd_left) * prod_weight_left
-mass(ens_size + 1) = (1.0_r8 - norm_cdf(x(ens_size), new_mean_right, &
-   new_sd_right)) * prod_weight_right
+!!!mass(1) = norm_cdf(x(1), new_mean_left, new_sd_left) * prod_weight_left
+!************End Block to do Gaussian-Gaussian on tail **************
+
+! Flat tails: THIS REMOVES ALL ASSUMPTIONS ABOUT LIKELIHOOD AND CUTS COST
+new_var_left = left_var
+new_sd_left = left_sd
+new_mean_left = left_mean
+prod_weight_left = like(1)
+mass(1) = like(1) / (ens_size + 1.0_r8) 
+
+!*************** Block to do Gaussian-Gaussian on tail **************
+! Now the right tail
+!!!var_ratio = obs_var / (right_var + obs_var)
+!!!new_var_right = var_ratio * right_var
+!!!new_sd_right = sqrt(new_var_right)
+!!!new_mean_right  = var_ratio * (right_mean  + right_var*obs / obs_var)
+!!!prod_weight_right =  exp(-0.5_r8 * (right_mean**2 / right_var + &
+      !!!obs**2 / obs_var - new_mean_right**2 / new_var_right)) / &
+      !!!sqrt(2.0_r8 * PI * (right_var + obs_var))
+! Determine how much mass is in the updated tails by computing gaussian cdf
+!!!mass(ens_size + 1) = (1.0_r8 - norm_cdf(x(ens_size), new_mean_right, &
+   !!!new_sd_right)) * prod_weight_right
+!************End Block to do Gaussian-Gaussian on tail **************
+
+! Flat tails: THIS REMOVES ALL ASSUMPTIONS ABOUT LIKELIHOOD
+new_var_right = right_var
+new_sd_right = right_sd
+new_mean_right = right_mean
+prod_weight_right = like(ens_size)
+mass(ens_size + 1) = like(ens_size) / (ens_size + 1.0_r8)
 
 ! The mass in each interior box is the height times the width
 ! The height of the likelihood is like_dense
@@ -1694,8 +1703,13 @@ mass(ens_size + 1) = (1.0_r8 - norm_cdf(x(ens_size), new_mean_right, &
 ! to get approximate mass in updated bin 
 do i = 2, ens_size
    mass(i) = like_dense(i) / (ens_size + 1.0_r8)
-   ! Height of prior in this bin is mass/width
-   height(i) = 1.0_r8 / ((ens_size + 1.0_r8) * (x(i) - x(i-1)))
+   ! Height of prior in this bin is mass/width; Only needed for trapezoidal
+   ! If two ensemble members are the same, set height to -1 as flag
+   if(x(i) == x(i - 1)) then 
+      height = -1.0_r8
+   else
+      height(i) = 1.0_r8 / ((ens_size + 1.0_r8) * (x(i) - x(i-1)))
+   endif
 end do
 
 ! Now normalize the mass in the different bins to get a pdf
@@ -1703,8 +1717,10 @@ mass_sum = sum(mass)
 nmass = mass / mass_sum
 
 ! Get the weight for the final normalized tail gaussians
-left_mass = prod_weight_left / mass_sum
-right_mass = prod_weight_right / mass_sum
+! This is the same as left_amp=(ens_size + 1)*nmass(1)
+left_amp = prod_weight_left / mass_sum
+! This is the same as right_amp=(ens_size + 1)*nmass(ens_size + 1)
+right_amp = prod_weight_right / mass_sum
 
 ! Find cumulative mass at each box boundary and middle boundary
 cumul_mass(0) = 0.0_r8
@@ -1724,13 +1740,12 @@ do i = 1, ens_size
    if(umass < cumul_mass(1)) then
       ! It's in the left tail
       ! Get position of x in weighted gaussian where the cdf has value umass
-      call weighted_norm_inv(left_mass, new_mean_left, new_sd_left, &
+      call weighted_norm_inv(left_amp, new_mean_left, new_sd_left, &
          umass, new_ens(i))
-
    else if(umass > cumul_mass(ens_size)) then
       ! It's in the right tail
       ! Get position of x in weighted gaussian where the cdf has value umass
-      call weighted_norm_inv(right_mass, new_mean_right, new_sd_right, &
+      call weighted_norm_inv(right_amp, new_mean_right, new_sd_right, &
          1.0_r8 - umass, new_ens(i))
       ! Coming in from the right, use symmetry after pretending its on left
       new_ens(i) = new_mean_right + (new_mean_right - new_ens(i))
@@ -1740,45 +1755,53 @@ do i = 1, ens_size
          ! Find the box that this mass is in
          if(umass >= cumul_mass(j) .and. umass <= cumul_mass(j + 1)) then
 
-            !!! Commented block does rectangular quadrature
-            !!! Block below does trapezoidal quadrature that is more accurate
-            !!! Linearly interpolate in mass
-            !!! new_ens(i) = x(j) + ((umass - cumul_mass(j)) / &
-               !!! (cumul_mass(j+1) - cumul_mass(j))) * (x(j + 1) - x(j))
-            !!!if(1 == 1) goto 1213
+            !********* Block for rectangular quadrature *******************
+            ! Linearly interpolate in mass
+            new_ens(i) = x(j) + ((umass - cumul_mass(j)) / &
+               (cumul_mass(j+1) - cumul_mass(j))) * (x(j + 1) - x(j))
+            if(1 == 1) goto 1213
+            !********* End block for rectangular quadrature *******************
 
+            !********* Block for trapezoidal interpolation *******************
             ! Assume that mass has linear profile, quadratic interpolation
-            ! Height on left side and right side
-            hleft = height(j + 1) * like(j) / mass_sum
-            hright = height(j + 1) * like(j + 1) / mass_sum
-            ! Will solve a quadratic for desired x-x(j)
-            ! a is 0.5(hright - hleft) / (x(j+1) - x(j))
-            a = 0.5_r8 * (hright - hleft) / (x(j+1) - x(j))
-            ! b is hleft
-            b = hleft
-            ! c is cumul_mass(j) - umass
-            c = cumul_mass(j) - umass
-            ! Use stable quadratic solver
-            call solve_quadratic(a, b, c, r1, r2)
-            adj_r1 = r1 + x(j)
-            adj_r2 = r2 + x(j)
-            if(adj_r1 >= x(j) .and. adj_r1 <= x(j+1)) then
-               new_ens(i) = adj_r1
-            elseif (adj_r2 >= x(j) .and. adj_r2 <= x(j+1)) then
-               new_ens(i) = adj_r2
+            ! If two ensemble members are the same, just keep that value
+            if(height(j + 1) < 0) then
+               new_ens(i) = x(j)
             else
-               write(*, *) 'Did not get a satisfactory quadratic root'
-               write(*, *) 'j is ', j
-               write(*, *) 'Adjusted roots are ', adj_r1, adj_r2
-               write(*, *) 'bounds on update ', x(j), x(j+1)
-               write(*, *) 'hleft, hright ', hleft, hright
-               write(*, *) 'cumul mass ', cumul_mass(j), cumul_mass(j + 1)
-               write(*, *) 'umass ', umass
-               write(*, *) 'mass in box ', cumul_mass(j+1) - cumul_mass(j)
-               write(*, *) 'comp mass ', (x(j+1) - x(j)) * (hleft + hright) / 2.0_r8
-               write(*, *) 'mass_sum', mass_sum
-               stop
+               ! Height on left side and right side
+               hleft = height(j + 1) * like(j) / mass_sum
+               hright = height(j + 1) * like(j + 1) / mass_sum
+               ! Will solve a quadratic for desired x-x(j)
+               ! a is 0.5(hright - hleft) / (x(j+1) - x(j))
+               a = 0.5_r8 * (hright - hleft) / (x(j+1) - x(j))
+               ! b is hleft
+               b = hleft
+               ! c is cumul_mass(j) - umass
+               c = cumul_mass(j) - umass
+               ! Use stable quadratic solver
+               call solve_quadratic(a, b, c, r1, r2)
+               !!!write(*, *) 'two quadratic roots ', r1, r2
+               adj_r1 = r1 + x(j)
+               adj_r2 = r2 + x(j)
+               if(adj_r1 >= x(j) .and. adj_r1 <= x(j+1)) then
+                  new_ens(i) = adj_r1
+               elseif (adj_r2 >= x(j) .and. adj_r2 <= x(j+1)) then
+                  new_ens(i) = adj_r2
+               else
+                  write(*, *) 'Did not get a satisfactory quadratic root'
+                  write(*, *) 'j is ', j
+                  write(*, *) 'Adjusted roots are ', adj_r1, adj_r2
+                  write(*, *) 'bounds on update ', x(j), x(j+1)
+                  write(*, *) 'hleft, hright ', hleft, hright
+                  write(*, *) 'cumul mass ', cumul_mass(j), cumul_mass(j + 1)
+                  write(*, *) 'umass ', umass
+                  write(*, *) 'mass in box ', cumul_mass(j+1) - cumul_mass(j)
+                  write(*, *) 'comp mass ', (x(j+1) - x(j)) * (hleft + hright) / 2.0_r8
+                  write(*, *) 'mass_sum', mass_sum
+                  stop
+               endif
             endif
+            !********* End block for quadratic interpolation *******************
             
            1213 continue 
 
