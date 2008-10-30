@@ -90,12 +90,6 @@ logical, save :: module_initialized = .false.
 
 ! Storage for the special information required for GPS RO observations
 !
-!integer, parameter :: max_gpsro_obs = 100000
-!character(len=6) :: gpsro_ref_form(max_gpsro_obs)
-!real(r8) ::       ray_direction(3, max_gpsro_obs)
-!real(r8) ::                  rfict(max_gpsro_obs) ! local curvature radius
-!real(r8) ::              step_size(max_gpsro_obs)
-!real(r8) ::                ray_top(max_gpsro_obs)
 
 ! Because we are currently only generating one observation type
 ! (GPSRO_REFRACTIVITY), there must be enough of these to cover all gps
@@ -117,7 +111,9 @@ end type gps_nonlocal_type
 
 type(gps_nonlocal_type), allocatable :: gps_data(:)
 
-! NAMELIST - comment in this plus one more place below to enable run-time limit.
+!! NAMELIST: comment this in to allow user to increase the total number of
+!! gps obs allowed via namelist instead of recompiling.  also comment code
+!! in one other place below, also marked NAMELIST.
 !namelist /obs_def_gps_nml/ max_gpsro_obs
 
 character(len=129) :: msgstring
@@ -142,16 +138,18 @@ module_initialized = .true.
 ! global count of all gps observations from any input file
 keycount = 0
 
-! NAMELIST - comment in this block to enable runtime setting of the max obs.
+!! NAMELIST: comment this code in to enable namelist setting of max
+!! start NAMELIST
 !! Read the namelist entry
 !! find max number of gps obs which can be stored, and initialize type
 !call find_namelist_in_file("input.nml", "obs_def_gps_nml", iunit)
 !read(iunit, nml = obs_def_gps_nml, iostat = rc)
 !call check_namelist_read(iunit, rc, "obs_def_gps_nml")
-!
+
 !! Record the namelist values used for the run ...
 !if (do_output()) write(nmlfileunit, nml=obs_def_gps_nml)
 !if (do_output()) write(     *     , nml=obs_def_gps_nml)
+!! end NAMELIST
 
 allocate(gps_data(max_gpsro_obs), stat = rc)
 if (rc /= 0) then
@@ -497,65 +495,64 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
     ref1 = ref_perigee
     ref2 = ref_perigee
 
-    ! step_size = 5.0_r8      ! (m)
-
     iter = 0
-100 continue
+    do 
 
-    iter = iter + 1
-    dist_to_perigee = dist_to_perigee + gps_data(gpskey)%step_size
-
-    !  integrate to one direction of the ray for one step
-    xx = xo + dist_to_perigee * nx
-    yy = yo + dist_to_perigee * ny
-    zz = zo + dist_to_perigee * nz
+       iter = iter + 1
+       dist_to_perigee = dist_to_perigee + gps_data(gpskey)%step_size
    
-    ! convert the location of the point to geodetic coordinates 
-    ! height(m), lat, lon(deg)
-
-    call carte2geo(xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )  
-
-    ! get the refractivity at this ray point(ref00)
-    call ref_local(state_vector, location, height1, lat1, lon1, ref00, istatus0)
-    ! when any point of the ray is problematic, return failure
-    if(istatus0 > 0) then
-      istatus = istatus0
-      ro_ref = missing_r8
-      return
-    endif
-
-    ! get the excess phase due to this ray interval
-    delta_phase1 = (ref1 + ref00) * gps_data(gpskey)%step_size * 0.5_r8
-
-    ! save the refractivity for integration of next ray interval
-    ref1 = ref00
-
-    ! integrate to the other direction of the ray
-    xx = xo - dist_to_perigee * nx
-    yy = yo - dist_to_perigee * ny 
-    zz = zo - dist_to_perigee * nz
+       !  integrate to one direction of the ray for one step
+       xx = xo + dist_to_perigee * nx
+       yy = yo + dist_to_perigee * ny
+       zz = zo + dist_to_perigee * nz
+      
+       ! convert the location of the point to geodetic coordinates 
+       ! height(m), lat, lon(deg)
    
-    call carte2geo (xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )  
+       call carte2geo(xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )  
+       if (height1 >= gps_data(gpskey)%ray_top) exit
+   
+       ! get the refractivity at this ray point(ref00)
+       call ref_local(state_vector, location, height1, lat1, lon1, ref00, istatus0)
+       ! when any point of the ray is problematic, return failure
+       if(istatus0 > 0) then
+         istatus = istatus0
+         ro_ref = missing_r8
+         return
+       endif
+   
+       ! get the excess phase due to this ray interval
+       delta_phase1 = (ref1 + ref00) * gps_data(gpskey)%step_size * 0.5_r8
+   
+       ! save the refractivity for integration of next ray interval
+       ref1 = ref00
+   
+       ! integrate to the other direction of the ray
+       xx = xo - dist_to_perigee * nx
+       yy = yo - dist_to_perigee * ny 
+       zz = zo - dist_to_perigee * nz
+      
+       call carte2geo (xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )  
+   
+       ! get the refractivity at this ray point(ref00)
+       call ref_local(state_vector, location, height1, lat1, lon1, ref00, istatus0)
+       ! when any point of the ray is problematic, return failure
+       if(istatus0 > 0) then
+         istatus = istatus0
+         ro_ref = missing_r8
+         return
+       endif
+   
+       ! get the excess phase due to this ray interval
+       delta_phase2 = (ref2 + ref00) * gps_data(gpskey)%step_size * 0.5_r8
+   
+       ! save the refractivity for integration of next ray interval
+       ref2 = ref00
+   
+       phase = phase + delta_phase1 + delta_phase2
+       ! print*, 'phase= ',  phase, delta_phase1, delta_phase2
 
-    ! get the refractivity at this ray point(ref00)
-    call ref_local(state_vector, location, height1, lat1, lon1, ref00, istatus0)
-    ! when any point of the ray is problematic, return failure
-    if(istatus0 > 0) then
-      istatus = istatus0
-      ro_ref = missing_r8
-      return
-    endif
-
-    ! get the excess phase due to this ray interval
-    delta_phase2 = (ref2 + ref00) * gps_data(gpskey)%step_size * 0.5_r8
-
-    ! save the refractivity for integration of next ray interval
-    ref2 = ref00
-
-    phase = phase + delta_phase1 + delta_phase2
-    ! print*, 'phase= ',  phase, delta_phase1, delta_phase2
-
-    if(height1 .lt. gps_data(gpskey)%ray_top ) go to 100   !! do one more step
+    end do
 
     ! finish the integration of the excess phase along the ray
 
@@ -565,7 +562,15 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
 
 endif choose
 
-! ended ok, return local or non-local accumulated value
+! if the original height was too high, for example.  do not return a
+! negative or 0 excess phase or refractivity.
+if (ro_ref == missing_r8 .or. ro_ref <= 0.0_r8) then
+   istatus = 5
+   ro_ref = missing_r8
+   return
+endif
+
+! ended ok, return local refractivity or non-local excess phase accumulated value
 istatus = 0
 
 end subroutine get_expected_gpsro_ref
@@ -610,7 +615,7 @@ location2 = set_location(lon2, lat, height,  which_vert)
 
 ! set return values assuming failure, so we can simply return if any
 ! of the interpolation calls below fail.
-istatus0 = 1
+istatus0 = 3
 ref00 = missing_r8
 
 call interpolate(state_vector, location2,  KIND_TEMPERATURE,       t, istatus0)
