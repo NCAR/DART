@@ -1706,7 +1706,7 @@ do i = 2, ens_size
    ! Height of prior in this bin is mass/width; Only needed for trapezoidal
    ! If two ensemble members are the same, set height to -1 as flag
    if(x(i) == x(i - 1)) then 
-      height = -1.0_r8
+      height(i) = -1.0_r8
    else
       height(i) = 1.0_r8 / ((ens_size + 1.0_r8) * (x(i) - x(i-1)))
    endif
@@ -1813,14 +1813,9 @@ do i = 1, ens_size
    endif
 end do
 
-! Can now compute sorted increments
-do i = 1, ens_size
-   sort_inc(i) = new_ens(i) - x(i)
-end do
-
 ! Now, need to convert to increments for unsorted
 do i = 1, ens_size
-   obs_inc(e_ind(i)) = sort_inc(i)
+   obs_inc(e_ind(i)) = new_ens(i) - x(i)
 end do
 
 end subroutine obs_increment_boxcar2
