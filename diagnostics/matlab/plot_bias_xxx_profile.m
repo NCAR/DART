@@ -39,21 +39,9 @@ function plotdat = plot_bias_xxx_profile(fname,copystring)
 
 plotdat.fname         = fname;
 plotdat.copystring    = copystring;
-plotdat.bincenters    = getnc(fname,'time');
-plotdat.binedges      = getnc(fname,'time_bounds');
-plotdat.mlevel        = getnc(fname,'mlevel');
-plotdat.plevel        = getnc(fname,'plevel');
-plotdat.plevel_edges  = getnc(fname,'plevel_edges');
-plotdat.hlevel        = getnc(fname,'hlevel');
-plotdat.hlevel_edges  = getnc(fname,'hlevel_edges');
-plotdat.nregions      = length(getnc(fname,'region'));
-plotdat.region_names  = getnc(fname,'region_names');
-
-if (plotdat.nregions == 1)
-   plotdat.region_names = deblank(plotdat.region_names');
-end
 
 f = netcdf(fname,'nowrite');
+
 plotdat.binseparation      = f.bin_separation(:);
 plotdat.binwidth           = f.bin_width(:);
 time_to_skip               = f.time_to_skip(:);
@@ -64,6 +52,20 @@ plotdat.lonlim2            = f.lonlim2(:);
 plotdat.latlim1            = f.latlim1(:);
 plotdat.latlim2            = f.latlim2(:);
 plotdat.biasconv           = f.bias_convention(:);
+
+plotdat.bincenters         = f{'time',        1}(:);
+plotdat.binedges           = f{'time_bounds', 1}(:);
+plotdat.mlevel             = f{'mlevel',      1}(:);
+plotdat.plevel             = f{'plevel',      1}(:);
+plotdat.plevel_edges       = f{'plevel_edges',1}(:);
+plotdat.hlevel             = f{'hlevel',      1}(:);
+plotdat.hlevel_edges       = f{'hlevel_edges',1}(:);
+plotdat.nregions           = length(f{'region'});
+plotdat.region_names       = char(f{'region_names',1}(:));
+
+if (plotdat.nregions == 1)
+   plotdat.region_names = deblank(plotdat.region_names');
+end
 
 % Coordinate between time types and dates
 
@@ -125,11 +127,11 @@ for ivar = 1:plotdat.nvars
       disp(sprintf('%s has no vertical definition.',plotdat.guessvar))
       error('Cannot display this field this way.')
    else
-      plotdat.level_org     = getnc(fname, guessdims{2});
+      plotdat.level_org     = f{guessdims{2}}(:);
       plotdat.level_units   = f{guessdims{2}}.units(:);
       plotdat.nlevels       = length(f{guessdims{2}});
       edgename              = sprintf('%s_edges',guessdims{2});
-      plotdat.level_edges   = getnc(fname,edgename);
+      plotdat.level_edges   = f{edgename}(:);
       plotdat.Yrange        = [min(plotdat.level_edges) max(plotdat.level_edges)];
    end
 
@@ -150,7 +152,10 @@ for ivar = 1:plotdat.nvars
    
    guess = getnc(fname, plotdat.guessvar,-1,-1,-1,-1,-1,-1,0);  
    analy = getnc(fname, plotdat.analyvar,-1,-1,-1,-1,-1,-1,0); 
-   
+  
+   % guess2 = f{plotdat.guessvar,1}(:); Does not reflect _FillValue
+   % analy2 = f{plotdat.analyvar,1}(:); Does not reflect _FillValue
+ 
    % Check for one region ... if the last dimension is a singleton 
    % dimension, it is auto-squeezed  - which is bad.
    % We want these things to be 3D.
@@ -312,7 +317,7 @@ function myplot(plotdat)
    set(ax2,'YTick',get(ax1,'YTick'),'YTicklabel',[], ...
            'XTick',          xticks,'XTicklabel',num2str(nicexticks))
        
-   set(get(ax2,'Xlabel'),'String','# of obs (dashed) o=poss, +=used')
+   set(get(ax2,'Xlabel'),'String','# of obs (o=poss, +=used)')
    set(get(ax1,'Xlabel'),'String',plotdat.xlabel)
    set(ax1,'Position',get(ax2,'Position'))
    grid
@@ -426,7 +431,7 @@ function Stripes(x,edges)
 xc = [ x(1) x(2) x(2) x(1) x(1) ];
 
 hold on;
-for i = 1:2:length(edges)
+for i = 1:2:(length(edges)-1)
   yc = [ edges(i) edges(i) edges(i+1) edges(i+1) edges(i) ];
   h = fill(xc,yc,[0.8 0.8 0.8], ...
   'EraseMode','background','EdgeColor','none');
