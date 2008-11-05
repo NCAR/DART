@@ -20,7 +20,8 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
    get_obs_def, set_obs_def, append_obs_to_seq, get_next_obs, insert_obs_in_seq, init_obs, &
    assignment(=), static_init_obs_sequence, get_num_copies, get_num_qc, &
    get_copy_meta_data, get_qc_meta_data, set_qc_meta_data
-use time_manager_mod, only : time_type, operator(*), operator(+), set_time, interactive_time
+use time_manager_mod, only : time_type, set_time, interactive_time, &
+                             operator(*), operator(+)
 use        model_mod, only : static_init_model
 
 implicit none
@@ -60,10 +61,10 @@ network_size = get_num_obs(seq_in)
 
 ! Initialize the obs_type variables
 num_copies = get_num_copies(seq_in)
-num_qc = get_num_qc(seq_in)
-call init_obs(obs, num_copies, num_qc)
+num_qc     = get_num_qc(seq_in)
+call init_obs(     obs, num_copies, num_qc)
 call init_obs(next_obs, num_copies, num_qc)
-call init_obs(new_obs, num_copies, num_qc)
+call init_obs( new_obs, num_copies, num_qc)
 
 ! Get the time information 
 
@@ -127,10 +128,26 @@ else if(option == 2) then
    write(*, *) 'Input an upper bound on the number of observation times'
    read(*, *) num_times
 
-! Initialize the output sequence
-   call init_obs_sequence(seq, 0, 0, network_size * num_times)
+   ! Initialize the output sequence
+   call init_obs_sequence(seq, num_copies, num_qc, network_size * num_times)
+
+   ! Get the metadata (might want a call in obs_sequence to do this)
+   do i = 1, num_copies
+      call set_copy_meta_data(seq, i, get_copy_meta_data(seq_in, i))
+   end do
+   do i = 1, num_qc
+      call set_qc_meta_data(seq, i, get_qc_meta_data(seq_in, i))
+   end do
 
    IRREGULAR : do j = 1, num_times
+
+! TJH this block does not provide for an 'early exit' ... interactive_time
+!     would need an optional output argument for status ... maybe later.
+!     write(*, *) 'Input this time time redundant message'
+!     call interactive_time(this_time)
+
+! TJH this block is annoying, because create_obs_sequence and the 'regular-
+!     in-time' block use YYYY MM DD HH MM SS if calendar is Gregorian.
 
       write(*, *) 'Input time in days and seconds, negative days if finished with this set'
       read(*, *) days, seconds
@@ -144,20 +161,22 @@ else if(option == 2) then
 
       ob_time = this_time
 
-! Put all the observations in the output sequence with this time      
+      ! Put all the observations in the output sequence with this time      
+
       is_there_one = get_first_obs(seq_in, obs)
       
       do i = 1, network_size
+
          new_obs = obs
-! Set the time
+
          call get_obs_def(new_obs, obs_def)
          call set_obs_def_time(obs_def, ob_time) 
          call set_obs_def(new_obs, obs_def)
-! Append it to the sequence 
-         call append_obs_to_seq(seq, new_obs)
-! Find the next observation in the input set
-         call get_next_obs(seq_in, obs, next_obs, is_there_one)
-         obs = next_obs
+         call insert_obs_in_seq(seq, new_obs)
+
+         call get_next_obs(seq_in, obs, next_obs, is_this_last)
+         if(.not. is_this_last) obs = next_obs
+
       end do
 
    enddo IRREGULAR
