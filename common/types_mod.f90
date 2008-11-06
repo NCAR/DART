@@ -17,6 +17,7 @@ private
 public :: i4, i8, r4, c4, r8, c8, digits12
 public :: PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8
 public :: MISSING_I, MISSING_DATA
+public :: SECPERDAY
 public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant
 public :: L_over_Rv, ps0, earth_radius, gravity
 
@@ -61,6 +62,8 @@ SAVE
 !----------------------------------------------------------------------------
 ! Constants ... 
 !----------------------------------------------------------------------------
+
+integer,       PARAMETER ::  SECPERDAY = 24*60*60
 
 real(kind=r8), parameter :: PI = 3.1415926535897932346_r8
 real(kind=r8), parameter :: DEG2RAD = PI / 180.0_r8
