@@ -80,13 +80,13 @@ echo 'batch*'            >> tar_excl_list
 echo $saved              >> tar_excl_list
 
 ## Added to make mean easily accessible in the form of a CAM initial file
-## (Don't forget to save/bundle a CLM initial file with these cam_init_[obs_#]Hhh.nc files)
 echo 'cam_analyses.tar'  >> tar_excl_list
+echo 'H[0-9]*'           >> tar_excl_list
 
 #-----------------------------
 # Stuff the Posterior mean fields into CAM initial files.
 # Tar together with a CLM initial file.
-# Arguments to mean2cam_init.csh are
+# Arguments to analyses2initial.csh are
 #   set ms_file   = $1   script searches for local Posterior_Diag.nc first, so give a dummy MS name.
 #   set local_dir = $2
 #   set kind      = $3
@@ -94,24 +94,51 @@ echo 'cam_analyses.tar'  >> tar_excl_list
 #   set element1  = $5
 #   set yrmoday   = $6   set to $obs_seq instead of yyyymmdd, since obs_seq is easily available
 
-if (-e ../../mean2cam_init.csh) then
-   # mean2cam_init.csh needs CAM initial files to receive the analyses from Posterior_Diag.nc.
-   # They should have been saved during the assimilation and be living in the exp/obs_#### directory.
-   ls -l cam_init_memb*
-   if ($status != 0) then
-      echo "cam_init_memb# not available; exiting" >>& $saved
-      exit
+if (-e ../../analyses2initial.csh) then
+   # analyses2initial.csh needs CAM initial files to average and receive the analyses 
+   # from Posterior_Diag.nc.
+   # They should have been saved during the assimilation and be living in the 
+   # exp/obs_####/H## directories.
+   ls H*/caminput_1.nc > /dev/null
+   set stat = $status
+   if ($stat == 0) then
+      ls H*/clminput_1.nc > /dev/null
+      set stat = $status
    endif
+   if ($stat != 0) then
+      echo "H*/c[al]minput_* not available"                           >>& $saved
+      echo "H*/c[al]minput_* not available" >&  ANALYSES_NOT_SAVED
+   else
+#   if ($status == 0) ls H*/clminput_1.nc > /dev/null
+#   if ($status != 0) then
+#      echo "H*/c[al]minput_* not available; exiting"                           >>& $saved
+#      echo "H*/c[al]minput_* not available; exiting" >&  ANALYSES_NOT_SAVED
+#      exit
+#   endif
    
-   ../../mean2cam_init.csh no_MS '.' Posterior copy 1 ${obs_seq}H
+      ../../analyses2initial.csh no_MS '.' Posterior copy 1 ${obs_seq}H              >>& $saved
    
-   tar -c -f cam_analyses.tar cam_init_${obs_seq}H* clm_init_*
-   
+      tar -c -f cam_analyses.tar H*/c*_init_* 
+      if ($status == 0)  \
    msrcp -pe 1000 -pr $proj_num -wpwd $write_pass -comment "write password $write_pass" \
-      cam_analyses.tar mss:${ms_dir}/cam_analyses.tar >>& $saved  &
-   rm c[al]m_init_*.nc
+               cam_analyses.tar mss:${ms_dir}/cam_analyses.tar                    >>& $saved  
+      set list = `ls -l cam_analyses.tar`
+      set local_size = $list[5]
+      set list = `msls -l ${ms_dir}/cam_analyses.tar`
+      set ms_size = $list[5]
+      echo " cam_analyses.tar local_size = $local_size, ms_size = $ms_size"       >> $saved
+   
+      if ($local_size == $ms_size) then
+         echo "Archived $ms_dir/cam_analyses.tar with write password $write_pass" >> $saved
+         echo '    REMOVING H[0-9]* and cam_analyses.tar '                        >> $saved
+#      rm -rf H[0-9]* cam_analyses.tar
+      else
+         echo "msrcp of ${ms_dir}/cam_analyses.tar  failed; "                     >> $saved
+         echo 'NOT removing H[0-9]* and cam_analyses.tar '                        >> $saved
+      endif
+   endif
 else
-   echo "NO mean2cam_init.csh, so no CAM initial file format analyses created"
+   echo "NO analyses2initial.csh, so no CAM initial file format analyses created"
 endif
 
 #-----------------------------
