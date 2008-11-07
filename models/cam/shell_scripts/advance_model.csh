@@ -182,8 +182,7 @@ while($state_copy <= $num_states)
             echo 'Executing trans_pv_sv'       >> cam_out_temp
             ${CENTRALDIR}/trans_pv_sv       >> cam_out_temp
    
-      # Save CLM and CAM files for storage of analyses in CAM initial file format (mean2cam_init)
-            if ($element == 1) then
+      # Save CLM and CAM files for storage of analyses in CAM initial file format (analyses2initial)
                # get the forecast time, which is the time of this CLM initial file
                set seconds = (`head -1 times`)
                if ($seconds[2] == 0) then
@@ -192,16 +191,23 @@ while($state_copy <= $num_states)
                   @ hour = $seconds[2] / 3600
                endif
                if ($hour < 10) set hour = 0$hour
-               ${COPY} clminput.nc ${CENTRALDIR}/clm_init_memb${element}_H${hour}.nc
-               ${COPY} caminput.nc ${CENTRALDIR}/cam_init_memb${element}_H${hour}.nc
-            endif
-
+            # Directory for storing CAM initial files until they can be averaged during
+            # archiving for analyses
+            if (! -d ${CENTRALDIR}/H${hour}) mkdir ${CENTRALDIR}/H${hour}
       # Move updated state vector and new CAM/CLM initial files back to experiment
       # directory for use by filter and the next advance.
+      # Store them in H## directories for later generation of  ensemble average CAM and CLM 
+      # initial file after all members are done.
             ${MOVE} temp_ud     ${CENTRALDIR}/$output_file
-            ${MOVE} clminput.nc ${CENTRALDIR}/clminput_${element}.nc
-            ${MOVE} caminput.nc ${CENTRALDIR}/caminput_${element}.nc
             ${MOVE} namelist    ${CENTRALDIR}
+            ${MOVE} clminput.nc ${CENTRALDIR}/H${hour}/clminput_${element}.nc
+            ${MOVE} caminput.nc ${CENTRALDIR}/H${hour}/caminput_${element}.nc
+
+            # link the new initial files into the CENTRAL directory where filter will find them.
+            ${LINK} ${CENTRALDIR}/H${hour}/clminput_${element}.nc \
+                    ${CENTRALDIR}/clminput_${element}.nc
+            ${LINK} ${CENTRALDIR}/H${hour}/caminput_${element}.nc \
+                    ${CENTRALDIR}/caminput_${element}.nc
    
             echo "finished ${myname} for ens member $element at "`date` >> cam_out_temp
             ${MOVE} cam_out_temp ${CENTRALDIR}/cam_out_temp$element
