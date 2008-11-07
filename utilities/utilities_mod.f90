@@ -99,7 +99,7 @@ public :: file_exist, get_unit, open_file, close_file, timestamp, &
        register_module, error_handler, to_upper, &
        nc_check, logfileunit, nmlfileunit, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
-       find_namelist_in_file, check_namelist_read, 
+       find_namelist_in_file, check_namelist_read, &
        set_tasknum, set_output, do_output,  &
        E_DBG, E_MSG, E_WARN, E_ERR, & 
        DEBUG, MESSAGE, WARNING, FATAL
