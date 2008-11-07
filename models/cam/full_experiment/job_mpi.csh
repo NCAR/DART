@@ -93,7 +93,7 @@
 #BSUB -o job_mpi.%J.log
 #BSUB -P xxxxxxxx
 #BSUB -q share
-#BSUB -W 0:30
+#BSUB -W 0:10
 #BSUB -n 1
 #BSUB -R "span[ptile=1]"
 #
@@ -146,12 +146,10 @@ if ($?LS_SUBCWD) then
 
    # Bluefire
    #set run_command = 'setenv TARGET_CPU_LIST "-1"; mpirun.lsf /usr/local/bin/launch '
-   # Wei's suggestion to fix ntbl windows problems
-   #set run_command = '/contrib/mpiruns/mpirun.lsf '
    # For multi-thread   
    set run_command = 'mpirun.lsf '
    # For single-thread (?)
-   #set run_command = ' '
+   # set run_command = ' '
 
 
 # Doesn't work with complicated bluefire run_command
@@ -299,22 +297,32 @@ set year = 2007
 
 # Location of input observation files
 set obs_seq_root = ${CENTRALDIR}/obs_seq2006
+# More automatic way to find obs_seq.out files, if they're named consistently:
+# set month = $mo
+# if ($mo < 10) set month = 0$mo
+# set obs_seq_root = /ptmp/dart/Obs_sets/ACARS_24_ascii/${year}${month}/obs_seq${year}
 
 # DART source code directory trunk, and CAM interface location.
 set DARTDIR =     ~${user}/DART
 set DARTCAMDIR =   ${DARTDIR}/models/cam
 
 # The maximum number of processors that will be used by 
-# the $exp_#.script jobs spawned by this script.  
-# (FV core jobs may use less, depending on the domain decomposition)
-# (async = 2 jobs may need to use less, if memory is a constraint for
-#  having so many CAMs running on 1 node.  See LSB_PJL_TASK_GEOMETRY.
-#  On IBM Power5 parallel_cam = false will require using less than 16 procs/node 
-#  for FV1.9x2.5 and higher resol. )
-# ptile is the number of processors/node on this machine.  
-# It has no bearing on whether CAM is MPI or not, as long as filter is MPI.
-set max_num_procs = 80
-set ptile = 16
+#   the $exp_#.script jobs spawned by this script and
+# ptile is the number of processors/node to use.
+#   It has no bearing on whether CAM is MPI or not, as long as filter is MPI.
+#   FV core jobs may automatically use less, depending on the domain decomposition; 
+#      see keep_lev_blocks.
+#   async = 2 jobs may need to use ptile < #_procs/node, if memory is a constraint for
+#     having so many CAMs running on 1 node.  Also see LSB_PJL_TASK_GEOMETRY.
+#     This is not automatic.
+#     On IBM Power5 parallel_cam = false will require using < 28 (of 32) procs/node 
+#     for FV1.9x2.5 and higher resol. )
+# It's most efficient to run CAM single-threaded on at least as many processors
+#   as there are ensemble members.  The CAM start up is single threaded, and the
+#   forecasts (the multi-threaded part of CAM) are short.
+# For 80 members of FV1.9x2.5 on bluefire:
+set max_num_procs = 81
+set ptile = 27
 
 # accounting code used for batch jobs (if no accounting needed, you may need
 # to remove the -P lines in the script generation sections below.
@@ -907,7 +915,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    # Commented out to use real SSTs (in CAM_src)
    if ($obs_seq_1 == $obs_seq_first) then
       ${REMOVE} namelistin
-      ${LINK} ${CAM_src}/namelistin namelistin
+      ${COPY} ${CAM_src}/namelistin namelistin
       sleep 1 
    endif
    if (! -e namelistin ) then
@@ -1101,15 +1109,6 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo '        set from = filter_ic_new*[.0]$n'                                     >> ${job_i}
    echo "        set dest = ${out_full}/DART/filter_ic."'$from:e'                     >> ${job_i}
 
-   # stuff analyses into CAM initial files using 
-   # echo " " >> ${job_i}
-   # echo '      echo "$from >\! member "'                                              >> ${job_i}
-   # echo '      echo "caminput_${n}.nc >> member "'                                    >> ${job_i}
-   # echo "      ./trans_sv_pv "                                                        >> ${job_i}
-   # echo '      echo "stuffing analyses from $from into caminput_${n}.nc >> $MASTERLOG ' >> ${job_i}
-   # echo '      ls -l caminput_${n}.nc >> $MASTERLOG   '                               >> ${job_i}
-   # end stuffing 
-
    echo " " >> ${job_i}
    echo "        ${MOVE} "'$from $dest'                                               >> ${job_i}
    echo "        if (! "'$status'" == 0 ) then "                                      >> ${job_i}
@@ -1145,7 +1144,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
    echo " "                                                                           >> ${job_i}
    echo '   if ( -e $CAMINPUT && ! -z $CAMINPUT) then '                               >> ${job_i}
-   echo "      ${MOVE} "'$CAMINPUT'" ${out_full}/CAM  "                               >> ${job_i}
+   echo "      ${COPY} "'$CAMINPUT'" ${out_full}/CAM  "                               >> ${job_i}
    echo '      if (! $status == 0 ) then '                                            >> ${job_i}
    echo '         echo "failed moving ${CENTRALDIR}/$CAMINPUT " '                     >> ${job_i}
    echo "         $KILLCOMMAND "                                                      >> ${job_i}
@@ -1159,7 +1158,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
    echo " "                                                                           >> ${job_i}
    echo '   if ( -e $CLMINPUT && ! -z $CLMINPUT) then '                               >> ${job_i}
-   echo "      ${MOVE} "'$CLMINPUT'" ${out_full}/CLM "                                >> ${job_i}
+   echo "      ${COPY} "'$CLMINPUT'" ${out_full}/CLM "                                >> ${job_i}
    echo '      if (! $status == 0 ) then '                                            >> ${job_i}
    echo '         echo "failed moving ${CENTRALDIR}/$CLMINPUT " '                     >> ${job_i}
    echo "         $KILLCOMMAND "                                                      >> ${job_i}
@@ -1175,35 +1174,11 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo "   @ n++ "                                                                   >> ${job_i}
    echo "end "                                                                        >> ${job_i}
 
-# save the CLM initial files from intermediate times, for analyses in CAM initial file format
+# Now safe to move H{06,12,18,24} to out_full for later archiving use
+   echo 'foreach Hdir (`ls -d H[0-9]*`)'                                              >> ${job_i}
+   echo "   ${MOVE} "'$Hdir '"${out_full} "                                            >> ${job_i}
+   echo "end "                                                                        >> ${job_i}
    echo " "                                                                           >> ${job_i}
-   echo 'foreach clm (`ls clm_init_memb*.nc`) '                                       >> ${job_i}
-   echo '   if (! -z $clm) then '                                                     >> ${job_i}
-   echo "      ${MOVE} "'$clm'" ${out_full}"                                          >> ${job_i}
-   echo '      if (! $status == 0 ) then '                                            >> ${job_i}
-   echo '         echo "failed moving ${CENTRALDIR}/$clm " '                          >> ${job_i}
-   echo "         $KILLCOMMAND "                                                      >> ${job_i}
-   echo "      endif "                                                                >> ${job_i}
-   echo "   else "                                                                    >> ${job_i}
-   echo '      echo "failed moving ${CENTRALDIR}/$clm because of size 0" '            >> ${job_i}
-   echo "   endif "                                                                   >> ${job_i}
-   echo "end"                                                                         >> ${job_i}
-   echo " "                                                                           >> ${job_i}
-# save the CAM initial files from intermediate times, for analyses in CAM initial file format
-   echo " "                                                                           >> ${job_i}
-   echo 'foreach cam (`ls cam_init_memb*.nc`) '                                       >> ${job_i}
-   echo '   if (! -z $cam) then '                                                     >> ${job_i}
-   echo "      ${MOVE} "'$cam'" ${out_full}"                                          >> ${job_i}
-   echo '      if (! $status == 0 ) then '                                            >> ${job_i}
-   echo '         echo "failed moving ${CENTRALDIR}/$cam " '                          >> ${job_i}
-   echo "         $KILLCOMMAND "                                                      >> ${job_i}
-   echo "      endif "                                                                >> ${job_i}
-   echo "   else "                                                                    >> ${job_i}
-   echo '      echo "failed moving ${CENTRALDIR}/$cam because of size 0" '            >> ${job_i}
-   echo "   endif "                                                                   >> ${job_i}
-   echo "end"                                                                         >> ${job_i}
-   echo " "                                                                           >> ${job_i}
-
 
    echo "if (! -e times  && ! -e ${out_full}/CAM/caminput_1.nc) then  "               >> ${job_i}
    echo "   # There may have been no advance; "                                       >> ${job_i}
@@ -1241,10 +1216,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo "cd $out_prev "                                                             >> ${job_i}
 
       if (-e auto_diag2ms_LSF.csh) then
-#     Diagnostics file
-#     Need to do this before handling restarts because mean2cam_init needs clminput_1.nc
-#     Change CLM initial file strategy; they (*$i* vertions) are saved during model advance
-#        and should already be in $out_prev
+#     Diagnostics files
          echo "bsub < ../../auto_diag2ms_LSF.csh  >>& " ' $MASTERLOG '                 >> ${job_i}
          echo 'echo "job '$i'; Backing up diagnostics '${out_prev}' >> $MASTERLOG"'    >> ${job_i}
          echo 'echo "    to mass store in separate batch job"  >> $MASTERLOG  '        >> ${job_i}
@@ -1288,7 +1260,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo "${MOVE} ${job_i}            ${out_full} "                           >> ${job_i}
    echo "${MOVE} cam_out_temp1       ${out_full} "                           >> ${job_i}
    echo "${MOVE} namelist            ${exp}"                                 >> ${job_i}
-   echo "${REMOVE} cam_out_temp* *_ud* *_ic[0-9]* *_ic_old* "                >> ${job_i}
+   echo "${REMOVE} cam_out_temp* *_ud.* *_ic[0-9]* *_ic_old* "                >> ${job_i}
 # It's really stupid that this doesn't work on blueX, even with nonomatch
 #   echo "set nonomatch"                                                     >> ${job_i}
 #   if ($i != $obs_seq_first) then
@@ -1297,9 +1269,9 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 #      echo "if (-e ${exp}_${j}.*.log) ${MOVE} ${exp}_${j}.*.log  ${out_prev} " >> ${job_i}
 #   endif
 # SO,
-   echo "ls -1 ${exp}_${j}.*.log > logs"                                         >> ${job_i}
-   echo "set num_logs = `wc -l logs`"                                            >> ${job_i}
-   echo 'if ($num_logs[1] > 0)' "${MOVE} ${exp}_${j}.*.log  ${out_prev} "        >> ${job_i}
+   echo "ls -1 ${exp}_${j}"'.*.log >! logs'                                      >> ${job_i}
+   echo 'set num_logs = `wc -l logs`'                                            >> ${job_i}
+   echo 'if ($num_logs[1] > 0)' "${MOVE} ${exp}_${j}"'.*.log'"  ${out_prev} "    >> ${job_i}
    echo "rm logs"                                                                >> ${job_i}
 # END of trying to move log files.  Phew.
 
