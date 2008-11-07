@@ -14,7 +14,7 @@ module model_mod
 ! This is the interface between the MITgcm ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r4, r8
+use        types_mod, only : r4, r8, SECPERDAY
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
                              set_calendar_type, GREGORIAN, print_time, print_date, &
                              operator(*),  operator(+), operator(-), &
@@ -25,8 +25,9 @@ use     location_mod, only : location_type,      get_close_maxdist_init, &
                              VERTISHEIGHT, get_location, vert_is_height, &
                              vert_is_level, vert_is_surface
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
-                             logfileunit, get_unit, nc_check, do_output, &
-                             find_namelist_in_file, check_namelist_read
+                             logfileunit, get_unit, nc_check, do_output, to_upper, &
+                             find_namelist_in_file, check_namelist_read, &
+                             open_file, file_exist
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COMPONENT, &
                              KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT
 use mpi_utilities_mod, only: my_task_id
@@ -60,9 +61,10 @@ public :: get_model_size,         &
 public :: prog_var_to_vector, vector_to_prog_var, &
           MIT_meta_type, read_meta, write_meta, &
           read_snapshot, write_snapshot, get_gridsize, &
+          write_data_namelistfile, set_model_end_time, &
           snapshot_files_to_sv, sv_to_snapshot_files, &
           timestep_to_DARTtime, DARTtime_to_MITtime, &
-          DARTtime_to_timestepindex
+          DARTtime_to_timestepindex 
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -257,7 +259,7 @@ real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 !real(r8) :: delta_lat, delta_lon, delta_depth
 !real(r8), allocatable :: lat_grid(:), lon_grid(:), depth_grid(:)
 
-real(r8)        :: timestep = 900.0_r4
+real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 integer         :: timestepcount = 0
 type(time_type) :: model_time, model_timestep
 
@@ -266,9 +268,14 @@ integer :: model_size    ! the state vector length
 ! Skeleton of a model_nml that would be in input.nml
 ! This is where dart-related model parms could be set.
 logical  :: output_state_vector = .true.
+integer  :: assimilation_period_days = 7
+integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
 
-namelist /model_nml/ output_state_vector, model_perturbation_amplitude
+namelist /model_nml/ output_state_vector,         &
+                     assimilation_period_days,    &
+                     assimilation_period_seconds, &
+                     model_perturbation_amplitude
 
 ! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
 type MIT_meta_type
@@ -310,6 +317,7 @@ subroutine static_init_model()
 ! it reads in the grid information and then the model data.
 
 integer :: i, iunit, io
+integer :: ss, dd
 
 ! The Plan:
 !
@@ -333,6 +341,7 @@ call register_module(source, revision, revdate)
 ! Since this routine calls other routines that could call this routine
 ! we'll say we've been initialized pretty dang early.
 module_initialized = .true.
+
 
 ! Read the DART namelist for this model
 call find_namelist_in_file("input.nml", "model_nml", iunit)
@@ -370,7 +379,7 @@ call check_namelist_read(iunit, io, "PARM03")
 if ((deltaTmom   == deltaTtracer) .and. &
     (deltaTmom   == deltaTClock ) .and. &
     (deltaTClock == deltaTtracer)) then
-   timestep       = deltaTmom                    ! need a time_type version
+   ocean_dynamics_timestep = deltaTmom                    ! need a time_type version
 else
    write(msgstring,*)"namelist PARM03 has deltaTmom /= deltaTtracer /= deltaTClock"
    call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
@@ -380,8 +389,19 @@ else
    call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
 endif
 
-model_timestep = set_time(nint(endTime), 0) ! works with deltaTmom > 86400
+! Define the assimilation period as the model_timestep
+! Ensure model_timestep is multiple of ocean_dynamics_timestep
+
 model_time     = timestep_to_DARTtime(timestepcount)
+model_timestep = set_model_time_step(assimilation_period_seconds, &
+                                     assimilation_period_days,    &
+                                     ocean_dynamics_timestep)
+
+call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
+
+write(msgstring,*)"assimilation period is ",dd," days ",ss," seconds"
+call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
+if (do_output()) write(logfileunit,*)msgstring
 
 ! Grid-related variables are in PARM04
 delX(:) = 0.0_r4
@@ -1036,6 +1056,33 @@ end function get_val
 
 
 
+function set_model_time_step(ss, dd, dt)
+!------------------------------------------------------------------
+!
+! Sets the model 'timestep' AKA 'assimilation period'.
+! Must make sure the assimilation period is a multiple of the 
+! model's dynamical timestepping requirement.
+
+integer,  intent(in) :: ss    ! assimilation_period_seconds
+integer,  intent(in) :: dd    ! assimilation_period_days
+real(r8), intent(in) :: dt    ! ocean_dynamics_timestep
+
+type(time_type) :: set_model_time_step
+
+integer :: assim_period, ndt
+
+if ( .not. module_initialized ) call static_init_model
+
+assim_period = ss + dd*SECPERDAY   ! in seconds 
+ndt = max(nint(assim_period / dt),1)
+assim_period = nint(ndt * dt)
+
+set_model_time_step = set_time(assim_period, 0) ! works seconds > 86400
+
+end function set_model_time_step
+
+
+
 function get_model_time_step()
 !------------------------------------------------------------------
 !
@@ -1050,6 +1097,26 @@ if ( .not. module_initialized ) call static_init_model
 get_model_time_step = model_timestep
 
 end function get_model_time_step
+
+
+
+subroutine set_model_end_time(adv_to_offset)
+!------------------------------------------------------------------
+!
+! sets PARM03:endTime to reflect the time when the model will stop. 
+! endTime is in module storage 
+
+type(time_type), intent(in) :: adv_to_offset
+
+integer :: secs, days
+
+if ( .not. module_initialized ) call static_init_model
+
+call get_time(adv_to_offset, secs, days)
+
+endTime = (secs + days*SECPERDAY)
+
+end subroutine set_model_end_time
 
 
 
@@ -2595,17 +2662,17 @@ offset = set_time(0,0)
 ! the timestepindex can be a 10 digit integer ... potential overflow
 ! when multiplied by a large deltaT
 
-maxtimestep = HUGE(modeloffset)/timestep
+maxtimestep = HUGE(modeloffset)/ocean_dynamics_timestep
 
 if (TimeStepIndex >= maxtimestep) then
    write(msgstring,*)' timestepindex (',TimeStepIndex, &
-                     ') * timestep (',timestep,') overflows.'
+                     ') * timestep (',ocean_dynamics_timestep,') overflows.'
    call error_handler(E_ERR,'model_mod:timestep_to_DARTtime',msgstring,source,revision,revdate) 
 endif
 
-modeloffset = nint(TimeStepIndex * timestep)
-dd          = modeloffset /    (24*60*60)   ! use integer arithmetic 
-ss          = modeloffset - (dd*24*60*60)
+modeloffset = nint(TimeStepIndex * ocean_dynamics_timestep)
+dd          = modeloffset /     SECPERDAY    ! use integer arithmetic 
+ss          = modeloffset - (dd*SECPERDAY)
 offset      = set_time(ss,dd)
 
 ! Calculate the DART time_type for the MIT base time.
@@ -2626,15 +2693,9 @@ end function timestep_to_DARTtime
 
 subroutine DARTtime_to_MITtime(darttime,date1,date2)
 !
-! The MITtime is composed of an offset to a fixed time base.
-! The base time is derived from the namelist in 'date.cal',
-! the model timestep (deltaT) is from the namelist 'PARM03',
-! and the timestepindex is the middle portion of the filename
-! of the MIT files   [S,T,U,V,Eta].nnnnnnnnnn.dat 
-!
+! The MITtime is composed of:
 ! (namelist) startDate_1  yyyymmdd (year/month/day)
 ! (namelist) startDate_2    hhmmss (hours/minutes/seconds)
-! (namelist) deltaTmom   aka 'timestep' ... r4 ... implies roundoff nuances
 !
 type(time_type), intent(in)  :: darttime
 integer,         intent(out) :: date1, date2
@@ -2643,14 +2704,14 @@ integer         :: yy,mn,dd,hh,mm,ss
 
 if ( .not. module_initialized ) call static_init_model
 
-if (do_output()) write(*,*)'DART2MIT ',startDate_1,startDate_2
-
-if (do_output()) call print_date(darttime,'DART2MIT dart model time')
-
 call get_date(darttime,yy,mn,dd,hh,mm,ss)
 
 date1 = yy*10000 + mn*100 + dd
 date2 = hh*10000 + mm*100 + ss
+
+!if (do_output()) call print_time(darttime,'DART2MIT dart model time')
+!if (do_output()) call print_date(darttime,'DART2MIT dart model date')
+!if (do_output()) write(*,*)'DART2MIT',date1,date2
 
 end subroutine DARTtime_to_MITtime
 
@@ -2680,13 +2741,13 @@ timeorigin = timestep_to_DARTtime(0)
 offset     = mytime - timeorigin
 call get_time(offset,ss,dd)
 
-if (dd >= (HUGE(dd)/86400)) then   ! overflow situation
+if (dd >= (HUGE(dd)/SECPERDAY)) then   ! overflow situation
    call print_time(mytime,'DART time is',logfileunit)
    write(msgstring,*)'Trying to convert DART time to MIT timestep overflows'
    call error_handler(E_ERR,'model_mod:DARTtime_to_timestepindex',msgstring,source,revision,revdate) 
 endif
 
-DARTtime_to_timestepindex = nint((dd*86400+ss) / timestep)
+DARTtime_to_timestepindex = nint((dd*SECPERDAY+ss) / ocean_dynamics_timestep)
 
 end function DARTtime_to_timestepindex
 
@@ -2702,6 +2763,161 @@ subroutine get_gridsize(num_x, num_y, num_z)
  num_z = Nz
 
 end subroutine get_gridsize
+
+
+
+subroutine write_data_namelistfile
+!------------------------------------------------------------------
+! Essentially, we want to set the PARM03:endTime value to tell the
+! model when to stop. To do that, we have to write an entirely new
+! 'data' file, which unfortunately contains multiple namelists.
+!
+! The strategy here is to determine where the PARM03 namelist starts
+! and stops. The stopping part is generally tricky, since 
+! the terminator is not well-defined.
+!
+! So - once we know where the namelist starts and stops, we can
+! hunt for the values we need to change and change them while 
+! preserving everything else.
+! 
+
+integer :: iunit, ounit
+integer :: linenum1, linenumE, linenumN
+integer :: io, iline
+real(r8) :: MyEndTime
+
+character(len=169) :: nml_string, uc_string
+
+if ( .not. file_exist('data') ) then
+   call error_handler(E_ERR,'write_data_namelistfile', &
+      'namelist file "data" does not exist',source,revision,revdate) 
+endif
+
+iunit = open_file('data',      action = 'read')
+ounit = open_file('data.DART', action = 'write')
+rewind(ounit)
+
+! Find which line number contains &PARM03 and how many lines total.
+! Since static_init_model() has already read this once, we know
+! that the data file exists and that it contains a PARM03 namelist.
+linenumN = 0
+linenum1 = 0
+
+FINDSTART : do
+
+   read(iunit, '(A)', iostat = io) nml_string
+
+   if (io < 0 ) then ! end of file
+   !  write(*,*)'FINDSTART ... end-of-file at ',linenumN
+      exit FINDSTART
+   elseif (io /= 0 ) then ! read error
+      write(*,msgstring)'manual namelist read failed at line ',linenum1
+      call error_handler(E_ERR,'write_data_namelistfile', &
+         msgstring,source,revision,revdate) 
+   endif
+
+   linenumN = linenumN + 1
+
+   if('&PARM03' == trim(adjustl(nml_string))) then
+      linenum1 = linenumN
+   endif
+
+enddo FINDSTART
+
+! write(*,*)'Namelist PARM03 starts at line ',linenum1
+! write(*,*)'File has ',linenumN,' lines'
+
+if (linenum1 < 1) then
+   write(*,msgstring)'unable to find string PARM03'
+   call error_handler(E_ERR,'write_data_namelistfile', &
+      msgstring,source,revision,revdate) 
+endif
+
+! We must preserve the value of the paramters right now,
+! so we can write THEM (and not the values we are about to read!)
+
+MyEndTime  = endTime
+
+! Hopefully, we can read the namelist and stay positioned
+! Since static_init_model() has already read this once, 
+! it is highly unlikely to fail here ...
+
+rewind(iunit) 
+read(iunit, nml = PARM03, iostat = io)
+if (io /= 0 ) then
+   call error_handler(E_ERR,'write_data_namelistfile', &
+   'namelist READ failed somehow',source,revision,revdate) 
+endif
+
+endTime  = MyEndTime
+dumpFreq = MyEndTime
+taveFreq = MyEndTime
+
+! Find how many more lines till the end-of-file 
+linenumE = 0
+
+FINDEND : do
+
+   read(iunit, '(A)', iostat = io) nml_string
+
+   if (io < 0 ) then ! end of file
+   !  write(*,*)'FINDEND ... end-of-file at ',linenumE
+      exit FINDEND
+   elseif (io /= 0 ) then ! read error
+      write(*,msgstring)'manual namelist read failed at line ',linenumE
+      call error_handler(E_ERR,'write_data_namelistfile', &
+         msgstring,source,revision,revdate) 
+   endif
+
+   linenumE = linenumE + 1
+
+enddo FINDEND
+
+! write(*,*)'There are ',linenumE,' lines after the namelist ends.'
+rewind(iunit) 
+
+! Read the original namelistfile, write the new namelistfile
+
+do iline = 1,linenum1
+    read(iunit, '(A)', iostat = io) nml_string
+   write(ounit, '(A)', iostat = io) trim(nml_string)
+enddo 
+do iline = 1,(linenumN-linenum1-linenumE+1)
+
+    read(iunit, '(A)', iostat = io) nml_string
+   uc_string = nml_string
+   call to_upper(uc_string)
+
+   if     (index(uc_string,'ADJDUMPFREQ') > 0) then
+      continue
+
+   elseif (index(uc_string,'STARTTIME') > 0) then
+      write(nml_string,'('' startTime = '',f,'','')')0.0_r8
+
+   elseif (index(uc_string,'DUMPFREQ') > 0) then
+      write(nml_string,'('' dumpFreq = '',f,'','')')dumpFreq
+
+   elseif (index(uc_string,'ENDTIME') > 0) then
+      write(nml_string,'('' endTime  = '',f,'','')')endTime
+
+   elseif (index(uc_string,'TAVEFREQ') > 0) then
+      write(nml_string,'('' taveFreq = '',f,'','')')taveFreq
+
+   endif
+
+   write(ounit, '(A)', iostat = io) trim(nml_string)
+enddo 
+do iline = 1,(linenumE-1)
+    read(iunit, '(A)', iostat = io) nml_string
+   write(ounit, '(A)', iostat = io) trim(nml_string)
+enddo 
+
+close(iunit)
+close(ounit)
+
+end subroutine write_data_namelistfile
+
+
 
 !===================================================================
 ! End of model_mod

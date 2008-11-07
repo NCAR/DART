@@ -58,6 +58,8 @@ module utilities_mod
 !      logfileunit      Global integer unit numbers for the log file and
 !      nmlfileunit      for the namelist file (which defaults to the same as log)
 !
+!      to_upper         converts a character string to uppercase
+!
 ! nsc start 31jan07
 !   idea - add some unit number routine here?
 !   you can extract the filename associated with a fortran unit number
@@ -93,11 +95,12 @@ integer, private :: task_number = 0
 integer, parameter :: E_DBG = -1,   E_MSG = 0,  E_WARN = 1, E_ERR = 2
 integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 
-public :: file_exist, get_unit, open_file, timestamp, set_tasknum, &
-       close_file, register_module, error_handler, &
+public :: file_exist, get_unit, open_file, close_file, timestamp, &
+       register_module, error_handler, to_upper, &
        nc_check, logfileunit, nmlfileunit, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
-       find_namelist_in_file, check_namelist_read, do_output, set_output, &
+       find_namelist_in_file, check_namelist_read, 
+       set_tasknum, set_output, do_output,  &
        E_DBG, E_MSG, E_WARN, E_ERR, & 
        DEBUG, MESSAGE, WARNING, FATAL
 
@@ -1119,6 +1122,25 @@ end subroutine check_namelist_read
   
 
    end subroutine nc_check
+
+
+!#######################################################################
+
+subroutine to_upper( string )
+! Converts 'string' to uppercase
+character(len=*), intent(INOUT) :: string
+integer :: ismalla, ibiga, i
+
+ismalla = ichar('a')
+ibiga   = ichar('A')
+
+do i = 1,len(string)
+   if ((string(i:i) >= 'a') .and. (string(i:i) <= 'z')) then
+        string(i:i)  = char( ichar(string(i:i)) + ibiga - ismalla)
+   endif
+enddo
+
+end subroutine to_upper
 
 !=======================================================================
 ! End of utilities_mod

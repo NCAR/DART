@@ -138,8 +138,10 @@
 # model specific namelist info
 
 &model_nml
-   model_perturbation_amplitude  = 0.2, 
-     output_state_vector = .false. /
+   assimilation_period_days     = 7, 
+   assimilation_period_seconds  = 0, 
+   model_perturbation_amplitude = 0.2, 
+   output_state_vector          = .false. /
 
 &location_nml
    horiz_dist_only             = .true.,
@@ -174,8 +176,14 @@
    new_advance_secs             =  -1   /
 
 &merge_obs_seq_nml
-   num_input_files = 2,
-   filename_seq    = '../observations/obs_seq.gliders_t_pseudo.out', '../observations/obs_seq.gliders_s_pseudo.out',
+   num_input_files = 7,
+   filename_seq    = '../observations/ssh_pseudo.obs_seq.out',
+                     '../observations/gliders_t_pseudo.obs_seq.out',
+                     '../observations/drifters_u_pseudo.obs_seq.out',
+                     '../observations/drifters_v_pseudo.obs_seq.out',
+                     '../observations/adcp_u_pseudo.obs_seq.out',
+                     '../observations/adcp_v_pseudo.obs_seq.out',
+                     '../observations/tmi_pseudo.obs_seq.out',
    filename_out    = 'obs_seq.out'  /
 
 # The times in the namelist for the obs_diag program are vectors
@@ -197,15 +205,23 @@
    max_num_bins     = 1000,
    rat_cri            = 3.0,
    input_qc_threshold = 4.0,
-   Nregions   = 1,
-   lonlim1    = 250.0,   0.0,   0.0, 235.0,
-   lonlim2    = 300.0, 360.0, 360.0, 295.0,
-   latlim1    =  20.0, -80.0, -20.0,  25.0,
-   latlim2    =  40.0, -20.0,  20.0,  55.0,
-   reg_names  = 'Gulf of Mexico', 'Southern Hemisphere', 'Tropics', 'North America',
+   Nregions   = 3,
+   lonlim1    = 260.0, 270.0, 260.0,
+   lonlim2    = 310.0, 310.0, 300.0,
+   latlim1    =   0.0,   0.0,  20.0,
+   latlim2    =  40.0,  20.0,  40.0,
+   reg_names  = 'Gulf & Caribbean', 'Caribbean', 'Gulf of Mexico',
    print_mismatched_locs = .false.,
    print_obs_locations   = .false.,
-   verbose               = .true.  /
+   verbose               = .true.,
+   hlevel =  -2.50185,   -7.7967, -13.72595, -20.40305,  -27.9614, 
+            -36.55765,  -46.3757,  -57.6311, -70.57615,  -85.5057,
+            -102.7636, -122.7502, -145.9296, -172.8393, -204.0984, 
+            -240.4174, -282.6075, -331.5891, -388.3994, -454.1974, 
+            -530.2654, -618.0071, -718.9376, -834.6679, -966.8794, 
+            -1117.289, -1287.607, -1479.480, -1694.436, -1933.820, 
+            -2198.734, -2489.986, -2808.042, -3153.009, -3524.622, 
+            -3922.264, -4344.997, -4791.606, -5260.660, -5750.303   /
 
 # These are Ibrahims synthetic observations - isolated by platform.
 #  fname    = '../observations/adcp_u_pseudo.txt',
@@ -218,16 +234,16 @@
 #  fname    = '../observations/tmi_pseudo.txt',
 
 &create_ocean_obs_nml
-   year     = 1996, 
-   month    = 1, 
-   day      = 1, 
-   tot_days = 14, 
-   max_num  = 800000, 
-   fname       = '../observations/drifters_v_pseudo.txt', 
-   output_name = '../observations/drifters_v_pseudo.obs_seq.out', 
-   lon1     = 0.0, 
-   lon2     = 360.0, 
-   lat1     = 0.0, 
+   year     = 1996,
+   month    = 1,
+   day      = 1,
+   tot_days = 14,
+   max_num  = 800000,
+   fname       = '../observations/adcp_v_pseudo.txt',
+   output_name = '../observations/adcp_v_pseudo.obs_seq.out',
+   lon1     = 0.0,
+   lon2     = 360.0,
+   lat1     = 0.0,
    lat2     = 90.0
  /
 

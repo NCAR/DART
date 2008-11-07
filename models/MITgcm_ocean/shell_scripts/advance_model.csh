@@ -10,17 +10,21 @@
 # $Id$
 # $Revision$
 # $Date$
-
-# Script for use in assimilation applications
-# where the model advance is executed as a separate process.
-
-# This script copies the necessary files into the temporary directory
-# and then executes the model
-
+#
+# This script has 4 logical 'blocks':
+# 1) creates a clean, temporary directory in which to run a model instance 
+#    and copies the necessary files into the temporary directory
+# 2) converts the DART output to input expected by the ocean model
+# 3) runs the ocean model
+# 4) converts the ocean model output to input expected by DART
+#
+# The error code from the script reflects which block it failed.
+#
 # Arguments are the 
 # 1) process number of caller, 
 # 2) the number of state copies belonging to that process, and 
 # 3) the name of the filter_control_file for that process
+
 set process = $1
 set num_states = $2
 set control_file = $3
@@ -28,6 +32,11 @@ set control_file = $3
 echo "process      is $process"
 echo "num_states   is $num_states"
 echo "control_file is $control_file"
+
+#-------------------------------------------------------------------------
+# Block 1: populate a run-time directory with the bits needed to 
+# run the ocean model.
+#-------------------------------------------------------------------------
 
 # Get unique name for temporary working directory for this process's stuff
 set temp_dir = 'advance_temp'${process}
@@ -55,7 +64,7 @@ end
 #foreach FILE ( bathymetry.bin gom_H_199601.bin gom_S_199601.bin \
 #             gom_T_199601.bin gom_U_199601.bin gom_V_199601.bin )
 foreach FILE ( bathymetry.bin )
-    cp -pv ../inputs/$FILE . || exit 2
+    cp -pv ../inputs/$FILE . || exit 1
 end
 
 # link the files used by data.exf&EXF_NML_02 - external forcings
@@ -70,7 +79,7 @@ foreach FILE ( lev05_monthly_sss_relax.bin \
                ncep_shum_19960101.bin      \
                ncep_uwnd_19960101.bin      \
                ncep_vwnd_19960101.bin      )
-   ln -sf ../inputs/$FILE . || exit 3
+   ln -sf ../inputs/$FILE . || exit 1
 end
 
 # link the files used by data.obcs&OBCS_PARM01 - open boundaries
@@ -78,9 +87,8 @@ foreach FILE ( Rs_SobcsE_52_01_nPx1.bin    Rs_SobcsN_52_01_nPy1.bin \
                Rs_TobcsE_52_01_nPx1.bin    Rs_TobcsN_52_01_nPy1.bin \
                Rs_UobcsE_52_01_nPx1_c1.bin Rs_UobcsN_52_01_nPy1.bin \
                Rs_VobcsE_52_01_nPx1.bin    Rs_VobcsN_52_01_nPy1_c1.bin)
-   ln -sf ../inputs/$FILE .
+   ln -sf ../inputs/$FILE . || exit 1
 end
-
 
 
 echo 'listing now that the table has been set ...'
@@ -96,60 +104,62 @@ while($state_copy <= $num_states)
    set ensemble_member = `head -$ensemble_member_line ../$control_file | tail -1`
    set input_file      = `head -$input_file_line      ../$control_file | tail -1`
    set output_file     = `head -$output_file_line     ../$control_file | tail -1`
-   
-   # Get the ics file for this state_copy and
-   # convert them to the form needed to cold-start the ocean model
+
+   #----------------------------------------------------------------------
+   # Block 2: Convert the DART output file to form needed by ocean model
+   #----------------------------------------------------------------------
+   #
    # trans_sv_pv  creates the following files:
+   #
+   # data.cal.DART  ... containing the appropriate startdate_1, startdate_2
+   # data.DART     ... containing the appropriate endTime, dumpFreq, and taveFreq
    #   S.YYYYMMDD.HHMMSS.[data,meta],
    #   T.YYYYMMDD.HHMMSS.[data,meta],
    #   U.YYYYMMDD.HHMMSS.[data,meta],
    #   V.YYYYMMDD.HHMMSS.[data,meta],
-   # Eta.YYYYMMDD.HHMMSS.[data,meta], and 
-   # data.cal.new  ... which contains the appropriate startdate_1, startdate_2
-   # so data&PARM05 will specify the input data files.
+   # Eta.YYYYMMDD.HHMMSS.[data,meta], 
 
-   mv -v ../$input_file assim_model_state_ic || exit 4
+   ln -sfv ../$input_file assim_model_state_ic || exit 2
 
-   ../trans_sv_pv
+   ../trans_sv_pv || exit 2
 
-   cp -v data.cal.new data.cal
+   cp -pv data.cal.DART data.cal
+   cp -pv data.DART     data
 
-   # Update the MIT namelist output ... 
-   # and rename the input files to those defined in the data&PARM05 namelist.
+   # The DART output files must be renamed to match the data&PARM05 namelist.
    # This is pretty gory, but it works.
 
    set FNAME = `grep -i hydrogSaltFile data | sed -e "s#=##"`
    set FNAME = `echo  $FNAME | sed -e "s#hydrogSaltFile##"`
    set FNAME = `echo  $FNAME | sed -e "s#,##g"`
    set FNAME = `echo  $FNAME | sed -e "s#'##g"`
-   mv -v S.*.*.data $FNAME  || exit 5
+   mv -v S.*.*.data $FNAME  || exit 2
 
    set FNAME = `grep -i hydrogThetaFile data | sed -e "s#=##"`
    set FNAME = `echo  $FNAME | sed -e "s#hydrogThetaFile##"`
    set FNAME = `echo  $FNAME | sed -e "s#,##g"`
    set FNAME = `echo  $FNAME | sed -e "s#'##g"`
-   mv -v T.*.*.data $FNAME  || exit 5
+   mv -v T.*.*.data $FNAME  || exit 2
 
    set FNAME = `grep -i uVelInitFile data | sed -e "s#=##"`
    set FNAME = `echo  $FNAME | sed -e "s#uVelInitFile##"`
    set FNAME = `echo  $FNAME | sed -e "s#,##g"`
    set FNAME = `echo  $FNAME | sed -e "s#'##g"`
-   mv -v U.*.*.data $FNAME  || exit 5
+   mv -v U.*.*.data $FNAME  || exit 2
 
    set FNAME = `grep -i vVelInitFile data | sed -e "s#=##"`
    set FNAME = `echo  $FNAME | sed -e "s#vVelInitFile##"`
    set FNAME = `echo  $FNAME | sed -e "s#,##g"`
    set FNAME = `echo  $FNAME | sed -e "s#'##g"`
-   mv -v V.*.*.data $FNAME  || exit 5
+   mv -v V.*.*.data $FNAME  || exit 2
 
    set FNAME = `grep -i pSurfInitFile data | sed -e "s#=##"`
    set FNAME = `echo  $FNAME | sed -e "s#pSurfInitFile##"`
    set FNAME = `echo  $FNAME | sed -e "s#,##g"`
    set FNAME = `echo  $FNAME | sed -e "s#'##g"`
-   mv -v Eta.*.*.data $FNAME  || exit 5
+   mv -v Eta.*.*.data $FNAME  || exit 2
 
-   # Update the MIT namelist output ... 
-   # and rename the input files to those defined in the data&PARM05 namelist.
+   # The DART output files must be renamed to match the data&PARM05 namelist.
    # This is succinct, but it does not work.
 
    # set pattern="s/.*'\(.*\)'.*/\1/"
@@ -166,18 +176,20 @@ while($state_copy <= $num_states)
    #  mv   V.*.*.data  $vVelInitFile
    #  mv Eta.*.*.data  $pSurfInitFile
 
+   #----------------------------------------------------------------------
+   # Block 3: Run the ocean model
+   #----------------------------------------------------------------------
+
    # Must determine if we are running in a queueing environment or not
    # so we know the form of the advance command.
 
-   env | sort
-
    if ($?LS_SUBCWD) then
 
-      mpirun.lsf ../mitgcmuv
+      mpirun.lsf ../mitgcmuv || exit 3
    
    else if ($?PBS_O_WORKDIR) then
 
-      mpirun     ../mitgcmuv
+      mpirun     ../mitgcmuv || exit 3
 
    else
 
@@ -186,11 +198,16 @@ while($state_copy <= $num_states)
       # At some point in the future, the MPIRUN variable should not be hardwired
       # to an architecture-specific value.
 
-      if ( -e ../nodelist ) then
-         setenv NUM_PROCS `cat ../nodelist | wc -l`
-         set MPIRUN = /opt/mpich/myrinet/pgi/bin/mpirun
+      if ( -e ../nodelist-pgi ) then
 
-         $MPIRUN -np $NUM_PROCS -nolocal -machinefile ../nodelist ../mitgcmuv
+         setenv NUM_PROCS `cat ../nodelist-pgi | wc -l`
+
+# compas
+#        set MPIRUN = /opt/mpich/myrinet/pgi/bin/mpirun
+# atlas
+         set MPIRUN = /share/apps/mpich1/pgi/bin/mpirun
+
+         $MPIRUN -np $NUM_PROCS -nolocal -machinefile ../nodelist-pgi ../mitgcmuv || exit 3
 
       else
          echo "ERROR - there is no CENTRALDIR/nodelist for this execution."
@@ -198,10 +215,26 @@ while($state_copy <= $num_states)
          echo "        The current working directory is: "`pwd`
          echo "        The contents of the directory are: "
          ls -l
-         exit 6
+         exit 3
       endif
 
    endif
+
+   #----------------------------------------------------------------------
+   # Block 4: Convert the ocean model output to form needed by DART
+   #----------------------------------------------------------------------
+
+   # trans_pv_sv reads the snapshot file after the model advance and must
+   # convert them to an array that is prefaced by the time at which the 
+   # model state is valid. This requires converting the timestep info
+   # contained in the snapshot file into a real time. This requires
+   # reading the 'data.cal' that _started_ the model advance, and the 
+   # timestep increment from the 'data' namelist.
+
+   # This code block makes the STRONG ASSUMPTION that there are precisely
+   # two sets of snapshot files - the unavoidable one at time zero - and
+   # the set for the END of the model advance. Now that trans_sv_pv 
+   # sets data:endTime and dumpFreq, this should not be a problem. 
 
    # Remove the snapshot file at time zero.
    # We are interested in the snapshot file at the end of the advance.
@@ -213,10 +246,10 @@ while($state_copy <= $num_states)
    set TIMESTEP = $TIMESTEP:r
    set TIMESTEP = $TIMESTEP:e
 
-   echo $TIMESTEP | ../trans_pv_sv
+   echo $TIMESTEP | ../trans_pv_sv || exit 4
 
    # Move the updated state vector back to 'centraldir'
-   mv assim_model_state_ud ../$output_file  || exit 7
+   mv assim_model_state_ud ../$output_file || exit 4
 
    @ state_copy++
    @ ensemble_member_line = $ensemble_member_line + 3
@@ -228,10 +261,10 @@ echo "old data.cal is"
 cat ../data.cal
 echo ""
 echo "new data.cal is"
-cat data.cal.new
+cat data.cal.DART
 echo ""
  
-cp -pv data.cal.new ../data.cal
+cp -pv data.cal.DART ../data.cal
 
 # Change back to original directory and get rid of temporary directory
 cd ..

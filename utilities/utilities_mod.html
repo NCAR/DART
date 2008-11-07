@@ -91,17 +91,19 @@ netCDF
                    <TD><A HREF="#file_exist">file_exist</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_unit">get_unit</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#open_file">open_file</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#timestamp">timestamp</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#close_file">close_file</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#timestamp">timestamp</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#register_module">register_module</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#error_handler">error_handler</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#to_upper">to_upper</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_check">nc_check</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#logfileunit">logfileunit</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nmlfileunit">nmlfileunit</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#initialize_utilities">initialize_utilities</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#finalize_utilities">finalize_utilities</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#dump_unit_attributes">dump_unit_attributes</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#find_namelist_in_file">find_namelist_in_file</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#check_namelist_read">check_namelist_read</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#nc_check">nc_check</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_tasknum">set_tasknum</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_output">set_output</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#do_output">do_output</A></TD></TR>
@@ -399,6 +401,25 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
  <BR>
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="to_upper"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call to_upper(string)</em>
+ <pre>
+ character(len=*), intent (INOUT) :: <em class=code>string</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+  Converts the character string to UPPERCASE - in place. The input
+  string <strong>is</strong> modified.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top width="15%"><em class=code>string</em></TD>
+     <TD>any character string</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="nc_check"></A>
  <P></P><HR><P></P>
  <div class=routine>
@@ -606,8 +627,27 @@ to control at which level program termination should occur.</TD></TR>
  <P>
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>logfileunit&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top width="15%"><em class=code>logfileunit</em></TD>
      <TD>Unit opened to file for diagnostic output.</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--============= DESCRIPTION OF A CONSTANT ========================-->
+ <A NAME="nmlfileunit"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <pre>
+ integer :: <em class=code>nmlfileunit</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top width="15%"><em class=code>nmlfileunit</em></TD>
+     <TD>Unit opened to file for diagnostic output of namelist files.
+         Defaults to same as <em class=code>logfileunit</em>. Provides the
+         flexibility to log namelists to a separate file, reducing the clutter
+         in the log files and perhaps increasing readability.</TD></TR>
  </TABLE>
  <BR>
 
@@ -619,7 +659,7 @@ to control at which level program termination should occur.</TD></TR>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
  '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
- <em class=call>namelist / utilities_nml / </em> TERMLEVEL, logfilename
+ <em class=call>namelist / utilities_nml / </em> TERMLEVEL, logfilename, nmlfilename
 
 
  </pre></div>
@@ -634,30 +674,30 @@ lead to termination (be careful doing this).
  </P>
  <P>This namelist is read in a file called <em class=file>input.nml</em>
  </P>
- <TABLE border=0 cellpadding=3 width=100%>
+ <TABLE border=0 cellpadding=10 width=100%>
  <TR><TH align=left>Contents    </TH>
      <TH align=left>Type        </TH>
      <TH align=left>Description </TH></TR>
  <TR><!--contents--><TD valign=top>TERMLEVEL</TD>
-     <!--  type  --><TD>integer</TD>
-     <!--descript--><TD>Level at which calls to error
-                        manager terminate program. Default: E_ERR</TD></TR>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD valign=top>Level at which calls to error
+                        manager terminate program. <em class="unit">Default: E_ERR</em></TD></TR>
  <TR><!--contents--><TD valign=top>logfilename</TD>
-     <!--  type  --><TD>character(len=129)</TD>
-     <!--descript--><TD>File to which the logfile is written. 
-                        Default: dart_log.out</TD></TR>
+     <!--  type  --><TD valign=top>character(len=129)</TD>
+     <!--descript--><TD valign=top>File to which the logfile is written. 
+                        <em class="unit">Default: dart_log.out</em></TD></TR>
  <TR><!--contents--><TD valign=top>nmlfilename</TD>
-     <!--  type  --><TD>character(len=129)</TD>
-     <!--descript--><TD>File to which the namelist output is written. 
+     <!--  type  --><TD valign=top>character(len=129)</TD>
+     <!--descript--><TD valign=top>File to which the namelist output is written. 
                         Can be the same name as the logfile.
-                        Default: dart_log.nml</TD></TR>
+                        <em class="unit">Default: dart_log.nml</em></TD></TR>
  <TR><!--contents--><TD valign=top>module_details</TD>
-     <!--  type  --><TD>logical</TD>
-     <!--descript--><TD>Each source code module can write out the
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD valign=top>Each source code module can write out the
                         repository version number and filename to the logfile.
                         Verbose, but useful for knowing what version of the
                         code was used during the run.
-                        Default: .true.</TD></TR>
+                        <em class="unit">Default: .true.</em></TD></TR>
  </TABLE>
  <BR>
 
@@ -737,6 +777,7 @@ next namelist in the input.nml file in this case. </TD>
 <BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none
 </P>
 
 <!--==================================================================-->
@@ -747,6 +788,7 @@ next namelist in the input.nml file in this case. </TD>
 <BR><HR><BR>
 <H2>FUTURE PLANS</H2>
 <P>
+none
 </P>
 
 <!--==================================================================-->
@@ -756,7 +798,9 @@ next namelist in the input.nml file in this case. </TD>
 <A NAME="PrivateComponents"></A>
 <BR><HR><BR>
 <H2>PRIVATE COMPONENTS</H2>
-
+<P>
+none
+</P>
 
 <!--==================================================================-->
 
