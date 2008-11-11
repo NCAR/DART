@@ -564,27 +564,35 @@ type(location_type),        intent(in) :: loc
 character(len=*), optional, intent(in) :: attr
 real(r8)                               :: fval
 
-character(len=16) :: attribute
-
 if ( .not. module_initialized ) call initialize_module
 
-attribute = 'which_vert'
+! Workaround for apparent bug in mac osx intel 10.x fortran compiler.
+! Previous code had a 16 byte local character variable which was
+! apparently not getting deallocated after this function returned.
+! This code, while it has redundant default lines (attr not present 
+! and the case default) does not exhibit the leak.
 
-if (present(attr)) attribute = attr
-selectcase(adjustl(attribute))
- case ('which_vert','WHICH_VERT')
+if (.not. present(attr)) then
    fval = loc%which_vert
- case ('lat','LAT')
-   fval = loc%lat
- case ('lon','LON')
-   fval = loc%lon
- case ('vloc','VLOC')
-   fval = loc%vloc
- case default
-   fval = loc%which_vert
-end select
+
+else
+   selectcase(adjustl(attr))
+    case ('which_vert','WHICH_VERT')
+      fval = loc%which_vert
+    case ('lat','LAT')
+      fval = loc%lat
+    case ('lon','LON')
+      fval = loc%lon
+    case ('vloc','VLOC')
+      fval = loc%vloc
+    case default
+      fval = loc%which_vert
+   end select
+
+endif
 
 end function query_location
+
 
 subroutine write_location(ifile, loc, fform)
 !----------------------------------------------------------------------------
