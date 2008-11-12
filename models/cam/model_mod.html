@@ -154,7 +154,7 @@ using CAM and parallel architecture computers, including:
 <TR><TD><em class=call>use model_mod, only : </em></TD>
                    <TD><A HREF="#yyyroutine1">get_model_size</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">get_state_meta_data</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">model_interpolate</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#model_interpolate">model_interpolate</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">get_model_time_step</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">static_init_model</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">nc_write_model_atts</A></TD></TR>
@@ -271,7 +271,7 @@ of ways is provided. </TD></TR>
 
 <!--=================== DESCRIPTION OF SUBROUTINE ====================-->
 
-<A NAME="yyyroutine3"></A>
+<A NAME="model_interpolate"></A>
 <P></P><HR><P></P>
 <div class=routine>
 <em class=call> call model_interpolate(x, location, obs_type, interp_val, istatus)</em>
@@ -382,86 +382,89 @@ including the vertical hybrid coordinate coefficients, time step, and
 Gaussian weights, etc).  
 </P>
 
-
-
 <H3 class=indent1>Notes</H3>
 
 
 <!--=================================================================-->
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_maxdist_init"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_maxdist_init(gc, maxdist) </em>
- <pre>
- type(get_close_type), intent(inout) :: <em class=code>gc</em>
- real(r8),             intent(in)    :: <em class=code>maxdist</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed-sphere/location_mod.html#get_close_maxdist_init">
-get_close_maxdist_init()</A> for the documentation of this subroutine.
+<A NAME="get_close_maxdist_init"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> call get_close_maxdist_init(gc, maxdist) </em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+real(r8),             intent(in)    :: <em class=code>maxdist</em>
+</pre></div>
+<H3 class=indent1>Description</H3>
+<P>
+Pass-through to the 3-D sphere locations module routine of the same name. See 
+<A HREF="../../location/threed_sphere/location_mod.html#get_close_maxdist_init">
+location_mod:get_close_maxdist_init()</A> for the documentation of this subroutine.
+</P>
 
 <!--=================================================================-->
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_obs_init"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_obs_init(gc, num, obs) </em>
- <pre>
- type(get_close_type), intent(inout) :: <em class=code>gc</em>
- integer,              intent(in)    :: <em class=code>num</em>
- type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<A NAME="get_close_obs_init"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> call get_close_obs_init(gc, num, obs) </em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+integer,              intent(in)    :: <em class=code>num</em>
+type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
+</pre></div>
+<H3 class=indent1>Description</H3>
+<P>
 Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed-sphere/location_mod.html#get_close_obs_init">
+<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs_init">
 get_close_obs_init()</A> for the documentation of this subroutine.
+</P>
 
 <!--=================================================================-->
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_obs"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_obs(gc, base_obs_loc, base_obs_kind, 
+<A NAME="get_close_obs"></A>
+<P></P><HR><P></P>
+<div class=routine>
+<em class=call> call get_close_obs(gc, base_obs_loc, base_obs_kind, 
    obs, obs_kind, num_close, close_ind
-   <em class=code>[, dist]</em>) </em>
- <pre>
- type(get_close_type), intent(in)  :: <em class=code>gc</em>
- type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
- integer,              intent(in)  :: <em class=code>base_obs_kind</em>
- type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
- integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
- integer,              intent(out) :: <em class=code>num_close</em>
- integer,              intent(out) :: <em class=code>close_ind(:)</em>
- real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-FIXME HERE!  First calls the location module code and then updates
-the distances?
+  <em class=optionalcode>[, dist]</em>) </em>
+<pre>
+type(get_close_type), intent(in)  :: <em class=code>gc</em>
+type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
+integer,              intent(in)  :: <em class=code>base_obs_kind</em>
+type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
+integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
+integer,              intent(out) :: <em class=code>num_close</em>
+integer,              intent(out) :: <em class=code>close_ind(:)</em>
+real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
+</pre></div>
+<H3 class=indent1>Description</H3>
+<P>
+First calls the location module code and then updates
+the distances to accomodate damping CAM's highest levels.
 Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed-sphere/location_mod.html#get_close_obs">
+<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">
 get_close_obs()</A> for the documentation of this subroutine.
 
 <H3 class=indent1>Notes</H3>
-
 <P>
-The vertical distance calculation is now fully implemented.  
-FIXME HERE!!
 CAM uses a hybrid vertical coordinate, which requires the surface pressure
 beneath a point in order to determine the point's vertical coordinate.
 When the model state vector is divided up among several regions during
 parallelization, surface pressure points from other regions become unavailable.
-
-Due to the damping at high levels (see model_interpolate) there is also code 
+The ensemble mean state is available to provide complete columns of data for
+these calculations.
+<br><br>
+Due to the damping at high levels (see <a href="#model_interpolate">model_interpolate</a>)
+there is also code 
 which reduces the influence of observations on model points above some altitude.
-Currently namelist variables highest_obs_{pressure_mb,height_m,level} control this 
-for observations with pressure, height, and level vertical coordinates, respectively.
-The influence declines 
-to 0 above model level 6 for highest_obs_pressure_mb = 150.
+Currently namelist variables <em class="code">highest_obs_pressure_mb</em> and
+<em class="code">highest_state_pressure_mb</em> control this.
+All observations on height and level are handled automatically, using the 
+ensemble mean for calculations. The influence declines 
+to 0 above model level 6 for <em class="code">highest_obs_pressure_mb = 150</em>
+( &#126; model level 12).
+
 </P>
 
 
@@ -476,8 +479,8 @@ to 0 above model level 6 for highest_obs_pressure_mb = 150.
  </pre></div>
  <H3 class=indent1>Description</H3>
  <P>
-This model saves a local copy of the ensemble means and uses it when
-computing vertical heights.  FIXME HERE!
+saves a local copy of the ensemble means which can be used for 
+computing vertical heights, for example.
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>ens_mean&nbsp; &nbsp; </em></TD>
@@ -545,7 +548,7 @@ include multiple ensemble estimates of the state.
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
 <TR><TD valign=top><em class=code>ncFileID &nbsp; &nbsp; </em></TD>
-    <TD>Integer file descriptor opened to NetCDF file.</TD></TR>
+    <TD>Integer file descriptor to opened NetCDF file.</TD></TR>
 
 <TR><TD valign=top><em class=code>statevec</em></TD>
     <TD>State vector.</TD></TR>
@@ -557,7 +560,7 @@ include multiple ensemble estimates of the state.
     <TD>Integer index of which time in the file is being written.</TD></TR>
 
 <TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returned error code.</TD></TR>
+    <TD>Returned error code. success == 0, failure == -1</TD></TR>
 
 </TABLE>
 
@@ -812,10 +815,10 @@ file field names.
 <TR><!--contents--><TD valign=top>state_names_#d, #=0,1,2,3        </TD>
     <!--  type  --><TD valign=top>character(len=8), dimension(100)  </TD>
     <!--descript--><TD>Names of fields of various dimensions to put 
-                      into the state vector.  Defaults <BR>
-         <PRE>state_names_0d='        ', state_names_1d='        ', </PRE>
-         <PRE>state_names_2d='PS      ' </PRE>
-         <PRE>state_names_3d='T       ','U       ','V       ','Q       '  </PRE>
+                      into the state vector.  Defaults
+<PRE>state_names_0d='        ', state_names_1d='        ',
+state_names_2d='PS      '
+state_names_3d='T       ','U       ','V       ','Q       '</PRE>
      </TD></TR>
 <TR><!--contents--><TD valign=top>which_vert_#d, #=1,2,3           </TD>
     <!--  type  --><TD valign=top>integer, dimension(100)           </TD>
@@ -871,11 +874,11 @@ file field names.
                        Default  150.0 hPa </TD></TR>
 <TR><!--contents--><TD valign=top>Time_step_seconds          </TD>
     <!--  type  --><TD valign=top>real(r8)                   </TD>
-    <!--descript--><TD>Forecast duration (the part < 1 day)
+    <!--descript--><TD>Forecast duration (the part &#60; 1 day)
                        Default  21600 sec </TD></TR>
 <TR><!--contents--><TD valign=top>Time_step_days             </TD>
     <!--  type  --><TD valign=top>real(r8)                   </TD>
-    <!--descript--><TD>Forecast duration (the part > 24*3600 sec)
+    <!--descript--><TD>Forecast duration (the part &#62; 24*3600 sec)
                        Default  0 days </TD></TR>
 </TABLE>
 
@@ -1007,7 +1010,7 @@ in model_interpolate and model_get_close_states.
 <TR><TD><em class=call>use model_mod, only : </em></TD>
                    <TD><A HREF="#read_cam_init_size">read_cam_init_size</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_cam_init">read_cam_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">read_cam_coord</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_cam_coord">read_cam_coord</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_cam_scalar">read_cam_scalar </A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#nc_read_model_atts">nc_read_model_atts</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#check">check</A></TD></TR>
