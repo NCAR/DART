@@ -5,5 +5,7 @@
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
-   print_every_nth_obs             = 0  /
+   print_every_nth_obs             = 0,
+   rectangular_quadrature          = .true.,
+   gaussian_likelihood_tails       = .false.  /
 
