@@ -71,7 +71,7 @@ logical                :: first_get_correction = .true.
 real(r8)               :: exp_true_correl(200), alpha(200)                                                                      
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL: ", &
+   source   = "$URL$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
