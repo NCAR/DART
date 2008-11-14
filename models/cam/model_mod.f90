@@ -1910,7 +1910,7 @@ lon_val = MISSING_R8; lat_val = MISSING_R8; lev_val = MISSING_R8
 do i=1,state_num_0d
    nfld = nfld + 1
    if (indx == 1 ) then
-      which_vert = -2
+      which_vert = VERTISUNDEF
       goto 10
    else
       indx = indx - 1
