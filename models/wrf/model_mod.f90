@@ -1174,13 +1174,18 @@ subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
 
 ! x:       Full DART state vector relevant to what's being updated
 !          in the filter (mean or individual members).
-! istatus: Returned 0 if everything is OK, 1 if error occured.
-!                  -1 if the station height is lower than the lowest model level 
-!                     while the station is located inside the horizontal model domain.
+! istatus: Returned 0 if everything is OK, >0 if error occured.
+!                   1 = missing domain id
+!                   2 = bad vertical level
+!                   3 = unsupported obs kind
+!                  10 = polar observation while restrict_polar namelist true
+!                  99 = unknown reason (reached end of routine with missing_r8
+!                       as obs_val)
 
 ! modified 26 June 2006 to accomodate vortex attributes
 ! modified 13 December 2006 to accomodate changes for the mpi version
 ! modified 22 October 2007 to accomodate global WRF (3.0)
+! modified 18 November 2008 to allow unknown kinds to return without stopping
 
 ! arguments
 real(r8),            intent(in) :: x(:)
@@ -1400,7 +1405,7 @@ else
    ! Deal with missing vertical coordinates -- return with istatus .ne. 0
    if(zloc == missing_r8) then
       obs_val = missing_r8
-      istatus = 1
+      istatus = 2
       deallocate(v_h, v_p)
       return
    endif
@@ -2505,12 +2510,14 @@ else
 
    !-----------------------------------------------------
    ! If obs_kind is not negative (for identity obs), or if it is not one of the above 15
-   !   explicitly checked-for kinds, then return error message.
+   !   explicitly checked-for kinds, then set error istatus and missing_r8.
    else
 
-      write(errstring,*)'Obs kind not recognized for following kind: ',obs_kind
-      call error_handler(E_ERR,'model_interpolate', errstring, &
-           source, revision, revdate)
+      obs_val = missing_r8
+      istatus = 3
+      if (debug) print*, 'unrecognized obs KIND, value = ', obs_kind
+      deallocate(v_h, v_p)
+      return
 
    end if
 
@@ -2581,8 +2588,11 @@ else
 end if  ! end of "if ( obs_kind < 0 )"
 
 
-! Now that we are done, check to see if a missing value somehow made it through
-if ( obs_val == missing_r8 ) istatus = 1
+! Now that we are done, check to see if a missing value somehow 
+! made it through without already having set an error return code.
+if ( obs_val == missing_r8 .and. istatus == 0 ) then
+   istatus = 99
+endif
 
 ! Pring the observed value if in debug mode
 if(debug) print*,'model_interpolate() return value= ',obs_val

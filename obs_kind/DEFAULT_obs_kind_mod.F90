@@ -76,7 +76,11 @@ integer, parameter, public :: &
    KIND_MEAN_SOURCE                 = 30, &
    KIND_SOURCE_PHASE                = 31
 
-! missing kind for the am2 model
+! kind for power-weighted precipitation fall speed
+integer, parameter, public :: &
+   KIND_POWER_WEIGHTED_FALL_SPEED   = 32
+
+ ! missing kind for the am2 model
 integer, parameter, public :: &
    KIND_CLOUD_FRACTION              = 35
 
