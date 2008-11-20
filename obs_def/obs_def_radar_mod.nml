@@ -1,20 +1,24 @@
 # Notes for obs_def_radar_mod_nml:
-# (1) Reflectivity limit can be applied to observations and/or state (forward operator).
-# (2) Default lowest_reflectivity values DART will use (if apply_reflectivity_limit = .true.)
-#     is missing_r8 (currently -888888.0) . If you want to use the default, 
-#     delete the line of respective lowest_reflectivity 
-#     ("missing" is not accepted as valid entry here in the namelist).
-# (3) As it is not clear how to assimilate Z (for now), "convert_to_dbz" is always .true.
-#     for Z ... i.e. this namelist value is ignored. If you need to override this,
-#     you must hand-edit obs_def_radar_mod:initialize_module()
+# (1) Reflectivity limit can be applied to observations and/or forward operator.
+# (2) The default constants below match the WRF defaults.  They will need to 
+# be changed for other cases, depending on which microphysics scheme is used.
+# 
 
 &obs_def_radar_mod_nml
-   convert_to_dbz            =  .true. ,
-   dbz_threshold             =   0.001 ,
-   apply_ref_limit_to_obs    = .false. ,
-   reflectivity_limit_obs    =     0.0 ,
-   lowest_reflectivity_obs   = -888888.0,
-   apply_ref_limit_to_state  = .false. ,
-   reflectivity_limit_state  =     0.0 ,
-   lowest_reflectivity_state = -888888.0  /
+   apply_ref_limit_to_obs      =   .false.,
+   reflectivity_limit_obs      =  -10.0_r8,
+   lowest_reflectivity_obs     =  -10.0_r8,
+   apply_ref_limit_to_fwd_op   =   .false.,
+   reflectivity_limit_fwd_op   =  -10.0_r8,
+   lowest_reflectivity_fwd_op  =  -10.0_r8,
+   max_radial_vel_obs          =   1000000,
+   allow_wet_graupel           =   .false.,
+   dielectric_factor           =  0.224_r8,
+   n0_rain                     =  8.0e6_r8,
+   n0_graupel                  =  4.0e6_r8,
+   n0_snow                     =  3.0e6_r8,
+   rho_rain                    = 1000.0_r8,
+   rho_graupel                 =  400.0_r8,
+   rho_snow                    =  100.0_r8 
+   /
 
