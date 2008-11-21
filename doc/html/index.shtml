@@ -28,9 +28,9 @@
    <td width="40" valign="top">&nbsp;</td><!-- provides a little space -->
    <td valign="middle">
    <H1 align="center">The Data Assimilation Research Testbed -- DART</H1>
-   <center><img src="DARTspaghettiSquare.gif" alt="cool
-spaghetti plot of North America demonstrating the uncertainty among the
-ensemble members"><br>
+   <center><img src="DARTspaghettiSquare.gif" 
+   alt="cool spaghetti plot of North America demonstrating the uncertainty among the
+        ensemble members"><br>
    The 500hPa geopotential height from 20 ensemble members of an 80 member experiment
    with a T85 resolution of CAM (00Z 01 Feb 2003). The contour sets are from 
    5320 to 5800 by 80.</center></td>
@@ -43,8 +43,10 @@ ensemble members"><br>
    <b>D</b>ata <b>A</b>ssimilation <b>R</b>esearch <b>T</b>estbed (<b>DART</b>).</h2>
 
    <P align="center">
+   <font size="+1"><b>If you are using RADAR observations in DART</b>:
+   <a href="#RadarChanges">you need to know about recent (18Nov2008) changes</a>.<br>
    <b>If you are using DART</b>:
-   <a href="#BigChanges">you need to know about recent (2Jun2008) changes</a>.
+   <a href="#BigChanges">you need to know about recent (2Jun2008) changes</a>.</font>
    </P>
 
    <A NAME="index"></A>
@@ -393,6 +395,63 @@ ensemble members"><br>
           </TD></TR>
       </TABLE>
       <BR>
+
+      <A NAME="RadarChanges"></A>
+      <H2>User-Visible changes to the DART radar module (obs_def_radar_mod.f90) version 3657 (circa 18&nbsp;Nov&nbsp;2008)</H2>
+      <P>For users of previous versions of <em class="file">obs_def_radar_mod.f90</em>,
+         here are a list of changes which are <b>not</b> backward compatible:
+	 <UL>
+         <LI>The 
+         <em class="file">obs_def_radar_mod</em>:<em class="code">obs_def_radar_mod_nml</em>
+         namelist has changed quite a bit; some items were removed, 
+	 some added, and some renamed. See the 
+         <em class="file">obs_def_radar_mod.html</em>
+         documentation for the namelist for current item names and default values.</li>
+
+	 <LI>Some constants which depend on the microphysics scheme have been 
+	 added to the 
+         <em class="file">obs_def_radar_mod</em>:<em class="code">obs_def_radar_mod_nml</em>
+         namelist to make it easier to change the values for 
+	 different schemes, but the defaults have also changed.  Verify they 
+	 are appropriate for the scheme being used.</li>
+
+	 <LI>The interactive create routine prompts for the beam direction 
+	 differently now.  It takes <em>azimuth</em> and <em>elevation</em>, 
+         and then does the trigonometry to compute the three internal values 
+         which are stored in the file. The previous version prompted for the 
+         internal values directly.</li>
+
+	 <LI>The value for gravity is currently hardcoded in this module.  
+	 Previous versions of this code used the gravity constant in the DART 
+	 <em class="file">types_mod.f90</em> code, but in reality the code 
+	 should be using whatever value of gravity is being used in the model 
+	 code.  For now, the value is at least separated so users can change 
+	 the value in this code if necessary.</li>
+
+	 <LI>The <em class="routine">get_expected_xxxx</em> routines try to call 
+	 the <em class="file">model_mod</em>:<em class="code">model_interpolate()</em> 
+         routine for 
+	 <em class="code">KIND_POWER_WEIGHTED_FALL_SPEED</em> and 
+	 <em class="code">KIND_RADAR_REFLECTIVITY</em> values. If they are not 
+	 available, then the code calls the 
+         <em class="file">model_mod</em>:<em class="code">model_interpolate()</em> 
+         routine for several other kinds and computes these quantities.  
+         However, this requires that the
+         <em class="file">model_mod</em>:<em class="code">model_interpolate()</em> 
+	 code returns gracefully if the kind is unknown or unsupported.</li>
+
+         <LI>
+         <b>WRF users take note!</b> All versions of WRF's
+         <em class="file">model_mod.f90</em> before V.3657 used to 
+	 print an error message and stop if the kind was unknown.  The updated 
+	 version in the repository (V.3657) which went in with the corresponding 
+         <em class="file">obs_def_radar_mod.f90</em> radar code has been 
+	 changed to return an error status code but continue if the kind is 
+	 unknown. The <em class="file">DEFAULT_obs_kind_mod.F90</em> file also 
+	 needs to be updated to define these new KINDs.</li>
+
+	 </UL>
+      </P>
 
       <A NAME="BigChanges"></A>
       <H2>User-Visible changes to the TRUNK (circa 2 Jun 2008)</H2>
