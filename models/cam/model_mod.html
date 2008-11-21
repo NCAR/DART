@@ -350,7 +350,7 @@ The choice of initial files instead of restart files restricts the
 assimilation from using "time steps" which are too small.  This is because
 CAM uses a leapfrog time scheme, but the initial files store only a 
 single timestep.  The initial forecast step is a simple forward step, so if 
-repeated short forecasts (< ~9 model time steps) are made, the model 
+repeated short forecasts (&#60; ~9 model time steps) are made, the model 
 becomes unstable.
 In the long run, a more general extended interface may be required that specifies 
 the models range of time stepping possibilities.
@@ -692,7 +692,7 @@ A stub is provided for the CAM model.
 <div class=routine>
 <em class=call>call init_time(time) </em>
 <pre>
-type(time_type),          intent(in)    :: <em class=code> time </em>
+type(time_type),          intent(<em class="changed">out</em>)    :: <em class=code> time </em>
 </pre></div>
 
 <H3 class=indent1>Description</H3>
