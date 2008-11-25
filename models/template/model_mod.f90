@@ -18,13 +18,14 @@ module model_mod
 ! interface and look for NULL INTERFACE). 
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r8
+use        types_mod, only : r8, MISSING_R8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type,      get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, set_location
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
-             ! nmlfileunit, do_output, find_namelist_in_file, check_namelist_read
-
+use    utilities_mod, only : register_module, error_handler, nc_check, &
+                             E_ERR, E_MSG
+                             ! nmlfileunit, do_output, &
+                             ! find_namelist_in_file, check_namelist_read
 
 implicit none
 private
@@ -131,6 +132,7 @@ subroutine init_conditions(x)
 
 real(r8), intent(out) :: x(:)
 
+x = MISSING_R8
 
 end subroutine init_conditions
 
@@ -343,9 +345,9 @@ integer :: i
 
 ierr = -1 ! assume things go poorly
 
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, &
-                                  nAttributes, unlimitedDimID), "inquire")
-call check(nf90_Redef(ncFileID),"redef")
+call nc_check(nf90_inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID), &
+                     "nc_write_model_atts", "inquire")
+call nc_check(nf90_redef(ncFileID), "nc_write_model_atts", "redef")
 
 !-------------------------------------------------------------------------------
 ! We need the dimension ID for the number of copies/ensemble members, and
@@ -353,8 +355,10 @@ call check(nf90_Redef(ncFileID),"redef")
 ! Our job is create the 'model size' dimension.
 !-------------------------------------------------------------------------------
 
-call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID),"copy dimid")
-call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID),"time dimid")
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID), &
+                            "nc_write_model_atts", "inq_dimid copy")
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid= TimeDimID), &
+                            "nc_write_model_atts", "inq_dimid time")
 
 if ( TimeDimID /= unlimitedDimId ) then
    write(errstring,*)"Time Dimension ID ",TimeDimID, &
@@ -365,8 +369,9 @@ endif
 !-------------------------------------------------------------------------------
 ! Define the model size / state variable dimension / whatever ...
 !-------------------------------------------------------------------------------
-call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                        len=model_size, dimid = StateVarDimID),"state def_dim")
+call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable",  &
+                           len=model_size, dimid=StateVarDimID), &
+                           "nc_write_model_atts", "def_dim state")
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes 
@@ -376,11 +381,16 @@ call DATE_AND_TIME(crdate,crtime,crzone,values)
 write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
                   values(1), values(2), values(3), values(5), values(6), values(7)
 
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date" ,str1    ),"creation put")
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source"  ,source  ),"source put")
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision),"revision put")
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate ),"revdate put")
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","template"       ),"model put")
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date" ,str1), &
+                          "nc_write_model_atts", "put_att creation_date")
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source"  ,source), &
+                          "nc_write_model_atts", "put_att model_source")
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision), &
+                          "nc_write_model_atts", "put_att model_revision")
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate), &
+                          "nc_write_model_atts", "put_att model_revdate")
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","template"), &
+                          "nc_write_model_atts", "put_att model")
 
 !-------------------------------------------------------------------------------
 ! Here is the extensible part. The simplest scenario is to output the state vector,
@@ -396,28 +406,29 @@ if ( output_state_vector ) then
    !----------------------------------------------------------------------------
 
   ! Define the state vector coordinate variable and some attributes.
-   call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-              dimids=StateVarDimID, varid=StateVarVarID), "statevariable def_var")
-   call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable ID"), &
-                                    "statevariable long_name")
-   call check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical"), &
-                                    "statevariable units")
-   call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)), &
-                                    "statevariable valid_range")
+   call nc_check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=NF90_INT, &
+                              dimids=StateVarDimID, varid=StateVarVarID), &
+                             "nc_write_model_atts", "def_var StateVariable")
+   call nc_check(nf90_put_att(ncFileID, StateVarVarID,"long_name","State Variable ID"), &
+                             "nc_write_model_atts", "put_att StateVariable long_name")
+   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical"), &
+                             "nc_write_model_atts", "put_att StateVariable units")
+   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)), &
+                             "nc_write_model_atts", "put_att StateVariable valid_range")
 
    ! Define the actual (3D) state vector, which gets filled as time goes on ... 
-   call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real, &
-              dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), &
-              varid=StateVarID), "state def_var")
-   call check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"), &
-                                           "state long_name")
+   call nc_check(nf90_def_var(ncid=ncFileID, name="state", xtype=NF90_REAL, &
+                 dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), &
+                 varid=StateVarID), "nc_write_model_atts", "def_var state")
+   call nc_check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"), &
+                             "nc_write_model_atts", "put_att state long_name")
 
    ! Leave define mode so we can fill the coordinate variable.
-   call check(nf90_enddef(ncfileID),"state enddef")
+   call nc_check(nf90_enddef(ncfileID),"nc_write_model_atts", "state_vector enddef")
 
    ! Fill the state variable coordinate variable
-   call check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ), &
-                                    "state put_var")
+   call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /)), &
+                                    "nc_write_model_atts", "put_var state")
 
 else
 
@@ -429,52 +440,16 @@ else
    ! Usually, the control for the execution of this block is a namelist variable.
    ! Take a peek at the bgrid model_mod.f90 for a (rather complicated) example.
 
-   call check(nf90_enddef(ncfileID), "prognostic enddef")
+   call nc_check(nf90_enddef(ncfileID), "nc_write_model_atts", "prognostic enddef")
 
 endif
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
-call check(nf90_sync(ncFileID),"atts sync")
+call nc_check(nf90_sync(ncFileID),"nc_write_model_atts", "sync")
 
 ierr = 0 ! If we got here, things went well.
-
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus, string1)
-  !
-  ! string1 was added to provide some sense of WHERE things were bombing.
-  ! It helps to determine which particular 'nf90_put_att' was generating
-  ! the error, for example.
-
-    integer, intent ( in) :: istatus
-    character(len=*), intent(in), optional :: string1
-
-    character(len=20)  :: myname = 'nc_write_model_atts '
-    character(len=129) :: mystring
-    integer            :: indexN
-
-    if( istatus /= nf90_noerr) then
-
-       if (present(string1) ) then
-          if ((len_trim(string1)+len(myname)) <= len(mystring) ) then
-             mystring = myname // trim(adjustl(string1))
-          else
-             indexN = len(mystring) - len(myname)
-             mystring = myname // string1(1:indexN)
-          endif
-       else
-          mystring = myname
-       endif
-
-       call error_handler(E_ERR, mystring, trim(nf90_strerror(istatus)), &
-                          source, revision, revdate)
-    endif
-
-  end subroutine check
 
 end function nc_write_model_atts
 
@@ -523,14 +498,16 @@ integer :: StateVarID
 
 ierr = -1 ! assume things go poorly
 
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, &
-                                  nAttributes, unlimitedDimID), "inquire")
+call nc_check(nf90_inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID), &
+                          "nc_write_model_vars", "inquire")
 
 if ( output_state_vector ) then
 
-   call check(NF90_inq_varid(ncFileID, "state", StateVarID), "state inq_varid" )
-   call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
-                start=(/ 1, copyindex, timeindex /)), "state put_var")                   
+   call nc_check(nf90_inq_varid(ncFileID, "state", StateVarID), &
+                               "nc_write_model_vars", "inq_varid state" )
+   call nc_check(nf90_put_var(ncFileID, StateVarID, statevec,  &
+                              start=(/ 1, copyindex, timeindex /)), &
+                             "nc_write_model_vars", "put_var state")                   
 
 else
 
@@ -554,9 +531,11 @@ else
    ! the 'start' array is crucial. In the following example, 'ps' is a 2D
    ! array, and the netCDF variable "ps" is a 4D array [lat,lon,copy,time]
 
-   ! call check(NF90_inq_varid(ncFileID, "ps", psVarID), "ps inq_varid")
-   ! call check(nf90_put_var( ncFileID, psVarID, global_Var%ps, &
-   !                          start=(/ 1, 1, copyindex, timeindex /) ), "ps put_var")
+   ! call nc_check(nf90_inq_varid(ncFileID, "ps", psVarID), &
+   !                             "nc_write_model_vars",  "inq_varid ps")
+   ! call nc_check(nf90_put_var( ncFileID, psVarID, global_Var%ps, &
+   !                             start=(/ 1, 1, copyindex, timeindex /)), &
+   !                            "nc_write_model_vars", "put_var ps")
 
 endif
 
@@ -564,40 +543,9 @@ endif
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
 
-call check(nf90_sync(ncFileID), "sync")
+call nc_check(nf90_sync(ncFileID), "nc_write_model_vars", "sync")
 
 ierr = 0 ! If we got here, things went well.
-
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints 
-  !                       text message each time an error code is returned. 
-  subroutine check(istatus, string1)
-    integer, intent ( in) :: istatus
-    character(len=*), intent(in), optional :: string1
-
-    character(len=20)  :: myname = 'nc_write_model_vars '
-    character(len=129) :: mystring
-    integer            :: indexN
-
-    if( istatus /= nf90_noerr) then
-
-       if (present(string1) ) then
-          if ((len_trim(string1)+len(myname)) <= len(mystring) ) then
-             mystring = myname // trim(adjustl(string1))
-          else
-             indexN = len(mystring) - len(myname)
-             mystring = myname // string1(1:indexN)
-          endif
-       else
-          mystring = myname
-       endif
-
-       call error_handler(E_ERR, mystring, trim(nf90_strerror(istatus)), &
-                          source, revision, revdate)
-    endif
-
-  end subroutine check
 
 end function nc_write_model_vars
 
@@ -620,6 +568,7 @@ real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
+pert_state      = MISSING_R8
 interf_provided = .false.
 
 end subroutine pert_model_state
