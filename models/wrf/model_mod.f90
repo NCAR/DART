@@ -38,7 +38,7 @@ use      location_mod, only : location_type, get_location, set_location, &
 
 use     utilities_mod, only : file_exist, open_file, close_file, &
                               register_module, error_handler, E_ERR, E_WARN, &
-                              E_MSG, nmlfileunit, do_output, &
+                              E_MSG, nmlfileunit, do_output, nc_check, &
                               find_namelist_in_file, check_namelist_read
 
 use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
@@ -244,7 +244,7 @@ logical, parameter    :: debug = .false.
 integer               :: var_id, ind, i, j, k, id, dart_index, model_type
 
 integer  :: proj_code
-real(r8) :: stdlon,truelat1,truelat2,dt,latinc,loninc
+real(r8) :: stdlon,truelat1,truelat2,latinc,loninc
 character(len=129) :: errstring
 
 !----------------------------------------------------------------------
@@ -321,7 +321,8 @@ do id=1,num_domains
 
    if(file_exist('wrfinput_d0'//idom)) then
 
-      call check( nf90_open('wrfinput_d0'//idom, NF90_NOWRITE, ncid) )
+      call nc_check( nf90_open('wrfinput_d0'//idom, NF90_NOWRITE, ncid), &
+                     'static_init_model','open wrfinput_d0'//idom )
 
    else
 
@@ -334,26 +335,40 @@ do id=1,num_domains
 
 ! get wrf grid dimensions
 
-   call check( nf90_inq_dimid(ncid, "bottom_top", var_id) )
-   call check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%bt) )
+   call nc_check( nf90_inq_dimid(ncid, "bottom_top", var_id), &
+                     'static_init_model','inq_dimid bottom_top')
+   call nc_check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%bt), &
+                     'static_init_model','inquire_dimension '//trim(name))
 
-   call check( nf90_inq_dimid(ncid, "bottom_top_stag", var_id) ) ! reuse var_id, no harm
-   call check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%bts) )
+   call nc_check( nf90_inq_dimid(ncid, "bottom_top_stag", var_id), &
+                     'static_init_model','inq_dimid bottom_top_stag') ! reuse var_id, no harm
+   call nc_check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%bts), &
+                     'static_init_model','inquire_dimension '//trim(name))
 
-   call check( nf90_inq_dimid(ncid, "south_north", var_id) )
-   call check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%sn) )
+   call nc_check( nf90_inq_dimid(ncid, "south_north", var_id), &
+                     'static_init_model','inq_dimid south_north')
+   call nc_check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%sn), &
+                     'static_init_model','inquire_dimension '//trim(name))
 
-   call check( nf90_inq_dimid(ncid, "south_north_stag", var_id)) ! reuse var_id, no harm
-   call check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%sns) )
+   call nc_check( nf90_inq_dimid(ncid, "south_north_stag", var_id), &
+                     'static_init_model','inq_dimid south_north_stag') ! reuse var_id, no harm
+   call nc_check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%sns), &
+                     'static_init_model','inquire_dimension '//trim(name))
 
-   call check( nf90_inq_dimid(ncid, "west_east", var_id) )
-   call check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%we) )
+   call nc_check( nf90_inq_dimid(ncid, "west_east", var_id), &
+                     'static_init_model','inq_dimid west_east')
+   call nc_check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%we), &
+                     'static_init_model','inquire_dimension '//trim(name))
 
-   call check( nf90_inq_dimid(ncid, "west_east_stag", var_id) )  ! reuse var_id, no harm
-   call check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%wes) )
+   call nc_check( nf90_inq_dimid(ncid, "west_east_stag", var_id), &
+                     'static_init_model','inq_dimid west_east_stag')  ! reuse var_id, no harm
+   call nc_check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%wes), &
+                     'static_init_model','inquire_dimension '//trim(name))
 
-   call check( nf90_inq_dimid(ncid, "soil_layers_stag", var_id) )  ! reuse var_id, no harm
-   call check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%sls) )
+   call nc_check( nf90_inq_dimid(ncid, "soil_layers_stag", var_id), &
+                     'static_init_model','inq_dimid soil_layers_stag')  ! reuse var_id, no harm
+   call nc_check( nf90_inquire_dimension(ncid, var_id, name, wrf%dom(id)%sls), &
+                     'static_init_model','inquire_dimension '//trim(name))
 
    if(debug) then
       write(*,*) ' dimensions bt, sn, we are ',wrf%dom(id)%bt, &
@@ -364,29 +379,38 @@ do id=1,num_domains
 
 ! get meta data and static data we need
 
-   call check( nf90_get_att(ncid, nf90_global, 'DX', wrf%dom(id)%dx) )
-   call check( nf90_get_att(ncid, nf90_global, 'DY', wrf%dom(id)%dy) )
-   call check( nf90_get_att(ncid, nf90_global, 'DT', wrf%dom(id)%dt) )
+   call nc_check( nf90_get_att(ncid, nf90_global, 'DX', wrf%dom(id)%dx), &
+                     'static_init_model', 'get_att DX')
+   call nc_check( nf90_get_att(ncid, nf90_global, 'DY', wrf%dom(id)%dy), &
+                     'static_init_model', 'get_att DY')
+   call nc_check( nf90_get_att(ncid, nf90_global, 'DT', wrf%dom(id)%dt), &
+                     'static_init_model', 'get_att DT')
    if (do_output()) print*,'dt from wrfinput file is: ', wrf%dom(id)%dt
    if(debug) write(*,*) ' dx, dy, dt are ',wrf%dom(id)%dx, &
         wrf%dom(id)%dy, wrf%dom(id)%dt
 
-   call check( nf90_get_att(ncid, nf90_global, 'MAP_PROJ', wrf%dom(id)%map_proj) )
+   call nc_check( nf90_get_att(ncid, nf90_global, 'MAP_PROJ', wrf%dom(id)%map_proj), &
+                     'static_init_model', 'get_att MAP_PROJ')
    if(debug) write(*,*) ' map_proj is ',wrf%dom(id)%map_proj
 
-   call check( nf90_get_att(ncid, nf90_global, 'CEN_LAT', wrf%dom(id)%cen_lat) )
+   call nc_check( nf90_get_att(ncid, nf90_global, 'CEN_LAT', wrf%dom(id)%cen_lat), &
+                     'static_init_model', 'get_att CEN_LAT')
    if(debug) write(*,*) ' cen_lat is ',wrf%dom(id)%cen_lat
 
-   call check( nf90_get_att(ncid, nf90_global, 'CEN_LON', wrf%dom(id)%cen_lon) )
+   call nc_check( nf90_get_att(ncid, nf90_global, 'CEN_LON', wrf%dom(id)%cen_lon), &
+                     'static_init_model', 'get_att CEN_LON')
    if(debug) write(*,*) ' cen_lon is ',wrf%dom(id)%cen_lon
 
-   call check( nf90_get_att(ncid, nf90_global, 'TRUELAT1', truelat1) )
+   call nc_check( nf90_get_att(ncid, nf90_global, 'TRUELAT1', truelat1), &
+                     'static_init_model', 'get_att TRUELAT1')
    if(debug) write(*,*) ' truelat1 is ',truelat1
 
-   call check( nf90_get_att(ncid, nf90_global, 'TRUELAT2', truelat2) )
+   call nc_check( nf90_get_att(ncid, nf90_global, 'TRUELAT2', truelat2), &
+                     'static_init_model', 'get_att TRUELAT2')
    if(debug) write(*,*) ' truelat2 is ',truelat2
 
-   call check( nf90_get_att(ncid, nf90_global, 'STAND_LON', stdlon) )
+   call nc_check( nf90_get_att(ncid, nf90_global, 'STAND_LON', stdlon), &
+                     'static_init_model', 'get_att STAND_LON')
    if(debug) write(*,*) ' stdlon is ',stdlon
 
 
@@ -422,35 +446,47 @@ do id=1,num_domains
    if(debug) write(*,*) ' scm   ',wrf%dom(id)%scm   
 
 
-   call check( nf90_inq_varid(ncid, "P_TOP", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%p_top) )
+   call nc_check( nf90_inq_varid(ncid, "P_TOP", var_id), &
+                     'static_init_model','inq_varid P_TOP')
+   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%p_top), &
+                     'static_init_model','get_var P_TOP')
 
 !  get 1D (z) static data defining grid levels
 
    allocate(wrf%dom(id)%dn(1:wrf%dom(id)%bt))
-   call check( nf90_inq_varid(ncid, "DN", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%dn) )
+   call nc_check( nf90_inq_varid(ncid, "DN", var_id), &
+                     'static_init_model','inq_varid DN')
+   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%dn), &
+                     'static_init_model','get_var DN')
    if(debug) write(*,*) ' dn ',wrf%dom(id)%dn
 
    allocate(wrf%dom(id)%znu(1:wrf%dom(id)%bt))
-   call check( nf90_inq_varid(ncid, "ZNU", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%znu) )
+   call nc_check( nf90_inq_varid(ncid, "ZNU", var_id), &
+                     'static_init_model','inq_varid ZNU')
+   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%znu), &
+                     'static_init_model','get_var ZNU')
    if(debug) write(*,*) ' znu is ',wrf%dom(id)%znu
 
    allocate(wrf%dom(id)%dnw(1:wrf%dom(id)%bt))
-   call check( nf90_inq_varid(ncid, "DNW", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%dnw) )
+   call nc_check( nf90_inq_varid(ncid, "DNW", var_id), &
+                     'static_init_model','inq_varid DNW')
+   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%dnw), &
+                     'static_init_model','get_var DNW')
    if(debug) write(*,*) ' dnw is ',wrf%dom(id)%dnw
 
    allocate(wrf%dom(id)%zs(1:wrf%dom(id)%sls))
-   call check( nf90_inq_varid(ncid, "ZS", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%zs) )
+   call nc_check( nf90_inq_varid(ncid, "ZS", var_id), &
+                     'static_init_model','inq_varid ZS')
+   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%zs), &
+                     'static_init_model','get_var ZS')
 
 !  get 2D (x,y) base state for mu, latitude, longitude
 
    allocate(wrf%dom(id)%mub(1:wrf%dom(id)%we,1:wrf%dom(id)%sn))
-   call check( nf90_inq_varid(ncid, "MUB", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%mub) )
+   call nc_check( nf90_inq_varid(ncid, "MUB", var_id), &
+                     'static_init_model','inq_varid MUB')
+   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%mub), &
+                     'static_init_model','get_var MUB')
    if(debug) then
       write(*,*) ' corners of mub '
       write(*,*) wrf%dom(id)%mub(1,1),wrf%dom(id)%mub(wrf%dom(id)%we,1),  &
@@ -459,16 +495,22 @@ do id=1,num_domains
    end if
 
    allocate(wrf%dom(id)%longitude(1:wrf%dom(id)%we,1:wrf%dom(id)%sn))
-   call check( nf90_inq_varid(ncid, "XLONG", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%longitude) )
+   call nc_check( nf90_inq_varid(ncid, "XLONG", var_id), &
+                     'static_init_model','inq_varid XLONG')
+   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%longitude), &
+                     'static_init_model','get_var XLONG')
 
    allocate(wrf%dom(id)%latitude(1:wrf%dom(id)%we,1:wrf%dom(id)%sn))
-   call check( nf90_inq_varid(ncid, "XLAT", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%latitude) )
+   call nc_check( nf90_inq_varid(ncid, "XLAT", var_id), &
+                     'static_init_model','inq_varid XLAT')
+   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%latitude), &
+                     'static_init_model','get_var XLAT')
 
    allocate(wrf%dom(id)%land(1:wrf%dom(id)%we,1:wrf%dom(id)%sn))
-   call check( nf90_inq_varid(ncid, "XLAND", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%land) )
+   call nc_check( nf90_inq_varid(ncid, "XLAND", var_id), &
+                     'static_init_model','inq_varid XLAND')
+   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%land), &
+                     'static_init_model','get_var XLAND')
    if(debug) then
       write(*,*) ' corners of land '
       write(*,*) wrf%dom(id)%land(1,1),wrf%dom(id)%land(wrf%dom(id)%we,1),  &
@@ -491,26 +533,36 @@ do id=1,num_domains
 !nc --   MAPFACs in the x and y directions
 
 !   allocate(wrf%dom(id)%mapfac_m(1:wrf%dom(id)%we,1:wrf%dom(id)%sn))
-!   call check( nf90_inq_varid(ncid, "MAPFAC_M", var_id) )
-!   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%mapfac_m) )
+!   call nc_check( nf90_inq_varid(ncid, "MAPFAC_M", var_id), &
+!                    'static_init_model','inq_varid MAPFAC_M')
+!   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%mapfac_m), &
+!                    'static_init_model','get_var MAPFAC_M')
 
    allocate(wrf%dom(id)%hgt(1:wrf%dom(id)%we,1:wrf%dom(id)%sn))
-   call check( nf90_inq_varid(ncid, "HGT", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%hgt) )
+   call nc_check( nf90_inq_varid(ncid, "HGT", var_id), &
+                     'static_init_model','inq_varid HGT')
+   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%hgt), &
+                     'static_init_model','get_var HGT')
 
 !   allocate(wrf%dom(id)%mapfac_u(1:wrf%dom(id)%wes,1:wrf%dom(id)%sn))
-!   call check( nf90_inq_varid(ncid, "MAPFAC_U", var_id) )
-!   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%mapfac_u) )
+!   call nc_check( nf90_inq_varid(ncid, "MAPFAC_U", var_id), &
+!                    'static_init_model','inq_varid MAPFAC_U')
+!   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%mapfac_u), &
+!                    'static_init_model','get_var MAPFAC_U')
 
 !   allocate(wrf%dom(id)%mapfac_v(1:wrf%dom(id)%we,1:wrf%dom(id)%sns))
-!   call check( nf90_inq_varid(ncid, "MAPFAC_V", var_id) )
-!   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%mapfac_v) )
+!   call nc_check( nf90_inq_varid(ncid, "MAPFAC_V", var_id), &
+!                    'static_init_model','inq_varid MAPFAC_V')
+!   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%mapfac_v), &
+!                    'static_init_model','get_var MAPFAC_V')
 
 ! get 3D base state geopotential
 
    allocate(wrf%dom(id)%phb(1:wrf%dom(id)%we,1:wrf%dom(id)%sn,1:wrf%dom(id)%bts))
-   call check( nf90_inq_varid(ncid, "PHB", var_id) )
-   call check( nf90_get_var(ncid, var_id, wrf%dom(id)%phb) )
+   call nc_check( nf90_inq_varid(ncid, "PHB", var_id), &
+                     'static_init_model','inq_varid PHB')
+   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%phb), &
+                     'static_init_model','get_var PHB')
    if(debug) then
       write(*,*) ' corners of phb '
       write(*,*) wrf%dom(id)%phb(1,1,1),wrf%dom(id)%phb(wrf%dom(id)%we,1,1),  &
@@ -524,7 +576,7 @@ do id=1,num_domains
 
 ! close data file, we have all we need
 
-   call check( nf90_close(ncid) )
+   call nc_check(nf90_close(ncid),'static_init_model','close wrfinput_d0'//idom)
 
 ! Initializes the map projection structure to missing values
 
@@ -960,18 +1012,6 @@ write(*,*)
 wrf%model_size = dart_index - 1
 allocate (ens_mean(wrf%model_size))
 if(debug) write(*,*) ' wrf model size is ',wrf%model_size
-
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints
-  !                       text message each time an error code is returned.
-  subroutine check(istatus)
-    integer, intent (in) :: istatus
-
-    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'static_init_model', &
-       trim(nf90_strerror(istatus)), source, revision, revdate)
-
-  end subroutine check
 
 end subroutine static_init_model
 
@@ -3137,15 +3177,18 @@ ierr = 0     ! assume normal termination
 ! and then put into define mode.
 !-----------------------------------------------------------------
 
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
-call check(nf90_Redef(ncFileID))
+call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
+              'nc_write_model_atts','inquire')
+call nc_check(nf90_Redef(ncFileID),'nc_write_model_atts','redef')
 
 !-----------------------------------------------------------------
 ! We need the dimension ID for the number of copies 
 !-----------------------------------------------------------------
 
-call check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID))
-call check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID))
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID), &
+              'nc_write_model_atts','inq_dimid copy')
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid= TimeDimID), &
+              'nc_write_model_atts','inq_dimid time')
 
 if ( TimeDimID /= unlimitedDimId ) then
    write(errstring,*)'Time Dimension ID ',TimeDimID, &
@@ -3156,8 +3199,9 @@ endif
 !-----------------------------------------------------------------
 ! Define the model size, state variable dimension ... whatever ...
 !-----------------------------------------------------------------
-call check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                        len=wrf%model_size, dimid = StateVarDimID))
+call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
+              len=wrf%model_size, dimid = StateVarDimID), &
+              'nc_write_model_atts','def_dim StateVariable')
 
 !-----------------------------------------------------------------
 ! Write Global Attributes 
@@ -3166,11 +3210,16 @@ call DATE_AND_TIME(crdate,crtime,crzone,values)
 write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
                   values(1), values(2), values(3), values(5), values(6), values(7)
 
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","WRF"))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source",source))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision))
-call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date",str1), &
+              'nc_write_model_atts','put_att creation_date')
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","WRF"), &
+              'nc_write_model_atts','put_att model')
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source",source), &
+              'nc_write_model_atts','put_att model_source')
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision), &
+              'nc_write_model_atts','put_att model_revision')
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate), &
+              'nc_write_model_atts','put_att model_revdate')
 
 ! how about namelist input? might be nice to save ...
 
@@ -3178,25 +3227,33 @@ call check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate))
 ! Define the dimensions IDs
 !-----------------------------------------------------------------
 
-call check(nf90_def_dim(ncid=ncFileID, name="domain",           &
-          len = num_domains,  dimid = DomDimID))
+call nc_check(nf90_def_dim(ncid=ncFileID, name="domain", &
+              len = num_domains,  dimid = DomDimID), &
+              'nc_write_model_atts','def_dim domain')
 
 do id=1,num_domains
    write( idom , '(I1)') id
-   call check(nf90_def_dim(ncid=ncFileID, name="west_east_d0"//idom,        &
-        len = wrf%dom(id)%we,  dimid = weDimID(id)))
-   call check(nf90_def_dim(ncid=ncFileID, name="west_east_stag_d0"//idom,   &
-        len = wrf%dom(id)%wes, dimid = weStagDimID(id)))
-   call check(nf90_def_dim(ncid=ncFileID, name="south_north_d0"//idom,      &
-        len = wrf%dom(id)%sn,  dimid = snDimID(id)))
-   call check(nf90_def_dim(ncid=ncFileID, name="south_north_stag_d0"//idom, &
-        len = wrf%dom(id)%sns, dimid = snStagDimID(id)))
-   call check(nf90_def_dim(ncid=ncFileID, name="bottom_top_d0"//idom,       &
-        len = wrf%dom(id)%bt,  dimid = btDimID(id)))
-   call check(nf90_def_dim(ncid=ncFileID, name="bottom_top_stag_d0"//idom,  &
-        len = wrf%dom(id)%bts, dimid = btStagDimID(id)))
-   call check(nf90_def_dim(ncid=ncFileID, name="soil_layers_stag_d0"//idom,  &
-        len = wrf%dom(id)%sls, dimid = slSDimID(id)))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="west_east_d0"//idom,        &
+                 len = wrf%dom(id)%we,  dimid = weDimID(id)), &
+                 'nc_write_model_atts','def_dim west_east_d0'//idom)
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="west_east_stag_d0"//idom,   &
+                 len = wrf%dom(id)%wes, dimid = weStagDimID(id)), &
+                 'nc_write_model_atts','def_dim west_east_stag_d0'//idom)
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="south_north_d0"//idom,      &
+                 len = wrf%dom(id)%sn,  dimid = snDimID(id)), &
+                 'nc_write_model_atts','def_dim south_north_d0'//idom)
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="south_north_stag_d0"//idom, &
+                 len = wrf%dom(id)%sns, dimid = snStagDimID(id)), &
+                 'nc_write_model_atts','def_dim south_north_stag_d0'//idom)
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="bottom_top_d0"//idom,       &
+                 len = wrf%dom(id)%bt,  dimid = btDimID(id)), &
+                 'nc_write_model_atts','def_dim bottom_top_d0'//idom)
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="bottom_top_stag_d0"//idom,  &
+                 len = wrf%dom(id)%bts, dimid = btStagDimID(id)), &
+                 'nc_write_model_atts','def_dim bottom_top_stag_d0'//idom)
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="soil_layers_stag_d0"//idom,  &
+                 len = wrf%dom(id)%sls, dimid = slSDimID(id)), &
+                 'nc_write_model_atts','def_dim soil_layers_stag_d0'//idom)
 enddo
 
 !-----------------------------------------------------------------
@@ -3208,147 +3265,203 @@ enddo
 ! Commented block is from wrfinput
 !-----------------------------------------------------------------
 
-call check(nf90_def_var(ncFileID, name="DX", xtype=nf90_real, &
-     dimids= DomDimID, varid=DXVarID) )
-call check(nf90_put_att(ncFileID, DXVarID, "long_name", &
-     "X HORIZONTAL RESOLUTION"))
-call check(nf90_put_att(ncFileID, DXVarID, "units", "m"))
+call nc_check(nf90_def_var(ncFileID, name="DX", xtype=nf90_real, &
+              dimids= DomDimID, varid=DXVarID), &
+              'nc_write_model_atts','def_var DX')
+call nc_check(nf90_put_att(ncFileID, DXVarID, "long_name", "X HORIZONTAL RESOLUTION"), &
+              'nc_write_model_atts','put_att DX long_name')
+call nc_check(nf90_put_att(ncFileID, DXVarID, "units", "m"), &
+              'nc_write_model_atts','put_att DX units')
 
-call check(nf90_def_var(ncFileID, name="DY", xtype=nf90_real, &
-     dimids= DomDimID, varid=DYVarID) )
-call check(nf90_put_att(ncFileID, DYVarID, "long_name", &
-     "Y HORIZONTAL RESOLUTION"))
-call check(nf90_put_att(ncFileID, DYVarID, "units", "m"))
+call nc_check(nf90_def_var(ncFileID, name="DY", xtype=nf90_real, &
+              dimids= DomDimID, varid=DYVarID), &
+              'nc_write_model_atts','def_var DY')
+call nc_check(nf90_put_att(ncFileID, DYVarID, "long_name", "Y HORIZONTAL RESOLUTION"), &
+              'nc_write_model_atts','put_att DY long_name')
+call nc_check(nf90_put_att(ncFileID, DYVarID, "units", "m"), &
+              'nc_write_model_atts','put_att DY units')
 
-call check(nf90_def_var(ncFileID, name="TRUELAT1", xtype=nf90_real, &
-     dimids= DomDimID, varid=TRUELAT1VarID) )
-call check(nf90_put_att(ncFileID, TRUELAT1VarID, "long_name", &
-     "first standard parallel"))
-call check(nf90_put_att(ncFileID, TRUELAT1VarID, "units", &
-     "degrees, negative is south"))
+call nc_check(nf90_def_var(ncFileID, name="TRUELAT1", xtype=nf90_real, &
+              dimids= DomDimID, varid=TRUELAT1VarID), &
+              'nc_write_model_atts','def_var TRUELAT1')
+call nc_check(nf90_put_att(ncFileID, TRUELAT1VarID, "long_name", &
+              "first standard parallel"), &
+              'nc_write_model_atts','put_att TRUELAT1 long_name')
+call nc_check(nf90_put_att(ncFileID, TRUELAT1VarID, "units", &
+              "degrees, negative is south"), &
+              'nc_write_model_atts','put_att TRUELAT1 units')
 
-call check(nf90_def_var(ncFileID, name="TRUELAT2", xtype=nf90_real, &
-     dimids= DomDimID, varid=TRUELAT2VarID) )
-call check(nf90_put_att(ncFileID, TRUELAT2VarID, "long_name", &
-     "second standard parallel"))
-call check(nf90_put_att(ncFileID, TRUELAT2VarID, "units", &
-     "degrees, negative is south"))
+call nc_check(nf90_def_var(ncFileID, name="TRUELAT2", xtype=nf90_real, &
+              dimids= DomDimID, varid=TRUELAT2VarID), &
+              'nc_write_model_atts','def_var TRUELAT2')
+call nc_check(nf90_put_att(ncFileID, TRUELAT2VarID, "long_name", &
+              "second standard parallel"), &
+              'nc_write_model_atts','put_att TRUELAT2 long_name')
+call nc_check(nf90_put_att(ncFileID, TRUELAT2VarID, "units", &
+              "degrees, negative is south"), &
+              'nc_write_model_atts','put_att TRUELAT2 units')
 
-call check(nf90_def_var(ncFileID, name="STAND_LON", xtype=nf90_real, &
-     dimids= DomDimID, varid=STAND_LONVarID) )
-call check(nf90_put_att(ncFileID, STAND_LONVarID, "long_name", &
-     "standard longitude"))
-call check(nf90_put_att(ncFileID, STAND_LONVarID, "units", &
-     "degrees, negative is west"))
+call nc_check(nf90_def_var(ncFileID, name="STAND_LON", xtype=nf90_real, &
+              dimids= DomDimID, varid=STAND_LONVarID), &
+              'nc_write_model_atts','def_var STAND_LON')
+call nc_check(nf90_put_att(ncFileID, STAND_LONVarID, "long_name", &
+              "standard longitude"), &
+              'nc_write_model_atts','put_att STAND_LON long_name')
+call nc_check(nf90_put_att(ncFileID, STAND_LONVarID, "units", &
+              "degrees, negative is west"), &
+              'nc_write_model_atts','put_att STAND_LON units')
 
-call check(nf90_def_var(ncFileID, name="CEN_LAT", xtype=nf90_real, &
-     dimids= DomDimID, varid=CEN_LATVarID) )
-call check(nf90_put_att(ncFileID, CEN_LATVarID, "long_name", &
-     "center latitude"))
-call check(nf90_put_att(ncFileID, CEN_LATVarID, "units", &
-     "degrees, negative is south"))
+call nc_check(nf90_def_var(ncFileID, name="CEN_LAT", xtype=nf90_real, &
+              dimids= DomDimID, varid=CEN_LATVarID), &
+              'nc_write_model_atts','def_var CEN_LAT')
+call nc_check(nf90_put_att(ncFileID, CEN_LATVarID, "long_name", &
+              "center latitude"), &
+              'nc_write_model_atts','put_att CEN_LAT long_name')
+call nc_check(nf90_put_att(ncFileID, CEN_LATVarID, "units", &
+              "degrees, negative is south"), &
+              'nc_write_model_atts','put_att CEN_LAT units')
 
-call check(nf90_def_var(ncFileID, name="CEN_LON", xtype=nf90_real, &
-     dimids= DomDimID, varid=CEN_LONVarID) )
-call check(nf90_put_att(ncFileID, CEN_LONVarID, "long_name", &
-     "central longitude"))
-call check(nf90_put_att(ncFileID, CEN_LONVarID, "units", &
-     "degrees, negative is west"))
+call nc_check(nf90_def_var(ncFileID, name="CEN_LON", xtype=nf90_real, &
+              dimids= DomDimID, varid=CEN_LONVarID), &
+              'nc_write_model_atts','def_var CEN_LON')
+call nc_check(nf90_put_att(ncFileID, CEN_LONVarID, "long_name", &
+              "central longitude"), &
+              'nc_write_model_atts','put_att CEN_LON long_name')
+call nc_check(nf90_put_att(ncFileID, CEN_LONVarID, "units", &
+              "degrees, negative is west"), &
+              'nc_write_model_atts','put_att CEN_LON units')
 
-call check(nf90_def_var(ncFileID, name="MAP_PROJ", xtype=nf90_real, &
-     dimids= DomDimID, varid=MAP_PROJVarID) )
-call check(nf90_put_att(ncFileID, MAP_PROJVarID, "long_name", &
-     "domain map projection"))
-call check(nf90_put_att(ncFileID, MAP_PROJVarID, "units", &
-     "0=none, 1=Lambert, 2=polar, 3=Mercator, 5=Cylindrical, 6=Cassini"))
+call nc_check(nf90_def_var(ncFileID, name="MAP_PROJ", xtype=nf90_real, &
+              dimids= DomDimID, varid=MAP_PROJVarID), &
+              'nc_write_model_atts','def_var MAP_PROJ')
+call nc_check(nf90_put_att(ncFileID, MAP_PROJVarID, "long_name", &
+              "domain map projection"), &
+              'nc_write_model_atts','put_att MAP_PROJ long_name')
+call nc_check(nf90_put_att(ncFileID, MAP_PROJVarID, "units", &
+              "0=none, 1=Lambert, 2=polar, 3=Mercator, 5=Cylindrical, 6=Cassini"), &
+              'nc_write_model_atts','put_att MAP_PROJ units')
 
 !nc -- we need to add in code here to report the domain values for the 
 !        boundary condition flags periodic_x and polar.  Since these are
 !        carried internally as logicals, they will first need to be 
 !        converted back to integers.
-call check(nf90_def_var(ncFileID, name="PERIODIC_X", xtype=nf90_int, &
-     dimids= DomDimID, varid=PERIODIC_XVarID) )
-call check(nf90_put_att(ncFileID, PERIODIC_XVarID, "long_name", &
-     "Longitudinal periodic b.c. flag"))
-call check(nf90_put_att(ncFileID, PERIODIC_XVarID, "units", &
-     "logical: 1 = .true., 0 = .false."))
+call nc_check(nf90_def_var(ncFileID, name="PERIODIC_X", xtype=nf90_int, &
+              dimids= DomDimID, varid=PERIODIC_XVarID), &
+              'nc_write_model_atts','def_var PERIODIC_X')
+call nc_check(nf90_put_att(ncFileID, PERIODIC_XVarID, "long_name", &
+              "Longitudinal periodic b.c. flag"), &
+              'nc_write_model_atts','put_att PERIODIC_X long_name')
+call nc_check(nf90_put_att(ncFileID, PERIODIC_XVarID, "units", &
+              "logical: 1 = .true., 0 = .false."), &
+              'nc_write_model_atts','put_att PERIODIC_X units')
 
-call check(nf90_def_var(ncFileID, name="POLAR", xtype=nf90_int, &
-     dimids= DomDimID, varid=POLARVarID) )
-call check(nf90_put_att(ncFileID, POLARVarID, "long_name", &
-     "Polar periodic b.c. flag"))
-call check(nf90_put_att(ncFileID, POLARVarID, "units", &
-     "logical: 1 = .true., 0 = .false."))
+call nc_check(nf90_def_var(ncFileID, name="POLAR", xtype=nf90_int, &
+              dimids= DomDimID, varid=POLARVarID), &
+              'nc_write_model_atts','def_var POLAR')
+call nc_check(nf90_put_att(ncFileID, POLARVarID, "long_name", &
+              "Polar periodic b.c. flag"), &
+              'nc_write_model_atts','put_att POLAR long_name')
+call nc_check(nf90_put_att(ncFileID, POLARVarID, "units", &
+              "logical: 1 = .true., 0 = .false."), &
+              'nc_write_model_atts','put_att POLAR units')
 
 
 
 do id=1,num_domains
    write( idom , '(I1)') id
 
-   call check(nf90_def_var(ncFileID, name="DN_d0"//idom, xtype=nf90_real, &
-        dimids= btDimID(id), varid=DNVarID(id)) )
-   call check(nf90_put_att(ncFileID, DNVarID(id), "long_name", &
-        "dn values on half (mass) levels"))
-   call check(nf90_put_att(ncFileID, DNVarID(id), "units", "dimensionless"))
+   call nc_check(nf90_def_var(ncFileID, name="DN_d0"//idom, xtype=nf90_real, &
+                 dimids= btDimID(id), varid=DNVarID(id)), &
+                 'nc_write_model_atts','def_var DN_do'//idom)
+   call nc_check(nf90_put_att(ncFileID, DNVarID(id), "long_name", &
+                 "dn values on half (mass) levels"), &
+                 'nc_write_model_atts','put_att DN_do'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, DNVarID(id), "units", &
+                 "dimensionless"), &
+                 'nc_write_model_atts','put_att DN_do'//idom//' units')
 
-   call check(nf90_def_var(ncFileID, name="ZNU_d0"//idom, xtype=nf90_real, &
-        dimids= btDimID(id), varid=ZNUVarID(id)) )
-   call check(nf90_put_att(ncFileID, ZNUVarID(id), "long_name", &
-        "eta values on half (mass) levels"))
-   call check(nf90_put_att(ncFileID, ZNUVarID(id), "units", "dimensionless"))
+   call nc_check(nf90_def_var(ncFileID, name="ZNU_d0"//idom, xtype=nf90_real, &
+                 dimids= btDimID(id), varid=ZNUVarID(id)), &
+                 'nc_write_model_atts','def_var ZNU_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, ZNUVarID(id), "long_name", &
+                 "eta values on half (mass) levels"), &
+                 'nc_write_model_atts','put_att ZNU_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, ZNUVarID(id), "units", &
+                 "dimensionless"), &
+                 'nc_write_model_atts','put_att ZNU_d0'//idom//' units')
 
-   call check(nf90_def_var(ncFileID, name="DNW_d0"//idom, xtype=nf90_real, &
-        dimids= btDimID(id), varid=DNWVarID(id)) )
-   call check(nf90_put_att(ncFileID, DNWVarID(id), "long_name", &
-        "dn values on full (w) levels"))
-   call check(nf90_put_att(ncFileID, DNWVarID(id), "units", "dimensionless"))
+   call nc_check(nf90_def_var(ncFileID, name="DNW_d0"//idom, xtype=nf90_real, &
+                 dimids= btDimID(id), varid=DNWVarID(id)), &
+                 'nc_write_model_atts','def_var DNW_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, DNWVarID(id), "long_name", &
+                 "dn values on full (w) levels"), &
+                 'nc_write_model_atts','def_var DNW_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, DNWVarID(id), "units", &
+                 "dimensionless"), &
+                 'nc_write_model_atts','def_var DNW_d0'//idom//' units')
 
 !
 !    float MUB(Time, south_north, west_east) ;
 !            MUB:FieldType = 104 ;
 !            MUB:MemoryOrder = "XY " ;
 !            MUB:stagger = "" ;
-   call check(nf90_def_var(ncFileID, name="MUB_d0"//idom, xtype=nf90_real, &
-        dimids= (/ weDimID(id), snDimID(id) /), varid=MubVarID(id)) )
-   call check(nf90_put_att(ncFileID, MubVarID(id), "long_name", &
-        "base state dry air mass in column"))
-   call check(nf90_put_att(ncFileID, MubVarID(id), "units", "Pa"))
+   call nc_check(nf90_def_var(ncFileID, name="MUB_d0"//idom, xtype=nf90_real, &
+                 dimids= (/ weDimID(id), snDimID(id) /), varid=MubVarID(id)), &
+                 'nc_write_model_atts','def_var MUB_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, MubVarID(id), "long_name", &
+                 "base state dry air mass in column"), &
+                 'nc_write_model_atts','put_att MUB_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, MubVarID(id), "units", "Pa"), &
+                 'nc_write_model_atts','put_att MUB_d0'//idom//' long_name')
 
 ! Longitudes
 !      float XLONG(Time, south_north, west_east) ;
 !         XLONG:FieldType = 104 ;
 !         XLONG:MemoryOrder = "XY " ;
 !         XLONG:stagger = "" ;
-   call check(nf90_def_var(ncFileID, name="XLON_d0"//idom, xtype=nf90_real, &
-        dimids= (/ weDimID(id), snDimID(id) /), varid=LonVarID(id)) )
-   call check(nf90_put_att(ncFileID, LonVarID(id), "long_name", "longitude"))
-   call check(nf90_put_att(ncFileID, LonVarID(id), "units", "degrees_east"))
-   call check(nf90_put_att(ncFileID, LonVarID(id), "valid_range", &
-        (/ -180.0_r8, 180.0_r8 /)))
-   call check(nf90_put_att(ncFileID, LonVarID(id), "description", &
-        "LONGITUDE, WEST IS NEGATIVE"))
+   call nc_check(nf90_def_var(ncFileID, name="XLON_d0"//idom, xtype=nf90_real, &
+                 dimids= (/ weDimID(id), snDimID(id) /), varid=LonVarID(id)),  &
+                 'nc_write_model_atts','def_var XLON_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, LonVarID(id), "long_name", "longitude"), &
+                 'nc_write_model_atts','put_att XLON_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, LonVarID(id), "units", "degrees_east"), &
+                 'nc_write_model_atts','put_att XLON_d0'//idom//' units')
+   call nc_check(nf90_put_att(ncFileID, LonVarID(id), "valid_range", &
+                 (/ -180.0_r8, 180.0_r8 /)), &
+                 'nc_write_model_atts','put_att XLON_d0'//idom//' valid_range')
+   call nc_check(nf90_put_att(ncFileID, LonVarID(id), "description", &
+                 "LONGITUDE, WEST IS NEGATIVE"), &
+                 'nc_write_model_atts','put_att XLON_d0'//idom//' description')
 
 ! Latitudes
 !      float XLAT(Time, south_north, west_east) ;
 !         XLAT:FieldType = 104 ;
 !         XLAT:MemoryOrder = "XY " ;
 !         XLAT:stagger = "" ;
-   call check(nf90_def_var(ncFileID, name="XLAT_d0"//idom, xtype=nf90_real, &
-        dimids=(/ weDimID(id), snDimID(id) /), varid=LatVarID(id)) ) 
-   call check(nf90_put_att(ncFileID, LatVarID(id), "long_name", "latitude"))
-   call check(nf90_put_att(ncFileID, LatVarID(id), "units", "degrees_north"))
-   call check(nf90_put_att(ncFileID, LatVarID(id), "valid_range", &
-        (/ -90.0_r8, 90.0_r8 /)))
-   call check(nf90_put_att(ncFileID, LatVarID(id), "description", &
-        "LATITUDE, SOUTH IS NEGATIVE"))
+   call nc_check(nf90_def_var(ncFileID, name="XLAT_d0"//idom, xtype=nf90_real, &
+                 dimids=(/ weDimID(id), snDimID(id) /), varid=LatVarID(id)), &
+                 'nc_write_model_atts','def_var XLAT_d0'//idom) 
+   call nc_check(nf90_put_att(ncFileID, LatVarID(id), "long_name", "latitude"), &
+                 'nc_write_model_atts','put_att XLAT_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, LatVarID(id), "units", "degrees_north"), &
+                 'nc_write_model_atts','put_att XLAT_d0'//idom//' units')
+   call nc_check(nf90_put_att(ncFileID, LatVarID(id), "valid_range", &
+                 (/ -90.0_r8, 90.0_r8 /)), &
+                 'nc_write_model_atts','put_att XLAT_d0'//idom//' valid_range')
+   call nc_check(nf90_put_att(ncFileID, LatVarID(id), "description", &
+                 "LATITUDE, SOUTH IS NEGATIVE"), &
+                 'nc_write_model_atts','put_att XLAT_d0'//idom//' description')
 
 ! grid levels
-   call check(nf90_def_var(ncFileID, name="level_d0"//idom, xtype=nf90_short, &
-        dimids=btDimID(id), varid=ilevVarID(id)) )
-   call check(nf90_put_att(ncFileID, ilevVarID(id), "long_name", &
-        "placeholder for level"))
-   call check(nf90_put_att(ncFileID, ilevVarID(id), "units", &
-        "at this point, indexical"))
+   call nc_check(nf90_def_var(ncFileID, name="level_d0"//idom, xtype=nf90_short, &
+                 dimids=btDimID(id), varid=ilevVarID(id)), &
+                 'nc_write_model_atts','def_var level_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, ilevVarID(id), "long_name", &
+                 "placeholder for level"), &
+                 'nc_write_model_atts','put_att level_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, ilevVarID(id), "units", &
+                 "at this point, indexical"), &
+                 'nc_write_model_atts','put_att level_d0'//idom//' units')
 
 ! Land Mask
 !    float XLAND(Time, south_north, west_east) ;
@@ -3356,13 +3469,18 @@ do id=1,num_domains
 !            XLAND:MemoryOrder = "XY " ;
 !            XLAND:units = "NA" ;
 !            XLAND:stagger = "" ;
-   call check(nf90_def_var(ncFileID, name="XLAND_d0"//idom, xtype=nf90_short, &
-        dimids= (/ weDimID(id), snDimID(id) /), varid=XlandVarID(id)) )
-   call check(nf90_put_att(ncFileID, XlandVarID(id), "long_name", "land mask"))
-   call check(nf90_put_att(ncFileID, XlandVarID(id), "units", "NA"))
-   call check(nf90_put_att(ncFileID, XlandVarID(id), "valid_range", (/ 1, 2 /)))
-   call check(nf90_put_att(ncFileID, XlandVarID(id), "description", &
-        "1 = LAND, 2 = WATER"))
+   call nc_check(nf90_def_var(ncFileID, name="XLAND_d0"//idom, xtype=nf90_short, &
+                 dimids= (/ weDimID(id), snDimID(id) /), varid=XlandVarID(id)),  &
+                 'nc_write_model_atts','def_var XLAND_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, XlandVarID(id), "long_name", "land mask"), &
+                 'nc_write_model_atts','put_att XLAND_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, XlandVarID(id), "units", "NA"), &
+                 'nc_write_model_atts','put_att XLAND_d0'//idom//' units')
+   call nc_check(nf90_put_att(ncFileID, XlandVarID(id), "valid_range", (/ 1, 2 /)), &
+                 'nc_write_model_atts','put_att XLAND_d0'//idom//' valid_range')
+   call nc_check(nf90_put_att(ncFileID, XlandVarID(id), "description", &
+                 "1 = LAND, 2 = WATER"), &
+                 'nc_write_model_atts','put_att XLAND_d0'//idom//' description')
 
 !nc -- eliminated the reading in of MAPFACs since global WRF will have different 
 !nc --   MAPFACs in the x and y directions
@@ -3372,51 +3490,68 @@ do id=1,num_domains
 !            MAPFAC_M:FieldType = 104 ;
 !            MAPFAC_M:MemoryOrder = "XY " ;
 !            MAPFAC_M:stagger = "" ;
-!   call check(nf90_def_var(ncFileID, name="MAPFAC_M_d0"//idom, xtype=nf90_real, &
-!        dimids= (/ weDimID(id), snDimID(id) /), varid=MapFacMVarID(id)) )
-!   call check(nf90_put_att(ncFileID, MapFacMVarID(id), "long_name", &
-!       "Map scale factor on mass grid"))
-!   call check(nf90_put_att(ncFileID, MapFacMVarID(id), "units", "dimensionless"))
+!   call nc_check(nf90_def_var(ncFileID, name="MAPFAC_M_d0"//idom, xtype=nf90_real, &
+!                 dimids= (/ weDimID(id), snDimID(id) /), varid=MapFacMVarID(id)),  &
+!                 'nc_write_model_atts','def_var MAPFAC_M_d0'//idom)
+!   call nc_check(nf90_put_att(ncFileID, MapFacMVarID(id), "long_name", &
+!                 "Map scale factor on mass grid"), &
+!                 'nc_write_model_atts','put_att MAPFAC_M_d0'//idom//' long_name')
+!   call nc_check(nf90_put_att(ncFileID, MapFacMVarID(id), "units", "dimensionless"), &
+!                 'nc_write_model_atts','put_att MAPFAC_M_d0'//idom//' units')
 
 ! Map Scale Factor on u-grid
 !    float MAPFAC_U(Time, south_north, west_east_stag) ;
 !            MAPFAC_U:FieldType = 104 ;
 !            MAPFAC_U:MemoryOrder = "XY " ;
 !            MAPFAC_U:stagger = "X" ;
-!   call check(nf90_def_var(ncFileID, name="MAPFAC_U_d0"//idom, xtype=nf90_real, &
-!        dimids= (/ weStagDimID(id), snDimID(id) /), varid=MapFacUVarID(id)) )
-!   call check(nf90_put_att(ncFileID, MapFacUVarID(id), "long_name", &
-!        "Map scale factor on u-grid"))
-!   call check(nf90_put_att(ncFileID, MapFacUVarID(id), "units", "dimensionless"))
+!   call nc_check(nf90_def_var(ncFileID, name="MAPFAC_U_d0"//idom, xtype=nf90_real, &
+!                 dimids= (/ weStagDimID(id), snDimID(id) /), varid=MapFacUVarID(id)), &
+!                 'nc_write_model_atts','def_var MAPFAC_U_d0'//idom)
+!   call nc_check(nf90_put_att(ncFileID, MapFacUVarID(id), "long_name", &
+!                 "Map scale factor on u-grid"), &
+!                 'nc_write_model_atts','put_att MAPFAC_U_d0'//idom//' long_name')
+!   call nc_check(nf90_put_att(ncFileID, MapFacUVarID(id), "units", "dimensionless"), &
+!                 'nc_write_model_atts','put_att MAPFAC_U_d0'//idom//' units')
 
 ! Map Scale Factor on v-grid
 !    float MAPFAC_V(Time, south_north_stag, west_east) ;
 !            MAPFAC_V:FieldType = 104 ;
 !            MAPFAC_V:MemoryOrder = "XY " ;
 !            MAPFAC_V:stagger = "Y" ;
-!   call check(nf90_def_var(ncFileID, name="MAPFAC_V_d0"//idom, xtype=nf90_real, &
-!        dimids= (/ weDimID(id), snStagDimID(id) /), varid=MapFacVVarID(id)) )
-!   call check(nf90_put_att(ncFileID, MapFacVVarID(id), "long_name", &
-!        "Map scale factor on v-grid"))
-!   call check(nf90_put_att(ncFileID, MapFacVVarID(id), "units", "dimensionless"))
+!   call nc_check(nf90_def_var(ncFileID, name="MAPFAC_V_d0"//idom, xtype=nf90_real, &
+!                 dimids= (/ weDimID(id), snStagDimID(id) /), varid=MapFacVVarID(id)), &
+!                 'nc_write_model_atts','def_var MAPFAC_V_d0'//idom)
+!   call nc_check(nf90_put_att(ncFileID, MapFacVVarID(id), "long_name", &
+!                 "Map scale factor on v-grid"), &
+!                 'nc_write_model_atts','put_att MAPFAC_V_d0'//idom//' long_name')
+!   call nc_check(nf90_put_att(ncFileID, MapFacVVarID(id), "units", "dimensionless"), &
+!                 'nc_write_model_atts','put_att MAPFAC_V_d0'//idom//' units')
 
 ! PHB
 !    float PHB(Time, bottom_top_stag, south_north, west_east) ;
 !            PHB:FieldType = 104 ;
 !            PHB:MemoryOrder = "XYZ" ;
 !            PHB:stagger = "Z" ;
-   call check(nf90_def_var(ncFileID, name="PHB_d0"//idom, xtype=nf90_real, &
-        dimids= (/ weDimID(id), snDimID(id), btStagDimID(id) /), varid=phbVarId(id)) )
-   call check(nf90_put_att(ncFileID, phbVarId(id), "long_name", &
-        "base-state geopotential"))
-   call check(nf90_put_att(ncFileID, phbVarId(id), "units", "m2/s2"))
-   call check(nf90_put_att(ncFileID, phbVarId(id), "units_long_name", "m{2} s{-2}"))
+   call nc_check(nf90_def_var(ncFileID, name="PHB_d0"//idom, xtype=nf90_real, &
+        dimids= (/ weDimID(id), snDimID(id), btStagDimID(id) /), varid=phbVarId(id)), &
+        'nc_write_model_atts','def_var PHB_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, phbVarId(id), "long_name", &
+                 "base-state geopotential"), &
+                 'nc_write_model_atts','put_att PHB_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, phbVarId(id), "units", "m2/s2"), &
+                 'nc_write_model_atts','put_att PHB_d0'//idom//' units')
+   call nc_check(nf90_put_att(ncFileID, phbVarId(id), "units_long_name", "m{2} s{-2}"), &
+                 'nc_write_model_atts','put_att PHB_d0'//idom//' units_long_name')
 
-   call check(nf90_def_var(ncFileID, name="HGT_d0"//idom, xtype=nf90_real, &
-        dimids= (/ weDimID(id), snDimID(id) /), varid=hgtVarId(id)) )
-   call check(nf90_put_att(ncFileID, hgtVarId(id), "long_name", "Terrain Height"))
-   call check(nf90_put_att(ncFileID, hgtVarId(id), "units", "m"))
-   call check(nf90_put_att(ncFileID, hgtVarId(id), "units_long_name", "meters"))
+   call nc_check(nf90_def_var(ncFileID, name="HGT_d0"//idom, xtype=nf90_real, &
+                 dimids= (/ weDimID(id), snDimID(id) /), varid=hgtVarId(id)), &
+                 'nc_write_model_atts','def_var HGT_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, hgtVarId(id), "long_name", "Terrain Height"), &
+                 'nc_write_model_atts','put_att HGT_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, hgtVarId(id), "units", "m"), &
+                 'nc_write_model_atts','put_att HGT_d0'//idom//' units')
+   call nc_check(nf90_put_att(ncFileID, hgtVarId(id), "units_long_name", "meters"), &
+                 'nc_write_model_atts','put_att HGT_d0'//idom//' units_long_name')
 
 enddo
 
@@ -3428,74 +3563,104 @@ if ( output_state_vector ) then
 
    ! Define the state vector coordinate variable
 
-   call check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-              dimids=StateVarDimID, varid=StateVarVarID))
+   call nc_check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
+                 dimids=StateVarDimID, varid=StateVarVarID), &
+                 'nc_write_model_atts','def_var StateVariable')
 
-   call check(nf90_put_att(ncFileID, StateVarVarID, "long_name", &
-        "State Variable ID"))
-   call check(nf90_put_att(ncFileID, StateVarVarID, "units", &
-        "indexical") )
-   call check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", &
-        (/ 1, wrf%model_size /)))
+   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "long_name", &
+                 "State Variable ID"), &
+                 'nc_write_model_atts','put_att StateVariable long_name')
+   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "units", &
+                 "indexical"), &
+                 'nc_write_model_atts','put_att StateVariable units')
+   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", &
+                 (/ 1, wrf%model_size /)), &
+                 'nc_write_model_atts','put_att StateVariable valid_range')
 
    ! Define the actual state vector
 
-   call check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real, &
-              dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), &
-              varid=StateVarID))
-   call check(nf90_put_att(ncFileID, StateVarID, "long_name", &
-        "model state or fcopy"))
-   call check(nf90_put_att(ncFileID, StateVarId, "U_units","m/s"))
-   call check(nf90_put_att(ncFileID, StateVarId, "V_units","m/s"))
-   call check(nf90_put_att(ncFileID, StateVarId, "W_units","m/s"))
-   call check(nf90_put_att(ncFileID, StateVarId, "GZ_units","m2/s2"))
-   call check(nf90_put_att(ncFileID, StateVarId, "T_units","K"))
-   call check(nf90_put_att(ncFileID, StateVarId, "MU_units","Pa"))
-   call check(nf90_put_att(ncFileID, StateVarId, "TSK_units","K"))
+   call nc_check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real, &
+                 dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), &
+                 varid=StateVarID), &
+                 'nc_write_model_atts','def_var state')
+   call nc_check(nf90_put_att(ncFileID, StateVarID, "long_name", &
+                 "model state or fcopy"), &
+                 'nc_write_model_atts','put_att state long_name')
+   call nc_check(nf90_put_att(ncFileID, StateVarId, "U_units","m/s"), &
+                 'nc_write_model_atts','put_att state U_units')
+   call nc_check(nf90_put_att(ncFileID, StateVarId, "V_units","m/s"), &
+                 'nc_write_model_atts','put_att state V_units')
+   call nc_check(nf90_put_att(ncFileID, StateVarId, "W_units","m/s"), &
+                 'nc_write_model_atts','put_att state W_units')
+   call nc_check(nf90_put_att(ncFileID, StateVarId, "GZ_units","m2/s2"), &
+                 'nc_write_model_atts','put_att state GZ_units')
+   call nc_check(nf90_put_att(ncFileID, StateVarId, "T_units","K"), &
+                 'nc_write_model_atts','put_att state T_units')
+   call nc_check(nf90_put_att(ncFileID, StateVarId, "MU_units","Pa"), &
+                 'nc_write_model_atts','put_att state MU_units')
+   call nc_check(nf90_put_att(ncFileID, StateVarId, "TSK_units","K"), &
+                 'nc_write_model_atts','put_att state TSK_units')
    if( wrf%dom(num_domains)%n_moist >= 1) then
-      call check(nf90_put_att(ncFileID, StateVarId, "QV_units","kg/kg"))
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "QV_units","kg/kg"), &
+                    'nc_write_model_atts','put_att state QV_units')
    endif
    if( wrf%dom(num_domains)%n_moist >= 2) then
-      call check(nf90_put_att(ncFileID, StateVarId, "QC_units","kg/kg"))
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "QC_units","kg/kg"), &
+                    'nc_write_model_atts','put_att state QC_units')
    endif
    if( wrf%dom(num_domains)%n_moist >= 3) then
-      call check(nf90_put_att(ncFileID, StateVarId, "QR_units","kg/kg"))
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "QR_units","kg/kg"), &
+                    'nc_write_model_atts','put_att state QR_units')
    endif
    if( wrf%dom(num_domains)%n_moist >= 4) then
-      call check(nf90_put_att(ncFileID, StateVarId, "QI_units","kg/kg"))
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "QI_units","kg/kg"), &
+                    'nc_write_model_atts','put_att state QI_units')
    endif
    if( wrf%dom(num_domains)%n_moist >= 5) then
-      call check(nf90_put_att(ncFileID, StateVarId, "QS_units","kg/kg"))
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "QS_units","kg/kg"), &
+                    'nc_write_model_atts','put_att state QS_units')
    endif
    if( wrf%dom(num_domains)%n_moist >= 6) then
-      call check(nf90_put_att(ncFileID, StateVarId, "QG_units","kg/kg"))
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "QG_units","kg/kg"), &
+                    'nc_write_model_atts','put_att state QG_units')
    endif
    if( wrf%dom(num_domains)%n_moist == 7) then
-      call check(nf90_put_att(ncFileID, StateVarId, "QNICE_units","kg-1"))
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "QNICE_units","kg-1"), &
+                    'nc_write_model_atts','put_att state QNICE_units')
    endif
    if(wrf%dom(num_domains)%surf_obs ) then
-      call check(nf90_put_att(ncFileID, StateVarId, "U10_units","m/s"))
-      call check(nf90_put_att(ncFileID, StateVarId, "V10_units","m/s"))
-      call check(nf90_put_att(ncFileID, StateVarId, "T2_units","K"))
-      call check(nf90_put_att(ncFileID, StateVarId, "TH2_units","K"))
-      call check(nf90_put_att(ncFileID, StateVarId, "Q2_units","kg/kg"))
-      call check(nf90_put_att(ncFileID, StateVarId, "PS_units","Pa"))
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "U10_units","m/s"), &
+                    'nc_write_model_atts','put_att state U10_units')
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "V10_units","m/s"), &
+                    'nc_write_model_atts','put_att state V10_units')
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "T2_units","K"), &
+                    'nc_write_model_atts','put_att state T2_units')
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "TH2_units","K"), &
+                    'nc_write_model_atts','put_att state TH2_units')
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "Q2_units","kg/kg"), &
+                    'nc_write_model_atts','put_att state Q2_units')
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "PS_units","Pa"), &
+                    'nc_write_model_atts','put_att state PS_units')
    endif
    if(wrf%dom(num_domains)%soil_data ) then
-      call check(nf90_put_att(ncFileID, StateVarId, "TSLB_units","K"))
-      call check(nf90_put_att(ncFileID, StateVarId, "SMOIS_units","m3/m3"))
-      call check(nf90_put_att(ncFileID, StateVarId, "SH2O_units","m3/m3"))
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "TSLB_units","K"), &
+                    'nc_write_model_atts','put_att state TSLB_units')
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "SMOIS_units","m3/m3"), &
+                    'nc_write_model_atts','put_att state SMOIS_units')
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "SH2O_units","m3/m3"), &
+                    'nc_write_model_atts','put_att state SH2O_units')
    endif
    if(h_diab ) then
-      call check(nf90_put_att(ncFileID, StateVarId, "H_DIAB_units",""))
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "H_DIAB_units",""), &
+                    'nc_write_model_atts','put_att state H_DIAB_units')
    endif
 
    ! Leave define mode so we can actually fill the variables.
 
-   call check(nf90_enddef(ncfileID))
+   call nc_check(nf90_enddef(ncfileID),'nc_write_model_atts','enddef')
 
-   call check(nf90_put_var(ncFileID, StateVarVarID, &
-        (/ (i,i=1,wrf%model_size) /) ))
+   call nc_check(nf90_put_var(ncFileID,StateVarVarID,(/ (i,i=1,wrf%model_size) /)), &
+                 'nc_write_model_atts','put_var StateVarVarID')
 
 else
 
@@ -3510,49 +3675,60 @@ do id=1,num_domains
    !         U:FieldType = 104 ;
    !         U:MemoryOrder = "XYZ" ;
    !         U:stagger = "X" ;
-   call check(nf90_def_var(ncid=ncFileID, name="U_d0"//idom, xtype=nf90_real, &
-         dimids = (/ weStagDimID(id), snDimId(id), btDimID(id), MemberDimID, &
-         unlimitedDimID /), varid  = var_id))
-   call check(nf90_put_att(ncFileID, var_id, "long_name", "x-wind component"))
-   call check(nf90_put_att(ncFileID, var_id, "units", "m/s"))
-   call check(nf90_put_att(ncFileID, var_id, "units_long_name", "m s{-1}"))
-
+   call nc_check(nf90_def_var(ncid=ncFileID, name="U_d0"//idom, xtype=nf90_real, &
+        dimids=(/weStagDimID(id),snDimId(id),btDimID(id),MemberDimID,unlimitedDimID/), &
+        varid=var_id),'nc_write_model_atts','def_var U_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, var_id, "long_name", "x-wind component"), &
+                 'nc_write_model_atts','put_att U_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, var_id, "units", "m/s"), &
+                 'nc_write_model_atts','put_att U_d0'//idom//' units')
+   call nc_check(nf90_put_att(ncFileID, var_id, "units_long_name", "m s{-1}"), &
+                 'nc_write_model_atts','put_att U_d0'//idom//' units_long_name')
 
    !      float V(Time, bottom_top, south_north_stag, west_east) ;
    !         V:FieldType = 104 ;
    !         V:MemoryOrder = "XYZ" ;
    !         V:stagger = "Y" ;
-   call check(nf90_def_var(ncid=ncFileID, name="V_d0"//idom, xtype=nf90_real, &
-         dimids = (/ weDimID(id), snStagDimID(id), btDimID(id), MemberDimID, &
-         unlimitedDimID /), varid  = var_id))
-   call check(nf90_put_att(ncFileID, var_id, "long_name", "y-wind component"))
-   call check(nf90_put_att(ncFileID, var_id, "units", "m/s"))
-   call check(nf90_put_att(ncFileID, var_id, "units_long_name", "m s{-1}"))
+   call nc_check(nf90_def_var(ncid=ncFileID, name="V_d0"//idom, xtype=nf90_real, &
+        dimids=(/weDimID(id),snStagDimID(id),btDimID(id),MemberDimID,unlimitedDimID/), &
+        varid=var_id),'nc_write_model_atts','def_var V_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, var_id, "long_name", "y-wind component"), &
+                 'nc_write_model_atts','put_att V_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, var_id, "units", "m/s"), &
+                 'nc_write_model_atts','put_att V_d0'//idom//' units')
+   call nc_check(nf90_put_att(ncFileID, var_id, "units_long_name", "m s{-1}"), &
+                 'nc_write_model_atts','put_att V_d0'//idom//' units_long_name')
 
 
    !      float W(Time, bottom_top_stag, south_north, west_east) ;
    !         W:FieldType = 104 ;
    !         W:MemoryOrder = "XYZ" ;
    !         W:stagger = "Z" ;
-   call check(nf90_def_var(ncid=ncFileID, name="W_d0"//idom, xtype=nf90_real, &
-         dimids = (/ weDimID(id), snDimID(id), btStagDimID(id), MemberDimID, &
-         unlimitedDimID /), varid  = var_id))
-   call check(nf90_put_att(ncFileID, var_id, "long_name", "z-wind component"))
-   call check(nf90_put_att(ncFileID, var_id, "units", "m/s"))
-   call check(nf90_put_att(ncFileID, var_id, "units_long_name", "m s{-1}"))
+   call nc_check(nf90_def_var(ncid=ncFileID, name="W_d0"//idom, xtype=nf90_real, &
+        dimids=(/weDimID(id),snDimID(id),btStagDimID(id),MemberDimID,unlimitedDimID/), &
+        varid=var_id),'nc_write_model_atts','def_var W_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, var_id, "long_name", "z-wind component"), &
+                 'nc_write_model_atts','put_att W_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, var_id, "units", "m/s"), &
+                 'nc_write_model_atts','put_att W_d0'//idom//' units')
+   call nc_check(nf90_put_att(ncFileID, var_id, "units_long_name", "m s{-1}"), &
+                 'nc_write_model_atts','put_att W_d0'//idom//' units_long_name')
 
 
    !      float PH(Time, bottom_top_stag, south_north, west_east) ;
    !         PH:FieldType = 104 ;
    !         PH:MemoryOrder = "XYZ" ;
    !         PH:stagger = "Z" ;
-   call check(nf90_def_var(ncid=ncFileID, name="PH_d0"//idom, xtype=nf90_real, &
-         dimids = (/ weDimID(id), snDimID(id), btStagDimID(id), MemberDimID, &
-         unlimitedDimID /), varid  = var_id))
-   call check(nf90_put_att(ncFileID, var_id, "long_name", &
-        "perturbation geopotential"))
-   call check(nf90_put_att(ncFileID, var_id, "units", "m2/s2"))
-   call check(nf90_put_att(ncFileID, var_id, "units_long_name", "m{2} s{-2}"))
+   call nc_check(nf90_def_var(ncid=ncFileID, name="PH_d0"//idom, xtype=nf90_real, &
+        dimids=(/weDimID(id),snDimID(id),btStagDimID(id),MemberDimID,unlimitedDimID/), &
+        varid=var_id),'nc_write_model_atts','def_var PH_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, var_id, "long_name", &
+                 "perturbation geopotential"), &
+                 'nc_write_model_atts','put_att PH_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, var_id, "units", "m2/s2"), &
+                 'nc_write_model_atts','put_att PH_d0'//idom//' units')
+   call nc_check(nf90_put_att(ncFileID, var_id, "units_long_name", "m{2} s{-2}"), &
+                 'nc_write_model_atts','put_att PH_d0'//idom//' units_long_name')
 
 
    !      float T(Time, bottom_top, south_north, west_east) ;
@@ -3560,13 +3736,16 @@ do id=1,num_domains
    !         T:MemoryOrder = "XYZ" ;
    !         T:units = "K" ;
    !         T:stagger = "" ;
-   call check(nf90_def_var(ncid=ncFileID, name="T_d0"//idom, xtype=nf90_real, &
-         dimids = (/ weDimID(id), snDimID(id), btDimID(id), MemberDimID, &
-         unlimitedDimID /), varid  = var_id))
-   call check(nf90_put_att(ncFileID, var_id, "long_name", "temperature"))
-   call check(nf90_put_att(ncFileID, var_id, "units", "K"))
-   call check(nf90_put_att(ncFileId, var_id, "description", &
-        "perturbation potential temperature (theta-t0)"))
+   call nc_check(nf90_def_var(ncid=ncFileID, name="T_d0"//idom, xtype=nf90_real, &
+        dimids=(/weDimID(id),snDimID(id),btDimID(id),MemberDimID,unlimitedDimID/), &
+        varid=var_id),'nc_write_model_atts','def_var T_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, var_id, "long_name", "temperature"), &
+                 'nc_write_model_atts','put_att T_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, var_id, "units", "K"), &
+                 'nc_write_model_atts','put_att T_d0'//idom//' units')
+   call nc_check(nf90_put_att(ncFileId, var_id, "description", &
+                 "perturbation potential temperature (theta-t0)"), &
+                 'nc_write_model_atts','put_att T_d0'//idom//' description')
 
 
    !      float MU(Time, south_north, west_east) ;
@@ -3575,13 +3754,16 @@ do id=1,num_domains
    !         MU:description = "perturbation dry air mass in column" ;
    !         MU:units = "pascals" ;
    !         MU:stagger = "" ;
-   call check(nf90_def_var(ncid=ncFileID, name="MU_d0"//idom, xtype=nf90_real, &
-         dimids = (/ weDimID(id), snDimID(id), MemberDimID, &
-         unlimitedDimID /), varid  = var_id))
-   call check(nf90_put_att(ncFileID, var_id, "long_name", "mu field"))
-   call check(nf90_put_att(ncFileID, var_id, "units", "pascals"))
-   call check(nf90_put_att(ncFileId, var_id, "description", &
-        "perturbation dry air mass in column"))
+   call nc_check(nf90_def_var(ncid=ncFileID, name="MU_d0"//idom, xtype=nf90_real, &
+        dimids=(/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
+        varid=var_id), 'nc_write_model_atts','def_var MU_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, var_id, "long_name", "mu field"), &
+                 'nc_write_model_atts','put_att MU_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, var_id, "units", "pascals"), &
+                 'nc_write_model_atts','put_att MU_d0'//idom//' units')
+   call nc_check(nf90_put_att(ncFileId, var_id, "description", &
+                 "perturbation dry air mass in column"), &
+                 'nc_write_model_atts','put_att MU_d0'//idom//' description')
 
 
    !      float TSK(Time, south_north, west_east) ;
@@ -3590,13 +3772,16 @@ do id=1,num_domains
    !         TSK:description = "SURFACE SKIN TEMPERATURE" ;
    !         TSK:units = "K" ;
    !         TSK:stagger = "" ;
-   call check(nf90_def_var(ncid=ncFileID, name="TSK_d0"//idom, xtype=nf90_real, &
-         dimids = (/ weDimID(id), snDimID(id), MemberDimID, &
-         unlimitedDimID /), varid  = var_id))
-   call check(nf90_put_att(ncFileID, var_id, "long_name", "tsk field"))
-   call check(nf90_put_att(ncFileID, var_id, "units", "K"))
-   call check(nf90_put_att(ncFileId, var_id, "description", &
-        "SURFACE SKIN TEMPERATURE"))
+   call nc_check(nf90_def_var(ncid=ncFileID, name="TSK_d0"//idom, xtype=nf90_real, &
+        dimids=(/weDimID(id),snDimID(id),MemberDimID,unlimitedDimID /), &
+        varid=var_id),'nc_write_model_atts','def_var TSK_d0'//idom)
+   call nc_check(nf90_put_att(ncFileID, var_id, "long_name", "tsk field"), &
+                 'nc_write_model_atts','put_att TSK_d0'//idom//' long_name')
+   call nc_check(nf90_put_att(ncFileID, var_id, "units", "K"), &
+                 'nc_write_model_atts','put_att TSK_d0'//idom//' units')
+   call nc_check(nf90_put_att(ncFileId, var_id, "description", &
+                 "SURFACE SKIN TEMPERATURE"), &
+                 'nc_write_model_atts','put_att TSK_d0'//idom//' description')
 
 
    !      float QVAPOR(Time, bottom_top, south_north, west_east) ;
@@ -3604,12 +3789,14 @@ do id=1,num_domains
    !         QVAPOR:MemoryOrder = "XYZ" ;
    !         QVAPOR:stagger = "" ;
    if( wrf%dom(id)%n_moist >= 1) then
-      call check(nf90_def_var(ncid=ncFileID, name="QVAPOR_d0"//idom, xtype=nf90_real, &
-           dimids = (/ weDimID(id), snDimID(id), btDimID(id), MemberDimID, &
-           unlimitedDimID /), varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"))
-      call check(nf90_put_att(ncFileId, var_id, "description", &
-           "Water vapor mixing ratio"))
+      call nc_check(nf90_def_var(ncid=ncFileID, name="QVAPOR_d0"//idom, xtype=nf90_real, &
+           dimids=(/weDimID(id),snDimID(id),btDimID(id),MemberDimID,unlimitedDimID /), &
+           varid=var_id),'nc_write_model_atts','def_var QVAPOR_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"), &
+                    'nc_write_model_atts','put_att QVAPOR_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileId, var_id, "description", &
+                    "Water vapor mixing ratio"), &
+                    'nc_write_model_atts','put_att QVAPOR_d0'//idom//' description')
    endif
 
 
@@ -3618,12 +3805,14 @@ do id=1,num_domains
    !         QCLOUD:MemoryOrder = "XYZ" ;
    !         QCLOUD:stagger = "" ;
    if( wrf%dom(id)%n_moist >= 2) then
-      call check(nf90_def_var(ncid=ncFileID, name="QCLOUD_d0"//idom, xtype=nf90_real, &
-           dimids = (/ weDimID(id), snDimID(id), btDimID(id), MemberDimID, &
-           unlimitedDimID /), varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"))
-      call check(nf90_put_att(ncFileID, var_id, "description", &
-           "Cloud water mixing ratio"))
+      call nc_check(nf90_def_var(ncid=ncFileID, name="QCLOUD_d0"//idom, xtype=nf90_real, &
+           dimids=(/weDimID(id),snDimID(id),btDimID(id),MemberDimID,unlimitedDimID/), &
+           varid=var_id),'nc_write_model_atts','def_var QCLOUD_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"), &
+                    'nc_write_model_atts','def_var QCLOUD_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "description", &
+                    "Cloud water mixing ratio"), &
+                    'nc_write_model_atts','def_var QCLOUD_d0'//idom//' description')
    endif
 
 
@@ -3632,87 +3821,110 @@ do id=1,num_domains
    !         QRAIN:MemoryOrder = "XYZ" ;
    !         QRAIN:stagger = "" ;
    if( wrf%dom(id)%n_moist >= 3) then
-      call check(nf90_def_var(ncid=ncFileID, name="QRAIN_d0"//idom, xtype=nf90_real, &
-           dimids = (/ weDimID(id), snDimID(id), btDimID(id), MemberDimID, &
-           unlimitedDimID /), varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"))
-      call check(nf90_put_att(ncFileID, var_id, "description", &
-           "Rain water mixing ratio"))
+      call nc_check(nf90_def_var(ncid=ncFileID, name="QRAIN_d0"//idom, xtype=nf90_real, &
+           dimids=(/weDimID(id),snDimID(id),btDimID(id),MemberDimID,unlimitedDimID/), &
+           varid=var_id),'nc_write_model_atts','def_var QRAIN_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"), &
+                    'nc_write_model_atts','put_att QRAIN_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "description", &
+                    "Rain water mixing ratio"), &
+                    'nc_write_model_atts','put_att QRAIN_d0'//idom//' description')
    endif
 
    if( wrf%dom(id)%n_moist >= 4) then
-      call check(nf90_def_var(ncid=ncFileID, name="QICE_d0"//idom, xtype=nf90_real, &
-           dimids = (/ weDimID(id), snDimID(id), btDimID(id), MemberDimID, &
-           unlimitedDimID /), varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"))
-      call check(nf90_put_att(ncFileID, var_id, "description", &
-           "Ice mixing ratio"))
+      call nc_check(nf90_def_var(ncid=ncFileID, name="QICE_d0"//idom, xtype=nf90_real, &
+           dimids=(/weDimID(id),snDimID(id),btDimID(id),MemberDimID,unlimitedDimID/), &
+           varid=var_id),'nc_write_model_atts','def_var QICE_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"), &
+                    'nc_write_model_atts','put_att QICE_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "description", &
+                    "Ice mixing ratio"), &
+                    'nc_write_model_atts','put_att QICE_d0'//idom//' description')
    endif
 
    if( wrf%dom(id)%n_moist >= 5) then
-      call check(nf90_def_var(ncid=ncFileID, name="QSNOW_d0"//idom, xtype=nf90_real, &
-           dimids = (/ weDimID(id), snDimID(id), btDimID(id), MemberDimID, &
-           unlimitedDimID /), varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"))
-      call check(nf90_put_att(ncFileID, var_id, &
-           "description", "Snow mixing ratio"))
+      call nc_check(nf90_def_var(ncid=ncFileID, name="QSNOW_d0"//idom, xtype=nf90_real, &
+           dimids=(/weDimID(id),snDimID(id),btDimID(id),MemberDimID,unlimitedDimID/), &
+           varid=var_id),'nc_write_model_atts','def_var QSNOW_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"), &
+                    'nc_write_model_atts','put_att QSNOW_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "description", &
+                    "Snow mixing ratio"), &
+                    'nc_write_model_atts','put_att QSNOW_d0'//idom//' description')
    endif
 
    if( wrf%dom(id)%n_moist >= 6) then
-      call check(nf90_def_var(ncid=ncFileID, name="QGRAUP_d0"//idom, xtype=nf90_real, &
-           dimids = (/ weDimID(id), snDimID(id), btDimID(id), MemberDimID, &
-           unlimitedDimID /), varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"))
-      call check(nf90_put_att(ncFileID, var_id, "description", &
-           "Graupel mixing ratio"))
+      call nc_check(nf90_def_var(ncid=ncFileID, name="QGRAUP_d0"//idom, xtype=nf90_real, &
+           dimids=(/weDimID(id),snDimID(id),btDimID(id),MemberDimID,unlimitedDimID/), &
+           varid=var_id),'nc_write_model_atts','def_var QGRAUP_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"), &
+                    'nc_write_model_atts','put_att QGRAUP_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "description", &
+                    "Graupel mixing ratio"), &
+                    'nc_write_model_atts','put_att QGRAUP_d0'//idom//' description')
    endif
 
    if( wrf%dom(id)%n_moist == 7) then
-      call check(nf90_def_var(ncid=ncFileID, name="QNICE_d0"//idom, xtype=nf90_real, &
-           dimids = (/ weDimID(id), snDimID(id), btDimID(id), MemberDimID, &
-           unlimitedDimID /), varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "kg-1"))
-      call check(nf90_put_att(ncFileID, var_id, "description", &
-           "Ice Number concentration"))
+      call nc_check(nf90_def_var(ncid=ncFileID, name="QNICE_d0"//idom, xtype=nf90_real, &
+           dimids=(/weDimID(id),snDimID(id),btDimID(id),MemberDimID,unlimitedDimID/), &
+           varid=var_id),'nc_write_model_atts','def_var QNICE_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "kg-1"), &
+                    'nc_write_model_atts','put_att QNICE_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "description", &
+                    "Ice Number concentration"), &
+                    'nc_write_model_atts','put_att QNICE_d0'//idom//' description')
    endif
 
    if(wrf%dom(id)%surf_obs ) then
 
-      call check(nf90_def_var(ncid=ncFileID, name="U10_d0"//idom, xtype=nf90_real, &
+      call nc_check(nf90_def_var(ncid=ncFileID, name="U10_d0"//idom, xtype=nf90_real, &
            dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
-           varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "m/s"))
-      call check(nf90_put_att(ncFileID, var_id, "description", "U at 10 m"))
+           varid  = var_id),'nc_write_model_atts','def_var U10_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "m/s"), &
+                    'nc_write_model_atts','put_att U10_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "description", "U at 10 m"), &
+                    'nc_write_model_atts','put_att U10_d0'//idom//' description')
 
-      call check(nf90_def_var(ncid=ncFileID, name="V10_d0"//idom, xtype=nf90_real, &
+      call nc_check(nf90_def_var(ncid=ncFileID, name="V10_d0"//idom, xtype=nf90_real, &
            dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
-           varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "m/s"))
-      call check(nf90_put_att(ncFileID, var_id, "description", "V at 10 m"))
+           varid  = var_id),'nc_write_model_atts','def_var V10_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "m/s"), &
+                    'nc_write_model_atts','put_att V10_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "description", "V at 10 m"), &
+                    'nc_write_model_atts','put_att V10_d0'//idom//' description')
 
-      call check(nf90_def_var(ncid=ncFileID, name="T2_d0"//idom, xtype=nf90_real, &
+      call nc_check(nf90_def_var(ncid=ncFileID, name="T2_d0"//idom, xtype=nf90_real, &
            dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
-           varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "K"))
-      call check(nf90_put_att(ncFileID, var_id, "description", "TEMP at 2 m"))
+           varid  = var_id),'nc_write_model_atts','def_var T2_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "K"), &
+                    'nc_write_model_atts','put_att T2_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "description", "TEMP at 2 m"), &
+                    'nc_write_model_atts','put_att T2_d0'//idom//' description')
 
-      call check(nf90_def_var(ncid=ncFileID, name="TH2_d0"//idom, xtype=nf90_real, &
+      call nc_check(nf90_def_var(ncid=ncFileID, name="TH2_d0"//idom, xtype=nf90_real, &
            dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
-           varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "K"))
-      call check(nf90_put_att(ncFileID, var_id, "description", "POT TEMP at 2 m"))
+           varid  = var_id),'nc_write_model_atts','def_var TH2_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "K"), &
+                    'nc_write_model_atts','put_att TH2_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "description", "POT TEMP at 2 m"), &
+                    'nc_write_model_atts','put_att TH2_d0'//idom//' description')
 
-      call check(nf90_def_var(ncid=ncFileID, name="Q2_d0"//idom, xtype=nf90_real, &
+      call nc_check(nf90_def_var(ncid=ncFileID, name="Q2_d0"//idom, xtype=nf90_real, &
            dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
-           varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"))
-      call check(nf90_put_att(ncFileID, var_id, "description", "QV at 2 m"))
+           varid  = var_id),'nc_write_model_atts','def_var Q2_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "kg/kg"), &
+                    'nc_write_model_atts','put_att Q2_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "description", "QV at 2 m"), &
+                    'nc_write_model_atts','put_att Q2_d0'//idom//' description')
 
-      call check(nf90_def_var(ncid=ncFileID, name="PS_d0"//idom, xtype=nf90_real, &
+      call nc_check(nf90_def_var(ncid=ncFileID, name="PS_d0"//idom, xtype=nf90_real, &
            dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
-           varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "units", "Pa"))
-      call check(nf90_put_att(ncFileID, var_id, "description", "Total surface pressure"))
+           varid  = var_id),'nc_write_model_atts','def_var PS_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "Pa"), &
+                    'nc_write_model_atts','put_att PS_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "description", &
+                    "Total surface pressure"), &
+                    'nc_write_model_atts','put_att PS_d0'//idom//' description')
 
    end if
 
@@ -3723,29 +3935,38 @@ do id=1,num_domains
       !         TSLB:description = "SOIL TEMPERATURE" ;
       !         TSLB:units = "K" ;
       !         TSLB:stagger = "Z" ;
-      call check(nf90_def_var(ncid=ncFileID, name="TSLB_d0"//idom, xtype=nf90_real, &
-           dimids = (/ weDimID(id), snDimID(id), slSDimID(id), MemberDimID, &
-           unlimitedDimID /), varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "long_name", "soil temperature"))
-      call check(nf90_put_att(ncFileID, var_id, "units", "K"))
-      call check(nf90_put_att(ncFileId, var_id, "description", &
-           "SOIL TEMPERATURE"))
+      call nc_check(nf90_def_var(ncid=ncFileID, name="TSLB_d0"//idom, xtype=nf90_real, &
+           dimids=(/weDimID(id),snDimID(id),slSDimID(id),MemberDimID,unlimitedDimID/), &
+           varid=var_id),'nc_write_model_atts','def_var TSLB_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "long_name", "soil temperature"), &
+                    'nc_write_model_atts','put_att TSLB_d0'//idom//' long_name')
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "K"), &
+                    'nc_write_model_atts','put_att TSLB_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileId, var_id, "description", &
+                    "SOIL TEMPERATURE"), &
+                    'nc_write_model_atts','put_att TSLB_d0'//idom//' description')
            
-      call check(nf90_def_var(ncid=ncFileID, name="SMOIS_d0"//idom, xtype=nf90_real, &
-            dimids = (/ weDimID(id), snDimID(id), slSDimID(id), MemberDimID, &
-            unlimitedDimID /), varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "long_name", "soil moisture"))
-      call check(nf90_put_att(ncFileID, var_id, "units", "m3/m3"))
-      call check(nf90_put_att(ncFileId, var_id, "description", &
-           "SOIL MOISTURE"))
+      call nc_check(nf90_def_var(ncid=ncFileID, name="SMOIS_d0"//idom, xtype=nf90_real, &
+           dimids=(/weDimID(id),snDimID(id),slSDimID(id),MemberDimID,unlimitedDimID/),  &
+           varid=var_id),'nc_write_model_atts','def_var SMOIS_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "long_name", "soil moisture"), &
+                    'nc_write_model_atts','put_att SMOIS_d0'//idom//' long_name')
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "m3/m3"), &
+                    'nc_write_model_atts','put_att SMOIS_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileId, var_id, "description", &
+                    "SOIL MOISTURE"), &
+                    'nc_write_model_atts','put_att SMOIS_d0'//idom//' description')
 
-      call check(nf90_def_var(ncid=ncFileID, name="SH2O_d0"//idom, xtype=nf90_real, &
-            dimids = (/ weDimID(id), snDimID(id), slSDimID(id), MemberDimID, &
-            unlimitedDimID /), varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "long_name", "soil liquid water"))
-      call check(nf90_put_att(ncFileID, var_id, "units", "m3/m3"))
-      call check(nf90_put_att(ncFileId, var_id, "description", &
-           "SOIL LIQUID WATER"))
+      call nc_check(nf90_def_var(ncid=ncFileID, name="SH2O_d0"//idom, xtype=nf90_real, &
+           dimids=(/weDimID(id),snDimID(id),slSDimID(id),MemberDimID,unlimitedDimID/), &
+           varid=var_id),'nc_write_model_atts','def_var SH20_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "long_name", "soil liquid water"), &
+                    'nc_write_model_atts','put_att SH20_d0'//idom//' long_name')
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "m3/m3"), &
+                    'nc_write_model_atts','put_att SH20_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileId, var_id, "description", &
+                    "SOIL LIQUID WATER"), &
+                    'nc_write_model_atts','put_att SH20_d0'//idom//' description')
 
    endif
 
@@ -3756,16 +3977,22 @@ do id=1,num_domains
       !            H_DIABATIC:description = "PREVIOUS TIMESTEP CONDENSATIONAL HEATING" ;
       !            H_DIABATIC:units = "" ;
       !            H_DIABATIC:stagger = "" ;
-      call check(nf90_def_var(ncid=ncFileID, name="H_DIAB_d0"//idom, xtype=nf90_real, &
-            dimids = (/ weDimID(id), snDimID(id), btDimID(id), MemberDimID, &
-            unlimitedDimID /), varid  = var_id))
-      call check(nf90_put_att(ncFileID, var_id, "long_name", "diabatic heating"))
-      call check(nf90_put_att(ncFileID, var_id, "units", ""))
-      call check(nf90_put_att(ncFileID, var_id, "FieldType", 104))
-      call check(nf90_put_att(ncFileID, var_id, "MemoryOrder", "XYZ"))
-      call check(nf90_put_att(ncFileID, var_id, "stagger", ""))
-      call check(nf90_put_att(ncFileId, var_id, "description", &
-           "previous timestep condensational heating"))
+      call nc_check(nf90_def_var(ncid=ncFileID, name="H_DIAB_d0"//idom, xtype=nf90_real, &
+           dimids=(/weDimID(id),snDimID(id),btDimID(id),MemberDimID,unlimitedDimID/), &
+           varid=var_id),'nc_write_model_atts','def_var H_DIAB_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "long_name", "diabatic heating"), &
+                    'nc_write_model_atts','def_var H_DIAB_d0'//idom//' long_name')
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", ""), &
+                    'nc_write_model_atts','def_var H_DIAB_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileID, var_id, "FieldType", 104), &
+                    'nc_write_model_atts','def_var H_DIAB_d0'//idom//' FieldType')
+      call nc_check(nf90_put_att(ncFileID, var_id, "MemoryOrder", "XYZ"), &
+                    'nc_write_model_atts','def_var H_DIAB_d0'//idom//' MemoryOrder')
+      call nc_check(nf90_put_att(ncFileID, var_id, "stagger", ""), &
+                    'nc_write_model_atts','def_var H_DIAB_d0'//idom//' stagger')
+      call nc_check(nf90_put_att(ncFileId, var_id, "description", &
+                    "previous timestep condensational heating"), &
+                    'nc_write_model_atts','def_var H_DIAB_d0'//idom//' description')
    endif
 
 enddo
@@ -3775,16 +4002,24 @@ endif
 !-----------------------------------------------------------------
 ! Fill the variables we can
 !-----------------------------------------------------------------
-call check(nf90_enddef(ncfileID))
+call nc_check(nf90_enddef(ncfileID),'nc_write_model_atts','enddef')
 
-call check(nf90_put_var(ncFileID,        DXVarID, wrf%dom(1:num_domains)%dx))
-call check(nf90_put_var(ncFileID,        DYVarID, wrf%dom(1:num_domains)%dy))
-call check(nf90_put_var(ncFileID,  TRUELAT1VarID, wrf%dom(1:num_domains)%proj%truelat1))
-call check(nf90_put_var(ncFileID,  TRUELAT2VarID, wrf%dom(1:num_domains)%proj%truelat2))
-call check(nf90_put_var(ncFileID, STAND_LONVarID, wrf%dom(1:num_domains)%proj%stdlon))
-call check(nf90_put_var(ncFileID,   CEN_LATVarID, wrf%dom(1:num_domains)%cen_lat))
-call check(nf90_put_var(ncFileID,   CEN_LONVarID, wrf%dom(1:num_domains)%cen_lon))
-call check(nf90_put_var(ncFileID,  MAP_PROJVarID, wrf%dom(1:num_domains)%map_proj))
+call nc_check(nf90_put_var(ncFileID,        DXVarID, wrf%dom(1:num_domains)%dx), &
+              'nc_write_model_atts','put_var dx')
+call nc_check(nf90_put_var(ncFileID,        DYVarID, wrf%dom(1:num_domains)%dy), &
+              'nc_write_model_atts','put_var dy')
+call nc_check(nf90_put_var(ncFileID,  TRUELAT1VarID, wrf%dom(1:num_domains)%proj%truelat1), &
+              'nc_write_model_atts','put_var truelat1')
+call nc_check(nf90_put_var(ncFileID,  TRUELAT2VarID, wrf%dom(1:num_domains)%proj%truelat2), &
+              'nc_write_model_atts','put_var truelat2')
+call nc_check(nf90_put_var(ncFileID, STAND_LONVarID, wrf%dom(1:num_domains)%proj%stdlon), &
+              'nc_write_model_atts','put_var stdlon')
+call nc_check(nf90_put_var(ncFileID,   CEN_LATVarID, wrf%dom(1:num_domains)%cen_lat), &
+              'nc_write_model_atts','put_var cen_lat')
+call nc_check(nf90_put_var(ncFileID,   CEN_LONVarID, wrf%dom(1:num_domains)%cen_lon), &
+              'nc_write_model_atts','put_var cen_lon')
+call nc_check(nf90_put_var(ncFileID,  MAP_PROJVarID, wrf%dom(1:num_domains)%map_proj), &
+              'nc_write_model_atts','put_var map_proj')
 
 !nc -- convert internally logical boundary condition variables into integers before filling
 do id=1,num_domains
@@ -3794,7 +4029,8 @@ do id=1,num_domains
       tmp(id) = 0
    end if
 end do
-call check(nf90_put_var(ncFileID, PERIODIC_XVarID, tmp(1:num_domains) ))
+call nc_check(nf90_put_var(ncFileID, PERIODIC_XVarID, tmp(1:num_domains) ), &
+              'nc_write_model_atts','put_var PERIODIC_XVarID')
 
 do id=1,num_domains
    if ( wrf%dom(id)%polar ) then
@@ -3803,27 +4039,41 @@ do id=1,num_domains
       tmp(id) = 0
    end if
 end do
-call check(nf90_put_var(ncFileID, POLARVarID, tmp(1:num_domains) ))
+call nc_check(nf90_put_var(ncFileID, POLARVarID, tmp(1:num_domains) ), &
+              'nc_write_model_atts','put var POLARVarID')
 
 
 do id=1,num_domains
 
 ! defining grid levels
-   call check(nf90_put_var(ncFileID,       DNVarID(id), wrf%dom(id)%dn        ))
-   call check(nf90_put_var(ncFileID,      ZNUVarID(id), wrf%dom(id)%znu       ))
-   call check(nf90_put_var(ncFileID,      DNWVarID(id), wrf%dom(id)%dnw       ))
+   call nc_check(nf90_put_var(ncFileID,       DNVarID(id), wrf%dom(id)%dn), &
+              'nc_write_model_atts','put_var dn')
+   call nc_check(nf90_put_var(ncFileID,      ZNUVarID(id), wrf%dom(id)%znu), &
+              'nc_write_model_atts','put_var znu')
+   call nc_check(nf90_put_var(ncFileID,      DNWVarID(id), wrf%dom(id)%dnw), &
+              'nc_write_model_atts','put_var dnw')
 
 ! defining horizontal
-   call check(nf90_put_var(ncFileID,      mubVarID(id), wrf%dom(id)%mub       ))
-   call check(nf90_put_var(ncFileID,      LonVarID(id), wrf%dom(id)%longitude ))
-   call check(nf90_put_var(ncFileID,      LatVarID(id), wrf%dom(id)%latitude  ))
-   call check(nf90_put_var(ncFileID,     ilevVarID(id), (/ (i,i=1,wrf%dom(id)%bt) /) ))
-   call check(nf90_put_var(ncFileID,    XlandVarID(id), wrf%dom(id)%land      ))
-!   call check(nf90_put_var(ncFileID,  MapFacMVarID(id), wrf%dom(id)%mapfac_m  ))
-!   call check(nf90_put_var(ncFileID,  MapFacUVarID(id), wrf%dom(id)%mapfac_u  ))
-!   call check(nf90_put_var(ncFileID,  MapFacVVarID(id), wrf%dom(id)%mapfac_v  ))
-   call check(nf90_put_var(ncFileID,      phbVarID(id), wrf%dom(id)%phb       ))
-   call check(nf90_put_var(ncFileID,      hgtVarID(id), wrf%dom(id)%hgt       ))
+   call nc_check(nf90_put_var(ncFileID,      mubVarID(id), wrf%dom(id)%mub), &
+              'nc_write_model_atts','put_var mub')
+   call nc_check(nf90_put_var(ncFileID,      LonVarID(id), wrf%dom(id)%longitude), &
+              'nc_write_model_atts','put_var longitude')
+   call nc_check(nf90_put_var(ncFileID,      LatVarID(id), wrf%dom(id)%latitude), &
+              'nc_write_model_atts','put_var latitude')
+   call nc_check(nf90_put_var(ncFileID,     ilevVarID(id), (/ (i,i=1,wrf%dom(id)%bt) /)), &
+              'nc_write_model_atts','put_var bt')
+   call nc_check(nf90_put_var(ncFileID,    XlandVarID(id), wrf%dom(id)%land), &
+              'nc_write_model_atts','put_var land')
+!   call nc_check(nf90_put_var(ncFileID,  MapFacMVarID(id), wrf%dom(id)%mapfac_m), &
+!             'nc_write_model_atts','put_var mapfac_m')
+!   call nc_check(nf90_put_var(ncFileID,  MapFacUVarID(id), wrf%dom(id)%mapfac_u), &
+!             'nc_write_model_atts','put_var mapfac_u')
+!   call nc_check(nf90_put_var(ncFileID,  MapFacVVarID(id), wrf%dom(id)%mapfac_v), &
+!             'nc_write_model_atts','put_var mapfac_v')
+   call nc_check(nf90_put_var(ncFileID,      phbVarID(id), wrf%dom(id)%phb), &
+              'nc_write_model_atts','put_var phb')
+   call nc_check(nf90_put_var(ncFileID,      hgtVarID(id), wrf%dom(id)%hgt), &
+              'nc_write_model_atts','put_var hgt')
 
 enddo
 
@@ -3831,21 +4081,9 @@ enddo
 ! Flush the buffer and leave netCDF file open
 !-----------------------------------------------------------------
 
-call check(nf90_sync(ncFileID))
+call nc_check(nf90_sync(ncFileID),'nc_write_model_atts','sync')
 
 write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...'
-
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints
-  !                       text message each time an error code is returned.
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-
-    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_write_model_atts', &
-       trim(nf90_strerror(istatus)), source, revision, revdate)
-
-  end subroutine check
 
 end function nc_write_model_atts
 
@@ -3884,13 +4122,16 @@ ierr = 0     ! assume normal termination
 ! then get all the Variable ID's we need.
 !-----------------------------------------------------------------
 
-call check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID))
+call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
+              'nc_write_model_vars','inquire')
 
 if ( output_state_vector ) then
 
-   call check(NF90_inq_varid(ncFileID, "state", StateVarID) )
-   call check(NF90_put_var(ncFileID, StateVarID, statevec,  &
-                start=(/ 1, copyindex, timeindex /)))
+   call nc_check(nf90_inq_varid(ncFileID, "state", StateVarID), &
+              'nc_write_model_vars','inq_varid state')
+   call nc_check(nf90_put_var(ncFileID, StateVarID, statevec, &
+                start=(/ 1, copyindex, timeindex /)), &
+              'nc_write_model_vars','put_var statevec')
 
 else
 
@@ -3907,116 +4148,132 @@ do id=1,num_domains
    !----------------------------------------------------------------------------
    varname = 'U_d0'//idom
    !----------------------------------------------------------------------------
-   call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+   call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
    i       = j + 1
    j       = i + wrf%dom(id)%wes * wrf%dom(id)%sn * wrf%dom(id)%bt - 1 
    if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-              trim(adjustl(varname)),i,j,wrf%dom(id)%wes,wrf%dom(id)%sn,wrf%dom(id)%bt 
+              trim(varname),i,j,wrf%dom(id)%wes,wrf%dom(id)%sn,wrf%dom(id)%bt 
    allocate ( temp3d(wrf%dom(id)%wes, wrf%dom(id)%sn, wrf%dom(id)%bt) )
    temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%wes, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
-   call check(nf90_put_var( ncFileID, VarID, temp3d, &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
+   call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+                            start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
    deallocate(temp3d)
 
 
    !----------------------------------------------------------------------------
    varname = 'V_d0'//idom
    !----------------------------------------------------------------------------
-   call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+   call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
    i       = j + 1
    j       = i + wrf%dom(id)%we * wrf%dom(id)%sns * wrf%dom(id)%bt - 1
    if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-              trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sns,wrf%dom(id)%bt
+              trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sns,wrf%dom(id)%bt
    allocate ( temp3d(wrf%dom(id)%we, wrf%dom(id)%sns, wrf%dom(id)%bt) )
    temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sns, wrf%dom(id)%bt /) ) 
-   call check(nf90_put_var( ncFileID, VarID, temp3d, &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
+   call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+                            start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
    deallocate(temp3d)
 
 
    !----------------------------------------------------------------------------
    varname = 'W_d0'//idom
    !----------------------------------------------------------------------------
-   call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+   call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
    i       = j + 1
    j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bts - 1
    if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-              trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bts
+              trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bts
    allocate ( temp3d(wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bts) )
    temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bts /) ) 
-   call check(nf90_put_var( ncFileID, VarID, temp3d, &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
+   call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+                            start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
 
    !----------------------------------------------------------------------------
    varname = 'PH_d0'//idom       ! AKA "GZ"
    !----------------------------------------------------------------------------
-   call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+   call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
    i       = j + 1
    j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bts - 1
    if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-              trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bts
+              trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bts
    temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bts /) ) 
-   call check(nf90_put_var( ncFileID, VarID, temp3d, &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
+   call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+                            start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
    deallocate(temp3d)
 
 
    !----------------------------------------------------------------------------
    varname = 'T_d0'//idom
    !----------------------------------------------------------------------------
-   call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+   call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
    i       = j + 1
    j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt - 1
    if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-              trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
+              trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
    allocate ( temp3d(wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt) )
    temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
-   call check(nf90_put_var( ncFileID, VarID, temp3d, &
-                            start=(/ 1, 1, 1, copyindex, timeindex /) ))
+   call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+                            start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
    deallocate(temp3d)
 
 
    !----------------------------------------------------------------------------
    varname = 'MU_d0'//idom
    !----------------------------------------------------------------------------
-   call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+   call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
    i       = j + 1
    j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
    if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-              trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
+              trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
    allocate ( temp2d(wrf%dom(id)%we, wrf%dom(id)%sn) )
    temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
-   call check(nf90_put_var( ncFileID, VarID, temp2d, &
-                            start=(/ 1, 1, copyindex, timeindex /) ))
+   call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
+                            start=(/ 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
 
    !----------------------------------------------------------------------------
    varname = 'TSK_d0'//idom
    !----------------------------------------------------------------------------
-   call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+   call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
    i       = j + 1
    j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
    if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-              trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
+              trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
    temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
-   call check(nf90_put_var( ncFileID, VarID, temp2d, &
-                            start=(/ 1, 1, copyindex, timeindex /) ))
+   call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
+                            start=(/ 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
 
    if( wrf%dom(id)%n_moist >= 1) then
       !----------------------------------------------------------------------------
       varname = 'QVAPOR_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
       allocate ( temp3d(wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt) )
       temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp3d, &
-           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
    endif
 
 
@@ -4024,14 +4281,16 @@ do id=1,num_domains
       !----------------------------------------------------------------------------
       varname = 'QCLOUD_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
       temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp3d, &
-           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
    endif
 
 
@@ -4039,14 +4298,16 @@ do id=1,num_domains
       !----------------------------------------------------------------------------
       varname = 'QRAIN_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
       temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp3d, &
-           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
    endif
 
 
@@ -4054,53 +4315,61 @@ do id=1,num_domains
       !----------------------------------------------------------------------------
       varname = 'QICE_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
       temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp3d, &
-           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
    endif
    if( wrf%dom(id)%n_moist >= 5) then
       !----------------------------------------------------------------------------
       varname = 'QSNOW_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
       temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp3d, &
-           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
    endif
    if( wrf%dom(id)%n_moist >= 6) then
       !----------------------------------------------------------------------------
       varname = 'QGRAUP_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
       temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp3d, &
-           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
    endif
    if( wrf%dom(id)%n_moist == 7) then
       !----------------------------------------------------------------------------
       varname = 'QNICE_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
       temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp3d, &
-           start=(/ 1, 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+           start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
    endif
 
    deallocate(temp3d)
@@ -4116,74 +4385,86 @@ do id=1,num_domains
       !----------------------------------------------------------------------------
       varname = 'U10_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
       temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp2d, &
-           start=(/ 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
+           start=(/ 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
       !----------------------------------------------------------------------------
       varname = 'V10_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
       temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp2d, &
-           start=(/ 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
+           start=(/ 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
       !----------------------------------------------------------------------------
       varname = 'T2_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
       temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp2d, &
-           start=(/ 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
+           start=(/ 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
       !----------------------------------------------------------------------------
       varname = 'TH2_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
       temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp2d, &
-           start=(/ 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
+           start=(/ 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
       !----------------------------------------------------------------------------
       varname = 'Q2_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
       temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp2d, &
-           start=(/ 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
+           start=(/ 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
       !----------------------------------------------------------------------------
       varname = 'PS_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-           trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
+           trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
       temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp2d, &
-           start=(/ 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
+           start=(/ 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
    endif
 
@@ -4192,39 +4473,45 @@ do id=1,num_domains
       !----------------------------------------------------------------------------
       varname = 'TSLB_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%sls - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-                 trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls
+                 trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls
       allocate ( temp3d(wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%sls) )
       temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%sls /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp3d, &
-                               start=(/ 1, 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+                               start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
       !----------------------------------------------------------------------------
       varname = 'SMOIS_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%sls - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-                 trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls
+                 trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls
       temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%sls /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp3d, &
-                               start=(/ 1, 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+                               start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
       !----------------------------------------------------------------------------
       varname = 'SH2O_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%sls - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-                 trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls
+                 trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls
       temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%sls /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp3d, &
-                               start=(/ 1, 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+                               start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
       deallocate(temp3d)
 
@@ -4237,15 +4524,17 @@ do id=1,num_domains
       !----------------------------------------------------------------------------
       varname = 'H_DIAB_d0'//idom
       !----------------------------------------------------------------------------
-      call check(NF90_inq_varid(ncFileID, trim(adjustl(varname)), VarID))
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
       i       = j + 1
       j       = i + wrf%dom(id)%we * wrf%dom(id)%sn * wrf%dom(id)%bt - 1
       if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-                 trim(adjustl(varname)),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
+                 trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bt
       allocate ( temp3d(wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt) )
       temp3d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn, wrf%dom(id)%bt /) ) 
-      call check(nf90_put_var( ncFileID, VarID, temp3d, &
-                               start=(/ 1, 1, 1, copyindex, timeindex /) ))
+      call nc_check(nf90_put_var( ncFileID, VarID, temp3d, &
+                               start=(/ 1, 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
       deallocate(temp3d)
 
    end if
@@ -4259,20 +4548,8 @@ endif
 !-----------------------------------------------------------------
 
 write (*,*)'Finished filling variables ...'
-call check(nf90_sync(ncFileID))
+call nc_check(nf90_sync(ncFileID), 'nc_write_model_vars','sync')
 write (*,*)'netCDF file is synched ...'
-
-contains
-
-  ! Internal subroutine - checks error status after each netcdf, prints
-  !                       text message each time an error code is returned.
-  subroutine check(istatus)
-    integer, intent ( in) :: istatus
-
-    if(istatus /= nf90_noerr) call error_handler(E_ERR, 'nc_write_model_vars', &
-         trim(nf90_strerror(istatus)), source, revision, revdate)
-
-  end subroutine check
 
 end function nc_write_model_vars
 
