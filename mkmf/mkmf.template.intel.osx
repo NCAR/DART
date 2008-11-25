@@ -31,7 +31,7 @@
 #
 
 MPIFC = mpif90
-MPILC = mpif90
+MPILD = mpif90
 FC = ifort
 LD = ifort
 NETCDF = /usr/local
