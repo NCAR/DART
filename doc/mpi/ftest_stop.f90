@@ -58,6 +58,7 @@ include "mpif.h"
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
+implicit none
 
 ! integer variables
 integer :: ierror, myrank, totalprocs
@@ -172,7 +173,7 @@ logical :: verbose
    verbose = .true.
 
    ! the i5.5 format below will not handle task counts larger than this.
-   if (total_tasks > 99999) then
+   if (totalprocs > 99999) then
       print *, 'cannot handle task counts > 99999'
       call exit
    endif

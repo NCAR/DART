@@ -42,7 +42,9 @@ include "mpif.h"
 ! BUILD TIP 2:
 ! Some systems require this interface block in order to use the system()
 ! function.  However, some other systems complain if this is here... 
-! If this is a problem your program will not link and most likely give ! you an error about an undefined symbol (something like '_system_').  ! Comment this block in or out as needed.
+! If this is a problem your program will not link and most likely give 
+! you an error about an undefined symbol (something like '_system_').  
+! Comment this block in or out as needed.
 
 ! ! interface block for getting return code back from system() routine
 ! interface
@@ -55,6 +57,7 @@ include "mpif.h"
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+implicit none
 
 ! integer variables
 integer :: ierror, myrank, totalprocs
@@ -162,7 +165,7 @@ logical :: verbose
    verbose = .true.
 
    ! the i5.5 format below will not handle task counts larger than this.
-   if (total_tasks > 99999) then
+   if (totalprocs > 99999) then
       print *, 'cannot handle task counts > 99999'
       call exit
    endif

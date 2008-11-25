@@ -56,6 +56,7 @@ include "mpif.h"
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+implicit none
 
 ! integer variables
 integer :: ierror, myrank, totalprocs, rc
