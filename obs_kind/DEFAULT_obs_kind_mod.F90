@@ -91,6 +91,17 @@ integer, parameter, public :: &
    KIND_V_CURRENT_COMPONENT         = 52, &
    KIND_SEA_SURFACE_HEIGHT          = 53
 
+! kinds for planetary remote sensing (wglawson)
+integer, parameter, public :: &
+   KIND_SKIN_TEMPERATURE            = 70, &
+   KIND_NADIR_RADIANCE              = 71, &
+   KIND_TRACER_1_MIXING_RATIO       = 72, &  ! for active dust aerosols
+   KIND_TRACER_2_MIXING_RATIO       = 73, &  ! for active dust aerosols
+   ! Is KIND_TRACER_MIXING_RATIO really necessary with KIND_TRACER_CONCENTRATION
+   !   (= 29) available from the simple advection model?
+   KIND_SOIL_TEMPERATURE            = 74, &  ! missing from WRF model_mod (?)
+   KIND_SOIL_LIQUID_WATER           = 75     ! missing from WRF model_mod (?)
+
 ! kinds for vortex tracking (WRF - yongsheng)
 integer, parameter, public :: &
    KIND_VORTEX_LON                  = 81, &
