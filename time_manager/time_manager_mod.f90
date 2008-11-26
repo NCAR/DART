@@ -53,27 +53,35 @@ public :: set_time, set_time_missing, increment_time, decrement_time, get_time
 public :: interval_alarm, repeat_alarm
 
 ! List of available calendar types
-!!! NO_LEAP changed to NOLEAP for some weird FMS Havana compliance
-public :: THIRTY_DAY_MONTHS,    JULIAN,    GREGORIAN,  NOLEAP,   NO_CALENDAR
+public :: THIRTY_DAY_MONTHS,    JULIAN,    GREGORIAN,  NOLEAP,   NO_CALENDAR, &
+          GREGORIAN_MARS
 
 ! Subroutines and functions involving relations between time and calendar
 public :: set_calendar_type, get_calendar_type
 public :: set_date,       set_date_gregorian,         set_date_julian, &
-                          set_date_thirty,            set_date_no_leap
+                          set_date_thirty,            set_date_no_leap, &
+                          set_date_gregorian_mars
 public :: get_date,       get_date_gregorian,         get_date_julian, &
-                          get_date_thirty,            get_date_no_leap
+                          get_date_thirty,            get_date_no_leap, &
+                          get_date_gregorian_mars
 public :: increment_date, increment_gregorian,        increment_julian, &
-                          increment_thirty,           increment_no_leap
+                          increment_thirty,           increment_no_leap, &
+                          increment_gregorian_mars
 public :: decrement_date, decrement_gregorian,        decrement_julian, &
-                          decrement_thirty,           decrement_no_leap
+                          decrement_thirty,           decrement_no_leap, &
+                          decrement_gregorian_mars
 public :: days_in_month,  days_in_month_gregorian,    days_in_month_julian, &
-                          days_in_month_no_leap,      days_in_month_thirty
+                          days_in_month_no_leap,      days_in_month_thirty, &
+                          days_in_month_gregorian_mars
 public :: leap_year,      leap_year_gregorian,        leap_year_julian, &
-                          leap_year_no_leap,          leap_year_thirty
+                          leap_year_no_leap,          leap_year_thirty, &
+                          leap_year_gregorian_mars
 public :: length_of_year, length_of_year_thirty,      length_of_year_julian, &
-                          length_of_year_gregorian,   length_of_year_no_leap
+                          length_of_year_gregorian,   length_of_year_no_leap, &
+                          length_of_year_gregorian_mars
 public :: days_in_year,   days_in_year_thirty,        days_in_year_julian, &
-                          days_in_year_gregorian,     days_in_year_no_leap
+                          days_in_year_gregorian,     days_in_year_no_leap, &
+                          days_in_year_gregorian_mars
 public :: month_name
 
 public :: julian_day
@@ -91,10 +99,10 @@ character(len=128), parameter :: &
 ! Global data to define calendar type
 integer, parameter :: THIRTY_DAY_MONTHS = 1,      JULIAN = 2, &
                       GREGORIAN = 3,              NOLEAP = 4, &
-                      NO_CALENDAR = 0
-! HAMMERING DEFAULT CALENDAR TYPE --- MUST FIX FOR REAL --- TJH
-! integer, private :: calendar_type = GREGORIAN, max_type = 4
-integer, private :: calendar_type = NO_CALENDAR, max_type = 4
+                      NO_CALENDAR = 0,            GREGORIAN_MARS = 5
+! FIXME: should be a namelist to select default calendar.  make no calendar the
+! default for now
+integer, private :: calendar_type = NO_CALENDAR, max_type = 5
 
 ! Define number of days per month
 integer, private :: days_per_month(12) = (/31,28,31,30,31,30,31,31,30,31,30,31/)
@@ -765,9 +773,12 @@ case(JULIAN)
    call get_date_julian(time, year, month, day, hour, minute, second)
 case(NOLEAP)
    call get_date_no_leap(time, year, month, day, hour, minute, second)
+case(GREGORIAN_MARS)
+   ! NOTE: "month" has no meaning in Mars calendar
+   call get_date_gregorian_mars(time, year, month, day, hour, minute, second)
 case default
    write(errstring,*)'type is ',calendar_type,' must be one of ', &
-                      THIRTY_DAY_MONTHS,GREGORIAN,JULIAN,NOLEAP
+                      THIRTY_DAY_MONTHS,GREGORIAN,JULIAN,NOLEAP,GREGORIAN_MARS
    call error_handler(E_ERR,'get_date',errstring,source,revision,revdate)
 end select
 end subroutine get_date
@@ -975,6 +986,72 @@ second = t - 60 * minute
 
 end subroutine get_date_no_leap
 
+
+subroutine get_date_gregorian_mars(time, year, month, day, hour, minute, second)
+!------------------------------------------------------------------------
+!
+! Computes date corresponding to time for gregorian MARS calendar
+! wgl - we need this to easily map from MarsWRF calendar to time_type
+!         NOTE :: "month" has no meaning for the Mars calendar
+!         ALSO :: the first day of the year is day 1, not 0
+!         PlanetWRF wrfout files follow :: YYYY-DDDDD_HH:MM:SS
+!
+! To be clear, the first Mars year is:
+!   According to MarsWRF         :: 0001-00001_00:00:00  thru  0001-00669_23:59:59
+!   According to DART time_type  :: days=0, secs=0       thru  days=668, secs=86399
+
+implicit none
+
+type(time_type), intent(in)  :: time
+integer,         intent(out) :: second, minute, hour, day, month, year
+
+integer :: t
+integer :: num_days, iyear, days_this_year
+
+! "base_year" for Mars will be defined as 1 (earliest wrfout file has year = 1)
+integer, parameter :: base_year= 1
+
+if ( .not. module_initialized ) call time_manager_init
+
+! Do this the inefficient inelegant way for now, top is 10000 years
+num_days = time%days
+do iyear = base_year, 10000
+
+   ! No leap years currently defined on Mars -- we generally run with the 
+   !   a WRF constant "PLANET_YEAR = 669", even though Mars year really has
+   !   668.6 days in its year (where "day" here is really "sol" = 1 solar day)
+   days_this_year = 669
+
+   if (num_days >= days_this_year) then
+      num_days = num_days - days_this_year
+   else
+      year = iyear
+      goto 111
+   endif
+
+end do
+
+111 continue
+
+
+! No need to deal with months on Mars -- make it 1 by default so that other
+!    functions do not break (like print_date and month_name)
+month = 1
+
+! Need to add 1 because Mars has NO day 0
+day = num_days + 1
+
+
+! Find hour,minute and second
+t      = time%seconds
+hour   = t / (60 * 60)
+t      = t - hour * (60 * 60)
+minute = t / 60
+second = t - 60 * minute
+
+end subroutine get_date_gregorian_mars
+
+
 !========================================================================
 ! END OF get_date BLOCK
 !========================================================================
@@ -1013,9 +1090,11 @@ case(JULIAN)
    set_date =    set_date_julian(year, month, day, ohours, ominutes, oseconds)
 case(NOLEAP)
    set_date =   set_date_no_leap(year, month, day, ohours, ominutes, oseconds)
+case(GREGORIAN_MARS)
+   set_date =   set_date_gregorian_mars(year, month, day, ohours, ominutes, oseconds)
 case default
    write(errstring,*)'type is ',calendar_type,' must be one of ', &
-                      THIRTY_DAY_MONTHS,GREGORIAN,JULIAN,NOLEAP
+                      THIRTY_DAY_MONTHS,GREGORIAN,JULIAN,NOLEAP,GREGORIAN_MARS
    call error_handler(E_ERR,'set_date',errstring,source,revision,revdate)
 end select
 end function set_date
@@ -1249,6 +1328,63 @@ set_date_no_leap = set_time(oseconds + 60 * (ominutes + 60 * ohours), &
 
 end function set_date_no_leap
 
+
+function set_date_gregorian_mars(year, month, day, hours, minutes, seconds)
+!------------------------------------------------------------------------
+!
+! Computes time corresponding to date for gregorian MARS calendar.
+! wgl - we need this to easily map from MarsWRF calendar to time_type
+!         NOTE :: "month" has no meaning for the Mars calendar
+!         ALSO :: the first day of the year is day 1, not 0
+!         PlanetWRF wrfout files follow :: YYYY-DDDDD_HH:MM:SS
+!
+! To be clear, the first Mars year is:
+!   According to MarsWRF         :: 0001-00001_00:00:00  thru  0001-00669_23:59:59
+!   According to DART time_type  :: days=0, secs=0       thru  days=668, secs=86399
+
+implicit none
+
+integer, intent(in)           :: day, month, year
+integer, intent(in), optional :: seconds, minutes, hours
+type(time_type)               :: set_date_gregorian_mars
+
+character(len=129) :: errstring
+integer :: oseconds, ominutes, ohours
+
+! "base_year" for Mars will be defined as 1 (earliest wrfout file has year = 1)
+integer :: base_year = 1
+
+if ( .not. module_initialized ) call time_manager_init
+
+! Missing optionals are set to 0
+
+oseconds = 0; if(present(seconds)) oseconds = seconds
+ominutes = 0; if(present(minutes)) ominutes = minutes
+ohours   = 0; if(present(hours  ))   ohours = hours
+
+! Need to check for bogus dates
+
+! Do not bother checking month bounds because it has no meaning (though it should
+!   be set to 1)
+if(    oseconds > 59 .or. oseconds < 0 .or. &
+       ominutes > 59 .or. ominutes < 0 .or. &
+       ohours   > 23 .or. ohours   < 0 .or. &
+                          day      < 1 .or. &
+                          year     < base_year) then
+   write(errstring,*)'s,m,h,d,mn,y',oseconds,ominutes,ohours,day,month,year,' not a valid date'
+   call error_handler(E_ERR,'set_date_gregorian',errstring,source,revision,revdate)
+endif
+
+! Month has no meaning for Mars calendar
+
+! Currently there is no leap year defined for Mars
+
+set_date_gregorian_mars%seconds = oseconds + 60*(ominutes + 60 * ohours)
+set_date_gregorian_mars%days = day - 1 + 669*(year - base_year)
+
+end function set_date_gregorian_mars
+
+
 !=========================================================================
 ! END OF set_date BLOCK
 !=========================================================================
@@ -1298,9 +1434,12 @@ case(JULIAN)
 case(NOLEAP)
    increment_date = increment_no_leap(time, oyears, omonths, odays, &
                                      ohours, ominutes, oseconds)
+case(GREGORIAN_MARS)
+   increment_date = increment_gregorian_mars(time, oyears, omonths, odays, &
+                                     ohours, ominutes, oseconds)
 case default
    write(errstring,*)'calendar type (',calendar_type,') must be one of ', &
-                      THIRTY_DAY_MONTHS ,GREGORIAN,JULIAN,NOLEAP
+                      THIRTY_DAY_MONTHS ,GREGORIAN,JULIAN,NOLEAP,GREGORIAN_MARS
    call error_handler(E_ERR,'increment_date',errstring,source,revision,revdate)
 end select
 end function increment_date
@@ -1577,6 +1716,31 @@ increment_no_leap = set_date_no_leap(cyear, cmonth, cday, chour, cminute, csecon
 end function increment_no_leap
 
 
+function increment_gregorian_mars(time, years, months, days, hours, minutes, seconds)
+!-------------------------------------------------------------------------
+!
+! Given time and some date increment, computes new time for gregorian MARS calendar.
+
+implicit none
+
+type(time_type), intent(in)           :: time
+integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
+type(time_type)                       :: increment_gregorian_mars
+
+!integer :: oseconds, ominutes, ohours, odays, omonths, oyears
+!integer :: csecond, cminute, chour, cday, cmonth, cyear
+
+if ( .not. module_initialized ) call time_manager_init
+
+call error_handler(E_ERR,'increment_gregorian_mars','not implemented',source,revision,revdate)
+
+! FIXME: set a return value to avoid compiler warnings
+increment_gregorian_mars = time
+
+end function increment_gregorian_mars
+
+
+
 !=========================================================================
 ! END OF increment_date BLOCK
 !=========================================================================
@@ -1625,6 +1789,9 @@ case(JULIAN)
                        ohours, ominutes, oseconds)
 case(NOLEAP)
    decrement_date = decrement_no_leap(time, oyears, omonths, odays, &
+                       ohours, ominutes, oseconds)
+case(GREGORIAN_MARS)
+   decrement_date = decrement_gregorian_mars(time, oyears, omonths, odays, &
                        ohours, ominutes, oseconds)
 case default
    write(errstring,*)'calendar type (',calendar_type,') not allowed.'
@@ -1900,6 +2067,31 @@ decrement_no_leap = set_date_no_leap(cyear, cmonth, cday, chour, cminute, csecon
 end function decrement_no_leap
 
 
+function decrement_gregorian_mars(time, years, months, days, hours, minutes, seconds)
+!-------------------------------------------------------------------------
+!
+! Given time and some date decrement, computes new time for gregorian MARS calendar.
+
+implicit none
+
+type(time_type), intent(in)           :: time
+integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
+type(time_type)                       :: decrement_gregorian_mars
+
+!integer :: oseconds, ominutes, ohours, odays, omonths, oyears
+!integer :: csecond, cminute, chour, cday, cmonth, cyear
+
+if ( .not. module_initialized ) call time_manager_init
+
+call error_handler(E_ERR,'decrement_gregorian','not implemented',source,revision,revdate)
+
+! FIXME: set a return value to avoid compiler warnings
+decrement_gregorian_mars = time
+
+end function decrement_gregorian_mars
+
+
+
 !=========================================================================
 ! END OF decrement_date BLOCK
 !=========================================================================
@@ -1931,6 +2123,8 @@ case(JULIAN)
    days_in_month = days_in_month_julian(time)
 case(NOLEAP)
    days_in_month = days_in_month_no_leap(time)
+case(GREGORIAN_MARS)
+   days_in_month = days_in_month_gregorian_mars(time)
 case default
    write(errstring,*)'Invalid calendar type (',calendar_type,')'
    call error_handler(E_ERR,'days_in_month',errstring,source,revision,revdate)
@@ -2017,6 +2211,26 @@ days_in_month_no_leap= days_per_month(month)
 end function days_in_month_no_leap
 
 
+function days_in_month_gregorian_mars(time)
+!--------------------------------------------------------------------------
+!
+! Returns the number of days in a gregorian MARS month.
+
+implicit none
+
+type(time_type), intent(in) :: time
+integer                     :: days_in_month_gregorian_mars
+
+if ( .not. module_initialized ) call time_manager_init
+
+call error_handler(E_ERR,'days_in_month_gregorian_mars', &
+                  'not implemented; oh, and, dude, Mars has no months',&
+                  source,revision,revdate)
+days_in_month_gregorian_mars = -1
+
+end function days_in_month_gregorian_mars
+
+
 !==========================================================================
 ! END OF days_in_month BLOCK
 !==========================================================================
@@ -2046,6 +2260,8 @@ case(JULIAN)
    leap_year = leap_year_julian(time)
 case(NOLEAP)
    leap_year = leap_year_no_leap(time)
+case(GREGORIAN_MARS)
+   leap_year = leap_year_gregorian_mars(time)
 case default
    write(errstring,*)'invalid calendar type (',calendar_type,')'
    call error_handler(E_ERR,'leap_year',errstring,source,revision,revdate)
@@ -2066,7 +2282,8 @@ logical                     :: leap_year_gregorian
 
 if ( .not. module_initialized ) call time_manager_init
 
-call error_handler(E_ERR,'leap_year_gregorian','not implemented',source,revision,revdate)
+call error_handler(E_ERR,'leap_year_gregorian','not implemented',&
+                   source,revision,revdate)
 
 leap_year_gregorian = .FALSE.
 
@@ -2132,6 +2349,29 @@ leap_year_no_leap = .FALSE.
 end function leap_year_no_leap
 
 
+function leap_year_gregorian_mars(time)
+!--------------------------------------------------------------------------
+!
+! Is this a leap year for gregorian calendar?
+! trick question: answer is always no.
+
+implicit none
+
+type(time_type), intent(in) :: time
+logical                     :: leap_year_gregorian_mars
+
+if ( .not. module_initialized ) call time_manager_init
+
+call error_handler(E_MSG,'leap_year_gregorian_mars', &
+                  'not implemented; oh, and, dude, Mars has no leap year',&
+                   source,revision,revdate)
+
+leap_year_gregorian_mars = .FALSE.
+
+end function leap_year_gregorian_mars
+
+
+
 !==========================================================================
 ! END OF leap_year BLOCK
 !==========================================================================
@@ -2161,6 +2401,8 @@ case(JULIAN)
    length_of_year = length_of_year_julian()
 case(NOLEAP)
    length_of_year = length_of_year_no_leap()
+case(GREGORIAN_MARS)
+   length_of_year = length_of_year_gregorian_mars()
 case default
    write(errstring,*)'invalid calendar type (',calendar_type,')'
    call error_handler(E_ERR,'length_of_year',errstring,source,revision,revdate)
@@ -2232,6 +2474,21 @@ length_of_year_no_leap = set_time(0, 365)
 end function length_of_year_no_leap
 
 
+
+function length_of_year_gregorian_mars()
+!---------------------------------------------------------------------------
+
+implicit none
+
+type(time_type) :: length_of_year_gregorian_mars
+
+if ( .not. module_initialized ) call time_manager_init
+
+length_of_year_gregorian_mars = set_time(0, 669)
+
+end function length_of_year_gregorian_mars
+
+
 !==========================================================================
 ! END OF length_of_year BLOCK
 !==========================================================================
@@ -2262,6 +2519,8 @@ case(JULIAN)
    days_in_year = days_in_year_julian(time)
 case(NOLEAP)
    days_in_year = days_in_year_no_leap(time)
+case(GREGORIAN_MARS)
+   days_in_year = days_in_year_gregorian_mars(time)
 case default
    write(errstring,*)'invalid calendar type (',calendar_type,')'
    call error_handler(E_ERR,'days_in_year',errstring,source,revision,revdate)
@@ -2338,6 +2597,22 @@ if ( .not. module_initialized ) call time_manager_init
 days_in_year_no_leap = 365
 
 end function days_in_year_no_leap
+
+
+
+function days_in_year_gregorian_mars(time)
+!---------------------------------------------------------------------------
+
+implicit none
+
+type(time_type), intent(in) :: time
+integer                     :: days_in_year_gregorian_mars
+
+if ( .not. module_initialized ) call time_manager_init
+
+days_in_year_gregorian_mars = 669
+
+end function days_in_year_gregorian_mars
 
 
 !==========================================================================
@@ -2486,13 +2761,28 @@ if ( .not. module_initialized ) call time_manager_init
   if (present(iunit)) unit_in = iunit
 
   call get_date (time,y,mo,d,h,m,s)
-  mon = month_name(mo)
-  if (present(str)) then
-     write (unit_in,10) trim(str)//' ', y,mon(1:3),' ',d,' ',h,':',m,':',s
+
+  ! print_date assumes an Earth calendar -- so check for calendar_type  
+  ! mars day numbers can be 3 digits long since there are no months.
+  if ( calendar_type == GREGORIAN_MARS ) then
+     mon = 'sol'
+     if (present(str)) then
+        write (unit_in,10) trim(str)//' ', y,mon(1:3),' ',d,' ',h,':',m,':',s
+     else
+        write (unit_in,10)       'DATE: ', y,mon(1:3),' ',d,' ',h,':',m,':',s
+     endif
+10   format (a,i4,1x,a3,a1,i3.3,3(a1,i2.2))
+
+  ! if not Mars, then use Earth calendar
   else
-     write (unit_in,10)       'DATE: ', y,mon(1:3),' ',d,' ',h,':',m,':',s
-  endif
-10 format (a,i4,1x,a3,4(a1,i2.2))
+     mon = month_name(mo)
+     if (present(str)) then
+        write (unit_in,11) trim(str)//' ', y,mon(1:3),' ',d,' ',h,':',m,':',s
+     else
+        write (unit_in,11)       'DATE: ', y,mon(1:3),' ',d,' ',h,':',m,':',s
+     endif
+11   format (a,i4,1x,a3,4(a1,i2.2))
+  end if
 
 end subroutine print_date
 
@@ -2626,6 +2916,12 @@ if (calendar_type == GREGORIAN) then
    write(*, *) 'input date (as integers): year month day hour minute second'
    read(*, *) year, month, day, hour, minute, second
    time = set_date(year, month, day, hour, minute, second)
+elseif (calendar_type == GREGORIAN_MARS) then
+   write(*, *) 'input date (as integers): year day hour minute second'
+   read(*, *) year, day, hour, minute, second
+   ! NOTE: "month" has no meaning for Mars calendar
+   month = 1
+   time = set_date(year, month, day, hour, minute, second)
 else
    write(*, *) 'input time in days and seconds (as integers)'
    read(*, *) day, second
@@ -2636,3 +2932,4 @@ end subroutine interactive_time
 
 
 end module time_manager_mod
+
