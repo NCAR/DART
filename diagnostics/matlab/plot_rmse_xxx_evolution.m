@@ -152,7 +152,7 @@ for ivar = 1:plotdat.nvars
       plotdat.ges_Nposs  = guess(:,plotdat.Npossindex, ilevel,:);
       plotdat.anl_Nposs  = analy(:,plotdat.Npossindex, ilevel,:);
       plotdat.ges_Nused  = guess(:,plotdat.Nusedindex, ilevel,:);
-      plotdat.anl_Nused  = guess(:,plotdat.Nusedindex, ilevel,:);
+      plotdat.anl_Nused  = analy(:,plotdat.Nusedindex, ilevel,:);
       plotdat.Yrange     = FindRange(plotdat);
       
       % plot by region
