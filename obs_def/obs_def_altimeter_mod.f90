@@ -97,7 +97,7 @@ if (istatus /= 0) then
 endif
 
 !  Compute the altimeter setting given surface pressure and height, altimeter is hPa
-altimeter_setting = compute_altimeter(psfc * 0.01, hsfc)
+altimeter_setting = compute_altimeter(psfc * 0.01_r8, hsfc)
 
 if (altimeter_setting < 880.0_r8 .or. altimeter_setting >= 1100.0_r8) then
    altimeter_setting = missing_r8
@@ -119,7 +119,7 @@ real(r8), intent(in) :: hsfc  !  (m above MSL)
 
 real(r8) :: compute_altimeter !  (hPa)
 
-compute_altimeter = ((psfc - 0.3) ** k1 + k2 * hsfc) ** (1 / k1)
+compute_altimeter = ((psfc - 0.3_r8) ** k1 + k2 * hsfc) ** (1.0_r8 / k1)
 
 return
 end function compute_altimeter
