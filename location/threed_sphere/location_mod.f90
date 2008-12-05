@@ -552,44 +552,49 @@ end function set_location_missing
 
 
 
-function query_location(loc,attr) result(fval)
+function query_location(loc,attr)
 !---------------------------------------------------------------------------
 !
-! Returns the value of the attribute
+! Returns the value of the requested location quantity
 !
 
 implicit none
 
 type(location_type),        intent(in) :: loc
 character(len=*), optional, intent(in) :: attr
-real(r8)                               :: fval
+real(r8)                               :: query_location
 
 if ( .not. module_initialized ) call initialize_module
 
 ! Workaround for apparent bug in mac osx intel 10.x fortran compiler.
 ! Previous code had a 16 byte local character variable which was
 ! apparently not getting deallocated after this function returned.
-! This code, while it has redundant default lines (attr not present 
-! and the case default) does not exhibit the leak.
 
-if (.not. present(attr)) then
-   fval = loc%which_vert
+! Workaround for a second compiler bug.  The PGI 6.1.x compiler
+! refused to compile the select statement below when it was
+! selectcase(adjustl(attr)).  i'm rearranging the code again because
+! this particular routine has been so troublesome.  i'm removing
+! the result(fval) construct, and setting the default to which_vert
+! and then overwriting it the case we recognize another quantity.
+! if we fall through to the end of the routine, the return value
+! is which_vert.  (This routine is rapidly becoming my favorite
+! problem child.  How can such a short piece of code be so troublesome?)
 
-else
-   selectcase(adjustl(attr))
-    case ('which_vert','WHICH_VERT')
-      fval = loc%which_vert
-    case ('lat','LAT')
-      fval = loc%lat
-    case ('lon','LON')
-      fval = loc%lon
-    case ('vloc','VLOC')
-      fval = loc%vloc
-    case default
-      fval = loc%which_vert
-   end select
+! set the default here, and then only overwrite it if we
+! recognize one of the other valid queries.
 
-endif
+query_location = loc%which_vert
+
+if (.not. present(attr)) return
+
+selectcase(attr)
+   case ('lat','LAT')
+      query_location = loc%lat
+   case ('lon','LON')
+      query_location = loc%lon
+   case ('vloc','VLOC')
+      query_location = loc%vloc
+end select
 
 end function query_location
 
