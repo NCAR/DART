@@ -1,0 +1,170 @@
+<HTML>
+<HEAD>
+<TITLE>observations</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+</HEAD>
+<BODY>
+<!--
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                                       !!
+!!                   GNU General Public License                          !!
+!!                                                                       !!
+!! This file is part of the Data Assimilation Research Testbed (DART).   !!
+!!                                                                       !!
+!! DART is free software; you can redistribute it and/or modify          !!
+!! it and are expected to follow the terms of the GNU General Public     !!
+!! License as published by the Free Software Foundation.                 !!
+!!                                                                       !!
+!! DART is distributed in the hope that it will be useful,               !!
+!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
+!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
+!! GNU General Public License for more details.                          !!
+!!                                                                       !!
+!! You should have received a copy of the GNU General Public License     !!
+!! along with DART; if not, write to:                                    !!
+!!          Free Software Foundation, Inc.                               !!
+!!          59 Temple Place, Suite 330                                   !!
+!!          Boston, MA  02111-1307  USA                                  !!
+!! or see:                                                               !!
+!!          http://www.gnu.org/licenses/gpl.txt                          !!
+!!                                                                       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-->
+
+<DIV ALIGN=CENTER>
+<A HREF="#Overview">OVERVIEW</A> / 
+<A HREF="#DataSources">DATA SOURCES</A> / 
+<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#KnownBugs">KNOWN BUGS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> 
+</DIV>
+
+<!--==================================================================-->
+
+<H1>Observations</H1>
+<A NAME="HEADER"></A>
+
+<!--==================================================================-->
+
+<A NAME="Overview"></A>
+<HR>
+<H2>OVERVIEW</H2>
+
+<P>
+Real-world observations of earth-system data come from a variety of sources,
+including radiosondes, satellites, ships, aircraft, weather stations, etc.  
+The files in this <em class=code>observations</em> directory
+can be used to convert data from a variety of native
+formats into a common DART 
+<em class=code>observation sequence</em> format.
+</P>
+<P>
+The DART framework enforces a clean separation between observations
+and the models they are assimilated into.  The same observations can be
+used in any model which understands how to generate a value for the requested
+type of observation from its state space values.
+</P>
+<P>
+In many cases, a single, self-contained program can convert 
+directly from the observation
+location, time, value, and error into the DART format.  In other cases,
+especially those linking with a complicated external library (e.g. BUFR),
+there is a two-step process with two programs and an ASCII intermediate file.
+We are currently leaning towards single-step conversions but either
+approach can be used for new programs.
+</P>
+<P>
+In many cases, the original datasets are in a standard scientific
+format like netCDF, HDF, or BUFR, and library routines for those
+formats can be used to read in the original observation data.
+</P>
+<P>
+The DART software distribution
+includes Fortran subroutines and functions to help create
+a sequence of observations in memory, and then a call to the 
+DART observation sequence write routine
+will create an entire <em class=code>obs_seq</em>
+file in the correct format.
+</P>
+<!--
+<P>
+Describe other utils here as well - print, merge, superobs, subset, etc.  
+anything that can be model independent.  Common back end.
+</P>
+-->
+<P>
+The DART system comes with several types of location modules for computing
+distances appropriately.  Two of the
+ones most commonly used are for data in a 1D system and for data in 
+a 3D spherical coordinate system.  All the programs here assume the
+<em class=code>location/threed_sphere/location_mod.f90</em> 3D sphere
+location module is being used.
+</P>
+
+<P>
+This directory is a work in progress.  There are currently about
+10 other observation sources and types which we are in the process
+of collecting information and conversion programs for and which will
+eventually be added to this directory.  In the meantime, if you have
+converters for data or interest in something that is not in the
+repository, please email the DART group.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<BR><HR><BR>
+<H2>DATA SOURCES</H2>
+
+<P>
+</P>
+
+<P>
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<BR><HR><BR>
+<H2>PROGRAMS</H2>
+
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<BR><HR><BR>
+<H2>KNOWN BUGS</H2>
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Descibe Future Plans.                                            -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<BR><HR><BR>
+<H2>FUTURE PLANS</H2>
+<P>
+</P>
+
+<BR><HR><BR>
+
+<!--==================================================================-->
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> nancy collins </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+<!--==================================================================-->
+
+<!--==================================================================-->
+
+<HR>
+</BODY>
+</HTML>

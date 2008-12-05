@@ -1,0 +1,146 @@
+<HTML>
+<HEAD>
+<TITLE>GPS Observations</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+</HEAD>
+<BODY>
+<!--
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                                       !!
+!!                   GNU General Public License                          !!
+!!                                                                       !!
+!! This file is part of the Data Assimilation Research Testbed (DART).   !!
+!!                                                                       !!
+!! DART is free software; you can redistribute it and/or modify          !!
+!! it and are expected to follow the terms of the GNU General Public     !!
+!! License as published by the Free Software Foundation.                 !!
+!!                                                                       !!
+!! DART is distributed in the hope that it will be useful,               !!
+!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
+!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
+!! GNU General Public License for more details.                          !!
+!!                                                                       !!
+!! You should have received a copy of the GNU General Public License     !!
+!! along with DART; if not, write to:                                    !!
+!!          Free Software Foundation, Inc.                               !!
+!!          59 Temple Place, Suite 330                                   !!
+!!          Boston, MA  02111-1307  USA                                  !!
+!! or see:                                                               !!
+!!          http://www.gnu.org/licenses/gpl.txt                          !!
+!!                                                                       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-->
+
+<DIV ALIGN=CENTER>
+<A HREF="#Overview">OVERVIEW</A> / 
+<A HREF="#DataSources">DATA SOURCES</A> / 
+<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#KnownBugs">KNOWN BUGS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> 
+</DIV>
+
+<!--==================================================================-->
+
+<H1>GPS Observations</H1>
+<A NAME="HEADER"></A>
+
+<!--==================================================================-->
+
+<A NAME="Overview"></A>
+<H2>OVERVIEW</H2>
+
+<P>
+GPS Radio Occultation data is being returned
+from a series of satellites as part of the
+<a href="http://www.cosmic.ucar.edu">Cosmic</a> 
+project.
+The programs in this directory help to extract the
+data from the distribution files and put them into
+DART observation sequence (obs_seq) file format.
+</P>
+<P>
+The COSMIC satellites measure the deviation and phase delay
+in the
+straight-line path of the GPS satellite signal as
+it passes through the Earth's atmosphere when the
+GPS and COSMIC
+satellites rise and set relative to each other.
+From this deviation and phase delay, vertical profiles of
+temperature and moisture can be computed. 
+There are thousands of observations each day
+distributed around the globe, including areas which
+previously were poorly observed.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<BR><HR><BR>
+<H2>DATA SOURCES</H2>
+
+<P>
+Data from 
+<a href="http://www.cosmic.ucar.edu">Cosmic</a> 
+is available by signing up on the
+<a href="http://cosmic-io.cosmic.ucar.edu/cdaac">data access</a>
+web page.
+It is delivered in
+<a href="http://www.unidata.ucar.edu/software/netcdf">netCDF</a>
+file format.
+</P>
+
+<P>
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<BR><HR><BR>
+<H2>PROGRAMS</H2>
+The data is distributed in
+<a href="http://www.unidata.ucar.edu/software/netcdf">netCDF</a>
+file format.
+Both Fortran and
+<a href="http://www.mathworks.com/">Matlab</a>
+programs are provided here to read the data and output
+DART obs_seq file formats.
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<BR><HR><BR>
+<H2>KNOWN BUGS</H2>
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Descibe Future Plans.                                            -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<BR><HR><BR>
+<H2>FUTURE PLANS</H2>
+<P>
+</P>
+
+<BR><HR><BR>
+
+<!--==================================================================-->
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> nancy collins </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+<!--==================================================================-->
+
+<!--==================================================================-->
+
+<HR>
+</BODY>
+</HTML>

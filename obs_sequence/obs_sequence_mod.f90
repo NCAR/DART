@@ -21,21 +21,23 @@ module obs_sequence_mod
 ! copy subroutines. USERS MUST BE VERY CAREFUL TO NOT DO DEFAULT ASSIGNMENT
 ! FOR THESE TYPES THAT HAVE COPY SUBROUTINES.
 
-use        types_mod, only : r8, DEG2RAD, earth_radius, t_kelvin, es_alpha, es_beta, &
-                             es_gamma, gas_constant_v, &
-                             gas_constant, L_over_Rv, MISSING_R8, ps0
+use        types_mod, only : r8, DEG2RAD, MISSING_R8
 use     location_mod, only : location_type, interactive_location
+                             !%! location_inside
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
-                             write_obs_def, destroy_obs_def, &
-                             interactive_obs_def, copy_obs_def, get_obs_def_location, &
-                             get_expected_obs_from_def, get_obs_kind
-use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
-                             operator(/=), set_time, operator(-), operator(+), &
-                             operator(==)
-use    utilities_mod, only : get_unit, close_file, register_module, error_handler, &
+                             write_obs_def, destroy_obs_def, copy_obs_def, &
+                             interactive_obs_def, get_obs_def_location, &
+                             get_expected_obs_from_def, get_obs_kind, &
+                             get_obs_def_key
+use     obs_kind_mod, only : write_obs_kind, read_obs_kind, max_obs_kinds, &
+                             get_obs_kind_index
+use time_manager_mod, only : time_type, operator(>), operator(<), &
+                             operator(>=), operator(/=), set_time, &
+                             operator(-), operator(+), operator(==)
+use    utilities_mod, only : get_unit, close_file, &
+                             register_module, error_handler, &
                              find_namelist_in_file, check_namelist_read, &
                              E_ERR, E_WARN, E_MSG, nmlfileunit, do_output
-use     obs_kind_mod, only : write_obs_kind, read_obs_kind, max_obs_kinds
 
 
 implicit none 
@@ -47,20 +49,23 @@ end interface
 
 ! Public interfaces for obs sequences
 public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
-   get_num_copies, get_num_qc, get_num_obs, get_max_num_obs, get_copy_meta_data, &
-   get_qc_meta_data, get_next_obs, get_prev_obs, insert_obs_in_seq, &
-   delete_obs_from_seq, set_copy_meta_data, set_qc_meta_data, get_first_obs, &
-   get_last_obs, add_copies, add_qc, write_obs_seq, read_obs_seq, set_obs, &
-   append_obs_to_seq, get_obs_from_key, get_obs_time_range, get_time_range_keys, &
+   get_num_copies, get_num_qc, get_num_obs, get_max_num_obs, &
+   get_copy_meta_data, get_qc_meta_data, get_next_obs, get_prev_obs, &
+   insert_obs_in_seq, delete_obs_from_seq, set_copy_meta_data, &
+   set_qc_meta_data, get_first_obs, get_last_obs, add_copies, add_qc, &
+   write_obs_seq, read_obs_seq, set_obs, append_obs_to_seq, &
+   get_obs_from_key, get_obs_time_range, get_time_range_keys, &
    get_num_times, get_num_key_range, &
    static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header, &
    get_expected_obs, delete_seq_head, delete_seq_tail, &
-   get_next_obs_from_key, get_prev_obs_from_key
+   get_next_obs_from_key, get_prev_obs_from_key, delete_obs_by_typelist, &
+   select_obs_by_location, delete_obs_by_qc, delete_obs_by_copy
 
 ! Public interfaces for obs
 public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
    get_obs_values, set_obs_values, replace_obs_values, get_qc, set_qc, &  
-   read_obs, write_obs, replace_qc, interactive_obs, copy_obs, assignment(=)
+   read_obs, write_obs, replace_qc, interactive_obs, copy_obs, assignment(=), &
+   get_obs_key
 
 ! Public interfaces for obs covariance modeling
 public :: obs_cov_type
@@ -315,7 +320,7 @@ integer,                 intent(out) :: istatus
 logical,                 intent(out) :: assimilate_this_ob, evaluate_this_ob
 
 integer             :: num_obs, i
-type(location_type) :: location
+!type(location_type) :: location
 type(obs_type)      :: obs
 type(obs_def_type)  :: obs_def
 integer             :: obs_kind_ind
@@ -332,7 +337,7 @@ call init_obs(obs, 0, 0)
 do i = 1, num_obs
    call get_obs_from_key(seq, keys(i), obs)
    call get_obs_def(obs, obs_def)
-   location = get_obs_def_location(obs_def)
+   !location = get_obs_def_location(obs_def)
    obs_kind_ind = get_obs_kind(obs_def)
 ! Check in kind for negative for identity obs
    if(obs_kind_ind < 0) then
@@ -451,6 +456,7 @@ else
    is_this_last = .false.
    next_obs = seq%obs(next_index)
 endif
+!print *, 'next index = ', next_index
 
 end subroutine get_next_obs
 
@@ -840,6 +846,8 @@ integer :: prev, next
 prev = obs%prev_time
 next = obs%next_time
 
+!print *, 'del key, initial prev,next=', obs%key, prev, next
+
 ! update obs count??  i think this should be done, but other code
 ! is not prepared to deal with it.
 !seq%num_obs = seq%num_obs - 1
@@ -867,6 +875,11 @@ else
    seq%last_time = prev
 endif
 
+
+!print *, 'prev key, next = ', prev, seq%obs(prev)%next_time
+!print *, 'next key, prev = ', next, seq%obs(next)%prev_time
+!print *, 'seq entire first/last = ', seq%first_time, seq%last_time
+
 end subroutine delete_obs_from_seq
 
 !-------------------------------------------------
@@ -876,7 +889,7 @@ subroutine set_copy_meta_data(seq, copy_num, meta_data)
 
 type(obs_sequence_type), intent(inout) :: seq
 integer, intent(in) :: copy_num
-character(len = 129), intent(in) :: meta_data
+character(len = *), intent(in) :: meta_data
 
 if (copy_num > seq%num_copies) then
    write(msg_string,*) 'trying to set copy (', copy_num, &
@@ -895,7 +908,7 @@ subroutine set_qc_meta_data(seq, qc_num, meta_data)
 ! Need error checks
 type(obs_sequence_type), intent(inout) :: seq
 integer, intent(in) :: qc_num
-character(len = 129), intent(in) :: meta_data
+character(len = *), intent(in) :: meta_data
 
 if (qc_num > seq%num_qc) then
    write(msg_string,*) 'trying to set qc (', qc_num, &
@@ -1045,10 +1058,9 @@ end subroutine add_qc
 subroutine write_obs_seq(seq, file_name)
 
 type(obs_sequence_type), intent(in) :: seq
-character(len = 129),    intent(in) :: file_name
+character(len = *),      intent(in) :: file_name
 
 integer :: i, file_id
-character(len=129) :: myfilename
 integer :: have(max_obs_kinds)
 
 
@@ -1112,10 +1124,9 @@ do i = 1, seq%num_obs
 end do
 
 ! Close up the file
-inquire(unit=file_id,name=myfilename)
 call close_file(file_id)
 
-write(msg_string, *) 'closed file ',trim(myfilename)
+write(msg_string, '(A129)') 'closed file '//trim(file_name)
 call error_handler(E_MSG,'write_obs_seq',msg_string,source,revision,revdate)
 
 end subroutine write_obs_seq
@@ -1126,7 +1137,7 @@ subroutine read_obs_seq(file_name, add_copies, add_qc, add_obs, seq)
 
 ! Be able to increase size at read in time for efficiency
 
-character(len = 129),    intent(in)  :: file_name
+character(len = *),      intent(in)  :: file_name
 integer,                 intent(in)  :: add_copies, add_qc, add_obs
 type(obs_sequence_type), intent(out) :: seq
 
@@ -1224,9 +1235,9 @@ subroutine read_obs_seq_header(file_name, num_copies, num_qc, num_obs, &
 
 ! Be able to increase size at read in time for efficiency
 
-character(len = 129),   intent(in) :: file_name
+character(len = *),     intent(in) :: file_name
 integer,               intent(out) :: num_copies, num_qc, num_obs, max_num_obs, file_id
-character(len = 129),  intent(out) :: read_format
+character(len = *),    intent(out) :: read_format
 logical,               intent(out) :: pre_I_format
 logical,      intent(in), optional :: close_the_file
 
@@ -1293,7 +1304,10 @@ if(ios == 0) then
    read(file_id, iostat = ios) num_copies, num_qc, num_obs, max_num_obs
    ! If it's pre-i unformatted, we've read in the header and we're done
    ! Initialize the default mapping for obs_kind by calling read_obs_kind
-   if(ios == 0) then
+   ! If you have a binary file on the wrong endian machine, you end up
+   ! here.  the test for num_copies and num_qc will catch bad binary
+   ! numbers and kick you out here -- nsc
+   if(ios == 0 .and. num_copies < 1000000 .and. num_qc < 1000000) then
       pre_I_format = .true.
       call read_obs_kind(file_id, pre_I_format, read_format)
       goto 51
@@ -1510,6 +1524,433 @@ call destroy_obs(obs)
 end subroutine delete_seq_tail
 
 
+!-------------------------------------------------
+
+
+subroutine delete_obs_by_typelist(num_obs_input_types, obs_input_types, &
+                                  keep_list, seq, all_gone)
+
+! Delete all observations in the sequence which either are or are not
+! in the given obs types list; the sense depends on the keep flag.
+! If there are no obs left afterwards return that the sequence is all_gone.
+
+integer,                 intent(in)    :: num_obs_input_types
+character(len=*),        intent(in)    :: obs_input_types(:)
+logical,                 intent(in)    :: keep_list
+type(obs_sequence_type), intent(inout) :: seq
+logical,                 intent(out)   :: all_gone
+
+type(obs_def_type)   :: obs_def
+type(obs_type)       :: obs, prev_obs
+integer              :: i
+logical              :: is_this_last, remove_me, first_obs
+integer              :: obs_type_index(num_obs_input_types), this_obs_type
+
+! Some sanity checking on the input args.
+if (num_obs_input_types <= 0) then
+   write(msg_string,*) 'num_obs_input_types must be > 0'
+   call error_handler(E_ERR,'delete_obs_by_typelist', msg_string, &
+                      source, revision, revdate)
+endif
+! Ok for list to be longer; only first N items will be used.  But list
+! cannot be shorter.
+if (size(obs_input_types) < num_obs_input_types) then
+   write(msg_string,*) 'num_obs_input_types must be >= length of list'
+   call error_handler(E_ERR,'delete_obs_by_typelist', msg_string, &
+                      source, revision, revdate)
+endif
+
+
+! Get index numbers for each type string
+do i=1, num_obs_input_types
+   obs_type_index(i) = get_obs_kind_index(obs_input_types(i))
+   if (obs_type_index(i) < 0) then
+      write(msg_string,*) 'obs_type ', trim(obs_input_types(i)), ' not found'
+      call error_handler(E_ERR,'delete_obs_by_typelist', msg_string, &
+                         source, revision, revdate)
+   endif
+enddo
+
+! Initialize an observation type with appropriate size
+call init_obs(obs, get_num_copies(seq), get_num_qc(seq))
+call init_obs(prev_obs, get_num_copies(seq), get_num_qc(seq))
+
+! Iterate entire sequence, deleting obs which are (are not) on the list
+! First, make sure there are obs to delete, and initialize first obs.
+if(.not. get_first_obs(seq, obs)) then
+   all_gone = .true.
+   call destroy_obs(obs)
+   call destroy_obs(prev_obs)
+   return
+endif
+
+first_obs = .true.
+prev_obs = obs
+
+! This is going to be O(n*m), n=num obs in seq, m=typelist length
+is_this_last = .false.
+allobs : do while (.not. is_this_last)
+
+   call get_obs_def(obs, obs_def)
+   this_obs_type = get_obs_kind(obs_def)
+!print *, 'this_obs_key, type = ', obs%key, this_obs_type
+
+   ! Do we keep things on the list, or toss them?
+   if (keep_list) then
+      ! Assume we are going to delete the obs unless we find it on the list
+      ! (can exit do loop early this way).
+      remove_me = .true.
+      do i=1, num_obs_input_types
+         if (obs_type_index(i) == this_obs_type) then
+            remove_me = .false.
+            exit
+         endif
+      end do
+   else
+      ! Assume we are going to keep the obs unless we find it on the list
+      ! (can exit do loop early this way).
+      remove_me = .false.
+      do i=1, num_obs_input_types
+         if (obs_type_index(i) == this_obs_type) then
+            remove_me = .true.
+            exit
+         endif
+      end do
+   endif
+
+   ! either remove the obs and update prev, or move to next obs
+   ! must be careful here; wrong order == wrong output
+   if (remove_me) then
+      if (first_obs) then
+         call delete_obs_from_seq(seq, obs)
+         if(.not. get_first_obs(seq, obs)) exit allobs
+      else
+         call delete_obs_from_seq(seq, obs)
+         ! cannot simply use prev_obs; cached copy out of sync with seq one
+         call get_next_obs_from_key(seq, prev_obs%key, obs, is_this_last)
+      endif
+   else
+      first_obs = .false.
+      prev_obs = obs
+      call get_next_obs(seq, prev_obs, obs, is_this_last)
+   endif
+   
+end do allobs
+
+! Figure out if there are no more obs left in the sequence.
+if(.not. get_first_obs(seq, obs)) then
+   all_gone = .true.
+else
+   all_gone = .false.
+endif
+
+! Done.  delete temp storage and return.
+call destroy_obs(obs)
+call destroy_obs(prev_obs)
+
+end subroutine delete_obs_by_typelist
+
+
+!-------------------------------------------------
+
+subroutine delete_obs_by_qc(qc_index, qc_min, qc_max, seq, all_gone)
+
+! Delete all observations in the sequence which are outside min/max range.
+! missing_r8 means infinity in that direction.
+! If there are no obs left afterwards return that the sequence is all_gone.
+
+integer,                 intent(in)    :: qc_index
+real(r8),                intent(in)    :: qc_min, qc_max
+type(obs_sequence_type), intent(inout) :: seq
+logical,                 intent(out)   :: all_gone
+
+type(obs_type)       :: obs, prev_obs
+integer              :: i
+logical              :: is_this_last, remove_me, first_obs
+real(r8)             :: qcval(1)
+
+! Some sanity checking on the input args.
+if (qc_index > seq%num_qc) then
+   write(msg_string,*) 'qc_index must be <', seq%num_qc
+   call error_handler(E_ERR,'delete_obs_by_qc', msg_string, &
+                      source, revision, revdate)
+endif
+! Ok for min/max to be missing_r8; if both specified, min must be < max.
+if (qc_min /= missing_r8 .and. qc_max /= missing_r8 .and. qc_min >= qc_max) then
+   write(msg_string,*) 'qc_min must be less than qc_max'
+   call error_handler(E_ERR,'delete_obs_by_qc', msg_string, &
+                      source, revision, revdate)
+endif
+
+! Initialize an observation type with appropriate size
+call init_obs(obs, get_num_copies(seq), get_num_qc(seq))
+call init_obs(prev_obs, get_num_copies(seq), get_num_qc(seq))
+ 
+! Iterate entire sequence, deleting obs which have a qc outside the range
+! First, make sure there are obs to delete, and initialize first obs.
+if(.not. get_first_obs(seq, obs)) then
+   all_gone = .true.
+   call destroy_obs(obs)
+   call destroy_obs(prev_obs)
+   return
+endif
+
+first_obs = .true.
+prev_obs = obs
+
+! This is going to be O(n), n=num obs in seq
+is_this_last = .false.
+allobs : do while (.not. is_this_last)
+
+   call get_qc(obs, qcval, qc_index)
+!print *, 'this_obs_key, qc = ', obs%key, qcval(1)
+
+   remove_me = .false.
+   if (qc_min /= missing_r8 .and. qcval(1) < qc_min) remove_me = .true.
+   if (qc_max /= missing_r8 .and. qcval(1) > qc_max) remove_me = .true.
+
+   ! either remove the obs and update prev, or move to next obs
+   if (remove_me) then
+      if (first_obs) then
+         call delete_obs_from_seq(seq, obs)
+         if(.not. get_first_obs(seq, obs)) exit allobs
+      else
+         call delete_obs_from_seq(seq, obs)
+         ! cannot simply use prev_obs; cached copy out of sync with seq one
+         call get_next_obs_from_key(seq, prev_obs%key, obs, is_this_last)
+      endif
+   else
+      first_obs = .false.
+      prev_obs = obs
+      call get_next_obs(seq, prev_obs, obs, is_this_last)
+   endif
+   
+end do allobs
+
+! Figure out if there are no more obs left in the sequence.
+if(.not. get_first_obs(seq, obs)) then
+   all_gone = .true.
+else
+   all_gone = .false.
+endif
+
+! Done.  delete temp storage and return.
+call destroy_obs(obs)
+call destroy_obs(prev_obs)
+
+end subroutine delete_obs_by_qc
+
+
+!-------------------------------------------------
+
+subroutine delete_obs_by_copy(copy_index, copy_min, copy_max, obs_type_name, &
+                              seq, all_gone)
+
+! Delete all observations in the sequence which are outside min/max range.
+! missing_r8 means infinity in that direction.
+! If there are no obs left afterwards return that the sequence is all_gone.
+
+integer,                 intent(in)    :: copy_index
+real(r8),                intent(in)    :: copy_min, copy_max
+character(len=*),        intent(in)    :: obs_type_name
+type(obs_sequence_type), intent(inout) :: seq
+logical,                 intent(out)   :: all_gone
+
+type(obs_def_type)   :: obs_def
+type(obs_type)       :: obs, prev_obs
+integer              :: i, obs_type_index, this_obs_type
+logical              :: is_this_last, remove_me, first_obs
+real(r8)             :: copyval(1)
+
+! Some sanity checking on the input args.
+if (copy_index > seq%num_copies) then
+   write(msg_string,*) 'copy_index must be <', seq%num_copies
+   call error_handler(E_ERR,'delete_obs_by_copy', msg_string, &
+                      source, revision, revdate)
+endif
+! Ok for min/max to be missing_r8; if both specified, min must be < max.
+if (copy_min /= missing_r8 .and. copy_max /= missing_r8 .and. &
+    copy_min >= copy_max) then
+   write(msg_string,*) 'copy_min must be less than copy_max'
+   call error_handler(E_ERR,'delete_obs_by_copy', msg_string, &
+                      source, revision, revdate)
+endif
+
+! Get index number for the type
+if (len(trim(obs_type_name)) > 0) then
+   obs_type_index = get_obs_kind_index(obs_type_name)
+   if (obs_type_index < 0) then
+      write(msg_string,*) 'obs_type ', trim(obs_type_name), ' not found'
+      call error_handler(E_ERR,'delete_obs_by_copy', msg_string, &
+                         source, revision, revdate)
+   endif
+else
+   obs_type_index = -1
+endif
+
+! Initialize an observation type with appropriate size
+call init_obs(obs, get_num_copies(seq), get_num_qc(seq))
+call init_obs(prev_obs, get_num_copies(seq), get_num_qc(seq))
+ 
+! Iterate entire sequence, deleting obs which have a copyval outside the range
+! First, make sure there are obs to delete, and initialize first obs.
+if(.not. get_first_obs(seq, obs)) then
+   all_gone = .true.
+   call destroy_obs(obs)
+   call destroy_obs(prev_obs)
+   return
+endif
+
+first_obs = .true.
+prev_obs = obs
+
+! This is going to be O(n), n=num obs in seq
+is_this_last = .false.
+allobs : do while (.not. is_this_last)
+
+   call get_obs_values(obs, copyval, copy_index)
+!print *, 'this_obs_key, val = ', obs%key, copyval(1)
+
+   remove_me = .false.
+
+   ! need to check type here, or below?
+   if (obs_type_index > 0) then
+      call get_obs_def(obs, obs_def)
+      this_obs_type = get_obs_kind(obs_def)
+      !print *, 'this_obs_key, type = ', obs%key, this_obs_type
+      if (this_obs_type /= obs_type_index) remove_me = .true.
+   endif
+
+   if (copy_min /= missing_r8 .and. copyval(1) < copy_min) remove_me = .true.
+   if (copy_max /= missing_r8 .and. copyval(1) > copy_max) remove_me = .true.
+
+   ! either remove the obs and update prev, or move to next obs
+   if (remove_me) then
+      if (first_obs) then
+         call delete_obs_from_seq(seq, obs)
+         if(.not. get_first_obs(seq, obs)) exit allobs
+      else
+         call delete_obs_from_seq(seq, obs)
+         ! cannot simply use prev_obs; cached copy out of sync with seq one
+         call get_next_obs_from_key(seq, prev_obs%key, obs, is_this_last)
+      endif
+   else
+      first_obs = .false.
+      prev_obs = obs
+      call get_next_obs(seq, prev_obs, obs, is_this_last)
+   endif
+   
+end do allobs
+
+! Figure out if there are no more obs left in the sequence.
+if(.not. get_first_obs(seq, obs)) then
+   all_gone = .true.
+else
+   all_gone = .false.
+endif
+
+! Done.  delete temp storage and return.
+call destroy_obs(obs)
+call destroy_obs(prev_obs)
+
+
+end subroutine delete_obs_by_copy
+
+!-------------------------------------------------
+
+! To be portable between different location types (i.e. 1D, 3D sphere)
+! this can only refer to the location type and the actual comparison must
+! be inside the locations module itself.
+subroutine select_obs_by_location(min_loc, max_loc, seq, all_gone)
+
+! Delete all observations in the sequence which are outside the bounding box.
+! If there are no obs left afterwards return that the sequence is all_gone.
+
+type(location_type),     intent(in)    :: min_loc, max_loc
+type(obs_sequence_type), intent(inout) :: seq
+logical,                 intent(out)   :: all_gone
+
+type(obs_def_type)   :: obs_def
+type(obs_type)       :: obs, prev_obs
+integer              :: i
+type(location_type)  :: location
+logical              :: out_of_range, is_this_last, inside, first_obs
+
+! FIXME:
+write(msg_string, *) 'Function not implemented yet'
+call error_handler(E_ERR, 'select_obs_by_location', msg_string, &
+                   source, revision, revdate)
+return
+! FIXME
+
+! Initialize an observation type with appropriate size
+call init_obs(obs, get_num_copies(seq), get_num_qc(seq))
+call init_obs(prev_obs, get_num_copies(seq), get_num_qc(seq))
+
+! Iterate entire sequence, deleting obs which are (are not) on the list
+! First, make sure there are obs to delete, and initialize first obs.
+if(.not. get_first_obs(seq, obs)) then
+   all_gone = .true.
+   call destroy_obs(obs)
+   call destroy_obs(prev_obs)
+   return
+endif
+
+first_obs = .true.
+prev_obs = obs
+
+! This is going to be O(n*m), n=num obs in seq, m=typelist length
+is_this_last = .false.
+allobs : do while (.not. is_this_last)
+
+   call get_obs_def(obs, obs_def)
+   location = get_obs_def_location(obs_def)
+
+   ! each diff locations mod has a different one of these
+   !%! FIXME:
+   !%! inside = location_inside(location, min_loc, max_loc)
+   inside = .false.
+   !%! FIXME
+   
+   ! same code as delete/keep by obstype; do any code fixes both places
+   if (.not. inside) then
+      if (first_obs) then
+         call delete_obs_from_seq(seq, obs)
+         if(.not. get_first_obs(seq, obs)) exit allobs
+      else
+!print *, 'going to del obs key ', obs%key
+!print *, 'prev key is ', prev_obs%key
+         call delete_obs_from_seq(seq, obs)
+         ! cannot simply use prev_obs; cached copy out of sync with seq one
+         call get_next_obs_from_key(seq, prev_obs%key, obs, is_this_last)
+!print *, 'next obs now is key ', obs%key
+      endif
+   else
+!print *, 'no del, keep this obs key ', obs%key
+      first_obs = .false.
+     prev_obs = obs
+!print *, 'prev obs now is key ', prev_obs%key
+!print *, 'obs was key ', obs%key
+      call get_next_obs(seq, prev_obs, obs, is_this_last)
+!print *, 'obs now is key ', obs%key
+   endif
+   
+end do allobs
+
+! Figure out if there are no more obs left in the sequence.
+if(.not. get_first_obs(seq, obs)) then
+   all_gone = .true.
+else
+   all_gone = .false.
+endif
+
+! Done.  delete temp storage and return.
+call destroy_obs(obs)
+call destroy_obs(prev_obs)
+
+end subroutine select_obs_by_location
+
+
 !------------------------------------------------------------------
 ! Figure out which of the total possible kinds (really types) exist in this
 ! sequence, and set the array values to 0 for no, 1 for yes.
@@ -1572,6 +2013,7 @@ num_qc      = get_num_qc(oldseq)
 num_obs     = get_num_obs(oldseq)
 max_num_obs = get_max_num_obs(oldseq)
 
+call init_obs(obs, num_copies, num_qc)
 
 ! Really count how many obs are in the linked list, with
 ! optional time starts and ends.
@@ -1587,6 +2029,8 @@ else
    call get_obs_from_key(oldseq, oldseq%last_time, obs)
    last_time = get_obs_def_time(obs%def)
 endif
+
+call destroy_obs(obs)
 
 call get_obs_time_range(oldseq, first_time, last_time, &
                         key_bounds, num_keys, out_of_range)
@@ -1628,9 +2072,19 @@ subroutine init_obs(obs, num_copies, num_qc)
 integer, intent(in) :: num_copies, num_qc
 type(obs_type), intent(out) :: obs
 
+if (num_copies > 0) then
+   allocate(obs%values(num_copies))
+   obs%values = missing_r8
+else
+   nullify(obs%values)
+endif
+if (num_qc > 0) then
+   allocate(obs%qc(num_qc))
+   obs%qc = 0
+else
+   nullify(obs%qc)
+endif
 obs%key = -1
-allocate(obs%values(num_copies), &
-   obs%qc(num_qc))
 obs%prev_time = -1
 obs%next_time = -1
 obs%cov_group = -1
@@ -1816,6 +2270,17 @@ endif
 
 end subroutine replace_qc
 
+!-------------------------------------------------------------
+
+function get_obs_key(obs)
+
+type(obs_type), intent(in) :: obs
+integer :: get_obs_key
+
+get_obs_key = obs%key
+
+end function get_obs_key
+
 !-------------------------------------------------
 
 subroutine write_obs(obs, file_id, num_copies, num_qc)
@@ -1867,7 +2332,7 @@ subroutine read_obs(file_id, num_copies, add_copies, num_qc, add_qc, key, &
 
 integer,              intent(in)    :: file_id, num_copies, add_copies
 integer,              intent(in)    :: num_qc, add_qc, key
-character(len = 129), intent(in)    :: read_format
+character(len = *),   intent(in)    :: read_format
 type(obs_type),       intent(inout) :: obs
 integer, optional,    intent(in)    :: max_obs
 

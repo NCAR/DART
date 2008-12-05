@@ -6,10 +6,11 @@
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
 # <next few lines under version control, do not edit>
-# $URL$
-# $Id$
-# $Revision$
-# $Date$
+# $URL: $
+# $Id: $
+# $Revision: 2691 $
+# $Date: 2007-03-11 12:18:09 -0600 (Sun, 11 Mar 2007) $
 #
-../../../mkmf/mkmf -p restart_file_utility -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
- -a "../../.." path_names_restart_file_utility
+../../../mkmf/mkmf -p obs_sequence_tool -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+ -a "../../.." path_names_obs_sequence_tool
+

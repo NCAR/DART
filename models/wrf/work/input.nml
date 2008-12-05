@@ -20,7 +20,7 @@
    adv_ens_command          = "./advance_model.csh",
    ens_size                 = 50,
    start_from_restart       = .true.,
-   output_restart           = .false.,
+   output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
    restart_in_file_name     = "filter_ics",
@@ -209,7 +209,7 @@
    print_obs_locations   = .false.,
    verbose               = .false.  /
 
-&restart_file_utility_nml 
+&restart_file_tool_nml 
    input_file_name              = "filter_restart",        
    output_file_name             = "filter_updated_restart",
    ens_size                     = 1,
@@ -226,4 +226,21 @@
    new_advance_secs             = -1
 /
 
+
+&obs_sequence_tool_nml
+   num_input_files = 1, 
+   filename_seq = 'obs_seq.out',
+   filename_out = 'obs_seq.processed', 
+   first_obs_days = -1, 
+   first_obs_seconds = -1, 
+   last_obs_days = -1, 
+   last_obs_seconds = -1, 
+   obs_types = '', 
+   keep_types = .false., 
+   print_only = .false., 
+   min_lat = -90.0, 
+   max_lat = 90.0, 
+   min_lon = 0.0, 
+   max_lon = 360.0
+   /
 
