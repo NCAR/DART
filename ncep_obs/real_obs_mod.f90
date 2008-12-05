@@ -361,7 +361,11 @@ obsloop:  do
    ! set vertical coordinate for surface observations
    if (subset == 'ADPSFC' .or. subset == 'SFCSHP') then
      vloc = lev
-     if ( subset == 'SFCSHP' ) vloc = 0.0_r8
+     ! some obs have elevation of 1e12 - toss those.
+     if ( subset == 'SFCSHP' .and. vloc > 4000.0_r8) then
+        iskip = iskip + 1
+        cycle obsloop
+     endif
      which_vert = VERTISSURFACE
    endif
 
