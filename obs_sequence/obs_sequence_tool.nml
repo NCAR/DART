@@ -1,0 +1,42 @@
+&obs_sequence_tool_nml
+   num_input_files    = 2,
+   filename_seq       = 'obs_seq.one', 'obs_seq.two',
+   filename_out       = 'obs_seq.processed',
+   print_only         =  .false.,
+   first_obs_days     = -1,
+   first_obs_seconds  = -1,
+   last_obs_days      = -1,
+   last_obs_seconds   = -1,
+   min_lat            =  -90.0,
+   max_lat            =   90.0,
+   min_lon            =    0.0,
+   max_lon            =  360.0,
+   gregorian_cal      = .true.
+/
+
+! these have no defaults (or the defaults are missing_r8 which
+! cannot be represented in a namelist).  here are examples
+! of their use:
+!
+! keep only observations with a DART QC of 0:
+!   qc_metadata        = 'Dart quality control',
+!   min_qc             = 0,
+!   max_qc             = 0,
+!
+! keep only radiosonde temp obs between 250 and 300 K:
+!   copy_metadata      = 'NCEP BUFR observation',
+!   copy_type          = 'RADIOSONDE_TEMPERATURE', 
+!   min_copy           = 250.0,
+!   max_copy           = 300.0,
+!
+! keep only the U and V radiosonde winds:
+!   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT', 
+!                        'RADIOSONDE_V_WIND_COMPONENT',
+!   keep_types         = .true.,
+!
+! remove the U and V radiosonde winds:
+!   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT', 
+!                        'RADIOSONDE_V_WIND_COMPONENT',
+!   keep_types         = .false.,
+!
+
