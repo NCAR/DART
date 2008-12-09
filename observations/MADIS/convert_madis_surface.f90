@@ -151,14 +151,14 @@ obsloop: do n = 1, nobs
   ! determine whether observation is close to analysis time
   time_obs = increment_time(comp_day0, mod(tobs(n),86400), tobs(n) / 86400)
   call get_time((time_anal - time_obs), dsec, dday)
-  if ( dsec > dsecobs .or. dday > 0 ) cycle obsloop
+  if ( (dsec + dday * 86400) > dsecobs ) cycle obsloop
   if ( lon(n) < 0.0_r8 )  lon(n) = lon(n) + 360.0_r8
 
   ! check to make sure this observation has not been used
   do i = 1, nused
     if ( lon(n) == lon(i) .and. lat(n) == lat(i) ) cycle obsloop
   end do
-  qc = 1
+  qc = 1.0_r8
 
   ! add altimeter data to text file
   if ( alti(n) /= alti_miss ) then
@@ -170,7 +170,7 @@ obsloop: do n = 1, nobs
   end if
 
   ! add wind component data to text file
-  if ( wdir(n) .ne. wdir_miss .and. wspd(n) .ne. wspd_miss ) then
+  if ( wdir(n) /= wdir_miss .and. wspd(n) /= wspd_miss ) then
 
     call wind_dirspd_to_uv(wdir(n), wspd(n), uwnd, vwnd)
     if ( abs(uwnd) < 150.0_r8 .and. abs(vwnd) < 150.0_r8 ) then
@@ -189,7 +189,7 @@ obsloop: do n = 1, nobs
   end if
 
   ! add air temperature data to text file
-  if ( tair(n) .ne. tair_miss ) then 
+  if ( tair(n) /= tair_miss ) then 
 
     call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, tair(n), &
                          LAND_SFC_TEMPERATURE, ncep_land_temp_error, oday, osec, qc, obs)
@@ -198,7 +198,7 @@ obsloop: do n = 1, nobs
   end if
 
   ! add dew-point temperature data to text file, but as specific humidity
-  if ( tair(n) .ne. tair_miss .and. tdew(n) .ne. tdew_miss .and. alti(n) .ne. alti_miss ) then
+  if ( tair(n) /= tair_miss .and. tdew(n) /= tdew_miss .and. alti(n) /= alti_miss ) then
 
     stn_pres = invert_altimeter(alti(n) * 0.01_r8, elev(n)) * 100.0_r8
     qobs = specific_humidity(sat_vapor_pressure(tdew(n)), stn_pres)

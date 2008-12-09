@@ -20,7 +20,7 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
-\rm -f preprocess *.o *.mod
+\rm -f preprocess *.o *.mod 
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
@@ -60,6 +60,9 @@ foreach TARGET ( mkmf_* )
       breaksw
    endsw
 end
+
+\rm -f *.o *.mod 
+
 
 echo "Success: All ${MODEL} programs compiled."  
 

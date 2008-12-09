@@ -162,7 +162,7 @@ obsloop: do n = 1, nobs
   pres = pres_alt_to_pres(palt(n))
 
   ! add wind component data to obs. sequence
-  if ( wdir(n) .ne. wdir_miss .and. wspd(n) .ne. wspd_miss ) then
+  if ( wdir(n) /= wdir_miss .and. wspd(n) /= wspd_miss ) then
 
     call wind_dirspd_to_uv(wdir(n), wspd(n), uwnd, vwnd)
     if ( abs(uwnd) < 150.0_r8 .and. abs(vwnd) < 150.0_r8 ) then
@@ -180,7 +180,7 @@ obsloop: do n = 1, nobs
   end if
 
   ! add air temperature data to obs. sequence
-  if ( tair(n) .ne. tair_miss ) then 
+  if ( tair(n) /= tair_miss ) then 
    
     oerr = ncep_acars_temp_error(pres * 0.01_r8) 
     call create_obs_type(lat(n), lon(n), pres, VERTISPRESSURE, tair(n), &
@@ -190,7 +190,7 @@ obsloop: do n = 1, nobs
   end if
 
   ! add relative humidity data to obs. sequence, but as specific humidity
-  if ( tair(n) .ne. tair_miss .and. relh(n) .ne. relh_miss ) then
+  if ( tair(n) /= tair_miss .and. relh(n) /= relh_miss ) then
 
     qsat = specific_humidity(sat_vapor_pressure(tair(n)), pres)
     qobs = qsat * relh(n)
