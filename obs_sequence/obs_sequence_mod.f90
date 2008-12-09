@@ -165,7 +165,7 @@ subroutine init_obs_sequence(seq, num_copies, num_qc, &
 type(obs_sequence_type), intent(out) :: seq
 integer, intent(in) :: num_copies, num_qc, expected_max_num_obs
 
-integer :: i,j
+integer :: i
 
 seq%num_copies  = num_copies
 seq%num_qc      = num_qc
@@ -185,14 +185,12 @@ do i = 1, seq%num_qc
 end do
 
 ! Initialize the pointers to allocated and initialize to something benign
+! (Go ahead and allocated even in the case the counts are 0.)
 do i = 1, seq%max_num_obs
-   allocate(seq%obs(i)%values(num_copies), seq%obs(i)%qc(num_qc))
-   do j = 1, num_copies
-      seq%obs(i)%values(j) = MISSING_R8
-   enddo
-   do j = 1, num_qc
-      seq%obs(i)%qc(j) = 0.0_r8
-   enddo
+   allocate(seq%obs(i)%values(num_copies))
+   if (num_copies > 0) seq%obs(i)%values = MISSING_R8
+   allocate(seq%obs(i)%qc(num_qc))
+   if (num_qc > 0) seq%obs(i)%qc = 0.0_r8
 end do
 seq%first_time = -1
 seq%last_time  = -1
@@ -259,7 +257,6 @@ type(obs_sequence_type) :: interactive_obs_sequence
 
 type(obs_type) :: obs
 integer :: max_num_obs, num_copies, num_qc, i, end_it_all
-
 
 write(*, *) 'Input upper bound on number of observations in sequence'
 read(*, *) max_num_obs
@@ -1665,7 +1662,6 @@ type(obs_sequence_type), intent(inout) :: seq
 logical,                 intent(out)   :: all_gone
 
 type(obs_type)       :: obs, prev_obs
-integer              :: i
 logical              :: is_this_last, remove_me, first_obs
 real(r8)             :: qcval(1)
 
@@ -1758,7 +1754,7 @@ logical,                 intent(out)   :: all_gone
 
 type(obs_def_type)   :: obs_def
 type(obs_type)       :: obs, prev_obs
-integer              :: i, obs_type_index, this_obs_type
+integer              :: obs_type_index, this_obs_type
 logical              :: is_this_last, remove_me, first_obs
 real(r8)             :: copyval(1)
 
@@ -1872,9 +1868,8 @@ logical,                 intent(out)   :: all_gone
 
 type(obs_def_type)   :: obs_def
 type(obs_type)       :: obs, prev_obs
-integer              :: i
 type(location_type)  :: location
-logical              :: out_of_range, is_this_last, inside, first_obs
+logical              :: is_this_last, inside, first_obs
 
 ! FIXME:
 write(msg_string, *) 'Function not implemented yet'
@@ -2072,18 +2067,14 @@ subroutine init_obs(obs, num_copies, num_qc)
 integer, intent(in) :: num_copies, num_qc
 type(obs_type), intent(out) :: obs
 
-if (num_copies > 0) then
-   allocate(obs%values(num_copies))
-   obs%values = missing_r8
-else
-   nullify(obs%values)
-endif
-if (num_qc > 0) then
-   allocate(obs%qc(num_qc))
-   obs%qc = 0
-else
-   nullify(obs%qc)
-endif
+! Intentionally allocate even 0 copies.  This creates an 
+! associated pointer with an explicit size of zero.
+allocate(obs%values(num_copies))
+if (num_copies > 0) obs%values = missing_r8
+
+allocate(obs%qc(num_qc))
+if (num_qc > 0) obs%qc = 0.0_r8
+
 obs%key = -1
 obs%prev_time = -1
 obs%next_time = -1
