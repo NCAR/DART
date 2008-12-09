@@ -67,8 +67,8 @@ MPILD = mpif90
 FC = g95
 LD = g95
 NETCDF = /usr/local/netcdf
-INCS = ${NETCDF}/include
-FFLAGS = -O2 -I$(INCS) 
+INCS = -I${NETCDF}/include
+FFLAGS = -O2 $(INCS) 
 LIBS = -L${NETCDF}/lib -lnetcdf
-LDFLAGS = -I$(INCS) $(LIBS)
+LDFLAGS = $(FFLAGS) $(LIBS)
 

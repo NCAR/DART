@@ -73,8 +73,8 @@ MPILD = mpif90
 FC = gfortran
 LD = gfortran
 NETCDF = /usr/local
-INCS = ${NETCDF}/include
-FFLAGS = -O2 -I$(INCS) 
+INCS = -I${NETCDF}/include
+FFLAGS = -O2 $(INCS) 
 LIBS = -L${NETCDF}/lib -lnetcdf
-LDFLAGS = -I$(INCS) $(LIBS)
+LDFLAGS = $(FFLAGS) $(LIBS)
 
