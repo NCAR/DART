@@ -893,6 +893,16 @@ integer :: ios, ios_out
 type(time_type) :: temp_time
 
 
+! WARNING: Absoft Pro Fortran 9.0, on a power-pc mac, is convinced
+! that certain binary files are, in fact, ascii, because the read_time 
+! call is returning what seems like a good time even though it should
+! be garbage.  This code works fine on all other platforms/compilers
+! we've tried, so we're leaving it as-is.  Best solution if you're
+! using absoft on a mac is to set all files to be non-binary in the
+! namelist.  You may also have to set the format in both obs_model_mod.f90 
+! and interpolate_model.f90 to 'formatted' instead of the hardcoded 
+! 'unformatted' for async 2/4 model advance temp_ic and temp_ud files.
+
 ! Autodetect format of restart file when opening
 ! Know that the first thing in here has to be a time, so try to read it.
 ! If it fails with one format, try the other. If it fails with both, punt.
