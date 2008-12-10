@@ -78,7 +78,7 @@ timestamp/data blocks for multiple ensemble members.
 
 <P>
 The files named <em class=code>temp_ic</em> or 
-<em class=code>assim_model_state_ic00001</em> contain the same
+<em class=code>assim_model_state_ic.0001</em> contain the same
 information as a normal restart file but the data for each
 ensemble is preceeded by an additional
 timestamp which indicates to the model advance code how far in time
@@ -88,8 +88,14 @@ timestamps, in addition to altering the normal data timestamps.
 
 <P>
 Note that the output from the model advance, <em class=code>temp_ud</em>
-or <em class=code>assim_model_state_ud00001</em>, are normal restart
+or <em class=code>assim_model_state_ud.0001</em>, are normal restart
 files without the extra timestamp.
+</P>
+
+<P>
+Optional namelist interface
+<A HREF="#Namelist"><em class=code>&amp;restart_file_tool_nml</em> </A>
+may be read from file <em class=file>input.nml</em>.
 </P>
 
 <!--==================================================================-->
@@ -118,6 +124,111 @@ mpi_utilities_mod
 
 <P>
 </P>
+
+
+<!--============== DESCRIPTION OF A NAMELIST ========================-->
+ <A NAME="Namelist"></A>
+<BR><HR><BR>
+<H2>NAMELIST</H2>
+ <P>We adhere to the F90 standard of starting a namelist with an ampersand
+ '&amp;' and terminating with a slash '/'.
+ <div class=namelist><pre>
+ <em class=call>namelist / restart_file_tool / </em> 
+   input_file_name, output_file_name, ens_size, single_restart_file_in,
+   single_restart_file_out, write_binary_restart_files, overwrite_data_time,
+   new_data_days, new_data_secs, input_is_model_advance_file, output_is_model_advance_file,
+   overwrite_advance_time, new_advance_days, new_advance_secs, gregorian_cal  /
+
+
+
+ </pre></div>
+ <H3 class=indent1>Discussion</H3>
+ <P>
+The namelist sets the behavior of this tool.
+ </em>
+ </P>
+ <P>This namelist is read in a file called <em class=file>input.nml</em>
+ </P>
+ <TABLE border=0 cellpadding=10 width=100%>
+ <TR><TH align=left>Contents    </TH>
+     <TH align=left>Type        </TH>
+     <TH align=left>Description </TH></TR>
+ <TR><!--contents--><TD valign=top>input_file_name</TD>
+     <!--  type  --><TD valign=top>character</TD>
+     <!--descript--><TD valign=top>Filename containing the DART restart data.  If
+                   'single_restart_file_in' is .true., this is the exact filename.
+                   If 'single_restart_file_in' is .false. this is the base name and
+                   '.ens_num' will be appended to each name before being opened.
+                   Default "filter_restart"</TD></TR>
+ <TR><!--contents--><TD valign=top>output_file_name</TD>
+     <!--  type  --><TD valign=top>character</TD>
+     <!--descript--><TD valign=top>Filename to be created.  If
+                   'single_restart_file_out' is .true., this is the exact filename.
+                   If 'single_restart_file_out' is .false. this is the base name and
+                   '.ens_num' will be appended to each name before being created.
+                   Default "filter_updated_restart"</TD></TR>
+ <TR><!--contents--><TD valign=top>ens_size</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD valign=top>Number of ensemble members.
+                   Default 1</TD></TR>
+ <TR><!--contents--><TD valign=top>single_restart_file_in</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD valign=top>Whether the input filename contains a single ensemble 
+                   member or multiple members concatinated in the same file.
+                   Default .true.</TD></TR>
+ <TR><!--contents--><TD valign=top>single_restart_file_out</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD valign=top>Whether to create an output file which contains a single
+                   member or multiple members concatinated in the same file.
+                   Default .true.</TD></TR>
+ <TR><!--contents--><TD valign=top>write_binary_restart_files</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD valign=top>Whether to write the data in ascii or binary.  The
+                   format of the input file will be detected automatically.
+                   Default .true.</TD></TR>
+ <TR><!--contents--><TD valign=top>overwrite_data_time</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD valign=top>Whether to replace the timestamp in the input with a 
+                   new time.  If true, new_data_days and new_data_secs must be set to valid values.
+                   Default .false.</TD></TR>
+ <TR><!--contents--><TD valign=top>new_data_days</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD valign=top>Day number if replacing the timestamp in the file.
+                   Default -1</TD></TR>
+ <TR><!--contents--><TD valign=top>new_data_secs</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD valign=top>Seconds if replacing the timestamp in the file.
+                   Default -1</TD></TR>
+ <TR><!--contents--><TD valign=top>input_is_model_advance_file</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD valign=top>If true, this file was written to be read by a
+                   model advance conversion program and contains two timestamps.
+                   Default .false.</TD></TR>
+ <TR><!--contents--><TD valign=top>output_is_model_advance_file</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD valign=top>Whether to write a file with two timestamps as output.
+                   Default .false.</TD></TR>
+ <TR><!--contents--><TD valign=top>overwrite_advance_time</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD valign=top>Replace existing advance time.
+                   Default .false.</TD></TR>
+ <TR><!--contents--><TD valign=top>new_advance_days</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD valign=top>If overwrite_advance_time is true, replace time with this value.
+                   Default -1</TD></TR>
+ <TR><!--contents--><TD valign=top>new_advance_secs</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD valign=top>Seconds for replacement time.
+                   Default -1</TD></TR>
+ <TR><!--contents--><TD valign=top>gregorian_cal</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD valign=top>If model uses the gregorian calendar, this program will
+                   print out the date in both day number and seconds, but also in calendar
+                   year/month/date etc format. Set to false if this model does not use this
+                   calendar.
+                   Default .true.</TD></TR>
+ </TABLE>
+ <BR>
 
 
 <!--==================================================================-->

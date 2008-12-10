@@ -13,7 +13,8 @@
    output_is_model_advance_file = .false.,
    overwrite_advance_time       = .false.,
    new_advance_days             = -1, 
-   new_advance_secs             = -1
+   new_advance_secs             = -1,
+   gregorian_cal                = .true.
 /
 
 

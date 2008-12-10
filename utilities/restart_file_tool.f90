@@ -16,7 +16,8 @@ program restart_file_tool
 use types_mod,           only : r8
 use time_manager_mod,    only : time_type, operator(<), operator(==), &
                                 set_time_missing, set_time,           &
-                                operator(/=), print_time, print_date
+                                operator(/=), print_time, print_date, &
+                                set_calendar_type, GREGORIAN
 
 use utilities_mod,       only : initialize_utilities, register_module,    &
                                 error_handler, nmlfileunit, E_MSG, E_ERR,  &
@@ -66,6 +67,7 @@ logical               :: output_is_model_advance_file = .false.
 logical               :: overwrite_advance_time       = .false.
 type(time_type)       :: advance_time, old_advance_time
 integer               :: new_advance_days = -1, new_advance_secs = -1
+logical               :: gregorian_cal = .true.
 
 namelist /restart_file_tool_nml/  &
    input_file_name,              &
@@ -81,7 +83,8 @@ namelist /restart_file_tool_nml/  &
    output_is_model_advance_file, &
    overwrite_advance_time,       &
    new_advance_days,             &
-   new_advance_secs
+   new_advance_secs,             &
+   gregorian_cal
 
 
 !----------------------------------------------------------------
@@ -102,6 +105,11 @@ call check_namelist_read(iunit, io, "restart_file_tool_nml")
 
 if (do_output()) write(nmlfileunit, nml=restart_file_tool_nml)
 if (do_output()) write(     *     , nml=restart_file_tool_nml)
+
+! if you are not using a gregorian cal, set this to false
+! in the namelist
+if (gregorian_cal) call set_calendar_type(GREGORIAN)
+
 
 ! ens_size is in the filter namelist, and the single restart file flags
 ! are in the ensemble manager namelist.  how do i get access to them
