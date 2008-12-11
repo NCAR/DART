@@ -14,13 +14,14 @@ program restart_file_tool
 ! Program to overwrite the time on each ensemble in a restart file.
 
 use types_mod,           only : r8
-use time_manager_mod,    only : time_type, operator(<), operator(==), &
-                                set_time_missing, set_time,           &
-                                operator(/=), print_time, print_date, &
-                                set_calendar_type, GREGORIAN
+use time_manager_mod,    only : time_type, operator(<), operator(==),      &
+                                set_time_missing, set_time,                &
+                                operator(/=), print_time, print_date,      &
+                                set_calendar_type, GREGORIAN, NO_CALENDAR, &
+                                get_calendar_type
 
 use utilities_mod,       only : initialize_utilities, register_module,    &
-                                error_handler, nmlfileunit, E_MSG, E_ERR,  &
+                                error_handler, nmlfileunit, E_MSG, E_ERR, &
                                 timestamp, find_namelist_in_file,         &
                                 check_namelist_read, do_output
                                 
@@ -47,7 +48,7 @@ character(len=128), parameter :: &
 integer                 :: iunit, model_size, io, member
 type(ensemble_type)     :: ens_handle
 character(len = 128)    :: ifile, ofile
-logical                 :: one_by_one
+logical                 :: one_by_one, has_cal
 character(len=16)       :: write_format
 
 !----------------------------------------------------------------
@@ -107,8 +108,18 @@ if (do_output()) write(nmlfileunit, nml=restart_file_tool_nml)
 if (do_output()) write(     *     , nml=restart_file_tool_nml)
 
 ! if you are not using a gregorian cal, set this to false
-! in the namelist
-if (gregorian_cal) call set_calendar_type(GREGORIAN)
+! in the namelist.
+! NOTE: the namelist entry should probably be: calendar = 'string_name'
+! and then the time manager should have a: call set_calendar_by_name('name')
+! and then this is much more flexible.  it should probably have a call
+! to get the calendar name as well so it could be used in print statements.
+if (gregorian_cal) then
+   call set_calendar_type(GREGORIAN)
+   has_cal = .true.
+else
+   has_cal = .false.
+endif
+
 
 
 ! ens_size is in the filter namelist, and the single restart file flags
@@ -311,18 +322,22 @@ endif
 
 if (old_advance_time .ne. set_time_missing()) then
    call print_time(old_advance_time,  "input file had an advance_time, which was ")
+   if (has_cal) &
    call print_date(old_advance_time,  "input file had an advance_time, which was ")
 endif
 if ((advance_time .ne. set_time_missing()) .and. output_is_model_advance_file) then
    call print_time(advance_time,  "output file advance_time is now set to ")
+   if (has_cal) &
    call print_date(advance_time,  "output file advance_time is now set to ")
 endif
 if (old_data_time .ne. set_time_missing()) then
    call print_time(old_data_time,  "input file data_time was ")
+   if (has_cal) &
    call print_date(old_data_time,  "input file data_time was ")
 endif
 if ((data_time .ne. set_time_missing()) .or. overwrite_data_time) then
    call print_time(data_time,  "output file data_time is now set to ")
+   if (has_cal) &
    call print_date(data_time,  "output file data_time is now set to ")
 endif
 
