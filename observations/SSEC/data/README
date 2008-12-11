@@ -1,0 +1,5 @@
+Unzip the data file.  Link or rename it
+to clwnd_input.txt in the work directory, 
+and run the convert program with tdata.in 
+as input.  It will create a DART obs sequence
+file called obs_seq.clwnd.
