@@ -4372,7 +4372,8 @@ do id=1,num_domains
               'nc_write_model_vars','put_var '//trim(varname))
    endif
 
-   deallocate(temp3d)
+   ! if n_moist == 0, this was never allocated.
+   if (allocated(temp3d)) deallocate(temp3d)
 
    if ( wrf%dom(id)%n_moist > 7 ) then
       write(*,'(''wrf%dom(id)%n_moist = '',i3)')wrf%dom(id)%n_moist
