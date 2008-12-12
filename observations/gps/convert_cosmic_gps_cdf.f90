@@ -719,23 +719,23 @@ real(r8) :: zz0(3), lon, lat, azim, rtp(3), rnm(3), rno(3), uon(3), vlen0
 zz0(1) = 0.0_r8  ;  zz0(2) = 0.0_r8  ;  zz0(3) = 1.0_r8
 lon = lon0 * deg2rad  ;  lat = lat0 * deg2rad  ;  azim = azim0 * deg2rad
 
-rtp(1) = dcos(lat) * dcos(lon)
-rtp(2) = dcos(lat) * dsin(lon)
-rtp(3) = dsin(lat)
+rtp(1) = cos(lat) * cos(lon)
+rtp(2) = cos(lat) * sin(lon)
+rtp(3) = sin(lat)
 
 !  compute unit vector normal to merdion plane through tangent point
 call vprod(rtp, zz0, rnm)
-vlen0 = dsqrt(rnm(1)*rnm(1) + rnm(2)*rnm(2) + rnm(3)*rnm(3))
+vlen0 = sqrt(rnm(1)*rnm(1) + rnm(2)*rnm(2) + rnm(3)*rnm(3))
 rnm(:) = rnm(:) / vlen0
 
 !  compute unit vector toward north from perigee point
 call vprod(rnm, rtp, rno)
-vlen0 = dsqrt(rno(1)*rno(1) + rno(2)*rno(2) + rno(3)*rno(3))
+vlen0 = sqrt(rno(1)*rno(1) + rno(2)*rno(2) + rno(3)*rno(3))
 rno(:) = rno(:) / vlen0
 
 !  rotate the vector rno around rtp for a single azim to get tangent vector
 call spin(rno, rtp, azim, uon)
-vlen0 = dsqrt(uon(1)*uon(1) + uon(2)*uon(2) + uon(3)*uon(3))
+vlen0 = sqrt(uon(1)*uon(1) + uon(2)*uon(2) + uon(3)*uon(3))
 ux = uon(1) / vlen0  ;  uy = uon(2) / vlen0  ;  uz = uon(3) / vlen0
 
 return
@@ -767,11 +767,11 @@ real(r8), intent(out) :: v2(3)
 real(r8) :: vsabs, vsn(3), a1, a2, a3, s(3,3) 
 
 ! Calculation of the unit vector for the rotation
-vsabs  = dsqrt(vs(1)*vs(1) + vs(2)*vs(2) + vs(3)*vs(3))
+vsabs  = sqrt(vs(1)*vs(1) + vs(2)*vs(2) + vs(3)*vs(3))
 vsn(:) = vs(:) / vsabs
 
 ! Calculation the rotation matrix
-a1 = dcos(a)  ;  a2 = 1.0_r8 - a1  ;  a3 = dsin(a)
+a1 = cos(a)  ;  a2 = 1.0_r8 - a1  ;  a3 = sin(a)
 s(1,1) = a2 * vsn(1) * vsn(1) + a1
 s(1,2) = a2 * vsn(1) * vsn(2) - a3 * vsn(3)
 s(1,3) = a2 * vsn(1) * vsn(3) + a3 * vsn(2)
