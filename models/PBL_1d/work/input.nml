@@ -155,7 +155,7 @@
    max_lat           =  90.0,
    min_lon           =   0.0,
    max_lon           = 360.0,
-   gregorian_cal     = .false.
+   gregorian_cal     = .true.
    /
 
 # other possible obs tool namelist items:
