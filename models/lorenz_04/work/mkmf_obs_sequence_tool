@@ -11,5 +11,5 @@
 # $Revision$
 # $Date$
 #
-../../../mkmf/mkmf -p merge_obs_seq -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
- -a "../../.." path_names_merge_obs_seq
+../../../mkmf/mkmf -p obs_sequence_tool -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+ -a "../../.." path_names_obs_sequence_tool
