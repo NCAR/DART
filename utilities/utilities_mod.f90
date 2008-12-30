@@ -60,6 +60,14 @@ module utilities_mod
 !
 !      to_upper         converts a character string to uppercase
 !
+!      find_textfile_dims    finds number of lines and max line length in a 
+!                            text file. Used so we can record the namelist files 
+!                            in the netcdf output files.
+!
+!      file_to_text     converts the contents of a (hopefully small) file to
+!                       a single text variable ... to record in the
+!                       netcdf output files.
+!
 ! nsc start 31jan07
 !   idea - add some unit number routine here?
 !   you can extract the filename associated with a fortran unit number
@@ -98,6 +106,7 @@ integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 public :: file_exist, get_unit, open_file, close_file, timestamp, &
        register_module, error_handler, to_upper, &
        nc_check, logfileunit, nmlfileunit, &
+       find_textfile_dims, file_to_text, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
        find_namelist_in_file, check_namelist_read, &
        set_tasknum, set_output, do_output,  &
@@ -1141,6 +1150,82 @@ do i = 1,len(string)
 enddo
 
 end subroutine to_upper
+
+!#######################################################################
+
+subroutine find_textfile_dims( fname, nlines, linelen )
+! Determines the number of lines and maximum line length
+! of the file. Sometimes you need to know this stuff.
+character(len=*), intent(IN)  :: fname
+integer,          intent(OUT) :: nlines, linelen
+
+integer :: i, mylen, ios, funit
+
+character(len=1024) :: oneline
+character(len=129)  :: error_msg
+
+nlines  = 0
+linelen = 0
+funit   = open_file(fname, form="FORMATTED", action="READ")
+
+READLOOP : do i = 1,100000
+
+   read(funit, '(A)', iostat=ios) oneline
+   if (ios < 0) exit READLOOP  ! end of file
+   if (ios > 0) then
+      write(error_msg,'(A,'' read around line '',i8)')trim(fname),nlines
+      call error_handler(E_ERR,'find_textfile_dims', error_msg)
+   endif
+
+   nlines = nlines + 1
+   mylen  = len_trim(oneline)
+
+   if (mylen > linelen) linelen = mylen
+
+enddo READLOOP
+
+call close_file(funit)
+
+end subroutine find_textfile_dims
+
+!#######################################################################
+
+subroutine file_to_text( fname, textblock )
+!
+!
+character(len=*),               intent(IN)  :: fname
+character(len=*), dimension(:), intent(OUT) :: textblock
+
+integer :: i, ios, funit
+integer :: mynlines, mylinelen
+
+character(len=129)  :: error_msg
+
+call find_textfile_dims(fname, mynlines, mylinelen)
+
+if ( ( mynlines /= size(textblock) ) .or. &
+     (mylinelen /= len(textblock)) ) then
+   write(error_msg,'(A, '' file shape is '',i6,'' by '',i4, &
+                       &''  textblock is '',i6,'' by '',i4)') &
+   trim(fname),mynlines,mylinelen,size(textblock),len(textblock)
+   call error_handler(E_MSG,'file_to_text', error_msg)
+endif
+
+funit   = open_file(fname, form="FORMATTED", action="READ")
+
+PARSELOOP : do i = 1,mynlines
+
+   read(funit, '(A)', iostat=ios) textblock(i)
+   if ( ios /= 0 ) then
+      write(error_msg,'(A,'' read around line '',i8)')trim(fname),i
+      call error_handler(E_ERR,'file_to_text', error_msg)
+   endif
+
+enddo PARSELOOP
+
+call close_file(funit)
+
+end subroutine file_to_text
 
 !=======================================================================
 ! End of utilities_mod

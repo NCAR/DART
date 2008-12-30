@@ -25,7 +25,8 @@ use time_manager_mod, only : time_type, get_time, read_time, write_time,        
 use utilities_mod, only : get_unit, close_file, register_module, error_handler,    &
                           E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, nmlfileunit,   &
                           do_output, dump_unit_attributes, find_namelist_in_file,  &
-                          check_namelist_read, nc_check
+                          check_namelist_read, nc_check, &
+                          find_textfile_dims, file_to_text
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
                           get_model_time_step, model_interpolate, init_conditions, &
                           init_time, adv_1step, end_model, nc_write_model_atts,    &
@@ -206,13 +207,15 @@ character(len=*), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
 integer, OPTIONAL,intent(in) :: lagID
 type(netcdf_file_type)       :: ncFileID
 
-integer             :: i, metadata_length
+integer :: i, metadata_length, nlines, linelen
 
 integer ::   MemberDimID,   MemberVarID     ! for each "copy" or ensemble member
 integer ::     TimeDimID,     TimeVarID
 integer :: LocationDimID
 integer :: MetadataDimID, MetadataVarID
+integer ::   nlinesDimID,  linelenDimID, nmlVarID
 
+character(len=129), allocatable, dimension(:) :: textblock
 
 if(.not. byteSizesOK()) then
     call error_handler(E_ERR,'init_diag_output', &
@@ -246,6 +249,22 @@ call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
               name="time",           len = nf90_unlimited,         dimid = TimeDimID), &
               'init_diag_output', 'def_dim time '//trim(ncFileID%fname))
 
+!-------------------------------------------------------------------------------
+! Find dimensions of namelist file ... will save it as a variable.
+!-------------------------------------------------------------------------------
+
+call find_textfile_dims("input.nml", nlines, linelen)
+
+allocate(textblock(nlines))
+textblock = ''
+
+call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
+              name="NMLlinelen", len = LEN(textblock(1)), dimid = linelenDimID), &
+              'init_diag_output', 'def_dim NMLlinelen '//trim(ncFileID%fname))
+
+call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
+              name="NMLnlines", len = nlines, dimid = nlinesDimID), &
+              'init_diag_output', 'def_dim NMLnlines '//trim(ncFileID%fname))
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes 
@@ -292,6 +311,12 @@ call nc_check(nf90_def_var(ncid=ncFileID%ncid,name="CopyMetaData", xtype=nf90_ch
 call nc_check(nf90_put_att(ncFileID%ncid, metadataVarID, "long_name",       &
               "Metadata for each copy/member"), 'init_diag_output', 'put_att long_name')
 
+!    input namelist 
+call nc_check(nf90_def_var(ncid=ncFileID%ncid,name="inputnml", xtype=nf90_char,    &
+              dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
+              'init_diag_output', 'def_var inputnml')
+call nc_check(nf90_put_att(ncFileID%ncid, nmlVarID, "long_name",       &
+              "input.nml contents"), 'init_diag_output', 'put_att input.nml')
 
 !    Time -- the unlimited dimension
 call nc_check(nf90_def_var(ncFileID%ncid, name="time", xtype=nf90_double, dimids=TimeDimID, &
@@ -301,7 +326,6 @@ if ( i /= 0 ) then
    write(msgstring, *)'nc_write_calendar_atts  bombed with error ', i
    call error_handler(E_MSG,'init_diag_output',msgstring,source,revision,revdate)
 endif
-
 
 ! Create the time "mirror" with a static length. There is another routine
 ! to increase it if need be. For now, just pick something.
@@ -316,6 +340,7 @@ call nc_check(nf90_enddef(ncFileID%ncid), 'init_diag_output', 'enddef '//trim(nc
 
 !-------------------------------------------------------------------------------
 ! Fill the coordinate variables.
+! Write the input namelist as a netCDF variable.
 ! The time variable is filled as time progresses.
 !-------------------------------------------------------------------------------
 
@@ -323,6 +348,13 @@ call nc_check(nf90_put_var(ncFileID%ncid, MemberVarID, (/ (i,i=1,copies_of_field
               'init_diag_output', 'put_var MemberVarID')
 call nc_check(nf90_put_var(ncFileID%ncid, metadataVarID, meta_data_per_copy ), &
               'init_diag_output', 'put_var metadataVarID')
+ 
+call file_to_text("input.nml", textblock)
+
+call nc_check(nf90_put_var(ncFileID%ncid, nmlVarID, textblock ), &
+              'init_diag_output', 'put_var nmlVarID')
+
+deallocate(textblock)
 
 !-------------------------------------------------------------------------------
 ! sync to disk, but leave open
