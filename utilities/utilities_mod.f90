@@ -1197,28 +1197,35 @@ character(len=*),               intent(IN)  :: fname
 character(len=*), dimension(:), intent(OUT) :: textblock
 
 integer :: i, ios, funit
-integer :: mynlines, mylinelen
+integer :: mynlines, mylinelen, strlen
 
-character(len=129)  :: error_msg
+character(len=512)  :: string
 
 call find_textfile_dims(fname, mynlines, mylinelen)
 
+strlen = len(textblock)
+
 if ( ( mynlines /= size(textblock) ) .or. &
-     (mylinelen /= len(textblock)) ) then
-   write(error_msg,'(A, '' file shape is '',i6,'' by '',i4, &
-                       &''  textblock is '',i6,'' by '',i4)') &
-   trim(fname),mynlines,mylinelen,size(textblock),len(textblock)
-   call error_handler(E_MSG,'file_to_text', error_msg)
+     (mylinelen /=     strlen    ) ) then
+   write(string,'(A, '' file shape is '',i6,'' by '',i4, &
+                       &'' ?truncating? to '',i6,'' by '',i4)') &
+   trim(fname),mynlines,mylinelen,size(textblock),strlen
+   call error_handler(E_MSG,'file_to_text', trim(string))
 endif
 
 funit   = open_file(fname, form="FORMATTED", action="READ")
 
+strlen  = min(mylinelen, strlen)
+
 PARSELOOP : do i = 1,mynlines
 
-   read(funit, '(A)', iostat=ios) textblock(i)
+   read(funit, '(A)', iostat=ios) string
+
+   write(textblock(i),'(A)') string(1:strlen)
+
    if ( ios /= 0 ) then
-      write(error_msg,'(A,'' read around line '',i8)')trim(fname),i
-      call error_handler(E_ERR,'file_to_text', error_msg)
+      write(string,'(A,'' read around line '',i8)')trim(fname),i
+      call error_handler(E_ERR,'file_to_text', trim(string))
    endif
 
 enddo PARSELOOP

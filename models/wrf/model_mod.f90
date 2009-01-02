@@ -39,7 +39,8 @@ use      location_mod, only : location_type, get_location, set_location, &
 use     utilities_mod, only : file_exist, open_file, close_file, &
                               register_module, error_handler, E_ERR, E_WARN, &
                               E_MSG, nmlfileunit, do_output, nc_check, &
-                              find_namelist_in_file, check_namelist_read
+                              find_namelist_in_file, check_namelist_read, &
+                              find_textfile_dims, file_to_text
 
 use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
@@ -151,6 +152,8 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
                      allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
                      polar, periodic_x, periodic_y, scm
+
+character(len = 20) :: wrf_nml_file = 'namelist.input'
 
 !-----------------------------------------------------------------------
 
@@ -3128,8 +3131,6 @@ end subroutine get_wrf_horizontal_location
 function nc_write_model_atts( ncFileID ) result (ierr)
 !-----------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
-! A. Caya May 7 2003
-! T. Hoar Mar 8 2004 writes prognostic flavor
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
@@ -3168,6 +3169,10 @@ character(len=NF90_MAX_NAME) :: str1
 
 character (len=1)     :: idom
 
+character(len=129), allocatable, dimension(:) :: textblock
+integer :: nlines, linelen
+integer :: LineLenDimID, nlinesDimID, nmlVarID
+
 !-----------------------------------------------------------------
 
 ierr = 0     ! assume normal termination
@@ -3185,6 +3190,8 @@ call nc_check(nf90_Redef(ncFileID),'nc_write_model_atts','redef')
 ! We need the dimension ID for the number of copies 
 !-----------------------------------------------------------------
 
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name="NMLlinelen", dimid=LineLenDimID), &
+              'nc_write_model_atts','inq_dimid NMLlinelen')
 call nc_check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID), &
               'nc_write_model_atts','inq_dimid copy')
 call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid= TimeDimID), &
@@ -3221,7 +3228,19 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision), &
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate",revdate), &
               'nc_write_model_atts','put_att model_revdate')
 
+!-----------------------------------------------------------------
 ! how about namelist input? might be nice to save ...
+! long lines are truncated when read into textblock
+!-----------------------------------------------------------------
+
+call find_textfile_dims(wrf_nml_file, nlines, linelen)
+
+allocate(textblock(nlines))
+textblock = ''
+
+call nc_check(nf90_def_dim(ncid=ncFileID, name="nlines", &
+              len = nlines, dimid = nlinesDimID), &
+              'nc_write_model_atts', 'def_dim nlines ')
 
 !-----------------------------------------------------------------
 ! Define the dimensions IDs
@@ -3264,6 +3283,12 @@ enddo
 ! Create the (empty) static variables and their attributes
 ! Commented block is from wrfinput
 !-----------------------------------------------------------------
+
+call nc_check(nf90_def_var(ncFileID,name="WRFnml", xtype=nf90_char,    &
+              dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
+              'nc_write_model_atts', 'def_var WRFnml')
+call nc_check(nf90_put_att(ncFileID, nmlVarID, "long_name",       &
+              "namelist.input contents"), 'nc_write_model_atts', 'put_att WRFnml')
 
 call nc_check(nf90_def_var(ncFileID, name="DX", xtype=nf90_real, &
               dimids= DomDimID, varid=DXVarID), &
@@ -4003,6 +4028,11 @@ endif
 ! Fill the variables we can
 !-----------------------------------------------------------------
 call nc_check(nf90_enddef(ncfileID),'nc_write_model_atts','enddef')
+
+call file_to_text(wrf_nml_file, textblock)
+call nc_check(nf90_put_var(ncFileID, nmlVarID, textblock ), &
+              'nc_write_model_atts', 'put_var nmlVarID')
+deallocate(textblock)
 
 call nc_check(nf90_put_var(ncFileID,        DXVarID, wrf%dom(1:num_domains)%dx), &
               'nc_write_model_atts','put_var dx')
