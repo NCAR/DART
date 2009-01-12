@@ -290,7 +290,6 @@ do id=1,num_domains
    n_values = n_values + (wrf%dom(id)%bt+1)*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! geopotential
    n_values = n_values + (wrf%dom(id)%bt  )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! t
    n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! dry surf. press.
-   n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! skin temperature
 
 ! moist variables. Order is qv, qc, qr, qi, qs, qg, qnice.
 
@@ -308,6 +307,7 @@ do id=1,num_domains
 
    if( wrf%dom(id)%soil_data ) then
       n_values = n_values + 3 * (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! tslb, smois, sh2o
+      n_values = n_values +                        (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! skin temperature
    endif
 
    if( wrf%dom(id)%h_diab ) then
@@ -377,10 +377,6 @@ do id=1,num_domains
    in = n_values+1
    call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%mu,wrf%dom(id)%we,wrf%dom(id)%sn)
    n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! dry surf. press.
-
-   in = n_values+1
-   call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%tsk,wrf%dom(id)%we,wrf%dom(id)%sn)
-   n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! skin temperature
 
 ! moist variables
 
@@ -472,6 +468,10 @@ do id=1,num_domains
      in = n_values+1
      call trans_3d( dart_to_wrf, dart(in:),wrf%dom(id)%sh2o,wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%sls)
      n_values = n_values + (wrf%dom(id)%sls )*(wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! sh2o    
+
+     in = n_values+1
+     call trans_2d( dart_to_wrf, dart(in:),wrf%dom(id)%tsk,wrf%dom(id)%we,wrf%dom(id)%sn)
+     n_values = n_values +                    (wrf%dom(id)%sn  )*(wrf%dom(id)%we  )  ! skin temperature
 
    endif
 

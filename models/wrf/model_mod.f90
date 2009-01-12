@@ -100,7 +100,9 @@ public ::  adv_1step,       &
 !   contained within model_mod available for public use:
 public ::  get_number_domains,       &
            wrf_static_data_for_dart, &
-           get_wrf_static_data
+           get_wrf_static_data,      &
+           model_pressure,           &
+           pres_to_zk         
 
 
 !-----------------------------------------------------------------------
@@ -679,12 +681,12 @@ do id=1,num_domains
 
 !  build the map into the 1D DART vector for WRF data
 
-   wrf%dom(id)%number_of_wrf_variables = 7 + wrf%dom(id)%n_moist
+   wrf%dom(id)%number_of_wrf_variables = 6 + wrf%dom(id)%n_moist
    if( wrf%dom(id)%surf_obs ) then
       wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 6
    endif
    if( wrf%dom(id)%soil_data ) then
-      wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 3
+      wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 4
    endif
    if( h_diab ) then
       wrf%dom(id)%number_of_wrf_variables = wrf%dom(id)%number_of_wrf_variables + 1
@@ -704,8 +706,6 @@ do id=1,num_domains
    wrf%dom(id)%dart_kind(5) = KIND_TEMPERATURE
    wrf%dom(id)%var_type(6)  = TYPE_MU
    wrf%dom(id)%dart_kind(6) = KIND_PRESSURE
-   wrf%dom(id)%var_type(7)  = TYPE_TSK
-   wrf%dom(id)%dart_kind(7) = KIND_TEMPERATURE
 
    ! WARNING: the following code assumes that by reading in the number of
    !  moist variables (from the dart model_nml namelist), you know what
@@ -722,7 +722,7 @@ do id=1,num_domains
    ! This has been added to the dart to-do list, but should be fixed by a
    ! wrf user when someone has the time and energy to do it.    nancy 5jun08.
 
-   ind = 7
+   ind = 6
    if( wrf%dom(id)%n_moist >= 1) then
       ind = ind + 1
       wrf%dom(id)%var_type(ind)  = TYPE_QV
@@ -788,6 +788,9 @@ do id=1,num_domains
       ind = ind + 1
       wrf%dom(id)%var_type(ind)  = TYPE_SH2O
       wrf%dom(id)%dart_kind(ind) = KIND_SOIL_MOISTURE
+      ind = ind + 1
+      wrf%dom(id)%var_type(ind)  = TYPE_TSK
+      wrf%dom(id)%dart_kind(ind) = KIND_TEMPERATURE
    end if
    if( h_diab ) then
       ind = ind + 1
@@ -893,21 +896,6 @@ do id=1,num_domains
    enddo
    wrf%dom(id)%var_index(2,ind) = dart_index - 1
 
-   ind = ind + 1                   ! *** tsk field ***
-   wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
-   wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
-   wrf%dom(id)%var_size(3,ind) = 1
-   wrf%dom(id)%var_index(1,ind) = dart_index
-   do k=1,wrf%dom(id)%var_size(3,ind)
-      do j=1,wrf%dom(id)%var_size(2,ind)
-         do i=1,wrf%dom(id)%var_size(1,ind)
-            wrf%dom(id)%dart_ind(i,j,k,TYPE_TSK) = dart_index
-            dart_index = dart_index + 1
-         enddo
-      enddo
-   enddo
-   wrf%dom(id)%var_index(2,ind) = dart_index - 1
-
    do model_type = TYPE_QV, TYPE_QV + wrf%dom(id)%n_moist - 1
       ind = ind + 1                   ! *** moisture field ***
       wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
@@ -989,6 +977,21 @@ do id=1,num_domains
          enddo
       enddo
       wrf%dom(id)%var_index(2,ind) = dart_index - 1  
+
+      ind = ind + 1                   ! *** tsk field ***
+      wrf%dom(id)%var_size(1,ind) = wrf%dom(id)%we
+      wrf%dom(id)%var_size(2,ind) = wrf%dom(id)%sn
+      wrf%dom(id)%var_size(3,ind) = 1
+      wrf%dom(id)%var_index(1,ind) = dart_index
+      do k=1,wrf%dom(id)%var_size(3,ind)
+         do j=1,wrf%dom(id)%var_size(2,ind)
+	    do i=1,wrf%dom(id)%var_size(1,ind)
+	       wrf%dom(id)%dart_ind(i,j,k,TYPE_TSK) = dart_index
+	       dart_index = dart_index + 1
+	    enddo
+	 enddo
+      enddo
+      wrf%dom(id)%var_index(2,ind) = dart_index - 1
    end if
 
    if(h_diab ) then
@@ -3131,6 +3134,10 @@ end subroutine get_wrf_horizontal_location
 function nc_write_model_atts( ncFileID ) result (ierr)
 !-----------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
+! A. Caya May 7 2003
+! T. Hoar Mar 8 2004 writes prognostic flavor
+
+logical, parameter :: write_precip = .false.
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
@@ -3159,7 +3166,7 @@ integer, dimension(num_domains) :: DNVarID, ZNUVarID, DNWVarID, phbVarID, &
 integer :: var_id
 integer :: i, id
 
-character(len=129) :: errstring
+character(len=129) :: errstring, title
 
 character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
@@ -3182,6 +3189,7 @@ ierr = 0     ! assume normal termination
 ! and then put into define mode.
 !-----------------------------------------------------------------
 
+call nc_check(nf90_get_att(ncFileID, NF90_GLOBAL, 'title', title), 'nc_write_model_atts','get_att')
 call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
               'nc_write_model_atts','inquire')
 call nc_check(nf90_Redef(ncFileID),'nc_write_model_atts','redef')
@@ -3623,8 +3631,6 @@ if ( output_state_vector ) then
                  'nc_write_model_atts','put_att state T_units')
    call nc_check(nf90_put_att(ncFileID, StateVarId, "MU_units","Pa"), &
                  'nc_write_model_atts','put_att state MU_units')
-   call nc_check(nf90_put_att(ncFileID, StateVarId, "TSK_units","K"), &
-                 'nc_write_model_atts','put_att state TSK_units')
    if( wrf%dom(num_domains)%n_moist >= 1) then
       call nc_check(nf90_put_att(ncFileID, StateVarId, "QV_units","kg/kg"), &
                     'nc_write_model_atts','put_att state QV_units')
@@ -3674,6 +3680,8 @@ if ( output_state_vector ) then
                     'nc_write_model_atts','put_att state SMOIS_units')
       call nc_check(nf90_put_att(ncFileID, StateVarId, "SH2O_units","m3/m3"), &
                     'nc_write_model_atts','put_att state SH2O_units')
+      call nc_check(nf90_put_att(ncFileID, StateVarId, "TSK_units","K"), &
+                       'nc_write_model_atts','put_att state TSK_units')
    endif
    if(h_diab ) then
       call nc_check(nf90_put_att(ncFileID, StateVarId, "H_DIAB_units",""), &
@@ -3789,24 +3797,6 @@ do id=1,num_domains
    call nc_check(nf90_put_att(ncFileId, var_id, "description", &
                  "perturbation dry air mass in column"), &
                  'nc_write_model_atts','put_att MU_d0'//idom//' description')
-
-
-   !      float TSK(Time, south_north, west_east) ;
-   !         TSK:FieldType = 104 ;
-   !         TSK:MemoryOrder = "XY " ;
-   !         TSK:description = "SURFACE SKIN TEMPERATURE" ;
-   !         TSK:units = "K" ;
-   !         TSK:stagger = "" ;
-   call nc_check(nf90_def_var(ncid=ncFileID, name="TSK_d0"//idom, xtype=nf90_real, &
-        dimids=(/weDimID(id),snDimID(id),MemberDimID,unlimitedDimID /), &
-        varid=var_id),'nc_write_model_atts','def_var TSK_d0'//idom)
-   call nc_check(nf90_put_att(ncFileID, var_id, "long_name", "tsk field"), &
-                 'nc_write_model_atts','put_att TSK_d0'//idom//' long_name')
-   call nc_check(nf90_put_att(ncFileID, var_id, "units", "K"), &
-                 'nc_write_model_atts','put_att TSK_d0'//idom//' units')
-   call nc_check(nf90_put_att(ncFileId, var_id, "description", &
-                 "SURFACE SKIN TEMPERATURE"), &
-                 'nc_write_model_atts','put_att TSK_d0'//idom//' description')
 
 
    !      float QVAPOR(Time, bottom_top, south_north, west_east) ;
@@ -3993,6 +3983,45 @@ do id=1,num_domains
                     "SOIL LIQUID WATER"), &
                     'nc_write_model_atts','put_att SH20_d0'//idom//' description')
 
+      !      float TSK(Time, south_north, west_east) ;
+      !         TSK:FieldType = 104 ;
+      !         TSK:MemoryOrder = "XY " ;
+      !         TSK:description = "SURFACE SKIN TEMPERATURE" ;
+      !         TSK:units = "K" ;
+      !         TSK:stagger = "" ;
+      call nc_check(nf90_def_var(ncid=ncFileID, name="TSK_d0"//idom, xtype=nf90_real, &
+           dimids=(/weDimID(id),snDimID(id),MemberDimID,unlimitedDimID /), &
+           varid=var_id),'nc_write_model_atts','def_var TSK_d0'//idom)
+      call nc_check(nf90_put_att(ncFileID, var_id, "long_name", "tsk field"), &
+                    'nc_write_model_atts','put_att TSK_d0'//idom//' long_name')
+      call nc_check(nf90_put_att(ncFileID, var_id, "units", "K"), &
+                    'nc_write_model_atts','put_att TSK_d0'//idom//' units')
+      call nc_check(nf90_put_att(ncFileId, var_id, "description", &
+                    "SURFACE SKIN TEMPERATURE"), &
+                    'nc_write_model_atts','put_att TSK_d0'//idom//' description')
+
+   endif
+
+   if ( trim(adjustl(title(1:2))) == 'pr' .and. write_precip ) then
+
+     call nc_check(nf90_def_var(ncid=ncFileID, name="RAINC_d0"//idom, xtype=nf90_real, &
+          dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
+          varid  = var_id),'nc_write_model_atts','def_var RAINC_d0'//idom)
+     call nc_check(nf90_put_att(ncFileID, var_id, "units", "mm"), &
+                   'nc_write_model_atts','put_att RAINC_d0'//idom//' units')
+     call nc_check(nf90_put_att(ncFileID, var_id, "description", & 
+                   "ACCUMULATED TOTAL CUMULUS PRECIPITATION"), &
+                   'nc_write_model_atts','put_att RAINC_d0'//idom//' description')
+
+     call nc_check(nf90_def_var(ncid=ncFileID, name="RAINNC_d0"//idom, xtype=nf90_real, &
+          dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
+	  varid  = var_id),'nc_write_model_atts','def_var RAINNC_d0'//idom)
+     call nc_check(nf90_put_att(ncFileID, var_id, "units", "mm"), &
+                   'nc_write_model_atts','put_att RAINNC_d0'//idom//' units')
+     call nc_check(nf90_put_att(ncFileID, var_id, "description", & 
+                   "ACCUMULATED TOTAL GRID POINT PRECIPITATION"), &
+                   'nc_write_model_atts','put_att RAINNC_d0'//idom//' description')
+
    endif
 
    if(h_diab ) then
@@ -4172,7 +4201,7 @@ do id=1,num_domains
    write( idom , '(I1)') id
 
    !----------------------------------------------------------------------------
-   ! Fill the variables, the order is CRITICAL  ...   U,V,W,GZ,T,MU,TSK,QV,QC,QR,...
+   ! Fill the variables, the order is CRITICAL  ...   U,V,W,GZ,T,MU,QV,QC,QR,...
    !----------------------------------------------------------------------------
 
    !----------------------------------------------------------------------------
@@ -4268,21 +4297,6 @@ do id=1,num_domains
    if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
               trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
    allocate ( temp2d(wrf%dom(id)%we, wrf%dom(id)%sn) )
-   temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
-   call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
-                            start=(/ 1, 1, copyindex, timeindex /) ), &
-              'nc_write_model_vars','put_var '//trim(varname))
-
-
-   !----------------------------------------------------------------------------
-   varname = 'TSK_d0'//idom
-   !----------------------------------------------------------------------------
-   call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
-              'nc_write_model_vars','inq_varid '//trim(varname))
-   i       = j + 1
-   j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
-   if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
-              trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
    temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) ) 
    call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
                             start=(/ 1, 1, copyindex, timeindex /) ), &
@@ -4545,6 +4559,20 @@ do id=1,num_domains
               'nc_write_model_vars','put_var '//trim(varname))
 
       deallocate(temp3d)
+
+      !----------------------------------------------------------------------------
+      varname = 'TSK_d0'//idom
+      !----------------------------------------------------------------------------
+      call nc_check(nf90_inq_varid(ncFileID, trim(varname), VarID), &
+              'nc_write_model_vars','inq_varid '//trim(varname))
+      i       = j + 1
+      j       = i + wrf%dom(id)%we * wrf%dom(id)%sn - 1
+      if (debug) write(*,'(a10,'' = statevec('',i7,'':'',i7,'') with dims '',3(1x,i3))') &
+                 trim(varname),i,j,wrf%dom(id)%we,wrf%dom(id)%sn
+      temp2d  = reshape(statevec(i:j), (/ wrf%dom(id)%we, wrf%dom(id)%sn /) )
+      call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
+                               start=(/ 1, 1, copyindex, timeindex /) ), &
+              'nc_write_model_vars','put_var '//trim(varname))
 
    endif
 
