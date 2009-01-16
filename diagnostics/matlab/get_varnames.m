@@ -27,7 +27,7 @@ function bob = get_varnames(fid)
 variables  =   var(fid);
 coordvars  = coord(fid);
 
-atmosvarinds = VariableIndices(coordvars,variables);
+atmosvarinds = VariableIndices(coordvars,variables,fid);
 
 % coerce just the names into a cell array 
 
@@ -37,7 +37,7 @@ end
 
 
 
-function inds = VariableIndices(coordvars,variables)
+function inds = VariableIndices(coordvars,variables,f)
 % returns the indices of the atmospheric variables.
 
 inds = [];
@@ -49,13 +49,16 @@ for i = 1:length(variables)
    
    for j = 1:length(coordvars)
       if (strcmp( varname , name(coordvars{j}))), isatmosvar = 0; end 
-      if (strcmp( varname ,      'time_bounds')), isatmosvar = 0; end 
-      if (strcmp( varname ,     'region_names')), isatmosvar = 0; end 
-      if (strcmp( varname ,     'CopyMetaData')), isatmosvar = 0; end 
-      if (strcmp( varname , 'ObservationTypes')), isatmosvar = 0; end 
    end
-
+   
+   if (strcmp( varname ,      'time_bounds')), isatmosvar = 0; end 
+   if (strcmp( varname ,     'region_names')), isatmosvar = 0; end 
+   if (strcmp( varname ,     'CopyMetaData')), isatmosvar = 0; end 
+   if (strcmp( varname , 'ObservationTypes')), isatmosvar = 0; end
+      
    if (isatmosvar > 0)
     inds = [inds i];
+   else
+       error('No atmospheric variables in %s.',name(f))
    end
 end
