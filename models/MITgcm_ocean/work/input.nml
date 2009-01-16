@@ -30,8 +30,8 @@
    init_time_seconds        =  43200,
    first_obs_days           = 144270,
    first_obs_seconds        =      0,
-   last_obs_days            = 144271,
-   last_obs_seconds         =  86400,
+   last_obs_days            = 144270,
+   last_obs_seconds         =  43200,
    num_output_state_members = 20,
    num_output_obs_members   = 20,
    output_interval          = 1,
@@ -130,7 +130,7 @@
    output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
      input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
     output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_MITgcm_ocean_mod.f90'  /
+   input_files              = '../../../obs_def/obs_def_ocean_mod.f90'  /
 
 &assim_model_nml
    write_binary_restart_files = .true.  /
