@@ -1,10 +1,10 @@
-This is a WRF 2.2 regression test case, which can be used to test an initial setup as well.
+This is a WRF 2.2.1 regression test case, which can be used to test an initial setup as well.
 
 The domain is CONUS (the continental United States), 50 km resolution. 
 
 The observation files are the standard prepbufr NCEP observations, from 2007/04/26.
 
-The initial condition and boundary files are compatible with WRF version 2.2.
+The initial condition and boundary files are compatible with WRF version 2.2.1.
 The DART model_mod works fine with WRF 3.0 as well, and if anyone would like to
 contribute 3.0 compatible ic and boundary files, we'd be happy to take them.
 
