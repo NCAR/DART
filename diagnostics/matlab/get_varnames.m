@@ -57,8 +57,10 @@ for i = 1:length(variables)
    if (strcmp( varname , 'ObservationTypes')), isatmosvar = 0; end
       
    if (isatmosvar > 0)
-    inds = [inds i];
-   else
-       error('No atmospheric variables in %s.',name(f))
+      inds = [inds i];
    end
+end
+
+if (isempty(inds))
+   error('No atmospheric variables in %s',name(f))
 end
