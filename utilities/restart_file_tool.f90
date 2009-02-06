@@ -20,10 +20,10 @@ use time_manager_mod,    only : time_type, operator(<), operator(==),      &
                                 set_calendar_type, GREGORIAN, NO_CALENDAR, &
                                 get_calendar_type
 
-use utilities_mod,       only : initialize_utilities, register_module,    &
-                                error_handler, nmlfileunit, E_MSG, E_ERR, &
-                                timestamp, find_namelist_in_file,         &
-                                check_namelist_read, do_output
+use utilities_mod,       only : initialize_utilities, register_module,     &
+                                error_handler, nmlfileunit, E_MSG, E_ERR,  &
+                                timestamp, find_namelist_in_file,          &
+                                check_namelist_read, do_output, logfileunit
                                 
 use assim_model_mod,     only : static_init_assim_model, get_model_size,   &
                                 open_restart_read, open_restart_write,     &
@@ -47,7 +47,7 @@ character(len=128), parameter :: &
 
 integer                 :: iunit, model_size, io, member
 type(ensemble_type)     :: ens_handle
-character(len = 128)    :: ifile, ofile
+character(len = 128)    :: ifile, ofile, msgstring
 logical                 :: one_by_one, has_cal
 character(len=16)       :: write_format
 
@@ -69,6 +69,7 @@ logical               :: overwrite_advance_time       = .false.
 type(time_type)       :: advance_time, old_advance_time
 integer               :: new_advance_days = -1, new_advance_secs = -1
 logical               :: gregorian_cal = .true.
+logical               :: print_only = .false.
 
 namelist /restart_file_tool_nml/  &
    input_file_name,              &
@@ -85,7 +86,8 @@ namelist /restart_file_tool_nml/  &
    overwrite_advance_time,       &
    new_advance_days,             &
    new_advance_secs,             &
-   gregorian_cal
+   gregorian_cal,                &
+   print_only
 
 
 !----------------------------------------------------------------
@@ -203,6 +205,14 @@ if (one_by_one) then
       call close_restart(iunit)
       !------------------- Read restart from file ----------------------
       
+      !-----------------  If only printing, print and exit --------------------
+      if (print_only) then
+         call print_info(model_size, has_cal, ens_handle%time(1), &
+                         input_is_model_advance_file, old_advance_time)
+         goto 10
+      endif
+      !-----------------  If only printing, print and exit --------------------
+
       !-----------------  Update data, advance times if requested -------------
       old_data_time = ens_handle%time(1)
       if (overwrite_data_time) &
@@ -270,6 +280,13 @@ else
    endif   
    !------------------- Read restart from file ----------------------
          
+   !-----------------  If only printing, print and exit --------------------
+   if (print_only) then
+      call print_info(model_size, has_cal, ens_handle%time(1), &
+                      input_is_model_advance_file, old_advance_time)
+      goto 10
+   endif
+   !-----------------  If only printing, print and exit --------------------
   
    !-----------------  Update data, advance times if requested -----------
    do member=1, ens_size
@@ -319,30 +336,71 @@ else
 
 endif
 
+write(msgstring, '(A, i8)') 'Model size/restart data length =', model_size
+call error_handler(E_MSG,'',msgstring)
 
 if (old_advance_time .ne. set_time_missing()) then
-   call print_time(old_advance_time,  "input file had an advance_time, which was ")
-   if (has_cal) &
-   call print_date(old_advance_time,  "input file had an advance_time, which was ")
+   call print_temporal(old_advance_time, has_cal, "input file had an advance_time, which was ")
 endif
 if ((advance_time .ne. set_time_missing()) .and. output_is_model_advance_file) then
-   call print_time(advance_time,  "output file advance_time is now set to ")
-   if (has_cal) &
-   call print_date(advance_time,  "output file advance_time is now set to ")
+   call print_temporal(advance_time, has_cal, "output file advance_time is now set to ")
 endif
 if (old_data_time .ne. set_time_missing()) then
-   call print_time(old_data_time,  "input file data_time was ")
-   if (has_cal) &
-   call print_date(old_data_time,  "input file data_time was ")
+   call print_temporal(old_data_time, has_cal, "input file data_time was ")
 endif
 if ((data_time .ne. set_time_missing()) .or. overwrite_data_time) then
-   call print_time(data_time,  "output file data_time is now set to ")
-   if (has_cal) &
-   call print_date(data_time,  "output file data_time is now set to ")
+   call print_temporal(data_time, has_cal, "output file data_time is now set to ")
 endif
+
+! Early exit for the 'print_only' option
+10 continue
 
 call timestamp(source,revision,revdate,'end') ! closes the log file.
 
 call finalize_mpi_utilities()
+
+contains
+
+subroutine print_info(model_size, has_cal, data_time, is_advance, advance_time)
+! called when the 'print_only' namelist item is true; print information
+! about the timestamps in the file and the model size.
+ integer, intent(in)                   :: model_size
+ logical, intent(in)                   :: has_cal
+ type(time_type), intent(in)           :: data_time
+ logical, intent(in)                   :: is_advance
+ type(time_type), intent(in), optional :: advance_time
+
+
+call error_handler(E_MSG,'','')
+
+write(msgstring, '(A, i8)') 'Model size/restart data length =', model_size
+call error_handler(E_MSG,'',msgstring)
+
+call error_handler(E_MSG,'','')
+
+call print_temporal(data_time, has_cal, "input file data time is ")
+if (is_advance) then
+   call print_temporal(advance_time, has_cal, "input file has an advance_time, which is ")
+endif
+
+end subroutine print_info
+
+subroutine print_temporal(timeval, has_cal, label)
+! the print_date/time routines print only one place.  rather than replicating
+! all the code, make a single call which prints both time, and date format if
+! there is a calendar, and print both to stdout and to the log file.
+ type(time_type), intent(in)  :: timeval
+ logical, intent(in)          :: has_cal
+ character(len=*), intent(in) :: label
+
+call print_time(timeval, label)
+call print_time(timeval, label, logfileunit)
+
+if (has_cal) then
+   call print_date(timeval, label)
+   call print_date(timeval, label, logfileunit)
+endif
+
+end subroutine print_temporal
 
 end program restart_file_tool
