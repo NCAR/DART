@@ -132,8 +132,8 @@ integer,             intent(in)    :: init_time_days
 ! Can either get restart by copying ensemble_ic into every lag or by reading from
 ! restart files. If reading from restart, may want to override the times as indicated
 ! by the filter namelist.
-integer             :: i
-character(len = 13) :: file_name
+integer             :: i, j
+character(len = 80) :: file_name, temp_name
 
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
@@ -147,27 +147,45 @@ do i = 1, num_lags
    call init_ensemble_manager(lag_handle(i), ens_size + 6, model_size, 1)
 end do
 
+! assume no lags are current, and increment this as the files are found.
+! this allows a model which has only advanced N times to have > N lags.
+num_current_lags = 0
+
 ! If starting from restart, read these in
 if(start_from_restart) then
-   do i = 1, num_lags
+   READ_LAGS: do i = 1, num_lags
+      ! FIXME: This should use the text string from the namelist.  It will
+      ! need to change to something like "(A, i5.5)" (or 4.4 to match the
+      ! resolution of the ensemble suffix.
       write(file_name, '("lag_", i5.5, "_ics")') i
-      if(init_time_days >= 0) then
-         call read_ensemble_restart(lag_handle(i), 1, ens_size, &
-            start_from_restart, file_name, time1)
+      write(temp_name, '(A, ".", i4.4)') trim(file_name), 1
+      if (file_exist(file_name) .or. file_exist(temp_name)) then
+         if(init_time_days >= 0) then
+            call read_ensemble_restart(lag_handle(i), 1, ens_size, &
+               start_from_restart, file_name, time1)
+         else
+            call read_ensemble_restart(lag_handle(i), 1, ens_size, &
+               start_from_restart, file_name)
+         endif
+         num_current_lags = num_current_lags + 1
       else
-         call read_ensemble_restart(lag_handle(i), 1, ens_size, &
-            start_from_restart, file_name)
+         ! lag ic file does not exist yet, duplicate the filter ics 
+         ! for the rest of the lags and break out of the i loop
+         do j = i, num_lags
+            call duplicate_ens(ens_handle, lag_handle(j), .true.)
+         end do
+         exit READ_LAGS
       endif
-   end do
-   ! All lags in restart are assumed to be current
-   num_current_lags = num_lags
+   end do READ_LAGS
+
+   write(errstring, '(i4, A)') num_current_lags, ' smoother restart files processed' 
+   call error_handler(E_MSG,'smoother_read_restart',errstring,source,revision,revdate)
+
 else
    ! If not starting from restart, just copy the filter ics to all lags
    do i = 1, num_lags
       call duplicate_ens(ens_handle, lag_handle(i), .true.)
    end do
-   ! None of these are current to start with
-   num_current_lags = 0
 endif
 
 end subroutine smoother_read_restart
@@ -295,11 +313,12 @@ if ( .not. module_initialized ) then
 endif
 
 ! Write out restart to each lag in turn
-! Storage is cyclic with lag 1 pointed to by head
-do i = 1, num_lags
+! Storage is cyclic with oldest lag pointed to by head, and 
+! head + 1 the most recent lag
+do i = 1, num_current_lags
    index = smoother_head + i - 1
    if(index > num_lags) index = index - num_lags
-   write(file_name, '("lag_", i5.5, "_restart")') index
+   write(file_name, '("lag_", i5.5, "_restart")') i
    call write_ensemble_restart(lag_handle(index), file_name, start_copy, end_copy)
 end do
 
