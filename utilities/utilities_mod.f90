@@ -1206,9 +1206,9 @@ call find_textfile_dims(fname, mynlines, mylinelen)
 strlen = len(textblock)
 
 if ( ( mynlines /= size(textblock) ) .or. &
-     (mylinelen /=     strlen    ) ) then
+     (mylinelen >      strlen    ) ) then
    write(string,'(A, '' file shape is '',i6,'' by '',i4, &
-                       &'' ?truncating? to '',i6,'' by '',i4)') &
+                    &'' truncating to '',i6,'' by '',i4)') &
    trim(fname),mynlines,mylinelen,size(textblock),strlen
    call error_handler(E_MSG,'file_to_text', trim(string))
 endif
