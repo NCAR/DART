@@ -351,6 +351,10 @@ endif
 
 do i = 1, num_lags
    call all_vars_to_all_copies(lag_handle(i))
+
+   write(errstring, *)'starting assimilate pass for lag ', i
+   call error_handler(E_MSG,'smoother_assim',errstring)
+
    ! NEED A LAG INFLATE TYPE THAT DOES NO INFLATION FOR NOW
    call filter_assim(lag_handle(i), obs_ens_handle, seq, keys, ens_size, num_groups, &
       obs_val_index, lag_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
