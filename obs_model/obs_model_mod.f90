@@ -26,7 +26,8 @@ use obs_sequence_mod,     only : obs_sequence_type, obs_type, get_obs_from_key, 
 use obs_def_mod,          only : obs_def_type, get_obs_def_time
 use time_manager_mod,     only : time_type, set_time, get_time, print_time,   &
                                  operator(/=), operator(>), operator(-),      &
-                                 operator(/), operator(+), operator(<), operator(==)
+                                 operator(/), operator(+), operator(<), operator(==), &
+                                 operator(<=), operator(>=)
 use ensemble_manager_mod, only : get_ensemble_time, ensemble_type
 use mpi_utilities_mod,    only : my_task_id, task_sync, task_count, block_task, &
                                  sum_across_tasks
@@ -43,6 +44,7 @@ character(len=128), parameter :: &
    revdate  = "$Date$"
 
 logical :: module_initialized = .false.
+logical :: print_time_details = .true.
 
 ! Module storage for writing error messages
 character(len = 129) :: errstring
@@ -81,7 +83,7 @@ type(time_type)    :: next_time, time2, start_time, end_time, delta_time, ens_ti
 type(obs_type)     :: observation
 type(obs_def_type) :: obs_def
 logical            :: is_this_last, is_there_one, out_of_range
-integer            :: sec, day, my_first_copy, leaving_early
+integer            :: my_first_copy, leaving_early
 
 ! Initialize if needed
 if(.not. module_initialized) then
@@ -149,12 +151,29 @@ next_time = get_obs_def_time(obs_def)
 ! Get the time of the ensemble, assume consistent across all ensemble copies
 call get_ensemble_time(ens_handle, 1, ens_time)
 
+! Compute the model time step and center a window around the closest time
+delta_time = get_model_time_step()
+
+! print out current window, if requested
+if (print_time_details) then
+   if(delta_time / 2 > ens_time) then
+      start_time = set_time(0, 0)
+   else
+      start_time = ens_time - delta_time / 2 + set_time(1, 0)
+   endif
+   end_time = ens_time + delta_time / 2
+   call timechat(ens_time,    'move_ahead', .true.,   'Model data timestamp currently:        ')
+   call timechat(start_time,  'move_ahead', .false.,  'Current assimilation window starts at: ')
+   call timechat(end_time,    'move_ahead', .false.,  'Current assimilation window ends at:   ')
+   !call timechat(delta_time,  'move_ahead', .false., 'Width of assimilation window:          ')
+endif
+
+! now recompute for the next window, so the code below can remain unchanged.
 ! Figure out time to which to advance model 
+
 ! More control over time window use of observations would come in here
 time2 = aget_closest_state_time_to(ens_time, next_time)
 
-! Compute the model time step and center a window around the closest time
-delta_time = get_model_time_step()
 ! WATCH OUT FOR USING BOUNDARY TIME OBS TWICE; add one second to bottom time
 ! ALSO, avoid having a negative time for the start (for low-order models in general)
 if(delta_time / 2 > time2) then
@@ -164,20 +183,59 @@ else
 endif
 end_time = time2 + delta_time / 2
 
-! Output the start and end time at the message level
-call get_time(start_time, sec, day)
-write (errstring, *) 'Start time of obs range day=', day, ', sec=', sec
-call error_handler(E_MSG, 'move_ahead', errstring, '', '', '')
-call get_time(end_time,   sec, day)
-write (errstring, *) 'End time of obs range day=  ', day, ', sec=', sec
-call error_handler(E_MSG, 'move_ahead', errstring, source, revision, revdate)
+! Output very brief current start and end time at the message level
+if (.not. print_time_details) then
+   call timechat(start_time,  'move_ahead', .true.,   'Next assimilation window starts at: ')
+   call timechat(end_time,    'move_ahead', .false.,  'Next assimilation window ends at:   ')
+endif
 
 ! If the next observation is not in the window, then have an error
-if(next_time < start_time .or. next_time > end_time) then
-   ! Is this test still really needed?
-   call get_time(next_time,   sec, day)
-   write(errstring, *) 'next obs time not in model time window: day=', day, ', sec=', sec
-   call error_handler(E_ERR, 'move_ahead', errstring, source, revision, revdate)
+if(next_time < start_time .or. next_time > end_time .or. print_time_details) then
+   ! Is this test still really needed?  If you comment out that test, you can
+   ! simply skip early obs, but for now, leave the code alone and print out a
+   ! better set of error messages.
+
+   if (next_time < start_time .or. next_time > end_time) then
+      call error_handler(E_MSG, ' ', ' ')
+      call error_handler(E_MSG, 'move_ahead', 'Inconsistent model state/observation times: ')
+   endif
+
+
+   if (time2 /= ens_time) then
+      call timechat(next_time,   'move_ahead', .true.,  'Next available observation time:       ')
+      call timechat(time2,       'move_ahead', .false., 'New data time should be:               ', &
+         'Not within current window, model will be called to advance state.')
+   else 
+      if (next_time >= start_time .and. next_time <= end_time) then
+         call timechat(next_time,   'move_ahead', .true.,  'Next available observation time:       ', &
+            'Within current assimilation window, model does not need advance.')
+      else 
+         call timechat(next_time,   'move_ahead', .true.,  'Next available observation time:       ', &
+            'Next obs outside current assimilation window.')
+      endif
+   endif
+   call error_handler(E_MSG, ' ', ' ')
+
+   if (next_time < start_time .or. next_time > end_time) then
+      call timechat(start_time,  'move_ahead', .true.,  'New assimilation window starts at:     ')
+      call timechat(end_time,    'move_ahead', .false., 'New assimilation window ends at:       ')
+      if (next_time < start_time) then
+         call error_handler(E_MSG, 'move_ahead', &
+            'Next observation cannot be earlier than start of new time window')
+         call error_handler(E_MSG, 'move_ahead', &
+            'If this is the start of the obs_seq file, ')
+         call error_handler(E_MSG, 'move_ahead', &
+            'use filter namelist to set first obs or data init time.')
+      else
+         call error_handler(E_MSG, 'move_ahead', &
+            'Next observation is later than end of new time window')
+         call error_handler(E_MSG, 'move_ahead', &  
+            'should not happen; code has miscomputed how far to advance, somehow')
+      endif
+      call error_handler(E_MSG, ' ', ' ')
+      !#call error_handler(E_ERR, 'move_ahead', &
+      !#  'Inconsistent model state/observation times, cannot continue', source, revision, revdate)
+   endif
 endif
 
 ! WANT BETTER WINDOW CONTROL, TIME INTERPOLATION, TOO.
@@ -185,9 +243,34 @@ endif
 call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
    out_of_range, observation)
 
+! ok, not really a time detail, but if turned off, the output is pretty much
+! the same as the original.
+if (print_time_details) then
+   write (errstring, '(A,I8,A)') 'Next window contains up to ', num_obs_in_set, ' observations'
+   call error_handler(E_MSG, 'move_ahead', errstring)
+endif
+
 ! Advance all ensembles to the time for the assimilation
 if(time2 /= ens_time) then
    call advance_state(ens_handle, ens_size, time2, async, adv_ens_command)
+
+   ! Get the time of the ensemble, assume consistent across all ensemble copies
+   call get_ensemble_time(ens_handle, 1, ens_time)
+   
+   if (ens_time /= time2 .or. print_time_details) then
+      call timechat(start_time, 'move_ahead', .false., 'New assimilation window starts at:     ')
+      call timechat(end_time,   'move_ahead', .false., 'New assimilation window ends at:       ')
+
+      ! error out if model state did not advance to when requested.
+      if (ens_time /= time2) then
+         call timechat(next_time,  'move_ahead', .true.,  'Model advance time NOT what requested: ')
+         call error_handler(E_ERR, 'move_ahead', 'Model advance complete but model time not correct')
+      else
+         call error_handler(E_MSG, 'move_ahead', 'Model advance complete, model time updated to requested time')
+         call error_handler(E_MSG, ' ', ' ')
+      endif
+   endif
+
 else
    call wait_if_needed(async)
 endif
@@ -428,7 +511,7 @@ if (async == 4) then
 
    ! sleep (not spin) until the model advance has finished.
    call block_task()
- 
+  
    return
 
 endif
@@ -439,6 +522,32 @@ call error_handler(E_ERR, 'work_to_do', errstring, '', '', '')
 
 end subroutine wait_if_needed
 
+!--------------------------------------------------------------------
+
+subroutine timechat(a_time, label, blank, string1, string2, string3)
+ type(time_type),  intent(in)           :: a_time
+ character(len=*), intent(in)           :: label, string1
+ logical,          intent(in)           :: blank
+ character(len=*), intent(in), optional :: string2, string3
+
+ 
+integer :: a_day, a_sec
+
+call get_time(a_time, a_sec, a_day)
+write (errstring, '(A,A,I8,A,I6)') string1, ' day=', a_day, ' sec=', a_sec
+
+if (blank) call error_handler(E_MSG, ' ', ' ')
+call error_handler(E_MSG, label, trim(errstring))
+
+if (present(string2)) then
+   call error_handler(E_MSG, label, string2)
+endif
+
+if (present(string3)) then
+   call error_handler(E_MSG, label, string3)
+endif
+
+end subroutine timechat
 !--------------------------------------------------------------------
 
 end module obs_model_mod
