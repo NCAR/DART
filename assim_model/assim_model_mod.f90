@@ -26,7 +26,7 @@ use utilities_mod, only : get_unit, close_file, register_module, error_handler, 
                           E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, nmlfileunit,   &
                           do_output, dump_unit_attributes, find_namelist_in_file,  &
                           check_namelist_read, nc_check, &
-                          find_textfile_dims, file_to_text
+                          find_textfile_dims, file_to_text, timestamp, set_output
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
                           get_model_time_step, model_interpolate, init_conditions, &
                           init_time, adv_1step, end_model, nc_write_model_atts,    &
@@ -922,8 +922,18 @@ integer :: open_restart_read
 character(len = *), intent(in) :: file_name
 
 integer :: ios, ios_out
+!!logical :: old_output_state
 type(time_type) :: temp_time
 
+! DEBUG -- if enabled, every task will print out as it opens the
+! restart files.  If questions about missing restart files, first start
+! by commenting in only the timestamp line.  If still concerns, then
+! go ahead and comment in all the lines.
+!!old_output_state = do_output()
+!!call set_output(.true.)
+!call timestamp("open_restart", "opening restart file "//trim(file_name), pos='')
+!!call set_output(old_output_state)
+!END DEBUG
 
 ! WARNING: Absoft Pro Fortran 9.0, on a power-pc mac, is convinced
 ! that certain binary files are, in fact, ascii, because the read_time 
