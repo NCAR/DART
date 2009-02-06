@@ -24,6 +24,8 @@ private
 public :: get_obs_kind_name, assimilate_this_obs_kind, &
           evaluate_this_obs_kind, get_obs_kind_var_type, get_obs_kind_index, &
           write_obs_kind, read_obs_kind, get_kind_from_menu, map_def_index
+! Added by TRW for restart file functionality
+public :: get_raw_obs_kind_name, get_raw_obs_kind_index
 
 !----------------------------------------------------------------------------
 ! Note: this list is currently maintained by hand; new kinds must be added
@@ -37,60 +39,60 @@ public :: get_obs_kind_name, assimilate_this_obs_kind, &
 ! kind strings are defined here. 
 
 integer, parameter, public :: &
-   KIND_RAW_STATE_VARIABLE          = 0, &
-   KIND_U_WIND_COMPONENT            = 1, &
-   KIND_V_WIND_COMPONENT            = 2, &
-   KIND_SURFACE_PRESSURE            = 3, &
-   KIND_TEMPERATURE                 = 4, &
-   KIND_SPECIFIC_HUMIDITY           = 5, &
-   KIND_PRESSURE                    = 6, &
-   KIND_VERTICAL_VELOCITY           = 7, &
-   KIND_RAINWATER_MIXING_RATIO      = 8, &
-   KIND_DEW_POINT_TEMPERATURE       = 9, &
-   KIND_DENSITY                     = 10, &
-   KIND_VELOCITY                    = 11, &
-   KIND_RADAR_REFLECTIVITY          = 12, &
-   KIND_1D_INTEGRAL                 = 13, &
-   KIND_GRAUPEL_MIXING_RATIO        = 14, &
-   KIND_SNOW_MIXING_RATIO           = 15, &
-   KIND_GPSRO                       = 16, &
-   KIND_CLOUD_LIQUID_WATER          = 17, &
-   KIND_CLOUD_ICE                   = 18, &
-   KIND_CONDENSATIONAL_HEATING      = 19, &
-   KIND_VAPOR_MIXING_RATIO          = 20, &
-   KIND_ICE_NUMBER_CONCENTRATION    = 21, &
-   KIND_GEOPOTENTIAL_HEIGHT         = 22, &
-   KIND_POTENTIAL_TEMPERATURE       = 23, &
-   KIND_SOIL_MOISTURE               = 24, &
-   KIND_SURFACE_ELEVATION           = 25
-                      
+    KIND_RAW_STATE_VARIABLE          = 0, &
+    KIND_U_WIND_COMPONENT            = 1, &
+    KIND_V_WIND_COMPONENT            = 2, &
+    KIND_SURFACE_PRESSURE            = 3, &
+    KIND_TEMPERATURE                 = 4, &
+    KIND_SPECIFIC_HUMIDITY           = 5, &
+    KIND_PRESSURE                    = 6, &
+    KIND_VERTICAL_VELOCITY           = 7, &
+    KIND_RAINWATER_MIXING_RATIO      = 8, &
+    KIND_DEW_POINT_TEMPERATURE       = 9, &
+    KIND_DENSITY                     = 10, &
+    KIND_VELOCITY                    = 11, &
+    KIND_RADAR_REFLECTIVITY          = 12, &
+    KIND_1D_INTEGRAL                 = 13, &
+    KIND_GRAUPEL_MIXING_RATIO        = 14, &
+    KIND_SNOW_MIXING_RATIO           = 15, &
+    KIND_GPSRO                       = 16, &
+    KIND_CLOUD_LIQUID_WATER          = 17, &
+    KIND_CLOUD_ICE                   = 18, &
+    KIND_CONDENSATIONAL_HEATING      = 19, &
+    KIND_VAPOR_MIXING_RATIO          = 20, &
+    KIND_ICE_NUMBER_CONCENTRATION    = 21, &
+    KIND_GEOPOTENTIAL_HEIGHT         = 22, &
+    KIND_POTENTIAL_TEMPERATURE       = 23, &
+    KIND_SOIL_MOISTURE               = 24, &
+    KIND_SURFACE_ELEVATION           = 25
+                       
 ! kinds for Gravity Wave Drag (CAM - kevin)
 integer, parameter, public :: &
-   KIND_GRAV_WAVE_DRAG_EFFIC        = 26, &
-   KIND_GRAV_WAVE_STRESS_FRACTION   = 27
-                      
+    KIND_GRAV_WAVE_DRAG_EFFIC        = 26, &
+    KIND_GRAV_WAVE_STRESS_FRACTION   = 27
+                       
 ! kinds for simple advection model
 integer, parameter, public :: &
-   KIND_TRACER_SOURCE               = 28, &
-   KIND_TRACER_CONCENTRATION        = 29, &
-   KIND_MEAN_SOURCE                 = 30, &
+    KIND_TRACER_SOURCE               = 28, &
+    KIND_TRACER_CONCENTRATION        = 29, &
+    KIND_MEAN_SOURCE                 = 30, &
    KIND_SOURCE_PHASE                = 31
-
+ 
 ! kind for power-weighted precipitation fall speed
 integer, parameter, public :: &
    KIND_POWER_WEIGHTED_FALL_SPEED   = 32
 
  ! missing kind for the am2 model
 integer, parameter, public :: &
-   KIND_CLOUD_FRACTION              = 35
-
+    KIND_CLOUD_FRACTION              = 35
+ 
 ! kinds for the MITgcm ocean model
 integer, parameter, public :: &
-   KIND_SALINITY                    = 50, &
-   KIND_U_CURRENT_COMPONENT         = 51, &
-   KIND_V_CURRENT_COMPONENT         = 52, &
-   KIND_SEA_SURFACE_HEIGHT          = 53
-
+    KIND_SALINITY                    = 50, &
+    KIND_U_CURRENT_COMPONENT         = 51, &
+    KIND_V_CURRENT_COMPONENT         = 52, &
+    KIND_SEA_SURFACE_HEIGHT          = 53
+ 
 ! kinds for planetary remote sensing (wglawson)
 integer, parameter, public :: &
    KIND_SKIN_TEMPERATURE            = 70, &
@@ -104,10 +106,17 @@ integer, parameter, public :: &
 
 ! kinds for vortex tracking (WRF - yongsheng)
 integer, parameter, public :: &
-   KIND_VORTEX_LON                  = 81, &
-   KIND_VORTEX_LAT                  = 82, &
-   KIND_VORTEX_PMIN                 = 83, &
-   KIND_VORTEX_WMAX                 = 84
+    KIND_VORTEX_LON                  = 81, &
+    KIND_VORTEX_LAT                  = 82, &
+    KIND_VORTEX_PMIN                 = 83, &
+    KIND_VORTEX_WMAX                 = 84, &
+ 
+! kinds for COAMPS (Tim Whitcomb)
+    KIND_EXNER_FUNCTION              = 85
+ 
+!! PRIVATE ONLY TO THIS MODULE. see comment below near the max_obs_specific
+!! declaration.
+integer, parameter :: max_obs_generic = 85
 
 !----------------------------------------------------------------------------
 ! This list is autogenerated by the 'preprocess' program.  To add new 
@@ -132,14 +141,26 @@ character(len=128), parameter :: &
 
 logical, save :: module_initialized = .false.
 
-integer :: num_def_obs_kinds = 0
+!! max_obs_kinds is really max_obs_types, and is generated by preprocess.
+
+!! PRIVATE ONLY TO THIS MODULE.  max_obs_kinds is really max_obs_types,
+!! but since the original variable name is public it can't change without
+!! being non-backwards compatible.  for now, punt on both type and kind
+!! and start trying to use specific and generic (ok, which do map to type
+!! and kind, respectively).  using intermediate names might make the transition
+!! less painful.  right now, many(most) of the subroutine names or args 
+!! which are public are using 'kind' where it needs to be 'type'.
+integer, parameter :: max_obs_specific = max_obs_kinds
+
+character(len=129) :: msg_string
+
 integer :: num_kind_assimilate, num_kind_evaluate
 
 ! Map from values of kind in obs_def to the fixed values in the list above.
 ! Initially, these are undefined and have values -1.
 ! For the first index 1, the value is the index in the input obs_sequence file.
 ! The first index 2 is the value of the corresponding index in this kind module.
-integer :: map(2, max_obs_kinds) = -1
+integer :: map(2, max_obs_specific) = -1
 
 ! An observation kind type links together all the information required.
 ! An integer index that is also associated with the parameter above,
@@ -150,22 +171,31 @@ integer :: map(2, max_obs_kinds) = -1
 ! whether observations of this kind are to be assimilated, evaluated,
 ! or neither. Name lengths are limited to 32 characters by compiler
 ! restrictions on the length of parameter identifiers.
-type obs_kind_type
+type obs_type_type
    integer              :: index
    character(len = 32)  :: name
    integer              :: var_type
    logical              :: assimilate
    logical              :: evaluate
+end type obs_type_type
+
+! An obs_type_type is defined by the preprocessor to store the association
+! between obs_types, associated integer identifiers, the underlying kind,
+! and whether observations of this type should be assimilate or evaluated.
+type(obs_type_type) :: obs_type_info(max_obs_specific)
+
+type obs_kind_type
+   integer              :: index
+   character(len = 32)  :: name
 end type obs_kind_type
 
-! An obs_kind_type is defined by the preprocessor to store the association
-! between obs_kinds, associated integer identifiers, the underlying type,
-! and whether observations of this type should be assimilate or evaluated.
-type(obs_kind_type) :: obs_kind_info(max_obs_kinds)
+! An obs_kind_name_type is defined by the preprocess program to store 
+! the association between obs_kind index numbers and string names.
+type(obs_kind_type) :: obs_kind_names(max_obs_generic)
 
 ! Namelist array to turn on any requested observation types
-character(len = 129) :: assimilate_these_obs_types(max_obs_kinds) = 'null'
-character(len = 129) :: evaluate_these_obs_types(max_obs_kinds) = 'null'
+character(len = 129) :: assimilate_these_obs_types(max_obs_specific) = 'null'
+character(len = 129) :: evaluate_these_obs_types(max_obs_specific) = 'null'
 
 namelist /obs_kind_nml/ assimilate_these_obs_types, evaluate_these_obs_types
 
@@ -205,13 +235,13 @@ call check_namelist_read(iunit, io, "obs_kind_nml")
 ! count here, then output below 
 
 num_kind_assimilate = 0
-do i = 1, max_obs_kinds
+do i = 1, max_obs_specific
    if(assimilate_these_obs_types(i) == 'null') exit
    num_kind_assimilate = i
 end do
 
 num_kind_evaluate = 0
-do i = 1, max_obs_kinds
+do i = 1, max_obs_specific
    if(evaluate_these_obs_types(i) == 'null') exit
    num_kind_evaluate = i
 end do
@@ -246,9 +276,9 @@ endif
 if (num_kind_assimilate > 0) then
    do i = 1, num_kind_assimilate
       ! Search for the matching string
-      do j = 1, max_obs_kinds
-         if(assimilate_these_obs_types(i) == obs_kind_info(j)%name) then
-            obs_kind_info(j)%assimilate = .true.
+      do j = 1, max_obs_specific
+         if(assimilate_these_obs_types(i) == obs_type_info(j)%name) then
+            obs_type_info(j)%assimilate = .true.
             goto 44
          endif
       end do
@@ -264,9 +294,9 @@ endif
 if (num_kind_evaluate > 0) then
    do i = 1, num_kind_evaluate
       ! Search for the matching string
-      do j = 1, max_obs_kinds
-         if(evaluate_these_obs_types(i) == obs_kind_info(j)%name) then
-            obs_kind_info(j)%evaluate = .true.
+      do j = 1, max_obs_specific
+         if(evaluate_these_obs_types(i) == obs_type_info(j)%name) then
+            obs_type_info(j)%evaluate = .true.
             goto 55
          endif
       end do
@@ -279,10 +309,10 @@ if (num_kind_evaluate > 0) then
 endif
 
 ! Make it an error to ask to assimilate AND evaluate the same obs kind
-do i = 1, max_obs_kinds
-   if(obs_kind_info(i)%evaluate .and. obs_kind_info(i)%assimilate) then
+do i = 1, max_obs_specific
+   if(obs_type_info(i)%evaluate .and. obs_type_info(i)%assimilate) then
       write(err_string, *) 'Illegal to evaluate and assimilate same kind ', &
-         trim(obs_kind_info(i)%name)
+         trim(obs_type_info(i)%name)
       call error_handler(E_ERR, 'initialize_module', err_string, source, revision, revdate)
    endif
 end do
@@ -306,7 +336,7 @@ if ( .not. module_initialized ) call initialize_module
 ! Need to search through the first map column to find this obs_def_index value
 ! Then return the index into table in this module from corresponding row in 
 ! second column.
-do i = 1, max_obs_kinds
+do i = 1, max_obs_specific
    if(map(1, i) == obs_def_index) then
       map_def_index = map(2, i)
       return
@@ -325,17 +355,46 @@ end function map_def_index
 
 function get_obs_kind_name(obs_kind_ind)
 
-! Returns observation name
+! Returns observation type name
 
 integer, intent(in) :: obs_kind_ind
 character(len = 32) :: get_obs_kind_name
 
 if ( .not. module_initialized ) call initialize_module
 
-get_obs_kind_name = obs_kind_info(obs_kind_ind)%name
+if (obs_kind_ind < 1 .or. obs_kind_ind > max_obs_specific) then
+   write(msg_string, *) 'index out of range 1<=val<=', max_obs_specific
+   call error_handler(E_ERR, 'get_obs_kind_name', msg_string, &
+                      source, revision, revdate)
+endif
+
+get_obs_kind_name = obs_type_info(obs_kind_ind)%name
 
 end function get_obs_kind_name
 
+!----------------------------------------------------------------------------
+! Added by TRW to handle matching RAW variable types to their strings
+! as well as the derived types - this will make the restart file
+! handling more readable.
+
+function get_raw_obs_kind_name(obs_kind_ind)
+  
+! Returns observation kind name
+
+integer, intent(in) :: obs_kind_ind
+character(len=32)   :: get_raw_obs_kind_name
+
+if (.not. module_initialized) call initialize_module
+
+if (obs_kind_ind < 1 .or. obs_kind_ind > max_obs_generic) then
+   write(msg_string, *) 'index out of range 1<=val<=', max_obs_generic
+   call error_handler(E_ERR, 'get_raw_obs_kind_name', msg_string, &
+                      source, revision, revdate)
+endif
+
+get_raw_obs_kind_name = obs_kind_names(obs_kind_ind)%name
+
+end function get_raw_obs_kind_name
 !----------------------------------------------------------------------------
 
 function get_obs_kind_index(obs_kind_name)
@@ -343,15 +402,15 @@ function get_obs_kind_index(obs_kind_name)
 ! Returns the integer index corresponding to an observation type string name
 ! Returns a -1 if this string is not in list
 
-character(len = 32), intent(in) ::obs_kind_name
+character(len = *), intent(in)  :: obs_kind_name
 integer                         :: get_obs_kind_index
 
 integer :: i
 
 if ( .not. module_initialized ) call initialize_module
 
-do i = 1, max_obs_kinds
-   if(trim(adjustl(obs_kind_name)) == trim(adjustl(obs_kind_info(i)%name))) then
+do i = 1, max_obs_specific
+   if(trim(adjustl(obs_kind_name)) == trim(adjustl(obs_type_info(i)%name))) then
       get_obs_kind_index = i
       return
    endif
@@ -361,6 +420,33 @@ get_obs_kind_index = -1
 
 end function get_obs_kind_index
 
+!----------------------------------------------------------------------------
+! Added by TRW to handle matching RAW variable types to their strings
+! as well as the derived types - this will make the restart file
+! handling more readable.
+
+function get_raw_obs_kind_index(obs_kind_name)
+
+! Returns the integer index corresponding to an observation kind string name
+! Returns a -1 if this string is not in list
+
+character(len=*), intent(in)  :: obs_kind_name
+integer                       :: get_raw_obs_kind_index
+
+integer :: i
+  
+if (.not. module_initialized) call initialize_module
+
+do i = 1, max_obs_generic
+   if(trim(adjustl(obs_kind_name)) == trim(adjustl(obs_kind_names(i)%name))) then
+      get_raw_obs_kind_index = i
+      return
+   end if
+end do
+
+get_raw_obs_kind_index = -1
+
+end function get_raw_obs_kind_index
 !----------------------------------------------------------------------------
 
 function assimilate_this_obs_kind(obs_kind_ind)
@@ -372,7 +458,7 @@ integer, intent(in) :: obs_kind_ind
 
 if ( .not. module_initialized ) call initialize_module
 
-assimilate_this_obs_kind = obs_kind_info(obs_kind_ind)%assimilate
+assimilate_this_obs_kind = obs_type_info(obs_kind_ind)%assimilate
 
 end function assimilate_this_obs_kind
 
@@ -387,7 +473,7 @@ integer, intent(in) :: obs_kind_ind
 
 if ( .not. module_initialized ) call initialize_module
 
-evaluate_this_obs_kind = obs_kind_info(obs_kind_ind)%evaluate
+evaluate_this_obs_kind = obs_type_info(obs_kind_ind)%evaluate
 
 end function evaluate_this_obs_kind
 
@@ -402,7 +488,7 @@ integer             :: get_obs_kind_var_type
 
 if ( .not. module_initialized ) call initialize_module
 
-get_obs_kind_var_type = obs_kind_info(obs_kind_ind)%var_type
+get_obs_kind_var_type = obs_type_info(obs_kind_ind)%var_type
 
 end function get_obs_kind_var_type
 
@@ -444,25 +530,25 @@ SELECT CASE (fileformat)
       if (present(use_list)) then
          write(ifile) count(use_list(:) > 0)
       else
-         write(ifile) max_obs_kinds
+         write(ifile) max_obs_specific
       endif
-      do i = 1, max_obs_kinds
+      do i = 1, max_obs_specific
          if (present(use_list)) then
             if (use_list(i) == 0) cycle
          endif
-         write(ifile) obs_kind_info(i)%index, obs_kind_info(i)%name
+         write(ifile) obs_type_info(i)%index, obs_type_info(i)%name
       end do
    CASE DEFAULT
       if (present(use_list)) then
          write(ifile, *) count(use_list(:) > 0)
       else
-         write(ifile, *) max_obs_kinds
+         write(ifile, *) max_obs_specific
       endif
-      do i = 1, max_obs_kinds
+      do i = 1, max_obs_specific
          if (present(use_list)) then
             if (use_list(i) == 0) cycle
          endif
-         write(ifile, *) obs_kind_info(i)%index, obs_kind_info(i)%name
+         write(ifile, *) obs_type_info(i)%index, obs_type_info(i)%name
       end do
 END SELECT
 
@@ -484,7 +570,6 @@ character(len=*), intent(in), optional :: fform
 
 character(len=20)  :: header
 character(len=32)  :: fileformat, o_name
-character(len=129) :: msg_string
 integer            :: i, num_def_kinds, o_index, list_index
 
 if ( .not. module_initialized ) call initialize_module
@@ -495,7 +580,7 @@ if ( .not. module_initialized ) call initialize_module
 ! that this order is consistent with what the obs_sequence
 ! file thinks.
 if(pre_I_format) then
-   do i = 1, max_obs_kinds
+   do i = 1, max_obs_specific
       map(1, i) = i; map(2, i) = i
    end do
    return
@@ -582,9 +667,9 @@ if ( .not. module_initialized ) call initialize_module
 write(*, *) '     ', 'Input -1 * state variable index for identity observations'
 write(*, *) '     ', 'OR input the name of the observation kind from table below:'
 write(*, *) '     ', 'OR input the integer index, BUT see documentation...'
-do i = 1, max_obs_kinds
+do i = 1, max_obs_specific
    if(assimilate_this_obs_kind(i) .or. evaluate_this_obs_kind(i)) &
-      write(*, *) '     ',  obs_kind_info(i)%index, trim(obs_kind_info(i)%name)
+      write(*, *) '     ',  obs_type_info(i)%index, trim(obs_type_info(i)%name)
 end do
 
 ! Read the input as a string, convert to integers as appropriate 
@@ -602,7 +687,7 @@ if(ierr /= 0) then
    endif
 else
    ! Make sure that number entered isn't 0 or too larg
-   if(get_kind_from_menu == 0 .or. get_kind_from_menu > max_obs_kinds) then
+   if(get_kind_from_menu == 0 .or. get_kind_from_menu > max_obs_specific) then
       write(*, *) get_kind_from_menu, 'is not a legal entry: Please try again.'
       goto 21
    endif

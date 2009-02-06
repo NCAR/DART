@@ -489,9 +489,9 @@ do
    write(obs_kind_out_unit, 21) trim(line)
 end do
 
-! Write out the definitions of each entry of obs_kind_info
+! Write out the definitions of each entry of obs_type_info
 do i = 1, num_types_found
-   write(line, '(A,I5,3A)') 'obs_kind_info(', i, ') = obs_kind_type(', &
+   write(line, '(A,I5,3A)') 'obs_type_info(', i, ') = obs_type_type(', &
       trim(type_string(i)), ", &"
    write(obs_kind_out_unit, 21) trim(line)
    write(line, *) '   ', "'", trim(type_string(i)), "', ", &
