@@ -1,3 +1,24 @@
+This is a WRF 3.0.1.1 regression test case, which can be used to test
+that code changes do not break existing functions, as well as testing
+a wrf/dart initial setup.
+
+This is a global domain; no boundary conditions required.
+The grid is 128 by 64 with 40 levels.
+
+The observation files are the standard prepbufr NCEP observations, from 2007/04/26.
+   
+There are enough files to run with 20 ensemble members.
+   
+The smaller files are here in this directory.
+   
+The large data files (observations, initial conditions and WRF tarball)
+are on the DART web server, at this http address: 
+   
+http://www.image.ucar.edu/pub/DART/WRF/regression/Global-V3
+   
+Details of the files follow.
+
+
 This the Table of Contents for the WRF3 global DART regression case
 
 1. wrfinput_d01.skamarock :: I got this file from Bill Skamarock will

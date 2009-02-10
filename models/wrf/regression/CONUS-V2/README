@@ -1,4 +1,6 @@
-This is a WRF 2.2.1 regression test case, which can be used to test an initial setup as well.
+This is a WRF 2.2.1 regression test case, which can be used to test 
+that code changes do not break existing functions, as well as testing
+a wrf/dart initial setup.
 
 The domain is CONUS (the continental United States), 50 km resolution. 
 
@@ -15,7 +17,7 @@ The smaller files are here in this directory.
 The large data files (observations, initial conditions and boundary files) 
 are on the DART web server, at this http address:
 
-http://www.image.ucar.edu/pub/DART/WRF/regression/
+http://www.image.ucar.edu/pub/DART/WRF/regression/CONUS-V2
 
 
 Input files you need to run the test:
