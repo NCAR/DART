@@ -233,8 +233,8 @@ if(next_time < start_time .or. next_time > end_time .or. print_time_details) the
             'should not happen; code has miscomputed how far to advance, somehow')
       endif
       call error_handler(E_MSG, ' ', ' ')
-      !#call error_handler(E_ERR, 'move_ahead', &
-      !#  'Inconsistent model state/observation times, cannot continue', source, revision, revdate)
+      call error_handler(E_ERR, 'move_ahead', &
+        'Inconsistent model state/observation times, cannot continue', source, revision, revdate)
    endif
 endif
 
