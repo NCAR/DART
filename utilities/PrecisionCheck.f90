@@ -63,7 +63,7 @@
       write(*,*)'PRECISION = ',precision(realr4)
 
       write(*,'(''----------------------------------------------'')')
-      write(*,*)'"real(r8") r8 = SELECTED_REAL_KIND(13)'
+      write(*,*)'"real(r8)" r8 = SELECTED_REAL_KIND(13)'
       write(*,*)'DIGITS    = ',   digits(realr8)
       write(*,*)'EPSILON   = ',  epsilon(realr8)
       write(*,*)'HUGE      = ',     huge(realr8)
