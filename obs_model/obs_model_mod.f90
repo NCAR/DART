@@ -162,7 +162,7 @@ if (print_time_details) then
       start_time = ens_time - delta_time / 2 + set_time(1, 0)
    endif
    end_time = ens_time + delta_time / 2
-   call timechat(ens_time,    'move_ahead', .true.,   'Model data timestamp currently:        ')
+   call timechat(ens_time,    'move_ahead', .false.,   'Current model data time:               ')
    call timechat(start_time,  'move_ahead', .false.,  'Current assimilation window starts at: ')
    call timechat(end_time,    'move_ahead', .false.,  'Current assimilation window ends at:   ')
    !call timechat(delta_time,  'move_ahead', .false., 'Width of assimilation window:          ')
@@ -185,8 +185,8 @@ end_time = time2 + delta_time / 2
 
 ! Output very brief current start and end time at the message level
 if (.not. print_time_details) then
-   call timechat(start_time,  'move_ahead', .true.,   'Next assimilation window starts at: ')
-   call timechat(end_time,    'move_ahead', .false.,  'Next assimilation window ends at:   ')
+   call timechat(start_time,  'move_ahead', .false.,   'Next assimilation window starts at: ')
+   call timechat(end_time,    'move_ahead', .false.,  'Next assimilation window ends   at: ')
 endif
 
 ! If the next observation is not in the window, then have an error
@@ -202,23 +202,23 @@ if(next_time < start_time .or. next_time > end_time .or. print_time_details) the
 
 
    if (time2 /= ens_time) then
-      call timechat(next_time,   'move_ahead', .true.,  'Next available observation time:       ')
-      call timechat(time2,       'move_ahead', .false., 'New data time should be:               ', &
-         'Not within current window, model will be called to advance state.')
+      call timechat(next_time,   'move_ahead', .false.,  'Next available observation time:       ')
+      call timechat(time2,       'move_ahead', .false., 'Next data time should be:              ', &
+         'Not within current window, model now being called to advance state.')
    else 
       if (next_time >= start_time .and. next_time <= end_time) then
-         call timechat(next_time,   'move_ahead', .true.,  'Next available observation time:       ', &
+         call timechat(next_time,   'move_ahead', .false.,  'Next available observation time:       ', &
             'Within current assimilation window, model does not need advance.')
       else 
-         call timechat(next_time,   'move_ahead', .true.,  'Next available observation time:       ', &
+         call timechat(next_time,   'move_ahead', .false.,  'Next available observation time:       ', &
             'Next obs outside current assimilation window.')
       endif
    endif
    call error_handler(E_MSG, ' ', ' ')
 
    if (next_time < start_time .or. next_time > end_time) then
-      call timechat(start_time,  'move_ahead', .true.,  'New assimilation window starts at:     ')
-      call timechat(end_time,    'move_ahead', .false., 'New assimilation window ends at:       ')
+      call timechat(start_time,  'move_ahead', .false., 'Next assimilation window starts at:    ')
+      call timechat(end_time,    'move_ahead', .false., 'Next assimilation window ends   at:    ')
       if (next_time < start_time) then
          call error_handler(E_MSG, 'move_ahead', &
             'Next observation cannot be earlier than start of new time window')
@@ -243,13 +243,6 @@ endif
 call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
    out_of_range, observation)
 
-! ok, not really a time detail, but if turned off, the output is pretty much
-! the same as the original.
-if (print_time_details) then
-   write (errstring, '(A,I8,A)') 'Next window contains up to ', num_obs_in_set, ' observations'
-   call error_handler(E_MSG, 'move_ahead', errstring)
-endif
-
 ! Advance all ensembles to the time for the assimilation
 if(time2 /= ens_time) then
    call advance_state(ens_handle, ens_size, time2, async, adv_ens_command)
@@ -258,21 +251,27 @@ if(time2 /= ens_time) then
    call get_ensemble_time(ens_handle, 1, ens_time)
    
    if (ens_time /= time2 .or. print_time_details) then
-      call timechat(start_time, 'move_ahead', .false., 'New assimilation window starts at:     ')
-      call timechat(end_time,   'move_ahead', .false., 'New assimilation window ends at:       ')
 
       ! error out if model state did not advance to when requested.
       if (ens_time /= time2) then
-         call timechat(next_time,  'move_ahead', .true.,  'Model advance time NOT what requested: ')
+         call timechat(next_time,  'move_ahead', .false.,  'Model advance time NOT what requested: ')
          call error_handler(E_ERR, 'move_ahead', 'Model advance complete but model time not correct')
       else
          call error_handler(E_MSG, 'move_ahead', 'Model advance complete, model time updated to requested time')
-         call error_handler(E_MSG, ' ', ' ')
       endif
+      call timechat(start_time, 'move_ahead', .false., 'Next assimilation window starts at:    ')
+      call timechat(end_time,   'move_ahead', .false., 'Next assimilation window ends at:      ')
    endif
 
 else
    call wait_if_needed(async)
+endif
+
+! ok, not really a time detail, but if turned off, the output is pretty much
+! the same as the original.
+if (print_time_details) then
+   write (errstring, '(A,I8,A)') 'Next window contains up to ', num_obs_in_set, ' observations'
+   call error_handler(E_MSG, 'move_ahead', errstring)
 endif
 
 ! Release the storage associated with the observation temp variable
