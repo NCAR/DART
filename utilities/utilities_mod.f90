@@ -141,8 +141,10 @@ integer  :: TERMLEVEL = E_ERR     ! E_ERR All warnings/errors are assumed fatal.
 character(len=129) :: logfilename = 'dart_log.out'
 character(len=129) :: nmlfilename = 'dart_log.nml'
 logical  :: module_details = .true.  ! print svn details about each module
+logical  :: print_debug    = .false. ! print messages labeled DBG
 
-namelist /utilities_nml/ TERMLEVEL, logfilename, module_details, nmlfilename
+namelist /utilities_nml/ TERMLEVEL, logfilename, module_details, &
+                         nmlfilename, print_debug
 
 contains
 
@@ -632,6 +634,26 @@ select case(level)
         endif
         write(     *     , *) trim(taskstr),': ',trim(routine),' ', trim(text)
         write(logfileunit, *) trim(taskstr),': ',trim(routine),' ', trim(text)
+      endif
+
+   case (E_DBG)
+      if (print_debug) then
+
+         ! what about do_output_flag?  want messages from all procs or just PE0?
+         if ( single_task ) then
+           write(     *     , *) 'DEBUG FROM: ', trim(routine),' ', trim(text)
+           write(logfileunit, *) 'DEBUG FROM: ', trim(routine),' ', trim(text)
+         else
+           if (task_number < 10) then
+               write(taskstr, '(a,i1)' ) "PE ", task_number
+           else if (task_number < 100) then
+               write(taskstr, '(a,i2)' ) "PE ", task_number
+           else
+               write(taskstr, '(a,i5)' ) "PE ", task_number
+           endif
+           write(     *     , *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ', trim(text)
+           write(logfileunit, *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ', trim(text)
+         endif
       endif
 
    case (E_WARN)

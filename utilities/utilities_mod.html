@@ -659,18 +659,13 @@ to control at which level program termination should occur.</TD></TR>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
  '&#38;' and terminating with a slash '/'.
  <div class=namelist><pre>
- <em class=call>namelist / utilities_nml / </em> TERMLEVEL, logfilename, nmlfilename
-
-
+ <em class=call>namelist / utilities_nml / </em> TERMLEVEL, logfilename, nmlfilename,
+                                           module_details, print_debug
  </pre></div>
  <H3 class=indent1>Discussion</H3>
  <P>
-The namelist controls the way in which the error handler acts. In the
-default case, only calls with level E_ERR lead to program termination.
-If TERMLEVEL is set to E_WARN, then warnings or errors lead to 
-termination. If TERMLEVEL is set to E_ERR + 1, then even errors don't
-lead to termination (be careful doing this). 
- </em>
+The namelist controls how the logging, namelist, messages, and general
+utility routines behave.
  </P>
  <P>This namelist is read in a file called <em class=file>input.nml</em>
  </P>
@@ -681,10 +676,15 @@ lead to termination (be careful doing this).
  <TR><!--contents--><TD valign=top>TERMLEVEL</TD>
      <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD valign=top>Level at which calls to error
-                        manager terminate program. <em class="unit">Default: E_ERR</em></TD></TR>
+                        manager terminate program.  The default setting is
+                        warnings and errors terminate the program. Setting
+                        this to 2 (E_ERR) means only errors terminate.
+                        Setting this to 3 means even errors do not cause an
+                        exit (which is not a good idea).
+                        <em class="unit">Default: 1 (E_WARN)</em></TD></TR>
  <TR><!--contents--><TD valign=top>logfilename</TD>
      <!--  type  --><TD valign=top>character(len=129)</TD>
-     <!--descript--><TD valign=top>File to which the logfile is written. 
+     <!--descript--><TD valign=top>File to which the log messages are written. 
                         <em class="unit">Default: dart_log.out</em></TD></TR>
  <TR><!--contents--><TD valign=top>nmlfilename</TD>
      <!--  type  --><TD valign=top>character(len=129)</TD>
@@ -698,6 +698,12 @@ lead to termination (be careful doing this).
                         Verbose, but useful for knowing what version of the
                         code was used during the run.
                         <em class="unit">Default: .true.</em></TD></TR>
+ <TR><!--contents--><TD valign=top>print_debug</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD valign=top>Setting this to .true. causes additional
+                        debug messages to print. These can be very verbose
+                        and by default are turned off.
+                        <em class="unit">Default: .false.</em></TD></TR>
  </TABLE>
  <BR>
 
