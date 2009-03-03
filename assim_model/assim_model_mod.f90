@@ -935,6 +935,13 @@ type(time_type) :: temp_time
 !!call set_output(old_output_state)
 !END DEBUG
 
+! if you want to document which file(s) are being opened before
+! trying the open (e.g. in case the fortran runtime library intercepts
+! the error and does not return to let us print out the name) then
+! comment this in and you can see what files are being opened.
+!write(msgstring, *) 'Opening restart file ',trim(adjustl(file_name))
+!call error_handler(E_MSG,'open_restart_read',msgstring,source,revision,revdate)
+
 ! WARNING: Absoft Pro Fortran 9.0, on a power-pc mac, is convinced
 ! that certain binary files are, in fact, ascii, because the read_time 
 ! call is returning what seems like a good time even though it should
