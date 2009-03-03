@@ -316,11 +316,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! If requested, print out a message every Nth observation
    ! to indicate progress is being made and to allow estimates 
    ! of how long the assim will take.
-   if (nth_obs == 0 .and. my_task_id() == 0) then
-      write(*, *) 'Processing observation ', i, ' of ', obs_ens_handle%num_vars
+   if (nth_obs == 0) then
+      write(errstring, '(A,1x,I8,1x,A,I8)') 'Processing observation ', i, &
+                                         ' of ', obs_ens_handle%num_vars
+      call error_handler(E_MSG,'filter_assim',errstring)
 ! or if you want timestamps:
-!     write(errstring, '(a,1x,i8,1x,a,i8)') 'Processing observation ', i, &
-!                                        ' of ', obs_ens_handle%num_vars
 !     call timestamp(errstring, pos="debug")
    endif
 
@@ -665,6 +665,10 @@ endif
 call destroy_obs(observation)
 call get_close_obs_destroy(gc_state)
 call get_close_obs_destroy(gc_obs)
+
+! Assure user we have done something
+write(errstring, '(A,I8,A)') 'Processed', obs_ens_handle%num_vars, ' total observations'
+call error_handler(E_MSG,'filter_assim',errstring)
 
 ! diagnostics for stats on saving calls by remembering obs at the same location.
 ! change .true. to .false. in the line below to remove the output completely.
