@@ -403,7 +403,7 @@ npairs = length(varargin)/2;
 
 levels      = [];
 region      = [];
-scalefactor = [];
+scalefactor = 10.0;
 
 for i = 1:2:length(varargin)
    switch lower(varargin{i})
