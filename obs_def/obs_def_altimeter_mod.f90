@@ -3,8 +3,6 @@
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-module obs_def_altimeter_mod
-
 ! BEGIN DART PREPROCESS KIND LIST
 ! RADIOSONDE_SURFACE_ALTIMETER, KIND_SURFACE_PRESSURE
 ! MARINE_SFC_ALTIMETER,         KIND_SURFACE_PRESSURE
