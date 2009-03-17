@@ -178,6 +178,10 @@ for ivar = 1:plotdat.nvars
       % create a postscript file
       print(gcf,'-dpsc','-append',psfname);
 
+      % block to go slow and look at each one ...
+      % disp('Pausing, hit any key to continue ...')
+      % pause
+
    end
 end
 
@@ -378,17 +382,30 @@ end
 
 
 function x = FindRange(y)
+% Trying to pick 'nice' limits for plotting.
+% Completely ad hoc ... and not well posed.
+%
 % In this scope, y is bounded from below by 0.0
+%
+% If the numbers are very small ... 
 
-glommed = [y.ges_copy(:); y.ges_rmse(:); ...
-           y.anl_copy(:); y.anl_rmse(:)];
-ymin = floor(min(glommed));
-ymax =  ceil(max(glommed));
-Yrange = [ymin ymax];
+bob  = [y.ges_copy(:) ; y.anl_copy(:)];
+inds = find(isfinite(bob));
 
-if ( isfinite(Yrange) )
-   x = [min([Yrange(1) 0.0]) Yrange(2)];
-else
+if ( isempty(inds) )
    x = [0 1];
+else
+   glommed = bob(inds);
+   ymin    = min(glommed);
+   ymax    = max(glommed);
+
+   if ( ymax > 1.0 ) 
+      ymin = floor(min(glommed));
+      ymax =  ceil(max(glommed));
+   end
+
+   Yrange = [ymin ymax];
+
+   x = [min([Yrange(1) 0.0]) Yrange(2)];
 end
 
