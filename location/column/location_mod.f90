@@ -19,7 +19,8 @@ use  utilities_mod, only : register_module, error_handler, E_ERR
 implicit none
 private
 
-public :: location_type, get_dist, get_location, set_location, set_location_missing, &
+public :: location_type, get_dist, get_location, set_location, &
+          set_location2, set_location_missing, is_location_in_region, &
           write_location, read_location, interactive_location, vert_is_undef, &
           vert_is_surface, vert_is_pressure, vert_is_level, vert_is_height, &
           query_location, LocationDims, LocationName, LocationLName, &
@@ -124,6 +125,32 @@ set_location%vloc = vert_loc
 set_location%which_vert = which_vert
 
 end function set_location
+
+
+function set_location2(list)
+!----------------------------------------------------------------------------
+!
+! location semi-independent interface routine
+! given 2 float numbers, call the underlying set_location routine
+
+implicit none
+
+type (location_type) :: set_location2
+real(r8), intent(in) :: list(:)
+
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call initialize_module
+
+if (size(list) /= 2) then
+   write(errstring,*)'requires 2 input values'
+   call error_handler(E_ERR, 'set_location2', errstring, source, revision, revdate)
+endif
+
+set_location2 = set_location(list(1), nint(list(2)))
+
+end function set_location2
+
 
 
 function vert_is_undef(loc)
@@ -500,8 +527,39 @@ end do
 
 end subroutine get_close_obs
 
+function is_location_in_region(loc, minl, maxl)
 !----------------------------------------------------------------------------
-! end of location/oned/location_mod.f90
+!
+! Returns true if the first arg is between the other two.
+
+implicit none
+
+logical                          :: is_location_in_region
+type(location_type), intent(in)  :: loc, minl, maxl
+
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call initialize_module
+
+if ((minl%which_vert /= maxl%which_vert) .or. &
+    (minl%which_vert /= loc%which_vert)) then
+   write(errstring,*)'which_vert (',loc%which_vert,') must be same in all args'
+   call error_handler(E_ERR, 'is_location_in_region', errstring, source, revision, revdate)
+endif
+
+! assume failure and return as soon as we are confirmed right.
+! set to success only at the bottom after all tests have passed.
+is_location_in_region = .false.
+
+if ((loc%vloc < minl%vloc) .or. (loc%vloc > maxl%vloc)) return
+
+is_location_in_region = .true.
+
+end function is_location_in_region
+
+
+!----------------------------------------------------------------------------
+! end of location/column/location_mod.f90
 !----------------------------------------------------------------------------
 
 end module location_mod

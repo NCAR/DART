@@ -21,6 +21,8 @@ module location_mod
 ! Note: in an effort to maintain consistency with the other 
 ! location_mods, will use lon for azimuthal direction, lat for
 ! radial direction, and lev for depth.
+! (Note2: not clear this is a good thing - what consistency do we buy?
+!  might want to use real names for the values for clarity.)
 
 use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
 use  utilities_mod, only : register_module, error_handler, E_ERR
@@ -29,10 +31,12 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 implicit none
 private
 
-public :: location_type, get_dist, get_location, set_location, set_location_missing, &
+public :: location_type, get_dist, get_location, set_location, &
+          set_location2, set_location_missing, is_location_in_region, &
           write_location, read_location, interactive_location, &
           vert_is_pressure, vert_is_level, vert_is_height, query_location, &
-          LocationDims, LocationName, LocationLName, get_close_obs, alloc_get_close_obs, &
+          LocationDims, LocationName, LocationLName, &
+          get_close_obs, alloc_get_close_obs, &
           operator(==), operator(/=)
 
 ! version controlled file description for error handling, do not edit
@@ -303,6 +307,31 @@ set_location%which_vert = which_vert
 set_location%vloc = vert_loc
 
 end function set_location
+
+
+function set_location2(list)
+!----------------------------------------------------------------------------
+!
+! location semi-independent interface routine
+! given 4 float numbers, call the underlying set_location routine
+
+implicit none
+
+type (location_type) :: set_location2
+real(r8), intent(in) :: list(:)
+
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call initialize_module
+
+if (size(list) /= 4) then
+   write(errstring,*)'requires 4 input values'
+   call error_handler(E_ERR, 'set_location2', errstring, source, revision, revdate)
+endif
+
+set_location2 = set_location(list(1), list(2), list(3), nint(list(4)))
+
+end function set_location2
 
 
 
@@ -588,8 +617,11 @@ type(location_type), intent(in) :: obs(num)
 real(r8), intent(in) :: cutoff
 integer, intent(out) :: obs_box(num)
 
-! This does pre-computing for close obs; no function needed in one dimension
+! There might not need to be code here but if the get_close_obs() call
+! gets too slow, precomputing can be done here.
 
+! set this to satisfy the intent(out) directive.
+obs_box(:) = 0
 return
 
 end subroutine alloc_get_close_obs
@@ -599,7 +631,9 @@ end subroutine alloc_get_close_obs
 
 subroutine get_close_obs(base_ob, num, obs, cutoff, obs_box, num_close, close_ind, dist)
 
-! Default version with no smarts; no need to be smart in 1D
+! This is the wrong code for this location module; it seems to be lifted
+! from the 1d case, which is incorrect.  It does allow code to be compiled
+! but it will not compute correct values for distance.
 
 implicit none
 
@@ -627,6 +661,40 @@ end do
 
 end subroutine get_close_obs
 
+
+
+function is_location_in_region(loc, minl, maxl)
+!----------------------------------------------------------------------------
+!
+! Returns true if the given location is between the other two.
+
+implicit none
+
+logical                          :: is_location_in_region
+type(location_type), intent(in)  :: loc, minl, maxl
+
+
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call initialize_module
+
+if ((minl%which_vert /= maxl%which_vert) .or. &
+    (minl%which_vert /= loc%which_vert)) then
+   write(errstring,*)'which_vert (',loc%which_vert,') must be same in all args'
+   call error_handler(E_ERR, 'is_location_in_region', errstring, source, revision, revdate)
+endif
+
+! assume failure and return as soon as we are confirmed right.
+! set to success only at the bottom after all tests have passed.
+is_location_in_region = .false.
+
+if ((loc%lon < minl%lon) .or. (loc%lon > maxl%lon)) return
+if ((loc%lat < minl%lat) .or. (loc%lat > maxl%lat)) return
+if ((loc%vloc < minl%vloc) .or. (loc%vloc > maxl%vloc)) return
+ 
+is_location_in_region = .true.
+
+end function is_location_in_region
 
 
 !----------------------------------------------------------------------------

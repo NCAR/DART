@@ -33,7 +33,8 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 implicit none
 private
 
-public :: location_type, get_location, set_location, set_location_missing, &
+public :: location_type, get_location, set_location, &
+          set_location2, set_location_missing, is_location_in_region, &
           write_location, read_location, interactive_location, vert_is_undef, &
           vert_is_surface, vert_is_pressure, vert_is_level, vert_is_height, &
           query_location, LocationDims, LocationName, LocationLName, &
@@ -60,7 +61,7 @@ integer, parameter :: VERTISHEIGHT   =  3 ! by height
 
 type location_type
    private 
-   real(r8) :: lon, lat, vloc
+   real(r8) :: lon, lat, vloc ! lon, lat stored in radians
    integer  :: which_vert     ! determines if by level, height, pressure, ...
 end type location_type
 
@@ -465,7 +466,8 @@ end function loc_ne
 function get_location_lon(loc)
 !---------------------------------------------------------------------------
 !
-! Given a location type, return the longitude
+! Given a location type, return the longitude.  Values stored in radians but
+! returned in degrees.
 
 implicit none
 
@@ -481,7 +483,8 @@ end function get_location_lon
 function get_location_lat(loc)
 !---------------------------------------------------------------------------
 !
-! Given a location type, return the latitude
+! Given a location type, return the latitude.  Values stored in radians but
+! returned in degrees.
 
 implicit none
 
@@ -500,7 +503,8 @@ function set_location(lon, lat, vert_loc,  which_vert)
 !----------------------------------------------------------------------------
 !
 ! Puts the given longitude, latitude, and vertical location
-! into a location datatype.
+! into a location datatype.  Arguments to this function are in degrees,
+! but the values are stored as radians.
 !
 
 implicit none
@@ -534,6 +538,31 @@ set_location%which_vert = which_vert
 set_location%vloc = vert_loc
 
 end function set_location
+
+
+function set_location2(list)
+!----------------------------------------------------------------------------
+!
+! location semi-independent interface routine
+! given 4 float numbers, call the underlying set_location routine
+
+implicit none
+
+type (location_type) :: set_location2
+real(r8), intent(in) :: list(:)
+
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call initialize_module
+
+if (size(list) /= 4) then
+   write(errstring,*)'requires 4 input values'
+   call error_handler(E_ERR, 'set_location2', errstring, source, revision, revdate)
+endif
+
+set_location2 = set_location(list(1), list(2), list(3), nint(list(4)))
+
+end function set_location2
 
 
 
@@ -1644,6 +1673,40 @@ endif
 
 
 end subroutine print_get_close_type
+
+
+function is_location_in_region(loc, minl, maxl)
+!----------------------------------------------------------------------------
+!
+! Returns true if the given location is between the other two.
+
+implicit none
+
+logical                          :: is_location_in_region
+type(location_type), intent(in)  :: loc, minl, maxl
+
+
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call initialize_module
+
+!if ((minl%which_vert /= maxl%which_vert) .or. &
+!    (minl%which_vert /= loc%which_vert)) then
+!   write(errstring,*)'which_vert (',loc%which_vert,') must be same in all args'
+!   call error_handler(E_ERR, 'is_location_in_region', errstring, source, revision, revdate)
+!endif
+
+! assume failure and return as soon as we are confirmed right.
+! set to success only at the bottom after all tests have passed.
+is_location_in_region = .false.
+
+if ((loc%lon < minl%lon) .or. (loc%lon > maxl%lon)) return
+if ((loc%lat < minl%lat) .or. (loc%lat > maxl%lat)) return
+!if ((loc%vloc < minl%vloc) .or. (loc%vloc > maxl%vloc)) return
+ 
+is_location_in_region = .true.
+
+end function is_location_in_region
 
 
 !----------------------------------------------------------------------------

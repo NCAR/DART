@@ -22,7 +22,8 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 implicit none
 private
 
-public :: location_type, get_location, set_location, set_location_missing, &
+public :: location_type, get_location, set_location, &
+          set_location2, set_location_missing, is_location_in_region, &
           write_location, read_location, interactive_location, query_location, &
           LocationDims, LocationName, LocationLName, get_close_obs, &
           get_close_maxdist_init, get_close_obs_init, get_close_type, &
@@ -170,6 +171,31 @@ if(x < 0.0_r8 .or. x > 1.0_r8) call error_handler(E_ERR, 'set_location', &
 set_location%x = x
 
 end function set_location
+
+
+function set_location2(list)
+!----------------------------------------------------------------------------
+!
+! location semi-independent interface routine
+! given 1 float number, call the underlying set_location routine
+
+implicit none
+
+type (location_type) :: set_location2
+real(r8), intent(in) :: list(:)
+
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call initialize_module
+
+if (size(list) /= 1) then
+   write(errstring,*)'requires 1 input value'
+   call error_handler(E_ERR, 'set_location2', errstring, source, revision, revdate)
+endif
+
+set_location2 = set_location(list(1))
+
+end function set_location2
 
 
 
@@ -414,6 +440,31 @@ do i = 1, gc%num
 end do
 
 end subroutine get_close_obs
+
+function is_location_in_region(loc, minl, maxl)
+!----------------------------------------------------------------------------
+!
+! Returns true if the given location is between the other two.
+
+implicit none
+
+logical                          :: is_location_in_region
+type(location_type), intent(in)  :: loc, minl, maxl
+
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call initialize_module
+
+! assume failure and return as soon as we are confirmed right.
+! set to success only at the bottom after all tests have passed.
+is_location_in_region = .false.
+
+if ((loc%x < minl%x) .or. (loc%x > maxl%x)) return
+ 
+is_location_in_region = .true.
+
+end function is_location_in_region
+
 
 !----------------------------------------------------------------------------
 ! end of location/oned/location_mod.f90
