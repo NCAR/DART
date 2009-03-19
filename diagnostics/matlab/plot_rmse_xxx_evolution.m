@@ -30,11 +30,11 @@ function plotdat = plot_rmse_xxx_evolution(fname,copystring)
 % $Revision$
 % $Date$
 
-%----------------------------------------------------------------------
-% Get plotting metadata from obs_diag run.
-%----------------------------------------------------------------------
+if (exist(fname,'file') ~= 2)
+   error('file/fname <%s> does not exist',fname)
+end
 
-% Harvest info from netcdf file.
+% Harvest plotting info/metadata from netcdf file.
 
 plotdat.fname         = fname;
 plotdat.copystring    = copystring;
@@ -389,7 +389,8 @@ function x = FindRange(y)
 %
 % If the numbers are very small ... 
 
-bob  = [y.ges_copy(:) ; y.anl_copy(:)];
+bob  = [y.ges_copy(:) ; y.ges_rmse(:) ; ...
+        y.anl_copy(:) ; y.anl_rmse(:) ];
 inds = find(isfinite(bob));
 
 if ( isempty(inds) )

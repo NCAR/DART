@@ -31,11 +31,11 @@ function plotdat = plot_rmse_xxx_profile(fname,copystring)
 % $Revision$
 % $Date$
 
-%----------------------------------------------------------------------
-% Get plotting metadata from obs_diag run.
-%----------------------------------------------------------------------
+if (exist(fname,'file') ~= 2)
+   error('file/fname <%s> does not exist',fname)
+end
 
-% Harvest info from netcdf file.
+% Harvest plotting info/metadata from netcdf file.
 
 plotdat.fname         = fname;
 plotdat.copystring    = copystring;
@@ -413,20 +413,33 @@ end
 
 
 function x = FindRange(y)
+% Trying to pick 'nice' limits for plotting.
+% Completely ad hoc ... and not well posed.
+%
 % In this scope, y is bounded from below by 0.0
+%
+% If the numbers are very small ... 
 
-glommed = [y.ges_copy(:); y.ges_rmse(:); ...
-           y.anl_copy(:); y.anl_rmse(:)];
-      
-Yrange = [floor(min(glommed)) ceil(max(glommed))];
+bob  = [y.ges_copy(:) ; y.ges_rmse(:) ; ...
+        y.anl_copy(:) ; y.anl_rmse(:) ];
+inds = find(isfinite(bob));
 
-if ( isfinite(Yrange) )
-   x = [min([Yrange(1) 0.0]) Yrange(2)];
-else
+if ( isempty(inds) )
    x = [0 1];
+else
+   glommed = bob(inds);
+   ymin    = min(glommed);
+   ymax    = max(glommed);
+
+   if ( ymax > 1.0 ) 
+      ymin = floor(min(glommed));
+      ymax =  ceil(max(glommed));
+   end
+
+   Yrange = [ymin ymax];
+
+   x = [min([Yrange(1) 0.0]) Yrange(2)];
 end
-
-
 
 function Stripes(x,edges)
 % EraseMode: [ {normal} | background | xor | none ]
