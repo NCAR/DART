@@ -227,8 +227,8 @@ function myplot(plotdat)
       mean_po_other = NaN;
    end
 
-   string_rmse   = sprintf('%s pr=%.3f, po=%.3f','rmse', mean_pr_rmse, mean_po_rmse);
-   string_other = sprintf('%s pr=%.3f, po=%.3f', plotdat.copystring, ...
+   string_rmse  = sprintf('%s pr=%.5g, po=%.5g','rmse', mean_pr_rmse, mean_po_rmse);
+   string_other = sprintf('%s pr=%.5g, po=%.5g', plotdat.copystring, ...
                           mean_pr_other, mean_po_other);
 
    % Plot the bias and 'xxx' on the same (left) axis.

@@ -249,10 +249,10 @@ function myplot(plotdat)
       other_analy = NaN;
    end
 
-   str_rmse_pr  = sprintf('%s pr=%.3f','rmse',rmse_guess);
-   str_rmse_po  = sprintf('%s po=%.3f','rmse',rmse_analy);
-   str_other_pr = sprintf('%s pr=%.3f',plotdat.copystring,other_guess);
-   str_other_po = sprintf('%s po=%.3f',plotdat.copystring,other_analy);
+   str_rmse_pr  = sprintf('%s pr=%.5g','rmse',rmse_guess);
+   str_rmse_po  = sprintf('%s po=%.5g','rmse',rmse_analy);
+   str_other_pr = sprintf('%s pr=%.5g',plotdat.copystring,other_guess);
+   str_other_po = sprintf('%s po=%.5g',plotdat.copystring,other_analy);
 
    % Plot the rmse and 'xxx' on the same (bottom) axis.
    % The observation count will use the axis on the top.

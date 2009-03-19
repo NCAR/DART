@@ -249,10 +249,10 @@ function myplot(plotdat)
       other_analy = NaN;
    end
 
-   str_bias_pr  = sprintf('%s pr=%.3f','bias',bias_guess);
-   str_bias_po  = sprintf('%s po=%.3f','bias',bias_analy);
-   str_other_pr = sprintf('%s pr=%.3f',plotdat.copystring,other_guess);
-   str_other_po = sprintf('%s po=%.3f',plotdat.copystring,other_analy);
+   str_bias_pr  = sprintf('%s pr=%.5g','bias',bias_guess);
+   str_bias_po  = sprintf('%s po=%.5g','bias',bias_analy);
+   str_other_pr = sprintf('%s pr=%.5g',plotdat.copystring,other_guess);
+   str_other_po = sprintf('%s po=%.5g',plotdat.copystring,other_analy);
 
    % Plot the bias and 'xxx' on the same (bottom) axis.
    % The observation count will use the axis on the top.

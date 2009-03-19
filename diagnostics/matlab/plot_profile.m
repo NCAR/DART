@@ -238,8 +238,8 @@ function myplot(plotdat)
       other_analy = NaN;
    end
 
-   str_other_pr = sprintf('%s pr=%.3f',plotdat.copystring,other_guess);
-   str_other_po = sprintf('%s po=%.3f',plotdat.copystring,other_analy);
+   str_other_pr = sprintf('%s pr=%.5g',plotdat.copystring,other_guess);
+   str_other_po = sprintf('%s po=%.5g',plotdat.copystring,other_analy);
 
    % Plot 'xxx' on the bottom axis.
    % The observation count will use the axis on the top.
