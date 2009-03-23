@@ -20,12 +20,28 @@ mkmf.template.compiler.system file into mkmf.template.
 Edit to set the NETCDF directory location if not in
 /usr/lib (which is hardly ever true).
 
-Go into models/lorenz_96/work and run workshop_setup.csh.
-If it compiles and runs 'perfect_model_obs' and 'filter',
-you've got a working setup.  Congrats.
+If you are using gfortran, go into the mpi_utilities
+directory and run the ./fixsystem shell script.
+
+Go into models/lorenz_63/work and run ./quickbuild.csh.
+
+If it compiles, hooray.  Run './perfect_model_obs' 
+and then './filter'.  If it runs, hooray again. 
+Finally, if you have 'matlab' installed on your system,
+add $DART/matlab to your matlab search path and run
+the 'plot_total_err' diagnostic script while in the
+models/lorenz_63/work directory.  If the output plots 
+and looks reasonable, you're great!  Congrats.  
 
 
-See the project web pages at:
+If any of these steps fail, or you don't know how to
+do them, go to the DART project web page below for
+very detailed instructions that should get you over
+any bumps in the process.
+
+
+
+See the (new and very much improved) project web pages at:
 
 http://www.image.ucar.edu/DAReS/DART
 
