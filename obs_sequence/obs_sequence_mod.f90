@@ -255,8 +255,10 @@ function interactive_obs_sequence()
 ! Interactive creation of an observation sequence
 type(obs_sequence_type) :: interactive_obs_sequence
 
-type(obs_type) :: obs
-integer :: max_num_obs, num_copies, num_qc, i, end_it_all
+type(obs_type)     :: obs, prev_obs
+type(obs_def_type) :: obs_def
+type(time_type)    :: obs_time, prev_time
+integer            :: max_num_obs, num_copies, num_qc, i, end_it_all
 
 write(*, *) 'Input upper bound on number of observations in sequence'
 read(*, *) max_num_obs
@@ -282,8 +284,9 @@ end do
 
 ! Initialize the obs variable
 call init_obs(obs, num_copies, num_qc)
+call init_obs(prev_obs, num_copies, num_qc)
 
-! Loop to initialize each observation in turn; terminate by ???
+! Loop to initialize each observation in turn; terminate by -1
 do i = 1, max_num_obs
    write(*, *) 'input a -1 if there are no more obs'
    read(*, *) end_it_all
@@ -293,11 +296,27 @@ do i = 1, max_num_obs
    if(i == 1) then
       call insert_obs_in_seq(interactive_obs_sequence, obs)
    else
-      call insert_obs_in_seq(interactive_obs_sequence, obs, interactive_obs_sequence%obs(i - 1))
+      ! if this is not the first obs, make sure the time is larger
+      ! than the previous observation.  if so, we can start the
+      ! linked list search at the location of the previous obs.
+      ! otherwise, we have to start at the beginning of the entire
+      ! sequence to be sure the obs are ordered correctly in
+      ! monotonically increasing times. 
+      call get_obs_def(obs, obs_def)
+      obs_time = get_obs_def_time(obs_def)
+      call get_obs_def(prev_obs, obs_def)
+      prev_time = get_obs_def_time(obs_def)
+      if(prev_time > obs_time) then
+         call insert_obs_in_seq(interactive_obs_sequence, obs)
+      else
+         call insert_obs_in_seq(interactive_obs_sequence, obs, prev_obs)
+      endif
    endif
+   prev_obs = obs
 end do
 
 call destroy_obs(obs)
+call destroy_obs(prev_obs)
 
 end function interactive_obs_sequence
 
@@ -696,10 +715,35 @@ seq%num_obs = seq%num_obs + 1
 ! Get the time for the observation
 obs_time = get_obs_def_time(obs%def)
 
+! Assume we're starting at the beginning.
+! If we make this smarter eventually, here is where
+! we'd set the initial key number for a search.
+
+! If given an existing obs, be sure the new obs time is
+! consistent - later or equal to the given previous obs. 
 if(present(prev_obs)) then
-    prev = prev_obs%key
-    current = prev
-    next = prev_obs%next_time
+   prev = prev_obs%key
+   current = prev
+   next = prev_obs%next_time
+   
+   ! it is an error to try to insert an observation after an
+   ! existing obs which has a smaller timestamp.
+   if (prev /= -1) then
+       current_time = get_obs_def_time(seq%obs(prev)%def)
+       if (obs_time < current_time) then
+          !! or, do the insert searching from the start
+          !prev = -1
+          !current = -1
+          !next = seq%first_time
+          ! error out 
+          write(msg_string,*) 'time of prev_obs cannot be > time of new obs'
+          call error_handler(E_ERR,'insert_obs_in_seq',msg_string,source,revision,revdate)
+       endif
+    endif
+   
+    ! the insert code will search forward starting at the
+    ! given obs, so it is not an error to give an obs which
+    ! has a larger time than the next obs.
 else
    ! Start search at beginning
    prev = -1
@@ -784,7 +828,7 @@ else
    obs_time = get_obs_def_time(obs%def)
    last_time = get_obs_def_time(last_obs%def)
    if(obs_time < last_time) then
-      write(msg_string, *) 'tried to append an obs to sequence with bad time'
+      write(msg_string, *) 'time of appended obs cannot be < time of last obs in sequence'
       call error_handler(E_ERR,'append_obs_to_seq',msg_string,source,revision,revdate)
    endif
 

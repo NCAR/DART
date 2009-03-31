@@ -331,6 +331,8 @@ do i = 1, num_input_files
    call destroy_obs_sequence(seq_in)
    if (remaining_obs_count == 0) then
       process_file(i) = .false.
+      write(msgstring,*) 'No obs used from input sequence file ', trim(filename_seq(i))
+      call error_handler(E_MSG,'obs_sequence_tool',msgstring)
       cycle
    else
       process_file(i) = .true.
@@ -357,6 +359,9 @@ endif
 
 ! pass 2:
 
+! blank line, start of actually creating output file
+call error_handler(E_MSG,' ',' ')
+
 ! Initialize individual observation variables 
 call init_obs(     obs, num_copies_out, num_qc_out)
 call init_obs( new_obs, num_copies_out, num_qc_out)
@@ -372,7 +377,7 @@ do i = 1, num_input_files
    if (.not. process_file(i)) cycle
  
    write(msgstring,*) 'Starting to process input sequence file ', trim(filename_seq(i))
-   call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+   call error_handler(E_MSG,'obs_sequence_tool',msgstring)
 
    call read_obs_seq(filename_seq(i), 0, 0, 0, seq_in)
 
@@ -412,9 +417,10 @@ do i = 1, num_input_files
    size_seq_out = get_num_key_range(seq_out)   !current size of seq_out
    size_seq_in = get_num_key_range(seq_in)     !current size of seq_in
 
-   if (print_only) then
-      call print_obs_seq(seq_in, filename_seq(i))
-   endif
+   ! ensure the linked list times are in increasing time order
+   call validate_obs_seq_time(seq_in, filename_seq(i))
+
+   if (print_only) call print_obs_seq(seq_in, filename_seq(i))
 
    !-------------------------------------------------------------
    ! Start to insert obs from sequence_in into sequence_out
@@ -467,8 +473,8 @@ do i = 1, num_input_files
       total_num_inserted = total_num_inserted + num_inserted
 
    else
-      write(msgstring,*)'no first observation in ',trim(adjustl(filename_seq(i)))
-      call error_handler(E_MSG,'obs_sequence_tool', msgstring, source, revision, revdate)
+      write(msgstring,*)'no first observation in ',trim(filename_seq(i))
+      call error_handler(E_MSG,'obs_sequence_tool', msgstring)
    endif
 
    if (.not. print_only) then
@@ -484,7 +490,7 @@ do i = 1, num_input_files
 enddo
 
 write(msgstring,*) 'Starting to process output sequence file ', trim(filename_out)
-call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+call error_handler(E_MSG,'obs_sequence_tool',msgstring)
 
 if (.not. print_only) then
    print*, 'Total number of obs  inserted  :          ', total_num_inserted
@@ -498,8 +504,7 @@ if (.not. print_only) then
    call write_obs_seq(seq_out, filename_out)
 else
    write(msgstring,*) 'Output sequence file not created; print_only in namelist is .true.'
-   print *, trim(msgstring)
-   call error_handler(E_MSG,'obs_sequence_tool', msgstring, source, revision, revdate)
+   call error_handler(E_MSG,'', msgstring)
 endif
 
 ! Time to clean up
@@ -567,13 +572,13 @@ endif
 if ( num_copies1 /= num_copies2 ) then
    write(msgstring2,*)'Different numbers of data copies found: ', &
                       num_copies1, ' vs ', num_copies2 
-   call error_handler(E_MSG, 'obs_sequence_tool', msgstring2, source, revision, revdate)
+   call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
    num_copies = -1
 endif
 if ( num_qc1 /= num_qc2 ) then
    write(msgstring2,*)'Different different numbers of QCs found: ', &
                       num_qc1, ' vs ', num_qc2
-   call error_handler(E_MSG, 'obs_sequence_tool', msgstring2, source, revision, revdate)
+   call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
    num_qc = -1
 endif
 if ( num_copies < 0 .or. num_qc < 0 ) then
@@ -586,12 +591,12 @@ MetaDataLoop : do i=1, num_copies
 
    if( str1 == str2 ) then
       write(msgstring2,*)'metadata ',trim(adjustl(str1)), ' in both.'
-      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2, source, revision, revdate)
+      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
    else
       write(msgstring2,*)'metadata value mismatch. seq1: ', trim(adjustl(str1))
-      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2, source, revision, revdate)
+      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
       write(msgstring2,*)'metadata value mismatch. seq2: ', trim(adjustl(str2))
-      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2, source, revision, revdate)
+      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
       call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, source, revision, revdate)
    endif
 enddo MetaDataLoop
@@ -602,12 +607,12 @@ QCMetaData : do i=1, num_qc
 
    if( str1 == str2 ) then
       write(msgstring2,*)'qc metadata ', trim(adjustl(str1)), ' in both.'
-      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2, source, revision, revdate)
+      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
    else
       write(msgstring2,*)'qc metadata value mismatch. seq1: ', trim(adjustl(str1))
-      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2, source, revision, revdate)
+      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
       write(msgstring2,*)'qc metadata value mismatch. seq2: ', trim(adjustl(str2))
-      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2, source, revision, revdate)
+      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
       call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, source, revision, revdate)
    endif
 enddo QCMetaData
@@ -637,7 +642,7 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
          if (print_msg) then
             msgstring = 'Skipping: all obs in ' // trim(seqfilename) // &
                         ' are before first_obs_days:first_obs_seconds'
-            call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+            call error_handler(E_MSG,'obs_sequence_tool',msgstring)
          endif
          remaining_obs_count = 0
          return
@@ -651,7 +656,7 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
          if (print_msg) then
             msgstring = 'Skipping: all obs in ' // trim(seqfilename) // &
                         ' are after last_obs_days:last_obs_seconds'
-            call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+            call error_handler(E_MSG,'obs_sequence_tool',msgstring)
          endif
          remaining_obs_count = 0
          return
@@ -671,7 +676,7 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
                msgstring = 'Skipping: all obs in ' // trim(seqfilename) // &
                            ' are on the discard obs_types list'
             endif
-            call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+            call error_handler(E_MSG,'obs_sequence_tool',msgstring)
          endif
          remaining_obs_count = 0
          return
@@ -688,13 +693,13 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
       else 
          !%! call select_obs_by_location(min_loc, max_loc, seq, all_gone)
          msgstring = 'Select by general bounding box not implemented yet'
-         call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+         call error_handler(E_MSG,'obs_sequence_tool',msgstring)
       endif
       if(all_gone) then
          if (print_msg) then
             msgstring = 'Skipping: no obs in ' // trim(seqfilename) // &
                         ' are above the given height'
-            call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+            call error_handler(E_MSG,'obs_sequence_tool',msgstring)
          endif
          remaining_obs_count = 0
          return
@@ -716,13 +721,13 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
       if (.not. found) then 
          msgstring = 'QC metadata string: ' // trim(qc_metadata) // &
                      ' not found in obs_seq file'
-         call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+         call error_handler(E_MSG,'obs_sequence_tool',msgstring)
       endif
       if(all_gone) then
          if (print_msg) then
             msgstring = 'Skipping: all obs in ' // trim(seqfilename) // &
                         ' are outside the qc min/max range'
-            call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+            call error_handler(E_MSG,'obs_sequence_tool',msgstring)
          endif
          remaining_obs_count = 0
          return
@@ -743,13 +748,13 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
       if (.not. found) then 
          msgstring = 'Copy metadata string: ' // trim(copy_metadata) // &
                      ' not found in obs_seq file'
-         call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+         call error_handler(E_MSG,'obs_sequence_tool',msgstring)
       endif
       if(all_gone) then
          if (print_msg) then
             msgstring = 'Skipping: all obs in ' // trim(seqfilename) // &
                         ' are outside the copy min/max range'
-            call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+            call error_handler(E_MSG,'obs_sequence_tool',msgstring)
          endif
          remaining_obs_count = 0
          return
@@ -763,7 +768,7 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
          if (print_msg) then
             msgstring = 'Skipping: no obs in ' // trim(seqfilename) // &
                         ' are above the GPS height threshold'
-            call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+            call error_handler(E_MSG,'obs_sequence_tool',msgstring)
          endif
          remaining_obs_count = 0
          return
@@ -809,8 +814,8 @@ identity_count = 0
 
 size_seq_in = get_num_obs(seq_in)
 if (size_seq_in == 0) then
-   msgstring = 'Obs_seq file is empty.'
-   call error_handler(E_MSG,'obs_sequence_tool',msgstring,source,revision,revdate)
+   msgstring = 'Obs_seq file '//trim(filename)//' is empty.'
+   call error_handler(E_MSG,'obs_sequence_tool',msgstring)
    return
 endif
 
@@ -832,8 +837,8 @@ call print_metadata(seq_in, filename)
 is_there_one = get_first_obs(seq_in, obs)
 
 if ( .not. is_there_one )  then
-   write(msgstring,*)'no first observation in ',trim(adjustl(filename))
-   call error_handler(E_MSG,'obs_sequence_tool', msgstring, source, revision, revdate)
+   write(msgstring,*)'no first observation in ',trim(filename)
+   call error_handler(E_MSG,'obs_sequence_tool', msgstring)
 endif
 
 ! process it here
@@ -896,6 +901,88 @@ call destroy_obs(     obs)
 call destroy_obs(next_obs)
 
 end subroutine print_obs_seq
+
+!---------------------------------------------------------------------
+subroutine validate_obs_seq_time(seq, filename)
+
+! this eventually belongs in the obs_seq_mod code, but for now
+! try it out here.  we just fixed a hole in the interactive create
+! routine which would silently let you create out-of-time-order
+! linked lists, which gave no errors but didn't assimilate the
+! right obs at the right time when running filter.   this runs
+! through the times in the entire sequence, ensuring they are
+! monotonically increasing in time.  this should help catch any
+! bad files which were created with older versions of code.
+
+type(obs_sequence_type), intent(in) :: seq
+character(len=*),        intent(in) :: filename
+
+type(obs_type)          :: obs, next_obs
+type(obs_def_type)      :: this_obs_def
+logical                 :: is_there_one, is_this_last
+integer                 :: size_seq, num_copies, num_qc
+integer                 :: i, j, key
+type(time_type)         :: last_time, this_time
+
+
+! make sure there are obs left to process before going on.
+size_seq = get_num_obs(seq) 
+if (size_seq == 0) then
+   msgstring = 'Obs_seq file '//trim(filename)//' is empty.'
+   call error_handler(E_MSG,'obs_sequence_tool:validate',msgstring)
+   return
+endif
+
+! Initialize individual observation variables 
+call init_obs(     obs, get_num_copies(seq), get_num_qc(seq))
+call init_obs(next_obs, get_num_copies(seq), get_num_qc(seq))
+
+!-------------------------------------------------------------
+! Start to process obs from seq
+!--------------------------------------------------------------
+is_there_one = get_first_obs(seq, obs)
+
+if ( .not. is_there_one )  then
+   write(msgstring,*)'no first observation in sequence ' // trim(filename)
+   call error_handler(E_MSG,'obs_sequence_tool:validate', msgstring, source, revision, revdate)
+endif
+
+call get_obs_def(obs, this_obs_def)
+last_time = get_obs_def_time(this_obs_def)
+
+
+is_this_last = .false.
+ObsLoop : do while ( .not. is_this_last)
+
+   call get_obs_def(obs, this_obs_def)
+   this_time = get_obs_def_time(this_obs_def)
+
+   if (last_time > this_time) then
+      ! bad time order of observations in linked list
+      call print_time(last_time, ' previous timestamp: ')
+      if (gregorian_cal) call print_date(last_time, '   Gregorian day: ')
+      call print_time(this_time, ' next timestamp: ')
+      if (gregorian_cal) call print_date(this_time, '   Gregorian day: ')
+
+      key = get_obs_key(obs)
+      write(msgstring,*)'obs number ', key, ' has earlier time than previous obs'
+      call error_handler(E_MSG,'obs_sequence_tool:validate', msgstring)
+      write(msgstring,*)'observations must be in increasing time order, file ' // trim(filename)
+      call error_handler(E_ERR,'obs_sequence_tool:validate', msgstring, source, revision, revdate)
+   endif
+
+   last_time = this_time
+
+   call get_next_obs(seq, obs, next_obs, is_this_last)
+   if (.not. is_this_last) obs = next_obs
+
+enddo ObsLoop
+
+! clean up
+call destroy_obs(     obs)
+call destroy_obs(next_obs)
+
+end subroutine validate_obs_seq_time
 
 !---------------------------------------------------------------------
 subroutine print_metadata(seq1, fname1)
