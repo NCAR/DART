@@ -186,8 +186,9 @@ end function set_time
 function set_time_missing()
 !---------------------------------------------------------------------------
 !
-! Returns a time interval corresponding to this number of days and seconds.
-! The arguments must not be negative but are otherwise unrestricted.
+! Initialize a time derived type to a known value.  It is impossible for
+! this to be set by the set_time() function since the missing integers
+! are negative values.
 
 type(time_type) :: set_time_missing
 
@@ -202,6 +203,8 @@ subroutine get_time(time, seconds, days)
 !---------------------------------------------------------------------------
 !
 ! Returns days and seconds ( < 86400 ) corresponding to a time.
+! If the optional 'days' argument is not given, the days are converted
+! to seconds and the total time is returned as seconds.
 
 implicit none
 
