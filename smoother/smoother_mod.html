@@ -47,13 +47,6 @@
 
 <H1>MODULE smoother_mod</H1>
 <A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 
@@ -76,12 +69,12 @@ your <em class="file">input.nml</em> file and run
 
 <div class="routine">
 <pre>
-&#38;smoother_nml
+&amp;smoother_nml
    num_lags              = <em class="changed">10</em>,
    start_from_restart    = .false.,
    output_restart        = .true.,
-   restart_in_file_name  = "smoother_ics",
-   restart_out_file_name = "smoother_restart"  /
+   restart_in_file_name  = "ics",
+   restart_out_file_name = "restart"  /
 </pre>
 </div>
 
@@ -143,20 +136,18 @@ adaptive_inflate_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#filter_state_space_diagnostics">filter_state_space_diagnostics</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#smoother_ss_diagnostics">smoother_ss_diagnostics</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#smoother_end">smoother_end</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#smoother_inc_lags">smoother_inc_lags</A></TD></TR>
 </TABLE>
 
 <H3 class=indent1>NOTES</H3>
 
 <P>
-Optional namelist interface <a href="#Namelist"><em class=code>&#38;smoother_nml</em></a>
+Optional namelist interface <a href="#Namelist"><em class=code>&amp;smoother_nml</em></a>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
 <!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
 <!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
 <!--==================================================================-->
 
 <A NAME="PublicEntities"></A>
@@ -215,7 +206,7 @@ Reads in ensemble of states for all lag estimates from a restart file.
  Advances smoother state estimates at all lags forward in time. This
 entails copying the most recent smoother state, contained in
 ens_handle, into the lag 1 smoother state and pushing back all other
-lags by 1 (i.e. lag 1 becomes lag2, etc.).
+lags by 1 (i.e. lag 1 becomes lag 2, etc.).
  </P>
  <TABLE width=100% border=0 summary="" celpadding=3>
  <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
@@ -576,10 +567,10 @@ propagate the state to all requested lags.
  <BR><HR><BR>
  <H2>NAMELIST</H2>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&#38;' and terminating with a slash '/'.
+ '&amp;' and terminating with a slash '/'.
  <div class=namelist><pre>
- <em class=call>namelist / smoother_nml / </em>  &#38;
-    num_lags, start_from_restart, output_restart,  &#38;
+ <em class=call>namelist / smoother_nml / </em>  
+    num_lags, start_from_restart, output_restart,
     restart_in_file_name, restart_out_file_name
  </pre></div>
  <H3 class=indent1>Discussion</H3>
@@ -593,25 +584,43 @@ propagate the state to all requested lags.
  <TR><TH align=left>Contents    </TH>
      <TH align=left>Type        </TH>
      <TH align=left>Description </TH></TR>
+
  <TR><!--contents--><TD valign=top>num_lags</TD>
      <!--  type  --><TD valign=top>integer</TD>
- <!--descript--><TD>Number of smoother lags; &#60; 1 means no smoother. Default: 0</TD></TR>
+     <!--descript--><TD>Number of smoother lags; &lt; 1 means no smoother. 
+                        Default: 0</TD></TR>
+
  <TR><!--contents--><TD valign=top>start_from_restart</TD>
      <!--  type  --><TD valign=top>logical</TD>
- <!--descript--><TD>True if smoother states are to come from restart file. False
-  if they are to be spun up from scratch. Default: .false.</TD></TR>
+     <!--descript--><TD>True if smoother states are to come from restart file(s). 
+                        False if they are to be spun up from scratch. 
+                        Default: .false.</TD></TR>
+
  <TR><!--contents--><TD valign=top>output_restart</TD>
      <!--  type  --><TD valign=top>logical</TD>
- <!--descript--><TD>True if restart file is to be written, else false. 
-   Default:.false.</TD></TR>
+     <!--descript--><TD>True if restart file(s) are to be written, else false. 
+                        Default:.false.</TD></TR>
+
  <TR><!--contents--><TD valign=top>restart_in_file_name</TD>
      <!--  type  --><TD valign=top>character(len=129)</TD>
- <!--descript--><TD>File name from which to read restarts, lag extensions get added. 
-       Default: smoother_ics </TD></TR>
+     <!--descript--><TD>String used to construct the file name from which 
+       to read restart data. 'Lag_NNNNN_' will be prepended to the specified value to 
+       create the actual filename.  If each ensemble is to be read from a separate file, 
+       the .NNNN ensemble number will also be appended.  e.g. specifying 'ics' here
+       results in 'Lag_00001_ics' if all ensemble members are read from a single file, 
+       'Lag_00001_ics.0001', 'Lag_00001_ics.0002', etc for multiples.
+       Default: ics </TD></TR>
+
  <TR><!--contents--><TD valign=top>restart_out_file_name</TD>
      <!--  type  --><TD valign=top>character(len=129)</TD>
- <!--descript--><TD>File name to which to write smoother restarts, lag extensions get added. 
-    Default: smoother_restart</TD></TR>
+     <!--descript--><TD>String used to construct the file name to which
+       to write restart data. 'Lag_NNNNN_' will be prepended to the specified value to 
+       create the actual filename.  If each ensemble is to be written to a separate file, 
+       the .NNNN ensemble number will also be appended.  e.g. specifying 'restart' here
+       results in 'Lag_00001_restart' if all ensemble members are written to a single file, 
+       'Lag_00001_restart.0001', 'Lag_00001_restart.0002', etc for multiples.
+       Default: restart </TD></TR>
+
  </TABLE>
  <P>
  <!--================================================================-->
@@ -625,7 +634,8 @@ propagate the state to all requested lags.
 <BR><HR><BR>
 <H2>FILES</H2>
 <UL><LI>input.nml</LI>
-    <LI>smoother restart files with lag extensions</LI>
+    <LI>smoother initial condition files</LI>
+    <LI>smoother restart files</LI>
 </UL>
 
 <!--==================================================================-->
@@ -749,7 +759,7 @@ reply = input('Lag 09.  hit enter to continue ');
 </P>
 
 <!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!-- Have not fleshed out this part yet ...                           -->
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
@@ -760,10 +770,16 @@ reply = input('Lag 09.  hit enter to continue ');
 <pre>
 </div>
 
-<H3 class=indent1>Discussion</H3>
-
 <!--==================================================================-->
 
 <HR>
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
 </BODY>
 </HTML>

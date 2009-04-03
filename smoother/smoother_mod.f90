@@ -15,14 +15,14 @@ module smoother_mod
 
 use      types_mod,       only : r8
 use  mpi_utilities_mod,   only : my_task_id
-use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output, &
+use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,  &
                                  find_namelist_in_file, register_module, error_handler, &
-                                 E_ERR, E_MSG, nmlfileunit
+                                 E_ERR, E_MSG, nmlfileunit, logfileunit, timestamp
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, read_ensemble_restart, &
-                                 write_ensemble_restart, all_vars_to_all_copies, &
-                                 duplicate_ens, compute_copy_mean, compute_copy_mean_sd, &
+                                 write_ensemble_restart, all_vars_to_all_copies,              &
+                                 duplicate_ens, compute_copy_mean, compute_copy_mean_sd,      &
                                  all_copies_to_all_vars, get_copy
-use time_manager_mod,     only : time_type
+use time_manager_mod,     only : time_type, operator(==), print_time
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   &
                                  aoutput_diagnostics
@@ -33,11 +33,11 @@ use adaptive_inflate_mod, only : adaptive_inflate_type, adaptive_inflate_init, &
 implicit none
 private
 
-public :: smoother_read_restart, advance_smoother,                          &
+public :: smoother_read_restart, advance_smoother,                     &
    smoother_gen_copy_meta_data, smoother_write_restart, init_smoother, &
-   do_smoothing, smoother_mean_spread, smoother_assim,                      &
-   filter_state_space_diagnostics, smoother_ss_diagnostics,        &
-   smoother_end, smoother_inc_lags
+   do_smoothing, smoother_mean_spread, smoother_assim,                 &
+   filter_state_space_diagnostics, smoother_ss_diagnostics,            &
+   smoother_end, set_smoother_trace
 
 
 ! version controlled file description for error handling, do not edit
@@ -47,6 +47,8 @@ character(len=128), parameter :: &
    revdate  = "$Date$"
 
 logical :: module_initialized = .false.
+integer :: print_trace_details = 0
+integer :: print_timestamps    = 0
 
 character(len = 129) :: errstring
 
@@ -61,12 +63,14 @@ type(adaptive_inflate_type)         :: lag_inflate
 
 !---- namelist with default values
 
-integer  :: num_lags = 0
+integer  :: num_lags           = 0
 logical  :: start_from_restart = .false.
 logical  :: output_restart     = .false.
 
-character(len = 129) :: restart_in_file_name  = 'smoother_ics', &
-                        restart_out_file_name = 'smoother_restart'
+! These will be prepended with Lag_NNNNN_ (and optionally appended with
+! ens number depending on namelist settings).
+character(len = 129) :: restart_in_file_name  = 'ics', &
+                        restart_out_file_name = 'restart'
 
 namelist /smoother_nml/ num_lags, start_from_restart, &
                         output_restart, restart_in_file_name, &
@@ -132,8 +136,8 @@ integer,             intent(in)    :: init_time_days
 ! Can either get restart by copying ensemble_ic into every lag or by reading from
 ! restart files. If reading from restart, may want to override the times as indicated
 ! by the filter namelist.
-integer             :: i, j
-character(len = 80) :: file_name, temp_name
+integer              :: i, j, smoother_index
+character(len = 256) :: file_name, temp_name
 
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
@@ -154,39 +158,49 @@ num_current_lags = 0
 ! If starting from restart, read these in
 if(start_from_restart) then
    READ_LAGS: do i = 1, num_lags
-      ! FIXME: This should use the text string from the namelist.  It will
-      ! need to change to something like "(A, i5.5)" (or 4.4 to match the
-      ! resolution of the ensemble suffix.
-      write(file_name, '("lag_", i5.5, "_ics")') i
-      write(temp_name, '(A, ".", i4.4)') trim(file_name), 1
+      smoother_index = smoother_head + i - 1
+      if(smoother_index > num_lags) smoother_index = smoother_index - num_lags
+      write(file_name, '("Lag_", I5.5, "_", A)') i, trim(restart_in_file_name)
+      write(temp_name, '(A, ".", I4.4)') trim(file_name), 1
       if (file_exist(file_name) .or. file_exist(temp_name)) then
          if(init_time_days >= 0) then
-            call read_ensemble_restart(lag_handle(i), 1, ens_size, &
+            call read_ensemble_restart(lag_handle(smoother_index), 1, ens_size, &
                start_from_restart, file_name, time1)
          else
-            call read_ensemble_restart(lag_handle(i), 1, ens_size, &
+            call read_ensemble_restart(lag_handle(smoother_index), 1, ens_size, &
                start_from_restart, file_name)
          endif
          num_current_lags = num_current_lags + 1
+   !write(errstring, '(A,I4,A,I4)') 'reading restart file ', i, ' into cycle number', smoother_index
+   !call error_handler(E_MSG, 'smoother_read_restart', errstring)
       else
          ! lag ic file does not exist yet, duplicate the filter ics 
          ! for the rest of the lags and break out of the i loop
          do j = i, num_lags
-            call duplicate_ens(ens_handle, lag_handle(j), .true.)
+            smoother_index = smoother_head + j - 1
+            if(smoother_index > num_lags) smoother_index = smoother_index - num_lags
+            call duplicate_ens(ens_handle, lag_handle(smoother_index), .true.)
+   !write(errstring, '(A,I4,A,I4)') 'filling restart data ', i, ' into cycle number', smoother_index
+   !call error_handler(E_MSG, 'smoother_read_restart', errstring)
          end do
          exit READ_LAGS
       endif
    end do READ_LAGS
 
-   write(errstring, '(i4, A)') num_current_lags, ' smoother restart files processed' 
-   call error_handler(E_MSG,'smoother_read_restart',errstring,source,revision,revdate)
+   !write(errstring, '(i4, A)') num_current_lags, ' smoother restart files processed' 
+   !call error_handler(E_MSG,'smoother_read_restart',errstring)
 
 else
    ! If not starting from restart, just copy the filter ics to all lags
    do i = 1, num_lags
       call duplicate_ens(ens_handle, lag_handle(i), .true.)
    end do
+   !write(errstring, '(A,I4,A)') 'no restart data found, filling all', num_lags, ' lags'
+   !call error_handler(E_MSG, 'smoother_read_restart', errstring)
 endif
+
+!write(errstring, '(A,I4,A)') 'head =', smoother_head
+!call error_handler(E_MSG, 'smoother_read_restart', errstring)
 
 end subroutine smoother_read_restart
 
@@ -204,22 +218,40 @@ if ( .not. module_initialized ) then
    call error_handler(E_ERR,'advance_smoother',errstring,source,revision,revdate)
 endif
 
+!call error_handler(E_MSG, 'advance_smoother', 'start of routine')
+!if (num_lags /= num_current_lags) then
+!   write(errstring, '(A,I4)') 'num_current_lags starts =', num_current_lags
+!   call error_handler(E_MSG, 'advance_smoother', errstring)
+!endif
+
+!write(errstring, '(A,I4)') 'apparently time has advanced, head starts =', smoother_head
+!call error_handler(E_MSG, 'advance_smoother', errstring)
+
 ! Copy the newest state from the ensemble over the oldest state
 ! Storage is cyclic
 smoother_tail = smoother_head - 1
 if(smoother_tail == 0) smoother_tail = num_lags
 call duplicate_ens(ens_handle, lag_handle(smoother_tail), .true.)
+!write(errstring, '(A,I4)') 'copied current ens data into tail =', smoother_tail
+!call error_handler(E_MSG, 'advance_smoother', errstring)
 
-! Now make the head point to the latest
+
+! Make the head point to the most recent data copy
 smoother_head = smoother_tail
- 
-! Update time of lag1 to be the updated filter time;
-! Rest of times propagated back in the advance_smoother step
-if(num_current_lags > 0) then
-   do j = 1, ens_handle%my_num_copies
-      lag_handle(smoother_head)%time(j) = ens_handle%time(j)
-   end do
-endif
+
+! Add one to smoother ens if necessary
+call smoother_inc_lags()
+
+!write(errstring, '(A,I4,A,I4)') 'head now =', smoother_head, ' num_current_lags =', num_current_lags
+!call error_handler(E_MSG, 'advance_smoother', errstring)
+
+! debug only
+!call print_time(lag_handle(smoother_head)%time(1), ' advance_smoother: head time now', logfileunit)
+!call print_time(lag_handle(smoother_head)%time(1), ' advance_smoother: head time now')
+!smoother_tail = smoother_head - 1
+!if(smoother_tail == 0) smoother_tail = num_lags
+!call print_time(lag_handle(smoother_tail)%time(1), ' advance_smoother: tail time now', logfileunit)
+!call print_time(lag_handle(smoother_tail)%time(1), ' advance_smoother: tail time now')
 
 end subroutine advance_smoother
 
@@ -303,8 +335,8 @@ integer,             intent(in)    :: start_copy, end_copy
 ! Single versus multiple file status is selected by ensemble manager
 ! Names for file are set here
 
-character(len = 17) :: file_name
-integer             :: i, index
+character(len = 256) :: file_name
+integer              :: i, smoother_index
 
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
@@ -312,14 +344,19 @@ if ( .not. module_initialized ) then
    call error_handler(E_ERR,'smoother_write_restart',errstring,source,revision,revdate)
 endif
 
+! namelist controlled
+if (.not. output_restart) return
+
 ! Write out restart to each lag in turn
 ! Storage is cyclic with oldest lag pointed to by head, and 
 ! head + 1 the most recent lag
 do i = 1, num_current_lags
-   index = smoother_head + i - 1
-   if(index > num_lags) index = index - num_lags
-   write(file_name, '("lag_", i5.5, "_restart")') i
-   call write_ensemble_restart(lag_handle(index), file_name, start_copy, end_copy)
+   smoother_index = smoother_head + i - 1
+   if(smoother_index > num_lags) smoother_index = smoother_index - num_lags
+   write(file_name, '("Lag_", I5.5, "_", A)') i, trim(restart_out_file_name)
+   call write_ensemble_restart(lag_handle(smoother_index), file_name, start_copy, end_copy)
+   !write(errstring, '(A,I4,A,I4)') 'writing restart file ', i, ' from cycle number', smoother_index
+   !call error_handler(E_MSG, 'smoother_write_restart', errstring)
 end do
 
 end subroutine smoother_write_restart
@@ -341,7 +378,7 @@ integer,                     intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
 integer,                     intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END
 integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END
 
-integer :: i
+integer :: smoother_index, i
 
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
@@ -349,19 +386,38 @@ if ( .not. module_initialized ) then
    call error_handler(E_ERR,'smoother_assim',errstring,source,revision,revdate)
 endif
 
-do i = 1, num_lags
-   call all_vars_to_all_copies(lag_handle(i))
+do i = 1, num_current_lags
+   smoother_index = smoother_head + i - 1
+   if(smoother_index > num_lags) smoother_index = smoother_index - num_lags
+   call all_vars_to_all_copies(lag_handle(smoother_index))
 
-   write(errstring, *)'starting assimilate pass for lag ', i
+   !write(errstring, '(A,I4,A,I4)') 'starting assimilate pass for lag', i, &
+   !                                ' data, cycle index', smoother_index
+   !call error_handler(E_MSG,'smoother_assim',errstring)
+
+   write(errstring, '(A,I4,A)') 'starting assimilate pass for lag', i, ' data'
    call error_handler(E_MSG,'smoother_assim',errstring)
 
    ! NEED A LAG INFLATE TYPE THAT DOES NO INFLATION FOR NOW
-   call filter_assim(lag_handle(i), obs_ens_handle, seq, keys, ens_size, num_groups, &
+   call filter_assim(lag_handle(smoother_index), obs_ens_handle, &
+      seq, keys, ens_size, num_groups, &
       obs_val_index, lag_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
       OBS_PRIOR_VAR_END, inflate_only = .false.)
+
+   !write(errstring, '(A,I8,A,I4,A)') 'finished assimilating ', size(keys), &
+   !                                  ' observations for lag', i, ' data'
+   !call error_handler(E_MSG,'smoother_assim', errstring)
+   !write(errstring, '(A,I4)') ' smoother_assim: smoother_index =', smoother_index
+   !call error_handler(E_MSG,'smoother_assim', errstring)
+   !call print_time(lag_handle(smoother_index)%time(1), errstring)
+   write(errstring, '(A,I8,A,I4,A)') 'finished assimilating ', size(keys), &
+                                     ' observations for lag', i, ' data'
+   if (do_output() .and. print_timestamps > 0) call timestamp(errstring, pos='debug')
 end do
+
+!call error_handler(E_MSG,'smoother_assim', 'end of routine, returning')
 
 end subroutine smoother_assim
 
@@ -386,7 +442,7 @@ subroutine smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
 integer, intent(in) :: ens_size, ENS_MEAN_COPY, ENS_SD_COPY
 
-integer :: i
+integer :: smoother_index, i
 
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
@@ -394,13 +450,17 @@ if ( .not. module_initialized ) then
    call error_handler(E_ERR,'smoother_mean_spread',errstring,source,revision,revdate)
 endif
 
-do i = 1, num_lags
-   call compute_copy_mean_sd(lag_handle(i), 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+do i = 1, num_current_lags
+   smoother_index = smoother_head + i - 1
+   if(smoother_index > num_lags) smoother_index = smoother_index - num_lags
+   call compute_copy_mean_sd(lag_handle(smoother_index), 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 end do
 
 ! Now back to var complete for diagnostics
-do i = 1, num_lags
-   call all_copies_to_all_vars(lag_handle(i))
+do i = 1, num_current_lags
+   smoother_index = smoother_head + i - 1
+   if(smoother_index > num_lags) smoother_index = smoother_index - num_lags
+   call all_copies_to_all_vars(lag_handle(smoother_index))
 end do
 
 end subroutine smoother_mean_spread
@@ -521,12 +581,44 @@ end subroutine smoother_end
 !-----------------------------------------------------------
 
 subroutine smoother_inc_lags()
-
 ! Increment the number of lags that are current for the smoother storage
+
+! must have called init_smoother() before using this routine
+if ( .not. module_initialized ) then
+   write(errstring, *)'cannot be called before init_smoother() called'
+   call error_handler(E_ERR,'smoother_inc_lags',errstring,source,revision,revdate)
+endif
+
 
 if(num_current_lags < num_lags) num_current_lags = num_current_lags + 1
 
+!write(errstring, *)'smoother_inc_lags called, num_current_lags =', num_current_lags
+!call error_handler(E_MSG,'smoother_inc_lags',errstring)
+
+
 end subroutine smoother_inc_lags
+
+!-----------------------------------------------------------
+
+subroutine set_smoother_trace(execution_level, timestamp_level)
+ integer, intent(in) :: execution_level
+ integer, intent(in) :: timestamp_level
+
+! set module local vars from the calling code to indicate how much
+! output we should generate from this code.  execution level is
+! intended to make it easier to figure out where in the code a crash
+! is happening; timestamp level is intended to help with gross levels
+! of overall performance profiling.  eventually, a level of 1 will
+! print out only basic info; level 2 will be more detailed.  
+! (right now, only > 0 prints anything and it doesn't matter how 
+! large the value is.)
+ 
+
+if (execution_level >= 0) print_trace_details = execution_level
+if (timestamp_level >= 0) print_timestamps    = timestamp_level
+
+end subroutine set_smoother_trace
+
 !-----------------------------------------------------------
 
 end module smoother_mod

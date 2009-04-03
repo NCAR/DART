@@ -46,13 +46,6 @@
 
 <H1>PROGRAM filter</H1>
 <A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 
@@ -63,11 +56,29 @@
 <P>
    Main program for driving ensemble filter assimilations. 
 </P>
+<P>
+   The basic execution loop is:
+   <UL><LI>Read in initial conditions, observations, set up and initialize</LI>
+       <LI>Until out of observations:</LI>
+       <UL><LI>Run model to advance data</LI>
+           <LI>Assimilate all observations in the current time window</LI>
+           <LI>Repeat</LI>
+       </UL>
+       <LI>Write out diagnostic files, restart files, final observation sequence file</LI>
+   </UL>
+</P>
+
+<P>
+   See the <A href="http://www.image.ucar.edu/DAReS/DART">DART web site</A> 
+   for detailed discussion of the capabilities of the
+   assimilation system, a diagram of the entire execution cycle, the options
+   and features.
+</P>
 
 <P>
    NOTE: The different types of assimilation algorithms 
    (EAKF, ENKF, Kernel filter, Particle filter, etc.) are determined
-   by the <em class=code>&#38;assim_tools_nml:filter_kind</em> entry,
+   by the <em class=code>&amp;assim_tools_nml:filter_kind</em> entry,
    described in <a href="../assim_tools/assim_tools_mod.html">assim_tools_mod.html</a>.
    Despite having 'filter' in the name, they are assimilation algorithms
    and so are implemented in <em class=file>assim_tools_mod.f90</em>.
@@ -77,8 +88,7 @@
    provides a number of options that are driven from its namelist. The
    number of assimilation steps to be done are controlled by the input
    observation sequence and by the time-stepping capabilities of the model
-   being used in the assimilation. This documentation was created for the
-   J-release of DART.
+   being used in the assimilation.
 </P>
 
 <P>
@@ -114,7 +124,7 @@
 
 <P>
 Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&#38;filter_nml</em> </A>
+<A HREF="#Namelist"> <em class=code>&amp;filter_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -146,11 +156,12 @@ smoother_mod
  <HR>
  <H2>NAMELIST</H2>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&#38;' and terminating with a slash '/'.
+ '&amp;' and terminating with a slash '/'.
  <div class=namelist><pre>
  <em class=call>namelist / filter_nml / </em>
    async,
    adv_ens_command,
+   tasks_per_model_advance,
    ens_size,
    start_from_restart,
    output_restart,
@@ -164,6 +175,8 @@ smoother_mod
    first_obs_seconds,
    last_obs_days,
    last_obs_seconds,
+   obs_window_days,
+   obs_window_seconds,
    num_output_state_members,
    num_output_obs_members,
    output_interval,
@@ -173,6 +186,7 @@ smoother_mod
    output_forward_op_errors,
    output_timestamps,
    output_inflation,
+   trace_execution,
      
    inf_flavor,
    inf_initial_from_restart,
@@ -216,6 +230,11 @@ being for the posterior inflation.
      <!--descript--><TD>Command sent to shell if async is 2. 
                         Default: ./advance_model.csh</TD></TR>
 
+ <TR><!--contents--><TD valign=top>tasks_per_model_advance</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>Reserved for future use.
+                        Default: 1</TD></TR>
+
  <TR><!--contents--><TD valign=top>ens_size</TD>
      <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>Size of ensemble.
@@ -255,14 +274,48 @@ being for the posterior inflation.
  <TR><!--contents--><TD valign=top>init_time_days</TD>
      <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>If negative, don't use. If non-negative, override the initial 
-                        days read from state restart. 
+                        days read from state data restart file. 
                         Default: 0</TD></TR>
 
  <TR><!--contents--><TD valign=top>init_time_seconds</TD>
      <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>If negative don't use. If non-negative, override the initial
-                        seconds read from state restart. 
+                        seconds read from state data restart file. 
                         Default: 0</TD></TR>
+
+ <TR><!--contents--><TD valign=top>first_obs_days</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>If negative, don't use. If non-negative, ignore all observations
+                        before this time.
+                        Default: -1</TD></TR>
+
+ <TR><!--contents--><TD valign=top>first_obs_seconds</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>If negative, don't use. If non-negative, ignore all observations
+                        before this time.
+                        Default: -1</TD></TR>
+
+ <TR><!--contents--><TD valign=top>last_obs_days</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>If negative, don't use. If non-negative, ignore all observations
+                        after this time.
+                        Default: -1</TD></TR>
+
+ <TR><!--contents--><TD valign=top>last_obs_seconds</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>If negative, don't use. If non-negative, ignore all observations
+                        after this time.
+                        Default: -1</TD></TR>
+
+ <TR><!--contents--><TD valign=top>obs_window_days</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>If negative, don't use. If non-negative, reserved for future use.
+                        Default: -1</TD></TR>
+
+ <TR><!--contents--><TD valign=top>obs_window_seconds</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>If negative, don't use. If non-negative, reserved for future use.
+                        Default: -1</TD></TR>
 
  <TR><!--contents--><TD valign=top>num_output_state_members</TD>
      <!--  type  --><TD valign=top>integer</TD>
@@ -312,6 +365,13 @@ being for the posterior inflation.
      <!--descript--><TD>True means output inflation values in the prior and posterior
                         diagnostic files.  False omits them.
                         Default: .true.</TD></TR>
+
+ <TR><!--contents--><TD valign=top>trace_execution</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD>True means output very detailed messages about what routines
+                        are being called in the main filter loop.  Useful if a job
+                        hangs or otherwise doesn't execute as expected.
+                        Default: .false.</TD></TR>
 
  <TR><TD colspan=3>All subsequent variables are arrays of length 2.<br>
                    The first element is for the prior, the second element is 
@@ -539,7 +599,7 @@ being for the posterior inflation.
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
@@ -551,7 +611,7 @@ computed once is needed.
 </P>
 
 <!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!-- Have not fleshed out this part yet ...                           -->
 <!--==================================================================-->
 
 
@@ -560,5 +620,13 @@ computed once is needed.
 <!--==================================================================-->
 
 <HR>
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
 </BODY>
 </HTML>

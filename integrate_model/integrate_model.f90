@@ -78,7 +78,7 @@ call close_restart(iunit)
 ! If the model time is past the obs set time, just need to skip
 if(ens_handle%time(1) < target_time) &
    call advance_state(ens_handle, ens_size=1, target_time=target_time, &
-      async=0, adv_ens_command=adv_ens_command)
+      async=0, adv_ens_command=adv_ens_command, tasks_per_model_advance=1)
 
 ! Output the restart file if requested; Force to binary for bitwise reproducing
 ! use in filter and perfect_model obs with shell advance options

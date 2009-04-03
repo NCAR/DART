@@ -35,7 +35,7 @@ use mpi_utilities_mod,    only : my_task_id, task_sync, task_count, block_task, 
 implicit none
 private
 
-public :: move_ahead, advance_state
+public :: move_ahead, advance_state, set_obs_model_trace, have_members
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -43,8 +43,9 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-logical :: module_initialized = .false.
-logical :: print_time_details = .true.
+logical :: module_initialized  = .false.
+integer :: print_timestamps    = 0
+integer :: print_trace_details = 0
 
 ! Module storage for writing error messages
 character(len = 129) :: errstring
@@ -62,28 +63,30 @@ end subroutine initialize_module
 
 !-------------------------------------------------------------------------
 
-subroutine move_ahead(ens_handle, ens_size, seq, last_key_used, &
-   key_bounds, num_obs_in_set, async, adv_ens_command)
+subroutine move_ahead(ens_handle, ens_size, seq, last_key_used, window_time, &
+   key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
 
-! Advances all ensemble copies of the state to the time appropriate for
-! the next unused observation in the observation sequence. Note that there
-! may be more than ens_size copies in the ens_handle storage. Copies other
-! than the ensemble copies need not be advanced in time.
+! Based on the current ens time and the time of the next available
+! observation, compute whether and how far the ensemble copies of the
+! state need to be advanced.  This returns the number of obs in the
+! next assimilation window, and both the current and expected next data
+! times.  It NO LONGER advances the model - the calling code must call
+! advance_state() itself in order to do that if next time is /= curr time.
 
 implicit none
 
 type(ensemble_type),     intent(inout) :: ens_handle
 integer,                 intent(in)    :: ens_size
 type(obs_sequence_type), intent(in)    :: seq
-integer,                 intent(in)    :: last_key_used, async
+integer,                 intent(in)    :: last_key_used
+type(time_type),         intent(in)    :: window_time
 integer,                 intent(out)   :: key_bounds(2), num_obs_in_set
-character(len = *),      intent(in)    :: adv_ens_command
+type(time_type),         intent(out)   :: curr_ens_time, next_ens_time
 
 type(time_type)    :: next_time, time2, start_time, end_time, delta_time, ens_time
 type(obs_type)     :: observation
 type(obs_def_type) :: obs_def
-logical            :: is_this_last, is_there_one, out_of_range
-integer            :: my_first_copy, leaving_early
+logical            :: is_this_last, is_there_one, out_of_range, leaving_early
 
 ! Initialize if needed
 if(.not. module_initialized) then
@@ -94,7 +97,10 @@ endif
 ! Prepare values for 'early' returns
 num_obs_in_set  =   0
 key_bounds(1:2) = -99
-leaving_early   =   0
+leaving_early   =   .false.
+curr_ens_time   = set_time(0,0)
+next_ens_time   = set_time(0,0)
+
 
 ! If none of my copies are regular ensemble members no need to advance. 
 ! This is true either if I have no copies or if the copy #s I have are
@@ -104,41 +110,33 @@ leaving_early   =   0
 ! (note: Violating the private boundaries on ens_handle by direct access)
 ! This was the original code:
 !   if((ens_handle%my_num_copies < 1) .or. (ens_handle%my_copies(1) > ens_size)) then
-
-if(ens_handle%my_num_copies >= 1) then
-   my_first_copy = ens_handle%my_copies(1)
-else
-   my_first_copy = 0
-endif
-
+! but if the compiler tried to evaluate both halves at the same time,
+! (which it's allowed to do), it got an access violation if num copies was 0.
 
 ! if this task has no ensembles to advance, return directly from here.
-! this routine has code to sync up with the other ensembles which do
-! have an advance to do - it will not return until the others are done.
-if ((ens_handle%my_num_copies < 1) .or. (my_first_copy > ens_size)) then
-   call wait_if_needed(async)
-   return
-endif
+! the calling code will sort out syncing up in the parallel case.
+if (.not. have_members(ens_handle, ens_size)) return
+
 
 ! if you get here, this task has at least one ensemble to try to advance;
 ! it is possible we are at the end of the observations and there in fact
-! is no need to advance.  if so, we need to tell any sleepers to give up.
+! is no need to advance.  if so, can return.
 
 ! Initialize a temporary observation type to use
+! after here, must delete observation before returning.
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
 
 ! Get the next observation in the sequence that hasn't already been assimilated
 if(last_key_used > 0) then
    call get_next_obs_from_key(seq, last_key_used, observation, is_this_last)
    ! If the end of the observation sequence has been passed, return
-   if(is_this_last) leaving_early = 1
+   if(is_this_last) leaving_early = .true.
 else
    is_there_one = get_first_obs(seq, observation)
-   if(.not. is_there_one) leaving_early = 1
+   if(.not. is_there_one) leaving_early = .true.
 endif
 
-if (leaving_early > 0) then
-   call wait_if_needed(async)
+if (leaving_early) then
    ! need to destroy obs here before returning
    call destroy_obs(observation)
    return
@@ -155,7 +153,7 @@ call get_ensemble_time(ens_handle, 1, ens_time)
 delta_time = get_model_time_step()
 
 ! print out current window, if requested
-if (print_time_details) then
+if (print_trace_details > 0) then
    if(delta_time / 2 > ens_time) then
       start_time = set_time(0, 0)
    else
@@ -169,7 +167,7 @@ if (print_time_details) then
 endif
 
 ! now recompute for the next window, so the code below can remain unchanged.
-! Figure out time to which to advance model 
+! Figure out what time to advance the model to.
 
 ! More control over time window use of observations would come in here
 time2 = aget_closest_state_time_to(ens_time, next_time)
@@ -184,13 +182,13 @@ endif
 end_time = time2 + delta_time / 2
 
 ! Output very brief current start and end time at the message level
-if (.not. print_time_details) then
+if (print_trace_details == 0) then
    call timechat(start_time,  'move_ahead', .false.,   'Next assimilation window starts at: ')
    call timechat(end_time,    'move_ahead', .false.,  'Next assimilation window ends   at: ')
 endif
 
 ! If the next observation is not in the window, then have an error
-if(next_time < start_time .or. next_time > end_time .or. print_time_details) then
+if(next_time < start_time .or. next_time > end_time .or. print_trace_details > 0) then
    ! Is this test still really needed?  If you comment out that test, you can
    ! simply skip early obs, but for now, leave the code alone and print out a
    ! better set of error messages.
@@ -204,7 +202,9 @@ if(next_time < start_time .or. next_time > end_time .or. print_time_details) the
    if (time2 /= ens_time) then
       call timechat(next_time,   'move_ahead', .false.,  'Next available observation time:       ')
       call timechat(time2,       'move_ahead', .false., 'Next data time should be:              ', &
-         'Not within current window, model now being called to advance state.')
+         'Not within current window, model will be called to advance state.')
+      call timechat(start_time,  'move_ahead', .false., 'Next assimilation window starts at:    ')
+      call timechat(end_time,    'move_ahead', .false., 'Next assimilation window ends   at:    ')
    else 
       if (next_time >= start_time .and. next_time <= end_time) then
          call timechat(next_time,   'move_ahead', .false.,  'Next available observation time:       ', &
@@ -214,11 +214,11 @@ if(next_time < start_time .or. next_time > end_time .or. print_time_details) the
             'Next obs outside current assimilation window.')
       endif
    endif
-   call error_handler(E_MSG, ' ', ' ')
+   !call error_handler(E_MSG, ' ', ' ')
 
    if (next_time < start_time .or. next_time > end_time) then
-      call timechat(start_time,  'move_ahead', .false., 'Next assimilation window starts at:    ')
-      call timechat(end_time,    'move_ahead', .false., 'Next assimilation window ends   at:    ')
+      !call timechat(start_time,  'move_ahead', .false., 'Next assimilation window starts at:    ')
+      !call timechat(end_time,    'move_ahead', .false., 'Next assimilation window ends   at:    ')
       if (next_time < start_time) then
          call error_handler(E_MSG, 'move_ahead', &
             'Next observation cannot be earlier than start of new time window')
@@ -239,52 +239,39 @@ if(next_time < start_time .or. next_time > end_time .or. print_time_details) the
 endif
 
 ! WANT BETTER WINDOW CONTROL, TIME INTERPOLATION, TOO.
-! Get all the observations that are in the observation window
+! Get all the observations that are in the observation window - do this with the
+! window times, but set the returns to the data times.
 call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
    out_of_range, observation)
 
-! Advance all ensembles to the time for the assimilation
-if(time2 /= ens_time) then
-   call advance_state(ens_handle, ens_size, time2, async, adv_ens_command)
-
-   ! Get the time of the ensemble, assume consistent across all ensemble copies
-   call get_ensemble_time(ens_handle, 1, ens_time)
-   
-   if (ens_time /= time2 .or. print_time_details) then
-
-      ! error out if model state did not advance to when requested.
-      if (ens_time /= time2) then
-         call timechat(next_time,  'move_ahead', .false.,  'Model advance time NOT what requested: ')
-         call error_handler(E_ERR, 'move_ahead', 'Model advance complete but model time not correct')
-      else
-         call error_handler(E_MSG, 'move_ahead', 'Model advance complete, model time updated to requested time')
-      endif
-      call timechat(start_time, 'move_ahead', .false., 'Next assimilation window starts at:    ')
-      call timechat(end_time,   'move_ahead', .false., 'Next assimilation window ends at:      ')
-   endif
-
-else
-   call wait_if_needed(async)
-endif
-
 ! ok, not really a time detail, but if turned off, the output is pretty much
 ! the same as the original.
-if (print_time_details) then
-   write (errstring, '(A,I8,A)') 'Next window contains up to ', num_obs_in_set, ' observations'
+if (print_trace_details > 0) then
+   !call timechat(start_time, 'move_ahead', .false., 'Next assimilation window starts at:    ')
+   !call timechat(end_time,   'move_ahead', .false., 'Next assimilation window ends at:      ')
+   write (errstring, '(A,I8,A)') 'Next assimilation window contains up to ', &
+                                  num_obs_in_set, ' observations'
    call error_handler(E_MSG, 'move_ahead', errstring)
 endif
 
+curr_ens_time = ens_time
+next_ens_time = time2
+
 ! Release the storage associated with the observation temp variable
 call destroy_obs(observation)
+
 
 end subroutine move_ahead
 
 
 !------------------------------------------------------------------------------
 
-subroutine advance_state(ens_handle, ens_size, target_time, async, adv_ens_command) 
+subroutine advance_state(ens_handle, ens_size, target_time, async, adv_ens_command, &
+                         tasks_per_model_advance)
 
-! Advances the model extended state until time is equal to the target_time.
+! Advances all ensemble copies of the state to the target_time.  Note that 
+! there may be more than ens_size copies in the ens_handle storage. Copies other
+! than the ensemble copies need not be advanced in time.
 
 implicit none
 
@@ -293,13 +280,14 @@ type(ensemble_type), intent(inout) :: ens_handle
 type(time_type),     intent(in)    :: target_time
 integer,             intent(in)    :: ens_size, async
 character(len=*),    intent(in)    :: adv_ens_command
+integer,             intent(in)    :: tasks_per_model_advance
 
 character(len = 129), dimension(ens_handle%num_copies) :: ic_file_name, ud_file_name 
 character(len = 129)                                   :: control_file_name
 ! WARNING: ARE THESE LENGTHS OKAY?
 character(len = 129)                                   :: system_string
 
-type(time_type) :: time_step
+type(time_type) :: time_step, ens_time
 integer         :: is1, is2, id1, id2, my_num_state_copies, global_ens_index
 integer         :: i, control_unit, ic_file_unit, ud_file_unit
 
@@ -326,11 +314,8 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
    ! Increment number of ensemble member copies I have
    my_num_state_copies = my_num_state_copies + 1
 
-   ! If no need to advance return
-   if(ens_handle%time(i) == target_time) then
-      call wait_if_needed(async)
-      return
-   endif
+   ! No need to advance if already at target time 
+   if(ens_handle%time(i) == target_time) exit ENSEMBLE_MEMBERS
 
    ! Check for time error
    if(ens_handle%time(i) > target_time) then
@@ -387,29 +372,31 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
 
    if (async == 2) then
 
-      ! Everyone writes the ic and ud file names to the control file
-      control_unit = get_unit()
-      open(unit = control_unit, file = trim(control_file_name))
-      ! Write out the file names to a control file
-      ! Also write out the global ensemble member number for the script 
-      ! if it needs to create unique filenames for its own use.
-      do i = 1, my_num_state_copies
-         write(control_unit, '(i5)') ens_handle%my_copies(i)
-         write(control_unit, '(a)' ) trim(ic_file_name(i))
-         write(control_unit, '(a)' ) trim(ud_file_name(i))
-      end do
-      close(control_unit)
-
-      ! Arguments to advance model script are unique id and number of copies
-      write(system_string, '(i10, 1x, i10)') my_task_id(), my_num_state_copies
-     
-      ! Issue a system command with arguments my_task, my_num_copies, and control_file
-      call system(trim(adv_ens_command)//' '//trim(system_string)//' '//trim(control_file_name))
+      if (have_members(ens_handle, ens_size)) then
+         ! Everyone writes the ic and ud file names to the control file
+         control_unit = get_unit()
+         open(unit = control_unit, file = trim(control_file_name))
+         ! Write out the file names to a control file
+         ! Also write out the global ensemble member number for the script 
+         ! if it needs to create unique filenames for its own use.
+         do i = 1, my_num_state_copies
+            write(control_unit, '(i5)') ens_handle%my_copies(i)
+            write(control_unit, '(a)' ) trim(ic_file_name(i))
+            write(control_unit, '(a)' ) trim(ud_file_name(i))
+         end do
+         close(control_unit)
    
-      ! if control file is still here, the advance failed
-      if(file_exist(control_file_name)) then
-        write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
-        call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
+         ! Arguments to advance model script are unique id and number of copies
+         write(system_string, '(i10, 1x, i10)') my_task_id(), my_num_state_copies
+        
+         ! Issue a system command with arguments my_task, my_num_copies, and control_file
+         call system(trim(adv_ens_command)//' '//trim(system_string)//' '//trim(control_file_name))
+      
+         ! if control file is still here, the advance failed
+         if(file_exist(control_file_name)) then
+           write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
+           call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
+         endif
       endif
 
    else if (async == 4) then
@@ -430,8 +417,8 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
          close(control_unit)
       endif
 
-      ! make sure all tasks have finished writing their initial condition
-      ! files before letting process 0 start the model advances.
+      ! make sure all tasks have finished writing their initial condition files
+      ! (in the previous block above) before letting proc 0 start the model advances.
       call task_sync()
 
       ! PE0 tells the run script to all the model advance script here, then sleeps.  
@@ -441,9 +428,11 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
       ! eventually it should probably be yet another separate executable which
       ! keeps the code all together in the mpi module.
 
-      ! tell any waiting tasks that we are indeed doing a model advance
-      ! here and they need to block.
-      call sum_across_tasks(1, i)
+      ! all tasks now get here, even those which do not have ensemble members,
+      ! so this bookkeeping is not needed, i think.
+      !! tell any waiting tasks that we are indeed doing a model advance
+      !! here and they need to block.
+      !call sum_across_tasks(1, i)
 
       ! block, not spin, until the model advance is done.
       ! the code does not resume running until the separate program 'wakeup_filter'
@@ -464,6 +453,9 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
    endif
 
    ! All should be done, read in the states and proceed
+   ! NOTE: if async 2 and we add support for tasks_per_model_advance, then we need
+   ! another sync here before trying to read in from a task which might not have been
+   ! the one which advanced it.
    do i = 1, my_num_state_copies
       ud_file_unit = open_restart_read(trim(ud_file_name(i)))
       call aread_state_restart(ens_handle%time(i), ens_handle%vars(:, i), ud_file_unit)
@@ -472,11 +464,36 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
 
 end if SHELL_ADVANCE_METHODS
 
+
+! any process that owns members, check that they advanced ok.
+if (have_members(ens_handle, ens_size)) then
+
+   ! Get the time of the ensemble, assume consistent across all ensemble copies
+   call get_ensemble_time(ens_handle, 1, ens_time)
+   
+   if (ens_time /= target_time .or. print_trace_details > 0) then
+
+      ! error out if model state did not advance to when requested.
+      if (ens_time /= target_time) then
+         call timechat(ens_time,    'advance_state', .true.,   'Model advance time is now:             ')
+         call timechat(target_time, 'advance_state', .false.,  'Model advance time NOT what requested: ')
+         call error_handler(E_ERR, 'advance_state', 'Model advance complete but model time not correct')
+      else
+         !call error_handler(E_MSG, '', '')
+         call error_handler(E_MSG, 'advance_state', 'Model advance complete, model time updated to requested time')
+      endif
+   endif
+
+endif
+
+
 end subroutine advance_state
 
 !--------------------------------------------------------------------
 
 subroutine wait_if_needed(async) 
+
+! obsolete now that move_ahead and advance_state are separated?
 
 ! returns true if this task has at least one ensemble to advance.
 ! if not, this routine blocks until it is safe to return in sync
@@ -529,6 +546,8 @@ subroutine timechat(a_time, label, blank, string1, string2, string3)
  logical,          intent(in)           :: blank
  character(len=*), intent(in), optional :: string2, string3
 
+! prettyprint a time, with an optional preceeding blank line, a label
+! before the time, and up to 2 additional text lines afterwards.
  
 integer :: a_day, a_sec
 
@@ -547,6 +566,58 @@ if (present(string3)) then
 endif
 
 end subroutine timechat
+
+!--------------------------------------------------------------------
+
+subroutine set_obs_model_trace(execution_level, timestamp_level)
+ integer, intent(in) :: execution_level
+ integer, intent(in) :: timestamp_level
+
+! set module local vars from the calling code to indicate how much
+! output we should generate from this code.  execution level is
+! intended to make it easier to figure out where in the code a crash
+! is happening; timestamp level is intended to help with gross levels
+! of overall performance profiling.  eventually, a level of 1 will
+! print out only basic info; level 2 will be more detailed.  
+! (right now, only > 0 prints anything and it doesn't matter how 
+! large the value is.)
+ 
+
+if (execution_level >= 0) print_trace_details = execution_level
+if (timestamp_level >= 0) print_timestamps    = timestamp_level
+
+end subroutine set_obs_model_trace
+
+!--------------------------------------------------------------------
+
+function have_members(ens_handle, ens_size)
+
+! return true if this task contains ensemble copies.
+! mean, sd, etc do not count. 
+!
+! note this depends on how filter (or the calling code) has laid out
+! the actual ensemble members vs the other state-length arrays
+! carried around in the ensemble handle.
+
+type(ensemble_type), intent(in) :: ens_handle
+integer, intent(in)             :: ens_size
+logical                         :: have_members
+
+integer :: my_first_copy
+
+! assumes copies are stored in the lowest numbered slots.
+if(ens_handle%my_num_copies >= 1) then
+   my_first_copy = ens_handle%my_copies(1)
+else
+   my_first_copy = 0
+endif
+
+! if i have at least one copy, and it is a real member, 
+! not aux data (mean, inflation, etc), return true.
+have_members = ((ens_handle%my_num_copies >= 1) .and. (my_first_copy <= ens_size)) 
+
+end function have_members
+
 !--------------------------------------------------------------------
 
 end module obs_model_mod

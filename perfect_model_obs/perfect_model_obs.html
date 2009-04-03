@@ -47,13 +47,6 @@
 
 <H1>PROGRAM perfect_model_obs</H1>
 <A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 
@@ -73,7 +66,7 @@
 
 <P>
 Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&#38;assim_model_nml</em> </A>
+<A HREF="#Namelist"> <em class=code>&amp;perfect_model_obs_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -104,12 +97,13 @@ ensemble_manager_mod
  <BR><HR><BR>
  <H2>NAMELIST</H2>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&#38;' and terminating with a slash '/'.
+ '&amp;' and terminating with a slash '/'.
  <div class=namelist><pre>
  <em class=call>namelist / perfect_model_obs_nml / </em>
- start_from_restart, output_restart, async, init_time_days, init_time_seconds, 
- output_interval, restart_in_file_name, restart_out_file_name, 
- obs_seq_in_file_name, obs_seq_out_file_name, adv_ens_command
+  start_from_restart, output_restart, async, init_time_days, init_time_seconds,
+  first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds, output_interval,
+  restart_in_file_name, restart_out_file_name, obs_seq_in_file_name, obs_seq_out_file_name,
+  adv_ens_command, tasks_per_model_advance, obs_window_days, obs_window_seconds
 
  </pre></div>
  <H3 class=indent1>Discussion</H3>
@@ -125,7 +119,7 @@ ensemble_manager_mod
      <TH align=left>Description </TH></TR>
  <TR><!--contents--><TD valign=top>start_from_restart</TD>
      <!--  type  --><TD>logical</TD>
-     <!--descript--><TD>.true. means start from a restart file, 
+     <!--descript--><TD>.true. means read starting state data from a restart file, 
                         .false. means ask model for an initial condition.
                         Default: .false.</TD></TR>
 
@@ -138,20 +132,45 @@ ensemble_manager_mod
      <!--  type  --><TD>integer</TD>
      <!--descript--><TD>Controls method for advancing model:
                         0&nbsp;==&nbsp;subroutine&nbsp;call,
-                        2&nbsp;==&nbsp;shell&nbsp;command.
+                        2&nbsp;==&nbsp;shell&nbsp;command, single task model.
+                        4&nbsp;==&nbsp;shell&nbsp;command, parallel model.
                         Default: 0</TD></TR>
 
  <TR><!--contents--><TD valign=top>init_time_days</TD>
      <!--  type  --><TD>integer</TD>
      <!--descript--><TD>If negative, don't use.
-                        If non-negative, override the initial days read from restart.
+                        If non-negative, override the initial data time read from restart file.
                         Default: 0</TD></TR>
 
  <TR><!--contents--><TD valign=top>init_time_seconds</TD>
      <!--  type  --><TD>integer</TD>
      <!--descript--><TD>If negative don't use. 
-                        If non-negative, override the initial seconds read from restart.
+                        If non-negative, override the initial data time read from restart file.
                         Default: 0</TD></TR>
+
+ <TR><!--contents--><TD valign=top>first_obs_days</TD>
+     <!--  type  --><TD>integer</TD>
+     <!--descript--><TD>If negative, don't use.
+                        If non-negative, ignore any observations before this time.
+                        Default: -1</TD></TR>
+
+ <TR><!--contents--><TD valign=top>first_obs_seconds</TD>
+     <!--  type  --><TD>integer</TD>
+     <!--descript--><TD>If negative, don't use.
+                        If non-negative, ignore any observations before this time.
+                        Default: -1</TD></TR>
+
+ <TR><!--contents--><TD valign=top>last_obs_days</TD>
+     <!--  type  --><TD>integer</TD>
+     <!--descript--><TD>If negative, don't use.
+                        If non-negative, ignore any observations after this time.
+                        Default: -1</TD></TR>
+
+ <TR><!--contents--><TD valign=top>last_obs_seconds</TD>
+     <!--  type  --><TD>integer</TD>
+     <!--descript--><TD>If negative, don't use.
+                        If non-negative, ignore any observations after this time.
+                        Default: -1</TD></TR>
 
  <TR><!--contents--><TD valign=top>output_interval</TD>
      <!--  type  --><TD>integer</TD>
@@ -180,8 +199,25 @@ ensemble_manager_mod
 
  <TR><!--contents--><TD valign=top>adv_ens_command</TD>
      <!--  type  --><TD>character(len=129)</TD>
-     <!--descript--><TD>Command sent to shell if async&nbsp;==&nbsp;2.
+     <!--descript--><TD>Command sent to shell if async&nbsp;==&nbsp;2 or 4.
                         Default: './advance_model.csh'</TD></TR>
+
+ <TR><!--contents--><TD valign=top>tasks_per_model_advance</TD>
+     <!--  type  --><TD>integer</TD>
+     <!--descript--><TD>Reserved for future use.
+                        Default: 1</TD></TR>
+
+ <TR><!--contents--><TD valign=top>obs_window_days</TD>
+     <!--  type  --><TD>integer</TD>
+     <!--descript--><TD>If negative, don't use.
+                        If non-negative, reserved for future use.
+                        Default: -1</TD></TR>
+
+ <TR><!--contents--><TD valign=top>obs_window_seconds</TD>
+     <!--  type  --><TD>integer</TD>
+     <!--descript--><TD>If negative, don't use.
+                        If non-negative, reserved for future use.
+                        Default: -1</TD></TR>
 
  </TABLE>
  <BR><BR>
@@ -260,5 +296,13 @@ ensemble_manager_mod
 <!--==================================================================-->
 
 <HR>
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
 </BODY>
 </HTML>

@@ -23,6 +23,7 @@
    output_forward_op_errors = .false.,
    output_timestamps        = .false.,
    output_inflation         = .true.,
+   trace_execution          = .false.,
 
    inf_flavor                  = 0,                       0,
    inf_initial_from_restart    = .false.,                 .false.,

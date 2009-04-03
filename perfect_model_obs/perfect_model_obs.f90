@@ -17,7 +17,7 @@ use        types_mod,     only : r8
 use    utilities_mod,     only : initialize_utilities, register_module, error_handler, &
                                  find_namelist_in_file, check_namelist_read,           &
                                  E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp
-use time_manager_mod,     only : time_type, get_time, set_time
+use time_manager_mod,     only : time_type, get_time, set_time, operator(/=)
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                 &
                                  get_obs_from_key, set_copy_meta_data, get_obs_def,         &
                                  get_time_range_keys, set_obs_values, set_qc, set_obs,      &
@@ -27,7 +27,7 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  delete_seq_tail
 
 use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance 
-use    obs_model_mod,     only : move_ahead 
+use    obs_model_mod,     only : move_ahead, advance_state
 use  assim_model_mod,     only : static_init_assim_model, get_model_size,                    &
                                  aget_initial_condition, netcdf_file_type, init_diag_output, &
                                  aoutput_diagnostics, finalize_diag_output
@@ -53,32 +53,37 @@ character(len=129) :: msgstring
 !-----------------------------------------------------------------------------
 ! Namelist with default values
 !
-logical              ::    start_from_restart = .false.
-logical              ::        output_restart = .false.
-integer              ::                 async = 0
+logical  :: start_from_restart = .false.
+logical  :: output_restart     = .false.
+integer  :: async              = 0
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
-integer              ::        init_time_days = 0
-integer              ::     init_time_seconds = 0
+integer  :: init_time_days     = 0
+integer  :: init_time_seconds  = 0
 ! Time of first and last observations to be used from obs_sequence
 ! If negative, these are not used
-integer  :: first_obs_days    = -1
-integer  :: first_obs_seconds = -1
-integer  :: last_obs_days     = -1
-integer  :: last_obs_seconds  = -1
-integer              ::       output_interval = 1
+integer  :: first_obs_days     = -1
+integer  :: first_obs_seconds  = -1
+integer  :: last_obs_days      = -1
+integer  :: last_obs_seconds   = -1
+integer  :: obs_window_days    = -1
+integer  :: obs_window_seconds = -1
+integer  :: tasks_per_model_advance = 1
+integer  :: output_interval = 1
 character(len = 129) :: restart_in_file_name  = 'perfect_ics',     &
                         restart_out_file_name = 'perfect_restart', &
                         obs_seq_in_file_name  = 'obs_seq.in',      &
                         obs_seq_out_file_name = 'obs_seq.out',     &
                         adv_ens_command       = './advance_model.csh'
 
-namelist /perfect_model_obs_nml/ start_from_restart, output_restart, async,                        &
-                                 init_time_days, first_obs_days, first_obs_seconds, last_obs_days, &
-                                 last_obs_seconds,init_time_seconds, output_interval,              &
-                                 restart_in_file_name, restart_out_file_name,                      &
-                                 obs_seq_in_file_name, obs_seq_out_file_name,                      &
-                                 adv_ens_command
+namelist /perfect_model_obs_nml/ start_from_restart, output_restart, async,         &
+                                 init_time_days, init_time_seconds,                 &
+                                 first_obs_days, first_obs_seconds,                 &
+                                 last_obs_days,  last_obs_seconds, output_interval, &
+                                 restart_in_file_name, restart_out_file_name,       &
+                                 obs_seq_in_file_name, obs_seq_out_file_name,       &
+                                 adv_ens_command, tasks_per_model_advance,          &       
+                                 obs_window_days, obs_window_seconds
 
 !------------------------------------------------------------------------------
 
@@ -98,6 +103,7 @@ type(random_seq_type)   :: random_seq
 type(ensemble_type)     :: ens_handle
 type(netcdf_file_type)  :: StateUnit
 type(time_type)         :: first_obs_time, last_obs_time
+type(time_type)         :: window_time, curr_ens_time, next_ens_time
 
 integer, allocatable    :: keys(:)
 integer                 :: j, iunit, time_step_number, obs_seq_file_id
@@ -170,7 +176,7 @@ call set_copy_meta_data(seq, 2, copy_meta_data(2))
 ! Initialize the model now that obs_sequence is all set up
 model_size = get_model_size()
 write(msgstring,*)'Model size = ',model_size
-call error_handler(E_MSG,'perfect_main',msgstring,source,revision,revdate)
+call error_handler(E_MSG,'perfect_main',msgstring)
 
 ! Set up the ensemble storage and read in the restart file
 call perfect_read_restart(ens_handle, model_size)
@@ -182,12 +188,12 @@ StateUnit = init_diag_output('True_State', 'true state from control', 1, (/'true
 call init_random_seq(random_seq)
 
 ! Get the time of the first observation in the sequence
-write(msgstring, *) 'number of obs in sequence is ', get_num_obs(seq)
-call error_handler(E_MSG,'perfect_main',msgstring,source,revision,revdate)
+write(msgstring, *) 'total number of obs in sequence is ', get_num_obs(seq)
+call error_handler(E_MSG,'perfect_main',msgstring)
 
 num_qc = get_num_qc(seq)
 write(msgstring, *) 'number of qc values is ',num_qc
-call error_handler(E_MSG,'perfect_main',msgstring,source,revision,revdate)
+call error_handler(E_MSG,'perfect_main',msgstring)
 
 ! Need to find first obs with appropriate time, delete all earlier ones
 if(first_obs_seconds > 0 .or. first_obs_days > 0) then
@@ -213,15 +219,31 @@ endif
 
 ! Time step number is used to do periodic diagnostic output
 time_step_number = -1
+window_time = set_time(0,0)
 
 ! Advance model to the closest time to the next available observations
 AdvanceTime: do
    time_step_number = time_step_number + 1
 
+   write(msgstring , '(A,I5)') 'Main evaluation loop, starting iteration', time_step_number
+   call error_handler(E_MSG,'', ' ')
+   call error_handler(E_MSG,'perfect_model_obs:', msgstring)
+
    ! Get the model to a good time to use a next set of observations
-   call move_ahead(ens_handle, 1, seq, last_key_used, &
-      key_bounds, num_obs_in_set, async, adv_ens_command)
-   if(key_bounds(1) < 0) exit AdvanceTime
+   call move_ahead(ens_handle, 1, seq, last_key_used, window_time, &
+      key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
+   if(key_bounds(1) < 0) then
+      call error_handler(E_MSG,'perfect_model_obs:', 'No more obs to evaluate, exiting main loop')
+      exit AdvanceTime
+   endif
+ 
+   if (curr_ens_time /= next_ens_time) then
+      call error_handler(E_MSG,'perfect_model_obs:', 'Ready to run model to advance data time')
+      call advance_state(ens_handle, 1, next_ens_time, async, &
+         adv_ens_command, tasks_per_model_advance)
+   else
+      call error_handler(E_MSG,'perfect_model_obs:', 'Model does not need to run; data already at required time')
+   endif
 
    ! Allocate storage for observation keys for this part of sequence
    allocate(keys(num_obs_in_set))
@@ -232,6 +254,9 @@ AdvanceTime: do
    ! Output the true state to the netcdf file
    if(time_step_number / output_interval * output_interval == time_step_number) &
       call aoutput_diagnostics(StateUnit, ens_handle%time(1), ens_handle%vars(:, 1), 1)
+
+   write(msgstring, '(A,I8,A)') 'Ready to evaluate up to', size(keys), ' observations'
+   call error_handler(E_MSG,'perfect_model_obs:', msgstring)
 
    ! How many observations in this set
    write(msgstring, *) 'num_obs_in_set is ', num_obs_in_set
@@ -281,6 +306,8 @@ AdvanceTime: do
    last_key_used = key_bounds(2)
 
 end do AdvanceTime
+
+call error_handler(E_MSG,'perfect_model_obs:', 'End of main filter evaluation loop, starting cleanup')
 
 ! properly dispose of the diagnostics files
 ierr = finalize_diag_output(StateUnit)
