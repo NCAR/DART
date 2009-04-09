@@ -53,7 +53,7 @@ character(len=128), parameter :: &
 logical, save :: module_initialized = .false.
 character(len=128) :: msgstring
 
-logical :: DEBUG = .true.
+logical :: DEBUG = .false.
 
 ! For the 25.0km resolution WVC ... MAX_ROWS = 1624 MAX_WVC =  76
 ! For the 12.5km resolution WVC ... MAX_ROWS = 3248 MAX_WVC = 152
@@ -171,7 +171,6 @@ real(r8) :: sintheta, costheta, dirvar, speedvar
 
 type(time_type) :: time, pre_time
 
-character(len = 32) :: obs_kind_name
 character(len = 129) :: meta_data
 
 if ( .not. module_initialized ) call initialize_module
@@ -263,8 +262,8 @@ rowloop:  do irow=1,MAX_ROWS
       ! The requirements for QuikSCAT were 2 m/s speed (rms) over 3-20m/s
       ! or 10% of the speed from 20-30 m/s and 20 degrees (rms) 3-30 m/s
 
-      dirvar = 20.0_r4*deg2rad   ! 20 degree (rms) by spec
-      speedvar = max(2.0_r4, speed*0.1_r4)
+      dirvar = (20.0_r4*deg2rad)**2   ! 20 degree (rms) by spec
+      speedvar = max(2.0_r4, speed*0.1_r4)**2
 
       sintheta = sin(dir*deg2rad)
       costheta = cos(dir*deg2rad)
@@ -275,11 +274,23 @@ rowloop:  do irow=1,MAX_ROWS
       ! operator that takes U,V and calculates speed/dir ...(trivial)
       ! left for a future upgrade TJH
 
+      ! U = R*sin(theta)
+      ! V = R*cos(theta)
+      ! theta ~ theta0 + etheta ... etheta ~ (0,dirvar)
+      ! R     ~     R0 + espeed ... espeed ~ (0,speedvar)
+      ! U ~ sin(theta0+etheta)(R0 + espeed)
+      ! expand via Taylor ...
+      ! U ~ sin(theta0)R0 + R0*cos(theta0)*etheta + sin(theta0)*espeed + ...
+      ! The first term is the mean. 
+      ! The variance of a constant times a random variable is the 
+      ! constant-squared times the variance of the random variable.
+      ! The random variables in the higher order terms is etheta and espeed. 
+
       u_obs = speed * sintheta
       v_obs = speed * costheta
 
-      u_var = abs(speedvar*sintheta)   ! This is THE WRONG FORMULA ...
-      v_var = abs(speedvar*costheta)   ! This is THE WRONG FORMULA ...
+      u_var = ((speed*costheta)**2)*dirvar + (sintheta**2)*speedvar
+      v_var = ((speed*sintheta)**2)*dirvar + (costheta**2)*speedvar
       
       ! verify the location is not outside valid limits
       if((lon > 360.0_r8) .or. (lon <   0.0_r8) .or.  &
@@ -459,7 +470,7 @@ character(len=21) :: TimeTags(MAX_ROWS)
 real(r4), dimension(MAX_WVC,MAX_ROWS) :: datmat
 
 integer :: sd_id, retn, sfstart, sfend
-integer :: irec1, irec2, itmp, irow, iwvc, iamb
+integer :: irow, iwvc, iamb
 integer :: ntype, nval
 
 integer  :: year, doy, hh, mm
@@ -764,7 +775,7 @@ end subroutine read_qscat2b
       integer*2 :: buffer(MAX_BUF_SIZE)
       byte buffer2(MAX_BUF_SIZE)
       integer*4 :: buffer3(MAX_BUF_SIZE)
-      real(r4) :: out_var(MAX_BUF_SIZE)
+      real(r4) :: out_var(*)
 
       if ( .not. module_initialized ) call initialize_module
 
