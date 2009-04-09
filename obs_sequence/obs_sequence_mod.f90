@@ -1167,7 +1167,7 @@ end do
 ! Close up the file
 call close_file(file_id)
 
-write(msg_string, '(A129)') 'closed file '//trim(file_name)
+write(msg_string, *) 'closed file '//trim(file_name)
 call error_handler(E_MSG,'write_obs_seq',msg_string,source,revision,revdate)
 
 end subroutine write_obs_seq
