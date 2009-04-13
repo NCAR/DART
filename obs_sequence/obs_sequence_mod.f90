@@ -22,8 +22,8 @@ module obs_sequence_mod
 ! FOR THESE TYPES THAT HAVE COPY SUBROUTINES.
 
 use        types_mod, only : r8, DEG2RAD, MISSING_R8
-use     location_mod, only : location_type, interactive_location
-                             !%! location_inside
+use     location_mod, only : location_type, interactive_location, &
+                             is_location_in_region
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, copy_obs_def, &
                              interactive_obs_def, get_obs_def_location, &
@@ -34,8 +34,8 @@ use     obs_kind_mod, only : write_obs_kind, read_obs_kind, max_obs_kinds, &
 use time_manager_mod, only : time_type, operator(>), operator(<), &
                              operator(>=), operator(/=), set_time, &
                              operator(-), operator(+), operator(==)
-use    utilities_mod, only : get_unit, close_file, &
-                             register_module, error_handler, &
+use    utilities_mod, only : get_unit, close_file,                       &
+                             register_module, error_handler,             &
                              find_namelist_in_file, check_namelist_read, &
                              E_ERR, E_WARN, E_MSG, nmlfileunit, do_output
 
@@ -1915,12 +1915,6 @@ type(obs_type)       :: obs, prev_obs
 type(location_type)  :: location
 logical              :: is_this_last, inside, first_obs
 
-! FIXME:
-write(msg_string, *) 'Function not implemented yet'
-call error_handler(E_ERR, 'select_obs_by_location', msg_string, &
-                   source, revision, revdate)
-return
-! FIXME
 
 ! Initialize an observation type with appropriate size
 call init_obs(obs, get_num_copies(seq), get_num_qc(seq))
@@ -1946,10 +1940,7 @@ allobs : do while (.not. is_this_last)
    location = get_obs_def_location(obs_def)
 
    ! each diff locations mod has a different one of these
-   !%! FIXME:
-   !%! inside = location_inside(location, min_loc, max_loc)
-   inside = .false.
-   !%! FIXME
+   inside = is_location_in_region(location, min_loc, max_loc)
    
    ! same code as delete/keep by obstype; do any code fixes both places
    if (.not. inside) then

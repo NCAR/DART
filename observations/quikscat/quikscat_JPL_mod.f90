@@ -25,7 +25,7 @@ use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, 
 
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, &
-                             E_ERR, E_MSG, timestamp
+                             E_ERR, E_MSG, timestamp, is_longitude_between
 
 use     location_mod, only : location_type, set_location, VERTISHEIGHT
 
@@ -164,7 +164,7 @@ integer :: obs_num
 integer :: which_vert, uobstype, vobstype
 
 real(r4) :: speed, dir
-real(r8) :: lonc, lon, lat, vloc
+real(r8) :: lon, lat, vloc
 real(r8) :: u_obs, v_obs, u_var, v_var
 real(r8) :: aqc
 real(r8) :: sintheta, costheta, dirvar, speedvar
@@ -240,11 +240,8 @@ rowloop:  do irow=1,MAX_ROWS
       endif
 
       ! reject observations outside the bounding box (allowing wrapping)
-      lonc = lon
-      if (lon2 > 360.0_r8 .and. lon < 180.0_r8) lonc = lon + 360.0_r8
-
-      if(( lat < lat1) .or. ( lat > lat2) .or. &
-         (lonc < lon1) .or. (lonc > lon2)) cycle wvcloop
+      if(( lat < lat1) .or. ( lat > lat2 ) .or. &
+         (.not. is_longitude_between(lon, lon1, lon2))) cycle wvcloop
 
       ! QuikSCAT uses the oceanographic/flow convention ... 
       ! 0.0 is TOWARD the north - in direct contradiction to 

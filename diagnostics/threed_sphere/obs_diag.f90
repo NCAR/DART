@@ -30,8 +30,9 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_d
                              get_obs_def_location,  get_obs_kind, get_obs_name
 use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_var_type, get_obs_kind_name, &
                              KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT
-use     location_mod, only : location_type, get_location, set_location_missing, &
-                             write_location, operator(/=),     &
+use     location_mod, only : location_type, get_location, set_location_missing,   &
+                             write_location, operator(/=), is_location_in_region, &
+                             set_location,                                        &
                              vert_is_undef,    VERTISUNDEF,    &
                              vert_is_surface,  VERTISSURFACE,  &
                              vert_is_level,    VERTISLEVEL,    &
@@ -165,6 +166,7 @@ integer :: Nregions = 0
 real(r8), dimension(MaxRegions) :: lonlim1= MISSING_R8, lonlim2= MISSING_R8
 real(r8), dimension(MaxRegions) :: latlim1= MISSING_R8, latlim2= MISSING_R8 
 character(len = stringlength), dimension(MaxRegions) :: reg_names = 'null'
+type(location_type), dimension(MaxRegions) :: min_loc, max_loc
 
 real(r8):: rat_cri               = 5000.0_r8 ! QC ratio
 real(r8):: input_qc_threshold    = 4.0_r8    ! maximum NCEP QC factor
@@ -330,6 +332,9 @@ hlevel_edges(1:Nhlevels+1) = sort(hlevel_edges(1:Nhlevels+1))
 !----------------------------------------------------------------------
 
 call SetScaleFactors(scale_factor, logfileunit) ! for plotting purposes
+
+call SetRegionLimits(Nregions, lonlim1, lonlim2, latlim1, latlim2, &
+     min_loc, max_loc)
 
 if (verbose) then
    write(*,*)'pressure levels     = ',plevel(    1:Nplevels)
@@ -926,8 +931,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
          Areas : do iregion =1, Nregions
 
-            keeper = InRegion( obslon, obslat, lonlim1(iregion), lonlim2(iregion), &
-                                           latlim1(iregion), latlim2(iregion))
+            keeper = is_location_in_region( obs_loc, min_loc(iregion), max_loc(iregion) )
             if ( .not. keeper ) cycle Areas
 
             !-----------------------------------------------------------
@@ -2119,29 +2123,29 @@ CONTAINS
 
 
 
-   Function InRegion( lon, lat, lon1, lon2, lat1, lat2 )
-   ! InRegion handles regions that 'wrap' in longitude
-   ! if the easternmost longitude of the region is > 360.0
-   ! For example; lon1 == 320, lon = 10, lon2 == 380 --> .true.
-   ! 
-   logical :: InRegion
-   real(r8), intent(in) :: lon, lat, lon1, lon2, lat1, lat2
-   real(r8) :: mylon
+   Subroutine SetRegionLimits(Nregions, lonlim1, lonlim2, latlim1, latlim2, &
+              min_loc, max_loc)
 
-   InRegion = .false.
+   ! Set the min and max location_types for each region
+     
+   integer, intent(in)                :: Nregions
+   real(r8), dimension(*), intent(in) :: lonlim1, lonlim2, latlim1, latlim2
+   type(location_type), dimension(*), intent(out) :: min_loc, max_loc
 
-   if( (lon >= lon1) .and. (lon <= lon2) .and. &
-       (lat >= lat1) .and. (lat <= lat2) ) InRegion = .true.
+   integer  :: i
+   real(r8) :: lon
 
-   if( lon2 > 360.0_r8 ) then ! checking the wraparound case
-      mylon = lon + 360.0_r8
-      if( (mylon >= lon1) .and. (mylon <= lon2) .and. &
-          (  lat >= lat1) .and. (  lat <= lat2) ) then
-         InRegion = .true.
-      endif
-   endif
+   ! only set the horizontal limits; vertical will be ignored.
+   ! modulo() return is always positive, even if input is negative.
+   ! this is not true for mod().
+   do i = 1, Nregions
+      lon = modulo(lonlim1(i), 360.0_r8)
+      min_loc(i) = set_location(lon, latlim1(i), 0.0_r8, VERTISUNDEF)
+      lon = modulo(lonlim2(i), 360.0_r8)
+      max_loc(i) = set_location(lon, latlim2(i), 0.0_r8, VERTISUNDEF)
+   enddo
 
-   end Function InRegion
+   end Subroutine SetRegionLimits
 
 
 

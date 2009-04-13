@@ -17,8 +17,8 @@ use        types_mod, only : r8, missing_r8
 use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              error_handler, E_ERR, E_MSG, nmlfileunit
-use     location_mod, only : location_type, get_location, &
-                             LocationName !! , vert_is_height   !! set_location2
+use     location_mod, only : location_type, get_location, set_location2, &
+                             LocationName !! , vert_is_height 
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind, &
                              get_obs_def_location
 use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name, get_obs_kind_index
@@ -37,9 +37,8 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
                              get_num_key_range, delete_obs_by_typelist, &
                              get_obs_key, &
                              delete_obs_from_seq, get_next_obs_from_key, &
-                             delete_obs_by_qc, delete_obs_by_copy
-
-                             !%! select_obs_by_location  ! not in repository yet
+                             delete_obs_by_qc, delete_obs_by_copy, &
+                             select_obs_by_location 
 implicit none
 
 ! <next few lines under version control, do not edit>
@@ -76,7 +75,7 @@ integer, parameter :: max_obs_input_types = 500
 character(len = 32) :: obs_types(max_obs_input_types)
 logical :: restrict_by_obs_type
 integer :: num_obs_input_types
-logical :: restrict_by_location, restrict_by_latlon
+logical :: restrict_by_location
 logical :: restrict_by_qc, restrict_by_copy, restrict_by_height
 
 
@@ -119,23 +118,15 @@ namelist /obs_sequence_tool_nml/ num_input_files, filename_seq, filename_out, &
          min_gps_height
 
 !----------------------------------------------------------------
-! Start of the routine.
-! This routine basically opens the second observation sequence file
-! and 'inserts' itself into the first observation sequence file.
-! Each observation in the second file is independently inserted 
-! or appended into the first file.
-! Inserting takes time, appending is much faster when possible.
+! Start of the program:
+!
+! Process each input observation sequence file in turn, optionally
+! selecting observations to insert into the output sequence file.
 !----------------------------------------------------------------
 
 call obs_seq_modules_used()
 
-! if you are not using a gregorian cal, set this to false
-! if anyone cares, we can add calendar integer to list
-if (gregorian_cal) then
-   call set_calendar_type(GREGORIAN)
-endif
-
-! Initialize input obs_seq filenames and obs_types
+! Initialize input obs_seq filenames and obs_types before reading namelist.
 do i = 1, max_num_input_files
    filename_seq(i) = ""
 enddo
@@ -156,6 +147,16 @@ endif
 
 ! Record the namelist values used for the run ...
 write(nmlfileunit, nml=obs_sequence_tool_nml)
+!if (do_nml_file()) write(nmlfileunit, nml=obs_sequence_tool_nml)
+!if (do_nml_term()) write(    *      , nml=obs_sequence_tool_nml)
+
+! if you are not using a gregorian cal, set this to false in the namelist.
+! if users need it, we could add a calendar type integer to the namelist,
+! if users want to specify a particular calendar which is not gregorian.
+! (earlier versions of this file had the test before the namelist read - duh.)
+if (gregorian_cal) then
+   call set_calendar_type(GREGORIAN)
+endif
 
 ! See if the user is restricting the obs types to be processed, and set up
 ! the values if so.
@@ -171,19 +172,28 @@ else
 endif
 
 ! See if the user is restricting the obs locations to be processed, and set up
-! the values if so.
-!!if ((minval(min_box).ne.missing_r8) .or. (maxval(min_box).ne.missing_r8) .or. &
-!!    (minval(max_box).ne.missing_r8) .or. (maxval(max_box).ne.missing_r8)) then
-!!   restrict_by_location = .true.
-!!   restrict_by_latlon = .false.
-!!   min_loc = set_location2(min_box)
-!!   max_loc = set_location2(max_box)
-!!else 
+! the values if so.  Note that if any of the values are not missing_r8, all of
+! them must have good (and consistent) values.  i don't have code in here yet
+! to idiotproof this, but i should add it.
+if ((minval(min_box).ne.missing_r8) .or. (maxval(min_box).ne.missing_r8) .or. &
+    (minval(max_box).ne.missing_r8) .or. (maxval(max_box).ne.missing_r8)) then
+   restrict_by_location = .true.
+   min_loc = set_location2(min_box)
+   max_loc = set_location2(max_box)
+else
+   restrict_by_location = .false.
+endif
+
+! 3d sphere box check - locations module dependent, but an important one.
 if ((min_lat /= -90.0_r8) .or. (max_lat /=  90.0_r8) .or. &
     (min_lon /=   0.0_r8) .or. (max_lon /= 360.0_r8)) then
-   ! 3d sphere box check - locations module dependent, but an important one.
+   ! do not allow namelist to set BOTH min/max box and by lat/lon.
+   if (restrict_by_location) then
+      call error_handler(E_ERR,'obs_sequence_tool', &
+                         'use either lat/lon box or min/max box but not both', &
+                         source,revision,revdate)
+   endif
    restrict_by_location = .true.
-   restrict_by_latlon = .true.
    if (trim(LocationName) /= 'loc3Dsphere') then
       call error_handler(E_ERR,'obs_sequence_tool', &
                          'can only use lat/lon box with 3d sphere locations', &
@@ -223,18 +233,37 @@ if ((min_lat /= -90.0_r8) .or. (max_lat /=  90.0_r8) .or. &
                          source,revision,revdate)
    endif
 
-   ! handle wrap in lon; at the end of this block the min is [0,360) and
-   ! max is [0, 720) and greater than min.  modulo() must be used here and not
-   ! mod() -- the result of modulo() is positive even if the input is negative.
-   min_lon = modulo(min_lon,360.0_r8)
-   max_lon = modulo(max_lon,360.0_r8)
-   if (min_lon > max_lon) max_lon = max_lon + 360.0_r8
-
+   ! it is risky to allow == operations on floating point numbers.
+   ! if someone wants to select only obs exactly on a particular lon,
+   ! force them to do an interval [min-epsilon, max-epsilon].
+   ! move this test BEFORE the modulo so that if afterwards they are
+   ! the same (e.g. 0 and 360) that's ok -- it will mean all longitudes 
+   ! will be accepted.
    if (min_lon == max_lon) then
       call error_handler(E_ERR,'obs_sequence_tool', &
-                         'min_lon cannot equal max_lon', &
+                         'min_lon cannot exactly equal max_lon', &
                          source,revision,revdate)
    endif
+  
+   ! do not test for min < max, because lon can wrap around 0.  ensure that
+   ! the values after here are [0, 360) and the compare routine knows about wrap.
+   ! must use modulo() and not just mod() to handle negative values correctly;
+   ! the result of modulo() is positive even if the input is negative.
+   min_lon = modulo(min_lon,360.0_r8)
+   max_lon = modulo(max_lon,360.0_r8)
+
+   ! create real location_type objects, knowing we are running with the
+   ! 3d sphere locations module.
+   min_box(1) = min_lon
+   min_box(2) = min_lat
+   min_box(3) = 0.0_r8
+   min_box(4) = -2.0_r8 !! FIXME: VERTISUNDEF, but not all loc mods have it
+   min_loc = set_location2(min_box)
+   max_box(1) = max_lon
+   max_box(2) = max_lat
+   max_box(3) = 0.0_r8
+   max_box(4) = -2.0_r8 !! FIXME: VERTISUNDEF, but not all loc mods have it
+   max_loc = set_location2(max_box)
 else
    restrict_by_location = .false.
 endif
@@ -683,18 +712,13 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
       endif
    endif
 
-   ! optionally select obs in a lat/lon box
-   ! the more generic is a box in any number of dimensions which matches
-   ! the locations module which is determined at link time.  but for now...
+   ! optionally select only obs inside a bounding box
+   ! most common expected use is a lat/lon box with the 3d sphere locations
+   ! mod, but this should work with any locations mod if the namelist uses
+   ! the right number of corners appropriate for the dimensions of the location
+   ! when setting min_box and max_box.
    if (restrict_by_location) then
-      if (restrict_by_latlon) then
-         call select_obs_by_latlon(min_lon, max_lon, min_lat, max_lat, &
-                                   seq, all_gone)
-      else 
-         !%! call select_obs_by_location(min_loc, max_loc, seq, all_gone)
-         msgstring = 'Select by general bounding box not implemented yet'
-         call error_handler(E_MSG,'obs_sequence_tool',msgstring)
-      endif
+      call select_obs_by_location(min_loc, max_loc, seq, all_gone)
       if(all_gone) then
          if (print_msg) then
             msgstring = 'Skipping: no obs in ' // trim(seqfilename) // &
@@ -1022,115 +1046,6 @@ QCMetaData : do i=1, num_qc
 enddo QCMetaData
 
 end subroutine print_metadata
-
-!---------------------------------------------------------------------
-!---------------------------------------------------------------------
-! WARNING:
-! this routine should be in obs_sequence_mod.f90 but is has one line which
-! is dependent on the locations module being the 3d sphere; if it is
-! something else, this code will not work.  i have a first cut at a loc-indep
-! routine but not all the kinks are worked out yet so put this code here for
-! now.  to use merge with any other locations module, comment out
-! the calls to get_location() and do not select by bounding box in the nml.
-
-subroutine select_obs_by_latlon(min_lon, max_lon, min_lat, max_lat, &
-                                seq, all_gone)
-
-! Delete all observations in the sequence which are outside the bounding box.
-! If there are no obs left afterwards return that the sequence is all_gone.
-
-real(r8),                intent(in)    :: min_lon, max_lon, min_lat, max_lat
-type(obs_sequence_type), intent(inout) :: seq
-logical,                 intent(out)   :: all_gone
-
-type(obs_def_type)   :: obs_def
-type(obs_type)       :: obs, prev_obs
-integer              :: i, key
-type(location_type)  :: location
-logical              :: out_of_range, is_this_last, inside, first_obs
-real(r8)             :: ll(3), lat, lon
-
-
-! Initialize an observation type with appropriate size
-call init_obs(obs, get_num_copies(seq), get_num_qc(seq))
-call init_obs(prev_obs, get_num_copies(seq), get_num_qc(seq))
-
-! Iterate entire sequence, deleting obs which are not in the box.
-! First, make sure there are obs to delete, and initialize first obs.
-if(.not. get_first_obs(seq, obs)) then
-   all_gone = .true.
-   call destroy_obs(obs)
-   call destroy_obs(prev_obs)
-   return
-endif
-
-first_obs = .true.
-prev_obs = obs
-
-! This is going to be O(n), n=num obs in seq
-is_this_last = .false.
-allobs : do while (.not. is_this_last)
-
-   call get_obs_def(obs, obs_def)
-   location = get_obs_def_location(obs_def)
-
-   ! each diff locations mod has a different one of these
-   ! FIXME: this next line is what makes this locations dependent.
-   ! this also is ignoring the vertical for now.
-   ll = get_location(location)
-   lon = ll(1)
-   lat = ll(2)
-   
-   ! if wrap in longitude, lon now (0,720] 
-   !if (lon < max_lon-360.0_r8) lon = lon + 360.0
-   if (max_lon >= 360.0) lon = lon + 360.0
-
-   ! box test.
-   if ((lon < min_lon) .or. (lon > max_lon) .or. &
-       (lat < min_lat) .or. (lat > max_lat)) then
-      inside = .false.
-   else
-      inside = .true.
-   endif
-   
-   ! same code as delete/keep by obstype; do any code fixes both places
-   if (.not. inside) then
-      if (first_obs) then
-         call delete_obs_from_seq(seq, obs)
-         if(.not. get_first_obs(seq, obs)) exit allobs
-      else
-!print *, 'going to del obs key ', obs%key
-!print *, 'prev key is ', prev_obs%key
-         call delete_obs_from_seq(seq, obs)
-         ! cannot simply use prev_obs; cached copy out of sync with seq one
-         key = get_obs_key(prev_obs)
-         call get_next_obs_from_key(seq, key, obs, is_this_last)
-!print *, 'next obs now is key ', obs%key
-      endif
-   else
-!print *, 'no del, keep this obs key ', obs%key
-      first_obs = .false.
-     prev_obs = obs
-!print *, 'prev obs now is key ', prev_obs%key
-!print *, 'obs was key ', obs%key
-      call get_next_obs(seq, prev_obs, obs, is_this_last)
-!print *, 'obs now is key ', obs%key
-   endif
-   
-end do allobs
-
-! Figure out if there are no more obs left in the sequence.
-if(.not. get_first_obs(seq, obs)) then
-   all_gone = .true.
-else
-   all_gone = .false.
-endif
-
-! Done.  delete temp storage and return.
-call destroy_obs(obs)
-call destroy_obs(prev_obs)
-
-end subroutine select_obs_by_latlon
 
 
 !---------------------------------------------------------------------

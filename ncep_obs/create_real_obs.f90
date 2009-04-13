@@ -97,10 +97,6 @@ call error_handler(E_MSG,'create_real_obs','ncepobs_nml values are',' ',' ',' ')
 if (do_output()) write(logfileunit, nml=ncepobs_nml)
 if (do_output()) write(     *     , nml=ncepobs_nml)
 
-lon1 = min(max(lon1,0.0_r8),360.0_r8)
-lon2 = min(max(lon2,0.0_r8),360.0_r8)
-if ( lon1 > lon2 ) lon2 = lon2 + 360.0_r8
-
 ! Loop through the days interested.
 
 do ii = 1, tot_days

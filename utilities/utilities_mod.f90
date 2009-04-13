@@ -13,7 +13,7 @@ module utilities_mod
 
 !-----------------------------------------------------------------------
 !
-!   A collection of simple useful programs.
+!   A collection of simple useful routines:
 !
 !      file_exist       Function that returns if a given
 !                       file name exists
@@ -68,6 +68,17 @@ module utilities_mod
 !                       a single text variable ... to record in the
 !                       netcdf output files.
 !
+!      is_longitude_between  checks whether a given longitude is between
+!                            the two given limits, starting at the first and
+!                            going EAST until reaching the second.  the end
+!                            points are included. if min=max, all points are
+!                            considered inside.  there is no rejection of the
+!                            input values based on range; they are all converted
+!                            to [0-360) by calling modulo() before starting.
+!                            default is degrees, but there is an optional
+!                            argument to select radians instead.
+!                           
+!
 ! nsc start 31jan07
 !   idea - add some unit number routine here?
 !   you can extract the filename associated with a fortran unit number
@@ -79,7 +90,7 @@ module utilities_mod
 !logical :: is_named
 !integer :: rc
 !
-!inquire(ncFileID, named=is_named, name=filename, iostat=rc)
+!inquire(unitnum, named=is_named, name=filename, iostat=rc)
 !print *, 'is_named =', is_named, 'name = ', trim(filename)
 !if ((rc /= 0) .or. (.not. is_named)) filename = 'unknown file'
 !
@@ -87,7 +98,7 @@ module utilities_mod
 !
 !-----------------------------------------------------------------------
 
-use types_mod, only : r8
+use types_mod, only : r8, PI
 use netcdf
 
 implicit none
@@ -103,10 +114,12 @@ integer, private :: task_number = 0
 integer, parameter :: E_DBG = -1,   E_MSG = 0,  E_WARN = 1, E_ERR = 2
 integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 
+real(r8), parameter :: TWOPI = PI * 2.0_r8
+
 public :: file_exist, get_unit, open_file, close_file, timestamp, &
        register_module, error_handler, to_upper, &
        nc_check, logfileunit, nmlfileunit, &
-       find_textfile_dims, file_to_text, &
+       find_textfile_dims, file_to_text, is_longitude_between, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
        find_namelist_in_file, check_namelist_read, &
        set_tasknum, set_output, do_output,  &
@@ -1256,6 +1269,48 @@ call close_file(funit)
 
 end subroutine file_to_text
 
+!#######################################################################
+
+function is_longitude_between (lon, minlon, maxlon, doradians)
+
+!  uniform way to treat longitude ranges, in degrees, on a globe.
+!  returns true if lon is between min and max, starting at min
+!  and going EAST until reaching max.  wraps across 0 longitude.
+!  if min == max, all points are inside.  includes edges.
+!  if optional arg doradians is true, do computation in radians 
+!  between 0 and 2*PI instead of 360.
+
+real(r8), intent(in)           :: lon, minlon, maxlon
+logical,  intent(in), optional :: doradians
+logical :: is_longitude_between
+
+real(r8) :: minl, maxl, lon2, circumf
+
+circumf = 360.0_r8
+if (present(doradians)) then
+  if (doradians) circumf = TWOPI
+endif
+
+minl = modulo(minlon, circumf)
+maxl = modulo(maxlon, circumf)
+
+if (minl == maxl) then
+   is_longitude_between = .true.  ! entire globe
+   return
+endif
+
+lon2  = modulo(lon, circumf)
+
+if (minl > maxl) then
+   maxl = maxl + circumf
+   if (lon2 < minl) lon2 = lon2 + circumf
+endif
+
+is_longitude_between = ((lon2 >= minl) .and. (lon2 <= maxl))
+
+
+end function is_longitude_between 
+                           
 !=======================================================================
 ! End of utilities_mod
 !=======================================================================

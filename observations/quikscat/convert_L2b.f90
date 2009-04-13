@@ -83,10 +83,6 @@ call check_namelist_read(iunit, io, 'convert_L2b_nml')
 write(nmlfileunit, nml=convert_L2b_nml)
 write(    *      , nml=convert_L2b_nml)
 
-lon1 = min(max(lon1,0.0_r8),360.0_r8)
-lon2 = min(max(lon2,0.0_r8),360.0_r8)
-if ( lon1 > lon2 ) lon2 = lon2 + 360.0_r8
-
 call create_output_filename(l2b_file, output_name)
 datafile = trim(  datadir)//'/'//trim(l2b_file)
 dartfile = trim(outputdir)//'/'//trim(output_name)

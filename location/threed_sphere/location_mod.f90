@@ -27,7 +27,7 @@ module location_mod
 use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
 use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                            logfileunit, nmlfileunit, find_namelist_in_file, &
-                           check_namelist_read, do_output
+                           check_namelist_read, do_output, is_longitude_between
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -1678,20 +1678,24 @@ end subroutine print_get_close_type
 function is_location_in_region(loc, minl, maxl)
 !----------------------------------------------------------------------------
 !
-! Returns true if the given location is between the other two.
+! Returns true if the given location is inside the rectangular
+! region defined by minl as the lower left, maxl the upper right.
+! test is inclusive; values on the edges are considered inside.
+! Periodic in longitude (box can cross the 2PI -> 0 line)
 
 implicit none
 
 logical                          :: is_location_in_region
 type(location_type), intent(in)  :: loc, minl, maxl
 
-
 character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 
-!if ((minl%which_vert /= maxl%which_vert) .or. &
-!    (minl%which_vert /= loc%which_vert)) then
+! maybe could use VERTISUNDEF in the minl and maxl args to indicate
+! we want to test only in horizontal?  and if not, vtypes must match?
+!if ( (minl%which_vert /= maxl%which_vert) .or. &
+! ((minl%which_vert /= loc%which_vert).and.(minl%which_vert /= VERTISUNDEF))) then
 !   write(errstring,*)'which_vert (',loc%which_vert,') must be same in all args'
 !   call error_handler(E_ERR, 'is_location_in_region', errstring, source, revision, revdate)
 !endif
@@ -1700,10 +1704,17 @@ if ( .not. module_initialized ) call initialize_module
 ! set to success only at the bottom after all tests have passed.
 is_location_in_region = .false.
 
-if ((loc%lon < minl%lon) .or. (loc%lon > maxl%lon)) return
+! latitude: we do not allow wrap of rectangular regions over the poles.
 if ((loc%lat < minl%lat) .or. (loc%lat > maxl%lat)) return
-!if ((loc%vloc < minl%vloc) .or. (loc%vloc > maxl%vloc)) return
- 
+
+! use common routine in utilities module to do all the wrapping
+if (.not. is_longitude_between(loc%lon, minl%lon, maxl%lon, doradians=.TRUE.)) return
+
+! once we decide what to do about diff vert units, this is the test.
+!if ((minl%which_vert .ne. VERTISUNDEF) .and. 
+!    (loc%vloc < minl%vloc) .or. (loc%vloc > maxl%vloc)) return
+
+
 is_location_in_region = .true.
 
 end function is_location_in_region

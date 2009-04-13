@@ -104,6 +104,9 @@ netCDF
 <TR><TD>&nbsp;</TD><TD><A HREF="#dump_unit_attributes">dump_unit_attributes</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#find_namelist_in_file">find_namelist_in_file</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#check_namelist_read">check_namelist_read</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#find_textfile_dims">find_textfile_dims</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#file_to_text">file_to_text</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#is_longitude_between">is_longitude_between</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_tasknum">set_tasknum</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_output">set_output</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#do_output">do_output</A></TD></TR>
@@ -399,6 +402,95 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
          applications, it is normally not used (default is false).</TD></TR>
  </TABLE>
  <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="find_textfile_dims"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call find_textfile_dims (fname, nlines, linelen)</em>
+ <pre>
+ character(len=*), intent (IN)  :: <em class=code>fname</em>
+ integer,          intent (OUT) :: <em class=code>nlines</em>
+ integer,          intent (OUT) :: <em class=code>linelen</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+  Determines the number of lines and maximum line length of an
+  ASCII text file.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>fname</em></TD>
+     <TD>input, character string file name</TD></TR>
+ <TR><TD valign=top><em class=code>nlines</em></TD>
+     <TD>output, number of lines in the file</TD></TR>
+ <TR><TD valign=top><em class=code>linelen</em></TD>
+     <TD>output, length of longest line in the file</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+ <A NAME="file_to_text"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> call file_to_text (fname, textblock)</em>
+ <pre>
+ character(len=*),               intent (IN)  :: <em class=code>fname</em>
+ character(len=*), dimension(:), intent (OUT) :: <em class=code>textblock</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+  Opens the given filename and reads ASCII text lines into a
+  character array.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>fname</em></TD>
+     <TD>input, character string file name</TD></TR>
+ <TR><TD valign=top><em class=code>textblock</em></TD>
+     <TD>output, character array of text in the file</TD></TR>
+ </TABLE>
+ <BR>
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <A NAME="is_longitude_between"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> var = is_longitude_between(lon, minlon, maxlon 
+                       <em class=optionalcode>[, doradians]</em>) </em>
+ <pre>
+ real(r8), intent(in)           :: <em class=code>lon</em>
+ real(r8), intent(in)           :: <em class=code>minlon</em>
+ real(r8), intent(in)           :: <em class=code>maxlon</em>
+ logical,  intent(in), optional :: <em class=optionalcode>doradians</em>
+ logical                        :: <em class=code>is_longitude_between</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+   Uniform way to test longitude ranges, in degrees, on a globe.
+   Returns true if lon is between min and max, starting at min
+   and going EAST until reaching max.  Wraps across 0 longitude.
+   If min equals max, all points are inside.  Includes endpoints.
+   If optional arg doradians is true, do computation in radians
+   between 0 and 2*PI instead of default 360.  There is no rejection
+   of input values based on range; they are all converted to a known
+   range by calling modulo() first.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
+     <TD>True if lon is between min and max.</TD></TR>
+ <TR><TD valign=top><em class=code>lon </em></TD>
+     <TD>Location to test.</TD></TR>
+ <TR><TD valign=top><em class=code>minlon </em></TD>
+     <TD>Minimum longitude.  Region will start here and go east.</TD></TR>
+ <TR><TD valign=top><em class=code>maxlon </em></TD>
+     <TD>Maximum longitude.  Region will end here.</TD></TR>
+ <TR><TD valign=top><em class=optionalcode>doradians </em></TD>
+     <TD>Optional argument.  Default computations are in degrees.  If
+         this argument is specified and is .true., do the computation
+         in radians, and wrap across the globe at 2 * PI.  All inputs
+         must then be specified in radians.</TD></TR>
+ </TABLE>
+ <BR>
+
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="to_upper"></A>

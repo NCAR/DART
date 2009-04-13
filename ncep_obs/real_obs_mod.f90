@@ -21,8 +21,9 @@ use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), 
                              get_date, set_time, GREGORIAN
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, &
-                             E_ERR, E_MSG, timestamp
-use     location_mod, only : location_type, set_location, VERTISPRESSURE, VERTISSURFACE
+                             E_ERR, E_MSG, timestamp, is_longitude_between
+use     location_mod, only : location_type, set_location, &
+                             VERTISPRESSURE, VERTISSURFACE
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, set_qc, obs_sequence_type, obs_type, &
                              copy_obs, set_copy_meta_data, set_qc_meta_data, set_obs_def
@@ -111,7 +112,7 @@ type(time_type) :: current_day, next_day
 integer :: obs_unit
 integer :: obs_prof, obs_kind, obs_kind_gen, which_vert, iqc, obstype, pc
 real (r8) :: obs_err, lon, lat, lev, zob, time, pre_time, rcount, zob2
-real (r8) :: vloc, obs_value, aqc, var2, lon2c, lonc
+real (r8) :: vloc, obs_value, aqc, var2
 
 real (r8) :: bin_beg, bin_end
 
@@ -208,11 +209,9 @@ obsloop:  do
       cycle obsloop
    endif
 
-   lonc = lon
-   if (lon2 > 360.0_r8 .and. lon < 180.0_r8) lonc = lon + 360.0_r8
-
    ! reject observations outside the bounding box
-   if(lat < lat1 .or. lat > lat2 .or. lonc < lon1 .or. lonc > lon2) then
+   if(lat < lat1 .or. lat > lat2 .or. & 
+     .not. is_longitude_between(lon, lon1, lon2)) then
      iskip = iskip + 1
      cycle obsloop
    endif
@@ -398,29 +397,23 @@ obsloop:  do
                  var2, aqc, obs_kind, which_vert, seconds, days)
 
    
-   if(obs_num == 1) then ! for the first observation 
+   if(obs_num == 1) then  ! the first observation, no prev_obs yet
 
-     call insert_obs_in_seq(real_obs_sequence, obs)
-     call copy_obs(prev_obs, obs)
-     pre_time = time
+      call insert_obs_in_seq(real_obs_sequence, obs)
 
-   else  !  not the first observation 
+   else if(time >= pre_time) then  ! same time or later than previous obs
 
-     if(time == pre_time) then  ! same time as previous observation
+      call insert_obs_in_seq(real_obs_sequence, obs, prev_obs)
 
-       call insert_obs_in_seq(real_obs_sequence, obs, prev_obs)
-       call copy_obs(prev_obs, obs)
-       pre_time = time
+   else  ! earlier time, must start search from start of list
 
-    else  ! not the same time
+      call insert_obs_in_seq(real_obs_sequence, obs)
 
-       call insert_obs_in_seq(real_obs_sequence, obs)
-       call copy_obs(prev_obs, obs)
-       pre_time = time
+   endif
 
-    endif
-
-  endif
+   ! save for next iteration
+   call copy_obs(prev_obs, obs)
+   pre_time = time
 
 end do obsloop
 
