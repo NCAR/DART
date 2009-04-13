@@ -290,6 +290,7 @@ character(len = 129)                                   :: system_string
 type(time_type) :: time_step, ens_time
 integer         :: is1, is2, id1, id2, my_num_state_copies, global_ens_index
 integer         :: i, control_unit, ic_file_unit, ud_file_unit
+integer         :: need_advance, any_need_advance
 
 
 ! Initialize if needed
@@ -297,6 +298,11 @@ if(.not. module_initialized) then
    call initialize_module
    module_initialized = .true.
 endif
+
+! Tasks without ensemble members do not know the ensemble time, so assume
+! no advance until we can read the time on at least some tasks and confirm
+! the advance is needed (which it should be).
+need_advance = 0
 
 ! Determine model time_step
 time_step = get_model_time_step()
@@ -311,9 +317,6 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
    ! contiguously on local processor
    if(global_ens_index > ens_size) exit ENSEMBLE_MEMBERS
 
-   ! Increment number of ensemble member copies I have
-   my_num_state_copies = my_num_state_copies + 1
-
    ! No need to advance if already at target time 
    if(ens_handle%time(i) == target_time) exit ENSEMBLE_MEMBERS
 
@@ -324,6 +327,12 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
       write(errstring,*)'target time ',is2,id2,' is before model_time ',is1,id1
       call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
    endif
+
+   ! Ok, this task does need to advance something. 
+   need_advance = 1
+
+   ! Increment number of ensemble member copies I have.
+   my_num_state_copies = my_num_state_copies + 1
 
    !------------- Block for subroutine callable adv_1step interface -----------
    if(async == 0) then
@@ -365,6 +374,14 @@ end do ENSEMBLE_MEMBERS
 
 ! Following is for async options that use shell to advance model
 SHELL_ADVANCE_METHODS: if(async /= 0) then
+
+   ! If no one needs advance, get out now.  This is a global communication routine.
+   call sum_across_tasks(need_advance, any_need_advance)
+   if (any_need_advance == 0) then
+      call error_handler(E_MSG, 'advance_state', 'Model time already at requested time')
+      return
+   endif
+
    ! Get a unique name for the control file; use process id
    if(my_task_id() >= 10000) call error_handler(E_ERR, 'advance_state', &
       'Can only have 10000 processes', source, revision, revdate)
