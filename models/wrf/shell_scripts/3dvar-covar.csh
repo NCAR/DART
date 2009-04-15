@@ -90,7 +90,7 @@ while ( $NC <= $ES )
 #---------------------------------------------------
 
 # create new input to DART (taken from "wrfinput_d0x")
-   echo ".false." | dart_tf_wrf >& out.wrf_to_dart
+   wrf_to_dart >& out.wrf_to_dart
 
    cat dart_wrf_vector >> filter_ics
 
