@@ -117,7 +117,7 @@ while($state_copy <= $num_states)
    
    if (  -e ${CENTRALDIR}/assim_model_state_ic_mean ) then
       ln -sf ${CENTRALDIR}/assim_model_state_ic_mean dart_wrf_vector
-      echo ".true." | ${CENTRALDIR}/dart_tf_wrf >&! out.dart_to_wrf_mean
+      ${CENTRALDIR}/dart_to_wrf >&! out.dart_to_wrf_mean
       ${COPY} wrfinput_d01 wrfinput_mean
    endif
    
@@ -125,11 +125,11 @@ while($state_copy <= $num_states)
    
    # Convert DART to wrfinput
    
-   echo ".true." | ${CENTRALDIR}/dart_tf_wrf >&! out.dart_to_wrf
+   ${CENTRALDIR}/dart_to_wrf >&! out.dart_to_wrf
    
    ${REMOVE} dart_wrf_vector
    
-   # The program dart_tf_wrf has created the file wrf.info.
+   # The program dart_to_wrf has created the file wrf.info.
    # Time information is extracted from wrf.info.
    
    set secday = `head -1 wrf.info`
@@ -351,7 +351,7 @@ while($state_copy <= $num_states)
 # a wrfoutput file at the end of the run interval
  /history_interval/c\
  history_interval           = ${INTERVAL_MIN}, ${INTERVAL_MIN}, ${INTERVAL_MIN}
-#  dart_tf_wrf is expecting only a single time per file
+#  dart_to_wrf is expecting only a single time per file
  /frames_per_outfile/c\
  frames_per_outfile         = 1, 1, 1,
 EOF
@@ -416,7 +416,7 @@ EOF
    ##############################################
    
    # create new input to DART (taken from "wrfinput")
-   echo ".false." | ${CENTRALDIR}/dart_tf_wrf >&! out.wrf_to_dart
+   ${CENTRALDIR}/wrf_to_dart >&! out.wrf_to_dart
    
    ${MOVE} dart_wrf_vector ${CENTRALDIR}/$output_file
 
