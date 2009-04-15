@@ -101,7 +101,13 @@ while($state_copy <= $num_states)
    ln -sf ${CENTRALDIR}/tr49t67 .
    ln -sf ${CENTRALDIR}/tr49t85 .
    ln -sf ${CENTRALDIR}/tr67t85 .
-   ln -sf ${CENTRALDIR}/urban_param.tbl .
+   # WRF V2 uses urban_param.tbl, V3 uses URBPARM.TBL - do either)
+   if ( -e ${CENTRALDIR}/urban_param.tbl ) then
+      ln -sf ${CENTRALDIR}/urban_param.tbl .
+   endif
+   if ( -e ${CENTRALDIR}/URBPARM.TBL ) then
+      ln -sf ${CENTRALDIR}/URBPARM.TBL .
+   endif
    ln -sf ${CENTRALDIR}/VEGPARM.TBL .
    ln -sf ${CENTRALDIR}/wrf.exe .
    

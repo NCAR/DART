@@ -103,7 +103,13 @@ while($state_copy <= $num_states)
    ln -s ${CENTRALDIR}/tr49t85 .
    ln -s ${CENTRALDIR}/tr67t85 .
    # These are needed for use with module_sf_urban.F (I think)
-   ln -s ${CENTRALDIR}/urban_param.tbl .
+   # WRF V2 uses urban_param.tbl, V3 uses URBPARM.TBL - do either)
+   if ( -e ${CENTRALDIR}/urban_param.tbl ) then
+      ln -s ${CENTRALDIR}/urban_param.tbl .
+   endif
+   if ( -e ${CENTRALDIR}/URBPARM.TBL ) then
+      ln -s ${CENTRALDIR}/URBPARM.TBL .
+   endif
    
    # nfile is required when using mpi to run wrf.exe
    # nfile is machine specific; ideally, it should be
