@@ -103,7 +103,8 @@ while($state_copy <= $num_states)
    ln -s ${CENTRALDIR}/tr49t85 .
    ln -s ${CENTRALDIR}/tr67t85 .
    # These are needed for use with module_sf_urban.F (I think)
-   # WRF V2 uses urban_param.tbl, V3 uses URBPARM.TBL - do either)
+   # WRF versions before and including V3.0.1.1 use urban_param.tbl, 
+   # V3.1 uses URBPARM.TBL - link to either that are found.)
    if ( -e ${CENTRALDIR}/urban_param.tbl ) then
       ln -s ${CENTRALDIR}/urban_param.tbl .
    endif
