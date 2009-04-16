@@ -13,7 +13,7 @@ module time_manager_mod
 
 use     types_mod, only : missing_i, digits12
 use utilities_mod, only : error_handler, E_DBG, E_MSG, E_WARN, E_ERR, &
-                          register_module, dump_unit_attributes
+                          register_module, dump_unit_attributes, to_upper
 
 implicit none
 private
@@ -57,7 +57,7 @@ public :: THIRTY_DAY_MONTHS,    JULIAN,    GREGORIAN,  NOLEAP,   NO_CALENDAR, &
           GREGORIAN_MARS
 
 ! Subroutines and functions involving relations between time and calendar
-public :: set_calendar_type, get_calendar_type
+public :: set_calendar_type, get_calendar_type, get_calendar_string
 public :: set_date,       set_date_gregorian,         set_date_julian, &
                           set_date_thirty,            set_date_no_leap, &
                           set_date_gregorian_mars
@@ -130,9 +130,16 @@ interface operator (==);  module procedure time_eq;          end interface
 interface operator (/=);  module procedure time_ne;          end interface
 interface operator (//);  module procedure time_real_divide; end interface
 
+interface set_calendar_type
+   module procedure set_calendar_type_integer
+   module procedure set_calendar_type_string
+end interface
+
 !======================================================================
 
 logical, save :: module_initialized = .false.
+
+character(len=129) :: errstring
 
 !======================================================================
 
@@ -155,7 +162,6 @@ integer, intent(in), optional :: days
 type(time_type)               :: set_time
 
 integer            :: days_in
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -212,8 +218,6 @@ type(time_type), intent(in)            :: time
 integer,         intent(out)           :: seconds
 integer,         intent(out), optional :: days
 
-character(len=129) :: errstring
-
 if ( .not. module_initialized ) call time_manager_init
 
 seconds = time%seconds
@@ -247,7 +251,6 @@ integer,         intent(in), optional :: days
 type(time_type)                       :: increment_time
 
 integer            :: days_in
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -291,7 +294,6 @@ integer,         intent(in), optional :: days
 type(time_type)                       :: decrement_time
 
 integer            :: cseconds, cdays
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -493,7 +495,6 @@ type(time_type)             :: time_scalar_mult
 
 integer            :: days, seconds
 real(digits12)     :: sec_prod
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -552,7 +553,6 @@ type(time_type), intent(in) :: time1, time2
 integer                     :: time_divide
 
 real(digits12)     :: d1, d2
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -615,7 +615,6 @@ type(time_type)             :: time_scalar_divide
 real(digits12)  :: d, div
 integer         :: days, seconds
 type(time_type) :: prod1, prod2
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -706,29 +705,95 @@ end function repeat_alarm
 ! CALENDAR OPERATIONS BEGIN HERE
 !=========================================================================
 
-subroutine set_calendar_type(type)
+subroutine set_calendar_type_integer(mytype)
 
-! Selects calendar for default mapping from time to date. 
+! Selects calendar for default mapping from time to date - if you know 
+! the magic integer for the calendar of interest. 
 
-implicit none
-
-integer, intent(in) :: type
-
-character(len=129) :: errstring
+integer, intent(in) :: mytype
 
 if ( .not. module_initialized ) call time_manager_init
 
-if(type <  0 .or. type > max_type) then
-   write(errstring,*)'Illegal type ',type,' must be > 0 or < ',max_type
-   call error_handler(E_ERR,'set_calendar_type',errstring,source,revision,revdate)
+if(mytype <  0 .or. mytype > max_type) then
+   write(errstring,*)'Illegal calendar type ',mytype,' must be >= 0 or <= ',max_type
+   call error_handler(E_ERR,'set_calendar_type_integer', &
+                  errstring,source,revision,revdate)
 endif
-calendar_type = type
+calendar_type = mytype
 
-! GREGORIAN Calendar only partially implemented; get and set_date work
-!if(type == GREGORIAN) &
-!   call error_handler('set_calendar_type :: GREGORIAN CALENDAR not implemented')
+end subroutine set_calendar_type_integer
 
-end subroutine set_calendar_type
+
+
+subroutine set_calendar_type_string(calstring)
+
+! Selects calendar for default mapping from time to date - given a string. 
+
+character(len=*), intent(in) :: calstring
+
+integer, parameter :: max_calendar_string_length = len_trim('THIRTY_DAY_MONTHS')
+
+character(len=len(calstring))             :: str1
+character(len=max_calendar_string_length) :: cstring
+logical :: found_calendar = .false.
+integer :: i
+
+if ( .not. module_initialized ) call time_manager_init
+
+str1 = adjustl(calstring)
+
+if ( len_trim(str1) > max_calendar_string_length ) then
+   write(errstring,*)'Illegal calendar ',trim(calstring)
+   call error_handler(E_ERR,'set_calendar_type_string', &
+                  errstring,source,revision,revdate)
+endif
+
+cstring = trim(str1)
+call to_upper(cstring)
+
+! Using 'cstring' as the substring (2nd argument), we remove 
+! the ambiguity of someone trying to use a calendar string
+! of 'no' ... which could either match no_calendar or noleap.
+! We must check for the gregorian_mars calendar before
+! the gregorian calendar for similar reasons.
+
+WhichCalendar : do i = 0, max_type 
+
+   if     ( cstring == 'NO_CALENDAR' ) then
+           calendar_type  = NO_CALENDAR
+           found_calendar = .true.
+           exit WhichCalendar
+   elseif ( cstring == 'THIRTY_DAY_MONTHS' ) then
+           calendar_type  = THIRTY_DAY_MONTHS
+           found_calendar = .true.
+           exit WhichCalendar
+   elseif ( cstring == 'JULIAN' ) then
+           calendar_type  = JULIAN
+           found_calendar = .true.
+           exit WhichCalendar
+   elseif ( cstring == 'NOLEAP' ) then
+           calendar_type  = NOLEAP
+           found_calendar = .true.
+           exit WhichCalendar
+   elseif ( cstring == 'GREGORIAN_MARS' ) then
+           calendar_type  = GREGORIAN_MARS
+           found_calendar = .true.
+           exit WhichCalendar
+   elseif ( cstring == 'GREGORIAN' ) then
+           calendar_type  = GREGORIAN
+           found_calendar = .true.
+           exit WhichCalendar
+   endif
+
+enddo WhichCalendar
+
+if( .not. found_calendar ) then
+   write(errstring,*)'Unknown calendar ',calstring
+   call error_handler(E_ERR,'set_calendar_type_string', &
+                  errstring,source,revision,revdate)
+endif
+
+end subroutine set_calendar_type_string
 
 
 
@@ -749,6 +814,38 @@ end function get_calendar_type
 
 
 
+subroutine get_calendar_string(mystring)
+!------------------------------------------------------------------------
+!
+! Returns default calendar type for mapping from time to date.
+
+character(len=*), intent(OUT) :: mystring
+
+integer :: i
+
+if ( .not. module_initialized ) call time_manager_init
+
+mystring = '  '
+
+do i = 0,max_type
+   if (calendar_type ==            JULIAN) mystring = 'JULIAN'
+   if (calendar_type ==            NOLEAP) mystring = 'NOLEAP'
+   if (calendar_type ==         GREGORIAN) mystring = 'GREGORIAN'
+   if (calendar_type ==       NO_CALENDAR) mystring = 'NO_CALENDAR'
+   if (calendar_type ==    GREGORIAN_MARS) mystring = 'GREGORIAN_MARS'
+   if (calendar_type == THIRTY_DAY_MONTHS) mystring = 'THIRTY_DAY_MONTHS'
+enddo
+
+if (len_trim(mystring) < 3) then
+   write(errstring,*)'unknown calendar type ', calendar_type
+   call error_handler(E_ERR,'get_calendar_string',errstring, &
+                      source,revision,revdate)
+endif
+
+end subroutine get_calendar_string
+
+
+
 !========================================================================
 ! START OF get_date BLOCK
 !========================================================================
@@ -762,8 +859,6 @@ implicit none
 
 type(time_type), intent(in)  :: time
 integer,         intent(out) :: second, minute, hour, day, month, year
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -1075,7 +1170,6 @@ integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date
 
 integer            :: oseconds, ominutes, ohours
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -1115,7 +1209,6 @@ integer, intent(in)           :: day, month, year
 integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date_gregorian
 
-character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours
 integer :: ndays, m, nleapyr
 integer :: base_year = 1601
@@ -1189,7 +1282,6 @@ integer, intent(in)           :: day, month, year
 integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date_julian
 
-character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours
 integer :: ndays, m, nleapyr
 logical :: leap
@@ -1256,7 +1348,6 @@ integer, intent(in)           :: day, month, year
 integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date_thirty
 
-character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours
 
 if ( .not. module_initialized ) call time_manager_init
@@ -1297,7 +1388,6 @@ integer, intent(in)           :: day, month, year
 integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date_no_leap
 
-character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours
 integer :: ndays, m
 
@@ -1351,7 +1441,6 @@ integer, intent(in)           :: day, month, year
 integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date_gregorian_mars
 
-character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours
 
 ! "base_year" for Mars will be defined as 1 (earliest wrfout file has year = 1)
@@ -1411,7 +1500,6 @@ integer,         intent(in), optional :: seconds, minutes, hours, days, months, 
 type(time_type)                       :: increment_date
 
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -1462,7 +1550,6 @@ type(time_type)                       :: increment_gregorian
 
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cminute, chour, cday, cmonth, cyear
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -1522,7 +1609,6 @@ type(time_type)                       :: increment_julian
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cminute, chour, cday, cmonth, cyear, dyear
 type(time_type) :: t
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -1604,7 +1690,6 @@ type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
 type(time_type)                       :: increment_thirty
 
-character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cday
 
@@ -1653,7 +1738,6 @@ type(time_type)                       :: increment_no_leap
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cminute, chour, cday, cmonth, cyear, dyear
 type(time_type) :: t
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -1767,7 +1851,6 @@ integer,         intent(in), optional :: seconds, minutes, hours, days, months, 
 type(time_type)                       :: decrement_date
 
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -1816,7 +1899,6 @@ type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
 type(time_type)                       :: decrement_gregorian
 
-character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cminute, chour, cday, cmonth, cyear
 
@@ -1879,7 +1961,6 @@ type(time_type)                       :: decrement_julian
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cminute, chour, cday, cmonth, cyear
 type(time_type) :: t
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -1957,7 +2038,6 @@ type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
 type(time_type)                       :: decrement_thirty
 
-character(len=129) :: errstring
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cday
 
@@ -2002,7 +2082,6 @@ type(time_type)                       :: decrement_no_leap
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
 integer :: csecond, cminute, chour, cday, cmonth, cyear
 type(time_type) :: t
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -2113,7 +2192,6 @@ implicit none
 type(time_type), intent(in) :: time
 integer                     :: days_in_month
 
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -2249,8 +2327,6 @@ implicit none
 
 type(time_type), intent(in) :: time
 logical                     :: leap_year
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -2391,8 +2467,6 @@ implicit none
 
 type(time_type) :: length_of_year
 
-character(len=129) :: errstring
-
 if ( .not. module_initialized ) call time_manager_init
 
 select case(calendar_type)
@@ -2508,8 +2582,6 @@ implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_year
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -2635,8 +2707,6 @@ character(len=9), dimension(12) :: months = (/'January  ','February ','March    
                                               'April    ','May      ','June     ',&
                                               'July     ','August   ','September',&
                                               'October  ','November ','December '/) 
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call time_manager_init
 
@@ -2864,7 +2934,7 @@ integer,          intent(out), optional :: ios
 
 integer           :: secs, days, io
 character(len=32) :: fileformat
-character(len=129) :: errstring, filename
+character(len=129) :: filename
 logical :: is_named
 integer :: rc
 
