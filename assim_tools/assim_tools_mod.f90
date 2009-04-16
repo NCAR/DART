@@ -1596,9 +1596,9 @@ real(r8) :: nmass(ens_size + 1)
 real(r8) :: new_mean_left, new_mean_right, prod_weight_left, prod_weight_right
 real(r8) :: new_var_left, new_var_right, new_sd_left, new_sd_right
 real(r8) :: new_ens(ens_size), mass_sum
-real(r8) :: x(ens_size), sort_inc(ens_size)
+real(r8) :: x(ens_size)
 real(r8) :: like_dense(2:ens_size), height(2:ens_size)
-real(r8) :: dist_to_first, dist_to_last, dist_for_unit_sd
+real(r8) :: dist_for_unit_sd
 real(r8) :: a, b, c, hright, hleft, r1, r2, adj_r1, adj_r2
 
 ! Do an index sort of the ensemble members; Will want to do this very efficiently

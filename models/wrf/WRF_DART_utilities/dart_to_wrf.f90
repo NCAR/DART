@@ -85,9 +85,7 @@ real(r8), pointer :: wrf_var_3d(:,:,:), wrf_var_2d(:,:)
 type(time_type)   :: dart_time(2)
 integer           :: number_dart_values, ndays, &
                      year, month, day, hour, minute, second
-integer           :: ndims, idims(2), dimids(2)
-integer           :: i, ivtype, ind, dart_ind, my_index
-character(len=80) :: varname
+integer           :: ind, dart_ind, my_index
 character(len=19) :: timestring
 character(len=1)  :: idom
 
@@ -244,7 +242,7 @@ WRFDomains2 : do id = 1,num_domains
       my_index = wrf%dom(id)%var_index_list(ind)
 
       if ( debug ) then
-         write(*,*),'Rolling up variable ',trim(wrf_state_variables(1,my_index))
+         write(*,*)'Rolling up variable ',trim(wrf_state_variables(1,my_index))
       endif
 
       ! get stagger and variable size
@@ -255,8 +253,8 @@ WRFDomains2 : do id = 1,num_domains
       if (  wrf%dom(id)%var_size(3,ind) == 1 ) then
 
          if ( debug ) then
-            write(*,*),trim(wrf_state_variables(1,my_index)),' is 2D'
-            write(*,*),'size  ',wrf%dom(id)%var_size(:,ind)
+            write(*,*)trim(wrf_state_variables(1,my_index)),' is 2D'
+            write(*,*)'size  ',wrf%dom(id)%var_size(:,ind)
          endif
 
          allocate(wrf_var_2d(wrf%dom(id)%var_size(1,ind),wrf%dom(id)%var_size(2,ind)))
@@ -275,8 +273,8 @@ WRFDomains2 : do id = 1,num_domains
       else
 
          if ( debug ) then
-            write(*,*),trim(wrf_state_variables(1,my_index)),' is 3D'
-            write(*,*),'size  ',wrf%dom(id)%var_size(:,ind)
+            write(*,*)trim(wrf_state_variables(1,my_index)),' is 3D'
+            write(*,*)'size  ',wrf%dom(id)%var_size(:,ind)
          endif
 
          allocate(wrf_var_3d(wrf%dom(id)%var_size(1,ind),wrf%dom(id)%var_size(2,ind),wrf%dom(id)%var_size(3,ind)))
@@ -302,7 +300,7 @@ WRFDomains2 : do id = 1,num_domains
               trim(wrf_state_variables(1,my_index)) == 'QCLOUD' ) then
 
             if ( debug ) then
-              write(*,*),'Setting 0 lower bound on ', &
+              write(*,*)'Setting 0 lower bound on ', &
                           trim(wrf_state_variables(1,my_index))
             endif
 

@@ -83,8 +83,6 @@ logical, parameter :: debug = .false.
 
 real(r8) :: bdyfrq_old, bdyfrq, dtnext
 
-integer :: io, iunit
-
 !----------------------------------------------------------------------
 
 call initialize_utilities('pert_wrf_bc')

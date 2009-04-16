@@ -258,10 +258,9 @@ subroutine static_init_model()
 integer :: ncid
 integer :: io, iunit
 
-character (len=80)    :: name
 character (len=1)     :: idom
 logical, parameter    :: debug = .false.
-integer               :: var_id, ind, i, j, k, id, dart_index, model_type
+integer               :: ind, i, j, k, id, dart_index
 integer               :: my_index
 integer               :: var_element_list(max_state_variables)
 
@@ -502,8 +501,9 @@ WRFDomains : do id=1,num_domains
       my_index =  wrf%dom(id)%var_index_list(ind)
 
       if ( debug ) then
-         write(*,*),'Assigning dart vector indices for var_type ',wrf%dom(id)%var_type(ind)
-         write(*,*),'affiliated with WRF variable ',trim(wrf_state_variables(1,my_index)),' of size ',wrf%dom(id)%var_size(:,ind)
+         write(*,*)'Assigning dart vector indices for var_type ',wrf%dom(id)%var_type(ind)
+         write(*,*)'affiliated with WRF variable ', &
+             trim(wrf_state_variables(1,my_index)),' of size ',wrf%dom(id)%var_size(:,ind)
       endif
 
       wrf%dom(id)%var_index(1,ind) = dart_index
@@ -518,7 +518,7 @@ WRFDomains : do id=1,num_domains
       enddo
       wrf%dom(id)%var_index(2,ind) = dart_index - 1
 
-      if ( debug ) write(*,*),'assigned start, stop ',wrf%dom(id)%var_index(:,ind)
+      if ( debug ) write(*,*)'assigned start, stop ',wrf%dom(id)%var_index(:,ind)
 
    enddo ! loop through all viable state variables on this domain
 
@@ -528,7 +528,7 @@ write(*,*)
 
 wrf%model_size = dart_index - 1
 allocate (ens_mean(wrf%model_size))
-if(debug) write(*,*) ' wrf model size is ',wrf%model_size
+if(debug) write(*,*)' wrf model size is ',wrf%model_size
 
 end subroutine static_init_model
 
@@ -3318,7 +3318,7 @@ do id=1,num_domains
 
      call nc_check(nf90_def_var(ncid=ncFileID, name="RAINNC_d0"//idom, xtype=nf90_real, &
           dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
-	  varid  = var_id),'nc_write_model_atts','def_var RAINNC_d0'//idom)
+          varid  = var_id),'nc_write_model_atts','def_var RAINNC_d0'//idom)
      call nc_check(nf90_put_att(ncFileID, var_id, "units", "mm"), &
                    'nc_write_model_atts','put_att RAINNC_d0'//idom//' units')
      call nc_check(nf90_put_att(ncFileID, var_id, "description", & 
@@ -5934,7 +5934,7 @@ implicit none
 integer, intent(in) :: id
 character(len=129), intent(in) :: state_table(num_state_table_columns,max_state_variables) 
 integer, intent(out), optional :: var_element_list(max_state_variables)
-integer :: ivar, num_vars, domain_int, i
+integer :: ivar, num_vars
 character(len=129) :: my_string
 logical :: debug = .false.
 
@@ -6016,7 +6016,7 @@ integer, intent(out)              :: var_size(3)
 character(len=129),intent(out)    :: stagger
 
 logical, parameter    :: debug = .false.
-integer               :: var_id, strlen, ndims 
+integer               :: var_id, ndims 
 
    stagger = ''
    call nc_check( nf90_inq_varid(ncid, trim(wrf_var_name), var_id), &
@@ -6125,7 +6125,7 @@ integer function get_type_ind_from_type_string(id, wrf_varname)
 
    enddo ! ivar
 
-   if ( debug ) write(*,*), 'get_type_from_ind ',trim(wrf_varname),' ',get_type_ind_from_type_string
+   if ( debug ) write(*,*)'get_type_from_ind ',trim(wrf_varname),' ',get_type_ind_from_type_string
 
    return
 

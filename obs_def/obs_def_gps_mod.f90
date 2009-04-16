@@ -324,7 +324,6 @@ integer, intent(out) :: gpskey
 
 real(r8) :: nx, ny, nz, rfict0, ds, htop
 character(len=6) :: subset0
-type(location_type) :: location
 integer :: gpstype
 
 

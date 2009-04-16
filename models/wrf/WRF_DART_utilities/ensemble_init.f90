@@ -77,7 +77,6 @@ logical :: soil_data            = .true.
 logical :: h_diab               = .false.     
 character(len = 72) :: adv_mod_command = './wrf.exe'
 real (kind=r8) :: center_search_half_length = 500000.0_r8
-integer :: center_search_half_size            
 integer :: center_spline_grid_scale = 10      
 integer :: vert_localization_coord = VERTISHEIGHT
 ! Allow (or not) observations above the surface but below the lowest

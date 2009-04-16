@@ -83,7 +83,7 @@ type(wrf_dom) :: wrf
 real(r8), pointer :: dart(:)
 real(r8), allocatable :: wrf_var_3d(:,:,:), wrf_var_2d(:,:)
 type(time_type)   :: dart_time(2)
-integer           :: number_dart_values, ndays, &
+integer           :: number_dart_values, &
                      year, month, day, hour, minute, second
 integer           :: ndims, idims(2), dimids(2)
 integer           :: i, ivtype, ind, dart_ind, my_index

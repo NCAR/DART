@@ -426,11 +426,11 @@ do i = 1, num_input_files
    if (first_seq < 0) then
       call init_obs_sequence(seq_out, num_copies_out, num_qc_out, size_seq_out) 
       do j=1, num_copies_out
-	 meta_data = get_copy_meta_data(seq_in, j) 
+         meta_data = get_copy_meta_data(seq_in, j) 
          call set_copy_meta_data(seq_out, j, meta_data)
       enddo 
       do j=1, num_qc_out
-	 meta_data = get_qc_meta_data(seq_in, j) 
+         meta_data = get_qc_meta_data(seq_in, j) 
          call set_qc_meta_data(seq_out, j, meta_data)
       enddo 
       first_seq = i
@@ -735,7 +735,7 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
       ! validate the metadata string
       found = .false.
       do i=1, num_qc_in
-	 meta_data = get_qc_meta_data(seq_in, i) 
+         meta_data = get_qc_meta_data(seq_in, i) 
          if (trim(qc_metadata) == trim(meta_data)) then 
             call delete_obs_by_qc(i, min_qc, max_qc, seq, all_gone)
             found = .true.
@@ -761,7 +761,7 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
       ! validate the metadata string
       found = .false.
       do i=1, num_copies_in
-	 meta_data = get_copy_meta_data(seq_in, i) 
+         meta_data = get_copy_meta_data(seq_in, i) 
          if (trim(copy_metadata) == trim(meta_data)) then 
             call delete_obs_by_copy(i, min_copy, max_copy, copy_type, &
                                     seq, all_gone)
@@ -817,8 +817,8 @@ character(len=*), intent(in)        :: filename
 type(obs_type)          :: obs, next_obs
 type(obs_def_type)      :: this_obs_def
 logical                 :: is_there_one, is_this_last
-integer                 :: size_seq_in, num_copies_in, num_qc_in
-integer                 :: i, j
+integer                 :: size_seq_in
+integer                 :: i
 integer                 :: this_obs_kind
 ! max_obs_kinds is a public from obs_kind_mod.f90 and really is
 ! counting the max number of types, not kinds
@@ -944,8 +944,8 @@ character(len=*),        intent(in) :: filename
 type(obs_type)          :: obs, next_obs
 type(obs_def_type)      :: this_obs_def
 logical                 :: is_there_one, is_this_last
-integer                 :: size_seq, num_copies, num_qc
-integer                 :: i, j, key
+integer                 :: size_seq
+integer                 :: key
 type(time_type)         :: last_time, this_time
 
 

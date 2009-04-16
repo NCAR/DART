@@ -210,7 +210,7 @@ subroutine advance_smoother(ens_handle)
 
 type(ensemble_type), intent(in) :: ens_handle
 
-integer         :: smoother_tail, j
+integer         :: smoother_tail
 
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then

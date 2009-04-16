@@ -82,8 +82,6 @@ logical, parameter :: debug = .false.
 
 real(r8) :: bdyfrq_old, bdyfrq, infl
 
-integer :: io, iunit
-
 !----------------------------------------------------------------------
 
 call initialize_utilities('update_wrf_bc')
