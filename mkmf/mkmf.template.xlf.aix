@@ -49,4 +49,13 @@ LD = xlf90_r
 INCS = -I/usr/local/lib64/r4i4 -I/usr/local/include
 LIBS = -L/usr/local/lib64/r4i4 -lnetcdf
 FFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -b64 -qarch=auto -qmaxmem=-1 -O2 $(INCS)
-LDFLAGS = $(FFLAGS) -bmaxdata:2000000000 -bmaxstack:2000000000 $(LIBS)
+LDFLAGS = $(FFLAGS) $(LIBS)
+
+# sidd (ncar consulting) says the loader flags we used to have here
+# (-bmaxdata:2000000000 and -bmaxstack:2000000000) were good for the 32-bit
+# version of the compiler, to use more memory.  BUT, for the 64-bit version
+# it was actually restricting the max memory for the job.  so they're gone.
+# (and interestingly, compiling filter like that and then starting another
+# job in async=2 mode restricted the subjob as well, no matter how it was
+# compiled -- inheriting limits in the proc table at exec time?)  anyway,
+# we removed them.
