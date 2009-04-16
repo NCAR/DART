@@ -1,0 +1,10 @@
+&schedule_nml
+   calendar       = 'Gregorian',
+   bin_start      =  2008, 9, 7, 0, 0, 0 ,
+   bin_end        =  2008, 9, 7, 2, 0, 0 ,
+   last_bin_end   =  2008, 9,11, 0, 0, 0 ,
+   bin_interval_days    = 0,   
+   bin_interval_seconds = 21600, 
+   max_num_bins         = 1000,
+   print_table          = .true.  /
+
