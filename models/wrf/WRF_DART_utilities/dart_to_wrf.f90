@@ -91,9 +91,7 @@ real(r8)          :: lb, ub
 type(time_type)   :: dart_time(2)
 integer           :: number_dart_values, ndays, &
                      year, month, day, hour, minute, second
-integer           :: ndims, idims(2), dimids(2)
-integer           :: i, ivtype, ind, dart_ind, my_index
-character(len=80) :: varname
+integer           :: ind, dart_ind, my_index
 character(len=19) :: timestring
 character(len=1)  :: idom
 

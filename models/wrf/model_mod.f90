@@ -266,10 +266,9 @@ subroutine static_init_model()
 integer :: ncid
 integer :: io, iunit
 
-character (len=80)    :: name
 character (len=1)     :: idom
 logical, parameter    :: debug = .false.
-integer               :: var_id, ind, i, j, k, id, dart_index, model_type
+integer               :: ind, i, j, k, id, dart_index
 integer               :: my_index
 integer               :: var_element_list(max_state_variables)
 
@@ -5936,7 +5935,7 @@ implicit none
 integer, intent(in) :: id
 character(len=129), intent(in) :: state_table(num_state_table_columns,max_state_variables) 
 integer, intent(out), optional :: var_element_list(max_state_variables)
-integer :: ivar, num_vars, domain_int, i
+integer :: ivar, num_vars
 character(len=129) :: my_string
 logical :: debug = .false.
 
@@ -6105,7 +6104,7 @@ character(len=129),intent(out)    :: stagger
 
 logical, parameter    :: debug = .false.
 integer               :: var_id, ndims, dimids(10) 
-integer               :: idim, strlen
+integer               :: idim
 
    stagger = ''
 
