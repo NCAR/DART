@@ -11,7 +11,7 @@ PROGRAM dart_to_wrf
 ! $Revision$
 ! $Date$
 
-use        types_mod, only : r8
+use        types_mod, only : r8, missing_r8
 use time_manager_mod, only : time_type, write_time, read_time, get_date, set_date, operator(-), &
                              get_time, print_time, set_calendar_type, GREGORIAN, julian_day
 use    utilities_mod, only : get_unit, file_exist, open_file, close_file, &
@@ -23,7 +23,10 @@ use  assim_model_mod, only : open_restart_read, open_restart_write, aread_state_
                              awrite_state_restart
 use model_mod, only        : max_state_variables,  &
                              num_state_table_columns, read_wrf_dimensions, &
+                             num_bounds_table_columns, &
                              get_number_of_wrf_variables,  &
+                             get_variable_bounds,          &
+                             set_variable_bound_defaults,          &
                              get_variable_size_from_file, wrf_dom, &
                              fill_default_state_table, &
                              trans_1Dto3D, trans_1Dto2D,&
@@ -47,6 +50,7 @@ character(len=128), parameter :: &
 logical :: output_state_vector  = .false.  ! state vs. prognostic format
 logical :: default_state_variables = .true.   ! use default state list?
 character(len=129) :: wrf_state_variables(num_state_table_columns,max_state_variables) = 'NULL'
+character(len=129) :: wrf_state_bounds(num_bounds_table_columns,max_state_variables) = 'NULL'
 integer :: num_moist_vars       = 3
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
@@ -70,6 +74,7 @@ logical :: scm        = .false.    ! using the single column model
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      default_state_variables, wrf_state_variables, &
+                     wrf_state_bounds, &
                      adv_mod_command, assimilation_period_seconds, &
                      allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
@@ -82,10 +87,13 @@ type(wrf_dom) :: wrf
 
 real(r8), pointer :: dart(:)
 real(r8), pointer :: wrf_var_3d(:,:,:), wrf_var_2d(:,:)
+real(r8)          :: lb, ub
 type(time_type)   :: dart_time(2)
 integer           :: number_dart_values, ndays, &
                      year, month, day, hour, minute, second
-integer           :: ind, dart_ind, my_index
+integer           :: ndims, idims(2), dimids(2)
+integer           :: i, ivtype, ind, dart_ind, my_index
+character(len=80) :: varname
 character(len=19) :: timestring
 character(len=1)  :: idom
 
@@ -170,6 +178,38 @@ WRFDomains : do id = 1,num_domains
    allocate(wrf%dom(id)%var_index_list(wrf%dom(id)%number_of_wrf_variables))
    wrf%dom(id)%var_index_list = var_element_list(1:wrf%dom(id)%number_of_wrf_variables)
 
+! allocate bounds lists and instructions
+   allocate(wrf%dom(id)%lower_bound(wrf%dom(id)%number_of_wrf_variables))
+   allocate(wrf%dom(id)%upper_bound(wrf%dom(id)%number_of_wrf_variables))
+   allocate(wrf%dom(id)%clamp_or_fail(wrf%dom(id)%number_of_wrf_variables))
+   call set_variable_bound_defaults(wrf%dom(id)%number_of_wrf_variables, &
+                                    wrf%dom(id)%lower_bound, &
+                                    wrf%dom(id)%upper_bound, &
+                                    wrf%dom(id)%clamp_or_fail)
+
+! assign default bounds and link the bounds to the correct variable locations
+   do ind = 1,wrf%dom(id)%number_of_wrf_variables
+
+      ! actual location in state variable table
+      my_index =  wrf%dom(id)%var_index_list(ind)
+
+      call get_variable_bounds(wrf_state_bounds, &
+                               wrf_state_variables(1,my_index), &
+                               wrf%dom(id)%lower_bound(ind), &
+                               wrf%dom(id)%upper_bound(ind), &
+                               wrf%dom(id)%clamp_or_fail(ind))
+
+      if ( debug ) then
+         write(*,*) 'Bounds for variable ',  &
+                     trim(wrf_state_variables(1,my_index)), &
+                     ' are ',wrf%dom(id)%lower_bound(ind), &
+                     wrf%dom(id)%upper_bound(ind), &
+                     wrf%dom(id)%clamp_or_fail(ind)
+      endif
+
+   enddo
+
+
 ! allocate var size
   allocate(wrf%dom(id)%var_size(3,wrf%dom(id)%number_of_wrf_variables))
 
@@ -242,7 +282,7 @@ WRFDomains2 : do id = 1,num_domains
       my_index = wrf%dom(id)%var_index_list(ind)
 
       if ( debug ) then
-         write(*,*)'Rolling up variable ',trim(wrf_state_variables(1,my_index))
+         write(*,*) 'Rolling up variable ',trim(wrf_state_variables(1,my_index))
       endif
 
       ! get stagger and variable size
@@ -253,8 +293,8 @@ WRFDomains2 : do id = 1,num_domains
       if (  wrf%dom(id)%var_size(3,ind) == 1 ) then
 
          if ( debug ) then
-            write(*,*)trim(wrf_state_variables(1,my_index)),' is 2D'
-            write(*,*)'size  ',wrf%dom(id)%var_size(:,ind)
+            write(*,*) trim(wrf_state_variables(1,my_index)),' is 2D'
+            write(*,*) 'size  ',wrf%dom(id)%var_size(:,ind)
          endif
 
          allocate(wrf_var_2d(wrf%dom(id)%var_size(1,ind),wrf%dom(id)%var_size(2,ind)))
@@ -273,8 +313,8 @@ WRFDomains2 : do id = 1,num_domains
       else
 
          if ( debug ) then
-            write(*,*)trim(wrf_state_variables(1,my_index)),' is 3D'
-            write(*,*)'size  ',wrf%dom(id)%var_size(:,ind)
+            write(*,*) trim(wrf_state_variables(1,my_index)),' is 3D'
+            write(*,*) 'size  ',wrf%dom(id)%var_size(:,ind)
          endif
 
          allocate(wrf_var_3d(wrf%dom(id)%var_size(1,ind),wrf%dom(id)%var_size(2,ind),wrf%dom(id)%var_size(3,ind)))
@@ -285,28 +325,62 @@ WRFDomains2 : do id = 1,num_domains
                       wrf%dom(id)%var_size(1,ind), &
                       wrf%dom(id)%var_size(2,ind),wrf%dom(id)%var_size(3,ind))
  
-         ! better way to set 0, or even necessary with WRF functionality?
-!              trim(wrf_state_variables(1,my_index)) == 'QICE' .or.      &
-!              trim(wrf_state_variables(1,my_index)) == 'QSNOW' .or.      &
-!              trim(wrf_state_variables(1,my_index)) == 'QGRAUP' .or.  &
-!              trim(wrf_state_variables(1,my_index)) == 'QNDROP' .or.  &
-!              trim(wrf_state_variables(1,my_index)) == 'QNGRAUPEL' .or.  &
-!              trim(wrf_state_variables(1,my_index)) == 'QNSNOW' .or.  &
-!              trim(wrf_state_variables(1,my_index)) == 'QNRAIN' .or.  &
-!              trim(wrf_state_variables(1,my_index)) == 'QNICE' .or.  &
-!              trim(wrf_state_variables(1,my_index)) == 'QNICE' ) then
-         if ( trim(wrf_state_variables(1,my_index)) == 'QVAPOR' .or.    &
-              trim(wrf_state_variables(1,my_index)) == 'QRAIN' .or.     &
-              trim(wrf_state_variables(1,my_index)) == 'QCLOUD' ) then
+         ! check for bounds
+         lb = wrf%dom(id)%lower_bound(my_index)
+         ub = wrf%dom(id)%upper_bound(my_index)
+
+         ! check bounds and fail if requested
+         if ( trim(wrf%dom(id)%clamp_or_fail(my_index)) == 'FAIL' ) then
+
+            if (minval(wrf_var_3d) < lb ) then
+               call error_handler(E_ERR,'dart_to_wrf', &
+               'Variable '//trim(wrf_state_variables(1,my_index))// &
+               ' failed lower bounds check.', source, revision,revdate)
+            endif
+
+            if (maxval(wrf_var_3d) > ub ) then
+               call error_handler(E_ERR,'dart_to_wrf', &
+               'Variable '//trim(wrf_state_variables(1,my_index))// &
+               ' failed upper bounds check.', source, revision,revdate)
+            endif
+
+         endif ! bounds check failure request
+
+         ! apply bounds if asked
+         if ( lb /= missing_r8 ) then
 
             if ( debug ) then
-              write(*,*)'Setting 0 lower bound on ', &
+              write(*,*) 'Setting lower bound ',lb,' on ', &
                           trim(wrf_state_variables(1,my_index))
             endif
 
-            wrf_var_3d = max(0.0_r8,wrf_var_3d)
-
+            wrf_var_3d = max(lb,wrf_var_3d)
+  
          endif
+
+         if ( ub /= missing_r8 ) then
+
+            if ( debug ) then
+              write(*,*) 'Setting upper bound ',ub,' on ', &
+                          trim(wrf_state_variables(1,my_index))
+            endif
+
+            wrf_var_3d = min(ub,wrf_var_3d)
+  
+         endif
+
+!         if ( trim(wrf_state_variables(1,my_index)) == 'QVAPOR' .or.    &
+!              trim(wrf_state_variables(1,my_index)) == 'QRAIN' .or.     &
+!              trim(wrf_state_variables(1,my_index)) == 'QCLOUD' ) then
+!
+!            if ( debug ) then
+!              write(*,*) 'Setting 0 lower bound on ', &
+!                          trim(wrf_state_variables(1,my_index))
+!            endif
+
+!            wrf_var_3d = max(0.0_r8,wrf_var_3d)
+
+!         endif
 
          call nc_check( nf90_put_var(ncid(id), var_id, wrf_var_3d), &
                      'dart_to_wrf','put_var '//wrf_state_variables(1,my_index) )

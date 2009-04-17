@@ -106,6 +106,8 @@ public ::  get_number_domains,       &
            fill_default_state_table, &
            read_wrf_dimensions,      &
            get_number_of_wrf_variables, &
+           get_variable_bounds,         &
+           set_variable_bound_defaults,         &
            get_variable_size_from_file, &
            trans_3Dto1D, trans_1Dto3D, &
            trans_2Dto1D, trans_1Dto2D, &
@@ -113,7 +115,8 @@ public ::  get_number_domains,       &
 
 ! public parameters
 public :: max_state_variables, &
-          num_state_table_columns
+          num_state_table_columns, &
+          num_bounds_table_columns
 
 ! types
 public :: wrf_dom, wrf_static_data_for_dart
@@ -129,6 +132,7 @@ character(len=128), parameter :: &
 ! miscellaneous
 integer, parameter :: max_state_variables = 100
 integer, parameter :: num_state_table_columns = 5
+integer, parameter :: num_bounds_table_columns = 4
 
 !-----------------------------------------------------------------------
 ! Model namelist parameters with default values.
@@ -141,6 +145,7 @@ integer, parameter :: num_state_table_columns = 5
 logical :: output_state_vector  = .false.     ! output prognostic variables
 logical :: default_state_variables = .true.   ! use default state list?
 character(len=129) :: wrf_state_variables(num_state_table_columns,max_state_variables) = 'NULL'
+character(len=129) :: wrf_state_bounds(num_bounds_table_columns,max_state_variables) = 'NULL'
 integer :: num_moist_vars       = 3
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
@@ -169,6 +174,7 @@ logical :: scm        = .false.    ! using the single column model
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      default_state_variables, wrf_state_variables, &
+                     wrf_state_bounds, &
                      adv_mod_command, assimilation_period_seconds, &
                      allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
@@ -231,6 +237,8 @@ TYPE wrf_static_data_for_dart
    integer, dimension(:),   pointer :: var_index_list
    integer, dimension(:),   pointer :: dart_kind
    integer, dimension(:,:), pointer :: land
+   real(r8), dimension(:), pointer  :: lower_bound,upper_bound
+   character(len=10), dimension(:),pointer :: clamp_or_fail
    character(len=129),dimension(:),pointer :: description, units, stagger
 
    integer, dimension(:,:,:,:), pointer :: dart_ind
@@ -258,9 +266,10 @@ subroutine static_init_model()
 integer :: ncid
 integer :: io, iunit
 
+character (len=80)    :: name
 character (len=1)     :: idom
 logical, parameter    :: debug = .false.
-integer               :: ind, i, j, k, id, dart_index
+integer               :: var_id, ind, i, j, k, id, dart_index, model_type
 integer               :: my_index
 integer               :: var_element_list(max_state_variables)
 
@@ -501,9 +510,8 @@ WRFDomains : do id=1,num_domains
       my_index =  wrf%dom(id)%var_index_list(ind)
 
       if ( debug ) then
-         write(*,*)'Assigning dart vector indices for var_type ',wrf%dom(id)%var_type(ind)
-         write(*,*)'affiliated with WRF variable ', &
-             trim(wrf_state_variables(1,my_index)),' of size ',wrf%dom(id)%var_size(:,ind)
+         write(*,*) 'Assigning dart vector indices for var_type ',wrf%dom(id)%var_type(ind)
+         write(*,*) 'affiliated with WRF variable ',trim(wrf_state_variables(1,my_index)),' of size ',wrf%dom(id)%var_size(:,ind)
       endif
 
       wrf%dom(id)%var_index(1,ind) = dart_index
@@ -518,7 +526,7 @@ WRFDomains : do id=1,num_domains
       enddo
       wrf%dom(id)%var_index(2,ind) = dart_index - 1
 
-      if ( debug ) write(*,*)'assigned start, stop ',wrf%dom(id)%var_index(:,ind)
+      if ( debug ) write(*,*) 'assigned start, stop ',wrf%dom(id)%var_index(:,ind)
 
    enddo ! loop through all viable state variables on this domain
 
@@ -528,7 +536,7 @@ write(*,*)
 
 wrf%model_size = dart_index - 1
 allocate (ens_mean(wrf%model_size))
-if(debug) write(*,*)' wrf model size is ',wrf%model_size
+if(debug) write(*,*) ' wrf model size is ',wrf%model_size
 
 end subroutine static_init_model
 
@@ -5872,8 +5880,8 @@ implicit none
 character(len=129), intent(out) :: default_table(num_state_table_columns,max_state_variables) 
 
 integer :: row
-default_table = 'NULL'
 
+default_table = 'NULL'
 row = 0
 
 ! fill default state variable table here.
@@ -5894,31 +5902,25 @@ default_table(:,row) = (/ 'W                     ', &
                           'KIND_VERTICAL_VELOCITY', &
                           'TYPE_W                ', &
                           'UPDATE                ', &
-                          '999                   '/)
-row = row+1
-default_table(:,row) = (/ 'T                         ', &
-                          'KIND_POTENTIAL_TEMPERATURE', &
-                          'TYPE_T                    ', &
-                          'UPDATE                    ', &
-                          '999                       '/)
-row = row+1
-default_table(:,row) = (/ 'QVAPOR                 ', &
-                          'KIND_VAPOR_MIXING_RATIO', &
-                          'TYPE_QV                ', &
-                          'UPDATE                 ', &
-                          '999                    '/)
+                          '999                   '  /)
 row = row+1
 default_table(:,row) = (/ 'PH                      ', &
                           'KIND_GEOPOTENTIAL_HEIGHT', &
                           'TYPE_GZ                 ', &
                           'UPDATE                  ', &
-                          '999                     '/)
+                          '999                     '  /)
+row = row+1
+default_table(:,row) = (/ 'T                         ', &
+                          'KIND_POTENTIAL_TEMPERATURE', &
+                          'TYPE_T                    ', &
+                          'UPDATE                    ', &
+                          '999                       '  /)
 row = row+1
 default_table(:,row) = (/ 'MU           ', &
                           'KIND_PRESSURE', &
                           'TYPE_MU      ', &
                           'UPDATE       ', &
-                          '999          '/)
+                          '999          '  /)
 
 return
 
@@ -5934,7 +5936,7 @@ implicit none
 integer, intent(in) :: id
 character(len=129), intent(in) :: state_table(num_state_table_columns,max_state_variables) 
 integer, intent(out), optional :: var_element_list(max_state_variables)
-integer :: ivar, num_vars
+integer :: ivar, num_vars, domain_int, i
 character(len=129) :: my_string
 logical :: debug = .false.
 
@@ -5965,6 +5967,92 @@ get_number_of_wrf_variables = num_vars
 return
 
 end function get_number_of_wrf_variables 
+
+!--------------------------------------------
+!--------------------------------------------
+
+subroutine set_variable_bound_defaults(nbounds,lb,ub,instructions)
+
+   implicit none
+
+   integer, intent(in)                                :: nbounds
+   real(r8), dimension(nbounds), intent(out)          :: lb, ub
+   character(len=10), dimension(nbounds), intent(out) :: instructions
+
+   lb(:) = missing_r8
+   ub(:) = missing_r8
+   instructions(:) = 'NULL'
+
+   return
+
+end subroutine set_variable_bound_defaults
+
+!--------------------------------------------
+!--------------------------------------------
+
+subroutine get_variable_bounds(bounds_table,wrf_var_name,lb,ub,instructions)
+
+! matches WRF variable name in bounds table to input name, and assigns
+! the bounds and instructions if they exist
+
+   implicit none
+
+   character(len=129), intent(in)    :: bounds_table(num_bounds_table_columns,max_state_variables) 
+   character(len=129), intent(in)    :: wrf_var_name
+   real(r8),           intent(out)   :: lb,ub
+   character(len=10),  intent(out)   :: instructions
+
+   character(len=30)                 :: wrf_varname_trim, bounds_varname_trim
+   character(len=30)                 :: bound_trim
+   integer :: ivar
+   logical :: debug = .false.
+
+   wrf_varname_trim = ''
+   wrf_varname_trim = trim(wrf_var_name)
+
+   ivar = 1
+   do while ( trim(bounds_table(1,ivar)) /= 'NULL' ) 
+
+     bounds_varname_trim = trim(bounds_table(1,ivar))
+
+     if ( bounds_varname_trim == wrf_varname_trim ) then
+ 
+        bound_trim = trim(bounds_table(2,ivar))
+        if ( bound_trim  /= 'NULL' ) then
+           read(bound_trim,'(d16.8)') lb 
+        else
+           lb = missing_r8
+        endif
+
+        bound_trim = trim(bounds_table(3,ivar))
+        if ( bound_trim  /= 'NULL' ) then
+           read(bound_trim,'(d16.8)') ub 
+        else
+           ub = missing_r8
+        endif
+
+        ! instructions are required
+        instructions = trim(bounds_table(4,ivar))
+
+        if ( instructions == 'NULL' ) then
+          call error_handler(E_ERR,'get_variable_bounds','instructions for bounds on '//wrf_varname_trim//' are required',&
+                                    source,revision,revdate)
+        endif
+ 
+     endif
+
+     ivar = ivar + 1
+
+   enddo !ivar
+
+   if ( debug ) then
+      write(*,*) 'In get_variable_bounds assigned ',wrf_varname_trim
+      write(*,*) ' bounds ',lb,ub,instructions
+   endif
+
+   return
+
+end subroutine get_variable_bounds
 
 !--------------------------------------------
 !--------------------------------------------
@@ -6016,43 +6104,45 @@ integer, intent(out)              :: var_size(3)
 character(len=129),intent(out)    :: stagger
 
 logical, parameter    :: debug = .false.
-integer               :: var_id, ndims 
+integer               :: var_id, ndims, dimids(10) 
+integer               :: idim, strlen
 
    stagger = ''
+
+! get variable ID
    call nc_check( nf90_inq_varid(ncid, trim(wrf_var_name), var_id), &
-                     'get_variable_size_from_file', &
+                     'get_variable_size_from_file',                 &
                      'inq_varid '//wrf_var_name)
-   call nc_check( nf90_inquire_variable(ncid, var_id,ndims=ndims), &
-                     'get_variable_size_from_file', &
+
+! get number of dimensions and dimension IDs
+   call nc_check( nf90_inquire_variable(ncid, var_id,ndims=ndims,  &
+                     dimids=dimids),                               &
+                     'get_variable_size_from_file',                &
                      'inquire_variable '//wrf_var_name)
+
+! get dimension length, ignoring first dimension (time)
+   do idim = 1,ndims-1
+      call nc_check( nf90_inquire_dimension(ncid, dimids(idim),  &
+                     len=var_size(idim)),                               &
+                     'get_variable_size_from_file',                &
+                     'inquire_dimension '//wrf_var_name)
+   enddo
+
+! if a 2D variable fill the vertical dimension with 1
+   if ( ndims < 4 ) var_size(ndims) = 1
+
+   if ( debug ) then
+      print*,'In get_variable_size_from_file got variable size ',var_size
+   endif
+
+
+! get variable attribute stagger
    call nc_check( nf90_get_att(ncid, var_id, 'stagger', stagger), &
                      'get_variable_size_from_file', &
                      'get_att '//wrf_var_name//' '//stagger)
 
    if ( debug ) then
       print*,'In get_variable_size_from_file got stagger ',trim(stagger),' for variable ',trim(wrf_var_name)
-   endif
-
-! NOTE: using default to deal with empty strings - not the best solution
-   select case (trim(stagger))
-!      case ('')   ! mass grid unstaggered vertical
-!         var_size = (/we,sn,bt/)
-      case ('Z')  ! mass grid staggered vertical
-         var_size = (/we,sn,bts/)
-      case ('X')  ! U grid unstaggered vertical
-         var_size = (/wes,sn,bt/)
-      case ('Y')  ! V grid unstaggered vertical
-         var_size = (/we,sns,bt/)
-      case default 
-         if ( debug ) print*,'Defaulting to unstaggered for ',wrf_var_name
-         var_size = (/we,sn,bt/)
-!         print*,'Could not determine stagger or size for ',wrf_var_name
-!         print*,'on domain ',id
-   end select
-
-! make vertical dimension 1 if a 2D variable
-   if ( ndims < 4 ) then ! looking for (time,z,y,x)
-      var_size(3) = 1
    endif
 
 return
@@ -6110,14 +6200,18 @@ integer function get_type_ind_from_type_string(id, wrf_varname)
 
    integer                      :: ivar, my_index
    logical                      :: debug = .false.
+   character(len=30)            :: wrf_varname_trim, wrf_state_var_trim
 
    get_type_ind_from_type_string = -1
 
    do ivar = 1,wrf%dom(id)%number_of_wrf_variables
       
       my_index =  wrf%dom(id)%var_index_list(ivar)
+
+      wrf_state_var_trim = trim(wrf_state_variables(1,my_index))
+      wrf_varname_trim   = trim(wrf_varname)
       
-      if ( trim(wrf_state_variables(1,my_index)) == trim(wrf_varname) ) then
+      if ( wrf_state_var_trim == wrf_varname_trim ) then
 
          get_type_ind_from_type_string = ivar
 
@@ -6125,7 +6219,7 @@ integer function get_type_ind_from_type_string(id, wrf_varname)
 
    enddo ! ivar
 
-   if ( debug ) write(*,*)'get_type_from_ind ',trim(wrf_varname),' ',get_type_ind_from_type_string
+   if ( debug ) write(*,*) 'get_type_from_ind ',trim(wrf_varname),' ',get_type_ind_from_type_string
 
    return
 

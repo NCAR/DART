@@ -23,6 +23,7 @@ use  assim_model_mod, only : open_restart_read, open_restart_write, aread_state_
                              awrite_state_restart
 use model_mod, only        : max_state_variables,  &
                              num_state_table_columns, read_wrf_dimensions, &
+                             num_bounds_table_columns, &
                              get_number_of_wrf_variables,  &
                              get_variable_size_from_file, wrf_dom, &
                              fill_default_state_table, &
@@ -47,6 +48,7 @@ character(len=128), parameter :: &
 logical :: output_state_vector  = .false.  ! state vs. prognostic format
 logical :: default_state_variables = .true.   ! use default state list?
 character(len=129) :: wrf_state_variables(num_state_table_columns,max_state_variables) = 'NULL'
+character(len=129) :: wrf_state_bounds(num_bounds_table_columns,max_state_variables) = 'NULL'
 integer :: num_moist_vars       = 3
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
@@ -70,6 +72,7 @@ logical :: scm        = .false.    ! using the single column model
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      default_state_variables, wrf_state_variables, &
+                     wrf_state_bounds, &
                      adv_mod_command, assimilation_period_seconds, &
                      allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
@@ -83,7 +86,7 @@ type(wrf_dom) :: wrf
 real(r8), pointer :: dart(:)
 real(r8), allocatable :: wrf_var_3d(:,:,:), wrf_var_2d(:,:)
 type(time_type)   :: dart_time(2)
-integer           :: number_dart_values, &
+integer           :: number_dart_values, ndays, &
                      year, month, day, hour, minute, second
 integer           :: ndims, idims(2), dimids(2)
 integer           :: i, ivtype, ind, dart_ind, my_index
