@@ -17,7 +17,7 @@ function obs = plot_wind_vectors( fname, ncname, platform, varargin )
 %                 used.
 %
 % fname    = 'wind_vectors.006.dat';
-% ncname   = 'obs_diag_output.nc';
+% ncname   = 'obs_to_table_output.nc';
 % platform = 'RADIOSONDE';
 % levels   = [1020 500];
 % region   = [0 360 0 90];    % 
@@ -61,7 +61,7 @@ data.scalefactor = scalefactor;
 
 f = netcdf(ncname,'nowrite');
 data.platforms = f{'ObservationTypes'}(:);
-data.timeunits = f{'time'}.units(:);
+data.timeunits = f{'time_bounds'}.units(:);
 close(f);
 
 timebase   = sscanf(data.timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
@@ -219,6 +219,11 @@ for i = 1:nplatforms
    uindex = findstr(Ustrings(i,:),'_U_WIND_COMPONENT') - 1;
    vindex = findstr(Vstrings(i,:),'_V_WIND_COMPONENT') - 1;
 
+   if (isempty(uindex) | isempty(vindex)) 
+      uindex = findstr(Ustrings(i,:),'_U_10_METER_WIND') - 1;
+      vindex = findstr(Vstrings(i,:),'_V_10_METER_WIND') - 1;
+   end 
+
    Ubase  = Ustrings(i,1:uindex);
    Vbase  = Vstrings(i,1:vindex);
 
@@ -260,15 +265,16 @@ seconds  = obsmat(inds, 3);
 lon      = obsmat(inds, 4);
 lat      = obsmat(inds, 5);
 level    = obsmat(inds, 6);
-levind   = obsmat(inds, 7);
-Uqc      = obsmat(inds, 8);
-Vqc      = obsmat(inds, 9);
-U        = obsmat(inds,10);
-V        = obsmat(inds,11);
-Upr      = obsmat(inds,12);
-Vpr      = obsmat(inds,13);
-Upo      = obsmat(inds,14);
-Vpo      = obsmat(inds,15);
+Uqc      = obsmat(inds, 7);
+Vqc      = obsmat(inds, 8);
+U        = obsmat(inds, 9);
+V        = obsmat(inds,10);
+if ( size(obsmat,2) > 10 )
+   Upr   = obsmat(inds,11);
+   Vpr   = obsmat(inds,12);
+   Upo   = obsmat(inds,13);
+   Vpo   = obsmat(inds,14);
+end
 times    = day + seconds/86400;
 
 %--------------------------------------------------
@@ -300,15 +306,16 @@ else
    lon      =      lon(inds);
    lat      =      lat(inds);
    level    =    level(inds);
-   levind   =   levind(inds);
    Uqc      =      Uqc(inds);
    Vqc      =      Vqc(inds);
    U        =        U(inds);
    V        =        V(inds);
-   Upr      =      Upr(inds);
-   Vpr      =      Vpr(inds);
-   Upo      =      Upo(inds);
-   Vpo      =      Vpo(inds);
+   if ( size(obsmat,2) > 10 )
+      Upr   =      Upr(inds);
+      Vpr   =      Vpr(inds);
+      Upo   =      Upo(inds);
+      Vpo   =      Vpo(inds);
+   end
    times    =    times(inds);
 end
 
@@ -342,7 +349,6 @@ else
    lon      =      lon(inds);
    lat      =      lat(inds);
    level    =    level(inds);
-   levind   =   levind(inds);
    Uqc      =      Uqc(inds);
    Vqc      =      Vqc(inds);
    U        =        U(inds);
@@ -360,10 +366,12 @@ end
 
 U(   U   < -900) = NaN;
 V(   V   < -900) = NaN;
-Upr( Upr < -900) = NaN;
-Vpr( Vpr < -900) = NaN;
-Upo( Upo < -900) = NaN;
-Vpo( Vpo < -900) = NaN;
+if ( size(obsmat,2) > 10 )
+   Upr( Upr < -900) = NaN;
+   Vpr( Vpr < -900) = NaN;
+   Upo( Upo < -900) = NaN;
+   Vpo( Vpo < -900) = NaN;
+end
 
 %--------------------------------------------------
 % Create the output structure.
@@ -375,15 +383,16 @@ obs.seconds     = seconds;
 obs.lon         = lon;
 obs.lat         = lat;
 obs.level       = level;
-obs.levind      = levind;
 obs.Uqc         = Uqc;
 obs.Vqc         = Vqc;
 obs.U           = U;
 obs.V           = V;
-obs.Upr         = Upr;
-obs.Vpr         = Vpr;
-obs.Upo         = Upo;
-obs.Vpo         = Vpo;
+if ( size(obsmat,2) > 10 )
+   obs.Upr      = Upr;
+   obs.Vpr      = Vpr;
+   obs.Upo      = Upo;
+   obs.Vpo      = Vpo;
+end
 obs.times       = times;
 obs.levels      = data.levels;
 obs.region      = data.region;
