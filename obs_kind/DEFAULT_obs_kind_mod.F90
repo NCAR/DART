@@ -14,7 +14,7 @@
 module obs_kind_mod
 
 use    utilities_mod, only : register_module, error_handler,  &
-                             E_ERR, E_MSG,                    &
+                             E_ERR, E_MSG, E_WARN,               &
                              logfileunit, find_namelist_in_file, &
                              check_namelist_read, do_output
 
@@ -26,6 +26,7 @@ public :: get_obs_kind_name, assimilate_this_obs_kind, &
           write_obs_kind, read_obs_kind, get_kind_from_menu, map_def_index
 ! Added by TRW for restart file functionality
 public :: get_raw_obs_kind_name, get_raw_obs_kind_index
+public :: do_obs_form_pair, add_wind_names
 
 !----------------------------------------------------------------------------
 ! Note: this list is currently maintained by hand; new kinds must be added
@@ -757,5 +758,248 @@ endif
 end function get_kind_from_menu
 
 !----------------------------------------------------------------------------
+
+function add_wind_names(my_names)
+!----------------------------------------------------------------------
+! Define/Append the 'horizontal wind' obs_kinds to supplant the list 
+! of names for scalar observations in obs_kind_names()
+! i.e. if there is a RADIOSONDE_U_WIND_COMPONENT and
+!                  a RADIOSONDE_V_WIND_COMPONENT, there must be 
+!  
+!                  a RADIOSONDE_HORIZONTAL_WIND
+! Replace calls to 'get_obs_kind_name' with variable 'my_obs_kind_names'
+!----------------------------------------------------------------------
+
+character(len=*), pointer :: my_names(:) ! INTENT OUT, btw
+integer :: add_wind_names
+
+integer :: ivar, nwinds
+character(len=len(my_names)) :: str1, str2, str3
+character(len=len(my_names)), dimension(2*max_obs_kinds) :: names
+
+! Initially, the array of obs_kind_names is exactly 'max_num_obs' in length.
+! This block finds the U,V wind pairs and creates the 'horizontal_wind'
+! equivalents. Depending on the number of unique wind pairs - we can allocate
+! space, copy the existing names into that array, and append the new unique ones.
+! easy ...
+
+integer :: indx1, indx2
+integer :: indx1N,indx2N,indxN
+
+logical :: DEBUG = .false.
+
+nwinds = 0
+
+if ( DEBUG ) write(*,*)'my_names length is ',len(my_names)
+
+! Copy all the known obs kinds to a local list that is SURELY too BIG
+! as we find wind pairs, we insert the new name at the end of the known 
+! names.
+
+do ivar = 1,max_obs_kinds
+   names(ivar) = get_obs_kind_name(ivar)
+enddo
+
+! Search through the obs_kind_name list for matching U,V components.
+! The U component always comes before the V component, so we exploit that.
+! Once we have counted the pairs - we know how far to expand the obs_kind list.
+
+do ivar = 2,max_obs_kinds
+
+   str1   = names(ivar-1)
+   indx1  = index(str1,'_U_WIND_COMPONENT') - 1
+   indx1N = len_trim(str1)
+
+   str2   = names(ivar)
+   indx2  = index(str2,'_V_WIND_COMPONENT') - 1
+   indx2N = len_trim(str2)
+
+   if ( DEBUG ) write(*,*)'Checking ',ivar, indx1, indx2, trim(adjustl(str2))
+
+   if ((indx1 > 0) .and. (indx2 > 0)) then ! we know we have u,v wind components
+
+      indxN = index(str1(1:indx1),str2(1:indx2))
+
+      if ( DEBUG )  write(*,*)' have u,v components at ',ivar,indxN
+
+      if (indxN > 0) then ! we know they are matching kinds
+         nwinds = nwinds + 1
+         str3   = str1(1:indx2)//'_HORIZONTAL_WIND'
+         names(max_obs_kinds + nwinds) = str3
+
+         if ( DEBUG ) write(*,*)'Seems like ',str1(1:indx1N),' matches ',str2(1:indx2N)
+         if ( DEBUG ) write(*,*)'results in ',str3
+      endif
+   endif
+
+enddo
+
+! Turns out there is also a [U,V]_10_METER_WIND
+! Need to find and count them, too.
+
+do ivar = 2,max_obs_kinds
+
+   str1   = get_obs_kind_name(ivar-1)
+   indx1  = index(str1,'_U_10_METER_WIND') - 1
+   indx1N = len_trim(str1)
+
+   str2   = get_obs_kind_name(ivar)
+   indx2  = index(str2,'_V_10_METER_WIND') - 1
+   indx2N = len_trim(str2)
+
+   if ((indx1 > 0) .and. (indx2 > 0)) then ! we know we have u,v wind components
+      indxN = index(str1(1:indx1),str2(1:indx2))
+      if (indxN > 0) then ! we know they are matching kinds
+         nwinds = nwinds + 1
+         str3   = str1(1:indx2)//'_10_METER_HORIZONTAL_WIND'
+         names(max_obs_kinds + nwinds) = str3
+      endif
+   endif
+enddo
+
+if ( DEBUG ) write(*,*)'There are ',nwinds,' pairs of winds.'
+
+! Now that we know how many wind pairs there are, we return the
+! exact number and new array of observation kind names  
+
+add_wind_names = max_obs_kinds + nwinds
+
+allocate(my_names(add_wind_names))
+
+do ivar = 1,add_wind_names
+   my_names(ivar) = names(ivar)
+enddo
+
+end function add_wind_names
+
+!----------------------------------------------------------------------------
+
+function do_obs_form_pair(obs1type, obs2type, obskey, all_obs_typenames, flavor )
+
+! This routine ensures that the U,V components of wind
+! are from the same observation platform, and returns
+! the 'type'. Keep in mind that DART only uses scalars, so there is
+! no explicit type for a bivariate observation. The fourth
+! argument to this function is the list of all the normal 'types' plus
+! all the types that can be combined to form a wind pair. e.g.
+! all_obs_typenames = 'RADIOSONDE_U_WIND_COMPONENT',
+!                     'RADIOSONDE_U_WIND_COMPONENT',
+!                     'RADIOSONDE_HORIZONTAL_WIND', ...
+!
+! obstype1           The (specific) 'type' of a candidate observation
+! obstype2           The (specific) 'type' of a candidate observation
+! obskey             The observation number (from the obs sequence file - 
+!                    used for error messages only)
+! all_obs_typenames  The 'extended' list of observation types - declared
+!                    by grok_observation_names()
+! flavor             The (specific) 'type' of wind ... i.e. the index
+!                    into all_obs_typenames(:)
+
+integer,                        intent(in)  :: obs1type, obs2type, obskey
+character(len=*), dimension(:), intent(in)  :: all_obs_typenames
+integer,                        intent(out) :: flavor
+logical :: do_obs_form_pair
+
+character(len=len(all_obs_typenames)) :: str1, str2, str3
+
+integer :: obs1kind, obs2kind, num_obs_kinds
+integer :: indx1, indx2, ivar
+
+logical :: DEBUG = .false.
+
+do_obs_form_pair = .FALSE. ! Assume no match ... till proven otherwise
+flavor           = -1 ! bad flavor
+
+obs1kind = get_obs_kind_var_type(obs1type)
+obs2kind = get_obs_kind_var_type(obs2type)
+
+! flavor 1 has to be either U or V, flavor 2 has to be the complement
+if ( .not.((obs2kind == KIND_U_WIND_COMPONENT .and. &
+            obs1kind == KIND_V_WIND_COMPONENT) .or. &
+           (obs1kind == KIND_U_WIND_COMPONENT .and. &
+            obs2kind == KIND_V_WIND_COMPONENT)) ) then
+   write(msg_string,*) 'around OBS ', obskey, &
+           'flavors not complementary ...',obs1type, obs2type
+   call error_handler(E_WARN,'do_obs_form_pair',msg_string,source,revision,revdate)
+   flavor = -obs1type
+   return
+endif
+
+! By now they must be compatible wind components but need not be taken
+! be the same observation platform.  Protect against matching
+! 'QKSWND_U_WIND_COMPONENT' and a 'PROFILER_V_WIND_COMPONENT'
+
+str1  = get_obs_kind_name(obs1type)
+str2  = get_obs_kind_name(obs2type)
+
+if (len_trim(str1) /= len_trim(str2)) then
+   write(     *     ,*)'wind component 1 ',trim(str1)
+   write(     *     ,*)'wind component 2 ',trim(str2)
+   write(msg_string,*) 'around OBS ', obskey, ' adjacent U,V lengths not matching'
+   call error_handler(E_WARN,'do_obs_form_pair',msg_string,source,revision,revdate)
+   flavor = -obs2type
+   return
+endif
+
+! Focus on getting the platform name 
+! There are only two viable wind component strings (see obs_def_mod.f90):
+! '_?_WIND_COMPONENT' and '_?_10_METER_WIND'
+
+indx1 = index(str1,'_WIND_COMPONENT') - 3
+indx2 = index(str1, '_10_METER_WIND') - 3
+
+if ( DEBUG ) write(*,*)'str1, index is ',trim(str1),indx1
+if ( DEBUG ) write(*,*)'str2, index is ',trim(str1),indx2
+
+if ( (indx1 < 1) .and. (indx2 < 1) ) then
+   write(msg_string,*) 'around OBS ', obskey,' '//trim(str1)//' not a known wind name ...'
+   call error_handler(E_ERR,'do_obs_form_pair',msg_string,source,revision,revdate)
+   flavor = -obs2type
+   return
+endif
+
+if (indx1 > 0) then ! must be _?_WIND_COMPONENT
+   str3 = str1(1:indx1)//'_HORIZONTAL_WIND'
+else                ! must be _?_10_METER_WIND
+   str3 = str1(1:indx2)//'_10_METER_HORIZONTAL_WIND'
+   indx1 = indx2
+endif
+
+! So now we have the platform name for one of the observations
+! and that (1:indx1) defines the platform name in a matching scenario.
+! str1(1:indx1) and str2(1:indx1) should be the wind name - 
+! 'RADIOSONDE_' or 'SHIP_' or 'AIREP_' or ...
+
+if (index(str1, str2(1:indx1)) < 1) then
+   write(msg_string,*) 'around OBS ', obskey, trim(str1),trim(str2), 'observation types not compatible.'
+   call error_handler(E_WARN,'do_obs_form_pair',msg_string,source,revision,revdate)
+endif
+
+! Find the derived type in our augmented list.
+! DEBUG ... remove need for num_obs_kinds
+
+num_obs_kinds = size(all_obs_typenames)
+
+if ( DEBUG ) write(*,*)'I think there are ',num_obs_kinds,' different types.'
+
+MyKind : do ivar = 1,num_obs_kinds
+   indx1 = index(str3, all_obs_typenames(ivar))
+   if (indx1 > 0) then
+      flavor = ivar
+      do_obs_form_pair = .TRUE.
+      exit MyKind
+   endif
+enddo MyKind
+
+! If we have checked all the types and not found a match ... 
+
+if (.not. do_obs_form_pair ) then
+   write(     *     ,*) trim(str1),' ',trim(str2)
+   write( msg_string,*) 'around OBS ', obskey, 'observation types not known.'
+   call error_handler(E_ERR,'do_obs_form_pair',msg_string,source,revision,revdate)
+endif
+
+end function do_obs_form_pair
+
 
 end module obs_kind_mod

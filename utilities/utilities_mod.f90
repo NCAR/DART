@@ -117,7 +117,7 @@ integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 real(r8), parameter :: TWOPI = PI * 2.0_r8
 
 public :: file_exist, get_unit, open_file, close_file, timestamp, &
-       register_module, error_handler, to_upper, &
+       register_module, error_handler, to_upper, next_file, &
        nc_check, logfileunit, nmlfileunit, &
        find_textfile_dims, file_to_text, is_longitude_between, &
        initialize_utilities, finalize_utilities, dump_unit_attributes, &
@@ -147,6 +147,9 @@ character(len=128), parameter :: &
 logical, save :: module_initialized = .false.
 integer, save :: logfileunit = -1
 integer, save :: nmlfileunit = -1
+
+
+character(len = 169) :: msgstring
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -1000,7 +1003,7 @@ character(len = *), intent(in) :: nml_name
 integer, intent(out)           :: iunit
 logical, intent(in), optional :: write_to_logfile_in
 
-character(len = 169) :: nml_string, test_string, err_string
+character(len = 169) :: nml_string, test_string
 integer              :: io
 logical              :: write_to_logfile
 
@@ -1021,15 +1024,15 @@ if(file_exist(trim(namelist_file_name))) then
       read(iunit, '(A)', iostat = io) nml_string
       if(io /= 0) then
          ! No values for this namelist; error
-         write(err_string, *) 'Namelist entry &', nml_name, ' must exist in ', namelist_file_name
+         write(msgstring, *) 'Namelist entry &', nml_name, ' must exist in ', namelist_file_name
          ! Can't write to logfile if it hasn't yet been opened
          if(write_to_logfile) then
-            call error_handler(E_ERR, 'find_namelist_in_file', err_string, &
+            call error_handler(E_ERR, 'find_namelist_in_file', msgstring, &
                source, revision, revdate)
          else
             write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
             write(*, *) 'Error is in subroutine find_namelist_in_file'
-            write(*, *) err_string
+            write(*, *) msgstring
             write(*,*)'  ',trim(source)
             write(*,*)'  ',trim(revision)
             write(*,*)'  ',trim(revdate)
@@ -1044,14 +1047,14 @@ if(file_exist(trim(namelist_file_name))) then
    end do
 else
    ! No namelist_file_name file is an error
-   write(err_string, *) 'Namelist input file: ', namelist_file_name, ' must exist.'
+   write(msgstring, *) 'Namelist input file: ', namelist_file_name, ' must exist.'
    if(write_to_logfile) then
-      call error_handler(E_ERR, 'find_namelist_in_file', err_string, &
+      call error_handler(E_ERR, 'find_namelist_in_file', msgstring, &
          source, revision, revdate)
    else
       write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
       write(*, *) 'Error is in subroutine find_namelist_in_file'
-      write(*, *) err_string
+      write(*, *) msgstring
       write(*,*)'  ',trim(source)
       write(*,*)'  ',trim(revision)
       write(*,*)'  ',trim(revdate)
@@ -1078,7 +1081,7 @@ integer,            intent(in) :: iunit, iostat_in
 character(len = *), intent(in) :: nml_name
 logical, intent(in), optional :: write_to_logfile_in
 
-character(len=159) :: nml_string, err_string
+character(len=159) :: nml_string
 integer            :: io
 logical            :: write_to_logfile
 
@@ -1096,14 +1099,14 @@ else
    ! A failure in this read means that the namelist started but never terminated
    ! Result was falling off the end, so backspace followed by read fails
    if(io /= 0) then
-      write(err_string, *) 'Namelist ', trim(nml_name), ' started but never terminated'
+      write(msgstring, *) 'Namelist ', trim(nml_name), ' started but never terminated'
       if(write_to_logfile) then
-         call error_handler(E_ERR, 'check_namelist_read', err_string, &
+         call error_handler(E_ERR, 'check_namelist_read', msgstring, &
             source, revision, revdate)
       else
          write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
          write(*, *) 'Error is in subroutine check_namelist_read'
-         write(*, *) err_string
+         write(*, *) msgstring
          write(*,*)'  ',trim(source)
          write(*,*)'  ',trim(revision)
          write(*,*)'  ',trim(revdate)
@@ -1114,20 +1117,20 @@ else
       ! TEMP HELP FOR USERS; remove after next release
       if (len(nml_name) >= 10) then
          if ((nml_name(1:10) == 'filter_nml') .and. (index(nml_string,'inf_start_from_restart') > 0)) then
-            write(err_string, *) 'inf_start_from_restart obsolete'
-            call error_handler(E_MSG, 'filter_nml: ', err_string, "", "", "")
-            write(err_string, *) 'use inf_initial_from_restart and inf_sd_initial_from_restart'
-            call error_handler(E_MSG, 'filter_nml: ', err_string, "", "", "")
+            write(msgstring, *) 'inf_start_from_restart obsolete'
+            call error_handler(E_MSG, 'filter_nml: ', msgstring, "", "", "")
+            write(msgstring, *) 'use inf_initial_from_restart and inf_sd_initial_from_restart'
+            call error_handler(E_MSG, 'filter_nml: ', msgstring, "", "", "")
          endif 
       endif 
-      write(err_string, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
+      write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
       if(write_to_logfile) then
-         call error_handler(E_ERR, 'check_namelist_read', err_string, &
+         call error_handler(E_ERR, 'check_namelist_read', msgstring, &
             source, revision, revdate)
       else
          write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
          write(*, *) 'Error is in subroutine check_namelist_read'
-         write(*, *) err_string
+         write(*, *) msgstring
          write(*,*)'  ',trim(source)
          write(*,*)'  ',trim(revision)
          write(*,*)'  ',trim(revdate)
@@ -1227,7 +1230,13 @@ end subroutine find_textfile_dims
 
 subroutine file_to_text( fname, textblock )
 !
-!
+! Reads a text file into a character variable.
+! Initially needed to read a namelist file into a variable that could 
+! then be inserted into a netCDF file. Due to a quirk in the way Fortran
+! and netCDF play together, I have not figured out how to dynamically
+! create the minimal character length ... so any line longer than
+! the declared length of the textblock variable is truncated.
+
 character(len=*),               intent(IN)  :: fname
 character(len=*), dimension(:), intent(OUT) :: textblock
 
@@ -1310,7 +1319,128 @@ is_longitude_between = ((lon2 >= minl) .and. (lon2 <= maxl))
 
 
 end function is_longitude_between 
-                           
+
+
+
+Function next_file(fname,ifile)
+!----------------------------------------------------------------------
+! The file name can take one of three forms:
+! /absolute/path/to/nirvana/obs_001/obs_seq.final   (absolute path)
+! obs_0001/obs_seq.final    (relative path)
+! obs_seq.final      (no path ... local)
+!
+! If there is a '/' in the file name, we grab the portion before the
+! slash and look for an underscore. Anything following the underscore
+! is presumed to be the portion to increment.
+!
+! If there is no slash AND ifile is > 1 ... we have already read
+! the 'one and only' obs_seq.final file and we return 'done'.
+!----------------------------------------------------------------------
+
+character(len=*), intent(in) :: fname
+integer,          intent(in) :: ifile
+
+character(len=len(fname)) :: next_file
+character(len=len(fname)) :: dir_name
+
+integer,            SAVE :: filenum = 0
+integer,            SAVE :: dir_prec = 0
+character(len=129), SAVE :: dir_base
+character(len=129), SAVE :: filename
+character(len=129), SAVE :: dir_ext
+
+integer :: slashindex, splitindex, i, strlen
+
+if (len(fname) > len(dir_base) ) then
+   write(msgstring,*)'input filename not guaranteed to fit in local variables'
+   call error_handler(E_MSG,'next_file',msgstring, source,revision,revdate)
+
+   write(msgstring,'('' input filename (len='',i3,'') tempvars are (len='',i3,'')'')') &
+   len(fname),len(dir_base)
+
+   call error_handler(E_MSG,'next_file',msgstring, source,revision,revdate)
+   write(msgstring,*)'increase len of dir_base, filename, dir_ext and recompile'
+   call error_handler(E_MSG,'next_file',msgstring, source,revision,revdate)
+endif
+
+if (ifile == 1) then ! First time through ... find things.
+
+   ! Start looking (right-to-left) for the 'slash'.
+   ! Anything to the right of it must be a filename.
+   ! Anything to the left must be the part that gets incremented.
+
+   filename   = adjustl(fname)
+   next_file  = trim(filename)
+   strlen     = len_trim(filename)
+   slashindex = 0
+
+   SlashLoop : do i = strlen,1,-1
+   if ( next_file(i:i) == '/' ) then
+      slashindex = i
+      exit SlashLoop
+   endif
+   enddo SlashLoop
+
+   if (slashindex > 0) then ! we have a directory structure
+
+      dir_name   = trim(fname(1:slashindex-1))
+      filename   = trim(fname(slashindex+1:129))
+      strlen     = len_trim(dir_name)
+      splitindex = 0
+
+      SplitLoop : do i = strlen,1,-1
+      if ( dir_name(i:i) == '_' ) then
+         splitindex = i
+         exit SplitLoop
+      elseif (dir_name(i:i) == '/') then
+         ! there is no underscore in the directory node
+         ! immediately preceeding the filename
+         exit SplitLoop
+      endif
+      enddo SplitLoop
+
+      if (splitindex <= 0) then
+         filenum  = -1 ! indicates no next file
+      else
+         dir_base   = dir_name(1:splitindex-1)
+         dir_ext    = dir_name(splitindex+1:slashindex-1)
+         dir_prec   = slashindex - splitindex - 1
+
+         read(dir_ext,*) filenum
+      endif
+
+   else ! we have one single file - on the first trip through
+
+      filenum  = -1 ! indicates no next file
+
+   endif 
+
+else
+
+   if (filenum < 0) then
+      next_file = 'doneDONEdoneDONE'
+   else
+
+      filenum = filenum + 1
+      if (dir_prec == 1) then
+      write(next_file,'(a,''_'',i1.1,''/'',a)') trim(dir_base),filenum,trim(filename)
+      elseif (dir_prec == 2) then
+      write(next_file,'(a,''_'',i2.2,''/'',a)') trim(dir_base),filenum,trim(filename)
+      elseif (dir_prec == 3) then
+      write(next_file,'(a,''_'',i3.3,''/'',a)') trim(dir_base),filenum,trim(filename)
+      elseif (dir_prec == 4) then
+      write(next_file,'(a,''_'',i4.4,''/'',a)') trim(dir_base),filenum,trim(filename)
+      else
+      write(next_file,'(a,''_'',i5.5,''/'',a)') trim(dir_base),filenum,trim(filename)
+      endif
+
+   endif
+
+endif
+
+end Function next_file
+
+
 !=======================================================================
 ! End of utilities_mod
 !=======================================================================

@@ -46,7 +46,9 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
 use    utilities_mod, only : open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, logfileunit, nmlfileunit, timestamp, &
-                             find_namelist_in_file, check_namelist_read, nc_check
+                             find_namelist_in_file, check_namelist_read, nc_check, &
+                             next_file, find_textfile_dims, file_to_text
+
 use         sort_mod, only : sort
 
 use typeSizes
@@ -503,13 +505,7 @@ write(nsigmaUnit,'(a)') '   day   secs    lon      lat    level         obs    g
 ObsFileLoop : do ifile=1, Nepochs*4
 !-----------------------------------------------------------------------
 
-   ! TODO: NextFile only handles relative filenames (as of 12/20/2007).
-   ! The assumption is that the file are organized  obs_0001/obs_seq.final   
-   ! NextFile finds the first slash instead of the last slash. If everything
-   ! were slaved off the last slash I suspect relative and absolute would work.
-   ! TJH 2007/12/20
-
-   obs_seq_in_file_name = NextFile(obs_sequence_name,ifile)
+   obs_seq_in_file_name = next_file(obs_sequence_name,ifile)
 
    if ( file_exist(trim(obs_seq_in_file_name)) ) then
       write(msgstring,*)'opening ', trim(obs_seq_in_file_name)
@@ -3221,108 +3217,6 @@ CONTAINS
 
 
 
-   Function NextFile(fname,ifile)
-   !----------------------------------------------------------------------
-   ! The file name can take one of three forms:
-   ! /absolute/path/to/nirvana/obs_001/obs_seq.final   (absolute path)
-   ! obs_0001/obs_seq.final    (relative path)
-   ! obs_seq.final      (no path ... local)
-   !
-   ! If there is a '/' in the file name, we grab the portion before the
-   ! slash and look for an underscore. Anything following the underscore
-   ! is presumed to be the portion to increment.
-   !
-   ! If there is no slash AND ifile is > 1 ... we have already read
-   ! the 'one and only' obs_seq.final file and we return 'done'.
-   !----------------------------------------------------------------------
-
-   character(len=129), intent(in) :: fname
-   integer,            intent(in) :: ifile
-   character(len=129)             :: NextFile
-
-   integer,                     SAVE :: filenum = 0
-   integer,                     SAVE :: dir_prec = 0
-   character(len=129),          SAVE :: dir_base
-   character(len=129),          SAVE :: filename
-   character(len=stringlength), SAVE :: dir_ext
-
-   character(len=129) :: dir_name
-   integer :: slashindex, splitindex, i, strlen
-
-   if (ifile == 1) then ! First time through ... find things.
-
-      ! Start looking (right-to-left) for the 'slash'.
-      ! Anything to the right of it must be a filename.
-      ! Anything to the left must be the part that gets incremented.
-
-      filename   = adjustl(fname)
-      NextFile   = trim(filename)
-      strlen     = len_trim(filename)
-      slashindex = 0
-
-      SlashLoop : do i = strlen,1,-1
-      if ( NextFile(i:i) == '/' ) then
-         slashindex = i
-         exit SlashLoop
-      endif
-      enddo SlashLoop
-
-      if (slashindex > 0) then ! we have a directory structure
-
-         dir_name   = trim(fname(1:slashindex-1))
-         filename   = trim(fname(slashindex+1:129))
-         strlen     = len_trim(dir_name)
-         splitindex = 0
-
-         SplitLoop : do i = strlen,1,-1
-         if ( dir_name(i:i) == '_' ) then
-            splitindex = i
-            exit SplitLoop
-         endif
-         enddo SplitLoop
-
-         if (splitindex <= 0) then
-            filenum  = -1 ! indicates no next file
-         else
-            dir_base   = dir_name(1:splitindex-1)
-            dir_ext    = dir_name(splitindex+1:slashindex-1)
-            dir_prec   = slashindex - splitindex - 1
-            read(dir_ext,*) filenum
-         endif
-
-      else ! we have one single file - on the first trip through
-
-         filenum  = -1 ! indicates no next file
-
-      endif 
-
-   else
-
-      if (filenum < 0) then
-         NextFile = 'doneDONEdoneDONE'
-      else
-
-         filenum = filenum + 1
-         if (dir_prec == 1) then
-         write(NextFile,'(a,''_'',i1.1,''/'',a)') trim(dir_base),filenum,trim(filename)
-         elseif (dir_prec == 2) then
-         write(NextFile,'(a,''_'',i2.2,''/'',a)') trim(dir_base),filenum,trim(filename)
-         elseif (dir_prec == 3) then
-         write(NextFile,'(a,''_'',i3.3,''/'',a)') trim(dir_base),filenum,trim(filename)
-         elseif (dir_prec == 4) then
-         write(NextFile,'(a,''_'',i4.4,''/'',a)') trim(dir_base),filenum,trim(filename)
-         else
-         write(NextFile,'(a,''_'',i5.5,''/'',a)') trim(dir_base),filenum,trim(filename)
-         endif
-
-      endif
-
-   endif
-
-   end Function NextFile
-
-  
- 
    Subroutine ObsLocationsExist( printswitch )
 
    ! This routine checks for the existence of observation location files.

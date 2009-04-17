@@ -423,7 +423,9 @@ function loc_eq(loc1,loc2)
 !
 ! interface operator used to compare two locations.
 ! Returns true only if all components are 'the same' to within machine
-! precision.
+! precision. There is some debate as to whether or not the vertical
+! locations need to be identical if 'VERTISUNDEF' ... hard to peruse
+! the code tree to find where this may be affected. 
 
 implicit none
 
@@ -434,9 +436,13 @@ if ( .not. module_initialized ) call initialize_module
 
 loc_eq = .false.
 
+! if ( loc1%which_vert /= loc2%which_vert ) return
 if ( abs(loc1%lon  - loc2%lon ) > epsilon(loc1%lon ) ) return
 if ( abs(loc1%lat  - loc2%lat ) > epsilon(loc1%lat ) ) return
-if ( abs(loc1%vloc - loc2%vloc) > epsilon(loc1%vloc) ) return
+
+!if ( loc1%which_vert /= VERTISUNDEF ) then
+   if ( abs(loc1%vloc - loc2%vloc) > epsilon(loc1%vloc) ) return
+!endif
 
 loc_eq = .true.
 
@@ -550,8 +556,6 @@ implicit none
 
 type (location_type) :: set_location2
 real(r8), intent(in) :: list(:)
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -682,7 +686,6 @@ type(location_type) :: read_location
 character(len=*), intent(in), optional :: fform
 
 character(len=5)   :: header
-character(len=129) :: errstring
 character(len=32) :: fileformat
 
 if ( .not. module_initialized ) call initialize_module
@@ -1687,8 +1690,6 @@ implicit none
 
 logical                          :: is_location_in_region
 type(location_type), intent(in)  :: loc, minl, maxl
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 
