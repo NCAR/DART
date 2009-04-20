@@ -708,7 +708,7 @@ contains
       interp_status = 0
     else
       obs_val = MISSING_R8
-      interp_status = -1
+      interp_status = 1
     end if
   end subroutine model_interpolate
 
