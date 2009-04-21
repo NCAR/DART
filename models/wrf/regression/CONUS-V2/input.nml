@@ -189,11 +189,6 @@
    print_obs_locations = .false.,
    verbose = .false.  /
 
-&merge_obs_seq_nml
-   num_input_files = 2,
-   filename_seq    = 'obs_seq.new_1', 'obs_seq.new_2'
-   filename_out    = 'obs_seq.final'   /
-
 &restart_file_utility_nml
    input_file_name              = "restart_file_input",
    output_file_name             = "restart_file_output",
@@ -210,6 +205,8 @@
    new_advance_days             = _RESTART_DAYS_,
    new_advance_secs             = _RESTART_SECONDS_
 /
+
+
 &obs_sequence_tool_nml
    num_input_files    = 2,
    filename_seq       = 'obs_seq2007042606','obs_seq2007042612',

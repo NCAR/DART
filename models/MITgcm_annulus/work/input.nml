@@ -144,11 +144,6 @@
    new_advance_days             =  -1,
    new_advance_secs             =  -1   /
 
-&merge_obs_seq_nml
-   num_input_files = 2,
-   filename_seq    = 'obs_seq.one', 'obs_seq.two',
-   filename_out    = 'obs_seq.merged'  /
-
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
 # year   month   day   hour   minute   second
