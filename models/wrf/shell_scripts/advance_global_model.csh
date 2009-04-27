@@ -314,12 +314,19 @@ EOF
    
    # Set off WRF integration
    ${ADV_MOD_COMMAND} >>& rsl.out.integration
+   ${COPY} rsl.out.integration ${CENTRALDIR}/wrf.out_${targdays}_${targsecs}_${element}  
    
    sleep 1
    
    set SUCCESS = `grep "wrf: SUCCESS COMPLETE WRF" rsl.* | cat | wc -l`
    if ($SUCCESS == 0) then
-      echo $element >> ${CENTRALDIR}/blown_${targdays}_${targsecs}.out
+      if ($SUCCESS == 0) then
+         echo $element >>! ${CENTRALDIR}/blown_${targdays}_${targsecs}.out
+         echo "Model failure! Check file " ${CENTRALDIR}/blown_${targdays}_${targsecs}.out
+         echo "for a list of failed elements, and check here for the individual output files:"
+         echo " ${CENTRALDIR}/wrf.out_${targdays}_${targsecs}_elementnumber  "
+         exit -1
+      endif
    endif
 
    if ( -e ${CENTRALDIR}/extract ) then
