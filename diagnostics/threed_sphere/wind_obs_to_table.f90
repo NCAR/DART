@@ -3,7 +3,7 @@
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-program obs_to_table
+program wind_obs_to_table
 
 ! <next few lines under version control, do not edit>
 ! $URL$
@@ -152,7 +152,7 @@ real(r8) :: latlim1= MISSING_R8, latlim2= MISSING_R8
 
 logical :: verbose = .false.
 
-namelist /obs_to_table_nml/ obs_sequence_name, lonlim1, lonlim2, &
+namelist /wind_obs_to_table_nml/ obs_sequence_name, lonlim1, lonlim2, &
                             latlim1, latlim2, verbose
 
 !-----------------------------------------------------------------------
@@ -190,7 +190,7 @@ integer  :: Nidentity  = 0   ! identity observations
 ! Get the party started
 !=======================================================================
 
-call initialize_utilities('obs_to_table')
+call initialize_utilities('wind_obs_to_table')
 call register_module(source,revision,revdate) 
 call static_init_obs_sequence()  ! Initialize the obs sequence module 
 
@@ -207,13 +207,13 @@ num_obs_kinds = add_wind_names(my_obs_kind_names)
 ! Read the namelist
 !----------------------------------------------------------------------
 
-call find_namelist_in_file('input.nml', 'obs_to_table_nml', iunit)
-read(iunit, nml = obs_to_table_nml, iostat = io)
-call check_namelist_read(iunit, io, 'obs_to_table_nml')
+call find_namelist_in_file('input.nml', 'wind_obs_to_table_nml', iunit)
+read(iunit, nml = wind_obs_to_table_nml, iostat = io)
+call check_namelist_read(iunit, io, 'wind_obs_to_table_nml')
 
 ! Record the namelist values used for the run ...
-write(nmlfileunit, nml=obs_to_table_nml)
-write(    *      , nml=obs_to_table_nml)
+write(nmlfileunit, nml=wind_obs_to_table_nml)
+write(    *      , nml=wind_obs_to_table_nml)
 
 !----------------------------------------------------------------------
 ! SetSchedule rectifies user input and the final binning sequence.
@@ -244,11 +244,11 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
    if ( file_exist(trim(obs_seq_in_file_name)) ) then
       write(msgstring,*)'opening ', trim(obs_seq_in_file_name)
-      call error_handler(E_MSG,'obs_to_table',msgstring,source,revision,revdate)
+      call error_handler(E_MSG,'wind_obs_to_table',msgstring,source,revision,revdate)
    else
       write(msgstring,*)trim(obs_seq_in_file_name),&
                         ' does not exist. Finishing up.'
-      call error_handler(E_MSG,'obs_to_table',msgstring,source,revision,revdate)
+      call error_handler(E_MSG,'wind_obs_to_table',msgstring,source,revision,revdate)
       exit ObsFileLoop
    endif
 
@@ -294,7 +294,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
    is_there_one = get_first_obs(seq, obs1)
    if ( .not. is_there_one ) then
-      call error_handler(E_ERR,'obs_to_table','No first observation  in sequence.', &
+      call error_handler(E_ERR,'wind_obs_to_table','No first observation  in sequence.', &
       source,revision,revdate)
    endif
    call get_obs_def(obs1,   obs_def)
@@ -302,7 +302,7 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
    is_there_one = get_last_obs(seq, obsN)
    if ( .not. is_there_one ) then
-      call error_handler(E_ERR,'obs_to_table','No last observation in sequence.', &
+      call error_handler(E_ERR,'wind_obs_to_table','No last observation in sequence.', &
       source,revision,revdate)
    endif
    call get_obs_def(obsN,   obs_def)
@@ -520,7 +520,7 @@ enddo ObsFileLoop
 ! Open netCDF output file 
 !----------------------------------------------------------------------
 
-ncName = 'obs_to_table_output.nc'
+ncName = 'wind_obs_to_table_output.nc'
   
 call WriteNetCDF(ncName)
 
@@ -572,7 +572,7 @@ CONTAINS
    endif
 
    call nc_check(nf90_create(path = trim(fname), cmode = nf90_share, &
-            ncid = ncid), 'obs_to_table:WriteNetCDF', 'create '//trim(fname))
+            ncid = ncid), 'wind_obs_to_table:WriteNetCDF', 'create '//trim(fname))
 
    write(msgstring,*)trim(ncName), ' is fortran unit ',ncid
    call error_handler(E_MSG,'WriteNetCDF',msgstring,source,revision,revdate)
@@ -597,12 +597,12 @@ CONTAINS
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'creation_date', trim(msgstring) ), &
               'WriteNetCDF', 'put_att creation_date '//trim(fname))
 
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_to_table_source', source ), &
-              'WriteNetCDF', 'put_att obs_to_table_source '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_to_table_revision', revision ), &
-              'WriteNetCDF', 'put_att obs_to_table_revision '//trim(fname))
-   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_to_table_revdate', revdate ), &
-              'WriteNetCDF', 'put_att obs_to_table_revdate '//trim(fname))
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'wind_obs_to_table_source', source ), &
+              'WriteNetCDF', 'put_att wind_obs_to_table_source '//trim(fname))
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'wind_obs_to_table_revision', revision ), &
+              'WriteNetCDF', 'put_att wind_obs_to_table_revision '//trim(fname))
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'wind_obs_to_table_revdate', revdate ), &
+              'WriteNetCDF', 'put_att wind_obs_to_table_revdate '//trim(fname))
 
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'horizontal_wind', &
               'vector wind derived from U,V components' ), &
@@ -737,7 +737,7 @@ CONTAINS
    ! Set nofill mode - supposed to be performance gain
  
    call nc_check(nf90_set_fill(ncid, NF90_NOFILL, i),  &
-            'obs_to_table:WriteNetCDF', 'set_nofill '//trim(fname))
+            'wind_obs_to_table:WriteNetCDF', 'set_nofill '//trim(fname))
 
    !----------------------------------------------------------------------------
    ! Leave define mode so we can fill
@@ -820,11 +820,11 @@ CONTAINS
 
    if (               qc_index < 0 ) then 
       write(msgstring,*)'metadata:Quality Control not found' 
-      call error_handler(E_MSG,'obs_to_table',msgstring,source,revision,revdate)
+      call error_handler(E_MSG,'wind_obs_to_table',msgstring,source,revision,revdate)
    endif
    if (          dart_qc_index < 0 ) then 
       write(msgstring,*)'metadata:DART quality control not found' 
-      call error_handler(E_MSG,'obs_to_table',msgstring,source,revision,revdate)
+      call error_handler(E_MSG,'wind_obs_to_table',msgstring,source,revision,revdate)
    endif
 
    ! Only require obs_index to be present; this allows the program
@@ -833,7 +833,7 @@ CONTAINS
 
    if ( obs_index < 0 ) then
       write(msgstring,*)'metadata:observation not found'
-      call error_handler(E_ERR,'obs_to_table',msgstring,source,revision,revdate)
+      call error_handler(E_ERR,'wind_obs_to_table',msgstring,source,revision,revdate)
    endif
 
    !--------------------------------------------------------------------
@@ -843,19 +843,19 @@ CONTAINS
    if ( verbose ) then
    write(msgstring,'(''observation      index '',i2,'' metadata '',a)') &
         obs_index, trim(get_copy_meta_data(seq,obs_index))
-   call error_handler(E_MSG,'obs_to_table',msgstring,source,revision,revdate)
+   call error_handler(E_MSG,'wind_obs_to_table',msgstring,source,revision,revdate)
    endif
 
    if (qc_index > 0 ) then
       write(msgstring,'(''Quality Control      index '',i2,'' metadata '',a)') &
            qc_index,      trim(get_qc_meta_data(seq,     qc_index))
-      call error_handler(E_MSG,'obs_to_table',msgstring,source,revision,revdate)
+      call error_handler(E_MSG,'wind_obs_to_table',msgstring,source,revision,revdate)
    endif
 
    if (dart_qc_index > 0 ) then
       write(msgstring,'(''DART quality control index '',i2,'' metadata '',a)') &
            dart_qc_index, trim(get_qc_meta_data(seq,dart_qc_index))
-      call error_handler(E_MSG,'obs_to_table',msgstring,source,revision,revdate)
+      call error_handler(E_MSG,'wind_obs_to_table',msgstring,source,revision,revdate)
    endif
 
    end Subroutine SetIndices
@@ -921,4 +921,4 @@ CONTAINS
 
    end Subroutine WritePairs
 
-end program obs_to_table
+end program wind_obs_to_table

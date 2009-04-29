@@ -1,6 +1,6 @@
 <HTML>
 <HEAD>
-<TITLE>program obs_to_table</TITLE>
+<TITLE>program wind_obs_to_table</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css"></link> 
 </HEAD>
 <BODY>
@@ -45,7 +45,7 @@
 
 <!--==================================================================-->
 
-<H1>PROGRAM obs_to_table</H1>
+<H1>PROGRAM wind_obs_to_table</H1>
 <A NAME="HEADER"></A>
 <TABLE summary="">
 <TR><TD>Contact:       </TD><TD> Tim Hoar </TD></TR>
@@ -62,7 +62,7 @@
 <H2>OVERVIEW</H2>
 
 <P>
-   <em class=program>obs_to_table</em> 
+   <em class=program>wind_obs_to_table</em> 
    is a routine to extract the U and V horizontal components from
    observation sequence files and write out 'simple' ASCII files 
    that can be easily digested by other applications. If the DART QC field
@@ -83,7 +83,7 @@
 
    <H3 class="indent1">What's on the horizon ...</H3>
 <P>
-   <em class=program>obs_to_table</em> 
+   <em class=program>wind_obs_to_table</em> 
    is a step toward encoding our observations in netCDF files.
    We are also exploring plotting facilities to examine the spatial
    distributions of quantities like bias between the ensemble mean and
@@ -93,7 +93,7 @@
 
 <P>
    Optional namelist interfaces
-   <A HREF="#Namelist"><em class=code>&#38;obs_to_table_nml</em></A> and
+   <A HREF="#Namelist"><em class=code>&#38;wind_obs_to_table_nml</em></A> and
    <A HREF="../../time_manager/schedule_mod.html#Namelist"><em class=code>&#38;schedule_nml</em></A>
    may be read from file <em class=file>input.nml</em>.
 </P>
@@ -134,7 +134,7 @@ obs_def_?????.f90 files.
 <P>We adhere to the F90 standard of starting a namelist with an 
    ampersand '&#38;' and terminating with a slash '/'.
    <div class=namelist><pre>
-   <em class=call>namelist / obs_to_table_nml / </em> &#38;
+   <em class=call>namelist / wind_obs_to_table_nml / </em> &#38;
       obs_sequence_name, lonlim1, lonlim2, latlim1, latlim2, verbose
    </pre></div>
 </P>
@@ -162,12 +162,12 @@ obs_def_?????.f90 files.
 	    everything to the right, and a directory structure to the left.
 	    The directory structure is then queried to see if it can be
 	    incremented to handle a sequence of observation files.
-	    The default behavior of <em class="program">obs_to_table</em> 
+	    The default behavior of <em class="program">wind_obs_to_table</em> 
 	    is to look for additional files to include until the files 
 	    are exhausted or an <em class=file>obs_seq.final</em> file 
 	    is found that contains observations beyond the timeframe of 
 	    interest.<BR>e.g. 'obsdir_001/obs_seq.final' will cause
-	    <em class="program">obs_to_table</em> to look for
+	    <em class="program">wind_obs_to_table</em> to look for
 	    'obsdir_002/obs_seq.final', and so on.<BR>
 	    Default 'obs_seq.final'</TD></TR>  
 
@@ -198,7 +198,7 @@ obs_def_?????.f90 files.
 
 <TR><!--contents--><TD valign=top>   verbose   </TD>
     <!--  type  --><TD valign=top>   logical   </TD>
-    <!--descript--><TD>Print extra info about the obs_to_table run.<BR>
+    <!--descript--><TD>Print extra info about the wind_obs_to_table run.<BR>
             Default: .false. </TD></TR>  
 
 </TABLE>
@@ -211,19 +211,19 @@ obs_def_?????.f90 files.
 <BR><HR><BR>
 <H2>FILES</H2>
 <UL><LI><em class="file">input.nml</em> is used for 
-        <em class="code">obs_to_table_nml</em> and 
+        <em class="code">wind_obs_to_table_nml</em> and 
         <em class="code">schedule_nml</em>.
 	</LI>
-    <LI><em class="file">obs_to_table_output.nc</em> is a 
+    <LI><em class="file">wind_obs_to_table_output.nc</em> is a 
         netCDF output file with all the metadata (for now) and will
 	have the observation values and derived quantities in the near future.</LI>
     <LI><em class="file">dart_log.out</em> list directed output 
-        from the obs_to_table.</LI>
+        from the wind_obs_to_table.</LI>
     <LI><em class="file">wind_vectors.xxx.dat</em> contains the
     locations for all the wind observations in temporal bin "xxx".</LI>
 </UL>
 
-<H3 class=indent1>Discussion of obs_to_table_output.nc variables</H3>
+<H3 class=indent1>Discussion of wind_obs_to_table_output.nc variables</H3>
 <P>
 These are the metadata for all the ASCII ouput files.
 Between the output files and the netCDF file, you have everything
@@ -231,7 +231,7 @@ you need to make sensible plots of the wind observations.
 </P>
 
 <!--==================================================================-->
-<!-- Discuss  typical usage of obs_to_table.                              -->
+<!-- Discuss  typical usage of wind_obs_to_table.                              -->
 <!--==================================================================-->
 
 <A NAME="Usage"></A>
@@ -239,7 +239,7 @@ you need to make sensible plots of the wind observations.
 <H2>USAGE</H2>
 
 <P>
-<em class="program">obs_to_table</em> is built and run in 
+<em class="program">wind_obs_to_table</em> is built and run in 
 ...<em class="file">/DART/models/</em>your_model<em class="file">/work</em>, 
 in the same way as the other DART components. After the program has been run,
 <em class="file">/DART/diagnostics/matlab/</em><em
@@ -267,17 +267,17 @@ observations.
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>obs_to_table</TD>
+<TR><!-- routine --><TD VALIGN=top>wind_obs_to_table</TD>
     <!-- message --><TD VALIGN=top>No first observation in sequence.</TD>
     <!-- comment --><TD VALIGN=top>get_first_obs couldn't find a "first obs" 
                                    in the obs_seq.final. </TD>
 </TR>
-<TR><!-- routine --><TD VALIGN=top>obs_to_table</TD>
+<TR><!-- routine --><TD VALIGN=top>wind_obs_to_table</TD>
     <!-- message --><TD VALIGN=top>No last observation in sequence</TD>
     <!-- comment --><TD VALIGN=top>get_last_obs couldn't find a "last obs" 
                                    in the obs_seq.final </TD>
 </TR>
-<TR><!-- routine --><TD VALIGN=top>obs_to_table</TD>
+<TR><!-- routine --><TD VALIGN=top>wind_obs_to_table</TD>
     <!-- message --><TD VALIGN=top>metadata:observation not found</TD>
     <!-- comment --><TD VALIGN=top>Couldn't find the index for the
     observation value in the observation sequence file. It is the only

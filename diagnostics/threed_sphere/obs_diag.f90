@@ -18,6 +18,13 @@ program obs_diag
 ! All 'possible' obs_kinds are treated separately.
 !-----------------------------------------------------------------------
 
+! In Atmospheric Science, 'spread' has units of standard deviations ... 
+! 
+! I should rename some of the variables I use as variances to reflect this.
+! 'priorspred' should really be 'priorvar' since you have to accumulate variances 
+! the math is correct as it is, but the variable names don't make it easy ...
+
+
 use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_R4
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
                              get_obs_from_key, get_obs_def, get_copy_meta_data, &
