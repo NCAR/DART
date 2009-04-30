@@ -1,6 +1,6 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   convert_ssec_clwnd - program that reads ASCII cloud wind data from 
+!   convert_ssec_clwnd - program that reads ASCII satellite wind data from 
 !                        CIMSS/SSEC and writes a genertic text file 
 !                        for use in creating obs_seq files.
 !
@@ -19,14 +19,14 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                              append_obs_to_seq, init_obs_sequence, get_num_obs, &
                              set_copy_meta_data, set_qc_meta_data
 use       meteor_mod, only : wind_dirspd_to_uv
-use ncep_obs_err_mod, only : ncep_cloud_wind_error, ncep_wv_wind_error
+use      obs_err_mod, only : sat_wind_error, sat_wv_wind_error
 use     obs_kind_mod, only : SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT
 use           netcdf
 
 implicit none
 
-character(len=15),  parameter :: ssec_cloud_file = 'clwnd_input.txt'
-character(len=129), parameter :: cloud_wind_file = 'obs_seq.clwnd'
+character(len=15),  parameter :: ssec_sat_file = 'clwnd_input.txt'
+character(len=129), parameter :: sat_wind_file = 'obs_seq.clwnd'
 
 integer, parameter :: nmaxwnd = 50000,  &  ! maximum number of vectors
                       num_copies = 1,   &  ! number of copies in sequence
@@ -67,16 +67,16 @@ time_anal = set_date(iyear, imonth, iday, ihour, imin, isec)
 call get_time(time_anal, secs, days)
 
 in_unit  = get_unit()
-open(unit=in_unit,  file = ssec_cloud_file,  status='old')
+open(unit=in_unit,  file = ssec_sat_file,  status='old')
 read(in_unit,*) junk
 
 !  either read existing obs_seq or create a new one
 call static_init_obs_sequence()
 call init_obs(obs, num_copies, num_qc)
-inquire(file=cloud_wind_file, exist=file_exist)
+inquire(file=sat_wind_file, exist=file_exist)
 if ( file_exist ) then
 
-  call read_obs_seq(cloud_wind_file, 0, 0, 2*nmaxwnd, obs_seq)
+  call read_obs_seq(sat_wind_file, 0, 0, 2*nmaxwnd, obs_seq)
 
 else
 
@@ -119,9 +119,9 @@ obsloop: do
   qc = 1
 
   if ( trim(adjustl(band(1:2))) == 'WV' ) then
-    oerr = ncep_wv_wind_error(pres)
+    oerr = sat_wv_wind_error(pres)
   else
-    oerr = ncep_cloud_wind_error(pres)
+    oerr = sat_wind_error(pres)
   end if
 
   call wind_dirspd_to_uv(wdir, wspd, uwnd, vwnd)
@@ -143,7 +143,7 @@ end do obsloop
 
 close( in_unit)
 
-if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, cloud_wind_file)
+if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, sat_wind_file)
 
 stop
 end
