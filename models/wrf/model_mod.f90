@@ -222,6 +222,7 @@ TYPE wrf_static_data_for_dart
    logical  :: scm
 
    integer  :: n_moist
+   integer  :: domain_size
    logical  :: surf_obs
    logical  :: soil_data
    integer  :: vert_coord
@@ -528,6 +529,11 @@ WRFDomains : do id=1,num_domains
       if ( debug ) write(*,*) 'assigned start, stop ',wrf%dom(id)%var_index(:,ind)
 
    enddo ! loop through all viable state variables on this domain
+   if ( id == 1 ) then
+     wrf%dom(id)%domain_size = dart_index - 1
+   else
+     wrf%dom(id)%domain_size = dart_index - 1 - wrf%dom(id-1)%domain_size
+   end if
 
 enddo WRFDomains 
 
