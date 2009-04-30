@@ -11,5 +11,5 @@
 # $Revision: 2691 $
 # $Date: 2007-03-11 12:18:09 -0600 (Sun, 11 Mar 2007) $
 #
-../../../mkmf/mkmf -p convert_ssec_clwnd -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
- -a "../../.." path_names_convert_ssec_clwnd
+../../../mkmf/mkmf -p convert_ssec_satwnd -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+ -a "../../.." path_names_convert_ssec_satwnd
