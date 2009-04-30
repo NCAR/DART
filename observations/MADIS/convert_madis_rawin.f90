@@ -10,7 +10,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 program convert_madis_rawin
 
-use             types_mod, only : r8
+use             types_mod, only : r8, missing_r8
 use      time_manager_mod, only : time_type, set_calendar_type, set_date, &
                                   get_time, increment_time, GREGORIAN, operator(-)
 use          location_mod, only : VERTISSURFACE, VERTISPRESSURE, VERTISHEIGHT
@@ -19,9 +19,9 @@ use      obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                                   append_obs_to_seq, init_obs_sequence, get_num_obs, &
                                   set_copy_meta_data, set_qc_meta_data
 use            meteor_mod, only : sat_vapor_pressure, specific_humidity, & 
-                                  wind_dirspd_to_uv
-use      ncep_obs_err_mod, only : ncep_rawin_temp_error, ncep_rawin_wind_error, &
-                                  ncep_rawin_sfcpres_error, ncep_rawin_moist_error
+                                  wind_dirspd_to_uv, pres_alt_to_pres
+use           obs_err_mod, only : rawin_temp_error, rawin_wind_error, &
+                                  rawin_pres_error, rawin_rel_hum_error
 use obs_def_altimeter_mod, only : compute_altimeter
 use          obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT,  & 
                                   RADIOSONDE_V_WIND_COMPONENT,  & 
@@ -51,7 +51,7 @@ logical :: fexist, sigwnd, sigtmp
 
 real(r8) :: obswindow, otime, lat, lon, elev, uwnd, vwnd, qobs, qsat, oerr, &
             pres_miss, wdir_miss, wspd_miss, tair_miss, tdew_miss, prespa, & 
-            time_miss, qc, altim
+            time_miss, qc, altim, qerr
 
 real(r8), allocatable :: pres(:), wdir(:), wspd(:), tair(:), tdew(:)
 
@@ -59,10 +59,8 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs
 type(time_type)         :: comp_day0, time_anal, time_obs
 
-print*,'Enter the analysis time (yyyy-mm-dd_hh:mm:ss)'
-read*,datestr
-print*,'Enter the observation window (hours)'
-read*,obswindow
+print*,'Enter the analysis time (yyyy-mm-dd_hh:mm:ss) and window (hours)'
+read*,datestr, obswindow
 print*,'Include significant level winds, temperature?'
 read*,sigwnd, sigtmp
 
@@ -182,10 +180,14 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   if ( pres(1) /= pres_miss ) then
 
     altim = compute_altimeter(pres(1), elev)
-    call create_obs_type(lat, lon, elev, VERTISSURFACE, altim, &
-                         RADIOSONDE_SURFACE_ALTIMETER, ncep_rawin_sfcpres_error, & 
-                         oday, osec, qc, obs)
-    call append_obs_to_seq(obs_seq, obs)
+    oerr  = rawin_pres_error(pres_alt_to_pres(elev) * 0.01_r8)
+    if ( altim >= 880.0_r8 .and. altim <= 1100.0_r8 .and. oerr /= missing_r8 ) then
+
+      call create_obs_type(lat, lon, elev, VERTISSURFACE, altim, &
+                           RADIOSONDE_SURFACE_ALTIMETER, oerr, oday, osec, qc, obs)
+      call append_obs_to_seq(obs_seq, obs)
+
+    end if
 
   end if
 
@@ -196,22 +198,31 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     if ( wdir(k) /= wdir_miss .and. wspd(k) /= wspd_miss ) then
 
       call wind_dirspd_to_uv(wdir(k), wspd(k), uwnd, vwnd)
-      oerr = ncep_rawin_wind_error(pres(k))
-      call create_obs_type(lat, lon, prespa, VERTISPRESSURE, uwnd, &
-                           RADIOSONDE_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
-      call append_obs_to_seq(obs_seq, obs)
-      call create_obs_type(lat, lon, prespa, VERTISPRESSURE, vwnd, &
-                           RADIOSONDE_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
-      call append_obs_to_seq(obs_seq, obs)
+      oerr = rawin_wind_error(pres(k))
+      if ( abs(uwnd) <= 150.0_r8 .and. & 
+           abs(vwnd) <= 150.0_r8 .and. oerr /= missing_r8 ) then
+
+        call create_obs_type(lat, lon, prespa, VERTISPRESSURE, uwnd, &
+                             RADIOSONDE_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+        call append_obs_to_seq(obs_seq, obs)
+        call create_obs_type(lat, lon, prespa, VERTISPRESSURE, vwnd, &
+                             RADIOSONDE_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+        call append_obs_to_seq(obs_seq, obs)
+
+      end if
 
     end if
 
     if ( tair(k) /= tair_miss ) then
 
-      oerr = ncep_rawin_temp_error(pres(k))
-      call create_obs_type(lat, lon, prespa, VERTISPRESSURE, tair(k), &
-                           RADIOSONDE_TEMPERATURE, oerr, oday, osec, qc, obs)
-      call append_obs_to_seq(obs_seq, obs)
+      oerr = rawin_temp_error(pres(k))
+      if ( tair(k) >= 180.0_r8 .and. tair(k) <= 330.0_r8 .and. oerr /= missing_r8 ) then
+
+        call create_obs_type(lat, lon, prespa, VERTISPRESSURE, tair(k), &
+                             RADIOSONDE_TEMPERATURE, oerr, oday, osec, qc, obs)
+        call append_obs_to_seq(obs_seq, obs)
+
+      end if
 
     end if
 
@@ -220,8 +231,10 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
       qobs = tair(k) - tdew(k)
       qobs = specific_humidity(sat_vapor_pressure(qobs),    prespa)
       qsat = specific_humidity(sat_vapor_pressure(tair(k)), prespa)
-      oerr = max(ncep_rawin_moist_error * qsat, 0.0001_r8)
-      if ( qobs > 0.0_r8 .and. qobs < 0.070_r8 ) then
+      qerr = rawin_rel_hum_error(pres(k), tair(k), qobs / qsat)
+      oerr = max(qerr * qsat, 0.0001_r8)
+
+      if ( qobs > 0.0_r8 .and. qobs <= 0.070_r8 .and. qerr /= missing_r8 ) then
         call create_obs_type(lat, lon, prespa, VERTISPRESSURE, qobs, &
                              RADIOSONDE_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
         call append_obs_to_seq(obs_seq, obs)
@@ -257,10 +270,14 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
       if ( tair(k) /= tair_miss ) then
 
-        oerr = ncep_rawin_temp_error(pres(k))
-        call create_obs_type(lat, lon, prespa, VERTISPRESSURE, tair(k), &
-                             RADIOSONDE_TEMPERATURE, oerr, oday, osec, qc, obs)
-        call append_obs_to_seq(obs_seq, obs)
+        oerr = rawin_temp_error(pres(k))
+        if ( tair(k) >= 180.0_r8 .and. tair(k) <= 330.0_r8 .and. oerr /= missing_r8 ) then
+
+          call create_obs_type(lat, lon, prespa, VERTISPRESSURE, tair(k), &
+                               RADIOSONDE_TEMPERATURE, oerr, oday, osec, qc, obs)
+          call append_obs_to_seq(obs_seq, obs)
+
+        end if
 
       end if
 
@@ -269,8 +286,9 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
         qobs = tair(k) - tdew(k)
         qobs = specific_humidity(sat_vapor_pressure(qobs),    prespa)
         qsat = specific_humidity(sat_vapor_pressure(tair(k)), prespa)
-        oerr = max(ncep_rawin_moist_error * qsat, 0.0001_r8)
-        if ( qobs > 0.0_r8 .and. qobs < 0.070_r8 ) then
+        qerr = rawin_rel_hum_error(pres(k), tair(k), qobs / qsat)
+        oerr = max(qerr * qsat, 0.0001_r8)
+        if ( qobs > 0.0_r8 .and. qobs <= 0.070_r8 .and. qerr /= missing_r8 ) then
           call create_obs_type(lat, lon, prespa, VERTISPRESSURE, qobs, &
                                RADIOSONDE_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
           call append_obs_to_seq(obs_seq, obs)
@@ -308,13 +326,18 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
       if ( wdir(k) /= wdir_miss .and. wspd(k) /= wspd_miss ) then
 
         call wind_dirspd_to_uv(wdir(k), wspd(k), uwnd, vwnd)
-        oerr = ncep_rawin_wind_error(500.0_r8)
-        call create_obs_type(lat, lon, pres(k), VERTISHEIGHT, uwnd, &
-                             RADIOSONDE_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
-        call append_obs_to_seq(obs_seq, obs)
-        call create_obs_type(lat, lon, pres(k), VERTISHEIGHT, vwnd, &
-                             RADIOSONDE_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
-        call append_obs_to_seq(obs_seq, obs)
+        oerr = rawin_wind_error(pres_alt_to_pres(pres(k)) * 0.01_r8)
+        if ( abs(uwnd) <= 150.0_r8 .and. & 
+             abs(vwnd) <= 150.0_r8 .and. oerr /= missing_r8 ) then
+
+          call create_obs_type(lat, lon, pres(k), VERTISHEIGHT, uwnd, &
+                               RADIOSONDE_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+          call append_obs_to_seq(obs_seq, obs)
+          call create_obs_type(lat, lon, pres(k), VERTISHEIGHT, vwnd, &
+                               RADIOSONDE_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+          call append_obs_to_seq(obs_seq, obs)
+
+        end if
 
       end if
 

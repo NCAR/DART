@@ -11,11 +11,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 program convert_madis_acars
 
-use        types_mod, only : r8
-use       meteor_mod, only : pres_alt_to_pres, sat_vapor_pressure, & 
-                             specific_humidity, wind_dirspd_to_uv
-use ncep_obs_err_mod, only : ncep_acars_wind_error, ncep_acars_temp_error, &
-                             ncep_acars_moist_error
+use        types_mod, only : r8, missing_r8
 use     location_mod, only : VERTISPRESSURE
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                              static_init_obs_sequence, init_obs, write_obs_seq, &
@@ -25,6 +21,10 @@ use time_manager_mod, only : time_type, set_calendar_type, set_date, &
                              increment_time, get_time, GREGORIAN, operator(-)
 use     obs_kind_mod, only : ACARS_U_WIND_COMPONENT, ACARS_V_WIND_COMPONENT, &
                              ACARS_TEMPERATURE, ACARS_SPECIFIC_HUMIDITY
+use       meteor_mod, only : pres_alt_to_pres, sat_vapor_pressure, &
+                             specific_humidity, wind_dirspd_to_uv
+use      obs_err_mod, only : acars_wind_error, acars_temp_error, &
+                             acars_rel_hum_error
 use           netcdf
 
 implicit none
@@ -42,7 +42,7 @@ integer :: rcode, ncid, varid, nobs, n, i, window_sec, dday, dsec, &
            oday, osec, nused, iyear, imonth, iday, ihour, imin, isec
 logical :: file_exist
 real(r8) :: palt_miss, tair_miss, relh_miss, wdir_miss, wspd_miss, uwnd, &
-            vwnd, qobs, qsat, oerr, window_hours, pres, qc
+            vwnd, qobs, qsat, oerr, window_hours, pres, qc, qerr
 
 integer,  allocatable :: tobs(:)
 real(r8), allocatable :: lat(:), lon(:), palt(:), tair(:), relh(:), &
@@ -52,10 +52,8 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs
 type(time_type)         :: comp_day0, time_obs, time_anal
 
-print*,'Enter the target assimilation time (yyyy-mm-dd_hh:mm:ss)'
-read*,datime
-print*,'Enter the observation window (hours)'
-read*,window_hours
+print*,'Enter target assimilation time (yyyy-mm-dd_hh:mm:ss), obs window (hours)'
+read*,datime,window_hours
 
 call set_calendar_type(GREGORIAN)
 read(datime(1:4),   fmt='(i4)') iyear
@@ -165,9 +163,9 @@ obsloop: do n = 1, nobs
   if ( wdir(n) /= wdir_miss .and. wspd(n) /= wspd_miss ) then
 
     call wind_dirspd_to_uv(wdir(n), wspd(n), uwnd, vwnd)
-    if ( abs(uwnd) < 150.0_r8 .and. abs(vwnd) < 150.0_r8 ) then
+    oerr = acars_wind_error(pres * 0.01_r8)
+    if ( abs(uwnd) < 150.0_r8 .and. abs(vwnd) < 150.0_r8 .and. oerr /= missing_r8) then
 
-      oerr = ncep_acars_wind_error
       call create_obs_type(lat(n), lon(n), pres, VERTISPRESSURE, uwnd, &
                            ACARS_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
@@ -182,10 +180,14 @@ obsloop: do n = 1, nobs
   ! add air temperature data to obs. sequence
   if ( tair(n) /= tair_miss ) then 
    
-    oerr = ncep_acars_temp_error(pres * 0.01_r8) 
-    call create_obs_type(lat(n), lon(n), pres, VERTISPRESSURE, tair(n), &
-                         ACARS_TEMPERATURE, oerr, oday, osec, qc, obs)
-    call append_obs_to_seq(obs_seq, obs)
+    oerr = acars_temp_error(pres * 0.01_r8)
+    if ( tair(n) >= 180.0_r8 .and. tair(n) <= 330.0_r8 .and. oerr /= missing_r8 ) then
+
+      call create_obs_type(lat(n), lon(n), pres, VERTISPRESSURE, tair(n), &
+                           ACARS_TEMPERATURE, oerr, oday, osec, qc, obs)
+      call append_obs_to_seq(obs_seq, obs)
+
+    end if
 
   end if
 
@@ -194,9 +196,10 @@ obsloop: do n = 1, nobs
 
     qsat = specific_humidity(sat_vapor_pressure(tair(n)), pres)
     qobs = qsat * relh(n)
-    oerr = max(ncep_acars_moist_error * qsat, 0.0001_r8)
+    qerr = acars_rel_hum_error(pres * 0.01_r8, tair(n), relh(n))
+    oerr = max(qerr * qsat, 0.0001_r8)
 
-    if ( abs(qobs) < 0.1_r8 ) then
+    if ( abs(qobs) < 0.1_r8 .and. qerr /= missing_r8 ) then
 
       call create_obs_type(lat(n), lon(n), pres, VERTISPRESSURE, qobs, &
                          ACARS_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)

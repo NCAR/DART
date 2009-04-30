@@ -1,0 +1,14 @@
+
+Eventually this directory will contain an ECMWF error module,
+and any other error modules that people want to contribute.
+
+The intent is that each file will contain a module with the
+same name, obs_err_mod, and all the subroutines will have
+identical names (but presumably return different values).
+
+This way the user can change between error values by editing
+the filename in the path_names_xxx files and recompiling,
+without changing the code.
+
+Thanks to Ryan Torn for the idea and initial contributions.
+

@@ -11,7 +11,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 program convert_madis_marine
 
-use             types_mod, only : r8
+use             types_mod, only : r8, missing_r8
 use      time_manager_mod, only : time_type, set_calendar_type, set_date, &
                                   increment_time, get_time, operator(-), GREGORIAN
 use          location_mod, only : VERTISSURFACE
@@ -20,9 +20,11 @@ use      obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                                   append_obs_to_seq, init_obs_sequence, get_num_obs, &
                                   set_copy_meta_data, set_qc_meta_data
 use            meteor_mod, only : sat_vapor_pressure, specific_humidity, & 
-                                  wind_dirspd_to_uv
-use      ncep_obs_err_mod, only : ncep_marine_temp_error, ncep_marine_moist_error, &
-                                  ncep_marine_wind_error, ncep_marine_altim_error
+                                  wind_dirspd_to_uv, pres_alt_to_pres
+use           obs_err_mod, only : fixed_marine_temp_error, fixed_marine_rel_hum_error, &
+                                  fixed_marine_wind_error, fixed_marine_pres_error, &
+                                  moving_marine_temp_error, moving_marine_rel_hum_error, &
+                                  moving_marine_wind_error, moving_marine_pres_error
 use          obs_kind_mod, only : MARINE_SFC_U_WIND_COMPONENT, MARINE_SFC_V_WIND_COMPONENT, &
                                   MARINE_SFC_TEMPERATURE, MARINE_SFC_SPECIFIC_HUMIDITY, &
                                   MARINE_SFC_ALTIMETER
@@ -47,9 +49,9 @@ integer :: rcode, ncid, varid, nobs, n, i, dday, dsec, oday, &
            osec, nused, iyear, imonth, iday, ihour, imin, isec
 logical :: file_exist
 real(r8) :: sfcp_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
-            vwnd, altim, qobs, qsat, qobserr, slp_miss, elev_miss, qc
+            vwnd, altim, palt, oerr, qobs, qerr, qsat, slp_miss, elev_miss, qc
 
-integer,  allocatable :: tobs(:)
+integer,  allocatable :: tobs(:), plid(:)
 real(r8), allocatable :: lat(:), lon(:), elev(:), sfcp(:), tair(:), slp(:), & 
                          tdew(:), wdir(:), wspd(:), latu(:), lonu(:)
 
@@ -78,10 +80,11 @@ call check( nf90_inquire_dimension(ncid, varid, name, nobs) )
 
 allocate( lat(nobs))  ;  allocate( lon(nobs))
 allocate(latu(nobs))  ;  allocate(lonu(nobs))
-allocate(elev(nobs))  ;  allocate(sfcp(nobs))
+allocate(elev(nobs))  ;  allocate(plid(nobs))
+allocate(sfcp(nobs))  ;  allocate(slp(nobs))
 allocate(tair(nobs))  ;  allocate(tdew(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
-allocate(tobs(nobs))  ;  allocate(slp(nobs))
+allocate(tobs(nobs))
 
 ! read the latitude array
 call check( nf90_inq_varid(ncid, "latitude", varid) )
@@ -95,6 +98,10 @@ call check( nf90_get_var(ncid, varid, lon) )
 call check( nf90_inq_varid(ncid, "elevation", varid) )
 call check( nf90_get_var(ncid, varid, elev) )
 call check( nf90_get_att(ncid, varid, '_FillValue', elev_miss) )
+
+! read the platform type array
+call check( nf90_inq_varid(ncid, "dataPlatformType", varid) )
+call check( nf90_get_var(ncid, varid, plid) )
 
 ! read the altimeter setting array
 call check( nf90_inq_varid(ncid, "stationPress", varid) )
@@ -170,25 +177,48 @@ obsloop: do n = 1, nobs
   do i = 1, nused
     if ( lon(n) == lon(i) .and. lat(n) == lat(i) ) cycle obsloop
   end do
-  qc = 1.0_r8
+  qc = 1.0_r8  ;  
+  if ( elev(n) /= missing_r8 ) then
+    palt = pres_alt_to_pres(elev(n)) * 0.01_r8
+  else
+    palt = pres_alt_to_pres(def_elev) * 0.01_r8
+  end if
 
   ! add altimeter data to obs_seq
   if ( sfcp(n) /= sfcp_miss .and. elev(n) /= elev_miss ) then
 
     altim = compute_altimeter(sfcp(n) * 0.01_r8, elev(n))
-    call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, altim, &
-                         MARINE_SFC_ALTIMETER, ncep_marine_altim_error, &
-                         oday, osec, qc, obs)
-    call append_obs_to_seq(obs_seq, obs)
+    if ( plid(n) == 0 ) then
+      oerr = fixed_marine_pres_error(palt)
+    else
+      oerr = moving_marine_pres_error(palt)
+    end if
+
+    if ( altim >= 890.0_r8 .and. altim <= 1100.0_r8 .and. oerr /= missing_r8 ) then
+
+      call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, altim, &
+                           MARINE_SFC_ALTIMETER, oerr, oday, osec, qc, obs)
+      call append_obs_to_seq(obs_seq, obs)
+
+    end if
 
   !  if surface pressure and elevation do not exist, use SLP.
   else if ( slp(n) /= slp_miss ) then
 
-    altim = compute_altimeter(slp(n) * 0.01_r8, 0.0_r8) 
-    call create_obs_type(lat(n), lon(n), def_elev, VERTISSURFACE, altim, &
-                         MARINE_SFC_ALTIMETER, ncep_marine_altim_error, &
-                         oday, osec, qc, obs)
-    call append_obs_to_seq(obs_seq, obs)
+    altim = compute_altimeter(slp(n) * 0.01_r8, 0.0_r8)
+    if ( plid(n) == 0 ) then
+      oerr = fixed_marine_pres_error(palt)
+    else
+      oerr = moving_marine_pres_error(palt)
+    end if
+    
+    if ( altim >= 890.0_r8 .and. altim <= 1100.0_r8 .and. oerr /= missing_r8 ) then
+
+      call create_obs_type(lat(n), lon(n), def_elev, VERTISSURFACE, altim, &
+                           MARINE_SFC_ALTIMETER, oerr, oday, osec, qc, obs)
+      call append_obs_to_seq(obs_seq, obs)
+
+    end if
 
   end if
   if ( elev(n) == elev_miss )  elev(n) = def_elev
@@ -197,15 +227,18 @@ obsloop: do n = 1, nobs
   if ( wdir(n) /= wdir_miss .and. wspd(n) /= wspd_miss ) then
 
     call wind_dirspd_to_uv(wdir(n), wspd(n), uwnd, vwnd)
-    if ( abs(uwnd) < 150.0_r8 .and. abs(vwnd) < 150.0_r8 ) then
+    if ( plid(n) == 0 ) then
+      oerr = fixed_marine_wind_error(palt)
+    else
+      oerr = moving_marine_wind_error(palt)
+    end if
+    if ( abs(uwnd) < 150.0_r8 .and. abs(vwnd) < 150.0_r8 .and. oerr /= missing_r8 ) then
 
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, uwnd, &
-                           MARINE_SFC_U_WIND_COMPONENT, ncep_marine_wind_error, &
-                           oday, osec, qc, obs)
+                           MARINE_SFC_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, vwnd, &
-                           MARINE_SFC_V_WIND_COMPONENT, ncep_marine_wind_error, &
-                           oday, osec, qc, obs)
+                           MARINE_SFC_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
 
     end if
@@ -214,25 +247,38 @@ obsloop: do n = 1, nobs
 
   ! add air temperature data to obs. sequence
   if ( tair(n) /= tair_miss ) then 
-    
-    call create_obs_type(lat(n), lon(n), def_elev, VERTISSURFACE, tair(n), &
-                         MARINE_SFC_TEMPERATURE, ncep_marine_temp_error, &
-                         oday, osec, qc, obs)
-    call append_obs_to_seq(obs_seq, obs)
+
+    if ( plid(n) == 0 ) then
+      oerr = fixed_marine_temp_error(palt)
+    else
+      oerr = moving_marine_temp_error(palt)
+    end if
+    if ( tair(n) >= 200.0_r8 .and. tair(n) <= 335.0_r8 .and. oerr /= missing_r8 ) then
+
+      call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, tair(n), &
+                           MARINE_SFC_TEMPERATURE, oerr, oday, osec, qc, obs)
+      call append_obs_to_seq(obs_seq, obs)
  
+    end if
+
   end if
 
   ! add dew-point temperature data to obs. sequence, but as specific humidity
   if ( tair(n) /= tair_miss .and. tdew(n) /= tdew_miss .and. sfcp(n) /= sfcp_miss ) then
 
-    qobs    = specific_humidity(sat_vapor_pressure(tdew(n)), sfcp(n))
-    qsat    = specific_humidity(sat_vapor_pressure(tair(n)), sfcp(n))
-    qobserr = max(ncep_marine_moist_error * qsat, 0.0001_r8)
+    qobs = specific_humidity(sat_vapor_pressure(tdew(n)), sfcp(n))
+    qsat = specific_humidity(sat_vapor_pressure(tair(n)), sfcp(n))
+    if ( plid(n) == 0 ) then
+      oerr = fixed_marine_rel_hum_error(palt, tair(n), qobs / qsat)
+    else
+      oerr = moving_marine_rel_hum_error(palt, tair(n), qobs / qsat)
+    end if
+    oerr = max(qerr * qsat, 0.0001_r8)
 
-    if ( abs(qobs) < 100.0_r8 ) then
+    if ( qobs >= 0.0_r8 .and. qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
 
       call create_obs_type(lat(n), lon(n), def_elev, VERTISSURFACE, qobs, &
-                           MARINE_SFC_SPECIFIC_HUMIDITY, qobserr, oday, osec, qc, obs)
+                           MARINE_SFC_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
 
     end if
@@ -299,7 +345,7 @@ end subroutine check
 subroutine create_obs_type(lat, lon, pres, vcord, obsv, okind, oerr, day, sec, qc, obs)
 
 use types_mod,        only : r8
-use obs_sequence_mod, only : obs_type, set_obs_values, set_qc, set_obs_def
+use obs_sequence_mod, only : obs_type, set_obs_values, set_qc, set_obs_def, init_obs
 use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
                              set_obs_def_error_variance, set_obs_def_location
 use     location_mod, only : location_type, set_location
@@ -309,11 +355,12 @@ implicit none
 
 integer, intent(in)         :: okind, vcord, day, sec
 real(r8), intent(in)        :: lat, lon, pres, obsv, oerr, qc
-type(obs_type), intent(inout) :: obs
+type(obs_type), intent(out) :: obs
 
 real(r8)              :: obs_val(1), qc_val(1)
 type(obs_def_type)    :: obs_def
 
+call init_obs(obs, 1, 1)
 call set_obs_def_location(obs_def, set_location(lon, lat, pres, vcord))
 call set_obs_def_kind(obs_def, okind)
 call set_obs_def_time(obs_def, set_time(sec, day))

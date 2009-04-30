@@ -11,7 +11,7 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 program convert_madis_surface
 
-use        types_mod, only : r8
+use        types_mod, only : r8, missing_r8
 use time_manager_mod, only : time_type, set_calendar_type, set_date, &
                              increment_time, get_time, GREGORIAN, operator(-)
 use     location_mod, only : VERTISSURFACE
@@ -20,9 +20,9 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                              append_obs_to_seq, init_obs_sequence, get_num_obs, & 
                              set_copy_meta_data, set_qc_meta_data
 use       meteor_mod, only : sat_vapor_pressure, specific_humidity, & 
-                             wind_dirspd_to_uv, invert_altimeter
-use ncep_obs_err_mod, only : ncep_land_temp_error, ncep_land_wind_error, &
-                             ncep_land_altim_error, ncep_land_moist_error
+                             wind_dirspd_to_uv, invert_altimeter, pres_alt_to_pres
+use      obs_err_mod, only : land_temp_error, land_wind_error, &
+                             land_pres_error, land_rel_hum_error
 use     obs_kind_mod, only : LAND_SFC_U_WIND_COMPONENT, LAND_SFC_V_WIND_COMPONENT, &
                              LAND_SFC_TEMPERATURE, LAND_SFC_SPECIFIC_HUMIDITY, & 
                              LAND_SFC_ALTIMETER                
@@ -44,7 +44,7 @@ integer :: rcode, ncid, varid, nobs, n, i, oday, osec, dday, &
            dsec, nused, iyear, imonth, iday, ihour, imin, isec
 logical :: file_exist
 real(r8) :: alti_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
-            vwnd, qobs, qsat, oerr, stn_pres, qc
+            vwnd, palt, qobs, qsat, oerr, pres, qerr, qc
 
 integer,  allocatable :: tobs(:)
 real(r8), allocatable :: lat(:), lon(:), elev(:), alti(:), tair(:), & 
@@ -159,13 +159,20 @@ obsloop: do n = 1, nobs
     if ( lon(n) == lon(i) .and. lat(n) == lat(i) ) cycle obsloop
   end do
   qc = 1.0_r8
+  palt = pres_alt_to_pres(elev(n)) * 0.01_r8
 
   ! add altimeter data to text file
   if ( alti(n) /= alti_miss ) then
 
-    call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, alti(n) * 0.01_r8, & 
-                         LAND_SFC_ALTIMETER, ncep_land_altim_error, oday, osec, qc, obs)
-    call append_obs_to_seq(obs_seq, obs)
+    pres = invert_altimeter(alti(n) * 0.01_r8, elev(n))
+    oerr = land_pres_error(palt)
+    if ( alti(n) >= 89000.0_r8 .and. alti(n) <= 110000.0_r8 .and. oerr /= missing_r8 ) then
+
+      call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, alti(n) * 0.01_r8, & 
+                           LAND_SFC_ALTIMETER, oerr, oday, osec, qc, obs)
+      call append_obs_to_seq(obs_seq, obs)
+
+    end if
 
   end if
 
@@ -173,15 +180,14 @@ obsloop: do n = 1, nobs
   if ( wdir(n) /= wdir_miss .and. wspd(n) /= wspd_miss ) then
 
     call wind_dirspd_to_uv(wdir(n), wspd(n), uwnd, vwnd)
-    if ( abs(uwnd) < 150.0_r8 .and. abs(vwnd) < 150.0_r8 ) then
+    oerr = land_wind_error(palt)
+    if ( abs(uwnd) < 150.0_r8 .and. abs(vwnd) < 150.0_r8 .and. oerr /= missing_r8 ) then
 
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, uwnd, &
-                           LAND_SFC_U_WIND_COMPONENT, ncep_land_wind_error, & 
-                           oday, osec, qc, obs)
+                           LAND_SFC_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, vwnd, &
-                           LAND_SFC_V_WIND_COMPONENT, ncep_land_wind_error, &
-                           oday, osec, qc, obs)
+                           LAND_SFC_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
 
     end if
@@ -191,24 +197,31 @@ obsloop: do n = 1, nobs
   ! add air temperature data to text file
   if ( tair(n) /= tair_miss ) then 
 
-    call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, tair(n), &
-                         LAND_SFC_TEMPERATURE, ncep_land_temp_error, oday, osec, qc, obs)
-    call append_obs_to_seq(obs_seq, obs)
+    oerr = land_temp_error(palt)
+    if ( tair(n) >= 200.0_r8 .and. tair(n) <= 335.0_r8 .and. oerr /= missing_r8 ) then
+
+      call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, tair(n), &
+                           LAND_SFC_TEMPERATURE, oerr, oday, osec, qc, obs)
+      call append_obs_to_seq(obs_seq, obs)
+
+    end if
 
   end if
 
   ! add dew-point temperature data to text file, but as specific humidity
   if ( tair(n) /= tair_miss .and. tdew(n) /= tdew_miss .and. alti(n) /= alti_miss ) then
 
-    stn_pres = invert_altimeter(alti(n) * 0.01_r8, elev(n)) * 100.0_r8
-    qobs = specific_humidity(sat_vapor_pressure(tdew(n)), stn_pres)
-    qsat = specific_humidity(sat_vapor_pressure(tair(n)), stn_pres)
-    oerr = max(ncep_land_moist_error * qsat, 0.0001_r8)
+    qobs = specific_humidity(sat_vapor_pressure(tdew(n)), pres * 100.0_r8)
+    qsat = specific_humidity(sat_vapor_pressure(tair(n)), pres * 100.0_r8)
+    qerr = land_rel_hum_error(pres, tair(n), qobs / qsat)
+    oerr = max(qerr * qsat, 0.0001_r8)
 
-    if ( abs(qobs) < 100.0_r8 ) then
+    if ( qobs > 0.0_r8 .and. qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
+
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, qobs, &
                            LAND_SFC_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
+
     end if
 
   end if
