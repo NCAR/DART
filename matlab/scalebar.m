@@ -10,7 +10,8 @@
 %
 %  returns a handle ...
 %
-%  scalebar ONLY uses the first 64 colors in a colormap ...
+%  As of May 2009, scalebar now uses all the colors in the colormap;
+%  previously only the first 64 colors were used.
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004-2007, Data Assimilation Research Section
