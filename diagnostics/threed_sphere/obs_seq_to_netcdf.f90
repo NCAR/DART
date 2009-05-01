@@ -413,12 +413,11 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
          ! replace missing values with NetCDF missing value
          where (obscopies == MISSING_R8 ) obscopies = NF90_FILL_DOUBLE
-         copyvals = NF90_FILL_DOUBLE
 
          ! paste on the observational error variance (more?)
          obs_err_var = get_obs_def_error_variance(obs_def)
 
-         copyvals(1:num_copies+1) = (/ obscopies, obs_err_var /)
+         copyvals = (/ obscopies, obs_err_var /)
 
          call get_time(obs_time,seconds,days)
          mytime   = days + seconds/86400.0_r8
@@ -644,8 +643,8 @@ call nc_check(nf90_def_dim(ncid=ncid, &
               'InitNetCDF', 'def_dim:stringlength '//trim(fname))
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='obs_copy', len = allNcopies, dimid = ObsCopyDimID), &
-              'InitNetCDF', 'def_dim:obs_copy '//trim(fname))
+              name='copy', len = allNcopies, dimid = ObsCopyDimID), &
+              'InitNetCDF', 'def_dim:copy '//trim(fname))
 
 call nc_check(nf90_def_dim(ncid=ncid, &
               name='qc_copy', len = num_qc, dimid = QCCopyDimID), &
@@ -669,11 +668,11 @@ call nc_check(nf90_def_dim(ncid=ncid, &
 
 ! Define the types of observation quantities 
 
-call nc_check(nf90_def_var(ncid=ncid, name='obs_copy', xtype=nf90_int, &
+call nc_check(nf90_def_var(ncid=ncid, name='copy', xtype=nf90_int, &
              dimids=ObsCopyDimID, varid=VarID), &
-             'InitNetCDF', 'obs_copy:def_var')
+             'InitNetCDF', 'copy:def_var')
 call nc_check(nf90_put_att(ncid, VarID, 'explanation', 'see CopyMetaData'), &
-             'InitNetCDF', 'obs_copy:explanation')
+             'InitNetCDF', 'copy:explanation')
 
 ! Define the types of qc quantities
 
@@ -829,10 +828,10 @@ call nc_check(nf90_put_var(ncid, VarID, textblock ), &
 
 deallocate(textblock)
 
-call nc_check(nf90_inq_varid(ncid, 'obs_copy', VarID), &
-           'InitNetCDF', 'inq_varid:obs_copy '//trim(fname))
+call nc_check(nf90_inq_varid(ncid, 'copy', VarID), &
+           'InitNetCDF', 'inq_varid:copy '//trim(fname))
 call nc_check(nf90_put_var(ncid, VarId, (/ (i,i=1,allNcopies) /) ), &
-           'InitNetCDF', 'put_var:obs_copy')
+           'InitNetCDF', 'put_var:copy')
 
 call nc_check(nf90_inq_varid(ncid, 'CopyMetaData', VarID), &
            'InitNetCDF', 'inq_varid:CopyMetaData '//trim(fname))
@@ -1108,10 +1107,10 @@ endif
 
 ! Check the number of copies
 
-call nc_check(nf90_inq_dimid(ncid, 'obs_copy', dimid=ObsCopyDimID), &
-        'NC_Compatibility_Check', 'inq_dimid:obs_copy  '//trim(fname))
+call nc_check(nf90_inq_dimid(ncid, 'copy', dimid=ObsCopyDimID), &
+        'NC_Compatibility_Check', 'inq_dimid:copy  '//trim(fname))
 call nc_check(nf90_inquire_dimension(ncid, ObsCopyDimID, name=dimname, len=dimlen), &
-        'NC_Compatibility_Check', 'inquire_dimension:obs_copy '//trim(fname))
+        'NC_Compatibility_Check', 'inquire_dimension:copy '//trim(fname))
 
 if ( dimlen /= allNcopies ) then
    write(msgstring,*)'different number of copies ... ',dimlen,' /= ',allNcopies
