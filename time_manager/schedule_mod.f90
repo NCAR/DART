@@ -61,16 +61,16 @@ end type schedule_type
 ! Namelist with default values
 !-----------------------------------------------------------------------
 
-integer, dimension(6) :: bin_start      = (/ 2008, 9, 7, 0, 0, 0 /)
-integer, dimension(6) :: bin_end        = (/ 2008, 9, 7, 2, 0, 0 /)
-integer, dimension(6) :: last_bin_end   = (/ 2008, 9,11, 0, 0, 0 /)
+integer, dimension(6) :: first_bin_start = (/ 2008, 9, 7, 0, 0, 0 /)
+integer, dimension(6) :: first_bin_end   = (/ 2008, 9, 7, 2, 0, 0 /)
+integer, dimension(6) :: last_bin_end    = (/ 2008, 9,11, 0, 0, 0 /)
 integer               :: bin_interval_days    = 0
 integer               :: bin_interval_seconds = 21600
 integer               :: max_num_bins         = 1000
 character(len=32)     :: calendar             = 'Gregorian'
 logical               :: print_table          = .false.
 
-namelist /schedule_nml/ bin_start, bin_end, last_bin_end, &
+namelist /schedule_nml/ first_bin_start, first_bin_end, last_bin_end, &
                         bin_interval_days, bin_interval_seconds, &
                         max_num_bins, calendar, print_table
 
@@ -136,12 +136,12 @@ character(len=32) :: str1, str2, str3
 
 if ( .not. module_initialized ) call schedule_init   ! reads the namelist
 
-beg_time    = set_date(bin_start(1), bin_start(2), &
-                       bin_start(3), bin_start(4), &
-                       bin_start(5), bin_start(6) )
-end_time    = set_date(bin_end(1), bin_end(2), &
-                       bin_end(3), bin_end(4), &
-                       bin_end(5), bin_end(6) )
+beg_time    = set_date(first_bin_start(1), first_bin_start(2), &
+                       first_bin_start(3), first_bin_start(4), &
+                       first_bin_start(5), first_bin_start(6) )
+end_time    = set_date(first_bin_end(1), first_bin_end(2), &
+                       first_bin_end(3), first_bin_end(4), &
+                       first_bin_end(5), first_bin_end(6) )
 TimeMax     = set_date(last_bin_end(1), last_bin_end(2), &
                        last_bin_end(3), last_bin_end(4), &
                        last_bin_end(5), last_bin_end(6) )
@@ -151,12 +151,12 @@ bininterval = set_time(bin_interval_seconds, bin_interval_days)
 ! do some error-checking first
 
 if (end_time < beg_time) then
-   write(msgstring,*)'schedule_nml:bin_end must be at or after bin_start'
+   write(msgstring,*)'schedule_nml:first_bin_end must be at or after first_bin_start'
    call error_handler(E_ERR,'set_regular_schedule',msgstring,source,revision,revdate)
 endif
 
 if (TimeMax < end_time) then
-   write(msgstring,*)'schedule_nml:last_bin_end must be at or after bin_end'
+   write(msgstring,*)'schedule_nml:last_bin_end must be at or after first_bin_end'
    call error_handler(E_ERR,'set_regular_schedule',msgstring,source,revision,revdate)
 endif
 

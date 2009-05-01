@@ -34,10 +34,10 @@
 
 #  bin_interval_seconds = 21600,
 &schedule_nml
-   calendar       = 'Gregorian',
-   bin_start      =  2006, 8, 1, 3, 0, 0 ,
-   bin_end        =  2006, 8, 1, 9, 0, 0 ,
-   last_bin_end   =  2006, 8, 5, 0, 0, 0 ,
+   calendar        = 'Gregorian',
+   first_bin_start =  2006, 8, 1, 0, 0, 0 ,
+   first_bin_end   =  2006, 8, 1, 6, 0, 0 ,
+   last_bin_end    =  2006, 8, 5, 0, 0, 0 ,
    bin_interval_days    = 0,
    bin_interval_seconds = 21600,
    max_num_bins         = 1000,
@@ -45,7 +45,7 @@
    /
 
 &obs_seq_to_netcdf_nml
-   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_name = '/Users/thoar/DART/models/bgrid_solo/work/01_01/obs_seq.final'
    lonlim1    =    0.0,
    lonlim2    =  360.0,
    latlim1    =  -80.0,

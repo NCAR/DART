@@ -131,7 +131,7 @@ integer,        allocatable, dimension(:)   :: which_vert
 ! General purpose variables
 !-----------------------------------------------------------------------
 
-integer  :: iepoch, ivar, ifile, num_obs_in_epoch, ngood
+integer  :: iepoch, ifile, num_obs_in_epoch, ngood
 real(r8) :: obsloc3(3)
 
 integer  :: i, io, obsindex, ncunit
@@ -146,7 +146,7 @@ type(time_type) :: obs_time
 real(digits12)  :: mytime
 integer         :: seconds, days
 
-character(len = 129) :: ncName, windName, msgstring, calendarstring
+character(len = 129) :: ncName, msgstring, calendarstring
 
 !=======================================================================
 ! Get the party started
@@ -557,10 +557,6 @@ integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 
 character(len=129), allocatable, dimension(:) :: textblock
 
-character(len=nf90_max_name) :: dimname
-integer                      :: dimlen
-integer, dimension(nf90_max_var_dims) :: dimIDs
-
 real(digits12)  :: epoch_edges(2)
 integer         :: seconds, days
 type(time_type) :: mytime
@@ -884,7 +880,7 @@ real(digits12), dimension(:), intent(in) :: obs_times
 integer,        dimension(:), intent(in) :: obs_types
 integer,        dimension(:), intent(in) :: which_vert
 
-integer :: DimID, VarID, dimlen, obsindex, iobs
+integer :: DimID, dimlen, obsindex, iobs
 integer, dimension(1) :: istart, icount, intval
 
 integer :: locldimlen, obsldimlen, qcldimlen
