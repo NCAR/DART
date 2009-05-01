@@ -23,4 +23,4 @@ set MYLIBDIR = "-L${HDFDIR}/lib     -L${JPGDIR}/lib"
  -l "${MYINCDIR} -L/usr/lib64 ${MYLIBDIR} ${MYLIBS}" \
  -a "../../.." path_names_convert_L2b
 
-#-o "-ffixed-line-length-132 -I${HDFDIR}/include} -L/usr/lib64 -L${HDFDIR}/lib ${HDFLIBS}" \
+#-o "-ffixed-line-length-132 -I${HDFDIR}/include -L/usr/lib64 -L${HDFDIR}/lib ${HDFLIBS}" \
