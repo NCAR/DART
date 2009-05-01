@@ -41,8 +41,8 @@
    end
 
    ax = axes('position',[ xmin ymin wid height ]);
-   frog = [1:64];
-   m = (zmax-zmin)/(64-1);
+   frog = [1:length(colormap)];
+   m = (zmax-zmin)/(length(colormap)-1);
    b = zmin - m;
    x_axis =  frog*m + b;
 

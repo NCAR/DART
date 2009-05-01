@@ -30,9 +30,7 @@ function h = SimpleMap(fname,var,time,copystring,level)
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
 % <next few lines under version control, do not edit>
-% $URL:
-% http://subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/fit_ens_mean_time.m
-% $
+% $URL$
 % $Id$
 % $Revision$
 % $Date$

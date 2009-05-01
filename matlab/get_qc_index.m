@@ -1,12 +1,12 @@
-function copy_index = get_copy_index(fname, copystring)
-%GET_COPY_INDEX  Gets an index corresponding to copy meta_data string
+function copy_index = get_qc_index(fname, copystring)
+%get_qc_index  Gets an index corresponding to copy meta_data string
 % Retrieves index associated with a given copy meta_data string in 
 % file fname. If string is not found in meta_data list, a -1 is returned.
 %
 % Example:
 % fname = 'Prior_Diag.nc';
 % copystring = 'ensemble member 5';
-% copy_index = get_copy_index(fname, copystring);
+% copy_index = get_qc_index(fname, copystring);
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004-2007, Data Assimilation Research Section
@@ -19,20 +19,23 @@ function copy_index = get_copy_index(fname, copystring)
 % $Revision$
 % $Date$
 
-if ( exist('nc_varget') == 2)
-   copy_meta_data = nc_varget(fname,'CopyMetaData');
-   atts           = nc_getdiminfo(fname,'copy');
-   num_copies     = atts.Length;
+% Need to get the QC MetaData (strings with the names)
+% We then search the metadata for each copy for the appropriate copies.
+
+if ( exist('nc_varget') == 2) 
+   qc_meta_data = nc_varget(fname,'QCMetaData');
+   atts         = nc_getdiminfo(fname,'qc_copy');
+   num_copies   = atts.Length;
 else
    f = netcdf(fname);
-   num_copies = ncsize(f{'copy'});
+   num_copies = ncsize(f{'qc_copy'}); % determine # of ensemble members
    close(f)
-   copy_meta_data = getnc(fname, 'CopyMetaData');
+   qc_meta_data = getnc(fname,'QCMetaData');
 end
 
 % For a single copy, the size is nx1, for more k copies, it's kxn
-if size(copy_meta_data, 2) == 1
-   copy_meta_data = transpose(copy_meta_data);
+if size(qc_meta_data, 2) == 1
+   qc_meta_data = transpose(qc_meta_data);
 end
 
 nowhitecs = dewhite(copystring);
@@ -42,7 +45,7 @@ copy_index = -1;
 for i = 1:num_copies,
 
    % for matching -- we want to ignore whitespace -- find it & remove it
-   nowhitemd = dewhite(copy_meta_data(i,:));
+   nowhitemd = dewhite(qc_meta_data(i,:));
 
    if strcmp(nowhitemd , nowhitecs) == 1
       fprintf('%s is copy %3i\n', copystring,i);
@@ -57,7 +60,7 @@ if (copy_index < 0)
                 copystring, fname))
    disp('valid metadata strings are: ')
    for i = 1:num_copies,
-      disp(sprintf('%s',deblank(copy_meta_data(i,:))))
+      disp(sprintf('%s',deblank(qc_meta_data(i,:))))
    end
    error('please try again')
 end
