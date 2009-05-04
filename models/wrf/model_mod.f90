@@ -256,6 +256,10 @@ type(wrf_dom) :: wrf
 ! JPH move map stuff into common (can move back into S/R later?)
 real(r8) :: stdlon,truelat1,truelat2 !,latinc,loninc
 
+! have a single, module global error string (rather than 
+! replicate it in each subroutine and use up more stack space)
+character(len=129) :: errstring
+
 contains
 
 !#######################################################################
@@ -273,7 +277,6 @@ integer               :: ind, i, j, k, id, dart_index
 integer               :: my_index
 integer               :: var_element_list(max_state_variables)
 
-character(len=129) :: errstring
 
 !----------------------------------------------------------------------
 
@@ -630,7 +633,6 @@ real(r8) :: lon, lat, lev
 
 integer :: i, id
 logical, parameter :: debug = .false.
-character(len=129) :: errstring
 
 integer :: type_w, type_gz
 
@@ -785,8 +787,6 @@ logical             :: surf_var
 ! from getCorners
 integer, dimension(2) :: ll, lr, ul, ur, ll_v, lr_v, ul_v, ur_v
 integer            :: rc, ill, ilr, iul, iur, i1, i2
-
-character(len=129) :: errstring
 
 real(r8), dimension(2) :: fld
 real(r8), allocatable, dimension(:) :: v_h, v_p
@@ -2260,8 +2260,6 @@ integer             :: id, i, j, k, rc
 real(r8)            :: dx,dy,dz,dxm,dym,dzm
 integer, dimension(2) :: ll, lr, ul, ur
 
-character(len=129) :: errstring
-
 real(r8), allocatable, dimension(:) :: v_h, v_p
 
 ! local vars, used in calculating pressure and height
@@ -2589,8 +2587,6 @@ integer, intent(in) :: i,j,k,var_type,id
 integer :: get_wrf_index
 integer :: in
 
-character(len=129) :: errstring
-
 write(errstring,*)'function get_wrf_index should not be called -- still needs updating!'
 call error_handler(E_ERR,'get_wrf_index', errstring, &
      source, revision, revdate)
@@ -2753,7 +2749,7 @@ integer, dimension(num_domains) :: DNVarID, ZNUVarID, DNWVarID, phbVarID, &
 integer :: var_id
 integer :: i, id
 
-character(len=129) :: errstring, title
+character(len=129) :: title
 
 character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
@@ -2767,10 +2763,11 @@ character(len=129), allocatable, dimension(:) :: textblock
 integer :: nlines, linelen
 integer :: LineLenDimID, nlinesDimID, nmlVarID
 integer :: ind, my_index
-character(len=129) :: attname, varname, unitsval
+character(len=NF90_MAX_NAME) :: attname, varname
+character(len=129) :: unitsval
 integer, dimension(5) :: dimids_3D
 integer, dimension(4) :: dimids_2D
-logical               :: debug = .true.
+logical               :: debug = .false.
 
 !-----------------------------------------------------------------
 
@@ -3462,7 +3459,7 @@ integer :: StateVarID, VarID, id, ind, my_index
 integer :: i,j
 real(r8), allocatable, dimension(:,:)   :: temp2d
 real(r8), allocatable, dimension(:,:,:) :: temp3d
-character(len=10) :: varname
+character(len=NF90_MAX_NAME) :: varname
 character(len=1) :: idom
 integer, dimension(2) :: dimsizes_2D
 integer, dimension(3) :: dimsizes_3D
@@ -4584,7 +4581,6 @@ subroutine compute_seaprs ( nz, z, t, p , q ,          &
 
 !     Local variables:
 
-      character(len=129) :: errstring
       INTEGER :: k
       INTEGER :: klo, khi
 
@@ -4791,7 +4787,10 @@ SUBROUTINE splint(xa,ya,y2a,n,x,y)
       goto 1
       endif
       h=xa(khi)-xa(klo)
-      if (h.eq.0.) pause 'bad xa input in splint'
+      if (h.eq.0.) then
+         write(*,*) 'bad xa input in splint'
+         stop
+      endif 
       a=(xa(khi)-x)/h
       b=(x-xa(klo))/h
       y=a*ya(klo)+b*ya(khi)+((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6.
@@ -5519,11 +5518,11 @@ subroutine read_wrf_dimensions(ncid,bt,bts,sn,sns,we,wes,sls)
 
 implicit none
 
-integer, intent(in)   :: ncid
-integer, intent(out)  :: bt,bts,sn,sns,we,wes,sls
-logical, parameter    :: debug = .false.
-integer               :: var_id 
-character (len=80)    :: name
+integer, intent(in)            :: ncid
+integer, intent(out)           :: bt,bts,sn,sns,we,wes,sls
+logical, parameter             :: debug = .false.
+integer                        :: var_id 
+character (len=NF90_MAX_NAME)  :: name
 
 ! get wrf grid dimensions
 
@@ -5939,10 +5938,11 @@ integer function get_number_of_wrf_variables(id, state_table, var_element_list)
 implicit none
 
 integer, intent(in) :: id
-character(len=129), intent(in) :: state_table(num_state_table_columns,max_state_variables) 
+character(len=*), intent(in) :: state_table(num_state_table_columns,max_state_variables) 
 integer, intent(out), optional :: var_element_list(max_state_variables)
 integer :: ivar, num_vars
-character(len=129) :: my_string
+! was this for debugging?  seems unused.
+!character(len=129) :: my_string
 logical :: debug = .false.
 
 if ( present(var_element_list) ) var_element_list = -1
@@ -5951,7 +5951,7 @@ ivar = 1
 num_vars = 0
 do while ( trim(state_table(5,ivar)) /= 'NULL' ) 
 
-   my_string = state_table(5,ivar)
+   !my_string = state_table(5,ivar)
 
    if ( variable_is_on_domain(state_table(5,ivar),id) ) then
       num_vars = num_vars + 1
@@ -6002,13 +6002,13 @@ subroutine get_variable_bounds(bounds_table,wrf_var_name,lb,ub,instructions)
 
    implicit none
 
-   character(len=129), intent(in)    :: bounds_table(num_bounds_table_columns,max_state_variables) 
-   character(len=129), intent(in)    :: wrf_var_name
-   real(r8),           intent(out)   :: lb,ub
-   character(len=10),  intent(out)   :: instructions
+   character(len=*), intent(in)    :: bounds_table(num_bounds_table_columns,max_state_variables) 
+   character(len=*), intent(in)    :: wrf_var_name
+   real(r8),         intent(out)   :: lb,ub
+   character(len=10),intent(out)   :: instructions
 
-   character(len=30)                 :: wrf_varname_trim, bounds_varname_trim
-   character(len=30)                 :: bound_trim
+   character(len=30)               :: wrf_varname_trim, bounds_varname_trim
+   character(len=30)               :: bound_trim
    integer :: ivar
    logical :: debug = .false.
 
@@ -6066,10 +6066,10 @@ logical function variable_is_on_domain(domain_id_string, id)
 
 implicit none
 
-integer,            intent(in) :: id
-character(len=129), intent(in) :: domain_id_string
+integer,           intent(in) :: id
+character(len=*),  intent(in) :: domain_id_string
 
-integer                        :: domain_int, i
+integer                       :: domain_int, i
 
 variable_is_on_domain = .false.
 
@@ -6102,11 +6102,11 @@ subroutine get_variable_size_from_file(ncid,id,wrf_var_name,bt,bts,sn,sns, &
 
 implicit none
 
-integer, intent(in)               :: ncid, id
-integer, intent(in)               :: bt, bts, sn, sns, we, wes
-character(len=129), intent(in)    :: wrf_var_name
-integer, intent(out)              :: var_size(3)
-character(len=129),intent(out)    :: stagger
+integer,           intent(in)   :: ncid, id
+integer,           intent(in)   :: bt, bts, sn, sns, we, wes
+character(len=*),  intent(in)   :: wrf_var_name
+integer,           intent(out)  :: var_size(3)
+character(len=129),intent(out)  :: stagger
 
 logical, parameter    :: debug = .false.
 integer               :: var_id, ndims, dimids(10) 
@@ -6166,7 +6166,7 @@ subroutine get_variable_metadata_from_file(ncid,id,wrf_var_name,description, &
 implicit none
 
 integer, intent(in)               :: ncid, id
-character(len=129), intent(in)    :: wrf_var_name
+character(len=*),   intent(in)    :: wrf_var_name
 character(len=129), intent(out)   :: description, units
 
 logical, parameter    :: debug = .false.
@@ -6243,7 +6243,6 @@ real(r8), intent(inout) :: a2d(nx,ny)
 !---
 
 integer :: i,j,m
-character(len=129) :: errstring
 
 i=size(a2d,1)
 j=size(a2d,2)
@@ -6277,7 +6276,6 @@ real(r8), intent(inout) :: a3d(:,:,:)
 !---
 
 integer :: i,j,k,m
-character(len=129) :: errstring
 
 i=size(a3d,1)
 j=size(a3d,2)
@@ -6315,7 +6313,6 @@ real(r8), intent(inout) :: a2d(nx,ny)
 !---
 
 integer :: i,j,m
-character(len=129) :: errstring
 
 i=size(a2d,1)
 j=size(a2d,2)
@@ -6349,7 +6346,6 @@ real(r8), intent(inout) :: a3d(:,:,:)
 !---
 
 integer :: i,j,k,m
-character(len=129) :: errstring
 
 i=size(a3d,1)
 j=size(a3d,2)
@@ -6386,9 +6382,9 @@ implicit none
 integer,           intent(out) :: year, month, day, hour, minute, second
 character(len=19), intent(in)  :: tstring
 
-read(tstring(1:4),'(i4)') year
-read(tstring(6:7),'(i2)') month
-read(tstring(9:10),'(i2)') day
+read(tstring( 1: 4),'(i4)') year
+read(tstring( 6: 7),'(i2)') month
+read(tstring( 9:10),'(i2)') day
 read(tstring(12:13),'(i2)') hour
 read(tstring(15:16),'(i2)') minute
 read(tstring(18:19),'(i2)') second
