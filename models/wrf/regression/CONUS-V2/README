@@ -37,7 +37,7 @@ namelist.input - WRF Fortran namelist
 
 Executables you will need to build from the DART/WRF distribution:
 
-dart_tf_wrf - translates from WRF netcdf files to DART restart, and back
+dart_to_wrf, wrf_to_dart - translates from WRF netcdf files to DART restart, and back
 filter - the main DART assimilation program
 wakeup_filter - only needed if you must run WRF in parallel mode
 

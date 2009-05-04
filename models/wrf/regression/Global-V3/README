@@ -28,7 +28,7 @@ This the Table of Contents for the WRF3 global DART regression case
    is: 128 by 64 by 40. It is self-described for being valid at 12Z,
    18 Oct 2007.
 
-   As I recall, I used wrf_tf_dart to convert this wrfinput_d01 file
+   As I recall, I used wrf_to_dart to convert this wrfinput_d01 file
    into "dart_wrf_vector", which I then simply renamed "perfect_ics".
    I used the executable filter's ability to add small random noise to
    generate an ensemble from perfect_ics.  I then integrated this
