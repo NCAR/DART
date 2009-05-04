@@ -1,13 +1,13 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   convert_ssec_clwnd - program that reads ASCII satellite wind data from 
+!   convert_ssec_satwnd - program that reads ASCII satellite wind data from 
 !                        CIMSS/SSEC and writes a genertic text file 
 !                        for use in creating obs_seq files.
 !
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-program convert_ssec_clwnd
+program convert_ssec_satwnd
 
 use        types_mod, only : r8
 use    utilities_mod, only : get_unit
@@ -25,8 +25,8 @@ use           netcdf
 
 implicit none
 
-character(len=15),  parameter :: ssec_sat_file = 'clwnd_input.txt'
-character(len=129), parameter :: sat_wind_file = 'obs_seq.clwnd'
+character(len=16),  parameter :: ssec_sat_file = 'satwnd_input.txt'
+character(len=129), parameter :: sat_wind_file = 'obs_seq.satwnd'
 
 integer, parameter :: nmaxwnd = 50000,  &  ! maximum number of vectors
                       num_copies = 1,   &  ! number of copies in sequence
@@ -145,8 +145,9 @@ close( in_unit)
 
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, sat_wind_file)
 
-stop
-end
+! end of main program
+
+contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -199,3 +200,5 @@ call set_qc(obs, qc_val)
 
 return
 end subroutine create_obs_type
+
+end program
