@@ -6,7 +6,7 @@ function CAM_DART_correl(datadir,DARTfile,DARTvarname,DARTlevel,CAMvarname,CAMlo
 % DARTvarname = 'T';
 % DARTlevel   = 600;
 % CAMvarname  = 'EVAPPREC';
-% CAMlocation = [260, 8.5, 600];  % lon/lat/level
+% CAMlocation = [170, 31, 600];  % lon/lat/level
 %
 % CAM_DART_correl(datadir,DARTfile,DARTvarname,DARTlevel,CAMvarname,CAMlocation)
 
@@ -86,8 +86,12 @@ diffs = abs(DARTlevels - DARTlevel);
 [dartlevel,dartlevind] = min(diffs);
 dartlevel = DARTlevels(dartlevind);
 
-start = [ 0  0  0  0 dartlevind-1];
-count = [-1 -1 -1 -1      1];
+copyind1 = get_copy_index(prfname,'ensemble member 1');
+copyindN = get_copy_index(prfname,'ensemble member 80');
+copyN = copyindN - copyind1 + 1;
+
+start = [ 0  copyind1-1  0  0 dartlevind-1];
+count = [-1  copyN      -1 -1      1];
 y     = nc_varget(prfname,DARTvarname,start,count);
 
 [Nmem, Nlat, Nlon] = size(y);

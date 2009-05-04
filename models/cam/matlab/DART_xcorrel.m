@@ -53,8 +53,12 @@ camlon   = CAMlons(  camlonind);
 %                T:long_name = "Temperature" ;
 %                T:units = "K" ;
 
-start = [ 0   0   0   0   camlevind-1];
-count = [ 1   -1  -1  -1        1];
+copyind1 = get_copy_index(camname,'ensemble member 1');
+copyindN = get_copy_index(camname,'ensemble member 80');
+copyN = copyindN - copyind1 + 1;
+
+start = [ 0  copyind1-1   0   0   camlevind-1];
+count = [ 1  copyN       -1  -1        1     ];
 
 bob = nc_varget(camname,varname1,start,count);
 x   = bob(:,camlatind,camlonind); 
@@ -75,8 +79,8 @@ diffs = abs(DARTlevels - level2);
 [dartlevel,dartlevind] = min(diffs);
 dartlevel = DARTlevels(dartlevind);
 
-start = [ 0  0  0  0 dartlevind-1];
-count = [-1 -1 -1 -1      1];
+start = [ 0  copyind1-1  0  0 dartlevind-1];
+count = [ 1  copyN      -1 -1      1      ];
 y     = nc_varget(prfname,varname2,start,count);
 
 [Nmem, Nlat, Nlon] = size(y);
