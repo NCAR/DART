@@ -1,13 +1,27 @@
-function obsstruct = plot_obs_netcdf(fname, ObsTypeString, region, ObsString, QCString, verbose)
+function obsstruct = plot_obs_netcdf(fname, ObsTypeString, region, ObsString, ...
+                                     QCString, maxQC, verbose)
 %
 % fname         = 'obs_sequence_001.nc';
 % ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';
 % region        = [0 360 -90 90 -Inf Inf];
 % ObsString     = 'NCEP BUFR observation';
 % QCString      = 'DART quality control';
+% maxQC         = 2;
 % verbose       = 1;   % anything > 0 == 'true'
 %
-% bob = plot_obs_netcdf(fname, ObsTypeString, region, ObsString, QCString, verbose);
+% bob = plot_obs_netcdf(fname, ObsTypeString, region, ObsString, QCString, maxQC, verbose);
+
+% record the user input
+
+obsstruct.fname         = fname;
+obsstruct.ObsTypeString = ObsTypeString;
+obsstruct.region        = region;
+obsstruct.ObsString     = ObsString;
+obsstruct.QCString      = QCString;
+obsstruct.maxQC         = maxQC;
+obsstruct.verbose       = verbose;
+
+% get going
 
 ObsTypes       = nc_varget(fname,'ObsTypes');
 ObsTypeStrings = nc_varget(fname,'ObsTypesMetaData');
@@ -22,7 +36,13 @@ loc            = nc_varget(fname,'location');
 obs            = nc_varget(fname,'observations');
 qc             = nc_varget(fname,'qc');
 
-my_types = unique(obs_type);  % only ones in the file, actually.
+my_types   = unique(obs_type);  % only ones in the file, actually.
+timeunits  = nc_attget(fname,'time','units');
+timerange  = nc_attget(fname,'time','valid_range');
+calendar   = nc_attget(fname,'time','calendar');
+timebase   = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
+timeorigin = datenum(timebase(1),timebase(2),timebase(3));
+timestring = datestr(timerange + timeorigin);
 
 % Echo summary if requested
 
@@ -47,16 +67,20 @@ if ( verbose > 0 )
 
 end
 
+% Find observations of the correct type.
+
 mytypeind = get_copy_index(fname, ObsString);
-myQCind   =   get_qc_index(fname,  QCString);
+myind     = strmatch(ObsTypeString,ObsTypeStrings);
+inds      = find(obs_type == myind);
+mylocs    = loc(inds,:);
+myobs     = obs(inds,mytypeind);
 
-% Find observations of a the correct type.
-
-myind  = strmatch(ObsTypeString,ObsTypeStrings);
-inds   = find(obs_type == myind);
-mylocs = loc(inds,:);
-myqc   =  qc(inds,myQCind);
-myobs  = obs(inds,mytypeind);
+if ~ isempty(QCString)
+   myQCind = get_qc_index(fname,  QCString);
+   myqc    = qc(inds,myQCind);
+else
+   myqc    = [];
+end
 
 % geographic subset if needed
 
@@ -66,7 +90,30 @@ obsstruct.lons = mylocs(inds,1);
 obsstruct.lats = mylocs(inds,2);
 obsstruct.z    = mylocs(inds,3);
 obsstruct.obs  =  myobs(inds);
+
+if ( ~ isempty(myqc))
 obsstruct.qc   =   myqc(inds);
+end
+
+% It might be great to have a histogram of the observations with particular QC
+% values
+
+% subset based on qc value
+
+if ( (~ isempty(myqc)) & ( ~ isempty(maxQC)) )
+
+   inds = find(obsstruct.qc > maxQC);
+   disp(sprintf('Removing %d obs with a %s value greater than %f', ...
+                length(inds),QCString,maxQC))
+
+   inds = find(obsstruct.qc <= maxQC);
+
+   bob = obsstruct.lons(inds); obsstruct.lons = bob;
+   bob = obsstruct.lats(inds); obsstruct.lats = bob;
+   bob = obsstruct.z(   inds); obsstruct.z    = bob;
+   bob = obsstruct.obs( inds); obsstruct.obs  = bob;
+
+end
 
 xmin = min(region(1:2));
 xmax = max(region(1:2));
@@ -86,9 +133,13 @@ scalarray = obsstruct.obs*slope + b;
 
 h = scatter(obsstruct.lons,obsstruct.lats,scalarray,obsstruct.obs,'d','filled');
 axis image
-axis([xmin xmax ymin ymax])
+% axis([xmin xmax -Inf Inf])
 worldmap;
 colorbar;
-title(sprintf('level (%.2f - %.2f) %s (%d locations)',zmin,zmax, ...
-       ObsTypeString,length(inds)), 'Interpreter','none');
 
+str1 = sprintf('%s level (%.2f - %.2f)',ObsTypeString,zmin,zmax);
+str2 = sprintf('(%d locations)',length(obsstruct.obs));
+str3 = sprintf('%s - %s',timestring(1,:),timestring(2,:));
+
+title( {str1, str3}, 'Interpreter','none','FontSize',18);
+xlabel(str2,'FontSize',16)
