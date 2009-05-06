@@ -38,8 +38,8 @@ character(len = 2) :: obstime(4), hour1
 data obstime/'06','12','18','24'/
 
 real(r8) :: bin_beg(5), bin_end(5)
-data bin_beg/ 3.01_r8,  9.01_r8, 15.01_r8, 21.01_r8, 3.01_r8/
-data bin_end/ 9.00_r8, 15.00_r8, 21.00_r8, 27.00_r8, 27.00_r8/
+data bin_beg/ 3.001_r8,  9.001_r8, 15.001_r8, 21.001_r8,  3.001_r8/
+data bin_end/ 9.000_r8, 15.000_r8, 21.000_r8, 27.000_r8, 27.000_r8/
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
