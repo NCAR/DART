@@ -778,7 +778,7 @@ if (.not.iamroot) then
 
    ! my task is receiving data.
    call MPI_Recv(dstarray, dstcount, datasize, root, MPI_ANY_TAG, &
-	          my_local_comm, status, errcode)
+                 my_local_comm, status, errcode)
    if (errcode /= MPI_SUCCESS) then
       write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
       call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
