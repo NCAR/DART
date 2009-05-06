@@ -12,7 +12,7 @@ program filter
 ! $Date$
 
 !------------------------------------------------------------------------------
-use types_mod,            only : r8, missing_r8
+use types_mod,            only : r8, missing_r8, metadatalength
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                  &
                                  get_obs_from_key, set_copy_meta_data, get_copy_meta_data,   &
                                  get_obs_def, get_time_range_keys, set_obs_values, set_obs,  &
@@ -775,7 +775,7 @@ character(len=129) :: prior_meta_data, posterior_meta_data
 ! The 4 is for ensemble mean and spread plus inflation mean and spread
 ! The Prior file contains the prior inflation mean and spread only
 ! Posterior file contains the posterior inflation mean and spread only
-character(len=129) :: state_meta(num_output_state_members + 4)
+character(len=metadatalength) :: state_meta(num_output_state_members + 4)
 integer :: i, ensemble_offset, num_state_copies, num_obs_copies
 
 

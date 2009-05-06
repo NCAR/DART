@@ -13,7 +13,7 @@ program perfect_model_obs
 
 ! Program to build an obs_sequence file from simulated observations.
 
-use        types_mod,     only : r8
+use        types_mod,     only : r8, metadatalength
 use    utilities_mod,     only : initialize_utilities, register_module, error_handler, &
                                  find_namelist_in_file, check_namelist_read,           &
                                  E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp
@@ -115,6 +115,7 @@ integer                 :: model_size, key_bounds(2), num_qc, last_key_used
 real(r8)                :: true_obs(1), obs_value(1), qc(1)
 
 character(len=129)      :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
+character(len=metadatalength) :: state_meta(1)
 
 logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
 logical                 :: all_gone
@@ -181,8 +182,9 @@ call error_handler(E_MSG,'perfect_main',msgstring)
 ! Set up the ensemble storage and read in the restart file
 call perfect_read_restart(ens_handle, model_size)
 
+state_meta(1) = 'true state'
 ! Set up output of truth for state
-StateUnit = init_diag_output('True_State', 'true state from control', 1, (/'true state'/))
+StateUnit = init_diag_output('True_State', 'true state from control', 1, state_meta)
 
 ! Initialize a repeatable random sequence for perturbations
 call init_random_seq(random_seq)

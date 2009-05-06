@@ -20,6 +20,7 @@ public :: MISSING_I, MISSING_DATA
 public :: SECPERDAY
 public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant
 public :: L_over_Rv, ps0, earth_radius, gravity
+public :: metadatalength
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -28,6 +29,12 @@ character(len=128), parameter :: &
    revdate  = "$Date$"
 
 SAVE
+
+!----------------------------------------------------------------------------
+! constants that need to be shared - really has nothing to do with types ...
+!----------------------------------------------------------------------------
+
+integer, parameter :: metadatalength = 64 ! 75 is max w/out wrapping in ncdump
 
 !----------------------------------------------------------------------------
 ! Attributes for variable kinds -- no need to rely on -r8 switch in compiler
