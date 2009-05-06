@@ -1,6 +1,15 @@
 This directory is where to add modules that compute/set the
 observational errors for different types of real-world observations.
 
+For the 2 existing files, the data source is:
+
+ECMWF errors: 
+http://www.ecmwf.int/research/ifsdocs/CY25r1/Observations/Observations-03-3.html
+
+NCEP errors: 
+a 2005 version of the GFS observation error tables.
+
+
 Each center uses different errors, and these separate files
 make it easy to collect these values in one place, and switch
 them in and out depending on the needs of the user who is
