@@ -800,7 +800,7 @@ else
       else
          ! call MPI to send the data to the remote task
          call MPI_Ssend(localchunk, dstcount, datasize, i, tag, &
-   	               my_local_comm, errcode)
+                        my_local_comm, errcode)
          if (errcode /= MPI_SUCCESS) then
             write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
             call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
