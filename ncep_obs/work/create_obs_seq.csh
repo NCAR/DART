@@ -98,10 +98,10 @@ while ($n <= $dayn)
             echo " fixing $obs pole locations"                     >> create_obs_seq.log
             sed -e 's/ 1.57079632679490/ 1.57079632679488/' \
                 -e 's/-1.57079632679490/-1.57079632679488/' $obs   >! fixed_pole${n}
+            mv -f fixed_pole${n} $obs
          else
             exit
          endif
-         mv -f fixed_pole${n} $obs
       endif
       mv $obs $Obs_base:h &
    end
