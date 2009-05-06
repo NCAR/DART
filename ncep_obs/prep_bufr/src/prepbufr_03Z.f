@@ -411,7 +411,7 @@ c    between this file and prepbufr.f.  it is intended to be run only
 c    on bufr files marked 06Z (which contain data from 3Z to 9Z) to
 c    allow obs_seq files from 03:01Z to 03:00Z+1day to be created.
 
-        if( abs(hour01 - 3.0) .gt. 0.001)  go to 200 
+        if( abs(hour01 - 3.0) .gt. 0.0001)  go to 200 
         tdata(8) = hour01 + 24.0
         pdata(8) = hour01 + 24.0
         qdata(8) = hour01 + 24.0
