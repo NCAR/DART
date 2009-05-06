@@ -75,6 +75,7 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
+
 logical, save :: module_initialized = .false.
 ! set this to true if you want to print out the current time
 ! after each N observations are processed, for benchmarking.
@@ -106,8 +107,25 @@ integer :: i, num_copies, num_qc
 integer :: days, seconds
 integer :: day0, sec0
 integer :: hour, imin, sec
-integer :: obs_num, calender_type, iskip
+integer :: obs_num, calender_type
 type(time_type) :: current_day, next_day
+
+integer, parameter :: num_fail_kinds = 6
+integer :: iskip(num_fail_kinds)
+integer, parameter :: fail_3Z        = 1
+integer, parameter :: fail_timerange = 2
+integer, parameter :: fail_badloc    = 3
+integer, parameter :: fail_areabox   = 4
+integer, parameter :: fail_badkind   = 5
+integer, parameter :: fail_notwanted = 6
+character(len=32) :: skip_reasons(num_fail_kinds) = (/ &
+                     'time too early (exactly 03Z)    ', &
+                     'time outside bin range          ', &
+                     'bad observation location        ', &
+                     'observation outside lat/lon box ', &
+                     'unrecognized observation kind   ', &
+                     'obs type not on select list     ' /)
+
 
 integer :: obs_unit
 integer :: obs_prof, obs_kind, obs_kind_gen, which_vert, iqc, obstype, pc
@@ -174,7 +192,7 @@ rewind (obs_unit)
 !print*, 'ncep obsdates = ', obsdate
 
 obs_num = 0
-iskip   = 0
+iskip(:) = 0
 
 !  loop over all observations within the file
 !------------------------------------------------------------------------------
@@ -191,13 +209,13 @@ obsloop:  do
 !   (obs at 03Z the next day have a time of 27.)
 !------------------------------------------------------------------------------
    if(time == 3.0_r8) then
-      iskip = iskip + 1
+      iskip(fail_3Z) = iskip(fail_3Z) + 1
       cycle obsloop 
    endif 
 
    !  select the obs for the time window
    if(time < bin_beg .or. time > bin_end) then
-      iskip = iskip + 1
+      iskip(fail_timerange) = iskip(fail_timerange) + 1
       cycle obsloop
    endif
 
@@ -205,15 +223,32 @@ obsloop:  do
    if((lon > 360.0_r8) .or. (lon <   0.0_r8) .or.  &
       (lat >  90.0_r8) .or. (lat < -90.0_r8)) then
       write(*,*) 'invalid location.  lon,lat = ', lon, lat
-      iskip = iskip + 1
+      iskip(fail_badloc) = iskip(fail_badloc) + 1
       cycle obsloop
    endif
 
    ! reject observations outside the bounding box
    if(lat < lat1 .or. lat > lat2 .or. & 
      .not. is_longitude_between(lon, lon1, lon2)) then
-     iskip = iskip + 1
+     iskip(fail_areabox) = iskip(fail_areabox) + 1
      cycle obsloop
+   endif
+
+   ! it seems when a machine writes out a number and then reads it back in
+   ! you should at least get consistent round-off errors.  perhaps it is more
+   ! complex than it seems, but on the ibm xlf compiler, values of exactly
+   ! 90.0 and -90.0 are written out as (binary) doubles and when they are
+   ! read back in and compared to 90 and -90, they are not equal anymore.
+   ! the difference is in a very small but apparently significant digit,
+   ! so we error out in our 3d sphere locations module.  this hack is a try
+   ! at adjusting the numbers by a small enough value that the location is
+   ! still the pole but isn't going to round out of range.
+   if      (lat >=  89.9999_r8) then
+     lat = lat - 1.0e-12_r8
+     !print *, 'lat adjusted down, now ', lat
+   else if (lat <= -89.9999_r8) then
+     lat = lat + 1.0e-12_r8
+     !print *, 'lat adjusted   up, now ', lat
    endif
 
    obs_prof = rcount/1000000
@@ -280,13 +315,13 @@ obsloop:  do
    endif
 
    if (obs_kind < 0) then
-      ! the "real" fix here if the record type is not found might actually be to
-      ! accept all record types here within valid ranges, and depend on the first
+      ! the "real" fix if the record type is not found might actually be to
+      ! accept all record types within valid ranges, and depend on the first
       ! preprocessing steps (in the prepbufr converter) to remove obs record
       ! types which are not desired.  for now, avoid giving them the wrong type
       ! and quietly loop.
       !print *, 'unrecognized obs_prof or obstype, skipping', obs_prof, obstype
-      iskip = iskip + 1
+      iskip(fail_badkind) = iskip(fail_badkind) + 1
       cycle obsloop 
    endif
 
@@ -323,7 +358,7 @@ obsloop:  do
      
       ! if pass is still true, we want to ignore this obs.
       if(pass) then
-         iskip = iskip + 1
+         iskip(fail_notwanted) = iskip(fail_notwanted) + 1
          cycle obsloop 
       endif
 
@@ -421,8 +456,11 @@ end do obsloop
 
 close(obs_unit)
 
-print*, 'date ', obsdate, ' obs used = ', obs_num, ' obs skipped = ', iskip
-!print*, 'obs_num= ',obs_num,' skipped= ',obsdate,iskip
+print*, 'date ', obsdate
+print*, 'num obs used = ', obs_num, ' total obs skipped = ', sum(iskip)
+do i=1, num_fail_kinds
+  if (iskip(i) >  0) print *, iskip(i), 'skipped because ', skip_reasons(i)
+enddo
 
 end function real_obs_sequence
 
