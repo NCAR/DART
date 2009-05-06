@@ -405,8 +405,8 @@ vloc = query_location(radar_location, 'vloc')
 ! Add the height increment and check for 'too high'.
 vloc = vloc + h
 
-if(vloc.gt.ceiling) then 	! max. height for radar obs = 8.5km
-   qc = .false.	! bad data
+if(vloc.gt.ceiling) then       ! max. height for radar obs = 8.5km
+   qc = .false.        ! bad data
    return
 endif 
 
@@ -436,7 +436,7 @@ if(select_obstype .eq. 1 .or. select_obstype .eq. 3) then
    call set_radial_vel(defkey, radar_location, beam_direction, nyquist_velocity)
 endif
 
-qc = .true.	! all good
+qc = .true.    ! all good
 
 end subroutine compute_location
 
