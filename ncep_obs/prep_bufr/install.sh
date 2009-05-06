@@ -14,6 +14,13 @@
 #  environment variable.  Type "which ar" to check if this is done. **
 #  ------------------------------------------------------------------------
  
+#  ------------------------------------------------------------------------
+#  if you get a link or runtime error about bort being undefined, go into
+#  the lib directory and read the README_BUFRLIB file about how to fix it.
+#  you can do something like:  cc='cc -DUNDERSCORE' to set the flag for all
+#  compiles at once.
+#  ------------------------------------------------------------------------
+
 set -eua
  
 #  ------------------------------------------------------------------------
@@ -36,7 +43,7 @@ then
    cc=cc; ff=ifort
 elif [ $CPLAT = aix ]
 then
-   cc=cc; ff=f77
+   cc='cc -O'; ff='f77 -O'
 elif [ $CPLAT = sun ]
 then
    cc=cc; ff=f77
