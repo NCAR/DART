@@ -226,7 +226,7 @@ close(unit=4)
 ! for the hydrostatic variables
 open(unit=3,file='pickup_nh.in.s',status='old',access='direct',recl=naz*8)
 open(unit=4,file='pickup_nh.out.s',status='unknown',access='direct',recl=naz*8)
-	
+
 ! write out p (phi_nh in MITgcm-speak)
 do k = 1, nzed
    do j = 1, nrad
