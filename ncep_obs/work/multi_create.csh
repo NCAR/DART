@@ -32,6 +32,9 @@ set    month =    0
 set startday =    1
 set   endday =   31
 
+# if you want to run more than one of these jobs at a time,
+# each must have a different base tempname.
+set tempname = tempdir
 
 # Loop over days, first to convert, then to clean up
 set day = $startday
@@ -39,8 +42,8 @@ set lastday = $endday
 
 while ( $day <= $lastday )
 
-   mkdir tempdir_${day}
-   cd tempdir_${day}
+   mkdir ${tempname}_${day}
+   cd ${tempname}_${day}
 
    set mo = `printf %02d $month`
    cp -f ../create_real_obs .
@@ -70,8 +73,10 @@ set lastday = $endday
 # belong.  must then set a base dir to move them into.
 # could then remove the dir, although might miss errors that way.
 while ( $day <= $lastday )
- rm tempdir_${day}/input.nml tempdir_${day}/create_real_obs tempdir_${day}/dart_log.nml
- #rmdir tempdir_${day} 
+ rm ${tempname}_${day}/input.nml ${tempname}_${day}/create_real_obs ${tempname}_${day}/dart_log.nml
+
+ # could mv the obs file to the eventual destination dir here
+ #rmdir ${tempname}_${day} 
  @ day++
 end
 
