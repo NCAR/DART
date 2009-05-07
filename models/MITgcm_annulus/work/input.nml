@@ -40,6 +40,7 @@
    output_forward_op_errors = .false.,
    output_timestamps        = .false.,
    output_inflation         = .true.,
+   trace_execution          = .false.,
 
    inf_flavor                  = 0,                       0,
    inf_initial_from_restart    = .false.,                 .false.,
@@ -111,9 +112,10 @@
 
 &utilities_nml
    TERMLEVEL = 1,
-   module_details = .true.,
+   module_details = .false.,
    logfilename = 'dart_log.out',
-   nmlfilename = 'dart_log.nml'  /
+   nmlfilename = 'dart_log.nml',
+   write_nml   = 'file'  /
 
 &reg_factor_nml
    select_regression    = 1,

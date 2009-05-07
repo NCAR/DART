@@ -23,7 +23,8 @@ use time_manager_mod,    only : time_type, operator(<), operator(==),      &
 use utilities_mod,       only : initialize_utilities, register_module,     &
                                 error_handler, nmlfileunit, E_MSG, E_ERR,  &
                                 timestamp, find_namelist_in_file,          &
-                                check_namelist_read, do_output, logfileunit
+                                check_namelist_read, do_output, logfileunit, &
+                                do_nml_file, do_nml_term
                                 
 use assim_model_mod,     only : static_init_assim_model, get_model_size,   &
                                 open_restart_read, open_restart_write,     &
@@ -106,8 +107,8 @@ call find_namelist_in_file("input.nml", "restart_file_tool_nml", iunit)
 read(iunit, nml = restart_file_tool_nml, iostat = io)
 call check_namelist_read(iunit, io, "restart_file_tool_nml")
 
-if (do_output()) write(nmlfileunit, nml=restart_file_tool_nml)
-if (do_output()) write(     *     , nml=restart_file_tool_nml)
+if (do_nml_file()) write(nmlfileunit, nml=restart_file_tool_nml)
+if (do_nml_term()) write(     *     , nml=restart_file_tool_nml)
 
 ! if you are not using a gregorian cal, set this to false
 ! in the namelist.

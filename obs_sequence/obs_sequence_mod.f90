@@ -36,8 +36,9 @@ use time_manager_mod, only : time_type, operator(>), operator(<), &
                              operator(-), operator(+), operator(==)
 use    utilities_mod, only : get_unit, close_file,                       &
                              register_module, error_handler,             &
-                             find_namelist_in_file, check_namelist_read, &
-                             E_ERR, E_WARN, E_MSG, nmlfileunit, do_output
+                             find_namelist_in_file, check_namelist_read,   &
+                             E_ERR, E_WARN, E_MSG, nmlfileunit, do_output, &
+                             do_nml_file, do_nml_term
 
 
 implicit none 
@@ -147,8 +148,8 @@ call find_namelist_in_file("input.nml", "obs_sequence_nml", iunit)
 read(iunit, nml = obs_sequence_nml, iostat = io)
 call check_namelist_read(iunit, io, "obs_sequence_nml")
 
-if (do_output()) write(nmlfileunit,nml=obs_sequence_nml)
-if (do_output()) write(     *     ,nml=obs_sequence_nml)
+if (do_nml_file()) write(nmlfileunit,nml=obs_sequence_nml)
+if (do_nml_term()) write(     *     ,nml=obs_sequence_nml)
 
 end subroutine static_init_obs_sequence
 

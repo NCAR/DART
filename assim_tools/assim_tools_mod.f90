@@ -16,7 +16,7 @@ module assim_tools_mod
 use      types_mod,       only : r8, digits12, PI
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
                                  find_namelist_in_file, register_module, error_handler,   &
-                                 E_ERR, E_MSG, nmlfileunit
+                                 E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term
 use       sort_mod,       only : index_sort 
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
@@ -119,8 +119,8 @@ read(iunit, nml = assim_tools_nml, iostat = io)
 call check_namelist_read(iunit, io, "assim_tools_nml")
 
 ! Write the namelist values to the log file
-if (do_output()) write(nmlfileunit, nml=assim_tools_nml)
-if (do_output()) write(     *     , nml=assim_tools_nml)
+if (do_nml_file()) write(nmlfileunit, nml=assim_tools_nml)
+if (do_nml_term()) write(     *     , nml=assim_tools_nml)
 
 ! FOR NOW, can only do spread restoration with filter option 1 (need to extend this)
 if(spread_restoration .and. .not. filter_kind == 1) then

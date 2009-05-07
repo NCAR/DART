@@ -18,7 +18,8 @@ use     location_mod, only : location_type, set_location, get_location, &
                              get_close_maxdist_init, get_close_obs_init, get_close_obs
 
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, nmlfileunit, &
-                             do_output, find_namelist_in_file, check_namelist_read
+                             do_output, find_namelist_in_file, check_namelist_read,     &
+                             do_nml_file, do_nml_term
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
@@ -99,8 +100,8 @@ call check_namelist_read(iunit, io, "model_nml")
 model_size = 2 * num_state_vars
 
 ! Record the namelist values used for the run ...
-if (do_output()) write(nmlfileunit, nml=model_nml)
-if (do_output()) write(     *     , nml=model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Create storage for locations
 allocate(state_loc(model_size))

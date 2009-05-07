@@ -24,9 +24,9 @@ program preprocess
 ! NEED TO ADD IN ALL THE ERROR STUFF
 
 use     types_mod, only : r8
-use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
-                          file_exist, open_file, logfileunit, timestamp, &
-                          initialize_utilities, &
+use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,   &
+                          file_exist, open_file, logfileunit, timestamp,  &
+                          initialize_utilities, do_nml_file, do_nml_term, &
                           find_namelist_in_file, check_namelist_read
 
 implicit none
@@ -123,9 +123,11 @@ character(len = 129) :: output_obs_kind_mod_file = &
                         '../../../obs_kind/obs_kind_mod.f90'
 character(len = 129) :: input_files(max_input_files) = 'null'
 character(len = 129) :: model_files(max_model_files) = 'null'
+logical              :: force = .false.
 
-namelist /preprocess_nml/ input_obs_def_mod_file, input_obs_kind_mod_file, &
-   output_obs_def_mod_file, output_obs_kind_mod_file, input_files, model_files
+namelist /preprocess_nml/ input_obs_def_mod_file, input_obs_kind_mod_file,   &
+                          output_obs_def_mod_file, output_obs_kind_mod_file, &
+                          input_files, model_files, force
 
 !---------------------------------------------------------------------------
 ! start of program code
@@ -219,7 +221,7 @@ else
 endif
 
 ! Output files must NOT EXIST or else an error
-if(.not. file_exist(trim(output_obs_def_mod_file))) then
+if(.not. file_exist(trim(output_obs_def_mod_file)) .or. force) then
    ! Open (create) the file for writing
    obs_def_out_unit = open_file(output_obs_def_mod_file)
 else
@@ -230,7 +232,7 @@ else
       source, revision, revdate)
 endif
 
-if(.not. file_exist(trim(output_obs_kind_mod_file))) then
+if(.not. file_exist(trim(output_obs_kind_mod_file)) .or. force) then
    ! Open (create) the file for writing
    obs_kind_out_unit = open_file(output_obs_kind_mod_file)
 else

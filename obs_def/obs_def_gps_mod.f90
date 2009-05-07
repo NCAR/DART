@@ -61,7 +61,7 @@ use        types_mod, only : r8, missing_r8, RAD2DEG, DEG2RAD, PI
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              file_exist, open_file, close_file, nmlfileunit, &
                              check_namelist_read, find_namelist_in_file, &
-                             do_output
+                             do_output, do_nml_file, do_nml_term
 use     location_mod, only : location_type, set_location, get_location, &
                              write_location, read_location, vert_is_height, &
                              VERTISHEIGHT
@@ -147,8 +147,8 @@ keycount = 0
 !call check_namelist_read(iunit, rc, "obs_def_gps_nml")
 
 !! Record the namelist values used for the run ...
-!if (do_output()) write(nmlfileunit, nml=obs_def_gps_nml)
-!if (do_output()) write(     *     , nml=obs_def_gps_nml)
+!if (do_nml_file()) write(nmlfileunit, nml=obs_def_gps_nml)
+!if (do_nml_term()) write(     *     , nml=obs_def_gps_nml)
 !! end NAMELIST
 
 allocate(gps_data(max_gpsro_obs), stat = rc)

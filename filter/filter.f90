@@ -29,7 +29,7 @@ use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), op
 use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
                                  initialize_utilities, logfileunit, nmlfileunit, timestamp,  &
                                  do_output, find_namelist_in_file, check_namelist_read,      &
-                                 open_file, close_file
+                                 open_file, close_file, do_nml_file, do_nml_term
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   & 
                                  aoutput_diagnostics, ens_mean_for_model
@@ -193,8 +193,8 @@ read(iunit, nml = filter_nml, iostat = io)
 call check_namelist_read(iunit, io, "filter_nml")
 
 ! Record the namelist values used for the run ...
-if (do_output()) write(nmlfileunit, nml=filter_nml)
-if (do_output()) write(     *     , nml=filter_nml)
+if (do_nml_file()) write(nmlfileunit, nml=filter_nml)
+if (do_nml_term()) write(     *     , nml=filter_nml)
 
 call set_trace(trace_execution, output_timestamps)
 
@@ -360,8 +360,6 @@ AdvanceTime : do
    call error_handler(E_MSG,'', ' ')
    call error_handler(E_MSG,'filter:', msgstring)
 
-   !call trace_message(msgstring)
-   !if(my_task_id() == 0) write(*, *) 'Starting advance time loop'
 
    ! Check the time before doing the first model advance.  Not all tasks
    ! might have a time, so only check on PE0 if running multitask.

@@ -31,7 +31,8 @@ use     location_mod, only : location_type,      get_close_maxdist_init, &
                              LocationDims, LocationName, LocationLName
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              do_output, nmlfileunit, &
-                             find_namelist_in_file, check_namelist_read
+                             find_namelist_in_file, check_namelist_read, &
+                             do_nml_file, do_nml_term
 
 
 implicit none
@@ -109,8 +110,8 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
-if (do_output()) write(nmlfileunit, nml=model_nml)
-if (do_output()) write(     *     , nml=model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Define the locations of the model state variables
 do i = 1, model_size

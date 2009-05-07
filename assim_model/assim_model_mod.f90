@@ -25,7 +25,7 @@ use time_manager_mod, only : time_type, get_time, read_time, write_time,        
 use utilities_mod, only : get_unit, close_file, register_module, error_handler,    &
                           E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, nmlfileunit,   &
                           do_output, dump_unit_attributes, find_namelist_in_file,  &
-                          check_namelist_read, nc_check, &
+                          check_namelist_read, nc_check, do_nml_file, do_nml_term, &
                           find_textfile_dims, file_to_text, timestamp, set_output
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
                           get_model_time_step, model_interpolate, init_conditions, &
@@ -86,6 +86,9 @@ end type netcdf_file_type
 ! Permanent class storage for model_size
 integer :: model_size
 
+! Ensure init code is called exactly once
+logical :: module_initialized = .false.
+
 ! Global storage for default restart formats
 character(len = 16) :: read_format = "unformatted", write_format = "unformatted"
 
@@ -143,9 +146,12 @@ implicit none
 
 integer :: iunit, io
 
-! First thing to do is echo info to logfile ... 
+! only execute this code once, even if called multiple times.
+if (module_initialized) return
 
+! First thing to do is echo info to logfile ... 
 call register_module(source, revision, revdate)
+module_initialized = .true.
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "assim_model_nml", iunit)
@@ -153,8 +159,8 @@ read(iunit, nml = assim_model_nml, iostat = io)
 call check_namelist_read(iunit, io, "assim_model_nml")
 
 ! Record the namelist values used for the run ... 
-if (do_output()) write(nmlfileunit, nml=assim_model_nml)
-if (do_output()) write(     *     , nml=assim_model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=assim_model_nml)
+if (do_nml_term()) write(     *     , nml=assim_model_nml)
 
 ! Set the write format for restart files
 if(write_binary_restart_files) then
@@ -217,6 +223,8 @@ integer ::   nlinesDimID,  linelenDimID, nmlVarID
 
 character(len=129), allocatable, dimension(:) :: textblock
 
+if ( .not. module_initialized ) call static_init_assim_model()
+
 if(.not. byteSizesOK()) then
     call error_handler(E_ERR,'init_diag_output', &
    'Compiler does not support required kinds of variables.',source,revision,revdate) 
@@ -253,7 +261,14 @@ call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
 ! Find dimensions of namelist file ... will save it as a variable.
 !-------------------------------------------------------------------------------
 
+! All DART programs require input.nml, so it is unlikely this can fail, but
+! still check and in this case, error out if not found.
 call find_textfile_dims("input.nml", nlines, linelen)
+if (nlines <= 0 .or. linelen <= 0) then
+   call error_handler(E_MSG,'init_diag_output', &
+                      'cannot open/read input.nml to save in diagnostic file', &
+                      source,revision,revdate)
+endif
 
 allocate(textblock(nlines))
 textblock = ''
@@ -420,6 +435,8 @@ integer :: init_diag_input, io
 character(len = *), intent(in)  :: file_name
 character(len = *), intent(out) :: global_meta_data
 integer,            intent(out) :: model_size, copies_of_field_per_time
+
+if ( .not. module_initialized ) call static_init_assim_model()
 
 init_diag_input = get_unit()
 open(unit = init_diag_input, file = file_name, action = 'read', iostat = io)
@@ -763,6 +780,8 @@ character(len = 16) :: open_format
 character(len=128) :: filename
 logical :: is_named
 
+if ( .not. module_initialized ) call static_init_assim_model()
+
 ! Figure out whether the file is opened FORMATTED or UNFORMATTED
 inquire(funit, FORM=open_format)
 
@@ -817,6 +836,8 @@ type(assim_model_type), intent(out)          :: assim_model
 integer,                intent(in)           :: funit
 type(time_type),        optional, intent(out) :: target_time
 
+if ( .not. module_initialized ) call static_init_assim_model()
+
 if(present(target_time)) then
    call aread_state_restart(assim_model%time, assim_model%state_vector, funit, target_time)
 else
@@ -842,6 +863,8 @@ type(time_type), optional, intent(out) :: target_time
 
 character(len = 16) :: open_format
 integer :: ios, int1, int2
+
+if ( .not. module_initialized ) call static_init_assim_model()
 
 ios = 0
 
@@ -898,6 +921,8 @@ character(len = *), optional, intent(in) :: override_write_format
 
 integer :: open_restart_write, io
 
+if ( .not. module_initialized ) call static_init_assim_model()
+
 open_restart_write = get_unit()
 if(present(override_write_format)) then
    open(unit = open_restart_write, file = file_name, form = override_write_format, &
@@ -924,6 +949,8 @@ character(len = *), intent(in) :: file_name
 integer :: ios, ios_out
 !!logical :: old_output_state
 type(time_type) :: temp_time
+
+if ( .not. module_initialized ) call static_init_assim_model()
 
 ! DEBUG -- if enabled, every task will print out as it opens the
 ! restart files.  If questions about missing restart files, first start

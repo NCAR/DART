@@ -73,7 +73,8 @@ use             types_mod, only: r8, pi
 ! was unhappy about the repetition.  nsc 11apr06
 use        utilities_mod, only : open_file, error_handler, E_ERR, E_MSG, &
                                  nmlfileunit, register_module, &
-                                 find_namelist_in_file, check_namelist_read
+                                 find_namelist_in_file, check_namelist_read, &
+                                 do_nml_file, do_nml_term
 
 use          obs_kind_mod, only: KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                                  KIND_SURFACE_PRESSURE, KIND_TEMPERATURE
@@ -402,8 +403,8 @@ end subroutine init_conditions
    !----- write namelist to logfile -----
 
    call write_version_number (version,tag)
-   write (nmlfileunit, nml=model_nml)
-   write (stdlog(),    nml=model_nml)
+   if (do_nml_file()) write (nmlfileunit, nml=model_nml)
+   if (do_nml_term()) write (stdlog(),    nml=model_nml)
 
    if(dt_atmos == 0) then
      call error_mesg ('program atmos_model', 'dt_atmos has not been specified', FATAL)

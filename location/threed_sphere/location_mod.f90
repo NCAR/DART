@@ -25,22 +25,23 @@ module location_mod
 ! of vertical discretization as required for Bgrid surface pressure.
 
 use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
-use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,    &
                            logfileunit, nmlfileunit, find_namelist_in_file, &
-                           check_namelist_read, do_output, is_longitude_between
+                           check_namelist_read, do_output, do_nml_file,     &
+                           do_nml_term, is_longitude_between
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
 private
 
-public :: location_type, get_location, set_location, &
-          set_location2, set_location_missing, is_location_in_region, &
+public :: location_type, get_location, set_location,                          &
+          set_location2, set_location_missing, is_location_in_region,         &
           write_location, read_location, interactive_location, vert_is_undef, &
-          vert_is_surface, vert_is_pressure, vert_is_level, vert_is_height, &
-          query_location, LocationDims, LocationName, LocationLName, &
-          horiz_dist_only, get_close_obs, get_close_type, &
-          get_close_maxdist_init, get_close_obs_init, get_close_obs_destroy, &
-          operator(==), operator(/=), VERTISUNDEF, VERTISSURFACE, &
+          vert_is_surface, vert_is_pressure, vert_is_level, vert_is_height,   &
+          query_location, LocationDims, LocationName, LocationLName,          &
+          horiz_dist_only, get_close_obs, get_close_type,                     &
+          get_close_maxdist_init, get_close_obs_init, get_close_obs_destroy,  &
+          operator(==), operator(/=), VERTISUNDEF, VERTISSURFACE,             &
           VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, get_dist,                &
           print_get_close_type
 
@@ -158,8 +159,8 @@ call check_namelist_read(iunit, io, "location_nml")
 
 ! Write the namelist values to the log file
 
-if(do_output()) write(nmlfileunit, nml=location_nml)
-if(do_output()) write(     *     , nml=location_nml)
+if(do_nml_file()) write(nmlfileunit, nml=location_nml)
+if(do_nml_term()) write(     *     , nml=location_nml)
 
 ! Make sure that the number of longitudes, nlon, for get_close_obs is odd
 if(nlon / 2 * 2 == nlon) then
@@ -1714,7 +1715,6 @@ if (.not. is_longitude_between(loc%lon, minl%lon, maxl%lon, doradians=.TRUE.)) r
 ! once we decide what to do about diff vert units, this is the test.
 !if ((minl%which_vert .ne. VERTISUNDEF) .and. 
 !    (loc%vloc < minl%vloc) .or. (loc%vloc > maxl%vloc)) return
-
 
 is_location_in_region = .true.
 

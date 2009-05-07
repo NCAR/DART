@@ -1755,7 +1755,7 @@ MODULE map_utils
 
       dphd = REAL(proj%phi,HIGH)/REAL((proj%jydim-1)/2,HIGH)        ! HIGH
       dlmd = REAL(proj%lambda,HIGH)/REAL(proj%ixdim-1,HIGH)         ! HIGH
-	
+
       ppi = ACOS(-1.0_HIGH)                                          ! HIGH (same name as module variable)
       d2r = ppi/180.0_HIGH                                           ! HIGH
       r2d = 1.0_HIGH/d2r                                            ! HIGH
@@ -1774,7 +1774,7 @@ MODULE map_utils
       z = COS(tph0)*SIN(glat)-SIN(tph0)*COS(glat)*COS(glon-tlm0)    ! HIGH
       tlat = r2d*ATAN(z/SQRT(x*x+y*y))                              ! HIGH
       tlon = r2d*ATAN(y/x)                                          ! HIGH
-	
+
       row = tlat/dphd+REAL(jmt,HIGH)                                ! HIGH
       col = tlon/dlmd+REAL(proj%ixdim,HIGH)                         ! HIGH
 

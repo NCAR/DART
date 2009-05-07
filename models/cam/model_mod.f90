@@ -237,7 +237,8 @@ use time_manager_mod,  only : time_type, set_time, print_time, set_calendar_type
                               THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR
 use utilities_mod,     only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
                               register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
-                              logfileunit, nmlfileunit, do_output, nc_check
+                              logfileunit, nmlfileunit, do_output, nc_check, &
+                              do_nml_file, do_nml_term
 use mpi_utilities_mod, only : my_task_id, task_count
 
 !-------------------------------------------------------------------------
@@ -678,7 +679,8 @@ else
 end if
 
 ! Record the namelist values 
-if (do_out) write(nmlfileunit, nml=model_nml)
+if (do_out .and. do_nml_file()) write(nmlfileunit, nml=model_nml)
+if (do_out .and. do_nml_term()) write(     *     , nml=model_nml)
 
 ! Set the model minimum time step from the namelist seconds and days input
 Time_step_atmos = set_time(Time_step_seconds, Time_step_days)
@@ -4750,7 +4752,7 @@ end function gph2gmh
       galt = g - 2.0*ge*alt/ae*(1.0 + f + xm + (-3.0*f + 5.0/2.0*xm)*  &
                              (dsin(xlat))**2) + 3.0*ge*alt**2/ae**2
 !
-!liu     galt = galt*1.0d5		! convert from km/s2 to cm/s2
+!liu     galt = galt*1.0d5             ! convert from km/s2 to cm/s2
 !
 end subroutine gravity
 

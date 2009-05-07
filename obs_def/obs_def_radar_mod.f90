@@ -86,7 +86,7 @@ module obs_def_radar_mod
 use        types_mod, only : r8, missing_r8, PI, deg2rad
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              check_namelist_read, find_namelist_in_file,   &
-                             nmlfileunit, do_output
+                             nmlfileunit, do_output, do_nml_file, do_nml_term
 use     location_mod, only : location_type, write_location, read_location, &
                              interactive_location, get_location
 use  assim_model_mod, only : interpolate
@@ -345,8 +345,8 @@ read(iunit, nml = obs_def_radar_mod_nml, iostat = io)
 call check_namelist_read(iunit, io, "obs_def_radar_mod_nml")
 
 ! Record the namelist values used for the run ... 
-if (do_output()) write(nmlfileunit, nml=obs_def_radar_mod_nml)
-if (do_output()) write(     *     , nml=obs_def_radar_mod_nml)
+if (do_nml_file()) write(nmlfileunit, nml=obs_def_radar_mod_nml)
+if (do_nml_term()) write(     *     , nml=obs_def_radar_mod_nml)
 
 ! Consistency warning; print a message if the thresholds and lower values
 ! are going to be used and are different.

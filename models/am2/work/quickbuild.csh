@@ -92,6 +92,8 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
+\rm -f *.o *.mod input.nml*_default
+
 if ( $#argv == 1 && "$1" == "-mpi" ) then
   echo "Success: All single task DART programs compiled."  
   echo "Script now compiling MPI parallel versions of the DART programs."
@@ -119,7 +121,7 @@ endif
 # Build the MPI-enabled target(s) 
 #----------------------------------------------------------------------
 
-\rm -f *.o *.mod filter wakeup_filter
+\rm -f filter wakeup_filter
 
 @ n = $n + 1
 echo
@@ -143,7 +145,7 @@ echo "build number $n is mkmf_wakeup_filter"
 csh  mkmf_wakeup_filter -mpi
 make || exit $n
 
-\rm -f *.o *.mod
+\rm -f *.o *.mod input.nml*_default
 
 echo
 echo 'time to run filter here:'

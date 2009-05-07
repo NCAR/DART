@@ -67,7 +67,10 @@ module model_mod
                                   find_namelist_in_file,         &
                                   get_unit,                      &
                                   nc_check,                      &
-                                  register_module
+                                  register_module,               &
+                                  do_nml_file,                   &
+                                  do_nml_term,                   &
+                                  nmlfileunit
 
   implicit none
 
@@ -199,7 +202,8 @@ contains
     call find_namelist_in_file('input.nml', 'model_nml', nml_unit)
     read (nml_unit,nml=model_nml,iostat=io_status)
     call check_namelist_read(nml_unit, io_status, 'model_nml')
-    if (do_output()) write (*,model_nml)
+    if (do_nml_file()) write (nmlfileunit,model_nml)
+    if (do_nml_term()) write (     *     ,model_nml)
 
     call initialize_restart_info(cdtg, 'restart.vars')
 

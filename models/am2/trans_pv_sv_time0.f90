@@ -12,9 +12,9 @@ program trans_pv_sv_time0
 ! $Date$
 
 !----------------------------------------------------------------------
-! purpose: interface between CAM and DART
+! purpose: interface between AM2 and DART
 !
-! method: Read CAM 'initial' file (netCDF format).
+! method: Read AM2 'initial' file (netCDF format).
 !         Reform fields into a state vector.
 !         Write out state vector in "proprietary" format for DART
 !
@@ -82,68 +82,71 @@ namelist /perfect_model_obs_nml/                                            &
 
 call initialize_utilities('Trans_sv_pv_time0')
 
-! Static init assim model calls static_init_model
-PRINT*,'static_init_assim_model in trans_pv_sv'
-call static_init_assim_model()
+call error_handler(E_ERR, 'trans_sv_pv_time0', 'not converted to run with AM2')
+stop
 
-! Initialize the assim_model instance
-call init_assim_model(x)
-
-! Allocate the local state vector
-x_size = get_model_size()
-allocate(x_state(x_size), x_temp(x_size))
-
-! Allocate the instance of the cam model type for storage
-call init_model_instance(var)
-
-! Read the file cam state fragments into var
-call read_model_init(file_name, var)
-
-! transform fields into state vector for DART
-call prog_var_to_vector(var, x_state)
-
-! Put this in the structure
-call set_model_state_vector(x, x_state)
-
-! Read the namelist entry
-call find_namelist_in_file("input.nml", "perfect_model_obs_nml", iunit)
-read(iunit, nml = perfect_model_obs_nml, iostat = io)
-call check_namelist_read(iunit, io, "perfect_model_obs_nml")
-
-! Record the namelist values used for the run ...
-call error_handler(E_MSG,'trans_pv_sv_time0','perfect_model_obs_nml values are',' ',' ',' ')
-write(nmlfileunit, nml=perfect_model_obs_nml)
-write(     *     , nml=perfect_model_obs_nml)
-
-
-call filter_set_initial_time
-
-call set_model_time (x, model_time)
-call close_restart(file_unit)
-
-! Get channel for output 
-file_unit = open_restart_write(file_out)
-PRINT*,'In trans_pv_sv file_out unit = ',file_unit
-PRINT*,' '
-! write out state vector in "proprietary" format
-call write_state_restart(x, file_unit)
-call close_restart(file_unit)
-
-call finalize_utilities()
-
-!-------------------------------------------------------------------------
-contains
-!-------------------------------------------------------------------------
-
-subroutine filter_set_initial_time
-
-if(init_time_days >= 0) then
-   model_time = set_time(init_time_seconds, init_time_days)
-else
-   model_time = set_time(0, 0)
-endif
-
-end subroutine filter_set_initial_time
+!! Static init assim model calls static_init_model
+!PRINT*,'static_init_assim_model in trans_pv_sv'
+!call static_init_assim_model()
+!
+!! Initialize the assim_model instance
+!call init_assim_model(x)
+!
+!! Allocate the local state vector
+!x_size = get_model_size()
+!allocate(x_state(x_size), x_temp(x_size))
+!
+!! Allocate the instance of the cam model type for storage
+!call init_model_instance(var)
+!
+!! Read the file cam state fragments into var
+!call read_model_init(file_name, var)
+!
+!! transform fields into state vector for DART
+!call prog_var_to_vector(var, x_state)
+!
+!! Put this in the structure
+!call set_model_state_vector(x, x_state)
+!
+!! Read the namelist entry
+!call find_namelist_in_file("input.nml", "perfect_model_obs_nml", iunit)
+!read(iunit, nml = perfect_model_obs_nml, iostat = io)
+!call check_namelist_read(iunit, io, "perfect_model_obs_nml")
+!
+!! Record the namelist values used for the run ...
+!call error_handler(E_MSG,'trans_pv_sv_time0','perfect_model_obs_nml values are',' ',' ',' ')
+!write(nmlfileunit, nml=perfect_model_obs_nml)
+!write(     *     , nml=perfect_model_obs_nml)
+!
+!
+!call filter_set_initial_time
+!
+!call set_model_time (x, model_time)
+!call close_restart(file_unit)
+!
+!! Get channel for output 
+!file_unit = open_restart_write(file_out)
+!PRINT*,'In trans_pv_sv file_out unit = ',file_unit
+!PRINT*,' '
+!! write out state vector in "proprietary" format
+!call write_state_restart(x, file_unit)
+!call close_restart(file_unit)
+!
+!call finalize_utilities()
+!
+!!-------------------------------------------------------------------------
+!contains
+!!-------------------------------------------------------------------------
+!
+!subroutine filter_set_initial_time
+!
+!if(init_time_days >= 0) then
+!   model_time = set_time(init_time_seconds, init_time_days)
+!else
+!   model_time = set_time(0, 0)
+!endif
+!
+!end subroutine filter_set_initial_time
 
 !-------------------------------------------------------------------------
 end program trans_pv_sv_time0

@@ -24,7 +24,7 @@ use     location_mod, only : location_type,      get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, set_location
 use    utilities_mod, only : register_module, error_handler, nc_check, &
                              E_ERR, E_MSG
-                             ! nmlfileunit, do_output, &
+                             ! nmlfileunit, do_output, do_nml_file, do_nml_term,  &
                              ! find_namelist_in_file, check_namelist_read
 
 implicit none
@@ -94,8 +94,8 @@ call register_module(source, revision, revdate)
 
 
 ! Record the namelist values used for the run ...
-!if (do_output()) write(nmlfileunit, nml=model_nml)
-!if (do_output()) write(     *     , nml=model_nml)
+!if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+!if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Create storage for locations
 allocate(state_loc(model_size))

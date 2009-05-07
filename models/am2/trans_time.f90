@@ -12,11 +12,11 @@ program trans_time
 ! $Date$
 
 !----------------------------------------------------------------------
-! purpose: interface between CAM and DART time and date
+! purpose: interface between AM2 and DART time and date
 !
 ! method: Read DART 'state vector' file (proprietary format).
-!         Reform time and date into form needed by CAM.
-!         Write out CAM time and date to file for use by run-pc.csh
+!         Reform time and date into form needed by AM2.
+!         Write out AM2 time and date to file for use by run-pc.csh
 !
 ! author: Kevin Raeder 8/1/03
 !

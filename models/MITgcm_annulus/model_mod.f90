@@ -19,7 +19,8 @@ use     location_mod, only : location_type, get_dist, set_location, get_location
                              get_close_maxdist_init, get_close_obs_init, get_close_obs
 
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, do_output, &
-                             nmlfileunit, find_namelist_in_file, check_namelist_read
+                             nmlfileunit, find_namelist_in_file, check_namelist_read, &
+                             do_nml_file, do_nml_term
 
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
                              KIND_V_WIND_COMPONENT, &
@@ -60,31 +61,31 @@ type(random_seq_type)   :: random_seq
 !---------------------------------------------------------------
 ! Namelist with default values
 !
-! model_size 		length of the data assimilation control
-!			  vector, and is = naz*nrad*nzed*ntype
-! naz			number of gridpoints in the azimuthal direction
-! nrad			number of gridpoints in the radial direction
-! nzed			number of gridpoints in the z direction
-! ntype			number of variables at each grid point that
-!			  are impacted by the data assimilation
-! daz			the gridpoint increment in the azimuthal
-!			  direction (degrees)
-! drad			the gridpoint increment in the radial
-!			  direction (meters)
-! dzed			the gridpoint increment in the z 
-!			  direction (meters)
-! inner_rad		the radius of the inner cylinder of the
-!			  annulus (meters)
-! outer_rad		the radius of the outer cylinder of the
-!		 	  annulus (meters)
-! depth			the overall depth of the fluid (meters)
-! delta_t		the model integration time step (in seconds)
-! time_step_days	the number of days in an integration time step
-! time_step_seconds	the number of seconds in an integration time step.
-!			this is not real time, this is time scales by the
-!			tank's rotation rate.  f=0.5 mean a "day" is 4sec.
-!			equate 4sec to 86400sec and determine the dart
-!			time step
+! model_size             length of the data assimilation control
+!                          vector, and is = naz*nrad*nzed*ntype
+! naz                    number of gridpoints in the azimuthal direction
+! nrad                   number of gridpoints in the radial direction
+! nzed                   number of gridpoints in the z direction
+! ntype                  number of variables at each grid point that
+!                          are impacted by the data assimilation
+! daz                    the gridpoint increment in the azimuthal
+!                          direction (degrees)
+! drad                   the gridpoint increment in the radial
+!                          direction (meters)
+! dzed                   the gridpoint increment in the z 
+!                          direction (meters)
+! inner_rad              the radius of the inner cylinder of the
+!                          annulus (meters)
+! outer_rad              the radius of the outer cylinder of the
+!                           annulus (meters)
+! depth                  the overall depth of the fluid (meters)
+! delta_t                the model integration time step (in seconds)
+! time_step_days         the number of days in an integration time step
+! time_step_seconds      the number of seconds in an integration time step.
+!                        this is not real time, this is time scales by the
+!                        tank's rotation rate.  f=0.5 mean a "day" is 4sec.
+!                        equate 4sec to 86400sec and determine the dart
+!                        time step
 
 integer  :: model_size        = 539400
 integer  :: naz               = 120 
@@ -174,8 +175,8 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist to the logfile
-if (do_output()) write(nmlfileunit, nml=model_nml)
-if (do_output()) write(     *     , nml=model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Create space for the model prognostic variables
 allocate(var%vars_3d(naz, nrad, nzed, ntype))

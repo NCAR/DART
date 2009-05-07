@@ -54,8 +54,8 @@ module obs_def_TES_nadir_mod
 use        types_mod, only : r8, missing_r8, PI, DEG2RAD
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              check_namelist_read, find_namelist_in_file, &
-                             logfileunit, do_output, file_exist, &
-                             open_file, close_file, get_unit
+                             logfileunit, nmlfileunit, do_output, file_exist, &
+                             open_file, close_file, get_unit, do_nml_file, do_nml_term
 use     location_mod, only : location_type, set_location, get_location, &
                              vert_is_undef, vert_is_surface, &
                              vert_is_level, vert_is_pressure, vert_is_height, &
@@ -183,6 +183,9 @@ keycount = 0
 call find_namelist_in_file("input.nml", "obs_def_TES_nadir_mod_nml", iunit)
 read(iunit, nml = obs_def_TES_nadir_mod_nml, iostat = io)
 call check_namelist_read(iunit, io, "obs_def_TES_nadir_mod_nml")
+
+if (do_nml_file()) write(nmlfileunit, nml=obs_def_TES_nadir_mod_nml)
+if (do_nml_term()) write(    *      , nml=obs_def_TES_nadir_mod_nml)
 
 ! Allocate arrays whose dimensions depend on namelist values
 allocate( gw(n_gauss) )

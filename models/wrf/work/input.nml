@@ -18,7 +18,7 @@
 &filter_nml
    async                    = 2,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 = 50,
+   ens_size                 = 32,
    start_from_restart       = .true.,
    output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.out",
@@ -40,6 +40,7 @@
    output_forward_op_errors = .false.,
    output_timestamps        = .false.,
    output_inflation         = .true.,
+   trace_execution          = .false.,
 
    inf_flavor                  = 0,                       0,
    inf_initial_from_restart    = .false.,                 .false.,
@@ -90,7 +91,7 @@
                               '../../../obs_def/obs_def_dew_point_mod.f90',
                               '../../../obs_def/obs_def_altimeter_mod.f90',
                               '../../../obs_def/obs_def_gps_mod.f90',
-                              '../../../obs_def/obs_def_vortex_mod.f90'  /
+   /
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
@@ -98,14 +99,11 @@
                                 'METAR_V_10_METER_WIND',
                                 'METAR_TEMPERATURE_2_METER',
                                 'RADIOSONDE_U_WIND_COMPONENT',
-                                'RADIOSONDE_SPECIFIC_HUMIDITY',
-                                'DOPPLER_RADIAL_VELOCITY',
-                                'DEW_POINT_2_METER',
+                                'RADIOSONDE_V_WIND_COMPONENT',
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
                                 'GPSRO_REFRACTIVITY',
-                                'RADAR_REFLECTIVITY',
-     evaluate_these_obs_types = 'RADIOSONDE_V_WIND_COMPONENT'  /
+   evaluate_these_obs_types   = 'RADIOSONDE_SPECIFIC_HUMIDITY'  /
 
 # Notes for obs_def_radar_mod_nml:
 # (1) Reflectivity limit can be applied to observations and/or state (forward operator).
@@ -178,9 +176,10 @@
 
 &utilities_nml
    TERMLEVEL = 1,
-   module_details = .true.,
+   module_details = .false.,
    logfilename = 'dart_log.out',
-   nmlfilename = 'dart_log.nml'  /
+   nmlfilename = 'dart_log.nml',
+   write_nml   = 'file'  /
 
 &reg_factor_nml
    select_regression    = 1,

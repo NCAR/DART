@@ -16,7 +16,7 @@ program trans_date_to_dart
 !
 ! method: Read ASCII input(/output) file containing yyyy/mm/dd hh:mm:ss . 
 !         Reform time and date into form needed by DART.
-!         Write out CAM time and date to i/o file for use in input.nlm . 
+!         Write out AM2 time and date to i/o file for use in input.nlm . 
 !
 ! author: Kevin Raeder 8/18/03
 !
@@ -61,7 +61,7 @@ PRINT*,'read in date = ',year, month, day, hour, minute, second
 dart_time = set_date(year, month, day, hour, minute, second)
 call write_time (file_unit,dart_time)
 
-! create and write CAM date
+! create and write AM2 date
 cam_date = (year)*10000 + month*100 + day
 cam_tod  = hour*3600 + minute*60 + second
 write (file_unit,'(2I8)') cam_date, cam_tod

@@ -19,8 +19,9 @@ use     location_mod, only : location_type, set_location, get_location,  &
                              get_close_obs
 
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
-                             nmlfileunit, find_namelist_in_file,            &
-                             check_namelist_read, nc_check, do_output
+                             nmlfileunit, find_namelist_in_file,           &
+                             check_namelist_read, nc_check, do_output,     &
+                             do_nml_file, do_nml_term
 
 use     obs_kind_mod, only : KIND_VELOCITY, KIND_TRACER_CONCENTRATION, &
                              KIND_TRACER_SOURCE, KIND_MEAN_SOURCE, KIND_SOURCE_PHASE
@@ -144,10 +145,8 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
-if (do_output()) then
-   write(nmlfileunit, nml=model_nml)
-   write(     *     , nml=model_nml)
-endif
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Create storage for locations
 allocate(state_loc(5*num_grid_points))

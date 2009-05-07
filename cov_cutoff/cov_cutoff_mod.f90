@@ -12,8 +12,9 @@ module cov_cutoff_mod
 ! $Date$
 
 use     types_mod, only : r8
-use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, do_output, &
-                          nmlfileunit, find_namelist_in_file, check_namelist_read
+use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+                          do_output, do_nml_file, do_nml_term, nmlfileunit, &
+                          find_namelist_in_file, check_namelist_read
 use location_mod,  only : location_type
 
 implicit none
@@ -95,8 +96,8 @@ if(.not. namelist_initialized) then
    read(iunit, nml = cov_cutoff_nml, iostat = io)
    call check_namelist_read(iunit, io, "cov_cutoff_nml")
 
-   if (do_output()) write(nmlfileunit,nml=cov_cutoff_nml)
-   if (do_output()) write(     *     ,nml=cov_cutoff_nml)
+   if (do_nml_file()) write(nmlfileunit,nml=cov_cutoff_nml)
+   if (do_nml_term()) write(     *     ,nml=cov_cutoff_nml)
 
 endif
 !---------------------------------------------------------

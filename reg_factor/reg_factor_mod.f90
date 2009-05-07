@@ -13,8 +13,8 @@ module reg_factor_mod
 
 use     types_mod, only : r8
 use utilities_mod, only : get_unit, open_file, register_module, error_handler, &
-                          E_ERR, E_MSG, nmlfileunit, find_namelist_in_file, &
-                          check_namelist_read, do_output
+                          E_ERR, E_MSG, nmlfileunit, find_namelist_in_file,    &
+                          check_namelist_read, do_nml_file, do_nml_term
 
 use time_manager_mod, only : time_type, write_time, get_time
 
@@ -99,8 +99,8 @@ if(.not. namelist_initialized) then
    call check_namelist_read(iunit, io, "reg_factor_nml")
 
    ! Record the namelist values used for the run ...
-   if (do_output()) write(nmlfileunit, nml=reg_factor_nml)
-   if (do_output()) write(     *     , nml=reg_factor_nml)
+   if (do_nml_file()) write(nmlfileunit, nml=reg_factor_nml)
+   if (do_nml_term()) write(     *     , nml=reg_factor_nml)
 
    ! See if diagnostic output is requested, if so, open file
    if(save_reg_diagnostics) then

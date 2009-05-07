@@ -16,7 +16,8 @@ program perfect_model_obs
 use        types_mod,     only : r8, metadatalength
 use    utilities_mod,     only : initialize_utilities, register_module, error_handler, &
                                  find_namelist_in_file, check_namelist_read,           &
-                                 E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp
+                                 E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp, &
+                                 do_nml_file, do_nml_term
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=)
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                 &
                                  get_obs_from_key, set_copy_meta_data, get_obs_def,         &
@@ -129,8 +130,8 @@ read(iunit, nml = perfect_model_obs_nml, iostat = io)
 call check_namelist_read(iunit, io, "perfect_model_obs_nml")
 
 ! Record the namelist values used for the run ...
-write(nmlfileunit, nml=perfect_model_obs_nml)
-write(     *     , nml=perfect_model_obs_nml)
+if (do_nml_file()) write(nmlfileunit, nml=perfect_model_obs_nml)
+if (do_nml_term()) write(     *     , nml=perfect_model_obs_nml)
 
 ! Don't let this run with more than one task; just a waste of resource
 if(task_count() > 1) then

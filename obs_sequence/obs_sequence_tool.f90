@@ -16,7 +16,8 @@ program obs_sequence_tool
 use        types_mod, only : r8, missing_r8
 use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
-                             error_handler, E_ERR, E_MSG, nmlfileunit
+                             error_handler, E_ERR, E_MSG, nmlfileunit,   &
+                             do_nml_file, do_nml_term
 use     location_mod, only : location_type, get_location, set_location2, &
                              LocationName !! , vert_is_height 
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind, &
@@ -146,9 +147,8 @@ if(num_input_files .gt. max_num_input_files) then
 endif
 
 ! Record the namelist values used for the run ...
-write(nmlfileunit, nml=obs_sequence_tool_nml)
-!if (do_nml_file()) write(nmlfileunit, nml=obs_sequence_tool_nml)
-!if (do_nml_term()) write(    *      , nml=obs_sequence_tool_nml)
+if (do_nml_file()) write(nmlfileunit, nml=obs_sequence_tool_nml)
+if (do_nml_term()) write(     *     , nml=obs_sequence_tool_nml)
 
 ! if you are not using a gregorian cal, set this to false in the namelist.
 ! if users need it, we could add a calendar type integer to the namelist,

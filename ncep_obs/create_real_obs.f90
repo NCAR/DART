@@ -15,9 +15,9 @@ use types_mod,        only : r8, deg2rad, PI
 use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              static_init_obs_sequence, destroy_obs_sequence 
 use     real_obs_mod, only : real_obs_sequence
-use    utilities_mod, only : initialize_utilities, register_module, &
-                             do_output, logfileunit, &
-                             error_handler, timestamp, E_ERR, E_MSG, &
+use    utilities_mod, only : initialize_utilities, register_module,            &
+                             do_output, logfileunit, do_nml_file, do_nml_term, &
+                             error_handler, timestamp, E_ERR, E_MSG,           &
                              find_namelist_in_file, check_namelist_read
 
 implicit none
@@ -93,9 +93,8 @@ read(iunit, nml = ncepobs_nml, iostat = io)
 call check_namelist_read(iunit, io, "ncepobs_nml")
 
 ! Record the namelist values used for the run ...
-call error_handler(E_MSG,'create_real_obs','ncepobs_nml values are',' ',' ',' ')
-if (do_output()) write(logfileunit, nml=ncepobs_nml)
-if (do_output()) write(     *     , nml=ncepobs_nml)
+if (do_nml_file()) write(logfileunit, nml=ncepobs_nml)
+if (do_nml_term()) write(     *     , nml=ncepobs_nml)
 
 ! Loop through the days interested.
 

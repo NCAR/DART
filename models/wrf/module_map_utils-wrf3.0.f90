@@ -1648,7 +1648,7 @@ MODULE map_utils
   
       dphd = proj%phi/REAL((proj%jydim-1)/2)
       dlmd = proj%lambda/REAL(proj%ixdim-1)
-	
+
       pi = ACOS(-1.0)
       d2r = pi/180.
       r2d = 1./d2r
@@ -1667,7 +1667,7 @@ MODULE map_utils
       z = COS(tph0)*SIN(glat)-SIN(tph0)*COS(glat)*COS(glon-tlm0)
       tlat = r2d*ATAN(z/SQRT(x*x+y*y))
       tlon = r2d*ATAN(y/x)
-	
+
       row = tlat/dphd+jmt
       col = tlon/dlmd+proj%ixdim
 
@@ -1752,7 +1752,7 @@ MODULE map_utils
   
 
 !!! Added next line as a Kludge - not yet understood why needed
-	if (ncol .le. 0) ncol=ncol-1
+      if (ncol .le. 0) ncol=ncol-1
 
       jj = nrow
       ii = ncol/2

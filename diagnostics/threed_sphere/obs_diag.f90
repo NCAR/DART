@@ -52,10 +52,10 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
                              operator(/=), operator(<=)
 use    utilities_mod, only : open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
-                             initialize_utilities, logfileunit, nmlfileunit, timestamp, &
-                             find_namelist_in_file, check_namelist_read, nc_check, &
+                             initialize_utilities, logfileunit, nmlfileunit,  &
+                             find_namelist_in_file, check_namelist_read,      &
+                             nc_check, do_nml_file, do_nml_term, timestamp,   &
                              next_file, find_textfile_dims, file_to_text
-
 use         sort_mod, only : sort
 
 use typeSizes
@@ -316,8 +316,8 @@ read(iunit, nml = obs_diag_nml, iostat = io)
 call check_namelist_read(iunit, io, 'obs_diag_nml')
 
 ! Record the namelist values used for the run ...
-write(nmlfileunit, nml=obs_diag_nml)
-write(    *      , nml=obs_diag_nml)
+if (do_nml_file()) write(nmlfileunit, nml=obs_diag_nml)
+if (do_nml_term()) write(    *      , nml=obs_diag_nml)
 
 !----------------------------------------------------------------------
 ! Now that we have input, do some checking and setup

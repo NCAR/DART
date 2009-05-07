@@ -17,7 +17,8 @@ use      types_mod,       only : r8
 use  mpi_utilities_mod,   only : my_task_id
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,  &
                                  find_namelist_in_file, register_module, error_handler, &
-                                 E_ERR, E_MSG, nmlfileunit, logfileunit, timestamp
+                                 E_ERR, E_MSG, nmlfileunit, logfileunit, timestamp,     &
+                                 do_nml_file, do_nml_term
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, read_ensemble_restart, &
                                  write_ensemble_restart, all_vars_to_all_copies,              &
                                  duplicate_ens, compute_copy_mean, compute_copy_mean_sd,      &
@@ -95,8 +96,8 @@ if ( .not. module_initialized ) then
    read(iunit, nml = smoother_nml, iostat = io)
    call check_namelist_read(iunit, io, "smoother_nml")
 
-   if (do_output()) write(nmlfileunit, nml=smoother_nml)
-   if (do_output()) write(     *     , nml=smoother_nml)
+   if (do_nml_file()) write(nmlfileunit, nml=smoother_nml)
+   if (do_nml_term()) write(     *     , nml=smoother_nml)
 
    ! Allocate space for lag_size storage
    if(num_lags > 0) &

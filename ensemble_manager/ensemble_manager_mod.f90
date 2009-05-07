@@ -20,12 +20,13 @@ module ensemble_manager_mod
 ! appropriately abstracted at a higher level of code.
 
 use types_mod,         only : r8, MISSING_R8
-use utilities_mod,     only : register_module, &
+use utilities_mod,     only : register_module, do_nml_file, do_nml_term, &
                               error_handler, E_ERR, E_MSG, do_output, &
-                              nmlfileunit, find_namelist_in_file, check_namelist_read
-use assim_model_mod,   only : aread_state_restart, awrite_state_restart, open_restart_read, &
-                              open_restart_write, close_restart, &
-                              pert_model_state
+                              nmlfileunit, find_namelist_in_file,        &
+                              check_namelist_read
+use assim_model_mod,   only : aread_state_restart, awrite_state_restart, &
+                              open_restart_read, open_restart_write,     &
+                              close_restart, pert_model_state
 use time_manager_mod,  only : time_type, set_time
 use random_seq_mod,    only : random_seq_type, init_random_seq, random_gaussian
 use mpi_utilities_mod, only : task_count, my_task_id, send_to, receive_from
@@ -74,7 +75,7 @@ type(random_seq_type) :: random_seq
 ! Module storage for writing error messages
 character(len = 129) :: errstring
 
-! Module storage for pe information for this process aviods recomputation
+! Module storage for pe information for this process avoids recomputation
 integer              :: my_pe, num_pes
 
 !-----------------------------------------------------------------
@@ -90,7 +91,8 @@ logical  :: single_restart_file_out = .true.
 ! Size of perturbations for creating ensembles when model won't do it
 real(r8) :: perturbation_amplitude  = 0.2_r8
 
-namelist / ensemble_manager_nml / single_restart_file_in, single_restart_file_out, &
+namelist / ensemble_manager_nml / single_restart_file_in,  &
+                                  single_restart_file_out, &
                                   perturbation_amplitude
 
 !-----------------------------------------------------------------
@@ -129,8 +131,8 @@ if ( .not. module_initialized ) then
    read(iunit, nml = ensemble_manager_nml, iostat = io)
    call check_namelist_read(iunit, io, "ensemble_manager_nml")
 
-   if (do_output()) write(nmlfileunit, nml=ensemble_manager_nml)
-   if (do_output()) write(     *     , nml=ensemble_manager_nml)
+   if (do_nml_file()) write(nmlfileunit, nml=ensemble_manager_nml)
+   if (do_nml_term()) write(     *     , nml=ensemble_manager_nml)
 
    ! Get mpi information for this process; it's stored in module storage
    num_pes = task_count()
@@ -164,6 +166,7 @@ logical,              intent(in),    optional :: force_single_file
 ! where other copies like mean, inflation, etc., are stored.
 
 ! Would like to avoid num_vars size storage
+! LARGE ARRAY ON STACK -- make this a pointer and allocate it from heap?
 real(r8)                            :: ens(ens_handle%num_vars)
 integer                             :: iunit, i, j
 character(len = LEN(file_name) + 5) :: this_file_name
@@ -275,6 +278,7 @@ integer,              intent(in)    :: start_copy, end_copy
 logical, optional,    intent(in)    :: force_single_file
 
 ! Large temporary storage to be avoided if possible
+! LARGE ARRAY ON STACK -- make this a pointer and allocate it from heap?
 real(r8)                            :: ens(ens_handle%num_vars)
 type(time_type)                     :: ens_time
 integer                             :: iunit, i, global_index

@@ -36,13 +36,27 @@ module utilities_mod
 !
 !      set_output       Set the status of printing.  Can be set on a per-task
 !                       basis if you are running with multiple tasks.
-!                       If set to false only warnings and fatal errors will 
-!                       write to the log.
+!                       By default all warnings and errors print no matter
+!                       which task executes the code; messages only print
+!                       from task 0 to avoid N copies of identical messages.
 !
 !      do_output        Logical function which returns whether informational
 !                       messages should be output.  Controlled by the setting
 !                       made from set_output.  Useful for messages which cannot
 !                       go through the normal error handler (e.g. namelists).
+!
+!      set_nml_output   Set the status of printing namelist data.  By default,
+!                       only print to the nml log file.  Can be set to print
+!                       to stdout, both, or none.  Argument is a string; valid
+!                       values are 'none', 'file', 'terminal', or 'both'.
+!
+!      do_nml_file      Logical function which returns whether informational
+!                       messages should be output to the file.  Controlled
+!                       by a call to set_nml_output().
+!                     
+!      do_nml_term      Logical function which returns whether informational
+!                       messages should be output to * (unit 6?).  Controlled
+!                       by a call to set_nml_output().
 !
 !      set_tasknum      Only called for an MPI job with multiple tasks.
 !                       Sets the 'multi-task' flag and records the local task
@@ -56,13 +70,13 @@ module utilities_mod
 !      write_time       Writes a timestamp in a standard format.
 !
 !      logfileunit      Global integer unit numbers for the log file and
-!      nmlfileunit      for the namelist file (which defaults to the same as log)
+!      nmlfileunit      for the namelist file (which defaults to same as log)
 !
 !      to_upper         converts a character string to uppercase
 !
 !      find_textfile_dims    finds number of lines and max line length in a 
-!                            text file. Used so we can record the namelist files 
-!                            in the netcdf output files.
+!                            text file. Used so we can record the namelist 
+!                            file content in the netcdf output files.
 !
 !      file_to_text     converts the contents of a (hopefully small) file to
 !                       a single text variable ... to record in the
@@ -104,27 +118,30 @@ use netcdf
 implicit none
 private
 
-!   ---- private data for check_nml_error ----
-
-integer, private :: num_nml_error_codes, nml_error_codes(5)
-logical, private :: do_output_flag = .true.
-logical, private :: single_task = .true.
-integer, private :: task_number = 0
+! module local data
 
 integer, parameter :: E_DBG = -1,   E_MSG = 0,  E_WARN = 1, E_ERR = 2
 integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
+integer, parameter :: NML_NONE = 0, NML_FILE = 1, NML_TERMINAL = 2, NML_BOTH = 3
 
 real(r8), parameter :: TWOPI = PI * 2.0_r8
 
-public :: file_exist, get_unit, open_file, close_file, timestamp, &
-       register_module, error_handler, to_upper, next_file, &
-       nc_check, logfileunit, nmlfileunit, &
-       find_textfile_dims, file_to_text, is_longitude_between, &
-       initialize_utilities, finalize_utilities, dump_unit_attributes, &
-       find_namelist_in_file, check_namelist_read, &
-       set_tasknum, set_output, do_output,  &
-       E_DBG, E_MSG, E_WARN, E_ERR, & 
-       DEBUG, MESSAGE, WARNING, FATAL
+logical :: do_output_flag = .true.
+integer :: nml_flag       = NML_FILE
+logical :: single_task    = .true.
+integer :: task_number    = 0
+logical :: module_initialized = .false.
+integer :: logfileunit = -1
+integer :: nmlfileunit = -1
+
+public :: file_exist, get_unit, open_file, close_file, timestamp,           &
+          register_module, error_handler, to_upper, nc_check, next_file,    &
+          logfileunit, nmlfileunit, find_textfile_dims, file_to_text,       &
+          initialize_utilities, finalize_utilities, dump_unit_attributes,   &
+          find_namelist_in_file, check_namelist_read, do_nml_term,          &
+          set_tasknum, set_output, do_output, set_nml_output, do_nml_file,  &
+          E_DBG, E_MSG, E_WARN, E_ERR, DEBUG, MESSAGE, WARNING, FATAL,      &
+          is_longitude_between
 
 ! this routine is either in the null_mpi_utilities_mod.f90, or in
 ! the mpi_utilities_mod.f90 file, but it is not a module subroutine.
@@ -144,23 +161,31 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-logical, save :: module_initialized = .false.
-integer, save :: logfileunit = -1
-integer, save :: nmlfileunit = -1
-
 
 character(len = 169) :: msgstring
 
 !----------------------------------------------------------------
 ! Namelist input with default values
-integer  :: TERMLEVEL = E_ERR     ! E_ERR All warnings/errors are assumed fatal.
-character(len=129) :: logfilename = 'dart_log.out'
-character(len=129) :: nmlfilename = 'dart_log.nml'
-logical  :: module_details = .true.  ! print svn details about each module
-logical  :: print_debug    = .false. ! print messages labeled DBG
+
+! E_ERR All warnings/errors are assumed fatal.
+integer            :: TERMLEVEL      = E_ERR   
+
+! default log and namelist output filenames
+character(len=129) :: logfilename    = 'dart_log.out'
+character(len=129) :: nmlfilename    = 'dart_log.nml'
+
+! output each module subversion details
+logical            :: module_details = .true.  
+
+! print messages labeled DBG
+logical            :: print_debug    = .false. 
+
+! where to write namelist values.
+! valid strings:  'none', 'file', 'terminal', 'both'
+character(len=32)  :: write_nml      = 'file'  
 
 namelist /utilities_nml/ TERMLEVEL, logfilename, module_details, &
-                         nmlfilename, print_debug
+                         nmlfilename, print_debug, write_nml
 
 contains
 
@@ -255,6 +280,9 @@ contains
          ! Echo the module information using normal mechanism
          call register_module(source, revision, revdate)
 
+         ! Set the defaults for logging the namelist values
+         call set_nml_output(write_nml)
+
          ! If nmlfilename != logfilename, open it.  otherwise set nmlfileunit
          ! to be same as logunit.
          if (trim(adjustl(nmlfilename)) /= trim(adjustl(lname))) then
@@ -287,8 +315,8 @@ contains
                   write(nmlfileunit, *) '!Starting Program '
                endif 
             endif
-            write(nmlfileunit, nml=utilities_nml)
-            write(    *     , nml=utilities_nml)
+            if (do_nml_file()) write(nmlfileunit, nml=utilities_nml)
+            if (do_nml_term()) write(     *     , nml=utilities_nml)
          endif
 
       endif
@@ -938,6 +966,86 @@ end subroutine error_handler
 
 !#######################################################################
 
+   subroutine set_nml_output (nmlstring)
+
+! *** set whether nml output is written to stdout file or only nml file
+!
+!    in:  doflag  = whether to output nml information to stdout 
+
+   character(len=*), intent(in) :: nmlstring
+
+   if ( .not. module_initialized ) call initialize_utilities
+
+   select case (nmlstring)
+      case ('NONE', 'none')
+         nml_flag = NML_NONE
+         call error_handler(E_MSG, 'set_nml_output', &
+                            'No echo of NML values')
+
+      case ('FILE', 'file')
+         nml_flag = NML_FILE
+         call error_handler(E_MSG, 'set_nml_output', &
+                            'Echo NML values to log file only')
+  
+      case ('TERMINAL', 'terminal')
+         nml_flag = NML_TERMINAL
+         call error_handler(E_MSG, 'set_nml_output', &
+                            'Echo NML values to terminal output only')
+   
+      case ('BOTH', 'both')
+         nml_flag = NML_BOTH
+         call error_handler(E_MSG, 'set_nml_output', &
+                            'Echo NML values to both log file and terminal')
+
+      case default
+         call error_handler(E_ERR, 'set_nml_output', &
+           'unrecognized input string: '//trim(nmlstring))
+ 
+   end select
+
+   end subroutine set_nml_output
+
+
+!#######################################################################
+
+   function do_nml_file ()
+
+! *** return whether nml should be written to nml file
+!
+
+   logical :: do_nml_file
+
+   if ( .not. module_initialized ) call initialize_utilities
+
+   if ( .not. do_output()) then
+      do_nml_file = .false.
+   else
+      do_nml_file = (nml_flag == NML_FILE .or. nml_flag == NML_BOTH)
+   endif
+
+   end function do_nml_file
+
+!#######################################################################
+
+   function do_nml_term ()
+
+! *** return whether nml should be written to terminal
+!
+
+   logical :: do_nml_term
+
+   if ( .not. module_initialized ) call initialize_utilities
+
+   if ( .not. do_output()) then
+      do_nml_term = .false.
+   else
+      do_nml_term = (nml_flag == NML_TERMINAL .or. nml_flag == NML_BOTH)
+   endif
+
+   end function do_nml_term
+
+!#######################################################################
+
 
    subroutine set_tasknum (tasknum)
 
@@ -1202,6 +1310,14 @@ integer :: i, mylen, ios, funit
 character(len=1024) :: oneline
 character(len=129)  :: error_msg
 
+! if there is no file, return -1 for both counts
+if (.not. file_exist(fname)) then
+  nlines = -1
+  linelen = -1
+  return
+endif
+
+! the file exists, go count things up.
 nlines  = 0
 linelen = 0
 funit   = open_file(fname, form="FORMATTED", action="READ")
