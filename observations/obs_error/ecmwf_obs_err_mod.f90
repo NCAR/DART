@@ -3,6 +3,12 @@
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 module obs_err_mod
 
 use        types_mod, only : r8, missing_r8
@@ -50,9 +56,10 @@ public :: drop_pres_error,              &
 
 contains
 
-function acars_rel_hum_error(pres)
 
-real(r8), intent(in) :: pres
+function acars_rel_hum_error(pres, tmpk, rh)
+
+real(r8), intent(in) :: pres, tmpk, rh   !  (mb)
 
 real(r8) :: acars_rel_hum_error
 
@@ -64,7 +71,7 @@ end function acars_rel_hum_error
 
 function acars_temp_error(pres)
 
-real(r8), intent(in) :: pres
+real(r8), intent(in) :: pres  !  (mb)
 
 integer  :: k0
 real(r8) :: obs_err(nobs_level), wght, acars_temp_error
@@ -83,7 +90,7 @@ end function acars_temp_error
 
 function acars_wind_error(pres)
 
-real(r8), intent(in) :: pres
+real(r8), intent(in) :: pres  !  (mb)
 
 integer  :: k0
 real(r8) :: obs_err(nobs_level), wght, acars_wind_error

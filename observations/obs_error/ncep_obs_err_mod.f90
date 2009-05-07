@@ -17,7 +17,7 @@ implicit none
 private
 
 integer,  parameter :: nobs_level = 33
-real(r8)            :: obs_prs(nobs_level)
+real(r8)           :: obs_prs(nobs_level)
 
 data obs_prs/   0.0_r8,   1.0_r8,   2.0_r8,   3.0_r8,   4.0_r8, &
                 5.0_r8,  10.0_r8,  20.0_r8,  30.0_r8,  40.0_r8, &
@@ -41,8 +41,8 @@ public :: land_pres_error,              &
           land_temp_error,              &
           land_wind_error
 
-public :: acars_rel_hum_error,          & 
-          acars_temp_error,             & 
+public :: acars_rel_hum_error,          &
+          acars_temp_error,             &
           acars_wind_error
 
 public :: sat_wind_error,               &
@@ -53,7 +53,7 @@ public :: rawin_pres_error,             &
           rawin_temp_error,             &
           rawin_wind_error
 
-public :: drop_pres_error,              & 
+public :: drop_pres_error,              &
           drop_rel_hum_error,           &
           drop_temp_error,              &
           drop_wind_error
@@ -63,7 +63,7 @@ contains
 
 function acars_rel_hum_error(pres, tmpk, rh)
 
-real(r8), intent(in) :: pres, tmpk, rh
+real(r8), intent(in) :: pres, tmpk, rh   !  (mb)
 
 real(r8) :: acars_rel_hum_error
 
@@ -78,7 +78,6 @@ function acars_temp_error(pres)
 real(r8), intent(in) :: pres  !  (mb)
 
 integer  :: k0
-
 real(r8) :: obs_err(nobs_level), wght, acars_temp_error
 
 data obs_err/1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, &
@@ -265,7 +264,6 @@ function sat_wind_error(pres)
 real(r8), intent(in) :: pres  !  (mb)
 
 integer  :: k0
-
 real(r8) :: obs_err(nobs_level), wght, sat_wind_error
 
 data obs_err/5.0_r8, 5.0_r8, 5.0_r8, 5.0_r8, 5.0_r8, 5.0_r8, &
@@ -288,7 +286,6 @@ function sat_wv_wind_error(pres)
 real(r8), intent(in) :: pres  !  (mb)
 
 integer  :: k0
-
 real(r8) :: obs_err(nobs_level), wght, sat_wv_wind_error
 
 data obs_err/7.0_r8, 7.0_r8, 7.0_r8, 7.0_r8, 7.0_r8, 7.0_r8, &
@@ -314,8 +311,8 @@ real(r8) :: rawin_pres_error
 
 rawin_pres_error = 2.0_r8
 
+return
 end function rawin_pres_error
-
 
 
 function rawin_rel_hum_error(pres, tmpk, rh)
@@ -326,6 +323,7 @@ real(r8) :: rawin_rel_hum_error
 
 rawin_rel_hum_error = 0.2_r8
 
+return
 end function rawin_rel_hum_error
 
 
@@ -334,7 +332,6 @@ function rawin_temp_error(pres)
 real(r8), intent(in) :: pres  !  (mb)
 
 integer  :: k0
-
 real(r8) :: obs_err(nobs_level), wght, rawin_temp_error
 
 data obs_err/1.5_r8, 1.5_r8, 1.5_r8, 1.5_r8, 1.5_r8, 1.5_r8, &
@@ -357,7 +354,6 @@ function rawin_wind_error(pres)
 real(r8), intent(in) :: pres  !  (mb)
 
 integer  :: k0
-
 real(r8) :: obs_err(nobs_level), wght, rawin_wind_error
 
 data obs_err/2.1_r8, 2.1_r8, 2.1_r8, 2.1_r8, 2.1_r8, 2.1_r8, &
@@ -383,17 +379,19 @@ real(r8) :: drop_pres_error
 
 drop_pres_error = 2.0_r8
 
+return
 end function drop_pres_error
 
 
 function drop_rel_hum_error(pres, tmpk, rh)
 
-real(r8), intent(in) :: pres, tmpk, rh
+real(r8), intent(in) :: pres, tmpk, rh   !  (mb)
 
 real(r8) :: drop_rel_hum_error
 
 drop_rel_hum_error = 0.2_r8
 
+return
 end function drop_rel_hum_error
 
 
@@ -402,7 +400,6 @@ function drop_temp_error(pres)
 real(r8), intent(in) :: pres  !  (mb)
 
 integer  :: k0
-
 real(r8) :: obs_err(nobs_level), wght, drop_temp_error
 
 data obs_err/1.5_r8, 1.5_r8, 1.5_r8, 1.5_r8, 1.5_r8, 1.5_r8, &
@@ -425,7 +422,6 @@ function drop_wind_error(pres)
 real(r8), intent(in) :: pres  !  (mb)
 
 integer  :: k0
-
 real(r8) :: obs_err(nobs_level), wght, drop_wind_error
 
 data obs_err/2.7_r8, 2.7_r8, 2.7_r8, 2.7_r8, 2.7_r8, 2.7_r8, &
@@ -460,7 +456,7 @@ do k = 1, nobs_level
 
   if ( pres <= obs_prs(k) )  then
     zloc = k - 1
-    wght = (log(obs_prs(k)) - log(pres)) / & 
+    wght = (log(obs_prs(k)) - log(pres)) / &
            (log(obs_prs(k)) - log(obs_prs(k-1)))
     exit
   end if
