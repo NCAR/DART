@@ -175,7 +175,7 @@ obsloop: do n = 1, nobs
   if ( lon(n) < 0.0_r8 )  lon(n) = lon(n) + 360.0_r8
 
   do i = 1, nused
-    if ( lon(n) == lon(i) .and. lat(n) == lat(i) ) cycle obsloop
+    if ( lon(n) == lonu(i) .and. lat(n) == latu(i) ) cycle obsloop
   end do
   qc = 1.0_r8  ;  
   if ( elev(n) /= missing_r8 ) then

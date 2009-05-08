@@ -156,7 +156,7 @@ obsloop: do n = 1, nobs
 
   ! check to make sure this observation has not been used
   do i = 1, nused
-    if ( lon(n) == lon(i) .and. lat(n) == lat(i) ) cycle obsloop
+    if ( lon(n) == lonu(i) .and. lat(n) == latu(i) ) cycle obsloop
   end do
   qc = 1.0_r8
   palt = pres_alt_to_pres(elev(n)) * 0.01_r8
