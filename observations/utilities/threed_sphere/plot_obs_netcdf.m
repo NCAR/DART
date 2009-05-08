@@ -10,6 +10,8 @@ function h = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, ...
 % verbose       = 1;   % anything > 0 == 'true'
 %
 % bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxQC, verbose);
+%
+% view(0,90);   % for a traditional '2D' plot
 
 % record the user input
 
@@ -69,8 +71,13 @@ end
 
 % Find observations of the correct type.
 
-mytypeind = get_copy_index(fname, CopyString);
 myind     = strmatch(ObsTypeString,ObsTypeStrings);
+
+if ( isempty(myind) ) 
+   error('no %s observations ... stopping',obsstruct.ObsTypeString) 
+end
+
+mytypeind = get_copy_index(fname, CopyString);
 inds      = find(obs_type == myind);
 mylocs    = loc(inds,:);
 myobs     = obs(inds,mytypeind);
@@ -140,21 +147,15 @@ ymax = max(region(3:4));
 zmin = min(obsstruct.z);
 zmax = max(obsstruct.z);
 
-y1    = 36;
-yN    = 10*y1;
-x1    = min(obsstruct.obs);
-xN    = max(obsstruct.obs);
-slope = (yN-y1)/(xN-x1);
-b     = y1 - slope*x1;
-scalarray = obsstruct.obs*slope + b;
+scalearray = scaleme(obsstruct.obs, 36);
 
 scatter3(obsstruct.lons, obsstruct.lats, obsstruct.z, ...
-         scalarray, obsstruct.obs, 'd', 'filled');
+         scalearray, obsstruct.obs, 'd', 'filled');
 
 axis([xmin xmax ymin ymax zmin zmax])
 
 str1 = sprintf('%s level (%.2f - %.2f)',ObsTypeString,zmin,zmax);
-str2 = sprintf('(%d locations)',length(obsstruct.obs));
+str2 = sprintf('%s (%d locations)',CopyString,length(obsstruct.obs));
 str3 = sprintf('%s - %s',timestring(1,:),timestring(2,:));
 
 title( {str1, str3, str2}, 'Interpreter','none','FontSize',18);
@@ -192,7 +193,9 @@ zmax = max(badobs.z);
 
 scatter3(badobs.lons, badobs.lats, badobs.z, scalearray, badobs.qc,'filled')
 
-title( {str1, str3, 'Bad Observations'}, 'Interpreter','none','FontSize',18);
+str2 = sprintf('%s (%d bad observations)',CopyString,length(badobs.obs));
+
+title( {str1, str3, str2}, 'Interpreter','none','FontSize',18);
 xlabel('longitude')
 ylabel('latitude')
 
@@ -225,8 +228,10 @@ for i = 1:length(qcvals)
    s{i} = sprintf('%d obs with qc == %d',qccount(i),qcvals(i));
 end
 
-text(0.0,0.0,s{1})
-text(0.0,0.5,s{2})
+dy = 1.0/length(s);
+for i = 1:length(s)
+   text(0.0, (i-1)*dy ,s{i})
+end
 
 
 
@@ -303,4 +308,16 @@ for i = 1:numel(h_patch)
 end
 
 if (orgholdstate == 0) hold off; end;
+
+
+function s = scaleme(x,minsize)
+% scaleme returns a uniformly scaled array the same size as the input
+% array where the maximum is 10 times the minimum 
+maxsize = 10*minsize;
+minx    = min(x);
+maxx    = max(x);
+slope   = (maxsize-minsize)/(maxx-minx);
+b       = minsize - slope*minx;
+
+s = x*slope + b;
 

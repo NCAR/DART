@@ -92,6 +92,8 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
+\rm -f *.o *.mod input.nml*_default
+
 echo ""
 echo "Success: All single task DART programs compiled."  
 echo ""

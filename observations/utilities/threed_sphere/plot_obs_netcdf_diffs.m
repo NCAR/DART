@@ -72,10 +72,14 @@ end
 
 % Find observations of the correct types.
 
+myind     = strmatch(ObsTypeString,ObsTypeStrings);
+
+if ( isempty(myind) )           
+   error('no %s observations ... stopping',obsstruct.ObsTypeString)
+end
+
 mytype1   = get_copy_index(fname, CopyString1);
 mytype2   = get_copy_index(fname, CopyString2);
-
-myind     = strmatch(ObsTypeString,ObsTypeStrings);
 inds      = find(obs_type == myind);
 mylocs    = loc(inds,:);
 myobs1    = obs(inds,mytype1);
@@ -149,14 +153,7 @@ ymax = max(region(3:4));
 zmin = min(obsstruct.z);
 zmax = max(obsstruct.z);
 
-y1    = 36;
-yN    = 10*y1;
-x1    = min(obsstruct.obs);
-xN    = max(obsstruct.obs);
-slope = (yN-y1)/(xN-x1);
-b     = y1 - slope*x1;
-scalarray = obsstruct.obs*slope + b;
-
+scalearray = scaleme(obsstruct.obs,36);
 scalearray = 128 * ones(size(obsstruct.obs));
 
 scatter3(obsstruct.lons, obsstruct.lats, obsstruct.z, ...
@@ -236,8 +233,10 @@ for i = 1:length(qcvals)
    s{i} = sprintf('%d obs with qc == %d',qccount(i),qcvals(i));
 end
 
-text(0.0,0.0,s{1})
-text(0.0,0.5,s{2})
+dy = 1.0/length(s);
+for i = 1:length(s)
+   text(0.0, (i-1)*dy ,s{i})
+end
 
 
 
@@ -314,4 +313,16 @@ for i = 1:numel(h_patch)
 end
 
 if (orgholdstate == 0) hold off; end;
+
+
+function s = scaleme(x,minsize)
+% scaleme returns a uniformly scaled array the same size as the input
+% array where the maximum is 10 times the minimum 
+maxsize = 10*minsize;
+minx    = min(x);
+maxx    = max(x);
+slope   = (maxsize-minsize)/(maxx-minx);
+b       = minsize - slope*minx;
+
+s = x*slope + b;
 
