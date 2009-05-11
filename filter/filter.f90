@@ -33,7 +33,7 @@ use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, 
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   & 
                                  aoutput_diagnostics, ens_mean_for_model
-use assim_tools_mod,      only : filter_assim
+use assim_tools_mod,      only : filter_assim, set_assim_tools_trace
 use obs_model_mod,        only : move_ahead, advance_state, set_obs_model_trace
 use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,                &
                                  ensemble_type, get_copy, get_my_num_copies, put_copy,       &
@@ -70,6 +70,8 @@ character(len=128), parameter :: &
 character(len=129)      :: msgstring
 type(obs_type)          :: observation
 
+integer                 :: trace_level, timestamp_level
+
 ! Defining whether diagnostics are for prior or posterior
 integer, parameter :: PRIOR_DIAG = 0, POSTERIOR_DIAG = 2
 
@@ -103,6 +105,7 @@ real(r8) :: input_qc_threshold  = 4.0_r8
 logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps = .false.
 logical  :: trace_execution   = .false.
+logical  :: silence           = .false.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -141,7 +144,8 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_flavor, inf_initial_from_restart, inf_sd_initial_from_restart,               &
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
-   inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation
+   inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation,          &
+   silence
 
 
 !----------------------------------------------------------------
@@ -196,7 +200,7 @@ call check_namelist_read(iunit, io, "filter_nml")
 if (do_nml_file()) write(nmlfileunit, nml=filter_nml)
 if (do_nml_term()) write(     *     , nml=filter_nml)
 
-call set_trace(trace_execution, output_timestamps)
+call set_trace(trace_execution, output_timestamps, silence)
 
 call trace_message('Filter start')
 
@@ -356,10 +360,10 @@ AdvanceTime : do
    call trace_message('Top of main advance time loop')
 
    time_step_number = time_step_number + 1
-   write(msgstring , '(A,I5)') 'Main assimilation loop, starting iteration', time_step_number
-   call error_handler(E_MSG,'', ' ')
-   call error_handler(E_MSG,'filter:', msgstring)
-
+   write(msgstring , '(A,I5)') &
+      'Main assimilation loop, starting iteration', time_step_number
+   call trace_message(' ', ' ', -1)
+   call trace_message(msgstring, 'filter: ', -1)
 
    ! Check the time before doing the first model advance.  Not all tasks
    ! might have a time, so only check on PE0 if running multitask.
@@ -389,7 +393,7 @@ AdvanceTime : do
    ! PAR For now, can only broadcast real arrays
    call filter_sync_keys_time(key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
    if(key_bounds(1) < 0) then 
-      call error_handler(E_MSG,'filter:', 'No more obs to assimilate, exiting main loop')
+      call trace_message('No more obs to assimilate, exiting main loop', 'filter:', -1)
       !call trace_message('No more obs to assimilate, exiting main loop')
       exit AdvanceTime
    endif
@@ -404,7 +408,7 @@ AdvanceTime : do
          call trace_message('After  advancing smoother')
       endif
 
-      call error_handler(E_MSG,'filter:', 'Ready to run model to advance data time')
+      call trace_message('Ready to run model to advance data time', 'filter:', -1)
       call print_ens_time(ens_handle, ' filter trace: Ensemble data time before advance')
       call trace_message('Before advance_state called to run model')
       call timestamp_message('Before model advance', sync=.true.)
@@ -418,7 +422,7 @@ AdvanceTime : do
       call trace_message('After  advance_state called to run model')
       call print_ens_time(ens_handle, ' filter trace: Ensemble data time after  advance')
    else
-      call error_handler(E_MSG,'filter:', 'Model does not need to run; data already at required time')
+      call trace_message('Model does not need to run; data already at required time', 'filter:', -1)
    endif
 
    call trace_message('Before setup for next group of observations')
@@ -523,7 +527,7 @@ AdvanceTime : do
    call all_vars_to_all_copies(obs_ens_handle)
 
    write(msgstring, '(A,I8,A)') 'Ready to assimilate up to', size(keys), ' observations'
-   call error_handler(E_MSG,'filter:', msgstring)
+   call trace_message(msgstring, 'filter:', -1)
    !call error_handler(E_MSG,'filter:', 'Ready to assimilate observations')
 
    call trace_message('Before observation assimilation')
@@ -544,7 +548,7 @@ AdvanceTime : do
    ! in the future
    if(ds) then
       write(msgstring, '(A,I8,A)') 'Ready to reassimilate up to', size(keys), ' observations in the smoother'
-      call error_handler(E_MSG,'filter:', msgstring)
+      call trace_message(msgstring, 'filter:', -1)
 
       call trace_message('Before smoother assimilation')
       call timestamp_message('Before smoother assimilation')
@@ -686,7 +690,7 @@ AdvanceTime : do
    call trace_message('Bottom of main advance time loop')
 end do AdvanceTime
 
-call error_handler(E_MSG,'filter:', 'End of main filter assimilation loop, starting cleanup')
+call trace_message('End of main filter assimilation loop, starting cleanup', 'filter:', -1)
 
 call trace_message('Before finalizing diagnostics files')
 ! properly dispose of the diagnostics files
@@ -1429,44 +1433,60 @@ end subroutine filter_sync_keys_time
 
 !-------------------------------------------------------------------------
 
-subroutine trace_message(msg)
-
-character(len=*), intent(in) :: msg
-
-! Write message to stdout and log file.
-
-if (.not. trace_execution) return
-
-if (do_output()) &
-   call error_handler(E_MSG,'filter trace:',trim(msg))
-
-end subroutine trace_message
-
-!-------------------------------------------------------------------------
-
-subroutine set_trace(trace_execution, output_timestamps)
+subroutine set_trace(trace_execution, output_timestamps, silence)
 
 logical, intent(in) :: trace_execution
 logical, intent(in) :: output_timestamps
+logical, intent(in) :: silence
 
 ! Set whether other modules trace execution with messages
 ! and whether they output timestamps to trace overall performance
 
-integer :: trace_level, timestamp_level
-
-if (.not. trace_execution .and. .not. output_timestamps) return
-
-trace_level = 0
+! defaults
+trace_level     = 0
 timestamp_level = 0
 
-if (trace_execution) trace_level = 1
+! selectively turn stuff back on
+if (trace_execution)   trace_level     = 1
 if (output_timestamps) timestamp_level = 1
+
+! turn as much off as possible
+if (silence) then
+   trace_level     = -1
+   timestamp_level = -1
+endif
 
 call set_smoother_trace(trace_level, timestamp_level)
 call set_obs_model_trace(trace_level, timestamp_level)
-! call set_assim_tools_trace(trace_level, timestamp_level)
+call set_assim_tools_trace(trace_level, timestamp_level)
 
 end subroutine set_trace
+
+!-------------------------------------------------------------------------
+
+subroutine trace_message(msg, label, threshold)
+
+character(len=*), intent(in)           :: msg
+character(len=*), intent(in), optional :: label
+integer,          intent(in), optional :: threshold
+
+! Write message to stdout and log file.
+integer :: t
+
+t = 0
+if (present(threshold)) t = threshold
+
+if (trace_level <= t) return
+
+if (.not. do_output()) return
+
+if (present(label)) then
+   call error_handler(E_MSG,trim(label),trim(msg))
+else
+   call error_handler(E_MSG,'filter trace:',trim(msg))
+endif
+
+end subroutine trace_message
 
 !-------------------------------------------------------------------------
 
@@ -1478,7 +1498,7 @@ logical, intent(in), optional :: sync
 ! Write current time and message to stdout and log file. 
 ! if sync is present and true, sync mpi jobs before printing time.
 
-if (.not. output_timestamps) return
+if (timestamp_level <= 0) return
 
 if (present(sync)) then
   if (sync) call task_sync()
@@ -1498,7 +1518,7 @@ character(len=*), intent(in) :: msg
 ! Write message to stdout and log file.
 type(time_type) :: mtime
 
-if (.not. trace_execution) return
+if (trace_level <= 0) return
 
 if (do_output()) then
    if (get_my_num_copies(ens_handle) < 1) return
@@ -1522,7 +1542,7 @@ type(obs_type) :: obs
 type(obs_def_type) :: obs_def
 type(time_type) :: mtime
 
-if (.not. trace_execution) return
+if (trace_level <= 0) return
 
 if (do_output()) then
    call init_obs(obs, 0, 0)

@@ -55,10 +55,13 @@ use assim_model_mod,      only : get_state_meta_data, get_close_maxdist_init,   
 implicit none
 private
 
-public :: filter_assim
+public :: filter_assim, set_assim_tools_trace
 
 ! Indicates if module initialization subroutine has been called yet
-logical                :: module_initialized = .false.
+logical :: module_initialized = .false.
+integer :: print_timestamps    = 0
+integer :: print_trace_details = 0
+
 
 ! True if random sequence needs to be initialized
 logical                :: first_inc_ran_call = .true.
@@ -667,8 +670,9 @@ call get_close_obs_destroy(gc_state)
 call get_close_obs_destroy(gc_obs)
 
 ! Assure user we have done something
-write(errstring, '(A,I8,A)') 'Processed', obs_ens_handle%num_vars, ' total observations'
-call error_handler(E_MSG,'filter_assim',errstring)
+write(errstring, '(A,I8,A)') &
+   'Processed', obs_ens_handle%num_vars, ' total observations'
+if (print_trace_details >= 0) call error_handler(E_MSG,'filter_assim:',errstring)
 
 ! diagnostics for stats on saving calls by remembering obs at the same location.
 ! change .true. to .false. in the line below to remove the output completely.
@@ -2057,6 +2061,27 @@ endif
 end subroutine norm_inv
 
 !------------------------------------------------------------------------
+
+subroutine set_assim_tools_trace(execution_level, timestamp_level)
+ integer, intent(in) :: execution_level
+ integer, intent(in) :: timestamp_level
+
+! set module local vars from the calling code to indicate how much
+! output we should generate from this code.  execution level is
+! intended to make it easier to figure out where in the code a crash
+! is happening; timestamp level is intended to help with gross levels
+! of overall performance profiling.  eventually, a level of 1 will
+! print out only basic info; level 2 will be more detailed.
+! (right now, only > 0 prints anything and it doesn't matter how
+! large the value is.)
+
+
+print_trace_details = execution_level
+print_timestamps    = timestamp_level
+
+end subroutine set_assim_tools_trace
+
+!--------------------------------------------------------------------
 
 
 

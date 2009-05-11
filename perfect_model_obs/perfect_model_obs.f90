@@ -16,19 +16,20 @@ program perfect_model_obs
 use        types_mod,     only : r8, metadatalength
 use    utilities_mod,     only : initialize_utilities, register_module, error_handler, &
                                  find_namelist_in_file, check_namelist_read,           &
-                                 E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp, &
-                                 do_nml_file, do_nml_term
-use time_manager_mod,     only : time_type, get_time, set_time, operator(/=)
+                                 E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp,          &
+                                 do_nml_file, do_nml_term, logfileunit
+use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), print_time
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                 &
                                  get_obs_from_key, set_copy_meta_data, get_obs_def,         &
                                  get_time_range_keys, set_obs_values, set_qc, set_obs,      &
                                  write_obs_seq, get_num_obs, init_obs, assignment(=),       &
                                  static_init_obs_sequence, get_num_qc, read_obs_seq_header, &
                                  set_qc_meta_data, get_expected_obs, delete_seq_head,       &
-                                 delete_seq_tail
+                                 delete_seq_tail, set_obs_def, destroy_obs
 
-use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance 
-use    obs_model_mod,     only : move_ahead, advance_state
+use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance, &
+                                 set_obs_def_error_variance, get_obs_def_time
+use    obs_model_mod,     only : move_ahead, advance_state, set_obs_model_trace
 use  assim_model_mod,     only : static_init_assim_model, get_model_size,                    &
                                  aget_initial_condition, netcdf_file_type, init_diag_output, &
                                  aoutput_diagnostics, finalize_diag_output
@@ -37,8 +38,9 @@ use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilitie
                                  task_count, task_sync
 
 use   random_seq_mod,     only : random_seq_type, init_random_seq, random_gaussian
-use ensemble_manager_mod, only : init_ensemble_manager, write_ensemble_restart, &
-                                 end_ensemble_manager, ensemble_type, read_ensemble_restart
+use ensemble_manager_mod, only : init_ensemble_manager, write_ensemble_restart,              &
+                                 end_ensemble_manager, ensemble_type, read_ensemble_restart, &
+                                 get_my_num_copies, get_ensemble_time
 
 implicit none
 
@@ -50,6 +52,7 @@ character(len=128), parameter :: &
 
 ! Module storage for message output
 character(len=129) :: msgstring
+integer            :: trace_level, timestamp_level
 
 !-----------------------------------------------------------------------------
 ! Namelist with default values
@@ -57,6 +60,9 @@ character(len=129) :: msgstring
 logical  :: start_from_restart = .false.
 logical  :: output_restart     = .false.
 integer  :: async              = 0
+logical  :: trace_execution    = .false.
+logical  :: output_timestamps  = .false.
+logical  :: silence            = .false.
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
 integer  :: init_time_days     = 0
@@ -83,8 +89,9 @@ namelist /perfect_model_obs_nml/ start_from_restart, output_restart, async,     
                                  last_obs_days,  last_obs_seconds, output_interval, &
                                  restart_in_file_name, restart_out_file_name,       &
                                  obs_seq_in_file_name, obs_seq_out_file_name,       &
-                                 adv_ens_command, tasks_per_model_advance,          &       
-                                 obs_window_days, obs_window_seconds
+                                 adv_ens_command, tasks_per_model_advance,          & 
+                                 obs_window_days, obs_window_seconds, silence,      &
+                                 trace_execution, output_timestamps
 
 !------------------------------------------------------------------------------
 
@@ -113,7 +120,7 @@ integer                 :: additional_qc, additional_copies
 integer                 :: ierr, io, istatus, num_obs_in_set
 integer                 :: model_size, key_bounds(2), num_qc, last_key_used
 
-real(r8)                :: true_obs(1), obs_value(1), qc(1)
+real(r8)                :: true_obs(1), obs_value(1), qc(1), errvar
 
 character(len=129)      :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
 character(len=metadatalength) :: state_meta(1)
@@ -140,6 +147,9 @@ if(task_count() > 1) then
       source, revision, revdate)
 endif
 call task_sync()
+
+! set the level of output
+call set_trace(trace_execution, output_timestamps, silence)
 
 ! Find out how many data copies are in the obs_sequence 
 call read_obs_seq_header(obs_seq_in_file_name, cnum_copies, cnum_qc, cnum_obs, cnum_max, &
@@ -229,8 +239,8 @@ AdvanceTime: do
    time_step_number = time_step_number + 1
 
    write(msgstring , '(A,I5)') 'Main evaluation loop, starting iteration', time_step_number
-   call error_handler(E_MSG,'', ' ')
-   call error_handler(E_MSG,'perfect_model_obs:', msgstring)
+   if (.not.silence) call error_handler(E_MSG,'', ' ')
+   if (.not.silence) call error_handler(E_MSG,'perfect_model_obs:', msgstring)
 
    ! Get the model to a good time to use a next set of observations
    call move_ahead(ens_handle, 1, seq, last_key_used, window_time, &
@@ -241,11 +251,11 @@ AdvanceTime: do
    endif
  
    if (curr_ens_time /= next_ens_time) then
-      call error_handler(E_MSG,'perfect_model_obs:', 'Ready to run model to advance data time')
+      if (.not.silence) call error_handler(E_MSG,'perfect_model_obs:', 'Ready to run model to advance data time')
       call advance_state(ens_handle, 1, next_ens_time, async, &
          adv_ens_command, tasks_per_model_advance)
    else
-      call error_handler(E_MSG,'perfect_model_obs:', 'Model does not need to run; data already at required time')
+      if (.not.silence) call error_handler(E_MSG,'perfect_model_obs:', 'Model does not need to run; data already at required time')
    endif
 
    ! Allocate storage for observation keys for this part of sequence
@@ -259,7 +269,7 @@ AdvanceTime: do
       call aoutput_diagnostics(StateUnit, ens_handle%time(1), ens_handle%vars(:, 1), 1)
 
    write(msgstring, '(A,I8,A)') 'Ready to evaluate up to', size(keys), ' observations'
-   call error_handler(E_MSG,'perfect_model_obs:', msgstring)
+   if (.not.silence) call error_handler(E_MSG,'perfect_model_obs:', msgstring)
 
    ! How many observations in this set
    write(msgstring, *) 'num_obs_in_set is ', num_obs_in_set
@@ -280,8 +290,17 @@ AdvanceTime: do
       call get_obs_def(obs, obs_def)
 
       if(istatus == 0 .and. (assimilate_this_ob .or. evaluate_this_ob)) then
-         obs_value(1) = random_gaussian(random_seq, true_obs(1), &
-            sqrt(get_obs_def_error_variance(obs_def)))
+         ! DEBUG: try this out to see if it's useful.  if the incoming error
+         ! variance is negative, add no noise to the values, but do switch the
+         ! sign on the error so the file is useful in subsequent runs.
+         errvar = get_obs_def_error_variance(obs_def)
+         if (errvar > 0.0_r8) then
+            obs_value(1) = random_gaussian(random_seq, true_obs(1), errvar)
+         else
+            obs_value(1) = true_obs(1)
+            call set_obs_def_error_variance(obs_def, -errvar)
+            call set_obs_def(obs, obs_def)
+         endif
 
          ! Set qc to 0 if none existed before
          if(cnum_qc == 0) then
@@ -388,6 +407,124 @@ call error_handler(E_DBG,'perfect_read_restart',msgstring,source,revision,revdat
 
 end subroutine perfect_read_restart
 
-!---------------------------------------------------------------------
- 
+!-------------------------------------------------------------------------
+
+subroutine set_trace(trace_execution, output_timestamps, silence)
+
+logical, intent(in) :: trace_execution
+logical, intent(in) :: output_timestamps
+logical, intent(in) :: silence
+
+! Set whether other modules trace execution with messages
+! and whether they output timestamps to trace overall performance
+
+! defaults
+trace_level     = 0
+timestamp_level = 0
+
+! selectively turn stuff back on
+if (trace_execution)   trace_level     = 1
+if (output_timestamps) timestamp_level = 1
+
+! turn as much off as possible
+if (silence) then
+   trace_level     = -1
+   timestamp_level = -1
+endif
+
+call set_obs_model_trace(trace_level, timestamp_level)
+
+end subroutine set_trace
+
+!-------------------------------------------------------------------------
+
+subroutine trace_message(msg, label, threshold)
+
+character(len=*), intent(in)           :: msg
+character(len=*), intent(in), optional :: label
+integer,          intent(in), optional :: threshold
+
+! Write message to stdout and log file.
+integer :: t
+
+t = 0
+if (present(threshold)) t = threshold
+
+if (trace_level <= t) return
+
+if (present(label)) then
+   call error_handler(E_MSG,trim(label),trim(msg))
+else
+   call error_handler(E_MSG,'p_m_o trace:',trim(msg))
+endif
+
+end subroutine trace_message
+
+!-------------------------------------------------------------------------
+
+subroutine timestamp_message(msg, sync)
+
+character(len=*), intent(in) :: msg
+logical, intent(in), optional :: sync
+
+! Write current time and message to stdout and log file. 
+! if sync is present and true, sync mpi jobs before printing time.
+
+if (timestamp_level <= 0) return
+
+if (present(sync)) then
+  if (sync) call task_sync()
+endif
+
+call timestamp(trim(msg), pos='debug')
+
+end subroutine timestamp_message
+
+!-------------------------------------------------------------------------
+
+subroutine print_ens_time(ens_handle, msg)
+
+type(ensemble_type), intent(in) :: ens_handle
+character(len=*), intent(in) :: msg
+
+! Write message to stdout and log file.
+type(time_type) :: mtime
+
+if (trace_level <= 0) return
+
+if (get_my_num_copies(ens_handle) < 1) return
+
+call get_ensemble_time(ens_handle, 1, mtime)
+call print_time(mtime, msg, logfileunit)
+call print_time(mtime, msg)
+
+end subroutine print_ens_time
+
+!-------------------------------------------------------------------------
+
+subroutine print_obs_time(seq, key, msg)
+
+type(obs_sequence_type), intent(in) :: seq
+integer, intent(in) :: key
+character(len=*), intent(in), optional :: msg
+
+! Write time of an observation to stdout and log file.
+type(obs_type) :: obs
+type(obs_def_type) :: obs_def
+type(time_type) :: mtime
+
+if (trace_level <= 0) return
+
+call init_obs(obs, 0, 0)
+call get_obs_from_key(seq, key, obs)
+call get_obs_def(obs, obs_def)
+mtime = get_obs_def_time(obs_def)
+call print_time(mtime, msg, logfileunit)
+call print_time(mtime, msg)
+call destroy_obs(obs)
+
+end subroutine print_obs_time
+
+!-------------------------------------------------------------------------
+
 end program perfect_model_obs

@@ -396,8 +396,14 @@ do i = 1, num_current_lags
    !                                ' data, cycle index', smoother_index
    !call error_handler(E_MSG,'smoother_assim',errstring)
 
-   write(errstring, '(A,I4,A)') 'starting assimilate pass for lag', i, ' data'
-   call error_handler(E_MSG,'smoother_assim',errstring)
+   write(errstring, '(A,I4,A)') 'Starting reassimilate pass for lag', i, ' data'
+   if (print_trace_details >= 0) call error_handler(E_MSG,'smoother_assim:',errstring)
+   if (print_trace_details >= 1) then
+      call print_time(lag_handle(smoother_index)%time(1), &
+         ' smoother_assim: Time of lagged data is: ', logfileunit)
+      call print_time(lag_handle(smoother_index)%time(1), &
+         ' smoother_assim: Time of lagged data is: ')
+   endif
 
    ! NEED A LAG INFLATE TYPE THAT DOES NO INFLATION FOR NOW
    call filter_assim(lag_handle(smoother_index), obs_ens_handle, &
@@ -615,8 +621,8 @@ subroutine set_smoother_trace(execution_level, timestamp_level)
 ! large the value is.)
  
 
-if (execution_level >= 0) print_trace_details = execution_level
-if (timestamp_level >= 0) print_timestamps    = timestamp_level
+print_trace_details = execution_level
+print_timestamps    = timestamp_level
 
 end subroutine set_smoother_trace
 

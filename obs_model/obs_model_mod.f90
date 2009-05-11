@@ -14,7 +14,7 @@ module obs_model_mod
 use types_mod,            only : r8
 use utilities_mod,        only : register_module, error_handler,     &
                                  E_ERR, E_MSG, E_WARN,               &
-                                 get_unit, file_exist
+                                 get_unit, file_exist, do_output
 use assim_model_mod,      only : aget_closest_state_time_to, get_model_time_step, &
                                  open_restart_write, open_restart_read,           &
                                  awrite_state_restart, close_restart, adv_1step,  &
@@ -600,8 +600,8 @@ subroutine set_obs_model_trace(execution_level, timestamp_level)
 ! large the value is.)
  
 
-if (execution_level >= 0) print_trace_details = execution_level
-if (timestamp_level >= 0) print_timestamps    = timestamp_level
+print_trace_details = execution_level
+print_timestamps    = timestamp_level
 
 end subroutine set_obs_model_trace
 
