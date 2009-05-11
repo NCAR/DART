@@ -174,6 +174,7 @@ logical :: periodic_y = .false.    ! used for single column model, wrap in y
 !JPH -- single column model flag 
 logical :: scm        = .false.    ! using the single column model
 
+! JPH note that soil_data and h_diab are never used and can be removed.
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      default_state_variables, wrf_state_variables, &
@@ -228,7 +229,6 @@ TYPE wrf_static_data_for_dart
    integer  :: n_moist
    integer  :: domain_size
    logical  :: surf_obs
-   logical  :: soil_data
    integer  :: vert_coord
    real(r8), dimension(:),     pointer :: znu, dn, dnw, zs
    real(r8), dimension(:,:),   pointer :: mub, latitude, longitude, hgt
@@ -328,7 +328,6 @@ if( num_moist_vars > 7) then
 endif
 
 wrf%dom(:)%surf_obs = surf_obs
-wrf%dom(:)%soil_data = soil_data
 
 !---------------------------
 ! end obsolete
@@ -496,9 +495,6 @@ WRFDomains : do id=1,num_domains
 
 ! start and stop of each variable in vector
    allocate(wrf%dom(id)%var_index(2,wrf%dom(id)%number_of_wrf_variables))
-
-! dimension of variables
-!   allocate(wrf%dom(id)%var_size(3,wrf%dom(id)%number_of_wrf_variables))
 
 !---------------------------
 ! end block to be obsolete
@@ -3263,16 +3259,32 @@ do id=1,num_domains
 
          dimids_3D(4:5) = (/MemberDimID,unlimitedDimID/)
 
+         ! get first two dimensions based on stagger (could do this
+         ! differently)
          select case (trim(wrf%dom(id)%stagger(ind)))
          case ('Z')  ! mass grid staggered vertical
-           dimids_3D(1:3)=(/weDimID(id),snDimId(id),btStagDimID(id)/)
+           dimids_3D(1:2)=(/weDimID(id),snDimId(id)/)
          case ('X')  ! U grid unstaggered vertical
-           dimids_3D(1:3)=(/weStagDimID(id),snDimId(id),btDimID(id)/)
+           dimids_3D(1:2)=(/weStagDimID(id),snDimId(id)/)
          case ('Y')  ! V grid unstaggered vertical
-           dimids_3D(1:3)=(/weDimID(id),snStagDimId(id),btDimID(id)/)
+           dimids_3D(1:2)=(/weDimID(id),snStagDimId(id)/)
          case default 
-           dimids_3D(1:3)=(/weDimID(id),snDimId(id),btDimID(id)/)
+           dimids_3D(1:2)=(/weDimID(id),snDimId(id)/)
          end select
+
+         ! vertical dimension can be stag, unstag, or staggered soil
+         ! need to use if/then/else instead of select because testing
+         ! is against variables
+         if ( wrf%dom(id)%var_size(3,my_index) == wrf%dom(id)%bts ) then
+           dimids_3D(3)=btStagDimID(id)
+         elseif ( wrf%dom(id)%var_size(3,my_index) == wrf%dom(id)%bt ) then
+           dimids_3D(3)=btDimID(id)
+         elseif ( wrf%dom(id)%var_size(3,my_index) == wrf%dom(id)%sls ) then
+           dimids_3D(3)=slSDimID(id)
+         else
+           write(errstring,*)'Could not determine dim_id for vertical dimension to output variable '//varname
+           call error_handler(E_ERR,'nc_write_atts',errstring,source, revision,revdate)
+         endif
 
          if ( debug ) write(*,*) '3D with dim ids ',dimids_3D
 
