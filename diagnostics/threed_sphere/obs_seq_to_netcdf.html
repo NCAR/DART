@@ -520,15 +520,14 @@ verbose       = 1;
 
 bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxQC, verbose);
 
-<em class="input">
-&#62;&#62; fname         = 'obs_sequence_001.nc';
-&#62;&#62; ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';
-&#62;&#62; region        = [0 360 -90 90 -Inf Inf];
-&#62;&#62; CopyString    = 'NCEP BUFR observation';
-&#62;&#62; QCString      = 'DART quality control';
-&#62;&#62; maxQC         = 2;
-&#62;&#62; verbose       = 1;
-&#62;&#62; bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxQC, verbose);</em>
+&#62;&#62;<em class="input"> fname         = 'obs_sequence_001.nc';</em>
+&#62;&#62;<em class="input"> ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';</em>
+&#62;&#62;<em class="input"> region        = [0 360 -90 90 -Inf Inf];</em>
+&#62;&#62;<em class="input"> CopyString    = 'NCEP BUFR observation';</em>
+&#62;&#62;<em class="input"> QCString      = 'DART quality control';</em>
+&#62;&#62;<em class="input"> maxQC         = 2;</em>
+&#62;&#62;<em class="input"> verbose       = 1;</em>
+&#62;&#62;<em class="input"> bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxQC, verbose);</em>
 
 N =  3336 RADIOSONDE_U_WIND_COMPONENT  obs (type   1) between levels 550.00 and 101400.00
 N =  3336 RADIOSONDE_V_WIND_COMPONENT  obs (type   2) between levels 550.00 and 101400.00
@@ -556,7 +555,7 @@ you get the plots at the top of this document. If you have a relatively
 new version of Matlab, you can dynamically rotate the 3D view ...
 coooool. The vertical levels are reported so you can restrict the area
 of interest with the 'region' variable [minlon maxlon minlat maxlat
-minlevel maxlevel]. The observation Only the observations with a QC value less than or
+minlevel maxlevel]. Only the observations with a QC value less than or
 equal to 'maxQC' are plotted in 'Figure 1'. Note the values of 'QCString' 
 and 'CopyString' must match some value of <em class="unix">QCMetaData</em> 
 and <em class="unix">CopyMetaData</em>, respectively. If you're not so
