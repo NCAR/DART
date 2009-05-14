@@ -443,19 +443,19 @@ data:
 
 <P class="indent">So, first off, the UNLIMITED dimension is not 'time'.
 It's simply the number of observations - a coordinate variable 
-called <em class="unix">ObsIndex</em>. The <em class="unix">observations</em> 
+called <em class="code">ObsIndex</em>. The <em class="code">observations</em> 
 variable is a 2D array - each column is a 'copy' of the observation. The
-interpretation of the column is found in the <em class="unix">CopyMetaData</em>
-variable. Same thing goes for the <em class="unix">qc</em> variable - 
-each column is defined by the <em class="unix">QCMetaData</em> variable.
+interpretation of the column is found in the <em class="code">CopyMetaData</em>
+variable. Same thing goes for the <em class="code">qc</em> variable - 
+each column is defined by the <em class="code">QCMetaData</em> variable.
 <br />
 <br />
-The <em class="unix">Obs_Type</em> variable is crucial. Each observation
+The <em class="code">Obs_Type</em> variable is crucial. Each observation
 has an integer code to define the specific ... DART observation type. 
 In our example - lets assume that observation number 10 (i.e. 
-ObsIndex&nbsp;==&nbsp;10) has an <em class="unix">obs_type</em> of 3 
+ObsIndex&nbsp;==&nbsp;10) has an <em class="code">obs_type</em> of 3 
 [i.e.&nbsp;obs_type(10)&nbsp;=&nbsp;3]. Since 
-<em class="unix">ObsTypesMetaData(3) == "RADIOSONDE_SURFACE_PRESSURE"</em>, 
+<em class="code">ObsTypesMetaData(3) == "RADIOSONDE_SURFACE_PRESSURE"</em>, 
 we know that any/all quantities where ObsIndex == 10 pertain to a
 radiosonde surface pressure observation.
 </P>
@@ -479,7 +479,7 @@ class="program">plot_obs_netcdf.m</em> can be run to plot the observations.
 The only thing that is tricky is the fact that the table of known
 observation types in the netCDF file is not pruned down to reflect the
 contents of the netCDF file. As a consequence, a dump of <em
-class="unix">ObsObsTypesMetaData</em> might lead you to try to plot 
+class="code">ObsObsTypesMetaData</em> might lead you to try to plot 
 observation types that do not exist in the file. Stay tuned.
 <P/>
 
@@ -557,8 +557,8 @@ coooool. The vertical levels are reported so you can restrict the area
 of interest with the 'region' variable [minlon maxlon minlat maxlat
 minlevel maxlevel]. Only the observations with a QC value less than or
 equal to 'maxQC' are plotted in 'Figure 1'. Note the values of 'QCString' 
-and 'CopyString' must match some value of <em class="unix">QCMetaData</em> 
-and <em class="unix">CopyMetaData</em>, respectively. If you're not so
+and 'CopyString' must match some value of <em class="code">QCMetaData</em> 
+and <em class="code">CopyMetaData</em>, respectively. If you're not so
 keen on a 3D plot, simply change the view to be directly 'overhead':
 <br />
 <br />
