@@ -31,6 +31,7 @@ use     obs_kind_mod, only : get_obs_kind_var_type, get_obs_kind_name, &
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=), operator(==), &
                              set_location, is_location_in_region, VERTISUNDEF, &
+                             VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, &
                              query_location
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              set_calendar_type, get_calendar_string, print_date, &
@@ -770,7 +771,17 @@ call nc_check(nf90_def_var(ncid=ncid, name='which_vert', xtype=nf90_int, &
           dimids=(/ ObsNumDimID /), varid=VarID), &
             'InitNetCDF', 'which_vert:def_var')
 call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'vertical coordinate system code'), &
-          'InitNetCDF', 'which_vert:long_name')
+           'InitNetCDF', 'which_vert:long_name')
+call nc_check(nf90_put_att(ncid, VarID, 'VERTISUNDEF', VERTISUNDEF), &
+           'InitNetCDF', 'which_vert:VERTISUNDEF')
+call nc_check(nf90_put_att(ncid, VarID, 'VERTISSURFACE', VERTISSURFACE), &
+           'InitNetCDF', 'which_vert:VERTISSURFACE')
+call nc_check(nf90_put_att(ncid, VarID, 'VERTISLEVEL', VERTISLEVEL), &
+           'InitNetCDF', 'which_vert:VERTISLEVEL')
+call nc_check(nf90_put_att(ncid, VarID, 'VERTISPRESSURE', VERTISPRESSURE), &
+           'InitNetCDF', 'which_vert:VERTISPRESSURE')
+call nc_check(nf90_put_att(ncid, VarID, 'VERTISHEIGHT', VERTISHEIGHT), &
+           'InitNetCDF', 'which_vert:VERTISHEIGHT')
 
 ! Define the observation locations
 
