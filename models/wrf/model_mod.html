@@ -134,7 +134,7 @@ models/wrf/PERTURB/3DVAR-COVAR.
 
 <P>
 Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&#38;model_mod</em> </A>
+<A HREF="#Namelist"> <em class=code>&amp;model_mod</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -292,7 +292,7 @@ type(time_type)                       :: <em class=code> get_model_time_step
 Returns the model base time step as a time_type. For the model wrf, it returns
 the time step used for domain 1 (usually the largest time step among all
 domains because domain 1 is the coarser grid). The time step is read from
-namelist.input. In the long run, 
+the wrfinput_d01 file (used to be namelist.input). In the long run, 
 a more general extended interface may be required that specifies the models 
 range of time stepping possibilities.
 </P>
@@ -647,13 +647,16 @@ state is always to be provided from input files.
 <BR><HR><BR>
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&#38;' and terminating with a slash '/'.
+'&amp;' and terminating with a slash '/'.
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml / </em>                          &#38;
-    output_state_vector, num_moist_vars, num_domains, calendar_type, &#38; 
-    surf_obs, soil_data, h_diab, adv_mod_command, assimilation_period_seconds,  &#38;
-    vert_localization_coord, center_search_half_length, center_spline_grid_scale
+<em class=call>namelist / model_nml / </em>                             &amp;
+   default_state_variables, wrf_state_variables, wrf_state_bounds,      &amp;
+   output_state_vector, num_domains, calendar_type,                     &amp;
+   adv_mod_command, assimilation_period_seconds, allow_obs_below_vol,   &amp;
+   vert_localization_coord, center_search_half_length, center_spline_grid_scale,   &amp;
+   polar, periodic_x, periodic_y, scm                                   &amp;
+   num_moist_vars, surf_obs, soil_data, h_diab
 
 </pre>
 </div>
@@ -669,17 +672,56 @@ state is always to be provided from input files.
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
 
+<TR><!--contents--><TD valign=top>default_state_variables      </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
+    <!--descript--><TD>If .true., the dart state vector contains
+    the fields U, V, W, PH, T, MU, in that order, and only those.
+    Any values listed in the wrf_state_variables namelist item will
+    be ignored.  Defaults to .true.</TD></TR>
+
+<TR><!--contents--><TD valign=top>wrf_state_variables      </TD>
+    <!--  type  --><TD valign=top>character(:, 5)          </TD>
+    <!--descript--><TD>A 2D array of strings, 5 per wrf array
+    to be added to the dart state vector.  If default_state_variables
+    is .true., this is ignored.  When .false., this list of array
+    names controls which arrays and the order that they are added
+    to the state vector.  The 5 strings are:  
+    <OL> <LI>WRF field name - must match netcdf name exactly</LI>
+         <LI>DART KIND name - must match a valid DART KIND_xxx exactly</LI>
+         <LI>TYPE_NN - will hopefully be obsolete, but for now NN 
+             should match the field name. </LI>
+         <LI>the string UPDATE.  at some future point, non-updatable
+             fields may become part of the state vector. </LI>
+         <LI>A numeric string listing the domain numbers this array
+             is part of.  The specical string 999 means all domains.
+             For example, '12' means domains 1 and 2, '13' means 1 and 3.</LI>
+   </OL>
+    No defaults.  All fields must be listed explicitly.</TD></TR>
+
+<TR><!--contents--><TD valign=top>wrf_state_bounds      </TD>
+    <!--  type  --><TD valign=top>character(:, 4)          </TD>
+    <!--descript--><TD>A 2D array of strings, 4 per wrf array.
+    During the copy of data to and from the wrf netcdf file,
+    variables listed here will have minimum and maximum values
+    enforced.  The 4 strings are:  
+    <OL> <LI>WRF field name - must match netcdf name exactly</LI>
+         <LI>Minimum -- specified as a string but must be a numeric value
+             (e.g. '0.1')  Can be 'NULL' to allow any minimum value.</LI>
+         <LI>Maximum -- specified as a string but must be a numeric value
+             (e.g. '0.1')  Can be 'NULL' to allow any maximum value.</LI>
+         <LI>Action -- valid strings are 'CLAMP', 'FAIL'.  'FAIL' means if
+             a value is found outside the range, the code fails with an error.
+             'CLAMP' simply sets the out of range values to the given minimum
+             or maximum without error.</LI>
+   </OL>
+    No defaults.  All fields must be listed explicitly.</TD></TR>
+
 <TR><!--contents--><TD valign=top>output_state_vector          </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
     <!--descript--><TD>Controls the output to netCDF files. If .true., 
     output the raw dart state vector. Otherwise, output the prognostic 
     flavor (gridded data) for easier plotting (recommended).
     Defaults to false</TD></TR>
-
-<TR><!--contents--><TD valign=top>num_moist_vars               </TD>
-    <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD>Number of moist variables in the state vector
-    [0,...,7].  Defaults to 3</TD></TR>
 
 <TR><!--contents--><TD valign=top>num_domains                  </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
@@ -698,30 +740,36 @@ state is always to be provided from input files.
 		       multiple of the underlying model timestep.
                        Default is 21600 (6 hours)</TD></TR>
     
-<TR><!--contents--><TD valign=top>surf_obs                     </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>If true, includes U10, V10, T2, Q2, and PS 
-    in the state vector. The resulting extended state vector permits 
-    simpler observational operators for these variables. With this 
-    strategy, the surface scheme can be changed without the 
-    requirement of changing the observational operators in DART.
-    Defaults to true</TD></TR>
+<TR><!--contents--><TD valign=top>periodic_x                 </TD>
+    <!--  type  --><TD valign=top>logical                    </TD>
+    <!--descript--><TD>If .true., the grid is periodic in
+    longitude, and points above the last grid cell and points
+    below the first grid cell are wrapped.  Note this is not
+    the same as a grid which crosses the prime meridian.  WRF
+    handles that with an offset in longitude and points beyond
+    the last grid index are outside the domain.  The default
+    is .false.</TD></TR>
 
-<TR><!--contents--><TD valign=top>soil_data                    </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>If true, soil temperature (TSLB), 
-    soil moisture (SMOIS), and soil liquid water (SH2O) 
-    are included in the state vector, and they are updated by 
-    the assimilation.
-    Defaults to true</TD></TR>
+<TR><!--contents--><TD valign=top>periodic_y                 </TD>
+    <!--  type  --><TD valign=top>logical                    </TD>
+    <!--descript--><TD>Used for the Single Column Model to make
+    the grid wrap in Y (see scm below).  This is NOT the same as 
+    wrapping in latitude (see polar below).  The default is .false.</TD></TR>
 
-<TR><!--contents--><TD valign=top>h_diab                     </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>If true, includes H_DIABATIC in the state vector. 
-   This produces a smoother restart and reduces the spinup problem
-   during the assimilation. To use it, WRF registry needs to be changed
-   to include H_DIABATIC in WRF input/output files. This is especially 
-   useful for convective scale assimilations. Defaults to false</TD></TR>
+<TR><!--contents--><TD valign=top>polar                      </TD>
+    <!--  type  --><TD valign=top>logical                    </TD>
+    <!--descript--><TD>If .true., points at the poles are 
+    wrapped across the grid. It is not clear this is a good idea
+    since the grid is degnerate here. The default is .false.</TD></TR>
+
+<TR><!--contents--><TD valign=top>scm                        </TD>
+    <!--  type  --><TD valign=top>logical                    </TD>
+    <!--descript--><TD>If .true., the Single Column Model is
+    assumed.  The grid is a single vertical column, and there
+    are 9 cells arranged in a 3x3 grid.  See the WRF documentation
+    for more information on this configuration.  periodic_x
+    and periodic_y should also be .true. in this case.
+    The default is .false.</TD></TR>
 
 <TR><!--contents--><TD valign=top>adv_mod_command              </TD>
     <!--  type  --><TD valign=top>character(len=32)            </TD>
@@ -759,6 +807,43 @@ state is always to be provided from input files.
                        1 = model level,  2 = pressure,  3 = height.  
                        Default is 3</TD></TR>
     
+<TR><!--contents--><TD valign=top>surf_obs                     </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
+    <!--descript--><TD>If true, includes U10, V10, T2, Q2, and PS 
+    in the state vector. The resulting extended state vector permits 
+    simpler observational operators for these variables. With this 
+    strategy, the surface scheme can be changed without the 
+    requirement of changing the observational operators in DART.
+    Defaults to true.  DEPRECATED -- must be .true. for now if
+    any of the surface fields are part of the wrf_state_variables list.
+    Will be removed the next time the code is reorganized.</TD></TR>
+
+<TR><!--contents--><TD valign=top>soil_data                    </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
+    <!--descript--><TD>If true, soil temperature (TSLB), 
+    soil moisture (SMOIS), and soil liquid water (SH2O) 
+    are included in the state vector, and they are updated by 
+    the assimilation.
+    Defaults to true.  DEPRECATED -- has no effect on the code 
+    and will be removed soon.</TD></TR>
+
+<TR><!--contents--><TD valign=top>h_diab                     </TD>
+    <!--  type  --><TD valign=top>logical                      </TD>
+    <!--descript--><TD>If true, includes H_DIABATIC in the state vector. 
+   This produces a smoother restart and reduces the spinup problem
+   during the assimilation. To use it, WRF registry needs to be changed
+   to include H_DIABATIC in WRF input/output files. This is especially 
+   useful for convective scale assimilations. Defaults to false.
+   DEPRECATED -- has no effect on the code and will be removed soon.</TD></TR>
+
+<TR><!--contents--><TD valign=top>num_moist_vars               </TD>
+    <!--  type  --><TD valign=top>integer                      </TD>
+    <!--descript--><TD>Number of moist variables in the state vector
+    [0,...,7].  Defaults to 3.  DEPRECATED -- will soon have no effect
+    on the code.  For now, must be > 1 if any Q hydrometeors are
+    specified in the wrf_state_variables list.
+    Will be removed the next time the code is reorganized.</TD></TR>
+
 </TABLE>
 
 <!--==================================================================-->
