@@ -145,7 +145,7 @@ integer, parameter :: num_bounds_table_columns = 4
 ! center_spline_scale: coarse grid to spline interp. fine grid ratio
 !-----------------------------------------------------------------------
 
-logical :: output_state_vector  = .false.     ! output prognostic variables
+logical :: output_state_vector     = .false.  ! output prognostic variables
 logical :: default_state_variables = .true.   ! use default state list?
 character(len=129) :: wrf_state_variables(num_state_table_columns,max_state_variables) = 'NULL'
 character(len=129) :: wrf_state_bounds(num_bounds_table_columns,max_state_variables) = 'NULL'
@@ -308,6 +308,13 @@ allocate(wrf%dom(num_domains))
 if ( default_state_variables ) then
   wrf_state_variables = 'NULL'
   call fill_default_state_table(wrf_state_variables)
+  call error_handler(E_MSG, 'static_init_model:', &
+      'Using predefined wrf variable list for dart state vector.')
+  call error_handler(E_MSG, 'static_init_model:', &
+      'Set "default_state_variables" to .false. in the namelist')
+  call error_handler(E_MSG, 'static_init_model:', &
+      'to use the "wrf_state_variables" list instead.')
+
 endif
 
 if ( debug ) then
@@ -483,6 +490,9 @@ WRFDomains : do id=1,num_domains
       if ( debug ) then
          print*,'variable size ',trim(wrf_state_variables(1,my_index)),' ',wrf%dom(id)%var_size(:,ind)
       endif
+
+      write(errstring, '(A,I4,2A)') 'state vector array ', ind, ' is ', trim(wrf_state_variables(1,my_index))
+      call error_handler(E_MSG, 'static_init_model: ', errstring)
    enddo
 
 ! close data file, we have all we need
@@ -5544,7 +5554,7 @@ logical, parameter    :: debug = .false.
                      'static_init_model', 'get_att DY')
    call nc_check( nf90_get_att(ncid, nf90_global, 'DT', wrf%dom(id)%dt), &
                      'static_init_model', 'get_att DT')
-   if (do_output()) print*,'dt from wrfinput file is: ', wrf%dom(id)%dt
+   if (do_output()) print*,'dt from wrfinput_d0X file is: ', wrf%dom(id)%dt
    if(debug) write(*,*) ' dx, dy, dt are ',wrf%dom(id)%dx, &
         wrf%dom(id)%dy, wrf%dom(id)%dt
 
