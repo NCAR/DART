@@ -1,0 +1,3 @@
+Unzip this file with gunzip and then go into
+the ../work directory, and run convert_l2b to
+convert this HDF 4 file into a DART obs_sequence file.
