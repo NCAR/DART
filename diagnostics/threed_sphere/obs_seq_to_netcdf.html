@@ -679,8 +679,8 @@ who are now supporting the <a
 href="http://mexcdf.sourceforge.net/">snctools</a> set of 
 functions. The Matlab functions <em class="program">plot_obs_netcdf</em>
 and <em class="program">plot_obs_netcdf_diffs</em> both use the
-supported <em class="file">snctools</em> toolbox. A slow migration of
-the DART use of the <em class="file">netcdf_toolbox</em> and the CSIRO
+supported <em class="file">snctools</em> toolbox. A slow migration away
+from the existing DART use of the <em class="file">netcdf_toolbox</em> and the CSIRO
 toolbox <em class="file">matlab_netCDF_OPeNDAP</em> (i.e. the 'getnc'
 function) is underway. In the end - this will greatly ease the
 installation of the Matlab netcdf widgets and allow for the same code
@@ -688,9 +688,34 @@ to operate using Matlab's native low-level interface or the historical
 third-party interface (mexnc, mexcdf, mexcdf53).
 <br />
 <br />
+You will need the 'normal' <em class="file">DART/matlab</em> functions
+available to Matlab, so be sure your MATLABPATH is set such that you
+have access to <em class="program">get_copy_index</em> as well as  
+<em class="program">nc_varget</em> and 
+<em class="program">getnc</em> and  ... <br />
+This generally means your MATLABPATH should look something like:
+<div class="routine">
+<pre>
+addpath('replace_this_with_the_real_path_to/DART/matlab')
+addpath('replace_this_with_the_real_path_to/DART/diagnostics/matlab')
+addpath('some_other_netcdf_install_dir/mexnc','-BEGIN')
+addpath('some_other_netcdf_install_dir/snctools')
+addpath('some_other_netcdf_install_dir/netcdf_toolbox/netcdf')
+addpath('some_other_netcdf_install_dir/netcdf_toolbox/netcdf/nctype')
+addpath('some_other_netcdf_install_dir/netcdf_toolbox/netcdf/ncutility')
+addpath('some_other_CSIRO_install_dir/matlab_netCDF_OPeNDAP')
+</pre>
+</div>
+<br />
+which is precisely why I'm trying to shorten it. On my systems, I've bundled the
+last 6 commands into a function called <em class="program">ncstartup.m</em> which
+is run every time I start Matlab 
+(because I execute it in my <em class="program">~/matlab/startup.m</em>)
+<br />
+<br />
 As is standard practice, the instructions for using the Matlab scripts
-are available by using the Matlab 'help' facility (i.e.  
-<em class="input">help plot_obs_netcdf</em>&nbsp;). A quick discussion
+are available by using the Matlab 'help' facility 
+(i.e.&nbsp;<em class="input">help&nbsp;plot_obs_netcdf</em>&nbsp;). A quick discussion
 of them here still seems appropriate. If you run the following Matlab
 commands with an <em class="file">obs_sequence_001.nc</em> file you 
 couldn't possibly have:
