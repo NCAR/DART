@@ -370,7 +370,8 @@ contains
     end if
 
     if(field_number <=0) &
-      call error_handler(E_ERR,'get_state_meta_data', "State vector index out of bounds", source, revision, revdate)
+      call error_handler(E_ERR,'get_state_meta_data', "State vector index out of bounds", &
+                         source, revision, revdate)
 
     !
     ! Compute the x, y, z index. The state vector is stored in order level, lon, lat
@@ -983,7 +984,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
             !
             forall(i = 1:2, j = 1:2)
               cornerLogPressures(i, j) = interpolate1D(desiredLocation = lon_lat_height(3),          &
-                                                       values = cornerLogPressureProfiles(i, j,:),  &
+                                                       values = cornerLogPressureProfiles(i, j,num_levels+1:1:-1),  & 
                                                        locations =  cornerHeights(i, j,num_levels+1:1:-1))
             end forall
             !
@@ -1198,7 +1199,11 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
    ! We don't write the first row of u, which should be all 0s
    !
    call nc_check(nf90_inq_varid(ncfileid, "U", ncVarId),'write_model_init','inquiring u varid')
-   call nc_check(nf90_put_var(ncfileid, ncVarId, var%u, start = (/ 1, 2, 1/)),&
+   call nc_check(nf90_put_var(ncfileid, ncVarId, var%u(:,2:num_lats,:), start = (/ 1, 2, 1/)),& 
+                                                        'write_model_init','putting u var')
+   call nc_check(nf90_put_var(ncfileid, ncVarId, RESHAPE( (/(0,i=1,num_lons*num_levels)/), &
+                                                          (/num_lons,num_levels/)), &
+                              start = (/ 1, 1, 1/), count = (/num_lons, 1, num_levels/)), &
                                                         'write_model_init','putting u var')
 
    !
@@ -1291,7 +1296,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
     if(num_tracers > 0)                                                         &
       forall(i = 1:num_levels, j=1:num_lons, k=1:num_lats, t = 1:num_tracers ) &
         tracers(i, j, k, t) = model_var%tracers(j, k, i, t)
-
+    !
     ! 2D field ps is ordered lon, lat; 3D fields are ordered lon, lat, level but are
     !   reordered to level, lon, lat before packing into vectors
     ! Tracers are ordered lon, lat, level, tracer_num, pack as level, lon, lat, tracer_num.
@@ -1379,7 +1384,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
     !Fill model_var components
     forall(i = 1:num_lons, j=1:num_lats, k=1:num_levels)
           model_var%u(i, j, k) = u_var(k, i, j)
-          model_var%v(i, j, k) = v_var(k, i, k)
+          model_var%v(i, j, k) = v_var(k, i, j)
           model_var%t(i, j, k) = t_var(k, i, j)
     end forall
 
