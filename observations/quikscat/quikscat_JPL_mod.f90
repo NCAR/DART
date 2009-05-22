@@ -158,7 +158,10 @@ type(obs_sequence_type) :: real_obs_sequence
 type(obs_def_type)      :: obs_def
 type(obs_type)          :: obs, prev_obs
 
-integer :: i, irow, iwvc, iamb, num_copies, num_qc
+integer :: i, irow, iwvc, iamb
+integer, PARAMETER :: num_copies = 1
+!integer, PARAMETER :: num_qc = 3
+integer, PARAMETER :: num_qc = 1
 integer :: days, seconds
 integer :: obs_num
 integer :: which_vert, uobstype, vobstype
@@ -166,7 +169,7 @@ integer :: which_vert, uobstype, vobstype
 real(r4) :: speed, dir
 real(r8) :: lon, lat, vloc
 real(r8) :: u_obs, v_obs, u_var, v_var
-real(r8) :: aqc
+real(r8) :: aqc(num_qc)
 real(r8) :: sintheta, costheta, dirvar, speedvar
 
 type(time_type) :: time, pre_time
@@ -174,9 +177,6 @@ type(time_type) :: time, pre_time
 character(len = 129) :: meta_data
 
 if ( .not. module_initialized ) call initialize_module
-
-num_copies  = 1
-num_qc      = 1
 
 ! Initialize an obs_sequence 
 call init_obs_sequence(real_obs_sequence, num_copies, num_qc, max_num)
@@ -187,10 +187,9 @@ do i = 1, num_copies
    call set_copy_meta_data(real_obs_sequence, i, meta_data)
 end do
 
-do i = 1, num_qc
-   meta_data = 'QC index - wvc_quality_flag'
-   call set_qc_meta_data(real_obs_sequence, i, meta_data)
-end do
+call set_qc_meta_data(real_obs_sequence, 1, 'QC flag - wvc_quality_flag')
+!call set_qc_meta_data(real_obs_sequence, 2, 'IMUDH - mp_rain_probability')
+!call set_qc_meta_data(real_obs_sequence, 3, 'NOF Index - nof_rain_index')
 
 ! Initialize the obs variables
 call init_obs(     obs, num_copies, num_qc)
@@ -223,11 +222,14 @@ rowloop:  do irow=1,MAX_ROWS
 
       if (orbit%num_ambigs(iwvc,irow) < 1) cycle wvcloop
 
-      ! only use data flagged as 'best'
-      ! this should be namelist controlled at some point
+    !   only use data flagged as 'best'
+    !   this should be namelist controlled at some point
+    !
+      if ( orbit%wvc_quality_flag(iwvc,irow) /= 0 ) cycle wvcloop
 
-      aqc = orbit%wvc_quality_flag(iwvc,irow)
-      if ( aqc /= 0 ) cycle wvcloop
+      aqc(1) = orbit%wvc_quality_flag(   iwvc,irow)
+!     aqc(2) = orbit%mp_rain_probability(iwvc,irow)
+!     aqc(3) = orbit%nof_rain_index(     iwvc,irow)
 
       lat  = orbit%wvc_lat(iwvc,irow) ! valid range [-90.00,  90.00]
       lon  = orbit%wvc_lon(iwvc,irow) ! valid range [  0.00, 359.99]
@@ -247,12 +249,17 @@ rowloop:  do irow=1,MAX_ROWS
       ! 0.0 is TOWARD the north - in direct contradiction to 
       ! atmospheric convention. Convert by adding 180 modulo 360 
    
-      ! using the 'selected wind' ... aka highest-ranked ambiguity,
-      ! Not DIRTH nor NWP ... should also be namelist selected
-
       iamb  = orbit%wvc_selection(     iwvc,irow)
-      speed = orbit%wind_speed(   iamb,iwvc,irow)
-      dir   = mod(orbit%wind_dir( iamb,iwvc,irow)+180.0_r4, 360.0_r4)
+
+      ! using the 'selected wind' ... aka highest-ranked ambiguity,
+
+!     speed =     orbit%wind_speed(iamb,iwvc,irow)
+!     dir   = mod(orbit%wind_dir(  iamb,iwvc,irow)+180.0_r4, 360.0_r4)
+
+      ! Use this block for the DIRTH selection
+
+      speed =     orbit%wind_speed_selection(iwvc,irow)
+      dir   = mod(orbit%wind_dir_selection(  iwvc,irow) + 180.0_r4, 360.0_r4)
 
       if ( speed < 1.0_r4 ) cycle wvcloop ! everything unreliable 
 
@@ -362,11 +369,11 @@ subroutine real_obs(num_copies, num_qc, obs, lon, lat, vloc, obs_value, &
 !------------------------------------------------------------------------------
 integer,        intent(in)    :: num_copies, num_qc
 type(obs_type), intent(inout) :: obs
-real(r8),       intent(in)    :: lon, lat, vloc, obs_value, var2, aqc
+real(r8),       intent(in)    :: lon, lat, vloc, obs_value, var2, aqc(:)
 integer,        intent(in)    :: obs_kind, which_vert, seconds, days
 
 integer            :: i
-real(r8)           :: aqc01(1), obs_value01(1)
+real(r8)           :: obs_value01(1)
 type(obs_def_type) :: obsdef0
 
 if ( .not. module_initialized ) call initialize_module
@@ -382,10 +389,7 @@ do i = 1, num_copies
    call set_obs_values(obs, obs_value01(1:1) )
 end do
 
-do i = 1, num_qc
-   aqc01(1) = aqc
-   call set_qc(obs, aqc01(1:1))
-end do
+call set_qc(obs, aqc)
 
 end subroutine real_obs
 

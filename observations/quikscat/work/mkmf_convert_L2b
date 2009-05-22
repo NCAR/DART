@@ -13,11 +13,13 @@
 #
 
 set JPGDIR = /contrib/jpeg-6b_gnu-4.1.2-64
-set HDFDIR = /contrib/hdf-4.2r4_gnu-4.1.2-64
+set HDFDIR = /contrib/HDF4.2r4/intel-10-64
 set MYLIBS = "-lmfhdf -ldf -ljpeg -lz  -lm"
 
-set MYINCDIR = "-I${HDFDIR}/include -I${JPGDIR}/include"
-set MYLIBDIR = "-L${HDFDIR}/lib     -L${JPGDIR}/lib"
+#set MYINCDIR = "-I${HDFDIR}/include -I${JPGDIR}/include"
+#set MYLIBDIR = "-L${HDFDIR}/lib     -L${JPGDIR}/lib"
+set MYINCDIR = "-I${HDFDIR}/include"
+set MYLIBDIR = "-L${HDFDIR}/lib"
 
 ../../../mkmf/mkmf -p convert_L2b -t ../../../mkmf/mkmf.template \
  -l "${MYINCDIR} -L/usr/lib64 ${MYLIBDIR} ${MYLIBS}" \
