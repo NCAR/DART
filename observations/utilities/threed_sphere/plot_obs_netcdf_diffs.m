@@ -15,6 +15,17 @@ function obsstruct = plot_obs_netcdf_diffs(fname, ObsTypeString, region,  ...
 
 % record the user input
 
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004-2007, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+
 obsstruct.fname         = fname;
 obsstruct.ObsTypeString = ObsTypeString;
 obsstruct.region        = region;
@@ -104,6 +115,7 @@ obsstruct.lats = mylocs(inds,2);
 obsstruct.z    = mylocs(inds,3);
 obsstruct.obs  =  myobs(inds);
 obsstruct.Ztyp = z_type(inds);
+obsstruct.numbadqc = 0;
 
 if (isempty(myqc))
    obsstruct.qc = [];
@@ -116,6 +128,8 @@ end
 if ( (~ isempty(myqc)) & (~ isempty(maxQC)) )
 
    inds = find(obsstruct.qc > maxQC);
+
+   obsstruct.numbadqc = length(inds);
    
    if (~isempty(inds))
        badobs.lons = obsstruct.lons(inds);
@@ -190,55 +204,57 @@ set(get(h,'YLabel'),'String',ObsTypeString,'Interpreter','none')
 % Create graphic of spatial distribution of 'bad' observations & their QC value.
 %-------------------------------------------------------------------------------
 
-figure(2); clf
+if (obsstruct.numbadqc > 0 )
 
-subplot('position',[0.1 0.20 0.8 0.65])
-scalearray = 128 * ones(size(badobs.obs));
+   figure(2); clf
+   
+   subplot('position',[0.1 0.20 0.8 0.65])
+   scalearray = 128 * ones(size(badobs.obs));
+   
+   zmin = min(badobs.z);
+   zmax = max(badobs.z);
+   
+   scatter3(badobs.lons, badobs.lats, badobs.z, scalearray, badobs.qc,'filled')
+   
+   title( {str1, str3, 'Bad Observations'}, 'Interpreter','none','FontSize',18);
+   xlabel('longitude')
+   ylabel('latitude')
+   
+   if     (badobs.Ztyp(1) == -2) % VERTISUNDEF     = -2
+      zlabel('curious ... undefined')
+   elseif (badobs.Ztyp(1) == -1) % VERTISSURFACE   = -1
+      zlabel('surface')
+   elseif (badobs.Ztyp(1) ==  1) % VERTISLEVEL     =  1
+      zlabel('level')
+   elseif (badobs.Ztyp(1) ==  2) % VERTISPRESSURE  =  2
+      set(gca,'ZDir','reverse')
+      zlabel('pressure')
+   elseif (badobs.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
+      zlabel('height')
+   end
+   
+   axis([region(1) region(2) ymin ymax zmin zmax])
+   
+   myworldmap;
+   h = colorbar;
+   set(get(h,'YLabel'),'String',QCString,'Interpreter','none')
+   
+   subplot('position',[0.1 0.05 0.8 0.10])
+   axis off
+   
+   qcvals  = unique(badobs.qc);
+   qccount = zeros(size(qcvals));
+   for i = 1:length(qcvals)
+      qccount(i) = sum(badobs.qc == qcvals(i));
+      s{i} = sprintf('%d obs with qc == %d',qccount(i),qcvals(i));
+   end
+   
+   dy = 1.0/length(s);
+   for i = 1:length(s)
+      text(0.0, (i-1)*dy ,s{i})
+   end
 
-zmin = min(badobs.z);
-zmax = max(badobs.z);
-
-scatter3(badobs.lons, badobs.lats, badobs.z, scalearray, badobs.qc,'filled')
-
-title( {str1, str3, 'Bad Observations'}, 'Interpreter','none','FontSize',18);
-xlabel('longitude')
-ylabel('latitude')
-
-if     (badobs.Ztyp(1) == -2) % VERTISUNDEF     = -2
-   zlabel('curious ... undefined')
-elseif (badobs.Ztyp(1) == -1) % VERTISSURFACE   = -1
-   zlabel('surface')
-elseif (badobs.Ztyp(1) ==  1) % VERTISLEVEL     =  1
-   zlabel('level')
-elseif (badobs.Ztyp(1) ==  2) % VERTISPRESSURE  =  2
-   set(gca,'ZDir','reverse')
-   zlabel('pressure')
-elseif (badobs.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
-   zlabel('height')
 end
-
-axis([region(1) region(2) ymin ymax zmin zmax])
-
-myworldmap;
-h = colorbar;
-set(get(h,'YLabel'),'String',QCString,'Interpreter','none')
-
-subplot('position',[0.1 0.05 0.8 0.10])
-axis off
-
-qcvals  = unique(badobs.qc);
-qccount = zeros(size(qcvals));
-for i = 1:length(qcvals)
-   qccount(i) = sum(badobs.qc == qcvals(i));
-   s{i} = sprintf('%d obs with qc == %d',qccount(i),qcvals(i));
-end
-
-dy = 1.0/length(s);
-for i = 1:length(s)
-   text(0.0, (i-1)*dy ,s{i})
-end
-
-
 
 function h = myworldmap
 
