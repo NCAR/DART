@@ -1,6 +1,8 @@
 
 Welcome to DART, the Data Assimilation Research Testbed.
 
+(See below for status info from May 2009.)
+
 (See the bottom of this note for the update details for
 the 2 June 2008 commit.)
 
@@ -53,6 +55,23 @@ your model or observation types.
 
 Thank you -
 The DART Development Team.
+
+
+26 May 2009
+
+Over the last year we have been making incremental updates to the code tree.
+Most of these are backward compatible and so we didn't make a big fuss over them.
+We anticipate a new public release sometime in the late fall, at which time
+we will be adding non-backward-compatible features.  But in the meantime, we
+do strive to keep the most recent files on the subversion trunk in perfect
+working order; we don't leave the trunk broken for any amount of time.
+So you should feel comfortable updating on a regular basis.  We do post items
+on the DART users mailing list whenever anything significant has been added.
+Go here, and add yourself to 'Dart-users' to get these updates:
+
+http://mailman.ucar.edu/mailman/listinfo/
+
+It is not generally used for discussion, so it's a low-traffic list.
 
 
 2 June 2008
