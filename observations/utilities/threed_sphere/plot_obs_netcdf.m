@@ -42,18 +42,18 @@ ymax = max(region(3:4));
 zmin = min(obsstruct.z);
 zmax = max(obsstruct.z);
 
-scalearray = scaleme(obsstruct.obs, 36);
-
-scatter3(obsstruct.lons, obsstruct.lats, obsstruct.z, ...
-         scalearray, obsstruct.obs, 'd', 'filled');
 
 axis([xmin xmax ymin ymax zmin zmax])
+
+scalearray = scaleme(obsstruct.obs, 36);
+scatter3(obsstruct.lons, obsstruct.lats, obsstruct.z, ...
+         scalearray, obsstruct.obs, 'd', 'filled');
 
 str1 = sprintf('%s level (%.2f - %.2f)',ObsTypeString,zmin,zmax);
 str2 = sprintf('%s (%d locations)',CopyString,length(obsstruct.obs));
 str3 = sprintf('%s - %s',obsstruct.timestring(1,:),obsstruct.timestring(2,:));
 
-title( {str1, str3, str2}, 'Interpreter','none','FontSize',18);
+title( {str1, str3, str2}, 'Interpreter','none','FontSize',16);
 xlabel('longitude')
 ylabel('latitude')
 
@@ -71,6 +71,7 @@ elseif (obsstruct.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
 end
 
 myworldmap;
+set(gca,'CLim',[min(obsstruct.obs) max(obsstruct.obs)])
 h = colorbar;
 set(get(h,'YLabel'),'String',ObsTypeString,'Interpreter','none')
 
@@ -83,45 +84,46 @@ if (obsstruct.numbadqc > 0 )
    figure(2); clf
    
    subplot('position',[0.1 0.20 0.8 0.65])
-   scalearray = 128 * ones(size(badobs.obs));
+   scalearray = 128 * ones(size(obsstruct.badobs.obs));
    
-   zmin = min(badobs.z);
-   zmax = max(badobs.z);
+   zmin = min(obsstruct.badobs.z);
+   zmax = max(obsstruct.badobs.z);
    
-   scatter3(badobs.lons, badobs.lats, badobs.z, scalearray, badobs.qc,'filled')
+   scatter3(obsstruct.badobs.lons, obsstruct.badobs.lats, obsstruct.badobs.z, ...
+            scalearray, obsstruct.badobs.qc,'filled')
    
-   str2 = sprintf('%s (%d bad observations)',CopyString,length(badobs.obs));
+   str2 = sprintf('%s (%d bad observations)',CopyString,length(obsstruct.badobs.obs));
    
-   title( {str1, str3, str2}, 'Interpreter','none','FontSize',18);
+   title( {str1, str3, str2}, 'Interpreter','none','FontSize',16);
    xlabel('longitude')
    ylabel('latitude')
    
-   if     (badobs.Ztyp(1) == -2) % VERTISUNDEF     = -2
+   if     (obsstruct.badobs.Ztyp(1) == -2) % VERTISUNDEF     = -2
       zlabel('curious ... undefined')
-   elseif (badobs.Ztyp(1) == -1) % VERTISSURFACE   = -1
+   elseif (obsstruct.badobs.Ztyp(1) == -1) % VERTISSURFACE   = -1
       zlabel('surface')
-   elseif (badobs.Ztyp(1) ==  1) % VERTISLEVEL     =  1
+   elseif (obsstruct.badobs.Ztyp(1) ==  1) % VERTISLEVEL     =  1
       zlabel('level')
-   elseif (badobs.Ztyp(1) ==  2) % VERTISPRESSURE  =  2
+   elseif (obsstruct.badobs.Ztyp(1) ==  2) % VERTISPRESSURE  =  2
       set(gca,'ZDir','reverse')
       zlabel('pressure')
-   elseif (badobs.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
+   elseif (obsstruct.badobs.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
       zlabel('height')
    end
    
    axis([xmin xmax ymin ymax zmin zmax])
-   
    myworldmap;
+   set(gca,'CLim',[min(obsstruct.badobs.qc) max(obsstruct.badobs.qc)])
    h = colorbar;
    set(get(h,'YLabel'),'String',QCString,'Interpreter','none')
    
    subplot('position',[0.1 0.05 0.8 0.10])
    axis off
    
-   qcvals  = unique(badobs.qc);
+   qcvals  = unique(obsstruct.badobs.qc);
    qccount = zeros(size(qcvals));
    for i = 1:length(qcvals)
-      qccount(i) = sum(badobs.qc == qcvals(i));
+      qccount(i) = sum(obsstruct.badobs.qc == qcvals(i));
       s{i} = sprintf('%d obs with qc == %d',qccount(i),qcvals(i));
    end
    
@@ -199,8 +201,7 @@ fcolor = [0.7 0.7 0.7];    % light grey
 [c,h] = contourf(x,y,elev,[0.0 0.0],'k-');
 
 new_level = 1000;
-
-h_patch = get(h, 'Children');
+h_patch   = get(h, 'Children');
 
 for i = 1:numel(h_patch)
     y = get(h_patch(i), 'YData');
@@ -209,6 +210,8 @@ for i = 1:numel(h_patch)
 end
 
 if (orgholdstate == 0) hold off; end;
+
+
 
 
 function s = scaleme(x,minsize)

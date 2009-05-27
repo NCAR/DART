@@ -179,7 +179,7 @@ str1 = sprintf('%s level (%.2f - %.2f)',ObsTypeString,zmin,zmax);
 str2 = sprintf('%s - %s (%d locations)',CopyString2,CopyString1,length(obsstruct.obs));
 str3 = sprintf('%s - %s',timestring(1,:),timestring(2,:));
 
-title( {str1, str3, str2}, 'Interpreter','none','FontSize',18);
+title( {str1, str3, str2}, 'Interpreter','none','FontSize',16);
 xlabel('longitude')
 ylabel('latitude')
 
@@ -197,6 +197,7 @@ elseif (obsstruct.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
 end
 
 myworldmap;
+set(gca,'CLim',[min(obsstruct.obs) max(obsstruct.obs)])
 h = colorbar;
 set(get(h,'YLabel'),'String',ObsTypeString,'Interpreter','none')
 
@@ -216,7 +217,7 @@ if (obsstruct.numbadqc > 0 )
    
    scatter3(badobs.lons, badobs.lats, badobs.z, scalearray, badobs.qc,'filled')
    
-   title( {str1, str3, 'Bad Observations'}, 'Interpreter','none','FontSize',18);
+   title( {str1, str3, 'Bad Observations'}, 'Interpreter','none','FontSize',16);
    xlabel('longitude')
    ylabel('latitude')
    
@@ -236,6 +237,7 @@ if (obsstruct.numbadqc > 0 )
    axis([region(1) region(2) ymin ymax zmin zmax])
    
    myworldmap;
+   set(gca,'CLim',[min(badobs.qc) max(badobs.qc)])
    h = colorbar;
    set(get(h,'YLabel'),'String',QCString,'Interpreter','none')
    

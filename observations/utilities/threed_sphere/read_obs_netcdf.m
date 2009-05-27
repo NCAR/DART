@@ -149,3 +149,7 @@ if ( (~ isempty(myqc)) & (~ isempty(maxQC)) )
 
 end
 
+if ( exist('badobs','var') )
+   obsstruct.badobs = badobs;
+end
+
