@@ -11,6 +11,25 @@ function obsstruct = read_obs_netcdf(fname, ObsTypeString, region, CopyString, .
 %
 % obs = read_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxQC, verbose);
 %
+% The return variable 'obs' is a structure. As an example ...
+%
+%           fname: 'obs_sequence_001.nc'
+%   ObsTypeString: 'RADIOSONDE_U_WIND_COMPONENT'
+%          region: [0 360 -90 90 -Inf Inf]
+%      CopyString: 'NCEP BUFR observation'
+%        QCString: 'DART quality control'
+%           maxQC: 2
+%         verbose: 1
+%      timestring: [2x20 char]
+%            lons: [2343x1 double]
+%            lats: [2343x1 double]
+%               z: [2343x1 double]
+%             obs: [2343x1 double]
+%            Ztyp: [2343x1 double]
+%        numbadqc: 993
+%              qc: [2343x1 double]
+%          badobs: [1x1 struct]
+
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004-2007, Data Assimilation Research Section
@@ -110,11 +129,10 @@ obsstruct.lats = mylocs(inds,2);
 obsstruct.z    = mylocs(inds,3);
 obsstruct.obs  =  myobs(inds);
 obsstruct.Ztyp = z_type(inds);
+obsstruct.qc   = [];
 obsstruct.numbadqc = 0;
 
-if (isempty(myqc))
-   obsstruct.qc = [];
-else
+if ~ isempty(myqc)
    obsstruct.qc = myqc(inds);
 end
 

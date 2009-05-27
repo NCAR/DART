@@ -398,7 +398,11 @@ smallest possible delta is added to one of the assimilation edges.
         from the obs_seq_to_netcdf.</LI>
 </UL>
 <H3 class="indent1">Related Matlab functions</H3>
-<UL><LI><em class="file">observations/utilities/plot_obs_netcdf.m</em> may
+<UL><LI><em class="file">observations/utilities/read_obs_netcdf.m</em>
+        reads the netcdf files and returns an structure with easy-to-plot
+	components.  More on that in the 'Usage' section below.
+	</LI>
+    <LI><em class="file">observations/utilities/plot_obs_netcdf.m</em> may
         be used to explore the spatial distribution of observations and 
 	their values.  More on that in the 'Usage' section below.
 	</LI>
@@ -408,8 +412,6 @@ smallest possible delta is added to one of the assimilation edges.
         the bias between 'observation' and 'prior ensemble mean', for example.
         Again, more on that in the 'Usage' section below.
 	</LI>
-    <LI><em class="file">observations/utilities/read_obs_netcdf.m</em> will
-        be coming soon to a repository near you. </LI>
 </UL>
 
 <H3 class="indent1">Discussion of obs_sequence_xxx.nc structure</H3>
@@ -677,9 +679,9 @@ For better or for worse, the Matlab <em class="file">netcdf_toolbox</em>
 subset of functions is no longer being supported by their developers,
 who are now supporting the <a
 href="http://mexcdf.sourceforge.net/">snctools</a> set of 
-functions. The Matlab functions <em class="program">plot_obs_netcdf</em>
-and <em class="program">plot_obs_netcdf_diffs</em> both use the
-supported <em class="file">snctools</em> toolbox. A slow migration away
+functions. The Matlab function <em class="program">read_obs_netcdf</em>
+uses the supported <em class="file">snctools</em> toolbox. 
+A slow migration away
 from the existing DART use of the <em class="file">netcdf_toolbox</em> and the CSIRO
 toolbox <em class="file">matlab_netCDF_OPeNDAP</em> (i.e. the 'getnc'
 function) is underway. In the end - this will greatly ease the
@@ -714,11 +716,13 @@ is run every time I start Matlab
 <br />
 <br />
 As is standard practice, the instructions for using the Matlab scripts
+<em class="program">plot_obs_netcdf</em>
+and <em class="program">plot_obs_netcdf_diffs</em> 
 are available by using the Matlab 'help' facility 
 (i.e.&nbsp;<em class="input">help&nbsp;plot_obs_netcdf</em>&nbsp;). A quick discussion
 of them here still seems appropriate. If you run the following Matlab
 commands with an <em class="file">obs_sequence_001.nc</em> file you 
-couldn't possibly have:
+cannot possibly have:
 <br />
 <br />
 <div class="unix">
@@ -731,7 +735,7 @@ QCString      = 'DART quality control';
 maxQC         = 2;
 verbose       = 1;
 
-bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxQC, verbose);
+obs = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxQC, verbose);
 
 &#62;&#62;<em class="input"> fname         = 'obs_sequence_001.nc';</em>
 &#62;&#62;<em class="input"> ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';</em>
@@ -740,7 +744,7 @@ bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxQC,
 &#62;&#62;<em class="input"> QCString      = 'DART quality control';</em>
 &#62;&#62;<em class="input"> maxQC         = 2;</em>
 &#62;&#62;<em class="input"> verbose       = 1;</em>
-&#62;&#62;<em class="input"> bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxQC, verbose);</em>
+&#62;&#62;<em class="input"> obs = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxQC, verbose);</em>
 
 N =  3336 RADIOSONDE_U_WIND_COMPONENT  obs (type   1) between levels 550.00 and 101400.00
 N =  3336 RADIOSONDE_V_WIND_COMPONENT  obs (type   2) between levels 550.00 and 101400.00
@@ -784,14 +788,12 @@ keen on a 3D plot, simply change the view to be directly 'overhead':
 </div>
 <br />
 And if you act today, we'll throw in a structure containing the selected
-data AT NO EXTRA CHARGE.  Ryan has requested the obvious ... a function 
-to simply return the observations without plotting. I'm working on it.
-I am embarrassed I didn't start with that.
+data AT NO EXTRA CHARGE. 
 <br />
 <br />
 <div class="unix">
-<pre>&#62;&#62; <em class="input">bob</em>
-bob = 
+<pre>&#62;&#62; <em class="input">obs</em>
+obs = 
             fname: 'obs_sequence_001.nc'
     ObsTypeString: 'RADIOSONDE_U_WIND_COMPONENT'
            region: [0 360 -90 90 -Inf Inf]
@@ -805,8 +807,14 @@ bob =
               obs: [2343x1 double]
              Ztyp: [2343x1 double]
                qc: [2343x1 double]
+         numbadqc: 993
+           badobs: [1x1 struct]
 </pre>
 </div>
+<br />
+If there are observations with QC values above that defined by 
+<em class="code">maxQC</em> there will be a <em class="code">badobs</em> 
+structure as a component in the <em class="code">obs</em> structure.
 </P>
 
 <!--==================================================================-->

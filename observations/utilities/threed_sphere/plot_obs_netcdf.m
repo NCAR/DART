@@ -42,12 +42,11 @@ ymax = max(region(3:4));
 zmin = min(obsstruct.z);
 zmax = max(obsstruct.z);
 
-
-axis([xmin xmax ymin ymax zmin zmax])
-
 scalearray = scaleme(obsstruct.obs, 36);
 scatter3(obsstruct.lons, obsstruct.lats, obsstruct.z, ...
          scalearray, obsstruct.obs, 'd', 'filled');
+
+axis([xmin xmax ymin ymax zmin zmax])
 
 str1 = sprintf('%s level (%.2f - %.2f)',ObsTypeString,zmin,zmax);
 str2 = sprintf('%s (%d locations)',CopyString,length(obsstruct.obs));
@@ -91,6 +90,8 @@ if (obsstruct.numbadqc > 0 )
    
    scatter3(obsstruct.badobs.lons, obsstruct.badobs.lats, obsstruct.badobs.z, ...
             scalearray, obsstruct.badobs.qc,'filled')
+
+   axis([xmin xmax ymin ymax zmin zmax])
    
    str2 = sprintf('%s (%d bad observations)',CopyString,length(obsstruct.badobs.obs));
    
@@ -111,7 +112,6 @@ if (obsstruct.numbadqc > 0 )
       zlabel('height')
    end
    
-   axis([xmin xmax ymin ymax zmin zmax])
    myworldmap;
    set(gca,'CLim',[min(obsstruct.badobs.qc) max(obsstruct.badobs.qc)])
    h = colorbar;
