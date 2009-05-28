@@ -42,37 +42,28 @@ ymax = max(region(3:4));
 zmin = min(obsstruct.z);
 zmax = max(obsstruct.z);
 
-scalearray = scaleme(obsstruct.obs, 36);
-scatter3(obsstruct.lons, obsstruct.lats, obsstruct.z, ...
-         scalearray, obsstruct.obs, 'd', 'filled');
+pstruct.colorbarstring = obsstruct.ObsTypeString;
+pstruct.region = region;
+pstruct.scalearray = scaleme(obsstruct.obs, 36);
+pstruct.clim   = [min(obsstruct.obs) max(obsstruct.obs)];
+pstruct.str2   = sprintf('%s (%d locations)',obsstruct.CopyString,length(obsstruct.obs));
+pstruct.str3   = sprintf('%s - %s',obsstruct.timestring(1,:),obsstruct.timestring(2,:));
 
-axis([xmin xmax ymin ymax zmin zmax])
+if ( zmin ~= zmax )
 
-str1 = sprintf('%s level (%.2f - %.2f)',ObsTypeString,zmin,zmax);
-str2 = sprintf('%s (%d locations)',CopyString,length(obsstruct.obs));
-str3 = sprintf('%s - %s',obsstruct.timestring(1,:),obsstruct.timestring(2,:));
+   pstruct.axis = [xmin xmax ymin ymax zmin zmax];
+   pstruct.str1 = sprintf('%s level (%.2f - %.2f)',obsstruct.ObsTypeString,zmin,zmax);
 
-title( {str1, str3, str2}, 'Interpreter','none','FontSize',16);
-xlabel('longitude')
-ylabel('latitude')
+   plot_3D(obsstruct, pstruct)
 
-if     (obsstruct.Ztyp(1) == -2) % VERTISUNDEF     = -2
-   zlabel('curious ... undefined')
-elseif (obsstruct.Ztyp(1) == -1) % VERTISSURFACE   = -1
-   zlabel('surface')
-elseif (obsstruct.Ztyp(1) ==  1) % VERTISLEVEL     =  1
-   zlabel('level')
-elseif (obsstruct.Ztyp(1) ==  2) % VERTISPRESSURE  =  2
-   set(gca,'ZDir','reverse')
-   zlabel('pressure')
-elseif (obsstruct.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
-   zlabel('height')
+else
+
+   pstruct.axis = [xmin xmax ymin ymax];
+   pstruct.str1 = sprintf('%s',obsstruct.ObsTypeString);
+
+   plot_2D(obsstruct, pstruct)
+
 end
-
-myworldmap;
-set(gca,'CLim',[min(obsstruct.obs) max(obsstruct.obs)])
-h = colorbar;
-set(get(h,'YLabel'),'String',ObsTypeString,'Interpreter','none')
 
 %-------------------------------------------------------------------------------
 % Create graphic of spatial distribution of 'bad' observations & their QC value.
@@ -83,39 +74,30 @@ if (obsstruct.numbadqc > 0 )
    figure(2); clf
    
    subplot('position',[0.1 0.20 0.8 0.65])
-   scalearray = 128 * ones(size(obsstruct.badobs.obs));
    
    zmin = min(obsstruct.badobs.z);
    zmax = max(obsstruct.badobs.z);
-   
-   scatter3(obsstruct.badobs.lons, obsstruct.badobs.lats, obsstruct.badobs.z, ...
-            scalearray, obsstruct.badobs.qc,'filled')
 
-   axis([xmin xmax ymin ymax zmin zmax])
-   
-   str2 = sprintf('%s (%d bad observations)',CopyString,length(obsstruct.badobs.obs));
-   
-   title( {str1, str3, str2}, 'Interpreter','none','FontSize',16);
-   xlabel('longitude')
-   ylabel('latitude')
-   
-   if     (obsstruct.badobs.Ztyp(1) == -2) % VERTISUNDEF     = -2
-      zlabel('curious ... undefined')
-   elseif (obsstruct.badobs.Ztyp(1) == -1) % VERTISSURFACE   = -1
-      zlabel('surface')
-   elseif (obsstruct.badobs.Ztyp(1) ==  1) % VERTISLEVEL     =  1
-      zlabel('level')
-   elseif (obsstruct.badobs.Ztyp(1) ==  2) % VERTISPRESSURE  =  2
-      set(gca,'ZDir','reverse')
-      zlabel('pressure')
-   elseif (obsstruct.badobs.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
-      zlabel('height')
+   pstruct.scalearray = 128 * ones(size(obsstruct.badobs.obs));
+   pstruct.colorbarstring = QCString;
+   pstruct.clim = [min(obsstruct.badobs.qc) max(obsstruct.badobs.qc)];
+   pstruct.str2 = sprintf('%s (%d bad observations)',  ...
+                                    obsstruct.CopyString, ...
+                             length(obsstruct.badobs.obs));
+  
+   if ( zmin ~= zmax )
+
+      pstruct.axis = [xmin xmax ymin ymax zmin zmax];
+
+      plot_3D(obsstruct.badobs, pstruct)
+
+   else
+
+      pstruct.axis = [xmin xmax ymin ymax];
+
+      plot_2D(obsstruct.badobs, pstruct)
+
    end
-   
-   myworldmap;
-   set(gca,'CLim',[min(obsstruct.badobs.qc) max(obsstruct.badobs.qc)])
-   h = colorbar;
-   set(get(h,'YLabel'),'String',QCString,'Interpreter','none')
    
    subplot('position',[0.1 0.05 0.8 0.10])
    axis off
@@ -133,8 +115,6 @@ if (obsstruct.numbadqc > 0 )
    end
 
 end
-
-
 
 
 
@@ -183,7 +163,7 @@ y    = lats(lat_ind1:lat_ind2);
 %---------------------------------------------------------------------------
 % Contour the "subset"
 % There are differences between 6.5 and 7.0 that make changing the colors
-% of the filled contours a real pain. Providing both solutions.
+% of the filled contours a real pain.
 %---------------------------------------------------------------------------
 
 orgholdstate = ishold;
@@ -225,3 +205,80 @@ b       = minsize - slope*minx;
 
 s = x*slope + b;
 
+
+
+function s = plot_3D(obsstruct, pstruct)
+
+if (pstruct.clim(1) == pstruct.clim(2))
+   % If all the observations have the same value, setting the
+   % colorbar limits is a real pain. Fundamentally, I am 
+   % forcing the plot symbols to be the lowest color of the
+   % colormap and setting the colorbar to have some more
+   % colors 'on top' - that are never used.
+   cmap = colormap;
+   h = plot3(obsstruct.lons, obsstruct.lats, obsstruct.z, 'bo');
+   set(h,'MarkerFaceColor',cmap(1,:),'MarkerEdgeColor',cmap(1,:))
+   set(gca,'Clim',[pstruct.clim(1) pstruct.clim(2)+1])
+   set(gca,'XGrid','on','YGrid','on','ZGrid','on')
+
+else
+   scatter3(obsstruct.lons, obsstruct.lats, obsstruct.z, ...
+         pstruct.scalearray, obsstruct.obs, 'd', 'filled');
+end
+
+clim = get(gca,'CLim');
+
+axis(pstruct.axis)
+
+title( {pstruct.str1, pstruct.str3, pstruct.str2}, 'Interpreter','none','FontSize',16);
+xlabel('longitude')
+ylabel('latitude')
+
+if     (obsstruct.Ztyp(1) == -2) % VERTISUNDEF     = -2
+   zlabel('unspecified')
+elseif (obsstruct.Ztyp(1) == -1) % VERTISSURFACE   = -1
+   zlabel('surface')
+elseif (obsstruct.Ztyp(1) ==  1) % VERTISLEVEL     =  1
+   zlabel('level')
+elseif (obsstruct.Ztyp(1) ==  2) % VERTISPRESSURE  =  2
+   set(gca,'ZDir','reverse')
+   zlabel('pressure')
+elseif (obsstruct.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
+   zlabel('height')
+end
+
+myworldmap;
+set(gca,'CLim',clim)
+h = colorbar;
+set(get(h,'YLabel'),'String',pstruct.colorbarstring,'Interpreter','none')
+
+
+
+
+function s = plot_2D(obsstruct, pstruct)
+
+axis(pstruct.axis); hold on; worldmap('light');
+
+if (pstruct.clim(1) == pstruct.clim(2))
+   cmap = colormap;
+   h = plot(obsstruct.lons, obsstruct.lats, 'bo');
+   set(h,'MarkerFaceColor',cmap(1,:),'MarkerEdgeColor',cmap(1,:))
+   set(gca,'Clim',[pstruct.clim(1) pstruct.clim(2)+1])
+   set(gca,'XGrid','on','YGrid','on')
+
+else
+
+   scatter(obsstruct.lons, obsstruct.lats, ...
+         pstruct.scalearray, obsstruct.obs, 'd', 'filled');
+end
+
+clim = get(gca,'CLim');
+
+title( {pstruct.str1, pstruct.str3, pstruct.str2}, 'Interpreter','none','FontSize',16);
+xlabel('longitude')
+ylabel('latitude')
+
+set(gca,'CLim',clim)
+h = colorbar;
+set(get(h,'YLabel'),'String',pstruct.colorbarstring,'Interpreter','none')
+hold off
