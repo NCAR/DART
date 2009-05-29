@@ -54,8 +54,8 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
                               KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
                               KIND_VORTEX_LAT, KIND_VORTEX_LON, &
-                              KIND_VORTEX_PMIN, KIND_VORTEX_WMAX,&
-                              get_raw_obs_kind_index
+                              KIND_VORTEX_PMIN, KIND_VORTEX_WMAX, &
+                              get_raw_obs_kind_index, max_obs_kinds, get_raw_obs_kind_name
 
 
 !nc -- module_map_utils split the declarations of PROJ_* into a separate module called
@@ -188,6 +188,7 @@ real(r8), allocatable :: ens_mean(:)
 
 character(len = 20) :: wrf_nml_file = 'namelist.input'
 logical :: have_wrf_nml_file = .false.
+logical :: in_state_vector(max_obs_kinds) = .false.
 
 !-----------------------------------------------------------------------
 
@@ -234,6 +235,11 @@ TYPE wrf_static_data_for_dart
    real(r8), dimension(:,:),   pointer :: mub, latitude, longitude, hgt
 !   real(r8), dimension(:,:),   pointer :: mapfac_m, mapfac_u, mapfac_v
    real(r8), dimension(:,:,:), pointer :: phb
+
+   ! NEWVAR:  Currently you have to add a new type here if you want to use
+   ! NEWVAR:  a WRF variable which is not one of these types.  This will go
+   ! NEWVAR:  away eventually, we hope.  Search for NEWVAR for other places
+   ! NEWVAR:  the code has to change.
 
    ! JPH local variables to hold type indices
    integer :: type_u, type_v, type_w, type_t, type_qv, type_qr, &
@@ -322,6 +328,15 @@ if ( debug ) then
   print*,'default_state_variables = ',default_state_variables
   print*,wrf_state_variables
 endif
+
+!---------------------------
+! set this array so we know exactly which obs kinds are
+! allowed to be interpolated (and can give a reasonably
+! helpful error message if not).
+!---------------------------
+
+call fill_dart_kinds_table(wrf_state_variables, in_state_vector)
+
 
 !---------------------------
 ! next block to be obsolete
@@ -554,6 +569,11 @@ WRFDomains : do id=1,num_domains
      wrf%dom(id)%domain_size = dart_index - 1 - wrf%dom(id-1)%domain_size
    end if
 
+
+   ! NEWVAR: If you add a new wrf array type which is not yet in this list, currently
+   ! NEWVAR: you will have to add it here, and add a type_xx for it, and also add
+   ! NEWVAR: a in_state_variable case in the select statement.  search for NEWVAR.
+
    ! JPH now that we have the domain ID just go ahead and get type indices once
    ! NOTE: this is not strictly necessary - can use only stagger info in the future (???)
    wrf%dom(id)%type_u      = get_type_ind_from_type_string(id,'U')
@@ -585,7 +605,8 @@ write(*,*)
 
 wrf%model_size = dart_index - 1
 allocate (ens_mean(wrf%model_size))
-if(debug) write(*,*) ' wrf model size is ',wrf%model_size
+write(errstring,*) ' wrf model size is ',wrf%model_size
+call error_handler(E_MSG, 'static_init_model', errstring)
 
 end subroutine static_init_model
 
@@ -868,6 +889,15 @@ if ( obs_kind < 0 ) then
  
 ! Otherwise, we need to do interpolation
 else
+
+   ! Is this a valid kind to interpolate?  Set up in the static_init_model code,
+   ! based on entries in wrf_state_vector namelist item.
+   if (.not. in_state_vector(obs_kind)) then
+      write(errstring, *) 'cannot interpolate ' // trim(get_raw_obs_kind_name(obs_kind)) &
+                           // ' with the current WRF arrays in state vector'
+      call error_handler(E_ERR, 'model_interpolate', errstring, &
+                                 source, revision, revdate)
+   endif
 
    ! Unravel location_type information
    xyz_loc = get_location(location)
@@ -4877,8 +4907,6 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
 ! within filter_assim. In other words, these modifications will only matter within
 ! filter_assim, but will not propagate backwards to filter.
       
-implicit none
-
 type(get_close_type), intent(in)     :: gc
 type(location_type),  intent(inout)  :: base_obs_loc, obs_loc(:)
 integer,              intent(in)     :: base_obs_kind, obs_kind(:)
@@ -5226,8 +5254,6 @@ end function boundsCheck
 !   and then returns the four cornering gridpoints' 2-element integer indices. 
 subroutine getCorners(i, j, id, type, ll, ul, lr, ur, rc)
 
-  implicit none
-
   integer, intent(in)  :: i, j, id, type
   integer, dimension(2), intent(out) :: ll, ul, lr, ur
   integer, intent(out) :: rc
@@ -5477,8 +5503,6 @@ subroutine read_wrf_dimensions(ncid,bt,bts,sn,sns,we,wes,sls)
 ! ncid: input, file handl
 ! id:   input, domain id
 
-implicit none
-
 integer, intent(in)            :: ncid
 integer, intent(out)           :: bt,bts,sn,sns,we,wes,sls
 logical, parameter             :: debug = .false.
@@ -5541,8 +5565,6 @@ subroutine read_wrf_file_attributes(ncid,id)
 ! ncid: input, file handl
 ! id:   input, domain id
 
-implicit none
-
 integer, intent(in)   :: ncid, id
 logical, parameter    :: debug = .false.
 
@@ -5554,7 +5576,8 @@ logical, parameter    :: debug = .false.
                      'static_init_model', 'get_att DY')
    call nc_check( nf90_get_att(ncid, nf90_global, 'DT', wrf%dom(id)%dt), &
                      'static_init_model', 'get_att DT')
-   if (do_output()) print*,'dt from wrfinput_d0X file is: ', wrf%dom(id)%dt
+   write(errstring, *) 'dt from wrfinput_d0X file is: ', wrf%dom(id)%dt
+   call error_handler(E_MSG, ' ', errstring)
    if(debug) write(*,*) ' dx, dy, dt are ',wrf%dom(id)%dx, &
         wrf%dom(id)%dy, wrf%dom(id)%dt
 
@@ -5592,8 +5615,6 @@ end subroutine read_wrf_file_attributes
 subroutine assign_boundary_conditions(id)
 
 ! id:   input, domain id
-
-implicit none
 
 integer, intent(in)   :: id
 logical, parameter    :: debug = .false.
@@ -5638,8 +5659,6 @@ subroutine read_wrf_static_data(ncid,id)
 
 ! ncid: input, file handle
 ! id:   input, domain id
-
-implicit none
 
 integer, intent(in)   :: ncid, id
 logical, parameter    :: debug = .false.
@@ -5761,8 +5780,6 @@ subroutine setup_map_projection(id)
 
 ! id:   input, domain id
 
-implicit none
-
 integer, intent(in)   :: id
 logical, parameter    :: debug = .false.
 
@@ -5840,8 +5857,6 @@ end subroutine setup_map_projection
 
 subroutine fill_default_state_table(default_table)
 
-implicit none
-
 character(len=129), intent(out) :: default_table(num_state_table_columns,max_state_variables) 
 
 integer :: row
@@ -5894,9 +5909,110 @@ end subroutine fill_default_state_table
 !--------------------------------------------
 !--------------------------------------------
 
-integer function get_number_of_wrf_variables(id, state_table, var_element_list)
+subroutine fill_dart_kinds_table(wrf_state_variables, in_state_vector)
 
-implicit none
+! for each row in the kinds table, tick them off in an array
+! of all possible kinds.  then do some simple error checks for
+! kinds we know have interactions -- like both wind vectors are
+! required to convert directions from projection to lat/lon, etc
+
+character(len=*), intent(in) :: wrf_state_variables(:, :)
+logical, intent(inout)       :: in_state_vector(:)
+
+integer :: row, i, nextkind
+
+row = size(wrf_state_variables, 2)
+
+! NEWVAR: see each of part1, part 2, and part 3 below.
+! NEWVAR: if you are adding support for a new kind, see if there are
+! NEWVAR: any interactions that need special case code added.
+
+! part 1: mark off all the kinds that the user specifies, plus the
+! kinds that are related and can be interpolated from the given kind.
+
+do i = 1, row
+
+   ! end of the list?
+   if (wrf_state_variables(2, i) == 'NULL') exit
+
+   nextkind = get_raw_obs_kind_index(trim(wrf_state_variables(2, i)))
+   select case(nextkind)
+
+   ! wrf stores potential temperature (temperature perturbations around a 
+   ! threshold) but we can interpolate sensible temperature from it
+   case (KIND_POTENTIAL_TEMPERATURE)
+      in_state_vector(KIND_TEMPERATURE) = .true.
+      in_state_vector(KIND_POTENTIAL_TEMPERATURE) = .true.
+
+   ! we use vapor mixing ratio to compute specific humidity
+   case (KIND_VAPOR_MIXING_RATIO)
+      in_state_vector(KIND_VAPOR_MIXING_RATIO) = .true.
+      in_state_vector(KIND_SPECIFIC_HUMIDITY) = .true.
+
+   case default
+      in_state_vector(nextkind) = .true.
+
+   end select
+enddo
+
+
+! part 2: if you specified one kind but the interpolation is going to
+! require another, make sure the combinations make sense.  i.e. if you
+! have U wind, you also have to have V wind, etc.
+
+do i = 1, size(in_state_vector)
+
+   select case(i)
+  
+   ! the vortex center computations require wind speeds and phb?
+   case (KIND_VORTEX_LAT, KIND_VORTEX_LON, KIND_VORTEX_PMIN, KIND_VORTEX_WMAX)
+      if ((.not. in_state_vector(KIND_U_WIND_COMPONENT))   .or. &
+          (.not. in_state_vector(KIND_V_WIND_COMPONENT))   .or. &
+          (.not. in_state_vector(KIND_TEMPERATURE))        .or. &
+          (.not. in_state_vector(KIND_VAPOR_MIXING_RATIO)) .or. &
+          (.not. in_state_vector(KIND_PRESSURE))) then
+         write(errstring, *) 'VORTEX kinds require U,V,T,QVAPOR,MU in state vector'
+         call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
+                            source, revision, revdate)
+      endif
+ 
+   ! if you have one wind component you have to have both
+   case (KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT)
+      if ((.not. in_state_vector(KIND_U_WIND_COMPONENT))  .or. &
+          (.not. in_state_vector(KIND_V_WIND_COMPONENT))) then
+         write(errstring, *) 'WIND kinds require both U,V in state vector'
+         call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
+                            source, revision, revdate)
+      endif
+ 
+   ! by default anything else is fine
+
+   end select
+enddo
+
+
+! part 3: fields you just have to have, always.
+if (.not. in_state_vector(KIND_GEOPOTENTIAL_HEIGHT)) then
+   write(errstring, *) 'PH is always a required field'
+   call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
+                      source, revision, revdate)
+endif
+
+! FIXME: is this true?  or is pressure always required, and surface
+! pressure required only if you have any of the surface obs?
+if ((.not. in_state_vector(KIND_PRESSURE)) .and. &
+    (.not. in_state_vector(KIND_SURFACE_PRESSURE))) then
+    write(errstring, *) 'One of MU or PSFC is a required field'
+    call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
+                       source, revision, revdate)
+endif
+
+end subroutine fill_dart_kinds_table
+
+!--------------------------------------------
+!--------------------------------------------
+
+integer function get_number_of_wrf_variables(id, state_table, var_element_list)
 
 integer, intent(in) :: id
 character(len=*), intent(in) :: state_table(num_state_table_columns,max_state_variables) 
@@ -5924,7 +6040,7 @@ do while ( trim(state_table(5,ivar)) /= 'NULL' )
 enddo ! ivar
 
 if ( debug ) then
-  print*,'In functon get_number_of_wrf_variables'
+  print*,'In function get_number_of_wrf_variables'
   print*,'Found ',num_vars,' state variables for domain id ',id
 endif
 
@@ -5938,8 +6054,6 @@ end function get_number_of_wrf_variables
 !--------------------------------------------
 
 subroutine set_variable_bound_defaults(nbounds,lb,ub,instructions)
-
-   implicit none
 
    integer, intent(in)                                :: nbounds
    real(r8), dimension(nbounds), intent(out)          :: lb, ub
@@ -5960,8 +6074,6 @@ subroutine get_variable_bounds(bounds_table,wrf_var_name,lb,ub,instructions)
 
 ! matches WRF variable name in bounds table to input name, and assigns
 ! the bounds and instructions if they exist
-
-   implicit none
 
    character(len=*), intent(in)    :: bounds_table(num_bounds_table_columns,max_state_variables) 
    character(len=*), intent(in)    :: wrf_var_name
@@ -6025,8 +6137,6 @@ end subroutine get_variable_bounds
 
 logical function variable_is_on_domain(domain_id_string, id)
 
-implicit none
-
 integer,           intent(in) :: id
 character(len=*),  intent(in) :: domain_id_string
 
@@ -6060,8 +6170,6 @@ subroutine get_variable_size_from_file(ncid,id,wrf_var_name,bt,bts,sn,sns, &
 
 ! ncid: input, file handle
 ! id:   input, domain index
-
-implicit none
 
 integer,           intent(in)   :: ncid, id
 integer,           intent(in)   :: bt, bts, sn, sns, we, wes
@@ -6124,8 +6232,6 @@ subroutine get_variable_metadata_from_file(ncid,id,wrf_var_name,description, &
 ! ncid: input, file handle
 ! id:   input, domain index
 
-implicit none
-
 integer, intent(in)               :: ncid, id
 character(len=*),   intent(in)    :: wrf_var_name
 character(len=129), intent(out)   :: description, units
@@ -6158,8 +6264,6 @@ integer function get_type_ind_from_type_string(id, wrf_varname)
 
 ! simply loop through the state variable table to get the index of the
 ! type for this domain.  returns -1 if not found
-
-   implicit none
 
    integer,          intent(in) :: id
    character(len=*), intent(in) :: wrf_varname
@@ -6195,8 +6299,6 @@ end function get_type_ind_from_type_string
 
 subroutine trans_2Dto1D( a1d, a2d, nx, ny )
 
-implicit none
-
 integer,  intent(in)    :: nx,ny
 real(r8), intent(inout) :: a1d(:)
 real(r8), intent(inout) :: a2d(nx,ny)
@@ -6227,8 +6329,6 @@ end subroutine trans_2Dto1D
 !-------------------------------------------------------------
 
 subroutine trans_3Dto1D( a1d, a3d, nx, ny, nz )
-
-implicit none
 
 integer,  intent(in)    :: nx,ny,nz
 real(r8), intent(inout) :: a1d(:)
@@ -6265,8 +6365,6 @@ end subroutine trans_3Dto1D
 
 subroutine trans_1Dto2D( a1d, a2d, nx, ny )
 
-implicit none
-
 integer,  intent(in)    :: nx,ny
 real(r8), intent(inout) :: a1d(:)
 real(r8), intent(inout) :: a2d(nx,ny)
@@ -6297,8 +6395,6 @@ end subroutine trans_1Dto2D
 !-------------------------------------------------------------
 
 subroutine trans_1Dto3D( a1d, a3d, nx, ny, nz )
-
-implicit none
 
 integer,  intent(in)    :: nx,ny,nz
 real(r8), intent(inout) :: a1d(:)
@@ -6335,7 +6431,6 @@ end subroutine trans_1Dto3D
 
 subroutine get_wrf_date (tstring, year, month, day, hour, minute, second)
 
-implicit none
 !--------------------------------------------------------
 ! Returns integers taken from tstring
 ! It is assumed that the tstring char array is as YYYY-MM-DD_hh:mm:ss
@@ -6358,7 +6453,6 @@ end subroutine get_wrf_date
 
 subroutine set_wrf_date (tstring, year, month, day, hour, minute, second)
 
-implicit none
 !--------------------------------------------------------
 ! Returns integers taken from tstring
 ! It is assumed that the tstring char array is as YYYY-MM-DD_hh:mm:ss
