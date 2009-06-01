@@ -248,7 +248,7 @@ contains
          if (do_output_flag) write(*,*)'Trying to open file ', trim(adjustl(lname))
 
          open(logfileunit, file=trim(adjustl(lname)), form='formatted', &
-                           position='append', iostat = io )
+                           action='write', position='append', iostat = io )
          if ( io /= 0 ) then
             write(*,*)'FATAL ERROR in initialize_utilities'
             write(*,*)'  ',trim(source)
