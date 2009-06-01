@@ -254,8 +254,8 @@ contains
             write(*,*)'  ',trim(source)
             write(*,*)'  ',trim(revision)
             write(*,*)'  ',trim(revdate)
-            write(*,*)'   unable to open the logfile.'
-            write(*,*)'   the intended file name was <',trim(lname),'>'
+            write(*,*)'   unable to open the logfile for writing.'
+            write(*,*)'   the logfile name is "',trim(lname),'"'
             write(*,*)'   stopping.'
             call exit_all(77)
          endif
