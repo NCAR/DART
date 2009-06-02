@@ -1,0 +1,220 @@
+<HTML>
+<HEAD>
+<TITLE>AIRS Observations</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+</HEAD>
+<BODY>
+<!--
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                                       !!
+!!                   GNU General Public License                          !!
+!!                                                                       !!
+!! This file is part of the Data Assimilation Research Testbed (DART).   !!
+!!                                                                       !!
+!! DART is free software; you can redistribute it and/or modify          !!
+!! it and are expected to follow the terms of the GNU General Public     !!
+!! License as published by the Free Software Foundation.                 !!
+!!                                                                       !!
+!! DART is distributed in the hope that it will be useful,               !!
+!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
+!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
+!! GNU General Public License for more details.                          !!
+!!                                                                       !!
+!! You should have received a copy of the GNU General Public License     !!
+!! along with DART; if not, write to:                                    !!
+!!          Free Software Foundation, Inc.                               !!
+!!          59 Temple Place, Suite 330                                   !!
+!!          Boston, MA  02111-1307  USA                                  !!
+!! or see:                                                               !!
+!!          http://www.gnu.org/licenses/gpl.txt                          !!
+!!                                                                       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-->
+
+<DIV ALIGN=CENTER>
+<A HREF="#Overview">OVERVIEW</A> / 
+<A HREF="#DataSources">DATA SOURCES</A> / 
+<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#KnownBugs">KNOWN BUGS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> 
+</DIV>
+
+<!--==================================================================-->
+
+<H1>AIRS Observations</H1>
+<A NAME="HEADER"></A>
+
+<!--==================================================================-->
+
+<A NAME="Overview"></A>
+<H2>OVERVIEW</H2>
+
+<P>
+The 
+<a href="http://airs.jpl.nasa.gov/">AIRS</a>
+instrument is an Atmospheric Infrared Sounder flying on the
+<a href="http://aqua.nasa.gov/">Aqua</a> spacecraft.
+Aqua is one of a group of satellites flying close together
+in a polar orbit, collectively known as the "A-train".
+The programs in this directory help to extract the
+data from the distribution files and put them into
+DART observation sequence (obs_seq) file format.
+</P>
+<P>
+AIRS data includes atmospheric temperature in the troposphere,
+derived moisture profiles, land and ocean surface temperatures,
+surface emmissivity, cloud fraction, cloud top height,
+and ozone burden in the atmosphere.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<BR><HR><BR>
+<H2>DATA SOURCES</H2>
+
+<P>
+Access to the web pages where the
+AIRS data are stored is available by
+<a href="http://airs.jpl.nasa.gov/data_products/get_AIRS_data/">registering</a>
+as a data user.
+</P>
+
+<P>
+More detailed information on the 
+<a href="http://disc.gsfc.nasa.gov/AIRS/airsL2_Std.shtml/">
+sounder data</a>
+is available.
+</P>
+
+<P>
+The data is distributed in
+<a href="http://www.hdfgroup.org/">HDF-4</a> format, using
+some additional conventions for metadata called
+<a href="http://hdfeos.org/software.php">HDF-EOS</a>.
+There is a basic library for accessing data in hdf files,
+and a variety of
+<a href="http://www.hdfgroup.org/products/index.html">generic tools</a>
+that work with hdf files.
+Besides the programs in this directory, a variety of
+<a href="http://disc.sci.gsfc.nasa.gov/AIRS/tools.shtml">specific tools</a>
+targeted at AIRS data are available to help read and browse the data.
+General information on using hdf in the earth sciences is available
+<a href="http://eosweb.larc.nasa.gov/HBDOCS/hdf.html">here</a>.
+</P>
+
+<P>
+Several types of AIRS data, with varying levels of processing, are available.
+The following descriptions are taken from the
+<a href="http://disc.sci.gsfc.nasa.gov/AIRS/documentation/v5_docs/AIRS_V5_Release_User_Docs/V5_Data_Release_UG.pdf">V5_Data_Release_UG</a> document:
+</P>
+
+<BLOCKQUOTE>
+<P>
+The L1B data product includes geolocated, calibrated observed microwave,
+infrared and visible/near infrared radiances, as well as Quality Assessment
+(QA) data.  The radiances are well calibrated; however, not all QA data have
+been validated.  Each product granule contains 6 minutes of data.  Thus there
+are 240 granules of each L1B product produced every day.
+</P>
+
+<P>
+The L2 data product includes geolocated, calibrated cloud-cleared radiances
+and 2-dimensional and 3-dimensional retrieved physical quantities (e.g.,
+surface properties and temperature, moisture, ozone, carbon monoxide and
+methane profiles throughout the atmosphere).  Each product granule contains 6
+minutes of data.  Thus there are 240 granules of each L2 product produced
+every day.
+</P>
+
+<P>
+The L3 data are created from the L2 data product by binning them in
+1&deg;x1&deg;
+grids.  There are three products: daily, 8-day and monthly.  Each product
+provides separate ascending (daytime) and descending (nighttime) binned data
+sets.
+</P>
+
+</BLOCKQUOTE>
+
+<P>
+The converter in this directory processes level 2 (L2) data files, using
+data set <tt>AIRS_DP</tt> and data product <tt>AIRX2RET.005</tt> without
+<tt>HSB</tt> (the instrument measuring humidity which failed).
+</P>
+
+<P>
+The *new* converter in this directory will handle this product:
+<br>
+The Atmospheric Infrared Sounder (AIRS) is a facility instrument aboard the second Earth Observing System (EOS) polar-orbiting platform, EOS Aqua. In combination with the Advanced Microwave Sounding Unit (AMSU) and the Humidity Sounder for Brazil (HSB), AIRS constitutes an innovative atmospheric sounding group of visible, infrared, and microwave sensors. AIRS data will be generated continuously. Global coverage will be obtained twice daily (day and night) on a 1:30pm sun synchronous orbit from a 705-km altitude.
+
+The AIRS Standard Retrieval Product consists of retrieved estimates of cloud and surface properties, plus profiles of retrieved temperature, water vapor, ozone, carbon monoxide and methane. Estimates of the errors associated with these quantities will also be part of the Standard Product. The temperature profile vertical resolution is 28 levels total between 1100 mb and 0.1 mb, while moisture profile is reported at 14 atmospheric layers between 1100 mb and 50 mb. The horizontal resolution is 50 km. An AIRS granule has been set as 6 minutes of data, 30 footprints cross track by 45 lines along track.
+
+(The Shortname for this product is AIRX2RET).
+</P>
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<BR><HR><BR>
+<H2>PROGRAMS</H2>
+
+<P>
+The current procedure is to interactively select a group of data sets
+to download (the L2 data), which generates an ftp script that is
+downloaded and run to retrieve the individual data files.
+Once the data is on the local system, a matlab script converts the
+data into an ascii intermediate file, and then a second program converts
+the file into a second ascii intermediate file.  Finally a third program
+reads the ascii file and writes a DART obs_seq format file.
+Clearly, this process needs a couple tweeks - first, the download
+process needs to be completely automatable, and second, either 
+one or both of the ascii intermediate files could be bypassed 
+and a single fortran program could read the AIRS files and 
+write an obs_seq file directly.
+</P>
+
+<P>
+This directory contains a matlab script for reading the hdf files
+and converting them into an ascii intermediate file (read1.m or read2.m).
+Then sat.f90 reads the output of that and writes a second ascii intermediate
+file.  The create_real_obs, using the real_obs_mod.f90 in this dir, is
+used to convert to obs_seq format.
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<BR><HR><BR>
+<H2>KNOWN BUGS</H2>
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Descibe Future Plans.                                            -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<BR><HR><BR>
+<H2>FUTURE PLANS</H2>
+<P>
+</P>
+
+<BR><HR><BR>
+
+<!--==================================================================-->
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> nancy collins </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision: 3137 $ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL: http://subversion.ucar.edu/DAReS/DART/observations/observations.html $ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date: 2008-05-13 11:56:04 -0700 (Tue, 13 May 2008) $ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+<!--==================================================================-->
+
+<!--==================================================================-->
+
+<HR>
+</BODY>
+</HTML>
