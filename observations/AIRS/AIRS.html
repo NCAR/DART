@@ -139,13 +139,11 @@ sets.
 
 <P>
 The converter in this directory processes level 2 (L2) data files, using
-data set <tt>AIRS_DP</tt> and data product <tt>AIRX2RET.005</tt> without
+data set <tt>AIRS_DP</tt> and data product <tt>AIRX2RET</tt> without
 <tt>HSB</tt> (the instrument measuring humidity which failed).
 </P>
 
 <P>
-The *new* converter in this directory will handle this product:
-<br>
 The Atmospheric Infrared Sounder (AIRS) is a facility instrument aboard the second Earth Observing System (EOS) polar-orbiting platform, EOS Aqua. In combination with the Advanced Microwave Sounding Unit (AMSU) and the Humidity Sounder for Brazil (HSB), AIRS constitutes an innovative atmospheric sounding group of visible, infrared, and microwave sensors. AIRS data will be generated continuously. Global coverage will be obtained twice daily (day and night) on a 1:30pm sun synchronous orbit from a 705-km altitude.
 
 The AIRS Standard Retrieval Product consists of retrieved estimates of cloud and surface properties, plus profiles of retrieved temperature, water vapor, ozone, carbon monoxide and methane. Estimates of the errors associated with these quantities will also be part of the Standard Product. The temperature profile vertical resolution is 28 levels total between 1100 mb and 0.1 mb, while moisture profile is reported at 14 atmospheric layers between 1100 mb and 50 mb. The horizontal resolution is 50 km. An AIRS granule has been set as 6 minutes of data, 30 footprints cross track by 45 lines along track.
@@ -159,26 +157,13 @@ The AIRS Standard Retrieval Product consists of retrieved estimates of cloud and
 <H2>PROGRAMS</H2>
 
 <P>
-The current procedure is to interactively select a group of data sets
-to download (the L2 data), which generates an ftp script that is
-downloaded and run to retrieve the individual data files.
-Once the data is on the local system, a matlab script converts the
-data into an ascii intermediate file, and then a second program converts
-the file into a second ascii intermediate file.  Finally a third program
-reads the ascii file and writes a DART obs_seq format file.
-Clearly, this process needs a couple tweeks - first, the download
-process needs to be completely automatable, and second, either 
-one or both of the ascii intermediate files could be bypassed 
-and a single fortran program could read the AIRS files and 
-write an obs_seq file directly.
-</P>
-
-<P>
-This directory contains a matlab script for reading the hdf files
-and converting them into an ascii intermediate file (read1.m or read2.m).
-Then sat.f90 reads the output of that and writes a second ascii intermediate
-file.  The create_real_obs, using the real_obs_mod.f90 in this dir, is
-used to convert to obs_seq format.
+The hdf files need to be downloaded from the data server, in any manner
+you choose.   The converter program reads each hdf granule and outputs
+a DART obs_seq file containing up to 56700 observations.  Only those with
+a quality control of 0 (Best) are kept.
+<br>
+The resulting obs_seq files can be merged with the obs_sequence_tool into
+larger time periods.
 </P>
 
 <!--==================================================================-->
