@@ -5991,7 +5991,8 @@ do i = 1, size(in_state_vector)
 enddo
 
 
-! part 3: fields you just have to have, always.
+! part 3: fields you just have to have, always, and other exceptions
+! and things that break the rules.
 if (.not. in_state_vector(KIND_GEOPOTENTIAL_HEIGHT)) then
    write(errstring, *) 'PH is always a required field'
    call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
@@ -6006,6 +6007,11 @@ if ((.not. in_state_vector(KIND_PRESSURE)) .and. &
     call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
                        source, revision, revdate)
 endif
+
+! surface elevation is read in outside the state vector mechanism,
+! directly from the wrfinput template file, and does not vary from
+! one ensemble member to another.
+in_state_vector(KIND_SURFACE_ELEVATION) = .true.
 
 end subroutine fill_dart_kinds_table
 
