@@ -191,7 +191,7 @@ call set_regular_schedule(schedule) ! also sets calendar type
 
 Nepochs = get_schedule_length(schedule)
 call get_time_from_schedule(TimeMin, schedule,       1, 1)
-call get_time_from_schedule(TimeMax, schedule, Nepochs, 1)
+call get_time_from_schedule(TimeMax, schedule, Nepochs, 2)
 call get_calendar_string(calendarstring)
 
 U_obs_loc = set_location_missing()
