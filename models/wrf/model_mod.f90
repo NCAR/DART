@@ -1844,7 +1844,10 @@ else
 
    !-----------------------------------------------------
    ! 1.k Pressure (P)
-   else if( obs_kind == KIND_PRESSURE ) then
+   else if( obs_kind == KIND_PRESSURE .or. obs_kind == KIND_SURFACE_PRESSURE ) then
+
+      ! This is for the 3D pressure field -- surface pressure later
+      if(.not. surf_var) then
 
       ! Check to make sure retrieved integer gridpoints are in valid range
       if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -1883,10 +1886,8 @@ else
 
       end if
 
-
-   !-----------------------------------------------------
-   ! 1.l Surface Pressure (PS, add to dart_ind if surf_obs = .true.)
-   else if( obs_kind == KIND_SURFACE_PRESSURE ) then
+      !  This is for surface pressure (PSFC)
+      else
 
       ! Check to make sure retrieved integer gridpoints are in valid range
       if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -1903,7 +1904,6 @@ else
          ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_ps)
          iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_ps)
 
-            
          ! I'm not quite sure where this comes from, but I will trust them on it....
          if ( x(ill) /= 0.0_r8 .and. x(ilr) /= 0.0_r8 .and. x(iul) /= 0.0_r8 .and. &
               x(iur) /= 0.0_r8 ) then
@@ -1913,7 +1913,9 @@ else
          ! JPH special treatment for scm configuration, where PS is not defined
          ! on the boundaries and the weights are already 1,0
          elseif ( wrf%dom(id)%scm ) then
+
             fld(1) = x(ill)
+
          else
 
             fld(1) = missing_r8
@@ -1928,9 +1930,16 @@ else
 
       end if
 
+      end if
 
    !-----------------------------------------------------
    ! 1.m Vortex Center Stuff from Yongsheng
+
+   ! This computation eventually belongs in an obs_def forward operator,
+   ! but it also requires searching parts of the computational grid and
+   ! it was inefficient enough outside the interpolate() routine to break
+   ! the rules for now.  but if/when we add a 'get multiple values in one go'
+   ! interface, then this vortex code should move out.
 
    else if ( obs_kind == KIND_VORTEX_LAT .or. &
              obs_kind == KIND_VORTEX_LON .or. &
@@ -5949,10 +5958,30 @@ do i = 1, row
       in_state_vector(KIND_VAPOR_MIXING_RATIO) = .true.
       in_state_vector(KIND_SPECIFIC_HUMIDITY) = .true.
 
+   ! unrecognized kind string in namelist.
+   ! 0 is actually KIND_RAW_STATE_VARIABLE and not supported here.
+   case (-1, 0) 
+      write(errstring, *) 'unrecognized KIND string: ' // trim(wrf_state_variables(2, i))
+      call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
+                         source, revision, revdate)
+     
+   ! everything else, set it to be supported
    case default
       in_state_vector(nextkind) = .true.
 
    end select
+
+   ! NOTE: PSFC can be labeled either KIND_PRESSURE or KIND_SURFACE_PRESSURE
+   ! in the namelist, but make sure however it is labeled that for now we 
+   ! allow surface pressure interpolation.  this may go away once we work out
+   ! KIND_FOO vs KIND_SURFACE_FOO - are they fundamentally different things
+   ! or should the decision be made based on a KIND_FOO and the vertical
+   ! location type -- if it is VERTISSURFACE, then you do the 2d calc in the
+   ! surface field, otherwise you do the full-up 3d interpolation.
+   if ( wrf_state_variables(1, i) == 'PSFC' ) then
+      in_state_vector(KIND_SURFACE_PRESSURE) = .true.
+   end if
+
 enddo
 
 
@@ -6012,6 +6041,12 @@ endif
 ! directly from the wrfinput template file, and does not vary from
 ! one ensemble member to another.
 in_state_vector(KIND_SURFACE_ELEVATION) = .true.
+
+! if you have geopotential height and pressure, you can compute
+! a density value.
+if (in_state_vector(KIND_GEOPOTENTIAL_HEIGHT) .and. &
+    in_state_vector(KIND_PRESSURE) ) in_state_vector(KIND_DENSITY) = .true.
+
 
 end subroutine fill_dart_kinds_table
 
