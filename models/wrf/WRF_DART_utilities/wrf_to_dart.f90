@@ -18,7 +18,7 @@ use    utilities_mod, only : get_unit, file_exist, open_file, close_file, &
                              error_handler, E_ERR, E_MSG, initialize_utilities, &
                              register_module, logfileunit, nmlfileunit, timestamp, &
                              find_namelist_in_file, check_namelist_read, &
-                             nc_check
+                             nc_check, do_nml_file, do_nml_term
 use  assim_model_mod, only : open_restart_read, open_restart_write, aread_state_restart, &
                              awrite_state_restart
 use model_mod, only        : max_state_variables,  &
@@ -109,8 +109,8 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
 ! Record the namelist values used for the run ...
-write(nmlfileunit, nml=model_nml)
-write(     *     , nml=model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+if (do_nml_term()) write(     *     , nml=model_nml)
 
 call set_calendar_type(calendar_type)
 
