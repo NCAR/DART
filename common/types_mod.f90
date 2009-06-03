@@ -21,6 +21,7 @@ public :: SECPERDAY
 public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant
 public :: L_over_Rv, ps0, earth_radius, gravity
 public :: metadatalength
+public :: obstypelength
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -35,6 +36,7 @@ SAVE
 !----------------------------------------------------------------------------
 
 integer, parameter :: metadatalength = 64 ! 75 is max w/out wrapping in ncdump
+integer, parameter :: obstypelength  = 32 ! set by compiler/param limits
 
 !----------------------------------------------------------------------------
 ! Attributes for variable kinds -- no need to rely on -r8 switch in compiler
