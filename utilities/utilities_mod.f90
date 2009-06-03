@@ -428,6 +428,12 @@ contains
                           string1=string1, string2=string2, string3=string3)
 
          call finalize_utilities()
+      else if (trim(adjustl(pos)) == 'brief') then
+         call write_time (logfileunit, brief=.true., & 
+                          string1=string1, string2=string2, string3=string3)
+         call write_time (             brief=.true., &
+                          string1=string1, string2=string2, string3=string3)
+          
       else
          call write_time (logfileunit, & 
                           string1=string1, string2=string2, string3=string3)
@@ -870,13 +876,19 @@ end subroutine error_handler
 
 !#######################################################################
 
-   subroutine write_time (unit, label, string1, string2, string3, tz)
+   subroutine write_time (unit, label, string1, string2, string3, tz, brief)
 
 ! ***  Write the current time to a log file or standard output ***
 !
 !    in: unit number (default is * if not specified)
 !    in: label (default is  "Time is" if not specified)
 !    in: string1,2,3 (no defaults)
+!
+!  default output is a block of 3-4 lines, with dashed line separators
+!  and up to 3 descriptive text strings.
+!  if brief specified as true, only string1 printed if given,
+!  and time printed on same line in YYYY/MM/DD HH:MM:SS format
+!  with the tag 'TIME:' before it.  should be easier to postprocess.
 
    integer,          optional, intent(in) :: unit
    character(len=*), optional, intent(in) :: label
@@ -884,6 +896,7 @@ end subroutine error_handler
    character(len=*), optional, intent(in) :: string2
    character(len=*), optional, intent(in) :: string3
    logical,          optional, intent(in) :: tz
+   logical,          optional, intent(in) :: brief
 
 
    integer :: lunit
@@ -891,6 +904,7 @@ end subroutine error_handler
    character(len=10) :: ctime
    character(len= 5) :: zone
    integer, dimension(8) :: values
+   logical :: oneline
 
    if (present(unit)) then
       lunit = unit
@@ -903,28 +917,42 @@ end subroutine error_handler
    ! give up if no good values were returned
    if (.not. any(values /= -HUGE(0)) ) return 
 
-   ! ok to proceed
-   write(lunit,*)
-   write(lunit,*)'--------------------------------------'
-   if ( present(label) ) then
-      write(lunit,*) label // '... at YYYY MM DD HH MM SS = '
+   oneline = .false.
+   if (present(brief)) oneline = brief
+
+   if (oneline) then
+      if (present(string1)) then
+         write(lunit,'(A,1X,I4,5(A1,I2.2))') string1//' TIME:', &
+                        values(1), '/', values(2), '/', values(3), &
+                        ' ', values(5), ':', values(6), ':', values(7)
+      else
+         write(lunit,'(A,1X,I4,5(A1,I2.2))') 'TIME: ', &
+                        values(1), '/', values(2), '/', values(3), &
+                        ' ', values(5), ':', values(6), ':', values(7)
+      endif
    else
-      write(lunit,*) 'Time is  ... at YYYY MM DD HH MM SS = '
-   endif 
-   write(lunit,'(17x,i4,5(1x,i2))') values(1), values(2), &
-                     values(3),  values(5), values(6), values(7)
-
-   if(present(string1)) write(lunit,*)trim(string1)
-   if(present(string2)) write(lunit,*)trim(string2)
-   if(present(string3)) write(lunit,*)trim(string3)
-
-   if (present(tz)) then
-      if ( values(4) /= -HUGE(0) .and. tz) &
-         write(lunit,*)'time zone offset is ',values(4),' minutes.'
+      write(lunit,*)
+      write(lunit,*)'--------------------------------------'
+      if ( present(label) ) then
+         write(lunit,*) label // '... at YYYY MM DD HH MM SS = '
+      else
+         write(lunit,*) 'Time is  ... at YYYY MM DD HH MM SS = '
+      endif 
+      write(lunit,'(17x,i4,5(1x,i2))') values(1), values(2), &
+                        values(3),  values(5), values(6), values(7)
+   
+      if(present(string1)) write(lunit,*)trim(string1)
+      if(present(string2)) write(lunit,*)trim(string2)
+      if(present(string3)) write(lunit,*)trim(string3)
+   
+      if (present(tz)) then
+         if ( values(4) /= -HUGE(0) .and. tz) &
+            write(lunit,*)'time zone offset is ',values(4),' minutes.'
+      endif
+   
+      write(lunit,*)'--------------------------------------'
+      write(lunit,*)
    endif
-
-   write(lunit,*)'--------------------------------------'
-   write(lunit,*)
 
    end subroutine write_time
 
