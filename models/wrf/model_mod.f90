@@ -6042,6 +6042,19 @@ endif
 ! one ensemble member to another.
 in_state_vector(KIND_SURFACE_ELEVATION) = .true.
 
+! there is no field that directly maps to the vortex measurements.
+! if you have all the fields it needs, allow them.
+if (in_state_vector(KIND_U_WIND_COMPONENT)    .and. &
+    in_state_vector(KIND_V_WIND_COMPONENT)    .and. &
+    in_state_vector(KIND_TEMPERATURE)         .and. &
+    in_state_vector(KIND_VAPOR_MIXING_RATIO)  .and. &
+    in_state_vector(KIND_PRESSURE)) then        ! ok to add vortex types
+   in_state_vector(KIND_VORTEX_LAT)  = .true.
+   in_state_vector(KIND_VORTEX_LON)  = .true.
+   in_state_vector(KIND_VORTEX_PMIN) = .true.
+   in_state_vector(KIND_VORTEX_WMAX) = .true.
+endif
+ 
 ! if you have geopotential height and pressure, you can compute
 ! a density value.
 if (in_state_vector(KIND_GEOPOTENTIAL_HEIGHT) .and. &
