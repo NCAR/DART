@@ -2,8 +2,8 @@
 !
 !   convert_madis_rawin - program that reads a netCDF file from the 
 !                         MADIS database that contains rawinsonde data 
-!                         and writes a text file that can be converted 
-!                         into an obs_seq file.
+!                         and writes a DART obs_seq file using the DART 
+!                         library routines.
 !
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
 !

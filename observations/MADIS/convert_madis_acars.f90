@@ -1,10 +1,8 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !   convert_madis_acars - program that reads a MADIS netCDF ACARS 
-!                         observation file and writes a text file of 
-!                         observations within the analysis time.  The 
-!                         text file can be used in other programs that 
-!                         write obs_seq.out files.
+!                         observation file and writes a DART obs_seq file
+!                         using the DART library routines.
 !
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
 !
