@@ -1,31 +1,94 @@
 #!/bin/csh
 #
-#BSUB -J qscat
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2007, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next few lines under version control, do not edit>
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
+#
+# I am going to process one day per task and one month at a time via the job
+# array syntax.
+#
+#BXXX -J qscat[305-334]   # nov 2007
+#BXXX -J qscat[335-365]   # dec 2007
+#BXXX -J qscat[1-31]      # jan 2008
+#BXXX -J qscat[32-60]     # feb 2008
+#BXXX -J qscat[61-92]     # mar 2008
+#
+#BSUB -J qscat[335-365]
 #BSUB -n 1
 #BSUB -q standby
-#BSUB -W 0:05
-#BSUB -o out.%J.%I
-#BSUB -e err.%J.%I
+#BSUB -W 0:10
+#BSUB -o qscat.%J.%I
 #BSUB -N -u ${USER}@ucar.edu
-
+#BSUB -m  "cr0128en cr0129en cr0130en cr0131en cr0132en cr0133en cr0134en cr0135en cr0136en cr0137en cr0138en cr0139en cr0140en cr0141en cr0202en cr0201en"
+#
+#----------------------------------------------------------------------
+#----------------------------------------------------------------------
+# Turns out the scripts are a lot more flexible if you don't rely on 
+# the queuing-system-specific variables -- so I am converting them to
+# 'generic' names and using the generics throughout the remainder.
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
 
-set DARTHOME = /fs/image/home/thoar/DART/observations
-set DATADIR = /gpfs/ptmp/dart/Obs_sets/QuikSCAT_24_ascii
+set month = 12
+
+if ($?LSB_HOSTS) then
+
+   setenv ORIGINALDIR $LS_SUBCWD
+   setenv JOBNAME     $LSB_OUTPUTFILE:ar
+   setenv JOBID       $LSB_JOBID
+   setenv MYQUEUE     $LSB_QUEUE
+   setenv MYHOST      $LSB_SUB_HOST
+   setenv TASKID      $LSB_JOBINDEX
+   setenv NTASKS      $LSB_JOBINDEX_END
+   setenv STEP        $LSB_JOBINDEX_STEP
+
+   set DARTHOME = /fs/image/home/thoar/DART/observations
+   set DATADIR = /ptmp/thoar/QuikSCAT_L2B
+
+else
+
+   #-------------------------------------------------------------------
+   # You can run this interactively to check syntax, file motion, etc.
+   #-------------------------------------------------------------------
+
+   setenv ORIGINALDIR `pwd`
+   setenv JOBNAME     QuikSCAT
+   setenv JOBID       $$
+   setenv MYQUEUE     Interactive
+   setenv MYHOST      $host
+   setenv TASKID      305
+   setenv NTASKS      1
+   setenv STEP        1
+
+   set DARTHOME = /fs/image/home/thoar/DART/observations
+   set DATADIR = /ptmp/thoar/QuikSCAT_L2B
+
+endif
+
+echo ""
+echo "${JOBNAME} ($JOBID) submitted   from $ORIGINALDIR"
+echo "${JOBNAME} ($JOBID) running on  host $MYHOST"
+echo "${JOBNAME} ($JOBID) running in queue $MYQUEUE"
+echo "${JOBNAME} ($JOBID) job $TASKID of $NTASKS (by $STEP) started at "`date`
+echo ""
 
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
 
 @ y = 2007
-@ n = 305
-@ nmax = 313
+@ d = 305
+@ dmax = 313
 
-while ( $n <= $nmax )
+while ( $d <= $dmax )
 
-   echo "$y $n"
-
-   cd /ptmp/thoar/QuikSCAT_L2B/${y}/${n}
+   cd /ptmp/thoar/QuikSCAT_L2B/${y}/${d}
 
    \rm -f *obs_seq_out
 
@@ -94,13 +157,14 @@ while ( $n <= $nmax )
 
       ${DARTHOME}/utilities/threed_sphere/obs_sequence_tool || exit 2
 
-      mv obs_seq.processed ${DATADIR}/${y}11/qscatL2B_${y}_${n}_obs_seq.out
+      mv obs_seq.processed ${DATADIR}/${y}11/qscatL2B_${y}_${d}_obs_seq.out
 
    endif
 
-   @ n = $n + 1
+   @ d = $d + 1
 
    \rm -rf input.nml filenames_file dart_log.out dart_log.nml
 
 end
 
+echo "${JOBNAME} ($JOBID) job $TASKID finished at "`date`
