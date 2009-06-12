@@ -64,7 +64,22 @@
 <P>
    Main program for evaluating filter performance in observation space. 
    There is also the ability to ingest an observation sequence file and 
-   simply output the observation locations - more on that later.  
+   simply output the observation locations - more on that later.
+   <br />
+   <br />
+   Each <em class="file">obs_seq.final</em> file contains an observation 
+   sequence that has multiple 'copies' of the observation. One copy is
+   the actual observation, another copy is the estimate of the observation 
+   from ensemble member 1, ... etc. If the original observation sequence 
+   is the result of a 'perfect model' experiment, there is an additional
+   copy called the 'truth' - the noise-free expected observation given 
+   the true model state. Since this copy does not, in general, exist for
+   the high-order models, all comparisons are made with the copy labelled
+   'observation'. It may, in some instances be useful to compare against
+   the 'truth', in which case you will have to hand-edit the code and 
+   recompile. Caveat emptor.
+   <br />
+   <br />
    The models "expected" observations are compared against the actual
    observations in various ways.
    Each ensemble member applies a forward operator to the state to compute
@@ -90,8 +105,40 @@
    Identity observations (only possible from "perfect model experiments") 
    are already explored with state-space diagnostics,
    so <em class=program>obs_diag</em> simply skips them.
-   <BR>
-   <BR>
+   <br />
+   <br />
+   <em class="program">obs_diag</em> is designed to explore the effect of 
+   the assimilation in two ways 1) as a function of time for a particular 
+   variable and level (this is the figure on the left) and 2) as a 
+   time-averaged vertical profile (figure on the right).
+   These figures were created by a couple Matlab&#174; scripts that query 
+   the <em class="file">obs_diag_output.nc</em> file: 
+   <em class="file">DART/diagnostics/matlab/</em><em class="program">plot_evolution.m</em> 
+   and <em class="program">plot_profile.m</em>. Each of these takes as input a 
+   file name and a 'quantity' to plot ('rmse','spread','totalspread', ...)
+   and exhaustively plots the quantity (for every variable, every level, 
+   every region) in a single matlab figure window  - and creates a series 
+   of .ps files with multiple pages for each of the figures. 
+   The directory gets cluttered with them.
+   <br />
+   <br />
+   <em class="program">obs_diag</em>
+   is not explicitly designed to take explore OSSE's.  In general, it is 
+   used for 'real' observations and looks through the metadata for
+   the observation sequence to identify which 'copy' is labeled 'observation'.
+   It is THAT copy that is used as the noisy estimate of the truth.
+   <br />
+   <br />
+   The observation sequence files contain only the time of the observation, 
+   nothing of the assimilation interval, etc. - so it requires user guidance 
+   to declare what sort of temporal binning for the temporal evolution 
+   plots. I do a 'bunch' of arithmetic on the namelist times to convert 
+   them to a series of temporal bin edges that are used when traversing 
+   the observation sequence. The actual algorithm is that the user input for
+   the start date and bin width set up a sequence that ends in one of two ways ...
+   the last time is reached or the number of bins has been reached. 
+   <br />
+   <br />
    <em class=program>obs_diag</em> reads <em class=file>obs_seq.final</em>
    files and calculates the following quantities for an arbitrary number of
    regions and levels:
@@ -110,7 +157,7 @@
            DART does not exploit the bivariate nature of U,V winds
            and so the spread of the horizontal wind is defined as
            the sum of the spreads of the U and V components.</td></tr>
-   <tr><td valign="top"><b>totalspread</b></td>
+   <tr><td valign="top"><b>totalspread&nbsp;&nbsp;&nbsp;</b></td>
        <td>The spread of the estimated observation plus the observation 
            error variance.</td></tr>
    <tr><td valign="top"><b>Nposs</b></td>
@@ -647,7 +694,7 @@ as the other DART components.
    <img src="../../doc/html/obs_diag_location_example.png" width="500"
         alt="map of the world with altimeter observation locations
 	plotted"></TD>
-    <TD>The matlab script <em class="file">plot_observation_locations.m</em>
+    <TD>The Matlab&#174; script <em class="file">plot_observation_locations.m</em>
     automatically decodes the observation types and creates a legend. 
     It also allows plotting of observations with select QC values. 
     So, for example, you can plot the location of all the observations 
