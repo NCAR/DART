@@ -16,11 +16,11 @@
 #
 #BXXX -J qscat[305-334]   # nov 2007
 #BXXX -J qscat[335-365]   # dec 2007
-#BXXX -J qscat[1-31]      # jan 2008
-#BXXX -J qscat[32-60]     # feb 2008
-#BXXX -J qscat[61-92]     # mar 2008
+#BXXX -J qscat[001-031]   # jan 2008
+#BXXX -J qscat[032-060]   # feb 2008
+#BXXX -J qscat[061-091]   # mar 2008
 #
-#BSUB -J qscat[335-365]
+#BSUB -J qscat[061-091]
 #BSUB -n 1
 #BSUB -q standby
 #BSUB -W 0:10
@@ -36,7 +36,7 @@
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
 
-set month = 12
+set month = 03
 
 if ($?LSB_HOSTS) then
 
@@ -82,9 +82,15 @@ echo ""
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
 
-@ y = 2007
-@ d = $TASKID
+@ y = 2008
 
+if ( $TASKID < 10 ) then
+   @ d = 00$TASKID
+else if ( $TASKID < 100 ) then
+   @ d = 0$TASKID
+else
+   @ d = $TASKID
+endif
 
    cd /ptmp/thoar/QuikSCAT_L2B/${y}/${d}
 
