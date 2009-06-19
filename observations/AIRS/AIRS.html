@@ -35,6 +35,7 @@
 <A HREF="#Overview">OVERVIEW</A> / 
 <A HREF="#DataSources">DATA SOURCES</A> / 
 <A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#KnownBugs">KNOWN BUGS</A> /
 <A HREF="#FuturePlans">FUTURE PLANS</A> 
 </DIV>
@@ -82,8 +83,8 @@ as a data user.
 
 <P>
 More detailed information on the 
-<a href="http://disc.gsfc.nasa.gov/AIRS/airsL2_Std.shtml/">
-sounder data</a>
+<a href="http://disc.sci.gsfc.nasa.gov/AIRS/data-holdings/by-data-product/airsL2_Std.shtml">
+Level 2 standard product (AIRX2RET) data</a>
 is available.
 </P>
 
@@ -150,6 +151,23 @@ The AIRS Standard Retrieval Product consists of retrieved estimates of cloud and
 
 (The Shortname for this product is AIRX2RET).
 </P>
+
+<P>
+Getting the data currently means putting in a start/stop time at
+<a href="http://mirador.gsfc.nasa.gov/cgi-bin/mirador/homepageAlt.pl?keyword=AIRX2RET">this web page</a>.  The keyword is <tt>AIRX2RET</tt> and put in
+the time range of interest and optionally a geographic region.  
+Each file contains 6 minutes of data, is
+about 2.3 Megabytes, and globally there are 240 files/day 
+(about 550 Megabytes/day).
+There are additional options for getting only particular variables of
+interest, but the current reader expects whole files to be present.
+Depending on your connection to the internet, there are various options
+for downloading.  We have chosen to download a <tt>wget</tt> script which is
+created by the web page after adding the selected files to a 'cart' 
+and 'checking out'.  The script has a series of <tt>wget</tt> commands
+which downloads each file, one at a time, which is run on the machine
+where you want the data to end up.
+
 <!--==================================================================-->
 
 <A NAME="Programs"></A>
@@ -164,6 +182,16 @@ a quality control of 0 (Best) are kept.
 <br>
 The resulting obs_seq files can be merged with the obs_sequence_tool into
 larger time periods.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<BR><HR><BR>
+<H2>NAMELIST</H2>
+
+<P>
+doc namelist here.
 </P>
 
 <!--==================================================================-->
