@@ -72,7 +72,7 @@ module utilities_mod
 !      logfileunit      Global integer unit numbers for the log file and
 !      nmlfileunit      for the namelist file (which defaults to same as log)
 !
-!      to_upper         converts a character string to uppercase
+!      to_upper         converts a character string to uppercase.
 !
 !      find_textfile_dims    finds number of lines and max line length in a 
 !                            text file. Used so we can record the namelist 
@@ -81,6 +81,10 @@ module utilities_mod
 !      file_to_text     converts the contents of a (hopefully small) file to
 !                       a single text variable ... to record in the
 !                       netcdf output files.
+!
+!      get_next_filename     returns the next filename, given the name of
+!                            an ascii file which contains a filename per line.
+!                            it returns an empty string at end of list.
 !
 !      is_longitude_between  checks whether a given longitude is between
 !                            the two given limits, starting at the first and
@@ -141,7 +145,7 @@ public :: file_exist, get_unit, open_file, close_file, timestamp,           &
           find_namelist_in_file, check_namelist_read, do_nml_term,          &
           set_tasknum, set_output, do_output, set_nml_output, do_nml_file,  &
           E_DBG, E_MSG, E_WARN, E_ERR, DEBUG, MESSAGE, WARNING, FATAL,      &
-          is_longitude_between
+          is_longitude_between, get_next_filename
 
 ! this routine is either in the null_mpi_utilities_mod.f90, or in
 ! the mpi_utilities_mod.f90 file, but it is not a module subroutine.
@@ -1027,7 +1031,8 @@ end subroutine error_handler
 
       case default
          call error_handler(E_ERR, 'set_nml_output', &
-           'unrecognized input string: '//trim(nmlstring))
+           'unrecognized input string: '//trim(nmlstring), &
+           source, revision, revdate)
  
    end select
 
@@ -1254,9 +1259,9 @@ else
       if (len(nml_name) >= 10) then
          if ((nml_name(1:10) == 'filter_nml') .and. (index(nml_string,'inf_start_from_restart') > 0)) then
             write(msgstring, *) 'inf_start_from_restart obsolete'
-            call error_handler(E_MSG, 'filter_nml: ', msgstring, "", "", "")
+            call error_handler(E_MSG, 'filter_nml: ', msgstring)
             write(msgstring, *) 'use inf_initial_from_restart and inf_sd_initial_from_restart'
-            call error_handler(E_MSG, 'filter_nml: ', msgstring, "", "", "")
+            call error_handler(E_MSG, 'filter_nml: ', msgstring)
          endif 
       endif 
       write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
@@ -1356,7 +1361,8 @@ READLOOP : do i = 1,100000
    if (ios < 0) exit READLOOP  ! end of file
    if (ios > 0) then
       write(error_msg,'(A,'' read around line '',i8)')trim(fname),nlines
-      call error_handler(E_ERR,'find_textfile_dims', error_msg)
+      call error_handler(E_ERR,'find_textfile_dims', error_msg, &
+                         source, revision, revdate)
    endif
 
    nlines = nlines + 1
@@ -1413,7 +1419,8 @@ PARSELOOP : do i = 1,mynlines
 
    if ( ios /= 0 ) then
       write(string,'(A,'' read around line '',i8)')trim(fname),i
-      call error_handler(E_ERR,'file_to_text', trim(string))
+      call error_handler(E_ERR,'file_to_text', trim(string), &
+                         source, revision, revdate)
    endif
 
 enddo PARSELOOP
@@ -1421,6 +1428,49 @@ enddo PARSELOOP
 call close_file(funit)
 
 end subroutine file_to_text
+
+!#######################################################################
+
+function get_next_filename( listname, index )
+
+! Arguments are the name of a file which contains a list of filenames.
+! This routine opens the listfile, and returns the index-th one.
+!
+character(len=*),  intent(in) :: listname
+integer,           intent(in) :: index
+character(len=128)            :: get_next_filename
+
+integer :: i, ios, funit
+integer :: mynlines, mylinelen, strlen
+
+character(len=512)  :: string
+
+funit   = open_file(listname, form="FORMATTED", action="READ")
+
+PARSELOOP : do i=1, index
+
+   read(funit, '(A)', iostat=ios) string
+
+   ! reached end of file, return '' as indicator.
+   if ( ios /= 0 ) then
+      get_next_filename = ''
+      call close_file(funit)
+      return
+   endif
+
+enddo PARSELOOP
+
+! check for length problems
+if (len_trim(string) > len(get_next_filename)) then
+   call error_handler(E_ERR, 'get_next_filename', &
+                      'maximum filename length of 128 exceeded', &
+                      source, revision, revdate)   
+endif
+
+get_next_filename = string(1:len(get_next_filename))
+call close_file(funit)
+
+end function get_next_filename
 
 !#######################################################################
 
