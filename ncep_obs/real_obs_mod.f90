@@ -18,7 +18,7 @@ use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
                              set_obs_def_error_variance, set_obs_def_location
 use time_manager_mod, only : time_type, operator(>), operator(<), operator(>=), &
                              operator(/=), set_date, set_calendar_type, get_time, &
-                             get_date, set_time, GREGORIAN
+                             get_date, set_time, GREGORIAN, increment_time
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, &
                              E_ERR, E_MSG, timestamp, is_longitude_between
@@ -89,14 +89,14 @@ contains
 function real_obs_sequence (year, month, day, hourt, max_num, select_obs, &
           ObsBase, ADDUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
           obs_U, obs_V, obs_T, obs_PS, obs_QV, bin_beg, bin_end,           &
-          lon1, lon2, lat1, lat2)
+          lon1, lon2, lat1, lat2, obs_time)
 !------------------------------------------------------------------------------
 !  this function is to prepare NCEP decoded BUFR data to DART sequence format
 !
 integer,            intent(in) :: year, month, day, max_num, select_obs
 character(len = *), intent(in) :: ObsBase, hourt
 logical,            intent(in) :: ADDUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND
-logical,            intent(in) :: obs_U, obs_V, obs_T, obs_PS, obs_QV
+logical,            intent(in) :: obs_U, obs_V, obs_T, obs_PS, obs_QV, obs_time
 real(r8),           intent(in) :: lon1, lon2, lat1, lat2
 
 type(obs_sequence_type) :: real_obs_sequence
@@ -422,8 +422,24 @@ obsloop:  do
    var2 = obs_err**2            ! error variance
 
    aqc = iqc
-   seconds = time * 3600
    days = day0
+
+   if ( obs_time ) then
+
+      seconds = time * 3600
+
+   else
+
+      if ( hourt == '' ) then
+         call get_time(increment_time(set_date(year,month,day,0,0,0), &
+                        nint(time / 6.0_r8) * 21600, 0), seconds, days)
+      else
+         read(hourt, fmt='(i2)') hour
+         call get_time(increment_time(set_date(year,month,day,0,0,0), & 
+                         hour*3600, 0), seconds, days)
+      endif
+
+   end if
 
 !   create the obs_def for this observation, add to sequence
 !------------------------------------------------------------------------------

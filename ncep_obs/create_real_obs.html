@@ -74,7 +74,7 @@
    types (radiosonde, aircraft, and satellite data, etc.) and the DART 
    observation variables (U, V, T, Q, Ps) which are specified in its 
    optional namelist interface
-   <A HREF="#Namelist"> <em class=code>&#38;ncepobs_nml</em> </A>
+   <A HREF="#Namelist"> <em class=code>&amp;ncepobs_nml</em> </A>
    which may be read from file <em class=file>input.nml</em>.
 </P>
 
@@ -100,13 +100,15 @@ utilities_mod
 
 <UL>
 <LI> Go to DART/ncep_obs/work </LI>
+<LI> Use <em class=program>quickbuild.csh</em> to compile all executable
+     programs in the directory.  To rebuild just one program:
+<UL>
 <LI> Use <em class=program>mkmf_create_real_obs</em> to generate the 
      makefile to compile <em class=file>create_real_obs.f90</em>.</LI>
 <LI> Type <em class=unix>make</em> to get the executable. </LI>
+</UL>
 
-<LI> Rename <em class=file>input.nml.create_real_obs_default</em> to 
-     <em class=file>input.nml</em>.</LI>
-<LI> Make appropriate changes to the <em class=code>&#38;ncep_obs_nml</em>
+<LI> Make appropriate changes to the <em class=code>&amp;ncep_obs_nml</em>
      <A HREF="#Namelist">namelist</A> in <em class=file>input.nml</em>, 
      as follows. </LI>
 <LI> run <em class=program>create_real_obs</em>. </LI>
@@ -116,26 +118,67 @@ utilities_mod
 The selection of any combinations of the specific observation fields 
 (T, Q, U/V, and surface pressure) and types 
 (radiosonde, aircraft reports, or satellite wind, etc.) is made in 
-the namelist <em class=code>&#38;ncepobs_nml</em>. 
+the namelist <em class=code>&amp;ncepobs_nml</em>. 
 All the available combinations of fields X types (i.e. ADPUPA and obs_U) 
 will be written to the obs_seq file.
 (You will be able to select which of those to use during an assimilation in 
 another namelist (<em class=code>assimilate_these_obs</em>, 
-in <em class=code>&#38;obs_kind_nml</em>), 
+in <em class=code>&amp;obs_kind_nml</em>), 
 so be sure to include all the fields and types you might want.)
 You should change <em class=code>Obsbase</em> to the pathname of the 
 decoded PREPBUFR text data files. 
-Be sure that <em class=code>daily_file</em> is set to the value you want.
+Be sure that <em class=code>daily_file</em> is set to .TRUE. to create
+a single 24 hour file; .FALSE. converts input files one-for-one with
+output files.
+The default action is to tag each observation with the exact time it was
+taken and is the recommended setting.  However, if you want to bin the 
+observations in time, for example to do additional post-processing, 
+the time on all observations in the window
+can be overwritten and set to the nearest synoptic 
+time (e.g. 0Z, 6Z, 12Z, or 18Z), 
+by setting <em class=code>obs_time</em> to false.
 </P>
 
+<P>
+The default namelist values are:
 <PRE>
-&#38;ncepobs_nml
-  year = 2003, 
-  month = 1,
+&amp;ncepobs_nml
+   year       = 2003,
+   month      = 1,
+   day        = 1,
+   tot_days   = 31,
+   max_num    = 800000,
+   select_obs = 0,
+   ObsBase    = 'temp_obs.',
+   ADPUPA     = .false.,
+   AIRCAR     = .false.,
+   AIRCFT     = .false.,
+   SATEMP     = .false.,
+   SFCSHP     = .false.,
+   ADPSFC     = .false.,
+   SATWND     = .false.,
+   obs_U      = .false.,
+   obs_V      = .false.,
+   obs_T      = .false.,
+   obs_PS     = .false.,
+   obs_QV     = .false.,
+   daily_file = .true.,
+   obs_time   = .true.,
+   lon1       =   0.0,
+   lon2       = 360.0,
+   lat1       = -90.0,
+   lat2       =  90.0  /
+</PRE>
+but generally you will want to customize this for your own use.
+For example, here is a sample namelist:
+<PRE>
+&amp;ncepobs_nml
+  year = 2007, 
+  month = 3,
   day = 1,
   tot_days = 31,
   max_num = 700000,
-  ObsBase = '.../$YOUR_DART/DART/prep_bufr/work/temp_obs.'
+  ObsBase = '../prep_bufr/work/temp_obs.'
   select_obs  = 1,
   ADPUPA = .true., 
   AIRCAR = .false.,  
@@ -149,18 +192,19 @@ Be sure that <em class=code>daily_file</em> is set to the value you want.
   obs_T  = .true.,
   obs_PS = .false.,
   obs_QV = .false.,
-  daily_file = .true./
-
-&#38;obs_sequence_nml
+  daily_file = .true.
+  obs_time = .true.,
+/
+&amp;obs_sequence_nml
   write_binary_obs_sequence = .true.  /
 </PRE>
 
 This will produce daily observation sequence files for the period of 
-January 2003, which have the selected observation types and fields; 
+March 2007, which have the selected observation types and fields; 
 T, U, and V from radiosondes (ADPUPA) and aircraft (AIRCFT).  
 No surface pressure or specific humidity would appear in the obs_seq files,
 nor observations from ACARS, satellites, and surface stations.
-The output files look like "obs_seq200301dd", with dd = 1,...,31.
+The output files look like "obs_seq200703dd", with dd = 1,...,31.
 
 
 
@@ -171,12 +215,12 @@ The output files look like "obs_seq200301dd", with dd = 1,...,31.
 <BR><HR><BR>
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&#38;' and terminating with a slash '/'.
+'&amp;' and terminating with a slash '/'.
 <div class=namelist><pre>
-<em class=call>namelist / ncepobs_nml / </em> &#38;
+<em class=call>namelist / ncepobs_nml / </em> &amp;
 year, month, day, tot_days, max_num, select_obs, ObsBase, 
       ADPUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, 
-      obs_U, obs_V, obs_T, obs_PS, obs_QV, lat1, lat2, lon1, lon2
+      obs_U, obs_V, obs_T, obs_PS, obs_QV, lat1, lat2, lon1, lon2, obs_time
 </pre></div>
 
 <H3 class=indent1>Discussion</H3>
@@ -319,12 +363,20 @@ year, month, day, tot_days, max_num, select_obs, ObsBase,
 <TR><!--contents--><TD valign=top>lat1          </TD>
     <!--  type  --><TD valign=top>real          </TD>
     <!--descript--><TD>lower latitude bound of observations to keep
-                       Default is -89.0</TD></TR>
+                       Default is -90.0</TD></TR>
 
 <TR><!--contents--><TD valign=top>lat2          </TD>
     <!--  type  --><TD valign=top>real          </TD>
     <!--descript--><TD>upper latitude bound of observations to keep
-                       Default is 89.0</TD></TR>
+                       Default is 90.0</TD></TR>
+
+<TR><!--contents--><TD valign=top>obs_time      </TD>
+    <!--  type  --><TD valign=top>logical       </TD>
+    <!--descript--><TD>Use the full time in the input data for the time
+                       of the output observation.  To bin all observations
+                       in the window and give them the same synoptic time 
+                       (e.g. 0Z, 6Z, 12Z, or 18Z), set this to false.
+                       Default is .true.</TD></TR>
 
 </TABLE>
 

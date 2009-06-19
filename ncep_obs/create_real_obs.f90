@@ -53,7 +53,8 @@ logical :: ADPUPA = .false., AIRCAR = .false., AIRCFT = .false., &
            ADPSFC = .false.
 
 logical :: obs_U  = .false., obs_V  = .false., obs_T  = .false. , &
-           obs_PS = .false., obs_QV = .false., daily_file = .true.
+           obs_PS = .false., obs_QV = .false., daily_file = .true., & 
+           obs_time = .true.
 
 real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lon2 = 360.0_r8,  &   !  upper longitude bound 
@@ -62,7 +63,8 @@ real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
 
 namelist /ncepobs_nml/ year, month, day, tot_days, max_num, select_obs,  &
         ObsBase, ADPUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
-        obs_U, obs_V, obs_T, obs_PS, obs_QV, daily_file, lon1, lon2, lat1, lat2
+        obs_U, obs_V, obs_T, obs_PS, obs_QV, daily_file, lon1, lon2, & 
+        lat1, lat2, obs_time
 
 ! ----------------------------------------------------------------------
 ! Select observation types using NCEP categories (when select_obs /= 0).
@@ -126,7 +128,7 @@ do ii = 1, tot_days
     seq = real_obs_sequence(year, month, day1, hour1, max_num, select_obs, &
          ObsBase, ADPUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
          obs_U, obs_V, obs_T, obs_PS, obs_QV, bin_beg(kkk), bin_end(kkk), & 
-         lon1, lon2, lat1, lat2)
+         lon1, lon2, lat1, lat2, obs_time)
 
     ! output the daily sequence to a file
     if(.not. daily_file) output_name = 'obs_seq'//obsdate//obstime(kkk)
