@@ -13,20 +13,24 @@ module airs_obs_mod
 
 use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg
 
-use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
-                             write_obs_def, destroy_obs_def, interactive_obs_def, &
-                             copy_obs_def, set_obs_def_time, set_obs_def_kind, &
-                             set_obs_def_error_variance, set_obs_def_location
+use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def,     &
+                             write_obs_def, destroy_obs_def,                   &
+                             interactive_obs_def, copy_obs_def,                &
+                             set_obs_def_time, set_obs_def_kind,               &
+                             set_obs_def_error_variance, set_obs_def_location, &
+                             get_obs_def_location
 
-use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, &
-                             set_calendar_type, GREGORIAN, print_date, print_time, &
+use time_manager_mod, only : time_type, get_date, set_date,            &
+                             get_time, set_time, set_calendar_type,    &
+                             GREGORIAN, print_date, print_time,        &
                              operator(+), operator(>=)
 
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
-                             register_module, error_handler, &
+                             register_module, error_handler,              &
                              E_ERR, E_MSG, timestamp, is_longitude_between
 
-use     location_mod, only : location_type, set_location, VERTISPRESSURE
+use     location_mod, only : location_type, set_location, VERTISPRESSURE, &
+                             get_location
 
 use     obs_kind_mod, only : get_obs_kind_index, &
                              KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY
@@ -34,9 +38,10 @@ use     obs_kind_mod, only : get_obs_kind_index, &
 use obs_kind_mod,     only : AIRS_TEMPERATURE, AIRS_SPECIFIC_HUMIDITY
 
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
-                             set_obs_values, set_qc, obs_sequence_type, obs_type, &
-                             copy_obs, set_copy_meta_data, set_qc_meta_data, set_obs_def, &
-                             get_first_obs, get_last_obs, get_obs_def
+                             set_obs_values, set_qc, obs_sequence_type,      &
+                             obs_type, copy_obs, set_copy_meta_data,         &
+                             set_qc_meta_data, set_obs_def, get_first_obs,   &
+                             get_last_obs, get_obs_def
 
 use airs_JPL_mod   ! need ', only' list here
 
@@ -56,21 +61,17 @@ character(len=129) :: msgstring
 
 logical :: DEBUG = .false.
 
-! fixed size storage
-real ::   T    (AIRS_RET_STDPRESSURELEV, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-real ::   T_err(AIRS_RET_STDPRESSURELEV, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-real :: MMR    (AIRS_RET_H2OPRESSURELEV, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-real :: MMR_err(AIRS_RET_H2OPRESSURELEV, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-real ::   Q    (AIRS_RET_H2OPRESSURELEV, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-real ::   Q_err(AIRS_RET_H2OPRESSURELEV, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-real ::       PBest(                     AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-real ::       PGood(                     AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-integer :: nBestStd(                     AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-integer :: nGoodStd(                     AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-real ::         lat(                     AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-real ::         lon(                     AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-real ::         tim(                     AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
-integer :: qual_h2o(                     AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
+! the sizes of the Temperature arrays are:
+!   (AIRS_RET_STDPRESSURELAY, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
+! the sizes of the MMR arrays are:
+!   (AIRS_RET_H2OPRESSURELAY, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
+! the rest of the arrays are:
+!   (AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
+
+! MMR is converted into Q:  Q = MMR / (1 + MMR)
+real ::   Q    (AIRS_RET_H2OPRESSURELAY, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
+real ::   Q_err(AIRS_RET_H2OPRESSURELAY, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
+
 
 contains
 
@@ -86,41 +87,10 @@ module_initialized = .true.
 end subroutine initialize_module
 
 
-subroutine create_output_filename(l2name, ofname)
-!-------------------------------------------------
-! The L2 filenames have a very long extension that
-! records when the data was published - not very interesting
-! for our purposes. replace with something DART-y.
-character(len=*), intent(IN)  :: l2name
-character(len=*), intent(OUT) :: ofname
 
-integer :: i, basestart, extstart, strlen
-
-! hardcoded and brittle, but for now...  the first 19 chars
-! of the input filename have the date & granule number, which
-! seems like the bulk of the useful info.  find the last / and
-! copy from there to +19 chars.
-
-strlen = len_trim(l2name)
-
-basestart = 1
-slashloop : do i = strlen-1,1,-1
-   if (l2name(i:i) == '/' ) then
-      basestart = i+1
-      exit slashloop
-   endif
-enddo slashloop
-
-extstart = basestart+19-1
-
-ofname = l2name(basestart:extstart)//'.out'
-print *, 'output filename = ', ofname
-
-end subroutine create_output_filename
-
-
-
-function real_obs_sequence ( granule, lon1, lon2, lat1, lat2 )
+function real_obs_sequence ( granule, lon1, lon2, lat1, lat2, &
+                             min_MMR_threshold, top_pressure_level, &
+                             row_thin, col_thin)
 !------------------------------------------------------------------------------
 !  extract the temperature and humidity observations from a granule
 !  and convert to DART observation format.  allow caller to specify
@@ -128,24 +98,28 @@ function real_obs_sequence ( granule, lon1, lon2, lat1, lat2 )
 
 type(airs_granule_type), intent(in) :: granule
 real(r8), intent(in) :: lon1, lon2, lat1, lat2
+real(r8), intent(in) :: min_MMR_threshold, top_pressure_level
+integer,  intent(in) :: row_thin, col_thin
 
 ! max possible obs from this one granule.
-integer :: max_num=  AIRS_RET_STDPRESSURELEV * AIRS_RET_GEOXTRACK * AIRS_RET_GEOTRACK + &
-                     AIRS_RET_H2OPRESSURELEV * AIRS_RET_GEOXTRACK * AIRS_RET_GEOTRACK 
+integer :: max_num =  &
+   AIRS_RET_STDPRESSURELAY * AIRS_RET_GEOXTRACK * AIRS_RET_GEOTRACK + &
+   AIRS_RET_H2OPRESSURELAY * AIRS_RET_GEOXTRACK * AIRS_RET_GEOTRACK 
 
 type(obs_sequence_type) :: real_obs_sequence
 type(obs_def_type)      :: obs_def
 type(obs_type)          :: obs, prev_obs
+type(location_type)     :: obs_loc
 
 integer :: i, irow, icol, ivert, num_copies, num_qc
 integer :: days, seconds
-integer :: obs_num
+integer :: obs_num, temperature_top_index, humidity_top_index
 integer :: which_vert, tobstype, qobstype
 
 real(r4) :: speed, dir
 real(r8) :: olon, olat, vloc
 real(r8) :: obs_value, obs_var
-real(r8) :: tqc, qqc
+real(r8) :: tqc, qqc, latlon(3)
 real(r8) :: sintheta, costheta, dirvar, speedvar
 
 type(time_type) :: obs_time, base_time, pre_time, time
@@ -184,79 +158,45 @@ if ((tobstype < 1) .or. (qobstype < 1)) then
 endif
 
 
-
-!filename = '../data/200711/20071101/AIRS.2007.11.01.001.L2.RetStd.v5.2.2.0.G08078150655.hdf'
-
-
 base_time = set_date(1993, 1, 1, 0, 0, 0)   ! reference date: jan 1st, 1993
 
+call debug_print_size_check(granule)
 
-print *, 'size TairStd', size(granule%TairStd)
-T = reshape(granule%TairStd, shape(T))
-print *, 'first  row T', T(:, 1, 1)
-print *, 'second row T', T(:, 2, 1)
-print *, 'second col T', T(:, 1, 2)
+! The file contains 'Retrieved Water Vapor Mass Mixing Ratio'.  Convert
+! to specific humidity here.  Original units: gm/kg - scale to kg/kg first.
 
-print *, 'size TairStdErr', size(granule%TairStdErr)
-T_err = reshape(granule%TairStdErr, shape(T))
-print *, 'first  row T_err', T_err(:, 1, 1)
+where (granule%H2OMMRStd > min_MMR_threshold) 
+   Q = (granule%H2OMMRStd / 1000.) / ( 1.0 + (granule%H2OMMRStd/1000.0))
+elsewhere
+   Q = 0.0
+endwhere
 
-print *, 'PBest', size(granule%PBest)
-PBest = reshape(granule%PBest, shape(PBest))
-print *, 'first  row PBest', PBest(:, 1)
+where (granule%H2OMMRStdErr > 0.0_r8) 
+   Q_err = (granule%H2OMMRStdErr / 1000.) / ( 1.0 + (granule%H2OMMRStdErr/1000.0))
+elsewhere
+   Q_err = 0.0_r8   ! is this really ok?
+endwhere
 
-print *, 'PGood', size(granule%PGood)
-PGood = reshape(granule%PGood, shape(PGood))
-print *, 'first  row PGood', PGood(:, 1)
+! see what the top pressure allowed will be, and compute the index number
+! that is still below it in each profile.  that will be become the loop end.
+! default to doing the whole column
+temperature_top_index = size(granule%pressStd)
+do i = 1, size(granule%pressStd)
+   if (granule%pressStd(i) < top_pressure_level) then
+      temperature_top_index = i
+      exit
+   endif
+enddo
+if (DEBUG) print *, 'temp_top_index = ', temperature_top_index
 
-print *, 'nBestStd', size(granule%nBestStd)
-nBestStd = reshape(granule%nBestStd, shape(nBestStd))
-print *, 'first  row nBestStd', nBestStd(:, 1)
-
-print *, 'nGoodStd', size(granule%nGoodStd)
-nGoodStd = reshape(granule%nGoodStd, shape(nGoodStd))
-print *, 'first  row nGoodStd', nGoodStd(:, 1)
-
-print *, 'size water vapor mass mixing ratio', size(granule%H2OMMRStd)
-MMR = reshape(granule%H2OMMRStd, shape(MMR))
-print *, 'first  row MMR', MMR(:, 1, 1)
-print *, 'second col MMR', MMR(:, 2, 1)
-print *, 'second col MMR', MMR(:, 1, 2)
-
-print *, 'size water vapor mass mixing ratio err', size(granule%H2OMMRStdErr)
-MMR_err = reshape(granule%H2OMMRStdErr, shape(MMR_err))
-print *, 'first  row MMR_err', MMR_err(:, 1, 1)
-
-print *, 'water vapor mass mixing ratio quality', size(granule%Qual_H2o)
-qual_h2o = reshape(granule%Qual_H2O, shape(qual_h2o))
-print *, 'first  row qual_h2o', qual_h2o(:, 1)
-
-Q = (MMR / 1000.) / ( 1.0 + (MMR/1000.0))
-Q_err = (MMR_err / 1000.) / ( 1.0 + (MMR_err/1000.0))
-print *, 'first  row Q', Q(:, 1, 1)
-print *, 'second col Q', Q(:, 2, 1)
-print *, 'second col Q', Q(:, 1, 2)
-
-print *, 'first  row Q_err', Q_err(:, 1, 1)
-
-lat = reshape(granule%Latitude, shape(lat))
-lon = reshape(granule%Longitude, shape(lon))
-tim = reshape(granule%Time, shape(tim))
-
-print *, '1st lat, lon, time', lat(1,1), lon(1,1), tim(1,1)
-print *, 'r 2 lat, lon, time', lat(2,1), lon(2,1), tim(2,1)
-print *, 'c 2 lat, lon, time', lat(1,2), lon(1,2), tim(1,2)
-
-! compute time of this obs
-print *, 'int time ', int(tim(1, 1))
-obs_time = base_time + set_time(int(tim(1, 1)))
-call print_date(obs_time)
-print *, 'int time ', int(tim(AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK))
-obs_time = base_time + set_time(int(tim(AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)))
-call print_date(obs_time)
-
-print *, 'pressStd', granule%pressStd
-print *, 'pressH2O', granule%pressH2O
+humidity_top_index = size(granule%pressH2O)
+do i = 1, size(granule%pressH2O)
+   if (granule%pressH2O(i) < top_pressure_level) then
+      humidity_top_index = i
+      exit
+   endif
+enddo
+if (DEBUG) print *, 'humd_top_index = ', humidity_top_index
 
 !  loop over all observations within the file
 !------------------------------------------------------------------------------
@@ -264,14 +204,27 @@ print *, 'pressH2O', granule%pressH2O
 obs_num    = 1
 which_vert = VERTISPRESSURE
 
+! rows are along-track, stepping in the direction the satellite is moving
 rowloop:  do irow=1,AIRS_RET_GEOTRACK
 
+   ! if we're going to subset, we could cycle here
+   if (row_thin > 0) then
+      if (modulo(irow, row_thin) /= 1) cycle rowloop
+   endif
+
+   ! columns are across-track, varying faster than rows.
    colloop:  do icol=1,AIRS_RET_GEOXTRACK
 
-      olat  = lat(icol,irow) ! valid range [ -90.00,  90.00]
-      olon  = lon(icol,irow) ! valid range [-180.00, 180.00]
+      ! if we're going to subset, ditto
+      if (col_thin > 0) then
+         if (modulo(icol, col_thin) /= 1) cycle colloop
+      endif
 
-      ! verify the location is not outside valid limits
+      ! observation lat, lon:
+      olat  = granule%Latitude (icol,irow) ! valid range [ -90.00,  90.00]
+      olon  = granule%Longitude(icol,irow) ! valid range [-180.00, 180.00]
+
+      ! verify the location is not outside valid limits.  AIRS  uses -180/180
       if((olon > 180.0_r8) .or. (olon < -180.0_r8) .or.  &
          (olat >  90.0_r8) .or. (olat <  -90.0_r8)) then
          write(*,*)'WARNING : invalid location.  col,row,lon,lat = ', icol,irow,olon,olat
@@ -285,21 +238,28 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
       ! make sure lon is between 0 and 360
       if (olon < 0) olon = olon + 360.0_r8
 
-      obs_time = base_time + set_time(int(tim(icol, irow)))
+      obs_time = base_time + set_time(int(granule%Time(icol, irow)))
       call get_time(obs_time, seconds, days)
      
 
-      vert_T_loop:  do ivert=nBestStd(icol, irow), AIRS_RET_STDPRESSURELEV
+      vert_T_loop: do ivert=granule%nBestStd(icol, irow), temperature_top_index
 
-         tqc = 0   ! FIXME
+         tqc = 0   ! if we get here, the quality control is 'best' == 0
 
          ! create the obs_def for this observation, add to sequence
          !---------------------------------------------------------------
       
+
+         ! apparently -9999 is missing data, outside of qc mechanism
+         obs_value = granule%TAirStd(ivert, icol, irow)
+         if (obs_value == -9999.0_r8) cycle vert_T_loop
+
+
+         obs_var = granule%TAirStdErr(ivert, icol, irow) * &
+                   granule%TAirStdErr(ivert, icol, irow)
+
          vloc = granule%pressStd(ivert)
-   
-         obs_value = T(ivert, icol, irow)
-         obs_var = T_err(ivert, icol, irow) * T_err(ivert, icol, irow)
+
          call real_obs(num_copies, num_qc, obs, olon, olat, vloc, obs_value, &
                        obs_var, tqc, AIRS_TEMPERATURE, which_vert, seconds, days)
       
@@ -323,19 +283,22 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
  
       enddo vert_T_loop
 
-      vert_Q_loop:  do ivert=1,AIRS_RET_H2OPRESSURELEV
+      vert_Q_loop:  do ivert=1,humidity_top_index
 
-         if (qual_h2o(icol, irow) > 0) exit vert_Q_loop
+         if (granule%Qual_H2O(icol, irow) > 0) exit vert_Q_loop
 
-         qqc = 0   ! FIXME
+         qqc = 0   ! if we get here, the quality control is 'Best' == 0
 
          ! create the obs_def for this observation, add to sequence
          !---------------------------------------------------------------
-      
-         vloc = granule%pressH2O(ivert)
    
+         ! if original MMR data was -9999, that is apparently a missing val
+         if (granule%H2OMMRStd(ivert, irow, icol) == -9999.0_r8) cycle vert_Q_loop
+
          obs_value = Q(ivert, icol, irow)
          obs_var = Q_err(ivert, icol, irow) * Q_err(ivert, icol, irow)
+         vloc = granule%pressH2O(ivert)
+
          call real_obs(num_copies, num_qc, obs, olon, olat, vloc, obs_value, &
                        obs_var, qqc, AIRS_SPECIFIC_HUMIDITY, which_vert, seconds, days)
       
@@ -363,21 +326,30 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
 enddo rowloop
 
 ! Print a little summary
-print*, 'obs used = ', obs_num, ' obs skipped = ', max_num - obs_num
+write(msgstring,*) 'obs used = ', obs_num, ' obs skipped = ', max_num - obs_num
+call error_handler(E_MSG, ' ', msgstring)
 
 if ( get_first_obs(real_obs_sequence, obs) ) then
    call get_obs_def(obs, obs_def)
    pre_time = get_obs_def_time(obs_def)
    call print_time(pre_time,' first time in sequence is ')
-   call print_date(pre_time,' first date in sequence is ')
+   call print_date(pre_time,' which is gregorian date   ')
+   obs_loc = get_obs_def_location(obs_def)
+   latlon = get_location(obs_loc)
+   write(msgstring,*)'lat,lon,pres =', latlon(1), latlon(2), latlon(3)
+   call error_handler(E_MSG, 'location: ', msgstring)
 endif
 if( get_last_obs(real_obs_sequence, obs)) then
    call get_obs_def(obs, obs_def)
    time = get_obs_def_time(obs_def)
    call print_time(time,' last  time in sequence is ')
-   call print_date(time,' last  date in sequence is ')
+   call print_date(time,' which is gregorian date   ')
+   obs_loc = get_obs_def_location(obs_def)
+   latlon = get_location(obs_loc)
+   write(msgstring,*)'lat,lon,pres =', latlon(1), latlon(2), latlon(3)
+   call error_handler(E_MSG, 'location: ', msgstring)
 endif
-print*, ''
+call error_handler(E_MSG, ' ', ' ')
 
 end function real_obs_sequence
 
@@ -440,5 +412,127 @@ call set_obs_def_error_variance(obs_def, var2)
 
 end subroutine real_obs_def
 
+
+subroutine check_size(size1, size2, varlabel, subrlabel)
+!----------------------------------------------------------------------
+integer,          intent(in) :: size1, size2
+character(len=*), intent(in) :: varlabel, subrlabel
+
+if (size1 /= size2) then
+   write(msgstring, '(A,I6,A,I6)') 'unexpected size '//trim(varlabel)//': ', &
+         size1, ' /= ', size2
+   call error_handler(E_ERR, trim(subrlabel), msgstring,source,revision,revdate)
+endif
+
+end subroutine check_size
+
+
+subroutine create_output_filename(l2name, ofname)
+!-------------------------------------------------
+! The L2 filenames have a very long extension that
+! records when the data was published - not very interesting
+! for our purposes. replace with something DART-y.
+character(len=*), intent(IN)  :: l2name
+character(len=*), intent(OUT) :: ofname
+
+integer :: i, basestart, extstart, strlen
+
+! hardcoded and brittle, but for now...  the first 19 chars
+! of the input filename have the date & granule number, which
+! seems like the bulk of the useful info.  find the last / and
+! copy from there to +19 chars.
+
+strlen = len_trim(l2name)
+
+basestart = 1
+slashloop : do i = strlen-1,1,-1
+   if (l2name(i:i) == '/' ) then
+      basestart = i+1
+      exit slashloop
+   endif
+enddo slashloop
+
+extstart = basestart+19-1
+
+ofname = l2name(basestart:extstart)//'.out'
+if (DEBUG) print *, 'output filename = ', ofname
+
+end subroutine create_output_filename
+
+
+subroutine debug_print_size_check(granule)
+!-------------------------------------------------
+! bit of sanity checking - before we loop over these arrays, make sure
+! they are the size we expect them to be.
+type(airs_granule_type), intent(in) :: granule
+
+type(time_type) :: obs_time, base_time
+
+base_time = set_date(1993, 1, 1, 0, 0, 0)   ! reference date: jan 1st, 1993
+
+call check_size(size(granule%TAirStd),                           &
+   AIRS_RET_STDPRESSURELAY*AIRS_RET_GEOXTRACK*AIRS_RET_GEOTRACK, &
+   'TAirStd (T)','real_obs_sequence')
+
+if (DEBUG) print *, 'first  row T', granule%TAirStd(:, 1, 1)
+if (DEBUG) print *, 'second row T', granule%TAirStd(:, 2, 1)
+if (DEBUG) print *, 'second col T', granule%TAirStd(:, 1, 2)
+
+call check_size(size(granule%TAirStdErr), size(granule%TAirStd), &
+   'TAirStdErr (T_err)','real_obs_sequence')
+
+if (DEBUG) print *, 'first  row T err', granule%TAirStdErr(:, 1, 1)
+
+! First (lowest) good pressure level number
+call check_size(size(granule%nBestStd), AIRS_RET_GEOXTRACK*AIRS_RET_GEOTRACK, &
+   'nBestStd (T QC)','real_obs_sequence')
+
+if (DEBUG) print *, 'first  row nBestStd', granule%nBestStd(:, 1)
+
+call check_size(size(granule%H2OMMRStd),                         &
+   AIRS_RET_H2OPRESSURELAY*AIRS_RET_GEOXTRACK*AIRS_RET_GEOTRACK, &
+   'H2OMMRStd (MMR)','real_obs_sequence')
+
+if (DEBUG) print *, 'first  row MMR', granule%H2OMMRStd(:, 1, 1)
+if (DEBUG) print *, 'second col MMR', granule%H2OMMRStd(:, 2, 1)
+if (DEBUG) print *, 'second col MMR', granule%H2OMMRStd(:, 1, 2)
+
+call check_size(size(granule%H2OMMRStdErr), size(granule%H2OMMRStd), &
+   'H2OMMRStdErr (MMR_err)','real_obs_sequence')
+
+if (DEBUG) print *, 'first  row MMR err', granule%H2OMMRStdErr(:, 1, 1)
+
+call check_size(size(granule%Qual_H2O), AIRS_RET_GEOXTRACK*AIRS_RET_GEOTRACK, &
+   'Qual_H2O (Q QC)','real_obs_sequence')
+
+if (DEBUG) print *, 'first  row qual_h2o', granule%Qual_H2O(:, 1)
+
+if (DEBUG) print *, 'first  row Q', Q(:, 1, 1)
+if (DEBUG) print *, 'second col Q', Q(:, 2, 1)
+if (DEBUG) print *, 'second col Q', Q(:, 1, 2)
+
+if (DEBUG) print *, 'first  row Q_err', Q_err(:, 1, 1)
+
+
+if (DEBUG) print *, '1st lat, lon, time', &
+           granule%Latitude(1,1), granule%Longitude(1,1), granule%Time(1,1)
+if (DEBUG) print *, 'r 2 lat, lon, time', &
+           granule%Latitude(2,1), granule%Longitude(2,1), granule%Time(2,1)
+if (DEBUG) print *, 'c 2 lat, lon, time', &
+           granule%Latitude(1,2), granule%Longitude(1,2), granule%Time(1,2)
+
+! debugging for first/last time of obs in this file
+if (DEBUG) print *, 'int start time ', int(granule%Time(1, 1))
+if (DEBUG) obs_time = base_time + set_time(int(granule%Time(1, 1)))
+if (DEBUG) call print_date(obs_time)
+
+if (DEBUG) print *, 'int end   time ', int(granule%Time(AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK))
+if (DEBUG) obs_time = base_time + set_time(int(granule%Time(AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)))
+if (DEBUG) call print_date(obs_time)
+
+if (DEBUG) print *, 'pressStd', granule%pressStd
+if (DEBUG) print *, 'pressH2O', granule%pressH2O
+
+end subroutine debug_print_size_check
 
 end module airs_obs_mod
