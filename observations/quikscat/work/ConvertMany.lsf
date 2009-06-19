@@ -20,7 +20,7 @@
 #BXXX -J qscat[032-060]   # feb 2008
 #BXXX -J qscat[061-091]   # mar 2008
 #
-#BSUB -J qscat[061-091]
+#BSUB -J qscat[032-060]
 #BSUB -n 1
 #BSUB -q standby
 #BSUB -W 0:10
@@ -36,7 +36,8 @@
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
 
-set month = 03
+set month = 02
+set  year = 2008
 
 if ($?LSB_HOSTS) then
 
@@ -82,17 +83,15 @@ echo ""
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
 
-@ y = 2008
-
 if ( $TASKID < 10 ) then
-   @ d = 00$TASKID
+   set doy = 00$TASKID
 else if ( $TASKID < 100 ) then
-   @ d = 0$TASKID
+   set  doy = 0$TASKID
 else
-   @ d = $TASKID
+   set   doy = $TASKID
 endif
 
-   cd /ptmp/thoar/QuikSCAT_L2B/${y}/${d}
+   cd /ptmp/thoar/QuikSCAT_L2B/${year}/${doy}
 
    \rm -f *obs_seq_out
 
@@ -115,7 +114,9 @@ endif
       echo "outputdir = '.',"                          >> input.nml
       echo "l2b_file = '"$FILE"',"                     >> input.nml
       echo "lon1 =   0.0, lon2 = 360.0,"               >> input.nml
-      echo "lat1 = -90.0, lat2 =  90.0"                >> input.nml
+      echo "lat1 = -90.0, lat2 =  90.0,"               >> input.nml
+      echo "along_track_thin = 2,"                     >> input.nml
+      echo "cross_track_thin = 2"                      >> input.nml
       echo "   /"                                      >> input.nml
       echo " "                                         >> input.nml
 
@@ -162,7 +163,7 @@ endif
   #   ${DARTHOME}/utilities/threed_sphere/obs_sequence_tool || exit 2
       ${DARTHOME}/quikscat/work/obs_sequence_tool || exit 2
 
-      mv obs_seq.processed ${DATADIR}/${y}${month}/qscatL2B_${y}_${d}_obs_seq.out
+      mv obs_seq.processed ${DATADIR}/${year}${month}/qscatL2B_${year}_${doy}_obs_seq.out
 
    endif
 

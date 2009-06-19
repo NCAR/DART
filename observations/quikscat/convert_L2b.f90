@@ -57,8 +57,12 @@ real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lat1 = -90.0_r8,  &   !  lower latitude bound
             lat2 =  90.0_r8       !  upper latitude bound
 
+integer :: along_track_thin = 0
+integer :: cross_track_thin = 0
+
 namelist /convert_L2b_nml/ l2b_file, datadir, outputdir, &
-                           lon1, lon2, lat1, lat2
+                           lon1, lon2, lat1, lat2,       &
+                           along_track_thin, cross_track_thin
 
 ! ----------------------------------------------------------------------
 ! start of executable program code
@@ -88,7 +92,8 @@ datafile = trim(  datadir)//'/'//trim(l2b_file)
 dartfile = trim(outputdir)//'/'//trim(output_name)
 
 call read_qscat2b(datafile, orbit)   ! read from HDF file into a structure
-seq = real_obs_sequence(orbit, lon1, lon2, lat1, lat2) ! convert structure to a sequence
+seq = real_obs_sequence(orbit, lon1, lon2, lat1, lat2, &
+           along_track_thin, cross_track_thin ) ! convert structure to a sequence
 call write_obs_seq(seq, dartfile)
 call destroy_obs_sequence(seq)       ! release the memory of the seq
 call timestamp(source,revision,revdate,'end') ! close the log file

@@ -209,7 +209,8 @@ plotted with
 <P>
 <div class=namelist><pre>
 <em class=call>namelist / convert_L2b_nml / </em> &#38;
-    l2b_file, datadir, outputdir, lon1, lon2, lat1, lat2
+    l2b_file, datadir, outputdir, lon1, lon2, lat1, lat2, &#38;
+    along_track_thin, cross_track_thin 
 </pre></div>
 </P>
 
@@ -263,6 +264,17 @@ the South Atlantic), simply specify <em class="input">lon1 = 300, lon2 =
     <!--  type  --><TD valign=top>real(r8)             </TD>
     <!--descript--><TD>the North-most latitude of interest. [-90.0, 90.0]
                      <em class="unit">[default:90.0</em></TD></TR>
+<TR><!--contents--><TD valign=top>along_track_thin     </TD>
+    <!--  type  --><TD valign=top>integer              </TD>
+    <!--descript--><TD>provides ability to thin the data by ignoring 
+                       entire WVC rows. 2 == ignore every other row.
+                     <em class="unit">[default:0</em></TD></TR>
+<TR><!--contents--><TD valign=top>cross_track_thin     </TD>
+    <!--  type  --><TD valign=top>integer              </TD>
+    <!--descript--><TD>provides ability to thin the data by ignoring 
+                       wind vector cells in a particular row. 
+                       2 == ignore every other cell.
+                     <em class="unit">[default:0</em></TD></TR>
 </TABLE>
 
 <!--==================================================================-->

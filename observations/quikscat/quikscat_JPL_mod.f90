@@ -11,7 +11,7 @@ module quikscat_JPL_mod
 ! $Revision$
 ! $Date$
 
-use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg
+use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg, metadatalength
 
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, interactive_obs_def, &
@@ -145,12 +145,14 @@ end subroutine create_output_filename
 
 
 
-function real_obs_sequence ( orbit, lon1, lon2, lat1, lat2 )
+function real_obs_sequence ( orbit, lon1, lon2, lat1, lat2, &
+                             row_thin, col_thin )
 !------------------------------------------------------------------------------
 !  this function is to prepare data to DART sequence format
 !
 type(orbit_type), intent(in) :: orbit
 real(r8), intent(in) :: lon1, lon2, lat1, lat2
+integer,  intent(in) :: row_thin, col_thin
 
 integer :: max_num=MAX_WVC*MAX_ROWS*2
 
@@ -174,7 +176,7 @@ real(r8) :: sintheta, costheta, dirvar, speedvar
 
 type(time_type) :: time, pre_time
 
-character(len = 129) :: meta_data
+character(len = metadatalength) :: meta_data
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -213,10 +215,20 @@ which_vert = VERTISHEIGHT
 !rowloop:  do irow=400,403
 rowloop:  do irow=1,MAX_ROWS
 
+   ! if we're going to subset rows, cycle here
+   if (row_thin > 0) then
+      if (modulo(irow, row_thin) /= 1) cycle rowloop
+   endif
+
    time = orbit%row_time(irow)
    call get_time(time, seconds, days)
 
    wvcloop:  do iwvc=1,MAX_WVC
+
+      ! if we're going to subset columns, cycle here
+      if (col_thin > 0) then
+         if (modulo(iwvc, col_thin) /= 1) cycle wvcloop
+      endif
 
       ! no ambiguities means no retrieval
 
