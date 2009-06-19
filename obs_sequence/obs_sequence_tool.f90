@@ -13,11 +13,11 @@ program obs_sequence_tool
 ! $Revision
 ! $Date
 
-use        types_mod, only : r8, missing_r8
+use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
 use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              error_handler, E_ERR, E_MSG, nmlfileunit,   &
-                             do_nml_file, do_nml_term
+                             do_nml_file, do_nml_term, get_next_filename
 use     location_mod, only : location_type, get_location, set_location2, &
                              LocationName !! , vert_is_height 
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind, &
@@ -36,7 +36,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
                              destroy_obs, destroy_obs_sequence, &
                              delete_seq_head, delete_seq_tail, &
                              get_num_key_range, delete_obs_by_typelist, &
-                             get_obs_key, &
+                             get_obs_key, copy_partial_obs, &
                              delete_obs_from_seq, get_next_obs_from_key, &
                              delete_obs_by_qc, delete_obs_by_copy, &
                              select_obs_by_location 
@@ -49,7 +49,8 @@ character(len=128), parameter :: &
    revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq_in, seq_out
-type(obs_type)          :: obs, prev_obs, next_obs, new_obs
+type(obs_type)          :: obs_in, next_obs_in
+type(obs_type)          :: obs_out, prev_obs_out
 logical                 :: is_there_one, is_this_last
 integer                 :: size_seq_in, num_copies_in, num_qc_in
 integer                 :: size_seq_out, num_copies_out, num_qc_out
@@ -68,19 +69,23 @@ integer, parameter      :: print_every = 20000
 ! Namelist input with default values
 
 ! max_num_input_files : maximum number of input sequence files to be processed
-integer, parameter :: max_num_input_files = 50
-integer :: num_input_files = 1
+integer, parameter :: max_num_input_files = 500
+integer :: num_input_files = 0
 
 ! lazy, pick a big number
 integer, parameter :: max_obs_input_types = 500
-character(len = 32) :: obs_types(max_obs_input_types)
+character(len = obstypelength) :: obs_types(max_obs_input_types) = ''
 logical :: restrict_by_obs_type
 integer :: num_obs_input_types
 logical :: restrict_by_location
 logical :: restrict_by_qc, restrict_by_copy, restrict_by_height
+logical :: editing_obs, matching_copy_metadata, matching_qc_metadata
+integer :: matching_copy_limit = 0
+integer :: matching_qc_limit   = 0
 
 
-character(len = 129) :: filename_seq(max_num_input_files) = 'obs_seq.out'
+character(len = 129) :: filename_seq(max_num_input_files) = ''
+character(len = 129) :: filename_seq_list = ''
 character(len = 129) :: filename_out  = 'obs_seq.processed'
 logical              :: process_file(max_num_input_files)
 
@@ -92,7 +97,8 @@ integer  :: last_obs_days     = -1
 integer  :: last_obs_seconds  = -1
 ! must be location independent...
 type(location_type) :: min_loc, max_loc
-real(r8) :: min_box(4) = missing_r8, max_box(4) = missing_r8
+real(r8) :: min_box(4) = missing_r8
+real(r8) :: max_box(4) = missing_r8
 real(r8) :: min_lat = -90.0_r8
 real(r8) :: max_lat =  90.0_r8
 real(r8) :: min_lon =   0.0_r8
@@ -102,21 +108,38 @@ real(r8) :: min_qc = missing_r8
 real(r8) :: max_qc = missing_r8
 real(r8) :: min_copy = missing_r8
 real(r8) :: max_copy = missing_r8
-character(len = 32) :: copy_type = ''
-character(len=129) :: qc_metadata = ''
-character(len=129) :: copy_metadata = ''
+character(len = obstypelength) :: copy_type = ''
+character(len=metadatalength)  :: copy_metadata = ''
+character(len=metadatalength)  :: qc_metadata = ''
+! 256 is an arb max of number of copies for data and qc
+logical  :: edit_copy_metadata = .false.
+character(len=metadatalength) :: new_copy_metadata(256) = ''
+logical  :: edit_copies = .false.
+integer  :: new_copy_index(256) = -1
+integer  :: copy_index_len = 0
+logical  :: edit_qc_metadata = .false.
+character(len=metadatalength) :: new_qc_metadata(256)   = ''
+logical  :: edit_qcs = .false.
+integer  :: new_qc_index(256) = -1
+integer  :: qc_index_len = 0
+character(len=metadatalength) :: synonymous_copy_list(256) = ''
+character(len=metadatalength) :: synonymous_qc_list(256)   = ''
 logical  :: keep_types = .true.
 logical  :: print_only = .false.
 logical  :: gregorian_cal = .true.
 real(r8) :: min_gps_height = missing_r8
 
 
-namelist /obs_sequence_tool_nml/ num_input_files, filename_seq, filename_out, &
+namelist /obs_sequence_tool_nml/ &
+         num_input_files, filename_seq, filename_seq_list, filename_out,     &
          first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds, &
-         obs_types, keep_types, min_box, max_box, print_only, &
-         min_lat, max_lat, min_lon, max_lon, min_qc, max_qc, qc_metadata, &
-         min_copy, max_copy, copy_metadata, copy_type, gregorian_cal, &
-         min_gps_height
+         obs_types, keep_types, min_box, max_box, print_only,                &
+         min_lat, max_lat, min_lon, max_lon, min_qc, max_qc, qc_metadata,    &
+         min_copy, max_copy, copy_metadata, copy_type, gregorian_cal,        &
+         min_gps_height, edit_copy_metadata, new_copy_index,                 &
+         edit_qc_metadata, new_qc_index, synonymous_copy_list,               &
+         synonymous_qc_list, edit_copies, edit_qcs, new_copy_metadata,       &
+         new_qc_metadata
 
 !----------------------------------------------------------------
 ! Start of the program:
@@ -127,28 +150,29 @@ namelist /obs_sequence_tool_nml/ num_input_files, filename_seq, filename_out, &
 
 call obs_seq_modules_used()
 
-! Initialize input obs_seq filenames and obs_types before reading namelist.
-do i = 1, max_num_input_files
-   filename_seq(i) = ""
-enddo
-do i = 1, max_obs_input_types
-   obs_types(i) = ""
-enddo
-
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "obs_sequence_tool_nml", iunit)
 read(iunit, nml = obs_sequence_tool_nml, iostat = io)
 call check_namelist_read(iunit, io, "obs_sequence_tool_nml")
 
-if(num_input_files .gt. max_num_input_files) then
-  call error_handler(E_ERR,'obs_sequence_tool', &
-     'num_input_files > max_num_input_files. change max_num_input_files in source file', &
-     source,revision,revdate)
-endif
-
 ! Record the namelist values used for the run ...
 if (do_nml_file()) write(nmlfileunit, nml=obs_sequence_tool_nml)
 if (do_nml_term()) write(     *     , nml=obs_sequence_tool_nml)
+
+! ok, here's the new logic:
+! if the user specifies neither filename_seq nor filename_seq_list, we
+! default to trying 'obs_seq.out' and num files = 1.
+! if the user specifies both, it's an error.
+! if the user gives a filelist, we make sure the length is not more
+!   than maxfiles and read it into the explicit list and continue.
+! if num_input_files = 0, we count up the non-null items in the list
+!   and set num_input_files to that.
+! if the user specifies num_input_files but it doesn't match the list length,
+!   we give an error (and maybe suggest 0 if they don't want to keep 
+!   updating the num_input_files.)
+
+call handle_filenames(filename_seq, filename_seq_list, num_input_files)
+
 
 ! if you are not using a gregorian cal, set this to false in the namelist.
 ! if users need it, we could add a calendar type integer to the namelist,
@@ -300,12 +324,24 @@ else
    restrict_by_copy = .false.
 endif
 
-! Read header information for the sequences to see if we need
-! to accomodate additional copies or qc values from subsequent sequences.
-! Also, calculate how many observations to be added to the first sequence.
-num_copies_out   = 0
-num_qc_out       = 0
-size_seq_out     = 0
+! See if the user is requesting edit of either the number of copies
+! or qc values, or reordering them.
+editing_obs = .false.
+if (edit_copies) then
+   ! count up how many copies and qc there are going out.
+   do i = 1, size(new_copy_index)
+      if (new_copy_index(i) < 0) exit
+      copy_index_len = copy_index_len + 1
+   enddo
+   editing_obs = .true.
+endif
+if (edit_qcs) then
+   do i = 1, size(new_qc_index)
+      if (new_qc_index(i) < 0) exit
+      qc_index_len = qc_index_len + 1
+   enddo
+   editing_obs = .true.
+endif
 
 ! check to see if we are going to trim the sequence by time
 if(first_obs_seconds >= 0 .or. first_obs_days >= 0) then
@@ -326,6 +362,36 @@ if (trim_first .and. trim_last) then
                          source,revision,revdate)
    endif
 endif
+
+! check to see if user gave us lists of metadata that should be
+! considered the same across different obs_seq files.  count the
+! length of each list.  used in the compare_metadata() routine.
+matching_copy_metadata = .false.
+if (synonymous_copy_list(1) /= '') then
+   matching_copy_metadata = .true.
+   do i = 1, size(synonymous_copy_list)
+      if (synonymous_copy_list(i) == '') exit
+      matching_copy_limit = i
+   enddo
+endif
+matching_qc_metadata = .false.
+if (synonymous_qc_list(1) /= '') then
+   matching_qc_metadata = .true.
+   do i = 1, size(synonymous_qc_list)
+      if (synonymous_qc_list(i) == '') exit
+      matching_qc_limit = i
+   enddo
+endif
+
+
+! end of namelist processing and setup
+
+! Read header information for the sequences to see if we need
+! to accomodate additional copies or qc values from subsequent sequences.
+! Also, calculate how many observations to be added to the first sequence.
+num_copies_out   = 0
+num_qc_out       = 0
+size_seq_out     = 0
 
 ! TWO PASS algorithm; open each file, trim it if requested, and count
 ! the number of actual observations.  then the output file can be
@@ -368,10 +434,55 @@ do i = 1, num_input_files
       size_seq_in = remaining_obs_count
    endif
 
+   ! First sequence with valid data gets to set up the format of the output.
+   ! This only matters if we keep the 'non-exact match of metadata' in the
+   ! compare_metadata() subroutine below.
    if ( first_seq < 0 ) then
       first_seq = i
-      num_copies_out = num_copies_in
-      num_qc_out = num_qc_in
+      ! set up allowing number of copies or qcs to be changed or reordered.
+      if (edit_copies) then
+         ! do a tiny bit of sanity checking here.
+         do j = 1, copy_index_len
+            if ((new_copy_index(j) > num_copies_in) .or. &
+                (new_copy_index(j) < 1)) then
+               write(msgstring,*)'new_copy_index values must be between 1 and ', num_copies_in
+               call error_handler(E_ERR,'obs_sequence_tool', msgstring, &
+                                  source,revision,revdate)
+
+            endif
+         enddo
+         if (copy_index_len > num_copies_in) then
+            write(msgstring,*)'WARNING: more output copies than input; some are being replicated'
+            call error_handler(E_MSG,'obs_sequence_tool', msgstring)
+         endif
+         num_copies_out = copy_index_len
+      else
+         num_copies_out = num_copies_in
+         do j = 1, num_copies_in
+            new_copy_index(j) = j
+         enddo
+      endif
+      if (edit_qcs) then
+         do j = 1, qc_index_len
+            if ((new_qc_index(j) > num_qc_in) .or. &
+                (new_qc_index(j) < 1)) then
+               write(msgstring,*)'new_qc_index values must be between 1 and ', num_qc_in
+               call error_handler(E_ERR,'obs_sequence_tool', msgstring, &
+                                  source,revision,revdate)
+
+            endif
+         enddo
+         if (qc_index_len > num_qc_in) then
+            write(msgstring,*)'WARNING: more output qcs than input; some are being replicated'
+            call error_handler(E_MSG,'obs_sequence_tool', msgstring)
+         endif
+         num_qc_out = qc_index_len
+      else
+         num_qc_out = num_qc_in
+         do j = 1, num_qc_in
+            new_qc_index(j) = j
+         enddo
+      endif
       size_seq_out = size_seq_in
    else
       size_seq_out = size_seq_out + size_seq_in
@@ -392,10 +503,10 @@ endif
 call error_handler(E_MSG,' ',' ')
 
 ! Initialize individual observation variables 
-call init_obs(     obs, num_copies_out, num_qc_out)
-call init_obs( new_obs, num_copies_out, num_qc_out)
-call init_obs(next_obs, num_copies_out, num_qc_out)
-call init_obs(prev_obs, num_copies_out, num_qc_out)
+call init_obs(     obs_in,  num_copies_in,  num_qc_in )
+call init_obs(next_obs_in,  num_copies_in,  num_qc_in )
+call init_obs(     obs_out, num_copies_out, num_qc_out)
+call init_obs(prev_obs_out, num_copies_out, num_qc_out)
 
 total_num_inserted = 0
 
@@ -426,11 +537,49 @@ do i = 1, num_input_files
    if (first_seq < 0) then
       call init_obs_sequence(seq_out, num_copies_out, num_qc_out, size_seq_out) 
       do j=1, num_copies_out
-         meta_data = get_copy_meta_data(seq_in, j) 
+         if (edit_copy_metadata) then
+            meta_data = new_copy_metadata(j)
+            write(msgstring, *)'replacing original copy meta_data: ' // &
+                                trim(get_copy_meta_data(seq_in, new_copy_index(j)))
+            call error_handler(E_MSG,'obs_sequence_tool',msgstring)
+            write(msgstring, *)' with: ' // trim(meta_data)
+            call error_handler(E_MSG,'obs_sequence_tool',msgstring)
+            if (new_copy_index(j) /= j) then
+               write(msgstring, *)'original index was ', new_copy_index(j), ', now ', j
+               call error_handler(E_MSG,'obs_sequence_tool',msgstring)
+            endif
+         else
+            meta_data = get_copy_meta_data(seq_in, new_copy_index(j)) 
+            if (new_copy_index(j) /= j) then
+               write(msgstring, *)'copy with meta_data: ' // trim(meta_data)
+               call error_handler(E_MSG,'obs_sequence_tool',msgstring)
+               write(msgstring, *)'moved from index ', new_copy_index(j), ' to ', j
+               call error_handler(E_MSG,'obs_sequence_tool',msgstring)
+            endif
+         endif
          call set_copy_meta_data(seq_out, j, meta_data)
       enddo 
       do j=1, num_qc_out
-         meta_data = get_qc_meta_data(seq_in, j) 
+         if (edit_qc_metadata) then
+            meta_data = new_qc_metadata(j)
+            write(msgstring, *)'replacing original qc meta_data: ' // &
+                                trim(get_qc_meta_data(seq_in, new_qc_index(j)))
+            call error_handler(E_MSG,'obs_sequence_tool',msgstring)
+            write(msgstring, *)' with: ' // trim(meta_data)
+            call error_handler(E_MSG,'obs_sequence_tool',msgstring)
+            if (new_qc_index(j) /= j) then
+               write(msgstring, *)'original index was ', new_qc_index(j), ' now ', j
+               call error_handler(E_MSG,'obs_sequence_tool',msgstring)
+            endif
+         else
+            meta_data = get_qc_meta_data(seq_in, new_qc_index(j)) 
+            if (new_qc_index(j) /= j) then
+               write(msgstring, *)'qc with meta_data: ' // trim(meta_data)
+               call error_handler(E_MSG,'obs_sequence_tool',msgstring)
+               write(msgstring, *)'moved from index ', new_qc_index(j), ' now ', j
+               call error_handler(E_MSG,'obs_sequence_tool',msgstring)
+            endif
+         endif
          call set_qc_meta_data(seq_out, j, meta_data)
       enddo 
       first_seq = i
@@ -458,20 +607,27 @@ do i = 1, num_input_files
    !       Must pass a copy of incoming obs to insert_obs_in_seq.
    !--------------------------------------------------------------
    num_inserted = 0
-   is_there_one = get_first_obs(seq_in, obs)
+   is_there_one = get_first_obs(seq_in, obs_in)
 
    if ( is_there_one )  then
 
-      new_obs      = obs           ! obs records position in seq_out
+      if (editing_obs) then
+         ! copy subset or reordering
+         call copy_partial_obs(obs_out, obs_in,                &
+                               num_copies_out, new_copy_index, &
+                               num_qc_out, new_qc_index) 
+      else
+         obs_out = obs_in
+      endif
 
-!#!      call change_variance(new_obs)
+!#!      call change_variance(obs_out)
 
-      call insert_obs_in_seq(seq_out, new_obs)  ! new_obs linked list info changes
+      call insert_obs_in_seq(seq_out, obs_out)  ! new_obs linked list info changes
 
-      prev_obs     = new_obs       ! records new position in seq_in
+      prev_obs_out = obs_out            ! records new position in seq_out
       num_inserted = num_inserted + 1
    
-      call get_next_obs(seq_in, obs, next_obs, is_this_last)
+      call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)
       ObsLoop : do while ( .not. is_this_last)
 
          if (print_every > 0) then
@@ -480,22 +636,30 @@ do i = 1, num_input_files
             endif
          endif
 
-         obs     = next_obs   ! essentially records position in seq_out
-         new_obs = obs        ! will be modified w/ position in seq_in
+         obs_in     = next_obs_in   ! essentially records position in seq_out
 
-!#!         call change_variance(new_obs)
+         if (editing_obs) then
+            ! copy subset or reordering
+            call copy_partial_obs(obs_out, obs_in,                &
+                                  num_copies_out, new_copy_index, &
+                                  num_qc_out, new_qc_index) 
+         else
+            obs_out = obs_in
+         endif
+
+!#!         call change_variance(obs_out)
 
          ! Since the stride through the observation sequence file is always 
          ! guaranteed to be in temporally-ascending order, we can use the
          ! 'previous' observation as the starting point to search for the
          ! correct insertion point.  This speeds up the insert code a lot.
 
-         call insert_obs_in_seq(seq_out, new_obs, prev_obs)
+         call insert_obs_in_seq(seq_out, obs_out, prev_obs_out)
 
-         prev_obs     = new_obs    ! update position in seq_in for next insert
+         prev_obs_out = obs_out    ! update position in seq_in for next insert
          num_inserted = num_inserted + 1
 
-         call get_next_obs(seq_in, obs, next_obs, is_this_last)
+         call get_next_obs(seq_in, obs_in, next_obs_in, is_this_last)
 
       enddo ObsLoop
 
@@ -539,10 +703,10 @@ endif
 ! Time to clean up
 
 call destroy_obs_sequence(seq_out)
-call destroy_obs(     obs)
-call destroy_obs( new_obs)
-call destroy_obs(next_obs)
-call destroy_obs(prev_obs)
+call destroy_obs(     obs_in )
+call destroy_obs(next_obs_in )
+call destroy_obs(     obs_out)
+call destroy_obs(prev_obs_out)
 
 call timestamp(source,revision,revdate,'end')
 
@@ -571,24 +735,35 @@ subroutine compare_metadata(seq1, seq2, fname1, fname2)
 !
 ! The messages might be a bit misleading 'warning', 'warning', 'error' ...
 !
+! FIXME:  this routine uses several globals now from the namelist that
+! should be arguments to this routine.  i'm being lazy (or expedient) here
+! but this should be fixed at some point soon.
+!
+! and now there is an additional restriction -- if editing the copies or
+! qc entries, seq1 has already been edited and only 2 needs the editing
+! applied.  before they were completely symmetric.
 
  type(obs_sequence_type), intent(IN) :: seq1, seq2
  character(len=*), optional :: fname1, fname2
 
 integer :: num_copies1, num_qc1
 integer :: num_copies2, num_qc2
-integer :: num_copies , num_qc, i
+integer :: num_copies , num_qc, i, j
+logical :: have_match1, have_match2
 character(len=129) :: str1, str2
 character(len=255) :: msgstring1, msgstring2
 
-num_qc1     = get_num_qc(    seq1)
 num_copies1 = get_num_copies(seq1)
+num_qc1     = get_num_qc(    seq1)
 
-num_qc2     = get_num_qc(    seq2)
 num_copies2 = get_num_copies(seq2)
+num_qc2     = get_num_qc(    seq2)
 
-num_copies  = num_copies1
-num_qc      = num_qc1
+if (edit_copies) num_copies2 = copy_index_len
+if (edit_qcs   ) num_qc2     =   qc_index_len
+
+num_copies  = num_copies2
+num_qc      = num_qc2
 
 ! get this ready in case we have to use it
 if (present(fname1) .and. present(fname2)) then
@@ -614,36 +789,157 @@ if ( num_copies < 0 .or. num_qc < 0 ) then
    call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, source, revision, revdate)
 endif
 
-MetaDataLoop : do i=1, num_copies
-   str1 = trim(adjustl(get_copy_meta_data(seq1,i)))
-   str2 = trim(adjustl(get_copy_meta_data(seq2,i)))
+! watch the code flow in this loop and the one below it.
+! the smoothest code order is to determine what the strings are,
+! and then try different things to match them.  if a match is found,
+! cycle.  if you get to the bottom of the loop, there is no match
+! and a single set of (fatal) error messages is called.
+CopyMetaData : do i=1, num_copies
+   str1 = get_copy_meta_data(seq1,i)
 
-   if( str1 == str2 ) then
-      write(msgstring2,*)'metadata ',trim(adjustl(str1)), ' in both.'
-      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+   if (edit_copy_metadata) then
+      str2 = new_copy_metadata(i)
    else
-      write(msgstring2,*)'metadata value mismatch. seq1: ', trim(adjustl(str1))
-      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
-      write(msgstring2,*)'metadata value mismatch. seq2: ', trim(adjustl(str2))
-      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
-      call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, source, revision, revdate)
+      str2 = get_copy_meta_data(seq2, new_copy_index(i)) 
    endif
-enddo MetaDataLoop
+
+   ! easy case - they match.  cycle to next copy.
+   if( str1 == str2 ) then
+      write(msgstring2,*)'metadata ',trim(str1), ' in both.'
+      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+      cycle CopyMetaData
+   endif
+
+   ! see if user provided a list of metadata strings that are
+   ! the same values and can be considered a match.
+   if (matching_copy_metadata) then
+      have_match1 = .false.
+      do j=1, matching_copy_limit
+         if (trim(str1) == trim(synonymous_copy_list(j))) then
+            have_match1 = .true.
+            exit
+         endif
+      enddo
+
+      have_match2 = .false.
+      do j=1, matching_copy_limit
+         if (trim(str2) == trim(synonymous_copy_list(j))) then
+            have_match2 = .true.
+            exit
+         endif
+      enddo
+
+      ! if both are true, you found both strings in the list and
+      ! it is ok to proceed.
+      if (have_match1 .and. have_match2) then
+         write(msgstring2,*)'different copy metadata strings ok because both on synonymous list'
+         call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+         write(msgstring2,*)'one is: ', trim(str1)
+         call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+         write(msgstring2,*)'one is: ', trim(str2)
+         call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+         cycle CopyMetaData
+      endif
+
+      ! if no match, fall out of the if.
+   endif
+    
+   !! FIXME: this could be dangerous - it allows any metadata string with
+   !! the substring 'observation' to match any other.  if there are multiple
+   !! strings with 'observation', it will allow them to match.  for now it
+   !! allows 'NCEP BUFR observations' to match 'observation', for example,
+   !! but it's dangerous.
+   !if ((index(str1, 'observation') > 0) .and. &
+   !    (index(str2, 'observation') > 0)) then
+   !   write(msgstring2,*)'observation metadata in both ',trim(str1), ' and ', trim(str2)
+   !   call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+   !   write(msgstring2,*)'ALLOWING NON-EXACT MATCH'
+   !   call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+   !   cycle CopyMetaData
+   !! end FIXME
+
+   ! if you get here, the metadata is not the same and the user has not
+   ! given us strings that are ok to match.  fail.
+   write(msgstring2,*)'metadata value mismatch. seq1: ', trim(str1)
+   call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+   write(msgstring2,*)'metadata value mismatch. seq2: ', trim(str2)
+   call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+   call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, source, revision, revdate)
+
+enddo CopyMetaData
 
 QCMetaData : do i=1, num_qc
-   str1 = trim(adjustl(get_qc_meta_data(seq1,i)))
-   str2 = trim(adjustl(get_qc_meta_data(seq2,i)))
+   str1 = get_qc_meta_data(seq1,i)
 
-   if( str1 == str2 ) then
-      write(msgstring2,*)'qc metadata ', trim(adjustl(str1)), ' in both.'
-      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+   if (edit_qc_metadata) then
+      str2 = new_qc_metadata(i)
    else
-      write(msgstring2,*)'qc metadata value mismatch. seq1: ', trim(adjustl(str1))
-      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
-      write(msgstring2,*)'qc metadata value mismatch. seq2: ', trim(adjustl(str2))
-      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
-      call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, source, revision, revdate)
+      str2 = get_qc_meta_data(seq2, new_qc_index(i)) 
    endif
+
+
+   ! easy case - they match.  cycle to next copy.
+   if( str1 == str2 ) then
+      write(msgstring2,*)'metadata ',trim(str1), ' in both.'
+      call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+      cycle QCMetaData
+   endif
+
+   ! see if user provided a list of metadata strings that are
+   ! the same values and can be considered a match.
+   if (matching_copy_metadata) then
+      have_match1 = .false.
+      do j=1, matching_qc_limit
+         if (trim(str1) == trim(synonymous_qc_list(j))) then
+            have_match1 = .true.
+            exit
+         endif
+      enddo
+
+      have_match2 = .false.
+      do j=1, matching_qc_limit
+         if (trim(str2) == trim(synonymous_qc_list(j))) then
+            have_match2 = .true.
+            exit
+         endif
+      enddo
+
+      ! if both are true, you found both strings in the list and
+      ! it is ok to proceed.
+      if (have_match1 .and. have_match2) then
+         write(msgstring2,*)'different qc metadata strings ok because both on synonymous list'
+         call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+         write(msgstring2,*)'one is: ', trim(str1)
+         call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+         write(msgstring2,*)'one is: ', trim(str2)
+         call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+         cycle QCMetaData
+      endif
+
+      ! if no match, fall out of the if.
+   endif
+    
+   !! FIXME: this is even more dangerous than the obs - better to make the
+   !! user give an explicit list of strings that are ok to match.  but here
+   !! is the code if you wanted to make it more mindless.
+   !if (((index(str1, 'QC') > 0).or.(index(str1, 'quality control') > 0)).and. &
+   !    ((index(str2, 'QC') > 0).or.(index(str2, 'quality control') > 0))) then
+   !   write(msgstring2,*)'QC metadata in both ',trim(str1), ' and ', trim(str2)
+   !   call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+   !   write(msgstring2,*)'ALLOWING NON-EXACT MATCH'
+   !   call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+   !   cycle QCMetaData
+   !endif
+   !! end FIXME
+
+   ! if you get here, the metadata is not the same and the user has not
+   ! given us strings that are ok to match.  fail.
+   write(msgstring2,*)'qc metadata value mismatch. seq1: ', trim(str1)
+   call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+   write(msgstring2,*)'qc metadata value mismatch. seq2: ', trim(str2)
+   call error_handler(E_MSG, 'obs_sequence_tool', msgstring2)
+   call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, source, revision, revdate)
+
 enddo QCMetaData
 
 end subroutine compare_metadata
@@ -670,7 +966,7 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
       if(all_gone) then
          if (print_msg) then
             msgstring = 'Skipping: all obs in ' // trim(seqfilename) // &
-                        ' are before first_obs_days:first_obs_seconds'
+                        ' are before first_obs time'
             call error_handler(E_MSG,'obs_sequence_tool',msgstring)
          endif
          remaining_obs_count = 0
@@ -684,7 +980,7 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
       if(all_gone) then
          if (print_msg) then
             msgstring = 'Skipping: all obs in ' // trim(seqfilename) // &
-                        ' are after last_obs_days:last_obs_seconds'
+                        ' are after last_obs time'
             call error_handler(E_MSG,'obs_sequence_tool',msgstring)
          endif
          remaining_obs_count = 0
@@ -1026,21 +1322,22 @@ num_copies = get_num_copies(seq1)
 num_qc     = get_num_qc(    seq1)
 
 if ( num_copies < 0 .or. num_qc < 0 ) then
+   write(msgstring1,*)' illegal copy or obs count in file '//trim(fname1)
    call error_handler(E_ERR, 'obs_sequence_tool', msgstring1, source, revision, revdate)
 endif
 
 MetaDataLoop : do i=1, num_copies
-   str1 = trim(adjustl(get_copy_meta_data(seq1,i)))
+   str1 = get_copy_meta_data(seq1,i)
 
-   write(msgstring1,*)'Data Metadata: ',trim(adjustl(str1))
+   write(msgstring1,*)'Data Metadata: ',trim(str1)
    call error_handler(E_MSG, '', msgstring1)
 
 enddo MetaDataLoop
 
 QCMetaData : do i=1, num_qc
-   str1 = trim(adjustl(get_qc_meta_data(seq1,i)))
+   str1 = get_qc_meta_data(seq1,i)
 
-   write(msgstring1,*)'  QC Metadata: ', trim(adjustl(str1))
+   write(msgstring1,*)'  QC Metadata: ', trim(str1)
    call error_handler(E_MSG, '', msgstring1)
    
 enddo QCMetaData
@@ -1170,6 +1467,98 @@ return
 
 end subroutine select_gps_by_height
 
+!---------------------------------------------------------------------
+subroutine handle_filenames(filename_seq, filename_seq_list, num_input_files)
+! sort out the input lists, set the length if not given by user,
+! make sure what's specified is consistent.
+character(len=*), intent(inout) :: filename_seq(:)
+character(len=*), intent(in)    :: filename_seq_list
+integer,          intent(inout) :: num_input_files
+
+integer :: index
+logical :: from_file
+character(len=32) :: source
+
+! ok, here's the new logic:
+! if the user specifies neither filename_seq nor filename_seq_list, we
+! default to trying 'obs_seq.out' and num files = 1.
+! if the user specifies both, it's an error.
+! if the user gives a filelist, we make sure the length is not more
+!   than maxfiles and read it into the explicit list and continue.
+! if num_input_files = 0, we count up the non-null items in the list
+!   and set num_input_files to that.
+! if the user specifies num_input_files but it doesn't match the list length,
+!   we give an error (and maybe suggest 0 if they don't want to keep 
+!   updating the num_input_files.)
+
+! default case - input file is 'obs_seq.out' and count is 1.
+if (filename_seq(1) == '' .and. filename_seq_list == '') then
+
+   if (num_input_files /= 0 .and. num_input_files /= 1) then
+      call error_handler(E_ERR,'obs_sequence_tool', &
+          'if no filenames specified, num_input_files must be 0 or 1', &
+          source,revision,revdate)
+   endif
+   
+   num_input_files = 1
+   filename_seq(1) = 'obs_seq.out'
+   return
+endif
+
+! make sure the namelist specifies one or the other but not both
+if (filename_seq(1) /= '' .and. filename_seq_list /= '') then
+   call error_handler(E_ERR,'obs_sequence_tool', &
+       'cannot specify both filename_seq and filename_seq_list', &
+       source,revision,revdate)
+endif
+
+! if they have specified a file which contains a list, read it into
+! the filename_seq array and set the count.
+if (filename_seq_list /= '') then
+   source = 'filename_seq_list'
+   from_file = .true.
+else
+   source = 'filename_seq'
+   from_file = .false.
+endif
+
+do index = 1, max_num_input_files
+   if (from_file) &
+      filename_seq(index) = get_next_filename(filename_seq_list, index)
+
+   if (filename_seq(index) == '') then
+      if (index == 1) then
+         call error_handler(E_ERR,'obs_sequence_tool', &
+             trim(source)//' contains no filenames', &
+             source,revision,revdate)
+      endif
+      ! leaving num_input_files unspecified (or set to 0) means use
+      ! whatever number of files is in the list.
+      if (num_input_files == 0) then
+         num_input_files = index - 1
+         return
+      else 
+         ! if they do give a count, make it match.
+         if (num_input_files == (index - 1)) return
+
+         write(msgstring, *) 'if num_input_files is 0, the number of files will be automatically computed'
+         call error_handler(E_MSG,'obs_sequence_tool', msgstring)
+         write(msgstring, *) 'if num_input_files is not 0, it must match the number of filenames specified'
+         call error_handler(E_MSG,'obs_sequence_tool', msgstring)
+         write(msgstring, *) 'num_input_files is ', num_input_files, &
+                     ' but '//trim(source)//' has filecount ', index - 1
+         call error_handler(E_ERR,'obs_sequence_tool', msgstring, &
+            source,revision,revdate)
+         
+      endif
+   endif
+enddo
+
+write(msgstring, *) 'cannot specify more than ',max_num_input_files,' files'
+call error_handler(E_ERR,'obs_sequence_tool', msgstring, &
+     source,revision,revdate)
+
+end subroutine handle_filenames
 
 !---------------------------------------------------------------------
 !#! subroutine change_variance(this_obs)

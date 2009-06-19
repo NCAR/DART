@@ -66,7 +66,7 @@ public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
 public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
    get_obs_values, set_obs_values, replace_obs_values, get_qc, set_qc, &  
    read_obs, write_obs, replace_qc, interactive_obs, copy_obs, assignment(=), &
-   get_obs_key
+   get_obs_key, copy_partial_obs
 
 ! Public interfaces for obs covariance modeling
 public :: obs_cov_type
@@ -1102,31 +1102,42 @@ subroutine write_obs_seq(seq, file_name)
 type(obs_sequence_type), intent(in) :: seq
 character(len = *),      intent(in) :: file_name
 
-integer :: i, file_id
+integer :: i, file_id, rc
 integer :: have(max_obs_kinds)
+character(len=11) :: useform
 
+
+if(write_binary_obs_sequence) then
+   useform = 'unformatted'
+else
+   useform = 'formatted'
+endif
+
+! Open the file. nsc - why is this not using open_file()?
+file_id = get_unit()
+write(msg_string, *) 'opening '// trim(useform) // ' file ',trim(file_name)
+call error_handler(E_MSG,'write_obs_seq',msg_string)
+
+open(unit = file_id, file = file_name, form = useform, &
+     action='write', position='rewind', iostat=rc)
+if (rc /= 0) then
+   write(msg_string, *) 'unable to create file '//trim(file_name)
+   call error_handler(E_ERR,'write_obs_seq',msg_string,source,revision,revdate)
+endif
+
+! Write the initial string for help in figuring out binary
+if(write_binary_obs_sequence) then
+   write(file_id) 'obs_sequence'
+else
+   write(file_id, *) 'obs_sequence'
+endif
 
 ! Figure out which of the total possible kinds (really types) exist in this
 ! sequence, and set the array values to 0 for no, 1 for yes.
 call set_used_kinds(seq, have)
 
-! Open the file
-file_id = get_unit()
-if(write_binary_obs_sequence) then
-   write(msg_string, *) 'opening unformatted file ',trim(file_name)
-   call error_handler(E_MSG,'write_obs_seq',msg_string,source,revision,revdate)
-   open(unit = file_id, file = file_name, form = "unformatted")
-   ! Write the initial string for help in figuring out binary
-   write(file_id) 'obs_sequence'
-   call write_obs_kind(file_id, 'unformatted', have)
-else
-   write(msg_string, *) 'opening formatted file ',trim(file_name)
-   call error_handler(E_MSG,'write_obs_seq',msg_string,source,revision,revdate)
-   open(unit = file_id, file = file_name)
-   ! Write the initial string for help in figuring out binary
-   write(file_id, *) 'obs_sequence'
-   call write_obs_kind(file_id, use_list=have)
-endif
+! Write the TOC, with only the kinds that exist in this seq.
+call write_obs_kind(file_id, useform, have)
 
 ! First inefficient ugly pass at writing an obs sequence, need to 
 ! update for storage size.  CHANGE - use num_obs for the max_num_obs, to
@@ -1142,7 +1153,7 @@ do i = 1, seq%num_copies
    if(write_binary_obs_sequence) then
       write(file_id) seq%copy_meta_data(i)
    else
-      write(file_id, '(a129)') seq%copy_meta_data(i)
+      write(file_id, '(a)') seq%copy_meta_data(i)
    endif
 end do
 
@@ -1150,7 +1161,7 @@ do i = 1, seq%num_qc
    if(write_binary_obs_sequence) then
       write(file_id) seq%qc_meta_data(i)
    else
-      write(file_id, '(a129)') seq%qc_meta_data(i)
+      write(file_id, '(a)') seq%qc_meta_data(i)
    endif
 end do
 
@@ -1169,7 +1180,7 @@ end do
 call close_file(file_id)
 
 write(msg_string, *) 'closed file '//trim(file_name)
-call error_handler(E_MSG,'write_obs_seq',msg_string,source,revision,revdate)
+call error_handler(E_MSG,'write_obs_seq',msg_string)
 
 end subroutine write_obs_seq
 
@@ -2177,6 +2188,59 @@ endif
 call destroy_obs_def(obs%def)
 
 end subroutine destroy_obs
+
+!-----------------------------------------------------
+
+subroutine copy_partial_obs(obs1, obs2, numcopies, copylist, &
+                            numqc, qclist)
+
+! Copy from obs2 to obs1, the entire contents of the
+! obs def, but only the copies and qcs listed (in order)
+
+type(obs_type), intent(inout) :: obs1
+type(obs_type), intent(in) :: obs2
+integer, intent(in) :: numcopies, copylist(:), numqc, qclist(:)
+
+integer :: i
+
+! this needs idiotproofing - e.g. bad indices in the copylist
+! or qc list -- without too much expense in time.
+
+obs1%key = obs2%key
+call copy_obs_def(obs1%def, obs2%def)
+
+if (associated(obs1%values)) then
+   if (size(obs1%values) /= numcopies) then
+      deallocate(obs1%values)
+      allocate(obs1%values(numcopies))
+   endif
+else
+   allocate(obs1%values(numcopies))
+endif
+
+if (associated(obs1%qc)) then
+   if (size(obs1%qc) /= numqc) then
+      deallocate(obs1%qc)
+      allocate(obs1%qc(numqc))
+   endif
+else
+   allocate(obs1%qc(numqc))
+endif
+
+do i = 1, numcopies
+   ! error checks here?  if copylist(i) > numcopies or < 1, err out
+   obs1%values(i) = obs2%values(copylist(i))
+enddo
+do i = 1, numqc
+   ! and here?  if qclist(i) > numqc or < 1, err out
+   obs1%qc(i) = obs2%qc(qclist(i))
+enddo
+
+obs1%prev_time = obs2%prev_time
+obs1%next_time = obs2%next_time
+obs1%cov_group = obs2%cov_group
+
+end subroutine copy_partial_obs
 
 !-------------------------------------------------
 subroutine get_obs_def(obs, obs_def)

@@ -32,6 +32,11 @@
 -->
 
 <DIV ALIGN=CENTER>
+<A HREF="#OVERVIEW">OVERVIEW</A> / 
+<A HREF="#Examples">EXAMPLES</A> / 
+<A HREF="#Discussion">DISCUSSION</A> / 
+<A HREF="#FAQ">FAQ</A> / 
+<A HREF="#Building">BUILDING</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
@@ -52,60 +57,495 @@
 <H2>OVERVIEW</H2>
 
 <P>
-This program processes one or more compatible observation sequences 
-into a single observation sequence file, optionally selecting ranges
-by time, observation type, or location box.  
-The number of input files, their filenames, the output filename, and
-all the optional selection settings are read from the
-<em class=code>&amp;obs_sequence_tool_nml</em> namelist 
-in file <em class=file>input.nml</em>.
-<BR><BR>
+DART observation sequence files are stored in a proprietary format.
+This tool makes it easier to manipulate these files, allowing the user
+to subset or combine one or more files into a single output file.
+</P>
+
+<P>
+The tool has many options
+to select subsets of observations by time, type, data value, and location.
+The tool also allows the contents of observations to be
+changed by subsetting and/or reordering the copies and qc entries.
+Files with equivalent data but with different metadata labels 
+(e.g. 'NCEP QC' vs. 'QC') can now be merged as well.  
+The tool can be run without creating an output file, only printing 
+a summary of the counts of each observation type in the input files,
+and it can be used to convert from binary to ASCII and back.
+</P>
+
+<P>
+The actions of the <em class=code>obs_sequence_tool</em> program
+are controlled by a Fortran namelist, read from a file named
+<em class=file>input.nml</em> in the current directory.  A detailed
+description of each namelist item is described in the
+<a href="#Namelist">namelist section</a> of this document.
+The names used in this discussion refer to these namelist items.
+</P>
+
+<P>
+The following section contains examples of common usages for this tool.
+Below that are more details about DART observation sequence files, the
+structure of individual observations, and general background information.
+</P>
+
+
+<!--==================================================================-->
+
+<A NAME="Examples"></A>
+<HR>
+<H2>EXAMPLES</H2>
+
+<P>
+Here are details on how to set up common cases using this tool:
+<ul>
+<li><a href="#merge">Merge multiple files</a>
+<li><a href="#timeclamp">Subset in Time</a>
+<li><a href="#keepobs">Subset by Observation Type</a>
+<li><a href="#byloc">Subset by Location</a>
+<li><a href="#ascii">Binary to ASCII and back</a>
+<li><a href="#editmeta">Merging files with incompatible Metadata</a>
+<li><a href="#editdata">Altering the number of Copies or QC values</a>
+<li><a href="#print">Printing only</a>
+<li><a href="#keepval">Subset by Observation or QC Value</a>
+</ul>
+</P>
+
+<A NAME="merge"></A>
+<h3>Merge multiple files</h3>
+<P>
+Either specify a list of input files for <em class=code>filename_seq</em>, like:
+<pre>
+&obs_sequence_tool_nml
+   filename_seq       = 'obs_seq20071101',
+                        'qscatL2B_2007_11_01a.out',
+                        'obs_seq.gpsro_2007110106',
+   filename_out       = 'obs_seq20071101.all',
+   gregorian_cal      = .true.
+/
+</pre>
+and all observations in each of the three input files will be merged
+in time order and output in a single observation sequence file.
+Or, at the command line, create a file containing one filename per line,
+either with 'ls':
+<pre>
+> ls obs_seq_in* > tlist
+</pre>
+or with a text editor, or any other tool of your choice.  Then, 
+<pre>
+&obs_sequence_tool_nml
+   filename_seq_list = 'tlist',
+   filename_out       = 'obs_seq20071101.all',
+   gregorian_cal      = .true.
+/
+</pre>
+will open 'tlist' and read the filenames, one per line, and merge them
+together.  The output file will be named 'obs_seq20071101.all'.
+</P>
+
+<A NAME="timeclamp"></A>
+<h3>Subset in Time</h3>
+<P>
 The observations copied to the output file can be restricted in
 time by setting the namelist items for the first and last observation
 timestamps (in days and seconds).
-It is ok for some of the input
+It is not an error for some of the input
 files to have no observations in the requested time range, and 
-the input files can have overlapping time ranges.
-<BR><BR>
-A list of observation types can be given, and a flag to specify
-that either only those types will be copied to the output, or
-everything except those types will be copied.
-<BR><BR>
-A minimum and maximum latitude and longitude can be specified,
-and only observations within that horizontal box will be copied
-to the output. There is currently no way to select observations
-by height, but future versions may support some function like this.
-<BR><BR>
+multiple input files can have overlapping time ranges.
+For example:
+<pre>
+&obs_sequence_tool_nml
+   filename_seq       = 'obs_seq20071101',
+                        'qscatL2B_2007_11_01a.out',
+                        'obs_seq.gpsro_2007110106',
+   filename_out       = 'obs_seq20071101.06hrs',
+   first_obs_days     = 148592,
+   first_obs_seconds  =  10801,
+   last_obs_days      = 148592,
+   last_obs_seconds   =  32400,
+   gregorian_cal      = .true.
+/
+</pre>
+</P>
+
+<A NAME="keepobs"></A>
+<h3>Subset by Observation Type</h3>
+<P>
+You specify a list of observation types, by string name, and then
+specify a logical value to say whether this is the list of observations
+to keep, or if it's the list of observations to discard.  For example,
+<pre>
+&obs_sequence_tool_nml
+   filename_seq       = 'obs_seq20071101.06hrs',
+   filename_out       = 'obs_seq20071101.wind',
+   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
+                        'RADIOSONDE_V_WIND_COMPONENT',
+   keep_types         = .true.,
+   gregorian_cal      = .true.
+/
+</pre>
+will create an output file which contains only the U and V wind
+observations from the given input file.
+<pre>
+&obs_sequence_tool_nml
+   filename_seq       = 'obs_seq20071101.06hrs',
+   filename_out       = 'obs_seq20071101.notemp',
+   obs_types          = 'RADIOSONDE_TEMPERATURE',
+   keep_types         = .false.,
+   gregorian_cal      = .true.
+/
+</pre>
+will strip out all the radiosonde temperature observations
+and leave everything else.
+</P>
+
+<A NAME="byloc"></A>
+<h3>Subset by Location</h3>
+<P>
+If the observations have locations specified in 3 dimensions,
+as latitude, longitude, and a vertical coordinate, then it can 
+be subset by specifying the corners of a lat, lon box.  There is
+currently no vertical subsetting option.  For example:
+<pre>
+   min_lat            =    0.0,
+   max_lat            =   20.0,
+   min_lon            =  230.0,
+   max_lon            =  260.0,
+</pre>
+will only output observations between 0 and 20 latitude
+and 230 to 260 in longitude.  Latitude ranges are &minus;90 to 90,
+longitude can either be specified from &minus;180 to +180, or 0 to 360.
+</P>
+<!-- i am using minus here because a regular dash was allowing a line
+     break between it and the 180, depending on the page width. 
+     i could not find another way to always keep them together.
+-->
+<P>
+If the observations have 1 dimensional locations, between 0 and 1,
+then a bounding box can be specified like:
+<pre>
+   min_box = 0.2,
+   max_box = 0.4,
+</pre>
+will keep only those observations between 0.2 and 0.4.  In all
+these tests, points on the boundaries are considered inside the box.
+</P>
+
+<A NAME="ascii"></A>
+<h3>Binary to ASCII and back</h3>
+<P>
+To convert a (more compact) binary observation sequence file to 
+a (human readable and portable) ASCII file, a single input and 
+single output file can be specified with no selection criteria.
+The output file format is specified by the 
+<em class=code>write_binary_obs_sequence</em> item in
+the <em class=code>&amp;obs_sequence_nml</em> namelist 
+in the <em class=file>input.nml</em> file.
+It is a Fortran logical; setting it to <em class=code>.TRUE.</em>
+will write a binary file, setting it to <em class=code>.FALSE.</em>
+will write an ASCII text file.  If you have a binary file, it must
+be converted on the same kind of platform as it was created on before
+being moved to another architecture.  At this point in time, there are
+only 2 remaining incompatible platforms:  IBM systems based on PowerPC
+chips, and everything else (which is Intel or AMD).
+</P>
+Any number of input files and selection options can be specified, as well,
+but for a simple conversion, leave all other input namelist items unset.
+</P>
+
+<A NAME="editmeta"></A>
+<h3>Merging files with incompatible Metadata</h3>
+<P>
+To merge files which have the same number of copies and qc but
+different labels for what is exactly the same data, you can specify
+a list of synonym strings that will pass the matching test.  For example:
+<pre>
+&obs_sequence_tool_nml
+   filename_seq       = 'qscatL2B_2007_11_01.out',
+                        'obs_seq20071101',
+                        'obs_seq.gpsro_2007110124',
+   filename_out       = 'obs_seq20071101.all',
+   gregorian_cal      = .true.
+   synonymous_copy_list = 'NCEP BUFR observation', 'AIRS observation', 'observation',
+   synonymous_qc_list   = 'NCEP QC index', 'AIRS QC', 'QC flag - wvc quality flag', 'QC',
+/
+</pre>
+will allow any copy listed to match any other copy on that list, and 
+same with the QC values.  If the output metadata strings are not 
+specified (see below), then the actual metadata strings from the first 
+file which is used will set the output metadata strings.
+<P>
+To rename or override, with care, existing metadata strings in a file,
+set the appropriate edit strings to true, and set the same number
+of copies and/or QC values as will be in the output file.  
+Note that this will simply
+replace, without warning, whatever is originally listed as metadata.
+You can really mangle things here, so use this with caution:
+<pre>
+&obs_sequence_tool_nml
+   filename_seq       = 'qscat_all_qc_305.out', 'qscat_all_qc_306.out',
+   filename_out       = 'qscat_1_qc_2007_11.out',
+   edit_copy_metadata = .true.,
+   new_copy_metadata  = 'observation', 
+   edit_qc_metadata   = .true.,
+   new_qc_metadata    = 'QC', 'DART quality control',
+   gregorian_cal      = .true.
+/
+</pre>
+The log file will print out what input strings are being replaced;
+check this carefully to be sure you are doing what you expect.
+</P>
+<P>
+If you use both a synonym list and the edit list, the output file will
+have the specified edit list strings for metadata.
+</P>
+
+<A NAME="editdata"></A>
+<h3>Altering the number of Copies or QC values</h3>
+<P>
+To delete some of the copies or qc values in each observation, specify
+the copy numbers which are to be passed through, and list them in the 
+exact order they should appear in the output:
+<pre>
+   edit_copies = .true.,
+   new_copy_index = 1, 2, 81, 82,
+
+   edit_qcs = .true.,
+   new_qc_index = 2, 
+</pre>
+This will create an output sequence file with only 4 copies; the original
+first and second copies, and copies 81 and 82.  The original metadata will
+be retained.  It will have only the second QC value.
+</P>
+<P>
+If you also specify new metadata strings, specify them in the order
+and the number of strings that will appear in the output file, regardless
+of how many copies or qc values there were in the original input files.
+</P>
+<P>
+If necessary, you can simply reorder copies or qc values by
+specifying the same number of index values as currently exists,
+but list them in a different order.  Use caution here; there are
+no checks to be sure values have not been replicated.  I suppose
+there might actually be a use for this at some point, so it isn't
+prohibited.  Note that the only other thing that people might want
+to do at some point is to take the copies from an observation in
+one file and add them to the copies in another file.  This is not
+supported (yet).
+</P>
+
+<A NAME="print"></A>
+<h3>Printing only</h3>
+<P>
+Note that you can set all the other options and then set print true,
+and it will do all the work and then just print out how many of each
+obs type would have been created.  It is an easy way to preview what your
+choices would do without waiting to write an output file.
+It only prints the type breakdown for output file, but does print
+a running total of how many obs are being kept from each input file.
+For example:
+<pre>
+&obs_sequence_tool_nml
+   filename_seq       = 'obs_seq20071101',
+   print_only         =  .true.,
+/
+</pre>
+</P>
+
+<A NAME="keepval"></A>
+<h3>Subset by Observation or QC Value</h3>
+<P>
+You can specify a min, max data value and/or min, max qc value,
+and only those within the range will be kept.  There is no exclude option.
+For the data value, you must also specify an observation type since
+different types have different units and valid ranges.  For example:
+<pre>
+# keep only observations with a DART QC of 0:
+   qc_metadata        = 'Dart quality control',
+   min_qc             = 0,
+   max_qc             = 0,
+
+# keep only radiosonde temp obs between 250 and 300 K:
+   copy_metadata      = 'NCEP BUFR observation',
+   copy_type          = 'RADIOSONDE_TEMPERATURE',
+   min_copy           = 250.0,
+   max_copy           = 300.0,
+</pre>
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Discussion"></A>
+<HR>
+<H2>DISCUSSION</H2>
+
+<P>
+DART observation sequence files are lists of individual observations,
+each with a type, a time, one or more values (called copies), 
+zero or more quality control flags,
+a location, and an error estimate.  Regardless of the physical order
+of the observations in the file, they are always processed in increasing
+time order, using a simple linked list mechanism.  This tool reads in
+one or more input observation sequence files, and creates a single
+output observation sequence file with all observations sorted into
+a single, monotonically increasing time ordered output file.
+</P>
+
+<P>
+DART observation sequence files contain a header with the total
+observation count and a table of contents of observation types.
+The output file from this tool culls out unused observations, and
+only includes observation types in the table of contents which
+actually occur in the output file.  The table of contents 
+<b>does not</b> need to be the same across multiple files to merge
+them.  Each file has a self-contained numbering system for
+observation types.  However, the <em class=code>obs_sequence_tool</em>
+must be compiled with a list of observation types (defined in the
+<em class=file>obs_def</em> files listed in the <em class=code>preprocess</em>
+namelist) which includes all defined types across all input files.
+See the <a href="#Building">building section</a> below for more
+details on compiling the tool.
+</P>
+
+<P>
+The tool can handle observation sequence files at any stage along the
+processing pipeline: a template file with locations but no data, input
+files for an assimilation which have observation values only, or output
+files from an assimilation which then might include the prior and posterior
+mean and standard deviation, and optionally the output from the forward
+operator from each ensemble member. In all of these cases, the format
+of each individual observation is the same.  It has zero or more 
+<em>copies</em>, which is where the observation value and the means,
+forward operators, etc are stored.
+Each observation also has zero
+or more quality control values, <em>qc</em>, which can be associated
+with the incoming data quality, or can be added by the DART software
+to indicate how the assimilation processed this observation.  Each of 
+the copies and qc entries has an single associated character label 
+at the start of the observation sequence file
+which describes what each entry is, called the <em>metadata</em>.
+</P>
+
+<P>
+For multiple observation sequence files to be merged
+they must have the same number of <em>copies</em> and <em>qc</em> values,
+and all associated <em>metadata</em> must be identical.
+To merge multiple files where the numbers do not match exactly, the
+tool can be used on the individual files to rename, subset, and
+reorder the <em>copies</em> and/or <em>qc</em> first, and then the
+resulting files are mergeable.  
+To merge multiple files where the metadata strings do not match,
+but the data copy or qc values are indeed the same things, there are
+options to rename the metadata strings.  <b>This option should be
+used with care.  If the copies or qc values in different files are not
+really the same, the tool will go ahead and merge them but the resulting
+file will be very wrong.</b>
+</P>
+
+<P>
+The latest version of the tool offers an additional option for specifying
+a list of input files.  The user creates an ASCII file by any appropriate
+method, with one filename per line.  They specify this file with the
+<em class=code>filename_seq_list</em> namelist item, and the tool opens
+each input file in turn and processes the list.  In previous versions of
+the tool the user had to specify a count of the number of input files.
+In the current version, if the number of input files,
+<em class=code>num_input_files</em>, is unspecified or specified as 0,
+the number will be computed automatically.  If a count is specified,
+it must match either the explicit list in <em class=code>filename_seq</em>,
+or the file count from the contents of <em class=code>filename_seq_list</em>.
+</P>
+
+<P>
+Time is stored inside of DART as a day number and number of seconds,
+which is the same no matter which calendar is being used.  But many
+real-world observations use the Gregorian calendar for converting
+between number of days and an actual date.  If the 
+<em class=code>gregorian_cal</em> namelist item is set to
+<em class=code>.TRUE.</em> then any times will be printed out
+to the log file will be both in day/seconds and calendar date.  
+If the observation times are not using the Gregorian calendar, then set
+this value to <em class=code>.FALSE.</em> and only days/seconds will
+be printed.
+</P>
+
+<P>
+The most common use of this tool is to process a set of input files
+into a single output file, or to take one input file and extract a subset
+of observations into a smaller file.  The <a href="#Examples">examples</a>
+section below outlines several common scenerios.
+</P>
+
+<P>
+The tool now also allows the number of copies to be changed, but only
+to select subsets or reorder them.  It is not yet possible to merge copies
+or qcs from observations in different files into a 
+single observation with more copies.
+</P>
+
+<P>
 Observations can also be selected by a given range of quality
 control values or data values.
-<BR><BR>
-If multiple input observation sequence files are processed
-they must be 'compatible', which means they have matching
-numbers of and metadata names for the data copies and qc values.
-Possibly future versions of this tool will allow you to remove
-copies or qc fields from each observation, but this is not
-currently implemented.  If the number of copies or qcs match
-but the metadata labels do not, the header of the obs_sequence file
-can be edited, carefully, if in ASCII format, to make the strings the same.
-The table of contents of observation types <em>do not</em> have to
-match between different input files, and the type numbers in 
-different files <em>do not</em> have to be the same.
-The output file will be written with a table of contents that
-includes only those observation types which actually exist in
-the output file.
-<BR><BR>
-<em class=unix>obs_sequence_tool</em> does several things which can
-be useful even when there is only a single input file and no selection
-criteria is specified.
-The program will always sort the output observation
-sequence into increasing time order, and will not copy
-any unreferenced observations from the input sequence. 
-It can also be used to convert an observation sequence file from
-(more compact) binary to (human readable) ASCII, or vice-versa. 
-The output file format is specified by the 
-<em class=code>&amp;obs_sequence_nml</em> namelist 
-in file <em class=file>input.nml</em>.
-<BR><BR>
+</P>
+
+<P>
+Observations can be restricted to a given bounding box, either in
+latitude and longitude (in the horizontal only), or if the observations
+have 1D locations, then a single value for min_box and max_box can be 
+specified to restrict the observations to a subset of the space.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="FAQ"></A>
+<HR>
+<H2>FAQ</H2>
+
+<h3>Can I merge files where the observation types are different?</h3>
+<P>Yes.  The numbering in the table of contents at the top of each file 
+is only local to that file.  All processing of types is done with the
+string name, not the numbers.  Neither the set of obs types, nor the
+observation numbers need to match across files.
+</P>
+<h3>I get an error about unknown observation types.</h3>
+<P>
+Look at the <em class=code>&amp;preprocess_nml</em> namelist in the
+input.nml file in the directory where your tool was built.  It must
+have all the observation types you need to handle listed in the
+<em class=code>input_files</em> item.
+</P>
+<h3>Can I list more files than necessary in my input file list?</h3>
+<P>
+Sure.  It will take slightly longer to run, in that the tool must
+open the file and check the times and observation types.  But it is
+not an error to list files where no observations will be copied to the
+output file.  It is a common task to list a set of observation files
+and then set the first and last observation times, run the tool to
+select a shorter time period, then change the first and last times
+and run again with the same list of files.
+</P>
+
+
+<!--==================================================================-->
+
+<A NAME="Building"></A>
+<HR>
+<H2>BUILDING</H2>
+
+<P>
+Most <tt>$DART/models/*/work</tt> directories will build the tool along with
+other executable programs.  It is also possible to build the
+tool in the <tt>$DART/observations/utilities</tt> directory.
+The <tt>preprocess</tt> program must be built and run first, to define
+what set of observation types will be supported.  See the 
+<a href="../preprocess/preprocess.html">preprocess documentation</a>
+for more details on how to define the list and run it.
+The combined list of all observation types which will be encountered
+over all input files must be in the preprocess input list.
+The other important choice when building the tool is to include a
+compatible locations module.  For the low-order models,
+the <tt>oned</tt> module should be used; for real-world observations,
+the <tt>threed_sphere</tt> module should be used.
 </P>
 
 
@@ -124,21 +564,31 @@ obs_sequence_mod
 
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
 <A NAME="Namelist"></A>
- <BR><HR><BR>
+<HR>
+<H2>NAMELIST</H2>
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
  '&amp;' and terminating with a slash '/'.
  </P>
  <div class=namelist><pre>
  <em class=call>namelist / obs_sequence_tool_nml / </em> 
-         num_input_files, filename_seq, filename_out, &
-         first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds, &
-         obs_types, keep_types, print_only, gregorian_cal, &
-         min_lat, max_lat, min_lon, max_lon, &
-         qc_metadata, min_qc, max_qc, &
-         copy_metadata, copy_type, min_copy, max_copy
+         filename_seq, filename_seq_list, num_input_files, filename_out,
+         first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds,
+         min_lat, max_lat, min_lon, max_lon, 
+         min_box, max_box,
+         obs_types, keep_types, 
+         min_qc, max_qc, qc_metadata,
+         min_copy, max_copy, copy_metadata, copy_type, 
+         edit_copy_metadata, new_copy_metadata,
+         edit_qc_metadata, new_qc_metadata,
+         edit_copies, new_copy_index, 
+         edit_qcs, new_qc_index
+         synonym_copy_list, synonym_qc_list,
+         print_only, 
+         gregorian_cal,
  </pre></div>
 
- <H3 class=indent1>Discussion</H3>
+<!--  old, deprecated.
+<H3 class=indent1>Discussion</H3>
  <P>
  This program manipulates observation sequence files.  It can combine
  or split files; it can select time ranges, locations, observation types,
@@ -148,6 +598,7 @@ obs_sequence_mod
  the setting of the <em class=code>write_binary_obs_sequence</em>
  variable in the <em class=code>&amp;obs_sequence_nml</em> namelist.
  </P>
+-->
 
  <P>
  This <em class=code>&amp;obs_sequence_tool</em> namelist is read from 
@@ -161,14 +612,23 @@ obs_sequence_mod
  <TR><!--contents--><TD valign=top>num_input_files</TD>
      <!--  type  --><TD>integer</TD>
      <!--descript--><TD>The number of observation sequence files to process.
-                        Maximum of 50.
-                        Default: 1</TD></TR>
+                        Maximum of 500.  If left 0, the length is set by the
+                        number of input files given.  If non-zero, must match
+                        the given input file list length.
+                        Default: 0</TD></TR>
  <TR><!--contents--><TD valign=top>filename_seq</TD>
-     <!--  type  --><TD>character(len=129), dimension(50)</TD>
+     <!--  type  --><TD>character(len=129), dimension(500)</TD>
      <!--descript--><TD>The array of names of the observation sequence files to process.
                         With the F90 namelist mechanism, it is only necessary
-                        to specify the names you are going to use, not all 50.
-                        Default: 'obs_seq.out'</TD></TR>
+                        to specify the names you are going to use, not all.
+                        Default: ''</TD></TR>
+ <TR><!--contents--><TD valign=top>filename_seq_list</TD>
+     <!--  type  --><TD>character(len=129)</TD>
+     <!--descript--><TD>The name of a text file which contains, one per line,
+                        the names of the observation sequence files to process.
+                        You can only specify one of filename_seq OR 
+                        filename_seq_list, not both.
+                        Default: ''</TD></TR>
  <TR><!--contents--><TD valign=top>filename_out</TD>
      <!--  type  --><TD>character(len=129)</TD>
      <!--descript--><TD>The name of the resulting output observation sequence file.
@@ -245,17 +705,27 @@ obs_sequence_mod
                         the 3d-sphere locations module.  If min_lon is more than max_lon,
                         wrap across 360 to 0 is assumed.
                         Default: none</TD></TR>
+ <TR><!--contents--><TD valign=top>min_box</TD>
+     <!--  type  --><TD>real(r8)(:)</TD>
+     <!--descript--><TD>If the locations are 1D, set a min value here instead of using
+                        the lat/lon box values.
+                        Default: none</TD></TR>
+ <TR><!--contents--><TD valign=top>max_box</TD>
+     <!--  type  --><TD>real(r8)(:)</TD>
+     <!--descript--><TD>If the locations are 1D, set a max value here instead of using
+                        the lat/lon box values.
+                        Default: none</TD></TR>
  <TR><!--contents--><TD valign=top>qc_metadata</TD>
      <!--  type  --><TD>character</TD>
      <!--descript--><TD>If specified, the metadata string describing one of the quality
                         control (QC) fields in the input observation sequence files.
                         Default: none</TD></TR>
- <TR><!--contents--><TD valign=top>qc_min</TD>
+ <TR><!--contents--><TD valign=top>min_qc</TD>
      <!--  type  --><TD>real</TD>
      <!--descript--><TD>If specified, the minimum qc value in the QC field matching the
                         qc_metadata name that will be copied to the output file. 
                         Default: none</TD></TR>
- <TR><!--contents--><TD valign=top>qc_max</TD>
+ <TR><!--contents--><TD valign=top>max_qc</TD>
      <!--  type  --><TD>real</TD>
      <!--descript--><TD>If specified, the maximum qc value in the QC field matching the
                         qc_metadata name that will be copied to the output file. 
@@ -271,12 +741,12 @@ obs_sequence_mod
      <!--descript--><TD>If specified, the metadata string describing one of the data
                         copy fields in the input observation sequence files.
                         Default: none</TD></TR>
- <TR><!--contents--><TD valign=top>copy_min</TD>
+ <TR><!--contents--><TD valign=top>min_copy</TD>
      <!--  type  --><TD>real</TD>
      <!--descript--><TD>If specified, the minimum value in the data copy field matching the
                         copy_metadata name that will be copied to the output file. 
                         Default: none</TD></TR>
- <TR><!--contents--><TD valign=top>copy_max</TD>
+ <TR><!--contents--><TD valign=top>max_copy</TD>
      <!--  type  --><TD>real</TD>
      <!--descript--><TD>If specified, the maximum value in the data copy field matching the
                         copy_metadata name that will be copied to the output file. 
@@ -288,6 +758,66 @@ obs_sequence_mod
                         year/month/day hour:min:sec format.  Set this to .false. if the observations
                         were not created with gregorian calendar times.
                         Default: .TRUE.</TD></TR>
+ <TR><!--contents--><TD valign=top>edit_copy_metadata</TD>
+     <!--  type  --><TD>logical</TD>
+     <!--descript--><TD>If true, replace the output file metadata strings with the list
+                        specified in the new_copy_metadata list.
+                        Default: .false.</TD></TR>
+ <TR><!--contents--><TD valign=top>new_copy_metadata</TD>
+     <!--  type  --><TD>character(len=*)(:)</TD>
+     <!--descript--><TD>List of new metadata strings.  Use with care, there is no error checking
+                        to ensure you are doing a valid replacement.
+                        Default: none</TD></TR>
+ <TR><!--contents--><TD valign=top>edit_copies</TD>
+     <!--  type  --><TD>logical</TD>
+     <!--descript--><TD>If true, subset or rearrange the actual data copies in the output.
+                        The new_copy_index list controls the output order of copies from the
+                        input files.
+                        Default: .false.</TD></TR>
+ <TR><!--contents--><TD valign=top>new_copy_index</TD>
+     <!--  type  --><TD>integer(:)</TD>
+     <!--descript--><TD>An array of integers, which control how copies in the input are
+                        moved to the output sequence.
+                        Default: none</TD></TR>
+ <TR><!--contents--><TD valign=top>edit_qc_metadata</TD>
+     <!--  type  --><TD>logical</TD>
+     <!--descript--><TD>If true, replace the output file metadata strings with the list
+                        specified in the new_qc_metadata list.
+                        Default: .false.</TD></TR>
+ <TR><!--contents--><TD valign=top>new_qc_metadata</TD>
+     <!--  type  --><TD>character(len=*)(:)</TD>
+     <!--descript--><TD>List of new metadata strings.  Use with care, there is no error checking
+                        to ensure you are doing a valid replacement.
+                        Default: none</TD></TR>
+ <TR><!--contents--><TD valign=top>edit_qcs</TD>
+     <!--  type  --><TD>logical</TD>
+     <!--descript--><TD>If true, subset or rearrange the actual data qcs in the output.
+                        The new_qc_index list controls the output order of qcs from the
+                        input files.
+                        Default: .false.</TD></TR>
+ <TR><!--contents--><TD valign=top>new_qc_index</TD>
+     <!--  type  --><TD>integer(:)</TD>
+     <!--descript--><TD>An array of integers, which control how qcs in the input are
+                        moved to the output sequence.
+                        Default: none</TD></TR>
+ <TR><!--contents--><TD valign=top>synonym_copy_list</TD>
+     <!--  type  --><TD>character(len=*)(:)</TD>
+     <!--descript--><TD>An array of strings which are to be considered synonyms in the copy
+                        metadata strings for all the input obs seq files.
+                        Any string in this list
+                        will match any other string.  The first obs sequence file to copy
+                        observations to the output file will set the actual values used,
+                        unless they are explicitly overridden by edit_copy_metadata.
+                        Default: none</TD></TR>
+ <TR><!--contents--><TD valign=top>synonym_qc_list</TD>
+     <!--  type  --><TD>character(len=*)(:)</TD>
+     <!--descript--><TD>An array of strings which are to be considered synonyms in the qc
+                        metadata strings for all the input obs seq files.
+                        Any string in this list
+                        will match any other string.  The first obs sequence file to qc
+                        observations to the output file will set the actual values used,
+                        unless they are explicitly overridden by edit_qc_metadata.
+                        Default: none</TD></TR>
  </TABLE>
  
 
@@ -329,13 +859,12 @@ obs_sequence_mod
 <TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
     <!-- message --><TD VALIGN=top>num_input_files &gt; max_num_input_files. 
 		    change max_num_input_files in source file</TD>
-    <!-- comment --><TD VALIGN=top>The default is 50 files. If you're trying to 
-		    merge more than that, you're going about it the wrong way ...</TD>
+    <!-- comment --><TD VALIGN=top>The default is 500 files.</TD>
 </TR>
 
 <TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
     <!-- message --><TD VALIGN=top>num_input_files and filename_seq mismatch</TD>
-    <!-- comment --><TD VALIGN=top>the number of filenames does not match
+    <!-- comment --><TD VALIGN=top>The number of filenames does not match
                         the filename count.</TD>
 </TR>
 </TABLE>
@@ -361,19 +890,22 @@ obs_sequence_mod
 <P>
 Long laundry list of things this tool could do, including:
 <UL>
-<LI>Remove copies or qc fields from each observation</LI>
+<LI>Combine copies or qc fields from multiple files into a single 
+observation</LI>
 <LI>Select based on vertical location value.  (Complicated by the
 options of specifying vertical in meters, pressure, or model levels.)</LI>
 <LI>Sort obs with identical timestamps by a specified type list, so
 one kind of ob gets assimilated before another.</LI>
 <LI>Sort obs with idential timestamps so any at the same location 
-are contiguous in file,
-so the internal caching of previous locations will be more efficient.</LI>
+are contiguous in file
+(so the internal caching of previous locations will be more efficient).</LI>
 <LI>Remove duplicates (difficult to accurately compare floating
 point values, but identical obs should be possible to recognize,
 or some epsilon could be specified.)</LI>
 <LI>A way to split a single input file into multiple output files,
-based on a time interval.</LI>
+based on a time interval. Now with the <em>schedule</em> type,
+specifying the intervals is easy; need a way to generate the
+output filenames with a pattern.</LI>
 </UL>
 </P>
 

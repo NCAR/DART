@@ -1,22 +1,32 @@
 &obs_sequence_tool_nml
-   num_input_files    = 2,
-   filename_seq       = 'obs_seq.one', 'obs_seq.two',
-   filename_out       = 'obs_seq.processed',
-   print_only         =  .false.,
-   first_obs_days     = -1,
-   first_obs_seconds  = -1,
-   last_obs_days      = -1,
-   last_obs_seconds   = -1,
-   min_lat            =  -90.0,
-   max_lat            =   90.0,
-   min_lon            =    0.0,
-   max_lon            =  360.0,
-   gregorian_cal      = .true.
+   filename_seq         = 'obs_seq.one', 'obs_seq.two',
+   filename_out         = 'obs_seq.processed',
+   filename_seq_list    = '',
+   num_input_files      = 0,
+   first_obs_days       = -1,
+   first_obs_seconds    = -1,
+   last_obs_days        = -1,
+   last_obs_seconds     = -1,
+   obs_types            = '',
+   keep_types           = .true.,
+   min_lat              =  -90.0,
+   max_lat              =   90.0,
+   min_lon              =    0.0,
+   max_lon              =  360.0,
+   print_only           = .false.,
+   gregorian_cal        = .true.,
+   edit_copy_metadata   = .false.,
+   new_copy_metadata    = '',
+   edit_qc_metadata     = .false.,
+   new_qc_metadata      = '',
+   edit_copies          = .false.,
+   edit_qc              = .false.,
+   synonymous_copy_list = '',
+   synonymous_qc_list   = '', 
 /
 
-! these have no defaults (or the defaults are missing_r8 which
-! cannot be represented in a namelist).  here are examples
-! of their use:
+! SEE THE .HTML FILE FOR MORE DETAILED EXAMPLES AND FULL
+! DOCUMENTATION.  here are brief examples of possible settings:
 !
 ! keep only observations with a DART QC of 0:
 !   qc_metadata        = 'Dart quality control',
@@ -39,4 +49,21 @@
 !                        'RADIOSONDE_V_WIND_COMPONENT',
 !   keep_types         = .false.,
 !
+! change the metadata strings:
+!   edit_copy_metadata  = .true.,
+!   new_copy_metadata   = 'observations', 
+!   edit_qc_metadata    = .true.,
+!   new_qc_metadata     = 'QC', 'DART quality control',
+!
+! change the number and order of the copies and qc:
+!   edit_copies    = .true.,
+!   new_copy_index = 1, 2, 81, 82
+!   edit_qcs       = .true.,
+!   new_qc_index   =  2
+!
+! allow different metadata strings in multiple files to match:
+!   synonymous_copy_list = 'NCEP BUFR observations', 'observations',
+!   synonymous_qc_list   = 'NCEP QC index', 'AIRS QC', 'QC',
+
+
 
