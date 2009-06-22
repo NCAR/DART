@@ -27,7 +27,7 @@ use     location_mod, only : location_type,      get_close_maxdist_init, &
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              logfileunit, get_unit, nc_check, do_output, to_upper, &
                              find_namelist_in_file, check_namelist_read, &
-                             open_file, file_exist
+                             open_file, file_exist, find_textfile_dims, file_to_text
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COMPONENT, &
                              KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT
 use mpi_utilities_mod, only: my_task_id
@@ -1254,6 +1254,14 @@ integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID, ZCVarID
 integer :: SVarID, TVarID, UVarID, VVarID, EtaVarID 
 
 !----------------------------------------------------------------------
+! variables for the namelist output
+!----------------------------------------------------------------------
+
+character(len=129), allocatable, dimension(:) :: textblock
+integer :: LineLenDimID, nlinesDimID, nmlVarID
+integer :: nlines, linelen
+
+!----------------------------------------------------------------------
 ! local variables 
 !----------------------------------------------------------------------
 
@@ -1297,6 +1305,8 @@ call nc_check(nf90_Redef(ncFileID),"nc_write_model_atts",   "redef "//trim(filen
 ! Our job is create the 'model size' dimension.
 !-------------------------------------------------------------------------------
 
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name="NMLlinelen", dimid=LineLenDimID), &
+                           "nc_write_model_atts","inq_dimid NMLlinelen")
 call nc_check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID), &
                            "nc_write_model_atts", "copy dimid "//trim(filename))
 call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID), &
@@ -1332,6 +1342,25 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate ), &
            "nc_write_model_atts", "revdate put "//trim(filename))
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model",  "MITgcm_ocean" ), &
            "nc_write_model_atts", "model put "//trim(filename))
+
+!-------------------------------------------------------------------------------
+! Determine shape of most important namelist
+!-------------------------------------------------------------------------------
+
+call find_textfile_dims("data", nlines, linelen)
+
+allocate(textblock(nlines))
+textblock = ''
+
+call nc_check(nf90_def_dim(ncid=ncFileID, name="nlines", &
+              len = nlines, dimid = nlinesDimID), &
+              'nc_write_model_atts', 'def_dim nlines ')
+
+call nc_check(nf90_def_var(ncFileID,name="datanml", xtype=nf90_char,    &
+              dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
+              'nc_write_model_atts', 'def_var datanml')
+call nc_check(nf90_put_att(ncFileID, nmlVarID, "long_name",       &
+              "contents of data namelist"), 'nc_write_model_atts', 'put_att datanml')
 
 !-------------------------------------------------------------------------------
 ! Here is the extensible part. The simplest scenario is to output the state vector,
@@ -1558,6 +1587,15 @@ else
                 "nc_write_model_atts", "ZC put_var "//trim(filename))
 
 endif
+
+!-------------------------------------------------------------------------------
+! Fill the variables we can
+!-------------------------------------------------------------------------------
+
+call file_to_text("data", textblock)
+call nc_check(nf90_put_var(ncFileID, nmlVarID, textblock ), &
+              'nc_write_model_atts', 'put_var nmlVarID')
+deallocate(textblock)
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
@@ -2568,11 +2606,11 @@ varname = progvarnames(varindex)
 
 if (dim1 /= Nx) then
    write(msgstring,*)trim(varname),' 2d array dim 1 ',dim1,' /= ',Nx
-   call error_handler(E_ERR,'model_mod:vector_to_2d__prog_var',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'model_mod:vector_to_2d_prog_var',msgstring,source,revision,revdate) 
 endif
 if (dim2 /= Ny) then
    write(msgstring,*)trim(varname),' 2d array dim 2 ',dim2,' /= ',Ny
-   call error_handler(E_ERR,'model_mod:vector_to__2d_prog_var',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'model_mod:vector_to_2d_prog_var',msgstring,source,revision,revdate) 
 endif
 
 ii = start_index(varindex)
