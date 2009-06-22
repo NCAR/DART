@@ -1,0 +1,15 @@
+#!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2009, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next few lines under version control, do not edit>
+# $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/MITgcm_ocean/work/mkmf_restart_file_tool $
+# $Id: mkmf_restart_file_tool 3716 2008-12-15 18:57:29Z nancy $
+# $Revision: 3716 $
+# $Date: 2008-12-15 11:57:29 -0700 (Mon, 15 Dec 2008) $
+#
+../../../mkmf/mkmf -p restart_file_tool -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+ -a "../../.." path_names_restart_file_tool

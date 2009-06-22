@@ -1,0 +1,15 @@
+#!/bin/csh
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2009, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next few lines under version control, do not edit>
+# $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/MITgcm_ocean/work/mkmf_create_fixed_network_seq $
+# $Id: mkmf_create_fixed_network_seq 3439 2008-07-01 23:03:55Z thoar $
+# $Revision: 3439 $
+# $Date: 2008-07-01 17:03:55 -0600 (Tue, 01 Jul 2008) $
+#
+../../../mkmf/mkmf -p create_fixed_network_seq -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+ -a "../../.." path_names_create_fixed_network_seq
