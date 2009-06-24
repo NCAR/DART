@@ -739,13 +739,12 @@ istatus = 0
 ! The zc array contains the depths of the center of the vertical grid boxes
 
 ! It is assumed that the top box is shallow and any observations shallower
-! than the depth of this boxes center are just given the value of the
+! than the depth of this box's center are just given the value of the
 ! top box.
 if(lheight > hgt_array(1)) then
    top = 1
    bot = 2
    ! NOTE: the fract definition is the relative distance from bottom to top
-   ! ??? Make sure this is consistent with the interpolation
    fract = 1.0_r8 
 endif
 
@@ -800,12 +799,12 @@ istatus = 0
 
 ! Find out what latitude box and fraction
 ! The latitude grid being used depends on the variable type
-! V is on the YG latitude grid
-if(var_type == KIND_V_CURRENT_COMPONENT) then
+! U and V are on the YG latitude grid
+if(var_type == KIND_U_CURRENT_COMPONENT .or. var_type == KIND_V_CURRENT_COMPONENT) then
    lat_array = yg
    call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
 else 
-   ! Eta, U, T and S are on the YC latitude grid
+   ! Eta, T and S are on the YC latitude grid
    lat_array = yc
    call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
 endif
@@ -817,12 +816,12 @@ if(lat_status /= 0) then
 endif
 
 ! Find out what longitude box and fraction
-if(var_type == KIND_U_CURRENT_COMPONENT) then
-   ! U velocity is on the XG grid
+if(var_type == KIND_U_CURRENT_COMPONENT .or. var_type == KIND_V_CURRENT_COMPONENT) then
+   ! U and V velocity is on the XG grid
    lon_array = xg
    call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
 else
-   ! Eta, V, T, and S are on the XC grid
+   ! Eta, T, and S are on the XC grid
    lon_array = xc
    call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
 endif
@@ -950,8 +949,8 @@ subroutine lon_bounds(llon, nlons, lon_array, bot, top, fract, istatus)
 ! number of longitudes in the grid, returns the indices of the longitude
 ! below and above the location longitude and the fraction of the distance
 ! between. istatus is returned as 0 unless the location longitude is 
-! not between any of the longitude box boundaries. This should be modified
-! for global wrap-around grids.
+! not between any of the longitude box boundaries. A module storage flag
+! indicates whether the grid wraps around in longitude. 
 ! Algorithm fails for a silly grid that
 ! has only two longitudes separated by 180 degrees.
 
@@ -972,28 +971,35 @@ if ( .not. module_initialized ) call static_init_model
 istatus = 0
 
 !print *, 'computing bounds for = ', llon
-! This is inefficient, someone could clean it up
-! Plus, it doesn't work for a global model that wraps around
+! This is inefficient, someone could clean it up for regularly spaced longitudes
 do i = 2, nlons
    dist_bot = lon_dist(llon, lon_array(i - 1))
    dist_top = lon_dist(llon, lon_array(i))
 !print *, 'dist top, bot = ', dist_top, dist_bot
-   if(dist_bot >= 0 .and. dist_top < 0) then
+   if(dist_bot <= 0 .and. dist_top > 0) then
       bot = i - 1
       top = i
 !print *, 'bot, top = ', bot, top
 !print *, 'numerator = ',  dist_bot
 !print *, 'denomenator = ', dist_bot + abs(dist_top)
-      fract = dist_bot / (dist_bot + abs(dist_top))
-      ! orig: fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
+      fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
 !print *, 'fract = ', fract
       return
    endif
 end do
 
-! Falling off the end means its in between. Add the wraparound check.
-! For now, return istatus 1
-istatus = 1
+! Falling off the end means it's in between. Check for wraparound.
+if(wrap_around) then
+   bot = nlons
+   top = 1
+   dist_bot = lon_dist(llon, lon_array(bot))
+   dist_top = lon_dist(llon, lon_array(top)) 
+   fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
+   return
+else
+   ! Not in the localized longitude grid; return istatus 1
+   istatus = 1
+endif
 
 end subroutine lon_bounds
 
@@ -1012,8 +1018,8 @@ real(r8)             :: lon_dist
 
 if ( .not. module_initialized ) call static_init_model
 
-lon_dist = lon1 - lon2
-if(lon_dist >= -180.0_r8 .and. lon_dist <= 180.0_r8) then 
+lon_dist = lon2 - lon1
+if(lon_dist >= -180.0_r8 .and. lon_dist <= 180.0_r8) then
    return
 else if(lon_dist < -180.0_r8) then
    lon_dist = lon_dist + 360.0_r8
