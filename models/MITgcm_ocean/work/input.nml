@@ -282,9 +282,14 @@
    max_num  = 800000,
    fname       = '../observations/adcp_v_pseudo.txt',
    output_name = '../observations/adcp_v_pseudo.obs_seq.out',
-   lon1     = 0.0,
+   lon1     =   0.0,
    lon2     = 360.0,
-   lat1     = 0.0,
-   lat2     = 90.0
+   lat1     = -90.0,
+   lat2     =  90.0,
+   codar    = .false.
  /
 
+# Maximum number of CODAR observations in one observation sequence.
+&obs_def_ocean_nml
+   max_radial_vel_obs = 1000000
+ /
