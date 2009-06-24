@@ -50,6 +50,12 @@ else
 
    mitbase = '/ptmp/thoar/MITgcm/ics';
    fname   = sprintf('%s/filter_ics',mitbase);
+   ncopies = 40;
+
+   mitbase = '/ptmp/thoar/MITgcm/obs_gliders';
+   fname   = sprintf('%s/filter_restart',mitbase);
+   ncopies = 20;
+
    fid     = fopen(fname,'rb','ieee-be');
 
    for i = 1:ncopies
@@ -86,7 +92,8 @@ else
          set(gca,'YDir','normal')
          title(sprintf('S copy %02d level %03d day %d sec %d\n',i,ilev,T(2),T(1)))
          colorbar;
-         pause(0.1)
+         display('Pausing, hit any key to continue ...')
+         pause
       end
 
       % Plot temperature for each ensemble member
@@ -98,7 +105,8 @@ else
          set(gca,'YDir','normal')
          title(sprintf('T copy %02d level %03d day %d sec %d\n',i,ilev,T(2),T(1)))
          colorbar;
-         pause(0.1)
+         display('Pausing, hit any key to continue ...')
+         pause
       end
 
       % Read the U current component for each ensemble member
@@ -110,7 +118,8 @@ else
          set(gca,'YDir','normal')
          title(sprintf('U copy %02d level %03d day %d sec %d\n',i,ilev,T(2),T(1)))
          colorbar;
-         pause(0.1)
+         display('Pausing, hit any key to continue ...')
+         pause
       end
 
       % Read the V current component for each ensemble member
@@ -122,7 +131,8 @@ else
          set(gca,'YDir','normal')
          title(sprintf('V copy %02d level %03d day %d sec %d\n',i,ilev,T(2),T(1)))
          colorbar;
-         pause(0.1)
+         display('Pausing, hit any key to continue ...')
+         pause
       end
 
       % Read the sea surface height component for each ensemble member
@@ -133,7 +143,8 @@ else
       set(gca,'YDir','normal')
       title(sprintf('SSH copy %02d level %03d day %d sec %d\n',i,ilev,T(2),T(1)))
       colorbar;
-      pause(0.1)
+      display('Pausing, hit any key to continue ...')
+      pause
 
    end
 

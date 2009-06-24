@@ -1,6 +1,6 @@
 assim_model/assim_model_mod.f90
 models/MITgcm_ocean/create_ocean_obs.f90
-models/MITgcm_ocean/ocean_obs_mod.f90
+models/MITgcm_ocean/dart_MITocean_mod.f90
 models/MITgcm_ocean/model_mod.f90
 common/types_mod.f90
 location/threed_sphere/location_mod.f90

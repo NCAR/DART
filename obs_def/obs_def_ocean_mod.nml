@@ -1,0 +1,5 @@
+
+&obs_def_codar_mod_nml
+   max_radial_vel_obs          =   1000000,
+   /
+

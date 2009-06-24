@@ -3,7 +3,7 @@
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-module ocean_obs_mod
+module dart_MITocean_mod
 
 ! <next few lines under version control, do not edit>
 ! $URL$
@@ -15,20 +15,21 @@ use types_mod,        only : r8, rad2deg, PI
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, interactive_obs_def, &
                              copy_obs_def, set_obs_def_time, set_obs_def_kind, &
-                             set_obs_def_error_variance, set_obs_def_location
+                             set_obs_def_error_variance, set_obs_def_location, &
+                             set_obs_def_key
 use time_manager_mod, only : time_type, get_date, set_time, GREGORIAN, &
                              set_date, set_calendar_type, get_time, &
-                             print_date, print_time, operator(==)
+                             print_date, print_time, operator(>=)
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, &
-                             E_ERR, E_MSG, timestamp
+                             E_ERR, E_MSG, timestamp, is_longitude_between
 use     location_mod, only : location_type, set_location, VERTISHEIGHT, VERTISSURFACE
 use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              set_obs_values, set_qc, obs_sequence_type, obs_type, &
                              copy_obs, set_copy_meta_data, set_qc_meta_data, set_obs_def, &
                              get_first_obs, get_last_obs, get_obs_def
-
 use     obs_kind_mod, only : get_obs_kind_index
+use obs_def_ocean_mod, only : set_radial_vel
 
 implicit none
 private
@@ -53,13 +54,14 @@ contains
 !-------------------------------------------------
 
 function real_obs_sequence (obsfile, year, month, day, max_num, &
-          lon1, lon2, lat1, lat2)
+          lon1, lon2, lat1, lat2, codar)
 !------------------------------------------------------------------------------
 !  this function is to prepare data to DART sequence format
 !
 character(len=129), intent(in) :: obsfile
 integer,            intent(in) :: year, month, day, max_num
 real(r8),           intent(in) :: lon1, lon2, lat1, lat2
+logical,            intent(in) :: codar
 
 type(obs_sequence_type) :: real_obs_sequence
 
@@ -71,11 +73,11 @@ integer :: days, seconds
 integer :: yy, mn, dd, hh, mm, ss
 integer :: startdate1, startdate2
 integer :: obs_num, calender_type, iskip
-integer :: obs_unit
+integer :: obs_unit, id, defkey
 integer :: which_vert, obstype
 
 real (r8) :: lon, lat, vloc, obs_value
-real (r8) :: aqc, var2, lonc
+real (r8) :: aqc, var2, lonc, angle
 type(time_type) :: time, pre_time
 
 character(len = 32) :: obs_kind_name
@@ -121,14 +123,20 @@ rewind (obs_unit)
 
 obs_num = 0
 iskip   = 0
+defkey  = 1
 
 !  loop over all observations within the file
 !------------------------------------------------------------------------------
 
 obsloop:  do
 
-   read(obs_unit,*,end=200) lon, lat, vloc, obs_value, which_vert, var2, aqc, &
-                              obs_kind_name, startdate1, startdate2
+   if (codar) then
+      read(obs_unit,*,end=200) lon, lat, vloc, angle, obs_value, which_vert, var2, aqc, &
+                                 obs_kind_name, startdate1, startdate2, id
+   else
+      read(obs_unit,*,end=200) lon, lat, vloc, obs_value, which_vert, var2, aqc, &
+                                 obs_kind_name, startdate1, startdate2
+   endif
 
   !print*,''
   !print*,' Observation ', obs_num+1
@@ -136,6 +144,7 @@ obsloop:  do
   !print*,' which_vert var2 aqc ',which_vert, var2, aqc
   !print*,' obs_kind_name ',obs_kind_name
   !print*,' date1 date2 ',startdate1, startdate2
+  !if (codar) print*, 'angle id ',angle, id
 
    ! Calculate the DART time from the observation time 
    yy =     startdate1/10000
@@ -147,22 +156,25 @@ obsloop:  do
    time = set_date(yy,mn,dd,hh,mm,ss)
    call get_time(time,seconds,days)
 
-   ! verify the location is not outside valid limits
-   if((lon > 360.0_r8) .or. (lon <   0.0_r8) .or.  &
-      (lat >  90.0_r8) .or. (lat < -90.0_r8)) then
+   ! verify the latitude is not outside valid limits
+   if ((lat >  90.0_r8) .or. (lat < -90.0_r8)) then
       write(*,*) 'invalid location.  lon,lat = ', lon, lat
       iskip = iskip + 1
       cycle obsloop
    endif
 
-   lonc = lon
-   if (lon2 > 360.0_r8 .and. lon < 180.0_r8) lonc = lon + 360.0_r8
-
    ! reject observations outside the bounding box
-   if(lat < lat1 .or. lat > lat2 .or. lonc < lon1 .or. lonc > lon2) then
+   if(lat < lat1 .or. lat > lat2 .or. &
+      .not. is_longitude_between(lon, lon1, lon2)) then
      iskip = iskip + 1
      cycle obsloop
    endif
+
+   ! and now make sure lon is between 0 and 360, so the
+   ! dart locations module is happy.  using modulo is important 
+   ! here; plain mod() does not handle negative numbers the same.
+   lon = modulo(lon, 360.0_r8)
+
 
    ! assign each observation the correct observation type
    obstype = get_obs_kind_index(obs_kind_name)
@@ -195,31 +207,29 @@ obsloop:  do
 !------------------------------------------------------------------------------
    
    call real_obs(num_copies, num_qc, obs, lon, lat, vloc, obs_value, &
-                 var2, aqc, obstype, which_vert, seconds, days)
+                 var2, aqc, obstype, which_vert, seconds, days,      &
+                 codar, defkey, id, angle)
    
    if(obs_num == 1) then ! for the first observation 
 
-     call insert_obs_in_seq(real_obs_sequence, obs)
-     call copy_obs(prev_obs, obs)
-     pre_time = time
+      call insert_obs_in_seq(real_obs_sequence, obs)
 
    else  !  not the first observation 
 
-     if(time == pre_time) then  ! same time as previous observation
+      if(time >= pre_time) then  ! same time or later than prev
 
-       call insert_obs_in_seq(real_obs_sequence, obs, prev_obs)
-       call copy_obs(prev_obs, obs)
-       pre_time = time
+         call insert_obs_in_seq(real_obs_sequence, obs, prev_obs)
 
-    else  ! not the same time
+      else  ! earlier than prev obs, must search from start
 
-       call insert_obs_in_seq(real_obs_sequence, obs)
-       call copy_obs(prev_obs, obs)
-       pre_time = time
+         call insert_obs_in_seq(real_obs_sequence, obs)
 
-    endif
+      endif
 
-  endif
+   endif
+
+   call copy_obs(prev_obs, obs)
+   pre_time = time
 
 end do obsloop
 
@@ -249,12 +259,15 @@ end function real_obs_sequence
 
 
 subroutine real_obs(num_copies, num_qc, obs, lon, lat, vloc, obs_value, &
-                      var2, aqc, obs_kind, which_vert, seconds, days)
+                      var2, aqc, obs_kind, which_vert, seconds, days,   &
+                      codar, defkey, id, angle)
 !------------------------------------------------------------------------------
 integer,        intent(in)    :: num_copies, num_qc
 type(obs_type), intent(inout) :: obs
-real(r8),       intent(in)    :: lon, lat, vloc, obs_value, var2, aqc
-integer,        intent(in)    :: obs_kind, which_vert, seconds, days
+real(r8),       intent(in)    :: lon, lat, vloc, obs_value, var2, aqc, angle
+integer,        intent(in)    :: obs_kind, which_vert, seconds, days, id
+logical,        intent(in)    :: codar
+integer,        intent(inout) :: defkey
 
 integer            :: i
 real(r8)           :: aqc01(1), obs_value01(1)
@@ -266,6 +279,13 @@ if ( .not. module_initialized ) call initialize_module
 
 call real_obs_def(obsdef0, lon, lat, vloc, &
                     var2, obs_kind, which_vert, seconds, days)
+if (codar) then
+   ! this routine increments defkey and stores the private info in
+   ! the ocean module until time to write.
+   call set_radial_vel(defkey, id, angle)
+   call set_obs_def_key(obsdef0, defkey)
+endif
+
 call set_obs_def(obs, obsdef0)
 
 do i = 1, num_copies
@@ -314,4 +334,4 @@ module_initialized = .true.
 end subroutine initialize_module
 
 
-end module ocean_obs_mod
+end module dart_MITocean_mod

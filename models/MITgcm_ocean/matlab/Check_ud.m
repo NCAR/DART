@@ -2,8 +2,21 @@ function chunk = Check_ud(fname,dsize)
 %
 % fname = 'assim_model_state_ud.0001';
 % dsize = [256 225 40];
-%
 % x = Check_ud(fname,dsize);
+%
+% fname = '/ptmp/thoar/MITgcm/Run-2/advance_temp0/assim_model_state_ud';
+% dsize = [256 225 40];
+% xi = Check_ud(fname,dsize);
+%
+% fname = '/fs/image/home/thoar/SVN/DART/models/MITgcm_ocean/ibrahim/assim_model_state_ud';
+% dsize = [256 225 40];
+% xg = Check_ud(fname,dsize);
+%
+% Sdiff   = xi.S - xg.S; [min(Sdiff(:)) max(Sdiff(:))]
+% Tdiff   = xi.T - xg.T; [min(Tdiff(:)) max(Tdiff(:))]
+% Udiff   = xi.U - xg.U; [min(Udiff(:)) max(Udiff(:))]
+% Vdiff   = xi.V - xg.V; [min(Vdiff(:)) max(Vdiff(:))]
+% Etadiff = xi.Eta - xg.Eta; [min(Etadiff(:)) max(Etadiff(:))]
 
 modelsize = prod(dsize);
 
@@ -40,4 +53,6 @@ if (rec1 ~= recN)
    error('second record mismatch')
 end
 
-chunk.fname = fname;
+chunk.fname   = fname;
+chunk.seconds = seconds;
+chunk.days    = days;

@@ -13,13 +13,13 @@ program create_ocean_obs
 
 ! Initial program to read the raw ocean observations and insert them
 ! into an observation sequence. To make things easy ... we will mandate
-! an assimilatin interval of 1 day - so all observations will be
+! an assimilation interval of 1 day - so all observations will be
 ! redefined to occur at NOON on the day they were observed.
 
 use types_mod,        only : r8, deg2rad, PI
 use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              static_init_obs_sequence, destroy_obs_sequence 
-use    ocean_obs_mod, only : real_obs_sequence
+use dart_MITocean_mod, only : real_obs_sequence
 use    utilities_mod, only : initialize_utilities, register_module, &
                              do_output, logfileunit, &
                              error_handler, timestamp, E_ERR, E_MSG, &
@@ -45,6 +45,7 @@ integer :: year = 1996, month =1, day =1, tot_days = 31
 integer :: max_num = 800000
 character(len = 129) :: fname = 'raw_ocean_obs.txt'
 character(len = 129) :: output_name = 'raw_ocean_obs_seq.out'
+logical :: codar = .false.
 
 real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lon2 = 360.0_r8,  &   !  upper longitude bound 
@@ -52,7 +53,7 @@ real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lat2 =  90.0_r8       !  upper latitude bound
 
 namelist /create_ocean_obs_nml/ year, month, day, tot_days, max_num, &
-        fname, output_name, lon1, lon2, lat1, lat2
+        fname, output_name, lon1, lon2, lat1, lat2, codar
 
 ! ----------------------------------------------------------------------
 ! start of executable program code
@@ -75,13 +76,9 @@ call error_handler(E_MSG,'create_ocean_obs','create_ocean_obs_nml values are',' 
 if (do_output()) write(logfileunit, nml=create_ocean_obs_nml)
 if (do_output()) write(     *     , nml=create_ocean_obs_nml)
 
-lon1 = min(max(lon1,0.0_r8),360.0_r8)
-lon2 = min(max(lon2,0.0_r8),360.0_r8)
-if ( lon1 > lon2 ) lon2 = lon2 + 360.0_r8
-
 ! The file is read and parsed into a DART observation sequence linked list
 seq = real_obs_sequence(fname, year, month, day1, max_num, &
-                         lon1, lon2, lat1, lat2)
+                         lon1, lon2, lat1, lat2, codar)
 
 call write_obs_seq(seq, output_name)
 
