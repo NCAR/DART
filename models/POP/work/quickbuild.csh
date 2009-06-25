@@ -49,6 +49,26 @@ foreach TARGET ( mkmf_* )
    switch ( $TARGET )
    case mkmf_preprocess:
       breaksw
+   case mkmf_dart_to_pop:
+      breaksw
+   case mkmf_create_fixed_network_seq:
+      breaksw
+   case mkmf_create_obs_sequence:
+      breaksw
+   case mkmf_filter:
+      breaksw
+   case mkmf_obs_diag:
+      breaksw
+   case mkmf_obs_sequence_tool:
+      breaksw
+   case mkmf_perfect_model_obs:
+      breaksw
+   case mkmf_preprocess:
+      breaksw
+   case mkmf_restart_file_tool:
+      breaksw
+   case mkmf_wakeup_filter:
+      breaksw
    default:
       @ n = $n + 1
       echo

@@ -14,9 +14,9 @@ module model_mod
 ! This is the interface between the POP ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r4, r8, SECPERDAY
+use        types_mod, only : r4, r8, SECPERDAY, MISSING_R8
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
-                             set_calendar_type, GREGORIAN, print_time, print_date, &
+                             set_calendar_type, print_time, print_date, &
                              operator(*),  operator(+), operator(-), &
                              operator(>),  operator(<), operator(/), &
                              operator(/=), operator(<=)
@@ -33,6 +33,8 @@ use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COM
 use mpi_utilities_mod, only: my_task_id
 use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
 
+use typesizes
+use netcdf 
 
 implicit none
 private
@@ -58,13 +60,8 @@ public :: get_model_size,         &
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
-public :: prog_var_to_vector, vector_to_prog_var, &
-          POP_meta_type, read_meta, write_meta, &
-          read_snapshot, write_snapshot, get_gridsize, &
-          write_data_namelistfile, set_model_end_time, &
-          snapshot_files_to_sv, sv_to_snapshot_files, &
-          timestep_to_DARTtime, DARTtime_to_POPtime, &
-          DARTtime_to_timestepindex 
+public :: POP_meta_type, get_gridsize, set_model_end_time, &
+          restart_file_to_sv, sv_to_restart_file
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -72,174 +69,111 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-character(len=129) :: msgstring
+character(len=256) :: msgstring
 logical, save :: module_initialized = .false.
 
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
 
-
-!! FIXME: This is horrid ... 'reclen' is compiler-dependent.
-!! IBM XLF  -- item_size_direct_access == 4,8
-!! IFORT    -- needs compile switch "-assume byterecl"
-integer, parameter :: item_size_direct_access = 4
-
 !------------------------------------------------------------------
 !
-! POP namelist section:  we want to share the 'data' namelist file
-! with the model, so we must declare all possible namelist entries to
-! avoid getting an error from a valid namelist file.  Most of these
-! values are unused in this model_mod code; only a few are needed and
-! those are indicated in comments below.
+! POP namelist section:
+!  grid information comes in several files:
+!   horizontal grid lat/lons in one, topography (lowest valid vert
+!   level) in another, and the vertical grid spacing in a third.
+!  if the grid is global, or at least wraps around the sphere in
+!   longitude, set longitude_wrap to be true.
 !
 !------------------------------------------------------------------
 ! The time manager namelist variables
-! some types/etc come from   <POPsource>/pkg/cal/cal.h
-! some useful insight from   cal_set.F, cal_convdate.F
-!
-! startDate_1 (integer) yyyymmdd   "start date of the integration"
-! startDate_2 (integer) hhmmss
 !------------------------------------------------------------------
 
-character(len=9) :: TheCalendar = 'gregorian'
-! integration start date follows: yyyymmddhhmmss
-integer          :: startDate_1 = 19530101
-integer          :: startDate_2 =          60000
-logical          :: calendarDumps = .false.
+character(len=128) :: horiz_grid_input_file = 'no_horiz_grid_input_file'
+character(len=128) :: topography_input_file = 'no_topography_input_file'
+character(len=128) :: vert_grid_input_file  = 'no_vert_grid_input_file'
+character(len=128) :: dart_restart_file     = 'no_dart_restart_file'
+character(len=128) :: pop_data_file         = 'no_pop_data_file'
+logical            :: longitude_wrap        = .true.
 
-NAMELIST /CAL_NML/ TheCalendar, startDate_1, startDate_2, calendarDumps
+!integer :: nblocks   - model_mod doesn't need this
+!                       but advance_model will.  not sure this
+!                       helps in this code, since the script
+!                       needs the info, not the filter executable. 
 
-! FIXME: these namelists should probably be in a separate file, and only
-! the actual values needed should be made public, so this isn't so messy.
+! here are what we can get from the horiz grid file:
+!   real (r8), dimension(:,:), allocatable :: &
+!      ULAT,            &! latitude  (radians) of U points
+!      ULON,            &! longitude (radians) of U points
+!      HTN ,            &! length (cm) of north edge of T box
+!      HTE ,            &! length (cm) of east  edge of T box
+!      HUS ,            &! length (cm) of south edge of U box
+!      HUW ,            &! length (cm) of west  edge of U box
+!      ANGLE             ! angle
+!
+! here is what we can get from the topog file:
+!   integer, dimension(:,:), allocatable :: &
+!      KMT               ! k index of deepest grid cell on T grid
+!
+! the vert grid file is ascii, with 3 columns/line:
+! FIXME: confirm this:
+!    depth in cm?   vert cell center?   distance between centers or
+!                                       layer tops/bottoms?                 
 
-! must match the value in EEPARAMS.h
-integer, parameter :: MAX_LEN_FNAM = 512
 
-! these come from SIZE.h and can vary.  
-! should they be namelist controlled?
-integer, parameter :: max_nx = 1024
-integer, parameter :: max_ny = 1024
-integer, parameter :: max_nz = 512
-integer, parameter :: max_nr = 512
+! other things which can/should be in the model_nml
+logical  :: output_state_vector = .true.
+integer  :: assimilation_period_days = 1
+integer  :: assimilation_period_seconds = 0
+real(r8) :: model_perturbation_amplitude = 0.2
 
-!-- FIXME: i have not been able to find all of these in the
-!-- original source code.  the ones we're using have been
-!-- checked that they are the right type.  the others might
-!-- cause problems since i don't have a namelist file i can
-!-- examine that has the full set of values specified.
-!-- 
-!-- must match lists declared in ini_parms.f
+character(len=32):: calendar = 'noleap'
 
-!--   Time stepping parameters variable declarations
-real(r8) :: pickupSuff, &
-      deltaT, deltaTClock, deltaTmom, &
-      deltaTtracer, dTtracerLev(max_nr), deltaTfreesurf, &
-      abEps, alph_AB, beta_AB, &
-      tauCD, rCD, &
-      baseTime, startTime, endTime, chkPtFreq, &
-      dumpFreq, dumpInitAndLast, adjDumpFreq, taveFreq, tave_lastIter, &
-      diagFreq, monitorFreq, adjMonitorFreq, pChkPtFreq, cAdjFreq, &
-      outputTypesInclusive, &
-      tauThetaClimRelax, tauSaltClimRelax, latBandClimRelax, &
-      tauThetaClimRelax3Dim, tauSaltClimRelax3Dim, tauTr1ClimRelax, &
-      periodicExternalForcing, externForcingPeriod, externForcingCycle
-integer :: nIter0, nTimeSteps, nEndIter, momForcingOutAB, tracForcingOutAB
-logical :: forcing_In_AB, &
-      momDissip_In_AB, doAB_onGtGs, &
-      startFromPickupAB2
-
-!--   Gridding parameters variable declarations 
-logical :: usingCartesianGrid, usingCylindricalGrid, &
-           usingSphericalPolarGrid, usingCurvilinearGrid, &
-           deepAtmosphere
-real(r8) :: dxSpacing, dySpacing, delX(max_nx), delY(max_ny), &
-            phiMin, thetaMin, rSphere, &
-            Ro_SeaLevel, delZ(max_nz), delP, delR(max_nr), delRc(max_nr+1), &
-            rkFac, groundAtK1
-character(len=MAX_LEN_FNAM) :: delXFile, delYFile, &
-                      delRFile, delRcFile, &
-                      horizGridFile
-
-!--   Input files variable declarations 
-character(len=MAX_LEN_FNAM) :: &
-      bathyFile, topoFile, shelfIceFile, &
-      hydrogThetaFile, hydrogSaltFile, diffKrFile, &
-      zonalWindFile, meridWindFile, &
-      thetaClimFile, saltClimFile, &
-      surfQfile, surfQnetFile, surfQswFile, EmPmRfile, saltFluxFile, &
-      lambdaThetaFile, lambdaSaltFile, &
-      uVelInitFile, vVelInitFile, pSurfInitFile, &
-      dQdTFile, ploadFile,tCylIn,tCylOut, &
-      eddyTauxFile, eddyTauyFile, &
-      mdsioLocalDir, &
-      the_run_name
-
-!--   Time stepping parameters namelist
-NAMELIST /PARM03/ &
-      nIter0, nTimeSteps, nEndIter, pickupSuff, &
-      deltaT, deltaTClock, deltaTmom, &
-      deltaTtracer, dTtracerLev, deltaTfreesurf, &
-      forcing_In_AB, momForcingOutAB, tracForcingOutAB, &
-      momDissip_In_AB, doAB_onGtGs, &
-      abEps, alph_AB, beta_AB, startFromPickupAB2, &
-      tauCD, rCD, &
-      baseTime, startTime, endTime, chkPtFreq, &
-      dumpFreq, dumpInitAndLast, adjDumpFreq, taveFreq, tave_lastIter, &
-      diagFreq, monitorFreq, adjMonitorFreq, pChkPtFreq, cAdjFreq, &
-      outputTypesInclusive, &
-      tauThetaClimRelax, tauSaltClimRelax, latBandClimRelax, &
-      tauThetaClimRelax3Dim, tauSaltClimRelax3Dim, tauTr1ClimRelax, &
-      periodicExternalForcing, externForcingPeriod, externForcingCycle, &
-      calendarDumps
-
-!--   Gridding parameters namelist
-NAMELIST /PARM04/ &
-      usingCartesianGrid, usingCylindricalGrid, &
-      dxSpacing, dySpacing, delX, delY, delXFile, delYFile, &
-      usingSphericalPolarGrid, phiMin, thetaMin, rSphere, &
-      usingCurvilinearGrid, horizGridFile, deepAtmosphere, &
-      Ro_SeaLevel, delZ, delP, delR, delRc, delRFile, delRcFile, &
-      rkFac, groundAtK1
-
-!--   Input files namelist
-NAMELIST /PARM05/ &
-      bathyFile, topoFile, shelfIceFile, &
-      hydrogThetaFile, hydrogSaltFile, diffKrFile, &
-      zonalWindFile, meridWindFile, &
-      thetaClimFile, saltClimFile, &
-      surfQfile, surfQnetFile, surfQswFile, EmPmRfile, saltFluxFile, &
-      lambdaThetaFile, lambdaSaltFile, &
-      uVelInitFile, vVelInitFile, pSurfInitFile, &
-      dQdTFile, ploadFile,tCylIn,tCylOut, &
-      eddyTauxFile, eddyTauyFile, &
-      mdsioLocalDir, &
-      the_run_name
+namelist /model_nml/  &
+   horiz_grid_input_file,       &
+   topography_input_file,       &
+   vert_grid_input_file,        &
+   dart_restart_file,           &
+   pop_data_file,               &
+   longitude_wrap,              &
+   output_state_vector,         &
+   assimilation_period_days,    &  ! for now, this is the timestep
+   assimilation_period_seconds, &
+   model_perturbation_amplitude,&
+   calendar
 
 !------------------------------------------------------------------
 !
-! The DART state vector (control vector) will consist of:  S, T, U, V, Eta
+! The DART state vector (control vector) will consist of:  S, T, U, V, SHGT
 ! (Salinity, Temperature, U velocity, V velocity, Sea Surface Height).
-! S, T are 3D arrays, located at cell centers.  U is staggered in X
-! and V is staggered in Y (meaning the points are located on the cell
-! faces) but the grids are offset by half a cell, so there are actually
-! the same number of points in each grid. 
-! Eta is a 2D field (X,Y only).  The Z direction is downward.
+! S, T are 3D arrays, located at cell centers.  U,V are at grid cell corners.
+! SHGT is a 2D field (X,Y only).  The Z direction is downward.
 !
+! FIXME: proposed change 1: we put SSH first, then T,U,V, then S, then
+!                           any optional tracers, since SSH is the only 2D
+!                           field; all tracers are 3D.  this simplifies the
+!                           mapping to and from the vars to state vector.
+!
+! FIXME: proposed change 2: we make this completely namelist driven,
+!                           both contents and order of vars.  this should
+!                           wait until restart files are in netcdf format,
+!                           to avoid problems with incompatible namelist
+!                           and IC files.  it also complicates the mapping
+!                           to and from the vars to state vector.
 !------------------------------------------------------------------
 
 integer, parameter :: n3dfields = 4
 integer, parameter :: n2dfields = 1
 integer, parameter :: nfields   = n3dfields + n2dfields
 
-integer, parameter :: S_index   = 1
-integer, parameter :: T_index   = 2
-integer, parameter :: U_index   = 3
-integer, parameter :: V_index   = 4
-integer, parameter :: Eta_index = 5
-
 ! (the absoft compiler likes them to all be the same length during declaration)
 ! we trim the blanks off before use anyway, so ...
-character(len=128) :: progvarnames(nfields) = (/'S  ','T  ','U  ','V  ','Eta'/)
+character(len=128) :: progvarnames(nfields) = (/'SALT','TEMP','UVEL','VVEL','SHGT'/)
+
+integer, parameter :: S_index    = 1
+integer, parameter :: T_index    = 2
+integer, parameter :: U_index    = 3
+integer, parameter :: V_index    = 4
+integer, parameter :: SHGT_index = 5
 
 integer :: start_index(nfields)
 
@@ -251,31 +185,15 @@ integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
 
-! location information - these grids can either be regularly
-! spaced or the spacing along each axis can vary.
+! integer, lowest valid cell number in the vertical
+integer, allocatable  :: KMT(:, :)
 
-!real(r8) :: lat_origin, lon_origin
-!logical  :: regular_lat, regular_lon, regular_depth
-!real(r8) :: delta_lat, delta_lon, delta_depth
-!real(r8), allocatable :: lat_grid(:), lon_grid(:), depth_grid(:)
-
+real(r8)        :: endTime
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 integer         :: timestepcount = 0
 type(time_type) :: model_time, model_timestep
 
 integer :: model_size    ! the state vector length
-
-! Skeleton of a model_nml that would be in input.nml
-! This is where dart-related model parms could be set.
-logical  :: output_state_vector = .true.
-integer  :: assimilation_period_days = 7
-integer  :: assimilation_period_seconds = 0
-real(r8) :: model_perturbation_amplitude = 0.2
-
-namelist /model_nml/ output_state_vector,         &
-                     assimilation_period_days,    &
-                     assimilation_period_seconds, &
-                     model_perturbation_amplitude
 
 ! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
 type POP_meta_type
@@ -287,16 +205,6 @@ type POP_meta_type
    integer :: nrecords
    integer :: timeStepNumber    ! optional
 end type POP_meta_type
-
-INTERFACE read_snapshot
-      MODULE PROCEDURE read_2d_snapshot
-      MODULE PROCEDURE read_3d_snapshot
-END INTERFACE
-
-INTERFACE write_snapshot
-      MODULE PROCEDURE write_2d_snapshot
-      MODULE PROCEDURE write_3d_snapshot
-END INTERFACE
 
 INTERFACE vector_to_prog_var
       MODULE PROCEDURE vector_to_2d_prog_var
@@ -314,26 +222,26 @@ subroutine static_init_model()
 !------------------------------------------------------------------
 !
 ! Called to do one time initialization of the model. In this case,
-! it reads in the grid information and then the model data.
+! it reads in the grid information.
 
 integer :: i, iunit, io
 integer :: ss, dd
 
 ! The Plan:
 !
-!   read the standard POP namelist file 'data.cal' for the calendar info
+!   read in the grid sizes from the horiz grid file and the vert grid file
+!   horiz is netcdf, vert is ascii
+!  
+!   allocate space, and read in actual grid values
 !
-!   read the standard POP namelist file 'data' for the
-!   time stepping info and the grid info.
-!
-!   open the grid data files to get the actual grid coordinates
+!   figure out model timestep.  FIXME: from where?
 !
 !   Compute the model size.
 !
 !   set the index numbers where the field types change
 !
-!   set the grid location info
-!
+
+if ( module_initialized ) return ! only need to do this once.
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
@@ -341,7 +249,6 @@ call register_module(source, revision, revdate)
 ! Since this routine calls other routines that could call this routine
 ! we'll say we've been initialized pretty dang early.
 module_initialized = .true.
-
 
 ! Read the DART namelist for this model
 call find_namelist_in_file("input.nml", "model_nml", iunit)
@@ -354,45 +261,34 @@ if (do_output()) write(logfileunit, nml=model_nml)
 if (do_output()) write(     *     , nml=model_nml)
 
 ! POP calendar information
-call find_namelist_in_file("data.cal", "CAL_NML", iunit)
-read(iunit, nml = CAL_NML, iostat = io)
-call check_namelist_read(iunit, io, "CAL_NML")
 
-if (index(TheCalendar,'g') > 0 ) then
-   call set_calendar_type(GREGORIAN)
-elseif (index(TheCalendar,'G') > 0 )then
-   call set_calendar_type(GREGORIAN)
-else
-   write(msgstring,*)"namelist data.cal indicates a ",trim(TheCalendar)," calendar."
-   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
-   write(msgstring,*)"only have support for Gregorian"
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
-endif
-if (do_output()) write(*,*)'model_mod:namelist cal_NML',startDate_1,startDate_2
-if (do_output()) write(*,nml=CAL_NML)
+call set_calendar_type(calendar)
 
-! Time stepping parameters are in PARM03
-call find_namelist_in_file("data", "PARM03", iunit)
-read(iunit, nml = PARM03, iostat = io)
-call check_namelist_read(iunit, io, "PARM03")
+!---------------------------------------------------------------
+! get data dimensions, then allocate space, then open the files
+! and actually fill in the arrays.
 
-if ((deltaTmom   == deltaTtracer) .and. &
-    (deltaTmom   == deltaTClock ) .and. &
-    (deltaTClock == deltaTtracer)) then
-   ocean_dynamics_timestep = deltaTmom                    ! need a time_type version
-else
-   write(msgstring,*)"namelist PARM03 has deltaTmom /= deltaTtracer /= deltaTClock"
-   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
-   write(msgstring,*)"values were ",deltaTmom, deltaTtracer, deltaTClock
-   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
-   write(msgstring,*)"At present, DART only supports equal values."
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
-endif
+call get_horiz_grid_dims(Nx, Ny)
+call get_vert_grid_dims(Nz)
 
-! Define the assimilation period as the model_timestep
-! Ensure model_timestep is multiple of ocean_dynamics_timestep
+! Allocate space for grid variables. 
+allocate(XC(Nx), YC(Ny), ZC(Nz))
+allocate(XG(Nx), YG(Ny), ZG(Nz))
+allocate(KMT(Nx, Ny))
 
-model_time     = timestep_to_DARTtime(timestepcount)
+! Fill them in
+call read_horiz_grid(Nx, Ny, XC, XG, YC, YG)
+call read_vert_grid(Nz, ZC, ZG)
+call read_kmt(Nx, Ny, KMT)
+
+call write_grid_netcdf(XG, XC, YG, YC, ZG, ZC, KMT) ! DEBUG only
+
+!---------------------------------------------------------------
+! set the time step from the namelist for now.
+
+!! Define the assimilation period as the model_timestep
+!! Ensure model_timestep is multiple of ocean_dynamics_timestep
+!
 model_timestep = set_model_time_step(assimilation_period_seconds, &
                                      assimilation_period_days,    &
                                      ocean_dynamics_timestep)
@@ -403,114 +299,29 @@ write(msgstring,*)"assimilation period is ",dd," days ",ss," seconds"
 call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
 if (do_output()) write(logfileunit,*)msgstring
 
-! Grid-related variables are in PARM04
-delX(:) = 0.0_r4
-delY(:) = 0.0_r4
-delZ(:) = 0.0_r4
-call find_namelist_in_file("data", "PARM04", iunit)
-read(iunit, nml = PARM04, iostat = io)
-call check_namelist_read(iunit, io, "PARM04")
-
-! Input datasets are in PARM05
-call find_namelist_in_file("data", "PARM05", iunit)
-read(iunit, nml = PARM05, iostat = io)
-call check_namelist_read(iunit, io, "PARM05")
-
-! The only way I know to compute the number of
-! levels/lats/lons is to set the default value of delZ to 0.0
-! before reading the namelist.  now loop until you get back
-! to zero and that is the end of the list.
-! Not a very satisfying/robust solution ...
-
-Nx = -1
-do i=1, size(delX)
- if (delX(i) == 0.0_r4) then
-    Nx = i-1
-    exit
- endif
-enddo
-if (Nx == -1) then
-   write(msgstring,*)'could not figure out number of longitudes from delX in namelist'
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
-endif
-
-Ny = -1
-do i=1, size(delY)
- if (delY(i) == 0.0_r4) then
-    Ny = i-1
-    exit
- endif
-enddo
-if (Ny == -1) then
-   write(msgstring,*)'could not figure out number of latitudes from delY in namelist'
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
-endif
-
-Nz = -1
-do i=1, size(delZ)
- if (delZ(i) == 0.0_r4) then
-    Nz = i-1
-    exit
- endif
-enddo
-if (Nz == -1) then
-   write(msgstring,*)'could not figure out number of depth levels from delZ in namelist'
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
-endif
-
-! We know enough to allocate grid variables. 
-
-allocate(XC(Nx), YC(Ny), ZC(Nz))
-allocate(XG(Nx), YG(Ny), ZG(Nz))
-
-! XG (the grid edges) and XC (the grid centroids) must be computed.
-
-XG(1) = thetaMin
-XC(1) = thetaMin + 0.5_r8 * delX(1)
-do i=2, Nx
- XG(i) = XG(i-1) + delX(i-1)
- XC(i) = XC(i-1) + 0.5_r8 * delX(i-1) + 0.5_r8 * delX(i) 
-enddo
-
-! YG (the grid edges) and YC (the grid centroids) must be computed.
-
-YG(1) = phiMin
-YC(1) = phiMin + 0.5_r8 * delY(1)
-do i=2, Ny
- YG(i) = YG(i-1) + delY(i-1)
- YC(i) = YC(i-1) + 0.5_r8 * delY(i-1) + 0.5_r8 * delY(i) 
-enddo
-
-! the namelist contains a list of thicknesses of each depth level (delZ)
-! ZG (the grid edges) and ZC (the grid centroids) must be computed.
-
-ZG(1) = 0.0_r8
-ZC(1) = -0.5_r8 * delZ(1)
-do i=2, Nz
- ZG(i) = ZG(i-1) - delZ(i-1)
- ZC(i) = ZC(i-1) - 0.5_r8 * delZ(i-1) - 0.5_r8 * delZ(i) 
-enddo
+!---------------------------------------------------------------
+! compute the offsets into the state vector for the start of each
+! different variable type.
 
 ! record where in the state vector the data type changes
 ! from one type to another, by computing the starting
 ! index for each block of data.
-start_index(S_index)   = 1
-start_index(T_index)   = start_index(S_index) + (Nx * Ny * Nz)
-start_index(U_index)   = start_index(T_index) + (Nx * Ny * Nz)
-start_index(V_index)   = start_index(U_index) + (Nx * Ny * Nz)
-start_index(Eta_index) = start_index(V_index) + (Nx * Ny * Nz)
+start_index(S_index)    = 1
+start_index(T_index)    = start_index(S_index) + (Nx * Ny * Nz)
+start_index(U_index)    = start_index(T_index) + (Nx * Ny * Nz)
+start_index(V_index)    = start_index(U_index) + (Nx * Ny * Nz)
+start_index(SHGT_index) = start_index(V_index) + (Nx * Ny * Nz)
 
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 1 is 2D.
 !  e.g. S,T,U,V = 256 x 225 x 70
-!  e.g. Eta = 256 x 225
+!  e.g. SHGT = 256 x 225
 
 if (do_output()) write(logfileunit, *) 'Using grid size : '
 if (do_output()) write(logfileunit, *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 if (do_output()) write(     *     , *) 'Using grid size : '
 if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
-!print *, ' 3d field size: ', n3dfields * (Nx * Ny * Nz)
-!print *, ' 2d field size: ', n2dfields * (Nx * Ny)
+
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 if (do_output()) write(*,*) 'model_size = ', model_size
 
@@ -617,7 +428,7 @@ integer,             intent(in) :: obs_type
 real(r8),           intent(out) :: interp_val
 integer,            intent(out) :: istatus
 
-! Model interpolate will interpolate any state variable (S, T, U, V, Eta) to
+! Model interpolate will interpolate any state variable (S, T, U, V, SHGT) to
 ! the given location given a state vector. The type of the variable being
 ! interpolated is obs_type since normally this is used to find the expected
 ! value of an observation at some location. The interpolated value is 
@@ -804,7 +615,7 @@ if(var_type == KIND_U_CURRENT_COMPONENT .or. var_type == KIND_V_CURRENT_COMPONEN
    lat_array = yg
    call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
 else 
-   ! Eta, T and S are on the YC latitude grid
+   ! SHGT, T and S are on the YC latitude grid
    lat_array = yc
    call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
 endif
@@ -821,7 +632,7 @@ if(var_type == KIND_U_CURRENT_COMPONENT .or. var_type == KIND_V_CURRENT_COMPONEN
    lon_array = xg
    call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
 else
-   ! Eta, T, and S are on the XC grid
+   ! SHGT, T, and S are on the XC grid
    lon_array = xc
    call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
 endif
@@ -989,7 +800,7 @@ do i = 2, nlons
 end do
 
 ! Falling off the end means it's in between. Check for wraparound.
-if(wrap_around) then
+if(longitude_wrap) then
    bot = nlons
    top = 1
    dist_bot = lon_dist(llon, lon_array(bot))
@@ -1161,7 +972,7 @@ else if (index_in < start_index(V_index+1)) then
    var_num = V_index
 else 
    if (present(var_type)) var_type = KIND_SEA_SURFACE_HEIGHT
-   var_num = Eta_index
+   var_num = SHGT_index
 endif
 
 !print *, 'var num = ', var_num
@@ -1171,7 +982,7 @@ offset = index_in - start_index(var_num)
 
 !print *, 'offset = ', offset
 
-if (var_num == Eta_index) then
+if (var_num == SHGT_index) then
   depth = 0.0
   depth_index = 1
 else
@@ -1200,10 +1011,9 @@ subroutine end_model()
 ! Does any shutdown and clean-up needed for model. Can be a NULL
 ! INTERFACE if the model has no need to clean up storage, etc.
 
-! good style ... perhaps you could deallocate stuff (from static_init_model?).
-! deallocate(state_loc)
+! if ( .not. module_initialized ) call static_init_model
 
-if ( .not. module_initialized ) call static_init_model
+deallocate(XC, YC, ZC, XG, YG, ZG, KMT)
 
 end subroutine end_model
 
@@ -1228,9 +1038,6 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 ! NF90_ENDDEF           ! end definitions: leave define mode
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
-
-use typeSizes
-use netcdf
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
@@ -1257,7 +1064,7 @@ integer :: XGDimID, XCDimID, YGDimID, YCDimID, ZGDimID, ZCDimID
 integer :: XGVarID, XCVarID, YGVarID, YCVarID, ZGVarID, ZCVarID
 
 ! for the prognostic variables
-integer :: SVarID, TVarID, UVarID, VVarID, EtaVarID 
+integer :: SVarID, TVarID, UVarID, VVarID, SHGTVarID 
 
 !----------------------------------------------------------------------
 ! variables for the namelist output
@@ -1353,7 +1160,7 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model",  "MITgcm_ocean" ), &
 ! Determine shape of most important namelist
 !-------------------------------------------------------------------------------
 
-call find_textfile_dims("data", nlines, linelen)
+call find_textfile_dims("pop_in", nlines, linelen)
 
 allocate(textblock(nlines))
 textblock = ''
@@ -1362,11 +1169,11 @@ call nc_check(nf90_def_dim(ncid=ncFileID, name="nlines", &
               len = nlines, dimid = nlinesDimID), &
               'nc_write_model_atts', 'def_dim nlines ')
 
-call nc_check(nf90_def_var(ncFileID,name="datanml", xtype=nf90_char,    &
+call nc_check(nf90_def_var(ncFileID,name="pop_in", xtype=nf90_char,    &
               dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
-              'nc_write_model_atts', 'def_var datanml')
+              'nc_write_model_atts', 'def_var pop_in')
 call nc_check(nf90_put_att(ncFileID, nmlVarID, "long_name",       &
-              "contents of data namelist"), 'nc_write_model_atts', 'put_att datanml')
+              "contents of pop_in namelist"), 'nc_write_model_atts', 'put_att pop_in')
 
 !-------------------------------------------------------------------------------
 ! Here is the extensible part. The simplest scenario is to output the state vector,
@@ -1431,7 +1238,13 @@ else
    ! Create the (empty) Coordinate Variables and the Attributes
    !----------------------------------------------------------------------------
 
-   ! U Grid Longitudes
+   call nc_check(nf90_def_var(ncFileID,name="POPnml", xtype=nf90_char,    &
+                 dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
+                 'nc_write_model_atts', 'def_var POPnml')
+   call nc_check(nf90_put_att(ncFileID, nmlVarID, "long_name",       &
+                 "namelist.input contents"), 'nc_write_model_atts', 'put_att POPnml')
+
+   ! U,V Grid Longitudes
    call nc_check(nf90_def_var(ncFileID,name="XG",xtype=nf90_real,dimids=XGDimID,varid=XGVarID),&
                  "nc_write_model_atts", "XG def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID,  XGVarID, "long_name", "longitude grid edges"), &
@@ -1443,7 +1256,7 @@ else
    call nc_check(nf90_put_att(ncFileID,  XGVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)), &
                  "nc_write_model_atts", "XG valid_range "//trim(filename))
 
-   ! S,T,V,Eta Grid Longitudes
+   ! S,T,SHGT Grid (center) Longitudes
    call nc_check(nf90_def_var(ncFileID,name="XC",xtype=nf90_real,dimids=XCDimID,varid=XCVarID),&
                  "nc_write_model_atts", "XC def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, XCVarID, "long_name", "longitude grid centroids"), &
@@ -1455,7 +1268,7 @@ else
    call nc_check(nf90_put_att(ncFileID, XCVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)), &
                  "nc_write_model_atts", "XC valid_range "//trim(filename))
 
-   ! V Grid Latitudes
+   ! U,V Grid Latitudes
    call nc_check(nf90_def_var(ncFileID,name="YG",xtype=nf90_real,dimids=YGDimID,varid=YGVarID),&
                  "nc_write_model_atts", "YG def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, YGVarID, "long_name", "latitude grid edges"), &
@@ -1467,7 +1280,7 @@ else
    call nc_check(nf90_put_att(ncFileID,YGVarID,"valid_range",(/-90.0_r8,90.0_r8 /)), &
                  "nc_write_model_atts", "YG valid_range "//trim(filename))
 
-   ! S,T,U,Eta Grid Latitudes
+   ! S,T,SHGT Grid (center) Latitudes
    call nc_check(nf90_def_var(ncFileID,name="YC",xtype=nf90_real,dimids=YCDimID,varid=YCVarID), &
                  "nc_write_model_atts", "YC def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, YCVarID, "long_name", "latitude grid centroids"), &
@@ -1513,63 +1326,71 @@ else
    ! Create the (empty) Prognostic Variables and the Attributes
    !----------------------------------------------------------------------------
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="S", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncid=ncFileID, name="SALT", xtype=nf90_real, &
          dimids = (/XCDimID,YCDimID,ZCDimID,MemberDimID,unlimitedDimID/),varid=SVarID),&
          "nc_write_model_atts", "S def_var "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, SVarID, "long_name", "salinity"), &
          "nc_write_model_atts", "S long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SVarID, "units", "g/g"), &
+         "nc_write_model_atts", "S units "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SVarID, "missing_value", NF90_FILL_REAL), &
+         "nc_write_model_atts", "S missing "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, SVarID, "_FillValue", NF90_FILL_REAL), &
          "nc_write_model_atts", "S fill "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, "units", "psu"), &
-         "nc_write_model_atts", "S units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, "units_long_name", "practical salinity units"), &
-         "nc_write_model_atts", "S units_long_name "//trim(filename))
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="T", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncid=ncFileID, name="TEMP", xtype=nf90_real, &
          dimids=(/XCDimID,YCDimID,ZCDimID,MemberDimID,unlimitedDimID/),varid=TVarID),&
          "nc_write_model_atts", "T def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, "long_name", "Temperature"), &
+   call nc_check(nf90_put_att(ncFileID, TVarID, "long_name", "Potential Temperature"), &
          "nc_write_model_atts", "T long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "T fill "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, "units", "C"), &
+   call nc_check(nf90_put_att(ncFileID, TVarID, "units", "deg C"), &
          "nc_write_model_atts", "T units "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, TVarID, "units_long_name", "degrees celsius"), &
          "nc_write_model_atts", "T units_long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, TVarID, "missing_value", NF90_FILL_REAL), &
+         "nc_write_model_atts", "T missing "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, TVarID, "_FillValue", NF90_FILL_REAL), &
+         "nc_write_model_atts", "T fill "//trim(filename))
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="U", xtype=nf90_real, &
-         dimids=(/XGDimID,YCDimID,ZCDimID,MemberDimID,unlimitedDimID/),varid=UVarID),&
+   call nc_check(nf90_def_var(ncid=ncFileID, name="UVEL", xtype=nf90_real, &
+         dimids=(/XGDimID,YGDimID,ZGDimID,MemberDimID,unlimitedDimID/),varid=UVarID),&
          "nc_write_model_atts", "U def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, "long_name", "Zonal Velocity"), &
+   call nc_check(nf90_put_att(ncFileID, UVarID, "long_name", "U velocity"), &
          "nc_write_model_atts", "U long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, UVarID, "units", "cm/s"), &
+         "nc_write_model_atts", "U units "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, UVarID, "units_long_name", "centimeters per second"), &
+         "nc_write_model_atts", "U units_long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, UVarID, "missing_value", NF90_FILL_REAL), &
+         "nc_write_model_atts", "U missing "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, UVarID, "_FillValue", NF90_FILL_REAL), &
          "nc_write_model_atts", "U fill "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, "units", "m/s"), &
-         "nc_write_model_atts", "U units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, "units_long_name", "meters per second"), &
-         "nc_write_model_atts", "U units_long_name "//trim(filename))
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="V", xtype=nf90_real, &
-         dimids=(/XCDimID,YGDimID,ZCDimID,MemberDimID,unlimitedDimID/),varid=VVarID),&
+   call nc_check(nf90_def_var(ncid=ncFileID, name="VVEL", xtype=nf90_real, &
+         dimids=(/XGDimID,YGDimID,ZGDimID,MemberDimID,unlimitedDimID/),varid=VVarID),&
          "nc_write_model_atts", "V def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, "long_name", "Meridional Velocity"), &
+   call nc_check(nf90_put_att(ncFileID, VVarID, "long_name", "V Velocity"), &
          "nc_write_model_atts", "V long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, VVarID, "units", "cm/s"), &
+         "nc_write_model_atts", "V units "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, VVarID, "units_long_name", "centimeters per second"), &
+         "nc_write_model_atts", "V units_long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, VVarID, "missing_value", NF90_FILL_REAL), &
+         "nc_write_model_atts", "V missing "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, VVarID, "_FillValue", NF90_FILL_REAL), &
          "nc_write_model_atts", "V fill "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, "units", "m/s"), &
-         "nc_write_model_atts", "V units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, "units_long_name", "meters per second"), &
-         "nc_write_model_atts", "V units_long_name "//trim(filename))
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="Eta", xtype=nf90_real, &
-         dimids=(/XCDimID,YCDimID,MemberDimID,unlimitedDimID/),varid=EtaVarID), &
-         "nc_write_model_atts", "Eta def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, EtaVarID, "long_name", "sea surface height"), &
-         "nc_write_model_atts", "Eta long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, EtaVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "Eta fill "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, EtaVarID, "units", "meters"), &
-         "nc_write_model_atts", "Eta units "//trim(filename))
+   call nc_check(nf90_def_var(ncid=ncFileID, name="SHGT", xtype=nf90_real, &
+         dimids=(/XCDimID,YCDimID,MemberDimID,unlimitedDimID/),varid=SHGTVarID), &
+         "nc_write_model_atts", "SHGT def_var "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SHGTVarID, "long_name", "Sea surface height"), &
+         "nc_write_model_atts", "SHGT long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SHGTVarID, "units", "cm"), &
+         "nc_write_model_atts", "SHGT units "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SHGTVarID, "missing_value", NF90_FILL_REAL), &
+         "nc_write_model_atts", "SHGT missing "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SHGTVarID, "_FillValue", NF90_FILL_REAL), &
+         "nc_write_model_atts", "SHGT fill "//trim(filename))
 
    ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
@@ -1598,7 +1419,7 @@ endif
 ! Fill the variables we can
 !-------------------------------------------------------------------------------
 
-call file_to_text("data", textblock)
+call file_to_text("pop_in", textblock)
 call nc_check(nf90_put_var(ncFileID, nmlVarID, textblock ), &
               'nc_write_model_atts', 'put_var nmlVarID')
 deallocate(textblock)
@@ -1637,9 +1458,6 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 ! NF90_ENDDEF           ! end definitions: leave define mode
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
-
-use typeSizes
-use netcdf
 
 integer,                intent(in) :: ncFileID      ! netCDF file identifier
 real(r8), dimension(:), intent(in) :: statevec
@@ -1692,38 +1510,38 @@ else
 
    call vector_to_prog_var(statevec,S_index,data_3d)
    where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "S", VarID), &
+   call nc_check(NF90_inq_varid(ncFileID, "SALT", VarID), &
                 "nc_write_model_vars", "S inq_varid "//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 "nc_write_model_vars", "S put_var "//trim(filename))
 
    call vector_to_prog_var(statevec,T_index,data_3d)
    where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "T", VarID), &
+   call nc_check(NF90_inq_varid(ncFileID, "TEMP", VarID), &
                 "nc_write_model_vars", "T inq_varid "//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 "nc_write_model_vars", "T put_var "//trim(filename))
 
    call vector_to_prog_var(statevec,U_index,data_3d)
    where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "U", VarID), &
+   call nc_check(NF90_inq_varid(ncFileID, "UVEL", VarID), &
                 "nc_write_model_vars", "U inq_varid "//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 "nc_write_model_vars", "U put_var "//trim(filename))
 
    call vector_to_prog_var(statevec,V_index,data_3d)
    where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "V", VarID), &
+   call nc_check(NF90_inq_varid(ncFileID, "VVEL", VarID), &
                 "nc_write_model_vars", "V inq_varid "//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 "nc_write_model_vars", "V put_var "//trim(filename))
 
-   call vector_to_prog_var(statevec,Eta_index,data_2d)
+   call vector_to_prog_var(statevec,SHGT_index,data_2d)
    where (data_2d == 0.0_r4) data_2d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "Eta", VarID), &
-                "nc_write_model_vars", "Eta inq_varid "//trim(filename))
+   call nc_check(NF90_inq_varid(ncFileID, "SHGT", VarID), &
+                "nc_write_model_vars", "SHGT inq_varid "//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
-                "nc_write_model_vars", "Eta put_var "//trim(filename))
+                "nc_write_model_vars", "SHGT put_var "//trim(filename))
 
 endif
 
@@ -1799,606 +1617,108 @@ end subroutine ens_mean_for_model
 
 
 
-function read_meta(fbase, vartype)
+subroutine restart_file_to_sv(filename, state_vector, model_time)
 !------------------------------------------------------------------
-!
-! Reads the meta files associated with each 'snapshot'
-! and fills the appropriate parts of the output structure.
-!
-! I believe  pkg/mdsio/mdsio_write_meta.F writes the .meta files 
-!
-! The files look something like: 
-!
-! nDims = [   2 ];
-! dimList = [
-!   256,    1,  256,
-!   225,    1,  225
-! ];
-! dataprec = [ 'float32' ];
-! nrecords = [     1 ];
-! timeStepNumber = [          0 ];
-!
-! USAGE:
-! metadata = read_meta('U.0000000024')
-! ... or ...
-! metadata = read_meta('0000000024','U')
-
-character(len=*),           intent(in) :: fbase
-character(len=*), OPTIONAL, intent(in) :: vartype
-type(POP_meta_type)                    :: read_meta
-
-character(len=128) :: filename, charstring
-integer :: iunit, io
-integer :: i, j, indx, nlines, dim1, dimN
-logical :: fexist
-
-if ( .not. module_initialized ) call static_init_model
-
-if (present(vartype)) then
-   filename = vartype//'.'//trim(fbase)//'.meta'
-else
-   filename = trim(fbase)//'.meta'
-endif
-
-! Initialize to (mostly) bogus values
-
-read_meta%nDims = 0
-read_meta%dimList = (/ Nx, Ny, Nz /)
-read_meta%dataprec = 'float32'
-read_meta%reclen = 0
-read_meta%nrecords = 0
-read_meta%timeStepNumber = timestepcount
-
-iunit = get_unit()
-
-! See if the file exists ... typically not the case for a cold start.
-! If the file does not exist, we must use the namelist values as parsed.
-
-inquire(file=filename, exist=fexist, iostat=io)
-if ((io /= 0) .or. (.not. fexist)) then 
-   write(msgstring,*) trim(filename), ' does not exist, using namelist values'
-   call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
-   return
-endif
-
-! Get next available unit number and open the file
-
-open(unit=iunit, file=filename, action='read', form='formatted', iostat = io)
-if (io /= 0) then
-   write(msgstring,*) 'cannot open ', trim(filename), ', using namelist values'
-   call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
-   return
-endif
-
-! Read every line looking for the nDims entry
-! Count the lines just to make future loops more sensible.
-! nDims = [   2 ];
-
-nlines = 0
-ReadnDims: do i = 1,1000 
-   read(iunit,'(a)', iostat = io)charstring
-   if (io /= 0) exit ReadnDims
-   nlines = nlines + 1
-
-   indx = index(charstring,'nDims = [')
-   if (indx > 0) then
-      read(charstring(indx+9:),*,iostat=io)read_meta%nDims
-      if (io /= 0 )then
-         write(msgstring,*)'unable to parse line ',nlines,' from ', trim(filename)
-         call error_handler(E_ERR,'model_mod:read_meta:nDims',msgstring,source,revision,revdate)
-      endif
-   endif
-enddo ReadnDims
-
-if (read_meta%nDims < 1) then
-   write(msgstring,*) 'unable to determine nDims from ', trim(filename)
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
-endif
-
-! Read every line looking for the dimList entry
-! dimList = [
-!   256,    1,  256,
-!   225,    1,  225
-! ];
-
-rewind(iunit)
-ReaddimList: do i = 1,nlines 
-   
-   read(iunit,'(a)', iostat = io)charstring
-   if (io /= 0) then
-      write(msgstring,*) 'unable to read line ',i,' of ', trim(filename)
-      call error_handler(E_ERR,'model_mod:read_meta:dimList',msgstring,source,revision,revdate)
-   endif
-
-   indx = index(charstring,'dimList = [')
-
-   if (indx > 0) then
-      do j = 1,read_meta%nDims
-         read(iunit,*,iostat=io)read_meta%dimList(j),dim1,dimN
-         if (io /= 0) then
-            write(msgstring,*)'unable to parse dimList(',j, ') from ', trim(filename)
-            call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
-         endif
-      enddo
-      exit ReaddimList
-   endif
-enddo ReaddimList
-
-if (all(read_meta%dimList < 1)) then
-   write(msgstring,*) 'unable to determine dimList from ', trim(filename)
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
-endif
-
-
-! Read every line looking for the dataprec entry
-! dataprec = [ 'float32' ];
-
-rewind(iunit)
-Readdataprec: do i = 1,nlines 
-
-   read(iunit,'(a)', iostat = io)charstring
-   if (io /= 0) then
-      write(msgstring,*) 'unable to read line ',i,' of ', trim(filename)
-      call error_handler(E_ERR,'model_mod:read_meta:dataprec',msgstring,source,revision,revdate)
-   endif
-
-   indx = index(charstring,'dataprec = [')
-
-   if (indx > 0) then
-      read(charstring(indx+12:),*,iostat=io)read_meta%dataprec
-      if (io /= 0) then
-         write(msgstring,*)'unable to parse dataprec from ', trim(filename)
-         call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
-      endif
-      exit Readdataprec
-   endif
-enddo Readdataprec
-
-if (index(read_meta%dataprec,'null') > 0) then
-   write(msgstring,*) 'unable to determine dataprec from ', trim(filename)
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
-endif
-
-
-! Read every line looking for the nrecords entry
-! nrecords = [     1 ];
-
-rewind(iunit) 
-Readnrecords: do i = 1,nlines 
-   read(iunit,'(a)', iostat = io)charstring
-   if (io /= 0) then
-      call error_handler(E_ERR,'model_mod:read_meta','message',source,revision,revdate)
-   endif
-
-   indx = index(charstring,'nrecords = [')
-
-   if (indx > 0) then
-      read(charstring(indx+12:),*,iostat=io)read_meta%nrecords
-      if (io /= 0) then
-         write(msgstring,*)'unable to parse nrecords from ', trim(filename)
-         call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
-      endif
-      exit Readnrecords
-   endif
-enddo Readnrecords
-
-if (read_meta%nrecords < 1) then
-   write(msgstring,*) 'unable to determine nrecords from ', trim(filename)
-   call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
-endif
-
-
-! Read every line looking for the timeStepNumber entry
-! timeStepNumber = [          0 ];
-
-rewind(iunit)
-ReadtimeStepNumber: do i = 1,nlines 
-   read(iunit,'(a)', iostat = io)charstring
-   if (io /= 0) then
-      call error_handler(E_ERR,'model_mod:read_meta','message',source,revision,revdate)
-   endif
-
-   indx = index(charstring,'timeStepNumber = [')
-   if (indx > 0) then
-      read(charstring(indx+18:),*,iostat=io)read_meta%timeStepNumber
-      if (io /= 0) then
-         write(msgstring,*)'unable to parse timeStepNumber from ', trim(filename)
-         call error_handler(E_ERR,'model_mod:read_meta',msgstring,source,revision,revdate)
-      endif
-      exit ReadtimeStepNumber
-
-   endif
-enddo ReadtimeStepNumber
-
-if (read_meta%timeStepNumber < 0) then
-   write(msgstring,*) 'unable to determine timeStepNumber from ', trim(filename)
-   call error_handler(E_MSG,'model_mod:read_meta',msgstring,source,revision,revdate)
-endif
-
-close(iunit)
-
-end function read_meta
-
-
-subroutine write_meta(metadata, filebase)
-!------------------------------------------------------------------
-!
-type(POP_meta_type), intent(in) :: metadata
-character(len=*), intent(in) :: filebase
-
-integer :: iunit, io, i
-character(len=128) :: filename
-
-if ( .not. module_initialized ) call static_init_model
-
-filename = trim(filebase)//'.meta'
-
-iunit = get_unit()
-open(unit=iunit, file=filename, action='write', form='formatted', iostat = io)
-if (io /= 0) then
-   write(msgstring,*) 'unable to open file ', trim(filename), ' for writing'
-   call error_handler(E_ERR,'model_mod:write_meta',msgstring,source,revision,revdate)
-endif
-
-write(iunit, "(A,I5,A)") "nDims = [ ", metadata%nDims, " ];"
-write(iunit, "(A)")     "dimList = [ "
-do i=1, metadata%nDims-1
-  write(iunit, "(3(I5,A))") metadata%dimList(i), ',', &
-                           1, ',', &
-                           metadata%dimList(i), ','
-enddo
-write(iunit, "(3(I5,A))") metadata%dimList(i), ',', &
-                         1, ',', &
-                         metadata%dimList(i), ' '
-
-write(iunit, "(A)") "];"
-
-write(iunit, "(3A)") "dataprec = [ '", trim(metadata%dataprec), "' ];"
-
-write(iunit, "(A,I5,A)") "nrecords = [ ", metadata%nrecords, " ];"
-
-write(iunit, "(A,I8,A)") "timeStepNumber = [ ", metadata%timeStepNumber, " ];"
-
-close(iunit)
-
-end subroutine write_meta
-
-
-
-subroutine read_2d_snapshot(fbase, x, timestep, vartype)
-!------------------------------------------------------------------
-!
-! This routine reads the Fortran direct access binary files ... eg
-! U.nnnnnnnnnn.data    by getting the dimension information from
-! U.nnnnnnnnnn.meta
-!
-! As it stands now ... the .data files appear to be big-endian.
-
-character(len=*),           intent(in)  :: fbase
-real(r4), dimension(:,:),   intent(out) :: x
-integer,                    intent(out) :: timestep
-character(len=*), optional, intent(in)  :: vartype
-
-character(len=128) :: metafilename, datafilename
-type(POP_meta_type):: metadata
-integer :: iunit, io
-integer :: reclen
-
-if ( .not. module_initialized ) call static_init_model
-
-if (present(vartype)) then
-   metafilename = vartype//'.'//trim(fbase)//'.meta'
-   datafilename = vartype//'.'//trim(fbase)//'.data'
-else
-   metafilename = trim(fbase)//'.meta'
-   datafilename = trim(fbase)//'.data'
-endif
-
-! If the companion ".meta" file exists, it is used. 
-! Otherwise, the namelist variables are used.
-
-metadata = read_meta(fbase,vartype)
-timestep = metadata%timeStepNumber
-
-! check to make sure storage modes match
-! somehow have to pair the string with the fortran kind
-! and protect against the redefinition of 'r4' ...
-! This code is not robust as it stands ...
-
-if     ( index(metadata%dataprec,'float32') > 0 ) then
-   ! r4 is probably OK
-else if( index(metadata%dataprec,'real*4') > 0 ) then
-   ! r4 is probably OK
-else
-   write(msgstring,*) 'storage mode mismatch for ', trim(datafilename)
-   call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
-endif
-
-! Check dimensions
-
-if (size(x, 1) /= metadata%dimList(1) ) then
-   write(msgstring,*)trim(metafilename),' dim 1 does not match delX grid size from namelist'
-   call error_handler(E_MSG,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
-   write(msgstring,*)'expected ',size(x,1),' got ',metadata%dimList(1)
-   call error_handler(E_ERR,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
-endif
-
-if (size(x, 2) /= metadata%dimList(2)) then
-   write(msgstring,*)trim(metafilename),' dim 2 does not match delY grid size from namelist'
-   call error_handler(E_MSG,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
-   write(msgstring,*)'expected ',size(x,2),' got ',metadata%dimList(2)
-   call error_handler(E_ERR,"model_mod:read_2d_snapshot",msgstring,source,revision,revdate)
-endif
-
-reclen = product(shape(x)) * item_size_direct_access
-
-if (do_output()) write(logfileunit,*)'item_size is ',item_size_direct_access, ' reclen is ',reclen
-if (do_output()) write(     *     ,*)'item_size is ',item_size_direct_access, ' reclen is ',reclen
-
-! Get next available unit number, read file.
-
-iunit = get_unit()
-open(unit=iunit, file=datafilename, action='read', access='direct', recl=reclen, iostat=io)
-if (io /= 0) then
-   write(msgstring,*) 'cannot open (',io,') file ', trim(datafilename),' for reading.'
-   call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
-endif
-
-read(iunit, rec=1, iostat = io) x
-if (io /= 0) then
-   write(msgstring,*) 'unable to read (',io,') snapshot file ', trim(datafilename)
-   call error_handler(E_ERR,'model_mod:read_2d_snapshot',msgstring,source,revision,revdate)
-endif
-
-close(iunit)
-
-
-end subroutine read_2d_snapshot
-
-
-
-subroutine read_3d_snapshot(fbase, x, timestep, vartype)
-!------------------------------------------------------------------
-!
-! This routine reads the Fortran direct access binary files ... eg
-! U.nnnnnnnnnn.data    by getting the dimension information from
-! U.nnnnnnnnnn.meta
-!
-! As it stands now ... the .data files appear to be big-endian.
-
-character(len=*),           intent(in)  :: fbase
-real(r4), dimension(:,:,:), intent(out) :: x
-integer,                    intent(out) :: timestep
-character(len=*), optional, intent(in)  :: vartype
-
-character(len=128) :: metafilename, datafilename
-type(POP_meta_type):: metadata
-integer :: iunit, io
-integer :: reclen
-
-if ( .not. module_initialized ) call static_init_model
-
-if (present(vartype)) then
-   metafilename = vartype//'.'//trim(fbase)//'.meta'
-   datafilename = vartype//'.'//trim(fbase)//'.data'
-else
-   metafilename = trim(fbase)//'.meta'
-   datafilename = trim(fbase)//'.data'
-endif
-
-! If the companion ".meta" file exists, it is used. 
-! Otherwise, the namelist variables are used.
-
-metadata = read_meta(fbase,vartype)
-timestep = metadata%timeStepNumber
-
-! check to make sure storage modes match
-! somehow have to pair the string with the fortran kind
-! and protect against the redefinition of 'r4' ...
-! This code is not robust as it stands ...
-
-if     ( index(metadata%dataprec,'float32') > 0 ) then
-   ! r4 is probably OK
-else if( index(metadata%dataprec,'real*4') > 0 ) then
-   ! r4 is probably OK
-else
-   write(msgstring,*) 'storage mode mismatch for ', trim(datafilename)
-   call error_handler(E_ERR,'model_mod:read_3d_snapshot',msgstring,source,revision,revdate)
-endif
-
-! Check dimensions
-
-if (size(x, 1) /= metadata%dimList(1) ) then
-   write(msgstring,*)trim(metafilename),' dim 1 does not match delX grid size from namelist'
-   call error_handler(E_MSG,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
-   write(msgstring,*)'expected ',size(x,1),' got ',metadata%dimList(1)
-   call error_handler(E_ERR,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
-endif
-
-if (size(x, 2) /= metadata%dimList(2)) then
-   write(msgstring,*)trim(metafilename),' dim 2 does not match delY grid size from namelist'
-   call error_handler(E_MSG,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
-   write(msgstring,*)'expected ',size(x,2),' got ',metadata%dimList(2)
-   call error_handler(E_ERR,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
-endif
-
-if (size(x, 3) /= metadata%dimList(3)) then
-   write(msgstring,*)trim(metafilename),' dim 3 does not match delZ grid size from namelist'
-   call error_handler(E_MSG,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
-   write(msgstring,*)'expected ',size(x,3),' got ',metadata%dimList(3)
-   call error_handler(E_ERR,"model_mod:read_3d_snapshot",msgstring,source,revision,revdate)
-endif
-
-reclen = product(shape(x)) * item_size_direct_access
-
-! Get next available unit number, read file.
-
-iunit = get_unit()
-open(unit=iunit, file=datafilename, action='read', access='direct', recl=reclen, iostat=io)
-if (io /= 0) then
-   write(msgstring,*) 'cannot open file ', trim(datafilename),' for reading.'
-   call error_handler(E_ERR,'model_mod:read_3d_snapshot',msgstring,source,revision,revdate)
-endif
-
-read(iunit, rec=1, iostat = io) x
-if (io /= 0) then
-   write(msgstring,*) 'unable to read snapshot file ', trim(datafilename)
-   call error_handler(E_ERR,'model_mod:read_3d_snapshot',msgstring,source,revision,revdate)
-endif
-
-close(iunit)
-
-end subroutine read_3d_snapshot
-
-
-
-subroutine write_2d_snapshot(x, fbase, timestepindex)
-!------------------------------------------------------------------
-!
-! This routine writes the Fortran direct access binary files ... eg
-! U.nnnnnnnnnn.data    and
-! U.nnnnnnnnnn.meta
-!
-! As it stands now ... the .data files appear to be big-endian.
-
-real(r4), dimension(:,:), intent(in) :: x
-character(len=*),         intent(in) :: fbase
-integer, optional,        intent(in) :: timestepindex
-
-character(len=128) :: metafilename, datafilename
-type(POP_meta_type) :: metadata
-integer :: iunit, io
-integer :: reclen
-
-if ( .not. module_initialized ) call static_init_model
-
-metafilename = trim(fbase)//'.meta'
-datafilename = trim(fbase)//'.data'
-
-metadata%nDims = 2
-metadata%dimList(:) = (/ Nx, Ny, 0 /)
-metadata%dataprec = "float32"
-metadata%reclen = Nx * Ny 
-metadata%nrecords = 1
-if (present(timestepindex)) then
-   metadata%timeStepNumber = timestepindex
-else
-   metadata%timeStepNumber = 0
-endif
-
-call write_meta(metadata, fbase)
-
-reclen = metadata%reclen * item_size_direct_access
-
-iunit = get_unit()
-open(unit=iunit, file=datafilename, action='write', access='direct', recl=reclen, iostat=io)
-if (io /= 0) then
-   write(msgstring,*) 'cannot open file ', trim(datafilename),' for reading.'
-   call error_handler(E_ERR,'model_mod:write_2d_snapshot',msgstring,source,revision,revdate)
-endif
-
-write(iunit, rec=1, iostat = io) x
-if (io /= 0) then
-   write(msgstring,*) 'unable to read snapshot file ', trim(datafilename)
-   call error_handler(E_ERR,'write_2d_snapshot',msgstring,source,revision,revdate)
-endif
-
-close(iunit)
-
-end subroutine write_2d_snapshot
-
-
-subroutine write_3d_snapshot(x, fbase, timestepindex)
-!------------------------------------------------------------------
-!
-! This routine writes the Fortran direct access binary files ... eg
-! U.nnnnnnnnnn.data  and the associated
-! U.nnnnnnnnnn.meta 
-!
-! As it stands now ... the .data files appear to be big-endian.
-
-real(r4), dimension(:,:,:), intent(in) :: x
-character(len=*),           intent(in) :: fbase
-integer, optional,          intent(in) :: timestepindex
-
-character(len=128) :: metafilename, datafilename
-type(POP_meta_type) :: metadata
-integer :: iunit, io
-integer :: reclen
-
-if ( .not. module_initialized ) call static_init_model
-
-metafilename = trim(fbase)//'.meta'
-datafilename = trim(fbase)//'.data'
-
-metadata%nDims = 3
-metadata%dimList(:) = (/ Nx, Ny, Nz /)
-metadata%dataprec = "float32"     ! FIXME depends on defn of 'r4' 
-metadata%reclen = Nx * Ny * Nz
-metadata%nrecords = 1
-if (present(timestepindex)) then
-   metadata%timeStepNumber = timestepindex
-else
-   metadata%timeStepNumber = 0
-endif
-
-call write_meta(metadata, fbase)
-
-reclen = metadata%reclen * item_size_direct_access
-
-! Get next available unit number, write file.
-
-iunit = get_unit()
-open(unit=iunit, file=datafilename, action='write', access='direct', recl=reclen, iostat=io)
-if (io /= 0) then
-   write(msgstring,*) 'cannot open file ', trim(datafilename),' for writing.'
-   call error_handler(E_ERR,'model_mod:write_3d_snapshot',msgstring,source,revision,revdate)
-endif
-
-write(iunit, rec=1, iostat = io) x
-if (io /= 0) then
-   write(msgstring,*) 'unable to write snapshot file ', trim(datafilename)
-   call error_handler(E_ERR,'write_3d_snapshot',msgstring,source,revision,revdate)
-endif
-
-close(iunit)
-
-end subroutine write_3d_snapshot
-
-
-subroutine snapshot_files_to_sv(timestepcount, state_vector)
-!------------------------------------------------------------------
-!
-integer,  intent(in)    :: timestepcount 
-real(r8), intent(inout) :: state_vector(:)
+! Reads the current time and state variables from a POP restart
+! file and packs them into a dart state vector.
+
+character(len=*), intent(in)    :: filename 
+real(r8),         intent(inout) :: state_vector(:)
+type(time_type),  intent(out)   :: model_time
 
 ! temp space to hold data while we are reading it
-real(r4) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
-integer :: i, j, k, l, indx, timestepcount_out
+real(r8) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
+integer  :: i, j, k, l, indx
 
-! These must be a fixed number and in a fixed order.
-character(len=128)  :: prefixstring
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
+character(len=NF90_MAX_NAME) :: varname 
+integer :: VarID, numdims, dimlen
+integer :: ncid, iyear, imonth, iday, ihour, iminute, isecond
+character(len=256) :: myerrorstring 
+logical :: convert_to_ssh
 
 if ( .not. module_initialized ) call static_init_model
 
-! start counting up and filling the state vector
-! one item at a time, linearizing the 3d arrays into a single
-! 1d list of numbers.
+state_vector = MISSING_R8
+
+! Check that the input file exists ... 
+! Read the time data. 
+
+if ( .not. file_exist(filename) ) then
+   write(msgstring,*) 'cannot open file ', trim(filename),' for reading.'
+   call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
+endif
+
+call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
+                  "restart_file_to_sv", "open "//trim(filename))
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iyear'  , iyear), &
+                  "restart_file_to_sv", "get_att iyear")
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'imonth' , imonth), &
+                  "restart_file_to_sv", "get_att imonth")
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iday'   , iday), &
+                  "restart_file_to_sv", "get_att iday")
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ihour'  , ihour), &
+                  "restart_file_to_sv", "get_att ihour")
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
+                  "restart_file_to_sv", "get_att iminute")
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
+                  "restart_file_to_sv", "get_att isecond")
+
+model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
+
+if (do_output()) &
+    call print_time(model_time,'time for restart file '//trim(filename))
+if (do_output()) &
+    call print_date(model_time,'date for restart file '//trim(filename))
+
+! Start counting and filling the state vector one item at a time,
+! repacking the 3d arrays into a single 1d list of numbers.
+! These must be a fixed number and in a fixed order.
+
 indx = 1
 
-! fill S, T, U, V in that order
+! fill SALT, TEMP, UVEL, VVEL in that order
+! The POP restart files have two time steps for each variable,
+! the variables are named SALT_CUR and SALT_OLD ... for example.
+! We are only interested in the CURrent time step.
+
 do l=1, n3dfields
 
-   ! the filenames are constructed here and assumed to be:
-   !  Variable.Timestep.[data,.meta]
-   ! e.g. S.0000000672.data
-   !      S.0000000672.meta
-   write(prefixstring, '(A,''.'',I10.10)') trim(progvarnames(l)),timestepcount
+   varname = trim(progvarnames(l))//'_CUR'
+   myerrorstring = trim(filename)//' '//trim(varname)
 
-   call read_snapshot(prefixstring, data_3d_array, timestepcount_out)
-   do k = 1, Nz
-   do j = 1, Ny
-   do i = 1, Nx
+   ! Is the netCDF variable the right shape?
+
+   call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
+            "restart_file_to_sv", "inq_varid "//trim(myerrorstring))
+
+   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
+            "restart_file_to_sv", "inquire "//trim(myerrorstring))
+
+   if (numdims /= 3) then
+      write(msgstring,*) trim(myerrorstring),' does not have exactly 3 dimensions'
+      call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
+   endif
+
+   do i = 1,numdims
+      write(msgstring,'(''inquire dimension'',i,A)') i,trim(myerrorstring)
+      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
+            "restart_file_to_sv", msgstring)
+
+      if (dimlen /= size(data_3d_array,i)) then
+         write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
+         call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
+      endif
+   enddo   
+
+   ! Actually get the variable and stuff it into the array
+
+   call nc_check(nf90_get_var(ncid, VarID, data_3d_array), "restart_file_to_sv", &
+                "get_var "//trim(varname))
+
+   do k = 1, Nz   ! size(data_3d_array,3)
+   do j = 1, Ny   ! size(data_3d_array,2)
+   do i = 1, Nx   ! size(data_3d_array,1)
       state_vector(indx) = data_3d_array(i, j, k)
       indx = indx + 1
    enddo
@@ -2407,14 +1727,57 @@ do l=1, n3dfields
 
 enddo
 
-! and finally, Eta (and any other 2d fields)
+! and finally, SHGT (and any other 2d fields)
 do l=(n3dfields+1), (n3dfields+n2dfields)
 
-   write(prefixstring, '(A,''.'',I10.10)') trim(progvarnames(l)), timestepcount
+   select case ( trim(progvarnames(l)) )
+   case ("SHGT")
+      ! The restart files do not drag around SHGT, but they do drag
+      ! around PSURF ... which can be used to calculate SHGT.
+      varname = 'PSURF_CUR'
+      convert_to_ssh = .true.
+   case default
+      varname = trim(progvarnames(l))//'_CUR'
+      convert_to_ssh = .false.
+   end select
 
-   call read_snapshot(prefixstring, data_2d_array, timestepcount_out)
-   do j = 1, Ny
-   do i = 1, Nx
+   myerrorstring = trim(varname)//' '//trim(filename)
+
+   ! Is the netCDF variable the right shape?
+
+   call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
+            "restart_file_to_sv", "inq_varid "//trim(myerrorstring))
+
+   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
+            "restart_file_to_sv", "inquire "//trim(myerrorstring))
+
+   if (numdims /= 2) then
+      write(msgstring,*) trim(myerrorstring),' does not have exactly 2 dimensions'
+      call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
+   endif
+
+   do i = 1,numdims
+      write(msgstring,'(''inquire dimension'',i,A)')i,trim(myerrorstring)
+      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
+            "restart_file_to_sv", msgstring)
+
+      if (dimlen /= size(data_2d_array,i)) then
+         write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
+         call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
+      endif
+   enddo   
+
+   ! Actually get the variable and stuff it into the array
+
+   call nc_check(nf90_get_var(ncid, VarID, data_2d_array), "restart_file_to_sv", &
+                "get_var "//trim(varname))
+
+   if ( convert_to_ssh ) then  ! SSH=psurf/980.6    POP uses CGS 
+      data_2d_array = data_2d_array/980.6_r8
+   endif
+
+   do j = 1, Ny   ! size(data_3d_array,2)
+   do i = 1, Nx   ! size(data_3d_array,1)
       state_vector(indx) = data_2d_array(i, j)
       indx = indx + 1
    enddo
@@ -2422,173 +1785,166 @@ do l=(n3dfields+1), (n3dfields+n2dfields)
 
 enddo
 
-end subroutine snapshot_files_to_sv
+end subroutine restart_file_to_sv
 
 
 
-subroutine sv_to_snapshot_files(state_vector, date1, date2)
+subroutine sv_to_restart_file(state_vector, filename, date1, date2)
 !------------------------------------------------------------------
 !
-real(r8), intent(in) :: state_vector(:)
-integer,  intent(in) :: date1, date2 
+real(r8),         intent(in) :: state_vector(:)
+character(len=*), intent(in) :: filename 
+type(time_type),  intent(in) :: date1, date2 
+
+integer :: iyear, imonth, iday, ihour, iminute, isecond
+type(time_type) :: pop_time
 
 ! temp space to hold data while we are writing it
 real(r4) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
-integer :: i, j, k, l, indx
 
-! These must be a fixed number and in a fixed order.
-character(len=128)  :: prefixstring
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
+character(len=NF90_MAX_NAME)          :: varname 
+character(len=256)                    :: myerrorstring 
+
+integer :: i, l, ncid, VarID, numdims, dimlen
+logical :: convert_from_ssh
+
+!----------------------------------------------------------------------
+! Get the show underway
+!----------------------------------------------------------------------
 
 if ( .not. module_initialized ) call static_init_model
 
-! start counting up and filling the state vector
-! one item at a time, linearizing the 3d arrays into a single
-! 1d list of numbers.
-indx = 1
+! Check that the input file exists. 
+! make sure the time tag in the restart file matches 
+! the current time of the DART state ...
+
+if ( .not. file_exist(filename)) then
+   write(msgstring,*)trim(filename),' does not exist. FATAL error.'
+   call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate) 
+endif
+
+call nc_check( nf90_open(trim(filename), NF90_WRITE, ncid), &
+                  "sv_to_restart_file", "open "//trim(filename))
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iyear'  , iyear), &
+                  "sv_to_restart_file", "get_att iyear")
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'imonth' , imonth), &
+                  "sv_to_restart_file", "get_att imonth")
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iday'   , iday), &
+                  "sv_to_restart_file", "get_att iday")
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ihour'  , ihour), &
+                  "sv_to_restart_file", "get_att ihour")
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
+                  "sv_to_restart_file", "get_att iminute")
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
+                  "sv_to_restart_file", "get_att isecond")
+
+pop_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
+
+if ( pop_time /= date1 ) then
+   call print_time(   date1,'DART current time',logfileunit) 
+   call print_time(pop_time,'POP  current time',logfileunit) 
+   write(msgstring,*)trim(filename),' current time /= model time. FATAL error.'
+   call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate) 
+endif
+
+if (do_output()) &
+    call print_time(pop_time,'time of restart file '//trim(filename))
+if (do_output()) &
+    call print_date(pop_time,'date of restart file '//trim(filename))
 
 ! fill S, T, U, V in that order
 do l=1, n3dfields
 
-   ! the filenames are going to be constructed here and assumed to be:
-   !  Variable.Basename.Timestep.data  and .meta
-   ! e.g. S.Prior.0000000672.data
-   !      S.Prior.0000000672.meta
-   write(prefixstring, '(A,''.'',I8.8,''.'',I6.6)') trim(progvarnames(l)),date1,date2
+   varname = trim(progvarnames(l))//'_CUR'
+   myerrorstring = trim(filename)//' '//trim(varname)
 
-   do k = 1, Nz
-   do j = 1, Ny
-   do i = 1, Nx
-      data_3d_array(i, j, k) = state_vector(indx)
-      indx = indx + 1
+   ! Is the netCDF variable the right shape?
+
+   call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
+            "sv_to_restart_file", "inq_varid "//trim(myerrorstring))
+
+   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
+            "sv_to_restart_file", "inquire "//trim(myerrorstring))
+
+   if (numdims /= 3) then
+      write(msgstring,*) trim(myerrorstring),' does not have exactly 3 dimensions'
+      call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
+   endif
+
+   do i = 1,numdims
+      write(msgstring,'(''inquire dimension'',i,A)') i,trim(myerrorstring)
+      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
+            "sv_to_restart_file", msgstring)
+
+      if (dimlen /= size(data_3d_array,i)) then
+         write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
+         call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
+      endif
    enddo
-   enddo
-   enddo
-   call write_snapshot(data_3d_array, prefixstring, timestepcount)
+
+   call vector_to_prog_var(state_vector,start_index(l),data_3d_array)
+
+   ! Actually stuff it into the netcdf file
+   call nc_check(nf90_put_var(ncid, VarID, data_3d_array), &
+            'sv_to_restart_file', 'put_var '//trim(myerrorstring))
 
 enddo
 
-! and finally, Eta (and any other 2d fields)
+! and finally, SHGT (and any other 2d fields)
 do l=(n3dfields+1), (n3dfields+n2dfields)
 
-   write(prefixstring, '(A,''.'',I8.8,''.'',I6.6)') trim(progvarnames(l)),date1,date2
+   select case ( trim(progvarnames(l)) )
+   case ("SHGT")
+      ! The restart files do not drag around SHGT, but they do drag
+      ! around PSURF ... which can be used to calculate SHGT.
+      varname = 'PSURF_CUR'
+      convert_from_ssh = .true.
+   case default
+      varname = trim(progvarnames(l))//'_CUR'
+      convert_from_ssh = .false.
+   end select
 
-   do j = 1, Ny
-   do i = 1, Nx
-      data_2d_array(i, j) = state_vector(indx)
-      indx = indx + 1
+   myerrorstring = trim(varname)//' '//trim(filename)
+
+   ! Is the netCDF variable the right shape?
+
+   call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
+            "sv_to_restart_file", "inq_varid "//trim(myerrorstring))
+
+   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
+            "sv_to_restart_file", "inquire "//trim(myerrorstring))
+
+   if (numdims /= 2) then
+      write(msgstring,*) trim(myerrorstring),' does not have exactly 2 dimensions'
+      call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
+   endif
+
+   do i = 1,numdims
+      write(msgstring,'(''inquire dimension'',i,A)')i,trim(myerrorstring)
+      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
+            "sv_to_restart_file", msgstring)
+
+      if (dimlen /= size(data_2d_array,i)) then
+         write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
+         call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
+      endif
    enddo
-   enddo
-   call write_snapshot(data_2d_array, prefixstring, timestepcount)
+
+   call vector_to_prog_var(state_vector,start_index(l),data_2d_array)
+
+   if ( convert_from_ssh ) then  ! SSH = psurf*980.6    POP uses CGS 
+      data_2d_array = data_2d_array * 980.6_r8
+   endif
+
+   call nc_check(nf90_put_var(ncid, VarID, data_2d_array), &
+            'sv_to_restart_file', 'put_var '//trim(myerrorstring))
 
 enddo
 
-end subroutine sv_to_snapshot_files
+call nc_check(nf90_close(ncid), 'sv_to_restart_file', 'close '//trim(filename))
 
-
-
-subroutine prog_var_to_vector(s,t,u,v,eta,x)
-!------------------------------------------------------------------
-! deprecated in favor of snapshot_files_to_sv
-
-real(r4), dimension(:,:,:), intent(in)  :: s,t,u,v
-real(r4), dimension(:,:),   intent(in)  :: eta
-real(r8), dimension(:),     intent(out) :: x
-
-integer :: i,j,k,ii
-
-if ( .not. module_initialized ) call static_init_model
-
-! check shapes
-
-if (size(s,1) /= Nx) then
-   write(msgstring,*) 'dim 1 of S /= Nx ',size(s,1),Nx
-   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
-                      msgstring,source,revision,revdate) 
-endif
-
-if (size(s,2) /= Ny) then
-   write(msgstring,*) 'dim 2 of S /= Ny ',size(s,2),Ny
-   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
-                      msgstring,source,revision,revdate) 
-endif
-
-if (size(s,3) /= Nz) then
-   write(msgstring,*) 'dim 3 of S /= Nz ',size(s,3),Nz
-   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
-                      msgstring,source,revision,revdate) 
-endif
-
-if (size(eta,1) /= Nx) then
-   write(msgstring,*) 'dim 1 of Eta /= Nx ',size(eta,1),Nx
-   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
-                      msgstring,source,revision,revdate) 
-endif
-
-if (size(eta,2) /= Ny) then
-   write(msgstring,*) 'dim 2 of Eta /= Ny ',size(eta,2),Ny
-   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
-                      msgstring,source,revision,revdate) 
-endif
-
-! Should check sizes of T,U,V against that of S
-
-ii = 0
-
-! Salinity
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   x(ii) = s(i,j,k)
-enddo
-enddo
-enddo
-
-! Temperature
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   x(ii) = t(i,j,k)
-enddo
-enddo
-enddo
-
-! E-W 
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   x(ii) = u(i,j,k)
-enddo
-enddo
-enddo
-
-! N-S
-do k = 1,Nz   ! vertical
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   x(ii) = v(i,j,k)
-enddo
-enddo
-enddo
-
-! Sea Surface Height
-do j = 1,Ny   ! latitudes
-do i = 1,Nx   ! longitudes
-   ii = ii + 1
-   x(ii) = eta(i,j)
-enddo
-enddo
-
-if (ii /= get_model_size()) then
-   write(msgstring,*)'data size ',ii,' /= ',get_model_size(),' model size'
-   call error_handler(E_ERR,'model_mod:prog_var_to_vector', &
-                      msgstring,source,revision,revdate) 
-endif
-
-end subroutine prog_var_to_vector
+end subroutine sv_to_restart_file
 
 
 
@@ -2612,11 +1968,11 @@ varname = progvarnames(varindex)
 
 if (dim1 /= Nx) then
    write(msgstring,*)trim(varname),' 2d array dim 1 ',dim1,' /= ',Nx
-   call error_handler(E_ERR,'model_mod:vector_to_2d_prog_var',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'vector_to_2d_prog_var',msgstring,source,revision,revdate) 
 endif
 if (dim2 /= Ny) then
    write(msgstring,*)trim(varname),' 2d array dim 2 ',dim2,' /= ',Ny
-   call error_handler(E_ERR,'model_mod:vector_to_2d_prog_var',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'vector_to_2d_prog_var',msgstring,source,revision,revdate) 
 endif
 
 ii = start_index(varindex)
@@ -2653,15 +2009,15 @@ varname = progvarnames(varindex)
 
 if (dim1 /= Nx) then
    write(msgstring,*)trim(varname),' 3d array dim 1 ',dim1,' /= ',Nx
-   call error_handler(E_ERR,'model_mod:vector_to_3d_prog_var',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'vector_to_3d_prog_var',msgstring,source,revision,revdate) 
 endif
 if (dim2 /= Ny) then
    write(msgstring,*)trim(varname),' 3d array dim 2 ',dim2,' /= ',Ny
-   call error_handler(E_ERR,'model_mod:vector_to_3d_prog_var',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'vector_to_3d_prog_var',msgstring,source,revision,revdate) 
 endif
 if (dim3 /= Nz) then
    write(msgstring,*)trim(varname),' 3d array dim 3 ',dim3,' /= ',Nz
-   call error_handler(E_ERR,'model_mod:vector_to_3d_prog_var',msgstring,source,revision,revdate) 
+   call error_handler(E_ERR,'vector_to_3d_prog_var',msgstring,source,revision,revdate) 
 endif
 
 ii = start_index(varindex)
@@ -2678,129 +2034,72 @@ enddo
 end subroutine vector_to_3d_prog_var
 
 
-function timestep_to_DARTtime(TimeStepIndex)
+
+  subroutine get_horiz_grid_dims(Nx, Ny)
+!------------------------------------------------------------------
+! subroutine get_horiz_grid_dims(Nx, Ny)
 !
-! The POP time is composed of an offset to a fixed time base.
-! The base time is derived from the namelist in 'date.cal',
-! the model timestep (deltaT) is from the namelist 'PARM03',
-! and the timestepindex is the middle portion of the filename
-! of the POP files   [S,T,U,V,Eta].nnnnnnnnnn.dat 
+! Read in the lon, lat grid size from the netcdf file.
+! Get the actual values later.
 !
-! (namelist) startDate_1  yyyymmdd (year/month/day)
-! (namelist) startDate_2    hhmmss (hours/minutes/seconds)
-! (namelist) deltaTmom   aka 'timestep' ... r4 ... implies roundoff nuances
+! The file name comes from module storage ... namelist.
+
+ integer, intent(out) :: Nx   ! Number of Longitudes
+ integer, intent(out) :: Ny   ! Number of Latitudes
+
+ integer :: grid_id, dimid
+
+ ! get the ball rolling ...
+
+ call nc_check(nf90_open(trim(horiz_grid_input_file), nf90_nowrite, grid_id), &
+         'get_horiz_grid_dims','open '//trim(horiz_grid_input_file))
+
+ ! Longitudes : get dimid for 'i', and then get value
+
+ call nc_check(nf90_inq_dimid(grid_id, 'i', dimid), &
+         'get_horiz_grid_dims','inq_dimid i '//trim(horiz_grid_input_file))
+
+ call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Nx), &
+         'get_horiz_grid_dims','inquire_dimension i '//trim(horiz_grid_input_file))
+
+ ! Latitudes : get dimid for 'j', and then get value
+
+ call nc_check(nf90_inq_dimid(grid_id, 'j', dimid), &
+         'get_horiz_grid_dims','inq_dimid j '//trim(horiz_grid_input_file) )
+
+ call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Ny), &
+         'get_horiz_grid_dims','inquire_dimension i '//trim(horiz_grid_input_file))
+
+ ! tidy up
+
+ call nc_check(nf90_close(grid_id), &
+         'get_horiz_grid_dims','close '//trim(horiz_grid_input_file) )
+
+end subroutine get_horiz_grid_dims
+
+
+
+  subroutine get_vert_grid_dims(Nz)
+!------------------------------------------------------------------
+! subroutine get_vert_grid_dims(Nz)
 !
-integer, intent(in) :: TimeStepIndex
-type(time_type)     :: timestep_to_DARTtime
+! count the number of lines in the ascii file to figure out max
+! number of vert blocks.
 
-integer         :: yy,mn,dd,hh,mm,ss
-integer         :: modeloffset, maxtimestep
-type(time_type) :: offset
+ integer, intent(out) :: Nz
 
-if ( .not. module_initialized ) call static_init_model
+ integer :: linelen ! disposable
 
-offset = set_time(0,0)
-
-! Calculate how many seconds/days are represented by the 
-! timestepindex and timestepdeltaT .... the offset.
-! the timestepindex can be a 10 digit integer ... potential overflow
-! when multiplied by a large deltaT
-
-maxtimestep = HUGE(modeloffset)/ocean_dynamics_timestep
-
-if (TimeStepIndex >= maxtimestep) then
-   write(msgstring,*)' timestepindex (',TimeStepIndex, &
-                     ') * timestep (',ocean_dynamics_timestep,') overflows.'
-   call error_handler(E_ERR,'model_mod:timestep_to_DARTtime',msgstring,source,revision,revdate) 
-endif
-
-modeloffset = nint(TimeStepIndex * ocean_dynamics_timestep)
-dd          = modeloffset /     SECPERDAY    ! use integer arithmetic 
-ss          = modeloffset - (dd*SECPERDAY)
-offset      = set_time(ss,dd)
-
-! Calculate the DART time_type for the POP base time.
-
-yy =     startDate_1/10000
-mn = mod(startDate_1/100,100)
-dd = mod(startDate_1,100)
-
-hh =     startDate_2/10000 
-mm = mod(startDate_2/100,100)
-ss = mod(startDate_2,100)
-
-timestep_to_DARTtime =  set_date(yy,mn,dd,hh,mm,ss) + offset
-
-end function timestep_to_DARTtime
-
-
-
-subroutine DARTtime_to_POPtime(darttime,date1,date2)
-!
-! The POPtime is composed of:
-! (namelist) startDate_1  yyyymmdd (year/month/day)
-! (namelist) startDate_2    hhmmss (hours/minutes/seconds)
-!
-type(time_type), intent(in)  :: darttime
-integer,         intent(out) :: date1, date2
-
-integer         :: yy,mn,dd,hh,mm,ss
-
-if ( .not. module_initialized ) call static_init_model
-
-call get_date(darttime,yy,mn,dd,hh,mm,ss)
-
-date1 = yy*10000 + mn*100 + dd
-date2 = hh*10000 + mm*100 + ss
-
-!if (do_output()) call print_time(darttime,'DART2POP dart model time')
-!if (do_output()) call print_date(darttime,'DART2POP dart model date')
-!if (do_output()) write(*,*)'DART2POP',date1,date2
-
-end subroutine DARTtime_to_POPtime
-
-
-
-function DARTtime_to_timestepindex(mytime)
-!
-! The POPtime is composed of an offset to a fixed time base.
-! The base time is derived from the namelist in 'date.cal',
-! the model timestep (deltaT) is from the namelist 'PARM03',
-! and the timestepindex is the middle portion of the filename
-! of the POP files   [S,T,U,V,Eta].nnnnnnnnnn.dat 
-!
-! (namelist) startDate_1  yyyymmdd (year/month/day)
-! (namelist) startDate_2    hhmmss (hours/minutes/seconds)
-! (namelist) deltaTmom   aka 'timestep' ... r4 ... implies roundoff nuances
-!
-type(time_type), intent(in)  :: mytime
-integer                      :: DARTtime_to_timestepindex
-
-integer :: dd,ss
-type(time_type) :: timeorigin, offset
-
-if ( .not. module_initialized ) call static_init_model
-
-timeorigin = timestep_to_DARTtime(0)
-offset     = mytime - timeorigin
-call get_time(offset,ss,dd)
-
-if (dd >= (HUGE(dd)/SECPERDAY)) then   ! overflow situation
-   call print_time(mytime,'DART time is',logfileunit)
-   write(msgstring,*)'Trying to convert DART time to POP timestep overflows'
-   call error_handler(E_ERR,'model_mod:DARTtime_to_timestepindex',msgstring,source,revision,revdate) 
-endif
-
-DARTtime_to_timestepindex = nint((dd*SECPERDAY+ss) / ocean_dynamics_timestep)
-
-end function DARTtime_to_timestepindex
+ call find_textfile_dims(vert_grid_input_file, Nz, linelen) 
+ 
+end subroutine get_vert_grid_dims
 
 
 
 subroutine get_gridsize(num_x, num_y, num_z)
-!------------------------------------------------------------------
-!
  integer, intent(out) :: num_x, num_y, num_z
+!------------------------------------------------------------------
+! public utility routine.
 
  num_x = Nx
  num_y = Ny
@@ -2810,158 +2109,231 @@ end subroutine get_gridsize
 
 
 
-subroutine write_data_namelistfile
+  subroutine read_horiz_grid(nx, ny, XC, XG, YC, YG)
 !------------------------------------------------------------------
-! Essentially, we want to set the PARM03:endTime value to tell the
-! model when to stop. To do that, we have to write an entirely new
-! 'data' file, which unfortunately contains multiple namelists.
+! subroutine read_horiz_grid(nx, ny, XC, XG, YC, YG)
 !
-! The strategy here is to determine where the PARM03 namelist starts
-! and stops. The stopping part is generally tricky, since 
-! the terminator is not well-defined.
+! Open the netcdf file, read in the cell corners, and compute
+! the cell centers.
 !
-! So - once we know where the namelist starts and stops, we can
-! hunt for the values we need to change and change them while 
-! preserving everything else.
+! Here is the typically spartan dump of the grid netcdf file.
+! netcdf horiz_grid.x1 {
+! dimensions:
+!         i = 320 ;
+!         j = 384 ;
+! variables:
+!         double ULAT(j, i) ;
+!         double ULON(j, i) ;
+!         double HTN(j, i) ;
+!         double HTE(j, i) ;
+!         double HUS(j, i) ;
+!         double HUW(j, i) ;
+!         double ANGLE(j, i) ;
+! }
+! For this (global) case, the ULAT,ULON were in radians.
+
+ integer,  intent(in)  :: nx, ny
+ real(r8), intent(out) :: XC(:), XG(:)
+ real(r8), intent(out) :: YC(:), YG(:)
+
+ integer  :: grid_id, ulat_id, ulon_id, i, j
+ real(r8) :: ulat(nx, ny), ulon(nx, ny), first
+
+ call nc_check(nf90_open(trim(horiz_grid_input_file), nf90_nowrite, grid_id), &
+         'read_horiz_grid','open '//trim(horiz_grid_input_file) )
+
+ call nc_check(nf90_inq_varid(grid_id, 'ULAT', ulat_id), &
+         'read_horiz_grid','varid ULAT '//trim(horiz_grid_input_file) )
+
+ call nc_check(nf90_inq_varid(grid_id, 'ULON', ulon_id), &
+         'read_horiz_grid','varid ULON '//trim(horiz_grid_input_file) )
+
+ call nc_check(nf90_get_var(grid_id, ulat_id, ulat), &
+         'read_horiz_grid','get ULAT '//trim(horiz_grid_input_file) )
+
+ call nc_check(nf90_get_var(grid_id, ulon_id, ulon), &
+         'read_horiz_grid','get ULON '//trim(horiz_grid_input_file) )
+
+ ! TJH check sizes ...
+
+ call nc_check(nf90_close(grid_id), &
+         'read_horiz_grid','close '//trim(horiz_grid_input_file) )
+
+ ! check for orthogonality
+ do i=1, nx
+   first = ulon(i, 1)
+   do j=2, ny
+     if (ulon(i, j) /= first) then
+     endif
+   enddo
+   XG(i) = first
+ enddo
+
+ ! check for orthogonality
+ do j=1, ny
+   first = ulat(1, j)
+   do i=2, nx
+     if (ulat(i, j) /= first) then
+     endif
+   enddo
+   YG(j) = first
+ enddo
+
+ ! for now, compute centers.  FIXME: in a non-orthogonal grid this
+ ! cannot be computed like this, we should read it in from somewhere?
+ do i=1, nx-1
+   XC(i) = (XG(i+1) - XG(i)) * 0.5_r8
+ enddo
+ if (longitude_wrap) then
+   XC(nx) = ((XG(1)+360.0_r8) - XG(nx)) * 0.5_r8
+ else
+   ! FIXME: and XC(nx) is ??  extrapolate is wrong, but...
+   XC(nx) = XG(nx-1) + ((XG(nx) - XG(nx-1)) * 0.5_r8)
+ endif
+
+ ! ditto comments above.  less complicated because no wrap, but what
+ ! about last cell?
+ do j=1, ny-1
+   YC(j) = (YG(j+1) - YG(j)) * 0.5_r8
+ enddo
+ ! FIXME: extrapolate -- wrong, but what should it be??
+ YC(ny) = YG(ny-1) + ((YG(ny) - YG(ny-1)) * 0.5_r8)
+
+end subroutine read_horiz_grid
+
+
+
+subroutine read_vert_grid(nz, ZC, ZG)
+!------------------------------------------------------------------
+ integer,  intent(in)  :: nz
+ real(r8), intent(out) :: ZC(:), ZG(:)
+
+ integer  :: iunit, i, ios
+ real(r8) :: depth(nz), zcent(nz), zbot(nz)
+
+ iunit = open_file(trim(vert_grid_input_file), action = 'read')
+
+ do i=1, nz
+
+   read(iunit,*,iostat=ios) depth(i), zcent(i), zbot(i)
+
+   ! error
+   if ( ios /= 0 ) then
+      write(*,msgstring)'error reading depths, line ',i
+      call error_handler(E_ERR,'read_vert_grid',msgstring,source,revision,revdate) 
+   endif
+
+ enddo 
+
+ do i=1, nz
+   ZC(i) = zcent(i)
+   ZG(i) = zbot(i)   ! FIXME: is this right?
+ enddo
+end subroutine read_vert_grid
+
+
+
+  subroutine read_kmt(Nx, Ny, KMT)
+!------------------------------------------------------------------
+! subroutine read_kmt(Nx, Ny, KMT)
 ! 
+! open topo file
+! make sure i, j match Nx, Ny
+! KMT array already allocated - fill from file
+! close topo file
 
-integer :: iunit, ounit
-integer :: linenum1, linenumE, linenumN
-integer :: io, iline
-real(r8) :: MyEndTime
+ integer, intent(in)  :: Nx, Ny
+ integer, intent(out) :: KMT(:, :)
 
-character(len=169) :: nml_string, uc_string
+ integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
+ integer :: ncstat, ncid, varid, numdims
+ integer :: dim1len, dim2len
+  
 
-if ( .not. file_exist('data') ) then
-   call error_handler(E_ERR,'write_data_namelistfile', &
-      'namelist file "data" does not exist',source,revision,revdate) 
-endif
+ call nc_check(nf90_open(trim(topography_input_file), nf90_nowrite, ncid), &
+         'read_kmt','open '//trim(topography_input_file) )
 
-iunit = open_file('data',      action = 'read')
-ounit = open_file('data.DART', action = 'write')
-rewind(ounit)
+ call nc_check(nf90_inq_varid(ncid, 'KMT', varid), &
+         'read_kmt','inq_varid KMT '//trim(topography_input_file) )
 
-! Find which line number contains &PARM03 and how many lines total.
-! Since static_init_model() has already read this once, we know
-! that the data file exists and that it contains a PARM03 namelist.
-linenumN = 0
-linenum1 = 0
+ call nc_check(nf90_inquire_variable(ncid,varid,dimids=dimIDs,ndims=numdims), &
+         'read_kmt', 'inquire KMT '//trim(topography_input_file))
 
-FINDSTART : do
+ if ( numdims /= 2 ) then
+    write(msgstring,*)trim(topography_input_file)//' KMT should have 2 dims - has ',numdims
+    call error_handler(E_ERR,'read_kmt',msgstring,source,revision,revdate) 
+ endif
 
-   read(iunit, '(A)', iostat = io) nml_string
+ call nc_check(nf90_inquire_dimension(ncid, dimIDs(1), len=dim1len), &
+         'read_kmt', 'inquire dim1 of KMT '//trim(topography_input_file))
 
-   if (io < 0 ) then ! end of file
-   !  write(*,*)'FINDSTART ... end-of-file at ',linenumN
-      exit FINDSTART
-   elseif (io /= 0 ) then ! read error
-      write(*,msgstring)'manual namelist read failed at line ',linenum1
-      call error_handler(E_ERR,'write_data_namelistfile', &
-         msgstring,source,revision,revdate) 
-   endif
+ call nc_check(nf90_inquire_dimension(ncid, dimIDs(2), len=dim2len), &
+         'read_kmt', 'inquire dim2 of KMT '//trim(topography_input_file))
 
-   linenumN = linenumN + 1
+ if ( (dim1len /= Nx) .or. (dim2len /= Ny) ) then
+    write(msgstring,*)trim(topography_input_file)//' KMT shape wrong ',dim1len,dim2len
+    call error_handler(E_ERR,'read_kmt',msgstring,source,revision,revdate) 
+ endif
 
-   if('&PARM03' == trim(adjustl(nml_string))) then
-      linenum1 = linenumN
-   endif
+ ! If we made it this far, we can read the variable
 
-enddo FINDSTART
+ call nc_check(nf90_get_var(ncid, varid, KMT), &
+         'read_kmt','get_var KMT '//trim(topography_input_file) )
 
-! write(*,*)'Namelist PARM03 starts at line ',linenum1
-! write(*,*)'File has ',linenumN,' lines'
+ call nc_check(nf90_close(ncid), &
+         'read_kmt','close '//trim(topography_input_file) )
 
-if (linenum1 < 1) then
-   write(*,msgstring)'unable to find string PARM03'
-   call error_handler(E_ERR,'write_data_namelistfile', &
-      msgstring,source,revision,revdate) 
-endif
-
-! We must preserve the value of the paramters right now,
-! so we can write THEM (and not the values we are about to read!)
-
-MyEndTime  = endTime
-
-! Hopefully, we can read the namelist and stay positioned
-! Since static_init_model() has already read this once, 
-! it is highly unlikely to fail here ...
-
-rewind(iunit) 
-read(iunit, nml = PARM03, iostat = io)
-if (io /= 0 ) then
-   call error_handler(E_ERR,'write_data_namelistfile', &
-   'namelist READ failed somehow',source,revision,revdate) 
-endif
-
-endTime  = MyEndTime
-dumpFreq = MyEndTime
-taveFreq = MyEndTime
-
-! Find how many more lines till the end-of-file 
-linenumE = 0
-
-FINDEND : do
-
-   read(iunit, '(A)', iostat = io) nml_string
-
-   if (io < 0 ) then ! end of file
-   !  write(*,*)'FINDEND ... end-of-file at ',linenumE
-      exit FINDEND
-   elseif (io /= 0 ) then ! read error
-      write(*,msgstring)'manual namelist read failed at line ',linenumE
-      call error_handler(E_ERR,'write_data_namelistfile', &
-         msgstring,source,revision,revdate) 
-   endif
-
-   linenumE = linenumE + 1
-
-enddo FINDEND
-
-! write(*,*)'There are ',linenumE,' lines after the namelist ends.'
-rewind(iunit) 
-
-! Read the original namelistfile, write the new namelistfile
-
-do iline = 1,linenum1
-    read(iunit, '(A)', iostat = io) nml_string
-   write(ounit, '(A)', iostat = io) trim(nml_string)
-enddo 
-do iline = 1,(linenumN-linenum1-linenumE+1)
-
-    read(iunit, '(A)', iostat = io) nml_string
-   uc_string = nml_string
-   call to_upper(uc_string)
-
-   if     (index(uc_string,'ADJDUMPFREQ') > 0) then
-      continue
-
-   elseif (index(uc_string,'STARTTIME') > 0) then
-      write(nml_string,'('' startTime = '',f,'','')')0.0_r8
-
-   elseif (index(uc_string,'DUMPFREQ') > 0) then
-      write(nml_string,'('' dumpFreq = '',f,'','')')dumpFreq
-
-   elseif (index(uc_string,'ENDTIME') > 0) then
-      write(nml_string,'('' endTime  = '',f,'','')')endTime
-
-   elseif (index(uc_string,'TAVEFREQ') > 0) then
-      write(nml_string,'('' taveFreq = '',f,'','')')taveFreq
-
-   endif
-
-   write(ounit, '(A)', iostat = io) trim(nml_string)
-enddo 
-do iline = 1,(linenumE-1)
-    read(iunit, '(A)', iostat = io) nml_string
-   write(ounit, '(A)', iostat = io) trim(nml_string)
-enddo 
-
-close(iunit)
-close(ounit)
-
-end subroutine write_data_namelistfile
+end subroutine read_kmt
 
 
+
+  subroutine write_grid_netcdf(XG, XC, YG, YC, ZG, ZC, KMT)
+!------------------------------------------------------------------
+! subroutine write_grid_netcdf(XG, XC, YG, YC, ZG, ZC, KMT)
+!
+! Write the grid to a netcdf file for checking.
+
+ real(r8), intent(in) :: XC(:), XG(:)
+ real(r8), intent(in) :: YC(:), YG(:)
+ real(r8), intent(in) :: ZC(:), ZG(:)
+ integer,  intent(in) :: KMT(:,:)
+
+ integer :: ncid, idimid, jdimid, kdimid
+ integer :: i, j, k
+ integer :: XGvarid, XCvarid, YGvarid, YCvarid, ZGvarid, ZCvarid, KMTvarid
+
+ i = size(XG)
+ j = size(YG)
+ k = size(ZG)
+
+ call nc_check(nf90_create('dart_grid.nc', NF90_CLOBBER, ncid),'write_grid_netcdf')
+
+ call nc_check(nf90_def_dim(ncid, 'i', i, idimid),'write_grid_netcdf')
+ call nc_check(nf90_def_dim(ncid, 'j', j, jdimid),'write_grid_netcdf')
+ call nc_check(nf90_def_dim(ncid, 'k', k, kdimid),'write_grid_netcdf')
+
+ call nc_check(nf90_def_var(ncid,  'XG', nf90_double, idimid, XGvarid),'write_grid_netcdf')
+ call nc_check(nf90_def_var(ncid,  'XC', nf90_double, idimid, XCvarid),'write_grid_netcdf')
+ call nc_check(nf90_def_var(ncid,  'YG', nf90_double, jdimid, YGvarid),'write_grid_netcdf')
+ call nc_check(nf90_def_var(ncid,  'YC', nf90_double, jdimid, YCvarid),'write_grid_netcdf')
+ call nc_check(nf90_def_var(ncid,  'ZG', nf90_double, kdimid, ZGvarid),'write_grid_netcdf')
+ call nc_check(nf90_def_var(ncid,  'ZC', nf90_double, kdimid, ZCvarid),'write_grid_netcdf')
+ call nc_check(nf90_def_var(ncid, 'KMT', nf90_int, &
+                                           (/ idimid, jdimid /), KMTvarid),'write_grid_netcdf')
+
+ call nc_check(nf90_enddef(ncid),'write_grid_netcdf')
+
+ call nc_check(nf90_put_var(ncid,  XGvarid,  XG),'write_grid_netcdf')
+ call nc_check(nf90_put_var(ncid,  XCvarid,  XC),'write_grid_netcdf')
+ call nc_check(nf90_put_var(ncid,  YGvarid,  YG),'write_grid_netcdf')
+ call nc_check(nf90_put_var(ncid,  YCvarid,  YC),'write_grid_netcdf')
+ call nc_check(nf90_put_var(ncid,  ZGvarid,  ZG),'write_grid_netcdf')
+ call nc_check(nf90_put_var(ncid,  ZCvarid,  ZC),'write_grid_netcdf')
+ call nc_check(nf90_put_var(ncid, KMTvarid, KMT),'write_grid_netcdf')
+
+ call nc_check(nf90_close(ncid),'write_grid_netcdf')
+
+end subroutine write_grid_netcdf
 
 !===================================================================
 ! End of model_mod
