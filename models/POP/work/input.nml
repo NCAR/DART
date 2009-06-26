@@ -143,14 +143,12 @@
    horiz_grid_input_file        = 'horiz_grid.x1.nc',
    topography_input_file        = 'topography.x1.nc',
    vert_grid_input_file         = 'vert_grid.x1',
-   pop_data_file                =  'pop.r.x1A.00000102',
-   dart_restart_file            = 'dart.r.x1A.00000102'
    model_perturbation_amplitude = 0.2, 
    output_state_vector          = .false.,
  /
 
 &pop_to_dart_nml
-   pop_to_dart_restart_file =  'pop.r.x1A.00000102',
+   pop_to_dart_restart_file =  'pop.r.x1A.19000102',
    pop_to_dart_output_file  = 'assim_model_state_ud',
  /
 

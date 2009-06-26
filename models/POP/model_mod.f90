@@ -91,8 +91,6 @@ type(random_seq_type) :: random_seq
 character(len=128) :: horiz_grid_input_file = 'no_horiz_grid_input_file'
 character(len=128) :: topography_input_file = 'no_topography_input_file'
 character(len=128) :: vert_grid_input_file  = 'no_vert_grid_input_file'
-character(len=128) :: dart_restart_file     = 'no_dart_restart_file'
-character(len=128) :: pop_data_file         = 'no_pop_data_file'
 logical            :: longitude_wrap        = .true.
 
 !integer :: nblocks   - model_mod doesn't need this
@@ -132,8 +130,6 @@ namelist /model_nml/  &
    horiz_grid_input_file,       &
    topography_input_file,       &
    vert_grid_input_file,        &
-   dart_restart_file,           &
-   pop_data_file,               &
    longitude_wrap,              &
    output_state_vector,         &
    assimilation_period_days,    &  ! for now, this is the timestep

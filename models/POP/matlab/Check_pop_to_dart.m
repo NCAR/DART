@@ -79,5 +79,88 @@ mySSH  = reshape(datmat(ind1:ind2),size(SSH));
 d      = mySSH - SSH;
 disp(sprintf('SSH diffs are %f %f',min(d(:)),max(d(:))))
 
-clear fid fname iyear imonth iday ihour iminute isecond
-clear trec1 trecN rec1 recN offset ind1 ind2 days seconds
+clear datmat myS myT myU myV mySSH d
+
+%----------------------------------------------------------------------
+% This part creates an assim_model_state_ic file for use with
+% dart_to_pop ... assim_model_state_ic has the extra 'advance-to-time'
+%----------------------------------------------------------------------
+% The perfect_ics file contains precisely two records.
+% record 1 is two integers defining the valid time of the state vector.
+% record 2 is the state vector.
+% This is exactly the same as the 'assim_model_state_ud' file.
+% (except they normally are for different times ...)
+%----------------------------------------------------------------------
+
+tbase = datenum(1601,1,1,0,0,0);  % this is zero in the DART(gregorian) world
+t_one = datenum(1996,1,1,0,0,0);  % valid time of the 'gom' files.
+
+toffset = t_one - tbase;
+days    = floor(toffset);
+seconds = round(toffset - days)*86400;
+
+disp(sprintf('Creating a ''perfect_ics'' file with elements of shape %d %d %d',nx,ny,nz))
+
+disp(sprintf('prod(size(S)) is %d',  prod(size(S))))
+disp(sprintf('prod(size(T)) is %d',  prod(size(T))))
+disp(sprintf('prod(size(U)) is %d',  prod(size(U))))
+disp(sprintf('prod(size(V)) is %d',  prod(size(V))))
+disp(sprintf('prod(size(SSH)) is %d',prod(size(SSH))))
+
+nitems = prod(size(S))+ prod(size(T)) + prod(size(U)) + prod(size(V)) + prod(size(SSH));
+disp(sprintf('total restart size should %d',nitems*8 + 8 + 16))
+
+fid     = fopen('gom_S_199601.bin','rb','ieee-be');
+[Sics,count] = fread(fid,prod(size(S)),'float32');
+fclose(fid);
+if (count ~= prod(size(S)))
+   error(sprintf('S record length wrong %d %d',count,prod(size(S))))
+end
+
+fid     = fopen('gom_T_199601.bin','rb','ieee-be');
+[Tics,count]    = fread(fid,prod(size(T)),'float32');
+fclose(fid);
+if (count ~= prod(size(T)))
+   error(sprintf('T record length wrong %d %d',count,prod(size(T))))
+end
+
+fid     = fopen('gom_U_199601.bin','rb','ieee-be');
+[Uics,count]    = fread(fid,prod(size(U)),'float32');
+fclose(fid);
+if (count ~= prod(size(U)))
+   error(sprintf('U record length wrong %d %d',count,prod(size(U))))
+end
+
+fid     = fopen('gom_V_199601.bin','rb','ieee-be');
+[Vics,count]    = fread(fid,prod(size(V)),'float32');
+fclose(fid);
+if (count ~= prod(size(V)))
+   error(sprintf('V record length wrong %d %d',count,prod(size(V))))
+end
+
+fid     = fopen('gom_H_199601.bin','rb','ieee-be');
+[SSHics,count]  = fread(fid,prod(size(SSH)),'float32');
+fclose(fid);
+if (count ~= prod(size(SSH)))
+   error(sprintf('SSH record length wrong %d %d',count,prod(size(SSH))))
+end
+
+datvec = [Sics; Tics; Uics; Vics; SSHics];
+disp(sprintf('total model size is %d',length(datvec)*8))
+
+fid     = fopen('perfect_ics','wb','ieee-be');
+fwrite(fid,  trec1,'int32');
+fwrite(fid,seconds,'int32');
+fwrite(fid,   days,'int32');
+fwrite(fid,  trecN,'int32');
+
+fwrite(fid,   rec1,'int32');
+fwrite(fid, datvec,'float64');
+fwrite(fid,   recN,'int32');
+fclose(fid);
+
+fid     = fopen('perfect_ics.txt','wt');
+fprintf(fid,'%d %d\n',seconds,days);
+fprintf(fid,'%.15e\n',datvec);
+fclose(fid);
+
