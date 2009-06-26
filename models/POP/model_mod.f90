@@ -180,6 +180,8 @@ integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
 
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
+real(r8), allocatable :: ULAT(:,:), ULON(:,:), TLAT(:,:), TLON(:,:)
+
 
 ! integer, lowest valid cell number in the vertical
 integer, allocatable  :: KMT(:, :)
