@@ -182,7 +182,7 @@ real(r8), allocatable :: ULAT(:,:), ULON(:,:), TLAT(:,:), TLON(:,:)
 
 
 ! integer, lowest valid cell number in the vertical
-integer, allocatable  :: KMT(:, :)
+integer, allocatable  :: KMT(:, :), KMU(:, :)
 
 real(r8)        :: endTime
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
@@ -220,7 +220,7 @@ subroutine static_init_model()
 ! Called to do one time initialization of the model. In this case,
 ! it reads in the grid information.
 
-integer :: i, iunit, io
+integer :: iunit, io
 integer :: ss, dd
 
 ! The Plan:
@@ -270,16 +270,17 @@ call get_vert_grid_dims(Nz)
 ! Allocate space for grid variables. 
 allocate(XC(Nx), YC(Ny), ZC(Nz))
 allocate(XG(Nx), YG(Ny), ZG(Nz))
-allocate(KMT(Nx, Ny))
 
 ! These will eventually replace the single dim X/Y arrays above
 ! once we put in interpolation in the dipole grid code.
 allocate(ULAT(Nx, Ny), ULON(Nx, Ny), TLAT(Nx, Ny), TLON(Nx, Ny))
+allocate(KMT(Nx, Ny), KMU(Nx, Ny))
 
-! Fill them in  (horiz grid initialized ULAT/LON, TLAT/LON as well)
+! Fill them in.
+! (horiz grid initializes ULAT/LON, TLAT/LON as well)
 call read_horiz_grid(Nx, Ny, XC, XG, YC, YG)
 call read_vert_grid(Nz, ZC, ZG)
-call read_kmt(Nx, Ny, KMT)
+call read_kmt(Nx, Ny, KMT, KMU)
 
 call write_grid_netcdf(XG, XC, YG, YC, ZG, ZC, KMT) ! DEBUG only
 
@@ -444,9 +445,14 @@ integer        :: hstatus
 
 if ( .not. module_initialized ) call static_init_model
 
-! Successful istatus is 0
-interp_val = 0.0_r8
-istatus = 0
+! Let's assume failure.  Set return val to missing, then the code can
+! just set istatus to something indicating why it failed, and return.
+! If the interpolation is good, the interp_val will be set to the 
+! good value, and the last line here sets istatus to 0.
+! make any error codes set here be in the 10s
+
+interp_val = MISSING_R8     ! the DART bad value flag
+istatus = 99                ! unknown error
 
 ! Get the individual locations values
 loc_array = get_location(location)
@@ -464,11 +470,11 @@ elseif (vert_is_level(location)) then
    if ( (ind < 1) .or. (ind > size(zc)) ) then 
       lheight = zc(ind)
    else
-      istatus = 1
+      istatus = 11
       return
    endif
 else   ! if pressure or undefined, we don't know what to do
-   istatus = 7
+   istatus = 17
    return
 endif
 
@@ -486,7 +492,7 @@ else if(obs_type == KIND_SEA_SURFACE_HEIGHT) then
    base_offset = start_index(5)
 else
    ! Not a legal type for interpolation, return istatus error
-   istatus = 5
+   istatus = 15
    return
 endif
 
@@ -494,36 +500,43 @@ endif
 
 ! For Sea Surface Height don't need the vertical coordinate
 if( vert_is_surface(location) ) then
-   call lat_lon_interpolate(x(base_offset:), llon, llat, obs_type, interp_val, istatus)
+   call lat_lon_interpolate(x(base_offset:), llon, llat, obs_type, 1, interp_val, istatus)
    return
 endif
 
 ! Get the bounding vertical levels and the fraction between bottom and top
 call height_bounds(lheight, nz, zc, hgt_bot, hgt_top, hgt_fract, hstatus)
 if(hstatus /= 0) then
-   istatus = 2
+   istatus = 12
    return
 endif
 
-! Find the base location for the top height and interpolate horizontally on this level
-offset = base_offset + (hgt_top - 1) * nx * ny
-!print *, 'relative top height offset = ', offset - base_offset
-!print *, 'absolute top height offset = ', offset
-call lat_lon_interpolate(x(offset:), llon, llat, obs_type, top_val, istatus)
-! Failed istatus from interpolate means give up
-if(istatus /= 0) return
-
-! Find the base location for the bottom height and interpolate horizontally on this level
+! Find the base location for the bottom height and interpolate horizontally 
+!  on this level.  Do bottom first in case it is below the ocean floor; can
+!  avoid the second horizontal interpolation.
 offset = base_offset + (hgt_bot - 1) * nx * ny
 !print *, 'relative bot height offset = ', offset - base_offset
 !print *, 'absolute bot height offset = ', offset
-call lat_lon_interpolate(x(offset:), llon, llat, obs_type, bot_val, istatus)
+call lat_lon_interpolate(x(offset:), llon, llat, obs_type, hgt_bot, bot_val, istatus)
 ! Failed istatus from interpolate means give up
 if(istatus /= 0) return
 
-! Then weight them by the fraction and return
+! Find the base location for the top height and interpolate horizontally 
+!  on this level.
+offset = base_offset + (hgt_top - 1) * nx * ny
+!print *, 'relative top height offset = ', offset - base_offset
+!print *, 'absolute top height offset = ', offset
+call lat_lon_interpolate(x(offset:), llon, llat, obs_type, hgt_top, top_val, istatus)
+! Failed istatus from interpolate means give up
+if(istatus /= 0) return
+
+
+! Then weight them by the vertical fraction and return
 interp_val = bot_val + hgt_fract * (top_val - bot_val)
 !print *, 'model_interp: interp val = ',interp_val
+
+! All good.
+istatus = 0
 
 end subroutine model_interpolate
 
@@ -545,6 +558,7 @@ integer   :: i
 if ( .not. module_initialized ) call static_init_model
 
 ! Succesful istatus is 0
+! Make any failure here return istatus in the 20s
 istatus = 0
 
 ! The zc array contains the depths of the center of the vertical grid boxes
@@ -571,13 +585,13 @@ do i = 2, nheights
 end do
 
 ! Falling off the end means the location is lower than the deepest height
-! Fail with istatus 2 in this case
-istatus = 2
+istatus = 20
 
 end subroutine height_bounds
 
 
-subroutine lat_lon_interpolate(x, llon, llat, var_type, interp_val, istatus)
+subroutine lat_lon_interpolate(x, llon, llat, var_type, hgt_bot, &
+                               interp_val, istatus)
 !=======================================================================
 !
 
@@ -590,6 +604,7 @@ subroutine lat_lon_interpolate(x, llon, llat, var_type, interp_val, istatus)
 real(r8),            intent(in) :: x(:)
 real(r8),            intent(in) :: llon, llat
 integer,             intent(in) :: var_type
+integer,             intent(in) :: hgt_bot
 integer,            intent(out) :: istatus
 real(r8),           intent(out) :: interp_val
 
@@ -599,19 +614,17 @@ integer  :: lat_bot, lat_top, lon_bot, lon_top
 real(r8) :: lat_fract, lon_fract
 real(r8) :: pa, pb, pc, pd, xbot, xtop
 integer  :: lat_status, lon_status
-logical  :: masked
 
 if ( .not. module_initialized ) call static_init_model
 
 ! Succesful return has istatus of 0
-istatus = 0
-
-! Failed return values for istatus are ?????
+! Make any failure here return istatus in the 30s
+istatus = 30     ! unknown error
 
 ! Find out what latitude box and fraction
 ! The latitude grid being used depends on the variable type
-! U and V are on the YG latitude grid
-if(var_type == KIND_U_CURRENT_COMPONENT .or. var_type == KIND_V_CURRENT_COMPONENT) then
+if(is_on_ugrid(var_type)) then
+   ! U and V are on the YG latitude grid
    lat_array = yg
    call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
 else 
@@ -622,12 +635,12 @@ endif
 
 ! Check for error on the latitude interpolation
 if(lat_status /= 0) then 
-   istatus = 1
+   istatus = 31
    return
 endif
 
 ! Find out what longitude box and fraction
-if(var_type == KIND_U_CURRENT_COMPONENT .or. var_type == KIND_V_CURRENT_COMPONENT) then
+if(is_on_ugrid(var_type)) then
    ! U and V velocity is on the XG grid
    lon_array = xg
    call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
@@ -639,46 +652,33 @@ endif
 
 ! Check for error on the longitude interpolation
 if(lat_status /= 0) then 
-   istatus = 2
+   istatus = 32
+   return
+endif
+
+! FIXME: is this the right place to test?  make sure bottom of cell is valid
+! DO WE NEED TO TEST ALL 4 lon_bot, lon_top, lat_bot, lat_tops?
+if (is_not_ocean(var_type, lon_bot, lat_bot, hgt_bot) .or. &
+    is_not_ocean(var_type, lon_top, lat_bot, hgt_bot) .or. &
+    is_not_ocean(var_type, lon_bot, lat_top, hgt_bot) .or. &
+    is_not_ocean(var_type, lon_top, lat_top, hgt_bot)) then
+   istatus = 33
    return
 endif
 
 ! Vector is laid out with lat outermost loop, lon innermost loop
 ! Find the bounding points for the lat lon box
-! NOTE: For now, it is assumed that a real(r8) value of exactly 0.0 indicates
-! that a particular gridded quantity is masked and not available. This is not
-! the most robust way to do this, but may be sufficient since exact 0's are
-! expected to happen rarely. Jeff Anderson believes that the only implication
-! will be that an observation whos forward operator requires interpolating
-! from a point that has exactly 0.0 (but is not masked) will not be 
-! assimilated.
 !print *, 'lon_bot, lon_top = ', lon_bot, lon_top
 !print *, 'lat_bot, lat_top = ', lat_bot, lat_top
 
-pa = get_val(lon_bot, lat_bot, nx, x, masked)
+pa = get_val(lon_bot, lat_bot, nx, x)
 !print *, 'pa = ', pa
-if(masked) then
-   istatus = 3
-   return
-endif
-pb = get_val(lon_top, lat_bot, nx, x, masked)
+pb = get_val(lon_top, lat_bot, nx, x)
 !print *, 'pb = ', pb
-if(masked) then
-   istatus = 3
-   return
-endif
-pc = get_val(lon_bot, lat_top, nx, x, masked)
+pc = get_val(lon_bot, lat_top, nx, x)
 !print *, 'pc = ', pc
-if(masked) then
-   istatus = 3
-   return
-endif
-pd = get_val(lon_top, lat_top, nx, x, masked)
+pd = get_val(lon_top, lat_top, nx, x)
 !print *, 'pd = ', pd
-if(masked) then
-   istatus = 3
-   return
-endif
 
 !print *, 'pa,b,c,d = ', pa, pb, pc, pd
 
@@ -694,6 +694,9 @@ xtop = pc + lon_fract * (pd - pc)
 !print *, 'lat_fract, delta = ', lat_fract, (xtop - xbot)
 interp_val = xbot + lat_fract * (xtop - xbot)
 !print *, 'lat_lon_interp: interp_val = ', interp_val
+
+! good return
+istatus = 0
 
 end subroutine lat_lon_interpolate
 
@@ -725,15 +728,16 @@ integer    :: i
 
 if ( .not. module_initialized ) call static_init_model
 
-! Default is success
-istatus = 0
+! Success should return 0, failure a positive number.
+! Make any failure here return istatus in the 40s
+istatus = 40
 
 ! Check for too far south or north
 if(llat < lat_array(1)) then
-   istatus = 1
+   istatus = 41
    return
 else if(llat > lat_array(nlats)) then
-   istatus = 2
+   istatus = 42
    return
 endif
 
@@ -743,9 +747,12 @@ do i = 2, nlats
       bot = i - 1
       top = i
       fract = (llat - lat_array(bot)) / (lat_array(top) - lat_array(bot))
+      istatus = 0
       return
    endif
 end do
+
+! shouldn't get here.
 
 end subroutine lat_bounds
 
@@ -778,8 +785,9 @@ real(r8) :: dist_bot, dist_top
 
 if ( .not. module_initialized ) call static_init_model
 
-! Default is success
-istatus = 0
+! Success should return 0, failure a positive number.
+! Make any failure here return istatus in the 50s
+istatus = 50
 
 !print *, 'computing bounds for = ', llon
 ! This is inefficient, someone could clean it up for regularly spaced longitudes
@@ -795,6 +803,7 @@ do i = 2, nlons
 !print *, 'denomenator = ', dist_bot + abs(dist_top)
       fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
 !print *, 'fract = ', fract
+      istatus = 0
       return
    endif
 end do
@@ -806,10 +815,11 @@ if(longitude_wrap) then
    dist_bot = lon_dist(llon, lon_array(bot))
    dist_top = lon_dist(llon, lon_array(top)) 
    fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
+   istatus = 0
    return
 else
    ! Not in the localized longitude grid; return istatus 1
-   istatus = 1
+   istatus = 51
 endif
 
 end subroutine lon_bounds
@@ -841,14 +851,13 @@ endif
 end function lon_dist
 
 
-function get_val(lon_index, lat_index, nlon, x, masked)
+function get_val(lon_index, lat_index, nlon, x)
 !=======================================================================
 !
 
 ! Returns the value from a single level array given the lat and lon indices
 integer,     intent(in) :: lon_index, lat_index, nlon
 real(r8),    intent(in) :: x(:)
-logical,    intent(out) :: masked
 real(r8)                :: get_val
 
 if ( .not. module_initialized ) call static_init_model
@@ -859,16 +868,6 @@ if ( .not. module_initialized ) call static_init_model
 get_val = x((lat_index - 1) * nlon + lon_index)
 !print *, 'get_val = ', get_val
 
-! Masked returns false if the value is masked
-! A grid variable is assumed to be masked if its value is exactly 0.
-! See discussion in lat_lon_interpolate.
-if(get_val == 0.0_r8) then
-   masked = .true.
-else
-   masked = .false.
-endif
-
-!print *, 'masked is ', masked
 end function get_val
 
 
@@ -2146,8 +2145,16 @@ end subroutine get_gridsize
  call nc_check(nf90_inq_varid(grid_id, 'ULAT', ulat_id), &
          'read_horiz_grid','varid ULAT '//trim(horiz_grid_input_file) )
 
- call nc_check(nf90_inq_varid(grid_id, 'ULON', ulon_id), &
-         'read_horiz_grid','varid ULON '//trim(horiz_grid_input_file) )
+ ! some files have ULON, some ULONG.  try to read either.  same with T
+ nc_rc = nf90_inq_varid(grid_id, 'ULON', ulon_id)
+ if (nc_rc /= nf90_noerr) then
+   nc_rc = nf90_inq_varid(grid_id, 'ULONG', ulon_id)
+   if (nc_rc /= nf90_noerr) then
+      msgstring = 'unable to find either ULON or ULONG in file'
+      call error_handler(E_ERR, 'read_horiz_grid', msgstring, &
+                         source,revision,revdate) 
+   endif
+ endif 
 
  call nc_check(nf90_get_var(grid_id, ulat_id, ULAT), &
          'read_horiz_grid','get ULAT '//trim(horiz_grid_input_file) )
@@ -2163,9 +2170,17 @@ end subroutine get_gridsize
    call nc_check(nf90_inq_varid(grid_id, 'TLAT', tlat_id), &
            'read_horiz_grid','varid TLAT '//trim(horiz_grid_input_file) )
   
-   call nc_check(nf90_inq_varid(grid_id, 'TLON', tlon_id), &
-           'read_horiz_grid','varid TLON '//trim(horiz_grid_input_file) )
-  
+   ! look for TLON or TLONG
+   nc_rc = nf90_inq_varid(grid_id, 'TLON', tlon_id)
+   if (nc_rc /= nf90_noerr) then
+     nc_rc = nf90_inq_varid(grid_id, 'TLONG', tlon_id)
+     if (nc_rc /= nf90_noerr) then
+        msgstring = 'unable to find either TLON or TLONG in file'
+        call error_handler(E_ERR, 'read_horiz_grid', msgstring, &
+                           source,revision,revdate) 
+     endif
+   endif 
+
    call nc_check(nf90_get_var(grid_id, tlat_id, TLAT), &
            'read_horiz_grid','get TLAT '//trim(horiz_grid_input_file) )
   
@@ -2269,9 +2284,9 @@ end subroutine read_vert_grid
 
 
 
-  subroutine read_kmt(Nx, Ny, KMT)
+  subroutine read_kmt(Nx, Ny, KMT, KMU)
 !------------------------------------------------------------------
-! subroutine read_kmt(Nx, Ny, KMT)
+! subroutine read_kmt(Nx, Ny, KMT, KMU)
 ! 
 ! open topo file
 ! make sure i, j match Nx, Ny
@@ -2279,11 +2294,11 @@ end subroutine read_vert_grid
 ! close topo file
 
  integer, intent(in)  :: Nx, Ny
- integer, intent(out) :: KMT(:, :)
+ integer, intent(out) :: KMT(:, :), KMU(:, :)
 
  integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
- integer :: ncstat, ncid, varid, numdims
- integer :: dim1len, dim2len
+ integer :: ncid, varid, numdims
+ integer :: dim1len, dim2len, nc_rc, i, j
   
 
  call nc_check(nf90_open(trim(topography_input_file), nf90_nowrite, ncid), &
@@ -2316,16 +2331,61 @@ end subroutine read_vert_grid
  call nc_check(nf90_get_var(ncid, varid, KMT), &
          'read_kmt','get_var KMT '//trim(topography_input_file) )
 
+ ! Try to read in KMU.  If there, great.  If not, compute it.
+ nc_rc = nf90_inq_varid(ncid, 'KMU', varid)
+ if (nc_rc == nf90_noerr) then
+    call nc_check(nf90_get_var(ncid, varid, KMU), &
+            'read_kmt','get_var KMU '//trim(topography_input_file) )
+ else
+    KMU(1, 1) = 0
+    do j=2, dim2len
+       do i=2, dim1len
+          KMU(i,j) = min(KMT(i, j), KMT(i-1, j), KMT(i, j-1), KMT(i-1, j-1)) 
+       enddo
+    enddo
+ endif
+
  call nc_check(nf90_close(ncid), &
          'read_kmt','close '//trim(topography_input_file) )
 
 end subroutine read_kmt
 
 
+  function is_not_ocean(obs_type, lon_index, lat_index, hgt_index)
+!------------------------------------------------------------------
+! returns true if this point is below the ocean floor or if it is
+! on land.
+integer, intent(in)  :: obs_type
+integer, intent(in)  :: lon_index, lat_index, hgt_index
+logical              :: is_not_ocean
+
+logical :: is_ugrid
+
+is_ugrid = is_on_ugrid(obs_type)
+if ((      is_ugrid .and. hgt_index > KMU(lon_index, lat_index)) .or. &
+    (.not. is_ugrid .and. hgt_index > KMT(lon_index, lat_index))) then
+   is_not_ocean = .TRUE.
+   return
+endif
+
+  end function
+
+  function is_on_ugrid(obs_type)
+!------------------------------------------------------------------
+!  returns true if U, V -- everything else is on T grid
+integer, intent(in) :: obs_type
+logical             :: is_on_ugrid
+
+  is_on_ugrid = .FALSE.
+
+  if ((obs_type == KIND_U_CURRENT_COMPONENT)  .or.  &
+      (obs_type == KIND_V_CURRENT_COMPONENT)) is_on_ugrid = .TRUE.
+
+  end function
+
 
   subroutine write_grid_netcdf(XG, XC, YG, YC, ZG, ZC, KMT)
 !------------------------------------------------------------------
-! subroutine write_grid_netcdf(XG, XC, YG, YC, ZG, ZC, KMT)
 !
 ! Write the grid to a netcdf file for checking.
 
