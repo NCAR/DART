@@ -14,7 +14,7 @@ module model_mod
 ! This is the interface between the POP ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r4, r8, SECPERDAY, MISSING_R8
+use        types_mod, only : r4, r8, SECPERDAY, MISSING_R8, rad2deg
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
                              set_calendar_type, print_time, print_date, &
                              operator(*),  operator(+), operator(-), &
@@ -113,9 +113,7 @@ logical            :: longitude_wrap        = .true.
 !      KMT               ! k index of deepest grid cell on T grid
 !
 ! the vert grid file is ascii, with 3 columns/line:
-! FIXME: confirm this:
-!    depth in cm?   vert cell center?   distance between centers or
-!                                       layer tops/bottoms?                 
+!    cell thickness(in cm)   cell center(in m)   cell bottom(in m)
 
 
 ! other things which can/should be in the model_nml
@@ -274,7 +272,11 @@ allocate(XC(Nx), YC(Ny), ZC(Nz))
 allocate(XG(Nx), YG(Ny), ZG(Nz))
 allocate(KMT(Nx, Ny))
 
-! Fill them in
+! These will eventually replace the single dim X/Y arrays above
+! once we put in interpolation in the dipole grid code.
+allocate(ULAT(Nx, Ny), ULON(Nx, Ny), TLAT(Nx, Ny), TLON(Nx, Ny))
+
+! Fill them in  (horiz grid initialized ULAT/LON, TLAT/LON as well)
 call read_horiz_grid(Nx, Ny, XC, XG, YC, YG)
 call read_vert_grid(Nz, ZC, ZG)
 call read_kmt(Nx, Ny, KMT)
@@ -2134,8 +2136,9 @@ end subroutine get_gridsize
  real(r8), intent(out) :: XC(:), XG(:)
  real(r8), intent(out) :: YC(:), YG(:)
 
- integer  :: grid_id, ulat_id, ulon_id, i, j
- real(r8) :: ulat(nx, ny), ulon(nx, ny), first
+ integer  :: grid_id, i, j, nc_rc
+ integer  :: ulat_id, ulon_id, tlat_id, tlon_id
+ logical  :: read_tgrid
 
  call nc_check(nf90_open(trim(horiz_grid_input_file), nf90_nowrite, grid_id), &
          'read_horiz_grid','open '//trim(horiz_grid_input_file) )
@@ -2146,56 +2149,90 @@ end subroutine get_gridsize
  call nc_check(nf90_inq_varid(grid_id, 'ULON', ulon_id), &
          'read_horiz_grid','varid ULON '//trim(horiz_grid_input_file) )
 
- call nc_check(nf90_get_var(grid_id, ulat_id, ulat), &
+ call nc_check(nf90_get_var(grid_id, ulat_id, ULAT), &
          'read_horiz_grid','get ULAT '//trim(horiz_grid_input_file) )
 
- call nc_check(nf90_get_var(grid_id, ulon_id, ulon), &
+ call nc_check(nf90_get_var(grid_id, ulon_id, ULON), &
          'read_horiz_grid','get ULON '//trim(horiz_grid_input_file) )
+
+ ! if the file contains the TLON, TLAT grids directly, read them in.
+ ! otherwise, compute them after you have the U grids.
+ nc_rc = nf90_inq_varid(grid_id, 'TLAT', tlat_id)
+ if (nc_rc == nf90_noerr) then
+   read_tgrid = .true.
+   call nc_check(nf90_inq_varid(grid_id, 'TLAT', tlat_id), &
+           'read_horiz_grid','varid TLAT '//trim(horiz_grid_input_file) )
+  
+   call nc_check(nf90_inq_varid(grid_id, 'TLON', tlon_id), &
+           'read_horiz_grid','varid TLON '//trim(horiz_grid_input_file) )
+  
+   call nc_check(nf90_get_var(grid_id, tlat_id, TLAT), &
+           'read_horiz_grid','get TLAT '//trim(horiz_grid_input_file) )
+  
+   call nc_check(nf90_get_var(grid_id, tlon_id, TLON), &
+           'read_horiz_grid','get TLON '//trim(horiz_grid_input_file) )
+
+ else
+   read_tgrid = .false.
+ endif
 
  ! TJH check sizes ...
 
  call nc_check(nf90_close(grid_id), &
          'read_horiz_grid','close '//trim(horiz_grid_input_file) )
 
- ! check for orthogonality
+ ! FIXME:
+ !  even though the real grid is a dipole grid, we are going to treat it
+ !  as reg lat/lon for initial testing.   use the first row of longs as
+ !  the universal lons, and for now, take the first row of lats, because
+ !  they are monotonic (i checked).
+
+ ! lons: first row
  do i=1, nx
-   first = ulon(i, 1)
-   do j=2, ny
-     if (ulon(i, j) /= first) then
-     endif
-   enddo
-   XG(i) = first
+   XG(i) = ULON(i, 1) * rad2deg
  enddo
 
- ! check for orthogonality
+ ! lats: first row is monotonic in dipole grid
  do j=1, ny
-   first = ulat(1, j)
-   do i=2, nx
-     if (ulat(i, j) /= first) then
-     endif
+   YG(j) = ULAT(1, j) * rad2deg
+ enddo
+
+ if (read_tgrid) then
+   ! we read in the centers directly from netcdf file, just fill in arrays
+
+   ! lons: first row
+   do i=1, nx
+     XC(i) = TLON(i, 1) * rad2deg
    enddo
-   YG(j) = first
- enddo
+  
+   ! lats: first row is monotonic in dipole grid
+   do j=1, ny
+     YC(j) = TLAT(1, j) * rad2deg
+   enddo
 
- ! for now, compute centers.  FIXME: in a non-orthogonal grid this
- ! cannot be computed like this, we should read it in from somewhere?
- do i=1, nx-1
-   XC(i) = (XG(i+1) - XG(i)) * 0.5_r8
- enddo
- if (longitude_wrap) then
-   XC(nx) = ((XG(1)+360.0_r8) - XG(nx)) * 0.5_r8
  else
-   ! FIXME: and XC(nx) is ??  extrapolate is wrong, but...
-   XC(nx) = XG(nx-1) + ((XG(nx) - XG(nx-1)) * 0.5_r8)
- endif
+   ! compute centers for T grid
 
- ! ditto comments above.  less complicated because no wrap, but what
- ! about last cell?
- do j=1, ny-1
-   YC(j) = (YG(j+1) - YG(j)) * 0.5_r8
- enddo
- ! FIXME: extrapolate -- wrong, but what should it be??
- YC(ny) = YG(ny-1) + ((YG(ny) - YG(ny-1)) * 0.5_r8)
+   ! longitudes
+   do i=2, nx
+     XC(i) = XG(i-1) + (XG(i) - XG(i-1)) * 0.5_r8
+   enddo
+  
+   if (longitude_wrap) then
+     XC(1) = XG(nx) + (XG(1)+360.0_r8 - XG(nx)) * 0.5_r8 
+   else
+     ! FIXME: what to do here? extrapolate back .5 of box 1 for now.
+     XC(1) = XG(1) - ((XG(2) - XG(1)) * 0.5_r8)
+   endif
+  
+   ! latitudes
+   do j=2, ny
+     YC(j) = YG(j-1) + (YG(j) - YG(j-1)) * 0.5_r8
+   enddo
+  
+   ! FIXME: what to do here? extrapolate back .5 of box 1 for now.
+   YC(1) = YG(1) - ((YG(2) - YG(1)) * 0.5_r8)
+ endif
 
 end subroutine read_horiz_grid
 
@@ -2225,7 +2262,8 @@ subroutine read_vert_grid(nz, ZC, ZG)
 
  do i=1, nz
    ZC(i) = zcent(i)
-   ZG(i) = zbot(i)   ! FIXME: is this right?
+   ZG(i) = zbot(i)   ! FIXME: this might actually be off by one, but i cannot
+                     !  see that we ever use this in any interpolation.
  enddo
 end subroutine read_vert_grid
 
