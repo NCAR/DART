@@ -1674,7 +1674,7 @@ integer  :: i, j, k, l, indx
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: varname 
 integer :: VarID, numdims, dimlen
-integer :: ncid, iyear, imonth, iday, ihour, iminute, isecond
+integer :: ncid, iyear, imonth, iday, ihour, iminute, isecond, nc_rc
 character(len=256) :: myerrorstring 
 logical :: convert_to_ssh
 
@@ -1705,6 +1705,13 @@ call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
                   "restart_file_to_sv", "get_att isecond")
 
+! FIXME: we don't allow a real year of 0 - add one for now, but
+! THIS MUST BE FIXED IN ANOTHER WAY!
+if (iyear == 0) then
+  call error_handler(E_MSG, 'restart_file_to_sv', &
+                     'WARNING!!!   year 0 not supported; setting to year 1')
+  iyear = 1
+endif
 model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
 
 if (do_output()) &
