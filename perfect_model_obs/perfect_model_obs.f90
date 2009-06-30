@@ -25,7 +25,7 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  write_obs_seq, get_num_obs, init_obs, assignment(=),       &
                                  static_init_obs_sequence, get_num_qc, read_obs_seq_header, &
                                  set_qc_meta_data, get_expected_obs, delete_seq_head,       &
-                                 delete_seq_tail, set_obs_def, destroy_obs
+                                 delete_seq_tail, set_obs_def, destroy_obs, destroy_obs_sequence
 
 use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance, &
                                  set_obs_def_error_variance, get_obs_def_time
@@ -77,6 +77,8 @@ integer  :: obs_window_days    = -1
 integer  :: obs_window_seconds = -1
 integer  :: tasks_per_model_advance = 1
 integer  :: output_interval = 1
+integer  :: print_every_nth_obs = 0
+
 character(len = 129) :: restart_in_file_name  = 'perfect_ics',     &
                         restart_out_file_name = 'perfect_restart', &
                         obs_seq_in_file_name  = 'obs_seq.in',      &
@@ -91,7 +93,9 @@ namelist /perfect_model_obs_nml/ start_from_restart, output_restart, async,     
                                  obs_seq_in_file_name, obs_seq_out_file_name,       &
                                  adv_ens_command, tasks_per_model_advance,          & 
                                  obs_window_days, obs_window_seconds, silence,      &
-                                 trace_execution, output_timestamps
+                                 trace_execution, output_timestamps,                &
+                                 print_every_nth_obs
+
 
 !------------------------------------------------------------------------------
 
@@ -117,7 +121,7 @@ integer, allocatable    :: keys(:)
 integer                 :: j, iunit, time_step_number, obs_seq_file_id
 integer                 :: cnum_copies, cnum_qc, cnum_obs, cnum_max
 integer                 :: additional_qc, additional_copies
-integer                 :: ierr, io, istatus, num_obs_in_set
+integer                 :: ierr, io, istatus, num_obs_in_set, nth_obs
 integer                 :: model_size, key_bounds(2), num_qc, last_key_used
 
 real(r8)                :: true_obs(1), obs_value(1), qc(1), errvar
@@ -140,16 +144,24 @@ call check_namelist_read(iunit, io, "perfect_model_obs_nml")
 if (do_nml_file()) write(nmlfileunit, nml=perfect_model_obs_nml)
 if (do_nml_term()) write(     *     , nml=perfect_model_obs_nml)
 
+! set the level of output
+call set_trace(trace_execution, output_timestamps, silence)
+
+call trace_message('Perfect_model start')
+call timestamp_message('Perfect_model start')
+
 ! Don't let this run with more than one task; just a waste of resource
 if(task_count() > 1) then
    write(msgstring, *) 'Only use one mpi process here: ', task_count(), ' were requested'
    call error_handler(E_ERR, 'perfect_main', msgstring,  &
       source, revision, revdate)
 endif
-call task_sync()
 
-! set the level of output
-call set_trace(trace_execution, output_timestamps, silence)
+! Default to printing nothing
+nth_obs = -1
+
+call trace_message('Before setting up space for observations')
+call timestamp_message('Before observation setup')
 
 ! Find out how many data copies are in the obs_sequence 
 call read_obs_seq_header(obs_seq_in_file_name, cnum_copies, cnum_qc, cnum_obs, cnum_max, &
@@ -185,17 +197,24 @@ copy_meta_data(2) = 'truth'
 call set_copy_meta_data(seq, 1, copy_meta_data(1))
 call set_copy_meta_data(seq, 2, copy_meta_data(2))
 
+call timestamp_message('After  observation setup')
+call trace_message('After  setting up space for observations')
+
 ! Initialize the model now that obs_sequence is all set up
 model_size = get_model_size()
 write(msgstring,*)'Model size = ',model_size
 call error_handler(E_MSG,'perfect_main',msgstring)
 
 ! Set up the ensemble storage and read in the restart file
+call trace_message('Before reading in ensemble restart file')
 call perfect_read_restart(ens_handle, model_size)
+call trace_message('After  reading in ensemble restart file')
 
+call trace_message('Before initializing output diagnostic file')
 state_meta(1) = 'true state'
 ! Set up output of truth for state
 StateUnit = init_diag_output('True_State', 'true state from control', 1, state_meta)
+call trace_message('After  initializing output diagnostic file')
 
 ! Initialize a repeatable random sequence for perturbations
 call init_random_seq(random_seq)
@@ -207,6 +226,8 @@ call error_handler(E_MSG,'perfect_main',msgstring)
 num_qc = get_num_qc(seq)
 write(msgstring, *) 'number of qc values is ',num_qc
 call error_handler(E_MSG,'perfect_main',msgstring)
+
+call trace_message('Before trimming obs seq if start/stop time specified')
 
 ! Need to find first obs with appropriate time, delete all earlier ones
 if(first_obs_seconds > 0 .or. first_obs_days > 0) then
@@ -230,6 +251,8 @@ if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
    endif
 endif
 
+call trace_message('After  trimming obs seq if start/stop time specified')
+
 ! Time step number is used to do periodic diagnostic output
 time_step_number = -1
 window_time = set_time(0,0)
@@ -239,24 +262,43 @@ AdvanceTime: do
    time_step_number = time_step_number + 1
 
    write(msgstring , '(A,I5)') 'Main evaluation loop, starting iteration', time_step_number
-   if (.not.silence) call error_handler(E_MSG,'', ' ')
-   if (.not.silence) call error_handler(E_MSG,'perfect_model_obs:', msgstring)
+   call trace_message(' ', ' ', -1)
+   call trace_message(msgstring, 'perfect_model_obs: ', -1)
+
+   call trace_message('Before move_ahead checks time of data and next obs')
 
    ! Get the model to a good time to use a next set of observations
    call move_ahead(ens_handle, 1, seq, last_key_used, window_time, &
       key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
    if(key_bounds(1) < 0) then
-      call error_handler(E_MSG,'perfect_model_obs:', 'No more obs to evaluate, exiting main loop')
+      call trace_message('No more obs to evaluate, exiting main loop', 'perfect_model_obs:', -1)
       exit AdvanceTime
    endif
  
+   call trace_message('After  move_ahead checks time of data and next obs')
+
    if (curr_ens_time /= next_ens_time) then
-      if (.not.silence) call error_handler(E_MSG,'perfect_model_obs:', 'Ready to run model to advance data time')
+      call trace_message('Ready to run model to advance data time', 'perfect_model_obs:', -1)
+      call print_ens_time(ens_handle, 'Ensemble data time before advance')
+      call trace_message('Before advance_state called to run model')
+      call timestamp_message('Before model advance', sync=.true.)
+
       call advance_state(ens_handle, 1, next_ens_time, async, &
          adv_ens_command, tasks_per_model_advance)
+
+      call timestamp_message('After  model advance', sync=.true.)
+      call trace_message('After  advance_state called to run model')
+      call print_ens_time(ens_handle, 'Ensemble data time after  advance')
    else
-      if (.not.silence) call error_handler(E_MSG,'perfect_model_obs:', 'Model does not need to run; data already at required time')
+      call trace_message('Model does not need to run; data already at required time', 'perfect_model_obs:', -1)
    endif
+
+   call trace_message('Before setup for next group of observations')
+   write(msgstring, '(A,I7)') 'Number of observations to be evaluated', &
+      num_obs_in_set
+   call trace_message(msgstring)
+   call print_obs_time(seq, key_bounds(1), 'Time of first observation in window')
+   call print_obs_time(seq, key_bounds(2), 'Time of last  observation in window')
 
    ! Allocate storage for observation keys for this part of sequence
    allocate(keys(num_obs_in_set))
@@ -264,31 +306,49 @@ AdvanceTime: do
    ! Get all the keys associated with this set of observations
    call get_time_range_keys(seq, key_bounds, num_obs_in_set, keys)
 
+   call trace_message('After  setup for next group of observations')
+
    ! Output the true state to the netcdf file
-   if(time_step_number / output_interval * output_interval == time_step_number) &
+   if((output_interval > 0) .and. &
+      (time_step_number / output_interval * output_interval == time_step_number)) then
+ 
+      call trace_message('Before updating truth diagnostics file')
       call aoutput_diagnostics(StateUnit, ens_handle%time(1), ens_handle%vars(:, 1), 1)
+      call trace_message('After  updating truth diagnostics file')
+   endif
 
    write(msgstring, '(A,I8,A)') 'Ready to evaluate up to', size(keys), ' observations'
-   if (.not.silence) call error_handler(E_MSG,'perfect_model_obs:', msgstring)
-
-   ! How many observations in this set
-   write(msgstring, *) 'num_obs_in_set is ', num_obs_in_set
-   call error_handler(E_DBG,'perfect_main',msgstring,source,revision,revdate)
+   call trace_message(msgstring, 'perfect_model_obs:', -1)
 
    ! Compute the forward observation operator for each observation in set
    do j = 1, num_obs_in_set
 
+      
+      ! Some compilers do not like mod by 0, so test first.
+      if (print_every_nth_obs > 0) nth_obs = mod(j, print_every_nth_obs)
+
+      ! If requested, print out a message every Nth observation
+      ! to indicate progress is being made and to allow estimates
+      ! of how long the assim will take.
+      if (nth_obs == 0) then
+         write(msgstring, '(A,1x,I8,1x,A,I8)') 'Processing observation ', j, &
+                                            ' of ', num_obs_in_set
+         call trace_message(msgstring, 'perfect_model_obs:', -1)
+         ! or if you want timestamps:
+         !     call timestamp(msgstring, pos="debug")
+      endif
+
       ! Compute the observations from the state
       call get_expected_obs(seq, keys(j:j), ens_handle%vars(:, 1), &
          true_obs(1:1), istatus, assimilate_this_ob, evaluate_this_ob)
-      ! If observation is not being evaluated or assimilated, skip it
-      ! Ends up setting a 1000 qc field so observation is not used again.
 
       ! Get the observational error covariance (diagonal at present)
       ! Generate the synthetic observations by adding in error samples
       call get_obs_from_key(seq, keys(j), obs)
       call get_obs_def(obs, obs_def)
 
+      ! If observation is not being evaluated or assimilated, skip it
+      ! Ends up setting a 1000 qc field so observation is not used again.
       if(istatus == 0 .and. (assimilate_this_ob .or. evaluate_this_ob)) then
          ! DEBUG: try this out to see if it's useful.  if the incoming error
          ! variance is negative, add no noise to the values, but do switch the
@@ -329,23 +389,40 @@ AdvanceTime: do
 
 end do AdvanceTime
 
-call error_handler(E_MSG,'perfect_model_obs:', 'End of main filter evaluation loop, starting cleanup')
+call trace_message('End of main evaluation loop, starting cleanup', 'perfect_model_obs:', -1)
 
 ! properly dispose of the diagnostics files
+call trace_message('Before finalizing diagnostics file')
 ierr = finalize_diag_output(StateUnit)
+call trace_message('After  finalizing diagnostics file')
 
 ! Write out the sequence
+call trace_message('Before writing output sequence file')
 call write_obs_seq(seq, obs_seq_out_file_name)
+call trace_message('After  writing output sequence file')
 
 ! Output a restart file if requested
-if(output_restart) &
+if(output_restart) then
+   call trace_message('Before writing state restart file')
    call write_ensemble_restart(ens_handle, restart_out_file_name, 1, 1, &
       force_single_file = .true.)
+   call trace_message('After  writing state restart file')
+endif
+
+call trace_message('Before ensemble and obs memory cleanup')
 
 !  Release storage for ensemble
 call end_ensemble_manager(ens_handle)
 
-call error_handler(E_MSG,'perfect_main','FINISHED',source,revision,revdate)
+! Free up the observation kind and obs sequence
+call destroy_obs(obs)
+call destroy_obs_sequence(seq)
+call trace_message('After  ensemble and obs memory cleanup')
+
+call trace_message('Perfect_model done')
+call timestamp_message('Perfect_model done')
+
+!call error_handler(E_MSG,'perfect_main','FINISHED',source,revision,revdate)
 
 ! closes the log file.
 call timestamp(string1=source,string2=revision,string3=revdate,pos='end')
@@ -476,7 +553,7 @@ if (present(sync)) then
   if (sync) call task_sync()
 endif
 
-call timestamp(trim(msg), pos='debug')
+call timestamp(trim(msg), pos='brief')
 
 end subroutine timestamp_message
 
@@ -495,8 +572,8 @@ if (trace_level <= 0) return
 if (get_my_num_copies(ens_handle) < 1) return
 
 call get_ensemble_time(ens_handle, 1, mtime)
-call print_time(mtime, msg, logfileunit)
-call print_time(mtime, msg)
+call print_time(mtime, ' p_m_o trace: '//msg, logfileunit)
+call print_time(mtime, ' p_m_o trace: '//msg)
 
 end subroutine print_ens_time
 
@@ -519,8 +596,8 @@ call init_obs(obs, 0, 0)
 call get_obs_from_key(seq, key, obs)
 call get_obs_def(obs, obs_def)
 mtime = get_obs_def_time(obs_def)
-call print_time(mtime, msg, logfileunit)
-call print_time(mtime, msg)
+call print_time(mtime, ' p_m_o trace: '//msg, logfileunit)
+call print_time(mtime, ' p_m_o trace: '//msg)
 call destroy_obs(obs)
 
 end subroutine print_obs_time
