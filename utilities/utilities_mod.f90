@@ -773,17 +773,19 @@ end subroutine error_handler
    character(len=*), intent(in), optional :: form, action
    integer  :: iunit
 
-   integer           :: nc
+   integer           :: nc, rc
    logical           :: open
    character(len=11) :: format
-   character(len=6)  :: location
+   character(len=6)  :: pos
+   character(len=9)  :: act
+   character(len=7)  :: stat
 
    if ( .not. module_initialized ) call initialize_utilities
 
-      inquire (file=fname(1:len_trim(fname)), opened=open, number=iunit,  &
-               form=format)
+   inquire (file=trim(fname), opened=open, number=iunit,  &
+            form=format, iostat=rc)
 
-     if (open) then
+   if (open) then
 ! ---------- check format ??? ---------
 ! ---- (skip this and let fortran i/o catch bug) -----
 
@@ -805,38 +807,73 @@ end subroutine error_handler
     !        endif
     !    endif
          
-     else
+   else
 ! ---------- open file ----------
 
-         format   = 'formatted  '
-         location = 'asis  '
+      ! this code used to only set the form and position, not the action.
+      ! not specifying 'read' meant that many compilers would create an
+      ! empty file instead of returning a read error.  this leads to lots
+      ! of confusion.  add an explicit action here.  if the incoming argument
+      ! is read, make sure the open() call passes that in as an action.
 
-         if (present(form)) then
-             nc = min(11,len(form))
-             format(1:nc) = form(1:nc)
-         endif
+      format   = 'formatted'
+      act      = 'readwrite'
+      pos      = 'rewind'
+      stat     = 'unknown'
 
-         if (present(action)) then
-             nc = min(6,len(action))
-             location(1:nc) = action(1:nc)
-             if(location /= 'append' .and. location /= 'APPEND') &
-                location = 'rewind'
-         endif
+      if (present(form)) then
+          nc = min(len(format),len(form))
+          format(1:nc) = form(1:nc)
+      endif
 
-         iunit = get_unit()
+      if (present(action)) then
+          select case(action)
 
-         if (format == 'formatted  ' .or. format == 'FORMATTED  ') then
-             open (iunit, file=fname(1:len_trim(fname)),      &
-                         form=format(1:len_trim(format)),  &
-                     position=location(1:len_trim(location)),  &
-                        delim='apostrophe')
-         else
-             open (iunit, file=fname(1:len_trim(fname)),      &
-                         form=format(1:len_trim(format)),  &
-                     position=location(1:len_trim(location)) )
-         endif
-     endif
+             case ('read', 'READ')
+             ! open existing file.  fail if not found.  read from start.
+                act  = 'read'
+                stat = 'old'
+                pos  = 'rewind'
 
+             case ('write', 'WRITE')
+             ! create new file/replace existing file.  write at start.
+                act  = 'write'
+                stat = 'replace'
+                pos  = 'rewind'
+
+             case ('append', 'APPEND')
+             ! create new/open existing file.  write at end.
+                act  = 'readwrite'
+                stat = 'unknown'
+                pos  = 'append'
+
+             case default
+             ! leave defaults specified above, currently
+             ! create new/open existing file.  write at start.
+                !print *, 'action specified, and is ', action
+          end select
+      endif
+
+      iunit = get_unit()
+
+      if (format == 'formatted' .or. format == 'FORMATTED') then
+          open (iunit, file=trim(fname), form=format,     &
+                position=pos, delim='apostrophe',    &
+                action=act, status=stat, iostat=rc)
+      else
+          open (iunit, file=trim(fname), form=format,     &
+                position=pos, action=act, status=stat, iostat=rc)
+      endif
+
+      if (rc /= 0) then
+         call error_handler(E_MSG,'open_file', &
+                            'Trying to open file "'//trim(fname)//'" for '//act)
+         call error_handler(E_ERR,'open_file', &
+                            'Cannot open file "' // trim(fname) // '"', &
+                            source, revision, revdate)
+
+      endif
+   endif
 
    end function open_file
 
