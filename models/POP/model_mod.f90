@@ -14,7 +14,7 @@ module model_mod
 ! This is the interface between the POP ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r4, r8, SECPERDAY, MISSING_R8, rad2deg
+use        types_mod, only : r4, r8, SECPERDAY, MISSING_R8, rad2deg, PI
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
                              set_calendar_type, print_time, print_date, &
                              operator(*),  operator(+), operator(-), &
@@ -121,6 +121,7 @@ logical  :: output_state_vector = .true.
 integer  :: assimilation_period_days = 1
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
+integer  :: debug = 0   ! turn up for more and more debug messages
 
 character(len=32):: calendar = 'noleap'
 
@@ -133,7 +134,8 @@ namelist /model_nml/  &
    assimilation_period_days,    &  ! for now, this is the timestep
    assimilation_period_seconds, &
    model_perturbation_amplitude,&
-   calendar
+   calendar,                    &
+   debug
 
 !------------------------------------------------------------------
 !
@@ -282,7 +284,7 @@ call read_horiz_grid(Nx, Ny, XC, XG, YC, YG)
 call read_vert_grid(Nz, ZC, ZG)
 call read_kmt(Nx, Ny, KMT, KMU)
 
-call write_grid_netcdf() ! DEBUG only
+if (debug > 0) call write_grid_netcdf() ! DEBUG only
 
 !---------------------------------------------------------------
 ! set the time step from the namelist for now.
@@ -460,6 +462,8 @@ llon    = loc_array(1)
 llat    = loc_array(2)
 lheight = loc_array(3)
 
+if (debug > 1) print *, 'requesting interpolation at ', llon, llat, lheight
+
 if( vert_is_height(location) ) then
    ! Nothing to do 
 elseif ( vert_is_surface(location) ) then
@@ -496,7 +500,7 @@ else
    return
 endif
 
-!print *, 'base offset now ', base_offset
+if (debug > 1) print *, 'base offset now ', base_offset
 
 ! For Sea Surface Height don't need the vertical coordinate
 if( vert_is_surface(location) ) then
@@ -515,8 +519,8 @@ endif
 !  on this level.  Do bottom first in case it is below the ocean floor; can
 !  avoid the second horizontal interpolation.
 offset = base_offset + (hgt_bot - 1) * nx * ny
-!print *, 'relative bot height offset = ', offset - base_offset
-!print *, 'absolute bot height offset = ', offset
+if (debug > 1) print *, 'relative bot height offset = ', offset - base_offset
+if (debug > 1) print *, 'absolute bot height offset = ', offset
 call lat_lon_interpolate(x(offset:), llon, llat, obs_type, hgt_bot, bot_val, istatus)
 ! Failed istatus from interpolate means give up
 if(istatus /= 0) return
@@ -524,8 +528,8 @@ if(istatus /= 0) return
 ! Find the base location for the top height and interpolate horizontally 
 !  on this level.
 offset = base_offset + (hgt_top - 1) * nx * ny
-!print *, 'relative top height offset = ', offset - base_offset
-!print *, 'absolute top height offset = ', offset
+if (debug > 1) print *, 'relative top height offset = ', offset - base_offset
+if (debug > 1) print *, 'absolute top height offset = ', offset
 call lat_lon_interpolate(x(offset:), llon, llat, obs_type, hgt_top, top_val, istatus)
 ! Failed istatus from interpolate means give up
 if(istatus /= 0) return
@@ -533,7 +537,7 @@ if(istatus /= 0) return
 
 ! Then weight them by the vertical fraction and return
 interp_val = bot_val + hgt_fract * (top_val - bot_val)
-!print *, 'model_interp: interp val = ',interp_val
+if (debug > 1) print *, 'model_interp: interp val = ',interp_val
 
 ! All good.
 istatus = 0
@@ -562,24 +566,31 @@ if ( .not. module_initialized ) call static_init_model
 istatus = 0
 
 ! The zc array contains the depths of the center of the vertical grid boxes
+! In this case (unlike how we handle the MIT depths), positive is really down.
+! FIXME: in the MIT model, we're given box widths and we compute the centers,
+! and we computed them with larger negative numbers being deeper.  Here,
+! larger positive numbers are deeper.
 
 ! It is assumed that the top box is shallow and any observations shallower
 ! than the depth of this box's center are just given the value of the
 ! top box.
-if(lheight > hgt_array(1)) then
+if(lheight <= hgt_array(1)) then
    top = 1
    bot = 2
    ! NOTE: the fract definition is the relative distance from bottom to top
    fract = 1.0_r8 
+if (debug > 1) print *, 'above first level in height'
+if (debug > 1) print *, 'hgt_array, top, bot, fract=', hgt_array(1), top, bot, fract
 endif
 
 ! Search through the boxes
 do i = 2, nheights
    ! If the location is shallower than this entry, it must be in this box
-   if(lheight >= hgt_array(i)) then
+   if(lheight < hgt_array(i)) then
       top = i -1
       bot = i
-      fract = (lheight - hgt_array(bot)) / (hgt_array(top) - hgt_array(bot))
+      fract = (hgt_array(bot) - lheight) / (hgt_array(bot) - hgt_array(top))
+if (debug > 1) print *, 'i, hgt_array, top, bot, fract=', i, hgt_array(i), top, bot, fract
       return
    endif
 end do
@@ -633,6 +644,7 @@ else
    call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
 endif
 
+if (debug > 1) print *, 'lat bot, top, fract = ', lat_bot, lat_top, lat_fract
 ! Check for error on the latitude interpolation
 if(lat_status /= 0) then 
    istatus = 31
@@ -650,6 +662,7 @@ else
    call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
 endif
 
+if (debug > 1) print *, 'lon bot, top, fract = ', lon_bot, lon_top, lon_fract
 ! Check for error on the longitude interpolation
 if(lat_status /= 0) then 
    istatus = 32
@@ -663,37 +676,38 @@ if (is_not_ocean(var_type, lon_bot, lat_bot, hgt_bot) .or. &
     is_not_ocean(var_type, lon_bot, lat_top, hgt_bot) .or. &
     is_not_ocean(var_type, lon_top, lat_top, hgt_bot)) then
    istatus = 33
+if (debug > 1) print *, 'one corner not ocean'
    return
 endif
 
 ! Vector is laid out with lat outermost loop, lon innermost loop
 ! Find the bounding points for the lat lon box
-!print *, 'lon_bot, lon_top = ', lon_bot, lon_top
-!print *, 'lat_bot, lat_top = ', lat_bot, lat_top
+if (debug > 1) print *, 'lon_bot, lon_top = ', lon_bot, lon_top
+if (debug > 1) print *, 'lat_bot, lat_top = ', lat_bot, lat_top
 
 pa = get_val(lon_bot, lat_bot, nx, x)
-!print *, 'pa = ', pa
+if (debug > 1) print *, 'pa = ', pa
 pb = get_val(lon_top, lat_bot, nx, x)
-!print *, 'pb = ', pb
+if (debug > 1) print *, 'pb = ', pb
 pc = get_val(lon_bot, lat_top, nx, x)
-!print *, 'pc = ', pc
+if (debug > 1) print *, 'pc = ', pc
 pd = get_val(lon_top, lat_top, nx, x)
-!print *, 'pd = ', pd
+if (debug > 1) print *, 'pd = ', pd
 
-!print *, 'pa,b,c,d = ', pa, pb, pc, pd
+if (debug > 1) print *, 'pa,b,c,d = ', pa, pb, pc, pd
 
 ! Finish bi-linear interpolation 
 ! First interpolate in longitude
-!print *, 'bot lon_fract, delta = ', lon_fract, (pb-pa)
+if (debug > 1) print *, 'bot lon_fract, delta = ', lon_fract, (pb-pa)
 xbot = pa + lon_fract * (pb - pa)
-!print *, 'xbot = ', xbot
-!print *, 'top lon_fract, delta = ', lon_fract, (pd-pc)
+if (debug > 1) print *, 'xbot = ', xbot
+if (debug > 1) print *, 'top lon_fract, delta = ', lon_fract, (pd-pc)
 xtop = pc + lon_fract * (pd - pc)
-!print *, 'xtop = ', xtop
+if (debug > 1) print *, 'xtop = ', xtop
 ! Now interpolate in latitude
-!print *, 'lat_fract, delta = ', lat_fract, (xtop - xbot)
+if (debug > 1) print *, 'lat_fract, delta = ', lat_fract, (xtop - xbot)
 interp_val = xbot + lat_fract * (xtop - xbot)
-!print *, 'lat_lon_interp: interp_val = ', interp_val
+if (debug > 1) print *, 'lat_lon_interp: interp_val = ', interp_val
 
 ! good return
 istatus = 0
@@ -747,6 +761,9 @@ do i = 2, nlats
       bot = i - 1
       top = i
       fract = (llat - lat_array(bot)) / (lat_array(top) - lat_array(bot))
+if (debug > 1) print *, 'bot, top vals = ', lat_array(i-1), lat_array(i)
+if (debug > 1) print *, 'bot, top index = ', bot, top
+if (debug > 1) print *, 'fract = ', fract
       istatus = 0
       return
    endif
@@ -789,20 +806,21 @@ if ( .not. module_initialized ) call static_init_model
 ! Make any failure here return istatus in the 50s
 istatus = 50
 
-!print *, 'computing bounds for = ', llon
+if (debug > 1) print *, 'computing bounds for = ', llon
 ! This is inefficient, someone could clean it up for regularly spaced longitudes
 do i = 2, nlons
    dist_bot = lon_dist(llon, lon_array(i - 1))
    dist_top = lon_dist(llon, lon_array(i))
-!print *, 'dist top, bot = ', dist_top, dist_bot
+if (debug > 3) print *, 'dist top, bot = ', dist_top, dist_bot
    if(dist_bot <= 0 .and. dist_top > 0) then
       bot = i - 1
       top = i
-!print *, 'bot, top = ', bot, top
-!print *, 'numerator = ',  dist_bot
-!print *, 'denomenator = ', dist_bot + abs(dist_top)
+if (debug > 1) print *, 'bot, top vals = ', lon_array(i-1), lon_array(i)
+if (debug > 1) print *, 'bot, top index = ', bot, top
+if (debug > 1) print *, 'numerator = ',  dist_bot
+if (debug > 1) print *, 'denominator = ', dist_bot + abs(dist_top)
       fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
-!print *, 'fract = ', fract
+if (debug > 1) print *, 'fract = ', fract
       istatus = 0
       return
    endif
@@ -863,10 +881,10 @@ real(r8)                :: get_val
 if ( .not. module_initialized ) call static_init_model
 
 ! Layout has lons varying most rapidly
-!print *, 'lat_index, lon_index, nlon', lat_index, lon_index, nlon
-!print *, 'computing index val ', (lat_index - 1) * nlon + lon_index
+if (debug > 1) print *, 'lat_index, lon_index, nlon', lat_index, lon_index, nlon
+if (debug > 1) print *, 'computing index val ', (lat_index - 1) * nlon + lon_index
 get_val = x((lat_index - 1) * nlon + lon_index)
-!print *, 'get_val = ', get_val
+if (debug > 1) print *, 'get_val = ', get_val
 
 end function get_val
 
@@ -951,35 +969,37 @@ type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
 real(R8) :: lat, lon, depth
-integer :: var_num, offset, lon_index, lat_index, depth_index
+integer :: var_num, offset, lon_index, lat_index, depth_index, local_var
 
 if ( .not. module_initialized ) call static_init_model
 
-!print *, 'asking for meta data about index ', index_in
+if (debug > 5) print *, 'asking for meta data about index ', index_in
 
 if (index_in < start_index(S_index+1)) then
-   if (present(var_type)) var_type = KIND_SALINITY  
+   local_var = KIND_SALINITY  
    var_num = S_index
 else if (index_in < start_index(T_index+1)) then
-   if (present(var_type)) var_type = KIND_TEMPERATURE  
+   local_var = KIND_TEMPERATURE  
    var_num = T_index
 else if (index_in < start_index(U_index+1)) then
-   if (present(var_type)) var_type = KIND_U_CURRENT_COMPONENT
+   local_var = KIND_U_CURRENT_COMPONENT
    var_num = U_index
 else if (index_in < start_index(V_index+1)) then
-   if (present(var_type)) var_type = KIND_V_CURRENT_COMPONENT
+   local_var = KIND_V_CURRENT_COMPONENT
    var_num = V_index
 else 
-   if (present(var_type)) var_type = KIND_SEA_SURFACE_HEIGHT
+   local_var = KIND_SEA_SURFACE_HEIGHT
    var_num = SHGT_index
 endif
+if (present(var_type)) var_type = local_var  
 
-!print *, 'var num = ', var_num
+if (debug > 5) print *, 'var num = ', var_num
+if (debug > 5) print *, 'var type = ', local_var
 
 ! local offset into this var array
 offset = index_in - start_index(var_num)
 
-!print *, 'offset = ', offset
+if (debug > 5) print *, 'offset = ', offset
 
 if (var_num == SHGT_index) then
   depth = 0.0
@@ -992,11 +1012,16 @@ endif
 lat_index = (offset - ((depth_index-1)*Nx*Ny)) / Nx + 1
 lon_index = offset - ((depth_index-1)*Nx*Ny) - ((lat_index-1)*Nx) + 1
 
-!print *, 'lon, lat, depth index = ', lon_index, lat_index, depth_index
-lon = XC(lon_index)
-lat = YC(lat_index)
+if (debug > 5) print *, 'lon, lat, depth index = ', lon_index, lat_index, depth_index
+if (is_on_ugrid(local_var)) then
+   lon = XG(lon_index)
+   lat = YG(lat_index)
+else
+   lon = XC(lon_index)
+   lat = YC(lat_index)
+endif
 
-!print *, 'lon, lat, depth = ', lon, lat, depth
+if (debug > 5) print *, 'lon, lat, depth = ', lon, lat, depth
 
 location = set_location(lon, lat, depth, VERTISHEIGHT)
 
@@ -1072,6 +1097,7 @@ integer :: SVarID, TVarID, UVarID, VVarID, SHGTVarID
 character(len=129), allocatable, dimension(:) :: textblock
 integer :: LineLenDimID, nlinesDimID, nmlVarID
 integer :: nlines, linelen
+logical :: has_pop_namelist
 
 !----------------------------------------------------------------------
 ! local variables 
@@ -1160,20 +1186,29 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model",  "POP" ), &
 !-------------------------------------------------------------------------------
 
 call find_textfile_dims("pop_in", nlines, linelen)
+if (nlines > 0) then
+  has_pop_namelist = .true.
+else
+  has_pop_namelist = .false.
+endif
 
-allocate(textblock(nlines))
-textblock = ''
+if (debug > 0)    print *, 'pop namelist: nlines, linelen = ', nlines, linelen
+  
+if (has_pop_namelist) then 
+   allocate(textblock(nlines))
+   textblock = ''
+   
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="nlines", &
+                 len = nlines, dimid = nlinesDimID), &
+                 'nc_write_model_atts', 'def_dim nlines ')
+   
+   call nc_check(nf90_def_var(ncFileID,name="pop_in", xtype=nf90_char,    &
+                 dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
+                 'nc_write_model_atts', 'def_var pop_in')
+   call nc_check(nf90_put_att(ncFileID, nmlVarID, "long_name",       &
+                 "contents of pop_in namelist"), 'nc_write_model_atts', 'put_att pop_in')
 
-call nc_check(nf90_def_dim(ncid=ncFileID, name="nlines", &
-              len = nlines, dimid = nlinesDimID), &
-              'nc_write_model_atts', 'def_dim nlines ')
-
-call nc_check(nf90_def_var(ncFileID,name="pop_in", xtype=nf90_char,    &
-              dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
-              'nc_write_model_atts', 'def_var pop_in')
-call nc_check(nf90_put_att(ncFileID, nmlVarID, "long_name",       &
-              "contents of pop_in namelist"), 'nc_write_model_atts', 'put_att pop_in')
-
+endif
 !-------------------------------------------------------------------------------
 ! Here is the extensible part. The simplest scenario is to output the state vector,
 ! parsing the state vector into model-specific parts is complicated, and you need
@@ -1423,10 +1458,12 @@ endif
 ! Fill the variables we can
 !-------------------------------------------------------------------------------
 
-call file_to_text("pop_in", textblock)
-call nc_check(nf90_put_var(ncFileID, nmlVarID, textblock ), &
-              'nc_write_model_atts', 'put_var nmlVarID')
-deallocate(textblock)
+if (has_pop_namelist) then
+   call file_to_text("pop_in", textblock)
+   call nc_check(nf90_put_var(ncFileID, nmlVarID, textblock ), &
+                 'nc_write_model_atts', 'put_var nmlVarID')
+   deallocate(textblock)
+endif
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
@@ -2051,25 +2088,37 @@ end subroutine vector_to_3d_prog_var
  integer, intent(out) :: Nx   ! Number of Longitudes
  integer, intent(out) :: Ny   ! Number of Latitudes
 
- integer :: grid_id, dimid
+ integer :: grid_id, dimid, nc_rc
 
  ! get the ball rolling ...
 
  call nc_check(nf90_open(trim(horiz_grid_input_file), nf90_nowrite, grid_id), &
          'get_horiz_grid_dims','open '//trim(horiz_grid_input_file))
 
- ! Longitudes : get dimid for 'i', and then get value
-
- call nc_check(nf90_inq_dimid(grid_id, 'i', dimid), &
-         'get_horiz_grid_dims','inq_dimid i '//trim(horiz_grid_input_file))
+ ! Longitudes : get dimid for 'i' or 'nlon', and then get value
+ nc_rc = nf90_inq_dimid(grid_id, 'i', dimid)
+ if (nc_rc /= nf90_noerr) then
+   nc_rc = nf90_inq_dimid(grid_id, 'nlon', dimid)
+   if (nc_rc /= nf90_noerr) then
+      msgstring = 'unable to find either "i" or "nlon" in file'
+      call error_handler(E_ERR, 'get_horiz_grid_dims', msgstring, &
+                         source,revision,revdate) 
+   endif
+ endif 
 
  call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Nx), &
          'get_horiz_grid_dims','inquire_dimension i '//trim(horiz_grid_input_file))
 
- ! Latitudes : get dimid for 'j', and then get value
-
- call nc_check(nf90_inq_dimid(grid_id, 'j', dimid), &
-         'get_horiz_grid_dims','inq_dimid j '//trim(horiz_grid_input_file) )
+ ! Latitudes : get dimid for 'j' or 'nlat', and then get value
+ nc_rc = nf90_inq_dimid(grid_id, 'j', dimid)
+ if (nc_rc /= nf90_noerr) then
+   nc_rc = nf90_inq_dimid(grid_id, 'nlat', dimid)
+   if (nc_rc /= nf90_noerr) then
+      msgstring = 'unable to find either "j" or "nlat" in file'
+      call error_handler(E_ERR, 'get_horiz_grid_dims', msgstring, &
+                         source,revision,revdate) 
+   endif
+ endif 
 
  call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Ny), &
          'get_horiz_grid_dims','inquire_dimension i '//trim(horiz_grid_input_file))
@@ -2134,7 +2183,12 @@ end subroutine get_gridsize
 !         double HUW(j, i) ;
 !         double ANGLE(j, i) ;
 ! }
-! For this (global) case, the ULAT,ULON were in radians.
+! FIXME:
+! For the LANL global case, the ULAT,ULON were in radians.
+! For the CCSM global case, they were in degrees.  The CCSM files do
+! have units that include the word 'degrees' (degrees_north, degrees_east)
+! so perhaps we can look for them.  The LANL file had no attributes
+! to query.
 
  integer,  intent(in)  :: nx, ny
  real(r8), intent(out) :: XC(:), XG(:)
@@ -2142,7 +2196,9 @@ end subroutine get_gridsize
 
  integer  :: grid_id, i, j, nc_rc
  integer  :: ulat_id, ulon_id, tlat_id, tlon_id
- logical  :: read_tgrid
+ logical  :: read_tgrid, in_radians
+ character(len=128) :: grid_units
+ real(r8) :: wrapval
 
  call nc_check(nf90_open(trim(horiz_grid_input_file), nf90_nowrite, grid_id), &
          'read_horiz_grid','open '//trim(horiz_grid_input_file) )
@@ -2150,6 +2206,7 @@ end subroutine get_gridsize
  call nc_check(nf90_inq_varid(grid_id, 'ULAT', ulat_id), &
          'read_horiz_grid','varid ULAT '//trim(horiz_grid_input_file) )
 
+ ! FIXME:
  ! some files have ULON, some ULONG.  try to read either.  same with T
  nc_rc = nf90_inq_varid(grid_id, 'ULON', ulon_id)
  if (nc_rc /= nf90_noerr) then
@@ -2166,6 +2223,32 @@ end subroutine get_gridsize
 
  call nc_check(nf90_get_var(grid_id, ulon_id, ULON), &
          'read_horiz_grid','get ULON '//trim(horiz_grid_input_file) )
+
+ ! FIXME:
+ ! some files have the grid info in radians, some in degrees.
+ ! try to see if there is a units attribute, and if it contains the string 'degrees'
+ ! (e.g. 'degrees_north').  otherwise assume radians?  or try to be tricky and look
+ ! at the min/max and assume it is a global run.
+ 
+ nc_rc = nf90_get_att(grid_id, ulon_id, 'units', grid_units)
+ if (nc_rc /= nf90_noerr) then
+   ! found attribute; see if it contains the substring degrees
+   i = index(grid_units, 'degrees')
+   if (i /= 0) then
+      in_radians = .FALSE.
+   else
+      in_radians = .TRUE.
+   endif
+ else
+   ! FIXME: assumes global grid
+   ! try the max/min and for now assume it is a global grid
+   if (maxval(ULAT) < 7.0) then   ! 2 * PI plus slop.
+      in_radians = .TRUE.
+   else
+      in_radians = .FALSE.
+   endif
+ endif
+
 
  ! if the file contains the TLON, TLAT grids directly, read them in.
  ! otherwise, compute them after you have the U grids.
@@ -2209,29 +2292,40 @@ end subroutine get_gridsize
 
  ! lons: first row
  do i=1, nx
-   XG(i) = ULON(i, 1) * rad2deg
+   if (in_radians) ULON = ULON * rad2deg
+   XG(i) = ULON(i, 1)
+   if ( i < 5) print *, ULON(i, 1), XG(i)
  enddo
 
  ! lats: first row is monotonic in dipole grid
  do j=1, ny
-   YG(j) = ULAT(1, j) * rad2deg
+   if (in_radians) ULAT = ULAT * rad2deg
+   YG(j) = ULAT(1, j) 
+   if ( j < 5) print *, ULAT(1, j), YG(j)
  enddo
+
+ ! FIXME: i am assuming that if the U grid was in radians or degrees, and 
+ !   if the T grid is also in the file, that it is consistent units.
 
  if (read_tgrid) then
    ! we read in the centers directly from netcdf file, just fill in arrays
 
    ! lons: first row
    do i=1, nx
-     XC(i) = TLON(i, 1) * rad2deg
+     if (in_radians) TLON = TLON * rad2deg
+     XC(i) = TLON(i, 1)
+     if ( i < 5) print *, TLON(i, 1), XC(i)
    enddo
   
    ! lats: first row is monotonic in dipole grid
    do j=1, ny
-     YC(j) = TLAT(1, j) * rad2deg
+     if (in_radians) TLAT = TLAT * rad2deg
+     YC(j) = TLAT(1, j) 
+     if ( j < 5) print *, TLAT(1, j), YC(j)
    enddo
 
  else
-   ! compute centers for T grid
+   ! T grid not in input file, so compute centers for T grid
 
    ! longitudes
    do i=2, nx
@@ -2239,7 +2333,12 @@ end subroutine get_gridsize
    enddo
   
    if (longitude_wrap) then
-     XC(1) = XG(nx) + (XG(1)+360.0_r8 - XG(nx)) * 0.5_r8 
+     if (in_radians) then
+       wrapval = 2 * PI
+     else
+       wrapval = 360.0_r8
+     endif
+     XC(1) = XG(nx) + (XG(1)+wrapval - XG(nx)) * 0.5_r8 
    else
      ! FIXME: what to do here? extrapolate back .5 of box 1 for now.
      XC(1) = XG(1) - ((XG(2) - XG(1)) * 0.5_r8)
@@ -2253,6 +2352,14 @@ end subroutine get_gridsize
    ! FIXME: what to do here? extrapolate back .5 of box 1 for now.
    YC(1) = YG(1) - ((YG(2) - YG(1)) * 0.5_r8)
  endif
+
+if (debug > 5) then
+  print *, 'XG, XC, YG, YC:'
+  print *, '1: ' ,XG(1), XC(1), YG(1), YC(1)
+  print *, '2: ' ,XG(2), XC(2), YG(2), YC(2)
+  print *, '3: ' ,XG(3), XC(3), YG(3), YC(3)
+  print *, '4: ' ,XG(4), XC(4), YG(4), YC(4)
+endif
 
 end subroutine read_horiz_grid
 
@@ -2397,7 +2504,8 @@ end function
 
  integer :: ncid, NlonDimID, NlatDimID, NzDimID
  integer :: nlon, nlat, nz
- integer :: ulatVarID, ulonVarID, TLATvarid, TLONvarid, ZGvarid, ZCvarid, KMTvarid
+ integer :: ulatVarID, ulonVarID, TLATvarid, TLONvarid
+ integer :: ZGvarid, ZCvarid, KMTvarid, KMUvarid
 
  integer :: dimids(2);
 
@@ -2418,7 +2526,9 @@ end function
 
  ! define variables
 
+ ! FIXME: we should add attributes to say what units the grids are in (degrees).
  call nc_check(nf90_def_var(ncid,  'KMT', nf90_int,     dimids,  KMTvarid),'write_grid_netcdf')
+ call nc_check(nf90_def_var(ncid,  'KMU', nf90_int,     dimids,  KMUvarid),'write_grid_netcdf')
  call nc_check(nf90_def_var(ncid, 'ULON', nf90_double,  dimids, ulonVarID),'write_grid_netcdf')
  call nc_check(nf90_def_var(ncid, 'ULAT', nf90_double,  dimids, ulatVarID),'write_grid_netcdf')
  call nc_check(nf90_def_var(ncid, 'TLON', nf90_double,  dimids, TLONvarid),'write_grid_netcdf')
@@ -2440,6 +2550,7 @@ end function
  ! fill variables
 
  call nc_check(nf90_put_var(ncid,  KMTvarid,  KMT),'write_grid_netcdf')
+ call nc_check(nf90_put_var(ncid,  KMUvarid,  KMU),'write_grid_netcdf')
  call nc_check(nf90_put_var(ncid, ulatVarID, ULAT),'write_grid_netcdf')
  call nc_check(nf90_put_var(ncid, ulonVarID, ULON),'write_grid_netcdf')
  call nc_check(nf90_put_var(ncid, TLATvarid, TLAT),'write_grid_netcdf')
