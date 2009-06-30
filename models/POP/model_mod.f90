@@ -2231,7 +2231,7 @@ end subroutine get_gridsize
  ! at the min/max and assume it is a global run.
  
  nc_rc = nf90_get_att(grid_id, ulon_id, 'units', grid_units)
- if (nc_rc /= nf90_noerr) then
+ if (nc_rc == nf90_noerr) then
    ! found attribute; see if it contains the substring degrees
    i = index(grid_units, 'degrees')
    if (i /= 0) then
@@ -2239,6 +2239,7 @@ end subroutine get_gridsize
    else
       in_radians = .TRUE.
    endif
+   if (debug > 1) print *, 'found attribute, i, in_radians = ', i, in_radians
  else
    ! FIXME: assumes global grid
    ! try the max/min and for now assume it is a global grid
@@ -2247,6 +2248,7 @@ end subroutine get_gridsize
    else
       in_radians = .FALSE.
    endif
+   if (debug > 1) print *, 'no attribute, max, in_radians = ', maxval(ULAT), in_radians
  endif
 
 
@@ -2291,15 +2293,15 @@ end subroutine get_gridsize
  !  they are monotonic (i checked).
 
  ! lons: first row
+ if (in_radians) ULON = ULON * rad2deg
  do i=1, nx
-   if (in_radians) ULON = ULON * rad2deg
    XG(i) = ULON(i, 1)
    if ( i < 5) print *, ULON(i, 1), XG(i)
  enddo
 
  ! lats: first row is monotonic in dipole grid
+ if (in_radians) ULAT = ULAT * rad2deg
  do j=1, ny
-   if (in_radians) ULAT = ULAT * rad2deg
    YG(j) = ULAT(1, j) 
    if ( j < 5) print *, ULAT(1, j), YG(j)
  enddo
@@ -2311,15 +2313,15 @@ end subroutine get_gridsize
    ! we read in the centers directly from netcdf file, just fill in arrays
 
    ! lons: first row
+   if (in_radians) TLON = TLON * rad2deg
    do i=1, nx
-     if (in_radians) TLON = TLON * rad2deg
      XC(i) = TLON(i, 1)
      if ( i < 5) print *, TLON(i, 1), XC(i)
    enddo
   
    ! lats: first row is monotonic in dipole grid
+   if (in_radians) TLAT = TLAT * rad2deg
    do j=1, ny
-     if (in_radians) TLAT = TLAT * rad2deg
      YC(j) = TLAT(1, j) 
      if ( j < 5) print *, TLAT(1, j), YC(j)
    enddo
