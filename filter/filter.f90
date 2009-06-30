@@ -103,9 +103,9 @@ integer  :: num_groups          = 1
 real(r8) :: outlier_threshold   = -1.0_r8
 real(r8) :: input_qc_threshold  = 4.0_r8
 logical  :: output_forward_op_errors = .false.
-logical  :: output_timestamps = .false.
-logical  :: trace_execution   = .false.
-logical  :: silence           = .false.
+logical  :: output_timestamps        = .false.
+logical  :: trace_execution          = .false.
+logical  :: silence                  = .false.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -409,7 +409,7 @@ AdvanceTime : do
       endif
 
       call trace_message('Ready to run model to advance data time', 'filter:', -1)
-      call print_ens_time(ens_handle, ' filter trace: Ensemble data time before advance')
+      call print_ens_time(ens_handle, 'Ensemble data time before advance')
       call trace_message('Before advance_state called to run model')
       call timestamp_message('Before model advance', sync=.true.)
    
@@ -420,7 +420,7 @@ AdvanceTime : do
       ! slowest task to finish before outputting the time.
       call timestamp_message('After  model advance', sync=.true.)
       call trace_message('After  advance_state called to run model')
-      call print_ens_time(ens_handle, ' filter trace: Ensemble data time after  advance')
+      call print_ens_time(ens_handle, 'Ensemble data time after  advance')
    else
       call trace_message('Model does not need to run; data already at required time', 'filter:', -1)
    endif
@@ -429,8 +429,8 @@ AdvanceTime : do
    write(msgstring, '(A,I7)') 'Number of observations to be assimilated', &
       num_obs_in_set
    call trace_message(msgstring)
-   call print_obs_time(seq, key_bounds(1), " filter trace: Time of first observation in window")
-   call print_obs_time(seq, key_bounds(2), " filter trace: Time of last  observation in window")
+   call print_obs_time(seq, key_bounds(1), 'Time of first observation in window')
+   call print_obs_time(seq, key_bounds(2), 'Time of last  observation in window')
 
    ! Create an ensemble for the observations from this time plus
    ! obs_error_variance, observed value, key from sequence, global qc, 
@@ -473,6 +473,7 @@ AdvanceTime : do
    call trace_message('After  computing ensemble mean and spread')
 
    call trace_message('Before computing prior observation values')
+   call timestamp_message('Before computing prior observation values')
 
    ! Compute the ensemble of prior observations, load up the obs_err_var 
    ! and obs_values. ens_size is the number of regular ensemble members, 
@@ -500,11 +501,13 @@ AdvanceTime : do
    ! Now send the mean to the model in case it's needed
    call ens_mean_for_model(ens_mean)
 
+   call timestamp_message('After  computing prior observation values')
    call trace_message('After  computing prior observation values')
 
    ! Do prior state space diagnostic output as required
    ! Use ens_mean which is declared model_size for temp storage in diagnostics
-   if(time_step_number / output_interval * output_interval == time_step_number) then
+   if ((output_interval > 0) .and. &
+       (time_step_number / output_interval * output_interval == time_step_number)) then
       call trace_message('Before prior state space diagnostics')
       call filter_state_space_diagnostics(PriorStateUnit, ens_handle, &
          model_size, num_output_state_members, &
@@ -528,7 +531,6 @@ AdvanceTime : do
 
    write(msgstring, '(A,I8,A)') 'Ready to assimilate up to', size(keys), ' observations'
    call trace_message(msgstring, 'filter:', -1)
-   !call error_handler(E_MSG,'filter:', 'Ready to assimilate observations')
 
    call trace_message('Before observation assimilation')
    call timestamp_message('Before observation assimilation')
@@ -587,6 +589,7 @@ AdvanceTime : do
    call all_copies_to_all_vars(ens_handle)
    
    call trace_message('Before computing posterior observation values')
+   call timestamp_message('Before computing posterior observation values')
 
    ! Compute the ensemble of posterior observations, load up the obs_err_var 
    ! and obs_values.  ens_size is the number of regular ensemble members, 
@@ -595,6 +598,7 @@ AdvanceTime : do
       seq, keys, obs_val_index, num_obs_in_set, &
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY)
 
+   call timestamp_message('After  computing posterior observation values')
    call trace_message('After  computing posterior observation values')
 
    if(ds) then
@@ -604,7 +608,8 @@ AdvanceTime : do
    endif
 
    ! Do posterior state space diagnostic output as required
-   if(time_step_number / output_interval * output_interval == time_step_number) then
+   if ((output_interval > 0) .and. &
+       (time_step_number / output_interval * output_interval == time_step_number)) then
       call trace_message('Before posterior state space diagnostics')
       call filter_state_space_diagnostics(PosteriorStateUnit, ens_handle, &
          model_size, num_output_state_members, output_state_mean_index, &
@@ -1504,7 +1509,7 @@ if (present(sync)) then
   if (sync) call task_sync()
 endif
 
-if (do_output()) call timestamp(trim(msg), pos='debug')
+if (do_output()) call timestamp(trim(msg), pos='brief')  ! was debug
 
 end subroutine timestamp_message
 
@@ -1523,8 +1528,8 @@ if (trace_level <= 0) return
 if (do_output()) then
    if (get_my_num_copies(ens_handle) < 1) return
    call get_ensemble_time(ens_handle, 1, mtime)
-   call print_time(mtime, msg, logfileunit)
-   call print_time(mtime, msg)
+   call print_time(mtime, ' filter trace: '//msg, logfileunit)
+   call print_time(mtime, ' filter trace: '//msg)
 endif
 
 end subroutine print_ens_time
@@ -1549,8 +1554,8 @@ if (do_output()) then
    call get_obs_from_key(seq, key, obs)
    call get_obs_def(obs, obs_def)
    mtime = get_obs_def_time(obs_def)
-   call print_time(mtime, msg, logfileunit)
-   call print_time(mtime, msg)
+   call print_time(mtime, ' filter trace: '//msg, logfileunit)
+   call print_time(mtime, ' filter trace: '//msg)
    call destroy_obs(obs)
 endif
 
