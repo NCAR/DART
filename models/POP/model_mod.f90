@@ -111,6 +111,11 @@ logical            :: longitude_wrap        = .true.
 ! here is what we can get from the topog file:
 !   integer, dimension(:,:), allocatable :: &
 !      KMT               ! k index of deepest grid cell on T grid
+! maybe
+!      KMU               ! k index of deepest grid cell on U grid
+!      HT                ! real(r8) value of deepest valid T depth (in cm)
+!      HU                ! real(r8) value of deepest valid U depth (in cm)
+!
 !
 ! the vert grid file is ascii, with 3 columns/line:
 !    cell thickness(in cm)   cell center(in m)   cell bottom(in m)
@@ -185,6 +190,8 @@ real(r8), allocatable :: ULAT(:,:), ULON(:,:), TLAT(:,:), TLON(:,:)
 
 ! integer, lowest valid cell number in the vertical
 integer, allocatable  :: KMT(:, :), KMU(:, :)
+! real, depth of lowest valid cell (0 = land).  use only if KMT/KMU not avail.
+real(r8), allocatable :: HT(:,:), HU(:,:)
 
 real(r8)        :: endTime
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
@@ -277,9 +284,11 @@ allocate(XG(Nx), YG(Ny), ZG(Nz))
 ! once we put in interpolation in the dipole grid code.
 allocate(ULAT(Nx, Ny), ULON(Nx, Ny), TLAT(Nx, Ny), TLON(Nx, Ny))
 allocate(KMT(Nx, Ny), KMU(Nx, Ny))
+allocate(HT(Nx, Ny), HU(Nx, Ny))
 
 ! Fill them in.
-! (horiz grid initializes ULAT/LON, TLAT/LON as well)
+! horiz grid initializes ULAT/LON, TLAT/LON as well.
+! kmt initializes HT/HU if present in input file.
 call read_horiz_grid(Nx, Ny, XC, XG, YC, YG)
 call read_vert_grid(Nz, ZC, ZG)
 call read_kmt(Nx, Ny, KMT, KMU)
@@ -1037,7 +1046,7 @@ subroutine end_model()
 
 ! if ( .not. module_initialized ) call static_init_model
 
-deallocate(XC, YC, ZC, XG, YG, ZG, KMT)
+deallocate(XC, YC, ZC, XG, YG, ZG, KMT, KMU, HT, HU)
 
 end subroutine end_model
 
@@ -1086,6 +1095,7 @@ integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
 ! for the dimensions and coordinate variables
 integer :: NlonDimID, NlatDimID, NzDimID
 integer :: ulonVarID, ulatVarID, tlonVarID, tlatVarID, ZGVarID, ZCVarID
+integer :: KMTVarID, KMUVarID
 
 ! for the prognostic variables
 integer :: SVarID, TVarID, UVarID, VVarID, SHGTVarID 
@@ -1335,10 +1345,10 @@ else
                  "nc_write_model_atts", "ZG cartesian_axis "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, ZGVarID, "units", "meters"),  &
                  "nc_write_model_atts", "ZG units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZGVarID, "positive", "up"),  &
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, "positive", "down"),  &
                  "nc_write_model_atts", "ZG units "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, ZGVarID, "comment", &
-                  "more negative is closer to the center of the earth"),  &
+                  "more positive is closer to the center of the earth"),  &
                  "nc_write_model_atts", "ZG comment "//trim(filename))
 
    ! Depths
@@ -1353,8 +1363,36 @@ else
    call nc_check(nf90_put_att(ncFileID, ZCVarID, "positive", "down"),  &
                  "nc_write_model_atts", "ZC units "//trim(filename))
    call nc_check(nf90_put_att(ncFileID, ZCVarID, "comment", &
-                  "more negative is closer to the center of the earth"),  &
+                  "more positive is closer to the center of the earth"),  &
                  "nc_write_model_atts", "ZC comment "//trim(filename))
+
+   ! Depth mask
+   call nc_check(nf90_def_var(ncFileID,name="KMT",xtype=nf90_int, &
+                 dimids= (/ NlonDimID, NlatDimID /), varid=KMTVarID), &
+                 "nc_write_model_atts", "KMT def_var "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMTVarID, "long_name", "lowest valid depth index at grid centroids"), &
+                 "nc_write_model_atts", "KMT long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMTVarID, "units", "levels"),  &
+                 "nc_write_model_atts", "KMT units "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMTVarID, "positive", "down"),  &
+                 "nc_write_model_atts", "KMT units "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMTVarID, "comment", &
+                  "more positive is closer to the center of the earth"),  &
+                 "nc_write_model_atts", "KMT comment "//trim(filename))
+
+   ! Depth mask
+   call nc_check(nf90_def_var(ncFileID,name="KMU",xtype=nf90_int, &
+                 dimids= (/ NlonDimID, NlatDimID /), varid=KMUVarID), &
+                 "nc_write_model_atts", "KMU def_var "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMUVarID, "long_name", "lowest valid depth index at grid corners"), &
+                 "nc_write_model_atts", "KMU long_name "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMUVarID, "units", "levels"),  &
+                 "nc_write_model_atts", "KMU units "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMUVarID, "positive", "down"),  &
+                 "nc_write_model_atts", "KMU units "//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMUVarID, "comment", &
+                  "more positive is closer to the center of the earth"),  &
+                 "nc_write_model_atts", "KMU comment "//trim(filename))
 
    !----------------------------------------------------------------------------
    ! Create the (empty) Prognostic Variables and the Attributes
@@ -1451,6 +1489,10 @@ else
                 "nc_write_model_atts", "ZG put_var "//trim(filename))
    call nc_check(nf90_put_var(ncFileID, ZCVarID, ZC ), &
                 "nc_write_model_atts", "ZC put_var "//trim(filename))
+   call nc_check(nf90_put_var(ncFileID, KMTVarID, KMT ), &
+                "nc_write_model_atts", "KMT put_var "//trim(filename))
+   call nc_check(nf90_put_var(ncFileID, KMUVarID, KMU ), &
+                "nc_write_model_atts", "KMU put_var "//trim(filename))
 
 endif
 
@@ -2233,9 +2275,9 @@ end subroutine get_gridsize
 
  ! FIXME:
  ! some files have the grid info in radians, some in degrees.
- ! try to see if there is a units attribute, and if it contains the string 'degrees'
- ! (e.g. 'degrees_north').  otherwise assume radians?  or try to be tricky and look
- ! at the min/max and assume it is a global run.
+ ! see if there is a units attribute, and if it contains the string 'degrees'
+ ! (e.g. 'degrees_north').  if not found, try to be tricky and look
+ ! at the min/max -- THIS ASSUMES A GLOBAL RUN.
  
  nc_rc = nf90_get_att(grid_id, ulon_id, 'units', grid_units)
  if (nc_rc == nf90_noerr) then
@@ -2258,6 +2300,15 @@ end subroutine get_gridsize
    if (debug > 1) print *, 'no attribute, max, in_radians = ', maxval(ULAT), in_radians
  endif
 
+ ! check to see if grid is wrapped at 0 and make all positive.
+ if (minval(ULON) < 0.0) then
+    if (in_radians) then
+       where (ULON < 0.0) ULON = ULON + 2.0 * PI
+    else
+       where (ULON < 0.0) ULON = ULON + 360.0_r8
+    endif
+ endif
+ 
 
  ! if the file contains the TLON, TLAT grids directly, read them in.
  ! otherwise, compute them after you have the U grids.
@@ -2284,6 +2335,15 @@ end subroutine get_gridsize
    call nc_check(nf90_get_var(grid_id, tlon_id, TLON), &
            'read_horiz_grid','get TLON '//trim(horiz_grid_input_file) )
 
+   ! check to see if grid is wrapped at 0 and make all positive.
+   if (minval(TLON) < 0.0) then
+      if (in_radians) then
+         where (TLON < 0.0) TLON = TLON + 2.0 * PI
+      else
+         where (TLON < 0.0) TLON = TLON + 360.0_r8
+      endif
+   endif
+ 
  else
    read_tgrid = .false.
  endif
@@ -2419,51 +2479,101 @@ end subroutine read_vert_grid
 
  integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
  integer :: ncid, varid, numdims
- integer :: dim1len, dim2len, nc_rc, i, j
+ integer :: dim1len, dim2len, nc_rc, i, j, k
+ character(len=4) :: depthvar
   
 
  call nc_check(nf90_open(trim(topography_input_file), nf90_nowrite, ncid), &
          'read_kmt','open '//trim(topography_input_file) )
 
- call nc_check(nf90_inq_varid(ncid, 'KMT', varid), &
-         'read_kmt','inq_varid KMT '//trim(topography_input_file) )
+ ! Try to read in KMT.  If there, great.  If not, try KT.  If still not, fail.
+ nc_rc = nf90_inq_varid(ncid, 'KMT', varid)
+ if (nc_rc == nf90_noerr) then
+    depthvar = 'KMT'
+ else
+    nc_rc = nf90_inq_varid(ncid, 'HT', varid)
+    if (nc_rc /= nf90_noerr) then
+       write(msgstring,*)trim(topography_input_file)//' cannot find KMT or HT'
+       call error_handler(E_ERR,'read_kmt',msgstring,source,revision,revdate) 
+    endif
+    depthvar = 'HT'
+ endif
 
  call nc_check(nf90_inquire_variable(ncid,varid,dimids=dimIDs,ndims=numdims), &
-         'read_kmt', 'inquire KMT '//trim(topography_input_file))
+         'read_kmt', 'inquire '//depthvar//' '//trim(topography_input_file))
 
  if ( numdims /= 2 ) then
-    write(msgstring,*)trim(topography_input_file)//' KMT should have 2 dims - has ',numdims
+    write(msgstring,*)trim(topography_input_file)//' '//depthvar//'should have 2 dims - has ',numdims
     call error_handler(E_ERR,'read_kmt',msgstring,source,revision,revdate) 
  endif
 
  call nc_check(nf90_inquire_dimension(ncid, dimIDs(1), len=dim1len), &
-         'read_kmt', 'inquire dim1 of KMT '//trim(topography_input_file))
+         'read_kmt', 'inquire dim1 of '//depthvar//' '//trim(topography_input_file))
 
  call nc_check(nf90_inquire_dimension(ncid, dimIDs(2), len=dim2len), &
-         'read_kmt', 'inquire dim2 of KMT '//trim(topography_input_file))
+         'read_kmt', 'inquire dim2 of '//depthvar//' '//trim(topography_input_file))
 
  if ( (dim1len /= Nx) .or. (dim2len /= Ny) ) then
-    write(msgstring,*)trim(topography_input_file)//' KMT shape wrong ',dim1len,dim2len
+    write(msgstring,*)trim(topography_input_file)//' '//depthvar//'shape wrong ',dim1len,dim2len
     call error_handler(E_ERR,'read_kmt',msgstring,source,revision,revdate) 
  endif
 
  ! If we made it this far, we can read the variable
+ if (depthvar == 'KMT') then
+    call nc_check(nf90_get_var(ncid, varid, KMT), &
+            'read_kmt','get_var KMT '//trim(topography_input_file) )
+ else
+    call nc_check(nf90_get_var(ncid, varid, HT), &
+            'read_kmt','get_var HT '//trim(topography_input_file) )
+    
+    TLATLOOP: do j=1, dim2len
+       TLONLOOP: do i=1, dim1len
+          KMT(i, j) = 0
+          if (HT(i, j) /= 0.0_r8) then
+             TDEPTHLOOP: do k=Nz, 1, -1
+                if (HT(i, j) >= ZC(k)*1000.0_r8) then   ! HT in cm, ZC in m
+                   KMT(i,j) = k
+                   exit TDEPTHLOOP
+                endif
+             enddo TDEPTHLOOP
+          endif
+       enddo TLONLOOP
+    enddo TLATLOOP
 
- call nc_check(nf90_get_var(ncid, varid, KMT), &
-         'read_kmt','get_var KMT '//trim(topography_input_file) )
+ endif
 
- ! Try to read in KMU.  If there, great.  If not, compute it.
+ ! Try to read in KMU.  If there, great.  If not, try HU.  If not, compute it.
  nc_rc = nf90_inq_varid(ncid, 'KMU', varid)
  if (nc_rc == nf90_noerr) then
     call nc_check(nf90_get_var(ncid, varid, KMU), &
             'read_kmt','get_var KMU '//trim(topography_input_file) )
- else
-    KMU(1, 1) = 0
-    do j=2, dim2len
-       do i=2, dim1len
-          KMU(i,j) = min(KMT(i, j), KMT(i-1, j), KMT(i, j-1), KMT(i-1, j-1)) 
+ else 
+    nc_rc = nf90_inq_varid(ncid, 'HU', varid)
+    if (nc_rc == nf90_noerr) then
+       call nc_check(nf90_get_var(ncid, varid, HU), &
+            'read_kmt','get_var HU '//trim(topography_input_file) )
+
+       ULATLOOP: do j=1, dim2len
+          ULONLOOP: do i=1, dim1len
+             KMU(i, j) = 0
+             if (HU(i, j) /= 0.0_r8) then
+                UDEPTHLOOP: do k=Nz, 1, -1
+                   if (HU(i, j) >= ZC(k)*1000.0_r8) then   ! HU in cm, ZC in m
+                      KMU(i,j) = k
+                      exit UDEPTHLOOP
+                   endif
+                enddo UDEPTHLOOP
+             endif
+          enddo ULONLOOP
+       enddo ULATLOOP
+    else  ! neither KMU or HU found; compute from KMT
+       KMU(1, 1) = 0
+       do j=2, dim2len
+          do i=2, dim1len
+             KMU(i,j) = min(KMT(i, j), KMT(i-1, j), KMT(i, j-1), KMT(i-1, j-1)) 
+          enddo
        enddo
-    enddo
+    endif
  endif
 
  call nc_check(nf90_close(ncid), &
