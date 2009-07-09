@@ -55,7 +55,8 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
                               KIND_VORTEX_LAT, KIND_VORTEX_LON, &
                               KIND_VORTEX_PMIN, KIND_VORTEX_WMAX, &
-                              get_raw_obs_kind_index, max_obs_kinds, get_raw_obs_kind_name
+                              get_raw_obs_kind_index, get_num_raw_obs_kinds, &
+                              get_raw_obs_kind_name
 
 
 !nc -- module_map_utils split the declarations of PROJ_* into a separate module called
@@ -188,7 +189,8 @@ real(r8), allocatable :: ens_mean(:)
 
 character(len = 20) :: wrf_nml_file = 'namelist.input'
 logical :: have_wrf_nml_file = .false.
-logical :: in_state_vector(max_obs_kinds) = .false.
+integer :: num_obs_kinds = 0
+logical, allocatable :: in_state_vector(:)
 
 !-----------------------------------------------------------------------
 
@@ -335,6 +337,8 @@ endif
 ! helpful error message if not).
 !---------------------------
 
+num_obs_kinds = get_num_raw_obs_kinds()
+allocate(in_state_vector(num_obs_kinds))
 call fill_dart_kinds_table(wrf_state_variables, in_state_vector)
 
 
@@ -572,7 +576,7 @@ WRFDomains : do id=1,num_domains
 
    ! NEWVAR: If you add a new wrf array type which is not yet in this list, currently
    ! NEWVAR: you will have to add it here, and add a type_xx for it, and also add
-   ! NEWVAR: a in_state_variable case in the select statement.  search for NEWVAR.
+   ! NEWVAR: a in_state_vector case in the select statement.  search for NEWVAR.
 
    ! JPH now that we have the domain ID just go ahead and get type indices once
    ! NOTE: this is not strictly necessary - can use only stagger info in the future (???)
@@ -5930,6 +5934,8 @@ logical, intent(inout)       :: in_state_vector(:)
 
 integer :: row, i, nextkind
 
+in_state_vector = .false.
+
 row = size(wrf_state_variables, 2)
 
 ! NEWVAR: see each of part1, part 2, and part 3 below.
@@ -6000,17 +6006,18 @@ do i = 1, size(in_state_vector)
           (.not. in_state_vector(KIND_TEMPERATURE))        .or. &
           (.not. in_state_vector(KIND_VAPOR_MIXING_RATIO)) .or. &
           (.not. in_state_vector(KIND_PRESSURE))) then
-         write(errstring, *) 'VORTEX kinds require U,V,T,QVAPOR,MU in state vector'
-         call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
+         write(errstring, *) 'VORTEX kinds will require U,V,T,QVAPOR,MU in state vector'
+         ! FIXME: not fatal error, just informative at this point.
+         call error_handler(E_MSG, 'fill_dart_kinds_table', errstring, &
                             source, revision, revdate)
       endif
  
    ! if you have one wind component you have to have both
    case (KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT)
-      if ((.not. in_state_vector(KIND_U_WIND_COMPONENT))  .or. &
-          (.not. in_state_vector(KIND_V_WIND_COMPONENT))) then
-         write(errstring, *) 'WIND kinds require both U,V in state vector'
-         call error_handler(E_ERR, 'fill_dart_kinds_table', errstring, &
+      if (in_state_vector(KIND_U_WIND_COMPONENT) .ne. in_state_vector(KIND_V_WIND_COMPONENT)) then
+         write(errstring, *) 'WIND kinds will require both U,V in state vector'
+         ! FIXME: not fatal error, just informative at this point.
+         call error_handler(E_MSG, 'fill_dart_kinds_table', errstring, &
                             source, revision, revdate)
       endif
  

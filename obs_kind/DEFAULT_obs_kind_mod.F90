@@ -26,6 +26,15 @@ public :: get_obs_kind_name, assimilate_this_obs_kind, &
           write_obs_kind, read_obs_kind, get_kind_from_menu, map_def_index
 ! Added by TRW for restart file functionality
 public :: get_raw_obs_kind_name, get_raw_obs_kind_index
+! Added by nsc to try to limit the number of global vars exported from
+! this program.  i do not like this terminology, but since we are still
+! using kind where we mean type, raw kind is as good a solution as anything.
+! when i get permission to change public interfaces (next significant public
+! release of the code), all kinds will become types, and raw_kind will become
+! plain kind.  or i'll dump type/kind altogether and go to specific/generic
+! or some other pair without this long history.
+public :: get_num_obs_kinds, get_num_raw_obs_kinds
+
 public :: do_obs_form_pair, add_wind_names
 
 !----------------------------------------------------------------------------
@@ -507,6 +516,35 @@ end do
 get_raw_obs_kind_index = -1
 
 end function get_raw_obs_kind_index
+
+!----------------------------------------------------------------------------
+
+function get_num_obs_kinds()
+
+! Accessor function to return observation *type* count
+
+integer :: get_num_obs_kinds
+
+if ( .not. module_initialized ) call initialize_module
+
+get_num_obs_kinds = max_obs_specific
+
+end function get_num_obs_kinds
+
+!----------------------------------------------------------------------------
+
+function get_num_raw_obs_kinds()
+  
+! Accessor function to return observation *kind* count
+
+integer :: get_num_raw_obs_kinds
+
+if (.not. module_initialized) call initialize_module
+
+get_num_raw_obs_kinds = max_obs_generic
+
+end function get_num_raw_obs_kinds
+
 !----------------------------------------------------------------------------
 
 function assimilate_this_obs_kind(obs_kind_ind)
