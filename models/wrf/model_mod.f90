@@ -6014,7 +6014,7 @@ do i = 1, size(in_state_vector)
  
    ! if you have one wind component you have to have both
    case (KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT)
-      if (in_state_vector(KIND_U_WIND_COMPONENT) .ne. in_state_vector(KIND_V_WIND_COMPONENT)) then
+      if (in_state_vector(KIND_U_WIND_COMPONENT) .neqv. in_state_vector(KIND_V_WIND_COMPONENT)) then
          write(errstring, *) 'WIND kinds will require both U,V in state vector'
          ! FIXME: not fatal error, just informative at this point.
          call error_handler(E_MSG, 'fill_dart_kinds_table', errstring, &
