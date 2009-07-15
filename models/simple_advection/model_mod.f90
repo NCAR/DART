@@ -641,16 +641,16 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model", "simple_advection"), 
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "destruction_rate", destruction_rate ), &
               'nc_write_model_atts', 'put_att destruction_rate, '//trim(filename))
 
+! Define the model size, state variable dimension ... whatever ...
+call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
+                  len=get_model_size(), dimid = StateVarDimID), &
+                'nc_write_model_atts', 'def_dim StateVariable, '//trim(filename))
+
 !----------------------------------------------------------------------------
 ! Define either the "state vector" variables -OR- the "prognostic" variables.
 !----------------------------------------------------------------------------
 
 if ( output_state_vector ) then
-
-   ! Define the model size, state variable dimension ... whatever ...
-   call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                     len=get_model_size(), dimid = StateVarDimID), &
-                   'nc_write_model_atts', 'def_dim StateVariable, '//trim(filename))
 
    ! Define the Location Variable and add Attributes
    ! Some of the atts come from location_mod (via the USE: stmnt)
@@ -744,7 +744,7 @@ else
               'nc_write_model_atts', 'put_att units, '//trim(filename))
    call nc_check(nf90_put_att(ncFileID, LocationVarID, "valid_range", (/ 0.0_r8, 1.0_r8 /)), &
               'nc_write_model_atts', 'put_att valid_range, '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, LocationVarID, "axis", "T"), &
+   call nc_check(nf90_put_att(ncFileID, LocationVarID, "axis", "X"), &
                  'nc_write_model_atts', 'locations:axis, '//trim(filename)) 
 
    ! Define the prognostic variables - concentration
