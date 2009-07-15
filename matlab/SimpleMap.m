@@ -1,31 +1,29 @@
-function h = SimpleMap(fname,var,time,copystring,level)
+function h = SimpleMap(fname, varname, time, copystring, level)
 % SimpleMap plots a horizontal slice from a DART netcdf file.
-% Right now, the hard assumption is the netcdf variable has
-% order [time, copy, lat, lon (,lev)].
 %
 % Since WRF does not have tidy coordinate variables for lat/lon,
 % this script will not directly support WRF/DART netCDF files.
 %
 % EXAMPLE:
 %
-% fname  = 'PriorDiag.nc';
-% var    = 'T';      % 'PS','T','US','VS','Q','CLDLIQ','CLDICE' ...
-% time   = 1;        % index into time array
-% copy   = 'ensemble mean';  % anything from ncdump -v CopyMetaData
-% level  = 1;        % index into level array
-% h = SimpleMap(fname,var,time,copy,level);
+% fname   = 'PriorDiag.nc';
+% varname = 'T';      % 'PS','T','US','VS','Q','CLDLIQ','CLDICE' ...
+% time    = 1;        % index into time array
+% copy    = 'ensemble mean';  % anything from ncdump -v CopyMetaData
+% level   = 1;        % index into level array
+% h = SimpleMap(fname,varname,time,copy,level);
 %
 % EXAMPLE:
 %
-% fname  = '/project/dart/raeder/CSL/Groups2/PriorDiag.nc';
-% var    = 'T';      % 'PS','T','US','VS','Q','CLDLIQ','CLDICE' ...
-% time   = 1;        % index into time array
-% copy   = 'ensemble mean';  % anything from ncdump -v CopyMetaData
-% level  = 1;        % index into level array
-% h = SimpleMap(fname,var,time,copy,level);
+% fname   = '/project/dart/raeder/CSL/Groups2/PriorDiag.nc';
+% varname = 'T';      % 'PS','T','US','VS','Q','CLDLIQ','CLDICE' ...
+% time    = 1;        % index into time array
+% copy    = 'ensemble mean';  % anything from ncdump -v CopyMetaData
+% level   = 1;        % index into level array
+% h = SimpleMap(fname,varname,time,copy,level);
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -35,33 +33,30 @@ function h = SimpleMap(fname,var,time,copystring,level)
 % $Revision$
 % $Date$
 
+if (exist(fname,'file') ~= 2), error('%s does not exist.',fname); end
+
 % Get some information from the netCDF file.
 
-plotdat = netCDFinfo(fname,var);
+plotdat = netCDFinfo(fname, varname);
 
 % Figure out the starting date
 
 timebase   = sscanf(plotdat.timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin = datenum(timebase(1),timebase(2),timebase(3));
-timearr    = getnc(fname,'time');
+timearr    = nc_varget(fname,'time');
 timestring = datestr(timearr(1) + timeorigin);
 
 % create the hyperslab indices ... 
-% most are [time,copy,lat,lon,lev] but some (i.e. PS)
-% have no 'lev' dimension.
-% There is a HARD assumption about variable shape here ...
 
 copyindex = get_copy_index(fname,copystring);
 
-if ( length(plotdat.dimcells) < 5 )
-   corner    = [time,copyindex,-1,-1];
-   end_point = [time,copyindex,-1,-1];
-else 
-   corner    = [time,copyindex,-1,-1,level];
-   end_point = [time,copyindex,-1,-1,level];
-end
-   
-datmat = getnc(fname,var,corner,end_point);
+myinfo.diagn_file = fname;
+myinfo.copyindex  = copyindex;
+myinfo.levelindex = level;
+myinfo.timeindex  = time;
+[start, count]    = GetNCindices(myinfo,'diagn',varname);
+
+datmat = nc_varget(fname, varname, start, count);
 
 % Create the plot.
 % The figure window is partitioned into two parts ... one has 
@@ -76,7 +71,7 @@ worldmap;
 h1 = colorbar;
 set(h1,'FontSize',14)
 set(get(h1,'Ylabel'),'String',plotdat.varunits,'FontSize',14)
-title(sprintf('%s ''%s''',plotdat.model,var))
+title(sprintf('%s ''%s''',plotdat.model,varname))
 
 t0 = subplot('position',[0.1 0.05 0.8 0.25]);
 t1 = plot([0 1],[0 1],'.','Visible','off');
@@ -90,58 +85,87 @@ end
 text(0.0, 0.65, sprintf('%s %s',plotdat.model,fname),'Interpreter','none');
 text(0.0, 0.50, timestring);
 text(0.0, 0.35, sprintf('%s ''%s'' %s [%s]', ...
-               copystring, var, plotdat.varlname, dimstring));
+               copystring, varname, plotdat.varlname, dimstring));
 text(0.0, 0.20, sprintf('level %.2f (index %d) at timestep %d', ...
                          plotdat.levels(level), level, time));
 
 annotate(plotdat)
 
+
+
 % helper function(s) follow ...
 
-function plotdat = netCDFinfo(fname,var)
+function plotdat = netCDFinfo(fname,varname)
 
-ft                 = netcdf(fname);
-plotdat.model      = ft.model(:);
-plotdat.varlname   = ft{var}.long_name(:);
-plotdat.varunits   = ft{var}.units(:);
-plotdat.timeunits  = ft{'time'}.units(:);
-plotdat.calendar   = ft{'time'}.calendar(:);
-plotdat.dimcells   = dim(ft{var});
-plotdat.dimnames   = ncnames(plotdat.dimcells);
+plotdat.model      = nc_attget(fname, nc_global, 'model');
+plotdat.varlname   = nc_attget(fname, varname,   'long_name');
+plotdat.varunits   = nc_attget(fname, varname,   'units');
+plotdat.timeunits  = nc_attget(fname,'time',     'units');
+plotdat.calendar   = nc_attget(fname,'time',     'calendar');
 
-for i = 1:length(plotdat.dimcells)
+varinfo            = nc_getvarinfo(fname,varname);
+plotdat.dimnames   = varinfo.Dimension;
 
-   dimstring = lower(ft{plotdat.dimnames{i}}.units(:));
+for i = 1:length(varinfo.Dimension)
 
-   switch dimstring
+   diminfo = nc_getdiminfo(fname,varinfo.Dimension{i});
+   dimname = diminfo.Name;
 
-      case 'degrees_east'
-         plotdat.londimname = plotdat.dimnames{i};
-         plotdat.lons       = getnc(fname,plotdat.dimnames{i});
-         plotdat.lonunits   = dimstring;
-      case 'degrees_north' 
-         plotdat.latdimname = plotdat.dimnames{i};
-         plotdat.lats       = getnc(fname,plotdat.dimnames{i});
-         plotdat.latunits   = dimstring;
-      case 'level'
-         plotdat.levdimname = plotdat.dimnames{i};
-         plotdat.levels     = getnc(fname,plotdat.dimnames{i});
-         plotdat.levunits   = dimstring;
-         plotdat.levlname   = ft{plotdat.dimnames{i}}.long_name(:);
-      otherwise
+   % the coordinate variable is the same name as the dimension
+   % some grids have multiple vertical levels so there is no one
+   % predictable coordinate variable name. By convention, these
+   % variables should be tagged with a 'cartesian_axis' attribute.
+   % ditto for lat, lon ... (on staggered grids, for example)
+   % So the XG coordinate dimension has 'cartesian_axis = X',
+   % for example.
 
+   [len, status, value] = is_dimension_cartesian(fname, diminfo.Name);
+
+   if (status > 0)
+      dimname = value;
+   else
+      % Then there is no 'cartesian_axis' attribute and the best we can
+      % hope for is a standard dimension name [time,copy,lat,lon,lev]
    end
 
+   switch lower(dimname) % loop over all likely coordinate variables
+      case {'lev','z'}
+         plotdat.levdimname = diminfo.Name;
+         plotdat.levels     = nc_varget(fname,diminfo.Name);
+         plotdat.levunits   = nc_attget(fname,diminfo.Name,'units');
+         plotdat.levlname   = nc_attget(fname,diminfo.Name,'long_name');
+      case {'lat','y','tmpj'}
+         plotdat.latdimname = diminfo.Name;
+         plotdat.lats       = nc_varget(fname,diminfo.Name);
+         plotdat.latunits   = nc_attget(fname,diminfo.Name,'units');
+      case {'lon','x','tmpi'}
+         plotdat.londimname = diminfo.Name;
+         plotdat.lons       = nc_varget(fname,diminfo.Name);
+         plotdat.lonunits   = nc_attget(fname,diminfo.Name,'units');
+   end
 end
-close(ft)
 
-% Surface variables generally do not have a 'level'
 
-if ( ~isfield(plotdat,'levdimname') )
-   plotdat.levdimname = 'none';
-   plotdat.levels     = 1;
-   plotdat.levunits   = 'no level units';
+
+function [len, status, value] = is_dimension_cartesian(fname,dimname)
+
+status   = 0;
+len      = 0;
+value    = [];
+Cvarinfo = nc_getvarinfo(fname, dimname);
+
+for j = 1:length(Cvarinfo.Attribute);
+   attribute = Cvarinfo.Attribute(j);
+   switch lower(attribute.Name)
+      case{'cartesian_axis'}
+         status = 1;
+         len    = Cvarinfo.Size;
+         value  = attribute.Value;
+         break
+      otherwise
+   end
 end
+
 
 
 function annotate(plotdat)

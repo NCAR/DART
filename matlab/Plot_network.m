@@ -2,7 +2,7 @@
 %
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -29,12 +29,12 @@ KIND_TD2 = 204;
 map_proj = {'lambert', 'ups', 'mercator'};
 
 fname = 'True_State'
-stdlat1 = getnc(fname, 'TRUELAT1');
-stdlat2 = getnc(fname, 'TRUELAT2');
-cen_lat = getnc(fname, 'CEN_LAT');
-cen_lon = getnc(fname, 'CEN_LON');
+stdlat1 = nc_varget(fname, 'TRUELAT1');
+stdlat2 = nc_varget(fname, 'TRUELAT2');
+cen_lat = nc_varget(fname, 'CEN_LAT');
+cen_lon = nc_varget(fname, 'CEN_LON');
 
-mp = getnc(fname, 'MAP_PROJ');
+mp = nc_varget(fname, 'MAP_PROJ');
 
 num_domains = size(mp,1);
 
@@ -49,8 +49,8 @@ else
 
 end
 
-xlon = getnc(fname, ['XLON_d0',int2str(id)]);
-xlat = getnc(fname, ['XLAT_d0',int2str(id)]);
+xlon = nc_varget(fname, ['XLON_d0',int2str(id)]);
+xlat = nc_varget(fname, ['XLAT_d0',int2str(id)]);
 
 minlat = min(xlat(:)); maxlat = max(xlat(:));
 minlon = min(xlon(:)); maxlon = max(xlon(:));
@@ -154,13 +154,13 @@ for i = 1:a.num_obs,
 
 end
 
-disp(sprintf('# of U %d', iu))
-disp(sprintf('# of V %d', iv))
-disp(sprintf('# of T %d', it))
-disp(sprintf('# of Vr %d', ivr))
-disp(sprintf('# of Ref %d', iref))
-disp(sprintf('# of U10 %d', iu10))
-disp(sprintf('# of V10 %d', iv10))
-disp(sprintf('# of T2 %d', it2))
-disp(sprintf('# of TD2 %d', itd2))
-disp(sprintf('# of PS %d', ips))
+fprintf('# of U   %d\n', iu)
+fprintf('# of V   %d\n', iv)
+fprintf('# of T   %d\n', it)
+fprintf('# of Vr  %d\n', ivr)
+fprintf('# of Ref %d\n', iref)
+fprintf('# of U10 %d\n', iu10)
+fprintf('# of V10 %d\n', iv10)
+fprintf('# of T2  %d\n', it2)
+fprintf('# of TD2 %d\n', itd2)
+fprintf('# of PS  %d\n', ips)

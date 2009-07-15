@@ -10,7 +10,7 @@ function PlotRegFactor(fname,obsnum)
 % PlotRegFactor(fname, obsnum);
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -20,9 +20,7 @@ function PlotRegFactor(fname,obsnum)
 % $Revision$
 % $Date$
 
-if ( exist(fname,'file') ~=2 ) 
-   error(sprintf('%s does not exist on the Matlab search path',fname))
-end
+if ( exist(fname,'file') ~=2 ), error('%s does not exist on the Matlab search path',fname); end
 
 % Open the file and read the data into blobs.
 

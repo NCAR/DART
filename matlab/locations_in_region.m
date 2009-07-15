@@ -20,7 +20,7 @@ function inds = locations_in_region(locations, region)
 % inds = locations_in_region(locations,[0 360 -90 90 0 1000]); % Everything  between 0,1000
  
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %

@@ -49,7 +49,7 @@ function PlotEnsErrSpread( pinfo )
 % PlotEnsErrSpread(pinfo)
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -59,31 +59,15 @@ function PlotEnsErrSpread( pinfo )
 % $Revision$
 % $Date$
 
-pinfo = CheckModelCompatibility(pinfo)
+pinfo = CheckModelCompatibility(pinfo);
 
 % Get some information from the truth_file 
-ft = netcdf(pinfo.truth_file);
-tmodel      = ft.model(:);
-tvar_atts   = dim(ft{pinfo.var});      % cell array of dimensions for the var
-%tnum_times  = length(tvar_atts{1});    % determine # of output times
-tnum_copies = length(tvar_atts{2});    % # of ensemble members
-tnum_vars   = length(tvar_atts{3});    % dimension of desired variable
-close(ft);
-% time might be a subset now of the entire array - compute it instead of
-% assuming the entire size.
-tnum_times = pinfo.truth_time(2) - pinfo.truth_time(1) + 1;
+tmodel      = nc_attget( pinfo.truth_file,nc_global,'model');
+tnum_times  = pinfo.truth_time(2) - pinfo.truth_time(1) + 1;
 
 % Get some information from the diagn_file 
-fd = netcdf(pinfo.diagn_file);
-dmodel      = fd.model(:);
-dvar_atts   = dim(fd{pinfo.var});      % cell array of dimensions for the var
-%dnum_times  = length(dvar_atts{1});    % determine # of output times
-dnum_copies = length(dvar_atts{2});    % # of ensemble members
-dnum_vars   = length(dvar_atts{3});    % dimension of desired variable
-close(fd);
-% time might be a subset now of the entire array - compute it instead of
-% assuming the entire size.
-dnum_times = pinfo.diagn_time(2) - pinfo.diagn_time(1) + 1;
+dmodel      = nc_attget( pinfo.diagn_file,nc_global,'model');
+dnum_times  = pinfo.diagn_time(2) - pinfo.diagn_time(1) + 1;
 
 % Get the indices for the true state, ensemble mean and spread
 % The metadata is queried to determine which "copy" is appropriate.
@@ -92,8 +76,7 @@ ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
 % Get some useful plotting arrays
-times = getnc(pinfo.truth_file,'time', ...
-              [ pinfo.truth_time(1) ], [ pinfo.truth_time(2) ]);
+times = nc_varget(pinfo.truth_file,'time', pinfo.truth_time(1)-1 , tnum_times);
 
 switch lower(tmodel)
 
@@ -120,7 +103,7 @@ switch lower(tmodel)
             string1 = ['time-mean Ensemble Mean Total Error = ' num2str(errTotal)];
             string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
 
-            disp(sprintf('%s model Variable %d',tmodel,ivar))
+            fprintf('%s model Variable %d\n',tmodel,ivar)
 
             subplot(3, 1, j);
                plot(times,err, 'b', ...
@@ -204,24 +187,39 @@ switch lower(tmodel)
          ylabel('distance');
 
    otherwise
-      error(sprintf('model %s unknown.',tmodel))
+      error('model %s unknown.',tmodel)
 end
 
 %======================================================================
 % Subfunctions
 %======================================================================
 
-function var = GetCopy(fname, copyindex, pinfo, tstart, tend)
+
+
+function var = GetCopy(fname, copyindex, pinfo, tstartind, tendind)
 % Gets a time-series of a single specified copy of a prognostic variable
 % at a particular 3D location (level, lat, lon)
-if strcmp(pinfo.var,'ps')
-   corner = [tstart copyindex                  pinfo.latindex pinfo.lonindex];
-   endpnt = [tend   copyindex                  pinfo.latindex pinfo.lonindex];
-else
-   corner = [tstart copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
-   endpnt = [tend   copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
+
+myinfo.diagn_file = fname;
+myinfo.copyindex  = copyindex;
+myinfo.levelindex = pinfo.levelindex;
+myinfo.latindex   = pinfo.latindex;
+myinfo.lonindex   = pinfo.lonindex;
+[start, count]    = GetNCindices(myinfo,'diagn',pinfo.var);
+
+varinfo = nc_getvarinfo(fname,pinfo.var);
+
+for i = 1:length(varinfo.Dimension)
+   switch( lower(varinfo.Dimension{i}))
+      case{'time'}
+         start(i) = tstartind - 1;
+         count(i) = tendind - tstartind + 1;
+         break
+      otherwise
 end
-var = getnc(fname, pinfo.var, corner, endpnt);
+end
+var = nc_varget(fname, pinfo.var, start, count);
+
 
 
 function PlotLocator(pinfo)

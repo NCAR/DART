@@ -31,7 +31,7 @@ function a = ReadObsSeq(fname)
 % Uses ReadASCIIObsSeq.m  and ReadBINARYObsSeq.m
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -44,6 +44,8 @@ function a = ReadObsSeq(fname)
 if (nargin < 1 )
    fname = 'obs_seq.final';
 end
+
+if (exist(fname,'file') ~= 2), error('%s does not exist.',fname); end
 
 % Determine if the file is an ascii file:
 
@@ -86,5 +88,5 @@ switch  lower(flavor)
    case 'ieee-be'
 	   a = ReadBinaryObsSeq(fname,'ieee-be');
    otherwise
-      error(sprintf('Unable to determine format of %s',fname))
+      error('Unable to determine format of %s',fname)
 end

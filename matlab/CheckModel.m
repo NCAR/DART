@@ -8,7 +8,7 @@ function vars = CheckModel(fname);
 % vars = CheckModel(fname) 
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -18,38 +18,26 @@ function vars = CheckModel(fname);
 % $Revision$
 % $Date$
 
-if ( exist(fname) ~= 2 )
-   error(sprintf('%s does not exist.',fname))
-end
+if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
 % Get some information from the file
-f         = netcdf(fname);
-model     = f.model(:);
+model  = nc_attget(fname,nc_global,'model');
 
-atts = dim(f{'copy'}); num_copies = length(atts{1}); % determine # of ensemble members
-atts = dim(f{'time'}); num_times  = length(atts{1}); % determine # of output times
+num_copies = dim_length(fname,'copy'); % determine # of ensemble members
+num_times  = dim_length(fname,'time'); % determine # of output times
 
 if (isempty(model)) 
-   error(sprintf('%s has no ''model'' global attribute.',fname))
-end
-if (prod(size(num_copies)) > 1 ) 
-   error(sprintf('%s has no ''copy'' dimension.',fname))
-end
-if (prod(size(num_times)) > 1 ) 
-   error(sprintf('%s has no ''time'' dimension.',fname))
+   error('%s has no ''model'' global attribute.',fname)
 end
 
-copy          = getnc(fname,'copy');
+copy = nc_varget(fname,'copy');
 
 switch lower(model)
 
    case {'9var','lorenz_63','lorenz_84','ikeda'}
 
-      atts = dim(f{'StateVariable'}); num_vars  = length(atts{1}); % # of state varbls
-      if (prod(size(num_vars)) > 1 ) 
-         error(sprintf('%s has no ''StateVariable'' dimension.',fname))
-      end
-      StateVariable = getnc(fname,'StateVariable');
+      num_vars      = dim_length(fname,'StateVariable'); % determine # of state varbls
+      StateVariable =  nc_varget(fname,'StateVariable');
 
       def_state_vars = zeros(1,num_vars);    % for use as a subscript array, 
       def_state_vars(:) = StateVariable(:);  % def_state_vars must be a row vector.
@@ -67,11 +55,8 @@ switch lower(model)
 
    case {'lorenz_96', 'lorenz_04'}
 
-      atts = dim(f{'StateVariable'}); num_vars  = length(atts{1}); % # of state varbls
-      if (prod(size(num_vars)) > 1 ) 
-         error(sprintf('%s has no ''StateVariable'' dimension.',fname))
-      end
-      StateVariable = getnc(fname,'StateVariable');
+      num_vars      = dim_length(fname,'StateVariable'); % determine # of state varbls
+      StateVariable =  nc_varget(fname,'StateVariable');
 
       % The only trick is to pick an equally-spaced subset of state 
       % variables for the default.
@@ -93,17 +78,14 @@ switch lower(model)
 
       % This model has the state variables replicated, so there is a difference
       % between num_state_vars and the length of the state variable.
-      forcing           = f.model_forcing(:);
-      delta_t           = f.model_delta_t(:);
-      time_step_days    = f.model_time_step_days(:);
-      time_step_seconds = f.model_time_step_seconds(:);
-      num_model_vars    = cast(f.model_num_state_vars(:),'double');  % ACTUAL state vars, not
+      forcing           = nc_attget(fname, nc_global, 'model_forcing');
+      delta_t           = nc_attget(fname, nc_global, 'model_delta_t');
+      time_step_days    = nc_attget(fname, nc_global, 'model_time_step_days');
+      time_step_seconds = nc_attget(fname, nc_global, 'model_time_step_seconds');
+      num_model_vars    = nc_attget(fname, nc_global, 'model_num_state_vars');
 
-      atts = dim(f{'StateVariable'}); num_vars  = length(atts{1}); % # of state varbls
-      if (prod(size(num_vars)) > 1 ) 
-         error(sprintf('%s has no ''StateVariable'' dimension.',fname))
-      end
-      StateVariable = getnc(fname,'StateVariable');
+      num_vars      = dim_length(fname,'StateVariable'); % determine # of state varbls
+      StateVariable =  nc_varget(fname,'StateVariable');
 
       % The only trick is to pick an equally-spaced subset of state 
       % variables for the default.
@@ -127,17 +109,11 @@ switch lower(model)
 
    case 'lorenz_96_2scale'
 
-      atts = dim(f{'Xdim'}); num_X  = length(atts{1}); % # of X variables
-      if (prod(size(num_X)) > 1 ) 
-         error(sprintf('%s has no ''Xdim'' dimension.',fname))
-      end
-      Xdim = getnc(fname,'Xdim');
+      num_X  = dim_length(fname,'Xdim'); % # of X variables
+      Xdim   =  nc_varget(fname,'Xdim');
 
-      atts = dim(f{'Ydim'}); num_Y  = length(atts{1}); % # of Y variables
-      if (prod(size(num_Y)) > 1 ) 
-         error(sprintf('%s has no ''Ydim'' dimension.',fname))
-      end
-      Ydim = getnc(fname,'Ydim');
+      num_Y  = dim_length(fname,'Ydim'); % # of Y variables
+      Ydim   =  nc_varget(fname,'Ydim');
 
       % The only trick is to pick an equally-spaced subset of state 
       % variables for the default.
@@ -158,16 +134,16 @@ switch lower(model)
 
    case 'simple_advection'
 
-      loc1d = getnc(fname,'loc1d');
-      num_locs = length(loc1d);
+      num_locs = dim_length(fname,'loc1d'); % # of X variables
+      loc1d    =  nc_varget(fname,'loc1d');
 
-      if ( isempty(f{'state'}) )
+      if ( nc_isvar(fname,'state') )
+         varnames = {'state'};
+         def_inds = [1 13 27];
+      else
          varnames = {'concentration','source','wind', ...
                     'mean_source','source_phase'};
          def_inds = round([1 , num_locs/3 , 2*num_locs/3]);
-      else
-         varnames = {'state'};
-         def_inds = [1 13 27];
       end
 
       vars = struct('model'       ,model, ...
@@ -191,18 +167,16 @@ switch lower(model)
       % name(bob{1})       % is the variable name string
       % bob{1}(:)          % is the value of the netcdf variable  (no offset/scale)
 
-      varnames  = {'ps','t','u','v'};
+      varnames = {'ps','t','u','v'};
       num_vars = length(varnames);
-      nlevels   = ncsize(f('lev')); % determine # of state variables
-      if (prod(size(nlevels)) > 1 ) 
-         error(sprintf('%s has no ''lev'' dimension.',fname))
-      end
-%     times  = getnc(fname,'time');
-%     TmpI   = getnc(fname,'TmpI');    % longitude
-%     TmpJ   = getnc(fname,'TmpJ');    % latitude
-%     levels = getnc(fname,'level');
-%     VelI   = getnc(fname,'VelI');    % longitude
-%     VelJ   = getnc(fname,'VelJ');    % latitude
+      nlevels  = dim_length(fname,'lev'); % determine # of state variables
+
+%     times  = nc_varget(fname,'time');
+%     TmpI   = nc_varget(fname,'TmpI');    % longitude
+%     TmpJ   = nc_varget(fname,'TmpJ');    % latitude
+%     levels = nc_varget(fname,'level');
+%     VelI   = nc_varget(fname,'VelI');    % longitude
+%     VelJ   = nc_varget(fname,'VelJ');    % latitude
 
       vars = struct('model',model, ...
               'num_state_vars',num_vars, ...
@@ -223,10 +197,7 @@ switch lower(model)
 
       varnames = {'PS','T','U','V','Q','CLDLIQ','CLDICE'};
       num_vars = length(varnames);
-      nlevels  = ncsize(f('lev')); % determine # of state variables
-      if (prod(size(nlevels)) > 1 ) 
-          error(sprintf('%s has no ''lev'' dimension.',fname))
-      end
+      nlevels  = dim_length(fname,'lev'); % determine # of state variables
 
       vars = struct('model',model, ...
               'num_state_vars',num_vars, ...
@@ -244,15 +215,12 @@ switch lower(model)
       % name(bob{1})       % is the variable name string
       % bob{1}(:)          % is the value of the netcdf variable  (no offset/scale)
 
-      num_vars  = 22; % ps, t, u, v
-      z_level   = ncsize(f('z_level')); % determine # of state variables
-      sl_level  = ncsize(f('sl_level')); % determine # of state variables
-      if (prod(size(z_level)) > 1 ) 
-         error(sprintf('%s has no ''z_level'' dimension.',fname))
-      end
-      times    = getnc(fname,'time');
-      z_level  = getnc(fname,'z_level');
-      sl_level = getnc(fname,'sl_level');
+      num_vars = 22; % ps, t, u, v
+      z_level  = dim_length(fname, 'z_level'); % determine # of state variables
+      sl_level = dim_length(fname,'sl_level'); % determine # of state variables
+      times    = nc_varget(fname,'time');
+      z_level  = nc_varget(fname,'z_level');
+      sl_level = nc_varget(fname,'sl_level');
 
       vars = struct('model',model, ...
               'num_state_vars',num_vars, ...
@@ -268,8 +236,8 @@ switch lower(model)
       % so there is a separate function (GetPe2lyrInfo.m) that gets
       % the information for each specific plot type.
 
-      varnames  = {'u','v','z'};
-      num_vars  = length(varnames);
+      varnames = {'u','v','z'};
+      num_vars = length(varnames);
 
       vars = struct('model',model, ...
               'num_state_vars',num_vars, ...
@@ -290,10 +258,7 @@ switch lower(model)
 
       varnames = {'S','T','U','V','SSH'};
       num_vars = length(varnames);
-      nlevels  = ncsize(f('ZG')); % determine # of state variables
-      if (prod(size(nlevels)) > 1 ) 
-          error(sprintf('%s has no ''ZG'' dimension.',fname))
-      end
+      nlevels  = dim_length(fname,'ZG'); % determine # of state variables
 
       vars = struct('model',model, ...
               'num_state_vars',num_vars, ...
@@ -306,8 +271,19 @@ switch lower(model)
 
    otherwise
 
-      error(sprintf('model %s unknown',model))
+      error('model %s unknown',model)
 
 end
-close(f); 
+
+
+
+
+function x = dim_length(fname,dimname)
+
+y = nc_isvar(fname,dimname);
+if (y < 1)
+   error('%s has no %s dimension/coordinate variable',fname,varname)
+end
+bob = nc_getdiminfo(fname,dimname);
+x   = bob.Length;
 

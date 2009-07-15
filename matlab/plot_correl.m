@@ -9,7 +9,7 @@
 %              additional user input may be queried.
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -19,13 +19,15 @@
 % $Revision$
 % $Date$
 
-if (exist('diagn_file') ~=1)
+if (exist('diagn_file','var') ~=1)
    disp('Input name of prior or posterior diagnostics file;')
    diagn_file = input('<cr> for Prior_Diag.nc\n','s');
    if isempty(diagn_file)
       diagn_file = 'Prior_Diag.nc';
    end
 end 
+
+if ( exist(diagn_file,'file') ~= 2 ), error('%s does not exist.',diagn_file); end
 
 pinfo = CheckModel(diagn_file); 
 pinfo.fname = diagn_file;
@@ -46,15 +48,15 @@ switch lower(pinfo.model)
            pinfo.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
-      disp(sprintf('Using diagnostic file %s',diagn_file))
-      disp(sprintf('Correlating variable %s index %d at time %d.', ...
-           pinfo.base_var, pinfo.base_var_index, pinfo.base_time))
+      fprintf('Using diagnostic file %s\n',diagn_file)
+      fprintf('Correlating variable %s index %d at time %d.\n', ...
+           pinfo.base_var, pinfo.base_var_index, pinfo.base_time)
 
    case {'lorenz_96_2scale'}
 
-      disp(sprintf('Your choice of variables is ''X'' or ''Y'''))
-      disp(sprintf('''X'' can range from %d to %d', pinfo.min_X_var, pinfo.max_X_var))
-      disp(sprintf('''Y'' can range from %d to %d', pinfo.min_Y_var, pinfo.max_Y_var))
+      fprintf('Your choice of variables is ''X'' or ''Y''\n')
+      fprintf('''X'' can range from %d to %d\n', pinfo.min_X_var, pinfo.max_X_var)
+      fprintf('''Y'' can range from %d to %d\n', pinfo.min_Y_var, pinfo.max_Y_var)
 
       % parsing the result of this one is a bit tricky.
       inputstring = input('Input base variable and index i.e.  X 5\n','s');
@@ -65,16 +67,16 @@ switch lower(pinfo.model)
            pinfo.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
-      disp(sprintf('Using diagnostic file %s',diagn_file))
-      disp(sprintf('Correlating variable %s index %d at time %d.', ...
-           pinfo.base_var,pinfo.base_var_index, pinfo.base_time))
+      fprintf('Using diagnostic file %s\n',diagn_file)
+      fprintf('Correlating variable %s index %d at time %d.\n', ...
+           pinfo.base_var,pinfo.base_var_index, pinfo.base_time)
 
    case {'simple_advection'}
 
       disp('Your choice of variables are:')
       disp(pinfo.vars)
-      disp(sprintf('the indices (locations) can range from %d to %d, inclusive', ...
-           pinfo.min_state_var, pinfo.max_state_var))
+      fprintf('the indices (locations) can range from %d to %d, inclusive\n', ...
+           pinfo.min_state_var, pinfo.max_state_var)
 
       str1 = sprintf('Input base variable and index i.e. %s %d\n', ...
                       pinfo.def_var,pinfo.def_state_vars(1));
@@ -86,9 +88,9 @@ switch lower(pinfo.model)
            pinfo.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
-      disp(sprintf('Using diagnostic file %s',diagn_file))
-      disp(sprintf('Correlating variable %s index %d at time %d.', ...
-           pinfo.base_var,pinfo.base_var_index, pinfo.base_time))
+      fprintf('Using diagnostic file %s\n',diagn_file)
+      fprintf('Correlating variable %s index %d at time %d.\n', ...
+           pinfo.base_var,pinfo.base_var_index, pinfo.base_time)
 
    case 'fms_bgrid'
 
@@ -108,7 +110,7 @@ switch lower(pinfo.model)
 
    otherwise
 
-      error(sprintf('model %s not implemented yet', pinfo.model))
+      error('model %s not implemented yet', pinfo.model)
 
 end
 

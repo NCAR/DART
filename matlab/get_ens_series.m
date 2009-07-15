@@ -1,4 +1,4 @@
-function ens = get_ens_series(fname, varname, state_var_index, tstart, tend)
+function ens = get_ens_series(fname, varname, state_var_index, tstartind, tendind)
 %GET_ENS_SERIES: Returns matrix of time series for all members of ensemble for a variable
 %
 % the rows of the matrix correspond to time,
@@ -10,7 +10,7 @@ function ens = get_ens_series(fname, varname, state_var_index, tstart, tend)
 % ens = get_ens_series(fname,varname,state_var_index);
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -21,36 +21,37 @@ function ens = get_ens_series(fname, varname, state_var_index, tstart, tend)
 % $Date$
 
 if (nargin == 3) 
-  tstart = -1;
-  tend = -1;
+  tstartind =  1;
+  diminfo   = nc_getdiminfo(fname,'time');
+  tendind   = diminfo.Length;
 end
 
-f = netcdf(fname);
-model      = f.model(:);
-var_atts   = dim(f{varname});       % cell array of dimensions for the var
-num_copies = length(var_atts{2});
-num_vars   = length(var_atts{3});
+if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
-if ( ~ strcmp( name(var_atts{1}), 'time') )
-    disp( sprintf('%s first dimension ( %s ) is not ''time''',fname,name(var_atts{1})))
+model      = nc_attget(fname,nc_global,'model');
+varinfo    = nc_getvarinfo(fname,varname);
+num_copies = varinfo.Size(2);
+num_vars   = varinfo.Size(3);
+
+if ( ~ strcmp( varinfo.Dimension{1}, 'time') )
+   fprintf('%s first dimension ( %s ) is not ''time''\n',fname,varinfo.Dimension{1})
 end
-if ( ~ strcmp( name(var_atts{2}), 'copy') )
-    disp( sprintf('%s second dimension ( %s ) is not ''copy''',fname,name(var_atts{2})))
+if ( ~ strcmp( varinfo.Dimension{2}, 'copy') )
+   fprintf('%s second dimension ( %s ) is not ''copy''\n',fname,varinfo.Dimension{2})
 end
 if (state_var_index > num_vars)
-   disp( sprintf('%s only has %d %s variables',fname,num_vars,varname))
-   error(sprintf('you wanted variable %d ', state_var_index))
+   fprintf('%s only has %d %s variables\n',fname,num_vars,varname)
+   fprintf('you wanted variable %d\n', state_var_index)
 end
-close(f);
 
-metadata    = getnc(fname,'CopyMetaData');           % get all the metadata
+metadata    = nc_varget(fname,'CopyMetaData');       % get all the metadata
 copyindices = strmatch('ensemble member',metadata);  % find all 'member's
 if ( isempty(copyindices) )
-   disp(sprintf('%s has no valid ensemble members',fname))
+   fprintf('%s has no valid ensemble members\n',fname)
    disp('To be a valid ensemble member, the CopyMetaData for the member')
    disp('must start with the character string ''ensemble member''')
    disp('None of them in do in your file.')
-   disp(sprintf('%s claims to have %d copies',fname, num_copies))
+   fprintf('%s claims to have %d copies\n',fname, num_copies)
    error('netcdf file has no ensemble members.')
 end
 ens_num     = length(copyindices);
@@ -60,11 +61,13 @@ ens_num     = length(copyindices);
 % ensemble members than "mean" and "spread" (the two members
 % we are NOT interested in for this function).
 
-state_vec = getnc(fname,varname, [tstart, -1, state_var_index], ...
-                                 [tend,   -1, state_var_index]);
-% getnc always squeezes out the singleton last dimension.
+myinfo.diagn_file = fname;
+myinfo.stateindex = state_var_index;
+[start, count]    = GetNCindices(myinfo,'diagn',varname);
+
+state_vec = nc_varget(fname,varname,start,count);
 ens       = state_vec(:,copyindices);
 
-disp(sprintf('Read %d ensemble members for variable %d in %s', ...
-             ens_num, state_var_index,fname));
+fprintf('Read %d ensemble members for variable %d in %s\n', ...
+             ens_num, state_var_index,fname);
 

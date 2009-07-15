@@ -1,10 +1,8 @@
-%function plotdat = plot_reg_factor(fname,obsindex)
-% DART : 
-%
+%plot_reg_factor
 %
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -14,7 +12,7 @@
 % $Revision$
 % $Date$
 
-if (exist('fname') ~= 1)
+if (exist('fname','var') ~= 1)
    fname = input('Input name of reg diagnostics file; <cr> for reg_diagnostics\n','s');
    if isempty(fname)
       fname = 'reg_diagnostics';
@@ -23,6 +21,9 @@ else
    s1 = input(sprintf('Input name of reg_diagnostics file. <cr> for  %s ',fname),'s');
    if ~isempty(s1), fname = deblank(s1); end
 end
+
+if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
+
 
 obs_index = input('Input observation index \n');
 

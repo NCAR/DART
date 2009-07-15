@@ -9,7 +9,7 @@ function h = GetCalendarDate(seconds,days,calendartype)
 % mydate = GetCalendarDate(82761,148520);
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -31,8 +31,8 @@ switch lower(calendartype)
    case 'gregorian'
       mytime = datenum(1601,1,1) + days + seconds/86400;
       h = datestr(mytime);
-      disp(sprintf('DART time (%d s, %d d) is %s %s', ...
-                     seconds,days,h,calendartype))
+      fprintf('DART time (%d s, %d d) is %s %s\n', ...
+                     seconds,days,h,calendartype)
    case 'noleap'
       error('noleap not supported yet')
    case 'thirty_day_months'

@@ -1,15 +1,15 @@
-function pinfo_out = CheckModelCompatibility(arg1, arg2);
+function pinfo_out = CheckModelCompatibility(arg1, arg2)
 % CheckModelCompatibility tries to ensure that two netcdf files can be compared.
 % There are 2 ways to call this:  with 2 filenames, or with an already existing
 % pinfo struct (with 2 filenames and 2 2-vector arrays for start/stop times).
 % This routine fills in the 2-vectors with the time overlap region in a
 % pinfo struct.
-% If the time indices are common between the 2 files it returns [1,nlength]
-% for both; if no overlap [-1,-1] for both; otherwise the [start,end] indices 
-% for each array.
+% If the time indices are common between the 2 files it returns the 
+% [start,count] indices for each array (indexing starts at 1,N).
+% It is an error situation if there is no overlap ([-1,-1] for both). 
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -35,77 +35,57 @@ else
   error('Wrong number of arguments: must be 1 (pinfo) or 2 (file1,file2)')
 end
 
+if ( exist(file1,'file') ~= 2 ), error('(file1) %s does not exist.',file1); end
+if ( exist(file2,'file') ~= 2 ), error('(file2) %s does not exist.',file2); end
+
 % set this up for later
 pinfo_out = setfield(pinfo_out, 'truth_time', [-1,-1]);
 pinfo_out = setfield(pinfo_out, 'diagn_time', [-1,-1]);
 
-
-if ( exist(file1) ~= 2 )
-   error(sprintf('(file1) %s does not exist.',file1))
-end
-if ( exist(file2) ~= 2 )
-   error(sprintf('(file2) %s does not exist.',file2))
-end
-
 % Get some information from the file1
-% dimensions are f1(xxxx), variables are f1{xxxx}
-f1 = netcdf(file1);
-tmodel      = f1.model(:);
+tmodel  = nc_attget(file1,nc_global,'model');
+
 if (isempty(tmodel)) 
-   error(sprintf('%s has no ''model'' global attribute.',file1))
+   error('%s has no ''model'' global attribute.',file1)
 end
 
-if ( VarExist(f1,'copy') ) 
-   tnum_copies = length(f1('copy')); % determine # of ensemble members
-else
-   error(sprintf('%s has no ''copy'' dimension.',file1))
-end
-if ( VarExist(f1,'time') ) 
-   tnum_times  = length(f1('time')); % determine # of output times
-else
-   error(sprintf('%s has no ''time'' dimension.',file1))
-end
-ttimes = f1{'time'}(:);
+tnum_copies = dim_length(file1,'copy');
+tnum_times  = dim_length(file1,'time');
+ttimes      =  nc_varget(file1,'time');
 
-[tnum_vars,tdims] = ModelDimension(f1,tmodel);
+[tnum_vars,tdims] = ModelDimension(file1,tmodel);
 if ( tnum_vars <= 0 )
-   error(sprintf('Unable to determine resolution of %s.',file1))
+   error('Unable to determine resolution of %s.',file1)
 end
-close(f1); 
 
 
 % Get some information from the file2
-f2 = netcdf(file2);
-dmodel      = f2.model(:);
+dmodel  = nc_attget(file1,nc_global,'model');
+
 if (isempty(dmodel)) 
-   error(sprintf('%s has no ''model'' global attribute.',file2))
+   error('%s has no ''model'' global attribute.',file2)
 end
-if (VarExist(f2,'copy')) 
-   dnum_copies = length(f2('copy')); % determine # of ensemble members
-else
-   error(sprintf('%s has no ''copy'' dimension.',file2))
-end
-if (VarExist(f2,'time')) 
-   dnum_times  = length(f2('time')); % determine # of output times
-else
-   error(sprintf('%s has no ''time'' dimension.',file2))
-end
-dtimes = f2{'time'}(:);
-[dnum_vars,ddims] = ModelDimension(f2,dmodel);
+
+dnum_copies = dim_length(file2,'copy');
+dnum_times  = dim_length(file2,'time');
+dtimes      =  nc_varget(file2,'time');
+
+[dnum_vars,ddims] = ModelDimension(file2,dmodel);
 if ( dnum_vars <= 0 )
-   error(sprintf('Unable to determine resolution of %s.',file2))
+   error('Unable to determine resolution of %s.',file2)
 end
-close(f2); 
 
 % rudimentary bulletproofing
 if (strcmp(tmodel,dmodel) ~= 1)
-   disp(sprintf('%s has model %s ',file1,tmodel))
-   disp(sprintf('%s has model %s ',file2,dmodel))
+   fprintf('%s has model %s\n',file1,tmodel)
+   fprintf('%s has model %s\n',file2,dmodel)
    error('no No NO ... models must be the same')
 end
+pinfo_out = setfield(pinfo_out, 'model', tmodel);
+
 if (prod(tnum_vars) ~= prod(dnum_vars))
-   disp(sprintf('%s has %d state variables',file1,prod(tnum_vars)))
-   disp(sprintf('%s has %d state variables',file2,prod(dnum_vars)))
+   fprintf('%s has %d state variables\n',file1,prod(tnum_vars))
+   fprintf('%s has %d state variables\n',file2,prod(dnum_vars))
    error('no No NO ... both files must have same shape of state variables.')
 end
 
@@ -123,10 +103,10 @@ if ( ( pinfo_out.truth_time(1) == -1 ) || ...
      ( pinfo_out.truth_time(2) == -1 ) || ...
      ( pinfo_out.diagn_time(1) == -1 ) || ...
      ( pinfo_out.diagn_time(2) == -1 ))
-   disp(sprintf('%s has %d timesteps, from %f to %f', ...
-                file1,tnum_times,ttimes(1), ttimes(tnum_times)))  
-   disp(sprintf('%s has %d timesteps, from %f to %f', ...
-                file2,dnum_times,dtimes(1), dtimes(dnum_times)))  
+   fprintf('%s has %d timesteps, from %f to %f\n', ...
+                file1,tnum_times,ttimes(1), ttimes(tnum_times))
+   fprintf('%s has %d timesteps, from %f to %f\n', ...
+                file2,dnum_times,dtimes(1), dtimes(dnum_times))
    error('These files have no timesteps in common')
 end
 
@@ -148,9 +128,6 @@ pret.diagn_file = file2;
 pret.truth_time = [-1,-1];
 pret.diagn_time = [-1,-1];
 
-%disp('at start')
-%pret
-
 % ensure times are increasing and monotonic, and do they need to be
 % a constant delta or not?  compute delta array and validate those match?
 % (to within an epsilon with floating pt roundoff)
@@ -159,16 +136,14 @@ pret.diagn_time = [-1,-1];
 % watch out for the floating point compares, and the min/max are probably
 % redundant with the (1) and (l) comparisons, but until we put in checks
 % for monotonicity, it's a cheap safety check.
-l = length(times1);
+len = length(times1);
 if (   (length(times1) == length(times2)) ...
     && (abs(min(times1) - min(times2)) < epsilon) ...
     && (abs(max(times1) - max(times2)) < epsilon) ...
     && (times1(1) == times2(1)) ...
-    && (times1(l) == times2(l)))
-  pret.truth_time = [1,l];
-  pret.diagn_time = [1,l];
-%disp('equal')
-%pret
+    && (times1(len) == times2(len)))
+  pret.truth_time = [1,len];   % start/count
+  pret.diagn_time = [1,len];   % start/count
   return
 end
 
@@ -191,9 +166,9 @@ minA = min(A);
 minB = min(B);
 maxA = max(A);
 maxB = max(B);
-if (abs(minA - minB) < epsilon) , minB = minA; , end
-if (abs(maxA - minB) < epsilon) , minB = maxA; , end
-if (abs(maxA - maxB) < epsilon) , maxB = maxA; , end
+if (abs(minA - minB) < epsilon) , minB = minA; end
+if (abs(maxA - minB) < epsilon) , minB = maxA; end
+if (abs(maxA - maxB) < epsilon) , maxB = maxA; end
 
 % case 1: disjoint regions; simply return here because 
 % return struct was initialized to the 'no intersection' case.
@@ -231,112 +206,71 @@ else
 end
 
 % now put the indices in the return struct and we are done.
-pret.truth_time = [min1,max1];
-pret.diagn_time = [min2,max2];
+pret.truth_time = [min1, max1-min1+1];   % start,count
+pret.diagn_time = [min2, min2-max2+1];   % start,count
 
 % return here
 
 
-function x = VarExist(ncid,varname)
+function x = dim_length(fname,dimname)
 
-x = 0;   % false ... assumed not to exist.
-variables = var(ncid);
-for i=1:length(variables)
-   if ( strmatch(name(variables{i}), varname) == 1 )
-      x = 1;   % true ... variables exists in the netcdf file.
-   end
+y = nc_isvar(fname,dimname);
+if (y < 1) 
+   error('%s has no %s dimension/coordinate variable',fname,dimname)
 end
+bob = nc_getdiminfo(fname,dimname);
+x   = bob.Length;
 
 
-function x = DimExist(ncid,dimname)
 
-x = 0;   % false ... assumed not to exist.
-dimensions = dim(ncid);
-for i=1:length(dimensions)
-   if ( strmatch(name(dimensions{i}), dimname) == 1 )
-      x = 1;   % true ... variables exists in the netcdf file.
-   end
-end
-
-
-function [x,y] = ModelDimension(ncid,modelname)
+function [x,y] = ModelDimension(fname,modelname)
 
 x = 0;
 y = NaN;
 
-%disp(sprintf('working with %s',modelname))
-
 switch lower(modelname)
 
    case 'cam'
-      lonexist = VarExist(ncid,'lon');
-      latexist = VarExist(ncid,'lat');
-      lvlexist = VarExist(ncid,'lev');
-      if ( latexist && lonexist && lvlexist )
-         dnum_lons = prod(size(ncid('lon')));
-         dnum_lats = prod(size(ncid('lat')));
-         dnum_lvls = prod(size(ncid('lev')));
+      dnum_lons = dim_length(fname,'lon');
+      dnum_lats = dim_length(fname,'lat');
+      dnum_lvls = dim_length(fname,'lev');
          x = 3;
          y = [dnum_lons dnum_lats dnum_lvls];
-      end
 
    case 'pe2lyr'
-      lonexist = VarExist(ncid,'lon');
-      latexist = VarExist(ncid,'lat');
-      lvlexist = VarExist(ncid,'level');
-      if ( latexist && lonexist && lvlexist )
-         dnum_lons = prod(size(ncid('lon')));
-         dnum_lats = prod(size(ncid('lat')));
-         dnum_lvls = prod(size(ncid('lev')));
+      dnum_lons = dim_length(fname,'lon');
+      dnum_lats = dim_length(fname,'lat');
+      dnum_lvls = dim_length(fname,'lev');
          x = 3;
          y = [dnum_lons dnum_lats dnum_lvls];
-      end
 
    case 'fms_bgrid'
-      lonexist = VarExist(ncid,'TmpI'  );
-      latexist = VarExist(ncid,'TmpJ'  );
-      lvlexist = VarExist(ncid,'level');
-      if ( latexist && lonexist && lvlexist )
-         dnum_lons = prod(size(ncid('TmpI')));
-         dnum_lats = prod(size(ncid('TmpJ')));
-         dnum_lvls = prod(size(ncid('level')));
+      dnum_lons = dim_length(fname,'TmpI');
+      dnum_lats = dim_length(fname,'TmpJ');
+      dnum_lvls = dim_length(fname,'lev');
          x = 3;
          y = [dnum_lons dnum_lats dnum_lvls];
-      end
 
    case 'mitgcm_ocean'
-      lonexist = VarExist(ncid,'XG'  );
-      latexist = VarExist(ncid,'YG'  );
-      lvlexist = VarExist(ncid,'ZG');
-      if ( latexist && lonexist && lvlexist )
-         dnum_lons = prod(size(ncid('XG')));
-         dnum_lats = prod(size(ncid('YG')));
-         dnum_lvls = prod(size(ncid('ZG')));
+      dnum_lons = dim_length(fname,'XG');
+      dnum_lats = dim_length(fname,'YG');
+      dnum_lvls = dim_length(fname,'ZG');
          x = 3;
          y = [dnum_lons dnum_lats dnum_lvls];
-      end
 
    case 'lorenz_96_2scale'
-      Xexist = VarExist(ncid,'Xdim');
-      Yexist = VarExist(ncid,'Ydim');
-      if ( Xexist && Yexist ) 
-         dnum_X = prod(size(ncid('Xdim')));
-         dnum_Y = prod(size(ncid('Ydim')));
+      dnum_X = dim_length(fname,'Xdim');
+      dnum_Y = dim_length(fname,'Ydim');
 	 x = 2;
          y = [dnum_X dnum_Y];
-      end
 
    case 'simple_advection'
-      if ( VarExist(ncid,'loc1d')) 
-         y = prod(size(ncid('loc1d')));
+      y = dim_length(fname,'loc1d');
 	 x = 1;
-      end
 
    otherwise
-      if ( VarExist(ncid,'StateVariable')) 
-         y = prod(size(ncid('StateVariable')));
+      y = dim_length(fname,'StateVariable');
 	 x = 1;
-      end
 
 end
 

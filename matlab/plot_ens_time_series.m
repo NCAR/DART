@@ -6,7 +6,7 @@
 % plot_ens_time_series
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -16,7 +16,7 @@
 % $Revision$
 % $Date$
 
-if (exist('truth_file') ~= 1)
+if (exist('truth_file','var') ~= 1)
    disp('If the True_State.nc exists, it will be plotted. If not, don''t worry.')
    truth_file = input('Input name of True State file; <cr> for True_State.nc\n','s');
    if isempty(truth_file)
@@ -24,7 +24,7 @@ if (exist('truth_file') ~= 1)
    end
 end
 
-if (exist('diagn_file') ~=1)
+if (exist('diagn_file','var') ~=1)
    disp('Input name of prior or posterior diagnostics file;')
    diagn_file = input('<cr> for Prior_Diag.nc\n','s');
    if isempty(diagn_file)
@@ -34,7 +34,7 @@ end
 
 vars  = CheckModel(diagn_file);   % also gets default values for this model.
 
-if (exist(truth_file)==2)
+if (exist(truth_file,'file')==2)
    pinfo = CheckModelCompatibility(truth_file, diagn_file);
 else
    pinfo.truth_file = [];
@@ -92,7 +92,7 @@ switch lower(vars.model)
       pinfo.diagn_file = diagn_file;   % known to be compatible.
 
    otherwise
-      error(sprintf('model %s not implemented yet', vars.model))
+      error('model %s not implemented yet', vars.model)
 
 end
 

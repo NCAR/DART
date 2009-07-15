@@ -3,7 +3,7 @@
 % in an ensemble time sequence.
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -13,23 +13,23 @@
 % $Revision$
 % $Date$
 
-if (exist('fname') ~=1)
+if (exist('fname','var') ~=1)
    disp('Input name of file;')
    fname = input('<cr> for Prior_Diag.nc\n','s');
    if isempty(fname)
       fname = 'Prior_Diag.nc';
    end
-else
-   % check to make sure they are using a file with some ensemble members.
+end
 
-   f          = netcdf(fname,'nowrite');
-   var_atts   = dim(f{'copy'});
-   num_copies = length(var_atts{1}); % determine # of ensemble members
-   close(f)
+if (exist(fname,'file') ~=2 ), error('%s does not exist.',fname); end
 
-   if (num_copies <= 3) 
-      error(sprintf('Sorry -- %s does not have enough ensemble members to correlate.',fname))
-   end 
+% check to make sure they are using a file with some ensemble members.
+
+diminfo    = nc_getdiminfo(fname,'copy');
+num_copies = diminfo.Length; % determine # of ensemble members
+
+if (num_copies <= 3) 
+   error('Sorry -- %s does not have enough ensemble members to correlate.',fname)
 end 
 
 vars = CheckModel(fname);   % also gets default values for this file.
@@ -40,40 +40,35 @@ switch lower(vars.model)
 	 'forced_lorenz_96','ikeda'}
 
       inputstring = input( ...
-           sprintf('Input index for base variable (between %d and %d)  ', ...
+           sprintf('Input index for base variable (between %d and %d, inclusive)  ', ...
            vars.min_state_var, vars.max_state_var), 's');
       pinfo.base_var_index = str2num(deblank(inputstring));
 
       inputstring = input( ...
-           sprintf('Input time index for base point (between 1 and %d)  ', ...
+           sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
            vars.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
       inputstring = input( ...
-           sprintf('Input variable index for correlation (between %d and %d)  ', ...
+           sprintf('Input variable index for correlation (between %d and %d, inclusive)  ', ...
            vars.min_state_var, vars.max_state_var), 's');
       pinfo.state_var_index = str2num(deblank(inputstring));
 
       pinfo.base_var  = vars.def_var;
       pinfo.state_var = vars.def_var;
 
-    % disp(sprintf('Using diagnostic file %s',fname))
-    % disp(sprintf('Correlating variable %s %d at time %d with variable %s %d.', ...
-    %         pinfo.base_var, pinfo.base_var_index, pinfo.base_time, ...
-    %         pinfo.state_var, pinfo.state_var_index))
-
    case {'lorenz_96_2scale'}
 
-      disp(sprintf('Your choice of variables is ''X'' or ''Y'''))
-      disp(sprintf('''X'' can range from %d to %d', vars.min_X_var, vars.max_X_var))
-      disp(sprintf('''Y'' can range from %d to %d', vars.min_Y_var, vars.max_Y_var))
+      fprintf('Your choice of variables is ''X'' or ''Y''\n')
+      fprintf('''X'' can range from %d to %d\n', vars.min_X_var, vars.max_X_var)
+      fprintf('''Y'' can range from %d to %d\n', vars.min_Y_var, vars.max_Y_var)
 
       % parsing the result of this one is a bit tricky.
       inputstring = input('Input base variable and index i.e.  X 5\n','s');
       [pinfo.base_var, pinfo.base_var_index] = ParseAlphaNumerics(inputstring);
 
       inputstring = input( ...
-           sprintf('Input time index for base point (between 1 and %d) \n', ...
+           sprintf('Input time index for base point (between 1 and %d, inclusive) \n', ...
            vars.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
@@ -81,17 +76,12 @@ switch lower(vars.model)
       inputstring = input('Input variable and index for correlation \n','s');
       [pinfo.state_var, pinfo.state_var_index] = ParseAlphaNumerics(inputstring);
 
-    % disp(sprintf('Using diagnostic file %s',fname))
-    % disp(sprintf('Correlating variable %s %d at time %d with variable %s %d.', ...
-    %         pinfo.base_var, pinfo.base_var_index, pinfo.base_time, ...
-    %         pinfo.state_var, pinfo.state_var_index))
-
    case {'simple_advection'}
 
       disp('Your choice of variables are:')
       disp(vars.vars)
-      disp(sprintf('the indices (locations) can range from %d to %d', ...
-           vars.min_state_var, vars.max_state_var))
+      fprintf('the indices (locations) can range from %d to %d, inclusive\n', ...
+           vars.min_state_var, vars.max_state_var)
 
       str1 = sprintf('Input base variable and index i.e. %s %d\n', ...
                       vars.def_var,vars.def_state_vars(1));
@@ -99,7 +89,7 @@ switch lower(vars.model)
       [pinfo.base_var, pinfo.base_var_index] = ParseAlphaNumerics(inputstring);
 
       inputstring = input( ...
-           sprintf('Input time index for base point (between 1 and %d) \n', ...
+           sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
            vars.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
@@ -124,7 +114,7 @@ switch lower(vars.model)
 
    otherwise
 
-      error(sprintf('model %s not implemented yet', vars.model))
+      error('model %s not implemented yet', vars.model)
 
 end
 

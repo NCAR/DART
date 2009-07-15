@@ -1,9 +1,8 @@
 function varid = SetCopyID2(fname);
-% SetCopyID   Interactively determines the copy index for a set of 
-%             ensemble members -- valid for the specific netCDF file.
+% SetCopyID queries for the copy index for a set of ensemble members of a specific netCDF file.
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -13,27 +12,29 @@ function varid = SetCopyID2(fname);
 % $Revision$
 % $Date$
 
-metadata = getnc(fname,'CopyMetaData');           % get all the metadata
+if (exist(fname,'file') ~= 2), error('%s does not exist.',fname); end
+
+metadata = nc_varget(fname,'CopyMetaData');           % get all the metadata
 ncopies  = size(metadata,1);
 
 if ( ncopies < 2 )
-   disp(sprintf('%s has no valid ensemble members',fname))
+   fprintf('%s has no valid ensemble members\n',fname)
    disp('To be a valid ensemble member, the CopyMetaData for the member')
    disp('must start with the character string ''ensemble member''')
    disp('None of them in do in your file.')
-   disp(sprintf('%s claims to have %d copies',fname, num_copies))
+   fprintf('%s claims to have %d copies\n',fname, num_copies)
    error('netcdf file has no ensemble members.')
 elseif (ncopies == 2)
    def_copies = [1 2];
+else
+   def_copies = round([1*ncopies/3 , 2*ncopies/3]);
 end
-
-def_copies = round([1*ncopies/3 , 2*ncopies/3]);
 
 disp('Enter any (and all) IDs to plot.')
 for i = 1:ncopies
-   disp(sprintf('ID %2d  is  %s',i,deblank(metadata(i,:))))
+   fprintf('ID %2d  is  %s\n',i,deblank(metadata(i,:)))
 end
-disp(sprintf('-1                           for none.',ncopies))
+fprintf('-1                           for none.\n',ncopies)
 disp('(no intervening syntax required)');
 
 IDstring = input(sprintf('<cr> for %d %d \n',def_copies(1),def_copies(2)),'s');
@@ -48,3 +49,4 @@ else
       varid = ensmems;
    end
 end
+

@@ -9,7 +9,7 @@ function copy_index = get_copy_index(fname, copystring)
 % copy_index = get_copy_index(fname, copystring);
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -19,16 +19,11 @@ function copy_index = get_copy_index(fname, copystring)
 % $Revision$
 % $Date$
 
-if ( exist('nc_varget') == 2)
-   copy_meta_data = nc_varget(fname,'CopyMetaData');
-   atts           = nc_getdiminfo(fname,'copy');
-   num_copies     = atts.Length;
-else
-   f = netcdf(fname);
-   num_copies = ncsize(f{'copy'});
-   close(f)
-   copy_meta_data = getnc(fname, 'CopyMetaData');
-end
+if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
+
+copy_meta_data = nc_varget(fname,'CopyMetaData');
+atts           = nc_getdiminfo(fname,'copy');
+num_copies     = atts.Length;
 
 % For a single copy, the size is nx1, for more k copies, it's kxn
 if size(copy_meta_data, 2) == 1
@@ -53,11 +48,11 @@ end
 % Provide modest error support
 
 if (copy_index < 0)
-   disp(sprintf('ERROR: %s is not a valid metadata string for file %s', ...
-                copystring, fname))
+   fprintf('ERROR: %s is not a valid metadata string for file %s\n', ...
+                copystring, fname)
    disp('valid metadata strings are: ')
    for i = 1:num_copies,
-      disp(sprintf('%s',deblank(copy_meta_data(i,:))))
+      fprintf('%s\n',deblank(copy_meta_data(i,:)))
    end
    error('please try again')
 end

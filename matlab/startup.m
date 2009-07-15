@@ -6,7 +6,7 @@
 % in your path, nothing happens, so there is no harm trying.
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -26,8 +26,8 @@ end
 
 % See if we have succeeded in adding the netcdf operators.
 
-if ( exist('getnc') ~= 2 ) 
-   disp('Sorry. Unable to locate the netCDF matlab operators.')
+if ( exist('nc_varget') ~= 2 ) 
+   disp('Sorry. Unable to locate the snctools matlab operators.')
    error('The DART diagnostics will not run.')
 end
 

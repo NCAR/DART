@@ -1,4 +1,4 @@
-function var_vec = get_var_series(fname, varname, copynum, state_var, tstart, tend)
+function var_vec = get_var_series(fname, varname, copyindex, state_var, tstart, tcount)
 %GET_VAR_SERIES Gets a particular copy of a state variable from netcdf file
 %
 % Retrieves a particular copy of a state variable from a file whose
@@ -7,12 +7,12 @@ function var_vec = get_var_series(fname, varname, copynum, state_var, tstart, te
 % Example 1:
 % fname     = '../work/Prior_Diag.nc';
 % varname   = 'state';      % State Variable
-% copynum   = 8;            % Ensemble Member
-% state_var = 3;            % which state variable
-% var_vec   = get_var_series(fname, varname, copynum, state_var);
+% copyindex = 8;            % copy index (Ensemble Member)
+% state_var = 3;            % state variable index
+% var_vec   = get_var_series(fname, varname, copyindex, state_var);
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -22,37 +22,55 @@ function var_vec = get_var_series(fname, varname, copynum, state_var, tstart, te
 % $Revision$
 % $Date$
 
+if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
+
 if (nargin == 4)
-  tstart = -1;
-  tend = -1;
+  tstart =  1;
+  tcount = -1;
 end
 
-f = netcdf(fname,'nowrite');
-var_atts   = dim(f{varname});       % cell array of dimensions for the var
-num_copies = length(var_atts{2});
-num_vars   = length(var_atts{3});
+num_times   = dim_length(fname,'time');
+num_copies  = dim_length(fname,'copy');
+num_vars    = dim_length(fname,'StateVariable');
 
-if ( ~ strcmp( name(var_atts{1}), 'time') )
-    disp( sprintf('%s first dimension ( %s ) is not ''time''',fname,name(var_atts{1})))
-end
-if ( ~ strcmp( name(var_atts{2}), 'copy') )
-    disp( sprintf('%s second dimension ( %s ) is not ''copy''',fname,name(var_atts{2})))
-end
-if (copynum > num_copies ) 
-    disp( sprintf('%s only has %d ''copies/Ensemble members of %s''',fname,num_copies,varname))
-    error(sprintf('you wanted copy %d ', copynum))
+if (copyindex > num_copies ) 
+    fprintf('%s only has %d ''copies/Ensemble members''\n',fname,num_copies)
+    error('you wanted copy %d ', copyindex)
 end
 if (state_var > num_vars) 
-   disp( sprintf('%s only has %d %s variables',fname,num_vars,varname))
-   error(sprintf('you wanted variable %d ', state_var))
+   fprintf('%s only has %d %s variables\n',fname,num_vars,varname)
+   error('you wanted variable %d ', state_var)
 end
-close(f);
 
 % Get only the appropriate copy of the state and return
-var_vec = getnc(fname, varname, [tstart, copynum, state_var], ...
-                                [tend,   copynum, state_var]);
 
-if (sum(isfinite(var_vec)) == 0) 
-   error(sprintf('%s %s copy %d index %d has all missing values ...  exiting.', ...
-        fname,varname,copynum,state_var))
+myinfo.diagn_file = fname;
+myinfo.copyindex  = copyindex;
+myinfo.stateindex = state_var;
+[start, count]    = GetNCindices(myinfo, 'diagn', varname);
+
+varinfo = nc_getvarinfo(fname,varname);
+
+for i = 1:length(varinfo.Dimension)
+   switch( lower(varinfo.Dimension{i}))
+      case{'time'}
+         start(i) = tstart-1;
+         count(i) = tcount;
+         break
+      otherwise
+   end
 end
+
+var_vec = nc_varget(fname, varname, start, count);
+
+if (sum(isfinite(var_vec(:))) == 0) 
+   error('%s %s copy %d index %d has all missing values ... exiting.', ...
+        fname,varname,copyindex,state_var)
+end
+
+
+function x = dim_length(fname,dimname)
+
+bob = nc_getdiminfo(fname,dimname);
+x   = bob.Length;
+

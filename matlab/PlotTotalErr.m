@@ -23,7 +23,7 @@ function PlotTotalErr( pinfo )
 % PlotTotalErr( pinfo )
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -35,10 +35,9 @@ function PlotTotalErr( pinfo )
 
 % adds the time overlap info to the structure.  
 pstruct = CheckModelCompatibility(pinfo);
-pinfo = CombineStructs(pinfo, pstruct) 
+pinfo   = CombineStructs(pinfo, pstruct) 
 
-f = netcdf(pinfo.truth_file,'nowrite');
-model = f.model(:); 
+model   = nc_attget(pinfo.truth_file, nc_global, 'model');
 
 % Get the netcdf variable indices for desired "copies"
 % Get the indices for the true state, ensemble mean and spread
@@ -48,9 +47,8 @@ ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
 % The times are set before from the model compatibility call
-times = getnc(pinfo.truth_file,'time', pinfo.truth_time(1), ...
-                                       pinfo.truth_time(2));
-num_times = length(times);
+num_times = pinfo.truth_time(2) - pinfo.truth_time(1) + 1;
+times     = nc_varget(pinfo.truth_file,'time', pinfo.truth_time(1)-1, num_times);
 
 switch lower(model)
 
@@ -129,11 +127,11 @@ switch lower(model)
 
       % This model has the state variables replicated, so there is a difference
       % between num_state_vars and the length of the state variable.
-      forcing           = f.model_forcing(:);
-      delta_t           = f.model_delta_t(:);
-      time_step_days    = f.model_time_step_days(:);
-      time_step_seconds = f.model_time_step_seconds(:);
-      num_model_vars    = f.model_num_state_vars(:);  % ACTUAL state vars, not
+      forcing           = nc_attget(pinfo.truth_file, nc_global, 'model_forcing');
+      delta_t           = nc_attget(pinfo.truth_file, nc_global, 'model_delta_t');
+      time_step_days    = nc_attget(pinfo.truth_file, nc_global, 'model_time_step_days');
+      time_step_seconds = nc_attget(pinfo.truth_file, nc_global, 'model_time_step_seconds');
+      num_model_vars    = nc_attget(pinfo.truth_file, nc_global, 'model_num_state_vars');
 
       % Get the appropriate netcdf variables
 
@@ -212,10 +210,10 @@ switch lower(model)
       % if the 'state' variable exists ... then
       % 'concentration','source', and 'wind' do not.
 
-      if ( isempty(f.state(:)))
-         varlist = {'concentration','source','wind','mean_source','source_phase'};
-      else
+      if ( nc_isvar(pinfo.truth_file, 'state') )
          varlist = {'state'};
+      else
+         varlist = {'concentration','source','wind','mean_source','source_phase'};
       end
 
       for ivar = 1:length(varlist)
@@ -271,7 +269,6 @@ switch lower(model)
       disp(sprintf('unknown model %s -- doing nothing',model))
 
 end
-close(f)
 
 %=======================================================================
 % helper functions
@@ -280,10 +277,10 @@ close(f)
 function PBL1DTotalError ( pinfo )
 
 % Get some standard plotting arrays
- z_level = getnc(pinfo.truth_file, 'z_level',pinfo.truth_time(1), pinfo.truth_time(2));
-sl_level = getnc(pinfo.truth_file,'sl_level',pinfo.truth_time(1), pinfo.truth_time(2));
-times    = getnc(pinfo.truth_file,    'time',pinfo.truth_time(1), pinfo.truth_time(2));
-num_times  = length(times );
+num_times = pinfo.truth_time(2) - pinfo.truth_time(1) + 1;
+ z_level  = nc_varget(pinfo.truth_file, 'z_level');
+sl_level  = nc_varget(pinfo.truth_file,'sl_level');
+times     = nc_varget(pinfo.truth_file, 'time',pinfo.truth_time(1)-1, num_times);
 
 % Get the indices for the true state, ensemble mean and spread                  
 % The metadata is queried to determine which "copy" is appropriate.             
@@ -293,15 +290,16 @@ ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
 % U variable
 
-truth  = getnc(pinfo.truth_file,'U', ...
-              [pinfo.truth_time(1)  truth_index -1], ...
-              [pinfo.truth_time(2)  truth_index -1]);
-ens    = getnc(pinfo.diagn_file,'U', ...
-              [pinfo.diagn_time(1)  ens_mean_index -1], ...
-              [pinfo.diagn_time(2)  ens_mean_index -1]);
-spread = getnc(pinfo.diagn_file,'U', ...
-              [pinfo.diagn_time(1)  ens_spread_index -1], ...
-              [pinfo.diagn_time(2)  ens_spread_index -1]);
+count = [num_times 1];
+
+start  = [pinfo.truth_time(1)-1  truth_index-1];
+truth  = nc_varget(pinfo.truth_file,'U', start, count);
+
+start  = [pinfo.diagn_time(1)-1  ens_mean_index-1];
+ens    = nc_varget(pinfo.diagn_file,'U', start, count);
+
+start  = [pinfo.diagn_time(1)-1  ens_spread_index-1];
+spread = nc_varget(pinfo.diagn_file,'U', start, count);
 
 err        = total_err(              truth,    ens);
 err_spread = total_err(zeros(size(spread)), spread);
@@ -324,27 +322,26 @@ function BgridTotalError( pinfo )
 % for each variable and annotate an area-weighted total.
 %---------------------------------------------------------------------
 
-ft        = netcdf(pinfo.truth_file);
-model     = ft.model(:); 
-timeunits = ft{'time'}.units(:);
-close(ft);
+model     = nc_attget(pinfo.truth_file, nc_global, 'model');
+timeunits = nc_attget(pinfo.truth_file, 'time',    'units');
 
 tstart = pinfo.truth_time(1);
-tend   = pinfo.truth_time(2);
+tcount = pinfo.truth_time(2) - pinfo.truth_time(1) + 1;
 dstart = pinfo.diagn_time(1);
-dend   = pinfo.diagn_time(2);
+dcount = pinfo.diagn_time(2) - pinfo.diagn_time(1) + 1;
 
 % Since the models are "compatible", get the info from either one.
-tlons    = getnc(pinfo.truth_file, 'TmpI'); num_tlons  = length(tlons );
-tlats    = getnc(pinfo.truth_file, 'TmpJ'); num_tlats  = length(tlats );
-vlons    = getnc(pinfo.truth_file, 'VelI'); num_vlons  = length(vlons );
-vlats    = getnc(pinfo.truth_file, 'VelJ'); num_vlats  = length(vlats );
-levels   = getnc(pinfo.truth_file, 'lev' ); num_levels = length(levels);
-times    = getnc(pinfo.truth_file, 'time', tstart, tend); num_times  = length(times );
-ens_mems = getnc(pinfo.diagn_file, 'copy'); ens_size   = length(ens_mems);
+tlons     = nc_varget(pinfo.truth_file, 'TmpI'); num_tlons  = length(tlons );
+tlats     = nc_varget(pinfo.truth_file, 'TmpJ'); num_tlats  = length(tlats );
+vlons     = nc_varget(pinfo.truth_file, 'VelI'); num_vlons  = length(vlons );
+vlats     = nc_varget(pinfo.truth_file, 'VelJ'); num_vlats  = length(vlats );
+levels    = nc_varget(pinfo.truth_file, 'lev' ); num_levels = length(levels);
+ens_mems  = nc_varget(pinfo.diagn_file, 'copy'); ens_size   = length(ens_mems);
+times     = nc_varget(pinfo.truth_file, 'time', tstart-1, tcount); 
+num_times = length(times );
 
-% Try to coordinate "time" ... a poor attempt, needs refining
-ens_times     = getnc(pinfo.diagn_file, 'time', dstart, dend); 
+% weak attempt to ensure time arrays are compatible
+ens_times     = nc_varget(pinfo.diagn_file, 'time', dstart-1, dcount); 
 num_ens_times = length(ens_times);
 if num_ens_times < num_times
    times     =     ens_times;
@@ -373,12 +370,12 @@ vwts = reshape(SphereWeights(vlons, vlats),1,num_vlats*num_vlons); % Velocity   
 
 disp('Processing surface pressure ...')
 
-ivar   = 1;  % should do "ivar = find(xxx='ps')"
+ivar   = 1;
 ilevel = 1;
 
-truth      = Get2D(pinfo.truth_file,      truth_index, tstart, tend, 'ps');
-ens        = Get2D(pinfo.diagn_file,   ens_mean_index, dstart, dend, 'ps');
-spread     = Get2D(pinfo.diagn_file, ens_spread_index, dstart, dend, 'ps');
+truth      = Get2D(pinfo.truth_file, 'ps',      truth_index, tstart, tcount);
+ens        = Get2D(pinfo.diagn_file, 'ps',   ens_mean_index, dstart, dcount);
+spread     = Get2D(pinfo.diagn_file, 'ps', ens_spread_index, dstart, dcount);
 
 err        = total_err(              truth,    ens, twts );
 err_spread = total_err(zeros(size(spread)), spread, twts );
@@ -401,9 +398,9 @@ for ivar=2:pinfo.num_state_vars,
    % all vars organized    num_times x num_levels x num_lats x num_lons
    %-------------------------------------------------------------------
 
-   truth  = GetLevel(pinfo.truth_file, pinfo.vars{ivar},      truth_index, ilevel, tstart, tend);
-   ens    = GetLevel(pinfo.diagn_file, pinfo.vars{ivar},   ens_mean_index, ilevel, dstart, dend);
-   spread = GetLevel(pinfo.diagn_file, pinfo.vars{ivar}, ens_spread_index, ilevel, dstart, dend);
+   truth  = GetLevel(pinfo.truth_file, pinfo.vars{ivar},      truth_index, ilevel, tstart, tcount);
+   ens    = GetLevel(pinfo.diagn_file, pinfo.vars{ivar},   ens_mean_index, ilevel, dstart, dcount);
+   spread = GetLevel(pinfo.diagn_file, pinfo.vars{ivar}, ens_spread_index, ilevel, dstart, dcount);
 
    switch lower(pinfo.vars{ivar})
       case {'t'}
@@ -428,9 +425,8 @@ clear truth ens spread err err_spread
 for ivar=1:pinfo.num_state_vars,
 
    figure(ivar); clf;
-      ft       = netcdf(pinfo.truth_file);
-      varunits = ft{pinfo.vars{ivar}}.units(:);
-      close(ft);
+ 
+      varunits = nc_attget(pinfo.truth_file, pinfo.vars{ivar}, 'units');
 
       s1 = sprintf('%s %s Ensemble Mean for %s', model,pinfo.vars{ivar},pinfo.diagn_file);
 
@@ -469,27 +465,27 @@ function MITGCMOceanTotalError( pinfo )
 % for each variable and annotate an area-weighted total.
 %---------------------------------------------------------------------
 
-ft        = netcdf(pinfo.truth_file);
-model     = ft.model(:); 
-timeunits = ft{'time'}.units(:);
-close(ft);
+model     = nc_attget(pinfo.truth_file, nc_global, 'model');
+timeunits = nc_attget(pinfo.truth_file, 'time',    'units');
 
 tstart = pinfo.truth_time(1);
-tend   = pinfo.truth_time(2);
+tcount = pinfo.truth_time(2) - pinfo.truth_time(1) + 1;
 dstart = pinfo.diagn_time(1);
-dend   = pinfo.diagn_time(2);
+dcount = pinfo.diagn_time(2) - pinfo.diagn_time(1) + 1;
 
 % Since the models are "compatible", get the info from either one.
-XC    = getnc(pinfo.truth_file, 'XC'); num_XC  = length(XC );
-YC    = getnc(pinfo.truth_file, 'YC'); num_YC  = length(YC );
-XG    = getnc(pinfo.truth_file, 'XG'); num_XG  = length(XG );
-YG    = getnc(pinfo.truth_file, 'YG'); num_YG  = length(YG );
-ZC    = getnc(pinfo.truth_file, 'ZC'); num_ZC  = length(ZC);
-times    = getnc(pinfo.truth_file, 'time', tstart, tend); num_times  = length(times);
-ens_mems = getnc(pinfo.diagn_file, 'copy'); ens_size   = length(ens_mems);
+XC       = nc_varget(pinfo.truth_file, 'XC'); num_XC  = length(XC );
+YC       = nc_varget(pinfo.truth_file, 'YC'); num_YC  = length(YC );
+XG       = nc_varget(pinfo.truth_file, 'XG'); num_XG  = length(XG );
+YG       = nc_varget(pinfo.truth_file, 'YG'); num_YG  = length(YG );
+ZC       = nc_varget(pinfo.truth_file, 'ZC'); num_ZC  = length(ZC);
+ens_mems = nc_varget(pinfo.diagn_file, 'copy'); ens_size   = length(ens_mems);
+
+times         = nc_varget(pinfo.truth_file, 'time', tstart-1, tcount); 
+num_times     = length(times);
 
 % Try to coordinate "time" ... a poor attempt, needs refining
-ens_times     = getnc(pinfo.diagn_file, 'time', [dstart], [dend]); 
+ens_times     = nc_varget(pinfo.diagn_file, 'time', dstart-1, dcount); 
 num_ens_times = length(ens_times);
 if num_ens_times < num_times
    times     =     ens_times;
@@ -523,9 +519,9 @@ for ivar=1:pinfo.num_state_vars-1,  % knowing ssh is last
    % all vars organized    num_times x num_levels x num_lats x num_lons
    %-------------------------------------------------------------------
 
-   truth  = GetLevel(pinfo.truth_file, pinfo.vars{ivar},      truth_index, ilevel, tstart, tend);
-   ens    = GetLevel(pinfo.diagn_file, pinfo.vars{ivar},   ens_mean_index, ilevel, dstart, dend);
-   spread = GetLevel(pinfo.diagn_file, pinfo.vars{ivar}, ens_spread_index, ilevel, dstart, dend);
+   truth  = GetLevel(pinfo.truth_file, pinfo.vars{ivar},      truth_index, ilevel, tstart, tcount);
+   ens    = GetLevel(pinfo.diagn_file, pinfo.vars{ivar},   ens_mean_index, ilevel, dstart, dcount);
+   spread = GetLevel(pinfo.diagn_file, pinfo.vars{ivar}, ens_spread_index, ilevel, dstart, dcount);
 
    landmask = find(isfinite(truth(1,:))); % presume all members have same mask
    vweights = vwts(landmask);
@@ -562,9 +558,9 @@ disp('Processing sea surface height ...')
 ivar   = find(strcmp(pinfo.vars,'SSH'));
 ilevel = 1;
 
-truth      = Get2D(pinfo.truth_file,      truth_index, tstart, tend, 'SSH');
-ens        = Get2D(pinfo.diagn_file,   ens_mean_index, dstart, dend, 'SSH');
-spread     = Get2D(pinfo.diagn_file, ens_spread_index, dstart, dend, 'SSH');
+truth      = Get2D(pinfo.truth_file, 'SSH',      truth_index, tstart, tcount);
+ens        = Get2D(pinfo.diagn_file, 'SSH',   ens_mean_index, dstart, dcount);
+spread     = Get2D(pinfo.diagn_file, 'SSH', ens_spread_index, dstart, dcount);
 
 landmask   = find(isfinite(truth(1,:))); % presume all members have same mask
 tweights   = twts(landmask);
@@ -587,9 +583,7 @@ clear truth ens spread err err_spread
 for ivar=1:pinfo.num_state_vars,
 
    figure(ivar); clf;
-      ft       = netcdf(pinfo.truth_file);
-      varunits = ft{pinfo.vars{ivar}}.units(:);
-      close(ft);
+      varunits = nc_attget(pinfo.truth_file,pinfo.vars{ivar},'units');
 
       s1 = sprintf('%s %s Ensemble Mean for %s', model,pinfo.vars{ivar},pinfo.diagn_file);
 
@@ -628,25 +622,25 @@ function Pe2lyrTotalError( pinfo )
 % for each variable and annotate an area-weighted total.
 %---------------------------------------------------------------------
 
-ft        = netcdf(pinfo.truth_file);
-model     = ft.model(:); 
-timeunits = ft{'time'}.units(:);
-close(ft);
+model     = nc_attget(pinfo.truth_file, nc_global, 'model');
+timeunits = nc_attget(pinfo.truth_file, 'time',    'units');
 
 tstart = pinfo.truth_time(1);
-tend   = pinfo.truth_time(2);
+tcount = pinfo.truth_time(2) - pinfo.truth_time(1) + 1;
 dstart = pinfo.diagn_time(1);
-dend   = pinfo.diagn_time(2);
+dcount = pinfo.diagn_time(2) - pinfo.diagn_time(1) + 1;
 
 % Since the models are "compatible", get the info from either one.
-tlons    = getnc(pinfo.truth_file, 'lon' ); num_tlons  = length(tlons );
-tlats    = getnc(pinfo.truth_file, 'lat' ); num_tlats  = length(tlats );
-levels   = getnc(pinfo.truth_file, 'lev' ); num_levels = length(levels);
-times    = getnc(pinfo.truth_file, 'time', [tstart], [tend]); num_times  = length(times );
-ens_mems = getnc(pinfo.diagn_file, 'copy'); ens_size   = length(ens_mems);
+tlons    = nc_varget(pinfo.truth_file, 'lon' ); num_tlons  = length(tlons );
+tlats    = nc_varget(pinfo.truth_file, 'lat' ); num_tlats  = length(tlats );
+levels   = nc_varget(pinfo.truth_file, 'lev' ); num_levels = length(levels);
+ens_mems = nc_varget(pinfo.diagn_file, 'copy'); ens_size   = length(ens_mems);
+
+times         = nc_varget(pinfo.truth_file, 'time', tstart-1, tcount); 
+num_times     = length(times );
 
 % Try to coordinate "time" ... a poor attempt, needs refining
-ens_times     = getnc(pinfo.diagn_file, 'time', [dstart], [dend]); 
+ens_times     = nc_varget(pinfo.diagn_file, 'time', dstart-1, dcount); 
 num_ens_times = length(ens_times);
 if num_ens_times < num_times
    times     =     ens_times;
@@ -679,9 +673,9 @@ for ivar=1:pinfo.num_state_vars,
    % all vars organized    num_times x num_levels x num_lats x num_lons
    %-------------------------------------------------------------------
 
-   truth  = GetLevel(pinfo.truth_file, pinfo.vars{ivar},      truth_index, ilevel, tstart, tend);
-   ens    = GetLevel(pinfo.diagn_file, pinfo.vars{ivar},   ens_mean_index, ilevel, dstart, dend);
-   spread = GetLevel(pinfo.diagn_file, pinfo.vars{ivar}, ens_spread_index, ilevel, dstart, dend);
+   truth  = GetLevel(pinfo.truth_file, pinfo.vars{ivar},      truth_index, ilevel, tstart, tcount);
+   ens    = GetLevel(pinfo.diagn_file, pinfo.vars{ivar},   ens_mean_index, ilevel, dstart, dcount);
+   spread = GetLevel(pinfo.diagn_file, pinfo.vars{ivar}, ens_spread_index, ilevel, dstart, dcount);
 
    err        = total_err(              truth,    ens, twts);
    err_spread = total_err(zeros(size(spread)), spread, twts);
@@ -700,9 +694,8 @@ clear truth ens spread err err_spread
 for ivar=1:pinfo.num_state_vars,
 
    figure(ivar); clf;
-      ft       = netcdf(pinfo.truth_file);
-      varunits = ft{pinfo.vars{ivar}}.units(:);
-      close(ft);
+
+      varunits = nc_attget(pinfo.truth_file, pinfo.vars{ivar}, 'units');
 
       s1 = sprintf('%s %s Ensemble Mean for %s', model,pinfo.vars{ivar},pinfo.diagn_file);
 
@@ -735,20 +728,34 @@ end
 
 
 %----------------------------------------------------------------------
-% helper function
+% helper functions
 %----------------------------------------------------------------------
-function slice = Get2D(fname, copyindex, tstart, tend, varname);
 
-% this gets a bit funky if tstart == tend; in spite of trying to
-% pass 0 in for the squeeze argument, it seems to squeeze anyway,
+function slice = Get2D(fname, varname, copyindex, tstartind, tcount );
+% this gets a bit funky if tcount == 1; 
+% it automatically squeezes the singleton dimension,
 % leaving the dims in the wrong slots.  copyindex will always
 % squeeze out, so try to figure out if you get a 3d or 2d return
 % back from getnc() and then deal with time explicitly.
 % same goes below in GetLevel().
-corner     = [tstart, copyindex, -1, -1];
-endpnt     = [tend,   copyindex, -1, -1];
-ted        = getnc(fname,varname,corner,endpnt);
-n = ndims(ted);
+
+myinfo.diagn_file = fname;
+myinfo.copyindex  = copyindex;
+[start, count]    = GetNCindices(myinfo,'diagn',varname);
+
+varinfo = nc_getvarinfo(fname,varname);
+
+for i = 1:length(varinfo.Dimension)
+   switch( lower(varinfo.Dimension{i}))
+      case{'time'}
+         start(i) = tstartind - 1;
+         count(i) = tcount;
+         break
+      otherwise
+   end
+end
+ted = nc_varget(fname, varname, start, count);
+n   = ndims(ted);
 if (n == 2)
    [ny,nx] = size(ted);
    nt = 1;
@@ -758,12 +765,29 @@ end
 slice      = reshape(ted,[nt ny*nx]);
 
 
-function slice = GetLevel(fname,varstring,copyindex,ilevel,tstart,tend);
+
+
+function slice = GetLevel(fname, varname, copyindex, ilevel, tstartind, tcount);
 %
-corner     = [tstart, copyindex, ilevel, -1, -1];
-endpnt     = [tend,   copyindex, ilevel, -1, -1];
-ted        = getnc(fname,varstring,corner,endpnt);
-n = ndims(ted);
+myinfo.diagn_file = fname;
+myinfo.copyindex  = copyindex;
+myinfo.levelindex = ilevel;
+[start, count]    = GetNCindices(myinfo,'diagn',varname);
+
+varinfo = nc_getvarinfo(fname,varname);
+
+for i = 1:length(varinfo.Dimension)
+   switch( lower(varinfo.Dimension{i}))
+      case{'time'}
+         start(i) = tstartind - 1;
+         count(i) = tcount;
+         break
+      otherwise
+   end
+end
+
+ted = nc_varget(fname, varname, start, count);
+n   = ndims(ted);
 if (n == 2)
    [ny,nx] = size(ted);
    nt = 1;
@@ -773,9 +797,7 @@ end
 slice      = reshape(ted,[nt ny*nx]);
 
 
-%----------------------------------------------------------------------
-% helper function
-%----------------------------------------------------------------------
+
 function wts = SphereWeights(lons, lats)
 % SphereWeights creates weights based on area ...
 %

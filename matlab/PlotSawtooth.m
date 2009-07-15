@@ -41,7 +41,7 @@ function PlotSawtooth( pinfo )
 % PlotSawtooth( pinfo )
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -59,33 +59,29 @@ pinfo.posterior_times = pstruct.diagn_time;
 % Get some information from the truth_file, if it exists.
 if ( exist(pinfo.truth_file,'file') == 2 ) 
 
-   % If CMC() does not die ... that's all we need.
    CheckModelCompatibility(pinfo.truth_file, pinfo.posterior_file);
 
-   ft = netcdf(pinfo.truth_file,'nowrite');
-   truth.model      = ft.model(:);
-   truth.num_times  = length(ft('time'));          % determine # of output times
-   close(ft);
+   truth.model       = nc_attget(pinfo.truth_file, nc_global, 'model');
+   truth.time        = nc_varget(pinfo.truth_file, 'time');
+   truth.num_times   = length(truth.time);
    truth.truth_index = get_copy_index(pinfo.truth_file, 'true state' );
 else
    truth = [];
 end
 
 % Get some information from the prior_file 
-fpr = netcdf(pinfo.prior_file,'nowrite');
-prior.model = fpr.model(:);
-close(fpr);
-timearr         = getnc(pinfo.prior_file,'time');
-prior.times     = timearr(pinfo.prior_times(1) : pinfo.prior_times(2));
-prior.num_times = length(prior.times);
+prior.model     = nc_attget(pinfo.prior_file, nc_global, 'model');
+prior.num_times = pinfo.prior_times(2) - pinfo.prior_times(1) + 1;
+prior.times     = nc_varget(pinfo.prior_file, 'time', ...
+                        pinfo.prior_times(1)-1, prior.num_times);
 
 % Get some information from the posterior_file 
-fpo = netcdf(pinfo.posterior_file,'nowrite');
-post.model      = fpo.model(:);
-post.num_times  = length(fpo('time'));          % determine # of output times
-post.timeunits  = fpo{'time'}.units(:);
-post.calendar   = fpo{'time'}.calendar(:);
-close(fpr);
+post.model     = nc_attget(pinfo.posterior_file, nc_global, 'model');
+post.num_times = pinfo.posterior_times(2) - pinfo.posterior_times(1) + 1;
+post.times     = nc_varget(pinfo.posterior_file, 'time', ...
+                        pinfo.posterior_times(1)-1, post.num_times);
+post.timeunits = nc_attget(pinfo.posterior_file, 'time', 'units');
+post.calendar  = nc_attget(pinfo.posterior_file, 'time', 'calendar');
 
 % Get the indices for the true state and ensemble mean
 % The metadata is queried to determine which "copy" is appropriate.
@@ -99,7 +95,7 @@ x          = zeros(2,prior.num_times);   % xaxis
 x(1,:)     = prior.times;
 x(2,:)     = prior.times;
 pinfo.xax  = x(:);
-metadata   = getnc(pinfo.prior_file,'CopyMetaData'); % get all the metadata
+metadata   = nc_varget(pinfo.prior_file,'CopyMetaData'); % get all the metadata
 
 pinfo
 
@@ -142,7 +138,7 @@ function PlotGivenIndices(pinfo, prior, post, truth, metadata)
 
       if ( exist(pinfo.truth_file,'file') == 2 ) 
          true_trajectory = get_var_series(pinfo.truth_file, pinfo.var, truth.truth_index, ivar);
-	 h = plot(prior.times, true_trajectory, 'k-','linewidth',1.0); hold on;
+	 h = plot(truth.time, true_trajectory, 'k-','linewidth',1.0); hold on;
 	 h = plot(pinfo.xax, a, 'k-','linewidth',2.0);
 	 legend('truth','ensemble mean')
       else 
@@ -210,18 +206,7 @@ function PlotGivenVariable(pinfo, prior, post, truth, metadata)
 
       vname  = var_names{ivar};
             
-      % This makes horrible assumptions about the shape of the variable.
-
-  %   if ( strcmp(lower(vname),'ps') ==1 ) %  PS(time, copy, lat, lon)
-  %      corner = [  1 NaN pinfo.latindex pinfo.lonindex];
-  %      endpnt = [ -1 NaN pinfo.latindex pinfo.lonindex];
-  %   else % U(time, copy, lev, lat, lon)
-  %      corner = [  1 NaN pinfo.levelindex pinfo.latindex pinfo.lonindex ];
-  %      endpnt = [ -1 NaN pinfo.levelindex pinfo.latindex pinfo.lonindex ];
-  %   end
-
-      % This makes no assumptions about variable shape.
-      [corner, endpnt] = GetNCindices(pinfo,'prior',vname);
+      [start, count] = GetNCindices(pinfo,'prior',vname);
 
       ens_colors = get(gca,'ColorOrder');   % trying to cycle through colors
       ncolors = size(ens_colors,1) - 1;     % last one is black, already used.
@@ -230,23 +215,50 @@ function PlotGivenVariable(pinfo, prior, post, truth, metadata)
 
          imem = pinfo.copyindices(i);
 
-         corner(1) = pinfo.prior_times(1);
-         endpnt(1) = pinfo.prior_times(2);
-         corner(2) = imem;
-         endpnt(2) = imem;
-         pr_series = getnc(pinfo.prior_file,     vname, corner, endpnt);
-         corner(1) = pinfo.posterior_times(1);
-         endpnt(1) = pinfo.posterior_times(2);
-         po_series = getnc(pinfo.posterior_file, vname, corner, endpnt);
+         varinfo = nc_getvarinfo(pinfo.prior_file, vname);
 
-	 str1 = deblank(metadata(imem,:));
+         % Get the Prior 
+
+         for j = 1:length(varinfo.Dimension)
+            switch( lower(varinfo.Dimension{j}))
+               case{'time'}
+                  start(j) = pinfo.prior_times(1) - 1;
+                  count(j) = pinfo.prior_times(2) - pinfo.prior_times(1) + 1;
+               case{'copy'}
+                  start(j) = imem - 1;
+                  count(j) = 1;
+               otherwise
+            end
+         end
+
+         pr_series = nc_varget(pinfo.prior_file,     vname, start, count);
+
+         % Get the Posterior 
+
+         for j = 1:length(varinfo.Dimension)
+            switch( lower(varinfo.Dimension{j}))
+               case{'time'}
+                  start(j) = pinfo.posterior_times(1) - 1;
+                  count(j) = pinfo.posterior_times(2) - pinfo.posterior_times(1) + 1;
+                  break
+               otherwise
+            end
+         end
+
+         po_series = nc_varget(pinfo.posterior_file, vname, start, count);
+
+         % Paste Prior/Posterior into one series
 
 	 ens_member(1,:) = pr_series;
 	 ens_member(2,:) = po_series;
 	 b               = ens_member(:);
 
+         % plot it
+
    	 hold on; 
 	 memcolor = 1 + mod(i-1,ncolors); % cycles through colors [1,6]
+
+	 str1 = deblank(metadata(imem,:));
 
          if (strcmp(str1,'ensemble mean') == 1)
 	    h = plot(pinfo.xax, b,'k-','linewidth',2.0);
@@ -260,18 +272,35 @@ function PlotGivenVariable(pinfo, prior, post, truth, metadata)
 	 [legh, objh, outh, outm] = legend([outh; h],outm,0);
       end
 
-      % Plot the true trajectory if it exists; the ens mean; annotate
+      % Plot the true trajectory if it exists; maybe the ens mean
 
-      if ( exist(pinfo.truth_file) == 2 )
-         corner(2) = truth.truth_index;
-         endpnt(2) = truth.truth_index;
-         true_trajectory = getnc(pinfo.truth_file, vname, corner, endpnt);
-         truth.times     = getnc(pinfo.truth_file,'time');
+      if ( exist(pinfo.truth_file,'file') == 2 )
 
-	 h = plot(truth.times, true_trajectory, 'k-','linewidth',1.0); hold on;
-	 h = plot(pinfo.xax, a, 'k-','linewidth',2.0);
-	 legend('truth','ensemble mean')
+         varinfo = nc_getvarinfo(pinfo.truth_file, vname);
+
+         for j = 1:length(varinfo.Dimension)
+            switch( lower(varinfo.Dimension{j}))
+               case{'time'}
+                  start(j) =  0;
+                  count(j) = -1;
+               case{'copy'}
+                  start(j) = truth.truth_index - 1;
+                  count(j) = 1;
+               otherwise
+            end
+         end
+
+         true_trajectory = nc_varget(pinfo.truth_file, vname, start, count);
+
+	 h = plot(truth.time, true_trajectory, 'k-','linewidth',1.0); hold on;
+
+	 [legh, objh, outh, outm] = legend;
+	 nlines = length(outm);
+         outm{nlines+1} = 'truth';
+	 [legh, objh, outh, outm] = legend([outh; h],outm,0);
       end
+
+      % annotate
 
       ylabel(sprintf('''%s''  (%.3f,%.3fE) level index %d', vname, ...
                      pinfo.latitude, pinfo.longitude, pinfo.levelindex ))

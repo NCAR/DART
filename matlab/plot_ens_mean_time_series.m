@@ -11,7 +11,7 @@
 % All the heavy lifting is done by PlotEnsMeanTimeSeries.
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -21,14 +21,14 @@
 % $Revision$
 % $Date$
 
-if (exist('truth_file') ~= 1)
+if (exist('truth_file','var') ~= 1)
    truth_file = input('Input name of True State file; <cr> for True_State.nc\n','s');
    if isempty(truth_file)
       truth_file = 'True_State.nc';
    end
 end
 
-if (exist('diagn_file') ~=1)
+if (exist('diagn_file','var') ~=1)
    disp('Input name of prior or posterior diagnostics file;')
    diagn_file = input('<cr> for Prior_Diag.nc\n','s');
    if isempty(diagn_file)
@@ -38,13 +38,12 @@ end
 
 vars  = CheckModel(diagn_file);   % also gets default values for this model.
 
-if (exist(truth_file)==2)
+if (exist(truth_file,'file')==2)
    pinfo = CheckModelCompatibility(truth_file, diagn_file);
 else
    pinfo.truth_file = [];
 end
-truth_file = pinfo.truth_file;
-pinfo.model = vars.model;
+truth_file  = pinfo.truth_file;
 
 
 switch lower(vars.model)
@@ -58,7 +57,7 @@ switch lower(vars.model)
       pinfo = setfield(pinfo, 'var'       , varid.var);
       pinfo = setfield(pinfo, 'var_inds'  , varid.var_inds);
 
-      disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
+      fprintf('Comparing %s and \n          %s\n', pinfo.truth_file, pinfo.diagn_file)
       disp(['Using State Variable IDs ', num2str(pinfo.var_inds)])
       clear varid
 
@@ -94,9 +93,11 @@ switch lower(vars.model)
 
    otherwise
 
-      error(sprintf('model %s not implemented yet', vars.model))
+      error('model %s not implemented yet', vars.model)
 
 end
+
+pinfo
 
 PlotEnsMeanTimeSeries( pinfo )
 clear vars

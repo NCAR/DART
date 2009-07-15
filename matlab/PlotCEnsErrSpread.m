@@ -2,7 +2,7 @@ function PlotCEnsErrSpread( pinfo )
 %
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -13,30 +13,25 @@ function PlotCEnsErrSpread( pinfo )
 % $Date$
 
 % this sets start/stop time indices for both truth and diagn file now
-pinfo = CheckModelCompatibility(pinfo.truth_file,pinfo.diagn_file)
+pinfo = CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 
-ft        = netcdf(pinfo.truth_file);
-model     = ft.model(:); 
-timeunits = ft{'time'}.units(:);
-close(ft);
+model     = nc_attget(pinfo.truth_file, nc_global, 'model'); 
+timeunits = nc_attget(pinfo.truth_file,'time','units');
 
 nvars = 4;
 
 % Since the models are "compatible", get the info from either one.
-levels   = getnc(pinfo.truth_file, 'level'); num_levels = length(levels);
-ens_mems = getnc(pinfo.diagn_file,  'copy'); ens_size   = length(ens_mems);
-times    = getnc(pinfo.truth_file,  'time', ...
-                 [ pinfo.truth_time(1) ], [ pinfo.truth_time(2) ]) ;
-num_times  = length(times);
+levels   = nc_varget(pinfo.truth_file, 'level'); num_levels = length(levels);
+ens_mems = nc_varget(pinfo.diagn_file,  'copy'); ens_size   = length(ens_mems);
 
-
-% start/stop indices for the overlapping time region set above
-ens_times     = getnc(pinfo.diagn_file, 'time', ...
-                 [ pinfo.diagn_time(1) ], [ pinfo.diagn_time(2) ]) ;
-num_ens_times = length(ens_times);
-if num_ens_times ~= times
-   error ('Should not happen; CheckModelCompatibility returned incompatible time indices')
+num_times     = pinfo.truth_time(2) - pinfo.truth_time(1) + 1;
+num_ens_times = pinfo.diagn_time(2) - pinfo.diagn_time(1) + 1;
+if num_ens_times ~= num_times
+   error('CheckModelCompatibility returned incompatible time indices')
 end
+
+times     = nc_varget(pinfo.truth_file, 'time', pinfo.truth_time(1)-1, num_times);
+ens_times = nc_varget(pinfo.diagn_file, 'time', pinfo.diagn_time(1)-1, num_times);
 
 % Initialize storage for error averaging
 rms      = zeros(num_times, nvars, num_levels);
@@ -83,7 +78,7 @@ clear field ens sd ens_err
 
 for ilevel = 1:num_levels,     % Loop through all levels
 
-   disp(sprintf('Processing level %d of %d ...',ilevel,num_levels))
+   fprintf('Processing level %d of %d ...\n',ilevel,num_levels)
 
    %-------------------------------------------------------------------
    % temperature ...  num_times x num_levels x num_lats x num_lons
@@ -229,15 +224,33 @@ figure(4); clf;
 %----------------------------------------------------------------------
 % helper functions
 %----------------------------------------------------------------------
-function slice = GetPS(fname,copyindex,tstart,tend);
-corner     = [tstart, copyindex, -1, -1];
-endpnt     = [tend,   copyindex, -1, -1];
-ted        = getnc(fname,'ps',corner,endpnt);
+function slice = GetPS(fname,copyindex,tstartind,tendind);
+
+varinfo = nc_getvarinfo(fname,'ps');
+
+for i = 1:length(varinfo.Dimension)
+   switch( lower(varinfo.Dimension{i}))
+      case{'time'}
+         start(i) = tstartind - 1;
+         count(i) = tendind - tstartind + 1;
+      case{'copy'}
+         start(i) = copyindex - 1;
+         count(i) = 1;
+      otherwise
+         start(i) =  0;
+         count(i) = -1;
+   end
+end
+
+ted        = nc_varget(fname,'ps',start,count);
 [nt,ny,nx] = size(ted);
 slice      = reshape(ted,[nt ny*nx]);
 
 
-function slice = GetLevel(fname,ivar,copyindex,ilevel,tstart,tend);
+
+
+
+function slice = GetLevel(fname,ivar,copyindex,ilevel,tstartind,tendind);
 if ivar == 2 
    varstring = 't';
 elseif ivar == 3 
@@ -245,12 +258,31 @@ elseif ivar == 3
 elseif ivar == 4 
    varstring = 'v';
 else
-   error(sprintf(' variable id %d out of bounds',ivar))
+   error(' variable id %d out of bounds',ivar)
 end
-corner     = [tstart, copyindex, ilevel, -1, -1];
-endpnt     = [tend,   copyindex, ilevel, -1, -1];
-ted        = getnc(fname,varstring,corner,endpnt);
+
+varinfo = nc_getvarinfo(fname,varstring);
+ndims   = length(varinfo.Dimension);
+start   = zeros(1,ndims);
+count   = zeros(1,ndims);
+
+for i = 1:length(varinfo.Dimension)
+   switch( lower(varinfo.Dimension{i}))
+      case{'time'}
+         start(i) = tstartind - 1;
+         count(i) = tendind - tstartind + 1;
+      case{'copy'}
+         start(i) = copyindex - 1;
+         count(i) = 1;
+      case{'lev'}
+         start(i) = ilevel - 1;
+         count(i) = 1;
+      otherwise
+         start(i) =  0;
+         count(i) = -1;
+   end
+end
+ted        = nc_varget(fname,varstring,start,count);
 [nt,ny,nx] = size(ted);
 slice      = reshape(ted,[nt ny*nx]);
-
 

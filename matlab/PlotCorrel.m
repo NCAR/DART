@@ -23,7 +23,7 @@ function PlotCorrel( pinfo )
 % PlotCorrel(pinfo)                  % generates a plot
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -36,20 +36,19 @@ function PlotCorrel( pinfo )
 if (exist(pinfo.fname,'file') ~= 2), error('%s does not exist.',pinfo.fname), end
 
 % Get some file-specific information.
-f = netcdf(pinfo.fname,'nowrite');
-model      = f.model(:);
-var_atts   = dim(f{pinfo.base_var});      % cell array of dimensions for the var
-num_times  = length(var_atts{1});
-num_copies = length(var_atts{2});
-num_vars   = length(var_atts{3});
-timeunits  = f{'time'}.units(:);
-close(f)
+model      = nc_attget(pinfo.fname,nc_global,'model');
+timeunits  = nc_attget(pinfo.fname,'time','units');
+varinfo    = nc_getvarinfo(pinfo.fname, pinfo.base_var);
 
-if ( ~ strcmp( name(var_atts{1}), 'time') )
-    disp( sprintf('%s first dimension ( %s ) is not ''time''',fname,name(var_atts{1})))
-end
-if ( ~ strcmp( name(var_atts{2}), 'copy') )
-    disp( sprintf('%s second dimension ( %s ) is not ''copy''',fname,name(var_atts{2})))
+for i = 1:length(varinfo.Dimension)
+   switch( lower(varinfo.Dimension{i}) )
+      case 'time'
+         num_times = varinfo.Size(i);
+      case 'copy'
+         num_copies = varinfo.Size(i);
+      otherwise
+         num_vars = varinfo.Size(i);
+   end
 end
 
 switch(lower(model))
@@ -62,13 +61,13 @@ switch(lower(model))
       
       % The Base Variable Index must be a valid state variable
       if ( base_var_index > num_vars )
-         disp( sprintf('%s only has %d state variables', pinfo.fname, num_vars))
+         fprintf('%s only has %d state variables\n', pinfo.fname, num_vars)
          error('you wanted variable # %d ', base_var_index)
       end
       
       % The Time must be within range also.
       if ( base_time > num_times )
-         disp( sprintf('%s only has %d output times', pinfo.fname, num_times))
+         fprintf('%s only has %d output times\n', pinfo.fname, num_times)
          error('you wanted time # %d ', base_time)
       end
       
@@ -111,31 +110,28 @@ switch(lower(model))
 
       clf;
 
-      times      = getnc(pinfo.fname,'time');
-      f          = netcdf(pinfo.fname,'nowrite');
-      timeunits  = f{'time'}.units(:);
+      times = nc_varget(pinfo.fname, 'time');
       switch lower(pinfo.comp_var)
          case {'ps','t'}
-            lats = getnc(pinfo.fname,'TmpJ'); ny = length(lats);
-            lons = getnc(pinfo.fname,'TmpI'); nx = length(lons);
-            latunits = f{'TmpJ'}.units(:);
-            lonunits = f{'TmpI'}.units(:);
+            lats     = nc_varget(pinfo.fname,'TmpJ'); ny = length(lats);
+            lons     = nc_varget(pinfo.fname,'TmpI'); nx = length(lons);
+            latunits = nc_attget(pinfo.fname,'TmpJ','units');
+            lonunits = nc_attget(pinfo.fname,'TmpI','units');
          otherwise
-            lats = getnc(pinfo.fname,'VelJ'); ny = length(lats);
-            lons = getnc(pinfo.fname,'VelI'); nx = length(lons);
-            latunits = f{'VelJ'}.units(:);
-            lonunits = f{'VelI'}.units(:);
+            lats     = nc_varget(pinfo.fname,'VelJ'); ny = length(lats);
+            lons     = nc_varget(pinfo.fname,'VelI'); nx = length(lons);
+            latunits = nc_attget(pinfo.fname,'VelJ','units');
+            lonunits = nc_attget(pinfo.fname,'VelI','units');
       end
-      num_times  = ncsize(f('time')); % determine # of output times
-      num_copies = ncsize(f('copy')); % determine # of ensemble members
-      close(f)
 
       nxny = nx*ny;
 
       base_mem = Get1Ens( pinfo.fname, pinfo.base_var, pinfo.base_tmeind, ... 
                     pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
+
       comp_ens = GetEnsLevel( pinfo.fname,       pinfo.comp_var, ...
                               pinfo.base_tmeind, pinfo.comp_lvlind);
+
       nmembers = size(comp_ens,1);
 
       corr = zeros(nxny,1);
@@ -145,9 +141,9 @@ switch(lower(model))
          corr(i) = x(1, 2);
       end 
 
-      corrslice = reshape(corr,[ny nx]);
+      correl = reshape(corr,[ny nx]);
 
-      contour(lons,lats,corrslice,-1:0.2:1); hold on;
+      contour(lons,lats,correl,-1:0.2:1); hold on;
       plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
                  'MarkerSize',12,'MarkerFaceColor','k');
       s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f of %s', ...
@@ -172,30 +168,25 @@ switch(lower(model))
 
       clf;
 
-      times      = getnc(pinfo.fname,'time');
-      f          = netcdf(pinfo.fname,'nowrite');
-      timeunits  = f{'time'}.units(:);
+      times      = nc_varget(pinfo.fname,'time');
+
       switch lower(pinfo.comp_var)
          case {'u'}
-            lats = getnc(pinfo.fname,'YC'); ny = length(lats);
-            lons = getnc(pinfo.fname,'XG'); nx = length(lons);
-            latunits = f{'YC'}.units(:);
-            lonunits = f{'XG'}.units(:);
+            lats     = nc_varget(pinfo.fname,'YC'); ny = length(lats);
+            lons     = nc_varget(pinfo.fname,'XG'); nx = length(lons);
+            latunits = nc_attget(pinfo.fname,'YC','units');
+            lonunits = nc_attget(pinfo.fname,'XG','units');
          case {'v'}
-            lats = getnc(pinfo.fname,'YG'); ny = length(lats);
-            lons = getnc(pinfo.fname,'XC'); nx = length(lons);
-            latunits = f{'YG'}.units(:);
-            lonunits = f{'XC'}.units(:);
+            lats     = nc_varget(pinfo.fname,'YG'); ny = length(lats);
+            lons     = nc_varget(pinfo.fname,'XC'); nx = length(lons);
+            latunits = nc_attget(pinfo.fname,'YG','units');
+            lonunits = nc_attget(pinfo.fname,'XC','units');
          otherwise
-            lats = getnc(pinfo.fname,'YC'); ny = length(lats);
-            lons = getnc(pinfo.fname,'XC'); nx = length(lons);
-            latunits = f{'YC'}.units(:);
-            lonunits = f{'XC'}.units(:);
+            lats     = nc_varget(pinfo.fname,'YC'); ny = length(lats);
+            lons     = nc_varget(pinfo.fname,'XC'); nx = length(lons);
+            latunits = nc_attget(pinfo.fname,'YC','units');
+            lonunits = nc_attget(pinfo.fname,'XC','units');
       end
-
-      num_times  = ncsize(f('time')); % determine # of output times
-      num_copies = ncsize(f('copy')); % determine # of ensemble members
-      close(f)
 
       nxny = nx*ny;
 
@@ -212,9 +203,9 @@ switch(lower(model))
          corr(i) = x(1, 2);
       end 
 
-      corrslice = reshape(corr,[ny nx]);
+      correl = reshape(corr,[ny nx]);
 
-      contour(lons,lats,corrslice,-1:0.2:1); hold on;
+      contour(lons,lats,correl,-1:0.2:1); hold on;
       plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
                  'MarkerSize',12,'MarkerFaceColor','k');
       s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f of %s', ...
@@ -239,19 +230,13 @@ switch(lower(model))
 
       clf;
 
-      lats       = getnc(pinfo.fname,'lat'); ny = length(lats);
-      lons       = getnc(pinfo.fname,'lon'); nx = length(lons);
-      times      = getnc(pinfo.fname,'time');
-      f          = netcdf(pinfo.fname,'nowrite');
-      timeunits  = f{'time'}.units(:);
-      latunits   = f{'lat'}.units(:);
-      lonunits   = f{'lon'}.units(:);
+      lats     = nc_varget(pinfo.fname,'lat'); ny = length(lats);
+      lons     = nc_varget(pinfo.fname,'lon'); nx = length(lons);
+      times    = nc_varget(pinfo.fname,'time');
+      latunits = nc_attget(pinfo.fname,'lat','units');
+      lonunits = nc_attget(pinfo.fname,'lon','units');
 
-      num_times  = ncsize(f('time')); % determine # of output times
-      num_copies = ncsize(f('copy')); % determine # of ensemble members
-      close(f)
-
-      nxny = nx*ny;
+      nxny     = nx*ny;
 
       base_mem = Get1Ens( pinfo.fname, pinfo.base_var,    pinfo.base_tmeind, ... 
                     pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
@@ -266,9 +251,9 @@ switch(lower(model))
          corr(i) = x(1, 2);
       end 
 
-      corrslice = reshape(corr,[ny nx]);
+      correl = reshape(corr,[ny nx]);
 
-      contour(lons,lats,corrslice,-1:0.2:1); hold on;
+      contour(lons,lats,correl,-1:0.2:1); hold on;
       plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
                  'MarkerSize',12,'MarkerFaceColor','k');
       s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f of %s', ...
@@ -298,41 +283,40 @@ end
 %----------------------------------------------------------------------
 
 function slice = Get1Ens(fname, var, tmeind, lvlind, latind, lonind)
-% netcdf variable is ordered  [ time copy level lat lon ]
+% netcdf variable ordering is unimportant
 % Get1Ens retrieves all the ensemble members for a particular 4D 
 % location (time, level, lat, lon).
 % The ensemble members do not include the mean, spread, etc. 
 
 % find which are actual ensemble members
-metadata    = getnc(fname,'CopyMetaData');           % get all the metadata
+metadata    = nc_varget(fname,'CopyMetaData');           % get all the metadata
 copyindices = strmatch('ensemble member',metadata);  % find all 'member's
 
 if ( isempty(copyindices) )
-   disp(sprintf('%s has no valid ensemble members',fname))
+   fprintf('%s has no valid ensemble members\n',fname)
    disp('To be a valid ensemble member, the CopyMetaData for the member')
    disp('must start with the character string ''ensemble member''')
    disp('None of them in do in your file.')
-   disp(sprintf('%s claims to have %d copies',fname, num_copies))
+   fprintf('%s claims to have %d copies\n',fname, num_copies)
    error('netcdf file has no ensemble members.')
 end
-ens_num     = length(copyindices);
 
-switch lower(var)
-   case {'ps','ssh'}
-      corner     = [tmeind, -1,         latind, lonind];
-      endpnt     = [tmeind, -1,         latind, lonind];
-      bob        = getnc(fname,var,corner,endpnt);
-      slice      = bob(copyindices);
-   otherwise
-      corner     = [tmeind, -1, lvlind, latind, lonind];
-      endpnt     = [tmeind, -1, lvlind, latind, lonind];
-      bob        = getnc(fname,var,corner,endpnt);
-      slice      = bob(copyindices);
-end
+pinfo.diagn_file = fname;
+pinfo.timeindex  = tmeind;
+pinfo.levelindex = lvlind;
+pinfo.latindex   = latind;
+pinfo.lonindex   = lonind;
+[start, count]   = GetNCindices(pinfo,'diagn',var);
+
+% Get all the ensemble members and just subset the copies we want.
+
+bob   = nc_varget(fname, var, start, count);
+slice = bob(copyindices);
+
 
 
 function slice = GetEnsLevel(fname, var, tmeind, lvlind)
-% netcdf variable is ordered  [ time copy level lat lon ]
+% netcdf variable ordering is unimportant, nominally [ time copy level lat lon ]
 % GetEnsLevel retrieves all the ensemble members for a particular time and level. 
 %
 % The ensemble members do not include the mean, spread, etc. 
@@ -341,33 +325,29 @@ function slice = GetEnsLevel(fname, var, tmeind, lvlind)
 % should vectorize better.
 
 % find which are actual ensemble members
-metadata    = getnc(fname,'CopyMetaData');           % get all the metadata
+metadata    = nc_varget(fname,'CopyMetaData');           % get all the metadata
 copyindices = strmatch('ensemble member',metadata);  % find all 'member's
 
 if ( isempty(copyindices) )
-   disp(sprintf('%s has no valid ensemble members',fname))
+   fprintf('%s has no valid ensemble members\n',fname)
    disp('To be a valid ensemble member, the CopyMetaData for the member')
    disp('must start with the character string ''ensemble member''')
    disp('None of them in do in your file.')
-   disp(sprintf('%s claims to have %d copies',fname, num_copies))
+   fprintf('%s claims to have %d copies\n',fname, num_copies)
    error('netcdf file has no ensemble members.')
 end
-ens_num     = length(copyindices);
 
-switch lower(var)
-   case {'ps','ssh'}
-      corner     = [tmeind, -1,         -1, -1];
-      endpnt     = [tmeind, -1,         -1, -1];
+pinfo.diagn_file = fname;
+pinfo.timeindex  = tmeind;
+pinfo.levelindex = lvlind;
+[start, count]   = GetNCindices(pinfo,'diagn',var);
 
-   otherwise
-      corner     = [tmeind, -1, lvlind, -1, -1];
-      endpnt     = [tmeind, -1, lvlind, -1, -1];
-end
-
-bob        = getnc(fname,var,corner,endpnt);
+bob        = nc_varget(fname, var, start, count);
 ted        = bob(copyindices,:,:);
 [nm,ny,nx] = size(ted);
 slice      = reshape(ted,[nm ny*nx]);
+
+
 
 function PlotLocator(pinfo)
    plot(pinfo.base_lon, pinfo.base_lat,'pb','MarkerSize',12,'MarkerFaceColor','b');

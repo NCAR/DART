@@ -43,7 +43,7 @@ function PlotPhaseSpace( pinfo )
 % note the legend has both lines annotated.
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -53,29 +53,16 @@ function PlotPhaseSpace( pinfo )
 % $Revision$
 % $Date$
 
-if ( exist(pinfo.fname) ~= 2 ), error(sprintf('file %s does not exist.',pinfo.fname)), end
+if ( exist(pinfo.fname,'file') ~= 2 ), error('file %s does not exist.',pinfo.fname), end
 
-% Get some information for the 'X' variable
-f            = netcdf(pinfo.fname);
-model        = f.model(:);
-X.var_atts   = dim(f{pinfo.var1name});  % cell array of dimensions for the var
-X.num_times  = length(X.var_atts{1});   % determine # of output times
-X.num_copies = length(X.var_atts{2});   % # of ensemble members
-X.num_vars   = length(X.var_atts{3});   % dimension of desired variable
+model = nc_attget(pinfo.fname, nc_global, 'model');
 
-% Get some information for the 'Y' variable
-Y.var_atts   = dim(f{pinfo.var2name});  % cell array of dimensions for the var
-Y.num_times  = length(Y.var_atts{1});   % determine # of output times
-Y.num_copies = length(Y.var_atts{2});   % # of ensemble members
-Y.num_vars   = length(Y.var_atts{3});   % dimension of desired variable
+% Get some information for the 'X','Y' variable
+[X.num_times, X.num_copies, X.num_vars] = parse_varshape(pinfo.fname, pinfo.var1name);
+[Y.num_times, Y.num_copies, Y.num_vars] = parse_varshape(pinfo.fname, pinfo.var2name);
 
-if ( isfield( pinfo,'var3name') )
-   % Get some information for the 'Z' variable
-   Z.var_atts   = dim(f{pinfo.var3name});  % cell array of dimensions for the var
-   Z.num_times  = length(Z.var_atts{1});   % determine # of output times
-   Z.num_copies = length(Z.var_atts{2});   % # of ensemble members
-   Z.num_vars   = length(Z.var_atts{3});   % dimension of desired variable
-   close(f);
+if ( isfield( pinfo,'var3name') ) % Get some information for the 'Z' variable
+[Z.num_times, Z.num_copies, Z.num_vars] = parse_varshape(pinfo.fname, pinfo.var3name);
 end
 
 switch lower(model)
@@ -179,16 +166,16 @@ switch lower(model)
 
    case {'fms_bgrid','pe2lyr','mitgcm_ocean'}
 
-      disp(sprintf('PlotPhaseSpace'))
+      disp('PlotPhaseSpace')
       pinfo
 
       ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);   % errors out if no ens_mem 
       
-      x = Get1Copy(pinfo.fname, ens_mem_id, pinfo.var1name, ...
+      x = Get1Copy(pinfo.fname, pinfo.var1name, ens_mem_id,  ...
                   pinfo.var1_lvlind, pinfo.var1_latind, pinfo.var1_lonind);
-      y = Get1Copy(pinfo.fname, ens_mem_id, pinfo.var2name, ...
+      y = Get1Copy(pinfo.fname, pinfo.var2name, ens_mem_id,  ...
                   pinfo.var2_lvlind, pinfo.var2_latind, pinfo.var2_lonind);
-      z = Get1Copy(pinfo.fname, ens_mem_id, pinfo.var3name, ...
+      z = Get1Copy(pinfo.fname, pinfo.var3name, ens_mem_id,  ...
                   pinfo.var3_lvlind, pinfo.var3_latind, pinfo.var3_lonind);
 
       % There is no model-dependent segment ...
@@ -234,7 +221,7 @@ switch lower(model)
 
    otherwise
 
-      error(sprintf('model %s not implemented yet', model))
+      error('model %s not implemented yet', model)
 
 end
 
@@ -242,38 +229,70 @@ end
 %======================================================================                    
 % Subfunctions                                                                             
 %======================================================================                    
+
+
+
+function [nT, nC, n3] = parse_varshape(fname,varname)
+
+y = nc_isvar(fname,varname);
+if (y < 1)
+   error('%s has no variable named %s ',fname,varname)
+end
+
+nt = 0;
+nC = 0;
+n3 = 0;
+
+varinfo = nc_getvarinfo(fname,varname);
+
+% for i = 1:length(varinfo.Dimension)
+for i = 1:3  % only want/need the first 3 dimensions.
+   switch( lower(varinfo.Dimension{i}))
+      case 'time'
+         nT = varinfo.Size(i);
+      case 'copy'
+         nC = varinfo.Size(i);
+      case 'StateVariable'
+         n3 = varinfo.Size(i);
+      otherwise
+         n3 = varinfo.Size(i);
+   end
+end
+
+
                                                                                            
-function var = Get1Copy(fname, copyindex, var, lvlind, latind, lonind)                                            
+function var = Get1Copy(fname, varname, copyindex, lvlind, latind, lonind)                                            
 % Gets a time-series of a single specified copy of a prognostic variable                   
 % at a particular 3D location (level, lat, lon)                                            
-switch lower(var)
-   case{'ps','ssh'}
-      corner = [-1 copyindex        latind lonind];                 
-      endpnt = [-1 copyindex        latind lonind];                 
-   otherwise                                                                                       
-      corner = [-1 copyindex lvlind latind lonind];                 
-      endpnt = [-1 copyindex lvlind latind lonind];                 
-end                                                                                        
-var = getnc(fname, var, corner, endpnt);
+
+myinfo.diagn_file = fname;
+myinfo.copyindex  = copyindex;
+myinfo.levelindex = lvlind;
+myinfo.latindex   = latind;
+myinfo.lonindex   = lonind;
+[start, count]    = GetNCindices(myinfo,'diagn',varname);
+
+var = nc_varget(fname, varname, start, count); % 'bob' is only 2D 
+
 
 
 
 function BulletProof(pinfo,X,Y,Z)
 
 if ( (pinfo.var1ind > X.num_vars) | (pinfo.var1ind < 1) ) 
-   disp(sprintf('\n%s has %d %s variables',pinfo.fname,X.num_vars,pinfo.var1name))
-   disp(sprintf('%d  <= ''var1'' <= %d',1,X.num_vars))
-   error(sprintf('var1 (%d) out of range',pinfo.var1ind))
+   fprintf('\n%s has %d %s variables\n',pinfo.fname,X.num_vars,pinfo.var1name)
+   fprintf('%d  <= ''var1'' <= %d\n',1,X.num_vars)
+   error('var1 (%d) out of range',pinfo.var1ind)
 end
 
 if ( (pinfo.var2ind > Y.num_vars) | (pinfo.var2ind < 1) ) 
-   disp(sprintf('\n%s has %d %s variables',pinfo.fname,Y.num_vars,pinfo.var2name))
-   disp(sprintf('%d  <= ''var2'' <= %d',1,Y.num_vars))
-   error(sprintf('var2 (%d) out of range',pinfo.var2ind))
+   fprintf('\n%s has %d %s variables\n',pinfo.fname,Y.num_vars,pinfo.var2name)
+   fprintf('%d  <= ''var2'' <= %d\n',1,Y.num_vars)
+   error('var2 (%d) out of range',pinfo.var2ind)
 end
 
 if ( (pinfo.var3ind > Z.num_vars) | (pinfo.var3ind < 1) ) 
-   disp(sprintf('\n%s has %d %s variables',pinfo.fname,Z.num_vars,pinfo.var3name))
-   disp(sprintf('%d  <= ''var3'' <= %d',1,Z.num_vars))
-   error(sprintf('var3 (%d) out of range',pinfo.var3ind))
+   fprintf('\n%s has %d %s variables\n',pinfo.fname,Z.num_vars,pinfo.var3name)
+   fprintf('%d  <= ''var3'' <= %d\n',1,Z.num_vars)
+   error('var3 (%d) out of range',pinfo.var3ind)
 end

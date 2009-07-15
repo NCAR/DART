@@ -19,9 +19,11 @@ function PlotEnsMeanTimeSeries( pinfo )
 % Example 1  (9variable model)
 %-------------------------------------------------------------
 % pinfo.truth_file  = 'True_State.nc';
-% pinfo.diagn_file = 'Prior_Diag.nc';
+% pinfo.diagn_file  = 'Prior_Diag.nc';
+% pinfo.model       = '9var';
 % pinfo.var         = 'state';
 % pinfo.var_inds    = [ 4 5 6 ]; 
+
 % PlotEnsMeanTimeSeries( pinfo )
 %
 % Example 2 (FMS BGrid model)
@@ -35,7 +37,7 @@ function PlotEnsMeanTimeSeries( pinfo )
 % PlotEnsMeanTimeSeries( pinfo )
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -45,55 +47,66 @@ function PlotEnsMeanTimeSeries( pinfo )
 % $Revision$
 % $Date$
 
-pinfo.truth_time = [-1 -1];
-pinfo.diagn_time = [-1 -1];
+if ( exist(pinfo.diagn_file,'file') ~= 2 ), error('%s does not exist.',pinfo.diagn_file); end
 
 % Get the indices for the ensemble mean and spread.
 % The metadata is queried to determine which "copy" is appropriate.
 ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
-% Get some useful plotting arrays
-times = getnc(pinfo.diagn_file,'time', pinfo.diagn_time(1), pinfo.diagn_time(2)); 
-num_times = length(times);
-
 % If the truth is known, great.
-if (exist(pinfo.truth_file) == 2) 
+if ( exist(pinfo.truth_file,'file') == 2)
    have_truth  = 1;
    truth_index = get_copy_index(pinfo.truth_file, 'true state');
    vars        = CheckModelCompatibility(pinfo);
    pinfo       = CombineStructs(pinfo,vars);
 else
    have_truth  = 0;
+   diminfo = nc_getdiminfo(pinfo.diagn_file,'time');
+   pinfo.diagn_time = [1 diminfo.Length];
+   pinfo.model = nc_attget(pinfo.diagn_file, nc_global, 'model');
 end
+
+% Get some useful plotting arrays
+
+num_times = pinfo.diagn_time(2) - pinfo.diagn_time(1) + 1;
+times     = nc_varget(pinfo.diagn_file,'time', pinfo.diagn_time(1)-1, num_times); 
 
 switch lower(pinfo.model)
 
    case '9var'
 
       % Use three different figures with three subplots each
-      for i = 1:3,
+      for i = 1:3
          figure(i); clf
-         for j = 1:3,
+         for j = 1:3
             ivar = (i - 1)*3 + j;
-            disp(sprintf('plotting model %s Variable %d ...',pinfo.model,ivar))
+            fprintf('plotting model %s Variable %d ...\n',pinfo.model,ivar)
             subplot(3, 1, j);
-            ens_mean = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
-                                      pinfo.diagn_time(1), pinfo.diagn_time(2));
-            plot(times,ens_mean,'r')
-            legend('Ensemble Mean',0)
 
+            % If the truth is known ...
             if ( have_truth )
                truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
                                       pinfo.truth_time(1), pinfo.truth_time(2));
-               hold on; plot(times,truth,'b'); hold off;
-               legend('Ensemble Mean','True State',0)
+               plot(times,truth,'b','LineWidth',1.0); hold on;
+               legendstr = 'True State';
+            end
+
+            ens_mean = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
+                                      pinfo.diagn_time(1), pinfo.diagn_time(2));
+            plot(times,ens_mean,'r','LineWidth',1.0)
+
+            if (exist('legendstr','var'))
+               legend(legendstr,'Ensemble Mean',0)
+            else
+               legend('Ensemble Mean',0)
             end
 
             title(sprintf('%s Variable %d of %s',pinfo.model,ivar,pinfo.diagn_file), ...
                      'interpreter','none','fontweight','bold')
             xlabel(sprintf('model time (%d timesteps)',num_times))
             legend boxoff
+            hold off;
          end
       end
 
@@ -176,11 +189,8 @@ switch lower(pinfo.model)
 
       clf;
 
-      % Get some plotting information from the truth_file 
-      ft = netcdf(pinfo.diagn_file);
-      timeunits    = ft{'time'}.units(:);
-      varunits     = ft{pinfo.var}.units(:);
-      close(ft);
+      timeunits = nc_attget(pinfo.fname, 'time',    'units');
+      varunits  = nc_attget(pinfo.fname, pinfo.var, 'units');
 
       subplot(2,1,1)
          PlotLocator(pinfo)
@@ -223,16 +233,15 @@ switch lower(pinfo.model)
          figure(iplot); clf;
 
          pinfo.var  = var_names{ivar};
-         fd         = netcdf(pinfo.diagn_file);
-         timeunits  = fd{'time'}.units(:);
-         varunits   = fd{pinfo.var}.units(:);
-         close(fd);
+
+         timeunits = nc_attget(pinfo.diagn_file, 'time',    'units');
+         varunits  = nc_attget(pinfo.diagn_file, pinfo.var, 'units');
 
          subplot(2,1,1)
             PlotLocator(pinfo);
 
-         ens_mean = GetCamCopy(pinfo.diagn_file, ens_mean_index, pinfo, ...
-                               pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+         ens_mean = GetCopy(pinfo.diagn_file, ens_mean_index, pinfo, ...
+                            pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
          subplot(2,1,2)
             plot(times,ens_mean,'r','LineWidth',2);
             legend('Ensemble Mean', 0)
@@ -242,8 +251,8 @@ switch lower(pinfo.model)
                        pinfo.levelindex, pinfo.latitude, pinfo.longitude);
 
             if ( have_truth )
-               truth    = GetCamCopy(pinfo.truth_file, truth_index, pinfo, ...
-                                     pinfo.truth_time(1), pinfo.truth_time(2)) ;
+               truth    = GetCopy(pinfo.truth_file, truth_index, pinfo, ...
+                                  pinfo.truth_time(1), pinfo.truth_time(2)) ;
                hold on; plot(times,truth,'b','LineWidth',2); hold off;
                legend('Ensemble Mean','True State',0);
                s1 = sprintf('%s model ''%s'' %s Truth and Ensemble Mean ', ...
@@ -259,7 +268,7 @@ switch lower(pinfo.model)
       end
 
    otherwise
-      error(sprintf('model %s unknown.',pinfo.model))
+      error('model %s unknown.',pinfo.model)
 
 end
 
@@ -268,30 +277,29 @@ end
 % Subfunctions
 %======================================================================
 
-function var = GetCopy(fname, copyindex, pinfo, tstart, tend)
+function var = GetCopy(fname, copyindex, pinfo, tstartind, tendind)
 % Gets a time-series of a single specified copy of a prognostic variable 
 % at a particular 3D location (level, lat, lon)
-if strcmp(lower(pinfo.var),'ps')
-   corner = [tstart copyindex                  pinfo.latindex pinfo.lonindex];
-   endpnt = [tend   copyindex                  pinfo.latindex pinfo.lonindex];
-else
-   corner = [tstart copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
-   endpnt = [tend   copyindex pinfo.levelindex pinfo.latindex pinfo.lonindex];
-end
-var = getnc(fname, pinfo.var, corner, endpnt);
+myinfo.diagn_file = fname;
+myinfo.copyindex  = copyindex;
+myinfo.levelindex = pinfo.levelindex;
+myinfo.latindex   = pinfo.latindex;
+myinfo.lonindex   = pinfo.lonindex;
+[start, count]    = GetNCindices(myinfo,'diagn',pinfo.var);
 
+varinfo = nc_getvarinfo(fname,pinfo.var);
 
-function var = GetCamCopy(fname, copyindex, pinfo, tstart, tend)
-% Gets a time-series of a single specified copy of a prognostic variable 
-% at a particular 3D location (level, lat, lon)
-if strcmp(lower(pinfo.var),'ps')
-   corner = [tstart copyindex pinfo.latindex pinfo.lonindex];
-   endpnt = [tend   copyindex pinfo.latindex pinfo.lonindex];
-else
-   corner = [tstart copyindex pinfo.latindex pinfo.lonindex pinfo.levelindex];
-   endpnt = [tend   copyindex pinfo.latindex pinfo.lonindex pinfo.levelindex];
+for i = 1:length(varinfo.Dimension)
+   switch( lower(varinfo.Dimension{i}))
+      case{'time'}
+         start(i) = tstartind - 1;
+         count(i) = tendind - tstartind + 1;
+         break
+      otherwise
+   end
 end
-var = getnc(fname, pinfo.var, corner, endpnt);
+var = nc_varget(fname, pinfo.var, start, count);
+
 
 
 function PlotLocator(pinfo)

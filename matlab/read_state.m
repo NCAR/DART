@@ -5,7 +5,7 @@ function state = read_state( file_name )
 %
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -15,15 +15,12 @@ function state = read_state( file_name )
 % $Revision$
 % $Date$
 
-fid = fopen(file_name) ;
-%fid = fopen('prior_state_diagnostics') ;
+if (exist(file_name,'file') ~= 2), error('%s does not exist.',file_name); end
+
+fid              = fopen(file_name);
 global_meta_data = fgetl(fid);
-model_size = fscanf(fid, '%f', 1);
-copies_per_time = fscanf(fid, '%f', 1);
-
-
-
-
+model_size       = fscanf(fid, '%f', 1);
+copies_per_time  = fscanf(fid, '%f', 1);
 
 % Read in the per copy meta data
 for i = 1:copies_per_time,

@@ -1,23 +1,29 @@
-function [corner, endpnt] = GetNCindices(pinfo, whichfile, varname);
-% GETNCindices returns a corner,endpnt array for use with getnc.
+function [start, count] = GetNCindices(pinfo, whichfile, varname);
+% GETNCindices returns a start,count array for use with nc_getvar.
 % At present, all times, all copies for a specific level,lat,lon.
 % Does not assume anything about the dimension of the variable.
 %
 % USAGE:
-% [corner, endpnt] = GetNCindices(pinfo, whichfile, varname);
+% [start, count] = GetNCindices(pinfo, whichfile, varname);
+%
+% The structure 'pinfo' must have ONE of the following components:
+%                    pinfo.[prior,posterior,truth,diagn,fname]
+%     and may have
+%                    pinfo.timeindex
+%                    pinfo.copyindex
+%                    pinfo.levelindex
+%                    pinfo.latindex
+%                    pinfo.lonindex
+%                    pinfo.stateindex
+%
 % whichfile          is a character string specifying which 
-%                    component of 'pinfo' will be used.
-%                    ['prior','posterior','truth']
+%                    filename component of 'pinfo' will be used.
+%                    ['prior','posterior','truth','diagn','fname']
 % varname            is the netcdf variable being extracted.
-
-% The structure 'pinfo' must have the following components:
-%pinfo.latindex
-%pinfo.lonindex
-%pinfo.levelindex
-% and the value  
+%
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -30,11 +36,11 @@ function [corner, endpnt] = GetNCindices(pinfo, whichfile, varname);
 % GetNCindices replaces the following hardwired piece of code.
 %
 %      if ( strcmp(lower(vname),'ps') ==1 ) %  PS(time, copy, lat, lon)
-%         corner = [  1 NaN pinfo.latindex pinfo.lonindex];
-%         endpnt = [ -1 NaN pinfo.latindex pinfo.lonindex];
+%         start = [  1 NaN pinfo.latindex pinfo.lonindex];
+%         count = [ -1 NaN pinfo.latindex pinfo.lonindex];
 %      else % U(time, copy, lev, lat, lon)
-%         corner = [  1 NaN pinfo.levelindex pinfo.latindex pinfo.lonindex ];
-%         endpnt = [ -1 NaN pinfo.levelindex pinfo.latindex pinfo.lonindex ];
+%         start = [  1 NaN pinfo.levelindex pinfo.latindex pinfo.lonindex ];
+%         count = [ -1 NaN pinfo.levelindex pinfo.latindex pinfo.lonindex ];
 %      end
 
 switch lower(whichfile)
@@ -50,72 +56,122 @@ switch lower(whichfile)
       fname = pinfo.fname;
 end
 
-corner = [];
-endpnt = [];
+if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
-% This block uses the lowest level netcdf operator I know of.
+% If the structure has subsetting information, use it.
+% Otherwise, use the whole extent.
 
-[cdfid, rcode] = ncmex('OPEN',fname,'NC_NOWRITE');
-[varid, rcode] = ncmex('VARID', cdfid, varname);
-[var, datatype, ndims, dim, natts, status] = ncmex('VARINQ', cdfid, varid);
+lat1   = 0; latN   = -1;
+lon1   = 0; lonN   = -1;
+time1  = 0; timeN  = -1;
+copy1  = 0; copyN  = -1;
+level1 = 0; levelN = -1;
+state1 = 0; stateN = -1;
 
-% var      is the name of the variable as it is in the netCDF file
-% datatype is 
-% ndims    is the 'rank' of the variable 2D, 3D, 4D, etc.
-% dims     is an array of length 'ndims' specifying the 
-%          dimension ID's used - IN ORDER.
-% natts    is the number of attributes for the variable
-% status   is obvious
+if (isfield(pinfo,'timeindex'))
+   time1 = pinfo.timeindex - 1;
+   timeN = 1;
+end
+if (isfield(pinfo,'levelindex'))
+   level1 = pinfo.levelindex - 1;
+   levelN = 1;
+end
+if (isfield(pinfo,'latindex'))
+   lat1 = pinfo.latindex - 1;
+   latN = 1;
+end
+if (isfield(pinfo,'lonindex'))
+   lon1 = pinfo.lonindex - 1;
+   lonN = 1;
+end
+if (isfield(pinfo,'stateindex'))
+   state1 = pinfo.stateindex - 1;
+   stateN = 1;
+end
+if (isfield(pinfo,'copyindex'))
+   copy1 = pinfo.copyindex - 1;
+   copyN = 1;
+end
 
-% make sure it has a time and copy index
+% Determine shape of variable in question.
+
+varinfo = nc_getvarinfo(fname,varname);
+ndims   = length(varinfo.Dimension);
+start   = zeros(1,ndims);
+count   = zeros(1,ndims);
+
+% varinfo.Dimension is a cell array of the Dimension strings 
+% varinfo.Size is an N-D array describing the variable shape
+% varinfo.Attribute is a struct holding the variable attribues
 
 % loop over all of the variables dimensions and 
-% build up the corner/endpoint arrays
+% build up the start/endpoint arrays
 
-for i = 1:ndims 
+for i = 1:ndims
 
-   [dimname, length, status] = ncmex('DIMINQ', cdfid, dim(i));
+   diminfo = nc_getdiminfo(fname,varinfo.Dimension{i});
+   dimname = diminfo.Name;
 
    % the coordinate variable is the same name as the dimension
    % some grids have multiple vertical levels so there is no one
    % predictable coordinate variable name. By convention, these
    % variables should be tagged with a 'cartesian_axis' attribute.
    % ditto for lat, lon ... (on staggered grids, for example)
-
-%   [var, datatype, nddims, ddim, ndatts, status] = ncmex('VARINQ', cdfid, dimname);
-%   [datatype, len, status] = ncmex('ATTINQ', cdfid, var, 'cartesian_axis');
+   % So the XG coordinate dimension has 'cartesian_axis = X',
+   % for example.
    
-   [datatype, len, status] = ncmex('ATTINQ', cdfid, dimname, 'cartesian_axis');
+   [len, status, value] = is_dimension_cartesian(fname, diminfo.Name);
    
    if (status > 0) 
-      % There is a 'cartesian_axis' attribute, and it should be one of:
-      % [X,Y,Z,T]
-      [value, stat2] = ncmex('ATTGET', cdfid, dimname, 'cartesian_axis');
       dimname = value;
    else
       % Then there is no 'cartesian_axis' attribute and the best we can
-      % hope for is a standard name [time,copy,lat,lon,lev]
+      % hope for is a standard dimension name [time,copy,lat,lon,lev]
    end
 
-   switch lower(dimname)
+   switch lower(dimname) % loop over all likely coordinate variables
       case {'time','t'}
-         corner = [corner  1];
-         endpnt = [endpnt length];
+         start(i) = time1;
+         count(i) = timeN;
       case 'copy'
-         corner = [corner  1];
-         endpnt = [endpnt length];
-      case {'lat','y','tmpj'}
-         corner = [corner pinfo.latindex ];
-         endpnt = [endpnt pinfo.latindex ];
-      case {'lon','x','tmpi'}
-         corner = [corner pinfo.lonindex ];
-         endpnt = [endpnt pinfo.lonindex ];
+         start(i) = copy1;
+         count(i) = copyN;
       case {'lev','z'}
-         corner = [corner pinfo.levelindex ];
-         endpnt = [endpnt pinfo.levelindex ];
+         start(i) = level1;
+         count(i) = levelN;
+      case {'lat','y','tmpj'}
+         start(i) = lat1;
+         count(i) = latN;
+      case {'lon','x','tmpi'}
+         start(i) = lon1;
+         count(i) = lonN;
+      case {'statevariable','xdim','ydim','loc1d'}
+         % the lorenz_96_2scale has the unfortunate choice of 
+         % 'Xdim' and 'YDim' for their state variable names.
+         start(i) = state1;
+         count(i) = stateN;
    end
 
 end
 
-ncmex('CLOSE',cdfid);
+
+
+function [len, status, value] = is_dimension_cartesian(fname,dimname)
+
+status   = 0;
+len      = 0;
+value    = [];
+Cvarinfo = nc_getvarinfo(fname, dimname);
+
+for j = 1:length(Cvarinfo.Attribute);
+   attribute = Cvarinfo.Attribute(j);
+   switch lower(attribute.Name)
+      case{'cartesian_axis'}
+         status = 1;
+         len    = Cvarinfo.Size;
+         value  = attribute.Value;
+         break
+      otherwise
+   end
+end
 

@@ -14,7 +14,7 @@
 % plot_ens_err_spread
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -24,14 +24,14 @@
 % $Revision$
 % $Date$
 
-if (exist('truth_file') ~= 1)
+if (exist('truth_file','var') ~= 1)
    truth_file = input('Input name of True State file; <cr> for True_State.nc\n','s');
    if isempty(truth_file)
       truth_file = 'True_State.nc';
    end
 end
 
-if (exist('diagn_file') ~=1)
+if (exist('diagn_file','var') ~=1)
    disp('Input name of prior or posterior diagnostics file;')
    diagn_file = input('<cr> for Prior_Diag.nc\n','s');
    if isempty(diagn_file)
@@ -57,8 +57,8 @@ switch lower(vars.model)
       %               'var'       , varid.var, ...
       %               'var_inds'  , varid.var_inds);
 
-      disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
-      disp(sprintf('Using Variable %s IDs %s', pinfo.var,num2str(pinfo.var_inds)))
+      fprintf('Comparing %s and \n          %s\n', pinfo.truth_file, pinfo.diagn_file)
+      fprintf('Using Variable %s IDs %s\n', pinfo.var,num2str(pinfo.var_inds))
       clear varid
 
    case 'fms_bgrid'
@@ -87,10 +87,11 @@ switch lower(vars.model)
 
    otherwise
 
-      error(sprintf('model %s not implemented yet', vars.model))
+      error('model %s not implemented yet', vars.model)
 
 end
 
+pinfo
 PlotEnsErrSpread( pinfo )
 
 clear vars

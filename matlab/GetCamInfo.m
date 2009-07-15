@@ -8,7 +8,7 @@ function pinfo = GetCamInfo(pstruct,routine);
 % routine   name of subsequent plot routine.
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -18,30 +18,28 @@ function pinfo = GetCamInfo(pstruct,routine);
 % $Revision$
 % $Date$
 
-if (     exist(pstruct.truth_file) )
+if (     exist(pstruct.truth_file,'file') )
        fname = pstruct.truth_file;
-elseif ( exist(pstruct.diagn_file) )
+elseif ( exist(pstruct.diagn_file,'file') )
        fname = pstruct.diagn_file;
-elseif ( exist(pstruct.prior_file) )
+elseif ( exist(pstruct.prior_file,'file') )
        fname = pstruct.prior_file;
-elseif ( exist(pstruct.posterior_file) )
+elseif ( exist(pstruct.posterior_file,'file') )
        fname = pstruct.posterior_file;
 end
 
-ft         = netcdf(fname);
-model      = ft.model(:);
-close(ft)
+model      = nc_attget(fname,nc_global,'model');
 
 if strcmp(lower(model),'cam') ~= 1
    error('Not so fast, this is not a cam model.')
 end
 
-copy   = getnc(fname,'copy');
-times  = getnc(fname,'time');
-ilevel = getnc(fname,'ilev');    % interfaces
-levels = getnc(fname, 'lev');    % midpoints
-lon    = getnc(fname, 'lon');
-lat    = getnc(fname, 'lat');
+copy   = nc_varget(fname,'copy');
+times  = nc_varget(fname,'time');
+ilevel = nc_varget(fname,'ilev');    % interfaces
+levels = nc_varget(fname, 'lev');    % midpoints
+lon    = nc_varget(fname, 'lon');
+lat    = nc_varget(fname, 'lat');
 
 % A more robust way would be to use the netcdf low-level ops:
 % bob = var(f);     % bob is a cell array of ncvars
@@ -192,8 +190,8 @@ str = sprintf(' %s ',prognostic_vars{1});
 for i = 2:length(prognostic_vars),
    str = sprintf(' %s %s ',str,prognostic_vars{i});
 end
-disp(sprintf('Default variable is ''%s'', if this is OK, <cr>;',pgvar))  
-disp(sprintf('If not, please enter one of: %s',str))
+fprintf('Default variable is ''%s'', if this is OK, <cr>;\n',pgvar)  
+fprintf('If not, please enter one of: %s\n',str)
 varstring = input('(no syntax required)\n','s');
 
 if ~isempty(varstring), pgvar = strtrim(varstring); end 
@@ -206,9 +204,9 @@ function [time, timeind] = GetTime(pgvar, times, deftime)
 %----------------------------------------------------------------------
 if (nargin == 3), time = deftime; else time = mean(times); end
 
-disp(sprintf('Default time is %f, if this is OK, <cr>;',time))
-disp(sprintf('If not, enter a time between %.4f and %.4f, we use the closest.', ...
-                         min(times),max(times)))
+fprintf('Default time is %f, if this is OK, <cr>;\n',time)
+fprintf('If not, enter a time between %.4f and %.4f, we use the closest.\n', ...
+                         min(times),max(times))
 varstring = input('(no syntax required)\n','s');
 
 if ~isempty(varstring), time  = str2num(varstring); end 
@@ -230,9 +228,9 @@ if strcmp(lower(pgvar),'ps') ==1
    level  = 1;
    lvlind = 1;
 else
-   disp(sprintf('Default level (index) is  %d, if this is OK, <cr>;',lvlind))
-   disp(sprintf('If not, enter a level between %d and %d, inclusive ...', ...
-                         1,length(levels)))
+   fprintf('Default level (index) is  %d, if this is OK, <cr>;\n',lvlind)
+   fprintf('If not, enter a level between %d and %d, inclusive ...\n', ...
+                         1,length(levels))
    varstring = input('we''ll use the closest (no syntax required)\n','s');
 
    if ~isempty(varstring), lvlind = str2num(varstring); end 
@@ -249,9 +247,9 @@ function [lon, lonind] = GetLongitude(pgvar, lons, deflon)
 %----------------------------------------------------------------------
 if (nargin == 3), lon = deflon; else lon = 255.0; end
 
-disp(sprintf('Default longitude is %f, if this is OK, <cr>;',lon))  
-disp(sprintf('If not, enter a longitude between %.2f and %.2f, we use the closest.', ...
-                         min(lons),max(lons)))
+fprintf('Default longitude is %f, if this is OK, <cr>;\n',lon)  
+fprintf('If not, enter a longitude between %.2f and %.2f, we use the closest.\n', ...
+                         min(lons),max(lons))
 varstring = input('(no syntax required)\n','s');
 
 if ~isempty(varstring), lon  = str2num(varstring); end 
@@ -267,9 +265,9 @@ function [lat, latind] = GetLatitude(pgvar, lats, deflat)
 %----------------------------------------------------------------------
 if (nargin == 3), lat = deflat; else lat = 40.0; end
 
-disp(sprintf('Default latitude is %f, if this is OK, <cr>;',lat))
-disp(sprintf('If not, enter a latitude between %.2f and %.2f, we use the closest.', ...
-                         min(lats),max(lats)))
+fprintf('Default latitude is %f, if this is OK, <cr>;\n',lat)
+fprintf('If not, enter a latitude between %.2f and %.2f, we use the closest.\n', ...
+                         min(lats),max(lats))
 varstring = input('(no syntax required)\n','s');
 
 if ~isempty(varstring), lat = str2num(varstring); end 

@@ -12,7 +12,7 @@ function x = ChecknetCDFuse(fname)
 %
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -22,15 +22,17 @@ function x = ChecknetCDFuse(fname)
 % $Revision$
 % $Date$
 
+if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
+
 fid = fopen(fname,'wt');
-fprintf(fid,'%s \n',datestr(now));
-fprintf(fid,'%s \n',pwd);
-if (exist('getnc') ~= 2)
-   fprintf(fid,'%s \n','No matlab netcdf operators, not using matlab.');
+fprintf(fid,'%s\n',datestr(now));
+fprintf(fid,'%s\n',pwd);
+if (exist('nc_varget') ~= 2)
+   fprintf(fid,'%s \n','No matlab snctools, not using matlab.');
    fprintf(fid,'%d \n',-1);
    x = -1;
 else
-   fprintf(fid,'%s \n','Found matlab netcdf operators, using matlab.');
+   fprintf(fid,'%s \n','Found matlab snctools, using matlab.');
    fprintf(fid,'%d \n',0);
    x = 0;
 end

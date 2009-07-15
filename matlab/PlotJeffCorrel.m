@@ -26,7 +26,7 @@ function PlotJeffCorrel( pinfo )
 % PlotVarVarCorrel( pinfo )
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -36,17 +36,14 @@ function PlotJeffCorrel( pinfo )
 % $Revision$
 % $Date$
 
-if (exist(pinfo.fname) ~= 2), error(sprintf('%s does not exist.',pinfo.fname)), end
+if (exist(pinfo.fname) ~= 2), error('%s does not exist.',pinfo.fname), end
 
 % Get some file-specific information.
-f = netcdf(pinfo.fname,'nowrite');
-model      = f.model(:);
-timeunits  = f{'time'}.units(:);
-var_atts   = dim(f{pinfo.base_var}); % cell array of dimensions for the var
-num_times  = length(var_atts{1});    % determine # of output times
-num_copies = length(var_atts{2});    % determine # of ensemble members
-num_vars   = length(var_atts{3});    % determine # of state variables (of this type)
-close(f);
+
+model      = nc_attget(pinfo.fname, nc_global, 'model');
+timeunits  = nc_attget(pinfo.fname, 'time',    'units');
+num_times  = dim_length(pinfo.fname,'time');
+num_copies = dim_length(pinfo.fname,'copy');
 
 switch lower(model)
 
@@ -61,7 +58,7 @@ switch lower(model)
       nmembers = size(comp_mem,2);
 
       correl = jeff_correl(base_mem, pinfo.base_tmeind, comp_mem);
-      times  = getnc(pinfo.fname,'time');
+      times  = nc_varget(pinfo.fname,'time');
 
       subplot(2,1,1)
          PlotLocator(pinfo)
@@ -90,27 +87,28 @@ switch lower(model)
 
    otherwise
 
-      disp(sprintf('PlotJeffCorrel: num_vars is %d',num_vars))
+      num_vars   = dim_length(pinfo.fname,'StateVariable');
+      fprintf('PlotJeffCorrel: num_vars is %d\n',num_vars)
       
       % The Base Variable Index must be a valid state variable
       
       if ( pinfo.base_var_index > num_vars )
-         disp( sprintf('%s only has %d state variables', pinfo.fname, num_vars))
-         error(sprintf('you wanted variable # %d ', pinfo.base_var_index))
+         fprintf('%s only has %d state variables\n', pinfo.fname, num_vars)
+         error('you wanted variable # %d ', pinfo.base_var_index)
       end
       
       % The Time must be within range also.
       
       if ( pinfo.base_time > num_times )
-         disp( sprintf('%s only has %d output times', pinfo.fname, num_times))
-         error(sprintf('you wanted time # %d ', pinfo.base_time))
+         fprintf('%s only has %d output times\n', pinfo.fname, num_times)
+         error('you wanted time # %d ', pinfo.base_time)
       end
       
       % The State Variable Index must also be a valid state variable
       
       if ( pinfo.base_var_index > num_vars )
-         disp( sprintf('%s only has %d state variables', pinfo.fname, num_vars))
-         error(sprintf('you wanted variable # %d ', pinfo.base_var_index))
+         fprintf('%s only has %d state variables\n', pinfo.fname, num_vars)
+         error('you wanted variable # %d ', pinfo.base_var_index)
       end
       
       % Get 'standard' ensemble series 
@@ -145,6 +143,14 @@ end
 % Subfunctions
 %======================================================================
 
+
+
+function x = dim_length(fname,dimname)
+bob = nc_getdiminfo(fname,dimname);
+x   = bob.Length;
+
+
+
 function var = GetEns( fname, var, lvlind, latind, lonind)
 % Gets a time-series of all copies of a prognostic variable 
 % at a particular 3D location (level, lat, lon).
@@ -152,34 +158,29 @@ function var = GetEns( fname, var, lvlind, latind, lonind)
 % is the hard part.
 
 % find which are actual ensemble members
-metadata    = getnc(fname,'CopyMetaData');           % get all the metadata
+metadata    = nc_varget(fname,'CopyMetaData');       % get all the metadata
 copyindices = strmatch('ensemble member',metadata);  % find all 'member's
 
-% if need to clip by time, add these to arg list
-tstart = -1;
-tend   = -1;
-
 if ( isempty(copyindices) )
-   disp(sprintf('%s has no valid ensemble members',fname))
+   fprintf('%s has no valid ensemble members\n',fname)
    disp('To be a valid ensemble member, the CopyMetaData for the member')
    disp('must start with the character string ''ensemble member''')
    disp('None of them in do in your file.')
-   disp(sprintf('%s claims to have %d copies',fname, num_copies))
+   fprintf('%s claims to have %d copies\n',fname, num_copies)
    error('netcdf file has no ensemble members.')
 end
 ens_num     = length(copyindices);
 
 % Get all ensemble members, just return desired ones.
-switch lower(var)
-   case {'ps','ssh'}
-      corner = [tstart -1        latind lonind];
-      endpnt = [tend   -1        latind lonind];
-   otherwise
-      corner = [tstart -1 lvlind latind lonind];
-      endpnt = [tend   -1 lvlind latind lonind];
-end
-bob = getnc(fname, var, corner, endpnt); % 'bob' is only 2D 
+myinfo.diagn_file = fname;
+myinfo.levelindex = lvlind;
+myinfo.latindex   = latind;
+myinfo.lonindex   = lonind;
+[start, count]    = GetNCindices(myinfo,'diagn',var);
+
+bob = nc_varget(fname, var, start, count); % 'bob' is only 2D 
 var = bob(:,copyindices);
+
 
 
 function PlotLocator(pinfo)

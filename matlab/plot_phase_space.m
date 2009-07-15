@@ -1,4 +1,4 @@
-% DART : Plots a 3D trajectory of (3 state variables of) a single ensemble member.
+% plot_phase_space : Plots a 3D trajectory of (3 state variables of) a single ensemble member.
 %
 % Because it IS possible to overlay plots, the onus is on YOU to make
 % sure the current figure is "cleared" before you plot the first
@@ -27,7 +27,7 @@
 %
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -37,7 +37,7 @@
 % $Revision$
 % $Date$
 
-if (exist('fname') ~=1)
+if (exist('fname','var') ~=1)
    fname = input('Input name of netCDF file; <cr> for True_State.nc  ','s');
    if isempty(fname)
       fname = 'True_State.nc';
@@ -48,7 +48,9 @@ else
    if ~isempty(s1), fname = s1; end
 end 
 
-pinfo.fname = strtrim(fname)
+if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
+
+pinfo.fname = strtrim(fname);
 
 vars  = CheckModel(fname);   % also gets default values for this model.
 
@@ -86,23 +88,20 @@ switch lower(vars.model)
       end 
 
       pinfo = struct('fname'   , fname       , ...
+                     'model'   , vars.model  , ...
                      'var1name', vars.def_var, 'var1ind', var1, ...
                      'var2name', vars.def_var, 'var2ind', var2, ...
                      'var3name', vars.def_var, 'var3ind', var3, ...
                      'ens_mem' , ens_mem     , ...
                      'ltype'   , ltype   );
 
-  %   disp(sprintf('Using file %s, ensemble member %s.',pinfo.fname,pinfo.ens_mem))
-  %   disp(sprintf('Plotting %s variables %d %d %d with line type %s.', ...
-  %                 vars.def_var, pinfo.var1ind, pinfo.var2ind, pinfo.var3ind, pinfo.ltype))
-
    case {'lorenz_96_2scale'}
 
       if (ishold), clear var1 var2 var3 ens_mem ltype; end
 
-      disp(sprintf('Your choice of variables is ''X'' or ''Y'''))
-      disp(sprintf('''X'' can range from %d to %d', vars.min_X_var, vars.max_X_var))
-      disp(sprintf('''Y'' can range from %d to %d', vars.min_Y_var, vars.max_Y_var))
+      fprintf('Your choice of variables is ''X'' or ''Y''\n')
+      fprintf('''X'' can range from %d to %d\n', vars.min_X_var, vars.max_X_var)
+      fprintf('''Y'' can range from %d to %d\n', vars.min_Y_var, vars.max_Y_var)
 
       % really should utilize the defaults ... but its getting late.
       inputstring = input('Input variable and index for axis 1 i.e.  X 5\n','s');
@@ -128,6 +127,7 @@ switch lower(vars.model)
       end 
 
       pinfo = struct('fname'   , fname    , ...
+                     'model'   , vars.model  , ...
                      'var1name', var1name , 'var1ind', var1, ...
                      'var2name', var2name , 'var2ind', var2, ...
                      'var3name', var3name , 'var3ind', var3, ...
@@ -140,8 +140,8 @@ switch lower(vars.model)
 
       disp('Your choice of variables are:')
       disp(vars.vars)
-      disp(sprintf('the indices (locations) can range from %d to %d', ...
-           vars.min_state_var, vars.max_state_var))
+      fprintf('the indices (locations) can range from %d to %d\n', ...
+           vars.min_state_var, vars.max_state_var)
 
       str1 = sprintf('Input variable and index for axis 1 <cr> for %s %d\n', ...
                       vars.def_var,vars.def_state_vars(1));
@@ -188,6 +188,7 @@ switch lower(vars.model)
       end 
 
       pinfo = struct('fname'   , fname    , ...
+                     'model'   , vars.model  , ...
                      'var1name', var1name , 'var1ind', var1, ...
                      'var2name', var2name , 'var2ind', var2, ...
                      'var3name', var3name , 'var3ind', var3, ...
@@ -237,6 +238,7 @@ switch lower(vars.model)
       end 
 
       pinfo = struct('fname'   , fname       , ...
+                     'model'   , vars.model  , ...
                      'var1name', vars.def_var, 'var1ind', var1, ...
                      'var2name', vars.def_var, 'var2ind', var2, ...
                      'ens_mem' , ens_mem     , ...
@@ -244,7 +246,7 @@ switch lower(vars.model)
 
    otherwise
 
-      error(sprintf('model %s not implemented yet', vars.model))
+      error('model %s not implemented yet', vars.model)
 
 end
 

@@ -21,7 +21,7 @@ function a = ReadBinaryObsSeq(fname,machineformat)
 %                           ordering and 64 bit long data type.
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -37,6 +37,8 @@ if (nargin <= 1 )
 elseif (nargin < 2 )
    fname = 'obs_seq.final';
 end
+
+if (exist(fname,'file') ~= 2), error('%s does not exist.',fname); end
 
 fid = fopen(fname,'rb',machineformat);
 
@@ -110,10 +112,10 @@ num_obs      = fread(fid,1,'int32');
 max_num_obs  = fread(fid,1,'int32');
 bogus2       = fread(fid,1,'int32');
 
-disp(sprintf('num_copies  is %d',num_copies))
-disp(sprintf('num_qc      is %d',num_qc))
-disp(sprintf('num_obs     is %d',num_obs))
-disp(sprintf('max_num_obs is %d',max_num_obs))
+fprintf('num_copies  is %d\n',num_copies)
+fprintf('num_qc      is %d\n',num_qc)
+fprintf('num_obs     is %d\n',num_obs)
+fprintf('max_num_obs is %d\n',max_num_obs)
 
 % Read the metadata
 for i = 1:num_copies,
@@ -125,7 +127,7 @@ for i = 1:num_copies,
                     i,reclen,recend);
       error(str)
    else
-      disp(sprintf('%s%s',metadata{i},'[END]'))
+      fprintf('%s%s\n',metadata{i},'[END]')
    end
 end
 
@@ -141,7 +143,7 @@ for i = 1:num_qc,
                     i,reclen,recend);
       error(str)
    else
-      disp(sprintf('%s%s',qcdata{i},'[END]'))
+      fprintf('%s%s\n',qcdata{i},'[END]')
    end
 end
 
@@ -151,7 +153,7 @@ first_time = fread(fid,1,'int32');    % the indices of the adjacent obs
  last_time = fread(fid,1,'int32');    % the indices of the adjacent obs
 bogus2 = fread(fid,1,'int32');
 
-disp(sprintf('first_time = %d  last_time = %d',first_time, last_time))
+fprintf('first_time = %d  last_time = %d\n',first_time, last_time)
 
 a.num_copies  = num_copies;
 a.num_qc      = num_qc;
@@ -212,8 +214,8 @@ for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
    bogus2   = fread(fid,1,'int32');
 
    if ( mod(i,1000) == 0 ) 
-      disp(sprintf('obs %d prev_time = %d next_time = %d cov_group = %d', ...
-                    i,     prev_time(i),  next_time(i),  cov_group(i)))
+      fprintf('obs %d prev_time = %d next_time = %d cov_group = %d\n', ...
+                    i,     prev_time(i),  next_time(i),  cov_group(i))
    end
 
    % Read the observation definition obs_def_mod:write_obs_def
@@ -260,7 +262,7 @@ for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
             localization_type  = fread(fid,1,'int32');   % integer
             bogus2  = fread(fid,1,'int32');
             if (bogus1 ~= bogus2) 
-               error(sprintf('RAW_STATE_1D_INTEGRAL: off track at %d %d',i,i1d))
+               error('RAW_STATE_1D_INTEGRAL: off track at %d %d',i,i1d)
             end
          end
 
@@ -340,12 +342,12 @@ elseif ( reclen == 28 )                     % threed_sphere
       locs(1:3) = fread(fid,[1 3],'float64');
       which_vert = fread(fid,1,'int32');
 else
-      error(sprintf('Unknown record size for read_loc - got %d',reclen))
+      error('Unknown record size for read_loc - got %d',reclen)
 end
 recend  = fread(fid,1,'int32');
 
 if ( reclen ~= recend ) 
-      error(sprintf('off track at %d read_location %d ~= %d',i,reclen,recend))
+      error('off track at %d read_location %d ~= %d',i,reclen,recend)
 end
 
 
@@ -359,7 +361,7 @@ locs    = fread(fid,3,'float64');
 recend  = fread(fid,1,'int32');
 
 if ( reclen ~= recend ) 
-      error(sprintf('off track at %d read_orientation %d ~= %d',i,reclen,recend))
+      error('off track at %d read_orientation %d ~= %d',i,reclen,recend)
 end
 
 

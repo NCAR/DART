@@ -11,7 +11,7 @@ function a = ReadASCIIObsSeq(fname)
 % The resulting sequence "a.obs" is NOT guaranteed to be in a temporally ascending order.
 
 % Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
+% Copyright 2004-2009, Data Assimilation Research Section
 % University Corporation for Atmospheric Research
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
@@ -24,6 +24,8 @@ function a = ReadASCIIObsSeq(fname)
 if (nargin < 1 )
    fname = 'obs_seq.final';
 end
+
+if (exist(fname,'file') ~= 2), error('%s does not exist.',fname); end
 
 fid = fopen(fname,'rt');
 
