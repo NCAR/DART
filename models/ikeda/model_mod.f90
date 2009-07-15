@@ -23,7 +23,7 @@ module model_mod
 !   an adaptation of the lorenz_63 model_mod.f90 for a new simple system.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r8
+use        types_mod, only : r8, MISSING_R8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type,      get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, set_location, &
@@ -246,6 +246,8 @@ integer,            intent(out) :: istatus
 
 ! Default for successful return
 istatus = 0
+
+obs_val = MISSING_R8 ! Just to satisfy the INTENT(OUT)
 
 end subroutine model_interpolate
 
@@ -699,6 +701,8 @@ real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
 interf_provided = .false.
+
+pert_state = MISSING_R8 ! Just to satisfy the INTENT(OUT)
 
 end subroutine pert_model_state
 

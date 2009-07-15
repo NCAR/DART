@@ -17,7 +17,7 @@ module model_mod
 
 !---------------- m o d u l e   i n f o r m a t i o n ------------------
 
-use        types_mod, only : r8
+use        types_mod, only : r8, MISSING_R8
 use time_manager_mod, only : time_type, set_time
 use    utilities_mod, only : file_exist, open_file, close_file, nc_check, &
                              register_module, error_handler, E_ERR, E_MSG
@@ -786,6 +786,7 @@ real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
 interf_provided = .false.
+pert_state = MISSING_R8 ! just to satisfy INTENT(OUT)
 
 end subroutine pert_model_state
 

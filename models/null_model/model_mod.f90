@@ -17,7 +17,7 @@ module model_mod
 ! controlled by modifying the code comments in adv_1step and comp_dt in your
 ! sandbox. 
 
-use        types_mod, only : r8
+use        types_mod, only : r8, MISSING_R8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, get_dist, set_location, get_location, &
                              LocationDims, LocationName, LocationLName, &
@@ -610,6 +610,8 @@ real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
 interf_provided = .false.
+
+pert_state = MISSING_R8 ! Just to satisfy the INTENT(OUT)
 
 end subroutine pert_model_state
 

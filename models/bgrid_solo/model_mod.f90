@@ -68,7 +68,7 @@ use          location_mod, only: location_type, get_location, set_location, &
 
 
 use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
-use             types_mod, only: r8, pi
+use             types_mod, only: r8, pi, MISSING_R8
 ! combined duplicate use lines for utilities_mod; the intel 8.x compiler
 ! was unhappy about the repetition.  nsc 11apr06
 use        utilities_mod, only : open_file, error_handler, E_ERR, E_MSG, &
@@ -2039,9 +2039,8 @@ real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
-! Some compilers require an assignment to intent(out) arguments
-!!!pert_state = 0.0
 interf_provided = .false.
+pert_state = MISSING_R8 ! Just to satisfy INTENT(OUT)
 
 end subroutine pert_model_state
 
