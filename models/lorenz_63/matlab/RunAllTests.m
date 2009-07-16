@@ -8,8 +8,7 @@ function RunAllTests(dummy)
 % Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
 % <next few lines under version control, do not edit>
-% $URL:
-% http://subversion.ucar.edu/DAReS/DART/trunk/matlab/get_state_copy.m $
+% $URL$
 % $Id$
 % $Revision$
 % $Date$
