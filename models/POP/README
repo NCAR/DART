@@ -5,3 +5,16 @@ Do not use at your own risk ... DO NOT USE!!!
 When this model is supported, this file will reflect that.
 
 Tim
+
+(this should stay in the README.  at some point we might
+want to move the test program to a separate test directory,
+in which case this file needs to be updated to reflect that.)
+
+There is a test program in the work directory which validates
+the dipole interpolation.  It requires some data files
+(about 16 Mb in size) which are not checked into subversion,
+but can be found and downloaded from this web location:
+
+http://www.image.ucar.edu/pub/DART/POP/
+
+nancy
