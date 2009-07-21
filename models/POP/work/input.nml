@@ -20,12 +20,12 @@
 &filter_nml
    async                    = 2,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 = 20,
-   start_from_restart       = .true.,
+   ens_size                 = 8,
+   start_from_restart       = .false.,
    output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.in",
+   obs_sequence_in_name     = "obs_seq.perfect",
    obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ics",
+   restart_in_file_name     = "perfect_restart",
    restart_out_file_name    = "filter_restart",
    init_time_days           = -1,
    init_time_seconds        = -1,
@@ -143,6 +143,15 @@
 &assim_model_nml
    write_binary_restart_files = .true.  /
 
+   #horiz_grid_input_file        = 'horiz_grid.x1.nc',
+   #topography_input_file        = 'topography.x1.nc',
+   #vert_grid_input_file         = 'vert_grid.x1',
+
+
+   #horiz_grid_input_file        = '../utils/pop.hs.latlon.19000712.nc',
+   #topography_input_file        = '../utils/pop.hs.latlon.19000712.nc',
+   #vert_grid_input_file         = '../utils/vert_grid.latlon',
+
 &model_nml
    calendar                     = 'noleap', 
    assimilation_period_days     = 1, 
@@ -156,9 +165,12 @@
    debug                        = 0,  
  /
 
+   #pop_to_dart_restart_file = 'pop.r.x1A.19000102',
+   #pop_to_dart_restart_file = 'pop.r.nc',
+   #pop_to_dart_restart_file = '../utils/pop.r.latlon.19000712',
 &pop_to_dart_nml
    pop_to_dart_restart_file = 'pop.r.nc',
-   pop_to_dart_output_file  = 'assim_model_state_ud',
+   pop_to_dart_output_file  = 'perfect_ics',
  /
 
 &dart_to_pop_nml
