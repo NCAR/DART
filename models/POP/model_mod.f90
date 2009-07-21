@@ -56,7 +56,8 @@ public :: get_model_size,         &
           get_close_maxdist_init, &
           get_close_obs_init,     &
           get_close_obs,          &
-          ens_mean_for_model
+          ens_mean_for_model,     &
+          test_interpolation
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
@@ -181,10 +182,14 @@ integer :: start_index(nfields)
 ! Grid parameters - the values will be read from a
 ! standard POP namelist and filled in here.
 
+! nx, ny and nz are the size of the dipole (or irregular) grids. 
 integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
 
 ! locations of cell centers (C) and edges (G) for each axis.
 real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
+
+! These arrays store the longitude and latitude of the lower left corner of
+! each of the dipole u quadrilaterals and t quadrilaterals.
 real(r8), allocatable :: ULAT(:,:), ULON(:,:), TLAT(:,:), TLON(:,:)
 
 
@@ -216,6 +221,47 @@ INTERFACE vector_to_prog_var
       MODULE PROCEDURE vector_to_3d_prog_var
 END INTERFACE
 
+
+!------------------------------------------------
+
+! The regular grid used for dipole interpolation divides the sphere into
+! a set of regularly spaced lon-lat boxes. The number of boxes in
+! longitude and latitude are set by num_reg_x and num_reg_y. Making the
+! number of regular boxes smaller decreases the computation required for
+! doing each interpolation but increases the static storage requirements
+! and the initialization computation (which seems to be pretty small).
+integer, parameter :: num_reg_x = 90, num_reg_y = 90
+
+! The max_reg_list_num controls the size of temporary storage used for
+! initializing the regular grid. Four arrays
+! of size num_reg_x*num_reg_y*max_reg_list_num are needed. The initialization
+! fails and returns an error if max_reg_list_num is too small. A value of
+! 30 is sufficient for the x3 POP grid with 180 regular lon and lat boxes 
+! and a value of ??? is sufficient for for the x1 grid.
+integer, parameter :: max_reg_list_num = 30
+
+! The dipole interpolation keeps a list of how many and which dipole quads
+! overlap each regular lon-lat box. The number for the u and t grids are stored
+! in u_dipole_num and t_dipole_num. The allocatable arrays u_dipole_lon(lat)_list and
+! t_dipole_lon(lat)_list list the longitude and latitude indices for the overlapping
+! dipole quads. The entry in u_dipole_start and t_dipole_start for a given 
+! regular lon-lat box indicates where the list of dipole quads begins
+! in the u_dipole_lon(lat)_list and t_dipole_lon(lat)_list arrays.
+integer :: u_dipole_start(num_reg_x, num_reg_y)
+integer :: u_dipole_num  (num_reg_x, num_reg_y) = 0
+integer :: t_dipole_start(num_reg_x, num_reg_y)
+integer :: t_dipole_num  (num_reg_x, num_reg_y) = 0
+integer, allocatable :: u_dipole_lon_list(:), t_dipole_lon_list(:)
+integer, allocatable :: u_dipole_lat_list(:), t_dipole_lat_list(:)
+
+! Need to check for pole quads: for now we are not interpolating in them
+integer :: pole_x, t_pole_y, u_pole_y
+
+
+
+! Have a global variable saying whether this is dipole or regular lon-lat grid
+! This should be initialized static_init_model. Code to do this is below.
+logical :: dipole_grid
 
 contains
 
@@ -337,7 +383,352 @@ if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 if (do_output()) write(*,*) 'model_size = ', model_size
 
+! Initialize the interpolation routines
+call init_interp()
+
 end subroutine static_init_model
+
+
+
+!------------------------------------------------------------
+
+subroutine init_interp()
+
+! Initializes data structures needed for POP interpolation for
+! either dipole or irregular grid.
+! This should be called at static_init_model time to avoid 
+! having all this temporary storage in the middle of a run.
+
+integer :: i
+
+! Determine whether this is a irregular lon-lat grid or a dipole.
+! Do this by seeing if the lons have the same values at both
+! the first and last latitude row; this is not the case for dipole. 
+
+dipole_grid = .false.
+do i = 1, nx
+   if(ulon(i, 1) /= ulon(i, ny)) then
+      dipole_grid = .true.
+      write(*, *) 'dipole grid is ', dipole_grid
+      call init_dipole_interp()
+      return
+   endif
+end do
+
+end subroutine init_interp
+
+
+!------------------------------------------------------------
+
+
+subroutine init_dipole_interp()
+
+! Build the data structure for interpolation for a dipole grid.
+
+! Need a temporary data structure to build this.
+! These arrays keep a list of the x and y indices of dipole quads 
+! that potentially overlap the regular boxes. Need one for the u 
+! and one for the t grid.
+integer :: ureg_list_lon(num_reg_x, num_reg_y, max_reg_list_num)
+integer :: ureg_list_lat(num_reg_x, num_reg_y, max_reg_list_num)
+integer :: treg_list_lon(num_reg_x, num_reg_y, max_reg_list_num)
+integer :: treg_list_lat(num_reg_x, num_reg_y, max_reg_list_num)
+
+
+real(r8) :: u_c_lons(4), u_c_lats(4), t_c_lons(4), t_c_lats(4), pole_row_lon
+integer  :: i, j, k, pindex
+integer  :: reg_lon_ind(2), reg_lat_ind(2), u_total, t_total, u_index, t_index
+logical  :: is_pole
+
+! Begin by finding the quad that contains the pole for the dipole t_grid. To do this
+! locate the u quad with the pole on its right boundary. This is on the row 
+! that is opposite the shifted pole and exactly follows a lon circle.
+pole_x = nx / 2;
+! Search for the row at which the longitude flips over the pole
+pole_row_lon = ulon(pole_x, 1);
+do i = 1, ny
+   pindex = i
+   if(ulon(pole_x, i) /= pole_row_lon) exit
+enddo
+
+! Pole boxes for u have indices pole_x or pole_x-1 and index - 1;
+! (it's right before the flip).
+u_pole_y = pindex - 1;
+
+! Locate the T dipole quad that contains the pole.
+! We know it is in either the same lat quad as the u pole edge or one higher.
+! Figure out if the pole is more or less than halfway along
+! the u quad edge to find the right one.
+if(ulat(pole_x, u_pole_y) > ulat(pole_x, u_pole_y + 1)) then
+   t_pole_y = u_pole_y;
+else
+   t_pole_y = u_pole_y + 1;
+endif
+
+! Loop through each of the dipole grid quads 
+do i = 1, nx
+   ! There's no wraparound in y, one box less than grid boundaries
+   do j = 1, ny - 1
+      ! Is this the pole quad for the T grid?
+      is_pole = (i == pole_x .and. j == t_pole_y)
+      
+      ! Set up an array of the lons and lats for the corners of these u and t quads
+      call get_quad_corners(ulon, i, j, u_c_lons)
+      call get_quad_corners(ulat, i, j, u_c_lats)
+      call get_quad_corners(tlon, i, j, t_c_lons)
+      call get_quad_corners(tlat, i, j, t_c_lats)
+
+      ! Get list of regular boxes that cover this u dipole quad
+      ! The false indicates that for the u grid there's nothing special about pole
+      call reg_box_overlap(u_c_lons, u_c_lats, .false., reg_lon_ind, reg_lat_ind)         
+
+      ! Update the temporary data structures for the u quad 
+      call update_reg_list(u_dipole_num, ureg_list_lon, &
+         ureg_list_lat, reg_lon_ind, reg_lat_ind, i, j)
+
+      ! Repeat for t dipole quads
+      call reg_box_overlap(t_c_lons, t_c_lats, is_pole, reg_lon_ind, reg_lat_ind)         
+      call update_reg_list(t_dipole_num, treg_list_lon, &
+         treg_list_lat, reg_lon_ind, reg_lat_ind, i, j)
+   enddo
+enddo
+
+! Invert the temporary data structure. The total number of entries will be the sum 
+! of the number of dipole cells for each regular cell. 
+u_total = sum(u_dipole_num)
+t_total = sum(t_dipole_num)
+
+! Allocate storage for the final structures in module storage
+allocate(u_dipole_lon_list(u_total), u_dipole_lat_list(u_total))
+allocate(t_dipole_lon_list(t_total), t_dipole_lat_list(t_total))
+
+! Fill up the long list by traversing the temporary structure. Need indices 
+! to keep track of where to put the next entry.
+u_index = 1
+t_index = 1
+
+! Loop through each regular grid box
+do i = 1, num_reg_x
+   do j = 1, num_reg_y
+
+      ! The list for this regular box starts at the current indices.
+      u_dipole_start(i, j) = u_index
+      t_dipole_start(i, j) = t_index
+
+      ! Copy all the close dipole quads for regular u box(i, j)
+      do k = 1, u_dipole_num(i, j)
+         u_dipole_lon_list(u_index) = ureg_list_lon(i, j, k) 
+         u_dipole_lat_list(u_index) = ureg_list_lat(i, j, k) 
+         u_index = u_index + 1
+      enddo
+      
+      ! Copy all the close dipoles for regular t box (i, j)
+      do k = 1, t_dipole_num(i, j)
+         t_dipole_lon_list(t_index) = treg_list_lon(i, j, k) 
+         t_dipole_lat_list(t_index) = treg_list_lat(i, j, k) 
+         t_index = t_index + 1
+      enddo
+
+   enddo
+enddo
+
+! Confirm that the indices come out okay as debug
+if(u_index /= u_total + 1) then
+   msgstring = "Storage indices did not balance for U grid: : contact DART developers"
+   call error_handler(E_ERR, "init_dipole_interp", msgstring, source, revision, revdate)
+endif
+if(t_index /= t_total + 1) then
+   msgstring = "Storage indices did not balance for T grid: : contact DART developers"
+   call error_handler(E_ERR, "init_dipole_interp", msgstring, source, revision, revdate)
+endif
+
+end subroutine init_dipole_interp
+
+!------------------------------------------------------------
+
+subroutine get_reg_box_indices(lon, lat, x_ind, y_ind)
+
+! Given a longitude and latitude in degrees returns the index of the regular
+! lon-lat box that contains the point.
+
+real(r8), intent(in)  :: lon, lat
+integer,  intent(out) :: x_ind, y_ind
+
+call get_reg_lon_box(lon, x_ind)
+call get_reg_lat_box(lat, y_ind)
+
+end subroutine get_reg_box_indices
+
+!------------------------------------------------------------
+
+subroutine get_reg_lon_box(lon, x_ind)
+
+! Determine which regular longitude box a longitude is in.
+
+real(r8), intent(in)  :: lon
+integer,  intent(out) :: x_ind
+
+x_ind = int(num_reg_x * lon / 360.0_r8) + 1
+
+! Watch out for exactly at top; assume all lats and lons in legal range
+if(lon == 360.0_r8) x_ind = num_reg_x
+
+end subroutine get_reg_lon_box
+
+!------------------------------------------------------------
+
+subroutine get_reg_lat_box(lat, y_ind)
+
+! Determine which regular latitude box a latitude is in.
+
+real(r8), intent(in)  :: lat
+integer,  intent(out) :: y_ind
+
+y_ind = int(num_reg_y * (lat + 90.0_r8) / 180.0_r8) + 1
+
+! Watch out for exactly at top; assume all lats and lons in legal range
+if(lat == 90.0_r8)  y_ind = num_reg_y
+
+end subroutine get_reg_lat_box
+
+!------------------------------------------------------------
+
+subroutine reg_box_overlap(x_corners, y_corners, is_pole, reg_lon_ind, reg_lat_ind)
+
+real(r8), intent(in)  :: x_corners(4), y_corners(4)
+logical,  intent(in)  :: is_pole
+integer,  intent(out) :: reg_lon_ind(2), reg_lat_ind(2)
+
+! Find a set of regular lat lon boxes that covers all of the area covered
+! by a dipole grid qaud whose corners are given by the
+! dimension four x_cornersand y_corners arrays.  The two dimensional arrays reg_lon_ind and
+! reg_lat_ind return the first and last indices of the regular boxes in
+! latitude and longitude respectively. These indices may wraparound for
+! reg_lon_ind. A special computation is needed for a dipole quad that has
+! the true north pole in its interior. The logical is_pole is set to true
+! if this is the case. This can only happen for the t grid.
+! If the longitude boxes overlap 0 degrees, the indices returned are adjusted
+! by adding the total number of boxes to the second index (e.g. the indices
+! might be 88 and 93 for a case with 90 longitude boxes).
+
+real(r8) :: lat_min, lat_max, lon_min, lon_max
+integer  :: i
+
+!  A quad containing the pole is fundamentally different
+if(is_pole) then
+   ! Need all longitude boxes
+   reg_lon_ind(1) = 1
+   reg_lon_ind(2) = num_reg_x
+   ! Need to cover from lowest latitude to top box
+   lat_min = minval(y_corners)
+   reg_lat_ind(1) = int(num_reg_y * (lat_min + 90.0_r8) / 180.0_r8) + 1
+   call get_reg_lat_box(lat_min, reg_lat_ind(1))
+   reg_lat_ind(2) = num_reg_y
+else
+   ! All other quads do not contain the pole (pole could be on edge but no problem)
+   ! This is specific to the dipole POP grids that do not go to the south pole
+   ! Finding the range of latitudes is cake
+   lat_min = minval(y_corners)
+   lat_max = maxval(y_corners)
+
+   ! Figure out the indices of the regular boxes for min and max lats
+   call get_reg_lat_box(lat_min, reg_lat_ind(1))
+   call get_reg_lat_box(lat_max, reg_lat_ind(2))
+
+   ! Lons are much trickier. Need to make sure to wraparound the
+   ! right way. There is no guarantee on direction of lons in the
+   ! high latitude dipole rows.
+   ! All longitudes for non-pole rows have to be within 180 degrees
+   ! of one another. 
+   lon_min = minval(x_corners)
+   lon_max = maxval(x_corners)
+   if((lon_max - lon_min) > 180.0_r8) then
+      ! If the max longitude value is more than 180 
+      ! degrees larger than the min, then there must be wraparound.
+      ! Then, find the smallest value > 180 and the largest < 180 to get range.
+      lon_min = 360.0_r8
+      lon_max = 0.0_r8
+      do i=1, 4
+         if(x_corners(i) > 180.0_r8 .and. x_corners(i) < lon_min) lon_min = x_corners(i)
+         if(x_corners(i) < 180.0_r8 .and. x_corners(i) > lon_max) lon_max = x_corners(i)
+      end do
+   end if
+
+   ! Get the indices for the extreme longitudes
+   call get_reg_lon_box(lon_min, reg_lon_ind(1))
+   call get_reg_lon_box(lon_max, reg_lon_ind(2))
+
+   ! Watch for wraparound again; make sure that second index is greater than first
+   if(reg_lon_ind(2) < reg_lon_ind(1)) reg_lon_ind(2) = reg_lon_ind(2) + num_reg_x
+endif
+
+end subroutine reg_box_overlap
+
+!------------------------------------------------------------
+
+subroutine get_quad_corners(x, i, j, corners)
+
+real(r8), intent(in)  :: x(:, :)
+integer,  intent(in)  :: i, j
+real(r8), intent(out) :: corners(4)
+
+! Grabs the corners for a given quadrilateral from the global array of lower
+! right corners. Note that corners go counterclockwise around the quad.
+
+integer :: ip1
+
+! Have to worry about wrapping in longitude but not in latitude
+ip1 = i + 1
+if(ip1 > nx) ip1 = 1
+
+corners(1) = x(i,   j  ) 
+corners(2) = x(ip1, j  )
+corners(3) = x(ip1, j+1)
+corners(4) = x(i,   j+1)
+
+end subroutine get_quad_corners
+
+!------------------------------------------------------------
+
+subroutine update_reg_list(reg_list_num, reg_list_lon, reg_list_lat, &
+   reg_lon_ind, reg_lat_ind, dipole_lon_index, dipole_lat_index)
+
+integer, intent(inout) :: reg_list_num(:, :), reg_list_lon(:, :, :), reg_list_lat(:, :, :)
+integer, intent(inout) :: reg_lon_ind(2), reg_lat_ind(2)
+integer, intent(in)    :: dipole_lon_index, dipole_lat_index
+ 
+! Updates the data structure listing dipole quads that are in a given regular box
+integer :: ind_x, index_x, ind_y
+
+! Loop through indices for each possible regular cell
+! Have to watch for wraparound in longitude
+if(reg_lon_ind(2) < reg_lon_ind(1)) reg_lon_ind(2) = reg_lon_ind(2) + num_reg_x
+
+do ind_x = reg_lon_ind(1), reg_lon_ind(2)
+   ! Inside loop, need to go back to wraparound indices to find right box
+   index_x = ind_x
+   if(index_x > num_reg_x) index_x = index_x - num_reg_x
+   
+   do ind_y = reg_lat_ind(1), reg_lat_ind(2)
+      ! Make sure the list storage isn't full
+      if(reg_list_num(index_x, ind_y) > max_reg_list_num) then
+         msgstring = 'max_reg_list_num is too small'
+         call error_handler(E_ERR, 'update_reg_list', msgstring, source, revision, revdate)
+      endif
+
+      ! Increment the count
+      reg_list_num(index_x, ind_y) = reg_list_num(index_x, ind_y) + 1
+      ! Store this quad in the list for this regular box
+      reg_list_lon(index_x, ind_y, reg_list_num(index_x, ind_y)) = dipole_lon_index
+      reg_list_lat(index_x, ind_y, reg_list_num(index_x, ind_y)) = dipole_lat_index
+   enddo
+enddo
+
+end subroutine update_reg_list
+
+!------------------------------------------------------------
+
+
 
 
 
@@ -513,7 +904,7 @@ if (debug > 1) print *, 'base offset now ', base_offset
 
 ! For Sea Surface Height don't need the vertical coordinate
 if( vert_is_surface(location) ) then
-   call lat_lon_interpolate(x(base_offset:), llon, llat, obs_type, 1, interp_val, istatus)
+   call lon_lat_interpolate(x(base_offset:), llon, llat, obs_type, 1, interp_val, istatus)
    return
 endif
 
@@ -530,7 +921,7 @@ endif
 offset = base_offset + (hgt_bot - 1) * nx * ny
 if (debug > 1) print *, 'relative bot height offset = ', offset - base_offset
 if (debug > 1) print *, 'absolute bot height offset = ', offset
-call lat_lon_interpolate(x(offset:), llon, llat, obs_type, hgt_bot, bot_val, istatus)
+call lon_lat_interpolate(x(offset:), llon, llat, obs_type, hgt_bot, bot_val, istatus)
 ! Failed istatus from interpolate means give up
 if(istatus /= 0) return
 
@@ -539,7 +930,7 @@ if(istatus /= 0) return
 offset = base_offset + (hgt_top - 1) * nx * ny
 if (debug > 1) print *, 'relative top height offset = ', offset - base_offset
 if (debug > 1) print *, 'absolute top height offset = ', offset
-call lat_lon_interpolate(x(offset:), llon, llat, obs_type, hgt_top, top_val, istatus)
+call lon_lat_interpolate(x(offset:), llon, llat, obs_type, hgt_top, top_val, istatus)
 ! Failed istatus from interpolate means give up
 if(istatus /= 0) return
 
@@ -552,6 +943,803 @@ if (debug > 1) print *, 'model_interp: interp val = ',interp_val
 istatus = 0
 
 end subroutine model_interpolate
+
+
+! Three different types of grids are used here. The POP dipole 
+! grid is referred to as a dipole grid and each region is
+! referred to as a quad, short for quadrilateral. 
+! The longitude latitude rectangular grid with possibly irregular
+! spacing in latitude used for some POP applications and testing
+! is referred to as the irregular grid and each region is 
+! called a box.
+! Finally, a regularly spaced longitude latitude grid is used
+! as a computational tool for interpolating from the dipole
+! grid. This is referred to as the regular grid and each region
+! is called a box. 
+! All grids are referenced by the index of the lower left corner
+! of the quad or box.
+
+! The dipole grid is assumed to be global for all applications.
+! The irregular grid is also assumed to be global east
+! west for all applications.
+
+
+subroutine lon_lat_interpolate(x, lon, lat, var_type, height, interp_val, istatus)
+!=======================================================================
+!
+
+! Subroutine to interpolate to a lon lat location given the state vector 
+! for that level, x. This works just on one horizontal slice.
+! NOTE: Using array sections to pass in the x array may be inefficient on some
+! compiler/platform setups. Might want to pass in the entire array with a base
+! offset value instead of the section if this is an issue.
+! This routine works for either the dipole or a regular lat-lon grid.
+! Successful interpolation returns istatus=0.
+
+real(r8),            intent(in) :: x(:)
+real(r8),            intent(in) :: lon, lat
+integer,             intent(in) :: var_type, height
+real(r8),           intent(out) :: interp_val
+integer,            intent(out) :: istatus
+
+! Local storage
+integer  :: lat_bot, lat_top, lon_bot, lon_top, num_inds, start_ind
+integer  :: x_ind, y_ind, i
+real(r8) :: p(4), x_corners(4), y_corners(4), xbot, xtop
+real(r8) :: lon_fract, lat_fract
+logical  :: masked
+
+if ( .not. module_initialized ) call static_init_model
+
+! Succesful return has istatus of 0
+istatus = 0
+
+! Get the lower left corner for either grid type
+if(dipole_grid) then
+   ! Figure out which of the regular grid boxes this is in
+   call get_reg_box_indices(lon, lat, x_ind, y_ind)
+
+   ! Is this on the U or T grid?
+   if(is_on_ugrid(var_type)) then
+      ! On U grid
+      num_inds =  u_dipole_num  (x_ind, y_ind)
+      start_ind = u_dipole_start(x_ind, y_ind)
+
+      ! If there are no quads overlapping, can't do interpolation
+      if(num_inds == 0) then
+         istatus = 1
+         return
+      endif
+
+      ! Search the list of quads to see if (lon, lat) is in one
+      call get_dipole_quad(lon, lat, ulon, ulat, num_inds, start_ind, &
+         u_dipole_lon_list, u_dipole_lat_list, lon_bot, lat_bot, istatus)
+      ! Fail on bad istatus return
+      if(istatus /= 0) return
+
+      ! Getting corners for accurate interpolation
+      call get_quad_corners(ulon, lon_bot, lat_bot, x_corners)
+      call get_quad_corners(ulat, lon_bot, lat_bot, y_corners)
+
+      ! Fail if point is in one of the U boxes that go through the
+      ! pole (this could be fixed up if necessary)
+      if(lat_bot == u_pole_y .and. (lon_bot == pole_x -1 .or. &
+         lon_bot == pole_x)) then
+         istatus = 4
+         return
+      endif
+
+   else
+      ! On T grid
+      num_inds =  t_dipole_num  (x_ind, y_ind)
+      start_ind = t_dipole_start(x_ind, y_ind)
+      call get_dipole_quad(lon, lat, tlon, tlat, num_inds, start_ind, &
+         t_dipole_lon_list, t_dipole_lat_list, lon_bot, lat_bot, istatus)
+      ! Fail on bad istatus return
+      if(istatus /= 0) return
+
+      ! Fail if point is in T box that covers pole
+      if(lon_bot == pole_x .and. lat_bot == t_pole_y) then
+         istatus = 5
+         return
+      endif
+
+      ! Getting corners for accurate interpolation
+      call get_quad_corners(tlon, lon_bot, lat_bot, x_corners)
+      call get_quad_corners(tlat, lon_bot, lat_bot, y_corners)
+   endif
+
+else
+   ! This is an irregular grid
+   ! U and V are on velocity grid
+   if (is_on_ugrid(var_type)) then
+      ! Get the corner indices and the fraction of the distance between
+      call get_irreg_box(lon, lat, ulon, ulat, &
+         lon_bot, lat_bot, lon_fract, lat_fract, istatus)
+   else
+      ! Eta, T and S are on the T grid
+      ! Get the corner indices
+      call get_irreg_box(lon, lat, tlon, tlat, &
+         lon_bot, lat_bot, lon_fract, lat_fract, istatus)
+   endif
+
+   ! Return passing through error status
+   if(istatus /= 0) return
+
+endif
+
+! Find the indices to get the values for interpolating
+lat_top = lat_bot + 1
+if(lat_top > ny) then
+   istatus = 2
+   return
+endif
+
+! Watch for wraparound in longitude
+lon_top = lon_bot + 1
+if(lon_top > nx) lon_top = 1
+
+! Get the values at the four corners of the box or quad
+! Corners go around counterclockwise from lower left
+p(1) = get_val(lon_bot, lat_bot, nx, x, var_type, height, masked)
+if(masked) then
+   istatus = 3
+   return
+endif
+
+p(2) = get_val(lon_top, lat_bot, nx, x, var_type, height, masked)
+if(masked) then
+   istatus = 3
+   return
+endif
+
+p(3) = get_val(lon_top, lat_top, nx, x, var_type, height, masked)
+if(masked) then
+   istatus = 3
+   return
+endif
+
+p(4) = get_val(lon_bot, lat_top, nx, x, var_type, height, masked)
+if(masked) then
+   istatus = 3
+   return
+endif
+
+! Full bilinear interpolation for quads
+if(dipole_grid) then
+   call quad_bilinear_interp(lon, lat, x_corners, y_corners, p, interp_val)
+else
+   ! Rectangular biliear interpolation
+   xbot = p(1) + lon_fract * (p(2) - p(1))
+   xtop = p(4) + lon_fract * (p(3) - p(4))
+   ! Now interpolate in latitude
+   interp_val = xbot + lat_fract * (xtop - xbot)
+endif
+
+end subroutine lon_lat_interpolate
+
+!------------------------------------------------------------
+
+
+function get_val(lon_index, lat_index, nlon, x, var_type, height, masked)
+!=======================================================================
+!
+! Returns the value from a single level array given the lat and lon indices
+! 'masked' returns true if this is NOT a valid grid location (e.g. land, or
+! below the ocean floor in shallower areas).
+
+integer,     intent(in) :: lon_index, lat_index, nlon, var_type, height
+real(r8),    intent(in) :: x(:)
+logical,    intent(out) :: masked
+real(r8)                :: get_val
+
+if ( .not. module_initialized ) call static_init_model
+
+! check the land/ocean bottom map and return if not valid water cell.
+if(is_not_ocean(var_type, lon_index, lat_index, height)) then
+   masked = .true.
+   return
+endif
+
+! Layout has lons varying most rapidly
+get_val = x((lat_index - 1) * nlon + lon_index)
+
+! this is a valid ocean water cell, not land or below ocean floor
+masked = .false.
+
+end function get_val
+
+
+!------------------------------------------------------------
+
+subroutine get_irreg_box(lon, lat, lon_array, lat_array, &
+   found_x, found_y, lon_fract, lat_fract, istatus)
+!
+! Given a longitude and latitude of a point (lon and lat) and the
+! longitudes and latitudes of the lower left corner of the regular grid
+! boxes, gets the indices of the grid box that contains the point and
+! the fractions along each directrion for interpolation.
+
+real(r8),            intent(in) :: lon, lat
+real(r8),            intent(in) :: lon_array(nx, ny), lat_array(nx, ny)
+real(r8),           intent(out) :: lon_fract, lat_fract
+integer,            intent(out) :: found_x, found_y, istatus
+
+! Local storage
+integer  :: lon_status, lat_status, lon_top, lat_top
+
+! Succesful return has istatus of 0
+istatus = 0
+
+! Get latitude box boundaries
+call lat_bounds(lat, ny, lat_array, found_y, lat_top, lat_fract, lat_status)
+
+! Check for error on the latitude interpolation
+if(lat_status /= 0) then
+   istatus = 1
+   return
+endif
+
+! Find out what longitude box and fraction
+call lon_bounds(lon, nx, lon_array, found_x, lon_top, lon_fract)
+
+end subroutine get_irreg_box
+
+!------------------------------------------------------------
+
+
+subroutine lon_bounds(lon, nlons, lon_array, bot, top, fract)
+
+!=======================================================================
+!
+
+! Given a longitude lon, the array of longitudes for grid boundaries, and the
+! number of longitudes in the grid, returns the indices of the longitude
+! below and above the location longitude and the fraction of the distance
+! between. It is assumed that the longitude wraps around for a global grid. 
+! Since longitude grids are going to be regularly spaced, this could be made more efficient.
+! Algorithm fails for a silly grid that has only two longitudes separated by 180 degrees.
+
+real(r8),          intent(in) :: lon
+integer,           intent(in) :: nlons
+real(r8),          intent(in) :: lon_array(:, :)
+integer,          intent(out) :: bot, top
+real(r8),         intent(out) :: fract
+
+! Local storage
+integer  :: i
+real(r8) :: dist_bot, dist_top
+
+if ( .not. module_initialized ) call static_init_model
+
+! This is inefficient, someone could clean it up since longitudes are regularly spaced
+! But note that they don't have to start at 0
+do i = 2, nlons
+   dist_bot = lon_dist(lon, lon_array(i - 1, 1))
+   dist_top = lon_dist(lon, lon_array(i, 1))
+   if(dist_bot <= 0 .and. dist_top > 0) then
+      bot = i - 1
+      top = i
+      fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
+      return
+   endif
+end do
+
+! Falling off the end means it's in between; wraparound
+bot = nlons
+top = 1
+dist_bot = lon_dist(lon, lon_array(bot, 1))
+dist_top = lon_dist(lon, lon_array(top, 1)) 
+fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
+
+end subroutine lon_bounds
+
+
+!-------------------------------------------------------------
+
+subroutine lat_bounds(lat, nlats, lat_array, bot, top, fract, istatus)
+
+!=======================================================================
+!
+
+! Given a latitude lat, the array of latitudes for grid boundaries, and the
+! number of latitudes in the grid, returns the indices of the latitude
+! below and above the location latitude and the fraction of the distance
+! between. istatus is returned as 0 unless the location latitude is 
+! south of the southernmost grid point (1 returned) or north of the 
+! northernmost (2 returned). If one really had lots of polar obs would 
+! want to worry about interpolating around poles.
+
+real(r8),          intent(in) :: lat
+integer,           intent(in) :: nlats
+real(r8),          intent(in) :: lat_array(:, :)
+integer,          intent(out) :: bot, top
+real(r8),         intent(out) :: fract
+integer,          intent(out) :: istatus
+
+! Local storage
+integer :: i
+
+if ( .not. module_initialized ) call static_init_model
+
+! Success should return 0, failure a positive number.
+istatus = 0
+
+! Check for too far south or north
+if(lat < lat_array(1, 1)) then
+   istatus = 1
+   return
+else if(lat > lat_array(1, nlats)) then
+   istatus = 2
+   return
+endif
+
+! In the middle, search through
+do i = 2, nlats
+   if(lat <= lat_array(1, i)) then
+      bot = i - 1
+      top = i
+      fract = (lat - lat_array(1, bot)) / (lat_array(1, top) - lat_array(1, bot))
+      return
+   endif
+end do
+
+! Shouldn't get here. Might want to fail really hard through error handler
+istatus = 40
+
+end subroutine lat_bounds
+
+
+
+function lon_dist(lon1, lon2)
+!=======================================================================
+!
+
+! Returns the smallest signed distance between lon1 and lon2 on the sphere
+! If lon1 is less than 180 degrees east of lon2 the distance is negative
+! If lon1 is less than 180 degrees west of lon2 the distance is positive
+
+real(r8), intent(in) :: lon1, lon2
+real(r8)             :: lon_dist
+
+if ( .not. module_initialized ) call static_init_model
+
+lon_dist = lon2 - lon1
+if(lon_dist >= -180.0_r8 .and. lon_dist <= 180.0_r8) then
+   return
+else if(lon_dist < -180.0_r8) then
+   lon_dist = lon_dist + 360.0_r8
+else
+   lon_dist = lon_dist - 360.0_r8
+endif
+
+end function lon_dist
+
+
+!------------------------------------------------------------
+
+
+subroutine get_dipole_quad(lon, lat, qlons, qlats, num_inds, start_ind, &
+   x_inds, y_inds, found_x, found_y, istatus)
+
+real(r8), intent(in)  :: lon, lat, qlons(:, :), qlats(:, :)
+integer,  intent(in)  :: num_inds, start_ind, x_inds(:), y_inds(:)
+integer,  intent(out) :: found_x, found_y, istatus
+
+! Given the lon and lat of a point, and a list of the
+! indices of the quads that might contain a point at (lon, lat), determines
+! which quad contains the point.  istatus is returned as 0 if all went 
+! well and 1 if the point was not found to be in any of the quads.
+
+integer :: i, my_index
+real(r8) :: x_corners(4), y_corners(4)
+
+istatus = 0
+
+! Loop through all the quads and see if the point is inside
+do i = 1, num_inds
+   my_index = start_ind + i - 1
+   call get_quad_corners(qlons, x_inds(my_index), y_inds(my_index), x_corners)
+   call get_quad_corners(qlats, x_inds(my_index), y_inds(my_index), y_corners)
+
+   ! Ssearch in this individual quad
+   if(in_quad(lon, lat, x_corners, y_corners)) then
+      found_x = x_inds(my_index)
+      found_y = y_inds(my_index)
+      return
+   endif
+enddo
+
+! Falling off the end means search failed, return istatus 1
+istatus = 1
+
+end subroutine get_dipole_quad
+
+
+!------------------------------------------------------------
+function in_quad(lon, lat, x_corners, y_corners)
+
+real(r8), intent(in)  :: lon, lat, x_corners(4), y_corners(4)
+logical               :: in_quad
+
+! Return in_quad true if the point (lon, lat) is in the quad with 
+! the given corners.
+
+! Do this by ray tracing in latitude for now. For non-pole point, want a
+! downward directed ray from (lon,lat) to intersect only one edge of the
+! quadrilateral. Have to watch out for intersecting at a vertex nearly
+! exactly, other round-off issues. This should be checked carefully.
+
+real(r8) :: x(2), y(2)
+logical  :: cant_be_in_box, on_side
+integer  :: intercepts(4), exact_corner(4), second_corner, num_sides, num_corners, i
+
+! Default answer is point is not in quad
+in_quad = .false.
+
+! Loop through the sides and compute intercept (if any) with a downward
+! ray from the point. This ray has equation x=lon, y<=lat. 
+do i = 1, 4
+   ! Load up the sides endpoints
+   if(i <= 3) then
+      x(1:2) = x_corners(i:i+1)
+      y(1:2) = y_corners(i:i+1)
+   else
+      x(1) = x_corners(4)
+      x(2) = x_corners(1)
+      y(1) = y_corners(4)
+      y(2) = y_corners(1)
+   endif
+
+   ! Check to see how a southward going ray from the point is related to this side
+   call ray_intercept(x, y, lon, lat, cant_be_in_box, intercepts(i), &
+      exact_corner(i), on_side)
+
+   ! If cant_be_in_box is true, can return right away
+   if(cant_be_in_box) then
+      in_quad = .false.
+      return
+   ! Return true if on a side
+   else if(on_side) then
+      in_quad = .true.
+      return
+   endif
+
+enddo
+
+! Point is not known to be out of the quad or on the quads boundary.
+! See how many sides and corners it went through
+num_sides = sum(intercepts)
+num_corners = sum(exact_corner)
+
+! If the number of exact corner intercepts is 0 just look at sides.
+! If the ray only intersects one side we are in the box.
+if(sum(exact_corner) == 0) then
+   if(num_sides == 1) then
+      ! Point is in box
+      in_quad = .true.
+   else if(num_sides >= 3) then
+      ! Put in some development error checking; shouldn't be able to hit 3 or 4 sides
+      write(msgstring, *) "Num sides in in_quad is ", num_sides, &
+         "Please contact DART development team"
+      call error_handler(E_ERR, 'in_quad', msgstring, source, revision, revdate)
+   endif
+
+else
+   ! We have some exact_corner hits; these must come in pairs.
+   ! An odd number of corners should be impossible.
+   if(num_corners == 1 .or. num_corners == 3) then
+      ! Put in some development error checking; shouldn't be able to hit 3 or 4 sides
+      write(msgstring, *) "Num corners in in_quad is ", num_sides, &
+         "Please contact DART development team"
+      call error_handler(E_ERR, 'in_quad', msgstring, source, revision, revdate)
+   ! Four corners means we are not in; 
+   else if(num_corners == 4) then
+      in_quad = .false.
+      return
+   ! Two corners and one side means we are not in;
+   else if(num_corners == 2 .and. num_sides == 1) then
+      in_quad = .true.
+   ! Two corners and no plain intercepts means we could be in or out;
+   ! This case requires examining the particular sides.
+   else if(num_corners == 2 .and. num_sides == 0) then
+      ! See if the point is between these; if so in box
+      call two_corners(exact_corner, x_corners, lon, in_quad)
+   endif
+
+endif
+
+end function in_quad
+
+!------------------------------------------------------------
+
+subroutine two_corners(exact_corner, x_corners, lon, in_quad)
+
+integer,  intent(in)  :: exact_corner(4)
+real(r8), intent(in)  :: x_corners(4), lon
+logical,  intent(out) :: in_quad
+
+! For a ray that intersects the corner between two quad edges, is the
+! point in or out of the quad?
+
+integer :: ind, i, second_point
+real(r8) :: x_points(4)
+
+ind = 1
+
+! Loop to get a list (x_points) that contains the longitude of endpoints of
+! both of the sides that share a corner that was hit by the ray. There will
+! be one duplicate value.
+do i = 1, 4
+   if(exact_corner(i) == 1) then
+      ! Side i was one of the ones that got a corner hit
+      x_points(ind) = x_corners(i)
+      ind = ind + 1
+      second_point = i + 1
+      if(second_point > 4) second_point = 1
+      x_points(ind) = x_corners(second_point)
+      ind = ind + 1
+   endif
+end do
+
+! Get the min and max of the longitudes on the edges adjacent to the corner.
+! If the point has longitude between these, then it must lie in the
+! angle between them and the point is in the quad.
+if(lon >= minval(x_points) .and. lon <= maxval(x_points)) then
+   in_quad = .true.
+else
+   in_quad = .false.
+endif
+
+end subroutine two_corners
+
+!------------------------------------------------------------
+
+subroutine ray_intercept(x_in, y, x_ray_in, y_ray, &
+   cant_be_in_box, intercepts, exact_corner, on_side)
+
+real(r8), intent(in)  :: x_in(2), y(2), x_ray_in, y_ray
+logical,  intent(out) :: cant_be_in_box, on_side
+integer,  intent(out) :: intercepts, exact_corner
+
+! Find the intercept of a downward ray from (x_ray, y_ray) and
+! a line segment with endpoints x, y.
+! For a given side have endpoints (x1, y1) and (x2, y2) so equation of
+! segment is y=y1 + m(x-x1) for y between y1 and y2.
+! Intersection of ray and line occurs at y = y1 + m(lon - x1); need this
+! y to be less than lat and between y1 and y2).
+! If the ray is colinear with the side but the point is not on the side, return
+! cant_be_in_box as true. If the ray intercepts the side, return intercepts
+! as 1 else 0. If the ray intercepts a corner of the side, return exact_corner as
+! true. If the point lies on the side, return on_side as true.
+
+! WARNING: ALMOST CERTAINLY A PROBLEM FOR THE POLE BOX!!! POLE BOX COULD
+! HAVE SIDES THAT ARE LONGER THAN 180. For now pole boxes are excluded.
+
+! This can probably be made much cleaner and more efficient.
+
+real(r8) :: slope, y_intercept, x(2), x_ray
+
+! May have to adjust the longitude intent in values, so copy
+x = x_in
+x_ray = x_ray_in
+
+! See if the side wraps around in longitude
+if(maxval(x) - minval(x) > 180.0_r8) then
+   if(x(1) < 180.0_r8) x(1) = x(1) + 360.0_r8
+   if(x(2) < 180.0_r8) x(2) = x(2) + 360.0_r8
+   if(x_ray < 180.0_r8) x_ray = x_ray + 360.0_r8
+endif
+
+! Initialize all the possible returns 
+cant_be_in_box = .false.
+on_side        = .false.
+intercepts     = 0
+exact_corner   = 0
+
+! First easy check, if x_ray is not between x(1) and x(2) it can't intersect
+if(x_ray < minval(x) .or. x_ray > maxval(x)) return
+
+! First subblock, slope is undefined
+if(x(2) == x(1)) then
+   ! Check for exactly on this side
+   if(x_ray /= x(1)) then
+      ! Doesn't intersect vertical line
+      return
+   else
+      ! The ray is colinear with the side
+      ! If y_ray is between endpoints then point is on this side
+      if(y_ray <= maxval(y) .and. y_ray >= minval(y)) then
+         on_side = .true.
+         return
+      ! If not on side but colinear with side, point cant be in quad
+      else
+         cant_be_in_box = .true.
+         return
+      endif
+   endif
+
+else
+
+   ! Second possibility; slope is defined
+   slope = (y(2) - y(1)) / (x(2) - x(1))
+   ! Intercept of downward ray and line through points is at x_ray and...
+   y_intercept = y(1) + slope * (x_ray - x(1))
+
+   ! If y_intercept is greater than y_ray it's not on the downward ray
+   if(y_intercept > y_ray) return
+
+   ! If the slope is 0, we now know the ray intercepts
+   if(slope == 0) then
+      ! Check for exact corner
+      if(x_ray == x(1) .or. x_ray == x(2)) then
+         exact_corner = 1
+         return
+      else
+         intercepts = 1
+         return
+      endif
+   endif
+
+   ! Slope of line is not 0 or undefined so y endpoints differ
+   ! If intercept is on segment and is below the point
+   if(y_intercept > maxval(y) .or. y_intercept < minval(y)) then
+      ! Intersects line containing side outside of side
+      return
+   else if(y_intercept < maxval(y) .and. y_intercept > minval(y)) then
+      ! Intercepts inside the side
+      intercepts = 1
+      return
+   else
+      ! Otherwise, must go exactly through a corner
+      exact_corner = 1
+      return
+   endif
+endif
+
+end subroutine ray_intercept
+
+!------------------------------------------------------------
+
+subroutine quad_bilinear_interp(lon_in, lat, x_corners_in, y_corners, &
+   p, interp_val)
+
+real(r8), intent(in)  :: lon_in, lat, x_corners_in(4), y_corners(4), p(4)
+real(r8), intent(out) :: interp_val
+
+! Given a longitude and latitude (lon_in, lat), the longitude and
+! latitude of the 4 corners of a quadrilateral and the values at the
+! four corners, interpolates to (lon_in, lat) which is assumed to
+! be in the quad. This is done by bilinear interpolation, fitting
+! a function of the form a + bx + cy + dxy to the four points and 
+! then evaluating this function at (lon, lat). The fit is done by
+! solving the 4x4 system of equations for a, b, c, and d. The system
+! is reduced to a 3x3 by eliminating a from the first three equations
+! and then solving the 3x3 before back substituting. There is concern
+! about the numerical stability of this implementation. Implementation
+! checks showed accuracy to seven decimal places on all tests.
+
+integer :: i
+real(r8) :: m(3, 3), v(3), r(3), a, x_corners(4), lon, lon_mean
+
+! Watch out for wraparound on x_corners.
+lon = lon_in
+x_corners = x_corners_in
+
+! See if the side wraps around in longitude. If the corners longitudes
+! wrap around 360, then the corners and the point to interpolate to
+! must be adjusted to be in the range from 180 to 540 degrees.
+if(maxval(x_corners) - minval(x_corners) > 180.0_r8) then
+   if(lon < 180.0_r8) lon = lon + 360.0_r8
+   do i = 1, 4
+      if(x_corners(i) < 180.0_r8) x_corners(i) = x_corners(i) + 360.0_r8
+   end do
+endif
+
+
+!*******
+! Problems with extremes in polar cell interpolation can be reduced
+! by this block, but it is not clear that it is needed for actual
+! ocean grid data
+! Find the mean longitude of corners and remove
+!!!lon_mean = sum(x_corners) / 4.0_r8
+!!!x_corners = x_corners - lon_mean
+!!!lon = lon - lon_mean
+! Multiply everybody by the cos of the latitude
+!!!do i = 1, 4
+   !!!x_corners(i) = x_corners(i) * cos(y_corners(i) * deg2rad)
+!!!end do
+!!!lon = lon * cos(lat * deg2rad)
+
+!*******
+
+
+! Fit a surface and interpolate; solve for 3x3 matrix
+do i = 1, 3
+   ! Eliminate a from the first 3 equations
+   m(i, 1) = x_corners(i) - x_corners(i + 1)
+   m(i, 2) = y_corners(i) - y_corners(i + 1)
+   m(i, 3) = x_corners(i)*y_corners(i) - x_corners(i + 1)*y_corners(i + 1)
+   v(i) = p(i) - p(i + 1)
+end do
+
+! Solve the matrix for b, c and d
+call mat3x3(m, v, r)
+
+! r contains b, c, and d; solve for a
+a = p(4) - r(1) * x_corners(4) - r(2) * y_corners(4) - &
+   r(3) * x_corners(4)*y_corners(4)
+
+
+!----------------- Implementation test block
+! When interpolating on dipole x3 never exceeded 1e-9 error in this test
+!!!do i = 1, 4
+   !!!interp_val = a + r(1)*x_corners(i) + r(2)*y_corners(i)+ r(3)*x_corners(i)*y_corners(i)
+   !!!if(abs(interp_val - p(i)) > 1e-9) then
+      !!!write(*, *) 'large interp residual ', interp_val - p(i)
+   !!!endif
+!!!end do
+!----------------- Implementation test block
+
+
+! Now do the interpolation
+interp_val = a + r(1)*lon + r(2)*lat + r(3)*lon*lat
+
+!********
+! Avoid exceeding maxima or minima as stopgap for poles problem
+! When doing bilinear interpolation in quadrangle, can get interpolated
+! values that are outside the range of the corner values
+if(interp_val > maxval(p)) then 
+   interp_val = maxval(p)
+else if(interp_val < minval(p)) then
+   interp_val = minval(p)
+endif
+!********
+
+end subroutine quad_bilinear_interp
+
+!------------------------------------------------------------
+
+subroutine mat3x3(m, v, r)
+
+real(r8), intent(in)  :: m(3, 3), v(3)
+real(r8), intent(out) :: r(3)
+
+! Solves rank 3 linear system mr = v for r
+! using Cramer's rule. This isn't the best choice
+! for speed or numerical stability so might want to replace
+! this at some point.
+
+real(r8) :: m_sub(3, 3), numer, denom
+integer  :: i
+
+! Compute the denominator, det(m)
+denom = deter3(m)
+
+! Loop to compute the numerator for each component of r
+do i = 1, 3
+   m_sub = m
+   m_sub(:, i) = v   
+   numer = deter3(m_sub)
+   r(i) = numer / denom
+end do
+
+end subroutine mat3x3
+
+!------------------------------------------------------------
+function deter3(m)
+
+real(r8) :: deter3
+real(r8), intent(in) :: m(3, 3)
+
+! Computes determinant of 3x3 matrix m
+
+deter3 = m(1,1)*m(2, 2)*m(3, 3) + m(1, 2)*m(2, 3)*m(3, 1) + &
+   m(1, 3)*m(2, 1)*m(3, 2) - m(3, 1)*m(2, 2)*m(1, 3) - &
+   m(1, 1)*m(2, 3)*m(3,2) - m(3, 3)*m(2, 1)*m(1, 2)
+
+end function deter3
+!------------------------------------------------------------
 
 
 
@@ -608,294 +1796,6 @@ end do
 istatus = 20
 
 end subroutine height_bounds
-
-
-subroutine lat_lon_interpolate(x, llon, llat, var_type, hgt_bot, &
-                               interp_val, istatus)
-!=======================================================================
-!
-
-! Subroutine to interpolate to a lat lon location given that portion of state
-! vector. 
-! NOTE: Using array sections to pass in the x array may be inefficient on some
-! compiler/platform setups. Might want to pass in the entire array with a base
-! offset value instead of the section if this is an issue.
-
-real(r8),            intent(in) :: x(:)
-real(r8),            intent(in) :: llon, llat
-integer,             intent(in) :: var_type
-integer,             intent(in) :: hgt_bot
-integer,            intent(out) :: istatus
-real(r8),           intent(out) :: interp_val
-
-! Local storage
-real(r8) :: lat_array(ny), lon_array(nx)
-integer  :: lat_bot, lat_top, lon_bot, lon_top
-real(r8) :: lat_fract, lon_fract
-real(r8) :: pa, pb, pc, pd, xbot, xtop
-integer  :: lat_status, lon_status
-
-if ( .not. module_initialized ) call static_init_model
-
-! Succesful return has istatus of 0
-! Make any failure here return istatus in the 30s
-istatus = 30     ! unknown error
-
-! Find out what latitude box and fraction
-! The latitude grid being used depends on the variable type
-if(is_on_ugrid(var_type)) then
-   ! U and V are on the YG latitude grid
-   lat_array = yg
-   call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
-else 
-   ! SHGT, T and S are on the YC latitude grid
-   lat_array = yc
-   call lat_bounds(llat, ny, lat_array, lat_bot, lat_top, lat_fract, lat_status)
-endif
-
-if (debug > 1) print *, 'lat bot, top, fract = ', lat_bot, lat_top, lat_fract
-! Check for error on the latitude interpolation
-if(lat_status /= 0) then 
-   istatus = 31
-   return
-endif
-
-! Find out what longitude box and fraction
-if(is_on_ugrid(var_type)) then
-   ! U and V velocity is on the XG grid
-   lon_array = xg
-   call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
-else
-   ! SHGT, T, and S are on the XC grid
-   lon_array = xc
-   call lon_bounds(llon, nx, lon_array, lon_bot, lon_top, lon_fract, lon_status)
-endif
-
-if (debug > 1) print *, 'lon bot, top, fract = ', lon_bot, lon_top, lon_fract
-! Check for error on the longitude interpolation
-if(lat_status /= 0) then 
-   istatus = 32
-   return
-endif
-
-! FIXME: is this the right place to test?  make sure bottom of cell is valid
-! DO WE NEED TO TEST ALL 4 lon_bot, lon_top, lat_bot, lat_tops?
-if (is_not_ocean(var_type, lon_bot, lat_bot, hgt_bot) .or. &
-    is_not_ocean(var_type, lon_top, lat_bot, hgt_bot) .or. &
-    is_not_ocean(var_type, lon_bot, lat_top, hgt_bot) .or. &
-    is_not_ocean(var_type, lon_top, lat_top, hgt_bot)) then
-   istatus = 33
-if (debug > 1) print *, 'one corner not ocean'
-   return
-endif
-
-! Vector is laid out with lat outermost loop, lon innermost loop
-! Find the bounding points for the lat lon box
-if (debug > 1) print *, 'lon_bot, lon_top = ', lon_bot, lon_top
-if (debug > 1) print *, 'lat_bot, lat_top = ', lat_bot, lat_top
-
-pa = get_val(lon_bot, lat_bot, nx, x)
-if (debug > 1) print *, 'pa = ', pa
-pb = get_val(lon_top, lat_bot, nx, x)
-if (debug > 1) print *, 'pb = ', pb
-pc = get_val(lon_bot, lat_top, nx, x)
-if (debug > 1) print *, 'pc = ', pc
-pd = get_val(lon_top, lat_top, nx, x)
-if (debug > 1) print *, 'pd = ', pd
-
-if (debug > 1) print *, 'pa,b,c,d = ', pa, pb, pc, pd
-
-! Finish bi-linear interpolation 
-! First interpolate in longitude
-if (debug > 1) print *, 'bot lon_fract, delta = ', lon_fract, (pb-pa)
-xbot = pa + lon_fract * (pb - pa)
-if (debug > 1) print *, 'xbot = ', xbot
-if (debug > 1) print *, 'top lon_fract, delta = ', lon_fract, (pd-pc)
-xtop = pc + lon_fract * (pd - pc)
-if (debug > 1) print *, 'xtop = ', xtop
-! Now interpolate in latitude
-if (debug > 1) print *, 'lat_fract, delta = ', lat_fract, (xtop - xbot)
-interp_val = xbot + lat_fract * (xtop - xbot)
-if (debug > 1) print *, 'lat_lon_interp: interp_val = ', interp_val
-
-! good return
-istatus = 0
-
-end subroutine lat_lon_interpolate
-
-
-
-
-subroutine lat_bounds(llat, nlats, lat_array, bot, top, fract, istatus)
-
-!=======================================================================
-!
-
-! Given a latitude llat, the array of latitudes for grid boundaries, and the
-! number of latitudes in the grid, returns the indices of the latitude
-! below and above the location latitude and the fraction of the distance
-! between. istatus is returned as 0 unless the location latitude is 
-! south of the southernmost grid point (1 returned) or north of the 
-! northernmost (2 returned). If one really had lots of polar obs would 
-! want to worry about interpolating around poles.
-
-real(r8),          intent(in) :: llat
-integer,           intent(in) :: nlats
-real(r8),          intent(in) :: lat_array(nlats)
-integer,          intent(out) :: bot, top
-real(r8),         intent(out) :: fract
-integer,          intent(out) :: istatus
-
-! Local storage
-integer    :: i
-
-if ( .not. module_initialized ) call static_init_model
-
-! Success should return 0, failure a positive number.
-! Make any failure here return istatus in the 40s
-istatus = 40
-
-! Check for too far south or north
-if(llat < lat_array(1)) then
-   istatus = 41
-   return
-else if(llat > lat_array(nlats)) then
-   istatus = 42
-   return
-endif
-
-! In the middle, search through
-do i = 2, nlats
-   if(llat <= lat_array(i)) then
-      bot = i - 1
-      top = i
-      fract = (llat - lat_array(bot)) / (lat_array(top) - lat_array(bot))
-if (debug > 1) print *, 'bot, top vals = ', lat_array(i-1), lat_array(i)
-if (debug > 1) print *, 'bot, top index = ', bot, top
-if (debug > 1) print *, 'fract = ', fract
-      istatus = 0
-      return
-   endif
-end do
-
-! shouldn't get here.
-
-end subroutine lat_bounds
-
-
-
-subroutine lon_bounds(llon, nlons, lon_array, bot, top, fract, istatus)
-
-!=======================================================================
-!
-
-! Given a longitude llon, the array of longitudes for grid boundaries, and the
-! number of longitudes in the grid, returns the indices of the longitude
-! below and above the location longitude and the fraction of the distance
-! between. istatus is returned as 0 unless the location longitude is 
-! not between any of the longitude box boundaries. A module storage flag
-! indicates whether the grid wraps around in longitude. 
-! Algorithm fails for a silly grid that
-! has only two longitudes separated by 180 degrees.
-
-real(r8),          intent(in) :: llon
-integer,           intent(in) :: nlons
-real(r8),          intent(in) :: lon_array(nlons)
-integer,          intent(out) :: bot, top
-real(r8),         intent(out) :: fract
-integer,          intent(out) :: istatus
-
-! Local storage
-integer  :: i
-real(r8) :: dist_bot, dist_top
-
-if ( .not. module_initialized ) call static_init_model
-
-! Success should return 0, failure a positive number.
-! Make any failure here return istatus in the 50s
-istatus = 50
-
-if (debug > 1) print *, 'computing bounds for = ', llon
-! This is inefficient, someone could clean it up for regularly spaced longitudes
-do i = 2, nlons
-   dist_bot = lon_dist(llon, lon_array(i - 1))
-   dist_top = lon_dist(llon, lon_array(i))
-if (debug > 3) print *, 'dist top, bot = ', dist_top, dist_bot
-   if(dist_bot <= 0 .and. dist_top > 0) then
-      bot = i - 1
-      top = i
-if (debug > 1) print *, 'bot, top vals = ', lon_array(i-1), lon_array(i)
-if (debug > 1) print *, 'bot, top index = ', bot, top
-if (debug > 1) print *, 'numerator = ',  dist_bot
-if (debug > 1) print *, 'denominator = ', dist_bot + abs(dist_top)
-      fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
-if (debug > 1) print *, 'fract = ', fract
-      istatus = 0
-      return
-   endif
-end do
-
-! Falling off the end means it's in between. Check for wraparound.
-if(longitude_wrap) then
-   bot = nlons
-   top = 1
-   dist_bot = lon_dist(llon, lon_array(bot))
-   dist_top = lon_dist(llon, lon_array(top)) 
-   fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
-   istatus = 0
-   return
-else
-   ! Not in the localized longitude grid; return istatus 1
-   istatus = 51
-endif
-
-end subroutine lon_bounds
-
-
-
-function lon_dist(lon1, lon2)
-!=======================================================================
-!
-
-! Returns the smallest signed distance between lon1 and lon2 on the sphere
-! If lon1 is less than 180 degrees east of lon2 the distance is negative
-! If lon1 is less than 180 degrees west of lon2 the distance is positive
-
-real(r8), intent(in) :: lon1, lon2
-real(r8)             :: lon_dist
-
-if ( .not. module_initialized ) call static_init_model
-
-lon_dist = lon2 - lon1
-if(lon_dist >= -180.0_r8 .and. lon_dist <= 180.0_r8) then
-   return
-else if(lon_dist < -180.0_r8) then
-   lon_dist = lon_dist + 360.0_r8
-else
-   lon_dist = lon_dist - 360.0_r8
-endif
-
-end function lon_dist
-
-
-function get_val(lon_index, lat_index, nlon, x)
-!=======================================================================
-!
-
-! Returns the value from a single level array given the lat and lon indices
-integer,     intent(in) :: lon_index, lat_index, nlon
-real(r8),    intent(in) :: x(:)
-real(r8)                :: get_val
-
-if ( .not. module_initialized ) call static_init_model
-
-! Layout has lons varying most rapidly
-if (debug > 1) print *, 'lat_index, lon_index, nlon', lat_index, lon_index, nlon
-if (debug > 1) print *, 'computing index val ', (lat_index - 1) * nlon + lon_index
-get_val = x((lat_index - 1) * nlon + lon_index)
-if (debug > 1) print *, 'get_val = ', get_val
-
-end function get_val
 
 
 
@@ -2681,7 +3581,167 @@ end function
 
 end subroutine write_grid_netcdf
 
+
+!------------------------------------------------------------------
+
+subroutine test_interpolation(test_casenum)
+
+integer, intent(in) :: test_casenum
+
+! This is storage just used for temporary test driver
+integer :: imain, jmain, index, istatus, nx_temp, ny_temp
+integer :: dnx_temp, dny_temp, height
+real(r8) :: ti, tj
+
+! Storage for testing interpolation to a different grid
+integer :: dnx, dny
+real(r8), allocatable :: dulon(:, :), dulat(:, :), dtlon(:, :), dtlat(:, :)
+real(r8), allocatable :: reg_u_data(:, :), reg_t_data(:, :)
+real(r8), allocatable :: reg_u_x(:), reg_t_x(:), dipole_u(:, :), dipole_t(:, :)
+
+! Test program reads in two grids; one is the interpolation grid
+! The second is a grid to which to interpolate.
+
+! Read of first grid
+! Set of block options for now
+! Lon lat for u on channel 12, v on 13, u data on 14, t data on 15
+
+! Case 1: regular grid to dipole x3
+! Case 2: dipole x3 to regular grid
+! Case 3: regular grid to regular grid with same grid as x3 in SH
+! Case 4: regular grid with same grid as x3 in SH to regular grid
+! Case 5: regular grid with same grid as x3 in SH to dipole x3
+! Case 6: dipole x3 to regular grid with same grid as x3 in SH
+
+! do not let the standard init run
+module_initialized = .true.
+
+if(test_casenum == 1 .or. test_casenum == 3) then
+   ! Case 1 or 3: read in from regular grid 
+   open(unit = 12, file = 'regular_grid_u')
+   open(unit = 13, file = 'regular_grid_t')
+   open(unit = 14, file = 'regular_grid_u_data')
+   open(unit = 15, file = 'regular_grid_t_data')
+
+else if(test_casenum == 4 .or. test_casenum == 5) then
+   ! Case 3 or 4: read regular with same grid as x3 in SH
+   open(unit = 12, file = 'regular_griddi_u')
+   open(unit = 13, file = 'regular_griddi_t')
+   open(unit = 14, file = 'regular_griddi_u_data')
+   open(unit = 15, file = 'regular_griddi_t_data')
+
+else if(test_casenum == 2 .or. test_casenum == 6) then
+   ! Case 5: read in from dipole x3 grid
+   open(unit = 12, file = 'dipole_x3_grid_u')
+   open(unit = 13, file = 'dipole_x3_grid_t')
+   open(unit = 14, file = 'dipole_x3_u_data')
+   open(unit = 15, file = 'dipole_x3_t_data')
+endif
+
+
+! Get the size of the grid from the input u and t files
+read(12, *) nx, ny
+read(13, *) nx_temp, ny_temp
+if(nx /= nx_temp .or. ny /= ny_temp) then
+   write(*, *) 'input nx ny mismatch'
+   stop
+endif
+
+! Allocate stuff for the first grid (the one being interpolated from)
+allocate(ulon(nx, ny), ulat(nx, ny), tlon(nx, ny), tlat(nx, ny))
+allocate(kmt(nx, ny), kmu(nx, ny))
+allocate(reg_u_data(nx, ny), reg_t_data(nx, ny))
+! The Dart format 1d data arrays
+allocate(reg_u_x(nx*ny), reg_t_x(nx*ny))
+
+do imain = 1, nx
+   do jmain = 1, ny
+      read(12, *) ti, tj, ulon(imain, jmain), ulat(imain, jmain)
+      read(13, *) ti, tj, tlon(imain, jmain), tlat(imain, jmain)
+      read(14, *) ti, tj, reg_u_data(imain, jmain)
+      read(15, *) ti, tj, reg_t_data(imain, jmain)
+   end do
+end do
+
+! Load into 1D dart data array
+index = 0
+do jmain = 1, ny
+   do imain = 1, nx
+      index = index + 1
+      reg_u_x(index) = reg_u_data(imain, jmain)
+      reg_t_x(index) = reg_t_data(imain, jmain)
+   end do
+end do
+
+! dummy out vertical; let height always = 1 and allow
+! all grid points to be processed.
+kmt = 2
+kmu = 2
+height = 1
+
+! Initialize the interpolation data structure for this grid.
+call init_interp()
+
+! Now read in the points for the output grid
+! Case 1: regular grid to dipole x3
+! Case 2: dipole x3 to regular grid
+! Case 3: regular grid to regular grid with same grid as x3 in SH
+! Case 4: regular grid with same grid as x3 in SH to regular grid
+! Case 5: regular grid with same grid as x3 in SH to dipole x3
+! Case 6: dipole x3 to regular grid with same grid as x3 in SH
+if(test_casenum == 1 .or. test_casenum == 5) then
+   ! Output to dipole grid
+   open(unit = 22, file = 'dipole_x3_grid_u')
+   open(unit = 23, file = 'dipole_x3_grid_t')
+   open(unit = 24, file = 'dipole_x3_u_out')
+   open(unit = 25, file = 'dipole_x3_t_out')
+
+else if(test_casenum == 2 .or. test_casenum == 4) then
+   ! Output to regular grid
+   open(unit = 22, file = 'regular_grid_u')
+   open(unit = 23, file = 'regular_grid_t')
+   open(unit = 24, file = 'regular_grid_u_out')
+   open(unit = 25, file = 'regular_grid_t_out')
+
+else if(test_casenum == 3 .or. test_casenum == 6) then
+   ! Output to regular grid with same grid as x3 in SH
+   open(unit = 22, file = 'regular_griddi_u')
+   open(unit = 23, file = 'regular_griddi_t')
+   open(unit = 24, file = 'regular_griddi_u_out')
+   open(unit = 25, file = 'regular_griddi_t_out')
+endif
+
+read(22, *) dnx, dny
+read(23, *) dnx_temp, dny_temp
+if(dnx /= dnx_temp .or. dny /= dny_temp) then
+   write(*, *) 'input dnx dny mismatch'
+   stop
+endif
+
+allocate(dulon(dnx, dny), dulat(dnx, dny), dtlon(dnx, dny), dtlat(dnx, dny))
+allocate(dipole_u(dnx, dny), dipole_t(dnx, dny))
+do imain = 1, dnx
+   do jmain = 1, dny
+      read(22, *) ti, tj, dulon(imain, jmain), dulat(imain, jmain)
+      read(23, *) ti, tj, dtlon(imain, jmain), dtlat(imain, jmain)
+      ! Interpolate from the first grid to the second grid
+      call lon_lat_interpolate(reg_u_x, dulon(imain, jmain), dulat(imain, jmain), &
+         KIND_U_CURRENT_COMPONENT, height, dipole_u(imain, jmain), istatus)
+
+      write(24, *) dulon(imain, jmain), dulat(imain, jmain), dipole_u(imain, jmain)
+      call lon_lat_interpolate(reg_t_x, dtlon(imain, jmain), dtlat(imain, jmain), &
+         KIND_TEMPERATURE, height, dipole_t(imain, jmain), istatus)
+      write(25, *) dtlon(imain, jmain), dtlat(imain, jmain), dipole_t(imain, jmain)
+
+   end do
+end do
+
+end subroutine test_interpolation
+
+
 !===================================================================
 ! End of model_mod
 !===================================================================
 end module model_mod
+
+
