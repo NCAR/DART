@@ -7,7 +7,15 @@
 
 <!--==================================================================-->
 
-<DIV ALIGN=LEFT class="disclaimer">
+<H1>DART Documentation Index</H1>
+
+<table border=0 cellspacing=0 cellpadding=0>
+<tr>
+<td align=left>
+<img src="doc/html/Dartboard9.png" alt="extraordinarily cool DART logo"</img>
+</td>
+<td align=center>
+<DIV class="disclaimer">
 GNU General Public License
 
 <P>This file is part of the Data Assimilation Research Testbed (DART).</P>
@@ -29,16 +37,14 @@ Boston, MA  02111-1307  USA<BR>
 or see:<BR>
 http://www.gnu.org/licenses/gpl.txt
 </DIV>
+</td> </tr>
+</table>
 
 <!--==================================================================-->
 
 <br>
-<img src="doc/html/Dartboard9.png" alt="extraordinarily cool DART logo"></img>
-<br>
-<br>
 <A NAME="HEADER"></A>
 
-<H1>DART Documentation Index</H1>
 
 <DIV ALIGN=CENTER>
 <A HREF="#Overview">OVERVIEW</A> / 
@@ -56,7 +62,11 @@ http://www.gnu.org/licenses/gpl.txt
 
 <P>
 This page contains links to all the documentation for this DART release.
-The overview for this release is 
+The latest official release was named "Jamaica", but that was quite a
+while ago and we have been making significant code improvements and now
+recommend that people check out the head of the trunk branch of the
+subversion repository.  Still, some of the documentation prepared for the
+last release may be helpful.  See the overview
 <a href="doc/html/Jamaica_release.html">doc/html/Jamaica_release.html</a> and
 the differences from the previous release are highlighted in
 <a href="doc/html/Jamaica_diffs_from_I.html">doc/html/Jamaica_diffs_from_I.html</a>.
@@ -115,16 +125,16 @@ generate data or format the diagnostic information.
 The executable programs that come with DART include:
 
 <pre>
-<A HREF="filter/filter.html">program filter</A>
-<A HREF="preprocess/preprocess.html">program preprocess</A>
-<A HREF="perfect_model_obs/perfect_model_obs.html">program perfect_model_obs</A>
-<A HREF="obs_sequence/create_fixed_network_seq.html">program create_fixed_network_seq</A>
-<A HREF="obs_sequence/create_obs_sequence.html">program create_obs_sequence</A>
-<A HREF="obs_sequence/obs_sequence_tool.html">program obs_sequence_tool</A>
-<a href="utilities/restart_file_tool.html">program restart_file_tool</a>
-<A HREF="integrate_model/integrate_model.html">program integrate_model</A>
-<A HREF="filter/wakeup_filter.html">program wakeup_filter</A>
-<A HREF="diagnostics/rms_diag.f90">program rms_diag</A>
+<A HREF="filter/filter.html">program filter</A> - the main assimilation code
+<A HREF="preprocess/preprocess.html">program preprocess</A> - used during compiling
+<A HREF="perfect_model_obs/perfect_model_obs.html">program perfect_model_obs</A> - run a model to generate synthetic observation values
+<A HREF="obs_sequence/create_obs_sequence.html">program create_obs_sequence</A> - interactive program to generate synthetic observations
+<A HREF="obs_sequence/create_fixed_network_seq.html">program create_fixed_network_seq</A> - repeat an observation at multiple times
+<A HREF="obs_sequence/obs_sequence_tool.html">program obs_sequence_tool</A> - general observation sequence file manipulation
+<a href="utilities/restart_file_tool.html">program restart_file_tool</a> - utility for DART restart files
+<A HREF="preprocess/preprocess.html">program preprocess</A> - used during compiling
+<A HREF="integrate_model/integrate_model.html">program integrate_model</A> - wrapper for models called as subroutines
+<A HREF="filter/wakeup_filter.html">program wakeup_filter</A> - needed when running a parallel model advance
 </pre>
 </P>
 
@@ -134,10 +144,11 @@ The diagnostic programs that process observations after being assimilated
 by DART include:
 
 <pre>
-<A HREF="diagnostics/oned/obs_diag.html">oned/obs_diag</A>
-<A HREF="diagnostics/threed_sphere/obs_diag.html">threed_sphere/obs_diag</A>
-<A HREF="diagnostics/threed_sphere/obs_seq_to_netcdf.html">obs_seq_to_netcdf</A>
-<A HREF="diagnostics/threed_sphere/wind_obs_to_table.html">wind_obs_to_table</A>
+<A HREF="diagnostics/oned/obs_diag.html">oned/obs_diag</A> - low order model diagnostics
+<A HREF="diagnostics/threed_sphere/obs_diag.html">threed_sphere/obs_diag</A> - full 3d model diagnostics
+<A HREF="diagnostics/threed_sphere/obs_seq_to_netcdf.html">obs_seq_to_netcdf</A> - convert output observation sequence files into netcdf
+<A HREF="diagnostics/threed_sphere/wind_obs_to_table.html">wind_obs_to_table</A> - work with U,V wind vectors
+<A HREF="diagnostics/rms_diag.f90">program rms_diag</A> - example code to compute diagnostics
 </pre>
 
 </P>
@@ -328,7 +339,7 @@ the other categories.
 <H2>Complete list of all Documentation</H2>
 
 <P>
-The kitchen sink - quick linkes to all existing html docs plus 
+The kitchen sink - quick links to all existing html docs plus 
 all model_mod source files in the DART distribution tree:
 </P>
 
