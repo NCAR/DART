@@ -48,13 +48,6 @@
 
 <H1>MODULE obs_sequence_mod</H1>
 <A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 
@@ -63,19 +56,25 @@
 <H2>OVERVIEW</H2>
 
 <P>
-   Provides interfaces to the observation type and observation sequence
+Provides interfaces to the observation type and observation sequence
 type. An observation contains everything there is to know about an
 observation including all metadata contained in the observation definition
 and any number of copies of data associated with the observation (for
 instance an actual observation, an ensemble of first guess values, etc).
 An observation sequence is a time-ordered set of observations that is 
-contained in  linked list so that observations can be easily added or
+defined by a linked list so that observations can be easily added or
 deleted. A number of commands to extract observations depending on 
 the times at which they were taken are provided. For now, the observations
 are only ordered by time, but the ability to add extra sort keys could
 be added.
 </P>
 <P>
+These routines are commonly used in conversion programs which read
+observation data from various formats and create a DART observation
+sequence in memory, and then write it out to a file.  See the
+<a href="../observations/observations.html">observations</a>
+directory for examples of programs which create and manipulate
+observations using this routines.
 </P>
 
 <!--==================================================================-->
@@ -1866,6 +1865,16 @@ parameter should remain.
 <P>
 </P>
 
+<!--==================================================================-->
+
+<HR>
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 
