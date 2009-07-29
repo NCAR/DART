@@ -47,42 +47,74 @@
 
 <H1>PROGRAM create_obs_sequence</H1>
 <A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
+<HR>
 
 <!--==================================================================-->
 
 <A NAME="OVERVIEW"></A>
-<HR>
 <H2>OVERVIEW</H2>
 
 <P>
-This program can create an observation sequence file using input from 
-standard in. It can be run interactively, or input files can be created
-and redirected into standard in. The latter method is most commonly used to 
-create larger observation sequence files for perfect model application.
-The program can create complete observation sequences with both quality
-control fields and copies of data associated with each observation. 
-For perfect model application, it is usually convenient to define 0
+This program creates an observation sequence file using values read from 
+standard input.  It is typically used to create synthetic observations,
+or shorter sequences of observations (although there is no limit on
+the number of observations).  For creating observation sequence files
+directly from large, real-world observation datasets, see the 
+<a href="../observations/observations.html">observations</a> directory.
+</P><P>
+This program can be run interactively (input from a terminal), or input 
+files can be created with a text editor, perl or matlab script, or any
+other convenient method, and then run with standard input redirected 
+from this file.  The latter method is most commonly used to 
+create larger observation sequence files for perfect model applications.
+</P><P>
+The program can create complete observation sequences ready to be
+assimilated, or it can create observations with only partial data
+which is later filled in by another program.
+Each observation needs to have a type, location, time, expected error,
+and optionally a data value and/or a quality control indicator.
+For perfect model applications, it is usually convenient to define 0
 quality control fields and 0 copies of the data for each observation. 
-The output of create_obs_sequence can be read by perfect_model_obs which
-will then create a synthetic (perfect_model) observation sequence complete
-with two copies of the data for each observation (the observed value and
-the 'true' value).
-<HR>
-Another common approach for perfect model applications is to use create_obs_sequence
-to create a set of observations that will remain fixed in time. This can
-be done by having zero copies of data values associated with each observation
-and defining all observations to be at the same time. The program 
-create_fixed_network_sequence can read the output of create_obs_sequence
-and can be used to create an observation sequence that will observe all of
-the observations at a number of different times (see create_fixed_network_sequence).
+The output of create_obs_sequence can be read by 
+<a href="../perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a> 
+which will then create a synthetic (perfect_model) observation sequence 
+complete with two copies of the data for each observation: the observed 
+value and the 'true' value.
+</P><P>
+Another common approach for perfect model applications is to use 
+create_obs_sequence to define a set of observation locations and types,
+and where observations will be repeatedly sampled in time.
+When running create_obs_sequence, specify a single observation for
+each different location and type, with 0 copies of data and giving
+all the observations the same time.
+Then the program 
+<a href="create_fixed_network_seq.html">create_fixed_network_seq</a>
+can read the output of create_obs_sequence
+and create an observation sequence file that will contain the set of 
+input observations at a number of different times.
+This models a fixed observation station, observing the system at
+some frequency in time.
+</P><P>
+This program can also create what are called "identity observations".
+These are observations located directly at one of the state variables,
+so that computing the value requires no model interpolation but simply
+returns the actual state variable value.  To specify these types of
+observations, the convention is to put in the negative index number
+for the offset of that state variable in the state vector.  By specifying
+the index both the observation kind and location are defined by the
+kind and location of that state variable.
+</P><P>
+The types of observations which can be created by this program is
+controlled by the observation types built into the source files
+created by the
+<a href="../preprocess/preprocess.html">preprocess</a>
+program.  The preprocess namelist sets the available observation
+types, and must be run each time it is changed, and then the
+create_obs_sequence program must be recompiled to incorporate
+the updated source files.
 </P>
+
+
 
 <!--==================================================================-->
 
@@ -150,6 +182,15 @@ assim_model_mod
 <H3 class=indent1>Discussion</H3>
 
 <!--==================================================================-->
+
+<HR>
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
 
 <HR>
 </BODY>
