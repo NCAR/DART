@@ -1,0 +1,346 @@
+<HTML>
+<HEAD>
+<TITLE>module types_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+</HEAD>
+<BODY>
+<!--
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                                       !!
+!!                   GNU General Public License                          !!
+!!                                                                       !!
+!! This file is part of the Data Assimilation Research Testbed (DART).   !!
+!!                                                                       !!
+!! DART is free software; you can redistribute it and/or modify          !!
+!! it and are expected to follow the terms of the GNU General Public     !!
+!! License as published by the Free Software Foundation.                 !!
+!!                                                                       !!
+!! DART is distributed in the hope that it will be useful,               !!
+!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
+!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
+!! GNU General Public License for more details.                          !!
+!!                                                                       !!
+!! You should have received a copy of the GNU General Public License     !!
+!! along with DART; if not, write to:                                    !!
+!!          Free Software Foundation, Inc.                               !!
+!!          59 Temple Place, Suite 330                                   !!
+!!          Boston, MA  02111-1307  USA                                  !!
+!! or see:                                                               !!
+!!          http://www.gnu.org/licenses/gpl.txt                          !!
+!!                                                                       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-->
+
+<DIV ALIGN=CENTER>
+<A HREF="#Interface">INTERFACE</A> / 
+<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
+<A HREF="#Namelist">NAMELIST</A> / 
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#KnownBugs">BUGS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
+</DIV>
+
+<!--==================================================================-->
+
+<H1>MODULE types_mod</H1>
+<A NAME="HEADER"></A>
+
+<!--==================================================================-->
+
+<A NAME="OVERVIEW"></A>
+<HR>
+<H2>OVERVIEW</H2>
+
+<P>
+Provides some commonly used mathematical constants, and a set of
+Fortran integer and real kinds, to be used to select the right
+variable size (e.g. 4 bytes, 8 bytes) to match the rest of the
+DART interfaces.  (DART does not depend on compiler flags to
+set precision, but explicitly specifies a kind for each variable
+in the public interfaces.)
+</P> <P>
+
+</P>
+
+<!--==================================================================-->
+
+<A NAME="OTHER MODULES USED"></A>
+<BR><HR><BR>
+<H2>OTHER MODULES USED</H2>
+<PRE>
+none
+</PRE>
+
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+
+<A NAME="Interface"></A>
+<BR><HR><BR>
+<H2>PUBLIC INTERFACE</H2>
+
+This routine provides the following constants, but no routines
+of any kind.
+<TABLE>
+<TR><TD><em class=call>use types_mod, only : </em></TD>
+                   <TD><A HREF="#kinds">i4</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#kinds">i8</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#kinds">r4</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#kinds">r8</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#kinds">c4</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#kinds">c8</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#kinds">digits12</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#math">PI</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#math">DEG2RAD</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#math">RAD2DEG</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#math">SECPERDAY</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#no_data">MISSING_R4</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#no_data">MISSING_R8</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#no_data">MISSING_I</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#no_data">MISSING_DATA</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#dart_lengths">metadatalength</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#dart_lengths">obstypelength</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#phys_const">t_kelvin</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#phys_const">es_alpha</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#phys_const">es_beta</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#phys_const">es_gamma</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#phys_const">gas_constant_v</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#phys_const">gas_constant</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#phys_const">L_over_Rv</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#phys_const">ps0</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#phys_const">earth_radius</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#phys_const">gravity</A></TD></TR>
+
+
+</TABLE>
+
+<H3 class=indent1>NOTES</H3>
+
+<P>
+No namelist is used by this module.
+</P>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!--==================================================================-->
+
+<A NAME="PublicEntities"></A>
+<BR><HR><BR>
+<H2>PUBLIC COMPONENTS</H2>
+<BR>
+
+
+<!--=================== DESCRIPTION OF A PARAMETER ==================-->
+
+<A NAME="kinds"></A>
+<BR><HR><BR>                                                             
+<div class=type><pre>
+<em class=call>integer, parameter :: i4</em>
+<em class=call>integer, parameter :: i8</em>
+<em class=call>integer, parameter :: r4</em>
+<em class=call>integer, parameter :: r8</em>
+<em class=call>integer, parameter :: c4</em>
+<em class=call>integer, parameter :: c8</em>
+<em class=call>integer, parameter :: digits12</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+<P>
+These kinds are used when declaring variables, like:
+<pre>
+real(r8)    :: myvariable
+integer(i4) :: shortint
+</pre>
+All DART public interfaces use types on the real values to
+ensure they are consistent across various compilers and
+compile-time options. The digits12 is generally only used
+for reals which require extra precision.
+</P><P>
+Some models are able to run with single precision real values,
+which saves both memory when executing and file space when
+writing and reading restart files.  To accomplish this, the
+users edit this file, redefine r8 to equal r4, and then rebuild
+all of DART.
+</P>
+
+
+<!--=================== DESCRIPTION OF A PARAMETER ==================-->
+
+<A NAME="math"></A>
+<BR><HR><BR>                                                             
+<div class=type><pre>
+<em class=call>real(KIND=R8), parameter :: PI</em>
+<em class=call>real(KIND=R8), parameter :: DEG2RAD</em>
+<em class=call>real(KIND=R8), parameter :: RAD2DEG</em>
+<em class=call>real(KIND=R8), parameter :: SECPERDAY</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+<P>
+Some commonly used math constants, defined here for convenience.
+</P>
+
+<!--=================== DESCRIPTION OF A PARAMETER ==================-->
+
+<A NAME="no_data"></A>
+<BR><HR><BR>                                                             
+<div class=type><pre>
+<em class=call>real(KIND=R4), parameter :: MISSING_R4</em>
+<em class=call>real(KIND=R8), parameter :: MISSING_R8</em>
+<em class=call>integer,       parameter :: MISSING_I</em>
+<em class=call>integer,       parameter :: MISSING_DATA</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+<P>
+Numeric constants used in the DART code when a numeric
+value is required, but the data is invalid or missing.
+These are typically defined as negative and a series
+of 8's, so they are distinctive when scanning a list of values.
+</P>
+
+
+<!--=================== DESCRIPTION OF A PARAMETER ==================-->
+
+<A NAME="dart_lengths"></A>
+<BR><HR><BR>                                                             
+<div class=type><pre>
+<em class=call>integer, parameter :: metadatalength</em>
+<em class=call>integer, parameter :: obstypelength</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+<P>
+Some common string limits used system-wide by DART code.
+The obstypelength is limited by the Fortran-imposed maximum
+number of characters in a parameter; the metadatalength was
+selected to be long enough to allow descriptive names but
+short enough to keep printing to less than a single line.
+</P>
+
+
+<!--=================== DESCRIPTION OF A PARAMETER ==================-->
+
+<A NAME="phys_const"></A>
+<BR><HR><BR>                                                             
+<div class=type><pre>
+<em class=call>real(KIND=R8), parameter :: t_kevin</em>
+<em class=call>real(KIND=R8), parameter :: es_alpha</em>
+<em class=call>real(KIND=R8), parameter :: es_beta</em>
+<em class=call>real(KIND=R8), parameter :: es_gamma</em>
+<em class=call>real(KIND=R8), parameter :: gas_constant_v</em>
+<em class=call>real(KIND=R8), parameter :: gas_constant</em>
+<em class=call>real(KIND=R8), parameter :: L_over_Rv</em>
+<em class=call>real(KIND=R8), parameter :: ps0</em>
+<em class=call>real(KIND=R8), parameter :: earth_radius</em>
+<em class=call>real(KIND=R8), parameter :: gravity</em>
+</pre></div>
+
+<H3 class=indent1>Description</H3>
+<P>
+A set of geophysical constants, which could be
+argued do not belong in a DART-supplied file since
+they are quite probably specific to a model or a
+particular forward operator.
+</P><P>
+Best case would be if we could engineer the code so
+these constants were provided by the model and then
+used when compiling the forward operator files.
+But given that Fortran use statements
+cannot be circular, this poses a problem. 
+Perhaps we could work out how the obs_def code could
+define these constants and then they could be used
+by the model code.
+For now, they are defined here but it is up to the
+model and obs_def code writers whether to use these or not.
+</P>
+
+
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<BR><HR><BR>
+<H2>FILES</H2>
+<UL>
+ None currently.
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<BR><HR><BR>
+<H2>REFERENCES</H2>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<HR>
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class="errors">
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top></TD>
+    <!-- message --><TD VALIGN=top></TD>
+    <!-- comment --><TD VALIGN=top></TD>
+</TR>
+
+</TABLE>
+</div>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<BR><HR><BR>
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Descibe Future Plans.                                            -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<BR><HR><BR>
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<BR><HR><BR>
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+
+<HR>
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson, Tim Hoar </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+<HR>
+</BODY>
+</HTML>
