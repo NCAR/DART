@@ -1,3 +1,8 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2008, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !   convert_cosmic_gps_cdf - program that reads a COSMIC GPS observation 
@@ -7,69 +12,86 @@
 !     created June 2008 Ryan Torn, NCAR/MMM
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 program convert_cosmic_gps_cdf
 
 use        types_mod, only : r8
-use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time, &
-                             increment_time, get_time, set_date, operator(-)
-use    utilities_mod, only : initialize_utilities, find_namelist_in_file, &
-                             check_namelist_read, nmlfileunit, do_output
+use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
+                             increment_time, get_time, set_date, operator(-),  &
+                             print_date
+use    utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
+                             check_namelist_read, nmlfileunit, do_output,    &
+                             get_next_filename, error_handler, E_ERR, E_MSG, &
+                             nc_check, find_textfile_dims
 use     location_mod, only : VERTISHEIGHT, set_location
-use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
-                             static_init_obs_sequence, init_obs, write_obs_seq, &
-                             append_obs_to_seq, init_obs_sequence, get_num_obs, &
-                             set_copy_meta_data, set_qc_meta_data, set_qc, & 
+use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
+                             static_init_obs_sequence, init_obs, destroy_obs, &
+                             write_obs_seq, init_obs_sequence, get_num_obs,   &
+                             insert_obs_in_seq, destroy_obs_sequence,         &
+                             set_copy_meta_data, set_qc_meta_data, set_qc,    & 
                              set_obs_values, set_obs_def, insert_obs_in_seq
 use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
-                             set_obs_def_error_variance, set_obs_def_location, & 
+                             set_obs_def_error_variance, set_obs_def_location, &
                              set_obs_def_key
 use  obs_def_gps_mod, only : set_gpsro_ref
 use     obs_kind_mod, only : GPSRO_REFRACTIVITY
+
 use           netcdf
 
 implicit none
 
-character(len=19),  parameter :: gpsro_netcdf_file = 'cosmic_gps_input.nc'
-character(len=129), parameter :: gpsro_out_file    = 'obs_seq.gpsro'
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
 
-character (len=129) :: meta_data
+character (len=129) :: meta_data, msgstring, next_infile
 character (len=80)  :: name
 character (len=19)  :: datestr
 character (len=6)   :: subset
-integer :: rcode, ncid, varid, nlevels, k, &
-           aday, asec, dday, dsec, oday, osec, &
-           iyear, imonth, iday, ihour, imin, isec, &
-           glat, glon, zloc, obs_num, io, iunit, nobs
-logical :: file_exist
-real(r8) :: hght_miss, refr_miss, azim_miss, oerr, & 
-            obs_window, qc, lato, lono, hghto, refro, azimo, wght, nx, ny, & 
-            nz, ds, htop, rfict, obsval, phs, obs_val(1), qc_val(1), & 
-            ref_obserr_kuo_percent, excess_obserr_percent
+integer :: rcode, ncid, varid, nlevels, k, nfiles, num_new_obs,  &
+           aday, asec, dday, dsec, oday, osec,                   &
+           iyear, imonth, iday, ihour, imin, isec,               &
+           glat, glon, zloc, obs_num, io, iunit, nobs, filenum, dummy
+logical :: file_exist, first_obs, did_obs, from_list = .false.
+real(r8) :: hght_miss, refr_miss, azim_miss, oerr,               & 
+            qc, lato, lono, hghto, refro, azimo, wght, nx, ny,   & 
+            nz, ds, htop, rfict, obsval, phs, obs_val(1), qc_val(1)
 
 real(r8), allocatable :: lat(:), lon(:), hght(:), refr(:), azim(:), & 
                          hghtp(:), refrp(:)
 
 type(obs_def_type)      :: obs_def
 type(obs_sequence_type) :: obs_seq
-type(obs_type)          :: obs
+type(obs_type)          :: obs, prev_obs
 type(time_type)         :: time_obs, time_anal
 
 !------------------------------------------------------------------------
 !  Declare namelist parameters
 !------------------------------------------------------------------------
 
-integer, parameter :: nmaxlevels = 200   !  maximum number of observation levels
+integer, parameter :: nmaxlevels = 200   !  max number of observation levels
 
 logical  :: local_operator = .true.
+logical  :: overwrite_time = .false.
 real(r8) :: obs_levels(nmaxlevels) = -1.0_r8
+real(r8) :: obs_window = 12.0     ! accept obs within +/- hours from anal time
 real(r8) :: ray_ds = 5000.0_r8    ! delta stepsize (m) along ray, nonlocal op
 real(r8) :: ray_htop = 15000.0_r8 ! max height (m) for nonlocal op
+character(len=128) :: gpsro_netcdf_file     = 'cosmic_gps_input.nc'
+character(len=128) :: gpsro_netcdf_filelist = 'cosmic_gps_input_list'
+character(len=128) :: gpsro_out_file        = 'obs_seq.gpsro'
 
 namelist /convert_cosmic_gps_nml/ obs_levels, local_operator, obs_window, &
-                                  ray_ds, ray_htop
+                                  ray_ds, ray_htop, gpsro_netcdf_file,    &
+                                  gpsro_netcdf_filelist, gpsro_out_file 
+
+! could add overwrite_time to namelist
 
 ! initialize some values
 obs_num = 1
@@ -96,6 +118,7 @@ read(iunit, nml = convert_cosmic_gps_nml, iostat = io)
 ! Record the namelist values used for the run 
 if (do_output()) write(nmlfileunit, nml=convert_cosmic_gps_nml)
 
+! namelist checks for sanity
 
 !  count observation levels, make sure observation levels increase from 0
 nlevels = 0
@@ -105,208 +128,268 @@ do k = 1, nmaxlevels
 end do
 do k = 2, nlevels
   if ( obs_levels(k-1) >= obs_levels(k) ) then
-    write(6,*) 'Observation levels should increase'
-    stop
+    call error_handler(E_ERR, 'convert_cosmic_gps_cdf',       &
+                       'Observation levels should increase',  &
+                       source, revision, revdate)
   end if
 end do
 
 !  should error check the window some
 if (obs_window <= 0.0_r8 .or. obs_window > 24.0_r8) then
-    write(6,*) 'Bad value for obs_window (hours)'
-    stop
+    call error_handler(E_ERR, 'convert_cosmic_gps_cdf',       &
+                       'Bad value for obs_window (hours)',    &
+                       source, revision, revdate)
 else
    obs_window = obs_window * 3600.0_r8
 endif
 
-!  open the occultation profile, check if it is within the window
-rcode = nf90_open(gpsro_netcdf_file, nf90_nowrite, ncid)
-call check( nf90_get_att(ncid, nf90_global, 'year',   iyear)  )
-call check( nf90_get_att(ncid, nf90_global, 'month',  imonth) )
-call check( nf90_get_att(ncid, nf90_global, 'day',    iday)   )
-call check( nf90_get_att(ncid, nf90_global, 'hour',   ihour)  )
-call check( nf90_get_att(ncid, nf90_global, 'minute', imin)   )
-call check( nf90_get_att(ncid, nf90_global, 'second', isec)   )
 
-time_obs = set_date(iyear, imonth, iday, ihour, imin, isec)
-call get_time(time_obs, osec, oday)
+! cannot have both a single filename and a list; the namelist must
+! shut one off.
+if (gpsro_netcdf_file /= '' .and. gpsro_netcdf_filelist /= '') then
+  call error_handler(E_ERR, 'convert_cosmic_gps_cdf',                     &
+                     'One of gpsro_netcdf_file or filelist must be NULL', &
+                     source, revision, revdate)
+endif
+if (gpsro_netcdf_filelist /= '') from_list = .true.
 
-! time1-time2 is always positive no matter the relative magnitudes
-call get_time(time_anal-time_obs,dsec,dday)
-if ( real(dsec+dday*86400) > obs_window ) then
-  write(6,*) 'Observation is outside window'
-  stop
-end if
-
-call check( nf90_inq_dimid(ncid, "MSL_alt", varid) )
-call check( nf90_inquire_dimension(ncid, varid, name, nobs) )
-
-call check( nf90_get_att(ncid, nf90_global, 'lon',   glon)  )
-call check( nf90_get_att(ncid, nf90_global, 'lat',   glat)  )
-call check( nf90_get_att(ncid, nf90_global, 'rfict', rfict) )
-rfict = rfict * 1000.0_r8
-
-allocate( lat(nobs))  ;  allocate( lon(nobs))
-allocate(hght(nobs))  ;  allocate(refr(nobs))
-allocate(azim(nobs))
-
-! read the latitude array
-call check( nf90_inq_varid(ncid, "Lat", varid) )
-call check( nf90_get_var(ncid, varid, lat) )
-
-! read the latitude array
-call check( nf90_inq_varid(ncid, "Lon", varid) )
-call check( nf90_get_var(ncid, varid, lon) )
-
-! read the altitude array
-call check( nf90_inq_varid(ncid, "MSL_alt", varid) )
-call check( nf90_get_var(ncid, varid, hght) )
-call check( nf90_get_att(ncid, varid, '_FillValue', hght_miss) )
-
-! read the refractivity
-call check( nf90_inq_varid(ncid, "Ref", varid) )
-call check( nf90_get_var(ncid, varid, refr) )
-call check( nf90_get_att(ncid, varid, '_FillValue', refr_miss) )
-
-! read the dew-point temperature array
-call check( nf90_inq_varid(ncid, "Azim", varid) )
-call check( nf90_get_var(ncid, varid, azim) )
-call check( nf90_get_att(ncid, varid, '_FillValue', azim_miss) )
-
-call check( nf90_close(ncid) )
+! need to know a reasonable max number of obs that could be added here.
+if (from_list) then
+   call find_textfile_dims(gpsro_netcdf_filelist, nfiles, dummy)
+   num_new_obs = nlevels * nfiles
+else
+   num_new_obs = nlevels
+endif
 
 !  either read existing obs_seq or create a new one
 call static_init_obs_sequence()
 call init_obs(obs, num_copies, num_qc)
+call init_obs(prev_obs, num_copies, num_qc)
 inquire(file=gpsro_out_file, exist=file_exist)
 if ( file_exist ) then
 
 print *, "found existing obs_seq file, appending to ", trim(gpsro_out_file)
-  call read_obs_seq(gpsro_out_file, 0, 0, nlevels, obs_seq)
+   call read_obs_seq(gpsro_out_file, 0, 0, num_new_obs, obs_seq)
 
 else
 
 print *, "no existing obs_seq file, creating ", trim(gpsro_out_file)
-print *, "max entries = ", nlevels
-  call init_obs_sequence(obs_seq, num_copies, num_qc, nlevels)
+print *, "max entries = ", num_new_obs
+  call init_obs_sequence(obs_seq, num_copies, num_qc, num_new_obs)
   do k = 1, num_copies
-    meta_data = 'NCEP BUFR observation'
+    meta_data = 'COSMIC GPS observation'
     call set_copy_meta_data(obs_seq, k, meta_data)
   end do
   do k = 1, num_qc
-    meta_data = 'NCEP QC index'
+    meta_data = 'COSMIC QC'
     call set_qc_meta_data(obs_seq, k, meta_data)
   end do
 
 end if
 
 allocate(hghtp(nlevels))  ;  allocate(refrp(nlevels))
-obsloop: do k = 1, nlevels
+did_obs = .false.
 
-  call interp_height_wght(hght, obs_levels(k), nobs, zloc, wght)
-  if ( zloc < 1 )  cycle obsloop
-  hghtp(nlevels-k+1) = obs_levels(k) * 1000.0_r8
-  refrp(nlevels-k+1) = exp( wght * log(refr(zloc)) + & 
-                    (1.0_r8 - wght) * log(refr(zloc+1)) ) * 1.0e-6_r8
+! main loop that does either a single file or a list of files
 
-end do obsloop
+filenum = 1
+fileloop: do      ! until out of files
 
-obsloop2: do k = 1, nlevels
+   ! get the single name, or the next name from a list
+   if (from_list) then 
+      next_infile = get_next_filename(gpsro_netcdf_filelist, filenum)
+   else
+      next_infile = gpsro_netcdf_file
+      if (filenum > 1) next_infile = ''
+   endif
+   if (next_infile == '') exit fileloop
+  
+   !  open the occultation profile, check if it is within the window
+   call nc_check( nf90_open(next_infile, nf90_nowrite, ncid), 'file open', next_infile)
+   call nc_check( nf90_get_att(ncid,nf90_global,'year',  iyear) ,'get_att year')
+   call nc_check( nf90_get_att(ncid,nf90_global,'month', imonth),'get_att month')
+   call nc_check( nf90_get_att(ncid,nf90_global,'day',   iday)  ,'get_att day')
+   call nc_check( nf90_get_att(ncid,nf90_global,'hour',  ihour) ,'get_att hour')
+   call nc_check( nf90_get_att(ncid,nf90_global,'minute',imin)  ,'get_att minute')
+   call nc_check( nf90_get_att(ncid,nf90_global,'second',isec)  ,'get_att second')
+   
+   time_obs = set_date(iyear, imonth, iday, ihour, imin, isec)
+   call get_time(time_obs,  osec, oday)
+   
+   ! time1-time2 is always positive no matter the relative magnitudes
+   call get_time(time_anal-time_obs,dsec,dday)
+   if ( real(dsec+dday*86400) > obs_window ) then
+     call print_date(time_obs, 'observation: ')
+     call print_date(time_anal, 'window center: ')
+     write(msgstring, *) 'Window width (hours): ', obs_window / 3600.0_r8
+     call error_handler(E_MSG, 'convert_cosmic_gps_cdf',       &
+                        msgstring, source, revision, revdate)
+     call error_handler(E_ERR, 'convert_cosmic_gps_cdf',       &
+                        'Observation is outside window',       &
+                        source, revision, revdate)
+   end if
+   
+   call nc_check( nf90_inq_dimid(ncid, "MSL_alt", varid), 'inq dimid MSL_alt')
+   call nc_check( nf90_inquire_dimension(ncid, varid, name, nobs), 'inq dim MSL_alt')
+   
+   call nc_check( nf90_get_att(ncid,nf90_global,'lon',  glon) ,'get_att lon'  )
+   call nc_check( nf90_get_att(ncid,nf90_global,'lat',  glat) ,'get_att lat'  )
+   call nc_check( nf90_get_att(ncid,nf90_global,'rfict',rfict),'get_att rfict')
+   rfict = rfict * 1000.0_r8
+   
+   allocate( lat(nobs))  ;  allocate( lon(nobs))
+   allocate(hght(nobs))  ;  allocate(refr(nobs))
+   allocate(azim(nobs))
+   
+   ! read the latitude array
+   call nc_check( nf90_inq_varid(ncid, "Lat", varid) ,'inq varid Lat')
+   call nc_check( nf90_get_var(ncid, varid, lat)     ,'get var   Lat')
+   
+   ! read the latitude array
+   call nc_check( nf90_inq_varid(ncid, "Lon", varid) ,'inq varid Lon')
+   call nc_check( nf90_get_var(ncid, varid, lon)     ,'get var   Lon')
+   
+   ! read the altitude array
+   call nc_check( nf90_inq_varid(ncid, "MSL_alt", varid) ,'inq varid MSL_alt')
+   call nc_check( nf90_get_var(ncid, varid, hght)        ,'get_var   MSL_alt')
+   call nc_check( nf90_get_att(ncid, varid, '_FillValue', hght_miss) ,'get_att _FillValue MSL_alt')
+   
+   ! read the refractivity
+   call nc_check( nf90_inq_varid(ncid, "Ref", varid) ,'inq varid Ref')
+   call nc_check( nf90_get_var(ncid, varid, refr)    ,'get var   Ref')
+   call nc_check( nf90_get_att(ncid, varid, '_FillValue', refr_miss) ,'get_att _FillValue Ref')
+   
+   ! read the dew-point temperature array
+   call nc_check( nf90_inq_varid(ncid, "Azim", varid) ,'inq varid Azim')
+   call nc_check( nf90_get_var(ncid, varid, azim)     ,'get var   Azim')
+   call nc_check( nf90_get_att(ncid, varid, '_FillValue', azim_miss) ,'get_att _FillValue Azim')
+   
+   call nc_check( nf90_close(ncid) , 'close file')
+   
+   obsloop: do k = 1, nlevels
+   
+     call interp_height_wght(hght, obs_levels(k), nobs, zloc, wght)
+     if ( zloc < 1 )  cycle obsloop
+     hghtp(nlevels-k+1) = obs_levels(k) * 1000.0_r8
+     refrp(nlevels-k+1) = exp( wght * log(refr(zloc)) + & 
+                       (1.0_r8 - wght) * log(refr(zloc+1)) ) * 1.0e-6_r8
+   
+   end do obsloop
+   
+   first_obs = .true.
+   
+   obsloop2: do k = 1, nlevels
+   
+     call interp_height_wght(hght, obs_levels(k), nobs, zloc, wght)
+     if ( zloc < 1 )  cycle obsloop2
+   
+     lato  = wght * lat(zloc)  + (1.0_r8 - wght) * lat(zloc+1)
+     lono  = wght * lon(zloc)  + (1.0_r8 - wght) * lon(zloc+1)
+     if ( lono < 0.0_r8 )  lono = lono + 360.0_r8
+     hghto = wght * hght(zloc) + (1.0_r8 - wght) * hght(zloc+1)
+     hghto = hghto * 1000.0_r8
+     refro = wght * refr(zloc) + (1.0_r8 - wght) * refr(zloc+1)
+     azimo = wght * azim(zloc) + (1.0_r8 - wght) * azim(zloc+1)
+   
+     if ( local_operator ) then
+   
+        nx        = 0.0_r8
+        ny        = 0.0_r8
+        nz        = 0.0_r8
+        ray_ds    = 0.0_r8
+        ray_htop  = 0.0_r8
+        rfict     = 0.0_r8
+   
+        obsval = refro
+        oerr   = 0.01_r8 * ref_obserr_kuo_percent(hghto * 0.001_r8) * obsval
+        subset = 'GPSREF'
+   
+     else
+   
+       !  compute tangent unit vector
+       call tanvec01(lono, lato, azimo, nx, ny, nz)
+   
+       !  compute the excess phase
+       call excess(refrp, hghtp, lono, lato, hghto, nx, & 
+                   ny, nz, rfict, ray_ds, ray_htop, phs, nlevels)
+   
+       !  if too high, phs will return as 0.  cycle loop here.
+       if (phs <= 0) cycle obsloop2
+   
+       obsval = phs
+       oerr   = 0.01_r8 * excess_obserr_percent(hghto * 0.001_r8) * obsval
+   !print *, 'hghto,obsval,perc,err=', hghto, obsval, &
+   !          excess_obserr_percent(hghto * 0.001_r8), oerr
+       subset = 'GPSEXC'
+   
+     end if
+   
+     call set_gpsro_ref(obs_num, nx, ny, nz, rfict, ray_ds, ray_htop, subset)
+     call set_obs_def_location(obs_def,set_location(lono,lato,hghto,VERTISHEIGHT))
+     call set_obs_def_kind(obs_def, GPSRO_REFRACTIVITY)
+     if (overwrite_time) then   ! generally do not want to do this here.
+        call set_obs_def_time(obs_def, set_time(asec, aday))
+     else
+        call set_obs_def_time(obs_def, set_time(osec, oday))
+     endif
+     call set_obs_def_error_variance(obs_def, oerr * oerr)
+     call set_obs_def_key(obs_def, obs_num)
+     call set_obs_def(obs, obs_def)
+   
+     obs_val(1) = obsval
+     call set_obs_values(obs, obs_val)
+     qc_val(1)  = qc
+     call set_qc(obs, qc_val)
+   
+     ! first one, insert with no prev.  otherwise, since all times will be the
+     ! same for this column, insert with the prev obs as the starting point.
+     ! (this code used to call append, but calling insert makes it work even if
+     ! the input files are processed out of strict time order, which one message
+     ! i got seemed to indicate was happening...)
+     if (first_obs) then
+        call insert_obs_in_seq(obs_seq, obs)
+        first_obs = .false.
+   !print *, 'inserting first obs'
+     else
+        call insert_obs_in_seq(obs_seq, obs, prev_obs)
+   !print *, 'inserting other obs'
+     endif
+     obs_num = obs_num+1
+     prev_obs = obs
 
-  call interp_height_wght(hght, obs_levels(k), nobs, zloc, wght)
-  if ( zloc < 1 )  cycle obsloop2
+     if (.not. did_obs) did_obs = .true.
+   
+   end do obsloop2
 
-  lato  = wght * lat(zloc)  + (1.0_r8 - wght) * lat(zloc+1)
-  lono  = wght * lon(zloc)  + (1.0_r8 - wght) * lon(zloc+1)
-  if ( lono < 0.0_r8 )  lono = lono + 360.0_r8
-  hghto = wght * hght(zloc) + (1.0_r8 - wght) * hght(zloc+1)
-  hghto = hghto * 1000.0_r8
-  refro = wght * refr(zloc) + (1.0_r8 - wght) * refr(zloc+1)
-  azimo = wght * azim(zloc) + (1.0_r8 - wght) * azim(zloc+1)
+  ! clean up and loop if there is another input file
+  deallocate( lat, lon, hght, refr, azim )
 
-  if ( local_operator ) then
+  filenum = filenum + 1
 
-     nx    = 0.0_r8
-     ny    = 0.0_r8
-     nz    = 0.0_r8
-     ds    = 0.0_r8
-     htop  = 0.0_r8
-     rfict = 0.0_r8
+end do fileloop
 
-     obsval = refro
-     oerr   = 0.01_r8 * ref_obserr_kuo_percent(hghto * 0.001_r8) * obsval
-     subset = 'GPSREF'
+! done with main loop.  if we added any obs to the sequence, write it out.
+if (did_obs) then
+!print *, 'ready to write, nobs = ', get_num_obs(obs_seq)
+   if (get_num_obs(obs_seq) > 0) &
+      call write_obs_seq(obs_seq, gpsro_out_file)
 
-  else
+   ! minor stab at cleanup, in the off chance this will someday get turned
+   ! into a subroutine in a module.  probably not all that needs to be done,
+   ! but a start.
+!print *, 'calling destroy_obs'
+   call destroy_obs(obs)
+   call destroy_obs(prev_obs)
+print *, 'skipping destroy_seq'
+   ! get core dumps here, not sure why?
+   !if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
+endif
 
-    !  compute tangent unit vector
-    call tanvec01(lono, lato, azimo, nx, ny, nz)
+! END OF MAIN ROUTINE
 
-    !  compute the excess phase
-    call excess(refrp, hghtp, lono, lato, hghto, nx, & 
-                ny, nz, rfict, ray_ds, ray_htop, phs, nlevels)
+contains
 
-    !  if too high, phs will return as 0.  cycle loop here.
-    if (phs <= 0) cycle
-
-    obsval = phs
-    oerr   = 0.01_r8 * excess_obserr_percent(hghto * 0.001_r8) * obsval
-!print *, 'hghto,obsval,perc,err=', hghto, obsval, &
-!          excess_obserr_percent(hghto * 0.001_r8), oerr
-    subset = 'GPSEXC'
-
-  end if
-
-  call set_gpsro_ref(obs_num, nx, ny, nz, rfict, ray_ds, ray_htop, subset)
-  call set_obs_def_location(obs_def,set_location(lono,lato,hghto,VERTISHEIGHT))
-  call set_obs_def_kind(obs_def, GPSRO_REFRACTIVITY)
-  call set_obs_def_time(obs_def, set_time(osec, oday))
-  call set_obs_def_error_variance(obs_def, oerr * oerr)
-  call set_obs_def_key(obs_def, obs_num)
-  call set_obs_def(obs, obs_def)
-
-  obs_val(1) = obsval
-  call set_obs_values(obs, obs_val)
-  qc_val(1)  = qc
-  call set_qc(obs, qc_val)
-
-  ! if this gives an error, use insert instead.  slower, but times do not
-  ! need to be monotonically increasing.
-  call append_obs_to_seq(obs_seq, obs)
-  ! this will speed up if we keep track of the previous time, and pass in an
-  ! existing obs to insert after.
-  !call insert_obs_in_seq(obs_seq, obs)
-  obs_num = obs_num+1
-
-end do obsloop2
-
-if ( get_num_obs(obs_seq) > 0 ) call write_obs_seq(obs_seq, gpsro_out_file)
-
-stop
-end
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   check - subroutine that checks the flag from a netCDF function.  If
-!           there is an error, the message is displayed.
-!
-!    istatus - netCDF output flag
-!
-!     created Dec. 2007 Ryan Torn, NCAR/MMM
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine check( istatus ) 
-
-use netcdf
-
-implicit none
-
-integer, intent (in) :: istatus
-
-if(istatus /= nf90_noerr) then 
-  print*,'Netcdf error: ',trim(nf90_strerror(istatus))
-  stop
-end if
-end subroutine check
+! local subroutines/functions follow
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -815,3 +898,5 @@ z(3) = x(1)*y(2) - x(2)*y(1)
 
 return
 end subroutine vprod
+
+end program
