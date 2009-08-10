@@ -107,6 +107,7 @@ netCDF
 <TR><TD>&nbsp;</TD><TD><A HREF="#find_textfile_dims">find_textfile_dims</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#file_to_text">file_to_text</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#is_longitude_between">is_longitude_between</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_next_filename">get_next_filename</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_tasknum">set_tasknum</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_output">set_output</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#do_output">do_output</A></TD></TR>
@@ -488,6 +489,43 @@ is terminated. The default TERMLEVEL only stops for ERRORS.
          this argument is specified and is .true., do the computation
          in radians, and wrap across the globe at 2 * PI.  All inputs
          must then be specified in radians.</TD></TR>
+ </TABLE>
+ <BR>
+
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
+ <A NAME="get_next_filename"></A>
+ <P></P><HR><P></P>
+ <div class=routine>
+ <em class=call> var = get_next_filename( listname, index ) </em>
+
+ <pre>
+ character(len=*),  intent(in) :: <em class=code>listname</em>
+ integer,           intent(in) :: <em class=code>index</em>
+ character(len=128)            :: <em class=code>get_next_filename</em>
+ </pre></div>
+ <H3 class=indent1>Description</H3>
+ <P>
+Returns the specified line of a text file, given a filename and a line number.
+It returns an empty string when the line number is larger than the
+number of lines in a file.
+ </P>
+ <P>
+Intended as an easy way to process a list of files.  Use a command
+like 'ls > out' to 
+create a file containing the list, in order, of files to be processed.
+Then call this function with an increasing index number until the return
+value is empty.
+ </P>
+ <TABLE width=100% border=0 summary="" celpadding=3>
+ <TR><TD valign=top><em class=code>var </em></TD>
+     <TD>An ascii string, up to 128 characters long, containing the
+         contents of line <em class=code>index</em> of the input file.</TD></TR>
+ <TR><TD valign=top><em class=code>listname </em></TD>
+     <TD>The filename to open and read lines from.</TD></TR>
+ <TR><TD valign=top><em class=code>index </em></TD>
+     <TD>Integer line number, starting at 1.  If larger than the
+         number of lines in the file, the empty string '' will be returned.</TD></TR>
  </TABLE>
  <BR>
 
