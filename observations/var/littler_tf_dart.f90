@@ -18,7 +18,7 @@ use    utilities_mod, only : open_file, close_file, file_exist, &
                              timestamp, logfileunit
 use obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, &
                              insert_obs_in_seq, write_obs_seq, read_obs_seq, &
-                             set_qc, set_obs_values, set_copy_meta_data, &
+                             set_qc, set_qc_meta_data, set_obs_values, set_copy_meta_data, &
                              assignment(=), get_obs_time_range, &
                              init_obs, static_init_obs_sequence, get_num_qc, set_obs_def, &
                              get_num_obs, get_max_num_obs, get_obs_values, &
@@ -70,7 +70,7 @@ integer              :: n_no_support
 
 character(len = 129) :: dart_file_name     = 'obs_seq.out', &
                         littler_file_name = 'little-r.dat', &
-                        copy_meta_data
+                        copy_meta_data, qc_meta_data
 
 integer              :: calendar_type      = GREGORIAN
 
@@ -179,7 +179,7 @@ n_no_support = 0
 call static_init_obs_sequence()
 
 num_copies = 1
-num_qc = 0
+num_qc = 1
 
 ! must use read_obs_seq_header
 
@@ -537,6 +537,8 @@ else
 
    copy_meta_data = 'littler observations'
    call set_copy_meta_data(dart_seq, 1, copy_meta_data)
+   copy_meta_data = 'littler QC'
+   call set_qc_meta_data(dart_seq, 1, qc_meta_data)
 
    iunit = open_file(littler_file_name, action = 'read')
 
@@ -622,8 +624,8 @@ else
 
                obs_value(1) = t(k)
                call set_obs_values(obs, obs_value)
-!!$               qc(1) = tt_qc(k)
-!!$               call set_qc(obs, qc)
+               qc(1) = tt_qc(k)   ! translate this from little-r to dart numbers?
+               call set_qc(obs, qc)
 
                if(num_obs == 1) then
                   call insert_obs_in_seq(dart_seq, obs)
@@ -665,8 +667,8 @@ else
 
                obs_value(1) = uu(k)
                call set_obs_values(obs, obs_value)
-!!$               qc(1) = zuu_qc(k)
-!!$               call set_qc(obs, qc)
+               qc(1) = zuu_qc(k)   ! translate this from little-r to dart numbers?
+               call set_qc(obs, qc)
 
                if(num_obs == 1) then
                   call insert_obs_in_seq(dart_seq, obs)
@@ -696,8 +698,8 @@ else
 
                obs_value(1) = vv(k)
                call set_obs_values(obs, obs_value, 1)
-!!$               qc(1) = zvv_qc(k)
-!!$               call set_qc(obs, qc)
+               qc(1) = zvv_qc(k)   ! translate this from little-r to dart numbers?
+               call set_qc(obs, qc)
 
                if(num_obs == 1) then
                   call insert_obs_in_seq(dart_seq, obs)

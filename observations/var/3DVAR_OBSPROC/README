@@ -1,0 +1,13 @@
+
+This directory needs to have the following source code
+files from the WRF-Var release, the var/obsproc directory:
+
+DA_Define_Structures.f90
+DA_Constants.f90
+
+Copy them here before trying to build the executables in
+the work directory.
+
+See here for more info on this code:
+
+http://www.mmm.ucar.edu/wrf/WG4/wrfvar/3dvar_obsproc.htm

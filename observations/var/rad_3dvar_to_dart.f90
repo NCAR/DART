@@ -3,7 +3,7 @@
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
  
-PROGRAM wrf_3dvar_tf_dart
+PROGRAM rad_3dvar_to_dart
 
 ! <next few lines under version control, do not edit>
 ! $URL$
@@ -24,7 +24,7 @@ use       obs_def_mod, only : set_obs_def_location, set_obs_def_error_variance, 
 use      obs_kind_mod, only : DOPPLER_RADIAL_VELOCITY, RADAR_REFLECTIVITY
 use      location_mod, only : location_type, set_location
 use  time_manager_mod, only : time_type, set_date, set_calendar_type, GREGORIAN
-use obs_def_radar_mod, only : set_rad_vel
+use obs_def_radar_mod, only : set_radial_vel
 
 implicit none
 
@@ -44,7 +44,7 @@ INTEGER           :: iunit, iost, io
 
 character(len=19) :: radar_name
 real(r8)          :: radar_long, radar_lat, radar_elev
-real(r8)          :: orientation(3)
+real(r8)          :: orientation(3), nyquist_velocity
 character(len=19) :: start_scan_date
 integer           :: num_prof, max_levels
 
@@ -66,29 +66,29 @@ real(r8)          :: rgate, raz, elev_rad, elev_obs, ae
 !-----------------------------------------------------------------------------
 ! Namelist with default values
 !
-character(len = 129) :: wrf_3dvar_file        = 'qc_radr_3dvar_2002083100.dat', &
+character(len = 129) :: var_file              = 'qc_radr_3dvar_2002083100.dat', &
                         obs_seq_out_file_name = 'obs_seq.out'
 integer              :: calendar_type         = GREGORIAN
 
-namelist /wrf_3dvar_tf_dart_nml/ wrf_3dvar_file, obs_seq_out_file_name, calendar_type
+namelist /rad_3dvar_to_dart_nml/ var_file, obs_seq_out_file_name, calendar_type
 
 !------------------------------------------------------------------------------
 
-call initialize_utilities('wrf_3dvar_tf_dart')
+call initialize_utilities('rad_3dvar_to_dart')
 call register_module(source, revision, revdate)
 
 ! Read the namelist entry
-call find_namelist_in_file("input.nml", "wrf_3dvar_tf_dart_nml", iunit)
-read(iunit, nml = wrf_3dvar_tf_dart_nml, iostat = io)
-call check_namelist_read(iunit, io, "wrf_3dvar_tf_dart_nml")
+call find_namelist_in_file("input.nml", "rad_3dvar_to_dart_nml", iunit)
+read(iunit, nml = rad_3dvar_to_dart_nml, iostat = io)
+call check_namelist_read(iunit, io, "rad_3dvar_to_dart_nml")
 
 ! Record the namelist values used for the run ...
-write(nmlfileunit, nml=wrf_3dvar_tf_dart_nml)
-write(     *     , nml=wrf_3dvar_tf_dart_nml)
+write(nmlfileunit, nml=rad_3dvar_to_dart_nml)
+write(     *     , nml=rad_3dvar_to_dart_nml)
 
 call set_calendar_type(calendar_type)
 
-iunit = open_file(wrf_3dvar_file, action = 'read')
+iunit = open_file(var_file, action = 'read')
 
 ! -------------------------------------------------------------------
 ! Initialize the counters:
@@ -203,7 +203,9 @@ loop_level: DO ii = 1, levels
       orientation(2) = cos(raz)*cos(elev_obs)
       orientation(3) = sin(elev_obs)
 
-      call set_rad_vel(key, location, orientation)
+      nyquist_velocity = missing_r8
+
+      call set_radial_vel(key, location, orientation, nyquist_velocity)
 
       call set_obs_def_time(obs_def, time)
 
@@ -294,9 +296,9 @@ write(unit=*, fmt='(5x,a,i6,a)') &
 ! Write out the sequence
 call write_obs_seq(seq, obs_seq_out_file_name)
 
-write(logfileunit,*)'FINISHED wrf_3dvar_tf_dart.'
+write(logfileunit,*)'FINISHED rad_3dvar_to_dart.'
 write(logfileunit,*)
 
 call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
  
-END PROGRAM wrf_3dvar_tf_dart
+END PROGRAM rad_3dvar_to_dart
