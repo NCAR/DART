@@ -61,6 +61,8 @@ character(len=129) :: msgstring
 
 logical :: DEBUG = .false.
 
+real(r8), parameter :: mb_to_hPa = 100.0  ! millibars to hectopascals
+
 ! the sizes of the Temperature arrays are:
 !   (AIRS_RET_STDPRESSURELAY, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
 ! the sizes of the MMR arrays are:
@@ -258,7 +260,7 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
          obs_var = granule%TAirStdErr(ivert, icol, irow) * &
                    granule%TAirStdErr(ivert, icol, irow)
 
-         vloc = granule%pressStd(ivert)
+         vloc = granule%pressStd(ivert) * mb_to_hPa
 
          call real_obs(num_copies, num_qc, obs, olon, olat, vloc, obs_value, &
                        obs_var, tqc, AIRS_TEMPERATURE, which_vert, seconds, days)
@@ -297,7 +299,7 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
 
          obs_value = Q(ivert, icol, irow)
          obs_var = Q_err(ivert, icol, irow) * Q_err(ivert, icol, irow)
-         vloc = granule%pressH2O(ivert)
+         vloc = granule%pressH2O(ivert) * mb_to_hPa
 
          call real_obs(num_copies, num_qc, obs, olon, olat, vloc, obs_value, &
                        obs_var, qqc, AIRS_SPECIFIC_HUMIDITY, which_vert, seconds, days)
