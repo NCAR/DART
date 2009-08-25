@@ -54,7 +54,7 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
                               KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
                               KIND_VORTEX_LAT, KIND_VORTEX_LON, &
-                              KIND_RADAR_REFLECTIVITY, &
+                              KIND_RADAR_REFLECTIVITY, KIND_POWER_WEIGHTED_FALL_SPEED,&
                               KIND_VORTEX_PMIN, KIND_VORTEX_WMAX, &
                               get_raw_obs_kind_index, get_num_raw_obs_kinds, &
                               get_raw_obs_kind_name
@@ -6016,7 +6016,9 @@ if (in_state_vector(KIND_GEOPOTENTIAL_HEIGHT) .and. &
 ! way to interpolate it even if it is not in the state vector. if this
 ! is not allowed it will error exit instead of returning with an invalid istatus
 ! to indicate to the caller that the interpolation failed.
+! ditto for power weighted fall speed.
 in_state_vector(KIND_RADAR_REFLECTIVITY) = .true.
+in_state_vector(KIND_POWER_WEIGHTED_FALL_SPEED) = .true.
 
 ! FIXME:  i was going to suggest nuking this routine all together because it makes
 ! the default behavior be to exit with an error when requesting to interpolate an
