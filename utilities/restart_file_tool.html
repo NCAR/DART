@@ -32,38 +32,30 @@
 -->
 
 <DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
+<A HREF="#Overview">OVERVIEW</A> / 
+<A HREF="#ModulesUsed">MODULES USED</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
+<A HREF="#KnownBugs">KNOWN BUGS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> 
 </DIV>
 
 <!--==================================================================-->
 
 <H1>PROGRAM restart_file_tool</H1>
 <A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
 
 <!--==================================================================-->
 
-<A NAME="OVERVIEW"></A>
+<A NAME="Overview"></A>
 <HR>
 <H2>OVERVIEW</H2>
 
 <P>
 Utility program to alter the data timestamp in a DART restart file,
-to add or remove a model-advance time, to convert from ascii to binary 
+to add or remove a model-advance time, to convert from ASCII to binary 
 or back, and to either split or combine ensemble restarts into 
 one or multiple files.
 </P>
@@ -93,16 +85,28 @@ files without the extra timestamp.
 </P>
 
 <P>
-Optional namelist interface
+Namelist interface
 <A HREF="#Namelist"><em class=code>&amp;restart_file_tool_nml</em> </A>
-may be read from file <em class=file>input.nml</em>.
+must be read from file <em class=file>input.nml</em>.
+</P>
+
+<P>
+ASCII restart files are portable across different hardware architectures
+(these days, most notably between IBM PowerX chip-based systems and anything
+else including all Intel/AMD systems).  
+However, they are larger in size, and can lose precision
+when converting from binary to ASCII and back.  Binary restart files can
+be moved even between incompatible systems by using the 'swabrestart' utility
+found in the $DART/utilities directory.  See the extensive comment section
+at the top of that file for an explanation of the details of moving binary
+files between incompatible systems.
 </P>
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
+<A NAME="ModulesUsed"></A>
 <BR><HR><BR>
-<H2>OTHER MODULES USED</H2>
+<H2>MODULES USED</H2>
 <PRE>
 types_mod
 time_manager_mod
@@ -112,19 +116,6 @@ obs_model_mod
 ensemble_manager_mod
 mpi_utilities_mod
 </PRE>
-
-<!--==================================================================-->
-<!--Note to authors. The first row of the table is different.         -->
-
-<A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
-
-<H3 class=indent1>NOTES</H3>
-
-<P>
-</P>
-
 
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
  <A NAME="Namelist"></A>
@@ -137,7 +128,7 @@ mpi_utilities_mod
    input_file_name, output_file_name, ens_size, single_restart_file_in,
    single_restart_file_out, write_binary_restart_files, overwrite_data_time,
    new_data_days, new_data_secs, input_is_model_advance_file, output_is_model_advance_file,
-   overwrite_advance_time, new_advance_days, new_advance_secs, gregorian_cal  /
+   overwrite_advance_time, new_advance_days, new_advance_secs, gregorian_cal 
 
 
 
@@ -169,7 +160,7 @@ The namelist sets the behavior of this tool.
                    Default "filter_updated_restart"</TD></TR>
  <TR><!--contents--><TD valign=top>ens_size</TD>
      <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD valign=top>Number of ensemble members.
+     <!--descript--><TD valign=top>Total number of ensemble members.
                    Default 1</TD></TR>
  <TR><!--contents--><TD valign=top>single_restart_file_in</TD>
      <!--  type  --><TD valign=top>logical</TD>
@@ -183,21 +174,22 @@ The namelist sets the behavior of this tool.
                    Default .true.</TD></TR>
  <TR><!--contents--><TD valign=top>write_binary_restart_files</TD>
      <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>Whether to write the data in ascii or binary.  The
+     <!--descript--><TD valign=top>Whether to write the data in ASCII or binary.  The
                    format of the input file will be detected automatically.
                    Default .true.</TD></TR>
  <TR><!--contents--><TD valign=top>overwrite_data_time</TD>
      <!--  type  --><TD valign=top>logical</TD>
      <!--descript--><TD valign=top>Whether to replace the timestamp in the input with a 
-                   new time.  If true, new_data_days and new_data_secs must be set to valid values.
+                   new time.  If true, new_data_days and new_data_secs must both be set 
+                   to valid values.
                    Default .false.</TD></TR>
  <TR><!--contents--><TD valign=top>new_data_days</TD>
      <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD valign=top>Day number if replacing the timestamp in the file.
+     <!--descript--><TD valign=top>Day number if replacing the data timestamp in the file.
                    Default -1</TD></TR>
  <TR><!--contents--><TD valign=top>new_data_secs</TD>
      <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD valign=top>Seconds if replacing the timestamp in the file.
+     <!--descript--><TD valign=top>Seconds if replacing the data timestamp in the file.
                    Default -1</TD></TR>
  <TR><!--contents--><TD valign=top>input_is_model_advance_file</TD>
      <!--  type  --><TD valign=top>logical</TD>
@@ -206,34 +198,37 @@ The namelist sets the behavior of this tool.
                    Default .false.</TD></TR>
  <TR><!--contents--><TD valign=top>output_is_model_advance_file</TD>
      <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>Whether to write a file with two timestamps as output.
+     <!--descript--><TD valign=top>Whether to write a file with two timestamps in output.
                    Default .false.</TD></TR>
  <TR><!--contents--><TD valign=top>overwrite_advance_time</TD>
      <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>Replace existing advance time.
+     <!--descript--><TD valign=top>Replace existing advance timestamp, or add an 
+                   advance timestamp if output_is_model_advance_file is true.
+                   If true, new_advance_days and new_advance_secs must both be set 
+                   to valid values.
                    Default .false.</TD></TR>
  <TR><!--contents--><TD valign=top>new_advance_days</TD>
      <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD valign=top>If overwrite_advance_time is true, replace time with this value.
+     <!--descript--><TD valign=top>Day number if replacing or adding a model advance
+                   timestamp in the file.
                    Default -1</TD></TR>
  <TR><!--contents--><TD valign=top>new_advance_secs</TD>
      <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD valign=top>Seconds for replacement time.
+     <!--descript--><TD valign=top>Seconds if replacing or adding a model advance
+                   timestamp in the file.
                    Default -1</TD></TR>
  <TR><!--contents--><TD valign=top>gregorian_cal</TD>
      <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>If model uses the gregorian calendar, this program will
+     <!--descript--><TD valign=top>If model uses the Gregorian calendar, this program will
                    print out the date in both day number and seconds, but also in calendar
                    year/month/date etc format. Set to false if this model does not use this
-                   calendar.
-                   Default .true.</TD></TR>
+                   calendar.  Does not affect the timestamps in the file, only the
+                   printout for user.  Default .true.</TD></TR>
  <TR><!--contents--><TD valign=top>print_only</TD>
      <!--  type  --><TD valign=top>logical</TD>
      <!--descript--><TD valign=top>If .true., do not create the output file.
                    Only print the model size and existing time information in
-                   the input file.  If .false., create the output and change
-                   any requested timestamps in the file(s).
-                   Default .false.</TD></TR>
+                   the input file.  Default .false.</TD></TR>
  </TABLE>
  <BR>
 
@@ -327,26 +322,19 @@ The namelist sets the behavior of this tool.
 <A NAME="FuturePlans"></A>
 <BR><HR><BR>
 <H2>FUTURE PLANS</H2>
+<H3 class=indent1>Discussion</H3>
 <P>
 </P>
 
-<!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
-<!--==================================================================-->
 
-<A NAME="PrivateComponents"></A>
-<BR><HR><BR>
-<H2>PRIVATE COMPONENTS</H2>
-
-<!-- <div class=routine> -->
-<!-- <pre> -->
-<!-- type location_type -->
-<!--    private -->
-<!--    real(r8) :: x -->
-<!-- end type location_type</pre> -->
-<!-- </div> -->
-
-<H3 class=indent1>Discussion</H3>
+<HR>
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 
