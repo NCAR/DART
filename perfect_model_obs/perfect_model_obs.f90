@@ -350,17 +350,8 @@ AdvanceTime: do
       ! If observation is not being evaluated or assimilated, skip it
       ! Ends up setting a 1000 qc field so observation is not used again.
       if(istatus == 0 .and. (assimilate_this_ob .or. evaluate_this_ob)) then
-         ! DEBUG: try this out to see if it's useful.  if the incoming error
-         ! variance is negative, add no noise to the values, but do switch the
-         ! sign on the error so the file is useful in subsequent runs.
-         errvar = get_obs_def_error_variance(obs_def)
-         if (errvar > 0.0_r8) then
-            obs_value(1) = random_gaussian(random_seq, true_obs(1), errvar)
-         else
-            obs_value(1) = true_obs(1)
-            call set_obs_def_error_variance(obs_def, -errvar)
-            call set_obs_def(obs, obs_def)
-         endif
+         obs_value(1) = random_gaussian(random_seq, true_obs(1), &
+            sqrt(get_obs_def_error_variance(obs_def)))
 
          ! Set qc to 0 if none existed before
          if(cnum_qc == 0) then
