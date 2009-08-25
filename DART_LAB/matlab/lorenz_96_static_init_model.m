@@ -1,0 +1,35 @@
+% Initializes class data for L96, sets up global storage
+% and reads in control data from input file
+
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004-2009, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+
+% Lorenz-96 model parameters
+global FORCING
+global DELTA_T
+global TIME_STEP_DAYS
+global TIME_STEP_SECONDS
+
+% Set default values for the model parameters
+FORCING = 8;
+DELTA_T = 0.05;
+TIME_STEP_DAYS = 0;
+TIMES_STEP_SECONDS = 0;
+
+
+% Lorenz-96 fixed model parameters
+global MODEL_SIZE
+
+MODEL_SIZE = 40;
+
+global STATE_LOC
+
+STATE_LOC = (0:MODEL_SIZE - 1) / MODEL_SIZE;
