@@ -143,41 +143,28 @@
 &assim_model_nml
    write_binary_restart_files = .true.  /
 
-   #horiz_grid_input_file        = 'horiz_grid.x1.nc',
-   #topography_input_file        = 'topography.x1.nc',
-   #vert_grid_input_file         = 'vert_grid.x1',
-
-
-   #horiz_grid_input_file        = '../utils/pop.hs.latlon.19000712.nc',
-   #topography_input_file        = '../utils/pop.hs.latlon.19000712.nc',
-   #vert_grid_input_file         = '../utils/vert_grid.latlon',
-
 &model_nml
-   calendar                     = 'noleap', 
    assimilation_period_days     = 1, 
    assimilation_period_seconds  = 0, 
-   longitude_wrap               = .true.,
-   horiz_grid_input_file        = 'horiz_grid.x3.nc',
-   topography_input_file        = 'topography.x3.nc',
-   vert_grid_input_file         = 'vert_grid.x3',
    model_perturbation_amplitude = 0.2, 
    output_state_vector          = .false.,
    debug                        = 0,  
  /
 
-   #pop_to_dart_restart_file = 'pop.r.x1A.19000102',
-   #pop_to_dart_restart_file = 'pop.r.nc',
-   #pop_to_dart_restart_file = '../utils/pop.r.latlon.19000712',
+  #pop_to_dart_restart_file = 'pop.r.x1A.19000102',
+  #pop_to_dart_restart_file = 'pop.r.nc',
+  #pop_to_dart_restart_file = '../utils/pop.r.latlon.19000712',
+
 &pop_to_dart_nml
    pop_to_dart_restart_file = 'pop.r.nc',
-   pop_to_dart_output_file  = 'perfect_ics',
+   pop_to_dart_output_file  = 'dart.ics',
  /
 
 &dart_to_pop_nml
-   dart_to_pop_input_file   = 'assim_model_state_ic',
-   dart_to_pop_restart_file = 'my_pop_restart_file',
+   dart_to_pop_input_file   = 'test.ic',
+   dart_to_pop_restart_file = 'pop.r.nc',
+   advance_time_present     = .true.
  /
-
 
 &location_nml
    horiz_dist_only             = .true.,

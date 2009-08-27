@@ -1,166 +1,160 @@
-% Check_pop_to_dart
+function [dart pop] = Check_pop_to_dart(popfile,dartfile)
+% Check_pop_to_dart : check pop_to_dart.f90 ... the conversion of a POP restart to a DART state vector file.
 %
-% data.cal holds the starting time information
+%  popfile = 'pop.r.nc';
+% dartfile = 'dart.ics';
+% x        = Check_pop_to_dart(popfile, dartfile);
 %
+%  popfile = '~DART/models/POP/work/cx3.dart.001.pop.r.0002-01-01-00000.nc';
+% dartfile = '~DART/models/POP/work/perfect_ics';
+% [dart pop] = Check_pop_to_dart(popfile, dartfile);
 
-popdir   = '/ptmp/thoar/POP/job_40705';
-popfile  = 'pop.r.x1A.00000102';
-dartfile = 'assim_model_state_ud';
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004-2007, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
-fname = sprintf('%s/%s',popdir,popfile);
+% Read the original POP file values.
+if (exist(popfile,'file') ~= 2)
+   error('POP file %s does not exist.',popfile)
+end
+if (exist(dartfile,'file') ~= 2)
+   error('DART file %s does not exist.',dartfile)
+end
 
-S   = nc_varget(fname, 'SALT_CUR');
-T   = nc_varget(fname, 'TEMP_CUR');
-U   = nc_varget(fname, 'UVEL_CUR');
-V   = nc_varget(fname, 'VVEL_CUR');
-SSH = nc_varget(fname,'PSURF_CUR');
+iyear   = nc_attget(popfile,nc_global,'iyear');
+imonth  = nc_attget(popfile,nc_global,'imonth');
+iday    = nc_attget(popfile,nc_global,'iday');
+ihour   = nc_attget(popfile,nc_global,'ihour');
+iminute = nc_attget(popfile,nc_global,'iminute');
+isecond = nc_attget(popfile,nc_global,'isecond');
 
-modelsize = prod(size(S)) + prod(size(T)) + ...
-            prod(size(U)) + prod(size(V)) + prod(size(SSH));
-
-[nx ny nz] = size(S);
-
-iyear   = nc_attget(fname,nc_global,'iyear');
-imonth  = nc_attget(fname,nc_global,'imonth');
-iday    = nc_attget(fname,nc_global,'iday');
-ihour   = nc_attget(fname,nc_global,'ihour');
-iminute = nc_attget(fname,nc_global,'iminute');
-isecond = nc_attget(fname,nc_global,'isecond');
-
-fprintf('year  month  day  hour  minute  second %d %d %d %d %d %d\n',  ...
+fprintf('POP year  month  day  hour  minute  second %d %d %d %d %d %d\n',  ...
         iyear,imonth,iday,ihour,iminute,isecond);
 
-% Get the dart equivalent
+% The nc_varget() function returns the variables with the fastest 
+% varying dimension on the right. This is opposite to the Fortran
+% convention of the fastest varying dimension on the left ... so 
+% one of the variables must be permuted in order to be compared.
 
-fname   = sprintf('%s/%s',popdir,dartfile);
-fid     = fopen(fname,'rb','ieee-le');
+S     = nc_varget(popfile,  'SALT_CUR'); pop.S     = permute(S,   [3 2 1]);
+T     = nc_varget(popfile,  'TEMP_CUR'); pop.T     = permute(T,   [3 2 1]);
+U     = nc_varget(popfile,  'UVEL_CUR'); pop.U     = permute(U,   [3 2 1]);
+V     = nc_varget(popfile,  'VVEL_CUR'); pop.V     = permute(V,   [3 2 1]);
+PSURF = nc_varget(popfile, 'PSURF_CUR'); pop.PSURF = permute(PSURF, [2 1]);
+
+disp(sprintf('pop.PSURF min/max are %0.8g %0.8g',min(pop.PSURF(:)),max(pop.PSURF(:))))
+
+[nx ny nz] = size(pop.U);
+fprintf('vert dimension size is %d\n',nz)
+fprintf('N-S  dimension size is %d\n',ny)
+fprintf('E-W  dimension size is %d\n',nx)
+
+modelsize = nx*ny*nz;
+
+% filesize = S,T,U,V * (nx*ny*nz) + SSH * (nx*ny)
+storage  = 8;
+size2d   = nx*ny;
+size3d   = nx*ny*nz;
+n2ditems = 1*size2d;
+n3ditems = 4*size3d;
+rec1size = 4+(4+4)+4;  % time stamps ... 
+rec2size = 4+(n3ditems*storage + n2ditems*storage)+4;
+
+fsize    = rec1size + rec2size;
+disp(sprintf('with a modelsize of %d the file size should be %d bytes', ...
+     modelsize,fsize))
+
+% Open and read timetag for state
+fid     = fopen(dartfile,'rb','ieee-le');
 trec1   = fread(fid,1,'int32');
 seconds = fread(fid,1,'int32');
 days    = fread(fid,1,'int32');
 trecN   = fread(fid,1,'int32');
 
+fprintf('need to know POP calendar for better comparison.\n', days,seconds);
+fprintf('DART days seconds %d %d\n', days,seconds);
+
 if (trec1 ~= trecN) 
    error('first record mismatch')
 end
 
-rec1    = fread(fid,        1,'int32');
-datmat  = fread(fid,modelsize,'float64');
-recN    = fread(fid,        1,'int32');
+% Successively read state vector variables.
+rec1     = fread(fid,     1,  'int32');
+dart.S   = get_data(fid, [nx ny nz], 'float64');
+dart.T   = get_data(fid, [nx ny nz], 'float64');
+dart.U   = get_data(fid, [nx ny nz], 'float64');
+dart.V   = get_data(fid, [nx ny nz], 'float64');
+dart.SSH = get_data(fid, [nx ny   ], 'float64');
+recN     = fread(fid,     1,  'int32');
 fclose(fid);
+
+fprintf(' shape of DART variables is %d \n',size(dart.S))
+
+% The POP restart file has PSURF ... DART drags around SSH
+% SSH = psurf/980.6;
+
+dart.PSURF = dart.SSH * 980.6;
+
+disp(sprintf('PSURF min/max are %0.8g %0.8g',min(dart.PSURF(:)),max(dart.PSURF(:))))
+disp(sprintf('SSH   min/max are %0.8g %0.8g',min(dart.SSH(:)),max(dart.SSH(:))))
 
 if (rec1 ~= recN) 
    error('second record mismatch')
 end
 
-disp(sprintf('time tag is days/seconds : %d %d',days,seconds))
+dart.dartfile = dartfile;
+dart.seconds  = seconds;
+dart.days     = days;
 
-offset = prod(size(S)); ind1 = 1; ind2 = offset;
-myS    = reshape(datmat(ind1:ind2),size(S));
-d      = myS - S;
-disp(sprintf('S diffs are %f %f',min(d(:)),max(d(:))))
+% Find the range of the mismatch
 
-offset = prod(size(T)); ind1 = ind2+1; ind2 = ind1 + offset - 1;
-myT    = reshape(datmat(ind1:ind2),size(T)); 
-d      = myT - T;
-disp(sprintf('T diffs are %f %f',min(d(:)),max(d(:))))
+d = pop.S     - dart.S;     disp(sprintf('S     diffs are %0.8g %0.8g',min(d(:)),max(d(:))))
+d = pop.T     - dart.T;     disp(sprintf('T     diffs are %0.8g %0.8g',min(d(:)),max(d(:))))
+d = pop.U     - dart.U;     disp(sprintf('U     diffs are %0.8g %0.8g',min(d(:)),max(d(:))))
+d = pop.V     - dart.V;     disp(sprintf('V     diffs are %0.8g %0.8g',min(d(:)),max(d(:))))
+d = pop.PSURF - dart.PSURF; disp(sprintf('PSURF diffs are %0.8g %0.8g',min(d(:)),max(d(:))))
 
-offset = prod(size(U)); ind1 = ind2+1; ind2 = ind1 + offset - 1;
-myU    = reshape(datmat(ind1:ind2),size(U)); 
-d      = myU - U;
-disp(sprintf('U diffs are %f %f',min(d(:)),max(d(:))))
+% As an added bonus, we create an 'assim_model_state_ic' file with an 
+% advance-to-time one day in the future.
+% Add something known to each state variable to check dart_to_pop.f90
 
-offset = prod(size(V)); ind1 = ind2+1; ind2 = ind1 + offset - 1;
-myV    = reshape(datmat(ind1:ind2),size(V)); 
-d      = myV - V;
-disp(sprintf('V diffs are %f %f',min(d(:)),max(d(:))))
+S1     = dart.S     + 1.0;
+T1     = dart.T     + 2.0;
+U1     = dart.U     + 3.0;
+V1     = dart.V     + 4.0;
+SSH1   = dart.SSH + 5.0;
 
-offset = prod(size(SSH)); ind1 = ind2+1; ind2 = ind1 + offset - 1;
-mySSH  = reshape(datmat(ind1:ind2),size(SSH)); 
-d      = mySSH - SSH;
-disp(sprintf('SSH diffs are %f %f',min(d(:)),max(d(:))))
+datvec = [S1(:); T1(:); U1(:); V1(:); SSH1(:)];
+clear S1 T1 U1 V1 SSH1
 
-clear datmat myS myT myU myV mySSH d
+fid     = fopen('test.ic','wb','ieee-le');
+% Write the 'advance_to_time' FIRST
+fwrite(fid,  trec1,'int32');
+fwrite(fid,seconds,'int32');
+fwrite(fid,   days+1,'int32');
+fwrite(fid,  trecN,'int32');
 
-%----------------------------------------------------------------------
-% This part creates an assim_model_state_ic file for use with
-% dart_to_pop ... assim_model_state_ic has the extra 'advance-to-time'
-%----------------------------------------------------------------------
-% The perfect_ics file contains precisely two records.
-% record 1 is two integers defining the valid time of the state vector.
-% record 2 is the state vector.
-% This is exactly the same as the 'assim_model_state_ud' file.
-% (except they normally are for different times ...)
-%----------------------------------------------------------------------
-
-tbase = datenum(1601,1,1,0,0,0);  % this is zero in the DART(gregorian) world
-t_one = datenum(1996,1,1,0,0,0);  % valid time of the 'gom' files.
-
-toffset = t_one - tbase;
-days    = floor(toffset);
-seconds = round(toffset - days)*86400;
-
-disp(sprintf('Creating a ''perfect_ics'' file with elements of shape %d %d %d',nx,ny,nz))
-
-disp(sprintf('prod(size(S)) is %d',  prod(size(S))))
-disp(sprintf('prod(size(T)) is %d',  prod(size(T))))
-disp(sprintf('prod(size(U)) is %d',  prod(size(U))))
-disp(sprintf('prod(size(V)) is %d',  prod(size(V))))
-disp(sprintf('prod(size(SSH)) is %d',prod(size(SSH))))
-
-nitems = prod(size(S))+ prod(size(T)) + prod(size(U)) + prod(size(V)) + prod(size(SSH));
-disp(sprintf('total restart size should %d',nitems*8 + 8 + 16))
-
-fid     = fopen('gom_S_199601.bin','rb','ieee-be');
-[Sics,count] = fread(fid,prod(size(S)),'float32');
-fclose(fid);
-if (count ~= prod(size(S)))
-   error(sprintf('S record length wrong %d %d',count,prod(size(S))))
-end
-
-fid     = fopen('gom_T_199601.bin','rb','ieee-be');
-[Tics,count]    = fread(fid,prod(size(T)),'float32');
-fclose(fid);
-if (count ~= prod(size(T)))
-   error(sprintf('T record length wrong %d %d',count,prod(size(T))))
-end
-
-fid     = fopen('gom_U_199601.bin','rb','ieee-be');
-[Uics,count]    = fread(fid,prod(size(U)),'float32');
-fclose(fid);
-if (count ~= prod(size(U)))
-   error(sprintf('U record length wrong %d %d',count,prod(size(U))))
-end
-
-fid     = fopen('gom_V_199601.bin','rb','ieee-be');
-[Vics,count]    = fread(fid,prod(size(V)),'float32');
-fclose(fid);
-if (count ~= prod(size(V)))
-   error(sprintf('V record length wrong %d %d',count,prod(size(V))))
-end
-
-fid     = fopen('gom_H_199601.bin','rb','ieee-be');
-[SSHics,count]  = fread(fid,prod(size(SSH)),'float32');
-fclose(fid);
-if (count ~= prod(size(SSH)))
-   error(sprintf('SSH record length wrong %d %d',count,prod(size(SSH))))
-end
-
-datvec = [Sics; Tics; Uics; Vics; SSHics];
-disp(sprintf('total model size is %d',length(datvec)*8))
-
-fid     = fopen('perfect_ics','wb','ieee-be');
+% Write the 'model_state_time' (close to the data)
 fwrite(fid,  trec1,'int32');
 fwrite(fid,seconds,'int32');
 fwrite(fid,   days,'int32');
 fwrite(fid,  trecN,'int32');
 
-fwrite(fid,   rec1,'int32');
-fwrite(fid, datvec,'float64');
-fwrite(fid,   recN,'int32');
+% Write the (modified) model state ... 
+fwrite(fid,   rec1, 'int32');
+fwrite(fid, datvec, 'float64');
+fwrite(fid,   recN, 'int32');
 fclose(fid);
 
-fid     = fopen('perfect_ics.txt','wt');
-fprintf(fid,'%d %d\n',seconds,days);
-fprintf(fid,'%.15e\n',datvec);
-fclose(fid);
+% That's all folks ...
 
+function B = get_data(fid, shape, typestr)
+A = fread(fid, prod(shape), typestr);
+B = reshape(A, shape);

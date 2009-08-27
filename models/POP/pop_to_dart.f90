@@ -50,7 +50,7 @@ character(len=128), parameter :: &
 !-----------------------------------------------------------------------
 
 character (len = 128) :: pop_to_dart_restart_file = 'no_pop_to_dart_restart_file' 
-character (len = 128) :: pop_to_dart_output_file  = 'assim_model_state_ud'
+character (len = 128) :: pop_to_dart_output_file  = 'dart.ics'
 
 namelist /pop_to_dart_nml/ pop_to_dart_restart_file, pop_to_dart_output_file 
 

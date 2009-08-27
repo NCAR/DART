@@ -6,6 +6,8 @@ When this model is supported, this file will reflect that.
 
 Tim
 
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 (this should stay in the README.  at some point we might
 want to move the test program to a separate test directory,
 in which case this file needs to be updated to reflect that.)
@@ -18,3 +20,39 @@ but can be found and downloaded from this web location:
 http://www.image.ucar.edu/pub/DART/POP/
 
 nancy
+
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Tim : Tue Jul 21 17:45:52 MDT 2009
+
+Working on reading the BINARY grid files instead of the (nonexistent) 
+netCDF ones. Getting grid sizes from restart netCDF file and must make 
+hard assumptions about variable storage order. 
+
+dart_pop_mod is being modified to read the pop_in namelist and then set things 
+like the ocean dynamics timestep. Must ensure that the model_mod then uses that 
+to set a valid adv_to_time ...
+
+dart_pop_mod must also set the time_manager_nml:stop_count (and stop_option) to
+the right values.
+
+dart_pop_mod must also create a pointer file with the expected restart file as
+a way to make sure the model has advanced to the proper spot.
+
+advance_model.csh must paste the pop_in.DART namelist on top of the pop_in namelist
+for model control ... 
+
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This is how I understand (LANL) POP to work:
+
+Given:
+&init_ts_nml
+   init_ts_option   = 'restart'
+   init_ts_file     = 'pop.r'
+   init_ts_file_fmt = 'nc'
+/
+
+The init_ts_file entry is completely ignored. A pointer file with the name
+"pop_pointer.restart" contains the name of the restart file.
+

@@ -11,307 +11,629 @@ module dart_pop_mod
 ! $Revision$
 ! $Date$
 
-use types_mod,        only : r8, rad2deg, PI
-use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
-                             write_obs_def, destroy_obs_def, interactive_obs_def, &
-                             copy_obs_def, set_obs_def_time, set_obs_def_kind, &
-                             set_obs_def_error_variance, set_obs_def_location
-use time_manager_mod, only : time_type, get_date, set_time, GREGORIAN, &
-                             set_date, set_calendar_type, get_time, &
-                             print_date, print_time, operator(==)
+use        types_mod, only : r8, rad2deg, PI, SECPERDAY
+use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, &
+                             set_calendar_type, get_calendar_string, &
+                             print_date, print_time, operator(==), operator(-)
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
-                             register_module, error_handler, &
-                             E_ERR, E_MSG, timestamp
-use     location_mod, only : location_type, set_location, VERTISHEIGHT, VERTISSURFACE
-use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
-                             set_obs_values, set_qc, obs_sequence_type, obs_type, &
-                             copy_obs, set_copy_meta_data, set_qc_meta_data, set_obs_def, &
-                             get_first_obs, get_last_obs, get_obs_def
+                             register_module, error_handler, nc_check, &
+                             find_namelist_in_file, check_namelist_read, &
+                             E_ERR, E_MSG, timestamp, find_textfile_dims, &
+                             logfileunit
 
-use     obs_kind_mod, only : get_obs_kind_index
+use typesizes
+use netcdf
 
 implicit none
 private
 
-public :: real_obs_sequence
+public :: get_pop_calendar, set_model_time_step, &
+          get_horiz_grid_dims, get_vert_grid_dim, &
+          read_horiz_grid, read_topography, read_vert_grid, &
+          write_pop_namelist
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+   source   = '$URL$', &
+   revision = '$Revision$', &
+   revdate  = '$Date$'
 
+character(len=256) :: msgstring
 logical, save :: module_initialized = .false.
+
+character(len=256) :: ic_filename, restart_filename 
 
 ! set this to true if you want to print out the current time
 ! after each N observations are processed, for benchmarking.
 logical :: print_timestamps = .false.
 integer :: print_every_Nth  = 10000
 
-contains
+!------------------------------------------------------------------
+! The POP time manager namelist variables
+!------------------------------------------------------------------
 
-!-------------------------------------------------
+character(len=100) :: accel_file ! length consistent with POP
+character(len= 64) :: stop_option, runid, dt_option, time_mix_opt
+character(len=  1) :: date_separator
+logical  :: impcor, laccel, allow_leapyear
+real(r8) :: dtuxcel, dt_count
+integer  :: iyear0, imonth0, iday0, ihour0, iminute0, isecond0
+integer  :: stop_count, fit_freq, time_mix_freq
 
-function real_obs_sequence (obsfile, year, month, day, max_num, &
-          lon1, lon2, lat1, lat2)
-!------------------------------------------------------------------------------
-!  this function is to prepare data to DART sequence format
+namelist /time_manager_nml/ runid, time_mix_opt, time_mix_freq, &
+    impcor, laccel, accel_file, dtuxcel, iyear0, imonth0, &
+    iday0, ihour0, iminute0, isecond0, dt_option, dt_count, &
+    stop_option, stop_count, date_separator, allow_leapyear, fit_freq
+
+!------------------------------------------------------------------
+! The POP restart manager namelist variables
+!------------------------------------------------------------------
+
+character(len=100) :: restart_outfile ! length consistent with POP
+character(len= 64) :: restart_freq_opt, restart_fmt
+logical :: leven_odd_on, pressure_correction
+integer :: restart_freq, even_odd_freq
+
+namelist /restart_nml/ restart_freq_opt, restart_freq, restart_outfile, &
+    restart_fmt, leven_odd_on, even_odd_freq, pressure_correction
+
+!------------------------------------------------------------------
+! The POP initial temperature and salinity namelist 
+!------------------------------------------------------------------
+
+character(len=100) :: init_ts_file ! length consistent with POP
+character(len= 64) :: init_ts_option, init_ts_file_fmt
+
+namelist /init_ts_nml/ init_ts_option, init_ts_file, init_ts_file_fmt 
+
+!------------------------------------------------------------------
+! The POP domain namelist 
+!------------------------------------------------------------------
+
+character(len= 64) :: clinic_distribution_type, tropic_distribution_type
+character(len= 64) :: ew_boundary_type, ns_boundary_type
+integer :: nprocs_clinic, nprocs_tropic
+
+namelist /domain_nml/ clinic_distribution_type, nprocs_clinic, &
+                      tropic_distribution_type, nprocs_tropic, &
+                      ew_boundary_type, ns_boundary_type
+
+!------------------------------------------------------------------
+! The POP grid info namelist 
+!------------------------------------------------------------------
 !
-character(len=129), intent(in) :: obsfile
-integer,            intent(in) :: year, month, day, max_num
-real(r8),           intent(in) :: lon1, lon2, lat1, lat2
+! POP grid information comes in several files:
+!   horizontal grid lat/lons in one, 
+!   topography (lowest valid vert level) in another, and 
+!   the vertical grid spacing in a third.
+!
+!------------------------------------------------------------------
+!
+! Here is what we can get from the (binary) horiz grid file:
+!   real (r8), dimension(:,:), allocatable :: &
+!      ULAT,            &! latitude  (radians) of U points
+!      ULON,            &! longitude (radians) of U points
+!      HTN ,            &! length (cm) of north edge of T box
+!      HTE ,            &! length (cm) of east  edge of T box
+!      HUS ,            &! length (cm) of south edge of U box
+!      HUW ,            &! length (cm) of west  edge of U box
+!      ANGLE             ! angle
+!
+! Here is what we can get from the topography file:
+!   integer, dimension(:,:), allocatable :: &
+!      KMT               ! k index of deepest grid cell on T grid
+!
+! These must be derived or come from someplace else ...
+!      KMU               ! k index of deepest grid cell on U grid
+!      HT                ! real(r8) value of deepest valid T depth (in cm)
+!      HU                ! real(r8) value of deepest valid U depth (in cm)
+!
+! The vert grid file is ascii, with 3 columns/line:
+!    cell thickness(in cm)   cell center(in m)   cell bottom(in m)
+!
+!------------------------------------------------------------------
 
-type(obs_sequence_type) :: real_obs_sequence
+character(len=100) :: horiz_grid_file, vert_grid_file, topography_file, &
+                      bottom_cell_file, region_mask_file
+character(len= 64) :: horiz_grid_opt, sfc_layer_opt, vert_grid_opt, &
+                      topography_opt
+logical :: partial_bottom_cells, topo_smooth, flat_bottom, lremove_points
 
+namelist /grid_nml/ horiz_grid_opt, horiz_grid_file, sfc_layer_opt, &
+    vert_grid_opt, vert_grid_file, topography_opt, topography_file, &
+    partial_bottom_cells, bottom_cell_file, region_mask_file, &
+    topo_smooth, flat_bottom, lremove_points
 
-type(obs_def_type) :: obs_def
-type(obs_type) :: obs, prev_obs
-integer :: i, num_copies, num_qc
-integer :: days, seconds
-integer :: yy, mn, dd, hh, mm, ss
-integer :: startdate1, startdate2
-integer :: obs_num, calender_type, iskip
-integer :: obs_unit
-integer :: which_vert, obstype
-
-real (r8) :: lon, lat, vloc, obs_value
-real (r8) :: aqc, var2, lonc
-type(time_type) :: time, pre_time
-
-character(len = 32) :: obs_kind_name
-character(len = 80) :: label
-character(len = 129) :: copy_meta_data, qc_meta_data
-
-if ( .not. module_initialized ) call initialize_module
-
-num_copies  = 1
-num_qc      = 1
-
-! Initialize an obs_sequence 
-
-call init_obs_sequence(real_obs_sequence, num_copies, num_qc, max_num)
-
-! set meta data of obs_seq
-
-do i = 1, num_copies
-   copy_meta_data = 'observation'  
-   call set_copy_meta_data(real_obs_sequence, i, copy_meta_data)
-end do
-
-do i = 1, num_qc
-   qc_meta_data = 'QC index'
-   call set_qc_meta_data(real_obs_sequence, i, qc_meta_data)
-end do
-
-! Initialize the obs variable
-
-call init_obs(obs, num_copies, num_qc)
-call init_obs(prev_obs, num_copies, num_qc)
-
-! set observation time type
-calender_type = GREGORIAN
-call set_calendar_type(calender_type)
-
-! open observation data file
-
-obs_unit  = get_unit()
-open(unit = obs_unit, file = obsfile, form='formatted', status='old')
-print*, 'input file opened= ', trim(obsfile)
-rewind (obs_unit)
-
-obs_num = 0
-iskip   = 0
-
-!  loop over all observations within the file
-!------------------------------------------------------------------------------
-
-obsloop:  do
-
-   read(obs_unit,*,end=200) lon, lat, vloc, obs_value, which_vert, var2, aqc, &
-                              obs_kind_name, startdate1, startdate2
-
-  !print*,''
-  !print*,' Observation ', obs_num+1
-  !print*,' lon lat vloc obs_value ',lon, lat, vloc, obs_value
-  !print*,' which_vert var2 aqc ',which_vert, var2, aqc
-  !print*,' obs_kind_name ',obs_kind_name
-  !print*,' date1 date2 ',startdate1, startdate2
-
-   ! Calculate the DART time from the observation time 
-   yy =     startdate1/10000
-   mn = mod(startdate1/100,100)
-   dd = mod(startdate1    ,100)
-   hh =     startdate2/10000
-   mm = mod(startdate2/100,100)
-   ss = mod(startdate2    ,100)
-   time = set_date(yy,mn,dd,hh,mm,ss)
-   call get_time(time,seconds,days)
-
-   ! verify the location is not outside valid limits
-   if((lon > 360.0_r8) .or. (lon <   0.0_r8) .or.  &
-      (lat >  90.0_r8) .or. (lat < -90.0_r8)) then
-      write(*,*) 'invalid location.  lon,lat = ', lon, lat
-      iskip = iskip + 1
-      cycle obsloop
-   endif
-
-   lonc = lon
-   if (lon2 > 360.0_r8 .and. lon < 180.0_r8) lonc = lon + 360.0_r8
-
-   ! reject observations outside the bounding box
-   if(lat < lat1 .or. lat > lat2 .or. lonc < lon1 .or. lonc > lon2) then
-     iskip = iskip + 1
-     cycle obsloop
-   endif
-
-   ! assign each observation the correct observation type
-   obstype = get_obs_kind_index(obs_kind_name)
-   if(obstype < 1) then
-      print*, 'unknown observation type [',trim(obs_kind_name),'] ... skipping ...'
-      cycle obsloop
-  !else
-  !   print*,trim(obs_kind_name),' is ',obstype
-   endif
-
-   obs_num = obs_num + 1
-
-   ! print a reassuring message after every Nth processed obs.
-   ! if requested, print in the form of a timestamp.  
-   ! the default is just a plain string with the current obs count.
-   if(mod(obs_num, print_every_Nth) == 0) then
-       write(label, *) 'obs count = ', obs_num
-       if (print_timestamps) then
-          call timestamp(string1=label, pos='')
-       else
-          write(*,*) trim(label)
-       endif
-   endif
-   if(obs_num == max_num) then
-      print*, 'Max limit for observation count reached.  Increase value in namelist'
-      stop
-   endif
-   
-!   create the obs_def for this observation, add to sequence
-!------------------------------------------------------------------------------
-   
-   call real_obs(num_copies, num_qc, obs, lon, lat, vloc, obs_value, &
-                 var2, aqc, obstype, which_vert, seconds, days)
-   
-   if(obs_num == 1) then ! for the first observation 
-
-     call insert_obs_in_seq(real_obs_sequence, obs)
-     call copy_obs(prev_obs, obs)
-     pre_time = time
-
-   else  !  not the first observation 
-
-     if(time == pre_time) then  ! same time as previous observation
-
-       call insert_obs_in_seq(real_obs_sequence, obs, prev_obs)
-       call copy_obs(prev_obs, obs)
-       pre_time = time
-
-    else  ! not the same time
-
-       call insert_obs_in_seq(real_obs_sequence, obs)
-       call copy_obs(prev_obs, obs)
-       pre_time = time
-
-    endif
-
-  endif
-
-end do obsloop
-
-200 continue
-
-close(obs_unit)
-
-! Print a little summary
-print*, 'obs used = ', obs_num, ' obs skipped = ', iskip
-
-if ( get_first_obs(real_obs_sequence, obs) ) then
-   call get_obs_def(obs, obs_def)
-   pre_time = get_obs_def_time(obs_def)
-   call print_time(pre_time,' first time in sequence is ')
-   call print_date(pre_time,' first date in sequence is ')
-endif
-if( get_last_obs(real_obs_sequence, obs)) then
-   call get_obs_def(obs, obs_def)
-   time = get_obs_def_time(obs_def)
-   call print_time(time,' last  time in sequence is ')
-   call print_date(time,' last  date in sequence is ')
-endif
-print*, ''
-
-end function real_obs_sequence
-
-
-
-subroutine real_obs(num_copies, num_qc, obs, lon, lat, vloc, obs_value, &
-                      var2, aqc, obs_kind, which_vert, seconds, days)
-!------------------------------------------------------------------------------
-integer,        intent(in)    :: num_copies, num_qc
-type(obs_type), intent(inout) :: obs
-real(r8),       intent(in)    :: lon, lat, vloc, obs_value, var2, aqc
-integer,        intent(in)    :: obs_kind, which_vert, seconds, days
-
-integer            :: i
-real(r8)           :: aqc01(1), obs_value01(1)
-type(obs_def_type) :: obsdef0
-
-if ( .not. module_initialized ) call initialize_module
-
-! Does real initialization of an observation type
-
-call real_obs_def(obsdef0, lon, lat, vloc, &
-                    var2, obs_kind, which_vert, seconds, days)
-call set_obs_def(obs, obsdef0)
-
-do i = 1, num_copies
-   obs_value01(1) = obs_value
-   call set_obs_values(obs, obs_value01(1:1) )
-end do
-
-do i = 1, num_qc
-   aqc01(1) = aqc
-   call set_qc(obs, aqc01(1:1))
-end do
-
-end subroutine real_obs
-
-
-
-subroutine real_obs_def(obs_def, lon, lat, vloc, &
-                        var2, obs_kind, which_vert, seconds, days)
-!----------------------------------------------------------------------
-type(obs_def_type), intent(inout) :: obs_def
-real(r8),intent(in) :: lon, lat, vloc, var2
-integer, intent(in) :: obs_kind, which_vert, seconds, days
-
-type(location_type) :: loc0
-
-if ( .not. module_initialized ) call initialize_module
-
-! set obs location
-loc0 = set_location(lon, lat, vloc, which_vert )
-call set_obs_def_location(obs_def, loc0)
-
-! set obs kind
-call set_obs_def_kind(obs_def, obs_kind)
-
-call set_obs_def_time(obs_def, set_time(seconds, days) )
-call set_obs_def_error_variance(obs_def, var2)
-
-end subroutine real_obs_def
-
+!======================================================================
+contains
+!======================================================================
 
 
 subroutine initialize_module
-!-------------------------------------------------
-call register_module(source, revision, revdate)
+!------------------------------------------------------------------
+integer :: iunit, io
+
+! Read POP calendar information
+! In 'restart' mode, this is primarily the calendar type and 'stop'
+! information. The time attributes of the restart file override 
+! the namelist time information. 
+
+call find_namelist_in_file('pop_in', 'time_manager_nml', iunit)
+read(iunit, nml = time_manager_nml, iostat = io)
+call check_namelist_read(iunit, io, 'time_manager_nml')
+
+if ( allow_leapyear ) then
+   call set_calendar_type('gregorian')
+else
+   call set_calendar_type('noleap')
+endif
+
+! Read POP initial information (for input/restart filename)
+! The tricky part here is that we should really check for
+! the existence of the init_ts_file and take evasive action
+! like checking for the existence of a pointer file.
+
+call find_namelist_in_file('pop_in', 'init_ts_nml', iunit)
+read(iunit, nml = init_ts_nml, iostat = io)
+call check_namelist_read(iunit, io, 'init_ts_nml')
+
+ic_filename = trim(init_ts_file)//'.'//trim(init_ts_file_fmt)
+
+! FIXME ... what about the pointer file ...
+if ( .not. file_exist(ic_filename) ) then
+   msgstring = 'pop_in:init_ts_file '//trim(ic_filename)//' not found'
+   call error_handler(E_ERR,'initialize_module', &
+          msgstring, source, revision, revdate)
+endif
+
+! Read POP restart information (for model timestepping/grid dimensions)
+call find_namelist_in_file('pop_in', 'restart_nml', iunit)
+read(iunit, nml = restart_nml, iostat = io)
+call check_namelist_read(iunit, io, 'restart_nml')
+
+! Read POP domain information (for lon wrapping or not)
+call find_namelist_in_file('pop_in', 'domain_nml', iunit)
+read(iunit, nml = domain_nml, iostat = io)
+call check_namelist_read(iunit, io, 'domain_nml')
+
+! Read POP grid information (for grid dims/filenames)
+call find_namelist_in_file('pop_in', 'grid_nml', iunit)
+read(iunit, nml = grid_nml, iostat = io)
+call check_namelist_read(iunit, io, 'grid_nml')
+
 module_initialized = .true.
+
+! Print module information to log file and stdout.
+call register_module(source, revision, revdate)
+
 end subroutine initialize_module
+
+
+
+subroutine get_horiz_grid_dims(Nx, Ny)
+!------------------------------------------------------------------
+! subroutine get_horiz_grid_dims(Nx, Ny)
+!
+! Read the lon, lat grid size from the restart netcdf file.
+! The actual grid file is a binary file with no header information.
+!
+! The file name comes from module storage ... namelist.
+
+integer, intent(out) :: Nx   ! Number of Longitudes
+integer, intent(out) :: Ny   ! Number of Latitudes
+
+integer :: grid_id, dimid, nc_rc
+
+if ( .not. module_initialized ) call initialize_module
+
+! get the ball rolling ...
+
+call nc_check(nf90_open(trim(ic_filename), nf90_nowrite, grid_id), &
+         'get_horiz_grid_dims','open '//trim(ic_filename))
+
+! Longitudes : get dimid for 'i' or 'nlon', and then get value
+nc_rc = nf90_inq_dimid(grid_id, 'i', dimid)
+if (nc_rc /= nf90_noerr) then
+   nc_rc = nf90_inq_dimid(grid_id, 'nlon', dimid)
+   if (nc_rc /= nf90_noerr) then
+      msgstring = "unable to find either 'i' or 'nlon' in file "//trim(ic_filename)
+      call error_handler(E_ERR, 'get_horiz_grid_dims', msgstring, &
+                         source,revision,revdate) 
+   endif
+endif
+
+call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Nx), &
+         'get_horiz_grid_dims','inquire_dimension i '//trim(ic_filename))
+
+! Latitudes : get dimid for 'j' or 'nlat' ... and then get value
+nc_rc = nf90_inq_dimid(grid_id, 'j', dimid)
+if (nc_rc /= nf90_noerr) then
+   nc_rc = nf90_inq_dimid(grid_id, 'nlat', dimid)
+   if (nc_rc /= nf90_noerr) then
+      msgstring = "unable to find either 'j' or 'nlat' in "//trim(ic_filename)
+      call error_handler(E_ERR, 'get_horiz_grid_dims', msgstring, &
+                         source,revision,revdate)
+   endif
+endif
+
+call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Ny), &
+         'get_horiz_grid_dims','inquire_dimension i '//trim(ic_filename))
+
+! tidy up
+
+call nc_check(nf90_close(grid_id), &
+         'get_horiz_grid_dims','close '//trim(ic_filename) )
+
+end subroutine get_horiz_grid_dims
+
+
+
+  subroutine get_vert_grid_dim(Nz)
+!------------------------------------------------------------------
+! subroutine get_vert_grid_dim(Nz)
+!
+! count the number of lines in the ascii file to figure out max
+! number of vert blocks.
+
+integer, intent(out) :: Nz
+
+integer :: linelen ! disposable
+
+if ( .not. module_initialized ) call initialize_module
+
+call find_textfile_dims(vert_grid_file, Nz, linelen)
+
+end subroutine get_vert_grid_dim
+
+
+   
+subroutine get_pop_calendar(calstring)
+!------------------------------------------------------------------
+! the initialize_module ensures that the pop namelists are read and 
+! the DART time manager gets the pop calendar setting.
+!
+! Then, the DART time manager is queried to return what it knows ...
+!
+character(len=*), INTENT(OUT) :: calstring
+
+if ( .not. module_initialized ) call initialize_module
+
+call get_calendar_string(calstring)
+
+end subroutine get_pop_calendar
+
+
+
+function set_model_time_step()
+!------------------------------------------------------------------
+! the initialize_module ensures that the pop namelists are read.
+! The restart times in the pop_in&restart_nml are used to define
+! appropriate assimilation timesteps.
+!
+type(time_type) :: set_model_time_step
+
+if ( .not. module_initialized ) call initialize_module
+
+! Check the 'restart_freq_opt' and 'restart_freq' to determine
+! when we can stop the model
+
+if ( trim(restart_freq_opt) == 'nday' ) then
+   set_model_time_step = set_time(0, restart_freq) ! (seconds, days)
+else
+   call error_handler(E_ERR,'set_model_time_step', &
+              'restart_freq_opt must be days', source, revision, revdate)
+endif
+
+end function set_model_time_step
+
+
+
+
+subroutine write_pop_namelist(model_time, adv_to_time)
+!------------------------------------------------------------------
+!
+type(time_type), INTENT(IN) :: model_time, adv_to_time
+type(time_type) :: offset
+
+integer :: iunit, secs, days
+
+if ( .not. module_initialized ) call initialize_module
+
+offset = adv_to_time - model_time
+call get_time(offset, secs, days)
+
+if (secs /= 0 ) then
+   write(msgstring,*)'adv_to_time has seconds == ',secs,' must be zero'
+   call error_handler(E_ERR,'write_pop_namelist', msgstring, source, revision, revdate)
+endif
+
+! call print_date( model_time,'write_pop_namelist:dart model date')
+! call print_date(adv_to_time,'write_pop_namelist:advance_to date')
+! call print_time( model_time,'write_pop_namelist:dart model time')
+! call print_time(adv_to_time,'write_pop_namelist:advance_to time')
+! call print_time(     offset,'write_pop_namelist:a distance of')
+! write( *,'(''write_pop_namelist:TIME_MANAGER_NML   STOP_COUNT '',i10,'' days'')') days
+
+!Convey the information to the namelist 'stop option' and 'stop count'
+
+if ( trim(stop_option) == 'nday' ) then
+   stop_count = days
+else
+   call error_handler(E_ERR,'write_pop_namelist', &
+              'stop_option must be "nday"', source, revision, revdate)
+endif
+
+iunit = open_file('pop_in.DART',form='formatted',action='rewind')
+write(iunit, nml=time_manager_nml)
+write(iunit, '('' '')')
+close(iunit)
+
+end subroutine write_pop_namelist
+
+
+
+  subroutine read_horiz_grid(nx, ny, ULAT, ULON, TLAT, TLON)
+!------------------------------------------------------------------
+! subroutine read_horiz_grid(nx, ny, ULAT, ULON, TLAT, TLON)
+!
+! Open and read the binary grid file
+
+integer,                    intent(in)  :: nx, ny
+real(r8), dimension(nx,ny), intent(out) :: ULAT, ULON, TLAT, TLON
+
+!real(r8), dimension(nx,ny) :: &
+!     HTN ,  &! length (cm) of north edge of T box
+!     HTE ,  &! length (cm) of east  edge of T box
+!     HUS ,  &! length (cm) of south edge of U box
+!     HUW ,  &! length (cm) of west  edge of U box
+!     ANGLE  ! angle
+
+integer :: grid_unit, reclength
+
+if ( .not. module_initialized ) call initialize_module
+
+! Check to see that the file exists.
+
+if ( .not. file_exist(horiz_grid_file) ) then
+   msgstring = 'pop_in:horiz_grid_file '//trim(horiz_grid_file)//' not found'
+   call error_handler(E_ERR,'read_horiz_grid', &
+          msgstring, source, revision, revdate)
+endif
+
+! Open it and read them in the EXPECTED order.
+! Actually, we only need the first two, so I'm skipping the rest.
+
+grid_unit = get_unit()
+INQUIRE(iolength=reclength) ULAT
+
+open(grid_unit, file=trim(horiz_grid_file), form='unformatted', &
+                access='direct', recl=reclength, status='old' )
+read(grid_unit, rec=1) ULAT
+read(grid_unit, rec=2) ULON
+!read(grid_unit, rec=3) HTN
+!read(grid_unit, rec=4) HTE
+!read(grid_unit, rec=5) HUS
+!read(grid_unit, rec=6) HUW
+!read(grid_unit, rec=7) ANGLE
+close(grid_unit)
+
+call calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
+
+! convert from radians to degrees
+
+ULAT = ULAT * rad2deg
+ULON = ULON * rad2deg
+TLAT = TLAT * rad2deg
+TLON = TLON * rad2deg
+
+! ensure [0,360) [-90,90]
+
+where (ULON <   0.0_r8) ULON = ULON + 360.0_r8
+where (ULON > 360.0_r8) ULON = ULON - 360.0_r8
+where (TLON <   0.0_r8) TLON = TLON + 360.0_r8
+where (TLON > 360.0_r8) TLON = TLON - 360.0_r8
+
+where (ULAT < -90.0_r8) ULAT = -90.0_r8
+where (ULAT >  90.0_r8) ULAT =  90.0_r8
+where (TLAT < -90.0_r8) TLAT = -90.0_r8
+where (TLAT >  90.0_r8) TLAT =  90.0_r8
+
+end subroutine read_horiz_grid
+
+
+  subroutine calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
+!------------------------------------------------------------------
+! subroutine calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
+!
+! mimic POP grid.F90:calc_tpoints(), but for one big block.
+
+integer,                    intent( in) :: nx, ny
+real(r8), dimension(nx,ny), intent( in) :: ULAT, ULON
+real(r8), dimension(nx,ny), intent(out) :: TLAT, TLON
+
+integer  :: i, j
+real(r8) :: xc,yc,zc,xs,ys,zs,xw,yw,zw   ! Cartesian coordinates for
+real(r8) :: xsw,ysw,zsw,tx,ty,tz,da      ! nbr points
+
+real(r8), parameter ::  c0 = 0.000_r8, c1 = 1.000_r8
+real(r8), parameter ::  c2 = 2.000_r8, c4 = 4.000_r8
+real(r8), parameter :: p25 = 0.250_r8, p5 = 0.500_r8
+real(r8)            :: pi, pi2, pih, radian
+
+if ( .not. module_initialized ) call initialize_module
+
+! Define some constants as in pop
+
+pi     = c4*atan(c1)
+pi2    = c2*pi
+pih    = p5*pi
+radian = 180.0_r8/pi
+
+do j=2,ny
+do i=2,nx
+
+   !*** convert neighbor U-cell coordinates to 3-d Cartesian coordinates 
+   !*** to prevent problems with averaging near the pole
+
+   zsw = cos(ULAT(i-1,j-1))
+   xsw = cos(ULON(i-1,j-1))*zsw
+   ysw = sin(ULON(i-1,j-1))*zsw
+   zsw = sin(ULAT(i-1,j-1))
+
+   zs  = cos(ULAT(i  ,j-1))
+   xs  = cos(ULON(i  ,j-1))*zs
+   ys  = sin(ULON(i  ,j-1))*zs
+   zs  = sin(ULAT(i  ,j-1))
+
+   zw  = cos(ULAT(i-1,j  ))
+   xw  = cos(ULON(i-1,j  ))*zw
+   yw  = sin(ULON(i-1,j  ))*zw
+   zw  = sin(ULAT(i-1,j  ))
+
+   zc  = cos(ULAT(i  ,j  ))
+   xc  = cos(ULON(i  ,j  ))*zc
+   yc  = sin(ULON(i  ,j  ))*zc
+   zc  = sin(ULAT(i  ,j  ))
+
+   !*** straight 4-point average to T-cell Cartesian coords
+
+   tx = p25*(xc + xs + xw + xsw)
+   ty = p25*(yc + ys + yw + ysw)
+   tz = p25*(zc + zs + zw + zsw)
+
+   !*** convert to lat/lon in radians
+
+   da = sqrt(tx**2 + ty**2 + tz**2)
+
+   TLAT(i,j) = asin(tz/da)
+
+   if (tx /= c0 .or. ty /= c0) then
+      TLON(i,j) = atan2(ty,tx)
+   else
+      TLON(i,j) = c0
+   endif
+
+end do
+end do
+
+!*** for bottom row of domain where sw 4pt average is not valid,
+!*** extrapolate from interior
+!*** NOTE: THIS ASSUMES A CLOSED SOUTH BOUNDARY - WILL NOT
+!***       WORK CORRECTLY FOR CYCLIC OPTION
+
+do i=1,nx
+   TLON(i,1) =    TLON(i,1+1)
+   TLAT(i,1) = c2*TLAT(i,1+1) - TLAT(i,1+2)
+end do
+
+where (TLON(:,:) > pi2) TLON(:,:) = TLON(:,:) - pi2
+where (TLON(:,:) < c0 ) TLON(:,:) = TLON(:,:) + pi2
+
+!*** this leaves the leftmost/western edge to be filled 
+!*** if the longitudes wrap, this is easy.
+!*** the gx3v5 grid TLON(:,2) and TLON(:,nx) are both about 2pi,
+!*** so taking the average is reasonable.
+!*** averaging the latitudes is always reasonable.
+
+if ( trim(ew_boundary_type) == 'cyclic' ) then
+
+   TLAT(1,:) = (TLAT(2,:) + TLAT(nx,:))/c2
+   TLON(1,:) = (TLON(2,:) + TLON(nx,:))/c2
+
+else
+   write(msgstring,'(''pop_in&domain_nml:ew_boundary_type '',a,'' unknown.'')') &
+                                    trim(ew_boundary_type)
+   call error_handler(E_ERR,'calc_tpoints',msgstring,source,revision,revdate)
+endif
+
+end subroutine calc_tpoints
+
+
+
+  subroutine read_topography(nx, ny, KMT, KMU)
+!------------------------------------------------------------------
+! subroutine read_topography(nx, ny, KMT, KMU)
+!
+! Open and read the binary topography file
+
+integer,                   intent(in)  :: nx, ny
+integer, dimension(nx,ny), intent(out) :: KMT, KMU
+
+integer  :: i, j, topo_unit, reclength
+
+if ( .not. module_initialized ) call initialize_module
+
+! Check to see that the file exists.
+
+if ( .not. file_exist(topography_file) ) then
+   msgstring = 'pop_in:topography_file '//trim(topography_file)//' not found'
+   call error_handler(E_ERR,'read_topography', &
+          msgstring, source, revision, revdate)
+endif
+
+! read the binary file
+
+topo_unit = get_unit()
+INQUIRE(iolength=reclength) KMT
+
+open( topo_unit, file=trim(topography_file), form='unformatted', &
+                 access='direct', recl=reclength, status='old' )
+read( topo_unit, rec=1) KMT
+close(topo_unit)
+
+KMU(1, 1) = 0
+do j=2,ny
+do i=2,nx
+   KMU(i,j) = min(KMT(i, j), KMT(i-1, j), KMT(i, j-1), KMT(i-1, j-1))
+enddo
+enddo
+
+end subroutine read_topography
+
+
+
+  subroutine read_vert_grid(nz, ZC, ZG)
+!------------------------------------------------------------------
+! subroutine read_vert_grid(nz, ZC, ZG)
+!
+! Open and read the ASCII vertical grid information
+!
+! The vert grid file is ascii, with 3 columns/line:
+!    cell thickness(in cm)   cell center(in m)   cell bottom(in m)
+
+integer,  intent(in)  :: nz
+real(r8), intent(out) :: ZC(nz), ZG(nz)
+
+integer  :: iunit, i, ios
+real(r8) :: depth
+
+if ( .not. module_initialized ) call initialize_module
+
+! Check to see that the file exists.
+
+if ( .not. file_exist(vert_grid_file) ) then
+   msgstring = 'pop_in:vert_grid_file '//trim(vert_grid_file)//' not found'
+   call error_handler(E_ERR,'read_vert_grid', &
+          msgstring, source, revision, revdate)
+endif
+
+! read the ASCII file
+
+iunit = open_file(trim(vert_grid_file), action = 'read')
+
+do i=1, nz
+
+   read(iunit,*,iostat=ios) depth, ZC(i), ZG(i)
+
+   if ( ios /= 0 ) then ! error
+      write(msgstring,*)'error reading depths, line ',i
+      call error_handler(E_ERR,'read_vert_grid',msgstring,source,revision,revdate)
+   endif
+
+enddo
+
+end subroutine read_vert_grid
+
 
 
 end module dart_pop_mod

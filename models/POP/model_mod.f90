@@ -16,7 +16,7 @@ module model_mod
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8, SECPERDAY, MISSING_R8, rad2deg, PI
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
-                             set_calendar_type, print_time, print_date, &
+                             print_time, print_date, set_calendar_type, &
                              operator(*),  operator(+), operator(-), &
                              operator(>),  operator(<), operator(/), &
                              operator(/=), operator(<=)
@@ -31,7 +31,10 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MS
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COMPONENT, &
                              KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT
 use mpi_utilities_mod, only: my_task_id
-use random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
+use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
+use      dart_pop_mod, only: get_pop_calendar, set_model_time_step, &
+                             get_horiz_grid_dims, get_vert_grid_dim, &
+                             read_horiz_grid, read_topography, read_vert_grid
 
 use typesizes
 use netcdf 
@@ -66,9 +69,9 @@ public :: POP_meta_type, get_gridsize, set_model_end_time, &
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+   source   = '$URL$', &
+   revision = '$Revision$', &
+   revdate  = '$Date$'
 
 character(len=256) :: msgstring
 logical, save :: module_initialized = .false.
@@ -76,71 +79,18 @@ logical, save :: module_initialized = .false.
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
 
-!------------------------------------------------------------------
-!
-! POP namelist section:
-!  grid information comes in several files:
-!   horizontal grid lat/lons in one, topography (lowest valid vert
-!   level) in another, and the vertical grid spacing in a third.
-!  if the grid is global, or at least wraps around the sphere in
-!   longitude, set longitude_wrap to be true.
-!
-!------------------------------------------------------------------
-! The time manager namelist variables
-!------------------------------------------------------------------
-
-character(len=128) :: horiz_grid_input_file = 'no_horiz_grid_input_file'
-character(len=128) :: topography_input_file = 'no_topography_input_file'
-character(len=128) :: vert_grid_input_file  = 'no_vert_grid_input_file'
-logical            :: longitude_wrap        = .true.
-
-!integer :: nblocks   - model_mod doesn't need this
-!                       but advance_model will.  not sure this
-!                       helps in this code, since the script
-!                       needs the info, not the filter executable. 
-
-! here are what we can get from the horiz grid file:
-!   real (r8), dimension(:,:), allocatable :: &
-!      ULAT,            &! latitude  (radians) of U points
-!      ULON,            &! longitude (radians) of U points
-!      HTN ,            &! length (cm) of north edge of T box
-!      HTE ,            &! length (cm) of east  edge of T box
-!      HUS ,            &! length (cm) of south edge of U box
-!      HUW ,            &! length (cm) of west  edge of U box
-!      ANGLE             ! angle
-!
-! here is what we can get from the topog file:
-!   integer, dimension(:,:), allocatable :: &
-!      KMT               ! k index of deepest grid cell on T grid
-! maybe
-!      KMU               ! k index of deepest grid cell on U grid
-!      HT                ! real(r8) value of deepest valid T depth (in cm)
-!      HU                ! real(r8) value of deepest valid U depth (in cm)
-!
-!
-! the vert grid file is ascii, with 3 columns/line:
-!    cell thickness(in cm)   cell center(in m)   cell bottom(in m)
-
-
-! other things which can/should be in the model_nml
+! things which can/should be in the model_nml
 logical  :: output_state_vector = .true.
 integer  :: assimilation_period_days = 1
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
 integer  :: debug = 0   ! turn up for more and more debug messages
 
-character(len=32):: calendar = 'noleap'
-
 namelist /model_nml/  &
-   horiz_grid_input_file,       &
-   topography_input_file,       &
-   vert_grid_input_file,        &
-   longitude_wrap,              &
    output_state_vector,         &
    assimilation_period_days,    &  ! for now, this is the timestep
    assimilation_period_seconds, &
    model_perturbation_amplitude,&
-   calendar,                    &
    debug
 
 !------------------------------------------------------------------
@@ -186,12 +136,11 @@ integer :: start_index(nfields)
 integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
 
 ! locations of cell centers (C) and edges (G) for each axis.
-real(r8), allocatable :: XC(:), XG(:), YC(:), YG(:), ZC(:), ZG(:)
+real(r8), allocatable :: ZC(:), ZG(:)
 
 ! These arrays store the longitude and latitude of the lower left corner of
 ! each of the dipole u quadrilaterals and t quadrilaterals.
 real(r8), allocatable :: ULAT(:,:), ULON(:,:), TLAT(:,:), TLON(:,:)
-
 
 ! integer, lowest valid cell number in the vertical
 integer, allocatable  :: KMT(:, :), KMU(:, :)
@@ -275,6 +224,7 @@ subroutine static_init_model()
 ! Called to do one time initialization of the model. In this case,
 ! it reads in the grid information.
 
+character(len=32):: calendar
 integer :: iunit, io
 integer :: ss, dd
 
@@ -302,60 +252,47 @@ call register_module(source, revision, revdate)
 module_initialized = .true.
 
 ! Read the DART namelist for this model
-call find_namelist_in_file("input.nml", "model_nml", iunit)
+call find_namelist_in_file('input.nml', 'model_nml', iunit)
 read(iunit, nml = model_nml, iostat = io)
-call check_namelist_read(iunit, io, "model_nml")
+call check_namelist_read(iunit, io, 'model_nml')
 
 ! Record the namelist values used for the run
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
 if (do_output()) write(logfileunit, nml=model_nml)
 if (do_output()) write(     *     , nml=model_nml)
 
-! POP calendar information
+!---------------------------------------------------------------
+! Set the time step ... causes POP namelists to be read.
+! Ensures model_timestep is multiple of 'ocean_dynamics_timestep'
 
-call set_calendar_type(calendar)
+model_timestep = set_model_time_step()
+
+call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
+
+write(msgstring,*)'assimilation period is ',dd,' days ',ss,' seconds'
+call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
 
 !---------------------------------------------------------------
 ! get data dimensions, then allocate space, then open the files
 ! and actually fill in the arrays.
 
 call get_horiz_grid_dims(Nx, Ny)
-call get_vert_grid_dims(Nz)
+call get_vert_grid_dim(Nz)
 
 ! Allocate space for grid variables. 
-allocate(XC(Nx), YC(Ny), ZC(Nz))
-allocate(XG(Nx), YG(Ny), ZG(Nz))
-
-! These will eventually replace the single dim X/Y arrays above
-! once we put in interpolation in the dipole grid code.
-allocate(ULAT(Nx, Ny), ULON(Nx, Ny), TLAT(Nx, Ny), TLON(Nx, Ny))
-allocate(KMT(Nx, Ny), KMU(Nx, Ny))
-allocate(HT(Nx, Ny), HU(Nx, Ny))
+allocate(ULAT(Nx,Ny), ULON(Nx,Ny), TLAT(Nx,Ny), TLON(Nx,Ny))
+allocate( KMT(Nx,Ny),  KMU(Nx,Ny))
+allocate(  HT(Nx,Ny),   HU(Nx,Ny))
+allocate(     ZC(Nz),      ZG(Nz))
 
 ! Fill them in.
 ! horiz grid initializes ULAT/LON, TLAT/LON as well.
 ! kmt initializes HT/HU if present in input file.
-call read_horiz_grid(Nx, Ny, XC, XG, YC, YG)
-call read_vert_grid(Nz, ZC, ZG)
-call read_kmt(Nx, Ny, KMT, KMU)
+call read_horiz_grid(Nx, Ny, ULAT, ULON, TLAT, TLON)
+call read_topography(Nx, Ny,  KMT,  KMU)
+call read_vert_grid( Nz, ZC, ZG)
 
 if (debug > 0) call write_grid_netcdf() ! DEBUG only
-
-!---------------------------------------------------------------
-! set the time step from the namelist for now.
-
-!! Define the assimilation period as the model_timestep
-!! Ensure model_timestep is multiple of ocean_dynamics_timestep
-!
-model_timestep = set_model_time_step(assimilation_period_seconds, &
-                                     assimilation_period_days,    &
-                                     ocean_dynamics_timestep)
-
-call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
-
-write(msgstring,*)"assimilation period is ",dd," days ",ss," seconds"
-call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
-if (do_output()) write(logfileunit,*)msgstring
 
 !---------------------------------------------------------------
 ! compute the offsets into the state vector for the start of each
@@ -534,12 +471,12 @@ enddo
 
 ! Confirm that the indices come out okay as debug
 if(u_index /= u_total + 1) then
-   msgstring = "Storage indices did not balance for U grid: : contact DART developers"
-   call error_handler(E_ERR, "init_dipole_interp", msgstring, source, revision, revdate)
+   msgstring = 'Storage indices did not balance for U grid: : contact DART developers'
+   call error_handler(E_ERR, 'init_dipole_interp', msgstring, source, revision, revdate)
 endif
 if(t_index /= t_total + 1) then
-   msgstring = "Storage indices did not balance for T grid: : contact DART developers"
-   call error_handler(E_ERR, "init_dipole_interp", msgstring, source, revision, revdate)
+   msgstring = 'Storage indices did not balance for T grid: : contact DART developers'
+   call error_handler(E_ERR, 'init_dipole_interp', msgstring, source, revision, revdate)
 endif
 
 end subroutine init_dipole_interp
@@ -1420,8 +1357,8 @@ if(sum(exact_corner) == 0) then
       in_quad = .true.
    else if(num_sides >= 3) then
       ! Put in some development error checking; shouldn't be able to hit 3 or 4 sides
-      write(msgstring, *) "Num sides in in_quad is ", num_sides, &
-         "Please contact DART development team"
+      write(msgstring, *) 'Num sides in in_quad is ', num_sides, &
+         'Please contact DART development team'
       call error_handler(E_ERR, 'in_quad', msgstring, source, revision, revdate)
    endif
 
@@ -1430,8 +1367,8 @@ else
    ! An odd number of corners should be impossible.
    if(num_corners == 1 .or. num_corners == 3) then
       ! Put in some development error checking; shouldn't be able to hit 3 or 4 sides
-      write(msgstring, *) "Num corners in in_quad is ", num_sides, &
-         "Please contact DART development team"
+      write(msgstring, *) 'Num corners in in_quad is ', num_sides, &
+         'Please contact DART development team'
       call error_handler(E_ERR, 'in_quad', msgstring, source, revision, revdate)
    ! Four corners means we are not in; 
    else if(num_corners == 4) then
@@ -1799,33 +1736,6 @@ end subroutine height_bounds
 
 
 
-function set_model_time_step(ss, dd, dt)
-!------------------------------------------------------------------
-!
-! Sets the model 'timestep' AKA 'assimilation period'.
-! Must make sure the assimilation period is a multiple of the 
-! model's dynamical timestepping requirement.
-
-integer,  intent(in) :: ss    ! assimilation_period_seconds
-integer,  intent(in) :: dd    ! assimilation_period_days
-real(r8), intent(in) :: dt    ! ocean_dynamics_timestep
-
-type(time_type) :: set_model_time_step
-
-integer :: assim_period, ndt
-
-if ( .not. module_initialized ) call static_init_model
-
-assim_period = ss + dd*SECPERDAY   ! in seconds 
-ndt = max(nint(assim_period / dt),1)
-assim_period = nint(ndt * dt)
-
-set_model_time_step = set_time(assim_period, 0) ! works seconds > 86400
-
-end function set_model_time_step
-
-
-
 function get_model_time_step()
 !------------------------------------------------------------------
 !
@@ -1923,11 +1833,11 @@ lon_index = offset - ((depth_index-1)*Nx*Ny) - ((lat_index-1)*Nx) + 1
 
 if (debug > 5) print *, 'lon, lat, depth index = ', lon_index, lat_index, depth_index
 if (is_on_ugrid(local_var)) then
-   lon = XG(lon_index)
-   lat = YG(lat_index)
+   lon = ULON(lon_index, lat_index)
+   lat = ULAT(lon_index, lat_index)
 else
-   lon = XC(lon_index)
-   lat = YC(lat_index)
+   lon = TLON(lon_index, lat_index)
+   lat = TLAT(lon_index, lat_index)
 endif
 
 if (debug > 5) print *, 'lon, lat, depth = ', lon, lat, depth
@@ -1946,7 +1856,8 @@ subroutine end_model()
 
 ! if ( .not. module_initialized ) call static_init_model
 
-deallocate(XC, YC, ZC, XG, YG, ZG, KMT, KMU, HT, HU)
+deallocate(ULAT, ULON, TLAT, TLON, KMT, KMU, HT, HU)
+deallocate(ZC, ZG)
 
 end subroutine end_model
 
@@ -2044,8 +1955,8 @@ write(filename, '(a, i3)') 'ncFileID', ncFileID
 !-------------------------------------------------------------------------------
 
 call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
-                                   "nc_write_model_atts", "inquire "//trim(filename))
-call nc_check(nf90_Redef(ncFileID),"nc_write_model_atts",   "redef "//trim(filename))
+                                   'nc_write_model_atts', 'inquire '//trim(filename))
+call nc_check(nf90_Redef(ncFileID),'nc_write_model_atts',   'redef '//trim(filename))
 
 !-------------------------------------------------------------------------------
 ! We need the dimension ID for the number of copies/ensemble members, and
@@ -2053,24 +1964,24 @@ call nc_check(nf90_Redef(ncFileID),"nc_write_model_atts",   "redef "//trim(filen
 ! Our job is create the 'model size' dimension.
 !-------------------------------------------------------------------------------
 
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="NMLlinelen", dimid=LineLenDimID), &
-                           "nc_write_model_atts","inq_dimid NMLlinelen")
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="copy", dimid=MemberDimID), &
-                           "nc_write_model_atts", "copy dimid "//trim(filename))
-call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID), &
-                           "nc_write_model_atts", "time dimid "//trim(filename))
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name='NMLlinelen', dimid=LineLenDimID), &
+                           'nc_write_model_atts','inq_dimid NMLlinelen')
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name='copy', dimid=MemberDimID), &
+                           'nc_write_model_atts', 'copy dimid '//trim(filename))
+call nc_check(nf90_inq_dimid(ncid=ncFileID, name='time', dimid=  TimeDimID), &
+                           'nc_write_model_atts', 'time dimid '//trim(filename))
 
 if ( TimeDimID /= unlimitedDimId ) then
-   write(msgstring,*)"Time Dimension ID ",TimeDimID, &
-             " should equal Unlimited Dimension ID",unlimitedDimID
-   call error_handler(E_ERR,"nc_write_model_atts", msgstring, source, revision, revdate)
+   write(msgstring,*)'Time Dimension ID ',TimeDimID, &
+             ' should equal Unlimited Dimension ID',unlimitedDimID
+   call error_handler(E_ERR,'nc_write_model_atts', msgstring, source, revision, revdate)
 endif
 
 !-------------------------------------------------------------------------------
 ! Define the model size / state variable dimension / whatever ...
 !-------------------------------------------------------------------------------
-call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable", len=model_size, &
-        dimid = StateVarDimID),"nc_write_model_atts", "state def_dim "//trim(filename))
+call nc_check(nf90_def_dim(ncid=ncFileID, name='StateVariable', len=model_size, &
+        dimid = StateVarDimID),'nc_write_model_atts', 'state def_dim '//trim(filename))
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes 
@@ -2080,22 +1991,22 @@ call DATE_AND_TIME(crdate,crtime,crzone,values)
 write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
                   values(1), values(2), values(3), values(5), values(6), values(7)
 
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "creation_date" ,str1    ), &
-           "nc_write_model_atts", "creation put "//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_source"  ,source  ), &
-           "nc_write_model_atts", "source put "//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revision",revision), &
-           "nc_write_model_atts", "revision put "//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate ), &
-           "nc_write_model_atts", "revdate put "//trim(filename))
-call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model",  "POP" ), &
-           "nc_write_model_atts", "model put "//trim(filename))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'creation_date' ,str1    ), &
+           'nc_write_model_atts', 'creation put '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_source'  ,source  ), &
+           'nc_write_model_atts', 'source put '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_revision',revision), &
+           'nc_write_model_atts', 'revision put '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_revdate' ,revdate ), &
+           'nc_write_model_atts', 'revdate put '//trim(filename))
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model',  'POP' ), &
+           'nc_write_model_atts', 'model put '//trim(filename))
 
 !-------------------------------------------------------------------------------
 ! Determine shape of most important namelist
 !-------------------------------------------------------------------------------
 
-call find_textfile_dims("pop_in", nlines, linelen)
+call find_textfile_dims('pop_in', nlines, linelen)
 if (nlines > 0) then
   has_pop_namelist = .true.
 else
@@ -2108,15 +2019,15 @@ if (has_pop_namelist) then
    allocate(textblock(nlines))
    textblock = ''
    
-   call nc_check(nf90_def_dim(ncid=ncFileID, name="nlines", &
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='nlines', &
                  len = nlines, dimid = nlinesDimID), &
                  'nc_write_model_atts', 'def_dim nlines ')
    
-   call nc_check(nf90_def_var(ncFileID,name="pop_in", xtype=nf90_char,    &
+   call nc_check(nf90_def_var(ncFileID,name='pop_in', xtype=nf90_char,    &
                  dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
                  'nc_write_model_atts', 'def_var pop_in')
-   call nc_check(nf90_put_att(ncFileID, nmlVarID, "long_name",       &
-                 "contents of pop_in namelist"), 'nc_write_model_atts', 'put_att pop_in')
+   call nc_check(nf90_put_att(ncFileID, nmlVarID, 'long_name',       &
+                 'contents of pop_in namelist'), 'nc_write_model_atts', 'put_att pop_in')
 
 endif
 !-------------------------------------------------------------------------------
@@ -2133,29 +2044,29 @@ if ( output_state_vector ) then
    !----------------------------------------------------------------------------
 
   ! Define the state vector coordinate variable and some attributes.
-   call nc_check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-                 dimids=StateVarDimID, varid=StateVarVarID), "nc_write_model_atts", &
-                 "statevariable def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,StateVarVarID,"long_name","State Variable ID"),&
-                 "nc_write_model_atts","statevariable long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "units","indexical"), &
-                 "nc_write_model_atts", "statevariable units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,StateVarVarID,"valid_range",(/ 1,model_size /)),&
-                 "nc_write_model_atts", "statevariable valid_range "//trim(filename))
+   call nc_check(nf90_def_var(ncid=ncFileID,name='StateVariable', xtype=nf90_int, &
+                 dimids=StateVarDimID, varid=StateVarVarID), 'nc_write_model_atts', &
+                 'statevariable def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,StateVarVarID,'long_name','State Variable ID'),&
+                 'nc_write_model_atts','statevariable long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, StateVarVarID, 'units','indexical'), &
+                 'nc_write_model_atts', 'statevariable units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,StateVarVarID,'valid_range',(/ 1,model_size /)),&
+                 'nc_write_model_atts', 'statevariable valid_range '//trim(filename))
 
    ! Define the actual (3D) state vector, which gets filled as time goes on ... 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="state", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncid=ncFileID, name='state', xtype=nf90_real, &
                  dimids=(/StateVarDimID,MemberDimID,unlimitedDimID/),varid=StateVarID),&
-                 "nc_write_model_atts","state def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,StateVarID,"long_name","model state or fcopy"),&
-                 "nc_write_model_atts", "state long_name "//trim(filename))
+                 'nc_write_model_atts','state def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,StateVarID,'long_name','model state or fcopy'),&
+                 'nc_write_model_atts', 'state long_name '//trim(filename))
 
    ! Leave define mode so we can fill the coordinate variable.
-   call nc_check(nf90_enddef(ncfileID),"nc_write_model_atts","state enddef "//trim(filename))
+   call nc_check(nf90_enddef(ncfileID),'nc_write_model_atts','state enddef '//trim(filename))
 
    ! Fill the state variable coordinate variable
    call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ), &
-                 "nc_write_model_atts", "state put_var "//trim(filename))
+                 'nc_write_model_atts', 'state put_var '//trim(filename))
 
 else
 
@@ -2165,234 +2076,234 @@ else
    ! Define the new dimensions IDs
    !----------------------------------------------------------------------------
    
-   call nc_check(nf90_def_dim(ncid=ncFileID, name="i", &
-          len = Nx, dimid = NlonDimID),"nc_write_model_atts", "i def_dim "//trim(filename))
-   call nc_check(nf90_def_dim(ncid=ncFileID, name="j", &
-          len = Ny, dimid = NlatDimID),"nc_write_model_atts", "j def_dim "//trim(filename))
-   call nc_check(nf90_def_dim(ncid=ncFileID, name="k", &
-          len = Nz, dimid =   NzDimID),"nc_write_model_atts", "k def_dim "//trim(filename))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='i', &
+          len = Nx, dimid = NlonDimID),'nc_write_model_atts', 'i def_dim '//trim(filename))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='j', &
+          len = Ny, dimid = NlatDimID),'nc_write_model_atts', 'j def_dim '//trim(filename))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='k', &
+          len = Nz, dimid =   NzDimID),'nc_write_model_atts', 'k def_dim '//trim(filename))
    
    !----------------------------------------------------------------------------
    ! Create the (empty) Coordinate Variables and the Attributes
    !----------------------------------------------------------------------------
 
-   call nc_check(nf90_def_var(ncFileID,name="POPnml", xtype=nf90_char,    &
+   call nc_check(nf90_def_var(ncFileID,name='POPnml', xtype=nf90_char,    &
                  dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
                  'nc_write_model_atts', 'def_var POPnml')
-   call nc_check(nf90_put_att(ncFileID, nmlVarID, "long_name",       &
-                 "namelist.input contents"), 'nc_write_model_atts', 'put_att POPnml')
+   call nc_check(nf90_put_att(ncFileID, nmlVarID, 'long_name',       &
+                 'namelist.input contents'), 'nc_write_model_atts', 'put_att POPnml')
 
    ! U,V Grid Longitudes
-   call nc_check(nf90_def_var(ncFileID,name="ULON", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncFileID,name='ULON', xtype=nf90_real, &
                  dimids=(/ NlonDimID, NlatDimID /), varid=ulonVarID),&
-                 "nc_write_model_atts", "ULON def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  ulonVarID, "long_name", "longitudes of U,V grid"), &
-                 "nc_write_model_atts", "ULON long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  ulonVarID, "cartesian_axis", "X"),  &
-                 "nc_write_model_atts", "ULON cartesian_axis "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  ulonVarID, "units", "degrees_east"), &
-                 "nc_write_model_atts", "ULON units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  ulonVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)), &
-                 "nc_write_model_atts", "ULON valid_range "//trim(filename))
+                 'nc_write_model_atts', 'ULON def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  ulonVarID, 'long_name', 'longitudes of U,V grid'), &
+                 'nc_write_model_atts', 'ULON long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  ulonVarID, 'cartesian_axis', 'X'),  &
+                 'nc_write_model_atts', 'ULON cartesian_axis '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  ulonVarID, 'units', 'degrees_east'), &
+                 'nc_write_model_atts', 'ULON units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  ulonVarID, 'valid_range', (/ 0.0_r8, 360.0_r8 /)), &
+                 'nc_write_model_atts', 'ULON valid_range '//trim(filename))
 
    ! U,V Grid Latitudes
-   call nc_check(nf90_def_var(ncFileID,name="ULAT", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncFileID,name='ULAT', xtype=nf90_real, &
                  dimids=(/ NlonDimID, NlatDimID /), varid=ulatVarID),&
-                 "nc_write_model_atts", "ULAT def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  ulatVarID, "long_name", "latitudes of U,V grid"), &
-                 "nc_write_model_atts", "ULAT long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  ulatVarID, "cartesian_axis", "Y"),   &
-                 "nc_write_model_atts", "ULAT cartesian_axis "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  ulatVarID, "units", "degrees_north"),  &
-                 "nc_write_model_atts", "ULAT units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,  ulatVarID,"valid_range",(/ -90.0_r8, 90.0_r8 /)), &
-                 "nc_write_model_atts", "ULAT valid_range "//trim(filename))
+                 'nc_write_model_atts', 'ULAT def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  ulatVarID, 'long_name', 'latitudes of U,V grid'), &
+                 'nc_write_model_atts', 'ULAT long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  ulatVarID, 'cartesian_axis', 'Y'),   &
+                 'nc_write_model_atts', 'ULAT cartesian_axis '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  ulatVarID, 'units', 'degrees_north'),  &
+                 'nc_write_model_atts', 'ULAT units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  ulatVarID,'valid_range',(/ -90.0_r8, 90.0_r8 /)), &
+                 'nc_write_model_atts', 'ULAT valid_range '//trim(filename))
 
    ! S,T,SHGT Grid Longitudes
-   call nc_check(nf90_def_var(ncFileID,name="TLON", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncFileID,name='TLON', xtype=nf90_real, &
                  dimids=(/ NlonDimID, NlatDimID /), varid=tlonVarID),&
-                 "nc_write_model_atts", "TLON def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, tlonVarID, "long_name", "longitudes of S,T,... grid"), &
-                 "nc_write_model_atts", "TLON long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, tlonVarID, "cartesian_axis", "X"),   &
-                 "nc_write_model_atts", "TLON cartesian_axis "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, tlonVarID, "units", "degrees_east"),  &
-                 "nc_write_model_atts", "TLON units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, tlonVarID, "valid_range", (/ 0.0_r8, 360.0_r8 /)), &
-                 "nc_write_model_atts", "TLON valid_range "//trim(filename))
+                 'nc_write_model_atts', 'TLON def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, tlonVarID, 'long_name', 'longitudes of S,T,... grid'), &
+                 'nc_write_model_atts', 'TLON long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, tlonVarID, 'cartesian_axis', 'X'),   &
+                 'nc_write_model_atts', 'TLON cartesian_axis '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, tlonVarID, 'units', 'degrees_east'),  &
+                 'nc_write_model_atts', 'TLON units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, tlonVarID, 'valid_range', (/ 0.0_r8, 360.0_r8 /)), &
+                 'nc_write_model_atts', 'TLON valid_range '//trim(filename))
 
 
    ! S,T,SHGT Grid (center) Latitudes
-   call nc_check(nf90_def_var(ncFileID,name="TLAT", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncFileID,name='TLAT', xtype=nf90_real, &
                  dimids= (/ NlonDimID, NlatDimID /), varid=tlatVarID), &
-                 "nc_write_model_atts", "TLAT def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, tlatVarID, "long_name", "latitudes of S,T, ... grid"), &
-                 "nc_write_model_atts", "TLAT long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, tlatVarID, "cartesian_axis", "Y"),   &
-                 "nc_write_model_atts", "TLAT cartesian_axis "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, tlatVarID, "units", "degrees_north"),  &
-                 "nc_write_model_atts", "TLAT units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, tlatVarID, "valid_range", (/ -90.0_r8, 90.0_r8 /)), &
-                 "nc_write_model_atts", "TLAT valid_range "//trim(filename))
+                 'nc_write_model_atts', 'TLAT def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, tlatVarID, 'long_name', 'latitudes of S,T, ... grid'), &
+                 'nc_write_model_atts', 'TLAT long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, tlatVarID, 'cartesian_axis', 'Y'),   &
+                 'nc_write_model_atts', 'TLAT cartesian_axis '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, tlatVarID, 'units', 'degrees_north'),  &
+                 'nc_write_model_atts', 'TLAT units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, tlatVarID, 'valid_range', (/ -90.0_r8, 90.0_r8 /)), &
+                 'nc_write_model_atts', 'TLAT valid_range '//trim(filename))
 
    ! Depths
-   call nc_check(nf90_def_var(ncFileID,name="ZG", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncFileID,name='ZG', xtype=nf90_real, &
                  dimids=NzDimID, varid= ZGVarID), &
-                 "nc_write_model_atts", "ZG def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZGVarID, "long_name", "depth at grid edges"), &
-                 "nc_write_model_atts", "ZG long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZGVarID, "cartesian_axis", "Z"),   &
-                 "nc_write_model_atts", "ZG cartesian_axis "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZGVarID, "units", "meters"),  &
-                 "nc_write_model_atts", "ZG units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZGVarID, "positive", "down"),  &
-                 "nc_write_model_atts", "ZG units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZGVarID, "comment", &
-                  "more positive is closer to the center of the earth"),  &
-                 "nc_write_model_atts", "ZG comment "//trim(filename))
+                 'nc_write_model_atts', 'ZG def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, 'long_name', 'depth at grid edges'), &
+                 'nc_write_model_atts', 'ZG long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, 'cartesian_axis', 'Z'),   &
+                 'nc_write_model_atts', 'ZG cartesian_axis '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, 'units', 'meters'),  &
+                 'nc_write_model_atts', 'ZG units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, 'positive', 'down'),  &
+                 'nc_write_model_atts', 'ZG units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, 'comment', &
+                  'more positive is closer to the center of the earth'),  &
+                 'nc_write_model_atts', 'ZG comment '//trim(filename))
 
    ! Depths
-   call nc_check(nf90_def_var(ncFileID,name="ZC",xtype=nf90_real,dimids=NzDimID,varid=ZCVarID), &
-                 "nc_write_model_atts", "ZC def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZCVarID, "long_name", "depth at grid centroids"), &
-                 "nc_write_model_atts", "ZC long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZCVarID, "cartesian_axis", "Z"),   &
-                 "nc_write_model_atts", "ZC cartesian_axis "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZCVarID, "units", "meters"),  &
-                 "nc_write_model_atts", "ZC units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZCVarID, "positive", "down"),  &
-                 "nc_write_model_atts", "ZC units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZCVarID, "comment", &
-                  "more positive is closer to the center of the earth"),  &
-                 "nc_write_model_atts", "ZC comment "//trim(filename))
+   call nc_check(nf90_def_var(ncFileID,name='ZC',xtype=nf90_real,dimids=NzDimID,varid=ZCVarID), &
+                 'nc_write_model_atts', 'ZC def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'long_name', 'depth at grid centroids'), &
+                 'nc_write_model_atts', 'ZC long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'cartesian_axis', 'Z'),   &
+                 'nc_write_model_atts', 'ZC cartesian_axis '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'units', 'meters'),  &
+                 'nc_write_model_atts', 'ZC units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'positive', 'down'),  &
+                 'nc_write_model_atts', 'ZC units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'comment', &
+                  'more positive is closer to the center of the earth'),  &
+                 'nc_write_model_atts', 'ZC comment '//trim(filename))
 
    ! Depth mask
-   call nc_check(nf90_def_var(ncFileID,name="KMT",xtype=nf90_int, &
+   call nc_check(nf90_def_var(ncFileID,name='KMT',xtype=nf90_int, &
                  dimids= (/ NlonDimID, NlatDimID /), varid=KMTVarID), &
-                 "nc_write_model_atts", "KMT def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, KMTVarID, "long_name", "lowest valid depth index at grid centroids"), &
-                 "nc_write_model_atts", "KMT long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, KMTVarID, "units", "levels"),  &
-                 "nc_write_model_atts", "KMT units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, KMTVarID, "positive", "down"),  &
-                 "nc_write_model_atts", "KMT units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, KMTVarID, "comment", &
-                  "more positive is closer to the center of the earth"),  &
-                 "nc_write_model_atts", "KMT comment "//trim(filename))
+                 'nc_write_model_atts', 'KMT def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMTVarID, 'long_name', 'lowest valid depth index at grid centroids'), &
+                 'nc_write_model_atts', 'KMT long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMTVarID, 'units', 'levels'),  &
+                 'nc_write_model_atts', 'KMT units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMTVarID, 'positive', 'down'),  &
+                 'nc_write_model_atts', 'KMT units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMTVarID, 'comment', &
+                  'more positive is closer to the center of the earth'),  &
+                 'nc_write_model_atts', 'KMT comment '//trim(filename))
 
    ! Depth mask
-   call nc_check(nf90_def_var(ncFileID,name="KMU",xtype=nf90_int, &
+   call nc_check(nf90_def_var(ncFileID,name='KMU',xtype=nf90_int, &
                  dimids= (/ NlonDimID, NlatDimID /), varid=KMUVarID), &
-                 "nc_write_model_atts", "KMU def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, KMUVarID, "long_name", "lowest valid depth index at grid corners"), &
-                 "nc_write_model_atts", "KMU long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, KMUVarID, "units", "levels"),  &
-                 "nc_write_model_atts", "KMU units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, KMUVarID, "positive", "down"),  &
-                 "nc_write_model_atts", "KMU units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, KMUVarID, "comment", &
-                  "more positive is closer to the center of the earth"),  &
-                 "nc_write_model_atts", "KMU comment "//trim(filename))
+                 'nc_write_model_atts', 'KMU def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMUVarID, 'long_name', 'lowest valid depth index at grid corners'), &
+                 'nc_write_model_atts', 'KMU long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMUVarID, 'units', 'levels'),  &
+                 'nc_write_model_atts', 'KMU units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMUVarID, 'positive', 'down'),  &
+                 'nc_write_model_atts', 'KMU units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, KMUVarID, 'comment', &
+                  'more positive is closer to the center of the earth'),  &
+                 'nc_write_model_atts', 'KMU comment '//trim(filename))
 
    !----------------------------------------------------------------------------
    ! Create the (empty) Prognostic Variables and the Attributes
    !----------------------------------------------------------------------------
 
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="SALT", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncid=ncFileID, name='SALT', xtype=nf90_real, &
          dimids = (/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=SVarID),&
-         "nc_write_model_atts", "S def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, "long_name", "salinity"), &
-         "nc_write_model_atts", "S long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, "units", "g/g"), &
-         "nc_write_model_atts", "S units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, "missing_value", NF90_FILL_REAL), &
-         "nc_write_model_atts", "S missing "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "S fill "//trim(filename))
+         'nc_write_model_atts', 'S def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SVarID, 'long_name', 'salinity'), &
+         'nc_write_model_atts', 'S long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SVarID, 'units', 'g/g'), &
+         'nc_write_model_atts', 'S units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SVarID, 'missing_value', NF90_FILL_REAL), &
+         'nc_write_model_atts', 'S missing '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SVarID, '_FillValue', NF90_FILL_REAL), &
+         'nc_write_model_atts', 'S fill '//trim(filename))
 
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="TEMP", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncid=ncFileID, name='TEMP', xtype=nf90_real, &
          dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=TVarID),&
-         "nc_write_model_atts", "T def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, "long_name", "Potential Temperature"), &
-         "nc_write_model_atts", "T long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, "units", "deg C"), &
-         "nc_write_model_atts", "T units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, "units_long_name", "degrees celsius"), &
-         "nc_write_model_atts", "T units_long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, "missing_value", NF90_FILL_REAL), &
-         "nc_write_model_atts", "T missing "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "T fill "//trim(filename))
+         'nc_write_model_atts', 'T def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, TVarID, 'long_name', 'Potential Temperature'), &
+         'nc_write_model_atts', 'T long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, TVarID, 'units', 'deg C'), &
+         'nc_write_model_atts', 'T units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, TVarID, 'units_long_name', 'degrees celsius'), &
+         'nc_write_model_atts', 'T units_long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, TVarID, 'missing_value', NF90_FILL_REAL), &
+         'nc_write_model_atts', 'T missing '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, TVarID, '_FillValue', NF90_FILL_REAL), &
+         'nc_write_model_atts', 'T fill '//trim(filename))
 
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="UVEL", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncid=ncFileID, name='UVEL', xtype=nf90_real, &
          dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=UVarID),&
-         "nc_write_model_atts", "U def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, "long_name", "U velocity"), &
-         "nc_write_model_atts", "U long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, "units", "cm/s"), &
-         "nc_write_model_atts", "U units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, "units_long_name", "centimeters per second"), &
-         "nc_write_model_atts", "U units_long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, "missing_value", NF90_FILL_REAL), &
-         "nc_write_model_atts", "U missing "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "U fill "//trim(filename))
+         'nc_write_model_atts', 'U def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, UVarID, 'long_name', 'U velocity'), &
+         'nc_write_model_atts', 'U long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, UVarID, 'units', 'cm/s'), &
+         'nc_write_model_atts', 'U units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, UVarID, 'units_long_name', 'centimeters per second'), &
+         'nc_write_model_atts', 'U units_long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, UVarID, 'missing_value', NF90_FILL_REAL), &
+         'nc_write_model_atts', 'U missing '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, UVarID, '_FillValue', NF90_FILL_REAL), &
+         'nc_write_model_atts', 'U fill '//trim(filename))
 
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="VVEL", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncid=ncFileID, name='VVEL', xtype=nf90_real, &
          dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=VVarID),&
-         "nc_write_model_atts", "V def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, "long_name", "V Velocity"), &
-         "nc_write_model_atts", "V long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, "units", "cm/s"), &
-         "nc_write_model_atts", "V units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, "units_long_name", "centimeters per second"), &
-         "nc_write_model_atts", "V units_long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, "missing_value", NF90_FILL_REAL), &
-         "nc_write_model_atts", "V missing "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "V fill "//trim(filename))
+         'nc_write_model_atts', 'V def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, VVarID, 'long_name', 'V Velocity'), &
+         'nc_write_model_atts', 'V long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, VVarID, 'units', 'cm/s'), &
+         'nc_write_model_atts', 'V units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, VVarID, 'units_long_name', 'centimeters per second'), &
+         'nc_write_model_atts', 'V units_long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, VVarID, 'missing_value', NF90_FILL_REAL), &
+         'nc_write_model_atts', 'V missing '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, VVarID, '_FillValue', NF90_FILL_REAL), &
+         'nc_write_model_atts', 'V fill '//trim(filename))
 
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name="SHGT", xtype=nf90_real, &
+   call nc_check(nf90_def_var(ncid=ncFileID, name='SHGT', xtype=nf90_real, &
          dimids=(/NlonDimID,NlatDimID,MemberDimID,unlimitedDimID/),varid=SHGTVarID), &
-         "nc_write_model_atts", "SHGT def_var "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SHGTVarID, "long_name", "Sea surface height"), &
-         "nc_write_model_atts", "SHGT long_name "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SHGTVarID, "units", "cm"), &
-         "nc_write_model_atts", "SHGT units "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SHGTVarID, "missing_value", NF90_FILL_REAL), &
-         "nc_write_model_atts", "SHGT missing "//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SHGTVarID, "_FillValue", NF90_FILL_REAL), &
-         "nc_write_model_atts", "SHGT fill "//trim(filename))
+         'nc_write_model_atts', 'SHGT def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SHGTVarID, 'long_name', 'Sea surface height'), &
+         'nc_write_model_atts', 'SHGT long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SHGTVarID, 'units', 'cm'), &
+         'nc_write_model_atts', 'SHGT units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SHGTVarID, 'missing_value', NF90_FILL_REAL), &
+         'nc_write_model_atts', 'SHGT missing '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, SHGTVarID, '_FillValue', NF90_FILL_REAL), &
+         'nc_write_model_atts', 'SHGT fill '//trim(filename))
 
    ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
-   call nc_check(nf90_enddef(ncfileID), "prognostic enddef "//trim(filename))
+   call nc_check(nf90_enddef(ncfileID), 'prognostic enddef '//trim(filename))
 
    !----------------------------------------------------------------------------
    ! Fill the coordinate variables
    !----------------------------------------------------------------------------
 
    call nc_check(nf90_put_var(ncFileID, ulonVarID, ULON ), &
-                "nc_write_model_atts", "ULON put_var "//trim(filename))
+                'nc_write_model_atts', 'ULON put_var '//trim(filename))
    call nc_check(nf90_put_var(ncFileID, ulatVarID, ULAT ), &
-                "nc_write_model_atts", "ULAT put_var "//trim(filename))
+                'nc_write_model_atts', 'ULAT put_var '//trim(filename))
    call nc_check(nf90_put_var(ncFileID, tlonVarID, TLON ), &
-                "nc_write_model_atts", "TLON put_var "//trim(filename))
+                'nc_write_model_atts', 'TLON put_var '//trim(filename))
    call nc_check(nf90_put_var(ncFileID, tlatVarID, TLAT ), &
-                "nc_write_model_atts", "TLAT put_var "//trim(filename))
+                'nc_write_model_atts', 'TLAT put_var '//trim(filename))
    call nc_check(nf90_put_var(ncFileID, ZGVarID, ZG ), &
-                "nc_write_model_atts", "ZG put_var "//trim(filename))
+                'nc_write_model_atts', 'ZG put_var '//trim(filename))
    call nc_check(nf90_put_var(ncFileID, ZCVarID, ZC ), &
-                "nc_write_model_atts", "ZC put_var "//trim(filename))
+                'nc_write_model_atts', 'ZC put_var '//trim(filename))
    call nc_check(nf90_put_var(ncFileID, KMTVarID, KMT ), &
-                "nc_write_model_atts", "KMT put_var "//trim(filename))
+                'nc_write_model_atts', 'KMT put_var '//trim(filename))
    call nc_check(nf90_put_var(ncFileID, KMUVarID, KMU ), &
-                "nc_write_model_atts", "KMU put_var "//trim(filename))
+                'nc_write_model_atts', 'KMU put_var '//trim(filename))
 
 endif
 
@@ -2401,7 +2312,7 @@ endif
 !-------------------------------------------------------------------------------
 
 if (has_pop_namelist) then
-   call file_to_text("pop_in", textblock)
+   call file_to_text('pop_in', textblock)
    call nc_check(nf90_put_var(ncFileID, nmlVarID, textblock ), &
                  'nc_write_model_atts', 'put_var nmlVarID')
    deallocate(textblock)
@@ -2410,7 +2321,7 @@ endif
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
-call nc_check(nf90_sync(ncFileID), "nc_write_model_atts", "atts sync")
+call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'atts sync')
 
 ierr = 0 ! If we got here, things went well.
 
@@ -2451,8 +2362,8 @@ integer                            :: ierr          ! return value of function
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: VarID
 
-real(r4), dimension(Nx,Ny,Nz) :: data_3d
-real(r4), dimension(Nx,Ny)    :: data_2d
+real(r8), dimension(Nx,Ny,Nz) :: data_3d
+real(r8), dimension(Nx,Ny)    :: data_2d
 character(len=128)  :: filename
 
 if ( .not. module_initialized ) call static_init_model
@@ -2473,14 +2384,14 @@ write(filename, '(a, i3)') 'ncFileID', ncFileID
 !-------------------------------------------------------------------------------
 
 call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
-              "nc_write_model_vars", "inquire "//trim(filename))
+              'nc_write_model_vars', 'inquire '//trim(filename))
 
 if ( output_state_vector ) then
 
-   call nc_check(NF90_inq_varid(ncFileID, "state", VarID), &
-                 "nc_write_model_vars", "state inq_varid "//trim(filename))
+   call nc_check(NF90_inq_varid(ncFileID, 'state', VarID), &
+                 'nc_write_model_vars', 'state inq_varid '//trim(filename))
    call nc_check(NF90_put_var(ncFileID,VarID,statevec,start=(/1,copyindex,timeindex/)),&
-                 "nc_write_model_vars", "state put_var "//trim(filename))
+                 'nc_write_model_vars', 'state put_var '//trim(filename))
 
 else
 
@@ -2488,43 +2399,42 @@ else
    ! We need to process the prognostic variables.
    ! Replace missing values (0.0) with netcdf missing value.
    ! Staggered grid causes some logistical problems.
-   ! Hopefully, the conversion between r8 and r4 still preserves 'hard' zeros.
    !----------------------------------------------------------------------------
 
-   call vector_to_prog_var(statevec,S_index,data_3d)
-   where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "SALT", VarID), &
-                "nc_write_model_vars", "S inq_varid "//trim(filename))
+   call vector_to_prog_var(statevec, S_index, data_3d)
+   where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
+   call nc_check(NF90_inq_varid(ncFileID, 'SALT', VarID), &
+                'nc_write_model_vars', 'S inq_varid '//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                "nc_write_model_vars", "S put_var "//trim(filename))
+                'nc_write_model_vars', 'S put_var '//trim(filename))
 
-   call vector_to_prog_var(statevec,T_index,data_3d)
-   where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "TEMP", VarID), &
-                "nc_write_model_vars", "T inq_varid "//trim(filename))
+   call vector_to_prog_var(statevec, T_index, data_3d)
+   where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
+   call nc_check(NF90_inq_varid(ncFileID, 'TEMP', VarID), &
+                'nc_write_model_vars', 'T inq_varid '//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                "nc_write_model_vars", "T put_var "//trim(filename))
+                'nc_write_model_vars', 'T put_var '//trim(filename))
 
-   call vector_to_prog_var(statevec,U_index,data_3d)
-   where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "UVEL", VarID), &
-                "nc_write_model_vars", "U inq_varid "//trim(filename))
+   call vector_to_prog_var(statevec, U_index, data_3d)
+   where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
+   call nc_check(NF90_inq_varid(ncFileID, 'UVEL', VarID), &
+                'nc_write_model_vars', 'U inq_varid '//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                "nc_write_model_vars", "U put_var "//trim(filename))
+                'nc_write_model_vars', 'U put_var '//trim(filename))
 
-   call vector_to_prog_var(statevec,V_index,data_3d)
-   where (data_3d == 0.0_r4) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "VVEL", VarID), &
-                "nc_write_model_vars", "V inq_varid "//trim(filename))
+   call vector_to_prog_var(statevec, V_index, data_3d)
+   where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
+   call nc_check(NF90_inq_varid(ncFileID, 'VVEL', VarID), &
+                'nc_write_model_vars', 'V inq_varid '//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                "nc_write_model_vars", "V put_var "//trim(filename))
+                'nc_write_model_vars', 'V put_var '//trim(filename))
 
-   call vector_to_prog_var(statevec,SHGT_index,data_2d)
-   where (data_2d == 0.0_r4) data_2d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, "SHGT", VarID), &
-                "nc_write_model_vars", "SHGT inq_varid "//trim(filename))
+   call vector_to_prog_var(statevec, SHGT_index, data_2d)
+   where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
+   call nc_check(NF90_inq_varid(ncFileID, 'SHGT', VarID), &
+                'nc_write_model_vars', 'SHGT inq_varid '//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
-                "nc_write_model_vars", "SHGT put_var "//trim(filename))
+                'nc_write_model_vars', 'SHGT put_var '//trim(filename))
 
 endif
 
@@ -2532,7 +2442,7 @@ endif
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
 
-call nc_check(nf90_sync(ncFileID), "nc_write_model_vars", "sync "//trim(filename))
+call nc_check(nf90_sync(ncFileID), 'nc_write_model_vars', 'sync '//trim(filename))
 
 ierr = 0 ! If we got here, things went well.
 
@@ -2611,7 +2521,7 @@ type(time_type),  intent(out)   :: model_time
 
 ! temp space to hold data while we are reading it
 real(r8) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
-integer  :: i, j, k, l, indx
+integer  :: i, j, k, ivar, indx
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: varname 
@@ -2626,6 +2536,21 @@ state_vector = MISSING_R8
 
 ! Check that the input file exists ... 
 ! Read the time data. 
+! Note from Nancy Norton as pertains time:
+! "The time recorded in the pop2 restart files is the current time,
+! which corresponds to the time of the XXXX_CUR variables.
+!
+! The current time is determined from iyear, imonth, iday, and *seconds_this_day*
+!
+! The ihour, iminute, and isecond variables are used for internal
+! model counting purposes, but because isecond is rounded to the nearest
+! integer, it is possible that using ihour,iminute,isecond information
+! on the restart file to determine the exact curtime would give you a 
+! slightly wrong answer."
+!
+! DART only knows about integer number of seconds, so using the rounded one
+! is what we would have to do anyway ... and we already have a set_date routine
+! that takes ihour, iminute, isecond information.
 
 if ( .not. file_exist(filename) ) then
    write(msgstring,*) 'cannot open file ', trim(filename),' for reading.'
@@ -2633,19 +2558,19 @@ if ( .not. file_exist(filename) ) then
 endif
 
 call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
-                  "restart_file_to_sv", "open "//trim(filename))
+                  'restart_file_to_sv', 'open '//trim(filename))
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iyear'  , iyear), &
-                  "restart_file_to_sv", "get_att iyear")
+                  'restart_file_to_sv', 'get_att iyear')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'imonth' , imonth), &
-                  "restart_file_to_sv", "get_att imonth")
+                  'restart_file_to_sv', 'get_att imonth')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iday'   , iday), &
-                  "restart_file_to_sv", "get_att iday")
+                  'restart_file_to_sv', 'get_att iday')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ihour'  , ihour), &
-                  "restart_file_to_sv", "get_att ihour")
+                  'restart_file_to_sv', 'get_att ihour')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
-                  "restart_file_to_sv", "get_att iminute")
+                  'restart_file_to_sv', 'get_att iminute')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
-                  "restart_file_to_sv", "get_att isecond")
+                  'restart_file_to_sv', 'get_att isecond')
 
 ! FIXME: we don't allow a real year of 0 - add one for now, but
 ! THIS MUST BE FIXED IN ANOTHER WAY!
@@ -2654,6 +2579,7 @@ if (iyear == 0) then
                      'WARNING!!!   year 0 not supported; setting to year 1')
   iyear = 1
 endif
+
 model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
 
 if (do_output()) &
@@ -2672,18 +2598,18 @@ indx = 1
 ! the variables are named SALT_CUR and SALT_OLD ... for example.
 ! We are only interested in the CURrent time step.
 
-do l=1, n3dfields
+do ivar=1, n3dfields
 
-   varname = trim(progvarnames(l))//'_CUR'
+   varname = trim(progvarnames(ivar))//'_CUR'
    myerrorstring = trim(filename)//' '//trim(varname)
 
    ! Is the netCDF variable the right shape?
 
    call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
-            "restart_file_to_sv", "inq_varid "//trim(myerrorstring))
+            'restart_file_to_sv', 'inq_varid '//trim(myerrorstring))
 
    call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
-            "restart_file_to_sv", "inquire "//trim(myerrorstring))
+            'restart_file_to_sv', 'inquire '//trim(myerrorstring))
 
    if (numdims /= 3) then
       write(msgstring,*) trim(myerrorstring),' does not have exactly 3 dimensions'
@@ -2691,9 +2617,9 @@ do l=1, n3dfields
    endif
 
    do i = 1,numdims
-      write(msgstring,'(''inquire dimension'',i,A)') i,trim(myerrorstring)
+      write(msgstring,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            "restart_file_to_sv", msgstring)
+            'restart_file_to_sv', msgstring)
 
       if (dimlen /= size(data_3d_array,i)) then
          write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
@@ -2703,8 +2629,8 @@ do l=1, n3dfields
 
    ! Actually get the variable and stuff it into the array
 
-   call nc_check(nf90_get_var(ncid, VarID, data_3d_array), "restart_file_to_sv", &
-                "get_var "//trim(varname))
+   call nc_check(nf90_get_var(ncid, VarID, data_3d_array), 'restart_file_to_sv', &
+                'get_var '//trim(varname))
 
    do k = 1, Nz   ! size(data_3d_array,3)
    do j = 1, Ny   ! size(data_3d_array,2)
@@ -2717,17 +2643,19 @@ do l=1, n3dfields
 
 enddo
 
-! and finally, SHGT (and any other 2d fields)
-do l=(n3dfields+1), (n3dfields+n2dfields)
+stop
 
-   select case ( trim(progvarnames(l)) )
-   case ("SHGT")
+! and finally, SHGT (and any other 2d fields)
+do ivar=(n3dfields+1), (n3dfields+n2dfields)
+
+   select case ( trim(progvarnames(ivar)) )
+   case ('SHGT')
       ! The restart files do not drag around SHGT, but they do drag
       ! around PSURF ... which can be used to calculate SHGT.
       varname = 'PSURF_CUR'
       convert_to_ssh = .true.
    case default
-      varname = trim(progvarnames(l))//'_CUR'
+      varname = trim(progvarnames(ivar))//'_CUR'
       convert_to_ssh = .false.
    end select
 
@@ -2736,10 +2664,10 @@ do l=(n3dfields+1), (n3dfields+n2dfields)
    ! Is the netCDF variable the right shape?
 
    call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
-            "restart_file_to_sv", "inq_varid "//trim(myerrorstring))
+            'restart_file_to_sv', 'inq_varid '//trim(myerrorstring))
 
    call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
-            "restart_file_to_sv", "inquire "//trim(myerrorstring))
+            'restart_file_to_sv', 'inquire '//trim(myerrorstring))
 
    if (numdims /= 2) then
       write(msgstring,*) trim(myerrorstring),' does not have exactly 2 dimensions'
@@ -2747,9 +2675,9 @@ do l=(n3dfields+1), (n3dfields+n2dfields)
    endif
 
    do i = 1,numdims
-      write(msgstring,'(''inquire dimension'',i,A)')i,trim(myerrorstring)
+      write(msgstring,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            "restart_file_to_sv", msgstring)
+            'restart_file_to_sv', msgstring)
 
       if (dimlen /= size(data_2d_array,i)) then
          write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
@@ -2759,11 +2687,11 @@ do l=(n3dfields+1), (n3dfields+n2dfields)
 
    ! Actually get the variable and stuff it into the array
 
-   call nc_check(nf90_get_var(ncid, VarID, data_2d_array), "restart_file_to_sv", &
-                "get_var "//trim(varname))
+   call nc_check(nf90_get_var(ncid, VarID, data_2d_array), 'restart_file_to_sv', &
+                'get_var '//trim(varname))
 
    if ( convert_to_ssh ) then  ! SSH=psurf/980.6    POP uses CGS 
-      data_2d_array = data_2d_array/980.6_r8
+      data_2d_array = data_2d_array / 980.6_r8
    endif
 
    do j = 1, Ny   ! size(data_3d_array,2)
@@ -2779,24 +2707,24 @@ end subroutine restart_file_to_sv
 
 
 
-subroutine sv_to_restart_file(state_vector, filename, date1, date2)
+subroutine sv_to_restart_file(state_vector, filename, statedate)
 !------------------------------------------------------------------
 !
 real(r8),         intent(in) :: state_vector(:)
 character(len=*), intent(in) :: filename 
-type(time_type),  intent(in) :: date1, date2 
+type(time_type),  intent(in) :: statedate
 
 integer :: iyear, imonth, iday, ihour, iminute, isecond
 type(time_type) :: pop_time
 
 ! temp space to hold data while we are writing it
-real(r4) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
+real(r8) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname 
 character(len=256)                    :: myerrorstring 
 
-integer :: i, l, ncid, VarID, numdims, dimlen
+integer :: i, ivar, ncid, VarID, numdims, dimlen
 logical :: convert_from_ssh
 
 !----------------------------------------------------------------------
@@ -2815,25 +2743,27 @@ if ( .not. file_exist(filename)) then
 endif
 
 call nc_check( nf90_open(trim(filename), NF90_WRITE, ncid), &
-                  "sv_to_restart_file", "open "//trim(filename))
+                  'sv_to_restart_file', 'open '//trim(filename))
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iyear'  , iyear), &
-                  "sv_to_restart_file", "get_att iyear")
+                  'sv_to_restart_file', 'get_att iyear')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'imonth' , imonth), &
-                  "sv_to_restart_file", "get_att imonth")
+                  'sv_to_restart_file', 'get_att imonth')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iday'   , iday), &
-                  "sv_to_restart_file", "get_att iday")
+                  'sv_to_restart_file', 'get_att iday')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ihour'  , ihour), &
-                  "sv_to_restart_file", "get_att ihour")
+                  'sv_to_restart_file', 'get_att ihour')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
-                  "sv_to_restart_file", "get_att iminute")
+                  'sv_to_restart_file', 'get_att iminute')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
-                  "sv_to_restart_file", "get_att isecond")
+                  'sv_to_restart_file', 'get_att isecond')
 
 pop_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
 
-if ( pop_time /= date1 ) then
-   call print_time(   date1,'DART current time',logfileunit) 
-   call print_time(pop_time,'POP  current time',logfileunit) 
+if ( pop_time /= statedate ) then
+   call print_time(statedate,'DART current time',logfileunit) 
+   call print_time( pop_time,'POP  current time',logfileunit) 
+   call print_time(statedate,'DART current time') 
+   call print_time( pop_time,'POP  current time') 
    write(msgstring,*)trim(filename),' current time /= model time. FATAL error.'
    call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate) 
 endif
@@ -2844,18 +2774,17 @@ if (do_output()) &
     call print_date(pop_time,'date of restart file '//trim(filename))
 
 ! fill S, T, U, V in that order
-do l=1, n3dfields
+do ivar=1, n3dfields
 
-   varname = trim(progvarnames(l))//'_CUR'
+   varname = trim(progvarnames(ivar))//'_CUR'
    myerrorstring = trim(filename)//' '//trim(varname)
 
    ! Is the netCDF variable the right shape?
-
    call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
-            "sv_to_restart_file", "inq_varid "//trim(myerrorstring))
+            'sv_to_restart_file', 'inq_varid '//trim(myerrorstring))
 
    call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
-            "sv_to_restart_file", "inquire "//trim(myerrorstring))
+            'sv_to_restart_file', 'inquire '//trim(myerrorstring))
 
    if (numdims /= 3) then
       write(msgstring,*) trim(myerrorstring),' does not have exactly 3 dimensions'
@@ -2863,9 +2792,9 @@ do l=1, n3dfields
    endif
 
    do i = 1,numdims
-      write(msgstring,'(''inquire dimension'',i,A)') i,trim(myerrorstring)
+      write(msgstring,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            "sv_to_restart_file", msgstring)
+            'sv_to_restart_file', msgstring)
 
       if (dimlen /= size(data_3d_array,i)) then
          write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
@@ -2873,7 +2802,7 @@ do l=1, n3dfields
       endif
    enddo
 
-   call vector_to_prog_var(state_vector,start_index(l),data_3d_array)
+   call vector_to_prog_var(state_vector, ivar, data_3d_array)
 
    ! Actually stuff it into the netcdf file
    call nc_check(nf90_put_var(ncid, VarID, data_3d_array), &
@@ -2882,16 +2811,16 @@ do l=1, n3dfields
 enddo
 
 ! and finally, SHGT (and any other 2d fields)
-do l=(n3dfields+1), (n3dfields+n2dfields)
+do ivar=(n3dfields+1), (n3dfields+n2dfields)
 
-   select case ( trim(progvarnames(l)) )
-   case ("SHGT")
+   select case ( trim(progvarnames(ivar)) )
+   case ('SHGT')
       ! The restart files do not drag around SHGT, but they do drag
       ! around PSURF ... which can be used to calculate SHGT.
       varname = 'PSURF_CUR'
       convert_from_ssh = .true.
    case default
-      varname = trim(progvarnames(l))//'_CUR'
+      varname = trim(progvarnames(ivar))//'_CUR'
       convert_from_ssh = .false.
    end select
 
@@ -2900,10 +2829,10 @@ do l=(n3dfields+1), (n3dfields+n2dfields)
    ! Is the netCDF variable the right shape?
 
    call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
-            "sv_to_restart_file", "inq_varid "//trim(myerrorstring))
+            'sv_to_restart_file', 'inq_varid '//trim(myerrorstring))
 
    call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
-            "sv_to_restart_file", "inquire "//trim(myerrorstring))
+            'sv_to_restart_file', 'inquire '//trim(myerrorstring))
 
    if (numdims /= 2) then
       write(msgstring,*) trim(myerrorstring),' does not have exactly 2 dimensions'
@@ -2911,9 +2840,9 @@ do l=(n3dfields+1), (n3dfields+n2dfields)
    endif
 
    do i = 1,numdims
-      write(msgstring,'(''inquire dimension'',i,A)')i,trim(myerrorstring)
+      write(msgstring,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            "sv_to_restart_file", msgstring)
+            'sv_to_restart_file', msgstring)
 
       if (dimlen /= size(data_2d_array,i)) then
          write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
@@ -2921,7 +2850,7 @@ do l=(n3dfields+1), (n3dfields+n2dfields)
       endif
    enddo
 
-   call vector_to_prog_var(state_vector,start_index(l),data_2d_array)
+   call vector_to_prog_var(state_vector, ivar, data_2d_array)
 
    if ( convert_from_ssh ) then  ! SSH = psurf*980.6    POP uses CGS 
       data_2d_array = data_2d_array * 980.6_r8
@@ -2943,7 +2872,7 @@ subroutine vector_to_2d_prog_var(x, varindex, data_2d_array)
 !
 real(r8), dimension(:),   intent(in)  :: x
 integer,                  intent(in)  :: varindex
-real(r4), dimension(:,:), intent(out) :: data_2d_array
+real(r8), dimension(:,:), intent(out) :: data_2d_array
 
 integer :: i,j,ii
 integer :: dim1,dim2
@@ -2965,6 +2894,7 @@ if (dim2 /= Ny) then
    call error_handler(E_ERR,'vector_to_2d_prog_var',msgstring,source,revision,revdate) 
 endif
 
+write(*,*)' start_index, varindex ',start_index(varindex), varindex
 ii = start_index(varindex)
 
 do j = 1,Ny   ! latitudes
@@ -2983,7 +2913,7 @@ subroutine vector_to_3d_prog_var(x, varindex, data_3d_array)
 !
 real(r8), dimension(:),     intent(in)  :: x
 integer,                    intent(in)  :: varindex
-real(r4), dimension(:,:,:), intent(out) :: data_3d_array
+real(r8), dimension(:,:,:), intent(out) :: data_3d_array
 
 integer :: i,j,k,ii
 integer :: dim1,dim2,dim3
@@ -3025,79 +2955,6 @@ end subroutine vector_to_3d_prog_var
 
 
 
-  subroutine get_horiz_grid_dims(Nx, Ny)
-!------------------------------------------------------------------
-! subroutine get_horiz_grid_dims(Nx, Ny)
-!
-! Read in the lon, lat grid size from the netcdf file.
-! Get the actual values later.
-!
-! The file name comes from module storage ... namelist.
-
- integer, intent(out) :: Nx   ! Number of Longitudes
- integer, intent(out) :: Ny   ! Number of Latitudes
-
- integer :: grid_id, dimid, nc_rc
-
- ! get the ball rolling ...
-
- call nc_check(nf90_open(trim(horiz_grid_input_file), nf90_nowrite, grid_id), &
-         'get_horiz_grid_dims','open '//trim(horiz_grid_input_file))
-
- ! Longitudes : get dimid for 'i' or 'nlon', and then get value
- nc_rc = nf90_inq_dimid(grid_id, 'i', dimid)
- if (nc_rc /= nf90_noerr) then
-   nc_rc = nf90_inq_dimid(grid_id, 'nlon', dimid)
-   if (nc_rc /= nf90_noerr) then
-      msgstring = 'unable to find either "i" or "nlon" in file'
-      call error_handler(E_ERR, 'get_horiz_grid_dims', msgstring, &
-                         source,revision,revdate) 
-   endif
- endif 
-
- call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Nx), &
-         'get_horiz_grid_dims','inquire_dimension i '//trim(horiz_grid_input_file))
-
- ! Latitudes : get dimid for 'j' or 'nlat', and then get value
- nc_rc = nf90_inq_dimid(grid_id, 'j', dimid)
- if (nc_rc /= nf90_noerr) then
-   nc_rc = nf90_inq_dimid(grid_id, 'nlat', dimid)
-   if (nc_rc /= nf90_noerr) then
-      msgstring = 'unable to find either "j" or "nlat" in file'
-      call error_handler(E_ERR, 'get_horiz_grid_dims', msgstring, &
-                         source,revision,revdate) 
-   endif
- endif 
-
- call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Ny), &
-         'get_horiz_grid_dims','inquire_dimension i '//trim(horiz_grid_input_file))
-
- ! tidy up
-
- call nc_check(nf90_close(grid_id), &
-         'get_horiz_grid_dims','close '//trim(horiz_grid_input_file) )
-
-end subroutine get_horiz_grid_dims
-
-
-
-  subroutine get_vert_grid_dims(Nz)
-!------------------------------------------------------------------
-! subroutine get_vert_grid_dims(Nz)
-!
-! count the number of lines in the ascii file to figure out max
-! number of vert blocks.
-
- integer, intent(out) :: Nz
-
- integer :: linelen ! disposable
-
- call find_textfile_dims(vert_grid_input_file, Nz, linelen) 
- 
-end subroutine get_vert_grid_dims
-
-
-
 subroutine get_gridsize(num_x, num_y, num_z)
  integer, intent(out) :: num_x, num_y, num_z
 !------------------------------------------------------------------
@@ -3109,377 +2966,6 @@ subroutine get_gridsize(num_x, num_y, num_z)
 
 end subroutine get_gridsize
 
-
-
-  subroutine read_horiz_grid(nx, ny, XC, XG, YC, YG)
-!------------------------------------------------------------------
-! subroutine read_horiz_grid(nx, ny, XC, XG, YC, YG)
-!
-! Open the netcdf file, read in the cell corners, and compute
-! the cell centers.
-!
-! Here is the typically spartan dump of the grid netcdf file.
-! netcdf horiz_grid.x1 {
-! dimensions:
-!         i = 320 ;
-!         j = 384 ;
-! variables:
-!         double ULAT(j, i) ;
-!         double ULON(j, i) ;
-!         double HTN(j, i) ;
-!         double HTE(j, i) ;
-!         double HUS(j, i) ;
-!         double HUW(j, i) ;
-!         double ANGLE(j, i) ;
-! }
-! FIXME:
-! For the LANL global case, the ULAT,ULON were in radians.
-! For the CCSM global case, they were in degrees.  The CCSM files do
-! have units that include the word 'degrees' (degrees_north, degrees_east)
-! so perhaps we can look for them.  The LANL file had no attributes
-! to query.
-
- integer,  intent(in)  :: nx, ny
- real(r8), intent(out) :: XC(:), XG(:)
- real(r8), intent(out) :: YC(:), YG(:)
-
- integer  :: grid_id, i, j, nc_rc
- integer  :: ulat_id, ulon_id, tlat_id, tlon_id
- logical  :: read_tgrid, in_radians
- character(len=128) :: grid_units
- real(r8) :: wrapval
-
- call nc_check(nf90_open(trim(horiz_grid_input_file), nf90_nowrite, grid_id), &
-         'read_horiz_grid','open '//trim(horiz_grid_input_file) )
-
- call nc_check(nf90_inq_varid(grid_id, 'ULAT', ulat_id), &
-         'read_horiz_grid','varid ULAT '//trim(horiz_grid_input_file) )
-
- ! FIXME:
- ! some files have ULON, some ULONG.  try to read either.  same with T
- nc_rc = nf90_inq_varid(grid_id, 'ULON', ulon_id)
- if (nc_rc /= nf90_noerr) then
-   nc_rc = nf90_inq_varid(grid_id, 'ULONG', ulon_id)
-   if (nc_rc /= nf90_noerr) then
-      msgstring = 'unable to find either ULON or ULONG in file'
-      call error_handler(E_ERR, 'read_horiz_grid', msgstring, &
-                         source,revision,revdate) 
-   endif
- endif 
-
- call nc_check(nf90_get_var(grid_id, ulat_id, ULAT), &
-         'read_horiz_grid','get ULAT '//trim(horiz_grid_input_file) )
-
- call nc_check(nf90_get_var(grid_id, ulon_id, ULON), &
-         'read_horiz_grid','get ULON '//trim(horiz_grid_input_file) )
-
- ! FIXME:
- ! some files have the grid info in radians, some in degrees.
- ! see if there is a units attribute, and if it contains the string 'degrees'
- ! (e.g. 'degrees_north').  if not found, try to be tricky and look
- ! at the min/max -- THIS ASSUMES A GLOBAL RUN.
- 
- nc_rc = nf90_get_att(grid_id, ulon_id, 'units', grid_units)
- if (nc_rc == nf90_noerr) then
-   ! found attribute; see if it contains the substring degrees
-   i = index(grid_units, 'degrees')
-   if (i /= 0) then
-      in_radians = .FALSE.
-   else
-      in_radians = .TRUE.
-   endif
-   if (debug > 1) print *, 'found attribute, i, in_radians = ', i, in_radians
- else
-   ! FIXME: assumes global grid
-   ! try the max/min and for now assume it is a global grid
-   if (maxval(ULAT) < 7.0) then   ! 2 * PI plus slop.
-      in_radians = .TRUE.
-   else
-      in_radians = .FALSE.
-   endif
-   if (debug > 1) print *, 'no attribute, max, in_radians = ', maxval(ULAT), in_radians
- endif
-
- ! check to see if grid is wrapped at 0 and make all positive.
- if (minval(ULON) < 0.0) then
-    if (in_radians) then
-       where (ULON < 0.0) ULON = ULON + 2.0 * PI
-    else
-       where (ULON < 0.0) ULON = ULON + 360.0_r8
-    endif
- endif
- 
-
- ! if the file contains the TLON, TLAT grids directly, read them in.
- ! otherwise, compute them after you have the U grids.
- nc_rc = nf90_inq_varid(grid_id, 'TLAT', tlat_id)
- if (nc_rc == nf90_noerr) then
-   read_tgrid = .true.
-   call nc_check(nf90_inq_varid(grid_id, 'TLAT', tlat_id), &
-           'read_horiz_grid','varid TLAT '//trim(horiz_grid_input_file) )
-  
-   ! look for TLON or TLONG
-   nc_rc = nf90_inq_varid(grid_id, 'TLON', tlon_id)
-   if (nc_rc /= nf90_noerr) then
-     nc_rc = nf90_inq_varid(grid_id, 'TLONG', tlon_id)
-     if (nc_rc /= nf90_noerr) then
-        msgstring = 'unable to find either TLON or TLONG in file'
-        call error_handler(E_ERR, 'read_horiz_grid', msgstring, &
-                           source,revision,revdate) 
-     endif
-   endif 
-
-   call nc_check(nf90_get_var(grid_id, tlat_id, TLAT), &
-           'read_horiz_grid','get TLAT '//trim(horiz_grid_input_file) )
-  
-   call nc_check(nf90_get_var(grid_id, tlon_id, TLON), &
-           'read_horiz_grid','get TLON '//trim(horiz_grid_input_file) )
-
-   ! check to see if grid is wrapped at 0 and make all positive.
-   if (minval(TLON) < 0.0) then
-      if (in_radians) then
-         where (TLON < 0.0) TLON = TLON + 2.0 * PI
-      else
-         where (TLON < 0.0) TLON = TLON + 360.0_r8
-      endif
-   endif
- 
- else
-   read_tgrid = .false.
- endif
-
- ! TJH check sizes ...
-
- call nc_check(nf90_close(grid_id), &
-         'read_horiz_grid','close '//trim(horiz_grid_input_file) )
-
- ! FIXME:
- !  even though the real grid is a dipole grid, we are going to treat it
- !  as reg lat/lon for initial testing.   use the first row of longs as
- !  the universal lons, and for now, take the first row of lats, because
- !  they are monotonic (i checked).
-
- ! lons: first row
- if (in_radians) ULON = ULON * rad2deg
- do i=1, nx
-   XG(i) = ULON(i, 1)
-   if ( i < 5) print *, ULON(i, 1), XG(i)
- enddo
-
- ! lats: first row is monotonic in dipole grid
- if (in_radians) ULAT = ULAT * rad2deg
- do j=1, ny
-   YG(j) = ULAT(1, j) 
-   if ( j < 5) print *, ULAT(1, j), YG(j)
- enddo
-
- ! FIXME: i am assuming that if the U grid was in radians or degrees, and 
- !   if the T grid is also in the file, that it is consistent units.
-
- if (read_tgrid) then
-   ! we read in the centers directly from netcdf file, just fill in arrays
-
-   ! lons: first row
-   if (in_radians) TLON = TLON * rad2deg
-   do i=1, nx
-     XC(i) = TLON(i, 1)
-     if ( i < 5) print *, TLON(i, 1), XC(i)
-   enddo
-  
-   ! lats: first row is monotonic in dipole grid
-   if (in_radians) TLAT = TLAT * rad2deg
-   do j=1, ny
-     YC(j) = TLAT(1, j) 
-     if ( j < 5) print *, TLAT(1, j), YC(j)
-   enddo
-
- else
-   ! T grid not in input file, so compute centers for T grid
-
-   ! longitudes
-   do i=2, nx
-     XC(i) = XG(i-1) + (XG(i) - XG(i-1)) * 0.5_r8
-   enddo
-  
-   if (longitude_wrap) then
-     if (in_radians) then
-       wrapval = 2 * PI
-     else
-       wrapval = 360.0_r8
-     endif
-     XC(1) = XG(nx) + (XG(1)+wrapval - XG(nx)) * 0.5_r8 
-   else
-     ! FIXME: what to do here? extrapolate back .5 of box 1 for now.
-     XC(1) = XG(1) - ((XG(2) - XG(1)) * 0.5_r8)
-   endif
-  
-   ! latitudes
-   do j=2, ny
-     YC(j) = YG(j-1) + (YG(j) - YG(j-1)) * 0.5_r8
-   enddo
-  
-   ! FIXME: what to do here? extrapolate back .5 of box 1 for now.
-   YC(1) = YG(1) - ((YG(2) - YG(1)) * 0.5_r8)
- endif
-
-if (debug > 5) then
-  print *, 'XG, XC, YG, YC:'
-  print *, '1: ' ,XG(1), XC(1), YG(1), YC(1)
-  print *, '2: ' ,XG(2), XC(2), YG(2), YC(2)
-  print *, '3: ' ,XG(3), XC(3), YG(3), YC(3)
-  print *, '4: ' ,XG(4), XC(4), YG(4), YC(4)
-endif
-
-end subroutine read_horiz_grid
-
-
-
-subroutine read_vert_grid(nz, ZC, ZG)
-!------------------------------------------------------------------
- integer,  intent(in)  :: nz
- real(r8), intent(out) :: ZC(:), ZG(:)
-
- integer  :: iunit, i, ios
- real(r8) :: depth(nz), zcent(nz), zbot(nz)
-
- iunit = open_file(trim(vert_grid_input_file), action = 'read')
-
- do i=1, nz
-
-   read(iunit,*,iostat=ios) depth(i), zcent(i), zbot(i)
-
-   ! error
-   if ( ios /= 0 ) then
-      write(*,msgstring)'error reading depths, line ',i
-      call error_handler(E_ERR,'read_vert_grid',msgstring,source,revision,revdate) 
-   endif
-
- enddo 
-
- do i=1, nz
-   ZC(i) = zcent(i)
-   ZG(i) = zbot(i)   ! FIXME: this might actually be off by one, but i cannot
-                     !  see that we ever use this in any interpolation.
- enddo
-end subroutine read_vert_grid
-
-
-
-  subroutine read_kmt(Nx, Ny, KMT, KMU)
-!------------------------------------------------------------------
-! subroutine read_kmt(Nx, Ny, KMT, KMU)
-! 
-! open topo file
-! make sure i, j match Nx, Ny
-! KMT array already allocated - fill from file
-! close topo file
-
- integer, intent(in)  :: Nx, Ny
- integer, intent(out) :: KMT(:, :), KMU(:, :)
-
- integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
- integer :: ncid, varid, numdims
- integer :: dim1len, dim2len, nc_rc, i, j, k
- character(len=4) :: depthvar
-  
-
- call nc_check(nf90_open(trim(topography_input_file), nf90_nowrite, ncid), &
-         'read_kmt','open '//trim(topography_input_file) )
-
- ! Try to read in KMT.  If there, great.  If not, try KT.  If still not, fail.
- nc_rc = nf90_inq_varid(ncid, 'KMT', varid)
- if (nc_rc == nf90_noerr) then
-    depthvar = 'KMT'
- else
-    nc_rc = nf90_inq_varid(ncid, 'HT', varid)
-    if (nc_rc /= nf90_noerr) then
-       write(msgstring,*)trim(topography_input_file)//' cannot find KMT or HT'
-       call error_handler(E_ERR,'read_kmt',msgstring,source,revision,revdate) 
-    endif
-    depthvar = 'HT'
- endif
-
- call nc_check(nf90_inquire_variable(ncid,varid,dimids=dimIDs,ndims=numdims), &
-         'read_kmt', 'inquire '//depthvar//' '//trim(topography_input_file))
-
- if ( numdims /= 2 ) then
-    write(msgstring,*)trim(topography_input_file)//' '//depthvar//'should have 2 dims - has ',numdims
-    call error_handler(E_ERR,'read_kmt',msgstring,source,revision,revdate) 
- endif
-
- call nc_check(nf90_inquire_dimension(ncid, dimIDs(1), len=dim1len), &
-         'read_kmt', 'inquire dim1 of '//depthvar//' '//trim(topography_input_file))
-
- call nc_check(nf90_inquire_dimension(ncid, dimIDs(2), len=dim2len), &
-         'read_kmt', 'inquire dim2 of '//depthvar//' '//trim(topography_input_file))
-
- if ( (dim1len /= Nx) .or. (dim2len /= Ny) ) then
-    write(msgstring,*)trim(topography_input_file)//' '//depthvar//'shape wrong ',dim1len,dim2len
-    call error_handler(E_ERR,'read_kmt',msgstring,source,revision,revdate) 
- endif
-
- ! If we made it this far, we can read the variable
- if (depthvar == 'KMT') then
-    call nc_check(nf90_get_var(ncid, varid, KMT), &
-            'read_kmt','get_var KMT '//trim(topography_input_file) )
- else
-    call nc_check(nf90_get_var(ncid, varid, HT), &
-            'read_kmt','get_var HT '//trim(topography_input_file) )
-    
-    TLATLOOP: do j=1, dim2len
-       TLONLOOP: do i=1, dim1len
-          KMT(i, j) = 0
-          if (HT(i, j) /= 0.0_r8) then
-             TDEPTHLOOP: do k=Nz, 1, -1
-                if (HT(i, j) >= ZC(k)*1000.0_r8) then   ! HT in cm, ZC in m
-                   KMT(i,j) = k
-                   exit TDEPTHLOOP
-                endif
-             enddo TDEPTHLOOP
-          endif
-       enddo TLONLOOP
-    enddo TLATLOOP
-
- endif
-
- ! Try to read in KMU.  If there, great.  If not, try HU.  If not, compute it.
- nc_rc = nf90_inq_varid(ncid, 'KMU', varid)
- if (nc_rc == nf90_noerr) then
-    call nc_check(nf90_get_var(ncid, varid, KMU), &
-            'read_kmt','get_var KMU '//trim(topography_input_file) )
- else 
-    nc_rc = nf90_inq_varid(ncid, 'HU', varid)
-    if (nc_rc == nf90_noerr) then
-       call nc_check(nf90_get_var(ncid, varid, HU), &
-            'read_kmt','get_var HU '//trim(topography_input_file) )
-
-       ULATLOOP: do j=1, dim2len
-          ULONLOOP: do i=1, dim1len
-             KMU(i, j) = 0
-             if (HU(i, j) /= 0.0_r8) then
-                UDEPTHLOOP: do k=Nz, 1, -1
-                   if (HU(i, j) >= ZC(k)*1000.0_r8) then   ! HU in cm, ZC in m
-                      KMU(i,j) = k
-                      exit UDEPTHLOOP
-                   endif
-                enddo UDEPTHLOOP
-             endif
-          enddo ULONLOOP
-       enddo ULATLOOP
-    else  ! neither KMU or HU found; compute from KMT
-       KMU(1, 1) = 0
-       do j=2, dim2len
-          do i=2, dim1len
-             KMU(i,j) = min(KMT(i, j), KMT(i-1, j), KMT(i, j-1), KMT(i-1, j-1)) 
-          enddo
-       enddo
-    endif
- endif
-
- call nc_check(nf90_close(ncid), &
-         'read_kmt','close '//trim(topography_input_file) )
-
-end subroutine read_kmt
 
 
   function is_not_ocean(obs_type, lon_index, lat_index, hgt_index)
@@ -3555,13 +3041,21 @@ end function
  call nc_check(nf90_def_var(ncid,   'ZG', nf90_double, NzDimID,   ZGvarid),'write_grid_netcdf')
  call nc_check(nf90_def_var(ncid,   'ZC', nf90_double, NzDimID,   ZCvarid),'write_grid_netcdf')
 
- call nc_check(nf90_put_att(ncid,ulonVarID,"long_name","U,V grid lons"), &
+ call nc_check(nf90_put_att(ncid,ulonVarID,'long_name','U,V grid lons'), &
                                                        'write_grid_netcdf')
- call nc_check(nf90_put_att(ncid,ulatVarID,"long_name","U,V grid lats"), &
+ call nc_check(nf90_put_att(ncid,ulatVarID,'long_name','U,V grid lats'), &
                                                        'write_grid_netcdf')
- call nc_check(nf90_put_att(ncid,tlonVarID,"long_name","S,T grid lons"), &
+ call nc_check(nf90_put_att(ncid,tlonVarID,'long_name','S,T grid lons'), &
                                                        'write_grid_netcdf')
- call nc_check(nf90_put_att(ncid,tlatVarID,"long_name","S,T grid lats"), &
+ call nc_check(nf90_put_att(ncid,tlatVarID,'long_name','S,T grid lats'), &
+                                                      'write_grid_netcdf')
+ call nc_check(nf90_put_att(ncid,ZCVarID,'long_name','vertical grid centers'), &
+                                                      'write_grid_netcdf')
+ call nc_check(nf90_put_att(ncid,ZCVarID,'units','meters'), &
+                                                      'write_grid_netcdf')
+ call nc_check(nf90_put_att(ncid,ZGVarID,'long_name','vertical grid bottoms'), &
+                                                      'write_grid_netcdf')
+ call nc_check(nf90_put_att(ncid,ZGVarID,'units','meters'), &
                                                       'write_grid_netcdf')
 
  call nc_check(nf90_enddef(ncid),'write_grid_netcdf')
