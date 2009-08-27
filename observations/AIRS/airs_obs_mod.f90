@@ -11,7 +11,7 @@ module airs_obs_mod
 ! $Revision: 3809 $
 ! $Date: 2009-04-13 10:21:33 -0600 (Mon, 13 Apr 2009) $
 
-use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg
+use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg, metadatalength
 
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def,     &
                              write_obs_def, destroy_obs_def,                   &
@@ -61,7 +61,7 @@ character(len=129) :: msgstring
 
 logical :: DEBUG = .false.
 
-real(r8), parameter :: mb_to_hPa = 100.0  ! millibars to hectopascals
+real(r8), parameter :: mb_to_Pa = 100.0  ! millibars to pascals
 
 ! the sizes of the Temperature arrays are:
 !   (AIRS_RET_STDPRESSURELAY, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
@@ -126,7 +126,7 @@ real(r8) :: sintheta, costheta, dirvar, speedvar
 
 type(time_type) :: obs_time, base_time, pre_time, time
 
-character(len = 129) :: meta_data
+character(len = metadatalength) :: meta_data
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -260,7 +260,7 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
          obs_var = granule%TAirStdErr(ivert, icol, irow) * &
                    granule%TAirStdErr(ivert, icol, irow)
 
-         vloc = granule%pressStd(ivert) * mb_to_hPa
+         vloc = granule%pressStd(ivert) * mb_to_Pa
 
          call real_obs(num_copies, num_qc, obs, olon, olat, vloc, obs_value, &
                        obs_var, tqc, AIRS_TEMPERATURE, which_vert, seconds, days)
@@ -299,7 +299,7 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
 
          obs_value = Q(ivert, icol, irow)
          obs_var = Q_err(ivert, icol, irow) * Q_err(ivert, icol, irow)
-         vloc = granule%pressH2O(ivert) * mb_to_hPa
+         vloc = granule%pressH2O(ivert) * mb_to_Pa
 
          call real_obs(num_copies, num_qc, obs, olon, olat, vloc, obs_value, &
                        obs_var, qqc, AIRS_SPECIFIC_HUMIDITY, which_vert, seconds, days)
