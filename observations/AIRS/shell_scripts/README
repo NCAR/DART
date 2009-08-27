@@ -1,0 +1,7 @@
+
+These scripts are intended to help download the original AIRS hdf
+data files, convert them in bulk, and merge the resulting obs_seq files.
+
+In most cases, they're intended to be copied over to the ../work directory
+and then customized for the particular time period and local directory names.
+
