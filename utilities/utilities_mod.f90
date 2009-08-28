@@ -289,30 +289,32 @@ contains
 
          ! If nmlfilename != logfilename, open it.  otherwise set nmlfileunit
          ! to be same as logunit.
-         if (trim(adjustl(nmlfilename)) /= trim(adjustl(lname))) then
-            if (do_output_flag) &
-             write(*,*)'Trying to open namelist log ', trim(adjustl(nmlfilename))
-    
-            nmlfileunit = nextunit()
-            if (nmlfileunit < 0) &
-               call error_handler(E_ERR,'initialize_utilities', &
-                 'Cannot get unit for nm log file', source, revision, revdate)
-
-            open(nmlfileunit, file=trim(adjustl(nmlfilename)), form='formatted', &
-                 position='append', iostat = io )
-            if ( io /= 0 ) then
-               call error_handler(E_ERR,'initialize_utilities', &
-                   'Cannot open nm log file', source, revision, revdate)
+         if (do_nml_file()) then
+            if (trim(adjustl(nmlfilename)) /= trim(adjustl(lname))) then
+               if (do_output_flag) &
+                write(*,*)'Trying to open namelist log ', trim(adjustl(nmlfilename))
+       
+               nmlfileunit = nextunit()
+               if (nmlfileunit < 0) &
+                  call error_handler(E_ERR,'initialize_utilities', &
+                    'Cannot get unit for nm log file', source, revision, revdate)
+   
+               open(nmlfileunit, file=trim(adjustl(nmlfilename)), form='formatted', &
+                    position='append', iostat = io )
+               if ( io /= 0 ) then
+                  call error_handler(E_ERR,'initialize_utilities', &
+                      'Cannot open nm log file', source, revision, revdate)
+               endif
+       
+            else
+              nmlfileunit = logfileunit
             endif
-    
-         else
-           nmlfileunit = logfileunit
          endif
 
          ! Echo the namelist values for this module using normal mechanism
          ! including a separator line for this run.
          if (do_output_flag) then
-            if (nmlfileunit /= logfileunit) then
+            if (do_nml_file() .and. (nmlfileunit /= logfileunit)) then
                if ( present(progname) ) then
                   write(nmlfileunit, *) '!Starting Program '//trim(progname)
                else
@@ -374,7 +376,7 @@ contains
    ! integer :: logfileunit -- private module variable
 
       if (do_output_flag) then
-         if (nmlfileunit /= logfileunit) then
+         if (do_nml_file() .and. (nmlfileunit /= logfileunit)) then
             write(nmlfileunit, *) '!Ending Program '
          endif 
       endif
