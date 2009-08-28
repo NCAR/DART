@@ -1,4 +1,4 @@
-function x_new = advance_oned(x, alpha)
+function x_new = advance_oned(x, alpha, model_bias)
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004-2009, Data Assimilation Research Section
@@ -11,15 +11,16 @@ function x_new = advance_oned(x, alpha)
 % $Revision$
 % $Date$
 
-x_new = x + comp_dt(x, alpha);
+x_new = x + comp_dt(x, alpha, model_bias);
 end
 
 %---------------------------------------------------
 
 % Internal function comp_dt
-function dx = comp_dt(x, alpha)
+function dx = comp_dt(x, alpha, model_bias)
 
 % Compute the time tendency; alpha controls nonlinearity
-dx = x + alpha .* x .* abs(x);
+% model_bias controls a shift in the model dynamics
+dx = (x + model_bias) + alpha .* x .* abs(x);
 
 end
