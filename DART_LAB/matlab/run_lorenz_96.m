@@ -30,7 +30,7 @@ function varargout = run_lorenz_96(varargin)
 % $Revision$
 % $Date$
 
-% Last Modified by GUIDE v2.5 02-Jun-2009 15:44:28
+% Last Modified by GUIDE v2.5 27-Aug-2009 16:35:11
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -88,15 +88,15 @@ handles.h_ens = 0;
 handles.h_truth = 0;
 
 % Generate set of ensemble perturbations
-for n = 1:ens_size
+for n = 1:handles.ens_size
    handles.post(1, 1:MODEL_SIZE, n) = handles.true_state(1, :);
 end
-handles.post(1, 1:MODEL_SIZE, 1:ens_size) = ...
-   handles.post(1, 1:MODEL_SIZE, 1:ens_size) + ...
-   0.001 * randn(1, MODEL_SIZE, ens_size);
+handles.post(1, 1:MODEL_SIZE, 1:handles.ens_size) = ...
+   handles.post(1, 1:MODEL_SIZE, 1:handles.ens_size) + ...
+   0.001 * randn(1, MODEL_SIZE, handles.ens_size);
 
 % For convenience make the first prior identical to the first posterior
-handles.prior(1, 1:MODEL_SIZE, 1:ens_size) = handles.post;
+handles.prior(1, 1:MODEL_SIZE, 1:handles.ens_size) = handles.post;
 
 
 % Update handles structure
@@ -468,5 +468,60 @@ function popupmenu_inflation_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+
+function edit_ens_size_Callback(hObject, eventdata, handles)
+% hObject    handle to edit_ens_size (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit_ens_size as text
+%        str2double(get(hObject,'String')) returns contents of edit_ens_size as a double
+
+% Set the ensemble size global value to the update
+handles.ens_size = str2double(get(hObject, 'String'));
+if(not(isfinite(handles.ens_size)) | handles.ens_size < 2) 
+   set(handles.edit_ens_size, 'String', '???');
+   
+   % After this, only this edit box will work
+   %%%turn_off_controls(handles);
+   set(handles.edit_ens_size, 'Enable', 'On');
+
+   return
+end
+
+% Enable all controls
+%%%turn_on_controls(handles);
+
+% Need to reset the ensemble and the time
+slkjdf
+
+
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+
+
+% --- Executes during object creation, after setting all properties.
+function edit_ens_size_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit_ens_size (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes when uipanel2 is resized.
+function uipanel2_ResizeFcn(hObject, eventdata, handles)
+% hObject    handle to uipanel2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
 
 

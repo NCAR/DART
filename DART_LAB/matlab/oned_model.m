@@ -5,7 +5,7 @@ function varargout = oned_model(varargin)
 %
 %      ONED_MODEL demonstrates the simplest possible case of ensemble data
 %      assimilation. It is possible to explore assimilation algorithms,
-%      ensemble sizes, observation biases, etc. on-the-fly. The posterior
+%      ensemble sizes, model biases, etc. on-the-fly. The posterior
 %      of the state is indicated by blue asterisks, the states evolve along
 %      a tajectory indicated by the green lines to wind up at a prior state
 %      for the assimilation - indicated by the green asterisks. After the 
@@ -44,7 +44,7 @@ function varargout = oned_model(varargin)
 % $Revision$
 % $Date$
 
-% Last Modified by GUIDE v2.5 06-May-2009 08:31:46
+% Last Modified by GUIDE v2.5 27-Aug-2009 08:54:05
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -91,7 +91,8 @@ handles.observation = 0;
 handles.error = 0;
 handles.spread = 0;
 handles.kurtosis = 0;
-handles.obs_bias = 0;
+handles.model_bias = 0;
+handles.inflation = 1.0;
 
 % An array to keep track of rank histograms
 handles.prior_rank(1 : handles.ens_size + 1) = 0;
@@ -202,16 +203,21 @@ function edit1_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of edit1 as text
 %        str2double(get(hObject,'String')) returns contents of edit1 as a double
 
-% Get the value of the obs_bias
-if(isfinite(str2double(get(hObject, 'String'))))
-   handles.obs_bias = str2double(get(hObject, 'String'));
-else
+% Get the value of the model_bias
+handles.model_bias = str2double(get(hObject, 'String'));
+if(not(isfinite(handles.model_bias)))
+   % Indicate input error in text box
    set(handles.edit1, 'String', '???');
 
-   % Disable other input to guarantee only one error at a time!
+   % After this, only this edit box will work
+   turn_off_controls(handles);
+   set(handles.edit1, 'Enable', 'On');
+
    return
 end
 
+% Turn on all controls if successful
+turn_on_controls(handles)
 % Update handles structure
 guidata(hObject, handles);
 
@@ -314,15 +320,20 @@ function edit5_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of edit5 as a double
 
 % Get the value of the model nonlinearity parameter
-if(isfinite(str2double(get(hObject, 'String'))))
-   handles.alpha= str2double(get(hObject, 'String'));
-else
+handles.alpha= str2double(get(hObject, 'String'));
+if(not(isfinite(handles.alpha)) |  handles.alpha < 0)
+   % Indicate input error in text box
    set(handles.edit5, 'String', '???');
 
-   % Disable other input to guarantee only one error at a time!
+   % After this, only this edit box will work
+   turn_off_controls(handles);
+   set(handles.edit5, 'Enable', 'On');
+
    return
 end
 
+% Enable all controls
+turn_on_controls(handles);
 % Update handles structure
 guidata(hObject, handles);
 
@@ -364,6 +375,23 @@ else
    return
 end
 
+% Get the value of the ensemble size
+new_ens_size = str2double(get(hObject, 'String'));
+if(not(isfinite(new_ens_size)) |  new_ens_size < 2)
+   % Indicate input error in text box
+   set(handles.edit6, 'String', '???');
+
+   % After this, only this edit box will work
+   turn_off_controls(handles);
+   set(handles.edit6, 'Enable', 'On');
+
+   return
+end
+
+% Legal value for ensemble size; enable all controls
+turn_on_controls(handles);
+
+% Reset the histograms
 handles = reset_histograms(new_ens_size, hObject, handles);
 
 % Generate a new ensemble by truncating old ensemble OR adding new 
@@ -514,13 +542,8 @@ function pushbutton_run_Callback(hObject, eventdata, handles)
 
 
 % Turn off all the other controls to avoid a mess
-set(handles.pushbutton1,      'Enable', 'Off');
-set(handles.reset_pushbutton, 'Enable', 'Off');
-set(handles.edit1,            'Enable', 'Off');
-set(handles.edit5,            'Enable', 'Off');
-set(handles.edit6,            'Enable', 'Off');
-set(handles.popupmenu1,       'Enable', 'Off');
-
+turn_off_controls(handles)
+set(handles.pushbutton_run, 'Enable', 'On');
 
 if(strcmp(get(hObject, 'String'), 'Stop Free Run')) 
    % Being told to stop; switch to not running status
@@ -541,29 +564,17 @@ else
       status_string = get(my_data.pushbutton_run, 'String');
       if(strcmp(status_string, 'Start Free Run'))
          % Turn all the other controls back on
-         set(handles.pushbutton1,      'Enable', 'On');
-         set(handles.reset_pushbutton, 'Enable', 'On');
-         set(handles.edit1,            'Enable', 'On');
-         set(handles.edit5,            'Enable', 'On');
-         set(handles.edit6,            'Enable', 'On');
-         set(handles.popupmenu1,       'Enable', 'On');
-
+         turn_on_controls(handles);
          return
       end
       % Do the next advance or assimilation step
       step_ahead(hObject, my_data) 
-      pause(1)
+      pause(0.2)
    end
 end
 
 % Turn all the other controls back on
-set(handles.pushbutton1,      'Enable', 'On');
-set(handles.reset_pushbutton, 'Enable', 'On');
-set(handles.edit1,            'Enable', 'On');
-set(handles.edit5,            'Enable', 'On');
-set(handles.edit6,            'Enable', 'On');
-set(handles.popupmenu1,       'Enable', 'On');
-
+turn_on_controls(handles);
 
 
 %----------- Moves the model ahead or assimilates next observations ------
@@ -578,7 +589,14 @@ if(handles.ready_to_advance)
    % Set to do an assimilation next time
    handles.ready_to_advance = false;
    % Advance the model
-   ens_new = advance_oned(handles.ens, handles.alpha);
+   ens_new = advance_oned(handles.ens, handles.alpha, handles.model_bias);
+
+% Inflate the model
+   ens_new_mean = mean(ens_new);
+   ens_new = (ens_new - ens_new_mean) * sqrt(handles.inflation) + ens_new_mean;
+
+
+
    handles.time_step = handles.time_step + 1;
    h = plot(handles.time_step - 0.1, ens_new, '*', 'MarkerSize', 6);
    set(h, 'Color', [0 0.73 0]);
@@ -710,7 +728,7 @@ else
    handles.ready_to_advance = true;
    % Generate the observation as a draw Normal(0, 1)
    obs_error_sd = handles.obs_error_sd;
-   observation = randn(obs_error_sd) + handles.obs_bias;
+   observation = randn(obs_error_sd);
    % Plot the observation
    plot(handles.time_step, observation, 'r*', 'MarkerSize', 10);
 
@@ -915,6 +933,80 @@ figure(gcbo_fig);
 
 % Update handles structure
 guidata(hObject, handles);
+
+
+
+function edit7_Callback(hObject, eventdata, handles)
+% hObject    handle to edit7 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit7 as text
+%        str2double(get(hObject,'String')) returns contents of edit7 as a double
+
+% Get the value of the model_bias
+handles.inflation= str2double(get(hObject, 'String'));
+if(not(isfinite(handles.inflation)) |  handles.inflation < 1)
+   % Indicate input error in text box
+   set(handles.edit7, 'String', '???');
+
+   % After this, only this edit box will work
+   turn_off_controls(handles);
+   set(handles.edit7, 'Enable', 'On');
+
+   return
+end
+
+% Turn on all the controls
+turn_on_controls(handles);
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+
+% --- Executes during object creation, after setting all properties.
+function edit7_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit7 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+%-----------Turns off all the controls----------
+function turn_off_controls(handles)
+
+% Turn off all the other controls to avoid a mess
+set(handles.pushbutton1,      'Enable', 'Off');
+set(handles.pushbutton_run,   'Enable', 'Off');
+set(handles.reset_pushbutton, 'Enable', 'Off');
+set(handles.edit1,            'Enable', 'Off');
+set(handles.edit5,            'Enable', 'Off');
+set(handles.edit6,            'Enable', 'Off');
+set(handles.edit7,            'Enable', 'Off');
+set(handles.popupmenu1,       'Enable', 'Off');
+
+
+
+
+%-----------Turns on all the controls----------
+function turn_on_controls(handles)
+
+% Turn on all the other controls to avoid a mess
+set(handles.pushbutton1,      'Enable', 'On');
+set(handles.pushbutton_run,   'Enable', 'On');
+set(handles.reset_pushbutton, 'Enable', 'On');
+set(handles.edit1,            'Enable', 'On');
+set(handles.edit5,            'Enable', 'On');
+set(handles.edit6,            'Enable', 'On');
+set(handles.edit7,            'Enable', 'On');
+set(handles.popupmenu1,       'Enable', 'On');
 
 
 

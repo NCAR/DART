@@ -29,7 +29,7 @@ function varargout = oned_ensemble(varargin)
 % $Revision$
 % $Date$
 
-% Last Modified by GUIDE v2.5 25-Mar-2009 14:34:04
+% Last Modified by GUIDE v2.5 28-Aug-2009 16:29:57
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -65,33 +65,42 @@ help oned_ensemble
 handles.output = hObject;
 
 % Insert the ensemble structure into this
-handles.ens_size = 0;
-handles.ens_members = 0;
-handles.h_obs_plot = 0;
-handles.h_update_ens = 0;
-handles.h_ens_member = 0;
-handles.h_obs_ast = 0;
+handles.ens_size       = 0;
+handles.ens_members    = 0;
+handles.h_obs_plot     = 0;
+handles.h_update_ens   = 0;
+handles.h_ens_member   = 0;
+handles.h_obs_ast      = 0;
+handles.h_update_lines = 0;
+handles.observation    = 0;
+handles.obs_error_sd   = 0;
+handles.inflation      = 1.5;
+handles.plot_inflation = false;
+handles.h_inf_ens_member      = 0;
+handles.h_inf_up_ens   = 0;
+handles.h_inf_lines    = 0;
+handles.h_inf_axis     = 0;
 
 % Update handles structure
 guidata(hObject, handles);
 
+% Get the initial observation, obs_error_sd and inflation from the gui
+handles.observation = str2double(get(handles.edit_observation, 'String'));
+handles.obs_error_sd = str2double(get(handles.edit_obs_error_sd, 'String'));
+handles.inflation = str2double(get(handles.edit_inflation, 'String'));
+
 % Go ahead and plot the initial observational error distribution
-h_observation = get(handles.edit1);
-h_obs_error_sd = get(handles.edit2);
-observation = str2double(h_observation.String);
-obs_error_sd = str2double(h_obs_error_sd.String);
-handles.h_obs_plot = plot_gaussian(observation, obs_error_sd, 1);
+handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
 set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 2);
 hold on
 
 % Plot an asterisk 
-handles.h_obs_ast = plot(observation, 0, 'r*', 'MarkerSize', 16);
+handles.h_obs_ast = plot(handles.observation, 0, 'r*', 'MarkerSize', 16);
 
 % Set a basic plotting domain range that includes mean +/- 3 obs SDs
-lower = observation - 3*obs_error_sd;
-upper = observation + 3*obs_error_sd;
-axis([lower upper -0.2 1]);
-
+lower = handles.observation - 3*handles.obs_error_sd;
+upper = handles.observation + 3*handles.obs_error_sd;
+axis([lower upper -0.4 1]);
 
 set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
 set(gca, 'YTickLabel', [0 0.2 0.4 0.6 0.8]);
@@ -101,7 +110,6 @@ plot([lower upper], [0 0], 'k', 'Linewidth', 2);
 
 % Update handles structure
 guidata(hObject, handles);
-
 
 % UIWAIT makes oned_ensemble wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -124,49 +132,51 @@ varargout{1} = handles.output;
 %----------------------------------------------------------------------
 
 
-% --- Executes on button press in pushbutton1.
-function pushbutton1_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton1 (see GCBO)
+% --- Executes on button press in pushbutton_create_new.
+function pushbutton_create_new_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton_create_new (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % Disable the update ensemble button and all other active buttons
-set(handles.pushbutton1, 'Enable', 'Off');
-set(handles.pushbutton2, 'Enable', 'Off');
-set(handles.edit1, 'Enable', 'Off');
-set(handles.edit2, 'Enable', 'Off');
+set(handles.pushbutton_update_ens, 'Enable', 'Off');
+set(handles.edit_observation, 'Enable', 'Off');
+set(handles.edit_obs_error_sd, 'Enable', 'Off');
+set(handles.edit_inflation, 'Enable', 'Off');
 
 % Clear out any old ensemble members if they exist
-for i = 1:handles.ens_size
-   set(handles.h_ens_member(i), 'Visible', 'off');
-end
+set(handles.h_ens_member, 'Visible', 'off');
+set(handles.h_inf_ens_member, 'Visible', 'off');
 
-% Remove mean and sd of old ensemble
-set(handles.text2, 'String', 'Prior Mean = ');
-set(handles.text3, 'String', 'Prior SD = ');
+set(handles.h_update_lines, 'Visible', 'off');
+set(handles.h_inf_lines, 'Visible', 'off');
+set(handles.h_inf_axis, 'Visible', 'off');
+
+% Turn off any old update points
+set(handles.h_update_ens, 'Visible', 'off');
+set(handles.h_inf_up_ens, 'Visible', 'off');
+set(handles.h_inf_ens_member, 'Visible', 'off');
+
+clear_labels(handles);
 
 hold on
+
 % Set a basic plotting domain range that includes mean +/- 3 obs SDs
-h_observation = get(handles.edit1);
-h_obs_error_sd = get(handles.edit2);
-observation = str2double(h_observation.String);
-obs_error_sd = str2double(h_obs_error_sd.String);
-lower = observation - 3*obs_error_sd;
-upper = observation + 3*obs_error_sd;
-axis([lower upper -0.2 1]);
+lower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_members));
+upper = max(handles.observation + 3*handles.obs_error_sd, max(handles.ens_members));
+axis([lower upper -0.4 1]);
 
 set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
 set(gca, 'YTickLabel', [0 0.2 0.4 0.6 0.8]);
 
-
 % Messages should start 1/10 of the way across the screen
 x_message = lower + 0.1 * (upper - lower);
-h_click = text(x_message, 0.7, 'Click on x-axis to create member', 'FontSize', 16);
+h_click = text(x_message, 0.4, 'Click on x-axis to create member', 'FontSize', 16);
 
 % Need to guarantee at least 2 ensemble members
 ens_size = 0;
 
-h_err_text = text(x_message, 0.9, 'Click inside graphics box to select member', ...
+h_err_text = text(x_message, 0.5, 'Click inside graphics box to select member', ...
    'Color', 'r', 'FontSize', 16, 'Visible', 'off');
 
 while ens_size < 2
@@ -189,14 +199,12 @@ while ens_size < 2
       prior_sd = std(x);
       set(handles.text2, 'String', ['Prior Mean = ', num2str(prior_mean)]);
       set(handles.text3, 'String', ['Prior SD = ', num2str(prior_sd)]);
-
    end
 end
 
+h_finish = text(x_message, 0.3, 'Click outside of plot to finish', 'Fontsize', 16);
 
-h_finish = text(x_message, 0.5, 'Click outside of plot to finish', 'Fontsize', 16);
-
-while ens_size < 1000
+while ens_size < 100
    [xt, zt] = ginput(1);
    % Terminate by clicking outside of graph range
    if(xt > upper | xt < lower)
@@ -213,9 +221,7 @@ while ens_size < 1000
       prior_sd = std(x);
       set(handles.text2, 'String', ['Prior Mean = ', num2str(prior_mean)]);
       set(handles.text3, 'String', ['Prior SD = ', num2str(prior_sd)]);
-
    end
-
 end
 
 % Ensemble created, comupte mean and sd, clean up and return
@@ -226,73 +232,82 @@ handles.ens_members = x;
 % Update handles structure
 guidata(hObject, handles);
 
-
 % Turn off the data entry messages
 set(h_click, 'Visible', 'off');
 set(h_finish, 'Visible', 'off');
 
 % Enable the update ensemble button
-set(handles.pushbutton1, 'Enable', 'On');
-set(handles.pushbutton2, 'Enable', 'On');
-set(handles.edit1, 'Enable', 'On');
-set(handles.edit2, 'Enable', 'On');
+set(handles.pushbutton_update_ens, 'Enable', 'On');
+set(handles.edit_observation, 'Enable', 'On');
+set(handles.edit_obs_error_sd, 'Enable', 'On');
+set(handles.edit_inflation, 'Enable', 'On');
 
 
 %----------------------------------------------------------------------
 
 
 
-function edit1_Callback(hObject, eventdata, handles)
-% hObject    handle to edit1 (see GCBO)
+function edit_observation_Callback(hObject, eventdata, handles)
+% hObject    handle to edit_observation (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of edit1 as text
-%        str2double(get(hObject,'String')) returns contents of edit1 as a double
+% Hints: get(hObject,'String') returns contents of edit_observation as text
+%        str2double(get(hObject,'String')) returns contents of edit_observation as a double
+
+% Turn off any old updated points
+set(handles.h_update_ens, 'Visible', 'off');
+set(handles.h_inf_up_ens, 'Visible', 'off');
+set(handles.h_inf_ens_member, 'Visible', 'off');
+
+% Remove mean and sd of old posterior
+clear_labels(handles);
+
+% And the lines in between
+set(handles.h_update_lines, 'Visible', 'off');
+set(handles.h_inf_lines, 'Visible', 'off');
+set(handles.h_inf_axis, 'Visible', 'off');
 
 % Enable things that an error might have turned off
-set(handles.edit2, 'Enable', 'on')
-set(handles.pushbutton1, 'Enable', 'on')
+set(handles.edit_obs_error_sd, 'Enable', 'on')
+set(handles.edit_inflation, 'Enable', 'on')
+set(handles.pushbutton_create_new, 'Enable', 'on')
 
 % Only enable the update ensemble pushbutton if an ensemble has been created
 if(handles.ens_size > 0)
-   set(handles.pushbutton2, 'Enable', 'on');
+   set(handles.pushbutton_update_ens, 'Enable', 'on');
 end
 
 % Get the value of the observation
 if(isfinite(str2double(get(hObject, 'String'))))
    observation = str2double(get(hObject, 'String'));
 else
-   set(handles.edit1, 'String', '???');
+   set(handles.edit_observation, 'String', '???');
 
    % Disable other input to guarantee only one error at a time!
-   set(handles.edit2, 'Enable', 'off')
-   set(handles.pushbutton1, 'Enable', 'off')
-   set(handles.pushbutton2, 'Enable', 'off')
+   set(handles.edit_obs_error_sd, 'Enable', 'off')
+   set(handles.edit_inflation, 'Enable', 'off')
+   set(handles.pushbutton_create_new, 'Enable', 'off')
+   set(handles.pushbutton_update_ens, 'Enable', 'off')
    return
 end
 
-% Get the value of the observation error sd
-h_obs_error_sd = get(handles.edit2);
-obs_error_sd = str2double(h_obs_error_sd.String);
+% Update the global storage
+handles.observation = observation;
 
 % Plot the updated distribution
 set(handles.h_obs_plot, 'Visible', 'Off');
-handles.h_obs_plot = plot_gaussian(observation, obs_error_sd, 1);
+handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
 set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 2);
 
 % Move the observation asterisk
 set(handles.h_obs_ast, 'Visible', 'Off');
-handles.h_obs_ast = plot(observation, 0, 'r*', 'MarkerSize', 16);
+handles.h_obs_ast = plot(handles.observation, 0, 'r*', 'MarkerSize', 16);
 
 % Set a basic plotting domain range that includes mean +/- 3 obs SDs
-h_observation = get(handles.edit1);
-h_obs_error_sd = get(handles.edit2);
-observation = str2double(h_observation.String);
-obs_error_sd = str2double(h_obs_error_sd.String);
-lower = observation - 3*obs_error_sd;
-upper = observation + 3*obs_error_sd;
-axis([lower upper -0.2 1]);
+lower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_members));
+upper = max(handles.observation + 3*handles.obs_error_sd, max(handles.ens_members));
+axis([lower upper -0.4 1]);
 
 set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
 set(gca, 'YTickLabel', [0 0.2 0.4 0.6 0.8]);
@@ -308,8 +323,8 @@ guidata(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function edit1_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to edit1 (see GCBO)
+function edit_observation_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit_observation (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -323,21 +338,35 @@ end
 %----------------------------------------------------------------------
 
 
-function edit2_Callback(hObject, eventdata, handles)
-% hObject    handle to edit2 (see GCBO)
+function edit_obs_error_sd_Callback(hObject, eventdata, handles)
+% hObject    handle to edit_obs_error_sd (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of edit2 as text
-%        str2double(get(hObject,'String')) returns contents of edit2 as a double
+% Hints: get(hObject,'String') returns contents of edit_obs_error_sd as text
+%        str2double(get(hObject,'String')) returns contents of edit_obs_error_sd as a double
+
+% Turn off any old updated points
+set(handles.h_update_ens, 'Visible', 'off');
+set(handles.h_inf_up_ens, 'Visible', 'off');
+set(handles.h_inf_ens_member, 'Visible', 'off');
+
+% Remove mean and sd of old posterior
+clear_labels(handles);
+
+% And the lines in between
+set(handles.h_update_lines, 'Visible', 'off');
+set(handles.h_inf_lines, 'Visible', 'off');
+set(handles.h_inf_axis, 'Visible', 'off');
 
 % Enable things that an error might have turned off
-set(handles.edit1, 'Enable', 'on')
-set(handles.pushbutton1, 'Enable', 'on')
+set(handles.edit_observation, 'Enable', 'on')
+set(handles.edit_inflation, 'Enable', 'on')
+set(handles.pushbutton_create_new, 'Enable', 'on')
 
 % Only enable the update ensemble pushbutton if an ensemble has been created
 if(handles.ens_size > 0)
-   set(handles.pushbutton2, 'Enable', 'on');
+   set(handles.pushbutton_update_ens, 'Enable', 'on');
 end
 
 % Get the value of the observation
@@ -345,32 +374,28 @@ if(isfinite(str2double(get(hObject, 'String'))) && ...
    str2double(get(hObject, 'String')) > 0)
    obs_error_sd = str2double(get(hObject, 'String'));
 else
-   set(handles.edit2, 'String', '???');
+   set(handles.edit_obs_error_sd, 'String', '???');
 
    % Disable other input to guarantee only one error at a time!
-   set(handles.edit1, 'Enable', 'off')
-   set(handles.pushbutton1, 'Enable', 'off')
-   set(handles.pushbutton2, 'Enable', 'off')
+   set(handles.edit_observation, 'Enable', 'off')
+   set(handles.edit_inflation, 'Enable', 'off')
+   set(handles.pushbutton_create_new, 'Enable', 'off')
+   set(handles.pushbutton_update_ens, 'Enable', 'off')
    return
 end
 
-% Get the value of the observation
-h_observation = get(handles.edit1);
-observation = str2double(h_observation.String);
+% Update the value in global storage
+handles.obs_error_sd = obs_error_sd;
 
 % Plot the updated distribution
 set(handles.h_obs_plot, 'Visible', 'off');
-handles.h_obs_plot = plot_gaussian(observation, obs_error_sd, 1);
+handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
 set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 2);
 
 % Set a basic plotting domain range that includes mean +/- 3 obs SDs
-h_observation = get(handles.edit1);
-h_obs_error_sd = get(handles.edit2);
-observation = str2double(h_observation.String);
-obs_error_sd = str2double(h_obs_error_sd.String);
-lower = observation - 3*obs_error_sd;
-upper = observation + 3*obs_error_sd;
-axis([lower upper -0.2 1]);
+lower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_members));
+upper = max(handles.observation + 3*handles.obs_error_sd, max(handles.ens_members));
+axis([lower upper -0.4 1]);
 
 set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 2);
 
@@ -388,8 +413,8 @@ guidata(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function edit2_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to edit2 (see GCBO)
+function edit_obs_error_sd_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit_obs_error_sd (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -403,22 +428,22 @@ end
 %----------------------------------------------------------------------
 
 
-% --- Executes on selection change in popupmenu1.
-function popupmenu1_Callback(hObject, eventdata, handles)
-% hObject    handle to popupmenu1 (see GCBO)
+% --- Executes on selection change in popupmenu_filter_kind.
+function popupmenu_filter_kind_Callback(hObject, eventdata, handles)
+% hObject    handle to popupmenu_filter_kind (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = get(hObject,'String') returns popupmenu1 contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from popupmenu1
+% Hints: contents = get(hObject,'String') returns popupmenu_filter_kind contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from popupmenu_filter_kind
 
 
 %----------------------------------------------------------------------
 
 
 % --- Executes during object creation, after setting all properties.
-function popupmenu1_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to popupmenu1 (see GCBO)
+function popupmenu_filter_kind_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to popupmenu_filter_kind (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -432,37 +457,42 @@ end
 %----------------------------------------------------------------------
 
 
-% --- Executes on button press in pushbutton2.
-function pushbutton2_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton2 (see GCBO)
+% --- Executes on button press in pushbutton_update_ens.
+function pushbutton_update_ens_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton_update_ens (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % Turn off any old points
 set(handles.h_update_ens, 'Visible', 'off');
+set(handles.h_inf_up_ens, 'Visible', 'off');
+set(handles.h_inf_ens_member, 'Visible', 'off');
+
+% Remove mean and sd of old posterior
+clear_labels(handles);
+
+% And the lines in between
+set(handles.h_update_lines, 'Visible', 'off');
+set(handles.h_inf_lines, 'Visible', 'off');
+set(handles.h_inf_axis, 'Visible', 'off');
 
 ensemble = handles.ens_members;
-h_observation = get(handles.edit1);
-h_obs_error_sd = get(handles.edit2);
-observation = str2double(h_observation.String);
-obs_error_sd = str2double(h_obs_error_sd.String);
-
 
 % Figure out which filter option is currently selected
-h_filter_kind = get(handles.popupmenu1);
+h_filter_kind = get(handles.popupmenu_filter_kind);
 
 filter_type = char(h_filter_kind.String(h_filter_kind.Value));
 
 switch filter_type
    case 'EAKF'
       [obs_increments, err] = ...
-         obs_increment_eakf(ensemble, observation, obs_error_sd^2);
+         obs_increment_eakf(ensemble, handles.observation, handles.obs_error_sd^2);
    case 'EnKF'
       [obs_increments, err] = ...
-         obs_increment_enkf(ensemble, observation, obs_error_sd^2);
+         obs_increment_enkf(ensemble, handles.observation, handles.obs_error_sd^2);
    case 'RHF'
       [obs_increments, err] = ...
-         obs_increment_rhf(ensemble, observation, obs_error_sd^2);
+         obs_increment_rhf(ensemble, handles.observation, handles.obs_error_sd^2);
 end
 
 % Add on increments to get new ensemble
@@ -470,4 +500,209 @@ new_ensemble = ensemble + obs_increments;
 
 y(1:size(ensemble)) = -0.1;
 handles.h_update_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', 'Blue');
+
+% Plot lines connecting the prior and posterior ensemble members
+for i = 1:size(ensemble, 2)
+   x_line = [handles.ens_members(i), new_ensemble(i)];
+   y_line = [0, -0.1];
+   handles.h_update_lines(i) = plot(x_line, y_line, 'k');
+end
+
+% Add in a label of the updated mean and sd
+new_mean = mean(new_ensemble);
+new_sd = std(new_ensemble);
+
+% Update mean and sd of old posterior
+set(handles.text8, 'String', ['Prior Mean = ', num2str(new_mean)]);
+set(handles.text8, 'Visible', 'on');
+set(handles.text7, 'String', ['Prior SD = ', num2str(new_sd)]);
+set(handles.text7, 'Visible', 'on');
+
+% If the checkbox isn't set, return now
+if(not(get(handles.checkbox_inflation, 'Value')))
+   guidata(hObject, handles)
+   return
+end
+
+% Plot the inflated prior ensemble
+y = -0.2;
+prior_mean = mean(handles.ens_members(1:handles.ens_size));
+
+for i = 1: handles.ens_size
+   inf_ens(i) = (handles.ens_members(i) - prior_mean) * sqrt(handles.inflation) + ...
+      prior_mean;
+   handles.h_inf_ens_member(i) = plot(inf_ens(i), y, '*', 'MarkerSize', 16, 'Color', [0 0.73 0]);
+end
+
+% Update mean and sd of old posterior
+inf_prior_sd = std(inf_ens(1:handles.ens_size));
+set(handles.text9, 'String', ['Inflated = ', num2str(prior_mean)]);
+set(handles.text9, 'Visible', 'on');
+set(handles.text10, 'String', ['Inflated = ', num2str(inf_prior_sd)]);
+set(handles.text10, 'Visible', 'on');
+
+
+% Get the update for the inflated ensemble
+switch filter_type
+   case 'EAKF'
+      [obs_increments, err] = ...
+         obs_increment_eakf(inf_ens, handles.observation, handles.obs_error_sd^2);
+   case 'EnKF'
+      [obs_increments, err] = ...
+         obs_increment_enkf(inf_ens, handles.observation, handles.obs_error_sd^2);
+   case 'RHF'
+      [obs_increments, err] = ...
+         obs_increment_rhf(inf_ens, handles.observation, handles.obs_error_sd^2);
+end
+
+% Add on increments to get new ensemble
+new_ensemble = inf_ens + obs_increments;
+
+y(1:size(ensemble)) = -0.3;
+handles.h_inf_up_ens = plot(new_ensemble, y, '*', 'MarkerSize', 16, 'Color', 'Blue');
+
+% Plot lines connecting the prior and posterior ensemble members
+for i = 1:size(ensemble, 2)
+   x_line = [inf_ens(i), new_ensemble(i)];
+   y_line = [-0.2, -0.3];
+   handles.h_inf_lines(i) = plot(x_line, y_line, 'k');
+end
+
+% Set a basic plotting domain range that includes mean +/- 3 obs SDs
+% Plus all inflated members
+lower = min(handles.observation - 3*handles.obs_error_sd, min(inf_ens));
+upper = max(handles.observation + 3*handles.obs_error_sd, max(inf_ens));
+axis([lower upper -0.4 1]);
+
+% Plot the axes for the two priors
+plot([lower upper], [0 0], 'k', 'Linewidth', 2);
+handles.h_inf_axis = plot([lower upper], [-0.2 -0.2], 'k', 'Linewidth', 2);
+
+% Update mean and sd of old posterior
+update_inf_mean = mean(new_ensemble(1:handles.ens_size));
+update_inf_sd = std(new_ensemble(1:handles.ens_size));
+set(handles.text12, 'String', ['Inflated = ', num2str(update_inf_mean)]);
+set(handles.text12, 'Visible', 'on');
+set(handles.text11, 'String', ['Inflated = ', num2str(update_inf_sd)]);
+set(handles.text11, 'Visible', 'on');
+
 guidata(hObject, handles)
+
+
+
+
+
+% --- Executes on button press in checkbox_inflation.
+function checkbox_inflation_Callback(hObject, eventdata, handles)
+% hObject    handle to checkbox_inflation (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of checkbox_inflation
+
+
+
+
+function clear_labels(handles)
+
+% Turns off all labels except for the prior mean and SD
+set(handles.text9, 'Visible', 'off');
+set(handles.text10, 'Visible', 'off');
+set(handles.text8, 'Visible', 'off');
+set(handles.text7, 'Visible', 'off');
+set(handles.text12, 'Visible', 'off');
+set(handles.text11, 'Visible', 'off');
+
+
+
+
+
+function edit_inflation_Callback(hObject, eventdata, handles)
+% hObject    handle to edit_inflation (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit_inflation as text
+%        str2double(get(hObject,'String')) returns contents of edit_inflation as a double
+
+% Turn off any old updated points
+set(handles.h_update_ens, 'Visible', 'off');
+set(handles.h_inf_up_ens, 'Visible', 'off');
+set(handles.h_inf_ens_member, 'Visible', 'off');
+
+% Remove mean and sd of old posterior
+clear_labels(handles);
+
+% And the lines in between
+set(handles.h_update_lines, 'Visible', 'off');
+set(handles.h_inf_lines, 'Visible', 'off');
+set(handles.h_inf_axis, 'Visible', 'off');
+
+% Enable things that an error might have turned off
+set(handles.edit_observation, 'Enable', 'on')
+set(handles.edit_obs_error_sd, 'Enable', 'on')
+set(handles.pushbutton_create_new, 'Enable', 'on')
+
+% Only enable the update ensemble pushbutton if an ensemble has been created
+if(handles.ens_size > 0)
+   set(handles.pushbutton_update_ens, 'Enable', 'on');
+end
+
+% Get the value of the observation
+if(isfinite(str2double(get(hObject, 'String'))) && ...
+   str2double(get(hObject, 'String')) > 0)
+   inflation = str2double(get(hObject, 'String'));
+else
+   set(handles.edit_inflation, 'String', '???');
+
+   % Disable other input to guarantee only one error at a time!
+   set(handles.edit_observation, 'Enable', 'off')
+   set(handles.edit_obs_error_sd, 'Enable', 'off')
+   set(handles.pushbutton_create_new, 'Enable', 'off')
+   set(handles.pushbutton_update_ens, 'Enable', 'off')
+   return
+end
+
+% Update the value in global storage
+handles.inflation = inflation;
+
+% Plot the updated distribution
+set(handles.h_obs_plot, 'Visible', 'off');
+handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
+set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 2);
+
+% Set a basic plotting domain range that includes mean +/- 3 obs SDs
+lower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_members));
+upper = max(handles.observation + 3*handles.obs_error_sd, max(handles.ens_members));
+axis([lower upper -0.4 1]);
+
+set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 2);
+
+set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
+set(gca, 'YTickLabel', [0 0.2 0.4 0.6 0.8]);
+
+hold on
+plot([lower upper], [0 0], 'k', 'Linewidth', 2);
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+
+
+
+
+
+% --- Executes during object creation, after setting all properties.
+function edit_inflation_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit_inflation (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
