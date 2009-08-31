@@ -66,6 +66,17 @@ namelist /time_manager_nml/ runid, time_mix_opt, time_mix_freq, &
     stop_option, stop_count, date_separator, allow_leapyear, fit_freq
 
 !------------------------------------------------------------------
+! The POP I/O namelist variables
+!------------------------------------------------------------------
+
+character(len=100) :: log_filename, pointer_filename
+logical :: lredirect_stdout, luse_pointer_files
+integer :: num_iotasks
+
+namelist /io_nml/ num_iotasks, lredirect_stdout, log_filename, &
+    luse_pointer_files, pointer_filename
+
+!------------------------------------------------------------------
 ! The POP restart manager namelist variables
 !------------------------------------------------------------------
 
@@ -168,25 +179,46 @@ else
    call set_calendar_type('noleap')
 endif
 
+! Read POP I/O information (for restart file ... grid dimensions)
 ! Read POP initial information (for input/restart filename)
-! The tricky part here is that we should really check for
-! the existence of the init_ts_file and take evasive action
-! like checking for the existence of a pointer file.
+
+call find_namelist_in_file('pop_in', 'io_nml', iunit)
+read(iunit, nml = io_nml, iostat = io)
+call check_namelist_read(iunit, io, 'io_nml')
 
 call find_namelist_in_file('pop_in', 'init_ts_nml', iunit)
 read(iunit, nml = init_ts_nml, iostat = io)
 call check_namelist_read(iunit, io, 'init_ts_nml')
 
-ic_filename = trim(init_ts_file)//'.'//trim(init_ts_file_fmt)
+! Is it a pointer file or not ...
+if ( luse_pointer_files ) then
 
-! FIXME ... what about the pointer file ...
+   restart_filename = trim(pointer_filename)//'.restart'
+
+   if ( .not. file_exist(restart_filename) ) then
+      msgstring = 'pop_in:pointer file '//trim(restart_filename)//' not found'
+      call error_handler(E_ERR,'initialize_module', &
+             msgstring, source, revision, revdate)
+   endif
+
+   iunit = open_file(restart_filename,'formatted')
+   read(iunit,'(A)')ic_filename
+
+   restart_filename = ' '  
+   write(*,*)'DEBUG ... pointer filename dereferenced to ',trim(ic_filename )
+
+else
+   ic_filename = trim(init_ts_file)//'.'//trim(init_ts_file_fmt)
+endif
+
+! Make sure we have a pop restart file (for grid dims)
 if ( .not. file_exist(ic_filename) ) then
    msgstring = 'pop_in:init_ts_file '//trim(ic_filename)//' not found'
    call error_handler(E_ERR,'initialize_module', &
           msgstring, source, revision, revdate)
 endif
 
-! Read POP restart information (for model timestepping/grid dimensions)
+! Read POP restart information (for model timestepping)
 call find_namelist_in_file('pop_in', 'restart_nml', iunit)
 read(iunit, nml = restart_nml, iostat = io)
 call check_namelist_read(iunit, io, 'restart_nml')
@@ -196,7 +228,7 @@ call find_namelist_in_file('pop_in', 'domain_nml', iunit)
 read(iunit, nml = domain_nml, iostat = io)
 call check_namelist_read(iunit, io, 'domain_nml')
 
-! Read POP grid information (for grid dims/filenames)
+! Read POP grid information (for grid filenames)
 call find_namelist_in_file('pop_in', 'grid_nml', iunit)
 read(iunit, nml = grid_nml, iostat = io)
 call check_namelist_read(iunit, io, 'grid_nml')

@@ -20,7 +20,7 @@
 &filter_nml
    async                    = 2,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 = 8,
+   ens_size                 = 10,
    start_from_restart       = .false.,
    output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.perfect",
@@ -78,7 +78,7 @@
 
 &ensemble_manager_nml
    single_restart_file_in  = .true.,
-   single_restart_file_out = .true.,
+   single_restart_file_out = .false.,
    perturbation_amplitude  = 0.2  /
 
 &cov_cutoff_nml

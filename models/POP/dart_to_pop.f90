@@ -47,7 +47,7 @@ character(len=128), parameter :: &
 ! The namelist variables
 !------------------------------------------------------------------
 
-character (len = 128) :: dart_to_pop_input_file   = 'assim_model_state_ic'
+character (len = 128) :: dart_to_pop_input_file   = 'filter_ics'
 character (len = 128) :: dart_to_pop_restart_file = 'my_pop_restart_file'
 logical               :: advance_time_present     = .TRUE.
 
