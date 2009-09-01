@@ -809,10 +809,10 @@ elseif (vert_is_level(location)) then
    ! convert the level index to an actual depth 
    ind = nint(loc_array(3))
    if ( (ind < 1) .or. (ind > size(zc)) ) then 
-      lheight = zc(ind)
-   else
       istatus = 11
       return
+   else
+      lheight = zc(ind)
    endif
 else   ! if pressure or undefined, we don't know what to do
    istatus = 17
@@ -2643,8 +2643,6 @@ do ivar=1, n3dfields
 
 enddo
 
-stop
-
 ! and finally, SHGT (and any other 2d fields)
 do ivar=(n3dfields+1), (n3dfields+n2dfields)
 
@@ -3132,18 +3130,17 @@ else if(test_casenum == 2 .or. test_casenum == 6) then
    open(unit = 15, file = 'dipole_x3_t_data')
 endif
 
-
 ! Get the size of the grid from the input u and t files
 read(12, *) nx, ny
 read(13, *) nx_temp, ny_temp
 if(nx /= nx_temp .or. ny /= ny_temp) then
-   write(*, *) 'input nx ny mismatch'
-   stop
+   write(msgstring,*)'mismatch nx,nx_temp ',nx,nx_temp,' or ny,ny_temp',ny,ny_temp
+   call error_handler(E_ERR,'test_interpolation',msgstring,source,revision,revdate)
 endif
 
 ! Allocate stuff for the first grid (the one being interpolated from)
 allocate(ulon(nx, ny), ulat(nx, ny), tlon(nx, ny), tlat(nx, ny))
-allocate(kmt(nx, ny), kmu(nx, ny))
+allocate( kmt(nx, ny),  kmu(nx, ny))
 allocate(reg_u_data(nx, ny), reg_t_data(nx, ny))
 ! The Dart format 1d data arrays
 allocate(reg_u_x(nx*ny), reg_t_x(nx*ny))
@@ -3208,8 +3205,8 @@ endif
 read(22, *) dnx, dny
 read(23, *) dnx_temp, dny_temp
 if(dnx /= dnx_temp .or. dny /= dny_temp) then
-   write(*, *) 'input dnx dny mismatch'
-   stop
+   write(msgstring,*)'mismatch dnx,dnx_temp ',dnx,dnx_temp,' or dny,dny_temp',dny,dny_temp
+   call error_handler(E_ERR,'test_interpolation',msgstring,source,revision,revdate)
 endif
 
 allocate(dulon(dnx, dny), dulat(dnx, dny), dtlon(dnx, dny), dtlat(dnx, dny))
