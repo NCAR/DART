@@ -452,7 +452,7 @@ title 'Prior Rank Histogram'
 axis tight;
 
 subplot(handles.r5);
-bar(handles.prior_rank(1:ens_size + 1));
+bar(handles.posterior_rank(1:ens_size + 1));
 ylabel('Frequency');
 xlabel('Rank');
 title 'Posterior Rank Histogram'

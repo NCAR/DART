@@ -12,14 +12,9 @@ function [rank] = get_ens_rank(ens, x)
 % $Date$
 
 s_ens = sort(ens);
-
-for i = 1 : size(ens, 2)
-   if(x < s_ens(1, i))
-      rank = i;
-      return;
-   end
+rank = max(find(s_ens < squeeze(x))) + 1;;
+if(isempty(rank))
+   rank = 1;
 end
-
-rank = size(ens, 2) + 1;
 
 end

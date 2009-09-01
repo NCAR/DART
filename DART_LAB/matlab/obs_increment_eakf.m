@@ -43,7 +43,6 @@ else
    post_mean = post_var * (prior_mean / prior_var + observation / obs_error_var);
 end
 
-
 % Shift the prior ensemble to have the posterior mean
 updated_ensemble = ensemble - prior_mean + post_mean;
 
