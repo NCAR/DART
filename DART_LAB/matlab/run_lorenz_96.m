@@ -423,7 +423,7 @@ else
       handles.post(time, :, :) = temp_ens;
 
       % Compute the posterior rms
-      posterior_rms = rms_error(handles.true_state(time, :), handles.post(time, :, :))
+      posterior_rms = rms_error(handles.true_state(time, :), handles.post(time, :, :));
       handles.posterior_rms(time) = posterior_rms;
 
       % Save the information about the histograms from before

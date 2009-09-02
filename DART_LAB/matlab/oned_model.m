@@ -96,7 +96,7 @@ handles.inflation = 1.0;
 
 % An array to keep track of rank histograms
 handles.prior_rank(1 : handles.ens_size + 1) = 0;
-handles.post_rank(1 : handles.ens_size + 1) = 0;
+handles.posterior_rank(1 : handles.ens_size + 1) = 0;
 
 % Handles to subregions of plots
 handles.r1 = 0;
@@ -440,7 +440,7 @@ function[handles] = reset_histograms(ens_size, hObject, handles)
 
 % Need to reset the rank histograms when ensemble size changes
 handles.prior_rank(1 : ens_size + 1) = 0;
-handles.post_rank(1 : ens_size + 1) = 0;
+handles.posterior_rank(1 : ens_size + 1) = 0;
 
 % Clear the histograms
 figure(1);
@@ -509,9 +509,11 @@ handles.kurtosis = 0;
 
 subplot(handles.r2);
 hold off
-plot(1, 1, 'visible', 'off');
+% Reset the plot and set up the colors for the legend
+plot(1, 1, 'b', 'visible', 'off');
+hold on
+plot(1, 1, 'r', 'visible', 'off');
 axis([1 10 0 4]);
-hold on;
 ylabel('Error, Spread', 'FontSize', 14);
 
 %  Compute the initial error and spread; 0 is always the truth
@@ -614,6 +616,7 @@ if(handles.ready_to_advance)
    prior_error = abs(mean(ens_new));
    plot([handles.time_step - 1 + 0.1, handles.time_step - 0.1], ...
       [handles.error, prior_error]);
+   hold on;
 
    handles.error = prior_error; 
 
@@ -647,7 +650,9 @@ if(handles.ready_to_advance)
 
    % Update the rank data
    subplot(handles.r4);
-   ens_rank = get_ens_rank(handles.ens, 0);
+   ens_rank = get_ens_rank(ens_new, 0);
+sort(ens_new)
+ens_rank
 
    % Plot the latest rank entry as a different color
    temp_rank(:, 1) = handles.prior_rank(1:handles.ens_size + 1);
@@ -796,7 +801,7 @@ else
    ens_rank = get_ens_rank(handles.ens, 0);
 
    % Plot the latest rank entry as a different color
-   temp_rank(:, 1) = handles.post_rank(1:handles.ens_size + 1);
+   temp_rank(:, 1) = handles.posterior_rank(1:handles.ens_size + 1);
    temp_rank(:, 2) = 0;
    temp_rank(ens_rank, 2) = 1;
 
@@ -808,7 +813,7 @@ else
    axis tight;
 
    % Update the permanent storage of the rank values
-   handles.post_rank(ens_rank) = handles.post_rank(ens_rank) + 1;
+   handles.posterior_rank(ens_rank) = handles.posterior_rank(ens_rank) + 1;
 
    % Plot the segment for the updated error
    post_error = abs(mean(new_ens));
