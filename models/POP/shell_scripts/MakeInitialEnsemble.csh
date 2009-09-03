@@ -180,7 +180,8 @@ foreach FILE ( ${RESTARTDIR}/*/cx3.dart.001.pop.r.*.nc )
 
    ln -sf $FILE pop.r.nc
    
-   echo "pop.r.nc" > pop_pointer.restart
+   echo "pop.r.nc"       >! pop_pointer.restart
+   echo "RESTART_FMT=nc" >> pop_pointer.restart
 
    echo "Converting restart $FILE ..."
 
@@ -202,11 +203,21 @@ foreach FILE ( ${RESTARTDIR}/*/cx3.dart.001.pop.r.*.nc )
 
    #----------------------------------------------------------------------
    # Rename 'generic' output file to reflect the ensemble member number.
+   # At the end of the day, we need three things:
+   # 1) a DART ics file for each ensemble member :  ens_mem.xxxx 
+   # 2) a pointer file  for each ensmeble member :  rpointer.ocn.xxx.restart
+   # 3) a POP netCDF restart file (for each ensemble member) actually,
+   #    since we're just grabbing the grid dimensions and calendar info
+   #    we could probably use just one, but we've got them, and we're just 
+   #    creating links ... it's easy enough.
    #----------------------------------------------------------------------
    @ memcount = $memcount + 1
    set OFNAME = `printf ens_mem.%03d $memcount`
 
    mv filter_updated_restart $OFNAME
+   echo $FILE:t          >! rpointer.ocn.${memcount}.restart
+   echo "RESTART_FMT=nc" >> rpointer.ocn.${memcount}.restart
+   ln -s $FILE $FILE:t
 
    #----------------------------------------------------------------------
    # remove input files to prep for next iteration
