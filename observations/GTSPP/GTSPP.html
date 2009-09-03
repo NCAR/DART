@@ -101,29 +101,10 @@ of C shell scripts and a Fortran source executable,
 do this data conversion.
 <P>
 Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&amp;convert_cosmic_gps_nml</em> </A>
+<A HREF="#Namelist"> <em class=code>&amp;gtspp_to_obs_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P> 
 <P>
-The work directory contains several scripts, including one which downloads
-the raw data files a day at a time (cosmic_download.csh), and one 
-which executes the conversion program (convert_script.csh).  These
-scripts make 6 hour files by default, but have options for other
-times.  The input files are downloaded a day at a time.  Be aware
-that each profile is stored in a separate netcdf file, and there
-are between 1000-2000 files/day, so the download process can be
-lengthy.  You probably want to download as a separate preprocess step
-and do not use the options to automatically delete the input files.
-Keep the files around until you are sure you are satisified with the
-output files and then delete them by hand.
-</P> 
-<P>
-The conversion executable, convert_cosmic_gps_cdf, reads the namelist
-from the file 'input.nml', but also reads an analysis time from the
-terminal or the standard input unit.  This makes it simpler to convert
-multiple files without editing the namelist.  The program prompts for
-the time string with the required time format, 
-<em class=code>yyyy-mm-dd_hh:mm:ss</em> .
 </P>
 
 <!--==================================================================-->
@@ -138,7 +119,7 @@ utilities_mod
 location_mod
 obs_sequence_mod
 obs_def_mod
-obs_def_gps_mod
+obs_def_ocean_mod
 obs_kind_mod
 netcdf
 </PRE>
@@ -151,10 +132,11 @@ netcdf
  <P>We adhere to the F90 standard of starting a namelist with an ampersand
  '&amp;' and terminating with a slash '/'.
  <div class=namelist><pre>
- <em class=call>namelist / convert_cosmic_gps_nml / </em>
-    obs_levels, local_operator, obs_window, &
-    ray_ds, ray_htop, gpsro_netcdf_file,    &
-    gpsro_netcdf_filelist, gpsro_out_file
+ <em class=call>namelist / gtspp_to_obs_nml / </em>
+    gtspp_netcdf_file,    
+    gtspp_netcdf_filelist, 
+    gtspp_out_file,
+    avg_obs_per_file
  </em></pre></div> 
  <H3 class=indent1>Discussion</H3>
  <P>This namelist is read in a file called <em class=file>input.nml</em>
@@ -164,83 +146,40 @@ netcdf
      <TH align=left>Type        </TH>
      <TH align=left>Description </TH></TR>
    
- <TR><!--contents--><TD valign=top>obs_levels</TD>
-     <!--  type  --><TD valign=top>integer(200)</TD>
-     <!--descript--><TD>A series of heights, in kilometers, where observations
-                        from this profile should be interpolated.  (Note that
-                        the other distances and heights in the namelist are
-                        specified in meters.)  The values should be listed in
-                        increasing height order.
-                        Default: none</TD></TR>
-   
- <TR><!--contents--><TD valign=top>local_operator</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD>If .true., compute the observation using a method
-                        which assumes all effects occur at the tangent point.
-                        If .false., integrate along the tangent line and do
-                        ray-path reconstruction.
-                        Default: .true.</TD></TR>
-   
- <TR><!--contents--><TD valign=top>obs_window</TD>
-     <!--  type  --><TD valign=top>real(r8)</TD>
-     <!--descript--><TD>Accept and convert observations if they are within
-                        plus or minus this number of hours from the analysis
-                        time (which is read as an input from the terminal or
-                        the standard input unit).
-                        Default: 12.0</TD></TR>
-   
- <TR><!--contents--><TD valign=top>ray_ds</TD>
-     <!--  type  --><TD valign=top>real(r8)</TD>
-     <!--descript--><TD>For the non-local operator only, the delta stepsize, 
-                        in meters, to use for the along-path integration in
-                        each direction out from the tangent point.
-                        Default: 5000.0</TD></TR>
-   
- <TR><!--contents--><TD valign=top>ray_htop</TD>
-     <!--  type  --><TD valign=top>real(r8)</TD>
-     <!--descript--><TD>For the non-local operator only, stop the integration
-                        when one of the endpoints of the next integration step
-                        goes above this height.  Specified in meters.
-                        Default: 15000.0</TD></TR>
-   
- <TR><!--contents--><TD valign=top>gpsro_netcdf_file</TD>
+ <TR><!--contents--><TD valign=top>gtspp_netcdf_file</TD>
      <!--  type  --><TD valign=top>character(len=128)</TD>
      <!--descript--><TD>The input filename when converting a single profile.  
                         Only one of the 2 filenames can have a valid value, 
                         so to use the single filename set the list name
-                        ('gpsro_netcdf_filelist') to the empty string ('').
-                        Default: 'cosmic_gps_input.nc'</TD></TR>
+                        'gtspp_netcdf_filelist' to the empty string ('').
+                        Default: '1234567.nc'</TD></TR>
    
- <TR><!--contents--><TD valign=top>gpsro_netcdf_filelist</TD>
+ <TR><!--contents--><TD valign=top>gtspp_netcdf_filelist</TD>
      <!--  type  --><TD valign=top>character(len=128)</TD>
      <!--descript--><TD>To convert a series of profiles in a single execution
                         create a text file which contains each input file,
                         in ascii, one filename per line.  Set this item to
-                        the name of that file, and set 'gpsro_netcdf_file' to
+                        the name of that file, and set 'gtspp_netcdf_file' to
                         the empty string ('').
-                        Default: 'cosmic_gps_input_list'</TD></TR>
+                        Default: 'gtspp_to_obs_filelist'</TD></TR>
    
- <TR><!--contents--><TD valign=top>gpsro_out_file</TD>
+ <TR><!--contents--><TD valign=top>gtspp_out_file</TD>
      <!--  type  --><TD valign=top>character(len=128)</TD>
      <!--descript--><TD>The output file to be created.  Note that to be
                         compatible with earlier versions of this program, if
                         this file already exists it will be read in and the
                         new data will be inserted into that file.
-                        Default: 'obs_seq.gpsro'</TD></TR>
+                        Default: 'obs_seq.gtspp'</TD></TR>
    
- <TR><!--contents--><TD valign=top>overwrite_time</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD>This item is NOT in the standard namelist, but code
-                        exists in the program to support the functionality
-                        if the source is edited and this variable is added 
-                        to the namelist.  If set to
-                        .true., the output file will be created with all
-                        observations marked with the specified analysis time
-                        instead of the actual observation collection time.
-                        This is generally not what you want, but might be
-                        useful if you are binning observations by time to do 
-                        thinning or super-ob'ing data.
-                        Default: .false.</TD></TR>
+ <TR><!--contents--><TD valign=top>avg_obs_per_file</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>The code needs an upper limit on the number of observations
+                        generated by this program.  It can be larger than the actual
+                        number of observations converted.  The total number of obs
+                        is computed by multiplying this number by the number of input
+                        files.  If you get an error because there is no more room to
+                        add observations to the output file, increase this number.
+                        Default: 500</TD></TR>
    
  </TABLE>
 <P>
@@ -252,14 +191,8 @@ netcdf
 <BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
-Some COSMIC files seem to have internal times which differ from the
-times encoded in the filenames by as much as 2-3 minutes.  If it is
-important to get all the observations within a particular time window
-files with filenames from a few minutes before and after the window 
-should be converted.
-Times really outside the window can be excluded either by setting
-the 'obs_window' namelist variable, or can be trimmed later with the
-<a href="../../obs_sequence/obs_sequence_tool.html">obs_sequence_tool</a>.
+Does not have correct code for setting observation error variance yet.
+Also, not sure if the incoming data qc is strict enough.
 </P>
 
 <!--==================================================================-->

@@ -59,7 +59,7 @@ character (len=6)   :: subset
 integer :: rcode, ncid, varid, ndepths, k, nfiles, num_new_obs,  &
            aday, asec, dday, dsec, oday, osec,                   &
            iyear, imonth, iday, ihour, imin, isec,               &
-           zloc, obs_num, io, iunit, nobs, filenum, dummy
+           zloc, obs_num, io, iunit, filenum, dummy, i_qc
 logical :: file_exist, first_obs, did_obs, from_list = .false.
 real(r8) :: hght_miss, refr_miss, azim_miss, oerr,               & 
             qc, lato, lono, hghto, refro, azimo, wght, nx, ny,   & 
@@ -78,6 +78,7 @@ integer, parameter :: nmaxdepths = 5000   !  max number of observation depths
 real(r8) :: obs_depth(nmaxdepths)   = -1.0_r8
 real(r8) :: temperature(nmaxdepths) = -888888.0_r8
 real(r8) :: salinity(nmaxdepths) = -888888.0_r8
+character(len=nmaxdepths) :: str_qc = ''
 
 !------------------------------------------------------------------------
 !  Declare namelist parameters
@@ -191,11 +192,12 @@ fileloop: do      ! until out of files
    
    ! get the number of depths
    call nc_check( nf90_inq_dimid(ncid, "depth", varid), 'inq dimid depth')
-   call nc_check( nf90_inquire_dimension(ncid, varid, name, nobs), 'inq dim depth')
+   call nc_check( nf90_inquire_dimension(ncid, varid, name, ndepths), 'inq dim depth')
    
    ! and read in the depth array
    call nc_check( nf90_inq_varid(ncid, "depth", varid),'inq varid depth')
-   call nc_check( nf90_get_var(ncid, varid, obs_depth),'get var   depth')
+   call nc_check( nf90_get_var(ncid, varid, obs_depth, &
+                  start=(/1/), count=(/ndepths/)),'get var   depth')
 
    ! get the single lat/lon values
    call nc_check( nf90_inq_varid(ncid,"longitude",varid) ,'inq varid longitude')
@@ -205,17 +207,22 @@ fileloop: do      ! until out of files
 
    ! need to get the actual values from the 'temperature'
    call nc_check( nf90_inq_varid(ncid,"temperature",varid) ,'inq varid temperature')
-   call nc_check( nf90_get_var(ncid, varid, temperature),   'get var   temperature')
+   print *, 'getting temp, ndepths = ', ndepths
+   call nc_check( nf90_get_var(ncid, varid, temperature, &
+                              start=(/1,1,1,1/), count=(/1,1,ndepths,1/)),   'get var   temperature')
 
    ! salinity?  doesn't seem to be here 
 
    ! plus want file QC, and what about error?
-   
+   call nc_check( nf90_inq_varid(ncid,"TEMP_qparm",varid) ,'inq varid TEMP_qparam')
+   call nc_check( nf90_get_var(ncid, varid, str_qc, &
+                              start=(/1,1/), count=(/1,ndepths/)),   'get var   TEMP_qparam')
+print *, 'qc string = ', str_qc(1:10)
+
    call nc_check( nf90_close(ncid) , 'close file')
    
    
  ! FIXME:
-   d_qc(1) = 0.0
    oerr = 2.0
 
    first_obs = .true.
@@ -223,8 +230,12 @@ fileloop: do      ! until out of files
    obsloop: do k = 1, ndepths
    
      ! check qc here.  if bad, loop
-     if ( d_qc(1) /= 1 )  cycle obsloop
+     read(str_qc(k:k), '(I1)') i_qc
+     if ( i_qc /= 1 )  cycle obsloop    ! in this case, 1 is good
    
+     ! set qc
+     d_qc(1) = 0.0    ! but for dart, a QC of 0 is good
+
      ! set location 
      call set_obs_def_location(obs_def, &
                           set_location(glon, glat, obs_depth(k),VERTISHEIGHT))
@@ -235,7 +246,7 @@ fileloop: do      ! until out of files
      call set_obs_def_key(obs_def, obs_num)
      call set_obs_def(obs, obs_def)
    
-     obs_val(1) = obsval
+     obs_val(1) = temperature(k)
      call set_obs_values(obs, obs_val)
      qc_val(1)  = d_qc(1)
      call set_qc(obs, qc_val)
@@ -263,19 +274,17 @@ end do fileloop
 
 ! done with main loop.  if we added any obs to the sequence, write it out.
 if (did_obs) then
-!print *, 'ready to write, nobs = ', get_num_obs(obs_seq)
+print *, 'ready to write, nobs = ', get_num_obs(obs_seq)
    if (get_num_obs(obs_seq) > 0) &
       call write_obs_seq(obs_seq, gtspp_out_file)
 
    ! minor stab at cleanup, in the off chance this will someday get turned
    ! into a subroutine in a module.  probably not all that needs to be done,
    ! but a start.
-!print *, 'calling destroy_obs'
    call destroy_obs(obs)
-   call destroy_obs(prev_obs)
-print *, 'skipping destroy_seq'
+   !call destroy_obs(prev_obs)   ! is this identical to obs?
    ! get core dumps here, not sure why?
-   !if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
+   if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
 endif
 
 ! END OF MAIN ROUTINE

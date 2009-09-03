@@ -5,8 +5,8 @@
 ! flist contains a list of input filenames to convert into a single
 !  output file
 &gtspp_to_obs_nml
-  gtspp_netcdf_file = '',
-  gtspp_netcdf_filelist = 'flist',
+  gtspp_netcdf_file = '../data/1264095.nc',
+  gtspp_netcdf_filelist = '',
   gtspp_out_file = 'obs_seq.gtspp',
  /
 
