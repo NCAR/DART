@@ -59,9 +59,10 @@ character (len=6)   :: subset
 integer :: rcode, ncid, varid, ndepths, k, nfiles, num_new_obs,  &
            aday, asec, dday, dsec, oday, osec,                   &
            iyear, imonth, iday, ihour, imin, isec,               &
-           zloc, obs_num, io, iunit, filenum, dummy, i_qc
+           zloc, obs_num, io, iunit, filenum, dummy, i_qc, nc_rc
 logical :: file_exist, first_obs, did_obs, from_list = .false.
-real(r8) :: hght_miss, refr_miss, azim_miss, oerr,               & 
+logical :: have_temp = .false., have_salt = .false.
+real(r8) :: hght_miss, refr_miss, azim_miss, terr, serr,         & 
             qc, lato, lono, hghto, refro, azimo, wght, nx, ny,   & 
             nz, ds, htop, rfict, obsval, phs, obs_val(1), qc_val(1),  &
             dtime, glat, glon, d_qc(1)
@@ -77,8 +78,8 @@ type(time_type)         :: obs_time, base_time, delta_time
 integer, parameter :: nmaxdepths = 5000   !  max number of observation depths
 real(r8) :: obs_depth(nmaxdepths)   = -1.0_r8
 real(r8) :: temperature(nmaxdepths) = -888888.0_r8
-real(r8) :: salinity(nmaxdepths) = -888888.0_r8
-character(len=nmaxdepths) :: str_qc = ''
+real(r8) :: salinity(nmaxdepths)    = -888888.0_r8
+character(len=nmaxdepths) :: t_qc = '', s_qc = ''
 
 !------------------------------------------------------------------------
 !  Declare namelist parameters
@@ -205,67 +206,128 @@ fileloop: do      ! until out of files
    call nc_check( nf90_inq_varid(ncid,"latitude",varid) ,'inq varid latitude')
    call nc_check( nf90_get_var(ncid, varid, glat),       'get var   latitude')
 
-   ! need to get the actual values from the 'temperature'
-   call nc_check( nf90_inq_varid(ncid,"temperature",varid) ,'inq varid temperature')
-   print *, 'getting temp, ndepths = ', ndepths
-   call nc_check( nf90_get_var(ncid, varid, temperature, &
-                              start=(/1,1,1,1/), count=(/1,1,ndepths,1/)),   'get var   temperature')
+   ! if present, the data values from 'temperature'
+   nc_rc = nf90_inq_varid(ncid,"temperature",varid) 
+   if (nc_rc == nf90_noerr) then
+      have_temp = .true.
 
-   ! salinity?  doesn't seem to be here 
+      call nc_check( nf90_get_var(ncid, varid, temperature, &
+            start=(/1,1,1,1/), count=(/1,1,ndepths,1/)), 'get var temperature')
 
-   ! plus want file QC, and what about error?
-   call nc_check( nf90_inq_varid(ncid,"TEMP_qparm",varid) ,'inq varid TEMP_qparam')
-   call nc_check( nf90_get_var(ncid, varid, str_qc, &
-                              start=(/1,1/), count=(/1,ndepths/)),   'get var   TEMP_qparam')
-print *, 'qc string = ', str_qc(1:10)
+      ! for now, use the data qc from netcdf file
+      call nc_check( nf90_inq_varid(ncid,"TEMP_qparm",varid) ,'inq varid TEMP_qparam')
+      call nc_check( nf90_get_var(ncid, varid, t_qc, &
+            start=(/1,1/), count=(/1,ndepths/)),   'get var   TEMP_qparam')
+
+   endif
+
+   ! if present, the data values from 'salinity'
+   nc_rc = nf90_inq_varid(ncid,"salinity",varid)
+   if (nc_rc == nf90_noerr) then
+      have_salt = .true.
+
+      call nc_check( nf90_get_var(ncid, varid, salinity, &
+            start=(/1,1,1,1/), count=(/1,1,ndepths,1/)), 'get var salinity')
+
+      ! for now, use the data qc from netcdf file
+
+      call nc_check( nf90_inq_varid(ncid,"PSAL_qparm",varid) ,'inq varid PSAL_qparam')
+      call nc_check( nf90_get_var(ncid, varid, s_qc, &
+            start=(/1,1/), count=(/1,ndepths/)),   'get var   PSAL_qparam')
+
+   endif
 
    call nc_check( nf90_close(ncid) , 'close file')
    
    
  ! FIXME:
-   oerr = 2.0
+   terr = 2.0   ! temp error = 2 degrees C
+   serr = 1.0   ! salinity error = 1 something?
 
    first_obs = .true.
    
    obsloop: do k = 1, ndepths
    
-     ! check qc here.  if bad, loop
-     read(str_qc(k:k), '(I1)') i_qc
-     if ( i_qc /= 1 )  cycle obsloop    ! in this case, 1 is good
+      if (have_temp) then
+         ! check qc here.  if bad, skip the rest of this block
+         read(t_qc(k:k), '(I1)') i_qc
+         if ( i_qc /= 1 )  exit     ! in this case, 1 is good
    
-     ! set qc
-     d_qc(1) = 0.0    ! but for dart, a QC of 0 is good
+         ! set qc
+         d_qc(1) = 0.0    ! but for dart, a QC of 0 is good
+ 
+         ! set location 
+         if (glon < 0.0_r8) glon = glon + 180.0_r8
+         call set_obs_def_location(obs_def, &
+                           set_location(glon, glat, obs_depth(k),VERTISHEIGHT))
+         call set_obs_def_kind(obs_def, FLOAT_TEMPERATURE)
+         call set_obs_def_time(obs_def, set_time(osec, oday))
+    
+         call set_obs_def_error_variance(obs_def, terr * terr)
+         call set_obs_def_key(obs_def, obs_num)
+         call set_obs_def(obs, obs_def)
+   
+         obs_val(1) = temperature(k)
+         call set_obs_values(obs, obs_val)
+         qc_val(1)  = d_qc(1)
+         call set_qc(obs, qc_val)
+    
+         ! first one, insert with no prev.  otherwise, since all times will be the
+         ! same for this column, insert with the prev obs as the starting point.
+         ! (the first insert with no prev means it will search for the right
+         ! time ordered starting point.)
+         if (first_obs) then
+            call insert_obs_in_seq(obs_seq, obs)
+            first_obs = .false.
+         else
+           call insert_obs_in_seq(obs_seq, obs, prev_obs)
+         endif
+         obs_num = obs_num+1
+         prev_obs = obs
+ 
+         if (.not. did_obs) did_obs = .true.
+      endif   
 
-     ! set location 
-     call set_obs_def_location(obs_def, &
-                          set_location(glon, glat, obs_depth(k),VERTISHEIGHT))
-     call set_obs_def_kind(obs_def, FLOAT_TEMPERATURE)
-     call set_obs_def_time(obs_def, set_time(osec, oday))
+      if (have_salt) then
+         ! check qc here.  if bad, skip the rest of this block
+         read(s_qc(k:k), '(I1)') i_qc
+         if ( i_qc /= 1 )  exit     ! in this case, 1 is good
+   
+         ! set qc
+         d_qc(1) = 0.0    ! but for dart, a QC of 0 is good
+ 
+         ! set location 
+         if (glon < 0.0_r8) glon = glon + 180.0_r8
+         call set_obs_def_location(obs_def, &
+                           set_location(glon, glat, obs_depth(k),VERTISHEIGHT))
+         call set_obs_def_kind(obs_def, FLOAT_SALINITY)
+         call set_obs_def_time(obs_def, set_time(osec, oday))
+    
+         call set_obs_def_error_variance(obs_def, serr * serr)
+         call set_obs_def_key(obs_def, obs_num)
+         call set_obs_def(obs, obs_def)
+   
+         obs_val(1) = salinity(k)
+         call set_obs_values(obs, obs_val)
+         qc_val(1)  = d_qc(1)
+         call set_qc(obs, qc_val)
+    
+         ! first one, insert with no prev.  otherwise, since all times will be the
+         ! same for this column, insert with the prev obs as the starting point.
+         ! (the first insert with no prev means it will search for the right
+         ! time ordered starting point.)
+         if (first_obs) then
+            call insert_obs_in_seq(obs_seq, obs)
+            first_obs = .false.
+         else
+           call insert_obs_in_seq(obs_seq, obs, prev_obs)
+         endif
+         obs_num = obs_num+1
+         prev_obs = obs
+ 
+         if (.not. did_obs) did_obs = .true.
+      endif   
 
-     call set_obs_def_error_variance(obs_def, oerr * oerr)
-     call set_obs_def_key(obs_def, obs_num)
-     call set_obs_def(obs, obs_def)
-   
-     obs_val(1) = temperature(k)
-     call set_obs_values(obs, obs_val)
-     qc_val(1)  = d_qc(1)
-     call set_qc(obs, qc_val)
-   
-     ! first one, insert with no prev.  otherwise, since all times will be the
-     ! same for this column, insert with the prev obs as the starting point.
-     ! (the first insert with no prev means it will search for the right
-     ! time ordered starting point.)
-     if (first_obs) then
-        call insert_obs_in_seq(obs_seq, obs)
-        first_obs = .false.
-     else
-        call insert_obs_in_seq(obs_seq, obs, prev_obs)
-     endif
-     obs_num = obs_num+1
-     prev_obs = obs
-
-     if (.not. did_obs) did_obs = .true.
-   
    end do obsloop
 
   filenum = filenum + 1
@@ -293,9 +355,8 @@ endif
 
 ! local subroutines/functions follow
 
-! something to convert time from days past jan 1, 1900 to dart time
-
 ! something to set the err var - make it a subroutine so we can muck with it
 
-! something to ...
+! subroutine to fill an obs?
+
 end program
