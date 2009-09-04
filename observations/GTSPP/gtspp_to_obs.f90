@@ -22,7 +22,8 @@ use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
 use    utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
                              check_namelist_read, nmlfileunit, do_output,    &
                              get_next_filename, error_handler, E_ERR, E_MSG, &
-                             nc_check, find_textfile_dims
+                             nc_check, find_textfile_dims, finalize_utilities, &
+                             timestamp
 use     location_mod, only : VERTISHEIGHT, set_location
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
                              static_init_obs_sequence, init_obs, destroy_obs, &
@@ -61,7 +62,7 @@ integer :: rcode, ncid, varid, ndepths, k, nfiles, num_new_obs,  &
            iyear, imonth, iday, ihour, imin, isec,               &
            zloc, obs_num, io, iunit, filenum, dummy, i_qc, nc_rc
 logical :: file_exist, first_obs, did_obs, from_list = .false.
-logical :: have_temp = .false., have_salt = .false.
+logical :: have_temp, have_salt
 real(r8) :: hght_miss, refr_miss, azim_miss, terr, serr,         & 
             qc, lato, lono, hghto, refro, azimo, wght, nx, ny,   & 
             nz, ds, htop, rfict, obsval, phs, obs_val(1), qc_val(1),  &
@@ -89,10 +90,11 @@ character(len=128) :: gtspp_netcdf_file     = '1234567.nc'
 character(len=128) :: gtspp_netcdf_filelist = 'gtspp_to_obs_filelist'
 character(len=128) :: gtspp_out_file        = 'obs_seq.gtspp'
 integer            :: avg_obs_per_file      = 500
+logical            :: debug                 = .false.
 
 namelist /gtspp_to_obs_nml/ gtspp_netcdf_file,                     &
                             gtspp_netcdf_filelist, gtspp_out_file, &
-                            avg_obs_per_file
+                            avg_obs_per_file, debug
 
 ! start of executable code
 
@@ -136,7 +138,9 @@ call static_init_obs_sequence()
 call init_obs(obs, num_copies, num_qc)
 call init_obs(prev_obs, num_copies, num_qc)
 inquire(file=gtspp_out_file, exist=file_exist)
-if ( file_exist ) then
+! for now, disable this.  too easy to make files with duplicate obs in them.
+!if ( file_exist ) then
+if (.false.) then
 
 print *, "found existing obs_seq file, appending to ", trim(gtspp_out_file)
    call read_obs_seq(gtspp_out_file, 0, 0, num_new_obs, obs_seq)
@@ -173,6 +177,9 @@ fileloop: do      ! until out of files
    endif
    if (next_infile == '') exit fileloop
   
+   have_temp = .false.
+   have_salt = .false.
+
    !  open the next profile file
    call nc_check( nf90_open(next_infile, nf90_nowrite, ncid), 'file open', next_infile)
 
@@ -239,6 +246,13 @@ fileloop: do      ! until out of files
 
    call nc_check( nf90_close(ncid) , 'close file')
    
+! debug
+   if (debug) then
+      print *, 'input file: ', trim(next_infile)
+      print *, 'ndepths: ', ndepths
+      print *, 'has temps, salinity: ', have_temp, have_salt
+      call print_date(obs_time, 'obs time')
+   endif
    
  ! FIXME:
    terr = 2.0   ! temp error = 2 degrees C
@@ -248,12 +262,11 @@ fileloop: do      ! until out of files
    
    obsloop: do k = 1, ndepths
    
-      if (have_temp) then
-         ! check qc here.  if bad, skip the rest of this block
-         read(t_qc(k:k), '(I1)') i_qc
-         if ( i_qc /= 1 )  exit     ! in this case, 1 is good
-   
-         ! set qc
+     ! check qc here.  if bad, skip the rest of this block
+     read(t_qc(k:k), '(I1)') i_qc
+     if (have_temp .and. i_qc == 1) then
+
+         ! set qc to a good dart val
          d_qc(1) = 0.0    ! but for dart, a QC of 0 is good
  
          ! set location 
@@ -286,14 +299,14 @@ fileloop: do      ! until out of files
          prev_obs = obs
  
          if (.not. did_obs) did_obs = .true.
-      endif   
+      endif
 
-      if (have_salt) then
-         ! check qc here.  if bad, skip the rest of this block
-         read(s_qc(k:k), '(I1)') i_qc
-         if ( i_qc /= 1 )  exit     ! in this case, 1 is good
-   
-         ! set qc
+
+      ! check qc here.  if bad, skip the rest of this block
+      read(s_qc(k:k), '(I1)') i_qc
+      if (have_salt .and. i_qc == 1) then
+
+         ! set qc to good dart val
          d_qc(1) = 0.0    ! but for dart, a QC of 0 is good
  
          ! set location 
@@ -326,7 +339,7 @@ fileloop: do      ! until out of files
          prev_obs = obs
  
          if (.not. did_obs) did_obs = .true.
-      endif   
+      endif 
 
    end do obsloop
 
@@ -348,6 +361,9 @@ print *, 'ready to write, nobs = ', get_num_obs(obs_seq)
    ! get core dumps here, not sure why?
    if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
 endif
+
+call timestamp(source,revision,revdate,'end')
+call finalize_utilities()
 
 ! END OF MAIN ROUTINE
 
