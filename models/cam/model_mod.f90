@@ -10,6 +10,16 @@ module model_mod
 ! $Id$
 ! $Revision$
 ! $Date$
+
+
+
+
+! kdr This came from Nancy for doing comparisons with Pincus runs,
+!     where we want to limit the impact of cloud liquid water to only cloud liquid water.
+!     There are some minor changes in my model_mod.f90 which I'd want to incorporate into
+!     this version, but I'm leaving them out for now.
+
+
  
 !----------------------------------------------------------------------
 ! purpose: interface between CAM and DART
@@ -237,8 +247,7 @@ use time_manager_mod,  only : time_type, set_time, print_time, set_calendar_type
                               THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR
 use utilities_mod,     only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
                               register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
-                              logfileunit, nmlfileunit, do_output, nc_check, &
-                              do_nml_file, do_nml_term
+                              logfileunit, nmlfileunit, do_output, nc_check
 use mpi_utilities_mod, only : my_task_id, task_count
 
 !-------------------------------------------------------------------------
@@ -259,11 +268,12 @@ use location_mod,      only : location_type, get_location, set_location, query_l
 ! the idea is that only those actually in use will be defined 
 ! in obs_kind_mod.f90.
 ! BEGIN DART PREPROCESS USED KINDS
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT,                    &
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_PRESSURE,     &
                              KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
-                             KIND_PRESSURE, KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE,          &
+                             KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, KIND_CLOUD_FRACTION,    &
                              KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION,       &
-                             KIND_SURFACE_ELEVATION
+                             KIND_SURFACE_ELEVATION, get_raw_obs_kind_index
+
 ! END DART PREPROCESS USED KINDS
 
 
@@ -503,6 +513,14 @@ character (len=8),dimension(MAX_STATE_NAMES) :: pert_names     = (/('        ',i
 real(r8)         ,dimension(MAX_STATE_NAMES) :: pert_sd        = (/(-888888.0d0,iii=1,MAX_STATE_NAMES)/)
 real(r8)         ,dimension(MAX_STATE_NAMES) :: pert_base_vals = (/(-888888.0d0,iii=1,MAX_STATE_NAMES)/)
 
+! Special for an experiment.  Specify one string kind e.g KIND_CLOUD_LIQUID and 
+! observations of that kind will only impact other obs and state vars of that
+! same kind.  All other kinds of obs and state vars will not be impacted
+! by obs of this kind.  A null string means behave as normal.  Kind strings
+! are limited by compilers to be 32 chars, since they are declared as params.
+character(len=32) :: impact_only_same_kind = ' '
+integer           :: impact_kind_index = -1
+
 
 ! Specify shortest time step that the model will support
 ! This is limited below by CAMs fixed time step but is also impacted
@@ -515,7 +533,8 @@ namelist /model_nml/ output_state_vector , model_version , model_config_file &
                      ,                which_vert_1d  ,which_vert_2d  ,which_vert_3d &
                      ,pert_names ,pert_sd ,pert_base_vals &
                      ,highest_obs_pressure_mb , highest_state_pressure_mb  &
-                     ,max_obs_lat_degree ,Time_step_seconds ,Time_step_days 
+                     ,max_obs_lat_degree ,Time_step_seconds ,Time_step_days &
+                     ,impact_only_same_kind
                      
 
 !---- end of namelist (found in file input.nml) ----
@@ -665,10 +684,10 @@ if (file_exist('element')) then
    close(99)
    do_out = .false.
    if (ens_member == 1) do_out = .true.
-   write(*,*) 'do_out = ',do_out
+   !write(*,*) 'do_out = ',do_out
 else
    do_out = do_output()
-   write(*,*) 'do_out = ',do_out
+   !write(*,*) 'do_out = ',do_out
    ! static_init_model is called once(?) for each task(?).
    ! There may be more or fewer ensemble members than tasks.
    ! No problem if there are fewer.
@@ -679,8 +698,7 @@ else
 end if
 
 ! Record the namelist values 
-if (do_out .and. do_nml_file()) write(nmlfileunit, nml=model_nml)
-if (do_out .and. do_nml_term()) write(     *     , nml=model_nml)
+if (do_out) write(nmlfileunit, nml=model_nml)
 
 ! Set the model minimum time step from the namelist seconds and days input
 Time_step_atmos = set_time(Time_step_seconds, Time_step_days)
@@ -806,6 +824,13 @@ call nc_check(nf90_close(ncfileid), 'static_init_model', 'closing '//trim(cam_ph
 !    dart_to_cam_kinds and cam_to_dart_kinds
 call map_kinds()
 
+! nsc fri, 13mar09
+! if restricting impact of a particular kind to only obs and state vars
+! of the same kind, look up and set the kind index.
+if (len_trim(impact_only_same_kind) > 0) then
+   impact_kind_index = get_raw_obs_kind_index(impact_only_same_kind)
+endif
+
 end subroutine static_init_model
 
 
@@ -875,7 +900,7 @@ else
 endif
 
 !debug   where will this be written?
-if (do_out) then
+if (do_out .and. .false.) then
    if (state_num_1d > 0) then
       write(*,*) 's_dim_1d = ',s_dim_1d
       write(*,*) (s_dim_max(i,1),i=1,3)
@@ -1135,13 +1160,13 @@ character (len=8),               intent(in)  :: cfield
 integer :: ncfldid
 integer :: n,m, slon_index, slat_index, lat_index, lon_index
 
-if (do_out) PRINT*,'read_cam_horiz; reading ',cfield
+!if (do_out) PRINT*,'read_cam_horiz; reading ',cfield
 call nc_check(nf90_inq_varid(ncfileid, trim(cfield), ncfldid), &
               'read_cam_horiz', 'inq_varid '//trim(cfield))
 call nc_check(nf90_get_var(ncfileid, ncfldid, var, start=(/1,1,1/), &
            count=(/dim1, dim2, 1/)), 'read_cam_horiz', trim(cfield))
 
-if (do_out) PRINT*,'read_cam_horiz; reading ',cfield,' using id ',ncfldid, dim1, dim2
+!if (do_out) PRINT*,'read_cam_horiz; reading ',cfield,' using id ',ncfldid, dim1, dim2
 
 ! assign values to phis grids for use by the rest of the module.
 if (cfield == 'PHIS    ') then
@@ -1714,15 +1739,15 @@ integer  :: i
 
 call nc_check(nf90_def_var(ncFileID, name=c_name, xtype=nf90_double, dimids=dim_id, &
                         varid=c_id), 'write_cam_coord_def', 'def_var '//trim(c_name))
-if (do_out) write(*,'(/A,A)') 'write_cam_coord_def;  ', trim(c_name)
+!if (do_out) write(*,'(/A,A)') 'write_cam_coord_def;  ', trim(c_name)
 
 do i=1,coord%num_atts
-   if (do_out) then
-!      nch = len_trim(coord%atts_vals(i))
-!                 i,trim(coord%atts_names(i)),' ', coord%atts_vals(i)(1:nch)
-      write(*,*) '   i, att_name, att_val', &
-                 i,trim(coord%atts_names(i)),' ', trim(coord%atts_vals(i))
-   endif
+!   if (do_out) then
+!!      nch = len_trim(coord%atts_vals(i))
+!!                 i,trim(coord%atts_names(i)),' ', coord%atts_vals(i)(1:nch)
+!      write(*,*) '   i, att_name, att_val', &
+!                 i,trim(coord%atts_names(i)),' ', trim(coord%atts_vals(i))
+!   endif
    call nc_check(nf90_put_att(ncFileID, c_id, coord%atts_names(i), coord%atts_vals(i)), &
                  'write_cam_coord_def', 'put_att '//trim(coord%atts_names(i)))
 end do
@@ -2561,12 +2586,12 @@ end if
 ! Flush the buffer and leave netCDF file open
 !-------------------------------------------------------------------------------
 
-write (*,*)'Finished filling variables ...'
+!write (*,*)'Finished filling variables ...'
 call nc_check(nf90_sync(ncFileID),'nc_write_model_vars ','sync ')
-write (*,*)'netCDF file is synched ...'
+!write (*,*)'netCDF file is synched ...'
 
 ! temporary output
-print*,'num_calced, num_searched = ',num_calced, num_searched
+!print*,'num_calced, num_searched = ',num_calced, num_searched
 
 call end_model_instance(Var)   ! should avoid any memory leaking
 
@@ -3301,11 +3326,11 @@ end do
 !  in memory than in the previous/Bgrid structure.
 do nf= 1, state_num_3d
 
-   if (do_out) then
-      write(errstring, '(A,4I5)') 'fld, nlons, nlats, nlevs ',nf &
-                          ,s_dim_3d(2,nf),s_dim_3d(3,nf),s_dim_3d(1,nf)
-      call error_handler(E_MSG, 'prog_var_to_vector', errstring, source, revision, revdate)
-   endif
+!   if (do_out) then
+!      write(errstring, '(A,4I5)') 'fld, nlons, nlats, nlevs ',nf &
+!                          ,s_dim_3d(2,nf),s_dim_3d(3,nf),s_dim_3d(1,nf)
+!      call error_handler(E_MSG, 'prog_var_to_vector', errstring, source, revision, revdate)
+!   endif
 
    do i=1,s_dim_3d(3,nf)   !lats
    do j=1,s_dim_3d(2,nf)   !lons
@@ -3368,11 +3393,11 @@ end do
 
 ! 3D fields; see comments in prog_var_to_vect
 do nf = 1, state_num_3d
-   if (do_out) then
-      write(errstring, '(A,4I5)') 'fld, nlons, nlats, nlevs ',nf &
-                       ,s_dim_3d(2,nf),s_dim_3d(3,nf),s_dim_3d(1,nf)
-      call error_handler(E_MSG, 'vector_to_prog_var', errstring, source, revision, revdate)
-   end if
+!   if (do_out) then
+!      write(errstring, '(A,4I5)') 'fld, nlons, nlats, nlevs ',nf &
+!                       ,s_dim_3d(2,nf),s_dim_3d(3,nf),s_dim_3d(1,nf)
+!      call error_handler(E_MSG, 'vector_to_prog_var', errstring, source, revision, revdate)
+!   end if
    do i = 1, s_dim_3d(3,nf)
    do j = 1, s_dim_3d(2,nf)
    do k = 1, s_dim_3d(1,nf)
@@ -3455,6 +3480,11 @@ else
                                      local_base_which)
 end if
 
+!! DEBUG: comment this in if you want to bypass the top level damping code below.
+!call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+!                       num_close, close_ind, dist)
+!return
+
 ! Get all the potentially close obs but no dist (optional argument dist(:) is not present)
 call loc_get_close_obs(gc, local_base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
                        num_close, close_ind)
@@ -3488,24 +3518,41 @@ do k = 1, num_close
    local_obs_loc = set_location(obs_array(1), obs_array(2), local_obs_array(3), &
                                    local_obs_which)
 
-   dist(k) = get_dist(local_base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
+!  nsc fri, 13mar09
+!  allow a namelist specified kind string to restrict the impact of those
+!  obs kinds to only other obs and state vars of the same kind.
+   if ((impact_kind_index >= 0)                .and. &
+       (impact_kind_index == base_obs_kind)    .and. &
+       (impact_kind_index /= obs_kind(t_ind))) then
+      dist(k) = 999999._r8     ! arbitrary very large distance
+   else if (local_base_which == VERTISUNDEF) then
+      ! The last argument, no_vert = .true., makes get_dist calculate horzontal distance only.
+      dist(k) = get_dist(local_base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind),.true.)
+      ! Then no damping can be done since vertical distance is undefined.
+      ! ? Is this routine called *both* to get model points close to a real obs,
+      !   AND ob close to a model point?  I want damping in the latter case,
+      !   even if ob has which_vert = VERTISUNDEF.
+      !   I think that testing on local_base_which will do that.
+   else
+      dist(k) = get_dist(local_base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
 
-   ! Damp the influence of obs (below the namelist variable highest_obs_pressure_mb) 
-   ! on variables above highest_state_pressure_mb.  
-   ! This section could also change the distance based on the KIND_s of the base_obs and obs.
-
-   ! dist = 0 for some for synthetic obs.
-   ! Additive increase, based on height above threshold, works better than multiplicative
-
-   ! See model_mod circa 1/1/2007 for other damping algorithms.
-
-   increment = threshold - local_obs_array(3)
-   ! This if-test handles the case where no damping is performed, i.e. 
-   ! highest_state_pressure_mb = 0 and threshold = 0.
-   if (increment > 0) then
-      dist(k) = dist(k) + increment * increment * thresh_wght
-! too sharp      dist(k) = dist(k) + increment / threshold
-   end if
+      ! Damp the influence of obs (below the namelist variable highest_obs_pressure_mb) 
+      ! on variables above highest_state_pressure_mb.  
+      ! This section could also change the distance based on the KIND_s of the base_obs and obs.
+   
+      ! dist = 0 for some for synthetic obs.
+      ! Additive increase, based on height above threshold, works better than multiplicative
+   
+      ! See model_mod circa 1/1/2007 for other damping algorithms.
+   
+      increment = threshold - local_obs_array(3)
+      ! This if-test handles the case where no damping is performed, i.e. 
+      ! highest_state_pressure_mb = 0 and threshold = 0.
+      if (increment > 0) then
+         dist(k) = dist(k) + increment * increment * thresh_wght
+   ! too sharp      dist(k) = dist(k) + increment / threshold
+      end if
+   endif
 
 end do
 
@@ -4752,7 +4799,7 @@ end function gph2gmh
       galt = g - 2.0*ge*alt/ae*(1.0 + f + xm + (-3.0*f + 5.0/2.0*xm)*  &
                              (dsin(xlat))**2) + 3.0*ge*alt**2/ae**2
 !
-!liu     galt = galt*1.0d5             ! convert from km/s2 to cm/s2
+!liu     galt = galt*1.0d5		! convert from km/s2 to cm/s2
 !
 end subroutine gravity
 
