@@ -4,11 +4,14 @@ function varargout = twod_ensemble(varargin)
 %      on unobserved state variables. 
 %
 %      Click on the 'Create New Ensemble' button to activate the interactive 
-%      observation generation mechanism and lay down a set of 'observations' 
-%      representative of your ensemble. Start out small, say 6 or so.
+%      observation generation mechanism and lay down a set of ensemble
+%      samples of an unobserved variable (vertical axis) and an observed
+%      variable (horizontal axis). The ensemble members are created by
+%      left clicking in the central portion of the figure window.
+%      Start out small, say 6 or so.
 %      In this case, some H() operator would generate the Observed Quantity. 
 %      The Unobserved State Variable could simply be some portion of the 
-%      model state that is not needed by the H() operator, for example.
+%      model state.
 %
 %      After creating the ensemble, the correlation between the Observed
 %      Quantity and the Unobserved State Variable is calculated.

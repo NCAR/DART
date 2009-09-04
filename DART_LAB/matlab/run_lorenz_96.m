@@ -4,17 +4,22 @@ function varargout = run_lorenz_96(varargin)
 %
 %      To demonstrate the analogue to the atmosphere, the model is a cyclic 
 %      1D domain with equally-spaced nodal points. There are 20 ensemble 
-%      members in this example, each with 0.1% noise from a random normal 
-%      distribution.
+%      members initially in this example.
 %
-%      There are several experiments to perform - including generating the
-%      true state with one forcing and assimilaing with a model that has 
-%      the wrong forcing. If there's such a thing as a perfect model 
-%      experiment with an imperfect model, this is IT!
-%
-%      This utility also explores the effect of Localization - the ability 
-%      to restrict the impact of an observation to a subset of the state 
-%      vector.
+%      The model can be single-stepped through model advance and assimilation
+%      steps using the top pushbutton, or allowed to run free using the
+%      'Start Free Run' button. A variety of assimilation algorithms can
+%      be selected from the first pulldown. Model error in the assimilating
+%      model (an imperfect model assimilation experiment) can be selected
+%      with the second pulldown. The localization, inflation and ensemble 
+%      size can be changed with the three dialogue boxes. Changing the 
+%      ensemble size resets the diagnostic displays. The figure window
+%      displays time sequences of the prior and posterior error and prior
+%      and posterior (if assimilation is on) rank histograms.
+%      
+%      It takes about twenty timesteps for the intially small ensemble
+%      perturbations to grow large enough to be seen using the default
+%      settings.
 % 
 % See also: gaussian_product, oned_model, oned_ensemble, twod_ensemble, 
 %           run_lorenz_63

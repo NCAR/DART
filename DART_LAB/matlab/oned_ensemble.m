@@ -4,13 +4,27 @@ function varargout = oned_ensemble(varargin)
 %      Click on the 'Create New Ensemble' button to activate the interactive 
 %      observation generation mechanism and lay down a set of 'observations'
 %      representative of your ensemble. (Think: Some H() operator has 
-%      converted the model state to an expected observation.)
+%      converted the model state to an expected observation.) This is done by
+%      placing the cursor near the axis in the plot and clicking. When you 
+%      have all the ensemble members you want, click in the grey area of
+%      the window outside of the white axis plot.
 %
-%      After you have an ensemble and an observation, choose an assimilation 
-%      algorithm and click 'Update Ensemble'. The algorithm is applied and the 
-%      Posterior (blue) is plotted below the Prior (green).  Choose 'EAKF' 
-%      and click 'Update' ...  multiple times. Do the same for 'EnKF' and
-%      'RHF'. Hmnnnn ....
+%      After you have an ensemble and an observation, click 'Update Ensemble'. 
+%      The algorithm is applied and the Posterior (blue) is plotted below the 
+%      Prior (green). The mean and standard deviation of the posterior are
+%      also printed on the plot.
+%   
+%      The type of ensemble Kalman filter update can be chosen using the 
+%      pulldown menu at the bottom. 
+%
+%      Checking the 'Show Inflation' box will also apply inflation to the
+%      prior before doing the update and will print the mean and standard
+%      deviation of the inflated prior and the resulting posterior. The
+%      inflated prior and posterior are plotted on an axis below the 
+%      axis for the uninflated ensemble.
+%
+%      The 'EAKF' is a stochastic algorithm so repeated updates can be done
+%      for the same prior and observation. 
 %
 %      change the Observation Error SD, lay down an ensemble pretty far away
 %      from the observation - have fun with it.

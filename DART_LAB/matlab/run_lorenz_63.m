@@ -16,7 +16,8 @@ function varargout = run_lorenz_63(varargin)
 %      the model space in the immediate vicinity of the True State. The
 %      smaller view provides the context of the entire model space.
 %      Both views are fundamentally views 'from above' ... looking down
-%      on the Z-axis.
+%      on the Z-axis although they can be rotated when the assimilation is
+%      stopped.
 %
 %      After you get the feel for a few single steps through the process
 %      (by repeatedly pressing the 'Advance/Assimilate' button), select

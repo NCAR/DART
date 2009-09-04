@@ -7,17 +7,22 @@ function varargout = oned_model(varargin)
 %      assimilation. It is possible to explore assimilation algorithms,
 %      ensemble sizes, model biases, etc. on-the-fly. The posterior
 %      of the state is indicated by blue asterisks, the states evolve along
-%      a tajectory indicated by the green lines to wind up at a prior state
+%      a trajectory indicated by the green lines to wind up at a prior state
 %      for the assimilation - indicated by the green asterisks. After the 
 %      assimilation, the (posterior) state is indicated in blue and the 
 %      process is ready to repeat.
+%      
+%      ONED_MODEL opens two windows. A gui control window that also plots
+%      the most recent prior, posterior, and observation, and a figure
+%      window that plots time sequences of the assimilation, the RMS error,
+%      spread and kurtosis, and prior and posterior rank histograms.
 %
 %      The top button alternates between "Advance Model" and "Assimilate" to
 %      single-step the model. The "Start Free Run" button is useful to watch
 %      the system evolve and generate estimates from many assimilation cycles.
 %
 %      Since this is a 'perfect model' experiment, we know the true state,
-%      the amount of noise added to the observations, etc.; so it is possible
+%      the amount of noise added to the observations, etc.; so it is possible to
 %      calculate the error of the ensemble in addition to the spread. The 
 %      Truth is not (in general) the same as the observation!
 %
