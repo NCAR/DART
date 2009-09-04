@@ -1,0 +1,91 @@
+# Template for Intel 9.x Fortran Compiler on Linux clusters
+#   and workstations
+#
+# Data Assimilation Research Testbed -- DART
+# Copyright 2004-2007, Data Assimilation Research Section
+# University Corporation for Atmospheric Research
+# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+#
+# <next few lines under version control, do not edit>
+# $URL$
+# $Id$
+# $Revision$
+# $Date$
+
+# typical use with mkmf
+# mkmf -t mkmf.template.xxxx -c"-Duse_netCDF" ...
+#
+# NETCDF and LIBS may need to be customized for your site.
+#
+# If you have multiple machines to compile on and the only difference is
+# where NETCDF is installed, you can comment NETCDF out of this template
+# file and set it as an environment variable.
+#
+# FFLAGS   use when you like, if you must
+#     -fpp     run Fortran preprocessor on source files prior to compilation
+#     -free    interpret source as free-format, regardless of file extension
+#     -r8      specify default real size ...
+#     -convert big_endian         useful if you're on the wrong architecture
+#     -assume  byterecl ... more 'industry-standard' direct-access behavior
+#
+# FFLAGS   useful for debugging
+#     -C       (partially) enable extensive runtime error checking
+#     -g       include symbol table
+#     -check all       [bounds,overflow,format,args]
+#     -check noarg_temp_created   turns off this one
+#     -[no]warn <keywords>
+#           specifies the level of warning messages issued.
+#           keywords:  [no]alignments, [no]argument_checking, [no]declarations,
+#                      [no]errors, [no]fileopt, [no]general, [no]ignore_loc, 
+#                      [no]stderrors, [no]truncated_source, [no]uncalled,
+#                      [no]uninitialized, [no]unused, [no]usage
+#     -fpstkchk  catches conditions where the FP stack is not correct.
+#     Typically this is when a real function is called as if it were a
+#     subroutine, OR a subroutine is called as if it were a function (return
+#     values left of FP stack OR too much data is taken off the FP stack)
+#
+# FFLAGS   useful for benchmarking
+#     -O0      disable optimizations
+#     -pc64    set internal FPU precision to 53 bit significand
+#     -fpe0    underflows result in zero; all other exceptions abort
+#
+# FFLAGS   useful for production
+#     -O2      optimize
+#     -mp      maintain precision in the face of optimization
+#
+# Just for reference, this template has been used with these versions
+# of the fortran compiler.
+#
+# Compiler Information (ifort -V):  [dart, fisher]
+#    Intel(R) Fortran Compiler for 32-bit applications, Version 9.0
+#    Build 20051201Z Package ID: l_fc_c_9.0.031
+#    Copyright (C) 1985-2005 Intel Corporation.  All rights reserved.
+#    FOR NON-COMMERCIAL USE ONLY
+#
+# Compiler Information (ifort -V):  [coral]
+#    Intel(R) Fortran Compiler for Intel(R) EM64T-based applications, Version 9.0
+#    Build 20051020 
+#    Copyright (C) 1985-2005 Intel Corporation.  All rights reserved.
+#
+# Compiler Information (ifort -V):  [lightning]
+#    Intel(R) Fortran Compiler for Intel(R) EM64T-based applications, Version 8.1
+#    Build 20050406 Package ID: l_fce_pc_8.1.027
+#    Copyright (C) 1985-2005 Intel Corporation.  All rights reserved.
+#
+#
+# The PBL_1d model needs this flag added to whatever others are used:
+#FFLAGS = -r8 
+
+MPIFC = mpif90
+MPILD = mpif90
+FC = ifort
+LD = ifort
+
+# this generally needs to be customized for your machine:
+NETCDF = /sw/etch-ia32/netcdf-3.6.2-intel
+
+INCS = -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
+ FFLAGS = -O2 -fpe0 -vec-report0 $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS) -static
+
