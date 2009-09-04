@@ -11,7 +11,7 @@
 # $Revision$
 # $Date$
 
-# Saves restart files to MSS. CAM/CLM, and filter. This is the batch driver
+# Saves restart files to MSS. CAM/CLM/ICE, and filter. This is the batch driver
 # for auto_re2ms.csh ...
 
 #### LSF options for BSUB
@@ -51,17 +51,23 @@ echo "num_ens = $num_ens"
 
 # leaving off a factor of 100 here to handle limit on size of numbers (2^31 -1)
 
+set mem_parts = 'CAM/caminput_1.nc CLM/clminput_1.nc'
+set mem_entry = 5
 if (-e DART/filter_ic.0001) then
-   set list = `du -bc DART/filter_ic.0001 CAM/caminput_1.nc CLM/clminput_1.nc`
-   @ size_element = $list[7] / 100
-else
-   set list = `du -bc CAM/caminput_1.nc CLM/clminput_1.nc`
-   @ size_element = $list[5] / 100
+   set mem_parts = "$mem_parts DART/filter_ic.0001 "
+   @ mem_entry = $mem_entry + 2
 endif
+if (-e ICE/iceinput_1.tar) then
+   set mem_parts = "$mem_parts ICE/iceinput_1.tar "
+   @ mem_entry = $mem_entry + 2
+endif
+set list = `du -bc $mem_parts`
+@ size_element = $list[$mem_entry] / 100
+
 echo "size_element = $size_element"
 # This assumes compression factor of .8, from CAM and CLM only
 # (2^31 - 1) / .8 = 2680000000
-@ test_element =    26500000 / $size_element
+@ test_element =    70000000 / $size_element
 set div = 1
 set size_file = ${num_ens}
 echo div, size_file are $div $size_file     
@@ -177,22 +183,14 @@ while($batch <= $nbatch)
     echo base and member $base $member
 
 # create the tar file using the first ensemble member of this batch
-   if ($do_filter == true) then
-      if ($DART_files != 'none' && $member <= $base) then
-# won't work for $member < $base?
-         tar -c -f batch${batch}${comp} CAM/caminput_$member.nc* \
-             CLM/clminput_$member.nc* DART/filter_ic*[.0]$member DART/{$DART_files}
-         echo "tar -c -f batch${batch}${comp} CAM/caminput_$member.nc* \
-               CLM/clminput_$member.nc* DART/filter_ic*[.0]$member DART/{$DART_files} "
-      else
-         tar -c -f batch${batch}${comp} CAM/caminput_$member.nc* \
-             CLM/clminput_$member.nc* DART/filter_ic*[.0]$member
-         echo "tar -c -f batch${batch}${comp} CAM/caminput_$member.nc* \
-             CLM/clminput_$member.nc* DART/filter_ic*[.0]$member "
-      endif
-   else
-      tar -c -f batch${batch}${comp} CAM/caminput_$member.nc* CLM/clminput_$member.nc*
-   endif
+   set mem_parts = "CAM/caminput_$member.nc* CLM/clminput_$member.nc*"
+   if ($do_filter == true)                         set mem_parts = "$mem_parts DART/filter_ic*[.0]$member"
+   if (-e ICE/iceinput_${member}.tar)              set mem_parts = "$mem_parts ICE/iceinput_${member}.tar "
+   if ($DART_files != 'none' && $member <= $base)  set mem_parts = "$mem_parts DART/{$DART_files}"
+   tar -c -f batch${batch}${comp} $mem_parts
+   echo "tar -c -f batch${batch}${comp} $mem_parts" 
+   echo "tar -c -f batch${batch}${comp} $mem_parts" >> saved_restart
+
    # tack on additional ens members until this batch is complete
    set n = 2
    while ($n <= $num_per_batch)
@@ -201,19 +199,21 @@ while($batch <= $nbatch)
          @ batch = $nbatch + 1
          @ n = $num_per_batch + 1
       else
-         if ($do_filter == true) then
-            tar -r -f batch${batch}${comp} CAM/caminput_$member.nc* \
-               CLM/clminput_$member.nc* DART/filter_ic*[.0]$member
-            echo "tar -r -f batch${batch}${comp} CAM/caminput_$member.nc* \
-               CLM/clminput_$member.nc* DART/filter_ic*[.0]$member "
-         else
-            tar -r -f batch${batch}${comp} CAM/caminput_$member.nc* CLM/clminput_$member.nc*
-         endif
+         set mem_parts = "CAM/caminput_$member.nc* CLM/clminput_$member.nc*"
+         if ($do_filter == true)      set mem_parts = "$mem_parts DART/filter_ic*[.0]$member"
+         if (-e ICE/iceinput_${member}.tar) set mem_parts = "$mem_parts ICE/iceinput_${member}.tar "
+         tar -r -f batch${batch}${comp} $mem_parts
+         echo "tar -r -f batch${batch}${comp} $mem_parts" 
+
       endif
       @ n++
    end
 
-#   Do all at once, outside loop, for efficient MS access
+#  Doing all at once, outside loop, would give more efficient MS access
+#  but
+#     msrcp $opts "$p1"  batch*${comp} ${ms_dir}
+#     $opts and "p1" contents are being interpretted as files, 
+#     maybe because of the multi-file copy batch*...
    msrcp $opts "$p1"  batch${batch}${comp} ${ms_dir}/batch${batch}${comp}
    if ($batch < $nbatch) rm batch${batch}${comp}
 
@@ -223,9 +223,6 @@ end
 # Correct batch back to value of last batch, for use below.
 @ batch = $batch - 1
 
-# msrcp $opts "$p1"  batch*${comp} ${ms_dir}/batch*${comp}
-# $opts and "p1" contents are being interpretted as files, 
-# maybe because of the multi-file copy batch*...
 # ls -l batch*${comp}
 # echo "msrcp $opts $p1  batch*${comp} ${ms_dir}" >> saved_restart
 # msrcp $opts "$p1"  batch*${comp} ${ms_dir}
@@ -247,17 +244,17 @@ set list = `ls -l batch${batch}${comp}`
 set local_size = $list[5]
 set list = `msls -l ${ms_root}/batch${batch}${comp}`
 set ms_size = $list[5]
-echo " CAM/CLM(/DART) local_size ms_size = $local_size $ms_size" >> saved_restart
+echo " CAM/CLM(/DART/ICE) local_size ms_size = $local_size $ms_size" >> saved_restart
 if ($local_size != $ms_size) set ok_to_remove = false
 
 if ($ok_to_remove == true) then
    echo "Archived files with write password $write_pass" >> saved_restart
-   echo "msrcp of ${ms_root} succeeded; REMOVING $obs_seq DART,CAM,CLM" >> saved_restart
-   rm -rf DART CAM CLM
+   echo "msrcp of ${ms_root} succeeded; REMOVING $obs_seq DART,CAM,CLM,ICE" >> saved_restart
+   rm -rf DART CAM CLM ICE
    # rm batch${batch}${comp}
    rm batch*${comp}
 else
-   echo "msrcp of ${ms_root} failed; NOT removing $obs_seq DART,CAM,CLM" >> saved_restart
+   echo "msrcp of ${ms_root} failed; NOT removing $obs_seq DART,CAM,CLM,ICE" >> saved_restart
 endif
 
 chmod 444 saved_restart

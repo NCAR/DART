@@ -28,9 +28,9 @@
 #BSUB -J auto_diag2ms
 #BSUB -o auto_diag2ms.%J.log
 #BSUB -e auto_diag2ms.%J.err
-#BSUB -P account_number
-#BSUB -q premium
-#BSUB -W 3:00
+#BSUB -P xxxxxxxx
+#BSUB -q share
+#BSUB -W 2:00
 #BSUB -n 1
 #BSUB -R "span[ptile=1]"
 #xxxx -x
@@ -74,6 +74,7 @@ set ms_dir = /RAEDER/DAI/${exp_dir}/$case/${obs_seq}
 echo DART                >! tar_excl_list
 echo CAM                 >> tar_excl_list
 echo CLM                 >> tar_excl_list
+echo ICE                 >> tar_excl_list
 # batch* are the files into which DART,CAM,CLM are archived by auto_re2ms_LSF.csh,
 # which is run at the same time as this script.
 echo 'batch*'            >> tar_excl_list
@@ -93,6 +94,24 @@ echo 'H[0-9]*'           >> tar_excl_list
 #   set dim       = $4
 #   set element1  = $5
 #   set yrmoday   = $6   set to $obs_seq instead of yyyymmdd, since obs_seq is easily available
+
+# Save out history files from H* directories before calculating CAM/CLM analyses and deleting H*
+# compressing saves a factor of 12.
+   ls H[012]*/*.h0.* >& /dev/null
+   if ($status == 0) then
+      gzip H[012]*/*.h0.*
+      tar -c -f H_all.h0.gz.tar H[012]*/*.h0.*
+      set ar_status = $status
+      if ($ar_status == 0 && -e H_all.h0.gz.tar) then
+         msrcp -pe 1000 -pr $proj_num -wpwd $write_pass -comment "write password $write_pass" \
+               H_all.h0.gz.tar mss:${ms_dir}/H_all.h0.gz.tar                    >>& $saved  &
+         set ar_status = $status
+         if ($ar_status == 0) rm H[012]*/*.h0.* 
+      endif
+      if ($ar_status != 0) echo 'ARCHIVING of H[012]*.h0.gz.tar FAILED' >> & $saved
+   else
+       echo 'ARCHIVING of H[012]*.h0.gz.tar FAILED; no files available' >> & $saved
+   endif 
 
 if (-e ../../analyses2initial.csh) then
    # analyses2initial.csh needs CAM initial files to average and receive the analyses 
@@ -116,11 +135,22 @@ if (-e ../../analyses2initial.csh) then
 #      exit
 #   endif
    
-      ../../analyses2initial.csh no_MS '.' Posterior copy 1 ${obs_seq}H              >>& $saved
+      set num_anal = `ls H[0-2]*/cam_init_*`
+#      ls H[0-2]*/c*_init_* > /dev/null
+#      if ($status != 0) then
+      set tar_stat = 0
+      if (! -e cam_analyses.tar) then
+         if ($#num_anal < 4) then
+            echo " "                                                                >>& $saved
+            ../../analyses2initial.csh no_MS '.' Posterior copy 1 ${obs_seq}        >>& $saved
+            set num_anal = `ls H[0-2]*/cam_init_*`
+         endif
    
-      tar -c -f cam_analyses.tar H*/c*_init_* 
-      if ($status == 0)  \
-   msrcp -pe 1000 -pr $proj_num -wpwd $write_pass -comment "write password $write_pass" \
+         tar -c -f cam_analyses.tar H[0-2]*/{c,ice}*_init_* 
+         set tar_stat = $status
+      endif
+      if ($tar_stat == 0 )  \
+         msrcp -pe 1000 -pr $proj_num -wpwd $write_pass -comment "write password $write_pass" \
                cam_analyses.tar mss:${ms_dir}/cam_analyses.tar                    >>& $saved  
       set list = `ls -l cam_analyses.tar`
       set local_size = $list[5]
@@ -131,7 +161,7 @@ if (-e ../../analyses2initial.csh) then
       if ($local_size == $ms_size) then
          echo "Archived $ms_dir/cam_analyses.tar with write password $write_pass" >> $saved
          echo '    REMOVING H[0-9]* and cam_analyses.tar '                        >> $saved
-#      rm -rf H[0-9]* cam_analyses.tar
+         rm -rf H[0-9]*/[ci]* cam_analyses.tar
       else
          echo "msrcp of ${ms_dir}/cam_analyses.tar  failed; "                     >> $saved
          echo 'NOT removing H[0-9]* and cam_analyses.tar '                        >> $saved
@@ -149,6 +179,8 @@ rm tar_excl_list
 if ($compress == true) then
    if (-e $diag_name) then
       gzip $diag_name                         >>& $saved
+      set diag_name = ${diag_name}.gz
+   else if (-e ${diag_name}.gz) then
       set diag_name = ${diag_name}.gz
    else
       echo "$diag_name does not exist at gzip" >> $saved
@@ -170,7 +202,7 @@ echo " ${diag_name} local_size = $local_size, ms_size = $ms_size" >> $saved
 
 if ($local_size == $ms_size) then
    echo "Archived files with write password $write_pass" >> $saved
-   echo "msrcp of $ms_dir/$obs_seq succeeded; REMOVING $diag_name and P*Diag.nc " >> $saved
+   echo "msrcp of $ms_dir/$diag_name succeeded; REMOVING $diag_name and P*Diag.nc " >> $saved
    rm $diag_name P*Diag.nc
 else
    echo "msrcp of ${ms_dir}/$obs_seq  failed; " >> $saved
@@ -178,5 +210,8 @@ else
 endif
 
 chmod 444 $saved
+
+wait
+if ($ar_status == 0) rm H_all.h0.gz.tar
 
 exit

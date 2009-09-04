@@ -13,6 +13,7 @@
 
 # set echo verbose
 
+
 # Called from auto_diag2ms_LSF.csh with
 #   ../../analyses2initial.csh no_MS '.' Posterior copy 1 ${obs_seq}H              >>& $saved
 
@@ -23,106 +24,17 @@ set dim       = $4
 set element1  = $5
 set yrmoday   = $6
 
-# Upgrade; can these variables be filled by looking at what H* directories exist?
-# Then they wouldn't have to be hardwired here.
-set num_times  = 4
-set hours      = (06 12 18 24)
+# Import the H* directories information
+ls -1 -d H[0-2]* >! hdir_names
+set num_times  = `wc -l hdir_names`
+set hours      = `cat hdir_names`
+rm hdir_names
 
 if (! -d $local_dir) mkdir $local_dir
 cd $local_dir
 
-if (! -e ../../snow.nco) then
-   echo '/* '                                                                    >! snow.nco
-   echo 'execute via'                                                            >> snow.nco 
-   echo 'ncap2 -O -S snow.nco -o clminput_avg_goodsno.nc clminput_avg_badsno.nc' >> snow.nco
-   echo ' '                                                                      >> snow.nco
-   echo 'where clminput_avg_badsno.nc is the ensemble average '                  >> snow.nco
-
-   echo 'of the clminput_#.nc files'                                             >> snow.nco
-   echo '---------------------------'                                            >> snow.nco
-   echo '*/ '                                                                    >> snow.nco
-   echo ' '                                                                      >> snow.nco
-   echo '*cols = $column.size  ;'                                                >> snow.nco
-   echo '*landkind = cols1d_ityplun ;'                                           >> snow.nco
-   echo '*SNOWDPr = SNOWDP ;'                                                    >> snow.nco
-   echo ' '                                                                      >> snow.nco
-   echo '*SNLSNOr[column]        = 0    ;'                                       >> snow.nco
-   echo '*DZSNOr [column,levsno] = 0.0d ;'                                       >> snow.nco
-   echo '*ZSNOr  [column,levsno] = 0.0d ;'                                       >> snow.nco
-   echo '*ZISNOr [column,levsno] = 0.0d ;'                                       >> snow.nco
-   echo ' '                                                                      >> snow.nco
-   echo 'for (*c=0s ; c< cols; c++) {'                                           >> snow.nco
-   echo '   if ((SNOWDPr(c)>= 0.01d) && (SNOWDPr(c)<= 0.03d)) {'                 >> snow.nco
-   echo '      SNLSNOr(c) = -1 ;'                                                >> snow.nco
-   echo '      DZSNOr(c, 4)  = SNOWDPr(c);'                                      >> snow.nco
-   echo '    } else if ((SNOWDPr(c)> 0.03d) && (SNOWDPr(c)<= 0.04d)) {'          >> snow.nco
-   echo '      SNLSNOr(c) = -2 ;'                                                >> snow.nco
-   echo '      DZSNOr(c, 3) = SNOWDPr(c)/2.0d ;'                                 >> snow.nco
-   echo '      DZSNOr(c, 4) = DZSNOr(c, 3) ;'                                    >> snow.nco
-   echo '    } else if ((SNOWDPr(c)> 0.04d) && (SNOWDPr(c)<= 0.07d)) {'          >> snow.nco
-   echo '      SNLSNOr(c) = -2 ;'                                                >> snow.nco
-   echo '      DZSNOr(c, 3) = 0.02d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 4) = SNOWDPr(c)- DZSNOr(c, 3) ;'                        >> snow.nco
-   echo '    } else if ((SNOWDPr(c)> 0.07d) && (SNOWDPr(c)<= 0.12d)) {'          >> snow.nco
-   echo '      SNLSNOr(c) = -3 ;'                                                >> snow.nco
-   echo '      DZSNOr(c, 2) = 0.02d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 3) = (SNOWDPr(c)- DZSNOr(c, 2))/2.0d ;'                 >> snow.nco
-   echo '      DZSNOr(c, 4) = DZSNOr(c, 3) ;'                                    >> snow.nco
-   echo '    } else if ((SNOWDPr(c)> 0.12d) && (SNOWDPr(c)<= 0.18d)) {'          >> snow.nco
-   echo '      SNLSNOr(c) = -3 ;'                                                >> snow.nco
-   echo '      DZSNOr(c, 2) = 0.02d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 3) = 0.05d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 4) = SNOWDPr(c)- DZSNOr(c, 2) - DZSNOr(c, 3) ;'         >> snow.nco
-   echo '    } else if ((SNOWDPr(c)> 0.18d) && (SNOWDPr(c)<= 0.29d)) {'          >> snow.nco
-   echo '      SNLSNOr(c) = -4 ;'                                                >> snow.nco
-   echo '      DZSNOr(c, 1) = 0.02d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 2) = 0.05d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 3) = (SNOWDPr(c)- DZSNOr(c, 1) - DZSNOr(c, 2))/2.0d ;'  >> snow.nco
-   echo '      DZSNOr(c, 4) = DZSNOr(c, 3) ;'                                    >> snow.nco
-   echo '    } else if ((SNOWDPr(c)> 0.29d) && (SNOWDPr(c)<= 0.41d)) {'          >> snow.nco
-   echo '      SNLSNOr(c) = -4 ;'                                                >> snow.nco
-   echo '      DZSNOr(c, 1) = 0.02d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 2) = 0.05d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 3) = 0.11d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 4) = SNOWDPr(c)- DZSNOr(c, 1) - DZSNOr(c, 2) - DZSNOr(c, 3) ;' >> snow.nco
-   echo '    } else if ((SNOWDPr(c)> 0.41d) && (SNOWDPr(c)<= 0.64d)) {'          >> snow.nco
-   echo '      SNLSNOr(c) = -5 ;'                                              >> snow.nco
-   echo '      DZSNOr(c, 0) = 0.02d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 1) = 0.05d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 2) = 0.11d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 3) = (SNOWDPr(c)- DZSNOr(c, 0) - DZSNOr(c, 1) - DZSNOr(c, 2))/2.0d ;' >> snow.nco
-   echo '      DZSNOr(c, 4) = DZSNOr(c, 3) ;'                                    >> snow.nco
-   echo '    } else if (SNOWDPr(c)> 0.64d) {'                                    >> snow.nco
-   echo '      SNLSNOr(c) = -5 ;'                                                >> snow.nco
-   echo '      DZSNOr(c, 0) = 0.02d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 1) = 0.05d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 2) = 0.11d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 3) = 0.23d ;'                                           >> snow.nco
-   echo '      DZSNOr(c, 4) = SNOWDPr(c)- DZSNOr(c, 0)- DZSNOr(c, 1)- DZSNOr(c, 2)- DZSNOr(c, 3) ;' >> snow.nco
-   echo '    }'                                                                  >> snow.nco
-   echo '    '                                                                   >> snow.nco
-   echo '//   lake points do not get any snow distributed in snowdp2lev.'        >> snow.nco 
-   echo '   if ( landkind(c) != 3) {'                                            >> snow.nco
-   echo '      for ( *j = 4; j>5+SNLSNOr(c); j--) {'                             >> snow.nco
-   echo '         ZSNOr(c,j)    = ZISNOr(c,j) - DZSNOr(c,j) * 0.5d ;'            >> snow.nco
-   echo '         ZISNOr(c,j-1) = ZISNOr(c,j) - DZSNOr(c,j) ;'                   >> snow.nco
-   echo '      }'                                                                >> snow.nco
-   echo '      // j has been decremented to 0'                                   >> snow.nco
-   echo '      // This was taken out of the (shortened) loop to avoid referencing ZISNOr(c,-1)' >> snow.nco
-   echo '      ZSNOr(c,j)    = ZISNOr(c,j) - DZSNOr(c,j) * 0.5d ;'               >> snow.nco
-   echo '   }'                                                                   >> snow.nco
-   echo '}'                                                                      >> snow.nco
-   echo ' '                                                                      >> snow.nco
-   echo 'SNLSNO = SNLSNOr;'                                                      >> snow.nco
-   echo 'DZSNO  = DZSNOr ;'                                                      >> snow.nco
-   echo 'ZSNO   = ZSNOr  ;'                                                      >> snow.nco
-   echo 'ZISNO  = ZISNOr ;'                                                      >> snow.nco
-
-   mv snow.nco ../..
-endif
-
 echo "- - - - - - - - - -"
-echo "analyses2initial.csh":
+echo "analyses2initial.csh"
 
 if (! -e ${kind}.nc) then
    if (! -e ${kind}_Diag.nc) then
@@ -142,18 +54,21 @@ if (! -e ${kind}.nc) then
    endif
 
    set time = 1
-   while ($time <= $num_times)
+   while ($time <= $num_times[1])
       set out_name = init_analysis_${yrmoday}$hours[$time].nc
-      # Template into which we'll stuff the mean fields
-#     Want ensemble average CAM initial file
-      if (-e H$hours[$time]/caminput_1.nc &&       \
-          -e H$hours[$time]/clminput_1.nc) then
-         cd H$hours[$time]
+      #-----------
+      # CAM
+      # Template into which we'll stuff the mean fields: and ensemble average CAM initial file
+      if (-e $hours[$time]/caminput_1.nc &&       \
+          -e $hours[$time]/clminput_1.nc) then
+         cd $hours[$time]
+         # clm_ens_avg.f90 needs input.nml for initialization and model version.
+         if (! -e input.nml) ln -s ../input.nml .
          pwd
          echo cam_$out_name clm_$out_name
-         ncra -o cam_$out_name caminput*
+         ncra -O -o cam_$out_name caminput*
       else
-         echo "analyses2initial.csh; No H$hours[$time]/caminput* available; exiting" 
+         echo "analyses2initial.csh; No $hours[$time]/caminput* available; exiting" 
          exit
       endif
 
@@ -175,22 +90,55 @@ if (! -e ${kind}.nc) then
       #                                  from DART (time, lat, [s]lon, [s]lev)
       # Requires 3 calls to handle the 3 (staggered) grids
       ncpdq -a lev,lat,lon  avgd_copy_out.nc re-orderedT.nc
-      ncpdq -a lev,slat,lon re-orderedT.nc   re-orderedUS.nc
-      ncpdq -a lev,lat,slon re-orderedUS.nc  re-orderedVS.nc
+      # Is it an FV or eulerian CAM initial file?
+      ncdump -v US re-orderedT.nc                               >& /dev/null
+      if ($status == 0) then
+         # Requires 2 extra calls to handle the staggered grids
+         ncpdq -a lev,slat,lon re-orderedT.nc   re-orderedUS.nc
+         ncpdq -a lev,lat,slon re-orderedUS.nc  re-ordered.nc
+      else
+         mv re-orderedT.nc re-ordered.nc
+      endif
+
       # Finally, stuff the contents into the CAM initial file template
       # -A causes variables to be overwritten if there is a name "conflict",
       # without querying the user/script.
       # -x -v $dim removes the *variable* called copy.  (On blueice) it didn't work
       # to try to remove it in the ncwa command.
-      ncks -A -x -v ${dim} re-orderedVS.nc cam_$out_name
+      ncks -A -x -v ${dim} re-ordered.nc cam_$out_name
 
-      # CLM; ensemble average of the clminput files, 
-      ncea -O -o clminput_avg_badsno.nc clminput_*.nc 
-      # Fix the snow fields with NCO script based on algorithm in
-      # Cam3/cam3.5/models/lnd/clm2/src/main/snowdp2lev.F90
-      ncap2 -O -S ../../../snow.nco -o clm_$out_name clminput_avg_badsno.nc
+      rm time_copy_slab.nc avgd_copy_out.nc re-order* 
 
-      rm time_copy_slab.nc avgd_copy_out.nc re-order* clminput_avg_badsno.nc
+      #-----------
+      # CLM; ensemble average of the clminput files.   ncra can't be used because files
+      #      have no record dimension.  This will have incorrect snow and water fields.
+      ncea -O -o clm_ens_avg.nc clminput_[1-9]*.nc 
+
+      # Create a file of the ensemble of the snow and water fields which need to be fixed.
+      set cat_flds = 'DZSNO,H2OSNO,H2OSOI_LIQ,H2OSOI_ICE,SNLSNO,SNOWDP,T_SOISNO'
+      set cat_flds = "${cat_flds},snw_rds,qflx_snofrz_lyr,mss_bcpho,mss_bcphi,mss_ocpho,mss_ocphi"
+      set cat_flds = "${cat_flds},mss_dst1,mss_dst2,mss_dst3,mss_dst4"
+      set cat_flds = "${cat_flds},flx_absdv,flx_absdn,flx_absiv,flx_absin"
+      ncecat -u ensemble -v ${cat_flds} -o snow_water_ens.nc clminput_[1-9]*.nc
+
+      # Fix the snow fields with fortran program clm_ens_avg.f90 (different versions for 
+      # different CLM initial file versions.)
+      # This reads snow_water_ens.nc and writes into clm_ens_avg.nc.
+      ../../../clm_ens_avg 
+
+      # ncea prunes unused dimensions from the output file, but CLM needs them,
+      # so insert all the good, averaged, snow and water fields into a copy of an ensemble member, 
+      # which has a complete header.  Also exclude the timemgr fields.
+      cp clminput_1.nc clm_${out_name}
+      ncks -A -x -v '^timemgr' -o clm_${out_name} clm_ens_avg.nc
+
+# Remove files which won't be removed after archiving in auto_diag2ms_LSF.csh
+      rm snow_water_ens.nc input.nml dart*
+
+      #-----------
+      # ICE; no averaging available yet; use the first ensemble member as the "analysis"
+      cp iceinput_1.tar     ice_init_memb1_${yrmoday}$hours[$time].tar
+
       cd ..
       @ time++
    end

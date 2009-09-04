@@ -76,11 +76,14 @@ set case        = `head -1 ${CENTRALDIR}/casemodel | tail -1`
 set model       = `head -2 ${CENTRALDIR}/casemodel | tail -1`
 set cam_init    = `head -3 ${CENTRALDIR}/casemodel | tail -1`
 set clm_init    = `head -4 ${CENTRALDIR}/casemodel | tail -1`
+set list        = `head -5 ${CENTRALDIR}/casemodel | tail -1`
+set ice_init    = $list[1]
 
 # output diagnostic information to the same file as the CAM list-directed output
 echo "case $case model $model"    >> cam_out_temp
 echo "cam init is $cam_init"      >> cam_out_temp
 echo "clm init is $clm_init"      >> cam_out_temp
+echo "ice init is $ice_init"      >> cam_out_temp
 
 # Loop through each ensemble this task is responsible for advancing.
 set ensemble_number_line = 1
@@ -144,6 +147,18 @@ while($state_copy <= $num_states)
        ${COPY} ${clm_init}0.nc clminput.nc
    endif
    
+# Pond restart files have unchangable names like
+# FV_2deg-noleap-O2-Dev20-5-10.cice.r.volpn.2003-06-01-21600
+# Get iceinput and the related restart files for meltpond and aero
+   if ( -e     ${CENTRALDIR}/iceinput_${element}.tar) then
+       tar -x -f ${CENTRALDIR}/iceinput_${element}.tar
+   else if (-e ${ice_init}${element}.tar) then
+       tar -x -f ${ice_init}${element}.tar 
+   else
+       # no ice restart file available; start it with ice_in = 'default' via existence of iceinput
+       # in run-cam.csh
+   endif
+   
    ${LINK} ${CENTRALDIR}/cam_phis.nc .
 
    # create 'times' file for CAM from DART times in assim_model_state_ic#
@@ -183,14 +198,14 @@ while($state_copy <= $num_states)
             ${CENTRALDIR}/trans_pv_sv       >> cam_out_temp
    
       # Save CLM and CAM files for storage of analyses in CAM initial file format (analyses2initial)
-               # get the forecast time, which is the time of this CLM initial file
-               set seconds = (`head -1 times`)
-               if ($seconds[2] == 0) then
-                  set hour = 24
-               else
-                  @ hour = $seconds[2] / 3600
-               endif
-               if ($hour < 10) set hour = 0$hour
+            # get the forecast time, which is the time of this CLM initial file
+            set seconds = (`head -1 times`)
+            if ($seconds[2] == 0) then
+               set hour = 24
+            else
+               @ hour = $seconds[2] / 3600
+            endif
+            if ($hour < 10) set hour = 0$hour
             # Directory for storing CAM initial files until they can be averaged during
             # archiving for analyses
             if (! -d ${CENTRALDIR}/H${hour}) mkdir ${CENTRALDIR}/H${hour}
@@ -198,18 +213,27 @@ while($state_copy <= $num_states)
       # directory for use by filter and the next advance.
       # Store them in H## directories for later generation of  ensemble average CAM and CLM 
       # initial file after all members are done.
-            ${MOVE} temp_ud     ${CENTRALDIR}/$output_file
-            ${MOVE} namelist    ${CENTRALDIR}
-            ${MOVE} clminput.nc ${CENTRALDIR}/H${hour}/clminput_${element}.nc
-            ${MOVE} caminput.nc ${CENTRALDIR}/H${hour}/caminput_${element}.nc
+            ${MOVE} temp_ud         ${CENTRALDIR}/$output_file
+            ${MOVE} namelist        ${CENTRALDIR}
+            ${MOVE} caminput.nc     ${CENTRALDIR}/H${hour}/caminput_${element}.nc
+            ${MOVE} clminput.nc     ${CENTRALDIR}/H${hour}/clminput_${element}.nc
+            ${MOVE} iceinput.tar    ${CENTRALDIR}/H${hour}/iceinput_${element}.tar
+
+            set hist = `ls *.h0.*`
+            echo "advance_model: hist is "$hist                                  >> cam_out_temp
+            ${MOVE} $hist           ${CENTRALDIR}/H${hour}
+            # redundant element #;  /$hist:r_${element}.nc
 
             # link the new initial files into the CENTRAL directory where filter will find them.
-            ${LINK} ${CENTRALDIR}/H${hour}/clminput_${element}.nc \
-                    ${CENTRALDIR}/clminput_${element}.nc
             ${LINK} ${CENTRALDIR}/H${hour}/caminput_${element}.nc \
                     ${CENTRALDIR}/caminput_${element}.nc
+            ${LINK} ${CENTRALDIR}/H${hour}/clminput_${element}.nc \
+                    ${CENTRALDIR}/clminput_${element}.nc
+            ${LINK} ${CENTRALDIR}/H${hour}/iceinput_${element}.tar \
+                    ${CENTRALDIR}/iceinput_${element}.tar
    
             echo "finished ${myname} for ens member $element at "`date` >> cam_out_temp
+            ${COPY} cam_out_temp ${CENTRALDIR}/H${hour}/cam_out_temp$element
             ${MOVE} cam_out_temp ${CENTRALDIR}/cam_out_temp$element
          else
             @ retry++

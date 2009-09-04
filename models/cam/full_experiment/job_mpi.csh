@@ -283,8 +283,7 @@ set obs_seq_1_depend = false
 set obs_seq_1 = 1
 set obs_seq_n = 7
 
-# Month number of first obs_seq.out of entire experiment.  
-# All other runs will be counted from here.
+# Month of obs_seq = 1 for this series (not obs_seq_first, or obs_seq_1)
 set mo_first = 7
 # The month and year of the obs_seq.out files for this batch of obs_seq.out files.
 set mo = 7
@@ -320,9 +319,13 @@ set DARTCAMDIR =   ${DARTDIR}/models/cam
 # It's most efficient to run CAM single-threaded on at least as many processors
 #   as there are ensemble members.  The CAM start up is single threaded, and the
 #   forecasts (the multi-threaded part of CAM) are short.
-# For 80 members of FV1.9x2.5 on bluefire:
+# For 80 members of CAM 3.5 FV1.9x2.5 on bluefire:
 set max_num_procs = 81
 set ptile = 27
+# For 80 members of CAM 3.6 FV1.9x2.5 on bluefire:  set queue to XXX_large
+# 96x48 ran out of memory on large mem nodes
+# set max_num_procs = 96
+# set ptile = 32
 
 # accounting code used for batch jobs (if no accounting needed, you may need
 # to remove the -P lines in the script generation sections below.
@@ -341,7 +344,6 @@ set wall_clock = 6:00
 #    or other provided by user.  NOTE that the PHIS in bnd_topo is the wrong one!
 #    model_mod expects this file to be named cam_phis.nc, so there's a link from
 #    the use provided name to 'cam_phis.nc'
-set num_levs  = 26
 if ($resol == T21) then
    set DART_ics_1  = /ptmp/dart/CAM_init/T21/03-01-01/DART_MPI
    set CAM_ics_1   = /ptmp/dart/CAM_init/T21/03-01-01/CAM/caminput_
@@ -378,38 +380,43 @@ else if ($resol == FV4x5) then
    set DART_ics_1  = /ptmp/dart/CAM_init/FV4x5/03-01-01/DART_MPI
    set CAM_ics_1   = /ptmp/dart/CAM_init/FV4x5/03-01-01/CAM/caminput_
    set CLM_ics_1   = /ptmp/dart/CAM_init/FV4x5/03-01-01/CLM/clminput_
+   set ICE_ics_1   = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.6.26/Aug_1/ICE/iceinput_
    # -mpi will be attached to this name if parallel_cam = true; don't add it here
    set CAM_src      = /ptmp/dart/CAM/CAM_src/Cam3/cam3.5/models/atm/cam/bld/FV4x5-O2
    set CAM_phis = $CAM_src/cam_phis.nc
    set num_lons  = 72
    set num_lats  = 46
-else if ($resol == FV2x2.5) then
-   set DART_ics_1  = /ptmp/dart/CAM_init/FV2x2.5/03-01-01/DART_MPI
-   set CAM_ics_1   = /ptmp/dart/CAM_init/FV2x2.5/03-01-01/CAM/caminput_
-   set CLM_ics_1   = /ptmp/dart/CAM_init/FV2x2.5/03-01-01/CLM/clminput_
-   # -mpi will be attached to this name if parallel_cam = true; don't add it here
-   set CAM_src      = /ptmp/dart/CAM/CAM_src/Cam3/cam3.5/models/atm/cam/bld/FV2x2.5-O2
-   set CAM_phis = $CAM_src/cam_phis.nc
-   set num_lons  = 144
-   set num_lats  = 91
 else if ($resol == FV1.9x2.5) then
-   # set DART_ics_1  = ${CENTRALDIR}
-   # set CAM_ics_1   = ${CENTRALDIR}/caminput_
-   # set CLM_ics_1   = ${CENTRALDIR}/clminput_
-   set DART_ics_1  = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.5/Jul_1/DART_MPI
-   set CAM_ics_1   = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.5/Jul_1/CAM/caminput_
-   set CLM_ics_1   = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.5/Jul_1/CLM/clminput_
-   # -mpi will be attached to this name if parallel_cam = true; don't add it here
-   # set CAM_src     = /blhome/raeder/Cam3/cam3.5/models/atm/cam/bld/FV1.9x2.5_ALT_PFT-O3
-   set CAM_src     = /blhome/raeder/Cam3/cam3.5/models/atm/cam/bld/FV2deg_Tmix_fire
-   # set CAM_src   = /blhome/raeder/Cam3/cam3.5/models/atm/cam/bld/FV1.9x2.5-O3
-# NOTE; namelistin section is commented out; uncomment if you want namelistin from CAM_src
+   set DART_ics_1  = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.6.26/Aug_1/DART
+   set CAM_ics_1   = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.6.26/Aug_1/CAM/caminput_
+   set CLM_ics_1   = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.6.26/Aug_1/CLM/clminput_
+   set ICE_ics_1   = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.6.26/Aug_1/ICE/iceinput_
+   # -mpi will be attached to CAM_src if parallel_cam = true; don't add it here
+   # set CAM_src     = /blhome/raeder/Cam4/cam3.6.32.24/models/atm/cam/bld/FV_2deg-noleap-O2
+   set CAM_src     = /blhome/raeder/Cam4/cam3.6.32.24/models/atm/cam/bld/FV_2deg-del4-O2
    set CAM_phis  = $CAM_src/cam_phis.nc
    set num_lons  = 144
    set num_lats  = 96
+   # To use real SSTs it's necessary to pass matching stream info to the ice model by a special namelist
+   # which is done through casemodel.
+   # This must be done (now) even for CAM < 3.6; enter 'none' and 0s in that case.
+   set sst = '/ptmp/dart/CAM_init/FV1.9x2.5_cam3.5/Namelistin_files/sst_HadOIBl_bc_1.9x2.5_1949_2007.nc' 
+   set str_yr_first = 1949
+   set str_yr_last  = 2007
+   # Newer CAMs need specific namelist choices.
+   # Define a wordlist to test for appropriate namelist entries.
+   set cam_version = ( 3 6 32 )
 # If another FV resolution is added, then another qualifier is needed in the
 # domain decomposition section below.
 endif 
+
+# Define where to get namelistin; 'cwd' is the current working directory, 
+#                                 '$CAM_src/namelistin' is another common choice
+# This is only used if obs_seq_1_depend = false 
+set namelist = 'cwd'
+
+set num_levs  = 26
+if ($cam_version[1] > 3 || ($cam_version[1] == 3 && $cam_version[2] > 5))  set num_levs = 30
 
 if (${parallel_cam} == true) then
    set CAM_src = ${CAM_src}-mpi                                                 
@@ -444,23 +451,34 @@ set mod_save = 1
 #    filter output is put here, then moved to final storage.
 cd ${CENTRALDIR}
 set myname = $0                              # this is the name of this script
-set MASTERLOG = ${CENTRALDIR}/run_job.log    # Set Variable for a 'master' logfile 
+set MASTERLOG = ${CENTRALDIR}/run_job.$$.log    # Set Variable for a 'master' logfile 
 ${REMOVE} ${MASTERLOG}                       # clean up old links
 
 #----------------------------------------------------------
 # try to discover the ensemble size from the input.nml
 # this is some gory shell programming ... all to do 'something simple'
 grep ens_size input_${obs_seq_first}.nml >! ensstring.$$
-set  STRING = "1,$ s#,##g"
-set ensstring = `sed -e "$STRING" ensstring.$$`
+set ensstring = `sed -e "s#,##g" ensstring.$$`
 set num_ens = $ensstring[3]
-
 ${REMOVE} ensstring.$$
 
 echo "There are ${num_ens} ensemble members."
 # blueice requires the file to exist in order to append to it
 touch $MASTERLOG
 echo "There are ${num_ens} ensemble members."  >> $MASTERLOG
+
+# Try to discover the model version from input.nml
+  grep model_version input_${obs_seq_first}.nml >! ensstring.$$
+# Replace the ,s with nothings and put the words into a list
+  set   ensstring    = `sed -e "s#,##g" ensstring.$$`
+  echo $ensstring[3] >! ensstring.$$
+# Replace the 's with nothings 
+  echo `sed -e "s#'##g" ensstring.$$`  >! verstring.$$
+# Replace the .s with spaces and put the resulting numbers into a string
+  set model_version = `sed -e "s#\.# #g" verstring.$$`
+  echo "model version is $model_version"                                 >> $MASTERLOG
+  ls -l ${CAM_src}/cam                                                   >> $MASTERLOG
+${REMOVE} *string.$$
 
 #----------------------------------------------------------
 # Figure out CAMs domain decomposition and usable number of processors, 
@@ -537,6 +555,7 @@ if (! -x filter) then
    ${COPY} ${DARTCAMDIR}/work/trans_sv_pv                .
    ${COPY} ${DARTCAMDIR}/work/trans_time                 .
    ${COPY} ${DARTCAMDIR}/work/wakeup_filter              .
+   ${COPY} ${DARTCAMDIR}/work/clm_ens_avg                .
 endif
 if (! -e advance_model.csh) then
    ${COPY} ${DARTCAMDIR}/shell_scripts/advance_model.csh     .
@@ -544,6 +563,7 @@ if (! -e advance_model.csh) then
    ${COPY} ${DARTCAMDIR}/full_experiment/auto_re2ms*.csh       . 
    ${COPY} ${DARTCAMDIR}/full_experiment/diags.csh             . 
    ${COPY} ${DARTCAMDIR}/full_experiment/auto_diag2ms_LSF.csh  . 
+   ${COPY} ${DARTCAMDIR}/full_experiment/analyses2initial.csh  . 
 endif
 
 set days_in_mo = (31 28 31 30 31 30 31 31 30 31 30 31)
@@ -565,6 +585,7 @@ if ( $obs_seq_1_depend == false ) then
    if (-e caminput_1.nc) then
       ${REMOVE} clminput_[1-9]*.nc 
       ${REMOVE} caminput_[1-9]*.nc 
+      ${REMOVE} iceinput_[1-9]*.tar 
    endif
 
    # Remove any possibly stale CAM surface files
@@ -777,11 +798,16 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo "obs_seq, root, month, day = $i $obs_seq_root $month $day " >> $MASTERLOG
 
    else if ($obs_seq_freq > 0) then
-      @ month = $mo 
-      while ($month != $mo_first)
+#     Subtract off the days in months before the current month
+#     one month at a time
+      @ month = $mo - 1
+      if ($month == 0) @ month = 12
+      @ seq_in_month = $days_in_mo[$month] * $obs_seq_freq
+      while ($seq > $seq_in_month)
+          @ seq = $seq - $seq_in_month
           @ month = $month - 1
-          if ($month == 0) @ month = $month + 12
-          @ seq = $seq - $days_in_mo[$month] * $obs_seq_freq
+          if ($month == 0) @ month = 12
+          @ seq_in_month = $days_in_mo[$month] * $obs_seq_freq
       end
       @ month = $mo
       if ($month < 10) set month = 0$month
@@ -833,11 +859,13 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       set from_root = ${DART_ics_1} 
       set  cam_init = ${CAM_ics_1}
       set  clm_init = ${CLM_ics_1}
+      set  ice_init = ${ICE_ics_1}
    else
       # Get initial files from result of previous experiment.
       set from_root = `pwd`/${out_prev}/DART
       set cam_init =  `pwd`/${out_prev}/CAM/caminput_
       set clm_init =  `pwd`/${out_prev}/CLM/clminput_
+      set ice_init =  `pwd`/${out_prev}/ICE/iceinput_
    endif
 
    # transmit info to advance_model.csh
@@ -846,12 +874,12 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo "$CAM_src "                                        >> casemodel.$i
    echo "$cam_init "                                       >> casemodel.$i
    echo "$clm_init"                                        >> casemodel.$i
+   echo "$ice_init $str_yr_first $str_yr_last $sst"        >> casemodel.$i
    echo "$parallel_cam"                                    >> casemodel.$i
    echo "$run_command"                                     >> casemodel.$i
-   # Only write the 7th record if it's FV and run-cam.csh needs the decomposition info
-   # if ($keep_lev_blocks > -1) then
+   # Only write the 8th record if it's FV and run-cam.csh needs the decomposition info
    if ($keep_lev_blocks > 0) then
-      echo "$num_procs $keep_lev_blocks $keep_lat_blocks "    >> casemodel.$i
+      echo "$num_procs $keep_lev_blocks $keep_lat_blocks " >> casemodel.$i
    endif
    # advance_model wants to see a file 'casemodel' and not keep track of which obs_seq it's for
    echo "$REMOVE casemodel"                                                   >> ${job_i}
@@ -898,7 +926,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    # domain decomposition info by run-cam.csh
    #-----------------------------------------------------------------------------
    echo " " >> ${job_i}
-   echo "${REMOVE} caminput.nc clminput.nc "                 >> ${job_i}
+   echo "${REMOVE} caminput.nc clminput.nc iceinput "                 >> ${job_i}
    if (-e ${CAM_src}/caminput.nc) then
       echo "${LINK} ${CAM_src}/caminput.nc caminput.nc"          >> ${job_i}
       echo "${LINK} ${CAM_src}/clminput.nc clminput.nc"          >> ${job_i}
@@ -907,16 +935,19 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       exit
    endif
    
+   set KILLCOMMAND = "touch BOMBED; exit"
+
    
    #-----------------------------------------------------------------------------
    # get name of file containing PHIS from the CAM namelist.  This will be used by
    # static_init_model to read in the PHIS field, which is used for height obs.
    #-----------------------------------------------------------------------------
-   # Commented out to use real SSTs (in CAM_src)
-   if ($obs_seq_1 == $obs_seq_first) then
-      ${REMOVE} namelistin
-      ${COPY} ${CAM_src}/namelistin namelistin
-      sleep 1 
+   if ($obs_seq_1_depend == false) then
+      if ($namelist != 'cwd') then
+         ${REMOVE} namelistin
+         ${LINK} ${namelist} namelistin
+         sleep 1 
+      endif
    endif
    if (! -e namelistin ) then
       echo "ERROR ... need a namelistin file." >> $MASTERLOG
@@ -925,31 +956,52 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    endif
 # Check contents of namelistin for proper CLM file output
    set killit = false
-   grep restart_option namelistin | head -1 >! restart_option
-   if ($status != 0 ) then
-      set killit = true
-   else
-      set STRING = "1,$ s#'##g"
-      sed -e "$STRING" restart_option >! restart_string
-      set STRING = `cat restart_string`
-      if ($STRING[3] != nsteps) then
+   if ($model_version[2] < 5) then
+      grep hist_crtinic namelistin | head -1 >! clm_option
+      if ($status != 0 ) then
          set killit = true
+      else
+         set STRING = `sed -e "s#'##g" clm_option` 
+         if ($STRING[3] != ENDOFRUN) then
+            set killit = true
+         endif
+      endif
+      if ($killit == true) then
+         echo "namelistin:clmexp must contain "                      >> $MASTERLOG
+         echo "           hist_crtinic = 'ENDOFRUN'"                 >> $MASTERLOG
+         echo "exiting"                                              >> $MASTERLOG
+         echo "namelistin:clmexp must contain " 
+         echo "           hist_crtinic = 'ENDOFRUN'"  
+         echo "exiting"
+         $KILLCOMMAND
+      endif
+      
+   else
+      grep restart_option namelistin | head -1 >! clm_option
+      if ($status != 0 ) then
+         set killit = true
+      else
+         set STRING = `sed -e "s#'##g" clm_option`
+         if ($STRING[3] != nsteps) then
+            set killit = true
+         endif
+      endif
+      if ($killit == true) then
+         echo "namelistin:camcpl6_inparm must contain "              >> $MASTERLOG
+         echo "           restart_option = 'nsteps'"                 >> $MASTERLOG
+         echo "           restart_n = # models steps in forecast"    >> $MASTERLOG
+         echo "exiting"                                              >> $MASTERLOG
+         echo "namelistin:camcpl6_inparm must contain "              
+         echo "           restart_option = 'nsteps'"                 
+         echo "           restart_n = # models steps in forecast"    
+         echo "exiting"                                              
+         $KILLCOMMAND
       endif
    endif
-   if ($killit == true) then
-      echo "namelistin:camcpl6_inparm must contain "              >> $MASTERLOG
-      echo "           restart_option = 'nsteps'"                 >> $MASTERLOG
-      echo "           restart_n = # models steps in forecast"    >> $MASTERLOG
-      echo "exiting"                                              >> $MASTERLOG
-      echo "namelistin:camcpl6_inparm must contain "              
-      echo "           restart_option = 'nsteps'"                 
-      echo "           restart_n = # models steps in forecast"    
-      echo "exiting"                                              
-      $KILLCOMMAND
-   endif
-
-   ${REMOVE} restart_[os]*
    
+   ${REMOVE} clm_option
+   
+   # Archive namelistin in experiment directory
    echo "if (! -e ${exp}/namelistin) ${COPY} namelistin ${exp}/namelistin  "       >> ${job_i}
 
 
@@ -1022,8 +1074,6 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo "${run_command} ./filter "                                    >> ${job_i}
    endif
 
-   set KILLCOMMAND = "touch BOMBED; exit"
-
    #-----------------
    # When filter.f90 finishes an obs_seq.out file, it creates a file called 'go_end_filter' 
    # in the CENTRALDIR.  Under the MPI/async=2 scenario this won't be used.  The successful
@@ -1054,13 +1104,14 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 # Ensure the (output) experiment directories exist
 # All the  CAM-related files will get put in ${exp}/${output_dir}/CAM
 # All the  CLM-related files will get put in ${exp}/${output_dir}/CLM
+# All the  ICE-related files will get put in ${exp}/${output_dir}/ICE
 # All the DART-related files will get put in ${exp}/${output_dir}/DART
 #-----------------------------------------------------------------------------
    set output_dir = `printf "%s_%04d" ${output_root} $i`
    set out_full = ${exp}/${output_dir}
 
    echo " " >> ${job_i}
-   echo "mkdir -p ${out_full}/{CAM,CLM,DART} "                                        >> ${job_i}
+   echo "mkdir -p ${out_full}/{CAM,CLM,ICE,DART} "                                        >> ${job_i}
 
    echo " " >> ${job_i}
    echo "foreach FILE ( Prior_Diag.nc Posterior_Diag.nc obs_seq.final )"              >> ${job_i}
@@ -1141,6 +1192,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo 'while ($n <= '"${num_ens})    ;# loop over all ensemble members "            >> ${job_i}
    echo '   set CAMINPUT = caminput_${n}.nc  '                                        >> ${job_i}
    echo '   set CLMINPUT = clminput_${n}.nc  '                                        >> ${job_i}
+   echo '   set ICEINPUT = iceinput_${n}.tar     '                                        >> ${job_i}
 
    echo " "                                                                           >> ${job_i}
    echo '   if ( -e $CAMINPUT && ! -z $CAMINPUT) then '                               >> ${job_i}
@@ -1169,11 +1221,21 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 #            the assim.
 #   echo "            $KILLCOMMAND "                                                  >> ${job_i}
    echo "   endif "                                                                   >> ${job_i}
+   echo " "                                                                           >> ${job_i}
+   echo '   if ( -e $ICEINPUT && ! -z $ICEINPUT) then '                               >> ${job_i}
+   echo "      ${COPY} "'$ICEINPUT'" ${out_full}/ICE "                                >> ${job_i}
+   echo '      if (! $status == 0 ) then '                                            >> ${job_i}
+   echo '         echo "failed moving ${CENTRALDIR}/$ICEINPUT " '                     >> ${job_i}
+   echo "         $KILLCOMMAND "                                                      >> ${job_i}
+   echo "      endif "                                                                >> ${job_i}
+   echo "   else "                                                                    >> ${job_i}
+   echo '      echo "${CENTRALDIR}/$ICEINPUT does not exist and maybe should." '      >> ${job_i}
+   echo "   endif "                                                                   >> ${job_i}
+   echo " "                                                                           >> ${job_i}
 
    echo " "                                                                           >> ${job_i}
    echo "   @ n++ "                                                                   >> ${job_i}
    echo "end "                                                                        >> ${job_i}
-
 # Now safe to move H{06,12,18,24} to out_full for later archiving use
    echo 'foreach Hdir (`ls -d H[0-9]*`)'                                              >> ${job_i}
    echo "   ${MOVE} "'$Hdir '"${out_full} "                                            >> ${job_i}
@@ -1185,8 +1247,10 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo "   # use the CAM_ics_1 as the CAM ics for this time  "                       >> ${job_i}
    echo "   set ens = 1  "                                                            >> ${job_i}
    echo '   while ($ens <= '$num_ens" )  "                                            >> ${job_i}
-   echo "      cp ${CAM_ics_1}"'${ens}'".nc ${out_full}/CAM  "                        >> ${job_i}
-   echo "      cp ${CLM_ics_1}"'${ens}'".nc ${out_full}/CLM  "                        >> ${job_i}
+   echo "      cp ${CAM_ics_1}"'${ens}'".nc   ${out_full}/CAM "                       >> ${job_i}
+   echo "      cp ${CLM_ics_1}"'${ens}'".nc   ${out_full}/CLM "                       >> ${job_i}
+   echo "      cp ${ICE_ics_1}"'${ens}'".tar  ${out_full}/ICE "                       >> ${job_i}
+#   echo "      cp $ICE_ics_1:h/"'*-${ens}\.cice\.r\.volpn\.[0-9]*'" ${out_full}/ICE " >> ${job_i}
    echo "      @ ens++  "                                                             >> ${job_i}
    echo "   end  "                                                                    >> ${job_i}
    echo "endif  "                                                                     >> ${job_i}
@@ -1238,13 +1302,14 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
             echo 'echo "Backing up restart '${out_prev}' to mass store; "'              >> ${job_i}
             echo 'echo "    in separate batch job"  '                                   >> ${job_i}
          else
-            echo "${REMOVE} DART CAM CLM & "                                            >> ${job_i}   
+            echo "${REMOVE} DART CAM CLM ICE & "                                            >> ${job_i}   
             echo 'echo "job '$i'; Removing restart from '${out_prev} '" >> $MASTERLOG ' >> ${job_i}
             echo 'echo "Removing restart from '${out_prev} '"'                          >> ${job_i}
          endif
       else
          echo "NO ./auto_re2ms_LSF.csh FOUND or prev obs_seq = 0, so NO BACKUP OF ${out_prev} " >> ${MASTERLOG}
       endif
+#      endif
 
       echo "cd ../.. "                                                                      >> ${job_i}
    endif
@@ -1252,14 +1317,14 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
 
 # save a representative model advance 
    echo " " >> ${job_i}
-   echo "${MOVE} input.nml           ${out_full} "                           >> ${job_i}
-   echo "${MOVE} casemodel.$i        ${out_full} "                           >> ${job_i}
+   echo "${MOVE} input.nml                 ${out_full} "                     >> ${job_i}
+   echo "${MOVE} casemodel.$i              ${out_full} "                     >> ${job_i}
 # stdout   from filter.f90 
-   echo "${MOVE} run_filter.stout    ${out_full} "                           >> ${job_i}
-   echo "${MOVE} dart_log.out        ${out_full} "                           >> ${job_i}
-   echo "${MOVE} ${job_i}            ${out_full} "                           >> ${job_i}
-   echo "${MOVE} cam_out_temp1       ${out_full} "                           >> ${job_i}
-   echo "${MOVE} namelist            ${exp}"                                 >> ${job_i}
+   echo "${MOVE} run_filter.stout          ${out_full} "                     >> ${job_i}
+   echo "${MOVE} dart_log.out              ${out_full} "                     >> ${job_i}
+   echo "${MOVE} ${job_i}                  ${out_full} "                     >> ${job_i}
+   echo "${MOVE} cam_out_temp1             ${out_full} "                     >> ${job_i}
+   echo "${MOVE} namelist                  ${exp}"                           >> ${job_i}
    echo "${REMOVE} cam_out_temp* *_ud.* *_ic[0-9]* *_ic_old* "                >> ${job_i}
 # It's really stupid that this doesn't work on blueX, even with nonomatch
 #   echo "set nonomatch"                                                     >> ${job_i}
@@ -1333,7 +1398,8 @@ end # end of the huge "i" loop
 # and make a link to it using the old name, so that each of the $job_i scripts
 # can write their stout to the same file.
 ${MOVE} ${MASTERLOG} ${exp}/run_job_${obs_seq_1}-${obs_seq_n}.log   
-${LINK}              ${exp}/run_job_${obs_seq_1}-${obs_seq_n}.log run_job.log
+${LINK}              ${exp}/run_job_${obs_seq_1}-${obs_seq_n}.log $MASTERLOG
+
 
 # actual namelist used by CAM for most recent model advance
-${REMOVE} ~/lnd.*.rpointer
+if (obs_seq_1_depend == 'false' ) ${REMOVE} ~/lnd.*.rpointer
