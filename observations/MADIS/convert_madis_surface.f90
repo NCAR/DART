@@ -6,6 +6,9 @@
 !
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
 !
+!     modified to include QC_flag check (Soyoung Ha, NCAR/MMM, 08-04-2009)
+!
+!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 program convert_madis_surface
 
@@ -28,8 +31,12 @@ use           netcdf
 
 implicit none
 
+! COMPILE TIME OPTION:  by default this converter only processes hourly
+! observations.  if exclude_special is set to .false., then special obs
+! will be converted as well as the normal obs.  but this is not on by default.
 character(len=16),  parameter :: surface_netcdf_file = 'surface_input.nc'
 character(len=129), parameter :: surface_out_file    = 'obs_seq.land_sfc'
+logical,            parameter :: exclude_special     = .true.
 
 integer, parameter   :: dsecobs    = 420, &   ! observation window
                         num_copies = 1,   &   ! number of copies in sequence
@@ -38,6 +45,7 @@ integer, parameter   :: dsecobs    = 420, &   ! observation window
 character (len=129) :: meta_data
 character (len=80)  :: name
 character (len=19)  :: datestr
+character (len=5)   :: rtype
 integer :: rcode, ncid, varid, nobs, n, i, oday, osec, dday, &
            dsec, nused, iyear, imonth, iday, ihour, imin, isec
 logical :: file_exist
@@ -47,6 +55,7 @@ real(r8) :: alti_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
 integer,  allocatable :: tobs(:)
 real(r8), allocatable :: lat(:), lon(:), elev(:), alti(:), tair(:), & 
                          tdew(:), wdir(:), wspd(:), latu(:), lonu(:)
+integer,  allocatable :: qc_alti(:), qc_tair(:), qc_tdew(:), qc_wdir(:), qc_wspd(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs
@@ -77,6 +86,10 @@ allocate(elev(nobs))  ;  allocate(alti(nobs))
 allocate(tair(nobs))  ;  allocate(tdew(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
 allocate(tobs(nobs))
+
+allocate(qc_alti(nobs))
+allocate(qc_tair(nobs)) ;  allocate(qc_tdew(nobs))
+allocate(qc_wdir(nobs)) ;  allocate(qc_wspd(nobs))
 
 ! read the latitude array
 call check( nf90_inq_varid(ncid, "latitude", varid) )
@@ -119,7 +132,21 @@ call check( nf90_get_att(ncid, varid, '_FillValue', wspd_miss) )
 call check( nf90_inq_varid(ncid, "timeObs", varid) )
 call check( nf90_get_var(ncid, varid, tobs) )
 
-call check( nf90_close(ncid) )
+! read the QC check for each variable
+call check( nf90_inq_varid(ncid, "altimeterQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_alti) )
+
+call check( nf90_inq_varid(ncid, "temperatureQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_tair) )
+
+call check( nf90_inq_varid(ncid, "dewpointQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_tdew) )
+
+call check( nf90_inq_varid(ncid, "windDirQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_wdir) )
+
+call check( nf90_inq_varid(ncid, "windSpeedQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_wspd) )
 
 !  either read existing obs_seq or create a new one
 call static_init_obs_sequence()
@@ -153,6 +180,10 @@ obsloop: do n = 1, nobs
   if ( lon(n) < 0.0_r8 )  lon(n) = lon(n) + 360.0_r8
 
   ! check to make sure this observation has not been used
+  call check( nf90_inq_varid(ncid, "reportType", varid) )
+  call check( nf90_get_var(ncid, varid, rtype, start = (/ 1, n /)) )
+  if ( rtype /= 'METAR' .and. exclude_special )  cycle obsloop
+
   do i = 1, nused
     if ( lon(n) == lonu(i) .and. lat(n) == latu(i) ) cycle obsloop
   end do
@@ -160,7 +191,7 @@ obsloop: do n = 1, nobs
   palt = pres_alt_to_pres(elev(n)) * 0.01_r8
 
   ! add altimeter data to text file
-  if ( alti(n) /= alti_miss ) then
+  if ( alti(n) /= alti_miss .and. qc_alti(n) == 0 ) then
 
     pres = invert_altimeter(alti(n) * 0.01_r8, elev(n))
     oerr = land_pres_error(palt)
@@ -175,7 +206,7 @@ obsloop: do n = 1, nobs
   end if
 
   ! add wind component data to text file
-  if ( wdir(n) /= wdir_miss .and. wspd(n) /= wspd_miss ) then
+  if ( wdir(n) /= wdir_miss .and. wspd(n) /= wspd_miss .and. qc_wdir(n) == 0 .and. qc_wspd(n) == 0 ) then
 
     call wind_dirspd_to_uv(wdir(n), wspd(n), uwnd, vwnd)
     oerr = land_wind_error(palt)
@@ -193,7 +224,7 @@ obsloop: do n = 1, nobs
   end if
 
   ! add air temperature data to text file
-  if ( tair(n) /= tair_miss ) then 
+  if ( tair(n) /= tair_miss .and. qc_tair(n) == 0 ) then 
 
     oerr = land_temp_error(palt)
     if ( tair(n) >= 200.0_r8 .and. tair(n) <= 335.0_r8 .and. oerr /= missing_r8 ) then
@@ -209,6 +240,8 @@ obsloop: do n = 1, nobs
   ! add dew-point temperature data to text file, but as specific humidity
   if ( tair(n) /= tair_miss .and. tdew(n) /= tdew_miss .and. alti(n) /= alti_miss ) then
 
+   if ( qc_tair(n) == 0 .and. qc_tdew(n) == 0 .and. qc_alti(n) == 0 ) then
+
     qobs = specific_humidity(sat_vapor_pressure(tdew(n)), pres * 100.0_r8)
     qsat = specific_humidity(sat_vapor_pressure(tair(n)), pres * 100.0_r8)
     qerr = land_rel_hum_error(pres, tair(n), qobs / qsat)
@@ -222,6 +255,8 @@ obsloop: do n = 1, nobs
 
     end if
 
+   end if
+
   end if
 
   nused = nused + 1
@@ -231,6 +266,7 @@ obsloop: do n = 1, nobs
 end do obsloop
 
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, surface_out_file)
+call check( nf90_close(ncid) )
 
 stop
 end

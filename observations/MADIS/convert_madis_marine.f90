@@ -6,6 +6,9 @@
 !
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
 !
+!
+!     modified to include QC_flag check (Soyoung Ha, NCAR/MMM, 08-04-2009)
+!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 program convert_madis_marine
 
@@ -52,6 +55,7 @@ real(r8) :: sfcp_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
 integer,  allocatable :: tobs(:), plid(:)
 real(r8), allocatable :: lat(:), lon(:), elev(:), sfcp(:), tair(:), slp(:), & 
                          tdew(:), wdir(:), wspd(:), latu(:), lonu(:)
+integer,  allocatable :: qc_sfcp(:), qc_slp(:), qc_tair(:), qc_tdew(:), qc_wdir(:), qc_wspd(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs
@@ -83,6 +87,10 @@ allocate(sfcp(nobs))  ;  allocate(slp(nobs))
 allocate(tair(nobs))  ;  allocate(tdew(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
 allocate(tobs(nobs))
+
+allocate(qc_sfcp(nobs)) ;  allocate(qc_slp(nobs))
+allocate(qc_tair(nobs)) ;  allocate(qc_tdew(nobs))
+allocate(qc_wdir(nobs)) ;  allocate(qc_wspd(nobs))
 
 ! read the latitude array
 call check( nf90_inq_varid(ncid, "latitude", varid) )
@@ -135,6 +143,25 @@ call check( nf90_get_att(ncid, varid, '_FillValue', wspd_miss) )
 call check( nf90_inq_varid(ncid, "timeObs", varid) )
 call check( nf90_get_var(ncid, varid, tobs) )
 
+! read the QC check for each variable
+call check( nf90_inq_varid(ncid, "stationPressQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_sfcp) )
+
+call check( nf90_inq_varid(ncid, "seaLevelPressQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_slp) )
+
+call check( nf90_inq_varid(ncid, "temperatureQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_tair) )
+
+call check( nf90_inq_varid(ncid, "dewpointQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_tdew) )
+
+call check( nf90_inq_varid(ncid, "windDirQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_wdir) )
+
+call check( nf90_inq_varid(ncid, "windSpeedQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_wspd) )
+
 call check( nf90_close(ncid) )
 
 !  either read existing obs_seq or create a new one
@@ -183,7 +210,7 @@ obsloop: do n = 1, nobs
   end if
 
   ! add altimeter data to obs_seq
-  if ( sfcp(n) /= sfcp_miss .and. elev(n) /= elev_miss ) then
+  if ( sfcp(n) /= sfcp_miss .and. elev(n) /= elev_miss .and. qc_sfcp(n) == 0 ) then
 
     altim = compute_altimeter(sfcp(n) * 0.01_r8, elev(n))
     if ( plid(n) == 0 ) then
@@ -201,7 +228,7 @@ obsloop: do n = 1, nobs
     end if
 
   !  if surface pressure and elevation do not exist, use SLP.
-  else if ( slp(n) /= slp_miss ) then
+  else if ( slp(n) /= slp_miss .and. qc_slp(n) == 0 ) then
 
     altim = compute_altimeter(slp(n) * 0.01_r8, 0.0_r8)
     if ( plid(n) == 0 ) then
@@ -222,7 +249,7 @@ obsloop: do n = 1, nobs
   if ( elev(n) == elev_miss )  elev(n) = def_elev
 
   ! add wind component data to obs. sequence
-  if ( wdir(n) /= wdir_miss .and. wspd(n) /= wspd_miss ) then
+  if ( wdir(n) /= wdir_miss .and. wspd(n) /= wspd_miss .and. qc_wdir(n) == 0 .and. qc_wspd(n) == 0 ) then
 
     call wind_dirspd_to_uv(wdir(n), wspd(n), uwnd, vwnd)
     if ( plid(n) == 0 ) then
@@ -244,7 +271,7 @@ obsloop: do n = 1, nobs
   end if
 
   ! add air temperature data to obs. sequence
-  if ( tair(n) /= tair_miss ) then 
+  if ( tair(n) /= tair_miss .and. qc_tair(n) == 0 ) then 
 
     if ( plid(n) == 0 ) then
       oerr = fixed_marine_temp_error(palt)
@@ -264,6 +291,8 @@ obsloop: do n = 1, nobs
   ! add dew-point temperature data to obs. sequence, but as specific humidity
   if ( tair(n) /= tair_miss .and. tdew(n) /= tdew_miss .and. sfcp(n) /= sfcp_miss ) then
 
+   if ( qc_tair(n) == 0 .and. qc_tdew(n) == 0 .and. qc_sfcp(n) == 0 ) then
+
     qobs = specific_humidity(sat_vapor_pressure(tdew(n)), sfcp(n))
     qsat = specific_humidity(sat_vapor_pressure(tair(n)), sfcp(n))
     if ( plid(n) == 0 ) then
@@ -280,6 +309,8 @@ obsloop: do n = 1, nobs
       call append_obs_to_seq(obs_seq, obs)
 
     end if
+
+  end if
 
   end if
 
