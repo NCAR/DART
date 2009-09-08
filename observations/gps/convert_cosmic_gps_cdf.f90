@@ -15,7 +15,7 @@
 
 program convert_cosmic_gps_cdf
 
-use        types_mod, only : r8
+use        types_mod, only : r8, metadatalength
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
                              increment_time, get_time, set_date, operator(-),  &
                              print_date
@@ -50,7 +50,8 @@ character(len=128), parameter :: &
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
 
-character (len=129) :: meta_data, msgstring, next_infile
+character (len=metadatalength) :: meta_data
+character (len=129) :: msgstring, next_infile
 character (len=80)  :: name
 character (len=19)  :: datestr
 character (len=6)   :: subset
