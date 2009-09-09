@@ -5859,6 +5859,13 @@ default_table(:,row) = (/ 'MU           ', &
                           'UPDATE       ', &
                           '999          '  /)
 
+row = row+1
+default_table(:,row) = (/ 'QVAPOR                 ', &
+                          'KIND_VAPOR_MIXING_RATIO', &
+                          'TYPE_QV                ', &
+                          'UPDATE                 ', &
+                          '999                    '  /)
+
 return
 
 end subroutine fill_default_state_table
