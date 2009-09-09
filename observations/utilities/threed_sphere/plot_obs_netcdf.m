@@ -24,6 +24,10 @@ function obsstruct = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, .
 % $Revision$
 % $Date$
 
+if (exist(fname,'file') ~= 2)
+   error('%s does not exist.',fname)
+end
+
 % Read the observation sequence
 
 obsstruct = read_obs_netcdf(fname, ObsTypeString, region, ...
@@ -68,6 +72,26 @@ end
 %-------------------------------------------------------------------------------
 % Create graphic of spatial distribution of 'bad' observations & their QC value.
 %-------------------------------------------------------------------------------
+% 0     observation assimilated
+% 1     observation evaluated only
+%   --- everything above this means the prior and posterior are OK
+% 2     assimilated, but the posterior forward operator failed
+% 3     Evaluated only, but the posterior forward operator failed
+%   --- everything above this means only the prior is OK
+% 4     prior forward operator failed
+% 5     not used
+% 6     prior QC rejected
+% 7     outlier rejected
+
+dartqc_strings = { ...
+   '''observation evaluated only''', ...
+   '''assimilated, but the posterior forward operator failed''', ...
+   '''evaluated only, but the posterior forward operator failed''',...
+   '''prior forward operator failed''',...
+   '''not used''',...
+   '''prior QC rejected''',...
+   '''outlier rejected''',...
+   '''reserved for future use'''};
 
 if (obsstruct.numbadqc > 0 ) 
 
@@ -81,10 +105,12 @@ if (obsstruct.numbadqc > 0 )
    pstruct.scalearray = 128 * ones(size(obsstruct.badobs.obs));
    pstruct.colorbarstring = QCString;
    pstruct.clim = [min(obsstruct.badobs.qc) max(obsstruct.badobs.qc)];
+   pstruct.str1 = sprintf('%s level (%.2f - %.2f)',obsstruct.ObsTypeString,zmin,zmax);
    pstruct.str2 = sprintf('%s (%d bad observations)',  ...
                                     obsstruct.CopyString, ...
                              length(obsstruct.badobs.obs));
-  
+ 
+   obsstruct.badobs.obs = obsstruct.badobs.qc;  % plot QC values, not obs values
    if ( zmin ~= zmax )
 
       pstruct.axis = [xmin xmax ymin ymax zmin zmax];
@@ -106,7 +132,8 @@ if (obsstruct.numbadqc > 0 )
    qccount = zeros(size(qcvals));
    for i = 1:length(qcvals)
       qccount(i) = sum(obsstruct.badobs.qc == qcvals(i));
-      s{i} = sprintf('%d obs with qc == %d',qccount(i),qcvals(i));
+      s{i} = sprintf('%d obs with qc == %d %s',qccount(i),qcvals(i), ...
+             dartqc_strings{qcvals(i)});
    end
    
    dy = 1.0/length(s);

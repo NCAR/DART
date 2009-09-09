@@ -42,6 +42,10 @@ function obsstruct = read_obs_netcdf(fname, ObsTypeString, region, CopyString, .
 % $Revision$
 % $Date$
 
+if (exist(fname,'file') ~= 2)
+   error('%s does not exist.',fname)
+end
+
 % record the user input
 
 obsstruct.fname         = fname;
