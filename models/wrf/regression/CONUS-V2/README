@@ -46,6 +46,10 @@ Shell scripts that come with the DART/WRF distribution:
 
 runme_filter - shell script that starts the job
 advance_model.csh - shell script that advances the WRF model
+quickbuild.csh - shell script that builds all the executables.  run it with
+                 the single argument -nompi if you want to run it as a serial
+                 program, use -mpi (the default) to compile it to run as
+                 parallel mpi job.
 
 
 Files which are there to validate your results:
@@ -55,3 +59,18 @@ Prior_Diag.nc
 regression_plots.tar.gz
 
 
+Additional stuff to prepare to run:
+
+gen_ic_files.csh - 
+shell script that converts the set of wrfinput_d01 files to dart initial 
+condition/restart format files.  needs to be done once before the first run.
+
+obs_sequence_tool -
+You will need to run the obs_sequence_tool to combine 2 of the obs_sequence 
+files into a single larger file.   The input.nml namelist file already has 
+the right settings, just run ./obs_sequence_tool to do the merge.
+
+restart_file_tool -
+You will need to run this once to set the timestamps on the dart restart files
+to match the observation files in this directory.  The input.nml namelist file 
+already has the correct settings, just run ./restart_file_tool to do the update.

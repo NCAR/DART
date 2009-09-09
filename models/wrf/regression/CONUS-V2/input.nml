@@ -1,12 +1,12 @@
 &filter_nml
    async                    =  2,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 =  50,
+   ens_size                 =  32,
    start_from_restart       = .true.,
    output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.processed",
+   obs_sequence_in_name     = "obs_seq.filter_input",
    obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ic_old",
+   restart_in_file_name     = "filter_ic_up",
    restart_out_file_name    = "filter_ic_new", 
    init_time_days           = -1,
    init_time_seconds        = -1,
@@ -23,6 +23,7 @@
    output_forward_op_errors = .false.,
    output_timestamps        = .false.,
    output_inflation         = .true.,
+   trace_execution          = .true.,
 
    inf_flavor                  = 2,                      0,
    inf_initial_from_restart    = .false.,                .false.,
@@ -66,42 +67,6 @@
 &assim_model_nml
    write_binary_restart_files = .true.  /
 
-&location_nml
-   horiz_dist_only = .false.,
-   vert_normalization_pressure = 187500.0
-   vert_normalization_height = 5000000.0,
-   vert_normalization_level = 2666.7,
-   approximate_distance = .false.,
-   nlon = 141,
-   nlat = 72  /
-
-# Notes for model_nml:
-# (1) vert_localization_coord must be one of:
-#     1 = model level
-#     2 = pressure
-#     3 = height
-
-&model_nml
-   output_state_vector = .false.,
-   num_moist_vars = 3,
-   num_domains = 1,
-   calendar_type = 3,
-   surf_obs = .true.,
-   soil_data = .false.,
-   h_diab = .false.,
-   assimilation_period_seconds = 21600,
-   adv_mod_command = "./wrf.exe",
-   vert_localization_coord = 2,
-   center_search_half_length = 400000.0,
-   center_spline_grid_scale = 10  /
-
-#  adv_mod_command = "mpirun.lsf -np 4 wrf.exe",
-
-&utilities_nml
-   TERMLEVEL = 1,
-   logfilename = 'dart_log.out',
-   module_details = .false.  /
-
 &reg_factor_nml
    select_regression = 1,
    input_reg_file = "time_mean_reg",
@@ -126,22 +91,12 @@
                               '../../../obs_def/obs_def_QuikSCAT_mod.f90',
                               '../../../obs_def/obs_def_vortex_mod.f90'  /
 
-#   assimilate_these_obs_types = 'LAND_SFC_PRESSURE'
-
 &obs_kind_nml
-   assimilate_these_obs_types   = 'RADIOSONDE_TEMPERATURE',
+   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
                                 'RADIOSONDE_U_WIND_COMPONENT',
                                 'RADIOSONDE_V_WIND_COMPONENT',
-                                'RADIOSONDE_SURFACE_ALTIMETER',
-                                'RADIOSONDE_SPECIFIC_HUMIDITY',
-                                'LAND_SFC_U_WIND_COMPONENT',
-                                'LAND_SFC_V_WIND_COMPONENT',
-                                'LAND_SFC_TEMPERATURE',
-                                'LAND_SFC_SPECIFIC_HUMIDITY',
-                                'MARINE_SFC_U_WIND_COMPONENT',
-                                'MARINE_SFC_V_WIND_COMPONENT',
-                                'MARINE_SFC_TEMPERATURE',
-                                'MARINE_SFC_SPECIFIC_HUMIDITY' /
+   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE'  /
+
 
 # Notes for obs_def_radar_mod_nml:
 # (1) Reflectivity limit can be applied both to observations or state (forward operator).
@@ -189,28 +144,28 @@
    print_obs_locations = .false.,
    verbose = .false.  /
 
-&restart_file_utility_nml
-   input_file_name              = "restart_file_input",
-   output_file_name             = "restart_file_output",
-   ens_size                     = 1,
-   single_restart_file_in       = .true.,
-   single_restart_file_out      = .true.,
-   write_binary_restart_files   = .true.,
-   overwrite_data_time          = .false.,
-   new_data_days                = -1,
-   new_data_secs                = -1,
+&restart_file_tool_nml
+   input_file_name              = "filter_ic_old",
+   output_file_name             = "filter_ic_up",
+   ens_size                     = 50,
+   single_restart_file_in       = .false.,
+   single_restart_file_out      = .false.,
+   write_binary_restart_files   = .false.,
+   overwrite_data_time          = .true.,
+   new_data_days                = 148403,
+   new_data_secs                = 21600,
    input_is_model_advance_file  = .false.,
-   output_is_model_advance_file = .true.,
-   overwrite_advance_time       = .true.,
-   new_advance_days             = _RESTART_DAYS_,
-   new_advance_secs             = _RESTART_SECONDS_
+   output_is_model_advance_file = .false.,
+   overwrite_advance_time       = .false.,
+   new_advance_days             = -1,
+   new_advance_secs             = -1,
 /
 
 
 &obs_sequence_tool_nml
    num_input_files    = 2,
    filename_seq       = 'obs_seq2007042606','obs_seq2007042612',
-   filename_out       = 'obs_seq.processed',
+   filename_out       = 'obs_seq.filter_input',
    print_only         =  .false.,
    first_obs_days     = -1,
    first_obs_seconds  = -1,
@@ -249,21 +204,6 @@
 !   keep_types         = .false.,
 !
 
-&obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
-
-&obs_kind_nml
-   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
-                                'RADIOSONDE_U_WIND_COMPONENT',
-                                'RADIOSONDE_V_WIND_COMPONENT',
-   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE'  /
-
-&cov_cutoff_nml
-   select_localization = 1  /
-
-&assim_model_nml
-   write_binary_restart_files = .true.  /
-
 # Notes for model_nml:
 # (1) vert_localization_coord must be one of:
 #     1 = model level
@@ -272,14 +212,27 @@
 # (2) see below for explanations of polar, periodic_x,
 #     periodic_y, and scm
 
+#  adv_mod_command = "mpirun.lsf -np 4 wrf.exe",
+
 &model_nml
+   default_state_variables = .false.,
+   wrf_state_variables  = 'U', 'KIND_U_WIND_COMPONENT',     'TYPE_U', 'UPDATE','999',
+                          'V', 'KIND_V_WIND_COMPONENT',     'TYPE_V', 'UPDATE','999',
+                          'W', 'KIND_VERTICAL_VELOCITY',    'TYPE_W', 'UPDATE','999',
+                          'PH','KIND_GEOPOTENTIAL_HEIGHT',  'TYPE_GZ','UPDATE','999',
+                          'T', 'KIND_POTENTIAL_TEMPERATURE','TYPE_T', 'UPDATE','999',
+                          'MU','KIND_PRESSURE',             'TYPE_MU','UPDATE','999',
+                          'PSFC','KIND_PRESSURE',           'TYPE_PS','UPDATE','999',
+                          'QVAPOR','KIND_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',
+   wrf_state_bounds    = 'QVAPOR','0.0','NULL','CLAMP',
+                         'QRAIN','0.0','NULL','CLAMP',
+                         'QCLOUD','0.0','NULL','CLAMP',
+                         'QGRAUPEL','0.0','NULL','CLAMP',
+                         'QSNOW','0.0','NULL','CLAMP',
+
    output_state_vector         = .false.,
-   num_moist_vars              = 3,
    num_domains                 = 1,
    calendar_type               = 3,
-   surf_obs                    = .true.,
-   soil_data                   = .true.,
-   h_diab                      = .false.,
    assimilation_period_seconds = 21600,
    adv_mod_command             = './wrf.exe',
    allow_obs_below_vol         = .false.,
@@ -318,6 +271,6 @@
    TERMLEVEL = 1,
    logfilename = 'dart_log.out',
    nmlfilename = 'dart_log.nml',
-   module_details = .true.
+   module_details = .false.
 /
 
