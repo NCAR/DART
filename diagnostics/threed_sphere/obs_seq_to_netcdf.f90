@@ -113,6 +113,8 @@ integer :: allNcopies
 character(len=stringlength), dimension(Ncopies) :: copy_names = &
    (/ 'observation error variance' /)
 
+character(len=stringlength), allocatable, dimension(:) :: module_obs_copy_names
+character(len=stringlength), allocatable, dimension(:) :: module_qc_copy_names
 character(len=stringlength), allocatable, dimension(:) :: obs_copy_names, qc_copy_names
 character(len=stringlength), pointer,     dimension(:) :: my_obs_kind_names
 
@@ -283,18 +285,63 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
    call read_obs_seq(obs_seq_in_file_name, 0, 0, 0, seq)
 
-   if ( ifile == 1 ) then
-      do i=1, num_copies
+   do i=1, num_copies
          msgstring = trim(get_copy_meta_data(seq,i))//'                          '
          obs_copy_names(i) = msgstring(1:stringlength)
+   enddo
+   do i=1, Ncopies
+         obs_copy_names(num_copies+i) = trim(copy_names(i))
+   enddo
+   do i=1, num_qc
+         msgstring = trim(get_qc_meta_data(seq,i))//'                          '
+         qc_copy_names(i) = msgstring(1:stringlength)
+   enddo
+
+   if ( ifile == 1 ) then ! record the metadata for comparison
+
+      allocate(module_obs_copy_names(allNcopies), &
+                module_qc_copy_names(num_qc) )
+
+      do i=1, num_copies
+         msgstring = trim(get_copy_meta_data(seq,i))//'                          '
+         module_obs_copy_names(i) = msgstring(1:stringlength)
       enddo
       do i=1, Ncopies
-         obs_copy_names(num_copies+i) = trim(copy_names(i))
+         module_obs_copy_names(num_copies+i) = trim(copy_names(i))
       enddo
       do i=1, num_qc
          msgstring = trim(get_qc_meta_data(seq,i))//'                          '
-         qc_copy_names(i) = msgstring(1:stringlength)
+         module_qc_copy_names(i) = msgstring(1:stringlength)
       enddo
+
+   else ! Compare all subsequent files' metadata to the first one
+
+      do i = 1,allNcopies
+         if (trim(obs_copy_names(i)) /= trim(module_obs_copy_names(i))) then
+            write(msgstring,'(''obs copy '',i3,'' from '',a)') i,trim(obs_seq_in_file_name)
+            call error_handler(E_MSG,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
+            msgstring = 'does not match the same observation copy from the first file.'
+            call error_handler(E_MSG,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
+            write(msgstring,'(''obs copy '',a)') trim(obs_copy_names(i))
+            call error_handler(E_MSG,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
+            write(msgstring,'(''expected '',a)') trim(module_obs_copy_names(i))
+            call error_handler(E_ERR,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
+         endif
+      enddo
+
+      do i = 1,num_qc
+         if (trim(qc_copy_names(i)) /= trim(module_qc_copy_names(i))) then
+            write(msgstring,'(''qc copy '',i3,'' from '',a)') i,trim(obs_seq_in_file_name)
+            call error_handler(E_MSG,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
+            msgstring = 'does not match the same qc copy from the first file.'
+            call error_handler(E_MSG,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
+            write(msgstring,'(''qc  copy '',a)') trim(qc_copy_names(i))
+            call error_handler(E_MSG,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
+            write(msgstring,'(''expected '',a)') trim(module_qc_copy_names(i))
+            call error_handler(E_ERR,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
+         endif
+      enddo
+
    endif
 
    !--------------------------------------------------------------------
@@ -526,6 +573,9 @@ call destroy_obs_sequence(seq)
 
 if (allocated(qc)) deallocate( qc, U_qc, copyvals, U_copyvals,  &
                         obs_copy_names, qc_copy_names, obscopies )
+
+if (allocated(module_obs_copy_names)) &
+   deallocate(module_obs_copy_names, module_qc_copy_names)
 
 deallocate(obs_seq_filenames, my_obs_kind_names )
 
@@ -827,7 +877,7 @@ call nc_check(nf90_enddef(ncid), 'InitNetCDF', 'enddef '//trim(fname))
 
 call file_to_text('input.nml', textblock)
 
-call nc_check(nf90_inq_varid(ncid, 'namelist', VarID), &
+call nc_check(nf90_inq_varid(ncid, 'namelist', varid=VarID), &
            'InitNetCDF', 'inq_varid:namelist '//trim(fname))
 
 call nc_check(nf90_put_var(ncid, VarID, textblock ), &
@@ -835,34 +885,34 @@ call nc_check(nf90_put_var(ncid, VarID, textblock ), &
 
 deallocate(textblock)
 
-call nc_check(nf90_inq_varid(ncid, 'copy', VarID), &
+call nc_check(nf90_inq_varid(ncid, 'copy', varid=VarID), &
            'InitNetCDF', 'inq_varid:copy '//trim(fname))
 call nc_check(nf90_put_var(ncid, VarId, (/ (i,i=1,allNcopies) /) ), &
            'InitNetCDF', 'put_var:copy')
 
-call nc_check(nf90_inq_varid(ncid, 'CopyMetaData', VarID), &
+call nc_check(nf90_inq_varid(ncid, 'CopyMetaData', varid=VarID), &
            'InitNetCDF', 'inq_varid:CopyMetaData '//trim(fname))
-call nc_check(nf90_put_var(ncid, VarID, obs_copy_names), &
+call nc_check(nf90_put_var(ncid, VarID, module_obs_copy_names), &
            'InitNetCDF', 'put_var:CopyMetaData')
 
-call nc_check(nf90_inq_varid(ncid, 'ObsTypes', VarID), &
+call nc_check(nf90_inq_varid(ncid, 'ObsTypes', varid=VarID), &
            'InitNetCDF', 'inq_varid:ObsTypes '//trim(fname))
 call nc_check(nf90_put_var(ncid, VarId, (/ (i,i=1,num_obs_kinds) /) ), &
            'InitNetCDF', 'put_var:ObsTypes')
 
-call nc_check(nf90_inq_varid(ncid, 'ObsTypesMetaData', VarID), &
+call nc_check(nf90_inq_varid(ncid, 'ObsTypesMetaData', varid=VarID), &
            'InitNetCDF', 'inq_varid:ObsTypesmetaData '//trim(fname))
 call nc_check(nf90_put_var(ncid, VarID, my_obs_kind_names(1:num_obs_kinds)), &
            'InitNetCDF', 'put_var:ObsTypesMetaData')
 
-call nc_check(nf90_inq_varid(ncid, 'qc_copy', VarID), &
+call nc_check(nf90_inq_varid(ncid, 'qc_copy', varid=VarID), &
            'InitNetCDF', 'inq_varid:qc_copy '//trim(fname))
 call nc_check(nf90_put_var(ncid, VarId, (/ (i,i=1,num_qc) /) ), &
            'InitNetCDF', 'put_var:qc_copy')
 
-call nc_check(nf90_inq_varid(ncid, 'QCMetaData', VarID), &
+call nc_check(nf90_inq_varid(ncid, 'QCMetaData', varid=VarID), &
            'InitNetCDF', 'inq_varid:QCMetaData '//trim(fname))
-call nc_check(nf90_put_var(ncid, VarID, qc_copy_names), &
+call nc_check(nf90_put_var(ncid, VarID, module_qc_copy_names), &
            'InitNetCDF', 'put_var:QCMetaData')
 
 !----------------------------------------------------------------------------
@@ -921,25 +971,25 @@ icount(1) = ngood
 
 if (DEBUG) write(*,*)'DEBUG --- WriteNetCDF istart/icount ',istart(1), icount(1)
 
-call nc_check(nf90_inq_varid(ncid, 'ObsIndex', ObsIndexVarID), &
+call nc_check(nf90_inq_varid(ncid, 'ObsIndex', varid=ObsIndexVarID), &
           'WriteNetCDF', 'inq_varid:ObsIndex '//trim(fname))
 
-call nc_check(nf90_inq_varid(ncid, 'time', TimeVarID), &
+call nc_check(nf90_inq_varid(ncid, 'time', varid=TimeVarID), &
           'WriteNetCDF', 'inq_varid:time '//trim(fname))
 
-call nc_check(nf90_inq_varid(ncid, 'obs_type', ObsTypeVarID), &
+call nc_check(nf90_inq_varid(ncid, 'obs_type', varid=ObsTypeVarID), &
           'WriteNetCDF', 'inq_varid:obs_type '//trim(fname))
 
-call nc_check(nf90_inq_varid(ncid, 'which_vert', WhichVertVarID), &
+call nc_check(nf90_inq_varid(ncid, 'which_vert', varid=WhichVertVarID), &
           'WriteNetCDF', 'inq_varid:which_vert '//trim(fname))
 
-call nc_check(nf90_inq_varid(ncid, 'location', LocationVarID), &
+call nc_check(nf90_inq_varid(ncid, 'location', varid=LocationVarID), &
           'WriteNetCDF', 'inq_varid:location '//trim(fname))
 
-call nc_check(nf90_inq_varid(ncid, 'observations', ObsVarID), &
+call nc_check(nf90_inq_varid(ncid, 'observations', varid=ObsVarID), &
           'WriteNetCDF', 'inq_varid:observations '//trim(fname))
 
-call nc_check(nf90_inq_varid(ncid, 'qc', QCVarID), &
+call nc_check(nf90_inq_varid(ncid, 'qc', varid=QCVarID), &
           'WriteNetCDF', 'inq_varid:qc '//trim(fname))
 
 WriteObs : do iobs = 1,ngood
@@ -1126,7 +1176,7 @@ endif
 
 ! must check shape and actual values of copy metadata
 
-call nc_check(nf90_inq_varid(ncid, 'CopyMetaData', VarID), &
+call nc_check(nf90_inq_varid(ncid, 'CopyMetaData', varid=VarID), &
         'NC_Compatibility_Check', 'inq_varid CopyMetaData '//trim(fname))
 
 call nc_check(nf90_inquire_variable(ncid, VarID, dimids=dimIDs), &
@@ -1149,19 +1199,19 @@ if ( dimlen /= allNcopies ) then
 endif
 
 do i = 1,allNcopies
-   call nc_check(nf90_get_var(ncid, VarID, dimname, &
+   call nc_check(nf90_get_var(ncid, VarID, values=dimname, &
                     start = (/ 1, i /), count = (/ stringlength, 1 /)), &
         'NC_Compatibility_Check', 'get_var CopyMetaData '//trim(fname))
 
-   if ( trim(dimname) /= trim(obs_copy_names(i)) ) then
-      write(msgstring,*)'copymetadata ',i,trim(dimname),' /= ',trim(obs_copy_names(i))
+   if ( trim(dimname) /= trim(module_obs_copy_names(i)) ) then
+      write(msgstring,*)'copymetadata(',i,') ',trim(dimname),' /= ',trim(module_obs_copy_names(i))
       call error_handler(E_ERR,'NC_Compatibility_Check',msgstring,source,revision,revdate)
    endif
 enddo
 
 ! must check shape and actual values of QC metadata
 
-call nc_check(nf90_inq_varid(ncid, 'QCMetaData', VarID), &
+call nc_check(nf90_inq_varid(ncid, 'QCMetaData', varid=VarID), &
         'NC_Compatibility_Check', 'inq_varid QCMetaData '//trim(fname))
 
 call nc_check(nf90_inquire_variable(ncid, VarID, dimids=dimIDs), &
@@ -1188,15 +1238,15 @@ do i = 1,num_qc
                     start = (/ 1, i /), count = (/ stringlength, 1 /)), &
         'NC_Compatibility_Check', 'get_var QCMetaData '//trim(fname))
 
-   if ( trim(dimname) /= trim(qc_copy_names(i)) ) then
-      write(msgstring,*)'QCMetaData ',i,trim(dimname),' /= ',trim(qc_copy_names(i))
+   if ( trim(dimname) /= trim(module_qc_copy_names(i)) ) then
+      write(msgstring,*)'QCMetaData ',i,trim(dimname),' /= ',trim(module_qc_copy_names(i))
       call error_handler(E_ERR,'NC_Compatibility_Check',msgstring,source,revision,revdate)
    endif
 enddo
 
 ! must check shape and actual values of observation types
 
-call nc_check(nf90_inq_varid(ncid, 'ObsTypesMetaData', VarID), &
+call nc_check(nf90_inq_varid(ncid, 'ObsTypesMetaData', varid=VarID), &
         'NC_Compatibility_Check', 'inq_varid ObsTypesMetaData '//trim(fname))
 
 call nc_check(nf90_inquire_variable(ncid, VarID, dimids=dimIDs), &
