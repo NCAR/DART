@@ -32,9 +32,10 @@ use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COM
                              KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT
 use mpi_utilities_mod, only: my_task_id
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
-use      dart_pop_mod, only: get_pop_calendar, set_model_time_step, &
+use      dart_pop_mod, only: set_model_time_step, &
                              get_horiz_grid_dims, get_vert_grid_dim, &
-                             read_horiz_grid, read_topography, read_vert_grid
+                             read_horiz_grid, read_topography, read_vert_grid, &
+                             get_pop_restart_filename
 
 use typesizes
 use netcdf 
@@ -65,7 +66,7 @@ public :: get_model_size,         &
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
 public :: POP_meta_type, get_gridsize, set_model_end_time, &
-          restart_file_to_sv, sv_to_restart_file
+          restart_file_to_sv, sv_to_restart_file, get_pop_restart_filename
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -2958,6 +2959,8 @@ subroutine get_gridsize(num_x, num_y, num_z)
 !------------------------------------------------------------------
 ! public utility routine.
 
+if ( .not. module_initialized ) call static_init_model
+
  num_x = Nx
  num_y = Ny
  num_z = Nz
@@ -2976,6 +2979,8 @@ logical              :: is_not_ocean
 
 logical :: is_ugrid
 
+if ( .not. module_initialized ) call static_init_model
+
 is_ugrid = is_on_ugrid(obs_type)
 if ((      is_ugrid .and. hgt_index > KMU(lon_index, lat_index)) .or. &
     (.not. is_ugrid .and. hgt_index > KMT(lon_index, lat_index))) then
@@ -2991,6 +2996,8 @@ end function
 !  returns true if U, V -- everything else is on T grid
 integer, intent(in) :: obs_type
 logical             :: is_on_ugrid
+
+if ( .not. module_initialized ) call static_init_model
 
 is_on_ugrid = .FALSE.
 
@@ -3011,6 +3018,8 @@ end function
  integer :: ZGvarid, ZCvarid, KMTvarid, KMUvarid
 
  integer :: dimids(2);
+
+ if ( .not. module_initialized ) call static_init_model
 
  nlon = size(ULAT,1)
  nlat = size(ULAT,2)

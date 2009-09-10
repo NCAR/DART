@@ -30,7 +30,7 @@ private
 public :: get_pop_calendar, set_model_time_step, &
           get_horiz_grid_dims, get_vert_grid_dim, &
           read_horiz_grid, read_topography, read_vert_grid, &
-          write_pop_namelist
+          write_pop_namelist, get_pop_restart_filename
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -41,7 +41,8 @@ character(len=128), parameter :: &
 character(len=256) :: msgstring
 logical, save :: module_initialized = .false.
 
-character(len=256) :: ic_filename, restart_filename 
+character(len=256) :: ic_filename      = 'pop.r.nc'
+!character(len=256) :: restart_filename = 'dart_pop_mod_restart_filename_not_set'
 
 ! set this to true if you want to print out the current time
 ! after each N observations are processed, for benchmarking.
@@ -191,25 +192,25 @@ read(iunit, nml = init_ts_nml, iostat = io)
 call check_namelist_read(iunit, io, 'init_ts_nml')
 
 ! Is it a pointer file or not ...
-if ( luse_pointer_files ) then
-
-   restart_filename = trim(pointer_filename)//'.restart'
-
-   if ( .not. file_exist(restart_filename) ) then
-      msgstring = 'pop_in:pointer file '//trim(restart_filename)//' not found'
-      call error_handler(E_ERR,'initialize_module', &
-             msgstring, source, revision, revdate)
-   endif
-
-   iunit = open_file(restart_filename,'formatted')
-   read(iunit,'(A)')ic_filename
-
-   restart_filename = ' '  
-   write(*,*)'DEBUG ... pointer filename dereferenced to ',trim(ic_filename )
-
-else
-   ic_filename = trim(init_ts_file)//'.'//trim(init_ts_file_fmt)
-endif
+!if ( luse_pointer_files ) then
+!
+!   restart_filename = trim(pointer_filename)//'.restart'
+!
+!   if ( .not. file_exist(restart_filename) ) then
+!      msgstring = 'pop_in:pointer file '//trim(restart_filename)//' not found'
+!      call error_handler(E_ERR,'initialize_module', &
+!             msgstring, source, revision, revdate)
+!   endif
+!
+!   iunit = open_file(restart_filename,'formatted')
+!   read(iunit,'(A)')ic_filename
+!
+!   restart_filename = ' '  
+!   write(*,*)'DEBUG ... pointer filename dereferenced to ',trim(ic_filename )
+!
+!else
+!   ic_filename = trim(init_ts_file)//'.'//trim(init_ts_file_fmt)
+!endif
 
 ! Make sure we have a pop restart file (for grid dims)
 if ( .not. file_exist(ic_filename) ) then
@@ -666,6 +667,18 @@ enddo
 
 end subroutine read_vert_grid
 
+
+!------------------------------------------------------------------
+
+
+subroutine get_pop_restart_filename( filename )
+character(len=*), intent(OUT) :: filename
+
+if ( .not. module_initialized ) call initialize_module
+
+filename   = trim(ic_filename)
+
+end subroutine get_pop_restart_filename
 
 
 end module dart_pop_mod

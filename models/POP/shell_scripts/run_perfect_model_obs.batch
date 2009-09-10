@@ -127,44 +127,43 @@ echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 #-----------------------------------------------------------------------------
 
 set DARTDIR = /fs/image/home/${user}/SVN/DART/models/POP
-set  POPDIR = /fs/image/home/${user}/SVN/DART/models/POP/input
+set  POPDIR = /ptmp/${user}/POP/osse
+set POPFILE = `head -1 ${POPDIR}/rpointer.ocn.20.restart`
 
 #-----------------------------------------------------------------------------
 # Get the DART executables, scripts, and input files
 #-----------------------------------------------------------------------------
 
 # executables
-${COPY} ${DARTDIR}/work/perfect_model_obs          .
-${COPY} ${DARTDIR}/work/dart_to_pop                .
-${COPY} ${DARTDIR}/work/pop_to_dart                .
+ ${COPY} ${DARTDIR}/work/perfect_model_obs          .
+ ${COPY} ${DARTDIR}/work/dart_to_pop                .
+ ${COPY} ${DARTDIR}/work/pop_to_dart                .
 
 # shell scripts
-${COPY} ${DARTDIR}/shell_scripts/advance_model.csh .
+ ${COPY} ${DARTDIR}/shell_scripts/advance_model.csh .
 
 # data files
-${COPY} ${DARTDIR}/work/obs_seq.in                 .
-${COPY} ${DARTDIR}/work/dart.ics                   perfect_ics
-${COPY} ${DARTDIR}/work/input.nml                  .
+ ${COPY} ${DARTDIR}/work/obs_seq.in                 .
+ ${COPY} ${DARTDIR}/work/input.nml                  .
 
 #-----------------------------------------------------------------------------
-# Get the POP executable, control files, and  data files.
+# Get the POP executable, control files, and data files.
 # trying to use the CCSM naming conventions
 #-----------------------------------------------------------------------------
 
-${COPY} ${POPDIR}/pop                       .
-${COPY} ${POPDIR}/pop_in.part1              .
-${COPY} ${POPDIR}/pop_in.part2              .
-${COPY} ${POPDIR}/pop.r.nc                  .
-echo "pop.r.nc" >! pop_pointer.restart
+ ${COPY} ${POPDIR}/pop                       .
+ ${COPY} ${POPDIR}/pop_in.part1              .
+ ${COPY} ${POPDIR}/pop_in.part2              .
+ ${COPY} ${POPDIR}/${POPFILE}                pop.r.nc
 
-${COPY} ${POPDIR}/gx3v5_tavg_contents       .
-${COPY} ${POPDIR}/gx3v5_movie_contents      .
-${COPY} ${POPDIR}/gx3v5_history_contents    .
-${COPY} ${POPDIR}/gx3v5_transport_contents  .
+ ${COPY} ${POPDIR}/gx3v5_tavg_contents       .
+ ${COPY} ${POPDIR}/gx3v5_movie_contents      .
+ ${COPY} ${POPDIR}/gx3v5_history_contents    .
+ ${COPY} ${POPDIR}/gx3v5_transport_contents  .
 
-${COPY} ${POPDIR}/vert_grid.gx3v5              .
-${COPY} ${POPDIR}/horiz_grid.gx3v5.r8ieee.le   .
-${COPY} ${POPDIR}/topography.gx3v5.r8ieee.le   .
+ ${COPY} ${POPDIR}/vert_grid.gx3v5              .
+ ${COPY} ${POPDIR}/horiz_grid.gx3v5.r8ieee.le   .
+ ${COPY} ${POPDIR}/topography.gx3v5.r8ieee.le   .
 
 #${COPY} ${POPDIR}/chl_mm_SeaWiFs97-01_20031205.ieeer8   .
 #${COPY} ${POPDIR}/sfwf_20040517.ieeer8                  .
@@ -174,14 +173,22 @@ ${COPY} ${POPDIR}/topography.gx3v5.r8ieee.le   .
 
 #-----------------------------------------------------------------------------
 # Check that everything moved OK, and the table is set.
-# Gives us a chance to edit the local input.nml, data.cal, etc. if needed.
-#-----------------------------------------------------------------------------
-
-#-----------------------------------------------------------------------------
-# Run perfect_model_obs ... harvest the observations to populate obs_seq.out
+# Convert the POP restart file to a DART ics file.
 #-----------------------------------------------------------------------------
 
 cat pop_in.part1 pop_in.part2 >! pop_in
+
+./pop_to_dart
+
+${MOVE} dart.ud perfect_ics
+
+#-----------------------------------------------------------------------------
+# Run perfect_model_obs ... harvest the observations to populate obs_seq.out
+# This is the 'CENTRALDIR' ... advance_model.csh will expect some things.
+#-----------------------------------------------------------------------------
+
+echo "pop.r.nc"       >! rpointer.ocn.1.restart
+echo "RESTART_FMT=nc" >> rpointer.ocn.1.restart
 
 ./perfect_model_obs
 

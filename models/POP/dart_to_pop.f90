@@ -32,7 +32,7 @@ use time_manager_mod, only : time_type, get_time, print_time, print_date, &
                              operator(-), set_time
 use        model_mod, only : static_init_model, sv_to_restart_file, &
                              get_model_size, get_model_time_step, &
-                             set_model_end_time
+                             set_model_end_time, get_pop_restart_filename
 use     dart_pop_mod, only : write_pop_namelist
 
 implicit none
@@ -47,12 +47,10 @@ character(len=128), parameter :: &
 ! The namelist variables
 !------------------------------------------------------------------
 
-character (len = 128) :: dart_to_pop_input_file   = 'filter_ics'
-character (len = 128) :: dart_to_pop_restart_file = 'my_pop_restart_file'
+character (len = 128) :: dart_to_pop_input_file   = 'dart.ic'
 logical               :: advance_time_present     = .TRUE.
 
-namelist /dart_to_pop_nml/ dart_to_pop_input_file, dart_to_pop_restart_file, &
-                           advance_time_present
+namelist /dart_to_pop_nml/ dart_to_pop_input_file, advance_time_present
 
 !----------------------------------------------------------------------
 
@@ -60,6 +58,7 @@ integer               :: iunit, io, x_size
 integer               :: secs, days
 type(time_type)       :: model_time, adv_to_time
 real(r8), allocatable :: statevector(:)
+character (len = 128) :: pop_restart_filename = 'no_pop_restart_file'
 
 !----------------------------------------------------------------------
 
@@ -73,11 +72,13 @@ call static_init_model()
 x_size = get_model_size()
 allocate(statevector(x_size))
 
-! Read the namelist to get the input and output filenames. 
+! Read the namelist to get the input filename. 
 
 call find_namelist_in_file("input.nml", "dart_to_pop_nml", iunit)
 read(iunit, nml = dart_to_pop_nml, iostat = io)
 call check_namelist_read(iunit, io, "dart_to_pop_nml")
+
+call get_pop_restart_filename( pop_restart_filename )
 
 !----------------------------------------------------------------------
 ! Reads the valid time, the state, and the target time.
@@ -98,7 +99,7 @@ call close_restart(iunit)
 ! time_manager_nml: stop_option, stop_count increments
 !----------------------------------------------------------------------
 
-call sv_to_restart_file(statevector, dart_to_pop_restart_file, model_time)
+call sv_to_restart_file(statevector, pop_restart_filename, model_time)
 
 if ( advance_time_present ) then
    call write_pop_namelist(model_time, adv_to_time)
