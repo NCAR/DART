@@ -180,8 +180,8 @@ ls -lt
 # job_mpi.csh has calculated num_procs to make nprocs be correct,
 # and the helpful condition is satisfied in the namelist below.
 set length_casemodel = `wc -l ${CENTRALDIR}/casemodel`
-if ($length_casemodel[1] == 8) then
-   set list = `head -8 ${CENTRALDIR}/casemodel | tail -1`
+if ($length_casemodel[1] == 9) then
+   set list = `head -9 ${CENTRALDIR}/casemodel | tail -1`
    set num_procs  = $list[1]
    set lev_blocks = $list[2]
    set lat_blocks = $list[3]
@@ -204,16 +204,26 @@ if ($cam_version == 'single-namelist') then
 else if ($cam_version == 'multi-namelist') then
    # This builds all the *_in namelists CAM3.5 needs
 
-   $cfgdir/build-namelist -v $verbosity \
-     -case     ${camroot:t}-$case \
-     -runtype  startup \
-     $dir_arg  $wrkdir \
-     -infile   $CENTRALDIR/namelistin \
-     -cice_nl "$cice_nl" \
-     -namelist "$namelist_string" \
-     || echo   "build-namelist failed" && exit 1
-     # For advance_model to copy back to CENTRALDIR for archiving; won't be used here.
-     cat *_in >! namelist
+   if ($cice_nl == '') then
+      $cfgdir/build-namelist -v $verbosity \
+        -case     ${camroot:t}-$case \
+        -runtype  startup \
+        $dir_arg  $wrkdir \
+        -infile   $CENTRALDIR/namelistin \
+        -namelist "$namelist_string" \
+        || echo   "build-namelist failed" && exit 1
+   else
+      $cfgdir/build-namelist -v $verbosity \
+        -case     ${camroot:t}-$case \
+        -runtype  startup \
+        $dir_arg  $wrkdir \
+        -infile   $CENTRALDIR/namelistin \
+        -cice_nl "$cice_nl" \
+        -namelist "$namelist_string" \
+        || echo   "build-namelist failed" && exit 1
+      # For advance_model to copy back to CENTRALDIR for archiving; won't be used here.
+      cat *_in >! namelist
+   endif
 endif
 
 echo "finished build-namelist ..."
@@ -258,16 +268,22 @@ else
    # but volpn files have unique names which must be manually removed, except the last
    # of each obs_seq.  So remove this old one since we have the new one from the 
    # latest forecast.
-   mv *\.cice\.r\.[0-9]*  iceinput
-   # preserve only the youngest meltpond(volpn) and aero restart files
-   set ice_restarts = `ls -t *.cice.r.[a-z]*.*`
-   tar -c -f iceinput.tar  iceinput $ice_restarts[1-2]
+   ls *\.cice\.r\.[0-9]*
+   if ($status == 0) then
+      mv *\.cice\.r\.[0-9]*  iceinput
+      # preserve only the youngest meltpond(volpn) and aero restart files
+      set ice_restarts = `ls -t *.cice.r.[a-z]*.*`
+      tar -c -f iceinput.tar  iceinput $ice_restarts[1-2]
+   endif
 
    # move only the youngest h0 file
-   set hist = `ls -t *\.h0\.*`
-   echo hist is $hist
-   echo hist1 is $hist[1]
-   mv $hist[1]    hide_hist
+   set save_hist = `head -8 ${CENTRALDIR}/casemodel | tail -1`
+   if ($save_hist == 'true') then
+      set hist = `ls -t *\.h0\.*`
+      echo hist is $hist
+      echo hist1 is $hist[1]
+      mv $hist[1]    hide_hist
+   endif
 endif
 
 # Remove 'leftovers' ONLY if CAM completed correctly (old ice initials need to

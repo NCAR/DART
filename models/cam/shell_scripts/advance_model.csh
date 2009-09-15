@@ -217,18 +217,23 @@ while($state_copy <= $num_states)
             ${MOVE} namelist        ${CENTRALDIR}
             ${MOVE} caminput.nc     ${CENTRALDIR}/H${hour}/caminput_${element}.nc
             ${MOVE} clminput.nc     ${CENTRALDIR}/H${hour}/clminput_${element}.nc
+            if (-e iceinput.tar) \
             ${MOVE} iceinput.tar    ${CENTRALDIR}/H${hour}/iceinput_${element}.tar
 
-            set hist = `ls *.h0.*`
-            echo "advance_model: hist is "$hist                                  >> cam_out_temp
-            ${MOVE} $hist           ${CENTRALDIR}/H${hour}
-            # redundant element #;  /$hist:r_${element}.nc
+            set save_hist = `head -8 ${CENTRALDIR}/casemodel | tail -1`
+            if ($save_hist == 'true') then
+               set hist = `ls *.h0.*`
+               echo "advance_model: hist is "$hist                                  >> cam_out_temp
+               ${MOVE} $hist           ${CENTRALDIR}/H${hour}
+               # redundant element #;  /$hist:r_${element}.nc
+            endif
 
             # link the new initial files into the CENTRAL directory where filter will find them.
             ${LINK} ${CENTRALDIR}/H${hour}/caminput_${element}.nc \
                     ${CENTRALDIR}/caminput_${element}.nc
             ${LINK} ${CENTRALDIR}/H${hour}/clminput_${element}.nc \
                     ${CENTRALDIR}/clminput_${element}.nc
+            if (-e iceinput.tar) \
             ${LINK} ${CENTRALDIR}/H${hour}/iceinput_${element}.tar \
                     ${CENTRALDIR}/iceinput_${element}.tar
    

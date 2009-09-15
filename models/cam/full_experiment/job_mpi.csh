@@ -353,6 +353,8 @@ if ($resol == T21) then
    set CAM_phis = $CAM_src/cam_phis.nc
    set num_lons  = 64
    set num_lats  = 32
+   # < CAM 3.6.0: 
+   set num_levs  = 26
 else if ($resol == T42) then
    # T42
    set DART_ics_1  = /ptmp/dart/CAM_init/T42/03-01-01/DART_MPI
@@ -365,6 +367,8 @@ else if ($resol == T42) then
    set CAM_phis = $CAM_src/cam_phis.nc
    set num_lons  = 128
    set num_lats  = 64
+   # < CAM 3.6.0: 
+   set num_levs  = 26
 else if ($resol == T85) then
    # T85
    set DART_ics_1  = /ptmp/dart/CAM_init/T85_cam3.5/Jul_1/DART
@@ -376,6 +380,8 @@ else if ($resol == T85) then
    # set CAM_src      = /ptmp/dart/CAM/CAM_src/Cam3/cam3.1/models/atm/cam/bld/T85_3.1-O3
    set num_lons  = 256
    set num_lats  = 128
+   # < CAM 3.6.0: 
+   set num_levs  = 26
 else if ($resol == FV4x5) then
    set DART_ics_1  = /ptmp/dart/CAM_init/FV4x5/03-01-01/DART_MPI
    set CAM_ics_1   = /ptmp/dart/CAM_init/FV4x5/03-01-01/CAM/caminput_
@@ -386,6 +392,8 @@ else if ($resol == FV4x5) then
    set CAM_phis = $CAM_src/cam_phis.nc
    set num_lons  = 72
    set num_lats  = 46
+   # < CAM 3.6.0: 
+   set num_levs  = 26
 else if ($resol == FV1.9x2.5) then
    set DART_ics_1  = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.6.26/Aug_1/DART
    set CAM_ics_1   = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.6.26/Aug_1/CAM/caminput_
@@ -395,17 +403,17 @@ else if ($resol == FV1.9x2.5) then
    # set CAM_src     = /blhome/raeder/Cam4/cam3.6.32.24/models/atm/cam/bld/FV_2deg-noleap-O2
    set CAM_src     = /blhome/raeder/Cam4/cam3.6.32.24/models/atm/cam/bld/FV_2deg-del4-O2
    set CAM_phis  = $CAM_src/cam_phis.nc
+   # Running CAM parallel (async=4) may require grid info for domain decomposition.
    set num_lons  = 144
    set num_lats  = 96
+   # < CAM 3.6.0: set num_levs  = 26
+   set num_levs = 30
    # To use real SSTs it's necessary to pass matching stream info to the ice model by a special namelist
    # which is done through casemodel.
    # This must be done (now) even for CAM < 3.6; enter 'none' and 0s in that case.
    set sst = '/ptmp/dart/CAM_init/FV1.9x2.5_cam3.5/Namelistin_files/sst_HadOIBl_bc_1.9x2.5_1949_2007.nc' 
    set str_yr_first = 1949
    set str_yr_last  = 2007
-   # Newer CAMs need specific namelist choices.
-   # Define a wordlist to test for appropriate namelist entries.
-   set cam_version = ( 3 6 32 )
 # If another FV resolution is added, then another qualifier is needed in the
 # domain decomposition section below.
 endif 
@@ -414,9 +422,6 @@ endif
 #                                 '$CAM_src/namelistin' is another common choice
 # This is only used if obs_seq_1_depend = false 
 set namelist = 'cwd'
-
-set num_levs  = 26
-if ($cam_version[1] > 3 || ($cam_version[1] == 3 && $cam_version[2] > 5))  set num_levs = 30
 
 if (${parallel_cam} == true) then
    set CAM_src = ${CAM_src}-mpi                                                 
@@ -441,6 +446,11 @@ set input = input_
 set save_freq = 4
 set mod_save = 1
 
+# Set switch to archive the ensemble of h0 history files in a file on the Mass Store.
+# Be careful; the default h0 file is large, so you may want to edit its contents via 
+# the CAM namelist
+set save_hist = 'false'
+
 # END of run parameters to change
 #==========================================================================================
 
@@ -457,7 +467,7 @@ ${REMOVE} ${MASTERLOG}                       # clean up old links
 #----------------------------------------------------------
 # try to discover the ensemble size from the input.nml
 # this is some gory shell programming ... all to do 'something simple'
-grep ens_size input_${obs_seq_first}.nml >! ensstring.$$
+grep ens_size ${input}${obs_seq_first}.nml >! ensstring.$$
 set ensstring = `sed -e "s#,##g" ensstring.$$`
 set num_ens = $ensstring[3]
 ${REMOVE} ensstring.$$
@@ -468,7 +478,7 @@ touch $MASTERLOG
 echo "There are ${num_ens} ensemble members."  >> $MASTERLOG
 
 # Try to discover the model version from input.nml
-  grep model_version input_${obs_seq_first}.nml >! ensstring.$$
+  grep model_version ${input}${obs_seq_first}.nml >! ensstring.$$
 # Replace the ,s with nothings and put the words into a list
   set   ensstring    = `sed -e "s#,##g" ensstring.$$`
   echo $ensstring[3] >! ensstring.$$
@@ -877,7 +887,8 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo "$ice_init $str_yr_first $str_yr_last $sst"        >> casemodel.$i
    echo "$parallel_cam"                                    >> casemodel.$i
    echo "$run_command"                                     >> casemodel.$i
-   # Only write the 8th record if it's FV and run-cam.csh needs the decomposition info
+   echo "$save_hist"                                       >> casemodel.$i
+   # Only write the 9th record if it's FV and run-cam.csh needs the decomposition info
    if ($keep_lev_blocks > 0) then
       echo "$num_procs $keep_lev_blocks $keep_lat_blocks " >> casemodel.$i
    endif

@@ -83,6 +83,7 @@ echo $saved              >> tar_excl_list
 ## Added to make mean easily accessible in the form of a CAM initial file
 echo 'cam_analyses.tar'  >> tar_excl_list
 echo 'H[0-9]*'           >> tar_excl_list
+echo 'H_all*'            >> tar_excl_list
 
 #-----------------------------
 # Stuff the Posterior mean fields into CAM initial files.
@@ -97,6 +98,7 @@ echo 'H[0-9]*'           >> tar_excl_list
 
 # Save out history files from H* directories before calculating CAM/CLM analyses and deleting H*
 # compressing saves a factor of 12.
+   set ar_status = 1
    ls H[012]*/*.h0.* >& /dev/null
    if ($status == 0) then
       gzip H[012]*/*.h0.*
@@ -110,7 +112,7 @@ echo 'H[0-9]*'           >> tar_excl_list
       endif
       if ($ar_status != 0) echo 'ARCHIVING of H[012]*.h0.gz.tar FAILED' >> & $saved
    else
-       echo 'ARCHIVING of H[012]*.h0.gz.tar FAILED; no files available' >> & $saved
+       echo 'ARCHIVING of H[012]*.h0.gz.tar NOT DONE; no files available' >> & $saved
    endif 
 
 if (-e ../../analyses2initial.csh) then
@@ -135,23 +137,23 @@ if (-e ../../analyses2initial.csh) then
 #      exit
 #   endif
    
-      set num_anal = `ls H[0-2]*/cam_init_*`
-#      ls H[0-2]*/c*_init_* > /dev/null
-#      if ($status != 0) then
       set tar_stat = 0
       if (! -e cam_analyses.tar) then
-         if ($#num_anal < 4) then
+         ls -1 -d H[0-2]* >! hdir_names
+         set num_anal  = `wc -l hdir_names`
+         if ($num_anal[1] > 0) then
             echo " "                                                                >>& $saved
             ../../analyses2initial.csh no_MS '.' Posterior copy 1 ${obs_seq}        >>& $saved
-            set num_anal = `ls H[0-2]*/cam_init_*`
+            tar -c -f cam_analyses.tar H[0-2]*/{c,ice}*_init_* 
+            set tar_stat = $status
          endif
-   
-         tar -c -f cam_analyses.tar H[0-2]*/{c,ice}*_init_* 
-         set tar_stat = $status
       endif
-      if ($tar_stat == 0 )  \
+      if ($tar_stat == 0 ) then
          msrcp -pe 1000 -pr $proj_num -wpwd $write_pass -comment "write password $write_pass" \
                cam_analyses.tar mss:${ms_dir}/cam_analyses.tar                    >>& $saved  
+      else
+         echo 'cam_analyses.tar NOT archived because of tar problem'              >>& $saved
+      endif
       set list = `ls -l cam_analyses.tar`
       set local_size = $list[5]
       set list = `msls -l ${ms_dir}/cam_analyses.tar`
