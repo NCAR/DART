@@ -2957,7 +2957,6 @@ if (dim2 /= Ny) then
    call error_handler(E_ERR,'vector_to_2d_prog_var',msgstring,source,revision,revdate) 
 endif
 
-write(*,*)' start_index, varindex ',start_index(varindex), varindex
 ii = start_index(varindex)
 
 do j = 1,Ny   ! latitudes
