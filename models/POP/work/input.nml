@@ -13,19 +13,18 @@
    restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.perfect",
-   adv_ens_command       = "./advance_model.csh"  /
-
-#  trace_execution          = .true.,
+   adv_ens_command       = "./advance_model.csh"
+  /
 
 &filter_nml
-   async                    = 2,
+   async                    = 4,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 = 10,
-   start_from_restart       = .false.,
+   ens_size                 =  7,
+   start_from_restart       = .true.,
    output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.perfect",
+   obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "perfect_restart",
+   restart_in_file_name     = "filter_ics",
    restart_out_file_name    = "filter_restart",
    init_time_days           = -1,
    init_time_seconds        = -1,
@@ -33,8 +32,8 @@
    first_obs_seconds        = -1,
    last_obs_days            = -1,
    last_obs_seconds         = -1,
-   num_output_state_members = 0,
-   num_output_obs_members   = 0,
+   num_output_state_members = 7,
+   num_output_obs_members   = 7,
    output_interval          = 1,
    num_groups               = 1,
    input_qc_threshold       =  4.0,
@@ -42,6 +41,7 @@
    output_forward_op_errors = .false.,
    output_timestamps        = .false.,
    output_inflation         = .true.,
+   trace_execution          = .true.,
 
    inf_flavor                  = 0,                       0,
    inf_initial_from_restart    = .false.,                 .false.,
@@ -57,14 +57,15 @@
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
    inf_sd_lower_bound          = 0.0,                     0.0
-/
+  /
 
 &smoother_nml
    num_lags              = 0,
    start_from_restart    = .false.,
    output_restart        = .false.,
    restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart'  /
+   restart_out_file_name = 'smoother_restart'
+  /
 
 # cutoff of 0.03 (radians) is about 200km
 &assim_tools_nml
@@ -74,32 +75,37 @@
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
-   print_every_nth_obs             = 0  /
+   print_every_nth_obs             = 0
+  /
 
 &ensemble_manager_nml
-   single_restart_file_in  = .true.,
+   single_restart_file_in  = .false.,
    single_restart_file_out = .false.,
-   perturbation_amplitude  = 0.2  /
+   perturbation_amplitude  = 0.2
+  /
 
 &cov_cutoff_nml
-   select_localization = 1  /
+   select_localization = 1
+  /
 
 &reg_factor_nml
    select_regression    = 1,
    input_reg_file       = "time_mean_reg",
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = "reg_diagnostics"  /
+   reg_diagnostics_file = "reg_diagnostics"
+  /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+  /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'TEMPERATURE',
-                                'SALINITY',
+   assimilate_these_obs_types = 'FLOAT_TEMPERATURE',
+                                'FLOAT_SALINITY',
                                 'U_CURRENT_COMPONENT',
                                 'V_CURRENT_COMPONENT',
      evaluate_these_obs_types = 'SEA_SURFACE_HEIGHT',
- /
+  /
 
 #          xxx_these_obs_types = 'SALINITY',
 #                                'TEMPERATURE',
@@ -138,10 +144,12 @@
    output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
      input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
     output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_ocean_mod.f90'  /
+   input_files              = '../../../obs_def/obs_def_ocean_mod.f90'
+  /
 
 &assim_model_nml
-   write_binary_restart_files = .true.  /
+   write_binary_restart_files = .true.
+  /
 
 &model_nml
    assimilation_period_days     = 1, 
@@ -149,22 +157,16 @@
    model_perturbation_amplitude = 0.2, 
    output_state_vector          = .false.,
    debug                        = 0,  
- /
-
-  #pop_to_dart_restart_file = 'pop.r.x1A.19000102',
-  #pop_to_dart_restart_file = 'pop.r.nc',
-  #pop_to_dart_restart_file = '../utils/pop.r.latlon.19000712',
+  /
 
 &pop_to_dart_nml
-   pop_to_dart_restart_file = 'pop.r.nc',
-   pop_to_dart_output_file  = 'dart.ics',
- /
+   pop_to_dart_output_file  = 'dart.ud',
+  /
 
 &dart_to_pop_nml
-   dart_to_pop_input_file   = 'test.ic',
-   dart_to_pop_restart_file = 'pop.r.nc',
-   advance_time_present     = .true.
- /
+   dart_to_pop_input_file   = 'dart.ic',
+   advance_time_present     = .false.
+  /
 
 &location_nml
    horiz_dist_only             = .true.,
@@ -174,13 +176,15 @@
    approximate_distance        = .false.,
    nlon                        = 71,
    nlat                        = 36,
-   output_box_info             = .true.  /
+   output_box_info             = .true.
+  /
 
 &utilities_nml
    TERMLEVEL = 1,
    module_details = .false.,
    logfilename = 'dart_log.out',
-   nmlfilename = 'dart_log.nml'  /
+   nmlfilename = 'dart_log.nml'
+  /
 
 &restart_file_tool_nml
    input_file_name              = "filter_restart",
@@ -197,7 +201,8 @@
    overwrite_advance_time       = .false.,
    new_advance_days             = -1,
    new_advance_secs             = -1,
-   gregorian_cal                = .true.  /
+   gregorian_cal                = .true.
+  /
 
 &obs_sequence_tool_nml
    num_input_files = 7,
@@ -209,7 +214,8 @@
                      '../observations/adcp_v_pseudo.obs_seq.out',
                      '../observations/tmi_pseudo.obs_seq.out',
    filename_out    = 'obs_seq.out',
-   gregorian_cal   = .true.  /
+   gregorian_cal   = .true.
+  /
 
 # other possible obs tool namelist items:
 #
@@ -285,5 +291,26 @@
             -530.2654, -618.0071, -718.9376, -834.6679, -966.8794, 
             -1117.289, -1287.607, -1479.480, -1694.436, -1933.820, 
             -2198.734, -2489.986, -2808.042, -3153.009, -3524.622, 
-            -3922.264, -4344.997, -4791.606, -5260.660, -5750.303   /
+            -3922.264, -4344.997, -4791.606, -5260.660, -5750.303
+  /
+
+&schedule_nml
+   calendar        = 'Gregorian',
+   first_bin_start =  1999, 12, 31, 12, 0, 0 ,
+   first_bin_end   =  2000,  1,  1, 12, 0, 0 ,
+   last_bin_end    =  2000,  1,  7, 12, 0, 0 ,
+   bin_interval_days    = 1,
+   bin_interval_seconds = 0,
+   max_num_bins         = 1000,
+   print_table          = .true.
+  /
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = '/gpfs/ptmp/thoar/dart.001hy/run/obs_seq.2000-01-06-00000.final'
+   lonlim1    =    0.0,
+   lonlim2    =  360.0,
+   latlim1    =  -90.0,
+   latlim2    =   90.0,
+   verbose    = .false.
+  /
 

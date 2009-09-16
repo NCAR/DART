@@ -72,21 +72,23 @@ namelist /time_manager_nml/ runid, time_mix_opt, time_mix_freq, &
 
 character(len=100) :: log_filename, pointer_filename
 logical :: lredirect_stdout, luse_pointer_files
+logical :: luse_nf_64bit_offset
 integer :: num_iotasks
 
 namelist /io_nml/ num_iotasks, lredirect_stdout, log_filename, &
-    luse_pointer_files, pointer_filename
+    luse_pointer_files, pointer_filename, luse_nf_64bit_offset
 
 !------------------------------------------------------------------
 ! The POP restart manager namelist variables
 !------------------------------------------------------------------
 
 character(len=100) :: restart_outfile ! length consistent with POP
-character(len= 64) :: restart_freq_opt, restart_fmt
+character(len= 64) :: restart_freq_opt, restart_start_opt, restart_fmt
 logical :: leven_odd_on, pressure_correction
-integer :: restart_freq, even_odd_freq
+integer :: restart_freq, restart_start, even_odd_freq
 
-namelist /restart_nml/ restart_freq_opt, restart_freq, restart_outfile, &
+namelist /restart_nml/ restart_freq_opt, restart_freq, &
+     restart_start_opt, restart_start, restart_outfile, &
     restart_fmt, leven_odd_on, even_odd_freq, pressure_correction
 
 !------------------------------------------------------------------
@@ -94,9 +96,13 @@ namelist /restart_nml/ restart_freq_opt, restart_freq, restart_outfile, &
 !------------------------------------------------------------------
 
 character(len=100) :: init_ts_file ! length consistent with POP
-character(len= 64) :: init_ts_option, init_ts_file_fmt
+character(len=100) :: init_ts_outfile
+character(len= 64) :: init_ts_option, init_ts_suboption
+character(len= 64) :: init_ts_file_fmt, init_ts_outfile_fmt
 
-namelist /init_ts_nml/ init_ts_option, init_ts_file, init_ts_file_fmt 
+namelist /init_ts_nml/ init_ts_option, init_ts_suboption, &
+                       init_ts_file, init_ts_file_fmt, & 
+                       init_ts_outfile, init_ts_outfile_fmt
 
 !------------------------------------------------------------------
 ! The POP domain namelist 
@@ -145,16 +151,21 @@ namelist /domain_nml/ clinic_distribution_type, nprocs_clinic, &
 !
 !------------------------------------------------------------------
 
-character(len=100) :: horiz_grid_file, vert_grid_file, topography_file, &
+character(len=100) :: horiz_grid_file, vert_grid_file, &
+                      topography_file, topography_outfile, &
+                      bathymetry_file, region_info_file, &
                       bottom_cell_file, region_mask_file
 character(len= 64) :: horiz_grid_opt, sfc_layer_opt, vert_grid_opt, &
                       topography_opt
 logical :: partial_bottom_cells, topo_smooth, flat_bottom, lremove_points
+integer :: kmt_kmin, n_topo_smooth
 
 namelist /grid_nml/ horiz_grid_opt, horiz_grid_file, sfc_layer_opt, &
-    vert_grid_opt, vert_grid_file, topography_opt, topography_file, &
-    partial_bottom_cells, bottom_cell_file, region_mask_file, &
-    topo_smooth, flat_bottom, lremove_points
+    vert_grid_opt, vert_grid_file, topography_opt, kmt_kmin, &
+    topography_file, topography_outfile, bathymetry_file, &
+    partial_bottom_cells, bottom_cell_file, n_topo_smooth, &
+    region_mask_file, topo_smooth, flat_bottom, lremove_points, &
+    region_info_file
 
 !======================================================================
 contains
@@ -174,11 +185,15 @@ call find_namelist_in_file('pop_in', 'time_manager_nml', iunit)
 read(iunit, nml = time_manager_nml, iostat = io)
 call check_namelist_read(iunit, io, 'time_manager_nml')
 
-if ( allow_leapyear ) then
+! FIXME : Real observations are always GREGORIAN dates ...
+! but stomping on that here gets in the way of running
+! a perfect_model experiment for pre-1601 AD cases.
+
+! STOMP if ( allow_leapyear ) then
    call set_calendar_type('gregorian')
-else
-   call set_calendar_type('noleap')
-endif
+! STOMP else
+! STOMP    call set_calendar_type('noleap')
+! STOMP endif
 
 ! Read POP I/O information (for restart file ... grid dimensions)
 ! Read POP initial information (for input/restart filename)
@@ -352,9 +367,12 @@ if ( .not. module_initialized ) call initialize_module
 
 if ( trim(restart_freq_opt) == 'nday' ) then
    set_model_time_step = set_time(0, restart_freq) ! (seconds, days)
+else if ( trim(restart_freq_opt) == 'nyear' ) then
+   ! FIXME ... CCSM_POP uses a bogus value for this
+   set_model_time_step = set_time(0, 1) ! (seconds, days)
 else
    call error_handler(E_ERR,'set_model_time_step', &
-              'restart_freq_opt must be days', source, revision, revdate)
+              'restart_freq_opt must be nday', source, revision, revdate)
 endif
 
 end function set_model_time_step

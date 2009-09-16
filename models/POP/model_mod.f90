@@ -187,8 +187,8 @@ integer, parameter :: num_reg_x = 90, num_reg_y = 90
 ! of size num_reg_x*num_reg_y*max_reg_list_num are needed. The initialization
 ! fails and returns an error if max_reg_list_num is too small. A value of
 ! 30 is sufficient for the x3 POP grid with 180 regular lon and lat boxes 
-! and a value of ??? is sufficient for for the x1 grid.
-integer, parameter :: max_reg_list_num = 30
+! and a value of 80 is sufficient for for the x1 grid.
+integer, parameter :: max_reg_list_num = 80
 
 ! The dipole interpolation keeps a list of how many and which dipole quads
 ! overlap each regular lon-lat box. The number for the u and t grids are stored
@@ -431,6 +431,10 @@ do i = 1, nx
    enddo
 enddo
 
+! DEBUG to determine max_reg_list_num values for new grids ...
+! write(*,*)'u_dipole_num is ',maxval(u_dipole_num)
+! write(*,*)'t_dipole_num is ',maxval(t_dipole_num)
+
 ! Invert the temporary data structure. The total number of entries will be the sum 
 ! of the number of dipole cells for each regular cell. 
 u_total = sum(u_dipole_num)
@@ -649,8 +653,8 @@ do ind_x = reg_lon_ind(1), reg_lon_ind(2)
    
    do ind_y = reg_lat_ind(1), reg_lat_ind(2)
       ! Make sure the list storage isn't full
-      if(reg_list_num(index_x, ind_y) > max_reg_list_num) then
-         msgstring = 'max_reg_list_num is too small'
+      if(reg_list_num(index_x, ind_y) >= max_reg_list_num) then
+         write(msgstring,*) 'max_reg_list_num (',max_reg_list_num,') is too small ... increase'
          call error_handler(E_ERR, 'update_reg_list', msgstring, source, revision, revdate)
       endif
 
@@ -1368,9 +1372,16 @@ else
    ! An odd number of corners should be impossible.
    if(num_corners == 1 .or. num_corners == 3) then
       ! Put in some development error checking; shouldn't be able to hit 3 or 4 sides
-      write(msgstring, *) 'Num corners in in_quad is ', num_sides, &
+      write(*,*)'xcorners = ',x_corners,';'
+      write(*,*)'ycorners = ',y_corners,';'
+      write(*,*)'lon = ',lon,';'
+      write(*,*)'lat = ',lat,';'
+      write(*,*)'intercepts = ',intercepts,';'
+      write(*,*)'exact_corner = ',exact_corner,';'
+      write(msgstring, *) 'Num corners in in_quad is ', num_corners, &
          'Please contact DART development team'
-      call error_handler(E_ERR, 'in_quad', msgstring, source, revision, revdate)
+      call error_handler(E_MSG, 'in_quad', msgstring, source, revision, revdate)
+      in_quad = .false.   ! DEBUG FIXME TJH ... not the right thing to do.
    ! Four corners means we are not in; 
    else if(num_corners == 4) then
       in_quad = .false.
@@ -1457,17 +1468,28 @@ integer,  intent(out) :: intercepts, exact_corner
 ! This can probably be made much cleaner and more efficient.
 
 real(r8) :: slope, y_intercept, x(2), x_ray
+real(r8) :: xmin, xmax, ymin, ymax
+real(r8) :: rdummytiny, rdummyepsilon, rdummyabs, rdummyfraction
+integer :: idummydigits, idummyprecision, idummyexponent
+
+xmin = minval(x_in)
+xmax = maxval(x_in)
 
 ! May have to adjust the longitude intent in values, so copy
 x = x_in
 x_ray = x_ray_in
 
 ! See if the side wraps around in longitude
-if(maxval(x) - minval(x) > 180.0_r8) then
-   if(x(1) < 180.0_r8) x(1) = x(1) + 360.0_r8
-   if(x(2) < 180.0_r8) x(2) = x(2) + 360.0_r8
+if(xmax - xmin > 180.0_r8) then
+   if( x(1) < 180.0_r8)  x(1) =  x(1) + 360.0_r8
+   if( x(2) < 180.0_r8)  x(2) =  x(2) + 360.0_r8
    if(x_ray < 180.0_r8) x_ray = x_ray + 360.0_r8
 endif
+
+xmin = minval(x)
+xmax = maxval(x)
+ymin = minval(y)
+ymax = maxval(y)
 
 ! Initialize all the possible returns 
 cant_be_in_box = .false.
@@ -1478,8 +1500,45 @@ exact_corner   = 0
 ! First easy check, if x_ray is not between x(1) and x(2) it can't intersect
 if(x_ray < minval(x) .or. x_ray > maxval(x)) return
 
+if((x_ray < xmin) .or. (x_ray > xmax)) then
+   write(*,*)'minval vs xmin makes a difference'
+   return
+endif
+
+!if(x(2) == x(1)) then
+!        continue
+!else
+!   if (x(2) - x(1) == 0.0) &
+!        write(*,*)'x difference is zero', x
+!   if (abs(x(2) -x(1)) < epsilon(x(1))) &
+!        write(*,*)'x is almost equal', x
+!endif
+!
+!if(y(2) == y(1)) then
+!        continue
+!else
+!   if (y(2) - y(1) == 0.0) then
+!        write(*,*)'y difference is zero', y
+!   endif
+!   if (abs(y(2) -y(1)) < epsilon(y(1))) then
+!        write(*,*)'y is almost equal', y
+!   endif
+!   if (abs(y(2) -y(1)) < tiny(y(1))) then
+!        write(*,*)'y is almost equal', y
+!   endif
+!   rdummyabs       = abs(y(2) - y(1))
+!   rdummytiny      = tiny(y(1))
+!   rdummyepsilon   = epsilon(y(1))
+!   idummydigits    = digits(y(1))
+!   idummyprecision = precision(y(1))
+!   idummyexponent  = exponent(rdummyabs)
+!   rdummyfraction  = fraction(rdummyabs)
+!endif
+
+rdummyabs = abs(x(2) - x(1))
 ! First subblock, slope is undefined
-if(x(2) == x(1)) then
+! if(x(2) == x(1)) then
+if(rdummyabs < 1.0E-12_r8 ) then   ! near enough equal
    ! Check for exactly on this side
    if(x_ray /= x(1)) then
       ! Doesn't intersect vertical line
@@ -1487,7 +1546,7 @@ if(x(2) == x(1)) then
    else
       ! The ray is colinear with the side
       ! If y_ray is between endpoints then point is on this side
-      if(y_ray <= maxval(y) .and. y_ray >= minval(y)) then
+      if(y_ray <= ymax .and. y_ray >= ymin) then
          on_side = .true.
          return
       ! If not on side but colinear with side, point cant be in quad
@@ -1499,8 +1558,13 @@ if(x(2) == x(1)) then
 
 else
 
-   ! Second possibility; slope is defined
-   slope = (y(2) - y(1)) / (x(2) - x(1))
+   rdummyabs = abs(y(2) - y(1))
+   if ( rdummyabs < 1.0E-12_r8 ) then
+           slope = 0.0_r8
+   else
+      ! Second possibility; slope is defined
+      slope = (y(2) - y(1)) / (x(2) - x(1))
+   endif
    ! Intercept of downward ray and line through points is at x_ray and...
    y_intercept = y(1) + slope * (x_ray - x(1))
 
@@ -1521,10 +1585,10 @@ else
 
    ! Slope of line is not 0 or undefined so y endpoints differ
    ! If intercept is on segment and is below the point
-   if(y_intercept > maxval(y) .or. y_intercept < minval(y)) then
+   if(y_intercept > ymax .or. y_intercept < ymin) then
       ! Intersects line containing side outside of side
       return
-   else if(y_intercept < maxval(y) .and. y_intercept > minval(y)) then
+   else if(y_intercept < ymax .and. y_intercept > ymin) then
       ! Intercepts inside the side
       intercepts = 1
       return
