@@ -269,8 +269,9 @@ fileloop: do      ! until out of files
          ! set qc to a good dart val
          d_qc(1) = 0.0    ! but for dart, a QC of 0 is good
  
-         ! set location 
-         if (glon < 0.0_r8) glon = glon + 180.0_r8
+         ! set location - incoming obs are -180 to 180 in longitude;
+         ! dart wants 0 to 360.
+         if (glon < 0.0_r8) glon = glon + 360.0_r8
          call set_obs_def_location(obs_def, &
                            set_location(glon, glat, obs_depth(k),VERTISHEIGHT))
          call set_obs_def_kind(obs_def, FLOAT_TEMPERATURE)
@@ -309,8 +310,9 @@ fileloop: do      ! until out of files
          ! set qc to good dart val
          d_qc(1) = 0.0    ! but for dart, a QC of 0 is good
  
-         ! set location 
-         if (glon < 0.0_r8) glon = glon + 180.0_r8
+         ! set location - incoming obs are -180 to 180 in longitude;
+         ! dart wants 0 to 360.
+         if (glon < 0.0_r8) glon = glon + 360.0_r8
          call set_obs_def_location(obs_def, &
                            set_location(glon, glat, obs_depth(k),VERTISHEIGHT))
          call set_obs_def_kind(obs_def, FLOAT_SALINITY)
