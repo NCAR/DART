@@ -92,8 +92,8 @@
 
 <P>
    Required namelist interfaces
-   <A HREF="#Namelist1"><em class=code>&#38;obs_seq_to_netcdf</em></A> and
-   <A HREF="#Namelist2"><em class=code>&#38;schedule_nml</em></A>
+   <A HREF="#Namelist1"><em class=code>&amp;obs_seq_to_netcdf</em></A> and
+   <A HREF="#Namelist2"><em class=code>&amp;schedule_nml</em></A>
    are read from file <em class=file>input.nml</em>.
 </P>
 
@@ -137,10 +137,11 @@ obs_def_?????.f90 files.
 <BR><HR><BR>
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an 
-   ampersand '&#38;' and terminating with a slash '/'.
+   ampersand '&amp;' and terminating with a slash '/'.
    <div class=namelist><pre>
-   <em class=call>namelist / obs_seq_to_netcdf_nml / </em> &#38;
-      obs_sequence_name, lonlim1, lonlim2, latlim1, latlim2, verbose
+   <em class=call>namelist / obs_seq_to_netcdf_nml / </em> 
+      obs_sequence_name, obs_sequence_list, 
+      lonlim1, lonlim2, latlim1, latlim2, verbose
    </pre></div>
 </P>
 
@@ -161,20 +162,19 @@ obs_def_?????.f90 files.
 
 <TR><!--contents--><TD valign=top> obs_sequence_name  </TD>
     <!--  type  --><TD valign=top> character(len=129) </TD>
-    <!--descript--><TD>Name of the observation sequence files. <BR>
-            This may be a relative or absolute filename. If the filename
-            contains a '/', the filename is considered to be comprised of
-	    everything to the right, and a directory structure to the left.
-	    The directory structure is then queried to see if it can be
-	    incremented to handle a sequence of observation files.
-	    The default behavior of <em class="program">obs_seq_to_netcdf</em> 
-	    is to look for additional files to include until the files 
-	    are exhausted or an <em class=file>obs_seq.final</em> file 
-	    is found that contains observations beyond the timeframe of 
-	    interest.<BR>e.g. 'obsdir_001/obs_seq.final' will cause
-	    <em class="program">obs_seq_to_netcdf</em> to look for
-	    'obsdir_002/obs_seq.final', and so on.<BR>
+    <!--descript--><TD>Name of an observation sequence file. 
+            If this is specified, only this single file will be read,
+            and 'obs_sequence_list' must be set to ''.
 	    Default 'obs_seq.final'</TD></TR>  
+
+<TR><!--contents--><TD valign=top> obs_sequence_list  </TD>
+    <!--  type  --><TD valign=top> character(len=129) </TD>
+    <!--descript--><TD>Name of an ascii text file which contains a list
+            of one or more observation sequence files, one per line.
+            If this is specified, 'obs_sequence_name' must be set to ''. 
+            Can be created by any method, including sending the output
+            of the 'ls' command to a file, a text editor, or another program.
+	    Default 'obs_seq_list'</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   lonlim1   </TD>
     <!--  type  --><TD valign=top>   real      </TD>
@@ -214,8 +214,8 @@ obs_def_?????.f90 files.
 <BR><HR><BR>
 <H2>schedule NAMELIST</H2>
 <P><div class=namelist><pre>
-   <em class=call>namelist / schedule_nml / </em> &#38;
-      calendar, first_bin_start, first_bin_end, last_bin_end, &#38;
+   <em class=call>namelist / schedule_nml / </em> &amp;
+      calendar, first_bin_start, first_bin_end, last_bin_end, &amp;
       bin_interval_days, bin_interval_seconds, max_num_bins, print_table
    </pre></div>
 </P>
@@ -312,7 +312,7 @@ end at 09 Z, but the last bin in the table ends at 06 Z.
 <br />
 <div class="routine">
 <pre>
-&#38;schedule_nml
+&amp;schedule_nml
    calendar        = 'Gregorian',
    first_bin_start =  2006, 8, 1, 0, 0, 0 ,
    first_bin_end   =  2006, 8, 1, 6, 0, 0 ,
@@ -553,7 +553,7 @@ observation types that do not exist in the file. Stay tuned.
 <H4 class="indent1">example</H4>
 <div class="routine">
 <pre>
-&#38;schedule_nml
+&amp;schedule_nml
    calendar        = 'Gregorian',
    first_bin_start =  2006, 8, 1, 3, 0, 0 ,
    first_bin_end   =  2006, 8, 1, 9, 0, 0 ,
@@ -564,8 +564,9 @@ observation types that do not exist in the file. Stay tuned.
    print_table          = .true.
    /
 
-&#38;obs_seq_to_netcdf_nml
-   obs_sequence_name = '/users/thoar/temp/obs_0001/obs_seq.final'
+&amp;obs_seq_to_netcdf_nml
+   obs_sequence_name = '',
+   obs_sequence_list = 'olist',
    lonlim1    =    0.0,
    lonlim2    =  360.0,
    latlim1    =  -80.0,
@@ -573,6 +574,12 @@ observation types that do not exist in the file. Stay tuned.
    verbose    = .false.
    /
 </pre>
+
+> cat olist
+/users/thoar/temp/obs_0001/obs_seq.final
+/users/thoar/temp/obs_0002/obs_seq.final
+/users/thoar/temp/obs_0003/obs_seq.final
+
 </div>
 <br />
 <br />
@@ -588,7 +595,7 @@ first observation time in a file is beyond the last time of interest.
                  2009  5 15  9  0 23
  Program obs_seq_to_netcdf
  --------------------------------------
- 
+
  Requesting            8  assimilation periods.
  
 epoch      1  start day=148135, sec=10801

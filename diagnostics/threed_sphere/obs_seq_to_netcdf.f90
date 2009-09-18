@@ -1,3 +1,5 @@
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2009, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
@@ -44,7 +46,8 @@ use    utilities_mod, only : open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, nmlfileunit, timestamp, &
                              find_namelist_in_file, check_namelist_read, nc_check, &
-                             next_file, find_textfile_dims, file_to_text
+                             get_next_filename, find_textfile_dims, file_to_text, &
+                             do_nml_file, do_nml_term
 
 use typeSizes
 use netcdf
@@ -95,14 +98,15 @@ logical :: out_of_range, is_there_one, keeper
 !-----------------------------------------------------------------------
 
 character(len = 129) :: obs_sequence_name = 'obs_seq.final'
+character(len = 129) :: obs_sequence_list = 'obs_seq_list'
 
 real(r8) :: lonlim1= MISSING_R8, lonlim2= MISSING_R8
 real(r8) :: latlim1= MISSING_R8, latlim2= MISSING_R8 
 
 logical :: verbose = .false.
 
-namelist /obs_seq_to_netcdf_nml/ obs_sequence_name, lonlim1, lonlim2, &
-                            latlim1, latlim2, verbose
+namelist /obs_seq_to_netcdf_nml/ obs_sequence_name, obs_sequence_list, &
+                                 lonlim1, lonlim2, latlim1, latlim2, verbose
 
 !-----------------------------------------------------------------------
 ! Quantities of interest
@@ -182,8 +186,15 @@ read(ncunit, nml = obs_seq_to_netcdf_nml, iostat = io)
 call check_namelist_read(ncunit, io, 'obs_seq_to_netcdf_nml')
 
 ! Record the namelist values used for the run ...
-write(nmlfileunit, nml=obs_seq_to_netcdf_nml)
-write(    *      , nml=obs_seq_to_netcdf_nml)
+if (do_nml_file()) write(nmlfileunit, nml=obs_seq_to_netcdf_nml)
+if (do_nml_term()) write(    *      , nml=obs_seq_to_netcdf_nml)
+
+if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
+   write(msgstring,*)'in namelist only one of obs filename or filelist can be given.  set other to "" '
+   call error_handler(E_ERR, 'obs_seq_to_netcdf', msgstring, &
+                      source, revision, revdate)
+endif
+
 
 !----------------------------------------------------------------------
 ! SetSchedule rectifies user input and the final binning sequence.
@@ -224,7 +235,20 @@ ObsFileLoop : do ifile=1, Nepochs*4
 
    ! Try to build the next input filename ... 
 
-   obs_seq_in_file_name = next_file(obs_sequence_name,ifile)
+   ! original code:
+   !obs_seq_in_file_name = next_file(obs_sequence_name,ifile)
+
+   ! if you give a single explicit name, only go through loop once.
+   ! otherwise, you've given a list, so loop until the list is empty
+   ! (the routine returns '' when it gets to the list end).
+   obs_seq_in_file_name = ''
+   if (obs_sequence_name /= '') then
+      if (ifile == 1) obs_seq_in_file_name = obs_sequence_name
+   else
+      obs_seq_in_file_name = get_next_filename(obs_sequence_list,ifile)
+   endif
+      
+   if (obs_seq_in_file_name == '') exit ObsFileLoop
 
    if ( file_exist(trim(obs_seq_in_file_name)) ) then
       write(msgstring,*)'opening ', trim(obs_seq_in_file_name)
@@ -1286,3 +1310,4 @@ end function NC_Compatibility_Check
 
 
 end program obs_seq_to_netcdf
+
