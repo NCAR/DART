@@ -458,7 +458,7 @@ grid_unit = get_unit()
 INQUIRE(iolength=reclength) ULAT
 
 open(grid_unit, file=trim(horiz_grid_file), form='unformatted', &
-                access='direct', recl=reclength, status='old' )
+            access='direct', recl=reclength, status='old', action='read' )
 read(grid_unit, rec=1) ULAT
 read(grid_unit, rec=2) ULON
 !read(grid_unit, rec=3) HTN
@@ -628,7 +628,7 @@ topo_unit = get_unit()
 INQUIRE(iolength=reclength) KMT
 
 open( topo_unit, file=trim(topography_file), form='unformatted', &
-                 access='direct', recl=reclength, status='old' )
+            access='direct', recl=reclength, status='old', action='read' )
 read( topo_unit, rec=1) KMT
 close(topo_unit)
 

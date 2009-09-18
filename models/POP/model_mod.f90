@@ -347,7 +347,6 @@ dipole_grid = .false.
 do i = 1, nx
    if(ulon(i, 1) /= ulon(i, ny)) then
       dipole_grid = .true.
-      write(*, *) 'dipole grid is ', dipole_grid
       call init_dipole_interp()
       return
    endif

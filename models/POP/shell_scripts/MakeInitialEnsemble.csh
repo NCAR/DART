@@ -33,6 +33,7 @@
 # The call to restart_file_tool changes the time tag in the file
 # to be whatever is in the namelist. In this case, we want the time
 # tag to be 1996 01 01 00Z ... in DART-speak ... 144270 days 0 seconds.
+# tag to be 2000 01 01 00Z ... in DART-speak ... 145731 days 0 seconds.
 #
 # TJH - 28 July 2008
 
@@ -100,7 +101,7 @@ endif
 cp ${DARTNML}                            .
 cp ${POPDIR}/pop_in                      .
 cp ${POPDIR}/horiz_grid.gx3v5.r8ieee.le  .
-cp ${POPDIR}/topography.gx3v5.r8ieee.le  .
+cp ${POPDIR}/topography.gx3v5.i4ieee.le  .
 cp ${POPDIR}/vert_grid.gx3v5             .
 
 #-------------------------------------------------------------------------
@@ -140,7 +141,7 @@ endif
 #   single_restart_file_out      = .true.,
 #   write_binary_restart_files   = .true.,
 #   overwrite_data_time          = .true.,
-#   new_data_days                =  144270,
+#   new_data_days                =  145731,
 #   new_data_secs                =       0,
 #   input_is_model_advance_file  = .false.,
 #   output_is_model_advance_file = .false.,
@@ -157,7 +158,7 @@ echo ':s/.false./.true./'               >> vi_script
 echo '/overwrite_data_time'             >> vi_script
 echo ':s/.false./.true./'               >> vi_script
 echo '/new_data_days'                   >> vi_script
-echo ':s/-1/144270/'                    >> vi_script
+echo ':s/-1/145731/'                    >> vi_script
 echo '/new_data_secs'                   >> vi_script
 echo ':s/-1/0/'                         >> vi_script
 echo ':wq'                              >> vi_script
@@ -170,7 +171,7 @@ echo ':wq'                              >> vi_script
 # Loop over all the restart files.
 #-------------------------------------------------------------------------
 
-@ memcount = 0
+@ member = 0
 
 foreach FILE ( ${RESTARTDIR}/*/cx3.dart.001.pop.r.*.nc )
 
@@ -180,8 +181,8 @@ foreach FILE ( ${RESTARTDIR}/*/cx3.dart.001.pop.r.*.nc )
 
    ln -sf $FILE pop.r.nc
    
-   echo "pop.r.nc"       >! pop_pointer.restart
-   echo "RESTART_FMT=nc" >> pop_pointer.restart
+   echo "pop.r.nc"       >! rpointer.ocn.restart
+   echo "RESTART_FMT=nc" >> rpointer.ocn.restart
 
    echo "Converting restart $FILE ..."
 
@@ -211,13 +212,13 @@ foreach FILE ( ${RESTARTDIR}/*/cx3.dart.001.pop.r.*.nc )
    #    we could probably use just one, but we've got them, and we're just 
    #    creating links ... it's easy enough.
    #----------------------------------------------------------------------
-   @ memcount = $memcount + 1
-   set OFNAME = `printf ens_mem.%03d $memcount`
+   @ member = $member + 1
+   set OFNAME = `printf ens_mem.%03d $member`
 
    mv filter_updated_restart $OFNAME
-   echo $FILE:t          >! rpointer.ocn.${memcount}.restart
-   echo "RESTART_FMT=nc" >> rpointer.ocn.${memcount}.restart
-   ln -s $FILE $FILE:t
+   echo $FILE:t          >! rpointer.ocn.${member}.restart
+   echo "RESTART_FMT=nc" >> rpointer.ocn.${member}.restart
+   ln -sf $FILE $FILE:t
 
    #----------------------------------------------------------------------
    # remove input files to prep for next iteration

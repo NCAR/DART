@@ -163,7 +163,7 @@ set POPFILE = `head -1 ${POPDIR}/rpointer.ocn.20.restart`
 
  ${COPY} ${POPDIR}/vert_grid.gx3v5              .
  ${COPY} ${POPDIR}/horiz_grid.gx3v5.r8ieee.le   .
- ${COPY} ${POPDIR}/topography.gx3v5.r8ieee.le   .
+ ${COPY} ${POPDIR}/topography.gx3v5.i4ieee.le   .
 
 #${COPY} ${POPDIR}/chl_mm_SeaWiFs97-01_20031205.ieeer8   .
 #${COPY} ${POPDIR}/sfwf_20040517.ieeer8                  .

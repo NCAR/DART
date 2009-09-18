@@ -52,6 +52,18 @@ foreach FILE ( ../pop_in.part1 \
    cp -pv $FILE . || exit 1
 end
 
+# Try to ensure that the input.nml has the required value for
+# dart_to_pop_nml:advance_time_present for this context.
+
+echo '1'                      >! ex_commands
+echo '/dart_to_pop_nml'       >> ex_commands
+echo '/advance_time_present'  >> ex_commands
+echo ':s/\.false\./\.true\./' >> ex_commands
+echo ':wq'                    >> ex_commands
+
+( ex input.nml < ex_commands )
+\rm -f ex_commands
+
 # copy the files used by 
 foreach FILE ( ../horiz_grid.gx3v5.* \
                ../topography.gx3v5.* \
