@@ -15,7 +15,8 @@ use        types_mod, only : missing_i, digits12
 
 use    utilities_mod, only : error_handler, E_DBG, E_MSG, E_WARN, E_ERR, &
                              register_module, nmlfileunit, do_output, &
-                             check_namelist_read, find_namelist_in_file
+                             check_namelist_read, find_namelist_in_file, &
+                             do_nml_file, do_nml_term
 
 use time_manager_mod, only : time_type, set_calendar_type, get_calendar_type, &
                              set_time, set_date, get_time, get_date, &
@@ -109,8 +110,8 @@ read(iunit, nml = schedule_nml, iostat = io)
 call check_namelist_read(iunit, io, "schedule_nml")
 
 ! Write the namelist values to the log file
-if (do_output()) write(nmlfileunit, nml=schedule_nml)
-if (do_output()) write(     *     , nml=schedule_nml)
+if (do_nml_file()) write(nmlfileunit, nml=schedule_nml)
+if (do_nml_term()) write(     *     , nml=schedule_nml)
 
 call set_calendar_type(calendar)
 
