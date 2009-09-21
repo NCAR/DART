@@ -98,7 +98,7 @@ logical :: out_of_range, is_there_one, keeper
 !-----------------------------------------------------------------------
 
 character(len = 129) :: obs_sequence_name = 'obs_seq.final'
-character(len = 129) :: obs_sequence_list = 'obs_seq_list'
+character(len = 129) :: obs_sequence_list = ''
 
 real(r8) :: lonlim1= MISSING_R8, lonlim2= MISSING_R8
 real(r8) :: latlim1= MISSING_R8, latlim2= MISSING_R8 
