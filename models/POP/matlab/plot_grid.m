@@ -1,9 +1,21 @@
 function plot_grid(fname)
-% plot_grid ... plots the ULAT,ULONG and TLAT,TLONG variables from a netcdf file.
+% plot_grid ... plots the ULAT,ULON and TLAT,TLON variables from a netcdf file.
 % 
 % fname = 'h.A1.10.nc';
 % plot_grid(fname)
 %
+
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004-2009, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+
 ulat = nc_varget(fname,'ULAT') * 180/pi;;
 ulon = nc_varget(fname,'ULON') * 180/pi;;
 tlat = nc_varget(fname,'TLAT') * 180/pi;;
