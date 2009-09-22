@@ -527,9 +527,9 @@ new_mean = mean(new_ensemble);
 new_sd = std(new_ensemble);
 
 % Update mean and sd of old posterior
-set(handles.text8, 'String', ['Prior Mean = ', num2str(new_mean)]);
+set(handles.text8, 'String', ['Posterior Mean = ', num2str(new_mean)]);
 set(handles.text8, 'Visible', 'on');
-set(handles.text7, 'String', ['Prior SD = ', num2str(new_sd)]);
+set(handles.text7, 'String', ['Posterior SD = ', num2str(new_sd)]);
 set(handles.text7, 'Visible', 'on');
 
 % If the checkbox isn't set, return now
