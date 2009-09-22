@@ -1,9 +1,9 @@
-function plot_globe_dif(n)
-% plot_globe_dif - script to examine the interpolation tests.
+function plot_interp_diffs(n)
+% plot_interp_diffs - script to examine the interpolation tests.
 % 
-% plot_globe_dif(1) ;      % difference regular grids
-% plot_globe_dif(2) ;      % difference dipole x3 grids
-% plot_globe_dif(3) ;      % regular grids with same grid as x3 in SH
+% plot_interp_diffs(1) ;      % difference regular grids
+% plot_interp_diffs(2) ;      % difference dipole x3 grids
+% plot_interp_diffs(3) ;      % regular grids with same grid as x3 in SH
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004-2009, Data Assimilation Research Section
