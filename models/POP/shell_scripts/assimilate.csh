@@ -13,39 +13,7 @@
 
 #-----------------------------------------------------------------------------
 # assimilate.csh
-#
-# 
-#
-# just see what we have to work with.
-# Check the ENVIRONMENT section of:
-# /fis01/cgd/oce/yeager/home/ccsm_runs/ccsm4.0_IE/dart.001hy/poe.stdout.921054
 #-----------------------------------------------------------------------------
-# CASE=dart.001hy
-# CASEROOT=/fis01/cgd/oce/yeager/home/ccsm_runs/ccsm4.0_IE/dart.001hy
-# CCSMROOT=/blhome/yeager/ccsm4_0_beta21ie
-# GRID=T62_gx1v6
-# CASETOOLS=/fis01/cgd/oce/yeager/home/ccsm_runs/ccsm4.0_IE/dart.001hy/Tools
-# CASEBUILD=/fis01/cgd/oce/yeager/home/ccsm_runs/ccsm4.0_IE/dart.001hy/Buildconf
-# SCRIPTSROOT=/blhome/yeager/ccsm4_0_beta21ie/scripts
-# UTILROOT=/blhome/yeager/ccsm4_0_beta21ie/scripts/ccsm_utils
-# BLDROOT=/blhome/yeager/ccsm4_0_beta21ie/scripts/ccsm_utils/Build
-# CODEROOT=/blhome/yeager/ccsm4_0_beta21ie/models
-# SHAREROOT=/blhome/yeager/ccsm4_0_beta21ie/models/csm_share
-# COMP_OCN=pop2
-# OCN_GRID=gx1v6
-# OCN_NX=320
-# OCN_NY=384
-# STOP_OPTION=ndays
-# STOP_N=5
-# STOP_DATE=-999
-# REST_OPTION=ndays
-# REST_N=5
-# REST_DATE=-999
-# RUN_TYPE=hybrid
-# RUN_STARTDATE=2000-01-01
-# RUN_REFCASE=c.b12.001
-# RUN_REFDATE=0002-01-01
-# NINST_OCN=7
 
 set ensemble_size = ${NINST_OCN}
 
@@ -94,9 +62,9 @@ set  OBSDIR = /ptmp/dart/Obs_sets/GTSPP/${DART_OBS_DIR}
 foreach FILE ( input.nml filter pop_to_dart dart_to_pop ) 
 
    if ( -e   ../${FILE} ) then
-      cp -pv ../${FILE} .
+      /usr/local/bin/cp -pv ../${FILE} .
    else if ( -e ${DARTDIR}/${FILE} ) then
-      cp -pv    ${DARTDIR}/${FILE} .
+      /usr/local/bin/cp -pv    ${DARTDIR}/${FILE} .
    else
       echo "DART required file $FILE not found ... ERROR"
       stop
@@ -104,7 +72,6 @@ foreach FILE ( input.nml filter pop_to_dart dart_to_pop )
 
 end
 
-# what about advance_time 
 # move inflation info (if they exist) ...
 
 #-------------------------------------------------------------------------
@@ -117,9 +84,9 @@ end
 # that came from pointer files ../rpointer.ocn.[1-N].restart
 #
 # DART namelist settings appropriate/required:
-# &filter_nml:           restart_in_file_name   = 'filter_ics'
-# &ensemble_manager_nml: single_restart_file_in = '.false.'
-# &pop_to_dart_nml:      pop_to_dart_input_file = 'dart.ud',
+# &filter_nml:           restart_in_file_name    = 'filter_ics'
+# &ensemble_manager_nml: single_restart_file_in  = '.false.'
+# &pop_to_dart_nml:      pop_to_dart_output_file = 'dart.ud',
 #-------------------------------------------------------------------------
 
 set member = 1
@@ -130,7 +97,7 @@ while ( $member <= $ensemble_size )
    ln -sf ../$OCN_RESTART_FILENAME pop.r.nc
    ln -sf ../pop2_in.$member       pop_in
 
-   ./pop_to_dart
+   ./pop_to_dart || exit 1
 
    mv dart.ud $DART_IC_FILE
    @ member++
@@ -165,11 +132,12 @@ set OBS_FILE = ${OBSDIR}/${OBSFNAME}
 
 ln -sfv ${OBS_FILE} obs_seq.out
 
-mpirun.lsf ./filter
+mpirun.lsf ./filter || exit 2
 
 mv Prior_Diag.nc      ../Prior_Diag.${OCN_DATE_EXT}.nc
 mv Posterior_Diag.nc  ../Posterior_Diag.${OCN_DATE_EXT}.nc
 mv obs_seq.final      ../obs_seq.${OCN_DATE_EXT}.final
+mv dart_log.out       ../dart_log.${OCN_DATE_EXT}.out
 
 #  move inflation info (if they exist) ...
 
@@ -193,7 +161,7 @@ while ( $member <= $ensemble_size )
 
    ln -sf $DART_RESTART_FILE dart.ic
 
-   ./dart_to_pop
+   ./dart_to_pop || exit 3
 
    @ member++
 end

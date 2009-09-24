@@ -24,7 +24,7 @@ program dart_to_pop
 
 use        types_mod, only : r4, r8, SECPERDAY
 use    utilities_mod, only : E_ERR, E_WARN, E_MSG, error_handler, open_file, &
-                             initialize_utilities, finalize_utilities, &
+                             initialize_utilities, timestamp, &
                              find_namelist_in_file, check_namelist_read, &
                              logfileunit
 use  assim_model_mod, only : open_restart_read, aread_state_restart, close_restart
@@ -50,7 +50,8 @@ character(len=128), parameter :: &
 character (len = 128) :: dart_to_pop_input_file   = 'dart.ic'
 logical               :: advance_time_present     = .TRUE.
 
-namelist /dart_to_pop_nml/ dart_to_pop_input_file, advance_time_present
+namelist /dart_to_pop_nml/ dart_to_pop_input_file, &
+                           advance_time_present
 
 !----------------------------------------------------------------------
 
@@ -59,13 +60,16 @@ integer               :: secs, days
 type(time_type)       :: model_time, adv_to_time
 real(r8), allocatable :: statevector(:)
 character (len = 128) :: pop_restart_filename = 'no_pop_restart_file'
+logical               :: verbose              = .FALSE.
 
 !----------------------------------------------------------------------
 
-call initialize_utilities('dart_to_pop')
+call initialize_utilities(progname='dart_to_pop', output_flag=verbose)
 
-! Call model_mod:static_init_model(), which reads the namelists
-! to set calendar type, grid sizes, etc.
+!----------------------------------------------------------------------
+! Call model_mod:static_init_model() which reads the POP namelists
+! to set grid sizes, etc.
+!----------------------------------------------------------------------
 
 call static_init_model()
 
@@ -79,6 +83,11 @@ read(iunit, nml = dart_to_pop_nml, iostat = io)
 call check_namelist_read(iunit, io, "dart_to_pop_nml")
 
 call get_pop_restart_filename( pop_restart_filename )
+
+write(*,*)
+write(*,'(''dart_to_pop:converting DART file '',A, &
+      &'' to POP restart file '',A)') &
+     trim(dart_to_pop_input_file), trim(pop_restart_filename)
 
 !----------------------------------------------------------------------
 ! Reads the valid time, the state, and the target time.
@@ -109,10 +118,10 @@ endif
 ! Log what we think we're doing, and exit.
 !----------------------------------------------------------------------
 
-call print_date( model_time,'dart_to_pop:dart model date')
-call print_time( model_time,'dart_to_pop:dart model time')
-call print_date( model_time,'dart_to_pop:dart model date',logfileunit)
-call print_time( model_time,'dart_to_pop:dart model time',logfileunit)
+call print_date( model_time,'dart_to_pop:POP  model date')
+call print_time( model_time,'dart_to_pop:DART model time')
+call print_date( model_time,'dart_to_pop:POP  model date',logfileunit)
+call print_time( model_time,'dart_to_pop:DART model time',logfileunit)
 
 if ( advance_time_present ) then
 call print_time(adv_to_time,'dart_to_pop:advance_to time')
@@ -121,6 +130,7 @@ call print_time(adv_to_time,'dart_to_pop:advance_to time',logfileunit)
 call print_date(adv_to_time,'dart_to_pop:advance_to date',logfileunit)
 endif
 
-call finalize_utilities()
+! When called with 'end', timestamp will call finalize_utilities()
+call timestamp(string1=source, pos='end')
 
 end program dart_to_pop
