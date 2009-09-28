@@ -1,9 +1,24 @@
-function plot_interp_diffs(n)
+function plot_interp_diffs(ugrid_file, tgrid_file)
 % plot_interp_diffs - script to examine the interpolation tests.
 % 
-% plot_interp_diffs(1) ;      % difference regular grids
-% plot_interp_diffs(2) ;      % difference dipole x3 grids
-% plot_interp_diffs(3) ;      % regular grids with same grid as x3 in SH
+% Example 1: plot the regular grid output
+%--------------------------------------------------
+%    ugrid_file = 'regular_grid_u_data';
+%    tgrid_file = 'regular_grid_t_data';
+%    plot_interp_diffs(ugrid_file, tgrid_file)
+%
+% Example 2: plot the dipole grid output
+%--------------------------------------------------
+%    ugrid_file = 'dipole_grid_u_data';
+%    tgrid_file = 'dipole_grid_t_data';
+%    plot_interp_diffs(ugrid_file, tgrid_file)
+%
+% Example 3: plot the dipole grid output
+%--------------------------------------------------
+%    ugrid_file = 'regular_griddi_u_data';
+%    tgrid_file = 'regular_griddi_t_data';
+%    plot_interp_diffs(ugrid_file, tgrid_file)
+%
 
 % Data Assimilation Research Testbed -- DART
 % Copyright 2004-2009, Data Assimilation Research Section
@@ -16,45 +31,16 @@ function plot_interp_diffs(n)
 % $Revision$
 % $Date$
 
-%n = input(['Input 1 to difference regular grids .\n' ...
-%           'Input 2 to difference dipole x3 grids . \n' ...
-%           'Input 3 to diffference regular grids with same grid as x3 in SH\n'])
+u_org = read_file(ugrid_file);
+t_org = read_file(tgrid_file);
+u_new = read_file(sprintf('%s.out',ugrid_file));
+t_new = read_file(sprintf('%s.out',tgrid_file));
 
-if n == 1
-   u_data = load('regular_grid_u_data');
-   t_data = load('regular_grid_t_data');
-   u_out  = load('regular_grid_u_out');
-   t_out  = load('regular_grid_t_out');
-   nx = 111;
-   ny = 317;
-elseif n == 2
-   u_data = load('dipole_x3_u_data');
-   t_data = load('dipole_x3_t_data');
-   u_out  = load('dipole_x3_u_out');
-   t_out  = load('dipole_x3_t_out');
-   nx = 100;
-   ny = 116;
-elseif n == 3
-   u_data = load('regular_griddi_u_data');
-   t_data = load('regular_griddi_t_data');
-   u_out  = load('regular_griddi_u_out');
-   t_out  = load('regular_griddi_t_out');
-   nx = 100;
-   ny = 97;
-else
-   error('Sorry, choices are only 1, 2, or 3 ... you entered %d',n)
-end
+udif = u_org.datmat - u_new.datmat;
+tdif = t_org.datmat - t_new.datmat;
 
-u  = reshape( u_out(:,3),ny,nx);
-ub = reshape(u_data(:,3),ny,nx);
-t  = reshape( t_out(:,3),ny,nx);
-tb = reshape(t_data(:,3),ny,nx);
-
-dif  = u - ub;
-tdif = t - tb;
-
-umin = min(dif(:));
-umax = max(dif(:));
+umin = min(udif(:));
+umax = max(udif(:));
 str1 = sprintf('min/max of difference is %f %f',umin,umax);
 
 tmin = min(tdif(:));
@@ -62,11 +48,29 @@ tmax = max(tdif(:));
 str2 = sprintf('min/max of difference is %f %f',tmin,tmax);
 
 figure(1); clf;
-imagesc(dif)
+imagesc(udif); set(gca,'YDir','normal')
 colorbar 
 title({'U Difference',str1})
 
 figure(2); clf;
-imagesc(tdif)
+imagesc(tdif); set(gca,'YDir','normal')
 colorbar
 title({'T Difference',str2})
+
+
+function chunk = read_file(fname)
+
+if (exist(fname,'file') ~=2 )
+   error('%s does not exist',fname)
+end
+
+chunk.fname  = fname;
+mydata       = load(fname);
+chunk.lons   = mydata(:,1);
+chunk.lats   = mydata(:,2);
+chunk.vals   = mydata(:,3);
+chunk.nx     = sum(abs(diff(chunk.lats)) > 20) + 1;  % looking for big jumps
+chunk.ny     = length(chunk.lons) / chunk.nx;
+chunk.datmat = reshape(chunk.vals, chunk.ny, chunk.nx);
+chunk.string = sprintf('min/max is %f %f',min(chunk.vals), max(chunk.vals));
+
