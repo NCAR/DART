@@ -294,6 +294,7 @@ call read_topography(Nx, Ny,  KMT,  KMU)
 call read_vert_grid( Nz, ZC, ZG)
 
 if (debug > 0) call write_grid_netcdf() ! DEBUG only
+if (debug > 0) call write_grid_interptest() ! DEBUG only
 
 !---------------------------------------------------------------
 ! compute the offsets into the state vector for the start of each
@@ -313,10 +314,10 @@ start_index(SHGT_index) = start_index(V_index) + (Nx * Ny * Nz)
 !  e.g. S,T,U,V = 256 x 225 x 70
 !  e.g. SHGT = 256 x 225
 
-if (do_output()) write(logfileunit, *) 'Using grid size : '
-if (do_output()) write(logfileunit, *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
-if (do_output()) write(     *     , *) 'Using grid size : '
-if (do_output()) write(     *     , *) '  Nx, Ny, Nz = ', Nx, Ny, Nz
+if (do_output()) write(logfileunit, *) 'Using grid : Nx, Ny, Nz = ', &
+                                                     Nx, Ny, Nz
+if (do_output()) write(     *     , *) 'Using grid : Nx, Ny, Nz = ', &
+                                                     Nx, Ny, Nz
 
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 if (do_output()) write(*,*) 'model_size = ', model_size
@@ -1306,20 +1307,20 @@ logical               :: in_quad
 ! Return in_quad true if the point (lon, lat) is in the quad with 
 ! the given corners.
 
-! Do this by ray tracing in latitude for now. For non-pole point, want a
-! downward directed ray from (lon,lat) to intersect only one edge of the
-! quadrilateral. Have to watch out for intersecting at a vertex nearly
-! exactly, other round-off issues. This should be checked carefully.
+! Do this by line tracing in latitude for now. For non-pole point, want a vertical
+! line from the lon, lat point to intersect a side of the quad both above
+! and below the point.
 
 real(r8) :: x(2), y(2)
-logical  :: cant_be_in_box, on_side
-integer  :: intercepts(4), exact_corner(4), second_corner, num_sides, num_corners, i
+logical  :: cant_be_in_box, in_box
+integer  :: intercepts_above(4), intercepts_below(4), i
+integer  :: num_above, num_below
 
 ! Default answer is point is not in quad
 in_quad = .false.
 
-! Loop through the sides and compute intercept (if any) with a downward
-! ray from the point. This ray has equation x=lon, y<=lat. 
+! Loop through the sides and compute intercept (if any) with a vertical line
+! from the point. This line has equation x=lon.
 do i = 1, 4
    ! Load up the sides endpoints
    if(i <= 3) then
@@ -1332,273 +1333,123 @@ do i = 1, 4
       y(2) = y_corners(1)
    endif
 
-   ! Check to see how a southward going ray from the point is related to this side
-   call ray_intercept(x, y, lon, lat, cant_be_in_box, intercepts(i), &
-      exact_corner(i), on_side)
+   ! Check to see how a vertical line from the point is related to this side
+   call line_intercept(x, y, lon, lat, cant_be_in_box, in_box, intercepts_above(i), &
+      intercepts_below(i))
 
    ! If cant_be_in_box is true, can return right away
    if(cant_be_in_box) then
       in_quad = .false.
       return
    ! Return true if on a side
-   else if(on_side) then
+   else if(in_box) then
       in_quad = .true.
       return
    endif
 
 enddo
 
-! Point is not known to be out of the quad or on the quads boundary.
-! See how many sides and corners it went through
-num_sides = sum(intercepts)
-num_corners = sum(exact_corner)
+! See if the line intercepted a side of the quad both above and below
+num_above = sum(intercepts_above)
+num_below = sum(intercepts_below)
 
-! If the number of exact corner intercepts is 0 just look at sides.
-! If the ray only intersects one side we are in the box.
-if(sum(exact_corner) == 0) then
-   if(num_sides == 1) then
-      ! Point is in box
-      in_quad = .true.
-   else if(num_sides >= 3) then
-      ! Put in some development error checking; shouldn't be able to hit 3 or 4 sides
-      write(msgstring, *) 'Num sides in in_quad is ', num_sides, &
-         'Please contact DART development team'
-      call error_handler(E_ERR, 'in_quad', msgstring, source, revision, revdate)
-   endif
-
-else
-   ! We have some exact_corner hits; these must come in pairs.
-   ! An odd number of corners should be impossible.
-   if(num_corners == 1 .or. num_corners == 3) then
-      ! Put in some development error checking; shouldn't be able to hit 3 or 4 sides
-      write(*,*)'xcorners = ',x_corners,';'
-      write(*,*)'ycorners = ',y_corners,';'
-      write(*,*)'lon = ',lon,';'
-      write(*,*)'lat = ',lat,';'
-      write(*,*)'intercepts = ',intercepts,';'
-      write(*,*)'exact_corner = ',exact_corner,';'
-      write(msgstring, *) 'Num corners in in_quad is ', num_corners, &
-         'Please contact DART development team'
-      call error_handler(E_MSG, 'in_quad', msgstring, source, revision, revdate)
-      in_quad = .false.   ! DEBUG FIXME TJH ... not the right thing to do.
-   ! Four corners means we are not in; 
-   else if(num_corners == 4) then
-      in_quad = .false.
-      return
-   ! Two corners and one side means we are not in;
-   else if(num_corners == 2 .and. num_sides == 1) then
-      in_quad = .true.
-   ! Two corners and no plain intercepts means we could be in or out;
-   ! This case requires examining the particular sides.
-   else if(num_corners == 2 .and. num_sides == 0) then
-      ! See if the point is between these; if so in box
-      call two_corners(exact_corner, x_corners, lon, in_quad)
-   endif
-
+if(num_above > 0 .and. num_below > 0) then
+   in_quad = .true.
 endif
 
 end function in_quad
 
-!------------------------------------------------------------
-
-subroutine two_corners(exact_corner, x_corners, lon, in_quad)
-
-integer,  intent(in)  :: exact_corner(4)
-real(r8), intent(in)  :: x_corners(4), lon
-logical,  intent(out) :: in_quad
-
-! For a ray that intersects the corner between two quad edges, is the
-! point in or out of the quad?
-
-integer :: ind, i, second_point
-real(r8) :: x_points(4)
-
-ind = 1
-
-! Loop to get a list (x_points) that contains the longitude of endpoints of
-! both of the sides that share a corner that was hit by the ray. There will
-! be one duplicate value.
-do i = 1, 4
-   if(exact_corner(i) == 1) then
-      ! Side i was one of the ones that got a corner hit
-      x_points(ind) = x_corners(i)
-      ind = ind + 1
-      second_point = i + 1
-      if(second_point > 4) second_point = 1
-      x_points(ind) = x_corners(second_point)
-      ind = ind + 1
-   endif
-end do
-
-! Get the min and max of the longitudes on the edges adjacent to the corner.
-! If the point has longitude between these, then it must lie in the
-! angle between them and the point is in the quad.
-if(lon >= minval(x_points) .and. lon <= maxval(x_points)) then
-   in_quad = .true.
-else
-   in_quad = .false.
-endif
-
-end subroutine two_corners
 
 !------------------------------------------------------------
 
-subroutine ray_intercept(x_in, y, x_ray_in, y_ray, &
-   cant_be_in_box, intercepts, exact_corner, on_side)
+subroutine line_intercept(side_x_in, side_y, x_point_in, y_point, &
+   cant_be_in_box, in_box, intercept_above, intercept_below)
 
-real(r8), intent(in)  :: x_in(2), y(2), x_ray_in, y_ray
-logical,  intent(out) :: cant_be_in_box, on_side
-integer,  intent(out) :: intercepts, exact_corner
+real(r8), intent(in)  :: side_x_in(2), side_y(2), x_point_in, y_point
+logical,  intent(out) :: cant_be_in_box, in_box
+integer,  intent(out) :: intercept_above, intercept_below
 
-! Find the intercept of a downward ray from (x_ray, y_ray) and
-! a line segment with endpoints x, y.
-! For a given side have endpoints (x1, y1) and (x2, y2) so equation of
-! segment is y=y1 + m(x-x1) for y between y1 and y2.
-! Intersection of ray and line occurs at y = y1 + m(lon - x1); need this
-! y to be less than lat and between y1 and y2).
-! If the ray is colinear with the side but the point is not on the side, return
-! cant_be_in_box as true. If the ray intercepts the side, return intercepts
-! as 1 else 0. If the ray intercepts a corner of the side, return exact_corner as
-! true. If the point lies on the side, return on_side as true.
+! Find the intercept of a vertical line from point (x_point, y_point) and
+! a line segment with endpoints side_x and side_y.
+! For a given side have endpoints (side_x1, side_y1) and (side_x2, side_y2)
+! so equation of segment is y = side_y1 + m(x-side_x1) for y 
+! between side_y1 and side_y2.
+! Intersection of vertical line and line containing side 
+! occurs at y = side_y1 + m(x_point - side_x1); need this
+! y to be between side_y1 and side_y2.
+! If the vertical line is colinear with the side but the point is not on the side, return
+! cant_be_in_box as true. If the point is on the side, return in_box true.
+! If the intersection of the vertical line and the side occurs at a point above
+! the given point, return 1 for intercept_above. If the intersection occurs 
+! below, return 1 for intercept_below. If the vertical line does not intersect
+! the segment, return false and 0 for all intent out arguments.
 
-! WARNING: ALMOST CERTAINLY A PROBLEM FOR THE POLE BOX!!! POLE BOX COULD
+! WARNING: CERTAINLY A PROBLEM FOR THE POLE BOX!!! POLE BOX COULD
 ! HAVE SIDES THAT ARE LONGER THAN 180. For now pole boxes are excluded.
 
 ! This can probably be made much cleaner and more efficient.
 
-real(r8) :: slope, y_intercept, x(2), x_ray
-real(r8) :: xmin, xmax, ymin, ymax
-real(r8) :: rdummytiny, rdummyepsilon, rdummyabs, rdummyfraction
-integer :: idummydigits, idummyprecision, idummyexponent
-
-xmin = minval(x_in)
-xmax = maxval(x_in)
+real(r8) :: slope, y_intercept, side_x(2), x_point
 
 ! May have to adjust the longitude intent in values, so copy
-x = x_in
-x_ray = x_ray_in
+side_x = side_x_in
+x_point = x_point_in
 
 ! See if the side wraps around in longitude
-if(xmax - xmin > 180.0_r8) then
-   if( x(1) < 180.0_r8)  x(1) =  x(1) + 360.0_r8
-   if( x(2) < 180.0_r8)  x(2) =  x(2) + 360.0_r8
-   if(x_ray < 180.0_r8) x_ray = x_ray + 360.0_r8
+if(maxval(side_x) - minval(side_x) > 180.0_r8) then
+   if(side_x(1) < 180.0_r8)  side_x(1) =  side_x(1) + 360.0_r8
+   if(side_x(2) < 180.0_r8)  side_x(2) =  side_x(2) + 360.0_r8
+   if(x_point < 180.0_r8) x_point = x_point + 360.0_r8
 endif
 
-xmin = minval(x)
-xmax = maxval(x)
-ymin = minval(y)
-ymax = maxval(y)
+! Initialize the default returns 
+cant_be_in_box   = .false.
+in_box           = .false.
+intercept_above = 0
+intercept_below = 0
 
-! Initialize all the possible returns 
-cant_be_in_box = .false.
-on_side        = .false.
-intercepts     = 0
-exact_corner   = 0
+! First easy check, if x_point is not between endpoints of segment doesn't intersect
+if(x_point < minval(side_x) .or. x_point > maxval(side_x)) return
 
-! First easy check, if x_ray is not between x(1) and x(2) it can't intersect
-if(x_ray < minval(x) .or. x_ray > maxval(x)) return
+! Otherwise line must intersect the segment
 
-if((x_ray < xmin) .or. (x_ray > xmax)) then
-   write(*,*)'minval vs xmin makes a difference'
-   return
-endif
-
-!if(x(2) == x(1)) then
-!        continue
-!else
-!   if (x(2) - x(1) == 0.0) &
-!        write(*,*)'x difference is zero', x
-!   if (abs(x(2) -x(1)) < epsilon(x(1))) &
-!        write(*,*)'x is almost equal', x
-!endif
-!
-!if(y(2) == y(1)) then
-!        continue
-!else
-!   if (y(2) - y(1) == 0.0) then
-!        write(*,*)'y difference is zero', y
-!   endif
-!   if (abs(y(2) -y(1)) < epsilon(y(1))) then
-!        write(*,*)'y is almost equal', y
-!   endif
-!   if (abs(y(2) -y(1)) < tiny(y(1))) then
-!        write(*,*)'y is almost equal', y
-!   endif
-!   rdummyabs       = abs(y(2) - y(1))
-!   rdummytiny      = tiny(y(1))
-!   rdummyepsilon   = epsilon(y(1))
-!   idummydigits    = digits(y(1))
-!   idummyprecision = precision(y(1))
-!   idummyexponent  = exponent(rdummyabs)
-!   rdummyfraction  = fraction(rdummyabs)
-!endif
-
-rdummyabs = abs(x(2) - x(1))
 ! First subblock, slope is undefined
-! if(x(2) == x(1)) then
-if(rdummyabs < 1.0E-12_r8 ) then   ! near enough equal
-   ! Check for exactly on this side
-   if(x_ray /= x(1)) then
-      ! Doesn't intersect vertical line
+if(side_x(2) == side_x(1)) then
+   ! The line is colinear with the side
+   ! If y_point is between endpoints then point is on this side
+   if(y_point <= maxval(side_y) .and. y_point >= minval(side_y)) then
+      in_box = .true.
       return
+   ! If not on side but colinear with side, point cant be in quad
    else
-      ! The ray is colinear with the side
-      ! If y_ray is between endpoints then point is on this side
-      if(y_ray <= ymax .and. y_ray >= ymin) then
-         on_side = .true.
-         return
-      ! If not on side but colinear with side, point cant be in quad
-      else
-         cant_be_in_box = .true.
-         return
-      endif
+      cant_be_in_box = .true.
+      return
    endif
 
 else
 
-   rdummyabs = abs(y(2) - y(1))
-   if ( rdummyabs < 1.0E-12_r8 ) then
-           slope = 0.0_r8
-   else
-      ! Second possibility; slope is defined
-      slope = (y(2) - y(1)) / (x(2) - x(1))
-   endif
-   ! Intercept of downward ray and line through points is at x_ray and...
-   y_intercept = y(1) + slope * (x_ray - x(1))
+   ! Second possibility; slope is defined
+   ! FIXME: watch out for numerical instability.
+   ! near-zero x's and large side_y's may cause overflow
+   slope = (side_y(2) - side_y(1)) / (side_x(2) - side_x(1))
 
-   ! If y_intercept is greater than y_ray it's not on the downward ray
-   if(y_intercept > y_ray) return
+   ! Intercept of vertical line through is at x_point and...
+   y_intercept = side_y(1) + slope * (x_point - side_x(1))
 
-   ! If the slope is 0, we now know the ray intercepts
-   if(slope == 0) then
-      ! Check for exact corner
-      if(x_ray == x(1) .or. x_ray == x(2)) then
-         exact_corner = 1
-         return
-      else
-         intercepts = 1
-         return
-      endif
-   endif
-
-   ! Slope of line is not 0 or undefined so y endpoints differ
-   ! If intercept is on segment and is below the point
-   if(y_intercept > ymax .or. y_intercept < ymin) then
-      ! Intersects line containing side outside of side
+   ! Intersects the segment, is it above, below, or at the point
+   if(y_intercept == y_point) then
+      in_box = .true.
       return
-   else if(y_intercept < ymax .and. y_intercept > ymin) then
-      ! Intercepts inside the side
-      intercepts = 1
+   else if(y_intercept > y_point) then
+      intercept_above = 1
       return
    else
-      ! Otherwise, must go exactly through a corner
-      exact_corner = 1
+      intercept_below = 1
       return
    endif
 endif
 
-end subroutine ray_intercept
+end subroutine line_intercept
 
 !------------------------------------------------------------
 
@@ -1779,6 +1630,7 @@ if(lheight <= hgt_array(1)) then
    fract = 1.0_r8 
 if (debug > 1) print *, 'above first level in height'
 if (debug > 1) print *, 'hgt_array, top, bot, fract=', hgt_array(1), top, bot, fract
+   return
 endif
 
 ! Search through the boxes
@@ -3043,6 +2895,8 @@ logical :: is_ugrid
 
 if ( .not. module_initialized ) call static_init_model
 
+is_not_ocean = .FALSE.    ! start out thinking everything is wet.
+
 is_ugrid = is_on_ugrid(obs_type)
 if ((      is_ugrid .and. hgt_index > KMU(lon_index, lat_index)) .or. &
     (.not. is_ugrid .and. hgt_index > KMT(lon_index, lat_index))) then
@@ -3074,80 +2928,166 @@ end function
 !
 ! Write the grid to a netcdf file for checking.
 
- integer :: ncid, NlonDimID, NlatDimID, NzDimID
- integer :: nlon, nlat, nz
- integer :: ulatVarID, ulonVarID, TLATvarid, TLONvarid
- integer :: ZGvarid, ZCvarid, KMTvarid, KMUvarid
+integer :: ncid, NlonDimID, NlatDimID, NzDimID
+integer :: nlon, nlat, nz
+integer :: ulatVarID, ulonVarID, TLATvarid, TLONvarid
+integer :: ZGvarid, ZCvarid, KMTvarid, KMUvarid
 
- integer :: dimids(2);
+integer :: dimids(2);
 
- if ( .not. module_initialized ) call static_init_model
+if ( .not. module_initialized ) call static_init_model
 
- nlon = size(ULAT,1)
- nlat = size(ULAT,2)
- nz   = size(ZG)
- 
- call nc_check(nf90_create('dart_grid.nc', NF90_CLOBBER, ncid),'write_grid_netcdf')
+nlon = size(ULAT,1)
+nlat = size(ULAT,2)
+nz   = size(ZG)
 
- ! define dimensions
+call nc_check(nf90_create('dart_grid.nc', NF90_CLOBBER, ncid),'write_grid_netcdf')
 
- call nc_check(nf90_def_dim(ncid, 'i', nlon, NlonDimID),'write_grid_netcdf')
- call nc_check(nf90_def_dim(ncid, 'j', nlat, NlatDimID),'write_grid_netcdf')
- call nc_check(nf90_def_dim(ncid, 'k',   nz,   NzDimID),'write_grid_netcdf')
+! define dimensions
 
- dimids(1) = NlonDimID 
- dimids(2) = NlatDimID 
+call nc_check(nf90_def_dim(ncid, 'i', nlon, NlonDimID),'write_grid_netcdf')
+call nc_check(nf90_def_dim(ncid, 'j', nlat, NlatDimID),'write_grid_netcdf')
+call nc_check(nf90_def_dim(ncid, 'k',   nz,   NzDimID),'write_grid_netcdf')
 
- ! define variables
+dimids(1) = NlonDimID 
+dimids(2) = NlatDimID 
 
- ! FIXME: we should add attributes to say what units the grids are in (degrees).
- call nc_check(nf90_def_var(ncid,  'KMT', nf90_int,     dimids,  KMTvarid),'write_grid_netcdf')
- call nc_check(nf90_def_var(ncid,  'KMU', nf90_int,     dimids,  KMUvarid),'write_grid_netcdf')
- call nc_check(nf90_def_var(ncid, 'ULON', nf90_double,  dimids, ulonVarID),'write_grid_netcdf')
- call nc_check(nf90_def_var(ncid, 'ULAT', nf90_double,  dimids, ulatVarID),'write_grid_netcdf')
- call nc_check(nf90_def_var(ncid, 'TLON', nf90_double,  dimids, TLONvarid),'write_grid_netcdf')
- call nc_check(nf90_def_var(ncid, 'TLAT', nf90_double,  dimids, TLATvarid),'write_grid_netcdf')
- call nc_check(nf90_def_var(ncid,   'ZG', nf90_double, NzDimID,   ZGvarid),'write_grid_netcdf')
- call nc_check(nf90_def_var(ncid,   'ZC', nf90_double, NzDimID,   ZCvarid),'write_grid_netcdf')
+! define variables
 
- call nc_check(nf90_put_att(ncid,ulonVarID,'long_name','U,V grid lons'), &
-                                                       'write_grid_netcdf')
- call nc_check(nf90_put_att(ncid,ulatVarID,'long_name','U,V grid lats'), &
-                                                       'write_grid_netcdf')
- call nc_check(nf90_put_att(ncid,tlonVarID,'long_name','S,T grid lons'), &
-                                                       'write_grid_netcdf')
- call nc_check(nf90_put_att(ncid,tlatVarID,'long_name','S,T grid lats'), &
-                                                      'write_grid_netcdf')
- call nc_check(nf90_put_att(ncid,ZCVarID,'long_name','vertical grid centers'), &
-                                                      'write_grid_netcdf')
- call nc_check(nf90_put_att(ncid,ZCVarID,'units','meters'), &
-                                                      'write_grid_netcdf')
- call nc_check(nf90_put_att(ncid,ZGVarID,'long_name','vertical grid bottoms'), &
-                                                      'write_grid_netcdf')
- call nc_check(nf90_put_att(ncid,ZGVarID,'units','meters'), &
-                                                      'write_grid_netcdf')
+! FIXME: we should add attributes to say what units the grids are in (degrees).
+call nc_check(nf90_def_var(ncid,  'KMT', nf90_int,     dimids,  KMTvarid),'write_grid_netcdf')
+call nc_check(nf90_def_var(ncid,  'KMU', nf90_int,     dimids,  KMUvarid),'write_grid_netcdf')
+call nc_check(nf90_def_var(ncid, 'ULON', nf90_double,  dimids, ulonVarID),'write_grid_netcdf')
+call nc_check(nf90_def_var(ncid, 'ULAT', nf90_double,  dimids, ulatVarID),'write_grid_netcdf')
+call nc_check(nf90_def_var(ncid, 'TLON', nf90_double,  dimids, TLONvarid),'write_grid_netcdf')
+call nc_check(nf90_def_var(ncid, 'TLAT', nf90_double,  dimids, TLATvarid),'write_grid_netcdf')
+call nc_check(nf90_def_var(ncid,   'ZG', nf90_double, NzDimID,   ZGvarid),'write_grid_netcdf')
+call nc_check(nf90_def_var(ncid,   'ZC', nf90_double, NzDimID,   ZCvarid),'write_grid_netcdf')
 
- call nc_check(nf90_enddef(ncid),'write_grid_netcdf')
+call nc_check(nf90_put_att(ncid,ulonVarID,'long_name','U,V grid lons'), &
+                                                     'write_grid_netcdf')
+call nc_check(nf90_put_att(ncid,ulatVarID,'long_name','U,V grid lats'), &
+                                                     'write_grid_netcdf')
+call nc_check(nf90_put_att(ncid,tlonVarID,'long_name','S,T grid lons'), &
+                                                     'write_grid_netcdf')
+call nc_check(nf90_put_att(ncid,tlatVarID,'long_name','S,T grid lats'), &
+                                                    'write_grid_netcdf')
+call nc_check(nf90_put_att(ncid,ZCVarID,'long_name','vertical grid centers'), &
+                                                    'write_grid_netcdf')
+call nc_check(nf90_put_att(ncid,ZCVarID,'units','meters'), &
+                                                    'write_grid_netcdf')
+call nc_check(nf90_put_att(ncid,ZGVarID,'long_name','vertical grid bottoms'), &
+                                                    'write_grid_netcdf')
+call nc_check(nf90_put_att(ncid,ZGVarID,'units','meters'), &
+                                                    'write_grid_netcdf')
 
- ! fill variables
+call nc_check(nf90_enddef(ncid),'write_grid_netcdf')
 
- call nc_check(nf90_put_var(ncid,  KMTvarid,  KMT),'write_grid_netcdf')
- call nc_check(nf90_put_var(ncid,  KMUvarid,  KMU),'write_grid_netcdf')
- call nc_check(nf90_put_var(ncid, ulatVarID, ULAT),'write_grid_netcdf')
- call nc_check(nf90_put_var(ncid, ulonVarID, ULON),'write_grid_netcdf')
- call nc_check(nf90_put_var(ncid, TLATvarid, TLAT),'write_grid_netcdf')
- call nc_check(nf90_put_var(ncid, TLONvarid, TLON),'write_grid_netcdf')
- call nc_check(nf90_put_var(ncid,   ZGvarid,   ZG),'write_grid_netcdf')
- call nc_check(nf90_put_var(ncid,   ZCvarid,   ZC),'write_grid_netcdf')
+! fill variables
 
- call nc_check(nf90_close(ncid),'write_grid_netcdf')
+call nc_check(nf90_put_var(ncid,  KMTvarid,  KMT),'write_grid_netcdf')
+call nc_check(nf90_put_var(ncid,  KMUvarid,  KMU),'write_grid_netcdf')
+call nc_check(nf90_put_var(ncid, ulatVarID, ULAT),'write_grid_netcdf')
+call nc_check(nf90_put_var(ncid, ulonVarID, ULON),'write_grid_netcdf')
+call nc_check(nf90_put_var(ncid, TLATvarid, TLAT),'write_grid_netcdf')
+call nc_check(nf90_put_var(ncid, TLONvarid, TLON),'write_grid_netcdf')
+call nc_check(nf90_put_var(ncid,   ZGvarid,   ZG),'write_grid_netcdf')
+call nc_check(nf90_put_var(ncid,   ZCvarid,   ZC),'write_grid_netcdf')
+
+call nc_check(nf90_close(ncid),'write_grid_netcdf')
 
 end subroutine write_grid_netcdf
 
 
-!------------------------------------------------------------------
 
-subroutine test_interpolation(test_casenum)
+  subroutine write_grid_interptest()
+!------------------------------------------------------------------
+! Write the grid to an ascii file - in a format suitable for
+! subsequent use in the 'test_interpolation()' code.
+! write_grid_interptest is only possible after reading a real POP grid,
+! so static_init_model() must be called to gather the real POP grid.
+
+integer  :: i, j
+real(r8) :: rowmat(Nx,1), colmat(1,Ny), dmat(Nx,Ny)
+real(r8) :: rtlon, rulon, rtlat, rulat, u_val, t_val
+
+if ( .not. module_initialized ) call static_init_model
+
+!----------------------------------------------------------------------
+! Generate a 'Regular' grid with the same rough 'shape' as the dipole grid
+!----------------------------------------------------------------------
+
+open(unit=12, position='rewind', action='write', file='regular_grid_u')
+open(unit=13, position='rewind', action='write', file='regular_grid_t')
+open(unit=14, position='rewind', action='write', file='regular_grid_u_data')
+open(unit=15, position='rewind', action='write', file='regular_grid_t_data')
+
+write(12, *) Nx, Ny
+write(13, *) Nx, Ny
+
+! Have T-grid starting at 0 and U grid offset by half
+do i = 1, Nx
+   rtlon = (i - 1.0_r8) * 360.0_r8 / Nx
+   rulon = (i - 0.5_r8) * 360.0_r8 / Nx
+   do j = 1, Ny
+      rtlat = -90.0_r8 + (j - 1.0_r8) * 180.0_r8 / Ny
+      rulat = -90.0_r8 + (j - 0.5_r8) * 180.0_r8 / Ny
+      write(12, *) i, j, rulon, rulat
+      write(13, *) i, j, rtlon, rtlat
+      ! Now add some wave pattern data 
+      u_val = sin(3.0_r8*(rulat + 11.0_r8)*2.0_r8*PI/360.0_r8) * &
+              sin(4.0_r8*(rulon + 17.0_r8)*2.0_r8*PI/360.0_r8)
+      t_val = sin(3.0_r8*(rtlat + 11.0_r8)*2.0_r8*PI/360.0_r8) * &
+              sin(4.0_r8*(rtlon + 17.0_r8)*2.0_r8*PI/360.0_r8)
+      write(14, *) rulon, rulat, u_val
+      write(15, *) rtlon, rtlat, t_val
+   enddo
+enddo
+
+close(unit=12)
+close(unit=13)
+close(unit=14)
+close(unit=15)
+
+!----------------------------------------------------------------------
+! POP grid (dipole) next
+!----------------------------------------------------------------------
+
+open(unit=12, position='rewind', action='write', file='dipole_grid_u')
+open(unit=13, position='rewind', action='write', file='dipole_grid_t')
+open(unit=14, position='rewind', action='write', file='dipole_grid_u_data')
+open(unit=15, position='rewind', action='write', file='dipole_grid_t_data')
+
+write(12, *) Nx, Ny
+write(13, *) Nx, Ny
+
+rowmat(:,1) = cos(PI * real((/ (i,i=0,Nx-1) /),r8) / Nx);
+colmat(1,:) = sin(PI * real((/ (i,i=0,Ny-1) /),r8) / Ny);
+dmat        = matmul(rowmat,colmat)
+
+do i = 1, Nx
+   do j = 1, Ny
+      write(12, *) i, j, ULON(i,j), ULAT(i,j)
+      write(13, *) i, j, TLON(i,j), TLAT(i,j)
+      write(14, *)       ULON(i,j), ULAT(i,j), dmat(i, j)
+      write(15, *)       TLON(i,j), TLAT(i,j), dmat(i, j)
+   end do
+end do
+
+close(unit=12)
+close(unit=13)
+close(unit=14)
+close(unit=15)
+
+end subroutine write_grid_interptest
+
+
+
+ subroutine test_interpolation(test_casenum)
+!------------------------------------------------------------------
+!subroutine test_interpolation(test_casenum)
+!
+! rigorous test of the intepolation routine.
 
 integer, intent(in) :: test_casenum
 
@@ -3169,36 +3109,36 @@ real(r8), allocatable :: reg_u_x(:), reg_t_x(:), dipole_u(:, :), dipole_t(:, :)
 ! Set of block options for now
 ! Lon lat for u on channel 12, v on 13, u data on 14, t data on 15
 
-! Case 1: regular grid to dipole x3
-! Case 2: dipole x3 to regular grid
-! Case 3: regular grid to regular grid with same grid as x3 in SH
-! Case 4: regular grid with same grid as x3 in SH to regular grid
-! Case 5: regular grid with same grid as x3 in SH to dipole x3
-! Case 6: dipole x3 to regular grid with same grid as x3 in SH
+! Case 1: regular grid to dipole
+! Case 2: dipole to regular grid
+! Case 3: regular grid to regular grid with same grid as dipole in SH
+! Case 4: regular grid with same grid as dipole in SH to regular grid
+! Case 5: regular grid with same grid as dipole in SH to dipole
+! Case 6: dipole to regular grid with same grid as dipole in SH
 
 ! do not let the standard init run
 module_initialized = .true.
 
 if(test_casenum == 1 .or. test_casenum == 3) then
    ! Case 1 or 3: read in from regular grid 
-   open(unit = 12, file = 'regular_grid_u')
-   open(unit = 13, file = 'regular_grid_t')
-   open(unit = 14, file = 'regular_grid_u_data')
-   open(unit = 15, file = 'regular_grid_t_data')
+   open(unit=12, position='rewind', action='read', file='regular_grid_u')
+   open(unit=13, position='rewind', action='read', file='regular_grid_t')
+   open(unit=14, position='rewind', action='read', file='regular_grid_u_data')
+   open(unit=15, position='rewind', action='read', file='regular_grid_t_data')
 
 else if(test_casenum == 4 .or. test_casenum == 5) then
-   ! Case 3 or 4: read regular with same grid as x3 in SH
-   open(unit = 12, file = 'regular_griddi_u')
-   open(unit = 13, file = 'regular_griddi_t')
-   open(unit = 14, file = 'regular_griddi_u_data')
-   open(unit = 15, file = 'regular_griddi_t_data')
+   ! Case 3 or 4: read regular with same grid as dipole in SH
+   open(unit=12, position='rewind', action='read', file='regular_griddi_u')
+   open(unit=13, position='rewind', action='read', file='regular_griddi_t')
+   open(unit=14, position='rewind', action='read', file='regular_griddi_u_data')
+   open(unit=15, position='rewind', action='read', file='regular_griddi_t_data')
 
 else if(test_casenum == 2 .or. test_casenum == 6) then
-   ! Case 5: read in from dipole x3 grid
-   open(unit = 12, file = 'dipole_x3_grid_u')
-   open(unit = 13, file = 'dipole_x3_grid_t')
-   open(unit = 14, file = 'dipole_x3_u_data')
-   open(unit = 15, file = 'dipole_x3_t_data')
+   ! Case 5: read in from dipole grid
+   open(unit=12, position='rewind', action='read', file='dipole_grid_u')
+   open(unit=13, position='rewind', action='read', file='dipole_grid_t')
+   open(unit=14, position='rewind', action='read', file='dipole_grid_u_data')
+   open(unit=15, position='rewind', action='read', file='dipole_grid_t_data')
 endif
 
 ! Get the size of the grid from the input u and t files
@@ -3245,32 +3185,32 @@ height = 1
 call init_interp()
 
 ! Now read in the points for the output grid
-! Case 1: regular grid to dipole x3
-! Case 2: dipole x3 to regular grid
-! Case 3: regular grid to regular grid with same grid as x3 in SH
-! Case 4: regular grid with same grid as x3 in SH to regular grid
-! Case 5: regular grid with same grid as x3 in SH to dipole x3
-! Case 6: dipole x3 to regular grid with same grid as x3 in SH
+! Case 1: regular grid to dipole
+! Case 2: dipole to regular grid
+! Case 3: regular grid to regular grid with same grid as dipole in SH
+! Case 4: regular grid with same grid as dipole in SH to regular grid
+! Case 5: regular grid with same grid as dipole in SH to dipole 
+! Case 6: dipole to regular grid with same grid as dipole in SH
 if(test_casenum == 1 .or. test_casenum == 5) then
    ! Output to dipole grid
-   open(unit = 22, file = 'dipole_x3_grid_u')
-   open(unit = 23, file = 'dipole_x3_grid_t')
-   open(unit = 24, file = 'dipole_x3_u_out')
-   open(unit = 25, file = 'dipole_x3_t_out')
+   open(unit=22, position='rewind', action='read',  file='dipole_grid_u')
+   open(unit=23, position='rewind', action='read',  file='dipole_grid_t')
+   open(unit=24, position='rewind', action='write', file='dipole_grid_u_data.out')
+   open(unit=25, position='rewind', action='write', file='dipole_grid_t_data.out')
 
 else if(test_casenum == 2 .or. test_casenum == 4) then
    ! Output to regular grid
-   open(unit = 22, file = 'regular_grid_u')
-   open(unit = 23, file = 'regular_grid_t')
-   open(unit = 24, file = 'regular_grid_u_out')
-   open(unit = 25, file = 'regular_grid_t_out')
+   open(unit=22, position='rewind', action='read',  file='regular_grid_u')
+   open(unit=23, position='rewind', action='read',  file='regular_grid_t')
+   open(unit=24, position='rewind', action='write', file='regular_grid_u_data.out')
+   open(unit=25, position='rewind', action='write', file='regular_grid_t_data.out')
 
 else if(test_casenum == 3 .or. test_casenum == 6) then
-   ! Output to regular grid with same grid as x3 in SH
-   open(unit = 22, file = 'regular_griddi_u')
-   open(unit = 23, file = 'regular_griddi_t')
-   open(unit = 24, file = 'regular_griddi_u_out')
-   open(unit = 25, file = 'regular_griddi_t_out')
+   ! Output to regular grid with same grid as dipole in SH
+   open(unit=22, position='rewind', action='read',  file='regular_griddi_u')
+   open(unit=23, position='rewind', action='read',  file='regular_griddi_t')
+   open(unit=24, position='rewind', action='write', file='regular_griddi_u_data.out')
+   open(unit=25, position='rewind', action='write', file='regular_griddi_t_data.out')
 endif
 
 read(22, *) dnx, dny
@@ -3282,17 +3222,43 @@ endif
 
 allocate(dulon(dnx, dny), dulat(dnx, dny), dtlon(dnx, dny), dtlat(dnx, dny))
 allocate(dipole_u(dnx, dny), dipole_t(dnx, dny))
+
+dipole_u = 0.0_r8   ! just put some dummy values in to make sure they get changed.
+dipole_t = 0.0_r8   ! just put some dummy values in to make sure they get changed.
+
+do imain = 1, dnx
+do jmain = 1, dny
+   read(22, *) ti, tj, dulon(imain, jmain), dulat(imain, jmain)
+   read(23, *) ti, tj, dtlon(imain, jmain), dtlat(imain, jmain)
+end do
+end do
+
 do imain = 1, dnx
    do jmain = 1, dny
-      read(22, *) ti, tj, dulon(imain, jmain), dulat(imain, jmain)
-      read(23, *) ti, tj, dtlon(imain, jmain), dtlat(imain, jmain)
-      ! Interpolate from the first grid to the second grid
+      ! Interpolate U from the first grid to the second grid
+
       call lon_lat_interpolate(reg_u_x, dulon(imain, jmain), dulat(imain, jmain), &
          KIND_U_CURRENT_COMPONENT, height, dipole_u(imain, jmain), istatus)
 
+      if ( istatus /= 0 ) then
+         write(msgstring,'(''cell'',i4,i4,1x,f12.8,1x,f12.8,'' U interp failed - code '',i4)') &
+              imain, jmain, dulon(imain, jmain), dulat(imain, jmain), istatus
+         call error_handler(E_MSG,'test_interpolation',msgstring,source,revision,revdate)
+      endif
+
       write(24, *) dulon(imain, jmain), dulat(imain, jmain), dipole_u(imain, jmain)
+
+      ! Interpolate U from the first grid to the second grid
+
       call lon_lat_interpolate(reg_t_x, dtlon(imain, jmain), dtlat(imain, jmain), &
          KIND_TEMPERATURE, height, dipole_t(imain, jmain), istatus)
+
+      if ( istatus /= 0 ) then
+         write(msgstring,'(''cell'',i4,i4,1x,f12.8,1x,f12.8,'' T interp failed - code '',i4)') &
+              imain,jmain, dtlon(imain, jmain), dtlat(imain, jmain), istatus
+         call error_handler(E_MSG,'test_interpolation',msgstring,source,revision,revdate)
+      endif
+
       write(25, *) dtlon(imain, jmain), dtlat(imain, jmain), dipole_t(imain, jmain)
 
    end do
