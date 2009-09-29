@@ -96,20 +96,28 @@ integer, parameter, public :: &
 integer, parameter, public :: &
     KIND_CLOUD_FRACTION              = 35
  
-! kinds for the MITgcm ocean model
+! kinds for the MITgcm, POP ocean model
 integer, parameter, public :: &
     KIND_SALINITY                    = 50, &
     KIND_U_CURRENT_COMPONENT         = 51, &
     KIND_V_CURRENT_COMPONENT         = 52, &
-    KIND_SEA_SURFACE_HEIGHT          = 53
+    KIND_SEA_SURFACE_HEIGHT          = 53, &
+    KIND_DRY_LAND                    = 54, &
+    KIND_SEA_SURFACE_PRESSURE        = 55
  
+! kinds for satellite radiances (jason o.)
+integer, parameter, public :: &
+    KIND_INFRARED_RADIANCE            = 60, &
+    KIND_INFRARED_BRIGHT_TEMP         = 61, &
+    KIND_LANDMASK                     = 62
+                                     
 ! kinds for planetary remote sensing (wglawson)
 integer, parameter, public :: &
     KIND_SKIN_TEMPERATURE            = 70, &
     KIND_NADIR_RADIANCE              = 71, &
     KIND_TRACER_1_MIXING_RATIO       = 72, &  ! for active dust aerosols
     KIND_TRACER_2_MIXING_RATIO       = 73, &  ! for active dust aerosols
-    ! Is KIND_TRACER_MIXING_RATIO really necessary with KIND_TRACER_CONCENTRATION
+    ! Is KIND_TRACER_MIXING_RATIO necessary with KIND_TRACER_CONCENTRATION
     !   (= 29) available from the simple advection model?
     KIND_SOIL_TEMPERATURE            = 74, &  ! missing from WRF model_mod (?)
     KIND_SOIL_LIQUID_WATER           = 75     ! missing from WRF model_mod (?)
@@ -288,6 +296,11 @@ obs_kind_names(50) = obs_kind_type(KIND_SALINITY, 'KIND_SALINITY')
 obs_kind_names(51) = obs_kind_type(KIND_U_CURRENT_COMPONENT, 'KIND_U_CURRENT_COMPONENT')
 obs_kind_names(52) = obs_kind_type(KIND_V_CURRENT_COMPONENT, 'KIND_V_CURRENT_COMPONENT')
 obs_kind_names(53) = obs_kind_type(KIND_SEA_SURFACE_HEIGHT, 'KIND_SEA_SURFACE_HEIGHT')
+obs_kind_names(54) = obs_kind_type(KIND_DRY_LAND, 'KIND_DRY_LAND')
+obs_kind_names(55) = obs_kind_type(KIND_SEA_SURFACE_PRESSURE, 'KIND_SEA_SURFACE_PRESSURE')
+obs_kind_names(60) = obs_kind_type(KIND_INFRARED_RADIANCE, 'KIND_INFRARED_RADIANCE')
+obs_kind_names(61) = obs_kind_type(KIND_INFRARED_BRIGHT_TEMP, 'KIND_INFRARED_BRIGHT_TEMP')
+obs_kind_names(62) = obs_kind_type(KIND_LANDMASK, 'KIND_LANDMASK')
 obs_kind_names(70) = obs_kind_type(KIND_SKIN_TEMPERATURE, 'KIND_SKIN_TEMPERATURE')
 obs_kind_names(71) = obs_kind_type(KIND_NADIR_RADIANCE, 'KIND_NADIR_RADIANCE')
 obs_kind_names(72) = obs_kind_type(KIND_TRACER_1_MIXING_RATIO, 'KIND_TRACER_1_MIXING_RATIO')
