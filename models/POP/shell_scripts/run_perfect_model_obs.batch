@@ -178,7 +178,7 @@ set POPFILE = `head -1 ${POPDIR}/rpointer.ocn.20.restart`
 
 cat pop_in.part1 pop_in.part2 >! pop_in
 
-./pop_to_dart
+./pop_to_dart || exit 1
 
 ${MOVE} dart.ud perfect_ics
 
@@ -190,7 +190,7 @@ ${MOVE} dart.ud perfect_ics
 echo "pop.r.nc"       >! rpointer.ocn.1.restart
 echo "RESTART_FMT=nc" >> rpointer.ocn.1.restart
 
-./perfect_model_obs
+./perfect_model_obs || exit 2
 
 echo "${JOBNAME} ($JOBID) finished at "`date`
 

@@ -29,7 +29,8 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MS
                              find_namelist_in_file, check_namelist_read, &
                              open_file, file_exist, find_textfile_dims, file_to_text
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COMPONENT, &
-                             KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT
+                             KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT, &
+                             KIND_SEA_SURFACE_PRESSURE
 use mpi_utilities_mod, only: my_task_id
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use      dart_pop_mod, only: set_model_time_step, &
@@ -96,10 +97,10 @@ namelist /model_nml/  &
 
 !------------------------------------------------------------------
 !
-! The DART state vector (control vector) will consist of:  S, T, U, V, SHGT
+! The DART state vector (control vector) will consist of:  S, T, U, V, PSURF
 ! (Salinity, Temperature, U velocity, V velocity, Sea Surface Height).
 ! S, T are 3D arrays, located at cell centers.  U,V are at grid cell corners.
-! SHGT is a 2D field (X,Y only).  The Z direction is downward.
+! PSURF is a 2D field (X,Y only).  The Z direction is downward.
 !
 ! FIXME: proposed change 1: we put SSH first, then T,U,V, then S, then
 !                           any optional tracers, since SSH is the only 2D
@@ -120,13 +121,13 @@ integer, parameter :: nfields   = n3dfields + n2dfields
 
 ! (the absoft compiler likes them to all be the same length during declaration)
 ! we trim the blanks off before use anyway, so ...
-character(len=128) :: progvarnames(nfields) = (/'SALT','TEMP','UVEL','VVEL','SHGT'/)
+character(len=128) :: progvarnames(nfields) = (/'SALT ','TEMP ','UVEL ','VVEL ','PSURF'/)
 
-integer, parameter :: S_index    = 1
-integer, parameter :: T_index    = 2
-integer, parameter :: U_index    = 3
-integer, parameter :: V_index    = 4
-integer, parameter :: SHGT_index = 5
+integer, parameter :: S_index     = 1
+integer, parameter :: T_index     = 2
+integer, parameter :: U_index     = 3
+integer, parameter :: V_index     = 4
+integer, parameter :: PSURF_index = 5
 
 integer :: start_index(nfields)
 
@@ -303,16 +304,16 @@ if (debug > 0) call write_grid_interptest() ! DEBUG only
 ! record where in the state vector the data type changes
 ! from one type to another, by computing the starting
 ! index for each block of data.
-start_index(S_index)    = 1
-start_index(T_index)    = start_index(S_index) + (Nx * Ny * Nz)
-start_index(U_index)    = start_index(T_index) + (Nx * Ny * Nz)
-start_index(V_index)    = start_index(U_index) + (Nx * Ny * Nz)
-start_index(SHGT_index) = start_index(V_index) + (Nx * Ny * Nz)
+start_index(S_index)     = 1
+start_index(T_index)     = start_index(S_index) + (Nx * Ny * Nz)
+start_index(U_index)     = start_index(T_index) + (Nx * Ny * Nz)
+start_index(V_index)     = start_index(U_index) + (Nx * Ny * Nz)
+start_index(PSURF_index) = start_index(V_index) + (Nx * Ny * Nz)
 
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 1 is 2D.
 !  e.g. S,T,U,V = 256 x 225 x 70
-!  e.g. SHGT = 256 x 225
+!  e.g. PSURF = 256 x 225
 
 if (do_output()) write(logfileunit, *) 'Using grid : Nx, Ny, Nz = ', &
                                                      Nx, Ny, Nz
@@ -773,7 +774,7 @@ integer,             intent(in) :: obs_type
 real(r8),           intent(out) :: interp_val
 integer,            intent(out) :: istatus
 
-! Model interpolate will interpolate any state variable (S, T, U, V, SHGT) to
+! Model interpolate will interpolate any state variable (S, T, U, V, PSURF) to
 ! the given location given a state vector. The type of the variable being
 ! interpolated is obs_type since normally this is used to find the expected
 ! value of an observation at some location. The interpolated value is 
@@ -786,6 +787,7 @@ integer        :: hgt_bot, hgt_top
 real(r8)       :: hgt_fract
 real(r8)       :: top_val, bot_val
 integer        :: hstatus
+logical        :: convert_to_ssh
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -826,6 +828,9 @@ endif
 
 ! Do horizontal interpolations for the appropriate levels
 ! Find the basic offset of this field
+
+convert_to_ssh = .FALSE.
+
 if(obs_type == KIND_SALINITY) then
    base_offset = start_index(1)
 else if(obs_type == KIND_TEMPERATURE) then
@@ -834,8 +839,11 @@ else if(obs_type == KIND_U_CURRENT_COMPONENT) then
    base_offset = start_index(3)
 else if(obs_type == KIND_V_CURRENT_COMPONENT) then
    base_offset = start_index(4)
-else if(obs_type == KIND_SEA_SURFACE_HEIGHT) then
+else if(obs_type == KIND_SEA_SURFACE_PRESSURE) then
    base_offset = start_index(5)
+else if(obs_type == KIND_SEA_SURFACE_HEIGHT) then
+   base_offset = start_index(5) ! simple linear transform of PSURF
+   convert_to_ssh = .TRUE.
 else
    ! Not a legal type for interpolation, return istatus error
    istatus = 15
@@ -844,9 +852,13 @@ endif
 
 if (debug > 1) print *, 'base offset now ', base_offset
 
-! For Sea Surface Height don't need the vertical coordinate
+! For Sea Surface Height,Pressure don't need the vertical coordinate
+! SSP needs to be converted to a SSH
 if( vert_is_surface(location) ) then
    call lon_lat_interpolate(x(base_offset:), llon, llat, obs_type, 1, interp_val, istatus)
+   if (convert_to_ssh .and. (istatus == 0)) then
+      interp_val = interp_val / 980.6_r8   ! POP uses CGS units
+   endif
    return
 endif
 
@@ -1723,8 +1735,8 @@ else if (index_in < start_index(V_index+1)) then
    local_var = KIND_V_CURRENT_COMPONENT
    var_num = V_index
 else 
-   local_var = KIND_SEA_SURFACE_HEIGHT
-   var_num = SHGT_index
+   local_var = KIND_SEA_SURFACE_PRESSURE
+   var_num = PSURF_index
 endif
 if (present(var_type)) var_type = local_var  
 
@@ -1736,7 +1748,7 @@ offset = index_in - start_index(var_num)
 
 if (debug > 5) print *, 'offset = ', offset
 
-if (var_num == SHGT_index) then
+if (var_num == PSURF_index) then
   depth = 0.0
   depth_index = 1
 else
@@ -1825,7 +1837,7 @@ integer :: ulonVarID, ulatVarID, tlonVarID, tlatVarID, ZGVarID, ZCVarID
 integer :: KMTVarID, KMUVarID
 
 ! for the prognostic variables
-integer :: SVarID, TVarID, UVarID, VVarID, SHGTVarID 
+integer :: SVarID, TVarID, UVarID, VVarID, PSURFVarID 
 
 !----------------------------------------------------------------------
 ! variables for the namelist output
@@ -2035,7 +2047,7 @@ else
    call nc_check(nf90_put_att(ncFileID,  ulatVarID,'valid_range',(/ -90.0_r8, 90.0_r8 /)), &
                  'nc_write_model_atts', 'ULAT valid_range '//trim(filename))
 
-   ! S,T,SHGT Grid Longitudes
+   ! S,T,PSURF Grid Longitudes
    call nc_check(nf90_def_var(ncFileID,name='TLON', xtype=nf90_real, &
                  dimids=(/ NlonDimID, NlatDimID /), varid=tlonVarID),&
                  'nc_write_model_atts', 'TLON def_var '//trim(filename))
@@ -2049,7 +2061,7 @@ else
                  'nc_write_model_atts', 'TLON valid_range '//trim(filename))
 
 
-   ! S,T,SHGT Grid (center) Latitudes
+   ! S,T,PSURF Grid (center) Latitudes
    call nc_check(nf90_def_var(ncFileID,name='TLAT', xtype=nf90_real, &
                  dimids= (/ NlonDimID, NlatDimID /), varid=tlatVarID), &
                  'nc_write_model_atts', 'TLAT def_var '//trim(filename))
@@ -2184,17 +2196,17 @@ else
          'nc_write_model_atts', 'V fill '//trim(filename))
 
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name='SHGT', xtype=nf90_real, &
-         dimids=(/NlonDimID,NlatDimID,MemberDimID,unlimitedDimID/),varid=SHGTVarID), &
-         'nc_write_model_atts', 'SHGT def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SHGTVarID, 'long_name', 'Sea surface height'), &
-         'nc_write_model_atts', 'SHGT long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SHGTVarID, 'units', 'cm'), &
-         'nc_write_model_atts', 'SHGT units '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SHGTVarID, 'missing_value', NF90_FILL_REAL), &
-         'nc_write_model_atts', 'SHGT missing '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SHGTVarID, '_FillValue', NF90_FILL_REAL), &
-         'nc_write_model_atts', 'SHGT fill '//trim(filename))
+   call nc_check(nf90_def_var(ncid=ncFileID, name='PSURF', xtype=nf90_real, &
+         dimids=(/NlonDimID,NlatDimID,MemberDimID,unlimitedDimID/),varid=PSURFVarID), &
+         'nc_write_model_atts', 'PSURF def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, PSURFVarID, 'long_name', 'surface pressure'), &
+         'nc_write_model_atts', 'PSURF long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, PSURFVarID, 'units', 'dyne/cm2'), &
+         'nc_write_model_atts', 'PSURF units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, PSURFVarID, 'missing_value', NF90_FILL_REAL), &
+         'nc_write_model_atts', 'PSURF missing '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, PSURFVarID, '_FillValue', NF90_FILL_REAL), &
+         'nc_write_model_atts', 'PSURF fill '//trim(filename))
 
    ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
@@ -2345,12 +2357,12 @@ else
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 'nc_write_model_vars', 'V put_var '//trim(filename))
 
-   call vector_to_prog_var(statevec, SHGT_index, data_2d)
+   call vector_to_prog_var(statevec, PSURF_index, data_2d)
    where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, 'SHGT', VarID), &
-                'nc_write_model_vars', 'SHGT inq_varid '//trim(filename))
+   call nc_check(NF90_inq_varid(ncFileID, 'PSURF', VarID), &
+                'nc_write_model_vars', 'PSURF inq_varid '//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
-                'nc_write_model_vars', 'SHGT put_var '//trim(filename))
+                'nc_write_model_vars', 'PSURF put_var '//trim(filename))
 
 endif
 
@@ -2444,7 +2456,6 @@ character(len=NF90_MAX_NAME) :: varname
 integer :: VarID, numdims, dimlen
 integer :: ncid, iyear, imonth, iday, ihour, iminute, isecond, nc_rc
 character(len=256) :: myerrorstring 
-logical :: convert_to_ssh
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2559,20 +2570,10 @@ do ivar=1, n3dfields
 
 enddo
 
-! and finally, SHGT (and any other 2d fields)
+! and finally, PSURF (and any other 2d fields)
 do ivar=(n3dfields+1), (n3dfields+n2dfields)
 
-   select case ( trim(progvarnames(ivar)) )
-   case ('SHGT')
-      ! The restart files do not drag around SHGT, but they do drag
-      ! around PSURF ... which can be used to calculate SHGT.
-      varname = 'PSURF_CUR'
-      convert_to_ssh = .true.
-   case default
-      varname = trim(progvarnames(ivar))//'_CUR'
-      convert_to_ssh = .false.
-   end select
-
+   varname = trim(progvarnames(ivar))//'_CUR'
    myerrorstring = trim(varname)//' '//trim(filename)
 
    ! Is the netCDF variable the right shape?
@@ -2603,10 +2604,6 @@ do ivar=(n3dfields+1), (n3dfields+n2dfields)
 
    call nc_check(nf90_get_var(ncid, VarID, data_2d_array), 'restart_file_to_sv', &
                 'get_var '//trim(varname))
-
-   if ( convert_to_ssh ) then  ! SSH=psurf/980.6    POP uses CGS 
-      data_2d_array = data_2d_array / 980.6_r8
-   endif
 
    do j = 1, Ny   ! size(data_3d_array,2)
    do i = 1, Nx   ! size(data_3d_array,1)
@@ -2639,7 +2636,6 @@ character(len=NF90_MAX_NAME)          :: varname
 character(len=256)                    :: myerrorstring 
 
 integer :: i, ivar, ncid, VarID, numdims, dimlen
-logical :: convert_from_ssh
 
 !----------------------------------------------------------------------
 ! Get the show underway
@@ -2724,20 +2720,10 @@ do ivar=1, n3dfields
 
 enddo
 
-! and finally, SHGT (and any other 2d fields)
+! and finally, PSURF (and any other 2d fields)
 do ivar=(n3dfields+1), (n3dfields+n2dfields)
 
-   select case ( trim(progvarnames(ivar)) )
-   case ('SHGT')
-      ! The restart files do not drag around SHGT, but they do drag
-      ! around PSURF ... which can be used to calculate SHGT.
-      varname = 'PSURF_CUR'
-      convert_from_ssh = .true.
-   case default
-      varname = trim(progvarnames(ivar))//'_CUR'
-      convert_from_ssh = .false.
-   end select
-
+   varname = trim(progvarnames(ivar))//'_CUR'
    myerrorstring = trim(varname)//' '//trim(filename)
 
    ! Is the netCDF variable the right shape?
@@ -2765,10 +2751,6 @@ do ivar=(n3dfields+1), (n3dfields+n2dfields)
    enddo
 
    call vector_to_prog_var(state_vector, ivar, data_2d_array)
-
-   if ( convert_from_ssh ) then  ! SSH = psurf*980.6    POP uses CGS 
-      data_2d_array = data_2d_array * 980.6_r8
-   endif
 
    call nc_check(nf90_put_var(ncid, VarID, data_2d_array), &
             'sv_to_restart_file', 'put_var '//trim(myerrorstring))
