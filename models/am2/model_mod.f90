@@ -774,6 +774,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
     !
     ! Notes after talking to Jeff A
     !   We interpolate the KINDS we have: U, V, T, tracers, and PS; we also allow for surface height
+    !   **adding in KIND_PRESSURE**
     !   Vertical coordinates can be expressed as level, pressure (most usual), and height
     !   We'll interpolate linearly in lat, lon, and vertical coordinate since the
     !   errors this introduces are small and can be lumped in to "representativeness"
@@ -788,7 +789,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
     !   State vector is ordered ps (2D), u, v, t, tracers
     !
     variableStart = -1
-    if(itype == KIND_SURFACE_PRESSURE) then
+    if(itype == KIND_SURFACE_PRESSURE .or. itype == KIND_PRESSURE) then
       variableStart = 1
     else if (itype == KIND_U_WIND_COMPONENT) then
       variableStart = 1 + (num_lons * num_lats)
@@ -892,7 +893,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
         !   Storage order is level, lon, lat
         !
         if(itype == KIND_SURFACE_PRESSURE) then
-          cornerValues(:, :) = psurf(:, :)
+          cornerValues(:, :) = psurf(:, :)   
         else
           !
           ! Find the four starting locations of the 4 columns that bracket the observation location
@@ -907,29 +908,35 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
           ! We know how to interpolate vertically in level, pressure, and height - are we missing any possibilities?
           !
           if(vert_is_level(location)) then
-            forall(i = 1:2, j = 1:2)
-                cornerValues(i, j) = interpolate1D(desiredLocation = lon_lat_height(3),                                &
+            if(itype == KIND_PRESSURE) then
+               forall(i = 1:2, j = 1:2)
+                  cornerValues(i, j) = interpolate1D(desiredLocation = lon_lat_height(3),                 &
+                                                   values = akmid(:) + bkmid(:) * psurf(i,j),             &
+                                                   locations = (/ (real(k, kind = r8), k = 1, num_levels) /) )
+               end forall
+            else 
+               forall(i = 1:2, j = 1:2)
+                  cornerValues(i, j) = interpolate1D(desiredLocation = lon_lat_height(3),                                &
                                                    values = x(cornerStarts(i, j):cornerStarts(i, j) + num_levels - 1), &
                                                    locations = (/ (real(k, kind = r8), k = 1, num_levels) /) )
-            end forall
+               end forall
+            end if
           else if (vert_is_pressure(location)) then
             !
             ! Better be sure this is in the right units
             !
             forall(i = 1:2, j = 1:2)
-                cornerValues(i, j) = interpolate1D(desiredLocation = lon_lat_height(3),                                &
-                                                   values = x(cornerStarts(i, j):cornerStarts(i, j) + num_levels - 1), &
-                                                   ! Compute pressure at layer midpoints in this column on the fly
-                                                   locations = akmid(:) + bkmid(:) * psurf(i, j) )
+               cornerValues(i, j) = interpolate1D(desiredLocation = lon_lat_height(3),                                &
+                                                  values = x(cornerStarts(i, j):cornerStarts(i, j) + num_levels - 1), &
+                                                  ! Compute pressure at layer midpoints in this column on the fly
+                                                  locations = akmid(:) + bkmid(:) * psurf(i, j) )
 
             end forall
           else if (vert_is_height(location)) then
             !
-            !
             ! First compute the height at each interface pressure according to the hypsometric equation
             !   For the moment we use dry air temp but need to use virtual temperature
             !
-
             !
             ! Temperature profile in each column surrounding our location
             !
@@ -960,9 +967,8 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
               ! We ignore the distinction between specific humidity and mixing ratio -
               !   this should really be q/(1 - q) instead of q
               !
-              cornerTemperatures(:, :, :) = cornerTemperatures(:, :, :) * (1. + 0.61 * cornerHumidities(:, :, :))
+              cornerTemperatures(:, :, :) = cornerTemperatures(:, :, :) * (1. + 0.61 * (cornerHumidities(:, :, :)/(1.-cornerHumidities(:,:,:))))
             end if
-
             !
             ! Compute geometric height at each  level, remembering that the layers are ordered top to bottom
             !
@@ -975,9 +981,10 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
             cornerHeights(:, :, num_levels + 1) = cornerHeights(:, :, num_levels + 1)/gravity
             do k = num_levels, 2, -1
               cornerHeights(:, :, k) = cornerHeights(:, :, k + 1) +                  &
-                                       Rdgas/gravity * cornerTemperatures(:, :, i) * &
+                                       Rdgas/gravity * cornerTemperatures(:, :, k) * &
                                        (cornerLogPressureProfiles(:, :, k + 1) - cornerLogPressureProfiles(:, :, k))
             end do
+            
             cornerHeights(:, :, 1) = huge(cornerHeights)
             !
             ! Compute the pressure at the desired height, interpolating linearly in ln(p).
@@ -987,17 +994,25 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
                                                        values = cornerLogPressureProfiles(i, j,num_levels+1:1:-1),  & 
                                                        locations =  cornerHeights(i, j,num_levels+1:1:-1))
             end forall
-            !
-            ! Now interpolate the values as if pressure had been supplied
-            !   It might make sense to interpolate in ln(p) but this would be inconsistent with how
-            !   we do the interpolation when p is supplied.
-            !
-            forall(i = 1:2, j = 1:2)
-              cornerValues(i, j) = interpolate1D(desiredLocation = exp(cornerLogPressures(i, j)),                    &
+            if(itype == KIND_PRESSURE) then
+               forall(i = 1:2, j = 1:2)
+                  cornerValues(i,j) = exp(cornerLogPressures(i,j))
+               end forall
+               !
+            else
+               !
+               ! Now interpolate the values as if pressure had been supplied
+               !   It might make sense to interpolate in ln(p) but this would be inconsistent with how
+               !   we do the interpolation when p is supplied.
+               !
+               forall(i = 1:2, j = 1:2)
+                  cornerValues(i, j) = interpolate1D(desiredLocation = exp(cornerLogPressures(i, j)),                    &
                                                  values = x(cornerStarts(i, j):cornerStarts(i, j) + num_levels - 1), &
                                                  ! Compute pressure at layer midpoints in this column on the fly
                                                  locations = akmid(:) + bkmid(:) * psurf(i, j) )
-            end forall
+               end forall
+            end if !KIND_PRESSURE loop
+            !
           else
             !
             ! The requested vertical coordinate isn't a pressure, height, or level
@@ -1015,7 +1030,7 @@ timeindex /)), "nc_write_model_vars", "Writing PS")
           obs_val = MISSING_R8
           istatus = 1
         else
-            obs_val = sum(weights(:, :) * cornerValues(:, :))
+          obs_val = sum(weights(:, :) * cornerValues(:, :))
           !
           ! Set istatus to ensure we want to assimilate this obs
           !
