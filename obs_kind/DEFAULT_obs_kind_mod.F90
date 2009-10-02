@@ -103,7 +103,8 @@ integer, parameter, public :: &
     KIND_V_CURRENT_COMPONENT         = 52, &
     KIND_SEA_SURFACE_HEIGHT          = 53, &
     KIND_DRY_LAND                    = 54, &
-    KIND_SEA_SURFACE_PRESSURE        = 55
+    KIND_SEA_SURFACE_PRESSURE        = 55, &
+    KIND_W_CURRENT_COMPONENT         = 56
  
 ! kinds for satellite radiances (jason o.)
 integer, parameter, public :: &
