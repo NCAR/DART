@@ -33,8 +33,11 @@ program ftest_stop
 ! which defines the interfaces to the MPI library routines, or an include
 ! file which defines constants.  Try to use the module if it is available.
 
-!use mpi
-include "mpif.h"
+use mpi
+
+implicit none
+
+!include "mpif.h"
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
@@ -47,18 +50,17 @@ include "mpif.h"
 ! you an error about an undefined symbol (something like '_system_').  
 ! Comment this block in or out as needed.
 
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
+  ! interface block for getting return code back from system() routine
+  interface
+   function system(string)
+    character(len=*) :: string
+    integer :: system
+   end function system
+  end interface
+  ! end block
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
-implicit none
 
 ! integer variables
 integer :: ierror, myrank, totalprocs
