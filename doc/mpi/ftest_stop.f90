@@ -63,7 +63,7 @@ implicit none
 
 
 ! integer variables
-integer :: ierror, myrank, totalprocs
+integer :: ierror, myrank, totalprocs, rc
 
    print *, "program start"
 
