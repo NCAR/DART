@@ -329,7 +329,7 @@ contains
 
 ! Attributes
       statn = swrdattr(swid, "NumSO2FOVs", &
-                   airs_ret_gran.NumSO2FOVs)
+                   airs_ret_gran%NumSO2FOVs)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "NumSO2FOVs"
@@ -347,55 +347,55 @@ contains
                   "instrument"
 
       statn = swrdattr(swid, "DayNightFlag", &
-                         airs_ret_gran.DayNightFlag)
+                         airs_ret_gran%DayNightFlag)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "DayNightFlag"
 
       statn = swrdattr(swid, "AutomaticQAFlag", &
-                         airs_ret_gran.AutomaticQAFlag)
+                         airs_ret_gran%AutomaticQAFlag)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "AutomaticQAFlag"
 
       statn = swrdattr(swid, "NumTotalData", &
-                   airs_ret_gran.NumTotalData)
+                   airs_ret_gran%NumTotalData)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "NumTotalData"
 
       statn = swrdattr(swid, "NumProcessData", &
-                   airs_ret_gran.NumProcessData)
+                   airs_ret_gran%NumProcessData)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "NumProcessData"
 
       statn = swrdattr(swid, "NumSpecialData", &
-                   airs_ret_gran.NumSpecialData)
+                   airs_ret_gran%NumSpecialData)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "NumSpecialData"
 
       statn = swrdattr(swid, "NumBadData", &
-                   airs_ret_gran.NumBadData)
+                   airs_ret_gran%NumBadData)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "NumBadData"
 
       statn = swrdattr(swid, "NumMissingData", &
-                   airs_ret_gran.NumMissingData)
+                   airs_ret_gran%NumMissingData)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "NumMissingData"
 
       statn = swrdattr(swid, "NumLandSurface", &
-                   airs_ret_gran.NumLandSurface)
+                   airs_ret_gran%NumLandSurface)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "NumLandSurface"
 
       statn = swrdattr(swid, "NumOceanSurface", &
-                   airs_ret_gran.NumOceanSurface)
+                   airs_ret_gran%NumOceanSurface)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "NumOceanSurface"
@@ -587,31 +587,31 @@ contains
                   "num_fpe"
 
       statn = swrdattr(swid, "LonGranuleCen", &
-                   airs_ret_gran.LonGranuleCen)
+                   airs_ret_gran%LonGranuleCen)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "LonGranuleCen"
 
       statn = swrdattr(swid, "LatGranuleCen", &
-                   airs_ret_gran.LatGranuleCen)
+                   airs_ret_gran%LatGranuleCen)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "LatGranuleCen"
 
       statn = swrdattr(swid, "LocTimeGranuleCen", &
-                   airs_ret_gran.LocTimeGranuleCen)
+                   airs_ret_gran%LocTimeGranuleCen)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "LocTimeGranuleCen"
 
       statn = swrdattr(swid, "CO_first_guess", &
-                         airs_ret_gran.CO_first_guess)
+                         airs_ret_gran%CO_first_guess)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "CO_first_guess"
 
       statn = swrdattr(swid, "CH4_first_guess", &
-                         airs_ret_gran.CH4_first_guess)
+                         airs_ret_gran%CH4_first_guess)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading attribute ", &
                   "CH4_first_guess"
@@ -621,17 +621,17 @@ contains
       edge(1) = AIRS_RET_GEOXTRACK
       edge(2) = AIRS_RET_GEOTRACK
       statn = swrdfld(swid, "Latitude", start, stride, edge, &
-                      airs_ret_gran.Latitude)
+                      airs_ret_gran%Latitude)
       if (statn .ne. 0)  &
         print *, "Error ", statn, " reading field Latitude"
 
       statn = swrdfld(swid, "Longitude", start, stride, edge, &
-                      airs_ret_gran.Longitude)
+                      airs_ret_gran%Longitude)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field Longitude"
 
       statn = swrdfld(swid, "Time", start, stride, edge, &
-                      airs_ret_gran.Time)
+                      airs_ret_gran%Time)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field Time"
 
@@ -641,7 +641,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "RetQAFlag", &
                    start, stride, edge, &
-                   airs_ret_gran.RetQAFlag)
+                   airs_ret_gran%RetQAFlag)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "RetQAFlag"
@@ -877,7 +877,7 @@ contains
       edge(1) = 7
       statn = SWrdfld(swid, "MWHingeSurfFreqGHz", &
                    start, stride, edge, &
-                   airs_ret_gran.MWHingeSurfFreqGHz)
+                   airs_ret_gran%MWHingeSurfFreqGHz)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "MWHingeSurfFreqGHz"
@@ -908,7 +908,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_Guess_PSurf", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_Guess_PSurf)
+                   airs_ret_gran%Qual_Guess_PSurf)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_Guess_PSurf"
@@ -917,7 +917,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "PSurfStd", &
                    start, stride, edge, &
-                   airs_ret_gran.PSurfStd)
+                   airs_ret_gran%PSurfStd)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "PSurfStd"
@@ -935,7 +935,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Press_mid_top_bndry", &
                    start, stride, edge, &
-                   airs_ret_gran.Press_mid_top_bndry)
+                   airs_ret_gran%Press_mid_top_bndry)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Press_mid_top_bndry"
@@ -953,7 +953,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Press_bot_mid_bndry", &
                    start, stride, edge, &
-                   airs_ret_gran.Press_bot_mid_bndry)
+                   airs_ret_gran%Press_bot_mid_bndry)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Press_bot_mid_bndry"
@@ -971,7 +971,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "PBest", &
                    start, stride, edge, &
-                   airs_ret_gran.PBest)
+                   airs_ret_gran%PBest)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "PBest"
@@ -980,7 +980,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "PGood", &
                    start, stride, edge, &
-                   airs_ret_gran.PGood)
+                   airs_ret_gran%PGood)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "PGood"
@@ -1007,7 +1007,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_Temp_Profile_Top", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_Temp_Profile_Top)
+                   airs_ret_gran%Qual_Temp_Profile_Top)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_Temp_Profile_Top"
@@ -1016,7 +1016,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_Temp_Profile_Mid", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_Temp_Profile_Mid)
+                   airs_ret_gran%Qual_Temp_Profile_Mid)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_Temp_Profile_Mid"
@@ -1025,7 +1025,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_Temp_Profile_Bot", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_Temp_Profile_Bot)
+                   airs_ret_gran%Qual_Temp_Profile_Bot)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_Temp_Profile_Bot"
@@ -1035,7 +1035,7 @@ contains
       edge(1) = 28
       statn = SWrdfld(swid, "TAirStd", &
                    start, stride, edge, &
-                   airs_ret_gran.TAirStd)
+                   airs_ret_gran%TAirStd)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "TAirStd"
@@ -1045,7 +1045,7 @@ contains
       edge(1) = 28
       statn = SWrdfld(swid, "TAirStdErr", &
                    start, stride, edge, &
-                   airs_ret_gran.TAirStdErr)
+                   airs_ret_gran%TAirStdErr)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "TAirStdErr"
@@ -1054,7 +1054,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "TSurfAir", &
                    start, stride, edge, &
-                   airs_ret_gran.TSurfAir)
+                   airs_ret_gran%TSurfAir)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "TSurfAir"
@@ -1063,7 +1063,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "TSurfAirErr", &
                    start, stride, edge, &
-                   airs_ret_gran.TSurfAirErr)
+                   airs_ret_gran%TSurfAirErr)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "TSurfAirErr"
@@ -1072,7 +1072,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_Surf", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_Surf)
+                   airs_ret_gran%Qual_Surf)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_Surf"
@@ -1081,7 +1081,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "TSurfStd", &
                    start, stride, edge, &
-                   airs_ret_gran.TSurfStd)
+                   airs_ret_gran%TSurfStd)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "TSurfStd"
@@ -1090,7 +1090,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "TSurfStdErr", &
                    start, stride, edge, &
-                   airs_ret_gran.TSurfStdErr)
+                   airs_ret_gran%TSurfStdErr)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "TSurfStdErr"
@@ -1138,7 +1138,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_MW_Only_Temp_Strat", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_MW_Only_Temp_Strat)
+                   airs_ret_gran%Qual_MW_Only_Temp_Strat)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_MW_Only_Temp_Strat"
@@ -1147,7 +1147,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_MW_Only_Temp_Tropo", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_MW_Only_Temp_Tropo)
+                   airs_ret_gran%Qual_MW_Only_Temp_Tropo)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_MW_Only_Temp_Tropo"
@@ -1157,7 +1157,7 @@ contains
       edge(1) = 28
       statn = SWrdfld(swid, "TAirMWOnlyStd", &
                    start, stride, edge, &
-                   airs_ret_gran.TAirMWOnlyStd)
+                   airs_ret_gran%TAirMWOnlyStd)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "TAirMWOnlyStd"
@@ -1166,7 +1166,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "MWSurfClass", &
                    start, stride, edge, &
-                   airs_ret_gran.MWSurfClass)
+                   airs_ret_gran%MWSurfClass)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "MWSurfClass"
@@ -1186,7 +1186,7 @@ contains
       edge(1) = 7
       statn = SWrdfld(swid, "EmisMWStd", &
                    start, stride, edge, &
-                   airs_ret_gran.EmisMWStd)
+                   airs_ret_gran%EmisMWStd)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "EmisMWStd"
@@ -1196,7 +1196,7 @@ contains
       edge(1) = 7
       statn = SWrdfld(swid, "EmisMWStdErr", &
                    start, stride, edge, &
-                   airs_ret_gran.EmisMWStdErr)
+                   airs_ret_gran%EmisMWStdErr)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "EmisMWStdErr"
@@ -1205,7 +1205,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_MW_Only_H2O", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_MW_Only_H2O)
+                   airs_ret_gran%Qual_MW_Only_H2O)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_MW_Only_H2O"
@@ -1223,7 +1223,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_H2O", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_H2O)
+                   airs_ret_gran%Qual_H2O)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_H2O"
@@ -1233,7 +1233,7 @@ contains
       edge(1) = 14
       statn = SWrdfld(swid, "H2OMMRStd", &
                    start, stride, edge, &
-                   airs_ret_gran.H2OMMRStd)
+                   airs_ret_gran%H2OMMRStd)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "H2OMMRStd"
@@ -1243,7 +1243,7 @@ contains
       edge(1) = 14
       statn = SWrdfld(swid, "H2OMMRStdErr", &
                    start, stride, edge, &
-                   airs_ret_gran.H2OMMRStdErr)
+                   airs_ret_gran%H2OMMRStdErr)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "H2OMMRStdErr"
@@ -1271,7 +1271,7 @@ contains
       edge(1) = 14
       statn = SWrdfld(swid, "H2OMMRSat", &
                    start, stride, edge, &
-                   airs_ret_gran.H2OMMRSat)
+                   airs_ret_gran%H2OMMRSat)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "H2OMMRSat"
@@ -1281,7 +1281,7 @@ contains
       edge(1) = 14
       statn = SWrdfld(swid, "H2OMMRSat_liquid", &
                    start, stride, edge, &
-                   airs_ret_gran.H2OMMRSat_liquid)
+                   airs_ret_gran%H2OMMRSat_liquid)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "H2OMMRSat_liquid"
@@ -1300,7 +1300,7 @@ contains
       edge(1) = 11
       statn = SWrdfld(swid, "H2O_verticality", &
                    start, stride, edge, &
-                   airs_ret_gran.H2O_verticality)
+                   airs_ret_gran%H2O_verticality)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "H2O_verticality"
@@ -1309,7 +1309,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_O3", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_O3)
+                   airs_ret_gran%Qual_O3)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_O3"
@@ -1337,7 +1337,7 @@ contains
       edge(1) = 28
       statn = SWrdfld(swid, "O3VMRStd", &
                    start, stride, edge, &
-                   airs_ret_gran.O3VMRStd)
+                   airs_ret_gran%O3VMRStd)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "O3VMRStd"
@@ -1347,7 +1347,7 @@ contains
       edge(1) = 28
       statn = SWrdfld(swid, "O3VMRStdErr", &
                    start, stride, edge, &
-                   airs_ret_gran.O3VMRStdErr)
+                   airs_ret_gran%O3VMRStdErr)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "O3VMRStdErr"
@@ -1366,7 +1366,7 @@ contains
       edge(1) = 9
       statn = SWrdfld(swid, "O3_verticality", &
                    start, stride, edge, &
-                   airs_ret_gran.O3_verticality)
+                   airs_ret_gran%O3_verticality)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "O3_verticality"
@@ -1375,7 +1375,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_CO", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_CO)
+                   airs_ret_gran%Qual_CO)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_CO"
@@ -1384,7 +1384,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "CO_total_column", &
                    start, stride, edge, &
-                   airs_ret_gran.CO_total_column)
+                   airs_ret_gran%CO_total_column)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CO_total_column"
@@ -1401,7 +1401,7 @@ contains
       edge(1) = 9
       statn = SWrdfld(swid, "CO_trapezoid_layers", &
                    start, stride, edge, &
-                   airs_ret_gran.CO_trapezoid_layers)
+                   airs_ret_gran%CO_trapezoid_layers)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CO_trapezoid_layers"
@@ -1411,7 +1411,7 @@ contains
       edge(1) = 9
       statn = SWrdfld(swid, "CO_eff_press", &
                    start, stride, edge, &
-                   airs_ret_gran.CO_eff_press)
+                   airs_ret_gran%CO_eff_press)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CO_eff_press"
@@ -1421,7 +1421,7 @@ contains
       edge(1) = 9
       statn = SWrdfld(swid, "CO_VMR_eff", &
                    start, stride, edge, &
-                   airs_ret_gran.CO_VMR_eff)
+                   airs_ret_gran%CO_VMR_eff)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CO_VMR_eff"
@@ -1431,7 +1431,7 @@ contains
       edge(1) = 9
       statn = SWrdfld(swid, "CO_VMR_eff_err", &
                    start, stride, edge, &
-                   airs_ret_gran.CO_VMR_eff_err)
+                   airs_ret_gran%CO_VMR_eff_err)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CO_VMR_eff_err"
@@ -1441,7 +1441,7 @@ contains
       edge(1) = 9
       statn = SWrdfld(swid, "CO_verticality", &
                    start, stride, edge, &
-                   airs_ret_gran.CO_verticality)
+                   airs_ret_gran%CO_verticality)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CO_verticality"
@@ -1450,7 +1450,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "CO_dof", &
                    start, stride, edge, &
-                   airs_ret_gran.CO_dof)
+                   airs_ret_gran%CO_dof)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CO_dof"
@@ -1459,7 +1459,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_CH4", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_CH4)
+                   airs_ret_gran%Qual_CH4)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_CH4"
@@ -1468,7 +1468,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "CH4_total_column", &
                    start, stride, edge, &
-                   airs_ret_gran.CH4_total_column)
+                   airs_ret_gran%CH4_total_column)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CH4_total_column"
@@ -1485,7 +1485,7 @@ contains
       edge(1) = 7
       statn = SWrdfld(swid, "CH4_trapezoid_layers", &
                    start, stride, edge, &
-                   airs_ret_gran.CH4_trapezoid_layers)
+                   airs_ret_gran%CH4_trapezoid_layers)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CH4_trapezoid_layers"
@@ -1495,7 +1495,7 @@ contains
       edge(1) = 7
       statn = SWrdfld(swid, "CH4_eff_press", &
                    start, stride, edge, &
-                   airs_ret_gran.CH4_eff_press)
+                   airs_ret_gran%CH4_eff_press)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CH4_eff_press"
@@ -1505,7 +1505,7 @@ contains
       edge(1) = 7
       statn = SWrdfld(swid, "CH4_VMR_eff", &
                    start, stride, edge, &
-                   airs_ret_gran.CH4_VMR_eff)
+                   airs_ret_gran%CH4_VMR_eff)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CH4_VMR_eff"
@@ -1515,7 +1515,7 @@ contains
       edge(1) = 7
       statn = SWrdfld(swid, "CH4_VMR_eff_err", &
                    start, stride, edge, &
-                   airs_ret_gran.CH4_VMR_eff_err)
+                   airs_ret_gran%CH4_VMR_eff_err)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CH4_VMR_eff_err"
@@ -1525,7 +1525,7 @@ contains
       edge(1) = 7
       statn = SWrdfld(swid, "CH4_verticality", &
                    start, stride, edge, &
-                   airs_ret_gran.CH4_verticality)
+                   airs_ret_gran%CH4_verticality)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CH4_verticality"
@@ -1534,7 +1534,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "CH4_dof", &
                    start, stride, edge, &
-                   airs_ret_gran.CH4_dof)
+                   airs_ret_gran%CH4_dof)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CH4_dof"
@@ -1543,7 +1543,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "PTropopause", &
                    start, stride, edge, &
-                   airs_ret_gran.PTropopause)
+                   airs_ret_gran%PTropopause)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "PTropopause"
@@ -1552,7 +1552,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "T_Tropopause", &
                    start, stride, edge, &
-                   airs_ret_gran.T_Tropopause)
+                   airs_ret_gran%T_Tropopause)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "T_Tropopause"
@@ -1561,7 +1561,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "GP_Tropopause", &
                    start, stride, edge, &
-                   airs_ret_gran.GP_Tropopause)
+                   airs_ret_gran%GP_Tropopause)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "GP_Tropopause"
@@ -1571,7 +1571,7 @@ contains
       edge(1) = 28
       statn = SWrdfld(swid, "GP_Height", &
                    start, stride, edge, &
-                   airs_ret_gran.GP_Height)
+                   airs_ret_gran%GP_Height)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "GP_Height"
@@ -1581,7 +1581,7 @@ contains
       edge(1) = 28
       statn = SWrdfld(swid, "GP_Height_MWOnly", &
                    start, stride, edge, &
-                   airs_ret_gran.GP_Height_MWOnly)
+                   airs_ret_gran%GP_Height_MWOnly)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "GP_Height_MWOnly"
@@ -1590,7 +1590,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "GP_Surface", &
                    start, stride, edge, &
-                   airs_ret_gran.GP_Surface)
+                   airs_ret_gran%GP_Surface)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "GP_Surface"
@@ -1599,7 +1599,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_Cloud_OLR", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_Cloud_OLR)
+                   airs_ret_gran%Qual_Cloud_OLR)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_Cloud_OLR"
@@ -1618,7 +1618,7 @@ contains
       edge(1) = 2
       statn = SWrdfld(swid, "TCldTopStd", &
                    start, stride, edge, &
-                   airs_ret_gran.TCldTopStd)
+                   airs_ret_gran%TCldTopStd)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "TCldTopStd"
@@ -1628,7 +1628,7 @@ contains
       edge(1) = 2
       statn = SWrdfld(swid, "TCldTopStdErr", &
                    start, stride, edge, &
-                   airs_ret_gran.TCldTopStdErr)
+                   airs_ret_gran%TCldTopStdErr)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "TCldTopStdErr"
@@ -1638,7 +1638,7 @@ contains
       edge(1) = 2
       statn = SWrdfld(swid, "PCldTopStd", &
                    start, stride, edge, &
-                   airs_ret_gran.PCldTopStd)
+                   airs_ret_gran%PCldTopStd)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "PCldTopStd"
@@ -1648,7 +1648,7 @@ contains
       edge(1) = 2
       statn = SWrdfld(swid, "PCldTopStdErr", &
                    start, stride, edge, &
-                   airs_ret_gran.PCldTopStdErr)
+                   airs_ret_gran%PCldTopStdErr)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "PCldTopStdErr"
@@ -1660,7 +1660,7 @@ contains
       edge(1) = 2
       statn = SWrdfld(swid, "CldFrcStd", &
                    start, stride, edge, &
-                   airs_ret_gran.CldFrcStd)
+                   airs_ret_gran%CldFrcStd)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CldFrcStd"
@@ -1672,7 +1672,7 @@ contains
       edge(1) = 2
       statn = SWrdfld(swid, "CldFrcStdErr", &
                    start, stride, edge, &
-                   airs_ret_gran.CldFrcStdErr)
+                   airs_ret_gran%CldFrcStdErr)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CldFrcStdErr"
@@ -1699,7 +1699,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Qual_clrolr", &
                    start, stride, edge, &
-                   airs_ret_gran.Qual_clrolr)
+                   airs_ret_gran%Qual_clrolr)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Qual_clrolr"
@@ -1757,7 +1757,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "CC_noise_eff_amp_factor", &
                    start, stride, edge, &
-                   airs_ret_gran.CC_noise_eff_amp_factor)
+                   airs_ret_gran%CC_noise_eff_amp_factor)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CC_noise_eff_amp_factor"
@@ -1766,7 +1766,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "CC1_noise_eff_amp_factor", &
                    start, stride, edge, &
-                   airs_ret_gran.CC1_noise_eff_amp_factor)
+                   airs_ret_gran%CC1_noise_eff_amp_factor)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CC1_noise_eff_amp_factor"
@@ -1793,7 +1793,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "CC1_Resid", &
                    start, stride, edge, &
-                   airs_ret_gran.CC1_Resid)
+                   airs_ret_gran%CC1_Resid)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CC1_Resid"
@@ -1802,7 +1802,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "CCfinal_Resid", &
                    start, stride, edge, &
-                   airs_ret_gran.CCfinal_Resid)
+                   airs_ret_gran%CCfinal_Resid)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CCfinal_Resid"
@@ -1811,7 +1811,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "CCfinal_Noise_Amp", &
                    start, stride, edge, &
-                   airs_ret_gran.CCfinal_Noise_Amp)
+                   airs_ret_gran%CCfinal_Noise_Amp)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CCfinal_Noise_Amp"
@@ -1820,7 +1820,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Tdiff_IR_MW_ret", &
                    start, stride, edge, &
-                   airs_ret_gran.Tdiff_IR_MW_ret)
+                   airs_ret_gran%Tdiff_IR_MW_ret)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Tdiff_IR_MW_ret"
@@ -1829,7 +1829,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Tdiff_IR_4CC1", &
                    start, stride, edge, &
-                   airs_ret_gran.Tdiff_IR_4CC1)
+                   airs_ret_gran%Tdiff_IR_4CC1)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Tdiff_IR_4CC1"
@@ -1838,7 +1838,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "TSurfdiff_IR_4CC1", &
                    start, stride, edge, &
-                   airs_ret_gran.TSurfdiff_IR_4CC1)
+                   airs_ret_gran%TSurfdiff_IR_4CC1)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "TSurfdiff_IR_4CC1"
@@ -1847,7 +1847,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "TSurfdiff_IR_4CC2", &
                    start, stride, edge, &
-                   airs_ret_gran.TSurfdiff_IR_4CC2)
+                   airs_ret_gran%TSurfdiff_IR_4CC2)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "TSurfdiff_IR_4CC2"
@@ -1856,7 +1856,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "AMSU_Chans_Resid", &
                    start, stride, edge, &
-                   airs_ret_gran.AMSU_Chans_Resid)
+                   airs_ret_gran%AMSU_Chans_Resid)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "AMSU_Chans_Resid"
@@ -1865,7 +1865,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "TotCld_4_CCfinal", &
                    start, stride, edge, &
-                   airs_ret_gran.TotCld_4_CCfinal)
+                   airs_ret_gran%TotCld_4_CCfinal)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "TotCld_4_CCfinal"
@@ -1874,7 +1874,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Surf_Resid_Ratio", &
                    start, stride, edge, &
-                   airs_ret_gran.Surf_Resid_Ratio)
+                   airs_ret_gran%Surf_Resid_Ratio)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Surf_Resid_Ratio"
@@ -1883,7 +1883,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Temp_Resid_Ratio", &
                    start, stride, edge, &
-                   airs_ret_gran.Temp_Resid_Ratio)
+                   airs_ret_gran%Temp_Resid_Ratio)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Temp_Resid_Ratio"
@@ -1892,7 +1892,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Water_Resid_Ratio", &
                    start, stride, edge, &
-                   airs_ret_gran.Water_Resid_Ratio)
+                   airs_ret_gran%Water_Resid_Ratio)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Water_Resid_Ratio"
@@ -1901,7 +1901,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Cloud_Resid_Ratio", &
                    start, stride, edge, &
-                   airs_ret_gran.Cloud_Resid_Ratio)
+                   airs_ret_gran%Cloud_Resid_Ratio)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Cloud_Resid_Ratio"
@@ -1910,7 +1910,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "O3_Resid_Ratio", &
                    start, stride, edge, &
-                   airs_ret_gran.O3_Resid_Ratio)
+                   airs_ret_gran%O3_Resid_Ratio)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "O3_Resid_Ratio"
@@ -1919,7 +1919,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "CO_Resid_Ratio", &
                    start, stride, edge, &
-                   airs_ret_gran.CO_Resid_Ratio)
+                   airs_ret_gran%CO_Resid_Ratio)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CO_Resid_Ratio"
@@ -1928,7 +1928,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "CH4_Resid_Ratio", &
                    start, stride, edge, &
-                   airs_ret_gran.CH4_Resid_Ratio)
+                   airs_ret_gran%CH4_Resid_Ratio)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "CH4_Resid_Ratio"
@@ -1937,7 +1937,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "MWCheck_Resid_Ratio", &
                    start, stride, edge, &
-                   airs_ret_gran.MWCheck_Resid_Ratio)
+                   airs_ret_gran%MWCheck_Resid_Ratio)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "MWCheck_Resid_Ratio"
@@ -1946,7 +1946,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "O3_dof", &
                    start, stride, edge, &
-                   airs_ret_gran.O3_dof)
+                   airs_ret_gran%O3_dof)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "O3_dof"
@@ -1964,7 +1964,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "MW_ret_used", &
                    start, stride, edge, &
-                   airs_ret_gran.MW_ret_used)
+                   airs_ret_gran%MW_ret_used)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "MW_ret_used"
@@ -1973,7 +1973,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Initial_CC_score", &
                    start, stride, edge, &
-                   airs_ret_gran.Initial_CC_score)
+                   airs_ret_gran%Initial_CC_score)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Initial_CC_score"
@@ -1991,7 +1991,7 @@ contains
       edge(1) = 30
       statn = SWrdfld(swid, "Startup", &
                    start, stride, edge, &
-                   airs_ret_gran.Startup)
+                   airs_ret_gran%Startup)
       if (statn .ne. 0) &
         print *, "Error ", statn, " reading field ", &
                   "Startup"
