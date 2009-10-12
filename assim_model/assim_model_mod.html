@@ -667,7 +667,6 @@ state diagnostics file.
  <BR>
 
  <!--================================================================-->
-
  <!--============= DESCRIPTION OF A FUNCTION ========================-->
 <A NAME="yyyroutine22"></A>
  <P></P><HR><P></P>
@@ -1239,11 +1238,12 @@ documentation for arguments and details.
 <BR><HR><BR>
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&' and terminating with a slash '/'.
+'&#38;' and terminating with a slash '/'.
 </P>
 <div class=namelist><pre>
-<em class=call>namelist / assim_model_nml / </em> &
-    write_binary_restart_files
+<em class=call>namelist / assim_model_nml / </em> &#38;
+    write_binary_restart_files,
+    netCDF_large_file_support
 </pre></div>
 
 <H3 class=indent1>Discussion</H3>
@@ -1253,12 +1253,24 @@ documentation for arguments and details.
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
+    <TH align=left>&nbsp;&nbsp;&nbsp;Type</TH>
     <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>write_binary_restart_files</TD>
-    <!--  type  --><TD>logical                         </TD>
+<TR><!--contents--><TD valign=top><em class="code">write_binary_restart_files</em></TD>
+    <!--  type  --><TD valign=top>&nbsp;&nbsp;&nbsp;logical&nbsp;&nbsp;&nbsp;</TD>
     <!--descript--><TD> Are output state restart files ascii (false) or 
-                        unformatted (true)? Default is true.
+                        unformatted (true)? Default is .true.</TD></TR>
+<TR><!--contents--><TD valign=top><em class="code">netCDF_large_file_support</em></TD>
+    <!--  type  --><TD valign=top>&nbsp;&nbsp;&nbsp;logical</TD>
+    <!--descript--><TD> Use the netCDF LFS format that enables individual records
+        (i.e. all the information that has the same 'unlimited' record value) 
+        to exceed 2GB?  The only downside to using this flag is compatibility 
+        with some netCDF software. Some (but not all) software is not built 
+        with 'LFS' support.  Note it is, and has been, possible to create netCDF 
+        <strong>files</strong> larger than 2GB with a value of 
+        <em>.false</em> - which is compatible with the historical netCDF format. 
+        It is only necessary to use a value of <em>.true.</em> if the state vector 
+        is very large and you are outputting a large number of ensembles. 
+        Default is .false.</TD></TR>
 </TABLE>
 
 <!--==================================================================-->
@@ -1326,7 +1338,7 @@ documentation for arguments and details.
 </TR>
 <TR><!-- routine --><TD VALIGN=top>aoutput_diagnostics</TD>
     <!-- message --><TD VALIGN=top>model time (d,s) (#,#) is index # in ncFileID # </TD>
-    <!-- comment --><TD VALIGN=top>Time index for file listed is < 0 </TD>
+    <!-- comment --><TD VALIGN=top>Time index for file listed is #&60; 0 </TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>ainput_diagnostics</TD>
     <!-- message --><TD VALIGN=top>expected "copy", got _____'</TD>
@@ -1375,7 +1387,7 @@ documentation for arguments and details.
     <!-- comment --><TD VALIGN=top>Returned from one of the NetCDF calls in this subroutine.
       Consult the NetCDF manual. </TD>
 </TR>
-</TR> -->
+</TR>
 </TABLE>
 </div>
 

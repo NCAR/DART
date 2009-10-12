@@ -98,7 +98,9 @@
    evaluate_these_obs_types   = 'GEOPOTENTIAL_HEIGHT'  /
 
 &assim_model_nml
-   write_binary_restart_files = .true.  /
+   write_binary_restart_files = .true.,
+   netCDF_large_file_support  = .false.
+  /
 
 &location_nml
    horiz_dist_only             = .true.,

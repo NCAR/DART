@@ -102,8 +102,10 @@ character(len = 129)  :: msgstring
 !                                     but not as portable.
 
 logical  :: write_binary_restart_files = .true.
+logical  :: netCDF_large_file_support  = .false.
 
-namelist /assim_model_nml/ write_binary_restart_files
+namelist /assim_model_nml/ write_binary_restart_files, &
+                           netCDF_large_file_support
 !-------------------------------------------------------------
 
 contains
@@ -213,7 +215,7 @@ character(len=*), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
 integer, OPTIONAL,intent(in) :: lagID
 type(netcdf_file_type)       :: ncFileID
 
-integer :: i, metadata_length, nlines, linelen
+integer :: i, metadata_length, nlines, linelen, createmode
 
 integer ::   MemberDimID,   MemberVarID     ! for each "copy" or ensemble member
 integer ::     TimeDimID,     TimeVarID
@@ -232,9 +234,15 @@ end if
 
 metadata_length = LEN(meta_data_per_copy(1))
 
+if ( netCDF_large_file_support ) then
+   createmode = NF90_64BIT_OFFSET
+else
+   createmode = NF90_SHARE
+endif
+
 ! Create the file
 ncFileID%fname = trim(adjustl(FileName))//".nc"
-call nc_check(nf90_create(path = trim(ncFileID%fname), cmode = nf90_share, ncid = ncFileID%ncid), &
+call nc_check(nf90_create(path = trim(ncFileID%fname), cmode = createmode, ncid = ncFileID%ncid), &
               'init_diag_output', 'create '//trim(ncFileID%fname))
 
 write(msgstring,*)trim(ncFileID%fname), ' is ncFileID ',ncFileID%ncid
