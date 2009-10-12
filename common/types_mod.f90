@@ -88,10 +88,10 @@ real(r8), PARAMETER :: es_alpha       = 611.2_r8
 real(r8), PARAMETER :: es_beta        = 17.67_r8
 real(r8), PARAMETER :: es_gamma       = 243.5_r8
 real(r8), PARAMETER :: gas_constant_v = 461.6_r8
-real(r8), PARAMETER :: gas_constant   = 287.0_r8
+real(r8), PARAMETER :: gas_constant   = 287.0_r8 ! wikipedia has 287.06, WRF has 287.05 ...
 real(r8), PARAMETER :: L_over_Rv      = 5418.12_r8
 real(r8), PARAMETER :: ps0            = 100000.0_r8    ! Base sea level pressure
 real(r8), PARAMETER :: earth_radius   = 6370.0_r8      ! km, consistant with WRF
-real(r8), PARAMETER :: gravity        = 9.81_r8
+real(r8), PARAMETER :: gravity        = 9.81_r8        ! wikipedia has 9.80665
 
 END MODULE types_mod
