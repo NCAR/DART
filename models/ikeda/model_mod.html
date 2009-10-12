@@ -66,17 +66,20 @@ are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
 and do spatial interpolation for model state variables.
-</P>
-<P>
+<br />
+<br />
 The Ikeda model is a 2D chaotic map useful for visualization 
 data assimilation updating directly in state space.  
 There are three parameters:  a, b, and mu.  The state is 2D, x = [X Y].
 The equations are:
+</P>
 <pre>
 X(i+1) = 1 + mu * ( X(i) * cos( t ) - Y(i) * sin( t ) )
 Y(i+1) =     mu * ( X(i) * sin( t ) + Y(i) * cos( t ) ),
 </pre>
+<P>
 where
+</P>
 <pre>
 t = a - b / ( X(i)**2 + Y(i)**2 + 1 )
 </pre>
