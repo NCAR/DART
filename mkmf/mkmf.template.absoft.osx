@@ -19,7 +19,9 @@
 #    were lower-case symbols with trailing underscores, so DART must follow.
 #
 # There are some gotchas with this compiler. According to the User Guide:
+#
 #      -dp       "DEMOTE Double Precision to Real"
+#
 #      -N113     "Promote REAL and COMPLEX"    Without an explicit length 
 #                declaration, single precision REAL and COMPLEX data types 
 #                default to thirty-two bits or four bytes (KIND=4) and 
@@ -28,10 +30,17 @@
 #                precision equivalents (KIND=8). This option does not affect 
 #                variables which appear in type statements with explicit 
 #                sizes (such as REAL (KIND=4) or COMPLEX (KIND=4)).  
+#
 #      -f free   instructs compiler to accept source code written in the 
 #                format for Fortran 90/95 Free Source Form.
+#
 #      -reclen32 Causes the library to interpret the value specified for 
 #                RECL= in an OPEN statement as 32-bit words instead of bytes. 
+#
+#      -N26      Use this option to force the compiler to consider the byte 
+#                ordering of all unformatted files to be big-endian by default.
+#                The CONVERT specifier in the OPEN statement may be used to 
+#                override this setting for individual files. 
 #
 # FFLAGS   used all the time
 #     -YEXT_NAMES=LCS          lower case symbols
@@ -47,6 +56,10 @@
 #     -wabort                  treat all warnings as errors
 #     -Rb                      check array boundaries
 #     -Rc                      check array conformance (shapes)
+#     -Rs                      check that character substring expressions
+#                              do not specify a character index outside the 
+#                              scope of the character variable or 
+#                              character array element.
 #     -C                       full Checking (too much info ...)
 #
 # FFLAGS   useful for production (untested)
@@ -66,7 +79,8 @@ LD = f90
 NETCDF = /Users/thoar/Absoft
 INCS = ${NETCDF}/include
 LIBS = -L${NETCDF}/lib -lnetcdf
+ FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -Rb -Rc -g -p$(INCS)
 #FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -Rb -Rc -p$(INCS)
 #FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -N113 -f free -Rb -Rc -p$(INCS) -I$(INCS)
- FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -p$(INCS) -I$(INCS)
-LDFLAGS = -unixlib -p$(INCS) $(LIBS)
+#FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -Rb -Rc -N26 -p$(INCS) -I$(INCS)
+LDFLAGS = -unixlib $(FFLAGS) $(LIBS)
