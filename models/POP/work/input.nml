@@ -19,7 +19,7 @@
 &filter_nml
    async                    = 4,
    adv_ens_command          = "./advance_model.csh",
-   ens_size                 =  7,
+   ens_size                 =  23,
    start_from_restart       = .true.,
    output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.out",
@@ -32,12 +32,12 @@
    first_obs_seconds        = -1,
    last_obs_days            = -1,
    last_obs_seconds         = -1,
-   num_output_state_members = 7,
-   num_output_obs_members   = 7,
+   num_output_state_members = 10,
+   num_output_obs_members   = 10,
    output_interval          = 1,
    num_groups               = 1,
    input_qc_threshold       =  4.0,
-   outlier_threshold        = -1.0,
+   outlier_threshold        =  3.0,
    output_forward_op_errors = .false.,
    output_timestamps        = .false.,
    output_inflation         = .true.,
@@ -70,7 +70,7 @@
 # cutoff of 0.03 (radians) is about 200km
 &assim_tools_nml
    filter_kind                     = 1,
-   cutoff                          = 0.10,
+   cutoff                          = 0.20,
    sort_obs_inc                    = .true.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
@@ -101,10 +101,10 @@
 
 &obs_kind_nml
    assimilate_these_obs_types = 'FLOAT_TEMPERATURE',
+     evaluate_these_obs_types = 'SEA_SURFACE_HEIGHT',
                                 'FLOAT_SALINITY',
                                 'U_CURRENT_COMPONENT',
-                                'V_CURRENT_COMPONENT',
-     evaluate_these_obs_types = 'SEA_SURFACE_HEIGHT',
+                                'V_CURRENT_COMPONENT'
   /
 
 #          xxx_these_obs_types = 'SALINITY',
@@ -148,15 +148,16 @@
   /
 
 &assim_model_nml
-   write_binary_restart_files = .true.
+   write_binary_restart_files = .true.,
+   netCDF_large_file_support  = .true.
   /
 
 &model_nml
-   assimilation_period_days     = 1, 
-   assimilation_period_seconds  = 0, 
-   model_perturbation_amplitude = 0.2, 
+   assimilation_period_days     = 1,
+   assimilation_period_seconds  = 0,
+   model_perturbation_amplitude = 0.2,
    output_state_vector          = .false.,
-   debug                        = 0,  
+   debug                        = 0,
   /
 
 &pop_to_dart_nml
@@ -170,7 +171,7 @@
 
 &location_nml
    horiz_dist_only             = .true.,
-   vert_normalization_pressure = 100000.0, 
+   vert_normalization_pressure = 100000.0,
    vert_normalization_height   = 10000.0,
    vert_normalization_level    = 20.0,
    approximate_distance        = .false.,
@@ -267,8 +268,8 @@
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
-   first_bin_center =  1996, 1, 1,12, 0, 0 ,
-   last_bin_center  =  1996, 1,14,12, 0, 0 ,
+   first_bin_center =  2000, 1, 7, 0, 0, 0 ,
+   last_bin_center  =  2000, 1,31, 0, 0, 0 ,
    bin_separation   =     0, 0, 1, 0, 0, 0 ,
    bin_width        =     0, 0, 1, 0, 0, 0 ,
    time_to_skip     =     0, 0, 0, 0, 0, 0 ,
@@ -276,37 +277,33 @@
    rat_cri            = 3.0,
    input_qc_threshold = 4.0,
    Nregions   = 3,
-   lonlim1    = 260.0, 270.0, 260.0,
-   lonlim2    = 310.0, 310.0, 300.0,
-   latlim1    =   0.0,   0.0,  20.0,
-   latlim2    =  40.0,  20.0,  40.0,
-   reg_names  = 'Gulf & Caribbean', 'Caribbean', 'Gulf of Mexico',
+   lonlim1    = 30.0,  130.0, 290.0,
+   lonlim2    = 130.0, 270.0, 380.0,
+   latlim1    = -50.0, -50.0, -50.0,
+   latlim2    =  20.0,  50.0,  50.0,
+   reg_names  = 'Indian Ocean', 'Pacific', 'Atlantic',
    print_mismatched_locs = .false.,
    print_obs_locations   = .false.,
    verbose               = .true.,
-   hlevel =  -2.50185,   -7.7967, -13.72595, -20.40305,  -27.9614, 
-            -36.55765,  -46.3757,  -57.6311, -70.57615,  -85.5057,
-            -102.7636, -122.7502, -145.9296, -172.8393, -204.0984, 
-            -240.4174, -282.6075, -331.5891, -388.3994, -454.1974, 
-            -530.2654, -618.0071, -718.9376, -834.6679, -966.8794, 
-            -1117.289, -1287.607, -1479.480, -1694.436, -1933.820, 
-            -2198.734, -2489.986, -2808.042, -3153.009, -3524.622, 
-            -3922.264, -4344.997, -4791.606, -5260.660, -5750.303
+   hlevel =  10.0, 20.0, 30.0, 40.0,
+            100.0,  200.0,  500.0, 1000.0,  2000.0,
+            3000.0, 4000.0, 8000.0, 16000.0, 32000.0,
   /
 
 &schedule_nml
    calendar        = 'Gregorian',
    first_bin_start =  1999, 12, 31, 12, 0, 0 ,
-   first_bin_end   =  2000,  1,  1, 12, 0, 0 ,
-   last_bin_end    =  2000,  1,  7, 12, 0, 0 ,
-   bin_interval_days    = 1,
+   first_bin_end   =  2000,  1, 31, 12, 0, 0 ,
+   last_bin_end    =  2000,  1, 31, 12, 0, 0 ,
+   bin_interval_days    = 32,
    bin_interval_seconds = 0,
    max_num_bins         = 1000,
    print_table          = .true.
   /
 
 &obs_seq_to_netcdf_nml
-   obs_sequence_name = '/gpfs/ptmp/thoar/dart.001hy/run/obs_seq.2000-01-06-00000.final'
+   obs_sequence_name = ''
+   obs_sequence_list = 'obs_seq_file_list',
    lonlim1    =    0.0,
    lonlim2    =  360.0,
    latlim1    =  -90.0,
