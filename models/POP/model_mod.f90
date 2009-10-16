@@ -15,26 +15,30 @@ module model_mod
 
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8, SECPERDAY, MISSING_R8, rad2deg, PI
-use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
-                             print_time, print_date, set_calendar_type, &
-                             operator(*),  operator(+), operator(-), &
-                             operator(>),  operator(<), operator(/), &
+use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
+                             print_time, print_date, set_calendar_type,        &
+                             operator(*),  operator(+), operator(-),           &
+                             operator(>),  operator(<), operator(/),           &
                              operator(/=), operator(<=)
-use     location_mod, only : location_type,      get_close_maxdist_init, &
-                             get_close_obs_init, get_close_obs, set_location, &
-                             VERTISHEIGHT, get_location, vert_is_height, &
-                             vert_is_level, vert_is_surface
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
-                             logfileunit, get_unit, nc_check, do_output, to_upper, &
-                             find_namelist_in_file, check_namelist_read, &
-                             open_file, file_exist, find_textfile_dims, file_to_text
-use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_U_CURRENT_COMPONENT, &
+use     location_mod, only : location_type, get_dist, get_close_maxdist_init,  &
+                             get_close_obs_init, set_location,                 &
+                             VERTISHEIGHT, get_location, vert_is_height,       &
+                             vert_is_level, vert_is_surface,                   &
+                             loc_get_close_obs => get_close_obs, get_close_type
+use    utilities_mod, only : register_module, error_handler,                   &
+                             E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
+                             nc_check, do_output, to_upper,                    &
+                             find_namelist_in_file, check_namelist_read,       &
+                             open_file, file_exist, find_textfile_dims,        &
+                             file_to_text
+use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_DRY_LAND,   &
+                             KIND_U_CURRENT_COMPONENT,                         &
                              KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT, &
                              KIND_SEA_SURFACE_PRESSURE
 use mpi_utilities_mod, only: my_task_id
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
-use      dart_pop_mod, only: set_model_time_step, &
-                             get_horiz_grid_dims, get_vert_grid_dim, &
+use      dart_pop_mod, only: set_model_time_step,                              &
+                             get_horiz_grid_dims, get_vert_grid_dim,           &
                              read_horiz_grid, read_topography, read_vert_grid, &
                              get_pop_restart_filename
 
@@ -86,13 +90,19 @@ logical  :: output_state_vector = .true.
 integer  :: assimilation_period_days = 1
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
+logical  :: update_dry_cell_walls = .false.
 integer  :: debug = 0   ! turn up for more and more debug messages
+
+! FIXME: currently the update_dry_cell_walls namelist value DOES
+! NOTHING.  it needs additional code to detect the cells which are
+! wet, but within 1 cell of the bottom/sides/etc.  
 
 namelist /model_nml/  &
    output_state_vector,         &
    assimilation_period_days,    &  ! for now, this is the timestep
    assimilation_period_seconds, &
    model_perturbation_amplitude,&
+   update_dry_cell_walls,       &
    debug
 
 !------------------------------------------------------------------
@@ -192,12 +202,14 @@ integer, parameter :: num_reg_x = 90, num_reg_y = 90
 integer, parameter :: max_reg_list_num = 80
 
 ! The dipole interpolation keeps a list of how many and which dipole quads
-! overlap each regular lon-lat box. The number for the u and t grids are stored
-! in u_dipole_num and t_dipole_num. The allocatable arrays u_dipole_lon(lat)_list and
-! t_dipole_lon(lat)_list list the longitude and latitude indices for the overlapping
-! dipole quads. The entry in u_dipole_start and t_dipole_start for a given 
-! regular lon-lat box indicates where the list of dipole quads begins
-! in the u_dipole_lon(lat)_list and t_dipole_lon(lat)_list arrays.
+! overlap each regular lon-lat box. The number for the u and t grids are 
+! stored in u_dipole_num and t_dipole_num. The allocatable arrays
+! u_dipole_lon(lat)_list and t_dipole_lon(lat)_list list the longitude 
+! and latitude indices for the overlapping dipole quads. The entry in
+! u_dipole_start and t_dipole_start for a given regular lon-lat box indicates
+! where the list of dipole quads begins in the u_dipole_lon(lat)_list and
+! t_dipole_lon(lat)_list arrays.
+
 integer :: u_dipole_start(num_reg_x, num_reg_y)
 integer :: u_dipole_num  (num_reg_x, num_reg_y) = 0
 integer :: t_dipole_start(num_reg_x, num_reg_y)
@@ -352,7 +364,7 @@ do i = 1, nx
       call init_dipole_interp()
       return
    endif
-end do
+enddo
 
 end subroutine init_interp
 
@@ -379,9 +391,9 @@ integer  :: i, j, k, pindex
 integer  :: reg_lon_ind(2), reg_lat_ind(2), u_total, t_total, u_index, t_index
 logical  :: is_pole
 
-! Begin by finding the quad that contains the pole for the dipole t_grid. To do this
-! locate the u quad with the pole on its right boundary. This is on the row 
-! that is opposite the shifted pole and exactly follows a lon circle.
+! Begin by finding the quad that contains the pole for the dipole t_grid. 
+! To do this locate the u quad with the pole on its right boundary. This is on
+! the row that is opposite the shifted pole and exactly follows a lon circle.
 pole_x = nx / 2;
 ! Search for the row at which the longitude flips over the pole
 pole_row_lon = ulon(pole_x, 1);
@@ -411,14 +423,14 @@ do i = 1, nx
       ! Is this the pole quad for the T grid?
       is_pole = (i == pole_x .and. j == t_pole_y)
       
-      ! Set up an array of the lons and lats for the corners of these u and t quads
+      ! Set up array of lons and lats for the corners of these u and t quads
       call get_quad_corners(ulon, i, j, u_c_lons)
       call get_quad_corners(ulat, i, j, u_c_lats)
       call get_quad_corners(tlon, i, j, t_c_lons)
       call get_quad_corners(tlat, i, j, t_c_lats)
 
       ! Get list of regular boxes that cover this u dipole quad
-      ! The false indicates that for the u grid there's nothing special about pole
+      ! false indicates that for the u grid there's nothing special about pole
       call reg_box_overlap(u_c_lons, u_c_lats, .false., reg_lon_ind, reg_lat_ind)         
 
       ! Update the temporary data structures for the u quad 
@@ -436,8 +448,8 @@ enddo
 ! write(*,*)'u_dipole_num is ',maxval(u_dipole_num)
 ! write(*,*)'t_dipole_num is ',maxval(t_dipole_num)
 
-! Invert the temporary data structure. The total number of entries will be the sum 
-! of the number of dipole cells for each regular cell. 
+! Invert the temporary data structure. The total number of entries will be 
+! the sum of the number of dipole cells for each regular cell. 
 u_total = sum(u_dipole_num)
 t_total = sum(t_dipole_num)
 
@@ -542,17 +554,17 @@ real(r8), intent(in)  :: x_corners(4), y_corners(4)
 logical,  intent(in)  :: is_pole
 integer,  intent(out) :: reg_lon_ind(2), reg_lat_ind(2)
 
-! Find a set of regular lat lon boxes that covers all of the area covered
-! by a dipole grid qaud whose corners are given by the
-! dimension four x_cornersand y_corners arrays.  The two dimensional arrays reg_lon_ind and
-! reg_lat_ind return the first and last indices of the regular boxes in
-! latitude and longitude respectively. These indices may wraparound for
-! reg_lon_ind. A special computation is needed for a dipole quad that has
-! the true north pole in its interior. The logical is_pole is set to true
-! if this is the case. This can only happen for the t grid.
-! If the longitude boxes overlap 0 degrees, the indices returned are adjusted
-! by adding the total number of boxes to the second index (e.g. the indices
-! might be 88 and 93 for a case with 90 longitude boxes).
+! Find a set of regular lat lon boxes that covers all of the area covered by 
+! a dipole grid qaud whose corners are given by the dimension four x_corners 
+! and y_corners arrays.  The two dimensional arrays reg_lon_ind and reg_lat_ind
+! return the first and last indices of the regular boxes in latitude and
+! longitude respectively. These indices may wraparound for reg_lon_ind.  
+! A special computation is needed for a dipole quad that has the true north 
+! pole in its interior. The logical is_pole is set to true if this is the case.
+! This can only happen for the t grid.  If the longitude boxes overlap 0
+! degrees, the indices returned are adjusted by adding the total number of
+! boxes to the second index (e.g. the indices might be 88 and 93 for a case
+! with 90 longitude boxes).
 
 real(r8) :: lat_min, lat_max, lon_min, lon_max
 integer  :: i
@@ -568,7 +580,7 @@ if(is_pole) then
    call get_reg_lat_box(lat_min, reg_lat_ind(1))
    reg_lat_ind(2) = num_reg_y
 else
-   ! All other quads do not contain the pole (pole could be on edge but no problem)
+   ! All other quads do not contain pole (pole could be on edge but no problem)
    ! This is specific to the dipole POP grids that do not go to the south pole
    ! Finding the range of latitudes is cake
    lat_min = minval(y_corners)
@@ -594,8 +606,8 @@ else
       do i=1, 4
          if(x_corners(i) > 180.0_r8 .and. x_corners(i) < lon_min) lon_min = x_corners(i)
          if(x_corners(i) < 180.0_r8 .and. x_corners(i) > lon_max) lon_max = x_corners(i)
-      end do
-   end if
+      enddo
+   endif
 
    ! Get the indices for the extreme longitudes
    call get_reg_lon_box(lon_min, reg_lon_ind(1))
@@ -853,7 +865,7 @@ endif
 if (debug > 1) print *, 'base offset now ', base_offset
 
 ! For Sea Surface Height,Pressure don't need the vertical coordinate
-! SSP needs to be converted to a SSH
+! SSP needs to be converted to a SSH if height is required.
 if( vert_is_surface(location) ) then
    call lon_lat_interpolate(x(base_offset:), llon, llat, obs_type, 1, interp_val, istatus)
    if (convert_to_ssh .and. (istatus == 0)) then
@@ -1090,7 +1102,7 @@ real(r8)                :: get_val
 if ( .not. module_initialized ) call static_init_model
 
 ! check the land/ocean bottom map and return if not valid water cell.
-if(is_not_ocean(var_type, lon_index, lat_index, height)) then
+if(is_dry_land(var_type, lon_index, lat_index, height)) then
    masked = .true.
    return
 endif
@@ -1177,7 +1189,7 @@ do i = 2, nlons
       fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
       return
    endif
-end do
+enddo
 
 ! Falling off the end means it's in between; wraparound
 bot = nlons
@@ -1236,7 +1248,7 @@ do i = 2, nlats
       fract = (lat - lat_array(1, bot)) / (lat_array(1, top) - lat_array(1, bot))
       return
    endif
-end do
+enddo
 
 ! Shouldn't get here. Might want to fail really hard through error handler
 istatus = 40
@@ -1497,7 +1509,7 @@ if(maxval(x_corners) - minval(x_corners) > 180.0_r8) then
    if(lon < 180.0_r8) lon = lon + 360.0_r8
    do i = 1, 4
       if(x_corners(i) < 180.0_r8) x_corners(i) = x_corners(i) + 360.0_r8
-   end do
+   enddo
 endif
 
 
@@ -1512,7 +1524,7 @@ endif
 ! Multiply everybody by the cos of the latitude
 !!!do i = 1, 4
    !!!x_corners(i) = x_corners(i) * cos(y_corners(i) * deg2rad)
-!!!end do
+!!!enddo
 !!!lon = lon * cos(lat * deg2rad)
 
 !*******
@@ -1525,7 +1537,7 @@ do i = 1, 3
    m(i, 2) = y_corners(i) - y_corners(i + 1)
    m(i, 3) = x_corners(i)*y_corners(i) - x_corners(i + 1)*y_corners(i + 1)
    v(i) = p(i) - p(i + 1)
-end do
+enddo
 
 ! Solve the matrix for b, c and d
 call mat3x3(m, v, r)
@@ -1542,7 +1554,7 @@ a = p(4) - r(1) * x_corners(4) - r(2) * y_corners(4) - &
    !!!if(abs(interp_val - p(i)) > 1e-9) then
       !!!write(*, *) 'large interp residual ', interp_val - p(i)
    !!!endif
-!!!end do
+!!!enddo
 !----------------- Implementation test block
 
 
@@ -1586,7 +1598,7 @@ do i = 1, 3
    m_sub(:, i) = v   
    numer = deter3(m_sub)
    r(i) = numer / denom
-end do
+enddo
 
 end subroutine mat3x3
 
@@ -1655,7 +1667,7 @@ do i = 2, nheights
 if (debug > 1) print *, 'i, hgt_array, top, bot, fract=', i, hgt_array(i), top, bot, fract
       return
    endif
-end do
+enddo
 
 ! Falling off the end means the location is lower than the deepest height
 istatus = 20
@@ -1715,51 +1727,11 @@ integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
-real(R8) :: lat, lon, depth
-integer :: var_num, offset, lon_index, lat_index, depth_index, local_var
+real(r8) :: lat, lon, depth
+integer :: lon_index, lat_index, depth_index, local_var
 
-if ( .not. module_initialized ) call static_init_model
+call get_state_indices(index_in, lat_index, lon_index, depth_index, local_var)
 
-if (debug > 5) print *, 'asking for meta data about index ', index_in
-
-if (index_in < start_index(S_index+1)) then
-   local_var = KIND_SALINITY  
-   var_num = S_index
-else if (index_in < start_index(T_index+1)) then
-   local_var = KIND_TEMPERATURE  
-   var_num = T_index
-else if (index_in < start_index(U_index+1)) then
-   local_var = KIND_U_CURRENT_COMPONENT
-   var_num = U_index
-else if (index_in < start_index(V_index+1)) then
-   local_var = KIND_V_CURRENT_COMPONENT
-   var_num = V_index
-else 
-   local_var = KIND_SEA_SURFACE_PRESSURE
-   var_num = PSURF_index
-endif
-if (present(var_type)) var_type = local_var  
-
-if (debug > 5) print *, 'var num = ', var_num
-if (debug > 5) print *, 'var type = ', local_var
-
-! local offset into this var array
-offset = index_in - start_index(var_num)
-
-if (debug > 5) print *, 'offset = ', offset
-
-if (var_num == PSURF_index) then
-  depth = 0.0
-  depth_index = 1
-else
-  depth_index = (offset / (Nx * Ny)) + 1
-  depth = ZC(depth_index)
-endif
-
-lat_index = (offset - ((depth_index-1)*Nx*Ny)) / Nx + 1
-lon_index = offset - ((depth_index-1)*Nx*Ny) - ((lat_index-1)*Nx) + 1
-
-if (debug > 5) print *, 'lon, lat, depth index = ', lon_index, lat_index, depth_index
 if (is_on_ugrid(local_var)) then
    lon = ULON(lon_index, lat_index)
    lat = ULAT(lon_index, lat_index)
@@ -1768,12 +1740,131 @@ else
    lat = TLAT(lon_index, lat_index)
 endif
 
+if (local_var == KIND_SEA_SURFACE_HEIGHT) then
+   depth = 0.0_r8
+else
+   depth = ZC(depth_index)
+endif
+
 if (debug > 5) print *, 'lon, lat, depth = ', lon, lat, depth
 
 location = set_location(lon, lat, depth, VERTISHEIGHT)
 
+if (present(var_type)) then
+   var_type = local_var
+   if(is_dry_land(var_type, lon_index, lat_index, depth_index)) then
+      var_type = KIND_DRY_LAND
+   endif
+endif
+
 end subroutine get_state_meta_data
 
+
+subroutine get_state_indices(index_in, lat_index, lon_index, depth_index, var_type)
+!------------------------------------------------------------------
+!
+! Given an integer index into the state vector structure, returns the
+! associated array indices for lat, lon, and depth, as well as the type.
+
+integer, intent(in)  :: index_in
+integer, intent(out) :: lat_index, lon_index, depth_index
+integer, intent(out) :: var_type
+
+integer :: startind, offset
+
+if ( .not. module_initialized ) call static_init_model
+
+if (debug > 5) print *, 'asking for meta data about index ', index_in
+
+call get_state_kind(index_in, var_type, startind, offset)
+
+if (startind == start_index(PSURF_index)) then
+  depth_index = 1
+else
+  depth_index = (offset / (Nx * Ny)) + 1
+endif
+
+lat_index = (offset - ((depth_index-1)*Nx*Ny)) / Nx + 1
+lon_index =  offset - ((depth_index-1)*Nx*Ny) - ((lat_index-1)*Nx) + 1
+
+if (debug > 5) print *, 'lon, lat, depth index = ', lon_index, lat_index, depth_index
+
+end subroutine get_state_indices
+
+
+subroutine get_state_kind(index_in, var_type, startind, offset)
+!------------------------------------------------------------------
+!
+! Given an integer index into the state vector structure, returns the kind,
+! and both the starting offset for this kind, as well as the offset into
+! the block of this kind.
+
+integer, intent(in)  :: index_in
+integer, intent(out) :: var_type, startind, offset
+
+
+if ( .not. module_initialized ) call static_init_model
+
+if (debug > 5) print *, 'asking for meta data about index ', index_in
+
+if (index_in < start_index(S_index+1)) then
+   var_type = KIND_SALINITY  
+   startind = start_index(S_index)
+else if (index_in < start_index(T_index+1)) then
+   var_type = KIND_TEMPERATURE  
+   startind = start_index(T_index)
+else if (index_in < start_index(U_index+1)) then
+   var_type = KIND_U_CURRENT_COMPONENT
+   startind = start_index(U_index)
+else if (index_in < start_index(V_index+1)) then
+   var_type = KIND_V_CURRENT_COMPONENT
+   startind = start_index(V_index)
+else 
+   var_type = KIND_SEA_SURFACE_PRESSURE
+   startind = start_index(PSURF_index)
+endif
+
+! local offset into this var array
+offset = index_in - startind
+
+if (debug > 5) print *, 'var type = ', var_type
+if (debug > 5) print *, 'startind = ', startind
+if (debug > 5) print *, 'offset = ', offset
+
+end subroutine get_state_kind
+
+
+
+subroutine get_state_kind_inc_dry(index_in, var_type)
+!------------------------------------------------------------------
+!
+! Given an integer index into the state vector structure, returns the
+! type, taking into account the ocean bottom and dry land.
+
+integer, intent(in)  :: index_in
+integer, intent(out) :: var_type
+
+integer :: lon_index, lat_index, depth_index, startind, offset
+
+if ( .not. module_initialized ) call static_init_model
+
+call get_state_kind(index_in, var_type, startind, offset)
+
+if (startind == start_index(PSURF_index)) then
+  depth_index = 1
+else
+  depth_index = (offset / (Nx * Ny)) + 1
+endif
+
+lat_index = (offset - ((depth_index-1)*Nx*Ny)) / Nx + 1
+lon_index =  offset - ((depth_index-1)*Nx*Ny) - ((lat_index-1)*Nx) + 1
+
+! if on land or below ocean floor, replace type with dry land.
+if(is_dry_land(var_type, lon_index, lat_index, depth_index)) then
+   var_type = KIND_DRY_LAND
+endif
+
+end subroutine get_state_kind_inc_dry
 
 
 subroutine end_model()
@@ -2143,7 +2234,7 @@ else
          'nc_write_model_atts', 'S def_var '//trim(filename))
    call nc_check(nf90_put_att(ncFileID, SVarID, 'long_name', 'salinity'), &
          'nc_write_model_atts', 'S long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, 'units', 'g/g'), &
+   call nc_check(nf90_put_att(ncFileID, SVarID, 'units', 'kg/kg'), &
          'nc_write_model_atts', 'S units '//trim(filename))
    call nc_check(nf90_put_att(ncFileID, SVarID, 'missing_value', NF90_FILL_REAL), &
          'nc_write_model_atts', 'S missing '//trim(filename))
@@ -2395,7 +2486,7 @@ real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
-integer :: i
+integer :: i, var_type
 logical, save :: random_seq_init = .false.
 
 if ( .not. module_initialized ) call static_init_model
@@ -2408,12 +2499,16 @@ if(.not. random_seq_init) then
    random_seq_init = .true.
 endif
 
-! only perturb the non-zero values.  0 is a flag for missing
-! ocean cells (e.g. land or under the sea floor)
+! only perturb the actual ocean cells; leave the land and
+! ocean floor values alone.
 do i=1,size(state)
-   if (state(i) /= 0.0_r8) &
+   call get_state_kind_inc_dry(i, var_type)
+   if (var_type /= KIND_DRY_LAND) then
       pert_state(i) = random_gaussian(random_seq, state(i), &
                                       model_perturbation_amplitude)
+   else
+      pert_state(i) = state(i)
+   endif
 enddo
 
 
@@ -2467,7 +2562,7 @@ state_vector = MISSING_R8
 ! "The time recorded in the pop2 restart files is the current time,
 ! which corresponds to the time of the XXXX_CUR variables.
 !
-! The current time is determined from iyear, imonth, iday, and *seconds_this_day*
+! current time is determined from iyear, imonth, iday, and *seconds_this_day*
 !
 ! The ihour, iminute, and isecond variables are used for internal
 ! model counting purposes, but because isecond is rounded to the nearest
@@ -2620,6 +2715,8 @@ end subroutine restart_file_to_sv
 
 subroutine sv_to_restart_file(state_vector, filename, statedate)
 !------------------------------------------------------------------
+! Writes the current time and state variables from a dart state
+! vector (1d fortran array) into a POP netcdf restart file.
 !
 real(r8),         intent(in) :: state_vector(:)
 character(len=*), intent(in) :: filename 
@@ -2765,6 +2862,8 @@ end subroutine sv_to_restart_file
 
 subroutine vector_to_2d_prog_var(x, varindex, data_2d_array)
 !------------------------------------------------------------------
+! convert the values from a 1d fortran array, starting at an offset,
+! into a 2d fortran array.  the 2 dims are taken from the array size.
 !
 real(r8), dimension(:),   intent(in)  :: x
 integer,                  intent(in)  :: varindex
@@ -2805,6 +2904,8 @@ end subroutine vector_to_2d_prog_var
 
 subroutine vector_to_3d_prog_var(x, varindex, data_3d_array)
 !------------------------------------------------------------------
+! convert the values from a 1d fortran array, starting at an offset,
+! into a 3d fortran array.  the 3 dims are taken from the array size.
 !
 real(r8), dimension(:),     intent(in)  :: x
 integer,                    intent(in)  :: varindex
@@ -2865,24 +2966,24 @@ end subroutine get_gridsize
 
 
 
-  function is_not_ocean(obs_type, lon_index, lat_index, hgt_index)
+  function is_dry_land(obs_type, lon_index, lat_index, hgt_index)
 !------------------------------------------------------------------
 ! returns true if this point is below the ocean floor or if it is
 ! on land.
 integer, intent(in)  :: obs_type
 integer, intent(in)  :: lon_index, lat_index, hgt_index
-logical              :: is_not_ocean
+logical              :: is_dry_land
 
 logical :: is_ugrid
 
 if ( .not. module_initialized ) call static_init_model
 
-is_not_ocean = .FALSE.    ! start out thinking everything is wet.
+is_dry_land = .FALSE.    ! start out thinking everything is wet.
 
 is_ugrid = is_on_ugrid(obs_type)
 if ((      is_ugrid .and. hgt_index > KMU(lon_index, lat_index)) .or. &
     (.not. is_ugrid .and. hgt_index > KMT(lon_index, lat_index))) then
-   is_not_ocean = .TRUE.
+   is_dry_land = .TRUE.
    return
 endif
 
@@ -2982,6 +3083,64 @@ end subroutine write_grid_netcdf
 
 
 
+subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
+                         obs_loc, obs_kind, num_close, close_ind, dist)
+!------------------------------------------------------------------
+
+! Given a DART ob (referred to as "base") and a set of obs priors or state
+! variables (obs_loc, obs_kind), returns the subset of close ones to the
+! "base" ob, their indices, and their distances to the "base" ob...
+
+! For vertical distance computations, general philosophy is to convert all
+! vertical coordinates to a common coordinate. This coordinate type is defined
+! in the namelist with the variable "vert_localization_coord".
+
+! Note that both base_obs_loc and obs_loc are intent(inout), meaning that
+! these locations are possibly modified here and returned as such to the
+! calling routine.  The calling routine is always filter_assim and these arrays
+! are local arrays within filter_assim. In other words, these modifications
+! will only matter within filter_assim, but will not propagate backwards to
+! filter.
+
+type(get_close_type), intent(in)     :: gc
+type(location_type),  intent(inout)  :: base_obs_loc, obs_loc(:)
+integer,              intent(in)     :: base_obs_kind, obs_kind(:)
+integer,              intent(out)    :: num_close, close_ind(:)
+real(r8),             intent(out)    :: dist(:)
+
+integer                :: t_ind, k
+
+
+! Initialize variables to missing status
+num_close = 0
+close_ind = -99
+dist      = 1.0e9   !something big and positive (far away)
+
+
+! Get all the potentially close obs but no dist (optional argument dist(:)
+! is not present) This way, we are decreasing the number of distance
+! computations that will follow.  This is a horizontal-distance operation and
+! we don't need to have the relevant vertical coordinate information yet 
+! (for obs_loc).
+call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+                       num_close, close_ind)
+
+! Loop over potentially close subset of obs priors or state variables
+do k = 1, num_close
+
+   t_ind = close_ind(k)
+
+   ! if dry land, leave original 1e9 value.  otherwise, compute real dist.
+   if (obs_kind(t_ind) /= KIND_DRY_LAND) then
+      dist(k) = get_dist(base_obs_loc, obs_loc(t_ind), &
+                         base_obs_kind, obs_kind(t_ind))
+   endif
+
+enddo
+
+end subroutine get_close_obs
+
+
   subroutine write_grid_interptest()
 !------------------------------------------------------------------
 ! Write the grid to an ascii file - in a format suitable for
@@ -3053,8 +3212,8 @@ do i = 1, Nx
       write(13, *) i, j, TLON(i,j), TLAT(i,j)
       write(14, *)       ULON(i,j), ULAT(i,j), dmat(i, j)
       write(15, *)       TLON(i,j), TLAT(i,j), dmat(i, j)
-   end do
-end do
+   enddo
+enddo
 
 close(unit=12)
 close(unit=13)
@@ -3144,8 +3303,8 @@ do imain = 1, nx
       read(13, *) ti, tj, tlon(imain, jmain), tlat(imain, jmain)
       read(14, *) ti, tj, reg_u_data(imain, jmain)
       read(15, *) ti, tj, reg_t_data(imain, jmain)
-   end do
-end do
+   enddo
+enddo
 
 ! Load into 1D dart data array
 index = 0
@@ -3154,8 +3313,8 @@ do jmain = 1, ny
       index = index + 1
       reg_u_x(index) = reg_u_data(imain, jmain)
       reg_t_x(index) = reg_t_data(imain, jmain)
-   end do
-end do
+   enddo
+enddo
 
 ! dummy out vertical; let height always = 1 and allow
 ! all grid points to be processed.
@@ -3212,8 +3371,8 @@ do imain = 1, dnx
 do jmain = 1, dny
    read(22, *) ti, tj, dulon(imain, jmain), dulat(imain, jmain)
    read(23, *) ti, tj, dtlon(imain, jmain), dtlat(imain, jmain)
-end do
-end do
+enddo
+enddo
 
 do imain = 1, dnx
    do jmain = 1, dny
@@ -3243,8 +3402,8 @@ do imain = 1, dnx
 
       write(25, *) dtlon(imain, jmain), dtlat(imain, jmain), dipole_t(imain, jmain)
 
-   end do
-end do
+   enddo
+enddo
 
 end subroutine test_interpolation
 
