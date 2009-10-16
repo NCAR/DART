@@ -18,13 +18,16 @@
 set ensemble_size = ${NINST_OCN}
 
 # Create temporary working directory for the assimilation
-set temp_dir = assimilate_dir.$$
+set temp_dir = assimilate_dir
 echo "temp_dir is $temp_dir"
 
 # Create a clean temporary directory and go there
-\rm -rf  $temp_dir
-mkdir -p $temp_dir
-cd       $temp_dir
+if ( -d $temp_dir ) then
+   \rm -rf $temp_dir/*
+else
+   mkdir -p $temp_dir
+endif
+cd $temp_dir
 
 #-------------------------------------------------------------------------
 # Determine time of model state ... from file name of first member
@@ -132,12 +135,27 @@ set OBS_FILE = ${OBSDIR}/${OBSFNAME}
 
 ln -sfv ${OBS_FILE} obs_seq.out
 
+# FIXME: special for trying out non-monotonic task layouts.
+setenv ORG_PATH "${PATH}"
+setenv LSF_BINDIR /contrib/lsf/tgmpatch
+setenv PATH ${LSF_BINDIR}:${PATH}
+setenv ORG_TASK_GEOMETRY "${LSB_PJL_TASK_GEOMETRY}"
+setenv NANCY_GEOMETRY_126 \
+	"{(0,29,30,31,1,32,33,34,2,35,36,37,3,38,39,40,4,41,42,43,5)(44,45,46,6,47,48,49,7,50,51,52,8,53,54,55,9,56,57,58,10,59)(60,61,11,62,63,64,12,65,66,67,13,68,69,70,14,71,72,73,15,74,75)(76,16,77,78,79,17,80,81,82,18,83,84,85,19,86,87,88,20,89,90,91)(21,92,93,94,22,95,96,97,23,98,99,100,24,101,102,103,25,104,105,106,26)(107,108,109,27,110,111,112,28,113,114,115,116,117,118,119,120,121,122,123,124,125)}"
+setenv LSB_PJL_TASK_GEOMETRY "${NANCY_GEOMETRY_126}"
+
+which mpirun.lsf
+
 mpirun.lsf ./filter || exit 2
 
 mv Prior_Diag.nc      ../Prior_Diag.${OCN_DATE_EXT}.nc
 mv Posterior_Diag.nc  ../Posterior_Diag.${OCN_DATE_EXT}.nc
 mv obs_seq.final      ../obs_seq.${OCN_DATE_EXT}.final
 mv dart_log.out       ../dart_log.${OCN_DATE_EXT}.out
+
+# FIXME: special for trying out non-monotonic task layouts.
+setenv PATH "${ORG_PATH}"
+setenv LSB_PJL_TASK_GEOMETRY "${ORG_TASK_GEOMETRY}"
 
 #  move inflation info (if they exist) ...
 
