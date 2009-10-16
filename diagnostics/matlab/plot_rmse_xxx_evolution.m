@@ -38,36 +38,36 @@ end
 
 plotdat.fname         = fname;
 plotdat.copystring    = copystring;
-plotdat.bincenters    = getnc(fname,'time');
-plotdat.binedges      = getnc(fname,'time_bounds');
-plotdat.mlevel        = getnc(fname,'mlevel');
-plotdat.plevel        = getnc(fname,'plevel');
-plotdat.plevel_edges  = getnc(fname,'plevel_edges');
-plotdat.hlevel        = getnc(fname,'hlevel');
-plotdat.hlevel_edges  = getnc(fname,'hlevel_edges');
-plotdat.nregions      = length(getnc(fname,'region'));
-plotdat.region_names  = getnc(fname,'region_names');
+plotdat.bincenters    = nc_varget(fname,'time');
+plotdat.binedges      = nc_varget(fname,'time_bounds');
+plotdat.mlevel        = nc_varget(fname,'mlevel');
+plotdat.plevel        = nc_varget(fname,'plevel');
+plotdat.plevel_edges  = nc_varget(fname,'plevel_edges');
+plotdat.hlevel        = nc_varget(fname,'hlevel');
+plotdat.hlevel_edges  = nc_varget(fname,'hlevel_edges');
+plotdat.ncopies       = length(nc_varget(fname,'copy'));
+plotdat.nregions      = length(nc_varget(fname,'region'));
+plotdat.region_names  = nc_varget(fname,'region_names');
 
 if (plotdat.nregions == 1)
    plotdat.region_names = deblank(plotdat.region_names');
 end
 
-f = netcdf(fname,'nowrite');
-plotdat.binseparation      = f.bin_separation(:);
-plotdat.binwidth           = f.bin_width(:);
-time_to_skip               = f.time_to_skip(:);
-plotdat.rat_cri            = f.rat_cri(:);
-plotdat.input_qc_threshold = f.input_qc_threshold(:);
-plotdat.lonlim1            = f.lonlim1(:);
-plotdat.lonlim2            = f.lonlim2(:);
-plotdat.latlim1            = f.latlim1(:);
-plotdat.latlim2            = f.latlim2(:);
-plotdat.biasconv           = f.bias_convention(:);
+plotdat.binseparation      = nc_attget(fname, nc_global, 'bin_separation');
+plotdat.binwidth           = nc_attget(fname, nc_global, 'bin_width');
+time_to_skip               = nc_attget(fname, nc_global, 'time_to_skip');
+plotdat.rat_cri            = nc_attget(fname, nc_global, 'rat_cri');
+plotdat.input_qc_threshold = nc_attget(fname, nc_global, 'input_qc_threshold');
+plotdat.lonlim1            = nc_attget(fname, nc_global, 'lonlim1');
+plotdat.lonlim2            = nc_attget(fname, nc_global, 'lonlim2');
+plotdat.latlim1            = nc_attget(fname, nc_global, 'latlim1');
+plotdat.latlim2            = nc_attget(fname, nc_global, 'latlim2');
+plotdat.biasconv           = nc_attget(fname, nc_global, 'bias_convention');
 
 % Coordinate between time types and dates
 
-timeunits    = f{'time'}.units(:);
-calendar     = f{'time'}.calendar(:);
+calendar     = nc_attget(fname,'time','calendar');
+timeunits    = nc_attget(fname,'time','units');
 timebase     = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin   = datenum(timebase(1),timebase(2),timebase(3));
 skip_seconds = time_to_skip(4)*3600 + time_to_skip(5)*60 + time_to_skip(6);
@@ -83,10 +83,9 @@ plotdat.toff       = plotdat.bincenters(1) + iskip;
 plotdat.ylabel    = sprintf('rmse and %s',copystring);
 plotdat.linewidth = 2.0;
 
-[plotdat.allvarnames, plotdat.allvardims] = get_varsNdims(f);
+[plotdat.allvarnames, plotdat.allvardims] = get_varsNdims(fname);
 [plotdat.varnames,    plotdat.vardims]    = FindTemporalVars(plotdat);
-
-plotdat.nvars = length(plotdat.varnames);
+plotdat.nvars       = length(plotdat.varnames);
 
 plotdat.copyindex   = get_copy_index(fname,copystring); 
 plotdat.rmseindex   = get_copy_index(fname,'rmse');
@@ -114,23 +113,32 @@ for ivar = 1:plotdat.nvars
 
    % get appropriate vertical coordinate variable
 
-   guessdims = nc_var_dims(f, plotdat.guessvar);
-   analydims = nc_var_dims(f, plotdat.analyvar);
+   guessdims = nc_var_dims(fname, plotdat.guessvar);
+   analydims = nc_var_dims(fname, plotdat.analyvar);
 
    if ( findstr('surface',guessdims{3}) > 0 )
-      plotdat.level = 1;
+      plotdat.level       = 1;
       plotdat.level_units = 'surface';
    elseif ( findstr('undef',guessdims{3}) > 0 )
-      plotdat.level = 1;
+      plotdat.level       = 1;
       plotdat.level_units = 'undefined';
    else
-      plotdat.level = getnc(fname, guessdims{3});
-      plotdat.level_units = f{guessdims{3}}.units(:);
+      plotdat.level       = nc_varget(fname, guessdims{3});
+      plotdat.level_units = nc_attget(fname, guessdims{3}, 'units');
    end
+   plotdat.nlevels = length(plotdat.level);
 
-   guess = getnc(fname, plotdat.guessvar,-1,-1,-1,-1,-1,-1,0);  
-   analy = getnc(fname, plotdat.analyvar,-1,-1,-1,-1,-1,-1,0); 
-   
+   % Here is the tricky part. Singleton dimensions are auto-squeezed ... 
+   % single levels, single regions ...
+
+   guess_raw = nc_varget(fname, plotdat.guessvar);  
+   guess = reshape(guess_raw, plotdat.Nbins,   plotdat.ncopies, ...
+                              plotdat.nlevels, plotdat.nregions);
+
+   analy_raw = nc_varget(fname, plotdat.analyvar); 
+   analy = reshape(analy_raw, plotdat.Nbins,   plotdat.ncopies, ...
+                              plotdat.nlevels, plotdat.nregions);
+
    % check to see if there is anything to plot
    nposs = sum(guess(:,plotdat.Npossindex,:,:));
 
@@ -139,15 +147,12 @@ for ivar = 1:plotdat.nvars
       continue
    end
    
-   % here is where you have to check for one region ... the last
-   % dimension (if it is a singleton dimension) is auto-squeezed ... 
-
-   for ilevel = 1:length(plotdat.level)
+   for ilevel = 1:plotdat.nlevels
 
       plotdat.ges_copy   = guess(:,plotdat.copyindex,  ilevel,:);
       plotdat.anl_copy   = analy(:,plotdat.copyindex,  ilevel,:);
-      plotdat.ges_rmse   = guess(:,plotdat.rmseindex,   ilevel,:);
-      plotdat.anl_rmse   = analy(:,plotdat.rmseindex,   ilevel,:);
+      plotdat.ges_rmse   = guess(:,plotdat.rmseindex,  ilevel,:);
+      plotdat.anl_rmse   = analy(:,plotdat.rmseindex,  ilevel,:);
 
       plotdat.ges_Nposs  = guess(:,plotdat.Npossindex, ilevel,:);
       plotdat.anl_Nposs  = analy(:,plotdat.Npossindex, ilevel,:);
@@ -251,7 +256,7 @@ function myplot(plotdat)
    switch lower(plotdat.copystring)
       case 'bias'
          % plot a zero-bias line
-         h4 = line(t,0*t, 'Color','r','Parent',ax1);
+         h4 = line(axlims(1:2),[0 0], 'Color','r','Parent',ax1);
          set(h4,'LineWidth',1.5,'LineSTyle',':')
          plotdat.ylabel = sprintf('%s (%s) and rmse',plotdat.copystring,plotdat.biasconv);
       otherwise

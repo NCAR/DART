@@ -1,11 +1,11 @@
-function bob = get_varnames(fid)
+function bob = get_varnames(fname)
 % get_varnames returns JUST the 'atmospheric' variable names in the netCDF file - ie - not the coordinate variables.
 %
 % the result is a cell array of strings ... must use {} notation to address elements.
 %
 % EXAMPLE:
-% fid = netcdf('obs_seq.final.nc','nowrite');
-% varnames = get_varnames(fid);
+% fname    = 'obs_seq.final.nc';
+% varnames = get_varnames(fname);
 % varnames{:}
 % nvars = length(varnames);
 % disp(sprintf('first atmospheric variable (of %d) is %s',nvars,varnames{1}))
@@ -21,41 +21,26 @@ function bob = get_varnames(fid)
 % $Revision$
 % $Date$
 
-% Use the netcdf primitives 'var','coord' to get complete list
-% of (all) variables and the coordinate variables, respectively.
-
-variables  =   var(fid);
-coordvars  = coord(fid);
-
-atmosvarinds = VariableIndices(coordvars,variables,fid);
-
-% coerce just the names into a cell array 
-
-for i = 1:length(atmosvarinds)
-   bob{i} = name(variables{atmosvarinds(i)});
-end
-
-
-
-function inds = VariableIndices(coordvars,variables,f)
-% returns the indices of the atmospheric variables.
+fileinfo    = nc_info(fname);
+Nvarnames   = length(fileinfo.Dataset);
 
 inds = [];
 
-for i = 1:length(variables)
+for i = 1:Nvarnames
 
-   varname    = name(variables{i});
+   varname    = fileinfo.Dataset(i).Name;
    isatmosvar = 1;
-   
-   for j = 1:length(coordvars)
-      if (strcmp( varname , name(coordvars{j}))), isatmosvar = 0; end 
-   end
-   
+
+   % Reject the obvious coordinate variables and some that are
+   % specific to DART
+
+   if (         nc_iscoordvar(fname,varname)), isatmosvar = 0; end 
    if (strcmp( varname ,      'time_bounds')), isatmosvar = 0; end 
    if (strcmp( varname ,     'region_names')), isatmosvar = 0; end 
    if (strcmp( varname ,     'CopyMetaData')), isatmosvar = 0; end 
    if (strcmp( varname , 'ObservationTypes')), isatmosvar = 0; end
-      
+
+   % keep track of the 'good' variables
    if (isatmosvar > 0)
       inds = [inds i];
    end
@@ -63,4 +48,10 @@ end
 
 if (isempty(inds))
    error('No atmospheric variables in %s',name(f))
+end
+
+% coerce just the names into a cell array 
+
+for i = 1:length(inds)
+   bob{i} = fileinfo.Dataset(inds(i)).Name;
 end

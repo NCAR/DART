@@ -1,34 +1,44 @@
-function [y, ydims] = get_varsNdims(fid);
+function [y, ydims] = get_varsNdims(fname);
 % Get the dimension (strings) for each atmospheric variable.
-% [y, ydims] = get_vars_dims(fid);
+% [y, ydims] = get_vars_dims(fname);
 %
-% fid     a netcdf file id (result of fid = netcdf(fname);
+% fname     a netcdf file name
 %
 % y       a cell array of variable names
-% ydims   a cell array of the (appended) dimension names 
+% ydims   a cell array of the concatenated dimension names 
 %
 % EXAMPLE:
 % 
-% fid = netcdf('obs_seq.final.nc','nowrite');
-% [y, ydims] = get_varsNdims(fid);
-% nvars = length(y);
-% disp(sprintf('variable %s has named dimensions %s',y{1},ydims{1}))
+% fname      = 'obs_seq.final.nc';
+% [y, ydims] = get_varsNdims(fname);
+%
+% >> plotdat.allvarnames{20}  
+%
+%    AIRCRAFT_U_WIND_COMPONENT_guess
+%
+% >> plotdat.allvardims{20}
+%    region plevel copy time
 
-ALLvarnames = get_varnames(fid);
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004-2007, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+
+ALLvarnames = get_varnames(fname);
 Nvarnames   = length(ALLvarnames);
-
-ix = 0;
 
 for i = 1:Nvarnames
 
-   ncvobj = ncvar(ALLvarnames{i},fid);
-   dims   = dim(ncvobj);              % cell array ... 
-   dimnames = [];
-   for j = 1:length(dims)
-      dimnames = [dimnames ' ' name(dims{j})];
-   end
+   varname = ALLvarnames{i};
+   varinfo = nc_getvarinfo(fname,varname);
 
-   y{i}     = ALLvarnames{i};
-   ydims{i} = dimnames;
+   y{i}     = varname;
+   ydims{i} = sprintf('%s ',varinfo.Dimension{:});
 
 end

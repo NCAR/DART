@@ -37,40 +37,37 @@ end
 
 % Harvest plotting info/metadata from netcdf file.
 
-plotdat.fname         = fname;
-plotdat.copystring    = copystring;
+plotdat.fname              = fname;
+plotdat.copystring         = copystring;
 
-f = netcdf(fname,'nowrite');
+plotdat.binseparation      = nc_attget(fname, nc_global, 'bin_separation');
+plotdat.binwidth           = nc_attget(fname, nc_global, 'bin_width');
+time_to_skip               = nc_attget(fname, nc_global, 'time_to_skip');
+plotdat.rat_cri            = nc_attget(fname, nc_global, 'rat_cri');
+plotdat.input_qc_threshold = nc_attget(fname, nc_global, 'input_qc_threshold');
+plotdat.lonlim1            = nc_attget(fname, nc_global, 'lonlim1');
+plotdat.lonlim2            = nc_attget(fname, nc_global, 'lonlim2');
+plotdat.latlim1            = nc_attget(fname, nc_global, 'latlim1');
+plotdat.latlim2            = nc_attget(fname, nc_global, 'latlim2');
+plotdat.biasconv           = nc_attget(fname, nc_global, 'bias_convention');
 
-plotdat.binseparation      = f.bin_separation(:);
-plotdat.binwidth           = f.bin_width(:);
-time_to_skip               = f.time_to_skip(:);
-plotdat.rat_cri            = f.rat_cri(:);
-plotdat.input_qc_threshold = f.input_qc_threshold(:);
-plotdat.lonlim1            = f.lonlim1(:);
-plotdat.lonlim2            = f.lonlim2(:);
-plotdat.latlim1            = f.latlim1(:);
-plotdat.latlim2            = f.latlim2(:);
-plotdat.biasconv           = f.bias_convention(:);
+plotdat.bincenters         = nc_varget(fname, 'time');
+plotdat.binedges           = nc_varget(fname, 'time_bounds');
+plotdat.mlevel             = nc_varget(fname, 'mlevel');
+plotdat.plevel             = nc_varget(fname, 'plevel');
+plotdat.plevel_edges       = nc_varget(fname, 'plevel_edges');
+plotdat.hlevel             = nc_varget(fname, 'hlevel');
+plotdat.hlevel_edges       = nc_varget(fname, 'hlevel_edges');
 
-plotdat.bincenters         = f{'time',        1}(:);
-plotdat.binedges           = f{'time_bounds', 1}(:);
-plotdat.mlevel             = f{'mlevel',      1}(:);
-plotdat.plevel             = f{'plevel',      1}(:);
-plotdat.plevel_edges       = f{'plevel_edges',1}(:);
-plotdat.hlevel             = f{'hlevel',      1}(:);
-plotdat.hlevel_edges       = f{'hlevel_edges',1}(:);
-plotdat.nregions           = length(f{'region'});
-plotdat.region_names       = char(f{'region_names',1}(:));
-
-if (plotdat.nregions == 1)
-   plotdat.region_names = deblank(plotdat.region_names');
-end
+diminfo                    = nc_getdiminfo(fname,'region');
+plotdat.nregions           = diminfo.Length;
+region_names               = nc_varget(fname,'region_names') 
+plotdat.region_names       = deblank(region_names);
 
 % Coordinate between time types and dates
 
-timeunits    = f{'time'}.units(:);
-calendar     = f{'time'}.calendar(:);
+calendar     = nc_attget(fname,'time','calendar');
+timeunits    = nc_attget(fname,'time','units');
 timebase     = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin   = datenum(timebase(1),timebase(2),timebase(3));
 skip_seconds = time_to_skip(4)*3600 + time_to_skip(5)*60 + time_to_skip(6);
@@ -86,10 +83,10 @@ plotdat.toff       = plotdat.bincenters(1) + iskip;
 plotdat.xlabel    = sprintf('rmse and %s',copystring);
 plotdat.linewidth = 2.0;
 
-[plotdat.allvarnames, plotdat.allvardims] = get_varsNdims(f);
+[plotdat.allvarnames, plotdat.allvardims] = get_varsNdims(fname);
 [plotdat.varnames,    plotdat.vardims]    = FindVerticalVars(plotdat);
 
-plotdat.nvars = length(plotdat.varnames);
+plotdat.nvars       = length(plotdat.varnames);
 
 plotdat.copyindex   = get_copy_index(fname,copystring); 
 plotdat.rmseindex   = get_copy_index(fname,'rmse');
@@ -117,8 +114,8 @@ for ivar = 1:plotdat.nvars
 
    % get appropriate vertical coordinate variable
 
-   guessdims = nc_var_dims(f, plotdat.guessvar);
-   analydims = nc_var_dims(f, plotdat.analyvar);
+   guessdims = nc_var_dims(fname, plotdat.guessvar);
+   analydims = nc_var_dims(fname, plotdat.analyvar);
 
    if ( findstr('surface',guessdims{2}) > 0 )
       disp(sprintf('%s is a surface field.',plotdat.guessvar))
@@ -126,14 +123,14 @@ for ivar = 1:plotdat.nvars
    elseif ( findstr('undef',guessdims{2}) > 0 )
       disp(sprintf('%s has no vertical definition.',plotdat.guessvar))
       error('Cannot display this field this way.')
-   else
-      plotdat.level_org     = f{guessdims{2}}(:);
-      plotdat.level_units   = f{guessdims{2}}.units(:);
-      plotdat.nlevels       = length(f{guessdims{2}});
-      edgename              = sprintf('%s_edges',guessdims{2});
-      plotdat.level_edges   = f{edgename}(:);
-      plotdat.Yrange        = [min(plotdat.level_edges) max(plotdat.level_edges)];
    end
+
+   [level_org level_units nlevels level_edges Yrange] = FindVerticalInfo(fname, plotdat.guessvar);
+   plotdat.level_org   = level_org;
+   plotdat.level_units = level_units;
+   plotdat.nlevels     = nlevels;
+   plotdat.level_edges = level_edges;
+   plotdat.Yrange      = Yrange;
 
    % Matlab likes strictly ASCENDING order for things to be plotted,
    % then you can impose the direction. The data is stored in the original
@@ -150,12 +147,9 @@ for ivar = 1:plotdat.nvars
    level_edges         = sort(plotdat.level_edges);
    plotdat.level_edges = level_edges;
    
-   guess = getnc(fname, plotdat.guessvar,-1,-1,-1,-1,-1,-1,0);  
-   analy = getnc(fname, plotdat.analyvar,-1,-1,-1,-1,-1,-1,0); 
-  
-   % guess2 = f{plotdat.guessvar,1}(:); Does not reflect _FillValue
-   % analy2 = f{plotdat.analyvar,1}(:); Does not reflect _FillValue
- 
+   guess = nc_varget(fname, plotdat.guessvar);  
+   analy = nc_varget(fname, plotdat.analyvar); 
+
    % Check for one region ... if the last dimension is a singleton 
    % dimension, it is auto-squeezed  - which is bad.
    % We want these things to be 3D.
@@ -285,9 +279,6 @@ function myplot(plotdat)
    set(gca,'YDir', plotdat.YDir)
    hold on; plot([0 0],plotdat.Yrange,'k-')
 
-%   disp(plotdat.myregion)
-%   [plotdat.level CG' CA' MG' MA' ma' mg' ca' cg' plotdat.level_org]
-
    set(gca,'YTick',plotdat.level,'Ylim',plotdat.Yrange)
    ylabel(plotdat.level_units)
    
@@ -387,6 +378,29 @@ for j = 1:length(i)
 ydims{j} = basedims{j};
 end
 
+
+
+function [level_org level_units nlevels level_edges Yrange] = FindVerticalInfo(fname,varname);
+% Find the vertical dimension and harvest some info
+
+varinfo  = nc_getvarinfo(fname,varname);
+leveldim = [];
+
+for i = 1:length(varinfo.Dimension)
+   inds = strfind(varinfo.Dimension{i},'level');
+   if ( ~ isempty(inds)), leveldim = i; end
+end
+
+if ( isempty(leveldim) )
+   error('There is no level information for %s in %s',varname,fname)
+end
+
+level_org   = nc_varget(fname,varinfo.Dimension{leveldim});
+level_units = nc_attget(fname,varinfo.Dimension{leveldim},'units');
+nlevels     = varinfo.Size(leveldim);
+edgename    = sprintf('%s_edges',varinfo.Dimension{leveldim});
+level_edges = nc_varget(fname, edgename);
+Yrange      = [min(level_edges) max(level_edges)];
 
 
 function s = ReturnBase(string1)

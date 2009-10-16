@@ -208,8 +208,8 @@ end
 if (~isequal(arg_epochlist,[]))
   epochlist = arg_epochlist;
 else
-  epochtime = getnc(arg_ncfname,'time');
-  epochbnds = getnc(arg_ncfname,'time_bounds');
+  epochtime = nc_varget(arg_ncfname,'time');
+  epochbnds = nc_varget(arg_ncfname,'time_bounds');
   epochlist = 1:length(epochtime);
 end
 
@@ -248,7 +248,7 @@ for epoch = epochlist
  % in the 'Observation_Kind()' array.  (this file is produced by
  % running obs_diag -- full name is ObsDiagAtts.m)
  
- Observation_Kind = getnc(arg_ncfname,'ObservationTypes');
+ Observation_Kind = nc_varget(arg_ncfname,'ObservationTypes');
 
  % Use a different marker and color for each observation type
  % (12*6) = 72 combinations at the moment. Could extend these

@@ -1,26 +1,32 @@
-function vdims = nc_var_dims(fid,varname);
+function vdims = nc_var_dims(ncfname,varname);
 % Get the names of the coordinate variables for each 
 % of the dimensions of the variable.
 %
-% vdims = nc_var_dims(fid,varname);
+% vdims = nc_var_dims(ncfname,varname);
 %
-% fid        a netcdf file id (result of fid = netcdf(fname);
+% ncfname    file name of a netcdf file
 % varname    a variable names
 % vdims      a cell array of the coordinate variables
 %
 % EXAMPLE:
 % 
-% fid   = netcdf('obs_seq.final.nc','nowrite');
+% ncfname = 'obs_seq.final.nc';
 % varname = 'RADIOSONDE_TEMPERATURE_guess';
-% vdims = nc_var_dims(fid,varname);
+% vdims   = nc_var_dims(ncfname,varname);
 % for i = 1:length(vdims)
 %    disp(sprintf('variable %s dimension %d is %s',varname,i,vdims{i}))
 % end
 
-ncvobj = ncvar(varname,fid);
-dims   = dim(ncvobj);
-vdims  = [];
+% Data Assimilation Research Testbed -- DART
+% Copyright 2004-2009, Data Assimilation Research Section
+% University Corporation for Atmospheric Research
+% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
-for j = 1:length(dims)
-   vdims{j} = name(dims{j});
-end
+varinfo = nc_getvarinfo(ncfname,varname);
+vdims   = varinfo.Dimension;
