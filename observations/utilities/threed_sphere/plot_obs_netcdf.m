@@ -1,43 +1,60 @@
 function obsstruct = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, ...
                                      QCString, maxQC, verbose)
+%% plot_obs_netcdf will plot the locations and values of the observations in a DART netcdf file.
+%     any observations with a QC value greater than 'maxgoodQC' will get
+%     plotted on a separate figure ... color-coded to its QC value, not the
+%     observation value.
 %
+%--------------------------------------------------
+% EXAMPLE 1: plotting just one type of observation
+%--------------------------------------------------
 % fname         = 'obs_sequence_001.nc';
 % ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';
 % region        = [0 360 -90 90 -Inf Inf];
 % CopyString    = 'NCEP BUFR observation';
 % QCString      = 'DART quality control';
-% maxQC         = 2;
+% maxgoodQC     = 2;
 % verbose       = 1;   % anything > 0 == 'true'
 %
-% bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxQC, verbose);
+% bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxgoodQC, verbose);
 %
 % view(0,90);   % for a traditional '2D' plot
-
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
-% <next few lines under version control, do not edit>
-% $URL$
-% $Id$
-% $Revision$
-% $Date$
+%--------------------------------------------------
+% EXAMPLE 2: plotting all the observation types 
+%--------------------------------------------------
+% fname         = 'obs_sequence_001.nc';
+% ObsTypeString = 'ALL';
+% region        = [0 360 -90 90 -Inf Inf];
+% CopyString    = 'WOD observation';
+% QCString      = 'WOD QC';
+% maxgoodQC     = 0;
+% verbose       = 1;   % anything > 0 == 'true'
+%
+% bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxgoodQC, verbose);
+ 
+%% Data Assimilation Research Testbed -- DART
+%  Copyright 2004-2007, Data Assimilation Research Section
+%  University Corporation for Atmospheric Research
+%  Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%
+%  <next few lines under version control, do not edit>
+%  $URL$
+%  $Id$
+%  $Revision$
+%  $Date$
 
 if (exist(fname,'file') ~= 2)
    error('%s does not exist.',fname)
 end
 
-% Read the observation sequence
+%% Read the observation sequence
 
 obsstruct = read_obs_netcdf(fname, ObsTypeString, region, ...
                     CopyString, QCString, maxQC, verbose);
 
-%-------------------------------------------------------------------------------
-% Create graphic with area-weighted symbols for the good observations.
-%-------------------------------------------------------------------------------
-
-figure(1); clf
+%% Create graphic with area-weighted symbols for the good observations.
+%  It has happened that there have been zero good observations in a file.
 
 xmin = min(region(1:2));
 xmax = max(region(1:2));
@@ -48,30 +65,45 @@ zmax = max(obsstruct.z);
 
 pstruct.colorbarstring = obsstruct.ObsTypeString;
 pstruct.region = region;
-pstruct.scalearray = scaleme(obsstruct.obs, 36);
-pstruct.clim   = [min(obsstruct.obs) max(obsstruct.obs)];
-pstruct.str2   = sprintf('%s (%d locations)',obsstruct.CopyString,length(obsstruct.obs));
 pstruct.str3   = sprintf('%s - %s',obsstruct.timestring(1,:),obsstruct.timestring(2,:));
 
-if ( zmin ~= zmax )
-
-   pstruct.axis = [xmin xmax ymin ymax zmin zmax];
-   pstruct.str1 = sprintf('%s level (%.2f - %.2f)',obsstruct.ObsTypeString,zmin,zmax);
-
-   plot_3D(obsstruct, pstruct)
-
+if ( length(obsstruct.obs) < 1 ) 
+   fprintf('There are no ''good'' observations to plot\n')
 else
 
-   pstruct.axis = [xmin xmax ymin ymax];
-   pstruct.str1 = sprintf('%s',obsstruct.ObsTypeString);
+   figure(gcf+1); clf
 
-   plot_2D(obsstruct, pstruct)
+   % choose a symbol size based on the number of obs to plot.
 
+   if (length(obsstruct.obs) < 1000) 
+      pstruct.scalearray = scaleme(obsstruct.obs, 36);
+   else
+      pstruct.scalearray = 50.0 * ones(size(obsstruct.obs));
+   end
+   pstruct.clim   = [min(obsstruct.obs) max(obsstruct.obs)];
+   pstruct.str2   = sprintf('%s (%d locations)',obsstruct.CopyString,length(obsstruct.obs));
+
+   % If all the observations live on the same level ... make a 2D plot.
+
+   if ( zmin ~= zmax )
+
+      pstruct.axis = [xmin xmax ymin ymax zmin zmax];
+      pstruct.str1 = sprintf('%s level (%.2f - %.2f)',obsstruct.ObsTypeString,zmin,zmax);
+
+      plot_3D(obsstruct, pstruct)
+
+   else
+
+      pstruct.axis = [xmin xmax ymin ymax];
+      pstruct.str1 = sprintf('%s',obsstruct.ObsTypeString);
+
+      plot_2D(obsstruct, pstruct)
+
+   end
 end
 
-%-------------------------------------------------------------------------------
-% Create graphic of spatial distribution of 'bad' observations & their QC value.
-%-------------------------------------------------------------------------------
+%% Create graphic of spatial distribution of 'bad' observations & their QC value.
+%
 % 0     observation assimilated
 % 1     observation evaluated only
 %   --- everything above this means the prior and posterior are OK
@@ -93,9 +125,9 @@ dartqc_strings = { ...
    '''outlier rejected''',...
    '''reserved for future use'''};
 
-if (obsstruct.numbadqc > 0 ) 
+if (obsstruct.numbadqc > 0 ) % if there are bad observation to plot ... carry on.
 
-   figure(2); clf
+   figure(gcf+1); clf
    
    subplot('position',[0.1 0.20 0.8 0.65])
    
@@ -127,37 +159,46 @@ if (obsstruct.numbadqc > 0 )
    
    subplot('position',[0.1 0.05 0.8 0.10])
    axis off
-   
-   qcvals  = unique(obsstruct.badobs.qc);
-   qccount = zeros(size(qcvals));
-   for i = 1:length(qcvals)
-      qccount(i) = sum(obsstruct.badobs.qc == qcvals(i));
-      s{i} = sprintf('%d obs with qc == %d %s',qccount(i),qcvals(i), ...
-             dartqc_strings{qcvals(i)});
-   end
-   
-   dy = 1.0/length(s);
-   for i = 1:length(s)
-      text(0.0, (i-1)*dy ,s{i})
-   end
 
+   %% If the QC is a DART QC, we know how to interpret them.
+
+   switch lower(strtrim(QCString))
+      case 'dart quality control',
+
+         qcvals  = unique(obsstruct.badobs.qc); 
+         qccount = zeros(size(qcvals));
+         for i = 1:length(qcvals)
+            qccount(i) = sum(obsstruct.badobs.qc == qcvals(i));
+            s{i} = sprintf('%d obs with qc == %d %s',qccount(i),qcvals(i), ...
+                   dartqc_strings{qcvals(i)});
+         end
+   
+         dy =  1.0/length(s);
+         for i = 1:length(s)
+            text(0.0, (i-1)*dy ,s{i})
+         end
+
+      otherwise,
+         str = sprintf('no way to interpret values of %s',strtrim(QCString));
+         text(0.0, 0.0, str)
+   end
 end
 
 
 
 function h = myworldmap
 
-%---------------------------------------------------------------------------
+%%--------------------------------------------------------------------------
 % GET THE ELEVATION DATA AND SET UP THE ASSOCIATED COORDINATE DATA
 %---------------------------------------------------------------------------
 
-load topo;                 % GET Matlab-native [180x360] ELEVATION DATASET
-lats = [-89.5:89.5];       % CREATE LAT ARRAY FOR TOPO MATRIX
-lons = [0.5:359.5];        % CREATE LON ARRAY FOR TOPO MATRIX
+load topo;               % GET Matlab-native [180x360] ELEVATION DATASET
+lats = -89.5:89.5;       % CREATE LAT ARRAY FOR TOPO MATRIX
+lons = 0.5:359.5;        % CREATE LON ARRAY FOR TOPO MATRIX
 nlon = length(lons);
 nlat = length(lats);
 
-%---------------------------------------------------------------------------
+%%--------------------------------------------------------------------------
 % IF WE NEED TO SWAP HEMISPHERES, DO SO NOW.
 % If we didn't explicitly tell it, make a guess.
 %---------------------------------------------------------------------------
@@ -169,7 +210,7 @@ if (ax(1) < -2)
    topo = [ topo(:,nlon/2+1:nlon) topo(:,1:nlon/2) ];
 end
 
-%---------------------------------------------------------------------------
+%%--------------------------------------------------------------------------
 % We need to determine the geographic subset of the elevation matrix.
 %---------------------------------------------------------------------------
 
@@ -178,16 +219,16 @@ lon_ind2 = min(find(ax(2) <= lons));
 lat_ind1 = min(find(ax(3) <= lats));
 lat_ind2 = min(find(ax(4) <= lats));
 
-if (isempty(lon_ind1)) lon_ind1 = 1;    end;
-if (isempty(lon_ind2)) lon_ind2 = nlon; end;
-if (isempty(lat_ind1)) lat_ind1 = 1;    end;
-if (isempty(lat_ind2)) lat_ind2 = nlat; end;
+if (isempty(lon_ind1)), lon_ind1 = 1;    end;
+if (isempty(lon_ind2)), lon_ind2 = nlon; end;
+if (isempty(lat_ind1)), lat_ind1 = 1;    end;
+if (isempty(lat_ind2)), lat_ind2 = nlat; end;
 
 elev = topo(lat_ind1:lat_ind2,lon_ind1:lon_ind2);
 x    = lons(lon_ind1:lon_ind2);
 y    = lats(lat_ind1:lat_ind2);
 
-%---------------------------------------------------------------------------
+%%--------------------------------------------------------------------------
 % Contour the "subset"
 % There are differences between 6.5 and 7.0 that make changing the colors
 % of the filled contours a real pain.
@@ -207,7 +248,6 @@ fcolor = [0.7 0.7 0.7];    % light grey
 
 [c,h] = contourf(x,y,elev,[0.0 0.0],'k-');
 
-new_level = 1000;
 h_patch   = get(h, 'Children');
 
 for i = 1:numel(h_patch)
@@ -216,7 +256,7 @@ for i = 1:numel(h_patch)
     set(h_patch(i), 'ZData', zlevel*ones(s),'FaceColor',fcolor);
 end
 
-if (orgholdstate == 0) hold off; end;
+if (orgholdstate == 0), hold off; end;
 
 
 
@@ -234,7 +274,7 @@ s = x*slope + b;
 
 
 
-function s = plot_3D(obsstruct, pstruct)
+function plot_3D(obsstruct, pstruct)
 
 if (pstruct.clim(1) == pstruct.clim(2))
    % If all the observations have the same value, setting the
@@ -282,7 +322,7 @@ set(get(h,'YLabel'),'String',pstruct.colorbarstring,'Interpreter','none')
 
 
 
-function s = plot_2D(obsstruct, pstruct)
+function plot_2D(obsstruct, pstruct)
 
 axis(pstruct.axis); hold on; worldmap('light');
 

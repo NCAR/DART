@@ -1,8 +1,10 @@
 function obsstruct = read_obs_netcdf(fname, ObsTypeString, region, CopyString, ...
                                      QCString, maxQC, verbose)
+%% read_obs_netcdf reads in the netcdf flavor observation sequence file
+%                  and returns a subsetted structure.
 %
 % fname         = 'obs_sequence_001.nc';
-% ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';
+% ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';   % or 'ALL' ...
 % region        = [0 360 -90 90 -Inf Inf];
 % CopyString    = 'NCEP BUFR observation';
 % QCString      = 'DART quality control';
@@ -30,23 +32,22 @@ function obsstruct = read_obs_netcdf(fname, ObsTypeString, region, CopyString, .
 %              qc: [2343x1 double]
 %          badobs: [1x1 struct]
 
-
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% Data Assimilation Research Testbed -- DART
+%  Copyright 2004-2007, Data Assimilation Research Section
+%  University Corporation for Atmospheric Research
+%  Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 %
-% <next few lines under version control, do not edit>
-% $URL$
-% $Id$
-% $Revision$
-% $Date$
+%  <next few lines under version control, do not edit>
+%  $URL$
+%  $Id$
+%  $Revision$
+%  $Date$
 
 if (exist(fname,'file') ~= 2)
    error('%s does not exist.',fname)
 end
 
-% record the user input
+%% record the user input
 
 obsstruct.fname         = fname;
 obsstruct.ObsTypeString = ObsTypeString;
@@ -56,7 +57,7 @@ obsstruct.QCString      = QCString;
 obsstruct.maxQC         = maxQC;
 obsstruct.verbose       = verbose;
 
-% get going
+%% get going
 
 ObsTypes       = nc_varget(fname,'ObsTypes');
 ObsTypeStrings = nc_varget(fname,'ObsTypesMetaData');
@@ -81,7 +82,7 @@ timestring = datestr(timerange + timeorigin);
 
 obsstruct.timestring = timestring;
 
-% Echo summary if requested
+%% Echo summary if requested
 
 if ( verbose > 0 ) 
    for i = 1:length(my_types)
@@ -89,9 +90,9 @@ if ( verbose > 0 )
       inds   = find(obs_type == obtype);
       myz    = loc(inds,3);
      
-      disp(sprintf('N = %6d %s obs (type %3d) between levels %.2f and %.2f', ...
+      fprintf('N = %6d %s obs (type %3d) between levels %.2f and %.2f\n', ...
                length(inds), ObsTypeStrings(obtype,:), obtype, ...
-               unique(min(myz)), unique(max(myz))))
+               unique(min(myz)), unique(max(myz)))
    end
 
 %  uniquelevels = unique(loc(:,3));
@@ -104,18 +105,27 @@ if ( verbose > 0 )
 
 end
 
-% Find observations of the correct type.
-
-myind     = strmatch(ObsTypeString,ObsTypeStrings);
-
-if ( isempty(myind) ) 
-   error('no %s observations ... stopping',obsstruct.ObsTypeString) 
-end
+%% Find observations of the correct type.
+%  If 'ALL' is requested ... do not subset.
 
 mytypeind = get_copy_index(fname, CopyString);
-inds      = find(obs_type == myind);
+
+switch lower(ObsTypeString)
+   case 'all'
+      inds      = 1:size(obs,1);
+
+   otherwise % subset the desired observation type
+      myind     = strmatch(ObsTypeString, ObsTypeStrings);
+      if ( isempty(myind) ) 
+         error('no %s observations ... stopping',obsstruct.ObsTypeString) 
+      end
+      inds      = find(obs_type == myind);
+end
+
 mylocs    = loc(inds,:);
 myobs     = obs(inds,mytypeind);
+
+%% Find desired QC values of those observations
 
 if ~ isempty(QCString)
    myQCind = get_qc_index(fname,  QCString);
@@ -124,7 +134,7 @@ else
    myqc    = [];
 end
 
-% geographic subset if needed
+%% geographic subset if needed
 
 inds = locations_in_region(mylocs,region);
 
@@ -140,9 +150,10 @@ if ~ isempty(myqc)
    obsstruct.qc = myqc(inds);
 end
 
-% subset based on qc value
+%% subset based on qc value
+%  
 
-if ( (~ isempty(myqc)) & (~ isempty(maxQC)) )
+if ( (~ isempty(myqc)) && (~ isempty(maxQC)) )
 
    inds = find(obsstruct.qc > maxQC);
 
@@ -157,8 +168,8 @@ if ( (~ isempty(myqc)) & (~ isempty(maxQC)) )
        badobs.qc   = obsstruct.qc(inds);       
    end
    
-   disp(sprintf('Removing %d obs with a %s value greater than %f', ...
-                length(inds),QCString,maxQC))
+   fprintf('Removing %d obs with a %s value greater than %f\n', ...
+                length(inds),QCString,maxQC)
 
    inds = find(obsstruct.qc <= maxQC);
 
