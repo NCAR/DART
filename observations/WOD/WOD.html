@@ -1,0 +1,269 @@
+<HTML>
+<HEAD>
+<TITLE>WOD Observations</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+</HEAD>
+<BODY>
+<!--
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                                       !!
+!!                   GNU General Public License                          !!
+!!                                                                       !!
+!! This file is part of the Data Assimilation Research Testbed (DART).   !!
+!!                                                                       !!
+!! DART is free software; you can redistribute it and/or modify          !!
+!! it and are expected to follow the terms of the GNU General Public     !!
+!! License as published by the Free Software Foundation.                 !!
+!!                                                                       !!
+!! DART is distributed in the hope that it will be useful,               !!
+!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
+!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
+!! GNU General Public License for more details.                          !!
+!!                                                                       !!
+!! You should have received a copy of the GNU General Public License     !!
+!! along with DART; if not, write to:                                    !!
+!!          Free Software Foundation, Inc.                               !!
+!!          59 Temple Place, Suite 330                                   !!
+!!          Boston, MA  02111-1307  USA                                  !!
+!! or see:                                                               !!
+!!          http://www.gnu.org/licenses/gpl.txt                          !!
+!!                                                                       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-->
+
+<DIV ALIGN=CENTER>
+<A HREF="#Overview">OVERVIEW</A> / 
+<A HREF="#DataSources">DATA SOURCES</A> / 
+<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#Modules">MODULES USES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#KnownBugs">KNOWN BUGS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> 
+</DIV>
+
+<!--==================================================================-->
+
+<H1>WOD Observations</H1>
+<A NAME="HEADER"></A>
+
+<!--==================================================================-->
+
+<A NAME="Overview"></A>
+<H2>OVERVIEW</H2>
+
+<P>
+The WOD (World Ocean Database) data is a collection of data from various
+data sources, combined into a single format with uniform treatment.
+The <a href="http://www.nodc.noaa.gov/OC5/WOD05/pr_wod05.html">WOD 2005 page</a> 
+has detailed information about the repository, observations, and datasets.
+The programs in this directory convert from the packed ASCII files
+found in the repository into 
+DART observation sequence (obs_seq) file format.
+</P>
+<P>
+There are 2 sets of available files - the raw observations, and
+the observations binned onto standard levels.  The recommended
+datasets are the ones on standard levels.  The raw data can
+be very dense in the vertical and are not truly independent
+observations.  This leads to too much certainty in the updated
+values during the assimilation.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<BR><HR><BR>
+<H2>DATA SOURCES</H2>
+
+<P>
+Data from the WOD05 can be downloaded interactively from
+<a href="http://www.nodc.noaa.gov/OC5/SELECT/dbsearch/dbsearch.html">here</a>.
+</P>
+
+<P>
+UCAR/NCAR users with access to the DSS data repository can download
+WOD05 files from
+<a href="http://dss.ucar.edu/datazone/dsszone/ds285.0/#WOD05">here</a>.
+A UCAR DSS userid is required to access this page.  The files to use
+are named "yearly_*_STD.tar".
+</P>
+
+<P>
+Requested citation if you use this data:
+<pre>
+T.P. Boyer, J.I. Antonov, H.E. Garcia, D.R. Johnson, R.A. Locarnini, 
+A.V. Mishonov, M.T. Pitcher, O.K. Baranova, and I.V. Smolyar, 2006.  
+World Ocean Database 2005. S. Levitus, Ed., NODC Atlas NESDIS 60,  
+U.S. Government Printing Office, Wash., D.C., 190 pp., DVDs. 
+</pre>
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<BR><HR><BR>
+<H2>PROGRAMS</H2>
+<P>
+The data is distributed in
+a specialized packed ASCII format.
+In this directory is a program called 
+<em class=file>wodFOR.f</em> which is an example
+reader program to print out data values from
+the files.
+The program
+<em class=file>wod_to_obs</em> converts these
+packed ASCII files into DART obs_sequence files.
+</P> 
+<P>
+As with most other DART directories, the 
+<em class=file>work</em> directory contains
+a <em class=file>quickbuild.csh</em> script
+to build all necessary executables.
+</P> 
+<P>
+Optional namelist interface
+<A HREF="#Namelist"> <em class=code>&amp;wod_to_obs_nml</em> </A>
+may be read from file <em class=file>input.nml</em>.
+</P> 
+<P>
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<HR>
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+time_manager_mod
+utilities_mod
+location_mod
+obs_sequence_mod
+obs_def_mod
+obs_def_ocean_mod
+obs_kind_mod
+</PRE>
+
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<BR><HR><BR>
+<H2>NAMELIST</H2>
+ <P>We adhere to the F90 standard of starting a namelist with an ampersand
+ '&amp;' and terminating with a slash '/'.
+ <div class=namelist><pre>
+ <em class=call>namelist / wod_to_obs_nml / </em>
+    wod_input_file,    
+    wod_input_filelist, 
+    wod_out_file,
+    avg_obs_per_file
+ </em></pre></div> 
+ <H3 class=indent1>Discussion</H3>
+ <P>This namelist is read in a file called <em class=file>input.nml</em>
+ </P>
+ <TABLE border=0 cellpadding=3 width=100%>
+ <TR><TH align=left>Contents    </TH>
+     <TH align=left>Type        </TH>
+     <TH align=left>Description </TH></TR>
+   
+ <TR><!--contents--><TD valign=top>wod_input_file</TD>
+     <!--  type  --><TD valign=top>character(len=128)</TD>
+     <!--descript--><TD>The input filename when converting a single file.  
+                        Only one of the 2 ways to specify input files 
+                        can have a valid value, 
+                        so to use the single filename set the list name
+                        'wod_input_filelist' to the empty string ('').
+                        Default: '../data/XBTS2005'</TD></TR>
+   
+ <TR><!--contents--><TD valign=top>wod_input_filelist</TD>
+     <!--  type  --><TD valign=top>character(len=128)</TD>
+     <!--descript--><TD>To convert a series of files in a single execution
+                        create a text file which contains each input file,
+                        in ascii, one filename per line.  Set this item to
+                        the name of that file, and set 'wod_input_file' to
+                        the empty string ('').
+                        Default: ''</TD></TR>
+   
+ <TR><!--contents--><TD valign=top>wod_out_file</TD>
+     <!--  type  --><TD valign=top>character(len=128)</TD>
+     <!--descript--><TD>The output file to be created.  Note that unlike
+                        earlier versions of some converters, this program will
+                        overwrite an existing output file instead of appending 
+                        to it.  The risk of replicated observations, which are
+                        difficult to detect since most of the contents are 
+                        floating point numbers, outweighed the possible utility.
+                        Default: 'obs_seq.wod'</TD></TR>
+   
+ <TR><!--contents--><TD valign=top>avg_obs_per_file</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>The code needs an upper limit on the number of observations
+                        generated by this program.  It can be larger than the actual
+                        number of observations converted.  The total number of obs
+                        is computed by multiplying this number by the number of input
+                        files.  If you get an error because there is no more room to
+                        add observations to the output file, increase this number.
+                        Default: 500000</TD></TR>
+   
+ <TR><!--contents--><TD valign=top>print_every_nth_cast</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>If set to a value greater than 0, the program will print a
+                        message every N casts.  This allows the user to monitor the
+                        progress of the conversion.
+                        Default: -1 (no printing)</TD></TR>
+   
+ <TR><!--contents--><TD valign=top>debug</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD>If set to .TRUE., the program will print 
+                        out debugging information.
+                        Default: .FALSE. </TD></TR>
+   
+ <TR><!--contents--><TD valign=top>max_casts</TD>
+     <!--  type  --><TD valign=top>integer</TD>
+     <!--descript--><TD>If set to a value greater than 0, the program will only
+                        convert at most this number of casts from each input file.
+                        Generally only expected to be useful for debugging.
+                        Default: -1 (convert all data)</TD></TR>
+   
+ </TABLE>
+<P>
+</P>
+
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<BR><HR><BR>
+<H2>KNOWN BUGS</H2>
+<P>
+The code for setting observation error variances is using fixed values,
+and we are not certain if they are correct.  Incoming QC values larger
+than 0 are suspect, but it is not clear if they really signal unusable
+values or whether there are some codes we should accept.
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<BR><HR><BR>
+<H2>FUTURE PLANS</H2>
+<P>
+</P>
+
+<BR><HR><BR>
+
+<!--==================================================================-->
+<TABLE summary="">
+<TR><TD>Contact:       </TD><TD> nancy collins </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+<!--==================================================================-->
+
+<!--==================================================================-->
+
+<HR>
+</BODY>
+</HTML>
