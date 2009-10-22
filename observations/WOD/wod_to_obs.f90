@@ -142,14 +142,14 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: obs_time, delta_time
 
-integer :: temp_type, salt_type
+integer :: temp_type, salt_type, bad_casts
 
 !------------------------------------------------------------------------
 !  Declare namelist parameters
 !------------------------------------------------------------------------
 
-character(len=128) :: wod_input_file     = 'CTDS1998'
-character(len=128) :: wod_input_filelist = 'wod_to_obs_filelist'
+character(len=128) :: wod_input_file     = 'XBTS2005'
+character(len=128) :: wod_input_filelist = ''
 character(len=128) :: wod_out_file       = 'obs_seq.wod'
 integer            :: avg_obs_per_file   = 500000
 logical            :: debug              = .false.
@@ -243,7 +243,12 @@ fileloop: do      ! until out of files
 
    !  open the next profile file
    funit = open_file(next_infile, action='READ')
-print *, 'opening file ', next_infile
+
+print *, ' '
+print *, 'opening file ', trim(next_infile)
+
+   ! reset anything that's per-file
+   bad_casts = 0
 
    cast = 1
    castloop: do    ! until out of data
@@ -256,6 +261,16 @@ print *, 'opening file ', next_infile
    ! this comes back as 1 when the file has all been read.
    if (ieof == 1) exit castloop
 
+   ! if the whole cast is marked with a bad qc, loop here as well.
+   ! i'm seeing a few bad dates, e.g. 2/29 on non-leap years,
+   ! sept 31.  try testing the cast qc before decoding the date,
+   ! since it is a fatal error in our set_time() routine to set
+   ! an invalid date.
+   if (ierror(1) /= 0) then
+      bad_casts = bad_casts + 1
+      goto 20 ! inc counter, cycle castloop
+   endif
+
 !print *, 'obsyear, obsmonth, obsday = ', obsyear, obsmonth, obsday
 !print *, 'levels = ', levels
 !print *, 'lato, lono = ', lato, lono
@@ -264,6 +279,23 @@ print *, 'opening file ', next_infile
    !   time (year, month, day, time), lat, lon, depth, obs type, ?.
 
    ! start out with converting the real time.
+ 
+   ! at least 2 files have dates of 2/29 on non-leap years.  test for
+   ! that and reject those obs.  also found a 9/31, apparently without
+   ! a bad cast qc.
+   ! FIXME:  this is the code i wanted to use, but leap_year() isn't 
+   ! implemented in the current time_manager.  hack it for now.
+   !if ((.not. leap_year(obsyear)) .and. (obsmonth == 2) .and. (obsday == 29)) then
+   if ((obsyear /= 2000) .and. (obsmonth == 2) .and. (obsday == 29)) then
+      print *, 'date says:  ', obsyear, obsmonth, obsday
+      print *, 'which does not exist in this year; skipping obs'
+      goto 20 ! inc counter, cycle castloop
+   endif
+   if ((obsmonth == 9) .and. (obsday == 31)) then
+      print *, 'date says:  ', obsyear, obsmonth, obsday
+      print *, 'which does not exist in any year; skipping obs'
+      goto 20 ! inc counter, cycle castloop
+   endif
 
    ! convert to integer days and seconds, and add on to reference time.
    if (dtime == bmiss) then
@@ -419,6 +451,8 @@ print *, 'opening file ', next_infile
 
   call close_file(funit)
   filenum = filenum + 1
+
+   print *, 'filename, total casts, bad casts: ', trim(next_infile), cast, bad_casts
 
 end do fileloop
 
