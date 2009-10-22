@@ -46,8 +46,8 @@ use    utilities_mod, only : open_file, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, nmlfileunit, timestamp, &
                              find_namelist_in_file, check_namelist_read, nc_check, &
-                             get_next_filename, find_textfile_dims, file_to_text, &
-                             do_nml_file, do_nml_term
+                             next_file, get_next_filename, find_textfile_dims, &
+                             file_to_text, do_nml_file, do_nml_term
 
 use typeSizes
 use netcdf
@@ -190,9 +190,10 @@ if (do_nml_file()) write(nmlfileunit, nml=obs_seq_to_netcdf_nml)
 if (do_nml_term()) write(    *      , nml=obs_seq_to_netcdf_nml)
 
 if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
-   write(msgstring,*)'in namelist only one of obs filename or filelist can be given.  set other to "" '
-   call error_handler(E_ERR, 'obs_seq_to_netcdf', msgstring, &
-                      source, revision, revdate)
+   write(msgstring,*)'specify "obs_sequence_name" or "obs_sequence_list"'
+   call error_handler(E_MSG, 'obs_seq_to_netcdf', msgstring, source, revision, revdate)
+   write(msgstring,*)'set other to an empty string ... i.e. ""'
+   call error_handler(E_ERR, 'obs_seq_to_netcdf', msgstring, source, revision, revdate)
 endif
 
 
@@ -215,10 +216,10 @@ maxl = set_location(lonlim2, latlim2, 0.0_r8, VERTISUNDEF) ! vertical unimportan
 ! Prepare the variables
 !----------------------------------------------------------------------
 
-allocate(obs_seq_filenames(Nepochs*4))
+allocate(obs_seq_filenames(1000))
 obs_seq_filenames = 'null'
 
-ObsFileLoop : do ifile=1, Nepochs*4
+ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 !-----------------------------------------------------------------------
 
   ! Because of the ability to 'cycle' the ObsFileLoop, we need to
@@ -233,22 +234,14 @@ ObsFileLoop : do ifile=1, Nepochs*4
    if (allocated(qc)) deallocate( qc, U_qc, copyvals, U_copyvals,  &
                         obs_copy_names, qc_copy_names, obscopies )
 
-   ! Try to build the next input filename ... 
+   ! Determine the next input filename ... 
 
-   ! original code:
-   !obs_seq_in_file_name = next_file(obs_sequence_name,ifile)
-
-   ! if you give a single explicit name, only go through loop once.
-   ! otherwise, you've given a list, so loop until the list is empty
-   ! (the routine returns '' when it gets to the list end).
-   obs_seq_in_file_name = ''
-   if (obs_sequence_name /= '') then
-      if (ifile == 1) obs_seq_in_file_name = obs_sequence_name
+   if (obs_sequence_list == '') then
+      obs_seq_in_file_name = next_file(obs_sequence_name,ifile)
    else
       obs_seq_in_file_name = get_next_filename(obs_sequence_list,ifile)
+      if (obs_seq_in_file_name == '') exit ObsFileLoop
    endif
-      
-   if (obs_seq_in_file_name == '') exit ObsFileLoop
 
    if ( file_exist(trim(obs_seq_in_file_name)) ) then
       write(msgstring,*)'opening ', trim(obs_seq_in_file_name)
@@ -346,9 +339,9 @@ ObsFileLoop : do ifile=1, Nepochs*4
             call error_handler(E_MSG,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
             msgstring = 'does not match the same observation copy from the first file.'
             call error_handler(E_MSG,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
-            write(msgstring,'(''obs copy '',a)') trim(obs_copy_names(i))
+            write(msgstring,'(''obs copy >'',a,''<'')') trim(obs_copy_names(i))
             call error_handler(E_MSG,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
-            write(msgstring,'(''expected '',a)') trim(module_obs_copy_names(i))
+            write(msgstring,'(''expected >'',a,''<'')') trim(module_obs_copy_names(i))
             call error_handler(E_ERR,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
          endif
       enddo

@@ -152,6 +152,12 @@ obs_def_?????.f90 files.
    longitude [0.,360.] ... but it is possible to specify a region that spans
    the dateline by specifying the <em class="code">lonlim2</em> to be less 
    than <em class="code">lonlim1</em>.
+   <br />
+   <br />
+   You can only specify <strong>either</strong>
+   <em class="code">obs_sequence_name</em>
+   <strong>or</strong>
+   <em class="code">obs_sequence_list</em> -- not both.
 </P>
 
 
@@ -162,9 +168,21 @@ obs_def_?????.f90 files.
 
 <TR><!--contents--><TD valign=top> obs_sequence_name  </TD>
     <!--  type  --><TD valign=top> character(len=129) </TD>
-    <!--descript--><TD>Name of an observation sequence file. 
-            If this is specified, only this single file will be read,
-            and 'obs_sequence_list' must be set to ''.
+    <!--descript--><TD>Name of an observation sequence file(s). 
+            This may be a relative or absolute filename. If the filename
+            contains a '/', the filename is considered to be comprised of
+            everything to the right, and a directory structure to the left.
+            The directory structure is then queried to see if it can be
+            incremented to handle a sequence of observation files.
+            The default behavior of <em class="program">obs_diag</em>
+            is to look for additional files to include until the files
+            are exhausted or an <em class=file>obs_seq.final</em> file
+            is found that contains observations beyond the timeframe of
+            interest.<BR>e.g. 'obsdir_001/obs_seq.final' will cause
+            <em class="program">obs_diag</em> to look for
+            'obsdir_002/obs_seq.final', and so on.
+            <br />
+            If this is specified, 'obs_sequence_list' must be set to ''.
 	    Default 'obs_seq.final'</TD></TR>  
 
 <TR><!--contents--><TD valign=top> obs_sequence_list  </TD>
@@ -174,7 +192,7 @@ obs_def_?????.f90 files.
             If this is specified, 'obs_sequence_name' must be set to ''. 
             Can be created by any method, including sending the output
             of the 'ls' command to a file, a text editor, or another program.
-	    Default ''</TD></TR>  
+	    Default '' - and empty string.</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   lonlim1   </TD>
     <!--  type  --><TD valign=top>   real      </TD>

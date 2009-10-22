@@ -61,7 +61,8 @@
    /
 
 &obs_seq_to_netcdf_nml
-   obs_sequence_name = 'obs_seq2000.wod'
+   obs_sequence_name = 'obs_seq2000.wod',
+   obs_sequence_list = '',
    lonlim1    =    0.0,
    lonlim2    =  360.0,
    latlim1    =  -90.0,

@@ -313,7 +313,7 @@ sort_mod
 
 <TR><!--contents--><TD valign=top>   obs_sequence_name </TD>
     <!--  type  --><TD valign=top>   character         </TD>
-    <!--descript--><TD>Name of the observation sequence files. <BR>
+    <!--descript--><TD>Name of the observation sequence file(s). <BR>
             This may be a relative or absolute filename. If the filename
             contains a '/', the filename is considered to be comprised of
 	    everything to the right, and a directory structure to the left.
@@ -330,13 +330,11 @@ sort_mod
 
 <TR><!--contents--><TD valign=top>   obs_sequence_list </TD>
     <!--  type  --><TD valign=top>   character         </TD>
-    <!--descript--><TD>Name of a file containing a list of observation 
-            sequence files. <BR>
-            You can only specify <strong>either</strong> 
-            <em class="code">obs_sequence_name</em>
-            <strong>or</strong> 
-            <em class="code">obs_sequence_list</em> -- not both.
-            One of them has to be an empty string ... i.e. <em class="code">''</em>.
+    <!--descript--><TD>Name of an ascii text file which contains a list
+            of one or more observation sequence files, one per line.
+            If this is specified, 'obs_sequence_name' must be set to ''. 
+            Can be created by any method, including sending the output
+            of the 'ls' command to a file, a text editor, or another program.
 	    <BR>
 	    Default '' - an empty string.</TD></TR>  
 
