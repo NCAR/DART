@@ -217,6 +217,7 @@
 
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
+   obs_sequence_list = '',
    first_bin_center =  2003, 5, 6, 0, 0, 0,
    last_bin_center  =  2003, 5, 7, 0, 0, 0,
    bin_separation   =     0, 0, 0, 1, 0, 0,

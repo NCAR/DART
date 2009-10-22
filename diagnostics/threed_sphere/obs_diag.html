@@ -281,7 +281,7 @@ sort_mod
    ampersand '&#38;' and terminating with a slash '/'.
    <div class=namelist><pre>
    <em class=call>namelist / obs_diag_nml / </em> &#38;
-      obs_sequence_name, first_bin_center, last_bin_center, &#38;
+      obs_sequence_name, obs_sequence_list, first_bin_center, last_bin_center, &#38;
       bin_separation, bin_width, time_to_skip, max_num_bins, &#38;
       plevel, hlevel, mlevel, <em class=removed>obs_select</em>, rat_cri, input_qc_threshold, &#38;
       Nregions, lonlim1, lonlim2, latlim1, latlim2, &#38;
@@ -296,6 +296,13 @@ sort_mod
    (YYYY,&nbsp;MO,&nbsp;DA,&nbsp;HR,&nbsp;MIN,&nbsp;SEC). <BR>
    The allowable ranges for the region boundaries are: latitude [-90.,90], 
    longitude [0.,Inf.]
+<br />
+<br />
+   You can only specify <strong>either</strong> 
+   <em class="code">obs_sequence_name</em>
+   <strong>or</strong> 
+   <em class="code">obs_sequence_list</em> -- not both.
+   One of them has to be an empty string ... i.e. <em class="code">''</em>.
 </P>
 
 
@@ -320,6 +327,18 @@ sort_mod
 	    <em class="program">obs_diag</em> to look for
 	    'obsdir_002/obs_seq.final', and so on.<BR>
 	    Default 'obs_seq.final'</TD></TR>  
+
+<TR><!--contents--><TD valign=top>   obs_sequence_list </TD>
+    <!--  type  --><TD valign=top>   character         </TD>
+    <!--descript--><TD>Name of a file containing a list of observation 
+            sequence files. <BR>
+            You can only specify <strong>either</strong> 
+            <em class="code">obs_sequence_name</em>
+            <strong>or</strong> 
+            <em class="code">obs_sequence_list</em> -- not both.
+            One of them has to be an empty string ... i.e. <em class="code">''</em>.
+	    <BR>
+	    Default '' - an empty string.</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   first_bin_center </TD>
     <!--  type  --><TD valign=top>  integer, dimension(6) </TD>

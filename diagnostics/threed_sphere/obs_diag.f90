@@ -51,11 +51,12 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
                              operator(>), operator(<), operator(/), &
                              operator(/=), operator(<=)
 use    utilities_mod, only : open_file, close_file, register_module, &
-                             file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
-                             initialize_utilities, logfileunit, nmlfileunit,  &
-                             find_namelist_in_file, check_namelist_read,      &
-                             nc_check, do_nml_file, do_nml_term, timestamp,   &
-                             next_file, find_textfile_dims, file_to_text
+                             file_exist, error_handler, E_ERR, E_WARN, E_MSG,  &
+                             initialize_utilities, logfileunit, nmlfileunit,   &
+                             find_namelist_in_file, check_namelist_read,       &
+                             nc_check, do_nml_file, do_nml_term, timestamp,    &
+                             next_file, get_next_filename, find_textfile_dims, &
+                             file_to_text
 use         sort_mod, only : sort
 
 use typeSizes
@@ -160,6 +161,7 @@ real(r8), allocatable, dimension(:) :: copyvals
 !-----------------------------------------------------------------------
 
 character(len = 129) :: obs_sequence_name = 'obs_seq.final'
+character(len = 129) :: obs_sequence_list = ''
 integer, dimension(6) :: first_bin_center = (/ 2003, 1, 1, 0, 0, 0 /)
 integer, dimension(6) :: last_bin_center  = (/ 2003, 1, 2, 0, 0, 0 /)
 integer, dimension(6) :: bin_separation   = (/    0, 0, 0, 6, 0, 0 /)
@@ -183,7 +185,8 @@ logical :: print_mismatched_locs = .false.
 logical :: print_obs_locations   = .false.
 logical :: verbose               = .false.
 
-namelist /obs_diag_nml/ obs_sequence_name, first_bin_center, last_bin_center, &
+namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list, &
+                       first_bin_center, last_bin_center, &
                        bin_separation, bin_width, time_to_skip, max_num_bins, &
                        plevel, hlevel, mlevel, rat_cri, input_qc_threshold, &
                        Nregions, lonlim1, lonlim2, latlim1, latlim2, &
@@ -318,6 +321,13 @@ call check_namelist_read(iunit, io, 'obs_diag_nml')
 ! Record the namelist values used for the run ...
 if (do_nml_file()) write(nmlfileunit, nml=obs_diag_nml)
 if (do_nml_term()) write(    *      , nml=obs_diag_nml)
+
+if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
+   write(msgstring,*)'specify "obs_sequence_name" or "obs_sequence_list"'
+   call error_handler(E_MSG, 'obs_diag', msgstring, source, revision, revdate)
+   write(msgstring,*)'set other to an empty string ... i.e. ""'
+   call error_handler(E_ERR, 'obs_diag', msgstring, source, revision, revdate)
+endif
 
 !----------------------------------------------------------------------
 ! Now that we have input, do some checking and setup
@@ -509,10 +519,19 @@ write(nsigmaUnit,'(a)') '   day   secs    lon      lat    level         obs    g
 ! If the sequence is completely before the time period of interest, we skip.
 ! If the sequence is completely past the time period of interest, we stop.
 
-ObsFileLoop : do ifile=1, Nepochs*4
+ObsFileLoop : do ifile=1, 1000
 !-----------------------------------------------------------------------
 
-   obs_seq_in_file_name = next_file(obs_sequence_name,ifile)
+   if (obs_sequence_list == '') then ! try to increment filename
+
+      obs_seq_in_file_name = next_file(obs_sequence_name,ifile)
+
+   else
+
+      obs_seq_in_file_name = get_next_filename(obs_sequence_list,ifile)
+      if (obs_seq_in_file_name == '') exit ObsFileLoop
+
+   endif
 
    if ( file_exist(trim(obs_seq_in_file_name)) ) then
       write(msgstring,*)'opening ', trim(obs_seq_in_file_name)
@@ -2723,6 +2742,8 @@ CONTAINS
              'WriteNetCDF', 'mlevel:long_name')
    call nc_check(nf90_put_att(ncid, MlevelVarID, 'units',     'nondimensional'), &
              'WriteNetCDF', 'mlevel:units')
+   call nc_check(nf90_put_att(ncid, MlevelVarID, 'axis',     'Z'), &
+             'WriteNetCDF', 'mlevel:axis')
    call nc_check(nf90_put_att(ncid, MlevelVarID, 'valid_range', (/1,Nmlevels/)), &
              'WriteNetCDF', 'mlevel:valid_range')
 
@@ -2734,6 +2755,8 @@ CONTAINS
              'WriteNetCDF', 'plevel:long_name')
    call nc_check(nf90_put_att(ncid, PlevelVarID, 'units',     'hPa'), &
              'WriteNetCDF', 'plevel:units')
+   call nc_check(nf90_put_att(ncid, PlevelVarID, 'axis',     'Z'), &
+             'WriteNetCDF', 'plevel:axis')
    call nc_check(nf90_put_att(ncid, PlevelVarID, 'valid_range', &
       (/ minval(plevel(1:Nplevels)), maxval(plevel(1:Nplevels)) /)), &
              'WriteNetCDF', 'plevel:valid_range')
@@ -2746,6 +2769,8 @@ CONTAINS
              'WriteNetCDF', 'plevel_edges:long_name')
    call nc_check(nf90_put_att(ncid, PlevIntVarID, 'units',     'hPa'), &
              'WriteNetCDF', 'plevel_edges:units')
+   call nc_check(nf90_put_att(ncid, PlevIntVarID, 'axis',     'Z'), &
+             'WriteNetCDF', 'plevel_edges:axis')
    call nc_check(nf90_put_att(ncid, PlevIntVarID, 'valid_range', &
       (/ minval(plevel_edges(1:Nplevels+1)), maxval(plevel_edges(1:Nplevels+1)) /)), &
              'WriteNetCDF', 'plevel_edges:valid_range')
@@ -2758,6 +2783,8 @@ CONTAINS
              'WriteNetCDF', 'hlevel:long_name')
    call nc_check(nf90_put_att(ncid, HlevelVarID, 'units',     'm'), &
              'WriteNetCDF', 'hlevel:units')
+   call nc_check(nf90_put_att(ncid, HlevelVarID, 'axis',     'Z'), &
+             'WriteNetCDF', 'hlevel:axis')
    call nc_check(nf90_put_att(ncid, HlevelVarID, 'valid_range', &
       (/ minval(hlevel(1:Nhlevels)), maxval(hlevel(1:Nhlevels)) /)), &
              'WriteNetCDF', 'hlevel:valid_range')
@@ -2770,6 +2797,8 @@ CONTAINS
              'WriteNetCDF', 'hlevel_edges:long_name')
    call nc_check(nf90_put_att(ncid, HlevIntVarID, 'units',     'm'), &
              'WriteNetCDF', 'hlevel_edges:units')
+   call nc_check(nf90_put_att(ncid, HlevIntVarID, 'axis',     'Z'), &
+             'WriteNetCDF', 'hlevel_edges:axis')
    call nc_check(nf90_put_att(ncid, HlevIntVarID, 'valid_range', &
       (/ minval(hlevel_edges(1:Nhlevels+1)), maxval(hlevel_edges(1:Nhlevels+1)) /)), &
              'WriteNetCDF', 'hlevel_edges:valid_range')
