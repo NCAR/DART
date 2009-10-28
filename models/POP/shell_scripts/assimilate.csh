@@ -54,15 +54,16 @@ echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_SECONDS"
 set DARTDIR = ${HOME}/DART/models/POP/work
 
 set DART_OBS_DIR = `printf %04d%02d ${OCN_YEAR} ${OCN_MONTH}`
-set  OBSDIR = /ptmp/dart/Obs_sets/GTSPP/${DART_OBS_DIR}
+set  OBSDIR = /ptmp/dart/Obs_sets/WOD/${DART_OBS_DIR}
 
 #-------------------------------------------------------------------------
+# DART COPY BLOCK
 # Populate a run-time directory with the bits needed to run DART 
 # Either get them from the CCSM 'run' directory or some stock repository
 # The grid files are absolute paths ... so they need not move.
 #-------------------------------------------------------------------------
 
-foreach FILE ( input.nml filter pop_to_dart dart_to_pop ) 
+foreach FILE ( input.nml filter pop_to_dart dart_to_pop )
 
    if ( -e   ../${FILE} ) then
       /usr/local/bin/cp -pv ../${FILE} .
@@ -75,7 +76,29 @@ foreach FILE ( input.nml filter pop_to_dart dart_to_pop )
 
 end
 
-# move inflation info (if they exist) ...
+#-------------------------------------------------------------------------
+# INFLATION COPY BLOCK
+# These files are only relevant if 'inflation' is turned on -
+# i.e. if inf_flavor(1) /= 0
+#
+# filter_nml
+# inf_flavor                  = 2,                       0,
+# inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics',
+#-------------------------------------------------------------------------
+
+foreach FILE ( prior_inflate_ics ) 
+
+   if ( -e   ../${FILE} ) then
+      ln -sf ../${FILE} .
+   else if ( -e ${DARTDIR}/${FILE} ) then
+      ln -sf    ${DARTDIR}/${FILE} .
+   else
+      echo "DART auxiliary file $FILE not found ... starting from 1.0"
+      set INFLATEFILE =  /ptmp/thoar/gx1v6_prior_inflate_restart.be
+      /usr/local/bin/cp -v --preserve=timestamps ${INFLATEFILE} prior_inflate_ics
+   endif
+
+end
 
 #-------------------------------------------------------------------------
 # Block 1: convert N POP restart files to DART initial conditions file(s)
@@ -153,11 +176,28 @@ mv Posterior_Diag.nc  ../Posterior_Diag.${OCN_DATE_EXT}.nc
 mv obs_seq.final      ../obs_seq.${OCN_DATE_EXT}.final
 mv dart_log.out       ../dart_log.${OCN_DATE_EXT}.out
 
+if ( -e prior_inflate_restart ) then
+   # 1) rename file to reflect current date
+   # 2) must link generic name to specific date so next day
+   # we can just grab the generic name without having to
+   # parse the 'day before the current day'
+   # 3) move both to CENTRALDIR so the DART INFLATION BLOCK works next time
+   mv prior_inflate_restart prior_inflate.${OCN_DATE_EXT}.restart.be 
+   ln -sfv prior_inflate.${OCN_DATE_EXT}.restart.be prior_inflate_ics
+   mv prior_inflate.${OCN_DATE_EXT}.restart.be prior_inflate_ics ..
+else
+   echo "No prior_inflate_restart for ${OCN_DATE_EXT}"
+endif
+
+if ( -e prior_inflate_diag ) then
+   mv prior_inflate_diag ../prior_inflate.${OCN_DATE_EXT}.diag
+else
+   echo "No prior_inflate_diag for ${OCN_DATE_EXT}"
+endif
+
 # FIXME: special for trying out non-monotonic task layouts.
 setenv PATH "${ORG_PATH}"
 setenv LSB_PJL_TASK_GEOMETRY "${ORG_TASK_GEOMETRY}"
-
-#  move inflation info (if they exist) ...
 
 #-------------------------------------------------------------------------
 # Block 3: Update the POP restart files ... sequentially (sigh) ...
