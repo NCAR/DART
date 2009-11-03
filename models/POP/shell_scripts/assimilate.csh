@@ -15,6 +15,11 @@
 # assimilate.csh
 #-----------------------------------------------------------------------------
 
+set   MOVE = '/usr/local/bin/mv -fv'
+set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
+set   LINK = '/usr/local/bin/ln -fvs'
+set REMOVE = '/usr/local/bin/rm -fr'
+
 set ensemble_size = ${NINST_OCN}
 
 # Create temporary working directory for the assimilation
@@ -23,7 +28,7 @@ echo "temp_dir is $temp_dir"
 
 # Create a clean temporary directory and go there
 if ( -d $temp_dir ) then
-   \rm -rf $temp_dir/*
+   ${REMOVE} $temp_dir/*
 else
    mkdir -p $temp_dir
 endif
@@ -65,10 +70,10 @@ set  OBSDIR = /ptmp/dart/Obs_sets/WOD/${DART_OBS_DIR}
 
 foreach FILE ( input.nml filter pop_to_dart dart_to_pop )
 
-   if ( -e   ../${FILE} ) then
-      /usr/local/bin/cp -pv ../${FILE} .
+   if ( -e    ../${FILE} ) then
+      ${COPY} ../${FILE} .
    else if ( -e ${DARTDIR}/${FILE} ) then
-      /usr/local/bin/cp -pv    ${DARTDIR}/${FILE} .
+      ${COPY}   ${DARTDIR}/${FILE} .
    else
       echo "DART required file $FILE not found ... ERROR"
       stop
@@ -78,24 +83,41 @@ end
 
 #-------------------------------------------------------------------------
 # INFLATION COPY BLOCK
-# These files are only relevant if 'inflation' is turned on -
-# i.e. if inf_flavor(1) /= 0
+# This file is only relevant if 'inflation' is turned on -
+# i.e. if inf_flavor(1) /= 0 - AND we are in a 'restart' mode.
 #
 # filter_nml
 # inf_flavor                  = 2,                       0,
+# inf_initial_from_restart    = .true.,                  .false.,
 # inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics',
+#
+# This is a 'test' configuration for this script. We are simply
+# assuming that the namelist values are set such that we need this file,
+# and that it is called 'prior_inflate_ics'. Since the inflation file is
+# essentially a duplicate of the model state ... it is slaved to a specific 
+# geometry. I created the file offline for the gx1v6 geometry on bluefire. 
+# The inflation values are all unity.
+#
+# The strategy is to use an inflation file from CENTRALDIR if one exists - 
+# if not, grab one from the same place we get the DART bits - 
+# if not, grab the default one and hope for the best.
+#
+# The thought being: the first time through, CENTRALDIR doesn't have one
+# so it will either be copied from the DART tree or use a vanilla value.
+# After an assimilation, the output file will be copied back to CENTRALDIR
+# to be used for subsequent assimilations.
 #-------------------------------------------------------------------------
 
 foreach FILE ( prior_inflate_ics ) 
 
-   if ( -e   ../${FILE} ) then
-      ln -sf ../${FILE} .
+   if ( -e    ../${FILE} ) then
+      ${LINK} ../${FILE} .
    else if ( -e ${DARTDIR}/${FILE} ) then
-      ln -sf    ${DARTDIR}/${FILE} .
+      ${LINK}   ${DARTDIR}/${FILE} .
    else
       echo "DART auxiliary file $FILE not found ... starting from 1.0"
       set INFLATEFILE =  /ptmp/thoar/gx1v6_prior_inflate_restart.be
-      /usr/local/bin/cp -v --preserve=timestamps ${INFLATEFILE} prior_inflate_ics
+      ${COPY} ${INFLATEFILE} prior_inflate_ics
    endif
 
 end
@@ -120,12 +142,12 @@ while ( $member <= $ensemble_size )
 
    set DART_IC_FILE = `printf filter_ics.%04d $member`
    set OCN_RESTART_FILENAME = `head -1 ../rpointer.ocn.$member.restart`
-   ln -sf ../$OCN_RESTART_FILENAME pop.r.nc
-   ln -sf ../pop2_in.$member       pop_in
+   ${LINK} ../$OCN_RESTART_FILENAME pop.r.nc
+   ${LINK} ../pop2_in.$member       pop_in
 
    ./pop_to_dart || exit 1
 
-   mv dart.ud $DART_IC_FILE
+   ${MOVE} dart.ud $DART_IC_FILE
    @ member++
 end
 
@@ -153,10 +175,9 @@ end
 # Determine proper observation sequence file.
 
 set OBSFNAME = `printf obs_seq.0Z.%04d%02d%02d ${OCN_YEAR} ${OCN_MONTH} ${OCN_DAY}`
-# set OBSFNAME = obs_seq.0Z.20000106.1obs
 set OBS_FILE = ${OBSDIR}/${OBSFNAME} 
 
-ln -sfv ${OBS_FILE} obs_seq.out
+${LINK} ${OBS_FILE} obs_seq.out
 
 # FIXME: special for trying out non-monotonic task layouts.
 setenv ORG_PATH "${PATH}"
@@ -171,26 +192,27 @@ which mpirun.lsf
 
 mpirun.lsf ./filter || exit 2
 
-mv Prior_Diag.nc      ../Prior_Diag.${OCN_DATE_EXT}.nc
-mv Posterior_Diag.nc  ../Posterior_Diag.${OCN_DATE_EXT}.nc
-mv obs_seq.final      ../obs_seq.${OCN_DATE_EXT}.final
-mv dart_log.out       ../dart_log.${OCN_DATE_EXT}.out
+${MOVE} Prior_Diag.nc      ../Prior_Diag.${OCN_DATE_EXT}.nc
+${MOVE} Posterior_Diag.nc  ../Posterior_Diag.${OCN_DATE_EXT}.nc
+${MOVE} obs_seq.final      ../obs_seq.${OCN_DATE_EXT}.final
+${MOVE} dart_log.out       ../dart_log.${OCN_DATE_EXT}.out
 
+# FIXME: should add something for posterior_inflate_restarts ...
 if ( -e prior_inflate_restart ) then
    # 1) rename file to reflect current date
    # 2) must link generic name to specific date so next day
    # we can just grab the generic name without having to
    # parse the 'day before the current day'
    # 3) move both to CENTRALDIR so the DART INFLATION BLOCK works next time
-   mv prior_inflate_restart prior_inflate.${OCN_DATE_EXT}.restart.be 
-   ln -sfv prior_inflate.${OCN_DATE_EXT}.restart.be prior_inflate_ics
-   mv prior_inflate.${OCN_DATE_EXT}.restart.be prior_inflate_ics ..
+   ${MOVE} prior_inflate_restart prior_inflate.${OCN_DATE_EXT}.restart.be 
+   ${LINK} prior_inflate.${OCN_DATE_EXT}.restart.be prior_inflate_ics
+   ${MOVE} prior_inflate.${OCN_DATE_EXT}.restart.be prior_inflate_ics ..
 else
    echo "No prior_inflate_restart for ${OCN_DATE_EXT}"
 endif
 
 if ( -e prior_inflate_diag ) then
-   mv prior_inflate_diag ../prior_inflate.${OCN_DATE_EXT}.diag
+   ${MOVE} prior_inflate_diag ../prior_inflate.${OCN_DATE_EXT}.diag
 else
    echo "No prior_inflate_diag for ${OCN_DATE_EXT}"
 endif
@@ -214,10 +236,10 @@ while ( $member <= $ensemble_size )
 
    set DART_RESTART_FILE = `printf filter_restart.%04d $member`
    set OCN_RESTART_FILENAME = `head -1 ../rpointer.ocn.$member.restart`
-   ln -sf ../$OCN_RESTART_FILENAME pop.r.nc
-   ln -sf ../pop2_in.$member       pop_in
+   ${LINK} ../$OCN_RESTART_FILENAME pop.r.nc
+   ${LINK} ../pop2_in.$member       pop_in
 
-   ln -sf $DART_RESTART_FILE dart.ic
+   ${LINK} $DART_RESTART_FILE dart.ic
 
    ./dart_to_pop || exit 3
 
