@@ -156,7 +156,14 @@ obs_kind_mod
     wod_input_file,    
     wod_input_filelist, 
     wod_out_file,
-    avg_obs_per_file
+    avg_obs_per_file,
+    debug,
+    max_casts,
+    no_output_file,
+    print_every_nth_cast,
+    print_qc_summary,
+    temperature_error,
+    salinity_error
  </em></pre></div> 
  <H3 class=indent1>Discussion</H3>
  <P>This namelist is read in a file called <em class=file>input.nml</em>
@@ -177,8 +184,8 @@ obs_kind_mod
    
  <TR><!--contents--><TD valign=top>wod_input_filelist</TD>
      <!--  type  --><TD valign=top>character(len=128)</TD>
-     <!--descript--><TD>To convert a series of files in a single execution
-                        create a text file which contains each input file,
+     <!--descript--><TD>To convert one or more files in a single execution
+                        create a text file which contains each input filename,
                         in ascii, one filename per line.  Set this item to
                         the name of that file, and set 'wod_input_file' to
                         the empty string ('').
@@ -202,20 +209,31 @@ obs_kind_mod
                         is computed by multiplying this number by the number of input
                         files.  If you get an error because there is no more room to
                         add observations to the output file, increase this number.
+                        Do not make this an unreasonably huge number, however, since
+                        the code does preallocate space and will be slow if the number
+                        of obs becomes very large.
                         Default: 500000</TD></TR>
    
  <TR><!--contents--><TD valign=top>print_every_nth_cast</TD>
      <!--  type  --><TD valign=top>integer</TD>
      <!--descript--><TD>If set to a value greater than 0, the program will print a
-                        message every N casts.  This allows the user to monitor the
-                        progress of the conversion.
+                        message after processing every N casts.  This allows the user 
+                        to monitor the progress of the conversion.
                         Default: -1 (no printing)</TD></TR>
+   
+ <TR><!--contents--><TD valign=top>print_qc_summary</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD>If set to .TRUE., the program will print out a
+                        summary of the number of casts which had a non-zero 
+                        quality control values
+                        (current files appear to use values of 1-9).  
+                        Default: .TRUE. (print QC summary)</TD></TR>
    
  <TR><!--contents--><TD valign=top>debug</TD>
      <!--  type  --><TD valign=top>logical</TD>
      <!--descript--><TD>If set to .TRUE., the program will print 
                         out debugging information.
-                        Default: .FALSE. </TD></TR>
+                        Default: .FALSE. (no debug info printed) </TD></TR>
    
  <TR><!--contents--><TD valign=top>max_casts</TD>
      <!--  type  --><TD valign=top>integer</TD>
@@ -223,6 +241,36 @@ obs_kind_mod
                         convert at most this number of casts from each input file.
                         Generally only expected to be useful for debugging.
                         Default: -1 (convert all data)</TD></TR>
+   
+ <TR><!--contents--><TD valign=top>no_output_file</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD>If set to .TRUE., the converter will do all the work needed
+                        to convert the observations, count the number of each category
+                        of QC values, etc, but will not create the final obs_seq file.
+                        Can be useful if checking an input file for problems, or for
+                        getting QC statistics without waiting for a full output file
+                        to be constructed, which can be slow for large numbers of obs. 
+                        Generally only expected to be useful for debugging.
+                        Default: .FALSE. (create output file)</TD></TR>
+   
+ <TR><!--contents--><TD valign=top>temperature_error</TD>
+     <!--  type  --><TD valign=top>real(r8)</TD>
+     <!--descript--><TD>The combined expected error of temperature observations from
+                        all sources, including instrument error, model bias, and 
+                        representativeness error (e.g. larger or smaller grid 
+                        box sizes affecting expected accuracy), in degrees Centigrade. 
+                        Default: 0.5 degrees C. Observations in output file store 
+                        error variance, which will be this value squared.</TD></TR>
+   
+ <TR><!--contents--><TD valign=top>salinity_error</TD>
+     <!--  type  --><TD valign=top>real(r8)</TD>
+     <!--descript--><TD>The combined expected error of salinity observations from
+                        all sources, including instrument error, model bias, and 
+                        representativeness error (e.g. larger or smaller grid 
+                        box sizes affecting expected accuracy) in g/kg (psu). 
+                        Default: 0.5 psu (g/kg). Observations in output file store 
+                        error variance, and use units of msu (kg/kg), so the values
+                        will be this value / 1000.0, squared.</TD></TR>
    
  </TABLE>
 <P>
@@ -248,6 +296,9 @@ values or whether there are some codes we should accept.
 <BR><HR><BR>
 <H2>FUTURE PLANS</H2>
 <P>
+This converter is currently being used on WOD05 data, but as soon as the
+WOD09 data is available (data up to 2009), the same program should be
+able to convert those files as well.
 </P>
 
 <BR><HR><BR>

@@ -18,7 +18,7 @@ program wod_to_obs
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
                              increment_time, get_time, set_date, operator(-),  &
-                             print_date, operator(+)
+                             print_date, operator(+), leap_year
 use    utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
                              check_namelist_read, nmlfileunit, do_output,    &
                              get_next_filename, error_handler, E_ERR, E_MSG, &
@@ -100,7 +100,7 @@ character (len=129) :: meta_data, msgstring, next_infile
 character (len=80)  :: name
 character (len=19)  :: datestr
 character (len=6)   :: subset
-integer :: rcode, ncid, varid, k, nfiles, num_new_obs
+integer :: rcode, ncid, varid, j, k, nfiles, num_new_obs, castid
 integer :: aday, asec, dday, dsec, oday, osec                   
 integer :: obsyear, obsmonth, obsday, obshour, obsmin, obssec
 integer :: zloc, obs_num, io, iunit, filenum, dummy, i_qc, nc_rc
@@ -142,7 +142,8 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: obs_time, delta_time
 
-integer :: temp_type, salt_type, bad_casts
+integer :: temp_type, salt_type, good_temp, good_salt, bad_temp, bad_salt
+integer :: salt_qc(10), temp_qc(10)
 
 !------------------------------------------------------------------------
 !  Declare namelist parameters
@@ -153,13 +154,18 @@ character(len=128) :: wod_input_filelist = ''
 character(len=128) :: wod_out_file       = 'obs_seq.wod'
 integer            :: avg_obs_per_file   = 500000
 logical            :: debug              = .false.
+logical            :: print_qc_summary   = .true.
 integer            :: max_casts          = -1
+logical            :: no_output_file     = .false.
 integer            :: print_every_nth_cast = -1
+real(r8)           :: temperature_error  = 0.5  ! degrees C
+real(r8)           :: salinity_error     = 0.5  ! g/kg
 
-namelist /wod_to_obs_nml/ wod_input_file,                   &
-                          wod_input_filelist, wod_out_file, &
-                          avg_obs_per_file, debug, max_casts, &
-                          print_every_nth_cast
+namelist /wod_to_obs_nml/ &
+   wod_input_file, wod_input_filelist, wod_out_file,   &
+   avg_obs_per_file, debug, max_casts, no_output_file, &
+   print_every_nth_cast, print_qc_summary,             &
+   temperature_error, salinity_error
 
 ! start of executable code
 
@@ -248,28 +254,23 @@ print *, ' '
 print *, 'opening file ', trim(next_infile)
 
    ! reset anything that's per-file
-   bad_casts = 0
+   good_temp = 0
+   bad_temp = 0
+   good_salt = 0
+   bad_salt = 0
+   temp_qc(:) = 0
+   salt_qc(:) = 0
 
    cast = 1
    castloop: do    ! until out of data
    call WODreadDART(funit,obsyear,obsmonth,obsday, &
               dtime,lato,lono,levels,istdlev,nvar,ip2,nsecond, &
-              bmiss,ieof)
+              bmiss,castid,ieof)
 
 !if (ieof /= 0) print *, 'ieof is ', ieof
 
    ! this comes back as 1 when the file has all been read.
    if (ieof == 1) exit castloop
-
-   ! if the whole cast is marked with a bad qc, loop here as well.
-   ! i'm seeing a few bad dates, e.g. 2/29 on non-leap years,
-   ! sept 31.  try testing the cast qc before decoding the date,
-   ! since it is a fatal error in our set_time() routine to set
-   ! an invalid date.
-   if (ierror(1) /= 0) then
-      bad_casts = bad_casts + 1
-      goto 20 ! inc counter, cycle castloop
-   endif
 
 !print *, 'obsyear, obsmonth, obsday = ', obsyear, obsmonth, obsday
 !print *, 'levels = ', levels
@@ -282,19 +283,30 @@ print *, 'opening file ', trim(next_infile)
  
    ! at least 2 files have dates of 2/29 on non-leap years.  test for
    ! that and reject those obs.  also found a 9/31, apparently without
-   ! a bad cast qc.
-   ! FIXME:  this is the code i wanted to use, but leap_year() isn't 
-   ! implemented in the current time_manager.  hack it for now.
-   !if ((.not. leap_year(obsyear)) .and. (obsmonth == 2) .and. (obsday == 29)) then
-   if ((obsyear /= 2000) .and. (obsmonth == 2) .and. (obsday == 29)) then
-      print *, 'date says:  ', obsyear, obsmonth, obsday
-      print *, 'which does not exist in this year; skipping obs'
-      goto 20 ! inc counter, cycle castloop
+   ! a bad cast qc.   the 2/29s were examined and determined to be a bad
+   ! conversion - should be mar 1  the 9/31s were recording errors and
+   ! based on the other obs, should have been 9/30.
+
+   ! don't do the year test unless this is leap day.
+   if ((obsmonth == 2) .and. (obsday == 29)) then
+      ! jan 1st always exists.  set this so we can test for leap year.
+      obs_time = set_date(obsyear, 1, 1)
+      if (.not. leap_year(obs_time)) then
+         print *, 'cast number: ', castid
+         print *, 'date says:  ', obsyear, obsmonth, obsday
+         print *, 'which does not exist in this year; setting to mar 1'
+         ! convert this to mar 1 (date conversion error)
+         obsmonth = 3
+         obsday = 1
+      endif
    endif
    if ((obsmonth == 9) .and. (obsday == 31)) then
+      print *, 'cast number: ', castid
       print *, 'date says:  ', obsyear, obsmonth, obsday
-      print *, 'which does not exist in any year; skipping obs'
-      goto 20 ! inc counter, cycle castloop
+      print *, 'which does not exist in any year; setting to sept 30'
+      ! convert this to sept 30 (apparent date input error)
+      obsmonth = 9
+      obsday = 30
    endif
 
    ! convert to integer days and seconds, and add on to reference time.
@@ -349,14 +361,32 @@ print *, 'opening file ', trim(next_infile)
    endif
    
  ! FIXME: these are best-guess only.
-   terr = 1.0_r8                ! temp error = 1 degrees C
-   serr = 0.5_r8 / 1000.0_r8    ! salinity error = 0.5 g/kg, convert to kg/kg
+   terr = temperature_error            ! degrees C
+   serr = salinity_error / 1000.0_r8   ! g/kg, convert to kg/kg
 
    if (lono < 0.0_r8) lono = lono + 360.0_r8
    obslon = lono 
    obslat = lato
 
    first_obs = .true.
+
+   if (have_temp) then
+      if (ierror(1) == 0) then
+         good_temp = good_temp + 1
+      else
+         bad_temp = bad_temp + 1
+         temp_qc(ierror(1)) = temp_qc(ierror(1)) + 1
+      endif
+   endif
+   
+   if (have_salt) then
+      if (ierror(2) == 0) then
+         good_salt = good_salt + 1
+      else
+         bad_salt = bad_salt + 1
+         salt_qc(ierror(2)) = salt_qc(ierror(2)) + 1
+      endif
+   endif
    
    obsloop: do k = 1, levels
    
@@ -364,7 +394,8 @@ print *, 'opening file ', trim(next_infile)
 
      ! ierror is whole cast error
      if (have_temp .and. ierror(1) == 0 .and. &
-         temp_type > 0 .and. temp(k, 1) /= bmiss) then   
+         temp_type > 0 .and. temp(k, 1) /= bmiss &
+         .and. (.not. no_output_file)) then   
 
          ! set location - incoming obs are -180 to 180 in longitude;
          ! dart wants 0 to 360.  (also, r8)
@@ -401,8 +432,9 @@ print *, 'opening file ', trim(next_infile)
 
 
       ! ierror is whole cast
-      if (have_salt .and. ierror(1) == 0 .and. &
-          salt_type > 0 .and. temp(k, 2) /= bmiss) then  
+      if (have_salt .and. ierror(2) == 0 .and. &
+          salt_type > 0 .and. temp(k, 2) /= bmiss &
+         .and. (.not. no_output_file)) then   
 
          call set_obs_def_location(obs_def, &
                            set_location(obslon, obslat, obsdepth,VERTISHEIGHT))
@@ -452,7 +484,36 @@ print *, 'opening file ', trim(next_infile)
   call close_file(funit)
   filenum = filenum + 1
 
-   print *, 'filename, total casts, bad casts: ', trim(next_infile), cast, bad_casts
+  if (print_qc_summary) then
+     call error_handler(E_MSG, '', '')
+     write(msgstring, *) 'input data filename: ', trim(next_infile)
+     call error_handler(E_MSG, '', msgstring)
+     call error_handler(E_MSG, '', '')
+     write(msgstring, *) 'total casts, total profiles: ', cast, &
+                          good_temp+bad_temp+good_salt+bad_salt
+     call error_handler(E_MSG, '', msgstring)
+     write(msgstring, *) 'total/good/bad temperature profiles: ', &
+                          good_temp+bad_temp, good_temp, bad_temp
+     call error_handler(E_MSG, '', msgstring)
+     write(msgstring, *) 'total/good/bad salinity    profiles: ', &
+                          good_salt+bad_salt, good_salt, bad_salt
+     call error_handler(E_MSG, '', msgstring)
+     call error_handler(E_MSG, '', '')
+      do j=1, 10
+         if (temp_qc(j) > 0) then
+            write(msgstring, *) 'temp qc of ', j, ' found ', temp_qc(j), ' times'
+            call error_handler(E_MSG, '', msgstring)
+         endif
+      enddo
+      call error_handler(E_MSG, '', '')
+      do j=1, 10
+         if (salt_qc(j) > 0) then
+            write(msgstring, *) 'salt qc of ', j, ' found ', salt_qc(j), ' times'
+            call error_handler(E_MSG, '', msgstring)
+         endif
+      enddo
+      call error_handler(E_MSG, '', '')
+   endif
 
 end do fileloop
 

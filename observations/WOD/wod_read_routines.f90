@@ -106,7 +106,7 @@ private
       
         subroutine WODreadDART(nf,iyear,month,iday, &              
                           time,rlat,rlon,levels,istdlev,nvar,ip2,nsecond, &
-                          bmiss,ieof)
+                          bmiss,castid,ieof)
 
 !     This subroutine reads in the WOD ASCII format and loads it
 !     into arrays which are common/shared with the calling program.
@@ -116,7 +116,7 @@ private
 !   Passed Variables:
 !
 !     nf       - file identification number for input file
-!     jj       - WOD cast number
+!     castid    - WOD cast number
 !     !cc       - NODC country code
 !     !icruise  - NODC cruise number
 !     iyear    - year of cast
@@ -280,7 +280,7 @@ private
       !dimension jtottax(maxtcode,maxtax),itaxerr(maxtcode,maxtax)
       !dimension itaxorigerr(maxtcode,maxtax)
 
-      integer :: n, nn, n0, n1, n2, i, j, k, ij, jj
+      integer :: n, nn, n0, n1, n2, i, j, k, ij, castid
       integer :: nbio, inc, nchar, nlines, istartc, icruise, npinf
       integer :: npi, inchad, ica, icn, ns, insec, inbio, nbothtot, itaxtot
 
@@ -405,7 +405,7 @@ private
 !
 !   Extract header information from the cast array
 !
-!     jj       - WOD cast number  
+!     castid   - WOD cast number  
 !     cc       - NODC country code  
 !     icruise  - NODC cruise number
 !     iyear    - year of cast
@@ -418,7 +418,7 @@ private
       istartc=inc+3
       read(ichar(istartc:istartc),'(i1)') inc
       write(aout(3:3),'(i1)') inc
-      read(ichar(istartc+1:istartc+inc),aout) jj
+      read(ichar(istartc+1:istartc+inc),aout) castid
       istartc=istartc+inc+1
 
       cc = ichar(istartc:istartc+1)
