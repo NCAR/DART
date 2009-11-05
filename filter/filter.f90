@@ -101,7 +101,7 @@ integer  :: num_output_obs_members   = 0
 integer  :: output_interval     = 1
 integer  :: num_groups          = 1
 real(r8) :: outlier_threshold   = -1.0_r8
-real(r8) :: input_qc_threshold  = 4.0_r8
+real(r8) :: input_qc_threshold  = 3.0_r8
 logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
@@ -202,7 +202,8 @@ if (do_nml_term()) write(     *     , nml=filter_nml)
 
 call set_trace(trace_execution, output_timestamps, silence)
 
-call trace_message('Filter start')
+call     trace_message('Filter start')
+call timestamp_message('Filter start')
 
 ! Make sure ensemble size is at least 2 (NEED MANY OTHER CHECKS)
 if(ens_size < 2) then
@@ -249,14 +250,14 @@ OBS_PRIOR_VAR_END    = OBS_PRIOR_VAR_START + num_groups - 1
 if(num_output_state_members > ens_size) num_output_state_members = ens_size
 if(num_output_obs_members   > ens_size) num_output_obs_members   = ens_size
 
-call trace_message('Before setting up space for observations')
-call timestamp_message('Before observation setup')
+call     trace_message('Before setting up space for observations')
+call timestamp_message('Before setting up space for observations')
 
 ! Initialize the obs_sequence; every pe gets a copy for now
 call filter_setup_obs_sequence(seq, in_obs_copy, obs_val_index, input_qc_index, DART_qc_index)
 
-call timestamp_message('After  observation setup')
-call trace_message('After  setting up space for observations')
+call timestamp_message('After  setting up space for observations')
+call     trace_message('After  setting up space for observations')
 
 call trace_message('Before setting up space for ensembles')
 ! Allocate model size storage and ens_size storage for metadata for outputting ensembles
@@ -271,7 +272,8 @@ call trace_message('After  setting up space for ensembles')
 if(task_count() > model_size) call error_handler(E_ERR,'filter_main', &
    'Number of processes > model size' ,source,revision,revdate)
 
-call trace_message('Before reading in ensemble restart files')
+call     trace_message('Before reading in ensemble restart files')
+call timestamp_message('Before reading in ensemble restart files')
 
 ! Set a time type for initial time if namelist inputs are not negative
 call filter_set_initial_time(time1)
@@ -285,7 +287,8 @@ if(ds) then
    call smoother_read_restart(ens_handle, ens_size, model_size, time1, init_time_days)
 endif
 
-call trace_message('After  reading in ensemble restart files')
+call timestamp_message('After  reading in ensemble restart filess')
+call     trace_message('After  reading in ensemble restart files')
 
 call trace_message('Before initializing inflation')
 
@@ -303,7 +306,8 @@ call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart
 
 call trace_message('After  initializing inflation')
 
-call trace_message('Before initializing output files')
+call     trace_message('Before initializing output files')
+call timestamp_message('Before initializing output files')
 
 ! Initialize the output sequences and state files and set their meta data
 if(my_task_id() == 0) then
@@ -321,7 +325,21 @@ else
    posterior_obs_spread_index = 0
 endif
 
-call trace_message('After  initializing output files')
+call timestamp_message('After  initializing output files')
+call     trace_message('After  initializing output files')
+
+! Let user know what settings the outlier threshold has, and data qc.
+if (do_output()) then
+   if (outlier_threshold <= 0.0_r8) then
+      write(msgstring, *) 'No observation outlier threshold rejection will be done'
+   else
+      write(msgstring, '(A,F12.6,A)') 'Will reject obs values more than', outlier_threshold, ' sigma from mean'
+   endif
+   call error_handler(E_MSG,'filter:', msgstring)
+
+   write(msgstring, '(A,I4)') 'Will reject obs with Data QC larger than ', nint(input_qc_threshold)
+   call error_handler(E_MSG,'filter:', msgstring)
+endif
 
 call trace_message('Before trimming obs seq if start/stop time specified')
 
@@ -403,23 +421,25 @@ AdvanceTime : do
       ! Advance the lagged distribution, if needed.
       ! Must be done before the model runs and updates the data.
       if(ds) then
-         call trace_message('Before advancing smoother')
+         call     trace_message('Before advancing smoother')
+         call timestamp_message('Before advancing smoother')
          call advance_smoother(ens_handle)
-         call trace_message('After  advancing smoother')
+         call timestamp_message('After  advancing smoother')
+         call     trace_message('After  advancing smoother')
       endif
 
-      call trace_message('Ready to run model to advance data time', 'filter:', -1)
+      call trace_message('Ready to run model to advance data ahead in time', 'filter:', -1)
       call print_ens_time(ens_handle, 'Ensemble data time before advance')
-      call trace_message('Before advance_state called to run model')
-      call timestamp_message('Before model advance', sync=.true.)
+      call     trace_message('Before running model')
+      call timestamp_message('Before running model', sync=.true.)
    
       call advance_state(ens_handle, ens_size, next_ens_time, async, &
                          adv_ens_command, tasks_per_model_advance)
    
       ! only need to sync here since we want to wait for the
       ! slowest task to finish before outputting the time.
-      call timestamp_message('After  model advance', sync=.true.)
-      call trace_message('After  advance_state called to run model')
+      call timestamp_message('After  running model', sync=.true.)
+      call     trace_message('After  running model')
       call print_ens_time(ens_handle, 'Ensemble data time after  advance')
    else
       call trace_message('Model does not need to run; data already at required time', 'filter:', -1)
@@ -449,30 +469,30 @@ AdvanceTime : do
 
    call trace_message('After  setup for next group of observations')
 
-   call trace_message('Before computing ensemble mean and spread')
-
    ! Compute mean and spread for inflation and state diagnostics
    call all_vars_to_all_copies(ens_handle)
 
    call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
+      call trace_message('Before prior inflation damping and prep')
       if (inf_damping(1) /= 1.0_r8) then
          ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
             inf_damping(1) * (ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8) 
       endif
 
       call filter_ensemble_inflate(ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
+
       ! Recompute the the mean and spread as required for diagnostics
       call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+
+      call trace_message('After  prior inflation damping and prep')
    endif
 
    ! Back to state space for diagnostics if required
    call all_copies_to_all_vars(ens_handle) 
 
-   call trace_message('After  computing ensemble mean and spread')
-
-   call trace_message('Before computing prior observation values')
+   call     trace_message('Before computing prior observation values')
    call timestamp_message('Before computing prior observation values')
 
    ! Compute the ensemble of prior observations, load up the obs_err_var 
@@ -502,7 +522,7 @@ AdvanceTime : do
    call ens_mean_for_model(ens_mean)
 
    call timestamp_message('After  computing prior observation values')
-   call trace_message('After  computing prior observation values')
+   call     trace_message('After  computing prior observation values')
 
    ! Do prior state space diagnostic output as required
    ! Use ens_mean which is declared model_size for temp storage in diagnostics
@@ -532,7 +552,7 @@ AdvanceTime : do
    write(msgstring, '(A,I8,A)') 'Ready to assimilate up to', size(keys), ' observations'
    call trace_message(msgstring, 'filter:', -1)
 
-   call trace_message('Before observation assimilation')
+   call     trace_message('Before observation assimilation')
    call timestamp_message('Before observation assimilation')
 
    call filter_assim(ens_handle, obs_ens_handle, seq, keys, &
@@ -543,7 +563,7 @@ AdvanceTime : do
       OBS_PRIOR_VAR_END, inflate_only = .false.)
 
    call timestamp_message('After  observation assimilation')
-   call trace_message('After  observation assimilation')
+   call     trace_message('After  observation assimilation')
 
    ! Do the update for the smoother lagged fields, too.
    ! Would be more efficient to do these all at once inside filter_assim 
@@ -552,35 +572,35 @@ AdvanceTime : do
       write(msgstring, '(A,I8,A)') 'Ready to reassimilate up to', size(keys), ' observations in the smoother'
       call trace_message(msgstring, 'filter:', -1)
 
-      call trace_message('Before smoother assimilation')
+      call     trace_message('Before smoother assimilation')
       call timestamp_message('Before smoother assimilation')
       call smoother_assim(obs_ens_handle, seq, keys, ens_size, num_groups, &
          obs_val_index, ENS_MEAN_COPY, ENS_SD_COPY, &
          PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
          OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
          OBS_PRIOR_VAR_END)
-      call timestamp_message('After smoother assimilation')
-      call trace_message('After  smoother assimilation')
+      call timestamp_message('After  smoother assimilation')
+      call     trace_message('After  smoother assimilation')
    endif
 
    ! Already transformed, so compute mean and spread for state diag as needed
-   call trace_message('Before compute_copy_mean_sd')
    call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-   call trace_message('After  compute_copy_mean_sd')
 
 !-------- Test of posterior inflate ----------------
 
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
-      call trace_message('Before posterior inflation')
+      call trace_message('Before posterior inflation damping and prep')
       if (inf_damping(2) /= 1.0_r8) then
          ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
             inf_damping(2) * (ens_handle%copies(POST_INF_COPY, :) - 1.0_r8) 
       endif
 
       call filter_ensemble_inflate(ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY) 
+
       ! Recompute the mean or the mean and spread as required for diagnostics
       call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
-      call trace_message('After  posterior inflation')
+
+      call trace_message('After  posterior inflation damping and prep')
    endif
 
 !-------- End of posterior  inflate ----------------
@@ -588,7 +608,7 @@ AdvanceTime : do
    ! Now back to var complete for diagnostics
    call all_copies_to_all_vars(ens_handle)
    
-   call trace_message('Before computing posterior observation values')
+   call     trace_message('Before computing posterior observation values')
    call timestamp_message('Before computing posterior observation values')
 
    ! Compute the ensemble of posterior observations, load up the obs_err_var 
@@ -599,7 +619,7 @@ AdvanceTime : do
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY)
 
    call timestamp_message('After  computing posterior observation values')
-   call trace_message('After  computing posterior observation values')
+   call     trace_message('After  computing posterior observation values')
 
    if(ds) then
       call trace_message('Before computing smoother means/spread')
@@ -643,7 +663,9 @@ AdvanceTime : do
       ! If not reading the sd values from a restart file and the namelist initial
       !  sd < 0, then bypass this entire code block altogether for speed.
       if ((inf_sd_initial(2) >= 0.0_r8) .or. inf_sd_initial_from_restart(2)) then
-         call trace_message('Before computing posterior forward ops')
+
+         call     trace_message('Before computing posterior state space inflation')
+         call timestamp_message('Before computing posterior state space inflation')
 
          ! Ship the ensemble mean to the model; some models need this for computing distances
          ! Who stores the ensemble mean copy
@@ -661,16 +683,17 @@ AdvanceTime : do
   
          ! Need obs to be copy complete for assimilation: IS NEXT LINE REQUIRED???
          call all_vars_to_all_copies(obs_ens_handle)
-         call timestamp_message('Before posterior inflation')
+
          call filter_assim(ens_handle, obs_ens_handle, seq, keys, ens_size, num_groups, &
             obs_val_index, post_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
             POST_INF_COPY, POST_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
             OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, &
             OBS_PRIOR_VAR_END, inflate_only = .true.)
-         call timestamp_message('After  posterior inflation')
+
          call all_copies_to_all_vars(ens_handle)
 
-         call trace_message('After  computing posterior forward ops')
+         call timestamp_message('After  computing posterior state space inflation')
+         call     trace_message('After  computing posterior state space inflation')
 
       endif  ! sd >= 0 or sd from restart file
    endif  ! if doing state space posterior inflate
@@ -737,7 +760,8 @@ if(ds) then
    call trace_message('After  smoother memory cleanup')
 endif
 
-call trace_message('Filter done')
+call     trace_message('Filter done')
+call timestamp_message('Filter done')
 if(my_task_id() == 0) then 
    write(logfileunit,*)'FINISHED filter.'
    write(logfileunit,*)
@@ -745,6 +769,8 @@ endif
 
 ! Master task must close the log file; the magic 'end'
 ! flag does that in the timestamp routine.
+! FIXME: when i commit the updated util mod, remove this line.
+! finalize_utilities() will write the final timestamp.
 if(my_task_id() == 0) call timestamp(source,revision,revdate,'end')
 
 ! YOU CAN NO LONGER WRITE TO THE LOG FILE BELOW THIS!
@@ -1273,6 +1299,10 @@ do j = 1, obs_ens_handle%my_num_vars
    forward_min = nint(minval(forward_op_ens_handle%copies(1:ens_size, j)))
    ! Now do a case statement to figure out what the qc result should be
    ! For prior, have to test for a bunch of stuff
+   ! FIXME: note that this case statement doesn't cover every possibility;
+   ! if there's an error in the code and a minus value gets into the forward
+   ! operator istatus without being caught, it will fail all cases below.
+   ! add another line for 'internal inconsistency' to be safe.
    if(prior_post == PRIOR_DIAG) then
       if(forward_min == -99) then              ! Failed prior qc in get_obs_ens
          obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 6
@@ -1284,11 +1314,19 @@ do j = 1, obs_ens_handle%my_num_vars
          obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 1
       else if(forward_min == 0) then           ! All clear, assimilate this ob
          obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 0
+      ! FIXME: proposed enhancement - catchall for cases that we have not caught
+      !else   ! 'should not happen'
+      !   obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 9  ! inconsistent istatus codes
       endif
         
       ! PAR: THIS SHOULD BE IN QC MODULE 
-      ! Check on the outlier threshold quality control: move to QC module
-      if(do_outlier .and. (obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) < input_qc_threshold)) then
+      ! Check on the outlier threshold quality control: move to QC module?
+      ! bug fix: this was using the incoming qc threshold before.
+      ! it should only be doing the outlier test on dart qc values of 0 or 1.
+      ! if there is already a different qc code set, leave it alone.
+      ! only if it is still successful (assim or eval, 0 or 1), then check
+      ! for failing outlier test.
+      if(do_outlier .and. (obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) < 2)) then
          obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START, j)
          obs_prior_var = obs_ens_handle%copies(OBS_PRIOR_VAR_START, j)
          obs_val = obs_ens_handle%copies(OBS_VAL_COPY, j)
@@ -1296,7 +1334,15 @@ do j = 1, obs_ens_handle%my_num_vars
          error = obs_prior_mean - obs_val
          diff_sd = sqrt(obs_prior_var + obs_err_var)
          ratio = abs(error / diff_sd)
-         if(ratio > outlier_threshold) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 7
+         if(ratio > outlier_threshold) then
+            ! FIXME: proposed enhancement to dart qc values - differentiate
+            ! between obs thrown out for being outlier - assim vs eval.
+            !if(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) == 0) then 
+               obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 7    ! would have been assim
+            !else
+            !   obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 8    ! was eval only
+            !endif
+         endif
       endif
 
    else
@@ -1391,10 +1437,16 @@ real(r8), intent(in) :: input_qc
 ! Do checks on input_qc value with namelist control
 ! Should eventually go in qc module
 
+! NOTE: this code has changed since the original version.
+! qc values equal to the threshold are kept now; only qc
+! values LARGER THAN the threshold are rejected.  
+! e.g. to keep only obs with a data qc of 0, set the 
+! threshold to 0.
+
 ! To exclude negative qc values, comment in the following line instead
 ! of the existing code.
-! if((input_qc < input_qc_threshold) .and. (input_qc >= 0)) then
-if(input_qc < input_qc_threshold) then
+! if((nint(input_qc) <= nint(input_qc_threshold)) .and. (nint(input_qc) >= 0)) then
+if(nint(input_qc) <= nint(input_qc_threshold)) then
    input_qc_ok = .true.
 else
    input_qc_ok = .false.
@@ -1509,7 +1561,7 @@ if (present(sync)) then
   if (sync) call task_sync()
 endif
 
-if (do_output()) call timestamp(trim(msg), pos='brief')  ! was debug
+if (do_output()) call timestamp(' '//trim(msg), pos='brief')  ! was debug
 
 end subroutine timestamp_message
 
