@@ -910,10 +910,7 @@ do iyear = base_year, 10000
 ! Is this a leap year? Gregorian calendar assigns each year evenly
 ! divisible by 4 that is not a century year unevenly divisible by 400
 ! as a leap-year. (i.e. 1700,1800,1900 are not leap-years, 2000 is)
-   leap=(modulo(iyear,4).eq.0)
-   if((modulo(iyear,100).eq.0).and.(modulo(iyear,400).ne.0))then
-      leap=.false.
-   endif
+   leap=greg_leap(iyear)
 
    if(leap) then
       days_this_year = 366
@@ -1239,17 +1236,14 @@ if(month /= 2 .and. day > days_per_month(month)) then
    call error_handler(E_ERR,'set_date_gregorian',errstring,source,revision,revdate)
 endif
 
-! Is this a leap year? Gregorian calandar assigns each year evenly
+! Is this a leap year? Gregorian calendar assigns each year evenly
 ! divisible by 4 that is not a century year unevenly divisible by 400
 ! as a leap-year. (i.e. 1700,1800,1900 are not leap-years, 2000 is)
-  leap=(modulo(year,4).eq.0)
-  if((modulo(year,100).eq.0).and.(modulo(year,400).ne.0))then
-   leap=.false.
-  endif
+leap=greg_leap(year)
 
 ! Finish checking for day specication errors
 if(month == 2 .and. (day > 29 .or. ((.not. leap) .and. day > 28))) then
-   write(errstring,*)'month (',month,') does not have ',day,' days in a lon-leap year.'
+   write(errstring,*)'month (',month,') does not have ',day,' days in a non-leap year.'
    call error_handler(E_ERR,'set_date_gregorian',errstring,source,revision,revdate)
 endif
 
@@ -2359,12 +2353,13 @@ implicit none
 type(time_type), intent(in) :: time
 logical                     :: leap_year_gregorian
 
+integer :: iyear, imonth, iday, ihour, imin, isec
+
 if ( .not. module_initialized ) call time_manager_init
 
-call error_handler(E_ERR,'leap_year_gregorian','not implemented',&
-                   source,revision,revdate)
+call get_date_gregorian(time, iyear, imonth, iday, ihour, imin, isec)
 
-leap_year_gregorian = .FALSE.
+leap_year_gregorian=greg_leap(iyear)
 
 end function leap_year_gregorian
 
@@ -2630,10 +2625,11 @@ integer                     :: days_in_year_gregorian
 
 if ( .not. module_initialized ) call time_manager_init
 
-days_in_year_gregorian = 0
-
-call error_handler(E_ERR,'days_in_year_gregorian', &
-      'not implemented',source,revision,revdate)
+if(leap_year_gregorian(time)) then
+   days_in_year_gregorian = 366
+else
+   days_in_year_gregorian = 365
+endif
 
 end function days_in_year_gregorian
 
@@ -2721,6 +2717,24 @@ end function month_name
 
 !==========================================================================
 
+function greg_leap(iyear)
+
+! private function that takes an actual year number, not a time structure,
+! and returns true for leap and false for not.  this should not be made
+! public, unless we make wrappers for all the other calendar types.
+
+integer, intent(in) :: iyear
+logical             :: greg_leap
+
+greg_leap=(modulo(iyear,4).eq.0)
+if((modulo(iyear,100).eq.0).and.(modulo(iyear,400).ne.0))then
+   greg_leap=.false.
+endif
+
+end function greg_leap
+
+!==========================================================================
+
 
 function julian_day(year, month, day)
 
@@ -2742,10 +2756,7 @@ if (calendar_type /= GREGORIAN) then
 endif
 
 julian_day = 0
-leap = (modulo(year,4) == 0)
-if((modulo(year,100).eq.0).and.(modulo(year,400).ne.0))then
-   leap=.false.
-endif
+leap = greg_leap(year)
 
 do m = 1, month - 1
    julian_day = julian_day + days_per_month(m)
