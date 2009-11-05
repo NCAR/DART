@@ -190,7 +190,7 @@ must be read from file <em class=file>input.nml</em>.
     <em class="file">obs_kind_mod.F90</em> in the obs_kind
      directory.   </TD></TR>
 <TR><!--contents--><TD valign=top>input_files           </TD>
-    <!--  type  --><TD valign=top>character(len=129)<BR>
+    <!--  type  --><TD valign=top>character(len=129)(:)<BR>
           <em class="unit">[default: 'null']</em></TD>
     <!--descript--><TD> A list of up to max_input_files file names that contain
      special format obs definition files that are to be incorporated into the
@@ -199,6 +199,12 @@ must be read from file <em class=file>input.nml</em>.
      information about the observation type(s). These files normally reside in
      the obs_def directory in files such as 
       <em class="file">obs_def_reanalysis_bufr_mod.f90</em>.</TD></TR>
+<TR><!--contents--><TD valign=top>force           </TD>
+    <!--  type  --><TD valign=top>logical<BR>
+          <em class="unit">[default: .false.]</em></TD>
+    <!--descript--><TD> If set to .true., will allow preprocess to overwrite
+     existing obs_kind_mod.f90 and obs_def_mod.f90 files without complaint.  
+     The default setting prevents you from overwriting existing files. </TD>
 </TABLE>
 
 
