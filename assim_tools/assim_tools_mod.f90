@@ -128,7 +128,12 @@ if (do_nml_term()) write(     *     , nml=assim_tools_nml)
 ! FOR NOW, can only do spread restoration with filter option 1 (need to extend this)
 if(spread_restoration .and. .not. filter_kind == 1) then
    write(errstring, *) 'cant combine spread_restoration and filter_kind ', filter_kind
-   call error_handler(E_ERR,'assim_tools_init', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'assim_tools_init:', errstring, source, revision, revdate)
+endif
+
+if (do_output()) then
+   write(errstring, '(A,F18.6,A)') 'Using a localization radius of ', cutoff, ' radians'
+   call error_handler(E_MSG,'assim_tools_init:', errstring)
 endif
 
 end subroutine assim_tools_init
