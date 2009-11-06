@@ -180,17 +180,18 @@ character(len = stringlength), dimension(MaxRegions) :: reg_names = 'null'
 type(location_type), dimension(MaxRegions) :: min_loc, max_loc
 
 real(r8):: rat_cri               = 5000.0_r8 ! QC ratio
-real(r8):: input_qc_threshold    = 4.0_r8    ! maximum NCEP QC factor
+real(r8):: input_qc_threshold    = 3.0_r8    ! maximum NCEP QC factor
 logical :: print_mismatched_locs = .false.
 logical :: print_obs_locations   = .false.
 logical :: verbose               = .false.
 
-namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list, &
-                       first_bin_center, last_bin_center, &
+namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,                 &
+                       first_bin_center, last_bin_center,                     &
                        bin_separation, bin_width, time_to_skip, max_num_bins, &
-                       plevel, hlevel, mlevel, rat_cri, input_qc_threshold, &
-                       Nregions, lonlim1, lonlim2, latlim1, latlim2, &
-                       reg_names, print_mismatched_locs, print_obs_locations, verbose
+                       plevel, hlevel, mlevel, rat_cri, input_qc_threshold,   &
+                       Nregions, lonlim1, lonlim2, latlim1, latlim2,          &
+                       reg_names, print_mismatched_locs, print_obs_locations, &
+                       obs_sequence_list, verbose
 
 !-----------------------------------------------------------------------
 ! Variables used to accumulate the statistics.
@@ -973,7 +974,7 @@ ObsFileLoop : do ifile=1, 1000
             !-----------------------------------------------------------
 
             if( qc_index > 0 ) then
-               if (qc(qc_index) >= input_qc_threshold ) then
+               if (qc(qc_index) > input_qc_threshold ) then
                call IPE(guess%NbadQC(iepoch,level_index,iregion,flavor), 1)
                call IPE(analy%NbadQC(iepoch,level_index,iregion,flavor), 1)
                endif
@@ -1062,7 +1063,7 @@ ObsFileLoop : do ifile=1, 1000
             !-----------------------------------------------------------
 
             if( qc_index > 0 ) then
-               if (qc(qc_index) >= input_qc_threshold ) then
+               if (qc(qc_index) > input_qc_threshold ) then
                call IPE(guessAVG%NbadQC(level_index,iregion,flavor), 1)
                call IPE(analyAVG%NbadQC(level_index,iregion,flavor), 1)
                endif
