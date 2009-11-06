@@ -89,13 +89,30 @@ integer, parameter, public :: &
     KIND_SOURCE_PHASE                = 31
  
 ! kind for power-weighted precipitation fall speed
-integer, parameter, public :: &
-    KIND_POWER_WEIGHTED_FALL_SPEED   = 32
+! and a few other kinds that were missing from the
+! collection of fractions and mixing ratio definitions.
+! (CONCENTRATION -> CONCENTR because the max len of
+! these strings is still 32 chars.)
 
- ! missing kind for the am2 model
+! WARNING: the current models use 
+! KIND_CLOUD_LIQUID_WATER and KIND_CLOUD_ICE
+! for mixing ratios.  because current models are
+! using them, we can't make them consistent with
+! the rest of the names - but in the next release
+! we will be changing over to using mixing-ratio
+! in the names and removing the old ones.
 integer, parameter, public :: &
-    KIND_CLOUD_FRACTION              = 35
- 
+    KIND_POWER_WEIGHTED_FALL_SPEED   = 32, &
+    KIND_CLOUDWATER_MIXING_RATIO     = 33, &
+    KIND_ICE_MIXING_RATIO            = 34, &
+    KIND_DROPLET_NUMBER_CONCENTR     = 35, & 
+    KIND_SNOW_NUMBER_CONCENTR        = 36, &
+    KIND_RAIN_NUMBER_CONCENTR        = 37, &
+    KIND_GRAUPEL_NUMBER_CONCENTR     = 38, &
+    KIND_CLOUD_FRACTION              = 39, &
+    KIND_ICE_FRACTION                = 40, &
+    KIND_RELATIVE_HUMIDITY           = 41
+
 ! kinds for the MITgcm, POP ocean model
 integer, parameter, public :: &
     KIND_SALINITY                    = 50, &
@@ -108,9 +125,9 @@ integer, parameter, public :: &
  
 ! kinds for satellite radiances (jason o.)
 integer, parameter, public :: &
-    KIND_INFRARED_RADIANCE            = 60, &
-    KIND_INFRARED_BRIGHT_TEMP         = 61, &
-    KIND_LANDMASK                     = 62
+    KIND_INFRARED_RADIANCE           = 60, &
+    KIND_INFRARED_BRIGHT_TEMP        = 61, &
+    KIND_LANDMASK                    = 62
                                      
 ! kinds for planetary remote sensing (wglawson)
 integer, parameter, public :: &
@@ -292,7 +309,15 @@ obs_kind_names(29) = obs_kind_type(KIND_TRACER_CONCENTRATION, 'KIND_TRACER_CONCE
 obs_kind_names(30) = obs_kind_type(KIND_MEAN_SOURCE, 'KIND_MEAN_SOURCE')
 obs_kind_names(31) = obs_kind_type(KIND_SOURCE_PHASE, 'KIND_SOURCE_PHASE')
 obs_kind_names(32) = obs_kind_type(KIND_POWER_WEIGHTED_FALL_SPEED, 'KIND_POWER_WEIGHTED_FALL_SPEED')
-obs_kind_names(35) = obs_kind_type(KIND_CLOUD_FRACTION, 'KIND_CLOUD_FRACTION')
+obs_kind_names(33) = obs_kind_type(KIND_CLOUDWATER_MIXING_RATIO, 'KIND_CLOUDWATER_MIXING_RATIO')
+obs_kind_names(34) = obs_kind_type(KIND_ICE_MIXING_RATIO, 'KIND_ICE_MIXING_RATIO')
+obs_kind_names(35) = obs_kind_type(KIND_DROPLET_NUMBER_CONCENTR, 'KIND_DROPLET_NUMBER_CONCENTR')
+obs_kind_names(36) = obs_kind_type(KIND_SNOW_NUMBER_CONCENTR, 'KIND_SNOW_NUMBER_CONCENTR')
+obs_kind_names(37) = obs_kind_type(KIND_RAIN_NUMBER_CONCENTR, 'KIND_RAIN_NUMBER_CONCENTR')
+obs_kind_names(38) = obs_kind_type(KIND_GRAUPEL_NUMBER_CONCENTR, 'KIND_GRAUPEL_NUMBER_CONCENTR')
+obs_kind_names(39) = obs_kind_type(KIND_CLOUD_FRACTION, 'KIND_CLOUD_FRACTION')
+obs_kind_names(40) = obs_kind_type(KIND_ICE_FRACTION, 'KIND_ICE_FRACTION')
+obs_kind_names(41) = obs_kind_type(KIND_RELATIVE_HUMIDITY, 'KIND_RELATIVE_HUMIDITY')
 obs_kind_names(50) = obs_kind_type(KIND_SALINITY, 'KIND_SALINITY')
 obs_kind_names(51) = obs_kind_type(KIND_U_CURRENT_COMPONENT, 'KIND_U_CURRENT_COMPONENT')
 obs_kind_names(52) = obs_kind_type(KIND_V_CURRENT_COMPONENT, 'KIND_V_CURRENT_COMPONENT')
