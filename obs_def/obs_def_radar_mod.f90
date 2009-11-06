@@ -39,7 +39,8 @@
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !  use obs_def_radar_mod, only : write_radial_vel, read_radial_vel,           &
 !                            interactive_radial_vel, get_expected_radial_vel, &
-!                            read_radar_ref, get_expected_radar_ref
+!                            read_radar_ref, get_expected_radar_ref,          &
+!                            get_expected_fall_velocity
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !-----------------------------------------------------------------------------
 
@@ -49,6 +50,8 @@
 !     call get_expected_radial_vel(state, location, obs_def%key, obs_val, istatus)
 !  case(RADAR_REFLECTIVITY)
 !     call get_expected_radar_ref(state, location, obs_val, istatus)
+!  case(PRECIPITATION_FALL_SPEED)
+!     call get_expected_fall_velocity(state, location, obs_val, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !-----------------------------------------------------------------------------
 
@@ -58,6 +61,8 @@
 !      call read_radial_vel(obs_def%key, ifile, fileformat)
 !   case(RADAR_REFLECTIVITY)
 !      call read_radar_ref(obs_val, obs_def%key)
+!   case(PRECIPITATION_FALL_SPEED)
+!      continue
 ! END DART PREPROCESS READ_OBS_DEF
 !-----------------------------------------------------------------------------
 
@@ -67,6 +72,8 @@
 !      call write_radial_vel(obs_def%key, ifile, fileformat)
 !   case(RADAR_REFLECTIVITY)
 !      continue
+!   case(PRECIPITATION_FALL_SPEED)
+!      continue
 ! END DART PREPROCESS WRITE_OBS_DEF
 !-----------------------------------------------------------------------------
 
@@ -75,6 +82,8 @@
 !   case(DOPPLER_RADIAL_VELOCITY)
 !      call interactive_radial_vel(obs_def%key)
 !   case(RADAR_REFLECTIVITY)
+!      continue
+!   case(PRECIPITATION_FALL_SPEED)
 !      continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 !-----------------------------------------------------------------------------
@@ -103,7 +112,8 @@ private
 
 public :: read_radar_ref, get_expected_radar_ref,                          &
           read_radial_vel, write_radial_vel, interactive_radial_vel,       &
-          get_expected_radial_vel, get_obs_def_radial_vel, set_radial_vel
+          get_expected_radial_vel, get_obs_def_radial_vel, set_radial_vel, &
+          get_expected_fall_velocity
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -274,7 +284,32 @@ real(r8) :: param_refl_dry_g  !   reflectivity from dry graupel/hail
 !  A consequence is that a sharp gradient in reflectivity will be produced at
 !  the freezing level.  In the future, it might be better to provide the
 !  option of having a transition layer.
-
+!
+! microphysics_type:
+!  Integer. Tells obs_def_radar_mod what microphysical scheme is employed
+!  to enable some smarter decisions in handling fall velocity and radar
+!  reflectivity.
+!   1  - Kessler scheme
+!   2  - Lin et al. microphysics  (default)
+!   3  - User selected scheme where 10 cm reflectivity and power weighted fall
+!        velocity are expected in the state vector (failure if not found)
+!   4  - User selected scheme where only power weighted fall velocity is
+!        expected (failure if not found)
+!   5  - User selected scheme where only reflectivity is expected (failure
+!        if not found)
+!  -1  - ASSUME FALL VELOCITY IS ZERO, allows over-riding the failure modes
+!        above if reflectivity and/or fall velocity are not available but a
+!        result is desired for testing purposes only.
+!
+! allow_dbztowt_conv:
+!  Logical. Flag to enable use of the dbztowt routine where reflectivity is
+!  available, but not the power-weighted fall velocity. This scheme uses
+!  emperical relations between reflectivity and fall velocity, with poor
+!  accuracy for highly reflective, low density particles (such as water coated
+!  snow aggregates). Expect questionable accuracy in radial velocity from
+!  the forward operator with high elevation angles where ice is present in
+!  the model state.
+ 
 logical  :: apply_ref_limit_to_obs     = .false.
 real(r8) :: reflectivity_limit_obs     = -10.0_r8
 real(r8) :: lowest_reflectivity_obs    = -10.0_r8
@@ -283,6 +318,8 @@ real(r8) :: reflectivity_limit_fwd_op  = -10.0_r8
 real(r8) :: lowest_reflectivity_fwd_op = -10.0_r8
 integer  :: max_radial_vel_obs         = 1000000
 logical  :: allow_wet_graupel          = .false.
+integer  :: microphysics_type          = 2
+logical  :: allow_dbztowt_conv         = .false.
 
 
 ! Constants which depend on the microphysics scheme used.  Should be set
@@ -306,6 +343,8 @@ namelist /obs_def_radar_mod_nml/ apply_ref_limit_to_obs,     &
                                  max_radial_vel_obs,         &
                                  allow_wet_graupel,          &
                                  dielectric_factor,          &
+                                 microphysics_type,          &
+                                 allow_dbztowt_conv,         &
                                  n0_rain,                    &
                                  n0_graupel,                 &
                                  n0_snow,                    &
@@ -822,40 +861,10 @@ if (istatus /= 0) then
    return
 endif
 
-! If the model can return the precipitation fall speed directly, let it do 
-! so. Otherwise, compute the various fields individually and then do
-! the computation here.  Note that the computation here is accurate only
-! for the simple single-moment microphysics schemes (e.g., Kessler or Lin).
-
-call interpolate(state_vector, location, KIND_POWER_WEIGHTED_FALL_SPEED, &
-                 precip_fall_speed, istatus)
+call get_expected_fall_velocity(state_vector, location, precip_fall_speed, istatus)
 if (istatus /= 0) then
-   call interpolate(state_vector, location, KIND_RAINWATER_MIXING_RATIO, qr, istatus)
-   if (istatus /= 0) then
-      radial_vel = missing_r8
-      return
-   endif
-   call interpolate(state_vector, location, KIND_GRAUPEL_MIXING_RATIO, qg, istatus)
-   if (istatus /= 0) then
-      radial_vel = missing_r8
-      return
-   endif
-   call interpolate(state_vector, location, KIND_SNOW_MIXING_RATIO, qs, istatus)
-   if (istatus /= 0) then
-      radial_vel = missing_r8
-      return
-   endif
-   call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
-   if (istatus /= 0) then
-      radial_vel = missing_r8
-      return
-   endif
-   call interpolate(state_vector, location, KIND_TEMPERATURE, temp, istatus)
-   if (istatus /= 0) then
-      radial_vel = missing_r8
-      return
-   endif
-   call get_precip_fall_speed(qr, qg, qs, rho, temp, precip_fall_speed)
+   radial_vel = missing_r8
+   return
 endif
 
 radial_vel = radial_vel_data(velkey)%beam_direction(1) * u +    &
@@ -883,6 +892,114 @@ if (debug) then
 endif
 
 end subroutine get_expected_radial_vel
+ 
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
+! Expected fall velocity section
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
+
+subroutine get_expected_fall_velocity(state_vector, location,  &
+                                      precip_fall_speed, istatus)
+
+! This is the main forward operator routine for the expected
+! fall velocity, and it also used as part of computing expected
+! radial velocity.
+
+real(r8),            intent(in)  :: state_vector(:)
+type(location_type), intent(in)  :: location
+real(r8),            intent(out) :: precip_fall_speed
+integer,             intent(out) :: istatus
+
+! Local vars
+real(r8) :: qr, qg, qs, rho, temp, refl
+logical, save :: first_time = .true.
+
+! If the model can return the precipitation fall speed directly, let it do
+! so. Otherwise, attempt to compute if Kessler or Lin type microphysics,
+! or see if the dbztowt routine is desired. Note that the computation for
+! Lin and Kessler is expected to be reasonably accurate for 10cm radar.
+
+! Should we check microphysics_type var or just go ahead and try to get a value?
+istatus = 0
+precip_fall_speed = 0.0_r8
+call interpolate(state_vector, location, KIND_POWER_WEIGHTED_FALL_SPEED, &
+                 precip_fall_speed, istatus)
+
+! If able to get value, return here.
+if (istatus == 0) return
+
+! If the user explicitly wanted to interpolate in the field, try to complain
+! if it could not.  Note that the interp could fail for other reasons.
+if (microphysics_type == 3 .or. microphysics_type == 4) then
+   ! Could return a specific istatus code here to indicate this condition.
+   if (first_time) then
+      call error_handler(E_MSG,'get_expected_fall_velocity', &
+                         'interpolate failed. Fall Speed may NOT be in state vector', '', '', '')
+      first_time = .false.
+   endif
+   return
+endif
+
+! If not in the state vector, try to calculate it here based on the
+! setting of the microphysics_type namelist.
+
+! if Kessler or Lin we can compute the fall velocity
+if (microphysics_type == 1 .or. microphysics_type == 2) then
+   call interpolate(state_vector, location, KIND_RAINWATER_MIXING_RATIO, qr, istatus)
+   if (istatus /= 0) then
+      precip_fall_speed = missing_r8
+      return
+   endif
+   if (microphysics_type == 2) then
+      call interpolate(state_vector, location, KIND_GRAUPEL_MIXING_RATIO, qg, istatus)
+      if (istatus /= 0) then
+         precip_fall_speed = missing_r8
+         return
+      endif
+      call interpolate(state_vector, location, KIND_SNOW_MIXING_RATIO, qs, istatus)
+      if (istatus /= 0) then
+         precip_fall_speed = missing_r8
+         return
+      endif
+   endif
+   ! Done with Lin et al specific calls
+   call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
+   if (istatus /= 0) then
+      precip_fall_speed = missing_r8
+      return
+   endif
+   call interpolate(state_vector, location, KIND_TEMPERATURE, temp, istatus)
+   if (istatus /= 0) then
+      precip_fall_speed = missing_r8
+      return
+   endif
+   call get_LK_precip_fall_speed(qr, qg, qs, rho, temp, precip_fall_speed)
+   ! Done with Lin et al or Kessler -
+else if (microphysics_type == 5 .and. allow_dbztowt_conv) then
+   ! Provided reflectivity field - will estimate fall velocity using empirical relations
+   call get_expected_radar_ref(state_vector, location, refl, istatus)
+   if (istatus /= 0) then
+      precip_fall_speed = missing_r8
+      return
+   endif
+   call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
+   if (istatus /= 0) then
+      precip_fall_speed = missing_r8
+      return
+   endif
+   precip_fall_speed = dbztowt(refl, rho, missing_r8)
+else if (microphysics_type < 0) then
+   ! User requested setting fall velocity to zero - use with caution
+   precip_fall_speed = 0.0_r8
+else
+   ! Couldn't manage to compute a fall velocity
+   precip_fall_speed = missing_r8
+   istatus = 2   
+endif
+
+
+end subroutine get_expected_fall_velocity
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
@@ -933,12 +1050,13 @@ integer,             intent(out) :: istatus
 
 ! "interpolate()" ultimately calls model_mod routine "model_interpolate()"
 ! to get model values of qr, qg, qs, rho, and temp at the ob location. Then
-! the routine "get_reflectivity()" is called to compute the radar reflectivity
+! the routine "get_LK_reflectivity()" is called to compute the radar reflectivity
 ! factor value, Z, that corresponds to the hydrometeor and thermodynamic values.
 
-real(r8) :: qr, qg, qs, rho, temp
-real(r8) :: debug_location(3)
-logical  :: debug = .false.  ! set to .true. to enable debug printout
+real(r8)      :: qr, qg, qs, rho, temp
+real(r8)      :: debug_location(3)
+logical       :: debug = .false.  ! set to .true. to enable debug printout
+logical, save :: first_time = .true.
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -954,50 +1072,71 @@ temp = 0.0_r8
 ! the computation here.  Note that the computation here is accurate only
 ! for the simple single-moment microphysics schemes (e.g., Kessler or Lin).
 
+! Try to draw from state vector first 
 call interpolate(state_vector, location, KIND_RADAR_REFLECTIVITY, ref, istatus)
 if (istatus /= 0) then
 
-   call interpolate(state_vector, location, KIND_RAINWATER_MIXING_RATIO, &
-                    qr, istatus)
-   if (istatus /= 0) then
-      ref = missing_r8
+   ! If the user explicitly wanted to interpolate in the field, try to complain
+   ! if it could not.  Note that the interp could fail for other reasons.
+   if (microphysics_type == 3 .or. microphysics_type == 5) then
+      ! Could return a specific istatus code here to indicate this condition.
+      if (first_time) then
+         call error_handler(E_MSG,'get_expected_radar_ref', &
+                            'interpolate failed. Reflectivity may NOT be in state vector', '', '', '')
+         first_time = .false.
+      endif
       return
    endif
-   
-   call interpolate(state_vector, location, KIND_GRAUPEL_MIXING_RATIO, &
-                    qg, istatus)
-   if (istatus /= 0) then
-      ref = missing_r8
-      return
-   endif
-   
-   call interpolate(state_vector, location, KIND_SNOW_MIXING_RATIO, &
-                    qs, istatus)
-   if (istatus /= 0) then
-      ref = missing_r8
-      return
-   endif
-   
-   call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
-   if (istatus /= 0) then
-      ref = missing_r8
-      return
-   endif
-   
-   call interpolate(state_vector, location, KIND_TEMPERATURE, temp, istatus)
-   if (istatus /= 0) then
-      ref = missing_r8
-      return
-   endif
-   
-   call get_reflectivity(qr, qg, qs, rho, temp, ref)
-   
-endif
 
-! Always convert to dbz.  Make sure the value, before taking the logarithm, 
-! is always slightly positive.
-! tiny() is a fortran intrinsic function that is > 0 by a very small amount.
-ref = 10.0_r8 * log10(max(tiny(ref), ref))
+   if (microphysics_type == 1 .or. microphysics_type == 2) then
+
+      call interpolate(state_vector, location, KIND_RAINWATER_MIXING_RATIO, &
+                       qr, istatus)
+      if (istatus /= 0) then
+         ref = missing_r8
+         return
+      endif
+
+      if (microphysics_type == 2) then
+         ! Also need some ice vars
+         call interpolate(state_vector, location, KIND_GRAUPEL_MIXING_RATIO, &
+                          qg, istatus)
+         if (istatus /= 0) then
+            ref = missing_r8
+            return
+         endif
+
+         call interpolate(state_vector, location, KIND_SNOW_MIXING_RATIO, &
+                          qs, istatus)
+         if (istatus /= 0) then
+            ref = missing_r8
+            return
+         endif
+      endif  
+      call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
+      if (istatus /= 0) then
+         ref = missing_r8
+         return
+      endif
+   
+      call interpolate(state_vector, location, KIND_TEMPERATURE, temp, istatus)
+      if (istatus /= 0) then
+         ref = missing_r8
+         return
+      endif
+   
+      call get_LK_reflectivity(qr, qg, qs, rho, temp, ref)
+
+      ! Always convert to dbz.  Make sure the value, before taking the logarithm, 
+      ! is always slightly positive.
+      ! tiny() is a fortran intrinsic function that is > 0 by a very small amount.
+
+      ref = 10.0_r8 * log10(max(tiny(ref), ref))
+   else
+      ! not in state vector and not Lin et al or Kessler so can't do reflectivity
+      ref = missing_r8
+   endif 
+endif
 
 if ((apply_ref_limit_to_fwd_op) .and. &
     (ref < reflectivity_limit_fwd_op) .and. (ref /= missing_r8)) then
@@ -1033,7 +1172,7 @@ end subroutine get_expected_radar_ref
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 
-subroutine get_reflectivity(qr, qg, qs, rho, temp, ref)
+subroutine get_LK_reflectivity(qr, qg, qs, rho, temp, ref)
  
 ! Computes the equivalent radar reflectivity factor in mm^6 m^-3 for
 ! simple single-moment microphysics schemes such as the Kessler and 
@@ -1090,11 +1229,11 @@ if ( qs >= 1.0e-6_r8 ) then
    endif
 endif
 
-end subroutine get_reflectivity
+end subroutine get_LK_reflectivity
 
 !----------------------------------------------------------------------
 
-subroutine get_precip_fall_speed(qr, qg, qs, rho, temp, precip_fall_speed)
+subroutine get_LK_precip_fall_speed(qr, qg, qs, rho, temp, precip_fall_speed)
 
 ! Computes power-weighted precipitation fall speed in m s^-1 for simple single-
 ! moment microphysics schemes such as the Kessler and Lin et al. schemes.
@@ -1154,7 +1293,7 @@ if (qs >= 1.0e-6_r8) then
 endif
 
 if (precip_fall_speed > 0.0_r8) then
-   call get_reflectivity(qr, qg, qs, rho, temp, ref)
+   call get_LK_reflectivity(qr, qg, qs, rho, temp, ref)
    if (ref > 0.0_r8) then
       precip_fall_speed = precip_fall_speed/ref
    else
@@ -1162,7 +1301,33 @@ if (precip_fall_speed > 0.0_r8) then
    endif
 endif
 
-end subroutine get_precip_fall_speed
+end subroutine get_LK_precip_fall_speed
+
+!----------------------------------------------------------------------
+
+function dbztowt(rf, rho, spval)
+
+! Convert reflectivity (in DBZ, not Z) to terminal fall speed.
+! (Code from the pyncommas system - author D. Dowell)
+
+real(r8), intent(in)  :: rf           ! reflectivity (dBZ)
+real(r8), intent(in)  :: rho          ! density (km/m**3)
+real(r8), intent(in)  :: spval        ! bad/missing data flag
+real(r8)              :: dbztowt
+
+! Local vars
+real(r8) :: refl         ! reflectivity (Z)
+
+if ( (rf == spval) .or. (rho == spval) ) then
+   dbztowt = spval
+else
+   ! Convert back to Z for this calculation.
+   refl = 10.0**(0.1*rf)
+   ! Original code used opposite sign - be careful if updating.
+   dbztowt = 2.6 * refl**0.107 * (1.2/rho)**0.4
+endif
+
+end function dbztowt
 
 !----------------------------------------------------------------------
 
@@ -1256,7 +1421,7 @@ param_fs_dry_g = 1.0e18_r8 * dielectric_factor *                               &
 ! In the expressions for reflectivity for each hydrometeor category, the
 ! following parameters are computed from the constants that do not vary in time
 ! and space.  Computing these parameters now means that the equations in the
-! get_reflectivity subroutine will have the following simple form:
+! get_LK_reflectivity subroutine will have the following simple form:
 ! 
 !   ref = param_refl_r * (rho*qr)**1.75.
 !

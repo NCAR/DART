@@ -856,6 +856,8 @@ of the following values: <em class=code>"unformatted", "UNFORMATTED",
    lowest_reflectivity_fwd_op, &amp;
    max_radial_vel_obs,         &amp;
    allow_wet_graupel,          &amp;
+   microphysics_type           &amp;
+   allow_dbztowt_conv          &amp;
    dielectric_factor,          &amp;
    n0_rain,                    &amp;
    n0_graupel,                 &amp;
@@ -883,6 +885,8 @@ of the following values: <em class=code>"unformatted", "UNFORMATTED",
    lowest_reflectivity_fwd_op  =  -10.0_r8,
    max_radial_vel_obs          =   1000000,
    allow_wet_graupel           =   .FALSE.,
+   microphysics_type           =       2  ,
+   allow_dbztowt_conv          =   .FALSE.,
    dielectric_factor           =  0.224_r8,
    n0_rain                     =  8.0e6_r8,
    n0_graupel                  =  4.0e6_r8,
@@ -957,6 +961,48 @@ is assumed to be wet (dry) when the temperature is above (below) freezing.
 A consequence is that a sharp gradient in reflectivity will be produced at
 the freezing level.  In the future, it might be better to provide the
 option of having a transition layer.
+                   </TD></TR>
+<TR><!--contents--><TD valign=top>microphysics_type</TD>
+    <!--  type  --><TD valign=top>integer</TD>
+    <!--descript--><TD>
+If the state vector contains the reflectivity or the power
+weighted fall speed, interpolate directly from those regardless of
+the setting of this item.  If the state vector does not
+contain the fields, this value should be set to be 
+compatible with whatever microphysical scheme is being
+used by the model.  If the model is using a different
+microphysical scheme but has compatible fields to the ones
+listed below, setting this value will select the scheme to use.
+<br>
+1 = Kessler scheme.
+<br>
+2 = Lin et al. microphysics  (default)
+<br>
+3 = User selected scheme where 10 cm reflectivity and power weighted fall
+        velocity are expected in the state vector (failure if not found)
+<br>
+4 = User selected scheme where only power weighted fall velocity is
+        expected (failure if not found)
+<br>
+5 = User selected scheme where only reflectivity is expected (failure
+        if not found)
+<br>
+-1 = ASSUME FALL VELOCITY IS ZERO, allows over-riding the failure modes
+        above if reflectivity and/or fall velocity are not available but a
+        result is desired for testing purposes only.
+<br>
+Default value is 2. 
+                   </TD></TR>
+<TR><!--contents--><TD valign=top>allow_dbztowt_conv</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD>
+Flag to enable use of the dbztowt routine where reflectivity is
+available, but not the power-weighted fall velocity. This scheme uses
+emperical relations between reflectivity and fall velocity, with poor
+accuracy for highly reflective, low density particles (such as water coated
+snow aggregates). Expect questionable accuracy in radial velocity from
+the forward operator with high elevation angles where ice is present in
+the model state.  Default value is .FALSE.
                    </TD></TR>
 <TR><!--contents--><TD valign=top>dielectric_factor</TD>
     <!--  type  --><TD valign=top>real(r8)</TD>

@@ -13,6 +13,8 @@
    lowest_reflectivity_fwd_op  =  -10.0_r8,
    max_radial_vel_obs          =   1000000,
    allow_wet_graupel           =   .false.,
+   microphysics_type           =       2  ,
+   allow_dbztowt_conv          =   .false.,
    dielectric_factor           =  0.224_r8,
    n0_rain                     =  8.0e6_r8,
    n0_graupel                  =  4.0e6_r8,
@@ -21,4 +23,3 @@
    rho_graupel                 =  400.0_r8,
    rho_snow                    =  100.0_r8 
    /
-
