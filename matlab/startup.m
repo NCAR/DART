@@ -40,7 +40,7 @@ dartpath = sprintf('%s/matlab',mydir(1:dartloc));
 disp(sprintf('\nWelcome to DART ...'))
 disp(sprintf('\nYour current directory is  %s',mydir))
 
-if ( ~isempty(dartloc) ) 
+if ( ~isempty(dartloc) )
    path(dartpath,path);
    disp(sprintf('Using general tools in     %s',dartpath))
 end
@@ -49,9 +49,18 @@ end
 
 dartpath = sprintf('%s/diagnostics/matlab',mydir(1:dartloc));
 
-if ( ~isempty(dartloc) ) 
+if ( ~isempty(dartloc) )
    path(dartpath,path);
    disp(sprintf('observation-space tools in %s',dartpath))
+end
+
+% Try to intelligently add the observation-space netCDF DART tools.
+
+dartpath = sprintf('%s/observations/utilities/threed_sphere',mydir(1:dartloc));
+
+if ( ~isempty(dartloc) )
+   path(dartpath,path);
+   disp(sprintf('obs-seq netCDF tools in    %s',dartpath))
 end
 
 % Try to intelligently add the DART model-specific tools.
@@ -62,10 +71,10 @@ mydir    = pwd;
 dartloc  = strfind(mydir,'/work')-1;
 dartpath = sprintf('%s/matlab',mydir(1:dartloc));
 
-if ( ~isempty(dartloc) ) 
+if ( ~isempty(dartloc) )
    if ( exist(dartpath,'dir') == 7 )
       path(dartpath,path);
-      disp(sprintf('Using matlab scripts in     %s',dartpath))
+      disp(sprintf('Using matlab scripts in    %s',dartpath))
    end
 end
 
