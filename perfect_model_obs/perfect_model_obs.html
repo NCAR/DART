@@ -103,7 +103,9 @@ ensemble_manager_mod
   start_from_restart, output_restart, async, init_time_days, init_time_seconds,
   first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds, output_interval,
   restart_in_file_name, restart_out_file_name, obs_seq_in_file_name, obs_seq_out_file_name,
-  adv_ens_command, tasks_per_model_advance, obs_window_days, obs_window_seconds
+  adv_ens_command, tasks_per_model_advance, obs_window_days, obs_window_seconds,
+  output_forward_op_errors, output_timestamps, trace_execution, print_every_nth_obs,
+  silence
 
  </pre></div>
  <H3 class=indent1>Discussion</H3>
@@ -201,6 +203,35 @@ ensemble_manager_mod
      <!--  type  --><TD>character(len=129)</TD>
      <!--descript--><TD>Command sent to shell if async&nbsp;==&nbsp;2 or 4.
                         Default: './advance_model.csh'</TD></TR>
+
+ <TR><!--contents--><TD valign=top>output_forward_op_errors</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD>True means output errors from forward observation operators.
+                        This is the 'istatus' error return code from the model
+                        interpolate routine.  An ascii text file 'forward_op_errors'
+                        will be created in the current directory.  Each line will 
+                        contain an observation key number, and the istatus return code.
+                        Default: .false.</TD></TR>
+
+ <TR><!--contents--><TD valign=top>output_timestamps</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD>True means output timestamps before and after the model advance
+                        and the forward observation computation phases.
+                        Default: .false.</TD></TR>
+
+ <TR><!--contents--><TD valign=top>trace_execution</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD>True means output very detailed messages about what routines
+                        are being called in the main loop.  Useful if a job
+                        hangs or otherwise doesn't execute as expected.
+                        Default: .false.</TD></TR>
+
+ <TR><!--contents--><TD valign=top>silence</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD>True means output almost no runtime messages.  Not recommended
+                        for general use, but can speed test programs if the execution
+                        time becomes dominated by the volume of output.
+                        Default: .false.</TD></TR>
 
  <TR><!--contents--><TD valign=top>tasks_per_model_advance</TD>
      <!--  type  --><TD>integer</TD>

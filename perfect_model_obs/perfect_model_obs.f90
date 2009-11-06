@@ -17,7 +17,8 @@ use        types_mod,     only : r8, metadatalength
 use    utilities_mod,     only : initialize_utilities, register_module, error_handler, &
                                  find_namelist_in_file, check_namelist_read,           &
                                  E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp,          &
-                                 do_nml_file, do_nml_term, logfileunit
+                                 do_nml_file, do_nml_term, logfileunit, &
+                                 open_file, close_file
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), print_time
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                 &
                                  get_obs_from_key, set_copy_meta_data, get_obs_def,         &
@@ -75,6 +76,7 @@ integer  :: last_obs_days      = -1
 integer  :: last_obs_seconds   = -1
 integer  :: obs_window_days    = -1
 integer  :: obs_window_seconds = -1
+logical  :: output_forward_op_errors = .false.
 integer  :: tasks_per_model_advance = 1
 integer  :: output_interval = 1
 integer  :: print_every_nth_obs = 0
@@ -94,7 +96,7 @@ namelist /perfect_model_obs_nml/ start_from_restart, output_restart, async,     
                                  adv_ens_command, tasks_per_model_advance,          & 
                                  obs_window_days, obs_window_seconds, silence,      &
                                  trace_execution, output_timestamps,                &
-                                 print_every_nth_obs
+                                 print_every_nth_obs, output_forward_op_errors
 
 
 !------------------------------------------------------------------------------
@@ -120,7 +122,7 @@ type(time_type)         :: window_time, curr_ens_time, next_ens_time
 integer, allocatable    :: keys(:)
 integer                 :: j, iunit, time_step_number, obs_seq_file_id
 integer                 :: cnum_copies, cnum_qc, cnum_obs, cnum_max
-integer                 :: additional_qc, additional_copies
+integer                 :: additional_qc, additional_copies, forward_unit
 integer                 :: ierr, io, istatus, num_obs_in_set, nth_obs
 integer                 :: model_size, key_bounds(2), num_qc, last_key_used
 
@@ -161,7 +163,7 @@ endif
 nth_obs = -1
 
 call trace_message('Before setting up space for observations')
-call timestamp_message('Before observation setup')
+call timestamp_message('Before setting up space for observations')
 
 ! Find out how many data copies are in the obs_sequence 
 call read_obs_seq_header(obs_seq_in_file_name, cnum_copies, cnum_qc, cnum_obs, cnum_max, &
@@ -197,7 +199,7 @@ copy_meta_data(2) = 'truth'
 call set_copy_meta_data(seq, 1, copy_meta_data(1))
 call set_copy_meta_data(seq, 2, copy_meta_data(2))
 
-call timestamp_message('After  observation setup')
+call timestamp_message('After  setting up space for observations')
 call trace_message('After  setting up space for observations')
 
 ! Initialize the model now that obs_sequence is all set up
@@ -251,6 +253,9 @@ if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
    endif
 endif
 
+! Do verbose forward operator output if requested
+if(output_forward_op_errors) forward_unit = open_file('forward_op_errors', 'formatted', 'append')
+
 call trace_message('After  trimming obs seq if start/stop time specified')
 
 ! Time step number is used to do periodic diagnostic output
@@ -278,16 +283,16 @@ AdvanceTime: do
    call trace_message('After  move_ahead checks time of data and next obs')
 
    if (curr_ens_time /= next_ens_time) then
-      call trace_message('Ready to run model to advance data time', 'perfect_model_obs:', -1)
+      call trace_message('Ready to run model to advance data ahead in time', 'perfect_model_obs:', -1)
       call print_ens_time(ens_handle, 'Ensemble data time before advance')
-      call trace_message('Before advance_state called to run model')
-      call timestamp_message('Before model advance', sync=.true.)
+      call     trace_message('Before running model')
+      call timestamp_message('Before running model', sync=.true.)
 
       call advance_state(ens_handle, 1, next_ens_time, async, &
          adv_ens_command, tasks_per_model_advance)
 
-      call timestamp_message('After  model advance', sync=.true.)
-      call trace_message('After  advance_state called to run model')
+      call timestamp_message('After  running model', sync=.true.)
+      call     trace_message('After  running model')
       call print_ens_time(ens_handle, 'Ensemble data time after  advance')
    else
       call trace_message('Model does not need to run; data already at required time', 'perfect_model_obs:', -1)
@@ -319,6 +324,7 @@ AdvanceTime: do
 
    write(msgstring, '(A,I8,A)') 'Ready to evaluate up to', size(keys), ' observations'
    call trace_message(msgstring, 'perfect_model_obs:', -1)
+
 
    ! Compute the forward observation operator for each observation in set
    do j = 1, num_obs_in_set
@@ -362,23 +368,39 @@ AdvanceTime: do
          obs_value(1) = true_obs(1)
          qc(1) = 1000.0_r8
          call set_qc(obs, qc, 1)
+
+         ! FIXME: we could set different qc codes, like 1004, 1005, to
+         ! indicate why this obs isn't being processed - separate failed 
+         ! forward operators from those types not on the assim or eval lists.
+         ! the values 4, 5, etc could match the dart QC values + 1000.
+
+         ! if failed forward op logging requested, make sure we're
+         ! only writing out obs with real errors and not those that
+         ! end up in this code section because their type isn't in the namelist.
+         if(output_forward_op_errors) then
+            if ((istatus /= 0) .and. (assimilate_this_ob .or. evaluate_this_ob)) &
+               write(forward_unit, *) keys(j), istatus
+         endif
       endif
 
       call set_obs_values(obs, obs_value, 1)
       call set_obs_values(obs, true_obs, 2)
 
-! Insert the observations into the sequence first copy
+      ! Insert the observations into the sequence first copy
       call set_obs(seq, obs, keys(j))
 
    end do
 
-! Deallocate the keys storage
+   ! Deallocate the keys storage
    deallocate(keys)
 
-! The last key used is updated to move forward in the observation sequence
+   ! The last key used is updated to move forward in the observation sequence
    last_key_used = key_bounds(2)
 
 end do AdvanceTime
+
+! if logging errors, close unit
+if(output_forward_op_errors) call close_file(forward_unit)
 
 call trace_message('End of main evaluation loop, starting cleanup', 'perfect_model_obs:', -1)
 
@@ -544,7 +566,7 @@ if (present(sync)) then
   if (sync) call task_sync()
 endif
 
-call timestamp(trim(msg), pos='brief')
+call timestamp(' '//trim(msg), pos='brief')
 
 end subroutine timestamp_message
 
