@@ -132,7 +132,7 @@ if(spread_restoration .and. .not. filter_kind == 1) then
 endif
 
 if (do_output()) then
-   write(errstring, '(A,F18.6,A)') 'Using a localization radius of ', cutoff, ' radians'
+   write(errstring, '(A,F18.6,A)') 'Using a localization radius of ', cutoff
    call error_handler(E_MSG,'assim_tools_init:', errstring)
 endif
 
