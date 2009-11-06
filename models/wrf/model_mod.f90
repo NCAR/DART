@@ -53,12 +53,22 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_CONDENSATIONAL_HEATING, KIND_VAPOR_MIXING_RATIO, &
                               KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
                               KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
+                              KIND_DROPLET_NUMBER_CONCENTR, KIND_SNOW_NUMBER_CONCENTR, &
+                              KIND_RAIN_NUMBER_CONCENTR, KIND_GRAUPEL_NUMBER_CONCENTR, &
                               KIND_VORTEX_LAT, KIND_VORTEX_LON, &
                               KIND_RADAR_REFLECTIVITY, KIND_POWER_WEIGHTED_FALL_SPEED,&
                               KIND_VORTEX_PMIN, KIND_VORTEX_WMAX, &
+                              KIND_SKIN_TEMPERATURE, KIND_LANDMASK, &
                               get_raw_obs_kind_index, get_num_raw_obs_kinds, &
                               get_raw_obs_kind_name
 
+! FIXME:
+! the kinds KIND_CLOUD_LIQUID_WATER should be KIND_CLOUDWATER_MIXING_RATIO, 
+! and kind KIND_CLOUD_ICE should be KIND_ICE_MIXING_RATIO, but for backwards
+! compatibility with other models, they remain as is for now.  at the next
+! major dart release, the names will be made consistent.
+! ditto KIND_ICE_NUMBER_CONCENTRATION, which should be KIND_ICE_NUMBER_CONCENTR
+! to be consistent with the other concentration names.
 
 !nc -- module_map_utils split the declarations of PROJ_* into a separate module called
 !nc --   misc_definitions_module 
@@ -230,13 +240,10 @@ TYPE wrf_static_data_for_dart
    logical  :: polar
    logical  :: scm
 
-!   integer  :: n_moist    !! obsolete now
    integer  :: domain_size
-!   logical  :: surf_obs  !! obsolete now
    integer  :: vert_coord
    real(r8), dimension(:),     pointer :: znu, dn, dnw, zs
    real(r8), dimension(:,:),   pointer :: mub, latitude, longitude, hgt
-!   real(r8), dimension(:,:),   pointer :: mapfac_m, mapfac_u, mapfac_v
    real(r8), dimension(:,:,:), pointer :: phb
 
    ! NEWVAR:  Currently you have to add a new type here if you want to use
@@ -245,8 +252,9 @@ TYPE wrf_static_data_for_dart
    ! NEWVAR:  the code has to change.
 
    ! JPH local variables to hold type indices
-   integer :: type_u, type_v, type_w, type_t, type_qv, type_qr, &
-              type_qc, type_qg, type_qi, type_qs, type_gz, type_refl
+   integer :: type_u, type_v, type_w, type_t, type_qv, type_qr, type_hdiab, &
+              type_qndrp, type_qnsnow, type_qnrain, type_qngraupel, type_qnice, &
+              type_qc, type_qg, type_qi, type_qs, type_gz, type_refl, type_fall_spd
    integer :: type_u10, type_v10, type_t2, type_th2, type_q2, &
               type_ps, type_mu, type_tsk, type_tslb, type_sh2o, type_smois
 
@@ -575,6 +583,11 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_qg     = get_type_ind_from_type_string(id,'QGRAUP')
    wrf%dom(id)%type_qi     = get_type_ind_from_type_string(id,'QICE')
    wrf%dom(id)%type_qs     = get_type_ind_from_type_string(id,'QSNOW')
+   wrf%dom(id)%type_qnice  = get_type_ind_from_type_string(id,'QNICE')
+   wrf%dom(id)%type_qndrp  = get_type_ind_from_type_string(id,'QNDRP')
+   wrf%dom(id)%type_qnsnow = get_type_ind_from_type_string(id,'QNSNOW')
+   wrf%dom(id)%type_qnrain = get_type_ind_from_type_string(id,'QNRAIN')
+   wrf%dom(id)%type_qngraupel = get_type_ind_from_type_string(id,'QNGRAUPEL')
    wrf%dom(id)%type_u10    = get_type_ind_from_type_string(id,'U10')
    wrf%dom(id)%type_v10    = get_type_ind_from_type_string(id,'V10')
    wrf%dom(id)%type_t2     = get_type_ind_from_type_string(id,'T2')
@@ -587,6 +600,8 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_smois  = get_type_ind_from_type_string(id,'SMOIS')
    wrf%dom(id)%type_sh2o   = get_type_ind_from_type_string(id,'SH2O')
    wrf%dom(id)%type_refl   = get_type_ind_from_type_string(id,'REFL_10CM')
+   wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'FALL_SPD_Z_WEIGHTED')
+   wrf%dom(id)%type_hdiab  = get_type_ind_from_type_string(id,'H_DIABATIC')
 
 enddo WRFDomains 
 
@@ -903,8 +918,8 @@ else
       call get_domain_info(xyz_loc(1),xyz_loc(2),id,xloc,yloc)
    else
       id = 1
-      xloc = 2.0_r8
-      yloc = 2.0_r8
+      xloc = 1.0_r8
+      yloc = 1.0_r8
    endif
     
    ! check that we obtained a valid domain id number
@@ -1082,21 +1097,37 @@ else
 
    ! Large if-structure to select on obs_kind of desired field....
    ! Table of Contents:
-   ! a. U, V, U10, V10 -- Horizontal Winds
-   ! b. T, T2 -- Sensible Temperature
-   ! c. TH, TH2 -- Potential Temperature
-   ! d. Rho -- Density
-   ! e. W -- Vertical Wind
-   ! f. SH, SH2 -- Specific Humidity
-   ! g. QV, Q2 -- Vapor Mixing Ratio
-   ! h. QR -- Rainwater Mixing Ratio
-   ! i. QG -- Graupel Mixing Ratio
-   ! j. QS -- Snow Mixing Ratio
-   ! k. P -- Pressure
-   ! l. PS -- Surface Pressure
-   ! m. Vortex Center Stuff (Yongsheng)
-   ! n. GZ -- Geopotential Height (Ryan Torn)
-   ! o. HGT -- Surface Elevation (Ryan Torn)
+   ! 1.a Horizontal Winds (U, V, U10, V10)
+   ! 1.b Sensible Temperature (T, T2)
+   ! 1.c Potential Temperature (Theta, TH2)
+   ! 1.d Density (Rho)
+   ! 1.e Vertical Wind (W)
+   ! 1.f Specific Humidity (SH, SH2)
+   ! 1.g Vapor Mixing Ratio (QV, Q2)
+   ! 1.h Rainwater Mixing Ratio (QR)
+   ! 1.i Graupel Mixing Ratio (QG)
+   ! 1.j Snow Mixing Ratio (QS)
+   ! 1.k Ice Mixing Ratio (QI)
+   ! 1.l Cloud Mixing Ratio (QC)
+   ! 1.m Droplet Number Concentration (QNDRP)
+   ! 1.n Ice Number Concentration (QNICE)
+   ! 1.o Snow Number Concentration (QNSNOW)
+   ! 1.p Rain Number Concentration (QNRAIN)
+   ! 1.q Graupel Number Concentration (QNGRAUPEL)
+   ! 1.r Previous time step condensational heating (H_DIABATIC)
+   ! 1.s Reflectivity weighted precip fall speed (FALL_SPD_Z_WEIGHTED)
+   ! 1.t Pressure (P)
+   ! 1.u Vortex Center Stuff from Yongsheng
+   ! 1.v Radar Reflectivity (REFL_10CM)
+   ! 1.w Geopotential Height (GZ)
+   ! 1.x Surface Elevation (HGT)
+   ! 1.y Surface Skin Temperature (TSK)
+   ! 1.z Land Mask (XLAND)
+
+   ! NEWVAR:  Currently you have to add a new case here to tell the code what
+   !   field inside the state vector you will be interpolating in.  the eventual
+   !   plan is for there to be a default case which all simple interps fall into,
+   !   but for now we still have to add code.
 
    ! NOTE: the previous version of this code checked for surface observations with the syntax:
    !          "if(.not. vert_is_surface(location) .or. .not. surf_var) then"
@@ -1495,7 +1526,6 @@ else
       if(.not. surf_var) then
 
          ! First confirm that vapor mixing ratio is in the DART state vector
-         !if ( wrf%dom(id)%n_moist >= 1 ) then
          if ( wrf%dom(id)%type_qv >= 0 ) then
 
             ! Check to make sure retrieved integer gridpoints are in valid range
@@ -1565,7 +1595,6 @@ else
       if(.not. surf_var) then
 
          ! First confirm that vapor mixing ratio is in the DART state vector
-         !if ( wrf%dom(id)%n_moist >= 1 ) then
          if ( wrf%dom(id)%type_qv >= 0 ) then
       
             ! Check to make sure retrieved integer gridpoints are in valid range
@@ -1629,7 +1658,6 @@ else
    else if( obs_kind == KIND_RAINWATER_MIXING_RATIO ) then
 
       ! Confirm that QR is in the DART state vector
-      !if ( wrf%dom(id)%n_moist >= 3 ) then
       if ( wrf%dom(id)%type_qr >= 0 ) then
 
          ! Check to make sure retrieved integer gridpoints are in valid range
@@ -1669,7 +1697,6 @@ else
    else if( obs_kind == KIND_GRAUPEL_MIXING_RATIO ) then
 
       ! Confirm that QG is in the DART state vector
-!      if ( wrf%dom(id)%n_moist >= 6 ) then
       if ( wrf%dom(id)%type_qg >= 0 ) then
 
          ! Check to make sure retrieved integer gridpoints are in valid range
@@ -1704,12 +1731,11 @@ else
       end if
    
 
-  !-----------------------------------------------------
-  ! 1.j Snow Mixing Ratio (QS)
+   !-----------------------------------------------------
+   ! 1.j Snow Mixing Ratio (QS)
    else if( obs_kind == KIND_SNOW_MIXING_RATIO ) then
 
       ! Confirm that QS is in the DART state vector
-!      if ( wrf%dom(id)%n_moist >= 5 ) then
       if ( wrf%dom(id)%type_qs >= 0 ) then
 
          ! Check to make sure retrieved integer gridpoints are in valid range
@@ -1745,7 +1771,353 @@ else
    
 
    !-----------------------------------------------------
-   ! 1.k Pressure (P)
+   ! 1.k Ice Mixing Ratio (QI)
+   else if( obs_kind == KIND_CLOUD_ICE) then  ! really KIND_ICE_MIXING_RATIO
+
+      ! Confirm that QI is in the DART state vector
+      if ( wrf%dom(id)%type_qi >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+         
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners QI rc = ', rc
+               
+            ! Interpolation for QI field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_qi)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_qi)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_qi)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_qi)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+            ! Interpolation for QI field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_qi)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_qi)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_qi)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_qi)
+               
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Don't accept negative ice amounts (?)
+            fld = max(0.0_r8, fld)
+            
+         end if
+      end if
+   
+   !-----------------------------------------------------
+   ! 1.l Cloud Mixing Ratio (QC)
+
+   ! Cloud water mixing ratio added for forward radiative transfer model calculations.
+  
+   else if( obs_kind == KIND_CLOUD_LIQUID_WATER ) then ! really KIND_CLOUDWATER_MIXING_RATIO
+
+      ! make sure vector includes the needed field
+      if ( wrf%dom(id)%type_qc >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+         
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners QC rc = ', rc
+               
+            ! Interpolation for QC field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_qc)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_qc)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_qc)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_qc)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+            ! Interpolation for QC field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_qc)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_qc)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_qc)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_qc)
+               
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Don't accept negative cloud amounts (?)
+            fld = max(0.0_r8, fld)
+            
+         end if
+      end if
+   
+
+   !-----------------------------------------------------
+   ! 1.m Droplet Number Concentration (QNDRP)
+   else if( obs_kind == KIND_DROPLET_NUMBER_CONCENTR ) then
+
+      ! Confirm that QNDRP is in the DART state vector
+      if ( wrf%dom(id)%type_qndrp >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+         
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners QNDRP rc = ', rc
+               
+            ! Interpolation for QNDRP field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_qndrp)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_qndrp)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_qndrp)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_qndrp)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+            ! Interpolation for QNDRP field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_qndrp)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_qndrp)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_qndrp)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_qndrp)
+               
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Don't accept negative droplet concentrations (?)
+            fld = max(0.0_r8, fld)
+            
+         end if
+      end if
+   
+
+   !-----------------------------------------------------
+   ! 1.n Ice Number Concentration (QNICE)
+   else if( obs_kind == KIND_ICE_NUMBER_CONCENTRATION ) then
+
+      ! Confirm that QNICE is in the DART state vector
+      if ( wrf%dom(id)%type_qnice >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+         
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners QNICE rc = ', rc
+               
+            ! Interpolation for QNICE field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_qnice)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_qnice)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_qnice)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_qnice)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+            ! Interpolation for QNICE field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_qnice)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_qnice)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_qnice)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_qnice)
+               
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Don't accept negative ice concentrations (?)
+            fld = max(0.0_r8, fld)
+            
+         end if
+      end if
+   
+
+   !-----------------------------------------------------
+   ! 1.o Snow Number Concentration (QNSNOW)
+   else if( obs_kind == KIND_SNOW_NUMBER_CONCENTR ) then
+
+      ! Confirm that QNSNOW is in the DART state vector
+      if ( wrf%dom(id)%type_qnsnow >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+         
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners QNSNOW rc = ', rc
+               
+            ! Interpolation for QNSNOW field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_qnsnow)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_qnsnow)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_qnsnow)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_qnsnow)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+            ! Interpolation for QNSNOW field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_qnsnow)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_qnsnow)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_qnsnow)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_qnsnow)
+               
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Don't accept negative snow concentrations (?)
+            fld = max(0.0_r8, fld)
+            
+         end if
+      end if
+   
+
+   !----------------------------------------------------
+   ! 1.p Rain Number Concentration (QNRAIN)
+   else if( obs_kind == KIND_RAIN_NUMBER_CONCENTR ) then
+
+      ! Confirm that QNRAIN is in the DART state vector
+      if ( wrf%dom(id)%type_qnrain >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+         
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners QNRAIN rc = ', rc
+               
+            ! Interpolation for QNRAIN field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_qnrain)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_qnrain)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_qnrain)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_qnrain)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+            ! Interpolation for QNRAIN field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_qnrain)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_qnrain)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_qnrain)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_qnrain)
+               
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Don't accept negative rain concentrations (?)
+            fld = max(0.0_r8, fld)
+            
+         end if
+      end if
+   
+
+   !-----------------------------------------------------
+   ! 1.q Graupel Number Concentration (QNGRAUPEL)
+   else if( obs_kind == KIND_GRAUPEL_NUMBER_CONCENTR ) then
+
+      ! Confirm that QNGRAUPEL is in the DART state vector
+      if ( wrf%dom(id)%type_qngraupel >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+         
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners QNGRAUPEL rc = ', rc
+               
+            ! Interpolation for QNGRAUPEL field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_qngraupel)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_qngraupel)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_qngraupel)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_qngraupel)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+            ! Interpolation for QNGRAUPEL field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_qngraupel)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_qngraupel)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_qngraupel)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_qngraupel)
+               
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Don't accept negative graupel concentrations (?)
+            fld = max(0.0_r8, fld)
+            
+         end if
+      end if
+   
+
+   !-----------------------------------------------------
+   ! 1.r Previous time step condensational heating (H_DIABATIC)
+   else if( obs_kind == KIND_CONDENSATIONAL_HEATING ) then
+
+      ! Confirm that H_DIABATIC is in the DART state vector
+      if ( wrf%dom(id)%type_hdiab >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+         
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners H_DIABATIC rc = ', rc
+               
+            ! Interpolation for H_DIABATIC field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_hdiab)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_hdiab)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_hdiab)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_hdiab)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+            ! Interpolation for H_DIABATIC field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_hdiab)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_hdiab)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_hdiab)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_hdiab)
+               
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+         end if
+      end if
+   
+
+   !-----------------------------------------------------
+   ! 1.s Reflectivity weighted precip fall speed (FALL_SPD_Z_WEIGHTED)
+   else if( obs_kind == KIND_POWER_WEIGHTED_FALL_SPEED ) then
+
+      ! Confirm that FALL_SPD_Z_WEIGHTED is in the DART state vector
+      if ( wrf%dom(id)%type_fall_spd >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+         
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners FALL_SPD_Z_WEIGHTED rc = ', rc
+               
+            ! Interpolation for FALL_SPD_Z_WEIGHTED field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_fall_spd)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_fall_spd)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_fall_spd)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_fall_spd)
+            
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+               
+            ! Interpolation for FALL_SPD_Z_WEIGHTED field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_fall_spd)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_fall_spd)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_fall_spd)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_fall_spd)
+               
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+         end if
+      end if
+
+   !-----------------------------------------------------
+   ! 1.t Pressure (P)
    else if( obs_kind == KIND_PRESSURE .or. obs_kind == KIND_SURFACE_PRESSURE ) then
 
       ! This is for the 3D pressure field -- surface pressure later
@@ -1821,7 +2193,7 @@ else
       end if
 
    !-----------------------------------------------------
-   ! 1.m Vortex Center Stuff from Yongsheng
+   ! 1.u Vortex Center Stuff from Yongsheng
 
    ! This computation eventually belongs in an obs_def forward operator,
    ! but it also requires searching parts of the computational grid and
@@ -1975,8 +2347,8 @@ else
 !*****************************************************************************
 
 
-  !-----------------------------------------------------
-  ! 1.n Radar Reflectivity (REFL_10CM)
+   !-----------------------------------------------------
+   ! 1.v Radar Reflectivity (REFL_10CM)
    else if( obs_kind == KIND_RADAR_REFLECTIVITY ) then
 
       ! Confirm that REFL is in the DART state vector
@@ -2011,7 +2383,7 @@ else
       end if
    
    !-----------------------------------------------------
-   ! 1.o Geopotential Height (GZ)
+   ! 1.w Geopotential Height (GZ)
 
    ! Geopotential Height has been added by Ryan Torn to accommodate altimeter observations.
    !   GZ is on the ZNW grid (bottom_top_stagger), so its bottom-most level is defined to
@@ -2066,7 +2438,7 @@ else
 
 
    !-----------------------------------------------------
-   ! 1.p Surface Elevation (HGT)
+   ! 1.x Surface Elevation (HGT)
 
    ! Surface Elevation has been added by Ryan Torn to accommodate altimeter observations.
    !   HGT is not in the dart_ind vector, so get it from wrf%dom(id)%hgt.
@@ -2088,6 +2460,62 @@ else
                          dx*wrf%dom(id)%hgt(lr(1), lr(2)) ) + &
                    dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
                          dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
+
+      end if
+
+
+   !-----------------------------------------------------
+   ! 1.y Surface Skin Temperature (TSK)
+   
+   else if( obs_kind == KIND_SKIN_TEMPERATURE ) then
+
+      ! make sure vector includes the needed field
+      if ( wrf%dom(id)%type_tsk >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+                boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) &
+                .or. wrf%dom(id)%scm ) then
+   
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners TSK rc = ', rc
+
+            ! Interpolation for the TSK field
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_tsk)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_tsk)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_tsk)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_tsk)
+
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+         end if
+      end if
+
+
+   !-----------------------------------------------------
+   ! 1.z Land Mask (XLAND)
+
+   ! Land Mask has been added to accommodate satellite observations.
+   !   XLAND is not in the dart_ind vector, so get it from wrf%dom(id)%land
+   else if( obs_kind == KIND_LANDMASK ) then
+
+      if ( debug ) print*,'Getting land mask'
+
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
+      
+         call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+         if ( rc .ne. 0 ) &
+              print*, 'model_mod.f90 :: model_interpolate :: getCorners XLAND rc = ', rc
+         
+         ! Interpolation for the XLAND field -- XLAND is NOT part of state vector x, but rather
+         !   in the associated domain meta data
+         fld(1) = dym*( dxm*real(wrf%dom(id)%land(ll(1), ll(2))) + &
+                         dx*real(wrf%dom(id)%land(lr(1), lr(2))) ) + &
+                   dy*( dxm*real(wrf%dom(id)%land(ul(1), ul(2))) + &
+                         dx*real(wrf%dom(id)%land(ur(1), ur(2))) )
 
       end if
 
@@ -2253,8 +2681,8 @@ if ( .not. scm ) then
    call get_domain_info(xyz_loc(1),xyz_loc(2),id,xloc,yloc)
 else
    id = 1
-   xloc = 2.0_r8
-   yloc = 2.0_r8
+   xloc = 1.0_r8
+   yloc = 1.0_r8
 endif
  
 if (id==0) then
@@ -3061,51 +3489,6 @@ do id=1,num_domains
                  "1 = LAND, 2 = WATER"), &
                  'nc_write_model_atts','put_att XLAND_d0'//idom//' description')
 
-!nc -- eliminated the reading in of MAPFACs since global WRF will have different 
-!nc --   MAPFACs in the x and y directions
-
-! Map Scale Factor on m-grid
-!    float MAPFAC_M(Time, south_north, west_east) ;
-!            MAPFAC_M:FieldType = 104 ;
-!            MAPFAC_M:MemoryOrder = "XY " ;
-!            MAPFAC_M:stagger = "" ;
-!   call nc_check(nf90_def_var(ncFileID, name="MAPFAC_M_d0"//idom, xtype=nf90_real, &
-!                 dimids= (/ weDimID(id), snDimID(id) /), varid=MapFacMVarID(id)),  &
-!                 'nc_write_model_atts','def_var MAPFAC_M_d0'//idom)
-!   call nc_check(nf90_put_att(ncFileID, MapFacMVarID(id), "long_name", &
-!                 "Map scale factor on mass grid"), &
-!                 'nc_write_model_atts','put_att MAPFAC_M_d0'//idom//' long_name')
-!   call nc_check(nf90_put_att(ncFileID, MapFacMVarID(id), "units", "dimensionless"), &
-!                 'nc_write_model_atts','put_att MAPFAC_M_d0'//idom//' units')
-
-! Map Scale Factor on u-grid
-!    float MAPFAC_U(Time, south_north, west_east_stag) ;
-!            MAPFAC_U:FieldType = 104 ;
-!            MAPFAC_U:MemoryOrder = "XY " ;
-!            MAPFAC_U:stagger = "X" ;
-!   call nc_check(nf90_def_var(ncFileID, name="MAPFAC_U_d0"//idom, xtype=nf90_real, &
-!                 dimids= (/ weStagDimID(id), snDimID(id) /), varid=MapFacUVarID(id)), &
-!                 'nc_write_model_atts','def_var MAPFAC_U_d0'//idom)
-!   call nc_check(nf90_put_att(ncFileID, MapFacUVarID(id), "long_name", &
-!                 "Map scale factor on u-grid"), &
-!                 'nc_write_model_atts','put_att MAPFAC_U_d0'//idom//' long_name')
-!   call nc_check(nf90_put_att(ncFileID, MapFacUVarID(id), "units", "dimensionless"), &
-!                 'nc_write_model_atts','put_att MAPFAC_U_d0'//idom//' units')
-
-! Map Scale Factor on v-grid
-!    float MAPFAC_V(Time, south_north_stag, west_east) ;
-!            MAPFAC_V:FieldType = 104 ;
-!            MAPFAC_V:MemoryOrder = "XY " ;
-!            MAPFAC_V:stagger = "Y" ;
-!   call nc_check(nf90_def_var(ncFileID, name="MAPFAC_V_d0"//idom, xtype=nf90_real, &
-!                 dimids= (/ weDimID(id), snStagDimID(id) /), varid=MapFacVVarID(id)), &
-!                 'nc_write_model_atts','def_var MAPFAC_V_d0'//idom)
-!   call nc_check(nf90_put_att(ncFileID, MapFacVVarID(id), "long_name", &
-!                 "Map scale factor on v-grid"), &
-!                 'nc_write_model_atts','put_att MAPFAC_V_d0'//idom//' long_name')
-!   call nc_check(nf90_put_att(ncFileID, MapFacVVarID(id), "units", "dimensionless"), &
-!                 'nc_write_model_atts','put_att MAPFAC_V_d0'//idom//' units')
-
 ! PHB
 !    float PHB(Time, bottom_top_stag, south_north, west_east) ;
 !            PHB:FieldType = 104 ;
@@ -3131,6 +3514,31 @@ do id=1,num_domains
                  'nc_write_model_atts','put_att HGT_d0'//idom//' units')
    call nc_check(nf90_put_att(ncFileID, hgtVarId(id), "units_long_name", "meters"), &
                  'nc_write_model_atts','put_att HGT_d0'//idom//' units_long_name')
+
+
+   ! can't deal with precip yet - need to leave hard coded 
+
+   if ( trim(adjustl(title(1:2))) == 'pr' .and. write_precip ) then
+
+     call nc_check(nf90_def_var(ncid=ncFileID, name="RAINC_d0"//idom, xtype=nf90_real, &
+          dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
+          varid  = var_id),'nc_write_model_atts','def_var RAINC_d0'//idom)
+     call nc_check(nf90_put_att(ncFileID, var_id, "units", "mm"), &
+                   'nc_write_model_atts','put_att RAINC_d0'//idom//' units')
+     call nc_check(nf90_put_att(ncFileID, var_id, "description", & 
+                   "ACCUMULATED TOTAL CUMULUS PRECIPITATION"), &
+                   'nc_write_model_atts','put_att RAINC_d0'//idom//' description')
+
+     call nc_check(nf90_def_var(ncid=ncFileID, name="RAINNC_d0"//idom, xtype=nf90_real, &
+          dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
+          varid  = var_id),'nc_write_model_atts','def_var RAINNC_d0'//idom)
+     call nc_check(nf90_put_att(ncFileID, var_id, "units", "mm"), &
+                   'nc_write_model_atts','put_att RAINNC_d0'//idom//' units')
+     call nc_check(nf90_put_att(ncFileID, var_id, "description", & 
+                   "ACCUMULATED TOTAL GRID POINT PRECIPITATION"), &
+                   'nc_write_model_atts','put_att RAINNC_d0'//idom//' description')
+
+   endif
 
 enddo
 
@@ -3286,29 +3694,6 @@ do id=1,num_domains
 
    enddo ! variables
  
-   ! can't deal with precip yet - need to leave hard coded 
-
-   if ( trim(adjustl(title(1:2))) == 'pr' .and. write_precip ) then
-
-     call nc_check(nf90_def_var(ncid=ncFileID, name="RAINC_d0"//idom, xtype=nf90_real, &
-          dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
-          varid  = var_id),'nc_write_model_atts','def_var RAINC_d0'//idom)
-     call nc_check(nf90_put_att(ncFileID, var_id, "units", "mm"), &
-                   'nc_write_model_atts','put_att RAINC_d0'//idom//' units')
-     call nc_check(nf90_put_att(ncFileID, var_id, "description", & 
-                   "ACCUMULATED TOTAL CUMULUS PRECIPITATION"), &
-                   'nc_write_model_atts','put_att RAINC_d0'//idom//' description')
-
-     call nc_check(nf90_def_var(ncid=ncFileID, name="RAINNC_d0"//idom, xtype=nf90_real, &
-          dimids = (/ weDimID(id), snDimID(id), MemberDimID, unlimitedDimID /), &
-          varid  = var_id),'nc_write_model_atts','def_var RAINNC_d0'//idom)
-     call nc_check(nf90_put_att(ncFileID, var_id, "units", "mm"), &
-                   'nc_write_model_atts','put_att RAINNC_d0'//idom//' units')
-     call nc_check(nf90_put_att(ncFileID, var_id, "description", & 
-                   "ACCUMULATED TOTAL GRID POINT PRECIPITATION"), &
-                   'nc_write_model_atts','put_att RAINNC_d0'//idom//' description')
-
-   endif
 
 enddo ! domains
 
@@ -4001,7 +4386,7 @@ integer  :: ips, imu
 ! make sure one of these is good.
 if ( wrf%dom(id)%type_mu < 0 .or. wrf%dom(id)%type_ps < 0 ) then
   call error_handler(E_ERR, 'model_pressure_s:', &
-      'One of MU or PS must be in state vector to compute surface pressure', &
+      'One of MU or PSFC must be in state vector to compute surface pressure', &
        source, revision, revdate)
 endif
 
@@ -5889,9 +6274,12 @@ in_state_vector = .false.
 
 row = size(wrf_state_variables, 2)
 
+! NEWVAR: for a simple new variable you do not need to do anything here.
+! NEWVAR: but if a new kind has interactions - like if you have an obs
+! NEWVAR: of this kind, you actually interpolate in multiple fields in
+! NEWVAR: the state vector (e.g. wind needs both U and V), then you
+! NEWVAR: might need to add some code here.  
 ! NEWVAR: see each of part1, part 2, and part 3 below.
-! NEWVAR: if you are adding support for a new kind, see if there are
-! NEWVAR: any interactions that need special case code added.
 
 ! part 1: mark off all the kinds that the user specifies, plus the
 ! kinds that are related and can be interpolated from the given kind.
@@ -6107,8 +6495,8 @@ subroutine get_variable_bounds(bounds_table,wrf_var_name,lb,ub,instructions)
    real(r8),         intent(out)   :: lb,ub
    character(len=10),intent(out)   :: instructions
 
-   character(len=30)               :: wrf_varname_trim, bounds_varname_trim
-   character(len=30)               :: bound_trim
+   character(len=50)               :: wrf_varname_trim, bounds_varname_trim
+   character(len=50)               :: bound_trim
    integer :: ivar
    logical :: debug = .false.
 
@@ -6297,7 +6685,7 @@ integer function get_type_ind_from_type_string(id, wrf_varname)
 
    integer                      :: ivar, my_index
    logical                      :: debug = .false.
-   character(len=30)            :: wrf_varname_trim, wrf_state_var_trim
+   character(len=50)            :: wrf_varname_trim, wrf_state_var_trim
 
    get_type_ind_from_type_string = -1
 
