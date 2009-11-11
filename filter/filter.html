@@ -187,6 +187,7 @@ smoother_mod
    output_timestamps,
    output_inflation,
    trace_execution,
+   silence,
      
    inf_flavor,
    inf_initial_from_restart,
@@ -345,13 +346,18 @@ being for the posterior inflation.
  <TR><!--contents--><TD valign=top>input_qc_threshold</TD>
      <!--  type  --><TD valign=top>real(r8)</TD>
      <!--descript--><TD>Reject observation if incoming QC value exceeds
-                        'input_qc_threshold' value. Incoming observations have a
-                        QC value (usually set by NCEP). 
-                        Default: 4.0_r8</TD></TR>
+                        'input_qc_threshold' value. Incoming observations usually have a
+                        QC value set by the data provider, e.g. NCEP. 
+                        Default: 3.0_r8</TD></TR>
 
  <TR><!--contents--><TD valign=top>output_forward_op_errors</TD>
      <!--  type  --><TD valign=top>logical</TD>
      <!--descript--><TD>True means output errors from forward observation operators.
+                        This is the 'istatus' error return code from the model
+                        interpolate routine.  An ascii text file 'prior_forward_op_errors'
+                        and/or 'post_forward_op_errors' will be created in the
+                        current directory.  Each line will contain an observation key
+                        number, the ensemble member number, and the istatus return code.
                         Default: .false.</TD></TR>
 
  <TR><!--contents--><TD valign=top>output_timestamps</TD>
@@ -371,6 +377,13 @@ being for the posterior inflation.
      <!--descript--><TD>True means output very detailed messages about what routines
                         are being called in the main filter loop.  Useful if a job
                         hangs or otherwise doesn't execute as expected.
+                        Default: .false.</TD></TR>
+
+ <TR><!--contents--><TD valign=top>silence</TD>
+     <!--  type  --><TD valign=top>logical</TD>
+     <!--descript--><TD>True means output almost no runtime messages.  Not recommended
+                        for general use, but can speed test programs if the execution
+                        time becomes dominated by the volume of output. 
                         Default: .false.</TD></TR>
 
  <TR><TD colspan=3>All subsequent variables are arrays of length 2.<br>
