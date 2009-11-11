@@ -147,6 +147,7 @@ if (obs_window <= 0.0_r8 .or. obs_window > 24.0_r8) then
                        'Bad value for obs_window (hours)',    &
                        source, revision, revdate)
 else
+   ! convert to seconds
    obs_window = obs_window * 3600.0_r8
 endif
 
@@ -226,14 +227,18 @@ fileloop: do      ! until out of files
    ! time1-time2 is always positive no matter the relative magnitudes
    call get_time(time_anal-time_obs,dsec,dday)
    if ( real(dsec+dday*86400) > obs_window ) then
-     call print_date(time_obs, 'observation: ')
-     call print_date(time_anal, 'window center: ')
-     write(msgstring, *) 'Window width (hours): ', obs_window / 3600.0_r8
-     call error_handler(E_MSG, 'convert_cosmic_gps_cdf',       &
-                        msgstring, source, revision, revdate)
-     call error_handler(E_ERR, 'convert_cosmic_gps_cdf',       &
-                        'Observation is outside window',       &
+     call error_handler(E_MSG, 'convert_cosmic_gps_cdf: ',         &
+                        'Input file '//trim(next_infile), &
+                         source, revision, revdate)
+     write(msgstring, '(A,F8.4,A)') 'Ignored because obs time > ', &
+                       obs_window / 3600.0, ' hours from analysis time'
+     call error_handler(E_MSG, '', msgstring,        &
                         source, revision, revdate)
+     call print_date(time_obs,  '    observation time: ')
+     call print_date(time_anal, '  window center time: ')
+
+     filenum = filenum + 1
+     cycle fileloop
    end if
    
    call nc_check( nf90_inq_dimid(ncid, "MSL_alt", varid), 'inq dimid MSL_alt')
