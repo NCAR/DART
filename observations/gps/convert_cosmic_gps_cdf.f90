@@ -78,8 +78,8 @@ type(time_type)         :: time_obs, time_anal
 
 integer, parameter :: nmaxlevels = 200   !  max number of observation levels
 
-logical  :: local_operator = .true.
-logical  :: overwrite_time = .false.
+logical  :: local_operator = .true.   ! see html file for more on non/local
+logical  :: overwrite_time = .false.  ! careful - see note below
 real(r8) :: obs_levels(nmaxlevels) = -1.0_r8
 real(r8) :: obs_window = 12.0     ! accept obs within +/- hours from anal time
 real(r8) :: ray_ds = 5000.0_r8    ! delta stepsize (m) along ray, nonlocal op
@@ -92,7 +92,13 @@ namelist /convert_cosmic_gps_nml/ obs_levels, local_operator, obs_window, &
                                   ray_ds, ray_htop, gpsro_netcdf_file,    &
                                   gpsro_netcdf_filelist, gpsro_out_file 
 
-! could add overwrite_time to namelist
+
+! 'overwrite_time' replaces the actual observation times with the
+! analysis time for all obs.  this is intentionally not in the namelist
+! because we think observations should preserve the original times in all
+! cases.  but one of our users had a special request to overwrite the time
+! with the synoptic time, so there is code in this converter to do that
+! if this option is set to .true.  but we still don't encourage its use.
 
 ! initialize some values
 obs_num = 1

@@ -118,8 +118,7 @@ do this data conversion.
 Optional namelist interface
 <A HREF="#Namelist"> <em class=code>&amp;convert_cosmic_gps_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
-</P> 
-<P>
+</P> <P>
 The work directory contains several scripts, including one which downloads
 the raw data files a day at a time (cosmic_download.csh), and one 
 which executes the conversion program (convert_script.csh).  These
@@ -131,14 +130,26 @@ lengthy.  You probably want to download as a separate preprocess step
 and do not use the options to automatically delete the input files.
 Keep the files around until you are sure you are satisified with the
 output files and then delete them by hand.
-</P> 
-<P>
+</P> <P>
 The conversion executable, convert_cosmic_gps_cdf, reads the namelist
 from the file 'input.nml', but also reads an analysis time from the
 terminal or the standard input unit.  This makes it simpler to convert
 multiple files without editing the namelist.  The program prompts for
 the time string with the required time format, 
 <em class=code>yyyy-mm-dd_hh:mm:ss</em> .
+</P> <P>
+The namelist lets you select from one of two different forward
+operators.  The 'local' forward operator computes the expected
+observation value at a single point: the requested height at the
+tangent point of the ray between satellites.  The 'non-local' operator
+computes values along the ray-path and does an integration to get
+the expected value.  The length of the integration segments and
+height at which to end the integration are given in the namelist.
+In some experiments the difference between the two types of
+operators was negligible.  This choice is made at the time of
+the conversion, and the type of operator is stored in the observation,
+so at runtime the corresponding forward operator will be used to
+compute the expected observation value.
 </P>
 
 <!--==================================================================-->
