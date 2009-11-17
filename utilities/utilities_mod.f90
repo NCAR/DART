@@ -382,7 +382,9 @@ contains
       endif
 
       close(logfileunit)
-      if (nmlfileunit /= logfileunit) close(nmlfileunit)
+      if ((nmlfileunit /= logfileunit) .and. (nmlfileunit /= -1)) then
+         close(nmlfileunit)
+      endif
 
    end subroutine finalize_utilities
 
