@@ -11,7 +11,7 @@ program full_error
 ! $Revision$
 ! $Date$
 
-use types_mod
+use types_mod, only : r8
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &          
    twod_gaussians, random_uniform
 
@@ -19,21 +19,19 @@ implicit none
 
 integer, parameter :: num_times = 1, num_points =  100000000
 !!!integer, parameter :: num_times = 1, num_points =  10000000
+integer, parameter :: ens_size = 80
+
 type (random_seq_type) :: ran_id
-real(r8), allocatable :: pairs(:, :)
+real(r8) :: pairs(2, ens_size), temp(ens_size)
 real(r8) :: zero_2(2) = 0.0, cov(2, 2)
 real(r8) :: t_correl, correl_mean, sample_correl, alpha, beta
 real(r8) :: s_mean(2), s_var(2), reg_mean, reg_sd, t_sd1, t_sd2, true_correl_mean
 real(r8) :: tcorrel_sum(201), reg_sum(201), reg_2_sum(201)
-integer i, j, k, ens_size, bin_num, bin_count(201)
+integer i, j, k, bin_num, bin_count(201)
 
 call init_random_seq(ran_id)
 
 
-! Set the ensemble size
-ens_size = 40
-
-allocate(pairs(2, ens_size))
 write(*, *) 'stats for ensemble size ', ens_size
 
 bin_count = 0
@@ -73,19 +71,18 @@ do j = 1, num_points
       ! Also interested in finding out what the spurious variance reduction factor is
       ! First need to compute sample s.d. for the obs and unobs variable
       do i = 1, 2
-         call sample_mean_var(pairs(i, :), ens_size, s_mean(i), s_var(i))
+         temp = pairs(i, :)
+         call sample_mean_var(temp, ens_size, s_mean(i), s_var(i))
       end do
 
       !-----------------
-      reg_sum(bin_num) = reg_sum(bin_num) +t _correl * sqrt(s_var(2) / s_var(1))
+      reg_sum(bin_num) = reg_sum(bin_num) + t_correl * sqrt(s_var(2) / s_var(1))
       reg_2_sum(bin_num) = reg_2_sum(bin_num) + (t_correl * sqrt(s_var(2) / s_var(1)))**2
 
       bin_count(bin_num) = bin_count(bin_num) + 1
 
    end do
 end do
-
-deallocate(pairs)
 
 
 do i = 1, 201
@@ -115,12 +112,14 @@ end program full_error
 
 subroutine comp_correl(ens, n, correl)
 
+use types_mod, only : r8
+
 implicit none
 
 integer, intent(in) :: n
-double precision, intent(in) :: ens(2, n)
-double precision, intent(out) :: correl
-double precision :: sum_x, sum_y, sum_xy, sum_x2, sum_y2
+real(r8), intent(in) :: ens(2, n)
+real(r8), intent(out) :: correl
+real(r8) :: sum_x, sum_y, sum_xy, sum_x2, sum_y2
 
 
 sum_x = sum(ens(2, :))
@@ -140,13 +139,15 @@ end subroutine comp_correl
 
 subroutine sample_mean_var(x, n, mean, var)
 
+use types_mod, only : r8
+
 implicit none
 
 integer, intent(in) :: n
-double precision, intent(in) :: x(n)
-double precision, intent(out) :: mean, var
+real(r8), intent(in) :: x(n)
+real(r8), intent(out) :: mean, var
 
-double precision :: sx, s_x2
+real(r8) :: sx, s_x2
 
 sx = sum(x)
 s_x2 = sum(x * x)
