@@ -1,15 +1,15 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   convert_ssec_satwnd - program that reads ASCII satellite wind data from 
-!                        CIMSS/SSEC and writes a genertic text file 
-!                        for use in creating obs_seq files.
+!   convert_ssec_satwnd - program that reads ASCII satellite wind data 
+!                         from CIMSS/SSEC and writes an observation
+!                         sequence file
 !
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 program convert_ssec_satwnd
 
-use        types_mod, only : r8
+use        types_mod, only : r8, missing_r8
 use    utilities_mod, only : get_unit
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
                              increment_time, get_time, set_date, operator(-)
@@ -32,26 +32,25 @@ integer, parameter :: nmaxwnd = 50000,  &  ! maximum number of vectors
                       num_copies = 1,   &  ! number of copies in sequence
                       num_qc     = 1       ! number of QC entries
 
-character (len=129) :: meta_data
-character (len=80)  :: junk
+character (len=129) :: meta_data, header
 character (len=19)  :: datestr
 character (len=8)   :: datein
 character (len=6)   :: sat
 character (len=4)   :: band, hourin
 
-logical :: iruse, visuse, wvuse, swiruse, file_exist
+logical :: iruse, visuse, wvuse, swiruse, file_exist, qcinfile
 
 integer :: in_unit, i, days, secs, nused, iyear, imonth, iday, ihour, & 
            imin, isec, dsec, dday, dsecobs
-real(r8) :: obs_window, lat, lon, pres, wdir, wspd, uwnd, vwnd, oerr, &
-            latu(nmaxwnd), lonu(nmaxwnd), prsu(nmaxwnd), qc
+real(r8) :: obs_window, minqc, lat, lon, pres, wdir, wspd, uwnd, vwnd, oerr, &
+            latu(nmaxwnd), lonu(nmaxwnd), prsu(nmaxwnd), qc, qcin1, qcin2
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs
 type(time_type)         :: time_anal
 
-print*,'Enter the analysis time (yyyy-mm-dd_hh:mm:ss) and window (hours)'
-read*, datestr, obs_window
+print*,'Enter the analysis time (yyyy-mm-dd_hh:mm:ss), window (hours), and min. qc'
+read*, datestr, obs_window, minqc
 print*,'Do you want to include IR, VISIBLE, WV data, and SW IR? (T/F, 4 times)'
 read*, iruse, visuse, wvuse, swiruse 
 dsecobs = nint(obs_window * 3600.0_r8)
@@ -66,9 +65,10 @@ read(datestr(18:19), fmt='(i2)') isec
 time_anal = set_date(iyear, imonth, iday, ihour, imin, isec)
 call get_time(time_anal, secs, days)
 
-in_unit  = get_unit()
+in_unit  = get_unit()  ;  qcinfile = .false.
 open(unit=in_unit,  file = ssec_sat_file,  status='old')
-read(in_unit,*) junk
+read(in_unit,'(a100)') header
+if ( header(75:76) == 'qi' ) qcinfile = .true.
 
 !  either read existing obs_seq or create a new one
 call static_init_obs_sequence()
@@ -95,7 +95,13 @@ end if
 nused = 0
 obsloop: do
 
-  read(in_unit,*,END=200) band, sat, datein, hourin, lat, lon, pres, wspd, wdir
+  if ( qcinfile ) then
+    read(in_unit,*,END=200) band, sat, datein, hourin, lat, lon, &
+                            pres, wspd, wdir, qcin1, qcin2
+    if ( qcin2 < minqc ) cycle obsloop
+  else
+    read(in_unit,*,END=200) band, sat, datein, hourin, lat, lon, pres, wspd, wdir
+  end if
 
   read(datein(1:4), fmt='(i4)') iyear
   read(datein(5:6), fmt='(i2)') imonth
@@ -116,13 +122,17 @@ obsloop: do
   do i = 1, nused
     if ( lon == lonu(i) .and. lat == latu(i) .and. pres == prsu(i) ) cycle obsloop
   end do
-  qc = 1
+  qc = 1.0_r8
 
   if ( trim(adjustl(band(1:2))) == 'WV' ) then
     oerr = sat_wv_wind_error(pres)
   else
     oerr = sat_wind_error(pres)
   end if
+
+  !  perform sanity checks on observation errors and values
+  if ( oerr == missing_r8 .or. wdir < 0.0_r8 .or. wdir > 360.0_r8 .or. &
+       wspd < 0.0_r8 .or. wspd > 120.0_r8 )  cycle obsloop
 
   call wind_dirspd_to_uv(wdir, wspd, uwnd, vwnd)
 
