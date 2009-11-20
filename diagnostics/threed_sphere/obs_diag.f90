@@ -149,7 +149,7 @@ logical :: out_of_range, is_there_one, keeper
 
 integer             :: qc_index, dart_qc_index
 integer             :: qc_integer, my_qc_integer
-integer, parameter  :: QC_MAX = 7
+integer, parameter  :: QC_MAX = 8
 integer, parameter  :: QC_MAX_PRIOR     = 3
 integer, parameter  :: QC_MAX_POSTERIOR = 1
 integer, dimension(0:QC_MAX) :: qc_counter = 0
@@ -254,6 +254,7 @@ real(r8) :: obslon, obslat, obslevel, obsloc3(3)
 
 real(r8), dimension(MaxLevels+1) :: plevel_edges = MISSING_R8 ! pressure level (hPa)
 real(r8), dimension(MaxLevels+1) :: hlevel_edges = MISSING_R8 ! height (meters)
+real(r8), dimension(MaxLevels+1) :: mlevel_edges = MISSING_R8 ! model levels (nondimensional)
 
 integer  :: obsindex, i, iunit, lunit, ierr, io
 
@@ -343,7 +344,7 @@ call ActOnNamelist( Nregions )
 
 Nplevels = Rmidpoints2edges(plevel, plevel_edges)
 Nhlevels = Rmidpoints2edges(hlevel, hlevel_edges)
-Nmlevels = Imidpoints2edges(mlevel)
+Nmlevels = Imidpoints2edges(mlevel, mlevel_edges)
 
 hlevel_edges(1:Nhlevels+1) = sort(hlevel_edges(1:Nhlevels+1))
 
@@ -357,11 +358,12 @@ call SetRegionLimits(Nregions, lonlim1, lonlim2, latlim1, latlim2, &
      min_loc, max_loc)
 
 if (verbose) then
-   write(*,*)'pressure levels     = ',plevel(    1:Nplevels)
+   write(*,*)'pressure levels     = ',plevel(      1:Nplevels)
    write(*,*)'pressure interfaces = ',plevel_edges(1:Nplevels+1)
-   write(*,*)'height   levels     = ',hlevel(    1:Nhlevels)
+   write(*,*)'height   levels     = ',hlevel(      1:Nhlevels)
    write(*,*)'height   interfaces = ',hlevel_edges(1:Nhlevels+1)
-   write(*,*)'model    levels     = ',mlevel(    1:Nmlevels)
+   write(*,*)'model    levels     = ',mlevel(      1:Nmlevels)
+   write(*,*)'model    interfaces = ',mlevel_edges(1:Nmlevels+1)
    do i = 1,Nregions
       write(*,'(''Region '',i02,1x,a32,'' (WESN): '',4(f10.4,1x))') i, &
              reg_names(i), lonlim1(i),lonlim2(i),latlim1(i),latlim2(i)
@@ -848,7 +850,6 @@ ObsFileLoop : do ifile=1, 1000
          ! so I erred on the conservative side. TJH 24 Aug 2007
          !--------------------------------------------------------------
 
-         ! integer, parameter  :: QC_MAX = 7
          ! integer, parameter  :: QC_MAX_PRIOR     = 3
          ! integer, parameter  :: QC_MAX_POSTERIOR = 1
 
@@ -970,7 +971,7 @@ ObsFileLoop : do ifile=1, 1000
             endif
 
             !-----------------------------------------------------------
-            ! Count original (bad) QC values
+            ! Count original QC values 'of interest' ...
             !-----------------------------------------------------------
 
             if( qc_index > 0 ) then
@@ -1296,7 +1297,7 @@ enddo
 
 write(*,*)
 write(*,*) '# observations used  : ',sum(obs_used_in_epoch)
-write(*,*) 'Observation summary:'
+write(*,*) 'Count summary over all regions - obs may count for multiple regions:'
 write(*,*) '# identity           : ',Nidentity
 write(*,*) '# bad Innov  (ratio) : ',sum(guess%NbadIZ)
 write(*,*) '# bad UV (wind pairs): ',sum(guess%NbadUV)
@@ -1306,7 +1307,7 @@ write(*,*)
 
 write(logfileunit,*)
 write(logfileunit,*) '# observations used  : ',sum(obs_used_in_epoch)
-write(logfileunit,*) 'Observation summary:'
+write(logfileunit,*) 'Count summary over all regions - obs may count for multiple regions:'
 write(logfileunit,*) '# identity           : ',Nidentity
 write(logfileunit,*) '# bad Innov  (ratio) : ',sum(guess%NbadIZ)
 write(logfileunit,*) '# bad UV (wind pairs): ',sum(guess%NbadUV)
@@ -1890,52 +1891,65 @@ CONTAINS
 
 
 
-
-   Function Imidpoints2edges(levels)
-   ! determine layer midpoints ... sorta.
-   ! Mostly for compatibility with FindRMidpoints.
+   Function Imidpoints2edges(levelmids, leveledges)
+   ! determine layer edges ... needed for plotting purposes
+   ! the midpoints are integers
 
    integer :: Imidpoints2edges
-   integer, dimension(:), intent(inout) :: levels
+   integer, dimension(:), intent(inout) :: levelmids
+   real(r8), dimension(:), intent( out) :: leveledges
 
    logical :: increasing
    integer :: n, i
    integer :: dummyindxs(1)
-   integer,  dimension(SIZE(levels)) :: indxs
-   logical,  dimension(SIZE(levels)) :: logicarray
-   real(r8), dimension(SIZE(levels)) :: midpoints ! used for the 'sort' routine
+   integer,  dimension(SIZE(levelmids)) :: indxs
+   logical,  dimension(SIZE(levelmids)) :: logicarray
+   real(r8), dimension(SIZE(levelmids)) :: rdummy ! needed by sort routine
 
-   Imidpoints2edges = SIZE(levels,1)
+   Imidpoints2edges = SIZE(levelmids,1)
    if (Imidpoints2edges > MaxLevels) then
       write(msgstring,*)Imidpoints2edges,' is too many levels - max is ',Maxlevels,' (Maxlevels)'
       call error_handler(E_ERR,'obs_diag:Imidpoints2edges', msgstring,source,revision,revdate)
    endif
 
-   midpoints = levels
-
-   ! find length of useful portion of levels array
-   indxs      = (/ (i,i=1,SIZE(levels)) /) 
-   logicarray = levels > nint(MISSING_R8)
+   ! find length of useful portion of levelmids array
+   indxs      = (/ (i,i=1,SIZE(levelmids)) /) 
+   logicarray = levelmids > nint(MISSING_R8)
    dummyindxs = maxloc(indxs, logicarray)
    n          = dummyindxs(1)
+
    Imidpoints2edges = n
 
    ! single-level case 
    if ( n == 1 ) then
-      midpoints(1) = levels(1)
-      midpoints(2) = levels(1)
+      leveledges(1) = levelmids(1) - 0.5_r8
+      leveledges(2) = levelmids(1) + 0.5_r8
       return
    endif
 
    ! ensure monotonicity - up or down - 
-   if (levels(1) < levels(n) ) then 
-      increasing  = .true.
-      levels(1:n) = nint(sort(midpoints(1:n)))
+   rdummy = levelmids
+   if (levelmids(1) < levelmids(n) ) then 
+      increasing     = .true.
+      levelmids(1:n) = nint(sort(rdummy(1:n)))
    else
-      increasing     = .false.
-      midpoints(1:n) = nint(sort(midpoints(1:n)))
-      levels(1:n)    = midpoints(n:1:-1)
+      increasing      = .false.
+      leveledges(1:n) = sort(rdummy(1:n))
+      levelmids(1:n)  = nint(leveledges(n:1:-1))
    endif
+
+   leveledges(  1) = levelmids(  1) - (levelmids(2) - levelmids(  1))/2.0_r8
+   leveledges(n+1) = levelmids(  n) + (levelmids(n) - levelmids(n-1))/2.0_r8
+   do i = 2,n
+     leveledges(i) = levelmids(i-1) + (levelmids(i) - levelmids(i-1))/2.0_r8
+   enddo
+
+!  if ( increasing ) then ! must be heights
+!     leveledges(  1) = max(   0.0_r8, leveledges(  1))
+!  else                   ! must be pressures
+!     leveledges(  1) = min(1025.0_r8, leveledges(  1))
+!     leveledges(n+1) = max(   0.0_r8, leveledges(n+1))
+!  endif
 
    end Function Imidpoints2edges
 
@@ -1996,7 +2010,8 @@ CONTAINS
 
 
    Function ParseLevel(obslocation, obslevel, flavor)
-
+   ! returns the index of the level closest to 'obslevel'
+   ! There are three independent 'level' arrays 
    type(location_type),   intent(in   ) :: obslocation
    real(r8),              intent(inout) :: obslevel
    integer,               intent(in   ) :: flavor
@@ -2017,18 +2032,19 @@ CONTAINS
       ! surface observations - ancient history ...
       if (obslevel < 1.0_r8 ) obslevel = 1.0_r8  ! TJH negative model level
       bob                = 'level'
-      ParseLevel         = ClosestLevel(obslevel, VERTISLEVEL)
+      ParseLevel         = ClosestLevelIndex(obslevel, VERTISLEVEL)
       which_vert(flavor) = VERTISLEVEL
 
    elseif(vert_is_pressure(obslocation)) then
       bob                = 'pressure'
-      ParseLevel         = ClosestLevel(obslevel, VERTISPRESSURE)
+      ParseLevel         = ClosestLevelIndex(obslevel, VERTISPRESSURE)
       which_vert(flavor) = VERTISPRESSURE
 
    elseif(vert_is_height(obslocation)) then
       bob                = 'height'
-      ParseLevel         = ClosestLevel(obslevel, VERTISHEIGHT)
+      ParseLevel         = ClosestLevelIndex(obslevel, VERTISHEIGHT)
       which_vert(flavor) = VERTISHEIGHT
+
    elseif(vert_is_undef(obslocation)) then
       obslevel           = 1
       bob                = 'undef'
@@ -2051,53 +2067,59 @@ CONTAINS
 
 
 
-   Function ClosestLevel(level_in, levind)
-
-   ! The levels, intervals are ordered  surface == 1
+   Function ClosestLevelIndex(level_in, leveltype)
+   ! The levels, intervals are ordered surface == 1
    !
    ! nlev, levels and levels_int are scoped in this unit.
    !
    real(r8), intent(in) :: level_in         ! target level
-   integer,  intent(in) :: levind           ! indicator for surface, height, etc.
-   integer              :: ClosestLevel
+   integer,  intent(in) :: leveltype        ! indicator for surface, height, etc.
+   integer              :: ClosestLevelIndex
 
    integer :: a(1)
 
    real(r8), dimension(MaxLevels) :: dx
    real(r8) :: surface, top
 
-   if (levind == VERTISHEIGHT) then   ! we have heights levels
+   if (leveltype == VERTISHEIGHT) then   ! we have heights levels
 
       surface = hlevel_edges(1)
       top     = hlevel_edges(Nhlevels+1)
 
       if      ( level_in < surface ) then
-         ClosestLevel = -1
+         ClosestLevelIndex = -1
       else if ( level_in > top     ) then
-         ClosestLevel = 100 + Nhlevels
+         ClosestLevelIndex = 100 + Nhlevels
       else
          dx(1:Nhlevels) = abs(level_in - hlevel(1:Nhlevels))
          a              = minloc(dx(1:Nhlevels))
-         ClosestLevel   = a(1)
+         ClosestLevelIndex   = a(1)
       endif
 
-   else if (levind == VERTISLEVEL) then   ! we have model levels
+   else if (leveltype == VERTISLEVEL) then   ! we have model levels
 
-      surface = mlevel(1)
-      top     = mlevel(Nmlevels)
+      surface = minval(mlevel_edges(1:Nmlevels+1))
+      top     = maxval(mlevel_edges(1:Nmlevels+1))
 
       if (      level_in < surface ) then
-         write(*,*)'obs index ',obsindex,' below surface.'
-         ClosestLevel = -1
+         write(*,*)'obs index ',obsindex,' level is ',level_in, &
+                   ' below smallest level', surface
+         ClosestLevelIndex = -1
       else if ( level_in > top     ) then
-         ClosestLevel = 100 + Nmlevels
+         write(*,*)'obs index ',obsindex,' level is ',level_in, &
+                   ' greater than largest level',top
+         ClosestLevelIndex = 100 + Nmlevels
       else
-         ClosestLevel = level_in
+         dx(1:Nmlevels) = abs(level_in - mlevel(1:Nmlevels))
+         a              = minloc(dx(1:Nmlevels))
+         ClosestLevelIndex   = a(1)
+!        write(*,*)'obs index ',obsindex,' level is ',level_in, &
+!                  'level index out is ',ClosestLevelIndex
       endif
 
-   else if (levind == VERTISUNDEF) then
+   else if (leveltype == VERTISUNDEF) then
 
-         ClosestLevel = VERTISUNDEF    ! VERTISUNDEF == -2, a good bad value
+         ClosestLevelIndex = VERTISUNDEF    ! VERTISUNDEF == -2, a good bad value
 
    else  ! we have pressure levels (or surface obs ... also in pressure units)
 
@@ -2105,18 +2127,18 @@ CONTAINS
       top     = plevel_edges(Nplevels+1)
 
       if (      level_in > surface ) then 
-         ClosestLevel = -1
+         ClosestLevelIndex = -1
       else if ( level_in < top     ) then
-         ClosestLevel = 100 + Nplevels
+         ClosestLevelIndex = 100 + Nplevels
       else
          dx(1:Nplevels) = abs(level_in - plevel(1:Nplevels))
          a              = minloc(dx(1:Nplevels))
-         ClosestLevel   = a(1)
+         ClosestLevelIndex   = a(1)
       endif
 
    endif
 
-   end Function ClosestLevel
+   end Function ClosestLevelIndex
 
 
 
@@ -2540,6 +2562,7 @@ CONTAINS
    integer ::   TypesDimID,   TypesVarID, TypesMetaVarID
    integer :: PlevIntDimID, PlevIntVarID
    integer :: HlevIntDimID, HlevIntVarID
+   integer :: MlevIntDimID, MlevIntVarID
    integer ::  BoundsDimID,  BoundsVarID  
    integer ::  StringDimID
 
@@ -2682,6 +2705,9 @@ CONTAINS
    call nc_check(nf90_def_dim(ncid=ncid, &
               name='mlevel', len = Nmlevels,         dimid = MlevelDimID), &
               'WriteNetCDF', 'mlevel:def_dim '//trim(fname))
+   call nc_check(nf90_def_dim(ncid=ncid, &
+              name='mlevel_edges', len = Nmlevels+1, dimid = MlevIntDimID), &
+              'WriteNetCDF', 'mlevel_edges:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
               name='plevel', len = Nplevels,         dimid = PlevelDimID), &
@@ -2741,12 +2767,27 @@ CONTAINS
              dimids=MlevelDimID, varid=MlevelVarID), 'WriteNetCDF', 'mlevel:def_var')
    call nc_check(nf90_put_att(ncid, MlevelVarID, 'long_name', 'model level'), &
              'WriteNetCDF', 'mlevel:long_name')
-   call nc_check(nf90_put_att(ncid, MlevelVarID, 'units',     'nondimensional'), &
+   call nc_check(nf90_put_att(ncid, MlevelVarID, 'units',     'model level'), &
              'WriteNetCDF', 'mlevel:units')
    call nc_check(nf90_put_att(ncid, MlevelVarID, 'axis',     'Z'), &
              'WriteNetCDF', 'mlevel:axis')
-   call nc_check(nf90_put_att(ncid, MlevelVarID, 'valid_range', (/1,Nmlevels/)), &
+   call nc_check(nf90_put_att(ncid, MlevelVarID, 'valid_range',  &
+              (/ minval(mlevel(1:Nmlevels)), maxval(mlevel(1:Nmlevels)) /)), &
              'WriteNetCDF', 'mlevel:valid_range')
+
+   ! Define the model level interface coordinate variable and attributes
+
+   call nc_check(nf90_def_var(ncid=ncid, name='mlevel_edges', xtype=nf90_real, &
+             dimids=MlevIntDimID, varid=MlevIntVarID), 'WriteNetCDF', 'mlevel_edges:def_var')
+   call nc_check(nf90_put_att(ncid, MlevIntVarID, 'long_name', 'model level edges'), &
+             'WriteNetCDF', 'mlevel_edges:long_name')
+   call nc_check(nf90_put_att(ncid, MlevIntVarID, 'units',     'model level'), &
+             'WriteNetCDF', 'mlevel_edges:units')
+   call nc_check(nf90_put_att(ncid, MlevIntVarID, 'axis',     'Z'), &
+             'WriteNetCDF', 'mlevel_edges:axis')
+   call nc_check(nf90_put_att(ncid, MlevIntVarID, 'valid_range', &
+      (/ minval(mlevel_edges(1:Nmlevels+1)), maxval(mlevel_edges(1:Nmlevels+1)) /)), &
+             'WriteNetCDF', 'mlevel_edges:valid_range')
 
    ! Define the pressure level coordinate variable and attributes
 
@@ -2899,8 +2940,10 @@ CONTAINS
    call nc_check(nf90_put_var(ncid, RegionVarID, (/ (i,i=1,Nregions) /) ), &
               'WriteNetCDF', 'region:put_var')
 
-   call nc_check(nf90_put_var(ncid, MlevelVarID, (/ (i,i=1,Nmlevels) /) ), &
+   call nc_check(nf90_put_var(ncid, MlevelVarID, mlevel(1:Nmlevels) ), &
               'WriteNetCDF', 'mlevel:put_var')
+   call nc_check(nf90_put_var(ncid, MlevIntVarID, mlevel_edges(1:Nmlevels+1)), &
+              'WriteNetCDF', 'mlevel_edges:put_var')
 
    call nc_check(nf90_put_var(ncid, PlevelVarID, plevel(1:Nplevels)), &
               'WriteNetCDF', 'plevel:put_var')
