@@ -61,7 +61,7 @@ plotdat.hlevel_edges       = nc_varget(fname, 'hlevel_edges');
 
 diminfo                    = nc_getdiminfo(fname,'region');
 plotdat.nregions           = diminfo.Length;
-region_names               = nc_varget(fname,'region_names') 
+region_names               = nc_varget(fname,'region_names');
 plotdat.region_names       = deblank(region_names);
 
 % Coordinate between time types and dates
@@ -108,19 +108,20 @@ for ivar = 1:plotdat.nvars
    % level as another 'page' in the .ps file.
    
    psfname = sprintf('%s_%s_profile.ps',plotdat.varnames{ivar},plotdat.copystring);
-   disp(sprintf('Removing %s from the current directory.',psfname))
+   fprintf('Removing %s from the current directory.\n',psfname)
    system(sprintf('rm %s',psfname));
 
    % get appropriate vertical coordinate variable
 
-   guessdims = nc_var_dims(fname, plotdat.guessvar);
-   analydims = nc_var_dims(fname, plotdat.analyvar);
+   guessdims = nc_var_dims(  fname, plotdat.guessvar);
+   analydims = nc_var_dims(  fname, plotdat.analyvar);
+   varinfo   = nc_getvarinfo(fname, plotdat.analyvar);
 
    if ( findstr('surface',guessdims{2}) > 0 )
-      disp(sprintf('%s is a surface field.',plotdat.guessvar))
+      fprintf('%s is a surface field.\n',plotdat.guessvar)
       error('Cannot display a surface field this way.')
    elseif ( findstr('undef',guessdims{2}) > 0 )
-      disp(sprintf('%s has no vertical definition.',plotdat.guessvar))
+      fprintf('%s has no vertical definition.\n',plotdat.guessvar)
       error('Cannot display this field this way.')
    end
 
@@ -148,17 +149,27 @@ for ivar = 1:plotdat.nvars
    
    guess = nc_varget(fname, plotdat.guessvar);  
    analy = nc_varget(fname, plotdat.analyvar); 
+   n = size(analy);
+  
+   % singleton dimensions are auto-squeezed - which is unfortunate.
+   % We want these things to be 3D. [copy-level-region]
+   % Sometimes there is one region, sometimes one level, ...
+   % To complicate matters, the stupid 'ones' function does not allow
+   % the last dimension to be unity ... so you have double the size
+   % of the array ...
 
-   % Check for one region ... if the last dimension is a singleton 
-   % dimension, it is auto-squeezed  - which is bad.
-   % We want these things to be 3D.
-
-   n = size(guess);
-   if ( length(n) < 3 )
-       bob = NaN*ones(n(1),n(2),2);
-       ted = NaN*ones(n(1),n(2),2);
+   if ( plotdat.nregions == 1 )
+       bob = NaN*ones(varinfo.Size(1),varinfo.Size(2),2);
+       ted = NaN*ones(varinfo.Size(1),varinfo.Size(2),2);
        bob(:,:,1) = guess;
        ted(:,:,1) = analy;
+       guess = bob; clear bob
+       analy = ted; clear ted
+   elseif ( plotdat.nlevels == 1 )
+       bob = NaN*ones(varinfo.Size);
+       ted = NaN*ones(varinfo.Size);
+       bob(:,1,:) = guess;
+       ted(:,1,:) = analy;
        guess = bob; clear bob
        analy = ted; clear ted
    end
@@ -167,7 +178,7 @@ for ivar = 1:plotdat.nvars
    nposs = sum(guess(plotdat.Npossindex,:,:));
 
    if ( sum(nposs(:)) < 1 )
-      disp(sprintf('No obs for %s...  skipping', plotdat.varnames{ivar}))
+      fprintf('No obs for %s...  skipping\n', plotdat.varnames{ivar})
       continue
    end
 
@@ -361,7 +372,7 @@ for i = 1:length(x.allvarnames)
    end
 end
 
-[b,i,j] = unique(basenames);
+[~,i,~] = unique(basenames);
 
 for j = 1:length(i)
    disp(sprintf('%2d is %s',j,basenames{j}))
@@ -371,7 +382,7 @@ end
 
 
 
-function [level_org level_units nlevels level_edges Yrange] = FindVerticalInfo(fname,varname);
+function [level_org level_units nlevels level_edges Yrange] = FindVerticalInfo(fname,varname)
 % Find the vertical dimension and harvest some info
 
 varinfo  = nc_getvarinfo(fname,varname);
@@ -454,7 +465,6 @@ xc = [ x(1) x(2) x(2) x(1) x(1) ];
 hold on;
 for i = 1:2:(length(edges)-1)
   yc = [ edges(i) edges(i) edges(i+1) edges(i+1) edges(i) ];
-  h = fill(xc,yc,[0.8 0.8 0.8], ...
-  'EraseMode','background','EdgeColor','none');
+  fill(xc,yc,[0.8 0.8 0.8],'EraseMode','background','EdgeColor','none');
 end
 hold off;
