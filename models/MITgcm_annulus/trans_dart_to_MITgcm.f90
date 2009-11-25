@@ -55,7 +55,7 @@ namelist /model_nml/ model_size, naz, nrad, nzed, ntype, daz, drad, dzed, inner_
 real(r8), allocatable    :: r8seg(:)
 real(r8), allocatable    :: dart(:)
 type(time_type)          :: dart_time(2)
-integer                  :: icount, j, k, irec
+integer                  :: icount, j, k, irec, days, seconds
 integer                  :: ierr, iunit, io, dart_unit
 logical, parameter       :: debug = .false.
 
@@ -121,8 +121,9 @@ call dart_io( "INPUT ", dart, dart_unit, dart_time, binary_restart_files )
 ! write the contents of the second element of dart_time to a file
 ! for use by trans_MITgcm_to_dart
 open(unit=777,file="dart_time.dat",status="unknown")
-write(777,*) dart_time(1)
-write(6,*) 'dart_time in trans_dart_to_MITgcm', dart_time(1)
+call get_time(dart_time(1), seconds, days)
+write(777,*) days, seconds
+write(6,*) 'dart_time in trans_dart_to_MITgcm', days, seconds
 close(777)
 
 ! read in the original MITgcm restart file so that variables not
