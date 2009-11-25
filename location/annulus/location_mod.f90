@@ -25,7 +25,7 @@ module location_mod
 !  might want to use real names for the values for clarity.)
 
 use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
-use  utilities_mod, only : register_module, error_handler, E_ERR
+use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -36,7 +36,8 @@ public :: location_type, get_dist, get_location, set_location, &
           write_location, read_location, interactive_location, &
           vert_is_pressure, vert_is_level, vert_is_height, query_location, &
           LocationDims, LocationName, LocationLName, &
-          get_close_obs, alloc_get_close_obs, &
+          get_close_obs, alloc_get_close_obs, get_close_type, &
+          get_close_maxdist_init, get_close_obs_init, get_close_obs_destroy, &
           operator(==), operator(/=)
 
 ! version controlled file description for error handling, do not edit
@@ -47,7 +48,7 @@ character(len=128), parameter :: &
 
 type location_type
    private 
-   real(r8) :: lon, lat, vloc
+   real(r8) :: azm, rad, vloc
    integer  :: which_vert
    ! which_vert determines if the location is by level or by height/pressure
    ! 1 ===> obs is by level
@@ -55,9 +56,16 @@ type location_type
    ! 3 ===> obs is by height
 end type location_type
 
+type get_close_type
+   private
+   integer :: maxdist
+end type get_close_type
+
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
 logical,save :: module_initialized = .false.
+
+character(len=129) :: errstring
 
 integer,              parameter :: LocationDims = 3
 character(len = 129), parameter :: LocationName = "loc_annulus"
@@ -85,13 +93,9 @@ end subroutine initialize_module
 function get_dist(loc1, loc2)
 !----------------------------------------------------------------------------
 
-implicit none
-
 ! To comply with current (Guam) configuration, distance depends only on 
 ! horizontal distance.
 !
-! Note that for compatibility with other location modules, lat represents
-! the radial direction, and lon represents the azimuthal angle.
 
 type(location_type), intent(in) :: loc1, loc2
 real(r8) :: get_dist
@@ -101,10 +105,10 @@ real(r8) :: x1, y1, x2, y2
 if ( .not. module_initialized ) call initialize_module
 
 ! convert from cylindrical to cartesian coordinates
-x1 = loc1%lat*cos(loc1%lon)
-y1 = loc1%lat*sin(loc1%lon)
-x2 = loc2%lat*cos(loc2%lon)
-y2 = loc2%lat*sin(loc2%lon)
+x1 = loc1%rad*cos(loc1%azm)
+y1 = loc1%rad*sin(loc1%azm)
+x2 = loc2%rad*cos(loc2%azm)
+y2 = loc2%rad*sin(loc2%azm)
 
 ! Returns distance in m
 get_dist = sqrt((x1 - x2)**2 + (y1 - y2)**2)
@@ -119,15 +123,13 @@ function get_location(loc)
 ! Given a location type (where the azimuthal angle is in radians), this 
 ! routine return the azimuthal angle in degrees, the radius, and the level 
 
-implicit none
-
 type(location_type), intent(in) :: loc
 real(r8), dimension(3) :: get_location
 
    if ( .not. module_initialized ) call initialize_module
 
-   get_location(1) = loc%lon * RAD2DEG                 
-   get_location(2) = loc%lat
+   get_location(1) = loc%azm * RAD2DEG                 
+   get_location(2) = loc%rad
    get_location(3) = loc%vloc     
 
 end function get_location
@@ -199,8 +201,6 @@ function loc_eq(loc1,loc2)
 ! Returns true only if all components are 'the same' to within machine
 ! precision.
 
-implicit none
-
 type(location_type), intent(in) :: loc1, loc2
 logical :: loc_eq
 
@@ -208,8 +208,8 @@ if ( .not. module_initialized ) call initialize_module
 
 loc_eq = .false.
 
-if ( abs(loc1%lon  - loc2%lon ) > epsilon(loc1%lon ) ) return
-if ( abs(loc1%lat  - loc2%lat ) > epsilon(loc1%lat ) ) return
+if ( abs(loc1%azm  - loc2%azm ) > epsilon(loc1%azm ) ) return
+if ( abs(loc1%rad  - loc2%rad ) > epsilon(loc1%rad ) ) return
 if ( abs(loc1%vloc - loc2%vloc) > epsilon(loc1%vloc) ) return
 
 loc_eq = .true.
@@ -223,8 +223,6 @@ function loc_ne(loc1,loc2)
 !
 ! interface operator used to compare two locations.
 ! Returns true if locations are not identical to machine precision.
-
-implicit none
 
 type(location_type), intent(in) :: loc1, loc2
 logical :: loc_ne
@@ -242,14 +240,12 @@ function get_location_lon(loc)
 !
 ! Given a longitude location, return the azimuthal angle in degrees
 
-implicit none
-
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lon
 
 if ( .not. module_initialized ) call initialize_module
 
-get_location_lon = loc%lon * RAD2DEG    
+get_location_lon = loc%azm * RAD2DEG    
 
 end function get_location_lon
 
@@ -260,14 +256,12 @@ function get_location_lat(loc)
 !
 ! Given a latitude location, return the radius
 
-implicit none
-
 type(location_type), intent(in) :: loc
 real(r8) :: get_location_lat
 
 if ( .not. module_initialized ) call initialize_module
 
-get_location_lat = loc%lat
+get_location_lat = loc%rad
 
 end function get_location_lat
 
@@ -279,14 +273,10 @@ function set_location(lon, lat, vert_loc, which_vert)
 ! Puts the given azimuthal angle (in degrees), radius, and vertical 
 ! location into a location datatype.
 
-implicit none
-
 type (location_type) :: set_location
 real(r8), intent(in) :: lon, lat
 real(r8), intent(in) :: vert_loc
 integer,  intent(in) :: which_vert
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -295,11 +285,11 @@ if(lon < 0.0_r8 .or. lon > 360.0_r8) then
    call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
 endif
 
-set_location%lon = lon * DEG2RAD
-set_location%lat = lat 
+set_location%azm = lon * DEG2RAD
+set_location%rad = lat 
 
-if(which_vert < 1 .or. which_vert == 2 .or. which_vert > 3  ) then
-   write(errstring,*)'which_vert (',which_vert,') must be either 1 or 3'
+if(which_vert /= -1 .and. which_vert /= 1 .and. which_vert /= 3  ) then
+   write(errstring,*)'which_vert (',which_vert,') must be -1, 1 or 3'
    call error_handler(E_ERR,'set_location', errstring, source, revision, revdate)
 endif
 
@@ -315,12 +305,8 @@ function set_location2(list)
 ! location semi-independent interface routine
 ! given 4 float numbers, call the underlying set_location routine
 
-implicit none
-
 type (location_type) :: set_location2
 real(r8), intent(in) :: list(:)
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -341,8 +327,8 @@ function set_location_missing()
 
 type (location_type) :: set_location_missing
 
-set_location_missing%lon        = missing_r8
-set_location_missing%lat        = missing_r8
+set_location_missing%azm        = missing_r8
+set_location_missing%rad        = missing_r8
 set_location_missing%vloc       = missing_r8
 set_location_missing%which_vert = missing_i
 
@@ -355,8 +341,6 @@ function query_location(loc,attr) result(fval)
 !
 ! Returns the value of the attribute
 !
-
-implicit none
 
 type(location_type),        intent(in) :: loc
 character(len=*), optional, intent(in) :: attr
@@ -373,9 +357,9 @@ selectcase(adjustl(attribute))
  case ('which_vert','WHICH_VERT')
    fval = loc%which_vert
  case ('lat','LAT')
-   fval = loc%lat
+   fval = loc%rad
  case ('lon','LON')
-   fval = loc%lon
+   fval = loc%azm
  case ('vloc','VLOC')
    fval = loc%vloc
  case default
@@ -386,34 +370,52 @@ end select
 
 end function query_location
 
-subroutine write_location(ifile, loc, fform)
+subroutine write_location(ifile, loc, fform, charstring)
 !----------------------------------------------------------------------------
 !
 ! Writes location to the file. Implemented as a subroutine but could
 ! rewrite as a function with error control info returned. For initial 
 ! implementation, file is just an integer file unit number. 
 
-implicit none
+integer,                     intent(in) :: ifile
+type(location_type),         intent(in) :: loc
+character(len=*), intent(in),  optional :: fform
+character(len=*), intent(out), optional :: charstring
 
-integer,                    intent(in) :: ifile
-type(location_type),        intent(in) :: loc
-character(len=*), intent(in), optional :: fform
-
-character(len=32) :: fileformat
+logical            :: writebuf
+integer            :: charlength
 
 if ( .not. module_initialized ) call initialize_module
 
-fileformat = "ascii"    ! supply default
-if(present(fform)) fileformat = trim(adjustl(fform))
+! incoming char string must be long enough for format
+writebuf = present(charstring)
+if (writebuf) then
+   charlength = 82
+   if (len(charstring) < charlength) then
+      write(errstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
+      call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+   endif
+endif
 
-SELECT CASE (fileformat)
-   CASE("unf", "UNF", "unformatted", "UNFORMATTED")
-      write(ifile)loc%lon, loc%lat, loc%vloc, loc%which_vert
-   CASE DEFAULT
+
+if (ascii_file_format(fform)) then
+   if (writebuf) then
+      write(charstring,'(3(f22.14,1x),i4)') &
+            loc%azm, loc%rad, loc%vloc, loc%which_vert
+   else
+      ! Write out pressure or level along with integer tag
       write(ifile, '(''loc3d'')' ) 
-! Write out pressure or level along with integer tag
-      write(ifile, *)loc%lon, loc%lat, loc%vloc, loc%which_vert
-END SELECT
+      write(ifile, '(1x,3(f22.14,1x),i4)')loc%azm, loc%rad, loc%vloc, loc%which_vert
+   endif
+else
+   if (writebuf) then
+      call error_handler(E_ERR, 'write_location', &
+           'Cannot use string buffer with binary format', &
+            source, revision, revdate)
+   endif
+
+   write(ifile)loc%azm, loc%rad, loc%vloc, loc%which_vert
+endif
 
 end subroutine write_location
 
@@ -425,36 +427,28 @@ function read_location(ifile, fform)
 ! Reads location from file that was written by write_location.
 ! See write_location for additional discussion.
 
-implicit none
-
 integer, intent(in)                    :: ifile
 type(location_type)                    :: read_location
 character(len=*), intent(in), optional :: fform
 
 character(len=5)   :: header
-character(len=129) :: errstring
-character(len=32)  :: fileformat
 
 if ( .not. module_initialized ) call initialize_module
 
-fileformat = "ascii"    ! supply default
-if(present(fform)) fileformat = trim(adjustl(fform))
+if (ascii_file_format(fform)) then
+   read(ifile, '(a5)' ) header
 
-SELECT CASE (fileformat)
-   CASE("unf", "UNF", "unformatted", "UNFORMATTED")
-      read(ifile)read_location%lon, read_location%lat, &
-         read_location%vloc, read_location%which_vert
-   CASE DEFAULT
-      read(ifile, '(a5)' ) header
-
-      if(header /= 'loc3d') then
-         write(errstring,*)'Expected location header "loc3d" in input file, got ', header
-         call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
-      endif
-! Now read the location data value
-      read(ifile, *)read_location%lon, read_location%lat, &
-         read_location%vloc, read_location%which_vert
-END SELECT
+   if(header /= 'loc3d') then
+      write(errstring,*)'Expected location header "loc3d" in input file, got ', header
+      call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
+   endif
+   ! Now read the location data value
+   read(ifile, *)read_location%azm, read_location%rad, &
+                 read_location%vloc, read_location%which_vert
+else
+   read(ifile)read_location%azm, read_location%rad, &
+              read_location%vloc, read_location%which_vert
+endif
 
 end function read_location
 
@@ -466,20 +460,18 @@ subroutine interactive_location(location, set_to_default)
 ! Allows for interactive input of a location. Also gives option of selecting
 ! a uniformly distributed random location (what the heck).
 
-implicit none
-
 type(location_type), intent(out) :: location
 logical, intent(in), optional :: set_to_default
 
-real(r8) :: lon, lat, minlon, maxlon, minlat, maxlat
+real(r8) :: azm, rad, minazm, maxazm, minrad, maxrad
 
 if ( .not. module_initialized ) call initialize_module
 
 ! If set_to_default is true, then just zero out and return
 if(present(set_to_default)) then
    if(set_to_default) then
-      location%lon        = 0.0_r8
-      location%lat        = 0.0_r8
+      location%azm        = 0.0_r8
+      location%rad        = 0.0_r8
       location%vloc       = 0.0_r8
       location%which_vert = 0
       return
@@ -511,14 +503,14 @@ end if
 
 write(*, *) 'Input azimuthal angle: value 0 to 360.0 or a negative number '
 write(*, *) 'for uniformly distributed random location in the horizontal.'
-read(*, *) lon
+read(*, *) azm
 
-do while(lon > 360.0_r8)
+do while(azm > 360.0_r8)
    write(*, *) 'Input value greater than 360.0 is illegal, please try again'
-   read(*, *) lon
+   read(*, *) azm
 end do
 
-if(lon < 0.0_r8) then
+if(azm < 0.0_r8) then
 
    ! Need to make sure random sequence is initialized
 
@@ -528,40 +520,40 @@ if(lon < 0.0_r8) then
    endif
 
    write(*, *) 'Input minimum azimuthal angle (0 to 360.0)'
-   read(*, *) minlon
-   minlon = minlon * DEG2RAD
+   read(*, *) minazm
+   minazm = minazm * DEG2RAD
 
    write(*, *) 'Input maximum azimuthal angle(0 to 360.0)'
-   read(*, *) maxlon
-   maxlon = maxlon * DEG2RAD
+   read(*, *) maxazm
+   maxazm = maxazm * DEG2RAD
 
    ! Longitude is random from minlon to maxlon
-   location%lon = random_uniform(ran_seq) * (maxlon-minlon) + minlon
+   location%azm = random_uniform(ran_seq) * (maxazm-minazm) + minazm
 
    write(*, *) 'Input minimum radius '
-   read(*, *) minlat
+   read(*, *) minrad
 
    write(*, *) 'Input maximum radius '
-   read(*, *) maxlat
+   read(*, *) maxrad
 
    ! Latitude must be area weighted to obtain proper random realizations
-   location%lat = sqrt(random_uniform(ran_seq) * (maxlat-minlat) + minlat)
+   location%rad = sqrt(random_uniform(ran_seq) * (maxrad-minrad) + minrad)
 
-   write(*, *) 'random location is ', location%lon / DEG2RAD, &
-                                      location%lat 
+   write(*, *) 'random location is ', location%azm / DEG2RAD, &
+                                      location%rad 
 
 else
 
    write(*, *) 'Input radius '
-   read(*, *) lat
+   read(*, *) rad
 
-   do while(lat < 0)
+   do while(rad < 0)
       write(*, *) 'Input value is illegal, please try again'
-      read(*, *) lat
+      read(*, *) rad
    end do
 
-   location%lat = lat
-   location%lon = lon*DEG2RAD
+   location%rad = rad
+   location%azm = azm*DEG2RAD
 
 end if
 
@@ -578,16 +570,14 @@ subroutine nc_write_location(ncFileID, LocationVarID, loc, start)
 use typeSizes
 use netcdf
 
-implicit none
-
 integer, intent(in)             :: ncFileID, LocationVarID
 type(location_type), intent(in) :: loc
 integer, intent(in)             :: start
 
 if ( .not. module_initialized ) call initialize_module
 
-call check(nf90_put_var(ncFileID, LocationVarID, loc%lon,  (/ start, 1 /) ))
-call check(nf90_put_var(ncFileID, LocationVarID, loc%lat,  (/ start, 2 /) ))
+call check(nf90_put_var(ncFileID, LocationVarID, loc%azm,  (/ start, 1 /) ))
+call check(nf90_put_var(ncFileID, LocationVarID, loc%rad,  (/ start, 2 /) ))
 call check(nf90_put_var(ncFileID, LocationVarID, loc%vloc, (/ start, 3 /) ))
 
 contains
@@ -605,12 +595,43 @@ contains
 end subroutine nc_write_location
 
 
+!----------------------------------------------------------------------------
+
+subroutine get_close_obs_destroy(gc)
+
+type(get_close_type), intent(inout) :: gc
+
+
+end subroutine get_close_obs_destroy
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_maxdist_init(gc, maxdist)
+
+type(get_close_type), intent(inout) :: gc
+real(r8),             intent(in)    :: maxdist
+
+gc%maxdist = maxdist
+
+end subroutine get_close_maxdist_init
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_obs_init(gc, num, obs)
+
+! Initializes part of get_close accelerator that depends on the particular obs
+
+type(get_close_type), intent(inout) :: gc
+integer,              intent(in)    :: num
+type(location_type),  intent(in)    :: obs(num)
+
+end subroutine get_close_obs_init
+
 
 !----------------------------------------------------------------------------
 
 subroutine alloc_get_close_obs(num, obs, cutoff, obs_box)
-
-implicit none
+! CURRENTLY UNUSED, I BELIEVE.
 
 integer, intent(in) :: num
 type(location_type), intent(in) :: obs(num)
@@ -629,33 +650,31 @@ end subroutine alloc_get_close_obs
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_obs(base_ob, num, obs, cutoff, obs_box, num_close, close_ind, dist)
+subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
+   num_close, close_ind, dist)
 
-! This is the wrong code for this location module; it seems to be lifted
-! from the 1d case, which is incorrect.  It does allow code to be compiled
-! but it will not compute correct values for distance.
+! Return how many locations are closer than cutoff distance, along with a
+! count, and the actual distances if requested.  The kinds are available if
+! more sophisticated distance computations are wanted.
 
-implicit none
-
-integer, intent(in) :: base_ob, num
-type(location_type), intent(in) :: obs(num)
-real(r8), intent(in) :: cutoff
-integer, intent(in) :: obs_box(num)
-integer, intent(out) :: num_close, close_ind(num)
-real(r8), intent(out) :: dist(num)
+type(get_close_type),             intent(in)  :: gc
+type(location_type),              intent(in)  :: base_obs_loc, obs(:)
+integer,                          intent(in)  :: base_obs_kind, obs_kind(:)
+integer,                          intent(out) :: num_close, close_ind(:)
+real(r8),             optional,   intent(out) :: dist(:)
 
 integer :: i
 real(r8) :: this_dist
 
 ! Return list of obs that are within cutoff and their distances
 num_close = 0
-do i = 1, num
-   this_dist = get_dist(obs(base_ob), obs(i))
-   if(this_dist <= cutoff) then
+do i = 1, size(obs)
+   this_dist = get_dist(base_obs_loc, obs(i))
+   if(this_dist < gc%maxdist) then
       ! Add this ob to the list
       num_close = num_close + 1
       close_ind(num_close) = i
-      dist(num_close) = this_dist 
+      if (present(dist)) dist(num_close) = this_dist 
    endif
 end do
 
@@ -668,13 +687,9 @@ function is_location_in_region(loc, minl, maxl)
 !
 ! Returns true if the given location is between the other two.
 
-implicit none
-
 logical                          :: is_location_in_region
 type(location_type), intent(in)  :: loc, minl, maxl
 
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -688,8 +703,8 @@ endif
 ! set to success only at the bottom after all tests have passed.
 is_location_in_region = .false.
 
-if ((loc%lon < minl%lon) .or. (loc%lon > maxl%lon)) return
-if ((loc%lat < minl%lat) .or. (loc%lat > maxl%lat)) return
+if ((loc%azm < minl%azm) .or. (loc%azm > maxl%azm)) return
+if ((loc%rad < minl%rad) .or. (loc%rad > maxl%rad)) return
 if ((loc%vloc < minl%vloc) .or. (loc%vloc > maxl%vloc)) return
  
 is_location_in_region = .true.
