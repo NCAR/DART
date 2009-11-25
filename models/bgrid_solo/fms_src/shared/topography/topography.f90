@@ -358,7 +358,7 @@ public :: topography_init,                 &
  if ( get_ocean_frac(blon, blat, ocean_frac) ) then
    where (ocean_frac > 0.50)
      ocean_mask = .true.
-   else where
+   elsewhere
      ocean_mask = .false.
    end where
    get_ocean_mask = .true.
@@ -470,7 +470,7 @@ public :: topography_init,                 &
  if ( get_water_frac(blon, blat, water_frac) ) then
    where (water_frac > 0.50)
      water_mask = .true.
-   else where
+   elsewhere
      water_mask = .false.
    end where
    get_water_mask = .true.
