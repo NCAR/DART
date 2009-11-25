@@ -269,6 +269,7 @@ function myplot(plotdat)
    set(h1,'LineWidth',plotdat.linewidth);
    h = legend(h1,str_other_pr, str_other_po, 'Location', 'East');
    legend(h,'boxoff')
+   set(h,'Interpreter','none')
 
    axlims = [plotdat.Xrange plotdat.Yrange];
    axis(axlims)
@@ -452,6 +453,10 @@ else
       ymax =  ceil(max(glommed));
    end
 
+   if (ymin == 0 && ymax == 0)
+       ymax = 1;
+   end
+   
    if (ymin == ymax)
      ymin = ymin - 0.1*ymin;
      ymax = ymax + 0.1*ymax;
