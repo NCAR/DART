@@ -96,6 +96,9 @@ module utilities_mod
 !                            default is degrees, but there is an optional
 !                            argument to select radians instead.
 !                           
+!      ascii_file_format  function that returns true if the string argument
+!                         is indicating the requested format is ascii/text.
+!                         false means unformatted/binary.  
 !
 ! nsc start 31jan07
 !   idea - add some unit number routine here?
@@ -145,7 +148,7 @@ public :: file_exist, get_unit, open_file, close_file, timestamp,           &
           find_namelist_in_file, check_namelist_read, do_nml_term,          &
           set_tasknum, set_output, do_output, set_nml_output, do_nml_file,  &
           E_DBG, E_MSG, E_WARN, E_ERR, DEBUG, MESSAGE, WARNING, FATAL,      &
-          is_longitude_between, get_next_filename
+          is_longitude_between, get_next_filename, ascii_file_format
 
 ! this routine is either in the null_mpi_utilities_mod.f90, or in
 ! the mpi_utilities_mod.f90 file, but it is not a module subroutine.
@@ -1556,8 +1559,9 @@ is_longitude_between = ((lon2 >= minl) .and. (lon2 <= maxl))
 end function is_longitude_between 
 
 
+!#######################################################################
 
-Function next_file(fname,ifile)
+function next_file(fname,ifile)
 !----------------------------------------------------------------------
 ! The file name can take one of three forms:
 ! /absolute/path/to/nirvana/obs_001/obs_seq.final   (absolute path)
@@ -1673,7 +1677,38 @@ else
 
 endif
 
-end Function next_file
+end function next_file
+
+!#######################################################################
+
+
+function ascii_file_format(fform)
+
+!----------------------------------------------------------------------
+! Common routine for determining input file format.
+
+character(len=*), intent(in), optional :: fform
+logical                                :: ascii_file_format
+
+! Returns .true. if file is formatted/ascii, .false. if unformatted/binary
+! Defaults (if fform not specified) to formatted/ascii.
+
+if ( .not. module_initialized ) call initialize_utilities
+
+! Default to formatted/ascii.
+if ( .not. present(fform)) then
+   ascii_file_format = .true.
+   return
+endif
+
+SELECT CASE (trim(adjustl(fform)))
+   CASE("unf", "UNF", "unformatted", "UNFORMATTED")
+      ascii_file_format = .false.
+   CASE DEFAULT
+      ascii_file_format = .true.
+END SELECT
+
+end function ascii_file_format
 
 
 !=======================================================================
