@@ -124,7 +124,7 @@ while ( $datea < $datee )
 
     set    yyyy = `echo $datef | cut -b1-4`
     set      hh = `echo $datef | cut -b9-10`
-    set jyyyydd = `./${DATE_PROG} $datef 0 -j`
+    set jyyyydd = `echo $datef 0 -j | ./${DATE_PROG}`
     @ mday = $jyyyydd[2] + 1000  ;  set mday = `echo $mday | cut -b2-4`
 
     /bin/ls ${dates}/*.${yyyy}.${mday}.${hh}.*_nc >>! flist
