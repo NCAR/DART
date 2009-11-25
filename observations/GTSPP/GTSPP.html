@@ -87,6 +87,14 @@ to collect a month of observations together into a single output file
 with one execution of the converter program.
 </P>
 
+<P>
+The units in the source file are degrees C for temperature, g/kg for
+salinity, and so far we have not found any error information (not
+quality control, but observation instrument error values).  There is
+probably instrument source information encoded in these files, but
+so far we don't have the key.  The quality control values are read
+and only those with a QC of 1 are retained.
+</P>
 <!--==================================================================-->
 
 <A NAME="Programs"></A>

@@ -254,9 +254,10 @@ fileloop: do      ! until out of files
       call print_date(obs_time, 'obs time')
    endif
    
- ! FIXME:
-   terr = 2.0   ! temp error = 2 degrees C
-   serr = 1.0   ! salinity error = 1 something?
+ ! FIXME: these have no physical basis; selected to get us running
+ ! but need some domain expertise for guidance.
+   terr = 1.0     ! temp error = fixed at 1 degrees C
+   serr = 0.001   ! salinity error = 1 g/kg, which is 0.001 kg/kg
 
    first_obs = .true.
    
@@ -267,7 +268,7 @@ fileloop: do      ! until out of files
      if (have_temp .and. i_qc == 1) then
 
          ! set qc to a good dart val
-         d_qc(1) = 0.0    ! but for dart, a QC of 0 is good
+         d_qc(1) = 0.0    ! for dart, a QC of 0 is good
  
          ! set location - incoming obs are -180 to 180 in longitude;
          ! dart wants 0 to 360.
@@ -286,7 +287,7 @@ fileloop: do      ! until out of files
          qc_val(1)  = d_qc(1)
          call set_qc(obs, qc_val)
     
-         ! first one, insert with no prev.  otherwise, since all times will be the
+         ! first one, insert with no prev.  otherwise, since all times are the
          ! same for this column, insert with the prev obs as the starting point.
          ! (the first insert with no prev means it will search for the right
          ! time ordered starting point.)
@@ -322,12 +323,14 @@ fileloop: do      ! until out of files
          call set_obs_def_key(obs_def, obs_num)
          call set_obs_def(obs, obs_def)
    
-         obs_val(1) = salinity(k)
+         ! incoming obs are g/kg (practical salinity units - psu)
+         ! model works in kg/kg (model salinity units - msu) so convert here.
+         obs_val(1) = salinity(k) / 1000.0_r8
          call set_obs_values(obs, obs_val)
          qc_val(1)  = d_qc(1)
          call set_qc(obs, qc_val)
     
-         ! first one, insert with no prev.  otherwise, since all times will be the
+         ! first one, insert with no prev.  otherwise, since all times are the
          ! same for this column, insert with the prev obs as the starting point.
          ! (the first insert with no prev means it will search for the right
          ! time ordered starting point.)
