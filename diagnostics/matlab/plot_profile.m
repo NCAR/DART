@@ -119,10 +119,10 @@ for ivar = 1:plotdat.nvars
 
    if ( findstr('surface',guessdims{2}) > 0 )
       fprintf('%s is a surface field.\n',plotdat.guessvar)
-      error('Cannot display a surface field this way.')
+      fprintf('Cannot display a surface field this way.\n')
    elseif ( findstr('undef',guessdims{2}) > 0 )
       fprintf('%s has no vertical definition.\n',plotdat.guessvar)
-      error('Cannot display this field this way.')
+      fprintf('Cannot display this field this way.\n')
    end
 
    [level_org level_units nlevels level_edges Yrange] = FindVerticalInfo(fname, plotdat.guessvar);
@@ -314,7 +314,7 @@ function myplot(plotdat)
            'XTick',          xticks,'XTicklabel',num2str(nicexticks))
        
    set(get(ax2,'Xlabel'),'String','# of obs (o=poss, +=used)')
-   set(get(ax1,'Xlabel'),'String',plotdat.xlabel)
+   set(get(ax1,'Xlabel'),'String',plotdat.xlabel,'Interpreter','none')
    set(ax1,'Position',get(ax2,'Position'))
    grid
 
@@ -372,7 +372,7 @@ for i = 1:length(x.allvarnames)
    end
 end
 
-[~,i,~] = unique(basenames);
+[b,i,j] = unique(basenames);
 
 for j = 1:length(i)
    disp(sprintf('%2d is %s',j,basenames{j}))
@@ -452,9 +452,14 @@ else
       ymax =  ceil(max(glommed));
    end
 
+   if (ymin == ymax)
+     ymin = ymin - 0.1*ymin;
+     ymax = ymax + 0.1*ymax;
+   end
+
    Yrange = [ymin ymax];
 
-   x = [min([Yrange(1) 0.0]) Yrange(2)];
+   x = sort([min([Yrange(1) 0.0]) Yrange(2)] ,'ascend');
 end
 
 function Stripes(x,edges)

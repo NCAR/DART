@@ -61,7 +61,7 @@ plotdat.hlevel_edges       = nc_varget(fname, 'hlevel_edges');
 
 diminfo                    = nc_getdiminfo(fname,'region');
 plotdat.nregions           = diminfo.Length;
-region_names               = nc_varget(fname,'region_names') 
+region_names               = nc_varget(fname,'region_names');
 plotdat.region_names       = deblank(region_names);
 
 % Coordinate between time types and dates
@@ -114,15 +114,16 @@ for ivar = 1:plotdat.nvars
 
    % get appropriate vertical coordinate variable
 
-   guessdims = nc_var_dims(fname, plotdat.guessvar);
-   analydims = nc_var_dims(fname, plotdat.analyvar);
+   guessdims = nc_var_dims(  fname, plotdat.guessvar);
+   analydims = nc_var_dims(  fname, plotdat.analyvar);
+   varinfo   = nc_getvarinfo(fname, plotdat.analyvar);
 
    if ( findstr('surface',guessdims{2}) > 0 )
-      disp(sprintf('%s is a surface field.',plotdat.guessvar))
-      error('Cannot display a surface field this way.')
+      fprintf('%s is a surface field.\n',plotdat.guessvar)
+      fprintf('Cannot display a surface field this way.\n')
    elseif ( findstr('undef',guessdims{2}) > 0 )
-      disp(sprintf('%s has no vertical definition.',plotdat.guessvar))
-      error('Cannot display this field this way.')
+      fprintf('%s has no vertical definition.\n',plotdat.guessvar)
+      fprintf('Cannot display this field this way.\n')
    end
 
    [level_org level_units nlevels level_edges Yrange] = FindVerticalInfo(fname, plotdat.guessvar);
@@ -149,17 +150,27 @@ for ivar = 1:plotdat.nvars
    
    guess = nc_varget(fname, plotdat.guessvar);  
    analy = nc_varget(fname, plotdat.analyvar); 
+   n = size(analy);
+  
+   % singleton dimensions are auto-squeezed - which is unfortunate.
+   % We want these things to be 3D. [copy-level-region]
+   % Sometimes there is one region, sometimes one level, ...
+   % To complicate matters, the stupid 'ones' function does not allow
+   % the last dimension to be unity ... so you have double the size
+   % of the array ...
 
-   % Check for one region ... if the last dimension is a singleton 
-   % dimension, it is auto-squeezed  - which is bad.
-   % We want these things to be 3D.
-
-   n = size(guess);
-   if ( length(n) < 3 )
-       bob = NaN*ones(n(1),n(2),2);
-       ted = NaN*ones(n(1),n(2),2);
+   if ( plotdat.nregions == 1 )
+       bob = NaN*ones(varinfo.Size(1),varinfo.Size(2),2);
+       ted = NaN*ones(varinfo.Size(1),varinfo.Size(2),2);
        bob(:,:,1) = guess;
        ted(:,:,1) = analy;
+       guess = bob; clear bob
+       analy = ted; clear ted
+   elseif ( plotdat.nlevels == 1 )
+       bob = NaN*ones(varinfo.Size);
+       ted = NaN*ones(varinfo.Size);
+       bob(:,1,:) = guess;
+       ted(:,1,:) = analy;
        guess = bob; clear bob
        analy = ted; clear ted
    end
@@ -168,7 +179,7 @@ for ivar = 1:plotdat.nvars
    nposs = sum(guess(plotdat.Npossindex,:,:));
 
    if ( sum(nposs(:)) < 1 )
-      disp(sprintf('No obs for %s...  skipping', plotdat.varnames{ivar}))
+      fprintf('No obs for %s...  skipping\n', plotdat.varnames{ivar})
       continue
    end
 
@@ -276,6 +287,7 @@ function myplot(plotdat)
 
    axlims = [plotdat.Xrange plotdat.Yrange];
    axis(axlims)
+
    set(gca,'YDir', plotdat.YDir)
    hold on; plot([0 0],plotdat.Yrange,'k-')
 
@@ -312,7 +324,7 @@ function myplot(plotdat)
            'XTick',          xticks,'XTicklabel',num2str(nicexticks))
        
    set(get(ax2,'Xlabel'),'String','# of obs (o=poss, +=used)')
-   set(get(ax1,'Xlabel'),'String',plotdat.xlabel)
+   set(get(ax1,'Xlabel'),'String',plotdat.xlabel,'Interpreter','none')
    set(ax1,'Position',get(ax2,'Position'))
    grid
 
@@ -380,7 +392,7 @@ end
 
 
 
-function [level_org level_units nlevels level_edges Yrange] = FindVerticalInfo(fname,varname);
+function [level_org level_units nlevels level_edges Yrange] = FindVerticalInfo(fname,varname)
 % Find the vertical dimension and harvest some info
 
 varinfo  = nc_getvarinfo(fname,varname);
@@ -450,9 +462,14 @@ else
       ymax =  ceil(max(glommed));
    end
 
+   if (ymin == ymax)
+     ymin = ymin - 0.1*ymin;
+     ymax = ymax + 0.1*ymax;
+   end
+
    Yrange = [ymin ymax];
 
-   x = [min([Yrange(1) 0.0]) Yrange(2)];
+   x = sort([min([Yrange(1) 0.0]) Yrange(2)] ,'ascend');
 end
 
 function Stripes(x,edges)
@@ -463,7 +480,6 @@ xc = [ x(1) x(2) x(2) x(1) x(1) ];
 hold on;
 for i = 1:2:(length(edges)-1)
   yc = [ edges(i) edges(i) edges(i+1) edges(i+1) edges(i) ];
-  h = fill(xc,yc,[0.8 0.8 0.8], ...
-  'EraseMode','background','EdgeColor','none');
+  fill(xc,yc,[0.8 0.8 0.8],'EraseMode','background','EdgeColor','none');
 end
 hold off;

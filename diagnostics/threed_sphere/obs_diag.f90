@@ -1,4 +1,4 @@
-! Data Assimilation Research Testbed -- DART
+!d Data Assimilation Research Testbed -- DART
 ! Copyright 2004-2007, Data Assimilation Research Section
 ! University Corporation for Atmospheric Research
 ! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
@@ -197,10 +197,13 @@ namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,                 &
 ! Variables used to accumulate the statistics.
 !-----------------------------------------------------------------------
 
-integer, parameter :: Ncopies = 10
-character(len = stringlength), dimension(Ncopies) :: copy_names = &
-   (/ 'Nposs      ', 'Nused      ', 'NbadQC     ', 'NbadIZ     ', 'NbadUV     ', &
-      'NbadLV     ', 'rmse       ', 'bias       ', 'spread     ', 'totalspread' /)
+integer, parameter :: Ncopies = 21
+character(len = stringlength), dimension(Ncopies) :: copy_names =                &
+   (/ 'Nposs      ', 'Nused      ', 'NbigQC     ', 'NbadIZ     ', 'NbadUV     ', &
+      'NbadLV     ', 'rmse       ', 'bias       ', 'spread     ', 'totalspread', &
+      'NbadDARTQC ', 'observation', 'ens_mean   ',                               &
+      'N_DARTqc_0 ', 'N_DARTqc_1 ', 'N_DARTqc_2 ', 'N_DARTqc_3 ',                &
+      'N_DARTqc_4 ', 'N_DARTqc_5 ', 'N_DARTqc_6 ', 'N_DARTqc_7 ' /)
 
 type TLRV_type
    ! statistics by time-level-region-variable
@@ -211,11 +214,15 @@ type TLRV_type
    character(len=8) :: string
    integer :: num_times = 0, num_levels = 0, num_regions = 0, num_variables = 0
    integer,  dimension(:,:,:,:), pointer :: Nposs, Nused
-   integer,  dimension(:,:,:,:), pointer :: NbadQC ! # bad (original) QC values
+   integer,  dimension(:,:,:,:), pointer :: NbigQC ! # original QC values >= input_qc_threshold
    integer,  dimension(:,:,:,:), pointer :: NbadIZ ! # bad (ie huge) Innovation Zscore
    integer,  dimension(:,:,:,:), pointer :: NbadUV ! # unmatched U/V wind pairs
    integer,  dimension(:,:,:,:), pointer :: NbadLV ! # obs above/below top/bottom
    real(r8), dimension(:,:,:,:), pointer :: rmse, bias, spread, totspread
+   integer,  dimension(:,:,:,:), pointer :: NbadDartQC ! # bad DART QC values
+   real(r8), dimension(:,:,:,:), pointer :: observation, ens_mean
+   integer,  dimension(:,:,:,:), pointer :: NDartQC_0, NDartQC_1, NDartQC_2, NDartQC_3
+   integer,  dimension(:,:,:,:), pointer :: NDartQC_4, NDartQC_5, NDartQC_6, NDartQC_7
 end type TLRV_type
 
 type LRV_type
@@ -226,11 +233,15 @@ type LRV_type
    character(len=8) :: string
    integer :: num_levels = 0, num_regions = 0, num_variables = 0
    integer,  dimension(:,:,:), pointer :: Nposs, Nused
-   integer,  dimension(:,:,:), pointer :: NbadQC ! # bad (original) QC values
+   integer,  dimension(:,:,:), pointer :: NbigQC ! # bad (original) QC values
    integer,  dimension(:,:,:), pointer :: NbadIZ ! # bad (ie huge) Innovation Zscore
    integer,  dimension(:,:,:), pointer :: NbadUV ! # unmatched U/V wind pairs
    integer,  dimension(:,:,:), pointer :: NbadLV ! # obs above/below top/bottom
    real(r8), dimension(:,:,:), pointer :: rmse, bias, spread, totspread
+   integer,  dimension(:,:,:), pointer :: NbadDartQC ! # bad DART QC values
+   real(r8), dimension(:,:,:), pointer :: observation, ens_mean
+   integer,  dimension(:,:,:), pointer :: NDartQC_0, NDartQC_1, NDartQC_2, NDartQC_3
+   integer,  dimension(:,:,:), pointer :: NDartQC_4, NDartQC_5, NDartQC_6, NDartQC_7
 end type LRV_type
 
 type(TLRV_type) :: analy,    guess
@@ -392,37 +403,49 @@ write(*,*)'level dimension can be ',Nlevels
 allocate(obs_seq_filenames(Nepochs*4))
 obs_seq_filenames = 'null'
 
-allocate(guess%rmse(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%bias(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%spread(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-      guess%totspread(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%Nposs( Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%Nused( Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NbadQC(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NbadIZ(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NbadUV(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NbadLV(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%rmse(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%bias(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%spread(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-      analy%totspread(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%Nposs( Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%Nused( Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NbadQC(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NbadIZ(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NbadUV(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NbadLV(Nepochs, Nlevels, Nregions, num_obs_kinds))
+allocate(guess%rmse(       Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%bias(       Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%spread(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%totspread(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%observation(Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%ens_mean(   Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%Nposs(      Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%Nused(      Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NbigQC(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NbadIZ(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NbadUV(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NbadLV(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NbadDartQC( Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NDartQC_0(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NDartQC_1(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NDartQC_2(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NDartQC_3(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NDartQC_4(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NDartQC_5(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NDartQC_6(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         guess%NDartQC_7(  Nepochs, Nlevels, Nregions, num_obs_kinds)  )
 
-guess%rmse   = 0.0_r8
-guess%bias   = 0.0_r8
-guess%spread = 0.0_r8
-guess%totspread = 0.0_r8
-guess%Nposs  = 0
-guess%Nused  = 0
-guess%NbadQC = 0
-guess%NbadIZ = 0
-guess%NbadUV = 0
-guess%NbadLV = 0
+guess%rmse        = 0.0_r8
+guess%bias        = 0.0_r8
+guess%spread      = 0.0_r8
+guess%totspread   = 0.0_r8
+guess%observation = 0.0_r8
+guess%ens_mean    = 0.0_r8
+guess%Nposs       = 0
+guess%Nused       = 0
+guess%NbigQC      = 0
+guess%NbadIZ      = 0
+guess%NbadUV      = 0
+guess%NbadLV      = 0
+guess%NbadDartQC  = 0
+guess%NDartQC_0   = 0
+guess%NDartQC_1   = 0
+guess%NDartQC_2   = 0
+guess%NDartQC_3   = 0
+guess%NDartQC_4   = 0
+guess%NDartQC_5   = 0
+guess%NDartQC_6   = 0
+guess%NDartQC_7   = 0
 
 guess%string        = 'guess'
 guess%num_times     = Nepochs
@@ -430,16 +453,49 @@ guess%num_levels    = Nlevels
 guess%num_regions   = Nregions
 guess%num_variables = num_obs_kinds
 
-analy%rmse   = 0.0_r8
-analy%bias   = 0.0_r8
-analy%spread = 0.0_r8
-analy%totspread = 0.0_r8
-analy%Nposs  = 0
-analy%Nused  = 0
-analy%NbadQC = 0
-analy%NbadIZ = 0
-analy%NbadUV = 0
-analy%NbadLV = 0
+allocate(analy%rmse(       Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%bias(       Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%spread(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%totspread(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%observation(Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%ens_mean(   Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%Nposs(      Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%Nused(      Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NbigQC(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NbadIZ(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NbadUV(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NbadLV(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NbadDartQC( Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NDartQC_0(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NDartQC_1(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NDartQC_2(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NDartQC_3(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NDartQC_4(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NDartQC_5(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NDartQC_6(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
+         analy%NDartQC_7(  Nepochs, Nlevels, Nregions, num_obs_kinds)  )
+
+analy%rmse        = 0.0_r8
+analy%bias        = 0.0_r8
+analy%spread      = 0.0_r8
+analy%totspread   = 0.0_r8
+analy%observation = 0.0_r8
+analy%ens_mean    = 0.0_r8
+analy%Nposs       = 0
+analy%Nused       = 0
+analy%NbigQC      = 0
+analy%NbadIZ      = 0
+analy%NbadUV      = 0
+analy%NbadLV      = 0
+analy%NbadDartQC  = 0
+analy%NDartQC_0   = 0
+analy%NDartQC_1   = 0
+analy%NDartQC_2   = 0
+analy%NDartQC_3   = 0
+analy%NDartQC_4   = 0
+analy%NDartQC_5   = 0
+analy%NDartQC_6   = 0
+analy%NDartQC_7   = 0
 
 analy%string        = 'analy'
 analy%num_times     = Nepochs
@@ -447,53 +503,98 @@ analy%num_levels    = Nlevels
 analy%num_regions   = Nregions
 analy%num_variables = num_obs_kinds
 
-allocate(guessAVG%rmse(  Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%bias(  Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%spread(Nlevels, Nregions, num_obs_kinds), &
-      guessAVG%totspread(Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%Nposs( Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%Nused( Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NbadQC(Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NbadIZ(Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NbadUV(Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NbadLV(Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%rmse(  Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%bias(  Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%spread(Nlevels, Nregions, num_obs_kinds), &
-      analyAVG%totspread(Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%Nposs( Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%Nused( Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NbadQC(Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NbadIZ(Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NbadUV(Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NbadLV(Nlevels, Nregions, num_obs_kinds))
+allocate(guessAVG%rmse(       Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%bias(       Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%spread(     Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%totspread(  Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%observation(Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%ens_mean(   Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%Nposs(      Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%Nused(      Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NbigQC(     Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NbadIZ(     Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NbadUV(     Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NbadLV(     Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NbadDartQC( Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NDartQC_0(  Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NDartQC_1(  Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NDartQC_2(  Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NDartQC_3(  Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NDartQC_4(  Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NDartQC_5(  Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NDartQC_6(  Nlevels, Nregions, num_obs_kinds), &
+         guessAVG%NDartQC_7(  Nlevels, Nregions, num_obs_kinds)  )
 
-guessAVG%rmse   = 0.0_r8
-guessAVG%bias   = 0.0_r8
-guessAVG%spread = 0.0_r8
-guessAVG%totspread = 0.0_r8
-guessAVG%Nposs  = 0
-guessAVG%Nused  = 0
-guessAVG%NbadQC = 0
-guessAVG%NbadIZ = 0
-guessAVG%NbadUV = 0
-guessAVG%NbadLV = 0
+guessAVG%rmse        = 0.0_r8
+guessAVG%bias        = 0.0_r8
+guessAVG%spread      = 0.0_r8
+guessAVG%totspread   = 0.0_r8
+guessAVG%observation = 0.0_r8
+guessAVG%ens_mean    = 0.0_r8
+guessAVG%Nposs       = 0
+guessAVG%Nused       = 0
+guessAVG%NbigQC      = 0
+guessAVG%NbadIZ      = 0
+guessAVG%NbadUV      = 0
+guessAVG%NbadLV      = 0
+guessAVG%NbadDartQC  = 0
+guessAVG%NDartQC_0   = 0
+guessAVG%NDartQC_1   = 0
+guessAVG%NDartQC_2   = 0
+guessAVG%NDartQC_3   = 0
+guessAVG%NDartQC_4   = 0
+guessAVG%NDartQC_5   = 0
+guessAVG%NDartQC_6   = 0
+guessAVG%NDartQC_7   = 0
 
 guessAVG%string        = 'VPguess'
 guessAVG%num_levels    = Nlevels
 guessAVG%num_regions   = Nregions
 guessAVG%num_variables = num_obs_kinds
 
-analyAVG%rmse   = 0.0_r8
-analyAVG%bias   = 0.0_r8
-analyAVG%spread = 0.0_r8
-analyAVG%totspread = 0.0_r8
-analyAVG%Nposs  = 0
-analyAVG%Nused  = 0
-analyAVG%NbadQC = 0
-analyAVG%NbadIZ = 0
-analyAVG%NbadUV = 0
-analyAVG%NbadLV = 0
+allocate(analyAVG%rmse(       Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%bias(       Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%spread(     Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%totspread(  Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%observation(Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%ens_mean(   Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%Nposs(      Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%Nused(      Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NbigQC(     Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NbadIZ(     Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NbadUV(     Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NbadLV(     Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NbadDartQC( Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NDartQC_0(  Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NDartQC_1(  Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NDartQC_2(  Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NDartQC_3(  Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NDartQC_4(  Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NDartQC_5(  Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NDartQC_6(  Nlevels, Nregions, num_obs_kinds), &
+         analyAVG%NDartQC_7(  Nlevels, Nregions, num_obs_kinds)  )
+
+analyAVG%rmse        = 0.0_r8
+analyAVG%bias        = 0.0_r8
+analyAVG%spread      = 0.0_r8
+analyAVG%totspread   = 0.0_r8
+analyAVG%observation = 0.0_r8
+analyAVG%ens_mean    = 0.0_r8
+analyAVG%Nposs       = 0
+analyAVG%Nused       = 0
+analyAVG%NbigQC      = 0
+analyAVG%NbadIZ      = 0
+analyAVG%NbadUV      = 0
+analyAVG%NbadLV      = 0
+analyAVG%NbadDartQC  = 0
+analyAVG%NDartQC_0   = 0
+analyAVG%NDartQC_1   = 0
+analyAVG%NDartQC_2   = 0
+analyAVG%NDartQC_3   = 0
+analyAVG%NDartQC_4   = 0
+analyAVG%NDartQC_5   = 0
+analyAVG%NDartQC_6   = 0
+analyAVG%NDartQC_7   = 0
 
 analyAVG%string        = 'VPanaly'
 analyAVG%num_levels    = Nlevels
@@ -976,9 +1077,48 @@ ObsFileLoop : do ifile=1, 1000
 
             if( qc_index > 0 ) then
                if (qc(qc_index) > input_qc_threshold ) then
-               call IPE(guess%NbadQC(iepoch,level_index,iregion,flavor), 1)
-               call IPE(analy%NbadQC(iepoch,level_index,iregion,flavor), 1)
+               call IPE(guess%NbigQC(iepoch,level_index,iregion,flavor), 1)
+               call IPE(analy%NbigQC(iepoch,level_index,iregion,flavor), 1)
                endif
+            endif
+
+            !-----------------------------------------------------------
+            ! Count DART QC values 
+            ! FIXME ... should these be different for prior/posterior?
+            !-----------------------------------------------------------
+
+            if (        qc_integer == 0 ) then
+               call IPE(guess%NDartQC_0(iepoch,level_index,iregion,flavor), 1)
+               call IPE(analy%NDartQC_0(iepoch,level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer == 1 ) then
+               call IPE(guess%NDartQC_1(iepoch,level_index,iregion,flavor), 1)
+               call IPE(analy%NDartQC_1(iepoch,level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer == 2 ) then
+               call IPE(guess%NDartQC_2(iepoch,level_index,iregion,flavor), 1)
+               call IPE(analy%NDartQC_2(iepoch,level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer == 3 ) then
+               call IPE(guess%NDartQC_3(iepoch,level_index,iregion,flavor), 1)
+               call IPE(analy%NDartQC_3(iepoch,level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer == 4 ) then
+               call IPE(guess%NDartQC_4(iepoch,level_index,iregion,flavor), 1)
+               call IPE(analy%NDartQC_4(iepoch,level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer == 5 ) then
+               call IPE(guess%NDartQC_5(iepoch,level_index,iregion,flavor), 1)
+               call IPE(analy%NDartQC_5(iepoch,level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer == 6 ) then
+               call IPE(guess%NDartQC_6(iepoch,level_index,iregion,flavor), 1)
+               call IPE(analy%NDartQC_6(iepoch,level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer == 7 ) then
+               call IPE(guess%NDartQC_7(iepoch,level_index,iregion,flavor), 1)
+               call IPE(analy%NDartQC_7(iepoch,level_index,iregion,flavor), 1)
+
             endif
 
             !-----------------------------------------------------------
@@ -1065,10 +1205,49 @@ ObsFileLoop : do ifile=1, 1000
 
             if( qc_index > 0 ) then
                if (qc(qc_index) > input_qc_threshold ) then
-               call IPE(guessAVG%NbadQC(level_index,iregion,flavor), 1)
-               call IPE(analyAVG%NbadQC(level_index,iregion,flavor), 1)
+               call IPE(guessAVG%NbigQC(level_index,iregion,flavor), 1)
+               call IPE(analyAVG%NbigQC(level_index,iregion,flavor), 1)
                endif
             endif
+
+            ! Count DART QC values 
+            ! FIXME ... should these be different for prior/posterior?
+
+            if (        qc_integer    == 0 ) then
+               call IPE(guessAVG%NDartQC_0(level_index,iregion,flavor), 1)
+               call IPE(analyAVG%NDartQC_0(level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer    == 1 ) then
+               call IPE(guessAVG%NDartQC_1(level_index,iregion,flavor), 1)
+               call IPE(analyAVG%NDartQC_1(level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer    == 2 ) then
+               call IPE(guessAVG%NDartQC_2(level_index,iregion,flavor), 1)
+               call IPE(analyAVG%NDartQC_2(level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer    == 3 ) then
+               call IPE(guessAVG%NDartQC_3(level_index,iregion,flavor), 1)
+               call IPE(analyAVG%NDartQC_3(level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer    == 4 ) then
+               call IPE(guessAVG%NDartQC_4(level_index,iregion,flavor), 1)
+               call IPE(analyAVG%NDartQC_4(level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer    == 5 ) then
+               call IPE(guessAVG%NDartQC_5(level_index,iregion,flavor), 1)
+               call IPE(analyAVG%NDartQC_5(level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer    == 6 ) then
+               call IPE(guessAVG%NDartQC_6(level_index,iregion,flavor), 1)
+               call IPE(analyAVG%NDartQC_6(level_index,iregion,flavor), 1)
+
+            elseif (    qc_integer    == 7 ) then
+               call IPE(guessAVG%NDartQC_7(level_index,iregion,flavor), 1)
+               call IPE(analyAVG%NDartQC_7(level_index,iregion,flavor), 1)
+
+            endif
+
+            ! Count 'large' innovations
 
             if(pr_zscore > rat_cri )  then
                call IPE(guessAVG%NbadIZ(level_index,iregion,flavor), 1)
@@ -1161,51 +1340,72 @@ do ivar   = 1,num_obs_kinds
 do iregion= 1,Nregions
 do ilev   = 1,Nlevels
 do iepoch = 1,Nepochs
-   if (  guess%Nused( iepoch, ilev, iregion, ivar) == 0) then
-         guess%rmse(  iepoch, ilev, iregion, ivar) = MISSING_R4
-         guess%bias(  iepoch, ilev, iregion, ivar) = MISSING_R4
-         guess%spread(iepoch, ilev, iregion, ivar) = MISSING_R4
-      guess%totspread(iepoch, ilev, iregion, ivar) = MISSING_R4
+
+   if (  guess%Nused(      iepoch, ilev, iregion, ivar) == 0) then
+         guess%observation(iepoch, ilev, iregion, ivar) = MISSING_R4
+         guess%ens_mean(   iepoch, ilev, iregion, ivar) = MISSING_R4
+         guess%bias(       iepoch, ilev, iregion, ivar) = MISSING_R4
+         guess%rmse(       iepoch, ilev, iregion, ivar) = MISSING_R4
+         guess%spread(     iepoch, ilev, iregion, ivar) = MISSING_R4
+         guess%totspread(  iepoch, ilev, iregion, ivar) = MISSING_R4
    else
-         guess%rmse(  iepoch, ilev, iregion, ivar) = &
-    sqrt(guess%rmse(  iepoch, ilev, iregion, ivar) / &
-         guess%Nused( iepoch, ilev, iregion, ivar) )
+         guess%observation(iepoch, ilev, iregion, ivar) = &
+         guess%observation(iepoch, ilev, iregion, ivar) / &
+         guess%Nused(      iepoch, ilev, iregion, ivar)  
 
-         guess%bias(  iepoch, ilev, iregion, ivar) = &
-         guess%bias(  iepoch, ilev, iregion, ivar) / &
-         guess%Nused( iepoch, ilev, iregion, ivar)  
+         guess%ens_mean(   iepoch, ilev, iregion, ivar) = &
+         guess%ens_mean(   iepoch, ilev, iregion, ivar) / &
+         guess%Nused(      iepoch, ilev, iregion, ivar)  
 
-         guess%spread(iepoch, ilev, iregion, ivar) = &
-    sqrt(guess%spread(iepoch, ilev, iregion, ivar) / &
-         guess%Nused( iepoch, ilev, iregion, ivar) )
+         guess%bias(       iepoch, ilev, iregion, ivar) = &
+         guess%bias(       iepoch, ilev, iregion, ivar) / &
+         guess%Nused(      iepoch, ilev, iregion, ivar)  
 
-         guess%totspread(iepoch, ilev, iregion, ivar) = &
-    sqrt(guess%totspread(iepoch, ilev, iregion, ivar) / &
-         guess%Nused(    iepoch, ilev, iregion, ivar) )
+         guess%rmse(       iepoch, ilev, iregion, ivar) = &
+    sqrt(guess%rmse(       iepoch, ilev, iregion, ivar) / &
+         guess%Nused(      iepoch, ilev, iregion, ivar) )
+
+         guess%spread(     iepoch, ilev, iregion, ivar) = &
+    sqrt(guess%spread(     iepoch, ilev, iregion, ivar) / &
+         guess%Nused(      iepoch, ilev, iregion, ivar) )
+
+         guess%totspread(  iepoch, ilev, iregion, ivar) = &
+    sqrt(guess%totspread(  iepoch, ilev, iregion, ivar) / &
+         guess%Nused(      iepoch, ilev, iregion, ivar) )
 
    endif
 
-   if (  analy%Nused( iepoch, ilev, iregion, ivar) == 0) then
-         analy%rmse(  iepoch, ilev, iregion, ivar) = MISSING_R4
-         analy%bias(  iepoch, ilev, iregion, ivar) = MISSING_R4
-         analy%spread(iepoch, ilev, iregion, ivar) = MISSING_R4
-      analy%totspread(iepoch, ilev, iregion, ivar) = MISSING_R4
+   if (  analy%Nused(      iepoch, ilev, iregion, ivar) == 0) then
+         analy%observation(iepoch, ilev, iregion, ivar) = MISSING_R4
+         analy%ens_mean(   iepoch, ilev, iregion, ivar) = MISSING_R4
+         analy%bias(       iepoch, ilev, iregion, ivar) = MISSING_R4
+         analy%rmse(       iepoch, ilev, iregion, ivar) = MISSING_R4
+         analy%spread(     iepoch, ilev, iregion, ivar) = MISSING_R4
+         analy%totspread(  iepoch, ilev, iregion, ivar) = MISSING_R4
    else
-         analy%rmse(  iepoch, ilev, iregion, ivar) = &
-    sqrt(analy%rmse(  iepoch, ilev, iregion, ivar) / &
-         analy%Nused( iepoch, ilev, iregion, ivar) )
+         analy%observation(iepoch, ilev, iregion, ivar) = &
+         analy%observation(iepoch, ilev, iregion, ivar) / &
+         analy%Nused(      iepoch, ilev, iregion, ivar)  
 
-         analy%bias(  iepoch, ilev, iregion, ivar) = &
-         analy%bias(  iepoch, ilev, iregion, ivar) / &
-         analy%Nused( iepoch, ilev, iregion, ivar)  
+         analy%ens_mean( iepoch, ilev, iregion, ivar) = &
+         analy%ens_mean( iepoch, ilev, iregion, ivar) / &
+         analy%Nused(      iepoch, ilev, iregion, ivar)  
 
-         analy%spread(iepoch, ilev, iregion, ivar) = &
-    sqrt(analy%spread(iepoch, ilev, iregion, ivar) / &
-         analy%Nused( iepoch, ilev, iregion, ivar) )
+         analy%bias(       iepoch, ilev, iregion, ivar) = &
+         analy%bias(       iepoch, ilev, iregion, ivar) / &
+         analy%Nused(      iepoch, ilev, iregion, ivar)  
 
-         analy%totspread(iepoch, ilev, iregion, ivar) = &
-    sqrt(analy%totspread(iepoch, ilev, iregion, ivar) / &
-         analy%Nused(    iepoch, ilev, iregion, ivar) )
+         analy%rmse(       iepoch, ilev, iregion, ivar) = &
+    sqrt(analy%rmse(       iepoch, ilev, iregion, ivar) / &
+         analy%Nused(      iepoch, ilev, iregion, ivar) )
+
+         analy%spread(     iepoch, ilev, iregion, ivar) = &
+    sqrt(analy%spread(     iepoch, ilev, iregion, ivar) / &
+         analy%Nused(      iepoch, ilev, iregion, ivar) )
+
+         analy%totspread(  iepoch, ilev, iregion, ivar) = &
+    sqrt(analy%totspread(  iepoch, ilev, iregion, ivar) / &
+         analy%Nused(      iepoch, ilev, iregion, ivar) )
 
    endif
 enddo
@@ -1238,53 +1438,73 @@ do ivar=1,num_obs_kinds
 do iregion=1, Nregions
 do ilev=1, Nlevels
 
-   if (    guessAVG%Nused( ilev, iregion, ivar) == 0) then
-           guessAVG%rmse(  ilev, iregion, ivar) = MISSING_R4
-           guessAVG%bias(  ilev, iregion, ivar) = MISSING_R4
-           guessAVG%spread(ilev, iregion, ivar) = MISSING_R4
-        guessAVG%totspread(ilev, iregion, ivar) = MISSING_R4
+   if (    guessAVG%Nused(      ilev, iregion, ivar) == 0) then
+           guessAVG%observation(ilev, iregion, ivar) = MISSING_R4
+           guessAVG%ens_mean(   ilev, iregion, ivar) = MISSING_R4
+           guessAVG%bias(       ilev, iregion, ivar) = MISSING_R4
+           guessAVG%rmse(       ilev, iregion, ivar) = MISSING_R4
+           guessAVG%spread(     ilev, iregion, ivar) = MISSING_R4
+           guessAVG%totspread(  ilev, iregion, ivar) = MISSING_R4
 
    else
-           guessAVG%rmse(  ilev, iregion, ivar) = &
-      sqrt(guessAVG%rmse(  ilev, iregion, ivar) / &
-           guessAVG%Nused( ilev, iregion, ivar) )
+           guessAVG%observation(ilev, iregion, ivar) = &
+           guessAVG%observation(ilev, iregion, ivar) / &
+           guessAVG%Nused(      ilev, iregion, ivar)
 
-           guessAVG%bias(  ilev, iregion, ivar) = &
-           guessAVG%bias(  ilev, iregion, ivar) / &
-           guessAVG%Nused( ilev, iregion, ivar)
+           guessAVG%ens_mean( ilev, iregion, ivar) = &
+           guessAVG%ens_mean( ilev, iregion, ivar) / &
+           guessAVG%Nused(      ilev, iregion, ivar)
 
-           guessAVG%spread(ilev, iregion, ivar) = &
-      sqrt(guessAVG%spread(ilev, iregion, ivar) / &
-           guessAVG%Nused( ilev, iregion, ivar) )
+           guessAVG%bias(       ilev, iregion, ivar) = &
+           guessAVG%bias(       ilev, iregion, ivar) / &
+           guessAVG%Nused(      ilev, iregion, ivar)
 
-           guessAVG%totspread(ilev, iregion, ivar) = &
-      sqrt(guessAVG%totspread(ilev, iregion, ivar) / &
-           guessAVG%Nused(    ilev, iregion, ivar) )
+           guessAVG%rmse(       ilev, iregion, ivar) = &
+      sqrt(guessAVG%rmse(       ilev, iregion, ivar) / &
+           guessAVG%Nused(      ilev, iregion, ivar) )
+
+           guessAVG%spread(     ilev, iregion, ivar) = &
+      sqrt(guessAVG%spread(     ilev, iregion, ivar) / &
+           guessAVG%Nused(      ilev, iregion, ivar) )
+
+           guessAVG%totspread(  ilev, iregion, ivar) = &
+      sqrt(guessAVG%totspread(  ilev, iregion, ivar) / &
+           guessAVG%Nused(      ilev, iregion, ivar) )
 
    endif
 
-   if (    analyAVG%Nused( ilev, iregion, ivar) == 0) then
-           analyAVG%rmse(  ilev, iregion, ivar) = MISSING_R4
-           analyAVG%bias(  ilev, iregion, ivar) = MISSING_R4
-           analyAVG%spread(ilev, iregion, ivar) = MISSING_R4
-        analyAVG%totspread(ilev, iregion, ivar) = MISSING_R4
+   if (    analyAVG%Nused(      ilev, iregion, ivar) == 0) then
+           analyAVG%observation(ilev, iregion, ivar) = MISSING_R4
+           analyAVG%ens_mean(   ilev, iregion, ivar) = MISSING_R4
+           analyAVG%bias(       ilev, iregion, ivar) = MISSING_R4
+           analyAVG%rmse(       ilev, iregion, ivar) = MISSING_R4
+           analyAVG%spread(     ilev, iregion, ivar) = MISSING_R4
+           analyAVG%totspread(  ilev, iregion, ivar) = MISSING_R4
 
    else
-           analyAVG%rmse(  ilev, iregion, ivar) = &
-      sqrt(analyAVG%rmse(  ilev, iregion, ivar) / &
-           analyAVG%Nused( ilev, iregion, ivar) )
+           analyAVG%observation(ilev, iregion, ivar) = &
+           analyAVG%observation(ilev, iregion, ivar) / &
+           analyAVG%Nused(      ilev, iregion, ivar)
 
-           analyAVG%bias(  ilev, iregion, ivar) = &
-           analyAVG%bias(  ilev, iregion, ivar) / &
-           analyAVG%Nused( ilev, iregion, ivar)
+           analyAVG%ens_mean( ilev, iregion, ivar) = &
+           analyAVG%ens_mean( ilev, iregion, ivar) / &
+           analyAVG%Nused(      ilev, iregion, ivar)
 
-           analyAVG%spread(ilev, iregion, ivar) = &
-      sqrt(analyAVG%spread(ilev, iregion, ivar) / &
-           analyAVG%Nused( ilev, iregion, ivar) )
+           analyAVG%bias(       ilev, iregion, ivar) = &
+           analyAVG%bias(       ilev, iregion, ivar) / &
+           analyAVG%Nused(      ilev, iregion, ivar)
 
-           analyAVG%totspread(ilev, iregion, ivar) = &
-      sqrt(analyAVG%totspread(ilev, iregion, ivar) / &
-           analyAVG%Nused(    ilev, iregion, ivar) )
+           analyAVG%rmse(       ilev, iregion, ivar) = &
+      sqrt(analyAVG%rmse(       ilev, iregion, ivar) / &
+           analyAVG%Nused(      ilev, iregion, ivar) )
+
+           analyAVG%spread(     ilev, iregion, ivar) = &
+      sqrt(analyAVG%spread(     ilev, iregion, ivar) / &
+           analyAVG%Nused(      ilev, iregion, ivar) )
+
+           analyAVG%totspread(  ilev, iregion, ivar) = &
+      sqrt(analyAVG%totspread(  ilev, iregion, ivar) / &
+           analyAVG%Nused(      ilev, iregion, ivar) )
 
    endif
 enddo
@@ -1302,7 +1522,9 @@ write(*,*) '# identity           : ',Nidentity
 write(*,*) '# bad Innov  (ratio) : ',sum(guess%NbadIZ)
 write(*,*) '# bad UV (wind pairs): ',sum(guess%NbadUV)
 write(*,*) '# bad Level          : ',sum(guess%NbadLV(:,1,:,:))
-write(*,*) '# bad DART QC        : ',sum(guess%NbadQC)
+write(*,*) '# big (original) QC  : ',sum(guess%NbigQC)
+write(*,*) '# bad DART QC prior  : ',sum(guess%NbadDartQC)
+write(*,*) '# bad DART QC post   : ',sum(analy%NbadDartQC)
 write(*,*)
 
 write(logfileunit,*)
@@ -1312,7 +1534,9 @@ write(logfileunit,*) '# identity           : ',Nidentity
 write(logfileunit,*) '# bad Innov  (ratio) : ',sum(guess%NbadIZ)
 write(logfileunit,*) '# bad UV (wind pairs): ',sum(guess%NbadUV)
 write(logfileunit,*) '# bad Level          : ',sum(guess%NbadLV(:,1,:,:))
-write(logfileunit,*) '# bad DART QC        : ',sum(guess%NbadQC)
+write(logfileunit,*) '# big (original) QC  : ',sum(guess%NbigQC)
+write(logfileunit,*) '# bad DART QC prior  : ',sum(guess%NbadDartQC)
+write(logfileunit,*) '# bad DART QC post   : ',sum(analy%NbadDartQC)
 
 if (Nidentity > 0) then
    write(*,*)'There were identity observations in this observation sequence file.'
@@ -1337,20 +1561,37 @@ call WriteNetCDF(ncName)
 !-----------------------------------------------------------------------
 ! Really, really, done.
 !-----------------------------------------------------------------------
-
 deallocate(obs_seq_filenames)
 
-deallocate(guess%NbadQC, guess%NbadIZ, guess%NbadUV, guess%NbadLV, &
-           analy%NbadQC, analy%NbadIZ, analy%NbadUV, analy%NbadLV, &
-           guess%rmse, guess%bias, guess%spread, guess%totspread, guess%Nposs, guess%Nused,  &
-           analy%rmse, analy%bias, analy%spread, analy%totspread, analy%Nposs, analy%Nused)
+deallocate(guess%rmse,        guess%bias,      guess%spread,    guess%totspread, &
+           guess%observation, guess%ens_mean,  guess%Nposs,     guess%Nused,     &
+           guess%NbigQC,      guess%NbadIZ,    guess%NbadUV,    guess%NbadLV,    &
+           guess%NbadDartQC,                                                     &
+           guess%NDartQC_0,   guess%NDartQC_1, guess%NDartQC_2, guess%NDartQC_3, &
+           guess%NDartQC_4,   guess%NDartQC_5, guess%NDartQC_6, guess%NDartQC_7) 
 
-deallocate(guessAVG%NbadQC, guessAVG%NbadIZ, guessAVG%NbadUV, guessAVG%NbadLV, & 
-           analyAVG%NbadQC, analyAVG%NbadIZ, analyAVG%NbadUV, analyAVG%NbadLV, &
-           guessAVG%rmse, guessAVG%bias, guessAVG%spread, guessAVG%totspread, &
-           analyAVG%rmse, analyAVG%bias, analyAVG%spread, analyAVG%totspread, &
-           guessAVG%Nposs, guessAVG%Nused,  &
-           analyAVG%Nposs, analyAVG%Nused)
+deallocate(analy%rmse,        analy%bias,      analy%spread,    analy%totspread, &
+           analy%observation, analy%ens_mean,  analy%Nposs,     analy%Nused,     &
+           analy%NbigQC,      analy%NbadIZ,    analy%NbadUV,    analy%NbadLV,    &
+           analy%NbadDartQC,                                                     &
+           analy%NDartQC_0,   analy%NDartQC_1, analy%NDartQC_2, analy%NDartQC_3, &
+           analy%NDartQC_4,   analy%NDartQC_5, analy%NDartQC_6, analy%NDartQC_7) 
+
+deallocate(guessAVG%rmse,        guessAVG%bias,        guessAVG%spread,     &
+           guessAVG%totspread,   guessAVG%observation, guessAVG%ens_mean,   &
+           guessAVG%Nposs,       guessAVG%Nused,       guessAVG%NbigQC,     &
+           guessAVG%NbadIZ,      guessAVG%NbadUV,      guessAVG%NbadLV,     &
+           guessAVG%NbadDartQC,  guessAVG%NDartQC_0,   guessAVG%NDartQC_1,  &
+           guessAVG%NDartQC_2,   guessAVG%NDartQC_3,   guessAVG%NDartQC_4,  &
+           guessAVG%NDartQC_5,   guessAVG%NDartQC_6,   guessAVG%NDartQC_7) 
+
+deallocate(analyAVG%rmse,        analyAVG%bias,        analyAVG%spread,     &
+           analyAVG%totspread,   analyAVG%observation, analyAVG%ens_mean,   &
+           analyAVG%Nposs,       analyAVG%Nused,       analyAVG%NbigQC,     &
+           analyAVG%NbadIZ,      analyAVG%NbadUV,      analyAVG%NbadLV,     &
+           analyAVG%NbadDartQC,  analyAVG%NDartQC_0,   analyAVG%NDartQC_1,  &
+           analyAVG%NDartQC_2,   analyAVG%NDartQC_3,   analyAVG%NDartQC_4,  &
+           analyAVG%NDartQC_5,   analyAVG%NDartQC_6,   analyAVG%NDartQC_7) 
 
 deallocate(epoch_center, epoch_edges, bincenter, obs_used_in_epoch)
 
@@ -2113,8 +2354,6 @@ CONTAINS
          dx(1:Nmlevels) = abs(level_in - mlevel(1:Nmlevels))
          a              = minloc(dx(1:Nmlevels))
          ClosestLevelIndex   = a(1)
-!        write(*,*)'obs index ',obsindex,' level is ',level_in, &
-!                  'level index out is ',ClosestLevelIndex
       endif
 
    else if (leveltype == VERTISUNDEF) then
@@ -2342,7 +2581,6 @@ CONTAINS
    real(r8), intent(in)           :: obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd
    real(r8), intent(in), optional ::   uobs, uobserrvar, uprmean, uprsprd, upomean, uposprd
 
-   real(r8) :: obsspeed
    real(r8) :: priorsqerr      ! PRIOR     Squared Error
    real(r8) :: priorbias       ! PRIOR     simple bias
    real(r8) :: priorspred      ! PRIOR     (spread,variance)
@@ -2351,6 +2589,9 @@ CONTAINS
    real(r8) :: postbias        ! POSTERIOR simple bias
    real(r8) :: postspred       ! POSTERIOR (spread,variance)
    real(r8) :: postspredplus   ! POSTERIOR (spread,variance**)
+
+   real(r8) :: priormean, postmean, obsmean
+
    logical, dimension(6) :: optionals
 
    optionals = (/ present(uobs), present(uobserrvar), present(uprmean), &
@@ -2361,9 +2602,11 @@ CONTAINS
       postsqerr      = (pomean - obsval)**2 + (upomean - uobs)**2
 
       ! This calculation is the bias in the wind speed (F-O)
-      obsspeed       = sqrt(uobs**2 + obsval**2)
-      priorbias      = sqrt(prmean**2 + uprmean**2) - obsspeed
-      postbias       = sqrt(pomean**2 + upomean**2) - obsspeed
+      obsmean        = sqrt(obsval**2 + uobs**2)
+      priormean      = sqrt(prmean**2 + uprmean**2)
+      postmean       = sqrt(pomean**2 + upomean**2)
+      priorbias      = priormean - obsmean 
+      postbias       = postmean  - obsmean 
 
       priorspred     = prsprd**2 + uprsprd**2
       postspred      = posprd**2 + uposprd**2
@@ -2382,6 +2625,9 @@ CONTAINS
       postspred      = posprd**2
       priorspredplus = prsprd**2 + obserrvar
       postspredplus  = posprd**2 + obserrvar
+      obsmean        = obsval
+      priormean      = prmean
+      postmean       = pomean
    endif
 
    !----------------------------------------------------------------------
@@ -2393,36 +2639,42 @@ CONTAINS
 
    if ( iqc > QC_MAX_PRIOR ) then  ! prior and posterior failed
 
-      call IPE(guess%NbadQC(iepoch,ilevel,iregion,flavor),      1    )
-      call IPE(analy%NbadQC(iepoch,ilevel,iregion,flavor),      1    )
+      call IPE(guess%NbadDartQC(iepoch,ilevel,iregion,flavor),      1    )
+      call IPE(analy%NbadDartQC(iepoch,ilevel,iregion,flavor),      1    )
 
    else if ( iqc > QC_MAX_POSTERIOR ) then
 
       ! Then at least the prior (A.K.A. guess) is good
-      call IPE(guess%Nused(    iepoch,ilevel,iregion,flavor),      1    )
-      call RPE(guess%rmse(     iepoch,ilevel,iregion,flavor), priorsqerr)
-      call RPE(guess%bias(     iepoch,ilevel,iregion,flavor), priorbias )
-      call RPE(guess%spread(   iepoch,ilevel,iregion,flavor), priorspred)
-      call RPE(guess%totspread(iepoch,ilevel,iregion,flavor), priorspredplus)
+      call IPE(guess%Nused(      iepoch,ilevel,iregion,flavor),      1    )
+      call RPE(guess%observation(iepoch,ilevel,iregion,flavor), obsmean   )
+      call RPE(guess%ens_mean(   iepoch,ilevel,iregion,flavor), priormean )
+      call RPE(guess%bias(       iepoch,ilevel,iregion,flavor), priorbias )
+      call RPE(guess%rmse(       iepoch,ilevel,iregion,flavor), priorsqerr)
+      call RPE(guess%spread(     iepoch,ilevel,iregion,flavor), priorspred)
+      call RPE(guess%totspread(  iepoch,ilevel,iregion,flavor), priorspredplus)
 
       ! However, the posterior is bad
-      call IPE(analy%NbadQC(iepoch,ilevel,iregion,flavor),      1    )
+      call IPE(analy%NbadDartQC(iepoch,ilevel,iregion,flavor),      1    )
 
    else
 
       ! The prior is good
-      call IPE(guess%Nused(    iepoch,ilevel,iregion,flavor),      1    ) 
-      call RPE(guess%rmse(     iepoch,ilevel,iregion,flavor), priorsqerr)
-      call RPE(guess%bias(     iepoch,ilevel,iregion,flavor), priorbias )
-      call RPE(guess%spread(   iepoch,ilevel,iregion,flavor), priorspred)
-      call RPE(guess%totspread(iepoch,ilevel,iregion,flavor), priorspredplus)
+      call IPE(guess%Nused(      iepoch,ilevel,iregion,flavor),      1    ) 
+      call RPE(guess%observation(iepoch,ilevel,iregion,flavor), obsmean   )
+      call RPE(guess%ens_mean(   iepoch,ilevel,iregion,flavor), priormean )
+      call RPE(guess%bias(       iepoch,ilevel,iregion,flavor), priorbias )
+      call RPE(guess%rmse(       iepoch,ilevel,iregion,flavor), priorsqerr)
+      call RPE(guess%spread(     iepoch,ilevel,iregion,flavor), priorspred)
+      call RPE(guess%totspread(  iepoch,ilevel,iregion,flavor), priorspredplus)
 
       ! The posterior is good
-      call IPE(analy%Nused(    iepoch,ilevel,iregion,flavor),      1    )
-      call RPE(analy%rmse(     iepoch,ilevel,iregion,flavor), postsqerr )
-      call RPE(analy%bias(     iepoch,ilevel,iregion,flavor), postbias  )
-      call RPE(analy%spread(   iepoch,ilevel,iregion,flavor), postspred )
-      call RPE(analy%totspread(iepoch,ilevel,iregion,flavor), postspredplus)
+      call IPE(analy%Nused(      iepoch,ilevel,iregion,flavor),      1   )
+      call RPE(analy%observation(iepoch,ilevel,iregion,flavor), obsmean  )
+      call RPE(analy%ens_mean(   iepoch,ilevel,iregion,flavor), postmean )
+      call RPE(analy%bias(       iepoch,ilevel,iregion,flavor), postbias )
+      call RPE(analy%rmse(       iepoch,ilevel,iregion,flavor), postsqerr)
+      call RPE(analy%spread(     iepoch,ilevel,iregion,flavor), postspred)
+      call RPE(analy%totspread(  iepoch,ilevel,iregion,flavor), postspredplus)
 
    endif
 
@@ -2447,7 +2699,6 @@ CONTAINS
    real(r8), intent(in)           :: obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd
    real(r8), intent(in), optional ::   uobs, uobserrvar, uprmean, uprsprd, upomean, uposprd
 
-   real(r8) :: obsspeed
    real(r8) :: priorsqerr     ! PRIOR     Squared Error
    real(r8) :: priorbias      ! PRIOR     simple bias
    real(r8) :: priorspred     ! PRIOR     (spread,variance)
@@ -2458,6 +2709,8 @@ CONTAINS
    real(r8) :: postspredplus  ! POSTERIOR (spread,variance**)
    logical, dimension(6) :: optionals
 
+   real(r8) :: priormean, postmean, obsmean
+
    optionals = (/ present(uobs), present(uobserrvar), present(uprmean), &
                   present(uprsprd), present(upomean), present(uposprd) /)
 
@@ -2466,9 +2719,11 @@ CONTAINS
       postsqerr      = (pomean - obsval)**2 + (upomean - uobs)**2
 
       ! This calculation is the bias in the wind speed (F-O)
-      obsspeed       = sqrt(uobs**2 + obsval**2)
-      priorbias      = sqrt(prmean**2 + uprmean**2) - obsspeed
-      postbias       = sqrt(pomean**2 + upomean**2) - obsspeed
+      obsmean        = sqrt(obsval**2 + uobs**2)
+      priormean      = sqrt(prmean**2 + uprmean**2)
+      postmean       = sqrt(pomean**2 + upomean**2)
+      priorbias      = priormean - obsmean 
+      postbias       = postmean  - obsmean 
 
       priorspred     = prsprd**2 + uprsprd**2
       postspred      = posprd**2 + uposprd**2
@@ -2487,47 +2742,56 @@ CONTAINS
       postspred      = posprd**2
       priorspredplus = prsprd**2 + obserrvar
       postspredplus  = posprd**2 + obserrvar
-
+      obsmean        = obsval
+      priormean      = prmean
+      postmean       = pomean
    endif
 
    !----------------------------------------------------------------------
    ! Track the number of possible observations
    !----------------------------------------------------------------------
+
    call IPE(guessAVG%Nposs(ilevel,iregion,flavor), 1)
    call IPE(analyAVG%Nposs(ilevel,iregion,flavor), 1)
 
    if ( iqc > QC_MAX_PRIOR ) then  ! prior and posterior failed
 
-      call IPE(guessAVG%NbadQC(ilevel,iregion,flavor),      1    )
-      call IPE(analyAVG%NbadQC(ilevel,iregion,flavor),      1    )
+      call IPE(guessAVG%NbadDartQC(ilevel,iregion,flavor),      1    )
+      call IPE(analyAVG%NbadDartQC(ilevel,iregion,flavor),      1    )
 
    else if ( iqc > QC_MAX_POSTERIOR ) then
 
       ! Then at least the prior (A.K.A. guess) is good
-      call IPE(guessAVG%Nused(    ilevel,iregion,flavor),      1    )
-      call RPE(guessAVG%rmse(     ilevel,iregion,flavor), priorsqerr)
-      call RPE(guessAVG%bias(     ilevel,iregion,flavor), priorbias )
-      call RPE(guessAVG%spread(   ilevel,iregion,flavor), priorspred)
-      call RPE(guessAVG%totspread(ilevel,iregion,flavor), priorspredplus)
+      call IPE(guessAVG%Nused(      ilevel,iregion,flavor),      1    )
+      call RPE(guessAVG%observation(ilevel,iregion,flavor), obsmean   )
+      call RPE(guessAVG%ens_mean(   ilevel,iregion,flavor), priormean )
+      call RPE(guessAVG%bias(       ilevel,iregion,flavor), priorbias )
+      call RPE(guessAVG%rmse(       ilevel,iregion,flavor), priorsqerr)
+      call RPE(guessAVG%spread(     ilevel,iregion,flavor), priorspred)
+      call RPE(guessAVG%totspread(  ilevel,iregion,flavor), priorspredplus)
 
       ! However, the posterior is bad
-      call IPE(analyAVG%NbadQC(ilevel,iregion,flavor),      1    )
+      call IPE(analyAVG%NbadDartQC(ilevel,iregion,flavor),      1    )
 
    else
 
       ! The prior is good
-      call IPE(guessAVG%Nused(    ilevel,iregion,flavor),      1    ) 
-      call RPE(guessAVG%rmse(     ilevel,iregion,flavor), priorsqerr)
-      call RPE(guessAVG%bias(     ilevel,iregion,flavor), priorbias )
-      call RPE(guessAVG%spread(   ilevel,iregion,flavor), priorspred)
-      call RPE(guessAVG%totspread(ilevel,iregion,flavor), priorspredplus)
+      call IPE(guessAVG%Nused(      ilevel,iregion,flavor),      1    ) 
+      call RPE(guessAVG%observation(ilevel,iregion,flavor), obsmean   )
+      call RPE(guessAVG%ens_mean(   ilevel,iregion,flavor), priormean )
+      call RPE(guessAVG%bias(       ilevel,iregion,flavor), priorbias )
+      call RPE(guessAVG%rmse(       ilevel,iregion,flavor), priorsqerr)
+      call RPE(guessAVG%spread(     ilevel,iregion,flavor), priorspred)
+      call RPE(guessAVG%totspread(  ilevel,iregion,flavor), priorspredplus)
 
       ! The posterior is good
-      call IPE(analyAVG%Nused(    ilevel,iregion,flavor),      1    )
-      call RPE(analyAVG%rmse(     ilevel,iregion,flavor), postsqerr )
-      call RPE(analyAVG%bias(     ilevel,iregion,flavor), postbias  )
-      call RPE(analyAVG%spread(   ilevel,iregion,flavor), postspred)
-      call RPE(analyAVG%totspread(ilevel,iregion,flavor), postspredplus)
+      call IPE(analyAVG%Nused(      ilevel,iregion,flavor),      1   )
+      call RPE(analyAVG%observation(ilevel,iregion,flavor), obsmean  )
+      call RPE(analyAVG%ens_mean(   ilevel,iregion,flavor), postmean )
+      call RPE(analyAVG%bias(       ilevel,iregion,flavor), postbias )
+      call RPE(analyAVG%rmse(       ilevel,iregion,flavor), postsqerr)
+      call RPE(analyAVG%spread(     ilevel,iregion,flavor), postspred)
+      call RPE(analyAVG%totspread(  ilevel,iregion,flavor), postspredplus)
 
    endif
 
@@ -3024,16 +3288,27 @@ CONTAINS
       do ilevel  = 1,Nlevels
       do iregion = 1,Nregions
 
-         chunk(iregion,ilevel, 1,itime) = vrbl%Nposs(    itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 2,itime) = vrbl%Nused(    itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 3,itime) = vrbl%NbadQC(   itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 4,itime) = vrbl%NbadIZ(   itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 5,itime) = vrbl%NbadUV(   itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 6,itime) = vrbl%NbadLV(   itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 7,itime) = vrbl%rmse(     itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 8,itime) = vrbl%bias(     itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 9,itime) = vrbl%spread(   itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,10,itime) = vrbl%totspread(itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 1,itime) = vrbl%Nposs(      itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 2,itime) = vrbl%Nused(      itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 3,itime) = vrbl%NbigQC(     itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 4,itime) = vrbl%NbadIZ(     itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 5,itime) = vrbl%NbadUV(     itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 6,itime) = vrbl%NbadLV(     itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 7,itime) = vrbl%rmse(       itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 8,itime) = vrbl%bias(       itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 9,itime) = vrbl%spread(     itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel,10,itime) = vrbl%totspread(  itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel,11,itime) = vrbl%NbadDartQC( itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel,12,itime) = vrbl%observation(itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel,13,itime) = vrbl%ens_mean(   itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel,14,itime) = vrbl%NDartQC_0(  itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel,15,itime) = vrbl%NDartQC_1(  itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel,16,itime) = vrbl%NDartQC_2(  itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel,17,itime) = vrbl%NDartQC_3(  itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel,18,itime) = vrbl%NDartQC_4(  itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel,19,itime) = vrbl%NDartQC_5(  itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel,20,itime) = vrbl%NDartQC_6(  itime,ilevel,iregion,ivar)
+         chunk(iregion,ilevel,21,itime) = vrbl%NDartQC_7(  itime,ilevel,iregion,ivar)
 
       enddo
       enddo
@@ -3099,16 +3374,27 @@ CONTAINS
       do ilevel  = 1,Nlevels
       do iregion = 1,Nregions
 
-         chunk(iregion,ilevel, 1) = vrbl%Nposs(    ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 2) = vrbl%Nused(    ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 3) = vrbl%NbadQC(   ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 4) = vrbl%NbadIZ(   ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 5) = vrbl%NbadUV(   ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 6) = vrbl%NbadLV(   ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 7) = vrbl%rmse(     ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 8) = vrbl%bias(     ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 9) = vrbl%spread(   ilevel,iregion,ivar)
-         chunk(iregion,ilevel,10) = vrbl%totspread(ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 1) = vrbl%Nposs(      ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 2) = vrbl%Nused(      ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 3) = vrbl%NbigQC(     ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 4) = vrbl%NbadIZ(     ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 5) = vrbl%NbadUV(     ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 6) = vrbl%NbadLV(     ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 7) = vrbl%rmse(       ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 8) = vrbl%bias(       ilevel,iregion,ivar)
+         chunk(iregion,ilevel, 9) = vrbl%spread(     ilevel,iregion,ivar)
+         chunk(iregion,ilevel,10) = vrbl%totspread(  ilevel,iregion,ivar)
+         chunk(iregion,ilevel,11) = vrbl%NbadDartQC( ilevel,iregion,ivar)
+         chunk(iregion,ilevel,12) = vrbl%observation(ilevel,iregion,ivar)
+         chunk(iregion,ilevel,13) = vrbl%ens_mean(   ilevel,iregion,ivar)
+         chunk(iregion,ilevel,14) = vrbl%NDartQC_0(  ilevel,iregion,ivar)
+         chunk(iregion,ilevel,15) = vrbl%NDartQC_1(  ilevel,iregion,ivar)
+         chunk(iregion,ilevel,16) = vrbl%NDartQC_2(  ilevel,iregion,ivar)
+         chunk(iregion,ilevel,17) = vrbl%NDartQC_3(  ilevel,iregion,ivar)
+         chunk(iregion,ilevel,18) = vrbl%NDartQC_4(  ilevel,iregion,ivar)
+         chunk(iregion,ilevel,19) = vrbl%NDartQC_5(  ilevel,iregion,ivar)
+         chunk(iregion,ilevel,20) = vrbl%NDartQC_6(  ilevel,iregion,ivar)
+         chunk(iregion,ilevel,21) = vrbl%NDartQC_7(  ilevel,iregion,ivar)
 
       enddo
       enddo
