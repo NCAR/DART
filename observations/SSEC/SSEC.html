@@ -35,6 +35,7 @@
 <A HREF="#Overview">OVERVIEW</A> / 
 <A HREF="#DataSources">DATA SOURCES</A> / 
 <A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#References">REFERENCES</A> /
 <A HREF="#KnownBugs">KNOWN BUGS</A> /
 <A HREF="#FuturePlans">FUTURE PLANS</A> 
 </DIV>
@@ -50,8 +51,22 @@
 <H2>OVERVIEW</H2>
 
 <P>
+The program in this directory takes satellite wind data from the
+University of Wisconsin-Madison Space Science and Engineering
+Center, and converts it into DART format observation sequence files,
+for use in assimilating with the DART filter program.
+</P>
+
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<BR><HR><BR>
+<H2>DATA SOURCES</H2>
+
+<P>
 The Space Science and Engineering Center (SSEC) at University of
-Wisconsin-Madision has an online 
+Wisconsin-Madison has an online 
 <A href="http://www.ssec.wisc.edu/data">data center</A> with both
 real-time and archival weather satellite data.
 </P>
@@ -64,26 +79,42 @@ ftp://cyclone.ssec.wisc.edu/pub/fnoc</A>.
 
 <!--==================================================================-->
 
-<A NAME="DataSources"></A>
-<BR><HR><BR>
-<H2>DATA SOURCES</H2>
-
-<P>
-
-</P>
-
-<P>
-
-</P>
-
-<!--==================================================================-->
-
 <A NAME="Programs"></A>
 <BR><HR><BR>
 <H2>PROGRAMS</H2>
 
 <P>
+Conversion program <em class="code">convert_ssec_satwnd</em> converts the
+ascii data in the input files into a DART observation sequence file.
+Go into the <em class="code">work</em> directory and run 
+the <em class="code">quickbuild.csh</em> script to
+compile the necessary files.
+</P><P>
+The program reads standard input for the data time range,
+which types of observations to convert, and then, if quality control
+information is found in the input file, what type of quality
+control algorithm to use when deciding whether the observation
+is of good quality or not.  See the references below.
+</P>
 
+<!--==================================================================-->
+<!-- References.                                                      -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<BR><HR><BR>
+<H2>REFERENCES</H2>
+<P>
+<UL>
+<LI>
+RF method: Velden, C. S., T. L. Olander, and S. Wanzong, 1998: The impact of multispectral GOES-8 wind information on Atlantic
+tropical cyclone track forecasts in 1995. Part I: Dataset methodology, description, and case analysis. Mon. Wea. Rev., 126, 1202-1218.
+</LI><LI>
+QI method: Holmlund, K., 1998: The utilization of statistical properties of satellite-derived atmospheric motion vectors to derive quality indicators. Wea. Forecasting, 13, 1093-1104.
+</LI><LI>
+Comparison of two methods: Holmlund, K., C.S. Velden, and M. Rohn, 2001: Enhanced Automated Quality Control Applied to High-Density Satellite-Derived Winds. Mon. Wea. Rev., 129, 517-529.
+</LI>
+</UL>
 </P>
 
 <!--==================================================================-->

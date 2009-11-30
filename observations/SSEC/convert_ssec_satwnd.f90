@@ -38,19 +38,21 @@ character (len=8)   :: datein
 character (len=6)   :: sat
 character (len=4)   :: band, hourin
 
-logical :: iruse, visuse, wvuse, swiruse, file_exist, qcinfile
+logical :: iruse, visuse, wvuse, swiruse, file_exist, qifile, eefile, &
+           userfqc, useqiqc, useeeqc
 
 integer :: in_unit, i, days, secs, nused, iyear, imonth, iday, ihour, & 
-           imin, isec, dsec, dday, dsecobs
-real(r8) :: obs_window, minqc, lat, lon, pres, wdir, wspd, uwnd, vwnd, oerr, &
-            latu(nmaxwnd), lonu(nmaxwnd), prsu(nmaxwnd), qc, qcin1, qcin2
+           imin, isec, dsec, dday, dsecobs, qctype
+real(r8) :: obs_window, lat, lon, pres, wdir, wspd, uwnd, vwnd, oerr, &
+            latu(nmaxwnd), lonu(nmaxwnd), prsu(nmaxwnd), qc, qcthresh, &
+            rfqc, qiqc, eeqc
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs
 type(time_type)         :: time_anal
 
-print*,'Enter the analysis time (yyyy-mm-dd_hh:mm:ss), window (hours), and min. qc'
-read*, datestr, obs_window, minqc
+print*,'Enter the analysis time (yyyy-mm-dd_hh:mm:ss), and window (hours)'
+read*, datestr, obs_window
 print*,'Do you want to include IR, VISIBLE, WV data, and SW IR? (T/F, 4 times)'
 read*, iruse, visuse, wvuse, swiruse 
 dsecobs = nint(obs_window * 3600.0_r8)
@@ -65,10 +67,42 @@ read(datestr(18:19), fmt='(i2)') isec
 time_anal = set_date(iyear, imonth, iday, ihour, imin, isec)
 call get_time(time_anal, secs, days)
 
-in_unit  = get_unit()  ;  qcinfile = .false.
+qifile  = .false.  ;  eefile  = .false.
+userfqc = .false.  ;  useqiqc = .false.  ;  useeeqc = .false.  
+
+in_unit  = get_unit()
 open(unit=in_unit,  file = ssec_sat_file,  status='old')
 read(in_unit,'(a100)') header
-if ( header(75:76) == 'qi' ) qcinfile = .true.
+
+if ( header(81:82) == 'ee' ) then
+
+  print*,'Enter the QC type (0=none, 1=rf, 2=qi, 3=ee) and threshhold'
+  read*, qctype, qcthresh
+
+  select case ( qctype )
+    case (1)  !  Regression Factor QC
+      userfqc = .true.
+    case (2)  !  QI format QC
+      useqiqc = .true.
+    case (3)
+      useeeqc = .true.
+  end select
+  eefile = .true.
+
+else if ( header(75:76) == 'qi' ) then
+  
+  print*,'Enter the QC type (0=none, 1=rf, 2=qi) and threshhold' 
+  read*, qctype, qcthresh
+
+  select case ( qctype )
+    case (1)  !  Regression Factor QC
+      userfqc = .true.
+    case (2)  !  QI format QC
+      useqiqc = .true.
+  end select
+  qifile = .true.
+
+end if
 
 !  either read existing obs_seq or create a new one
 call static_init_obs_sequence()
@@ -95,12 +129,25 @@ end if
 nused = 0
 obsloop: do
 
-  if ( qcinfile ) then
+  if ( qifile ) then  !  QI format file
+
     read(in_unit,*,END=200) band, sat, datein, hourin, lat, lon, &
-                            pres, wspd, wdir, qcin1, qcin2
-    if ( qcin2 < minqc ) cycle obsloop
-  else
+                            pres, wspd, wdir, rfqc, qiqc
+    if ( userfqc .and. rfqc > qcthresh )  cycle obsloop
+    if ( useqiqc .and. qiqc < qcthresh )  cycle obsloop
+
+  else if ( eefile ) then  !  EE format file
+  
+    read(in_unit,*,END=200) band, sat, datein, hourin, lat, lon, &
+                            pres, wspd, wdir, rfqc, qiqc, eeqc
+    if ( userfqc .and. (rfqc > qcthresh) )  cycle obsloop
+    if ( useqiqc .and. (qiqc < qcthresh) )  cycle obsloop
+    if ( useeeqc .and. (eeqc > qcthresh) )  cycle obsloop
+
+  else  !  file without QC information
+
     read(in_unit,*,END=200) band, sat, datein, hourin, lat, lon, pres, wspd, wdir
+
   end if
 
   read(datein(1:4), fmt='(i4)') iyear
@@ -124,11 +171,11 @@ obsloop: do
   end do
   qc = 1.0_r8
 
-  if ( trim(adjustl(band(1:2))) == 'WV' ) then
-    oerr = sat_wv_wind_error(pres)
-  else
+!  if ( trim(adjustl(band(1:2))) == 'WV' ) then
+!    oerr = sat_wv_wind_error(pres)
+!  else
     oerr = sat_wind_error(pres)
-  end if
+!  end if
 
   !  perform sanity checks on observation errors and values
   if ( oerr == missing_r8 .or. wdir < 0.0_r8 .or. wdir > 360.0_r8 .or. &
