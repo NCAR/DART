@@ -51,7 +51,7 @@
 # 1. advance_time (from DART), located in your $CENTRALDIR
 # 2. one of either (da_wrfvar.exe and pert_wrf_bc) or update_wrf_bc if you 
 # want to run real-data cases with specified LBCs.  Elaborated below.
-# 3. directory $CENTRALDIR/WRF_RUN_DATA containing all the WRF run-time files
+# 3. directory $CENTRALDIR/WRF_RUN containing all the WRF run-time files
 # (typically files with data for the physics: LANDUSE.TBL, RRTM_DATA, etc
 # but also anything else you want to link into the wrf-run directory.  If
 # using WRF-Var then be.dat should be in there too.
@@ -62,9 +62,9 @@
 #
 # OPTIONAL:
 # ####EITHER 1 or 2 is required for specified LBC runs
-# 1.  da_wrfvar.exe (version 3.1 or later) and pert_wrf_bc in your $CENTRALDIR.
+# 1.  da_wrfvar.exe (version 3.1 or later) and pert_wrf_bc in your $CENTRALDIR/WRF_RUN.
 # In this case you also need be.dat (the be.dat.cv3 file from the WRF-Var 
-# distribution) in your $CENTRALDIR/WRF_RUN_DATA, and WRF-Var namelists in 
+# distribution) in your $CENTRALDIR/WRF_RUN, and WRF-Var namelists in 
 # your $CENTRALDIR/namelist.input
 # 2.  update_wrf_bc in your $CENTRALDIR for using pre-existing LBC files. Pre-existing LBC files should live in $CENTRALDIR/WRF
 
@@ -82,14 +82,14 @@ set process = $1
 set num_states = $2
 set control_file = $3
 
-# Setting to 1 saves output files from the ensemble mean only, while setting to
-# larger numbers will save all member output files <= to this value
+# Setting to vals > 0 saves wrfout files,
+# will save all member output files <= to this value
 set save_ensemble_member = 0
-set delete_temp_dir = true
+set delete_temp_dir = false
 
 # set this to true if you want to maintain complete individual wrfinput/output
 # for each member (to carry through non-updated fields)
-set individual_members = false
+set individual_members = true
 
 # next line ensures that the last cycle leaves everything in the temp dirs
 if ( $individual_members == true ) set delete_temp_dir = false
@@ -112,14 +112,14 @@ if ( $process == 0 ) then
      exit 1
    endif
 
-   if ( ! -d WRF_RUN_DATA ) then
-      echo ABORT\: advance_model.csh could not find required data directory ${CENTRALDIR}/WRF_RUN_DATA, which contains all the WRF run-time input files
+   if ( ! -d WRF_RUN ) then
+      echo ABORT\: advance_model.csh could not find required data directory ${CENTRALDIR}/WRF_RUN, which contains all the WRF run-time input files
       exit 1
    endif
 
-   if ( ! -x ${CENTRALDIR}/da_wrfvar.exe ) then
+   if ( ! -x ${CENTRALDIR}/WRF_RUN/da_wrfvar.exe ) then
      echo
-     echo WARNING\: advance_model.csh could not find optional executable dependency ${CENTRALDIR}/da_wrfvar.exe
+     echo WARNING\: advance_model.csh could not find optional executable dependency ${CENTRALDIR}/WRF_RUN/da_wrfvar.exe
      echo
      if ( ! -x update_wrf_bc ) then
         echo ABORT\: advance_model.csh could not find required executable dependency ${CENTRALDIR}/update_wrf_bc
@@ -131,12 +131,12 @@ if ( $process == 0 ) then
      echo
      echo WARNING\: da_wrfvar.exe found, using it to update LBCs on the fly
      echo
-     if ( ! -x pert_wrf_bc ) then
+     if ( ! -x ${CENTRALDIR}/pert_wrf_bc ) then
         echo ABORT\: advance_model.csh could not find required executable dependency ${CENTRALDIR}/pert_wrf_bc
         exit 1
      endif
-     if ( ! -r ${CENTRALDIR}/WRF_RUN_DATA/be.dat ) then
-        echo ABORT\: advance_model.csh could not find required readable dependency ${CENTRALDIR}/WRF_RUN_DATA/be.dat
+     if ( ! -r ${CENTRALDIR}/WRF_RUN/be.dat ) then
+        echo ABORT\: advance_model.csh could not find required readable dependency ${CENTRALDIR}/WRF_RUN/be.dat
         exit 1
      endif
      if ( ! -e ${CENTRALDIR}/bc_pert_scale ) then
@@ -148,7 +148,7 @@ if ( $process == 0 ) then
 endif # process 0 dependency checking
 
 # set this flag here for all processes so we don't have to keep checking
-if ( -x ${CENTRALDIR}/da_wrfvar.exe ) then
+if ( -x ${CENTRALDIR}/WRF_RUN/da_wrfvar.exe ) then
    set USE_WRFVAR = 1
 else
    set USE_WRFVAR = 0
@@ -194,13 +194,13 @@ while($state_copy <= $num_states)
    endif
 
    # link WRF-runtime files (required) and be.dat (if using WRF-Var)
-   ${LN} ${CENTRALDIR}/WRF_RUN_DATA/*  .
+   ${LN} ${CENTRALDIR}/WRF_RUN/*       .
 
    # link DART namelist
    ${LN} ${CENTRALDIR}/input.nml       .
 
    # link WRF executable
-   ${LN} ${CENTRALDIR}/wrf.exe         .
+#   ${LN} ${CENTRALDIR}/wrf.exe         .
 
    # nfile is required when using MPICH to run wrf.exe
    # nfile is machine specific.  Not needed on all platforms
@@ -394,12 +394,14 @@ while($state_copy <= $num_states)
             end_minute = ${END_MIN},
             /end_second/c\
             end_second = ${END_SEC},
+            /max_dom/c\
+            max_dom = 1,
 EOF
 # The EOF on the line above MUST REMAIN in column 1.
 
          sed -f script.sed ${CENTRALDIR}/namelist.input >! namelist.input
          ${LN} ${CENTRALDIR}/WRF/wrfinput_d01_${targdays}_${targsecs}_mean ./fg
-         ${CENTRALDIR}/da_wrfvar.exe >>&! out.wrfvar
+         ${CENTRALDIR}/WRF_RUN/da_wrfvar.exe >>&! out.wrfvar
          if ( -e rsl.out.0000 ) cat rsl.out.0000 >> out.wrfvar
 
          ${MOVE} wrfvar_output wrfinput_next

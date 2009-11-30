@@ -65,8 +65,9 @@
 #BSUB -o output.icbc
 #BSUB -e err.icbc
 #BSUB -q regular
-#BSUB -P ########
-#BSUB -W 1:00
+# EDIT for a valid project number if applicable
+#BSUB -P 111111111
+#BSUB -W 0:30
 
 set echo
 
@@ -88,40 +89,42 @@ export      YEAR_END=2008
 export      MONTH_END=5
 export      DAY_END=24
 export      HOUR_END=12
-# the date from which the run will start
-#export      INITIAL_DATE=2008052212
 # the time window for the assimilation run, in hours
 export      DA_TIME_WINDOW=48
 # the frequency of lateral boundary condition updates, in hours
 export      LBC_FREQ=6
-
+# for the assimilation run, pre-generated BC files(0), or on-the-fly(1)
+export      OTF=1
 #--------------------------------------------------------------------------------------
 # PATHS
 #--------------------------------------------------------------------------------------
-# parent tree where all of the wrf model files reside
-export      CODE_DIR=/blhome/user/models
+# parent tree where all of the wrf and wrfda files reside
+#EDIT lower case paths - do not edit upper case path parts
+export      CODE_DIR=/path/to/wrf
 # where the wrf model executable dir is within this
 export      WRF_DIR=$CODE_DIR/WRFV3
 # where the wrfvar tree is
 export      VAR_DIR=$CODE_DIR/WRFDA
 # where the DART home directory is
-export      DART_DIR=$CODE_DIR/DART
+export      DART_DIR=/path/to/dart/DART
 # where the da_advance_time executable is located
 export      TOOL_DIR=$VAR_DIR/var/da
 # where the namelists will be written for 3dvar, DART filter (input.nml), and wrf,
 # as well as the location for the be.dat file
-export      ICBC_DIR=/ptmp/user/work/icbc
+export      ICBC_DIR=/path/to/here
 # where the WPS processed files reside to feed to real.exe (met_em*)
 export      WPS_DATA_DIR=/$CODE_DIR/WPS
-# where the IC and BC files will be written by this script
-export      OUTPUT=/ptmp/user/work/input
+# temporary home where the IC and BC files will be written by this script
+export      OUTPUT=/path/to/output
 # work directory for temporary files 
-export      RUN_DIR=/ptmp/user/work/icbc_work
+export      RUN_DIR=/path/to/work/dir
 # assimilation directory where you expect to run the assimilation system....
 # where you plan to run filter
-export      ASSIM_DIR=/ptmp/user/work/cv3work
+export      ASSIM_DIR=/path/to/assim/run/dir
 # location of the obs_seq.out file 
-export      OBS_DIR=/ptmp/user/CONUSV3/ncep_obs/work
+export      OBS_DIR=$DART_DIR/ncep_obs/work
+# location of background error covariance file for da_wrfvar
+export      BE_file=$VAR_DIR/var/run/be.dat.cv3
 
 #--------------------------------------------------------------------------------------
 # OPTIONS
@@ -130,76 +133,82 @@ export      OBS_DIR=/ptmp/user/CONUSV3/ncep_obs/work
 #                              in the assimilation directory) 
 #
 # how many members in your ensemble
-export ENS_SIZE=32
+  export ENS_SIZE=32
 #Domain info:  only for nested domains, otherwise, = 1.
-export MAX_DOM=1
+  export MAX_DOM=1
 # List of WRF state variables to pass to DART - needs to make sense for the model
 # parameter definitions - especially the moist variables related to the microphysics
 # of your choice.  Note that any states that you want to update with filter, or
 # monitor, needs to be on this list. Note the lists below are in double quotes.
-   export  my_state_variables="'U','KIND_U_WIND_COMPONENT','TYPE_U','UPDATE','999',
-                               'V','KIND_V_WIND_COMPONENT','TYPE_V','UPDATE','999',
-                               'W','KIND_VERTICAL_VELOCITY','TYPE_W','UPDATE','999',
-                               'PH','KIND_GEOPOTENTIAL_HEIGHT','TYPE_GZ','UPDATE','999',
-                               'T','KIND_POTENTIAL_TEMPERATURE','TYPE_T','UPDATE','999',
-                               'MU','KIND_PRESSURE','TYPE_MU','UPDATE','999',
-                               'QVAPOR','KIND_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',
-                               'QCLOUD','KIND_CLOUD_LIQUID_WATER','TYPE_QC','UPDATE','999',
-                               'QRAIN','KIND_RAINWATER_MIXING_RATIO','TYPE_QR','UPDATE','999',
-                               'QICE','KIND_CLOUD_ICE','TYPE_QI','UPDATE','999',
-                               'QSNOW','KIND_SNOW_MIXING_RATIO','TYPE_QS','UPDATE','999',
-                               'U10','KIND_U_WIND_COMPONENT','TYPE_U10','UPDATE','999',
-                               'V10','KIND_V_WIND_COMPONENT','TYPE_V10','UPDATE','999',
-                               'T2','KIND_TEMPERATURE','TYPE_T2','UPDATE','999',
-                               'TH2','KIND_POTENTIAL_TEMPERATURE','TYPE_TH2','UPDATE','999',
-                               'Q2','KIND_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
-                               'PSFC','KIND_PRESSURE','TYPE_PS','UPDATE','999',"
+  export  my_state_variables="'U','KIND_U_WIND_COMPONENT','TYPE_U','UPDATE','999',
+                              'V','KIND_V_WIND_COMPONENT','TYPE_V','UPDATE','999',
+                              'W','KIND_VERTICAL_VELOCITY','TYPE_W','UPDATE','999',
+                              'PH','KIND_GEOPOTENTIAL_HEIGHT','TYPE_GZ','UPDATE','999',
+                              'T','KIND_POTENTIAL_TEMPERATURE','TYPE_T','UPDATE','999',
+                              'MU','KIND_PRESSURE','TYPE_MU','UPDATE','999',
+                              'QVAPOR','KIND_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',
+                              'QCLOUD','KIND_CLOUD_LIQUID_WATER','TYPE_QC','UPDATE','999',
+                              'QRAIN','KIND_RAINWATER_MIXING_RATIO','TYPE_QR','UPDATE','999',
+                              'QICE','KIND_CLOUD_ICE','TYPE_QI','UPDATE','999',
+                              'QSNOW','KIND_SNOW_MIXING_RATIO','TYPE_QS','UPDATE','999',
+                              'U10','KIND_U_WIND_COMPONENT','TYPE_U10','UPDATE','999',
+                              'V10','KIND_V_WIND_COMPONENT','TYPE_V10','UPDATE','999',
+                              'T2','KIND_TEMPERATURE','TYPE_T2','UPDATE','999',
+                              'TH2','KIND_POTENTIAL_TEMPERATURE','TYPE_TH2','UPDATE','999',
+                              'Q2','KIND_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
+                              'PSFC','KIND_PRESSURE','TYPE_PS','UPDATE','999',"
 # List of state variables that should be 'positive definite' - where negative values that
 # emerge from filter are reset to the value indicated below (zero). Microphysical variables
 # are logically added here.
-   export       my_state_bounds="'QVAPOR','0.0','NULL','CLAMP',
-                                 'QCLOUD','0.0','NULL','CLAMP',
-                                 'QRAIN','0.0','NULL','CLAMP',
-                                 'QICE','0.0','NULL','CLAMP',
-                                 'QSNOW','0.0','NULL','CLAMP',"
-   export my_inf_initial_from_restart=.false.
-   export my_inf_sd_initial_from_restart=.false.
+  export       my_state_bounds="'QVAPOR','0.0','NULL','CLAMP',
+                                'QCLOUD','0.0','NULL','CLAMP',
+                                'QRAIN','0.0','NULL','CLAMP',
+                                'QICE','0.0','NULL','CLAMP',
+                                'QSNOW','0.0','NULL','CLAMP',"
+  export my_inf_initial_from_restart=.false.
+  export my_inf_sd_initial_from_restart=.false.
 
 # 2. Common wrf model options (used by real.exe, and placed in assimilation directory)
 #  num. grid pts E-W in D01 - definition used in both wrfvar and real
-export    WE_D01=45
+  export    WE_D01=45
 #  num. grid pts N-S in D01 - definition used in both wrfvar and real
-export    SN_D01=45
+  export    SN_D01=45
 #  Vertical levels in D01 (make sure you have matching eta entries)- definition used in both wrfvar and real
-export    VL_D01=36
+  export    VL_D01=36
 #  resolution E-W in D01 in m - definition used in both wrfvar and real
-export    DXM_D01=120000.
+  export    DXM_D01=120000.
 #  resolution N-S in D01 in m - definition used in both wrfvar and real
-export    DYM_D01=120000.
+  export    DYM_D01=120000.
 # explicit microphysics - definition used in both wrfvar and real. Don't forget
 # to match up the state variable list above based on the micro package you selected
-export    MP_PHYS=4    
+  export    MP_PHYS=4    
 # surface layer physics (drag) - definition used in both wrfvar and real
-export    SFC_PHYS=1    
+  export    SFC_PHYS=1    
 # land-surface layer physics (thermal) - definition used in both wrfvar and real
-export    LSF_PHYS=1    
+  export    LSF_PHYS=1    
 # land-surface layer physics (thermal) - definition used in both wrfvar and real
-export    SOIL_LYR=5    
+  export    SOIL_LYR=5    
 
 # 3. Common wrfvar options
-# scaling factor for WRFDA
-export      DA_VAR_SCALING=0.4
+# scaling factors for WRFDA NCEP covariances. If you increase the horizontal scale, you
+# should also increase the perturbation scale
+  export      DA_VAR_SCALING=0.25
+  export      PSCALE=$DA_VAR_SCALING
+#  export      PSCALE=0.25
+  export      HSCALE=1.0
+  export      VSCALE=1.5
+  export      AUTOC=0.0
 
 #--------------------------------------------------------------------------------------
 # NAMELISTS
 #--------------------------------------------------------------------------------------
 cat > input.nml.tmp << EOF
-&filter_nml
+ &filter_nml
    async                    =  2,
    adv_ens_command          = "./advance_model.csh",
    ens_size                 =  $ENS_SIZE,
    start_from_restart       = .true.,
-   output_restart           = .true.,
+   output_restart           = .false.,
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
    restart_in_file_name     = "filter_ics",
@@ -235,19 +244,19 @@ cat > input.nml.tmp << EOF
    inf_upper_bound             = 1000000.0,              1000000.0,
    inf_sd_lower_bound          = 0.60,                   0.10
 /
-&ensemble_manager_nml
+ &ensemble_manager_nml
    single_restart_file_in  = .true.,
    single_restart_file_out = .true.,
    perturbation_amplitude  = 0.2 /
 
-&smoother_nml
+ &smoother_nml
    num_lags              = 0
    start_from_restart    = .false.
    output_restart        = .false.
    restart_in_file_name  = 'smoother_ics'
    restart_out_file_name = 'smoother_restart' /
 
-&assim_tools_nml
+ &assim_tools_nml
    filter_kind                     = 1,
    cutoff                          = 0.16,
    sort_obs_inc                    = .false.,
@@ -256,13 +265,13 @@ cat > input.nml.tmp << EOF
    print_every_nth_obs             = 1000,
    adaptive_localization_threshold = -1 /
 
-&cov_cutoff_nml
+ &cov_cutoff_nml
    select_localization             = 1  /
 
-&assim_model_nml
+ &assim_model_nml
    write_binary_restart_files      = .true.  /
 
-&location_nml
+ &location_nml
    horiz_dist_only                 = .false.,
    vert_normalization_pressure     = 187500.0,
    vert_normalization_height       = 5000000.0,
@@ -272,7 +281,7 @@ cat > input.nml.tmp << EOF
    nlat                            = 72,
    output_box_info                 = .false.  /
 
-&model_nml
+ &model_nml
    output_state_vector         = .false.,
    default_state_variables     = .false.,
    wrf_state_variables         = $my_state_variables
@@ -286,23 +295,23 @@ cat > input.nml.tmp << EOF
    center_search_half_length   = 400000.0,
    center_spline_grid_scale    = 10  /
 
-&utilities_nml
+ &utilities_nml
    TERMLEVEL                   = 1,
    logfilename                 = 'dart_log.out',
    nmlfilename                 = 'dart_log.nml',
    write_nml                   = 'file',
    module_details              = .false.  /
 
-&reg_factor_nml
+ &reg_factor_nml
    select_regression           = 1,
    input_reg_file              = "time_mean_reg",
    save_reg_diagnostics        = .false.,
    reg_diagnostics_file        = 'reg_diagnostics'  /
 
-&obs_sequence_nml
+ &obs_sequence_nml
    write_binary_obs_sequence   = .false.  /
 
-&preprocess_nml
+ &preprocess_nml
    input_obs_kind_mod_file  = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
    output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
    input_obs_def_mod_file   = '../../../obs_def/DEFAULT_obs_def_mod.F90',
@@ -317,7 +326,7 @@ cat > input.nml.tmp << EOF
                               '../../../obs_def/obs_def_QuikSCAT_mod.f90',
                               '../../../obs_def/obs_def_vortex_mod.f90'  /
 
-&obs_kind_nml
+ &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
                                 'METAR_U_10_METER_WIND',
                                 'METAR_V_10_METER_WIND',
@@ -326,10 +335,9 @@ cat > input.nml.tmp << EOF
                                 'RADIOSONDE_V_WIND_COMPONENT',
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
-                                'GPSRO_REFRACTIVITY',
    evaluate_these_obs_types   = 'RADIOSONDE_SPECIFIC_HUMIDITY'  /
 
-&obs_diag_nml
+ &obs_diag_nml
    obs_sequence_name          = 'obs_seq.final',
    first_bin_center           =  $YEAR_INIT, $MONTH_INIT, $DAY_INIT, $HOUR_INIT, 0, 0 ,
    last_bin_center            =  $YEAR_END , $MONTH_END , $DAY_END , $HOUR_END , 0, 0 ,
@@ -349,7 +357,7 @@ cat > input.nml.tmp << EOF
    print_obs_locations        = .false.,
    verbose                    = .false.  /
 
-&restart_file_utility_nml
+ &restart_file_utility_nml
    input_file_name              = "restart_file_input",
    output_file_name             = "restart_file_output",
    ens_size                     = 1,
@@ -364,15 +372,18 @@ cat > input.nml.tmp << EOF
    overwrite_advance_time       = .true.,
    new_advance_days             = -1,
    new_advance_secs             = -1 /
+
+ &dart_to_wrf_nml
+   restart_file = .FALSE. /
 EOF
 
 #--------------------------------------------------------------------------------------
 # Need a template version for advance_model.csh as well
 #
-cat > namelist.wrf.tmp << EOF
+cat > namelist.wrf << EOF
  &time_control
  run_days                            = 0,
- run_hours                           = _FCST_,
+ run_hours                           = 0,
  run_minutes                         = 0,
  run_seconds                         = 0,
  start_year                          = _MAX_DOM_*_START_YEAR_,
@@ -497,7 +508,7 @@ EOF
 #--------------------------------------------------------------------------------------
 # Note the file below is a template - which is updated for individual calls to 
 # WRFVAR
-cat > namelist.input.3dvar << EOF
+cat > namelist.3dvar << EOF
  &wrfvar1
  check_max_iv_print                  = .false.,
  write_increments                    = .false.,
@@ -543,17 +554,17 @@ cat > namelist.input.3dvar << EOF
 
  &wrfvar7
  cv_options                          = 3,
- as1                                 = _VAR_SCALING1_, 2.0, 1.5,
- as2                                 = _VAR_SCALING1_, 2.0, 1.5,
- as3                                 = _VAR_SCALING1_, 2.0, 1.5,
- as4                                 = _VAR_SCALING1_, 2.0, 1.5,
- as5                                 = _VAR_SCALING1_, 2.0, 1.5,
+ as1                                 = $PSCALE, $HSCALE, $VSCALE,
+ as2                                 = $PSCALE, $HSCALE, $VSCALE,
+ as3                                 = $PSCALE, $HSCALE, $VSCALE,
+ as4                                 = $PSCALE, $HSCALE, $VSCALE,
+ as5                                 = $PSCALE, $HSCALE, $VSCALE,
  rf_passes                           = 6,
- var_scaling1                        = _VAR_SCALING1_,
- var_scaling2                        = _VAR_SCALING2_,
- var_scaling3                        = _VAR_SCALING3_,
- var_scaling4                        = _VAR_SCALING4_,
- var_scaling5                        = _VAR_SCALING5_,
+ var_scaling1                        = $DA_VAR_SCALING,
+ var_scaling2                        = $DA_VAR_SCALING,
+ var_scaling3                        = $DA_VAR_SCALING,
+ var_scaling4                        = $DA_VAR_SCALING,
+ var_scaling5                        = $DA_VAR_SCALING,
  je_factor                           = 1.0,
  /
 
@@ -614,46 +625,45 @@ cat > namelist.input.3dvar << EOF
  /
 
  &wrfvar21
- time_window_min="_DA_WINDOW_MIN_.0000",
  /
 
  &wrfvar22
-time_window_max="_DA_WINDOW_MAX_.0000",
  /
 
  &wrfvar23
  /
-&time_control
-start_year=_START_YEAR_,
-start_month=_START_MONTH_,
-start_day=_START_DAY_,
-start_hour=_START_HOUR_,
-end_year=_END_YEAR_,
-end_month=_END_MONTH_,
-end_day=_END_DAY_,
-end_hour=_END_HOUR_,
-debug_level                         = 0
-/
-
-&domains
-e_we=$WE_D01,
-e_sn=$SN_D01,
-e_vert=$VL_D01,
-dx=$DXM_D01,
-dy=$DYM_D01,
-/
-
-&physics
-mp_physics=$MP_PHYS,
-sf_sfclay_physics=$SFC_PHYS,
-sf_surface_physics=$LSF_PHYS,
-num_soil_layers=$SOIL_LYR,/
+ &time_control
+ start_year=_START_YEAR_,
+ start_month=_START_MONTH_,
+ start_day=_START_DAY_,
+ start_hour=_START_HOUR_,
+ end_year=_END_YEAR_,
+ end_month=_END_MONTH_,
+ end_day=_END_DAY_,
+ end_hour=_END_HOUR_,
+ debug_level                         = 0
+ /
+ 
+ &domains
+ e_we=$WE_D01,
+ e_sn=$SN_D01,
+ e_vert=$VL_D01,
+ dx=$DXM_D01,
+ dy=$DYM_D01,
+ /
+ 
+ &physics
+ mp_physics=$MP_PHYS,
+ sf_sfclay_physics=$SFC_PHYS,
+ sf_surface_physics=$LSF_PHYS,
+ num_soil_layers=$SOIL_LYR,/
 EOF
 
 #--------------------------------------------------------------------------------------
 # You hopefully will not need to modify options below this line
 #--------------------------------------------------------------------------------------
 
+ln -sf $BE_file be.dat
 #Date string needs to be a fixed format
 typeset -Z2 HOUR_INIT2=$HOUR_INIT
 typeset -Z2 DAY_INIT2=$DAY_INIT
@@ -697,7 +707,7 @@ yyyy_end=`echo $end_date | cut -c 1-4`
 m4 -D_FCST_=$fcst_hour -D_MAX_DOM_=$MAX_DOM \
    -D_START_YEAR_=$yyyy -D_START_MONTH_=$mm -D_START_DAY_=$dd -D_START_HOUR_=$hh \
    -D_END_YEAR_=$yyyy_end -D_END_MONTH_=$mm_end -D_END_DAY_=$dd_end -D_END_HOUR_=$hh_end \
-   $ICBC_DIR/namelist.wrf.tmp  > namelist.input
+   $ICBC_DIR/namelist.wrf  > namelist.input
 
    ln -sf $WPS_DATA_DIR/met_em.d0* .
 
@@ -707,54 +717,56 @@ m4 -D_FCST_=$fcst_hour -D_MAX_DOM_=$MAX_DOM \
 # rename files 
 # ----------------
 
-export NANALYSIS=`expr $fcst_hour \/ $LBC_FREQ \+ 1`
+  export NANALYSIS=`expr $fcst_hour \/ $LBC_FREQ \+ 1`
 ##   mv wrflowinp_d01 $OUTPUT/.
 
-it=1
-this_date=$start_date
-while [[ $it -le $NANALYSIS ]] ; do
-  set -A g_date `$TOOL_DIR/da_advance_time.exe $this_date 0 -g`
-  set -A w_date `$TOOL_DIR/da_advance_time.exe $this_date 0 -w`
+  it=1
+  this_date=$start_date
+  echo !!!! $this_date and $g_date[0] $g_date[1]  and ${wdate}
+  while [[ $it -le $NANALYSIS ]] ; do
+    set -A g_date `$TOOL_DIR/da_advance_time.exe $this_date 0 -g`
+    set -A w_date `$TOOL_DIR/da_advance_time.exe $this_date 0 -w`
 
 
-  if [[ $it -eq 1 ]] ; then
+    if [[ $it -eq 1 ]] ; then
      id=1
      while [[ $id -le $MAX_DOM ]] ; do
-        mv wrfinput_d0$id $OUTPUT/wrfinput_d0${id}_mean_${g_date[0]}_${g_date[1]}  
+        echo move named mean file
+        mv wrfinput_d0$id $OUTPUT/wrfinput_d0${id}_${g_date[0]}_${g_date[1]}_mean
         (( id = id + 1 ))
      done
-  else
+    else
      (( itp1 = it - 1 ))
-     mv wrfinput_d01.${w_date}  $OUTPUT/wrfinput_d01_mean_${g_date[0]}_${g_date[1]}  
-     ncks -F -O -d Time,${itp1} wrfbdy_d01 $OUTPUT/wrfbdy_d01_mean_${g_date[0]}_${g_date[1]}
-  fi
-  (( it = it + 1 ))
-  this_date=`$TOOL_DIR/da_advance_time.exe $this_date $LBC_FREQ`
-done
-mv wrfbdy_d01 $OUTPUT/wrfbdy_d01
+     echo move dated mean file
+     mv wrfinput_d01.${w_date}  $OUTPUT/wrfinput_d01_${g_date[0]}_${g_date[1]}_mean
+# Extract the individual bdy conditions for each time. The file time is the target time,
+# and so should be coupled with a wrfinput file one analysis time earlier
+     ncks -F -O -d Time,${itp1} wrfbdy_d01 $OUTPUT/wrfbdy_d01_${g_date[0]}_${g_date[1]}_mean
+    fi
+    (( it = it + 1 ))
+    this_date=`$TOOL_DIR/da_advance_time.exe $this_date $LBC_FREQ`
+  done
+# File with all of the bdy times
+  mv wrfbdy_d01 $OUTPUT/wrfbdy_d01
 
 # ----------------------------------------------------------
 # prepare data/scripts to run wrfvar (v3) to perturb icbc
 # ----------------------------------------------------------
-mpmd_cmdfile=$RUN_DIR/run_wrfvar_mpmd_cmdfile
-ie=1
-while [[ $ie -le $ENS_SIZE ]]; do
-   if [[ ! -d $ie ]]; then mkdir $ie ; fi 
-   cd $ie
-   ln -sf $VAR_DIR/run/LANDUSE.TBL .
-   ln -sf $VAR_DIR/run/gribmap.txt .
+  mpmd_cmdfile=$RUN_DIR/run_wrfvar_mpmd_cmdfile
+  ie=1
+  while [[ $ie -le $ENS_SIZE ]]; do
+    if [[ ! -d $ie ]]; then mkdir $ie ; fi 
+    cd $ie
+    ln -sf $VAR_DIR/run/LANDUSE.TBL .
+    ln -sf $VAR_DIR/run/gribmap.txt .
 #     compile wrfvar v3 in single thread
-   ln -sf $VAR_DIR/var/build/da_wrfvar.exe    da_wrfvar.exe
-   ln -sf $ICBC_DIR/be.dat .
-   ln -sf $DART_DIR/models/wrf/work/pert_wrf_bc .
+    ln -sf $VAR_DIR/var/build/da_wrfvar.exe    da_wrfvar.exe
+    ln -sf $ICBC_DIR/be.dat .
+    ln -sf $DART_DIR/models/wrf/work/pert_wrf_bc .
 
-#   m4 -D_FIRST_OBS_DAYS_=-1 -D_FIRST_OBS_SECONDS_=-1 \
-#      -D_LAST_OBS_DAYS_=-1 -D_LAST_OBS_SECONDS_=-1 \
-#      -D_MAX_DOM_=$MAX_DOM -D_ENS_SIZE_=$ENS_SIZE \
-#      $ICBC_DIR/input.nml.tmp > input.nml 
-      cp $ICBC_DIR/input.nml.tmp  input.nml 
+    cp $ICBC_DIR/input.nml.tmp  input.nml 
 
-   cat > run_wrfvar_script.ksh << EOF
+    cat > run_wrfvar_script.ksh << EOF
 #!/bin/ksh -v
    # ksh run_wrfvar_script.ksh element start_date
    hostname
@@ -765,19 +777,9 @@ while [[ $ie -le $ENS_SIZE ]]; do
    while [[ \$it -le \$NANALYSIS ]] ; do
       set -A g_date \`\$TOOL_DIR/da_advance_time.exe \$this_date 0 -g\`
       this_date_wrf=\`\$TOOL_DIR/da_advance_time.exe \$this_date 0 -w\`
-      da_window_min=\`\$TOOL_DIR/da_advance_time.exe \$this_date -3 -w\`
-      da_window_max=\`\$TOOL_DIR/da_advance_time.exe \$this_date  3 -w\`
 
       seed_array1=\$this_date
       (( seed_array2 = ie * 10000 ))
-
-      var_scaling0=$DA_VAR_SCALING
-
-         var_scaling1=\$var_scaling0
-         var_scaling2=\$var_scaling0
-         var_scaling3=\$var_scaling0
-         var_scaling4=\$var_scaling0
-         var_scaling5=\$var_scaling0
 
       yyyy=\`echo \$this_date | cut -c 1-4\`
         mm=\`echo \$this_date | cut -c 5-6\`
@@ -786,15 +788,14 @@ while [[ $ie -le $ENS_SIZE ]]; do
 
       m4 -D_ANALYSIS_DATE_=\$this_date_wrf \
          -D_SEED_ARRAY1_=\$seed_array1 -D_SEED_ARRAY2_=\$seed_array2 \
-         -D_DA_WINDOW_MIN_=\$da_window_min -D_DA_WINDOW_MAX_=\$da_window_max \
          -D_START_YEAR_=\$yyyy -D_START_MONTH_=\$mm -D_START_DAY_=\$dd -D_START_HOUR_=\$hh \
          -D_END_YEAR_=\$yyyy -D_END_MONTH_=\$mm -D_END_DAY_=\$dd -D_END_HOUR_=\$hh \
          -D_VAR_SCALING1_=\$var_scaling1 -D_VAR_SCALING2_=\$var_scaling2 \
          -D_VAR_SCALING3_=\$var_scaling3 -D_VAR_SCALING4_=\$var_scaling4 \
          -D_VAR_SCALING5_=\$var_scaling5 \
-         $ICBC_DIR/namelist.input.3dvar > namelist.input
+         $ICBC_DIR/namelist.3dvar > namelist.input
 
-      ln -sf $OUTPUT/wrfinput_d01_mean_\${g_date[0]}_\${g_date[1]} fg
+      ln -sf $OUTPUT/wrfinput_d01_\${g_date[0]}_\${g_date[1]}_mean fg
 # If using an mpi version of da_wrfvar, swap the commented lines below
 # and swap the mpi call on the script below - see MPIDA
 #      mpirun.lsf da_wrfvar.exe >> output.wrfvar 2>&1
@@ -810,7 +811,7 @@ while [[ $ie -le $ENS_SIZE ]]; do
          ln -sf \$OUTPUT/wrfinput_d01_\${g_date[0]}_\${g_date[1]}_\$ie wrfinput_this
       else
          ln -sf \$OUTPUT/wrfinput_d01_\${g_date[0]}_\${g_date[1]}_\$ie wrfinput_next
-         cp \$OUTPUT/wrfbdy_d01_mean_\${g_date[0]}_\${g_date[1]} wrfbdy_this
+         cp \$OUTPUT/wrfbdy_d01_\${g_date[0]}_\${g_date[1]}_mean wrfbdy_this
 
 #  -------   perturb the wrfbdy files  --------
          pert_wrf_bc > output.pert_wrf_bc.\${g_date[0]}_\${g_date[1]} 2>&1
@@ -834,7 +835,6 @@ EOF
 
    if [[ -f $mpmd_cmdfile && $ie -eq 1 ]]; then \rm $mpmd_cmdfile ; fi
    echo $RUN_DIR/$ie/run_wrfvar_script.ksh $ie $start_date \& >> $mpmd_cmdfile
-#   if [[ $ie -eq $ENS_SIZE ]]; then echo wait >> $mpmd_cmdfile ; fi
    (( ie = ie + 1 ))
 done
 
@@ -885,7 +885,7 @@ done
 # --------------------------------
 
 #  for use as template of WRF/DART filter only
-   cp  $OUTPUT/wrfinput_d01_mean_${g_date[0]}_${g_date[1]} $OUTPUT/wrfinput_d01
+   cp  $OUTPUT/wrfinput_d01_${g_date[0]}_${g_date[1]}_mean $OUTPUT/wrfinput_d01
 
 # -------------------------
 # create filter_ics if desired
@@ -901,12 +901,7 @@ done
    m4 -D_FCST_=0 -D_MAX_DOM_=$MAX_DOM \
       -D_START_YEAR_=$yyyy -D_START_MONTH_=$mm -D_START_DAY_=$dd -D_START_HOUR_=$hh \
       -D_END_YEAR_=$yyyy -D_END_MONTH_=$mm -D_END_DAY_=$dd -D_END_HOUR_=$hh \
-      $ICBC_DIR/namelist.wrf.tmp  > namelist.input
-
-#   m4 -D_FIRST_OBS_DAYS_=-1 -D_FIRST_OBS_SECONDS_=-1 \
-#      -D_LAST_OBS_DAYS_=-1 -D_LAST_OBS_SECONDS_=-1 \
-#      -D_MAX_DOM_=$MAX_DOM -D_ENS_SIZE_=$ENS_SIZE \
-#      $ICBC_DIR/input.nml.cv3 > input.nml 
+      $ICBC_DIR/namelist.wrf  > namelist.input
 
     cp $ICBC_DIR/input.nml.tmp  input.nml 
 
@@ -925,7 +920,7 @@ done
       ln -sf $OUTPUT/wrfinput_d01_${g_date[0]}_${g_date[1]}_$ie wrfinput_d01
       if [[ MAX_DOM -eq 2 ]]; then
          ln -sf $OUTPUT/wrfinput_d01_${g_date[0]}_${g_date[1]}_$ie wrfout_d01_${start_date_wrf}
-         ln -sf $OUTPUT/wrfinput_d02_mean_${g_date[0]}_${g_date[1]} wrfndi_d02
+         ln -sf $OUTPUT/wrfinput_d02_${g_date[0]}_${g_date[1]}_mean wrfinput_d02
          mpirun.lsf ndown.exe
       fi
 
@@ -939,9 +934,6 @@ done
       (( ie = ie + 1 ))
    done
  \mv  filter_ic*  $OUTPUT/. 
-# FIX should d02 also be deleted here if present?
-#  remove all member wrfinput_d01 files
- \rm -f $OUTPUT/wrfinput_d01_1* 
 
 #############################################################################
 # Prepare for running filter by creating an assimilation directory and the
@@ -949,34 +941,20 @@ done
 #############################################################################
 
 if [[ -d $ASSIM_DIR ]]; then \rm -rf $ASSIM_DIR; fi
-mkdir -p $ASSIM_DIR
-cd $ASSIM_DIR
+   mkdir -p $ASSIM_DIR
+   cd $ASSIM_DIR
 # Copy in the input.nml file for DART
-    cp $ICBC_DIR/input.nml.tmp  $ASSIM_DIR/input.nml 
+   cp $ICBC_DIR/input.nml.tmp  $ASSIM_DIR/input.nml 
 # WRFDA and WRF namelists
-   cp $ICBC_DIR/namelist.input.3dvar $ASSIM_DIR/namelist.3dvar.input
-   cp $ICBC_DIR/namelist.wrf.tmp $ASSIM_DIR/namelist.wrf.tmp
-
-#   start_date=$INITIAL_DATE
-#   end_date=`$TOOL_DIR/da_advance_time.exe $INITIAL_DATE $DA_TIME_WINDOW`
-#   fcst_hour=$DA_TIME_WINDOW
-#yyyy=`echo $start_date | cut -c 1-4`
-#  mm=`echo $start_date | cut -c 5-6`
-#  dd=`echo $start_date | cut -c 7-8`
-#  hh=`echo $start_date | cut -c 9-10`
-#yyyy_end=`echo $end_date | cut -c 1-4`
-#  mm_end=`echo $end_date | cut -c 5-6`
-#  dd_end=`echo $end_date | cut -c 7-8`
-#  hh_end=`echo $end_date | cut -c 9-10`
-#
-#m4 -D_FCST_=$fcst_hour -D_MAX_DOM_=$MAX_DOM \
-#   -D_START_YEAR_=$yyyy -D_START_MONTH_=$mm -D_START_DAY_=$dd -D_START_HOUR_=$hh \
-#   -D_END_YEAR_=$yyyy_end -D_END_MONTH_=$mm_end -D_END_DAY_=$dd_end -D_END_HOUR_=$hh_end \
-#   $ICBC_DIR/namelist.wrf.tmp  > $ASSIM_DIR/namelist.wrf.input
+   head -123 $ICBC_DIR/namelist.3dvar > $ICBC_DIR/namelist.tmp
+   cat $ICBC_DIR/namelist.tmp $ICBC_DIR/namelist.wrf > $ASSIM_DIR/namelist.input
 
 # File with the value of variance for 3dvar
 cat > bc_pert_scale << EOF
-$DA_VAR_SCALING
+   $PSCALE
+   $HSCALE
+   $VSCALE
+   $AUTOC
 EOF
 # Link all of the executables to the run directory
 # DART first
@@ -986,27 +964,42 @@ EOF
    ln -sf $DART_DIR/models/wrf/work/wakeup_filter  .
    ln -sf $DART_DIR/models/wrf/work/obs_diag       .
    ln -sf $DART_DIR/models/wrf/work/filter         .
-   cp $DART_DIR/models/wrf/work/advance_model.csh  .
+   cp $DART_DIR/models/wrf/shell_scripts/advance_model.csh  .
    cp $DART_DIR/models/wrf/work/runme_filter       .
+   cp $DART_DIR/models/wrf/work/advance_time       .
 # WRF and WRFDA executables 
-   ln -sf $WRF_DIR/run/*                           .
-   ln -sf $TOOL_DIR/da_wrfvar.exe                  .
-   ln -sf $TOOL_DIR/da_advance_time.exe            .
+   mkdir -p $ASSIM_DIR/WRF_RUN
+   ln -sf $WRF_DIR/run/*                           ./WRF_RUN/
+   rm ./WRF_RUN/namelist.input
+   ln -sf $TOOL_DIR/da_wrfvar.exe                  ./WRF_RUN/
+   ln -sf $TOOL_DIR/da_advance_time.exe            ./WRF_RUN/
 # Background covariance
-   ln -sf $ICBC_DIR/be.dat                         .
+   ln -sf $ICBC_DIR/be.dat                         ./WRF_RUN/
 # Initial condition files for filter
    ln -sf $OUTPUT/filter_ic*                       .
    ln -sf $OUTPUT/wrfinput_d01                     .
 # Link the observation sequence file
    ln -sf $OBS_DIR/obs_seq.out                     .
 # Create directory where wrfout files are written
-mkdir -p $ASSIM_DIR/wrfout
+   mkdir -p $ASSIM_DIR/WRFOUT
 # Making WRF directory and linking the IC and BC files to there
-mkdir -p $ASSIM_DIR/WRF
-cd $ASSIM_DIR/WRF
+   mkdir -p $ASSIM_DIR/WRF
+   cd $ASSIM_DIR/WRF
    ln -sf $OUTPUT/wrfbdy_d01                       .
    ln -sf $OUTPUT/wrfinput_d01                     .
-   ln -sf $OUTPUT/wrfbdy_*mean*                    .
-   ln -sf $OUTPUT/wrfinput_*mean*                  .
+   if [[ OTF -eq 1 ]]; then
+     ln -sf $OUTPUT/wrfbdy_*mean                   .
+     ln -sf $OUTPUT/wrfinput_*mean                 .
+   else
+     ln -sf $OUTPUT/wrfbdy_*                       .
+   fi
+   ie=1
+   while [[ $ie -le $ENS_SIZE ]]; do
+      ln -sf $OUTPUT/wrfinput_d01_${g_date[0]}_${g_date[1]}_$ie wrfinput_d01_$ie
+      if [[ MAX_DOM -eq 2 ]]; then
+      ln -sf $OUTPUT/wrfinput_d02_${g_date[0]}_${g_date[1]}_$ie wrfinput_d02_$ie
+      fi
+      (( ie = ie + 1 ))
+   done
 
 exit 0
