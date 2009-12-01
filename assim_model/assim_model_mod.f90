@@ -26,7 +26,8 @@ use utilities_mod, only : get_unit, close_file, register_module, error_handler, 
                           E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, nmlfileunit,   &
                           do_output, dump_unit_attributes, find_namelist_in_file,  &
                           check_namelist_read, nc_check, do_nml_file, do_nml_term, &
-                          find_textfile_dims, file_to_text, timestamp, set_output
+                          find_textfile_dims, file_to_text, timestamp, set_output, &
+                          ascii_file_format
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
                           get_model_time_step, model_interpolate, init_conditions, &
                           init_time, adv_1step, end_model, nc_write_model_atts,    &
@@ -797,24 +798,23 @@ inquire(funit, FORM=open_format)
 io = 0
 
 ! Write the state vector
-SELECT CASE (open_format)
-   CASE ("unf","UNF","unformatted","UNFORMATTED")
-      if(present(target_time)) call write_time(funit, target_time, "unformatted", ios=io)
+if (ascii_file_format(open_format)) then
+   if(present(target_time)) call write_time(funit, target_time, ios_out=io)
+   if (io /= 0) goto 10
+   call write_time(funit, model_time, ios_out=io)
+   if (io /= 0) goto 10
+   do i = 1, size(model_state)
+      write(funit, *, iostat = io) model_state(i)
       if (io /= 0) goto 10
-      call write_time(funit, model_time, "unformatted", ios=io)
-      if (io /= 0) goto 10
-      write(funit, iostat = io) model_state
-      if (io /= 0) goto 10
-   CASE DEFAULT
-      if(present(target_time)) call write_time(funit, target_time, ios=io)
-      if (io /= 0) goto 10
-      call write_time(funit, model_time, ios=io)
-      if (io /= 0) goto 10
-      do i = 1, size(model_state)
-         write(funit, *, iostat = io) model_state(i)
-         if (io /= 0) goto 10
-      end do
-END SELECT  
+   end do
+else
+   if(present(target_time)) call write_time(funit, target_time, form="unformatted", ios_out=io)
+   if (io /= 0) goto 10
+   call write_time(funit, model_time, form="unformatted", ios_out=io)
+   if (io /= 0) goto 10
+   write(funit, iostat = io) model_state
+   if (io /= 0) goto 10
+endif
 
 ! come directly here on error. 
 10 continue
@@ -879,16 +879,15 @@ ios = 0
 ! Figure out whether the file is opened FORMATTED or UNFORMATTED
 inquire(funit, FORM=open_format)
 
-SELECT CASE (open_format)
-   CASE ("unf","UNF","unformatted","UNFORMATTED")
-      if(present(target_time)) target_time = read_time(funit, form = "unformatted")
-      model_time = read_time(funit, form = "unformatted")
-      read(funit,iostat=ios) model_state
-   CASE DEFAULT
-      if(present(target_time)) target_time = read_time(funit)
-      model_time = read_time(funit)
-      read(funit,*,iostat=ios) model_state
-END SELECT  
+if (ascii_file_format(open_format)) then
+   if(present(target_time)) target_time = read_time(funit)
+   model_time = read_time(funit)
+   read(funit,*,iostat=ios) model_state
+else
+   if(present(target_time)) target_time = read_time(funit, form = "unformatted")
+   model_time = read_time(funit, form = "unformatted")
+   read(funit,iostat=ios) model_state
+endif
 
 ! If the model_state read fails ... dump diagnostics.
 if ( ios /= 0 ) then

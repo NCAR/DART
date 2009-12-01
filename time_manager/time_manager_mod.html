@@ -802,19 +802,18 @@ write output to that unit; otherwise write to standard output/terminal.
 <A NAME="write_time"></A>
 <P></P><HR><P></P>
 <div class=routine>
-<em class=call> call write_time(file_unit, time [, form, ios])</em>
+<em class=call> call write_time(file_unit, time [, form, ios_out])</em>
 <pre>
 integer,          intent(in)               :: <em class=code>file_unit</em>
 type(time_type),  intent(in)               :: <em class=code>time</em>
 character(len=*), intent(in),  optional    :: <em class=optionalcode>form</em>
-integer,          intent(out), optional    :: <em class=optionalcode>ios</em>
+integer,          intent(out), optional    :: <em class=optionalcode>ios_out</em>
 </pre></div>
-<!-- ios should be ios_out to match read_time (or visa versa) -->
 <H3 class=indent1>Description</H3>
 <P>
 Write a time to an already open file unit.  The optional 'form'
 argument controls whether it is formatted or unformatted.
-On error, the optional 'ios' argument returns the error code; otherwise
+On error, the optional 'ios_out' argument returns the error code; otherwise
 a fatal error is triggered.
 </P>
 <TABLE width=100% border=0 summary="" celpadding=3>
@@ -825,7 +824,7 @@ a fatal error is triggered.
 <TR><TD valign=top><em class=optionalcode>form</em></TD>
     <TD>String format specifier; either 'unformatted' or 'formatted'.
         Defaults to 'formatted'.</TD><TR>
-<TR><TD valign=top><em class=optionalcode>ios</em></TD>
+<TR><TD valign=top><em class=optionalcode>ios_out</em></TD>
     <TD>If specified, on error the i/o status error code is returned here.
         Otherwise, the standard error handler is called and the 
         program exits. </TD><TR>
