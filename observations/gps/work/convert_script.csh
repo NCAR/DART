@@ -19,10 +19,10 @@
 setenv cosmic_user xxx
 setenv cosmic_pw   yyy
 
-./cosmic_to_obsseq.csh 20061101 .. no no
-./cosmic_to_obsseq.csh 20061102 .. no no
-./cosmic_to_obsseq.csh 20061103 .. no no
-./cosmic_to_obsseq.csh 20061104 .. no no
-./cosmic_to_obsseq.csh 20061105 .. no no
-./cosmic_to_obsseq.csh 20061106 .. no no
-./cosmic_to_obsseq.csh 20061107 .. no no
+./cosmic_to_obsseq.csh 20061101 ../cosmic no no
+./cosmic_to_obsseq.csh 20061102 ../cosmic no no
+./cosmic_to_obsseq.csh 20061103 ../cosmic no no
+./cosmic_to_obsseq.csh 20061104 ../cosmic no no
+./cosmic_to_obsseq.csh 20061105 ../cosmic no no
+./cosmic_to_obsseq.csh 20061106 ../cosmic no no
+./cosmic_to_obsseq.csh 20061107 ../cosmic no no
