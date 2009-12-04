@@ -20,9 +20,9 @@ use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
                              increment_time, get_time, set_date, operator(-),  &
                              print_date
 use    utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
-                             check_namelist_read, nmlfileunit, do_output,    &
+                             check_namelist_read, nmlfileunit, do_nml_file,   &
                              get_next_filename, error_handler, E_ERR, E_MSG, &
-                             nc_check, find_textfile_dims
+                             nc_check, find_textfile_dims, do_nml_term
 use     location_mod, only : VERTISHEIGHT, set_location
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
                              static_init_obs_sequence, init_obs, destroy_obs, &
@@ -119,11 +119,14 @@ call get_time(time_anal, asec, aday)
 
 !  read the necessary parameters from input.nml
 call initialize_utilities()
+
 call find_namelist_in_file("input.nml", "convert_cosmic_gps_nml", iunit)
 read(iunit, nml = convert_cosmic_gps_nml, iostat = io)
+call check_namelist_read(iunit, io, "convert_cosmic_gps_nml")
 
 ! Record the namelist values used for the run 
-if (do_output()) write(nmlfileunit, nml=convert_cosmic_gps_nml)
+if (do_nml_file()) write(nmlfileunit, nml=convert_cosmic_gps_nml)
+if (do_nml_term()) write(     *     , nml=convert_cosmic_gps_nml)
 
 ! namelist checks for sanity
 
