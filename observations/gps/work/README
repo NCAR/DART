@@ -1,0 +1,66 @@
+The intent for the scripts in this directory are:
+
+Summary:  
+1) Run ./quickbuild.csh to compile everything.  
+2) Edit cosmic_download.csh and cosmic_to_obsseq.csh once to set DART_DIR.
+3) Edit ./download_script.csh to set the cosmic name, pw, and dates.  Run it.
+4) Edit ./convert_script.csh to set the cosmic name, pw, and dates.  Run it.
+5) For additional days repeat steps 3 and 4.
+
+
+More details:
+
+1) quickbuild.csh:
+
+Make sure your $DART/mkmf/mkmf.template is one that matches the
+platform and compiler for your system.  It should be the same as
+how you have it set to build the other DART executables.
+
+Run quickbuild.csh and it should compile all the executables needed
+to do the GPS conversion into DART obs_sequence files.
+
+
+2) download_script.csh (and cosmic_download.csh):
+
+Edit cosmic_download.csh once to set the DART_DIR to where you have
+downloaded the DART distribution.  (There are a few additional options
+in this script, but the distribution version should be good for most users.)
+After this you should be able to ignore this script.
+
+Edit and run the download_script.csh.  You will need to set your
+cosmic web site user name and password, and set the days for which you 
+want to download data.
+
+
+3) convert_script.csh (and cosmic_to_obsseq.csh):
+
+Edit cosmic_to_obsseq.csh once to set the DART_DIR to where you have
+downloaded the DART distribution.  (There are a few additional options
+in this script, but the distribution version should be good for most users.)
+After this you should be able to ignore this script.
+
+Edit and run the convert_script.csh.  You will need to set your
+cosmic web site user name and password, and set the days for which you 
+want to convert data into DART obs_sequence files.
+
+There are options on the convert_script.csh to bypass step 2 and do both
+the download and convert in a single step. For one or two days this
+might be a good option, but it is common to have problems during the download.
+It is easier to restart the download separately from the conversion
+if you're using the separate download script.  Also, the conversion needs
+3 hours from the following day to create a file which has all obs within
+the window (usually 3 hours) from the center time (usually 0Z).  So if the
+download is done as a part of the script it must download 2 days, do the
+conversion, and then move on to the next day.  The script is currently
+not smart enough to avoid redownloading data, so if you are converting
+multiple consecutive days it will redownload the next day's data anyway
+and will not realize you already have it.  It cannot simply look for the
+existance of a directory since that complicates restarting failed or
+partial downloads.  It is also risky to automatically delete the data files
+in the script, since if there are errors (full file system, etc) that
+don't cause the script to exit, you will delete the data files and not
+have the converted obs files.  This is all only a consideration because
+currently it is slow to download the data.  If that becomes faster, then
+most of the discussion in this paragraph is moot.
+
+

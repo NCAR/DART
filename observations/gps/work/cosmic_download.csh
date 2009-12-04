@@ -46,9 +46,7 @@
 
 # should only have to set the DART_DIR and the rest should be in the
 # right place relative to it.
-setenv DART_DIR      /home/user/dart
-setenv cosmic_user   xxx
-setenv cosmic_pw     yyy
+setenv DART_DIR      /home/user/DART
 
 setenv DART_WORK_DIR  ${DART_DIR}/observations/gps/work
 setenv CONV_PROG      convert_cosmic_gps_cdf
@@ -123,6 +121,7 @@ if ( ! -d ${datea} ) then
 endif
 
 cd ${datea}
+ln -sf ../input.nml .
 
 echo $datea
 set jyyyydd = `echo $datea 0 -j | ../${DATE_PROG}` 
@@ -131,14 +130,7 @@ echo $jyyyydd
 ${get} ${gps_repository_path}/cosmic/level2/atmPrf/${yyyy}.${mday}/
 rm -f *.html *.txt
 ${get} ${gps_repository_path}/champ/level2/atmPrf/${yyyy}.${mday}/
-rm -f *.html *.txt
-
-set jyyyydd = `echo $datea 24 -j | ../${DATE_PROG}`
-@ mday = $jyyyydd[2] + 1000  ;  set mday = `echo $mday | cut -b2-4` 
-${get} ${gps_repository_path}/cosmic/level2/atmPrf/${yyyy}.${mday}/
-rm -f *.html *.txt
-${get} ${gps_repository_path}/champ/level2/atmPrf/${yyyy}.${mday}/
-rm -f *.html *.txt
+rm -f *.html *.txt input.nml
 
 if ( $chatty == 'yes' ) then
    # the ls arg list line gets too long in some cases

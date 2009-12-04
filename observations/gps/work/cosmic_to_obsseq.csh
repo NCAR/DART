@@ -43,7 +43,7 @@ set download_window     = 3  # window half-width (some users choose 2 hours)
 # verify the dirs all exist, the input.nml is in place.
 if ( ! -d ${DART_WORK_DIR} ) then
   echo 'work directory not found: ' ${DART_WORK_DIR}
-  exit
+  exit 1
 endif
 
 echo 'current dir is ' `pwd`
@@ -90,7 +90,9 @@ endif
 
 if ( $downld == 'yes' ) then
 
+   set dateb = `echo $datea +1d -f ccyymmdd | ${DATE_PROG}`
    ./cosmic_download.csh ${datea} ${datadir}
+   ./cosmic_download.csh ${dateb} ${datadir}
 
 endif
 
@@ -176,6 +178,15 @@ if ( $cleanup == 'yes' ) then
   rm -f ${dates}/atmPrf_C006*
   rm -f ${dates}/atmPrf_CHAM*
   rm -f ${dates}/atmPrf_*
+
+  rm -f ${dateb}/atmPrf_C001*
+  rm -f ${dateb}/atmPrf_C002*
+  rm -f ${dateb}/atmPrf_C003*
+  rm -f ${dateb}/atmPrf_C004*
+  rm -f ${dateb}/atmPrf_C005*
+  rm -f ${dateb}/atmPrf_C006*
+  rm -f ${dateb}/atmPrf_CHAM*
+  rm -f ${dateb}/atmPrf_*
 
 endif
 
