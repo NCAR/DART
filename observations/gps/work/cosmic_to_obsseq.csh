@@ -31,8 +31,8 @@ set chatty=yes
 
 set datea   = ${1}     # target date, YYYYMMDD
 set datadir = ${2}     # where to process the files
-set downld  = ${3}     # download?  'yes' or 'no'
-set cleanup = ${4}     # delete COSMIC files at end? 'yes' or 'no'
+set downld  = ${3}     # download?  'both' (both days) 'next' (next day)
+set cleanup = ${4}     # delete COSMIC files at end? 'both' or 'curr'
 
 set assim_freq          = 6  # hours, sets centers of windows.
 set download_window     = 3  # window half-width (some users choose 2 hours)
@@ -88,11 +88,13 @@ else
   echo 'using data conversion program already found in data proc dir'
 endif
 
-if ( $downld == 'yes' ) then
+set date2 = `echo $datea +1d -f ccyymmdd | ${DATE_PROG}`
 
-   set dateb = `echo $datea +1d -f ccyymmdd | ${DATE_PROG}`
-   ./cosmic_download.csh ${datea} ${datadir}
-   ./cosmic_download.csh ${dateb} ${datadir}
+if ( $downld == 'both' || $downld == 'next' ) then
+
+   if ( $downld == 'both' )  ./cosmic_download.csh ${datea} ${datadir}
+
+   ./cosmic_download.csh ${date2} ${datadir}
 
 endif
 
@@ -126,10 +128,11 @@ while ( $datea < $datee )
 
     set    yyyy = `echo $datef | cut -b1-4`
     set      hh = `echo $datef | cut -b9-10`
+    set yyyymmdd = `echo $datef | cut -b1-8` 
     set jyyyydd = `echo $datef 0 -j | ./${DATE_PROG}`
     @ mday = $jyyyydd[2] + 1000  ;  set mday = `echo $mday | cut -b2-4`
 
-    /bin/ls ${dates}/*.${yyyy}.${mday}.${hh}.*_nc >>! flist
+    /bin/ls ${yyyymmdd}/*.${yyyy}.${mday}.${hh}.*_nc >>! flist
 
     if ( $chatty == 'yes' ) then
       echo $datea ' hour ' $hh
@@ -162,7 +165,7 @@ while ( $datea < $datee )
 
 end
 
-if ( $cleanup == 'yes' ) then
+if ( $cleanup == 'both' || $cleanup == 'curr' ) then
 
    if ( $chatty == 'yes' ) then
       echo 'cleaning up files at ' `date`
@@ -179,14 +182,16 @@ if ( $cleanup == 'yes' ) then
   rm -f ${dates}/atmPrf_CHAM*
   rm -f ${dates}/atmPrf_*
 
-  rm -f ${dateb}/atmPrf_C001*
-  rm -f ${dateb}/atmPrf_C002*
-  rm -f ${dateb}/atmPrf_C003*
-  rm -f ${dateb}/atmPrf_C004*
-  rm -f ${dateb}/atmPrf_C005*
-  rm -f ${dateb}/atmPrf_C006*
-  rm -f ${dateb}/atmPrf_CHAM*
-  rm -f ${dateb}/atmPrf_*
+  if ( $cleanup == 'both' ) then
+    rm -f ${date2}/atmPrf_C001*
+    rm -f ${date2}/atmPrf_C002*
+    rm -f ${date2}/atmPrf_C003*
+    rm -f ${date2}/atmPrf_C004*
+    rm -f ${date2}/atmPrf_C005*
+    rm -f ${date2}/atmPrf_C006*
+    rm -f ${date2}/atmPrf_CHAM*
+    rm -f ${date2}/atmPrf_*
+  endif
 
 endif
 
