@@ -2040,7 +2040,13 @@ real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
 interf_provided = .false.
-pert_state = MISSING_R8 ! Just to satisfy INTENT(OUT)
+
+! you *cannot* set this to junk. in at least one
+! location the caller is passing the same
+! array into the first arg as the second.  doing this
+! corrupts the state vector completely. we'll just have 
+! to put up with the compiler warning.
+!pert_state = MISSING_R8 ! Just to satisfy INTENT(OUT)
 
 end subroutine pert_model_state
 
