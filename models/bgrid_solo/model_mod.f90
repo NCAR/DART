@@ -2044,9 +2044,9 @@ interf_provided = .false.
 ! you *cannot* set this to junk. in at least one
 ! location the caller is passing the same
 ! array into the first arg as the second.  doing this
-! corrupts the state vector completely. we'll just have 
-! to put up with the compiler warning.
-!pert_state = MISSING_R8 ! Just to satisfy INTENT(OUT)
+! corrupts the state vector completely. set it to the
+! incoming state if you must do something.
+pert_state = state ! Just to satisfy INTENT(OUT)
 
 end subroutine pert_model_state
 

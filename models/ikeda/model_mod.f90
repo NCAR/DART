@@ -702,7 +702,7 @@ logical,  intent(out) :: interf_provided
 
 interf_provided = .false.
 
-pert_state = MISSING_R8 ! Just to satisfy the INTENT(OUT)
+pert_state = state ! Just to satisfy the INTENT(OUT)
 
 end subroutine pert_model_state
 
