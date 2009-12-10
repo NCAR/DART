@@ -343,12 +343,10 @@ while($state_copy <= $num_states)
             set pscale = `head -1 ${CENTRALDIR}/bc_pert_scale | tail -1`
             set hscale = `head -2 ${CENTRALDIR}/bc_pert_scale | tail -1`
             set vscale = `head -3 ${CENTRALDIR}/bc_pert_scale | tail -1`
-            set autoc  = `head -4 ${CENTRALDIR}/bc_pert_scale | tail -1`
          else
             set pscale = 0.25
             set hscale = 1.0
             set vscale = 1.5
-            set autoc = 0.0
          endif
          @ iseed2 = $ensemble_member * 10000
 
@@ -414,7 +412,7 @@ EOF
             ${MOVE} fg              wrfinput_next_mean
          endif
 
-         echo $autoc | ${CENTRALDIR}/pert_wrf_bc >&! out.pert_wrf_bc
+         ${CENTRALDIR}/pert_wrf_bc >&! out.pert_wrf_bc
          ${REMOVE} wrfinput_this wrfinput_next wrfbdy_this
          if ( -e wrfinput_this_mean ) ${REMOVE} wrfinput_this_mean wrfinput_next_mean
 
