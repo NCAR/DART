@@ -197,7 +197,6 @@ export      BE_file=$VAR_DIR/var/run/be.dat.cv3
 #  export      PSCALE=0.25
   export      HSCALE=1.0
   export      VSCALE=1.5
-  export      AUTOC=0.0
 
 #--------------------------------------------------------------------------------------
 # NAMELISTS
@@ -954,7 +953,6 @@ cat > bc_pert_scale << EOF
    $PSCALE
    $HSCALE
    $VSCALE
-   $AUTOC
 EOF
 # Link all of the executables to the run directory
 # DART first
