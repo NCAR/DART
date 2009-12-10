@@ -28,7 +28,7 @@ use obs_sequence_mod, only : obs_sequence_type, static_init_obs_sequence, &
 use    utilities_mod, only : find_namelist_in_file, check_namelist_read, nc_check
 use     obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT, &
                              MARINE_SFC_U_WIND_COMPONENT, LAND_SFC_U_WIND_COMPONENT, &
-                             SAT_U_WIND_COMPONENT, VORTEX_LAT
+                             GPSRO_REFRACTIVITY, SAT_U_WIND_COMPONENT, VORTEX_LAT
 use        model_mod, only : static_init_model
 use           netcdf
 
@@ -46,6 +46,7 @@ character(len=129) :: file_name_input    = 'obs_seq.old',        &
                       land_sfc_extra     = 'obs_seq.land_sfc',   &
                       marine_sfc_extra   = 'obs_seq.marine_sfc', &
                       sat_wind_extra     = 'obs_seq.satwnd',     &
+                      gpsro_extra        = 'obs_seq.gpsro',      &
                       trop_cyclone_extra = 'obs_seq.tc'
 integer            :: max_num_obs              = 100000   ! Largest number of obs in one sequence
 
@@ -85,7 +86,7 @@ namelist /wrf_obs_preproc_nml/file_name_input, file_name_output,      &
          aircraft_pres_int, sat_wind_pres_int, sfc_elevation_tol,   & 
          obs_pressure_top, obs_height_top, obs_boundary, sonde_extra,   &
          acars_extra, land_sfc_extra, marine_sfc_extra, sat_wind_extra, &
-         trop_cyclone_extra, tc_sonde_radii, increase_bdy_error,      &
+         trop_cyclone_extra, gpsro_extra, tc_sonde_radii, increase_bdy_error,      &
          maxobsfac, obsdistbdy, sat_wind_horiz_int, aircraft_horiz_int
 
 ! ----------------------------------------------------------------------
@@ -101,7 +102,7 @@ integer                 :: io, iunit, fid, var_id, obs_seq_file_id, num_copies, 
 logical                 :: file_exist, pre_I_format
 
 type(obs_sequence_type) :: seq_all, seq_rawin, seq_sfc, seq_acars, seq_satwnd, &
-                           seq_tc, seq_other
+                           seq_tc, seq_gpsro, seq_other
 
 call static_init_obs_sequence()
 call static_init_model()
@@ -142,6 +143,7 @@ call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_rawin)
 call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_sfc)
 call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_acars)
 call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_satwnd)
+call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_gpsro)
 call create_new_obs_seq(num_copies, num_qc, 100,         seq_tc)
 call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_other)
 
@@ -149,37 +151,42 @@ call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_other)
 call read_and_parse_input_seq(file_name_input, dble(nx), dble(ny), obs_boundary, &
 include_sig_data, obs_pressure_top, obs_height_top, sfc_elevation_check, &
 sfc_elevation_tol, overwrite_ncep_sfc_qc, overwrite_ncep_satwnd_qc, seq_rawin, &
-seq_sfc, seq_acars, seq_satwnd, seq_tc, seq_other)
+seq_sfc, seq_acars, seq_satwnd, seq_tc, seq_gpsro, seq_other)
 
 !  add supplimental rawinsonde observations from file
 call add_supplimental_obs(sonde_extra, seq_rawin, max_obs_seq, &
 RADIOSONDE_U_WIND_COMPONENT, nx, ny, obs_boundary, include_sig_data, &
-obs_pressure_top, sfc_elevation_check, sfc_elevation_tol)
+obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol)
 
 !  add supplimental ACARS observations from file
 call add_supplimental_obs(acars_extra, seq_acars, max_obs_seq, &
 ACARS_U_WIND_COMPONENT, nx, ny, obs_boundary, include_sig_data, &
-obs_pressure_top, sfc_elevation_check, sfc_elevation_tol)
+obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol)
 
 !  add supplimental marine observations from file
 call add_supplimental_obs(marine_sfc_extra, seq_sfc, max_obs_seq, &
 MARINE_SFC_U_WIND_COMPONENT, nx, ny, obs_boundary, include_sig_data, &
-obs_pressure_top, sfc_elevation_check, sfc_elevation_tol)
+obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol)
 
 !  add supplimental land surface observations from file
 call add_supplimental_obs(land_sfc_extra, seq_sfc, max_obs_seq, &
 LAND_SFC_U_WIND_COMPONENT, nx, ny, obs_boundary, include_sig_data, &
-obs_pressure_top, sfc_elevation_check, sfc_elevation_tol)
+obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol)
 
 !  add supplimental satellite wind observations from file
 call add_supplimental_obs(sat_wind_extra, seq_satwnd, max_obs_seq, &
 SAT_U_WIND_COMPONENT, nx, ny, obs_boundary, include_sig_data, &
-obs_pressure_top, sfc_elevation_check, sfc_elevation_tol)
+obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol)
+
+!  add supplimental GPSRO observations from file
+call add_supplimental_obs(gpsro_extra, seq_gpsro, max_obs_seq, &
+GPSRO_REFRACTIVITY, nx, ny, obs_boundary, include_sig_data, &
+obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol)
 
 !  add supplimental tropical cyclone vortex observations from file
 call add_supplimental_obs(trop_cyclone_extra, seq_tc, max_obs_seq, &
 VORTEX_LAT, nx, ny, obs_boundary, include_sig_data, &
-obs_pressure_top, sfc_elevation_check, sfc_elevation_tol)
+obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol)
 
 !  remove all sonde observations within radius of TC if desired
 if ( tc_sonde_radii > 0.0_r8 ) call remove_sondes_near_tc(seq_tc, & 
@@ -195,7 +202,8 @@ if ( superob_sat_winds ) call superob_sat_wind_data(seq_satwnd, &
 
 max_obs_seq = get_num_obs(seq_tc)     + get_num_obs(seq_rawin) + &
               get_num_obs(seq_sfc)    + get_num_obs(seq_acars) + &
-              get_num_obs(seq_satwnd) + get_num_obs(seq_other)
+              get_num_obs(seq_satwnd) + get_num_obs(seq_gpsro) + &
+              get_num_obs(seq_other)
 
 call create_new_obs_seq(num_copies, num_qc, max_obs_seq, seq_all)
 
@@ -210,6 +218,9 @@ call destroy_obs_sequence(seq_sfc)
 
 call build_master_sequence(seq_acars, seq_all)
 call destroy_obs_sequence(seq_acars)
+
+call build_master_sequence(seq_gpsro, seq_all)
+call destroy_obs_sequence(seq_gpsro)
 
 call build_master_sequence(seq_satwnd, seq_all)
 call destroy_obs_sequence(seq_satwnd)
@@ -286,7 +297,7 @@ use       obs_def_mod, only : obs_def_type, get_obs_kind, &
                               get_obs_def_location
 use      obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT, &
                               LAND_SFC_U_WIND_COMPONENT, MARINE_SFC_U_WIND_COMPONENT, &
-                              SAT_U_WIND_COMPONENT, VORTEX_LAT
+                              GPSRO_REFRACTIVITY, SAT_U_WIND_COMPONENT, VORTEX_LAT
 use         model_mod, only : get_domain_info 
 
 implicit none
@@ -325,6 +336,8 @@ select case (plat_kind)
     write(6,*) 'Adding Supplimental Satellite Wind Data'
   case (VORTEX_LAT)
     write(6,*) 'Adding Supplimental Tropical Cyclone Data'
+  case (GPSRO_REFRACTIVITY)
+    write(6,*) 'Adding Supplimental GPS RO Data'
 
 end select
 
@@ -839,7 +852,8 @@ end function rawinsonde_obs_check
 subroutine read_and_parse_input_seq(filename, nx, ny, obs_bdy, siglevel, ptop, &
                                     htop, sfcelev, elev_max, new_sfc_qc, &
                                     new_satwnd_qc, rawin_seq, sfc_seq, &
-                                    acars_seq, satwnd_seq, tc_seq, other_seq)
+                                    acars_seq, satwnd_seq, tc_seq, gpsro_seq, &
+                                    other_seq)
 
 use         types_mod, only : r8
 use     utilities_mod, only : nc_check
@@ -853,7 +867,7 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, &
 use       obs_def_mod, only : obs_def_type, get_obs_kind, get_obs_def_location
 use      obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, RADIOSONDE_V_WIND_COMPONENT, &
                               RADIOSONDE_SURFACE_ALTIMETER, RADIOSONDE_TEMPERATURE, &
-                              RADIOSONDE_SPECIFIC_HUMIDITY, &
+                              RADIOSONDE_SPECIFIC_HUMIDITY, GPSRO_REFRACTIVITY, &
                               AIRCRAFT_U_WIND_COMPONENT, AIRCRAFT_V_WIND_COMPONENT, &
                               AIRCRAFT_TEMPERATURE, AIRCRAFT_SPECIFIC_HUMIDITY, &
                               ACARS_U_WIND_COMPONENT, ACARS_V_WIND_COMPONENT, &
@@ -879,7 +893,7 @@ real(r8),                intent(in)    :: nx, ny, obs_bdy, ptop, htop, elev_max
 logical,                 intent(in)    :: siglevel, sfcelev, new_sfc_qc, &
                                           new_satwnd_qc
 type(obs_sequence_type), intent(inout) :: rawin_seq, sfc_seq, acars_seq, &
-                                          satwnd_seq, tc_seq, other_seq
+                                          satwnd_seq, tc_seq, gpsro_seq, other_seq
 
 character(len=129)    :: qcmeta
 integer               :: fid, var_id, okind, dom_id, i, j
@@ -1023,6 +1037,11 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
 
       call copy_obs(obs, obs_in)
       call append_obs_to_seq(tc_seq, obs)
+
+    case ( GPSRO_REFRACTIVITY )
+
+      call copy_obs(obs, obs_in)
+      call append_obs_to_seq(gpsro_seq, obs)
 
     case default
 
