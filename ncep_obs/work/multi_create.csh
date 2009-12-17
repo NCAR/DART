@@ -1,9 +1,10 @@
 #!/bin/csh  -v
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
 #
 # test version - convert multiple days in parallel
 #
@@ -83,7 +84,6 @@ end
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: http://subversion.ucar.edu/DAReS/DART/trunk/ncep_obs/work/multi_create.csh $
-# $Id: prepbufr.csh 3042 2007-08-02 22:03:02Z thoar $
-# $Revision: 3042 $
-# $Date: 2007-08-02 16:03:02 -0600 (Thu, 02 Aug 2007) $
+# $URL$
+# $Revision$
+# $Date$

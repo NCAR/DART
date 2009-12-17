@@ -1,7 +1,13 @@
-# for the IBM/blueice machine, this fragment can be dropped into the job_mpi.csh script
-# to specifically schedule which mpi tasks run on whch nodes.  since cores on the same
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+
+# For the IBM/blueice machine. This fragment can be dropped into the job_mpi.csh script
+# to specifically schedule which mpi tasks run on which nodes. Since cores on the same
 # nodes share memory, if running one mpi task per core uses too much memory, everything
-# slows down drastically.  better to run fewer tasks per node (e.g. 7 tasks on an 8 core
+# slows down drastically.  Better to run fewer tasks per node (e.g. 7 tasks on an 8 core
 # node) since then each task gets more memory (the memory on these nodes is not
 # partitioned by core; it is completely shared and a single task can take over all
 # the memory if you let it).
@@ -29,3 +35,9 @@
       endif
 
    endif
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

@@ -1,28 +1,12 @@
 #!/bin/csh
 #
-#BXXX -b 18:00
-#BSUB -J POP_OSSE
-#BSUB -o POP_OSSE.%J.log
-#BSUB -N -u ${USER}@ucar.edu
-#BSUB -q economy
-#BSUB -n 16
-#BSUB -R "span[ptile=2]"
-#BSUB -W 2:00
-#BSUB -m  "cr0128en cr0129en cr0130en cr0131en cr0132en cr0133en cr0134en cr0135en cr0136en cr0137en cr0138en cr0139en cr0140en cr0141en cr0202en cr0201en"
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-#-----------------------------------------------------------------------------
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2009, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# $Id$
 #
-# <next few lines under version control, do not edit>
-# $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/POP/shell_scripts/job.simple.csh $
-# $Id: job.simple.csh 3575 2008-08-21 18:01:05Z thoar $
-# $Revision: 3575 $
-# $Date: 2008-08-21 12:01:05 -0600 (Thu, 21 Aug 2008) $
-#-----------------------------------------------------------------------------
-# run_perfect_model_obs.batch ... Top level script to generate observations and a TRUE state.
+# Top level script to generate observations and a TRUE state.
 #
 # Unlike the more complex job.csh, this script only processes a single 
 # observation file.  Still fairly complex; requires a raft of
@@ -46,6 +30,16 @@
 # The central directory is where the scripts reside and where script and 
 # program I/O are expected to happen.
 #-----------------------------------------------------------------------------
+#
+#BXXX -b 18:00
+#BSUB -J POP_OSSE
+#BSUB -o POP_OSSE.%J.log
+#BSUB -N -u ${USER}@ucar.edu
+#BSUB -q economy
+#BSUB -n 16
+#BSUB -R "span[ptile=2]"
+#BSUB -W 2:00
+#BSUB -m  "cr0128en cr0129en cr0130en cr0131en cr0132en cr0133en cr0134en cr0135en cr0136en cr0137en cr0138en cr0139en cr0140en cr0141en cr0202en cr0201en"
 
 #----------------------------------------------------------------------
 # Turns out the scripts are a lot more flexible if you don't rely on 
@@ -228,3 +222,11 @@ ${COPY} *.csh                      ${experiment}/DART
 ${COPY} $myname                    ${experiment}/DART
 
 ls -lrt
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

@@ -1,6 +1,11 @@
 #!/bin/bash
 #
-# SCRIPT:   populate_data_files.sh
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
 #
@@ -72,4 +77,11 @@ cp -f ${DATA_PATH}/terrht* .
 cp -f ${DART_HOME}/convert.vars ./convert.vars
 echo "  State vector definition"
 ${DART_HOME}/shell_scripts/populate_restart_vars.pl ${RESTART_DAT} > restart.log
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

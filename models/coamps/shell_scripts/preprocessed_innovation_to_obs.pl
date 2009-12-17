@@ -1,6 +1,11 @@
 #!/usr/bin/perl
 #
-# SCRIPT:	preprocessed_innovation_to_obs.pl
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # AUTHOR:	T. R. Whitcomb
 #
 # Script to handle the output of the innovation file preprocessor.
@@ -123,3 +128,11 @@ sub build_type_array
   $types[15] = 'SPECIFIC_HUMIDITY';
   $types[16] = 'POTENTIAL_TEMPERATURE';
 }
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

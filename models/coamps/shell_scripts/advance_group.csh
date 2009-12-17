@@ -1,6 +1,11 @@
 #!/bin/tcsh
 #
-# SCRIPT:   advance_group.csh
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
 #
@@ -19,8 +24,7 @@
 # N.B. The sed script of the form "1p $filename" is used several times 
 #      in this script and just pulls a specific line (line 1 in the 
 #      example) out of $filename
-######
-
+#
 ######
 # PBS instructions for MIT ACESGrid cluster
 ######
@@ -174,4 +178,11 @@ if (-e ${GROUPLOCK}) then
     rm -f ${GROUPLOCK}
     echo "Leaving advance_group.csh"
 endif
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

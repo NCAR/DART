@@ -1,22 +1,16 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
-#-----------------------------------------------------------------------------
-# job.simple.csh ... Top level script to run a single assimilation experiment.
 #
-#  Unlike the more complex job.csh, this script only processes a single 
-#  observation file.  Still fairly complex; requires a raft of
-#  data files and most of them are in hardcoded locations.
+# Top level script to run a single assimilation experiment.
+#
+# Unlike the more complex job.csh, this script only processes a single 
+# observation file.  Still fairly complex; requires a raft of
+# data files and most of them are in hardcoded locations.
 #
 # You need to know which of several batch systems you are using.  The most
 # common one is LSF.   PBS is also common.  (POE is another but is
@@ -42,7 +36,7 @@
 #
 # The central directory is where the scripts reside and where script and 
 # program I/O are expected to happen.
-#-----------------------------------------------------------------------------
+# 
 # 
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system 
@@ -380,3 +374,11 @@ echo "filter_server.csh will also remove the semaphor file go_end_filter,"
 echo "so do not remove it. If it still exists after filter_server has completed"
 echo "something is wrong ..."
 echo "Cheers."
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

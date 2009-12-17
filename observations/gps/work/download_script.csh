@@ -1,5 +1,11 @@
 #!/bin/csh
 #
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # Main script:
 # download multiple days of gps files
 #
@@ -8,7 +14,6 @@
 # for a username/password to access the site, and then setting 
 # the username and password here before running this script.
 #
-
 #BSUB -J get_gps
 #BSUB -o gps.%J.log
 #BSUB -q standby
@@ -53,3 +58,11 @@ setenv cosmic_pw   xxx
 ./cosmic_download.csh 20071029 ../cosmic
 ./cosmic_download.csh 20071030 ../cosmic
 ./cosmic_download.csh 20071031 ../cosmic
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

@@ -1,6 +1,11 @@
 #!/usr/bin/perl
 #
-# SCRIPT:   create_sounding_obs_sequence.pl
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
 #
@@ -101,4 +106,10 @@ print OUT "set_def.out\n";
 # Clean up
 print "Done creating sounding sequence.\n";
 
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

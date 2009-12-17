@@ -1,27 +1,22 @@
-#!/bin/csh 
+#!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
+#
 #--------------------------------------------------------------
 # DESCRIPTION:
 #
 #  This script is used to generate daily (3:01Z to 3:00Z of next day) decoded 
 #  NCEP reanalysis PREPBUFR text/ascii data.
 #
-#--------------------------------------------------------------
-
 # you may need additional options to submit this job to LSF;
 # e.g. -P project charge code, different queue name, etc.
-
+#
+#--------------------------------------------------------------
+#
 #BSUB -o prepbufr.out
 #BSUB -e prepbufr.err
 #BSUB -J prepbufr
@@ -30,8 +25,6 @@
 #BSUB -P XXXXXXXX
 #BSUB -n 1
 
-
-#
 #--------------------------------------------------------------
 #
 #  This script is used to generate daily (3:01Z to 3:00Z of next day) decoded 
@@ -274,4 +267,9 @@ while ( $day <= $last )
 end
 
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

@@ -1,6 +1,11 @@
 #!/bin/bash
 #
-# SCRIPT:   generate_restart_field_list.sh
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
 #
@@ -41,4 +46,11 @@ ${PARSER} 'anca' 'cond' 'aalhs' 'wbs' SINGLEIO field_list_single_io > fields_sin
 cat fields_*_io > fields_master_list
 rm field_list_*_io
 rm fields_*_io
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

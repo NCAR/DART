@@ -1,17 +1,11 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
-#-----------------------------------------------------------------------------
+#
 # job.simple.csh ... Top level script to run a single assimilation experiment.
 #
 # Unlike the more complex job.csh, this script only processes a single 
@@ -170,3 +164,11 @@ ${COPY} *.csh                      ${experiment}/DART
 ${COPY} $myname                    ${experiment}/DART
 
 ls -lrt
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

@@ -1,18 +1,10 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
-#-----------------------------------------------------------------------
-# Script init_ens_ocotillo.csh
 #
 # Purpose: Given start date etc, runs whole WRF system from global 
 #          analysis (NCEP AVN/FNL):
@@ -544,4 +536,10 @@ echo $seconds $days >> wrf.info
 
 end   # Loop over cycles
 
-exit (0)
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

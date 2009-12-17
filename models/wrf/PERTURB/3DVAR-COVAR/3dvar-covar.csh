@@ -1,19 +1,10 @@
 #!/bin/csh -f
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
-#
-#-----------------------------------------------------------------------
-# Script 3dvar-covar.csh
 #
 # Purpose: Given a first guess ensemble mean, generate ensemble members
 #          from wrf/3dvar covariances.
@@ -32,7 +23,7 @@
 # 1. the ensemble size (ES);
 # 2. Valid time of the ensemble (seconds, days);
 # 3. Number of wrf domains (MY_NUM_DOMAINS).
-
+#
 # Also, namelist.input and input.nml should be edited according to your needs.
 #
 # The namelist.3dvar.template is used by the present script. DO NOT change the lines
@@ -125,4 +116,10 @@ while ( $NC <= $ES )
 
 end
 
-exit (0)
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

@@ -1,10 +1,16 @@
 #!/bin/csh
-
+#
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # Extract the mean copy for each state vector field from each of the timeslots 
 # on a file (Posterior usually) and put each timeslot into CAM initial file format.
 # The non-state fields are ensemble averages of all the caminput_#.nc from the same 
 # timeslot.
-
+#
 # The CLM ensemble clminput_#.nc (all non-state fields) is ensemble averaged, 
 # and then the snow fields are overwritten using the algorithm from 
 # cam#.#.#/models/lnd/clm2/src/main/snowdp2lev.F90
@@ -12,7 +18,6 @@
 # ncap2 may need to be updated to NCO 3.9.4 or later.
 
 # set echo verbose
-
 
 # Called from auto_diag2ms_LSF.csh with
 #   ../../analyses2initial.csh no_MS '.' Posterior copy 1 ${obs_seq}H              >>& $saved
@@ -146,4 +151,11 @@ if (! -e ${kind}.nc) then
 endif
 
 echo "- - - - - - - - - -"
-exit
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

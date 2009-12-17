@@ -1,25 +1,21 @@
 #!/bin/sh 
 #
-# <next few lines under version control, do not edit>
-# $URL$
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
 # $Id$
-# $Revision$
-# $Date$
-
-#  ------------------------------------------------------------------------
-#  This script will make executables which extract data
-#  from ADP BUFR input files, and place the data into a basic text file.
-#  prepbufr.x:  used to extract data from prepbufr files
-#  ** Make sure the "ar" command location has been set in your path
-#  environment variable.  Type "which ar" to check if this is done. **
-#  ------------------------------------------------------------------------
- 
-#  ------------------------------------------------------------------------
-#  if you get a link or runtime error about bort being undefined, go into
-#  the lib directory and read the README_BUFRLIB file about how to fix it.
-#  you can do something like:  cc='cc -DUNDERSCORE' to set the flag for all
-#  compiles at once.
-#  ------------------------------------------------------------------------
+#
+# This script will make executables which extract data
+# from ADP BUFR input files, and place the data into a basic text file.
+# prepbufr.x:  used to extract data from prepbufr files
+# ** Make sure the "ar" command location has been set in your path
+# environment variable.  Type "which ar" to check if this is done. **
+#
+# if you get a link or runtime error about bort being undefined, go into
+# the lib directory and read the README_BUFRLIB file about how to fix it.
+# you can do something like:  cc='cc -DUNDERSCORE' to set the flag for all
+# compiles at once.
 
 set -eua
  
@@ -101,3 +97,9 @@ echo 'Finished making executables'
 cd ..
 
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

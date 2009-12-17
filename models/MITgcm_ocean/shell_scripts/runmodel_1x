@@ -1,11 +1,10 @@
 #!/bin/tcsh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2008, Data Assimilation Research Section, 
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id: runmodel_1x 2799 2007-04-04 23:17:51Z thoar $
+# $Id$
 #
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system
@@ -167,4 +166,11 @@ mkdir -p                 ${OUTPUTDIR}
 mv -f *.data *.meta STD* ${OUTPUTDIR}
 
 ls -al
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

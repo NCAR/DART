@@ -1,18 +1,10 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2006, Data Assimilation Research Section 
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
-#----------------------------------------------------------------------
-# advance_model.csh
 #
 # Script to advance one ensemble member one filter "time step"
 # when the model advance is executed as a separate process.
@@ -25,8 +17,6 @@
 # arg#1  the process number of caller
 # arg#2  the number of state copies belonging to that process
 # arg#3  the name of the filter_control_file for that process
-
-#----------------------------------------------------------------------
 
 set process = $1
 set num_states = $2
@@ -280,4 +270,10 @@ ${REMOVE} $temp_dir/*
 # Is there a need for any sleeps to avoid trouble on completing moves here?
 \rm -rf $control_file
 
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

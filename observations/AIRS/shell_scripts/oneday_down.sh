@@ -1,10 +1,16 @@
 #!/bin/bash
-
+#
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # this version gets the tar file from the mass store first.
 # unpack one day of tar files at a time, convert them into
 # individual obs_seq files.  this program also does the merge
 # of the 240 individual daily swaths into a single obs_seq file.
-
+#
 # this program should be started from the work directory.
 # it assumes ../data, ../tars, the output dir, etc
 # exist relative to starting from AIRS/work.
@@ -111,3 +117,9 @@ while (( d <= totaldays)) ; do
 done
 
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

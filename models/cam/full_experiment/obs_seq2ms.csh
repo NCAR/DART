@@ -1,6 +1,14 @@
 #!/usr/local/bin/tcsh
-# Doesn't let [^is]* work #!/bin/csh
-
+#
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+# 
+# $Id$
+#
+# Script for archiving months of obs_seq.final files 
+# (for easier access than diagnostics.tar.gz)
+#
 #BSUB -J obs_seq2ms
 #BSUB -o obs_seq2ms.%J.log
 #BSUB -P 93300315
@@ -8,9 +16,6 @@
 #BSUB -W 3:00
 #BSUB -n 1
 #BSUB -R "span[ptile=1]"
-#
-##=============================================================================
-# Script for archiving months of obs_seq.final files for easier access than diagnostics.tar.gz
 
 if ($?LS_SUBCWD) then
    cd $LS_SUBCWD
@@ -157,4 +162,10 @@ wait
 
 chmod 444 $saved
 
-exit
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

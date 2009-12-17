@@ -1,20 +1,14 @@
 #!/bin/csh
-
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
+#
 # Shell script to run the WRF model from DART input.
 # where the model advance is executed as a separate process.
-
+#
 # This script performs the following:
 # 1.  Creates a temporary directory to run a WRF realization (see options)
 # 2.  Copies or links the necessary files into the temporary directory
@@ -24,7 +18,7 @@
 # 6.  Runs WRF
 # 7.  Checks for incomplete runs
 # 8.  Converts wrf output to DART state vectors
-
+#
 # NOTES:
 # 1.  This version executes da_wrfvar.exe in serial (no mpirun)
 # 2.  If the ensemble mean assim_model_state_ic_mean is present in the 
@@ -34,7 +28,7 @@
 # calculate new boundary tendencies. The magnitude of the perturbation added
 # at the end of the interval is controlled by infl. The purpose is to increase
 # time correlation at the lateral boundaries.
-
+#
 # POSSIBLE TODO
 # 1.  modularization?  
 # 2.  error checking all over
@@ -539,4 +533,9 @@ end
 ${REMOVE} $control_file
 
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

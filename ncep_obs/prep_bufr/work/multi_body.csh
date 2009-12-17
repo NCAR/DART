@@ -1,9 +1,10 @@
-#!/bin/csh 
+#!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
 #
 # TEST VERSION - try to fork up to 32 processes to run
 # at once.  call this script with 4 args: year, month, start/end day
@@ -259,8 +260,7 @@ end
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: https://subversion.ucar.edu/DAReS/DART/trunk/ncep_obs/prep_bufr/work/prepbufr.csh $
-# $Id: prepbufr.csh 3637 2008-10-30 20:31:21Z nancy $
-# $Revision: 3637 $
-# $Date: 2008-10-30 14:31:21 -0600 (Thu, 30 Oct 2008) $
-#
+# $URL$
+# $Revision$
+# $Date$
+

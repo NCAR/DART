@@ -1,9 +1,15 @@
 #!/bin/bash
-
+#
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # split the monthly file into "daily" files which start at 12:01Z 
 # the previous day and end at 12:00Z on the day that matches the 
 # day in the filename.
-
+#
 #BSUB -J splitobs
 #BSUB -W 4:00
 #BSUB -o %J.out
@@ -11,7 +17,6 @@
 #BSUB -q share
 #BSUB -P 93300315
 #BSUB -n 1
-
 
 # set the first and last days to be split.  can roll over
 # month and year boundaries now!   note that for the first day
@@ -130,4 +135,9 @@ while (( d <= totaldays)) ; do
 done
 
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

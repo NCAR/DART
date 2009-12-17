@@ -1,17 +1,12 @@
 #!/bin/csh
-
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next three lines automatically updated by CVS, do not edit>
-# $Id: pmo.csh 3103 2007-09-12 16:05:21Z nancy $
-# $Source: /home/thoar/CVS.REPOS/DART/models/cam/shell_scripts/pmo.csh,v $
-# $Name:  $
-
-#-----------------------------------------------------------------------------
-# pmo.csh ... Script to run perfect_model_obs to generate synthetic observations
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
+# Script to run perfect_model_obs to generate synthetic observations
 #    from multiple obs_seq.in files. 
 #
 # The CENTRAL directory needs to have:
@@ -27,7 +22,7 @@
 #     trans_pv_sv
 #     trans_sv_pv
 #     trans_time
-
+#
 # You need to know which of several batch systems you are using.  The most
 # common one is LSF.   PBS is also common.  (POE is another but is
 # not supported directly by this script.  It is not recommended that you have a
@@ -48,7 +43,7 @@
 #
 # The script moves the necessary files to the current directory and then
 # starts 'perfect_model_obs' as a single-threaded job; 
-
+#
 # This central directory is where the scripts reside and where script and 
 # program I/O are expected to happen.
 #-----------------------------------------------------------------------------
@@ -774,4 +769,11 @@ ${REMOVE} perfect_ic_old
 end # end of the huge "i" loop
 
 ${REMOVE} ~/lnd.*.rpointer
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

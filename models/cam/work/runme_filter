@@ -1,9 +1,14 @@
 #!/bin/tcsh 
-
+#
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # start at a generic run script for the mpi version.  this should probably
 # end up in the shell scripts directory - but it is here for now.  nsc.
-
-# this code shamelessly stolen from tim.
+#
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system
 # LSF is used on the IBM   Linux cluster 'lightning'
@@ -98,4 +103,11 @@ else
    mpirun -np 4 ./filter
 
 endif
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

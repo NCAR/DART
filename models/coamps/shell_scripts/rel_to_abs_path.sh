@@ -1,5 +1,11 @@
 #!/bin/bash
-# SCRIPT:   rel_to_abs_path.sh
+#
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
 #
@@ -15,3 +21,11 @@ F_NAME=`basename "$REL_OUTPUT_FILE"`
 ABS_PATH=`cd "$D_NAME" 2>/dev/null && pwd || echo \"$D_NAME\"`
 OUTPUT_FILE="${ABS_PATH}/${F_NAME}"
 echo "$OUTPUT_FILE"
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

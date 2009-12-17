@@ -1,17 +1,11 @@
 #!/bin/csh
-
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next few lines under version control, do not edit>
-# $URL$
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
 # $Id$
-# $Revision$
-# $Date$
-
-#-----------------------------------------------------------------------------
+#
 # job.csh ... Script to run whole assimilation experiment; multiple obs_seq.out files. 
 # Resulting series of jobs can take days to run, depending on the numbers of: 
 #  > observation sequence files (each is a separate job and may be queued), 
@@ -45,7 +39,7 @@
 #
 # This central directory is where the scripts reside and where script and 
 # program I/O are expected to happen.
-#-----------------------------------------------------------------------------
+#
 # 
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system 
@@ -53,7 +47,6 @@
 # LSF is used on the IMAGe Linux cluster 'coral'
 # LSF is used on the IBM   'bluevista'
 # The queues on lightning and bluevista are supposed to be similar.
-#
 #
 # an explanation of the most common directives follows:
 # -J Job name
@@ -1414,3 +1407,11 @@ ${LINK}              ${exp}/run_job_${obs_seq_1}-${obs_seq_n}.log $MASTERLOG
 
 # actual namelist used by CAM for most recent model advance
 if (obs_seq_1_depend == 'false' ) ${REMOVE} ~/lnd.*.rpointer
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

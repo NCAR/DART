@@ -1,13 +1,11 @@
 #!/bin/tcsh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2008, Data Assimilation Research Section, 
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # $Id$
 #
-#=============================================================================
 # So the background is that I want 40 snapshot files to create an initial
 # conditions file with 40 ensemble members. 
 #
@@ -240,3 +238,11 @@ cat ens_mem_* >! filter_ics
 #-------------------------------------------------------------------------
 
 \rm -f ens_mem_*
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

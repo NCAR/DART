@@ -1,16 +1,11 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL: https://subversion.ucar.edu/DAReS/DART/trunk/observations/utilities/threed_sphere/quickbuild.csh $
-# $Id: quickbuild.csh 3869 2009-05-08 21:15:22Z thoar $
-# $Revision: 3869 $
-# $Date: 2009-05-08 15:15:22 -0600 (Fri, 08 May 2009) $
-
+# $Id$
+#
 # Script to manage the compilation of all components for this model;
 # executes a known "perfect model" experiment using an existing
 # observation sequence file (obs_seq.in) and initial conditions appropriate 
@@ -43,7 +38,7 @@
 # 'obs_diag' is a program that will create observation-space diagnostics
 # for any result of 'filter' and results in a couple data files that can
 # be explored with yet more matlab scripts.
-#
+
 #----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
 # observation module for the observations types in 'input.nml'; the 
@@ -97,4 +92,11 @@ end
 echo ""
 echo "Success: All single task DART programs compiled."  
 echo ""
+
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

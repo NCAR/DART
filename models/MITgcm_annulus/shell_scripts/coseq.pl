@@ -1,16 +1,11 @@
 #!/usr/bin/perl
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
+#
 # This perl script generates a file that can be redirected into
 # create_obs_seequence.  For the MITgcm annulus the script 
 # requires 10 pieces of information from STDIN.  As the MITgcm
@@ -300,4 +295,11 @@ print "\n";
 print "Note, if you are entering huge numbers of observations, it might be\n";
 print "necessary to enter coseq.pl and alter the first print OUT statement.\n";
 close(OUT);
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

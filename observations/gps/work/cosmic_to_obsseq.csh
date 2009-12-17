@@ -1,4 +1,11 @@
-#!/bin/csh 
+#!/bin/csh
+#
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 ########################################################################
 #
 #   cosmic_to_obsseq.csh - script that downloads COSMIC observations 
@@ -15,7 +22,6 @@
 #     created June 2008, Ryan Torn NCAR/MMM
 #     updated Nov  2008, nancy collins ncar/cisl
 #     updated Aug  2009, nancy collins ncar/cisl
-#
 # 
 ########################################################################
 
@@ -199,4 +205,10 @@ if ( $chatty == 'yes' ) then
    echo 'finished gps conversion at ' `date`
 endif
 
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

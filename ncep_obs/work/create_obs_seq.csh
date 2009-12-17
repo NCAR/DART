@@ -1,16 +1,11 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
+#
 #--------------------------------------------------------------
 # DESCRIPTION:
 #    Run create_obs_seq for the timespan described in input.nml
@@ -19,10 +14,10 @@
 #    digits to the end of the numbers, resulting in latitudes > 90)
 #
 #--------------------------------------------------------------
-
+#
 # you might need other options set for LSF on your system; 
 #  e.g. -P project_charge_code, a different queue name, etc.
-
+#
 #BSUB -o create_obs_seq.out
 #BSUB -e create_obs_seq.err
 #BSUB -J create_obs_seq
@@ -30,7 +25,6 @@
 #BSUB -W 2:00
 #BSUB -P NNNNNNNN
 #BSUB -n 1
-
 
 touch create_obs_seq.log
 
@@ -108,6 +102,10 @@ while ($n <= $dayn)
    @ n++
 end
 
+exit 0
 
-exit
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

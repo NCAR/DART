@@ -1,23 +1,18 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
+#
 # Standard script for use in assimilation applications
 # where the model advance is executed as a separate process.
-
+#
 # WGL -- Though I am not great with shell scripts, I am hoping to update this
 #          script for use with global WRF, which, most notably, does not 
 #          boundary condition files.
-
+#
 # WGL -- should the following still be included, or is it peculiar to b.c.'s? ::
 # If the ensemble mean assim_model_state_ic_mean is present in the CENTRALDIR,
 # it is converted to a WRF netCDF format.
@@ -374,4 +369,10 @@ ${REMOVE} ${temp_dir}
 # Is there a need for any sleeps to avoid trouble on completing moves here?
 \rm -rf $control_file
 
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

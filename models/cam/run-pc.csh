@@ -1,16 +1,11 @@
 #!/bin/tcsh -f
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
+#
 #  #td means code added to specify an arbitrary forecast duration
 #      using [START,STOP]_[YMD,TOD] passed as a -namelist argument
 
@@ -137,4 +132,11 @@ mv *clm2.i.* $wrkdir/clminput.nc
 rm *.h* *.r*
 echo ' '
 ls -l *input*
+
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

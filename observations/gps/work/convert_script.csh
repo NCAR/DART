@@ -1,5 +1,11 @@
 #!/bin/csh
 #
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # Main script:
 # generate multiple days of gps observations
 #
@@ -39,4 +45,11 @@ setenv cosmic_pw   yyy
 #./cosmic_to_obsseq.csh 20061102 ../cosmic next curr
 #./cosmic_to_obsseq.csh 20061103 ../cosmic next curr
 #./cosmic_to_obsseq.csh 20061104 ../cosmic next both
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

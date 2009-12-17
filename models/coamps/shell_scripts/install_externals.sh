@@ -1,6 +1,11 @@
 #!/bin/bash
 #
-# SCRIPT:   install_externals.sh
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
 #
@@ -122,3 +127,11 @@ echo "Using DART root directory $dart_dir"
 # Start processing the externals - as long as the directory structure in
 # "externals" mirrors that of the main DART directory, this should work
 traverse_tree "${dart_dir}/${EXTERNALS_PATH}"
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

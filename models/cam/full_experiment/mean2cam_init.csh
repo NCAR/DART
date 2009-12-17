@@ -1,5 +1,11 @@
 #!/bin/csh
-
+#
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # Extract the mean copy for each field from each of the timeslots on
 # a series of files (Posterior usually) and put each timeslot into 
 # CAM initial file format.
@@ -85,4 +91,10 @@ if (! -e ${kind}.nc) then
 
 endif
 
-exit
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

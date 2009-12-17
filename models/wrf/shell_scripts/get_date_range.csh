@@ -1,22 +1,12 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
-#-----------------------------------------------------------------------
-# Script get_date_range.csh
 #
 # Purpose: Set environment variables associated with date range.
-#
-#-----------------------------------------------------------------------
 
 #-----------------------------------------------------------------------
 # [1] Set arguments:
@@ -45,4 +35,10 @@ setenv END_MONTH `echo $END_DATE | cut -c5-6`
 setenv END_DAY `echo $END_DATE | cut -c7-8`
 setenv END_HOUR `echo $END_DATE | cut -c9-10`
 
-exit (0)
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

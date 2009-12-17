@@ -1,4 +1,4 @@
- 
+#  $Id$ 
 #  ------------------------------------------------------------------------
 #  This script will FORTRAN block or unblock BUFR files on a number of
 #  standard computing platforms. Stictly speaking, real BUFR files are

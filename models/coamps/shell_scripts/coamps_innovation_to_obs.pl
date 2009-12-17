@@ -1,6 +1,11 @@
 #!/usr/bin/perl -w
 #
-# SCRIPT:   coamps_innovation_to_obs.pl
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
 #
@@ -176,3 +181,11 @@ sub build_dart_hash
     $dart_hash{'TDPD'} = 205;  # Dewpoint depression (K)
     $dart_hash{'POTT'} = 207;  # Potential temperature (K)
 }
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

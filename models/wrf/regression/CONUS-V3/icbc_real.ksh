@@ -1,16 +1,10 @@
 #!/bin/ksh 
-#-----------------------------------------------------------------------
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-#-----------------------------------------------------------------------
-# <next few lines under version control, do not edit>
-# $URL: https://subversion.ucar.edu/DAReS/DART/trunk/models/wrf/shell_scripts/advance_model.csh $
-# $Id: advance_model.csh 3814 2009-04-15 20:48:36Z nancy $# $Revision: 3814 $
-# $Date: 2009-04-15 14:48:36 -0600 (Wed, 15 Apr 2009) $
-#-----------------------------------------------------------------------
 #
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
 #
 # Purpose: run real.exe and generate perturbed IC/BC's using WRFVAR
 # and prepares the run directory by linking all of the needed files
@@ -1001,3 +995,9 @@ EOF
    done
 
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

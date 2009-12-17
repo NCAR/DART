@@ -1,16 +1,11 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
- 
+# 
 # This script advances the MITgcm annulus model.  It copies the necessary
 # files into the relevant directory, converts the dart output files to
 # an MITgcm pickup file, runs the model, converts the MITgcm pickup
@@ -83,4 +78,10 @@ sleep 0.05
 mv dart_vector ${CENTRALDIR}/assim_model_state_ud$element
 sleep 0.05
 
-exit
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

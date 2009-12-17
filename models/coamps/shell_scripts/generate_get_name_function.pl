@@ -1,6 +1,11 @@
 #!/usr/bin/perl
 #
-# SCRIPT:   generate_get_name_function.pl
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
 #
@@ -111,3 +116,11 @@ print ROUTINE_FILE <<END_FOOTER;
 end subroutine get_name_info
 END_FOOTER
 close(ROUTINE_FILE);
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

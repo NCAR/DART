@@ -1,6 +1,11 @@
 #!/bin/bash
 #
-# SCRIPT:   change_ens_size.sh
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
 #
@@ -25,5 +30,12 @@ perl -i.bak -p -e "s/(ens_size\s*)=\s*\d+/\1= ${new_ens_size}/" input.nml
 echo "  input.nml - num_output_state_members"
 perl -i.bak -p -e "s/(num_output_state_members\s*)=\s*\d+/\1= ${new_ens_size}/" input.nml 
 echo "  input.nml - num_output_obs_members"
-perl -i.bak -p -e "s/(num_output_obs_members\s*)=\s*\d+/\1= ${new_ens_size}/" input.nml 
+perl -i.bak -p -e "s/(num_output_obs_members\s*)=\s*\d+/\1= ${new_ens_size}/" input.nml
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

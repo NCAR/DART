@@ -1,14 +1,15 @@
 #!/bin/csh
-
+#
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
 # script for copying 1 day/obs_seq of restart files to the mass store.
 # CAM,CLM, and possibly filter_ic for each ensemble member are lumped together
 # so that we can retrieve a subset of the ensemble members for a new experiment.
 # Then it lumps together ensemble members into batches to reduce the number of files.
-
-# <next three lines automatically updated by CVS, do not edit>
-# $Id$
-# $Source: /home/thoar/CVS.REPOS/DART/models/cam/shell_scripts/auto_re2ms.csh,v $
-# $Name:  $
 
 # change for lightning?
 setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:/usr/local/dcs/lib
@@ -240,4 +241,10 @@ endif
 
 chmod 444 saved_restart
 
-exit
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

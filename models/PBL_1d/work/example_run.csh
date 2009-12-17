@@ -1,16 +1,11 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
 # $Id$
-# $Revision$
-# $Date$
-
+#
 # Script to manage the compilation of all components for this model;
 # executes a known "perfect model" experiment using an existing
 # observation sequence file (obs_seq.in) and initial conditions appropriate 
@@ -43,7 +38,7 @@
 # 'obs_diag' is a program that will create observation-space diagnostics
 # for any result of 'filter' and results in a couple data files that can
 # be explored with yet more matlab scripts.
-#
+
 #----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
 # observation module for the observations types in 'input.nml'; the 
@@ -124,3 +119,11 @@ endif
 \cp -p obs_seq.final 05_01/obs_seq.final
 
 ./obs_diag   || exit 99
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+
