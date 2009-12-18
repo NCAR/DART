@@ -375,12 +375,30 @@ contains
    end subroutine initialize_utilities
 
 
-   subroutine finalize_utilities
+   subroutine finalize_utilities(progname)
+   character(len=*), intent(in), optional :: progname
    ! integer :: logfileunit -- private module variable
+
+      ! if called multiple times, just return
+      if (.not. module_initialized) return
+
+      if ( present(progname) ) then
+         call write_time (logfileunit, label='Finished ', &
+                          string1='Program '//trim(progname))
+         call write_time (             label='Finished ', &
+                          string1='Program '//trim(progname))
+      else
+         call write_time (logfileunit, label='Finished ')
+         call write_time (             label='Finished ')
+      endif 
 
       if (do_output_flag) then
          if (do_nml_file() .and. (nmlfileunit /= logfileunit)) then
-            write(nmlfileunit, *) '!Ending Program '
+            if ( present(progname) ) then
+               write(nmlfileunit, *) '!Finished Program '//trim(progname)
+            else
+               write(nmlfileunit, *) '!Finished Program '
+            endif 
          endif 
       endif
 
@@ -388,6 +406,8 @@ contains
       if ((nmlfileunit /= logfileunit) .and. (nmlfileunit /= -1)) then
          close(nmlfileunit)
       endif
+
+      module_initialized = .false.
 
    end subroutine finalize_utilities
 
@@ -433,11 +453,6 @@ contains
       if ( .not. do_output_flag) return
 
       if (trim(adjustl(pos)) == 'end') then
-         call write_time (logfileunit, label='Finished ', &
-                          string1=string1, string2=string2, string3=string3)
-         call write_time (             label='Finished ', &
-                          string1=string1, string2=string2, string3=string3)
-
          call finalize_utilities()
       else if (trim(adjustl(pos)) == 'brief') then
          call write_time (logfileunit, brief=.true., & 
@@ -659,16 +674,16 @@ contains
 
 !#######################################################################
 
-  subroutine error_handler(level, routine, text, src, rev, rdate, aut )
+  subroutine error_handler(level, routine, text, src, rev, rdate, aut, text2, text3 )
 !----------------------------------------------------------------------
-! subroutine error_handler(level, routine, text, src, rev, rdate, aut )
+! subroutine error_handler(level, routine, text, src, rev, rdate, aut , text2, text3)
 !
 ! logs warning/error 
 implicit none
 
 integer, intent(in) :: level
 character(len = *), intent(in) :: routine, text
-character(len = *), intent(in), optional :: src, rev, rdate, aut
+character(len = *), intent(in), optional :: src, rev, rdate, aut, text2, text3
 
 character(len = 8) :: taskstr
 
@@ -685,35 +700,66 @@ select case(level)
       if ( single_task ) then
         write(     *     , *) trim(routine),' ', trim(text)
         write(logfileunit, *) trim(routine),' ', trim(text)
+        if ( present(text2)) then
+           write(     *     , *) trim(routine),' ... ', trim(text2)
+           write(logfileunit, *) trim(routine),' ... ', trim(text2)
+        endif
+        if ( present(text3)) then
+           write(     *     , *) trim(routine),' ... ', trim(text3)
+           write(logfileunit, *) trim(routine),' ... ', trim(text3)
+        endif
       else
-        if (task_number < 10) then
-            write(taskstr, '(a,i1)' ) "PE ", task_number
-        else if (task_number < 100) then
-            write(taskstr, '(a,i2)' ) "PE ", task_number
+        ! FIXME: should they just all use i5? but most common case is only
+        ! messages from PE0, so it's tempting not to waste all those columns.
+        if (task_number == 0) then
+            write(taskstr, '(a)' ) "PE 0"
         else
             write(taskstr, '(a,i5)' ) "PE ", task_number
         endif
         write(     *     , *) trim(taskstr),': ',trim(routine),' ', trim(text)
         write(logfileunit, *) trim(taskstr),': ',trim(routine),' ', trim(text)
+        if ( present(text2)) then
+           write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text2)
+           write(logfileunit, *) trim(taskstr),': ',trim(routine),' ... ', trim(text2)
+        endif
+        if ( present(text3)) then
+           write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text3)
+           write(logfileunit, *) trim(taskstr),': ',trim(routine),' ... ', trim(text3)
+        endif
       endif
 
    case (E_DBG)
       if (print_debug) then
 
          ! what about do_output_flag?  want messages from all procs or just PE0?
+
          if ( single_task ) then
            write(     *     , *) 'DEBUG FROM: ', trim(routine),' ', trim(text)
            write(logfileunit, *) 'DEBUG FROM: ', trim(routine),' ', trim(text)
+           if ( present(text2)) then
+              write(     *     , *) 'DEBUG FROM: ', trim(routine),' ... ', trim(text2)
+              write(logfileunit, *) 'DEBUG FROM: ', trim(routine),' ... ', trim(text2)
+           endif
+           if ( present(text3)) then
+              write(     *     , *) 'DEBUG FROM: ', trim(routine),' ... ', trim(text3)
+              write(logfileunit, *) 'DEBUG FROM: ', trim(routine),' ... ', trim(text3)
+           endif
          else
-           if (task_number < 10) then
-               write(taskstr, '(a,i1)' ) "PE ", task_number
-           else if (task_number < 100) then
-               write(taskstr, '(a,i2)' ) "PE ", task_number
+           if (task_number == 0) then
+               write(taskstr, '(a)' ) "PE 0"
            else
                write(taskstr, '(a,i5)' ) "PE ", task_number
            endif
            write(     *     , *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ', trim(text)
            write(logfileunit, *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ', trim(text)
+           if ( present(text2)) then
+              write(     *     , *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ... ', trim(text2)
+              write(logfileunit, *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ... ', trim(text2)
+           endif
+           if ( present(text3)) then
+              write(     *     , *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ... ', trim(text3)
+              write(logfileunit, *) trim(taskstr),': DEBUG FROM: ',trim(routine),' ... ', trim(text3)
+           endif
          endif
       endif
 
@@ -721,49 +767,69 @@ select case(level)
 
       write(     *     , *) 'WARNING FROM:'
       if ( .not. single_task ) &
-      write(     *     , *) '   task id       : ', task_number
-      write(     *     , *) '   routine       : ', trim(routine)
-      write(     *     , *) '   source file   : ', trim(src)
-      write(     *     , *) '   file revision : ', trim(rev)
-      write(     *     , *) '   revision date : ', trim(rdate)
+      write(     *     , *) ' task id: ', task_number
+      write(     *     , *) ' routine: ', trim(routine)
+      write(     *     , *) ' message: ', trim(text)
+      if ( present(text2)) &
+      write(     *     , *) ' message: ... ', trim(text2)
+      if ( present(text3)) &
+      write(     *     , *) ' message: ... ', trim(text3)
+      write(     *     , *) ' '
+      write(     *     , *) ' source file: ', trim(src)
+      write(     *     , *) ' file revision: ', trim(rev)
+      write(     *     , *) ' revision date: ', trim(rdate)
       if(present(aut)) &
-      write(     *     , *) '   last editor   : ', trim(aut)
-      write(     *     , *) '   message       : ', trim(text)
+      write(     *     , *) ' last editor: ', trim(aut)
 
       write(logfileunit, *) 'WARNING FROM:'
       if ( .not. single_task ) &
-      write(logfileunit, *) '   task id       : ', task_number
-      write(logfileunit, *) '   routine       : ', trim(routine)
-      write(logfileunit, *) '   source file   : ', trim(src)
-      write(logfileunit, *) '   file revision : ', trim(rev)
-      write(logfileunit, *) '   revision date : ', trim(rdate)
+      write(logfileunit, *) ' task id: ', task_number
+      write(logfileunit, *) ' routine: ', trim(routine)
+      write(logfileunit, *) ' message: ', trim(text)
+      if ( present(text2)) &
+      write(logfileunit, *) ' message: ... ', trim(text2)
+      if ( present(text3)) &
+      write(logfileunit, *) ' message: ... ', trim(text3)
+      write(logfileunit, *) ' '
+      write(logfileunit, *) ' source file: ', trim(src)
+      write(logfileunit, *) ' file revision: ', trim(rev)
+      write(logfileunit, *) ' revision date: ', trim(rdate)
       if(present(aut)) &
-      write(logfileunit, *) '   last editor   : ', trim(aut)
-      write(logfileunit, *) '   message       : ', trim(text)
+      write(logfileunit, *) ' last editor: ', trim(aut)
 
    case(E_ERR)
 
       write(     *     , *) 'ERROR FROM:'
       if ( .not. single_task ) &
-      write(     *     , *) '   task id       : ', task_number
-      write(     *     , *) '   routine       : ', trim(routine)
-      write(     *     , *) '   source file   : ', trim(src)
-      write(     *     , *) '   file revision : ', trim(rev)
-      write(     *     , *) '   revision date : ', trim(rdate)
+      write(     *     , *) ' task id: ', task_number
+      write(     *     , *) ' routine: ', trim(routine)
+      write(     *     , *) ' message: ', trim(text)
+      if ( present(text2)) &
+      write(     *     , *) ' message: ... ', trim(text2)
+      if ( present(text3)) &
+      write(     *     , *) ' message: ... ', trim(text3)
+      write(     *     , *) ' '
+      write(     *     , *) ' source file: ', trim(src)
+      write(     *     , *) ' file revision: ', trim(rev)
+      write(     *     , *) ' revision date: ', trim(rdate)
       if(present(aut)) &
-      write(     *     , *) '   last editor   : ', trim(aut)
-      write(     *     , *) '   message       : ', trim(text)
+      write(     *     , *) ' last editor: ', trim(aut)
 
       write(logfileunit, *) 'ERROR FROM:'
       if ( .not. single_task ) &
-      write(logfileunit, *) '   task id       : ', task_number
-      write(logfileunit, *) '   routine       : ', trim(routine)
-      write(logfileunit, *) '   source file   : ', trim(src)
-      write(logfileunit, *) '   file revision : ', trim(rev)
-      write(logfileunit, *) '   revision date : ', trim(rdate)
+      write(logfileunit, *) ' task id: ', task_number
+      write(logfileunit, *) ' routine: ', trim(routine)
+      write(logfileunit, *) ' message: ', trim(text)
+      if ( present(text2)) &
+      write(logfileunit, *) ' message: ... ', trim(text2)
+      if ( present(text3)) &
+      write(logfileunit, *) ' message: ... ', trim(text3)
+      write(logfileunit, *) ' '
+      write(logfileunit, *) ' source file: ', trim(src)
+      write(logfileunit, *) ' file revision: ', trim(rev)
+      write(logfileunit, *) ' revision date: ', trim(rdate)
       if(present(aut)) &
-      write(logfileunit, *) '   last editor   : ', trim(aut)
-      write(logfileunit, *) '   message       : ', trim(text)
+      write(logfileunit, *) ' last editor: ', trim(aut)
 
 end select
 
@@ -1685,12 +1751,12 @@ end function next_file
 function ascii_file_format(fform)
 
 !----------------------------------------------------------------------
-! Common routine for determining input file format.
+! Common routine for setting read/write file format.
 
 character(len=*), intent(in), optional :: fform
 logical                                :: ascii_file_format
 
-! Returns .true. if file is formatted/ascii, .false. if unformatted/binary
+! Returns .true. for formatted/ascii file, .false. is unformatted/binary
 ! Defaults (if fform not specified) to formatted/ascii.
 
 if ( .not. module_initialized ) call initialize_utilities
