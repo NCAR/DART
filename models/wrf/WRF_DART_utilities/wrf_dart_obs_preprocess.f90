@@ -885,7 +885,8 @@ use            netcdf
 implicit none
 
 real(r8), parameter                    :: satwnd_qc_ok = 15.0_r8
-real(r8), parameter                    :: sfc_qc_ok    =  9.0_r8
+real(r8), parameter                    :: sfc_qc_ok1   =  9.0_r8
+real(r8), parameter                    :: sfc_qc_ok2   = 15.0_r8
 real(r8), parameter                    :: new_qc_value =  2.0_r8
 
 character(len=129),      intent(in)    :: filename
@@ -992,7 +993,7 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
                               okind /= MARINE_SFC_ALTIMETER  ) then
 
           call get_qc(obs, qc)
-          if ( qc(1) == sfc_qc_ok .and. input_ncep_qc ) then
+          if ( (qc(1) == sfc_qc_ok1 .or. qc(1) == sfc_qc_ok2) .and. input_ncep_qc ) then
             qc(1) = new_qc_value
             call set_qc(obs, qc)
           end if
