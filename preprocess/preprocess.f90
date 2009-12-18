@@ -27,7 +27,8 @@ use     types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,   &
                           file_exist, open_file, logfileunit, timestamp,  &
                           initialize_utilities, do_nml_file, do_nml_term, &
-                          find_namelist_in_file, check_namelist_read
+                          find_namelist_in_file, check_namelist_read,     &
+                          finalize_utilities
 
 implicit none
 
@@ -706,7 +707,7 @@ close(obs_def_out_unit)
 !______________________________________________________________________________
 
 
-call timestamp(source,revision,revdate,'end') ! closes the log file.
+call finalize_utilities('preprocess')
 
 contains
 
