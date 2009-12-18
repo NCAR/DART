@@ -382,17 +382,17 @@ contains
       ! if called multiple times, just return
       if (.not. module_initialized) return
 
-      if ( present(progname) ) then
-         call write_time (logfileunit, label='Finished ', &
-                          string1='Program '//trim(progname))
-         call write_time (             label='Finished ', &
-                          string1='Program '//trim(progname))
-      else
-         call write_time (logfileunit, label='Finished ')
-         call write_time (             label='Finished ')
-      endif 
-
       if (do_output_flag) then
+         if ( present(progname) ) then
+            call write_time (logfileunit, label='Finished ', &
+                             string1='Program '//trim(progname))
+            call write_time (             label='Finished ', &
+                             string1='Program '//trim(progname))
+         else
+            call write_time (logfileunit, label='Finished ')
+            call write_time (             label='Finished ')
+         endif 
+
          if (do_nml_file() .and. (nmlfileunit /= logfileunit)) then
             if ( present(progname) ) then
                write(nmlfileunit, *) '!Finished Program '//trim(progname)
