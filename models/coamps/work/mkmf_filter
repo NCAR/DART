@@ -1,20 +1,16 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/jamaica/models/wrf/work/mkmf_filter $
-# $Id: mkmf_filter 2691 2007-03-11 18:18:09Z thoar $
-# $Revision: 2691 $
-# $Date: 2007-03-11 14:18:09 -0400 (Sun, 11 Mar 2007) $
-
+# $Id$
+#
 # usage: mkmf_filter [ -mpi | -nompi ]
-#  without any args, builds filter without mpi libraries, and it will run
-#  as a normal executable. if -mpi is given, it will be compiled with the mpi
-#  libraries and can run with multiple cooperating processes.
+#
+# without any args, builds filter without mpi libraries, and it will run
+# as a normal executable. if -mpi is given, it will be compiled with the mpi
+# libraries and can run with multiple cooperating processes.
 
 if ( $#argv > 0 ) then
   if ("$argv[1]" == "-mpi") then
@@ -58,4 +54,11 @@ rm -f path_names_filter.back
 
 ../../../mkmf/mkmf -p filter -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
         -a "../../.." ${wrapper_arg} path_names_filter
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

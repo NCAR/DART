@@ -1,13 +1,18 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next three lines automatically updated by CVS, do not edit>
-# $Id: mkmf_preprocess,v 1.1 2005/06/07 20:30:25 jla Exp $
-# $Source: /home/thoar/CVS.REPOS/DART/models/lorenz_63/work/mkmf_preprocess,v $
-# $Name: post_iceland $
-#
+# $Id$
+
 ../../../mkmf/mkmf -p check_in_grid -t ../../../mkmf/mkmf.template \
  -a "../../.." path_names_in_grid
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

@@ -1,15 +1,18 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL: https://subversion.ucar.edu/DAReS/DART/trunk/observations/utilities/threed_sphere/mkmf_preprocess $
-# $Id: mkmf_preprocess 3836 2009-05-01 00:25:15Z thoar $
-# $Revision: 3836 $
-# $Date: 2009-04-30 18:25:15 -0600 (Thu, 30 Apr 2009) $
-#
+# $Id$
+
 ../../../mkmf/mkmf -p preprocess -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
  -a "../../.." path_names_preprocess
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

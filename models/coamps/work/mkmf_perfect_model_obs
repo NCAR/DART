@@ -1,13 +1,18 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next three lines automatically updated by CVS, do not edit>
-# $Id: mkmf_perfect_model_obs,v 1.2 2005/02/26 06:14:20 thoar Exp $
-# $Source: /home/thoar/CVS.REPOS/DART/models/MITgcm_annulus/work/mkmf_perfect_model_obs,v $
-# $Name: hawaii $
-#
+# $Id$
+
 ../../../mkmf/mkmf -p perfect_model_obs -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
  -a "../../.." path_names_perfect_model_obs
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

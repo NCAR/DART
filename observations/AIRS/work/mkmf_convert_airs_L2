@@ -1,16 +1,11 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 # Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# <next few lines under version control, do not edit>
-# $URL: http://subversion.ucar.edu/DAReS/DART/branches/nancy_work/models/wrf/work/mkmf_preprocess $
-# $Id: mkmf_preprocess 2691 2007-03-11 18:18:09Z thoar $
-# $Revision: 2691 $
-# $Date: 2007-03-11 12:18:09 -0600 (Sun, 11 Mar 2007) $
-#
+# $Id$
 
 set JPGDIR = .
 set HDFDIR = /fs/local/apps/hdf4.2r4-intel
@@ -19,8 +14,16 @@ set MYLIBS = "-lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
 set MYINCDIR = "-I${HDFDIR}/include -I${JPGDIR}/include"
 set MYLIBDIR = "-L${HDFDIR}/lib     -L${JPGDIR}/lib         -L.."
 
+#-o "-ffixed-line-length-132 -I${HDFDIR}/include -L/usr/lib64 -L${HDFDIR}/lib ${HDFLIBS}" \
+
 ../../../mkmf/mkmf -p convert_airs_L2 -t ../../../mkmf/mkmf.template \
  -l "${MYINCDIR} -L/usr/lib64 ${MYLIBDIR} ${MYLIBS}" \
  -a "../../.." path_names_convert_airs_L2
 
-#-o "-ffixed-line-length-132 -I${HDFDIR}/include -L/usr/lib64 -L${HDFDIR}/lib ${HDFLIBS}" \
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

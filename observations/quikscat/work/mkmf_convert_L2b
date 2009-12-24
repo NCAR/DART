@@ -1,15 +1,10 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL: http://subversion.ucar.edu/DAReS/DART/branches/nancy_work/models/wrf/work/mkmf_preprocess $
-# $Id: mkmf_preprocess 2691 2007-03-11 18:18:09Z thoar $
-# $Revision: 2691 $
-# $Date: 2007-03-11 12:18:09 -0600 (Sun, 11 Mar 2007) $
+# $Id$
 
 
 # This is the right set for coral.
@@ -31,4 +26,11 @@
 ../../../mkmf/mkmf -p convert_L2b -t ../../../mkmf/mkmf.template \
  -l "${MYINCDIR} -L/usr/lib64 ${MYLIBDIR} ${MYLIBS}" \
  -a "../../.." path_names_convert_L2b
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

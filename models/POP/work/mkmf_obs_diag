@@ -1,15 +1,18 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2009, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/MITgcm_ocean/work/mkmf_obs_diag $
-# $Id: mkmf_obs_diag 3439 2008-07-01 23:03:55Z thoar $
-# $Revision: 3439 $
-# $Date: 2008-07-01 17:03:55 -0600 (Tue, 01 Jul 2008) $
-#
+# $Id$
+
 ../../../mkmf/mkmf -p obs_diag -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
  -a "../../.." path_names_obs_diag
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+
