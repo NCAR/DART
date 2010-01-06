@@ -1,66 +1,28 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module model_mod (9-variable)</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<!--kdr PRIVATE COMPONENTS has no destination -->
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>MODULE model_mod (9-variable)</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 DART interface module for the 9-variable model. The 17 public interfaces
@@ -69,18 +31,17 @@ DART to advance the model, get the model state and metadata describing
 this state, find state variables that are close to a given location, 
 and do spatial interpolation for model state variables. The distinctive
 part of the model interfaces is the namelist. 
-</P>
-<P>
-This model provides 
-interesting transient off-attractor behavior that is something like
-gravity waves.
+<br><br>
+This model provides interesting transient off-attractor behavior 
+that is something like gravity waves.
 </P>
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
+
 <PRE>
 types_mod
 time_manager_mod
@@ -89,81 +50,94 @@ utilities_mod
 </PRE>
 
 <!--==================================================================-->
-<!--Note to authors. The first row of the table is different.         -->
-
-<A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
-
-<TABLE>
-<TR><TD><em class=call>use model_mod, only : </em></TD>
-                   <TD><A HREF="#yyyroutine1">get_model_size</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">adv_1step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">get_state_meta_data</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">model_interpolate</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">get_model_time_step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine6">end_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">static_init_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine8">init_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine9">init_conditions</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine11">nc_write_model_atts</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine12">nc_write_model_vars</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine13">pert_model_state</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
-</TABLE>
-
-<H3 class=indent1>NOTES</H3>
-<P>
-Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&#38;model_mod_nml</em> </A>
-may be read from file <em class=file>input.nml</em>.
-</P>
-
-
+<!-- Note to authors. The first row of the table is different.        -->
 <!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
 <!-- duplicate public routines template as many times as necessary    -->
 <!-- make sure you replace all yyyroutine?? strings                   -->
 <!--==================================================================-->
 
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2>PUBLIC COMPONENTS</H2>
+<A NAME="Interface"></A>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE>
+<TR><TD><em class=call>use model_mod, only : </em></TD>
+                   <TD><A HREF="#get_model_size">get_model_size</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data">get_state_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#model_interpolate">model_interpolate</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time_step">get_model_time_step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#end_model">end_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
+</TABLE>
+
 <P>
+Optional namelist interface
+<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
+may be read from file <em class=file>input.nml</em>.
+The details of the namelist are always model-specific 
+(there are no generic namelist values).
 </P>
 
-<!--===================== DESCRIPTION OF FUNCTION =====================-->
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
+</P>
 
-<A NAME="yyyroutine1"></A>
-<P></P><HR><P></P>
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_model_size"></A>
+<br>
 <div class=routine>
-<em class=call> var = get_model_size( )</em>
+<em class=call>model_size = get_model_size( )</em>
 <pre>
-integer                               :: <em class=code> get_model_size </em>
-</pre></div>
+integer :: <em class=code>get_model_size</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
-Returns the length of the model state vector, 9.
+Returns the length of the model state vector.
+Required.
 </P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
 
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+<TR><TD valign=top><em class=code>model_size</em></TD>
+    <TD>The length of the model state vector.</TD></TR>
 
-<A NAME="yyyroutine2"></A>
-<P></P><HR><P></P>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="adv_1step"></A>
+<br>
 <div class=routine>
 <em class=call>call adv_1step(x, time)</em>
 <pre>
-real(r8), dimension(:),   intent(inout) :: <em class=code> x </em>
-type(time_type),          intent(in)    :: <em class=code> time </em>
-</pre></div>
+real(r8), dimension(:), intent(inout) :: <em class=code>x</em>
+type(time_type),        intent(in)    :: <em class=code>time</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Advances the model for a single time step.
@@ -176,26 +150,30 @@ although it is not used for the computation.
 <TR><TD valign=top><em class=code>x</em></TD>
     <TD>State vector of length model_size.</TD></TR>
 
-<TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Gives time of the initial model state.  </TD></TR>
+<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Specifies time of the initial model state.</TD></TR>
 
 </TABLE>
 
+</div>
+<br>
 
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="yyyroutine3"></A>
-<P></P><HR><P></P>
+<A NAME="get_state_meta_data"></A>
+<br>
 <div class=routine>
 <em class=call>call get_state_meta_data (index_in, location, 
-                          <em class=optionalcode>[,var_type]</em> )</em>
+                          <em class=optionalcode>[,&nbsp;var_type]</em> )</em>
 <pre>
-integer,                  intent(in)    :: <em class=code> index_in </em>
-type(location_type),      intent(out)   :: <em class=code> location </em>
-integer, optional,        intent(out)   :: <em class=optionalcode> var_type </em>
-</pre></div>
+integer,             intent(in)  :: <em class=code>index_in</em>
+type(location_type), intent(out) :: <em class=code>location</em>
+integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Returns metadata about a given state vector element, 
@@ -209,35 +187,38 @@ on a cyclic [0, 1] domain. The variable type is always returned as 1.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>index_in</em></TD>
-    <TD>Index into the long state vector.</TD></TR>
+<TR><TD valign=top><em class=code>index_in&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Index of state vector element about which information is requested.</TD></TR>
 
 <TR><TD valign=top><em class=code>location</em></TD>
-    <TD>Returns location of indexed state variable. </TD></TR>
+    <TD>The location of state variable element.</TD></TR>
 
 <TR><TD valign=top><em class=optionalcode>var_type</em></TD>
-    <TD>Returns the type (always 1) of the indexed state variable as an optional argument.</TD></TR>
+    <TD>Returns the type (always 1) of the indexed state 
+        variable as an optional argument.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
-<!--===================== DESCRIPTION OF FUNCTION =====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="yyyroutine4"></A>
-<P></P><HR><P></P>
+<A NAME="model_interpolate"></A>
+<br>
 <div class=routine>
 <em class=call>call model_interpolate(x, location, itype, obs_val, istatus)</em>
 <pre>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-type(location_type),      intent(in)  :: <em class=code> location </em>
-integer,                  intent(in)  :: <em class=code> itype </em>
-real(r8)                              :: <em class=code> var </em>
-real(r8),                 intent(out) :: <em class=code> obs_val </em>
-integer,                  intent(out) :: <em class=code> istatus </em>
-</pre></div>
+real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
+type(location_type),    intent(in)  :: <em class=code>location</em>
+integer,                intent(in)  :: <em class=code>itype</em>
+real(r8),               intent(out) :: <em class=code>obs_val</em>
+integer,                intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Given model state, returns the value  interpolated to a given 
@@ -249,10 +230,10 @@ and istatus is always returned as 0 (successful interpolation).
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>x &nbsp; &nbsp; </em></TD>
-    <TD>Model state vector. </TD></TR>
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>A model state vector.</TD></TR>
 
-<TR><TD valign=top><em class=code>location</em></TD>
+<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>Location to which to interpolate.</TD></TR>
 
 <TR><TD valign=top><em class=code>itype</em></TD>
@@ -266,100 +247,127 @@ and istatus is always returned as 0 (successful interpolation).
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--===================== DESCRIPTION OF FUNCTION =====================-->
-
-<A NAME="yyyroutine5"></A>
-<P></P><HR><P></P>
+<A NAME="get_model_time_step"></A>
+<br>
 <div class=routine>
-<em class=call> var = get_model_time_step( )</em>
+<em class=call>var = get_model_time_step()</em>
 <pre>
-type(time_type)                       :: <em class=code> get_model_time_step </em>
-</pre></div>
+type(time_type) :: <em class=code>get_model_time_step</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
-Returns the models base time step as a time_type. 
+Returns the time step (forecast length) of the model;
 The time step defaults to 1 hour but is settable by namelist.
 </P>
 
-<H3 class=indent1>Notes</H3>
+<TABLE width=100% border=0 summary="" cellpadding=3>
 
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Smallest time step of model.</TD></TR>
 
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+</TABLE>
 
-<A NAME="yyyroutine6"></A>
-<P></P><HR><P></P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="static_init_model"></A>
+<br>
 <div class=routine>
-<em class=call>call end_model( )</em>
-<pre>
-</pre></div>
+<em class=call>call static_init_model()</em>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Used for runtime initialization of model; 
+reads namelist, initializes model parameters, etc.
+This is the first call made to the model by any 
+DART-compliant assimilation routine.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="end_model"></A>
+<br>
+<div class=routine>
+<em class=call>call end_model()</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
 
 <P>
 A stub since 9-variable requires no clean up.
 </P>
 
-<H3 class=indent1>Notes</H3>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+</TABLE>
 
+</div>
+<br>
 
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="yyyroutine7"></A>
-<P></P><HR><P></P>
+<A NAME="init_time"></A>
+<br>
 <div class=routine>
-<em class=call>call static_init_model( )</em>
+<em class=call>call init_time(time)</em>
 <pre>
-</pre></div>
+type(time_type), intent(out) :: <em class=code>time</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
-
-<P>
-Used for runtime initialization of model; 
-reads namelist, initializes model parameters, etc. This is the first call 
-made to the model by any DART compliant assimilation routine.
-</P>
-
-<H3 class=indent1>Notes</H3>
-
-
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
-
-<A NAME="yyyroutine8"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call init_time(time) </em>
-<pre>
-type(time_type),          intent(out)    :: <em class=code> time </em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Returns the time at which the model will start 
 if no input initial conditions are 
-to be used. This is used to spin-up the model from rest. 
+to be used. This is used to spin-up the model from rest.
 Sets time to 0 in this model.
 </P>
 
-<H3 class=indent1>Notes</H3>
+<TABLE width=100% border=0 summary="" cellpadding=3>
 
+<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Initial model time.</TD></TR>
 
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+</TABLE>
 
-<A NAME="yyyroutine9"></A>
-<P></P><HR><P></P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_conditions"></A>
+<br>
 <div class=routine>
-<em class=call>call init_conditions( x )</em>
+<em class=call>call init_conditions(x)</em>
 <pre>
-real(r8), dimension(:),   intent(out)   :: <em class=code> x </em>
-</pre></div>
+real(r8), dimension(:), intent(out) :: <em class=code>x</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Returns default initial conditions for the model; 
@@ -369,110 +377,121 @@ Values chosen here are 0.1 for all nine state variables.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>Model state vector.</TD></TR>
+<TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Initial conditions for state vector.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--===================== DESCRIPTION OF FUNCTION =====================-->
-
-<A NAME="yyyroutine11"></A>
-<P></P><HR><P></P>
+<A NAME="nc_write_model_atts"></A>
+<br>
 <div class=routine>
-<em class=call> ierr = nc_write_model_atts(ncFileId) </em>
+<em class=call>ierr = nc_write_model_atts(ncFileID)</em>
 <pre>
-integer,                              :: <em class=code> nc_write_model_atts </em>
-integer,                  intent(in)  :: <em class=code> ncFileId </em>
-</pre></div>
+integer             :: <em class=code>nc_write_model_atts</em>
+integer, intent(in) :: <em class=code>ncFileID</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
-Function to write model specific attributes to a netCDF file. At present, DART 
-is using the NetCDF format to output diagnostic information. This is not a 
-requirement, and models could choose to provide output in other formats. 
-This function writes the metadata associated with the model to a NetCDF 
-file opened to a file identified by ncFileID.  
+This routine must write the model-specific attributes to a netCDF file. 
+This includes coordinate variables and any metadata, but NOT
+the model state vector. We do have to allocate SPACE for the model
+state vector, but that variable gets filled as the model advances.
+<em class=code>models/template/model_mod.f90</em> contains code that 
+can be used for any model as-is.  The generic code prepares a
+file which will have the state vector written as a single 1-D array
+of data.  This routine can be modified to save the data in form
+more closely related to the actual grid shape and variable type,
+and could also be extended to write additional attributes if desired.
+This routine is required for all models.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ncFileId &nbsp; &nbsp; </em></TD>
-    <TD>Integer file descriptor opened to NetCDF file.</TD></TR>
+<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
 
 <TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returned error code.</TD></TR>
+    <TD>Returns a 0 for successful completion.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-
-<!--===================== DESCRIPTION OF FUNCTION =====================-->
-
-<A NAME="yyyroutine12"></A>
-<P></P><HR><P></P>
+<A NAME="nc_write_model_vars"></A>
+<br>
 <div class=routine>
-<em class=call> ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
+<em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
 <pre>
-integer                               :: <em class=code> nc_write_model_vars </em>
-integer,                  intent(in)  :: <em class=code> ncFileID </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> statevec </em>
-integer,                  intent(in)  :: <em class=code> copyindex</em>
-integer,                  intent(in)  :: <em class=code> timeindex </em>
-</pre></div>
+integer                            :: <em class=code>nc_write_model_vars</em>
+integer,                intent(in) :: <em class=code>ncFileID</em>
+real(r8), dimension(:), intent(in) :: <em class=code>statevec</em>
+integer,                intent(in) :: <em class=code>copyindex</em>
+integer,                intent(in) :: <em class=code>timeindex</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
-Writes a copy of the state variables to a NetCDF file. Multiple copies of the 
-state for a given time are supported, allowing, for instance, a single file to 
-include multiple ensemble estimates of the state.
+Writes a copy of the state variables to a netCDF file. Multiple copies
+of the state for a given time are supported, allowing, for instance,
+a single file to include multiple ensemble estimates of the state.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ncFileID &nbsp; &nbsp; </em></TD>
-    <TD>Integer file descriptor opened to NetCDF file.</TD></TR>
+<TR><TD valign=top><em class=code>ncFileID</em></TD>
+    <TD>file descriptor to previously-opened netCDF file.</TD></TR>
 
 <TR><TD valign=top><em class=code>statevec</em></TD>
-    <TD>State vector.</TD></TR>
+    <TD>A model state vector.</TD></TR>
 
-<TR><TD valign=top><em class=code>copyindex</em></TD>
-    <TD> Integer index to which copy is to be written. </TD></TR>
+<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD> Integer index of copy to be written.</TD></TR>
 
 <TR><TD valign=top><em class=code>timeindex</em></TD>
-    <TD>Integer index of which time in the file is being written.</TD></TR>
+    <TD>The timestep counter for the given state.</TD></TR>
 
 <TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returned error code.</TD></TR>
+    <TD>Returns 0 for normal completion.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
-
-<A NAME="yyyroutine13"></A>
-<P></P><HR><P></P>
+<A NAME="pert_model_state"></A>
+<br>
 <div class=routine>
 <em class=call>call pert_model_state(state, pert_state, interf_provided)</em>
 <pre>
-real(r8), dimension(:),   intent(in)    :: <em class=code> state </em>
-real(r8), dimension(:),   intent(out)   :: <em class=code> pert_state </em>
-logical,                  intent(out)   :: <em class=code> interf_provided </em>
-</pre></div>
+real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
+real(r8), dimension(:), intent(out) :: <em class=code>pert_state</em>
+logical,                intent(out) :: <em class=code>interf_provided</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
-Given a model state, produces a perturbed model state. 
-9-variable does not implement an interface for this 
+Given a model state, produces a perturbed model state.
+This particular model does not implement an interface for this 
 and so returns .false. for interf_provided.
 </P>
 
@@ -482,111 +501,146 @@ and so returns .false. for interf_provided.
     <TD>State vector to be perturbed.</TD></TR>
 
 <TR><TD valign=top><em class=code>pert_state</em></TD>
-    <TD>Perturbed state vector: NOT returned. </TD></TR>
+    <TD>Perturbed state vector: NOT returned.</TD></TR>
 
-<TR><TD valign=top><em class=code>interf_provided</em></TD>
+<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>Returned false; interface is not implemented.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
-<!--=================================================================-->
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_maxdist_init"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_maxdist_init(gc, maxdist) </em>
- <pre>
- type(get_close_type), intent(inout) :: <em class=code>gc</em>
- real(r8),             intent(in)    :: <em class=code>maxdist</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_maxdist_init"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_maxdist_init(gc, maxdist)</em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+real(r8),             intent(in)    :: <em class=code>maxdist</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Pass-through to the 1-D locations module. See
 <A HREF="../../location/oned/location_mod.html#get_close_maxdist_init">
 get_close_maxdist_init()</A> for the documentation of this subroutine.
+</P>
 
-<!--=================================================================-->
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_obs_init"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_obs_init(gc, num, obs) </em>
- <pre>
- type(get_close_type), intent(inout) :: <em class=code>gc</em>
- integer,              intent(in)    :: <em class=code>num</em>
- type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs_init"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_obs_init(gc, num, obs)</em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+integer,              intent(in)    :: <em class=code>num</em>
+type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Pass-through to the 1-D locations module. See
 <A HREF="../../location/oned/location_mod.html#get_close_obs_init">
 get_close_obs_init()</A> for the documentation of this subroutine.
+</P>
 
-<!--=================================================================-->
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_obs"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_obs(gc, base_obs_loc, base_obs_kind, 
-   obs, obs_kind, num_close, close_ind
-   <em class=code>[, dist]</em>) </em>
- <pre>
- type(get_close_type), intent(in)  :: <em class=code>gc</em>
- type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
- integer,              intent(in)  :: <em class=code>base_obs_kind</em>
- type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
- integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
- integer,              intent(out) :: <em class=code>num_close</em>
- integer,              intent(out) :: <em class=code>close_ind(:)</em>
- real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind,
+  obs, obs_kind, num_close, close_ind
+  <em class=optionalcode>[,&nbsp;dist]</em>) </em>
+<pre>
+type(get_close_type), intent(in)  :: <em class=code>gc</em>
+type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
+integer,              intent(in)  :: <em class=code>base_obs_kind</em>
+type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
+integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
+integer,              intent(out) :: <em class=code>num_close</em>
+integer,              intent(out) :: <em class=code>close_ind(:)</em>
+real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Pass-through to the 1-D locations module. See
 <A HREF="../../location/oned/location_mod.html#get_close_obs">
 get_close_obs()</A> for the documentation of this subroutine.
+</P>
 
-<!--=================================================================-->
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="ens_mean_for_model"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call ens_mean_for_model(ens_mean) </em>
- <pre>
- real(r8), dimension(:), intent(in)  :: <em class=code>ens_mean</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="ens_mean_for_model"></A>
+<br>
+<div class=routine>
+<em class=call>call ens_mean_for_model(ens_mean)</em>
+<pre>
+real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 A NULL INTERFACE in this model.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_mean&nbsp; &nbsp; </em></TD>
-     <TD>Ensemble mean state vector</TD></TR>
- </TABLE>
- <BR>
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
 
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<TR><TD valign=top><em class=code>ens_mean&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>State vector containing the ensemble mean.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A NAMELIST =====================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&#38;' and terminating with a slash '/'.
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+The declarations have a different syntax, naturally.
+</P>
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml / </em> &#38
+<em class=call>namelist / model_nml / </em> &amp;
     g, delta_t, time_step_days, time_step_seconds
 </pre>
 </div>
-</P>
 
-<H3 class=indent1>Discussion</H3>
+<div class=indent1>
+<!-- Description -->
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -595,88 +649,136 @@ A NULL INTERFACE in this model.
     <TH align=left>Description </TH></TR>
 <TR><!--contents--><TD valign=top>g           </TD>
     <!--  type  --><TD valign=top>real(r8)        </TD>
-    <!--descript--><TD>Model parameter, see comp_dt in code for equations. Default: 8. </TD></TR>
+    <!--descript--><TD>Model parameter, see comp_dt in code for equations.
+                       Default: 8.</TD></TR>
 <TR><!--contents--><TD valign=top>delta_t              </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Non-dimensional timestep, default 1/12. This is mapped to
-the dimensional timestep specified by time_step_days and time_step_seconds.</TD></TR>
+    <!--  type  --><TD valign=top>real(r8)             </TD>
+    <!--descript--><TD>Non-dimensional timestep, default 1/12. 
+                       This is mapped to the dimensional timestep specified by
+                       time_step_days and time_step_seconds.</TD></TR>
 <TR><!--contents--><TD valign=top>time_step_days       </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Number of days for dimensional timestep, mapped to delta_t. Default: 0.</TD></TR>
+    <!--  type  --><TD valign=top>real(r8)             </TD>
+    <!--descript--><TD>Number of days for dimensional timestep,
+                       mapped to delta_t. Default: 0.</TD></TR>
 <TR><!--contents--><TD valign=top>time_step_seconds    </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Number of seconds for dimensional timestep, mapped to delta_t.  Default: 3600</TD></TR>
+    <!--  type  --><TD valign=top>real(r8)             </TD>
+    <!--descript--><TD>Number of seconds for dimensional timestep,
+                       mapped to delta_t.  Default: 3600</TD></TR>
 </TABLE>
+
+</div>
+<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
-<UL> 
-    <LI>model_mod.nml in input.nml
-    <LI>netCDF output state diagnostics files
-</UL>
+
+<TABLE border=0 >
+<TR><TH align=left>filename</TH>
+    <TH align=left>purpose</TH></TR>
+<TR><TD>input.nml</TD>
+    <TD>to read the model_mod namelist</TD></TR>
+<TR><TD>Prior_Diag.nc</TD>
+    <TD>the time-history of the model state before assimilation</TD></TR>
+<TR><TD>Posterior_Diag.nc&nbsp;</TD>
+    <TD>the time-history of the model state after assimilation</TD></TR>
+<TR><TD>dart_log.out [default name]</TD>
+    <TD>the run-time diagnostic output</TD></TR>
+<TR><TD>dart_log.nml [default name]</TD>
+    <TD>the record of all the namelists actually USED - 
+        contains the default values</TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
+<ol>
+<li> none </li>
+</ol>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
 
-</TABLE>
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
-<TR><!-- routine --><TD VALIGN=top>
-                                   nc_write_model_atts <BR>
-                                   nc_write_model_vars <BR>
-    </TD>
-    <!-- message --><TD VALIGN=top>Various NetCDF-f90 interface error messages</TD>
-    <!-- comment --><TD VALIGN=top>From one of the NetCDF calls in the named routine</TD>
+<TR><TH>Routine</TH>
+    <TH>Message</TH>
+    <TH>Comment</TH></TR>
+<TR><!-- routine --><TD VALIGN=top> nc_write_model_atts<BR>
+                                    nc_write_model_vars</TD>
+    <!-- message --><TD VALIGN=top>Various netCDF-f90 interface error messages</TD>
+    <!-- comment --><TD VALIGN=top>From one of the netCDF calls in the named routine</TD>
 </TR>
 </TABLE>
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
+
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!-- PrivateComponents                                                -->
 <!--==================================================================-->
 
-<!--==================================================================-->
-
+<A NAME="PrivateComponents"></A>
 <HR>
+<H2>PRIVATE COMPONENTS</H2>
+
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>
