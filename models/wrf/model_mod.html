@@ -1,65 +1,28 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module model_mod (wrf)</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>MODULE model_mod (wrf)</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Hui Liu, David Dowell </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 DART interface module for the WRF model. The 17 public interfaces
@@ -72,9 +35,10 @@ observational operators.
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
+
 <PRE>
 types_mod
 time_manager_mod
@@ -88,41 +52,42 @@ typesizes
 
 <!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
 
 <A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
 <TR><TD><em class=call>use model_mod, only : </em></TD>
-                   <TD><A HREF="#yyyroutine1">get_model_size</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">get_state_meta_data</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine3">model_interpolate</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">get_model_time_step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">static_init_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">nc_write_model_atts</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine8">nc_write_model_vars</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine9">pert_model_state</A></TD></TR>
+                   <TD><A HREF="#get_model_size">get_model_size</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data">get_state_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#model_interpolate">model_interpolate</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time_step">get_model_time_step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine10">adv_1step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine11">end_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine12">init_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine13">init_conditions</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#end_model">end_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
 </TABLE>
-
-<H3 class=indent1>NOTES</H3>
 
 <P>
 The last 4 interfaces are only required for low-order models where advancing
 the model can be done by a call to a subroutine. The WRF model only advances by
 executing the program wrf.exe. Thus the last 4 interfaces only appear as stubs
 in the wrf module.
-</P>
-
-<P>
+<br><br>
 The interface pert_model_state is presently not provided for WRF. The initial
 ensemble has to be generated off-line. If coherent structures are not required,
 the filter can generate an ensemble with uncorrelated random Gaussian noise of
@@ -134,70 +99,79 @@ models/wrf/PERTURB/3DVAR-COVAR.
 
 <P>
 Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&amp;model_mod</em> </A>
+<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2>PUBLIC COMPONENTS</H2>
-<P>All and only 13 above interfaces are public.
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
 </P>
 
-<!--===================== DESCRIPTION OF FUNCTION ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="yyyroutine1"></A>
-<P></P><HR><P></P>
+<A NAME="get_model_size"></A>
+<br>
 <div class=routine>
-<em class=call> model_size = get_model_size( )</em>
+<em class=call>model_size = get_model_size( )</em>
 <pre>
-integer :: <em class=code> model_size </em>
-</pre></div>
+integer :: <em class=code>get_model_size</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
-Returns the length of the model state vector as an integer. This includes all
-nested domains.
-</P>
-
-
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<A NAME="yyyroutine2"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call get_state_meta_data (index_in, location 
-                          <em class=optionalcode>[, var_type, id]</em> )</em>
-<pre>
-integer,                  intent(in)    :: <em class=code> index_in </em>
-type(location_type),      intent(out)   :: <em class=code> location </em>
-integer, optional,        intent(out)   :: <em class=optionalcode> var_type, id
-</em>
-</pre></div>
-
-<H3 class=indent1>Description</H3>
-
-<P>
- Returns metadata about a given element, indexed by index_in, in the model 
-state vector. The location defines where the state variable is located 
-while the type of the variable (for instance temperature, 
-or u wind component) is returned by var_type. The integer values used to 
-indicate different variable types in var_type are themselves defined as 
-public interfaces to model_mod if required. The last optional argument is the
-wrf domain identification number.
+Returns the length of the model state vector as an integer.
+This includes all nested domains.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>index_in</em></TD>
-    <TD>Index into the long state vector.</TD></TR>
+<TR><TD valign=top><em class=code>model_size</em></TD>
+    <TD>The length of the model state vector.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_state_meta_data"></A>
+<br>
+<div class=routine>
+<em class=call>call get_state_meta_data (index_in, location 
+                          <em class=optionalcode>[,&nbsp;var_type_out,&nbsp;id_out]</em> )</em>
+<pre>
+integer,             intent(in)  :: <em class=code>index_in</em>
+type(location_type), intent(out) :: <em class=code>location</em>
+integer, optional,   intent(out) :: <em class=optionalcode>var_type_out</em>
+integer, optional,   intent(out) :: <em class=optionalcode>id_out</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns metadata about a given element, indexed by index_in, in the model 
+state vector. The location defines where the state variable is located 
+while the type of the variable (for instance temperature, 
+or u wind component) is returned by var_type. The integer values used to 
+indicate different variable types in var_type are themselves defined as 
+public interfaces to model_mod if required.
+The last optional argument is the wrf domain identification number - 
+obviously this is unique to the WRF version of this <em>required</em> 
+routine.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>index_in&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Index of state vector element about which information is requested.</TD></TR>
 
 <TR><TD valign=top><em class=code>location</em></TD>
     <TD>Returns location of indexed state variable. The location should 
@@ -206,39 +180,40 @@ realistic atmospheric models, for instance, a three-dimensional
 spherical location module that can represent height in a variety  
 of ways is provided. </TD></TR>
 
-<TR><TD valign=top><em class=optionalcode>var_type</em></TD>
+<TR><TD valign=top><em class=optionalcode>var_type_out</em></TD>
     <TD>Returns the type of the indexed state variable as an optional
     argument.</TD></TR>
 
-<TR><TD valign=top><em class=optionalcode>id</em></TD>
+<TR><TD valign=top><em class=optionalcode>id_out</em></TD>
     <TD>Returns the wrf domain identification number of the indexed state
     variable as an optional argument.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<A NAME="yyyroutine3"></A>
-<P></P><HR><P></P>
+<A NAME="model_interpolate"></A>
+<br>
 <div class=routine>
 <em class=call> call model_interpolate(x, location, obs_kind, obs_val,
 istatus)</em>
 <pre>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-type(location_type),      intent(in)  :: <em class=code> location </em>
-integer,                  intent(in)  :: <em class=code> obs_kind </em>
-real(r8),                 intent(out) :: <em class=code> obs_val </em>
-integer,                  intent(out) :: <em class=code> istatus </em>
-</pre></div>
+real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
+type(location_type),    intent(in)  :: <em class=code>location</em>
+integer,                intent(in)  :: <em class=code>obs_kind</em>
+real(r8),               intent(out) :: <em class=code>obs_val</em>
+integer,                intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
-Given model state, returns the value of observation type interpolated to a
-given 
+Given model state, returns the value of observation type interpolated to a given 
 location by a method of the model's choosing. All observation kinds defined in
 obs_kind_mod are supported. In the case where the observational operator is not
 defined at the given location (e.g. the observation is below the model surface
@@ -249,10 +224,10 @@ the highest resolution containing the observation.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>x &nbsp; &nbsp; </em></TD>
-    <TD>Model state vector. </TD></TR>
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>A model state vector.</TD></TR>
 
-<TR><TD valign=top><em class=code>location</em></TD>
+<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>Location to which to interpolate.</TD></TR>
 
 <TR><TD valign=top><em class=code>obs_kind</em></TD>
@@ -260,33 +235,34 @@ the highest resolution containing the observation.
     interpolated.</TD></TR>
 
 <TR><TD valign=top><em class=code>obs_val</em></TD>
-    <TD>Value interpolated to location.</TD></TR>
+    <TD> The interpolated value from the model.</TD></TR>
 
 <TR><TD valign=top><em class=code>istatus</em></TD>
     <TD>Integer flag indicating the result of the interpolation.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
-
 <P>
 As of September 9, 2004 the reflectivity observational operator is still not
 available (obs_kind = KIND_REF in obs_kind_mod).
 </P>
 
+</div>
+<br>
 
-<!--==================== DESCRIPTION OF FUNCTION =====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="yyyroutine4"></A>
-<P></P><HR><P></P>
+<A NAME="get_model_time_step"></A>
+<br>
 <div class=routine>
-<em class=call> model_time_step = get_model_time_step( )</em>
+<em class=call>var = get_model_time_step()</em>
 <pre>
-type(time_type)                       :: <em class=code> get_model_time_step
-</em>
-</pre></div>
+type(time_type) :: <em class=code>get_model_time_step</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Returns the model base time step as a time_type. For the model wrf, it returns
@@ -297,19 +273,26 @@ a more general extended interface may be required that specifies the models
 range of time stepping possibilities.
 </P>
 
-<H3 class=indent1>Notes</H3>
+<TABLE width=100% border=0 summary="" cellpadding=3>
 
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Smallest time step of model.</TD></TR>
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+</TABLE>
 
-<A NAME="yyyroutine5"></A>
-<P></P><HR><P></P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="static_init_model"></A>
+<br>
 <div class=routine>
-<em class=call>call static_init_model( )</em>
-<pre>
-</pre></div>
+<em class=call>call static_init_model()</em>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Used for runtime initialization of the model. This is the first call 
@@ -323,107 +306,109 @@ working directory to retrieve model information (grid dimensions and spacing,
 time step, pressure at the top of the model, map projection parameters, etc).
 </P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+</TABLE>
 
+</div>
+<br>
 
-<H3 class=indent1>Notes</H3>
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-
-<!--==================== DESCRIPTION OF FUNCTION =====================-->
-
-<A NAME="yyyroutine7"></A>
-<P></P><HR><P></P>
+<A NAME="nc_write_model_atts"></A>
+<br>
 <div class=routine>
-<em class=call> ierr = nc_write_model_atts(ncFileId) </em>
+<em class=call>ierr = nc_write_model_atts(ncFileID)</em>
 <pre>
-integer,                              :: <em class=code> nc_write_model_atts
-</em>
-integer,                  intent(in)  :: <em class=code> ncFileId </em>
-</pre></div>
+integer             :: <em class=code>nc_write_model_atts</em>
+integer, intent(in) :: <em class=code>ncFileID</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
- Function to write model specific attributes to a netCDF file. At present, DART 
+Function to write model specific attributes to a netCDF file. At present, DART 
 is using the NetCDF format to output diagnostic information. This is not a 
-requirement, and models could choose to provide output in other formats. This
-function 
-writes the metadata associated with the model to a NetCDF file opened to a file 
-identified by ncFileID.
+requirement, and models could choose to provide output in other formats. 
+This function writes the metadata associated with the model to a NetCDF file 
+opened to a file identified by ncFileID.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ncFileId &nbsp; &nbsp; </em></TD>
-    <TD>Integer file descriptor opened to NetCDF file.</TD></TR>
+<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
 
 <TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returned error code.</TD></TR>
+    <TD>Returns a 0 for successful completion.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--==================== DESCRIPTION OF FUNCTION =====================-->
-
-<A NAME="yyyroutine8"></A>
-<P></P><HR><P></P>
+<A NAME="nc_write_model_vars"></A>
+<br>
 <div class=routine>
-<em class=call> ierr = nc_write_model_vars(ncFileID, statevec, copyindex,
-timeindex)</em>
+<em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
 <pre>
-integer                               :: <em class=code> nc_write_model_vars
-</em>
-integer,                  intent(in)  :: <em class=code> ncFileID </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> statevec </em>
-integer,                  intent(in)  :: <em class=code> copyindex</em>
-integer,                  intent(in)  :: <em class=code> timeindex </em>
-</pre></div>
+integer                            :: <em class=code>nc_write_model_vars</em>
+integer,                intent(in) :: <em class=code>ncFileID</em>
+real(r8), dimension(:), intent(in) :: <em class=code>statevec</em>
+integer,                intent(in) :: <em class=code>copyindex</em>
+integer,                intent(in) :: <em class=code>timeindex</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
-Writes a copy of the state variables to a NetCDF file. Multiple copies of the 
-state for a given time are supported, allowing, for instance, a single file to 
-include multiple ensemble estimates of the state.
+Writes a copy of the state variables to a netCDF file. Multiple copies
+of the state for a given time are supported, allowing, for instance,
+a single file to include multiple ensemble estimates of the state.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ncFileID &nbsp; &nbsp; </em></TD>
-    <TD>Integer file descriptor opened to NetCDF file.</TD></TR>
+<TR><TD valign=top><em class=code>ncFileID</em></TD>
+    <TD>file descriptor to previously-opened netCDF file.</TD></TR>
 
 <TR><TD valign=top><em class=code>statevec</em></TD>
-    <TD>State vector.</TD></TR>
+    <TD>A model state vector.</TD></TR>
 
-<TR><TD valign=top><em class=code>copyindex</em></TD>
-    <TD> Integer index to which copy is to be written. </TD></TR>
+<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD> Integer index of copy to be written.</TD></TR>
 
 <TR><TD valign=top><em class=code>timeindex</em></TD>
-    <TD>Integer index of which time in the file is being written.</TD></TR>
+    <TD>The timestep counter for the given state.</TD></TR>
 
 <TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returned error code.</TD></TR>
+    <TD>Returns 0 for normal completion.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<A NAME="yyyroutine9"></A>
-<P></P><HR><P></P>
+<A NAME="pert_model_state"></A>
+<br>
 <div class=routine>
 <em class=call>call pert_model_state(state, pert_state, interf_provided)</em>
 <pre>
-real(r8), dimension(:),   intent(in)    :: <em class=code> state </em>
-real(r8), dimension(:),   intent(out)   :: <em class=code> pert_state </em>
-logical,                  intent(out)   :: <em class=code> interf_provided
-</em>
-</pre></div>
+real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
+real(r8), dimension(:), intent(out) :: <em class=code>pert_state</em>
+logical,                intent(out) :: <em class=code>interf_provided</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Given a model state, produces a perturbed model state. This is used to
@@ -448,101 +433,138 @@ tools provided in models/wrf/PERTURB/3DVAR-COVAR.
 <TR><TD valign=top><em class=code>pert_state</em></TD>
     <TD>Perturbed state vector is returned. </TD></TR>
 
-<TR><TD valign=top><em class=code>interf_provided</em></TD>
+<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>Return false to have DART perturb state .</TD></TR>
 
 </TABLE>
 
-<!--=================================================================-->
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_maxdist_init"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_maxdist_init(gc, maxdist) </em>
- <pre>
- type(get_close_type), intent(inout) :: <em class=code>gc</em>
- real(r8),             intent(in)    :: <em class=code>maxdist</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_maxdist_init"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_maxdist_init(gc, maxdist)</em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+real(r8),             intent(in)    :: <em class=code>maxdist</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Pass-through to the 3-D sphere locations module. See
 <A HREF="../../location/threed-sphere/location_mod.html#get_close_maxdist_init">
 get_close_maxdist_init()</A> for the documentation of this subroutine.
+</P>
 
-<!--=================================================================-->
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_obs_init"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_obs_init(gc, num, obs) </em>
- <pre>
- type(get_close_type), intent(inout) :: <em class=code>gc</em>
- integer,              intent(in)    :: <em class=code>num</em>
- type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs_init"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_obs_init(gc, num, obs)</em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+integer,              intent(in)    :: <em class=code>num</em>
+type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Pass-through to the 3-D sphere locations module. See
 <A HREF="../../location/threed-sphere/location_mod.html#get_close_obs_init">
 get_close_obs_init()</A> for the documentation of this subroutine.
+</P>
 
-<!--=================================================================-->
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_obs"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_obs(gc, base_obs_loc, base_obs_kind, 
-   obs, obs_kind, num_close, close_ind
-   <em class=code>[, dist]</em>) </em>
- <pre>
- type(get_close_type), intent(in)  :: <em class=code>gc</em>
- type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
- integer,              intent(in)  :: <em class=code>base_obs_kind</em>
- type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
- integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
- integer,              intent(out) :: <em class=code>num_close</em>
- integer,              intent(out) :: <em class=code>close_ind(:)</em>
- real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind,
+  obs, obs_kind, num_close, close_ind
+  <em class=optionalcode>[,&nbsp;dist]</em>) </em>
+<pre>
+type(get_close_type), intent(in)  :: <em class=code>gc</em>
+type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
+integer,              intent(in)  :: <em class=code>base_obs_kind</em>
+type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
+integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
+integer,              intent(out) :: <em class=code>num_close</em>
+integer,              intent(out) :: <em class=code>close_ind(:)</em>
+real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Pass-through to the 3-D sphere locations module. See
 <A HREF="../../location/threed-sphere/location_mod.html#get_close_obs">
 get_close_obs()</A> for the documentation of this subroutine.
+</P>
 
-<!--=================================================================-->
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="ens_mean_for_model"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call ens_mean_for_model(ens_mean) </em>
- <pre>
- real(r8), dimension(:), intent(in)  :: <em class=code>ens_mean</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="ens_mean_for_model"></A>
+<br>
+<div class=routine>
+<em class=call>call ens_mean_for_model(ens_mean)</em>
+<pre>
+real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 A local copy is kept and used during other computations in the 
 model_mod code.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_mean&nbsp; &nbsp; </em></TD>
-     <TD>Ensemble mean state vector</TD></TR>
- </TABLE>
- <BR>
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+<TR><TD valign=top><em class=code>ens_mean&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Ensemble mean state vector</TD></TR>
 
-<A NAME="yyyroutine10"></A>
-<P></P><HR><P></P>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="adv_1step"></A>
+<br>
 <div class=routine>
 <em class=call>call adv_1step(x, time)</em>
 <pre>
 real(r8), dimension(:),   intent(inout) :: <em class=code> x </em>
 type(time_type),          intent(in)    :: <em class=code> time </em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 This operation is not defined for the WRF model. 
@@ -567,62 +589,65 @@ module that is used to support time computations throughout the
 
 </TABLE>
 
+</div>
+<br>
 
-<H3 class=indent1>Notes</H3>
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<A NAME="yyyroutine11"></A>
-<P></P><HR><P></P>
+<A NAME="end_model"></A>
+<br>
 <div class=routine>
 <em class=call>call end_model( )</em>
-<pre>
-</pre></div>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Called when use of a model is completed to clean up storage, etc. 
 A stub is provided for the WRF model.
 </P>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<A NAME="yyyroutine12"></A>
-<P></P><HR><P></P>
+<A NAME="init_time"></A>
+<br>
 <div class=routine>
 <em class=call>call init_time(i_time) </em>
 <pre>
 type(time_type),        intent(in)  :: <em class=code> i_time </em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
-Returns the time at which the model will start if no input initial conditions
-are 
-to be used. This is frequently used to spin-up models from rest, but is not 
-meaningfully supported for the WRF model. 
+Returns the time at which the model will start if 
+no input initial conditions are to be used. 
+This is frequently used to spin-up models from rest, 
+but is not meaningfully supported for the WRF model. 
 </P>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<A NAME="yyyroutine13"></A>
-<P></P><HR><P></P>
+<A NAME="init_conditions"></A>
+<br>
 <div class=routine>
 <em class=call>call init_conditions( x )</em>
 <pre>
 real(r8), dimension(:), intent(out) :: <em class=code> x </em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Returns default initial conditions for model; generally used for spinning up 
@@ -637,17 +662,18 @@ state is always to be provided from input files.
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
-
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================== DESCRIPTION OF A NAMELIST =====================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&amp;' and terminating with a slash '/'.
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+The declarations have a different syntax, naturally.
+</P>
 <div class=namelist>
 <pre>
 <em class=call>namelist / model_nml / </em>                             &amp;
@@ -657,14 +683,14 @@ state is always to be provided from input files.
    vert_localization_coord, center_search_half_length, center_spline_grid_scale,   &amp;
    polar, periodic_x, periodic_y, scm                                   &amp;
    num_moist_vars, surf_obs, soil_data, h_diab
-
 </pre>
 </div>
-</P>
 
-<H3 class=indent1>Discussion</H3>
+<div class=indent1>
+<!-- Description -->
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -846,12 +872,15 @@ state is always to be provided from input files.
 
 </TABLE>
 
+</div>
+<br>
+
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
 <UL> <LI>model_nml in input.nml
      <LI>wrfinput_d01, wrfinput_d02, ... (one file for each domain)
@@ -863,21 +892,20 @@ state is always to be provided from input files.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
 <a href="http://www.mmm.ucar.edu/wrf/users/docs/user_guide/contents.html">
 http://www.mmm.ucar.edu/wrf/users/docs/user_guide/contents.html</a>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
 
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 <TR><!-- routine --><TD VALIGN=top>static_init_model <BR>
@@ -954,12 +982,6 @@ http://www.mmm.ucar.edu/wrf/users/docs/user_guide/contents.html</a>
 </TABLE>
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
 Only the Lambert projection (MAP_PROJ = 1) is working. Other map projections
@@ -971,275 +993,348 @@ Only the Lambert projection (MAP_PROJ = 1) is working. Other map projections
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
+
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Declare all private entities.                                    -->
+<!-- PrivateComponents                                                -->
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<BR><HR><BR>
+<HR>
 <H2>PRIVATE COMPONENTS</H2>
 
-<!--===================== DESCRIPTION OF FUNCTION ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> ind = get_wrf_index(i,j,k,var_type,id)</em>
 <pre>
-integer                               :: <em class=code> get_wrf_index </em>
-integer,                  intent(in)  :: <em class=code> i,j,k,var_type,id
+integer                               :: <em class=code>get_wrf_index </em>
+integer,                  intent(in)  :: <em class=code>i,j,k,var_type,id
 </em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Given grid indices, variable type, and domain identification number, returns
 the index in the model state vector as an integer.
 </P>
 
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--===================== DESCRIPTION OF FUNCTION ====================-->
-
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> dist = get_dist_wrf( i, j, k, var_type, o_loc, id, x )</em>
 <pre>
-real(r8)                              :: <em class=code> get_dist_wrf </em>
-integer,                  intent(in)  :: <em class=code> i,j,k,var_type,id
+real(r8)                              :: <em class=code>get_dist_wrf </em>
+integer,                  intent(in)  :: <em class=code>i,j,k,var_type,id
 </em>
-type(location_type),      intent(in)  :: <em class=code> o_loc </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-</pre></div>
+type(location_type),      intent(in)  :: <em class=code>o_loc </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Given grid indices, variable type, and domain identification number, computes
 the distance to the observation at location o_loc.
 </P>
 
+</div>
+<br>
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call get_wrf_horizontal_location( i, j, var_type, id, long, lat
 )</em>
 <pre>
-integer,                  intent(in)  :: <em class=code> i,j,var_type,id </em>
-real(r8),                 intent(out) :: <em class=code> long, lat </em>
-</pre></div>
+integer,                  intent(in)  :: <em class=code>i,j,var_type,id </em>
+real(r8),                 intent(out) :: <em class=code>long, lat </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Given horizontal grid indices, variable type, and domain identification number,
 returns the longitude and latitude in degrees.
 </P>
 
+</div>
+<br>
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call toGrid (x, j, dx, dxm)</em>
 <pre>
-real(r8),                 intent(in)  :: <em class=code> x </em>
-real(r8),                 intent(out) :: <em class=code> dx, dxm </em>
-integer ,                 intent(out) :: <em class=code> j </em>
-</pre></div>
+real(r8),                 intent(in)  :: <em class=code>x </em>
+real(r8),                 intent(out) :: <em class=code>dx, dxm </em>
+integer ,                 intent(out) :: <em class=code>j </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Given position x, find nearest grid point j (but smaller than or equal to x)
 and calculate its distance to grid j and j+1.
 </P>
 
+</div>
+<br>
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call pres_to_zk(pres, mdl_v, n3, zk)</em>
 <pre>
-real(r8),                  intent(in)  :: <em class=code> pres </em>
-integer                    intent(in)  :: <em class=code> n3 </em>
-real(r8), dimension(0:n3), intent(in)  :: <em class=code> mdl_v </em>
-real(r8),                  intent(out) :: <em class=code> zk </em>
-</pre></div>
+real(r8),                  intent(in)  :: <em class=code>pres </em>
+integer                    intent(in)  :: <em class=code>n3 </em>
+real(r8), dimension(0:n3), intent(in)  :: <em class=code>mdl_v </em>
+real(r8),                  intent(out) :: <em class=code>zk </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Calculate the position zk on half (mass) levels in the profile mdl_v
 corresponding to pressure location pres.
 </P>
 
+</div>
+<br>
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call height_to_zk(obs_v, mdl_v, n3, zk)</em>
 <pre>
-real(r8),                  intent(in)  :: <em class=code> obs_v </em>
-integer                    intent(in)  :: <em class=code> n3 </em>
-real(r8), dimension(0:n3), intent(in)  :: <em class=code> mdl_v </em>
-real(r8),                  intent(out) :: <em class=code> zk </em>
-</pre></div>
+real(r8),                  intent(in)  :: <em class=code>obs_v </em>
+integer                    intent(in)  :: <em class=code>n3 </em>
+real(r8), dimension(0:n3), intent(in)  :: <em class=code>mdl_v </em>
+real(r8),                  intent(out) :: <em class=code>zk </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Calculate the position zk on half (mass) levels in the profile mdl_v
 corresponding to height location obs_v.
 </P>
 
+</div>
+<br>
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call
 get_model_pressure_profile(i,j,dx,dy,dxm,dym,n,x,id,v_p)</em>
 <pre>
-integer                   intent(in)  :: <em class=code> i,j,n,id </em>
-real(r8),                 intent(in)  :: <em class=code> dx,dy,dxm,dym </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-real(r8), dimension(0:n), intent(out) :: <em class=code> v_p </em>
-</pre></div>
+integer                   intent(in)  :: <em class=code>i,j,n,id </em>
+real(r8),                 intent(in)  :: <em class=code>dx,dy,dxm,dym </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
+real(r8), dimension(0:n), intent(out) :: <em class=code>v_p </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Extract the pressure profile at position (i+dx, j+dy) on the
 non-staggered vertical grid (half (mass) levels).
 </P>
 
+</div>
+<br>
 
-<!--=================== DESCRIPTION OF FUNCTION ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> vloc = model_pressure(i,j,k,id,var_type,x)</em>
 <pre>
-real(r8),                             :: <em class=code> model_pressure </em>
-integer                   intent(in)  :: <em class=code> i,j,k,id,var_type
+real(r8),                             :: <em class=code>model_pressure </em>
+integer                   intent(in)  :: <em class=code>i,j,k,id,var_type
 </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-</pre></div>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Calculate the pressure at grid point (i,j,k), domain id. The grid is defined
 according to var_type.
 </P>
 
+</div>
+<br>
 
-<!--=================== DESCRIPTION OF FUNCTION ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> pres = model_pressure_t(i,j,k,id,x)</em>
 <pre>
-real(r8)                              :: <em class=code> model_pressure_t </em>
-integer                   intent(in)  :: <em class=code> i,j,k,id </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-</pre></div>
+real(r8)                              :: <em class=code>model_pressure_t </em>
+integer                   intent(in)  :: <em class=code>i,j,k,id </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Calculate the pressure at grid point (i,j,k), domain id, on mass point (half
 (mass) levels, T-point).
 </P>
 
+</div>
+<br>
 
-<!--=================== DESCRIPTION OF FUNCTION ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> rho = model_rho_t(i,j,k,id,x)</em>
 <pre>
-real(r8)                              :: <em class=code> model_rho_t </em>
-integer                   intent(in)  :: <em class=code> i,j,k,id </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-</pre></div>
+real(r8)                              :: <em class=code>model_rho_t </em>
+integer                   intent(in)  :: <em class=code>i,j,k,id </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Calculate the total density at grid point (i,j,k), domain id, on mass point
 (half (mass) levels, T-point).
 </P>
 
+</div>
+<br>
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call
 get_model_height_profile(i,j,dx,dy,dxm,dym,n,x,id,fld)</em>
 <pre>
-integer                   intent(in)  :: <em class=code> i,j,n,id </em>
-real(r8),                 intent(in)  :: <em class=code> dx,dy,dxm,dym </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-real(r8), dimension(n),   intent(out) :: <em class=code> fld </em>
-</pre></div>
+integer                   intent(in)  :: <em class=code>i,j,n,id </em>
+real(r8),                 intent(in)  :: <em class=code>dx,dy,dxm,dym </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
+real(r8), dimension(n),   intent(out) :: <em class=code>fld </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Extract the height profile at position (i+dx, j+dy) on the
 non-staggered vertical grid.
 </P>
 
+</div>
+<br>
 
-<!--=================== DESCRIPTION OF FUNCTION ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> vloc = model_height(i,j,k,id,var_type,x)</em>
 <pre>
-real(r8)                              :: <em class=code> model_height </em>
-integer                   intent(in)  :: <em class=code> i,j,k,id,var_type
-</em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-</pre></div>
+real(r8)                              :: <em class=code>model_height</em>
+integer                   intent(in)  :: <em class=code>i,j,k,id,var_type</em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Calculate the height at grid point (i,j,k), domain id. The grid is defined
 according to var_type.
 </P>
 
+</div>
+<br>
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call read_dt_from_wrf_nml( )</em>
-<pre>
-</pre></div>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Read the wrf model time step from namelist.input for all domains.
 </P>
 
+</div>
+<br>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD>Contact:       </TD><TD> Hui Liu, David Dowell </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 
-<HR>
 </BODY>
 </HTML>

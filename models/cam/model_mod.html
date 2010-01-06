@@ -1,65 +1,28 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
-<TITLE>module model_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css"></link> 
+<TITLE>module model_mod (CAM)</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
-<!--==================================================================-->
-
-<H1>MODULE model_mod</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Kevin Raeder </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2 class=indent2>OVERVIEW</H2>
+<H1>MODULE model_mod (CAM)</H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 The 17 public interfaces in model_mod
@@ -116,6 +79,7 @@ specified.  See <em class=code>which_vert</em> in
 Links to information about 
 <A HREF="doc/index.html" > setting up assimilation experiments </A> 
 using CAM and parallel architecture computers, including:
+</P>
 <UL>
     <LI> script and executable calling tree </LI>
     <LI> file contents and purposes</LI>
@@ -124,13 +88,13 @@ using CAM and parallel architecture computers, including:
     <LI> helpful hints</LI>
     <LI> space requirements of various CAM resolutions</LI>
 </UL> 
-</P>
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
+<A NAME="OtherModulesUsed"></A>
 <HR>
-<H2 class=indent2>OTHER MODULES USED</H2>
+<H2>OTHER MODULES USED</H2>
+
 <PRE>
        netcdf
        obs_kind_mod
@@ -144,42 +108,43 @@ using CAM and parallel architecture computers, including:
 </PRE>
 
 <!--==================================================================-->
-<!--Note to authors. The first row of the table is different.         -->
+<!-- Note to authors. The first row of the table is different.        -->
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
 
 <A NAME="Interface"></A>
 <HR>
-<H2 class=indent2>PUBLIC INTERFACE</H2>
+<H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
 <TR><TD><em class=call>use model_mod, only : </em></TD>
-                   <TD><A HREF="#yyyroutine1">get_model_size</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine2">get_state_meta_data</A></TD></TR>
+                   <TD><A HREF="#get_model_size">get_model_size</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data">get_state_meta_data</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#model_interpolate">model_interpolate</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine4">get_model_time_step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine5">static_init_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine7">nc_write_model_atts</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine8">nc_write_model_vars</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine9">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time_step">get_model_time_step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine10">adv_1step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine11">end_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine12">init_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#yyyroutine13">init_conditions</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#end_model">end_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
 </TABLE>
 
-<H3 class=indent2>NOTES</H3>
-
-<P class=indent2>
+<P>
 The last 4 interfaces are only required for low-order models where advancing
 the model can be done by a call to a subroutine. The CAM model only advances by
 executing the program cam (via script run-pc.csh). Thus the last 4 interfaces 
 only appear as stubs in the CAM module.
-</P>
-
-<P class=indent2>
+<br><br>
 The interface pert_model_state is provided for CAM, and it allows each
 field of the state vector to be randomly perturbed using a separate
 standard deviation.   Even this may not be flexible enough to handle
@@ -189,56 +154,54 @@ from the surface to the top of the model.
 
 <P>
 Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&#38;model_mod_nml</em> </A>
+<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
-
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2 class=indent2>PUBLIC COMPONENTS</H2>
-<P class=indent2>
-The list of interfaces above is the complete public list for this module.
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
 </P>
 
 <!--===================== DESCRIPTION OF FUNCTION ====================-->
 
-<A NAME="yyyroutine1"></A>
-<HR>
+<A NAME="get_model_size"></A>
+<br>
 <div class=routine>
 <em class=call> model_size = get_model_size( )</em>
 <pre>
-integer                               :: <em class=code> get_model_size </em>
-</pre></div>
+integer :: <em class=code> get_model_size </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Returns the length of the model state vector as an integer. This includes all
 nested domains.
 </P>
 
+</div>
+<br>
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="yyyroutine2"></A>
-<P></P><HR><P></P>
+<A NAME="get_state_meta_data"></A>
+<br>
 <div class=routine>
 <em class=call>call get_state_meta_data (index_in, location, 
-                          <em class=optionalcode>[, var_type]</em> )</em>
+                          <em class=optionalcode>[,&nbsp;var_type]</em> )</em>
 <pre>
-integer,                  intent(in)    :: <em class=code> index_in </em>
-type(location_type),      intent(out)   :: <em class=code> location </em>
-integer, optional,        intent(out)   :: <em class=code> var_type </em>
-</pre></div>
+integer,             intent(in)  :: <em class=code>index_in</em>
+type(location_type), intent(out) :: <em class=code>location</em>
+integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
  Returns metadata about a given element, indexed by index_in, in the model 
@@ -251,8 +214,8 @@ public interfaces to model_mod if required.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>index_in</em></TD>
-    <TD>Index into the long state vector.</TD></TR>
+<TR><TD valign=top><em class=code>index_in&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Index of state vector element about which information is requested.</TD></TR>
 
 <TR><TD valign=top><em class=code>location</em></TD>
     <TD>Returns location of indexed state variable. The location should 
@@ -266,24 +229,26 @@ of ways is provided. </TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
-
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="model_interpolate"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
-<em class=call> call model_interpolate(x, location, obs_type, interp_val, istatus)</em>
+<em class=call>call model_interpolate(x, location, obs_type, interp_val, istatus)</em>
 <pre>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
-type(location_type),      intent(in)  :: <em class=code> location </em>
-integer,                  intent(in)  :: <em class=code> obs_type </em>
-real(r8),                 intent(out) :: <em class=code> interp_val </em>
-integer,                  intent(out) :: <em class=code> istatus </em>
-</pre></div>
+real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
+type(location_type),    intent(in)  :: <em class=code>location</em>
+integer,                intent(in)  :: <em class=code>obs_type</em>
+real(r8),               intent(out) :: <em class=code>interp_val</em>
+integer,                intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Given model state, returns the value of observation type interpolated to a
@@ -309,40 +274,39 @@ get_val_pressure.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>x &nbsp; &nbsp; </em></TD>
-    <TD>Model state vector. </TD></TR>
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>A model state vector.</TD></TR>
 
-<TR><TD valign=top><em class=code>location</em></TD>
+<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>Location to which to interpolate.</TD></TR>
 
 <TR><TD valign=top><em class=code>obs_type</em></TD>
     <TD>Integer indexing which type of observation is to be interpolated.</TD></TR>
 
-<TR><TD valign=top><em class=code>interp_val</em></TD>
-    <TD>Value interpolated to location.</TD></TR>
+<TR><TD valign=top><em class=code>interp_val&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD> The interpolated value from the model.</TD></TR>
 
 <TR><TD valign=top><em class=code>istatus</em></TD>
     <TD>Integer flag indicating the success of the interpolation.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
-<P>
-</P>
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-
-<!--==================== DESCRIPTION OF FUNCTION =====================-->
-
-<A NAME="yyyroutine4"></A>
-<P></P><HR><P></P>
+<A NAME="get_model_time_step"></A>
+<br>
 <div class=routine>
-<em class=call> var = get_model_time_step( )</em>
+<em class=call>var = get_model_time_step()</em>
 <pre>
-type(time_type)                       :: <em class=code> get_model_time_step </em>
-</pre></div>
+type(time_type) :: <em class=code>get_model_time_step</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Returns the forecast length to be used as the "model base time step" in the filter. 
@@ -356,19 +320,26 @@ In the long run, a more general extended interface may be required that specifie
 the models range of time stepping possibilities.
 </P>
 
-<H3 class=indent1>Notes</H3>
+<TABLE width=100% border=0 summary="" cellpadding=3>
 
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Smallest time step of model.</TD></TR>
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+</TABLE>
 
-<A NAME="yyyroutine5"></A>
-<P></P><HR><P></P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="static_init_model"></A>
+<br>
 <div class=routine>
-<em class=call>call static_init_model( )</em>
-<pre>
-</pre></div>
+<em class=call>call static_init_model()</em>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Used for runtime initialization of the model. This is the first call made
@@ -382,48 +353,63 @@ including the vertical hybrid coordinate coefficients, time step, and
 Gaussian weights, etc).  
 </P>
 
-<H3 class=indent1>Notes</H3>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+</TABLE>
 
+</div>
+<br>
 
-<!--=================================================================-->
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="get_close_maxdist_init"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call get_close_maxdist_init(gc, maxdist) </em>
 <pre>
 type(get_close_type), intent(inout) :: <em class=code>gc</em>
 real(r8),             intent(in)    :: <em class=code>maxdist</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Pass-through to the 3-D sphere locations module routine of the same name. See 
 <A HREF="../../location/threed_sphere/location_mod.html#get_close_maxdist_init">
 location_mod:get_close_maxdist_init()</A> for the documentation of this subroutine.
 </P>
 
-<!--=================================================================-->
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 <A NAME="get_close_obs_init"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call get_close_obs_init(gc, num, obs) </em>
 <pre>
 type(get_close_type), intent(inout) :: <em class=code>gc</em>
 integer,              intent(in)    :: <em class=code>num</em>
 type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Pass-through to the 3-D sphere locations module. See
 <A HREF="../../location/threed_sphere/location_mod.html#get_close_obs_init">
 get_close_obs_init()</A> for the documentation of this subroutine.
 </P>
 
-<!--=================================================================-->
+</div>
+<br>
+
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="get_close_obs"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call get_close_obs(gc, base_obs_loc, base_obs_kind, 
    obs, obs_kind, num_close, close_ind
@@ -437,17 +423,19 @@ integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
 integer,              intent(out) :: <em class=code>num_close</em>
 integer,              intent(out) :: <em class=code>close_ind(:)</em>
 real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 First calls the location module code and then updates
 the distances to accomodate damping CAM's highest levels.
 Pass-through to the 3-D sphere locations module. See
 <A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">
 get_close_obs()</A> for the documentation of this subroutine.
-
-<H3 class=indent1>Notes</H3>
-<P>
+<br><br>
 CAM uses a hybrid vertical coordinate, which requires the surface pressure
 beneath a point in order to determine the point's vertical coordinate.
 When the model state vector is divided up among several regions during
@@ -467,40 +455,53 @@ to 0 above model level 6 for <em class="code">highest_obs_pressure_mb = 150</em>
 
 </P>
 
+</div>
+<br>
 
-<!--=================================================================-->
+
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="ens_mean_for_model"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call ens_mean_for_model(ens_mean) </em>
- <pre>
- real(r8), dimension(:), intent(in)  :: <em class=code>ens_mean</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<A NAME="ens_mean_for_model"></A>
+<br>
+<div class=routine>
+<em class=call> call ens_mean_for_model(ens_mean) </em>
+<pre>
+real(r8), dimension(:), intent(in)  :: <em class=code>ens_mean</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 saves a local copy of the ensemble means which can be used for 
 computing vertical heights, for example.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_mean&nbsp; &nbsp; </em></TD>
-     <TD>Ensemble mean state vector</TD></TR>
- </TABLE>
- <BR>
+</P>
 
-<!--=================================================================-->
-<!--==================== DESCRIPTION OF FUNCTION =====================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
 
-<A NAME="yyyroutine7"></A>
-<P></P><HR><P></P>
+<TR><TD valign=top><em class=code>ens_mean&nbsp;&nbsp;&nbsp;</em></TD>
+
+    <TD>State vector containing the ensemble mean.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="nc_write_model_atts"></A>
+<br>
 <div class=routine>
-<em class=call> ierr = nc_write_model_atts(ncFileId) </em>
+<em class=call>ierr = nc_write_model_atts(ncFileID)</em>
 <pre>
-integer,                              :: <em class=code> nc_write_model_atts </em>
-integer,                  intent(in)  :: <em class=code> ncFileId </em>
-</pre></div>
+integer             :: <em class=code>nc_write_model_atts</em>
+integer, intent(in) :: <em class=code>ncFileID</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
  Function to write model specific attributes to a netCDF file. At present, DART 
@@ -512,74 +513,78 @@ identified by ncFileID.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ncFileId &nbsp; &nbsp; </em></TD>
-    <TD>Integer file descriptor opened to NetCDF file.</TD></TR>
+<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
 
 <TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returned error code.</TD></TR>
+    <TD>Returns a 0 for successful completion.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--==================== DESCRIPTION OF FUNCTION =====================-->
-
-<A NAME="yyyroutine8"></A>
-<P></P><HR><P></P>
+<A NAME="nc_write_model_vars"></A>
+<br>
 <div class=routine>
-<em class=call> ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
+<em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
 <pre>
-integer                               :: <em class=code> nc_write_model_vars </em>
-integer,                  intent(in)  :: <em class=code> ncFileID </em>
-real(r8), dimension(:),   intent(in)  :: <em class=code> statevec </em>
-integer,                  intent(in)  :: <em class=code> copyindex</em>
-integer,                  intent(in)  :: <em class=code> timeindex </em>
-</pre></div>
+integer                            :: <em class=code>nc_write_model_vars</em>
+integer,                intent(in) :: <em class=code>ncFileID</em>
+real(r8), dimension(:), intent(in) :: <em class=code>statevec</em>
+integer,                intent(in) :: <em class=code>copyindex</em>
+integer,                intent(in) :: <em class=code>timeindex</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
-Writes a copy of the state variables to a NetCDF file. Multiple copies of the 
-state for a given time are supported, allowing, for instance, a single file to 
-include multiple ensemble estimates of the state.
+Writes a copy of the state variables to a netCDF file. Multiple copies
+of the state for a given time are supported, allowing, for instance,
+a single file to include multiple ensemble estimates of the state.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ncFileID &nbsp; &nbsp; </em></TD>
-    <TD>Integer file descriptor to opened NetCDF file.</TD></TR>
+<TR><TD valign=top><em class=code>ncFileID</em></TD>
+    <TD>file descriptor to previously-opened netCDF file.</TD></TR>
 
 <TR><TD valign=top><em class=code>statevec</em></TD>
-    <TD>State vector.</TD></TR>
+    <TD>A model state vector.</TD></TR>
 
-<TR><TD valign=top><em class=code>copyindex</em></TD>
-    <TD> Integer index to which copy is to be written. </TD></TR>
+<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD> Integer index of copy to be written.</TD></TR>
 
 <TR><TD valign=top><em class=code>timeindex</em></TD>
-    <TD>Integer index of which time in the file is being written.</TD></TR>
+    <TD>The timestep counter for the given state.</TD></TR>
 
 <TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returned error code. success == 0, failure == -1</TD></TR>
+    <TD>Returns 0 for normal completion.</TD></TR>
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<A NAME="yyyroutine9"></A>
-<P></P><HR><P></P>
+<A NAME="pert_model_state"></A>
+<br>
 <div class=routine>
 <em class=call>call pert_model_state(state, pert_state, interf_provided)</em>
 <pre>
-real(r8), dimension(:),   intent(in)    :: <em class=code> state </em>
-real(r8), dimension(:),   intent(out)   :: <em class=code> pert_state </em>
-logical,                  intent(out)   :: <em class=code> interf_provided </em>
-</pre></div>
+real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
+real(r8), dimension(:), intent(out) :: <em class=code>pert_state</em>
+logical,                intent(out) :: <em class=code>interf_provided</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Given a model state, produces a perturbed model state. This is used to
@@ -613,7 +618,6 @@ for each ensemble member, since trans_pv_sv_pert0 is executed once for each
 member and can't keep a series of different seeds intact.  
 </P>
 
-
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
 <TR><TD valign=top><em class=code>state</em></TD>
@@ -622,24 +626,29 @@ member and can't keep a series of different seeds intact.
 <TR><TD valign=top><em class=code>pert_state</em></TD>
     <TD>Perturbed state vector is returned. </TD></TR>
 
-<TR><TD valign=top><em class=code>interf_provided</em></TD>
+<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>Return false to have DART perturb state .</TD></TR>
 
 </TABLE>
 
+</div>
+<br>
+
 
 <!--=================== DESCRIPTION OF SUBROUTINE ====================-->
 
-<A NAME="yyyroutine10"></A>
-<P></P><HR><P></P>
+<A NAME="adv_1step"></A>
+<br>
 <div class=routine>
 <em class=call>call adv_1step(x, time)</em>
 <pre>
 real(r8), dimension(:),   intent(inout) :: <em class=code> x </em>
 type(time_type),          intent(in)    :: <em class=code> time </em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 This operation is not defined for the CAM model. 
@@ -662,40 +671,41 @@ module that is used to support time computations throughout the facility. </TD><
 
 </TABLE>
 
+</div>
+<br>
 
-<H3 class=indent1>Notes</H3>
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<A NAME="yyyroutine11"></A>
-<P></P><HR><P></P>
+<A NAME="end_model"></A>
+<br>
 <div class=routine>
 <em class=call>call end_model( )</em>
-<pre>
-</pre></div>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Called when use of a model is completed to clean up storage, etc. 
 A stub is provided for the CAM model.
 </P>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<A NAME="yyyroutine12"></A>
-<P></P><HR><P></P>
+<A NAME="init_time"></A>
+<br>
 <div class=routine>
 <em class=call>call init_time(time) </em>
 <pre>
 type(time_type),          intent(<em class="changed">out</em>)    :: <em class=code> time </em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Returns the time at which the model will start if no input initial conditions are 
@@ -703,20 +713,22 @@ to be used. This is frequently used to spin-up models from rest, but is not
 meaningfully supported for the CAM model. 
 </P>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<A NAME="yyyroutine13"></A>
-<P></P><HR><P></P>
+<A NAME="init_conditions"></A>
+<br>
 <div class=routine>
 <em class=call>call init_conditions( x )</em>
 <pre>
 real(r8), dimension(:),   intent(out)   :: <em class=code> x </em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Returns default initial conditions for model; generally used for spinning up 
@@ -731,35 +743,35 @@ state is always to be provided from input files.
 
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
+</div>
+<br>
 
-
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--===================== DESCRIPTION OF A NAMELIST =====================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
-<H2 class=indent2>NAMELIST</H2>
-<P class=indent2>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&' and terminating with a slash '/'.
+<HR>
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+The declarations have a different syntax, naturally.
+</P>
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml / </em> &
-     output_state_vector,  model_version,  model_config_file,          &  
-       state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d,   &  
-     state_names_0d, state_names_1d, state_names_2d, state_names_3d,   &
-                      which_vert_1d,  which_vert_2d,  which_vert_3d,   &
-     pert_names, pert_sd, pert_base_vals,                              &
-     highest_obs_pressure_mb, highest_state_pressure_mb,               &
+<em class=call>namelist / model_nml / </em> &amp;
+     output_state_vector,  model_version,  model_config_file,          &amp;  
+       state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d,   &amp;  
+     state_names_0d, state_names_1d, state_names_2d, state_names_3d,   &amp;
+                      which_vert_1d,  which_vert_2d,  which_vert_3d,   &amp;
+     pert_names, pert_sd, pert_base_vals,                              &amp;
+     highest_obs_pressure_mb, highest_state_pressure_mb,               &amp;
      max_obs_lat_degree, Time_step_seconds, Time_step_days
-    
 </pre>
 </div>
-</P>
 
-<H3 class=indent2>Discussion</H3>
+<div class=indent1>
+<!-- Description -->
 
-<P class=indent2>
+<P>
 This namelist is read in a file called <em class=file>input.nml</em>
 The specification of lists of names and numbers for the various dimensions 
 enables the very flexible definition of the state vector.  It can be
@@ -768,7 +780,7 @@ One hurdle that still remains is that distinct filter_ics are
 necessary for each separate set of fields which compose the state vector.
 </P>
 
-<P class=indent2>
+<P>
 The dimension of these lists is currently hardwired to size 100. 
 If more variables types need to be assimilated (e.g. many chemical species),
 look for the integer parameter MAX_STATE_NAMES in the source code
@@ -778,12 +790,12 @@ inside model_mod; one for setting the length of the lists and another
 to actually read in the data which fills the lists.
 </P>
 
-<P class=indent2>
+<P>
 The values for which_vert_#d is described in 
 DART/location/threed_sphere/location_mod.html.
 </P>
 
-<P class=indent2>
+<P>
 The names of the fields to put into the state vector come from the CAM initial
 file field names.
 </P>
@@ -882,40 +894,57 @@ state_names_3d='T       ','U       ','V       ','Q       '</PRE>
                        Default  0 days </TD></TR>
 </TABLE>
 
+</div>
+<br>
+
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
-<H2 class=indent2>FILES</H2>
-<UL> <LI>model_mod_nml in input.nml
-     <LI>caminput.nc (CAM initial file)
-     <LI>clminput.nc (CLM initial file)
-     <LI>netCDF output state diagnostics files
-</UL>
+<HR>
+<H2>FILES</H2>
+
+<TABLE border=0 >
+<TR><TH align=left>filename</TH>
+    <TH align=left>purpose</TH></TR>
+<TR><TD>input.nml</TD>
+    <TD>to read the model_mod namelist</TD></TR>
+<TR><TD>caminput.nc</TD>
+    <TD>CAM initial file</TD></TR>
+<TR><TD>clminput.nc</TD>
+    <TD>CLM initial file</TD></TR>
+<TR><TD>Prior_Diag.nc</TD>
+    <TD>the time-history of the model state before assimilation</TD></TR>
+<TR><TD>Posterior_Diag.nc&nbsp;</TD>
+    <TD>the time-history of the model state after assimilation</TD></TR>
+<TR><TD>dart_log.out [default name]</TD>
+    <TD>the run-time diagnostic output</TD></TR>
+<TR><TD>dart_log.nml [default name]</TD>
+    <TD>the record of all the namelists actually USED - 
+        contains the default values</TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
-<H2 class=indent2>REFERENCES</H2>
-<UL> 
+<HR>
+<H2>REFERENCES</H2>
+<ol>
 <LI><A HREF="http://www.ccsm.ucar.edu/models/atm-cam/"> CAM homepage </A>
-</UL>
+</ol>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
-<H2 class=indent2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<H2>ERROR CODES and CONDITIONS</H2>
 
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 <TR><!-- routine --><TD VALIGN=top>read_cam_init_size <BR>
@@ -962,17 +991,11 @@ state_names_3d='T       ','U       ','V       ','Q       '</PRE>
 </TABLE>
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
-<H2 class=indent2>KNOWN BUGS</H2>
-<P class=indent2>
+<H2>KNOWN BUGS</H2>
+<P>
 See description of timestep limitation in get_model_time_step.
 </P>
-<P class=indent2>
+<P>
 See description of dealing with highly damped top layers in CAM
 in model_interpolate and model_get_close_states.
 </P>
@@ -982,9 +1005,8 @@ in model_interpolate and model_get_close_states.
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
-<H2 class=indent2>FUTURE PLANS</H2>
-<P class=indent2>
+<HR>
+<H2>FUTURE PLANS</H2>
 <UL>
 <LI> Merge Eulerian DART-CAM with finite volume DART-CAM.
      This will include the ability to specify a unique set of dimension sizes
@@ -996,15 +1018,14 @@ in model_interpolate and model_get_close_states.
      on NCEP BUFR values. </LI>
 <LI> Incorporate CLM variables in to state vector. </LI>
 </UL>
-</P>
 
 <!--==================================================================-->
-<!-- Declare all private entities.                                    -->
+<!-- PrivateComponents                                                -->
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<BR><HR><BR>
-<H2 class=indent2>PRIVATE COMPONENTS</H2>
+<HR>
+<H2>PRIVATE COMPONENTS</H2>
 
 <TABLE>
 <TR><TD><em class=call>use model_mod, only : </em></TD>
@@ -1038,815 +1059,1007 @@ in model_interpolate and model_get_close_states.
 
 </TABLE>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="read_cam_init_size"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call read_cam_init_size(file_name,num_lons,num_lats,num_levs) </em>
- <pre>
- character(len, intent(in) :: <em class=code>file_name</em>
- integer, intent(out)      :: <em class=code>num_lons</em>
- integer, intent(out)      :: <em class=code>num_lats</em>
- integer, intent(out)      :: <em class=code>num_levs</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Gets the number of lons, lats and levels from a netcdf CAM initial file
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
-     <TD>CAM initial file.</TD></TR>
- <TR><TD valign=top><em class=code>num_lons&nbsp; &nbsp; </em></TD>
-     <TD>Number of longitudes in this CAM resolution.</TD></TR>
- <TR><TD valign=top><em class=code>num_lats&nbsp; &nbsp; </em></TD>
-     <TD>Number of latitudes.</TD></TR>
- <TR><TD valign=top><em class=code>num_levs&nbsp; &nbsp; </em></TD>
-     <TD>Number of data levels.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="read_cam_init"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call read_cam_init(file_name,var) </em>
- <pre>
- character(len, intent(in)     :: <em class=code>file_name</em>
- type(model_type), intent(out) :: <em class=code>var</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Reads state vector fields from a CAM initial file.  Fields are specified in model_mod.nml.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
-     <TD>CAM initial file name.</TD></TR>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Structure to hold the state vector fields read from file_name.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="read_cam_coord"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call read_cam_coord(var,idim,cfield) </em>
- <pre>
- real(r8), dimension(:), intent(out) :: <em class=code>var</em>
- integer, intent(in)                 :: <em class=code>idim</em>
- character, intent(in)               :: <em class=code>cfield</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Reads a coordinate array from a CAM initial file.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>A coordinate array from a CAM initial file.</TD></TR>
- <TR><TD valign=top><em class=code>idim&nbsp; &nbsp; </em></TD>
-     <TD>Length of var.</TD></TR>
- <TR><TD valign=top><em class=code>cfield&nbsp; &nbsp; </em></TD>
-     <TD>Name of var, as found on the CAM initial file.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="read_cam_scalar"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call read_cam_scalar(var,cfield) </em>
- <pre>
- real(r8), intent(out) :: <em class=code>var</em>
- character, intent(in) :: <em class=code>cfield</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Reads a scalar parameter from a CAM initial file.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Scalar to be read from a CAM initial file.</TD></TR>
- <TR><TD valign=top><em class=code>cfield&nbsp; &nbsp; </em></TD>
-     <TD>The name of the scalar to read.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="nc_read_model_atts"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call nc_read_model_atts(att,att_vals,nflds) </em>
- <pre>
- character, intent(in)                :: <em class=code>att</em>
- character, dimension(:), intent(out) :: <em class=code>att_vals</em>
- integer, intent(in)                  :: <em class=code>nflds</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Reads the value of an attribute for each of the fields in cflds.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>att&nbsp; &nbsp; </em></TD>
-     <TD>The name of an attribute of the fields on a CAM initial file.</TD></TR>
- <TR><TD valign=top><em class=code>att_vals&nbsp; &nbsp; </em></TD>
-     <TD>The values which that attribute has for each of the nflds fields needed
-  for the state vector.</TD></TR>
- <TR><TD valign=top><em class=code>nflds&nbsp; &nbsp; </em></TD>
-     <TD>The number of fields in the state vector.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="check"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call check(istatus) </em>
- <pre>
- integer, intent(in) :: <em class=code>istatus</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Checks the error status of the NetCDF function call and calls error_handler
- if the status is non-0.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>The error status returned from a NetCDF function call.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="write_cam_init"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call write_cam_init(file_name,var) </em>
- <pre>
- character, intent(in)                     :: <em class=code>file_name</em>
- type(model_type), allocatable, intent(in) :: <em class=code>var</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Write fields that have been updated by assimilation to the CAM 'initial' file.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
-     <TD>Name of CAM initial file to which var will be written.</TD></TR>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Structure containing all the fields of the state vector.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="prog_var_to_vector"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call prog_var_to_vector(var,x) </em>
- <pre>
- type(model_type), allocatable, intent(in)        :: <em class=code>var</em>
- real(r8), allocatable, dimension(:), intent(out) :: <em class=code>x</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Insert CAM fields (N-D) into DART state vector array (1-D)
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Structure containing all the fields of the state vector.</TD></TR>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>DART state vector.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="vector_to_prog_var"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call vector_to_prog_var(x,var) </em>
- <pre>
- real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
- type(model_type), allocatable, intent(out)      :: <em class=code>var</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Extract CAM fields (N-D) from state vector (1-D).
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>DART state vector.</TD></TR>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Structure containing all the fields of the state vector.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="init_model_instance"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call init_model_instance(var) </em>
- <pre>
- type(model_type), allocatable, intent(out) :: <em class=code>var</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Initializes an instance of a cam model state variable; all the fields
- specified for the state vector.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Structure which contains all the fields of various dimensions which are
-  in the DART state vector.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="end_model_instance"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call end_model_instance(var) </em>
- <pre>
- type(model_type), allocatable, intent(inout) :: <em class=code>var</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Ends an instance of a cam model state variable
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Structure which contains all the fields included in the state vector.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="plevs_cam"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call plevs_cam(ncol,ncold,ps,pmid) </em>
- <pre>
- integer, intent(in)                 :: <em class=code>ncol</em>
- integer, intent(in)                 :: <em class=code>ncold</em>
- real(r8), dimension(:), intent(in)  :: <em class=code>ps</em>
- real(r8), dimension(:), intent(out) :: <em class=code>pmid</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Define the pressures of the CAM data levels (layer midpoints) from the
- coordinate definitions and the surface pressure.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ncol&nbsp; &nbsp; </em></TD>
-     <TD>Number of columns of pressures to calculate (DART-CAM uses 1)</TD></TR>
- <TR><TD valign=top><em class=code>ncold&nbsp; &nbsp; </em></TD>
-     <TD>Dimension of ps.</TD></TR>
- <TR><TD valign=top><em class=code>ps&nbsp; &nbsp; </em></TD>
-     <TD>Surface pressure at this latitude and longitude (Pa).</TD></TR>
- <TR><TD valign=top><em class=code>pmid&nbsp; &nbsp; </em></TD>
-     <TD>Pressures at the CAM "midpoint" levels.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_val_pressure"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_val_pressure(val,x,lon_index,lat_index,pressure,
-                 obs_kind,istatus) </em>
- <pre>
- real(r8), intent(out)                           :: <em class=code>val</em>
- real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
- integer, intent(in)                             :: <em class=code>lon_index</em>
- integer, intent(in)                             :: <em class=code>lat_index</em>
- real(r8), intent(in)                            :: <em class=code>pressure</em>
- integer, intent(in)                             :: <em class=code>obs_kind</em>
- integer0, intent(out)                           :: <em class=code>istatus</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Gets the vertically interpolated value on pressure for variable obs_kind
- at the lon_index, lat_index horizontal grid point.  Some quality control of
- observations is done here, but may be moved later.  For now, observations
- above the lower of highest_obs_pressure_mb and the model's highest level,
- and below the lowest model level are excluded.  
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
-     <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>DART state vector.</TD></TR>
- <TR><TD valign=top><em class=code>lon_index&nbsp; &nbsp; </em></TD>
-     <TD>Index of longitude of this val.</TD></TR>
- <TR><TD valign=top><em class=code>lat_index&nbsp; &nbsp; </em></TD>
-     <TD>Index of latitude of this val.</TD></TR>
- <TR><TD valign=top><em class=code>pressure&nbsp; &nbsp; </em></TD>
-     <TD>The pressure to which this obs_kind must be interpolated.</TD></TR>
- <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
-     <TD>The kind of variable being interpolated, i.e. T.</TD></TR>
- <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>Flag containing the status of the interpolation. 0=all good, 1=can't 
- interpolate, 2=can interpolate but don't use the value.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_val_height"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_val_height(val,x,lon_index,lat_index,height,
-                 obs_kind,istatus) </em>
- <pre>
- real(r8), intent(out)                           :: <em class=code>val</em>
- real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
- integer, intent(in)                             :: <em class=code>lon_index</em>
- integer, intent(in)                             :: <em class=code>lat_index</em>
- real(r8), intent(in)                            :: <em class=code>height</em>
- integer, intent(in)                             :: <em class=code>obs_kind</em>
- integer, intent(out)                            :: <em class=code>istatus</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Gets the vertically interpolated value on height for variable obs_kind
- at the lon_index, lat_index horizontal grid point.  Some quality control of
- observations is done here, but may be moved later.  For now, observations
- above the lower of highest_obs_height_m and the model's highest level,
- and below the lowest model level are excluded.  So are PS and Q observations.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
-     <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>DART state vector.</TD></TR>
- <TR><TD valign=top><em class=code>lon_index&nbsp; &nbsp; </em></TD>
-     <TD>Index of longitude of this val.</TD></TR>
- <TR><TD valign=top><em class=code>lat_index&nbsp; &nbsp; </em></TD>
-     <TD>Index of latitude of this val.</TD></TR>
- <TR><TD valign=top><em class=code>height&nbsp; &nbsp; </em></TD>
-     <TD>The height to which this obs_kind must be interpolated.</TD></TR>
- <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
-     <TD>The kind of variable being interpolated, i.e. T.</TD></TR>
- <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>Flag containing the status of the interpolation. 0=all good, 1=can't 
- interpolate, 2=can interpolate but don't use the value.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_val_level"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_val_level(val,x,lon_index,lat_index,level,
-                 obs_kind,istatus) </em>
- <pre>
- real(r8), intent(out)                           :: <em class=code>val</em>
- real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
- integer, intent(in)                             :: <em class=code>lon_index</em>
- integer, intent(in)                             :: <em class=code>lat_index</em>
- integer, intent(in)                             :: <em class=code>level</em>
- integer, intent(in)                             :: <em class=code>obs_kind</em>
- integer, intent(out)                            :: <em class=code>istatus</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Gets the value on the model level for variable obs_kind
- at the lon_index, lat_index horizontal grid point.  Some quality control of
- observations is done here, but may be moved later.  For now, observations
- above the lower of highest_obs_level and the models highest level,
- and below the lowest model level are excluded.  So are PS and Q observations.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
-     <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>DART state vector.</TD></TR>
- <TR><TD valign=top><em class=code>lon_index&nbsp; &nbsp; </em></TD>
-     <TD>Index of longitude of this val.</TD></TR>
- <TR><TD valign=top><em class=code>lat_index&nbsp; &nbsp; </em></TD>
-     <TD>Index of latitude of this val.</TD></TR>
- <TR><TD valign=top><em class=code>level&nbsp; &nbsp; </em></TD>
-     <TD>The level for which this obs_kind must be retrieved.</TD></TR>
- <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
-     <TD>The kind of variable being interpolated, i.e. T.</TD></TR>
- <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>Flag containing the status of the interpolation. 0=all good, 1=can't 
- interpolate, 2=can interpolate but don't use the value.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_val"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_val(val,x,lon_index,lat_index,level,obs_kind,istatus) </em>
- <pre>
- real(r8), intent(out)                           :: <em class=code>val</em>
- real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
- integer, intent(in)                             :: <em class=code>lon_index</em
- >
- integer, intent(in)                             :: <em class=code>lat_index</em
- >
- integer, intent(in)                             :: <em class=code>level</em>
- integer, intent(in)                             :: <em class=code>obs_kind</em>
- integer, intent(out)                            :: <em class=code>istatus</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Extracts the value of a field at a specified location from the DART state vector.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
-     <TD>The value of the obs_kind variable at a grid point, from state vector x.</TD></TR>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>DART state vector.</TD></TR>
- <TR><TD valign=top><em class=code>lon_index&nbsp; &nbsp; </em></TD>
-     <TD>Index of longitude of this val.</TD></TR>
- <TR><TD valign=top><em class=code>lat_index&nbsp; &nbsp; </em></TD>
-     <TD>Index of latitude of this val.</TD></TR>
- <TR><TD valign=top><em class=code>level&nbsp; &nbsp; </em></TD>
-     <TD>The level of the obs_kind variable desired.</TD></TR>
- <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
-     <TD>The kind of variable being interpolated, i.e. T.</TD></TR>
- <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>Flag containing the status of the interpolation. 0=all good, 1=can't in
- terpolate, 2=can interpo but don't use the value.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="grid_close_states2"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call grid_close_states2(o_loc,lons,lats,nlon,nlat,radius,num,cl
- ose_lon_ind,close_lat_ind,close_dist) </em>
- <pre>
- type(location_type), intent(in)                    :: <em class=code>o_loc</em>
- real(r8), dimension(:), intent(in)                 :: <em class=code>lons</em>
- real(r8), dimension(:), intent(in)                 :: <em class=code>lats</em>
- integer, intent(in)                                :: <em class=code>nlon</em>
- integer, intent(in)                                :: <em class=code>nlat</em>
- real(r8), intent(in)                               :: <em class=code>radius</em
- >
- integer, intent(inout)                             :: <em class=code>num</em>
- integer, dimension(:), intent(inout)               :: <em class=code>close_lon_
- ind</em>
- integer, allocatable, dimension(:), intent(inout)  :: <em class=code>close_lat_
- ind</em>
- real(r8), allocatable, dimension(:), intent(inout) :: <em class=code>close_dist
- </em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Finds close state points from a particular grid; Just uses horizontal
- distance by setting pressure of state location to same as observation.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>o_loc&nbsp; &nbsp; </em></TD>
-     <TD>Observation location.</TD></TR>
- <TR><TD valign=top><em class=code>lons&nbsp; &nbsp; </em></TD>
-     <TD>Values of model longitudes.</TD></TR>
- <TR><TD valign=top><em class=code>lats&nbsp; &nbsp; </em></TD>
-     <TD>Values of model latitudes</TD></TR>
- <TR><TD valign=top><em class=code>nlon&nbsp; &nbsp; </em></TD>
-     <TD>Number of model longitudes.</TD></TR>
- <TR><TD valign=top><em class=code>nlat&nbsp; &nbsp; </em></TD>
-     <TD>Number of model latitudes</TD></TR>
- <TR><TD valign=top><em class=code>radius&nbsp; &nbsp; </em></TD>
-     <TD>Distance within which a model point is considered to be close to the ob
- servation.</TD></TR>
- <TR><TD valign=top><em class=code>num&nbsp; &nbsp; </em></TD>
-     <TD>Number of model points within radius of o_loc.</TD></TR>
- <TR><TD valign=top><em class=code>close_lon_ind&nbsp; &nbsp; </em></TD>
-     <TD>Indices of the longitudes of the close points.</TD></TR>
- <TR><TD valign=top><em class=code>close_lat_ind&nbsp; &nbsp; </em></TD>
-     <TD>Indices of the latitudes of the close points.</TD></TR>
- <TR><TD valign=top><em class=code>close_dist&nbsp; &nbsp; </em></TD>
-     <TD>Distances of the close points from o_loc.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="lon_search"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call lon_search(glat,glev,blon_ind,o_loc,radius,lons,close_lon_
- ind,close_dist,num) </em>
- <pre>
- real(r8), intent(in)                             :: <em class=code>glat</em>
- real(r8), intent(in)                             :: <em class=code>glev</em>
- integer, intent(in)                              :: <em class=code>blon_ind</em
- >
- type(location_type), intent(in)                  :: <em class=code>o_loc</em>
- real(r8), intent(in)                             :: <em class=code>radius</em>
- real(r8), allocatable, dimension(:), intent(in)  :: <em class=code>lons</em>
- integer, allocatable, dimension(:), intent(out)  :: <em class=code>close_lon_in
- d</em>
- real(r8), allocatable, dimension(:), intent(out) :: <em class=code>close_dist</em>
- integer, intent(out)                             :: <em class=code>num</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Given an observation location and radius and a latitude row from a grid,
- searches to find all longitude points in this row that are within radius
- of the observation location and returns their latitude index, longitude
- index, and the distance between them and the observation.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>glat&nbsp; &nbsp; </em></TD>
-     <TD>The latitude to search for closeness to o_loc.</TD></TR>
- <TR><TD valign=top><em class=code>glev&nbsp; &nbsp; </em></TD>
-     <TD>The level at which to search for closeness to o_loc.  Currently unused.
- </TD></TR>
- <TR><TD valign=top><em class=code>blon_ind&nbsp; &nbsp; </em></TD>
-     <TD>Longitude closest to o_loc.</TD></TR>
- <TR><TD valign=top><em class=code>o_loc&nbsp; &nbsp; </em></TD>
-     <TD>The location of the observation.</TD></TR>
- <TR><TD valign=top><em class=code>radius&nbsp; &nbsp; </em></TD>
-     <TD>The distance within which a model point is considered close to o_loc.</
- TD></TR>
- <TR><TD valign=top><em class=code>lons&nbsp; &nbsp; </em></TD>
-     <TD>Values of the model grid longitudes.</TD></TR>
- <TR><TD valign=top><em class=code>close_lon_ind&nbsp; &nbsp; </em></TD>
-     <TD>Longitudes of the model points which are close to o_loc.</TD></TR>
- <TR><TD valign=top><em class=code>close_dist&nbsp; &nbsp; </em></TD>
-     <TD>Distances of the close model points from o_loc.</TD></TR>
- <TR><TD valign=top><em class=code>num&nbsp; &nbsp; </em></TD>
-     <TD>Number of model points at this latitude which are close to o_loc.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_closest_lat_index"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_closest_lat_index(o_lat,lats,nlat) </em>
- <pre>
- real(r8), intent(in)               :: <em class=code>o_lat</em>
- real(r8), dimension(:), intent(in) :: <em class=code>lats</em>
- integer, intent(in)                :: <em class=code>nlat</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Finds the latitude of the grid point closest to the observation.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>o_lat&nbsp; &nbsp; </em></TD>
-     <TD>Latitude of the observation.</TD></TR>
- <TR><TD valign=top><em class=code>lats&nbsp; &nbsp; </em></TD>
-     <TD>Model grid latitudes.</TD></TR>
- <TR><TD valign=top><em class=code>nlat&nbsp; &nbsp; </em></TD>
-     <TD>Number of model grid latitudes.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_closest_lon_index"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_closest_lon_index(o_lon,lons,nlon) </em>
- <pre>
- real(r8), intent(in)               :: <em class=code>o_lon</em>
- real(r8), dimension(:), intent(in) :: <em class=code>lons</em>
- integer, intent(in)                :: <em class=code>nlon</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Finds the longitude of the grid point closest to the observation.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>o_lon&nbsp; &nbsp; </em></TD>
-     <TD>Longitude of the observation.</TD></TR>
- <TR><TD valign=top><em class=code>lons&nbsp; &nbsp; </em></TD>
-     <TD>Longitudes of the CAM grid.</TD></TR>
- <TR><TD valign=top><em class=code>nlon&nbsp; &nbsp; </em></TD>
-     <TD>Number of longitudes of the CAM grid.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="order_state_fields"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call order_state_fields(cflds,nflds) </em>
- <pre>
- character, dimension(:), intent(out) :: <em class=code>cflds</em>
- integer, intent(in)                  :: <em class=code>nflds</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Fills cflds with state_names for use in I/O of caminput.nc
- Also assigns field TYPE_ variables for use by get_state_meta_data,
- and other routines.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>cflds&nbsp; &nbsp; </em></TD>
-     <TD>Master list of CAM fields to be incorporated in the DART state vector.</TD></TR>
- <TR><TD valign=top><em class=code>nflds&nbsp; &nbsp; </em></TD>
-     <TD>Number of CAM fields in the state vector.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="size_coord"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call size_coord(coord_3d,coord_2d,coord_order) </em>
- <pre>
- integer, dimension(:), intent(out) :: <em class=code>coord_3d</em>
- integer, dimension(:), intent(out) :: <em class=code>coord_2d</em>
- integer, intent(out)               :: <em class=code>coord_order</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Figure out the order of the coordinates (lon, lat, lev) for the 3-D fields
- on the CAM initial file, based on the CAM version from model_mod.nml, 
- which has form #.#[.#[.#]]  The order changed from (lon,lev,lat) to (lon,lat,lev)
- around CAM3.0.3.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>coord_3d&nbsp; &nbsp; </em></TD>
-     <TD>The order of the coordinates for 3-D fields on the CAM initial file for
-  this version of CAM.</TD></TR>
- <TR><TD valign=top><em class=code>coord_2d&nbsp; &nbsp; </em></TD>
-     <TD>Similarly for 2-D fields.</TD></TR>
- <TR><TD valign=top><em class=code>coord_order&nbsp; &nbsp; </em></TD>
-     <TD>Flag saying whether the coordinate orders are for pre- or post- 
-         CAM3.0.3, when the levs and lats were exchanged.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="obs_field_location"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call obs_field_location(obs_loc_in_sv) </em>
- <pre>
- integer, dimension(:), intent(out) :: <em class=code>obs_loc_in_sv </em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Makes an array of 'locations within the state vector' of  all the available 
- obs kinds that come from obs_kind_mod.
- The obs kind that's needed will be the index into this array,
- the corresponding array value will be the position of that field (not individual variable)
- within the state vector according to state_names_Xd.
- There will be lots of empty array elements, since KIND_x has a lot of "missing" values.
- This subroutine will be called from static_init_model, so it will not have to be
- recomputed for every obs.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>obs_loc_in_sv&nbsp; &nbsp; </em></TD>
-     <TD>Array of locations of obs *fields* (not individual variables) within th
- e state vector.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
-NEW
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="model_heights"></A>
- <P></P><HR><P></P>
- <div class=routine>
-    <em class=call> call model_heights( x,lon_index,lat_index,model_h,istatus) </em>
- <pre>
- real(r8), dimension(:), intent(in)              :: <em class=code>x</em>
- integer, intent(in)                             :: <em class=code>lon_index</em>
- integer, intent(in)                             :: <em class=code>lat_index</em>
- real(r8), intent(out)                           :: <em class=code>model_h</em>
- integer, intent(out)                            :: <em class=code>istatus</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- This routine calculates geometrical height (m) at mid-layers of the CAM model
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
-     <TD>DART state vector.</TD></TR>
- <TR><TD valign=top><em class=code>lon_index&nbsp; &nbsp; </em></TD>
-     <TD>Index of longitude of this val.</TD></TR>
- <TR><TD valign=top><em class=code>lat_index&nbsp; &nbsp; </em></TD>
-     <TD>Index of latitude of this val.</TD></TR>
- <TR><TD valign=top><em class=code>model_h&nbsp; &nbsp; </em></TD>
-     <TD>geometrical height at midlayer (m).</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="dcz2"></A>
- <P></P><HR><P></P>
- <div class=routine>
-    <em class=call> call dcz2(ps,phis0,tv,hprb,hyba,hybb,kmax,idim,imax,pmln, &
-                            hypdln,hyalph,pterm,z2) </em>
- <pre>
- real(r8), dimension(idim,kmax), intent(out)     :: <em class=code>z2</em>
- real(r8), dimension(idim), intent(in)           :: <em class=code>ps</em>
- real(r8), dimension(idim), intent(in)           :: <em class=code>phis0</em>
- real(r8), dimension(idim,kmax), intent(in)      :: <em class=code>tv</em>
- real(r8), intent(in)                            :: <em class=code>hprb</em>
- real(r8), dimension(2,kmax+1), intent(in)      :: <em class=code>hyba</em>
- real(r8), dimension(2,kmax+1), intent(in)      :: <em class=code>hybb</em>
- integer, intent(in)                             :: <em class=code>kmax</em>
- integer, intent(in)                             :: <em class=code>idim</em>
- integer, intent(in)                             :: <em class=code>imax</em>
- real(r8), dimension(idim,kmax+1), intent(in)      :: <em class=code>pmln</em>
- real(r8), dimension(idim,kmax), intent(in)      :: <em class=code>hypdln</em>
- real(r8), dimension(idim,kmax), intent(in)      :: <em class=code>hyalph</em>
- real(r8), dimension(idim,kmax), intent(in)      :: <em class=code>pterm</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- To compute geopotential height for a CCM2 hybrid coordinate
- vertical slice.  Since the vertical integration matrix is a
- function of latitude and longitude, it is not explicitly
- computed as for sigma coordinates.  The integration algorithm
- is derived from Boville's mods in the ibm file hybrid 1mods
- (6/17/88).  All vertical slice arrays are oriented top to
- bottom as in CCM2.  This field is on full model levels (aka
- "midpoints") not half levels.  See code for more history.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>z2&nbsp; &nbsp; </em></TD>
-     <TD>Geopotential height, top to bottom.</TD></TR>
- <TR><TD valign=top><em class=code>ps&nbsp; &nbsp; </em></TD>
-     <TD>Surface pressure (pascals).</TD></TR>
- <TR><TD valign=top><em class=code>phis0&nbsp; &nbsp; </em></TD>
- <TD> Surface geoptential.</TD></TR>
- <TR><TD valign=top><em class=code>tv&nbsp; &nbsp; </em></TD>
-     <TD>Virtual temperature, top to bottom.</TD></TR>
- <TR><TD valign=top><em class=code>hprb&nbsp; &nbsp; </em></TD>
-     <TD>Hybrid base pressure (pascals).</TD></TR>
- <TR><TD valign=top><em class=code>hyba&nbsp; &nbsp; </em></TD>
-     <TD>Hybrid coord coeffs for base pressure.</TD></TR>
- <TR><TD valign=top><em class=code>hybb&nbsp; &nbsp; </em></TD>
-     <TD>Hybrid coord coeffs for surf pressure (in same format as hyba).</TD></TR>
- <TR><TD valign=top><em class=code>kmax&nbsp; &nbsp; </em></TD>
-     <TD>Number of vertical levels.</TD></TR>
- <TR><TD valign=top><em class=code>idim&nbsp; &nbsp; </em></TD>
-     <TD>Longitude dimension.</TD></TR>
- <TR><TD valign=top><em class=code>imax&nbsp; &nbsp; </em></TD>
-     <TD>Num of longitude points to compute.</TD></TR>
- <TR><TD valign=top><em class=code>pmln&nbsp; &nbsp; </em></TD>
-     <TD>Vertical slice scratch space used to hold logs of midpoint pressures.</TD></TR>
- <TR><TD valign=top><em class=code>hpdln&nbsp; &nbsp; </em></TD>
-     <TD>Vertical slice scratch space used to hold log p layer thickness.</TD></TR>
- <TR><TD valign=top><em class=code>hyalph&nbsp; &nbsp; </em></TD>
-     <TD>Vertical slice scratch space used to hold distance from interface to level during 
-         vertical integration.</TD></TR>
- <TR><TD valign=top><em class=code>pterm&nbsp; &nbsp; </em></TD>
-     <TD>Vertical scratch space.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="gph2gmh"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> gph2gmh = gph2gmh(h, lat) </em>
- <pre>
- real(r8), intent(out)                           :: <em class=code>gph2gmh</em>
- real(r8), intent(in)                            :: <em class=code>h</em>
- real(r8), intent(in)                            :: <em class=code>lat</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Convert a geopotential altitude to mean sea level altitude.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>gph2gmh&nbsp; &nbsp; </em></TD>
-     <TD>MSL altitude, in km.</TD></TR>
- <TR><TD valign=top><em class=code>h&nbsp; &nbsp; </em></TD>
-     <TD>geopotential altitude (in km).</TD></TR>
- <TR><TD valign=top><em class=code>lat&nbsp; &nbsp; </em></TD>
-     <TD>latitude in degrees.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="gravity"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call gravity (xlat,alt,galt) </em>
- <pre>
- real(r8), intent(out)                           :: <em class=code>galt</em>
- real(r8), intent(in)                            :: <em class=code>xlat</em>
- real(r8), intent(in)                            :: <em class=code>alt</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- This subroutine computes the Earth's gravity at any altitude
- and latitude.  The model assumes the Earth is an oblate 
- spheriod rotating at a the Earth's spin rate.  The model
- was taken from "Geophysical Geodesy, Kurt Lambeck, 1988".
- Compute acceleration due to the Earth's gravity at any latitude/altitude
- author     Bill Schreiner   5/95
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="read_cam_init_size"></A>
+<br>
+<div class=routine>
+<em class=call> call read_cam_init_size(file_name,num_lons,num_lats,num_levs) </em>
+<pre>
+character(len, intent(in) :: <em class=code>file_name</em>
+integer, intent(out)      :: <em class=code>num_lons</em>
+integer, intent(out)      :: <em class=code>num_lats</em>
+integer, intent(out)      :: <em class=code>num_levs</em>
+</pre>
+</div>
 
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>galt&nbsp; &nbsp; </em></TD>
-     <TD>gravity at the given lat and alt, cm/sec.</TD></TR>
- <TR><TD valign=top><em class=code>xlat&nbsp; &nbsp; </em></TD>
-     <TD>latitude in radians.</TD></TR>
- <TR><TD valign=top><em class=code>alt&nbsp; &nbsp; </em></TD>
-     <TD>altitude above the reference ellipsiod, km.</TD></TR>
- </TABLE>
- <P>
+<div class=indent1>
+<!-- Description -->
 
+<P>
+Gets the number of lons, lats and levels from a netcdf CAM initial file
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;</em></TD>
+    <TD>CAM initial file.</TD></TR>
+<TR><TD valign=top><em class=code>num_lons&nbsp;&nbsp;</em></TD>
+    <TD>Number of longitudes in this CAM resolution.</TD></TR>
+<TR><TD valign=top><em class=code>num_lats&nbsp;&nbsp;</em></TD>
+    <TD>Number of latitudes.</TD></TR>
+<TR><TD valign=top><em class=code>num_levs&nbsp;&nbsp;</em></TD>
+    <TD>Number of data levels.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="read_cam_init"></A>
+<br>
+<div class=routine>
+<em class=call> call read_cam_init(file_name,var) </em>
+<pre>
+character(len, intent(in)     :: <em class=code>file_name</em>
+type(model_type), intent(out) :: <em class=code>var</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads state vector fields from a CAM initial file.  Fields are specified in model_mod.nml.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;</em></TD>
+    <TD>CAM initial file name.</TD></TR>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Structure to hold the state vector fields read from file_name.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="read_cam_coord"></A>
+<br>
+<div class=routine>
+<em class=call> call read_cam_coord(var,idim,cfield) </em>
+<pre>
+real(r8), dimension(:), intent(out) :: <em class=code>var</em>
+integer, intent(in)                 :: <em class=code>idim</em>
+character, intent(in)               :: <em class=code>cfield</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads a coordinate array from a CAM initial file.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>A coordinate array from a CAM initial file.</TD></TR>
+<TR><TD valign=top><em class=code>idim&nbsp;&nbsp;</em></TD>
+    <TD>Length of var.</TD></TR>
+<TR><TD valign=top><em class=code>cfield&nbsp;&nbsp;</em></TD>
+    <TD>Name of var, as found on the CAM initial file.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="read_cam_scalar"></A>
+<br>
+<div class=routine>
+<em class=call> call read_cam_scalar(var,cfield) </em>
+<pre>
+real(r8), intent(out) :: <em class=code>var</em>
+character, intent(in) :: <em class=code>cfield</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads a scalar parameter from a CAM initial file.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Scalar to be read from a CAM initial file.</TD></TR>
+<TR><TD valign=top><em class=code>cfield&nbsp;&nbsp;</em></TD>
+    <TD>The name of the scalar to read.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="nc_read_model_atts"></A>
+<br>
+<div class=routine>
+<em class=call> call nc_read_model_atts(att,att_vals,nflds) </em>
+<pre>
+character, intent(in)                :: <em class=code>att</em>
+character, dimension(:), intent(out) :: <em class=code>att_vals</em>
+integer, intent(in)                  :: <em class=code>nflds</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads the value of an attribute for each of the fields in cflds.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>att&nbsp;&nbsp;</em></TD>
+    <TD>The name of an attribute of the fields on a CAM initial file.</TD></TR>
+<TR><TD valign=top><em class=code>att_vals&nbsp;&nbsp;</em></TD>
+    <TD>The values which that attribute has for each of the nflds fields needed
+ for the state vector.</TD></TR>
+<TR><TD valign=top><em class=code>nflds&nbsp;&nbsp;</em></TD>
+    <TD>The number of fields in the state vector.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="check"></A>
+<br>
+<div class=routine>
+<em class=call> call check(istatus) </em>
+<pre>
+integer, intent(in) :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Checks the error status of the NetCDF function call and calls error_handler
+if the status is non-0.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
+    <TD>The error status returned from a NetCDF function call.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="write_cam_init"></A>
+<br>
+<div class=routine>
+<em class=call> call write_cam_init(file_name,var) </em>
+<pre>
+character, intent(in)                     :: <em class=code>file_name</em>
+type(model_type), allocatable, intent(in) :: <em class=code>var</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Write fields that have been updated by assimilation to the CAM 'initial' file.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;</em></TD>
+    <TD>Name of CAM initial file to which var will be written.</TD></TR>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Structure containing all the fields of the state vector.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="prog_var_to_vector"></A>
+<br>
+<div class=routine>
+<em class=call> call prog_var_to_vector(var,x) </em>
+<pre>
+type(model_type), allocatable, intent(in)        :: <em class=code>var</em>
+real(r8), allocatable, dimension(:), intent(out) :: <em class=code>x</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Insert CAM fields (N-D) into DART state vector array (1-D)
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Structure containing all the fields of the state vector.</TD></TR>
+<TR><TD valign=top><em class=code>x&nbsp;&nbsp;</em></TD>
+    <TD>DART state vector.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="vector_to_prog_var"></A>
+<br>
+<div class=routine>
+<em class=call> call vector_to_prog_var(x,var) </em>
+<pre>
+real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
+type(model_type), allocatable, intent(out)      :: <em class=code>var</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Extract CAM fields (N-D) from state vector (1-D).
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>x&nbsp;&nbsp;</em></TD>
+    <TD>DART state vector.</TD></TR>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Structure containing all the fields of the state vector.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="init_model_instance"></A>
+<br>
+<div class=routine>
+<em class=call> call init_model_instance(var) </em>
+<pre>
+type(model_type), allocatable, intent(out) :: <em class=code>var</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Initializes an instance of a cam model state variable; all the fields
+specified for the state vector.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Structure which contains all the fields of various dimensions which are
+ in the DART state vector.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="end_model_instance"></A>
+<br>
+<div class=routine>
+<em class=call> call end_model_instance(var) </em>
+<pre>
+type(model_type), allocatable, intent(inout) :: <em class=code>var</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Ends an instance of a cam model state variable
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Structure which contains all the fields included in the state vector.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="plevs_cam"></A>
+<br>
+<div class=routine>
+<em class=call> call plevs_cam(ncol,ncold,ps,pmid) </em>
+<pre>
+integer, intent(in)                 :: <em class=code>ncol</em>
+integer, intent(in)                 :: <em class=code>ncold</em>
+real(r8), dimension(:), intent(in)  :: <em class=code>ps</em>
+real(r8), dimension(:), intent(out) :: <em class=code>pmid</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Define the pressures of the CAM data levels (layer midpoints) from the
+coordinate definitions and the surface pressure.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ncol&nbsp;&nbsp;</em></TD>
+    <TD>Number of columns of pressures to calculate (DART-CAM uses 1)</TD></TR>
+<TR><TD valign=top><em class=code>ncold&nbsp;&nbsp;</em></TD>
+    <TD>Dimension of ps.</TD></TR>
+<TR><TD valign=top><em class=code>ps&nbsp;&nbsp;</em></TD>
+    <TD>Surface pressure at this latitude and longitude (Pa).</TD></TR>
+<TR><TD valign=top><em class=code>pmid&nbsp;&nbsp;</em></TD>
+    <TD>Pressures at the CAM "midpoint" levels.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="get_val_pressure"></A>
+<br>
+<div class=routine>
+<em class=call> call get_val_pressure(val,x,lon_index,lat_index,pressure,
+                obs_kind,istatus) </em>
+<pre>
+real(r8), intent(out)                           :: <em class=code>val</em>
+real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
+integer, intent(in)                             :: <em class=code>lon_index</em>
+integer, intent(in)                             :: <em class=code>lat_index</em>
+real(r8), intent(in)                            :: <em class=code>pressure</em>
+integer, intent(in)                             :: <em class=code>obs_kind</em>
+integer0, intent(out)                           :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Gets the vertically interpolated value on pressure for variable obs_kind
+at the lon_index, lat_index horizontal grid point.  Some quality control of
+observations is done here, but may be moved later.  For now, observations
+above the lower of highest_obs_pressure_mb and the model's highest level,
+and below the lowest model level are excluded.  
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>val&nbsp;&nbsp;</em></TD>
+    <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
+<TR><TD valign=top><em class=code>x&nbsp;&nbsp;</em></TD>
+    <TD>DART state vector.</TD></TR>
+<TR><TD valign=top><em class=code>lon_index&nbsp;&nbsp;</em></TD>
+    <TD>Index of longitude of this val.</TD></TR>
+<TR><TD valign=top><em class=code>lat_index&nbsp;&nbsp;</em></TD>
+    <TD>Index of latitude of this val.</TD></TR>
+<TR><TD valign=top><em class=code>pressure&nbsp;&nbsp;</em></TD>
+    <TD>The pressure to which this obs_kind must be interpolated.</TD></TR>
+<TR><TD valign=top><em class=code>obs_kind&nbsp;&nbsp;</em></TD>
+    <TD>The kind of variable being interpolated, i.e. T.</TD></TR>
+<TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
+    <TD>Flag containing the status of the interpolation. 0=all good, 1=can't 
+interpolate, 2=can interpolate but don't use the value.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="get_val_height"></A>
+<br>
+<div class=routine>
+<em class=call> call get_val_height(val,x,lon_index,lat_index,height,
+                obs_kind,istatus) </em>
+<pre>
+real(r8), intent(out)                           :: <em class=code>val</em>
+real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
+integer, intent(in)                             :: <em class=code>lon_index</em>
+integer, intent(in)                             :: <em class=code>lat_index</em>
+real(r8), intent(in)                            :: <em class=code>height</em>
+integer, intent(in)                             :: <em class=code>obs_kind</em>
+integer, intent(out)                            :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Gets the vertically interpolated value on height for variable obs_kind
+at the lon_index, lat_index horizontal grid point.  Some quality control of
+observations is done here, but may be moved later.  For now, observations
+above the lower of highest_obs_height_m and the model's highest level,
+and below the lowest model level are excluded.  So are PS and Q observations.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>val&nbsp;&nbsp;</em></TD>
+    <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
+<TR><TD valign=top><em class=code>x&nbsp;&nbsp;</em></TD>
+    <TD>DART state vector.</TD></TR>
+<TR><TD valign=top><em class=code>lon_index&nbsp;&nbsp;</em></TD>
+    <TD>Index of longitude of this val.</TD></TR>
+<TR><TD valign=top><em class=code>lat_index&nbsp;&nbsp;</em></TD>
+    <TD>Index of latitude of this val.</TD></TR>
+<TR><TD valign=top><em class=code>height&nbsp;&nbsp;</em></TD>
+    <TD>The height to which this obs_kind must be interpolated.</TD></TR>
+<TR><TD valign=top><em class=code>obs_kind&nbsp;&nbsp;</em></TD>
+    <TD>The kind of variable being interpolated, i.e. T.</TD></TR>
+<TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
+    <TD>Flag containing the status of the interpolation. 0=all good, 1=can't 
+interpolate, 2=can interpolate but don't use the value.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="get_val_level"></A>
+<br>
+<div class=routine>
+<em class=call> call get_val_level(val,x,lon_index,lat_index,level,
+                obs_kind,istatus) </em>
+<pre>
+real(r8), intent(out)                           :: <em class=code>val</em>
+real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
+integer, intent(in)                             :: <em class=code>lon_index</em>
+integer, intent(in)                             :: <em class=code>lat_index</em>
+integer, intent(in)                             :: <em class=code>level</em>
+integer, intent(in)                             :: <em class=code>obs_kind</em>
+integer, intent(out)                            :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Gets the value on the model level for variable obs_kind
+at the lon_index, lat_index horizontal grid point.  Some quality control of
+observations is done here, but may be moved later.  For now, observations
+above the lower of highest_obs_level and the models highest level,
+and below the lowest model level are excluded.  So are PS and Q observations.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>val&nbsp;&nbsp;</em></TD>
+    <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
+<TR><TD valign=top><em class=code>x&nbsp;&nbsp;</em></TD>
+    <TD>DART state vector.</TD></TR>
+<TR><TD valign=top><em class=code>lon_index&nbsp;&nbsp;</em></TD>
+    <TD>Index of longitude of this val.</TD></TR>
+<TR><TD valign=top><em class=code>lat_index&nbsp;&nbsp;</em></TD>
+    <TD>Index of latitude of this val.</TD></TR>
+<TR><TD valign=top><em class=code>level&nbsp;&nbsp;</em></TD>
+    <TD>The level for which this obs_kind must be retrieved.</TD></TR>
+<TR><TD valign=top><em class=code>obs_kind&nbsp;&nbsp;</em></TD>
+    <TD>The kind of variable being interpolated, i.e. T.</TD></TR>
+<TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
+    <TD>Flag containing the status of the interpolation. 0=all good, 1=can't 
+interpolate, 2=can interpolate but don't use the value.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="get_val"></A>
+<br>
+<div class=routine>
+<em class=call> call get_val(val,x,lon_index,lat_index,level,obs_kind,istatus) </em>
+<pre>
+real(r8), intent(out)                           :: <em class=code>val</em>
+real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
+integer, intent(in)                             :: <em class=code>lon_index</em
+>
+integer, intent(in)                             :: <em class=code>lat_index</em
+>
+integer, intent(in)                             :: <em class=code>level</em>
+integer, intent(in)                             :: <em class=code>obs_kind</em>
+integer, intent(out)                            :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Extracts the value of a field at a specified location from the DART state vector.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>val&nbsp;&nbsp;</em></TD>
+    <TD>The value of the obs_kind variable at a grid point, from state vector x.</TD></TR>
+<TR><TD valign=top><em class=code>x&nbsp;&nbsp;</em></TD>
+    <TD>DART state vector.</TD></TR>
+<TR><TD valign=top><em class=code>lon_index&nbsp;&nbsp;</em></TD>
+    <TD>Index of longitude of this val.</TD></TR>
+<TR><TD valign=top><em class=code>lat_index&nbsp;&nbsp;</em></TD>
+    <TD>Index of latitude of this val.</TD></TR>
+<TR><TD valign=top><em class=code>level&nbsp;&nbsp;</em></TD>
+    <TD>The level of the obs_kind variable desired.</TD></TR>
+<TR><TD valign=top><em class=code>obs_kind&nbsp;&nbsp;</em></TD>
+    <TD>The kind of variable being interpolated, i.e. T.</TD></TR>
+<TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
+    <TD>Flag containing the status of the interpolation. 0=all good, 1=can't in
+terpolate, 2=can interpo but don't use the value.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="grid_close_states2"></A>
+<br>
+<div class=routine>
+<em class=call> call grid_close_states2(o_loc,lons,lats,nlon,nlat,radius,num,cl
+ose_lon_ind,close_lat_ind,close_dist) </em>
+<pre>
+type(location_type), intent(in)                    :: <em class=code>o_loc</em>
+real(r8), dimension(:), intent(in)                 :: <em class=code>lons</em>
+real(r8), dimension(:), intent(in)                 :: <em class=code>lats</em>
+integer, intent(in)                                :: <em class=code>nlon</em>
+integer, intent(in)                                :: <em class=code>nlat</em>
+real(r8), intent(in)                               :: <em class=code>radius</em
+>
+integer, intent(inout)                             :: <em class=code>num</em>
+integer, dimension(:), intent(inout)               :: <em class=code>close_lon_
+ind</em>
+integer, allocatable, dimension(:), intent(inout)  :: <em class=code>close_lat_
+ind</em>
+real(r8), allocatable, dimension(:), intent(inout) :: <em class=code>close_dist
+</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Finds close state points from a particular grid; Just uses horizontal
+distance by setting pressure of state location to same as observation.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>o_loc&nbsp;&nbsp;</em></TD>
+    <TD>Observation location.</TD></TR>
+<TR><TD valign=top><em class=code>lons&nbsp;&nbsp;</em></TD>
+    <TD>Values of model longitudes.</TD></TR>
+<TR><TD valign=top><em class=code>lats&nbsp;&nbsp;</em></TD>
+    <TD>Values of model latitudes</TD></TR>
+<TR><TD valign=top><em class=code>nlon&nbsp;&nbsp;</em></TD>
+    <TD>Number of model longitudes.</TD></TR>
+<TR><TD valign=top><em class=code>nlat&nbsp;&nbsp;</em></TD>
+    <TD>Number of model latitudes</TD></TR>
+<TR><TD valign=top><em class=code>radius&nbsp;&nbsp;</em></TD>
+    <TD>Distance within which a model point is considered to be close to the ob
+servation.</TD></TR>
+<TR><TD valign=top><em class=code>num&nbsp;&nbsp;</em></TD>
+    <TD>Number of model points within radius of o_loc.</TD></TR>
+<TR><TD valign=top><em class=code>close_lon_ind&nbsp;&nbsp;</em></TD>
+    <TD>Indices of the longitudes of the close points.</TD></TR>
+<TR><TD valign=top><em class=code>close_lat_ind&nbsp;&nbsp;</em></TD>
+    <TD>Indices of the latitudes of the close points.</TD></TR>
+<TR><TD valign=top><em class=code>close_dist&nbsp;&nbsp;</em></TD>
+    <TD>Distances of the close points from o_loc.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="lon_search"></A>
+<br>
+<div class=routine>
+<em class=call> call lon_search(glat,glev,blon_ind,o_loc,radius,lons,close_lon_
+ind,close_dist,num) </em>
+<pre>
+real(r8), intent(in)                             :: <em class=code>glat</em>
+real(r8), intent(in)                             :: <em class=code>glev</em>
+integer, intent(in)                              :: <em class=code>blon_ind</em
+>
+type(location_type), intent(in)                  :: <em class=code>o_loc</em>
+real(r8), intent(in)                             :: <em class=code>radius</em>
+real(r8), allocatable, dimension(:), intent(in)  :: <em class=code>lons</em>
+integer, allocatable, dimension(:), intent(out)  :: <em class=code>close_lon_in
+d</em>
+real(r8), allocatable, dimension(:), intent(out) :: <em class=code>close_dist</em>
+integer, intent(out)                             :: <em class=code>num</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given an observation location and radius and a latitude row from a grid,
+searches to find all longitude points in this row that are within radius
+of the observation location and returns their latitude index, longitude
+index, and the distance between them and the observation.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>glat&nbsp;&nbsp;</em></TD>
+    <TD>The latitude to search for closeness to o_loc.</TD></TR>
+<TR><TD valign=top><em class=code>glev&nbsp;&nbsp;</em></TD>
+    <TD>The level at which to search for closeness to o_loc.  Currently unused.
+</TD></TR>
+<TR><TD valign=top><em class=code>blon_ind&nbsp;&nbsp;</em></TD>
+    <TD>Longitude closest to o_loc.</TD></TR>
+<TR><TD valign=top><em class=code>o_loc&nbsp;&nbsp;</em></TD>
+    <TD>The location of the observation.</TD></TR>
+<TR><TD valign=top><em class=code>radius&nbsp;&nbsp;</em></TD>
+    <TD>The distance within which a model point is considered close to o_loc.</
+TD></TR>
+<TR><TD valign=top><em class=code>lons&nbsp;&nbsp;</em></TD>
+    <TD>Values of the model grid longitudes.</TD></TR>
+<TR><TD valign=top><em class=code>close_lon_ind&nbsp;&nbsp;</em></TD>
+    <TD>Longitudes of the model points which are close to o_loc.</TD></TR>
+<TR><TD valign=top><em class=code>close_dist&nbsp;&nbsp;</em></TD>
+    <TD>Distances of the close model points from o_loc.</TD></TR>
+<TR><TD valign=top><em class=code>num&nbsp;&nbsp;</em></TD>
+    <TD>Number of model points at this latitude which are close to o_loc.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="get_closest_lat_index"></A>
+<br>
+<div class=routine>
+<em class=call> call get_closest_lat_index(o_lat,lats,nlat) </em>
+<pre>
+real(r8), intent(in)               :: <em class=code>o_lat</em>
+real(r8), dimension(:), intent(in) :: <em class=code>lats</em>
+integer, intent(in)                :: <em class=code>nlat</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Finds the latitude of the grid point closest to the observation.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>o_lat&nbsp;&nbsp;</em></TD>
+    <TD>Latitude of the observation.</TD></TR>
+<TR><TD valign=top><em class=code>lats&nbsp;&nbsp;</em></TD>
+    <TD>Model grid latitudes.</TD></TR>
+<TR><TD valign=top><em class=code>nlat&nbsp;&nbsp;</em></TD>
+    <TD>Number of model grid latitudes.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="get_closest_lon_index"></A>
+<br>
+<div class=routine>
+<em class=call> call get_closest_lon_index(o_lon,lons,nlon) </em>
+<pre>
+real(r8), intent(in)               :: <em class=code>o_lon</em>
+real(r8), dimension(:), intent(in) :: <em class=code>lons</em>
+integer, intent(in)                :: <em class=code>nlon</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Finds the longitude of the grid point closest to the observation.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>o_lon&nbsp;&nbsp;</em></TD>
+    <TD>Longitude of the observation.</TD></TR>
+<TR><TD valign=top><em class=code>lons&nbsp;&nbsp;</em></TD>
+    <TD>Longitudes of the CAM grid.</TD></TR>
+<TR><TD valign=top><em class=code>nlon&nbsp;&nbsp;</em></TD>
+    <TD>Number of longitudes of the CAM grid.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="order_state_fields"></A>
+<br>
+<div class=routine>
+<em class=call> call order_state_fields(cflds,nflds) </em>
+<pre>
+character, dimension(:), intent(out) :: <em class=code>cflds</em>
+integer, intent(in)                  :: <em class=code>nflds</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Fills cflds with state_names for use in I/O of caminput.nc
+Also assigns field TYPE_ variables for use by get_state_meta_data,
+and other routines.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>cflds&nbsp;&nbsp;</em></TD>
+    <TD>Master list of CAM fields to be incorporated in the DART state vector.</TD></TR>
+<TR><TD valign=top><em class=code>nflds&nbsp;&nbsp;</em></TD>
+    <TD>Number of CAM fields in the state vector.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="size_coord"></A>
+<br>
+<div class=routine>
+<em class=call> call size_coord(coord_3d,coord_2d,coord_order) </em>
+<pre>
+integer, dimension(:), intent(out) :: <em class=code>coord_3d</em>
+integer, dimension(:), intent(out) :: <em class=code>coord_2d</em>
+integer, intent(out)               :: <em class=code>coord_order</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Figure out the order of the coordinates (lon, lat, lev) for the 3-D fields
+on the CAM initial file, based on the CAM version from model_mod.nml, 
+which has form #.#[.#[.#]]  The order changed from (lon,lev,lat) to (lon,lat,lev)
+around CAM3.0.3.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>coord_3d&nbsp;&nbsp;</em></TD>
+    <TD>The order of the coordinates for 3-D fields on the CAM initial file for
+ this version of CAM.</TD></TR>
+<TR><TD valign=top><em class=code>coord_2d&nbsp;&nbsp;</em></TD>
+    <TD>Similarly for 2-D fields.</TD></TR>
+<TR><TD valign=top><em class=code>coord_order&nbsp;&nbsp;</em></TD>
+    <TD>Flag saying whether the coordinate orders are for pre- or post- 
+        CAM3.0.3, when the levs and lats were exchanged.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="obs_field_location"></A>
+<br>
+<div class=routine>
+<em class=call> call obs_field_location(obs_loc_in_sv) </em>
+<pre>
+integer, dimension(:), intent(out) :: <em class=code>obs_loc_in_sv </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Makes an array of 'locations within the state vector' of  all the available 
+obs kinds that come from obs_kind_mod.
+The obs kind that's needed will be the index into this array;
+the corresponding array value will be the position of that field 
+(not individual variable)
+within the state vector according to state_names_Xd.
+There will be lots of empty array elements, since KIND_x has a lot of "missing" values.
+This subroutine will be called from static_init_model, so it will not have to be
+recomputed for every obs.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>obs_loc_in_sv&nbsp;&nbsp;</em></TD>
+    <TD>Array of locations of obs *fields* (not individual variables) within th
+e state vector.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="model_heights"></A>
+<br>
+<div class=routine>
+   <em class=call> call model_heights( x,lon_index,lat_index,model_h,istatus) </em>
+<pre>
+real(r8), dimension(:), intent(in)              :: <em class=code>x</em>
+integer, intent(in)                             :: <em class=code>lon_index</em>
+integer, intent(in)                             :: <em class=code>lat_index</em>
+real(r8), intent(out)                           :: <em class=code>model_h</em>
+integer, intent(out)                            :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+This routine calculates geometrical height (m) at mid-layers of the CAM model
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>x&nbsp;&nbsp;</em></TD>
+    <TD>DART state vector.</TD></TR>
+<TR><TD valign=top><em class=code>lon_index&nbsp;&nbsp;</em></TD>
+    <TD>Index of longitude of this val.</TD></TR>
+<TR><TD valign=top><em class=code>lat_index&nbsp;&nbsp;</em></TD>
+    <TD>Index of latitude of this val.</TD></TR>
+<TR><TD valign=top><em class=code>model_h&nbsp;&nbsp;</em></TD>
+    <TD>geometrical height at midlayer (m).</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="dcz2"></A>
+<br>
+<div class=routine>
+<em class=call> call dcz2(ps, phis0, tv, hprb, hyba, hybb, kmax, idim, &amp;
+       imax, pmln, hypdln, hyalph, pterm, z2) </em>
+<pre>
+real(r8), dimension(idim),        intent(in)  :: <em class=code>ps</em>
+real(r8), dimension(idim),        intent(in)  :: <em class=code>phis0</em>
+real(r8), dimension(idim,kmax),   intent(in)  :: <em class=code>tv</em>
+real(r8),                         intent(in)  :: <em class=code>hprb</em>
+real(r8), dimension(2,kmax+1),    intent(in)  :: <em class=code>hyba</em>
+real(r8), dimension(2,kmax+1),    intent(in)  :: <em class=code>hybb</em>
+integer,                          intent(in)  :: <em class=code>kmax</em>
+integer,                          intent(in)  :: <em class=code>idim</em>
+integer,                          intent(in)  :: <em class=code>imax</em>
+real(r8), dimension(idim,kmax+1), intent(in)  :: <em class=code>pmln</em>
+real(r8), dimension(idim,kmax),   intent(in)  :: <em class=code>hypdln</em>
+real(r8), dimension(idim,kmax),   intent(in)  :: <em class=code>hyalph</em>
+real(r8), dimension(idim,kmax),   intent(in)  :: <em class=code>pterm</em>
+real(r8), dimension(idim,kmax),   intent(out) :: <em class=code>z2</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+To compute geopotential height for a CCM2 hybrid coordinate
+vertical slice.  Since the vertical integration matrix is a
+function of latitude and longitude, it is not explicitly
+computed as for sigma coordinates.  The integration algorithm
+is derived from Boville's mods in the ibm file hybrid 1mods
+(6/17/88).  All vertical slice arrays are oriented top to
+bottom as in CCM2.  This field is on full model levels (aka
+"midpoints") not half levels.  See code for more history.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ps&nbsp;&nbsp;</em></TD>
+   <TD>Surface pressure (pascals).</TD></TR>
+<TR><TD valign=top><em class=code>phis0&nbsp;&nbsp;</em></TD>
+<TD> Surface geoptential.</TD></TR>
+<TR><TD valign=top><em class=code>tv&nbsp;&nbsp;</em></TD>
+   <TD>Virtual temperature, top to bottom.</TD></TR>
+<TR><TD valign=top><em class=code>hprb&nbsp;&nbsp;</em></TD>
+   <TD>Hybrid base pressure (pascals).</TD></TR>
+<TR><TD valign=top><em class=code>hyba&nbsp;&nbsp;</em></TD>
+   <TD>Hybrid coord coeffs for base pressure.</TD></TR>
+<TR><TD valign=top><em class=code>hybb&nbsp;&nbsp;</em></TD>
+   <TD>Hybrid coord coeffs for surf pressure (in same format as hyba).</TD></TR>
+<TR><TD valign=top><em class=code>kmax&nbsp;&nbsp;</em></TD>
+   <TD>Number of vertical levels.</TD></TR>
+<TR><TD valign=top><em class=code>idim&nbsp;&nbsp;</em></TD>
+   <TD>Longitude dimension.</TD></TR>
+<TR><TD valign=top><em class=code>imax&nbsp;&nbsp;</em></TD>
+   <TD>Num of longitude points to compute.</TD></TR>
+<TR><TD valign=top><em class=code>pmln&nbsp;&nbsp;</em></TD>
+   <TD>Vertical slice scratch space used to hold logs of midpoint pressures.</TD></TR>
+<TR><TD valign=top><em class=code>hpdln&nbsp;&nbsp;</em></TD>
+   <TD>Vertical slice scratch space used to hold log p layer thickness.</TD></TR>
+<TR><TD valign=top><em class=code>hyalph&nbsp;&nbsp;</em></TD>
+   <TD>Vertical slice scratch space used to hold distance from interface to level during 
+       vertical integration.</TD></TR>
+<TR><TD valign=top><em class=code>pterm&nbsp;&nbsp;</em></TD>
+   <TD>Vertical scratch space.</TD></TR>
+<TR><TD valign=top><em class=code>z2&nbsp;&nbsp;</em></TD>
+   <TD>Geopotential height, top to bottom.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+
+<A NAME="gph2gmh"></A>
+<br>
+<div class=routine>
+<em class=call> gph2gmh = gph2gmh(h, lat) </em>
+<pre>
+real(r8), intent(out)                           :: <em class=code>gph2gmh</em>
+real(r8), intent(in)                            :: <em class=code>h</em>
+real(r8), intent(in)                            :: <em class=code>lat</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Convert a geopotential altitude to mean sea level altitude.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gph2gmh&nbsp;&nbsp;</em></TD>
+    <TD>MSL altitude, in km.</TD></TR>
+<TR><TD valign=top><em class=code>h&nbsp;&nbsp;</em></TD>
+    <TD>geopotential altitude (in km).</TD></TR>
+<TR><TD valign=top><em class=code>lat&nbsp;&nbsp;</em></TD>
+    <TD>latitude in degrees.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+<A NAME="gravity"></A>
+<br>
+<div class=routine>
+<em class=call> call gravity (xlat,alt,galt) </em>
+<pre>
+real(r8), intent(out)                           :: <em class=code>galt</em>
+real(r8), intent(in)                            :: <em class=code>xlat</em>
+real(r8), intent(in)                            :: <em class=code>alt</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+This subroutine computes the Earth's gravity at any altitude
+and latitude.  The model assumes the Earth is an oblate 
+spheriod rotating at a the Earth's spin rate.  The model
+was taken from "Geophysical Geodesy, Kurt Lambeck, 1988".
+Compute acceleration due to the Earth's gravity at any latitude/altitude
+author     Bill Schreiner   5/95
+
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>galt&nbsp;&nbsp;</em></TD>
+    <TD>gravity at the given lat and alt, cm/sec.</TD></TR>
+<TR><TD valign=top><em class=code>xlat&nbsp;&nbsp;</em></TD>
+    <TD>latitude in radians.</TD></TR>
+<TR><TD valign=top><em class=code>alt&nbsp;&nbsp;</em></TD>
+    <TD>altitude above the reference ellipsiod, km.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
 <HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Kevin Raeder </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>
