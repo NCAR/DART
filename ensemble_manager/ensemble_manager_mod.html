@@ -1,65 +1,28 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module ensemble_manager_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>MODULE ensemble_manager_mod</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 Manages storage and a number of operations for multiple copies of a vector.
@@ -76,13 +39,12 @@ each process stores all of the state variables for a subset of copies. The
 ensemble manager is also used to manage ensembles of observation priors
 and quality control and ensembles of forward observation operator error 
 status.
-
 </P>
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -94,11 +56,16 @@ mpi_utilities_mod
 </PRE>
 
 <!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
 
 <A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
 <TR><TD><em class=call>use ensemble_manager_mod, only : </em></TD>
@@ -123,32 +90,24 @@ mpi_utilities_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#write_ensemble_restart">write_ensemble_restart</A></TD></TR>
 </TABLE>
 
-<H3 class=indent1>NOTES</H3>
-
 <P>
-Optional namelist interface <em class=code>&#38;ensemble_manager_nml</em> 
+Optional namelist interface <em class=code>&amp;ensemble_manager_nml</em> 
 may be read from file <em class=file>input.nml</em>.
 </P>
 
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2>PUBLIC COMPONENTS</H2>
 <P>
+   A note about documentation style. 
+   Optional arguments are enclosed in brackets 
+   <em class=optionalcode>[like this]</em>.
 </P>
 
-<!--==================================================================-->
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
 
 <!--kdr no private in code -->
 <A NAME="ensemble_type"></A>
-<BR><HR><BR>
-<div class=type><pre>
+<BR>
+<div class=type>
+<pre>
 <em class=call>type ensemble_type</em>
    !!! private
    integer :: num_copies
@@ -162,9 +121,11 @@ may be read from file <em class=file>input.nml</em>.
    type(time_type), pointer :: time(:)
    integer :: distribution_type
 end type ensemble_type
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Provides a handle for an ensemble that manages copies of a vector. For efficiency,
@@ -203,342 +164,423 @@ used throughout DART.
          the layout of different copies and variables in storage.  </TD></TR>
 </TABLE>
 
-<!--=================================================================-->
+</div>
+<br>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="init_ensemble_manager"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call init_ensemble_manager(ens_handle, num_copies, 
-    num_vars, distribution_type_in) </em>
- <pre>
- type(ensemble_type), intent(out) :: <em class=code>ens_handle</em>
- integer, intent(in)              :: <em class=code>num_copies</em>
- integer, intent(in)              :: <em class=code>num_vars</em>
- integer, optional, intent(in)    :: <em class=code>distribution_type_in</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Initializes an instance of an ensemble. Storage is allocated and the
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_ensemble_manager"></A>
+<br>
+<div class=routine>
+<em class=call> call init_ensemble_manager(ens_handle, num_copies, 
+   num_vars <em class=optionalcode>[,&nbsp;distribution_type_in]</em>) </em>
+<pre>
+type(ensemble_type), intent(out) :: <em class=code>ens_handle</em>
+integer, intent(in)              :: <em class=code>num_copies</em>
+integer, intent(in)              :: <em class=code>num_vars</em>
+integer, optional, intent(in)    :: <em class=optionalcode>distribution_type_in</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Initializes an instance of an ensemble. Storage is allocated and the
 size descriptions in the ensemble_type are initialized.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle for the ensemble being initialized</TD></TR>
- <TR><TD valign=top><em class=code>num_copies&nbsp; &nbsp; </em></TD>
-     <TD>Number of copies of vector.</TD></TR>
- <TR><TD valign=top><em class=code>num_vars&nbsp; &nbsp; </em></TD>
-     <TD>Number of variables in the vector.</TD></TR>
- <TR><TD valign=top><em class=code>distribution_type_in&nbsp; &nbsp; </em></TD>
-     <TD>Controls layout of storage on pe's. Currently only option 1 is supported.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_var_owner_index"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_var_owner_index(var_number, owner, owners_index) </em>
- <pre>
- integer, intent(in)  :: <em class=code>var_number</em>
- integer, intent(out) :: <em class=code>owner</em>
- integer, intent(out) :: <em class=code>owners_index</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Given the global index of a variable in the vector, returns the process that
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle</em></TD>
+    <TD>Handle for the ensemble being initialized</TD></TR>
+<TR><TD valign=top><em class=code>num_copies</em></TD>
+    <TD>Number of copies of vector.</TD></TR>
+<TR><TD valign=top><em class=code>num_vars</em></TD>
+    <TD>Number of variables in the vector.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>distribution_type_in&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Controls layout of storage on pe's. Currently only option 1 is supported.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_var_owner_index"></A>
+<br>
+<div class=routine>
+<em class=call> call get_var_owner_index(var_number, owner, owners_index) </em>
+<pre>
+integer, intent(in)  :: <em class=code>var_number</em>
+integer, intent(out) :: <em class=code>owner</em>
+integer, intent(out) :: <em class=code>owners_index</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given the global index of a variable in the vector, returns the process that
 stores this variable when all copies of a subset of variables are stored and
 the local storage index for this variable on that process.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var_number&nbsp; &nbsp; </em></TD>
-     <TD>Global index of a variable in the vector from an ensemble.</TD></TR>
- <TR><TD valign=top><em class=code>owner&nbsp; &nbsp; </em></TD>
-     <TD>Process (0 to num_processes) that stores this variable when each has all 
-          copies of subset of variables.</TD></TR>
- <TR><TD valign=top><em class=code>owners_index&nbsp; &nbsp; </em></TD>
-     <TD>Local storage index for this variable on the owning process.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var_number</em></TD>
+    <TD>Global index of a variable in the vector from an ensemble.</TD></TR>
+<TR><TD valign=top><em class=code>owner</em></TD>
+    <TD>Process (0 to num_processes) that stores this variable when each has all 
+         copies of subset of variables.</TD></TR>
+<TR><TD valign=top><em class=code>owners_index&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Local storage index for this variable on the owning process.</TD></TR>
+</TABLE>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="duplicate_ens"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call duplicate_ens(ens1, ens2, duplicate_time) </em>
- <pre>
- type(ensemble_type), intent(in)    :: <em class=code>ens1</em>
- type(ensemble_type), intent(inout) :: <em class=code>ens2</em>
- logical, intent(in)                :: <em class=code>duplicate_time</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Copies the contents of ens1 into ens2. If the num_copies and num_vars are
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="duplicate_ens"></A>
+<br>
+<div class=routine>
+<em class=call> call duplicate_ens(ens1, ens2, duplicate_time) </em>
+<pre>
+type(ensemble_type), intent(in)    :: <em class=code>ens1</em>
+type(ensemble_type), intent(inout) :: <em class=code>ens2</em>
+logical, intent(in)                :: <em class=code>duplicate_time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Copies the contents of ens1 into ens2. If the num_copies and num_vars are
 not consistent or if the distribution_type is not consistent, fails with an
 error. If duplicate_time is true, the times from ens1 are copied over the
 times of ens2.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens1&nbsp; &nbsp; </em></TD>
-     <TD>Ensemble handle of ensemble to be copies into ens2.</TD></TR>
- <TR><TD valign=top><em class=code>ens2&nbsp; &nbsp; </em></TD>
-     <TD>Ensemble handle of ensemble into which ens1 is copied.</TD></TR>
- <TR><TD valign=top><em class=code>duplicate_time&nbsp; &nbsp; </em></TD>
-     <TD>If true, copy the times from ens1 into ens2, else leave ens2 times unchanged.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
- <A NAME="get_my_num_copies"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = get_my_num_copies(ens_handle) </em>
- <pre>
- integer, intent(out)            :: <em class=code>get_my_num_copies</em>
- type(ensemble_type), intent(in) :: <em class=code>ens_handle</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Returns number of copies stored by this process when storing all
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TD valign=top><em class=code>ens1</em></TD>
+    <TD>Ensemble handle of ensemble to be copies into ens2.</TD></TR>
+<TR><TD valign=top><em class=code>ens2</em></TD>
+    <TD>Ensemble handle of ensemble into which ens1 is copied.</TD></TR>
+<TR><TD valign=top><em class=code>duplicate_time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>If true, copy the times from ens1 into ens2, else leave ens2 times unchanged.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_my_num_copies"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_my_num_copies(ens_handle) </em>
+<pre>
+integer, intent(out)            :: <em class=code>get_my_num_copies</em>
+type(ensemble_type), intent(in) :: <em class=code>ens_handle</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns number of copies stored by this process when storing all
 variables for a subset of copies.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Returns the number of copies stored by this process when storing all 
-         variables for a subset of copies. </TD></TR>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle for an ensemble.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
- <A NAME="get_my_num_vars"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = get_my_num_vars(ens_handle) </em>
- <pre>
- integer, intent(out)            :: <em class=code>get_my_num_vars</em>
- type(ensemble_type), intent(in) :: <em class=code>ens_handle</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Returns number of variables stored by this process when storing all
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Returns the number of copies stored by this process when storing all 
+        variables for a subset of copies. </TD></TR>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle for an ensemble.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_my_num_vars"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_my_num_vars(ens_handle) </em>
+<pre>
+integer, intent(out)            :: <em class=code>get_my_num_vars</em>
+type(ensemble_type), intent(in) :: <em class=code>ens_handle</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns number of variables stored by this process when storing all
 copies of a subset of variables.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Returns the number of vars stored by this process when storing all 
- copies of a subset of variables. </TD></TR>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle for an ensemble.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Returns the number of vars stored by this process when storing all 
+copies of a subset of variables. </TD></TR>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle for an ensemble.</TD></TR>
+</TABLE>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_my_copies"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_my_copies(ens_handle, copies) </em>
- <pre>
- type(ensemble_type), intent(in) :: <em class=code>ens_handle</em>
- integer, intent(out)            :: <em class=code>copies</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_my_copies"></A>
+<br>
+<div class=routine>
+<em class=call> call get_my_copies(ens_handle, copies) </em>
+<pre>
+type(ensemble_type), intent(in) :: <em class=code>ens_handle</em>
+integer, intent(out)            :: <em class=code>copies</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns a list of all copies stored on this process when storing subset of copies
 of all variables.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle for an ensemble.</TD></TR>
- <TR><TD valign=top><em class=code>copies&nbsp; &nbsp; </em></TD>
-     <TD>List of all copies stored by this process when storing subset of copies
-  of all variables.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_my_vars"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_my_vars(ens_handle, copies) </em>
- <pre>
- type(ensemble_type), intent(in) :: <em class=code>ens_handle</em>
- integer, intent(out)            :: <em class=code>vars</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle for an ensemble.</TD></TR>
+<TR><TD valign=top><em class=code>copies&nbsp;&nbsp;</em></TD>
+    <TD>List of all copies stored by this process when storing subset of copies
+ of all variables.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_my_vars"></A>
+<br>
+<div class=routine>
+<em class=call> call get_my_vars(ens_handle, copies) </em>
+<pre>
+type(ensemble_type), intent(in) :: <em class=code>ens_handle</em>
+integer, intent(out)            :: <em class=code>vars</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns a list of all variables stored on this process when storing all copies
 of a subset of variables.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle for an ensemble.</TD></TR>
- <TR><TD valign=top><em class=code>vars&nbsp; &nbsp; </em></TD>
-     <TD>List of all variables stored on this process when storing all copies
-  of a subset of variables.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle for an ensemble.</TD></TR>
+<TR><TD valign=top><em class=code>vars&nbsp;&nbsp;</em></TD>
+    <TD>List of all variables stored on this process when storing all copies
+ of a subset of variables.</TD></TR>
+</TABLE>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="compute_copy_mean"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call compute_copy_mean(ens_handle,  start_copy, end_copy, mean_copy) </em>
- <pre>
- type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
- integer, intent(in)                :: <em class=code>start_copy</em>
- integer, intent(in)                :: <em class=code>end_copy</em>
- integer, intent(in)                :: <em class=code>mean_copy</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Computes the mean of a contiguous subset of copies
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="compute_copy_mean"></A>
+<br>
+<div class=routine>
+<em class=call> call compute_copy_mean(ens_handle,  start_copy, end_copy, mean_copy) </em>
+<pre>
+type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
+integer, intent(in)                :: <em class=code>start_copy</em>
+integer, intent(in)                :: <em class=code>end_copy</em>
+integer, intent(in)                :: <em class=code>mean_copy</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Computes the mean of a contiguous subset of copies
 starting with global index start_copy and ending with global index ens_copy.
 Mean is written to index mean_copy.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle for an ensemble.</TD></TR>
- <TR><TD valign=top><em class=code>start_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of first copy in mean and sd computation.</TD></TR>
- <TR><TD valign=top><em class=code>end_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of last copy in mean and sd computation.</TD></TR>
- <TR><TD valign=top><em class=code>mean_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of copy into which mean is written.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="compute_copy_mean_sd"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call compute_copy_mean_sd(ens_handle, start_copy, end_copy, mean_copy, sd_copy) </em>
- <pre>
- type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
- integer, intent(in)                :: <em class=code>start_copy</em>
- integer, intent(in)                :: <em class=code>end_copy</em>
- integer, intent(in)                :: <em class=code>mean_copy</em>
- integer, intent(in)                :: <em class=code>sd_copy</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Computes the mean and standard deviation of a contiguous subset of copies
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle for an ensemble.</TD></TR>
+<TR><TD valign=top><em class=code>start_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of first copy in mean and sd computation.</TD></TR>
+<TR><TD valign=top><em class=code>end_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of last copy in mean and sd computation.</TD></TR>
+<TR><TD valign=top><em class=code>mean_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of copy into which mean is written.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="compute_copy_mean_sd"></A>
+<br>
+<div class=routine>
+<em class=call> call compute_copy_mean_sd(ens_handle, start_copy, end_copy, mean_copy, sd_copy) </em>
+<pre>
+type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
+integer, intent(in)                :: <em class=code>start_copy</em>
+integer, intent(in)                :: <em class=code>end_copy</em>
+integer, intent(in)                :: <em class=code>mean_copy</em>
+integer, intent(in)                :: <em class=code>sd_copy</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Computes the mean and standard deviation of a contiguous subset of copies
 starting with global index start_copy and ending with global index ens_copy.
 Mean is written to index mean_copy and standard deviation to index sd_copy.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle for an ensemble.</TD></TR>
- <TR><TD valign=top><em class=code>start_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of first copy in mean and sd computation.</TD></TR>
- <TR><TD valign=top><em class=code>end_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of last copy in mean and sd computation.</TD></TR>
- <TR><TD valign=top><em class=code>mean_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of copy into which mean is written.</TD></TR>
- <TR><TD valign=top><em class=code>sd_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of copy into which standard deviation is written.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="compute_copy_mean_var"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call compute_copy_mean_var(ens_handle, start_copy, end_copy, mean_copy, var_copy) </em>
- <pre>
- type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
- integer, intent(in)                :: <em class=code>start_copy</em>
- integer, intent(in)                :: <em class=code>end_copy</em>
- integer, intent(in)                :: <em class=code>mean_copy</em>
- integer, intent(in)                :: <em class=code>var_copy</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Computes the mean and variance of a contiguous subset of copies
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle for an ensemble.</TD></TR>
+<TR><TD valign=top><em class=code>start_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of first copy in mean and sd computation.</TD></TR>
+<TR><TD valign=top><em class=code>end_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of last copy in mean and sd computation.</TD></TR>
+<TR><TD valign=top><em class=code>mean_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of copy into which mean is written.</TD></TR>
+<TR><TD valign=top><em class=code>sd_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of copy into which standard deviation is written.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="compute_copy_mean_var"></A>
+<br>
+<div class=routine>
+<em class=call> call compute_copy_mean_var(ens_handle, start_copy, end_copy, mean_copy, var_copy) </em>
+<pre>
+type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
+integer, intent(in)                :: <em class=code>start_copy</em>
+integer, intent(in)                :: <em class=code>end_copy</em>
+integer, intent(in)                :: <em class=code>mean_copy</em>
+integer, intent(in)                :: <em class=code>var_copy</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Computes the mean and variance of a contiguous subset of copies
 starting with global index start_copy and ending with global index ens_copy.
 Mean is written to index mean_copy and variance to index var_copy.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle for an ensemble.</TD></TR>
- <TR><TD valign=top><em class=code>start_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of first copy in mean and sd computation.</TD></TR>
- <TR><TD valign=top><em class=code>end_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of last copy in mean and sd computation.</TD></TR>
- <TR><TD valign=top><em class=code>mean_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of copy into which mean is written.</TD></TR>
- <TR><TD valign=top><em class=code>var_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of copy into which variance is written.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle for an ensemble.</TD></TR>
+<TR><TD valign=top><em class=code>start_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of first copy in mean and sd computation.</TD></TR>
+<TR><TD valign=top><em class=code>end_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of last copy in mean and sd computation.</TD></TR>
+<TR><TD valign=top><em class=code>mean_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of copy into which mean is written.</TD></TR>
+<TR><TD valign=top><em class=code>var_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of copy into which variance is written.</TD></TR>
+</TABLE>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_copy"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_copy(receiving_pe, ens_handle, copy, vars, mtime) </em>
- <pre>
- integer, intent(in)                    :: <em class=code>receiving_pe</em>
- type(ensemble_type), intent(in)        :: <em class=code>ens_handle</em>
- integer, intent(in)                    :: <em class=code>copy</em>
- real(r8), dimension(:), intent(out)    :: <em class=code>vars</em>
- type(time_type), optional, intent(out) :: <em class=code>mtime</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_copy"></A>
+<br>
+<div class=routine>
+<em class=call> call get_copy(receiving_pe, ens_handle, copy, vars
+<em class=optionalcode>[,&nbsp;mtime]</em>) </em>
+<pre>
+integer, intent(in)                    :: <em class=code>receiving_pe</em>
+type(ensemble_type), intent(in)        :: <em class=code>ens_handle</em>
+integer, intent(in)                    :: <em class=code>copy</em>
+real(r8), dimension(:), intent(out)    :: <em class=code>vars</em>
+type(time_type), optional, intent(out) :: <em class=optionalcode>mtime</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Retreives a copy of the state vector, indexed by the global index copy. The
 process that is to receive the copy is receiving_pe and the copy is returned
 in the one dimensional array vars. The time of the copy is also returned if
 mtime is present. This is generally used for operations, like IO, that require
 a single processor to do things with the entire state vector.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>receiving_pe&nbsp; &nbsp; </em></TD>
-     <TD>This process ends up with the requested copy of the state 
-          vector.</TD></TR>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle for ensemble.</TD></TR>
- <TR><TD valign=top><em class=code>copy&nbsp; &nbsp; </em></TD>
-     <TD>The global index of the copy of the state vector that is to be 
-          retreived.</TD></TR>
- <TR><TD valign=top><em class=code>vars&nbsp; &nbsp; </em></TD>
-     <TD>One dimensional array in which the requested copy of the state vector 
-          is returned.</TD></TR>
- <TR><TD valign=top><em class=code>mtime&nbsp; &nbsp; </em></TD>
-     <TD>If present returns the time of the requested copy.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="put_copy"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call put_copy(sending_pe, ens_handle, copy, vars, mtime) </em>
- <pre>
- integer, intent(in)                    :: <em class=code>sending_pe</em>
- type(ensemble_type), intent(inout)     :: <em class=code>ens_handle</em>
- integer, intent(in)                    :: <em class=code>copy</em>
- real(r8), dimension(:), intent(in)     :: <em class=code>vars</em>
- type(time_type), optional, intent(in)  :: <em class=code>mtime</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>receiving_pe&nbsp;&nbsp;</em></TD>
+    <TD>This process ends up with the requested copy of the state 
+         vector.</TD></TR>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle for ensemble.</TD></TR>
+<TR><TD valign=top><em class=code>copy&nbsp;&nbsp;</em></TD>
+    <TD>The global index of the copy of the state vector that is to be 
+         retreived.</TD></TR>
+<TR><TD valign=top><em class=code>vars&nbsp;&nbsp;</em></TD>
+    <TD>One dimensional array in which the requested copy of the state vector 
+         is returned.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>mtime&nbsp;&nbsp;</em></TD>
+    <TD>If present returns the time of the requested copy.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="put_copy"></A>
+<br>
+<div class=routine>
+<em class=call> call put_copy(sending_pe, ens_handle, copy, vars
+<em class=optionalcode>[,&nbsp;mtime]</em>) </em>
+<pre>
+integer, intent(in)                    :: <em class=code>sending_pe</em>
+type(ensemble_type), intent(inout)     :: <em class=code>ens_handle</em>
+integer, intent(in)                    :: <em class=code>copy</em>
+real(r8), dimension(:), intent(in)     :: <em class=code>vars</em>
+type(time_type), optional, intent(in)  :: <em class=optionalcode>mtime</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Sends a state vector, in vars, from the given process to the process 
 storing the global index copy. 
 The time of the copy is also sent if mtime is present. 
@@ -546,88 +588,111 @@ This is generally used for operations, like IO, that require
 a single processor to do things with the entire state vector. For instance,
 if a single process reads in a state vector, it can be shipped to the storing
 process by this subroutine.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>sending_pe&nbsp; &nbsp; </em></TD>
-     <TD>This process sends the copy of the state vector.</TD></TR>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle for ensemble.</TD></TR>
- <TR><TD valign=top><em class=code>copy&nbsp; &nbsp; </em></TD>
-     <TD>The global index of the copy of the state vector that is to be sent. 
- </TD></TR>
- <TR><TD valign=top><em class=code>vars&nbsp; &nbsp; </em></TD>
-     <TD>One dimensional array in which the requested copy of the state vector 
-         is located.</TD></TR>
- <TR><TD valign=top><em class=code>mtime&nbsp; &nbsp; </em></TD>
-     <TD>If present send the time of the copy.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>sending_pe&nbsp;&nbsp;</em></TD>
+    <TD>This process sends the copy of the state vector.</TD></TR>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle for ensemble.</TD></TR>
+<TR><TD valign=top><em class=code>copy&nbsp;&nbsp;</em></TD>
+    <TD>The global index of the copy of the state vector that is to be sent. 
+</TD></TR>
+<TR><TD valign=top><em class=code>vars&nbsp;&nbsp;</em></TD>
+    <TD>One dimensional array in which the requested copy of the state vector 
+        is located.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>mtime&nbsp;&nbsp;</em></TD>
+    <TD>If present send the time of the copy.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="all_vars_to_all_copies"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call all_vars_to_all_copies(ens_handle) </em>
- <pre>
- type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<A NAME="all_vars_to_all_copies"></A>
+<br>
+<div class=routine>
+<em class=call> call all_vars_to_all_copies(ens_handle) </em>
+<pre>
+type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Transposes data from a representation in which each processor has a subset of
 copies of all variables to one in which each has all copies of a subset of
 variables. In the current implementation, storage is not released so both
 representations are always available. However, one representation may be
 current while the other is out of date.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>The handle of the ensemble being transposed.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="all_copies_to_all_vars"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call all_copies_to_all_vars(ens_handle) </em>
- <pre>
- type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>The handle of the ensemble being transposed.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="all_copies_to_all_vars"></A>
+<br>
+<div class=routine>
+<em class=call> call all_copies_to_all_vars(ens_handle) </em>
+<pre>
+type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Transposes data from a representation in which each processor has all copies
 of a subset of variables to one in which each has a subset of copies
 of all variables. In the current implementation, storage is not released so both
 representations are always available. However, one representation may be
 current while the other is out of date.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>The handle of the ensemble being transposed.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="read_ensemble_restart"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call read_ensemble_restart(ens_handle, start_copy, end_copy, 
-    start_from_restart, file_name, init_time, force_single_file) </em>
- <pre>
- type(ensemble_type), intent(inout)    :: <em class=code>ens_handle</em>
- integer, intent(in)                   :: <em class=code>start_copy</em>
- integer, intent(in)                   :: <em class=code>end_copy</em>
- logical, intent(in)                   :: <em class=code>start_from_restart</em>
- character(len=*), intent(in)          :: <em class=code>file_name</em>
- type(time_type), optional, intent(in) :: <em class=code>init_time</em>
- logical, optional, intent(in)         :: <em class=code>force_single_file</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>The handle of the ensemble being transposed.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="read_ensemble_restart"></A>
+<br>
+<div class=routine>
+<em class=call> call read_ensemble_restart(ens_handle, start_copy, end_copy, 
+   start_from_restart, file_name
+<em class=optionalcode>[,&nbsp;init_time]</em>
+<em class=optionalcode>[,&nbsp;force_single_file]</em>) </em>
+<pre>
+type(ensemble_type),       intent(inout) :: <em class=code>ens_handle</em>
+integer,                   intent(in)    :: <em class=code>start_copy</em>
+integer,                   intent(in)    :: <em class=code>end_copy</em>
+logical,                   intent(in)    :: <em class=code>start_from_restart</em>
+character(len=*),          intent(in)    :: <em class=code>file_name</em>
+type(time_type), optional, intent(in)    :: <em class=optionalcode>init_time</em>
+logical, optional,         intent(in)    :: <em class=optionalcode>force_single_file</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Read in a set of copies of a vector from file file_name. The copies read are
 place into global copies start_copy:end_copy in the ens_handle. All reads are
 done by process 0 in the current version and then shipped to the pe that
@@ -641,45 +706,51 @@ optional argument force_single_file forces the read to be from a single file
 if it is present and true. This is used for ensembles that contain the
 inflation values for state space inflation. If multiple files are to be read,
 the file names are generated by appending integers to the input file_name.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle of ensemble.</TD></TR>
- <TR><TD valign=top><em class=code>start_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of first of continguous set of copies to be read.</TD></TR>
- <TR><TD valign=top><em class=code>end_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of last of contiguous set of copies to be read, 
-        copies(start_copy:end_copy).</TD></TR>
- <TR><TD valign=top><em class=code>start_from_restart&nbsp; &nbsp; </em></TD>
-     <TD>If true, read all copies from file. If false, read one copy and perturb
-  to get required number.</TD></TR>
- <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
-     <TD>Name of file from which to read.</TD></TR>
- <TR><TD valign=top><em class=code>init_time&nbsp; &nbsp; </em></TD>
-     <TD>If present, set time of all copies read to this value.</TD></TR>
- <TR><TD valign=top><em class=code>force_single_file&nbsp; &nbsp; </em></TD>
-     <TD>If present and true, force the read to be from a single file which 
-       contains all copies.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle of ensemble.</TD></TR>
+<TR><TD valign=top><em class=code>start_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of first of continguous set of copies to be read.</TD></TR>
+<TR><TD valign=top><em class=code>end_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of last of contiguous set of copies to be read, 
+       copies(start_copy:end_copy).</TD></TR>
+<TR><TD valign=top><em class=code>start_from_restart&nbsp;&nbsp;</em></TD>
+    <TD>If true, read all copies from file. If false, read one copy and perturb
+ to get required number.</TD></TR>
+<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;</em></TD>
+    <TD>Name of file from which to read.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>init_time&nbsp;&nbsp;</em></TD>
+    <TD>If present, set time of all copies read to this value.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>force_single_file&nbsp;&nbsp;</em></TD>
+    <TD>If present and true, force the read to be from a single file which 
+      contains all copies.</TD></TR>
+</TABLE>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="write_ensemble_restart"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call write_ensemble_restart(ens_handle, file_name, start_copy, 
-  end_copy, force_single_file) </em>
- <pre>
- type(ensemble_type), intent(inout)    :: <em class=code>ens_handle</em>
- character(len=*), intent(in)          :: <em class=code>file_name</em>
- integer, intent(in)                   :: <em class=code>start_copy</em>
- integer, intent(in)                   :: <em class=code>end_copy</em>
- logical, optional, intent(in)         :: <em class=code>force_single_file</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="write_ensemble_restart"></A>
+<br>
+<div class=routine>
+<em class=call> call write_ensemble_restart(ens_handle, file_name, start_copy, 
+ end_copy <em class=optionalcode>[,&nbsp;force_single_file]</em>) </em>
+<pre>
+type(ensemble_type), intent(inout)    :: <em class=code>ens_handle</em>
+character(len=*), intent(in)          :: <em class=code>file_name</em>
+integer, intent(in)                   :: <em class=code>start_copy</em>
+integer, intent(in)                   :: <em class=code>end_copy</em>
+logical, optional, intent(in)         :: <em class=optionalcode>force_single_file</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Writes a set of copies of a vector to file file_name. The copies written are
 from global copies start_copy:end_copy in the ens_handle. 
 The write can be to a single file or to a different file for each copy. This
@@ -688,96 +759,111 @@ optional argument force_single_file forces the write to be to a single file
 if it is present and true. This is used for ensembles that contain the
 inflation values for state space inflation. If multiple files are to be written,
 the file names are generated by appending integers to the input file_name.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Handle of ensemble.</TD></TR>
- <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
-     <TD>Name of file from which to read.</TD></TR>
- <TR><TD valign=top><em class=code>start_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of first of continguous set of copies to be written.</TD></TR>
- <TR><TD valign=top><em class=code>end_copy&nbsp; &nbsp; </em></TD>
-     <TD>Global index of last of contiguous set of copies to be written, 
-           copies(start_copy:end_copy).</TD></TR>
- <TR><TD valign=top><em class=code>force_single_file&nbsp; &nbsp; </em></TD>
-     <TD>If present and true, force the write to be to a single file which 
-      contains all copies.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle of ensemble.</TD></TR>
+<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;</em></TD>
+    <TD>Name of file from which to read.</TD></TR>
+<TR><TD valign=top><em class=code>start_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of first of continguous set of copies to be written.</TD></TR>
+<TR><TD valign=top><em class=code>end_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of last of contiguous set of copies to be written, 
+          copies(start_copy:end_copy).</TD></TR>
+<TR><TD valign=top><em class=optionalcode>force_single_file&nbsp;&nbsp;</em></TD>
+    <TD>If present and true, force the write to be to a single file which 
+     contains all copies.</TD></TR>
+</TABLE>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="end_ensemble_manager"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call end_ensemble_manager(ens_handle) </em>
- <pre>
- type(ensemble_type), intent(in)          :: <em class=code>ens_handle</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<br>
+<div class=routine>
+<em class=call> call end_ensemble_manager(ens_handle) </em>
+<pre>
+type(ensemble_type), intent(in)          :: <em class=code>ens_handle</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Frees up storage associated with an ensemble.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Identifies ensemble</TD></TR>
- </TABLE>
- <BR>
+</P>
 
- <!--================================================================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Identifies ensemble</TD></TR>
+</TABLE>
 
+</div>
+<br>
 
- <!--============== DESCRIPTION OF A NAMELIST ========================-->
- <A NAME="Namelist"></A>
- <BR><HR><BR>
- <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&' and terminating with a slash '/'.
- <div class=namelist><pre>
- <em class=call>namelist / ensemble_manager_nml / </em>
- single_restart_file_in, single_restart_file_out, perturbation_amplitude
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
 
+<A NAME="Namelist"></A>
+<HR>
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that filenames that contain a '/' must be 
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+The namelist declaration (i.e. what follows) has a different syntax, naturally.
+</P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / ensemble_manager_nml / </em>
+   single_restart_file_in, single_restart_file_out, perturbation_amplitude
+</pre>
+</div>
 
+<div class=indent1>
+<!-- Description -->
 
- </pre></div>
- <H3 class=indent1>Discussion</H3>
- <P>
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
+</P>
 
- </em>
- </P>
- <P>This namelist is read in a file called <em class=file>input.nml</em>
- </P>
- <TABLE border=0 cellpadding=3 width=100%>
- <TR><TH align=left>Contents    </TH>
-     <TH align=left>Type        </TH>
-     <TH align=left>Description </TH></TR>
- <TR><!--contents--><TD valign=top>single_restart_file_in</TD>
-     <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True if all copies read from a single file. False for one 
-    file per copy. Default: .true.</TD></TR>
- <TR><!--contents--><TD valign=top>single_restart_file_out</TD>
-     <!--  type  --><TD>logical</TD>
- <!--descript--><TD>True if all copies written to a single file. False for one
-      file per copy. Default: .true.</TD></TR>
- <TR><!--contents--><TD valign=top>perturbation_amplitude</TD>
-     <!--  type  --><TD>real(r8)</TD>
- <!--descript--><TD>Perturbation standard deviation for generating ensemble 
-    members if assim_model_mod will not do it. Default: 0.2_r8</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+<TR><!--contents--><TD valign=top>single_restart_file_in</TD>
+    <!--  type  --><TD>logical</TD>
+    <!--descript--><TD>True if all copies read from a single file.
+      False for one file per copy. Default: .true.</TD></TR>
+<TR><!--contents--><TD valign=top>single_restart_file_out</TD>
+    <!--  type  --><TD>logical</TD>
+    <!--descript--><TD>True if all copies written to a single file.
+      False for one file per copy. Default: .true.</TD></TR>
+<TR><!--contents--><TD valign=top>perturbation_amplitude</TD>
+    <!--  type  --><TD>real(r8)</TD>
+    <!--descript--><TD>Perturbation standard deviation for generating 
+      ensemble members if assim_model_mod will not do it. 
+      Default: 0.2_r8</TD></TR>
+</TABLE>
 
+</div>
+<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
-<UL><LI>input.nml
-    <LI>State vector restart files, either one for all copies or one per copy.
-    <LI>State vector output files, either one for all copies or one per copy.
+<UL><LI>input.nml</li>
+    <LI>State vector restart files, either one for all copies or one per copy.</li>
+    <LI>State vector output files, either one for all copies or one per copy.</li>
 </UL>
 
 <!--==================================================================-->
@@ -785,18 +871,20 @@ Frees up storage associated with an ensemble.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
+<ol>
+<li> none </li>
+</ol>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
@@ -861,49 +949,59 @@ Frees up storage associated with an ensemble.
 </TABLE>
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
-Additional options for the layout of ensemble storage may lead to improved
-performance for different problem sizes on different architectures.
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
+Additional options for the layout of ensemble storage may lead to improved
+performance for different problem sizes on different architectures.
 </P>
 
 <!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!-- PrivateComponents                                                -->
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<BR><HR><BR>
+<HR>
 <H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
 
-<!-- <div class=routine> -->
-<!-- <pre> -->
-<!-- type location_type -->
-<!--    private -->
-<!--    real(r8) :: x -->
-<!-- end type location_type</pre> -->
-<!-- </div> -->
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
 
-<H3 class=indent1>Discussion</H3>
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 
-<HR>
 </BODY>
 </HTML>

@@ -1,79 +1,39 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module random_seq_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<!--kdr NAMELIST, PLANS, PRIVATE COMPONENTS have no destinationss -->
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>MODULE random_seq_mod</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 Provides access to any number of reproducible random sequences and allows
 uniform, gaussian, and two-dimensional gaussian distributions to be
 sampled.
 </P>
-<P>
-</P>
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -82,11 +42,16 @@ random_nr_mod
 </PRE>
 
 <!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
 
 <A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
 <TR><TD><em class=call>use assim_model_mod, only : </em></TD>
@@ -98,31 +63,32 @@ random_nr_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#twod_gaussians">twod_gaussians</A></TD></TR>
 </TABLE>
 
-<H3 class=indent1>NOTES</H3>
-
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2>PUBLIC COMPONENTS</H2>
+<P>
+Optional namelist interface
+<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
+may be read from file <em class=file>input.nml</em>.
 </P>
 
+<P>
+   A note about documentation style. 
+   Optional arguments are enclosed in brackets 
+   <em class=optionalcode>[like this]</em>.
+</P>
 
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
 
 <A NAME="random_seq_type"></A>
-<BR><HR><BR>
-<div class=type><pre>
+<br>
+<div class=routine>
+<pre>
 <em class=call>type random_seq_type</em>
    private
 end type random_seq_type
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 This type is used to uniquely identify a sequence. In this implementation,
@@ -130,149 +96,200 @@ it is passed through directly from the random_nr_mod and details can be
 seen in that module.
 </P>
 
-<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
+</div>
+<br>
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="init_random_seq"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call init_random_seq(r, seed) </em>
- <pre>
- type(random_seq_type),           intent(inout) :: <em class=code>r</em>
- type(random_seq_type), optional, intent(in)    :: <em class=code>seed</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_random_seq"></A>
+<br>
+<div class=routine>
+<em class=call> call init_random_seq(r, <em class=optionalcode>[,&nbsp; seed]</em>) </em>
+<pre>
+type(random_seq_type),           intent(inout) :: <em class=code>r</em>
+type(random_seq_type), optional, intent(in)    :: <em class=optionalcode>seed</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Initializes a random sequence for use. This must be called before
 any random numbers can be generated from this sequence. Any number
 of independent, reproducible random sequences can be generated by
 having multiple instances of a random_seq_type. A specified integer
 seed, optional, can produce a specific 'random' sequence.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>r&nbsp; &nbsp; </em></TD>
-     <TD>A random sequence.</TD></TR>
- <TR><TD valign=top><em class=code>seed&nbsp; &nbsp; </em></TD>
-     <TD>A seed for a random sequence.</TD></TR>
- </TABLE>
-<BR>
+</P>
 
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
- <A NAME="random_gaussian"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = random_gaussian(r, mean, standard_deviation) </em>
- <pre>
- real(r8)                             :: <em class=code>random_gaussian</em>
- type(random_seq_type), intent(inout) :: <em class=code>r</em>
- real(r8), intent(in)                 :: <em class=code>mean</em>
- real(r8), intent(in)                 :: <em class=code>standard_deviation</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>r</em></TD>
+    <TD>A random sequence.</TD></TR>
+<TR><TD valign=top><em class=code>seed&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>A seed for a random sequence.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="random_gaussian"></A>
+<br>
+<div class=routine>
+<em class=call> var = random_gaussian(r, mean, standard_deviation) </em>
+<pre>
+real(r8)                             :: <em class=code>random_gaussian</em>
+type(random_seq_type), intent(inout) :: <em class=code>r</em>
+real(r8),              intent(in)    :: <em class=code>mean</em>
+real(r8),              intent(in)    :: <em class=code>standard_deviation</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns a random draw from a Gaussian distribution with mean and
 standard deviation.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>random_gaussian&nbsp; &nbsp; </em></TD>
-     <TD>A random draw from a gaussian distribution.</TD></TR>
- <TR><TD valign=top><em class=code>r&nbsp; &nbsp; </em></TD>
-     <TD>The reproducible random sequence.</TD></TR>
- <TR><TD valign=top><em class=code>mean&nbsp; &nbsp; </em></TD>
-     <TD>Mean of the gaussian.</TD></TR>
- <TR><TD valign=top><em class=code>standard_deviation&nbsp; &nbsp; </em></TD>
-     <TD>Standard deviation of the gaussian.</TD></TR>
- </TABLE>
- <BR>
+</P>
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="several_random_gaussians"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call several_random_gaussians(r, mean, standard_deviation, n, rnum) </em>
- <pre>
- type(random_seq_type), intent(inout) :: <em class=code>r</em>
- real(r8), intent(in)                 :: <em class=code>mean</em>
- real(r8), intent(in)                 :: <em class=code>standard_deviation</em>
- integer, intent(in)                  :: <em class=code>n</em>
- real(r8), intent(out), dimension(:)  :: <em class=code>rnum</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>random_gaussian</em></TD>
+    <TD>A random draw from a gaussian distribution.</TD></TR>
+<TR><TD valign=top><em class=code>r</em></TD>
+    <TD>The reproducible random sequence.</TD></TR>
+<TR><TD valign=top><em class=code>mean</em></TD>
+    <TD>Mean of the gaussian.</TD></TR>
+<TR><TD valign=top><em class=code>standard_deviation&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Standard deviation of the gaussian.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="several_random_gaussians"></A>
+<br>
+<div class=routine>
+<em class=call> call several_random_gaussians(r, mean, standard_deviation, n, rnum) </em>
+<pre>
+type(random_seq_type),  intent(inout) :: <em class=code>r</em>
+real(r8),               intent(in)    :: <em class=code>mean</em>
+real(r8),               intent(in)    :: <em class=code>standard_deviation</em>
+integer,                intent(in)    :: <em class=code>n</em>
+real(r8), dimension(:), intent(out)   :: <em class=code>rnum</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns n random samples from a gaussian with mean and standard
 deviation. Make sure that there is enough room in rnum for all the
 returned values.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>r&nbsp; &nbsp; </em></TD>
-     <TD>A reproducible random sequence.</TD></TR>
- <TR><TD valign=top><em class=code>mean&nbsp; &nbsp; </em></TD>
-     <TD>Mean of the Gaussian to be sampled.</TD></TR>
- <TR><TD valign=top><em class=code>standard_deviation&nbsp; &nbsp; </em></TD>
-     <TD>Standard deviation of the Gaussian.</TD></TR>
- <TR><TD valign=top><em class=code>n&nbsp; &nbsp; </em></TD>
-     <TD>Number of samples to return</TD></TR>
- <TR><TD valign=top><em class=code>rnum&nbsp; &nbsp; </em></TD>
-     <TD>The random samples of the Gaussian.</TD></TR>
- </TABLE>
- <BR>
+</P>
 
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
- <A NAME="random_uniform"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = random_uniform(r) </em>
- <pre>
- real(r8)                             :: <em class=code>random_uniform</em>
- type(random_seq_type), intent(inout) :: <em class=code>r</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>r</em></TD>
+    <TD>A reproducible random sequence.</TD></TR>
+<TR><TD valign=top><em class=code>mean</em></TD>
+    <TD>Mean of the Gaussian to be sampled.</TD></TR>
+<TR><TD valign=top><em class=code>standard_deviation&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Standard deviation of the Gaussian.</TD></TR>
+<TR><TD valign=top><em class=code>n</em></TD>
+    <TD>Number of samples to return</TD></TR>
+<TR><TD valign=top><em class=code>rnum</em></TD>
+    <TD>The random samples of the Gaussian.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="random_uniform"></A>
+<br>
+<div class=routine>
+<em class=call> var = random_uniform(r) </em>
+<pre>
+real(r8)                             :: <em class=code>random_uniform</em>
+type(random_seq_type), intent(inout) :: <em class=code>r</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns a random draw from a uniform distribution on interval [0,1].
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>random_uniform&nbsp; &nbsp; </em></TD>
-     <TD>A random draw from a Uniform[0,1] distribution.</TD></TR>
- <TR><TD valign=top><em class=code>r&nbsp; &nbsp; </em></TD>
-     <TD>A random sequence.</TD></TR>
- </TABLE>
- <BR>
+</P>
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="twod_gaussians"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call twod_gaussians(r,mean,cov,rnum) </em>
- <pre>
- type(random_seq_type), intent(inout)  :: <em class=code>r</em>
- real(r8), dimension(2), intent(in)    :: <em class=code>mean</em>
- real(r8), dimension(2, 2), intent(in) :: <em class=code>cov</em>
- real(r8), dimension(2), intent(out)   :: <em class=code>rnum</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>random_uniform&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>A random draw from a Uniform[0,1] distribution.</TD></TR>
+<TR><TD valign=top><em class=code>r</em></TD>
+    <TD>A random sequence.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="twod_gaussians"></A>
+<br>
+<div class=routine>
+<em class=call> call twod_gaussians(r,mean,cov,rnum) </em>
+<pre>
+type(random_seq_type),    intent(inout) :: <em class=code>r</em>
+real(r8), dimension(2),   intent(in)    :: <em class=code>mean</em>
+real(r8), dimension(2,2), intent(in)    :: <em class=code>cov</em>
+real(r8), dimension(2),   intent(out)   :: <em class=code>rnum</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns a random draw from a 2D gaussian with mean and covariance.
 The algorithm used is from Knuth, exercise 13, section 3.4.1.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>r&nbsp; &nbsp; </em></TD>
-     <TD>A random sequence.</TD></TR>
- <TR><TD valign=top><em class=code>mean&nbsp; &nbsp; </em></TD>
-     <TD>Mean of 2D gaussian distribution.</TD></TR>
- <TR><TD valign=top><em class=code>cov&nbsp; &nbsp; </em></TD>
-     <TD>Covariance of 2D gaussian.</TD></TR>
- <TR><TD valign=top><em class=code>rnum&nbsp; &nbsp; </em></TD>
-     <TD>Returned random draw from gaussian.</TD></TR>
- </TABLE>
- <BR>
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>r</em></TD>
+    <TD>A random sequence.</TD></TR>
+<TR><TD valign=top><em class=code>mean&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Mean of 2D gaussian distribution.</TD></TR>
+<TR><TD valign=top><em class=code>cov</em></TD>
+    <TD>Covariance of 2D gaussian.</TD></TR>
+<TR><TD valign=top><em class=code>rnum</em></TD>
+    <TD>Returned random draw from gaussian.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<HR>
+<H2>NAMELIST</H2>
+<P>
+This module has no namelist input.
+</P>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
 <UL><LI>NONE
 </UL>
@@ -282,39 +299,79 @@ The algorithm used is from Knuth, exercise 13, section 3.4.1.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
+<TR><!-- routine --><TD VALIGN=top>&nbsp;</TD>
+    <!-- message --><TD VALIGN=top>&nbsp;</TD>
+    <!-- comment --><TD VALIGN=top>&nbsp;</TD></TR>
 
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
+</TABLE>
+</div>
+
 <H2>KNOWN BUGS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
-
-<!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
-<!--==================================================================-->
-
-<!--==================================================================-->
-
+<A NAME="FuturePlans"></A>
 <HR>
+<H2>FUTURE PLANS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<HR>
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

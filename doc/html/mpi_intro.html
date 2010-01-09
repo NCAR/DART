@@ -1,27 +1,23 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <title>The MPI version of DART</title>
-<link rel="stylesheet" type="text/css" href="doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="doc.css">
 </HEAD>
 <BODY>
+<A NAME="TOP"></A>
 
-<!--==================================================================-->
-
-<img src = "../../images/Dartboard9.png" align="center" alt="snappy DART image"></img>
-<br>
-
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Nancy Collins </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-
-<!--==================================================================-->
+<div>
+<center>
+<A HREF="#Legalese">TERMS OF USE</A>
+<br><br>
+<img src = "http://www.image.ucar.edu/images/Dartboard7.png" alt="snappy DART image">
+</center>
+</div>
 
 <H1>The MPI version of DART</H1>
+<br><!-- version tag follows, do not edit --><P>$Id$</P>
 
 <H3>Introduction</H3>
 <P>
@@ -36,9 +32,8 @@ with large state vectors and large numbers of observations, the data
 assimilation step will run much faster in parallel, which requires MPI
 to be installed and used.  However, if multiple ensembles of your model fit
 comfortably (in time and memory space) on a single processor, you need
-read no further about MPI.</P>
-
-<P>
+read no further about MPI.
+<br><br>
 MPI is an open-source standard; there are many implementations of it.
 If you have a large single-vendor system it probably comes with an MPI
 library by default.  For a Linux cluster there are generally more variations
@@ -46,23 +41,22 @@ in what might be installed; most systems use a version of MPI called MPICH.
 In smaller clusters or dual-processor workstations a version of MPI
 called either LAM-MPI or OpenMPI might be installed, or can be downloaded
 and installed by the end user.  (Note that OpenMP is a different parallel
-system; OpenMPI is a recent effort with a confusingly similar name.)</P>
-
-<P>
+system; OpenMPI is a recent effort with a confusingly similar name.)
+<br><br>
 An "MPI program" makes calls to an MPI library, and needs to be compiled
 with MPI include files and libraries.  Generally the MPI installation
 includes a shell script called 'mpif90' which adds the flags and libraries
 appropriate for each type of fortran compiler.
 So compiling an MPI program usually means 
-simply changing the fortran compiler name to the MPI script name.</P>
-
-<P>
+simply changing the fortran compiler name to the MPI script name.
+<br><br>
 These MPI scripts are built during the MPI install process and are specific to
 a particular compiler; if your system has multiple fortran compilers installed
 then either there will be multiple MPI scripts built, one for each compiler
 type, or there will be an environment variable or flag to the MPI script
 to select which compiler to invoke.  See your system documentation or find
-an example of a successful MPI program compile command and copy it.</P>
+an example of a successful MPI program compile command and copy it.
+</P>
 
 <a name="DART_MPI"></a>
 <H3>DART use of MPI</H3>
@@ -75,18 +69,16 @@ a single executable like previous releases of DART; using MPI and running
 in parallel is simply an additional option.) To build a parallel version
 of the 'filter' program, the 'mkmf_filter'
 command needs to be called with the '-mpi' option to generate a Makefile
-which compiles with the MPI scripts instead of the Fortran compiler.</P>
-
-<P>
+which compiles with the MPI scripts instead of the Fortran compiler.
+<br><br>
 See the 'workshop_setup.csh' scripts (which might be renamed 'build.csh'?) 
 in each $DART/models/*/work directory for the commands
 that need to be edited to enable the MPI utilities.  You will also need
 to edit the $DART/mkmf/mkmf.template file to call the proper version of
 the MPI compile script if it does not have the default name, is not
 in a standard location on the system, or needs additional options set
-to select between multiple Fortran compilers.</P>
-
-<P>
+to select between multiple Fortran compilers.
+<br><br>
 MPI programs generally need to be started with a shell script called
 'mpirun' or 'mpiexec', but they also interact with any batch control
 system that might be installed on the cluster or parallel system.
@@ -98,13 +90,13 @@ consult your local web pages or knowledgeable system admin for help here.
 Generally the run scripts supplied with DART have generic sections to 
 deal with LSF, PBS, no batch system at all, and sequential execution, but
 the details (e.g. the specific queue names, accounting charge codes) 
-will almost certainly have to be adjusted.</P>
-
-<P>
+will almost certainly have to be adjusted.
+<br><br>
 The data assimilation process involves running multiple copies (ensembles)
 of a user model, with an assimilation computation interspersed between
 calls to the model.  There are many possible execution combinations, 
-including:</P>
+including:
+</P>
 
 <ul>
 <li>
@@ -125,37 +117,34 @@ has 2 parts: building the executables and then running them.
 At build time, the choice of using MPI or not must be made.
 At execution time, the setting of the 'async' namelist value
 in the filter_nml section controls how the 'filter' program
-interacts with the model.</P>
-
-<P>
-Choices include:</P>
+interacts with the model.
+<br><br>
+Choices include:
+</P>
 <a name="async0"></a>
 <ul>
 <li>
-async = 0
-<br> The model and filter programs are compiled into a single
-executable, and when the model needs to advance, the filter
-program calls a subroutine.  
-See a <a href="filter_async_modes.html#async0">diagram</a> which illustrates this option.
+   async = 0<br>
+   The model and filter programs are compiled into a single
+   executable, and when the model needs to advance, the filter
+   program calls a subroutine.  
+   See a <a href="filter_async_modes.html#async0">diagram</a> 
+   which illustrates this option.
 </li>
-<a name="async2"></a>
-<br>
-<li>
-async = 2
-<br> The model is compiled into a sequential (single task)
-program.  If 'filter' is running in parallel, each filter task
-will execute the model independently to advance the group of ensembles.
-See a <a href="filter_async_modes.html#async2">diagram</a> which illustrates this option.
+<li><a name="async2"></a>
+   async = 2<br>
+   The model is compiled into a sequential (single task)
+   program.  If 'filter' is running in parallel, each filter task
+   will execute the model independently to advance the group of ensembles.
+   See a <a href="filter_async_modes.html#async2">diagram</a> which illustrates this option.
 </li>
-<a name="async4"></a>
-<br>
-<li>
-async = 4
-<br> The model is compiled into an MPI program (parallel)
-and only 'filter' task 0 tells the startup script when it is
-time to advance the model.  Each ensemble is advanced one by
-one, with the model using all the processors to run in parallel.
-See a <a href="filter_async_modes.html#async4">diagram</a> which illustrates this option.
+<li><a name="async4"></a>
+   async = 4<br>
+   The model is compiled into an MPI program (parallel)
+   and only 'filter' task 0 tells the startup script when it is
+   time to advance the model.  Each ensemble is advanced one by
+   one, with the model using all the processors to run in parallel.
+   See a <a href="filter_async_modes.html#async4">diagram</a> which illustrates this option.
 </li>
 </ul>
 
@@ -169,25 +158,24 @@ Alternatively, if the user model is compiled as a single executable
 (async=2),
 'filter' can run in parallel on any number of processors and each
 model advance can be executed independently without
-the model having to know about MPI or parallelism.</P>
-
-
-<P>
+the model having to know about MPI or parallelism.
+<br><br>
 Compiling and running an MPI application can be substantially
 more complicated than running a single executable.  There are a suite
 of small test programs to help diagnose any problems encountered in 
 trying to run the new version of DART.   Look in $DART/doc/mpi for
-the README and a set of tests to narrow down any difficulties.</P>
+the README and a set of tests to narrow down any difficulties.
+</P>
 
 <H3>Performance issues and timing results</H3>
 
 <P>
 Getting good performance from a parallel program is frequently difficult.
-Here are a few of reasons why:</P>
+Here are a few of reasons why:
+</P>
 
 <ul>
-<li>Amdahl's law
-<br>
+<li>Amdahl's law<br>
 You can look up the actual formula for this "law" in the Wikipedia, 
 but the gist is
 that the amount of serial code in your program limits how much
@@ -195,9 +183,8 @@ faster your program runs on a parallel machine, and at some point
 (often much sooner than you'd expect) you stop getting
 any speedup when adding more processors.
 </li>
-<br>
-<li>Surface area to volume ratio
-<br>
+
+<li>Surface area to volume ratio<br>
 Many scientific problems involve breaking up a large grid or array
 of data and distributing the smaller chunks across the multiple processors.  
 Each processor computes values for the data on the interior of the
@@ -211,9 +198,8 @@ decreases slower than the 'volume' inside that one processor can compute
 independently of other processors. At some point the communication overhead of
 exchanging edge data limits your speedup. 
 </li>
-<br>
-<li>Hardware architecture system balance
-<br>
+
+<li>Hardware architecture system balance<br>
 Raw CPU speeds have increased faster than memory access times,
 which have increased faster than access to secondary storage
 (e.g. I/O to disk).  Computations which need to read input data
@@ -228,9 +214,8 @@ There are also capacity issues; for example the amount
 of memory available on the I/O node to hold the entire dataset
 can be insufficient. 
 </li>
-<br>
-<li>NUMA memory
-<br>
+
+<li>NUMA memory<br>
 Many machines today have multiple levels of memory: on-chip 
 private cache, on-chip shared cache, local shared memory,
 and remote shared memory.  The approach is referred
@@ -254,33 +239,31 @@ case by problem size and amount of communication between processes.
 <P>
 Parallel performance can be measured and
 expressed in several different ways.
-A few of the relevant definitions are:</P>
+A few of the relevant definitions are:
+</P>
 
 <ul>
-<li>Speedup 
-<br> Generally defined as the wall-clock time
+<li>Speedup<br>
+Generally defined as the wall-clock time
 for a single processor divided by the wall-clock time
 for N processors.  
 </li>
-<br>
-<li>Efficiency 
-<br> The speedup number divided by N,
+
+<li>Efficiency<br>
+The speedup number divided by N,
 which for perfect scalability will remain at 1.0 as N increases.
 </li>
-<br>
-<li> Strong scaling
-<br>
+
+<li>Strong scaling<br>
 The problem size is held constant and the number of
 processors is increased.
 </li>
-<br>
-<li> Weak scaling
-<br>
+
+<li>Weak scaling<br>
 The problem size grows as the number of processors increases
 so the amount of work per processor is held constant.
 </li>
 </ul>
-
 
 <P>
 We measured the strong scaling efficiency of the DART 'filter'
@@ -295,7 +278,6 @@ These are described in
 
 
 <H3>User considerations for their own configurations</H3>
-
 <P>
 Many parallel machines today are a hybrid of shared and
 distributed memory processors; meaning that some small number
@@ -303,9 +285,8 @@ distributed memory processors; meaning that some small number
 and can transfer data quickly between them, while communicating
 data to other CPUs involves slower communication across either
 some kind of hardware switch or fabric, or a network communication
-card like high speed ethernet.  </P>
-
-<P>
+card like high speed ethernet.
+<br><br>
 Running as many tasks per node as CPUs per shared-memory node
 is in general
 good, unless the total amount of virtual memory used by the
@@ -313,14 +294,40 @@ program exceeds the physical memory.  Factors to consider here
 include whether each task is limited by the operating system
 to 1/Nth of the physical memory, or whether one task is free
 to consume more than its share.  If the node starts paging
-memory to disk, performance takes a huge nosedive.</P>
-
-<P>
+memory to disk, performance takes a huge nosedive.
+<br><br>
 Some models have large memory footprints, and it may be necessary
 to run in MPI mode not necessarily because the computation is faster
 in parallel, but because the dataset size is larger than the
 physical memory on a node and must be divided and spread across 
-multiple nodes to avoid paging to disk.</P>
+multiple nodes to avoid paging to disk.
+</P>
 
-</body>
-</html>
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Nancy Collins </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

@@ -1,68 +1,33 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
-<TITLE>module obs_def_gcm_ocean_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<TITLE>module obs_def_ocean_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-</DIV>
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
-<!--==================================================================-->
+<H1>MODULE obs_def_ocean_mod</H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
-<H1>MODULE obs_def_gcm_ocean_mod</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Tim Hoar     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
 <P class="indent1">
 DART includes a flexible, powerful, and (unfortunately) complicated mechanism 
 for incorporating new types of observations. The
-<em class="file">obs_def_gcm_ocean_mod</em> module 
+<em class="file">obs_def_ocean_mod</em> module 
 being described here is used by the program 
 <em class="unix">preprocess</em>
 to insert appropriate definitions of ocean observations into the 
@@ -72,7 +37,8 @@ generate the source files
 <em class="file">obs_kind_mod.f90</em>
 that are used by 
 <em class="unix">filter</em> and other DART programs.
-<br><br>
+<br>
+<br>
 There are no code segments in this module, only definitions of observation types
 that map specific observation types to generic observation kinds. DART contains
 logic that supports a limited inheritance of attributes. If you need to interpolate 
@@ -80,7 +46,8 @@ observations of 'FLOAT_TEMPERATURE', DART will check to see if a specific routin
 is provided for that type, if none exists, the interpolation routine for the
 generic 'KIND_TEMPERATURE' will be used; that way one interpolation routine may
 support many observation types.
-<BR><BR>
+<br>
+<br>
 The mandatory header line is followed by lines
 that have the observation type name (an all caps Fortran 90 identifier) and
 their associated generic kind identifier from the obs_kind module.
@@ -94,7 +61,9 @@ supply the code manually. One of the future extensions of this module will
 be to support acoustic tomographic observations, which will
 necessitate specific support routines.
 </P>
+
 <H3 class="indent1">ocean variable types and their corresponding kinds</H3>
+
 <pre class="indent1">
 ! BEGIN DART PREPROCESS KIND LIST
 !SALINITY,                      KIND_SALINITY,              COMMON_CODE
@@ -130,6 +99,7 @@ necessitate specific support routines.
 !SATELLITE_SSS,                 KIND_SALINITY,              COMMON_CODE
 ! END DART PREPROCESS KIND LIST
 </pre>
+
 <P class="indent1">
 New observation types may be added to this list with no loss of generality.
 Supporting the observations and actually <strong>assimilating</strong> them 
@@ -143,19 +113,24 @@ choose what types will be assimilated.
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
 <P class="indent1">
 none
 </P>
 
 <!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
 
 <A NAME="Interface"></A>
-<BR><HR>
-<H2>PUBLIC INTERFACE</H2>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
 <P class="indent1">
 none
 </P>
@@ -176,9 +151,9 @@ none
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
-</P>
+
 <A NAME="FilesUsed"></A>
-<BR><HR>
+<HR>
 <H2>FILES</H2>
 <P class="indent1">
 none
@@ -189,7 +164,7 @@ none
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR>
+<HR>
 <H2>REFERENCES</H2>
 <P class="indent1">
 none
@@ -197,7 +172,6 @@ none
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
@@ -211,19 +185,17 @@ none
 <!-- Describe the bugs.                                               -->
 <!--==================================================================-->
 
-<A NAME="KnownBugs"></A>
-<BR><HR>
 <H2>KNOWN BUGS</H2>
-<P class="indent1">
-none
+<P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Describe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <UL class="indent1">
 <LI>support acoustic tomography observations - similar to GPS soundings
@@ -232,8 +204,41 @@ Take a look at <a href="obs_def_gps_mod.f90">obs_def_gps_mod.f90</a></li>
 </UL>
 
 <!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
 
-<BR><HR>
+<A NAME="PrivateComponents"></A>
+<HR>
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
 
 </BODY>
 </HTML>

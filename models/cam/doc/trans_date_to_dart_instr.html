@@ -1,49 +1,62 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
-<TITLE>trans_date_to_dart </TITLE>
-<link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css"></link>
+<TITLE>trans_date_to_dart</TITLE>
+<link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+<A NAME="TOP"></A>
 
+<div>
+<center>
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
+
+<H1>Program <em class=program>trans_date_to_dart</em></H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
-Trans_date_to_dart translates a standard date and time into Gregorian and DART date/time pairs.
+<em class=program>trans_date_to_dart</em> translates a standard date and time into Gregorian and DART date/time pairs.
 It will be compiled automatically by .../DART/models/cam/work/workshop_setup.csh.
 It opens a pre-existing file called 'date_greg' which must be in the run directory
 and which must contain a date and time on the first line, in the form
+</P>
 <PRE>
 yyyy/mm/dd hh:mm:ss
 </PRE>
+<P>
 It will write out the gregorian day and time onto line 2 of the same file.
 It will also write out the date in the format the CAM wants to see onto the 3rd line.
 It does not require any namelist input from input.nml.
 </P>
 
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
 <HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Kevin Raeder </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

@@ -1,70 +1,41 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module schedule_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>MODULE schedule_mod</H1>
-<A NAME="HEADER"></A>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 Provides a set of routines to generate a regular pattern
-of time windows.
-</P> <P>
-
+of time windows. This module is only used for converting observation
+sequences files to netCDF format. If it stands the test of time, it
+will likely be used to create an assimilation schedule independent of
+the observation sequence file. Wouldn't that be nice ... 
 </P>
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -73,11 +44,16 @@ time_manager_mod
 </PRE>
 
 <!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
 
 <A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
 <TR><TD><em class=call>use schedule_mod, only : </em></TD>
@@ -87,60 +63,59 @@ time_manager_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_schedule_length">get_schedule_length</A></TD></TR>
 </TABLE>
 
-<H3 class=indent1>NOTES</H3>
-
 <P>
-Namelist
-<A HREF="#Namelist"><em class=code>&amp;schedule_mod_nml</em> </A> 
+Namelist <A HREF="#Namelist"><em class=code>&amp;schedule_mod_nml</em> </A> 
 may be read from file <em class=file>input.nml</em>. 
 </P>
 
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!--==================================================================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2>PUBLIC COMPONENTS</H2>
-<BR>
-
-
-<!-- # routines: -->
-
-<!--============= DESCRIPTION OF A SUBROUTINE ========================-->
 <A NAME="set_regular_schedule"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call set_regular_schedule(schedule) </em>
 <pre>
-type(schedule_type), intent(out)       :: <em class=code>schedule</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+type(schedule_type), intent(out) :: <em class=code>schedule</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Uses the namelist information to compute and fill a
 schedule_type variable.
 </P>
-<TABLE width=100% border=0 summary="" celpadding=3>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>schedule</em></TD>
     <TD>Fills this derived type with the information needed to
         generate a series of regularly spaced time windows.</TD></TR>
 </TABLE>
-<BR>
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="get_time_from_schedule"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
-<em class=call> call get_time_from_schedule(mytime, schedule, iepoch [, edge])</em>
+<em class=call> call get_time_from_schedule(mytime, schedule, iepoch 
+<em class=optionalcode>[,&nbsp;edge]</em>)</em>
 <pre>
-type(time_type),     intent(out)           :: <em class=code>mytime</em>
+type(time_type),     intent(out) :: <em class=code>mytime</em>
  or
-real(digits12),      intent(out)           :: <em class=code>mytime</em>
-type(schedule_type), intent(in)            :: <em class=code>schedule</em>
-integer,             intent(in)            :: <em class=code>iepoch</em>
-integer,             intent(in), optional  :: <em class=optionalcode>edge</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+real(digits12),      intent(out) :: <em class=code>mytime</em>
+type(schedule_type), intent(in)  :: <em class=code>schedule</em>
+integer,             intent(in)  :: <em class=code>iepoch</em>
+integer, optional,   intent(in)  :: <em class=optionalcode>edge</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Returns either the leading or trailing time for the specified
 bin/epoch number for the given schedule.  The time can be returned in one
@@ -148,49 +123,60 @@ of two formats, depending on the variable type specified for the
 first argument: either a DART derived time_type, or a real of kind
 digits12 (defined in the types_mod).
 </P>
-<TABLE width=100% border=0 summary="" celpadding=3>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>mytime</em></TD>
     <TD>Return value with the leading or trailing edge time for the
         requested bin.  There are two supported return formats, either as
         a standard DART time_type, or as a real value which will contain
-        the number of days plus any fraction. </TD><TR>
+        the number of days plus any fraction. </TD></TR>
 <TR><TD valign=top><em class=code>schedule</em></TD>
-    <TD>Schedule type to extract information from.</TD><TR>
+    <TD>Schedule type to extract information from.</TD></TR>
 <TR><TD valign=top><em class=code>iepoch</em></TD>
     <TD>The bin number, or epoch number, to return a time for.
     Unless edge is specified and requests the ending time, the time
-    returned is the starting time for this bin.</TD><TR>
+    returned is the starting time for this bin.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>edge</em></TD>
     <TD>If specified, and if edge is larger than 1, the trailing edge time
         of the bin is returned.  Any other value, or if this argument is
-        not specified, returns the leading edge time of the bin.</TD><TR>
+        not specified, returns the leading edge time of the bin.</TD></TR>
 </TABLE>
-<BR>
 
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="get_schedule_length"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> var = get_schedule_length() </em>
 <pre>
 integer                             :: <em class=code>get_schedule_length</em>
 type(schedule_type), intent(in)     :: <em class=code>schedule</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Return the total number of intervals/bins/epochs defined by
 this schedule.
 </P>
-<TABLE width=100% border=0 summary="" celpadding=3>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>schedule</em></TD>
     <TD>Return number of time intervals in this schedule.</TD></TR>
 </TABLE>
-<BR>
 
-<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
+</div>
+<br>
+
+<!--=================== DESCRIPTION OF A LOCAL TYPE ===================-->
 
 <A NAME="schedule_type"></A>
-<BR><HR><BR>                                                             
+<br>
 <div class=type><pre>
 <em class=call>type schedule_type</em>
    private
@@ -201,128 +187,148 @@ this schedule.
    character(len=32) :: calendarstring
    type(time_type)          :: binwidth
    type(time_type)          :: bininterval
-   type(time_type), pointer :: binstart(   :) => NULL()
-   type(time_type), pointer :: binend(     :) => NULL()
-   real(digits12),  pointer :: epoch_start(:) => NULL()
-   real(digits12),  pointer :: epoch_end(  :) => NULL()
+   type(time_type), pointer :: binstart(   :) =&#62; NULL()
+   type(time_type), pointer :: binend(     :) =&#62; NULL()
+   real(digits12),  pointer :: epoch_start(:) =&#62; NULL()
+   real(digits12),  pointer :: epoch_end(  :) =&#62; NULL()
 end type schedule_type
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
+
 <P>
 This type is used to define a schedule.
 </P>
 
+</div>
+<br>
 
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
 
-
-<!--============== DESCRIPTION OF A NAMELIST ========================-->
- <A NAME="Namelist"></A>
-<BR><HR><BR>
+<A NAME="Namelist"></A>
+<HR>
 <H2>NAMELIST</H2>
- <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&amp;' and terminating with a slash '/'.
- <div class=namelist><pre>
- <em class=call>namelist / schedule_mod_nml / </em>
-    first_bin_start, first_bin_end, last_bin_end, &
-    bin_interval_days, bin_interval_seconds, &
-    max_num_bins, calendar, print_table
- </pre></div>
- <H3 class=indent1>Discussion</H3>
- <P>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+</P>
+
+<div class=namelist>
+<pre>
+<em class=call>namelist / schedule_mod_nml / </em>
+   first_bin_start, first_bin_end, last_bin_end, &amp;
+   bin_interval_days, bin_interval_seconds, &amp;
+   max_num_bins, calendar, print_table
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Controls various aspects of filter. The inflation control variables are all
 dimensioned 2, the first value being for the prior inflation and the second
 being for the posterior inflation.
- </em>
- </P>
- <P>This namelist is read in a file called <em class=file>input.nml</em>
- </P>
- <TABLE border=0 cellpadding=3 width=100%>
- <TR><TH align=left>Contents    </TH>
-     <TH align=left>Type        </TH>
-     <TH align=left>Description </TH></TR>
+<br>
+<br>
+This namelist is read in a file called <em class=file>input.nml</em>
+</P>
 
- <TR><!--contents--><TD valign=top>first_bin_start</TD>
-     <!--  type  --><TD valign=top>integer, dimension(6)</TD>
-     <!--descript--><TD>Date/time specification for starting time
-                        of first bin.
-                        Default: 2008, 9, 7, 0, 0, 0</TD></TR>
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
 
- <TR><!--contents--><TD valign=top>first_bin_end</TD>
-     <!--  type  --><TD valign=top>integer, dimension(6)</TD>
-     <!--descript--><TD>Date/time specification for ending time
-                        of first bin.  Sets the bin width.
-                        Default: 2008, 9, 7, 2, 0, 0</TD></TR>
+<TR><!--contents--><TD valign=top>first_bin_start</TD>
+    <!--  type  --><TD valign=top>integer, dimension(6)</TD>
+    <!--descript--><TD>Date/time specification for starting time
+                       of first bin.
+                       Default: 2008, 9, 7, 0, 0, 0</TD></TR>
 
- <TR><!--contents--><TD valign=top>last_bin_end</TD>
-     <!--  type  --><TD valign=top>integer, dimension(6)</TD>
-     <!--descript--><TD>Date/time specification for ending time
-                        of last bin.  Sets the length of the overall
-                        time of the schedule.
-                        Default: 2008, 9, 11, 0, 0, 0</TD></TR>
+<TR><!--contents--><TD valign=top>first_bin_end</TD>
+    <!--  type  --><TD valign=top>integer, dimension(6)</TD>
+    <!--descript--><TD>Date/time specification for ending time
+                       of first bin.  Sets the bin width.
+                       Default: 2008, 9, 7, 2, 0, 0</TD></TR>
 
- <TR><!--contents--><TD valign=top>bin_interval_days</TD>
-     <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD>Sets the time between bins.  Must be larger or
-                        equal to the bin width.
-                        Default: 0</TD></TR>
+<TR><!--contents--><TD valign=top>last_bin_end</TD>
+    <!--  type  --><TD valign=top>integer, dimension(6)</TD>
+    <!--descript--><TD>Date/time specification for ending time
+                       of last bin.  Sets the length of the overall
+                       time of the schedule.
+                       Default: 2008, 9, 11, 0, 0, 0</TD></TR>
 
- <TR><!--contents--><TD valign=top>bin_interval_seconds</TD>
-     <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD>Sets the time between bins.  Must be larger or
-                        equal to the bin width.
-                        Default: 21600</TD></TR>
+<TR><!--contents--><TD valign=top>bin_interval_days</TD>
+    <!--  type  --><TD valign=top>integer</TD>
+    <!--descript--><TD>Sets the time between bins.  Must be larger or
+                       equal to the bin width.
+                       Default: 0</TD></TR>
 
- <TR><!--contents--><TD valign=top>max_num_bins</TD>
-     <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD>Upper limit on the number of bins.
-                        Default: 1000</TD></TR>
+<TR><!--contents--><TD valign=top>bin_interval_seconds</TD>
+    <!--  type  --><TD valign=top>integer</TD>
+    <!--descript--><TD>Sets the time between bins.  Must be larger or
+                       equal to the bin width.
+                       Default: 21600</TD></TR>
 
- <TR><!--contents--><TD valign=top>calendar</TD>
-     <!--  type  --><TD valign=top>character(len=32)</TD>
-     <!--descript--><TD>String calendar type.  Valid types are listed
-                        in the 
+<TR><!--contents--><TD valign=top>max_num_bins</TD>
+    <!--  type  --><TD valign=top>integer</TD>
+    <!--descript--><TD>Upper limit on the number of bins.
+                       Default: 1000</TD></TR>
+
+<TR><!--contents--><TD valign=top>calendar</TD>
+    <!--  type  --><TD valign=top>character(len=32)</TD>
+    <!--descript--><TD>String calendar type.  Valid types are listed
+                       in the 
 <a href="time_manager_mod.html#cal_type">time_manager_mod</a> file.
-                        Default: "Gregorian"</TD></TR>
+                       Default: "Gregorian"</TD></TR>
 
- <TR><!--contents--><TD valign=top>print_table</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD>If .TRUE., print out information about the schedule
-                        each time set_regular_schedule() is called.
-                        Default: .FALSE.</TD></TR>
- </TABLE>
+<TR><!--contents--><TD valign=top>print_table</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD>If .TRUE., print out information about the schedule
+                       each time set_regular_schedule() is called.
+                       Default: .FALSE.</TD></TR>
+</TABLE>
 
- <BR>
-
+</div>
+<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
-<UL>
- None currently.
-</UL>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TH align=left>filename</TH>
+    <TH align=left>purpose</TH></TR>
+<TR><TD>input.nml</TD>
+    <TD>to read the schedule_mod namelist</TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
+<ol>
+<li> none </li>
+</ol>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
@@ -334,52 +340,61 @@ being for the posterior inflation.
 </TABLE>
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
-none
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
 Setting the schedule from the namelist values means you can
-only have a single schedule
-object in the entire program.  We also need a subroutine to initialize
-a schedule type by giving explicit arguments.
+only have a single schedule object in the entire program.  
+We also need a subroutine to initialize a schedule type by 
+giving explicit arguments.
 </P>
 
 <!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!-- PrivateComponents                                                -->
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<BR><HR><BR>
+<HR>
 <H2>PRIVATE COMPONENTS</H2>
 <P>
-none
+N/A
 </P>
 
 <!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
 
+<A NAME="Legalese"></A>
 <HR>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson, Tim Hoar </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
-<HR>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

@@ -1,56 +1,29 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module obs_def_radar_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<H1>MODULE obs_def_radar_mod</H1>
-<A NAME="HEADER"></A>
-
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> /
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> /
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
-<!--==================================================================-->
+<H1>MODULE obs_def_radar_mod</H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
 <P>
 DART radar observation module, including the observation operators for the
 two primary radar-observation types -- Doppler velocity and reflectivity --
@@ -61,41 +34,44 @@ volumetric sample.  The implications of this approximation have not been
 investigated fully, so in the future it might be worth developing and testing
 more sophisticated observation operators that produce volumetric power-
 weighted samples.
-</P>
-<P>
+<br>
+<br>
 This module is able to compute reflectivity and precipitation fall speed
 (needed for computing Doppler radial velocity) from the prognostic model
 fields only for simple single-moment microphysics schemes such as the Kessler
 and Lin schemes.  If a more complicated microphysics scheme is used, then
 reflectivity and fall speed must be accessible instead as diagnostic fields
 in the model state.
-</P>
-<P>
+<br>
+<br>
 Author and Contact information: 
-<UL>
-<LI>  Radar Science:  David Dowell, ddowell at ucar.edu 
-<LI>  DART Code:  Nancy Collins, nancy at ucar.edu
-<LI>  Original DART/Radar work:  Alain Caya
-</UL>
 </P>
-<P>
+<UL>
+<LI>Radar Science:  David Dowell, ddowell at ucar.edu</LI>
+<LI>DART Code:  Nancy Collins, nancy at ucar.edu</LI>
+<LI>Original DART/Radar work:  Alain Caya</LI>
+</UL>
+
 <H3>Backward compatibility note:</H3>
+
+<P>
 For users of previous versions of the radar obs_def code, here are a list
 of changes beginning with subversion revision 3616 which are not backward
 compatible:
+</P>
 <UL>
 <LI>The namelist has changed quite a bit; some items were removed, 
 some added, and some renamed. See the <A HREF="#Namelist">namelist
-documention</A> in this file for the current item names and default values.
+documention</A> in this file for the current item names and default values.</LI>
 <LI>Some constants which depend on the microphysics scheme 
 have been added to the namelist to make it easier to change the values
 for different schemes, but the defaults have also changed.  Verify they
-are appropriate for the scheme being used.
+are appropriate for the scheme being used.</LI>
 <LI>The interactive create routine prompts for the beam direction 
 differently now.  It takes azimuth and elevation, and then does the
 trigonometry to compute the three internal values which are stored in
 the file.  The previous version prompted for the internal values
-directly.
+directly.</LI>
 <LI>The get_expected routines try to call the model interpolate routine for 
 <em class="code">KIND_POWER_WEIGHTED_FALL_SPEED</em> and
 <em class="code">KIND_RADAR_REFLECTIVITY</em> values.
@@ -107,20 +83,18 @@ The previous version of the WRF model_mod code used to print an
 error message and stop if the kind was unknown.  
 The updated version in the repository which went in with
 this radar code has been changed to return an error status code but continue
-if the kind is unknown.
+if the kind is unknown.</LI>
 <LI>The value for gravity is currently hardcoded in this module.  Previous
 versions of this code used the gravity constant in the DART types_mod.f90
 code, but in reality the code should be using whatever value of gravity is
 being used in the model code.  For now, the value is at least separated so
-users can change the value in this code if necessary.
+users can change the value in this code if necessary.</LI>
 </UL>
-</P>
-<BR>
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -131,11 +105,16 @@ obs_kind_mod
 </PRE>
 
 <!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
 
 <A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
 <TR><TD><em class=call>use obs_def_radar_mod, only : </em></TD>
@@ -149,52 +128,53 @@ obs_kind_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="set_radial_vel">set_radial_vel</A></TD></TR>
 </TABLE>
 
-<H3 class=indent1>NOTES</H3>
 <P>
 Optional namelist interface
 <A HREF="#Namelist"> <em class=code>&amp;obs_def_radar_mod_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
-<BR>
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
+</P>
 
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2>PUBLIC COMPONENTS</H2>
-<BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 <A NAME="read_radar_ref"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call read_radar_ref(obsvalue, refkey) </em>
 <pre>
 real(r8),                   intent(inout) :: <em class=code>obsvalue</em>
 integer,                    intent(out)   :: <em class=code>refkey</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Reflectivity observations have no auxiliary data to read or write, but there
 are namelist options that can alter the observation value at runtime.  This 
 routine tests the observation value and alters it if required.
 </P>
-<TABLE width=100% border=0 summary="" celpadding=3>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>obsvalue&nbsp;&nbsp;</em></TD>
     <TD>Observation value.</TD></TR>
 <TR><TD valign=top><em class=code>refkey</em></TD>
     <TD>Set to 0 to avoid uninitialized values, but otherwise unused.</TD></TR>
 </TABLE>
-<BR>
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="get_expected_radar_ref"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call get_expected_radar_ref(state_vector, location, ref, istatus)</em>
 <pre>
@@ -202,20 +182,25 @@ real(r8),            intent(in)  :: <em class=code>state_vector(:)</em>
 type(location_type), intent(in)  :: <em class=code>location</em>
 real(r8),            intent(out) :: <em class=code>ref</em>
 integer,             intent(out) :: <em class=code>istatus</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Given a location and the state vector from one of the ensemble members,
 compute the model-predicted radar reflectivity that would be observed
 at that location.  The returned value is in dBZ.
-</P>
-<P>
+<br>
+<br>
 If <em class=code>apply_ref_limit_to_fwd_op</em> is .TRUE. in the namelist, 
 reflectivity values less than 
 <em class=code>reflectivity_limit_fwd_op</em> 
 will be set to <em class=code>lowest_reflectivity_fwd_op</em>.
 </P>
-<TABLE width=100% border=0 summary="" celpadding=3>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>state_vector&nbsp;&nbsp;</em></TD>
     <TD>A one dimensional representation of the model state vector</TD></TR>
 <TR><TD valign=top><em class=code>location</em></TD>
@@ -228,11 +213,14 @@ will be set to <em class=code>lowest_reflectivity_fwd_op</em>.
         indicates an error; negative values are reserved for
         internal DART use only.</TD></TR>
 </TABLE>
-<BR>
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="real_radial_vel"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call read_radial_vel(velkey, ifile
       <em class=optionalcode>[, fform]</em>) </em>
@@ -240,14 +228,19 @@ will be set to <em class=code>lowest_reflectivity_fwd_op</em>.
 integer,                    intent(out) :: <em class=code>velkey</em>
 integer,                    intent(in)  :: <em class=code>ifile</em>
 character(len=*), optional, intent(in)  :: <em class=optionalcode>fform</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Reads the additional auxiliary information associated with a
 radial velocity observation.  This includes the location of the
 radar source, the beam direction, and the nyquist velocity.
 </P>
-<TABLE width=100% border=0 summary="" celpadding=3>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>velkey&nbsp;&nbsp;</em></TD>
     <TD>Unique identifier associated with this radial velocity
         observation.  In this code it is an integer index into module
@@ -258,12 +251,14 @@ radar source, the beam direction, and the nyquist velocity.
 <TR><TD valign=top><em class=optionalcode>fform</em></TD>
     <TD>File format specifier: FORMATTED or UNFORMATTED; default FORMATTED</TD>
 </TABLE>
-<BR>
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="write_radial_vel"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call write_radial_vel(velkey, ifile
    <em class=optionalcode>[, fform]</em>) </em>
@@ -271,14 +266,19 @@ radar source, the beam direction, and the nyquist velocity.
 integer,                    intent(in) :: <em class=code>velkey</em>
 integer,                    intent(in) :: <em class=code>ifile</em>
 character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Writes the additional auxiliary information associated with a
 radial velocity observation.  This includes the location of the
 radar source, the beam direction, and the nyquist velocity.
 </P>
-<TABLE width=100% border=0 summary="" celpadding=3>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>velkey&nbsp;&nbsp;</em></TD>
     <TD>Unique identifier associated with this radial velocity
         observation.  In this code it is an integer index into module
@@ -290,11 +290,14 @@ radar source, the beam direction, and the nyquist velocity.
 <TR><TD valign=top><em class=optionalcode>fform</em></TD>
     <TD>File format specifier: FORMATTED or UNFORMATTED; default FORMATTED</TD>
 </TABLE>
-<BR>
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="get_obs_def_radial_vel"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call get_obs_def_radial_vel(velkey, radar_location,
                                             beam_direction, nyquist_velocity)</em>
@@ -303,13 +306,18 @@ integer,             intent(in)  :: <em class=code>velkey</em>
 type(location_type), intent(out) :: <em class=code>radar_location</em>
 real(r8),            intent(out) :: <em class=code>beam_direction(3)</em>
 real(r8),            intent(out) :: <em class=code>nyquist_velocity</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Returns the auxiliary information associated with a given radial
 velocity observation.
 </P>
-<TABLE width=100% border=0 summary="" celpadding=3>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>velkey</em></TD>
     <TD>Unique identifier associated with this radial velocity
         observation.  In this code it is an integer index into module
@@ -324,11 +332,14 @@ velocity observation.
 <TR><TD valign=top><em class=code>nyquist_velocity&nbsp;&nbsp;</em></TD>
     <TD>Nyquist velocity at the observation point in meters/second.</TD></TR>
 </TABLE>
-<BR>
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="set_radial_vel"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call set_radial_vel(velkey, radar_location,
                                             beam_direction, nyquist_velocity)</em>
@@ -337,14 +348,19 @@ integer,             intent(out) :: <em class=code>velkey</em>
 type(location_type), intent(in)  :: <em class=code>radar_location</em>
 real(r8),            intent(in)  :: <em class=code>beam_direction(3)</em>
 real(r8),            intent(in)  :: <em class=code>nyquist_velocity</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Sets the auxiliary information associated with a radial velocity
 observation. This routine increments and returns the new key associated
 with these values.
 </P>
-<TABLE width=100% border=0 summary="" celpadding=3>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>velkey</em></TD>
     <TD>Unique identifier associated with this radial velocity
         observation.  In this code it is an integer index into module
@@ -359,33 +375,44 @@ with these values.
 <TR><TD valign=top><em class=code>nyquist_velocity&nbsp;&nbsp;</em></TD>
     <TD>Nyquist velocity at the observation point in meters/second.</TD></TR>
 </TABLE>
-<BR>
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="interactive_radial_vel"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call interactive_radial_vel(velkey) </em>
 <pre>
 integer, intent(out) :: <em class=code>velkey</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Prompts the user for the auxiliary information needed for a radial
 velocity observation, and returns the new key associated with this data.
 </P>
-<TABLE width=100% border=0 summary="" celpadding=3>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>velkey&nbsp;&nbsp;</em></TD>
     <TD>Unique identifier associated with this radial velocity
         observation.  In this code it is an integer index into module
         local arrays which hold the additional data. This routine returns
         the incremented value associated with this data.</TD></TR>
 </TABLE>
-<BR>
 
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="get_expected_radial_vel"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> call get_expected_radial_vel(state_vector, location, 
          velkey, radial_vel, istatus) </em>
@@ -395,8 +422,12 @@ type(location_type), intent(in)  :: <em class=code>location</em>
 integer,             intent(in)  :: <em class=code>velkey</em>
 real(r8),            intent(out) :: <em class=code>radial_vel</em>
 integer,             intent(out) :: <em class=code>istatus</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
 <P>
 Given a location and the state vector from one of the ensemble members,
 compute the model-predicted radial velocity in meters/second 
@@ -404,13 +435,13 @@ that would be observed at that location.  <em class="code">velkey</em>
 is the unique index for this particular radial velocity observation.
 The value is returned in <em class=code>radial_vel</em>, 
 <em class="code">istatus</em> is the return code.
-</P>
-<P>
+<br>
+<br>
 The along-beam component of the 3-d air velocity is computed from the
 u, v, and w fields plus the beam_direction.  The along-beam component
 of power-weighted precipitation fall velocity is added to the result.
 </P>
-<TABLE width=100% border=0 summary="" celpadding=3>
+<TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>state_vector&nbsp;&nbsp;</em></TD>
     <TD>A one dimensional representation of the model state vector</TD></TR>
 <TR><TD valign=top><em class=code>location</em></TD>
@@ -425,429 +456,23 @@ of power-weighted precipitation fall velocity is added to the result.
         indicates an error; negative values are reserved for
         internal DART use only.</TD></TR>
 </TABLE>
-<BR>
 
-<!--==================================================================-->
-
-<!--==================================================================-->
-<!-- Declare all private entities.                                    -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<BR><HR><BR>
-<H2>PRIVATE COMPONENTS</H2>
-
-<TABLE>
-<TR><TD>&nbsp;</TD><TD><A HREF="#initialize_module">initialize_module</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#read_beam_direction">read_beam_direction</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#read_nyquist_velocity">read_nyquist_velocity</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#write_beam_direction">write_beam_direction</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#write_nyquist_velocity">write_nyquist_velocity</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#interactive_beam_direction">interactive_beam_direction</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#interactive_nyquist_velocity">interactive_nyquist_velocity</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_reflectivity">get_reflectivity</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_precip_fall_speed">get_precip_fall_speed</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#initialize_constants">initialize_constants</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#print_constants">print_constants</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#pr_con">pr_con</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#velkey_out_of_range">velkey_out_of_range</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#check_namelist_limits">check_namelist_limits</A></TD><TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#ascii_file_format">ascii_file_format</A></TD><TR>
-</TABLE>
-
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="initialize_module"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call initialize_module()</em>
-<pre>
-</pre>
 </div>
-<H3 class=indent1>Description</H3>
-<P>
-Reads the namelist, allocates space for the auxiliary data associated
-wtih radial velocity observations, initializes the constants used in
-subsequent computations (possibly altered by values in the namelist),
-and prints out the list of constants and the values in use.  These
-may need to change depending on which microphysics scheme is being used.
-</P>
-<BR>
-
-<!--===================== DESCRIPTION OF FUNCTION ====================-->
-<A NAME="read_beam_direction"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>beam_direction = read_beam_direction(ifile, is_asciiformat)</em>
-<pre>
-real(r8), dimension(3)            :: <em class=code>read_beam_direction</em>
-integer,               intent(in) :: <em class=code>ifile</em>
-logical,               intent(in) :: <em class=code>is_asciiformat</em>
-</pre>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Reads the beam direction at the observation location.  Auxiliary data
-for doppler radial velocity observations.
-</P>
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>read_beam_direction&nbsp;&nbsp;</em></TD>
-    <TD>Returns three real values for the radar beam orientation</TD></TR>
-<TR><TD valign=top><em class=code>ifile</em></TD>
-    <TD>File unit descriptor for input file</TD></TR>
-<TR><TD valign=top><em class=code>is_asciiformat</em></TD>
-    <TD>File format specifier: .TRUE. if file is formatted/ascii, or
-        .FALSE. if unformatted/binary.  Default .TRUE.</TD></TR>
-</TABLE>
-<BR>
-
-<!--===================== DESCRIPTION OF FUNCTION ====================-->
-<A NAME="read_nyquist_velocity"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>nyquist_velocity = read_nyquist_velocity(ifile, is_asciiformat)</em>
-<pre>
-real(r8),            :: <em class=code>read_nyquist_velocity</em>
-integer,  intent(in) :: <em class=code>ifile</em>
-logical,  intent(in) :: <em class=code>is_asciiformat</em>
-</pre>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Reads nyquist velocity for a doppler radial velocity observation.
-</P>
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>read_nyquist_velocity&nbsp;&nbsp;</em></TD>
-    <TD>Returns a real value for the nyquist velocity value</TD></TR>
-<TR><TD valign=top><em class=code>ifile</em></TD>
-    <TD>File unit descriptor for input file</TD></TR>
-<TR><TD valign=top><em class=code>is_asciiformat</em></TD>
-    <TD>File format specifier: .TRUE. if file is formatted/ascii, or
-        .FALSE. if unformatted/binary.  Default .TRUE.</TD></TR>
-</TABLE>
-<BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="write_beam_direction"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call write_beam_direction(ifile, beam_direction, is_asciiformat)</em>
-<pre>
-integer,                intent(in) :: <em class=code>ifile</em>
-real(r8), dimension(3), intent(in) :: <em class=code>beam_direction</em>
-logical,                intent(in) :: <em class=code>is_asciiformat</em>
-</pre></div>
-<H3 class=indent1>Description</H3>
-<P>
-Writes the beam direction at the observation location.  Auxiliary data
-for doppler radial velocity observations.
-</P>
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>ifile</em></TD>
-    <TD>File unit descriptor for output file</TD></TR>
-<TR><TD valign=top><em class=code>beam_direction&nbsp;&nbsp;</em></TD>
-    <TD>Three components of the radar beam orientation</TD></TR>
-<TR><TD valign=top><em class=code>is_asciiformat</em></TD>
-    <TD>File format specifier: .TRUE. if file is formatted/ascii, or
-        .FALSE. if unformatted/binary.  Default .TRUE.</TD></TR>
-</TABLE>
-<BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="write_nyquist_velocity"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call write_nyquist_velocity(ifile, nyquist_velocity, is_asciiformat)</em>
-<pre>
-integer,  intent(in) :: <em class=code>ifile</em>
-real(r8), intent(in) :: <em class=code>nyquist_velocity</em>
-logical,  intent(in) :: <em class=code>is_asciiformat</em>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Writes nyquist velocity for a doppler radial velocity observation.
-</P>
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>ifile</em></TD>
-    <TD>File unit descriptor for output file</TD></TR>
-<TR><TD valign=top><em class=code>nyquist_velocity&nbsp;&nbsp;</em></TD>
-    <TD>The nyquist velocity value for this observation</TD></TR>
-<TR><TD valign=top><em class=code>is_asciiformat</em></TD>
-    <TD>File format specifier: .TRUE. if file is formatted/ascii, or
-        .FALSE. if unformatted/binary.  Default .TRUE.</TD></TR>
-</TABLE>
-<BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="interactive_beam_direction"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call interactive_beam_direction(beam_direction)</em>
-<pre>
-real(r8), dimension(3), intent(out) :: <em class=code>beam_direction</em>
-</pre>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Prompts the user for input for the azimuth and elevation of the radar
-beam at the observation location.  Will be converted to the three values
-actually stored in the observation sequence file.
-</P>
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>beam_direction&nbsp;&nbsp;</em></TD>
-    <TD>Three components of the radar beam orientation</TD></TR>
-</TABLE>
-<BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="interactive_nyquist_velocity"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call interactive_nyquist_velocity(nyquist_velocity)</em>
-<pre>
-real(r8), intent(out) :: <em class=code>nyquist_velocity</em>
-</pre>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Prompts the user for input for the nyquist velocity value
-associated with a doppler radial velocity observation.
-</P>
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>nyquist_velocity&nbsp;&nbsp;</em></TD>
-    <TD>Nyquist velocity value for the observation.</TD></TR>
-</TABLE>
-<BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="get_reflectivity"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call get_reflectivity(qr, qg, qs, rho, temp, ref)</em>
-<pre>
-real(r8), intent(in)  :: <em class=code>qr</em>
-real(r8), intent(in)  :: <em class=code>qg</em>
-real(r8), intent(in)  :: <em class=code>qs</em>
-real(r8), intent(in)  :: <em class=code>rho</em>
-real(r8), intent(in)  :: <em class=code>temp</em>
-real(r8), intent(out) :: <em class=code>ref</em>
-</pre>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Computes the equivalent radar reflectivity factor in 
-mm<sup>6</sup> m<sup>-3</sup>
-for simple single-moment microphysics schemes such as 
-Kessler and Lin, et al.
-See the <A HREF="#References">references</A> for more details.
-</P>
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>qr</em></TD>
-    <TD>Rain water content (kg kg<sup>-1</sup>)</TD></TR>
-<TR><TD valign=top><em class=code>qg</em></TD>
-    <TD>Graupel/hail content (kg kg<sup>-1</sup>)</TD></TR>
-<TR><TD valign=top><em class=code>qs</em></TD>
-    <TD>Snow content (kg kg<sup>-1</sup>)</TD></TR>
-<TR><TD valign=top><em class=code>rho</em></TD>
-    <TD>Air density (kg m<sup>-3</sup>)</TD></TR>
-<TR><TD valign=top><em class=code>temp&nbsp;&nbsp;</em></TD>
-    <TD>Air temperature (K)</TD></TR>
-<TR><TD valign=top><em class=code>ref</em></TD>
-    <TD>The returned radar reflectivity value</TD></TR>
-</TABLE>
-<BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="get_precip_fall_speed"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call get_precip_fall_speed(qr, qg, qs, rho, temp, precip_fall_speed)</em>
-<pre>
-real(r8), intent(in)  :: <em class=code>qr</em>
-real(r8), intent(in)  :: <em class=code>qg</em>
-real(r8), intent(in)  :: <em class=code>qs</em>
-real(r8), intent(in)  :: <em class=code>rho</em>
-real(r8), intent(in)  :: <em class=code>temp</em>
-real(r8), intent(out) :: <em class=code>precip_fall_speed</em>
-</pre>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Computes power-weighted precipitation fall speed in m s<sup>-1</sup> 
-for simple single-moment microphysics schemes such as Kessler and Lin, et al.
-See the <A HREF="#References">references</A> for more details.
-</P>
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>qr</em></TD>
-    <TD>Rain water content (kg kg<sup>-1</sup>)</TD></TR>
-<TR><TD valign=top><em class=code>qg</em></TD>
-    <TD>Graupel/hail content (kg kg<sup>-1</sup>)</TD></TR>
-<TR><TD valign=top><em class=code>qs</em></TD>
-    <TD>Snow content (kg kg<sup>-1</sup>)</TD></TR>
-<TR><TD valign=top><em class=code>rho</em></TD>
-    <TD>Air density (kg m<sup>-3</sup>)</TD></TR>
-<TR><TD valign=top><em class=code>temp</em></TD>
-    <TD>Air temperature (K)</TD></TR>
-<TR><TD valign=top><em class=code>precip_fall_speed&nbsp;&nbsp;</em></TD>
-    <TD>The returned precipitation vall speed</TD></TR>
-</TABLE>
-<BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="initialize_constants"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call initialize_constants()</em>
-<pre>
-</pre>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Set values for a collection of constants used throughout the module
-during the various calculations.  These are set once in this routine
-and are unchanged throughout the rest of the execution.  They cannot
-be true Fortran <em class=code>parameters</em> because some of the
-values can be overwritten by namelist entries, but once they are set
-they are treated as read-only parameters.
-</P>
-<BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="print_constants"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call print_constants()</em>
-<pre>
-</pre>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Print out the names and values of all constant parameters used by this
-module.  The error handler message facility is used to print the message,
-which by default goes to both the DART log file and to the standard
-output of the program.
-</P>
-<BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="pr_con"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call pr_con(c_val, c_str)</em>
-<pre>
-real(r8),         intent(in)  :: <em class=code>c_val</em>
-character(len=*), intent(in)  :: <em class=code>c_str</em>
-</pre>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Calls the DART error handler routine to print out a string label
-and a real value to both the log file and to the standard output.
-</P>
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>Value of constant&nbsp;&nbsp;</em></TD>
-    <TD>A real value.</TD></TR>
-<TR><TD valign=top><em class=code>Name of constant</em></TD>
-    <TD>A character string.</TD></TR>
-</TABLE>
-<BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="velkey_out_of_range"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call velkey_out_of_range(velkey)</em>
-<pre>
-integer, intent(in)  :: <em class=code>velkey</em>
-</pre>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Range check key and trigger a fatal error if larger than 
-the allocated array for observation auxiliary data.
-</P>
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>velkey&nbsp;&nbsp;</em></TD>
-    <TD>Integer key into a local array of auxiliary observation data.</TD></TR>
-</TABLE>
-<BR>
-
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
-<A NAME="check_namelist_limits"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>call check_namelist_limits(apply_ref_limit_to_obs, 
-  reflectivity_limit_obs, lowest_reflectivity_obs, apply_ref_limit_to_fwd_op,
-  reflectivity_limit_fwd_op, lowest_reflectivity_fwd_op)</em>
-<pre>
-logical,  intent(in) :: <em class=code>apply_ref_limit_to_obs</em>
-real(r8), intent(in) :: <em class=code>reflectivity_limit_obs</em>
-real(r8), intent(in) :: <em class=code>lowest_reflectivity_obs</em>
-logical,  intent(in) :: <em class=code>apply_ref_limit_to_fwd_op</em>
-real(r8), intent(in) :: <em class=code>reflectivity_limit_fwd_op</em>
-real(r8), intent(in) :: <em class=code>lowest_reflectivity_fwd_op</em>
-</pre>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Check the values set in the namelist for consistency.  Print out a message
-if the limits and set-to values are different; this may be intentional
-but is not generally expected to be the case.  In all cases below, see the
-namelist documentation for a fuller explanation of each value.
-</P>
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>apply_ref_limit_to_obs</em></TD>
-    <TD>Logical. See <A HREF="#Namelist">namelist</A>.</TD></TR>
-<TR><TD valign=top><em class=code>reflectivity_limit_obs</em></TD>
-    <TD>Real value. See <A HREF="#Namelist">namelist</A>.</TD></TR>
-<TR><TD valign=top><em class=code>lowest_reflectivity_obs</em></TD>
-    <TD>Real value. See <A HREF="#Namelist">namelist</A>.</TD></TR>
-<TR><TD valign=top><em class=code>apply_ref_limit_to_fwd_op</em></TD>
-    <TD>Logical. See <A HREF="#Namelist">namelist</A>.</TD></TR>
-<TR><TD valign=top><em class=code>reflectivity_limit_fwd_op</em></TD>
-    <TD>Real value. See <A HREF="#Namelist">namelist</A>.</TD></TR>
-<TR><TD valign=top><em class=code>lowest_reflectivity_fwd_op&nbsp;&nbsp;</em></TD>
-    <TD>Real value. See <A HREF="#Namelist">namelist</A>.</TD></TR>
-</TABLE>
-<BR>
-
-<!--============= DESCRIPTION OF A FUNCTION =======================-->
-<A NAME="ascii_file_format"></A>
-<P></P><HR><P></P>
-<div class=routine>
-<em class=call>is_asciifile = ascii_file_format(fform)</em>
-<pre>
-logical                                :: <em class=code>ascii_file_format</em>
-character(len=*), intent(in), optional :: <em class=code>fform</em>
-</pre>
-</div>
-<H3 class=indent1>Description</H3>
-<P>
-Should be moved to DART utility module at some point.  Returns
-.TRUE. if the optional argument is missing or if it is not one
-of the following values: <em class=code>"unformatted", "UNFORMATTED",
-"unf", "UNF"</em>.
-</P>
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>ascii_file_format&nbsp;&nbsp;</em></TD>
-    <TD>Return value. Logical.  Default is .TRUE.</TD></TR>
-<TR><TD valign=top><em class=code>fform</em></TD>
-    <TD>Character string file format.</TD></TR>
-</TABLE>
-<BR>
-
+<br>
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/'.
+'&amp;' and terminating with a slash '/' for all our namelist input.
+</P>
 <div class=namelist>
 <pre>
-<em class=call>namelist /obs_def_radar_mod_nml/ &amp;
+namelist /obs_def_radar_mod_nml/ &amp;
    apply_ref_limit_to_obs,     &amp;
    reflectivity_limit_obs,     &amp;
    lowest_reflectivity_obs,    &amp;
@@ -865,17 +490,16 @@ of the following values: <em class=code>"unformatted", "UNFORMATTED",
    rho_rain,                   &amp;
    rho_graupel,                &amp;
    rho_snow
-</em>
 </pre>
 </div>
-</P>
 
-<H3 class=indent1>Discussion</H3>
+<div class=indent1>
+<!-- Description -->
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
 </P>
 <pre>
-<em class=call>
 &amp;obs_def_radar_mod_nml
    apply_ref_limit_to_obs      =   .FALSE.,
    reflectivity_limit_obs      =  -10.0_r8,
@@ -895,7 +519,6 @@ of the following values: <em class=code>"unformatted", "UNFORMATTED",
    rho_graupel                 =  400.0_r8,
    rho_snow                    =  100.0_r8
    /
-</em>
 </pre>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -1059,12 +682,15 @@ Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
 
 </TABLE>
 
+</div>
+<br>
+
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
-</P>
+
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
 <UL><LI>A DART observation sequence file.
 </UL>
@@ -1074,7 +700,7 @@ Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
 <UL>
 <LI> Battan, L. J., 1973: <i>Radar Observation of the Atmosphere.</i> Univ. of Chicago Press, 324 pp.
@@ -1088,13 +714,12 @@ Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
@@ -1128,39 +753,552 @@ Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
 </TABLE>
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Describe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
 
-<BR><HR><BR>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Nancy Collins, David Dowell, Jeff Anderson </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<A NAME="PrivateComponents"></A>
+<HR>
+<H2>PRIVATE COMPONENTS</H2>
+
+<TABLE>
+<TR><TD><em class=call>use obs_def_radar_mod, only : </em></TD>
+                   <TD><A HREF="#initialize_module">initialize_module</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_beam_direction">read_beam_direction</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_nyquist_velocity">read_nyquist_velocity</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#write_beam_direction">write_beam_direction</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#write_nyquist_velocity">write_nyquist_velocity</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#interactive_beam_direction">interactive_beam_direction</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#interactive_nyquist_velocity">interactive_nyquist_velocity</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_reflectivity">get_reflectivity</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_precip_fall_speed">get_precip_fall_speed</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#initialize_constants">initialize_constants</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#print_constants">print_constants</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#pr_con">pr_con</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#velkey_out_of_range">velkey_out_of_range</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#check_namelist_limits">check_namelist_limits</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ascii_file_format">ascii_file_format</A></TD></TR>
+</TABLE>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="initialize_module"></A>
+<br>
+<div class=routine>
+<em class=call>call initialize_module()</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads the namelist, allocates space for the auxiliary data associated
+wtih radial velocity observations, initializes the constants used in
+subsequent computations (possibly altered by values in the namelist),
+and prints out the list of constants and the values in use.  These
+may need to change depending on which microphysics scheme is being used.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="read_beam_direction"></A>
+<br>
+<div class=routine>
+<em class=call>beam_direction = read_beam_direction(ifile, is_asciiformat)</em>
+<pre>
+real(r8), dimension(3)            :: <em class=code>read_beam_direction</em>
+integer,               intent(in) :: <em class=code>ifile</em>
+logical,               intent(in) :: <em class=code>is_asciiformat</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads the beam direction at the observation location.  Auxiliary data
+for doppler radial velocity observations.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>read_beam_direction&nbsp;&nbsp;</em></TD>
+    <TD>Returns three real values for the radar beam orientation</TD></TR>
+<TR><TD valign=top><em class=code>ifile</em></TD>
+    <TD>File unit descriptor for input file</TD></TR>
+<TR><TD valign=top><em class=code>is_asciiformat</em></TD>
+    <TD>File format specifier: .TRUE. if file is formatted/ascii, or
+        .FALSE. if unformatted/binary.  Default .TRUE.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="read_nyquist_velocity"></A>
+<br>
+<div class=routine>
+<em class=call>nyquist_velocity = read_nyquist_velocity(ifile, is_asciiformat)</em>
+<pre>
+real(r8),            :: <em class=code>read_nyquist_velocity</em>
+integer,  intent(in) :: <em class=code>ifile</em>
+logical,  intent(in) :: <em class=code>is_asciiformat</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads nyquist velocity for a doppler radial velocity observation.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>read_nyquist_velocity&nbsp;&nbsp;</em></TD>
+    <TD>Returns a real value for the nyquist velocity value</TD></TR>
+<TR><TD valign=top><em class=code>ifile</em></TD>
+    <TD>File unit descriptor for input file</TD></TR>
+<TR><TD valign=top><em class=code>is_asciiformat</em></TD>
+    <TD>File format specifier: .TRUE. if file is formatted/ascii, or
+        .FALSE. if unformatted/binary.  Default .TRUE.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="write_beam_direction"></A>
+<br>
+<div class=routine>
+<em class=call>call write_beam_direction(ifile, beam_direction, is_asciiformat)</em>
+<pre>
+integer,                intent(in) :: <em class=code>ifile</em>
+real(r8), dimension(3), intent(in) :: <em class=code>beam_direction</em>
+logical,                intent(in) :: <em class=code>is_asciiformat</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes the beam direction at the observation location.  Auxiliary data
+for doppler radial velocity observations.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ifile</em></TD>
+    <TD>File unit descriptor for output file</TD></TR>
+<TR><TD valign=top><em class=code>beam_direction&nbsp;&nbsp;</em></TD>
+    <TD>Three components of the radar beam orientation</TD></TR>
+<TR><TD valign=top><em class=code>is_asciiformat</em></TD>
+    <TD>File format specifier: .TRUE. if file is formatted/ascii, or
+        .FALSE. if unformatted/binary.  Default .TRUE.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="write_nyquist_velocity"></A>
+<br>
+<div class=routine>
+<em class=call>call write_nyquist_velocity(ifile, nyquist_velocity, is_asciiformat)</em>
+<pre>
+integer,  intent(in) :: <em class=code>ifile</em>
+real(r8), intent(in) :: <em class=code>nyquist_velocity</em>
+logical,  intent(in) :: <em class=code>is_asciiformat</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes nyquist velocity for a doppler radial velocity observation.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ifile</em></TD>
+    <TD>File unit descriptor for output file</TD></TR>
+<TR><TD valign=top><em class=code>nyquist_velocity&nbsp;&nbsp;</em></TD>
+    <TD>The nyquist velocity value for this observation</TD></TR>
+<TR><TD valign=top><em class=code>is_asciiformat</em></TD>
+    <TD>File format specifier: .TRUE. if file is formatted/ascii, or
+        .FALSE. if unformatted/binary.  Default .TRUE.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="interactive_beam_direction"></A>
+<br>
+<div class=routine>
+<em class=call>call interactive_beam_direction(beam_direction)</em>
+<pre>
+real(r8), dimension(3), intent(out) :: <em class=code>beam_direction</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Prompts the user for input for the azimuth and elevation of the radar
+beam at the observation location.  Will be converted to the three values
+actually stored in the observation sequence file.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>beam_direction&nbsp;&nbsp;</em></TD>
+    <TD>Three components of the radar beam orientation</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="interactive_nyquist_velocity"></A>
+<br>
+<div class=routine>
+<em class=call>call interactive_nyquist_velocity(nyquist_velocity)</em>
+<pre>
+real(r8), intent(out) :: <em class=code>nyquist_velocity</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Prompts the user for input for the nyquist velocity value
+associated with a doppler radial velocity observation.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>nyquist_velocity&nbsp;&nbsp;</em></TD>
+    <TD>Nyquist velocity value for the observation.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_reflectivity"></A>
+<br>
+<div class=routine>
+<em class=call>call get_reflectivity(qr, qg, qs, rho, temp, ref)</em>
+<pre>
+real(r8), intent(in)  :: <em class=code>qr</em>
+real(r8), intent(in)  :: <em class=code>qg</em>
+real(r8), intent(in)  :: <em class=code>qs</em>
+real(r8), intent(in)  :: <em class=code>rho</em>
+real(r8), intent(in)  :: <em class=code>temp</em>
+real(r8), intent(out) :: <em class=code>ref</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Computes the equivalent radar reflectivity factor in 
+mm<sup>6</sup> m<sup>-3</sup>
+for simple single-moment microphysics schemes such as 
+Kessler and Lin, et al.
+See the <A HREF="#References">references</A> for more details.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>qr</em></TD>
+    <TD>Rain water content (kg kg<sup>-1</sup>)</TD></TR>
+<TR><TD valign=top><em class=code>qg</em></TD>
+    <TD>Graupel/hail content (kg kg<sup>-1</sup>)</TD></TR>
+<TR><TD valign=top><em class=code>qs</em></TD>
+    <TD>Snow content (kg kg<sup>-1</sup>)</TD></TR>
+<TR><TD valign=top><em class=code>rho</em></TD>
+    <TD>Air density (kg m<sup>-3</sup>)</TD></TR>
+<TR><TD valign=top><em class=code>temp&nbsp;&nbsp;</em></TD>
+    <TD>Air temperature (K)</TD></TR>
+<TR><TD valign=top><em class=code>ref</em></TD>
+    <TD>The returned radar reflectivity value</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_precip_fall_speed"></A>
+<br>
+<div class=routine>
+<em class=call>call get_precip_fall_speed(qr, qg, qs, rho, temp, precip_fall_speed)</em>
+<pre>
+real(r8), intent(in)  :: <em class=code>qr</em>
+real(r8), intent(in)  :: <em class=code>qg</em>
+real(r8), intent(in)  :: <em class=code>qs</em>
+real(r8), intent(in)  :: <em class=code>rho</em>
+real(r8), intent(in)  :: <em class=code>temp</em>
+real(r8), intent(out) :: <em class=code>precip_fall_speed</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Computes power-weighted precipitation fall speed in m s<sup>-1</sup> 
+for simple single-moment microphysics schemes such as Kessler and Lin, et al.
+See the <A HREF="#References">references</A> for more details.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>qr</em></TD>
+    <TD>Rain water content (kg kg<sup>-1</sup>)</TD></TR>
+<TR><TD valign=top><em class=code>qg</em></TD>
+    <TD>Graupel/hail content (kg kg<sup>-1</sup>)</TD></TR>
+<TR><TD valign=top><em class=code>qs</em></TD>
+    <TD>Snow content (kg kg<sup>-1</sup>)</TD></TR>
+<TR><TD valign=top><em class=code>rho</em></TD>
+    <TD>Air density (kg m<sup>-3</sup>)</TD></TR>
+<TR><TD valign=top><em class=code>temp</em></TD>
+    <TD>Air temperature (K)</TD></TR>
+<TR><TD valign=top><em class=code>precip_fall_speed&nbsp;&nbsp;</em></TD>
+    <TD>The returned precipitation vall speed</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="initialize_constants"></A>
+<br>
+<div class=routine>
+<em class=call>call initialize_constants()</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Set values for a collection of constants used throughout the module
+during the various calculations.  These are set once in this routine
+and are unchanged throughout the rest of the execution.  They cannot
+be true Fortran <em class=code>parameters</em> because some of the
+values can be overwritten by namelist entries, but once they are set
+they are treated as read-only parameters.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="print_constants"></A>
+<br>
+<div class=routine>
+<em class=call>call print_constants()</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Print out the names and values of all constant parameters used by this
+module.  The error handler message facility is used to print the message,
+which by default goes to both the DART log file and to the standard
+output of the program.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="pr_con"></A>
+<br>
+<div class=routine>
+<em class=call>call pr_con(c_val, c_str)</em>
+<pre>
+real(r8),         intent(in)  :: <em class=code>c_val</em>
+character(len=*), intent(in)  :: <em class=code>c_str</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Calls the DART error handler routine to print out a string label
+and a real value to both the log file and to the standard output.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>Value of constant&nbsp;&nbsp;</em></TD>
+    <TD>A real value.</TD></TR>
+<TR><TD valign=top><em class=code>Name of constant</em></TD>
+    <TD>A character string.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="velkey_out_of_range"></A>
+<br>
+<div class=routine>
+<em class=call>call velkey_out_of_range(velkey)</em>
+<pre>
+integer, intent(in)  :: <em class=code>velkey</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Range check key and trigger a fatal error if larger than 
+the allocated array for observation auxiliary data.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>velkey&nbsp;&nbsp;</em></TD>
+    <TD>Integer key into a local array of auxiliary observation data.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="check_namelist_limits"></A>
+<br>
+<div class=routine>
+<em class=call>call check_namelist_limits(apply_ref_limit_to_obs, 
+  reflectivity_limit_obs, lowest_reflectivity_obs, apply_ref_limit_to_fwd_op,
+  reflectivity_limit_fwd_op, lowest_reflectivity_fwd_op)</em>
+<pre>
+logical,  intent(in) :: <em class=code>apply_ref_limit_to_obs</em>
+real(r8), intent(in) :: <em class=code>reflectivity_limit_obs</em>
+real(r8), intent(in) :: <em class=code>lowest_reflectivity_obs</em>
+logical,  intent(in) :: <em class=code>apply_ref_limit_to_fwd_op</em>
+real(r8), intent(in) :: <em class=code>reflectivity_limit_fwd_op</em>
+real(r8), intent(in) :: <em class=code>lowest_reflectivity_fwd_op</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Check the values set in the namelist for consistency.  Print out a message
+if the limits and set-to values are different; this may be intentional
+but is not generally expected to be the case.  In all cases below, see the
+namelist documentation for a fuller explanation of each value.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>apply_ref_limit_to_obs</em></TD>
+    <TD>Logical. See <A HREF="#Namelist">namelist</A>.</TD></TR>
+<TR><TD valign=top><em class=code>reflectivity_limit_obs</em></TD>
+    <TD>Real value. See <A HREF="#Namelist">namelist</A>.</TD></TR>
+<TR><TD valign=top><em class=code>lowest_reflectivity_obs</em></TD>
+    <TD>Real value. See <A HREF="#Namelist">namelist</A>.</TD></TR>
+<TR><TD valign=top><em class=code>apply_ref_limit_to_fwd_op</em></TD>
+    <TD>Logical. See <A HREF="#Namelist">namelist</A>.</TD></TR>
+<TR><TD valign=top><em class=code>reflectivity_limit_fwd_op</em></TD>
+    <TD>Real value. See <A HREF="#Namelist">namelist</A>.</TD></TR>
+<TR><TD valign=top><em class=code>lowest_reflectivity_fwd_op&nbsp;&nbsp;</em></TD>
+    <TD>Real value. See <A HREF="#Namelist">namelist</A>.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="ascii_file_format"></A>
+<br>
+<div class=routine>
+<em class=call>is_asciifile = ascii_file_format(fform)</em>
+<pre>
+logical                                :: <em class=code>ascii_file_format</em>
+character(len=*), intent(in), optional :: <em class=code>fform</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Should be moved to DART utility module at some point.  Returns
+.TRUE. if the optional argument is missing or if it is not one
+of the following values: <em class=code>"unformatted", "UNFORMATTED",
+"unf", "UNF"</em>.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ascii_file_format&nbsp;&nbsp;</em></TD>
+    <TD>Return value. Logical.  Default is .TRUE.</TD></TR>
+<TR><TD valign=top><em class=code>fform</em></TD>
+    <TD>Character string file format.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Nancy Collins, David Dowell, Jeff Anderson </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
 
-<HR>
 </BODY>
 </HTML>

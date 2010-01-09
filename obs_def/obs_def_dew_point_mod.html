@@ -1,63 +1,29 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module obs_def_dew_point_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> /
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> /
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
-<A HREF="#FuturePlans">PLANS</A>
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>MODULE obs_def_dew_point_mod</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson, David Dowell </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
 <P>
 Provides a subroutine to calculate the dew point temperature from model 
 temperature, specific humidity, and pressure.
@@ -66,12 +32,11 @@ temperature, specific humidity, and pressure.
 Revision 2801 implements a more robust method 
 (based on Bolton's Approximation) for calculating dew point.
 </P>
-<BR>
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -82,74 +47,82 @@ obs_kind_mod
 </PRE>
 
 <!--==================================================================-->
-<!--Note to authors. The first row of the table is different.         -->
-
-<A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
-
-<TABLE>
-<TR><TD><em class=call>use obs_def_dew_point_mod, only : </em></TD>
-                   <TD><A HREF="#yyyroutine1">get_expected_dew_point</A></TD></TR>
-</TABLE>
-
-<BR>
-
-<!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
 <!-- duplicate public routines template as many times as necessary    -->
 <!-- make sure you replace all yyyroutine?? strings                   -->
 <!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
 
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2>PUBLIC COMPONENTS</H2>
-<BR>
+<A NAME="Interface"></A>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE>
+<TR><TD><em class=call>use obs_def_dew_point_mod, only : </em></TD>
+                   <TD><A HREF="#get_expected_dew_point">get_expected_dew_point</A></TD></TR>
+</TABLE>
+
+<P>
+Optional namelist interface
+<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
+may be read from file <em class=file>input.nml</em>.
+</P>
+
+<P>
+   A note about documentation style. 
+   Optional arguments are enclosed in brackets 
+   <em class=optionalcode>[like this]</em>.
+</P>
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 
-<A NAME="yyyroutine1"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_expected_dew_point(state_vector, location, key, td, istatus) </em>
- <pre>
- real(r8),            intent(in)  :: <em class=code>state_vector</em>
- type(location_type), intent(in)  :: <em class=code>location</em>
- integer,             intent(in)  :: <em class=code>key</em>
- real(r8),            intent(out) :: <em class=code>td</em>
- integer,             intent(out) :: <em class=code>istatus</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<A NAME="get_expected_dew_point"></A>
+<br>
+<div class=routine>
+<em class=call> call get_expected_dew_point(state_vector, location, key, td, istatus) </em>
+<pre>
+real(r8),            intent(in)  :: <em class=code>state_vector</em>
+type(location_type), intent(in)  :: <em class=code>location</em>
+integer,             intent(in)  :: <em class=code>key</em>
+real(r8),            intent(out) :: <em class=code>td</em>
+integer,             intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Calculates the dew point temperature (Kelvin).
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>state_vector&nbsp; &nbsp; </em></TD>
-     <TD>A one dimensional representation of the model state vector</TD></TR>
- <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
-     <TD>Location for this obs</TD></TR>
- <TR><TD valign=top><em class=code>key&nbsp; &nbsp; </em></TD>
-     <TD>Controls whether upper levels (key = 1) or 2-meter (key = 2) 
-          is required.</TD></TR>
- <TR><TD valign=top><em class=code>td&nbsp; &nbsp; </em></TD>
-     <TD>The returned dew point temperature value</TD></TR>
- <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
-     <TD>Returned integer describing problems with applying
-                 forward operator</TD></TR>
- </TABLE>
- <BR>
+</P>
 
-<!--==================================================================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>state_vector&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>A one dimensional representation of the model state vector</TD></TR>
+<TR><TD valign=top><em class=code>location</em></TD>
+    <TD>Location for this obs</TD></TR>
+<TR><TD valign=top><em class=code>key</em></TD>
+    <TD>Controls whether upper levels (key = 1) or 2-meter (key = 2) 
+         is required.</TD></TR>
+<TR><TD valign=top><em class=code>td</em></TD>
+    <TD>The returned dew point temperature value</TD></TR>
+<TR><TD valign=top><em class=code>istatus</em></TD>
+    <TD>Returned integer describing problems with applying
+                forward operator</TD></TR>
+</TABLE>
 
+</div>
+<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
-</P>
+
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
-<UL><LI>NONE
+<UL><LI>NONE</LI>
 </UL>
 
 <!--==================================================================-->
@@ -157,18 +130,20 @@ Calculates the dew point temperature (Kelvin).
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
+<ol>
+<li> none </li>
+</ol>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
@@ -179,28 +154,52 @@ Calculates the dew point temperature (Kelvin).
 </TABLE>
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Describe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
 
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
 <HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

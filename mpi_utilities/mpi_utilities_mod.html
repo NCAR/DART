@@ -1,76 +1,40 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module mpi_utilities_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>MODULE mpi_utilities_mod</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Nancy Collins </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
 <P>
 This module provides subroutines which access the MPI 
 (message passing interface) parallel communications library.  
 To compile without using MPI substitute the
-<em class=module>null_mpi_utilities_mod.f90</em> for this one.
+<em class="file">null_mpi_utilities_mod.f90</em> for this one.
 </P>
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -80,11 +44,16 @@ mpi  (or mpif.h if mpi module not available)
 </PRE>
 
 <!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
 
 <A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
 <TR><TD><em class=call>use mpi_utilities_mod, only : </em></TD>
@@ -107,37 +76,22 @@ mpi  (or mpif.h if mpi module not available)
 <TR><TD>&nbsp;</TD><TD><A HREF="#exit_all">exit_all</A></TD></TR>
 </TABLE>
 
-<H3 class=indent1>NOTES</H3>
-
-<P>
-</P>
-
-
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2>PUBLIC COMPONENTS</H2>
-
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="initialize_mpi_utilities"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call initialize_mpi_utilities( 
 <em class=optionalcode>[progname]</em>
-<em class=optionalcode>[, alternatename]</em>)</em>
+<em class=optionalcode>[,&nbsp;alternatename]</em>)</em>
 <pre>
 character(len=*), intent(in), optional :: <em class=code>progname</em>
 character(len=*), intent(in), optional :: <em class=code>alternatename</em>
-<pre>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Initializes the MPI library, creates a private communicator, stores the
@@ -163,24 +117,22 @@ It is an error to call any of the other routines in this file before
 calling this routine.
 </P>
 
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>progname&nbsp; &nbsp; </em></TD>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>progname&nbsp;&nbsp;</em></TD>
     <TD>If given, written to the log file to document which program is
          being started.</TD></TR>
-<TR><TD valign=top><em class=code>alternatename&nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>alternatename&nbsp;&nbsp;</em></TD>
     <TD>If given, use this name as the log file instead of the default
          <em class=code>dart_log.out</em>.</TD></TR>
 </TABLE>
-<BR>
-<!-- <H3 class=indent1>Notes</H3> -->
-<!--                              -->
-<!-- <P>would go here             -->
-<!-- </P>                         -->
+
+</div>
+<br>
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="finalize_mpi_utilities"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call finalize_mpi_utilities(
 <em class=optionalcode>[callfinalize]</em>
@@ -188,9 +140,11 @@ calling this routine.
 <pre>
 logical, intent(in), optional  :: <em class=code>callfinalize</em>
 integer, intent(in), optional  :: <em class=code>async</em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Frees the local communicator, and shuts down the MPI library unless
@@ -215,33 +169,32 @@ It is an error to call any of the other routines in this file after
 calling this routine.
 </P>
 
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>callfinalize&nbsp; &nbsp; </em></TD>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>callfinalize&nbsp;&nbsp;</em></TD>
     <TD>If false, do not call the <em class=code>MPI_Finalize()</em> routine.</TD></TR>
-<TR><TD valign=top><em class=code>async&nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>async&nbsp;&nbsp;</em></TD>
     <TD>If the model advance mode (selected by the async namelist value
         in the filter_nml section) requires any synchronization or actions
         at shutdown, this is done.  Currently async=4 requires an additional
         set of actions at shutdown time.</TD></TR>
 </TABLE>
-<BR>
 
-<!-- <H3 class=indent1>Notes</H3> -->
-<!--                              -->
-<!-- <P>would go here             -->
-<!-- </P>                         -->
+</div>
+<br>
 
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
 
 <A NAME="task_count"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> var = task_count()</em>
 <pre>
 integer         :: <em class=code>task_count</em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Returns the total number of MPI tasks this job was started with.
@@ -252,22 +205,26 @@ will be from 0 to 3.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>var&nbsp; &nbsp;</em></TD>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
     <TD>Total number of MPI tasks in this job.</TD></TR>
 </TABLE>
-<BR>
+
+</div>
+<br>
 
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
 
 <A NAME="my_task_id"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> var = my_task_id()</em>
-<pre
+<pre>
 integer         :: <em class=code>my_task_id</em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Returns the local MPI task number. 
@@ -282,21 +239,23 @@ MPI task numbers start at 0, so valid task id numbers for a
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>var &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>var &nbsp;&nbsp;</em></TD>
     <TD>My unique MPI task id number.</TD></TR>
 </TABLE>
-<BR>
+
+</div>
+<br>
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="task_sync"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call task_sync()</em>
-<pre>
-</pre></div>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Synchronize tasks.
@@ -307,27 +266,25 @@ place in the code before proceeding.
 All tasks must make this call or the program will hang.
 </P>
 
-<BR>
-
-<!-- <H3 class=indent1>Notes</H3> -->
-<!--                              -->
-<!-- <P>would go here             -->
-<!-- </P>                         -->
+</div>
+<br>
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="send_to"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call send_to(dest_id, srcarray
-                           <em class=optionalcode>[, time]</em>)</em>
+                           <em class=optionalcode>[,&nbsp;time]</em>)</em>
 <pre>
-integer, intent(in)                   :: <em class=code>dest_id</em>
-real(r8), dimension(:), intent(in)    :: <em class=code>srcarray</em>
-type(time_type), intent(in), optional :: <em class=code>time</em>
-</pre></div>
+integer,                   intent(in) :: <em class=code>dest_id</em>
+real(r8), dimension(:),    intent(in) :: <em class=code>srcarray</em>
+type(time_type), optional, intent(in) :: <em class=optionalcode>time</em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Use the MPI library to send a copy of an array of data from one
@@ -352,17 +309,16 @@ This may be subject to change; MPI has several other non-blocking options
 for send and receive.
 </P>
 
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>dest_id &nbsp; &nbsp; </em></TD>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>dest_id</em></TD>
     <TD>The MPI task id of the receiver.</TD></TR>
-<TR><TD valign=top><em class=code>srcarray &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>srcarray&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>The data to be copied to the receiver.</TD></TR>
-<TR><TD valign=top><em class=code>time &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>time</em></TD>
     <TD>If specified, send the time as well.</TD></TR>
 </TABLE>
 <BR>
 
-<H3 class=indent1>Notes</H3>
 <P>
 The send and receive subroutines must be used with care.
 These calls must be used in pairs; the sending task and the receiving
@@ -374,10 +330,13 @@ or in neither or one of the tasks will hang.
 (Executive summary: There are lots of ways to go wrong here.)
 </P>
 
+</div>
+<br>
+
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="receive_from"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call receive_from(src_id, destarray
                            <em class=optionalcode>[, time]</em>)</em>
@@ -385,9 +344,11 @@ or in neither or one of the tasks will hang.
 integer, intent(in)                    :: <em class=code>src_id</em>
 real(r8), dimension(:), intent(out)    :: <em class=code>destarray</em>
 type(time_type), intent(out), optional :: <em class=code>time</em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Use the MPI library to receive a copy of an array of data from another task.
@@ -411,33 +372,37 @@ This may be subject to change; MPI has several other non-blocking options
 for send and receive.
 </P>
 
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>src_id &nbsp; &nbsp; </em></TD>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>src_id &nbsp;&nbsp;</em></TD>
     <TD>The MPI task id of the sender.</TD></TR>
-<TR><TD valign=top><em class=code>destarray &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>destarray &nbsp;&nbsp;</em></TD>
     <TD>The location where the data from the sender is to be placed.</TD></TR>
-<TR><TD valign=top><em class=code>time &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>time &nbsp;&nbsp;</em></TD>
     <TD>If specified, receive the time as well.</TD></TR>
 </TABLE>
 <BR>
 
-<H3 class=indent1>Notes</H3>
 <P>
 See the notes section
 of <em class=code><A HREF="#send_to">send_to()</A></em>.
 </P>
 
+</div>
+<br>
+
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="exit_all"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call exit_all(exit_code)</em>
 <pre>
 integer, intent(in)   :: <em class=code>exit_code</em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 A replacement for calling the Fortran intrinsic <em class=code>exit</em>.
@@ -455,13 +420,12 @@ the exit code may or may not
 be passed back to the calling job script.
 </P>
 
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>exit_code &nbsp; &nbsp; </em></TD>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>exit_code &nbsp;&nbsp;</em></TD>
     <TD> A numeric exit code.  </TD></TR>
 </TABLE>
 <BR>
 
-<H3 class=indent1>Notes</H3> 
 <P>
 It would generally be helpful to write out some kind of
 message before calling this routine, to indicate where in
@@ -473,18 +437,23 @@ a circular reference in the modules since the mpi module
 uses the utilities module already for other services.
 </P>                      
 
+</div>
+<br>
+
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="array_broadcast"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call array_broadcast(array, root)</em>
 <pre>
 real(r8), dimension(:), intent(inout) :: <em class=code>array</em>
 integer, intent(in)                   :: <em class=code>root</em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 All tasks must make this call together, but the behavior in each task
@@ -503,33 +472,37 @@ root array in their own arrays.
 </P>
 
 
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>array &nbsp; &nbsp; </em></TD>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>array &nbsp;&nbsp;</em></TD>
     <TD> Array containing data to send to all other tasks, or 
          the location in which to receive data. </TD></TR>
-<TR><TD valign=top><em class=code>root &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>root &nbsp;&nbsp;</em></TD>
     <TD> Task ID which will be the data source.  All others are destinations.</TD></TR>
 </TABLE>
 <BR>
 
-<H3 class=indent1>Notes</H3> 
 <P>
 This is another of the routines which must be called by all tasks.
 The MPI call used here is synchronous, so all tasks
 block here until everyone has called this routine.
 </P>                      
 
-<!--===================== DESCRIPTION OF FUNCTION =====================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="iam_task0"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> var = iam_task0()</em>
 <pre>
 logical                        :: <em class=code>iam_task0</em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Returns <em class=code>.TRUE.</em> if called from the task with
@@ -540,16 +513,18 @@ by <em class=code>if (iam_task0()) then ... </em>.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>var &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>var &nbsp;&nbsp;</em></TD>
     <TD> Convenience function to easily test and execute code blocks on 
          task 0 only. </TD></TR>
 </TABLE>
-<BR>
+
+</div>
+<br>
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="broadcast_send"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call broadcast_send(from, array1 
 <em class=optionalcode>[, array2]</em>
@@ -574,9 +549,11 @@ real(r8), intent(inout), optional :: <em class=optionalcode>scalar2</em>
 real(r8), intent(inout), optional :: <em class=optionalcode>scalar3</em>
 real(r8), intent(inout), optional :: <em class=optionalcode>scalar4</em>
 real(r8), intent(inout), optional :: <em class=optionalcode>scalar5</em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Cover routine for 
@@ -604,33 +581,31 @@ will be calling <em class=code>array_broadcast()</em> internally and so
 must be <em class=code>intent(inout)</em> to match.
 </P>
 
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>from &nbsp; &nbsp; </em></TD>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>from &nbsp;&nbsp;</em></TD>
     <TD> Current task ID; the root task for the data broadcast. </TD></TR>
-<TR><TD valign=top><em class=code>array1 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>array1 &nbsp;&nbsp;</em></TD>
     <TD> First data array to be broadcast. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>array2 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>array2 &nbsp;&nbsp;</em></TD>
     <TD> If given, second data array to be broadcast. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>array3 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>array3 &nbsp;&nbsp;</em></TD>
     <TD> If given, third data array to be broadcast. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>array4 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>array4 &nbsp;&nbsp;</em></TD>
     <TD> If given, fourth data array to be broadcast. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>array5 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>array5 &nbsp;&nbsp;</em></TD>
     <TD> If given, fifth data array to be broadcast. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>scalar1 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>scalar1 &nbsp;&nbsp;</em></TD>
     <TD> If given, first data scalar to be broadcast. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>scalar2 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>scalar2 &nbsp;&nbsp;</em></TD>
     <TD> If given, second data scalar to be broadcast. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>scalar3 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>scalar3 &nbsp;&nbsp;</em></TD>
     <TD> If given, third data scalar to be broadcast. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>scalar4 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>scalar4 &nbsp;&nbsp;</em></TD>
     <TD> If given, fourth data scalar to be broadcast. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>scalar5 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>scalar5 &nbsp;&nbsp;</em></TD>
     <TD> If given, fifth data scalar to be broadcast. </TD></TR>
 </TABLE>
-<BR>
 
-<H3 class=indent1>Notes</H3> 
 <P>
 This is another of the routines which must be called 
 consistently; only one task makes this call and all
@@ -639,10 +614,13 @@ The MPI call used here is synchronous, so all tasks
 block until everyone has called one of these two routines.
 </P>                      
 
+</div>
+<br>
+
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="broadcast_recv"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call broadcast_recv(from, array1 
 <em class=optionalcode>[, array2]</em>
@@ -667,9 +645,11 @@ real(r8), intent(inout), optional :: <em class=optionalcode>scalar2</em>
 real(r8), intent(inout), optional :: <em class=optionalcode>scalar3</em>
 real(r8), intent(inout), optional :: <em class=optionalcode>scalar4</em>
 real(r8), intent(inout), optional :: <em class=optionalcode>scalar5</em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Cover routine for 
@@ -696,33 +676,32 @@ will be calling <em class=code>array_broadcast()</em> internally and so
 must be <em class=code>intent(inout)</em> to match.
 </P>
 
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>from &nbsp; &nbsp; </em></TD>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>from &nbsp;&nbsp;</em></TD>
     <TD> The task ID for the data broadcast source. </TD></TR>
-<TR><TD valign=top><em class=code>array1 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>array1 &nbsp;&nbsp;</em></TD>
     <TD> First array location to receive data into. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>array2 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>array2 &nbsp;&nbsp;</em></TD>
     <TD> If given, second data array to receive data into. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>array3 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>array3 &nbsp;&nbsp;</em></TD>
     <TD> If given, third data array to receive data into. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>array4 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>array4 &nbsp;&nbsp;</em></TD>
     <TD> If given, fourth data array to receive data into. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>array5 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>array5 &nbsp;&nbsp;</em></TD>
     <TD> If given, fifth data array to receive data into. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>scalar1 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>scalar1 &nbsp;&nbsp;</em></TD>
     <TD> If given, first data scalar to receive data into. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>scalar2 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>scalar2 &nbsp;&nbsp;</em></TD>
     <TD> If given, second data scalar to receive data into. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>scalar3 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>scalar3 &nbsp;&nbsp;</em></TD>
     <TD> If given, third data scalar to receive data into. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>scalar4 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>scalar4 &nbsp;&nbsp;</em></TD>
     <TD> If given, fourth data scalar to receive data into. </TD></TR>
-<TR><TD valign=top><em class=optionalcode>scalar5 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>scalar5 &nbsp;&nbsp;</em></TD>
     <TD> If given, fifth data scalar to receive data into. </TD></TR>
 </TABLE>
 <BR>
 
-<H3 class=indent1>Notes</H3> 
 <P>
 This is another of the routines which must be called 
 consistently; all tasks but one make this call and exactly one
@@ -731,18 +710,23 @@ The MPI call used here is synchronous, so all tasks
 block until everyone has called one of these two routines.
 </P>                      
 
+</div>
+<br>
+
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="sum_across_tasks"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call sum_across_tasks(addend, sum)</em>
 <pre>
 integer, intent(in)                   :: <em class=code>addend</em>
 integer, intent(out)                  :: <em class=code>sum</em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 All tasks call this routine, each with their 
@@ -752,31 +736,33 @@ total of the values summed across all tasks, and is
 the same for each task.
 </P>
 
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>addend &nbsp; &nbsp; </em></TD>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>addend &nbsp;&nbsp;</em></TD>
     <TD> Single input value per task to be summed up. </TD></TR>
-<TR><TD valign=top><em class=code>sum &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>sum &nbsp;&nbsp;</em></TD>
     <TD> The sum. </TD></TR>
 </TABLE>
 <BR>
 
-<H3 class=indent1>Notes</H3>
 <P>
 This is another of those calls which must be made from each task,
 and the calls block until this is so.
 </P>                     
 
 
+</div>
+<br>
+
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="block_task"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call block_task()</em>
-<pre>
-</pre></div>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Create a named pipe (fifo) and read from it to
@@ -787,11 +773,10 @@ program must call restart_task() on the same set of
 processors the original program was distributed over.
 </P>
 
-<TABLE width=100% border=0 summary="" celpadding=3>
+<TABLE width=100% border=0 summary="" cellpadding=3>
 </TABLE>
 <BR>
 
-<H3 class=indent1>Notes</H3>
 <P>
 Even though fifos appear to be files, in reality they
 are implemented in the kernel.  The write into the fifo
@@ -799,16 +784,19 @@ must be executed on the same node as the read is pending on.
 See the man pages for the mkfifo(1) command for more details.
 </P>                     
 
+</div>
+<br>
+
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="restart_task"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call restart_task()</em>
-<pre>
-</pre></div>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Write into the pipe to restart the reading task.
@@ -819,11 +807,10 @@ See filter and wakeup_filter for examples
 of a program pair which uses these calls in async=4 mode.
 </P>
 
-<TABLE width=100% border=0 summary="" celpadding=3>
+<TABLE width=100% border=0 summary="" cellpadding=3>
 </TABLE>
 <BR>
 
-<H3 class=indent1>Notes</H3>
 <P>
 Even though fifos appear to be files, in reality they
 are implemented in the kernel.  The write into the fifo
@@ -832,17 +819,22 @@ See the man pages for the mkfifo(1) command for more details.
 </P>                     
 
 
+</div>
+<br>
+
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="finished_task"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call finished_task(async)</em>
 <pre>
 integer, intent(in) :: <em class=code>async</em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 For async=4 and task id = 0, write into the main
@@ -850,11 +842,10 @@ filter-to-script fifo to tell the run script that
 filter is exiting.   Does nothing else otherwise.
 </P>
 
-<TABLE width=100% border=0 summary="" celpadding=3>
+<TABLE width=100% border=0 summary="" cellpadding=3>
 </TABLE>
 <BR>
 
-<H3 class=indent1>Notes</H3>
 <P>
 Even though fifos appear to be files, in reality they
 are implemented in the kernel.  The write into the fifo
@@ -862,10 +853,13 @@ must be executed on the same node as the read is pending on.
 See the man pages for the mkfifo(1) command for more details.
 </P>                     
 
+</div>
+<br>
+
 <!--===================== DESCRIPTION OF FUNCTION =====================-->
 
 <A NAME="shell_execute"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> rc = shell_execute()</em>
 <pre>
@@ -873,9 +867,11 @@ integer                       :: <em class=code>shell_execute</em>
 character(len=*), intent(in)  :: <em class=code>execute_string</em>
 logical, intent(in), optional :: <em class=code>serialize</em>
 
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Wrapper routine around the system() library function to execute shell
@@ -885,31 +881,35 @@ other number indicates error.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>rc &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>rc &nbsp;&nbsp;</em></TD>
     <TD> Return code from the shell exit after the command has
          been executed. </TD></TR>
-<TR><TD valign=top><em class=code>execute_string &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>execute_string &nbsp;&nbsp;</em></TD>
     <TD> Command to be executed by the shell. </TD></TR>
-<TR><TD valign=top><em class=code>serialize &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>serialize &nbsp;&nbsp;</em></TD>
     <TD> If specified and if .TRUE. run the command from each PE
          in turn, waiting for each to complete before beginning the
          next.  The default is .FALSE. and does not require that all
          tasks call this routine.  If given and .TRUE. then all tasks
          must make this call. </TD></TR>
 </TABLE>
-<BR>
+
+</div>
+<br>
 
 <!--===================== DESCRIPTION OF SUBROUTINE =====================-->
 
 <A NAME="sleep_seconds"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call sleep_seconds(naplength)</em>
 <pre>
 real(r8), intent(in) :: <em class=code>naplength</em>
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 Wrapper routine for the sleep command.  Argument is a real
@@ -918,52 +918,54 @@ for the minimum time it will sleep.  This routine can round
 up to even seconds if a smaller than 1.0 time is given.
 </P>
 
-<TABLE width=100% border=0 summary="" celpadding=3>
-<TR><TD valign=top><em class=code>naplength &nbsp; &nbsp; </em></TD>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>naplength &nbsp;&nbsp;</em></TD>
     <TD> Number of seconds to sleep as a real value. </TD></TR>
 </TABLE>
 <BR>
 
-<H3 class=indent1>Notes</H3>
 <P>
 The amount of time this routine will sleep is not precise
 and might be in units of whole seconds on some platforms.
 </P>                     
 
+</div>
+<br>
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&#38;' and terminating with a slash '/'.
-</P>
 <P>
 No namelist interfaces are currently defined for this module,
 but at some point in the future an optional namelist interface 
-<A HREF="#Namelist"><em class=code>&#38;mpi_utilities_nml</em> </A>
+<A HREF="#Namelist"><em class=code>&amp;mpi_utilities_nml</em> </A>
 may be supported.  It would be read from file <em class=file>input.nml</em>.
 </P>
 
-<H3 class=indent1>Discussion</H3>
+<div class=indent1>
+<!-- Description -->
+
 <P>
 One anticipated addition
 would be a list of task numbers in which the default option is to print
 out all informational messages; the current default is that messages are
-only printed from task 0 and all others suppressed.  (Warnings and Errors
-print in all cases.)
+only printed from task 0 and all others suppressed.
+(Warnings and Errors print in all cases.)
 </P>
 
+</div>
+<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
 <UL><LI>mpi module or</LI>
     <LI>mpif.h</LI>
@@ -981,7 +983,7 @@ support in the MPI library calls.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
 <UL>
 <LI>MPI: The Complete Reference; Snir, Otto, Huss-Lederman, Walker, Dongarra;
@@ -992,7 +994,6 @@ MIT Press, 1996, ISBN 0-262-69184-1 </LI>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
@@ -1004,39 +1005,58 @@ with the numeric error code it received from MPI.
 See any of the MPI references for an up-to-date list of error codes.
 </P>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!-- PrivateComponents                                                -->
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<BR><HR><BR>
+<HR>
 <H2>PRIVATE COMPONENTS</H2>
 <P>
+N/A
 </P>
 
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Nancy Collins </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 
-<HR>
 </BODY>
 </HTML>

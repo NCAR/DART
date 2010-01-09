@@ -1,45 +1,23 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module DEFAULT_obs_def_kind</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
+
+<div>
+<center>
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>MODULE DEFAULT_obs_def_kind</H1>
-<A NAME="HEADER"></A>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
-
+<P>
 Beginning with the I-release of DART, a more flexible, powerful (and
 complicated) mechanism for incorporating new types of observations is part of
 DART. The DEFAULT_obs_kind module being described here is used by the program
@@ -54,8 +32,8 @@ provided by DEFAULT_obs_def_kind. If no special obs_def files are included in
 the preprocessor namelist, a minimal 
 <em class="file">obs_kind_mod.f90</em> is created which can
 only support identity forward observation operators.
-</P>
-<P> 
+<br>
+<br> 
 To add a new specific observation type, see the
 <a href="../obs_def/obs_def_mod.html">obs_def_mod</a> documentation.
 If adding this type includes defining a new generic observation kind,
@@ -69,8 +47,8 @@ to the template file, <em class="file">DEFAULT_obs_kind_mod.F90</em> and
 not the output of the preprocess program, 
 <em class="file">obs_kind_mod.f90</em>.  The latter file is overwritten
 each time preprocess runs, deleting any hand editing done on that file.
-</P>
-<P> 
+<br>
+<br> 
 The rest of this documentation 
 describes the special formatting that is included
 in the DEFAULT_obs_kind_mod in order to guide the preprocess program. Two
@@ -78,8 +56,9 @@ sections of code are inserted into the DEFAULT_obs_def_kind module from each of
 the special obs_def modules that are requested. The insertion point for each
 section is denoted by a special comment line that must be included VERBATIM
 in DEFAULT_obs_kind_mod. These special comment lines and their significance are:
+</P>
 <OL>
-<li> <pre>
+<li><pre>
 ! DART PREPROCESS INTEGER DECLARATION INSERTED HERE
 </pre>
 Each of the observation type identifiers are inserted here, and are given
@@ -96,7 +75,7 @@ RAW_STATE_VARIABLE will always be associated with a string
 "RAW_STATE_VARIABLE" (see below).
 </li>
 
-<li> <pre>
+<li><pre>
 ! DART PREPROCESS OBS_KIND_INFO INSERTED HERE
 </pre>
 The entries for the obs_kind_info table are initialized here. This table has a
@@ -139,22 +118,32 @@ created by the preprocess program.
 </li>
 
 </ol>
-<P>
 
-<P>
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
 
-
+<A NAME="Legalese"></A>
 <HR>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
 
-<BR>
-
 <!--==================================================================-->
 
-<!--==================================================================-->
+</BODY>
+</HTML>

@@ -1,70 +1,29 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module location_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<!--kdr PRIVATE COMPONENTS has no destination -->
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>MODULE location_mod (threed_sphere)</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson, Tim Hoar </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
-
-<P>
-   Optional arguments are enclosed in brackets <em class=optionalcode>[like this]</em>.
-</P>
 <P>
    Provides a representation of a physical location on a 3-D spherical
    shell. A type that abstracts the location is provided along
@@ -76,8 +35,8 @@
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -86,11 +45,16 @@ random_seq_mod
 </PRE>
 
 <!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
 
 <A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
 <TR><TD><em class=code>use location_mod, only : </em></TD>
@@ -125,30 +89,22 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#not_equal">operator(/=)</A></TD></TR>
 </TABLE>
 
-<H3 class=indent1>NOTES</H3>
-
 <P>
-Optional namelist interface 
-<A HREF="#Namelist"><em class=code>&#38;location_nml</em> </A>
+Optional namelist interface
+<A HREF="#Namelist"><em class=code>&amp;location_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2>PUBLIC ENTITIES</H2>
 <P>
+   A note about documentation style. 
+   Optional arguments are enclosed in brackets 
+   <em class=optionalcode>[like this]</em>.
 </P>
 
-<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
+<!--===================== DESCRIPTION OF A LOCAL TYPE =====================-->
 
 <A NAME="location_type"></A>
-<BR><HR><BR>
+<br>
 <div class=type><pre>
 type location_type
    private
@@ -157,7 +113,8 @@ type location_type
 end type location_type
 </pre></div>
 
-<H3 class=indent1>Detailed Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>Provides an abstract representation of physical location on a 
 three-d spherical shell.
@@ -166,77 +123,92 @@ three-d spherical shell.
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Component   </TH>
     <TH align=left>Description </TH></TR>
-<TR><TD valign=top> lon                       </TD>
-    <TD>longitude in radians</TD></TR>
-<TR><TD valign=top> lat                       </TD>
-    <TD>latitude in radians</TD></TR>
-<TR><TD valign=top> vloc                       </TD>
+<TR><TD valign=top> lon        </TD>
+    <TD>longitude in radians   </TD></TR>
+<TR><TD valign=top> lat        </TD>
+    <TD>latitude in radians    </TD></TR>
+<TR><TD valign=top> vloc       </TD>
     <TD>vertical location, units as selected by which_vert</TD></TR>
-<TR><TD valign=top> which_vert                       </TD>
+<TR><TD valign=top> which_vert </TD>
     <TD>type of vertical location: -2=no vert location; -1=surface; 
         1=level; 2=pressure; 3=height</TD></TR>
 </TABLE>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="get_location"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = get_location(loc) </em>
- <pre>
- real(r8), dimension(3), intent(inout) :: <em class=code>get_location</em>
- type(location_type), intent(in)       :: <em class=code>loc</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<br>
+<div class=routine>
+<em class=call> var = get_location(loc) </em>
+<pre>
+real(r8), dimension(3), intent(inout) :: <em class=code>get_location</em>
+type(location_type), intent(in)       :: <em class=code>loc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Extracts the longitude and latitude (converted to degrees) and the vertical
 location from a location type and returns in a 3 element real array.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_location&nbsp; &nbsp; </em></TD>
-     <TD>The longitude and latitude (in degrees) and vertical location</TD></TR>
- <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
-     <TD>A location type</TD></TR>
- </TABLE>
- <BR>
+</P>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>get_location&nbsp;&nbsp;</em></TD>
+    <TD>The longitude and latitude (in degrees) and vertical location</TD></TR>
+<TR><TD valign=top><em class=code>loc&nbsp;&nbsp;</em></TD>
+    <TD>A location type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="set_location"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = set_location(lon, lat, vert_loc, which_vert) </em>
- <pre>
- type(location_type)     :: <em class=code>set_location</em>
- real(r8), intent(in)    :: <em class=code>lon</em>
- real(r8), intent(in)    :: <em class=code>lat</em>
- real(r8), intent(in)    :: <em class=code>vert_loc</em>
- integer, intent(in)     :: <em class=code>which_vert</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<br>
+<div class=routine>
+<em class=call> var = set_location(lon, lat, vert_loc, which_vert) </em>
+<pre>
+type(location_type)     :: <em class=code>set_location</em>
+real(r8), intent(in)    :: <em class=code>lon</em>
+real(r8), intent(in)    :: <em class=code>lat</em>
+real(r8), intent(in)    :: <em class=code>vert_loc</em>
+integer, intent(in)     :: <em class=code>which_vert</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns a location type with the input longitude and latitude (input
 in degrees) and the vertical location of type specified by which_vert.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>set_location&nbsp; &nbsp; </em></TD>
-     <TD>A location type</TD></TR>
- <TR><TD valign=top><em class=code>lon&nbsp; &nbsp; </em></TD>
-     <TD>Longitude in degrees</TD></TR>
- <TR><TD valign=top><em class=code>lat&nbsp; &nbsp; </em></TD>
-     <TD>Latitude in degrees</TD></TR>
- <TR><TD valign=top><em class=code>vert_loc&nbsp; &nbsp; </em></TD>
-     <TD>Vertical location consistent with which_vert</TD></TR>
- <TR><TD valign=top><em class=code>which_vert&nbsp; &nbsp; </em></TD>
-     <TD>The vertical location type</TD></TR>
- </TABLE>
- <BR>
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>set_location&nbsp;&nbsp;</em></TD>
+    <TD>A location type</TD></TR>
+<TR><TD valign=top><em class=code>lon&nbsp;&nbsp;</em></TD>
+    <TD>Longitude in degrees</TD></TR>
+<TR><TD valign=top><em class=code>lat&nbsp;&nbsp;</em></TD>
+    <TD>Latitude in degrees</TD></TR>
+<TR><TD valign=top><em class=code>vert_loc&nbsp;&nbsp;</em></TD>
+    <TD>Vertical location consistent with which_vert</TD></TR>
+<TR><TD valign=top><em class=code>which_vert&nbsp;&nbsp;</em></TD>
+    <TD>The vertical location type</TD></TR>
+</TABLE>
 
-<!--=====================================================================-->
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="write_location"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call>call write_location(file, loc
      <em class=optionalcode>[,fform]</em>) </em>
@@ -244,54 +216,54 @@ in degrees) and the vertical location of type specified by which_vert.
 integer,               intent(in)      :: <em class=code> file </em>
 type(location_type),   intent(in)      :: <em class=code> loc </em>
 character(len=*), optional, intent(in) :: <em class=optionalcode> fform </em>
-</pre></div>
+</pre>
+</div>
 
-<H2 class=indent1>Description</H2>
+<div class=indent1>
+<!-- Description -->
 
 <P>
    Given an integer IO channel of an open file and a location, writes the
    location to this file. The fform argument controls whether write is "FORMATTED"
    or "UNFORMATTED" with default being formatted.
 </P>
-<P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-
 <TR><TD valign=top><em class=code>file</em></TD>
     <TD>the unit number of the open file.</TD></TR>
-
 <TR><TD valign=top><em class=code>loc</em></TD>
     <TD>location type to be written. </TD></TR>
-
 <TR><TD valign=top><em class=optionalcode>fform</em></TD>
     <TD>Format specifier (FORMATTED or UNFORMATTED). </TD></TR>
-
 </TABLE>
 
-<H3 class=indent1>Notes</H3>
-
-<P>Eventually, a more general file descriptor type should replace the
-use of the integer unit number.
+<P>
+   Eventually, a more general file descriptor type 
+   should replace the use of the integer unit number.
 </P>
 
-<!--===================================================================-->
-<!--===================== DESCRIPTION OF FUNCTION =====================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_dist"></A>
-<P></P><HR><P></P>
+<br>
 <div class=routine>
 <em class=call> var = get_dist( loc1, loc2, kind1, kind2, no_vert)</em>
 <pre>
-real(r8)                             :: <em class=code> get_dist </em>
-type(location_type),     intent(in)  :: <em class=code> loc1, loc2 </em>
-integer,                 intent(in)  :: <em class=code> kind1, kind2 </em>
-logical, optional                    :: <em class=code> no_vert </em>
-</pre></div>
+real(r8)                            :: <em class=code> get_dist </em>
+type(location_type),     intent(in) :: <em class=code> loc1, loc2 </em>
+integer,                 intent(in) :: <em class=code> kind1, kind2 </em>
+logical, optional                   :: <em class=code> no_vert </em>
+</pre>
+</div>
 
-<H2 class=indent1>Description</H2>
+<div class=indent1>
+<!-- Description -->
 
 <P>
-   Returns the distance between two locations. If horiz_only is set to true
+Returns the distance between two locations. If horiz_only is set to true
 just computes great circle distance on sphere. If horiz_only is false, then
 computes an ellipsoidal distance with the horizontal component as above and
 the vertical distance determined by the types of the locations and the 
@@ -300,9 +272,7 @@ coordinate types. The vertical normalization gives the vertical distance
 that is equally weighted as a horizontal distance of 1 radian. If no_vert
 is present, it overrides the value in the namelist and controls whether
 vertical distance is included or not.
-</P>
-
-<P>
+<br><br>
 The kind arguments are not used by the default location code, but
 are available to any user-supplied distance routines which want to
 do specialized calculations based on the types associated with each
@@ -311,7 +281,7 @@ of the two locations.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>loc1 &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>loc1 &nbsp;&nbsp;</em></TD>
     <TD>first location.</TD></TR>
 
 <TR><TD valign=top><em class=code>loc2</em></TD>
@@ -332,359 +302,453 @@ of the two locations.
 
 </TABLE>
 
-<BR>
+</div>
+<br>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
-<A NAME="read_location"></A>
- <P></P><HR><P></P>
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <!--kdr ifile is locfile in ../oned/location_mod.* -->
- <div class=routine>
- <em class=call> var = read_location(ifile
-     <em class=optionalcode>[,fform]</em>) </em>
- <pre>
- type(location_type)                    :: <em class=code>read_location</em>
- integer, intent(in)                    :: <em class=code>ifile</em>
- character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+
+<A NAME="read_location"></A>
+<br>
+<div class=routine>
+<em class=call> var = read_location(ifile
+<em class=optionalcode>[,fform]</em>) </em>
+<pre>
+type(location_type)                    :: <em class=code>read_location</em>
+integer, intent(in)                    :: <em class=code>ifile</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Reads a location_type from a file open on channel ifile using format
 fform (default is formatted).
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>read_location&nbsp; &nbsp; </em></TD>
-     <TD>Returned location type read from file</TD></TR>
- <TR><TD valign=top><em class=code>ifile&nbsp; &nbsp; </em></TD>
-     <TD>Integer channel opened to a file to be read</TD></TR>
- <TR><TD valign=top><em class=optionalcode>fform&nbsp; &nbsp; </em></TD>
-     <TD>Optional format specifier (FORMATTED or UNFORMATTED)</TD></TR>
- </TABLE>
- <BR>
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>read_location&nbsp;&nbsp;</em></TD>
+    <TD>Returned location type read from file</TD></TR>
+<TR><TD valign=top><em class=code>ifile&nbsp;&nbsp;</em></TD>
+    <TD>Integer channel opened to a file to be read</TD></TR>
+<TR><TD valign=top><em class=optionalcode>fform&nbsp;&nbsp;</em></TD>
+    <TD>Optional format specifier (FORMATTED or UNFORMATTED)</TD></TR>
+</TABLE>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="interactive_location"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call interactive_location(location
-     <em class=optionalcode>[,set_to_default]</em>) </em>
- <pre>
- type(location_type), intent(out) :: <em class=code>location</em>
- logical, optional, intent(in)    :: <em class=optionalcode>set_to_default</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<br>
+<div class=routine>
+<em class=call> call interactive_location(location
+<em class=optionalcode>[,set_to_default]</em>) </em>
+<pre>
+type(location_type), intent(out) :: <em class=code>location</em>
+logical, optional, intent(in)    :: <em class=optionalcode>set_to_default</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Use standard input to define a location type. With set_to_default true 
 get one with all elements set to 0.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>location&nbsp; &nbsp; </em></TD>
-     <TD>Location created from standard input</TD></TR>
- <TR><TD valign=top><em class=optionalcode>set_to_default&nbsp; &nbsp; </em></TD>
-     <TD>If true, sets all elments of location type to 0</TD></TR>
- </TABLE>
- <BR>
+</P>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>location&nbsp;&nbsp;</em></TD>
+    <TD>Location created from standard input</TD></TR>
+<TR><TD valign=top><em class=optionalcode>set_to_default&nbsp;&nbsp;</em></TD>
+    <TD>If true, sets all elments of location type to 0</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="set_location_missing"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = set_location_missing() </em>
- <pre>
- type(location_type), intent(in) :: <em class=code>set_location_missing</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<br>
+<div class=routine>
+<em class=call> var = set_location_missing() </em>
+<pre>
+type(location_type), intent(in) :: <em class=code>set_location_missing</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns a location with all elements set to missing values defined in 
 types module. 
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>set_location_missing&nbsp; &nbsp; </em></TD>
-     <TD>A location with all elements set to missing values</TD></TR>
- </TABLE>
- <BR>
+</P>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>set_location_missing&nbsp;&nbsp;</em></TD>
+    <TD>A location with all elements set to missing values</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="vert_is_undef"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = vert_is_undef(loc) </em>
- <pre>
- logical                         :: <em class=code>vert_is_undef</em>
- type(location_type), intent(in) :: <em class=code>loc</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<br>
+<div class=routine>
+<em class=call> var = vert_is_undef(loc) </em>
+<pre>
+logical                         :: <em class=code>vert_is_undef</em>
+type(location_type), intent(in) :: <em class=code>loc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns true if which_vert has no vertical location (undefined), else false.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>vert_is_undef&nbsp; &nbsp; </em></TD>
-     <TD>Returns true if vertical coordinate is not applicable.</TD></TR>
- <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
-     <TD>A location type</TD></TR>
- </TABLE>
- <BR>
+</P>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>vert_is_undef&nbsp;&nbsp;</em></TD>
+    <TD>Returns true if vertical coordinate is not applicable.</TD></TR>
+<TR><TD valign=top><em class=code>loc&nbsp;&nbsp;</em></TD>
+    <TD>A location type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="vert_is_surface"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = vert_is_surface(loc) </em>
- <pre>
- logical                         :: <em class=code>vert_is_surface</em>
- type(location_type), intent(in) :: <em class=code>loc</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<br>
+<div class=routine>
+<em class=call> var = vert_is_surface(loc) </em>
+<pre>
+logical                         :: <em class=code>vert_is_surface</em>
+type(location_type), intent(in) :: <em class=code>loc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns true if which_vert is for surface, else false.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>vert_is_surface&nbsp; &nbsp; </em></TD>
-     <TD>Returns true if vertical coordinate type is surface</TD></TR>
- <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
-     <TD>A location type</TD></TR>
- </TABLE>
- <BR>
+</P>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>vert_is_surface&nbsp;&nbsp;</em></TD>
+    <TD>Returns true if vertical coordinate type is surface</TD></TR>
+<TR><TD valign=top><em class=code>loc&nbsp;&nbsp;</em></TD>
+    <TD>A location type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="vert_is_pressure"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = vert_is_pressure(loc) </em>
- <pre>
- logical                         :: <em class=code>vert_is_pressure</em>
- type(location_type), intent(in) :: <em class=code>loc</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<br>
+<div class=routine>
+<em class=call> var = vert_is_pressure(loc) </em>
+<pre>
+logical                         :: <em class=code>vert_is_pressure</em>
+type(location_type), intent(in) :: <em class=code>loc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns true if which_vert is for pressure, else false.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>vert_is_pressure&nbsp; &nbsp; </em></TD>
-     <TD>Returns true if vertical coordinate type is pressure</TD></TR>
- <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
-     <TD>A location type</TD></TR>
- </TABLE>
- <BR>
+</P>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>vert_is_pressure&nbsp;&nbsp;</em></TD>
+    <TD>Returns true if vertical coordinate type is pressure</TD></TR>
+<TR><TD valign=top><em class=code>loc&nbsp;&nbsp;</em></TD>
+    <TD>A location type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="vert_is_level"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = vert_is_level(loc) </em>
- <pre>
- logical                         :: <em class=code>vert_is_level</em>
- type(location_type), intent(in) :: <em class=code>loc</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<br>
+<div class=routine>
+<em class=call> var = vert_is_level(loc) </em>
+<pre>
+logical                         :: <em class=code>vert_is_level</em>
+type(location_type), intent(in) :: <em class=code>loc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns true if which_vert is for level, else false.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>vert_is_level&nbsp; &nbsp; </em></TD>
-     <TD>Returns true if vertical coordinate type is level</TD></TR>
- <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
-     <TD>A location type</TD></TR>
- </TABLE>
- <BR>
+</P>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>vert_is_level&nbsp;&nbsp;</em></TD>
+    <TD>Returns true if vertical coordinate type is level</TD></TR>
+<TR><TD valign=top><em class=code>loc&nbsp;&nbsp;</em></TD>
+    <TD>A location type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="vert_is_height"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = vert_is_height(loc) </em>
- <pre>
- logical                         :: <em class=code>vert_is_height</em>
- type(location_type), intent(in) :: <em class=code>loc</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-Returns true if which_vert is for height, else false.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>vert_is_height&nbsp; &nbsp; </em></TD>
-     <TD>Returns true if vertical coordinate type is height</TD></TR>
- <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
-     <TD>A location type</TD></TR>
- </TABLE>
- <BR>
+<br>
+<div class=routine>
+<em class=call> var = vert_is_height(loc) </em>
+<pre>
+logical                         :: <em class=code>vert_is_height</em>
+type(location_type), intent(in) :: <em class=code>loc</em>
+</pre>
+</div>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns true if which_vert is for height, else false.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>vert_is_height&nbsp;&nbsp;</em></TD>
+    <TD>Returns true if vertical coordinate type is height</TD></TR>
+<TR><TD valign=top><em class=code>loc&nbsp;&nbsp;</em></TD>
+    <TD>A location type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="query_location"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = query_location(loc
-     <em class=optionalcode>[,attr]</em>) </em>
- <pre>
- real(r8), intent(out)                  :: <em class=code>query_location</em>
- type(location_type), intent(in)        :: <em class=code>loc</em>
- character(len=*), optional, intent(in) :: <em class=optionalcode>attr</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<br>
+<div class=routine>
+<em class=call> var = query_location(loc
+<em class=optionalcode>[,attr]</em>) </em>
+<pre>
+real(r8), intent(out)                  :: <em class=code>query_location</em>
+type(location_type), intent(in)        :: <em class=code>loc</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>attr</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Returns the value of which_vert, latitude, longitude, or vertical location from
 a location type as selected by the string argument attr. If attr is not present
 or if it is 'WHICH_VERT', the value of which_vert is converted to real and 
 returned. Otherwise, attr='LON' returns longitude, attr='LAT' returns latitude
 and attr='VLOC' returns the vertical location. 
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>query_location&nbsp; &nbsp; </em></TD>
-     <TD>Returns longitude, latitude, vertical location, or which_vert 
- (converted to real)</TD></TR>
- <TR><TD valign=top><em class=code>loc&nbsp; &nbsp; </em></TD>
-     <TD>A location type</TD></TR>
- <TR><TD valign=top><em class=optionalcode>attr&nbsp; &nbsp; </em></TD>
-     <TD>Selects 'WHICH_VERT', 'LON', 'LAT' or 'VLOC'</TD></TR>
- </TABLE>
- <BR>
+</P>
 
- <!--================================================================-->
- 
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>query_location&nbsp;&nbsp;</em></TD>
+    <TD>Returns longitude, latitude, vertical location, or which_vert 
+        (converted to real)</TD></TR>
+<TR><TD valign=top><em class=code>loc&nbsp;&nbsp;</em></TD>
+    <TD>A location type</TD></TR>
+<TR><TD valign=top><em class=optionalcode>attr&nbsp;&nbsp;</em></TD>
+    <TD>Selects 'WHICH_VERT', 'LON', 'LAT' or 'VLOC'</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="equal"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> loc1 == loc2 </em>
- <pre>
- type(location_type), intent(in)       :: <em class=code>loc1, loc2</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-  Returns true if the two location types have identical values, else
-  false.
- <BR>
+<br>
+<div class=routine>
+<em class=call> loc1 == loc2</em>
+<pre>
+type(location_type), intent(in) :: <em class=code>loc1, loc2</em>
+</pre>
+</div>
 
-<!--============= DESCRIPTION OF A FUNCTION ========================-->
+<div class=indent1>
+<!-- Description -->
+
+<P>
+ Returns true if the two location types have identical values, 
+ else false.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="not_equal"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call>loc1 /= loc2 </em>
- <pre>
- type(location_type), intent(in)       :: <em class=code>loc1, loc2</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-  Returns true if the two location types do NOT have identical values,
-  else false.
- </P>
- <BR>
+<br>
+<div class=routine>
+<em class=call>loc1 /= loc2</em>
+<pre>
+type(location_type), intent(in) :: <em class=code>loc1, loc2</em>
+</pre>
+</div>
 
+<div class=indent1>
+<!-- Description -->
 
+<P>
+ Returns true if the two location types 
+ do NOT have identical values, else false.
+</P>
 
-<!--================================================================-->
+</div>
+<br>
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_obs_init"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_obs_init(gc,num,obs) </em>
- <pre>
- type(get_close_type),             intent(inout) :: <em class=code>gc</em>
- integer,                          intent(in)    :: <em class=code>num</em>
- type(location_type), dimension(:) intent(in)    :: <em class=code>obs</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Initialize storage for efficient identification of locations close
+<A NAME="get_close_obs_init"></A>
+<br>
+<div class=routine>
+<em class=call> call get_close_obs_init(gc, num, obs)</em>
+<pre>
+type(get_close_type),             intent(inout) :: <em class=code>gc</em>
+integer,                          intent(in)    :: <em class=code>num</em>
+type(location_type), dimension(:) intent(in)    :: <em class=code>obs</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Initialize storage for efficient identification of locations close
 to a given location. Allocates storage for keeping track of which 'box'
 each observation in the list is in.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>gc&nbsp; &nbsp; </em></TD>
-     <TD>Structure that contains data to efficiently find locations close to a given location.</TD></TR>
- <TR><TD valign=top><em class=code>num&nbsp; &nbsp; </em></TD>
-     <TD>The number of locations in the list.</TD></TR>
- <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
-     <TD>The locations of each element in the list, not used in 1D implementation.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gc&nbsp;&nbsp;</em></TD>
+    <TD>Structure that contains data to efficiently find locations 
+        close to a given location.</TD></TR>
+<TR><TD valign=top><em class=code>num&nbsp;&nbsp;</em></TD>
+    <TD>The number of locations in the list.</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>The locations of each element in the list, 
+        not used in 1D implementation.</TD></TR>
+</TABLE>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_obs"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_obs(gc,base_obs_loc,base_obs_kind,obs,obs_kind,
-     num_close,close_ind,dist) </em>
- <pre>
- type(get_close_type), intent(in)              :: <em class=code>gc</em>
- type(location_type), intent(in)               :: <em class=code>base_obs_loc</em>
- integer, intent(in)                           :: <em class=code>base_obs_kind</em>
- type(location_type), dimension(:), intent(in) :: <em class=code>obs</em>
- integer, dimension(:), intent(in)             :: <em class=code>obs_kind</em>
- integer, intent(out)                          :: <em class=code>num_close</em>
- integer, dimension(:), intent(out)            :: <em class=code>close_ind</em>
- real(r8), dimension(:), intent(out)           :: <em class=code>dist</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind, obs, 
+     obs_kind, num_close, close_ind, dist) </em>
+<pre>
+type(get_close_type),              intent(in)  :: <em class=code>gc</em>
+type(location_type),               intent(in)  :: <em class=code>base_obs_loc</em>
+integer,                           intent(in)  :: <em class=code>base_obs_kind</em>
+type(location_type), dimension(:), intent(in)  :: <em class=code>obs</em>
+integer, dimension(:),             intent(in)  :: <em class=code>obs_kind</em>
+integer,                           intent(out) :: <em class=code>num_close</em>
+integer,  dimension(:),            intent(out) :: <em class=code>close_ind</em>
+real(r8), dimension(:),            intent(out) :: <em class=code>dist</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Given a single location and a list of other locations, returns the indices
 of all the locations close to the single one along with the number of
 these and the distances for the close ones.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>gc&nbsp; &nbsp; </em></TD>
-     <TD>Structure to allow efficient identification of locations close to a given location.</TD></TR>
- <TR><TD valign=top><em class=code>base_obs_loc&nbsp; &nbsp; </em></TD>
-     <TD>Single given location.</TD></TR>
- <TR><TD valign=top><em class=code>base_obs_kind&nbsp; &nbsp; </em></TD>
-     <TD>Kind of the single location.</TD></TR>
- <TR><TD valign=top><em class=code>obs&nbsp; &nbsp; </em></TD>
-     <TD>List of observations from which close ones are to be found.</TD></TR>
- <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
-     <TD>Kind associated with observations in obs list.</TD></TR>
- <TR><TD valign=top><em class=code>num_close&nbsp; &nbsp; </em></TD>
-     <TD>Number of observations close to the given location.</TD></TR>
- <TR><TD valign=top><em class=code>close_ind&nbsp; &nbsp; </em></TD>
-     <TD>Indices of those locations that are close.</TD></TR>
- <TR><TD valign=top><em class=code>dist&nbsp; &nbsp; </em></TD>
-     <TD>Distance between given location and the close ones identified in close_ind.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gc&nbsp;&nbsp;</em></TD>
+    <TD>Structure to allow efficient identification of 
+        locations close to a given location.</TD></TR>
+<TR><TD valign=top><em class=code>base_obs_loc&nbsp;&nbsp;</em></TD>
+    <TD>Single given location.</TD></TR>
+<TR><TD valign=top><em class=code>base_obs_kind&nbsp;&nbsp;</em></TD>
+    <TD>Kind of the single location.</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>List of observations from which close ones are to be found.</TD></TR>
+<TR><TD valign=top><em class=code>obs_kind&nbsp;&nbsp;</em></TD>
+    <TD>Kind associated with observations in obs list.</TD></TR>
+<TR><TD valign=top><em class=code>num_close&nbsp;&nbsp;</em></TD>
+    <TD>Number of observations close to the given location.</TD></TR>
+<TR><TD valign=top><em class=code>close_ind&nbsp;&nbsp;</em></TD>
+    <TD>Indices of those locations that are close.</TD></TR>
+<TR><TD valign=top><em class=code>dist&nbsp;&nbsp;</em></TD>
+    <TD>Distance between given location and the 
+        close ones identified in close_ind.</TD></TR>
+</TABLE>
 
+</div>
+<br>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="get_close_maxdist_init"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call get_close_maxdist_init(gc,maxdist) </em>
- <pre>
- type(get_close_type), intent(inout) :: <em class=code>gc</em>
- real(r8), intent(in)                :: <em class=code>maxdist</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Sets the threshhold distance. Anything closer that this is deemed
-to be close.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>gc&nbsp; &nbsp; </em></TD>
-     <TD>Data for efficiently finding close locations.</TD></TR>
- <TR><TD valign=top><em class=code>maxdist&nbsp; &nbsp; </em></TD>
-     <TD>Anything closer than this distance is a close location.</TD></TR>
- </TABLE>
- <P>
- <!--================================================================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
+<A NAME="get_close_maxdist_init"></A>
+<br>
+<div class=routine>
+<em class=call> call get_close_maxdist_init(gc,maxdist) </em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+real(r8), intent(in)                :: <em class=code>maxdist</em>
+</pre>
+</div>
 
-<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Sets the threshhold distance. 
+Anything closer that this is deemed to be close.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gc&nbsp;&nbsp;</em></TD>
+    <TD>Data for efficiently finding close locations.</TD></TR>
+<TR><TD valign=top><em class=code>maxdist&nbsp;&nbsp;</em></TD>
+    <TD>Anything closer than this distance is a close location.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_close_type"></A>
-<BR><HR><BR>
-<div class=type><pre>
+<br>
+<div class=type>
+<pre>
 type get_close_type
    private
    integer  :: num
@@ -694,11 +758,14 @@ type get_close_type
    integer, pointer :: count(:, :)
    integer, pointer :: start(:, :)
 end type get_close_type
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
-<P> Provides a structure for doing efficient computation of close locations.
+<P>
+Provides a structure for doing efficient computation of close locations.
 Doesn't do anything in the 1D implementation except provide appropriate
 stubs.
 </P>
@@ -718,80 +785,151 @@ stubs.
 <TR><TD valign=top> count </TD>
     <TD>Dimensioned nlon by nlat. Number of obs in each box.</TD></TR>
 <TR><TD valign=top> start </TD>
-    <TD>Dimensioned nlon by nlat. Index in straight storage list where obs in each
-        box start.</TD></TR>
+    <TD>Dimensioned nlon by nlat. Index in straight storage list 
+        where obs in each box start.</TD></TR>
 </TABLE>
- <!--================================================================-->
 
+</div>
+<br>
 
-<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="vert_constants"></A>
-<P></P><HR><P></P>
- <H3 class=indent1>Global variable: integer :: VERTISUNDEF</H3>
- <H3 class=indent1>Global variable: integer :: VERTISSURFACE</H3>
- <H3 class=indent1>Global variable: integer :: VERTISLEVEL</H3>
- <H3 class=indent1>Global variable: integer :: VERTISPRESSURE</H3>
- <H3 class=indent1>Global variable: integer :: VERTISHEIGHT</H3>
-Constant parameters used to denote the different vertical types.
- <BR>
+<br>
+<div class=routine>
+<pre>
+<em class=call>integer, parameter :: VERTISUNDEF    = -2</em>
+<em class=call>integer, parameter :: VERTISSURFACE  = -1</em>
+<em class=call>integer, parameter :: VERTISLEVEL    =  1</em>
+<em class=call>integer, parameter :: VERTISPRESSURE =  2</em>
+<em class=call>integer, parameter :: VERTISHEIGHT   =  3</em>
+</pre>
+</div>
 
+<div class=indent1>
+<!-- Description -->
 
+<P>
+Constant parameters used to differentiate vertical types.
+</P>
 
-<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+</div>
+<br>
+
+<!--=============== DESCRIPTION OF A PUBLIC CONSTANT =================-->
+
 <A NAME="LocationDims"></A>
-<P></P><HR><P></P>
- <H3 class=indent1>Global variable: integer :: LocationDims</H3>
+<br>
+<div class=routine>
+<pre>
+<em class=call>integer, parameter :: LocationDims = 3</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Contains the number of real values in a location type. Useful for 
 output routines that must deal transparently with many different
 location modules.
- <BR>
+</P>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+</div>
+<br>
+
+<!--=============== DESCRIPTION OF A PUBLIC CONSTANT =================-->
+
 <A NAME="LocationName"></A>
-<P></P><HR><P></P>
- <H3 class=indent1>Global variable: character(len=129) :: LocationName</H3>
+<br>
+<div class=routine>
+<pre>
+<em class=call>character(len=129), parameter :: LocationName = "loc3Dsphere"</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 A parameter set to "loc3Dsphere" used to identify this location module
 in netCDF output metadata.
- <BR>
+</P>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+</div>
+<br>
+
+<!--=============== DESCRIPTION OF A PUBLIC CONSTANT =================-->
+
 <A NAME="LocationLName"></A>
-<P></P><HR><P></P>
- <H3 class=indent1>Global variable: character(len=129) :: LocationLName</H3>
+<br>
+<div class=routine>
+<pre>
+<em class=call>character(len=129), parameter :: LocationLName = <br>
+       "threed sphere locations: lon, lat, lev or pressure"</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 A parameter set to "threed sphere locations: lon, lat, lev or pressure" used 
 to identify this location module in netCDF output long name metadata.
- <BR>
+</P>
 
-<!--================================================================-->
-<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+</div>
+<br>
+
+<!--=============== DESCRIPTION OF A PUBLIC CONSTANT =================-->
+
 <A NAME="horiz_dist_only"></A>
-<P></P><HR><P></P>
- <H3 class=indent1>Global variable: logical :: horiz_dist_only</H3>
+<br>
+<div class=routine>
+<pre>
+<em class=call>logical :: horiz_dist_only</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 This is a namelist variable that determines whether distance computation
 is horizontal only or not.
- <BR>
+</P>
 
-<!--================================================================-->
-<!--============== DESCRIPTION OF A NAMELIST ========================-->
- <A NAME="Namelist"></A>
- <BR><HR><BR>
+</div>
+<br>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<HR>
 <H2>NAMELIST</H2>
-
- <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&#38;' and terminating with a slash '/'.
- <div class=namelist><pre>
- <em class=call>namelist / location_nml / </em> &#38;
-   horiz_dist_only, vert_normalization_pressure, vert_normalization_height, &#38;
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that filenames that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+The namelist declaration (i.e. what follows) has a different syntax, naturally.
+</P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / location_nml / </em> &amp;
+   horiz_dist_only, vert_normalization_pressure, vert_normalization_height, &amp;
    vert_normalization_level, approximate_distance, nlon, nlat, output_box_info
- </pre></div>
- <H3 class=indent1>Discussion</H3>
- <P>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
 Items in this namelist either control the way in which distances 
 are computed and/or influence the code performance.
- </P>
- <P>
+<br><br>
 If <em>horiz_distance_only</em> is .false.
 then the appropriate normalization constant determines the relative impact of
 vertical and horizontal separation.  Since only a single localization
@@ -799,8 +937,7 @@ distance is specified, and the vertical scales might have very different
 distance characteristics, the vert_normalization_xxx values can be used
 to scale the vertical appropriately to control the desired influence 
 of observations in the vertical.
- </P>
- <P>
+<br><br>
 For search efficiency all locations are pre-binned. The surface of the
 sphere is divided up into <em>nlon</em> by <em>nlat</em> boxes and the
 index numbers of all items (both state vector entries and observations)
@@ -813,8 +950,7 @@ which state vector items are impacted by any given observation.  The search
 radius is the localization distance and only those state vector items
 in boxes closer than the radius to the observation location are processed.
 -->
- </P>
- <P>
+<br><br>
 The default values have given good performance on many of our
 existing model runs, but for tuning purposes the box counts
 have been added to the namelist to allow adjustment.  
@@ -834,8 +970,7 @@ contains a reasonable number of values, more or less evenly
 distributed across boxes. 
 The absolute numbers for best performance will certainly
 vary from case to case.
- </P>
- <P>
+<br><br>
 For latitude, the <em>nlat</em> boxes are distributed evenly across the
 actual extents of the data. (Locations are in radians, so the
 maximum limits are the poles at -PI/2 and +PI/2).   
@@ -855,86 +990,92 @@ In practice, for a global model the boxes are evenly distributed
 across the entire surface of the sphere.  
 For local or regional models, the boxes
 are distributed only across the the extent of the local grid.
- </P>
- <P>
+<br><br>
 This namelist is read in a file called <em class=file>input.nml</em> .
- </P>
- <TABLE border=0 cellpadding=3 width=100%>
- <TR><TH align=left>Contents    </TH>
-     <TH align=left>Type        </TH>
-     <TH align=left>Description </TH></TR>
- <TR><!--contents--><TD valign=top>horiz_dist_only</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD>Only compute horizontal distance component?
-	                 Default: true</TD></TR>
- <TR><!--contents--><TD valign=top>vert_normalization_pressure</TD>
-     <!--  type  --><TD valign=top>real(r8)</TD>
-     <!--descript--><TD>How many pascals should be equivalent distance to one 
-                        radian? Default: 100000.0</TD></TR>
- <TR><!--contents--><TD valign=top>vert_normalization_height</TD>
-     <!--  type  --><TD valign=top>real(r8)</TD>
-     <!--descript--><TD>How many geopotential meters should be equal 
-                        to one radian?  Default: 10000.0</TD></TR>
- <TR><!--contents--><TD valign=top>vert_normalization_level</TD>
-     <!--  type  --><TD valign=top>real(r8)</TD>
-     <!--descript--><TD>How many model levels should be equal to one radian? 
-	                Default: 20.0</TD></TR>
- <TR><!--contents--><TD valign=top>approximate_distance</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD> If true, uses a table lookup for fast approximate
-            computation of distances on sphere. Distance computation can be
-            a first order cost for some spherical problems, so this can increase
-            speed significantly at a loss of some precision. Default: .false.
-	                </TD></TR>
- <TR><!--contents--><TD valign=top>nlon</TD>
-     <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD> Number of boxes (bins) created in the longitude 
-            direction.  Must be an odd number.   (See discussion above for more
-            information about this item.)
-            Default: 71 </TD></TR>
- <TR><!--contents--><TD valign=top>nlat</TD>
-     <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD> Number of boxes (bins) created in the latitude 
-            direction.  (See discussion above for more
-            information about this item.)
-            Default: 36 </TD></TR>
- <TR><!--contents--><TD valign=top>output_box_info</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD> If true, print more details about the distribution
-            of locations across the array of boxes.  Default: .false.
-	                </TD></TR>
- </TABLE>
- <BR>
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+<TR><!--contents--><TD valign=top>horiz_dist_only</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD>Only compute horizontal distance component?
+                 Default: true</TD></TR>
+<TR><!--contents--><TD valign=top>vert_normalization_pressure</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
+    <!--descript--><TD>How many pascals should be equivalent distance to one 
+                       radian? Default: 100000.0</TD></TR>
+<TR><!--contents--><TD valign=top>vert_normalization_height</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
+    <!--descript--><TD>How many geopotential meters should be equal 
+                       to one radian?  Default: 10000.0</TD></TR>
+<TR><!--contents--><TD valign=top>vert_normalization_level</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
+    <!--descript--><TD>How many model levels should be equal to one radian? 
+                Default: 20.0</TD></TR>
+<TR><!--contents--><TD valign=top>approximate_distance</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD> If true, uses a table lookup for fast approximate
+           computation of distances on sphere. Distance computation can be
+           a first order cost for some spherical problems, so this can increase
+           speed significantly at a loss of some precision. Default: .false.
+                </TD></TR>
+<TR><!--contents--><TD valign=top>nlon</TD>
+    <!--  type  --><TD valign=top>integer</TD>
+    <!--descript--><TD> Number of boxes (bins) created in the longitude 
+           direction.  Must be an odd number.   (See discussion above for more
+           information about this item.)
+           Default: 71 </TD></TR>
+<TR><!--contents--><TD valign=top>nlat</TD>
+    <!--  type  --><TD valign=top>integer</TD>
+    <!--descript--><TD> Number of boxes (bins) created in the latitude 
+           direction.  (See discussion above for more
+           information about this item.)
+           Default: 36 </TD></TR>
+<TR><!--contents--><TD valign=top>output_box_info</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD> If true, print more details about the
+           distribution of locations across the array of boxes.
+           Default: .false. </TD></TR>
+</TABLE>
+
+</div>
+<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<P></P><HR><P></P>
+<HR>
 <H2>FILES</H2>
-<UL>
-    <LI> location_mod.nml from input.nml
-</UL>
+<TABLE border=0 >
+<TR><TH>filename</TH>
+    <TH>purpose</TH></TR>
+<TR><TD>input.nml</TD>
+    <TD>to read the location_mod namelist</TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<P></P><HR><P></P>
+<HR>
 <H2>REFERENCES</H2>
+<ol>
+<li> none </li>
+</ol>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class=color>
-
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
@@ -964,7 +1105,7 @@ This namelist is read in a file called <em class=file>input.nml</em> .
                -1 = surface value <BR>
                 1 = level <BR>
                 2 = pressure <BR>
-                3 = height <BR>      </TD>
+                3 = height <BR></TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>read_location</TD>
     <!-- message --><TD VALIGN=top>Expected location header "loc3d" in input file, got ___</TD>
@@ -976,15 +1117,8 @@ This namelist is read in a file called <em class=file>input.nml</em> .
 </TR>
 
 </TABLE>
-
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<P></P><HR><P></P>
 <H2>KNOWN BUGS</H2>
 <P>
 The Hawaii and Workshop versions of this module had an error in the
@@ -993,15 +1127,14 @@ table for cosine were insufficient for some cases. This manifested
 itself as potential errors, most commonly for computing distances 
 near the poles. For relatively small horizontal localizations, this 
 problem only occurred for locations very near the pole.
-None.
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<P></P><HR><P></P>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
 Need to provide more efficient algorithms for getting close observations
@@ -1009,7 +1142,41 @@ and document the nlon and nlat choices and their impact on cost.
 </P>
 
 <!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
 
+<A NAME="PrivateComponents"></A>
 <HR>
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD>Contact:       </TD><TD> Jeff Anderson, Tim Hoar </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

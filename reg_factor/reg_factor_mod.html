@@ -1,66 +1,28 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module reg_factor_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<!--kdr PRIVATE COMPONENTS has no destination -->
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>MODULE reg_factor</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
    Computes a weighting factor to reduce the impact of observations on
@@ -71,8 +33,8 @@
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -81,53 +43,54 @@ time_manager_mod
 </PRE>
 
 <!--==================================================================-->
-<!--Note to authors. The first row of the table is different.         -->
-
-<A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
-
-<TABLE>
-<TR><TD><em class=call>use reg_factor_mod, only : </em></TD>
-                   <TD><A HREF="#yyyroutine1">comp_reg_factor</A> </TD></TR>
-</TABLE>
-
-
-<!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
 <!-- duplicate public routines template as many times as necessary    -->
 <!-- make sure you replace all yyyroutine?? strings                   -->
 <!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE>
+<TR><TD><em class=call>use reg_factor_mod, only : </em></TD>
+                   <TD><A HREF="#comp_reg_factor">comp_reg_factor</A> </TD></TR>
+</TABLE>
 
 <P>
 Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&#38;reg_factor_nml</em> </A>
+<A HREF="#Namelist"> <em class=code>&amp;reg_factor_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
 
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2>PUBLIC COMPONENTS</H2>
+<P>
+   A note about documentation style. 
+   Optional arguments are enclosed in brackets 
+   <em class=optionalcode>[like this]</em>.
+</P>
 
-<!--===================== DESCRIPTION OF FUNCTION =====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="yyyroutine1"></A>
-<P></P><HR><P></P>
+<A NAME="comp_reg_factor"></A>
+<br>
 <div class=routine>
-<em class=call> var = comp_reg_factor(num_groups, regress, obs_index,
-               state_index
-<em class=optionalcode>[, obs_state_ind, obs_state_max]</em>) </em>
+<em class=call> var = comp_reg_factor(num_groups, regress, obs_index, state_index
+<em class=optionalcode>[,&nbsp;obs_state_ind]&nbsp;[,&nbsp;obs_state_max]</em>) </em>
 <pre>
-real(r8)                                      :: <em class=code> comp_reg_factor </em>
-integer, intent(in)                           :: <em class=code> num_groups </em>
-real(r8), intent(in), dimension(num_groups)   :: <em class=code> regress </em>
-integer, intent(in)                           :: <em class=code> obs_index </em>
-integer, intent(in)                           :: <em class=code> state_index </em>
-integer, intent(in), optional                 :: <em class=optionalcode> obs_state_ind </em>
-integer, intent(in), optional                 :: <em class=optionalcode> obs_state_max </em>
-</pre></div>
+real(r8)                                    :: <em class=code> comp_reg_factor </em>
+integer,                         intent(in) :: <em class=code> num_groups </em>
+real(r8), dimension(num_groups), intent(in) :: <em class=code> regress </em>
+integer,                         intent(in) :: <em class=code> obs_index </em>
+integer,                         intent(in) :: <em class=code> state_index </em>
+integer, optional,               intent(in) :: <em class=optionalcode> obs_state_ind </em>
+integer, optional,               intent(in) :: <em class=optionalcode> obs_state_max </em>
+</pre>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
    Returns a weighting factor given regression factors from each group of a 
@@ -137,105 +100,129 @@ integer, intent(in), optional                 :: <em class=optionalcode> obs_sta
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>num_groups &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>num_groups &nbsp;&nbsp;</em></TD>
     <TD>Number of groups. Set to 1 when using information from 
         previously run group filter from file.</TD></TR>
 
-<TR><TD valign=top><em class=code>regress &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>regress &nbsp;&nbsp;</em></TD>
     <TD>Regression factor from each group for a given state variable
         and observation variable pair.</TD></TR>
 
-<TR><TD valign=top><em class=code>obs_index &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>obs_index &nbsp;&nbsp;</em></TD>
     <TD> Integer index of the observation being processed. Not used
          in current implementation .</TD></TR>
 
-<TR><TD valign=top><em class=code>state_index &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>state_index &nbsp;&nbsp;</em></TD>
     <TD>Integer index of state variable being processed. Not used in 
         current implementation.</TD></TR>
 
-<TR><TD valign=top><em class=optionalcode>obs_state_ind &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>obs_state_ind &nbsp;&nbsp;</em></TD>
     <TD>Index into file generated for Bgrid model which could be
         duplicated in other large models.</TD></TR>
 
-<TR><TD valign=top><em class=optionalcode>obs_state_max &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=optionalcode>obs_state_max &nbsp;&nbsp;</em></TD>
     <TD>Maximum number of observation state variable pairs with non-zero
         impacts for a given model and observation sequence. Used for
         generating Bgrid statistic files.</TD></TR>
 
 </TABLE>
-<BR>
+
+</div>
+<br>
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&#38;' and terminating with a slash '/'.
-<div class=namelist><pre>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that filenames that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+The namelist declaration (i.e. what follows) has a different syntax, naturally.
+</P>
+<div class=namelist>
+<pre>
 <em class=call>namelist / reg_factor_nml / </em> select_regression, input_reg_file, 
    save_reg_diagnostics, reg_diagnostics_file
-</pre></div>
+</pre>
+</div>
+<br>
 
+<div class=indent1>
+<!-- Description -->
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
 <TR><!--contents--><TD valign=top>select_regression
-    <!--  type  --><TD valign=top>integer <em class="unit"></em></TD>
+    <!--  type  --><TD valign=top>integer <em class="unit">&nbsp;</em></TD>
     <!--descript--><TD>Selects the method for computing regression factor. <BR>
                        1 = compute using sampling theory for any ensemble size. Default. <BR>
                        2 = low order model format. Works from archived time mean or time
                        median regression files generated by low-order models like
-                       Lorenz-96. <BR>
+                       Lorenz-96.<BR>
                        3 = selects bgrid archived file. This is not currently
-                       supported in released versions. </TD></TR> 
+                       supported in released versions.</TD></TR> 
 <TR><!--contents--><TD valign=top>input_reg_file             </TD>
-    <!--  type  --><TD valign=top>character(len=129) <em class="unit"></em></TD>
+    <!--  type  --><TD valign=top>character(len=129)<em class="unit">&nbsp;</em></TD>
     <!--descript--><TD>File name from which statistics are to be read for select_regression = 3.
                        Default is "time_mean_reg".  </TD></TR>
 
 <TR><!--contents--><TD valign=top>save_reg_diagnostics</TD>
-    <!--  type  --><TD valign=top>logical <em class="unit"></em></TD>
+    <!--  type  --><TD valign=top>logical<em class="unit">&nbsp;</em></TD>
     <!--descript--><TD> True if regression diagnostics should be computed.  Default is .false.</TD></TR>
 
 <TR><!--contents--><TD valign=top>reg_diagnostics_file </TD>
-    <!--  type  --><TD valign=top>character(len=129) <em class="unit"></em></TD>
+    <!--  type  --><TD valign=top>character(len=129)<em class="unit">&nbsp;</em></TD>
     <!--descript--><TD>File name to which to write diagnostics. Default is "reg_diagnostics"  </TD></TR>
 
 </TABLE>
+
+</div>
+<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
-<H2><FILES></H2>
+<HR>
+<H2>FILES</H2>
 <UL>
     <LI> (optional) input regression file from namelist variable input_reg_file.
     <LI> reg_factor_mod.nml in input.nml
 </UL>
+
+<TABLE border=0 >
+<TR><TH align=left>filename</TH>
+    <TH align=left>purpose</TH></TR>
+<TR><TD>from <em class=file>input.nml</em>&amp;reg_factor_mod:input_reg_file</TD>
+    <TD>file of regression coefficients</TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
+<ol>
+<li> none </li>
+</ol>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
@@ -246,32 +233,58 @@ integer, intent(in), optional                 :: <em class=optionalcode> obs_sta
 </TABLE>
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
-Need to implement large model archive capability in efficient fashion.
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!-- PrivateComponents                                                -->
 <!--==================================================================-->
 
-
+<A NAME="PrivateComponents"></A>
 <HR>
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

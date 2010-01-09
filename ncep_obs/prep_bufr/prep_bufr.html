@@ -1,62 +1,28 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>program prepbufr</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css"></link>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Instructions">INSTRUCTIONS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<div>
+<center>
+<A HREF="#Instructions">INSTRUCTIONS</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
-<A HREF="#KnownBugs">BUGS</A> /
+<A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>PROGRAM prepbufr</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Hui Liu </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 Translating NCEP BUFR files into DART obs_seq.out files (input
@@ -68,15 +34,13 @@ create_real_obs, as described in
 <A HREF="../create_real_obs.html" > create_real_obs </A>.
 </P>
 
-<P>
-</P>
 
 <!--==================================================================-->
 
 <A NAME="Instructions"></A>
-<BR><HR><BR>
+<HR>
 <H2>INSTRUCTIONS</H2>
-
+<P>
 The prep_bufr package is free-standing and has not been completely
 assimilated into the DART architecture.  It also requires adaptation of the
 sources codes and scripts to the computing environment where it will be run.
@@ -84,6 +48,7 @@ It is not so robust that it can be controlled just with input parameters.
 It may not have the same levels of error detection and warning that the
 rest of DART has, so the user should very careful about checking the end
 product for correctness.
+</P>
 
 <H3 class=indent1> Overview of what needs to be built and run</H3>
 
@@ -117,7 +82,7 @@ If you are converting a single obs file, or are walking through the
 process by hand for the first time, you can follow the more detailed
 build instructions below, and then run the prep_bufr.x program by hand.   
 This involves the following steps:
-
+</P>
 <UL>
 <LI>building the executables.
 <LI>running the blocker if needed (generally not if you have
@@ -128,8 +93,6 @@ This involves the following steps:
 <LI>running prepbufr.x to convert the file
 <LI>copying the fixed output filename to the desired output filename
 </UL>
-
-</P>
 
 <H4 class=indent1> Production mode</H4>
 
@@ -147,9 +110,10 @@ queue for a long series of conversion runs.
 
 <H3 class=indent1> Installation of the NCEP BUFR decoding program</H3>
 
-
+<P>
 This package is currently (as of the Jamaica release) 
 organized into files under the DART/ncep_obs/prep_bufr directory:
+</P>
 <PRE>
 src           Source code of the NCEP PREPBUFR decoder
 lib           NCEP BUFR library source
@@ -163,7 +127,6 @@ convert_bufr  Source code (grabbufr) to convert the binary big-endian BUFR files
 blk_ublk      Source code (cwordsh) to convert between blocked and unblocked format.
 docs          Some background information about NCEP BUFR observations.
 </PRE>
-
 
 
 <H4 class=indent1> The decoding program: src/prepbufr.f</H4>
@@ -180,20 +143,19 @@ of the NCEP BUFR files.  The NCEP quality control indexes for these
 observations based on NCEP forecasts are also output and used in DART
 observation sequence files.  The NCEP PREPBUFR decoding program is written
 in Fortran 77 and has been successfully compiled on Linux computers using
-pgi90, SGI&#174 computers with f77, IBM&#174 SP&#174 systems with xlf,
-and Intel&#174 based Mac&#174 with gfortran.
+pgi90, SGI&#174; computers with f77, IBM&#174; SP&#174; systems with xlf,
+and Intel&#174; based Mac&#174; with gfortran.
 </P>
 
 <P>
-
 If your operating system uses modules you may need to remove the
 default compiler and add the one desired for this package.  For example
+</P>
 <UL>
     <LI> which pgf90 (to see if pgf90 is available.) </LI>
     <LI> module rm intel64 netcdf64 mpich64 </LI>
     <LI> module add pgi32 </LI>
 </UL>
-</P>
 
 <P>
 To compile the BUFR libraries and the decoding program, 
@@ -210,19 +172,18 @@ the ../exe directory.
 
 <P>
 Platforms tested:
-
 The code has been tested on NCAR systems: 
+</P>
 <UL><LI> Coral (Aspen Systems Linux cluster), </LI>
     <LI> Ocotillo.mmm (Linux), </LI>
     <LI> Tempest (SGI running IRIX), </LI>
     <LI> Bluesky (IBM Power4 cluster running AIX).</LI>
     </UL>
-</P>
 
 <H4 class=indent1> The byte-swapping program convert_bufr/grabbufr.f</H4>
 
 <P>
-For platforms with little-endian binary file format (e.g. Intel, AMD&#174,
+For platforms with little-endian binary file format (e.g. Intel, AMD&#174;,
 and non-MIPS SGI processors) the program grabbufr.f is used to convert the
 big-endian format NCEP BUFR data into little-endian format.  The grabbufr.f
 code is written in Fortran 90, and has been compiled can be compiled with
@@ -291,20 +252,19 @@ dataset, ds090.0, on NCAR Mass Store System (MSS).
 
 <P>
 <!-- kdr; How would I launch another window for the data web site? 
-          (fixed -- added target option to href section)
           How to change bullets to '>' prompts for commands?        -->
 To find the files:
+</P>
 <UL>
-<LI>go to the <A HREF=http://dss.ucar.edu/pub/reanalysis/ target="_blank">
-    NCAR/NCEP reanalysis archive.</A> </LI>
+<LI>go to the <A HREF="http://dss.ucar.edu/pub/reanalysis/" target="_blank">
+    NCAR/NCEP reanalysis archive.</A></LI>
 <LI>Click "Data Archive Summary" </LI>
 <LI>Click "Complete Tar list of Table of Contents of All VSN's" </LI>
 <LI>Look at the years you want and click on the ds090.0 next to the 
-    year mark.  </LI>
+    year mark.</LI>
 <LI>Find the data set you want by searching for prepqmYYMMDDHH, with
-    YY, MM, DD, HH = the year, month, day, and hour you want.  </LI>
+    YY, MM, DD, HH = the year, month, day, and hour you want.</LI>
 </UL>
-</P>
 
 <P>
 The prepqm file will be grouped with others in a weekly (monthly after
@@ -325,20 +285,21 @@ and you must contact the DSS group to get access.
 <P>
 Change directories into the prep_bufr/data subdirectory.
 From a machine with access to the MSS use
-<UL><LI> msread -fbi data.tar /DSS/A##### </L> </UL>
-or
-<UL><LI> msread -fbi data.tar /DSS/A#####.blk </L> </UL>
+<br>
+<em class=input>msread -fbi data.tar /DSS/A#####</em><br>or<br>
+<em class=input>msread -fbi data.tar /DSS/A#####.blk</em><br>
 where ##### is the data set number, to read the NCEP BUFR data tar files.
-<P>
+<br><br>
 If you use the 'msrcp' command instead of 'msread', you must run
 the 'cosconvert' program afterwards to convert the file into a
 readable tar file.   The files which include ACARS data have a read
 password; to specify that to the 'msread' command, add the '-r passwd' 
 argument.
-
-<P>
+<br><br>
 Then 
-<UL><LI> tar -xvf data.tar </L> </UL> 
+<br><br>
+<em class=input>tar -xvf data.tar </em>
+<br><br>
 will yield individual 6-hourly
 NCEP BUFR data files for the observations in the +/- 3-hour time windows
 of 00Z,  06Z, 12Z, and 18Z of each day.  Note that DART obs_seq files are
@@ -350,14 +311,15 @@ incorporating all the required obs from the "next" day, you'll need the BUFR
 files through 6Z of the day after the last day of interest.  For example,
 to generate the observation sequence for Jan 1, 2003, the decoded NCEP
 BUFR text files for Jan 1 and 2, 2003 are needed, and hence the BUFR files
+</P>
 <UL> 
 <LI> prepqm03010106 </LI>
 <LI> prepqm03010112 </LI>
 <LI> prepqm03010118 </LI>
-and 
 <LI> prepqm03010200 </LI>
 <LI> prepqm03010206 </LI>
 </UL>
+<P>
 are needed.
 </P>
 
@@ -391,41 +353,41 @@ chose this option, you will have to make corresponding changes in
 the create_obs_seq.csh script in step 2.
 </P>
 
-
-
-
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
-<!--
-<PRE>
-types_mod
-obs_sequence_mod
-real_obs_mod
-utilities_mod
-</PRE>
--->
+<P>
+This is a piece of code that is intended to be 'close' to the original,
+as such, we have not modified it to use the DART build mechanism.
+This code does not use any DART modules.
+</P>
 
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&#38;' and terminating with a slash '/'.
-<div class=namelist><pre>
-<em class=call>namelist / prep_bufr_nml / </em> &#38;
+'&amp;' and terminating with a slash '/' for all our namelist input.
+</P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / prep_bufr_nml / </em> &amp;
 obs_window, obs_window_cw, otype_use, qctype_use, land_temp_error, 
 land_wind_error, land_moist_error
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Discussion</H3>
+<div class=indent1>
+<!-- Description -->
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -473,19 +435,15 @@ land_wind_error, land_moist_error
 
 </TABLE>
 
-<!-- <div class=namelist><pre>
-<em class=call>namelist /    / </em> &
-</pre></div>
-
-<H3 class=indent1>Discussion</H3>
-
+</div>
+<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
 <UL><LI>input file(s); NCEP BUFR  observation files named using ObsBase 
         with the  "yymmddhh" date tag on the end.  Input to grabbufr if big- to 
@@ -501,33 +459,63 @@ land_wind_error, land_moist_error
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
 DART/ncep_obs/prep_bufr/docs/*  (NCEP text files describing the BUFR files)
 
 <!--==================================================================-->
-<!-- Describe the bugs.                                               -->
+<!-- Describe all the error conditions and codes.                     -->
 <!--==================================================================-->
 
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
+<A NAME="Errors"></A>
+<HR>
+<H2>ERROR CODES and CONDITIONS</H2>
+<P>
+this space intentionally left blank
+</P>
+
 <H2>KNOWN BUGS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
-Further development to get observations directly from original <BR>
+Further development to get observations directly from original
 (undecoded) NCEP BUFR files.
 </P>
 
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
 
+<A NAME="Legalese"></A>
 <HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Hui Liu </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

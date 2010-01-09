@@ -1,64 +1,32 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>DART Documentation Index</TITLE>
-<link rel="stylesheet" type="text/css" href="doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="doc/html/doc.css">
 </HEAD>
 <BODY>
+<A NAME="TOP"></A>
 
-<!--==================================================================-->
-
-<H1>DART Documentation Index</H1>
-
-<table border=0 cellspacing=0 cellpadding=0>
-<tr>
-<td align=left>
-<img src="doc/html/Dartboard9.png" alt="extraordinarily cool DART logo"</img>
-</td>
-<td align=center>
-<DIV class="disclaimer">
-GNU General Public License
-
-<P>This file is part of the Data Assimilation Research Testbed (DART).</P>
-
-<P>DART is free software; you can redistribute it and/or modify it
-and are expected to follow the terms of the GNU General Public
-License as published by the Free Software Foundation.</P>
-
-<P>DART is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-See the GNU General Public License for more details.</P>
-
-<P>You should have received a copy of the GNU General Public License
-along with DART; if not, write to: </P>
-Free Software Foundation, Inc.<BR>
-59 Temple Place, Suite 330<BR>
-Boston, MA  02111-1307  USA<BR>
-or see:<BR>
-http://www.gnu.org/licenses/gpl.txt
-</DIV>
-</td> </tr>
-</table>
-
-<!--==================================================================-->
-
-<br>
-<A NAME="HEADER"></A>
-
-
-<DIV ALIGN=CENTER>
-<A HREF="#Overview">OVERVIEW</A> / 
-<A HREF="#Models">MODELS</A> / 
-<A HREF="#Namelists">NAMELIST</A> / 
+<div>
+<center>
+<A HREF="#Programs">Programs</A> /
+<A HREF="#Models">MODELS</A> /
+<A HREF="#Namelists">NAMELIST</A> /
 <A HREF="#Modules">MODULES</A> /
 <A HREF="#OtherDocs">OTHER DOCUMENTATION</A> /
-<A HREF="#KitchenSink">ALL DOCUMENTS</A> 
-</DIV>
+<A HREF="#KitchenSink">ALL DOCUMENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
-<!--==================================================================-->
+<br>
+<center>
+<img src="doc/html/Dartboard9.png" alt="extraordinarily cool DART logo">
+</center>
 
-<A NAME="Overview"></A>
-<H2>Overview</H2>
+<H1>DART Documentation Index</H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 This page contains links to all the documentation for this DART release.
@@ -123,6 +91,7 @@ generate data or format the diagnostic information.
 
 <P>
 The executable programs that come with DART include:
+</P>
 
 <pre>
 <A HREF="filter/filter.html">program filter</A> - the main assimilation code
@@ -136,12 +105,11 @@ The executable programs that come with DART include:
 <A HREF="time_manager/advance_time.html">program advance_time</A> - utility for incrementing calendar times easily for scripting
 <A HREF="filter/wakeup_filter.html">program wakeup_filter</A> - needed when running a parallel model advance
 </pre>
-</P>
-
 
 <P>
 The diagnostic programs that process observations after being assimilated
 by DART include:
+</P>
 
 <pre>
 <A HREF="diagnostics/oned/obs_diag.html">oned/obs_diag</A> - low order model diagnostics
@@ -151,11 +119,9 @@ by DART include:
 <A HREF="diagnostics/rms_diag.f90">program rms_diag</A> - example code to compute diagnostics
 </pre>
 
-</P>
-
-
 <P>
 The executable programs that convert observations into DART format include:
+</P>
 
 <pre>
 <a href="observations/observations.html">General observations introduction</a>
@@ -461,19 +427,30 @@ all model_mod source files in the DART distribution tree:
 </pre>
 
 <!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
 
-<BR><HR><BR><BR>
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
 
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson, Tim Hoar </TD></TR>
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD>Contact:       </TD><TD> DART core group </TD></TR>
 <TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
-<BR><HR><BR><BR>
+
 </BODY>
 </HTML>
-

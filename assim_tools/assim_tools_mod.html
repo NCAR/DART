@@ -1,66 +1,30 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module assim_tools_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>MODULE assim_tools_mod</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-<BR>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<P>
 This module provides subroutines that implement the 'parallel' versions
 of the sequential scalar filter algorithms. These include the standard 
 sequential filter as described in Anderson (2003) along with systematic 
@@ -69,12 +33,12 @@ to do a variety of flavors of filters including the EAKF, ENKF, particle
 filter, and kernel filters are included. The parallel implementation 
 that allows each observation to update all state variables that are close
 to it at the same time is described in Anderson (2007).
-<BR>
+</P>
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -94,140 +58,154 @@ assim_model_mod
 </PRE>
 
 <!--==================================================================-->
-<!--Note to authors. The first row of the table is different.         -->
-
-<A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
-
-<TABLE>
-<TR><TD><em class=call>use assim_tools_mod, only : </em></TD>
-                   <TD><A HREF="#yyyroutine1">filter_assim</A></TD></TR>
-</TABLE>
-
-<BR>
-<P>
-Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&#38;assim_tools_nml</em> </A>
-may be read from file <em class=file>input.nml</em>.
-</P>
-
-
-<!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
 <!-- duplicate public routines template as many times as necessary    -->
 <!-- make sure you replace all yyyroutine?? strings                   -->
 <!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
 
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2>PUBLIC COMPONENTS</H2>
-<BR>
+<A NAME="Interface"></A>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
 
+<TABLE>
+<TR><TD><em class=call>use assim_tools_mod, only : </em></TD>
+                   <TD><A HREF="#filter_assim">filter_assim</A></TD></TR>
+</TABLE>
 
-<!--===================== DESCRIPTION OF SUBROUTINE =====================-->
+<P>
+Optional namelist interface
+<A HREF="#Namelist"> <em class=code>&amp;assim_tools_nml</em> </A>
+may be read from file <em class=file>input.nml</em>.
+</P>
 
-<A NAME="yyyroutine1"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call filter_assim(ens_handle, obs_ens_handle, obs_seq, keys, 
- ens_size, num_groups, obs_val_index, inflate, ENS_MEAN_COPY, ENS_SD_COPY, 
- ENS_INF_COPY, ENS_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, 
- OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END, 
- inflate_only) </em>
- <pre>
- type(ensemble_type), intent(inout)         :: <em class=code>ens_handle</em>
- type(ensemble_type), intent(inout)         :: <em class=code>obs_ens_handle</em>
- type(obs_sequence_type), intent(in)        :: <em class=code>obs_seq</em>
- integer, intent(in)                        :: <em class=code>keys(:)</em>
- integer, intent(in)                        :: <em class=code>ens_size</em>
- integer, intent(in)                        :: <em class=code>num_groups</em>
- integer, intent(in)                        :: <em class=code>obs_val_index</em>
- type(adaptive_inflate_type), intent(inout) :: <em class=code>inflate</em>
- integer, intent(in)                        :: <em class=code>ENS_MEAN_COPY</em>
- integer, intent(in)                        :: <em class=code>ENS_SD_COPY</em>
- integer, intent(in)                        :: <em class=code>ENS_INF_COPY</em>
- integer, intent(in)                        :: <em class=code>OBS_KEY_COPY</em>
- integer, intent(in)                        :: <em class=code>OBS_GLOBAL_QC_COPY</em>
- integer, intent(in)                        :: <em class=code>OBS_PRIOR_MEAN_START</em>
- integer, intent(in)                        :: <em class=code>OBS_PRIOR_MEAN_END</em>
- integer, intent(in)                        :: <em class=code>OBS_PRIOR_VAR_START</em>
- integer, intent(in)                        :: <em class=code>OBS_PRIOR_VAR_END</em>
- logical, intent(in)                        :: <em class=code>inflate_only</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Does assimilation and inflation for a set of observations that is identified
+<P>
+   A note about documentation style. 
+   Optional arguments are enclosed in brackets 
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="filter_assim"></A>
+<br>
+<div class=routine>
+<em class=call> call filter_assim(ens_handle, obs_ens_handle, obs_seq, keys, 
+ens_size, num_groups, obs_val_index, inflate, ens_mean_copy, ens_sd_copy, 
+ens_inf_copy, ens_inf_sd_copy, obs_key_copy, obs_global_qc_copy, 
+obs_prior_mean_start, obs_prior_mean_end, obs_prior_var_start, obs_prior_var_end, 
+inflate_only) </em>
+<pre>
+type(ensemble_type), intent(inout)         :: <em class=code>ens_handle</em>
+type(ensemble_type), intent(inout)         :: <em class=code>obs_ens_handle</em>
+type(obs_sequence_type), intent(in)        :: <em class=code>obs_seq</em>
+integer, intent(in)                        :: <em class=code>keys(:)</em>
+integer, intent(in)                        :: <em class=code>ens_size</em>
+integer, intent(in)                        :: <em class=code>num_groups</em>
+integer, intent(in)                        :: <em class=code>obs_val_index</em>
+type(adaptive_inflate_type), intent(inout) :: <em class=code>inflate</em>
+integer, intent(in)                        :: <em class=code>ens_mean_copy</em>
+integer, intent(in)                        :: <em class=code>ens_sd_copy</em>
+integer, intent(in)                        :: <em class=code>ens_inf_copy</em>
+integer, intent(in)                        :: <em class=code>ens_inf_sd_copy</em>
+integer, intent(in)                        :: <em class=code>obs_key_copy</em>
+integer, intent(in)                        :: <em class=code>obs_global_qc_copy</em>
+integer, intent(in)                        :: <em class=code>obs_prior_mean_start</em>
+integer, intent(in)                        :: <em class=code>obs_prior_mean_end</em>
+integer, intent(in)                        :: <em class=code>obs_prior_var_start</em>
+integer, intent(in)                        :: <em class=code>obs_prior_var_end</em>
+logical, intent(in)                        :: <em class=code>inflate_only</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Does assimilation and inflation for a set of observations that is identified
 by having integer indices listed in keys. Only the inflation is updated if
 inflation_only is true, otherwise the state is also updated.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Contains state variable ensemble data and description.</TD></TR>
- <TR><TD valign=top><em class=code>obs_ens_handle&nbsp; &nbsp; </em></TD>
-     <TD>Contains observation prior variable ensemble and description.</TD></TR>
- <TR><TD valign=top><em class=code>obs_seq&nbsp; &nbsp; </em></TD>
-     <TD>Contains the observation sequence including observed values and 
-          error variances.</TD></TR>
- <TR><TD valign=top><em class=code>keys&nbsp; &nbsp; </em></TD>
-     <TD>A list of integer indices of observations in obs_seq that are 
-          to be used at this time.</TD></TR>
- <TR><TD valign=top><em class=code>ens_size&nbsp; &nbsp; </em></TD>
-     <TD>Number of ensemble members in state and observation prior ensembles.</TD></TR>
- <TR><TD valign=top><em class=code>num_groups&nbsp; &nbsp; </em></TD>
-     <TD>Number of groups being used in assimilation.</TD></TR>
- <TR><TD valign=top><em class=code>obs_val_index&nbsp; &nbsp; </em></TD>
-     <TD>Integer index of copy in obs_seq that contains the observed 
-           value from instrument.</TD></TR>
- <TR><TD valign=top><em class=code>inflate&nbsp; &nbsp; </em></TD>
-     <TD>Contains inflation values and all information about inflation 
-         to be used.</TD></TR>
- <TR><TD valign=top><em class=code>ENS_MEAN_COPY&nbsp; &nbsp; </em></TD>
-     <TD>Index of copy containing ensemble mean in ens_handle.</TD></TR>
- <TR><TD valign=top><em class=code>ENS_SD_COPY&nbsp; &nbsp; </em></TD>
-     <TD>Index of copy containing ensemble standard deviation in ens_handle.</TD></TR>
- <TR><TD valign=top><em class=code>ENS_INF_COPY&nbsp; &nbsp; </em></TD>
-     <TD>Index of copy containing state space inflation in ens_handle.</TD></TR>
- <TR><TD valign=top><em class=code>ENS_INF_SD_COPY&nbsp; &nbsp; </em></TD>
-     <TD>Index of copy containing state space inflation standard deviation 
-         in ens_handle.</TD></TR>
- <TR><TD valign=top><em class=code>OBS_KEY_COPY&nbsp; &nbsp; </em></TD>
-     <TD>Index of copy containing unique key for observation in obs_ens_handle.</TD></TR>
- <TR><TD valign=top><em class=code>OBS_GLOBAL_QC_COPY&nbsp; &nbsp; </em></TD>
-     <TD>Index of copy containing global quality control value in 
-         obs_ens_handle.</TD></TR>
- <TR><TD valign=top><em class=code>OBS_PRIOR_MEAN_START&nbsp; &nbsp; </em></TD>
-     <TD>Index of copy containing first group's prior mean in obs_ens_handle.</TD></TR>
- <TR><TD valign=top><em class=code>OBS_PRIOR_MEAN_END&nbsp; &nbsp; </em></TD>
-     <TD>Index of copy containing last group's prior mean in obs_ens_handle.</TD></TR>
- <TR><TD valign=top><em class=code>OBS_PRIOR_VAR_START&nbsp; &nbsp; </em></TD>
-     <TD>Index of copy containing first group's ensemble variance in 
-         obs_ens_handle.</TD></TR>
- <TR><TD valign=top><em class=code>OBS_PRIOR_VAR_END&nbsp; &nbsp; </em></TD>
-     <TD>Index of copy containing last group's ensemble variance in 
-          obs_ens_handle.</TD></TR>
- <TR><TD valign=top><em class=code>inflate_only&nbsp; &nbsp; </em></TD>
-     <TD>True if only inflation is to be updated, and not state.</TD></TR>
- </TABLE>
- <P>
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle</em></TD>
+    <TD>Contains state variable ensemble data and description.</TD></TR>
+<TR><TD valign=top><em class=code>obs_ens_handle</em></TD>
+    <TD>Contains observation prior variable ensemble and description.</TD></TR>
+<TR><TD valign=top><em class=code>obs_seq</em></TD>
+    <TD>Contains the observation sequence including observed values and 
+         error variances.</TD></TR>
+<TR><TD valign=top><em class=code>keys</em></TD>
+    <TD>A list of integer indices of observations in obs_seq that are 
+         to be used at this time.</TD></TR>
+<TR><TD valign=top><em class=code>ens_size</em></TD>
+    <TD>Number of ensemble members in state and observation prior ensembles.</TD></TR>
+<TR><TD valign=top><em class=code>num_groups</em></TD>
+    <TD>Number of groups being used in assimilation.</TD></TR>
+<TR><TD valign=top><em class=code>obs_val_index</em></TD>
+    <TD>Integer index of copy in obs_seq that contains the observed 
+          value from instrument.</TD></TR>
+<TR><TD valign=top><em class=code>inflate</em></TD>
+    <TD>Contains inflation values and all information about inflation 
+        to be used.</TD></TR>
+<TR><TD valign=top><em class=code>ens_mean_copy</em></TD>
+    <TD>Index of copy containing ensemble mean in ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>ens_sd_copy</em></TD>
+    <TD>Index of copy containing ensemble standard deviation in ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>ens_inf_copy</em></TD>
+    <TD>Index of copy containing state space inflation in ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>ens_inf_sd_copy</em></TD>
+    <TD>Index of copy containing state space inflation standard deviation 
+        in ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>obs_key_copy</em></TD>
+    <TD>Index of copy containing unique key for observation in obs_ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>obs_global_qc_copy</em></TD>
+    <TD>Index of copy containing global quality control value in 
+        obs_ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>obs_prior_mean_start&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Index of copy containing first group's prior mean in obs_ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>obs_prior_mean_end</em></TD>
+    <TD>Index of copy containing last group's prior mean in obs_ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>obs_prior_var_start</em></TD>
+    <TD>Index of copy containing first group's ensemble variance in 
+        obs_ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>obs_prior_var_end</em></TD>
+    <TD>Index of copy containing last group's ensemble variance in 
+         obs_ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>inflate_only</em></TD>
+    <TD>True if only inflation is to be updated, and not state.</TD></TR>
+</TABLE>
 
+</div>
+<br>
+
+<!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&#38;' and terminating with a slash '/'.
-<div class=namelist><pre>
-<em class=call>namelist / assim_tools_nml / </em> &#38;
-filter_kind, cutoff, sort_obs_inc, print_every_nth_obs, &#38;
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that filenames that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+The namelist declaration (i.e. what follows) has a different syntax, naturally.
+</P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / assim_tools_nml / </em> &amp;
+filter_kind, cutoff, sort_obs_inc, print_every_nth_obs, &amp;
 spread_restoration, sampling_error_correction, adaptive_localization_threshold
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Discussion</H3>
+<div class=indent1>
+<!-- Description -->
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -291,39 +269,45 @@ spread_restoration, sampling_error_correction, adaptive_localization_threshold
              or to verify progress is being made in cases with suspected problems.
              Default: 0 </TD></TR>
 
-
 </TABLE>
+
+</div>
+<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
-<UL><LI>input.nml
-<LI>assim_tools_mod.nml in input.nml
-</UL>
+<TABLE border=0>
+<TR><TH>filename</TH>
+    <TH>purpose</TH></TR>
+<TR><TD>input.nml</TD>
+    <TD>to read <em class=code>assim_tools_nml</em></TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
-Anderson, Jeffrey L. "A Local Least Squares Framework for Ensemble Filtering"
-April 2003, MWR 131, pp 634-642
+<OL>
+<LI>Anderson, Jeffrey L. "A Local Least Squares Framework for Ensemble Filtering"
+April 2003, MWR 131, pp 634-642</LI>
+</OL>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
@@ -332,11 +316,11 @@ April 2003, MWR 131, pp 634-642
     <!-- comment --><TD VALIGN=top> Spread restoration only compatible with filter_kind 1 </TD>
 </TR>
 
-</TR>
 <TR><!-- routine --><TD VALIGN=top>obs_increment</TD>
     <!-- message --><TD VALIGN=top>Illegal value of filter_kind in assim_tools namelist [1-4 OK]</TD>
     <!-- comment --><TD VALIGN=top>Only 1-6 currently supported.</TD>
 </TR>
+
 <TR><!-- routine --><TD VALIGN=top>obs_increment_eakf <BR>
                                    obs_increment_ran_kf <BR>
                                    obs_increment_det_kf </TD> 
@@ -353,17 +337,9 @@ April 2003, MWR 131, pp 634-642
     <!-- message --><TD VALIGN=top>Correction file ______ does not exist.</TD>
     <!-- comment --><TD VALIGN=top> Couldn't find the correction file in the working directory.</TD>
 </TR>
-
-</TR>
 </TABLE>
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
 The current version of the systematic error correction algorithm does
@@ -372,31 +348,52 @@ feature.
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!-- PrivateComponents                                                -->
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<BR><HR><BR>
+<HR>
 <H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
 
-<div class=routine>
-<pre>
-</div>
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
 
-<H3 class=indent1>Discussion</H3>
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 
-<HR>
 </BODY>
 </HTML>

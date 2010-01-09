@@ -1,7 +1,7 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-"http://www.w3.org/TR/html4/loose.dtd">
-<html>
-<head>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
       <!-- $Id$ -->
       <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
       <title>Data Assimilation Research Testbed -- DART</title>
@@ -15,11 +15,16 @@
       </style>
       <!--#include virtual="/common/javascript.html" -->
 </HEAD>
-<body>
+<BODY>
+<A NAME="TOP"></A>
 
 <!--#include virtual="header.html" -->
 
-<A NAME="top"></A>
+<DIV>
+<center>
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</DIV>
 
 <table width="95%"  border="0" align="center" cellpadding="0" cellspacing="0">
 <tr>
@@ -41,13 +46,6 @@
 
    <h2 align="center">Welcome to the home page for the
    <b>D</b>ata <b>A</b>ssimilation <b>R</b>esearch <b>T</b>estbed (<b>DART</b>).</h2>
-
-   <P align="center">
-   <font size="+1"><b>If you are using RADAR observations in DART</b>:
-   <a href="#RadarChanges">you need to know about recent (18Nov2008) changes</a>.<br>
-   <b>If you are using DART</b>:
-   <a href="#BigChanges">you need to know about recent (2Jun2008) changes</a>.</font>
-   </P>
 
    <A NAME="index"></A>
    <h2>Overview Topics</h2>
@@ -111,15 +109,16 @@
    as long as you promise to provide feedback (good or bad!) so I can improve them. 
    My email is&nbsp;&nbsp;&nbsp;thoar&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu  - minus the
    spaces, naturally.
-
+   <br><br>
    Minimally, you will need a Fortran90 compiler and the netCDF libraries 
    built with the F90 interface. History has shown that it is a very good
    idea to make sure your run-time environment has the following:
+   </P>
    <div class=unix>
    limit stacksize unlimited<BR>
    limit datasize unlimited
    </div>
-   <br>
+   <P>
    If you want to run your own model, all you need is an executable and some scripts
    to interface with DART - we have templates and examples.
    If your model can be called as a subroutine, <em>life is good</em>, and
@@ -143,7 +142,7 @@
    your model is single-threaded, you can still run efficiently on parallel machines
    by dealing out each ensemble member (an unique instance of the model) to a separate
    processor. If your model cannot run single-threaded, fear not, DART can do that too.
-   </p>
+   </P>
 
    <h2>DART tested platforms/models/compilers</h2>
    <p>
@@ -303,12 +302,14 @@
       attributes for <strong>this</strong> file. Since svn uses 'mixed revisions', 
       files in the distribution will have different revision numbers.  If you download
       the 'trunk' (the latest version) - the revision numbers are assuredly different.
+      </P>
+
       <TABLE summary="">     
       <TR><TD>Revision:    </TD><TD>Revision:&nbsp;2857</TD></TR>
       <TR><TD>Source:      </TD><TD>URL:&nbsp;http://subversion.ucar.edu/DAReS/DART/trunk/doc/html/index.shtml </TD></TR>
-      <TR><TD>Change Date:   </TD><TD> $Date:&nbsp;2007-04-12&nbsp;10:44:44&nbsp;-0600&nbsp;(Thu,&nbsp;12&nbsp;Apr&nbsp;2007)&nbsp;$ </TD></TR>
+      <TR><TD>Change&nbsp;Date:&nbsp;</TD><TD>Date:&nbsp;2007-04-12&nbsp;10:44:44&nbsp;-0600&nbsp;(Thu,&nbsp;12&nbsp;Apr&nbsp;2007)&nbsp; </TD></TR>
       </TABLE>
-      </P>
+      <br>
       <TABLE border=0 cellpadding=2 width=100%>
       <TR><TH align="left" width="15%">version</TH>
           <TH align="left" width="15%">date</TH>
@@ -388,11 +389,10 @@
           <!-- change--><TD>enhanced portability, CAM, WRF</TD></TR>
 
       <TR><!--"/pub/DART/DART_ASP_Summer2003_1.tar.gz"-->
-      <TR><!--version--><TD>easter</TD>
+          <!--version--><TD>easter</TD>
           <!--   date--><TD>8&nbsp;March&nbsp;2004</TD>
           <!--instruc--><TD><A HREF="ASP_DART_exercise.html">[doc]</A></TD>
           <!-- change--><TD>initial release</TD></TR>
-          </TD></TR>
       </TABLE>
       <BR>
 
@@ -400,6 +400,7 @@
       <H2>User-Visible changes to the DART radar module (obs_def_radar_mod.f90) version 3657 (circa 18&nbsp;Nov&nbsp;2008)</H2>
       <P>For users of previous versions of <em class="file">obs_def_radar_mod.f90</em>,
          here are a list of changes which are <b>not</b> backward compatible:
+      </P>
 	 <UL>
          <LI>The 
          <em class="file">obs_def_radar_mod</em>:<em class="code">obs_def_radar_mod_nml</em>
@@ -451,7 +452,6 @@
 	 needs to be updated to define these new KINDs.</li>
 
 	 </UL>
-      </P>
 
       <A NAME="BigChanges"></A>
       <H2>User-Visible changes to the TRUNK (circa 2 Jun 2008)</H2>
@@ -459,70 +459,77 @@
       Some ideas are just too good to postpone till the next major release.  The following
       changes to the DART trunk code may require you to take additional action after an update:
       </P>
-      <ol>
-         <li>Additional function added to the <em type="unix">preprocess</em> program also
-             means that you now only
-             need to have <em type="file">obs_def_mod.f90</em> in your
-             <em type="file">path_names_*</em> files and it will include the code 
-             for all other <em type="file">obs_def_*</em> modules automatically.  
-             If you have additional obs_def lines for gps, altimeter, or other 
-             specialized obs_def files, they must be removed or you will get an
-             error similar to this:
-             <div class=unix>
-AMBIGUOUS: Module obs_def_gps_mod is associated with ../../../obs_def/obs_def_gps_mod.f90 as well as ../../../obs_def/obs_def_mod.f90.
-             </div>
-             Adding and removing various obs_def files now only involves changing the
-             <em type="unix">&preprocess_nml:input_files</em> namelist item in the
-             <em type="file">input.nml</em> file.
-             We will update all <em type="file">path_names_*</em> files
-             in the DART subversion (svn) repository; this only applies to files you have
-             that are not under svn control.</li><br>
-            
-         <li>All model work directories now have a <em type="file">quickbuild.csh</em> script
-             instead of <em type="file">workshop_setup.csh</em>.  The workshop script still
-             exists in some model directories, but may change in upcoming releases to accomodate
-             DART tutorial workshops.  The quickbuild script recompiles all the programs;
-             it does not try to run any of them.  By default it builds all small models without
-             MPI, and builds the large models (CAM, WRF, AM2) with MPI.  It takes 
-             <em type="code">-mpi</em> and <em type="code">-nompi</em> arguments.</li><br>
-  
-         <li>The MPI version of <em type="file">filter</em> would sometimes not kill the
-             entire job if one task failed.  This resulted in jobs hanging and using up computing
-             resources unnecessarily.  We added a new routine to the 
-             <em type="file">utilities_mod.f90</em> called
-             <em type="unix">exit_all()</em>.  For MPI-enabled jobs it calls
-             <em type="unix">MPI_Abort()</em> to inform all other tasks that one 
-             has failed. This should cause an MPI job to exit immediately on error.
-             Nothing new happens for programs which do not use MPI. 
-             However, this change requires adding the 
-             <em type="file">mpi_utilities/null_mpi_utilities_mod.f90</em> file to many of the 
-             <em type="file">path_names_*</em> files where it was not required before.
-             It might also require adding <em type="unix">time_manager/time_manager.f90</em>
-             if it is not already there.
-             We will update all <em type="file">path_names_*</em> files
-             in the DART subversion repository, but you may have programs of your own that use 
-             <em type="unix">utilities_mod</em> routines - in which case your programs 
-             will now need to link with <em type="unix">null_mpi_utilities_mod</em>.
-             Without it, the error you see will be similar to this:
-             <div class=unix>
-               /usr/bin/ld: Undefined symbols:<br>
-               _exit_all_
-             </div>
-             </li><br>
-            
-         <li>The default mpi interface utility code should now compile as-is
-             for every supported compiler <em class="italic">except</em> gfortran.  
-             (You should no longer need to go into the code and edit the interface 
-             block for the system function.)
-             If you are using the gfortran compiler,
-             in the <em class="file">$DART/mpi_utilities</em>
-             directory you will find a script called <em class="file">fixsystem</em>
-             that you can run to make the file compile without having to edit it
-             by hand.
-             </li><br>
-            
-      </ol>
 
+    <ol>
+      <li style="padding: 0.5em">
+      Additional function added to the <em class="unix">preprocess</em> program also 
+      means that you now only 
+      need to have <em class= "file">obs_def_mod.f90</em> in your 
+      <em class="file">path_names_*</em> files and it will include the code 
+      for all other <em class= "file">obs_def_*</em> modules automatically.
+      If you have additional obs_def lines for gps, altimeter, or other 
+      specialized obs_def files, they must be removed or you will get an 
+      error similar to this:
+        <div class="unix">
+          AMBIGUOUS: Module obs_def_gps_mod is associated with
+          ../../../obs_def/obs_def_gps_mod.f90 as well as
+          ../../../obs_def/obs_def_mod.f90.
+        </div>
+      Adding and removing various obs_def files now only involves changing the 
+      <em class="unix">&amp;preprocess_nml:input_files</em> namelist item in the 
+      <em class="file">input.nml</em> file.
+      We will update all <em class="file">path_names_*</em> files 
+      in the DART subversion (svn) repository; this only applies to files you have 
+      that are not under svn control.
+      </li>
+
+      <li style="padding: 0.5em">
+      All model work directories now have a <em class= "file">quickbuild.csh</em> script 
+      instead of <em class= "file">workshop_setup.csh</em>. The workshop script still 
+      exists in some model directories, but may change in upcoming releases to accomodate
+      DART tutorial workshops. The quickbuild script recompiles all the programs;
+      it does not try to run any of them. By default it builds all small models without
+      MPI, and builds the large models (CAM, WRF, AM2) with MPI. It takes 
+      <em class="code">-mpi</em> and <em class="code">-nompi</em> arguments.
+      </li>
+
+      <li style="padding: 0.5em">
+      The MPI version of <em class="file">filter</em> would sometimes not kill the 
+      entire job if one task failed. This resulted in jobs hanging and using up computing 
+      resources unnecessarily. We added a new routine to the 
+      <em class="file">utilities_mod.f90</em> called 
+      <em class= "unix">exit_all()</em>.  For MPI-enabled jobs it calls 
+      <em class= "unix">MPI_Abort()</em> to inform all other tasks that one
+      has failed.  This should cause an MPI job to exit immediately on error.
+      Nothing new happens for programs which do not use MPI.
+      However, this change requires adding the 
+      <em class="file">mpi_utilities/null_mpi_utilities_mod.f90</em> file to many of the
+      <em class="file">path_names_*</em> files where it was not required before.
+      It might also require adding <em class= "unix">time_manager/time_manager.f90</em>
+      if it is not already there.
+      We will update all <em class="file">path_names_*</em> files
+      in the DART subversion repository, but you may have programs of your own that use
+      <em class="unix">utilities_mod</em> routines - in which case your programs
+      will now need to link with <em class= "unix">null_mpi_utilities_mod</em>.
+      Without it, the error you see will be similar to this:<br>
+        <div class="unix">
+          /usr/bin/ld: Undefined symbols:<br>
+          _exit_all_
+        </div>
+      </li>
+
+      <li style="padding: 0.5em">
+      The default mpi interface utility code should now compile as-is
+      for every supported compiler <em class="italic">except</em> gfortran.
+      (You should no longer need to go into the code and edit the interface
+      block for the system function.)
+      If you are using the gfortran compiler,
+      in the <em class="file">$DART/mpi_utilities</em>
+      directory you will find a script called <em class="file">fixsystem</em>
+      that you can run to make the file compile without having to edit it
+      by hand.
+      </li>
+    </ol>
 
       <A NAME="teach"></A>
       <H2>DART Tutorial Materials and Presentations</H2>
@@ -555,7 +562,7 @@ AMBIGUOUS: Module obs_def_gps_mod is associated with ../../../obs_def/obs_def_gp
       non-local observation operator. 
          <a href="/pub/DART/2007_IUGG_hui.pdf">[poster&nbsp;.pdf]</a> Jul 2007</li>
 
-      <li>Data Assimilation for CAM - Research & Development.
+      <li>Data Assimilation for CAM - Research &amp; Development.
          <a href="/pub/DART/2007_CCSM_jla.pdf">[poster&nbsp;.pdf]</a> Jun 2007</li>
 
       <li>Parallel Implementation of Ensemble Filter Algorithms for Data Assimilation.
@@ -589,10 +596,10 @@ AMBIGUOUS: Module obs_def_gps_mod is associated with ../../../obs_def/obs_def_gp
       it will find its way to the best person. Pretty cool, eh?
       </p>
       <table width="95%"  border="0" align="center" cellpadding="0" cellspacing="0">
-      <tr><th align="left">general</td>
-          <th align="left">general</td>
-          <th align="left">platforms/mpi</td>
-          <th align="left">CAM</td>
+      <tr><th align="left">general</th>
+          <th align="left">general</th>
+          <th align="left">platforms/mpi</th>
+          <th align="left">CAM</th>
       </tr>
       <tr><td>Jeff Anderson</td>
           <td>Tim Hoar</td>
@@ -609,9 +616,33 @@ AMBIGUOUS: Module obs_def_gps_mod is associated with ../../../obs_def/obs_def_gp
       <!--#include virtual="/common/footernav.html"-->
       <!--#include virtual="/common/footer.html"-->
 
-      <p class="footer">
-      Document: <!--#echo var="DOCUMENT_URI" --> <BR>
-      Last modified: <!--#echo var="LAST_MODIFIED" --> <BR>
-      </p>
-</body>
-</html>
+      <br>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

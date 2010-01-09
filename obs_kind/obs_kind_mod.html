@@ -1,63 +1,35 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>module obs_def_kind</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<div>
+<center>
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
+</div>
 
 <H1>MODULE obs_kind_mod</H1>
-<A NAME="HEADER"></A>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
 <P>
 Provides definitions of observation types and generic variable kinds, and
 tools for determining how to use observations available in an observation 
 sequence file.
-</P>
-<P>
+<br>
+<br>
 Generic kinds can be associated with an observation type or with a model
 state variable. An example kind is 
 <em class="unix">KIND_U_WIND_COMPONENT</em>. 
@@ -73,8 +45,8 @@ new generic kinds are needed, they can be added to this list. Generic kind
 integer parameters are required to start with 
 <em class="unix">KIND_</em> and observation types
 are NOT allowed to start with <em class="unix">KIND_</em>.
-</P>
-<P>
+<br>
+<br>
 To add an additional kind, edit the
 <em class="file">obs_kind/DEFAULT_obs_kind_mod.F90</em> file and
 add a unique number to the table of generic kinds at the top of the file.
@@ -84,8 +56,8 @@ used by the rest of the DART system.
 Typically the kinds are used by model-specific 
 <em class="file">model_mod.f90</em> files, and observation-specific
 <em class="file">obs_def/obs_def_xx_mod.f90</em> files.
-</P>
-<P>
+<br>
+<br>
 Beginning with the I-release of DART, a more flexible, powerful (and
 complicated) mechanism for incorporating new types of observations is part of
 DART. The obs_kind module being described here is created by the program
@@ -101,8 +73,8 @@ documented in the obs_def directory. If no special obs_def files are included
 in the preprocessor namelist, a minimal 
 <em class="file">obs_kind_mod.f90</em> is created which can
 only support identity forward observation operators.
-</P>
-<P>
+<br>
+<br>
 The obs_kind module contains an automatically-generated table, 
 <em class="unix">obs_kind_info</em>, that 
 defines the details of each observation type that has been created by the 
@@ -118,19 +90,24 @@ initially default to .false. (type is ignored) and are set via the
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
+<A NAME="OtherModulesUsed"></A>
+<HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 utilities_mod
 </PRE>
 
 <!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
 
 <A NAME="Interface"></A>
-<BR><HR><BR>
-<H2>PUBLIC INTERFACE</H2>
+<HR>
+<H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
 <TR><TD><em class=call>use obs_def_mod, only : </em></TD>
@@ -148,319 +125,369 @@ utilities_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#OBSERVATION_TYPES">OBSERVATION_TYPES</A></TD></TR>
 </TABLE>
 
+<P>
+Optional namelist interface
+<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
+may be read from file <em class=file>input.nml</em>.
+</P>
+
+<P>
+   A note about documentation style. 
+   Optional arguments are enclosed in brackets 
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_obs_kind_name"></A>
 <BR>
+<div class=routine>
+<em class=call> var = get_obs_kind_name(obs_kind_ind) </em>
+<pre>
+character(len=32)              :: <em class=code>get_obs_kind_name</em>
+integer, intent(in)            :: <em class=code>obs_kind_ind</em>
+</pre>
+</div>
 
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
+<div class=indent1>
+<!-- Description -->
 
-<A NAME="PublicEntities"></A>
-<BR><HR><BR>
-<H2>PUBLIC COMPONENTS</H2>
+<P>
+Given an integer index into the obs_kind_info table (the index is defined
+in the integer, parameter statement for the observation types that is
+created by the preprocess program (see DEFAULT_obs_kind_mod.html), returns
+the associated string name. This string is the same as the F90 identifier
+associated with the integer index.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Name string associated with this entry in the obs_kind_info table.</TD>
+</TR>
+<TR><TD valign=top><em class=code>obs_kind_ind&nbsp;&nbsp;</em></TD>
+    <TD>An integer index into the obs_kind_info table.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="assimilate_this_obs_kind"></A>
 <BR>
+<div class=routine>
+<em class=call> var = assimilate_this_obs_kind(obs_kind_ind) </em>
+<pre>
+logical              :: <em class=code>assimilate_this_obs_kind</em>
+integer, intent(in)  :: <em class=code>obs_kind_ind</em>
+</pre>
+</div>
 
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
- <A NAME="get_obs_kind_name"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = get_obs_kind_name(obs_kind_ind) </em>
- <pre>
- character(len=32)              :: <em class=code>get_obs_kind_name</em>
- integer, intent(in)            :: <em class=code>obs_kind_ind</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
+<div class=indent1>
+<!-- Description -->
+
+<P>
  Given an integer index into the obs_kind_info table (the index is defined
- in the integer, parameter statement for the observation types that is
- created by the preprocess program (see DEFAULT_obs_kind_mod.html), returns
- the associated string name. This string is the same as the F90 identifier
- associated with the integer index.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Name string associated with this entry in the obs_kind_info table.</TD>
- </TR>
- <TR><TD valign=top><em class=code>obs_kind_ind&nbsp; &nbsp; </em></TD>
-     <TD>An integer index into the obs_kind_info table.</TD></TR>
- </TABLE>
- <P>
- </P>
- <!--================================================================-->
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
- <A NAME="assimilate_this_obs_kind"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = assimilate_this_obs_kind(obs_kind_ind) </em>
- <pre>
- logical              :: <em class=code>assimilate_this_obs_kind</em>
- integer, intent(in)  :: <em class=code>obs_kind_ind</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-  Given an integer index into the obs_kind_info table (the index is defined
- in the integer, parameter statement for the observation types that is
- created by the preprocess program (see DEFAULT_obs_kind_mod.html), returns
- true if this observation type is to be assimilated, otherwise false.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Returns true if this entry in the obs_kind_info table is to be 
-           assimilated.</TD></TR>
- <TR><TD valign=top><em class=code>obs_kind_ind&nbsp; &nbsp; </em></TD>
-     <TD>An integer index into the obs_kind_info table.</TD></TR>
- </TABLE>
- <P>
- </P>
- <!--================================================================-->
+in the integer, parameter statement for the observation types that is
+created by the preprocess program (see DEFAULT_obs_kind_mod.html), returns
+true if this observation type is to be assimilated, otherwise false.
+</P>
 
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
- <A NAME="evaluate_this_obs_kind"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = evaluate_this_obs_kind(obs_kind_ind) </em>
- <pre>
- logical              :: <em class=code>evaluate_this_obs_kind</em>
- integer, intent(in)  :: <em class=code>obs_kind_ind</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-  Given an integer index into the obs_kind_info table (the index is defined
- in the integer, parameter statement for the observation types that is
- created by the preprocess program (see DEFAULT_obs_kind_mod.html), returns
- true if this observation type is to be evaluated, otherwise false.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></
- TD>
-     <TD>Returns true if this entry in the obs_kind_info table 
-         is to be evaluated.</TD></TR>
- <TR><TD valign=top><em class=code>obs_kind_ind&nbsp; &nbsp; </em></TD>
-     <TD>An integer index into the obs_kind_info table.</TD></TR>
- </TABLE>
- <P>
- </P>
- <!--================================================================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Returns true if this entry in the obs_kind_info table is to be 
+          assimilated.</TD></TR>
+<TR><TD valign=top><em class=code>obs_kind_ind&nbsp;&nbsp;</em></TD>
+    <TD>An integer index into the obs_kind_info table.</TD></TR>
+</TABLE>
 
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
- <A NAME="get_obs_kind_var_type"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = get_obs_kind_var_type(obs_kind_ind) </em>
- <pre>
- integer              :: <em class=code>get_obs_kind_var_type</em>
- integer, intent(in)  :: <em class=code>obs_kind_ind</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
-  Given an integer index into the obs_kind_info table (the index is defined
- in the integer, parameter statement for the observation types that is
- created by the preprocess program (see DEFAULT_obs_kind_mod.html), returns
- the integer index of the GENERIC KIND that is associated with this observation
- type.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></
- TD>
-     <TD>Returns the integer GENERIC kind index associated with this obs type.</TD></TR>
- <TR><TD valign=top><em class=code>obs_kind_ind&nbsp; &nbsp; </em></TD>
-     <TD>An integer index into the obs_kind_info table.</TD></TR>
- </TABLE>
- <P>
- </P>
- <!--================================================================-->
+</div>
+<br>
 
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
- <A NAME="get_obs_kind_index"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = get_obs_kind_index(obs_kind_name) </em>
- <pre>
- integer                       :: <em class=code>get_obs_kind_index</em>
- character(len=32), intent(in) :: <em class=code>obs_kind_name</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Given the name of an observation type, returns the index of the entry
- in the obs_kind_info table with this name. If the name is not found in
- the table, a -1 is returned. The integer returned for a successful
- search is the value of the integer parameter with the same identifier
- as the name string.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>get_obs_kind_index&nbsp; &nbsp; </em></TD>
-     <TD>Integer index into the obs_kind_info table entry with name string 
-         corresponding to obs_kind_name.</TD></TR>
- <TR><TD valign=top><em class=code>obs_kind_name&nbsp; &nbsp; </em></TD>
-     <TD>Name of observation type to be found in obs_kind_info table.</TD></TR>
- </TABLE>
- <P>
- </P>
- <!--================================================================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="write_obs_kind"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call write_obs_kind(ifile
-                   <em class=optionalcode>[, fform]</em>) </em>
- <pre>
- integer, intent(in)                    :: <em class=code>ifile</em>
- character(len=*), optional, intent(in) :: <em class=code>fform</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Writes out information about all defined observation types from the
+<A NAME="evaluate_this_obs_kind"></A>
+<BR>
+<div class=routine>
+<em class=call> var = evaluate_this_obs_kind(obs_kind_ind) </em>
+<pre>
+logical              :: <em class=code>evaluate_this_obs_kind</em>
+integer, intent(in)  :: <em class=code>obs_kind_ind</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given an integer index into the obs_kind_info table (the index is defined
+in the integer, parameter statement for the observation types that is
+created by the preprocess program (see DEFAULT_obs_kind_mod.html), returns
+true if this observation type is to be evaluated, otherwise false.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></
+TD>
+    <TD>Returns true if this entry in the obs_kind_info table 
+        is to be evaluated.</TD></TR>
+<TR><TD valign=top><em class=code>obs_kind_ind&nbsp;&nbsp;</em></TD>
+    <TD>An integer index into the obs_kind_info table.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_obs_kind_var_type"></A>
+<BR>
+<div class=routine>
+<em class=call> var = get_obs_kind_var_type(obs_kind_ind) </em>
+<pre>
+integer              :: <em class=code>get_obs_kind_var_type</em>
+integer, intent(in)  :: <em class=code>obs_kind_ind</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+ Given an integer index into the obs_kind_info table (the index is defined
+in the integer, parameter statement for the observation types that is
+created by the preprocess program (see DEFAULT_obs_kind_mod.html), returns
+the integer index of the GENERIC KIND that is associated with this observation
+type.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></
+TD>
+    <TD>Returns the integer GENERIC kind index associated with this obs type.</TD></TR>
+<TR><TD valign=top><em class=code>obs_kind_ind&nbsp;&nbsp;</em></TD>
+    <TD>An integer index into the obs_kind_info table.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_obs_kind_index"></A>
+<BR>
+<div class=routine>
+<em class=call> var = get_obs_kind_index(obs_kind_name) </em>
+<pre>
+integer                       :: <em class=code>get_obs_kind_index</em>
+character(len=32), intent(in) :: <em class=code>obs_kind_name</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given the name of an observation type, returns the index of the entry
+in the obs_kind_info table with this name. If the name is not found in
+the table, a -1 is returned. The integer returned for a successful
+search is the value of the integer parameter with the same identifier
+as the name string.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>get_obs_kind_index&nbsp;&nbsp;</em></TD>
+    <TD>Integer index into the obs_kind_info table entry with name string 
+        corresponding to obs_kind_name.</TD></TR>
+<TR><TD valign=top><em class=code>obs_kind_name&nbsp;&nbsp;</em></TD>
+    <TD>Name of observation type to be found in obs_kind_info table.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="write_obs_kind"></A>
+<BR>
+<div class=routine>
+<em class=call> call write_obs_kind(ifile
+                  <em class=optionalcode>[,&nbsp;fform]</em>) </em>
+<pre>
+integer,                    intent(in) :: <em class=code>ifile</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes out information about all defined observation types from the
 obs_kind_info table. For each entry in the table, the integer index of
 the observation type and the associated string are written. These
 appear in the header of an obs_sequence file.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ifile&nbsp; &nbsp; </em></TD>
-     <TD>Unit number of output observation sequence file being written.</TD></TR
- >
- <TR><TD valign=top><em class=code>fform&nbsp; &nbsp; </em></TD>
-     <TD>Optional format for file. Default is FORMATTED.</TD></TR>
- </TABLE>
- <P>
- </P>
- <!--================================================================-->
+</P>
 
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="read_obs_kind"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> call read_obs_kind(ifile, pre_I_format
-                 <em class=optionalcode>[,fform]</em>) </em>
- <pre>
- integer, intent(in)                    :: <em class=code>ifile</em>
- logical, intent(in)                    :: <em class=code>pre_I_format</em>
- character(len=*), optional, intent(in) :: <em class=code>fform</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Reads the mapping between integer indices and observation type names
- from the header of an observation sequence file and prepares mapping
- to convert these to values defined in the obs_kind_info table. If
- pre_I_format is true, there is no header in the observation sequence
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ifile&nbsp;&nbsp;</em></TD>
+    <TD>Unit number of output observation sequence file being written.</TD></TR
+>
+<TR><TD valign=top><em class=optionalcode>fform&nbsp;&nbsp;</em></TD>
+    <TD>Optional format for file. Default is FORMATTED.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="read_obs_kind"></A>
+<BR>
+<div class=routine>
+<em class=call> call read_obs_kind(ifile, pre_I_format
+                <em class=optionalcode>[,&nbsp;fform]</em>) </em>
+<pre>
+integer,                    intent(in) :: <em class=code>ifile</em>
+logical,                    intent(in) :: <em class=code>pre_I_format</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads the mapping between integer indices and observation type names
+from the header of an observation sequence file and prepares mapping
+to convert these to values defined in the obs_kind_info table. If
+pre_I_format is true, there is no header in the observation sequence
 file and it is assumed that the integer indices for observation types
 in the file correspond to the storage order of the obs_kind_info table
 (integer index 1 in the file corresponds to the first table entry, etc.)
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>ifile&nbsp; &nbsp; </em></TD>
-     <TD>Unit number of output observation sequence file being 
-         written.</TD></TR>
- <TR><TD valign=top><em class=code>pre_I_format&nbsp; &nbsp; </em></TD>
-     <TD>True if the file being read has no obs type definition header.
-         </TD></TR>
- <TR><TD valign=top><em class=code>fform&nbsp; &nbsp; </em></TD>
-     <TD>Optional format for file. Default is FORMATTED.</TD></TR>
- </TABLE>
- <P>
- </P>
- <!--================================================================-->
+</P>
 
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
- <A NAME="get_kind_from_menu"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = get_kind_from_menu() </em>
- <pre>
- integer              :: <em class=code>get_kind_from_menu</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Interactive input of observation type from the obs_kind info.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Integer index of observation kind.</TD></TR>
- </TABLE>
- <P>
- </P>
- <!--================================================================-->
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ifile&nbsp;&nbsp;</em></TD>
+    <TD>Unit number of output observation sequence file being 
+        written.</TD></TR>
+<TR><TD valign=top><em class=code>pre_I_format&nbsp;&nbsp;</em></TD>
+    <TD>True if the file being read has no obs type definition header.
+        </TD></TR>
+<TR><TD valign=top><em class=optionalcode>fform&nbsp;&nbsp;</em></TD>
+    <TD>Optional format for file. Default is FORMATTED.</TD></TR>
+</TABLE>
 
- <!--============= DESCRIPTION OF A FUNCTION ========================-->
- <A NAME="map_def_index"></A>
- <P></P><HR><P></P>
- <div class=routine>
- <em class=call> var = map_def_index(obs_def_index) </em>
- <pre>
- integer              :: <em class=code>map_def_index</em>
- integer, intent(in)  :: <em class=code>obs_def_index</em>
- </pre></div>
- <H3 class=indent1>Description</H3>
- <P>
- Maps from the integer observation type index in the header block of
- an input observation sequence file into the corresponding entry in
- the obs_kind_info table. This allows observation sequences that were
- created with different obs_kind_mod.f90 versions to be used with
- the current obs_kind_mod.
- </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Index of this observation type in obs_kind_info table.</TD></TR>
- <TR><TD valign=top><em class=code>obs_def_index&nbsp; &nbsp; </em></TD>
-     <TD>Index of observation type from input observation 
-         sequence file.</TD></TR>
- </TABLE>
- <P>
- </P>
- <!--================================================================-->
+</div>
+<br>
 
- <!--===================== DESCRIPTION OF PUBLIC VARIABLE =====================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_kind_from_menu"></A>
+<BR>
+<div class=routine>
+<em class=call> var = get_kind_from_menu() </em>
+<pre>
+integer              :: <em class=code>get_kind_from_menu</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Interactive input of observation type from the obs_kind info.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Integer index of observation kind.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="map_def_index"></A>
+<BR>
+<div class=routine>
+<em class=call> var = map_def_index(obs_def_index) </em>
+<pre>
+integer              :: <em class=code>map_def_index</em>
+integer, intent(in)  :: <em class=code>obs_def_index</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Maps from the integer observation type index in the header block of
+an input observation sequence file into the corresponding entry in
+the obs_kind_info table. This allows observation sequences that were
+created with different obs_kind_mod.f90 versions to be used with
+the current obs_kind_mod.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Index of this observation type in obs_kind_info table.</TD></TR>
+<TR><TD valign=top><em class=code>obs_def_index&nbsp;&nbsp;</em></TD>
+    <TD>Index of observation type from input observation 
+        sequence file.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF PUBLIC VARIABLE =====================-->
 
 <A NAME="max_obs_kinds"></A>
-<P></P><HR><P></P>
+<BR>
 <div class=routine>
 <em class=call>integer, parameter :: max_obs_kinds </em>
-<pre>
-</pre></div>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 The total number of available observation types in the obs_kind_info table.
 This value is added by the preprocess program. 
 </P>
 
-
-<BR>
-
-<!--================================================================-->
+</div>
+<br>
 
 <!--===================== DESCRIPTION OF PUBLIC VARIABLE =====================-->
 
 <A NAME="GENERIC_KIND_DEFINITIONS"></A>
-<P></P><HR><P></P>
+<BR>
 <div class=routine>
 <em class=call>integer, parameter :: KIND_..... </em>
-<pre>
-</pre></div>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 All generic kinds available are public parameters that begin with KIND_.
 </P>
 
-
-<BR>
-
-<!--================================================================-->
+</div>
+<br>
 
 <!--===================== DESCRIPTION OF PUBLIC VARIABLE =====================-->
 
 <A NAME="OBSERVATION_TYPES"></A>
-<P></P><HR><P></P>
+<BR>
 <div class=routine>
 <em class=call>integer, parameter :: SAMPLE_OBS_TYPE </em>
-<pre>
-</pre></div>
+</div>
 
-<H3 class=indent1>Description</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>
 A list of all observation types that are available is provided as
@@ -469,61 +496,69 @@ same as the string names that are associated with this identifier
 in the obs_kind_info table.
 </P>
 
+</div>
+<br>
 
-<BR>
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
 
- <!--================================================================-->
-
- <!--============== DESCRIPTION OF A NAMELIST ========================-->
- <A NAME="Namelist"></A>
+<A NAME="Namelist"></A>
 <HR>
 <H2>NAMELIST</H2>
- <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&#38;' and terminating with a slash '/'.
- <div class=namelist><pre>
- <em class=call>namelist / obs_kind_nml / </em> &#38;
-     assimilate_these_obs_types,evaluate_these_obs_types
- </pre></div>
- <H3 class=indent1>Discussion</H3>
- <P>
- Controls what observation types are to be assimilated, evaluated, or
- ignored. For each entry, a list of observation type names can be
- specified. Any name in the obs_kind_info table is eligible. Specifying
- a name that is not in the table results in an error. Specifying the
- same name for both namelist entries also results in an error.
- Observation types specified in the list for assimilate_these_obs_types
- are assimilated. Those in the evaluate_these_obs_types list have
- their forward operators computed and included in diagnostic files but
- are not assimilated. An observation type that is specified in neither
- list is ignored.  Identity observations, however, are always assimilated
- if present in the obs_seq.out file.
- </em>
- </P>
- <P>This namelist is read in a file called <em class=file>input.nml</em>
- </P>
- <TABLE border=0 cellpadding=3 width=100%>
- <TR><TH align=left>Contents    </TH>
-     <TH align=left>Type        </TH>
-     <TH align=left>Description </TH></TR>
- <TR><!--contents--><TD valign=top>assimilate_these_obs_types</TD>
-     <!--  type  --><TD>character(len=129), dimension(:)</TD>
- <!--descript--><TD>Names of observation types to be assimilated only. 
-                    <br>Default: null</TD></TR>
- <TR><!--contents--><TD valign=top>evaluate_these_obs_types</TD>
-     <!--  type  --><TD>character(len=129), dimension(:)</TD>
- <!--descript--><TD>Names of observation types to be evaluated only.
-                    <br>Default: null </TD></TR>
- </TABLE>
- <P>
- </P>
- <!--================================================================-->
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+<div class=namelist>
+<pre>
+<em class=call>namelist / obs_kind_nml / </em> &amp;
+    assimilate_these_obs_types,evaluate_these_obs_types
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Controls what observation types are to be assimilated, evaluated, or
+ignored. For each entry, a list of observation type names can be
+specified. Any name in the obs_kind_info table is eligible. Specifying
+a name that is not in the table results in an error. Specifying the
+same name for both namelist entries also results in an error.
+Observation types specified in the list for assimilate_these_obs_types
+are assimilated. Those in the evaluate_these_obs_types list have
+their forward operators computed and included in diagnostic files but
+are not assimilated. An observation type that is specified in neither
+list is ignored.  Identity observations, however, are always assimilated
+if present in the obs_seq.out file.
+</P>
+
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+<TR><!--contents--><TD valign=top>assimilate_these_obs_types</TD>
+    <!--  type  --><TD>character(len=129), dimension(:)</TD>
+    <!--descript--><TD>Names of observation types to be assimilated only. 
+                   <br>Default: null</TD></TR>
+<TR><!--contents--><TD valign=top>evaluate_these_obs_types</TD>
+    <!--  type  --><TD>character(len=129), dimension(:)</TD>
+    <!--descript--><TD>Names of observation types to be evaluated only.
+                   <br>Default: null </TD></TR>
+</TABLE>
+
+</div>
+<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
-</P>
+
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
 <UL>
 <LI>obs_kind_nml in input.nml
@@ -535,18 +570,20 @@ in the obs_kind_info table.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
+<ol>
+<li> none </li>
+</ol>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
@@ -583,37 +620,58 @@ in the obs_kind_info table.
 </TABLE>
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Describe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
 
-<BR><HR><BR>
+<A NAME="PrivateComponents"></A>
+<HR>
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
 
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
+
+<!--==================================================================-->
 
 </BODY>
 </HTML>
