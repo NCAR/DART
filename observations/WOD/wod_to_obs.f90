@@ -18,7 +18,7 @@ program wod_to_obs
 use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
                              increment_time, get_time, set_date, operator(-),  &
-                             print_date, operator(+), leap_year
+                             print_date, operator(+), leap_year, operator(>)
 use    utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
                              check_namelist_read, nmlfileunit, do_output,    &
                              get_next_filename, error_handler, E_ERR, E_MSG, &
@@ -106,7 +106,7 @@ integer :: obsyear, obsmonth, obsday, obshour, obsmin, obssec
 integer :: zloc, obs_num, io, iunit, filenum, dummy, i_qc, nc_rc
 integer :: funit, levels, istdlev, nvar, nsecond, ieof
 integer :: ip2(0:maxlevel), cast, itype
-logical :: file_exist, first_obs, did_obs, from_list = .false.
+logical :: file_exist, did_obs, from_list = .false.
 logical :: have_temp, have_salt
 real(r8) :: hght_miss, refr_miss, azim_miss, terr, serr,         & 
             qc, hghto, refro, azimo, wght, nx, ny,   & 
@@ -140,7 +140,7 @@ real(r8), allocatable :: lat(:), lon(:), dep(:), err(:) !, d_qc(:)
 type(obs_def_type)      :: obs_def
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
-type(time_type)         :: obs_time, delta_time
+type(time_type)         :: obs_time, delta_time, prev_time
 
 integer :: temp_type, salt_type, good_temp, good_salt, bad_temp, bad_salt
 integer :: salt_qc(10), temp_qc(10)
@@ -177,6 +177,7 @@ d_qc(1) = 0.0_r8
 ! time often missing; am setting that to 0Z with less
 ! trepidation.
 call set_calendar_type(GREGORIAN)
+prev_time = set_date(4000, 1, 1)   ! must be something later than all obs
 
 !  read the necessary parameters from input.nml
 call initialize_utilities()
@@ -368,8 +369,6 @@ print *, 'opening file ', trim(next_infile)
    obslon = lono 
    obslat = lato
 
-   first_obs = .true.
-
    if (have_temp) then
       if (ierror(1) == 0) then
          good_temp = good_temp + 1
@@ -402,7 +401,7 @@ print *, 'opening file ', trim(next_infile)
          call set_obs_def_location(obs_def, &
                            set_location(obslon, obslat, obsdepth,VERTISHEIGHT))
          call set_obs_def_kind(obs_def, temp_type)
-         call set_obs_def_time(obs_def, set_time(osec, oday))
+         call set_obs_def_time(obs_def, obs_time)
     
          call set_obs_def_error_variance(obs_def, terr * terr)
          call set_obs_def_key(obs_def, obs_num)
@@ -418,14 +417,14 @@ print *, 'opening file ', trim(next_infile)
          ! same for this column, insert with the prev obs as the starting point.
          ! (the first insert with no prev means it will search for the right
          ! time ordered starting point.)
-         if (first_obs) then
+         if (prev_time > obs_time) then
             call insert_obs_in_seq(obs_seq, obs)
-            first_obs = .false.
          else
-           call insert_obs_in_seq(obs_seq, obs, prev_obs)
+            call insert_obs_in_seq(obs_seq, obs, prev_obs)
          endif
          obs_num = obs_num+1
          prev_obs = obs
+         prev_time = obs_time
  
          if (.not. did_obs) did_obs = .true.
       endif
@@ -439,7 +438,7 @@ print *, 'opening file ', trim(next_infile)
          call set_obs_def_location(obs_def, &
                            set_location(obslon, obslat, obsdepth,VERTISHEIGHT))
          call set_obs_def_kind(obs_def, salt_type)
-         call set_obs_def_time(obs_def, set_time(osec, oday))
+         call set_obs_def_time(obs_def, obs_time)
     
          call set_obs_def_error_variance(obs_def, serr * serr)
          call set_obs_def_key(obs_def, obs_num)
@@ -455,14 +454,14 @@ print *, 'opening file ', trim(next_infile)
          ! same for this column, insert with the prev obs as the starting point.
          ! (the first insert with no prev means it will search for the right
          ! time ordered starting point.)
-         if (first_obs) then
+         if (prev_time > obs_time) then
             call insert_obs_in_seq(obs_seq, obs)
-            first_obs = .false.
          else
-           call insert_obs_in_seq(obs_seq, obs, prev_obs)
+            call insert_obs_in_seq(obs_seq, obs, prev_obs)
          endif
          obs_num = obs_num+1
          prev_obs = obs
+         prev_time = obs_time
  
          if (.not. did_obs) did_obs = .true.
       endif 
