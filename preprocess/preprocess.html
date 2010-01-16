@@ -1,58 +1,25 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>program preprocess</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Interface">INTERFACE</A> / 
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<center>
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
 
 <H1>PROGRAM preprocess</H1>
-<A NAME="HEADER"></A>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 Preprocess is a DART-supplied preprocessor program which
@@ -62,9 +29,11 @@ The output files are normally named
 <em class="file">obs_kind/obs_kind_mod.f90</em> and 
 <em class="file">obs_def/obs_def_mod.f90</em>, but can
 be renamed by namelist control if needed.
-</P>
-<P>
+<br>
+<br>
 There are three kinds of input files: 
+</P>
+
 <ol>
 <li>A default template for the obs_kind_mod (normally 
 <em class="file">obs_kind/DEFAULT_obs_kind_mod.F90</em>).
@@ -75,30 +44,32 @@ observation specific types and code, such as
 <em class="file">obs_def_mod_reanalysis_bufr_mod.f90</em>.
 By convention these files are in the <em class="file">obs_def</em> directory. 
 </ol>
+
+<P>
 The DEFAULT files contain specially formatted comment lines which are
 used as markers to insert additional information into the templates
 and create the output files.
-</P>
-<P>
+<br>
+<br>
 If one or more special obs_def files are specified, information from these
 files is incorporated into the output obs_def and obs_kind modules and the
 observation types specified in the special obs_def files will be available
 for use by the filter programs.
-</P>
-<P>
+<br>
+<br>
 The special obs_def files must contain a number of sections of specially
 formatted F90 comments. They can also contain F90 code required for
 implementing operations needed for the observations. These sections are
 described in the documentation for the special obs_def modules, especially see
 <em class="file">obs_def_1d_state_mod.f90</em>.
-</P>
-<P> 
+<br>
+<br> 
 The DEFAULT obs_kind and obs_def templates also require specially commented
 sections to indicate where code from the special obs_def modules is to be
 inserted. See the documentation for the DEFAULT_obs_kind_mod.F90 and the
 DEFAULT_obs_def_mod.F90 for details.
-</P>
-<P>
+<br>
+<br>
 Although uncommon, it is possible to list no obs_def modules
 in the namelist, which results in 
 <em class="file">DEFAULT_obs_kind_mod.F90</em> and
@@ -111,52 +82,52 @@ forward operator is an identity).
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
-<H2>OTHER MODULES USED</H2>
+<A NAME="Modules"></A>
+<HR>
+<H2>MODULES USED</H2>
 <PRE>
 types_mod
 utilities_mod
 </PRE>
 
 <P>
-Namelist interface <em class=code>&preprocess_nml</em> 
+Namelist interface <em class=code>&amp;preprocess_nml</em> 
 must be read from file <em class=file>input.nml</em>.
 </P>
-
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&amp;' and terminating with a slash '/'.
-
-<div class=namelist><pre>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that character strings that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+The namelist declaration (i.e. what follows) has a different syntax, naturally.
+</P>
+<div class=namelist>
+<pre>
 <em class=call>namelist / preprocess_nml/ </em> &amp;
   input_obs_def_mod_file, input_obs_kind_mod_file, output_obs_def_mod_file, 
   output_obs_kind_mod_file, input_files(max_input_files) 
-</pre></div>
-</P>
+</pre>
+</div>
 
-<H3 class=indent1>Discussion</H3>
+<div class=indent1>
+<!-- Description -->
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align="left" width="15%">Contents    </TH>
     <TH align="left" width="30%">Type        </TH>
     <TH align="left" width="55%">Description </TH></TR>
+
 <TR><!--contents--><TD valign=top>input_obs_def_mod_file           </TD>
     <!--  type  --><TD valign=top>character(len=129)<BR>
           <em class="unit">[default: 'null']</em></TD>
@@ -166,6 +137,7 @@ must be read from file <em class=file>input.nml</em>.
      directory. This file must have the appropriate commented lines indicating
      where the different parts of the input special obs definition modules
      are to be inserted.  </TD></TR>
+
 <TR><!--contents--><TD valign=top>output_obs_def_mod_file           </TD>
     <!--  type  --><TD valign=top>character(len=129)<BR>
           <em class="unit">[default: 'null']</em></TD>
@@ -173,6 +145,7 @@ must be read from file <em class=file>input.nml</em>.
      created by preprocessor. Normally this is 
     <em class="file">obs_def_mod.f90</em> in the obs_def
      directory.   </TD></TR>
+
 <TR><!--contents--><TD valign=top>input_obs_kind_mod_file           </TD>
     <!--  type  --><TD valign=top>character(len=129)<BR>
           <em class="unit">[default: 'null']</em></TD>
@@ -182,6 +155,7 @@ must be read from file <em class=file>input.nml</em>.
      directory. This file must have the appropriate commented lines indicating
      where the different parts of the input special obs definition modules
      are to be inserted.  </TD></TR>
+
 <TR><!--contents--><TD valign=top>output_obs_kind_mod_file           </TD>
     <!--  type  --><TD valign=top>character(len=129)<BR>
           <em class="unit">[default: 'null']</em></TD>
@@ -189,6 +163,7 @@ must be read from file <em class=file>input.nml</em>.
      created by the preprocessor. Normally this is 
     <em class="file">obs_kind_mod.F90</em> in the obs_kind
      directory.   </TD></TR>
+
 <TR><!--contents--><TD valign=top>input_files           </TD>
     <!--  type  --><TD valign=top>character(len=129)(:)<BR>
           <em class="unit">[default: 'null']</em></TD>
@@ -199,21 +174,25 @@ must be read from file <em class=file>input.nml</em>.
      information about the observation type(s). These files normally reside in
      the obs_def directory in files such as 
       <em class="file">obs_def_reanalysis_bufr_mod.f90</em>.</TD></TR>
+
 <TR><!--contents--><TD valign=top>force           </TD>
     <!--  type  --><TD valign=top>logical<BR>
           <em class="unit">[default: .false.]</em></TD>
     <!--descript--><TD> If set to .true., will allow preprocess to overwrite
      existing obs_kind_mod.f90 and obs_def_mod.f90 files without complaint.  
-     The default setting prevents you from overwriting existing files. </TD>
+     The default setting prevents you from overwriting existing files. </TD></TR>
+
 </TABLE>
 
+</div>
+<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
 <UL><LI>input_obs_def_mod_file, specified by namelist; usually <em class="file">DEFAULT_obs_def_mod.F90</em>.
 <LI>output_obs_def_mod_file, specified by namelist; usually <em class="file">obs_def_mod.f90</em>.
@@ -228,18 +207,20 @@ must be read from file <em class=file>input.nml</em>.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
@@ -313,40 +294,47 @@ must be read from file <em class=file>input.nml</em>.
 </TABLE>
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
+none
 </P>
 
 <!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
 
-<BR><HR><BR>
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
 
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
 
-<HR>
 </BODY>
 </HTML>

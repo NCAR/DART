@@ -1,55 +1,25 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>GPS Observations</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Overview">OVERVIEW</A> / 
-<A HREF="#DataSources">DATA SOURCES</A> / 
+<center>
+<A HREF="#Overview">OVERVIEW</A> /
+<A HREF="#DataSources">DATA SOURCES</A> /
 <A HREF="#Programs">PROGRAMS</A> /
 <A HREF="#Modules">MODULES USES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#KnownBugs">KNOWN BUGS</A> /
-<A HREF="#FuturePlans">FUTURE PLANS</A> 
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#FuturePlans">FUTURE PLANS</A>
+</center>
 
 <H1>GPS Observations</H1>
-<A NAME="HEADER"></A>
-
-<!--==================================================================-->
-
-<A NAME="Overview"></A>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 GPS Radio Occultation data is being returned
@@ -59,8 +29,8 @@ project.
 The programs in this directory help to extract the
 data from the distribution files and put them into
 DART observation sequence (obs_seq) file format.
-</P>
-<P>
+<br>
+<br>
 The COSMIC satellites measure the deviation and phase delay
 in the
 straight-line path of the GPS satellite signal as
@@ -77,7 +47,7 @@ previously were poorly observed.
 <!--==================================================================-->
 
 <A NAME="DataSources"></A>
-<BR><HR><BR>
+<HR>
 <H2>DATA SOURCES</H2>
 
 <P>
@@ -105,8 +75,10 @@ a tar file to make it easier to download the raw data.
 <!--==================================================================-->
 
 <A NAME="Programs"></A>
-<BR><HR><BR>
+<HR>
 <H2>PROGRAMS</H2>
+
+<P>
 The data is distributed in
 <a href="http://www.unidata.ucar.edu/software/netcdf">netCDF</a>
 file format.  DART requires all observations to be in a proprietary
@@ -114,11 +86,13 @@ format often called DART "obs_seq" format.
 The files in this directory, a combination
 of C shell scripts and a Fortran source executable,
 do this data conversion.
-<P>
+<br>
+<br>
 Optional namelist interface
 <A HREF="#Namelist"> <em class=code>&amp;convert_cosmic_gps_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
-</P> <P>
+<br>
+<br>
 The work directory contains several scripts, including one which downloads
 the raw data files a day at a time (cosmic_download.csh), and one 
 which executes the conversion program (convert_script.csh).  These
@@ -130,14 +104,16 @@ lengthy.  You probably want to download as a separate preprocess step
 and do not use the options to automatically delete the input files.
 Keep the files around until you are sure you are satisified with the
 output files and then delete them by hand.
-</P> <P>
+<br>
+<br>
 The conversion executable, convert_cosmic_gps_cdf, reads the namelist
 from the file 'input.nml', but also reads an analysis time from the
 terminal or the standard input unit.  This makes it simpler to convert
 multiple files without editing the namelist.  The program prompts for
 the time string with the required time format, 
 <em class=code>yyyy-mm-dd_hh:mm:ss</em> .
-</P> <P>
+<br>
+<br>
 The namelist lets you select from one of two different forward
 operators.  The 'local' forward operator computes the expected
 observation value at a single point: the requested height at the
@@ -170,112 +146,125 @@ netcdf
 </PRE>
 
 <!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
- <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&amp;' and terminating with a slash '/'.
- <div class=namelist><pre>
- <em class=call>namelist / convert_cosmic_gps_nml / </em>
-    obs_levels, local_operator, obs_window, &
-    ray_ds, ray_htop, gpsro_netcdf_file,    &
-    gpsro_netcdf_filelist, gpsro_out_file
- </em></pre></div> 
- <H3 class=indent1>Discussion</H3>
- <P>This namelist is read in a file called <em class=file>input.nml</em>
- </P>
- <TABLE border=0 cellpadding=3 width=100%>
- <TR><TH align=left>Contents    </TH>
-     <TH align=left>Type        </TH>
-     <TH align=left>Description </TH></TR>
-   
- <TR><!--contents--><TD valign=top>obs_levels</TD>
-     <!--  type  --><TD valign=top>integer(200)</TD>
-     <!--descript--><TD>A series of heights, in kilometers, where observations
-                        from this profile should be interpolated.  (Note that
-                        the other distances and heights in the namelist are
-                        specified in meters.)  The values should be listed in
-                        increasing height order.
-                        Default: none</TD></TR>
-   
- <TR><!--contents--><TD valign=top>local_operator</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD>If .true., compute the observation using a method
-                        which assumes all effects occur at the tangent point.
-                        If .false., integrate along the tangent line and do
-                        ray-path reconstruction.
-                        Default: .true.</TD></TR>
-   
- <TR><!--contents--><TD valign=top>obs_window</TD>
-     <!--  type  --><TD valign=top>real(r8)</TD>
-     <!--descript--><TD>Accept and convert observations if they are within
-                        plus or minus this number of hours from the analysis
-                        time (which is read as an input from the terminal or
-                        the standard input unit).
-                        Default: 12.0</TD></TR>
-   
- <TR><!--contents--><TD valign=top>ray_ds</TD>
-     <!--  type  --><TD valign=top>real(r8)</TD>
-     <!--descript--><TD>For the non-local operator only, the delta stepsize, 
-                        in meters, to use for the along-path integration in
-                        each direction out from the tangent point.
-                        Default: 5000.0</TD></TR>
-   
- <TR><!--contents--><TD valign=top>ray_htop</TD>
-     <!--  type  --><TD valign=top>real(r8)</TD>
-     <!--descript--><TD>For the non-local operator only, stop the integration
-                        when one of the endpoints of the next integration step
-                        goes above this height.  Specified in meters.
-                        Default: 15000.0</TD></TR>
-   
- <TR><!--contents--><TD valign=top>gpsro_netcdf_file</TD>
-     <!--  type  --><TD valign=top>character(len=128)</TD>
-     <!--descript--><TD>The input filename when converting a single profile.  
-                        Only one of the 2 filenames can have a valid value, 
-                        so to use the single filename set the list name
-                        ('gpsro_netcdf_filelist') to the empty string ('').
-                        Default: 'cosmic_gps_input.nc'</TD></TR>
-   
- <TR><!--contents--><TD valign=top>gpsro_netcdf_filelist</TD>
-     <!--  type  --><TD valign=top>character(len=128)</TD>
-     <!--descript--><TD>To convert a series of profiles in a single execution
-                        create a text file which contains each input file,
-                        in ascii, one filename per line.  Set this item to
-                        the name of that file, and set 'gpsro_netcdf_file' to
-                        the empty string ('').
-                        Default: 'cosmic_gps_input_list'</TD></TR>
-   
- <TR><!--contents--><TD valign=top>gpsro_out_file</TD>
-     <!--  type  --><TD valign=top>character(len=128)</TD>
-     <!--descript--><TD>The output file to be created.  Note that to be
-                        compatible with earlier versions of this program, if
-                        this file already exists it will be read in and the
-                        new data will be inserted into that file.
-                        Default: 'obs_seq.gpsro'</TD></TR>
-   
- <TR><!--contents--><TD valign=top>overwrite_time</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD>This item is NOT in the standard namelist, but code
-                        exists in the program to support the functionality
-                        if the source is edited and this variable is added 
-                        to the namelist.  If set to
-                        .true., the output file will be created with all
-                        observations marked with the specified analysis time
-                        instead of the actual observation collection time.
-                        This is generally not what you want, but might be
-                        useful if you are binning observations by time to do 
-                        thinning or super-ob'ing data.
-                        Default: .false.</TD></TR>
-   
- </TABLE>
-<P>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that character strings that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+The namelist declaration (i.e. what follows) has a different syntax, naturally.
 </P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / convert_cosmic_gps_nml / </em>
+   obs_levels, local_operator, obs_window, &amp;
+   ray_ds, ray_htop, gpsro_netcdf_file,    &amp;
+   gpsro_netcdf_filelist, gpsro_out_file
+</pre> 
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+  
+<TR><!--contents--><TD valign=top>obs_levels</TD>
+    <!--  type  --><TD valign=top>integer(200)</TD>
+    <!--descript--><TD>A series of heights, in kilometers, where observations
+                       from this profile should be interpolated.  (Note that
+                       the other distances and heights in the namelist are
+                       specified in meters.)  The values should be listed in
+                       increasing height order.
+                       Default: none</TD></TR>
+  
+<TR><!--contents--><TD valign=top>local_operator</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD>If .true., compute the observation using a method
+                       which assumes all effects occur at the tangent point.
+                       If .false., integrate along the tangent line and do
+                       ray-path reconstruction.
+                       Default: .true.</TD></TR>
+  
+<TR><!--contents--><TD valign=top>obs_window</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
+    <!--descript--><TD>Accept and convert observations if they are within
+                       plus or minus this number of hours from the analysis
+                       time (which is read as an input from the terminal or
+                       the standard input unit).
+                       Default: 12.0</TD></TR>
+  
+<TR><!--contents--><TD valign=top>ray_ds</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
+    <!--descript--><TD>For the non-local operator only, the delta stepsize, 
+                       in meters, to use for the along-path integration in
+                       each direction out from the tangent point.
+                       Default: 5000.0</TD></TR>
+  
+<TR><!--contents--><TD valign=top>ray_htop</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
+    <!--descript--><TD>For the non-local operator only, stop the integration
+                       when one of the endpoints of the next integration step
+                       goes above this height.  Specified in meters.
+                       Default: 15000.0</TD></TR>
+  
+<TR><!--contents--><TD valign=top>gpsro_netcdf_file</TD>
+    <!--  type  --><TD valign=top>character(len=128)</TD>
+    <!--descript--><TD>The input filename when converting a single profile.  
+                       Only one of the 2 filenames can have a valid value, 
+                       so to use the single filename set the list name
+                       ('gpsro_netcdf_filelist') to the empty string ('').
+                       Default: 'cosmic_gps_input.nc'</TD></TR>
+  
+<TR><!--contents--><TD valign=top>gpsro_netcdf_filelist</TD>
+    <!--  type  --><TD valign=top>character(len=128)</TD>
+    <!--descript--><TD>To convert a series of profiles in a single execution
+                       create a text file which contains each input file,
+                       in ascii, one filename per line.  Set this item to
+                       the name of that file, and set 'gpsro_netcdf_file' to
+                       the empty string ('').
+                       Default: 'cosmic_gps_input_list'</TD></TR>
+  
+<TR><!--contents--><TD valign=top>gpsro_out_file</TD>
+    <!--  type  --><TD valign=top>character(len=128)</TD>
+    <!--descript--><TD>The output file to be created.  Note that to be
+                       compatible with earlier versions of this program, if
+                       this file already exists it will be read in and the
+                       new data will be inserted into that file.
+                       Default: 'obs_seq.gpsro'</TD></TR>
+  
+<TR><!--contents--><TD valign=top>overwrite_time</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD>This item is NOT in the standard namelist, but code
+                       exists in the program to support the functionality
+                       if the source is edited and this variable is added 
+                       to the namelist.  If set to
+                       .true., the output file will be created with all
+                       observations marked with the specified analysis time
+                       instead of the actual observation collection time.
+                       This is generally not what you want, but might be
+                       useful if you are binning observations by time to do 
+                       thinning or super-ob'ing data.
+                       Default: .false.</TD></TR>
+  
+</TABLE>
+
+</div>
+<br>
 
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<BR><HR><BR>
+<HR>
 <H2>KNOWN BUGS</H2>
 <P>
 Some COSMIC files seem to have internal times which differ from the
@@ -293,25 +282,37 @@ the 'obs_window' namelist variable, or can be trimmed later with the
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
+none
 </P>
 
-<BR><HR><BR>
-
 <!--==================================================================-->
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> nancy collins </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
+<!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
 
-<!--==================================================================-->
-
+<A NAME="Legalese"></A>
 <HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> nancy collins </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

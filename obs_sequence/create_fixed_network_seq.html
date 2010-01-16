@@ -1,58 +1,25 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>PROGRAM create_fixed_network_seq</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-
-<!--kdr INTERFACE, PUBLIC COMPONENTS, NAMELIST, ERRORS, PRIVATE COMPONENTS have no destinations -->
-<DIV ALIGN=CENTER>
-<A HREF="#PublicEntities">PUBLIC COMPONENTS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<center>
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
 
-<!--==================================================================-->
-
-<H1>PROGRAM create_fixed_network_seq</H1>
-<A NAME="HEADER"></A>
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<H1>PROGRAM <em class=program>create_fixed_network_seq</em></H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 Reads in an observation sequence file and creates a second observation
@@ -62,7 +29,9 @@ The output sequence replicates this set multiple times,
 either with a fixed period in time or at arbitrarily selected times. 
 The program is driven by input from standard input, either the terminal
 or a text file. 
-</P><P>
+</P>
+
+<P>
 First, one must select either
 a regularly repeating time sequence of observations (option 1) or an
 arbitrarily repeating sequence (option 2). 
@@ -75,7 +44,9 @@ Finally, the user selects a file name (traditionally obs_seq.in) to
 which the output file is written. The format of the output file is
 controlled by the namelist options in 
 <a href="obs_sequence_mod.html#Namelist">obs_sequence_mod</a>.
-</P><P>
+</P>
+
+<P>
 Any data values or quality control flags associated with the
 input set are replicated to the output, but this program is typically
 used with perfect model experiments to create observations without
@@ -85,9 +56,9 @@ data, which are then filled in by running
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
-<BR><HR><BR>
-<H2>OTHER MODULES USED</H2>
+<A NAME="Modules"></A>
+<HR>
+<H2>MODULES USED</H2>
 <PRE>
 types_mod
 utilities_mod
@@ -97,15 +68,12 @@ time_manager_mod
 model_mod
 </PRE>
 
-
-<!--==================================================================-->
-
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
 <UL><LI>Input observation sequence (set_def.out is standard).
     <LI>Output observation sequence (obs_seq.in is standard).
@@ -116,53 +84,71 @@ model_mod
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
+<A NAME="Errors"></A>
+<HR>
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
+<TR><!-- routine --><TD VALIGN=top>&nbsp;</TD>
+    <!-- message --><TD VALIGN=top>&nbsp;</TD>
+    <!-- comment --><TD VALIGN=top>&nbsp;</TD></TR>
 
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
+</TABLE>
+</div>
+
 <H2>KNOWN BUGS</H2>
 <P>
+none
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
+none
 </P>
 
 <!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
 
-
-<H3 class=indent1>Discussion</H3>
-
-<!--==================================================================-->
-
+<A NAME="Legalese"></A>
 <HR>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
 
-<HR>
+<!--==================================================================-->
+
 </BODY>
 </HTML>

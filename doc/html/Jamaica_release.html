@@ -1,51 +1,26 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>DART "Jamaica release" Documentation</TITLE>
-<link rel="stylesheet" type="text/css" href="doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="doc.css">
 </HEAD>
 <BODY>
+<A NAME="TOP"></A>
+
+<center>
+<A HREF="#Legalese">TERMS OF USE</A>
+<br>
+<br>
+<img src = "Dartboard7.png" alt="cool DART logo">
+</center>
 
 <!--==================================================================-->
 
-<DIV ALIGN=LEFT class=disclaimer>
-GNU General Public License
-
-<P>DART is free software; you can redistribute it and/or modify
-it and are expected to follow the terms of the GNU General Public
-License as published by the Free Software Foundation. </P>
-
-<P>DART is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details. </P>
-
-<P>You should have received a copy of the GNU General Public License
-along with DART; if not, write to:<BR>
-Free Software Foundation, Inc.<BR>
-59 Temple Place, Suite 330<BR>
-Boston, MA  02111-1307  USA<BR>
-or see:<BR>
-http://www.gnu.org/licenses/gpl.txt
-</P>
-</DIV>
-
-<!--==================================================================-->
-
-<br>
-<img src = "../../images/Dartboard9.png" alt="snappy DART image"></img>
-<br>
 <H1>DART "jamaica release" Documentation</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson, Tim Hoar </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <!--==================================================================-->
-
 
 <A NAME="OVERVIEW"></A>
 <H1>Overview of DART</H1>
@@ -166,7 +141,7 @@ The most visible changes in the <b>jamaica</b> release are:
    the same model state is used when computing the vertical localization.
    </P>
 
-   <h4 class="indent1">3D plots of observation locations & type</h4> 
+   <h4 class="indent1">3D plots of observation locations &amp; type</h4> 
    <P class="indent1">
    It's more than just eye candy. It is also possible to plot (in 3D) 
    the locations of observations by processing an observation sequence 
@@ -214,8 +189,9 @@ know how it went -- I'm curious.
 </P>
 
 <H3 class=indent1>What's nice to have</H3>
-<P>
-<div class="indent1"><strong>ncview</strong>: DART users have used 
+
+<div class="indent1">
+<strong>ncview</strong>: DART users have used 
 <A HREF="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</A> 
 to create graphical displays of output data fields. The 2D rendering is
 good for 'quick-look' type uses, but I wouldn't want to publish with it.
@@ -242,9 +218,6 @@ step will run much faster in parallel, which requires MPI to be installed and
 used. However, if multiple ensembles of your model fit comfortably (in time
 and memory space) on a single processor, you need read no further about MPI.
 </div>
-
-</P>
-
 
 <H2 class=indent1>Where's the (GUI) interface?</H2>
 
@@ -278,35 +251,42 @@ generates namelists with the default values for each program to be run.
 <!--==================================================================-->
 
 <H2 class=indent1>Document conventions</H2>
-<P>Anything underlined is a URL.<BR>
+<P>
+Anything underlined is a URL.
+<br>
+<br>
 <em class=file>All filenames look like this -- (typewriter font, green)</em>.<BR>
 <em class=program>Program names look like this -- (italicized font, green)</em>.<BR>
-<em class=input>user input looks like this -- (bold, magenta)</em>.<BR>
+<em class=input>user input looks like this -- (bold, magenta)</em>.
+</P>
 <div class=unix>
 commands to be typed at the command line are contained in an 
 indented gray box.
-</div><BR>
+</div>
+<P>
 And the contents of a file are enclosed in a box with a border:
+</P>
 <div class=routine>
-&#38;hypothetical_nml<BR>
+&amp;hypothetical_nml<BR>
 &nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<BR>
 &nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<BR>
 &nbsp;&nbsp;init_time_days = 0,<BR>
 &nbsp;&nbsp;init_time_seconds = 0,<BR>
 &nbsp;&nbsp;output_interval = 1<BR>
-&#38;end</div>
-</P>
+&amp;end</div>
 
 <!--==================================================================-->
 
 <A NAME="Installation"></A>
-<HR></HR>
+<HR>
 <H1>Installation</H1>
 
 <P>
 This document outlines the installation of the DART software
 and the system requirements. The entire installation process is summarized in
 the following steps:
+</P>
+
 <OL><LI><A HREF="#compilers">Determine which F90 compiler is available</A>.</LI>
     <LI><A HREF="#netCDFlib">Determine the location of the 
         <em class=code>netCDF</em> library</A>.</LI>
@@ -317,17 +297,19 @@ the following steps:
 	appropriate libraries</A>.</LI>
     <LI><A HREF="#building">Build the executables</A>.</LI>
 </OL>
-</P>
 
 <P>
 We have tried to make the code as portable as possible, but we
 do not have access to all compilers on all platforms, so there are no
 guarantees. We are interested in your experience building the system,
-so please email me (Tim Hoar) thoar 'at' ucar 'dot' edu</A>
+so please email me (Tim Hoar) thoar&nbsp;'at'&nbsp;ucar&nbsp;'dot'&nbsp;edu
 (trying to cut down on the spam).
 </P>
 
-<P>After the installation, you might want to peruse the following.
+<P>
+After the installation, you might want to peruse the following.
+</P>
+
 <UL><LI><A HREF="#Running">Running the Lorenz_63 Model</A>.</LI>
     <LI><A HREF="#matlab">Using the Matlab&#174; diagnostic scripts</A>.</LI>
     <LI>A short discussion on 
@@ -335,14 +317,14 @@ so please email me (Tim Hoar) thoar 'at' ucar 'dot' edu</A>
     <LI>And another one on 
      <A HREF="#syntheticobservations">synthetic observations</A>.</LI>
 </UL>
-</P>
+
 <h3 class="indent1">You should <i>absolutely</i> take the tutorial 
 in the <em class="file">DART/tutorial</em> directory.</h3>
 
 <!--==================================================================-->
 
 <A NAME="compilers"></A>
-<HR></HR>
+<HR>
 <H2>Requirements: an F90 Compiler</H2>
 
 <P>
@@ -365,7 +347,7 @@ with different models, there are no binaries to distribute.
 <!--==================================================================-->
 
 <A NAME="netCDFlib"></A>
-<HR></HR>
+<HR>
 <H2>Requirements: the <em class=file>netCDF</em> library</H2>
 
 <P>
@@ -407,7 +389,7 @@ section.
 <!--==================================================================-->
 
 <A NAME="download"></A>
-<HR></HR>
+<HR>
 <H2>Downloading the distribution.</H2>
 
 <P>
@@ -468,7 +450,7 @@ are:
 <!--==================================================================-->
 
 <A NAME="customizations"></A>
-<HR></HR>
+<HR>
 <H2>Customizing the build scripts -- Overview.</H2>
 
 <P>
@@ -570,6 +552,7 @@ MPI, these variables are of no consequence.
 
 <A HREF="netCDF"></A>
 <H4 class=indent2>NETCDF</H4>
+
 <P class=indent1>
 Modifying the <em class=code>NETCDF</em> value should be relatively
 straightforward.<BR>
@@ -584,6 +567,7 @@ variables.<BR>
 
 <A HREF="fflags"></A>
 <H4 class=indent2>FFLAGS</H4>
+
 <P class=indent1>
 Each compiler has different compile flags, so there is really no way
 to exhaustively cover this other than to say the templates as we supply
@@ -594,6 +578,7 @@ switch, but the <em class=file>bgrid_solo</em> model cannot.
 
 <A NAME="path_names"></A>
 <H3 class=indent1>Customizing the 'path_names_*' file</H3>
+
 <P>
 Several <em class=file>path_names_*</em> files are provided in
 the <em class=file>work</em> directory for each specific model, 
@@ -611,11 +596,10 @@ If you have correctly configured your <em class=file>mkmf.template</em>,
 you can run anything in the tutorial.
 </P>
 
-
 <!--==================================================================-->
 
 <A NAME="building"></A>
-<HR></HR>
+<HR>
 <H2>Building the Lorenz_63 DART project.</H2>
 
 <P>Currently, DART executables are constructed in a <em class=file>work</em>
@@ -627,8 +611,9 @@ directory and list the contents:
 <div class=unix>
 cd DART/models/lorenz_63/work<BR>
 ls -1
-</div><BR>
+</div>
 
+<P>
 With the result:
 <PRE>
 Posterior_Diag.nc
@@ -670,6 +655,8 @@ workshop_setup.csh
 <P>
 There are eight <em class=file>mkmf_</em><em class=italic>xxxxxx</em> 
 files for the programs 
+</P>
+
 <ol><li><em class=program>preprocess</em>, 
     <li><em class=program>create_obs_sequence</em>, 
     <li><em class=program>create_fixed_network_seq</em>, 
@@ -679,6 +666,8 @@ files for the programs
     <li><em class=program>merge_obs_seq</em>, and 
     <li><em class=program>obs_diag</em>,
 </ol>
+
+<P>
 along with the 
 corresponding <em class=file>path_names_</em><em class=italic>xxxxxx</em> files.
 There are also files that contain initial conditions, netCDF output, and 
@@ -729,7 +718,7 @@ the remaining executables. This is how the same code can assimilate state
 vector 'observations' for the Lorenz_63 model and real radar reflectivities for WRF 
 without needing to specify a set of radar operators for the Lorenz_63 model!
 <BR><BR>
-<em class=program>preprocess</em> reads the <em class=code>&#38;preprocess_nml</em>
+<em class=program>preprocess</em> reads the <em class=code>&amp;preprocess_nml</em>
 namelist to determine what observations and operators to incorporate. For this exercise, we will use the values in <em class=file>input.nml</em>.
 <em class=program>preprocess</em> is designed to abort if
 the files it is supposed to build already exist. For this reason, it is necessary
@@ -744,6 +733,7 @@ It is just a good habit to develop.
 ls -l ../../../obs_def/obs_def_mod.f90<BR>
 ls -l ../../../obs_kind/obs_kind_mod.f90<BR>
 </div>
+
 <P>
 This created <em class=file>../../../obs_def/obs_def_mod.f90</em> from
 <em class=file>../../../obs_kind/DEFAULT_obs_kind_mod.F90</em> and several other
@@ -770,11 +760,13 @@ csh mkmf_obs_diag<BR>
 make
 </div><BR>
 
+<P>
 The result (hopefully) is that six executables now 
 reside in your work directory. The most common problem is that the netCDF libraries
 and include files (particularly <em class=file>typesizes.mod</em>) are not found. 
 Edit the <em class=file>DART/mkmf/mkmf.template</em>,
-recreate the <em class=file>Makefile</em>, and try again.<BR><BR>
+recreate the <em class=file>Makefile</em>, and try again.
+</P>
 
 <TABLE border=0 cellpadding=1 width=100%>
 <TR><TH>program</TH><TH>purpose</TH></TR>
@@ -824,9 +816,10 @@ recreate the <em class=file>Makefile</em>, and try again.<BR><BR>
 <!--==================================================================-->
 
 <A NAME="Running"></A>
-<HR></HR>
+<HR>
 <H2>Running Lorenz_63.</H2>
 
+<P>
 This initial sequence of exercises includes detailed instructions 
 on how to work with the DART code and allows investigation of the 
 basic features of one of the most famous dynamical systems, the 
@@ -838,17 +831,18 @@ To perform a synthetic observation assimilation experiment
 for the L63 model, the following steps must be performed 
 (an overview of the process is given first, 
 followed by detailed procedures for each step): 
+</P>
 
 <H2 class=indent1>Experiment Overview</H2>
 <OL>
-   <LI><A HREF="#integrate">Integrate the L63 model for a long time</A></LI>
+   <LI><A HREF="#integrate">Integrate the L63 model for a long time</A><br>
    starting from arbitrary initial conditions to generate a model state 
    that lies on the attractor. The ergodic nature of the L63 system 
    means a 'lengthy' integration always converges to some point on 
    the computer's finite precision representation of the model's 
-   attractor.
+   attractor.<br><br></LI>
 
-   <LI><A HREF="#ensemblate">Generate a set of ensemble initial conditions</A></LI>
+   <LI><A HREF="#ensemblate">Generate a set of ensemble initial conditions</A><br>
    from which to start an assimilation. Since L63 is ergodic, the 
    ensemble members can be designed to look like random samples from 
    the model's 'climatological distribution'.  To generate an ensemble 
@@ -856,15 +850,15 @@ followed by detailed procedures for each step):
    the attractor generated by step 1. This perturbed state can then be 
    integrated for a very long time until all memory of its initial 
    condition can be viewed as forgotten. Any number of ensemble 
-   initial conditions can be generated by repeating this procedure.
+   initial conditions can be generated by repeating this procedure.<br><br></LI>
 
-   <LI><A HREF="#simulate">Simulate a particular observing system</A></LI>
+   <LI><A HREF="#simulate">Simulate a particular observing system</A><br>
    by first creating an 'observation set definition' and then creating
    an 'observation sequence'. The 'observation set definition' describes the 
    instrumental characteristics of the observations and the 'observation sequence'
-   defines the temporal sequence of the observations.
+   defines the temporal sequence of the observations.<br><br></LI>
 
-   <LI><A HREF="#generate">Populate the 'observation sequence' with 'perfect' observations</A></LI>
+   <LI><A HREF="#generate">Populate the 'observation sequence' with 'perfect' observations</A><br>
    by integrating the model and using the information in the 
    'observation sequence' file to create simulated observations.
    This entails operating on the model state at the 
@@ -873,10 +867,10 @@ followed by detailed procedures for each step):
    the expected value of the particular observation) and then adding 
    a random sample from the observation error distribution specified 
    in the observation set definition.  At the same time, diagnostic 
-   output about the 'true' state trajectory can be created.
+   output about the 'true' state trajectory can be created.<br><br></LI>
 
-   <LI><A HREF="#assimilate">Assimilate the synthetic observations</A></LI>
-   by running the filter; diagnostic output is generated.
+   <LI><A HREF="#assimilate">Assimilate the synthetic observations</A><br>
+   by running the filter; diagnostic output is generated.</LI>
 </OL>
 
 <A NAME="integrate"></A>
@@ -945,7 +939,7 @@ the user input looks <em class=input>like this</em>.
  $date: 2007-03-25 22:09:04 -0600 (Sun, 25 Mar 2007) $
  Registration complete.
 
- &#38;UTILITIES_NML
+ &amp;UTILITIES_NML
  TERMLEVEL= 2,LOGFILENAME=dart_log.out                                          
                                                                             
  /
@@ -969,7 +963,7 @@ the user input looks <em class=input>like this</em>.
 
  input a -1 if there are no more obs 
 <em class=input>0</em>
- 
+
  Registering module :
  $url: http://squish/DART/trunk/obs_def/DEFAULT_obs_def_mod.F90 $
  $revision: 2820 $
@@ -1053,7 +1047,7 @@ with the <em class=program>perfect_model_obs</em> program.
  Registration complete.
  
  static_init_obs_sequence obs_sequence_nml values are
- &#38;OBS_SEQUENCE_NML
+ &amp;OBS_SEQUENCE_NML
  WRITE_BINARY_OBS_SEQUENCE =  F,
  /
  Input filename for network definition sequence (usually  set_def.out  )
@@ -1112,7 +1106,7 @@ cp input.nml.perfect_model_obs_default input.nml<BR>
 
 <div class=routineIndent1>
 <pre>
-&#38;perfect_model_obs_nml
+&amp;perfect_model_obs_nml
    start_from_restart    = .false.,
    output_restart        = <em class=changed>.true.</em>,
    async                 = 0,
@@ -1129,12 +1123,12 @@ cp input.nml.perfect_model_obs_default input.nml<BR>
    obs_seq_out_file_name = "obs_seq.out",
    adv_ens_command       = "./advance_ens.csh"  /
 
-&#38;ensemble_manager_nml
+&amp;ensemble_manager_nml
    single_restart_file_in  = .true.,
    single_restart_file_out = .true.,
    perturbation_amplitude  = 0.2  /
 
-&#38;assim_tools_nml
+&amp;assim_tools_nml
    filter_kind                     = 1,
    cutoff                          = 0.2,
    sort_obs_inc                    = .false.,
@@ -1143,25 +1137,25 @@ cp input.nml.perfect_model_obs_default input.nml<BR>
    adaptive_localization_threshold = -1,
    print_every_nth_obs             = 0  /
 
-&#38;cov_cutoff_nml
+&amp;cov_cutoff_nml
    select_localization = 1  /
 
-&#38;reg_factor_nml
+&amp;reg_factor_nml
    select_regression    = 1,
    input_reg_file       = "time_mean_reg",
    save_reg_diagnostics = .false.,
    reg_diagnostics_file = "reg_diagnostics"  /
 
-&#38;obs_sequence_nml
+&amp;obs_sequence_nml
    write_binary_obs_sequence = .false.  /
 
-&#38;obs_kind_nml
+&amp;obs_kind_nml
    assimilate_these_obs_types = <em class=changed>'RAW_STATE_VARIABLE'  /</em>
 
-&#38;assim_model_nml
+&amp;assim_model_nml
    write_binary_restart_files = .true. /
 
-&#38;model_nml
+&amp;model_nml
    sigma  = 10.0,
    r      = 28.0,
    b      = 2.6666666666667,
@@ -1169,7 +1163,7 @@ cp input.nml.perfect_model_obs_default input.nml<BR>
    time_step_days = 0,
    time_step_seconds = 3600  /
 
-&#38;utilities_nml
+&amp;utilities_nml
    TERMLEVEL = 1,
    logfilename = 'dart_log.out'  /
 </pre>
@@ -1270,6 +1264,7 @@ perfect_model_obs
 
 <A NAME="ensemblate"></A>
 <H3 class=indent1>2. Generate a set of ensemble initial conditions.</H3>
+
 <P class=indent1>
    The set of initial conditions for a 'perfect model' experiment is 
    created in several steps.   1) Starting from the spun-up state of the model 
@@ -1289,10 +1284,11 @@ perfect_model_obs
    steps and place the final state in <em class=file>perfect_restart</em>.
    The rest of the namelists in <em class=file>input.nml</em> should remain
    unchanged.
+</P>
    
 <div class=routineIndent1>
 <pre>
-&#38;perfect_model_obs_nml
+&amp;perfect_model_obs_nml
    start_from_restart    = <em class=changed>.true.</em>,
    output_restart        = .true.,
    async                 = 0,
@@ -1316,7 +1312,6 @@ perfect_model_obs
    cp perfect_restart perfect_ics<BR>
    perfect_model_obs
    </div>
-</P>
 
 <P class=indent1>
    A <em class=file>True_State.nc</em> 
@@ -1324,15 +1319,17 @@ perfect_model_obs
 </P>
 
 <H4 class=indent1>Generating the ensemble</H4>
+
    <P class=indent1>
    This step (#2 from above) is done with the program <em class=program>filter</em>, 
    which also uses the Fortran90 namelist mechanism for input. It is now necessary 
    to copy the <em class=file>input.nml.filter_default</em> namelist to 
    <em class=file>input.nml</em>.</P>
 
-   <div class=unix class=indent1>
+   <div class=indent1>
    cp input.nml.filter_default input.nml<BR>
    </div>
+
    <P class=indent1>
    You may also build one master namelist containting all the required 
    namelists. Having unused namelists in the <em class=file>input.nml</em> 
@@ -1342,15 +1339,15 @@ perfect_model_obs
    <em class=file>input.nml</em>.
    <br>
    <br>
-   <em>HINT: if you used <em class="program">svn</em> to get the project, 
+   <em>HINT:</em> if you used <em class="program">svn</em> to get the project, 
    try 'svn revert input.nml' to restore the namelist that was distributed
    with the project - which DOES have all the namelist blocks. Just be sure 
-   the values match the examples here.</em>
+   the values match the examples here.
    </P>
 
 <div class=routineIndent1>
 <pre>
-&#38;filter_nml
+&amp;filter_nml
    async                    = 0,
    adv_ens_command          = "./advance_model.csh",
    ens_size                 = <em class=changed>100</em>,
@@ -1390,19 +1387,19 @@ perfect_model_obs
    inf_sd_lower_bound       = 0.0,                     0.0
 /
 
-&#38;smoother_nml
+&amp;smoother_nml
    num_lags              = 0,
    start_from_restart    = .false.,
    output_restart        = .false.,
    restart_in_file_name  = 'smoother_ics',
    restart_out_file_name = 'smoother_restart'  /
 
-&#38;ensemble_manager_nml
+&amp;ensemble_manager_nml
    single_restart_file_in  = .true.,
    single_restart_file_out = .true.,
    perturbation_amplitude  = 0.2  /
 
-&#38;assim_tools_nml
+&amp;assim_tools_nml
    filter_kind                     = 1,
    cutoff                          = 0.2,
    sort_obs_inc                    = .false.,
@@ -1411,25 +1408,25 @@ perfect_model_obs
    adaptive_localization_threshold = -1,
    print_every_nth_obs             = 0  /
 
-&#38;cov_cutoff_nml
+&amp;cov_cutoff_nml
    select_localization = 1  /
 
-&#38;reg_factor_nml
+&amp;reg_factor_nml
    select_regression    = 1,
    input_reg_file       = "time_mean_reg",
    save_reg_diagnostics = .false.,
    reg_diagnostics_file = "reg_diagnostics"  /
 
-&#38;obs_sequence_nml
+&amp;obs_sequence_nml
    write_binary_obs_sequence = .false.  /
 
-&#38;obs_kind_nml
+&amp;obs_kind_nml
    assimilate_these_obs_types = <em class="changed">'RAW_STATE_VARIABLE'  /</em>
 
-&#38;assim_model_nml
+&amp;assim_model_nml
    write_binary_restart_files = .true. /
 
-&#38;model_nml
+&amp;model_nml
    sigma  = 10.0,
    r      = 28.0,
    b      = 2.6666666666667,
@@ -1437,7 +1434,7 @@ perfect_model_obs
    time_step_days = 0,
    time_step_seconds = 3600  /
 
-&#38;utilities_nml
+&amp;utilities_nml
    TERMLEVEL = 1,
    logfilename = 'dart_log.out'  /
 </pre>
@@ -1603,7 +1600,7 @@ following input sequence:</P>
 
 <div class=routineIndent1>
 <pre>
-&#38;perfect_model_obs_nml
+&amp;perfect_model_obs_nml
    start_from_restart    = .true.,
    output_restart        = .true.,
    async                 = 0,
@@ -1639,7 +1636,7 @@ Finally, <em class=program>filter</em> can be run with its namelist set to:
 
 <div class=routineIndent1>
 <pre>
-&#38;filter_nml
+&amp;filter_nml
    async                    = 0,
    adv_ens_command          = "./advance_model.csh",
    ens_size                 = 100,
@@ -1678,6 +1675,7 @@ Finally, <em class=program>filter</em> can be run with its namelist set to:
    inf_upper_bound          = 1000000.0,               1000000.0,
    inf_sd_lower_bound       = 0.0,                     0.0
  /
+</pre>
 </div>
 
 <P class=indent1>
@@ -1697,7 +1695,7 @@ Now try applying all of the matlab diagnostic functions described in
 <!--==================================================================-->
 
 <A NAME="Workshop"></A>
-<HR></HR>
+<HR>
 <H2>The Tutorial.</H2>
 <P>
 The <em class=file>DART/tutorial</em> documents are an excellent way
@@ -1754,20 +1752,20 @@ operators on your system WILL be different from ours ... and that's OK.
   To get started, type one of these: helpwin, helpdesk, or demo.
   For product information, visit www.mathworks.com.
 
->><em class=input> which getnc</em>
+&gt;&gt;<em class=input> which getnc</em>
 /contrib/matlab/matlab_netcdf_5_0/getnc.m
->><em class=input>ls *.nc</em>
+&gt;&gt;<em class=input>ls *.nc</em>
 
 ans =
 
 Posterior_Diag.nc  Prior_Diag.nc  True_State.nc
 
 
->><em class=input>path('../../../matlab',path)</em>
->><em class=input>path('../../../diagnostics/matlab',path)</em>
->><em class=input>which plot_ens_err_spread</em>
+&gt;&gt;<em class=input>path('../../../matlab',path)</em>
+&gt;&gt;<em class=input>path('../../../diagnostics/matlab',path)</em>
+&gt;&gt;<em class=input>which plot_ens_err_spread</em>
 ../../../matlab/plot_ens_err_spread.m
->><em class=input>help plot_ens_err_spread</em>
+&gt;&gt;<em class=input>help plot_ens_err_spread</em>
 
   DART : Plots summary plots of the ensemble error and ensemble spread.
                          Interactively queries for the needed information.
@@ -1784,10 +1782,11 @@ Posterior_Diag.nc  Prior_Diag.nc  True_State.nc
   diagn_file = 'Prior_Diag.nc';
   plot_ens_err_spread
 
->><em class=input>plot_ens_err_spread</em>
+&gt;&gt;<em class=input>plot_ens_err_spread</em>
 </PRE>
 </div>
-<BR>
+
+<P>
 And the matlab graphics window will display the spread of the ensemble error for
 each state variable. The scripts are designed to do the "obvious" thing for the
 low-order models and will prompt for additional information if needed. 
@@ -1924,13 +1923,31 @@ Be careful to keep these issues in mind while exploring
 the capabilities of the ensemble filters with synthetic observations.
 </P>
 
-<HR>
-<!--#config errmsg="SSI Error" timefmt = "%e %h %Y"-->
-<center>
-Last modified: <!--#echo var="LAST_MODIFIED" --> 
- &nbsp; by thoar 'at' ucar 'dot' edu
-</center>
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
 
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
 
 </BODY>
-</HTML> 
+</HTML>

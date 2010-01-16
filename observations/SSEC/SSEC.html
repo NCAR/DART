@@ -1,54 +1,25 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>SSEC Data Center</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Overview">OVERVIEW</A> / 
-<A HREF="#DataSources">DATA SOURCES</A> / 
+<center>
+<A HREF="#Overview">OVERVIEW</A> /
+<A HREF="#DataSources">DATA SOURCES</A> /
 <A HREF="#Programs">PROGRAMS</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#KnownBugs">KNOWN BUGS</A> /
-<A HREF="#FuturePlans">FUTURE PLANS</A> 
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#FuturePlans">FUTURE PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
 
 <H1>SSEC Data Center</H1>
-<A NAME="HEADER"></A>
-
-<!--==================================================================-->
-
-<A NAME="Overview"></A>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 The program in this directory takes satellite wind data from the
@@ -57,30 +28,28 @@ Center, and converts it into DART format observation sequence files,
 for use in assimilating with the DART filter program.
 </P>
 
-
 <!--==================================================================-->
 
 <A NAME="DataSources"></A>
-<BR><HR><BR>
+<HR>
 <H2>DATA SOURCES</H2>
 
 <P>
 The Space Science and Engineering Center (SSEC) at University of
 Wisconsin-Madison has an online 
-<A href="http://www.ssec.wisc.edu/data">data center</A> with both
-real-time and archival weather satellite data.
+<A href="http://www.ssec.wisc.edu/data">data center</A> 
+with both real-time and archival weather satellite data.
 </P>
 
 <P>The last 2 day's worth of data is available from
 <A href="ftp://cyclone.ssec.wisc.edu/pub/fnoc">
 ftp://cyclone.ssec.wisc.edu/pub/fnoc</A>.
-
 </P>
 
 <!--==================================================================-->
 
 <A NAME="Programs"></A>
-<BR><HR><BR>
+<HR>
 <H2>PROGRAMS</H2>
 
 <P>
@@ -89,7 +58,8 @@ ascii data in the input files into a DART observation sequence file.
 Go into the <em class="code">work</em> directory and run 
 the <em class="code">quickbuild.csh</em> script to
 compile the necessary files.
-</P><P>
+<br>
+<br>
 The program reads standard input for the data time range,
 which types of observations to convert, and then, if quality control
 information is found in the input file, what type of quality
@@ -98,59 +68,73 @@ is of good quality or not.  See the references below.
 </P>
 
 <!--==================================================================-->
-<!-- References.                                                      -->
+<!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
-<P>
+
 <UL>
 <LI>
 RF method: Velden, C. S., T. L. Olander, and S. Wanzong, 1998: The impact of multispectral GOES-8 wind information on Atlantic
 tropical cyclone track forecasts in 1995. Part I: Dataset methodology, description, and case analysis. Mon. Wea. Rev., 126, 1202-1218.
-</LI><LI>
+</LI>
+<LI>
 QI method: Holmlund, K., 1998: The utilization of statistical properties of satellite-derived atmospheric motion vectors to derive quality indicators. Wea. Forecasting, 13, 1093-1104.
-</LI><LI>
+</LI>
+<LI>
 Comparison of two methods: Holmlund, K., C.S. Velden, and M. Rohn, 2001: Enhanced Automated Quality Control Applied to High-Density Satellite-Derived Winds. Mon. Wea. Rev., 129, 517-529.
 </LI>
 </UL>
-</P>
 
 <!--==================================================================-->
 <!-- Describe the bugs.                                               -->
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<BR><HR><BR>
+<HR>
 <H2>KNOWN BUGS</H2>
 <P>
+none
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
+none
 </P>
 
-<BR><HR><BR>
-
 <!--==================================================================-->
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> nancy collins </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
+<!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
 
-<!--==================================================================-->
-
+<A NAME="Legalese"></A>
 <HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

@@ -1,58 +1,26 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>AIRS Observations</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Overview">OVERVIEW</A> / 
-<A HREF="#DataSources">DATA SOURCES</A> / 
+<center>
+<A HREF="#Overview">OVERVIEW</A> /
+<A HREF="#DataSources">DATA SOURCES</A> /
 <A HREF="#Programs">PROGRAMS</A> /
-<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#KnownBugs">KNOWN BUGS</A> /
-<A HREF="#FuturePlans">FUTURE PLANS</A> 
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#FuturePlans">FUTURE PLANS</A>
+</center>
 
 <H1>AIRS Observations</H1>
-<A NAME="HEADER"></A>
-
-<!--==================================================================-->
-
-<A NAME="Overview"></A>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
-The 
-<a href="http://airs.jpl.nasa.gov/">AIRS</a>
+The <a href="http://airs.jpl.nasa.gov/">AIRS</a>
 instrument is an Atmospheric Infrared Sounder flying on the
 <a href="http://aqua.nasa.gov/">Aqua</a> spacecraft.
 Aqua is one of a group of satellites flying close together
@@ -60,8 +28,8 @@ in a polar orbit, collectively known as the "A-train".
 The programs in this directory help to extract the
 data from the distribution files and put them into
 DART observation sequence (obs_seq) file format.
-</P>
-<P>
+<br>
+<br>
 AIRS data includes atmospheric temperature in the troposphere,
 derived moisture profiles, land and ocean surface temperatures,
 surface emmissivity, cloud fraction, cloud top height,
@@ -71,7 +39,7 @@ and ozone burden in the atmosphere.
 <!--==================================================================-->
 
 <A NAME="DataSources"></A>
-<BR><HR><BR>
+<HR>
 <H2>DATA SOURCES</H2>
 
 <P>
@@ -135,7 +103,6 @@ grids.  There are three products: daily, 8-day and monthly.  Each product
 provides separate ascending (daytime) and descending (nighttime) binned data
 sets.
 </P>
-
 </BLOCKQUOTE>
 
 <P>
@@ -171,7 +138,7 @@ where you want the data to end up.
 <!--==================================================================-->
 
 <A NAME="Programs"></A>
-<BR><HR><BR>
+<HR>
 <H2>PROGRAMS</H2>
 
 <P>
@@ -180,18 +147,9 @@ you choose.   The converter program reads each hdf granule and outputs
 a DART obs_seq file containing up to 56700 observations.  Only those with
 a quality control of 0 (Best) are kept.
 <br>
+<br>
 The resulting obs_seq files can be merged with the obs_sequence_tool into
 larger time periods.
-</P>
-
-<!--==================================================================-->
-
-<A NAME="Namelist"></A>
-<BR><HR><BR>
-<H2>NAMELIST</H2>
-
-<P>
-doc namelist here.
 </P>
 
 <!--==================================================================-->
@@ -202,6 +160,7 @@ doc namelist here.
 <BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none
 </P>
 
 <!--==================================================================-->
@@ -212,22 +171,34 @@ doc namelist here.
 <BR><HR><BR>
 <H2>FUTURE PLANS</H2>
 <P>
+none
 </P>
 
-<BR><HR><BR>
-
 <!--==================================================================-->
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> nancy collins </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision: 3137 $ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL: http://subversion.ucar.edu/DAReS/DART/observations/observations.html $ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date: 2008-05-13 11:56:04 -0700 (Tue, 13 May 2008) $ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
+<!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
 
-<!--==================================================================-->
-
+<A NAME="Legalese"></A>
 <HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> nancy collins </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

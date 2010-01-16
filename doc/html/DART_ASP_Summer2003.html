@@ -1,25 +1,22 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>Data Assimilation Research Testbed</TITLE>
-<link rel="stylesheet" type="text/css" href="doc.css"></link>
+<link rel="stylesheet" type="text/css" href="doc.css">
 </HEAD>
+<BODY>
+<A NAME="TOP"></A>
 
-<BODY BGCOLOR="#EEEEEE">
-
-<!--==================================================================-->
-
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-<BR>
+<center>
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
 
 <!--==================================================================-->
 
 <H1>ASP Data Assimilation Colloquium Links</H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
+
 <OL><LI><A HREF="ASP_DART_exercise.html">Instructions for compiling </A>
     <LI><A HREF="/pub/DART/DART_ASP_Summer2003_1.tar.gz">the DART code</A> 
         from the Summer 2003 colloquium. [gzipped tar file ~ 8.3 MB]
@@ -33,11 +30,15 @@
     <LI><A HREF="agu_2003.pdf">Overview of Filter DA, AGU, Dec. 2003</A>
 </OL>
 
-<P><HR>
+<br><HR>
+
+<P>
 <FONT size = +2>Everything below here is for the NCAR DART Development team.<BR>
 If you are working with the ASP code from above,<BR>
 none of the following applies.</FONT>
-<HR><P>
+</P>
+
+<br><HR>
 
 <H1>Table of Contents</H1>
 <OL>
@@ -51,32 +52,34 @@ none of the following applies.</FONT>
     <LI><A HREF="#related">Related links</A>
 </OL>
 
-<!-- Overview ---------------------------------------------------------->
+<!-- Overview ========================================================-->
 
-<P><HR><P>
-<A NAME="overview">
+<HR>
+<A NAME="overview"></A>
 <H1>Overview/General.</H1>
-
+<P>
 The <A HREF="obs_set_specification.pdf">rough specifications for the
 observation set</A>.<BR>
 The <A HREF="task_schedule.pdf">draft version</A> of the task schedule.<BR>
 <A HREF="calling_sequence.pdf">Rough pseudo-code calling sequence for ensemble filter</A>.<BR>
 <A HREF="users_guide_overview.pdf">Rough draft of User's Guide Overview.</A><BR>
 <A HREF="userViews1to6.png">Flowchart of intended User's Views.</A>
+</P>
 
+<!-- Sandbox ========================================================-->
 
-<!-- Sandbox ---------------------------------------------------------->
-
-<P><HR><P>
-<A NAME="sandbox">
+<HR>
+<A NAME="sandbox"></A>
 <H1>To create a local version of the project ... a "sandbox"</H1>
 
+<P>
 For the purpose of simplicity, I am assuming you will be creating your
 <TT>DART</TT> sandbox on a machine that need not be in CGD. It the 
 machine IS inside CGD, the directions do not change 
 (but this is a bit of overkill).
-
-<P> I have named the project repository <TT>DART</TT> so when you check 
+<br>
+<br>
+I have named the project repository <TT>DART</TT> so when you check 
 out the repository, your sandbox will be installed in a directory also 
 called <TT>DART</TT>. You can sue me later. At this point, it is in
 my home directory, we will move it when the RAID array is operational.
@@ -84,11 +87,12 @@ my home directory, we will move it when the RAID array is operational.
 directory, I would <B>ask that you not add any large files to the repository,
 such as object or data files</B>. At this time, I have about 200 MB of free space
 and the current project is about 34+MB.
+</P>
 
-<!-- remote sandbox --------------------------------------------------->
+<!-- remote sandbox ================================================ -->
 
 <P>
-<A NAME="sandboxSSH">
+<A NAME="sandboxSSH"></A>
 <H2>On a remote filesystem</H2>
 This necessitates a valid account on goldhill and presumes you are running csh,tcsh
 on a remote machine. 
@@ -110,7 +114,7 @@ cvs commit <font color="#0000FF">[-m "your message goes here"]</font></PRE>
     <LI>And, if you like, you can remove the sandbox. Simply deleting the
         sandbox counfounds CVS' ability to track who has the project checked out.
         Gracefully exiting is appreciated. 
-        <PRE>cd ..<directory above sandbox>
+        <PRE>cd .. &lt;directory above sandbox&gt;
 cvs release -d DART</PRE>
 </OL>
 
@@ -120,7 +124,7 @@ ssh-keygen</A> ) is a great way to avoid botching your password every time you i
 cvs command when using ssh.
 
 <P>
-<A NAME="sandboxCGD">
+<A NAME="sandboxCGD"></A>
 <H3>One more thing ...</H3>
 
 <P>I predict this will be useful for those of us with multiple "groups".
@@ -149,16 +153,16 @@ chmod g+s `find DART -type d`</PRE>
 
 <P><B>setting the sticky bit for your personal sandbox is a good thing.</B>
 
-<P>The current "tag" of the project is <TT>rel-0-0</TT>&nbsp. 
+<P>The current "tag" of the project is <TT>rel-0-0</TT>&nbsp;. 
 We need to come up with a policy regarding when to "commit" a 
 sandbox to the repository. (i.e. does it need to pass a test suite...)
 
-<!--------------------------------------------------------------------->
-<!-- Coding Standards ------------------------------------------------->
-<!--------------------------------------------------------------------->
+<!-- ================================================================== -->
+<!-- Coding Standards ================================================= -->
+<!-- ================================================================== -->
 
-<P><HR><P>
-<A NAME="CodingStandards">
+<HR>
+<A NAME="CodingStandards"></A>
 <H1>Coding Standards <FONT size=-1>all of which are worth beer</FONT></H1>
 I can think of no reason why the 
 <A HREF="http://www.cgd.ucar.edu/cms/ccm4/codingstandard.shtml">
@@ -172,12 +176,12 @@ Additionally, I prefer to
     <LI>Comment lines should be indented as though they were code.
 </OL>
 
-<!--------------------------------------------------------------------->
-<!-- Building an Executable ------------------------------------------->
-<!--------------------------------------------------------------------->
+<!-- ================================================================== -->
+<!-- Building an Executable =========================================== -->
+<!-- ================================================================== -->
 
-<P><HR><P>
-<A NAME="build">
+<HR>
+<A NAME="build"></A>
 <H1>Build</H1>
 There are <!-- three --> two methods being explored at the moment. They require a
 list of source code as input. Creating the custom list of source code for
@@ -187,6 +191,7 @@ each particular build is "left as an exercise for the interested reader" ...
 <A HREF="http://www.gnu.org/software/autoconf/">autoconf</A> 
 to generate the makefile and such ... after I understand the 
 status quo "build" procedure. All in good time ...
+</P>
 
 <!-- <H2>compile_it</H2>
 There is a script <TT>compile_it</TT> that does the heavy lifting.
@@ -205,8 +210,10 @@ vi path_names_for_modules       <FONT COLOR="#ff0000">;# uncomment items</FONT>
 Jeff claims you can use any of the (case-insensitive) versions of any of the shell
 variables in <TT>path_names_for_modules</TT> as the argument to <TT>compile_it</TT>.  -->
 
-<P><H2><A HREF="http://www.gfdl.gov/~vb/mkmf.html">mkmf</A> 
+<H2><A HREF="http://www.gfdl.gov/~vb/mkmf.html">mkmf</A> 
 <FONT SIZE=-0>"make makefile"</FONT></H2>
+
+<P>
 Given a file containing a list of source code filenames 
 (<B><FONT COLOR="#338833">mkmf_targets</FONT></B>
 in the example below) and a file containing platform-specific environment 
@@ -218,7 +225,9 @@ so if you add that to your CGD PATH ...
 files <font color="#0000FF">(the BLUE argument below)</FONT>. At this point, I
 am using the following naming convention: 
 mkmf.<I>platform</I><FONT COLOR="#0000ff">[.prod]</FONT>
- (to differentiate between <FONT COLOR="#0000ff">prod</FONT>uction and <FONT COLOR="#0000ff">devel</FONT>opment compiler settings)
+(to differentiate between <FONT COLOR="#0000ff">prod</FONT>uction 
+and <FONT COLOR="#0000ff">devel</FONT>opment compiler settings)
+</P>
 
 <PRE>
 newgrp cgddart
@@ -230,7 +239,7 @@ make
 </PRE>
 
  
-<P><H2>The CAM method</H2>
+<H2>The CAM method</H2>
 
 <P>I am exploring Brian Eaton's perl scripts (
 <A HREF="file:/fs/cgd/home0/eaton/bin/mkSrcfiles">mkSrcfiles</A>, and 
@@ -239,13 +248,15 @@ to facilitate the build. A (Gnu) makefile contains the logic on how to
 build for specific platforms and runs both scripts to build the targets and
 dependencies. One of the caveats is that the modules and the files containing
 the modules are necessarily named the same.
-<P> 
+<br> 
+<br> 
 The <TT>mkSrcfiles</TT> utility assumes the existence of an input file
 <TT>./Filepath</TT>, and writes an output file <TT>./Srcfiles</TT> that 
 contains the names of all the files that match the patterns *.F90, *.F, 
 and *.c in all the directories from ./Filepath plus ./.  The files are 
 listed one per line. <FONT COLOR="#ff0000">At this point, I need to modify
 the scripts to recognize .f or I need to rename all files to .F</FONT>
+</P>
 
 <PRE>mkDepends [-t dir] [-w] Filepath Srcfiles</PRE>
 <TABLE>
@@ -253,7 +264,7 @@ the scripts to recognize .f or I need to rename all files to .F</FONT>
 <TR><TD>-t</TD><TD>dir</TD><TD>Target directory.  If this option is 
                 set the .o files that are targets in the dependency rules 
                 have the form dir/file.o.</TD></TR>
-<TR><TD>-w</TD><TD> &nbsp </TD><TD>Print warnings to STDERR about files or 
+<TR><TD>-w</TD><TD> &nbsp; </TD><TD>Print warnings to STDERR about files or 
                 dependencies not found.</TD></TR>
 <TR><TH colspan=3 align = left>arguments</TH></TR>
 <TR><TD colspan=2>Filepath</TD><TD>the name of a file containing the 
@@ -271,12 +282,12 @@ gmake -f Makefile.CAM
 ./a.out | tee seq_obs.log
 </PRE>
 
-<!--------------------------------------------------------------------->
-<!-- The Overall Assimilation Sequence -------------------------------->
-<!--------------------------------------------------------------------->
+<!-- ================================================================== -->
+<!-- The Overall Assimilation Sequence ================================ -->
+<!-- ================================================================== -->
 
-<P><HR><P>
-<A NAME="AssimilationSequence">
+<HR>
+<A NAME="AssimilationSequence"></A>
 <H1>Assimilation sequence</H1>
 <OL><LI>model_mod
        <OL><LI>init_model()
@@ -293,13 +304,14 @@ gmake -f Makefile.CAM
     <LI>state_loc ... array of meta_data
 </OL>
 
+<br>
+<br>
 
-<P>
-<A NAME="acronyms">
+<A NAME="acronyms"></A>
 <H1>Acronyms</H1>
 
 <TABLE>
-<TR><TH>Alphabet Soup &nbsp &nbsp</TH><TH ALIGN="LEFT">Description</TH></TR>
+<TR><TH>Alphabet Soup &nbsp;&nbsp;</TH><TH ALIGN="LEFT">Description</TH></TR>
 
 <TR><TD>CVS   </TD><TD>Concurrent Versions System</TD></TR>
 <TR><TD>DA    </TD><TD> Data Assimilation</TD></TR>
@@ -319,8 +331,10 @@ gmake -f Makefile.CAM
 <TR><TD>WRF   </TD><TD>Weather Research and Forecasting Model</TD></TR>
 </TABLE>
 
-<P>
-<A NAME="related">
+<br>
+<br>
+
+<A NAME="related"></A>
 <H1>Related Links</H1>
 
 <ul><li><a href="http://www.gfdl.noaa.gov/~fms">FMS group of GFDL</a></li>
@@ -336,11 +350,31 @@ gmake -f Makefile.CAM
     <li><a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview -- a visual browser for netCDF files</A></li>
 </ul>
 
-<P>
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
 <HR>
+<H2>Terms of Use</H2>
+
 <P>
-Document: <!--#echo var="DOCUMENT_URI" --> <BR>
-Last modified: <!--#echo var="LAST_MODIFIED" --> <BR>
-<a href="mailto:thoar@ucar.edu">Tim Hoar - thoar@ucar.edu</a>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

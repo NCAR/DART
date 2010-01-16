@@ -1,58 +1,25 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>program wind_obs_to_table</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Modules">MODULES</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<center>
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
-<A HREF="#Usage">USAGE </A> / 
+<A HREF="#Usage">USAGE </A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A>
-</DIV>
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
 
-<!--==================================================================-->
-
-<H1>PROGRAM wind_obs_to_table</H1>
-<A NAME="HEADER"></A>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<H1>PROGRAM <em class=program>wind_obs_to_table</em></H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
    <em class=program>wind_obs_to_table</em> 
@@ -74,7 +41,7 @@
    (i.e. the assimilation schedule). 
 </P>
 
-   <H3 class="indent1">What's on the horizon ...</H3>
+<H3 class="indent1">What's on the horizon ...</H3>
 <P>
    <em class=program>wind_obs_to_table</em> 
    is a step toward encoding our observations in netCDF files.
@@ -82,7 +49,6 @@
    distributions of quantities like bias between the ensemble mean and
    the observations ...
 </P>
-
 
 <P>
    Optional namelist interfaces
@@ -94,7 +60,7 @@
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<BR><HR><BR>
+<BR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 location_mod
@@ -108,6 +74,7 @@ typeSizes
 types_mod
 utilities_mod
 </PRE>
+
 <P>
 Naturally, the program must be compiled with support for the observation
 types contained in the observation sequence files, so
@@ -117,22 +84,28 @@ types contained in the observation sequence files, so
 obs_def_?????.f90 files.
 </P>
 
-
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an 
-   ampersand '&#38;' and terminating with a slash '/'.
-   <div class=namelist><pre>
-   <em class=call>namelist / wind_obs_to_table_nml / </em> &#38;
-      obs_sequence_name, lonlim1, lonlim2, latlim1, latlim2, verbose
-   </pre></div>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that filenames that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+The namelist declaration (i.e. what follows) has a different syntax, naturally.
 </P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / wind_obs_to_table_nml / </em> &amp;
+   obs_sequence_name, lonlim1, lonlim2, latlim1, latlim2, verbose
+</pre>
+</div>
 
-<H3 class=indent1>Discussion</H3>
+<div class=indent1>
+<!-- Description -->
 
 <P>This namelist is read in a file called <em class=file>input.nml</em>. <BR>
    The allowable ranges for the region boundaries are: latitude [-90.,90], 
@@ -140,7 +113,6 @@ obs_def_?????.f90 files.
    the dateline by specifying the <em class="code">lonlim2</em> to be less 
    than <em class="code">lonlim1</em>.
 </P>
-
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Contents    </TH>
@@ -196,12 +168,15 @@ obs_def_?????.f90 files.
 
 </TABLE>
 
+</div>
+<br>
+
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
 <UL><LI><em class="file">input.nml</em> is used for 
         <em class="code">wind_obs_to_table_nml</em> and 
@@ -217,6 +192,7 @@ obs_def_?????.f90 files.
 </UL>
 
 <H3 class=indent1>Discussion of wind_obs_to_table_output.nc variables</H3>
+
 <P>
 These are the metadata for all the ASCII ouput files.
 Between the output files and the netCDF file, you have everything
@@ -228,9 +204,8 @@ you need to make sensible plots of the wind observations.
 <!--==================================================================-->
 
 <A NAME="Usage"></A>
-<BR><HR><BR>
+<HR>
 <H2>USAGE</H2>
-
 <P>
 <em class="program">wind_obs_to_table</em> is built and run in 
 ...<em class="file">/DART/models/</em>your_model<em class="file">/work</em>, 
@@ -245,18 +220,20 @@ observations.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
+<ol>
+<li> none </li>
+</ol>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
@@ -279,30 +256,17 @@ observations.
 </TABLE>
 </div>
 
-<A NAME="PrivateComponents"></A>
-<BR><HR><BR>
-<H2>PRIVATE COMPONENTS</H2>
-<!--==================================================================-->
-<!-- Internal subroutines and functions.                              -->
-<!--==================================================================-->
-
-
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
 none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
 Extend to handle derived quantities for all observation types, not just
@@ -311,15 +275,30 @@ bias, for example.
 </P>
 
 <!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
 
+<A NAME="Legalese"></A>
 <HR>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Tim Hoar </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
-<HR>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

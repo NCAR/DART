@@ -1,57 +1,27 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>program obs_seq_to_netcdf</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
+<center>
 <A HREF="#Modules">MODULES</A> / 
-<A HREF="#Namelist1">NAMELIST</A> / 
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#Usage">USAGE </A> / 
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
-<A HREF="#FuturePlans">PLANS</A>
-</DIV>
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
 
-<!--==================================================================-->
-
-<H1>PROGRAM obs_seq_to_netcdf</H1>
-<A NAME="HEADER"></A>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<H1>PROGRAM <em class=program>obs_seq_to_netcdf</em></H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
    <em class=program>obs_seq_to_netcdf</em> 
@@ -88,11 +58,10 @@
    observations: 
    <em class=file>DART/observations/utilities/threed_sphere/</em><em 
        class=program>plot_obs_netcdf_diffs.m</em>.
-</P>
-
-<P>
+   <br />
+   <br />
    Required namelist interfaces
-   <A HREF="#Namelist1"><em class=code>&amp;obs_seq_to_netcdf</em></A> and
+   <A HREF="#Namelist"><em class=code>&amp;obs_seq_to_netcdf</em></A> and
    <A HREF="#Namelist2"><em class=code>&amp;schedule_nml</em></A>
    are read from file <em class=file>input.nml</em>.
 </P>
@@ -106,7 +75,7 @@
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<BR><HR><BR>
+<HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
 location_mod
@@ -129,21 +98,24 @@ types contained in the observation sequence files, so
 obs_def_?????.f90 files.
 </P>
 
-
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
 
-<A NAME="Namelist1"></A>
-<BR><HR><BR>
+<A NAME="Namelist"></A>
+<HR>
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an 
-   ampersand '&amp;' and terminating with a slash '/'.
-   <div class=namelist><pre>
-   <em class=call>namelist / obs_seq_to_netcdf_nml / </em> 
-      obs_sequence_name, obs_sequence_list, 
-      lonlim1, lonlim2, latlim1, latlim2, verbose
-   </pre></div>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+The declarations have a different syntax, naturally.
 </P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / obs_seq_to_netcdf_nml / </em> 
+   obs_sequence_name, obs_sequence_list, 
+   lonlim1, lonlim2, latlim1, latlim2, verbose
+</pre>
+</div>
 
 <H3 class=indent1>Discussion</H3>
 
@@ -159,7 +131,6 @@ obs_def_?????.f90 files.
    <strong>or</strong>
    <em class="code">obs_sequence_list</em> -- not both.
 </P>
-
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Contents    </TH>
@@ -229,14 +200,15 @@ obs_def_?????.f90 files.
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 
 <A NAME="Namelist2"></A>
-<BR><HR><BR>
+<HR>
 <H2>schedule NAMELIST</H2>
-<P><div class=namelist><pre>
-   <em class=call>namelist / schedule_nml / </em> &amp;
-      calendar, first_bin_start, first_bin_end, last_bin_end, &amp;
-      bin_interval_days, bin_interval_seconds, max_num_bins, print_table
-   </pre></div>
-</P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / schedule_nml / </em> &amp;
+   calendar, first_bin_start, first_bin_end, last_bin_end, &amp;
+   bin_interval_days, bin_interval_seconds, max_num_bins, print_table
+</pre>
+</div>
 
 <H3 class=indent1>Discussion</H3>
 
@@ -245,12 +217,12 @@ obs_def_?????.f90 files.
    <br />
    If the <em class="code">print_table</em> variable is 'true', a summary
    of the assimilation schedule will be written to the screen. Hopefully,
-   a picture will be worth a thousand words ...<br />
-   <center>
-   <img src="../../doc/images/schedule.png" alt="DART assimilation schedule" height=200></img>
-   </center>
-
+   a picture will be worth a thousand words ...
 </P>
+
+<center>
+<img src="../../doc/images/schedule.png" alt="DART assimilation schedule" height=200>
+</center>
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Contents    </TH>
@@ -326,8 +298,8 @@ obs_def_?????.f90 files.
 does not have to be a 'perfect' bin end - and it gives you an idea of an
 assimilation schedule table. Note that the user input defines the last bin to
 end at 09 Z, but the last bin in the table ends at 06 Z.
-<br />
-<br />
+</P>
+
 <div class="routine">
 <pre>
 &amp;schedule_nml
@@ -342,10 +314,11 @@ end at 09 Z, but the last bin in the table ends at 06 Z.
    /
 </pre>
 </div>
-<br />
+
+<P>
 This is the 'table' part of the run-time output:
-<br />
-<br />
+</P>
+
 <div class="unix">
 <pre>
 Requesting  5  assimilation periods.
@@ -376,7 +349,8 @@ epoch      5  start 2006 Aug 02 00:00:01
 epoch      5    end 2006 Aug 02 06:00:00
 </pre>
 </div>
-<br />
+
+<P>
 Notice that the leading edge of an assimilation window/bin/epoch/period 
 is actually 1 second <strong>after</strong> the specified start time.
 This is consistent with the way DART has always worked. If you specify
@@ -394,7 +368,7 @@ smallest possible delta is added to one of the assimilation edges.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
 <H3 class="indent1">Run-Time</H3>
 <UL><LI><em class="file">input.nml</em> is used for 
@@ -542,13 +516,12 @@ we know that any/all quantities where ObsIndex == 10 pertain to a
 radiosonde surface pressure observation.
 </P>
 
-
 <!--==================================================================-->
 <!-- Discuss  typical usage of obs_seq_to_netcdf.                     -->
 <!--==================================================================-->
 
 <A NAME="Usage"></A>
-<BR><HR><BR>
+<HR>
 <H2>USAGE</H2>
 
 <H3 class="indent1">obs_seq_to_netcdf</H3>
@@ -593,19 +566,19 @@ observation types that do not exist in the file. Stay tuned.
    /
 </pre>
 
-> cat olist
-/users/thoar/temp/obs_0001/obs_seq.final
-/users/thoar/temp/obs_0002/obs_seq.final
-/users/thoar/temp/obs_0003/obs_seq.final
+> cat olist<br />
+/users/thoar/temp/obs_0001/obs_seq.final<br />
+/users/thoar/temp/obs_0002/obs_seq.final<br />
+/users/thoar/temp/obs_0003/obs_seq.final<br />
 
 </div>
-<br />
-<br />
+
+<P>
 Here is the pruned run-time output. Note that multiple input observation
 sequence files are queried and the routine ends (in this case) when the
 first observation time in a file is beyond the last time of interest.
-<br />
-<br />
+</P>
+
 <div class="unix">
 <pre>
  --------------------------------------
@@ -689,48 +662,43 @@ epoch      8    end 2006 Aug 03 03:00:00
  --------------------------------------
 </pre>
 </div>
-<P/>
 
 <H3 class="indent1">Matlab helper functions</H3>
 <P>
-For better or for worse, the Matlab <em class="file">netcdf_toolbox</em> 
-subset of functions is no longer being supported by their developers,
-who are now supporting the <a
-href="http://mexcdf.sourceforge.net/">snctools</a> set of 
-functions. The Matlab function <em class="program">read_obs_netcdf</em>
+The Matlab <em class="file">netcdf_toolbox</em> 
+subset of functions is no longer being supported by their 
+developers, who are now supporting the 
+<a href="http://mexcdf.sourceforge.net/">snctools</a> 
+set of functions. The Matlab function <em class="program">read_obs_netcdf</em>
 uses the supported <em class="file">snctools</em> toolbox. 
-A slow migration away
+The migration away
 from the existing DART use of the <em class="file">netcdf_toolbox</em> and the CSIRO
 toolbox <em class="file">matlab_netCDF_OPeNDAP</em> (i.e. the 'getnc'
-function) is underway. In the end - this will greatly ease the
-installation of the Matlab netcdf widgets and allow for the same code
-to operate using Matlab's native low-level interface or the historical
-third-party interface (mexnc, mexcdf, mexcdf53).
+function) is complete. This greatly eases the
+installation of the Matlab netcdf widgets.
 <br />
 <br />
 You will need the 'normal' <em class="file">DART/matlab</em> functions
 available to Matlab, so be sure your MATLABPATH is set such that you
 have access to <em class="program">get_copy_index</em> as well as  
-<em class="program">nc_varget</em> and 
-<em class="program">getnc</em> and  ... <br />
+<em class="program">nc_varget</em> and ... <br />
 This generally means your MATLABPATH should look something like:
+</P>
+
 <div class="routine">
 <pre>
 addpath('replace_this_with_the_real_path_to/DART/matlab')
 addpath('replace_this_with_the_real_path_to/DART/diagnostics/matlab')
 addpath('some_other_netcdf_install_dir/mexnc','-BEGIN')
 addpath('some_other_netcdf_install_dir/snctools')
-addpath('some_other_netcdf_install_dir/netcdf_toolbox/netcdf')
-addpath('some_other_netcdf_install_dir/netcdf_toolbox/netcdf/nctype')
-addpath('some_other_netcdf_install_dir/netcdf_toolbox/netcdf/ncutility')
-addpath('some_other_CSIRO_install_dir/matlab_netCDF_OPeNDAP')
 </pre>
 </div>
-<br />
-which is precisely why I'm trying to shorten it. On my systems, I've bundled the
-last 6 commands into a function called <em class="program">ncstartup.m</em> which
+
+<P>
+On my systems, I've bundled those
+last 2 commands into a function called <em class="program">ncstartup.m</em> which
 is run every time I start Matlab 
-(because I execute it in my <em class="program">~/matlab/startup.m</em>)
+(because it is in my <em class="program">~/matlab/startup.m</em>)
 <br />
 <br />
 As is standard practice, the instructions for using the Matlab scripts
@@ -741,8 +709,8 @@ are available by using the Matlab 'help' facility
 of them here still seems appropriate. If you run the following Matlab
 commands with an <em class="file">obs_sequence_001.nc</em> file you 
 cannot possibly have:
-<br />
-<br />
+</P>
+
 <div class="unix">
 <pre>&#62;&#62; <em class="input">help plot_obs_netcdf</em>
 fname         = 'obs_sequence_001.nc';
@@ -783,8 +751,8 @@ DART quality control is copy   2
 Removing 993 obs with a DART quality control value greater than 2.000000
 </pre>
 </div>
-<br />
-<br />
+
+<P>
 you get the plots at the top of this document. If you have a relatively
 new version of Matlab, you can dynamically rotate the 3D view ...
 coooool. Even spiffier, if you click on the observations (try the BAD
@@ -799,16 +767,17 @@ equal to 'maxQC' are plotted in 'Figure 1'. Note the values of 'QCString'
 and 'CopyString' must match some value of <em class="code">QCMetaData</em> 
 and <em class="code">CopyMetaData</em>, respectively. If you're not so
 keen on a 3D plot, simply change the view to be directly 'overhead':
-<br />
-<br />
+</P>
+
 <div class="unix">
 <pre>&#62;&#62; <em class="input">view(0,90)</em></pre>
 </div>
-<br />
+
+<P>
 And if you act today, we'll throw in a structure containing the selected
 data AT NO EXTRA CHARGE. 
-<br />
-<br />
+</P>
+
 <div class="unix">
 <pre>&#62;&#62; <em class="input">obs</em>
 obs = 
@@ -829,7 +798,8 @@ obs =
            badobs: [1x1 struct]
 </pre>
 </div>
-<br />
+
+<P>
 If there are observations with QC values above that defined by 
 <em class="code">maxQC</em> there will be a <em class="code">badobs</em> 
 structure as a component in the <em class="code">obs</em> structure.
@@ -840,18 +810,20 @@ structure as a component in the <em class="code">obs</em> structure.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
+<ol>
+<li> none </li>
+</ol>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
@@ -874,31 +846,17 @@ structure as a component in the <em class="code">obs</em> structure.
 </TABLE>
 </div>
 
-<A NAME="PrivateComponents"></A>
-<BR><HR><BR>
-<H2>PRIVATE COMPONENTS</H2>
-<!--==================================================================-->
-<!-- Internal subroutines and functions.                              -->
-<!--==================================================================-->
-
-
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
-None at this time, but it doesn't do all we want it to do. Give us a
-chance!
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
 Extend to record all the metadata for the observations, even the
@@ -907,15 +865,41 @@ feature list a mile long.
 </P>
 
 <!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
 
+<A NAME="PrivateComponents"></A>
 <HR>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Tim Hoar </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
-<HR>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

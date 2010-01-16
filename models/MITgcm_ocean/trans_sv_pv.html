@@ -1,63 +1,27 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>program trans_sv_pv</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css"> 
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Namelist">NAMELIST</A> / 
+<center>
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
-<A HREF="#FuturePlans">PLANS</A>
-</DIV>
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
 
-<!--==================================================================-->
+<H1>PROGRAM <em class=program>trans_sv_pv</em></H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
-<H1>PROGRAM trans_sv_pv</H1>
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Tim Hoar     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2 class="indent1">OVERVIEW</H2>
-<P class="indent1">
+<P>
    <em class="program">trans_sv_pv</em> is responsible for converting a DART
    'initial conditions' file to a set of model 'snapshot' files and appropriate
    namelist files:
@@ -68,8 +32,8 @@
    same header also has the 'advance-to' time. 
    <em class="program">trans_sv_pv</em> uses this information to write out
    appropriate 
-   <em class="unix">&#38;CAL_NML</em> and
-   <em class="unix">&#38;PARM03</em> namelists in 
+   <em class="unix">&amp;CAL_NML</em> and
+   <em class="unix">&amp;PARM03</em> namelists in 
    <em class="file">data.cal.DART</em> and 
    <em class="file">data.DART</em>, respectively. The rest of the information
    in <em class="file">data</em> is preserved, so it is possible to simply replace
@@ -78,17 +42,17 @@
    The input filename is hardwired to that expected by 
    <em class="program">filter</em> and the output filenames are able to be
    renamed into those defined by the
-   <em class="file">data</em><em class="unix">&#38;PARM05</em> namelist specifying
+   <em class="file">data</em><em class="unix">&amp;PARM05</em> namelist specifying
    the filenames to use to cold-start the ocean model. 
    The output filename is comprised of 4 parts: the variable name, the startDate_1
    component (YYYYMMDD), the startDate_2 component (HHMMSS), and the extension (.data
    for the data and .meta for the metadata). The startDate_1 and startDate_2 pieces
    are identical in format to that used by identically named variables in the 
-   <em class="file">data.cal</em><em class="unix">&#38;CAL_NML</em> namelist.
+   <em class="file">data.cal</em><em class="unix">&amp;CAL_NML</em> namelist.
 </P>
 
-<H2 class="indent1">Usage</H2>
-<P class="indent1">
+<H2>Usage</H2>
+<P>
    There must be several input files in the current working directory;
    most of these are required by the <em class="unix">model_mod</em>
    interface.  The input filename is hardwired to
@@ -102,20 +66,20 @@
    <em class="file">Eta.19960723.060000.[data,meta]</em><br>
    <em class="file">data.cal.DART</em>, and<br>
    <em class="file">data.DART</em>
-   <div class="unix">
-   mv some_DART_ics_input_file assim_model_state_ic<br>
-   ./trans_sv_pv <br>
-   cp data.cal.DART data.cal<br>
-   cp data.DART     data
-   </div><br>
 </P>
+<div class="unix">
+mv some_DART_ics_input_file assim_model_state_ic<br>
+./trans_sv_pv <br>
+cp data.cal.DART data.cal<br>
+cp data.DART     data
+</div><br>
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
+<A NAME="Modules"></A>
 <HR>
-<H2 class="indent1">OTHER MODULES USED</H2>
-<PRE class="indent1">
+<H2>MODULES USED</H2>
+<PRE>
 types_mod
 utilities_mod
 model_mod
@@ -123,10 +87,14 @@ assim_model_mod
 time_manager_mod
 </PRE>
 
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
 <A NAME="Namelist"></A>
 <HR>
-<H2 class="indent1">NAMELIST</H2>
-<P class="indent1">
+<H2>NAMELIST</H2>
+<P>
 This program has no namelist of its own, but some of the underlying modules 
 require namelists to be read, even if the values are not used.
 To avoid duplication and, possibly, some inconsistency
@@ -134,7 +102,7 @@ in the documentation; only a list of the required namelists is provided -
 with a hyperlink to the full documentation for each namelist.
 </P>
 
-<TABLE border="0" cellpadding="10" width=100% class="indent1">
+<TABLE border="0" cellpadding="10" width=100%>
 <TR><TH align="left">Namelist</TH><TH align="left">Primary Purpose</TH></TR>
 <TR><TD valign="top"><a 
     href="../../utilities/utilities_mod.html#Namelist">utilities_nml</a></TD>
@@ -168,8 +136,8 @@ with a hyperlink to the full documentation for each namelist.
 
 <A NAME="FilesUsed"></A>
 <HR>
-<H2 class="indent1">FILES</H2>
-<UL class="indent1">
+<H2>FILES</H2>
+<UL>
     <LI>input namelist files: <em class="file">data, data.cal, input.nml</em></LI>
     <LI>output namelist files: <em class="file">data.cal.DART, data.DART</em></LI>
     <LI>input data file: <em class="file">assim_model_state_ic</em></LI>
@@ -183,29 +151,25 @@ with a hyperlink to the full documentation for each namelist.
 
 <A NAME="References"></A>
 <HR>
-<H2 class="indent1">REFERENCES</H2>
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
-<H2 class="indent1">ERROR CODES and CONDITIONS</H2>
-<P class="indent1">There are no error conditions specific to 
+<H2>ERROR CODES and CONDITIONS</H2>
+<P>
+There are no error conditions specific to 
 <em class="program">trans_sv_pv</em>.
 </P>
-</div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<HR>
-<H2 class="indent1">KNOWN BUGS</H2>
-<P class="indent1">
+<H2>KNOWN BUGS</H2>
+<P>
 There are no known bugs.
 </P>
 
@@ -215,8 +179,8 @@ There are no known bugs.
 
 <A NAME="FuturePlans"></A>
 <HR>
-<H2 class="indent1">FUTURE PLANS</H2>
-<P class="indent1">
+<H2>FUTURE PLANS</H2>
+<P>
 I may put in a routine to change the <em class="unix">PARM05</em>
 namelist parameters defining the input file names. The hack in
 <em class="program">advance_model.csh</em> to grep out the filenames
@@ -225,6 +189,30 @@ from the namelist and rename the files at the shell level is ugly.
 <br>
 Feel free to suggest improvements.
 </P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 

@@ -1,56 +1,25 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>program rad_3dvar_to_dart</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Modules">MODULES</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<center>
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
-<A HREF="#FuturePlans">PLANS</A>
-</DIV>
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
 
-<!--==================================================================-->
-
-<H1>PROGRAM rad_3dvar_to_dart</H1>
-<A NAME="HEADER"></A>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<BR><HR><BR>
-<H2>OVERVIEW</H2>
+<H1>PROGRAM <em class=program>rad_3dvar_to_dart</em></H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
    Programs to convert MM5 3D-VAR 2.0 Radar data files into DART observation
@@ -61,7 +30,7 @@
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<BR><HR><BR>
+<HR>
 <H2>MODULES DIRECTLY USED</H2>
 <PRE>
 types_mod
@@ -85,23 +54,29 @@ random_nr_mod
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&#38;' and terminating with a slash '/'.
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that character strings that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+The namelist declaration (i.e. what follows) has a different syntax, naturally.
+</P>
 <div class=namelist>
 <pre>
 <em class=call>namelist / rad_3dvar_to_dart_nml / </em> &amp;
     var_file, obs_seq_out_file_name, calendar_type
 </pre>
 </div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
 </P>
-
-<H3 class=indent1>Discussion</H3>
-
-<P>This namelist is read in a file called <em class=file>input.nml</em>
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Contents    </TH>
@@ -121,12 +96,15 @@ random_nr_mod
     WRF, which is the default.</TD></TR>
 </TABLE>
 
+</div>
+<br>
+
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
 <UL>
    <LI>input namelist ; <em class=file>input.nml</em>
@@ -136,17 +114,19 @@ random_nr_mod
 
 <H3>File formats</H3>
 
+<P>
 <em class=file>input.nml</em> and <em
 class=file>qc_radr_3dvar_2002083100.dat</em> are ASCII files. <em
 class=file>obs_seq.out</em> is either ASCII or binary, depending on the logical
 write_binary_obs_sequence, which is the namelist entry for obs_sequence_mod.
+</P>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
 <UL>
 <LI><A HREF="http://www.mmm.ucar.edu/wrf/WG4/">3DVAR GROUP PAGE</A>
@@ -154,21 +134,18 @@ write_binary_obs_sequence, which is the namelist entry for obs_sequence_mod.
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<BR><HR><BR>
+<HR>
 <H2>ERROR CODES and CONDITIONS</H2>
+<P>
+none
+</P>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none
 </P>
 
 <!--==================================================================-->
@@ -176,26 +153,40 @@ write_binary_obs_sequence, which is the namelist entry for obs_sequence_mod.
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
-<H2>FUTURE PLANS</H2>
-<P>
-<LI>Use the preprocessor to include the observation list provided by
-obs_kind_mod.
-<LI>Add the capability to convert from DART to MM5 3D-VAR 2.0 Radar data file
-format.
-</P>
-
 <HR>
+<H2>FUTURE PLANS</H2>
+<ol>
+<LI>Use the preprocessor to include the observation list 
+    provided by obs_kind_mod.</LI>
+<LI>Add the capability to convert from DART to MM5 3D-VAR 2.0 
+    Radar data file format.</LI>
+</ol>
 
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Tim Hoar     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
 
+<A NAME="Legalese"></A>
 <HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

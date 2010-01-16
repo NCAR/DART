@@ -1,22 +1,22 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>DART Iceland revisions</TITLE>
-<link rel="stylesheet" type="text/css" href="doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="doc.css">
 </HEAD>
 <BODY>
+<A NAME="TOP"></A>
 
-<A NAME="HEADER"></A>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
-<BR>
+<center>
+<A HREF="#Legalese">TERMS OF USE</A>
+<br>
+<br>
+<img src = "Dartboard7.png">
+</center>
 
 <H1>DART "Iceland release" summary of changes.</H1>
-<img src = "Dartboard9.png"></img>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 The DART Iceland release (23 Nov 2005) is expected to be the last update that 
@@ -42,12 +42,12 @@ workshop and Hawaii releases are:
 </P>
 
 <OL>
-<li>Namelist error detection.</li> Enhanced error checking capabilities
+<li>Namelist error detection.<br> Enhanced error checking capabilities
 for DART namelist reads are included. The input.nml must now
 contain an entry for each namelist that is read by a program,
 even if none of the values in that namelist entry are set. For
 instance, if a program that uses the assim_tools_mod is run,
-input.nml MUST contain an entry &#38;assim_tools_nml. Any namelist
+input.nml MUST contain an entry &amp;assim_tools_nml. Any namelist
 values to be set must follow this and the list is terminated
 by a /. If no entries are to be set in a given namelist, it must
 still be terminated by a line that contains only a slash (/).
@@ -55,39 +55,39 @@ If a variable that is NOT in a given namelist is found in input.nml,
 a fatal error occurs. Failing to terminate a namelist with 
 slash is also fatal. Tools to support this improved namelist
 error detection are implemented in utilities_mod and can be used
-to check for errors in other applications.
+to check for errors in other applications.</li>
 
-<li>Automatic detection of input file format.</li> Restart and observation
+<li>Automatic detection of input file format.<br> Restart and observation
 sequence files can be written in binary or ascii as in previous 
 releases. However, file formats for reads are now detected 
 automatically. The namelist entries 'read_binary_restart_files' in
 assim_model_nml and 'read_binary_obs_sequence' in obs_sequence_nml
-have been removed.
+have been removed.</li>
 
-<li>Error corrected in threed_sphere/location_mod.</li> An error in the
+<li>Error corrected in threed_sphere/location_mod.<br> An error in the
 Hawaii and Workshop releases led to the possibility of erroneous
 computations of distance in the threed_sphere/location_mod. The
 error only occurred if the namelist entry 'approximate_distance'
 was set to .true. (the default was .false.) and errors were
 generally small and confined to observations located in polar 
 regions. The result could be that localization was not applied 
-properly to polar observations.
+properly to polar observations.</li>
 
-<li>Support for reduced precision real computation.</li> For some large
+<li>Support for reduced precision real computation.<br> For some large
 model applications, using reduced precision reals can enhance
 performance. The definition of 'real(r8)' in types_mod can now
 be modified to support different real precision. Some computations
 in the time_manager can fail with reduced precision, so all time
-computations now use an independent fixed precision.
+computations now use an independent fixed precision.</li>
 
-<li>Quality control definition change.</li> values written to quality
+<li>Quality control definition change.<br> values written to quality
 control (qc) fields by perfect_model_obs and filter have been
 modified. If a prior (posterior) forward operator computation fails, 
 qc for that observation is incremented by 1000 (1000000). If
 the prior (posterior) observation lies outside the outlier_threshold,
-the qc for that observation is incremented by 100 (400). 
+the qc for that observation is incremented by 100 (400). </li>
 
-<li>Added obs_sequence file header.</li> Observation sequence files 
+<li>Added obs_sequence file header.<br> Observation sequence files 
 (obs_sequence files) now include a metadata header that includes
 a list of the names of each observation type that might be used
 in the file along with a mapping to an integer for each name in
@@ -97,9 +97,9 @@ types to observation type names is used. This default mapping works
 for most low-order model, bgrid and CAM obs_sequence files. It is
 strongly recommended that legacy obs_sequence files be converted
 to the new format by inserting a header block with the appropriate
-names and integer mappings.
+names and integer mappings.</li>
 
-<li>Interactive creation input for obs_sequence files.</li> A standard
+<li>Interactive creation input for obs_sequence files.<br> A standard
 method for creating obs_sequence files is to redirect a text file
 to standard input and use the interactive creation facility in
 create_obs_sequence. Old input files for this procedure may no
@@ -107,14 +107,14 @@ longer work correctly and may need to be updated. The new interactive
 creation interface allows the name of observations to be used, or
 an integer index. However, the integer index is now defined by a 
 table in the obs_kind_mod and may change dynamically. Users should
-understand this procedure.
+understand this procedure.</li>
 
-<li>obs_def_nml moved to obs_kind_nml.</li> The obs_def_nml in previous 
+<li>obs_def_nml moved to obs_kind_nml.<br> The obs_def_nml in previous 
 releases had entries to choose what observation types to assimilate
 or evaluate. These entries have been moved to obs_kind_nml and 
-obs_def_nml no longer exists.
+obs_def_nml no longer exists.</li>
 
-<li>Preprocessor functionality has changed.</li> While the preprocess program
+<li>Preprocessor functionality has changed.<br> While the preprocess program
 still needs to be run when setting up DART experiments, it now works
 differently. Previously, the preprocessor read obs_def_mod.F90 and 
 created obs_def_mod.f90 in a fashion very similar to the standard
@@ -123,14 +123,14 @@ input from DEFAULT_obs_kind_mod.F90, DEFAULT_obs_def_mod.F90, and from
 any requested special obs_def modules and creates an obs_kind_mod.f90
 and an obs_def_mod.f90. Documentation of this new functionality is 
 available in tutorial section 21 and in the html files for preprocess,
-obs_kind_mod, and obs_def_mod.
+obs_kind_mod, and obs_def_mod.</li>
 
-<li>Improved observation space diagnostics interfaces.</li> The observation
+<li>Improved observation space diagnostics interfaces.<br> The observation
 space diagnostics program and associated diagnostic tools are now all 
 located in the diagnostics directory. The interfaces and controls have
 been modified and are described in html documentation and in the 
 tutorial section 18. Consistent interfaces for low-order models and 
-large three-dimensional atmospheric models have been provided.
+large three-dimensional atmospheric models have been provided.</li>
 
 </OL>
 
@@ -308,13 +308,42 @@ added to describe the new obs_sequence implementation.</TD></TR>
 <A NAME="FutureWork"></A>
 <H2>Future Enhancements / Work</H2>
 <UL>
-<li>Extend PBL_1d support for all matlab scripts.</li> currently only supported by the
-observation-space diagnostics and a crude implementation for 'plot_total_err'.
+<li>Extend PBL_1d support for all matlab scripts.<br> currently only supported by the
+observation-space diagnostics and a crude implementation for 'plot_total_err'.</li>
+
 <li>Unify the machine-specific scripts to handle PBS, LSF and interactive submission in one script.</li>
-<li>Incorporate support for 'null_model'.</li> A useful exercise to test many facets of the DART code without a chaotic model. Should provide capability to perform regression testing of DART infrasturcture.
-<li>Improve netcdf error messages.</li> Will incorporate an additional argument to the 'check' routine to append a string to the netCDF error library string.
+
+<li>Incorporate support for 'null_model'.<br> A useful exercise to test many facets of the DART code without a chaotic model. Should provide capability to perform regression testing of DART infrasturcture.</li>
+
+<li>Improve netcdf error messages.<br> Will incorporate an additional argument to the 'check' routine to append a string to the netCDF error library string.</li>
+
 </UL>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
 
 </BODY>
 </HTML>
-

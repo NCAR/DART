@@ -1,54 +1,24 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>QuikSCAT SeaWinds Data</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Overview">OVERVIEW</A> / 
-<A HREF="#DataSources">DATA SOURCES</A> / 
+<center>
+<A HREF="#Overview">OVERVIEW</A> /
+<A HREF="#DataSources">DATA SOURCES</A> /
 <A HREF="#Programs">PROGRAMS</A> /
 <A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#KnownBugs">KNOWN BUGS</A> /
-<A HREF="#FuturePlans">FUTURE PLANS</A> 
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#FuturePlans">FUTURE PLANS</A>
+</center>
 
 <H1>QuikSCAT SeaWinds Data</H1>
-<A NAME="HEADER"></A>
-
-<!--==================================================================-->
-
-<A NAME="Overview"></A>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 NASA's QuikSCAT mission is described in 
@@ -79,6 +49,7 @@ ways of choosing 'the best' ambiguity. Beauty is in the eye of the
 beholder. At present, the routine to convert the original L2B data files
 (one per orbit) in HDF format into the DART observation sequence file
 makes several assumptions:
+</P>
 <ol>
 <li>All retrievals are labelled with a 10m height, in accordance with 
     the retrieval algorithm.</li>
@@ -95,12 +66,11 @@ makes several assumptions:
     not be a good assumption, and efforts to assimilate the speed and 
     direction directly are under way.</li>
 </ol>
-</P>
 
 <!--==================================================================-->
 
 <A NAME="DataSources"></A>
-<BR><HR><BR>
+<HR>
 <H2>DATA SOURCES</H2>
 
 <P>
@@ -130,7 +100,7 @@ any <em class="program">obs_sequence_tool</em> in the
 <!--==================================================================-->
 
 <A NAME="Programs"></A>
-<BR><HR><BR>
+<HR>
 <H2>PROGRAMS</H2>
 
 <P>There are several programs that are distributed from the JPL www-site,
@@ -166,11 +136,14 @@ be able to build <em class="program">convert_L2b</em></b>. In particular,
 you will have to change the two lines specifying the location of the HDF 
 (and probably the JPG) libraries. The rest of the script should require
 little, if any, modification.
+</P>
+
 <div class="routine">
 set JPGDIR = <em class="input">/contrib/jpeg-6b_gnu-4.1.2-64</em><br />
 set HDFDIR = <em class="input">/contrib/hdf-4.2r4_gnu-4.1.2-64</em><br />
 </div>
-<br />
+
+<P>
 There are a lot of observations in every QuikSCAT orbit. Consequently,
 the observation sequence files are pretty large - particularly if you
 use the ASCII format. Using the binary format (i.e. 
@@ -185,8 +158,8 @@ concatenate multiple observation sequence files into one file per day.
 This may be trivially accomplished with the 
 <em class="program">obs_sequence_tool</em> program in any <em
 class="file">model/xxxx/work</em> directory. Be sure to include the
-<div><em class="code">'../../../obs_def/obs_def_QuikSCAT_mod.f90'</em></div> string
-in <em class="code">input.nml&preprocess_nml:input_files</em> when you
+<em class="code">'../../../obs_def/obs_def_QuikSCAT_mod.f90'</em> string
+in <em class="code">input.nml&amp;preprocess_nml:input_files</em> when you
 run <em class="program">preprocess</em>.
 </P>
 
@@ -204,22 +177,26 @@ plotted with
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
-<P>
-<div class=namelist><pre>
-<em class=call>namelist / convert_L2b_nml / </em> &#38;
-    l2b_file, datadir, outputdir, lon1, lon2, lat1, lat2, &#38;
-    along_track_thin, cross_track_thin 
-</pre></div>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that character strings that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+The namelist declaration (i.e. what follows) has a different syntax, naturally.
 </P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / convert_L2b_nml / </em> &amp;
+    l2b_file, datadir, outputdir, lon1, lon2, lat1, lat2, &amp;
+    along_track_thin, cross_track_thin 
+</pre>
+</div>
 
-<H3 class=indent1>Discussion</H3>
+<div class=indent1><!-- Description -->
 
 <P>
-This namelist is read in a file called <em class=file>input.nml</em>.<br />
-We adhere to the F90 standard of starting a namelist with an ampersand
-'&#38;' and terminating with a slash '/'.
+This namelist is read in a file called <em class=file>input.nml</em>.
 <br />
 <br />
 It is possible to restrict the output observation sequence to contain
@@ -231,44 +208,54 @@ the South Atlantic), simply specify <em class="input">lon1 = 300, lon2 =
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
+
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
+
 <TR><!--contents--><TD valign=top>l2b_file             </TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
     <!--descript--><TD>name of the HDF file to read - NOT including 
                        the directory, e.g. QS_S2B44444.20080021548
                      <em class="unit">[default:'']</em></TD></TR>
-<TR><!--contents--><TD valign=top>datadir            </TD>
-    <!--  type  --><TD valign=top>character(len=128) </TD>
+
+<TR><!--contents--><TD valign=top>datadir              </TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
     <!--descript--><TD>the directory containing the HDF files
                      <em class="unit">[default:'.']</em></TD></TR>
-<TR><!--contents--><TD valign=top>outputdir</TD>
-    <!--  type  --><TD valign=top>character(len=128) </TD>
+
+<TR><!--contents--><TD valign=top>outputdir            </TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
     <!--descript--><TD>the directory for the output observation
                        sequence files.
                      <em class="unit">[default:'.']</em></TD></TR>
-<TR><!--contents--><TD valign=top>lon1         </TD>
+
+<TR><!--contents--><TD valign=top>lon1                 </TD>
     <!--  type  --><TD valign=top>real(r4)             </TD>
     <!--descript--><TD>the West-most longitude of interest. [0.0, 360]
                      <em class="unit">[default:0.0]</em></TD></TR>
-<TR><!--contents--><TD valign=top>lon2    </TD>
+
+<TR><!--contents--><TD valign=top>lon2                 </TD>
     <!--  type  --><TD valign=top>real(r4)             </TD>
     <!--descript--><TD>the East-most longitude of interest. [0.0, 360]
                      <em class="unit">[default:360.0]</em></TD></TR>
-<TR><!--contents--><TD valign=top>lat1            </TD>
+
+<TR><!--contents--><TD valign=top>lat1                 </TD>
     <!--  type  --><TD valign=top>real(r4)             </TD>
     <!--descript--><TD>the South-most latitude of interest. [-90.0, 90.0]
                      <em class="unit">[default:-90.0]</em></TD></TR>
-<TR><!--contents--><TD valign=top>lat2          </TD>
+
+<TR><!--contents--><TD valign=top>lat2                 </TD>
     <!--  type  --><TD valign=top>real(r8)             </TD>
     <!--descript--><TD>the North-most latitude of interest. [-90.0, 90.0]
                      <em class="unit">[default:90.0</em></TD></TR>
+
 <TR><!--contents--><TD valign=top>along_track_thin     </TD>
     <!--  type  --><TD valign=top>integer              </TD>
     <!--descript--><TD>provides ability to thin the data by ignoring 
                        entire WVC rows. 2 == ignore every other row.
                      <em class="unit">[default:0</em></TD></TR>
+
 <TR><!--contents--><TD valign=top>cross_track_thin     </TD>
     <!--  type  --><TD valign=top>integer              </TD>
     <!--descript--><TD>provides ability to thin the data by ignoring 
@@ -277,24 +264,27 @@ the South Atlantic), simply specify <em class="input">lon1 = 300, lon2 =
                      <em class="unit">[default:0</em></TD></TR>
 </TABLE>
 
+</div>
+<br>
+
 <!--==================================================================-->
 <!-- Describe the bugs.                                               -->
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<BR><HR><BR>
+<HR>
 <H2>KNOWN BUGS</H2>
-<P>There are no known bugs at this time.
+<P>
+There are no known bugs at this time.
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
-<P>
 <ol>
    <li>There is one bit of error-checking that I did not survive the
        conversion from F77 to F90. I need to restore the check that the
@@ -310,22 +300,32 @@ the South Atlantic), simply specify <em class="input">lon1 = 300, lon2 =
        natural implementation of the instrument error 
        characteristics.</li>
 </ol>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
 
-<BR><HR><BR>
-
-<!--==================================================================-->
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Tim Hoar </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
-<!--==================================================================-->
 
 <!--==================================================================-->
 
-<HR>
 </BODY>
 </HTML>

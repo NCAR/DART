@@ -1,57 +1,25 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>program restart_file_tool</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Overview">OVERVIEW</A> / 
-<A HREF="#ModulesUsed">MODULES USED</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<center>
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">KNOWN BUGS</A> /
-<A HREF="#FuturePlans">FUTURE PLANS</A> 
-</DIV>
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
 
-<!--==================================================================-->
-
-<H1>PROGRAM restart_file_tool</H1>
-<A NAME="HEADER"></A>
-
-<!--==================================================================-->
-
-<A NAME="Overview"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<H1>PROGRAM <em class=program>restart_file_tool</em></H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 Utility program to alter the data timestamp in a DART restart file,
@@ -104,7 +72,7 @@ files between incompatible systems.
 
 <!--==================================================================-->
 
-<A NAME="ModulesUsed"></A>
+<A NAME="Modules"></A>
 <HR>
 <H2>MODULES USED</H2>
 <PRE>
@@ -117,122 +85,132 @@ ensemble_manager_mod
 mpi_utilities_mod
 </PRE>
 
-<!--============== DESCRIPTION OF A NAMELIST ========================-->
- <A NAME="Namelist"></A>
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
 <HR>
 <H2>NAMELIST</H2>
- <P>We adhere to the F90 standard of starting a namelist with an ampersand
- '&amp;' and terminating with a slash '/'.
- <div class=namelist><pre>
- <em class=call>namelist / restart_file_tool_nml / </em> 
-   input_file_name, output_file_name, ens_size, single_restart_file_in,
-   single_restart_file_out, write_binary_restart_files, overwrite_data_time,
-   new_data_days, new_data_secs, input_is_model_advance_file, output_is_model_advance_file,
-   overwrite_advance_time, new_advance_days, new_advance_secs, gregorian_cal 
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that character strings that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+The namelist declaration (i.e. what follows) has a different syntax, naturally.
+</P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / restart_file_tool_nml / </em> 
+  input_file_name, output_file_name, ens_size, single_restart_file_in,
+  single_restart_file_out, write_binary_restart_files, overwrite_data_time,
+  new_data_days, new_data_secs, input_is_model_advance_file, output_is_model_advance_file,
+  overwrite_advance_time, new_advance_days, new_advance_secs, gregorian_cal 
+</pre>
+</div>
 
+<div class=indent1>
+<!-- Description -->
 
-
- </pre></div>
- <H3 class=indent1>Discussion</H3>
- <P>
+<P>
 The namelist sets the behavior of this tool.
- </P>
- <P>This namelist is read in a file called <em class=file>input.nml</em>
- </P>
- <TABLE border=0 cellpadding=10 width=100%>
- <TR><TH align=left>Contents    </TH>
-     <TH align=left>Type        </TH>
-     <TH align=left>Description </TH></TR>
- <TR><!--contents--><TD valign=top>input_file_name</TD>
-     <!--  type  --><TD valign=top>character</TD>
-     <!--descript--><TD valign=top>Filename containing the DART restart data.  If
-                   'single_restart_file_in' is .true., this is the exact filename.
-                   If 'single_restart_file_in' is .false. this is the base name and
-                   '.ens_num' will be appended to each name before being opened.
-                   Default "filter_restart"</TD></TR>
- <TR><!--contents--><TD valign=top>output_file_name</TD>
-     <!--  type  --><TD valign=top>character</TD>
-     <!--descript--><TD valign=top>Filename to be created.  If
-                   'single_restart_file_out' is .true., this is the exact filename.
-                   If 'single_restart_file_out' is .false. this is the base name and
-                   '.ens_num' will be appended to each name before being created.
-                   Default "filter_updated_restart"</TD></TR>
- <TR><!--contents--><TD valign=top>ens_size</TD>
-     <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD valign=top>Total number of ensemble members.
-                   Default 1</TD></TR>
- <TR><!--contents--><TD valign=top>single_restart_file_in</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>Whether the input filename contains a single ensemble 
-                   member or multiple members concatinated in the same file.
-                   Default .true.</TD></TR>
- <TR><!--contents--><TD valign=top>single_restart_file_out</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>Whether to create an output file which contains a single
-                   member or multiple members concatinated in the same file.
-                   Default .true.</TD></TR>
- <TR><!--contents--><TD valign=top>write_binary_restart_files</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>Whether to write the data in ASCII or binary.  The
-                   format of the input file will be detected automatically.
-                   Default .true.</TD></TR>
- <TR><!--contents--><TD valign=top>overwrite_data_time</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>Whether to replace the timestamp in the input with a 
-                   new time.  If true, new_data_days and new_data_secs must both be set 
-                   to valid values.
-                   Default .false.</TD></TR>
- <TR><!--contents--><TD valign=top>new_data_days</TD>
-     <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD valign=top>Day number if replacing the data timestamp in the file.
-                   Default -1</TD></TR>
- <TR><!--contents--><TD valign=top>new_data_secs</TD>
-     <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD valign=top>Seconds if replacing the data timestamp in the file.
-                   Default -1</TD></TR>
- <TR><!--contents--><TD valign=top>input_is_model_advance_file</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>If true, this file was written to be read by a
-                   model advance conversion program and contains two timestamps.
-                   Default .false.</TD></TR>
- <TR><!--contents--><TD valign=top>output_is_model_advance_file</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>Whether to write a file with two timestamps in output.
-                   Default .false.</TD></TR>
- <TR><!--contents--><TD valign=top>overwrite_advance_time</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>Replace existing advance timestamp, or add an 
-                   advance timestamp if output_is_model_advance_file is true.
-                   If true, new_advance_days and new_advance_secs must both be set 
-                   to valid values.
-                   Default .false.</TD></TR>
- <TR><!--contents--><TD valign=top>new_advance_days</TD>
-     <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD valign=top>Day number if replacing or adding a model advance
-                   timestamp in the file.
-                   Default -1</TD></TR>
- <TR><!--contents--><TD valign=top>new_advance_secs</TD>
-     <!--  type  --><TD valign=top>integer</TD>
-     <!--descript--><TD valign=top>Seconds if replacing or adding a model advance
-                   timestamp in the file.
-                   Default -1</TD></TR>
- <TR><!--contents--><TD valign=top>gregorian_cal</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>If model uses the Gregorian calendar, this program will
-                   print out the date in both day number and seconds, but also in calendar
-                   year/month/date etc format. Set to false if this model does not use this
-                   calendar.  Does not affect the timestamps in the file, only the
-                   printout for user.  Default .true.</TD></TR>
- <TR><!--contents--><TD valign=top>print_only</TD>
-     <!--  type  --><TD valign=top>logical</TD>
-     <!--descript--><TD valign=top>If .true., do not create the output file.
-                   Only print the model size and existing time information in
-                   the input file.  Default .false.</TD></TR>
- </TABLE>
- <BR>
+<br>
+<br>
+This namelist is read in a file called <em class=file>input.nml</em>
+</P>
 
+<TABLE border=0 cellpadding=10 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+<TR><!--contents--><TD valign=top>input_file_name</TD>
+    <!--  type  --><TD valign=top>character</TD>
+    <!--descript--><TD valign=top>Filename containing the DART restart data.  If
+                  'single_restart_file_in' is .true., this is the exact filename.
+                  If 'single_restart_file_in' is .false. this is the base name and
+                  '.ens_num' will be appended to each name before being opened.
+                  Default "filter_restart"</TD></TR>
+<TR><!--contents--><TD valign=top>output_file_name</TD>
+    <!--  type  --><TD valign=top>character</TD>
+    <!--descript--><TD valign=top>Filename to be created.  If
+                  'single_restart_file_out' is .true., this is the exact filename.
+                  If 'single_restart_file_out' is .false. this is the base name and
+                  '.ens_num' will be appended to each name before being created.
+                  Default "filter_updated_restart"</TD></TR>
+<TR><!--contents--><TD valign=top>ens_size</TD>
+    <!--  type  --><TD valign=top>integer</TD>
+    <!--descript--><TD valign=top>Total number of ensemble members.
+                  Default 1</TD></TR>
+<TR><!--contents--><TD valign=top>single_restart_file_in</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>Whether the input filename contains a single ensemble 
+                  member or multiple members concatinated in the same file.
+                  Default .true.</TD></TR>
+<TR><!--contents--><TD valign=top>single_restart_file_out</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>Whether to create an output file which contains a single
+                  member or multiple members concatinated in the same file.
+                  Default .true.</TD></TR>
+<TR><!--contents--><TD valign=top>write_binary_restart_files</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>Whether to write the data in ASCII or binary.  The
+                  format of the input file will be detected automatically.
+                  Default .true.</TD></TR>
+<TR><!--contents--><TD valign=top>overwrite_data_time</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>Whether to replace the timestamp in the input with a 
+                  new time.  If true, new_data_days and new_data_secs must both be set 
+                  to valid values.
+                  Default .false.</TD></TR>
+<TR><!--contents--><TD valign=top>new_data_days</TD>
+    <!--  type  --><TD valign=top>integer</TD>
+    <!--descript--><TD valign=top>Day number if replacing the data timestamp in the file.
+                  Default -1</TD></TR>
+<TR><!--contents--><TD valign=top>new_data_secs</TD>
+    <!--  type  --><TD valign=top>integer</TD>
+    <!--descript--><TD valign=top>Seconds if replacing the data timestamp in the file.
+                  Default -1</TD></TR>
+<TR><!--contents--><TD valign=top>input_is_model_advance_file</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>If true, this file was written to be read by a
+                  model advance conversion program and contains two timestamps.
+                  Default .false.</TD></TR>
+<TR><!--contents--><TD valign=top>output_is_model_advance_file</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>Whether to write a file with two timestamps in output.
+                  Default .false.</TD></TR>
+<TR><!--contents--><TD valign=top>overwrite_advance_time</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>Replace existing advance timestamp, or add an 
+                  advance timestamp if output_is_model_advance_file is true.
+                  If true, new_advance_days and new_advance_secs must both be set 
+                  to valid values.
+                  Default .false.</TD></TR>
+<TR><!--contents--><TD valign=top>new_advance_days</TD>
+    <!--  type  --><TD valign=top>integer</TD>
+    <!--descript--><TD valign=top>Day number if replacing or adding a model advance
+                  timestamp in the file.
+                  Default -1</TD></TR>
+<TR><!--contents--><TD valign=top>new_advance_secs</TD>
+    <!--  type  --><TD valign=top>integer</TD>
+    <!--descript--><TD valign=top>Seconds if replacing or adding a model advance
+                  timestamp in the file.
+                  Default -1</TD></TR>
+<TR><!--contents--><TD valign=top>gregorian_cal</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>If model uses the Gregorian calendar, this program will
+                  print out the date in both day number and seconds, but also in calendar
+                  year/month/date etc format. Set to false if this model does not use this
+                  calendar.  Does not affect the timestamps in the file, only the
+                  printout for user.  Default .true.</TD></TR>
+<TR><!--contents--><TD valign=top>print_only</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>If .true., do not create the output file.
+                  Only print the model size and existing time information in
+                  the input file.  Default .false.</TD></TR>
+</TABLE>
 
-<!--==================================================================-->
+</div>
+<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -253,43 +231,41 @@ The namelist sets the behavior of this tool.
 <A NAME="References"></A>
 <HR>
 <H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>restart_file_tool</TD>
     <!-- message --><TD VALIGN=top>Only use single process</TD>
     <!-- comment --><TD VALIGN=top>Only a single mpi process can be used 
-                                   with this program</TD>
-</TR>
+                                   with this program</TD></TR>
 
 <TR><!-- routine --><TD VALIGN=top>restart_file_tool</TD>
     <!-- message --><TD VALIGN=top>must specify data days and times</TD>
     <!-- comment --><TD VALIGN=top>If overwrite_data_time is true,
-       the namelist must include the new day and time.</TD>
-</TR>
+       the namelist must include the new day and time.</TD></TR>
 
 <TR><!-- routine --><TD VALIGN=top>restart_file_tool</TD>
     <!-- message --><TD VALIGN=top>output_is_model_advance_file must 
                                    be true to set advance time</TD>
     <!-- comment --><TD VALIGN=top>If overwrite_advance_time is true,
-              output_is_model_advance_file must also be true.</TD>
-</TR>
+              output_is_model_advance_file must also be true.</TD></TR>
 
 <TR><!-- routine --><TD VALIGN=top>restart_file_tool</TD>
     <!-- message --><TD VALIGN=top>must specify advance days and times</TD>
     <!-- comment --><TD VALIGN=top>If overwrite_advance_time is true,
-       the namelist must include the new day and time.</TD>
-</TR>
+       the namelist must include the new day and time.</TD></TR>
 
 <TR><!-- routine --><TD VALIGN=top>restart_file_tool</TD>
     <!-- message --><TD VALIGN=top>overwrite_advance_time must be true 
@@ -297,46 +273,52 @@ The namelist sets the behavior of this tool.
     <!-- comment --><TD VALIGN=top>If the incoming file does not have
                  a model advance time, the output cannot have one unless
                  the user gives one in the namelist, and sets 
-                 overwrite_advance_time to true.</TD>
-</TR>
+                 overwrite_advance_time to true.</TD></TR>
 
 </TABLE>
 </div>
 
-
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<HR>
 <H2>KNOWN BUGS</H2>
 <P>
+none
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
 <HR>
 <H2>FUTURE PLANS</H2>
-<H3 class=indent1>Discussion</H3>
 <P>
+none
 </P>
 
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
 
+<A NAME="Legalese"></A>
 <HR>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Jeff Anderson     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
 
-<HR>
 </BODY>
 </HTML>

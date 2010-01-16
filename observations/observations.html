@@ -1,54 +1,23 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
-<TITLE>observations</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css"></link> 
+<TITLE>DART perspective on observations</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
-<A HREF="#Overview">OVERVIEW</A> / 
-<A HREF="#DataSources">DATA SOURCES</A> / 
+<center>
+<A HREF="#Overview">OVERVIEW</A> /
+<A HREF="#DataSources">DATA SOURCES</A> /
 <A HREF="#Programs">PROGRAMS</A> /
 <A HREF="#KnownBugs">KNOWN BUGS</A> /
-<A HREF="#FuturePlans">FUTURE PLANS</A> 
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#FuturePlans">FUTURE PLANS</A>
+</center>
 
 <H1>Observations</H1>
-<A NAME="HEADER"></A>
-
-<!--==================================================================-->
-
-<A NAME="Overview"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
 Real-world observations of earth-system data come from a variety of sources,
@@ -57,14 +26,14 @@ The files in this <em class=code>observations</em> directory
 can be used to convert data from a variety of native
 formats into a common DART 
 <em class=code>observation sequence</em> format.
-</P>
-<P>
+<br>
+<br>
 The DART framework enforces a clean separation between observations
 and the models they are assimilated into.  The same observations can be
 used in any model which understands how to generate a value for the requested
 type of observation from its state space values.
-</P>
-<P>
+<br>
+<br>
 In many cases, a single, self-contained program can convert 
 directly from the observation
 location, time, value, and error into the DART format.  In other cases,
@@ -72,13 +41,13 @@ especially those linking with a complicated external library (e.g. BUFR),
 there is a two-step process with two programs and an ASCII intermediate file.
 We are currently leaning towards single-step conversions but either
 approach can be used for new programs.
-</P>
-<P>
+<br>
+<br>
 In many cases, the original datasets are in a standard scientific
 format like netCDF, HDF, or BUFR, and library routines for those
 formats can be used to read in the original observation data.
-</P>
-<P>
+<br>
+<br>
 The DART software distribution
 includes Fortran subroutines and functions to help create
 a sequence of observations in memory, and then a call to the 
@@ -113,22 +82,19 @@ repository, please email the DART group.
 <!--==================================================================-->
 
 <A NAME="DataSources"></A>
-<BR><HR><BR>
+<HR>
 <H2>DATA SOURCES</H2>
-
 <P>
-</P>
-
-<P>
+&nbsp;
 </P>
 
 <!--==================================================================-->
 
 <A NAME="Programs"></A>
-<BR><HR><BR>
+<HR>
 <H2>PROGRAMS</H2>
-
 <P>
+&nbsp;
 </P>
 
 <!--==================================================================-->
@@ -136,35 +102,48 @@ repository, please email the DART group.
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<BR><HR><BR>
+<HR>
 <H2>KNOWN BUGS</H2>
 <P>
+&nbsp;
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
+&nbsp;
 </P>
 
-<BR><HR><BR>
-
 <!--==================================================================-->
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> nancy collins </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
-</TABLE>
+<!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
 
-<!--==================================================================-->
-
+<A NAME="Legalese"></A>
 <HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
 </BODY>
 </HTML>

@@ -1,56 +1,26 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>program obs_diag</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css"></link>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
-<!--
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!                                                                       !!
-!!                   GNU General Public License                          !!
-!!                                                                       !!
-!! This file is part of the Data Assimilation Research Testbed (DART).   !!
-!!                                                                       !!
-!! DART is free software; you can redistribute it and/or modify          !!
-!! it and are expected to follow the terms of the GNU General Public     !!
-!! License as published by the Free Software Foundation.                 !!
-!!                                                                       !!
-!! DART is distributed in the hope that it will be useful,               !!
-!! but WITHOUT ANY WARRANTY; without even the implied warranty of        !!
-!! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !!
-!! GNU General Public License for more details.                          !!
-!!                                                                       !!
-!! You should have received a copy of the GNU General Public License     !!
-!! along with DART; if not, write to:                                    !!
-!!          Free Software Foundation, Inc.                               !!
-!!          59 Temple Place, Suite 330                                   !!
-!!          Boston, MA  02111-1307  USA                                  !!
-!! or see:                                                               !!
-!!          http://www.gnu.org/licenses/gpl.txt                          !!
-!!                                                                       !!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--->
+<A NAME="TOP"></A>
 
-<DIV ALIGN=CENTER>
+<center>
 <A HREF="#Modules">MODULES</A> / 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
-<A HREF="#KnownBugs">BUGS</A> /
-<A HREF="#FuturePlans">PLANS</A>
-</DIV>
-
-<!--==================================================================-->
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+</center>
 
 <H1>PROGRAM obs_diag</H1>
-<A NAME="HEADER"></A>
-
-<!--==================================================================-->
-
-<A NAME="OVERVIEW"></A>
-<HR>
-<H2>OVERVIEW</H2>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
    Main program for observation-space diagnostics for the models with
@@ -60,24 +30,21 @@
    selection block is commented out. The result of the code is a set of
    ASCII files that contain the RMS of the bias and the RMS of the spread
    of the prior (aka 'guess') and posterior (aka 'analysis') estimates 
-   as a function of time and region. <em class="new">Separate (pairs of) files are created
-	   for each observation type in the observation sequence file.</em>
-</P>
-
-<P>
+   as a function of time and region. Separate (pairs of) 
+   files are created for each observation type in the observation 
+   sequence file.
+<br><br>
    The <em class=program>obs_diag</em> program performs an outlier test on 
    observations, which can be more restrictive than the outlier test in the 
    filter, but not less 
    (see <em class=code>outlier_threshold</em> in <em class=code>filter_nml</em> 
    and <em class=code>rat_cri</em> here).
-</P>
-
-<P><em class='new'>
+<br><br>
    The J release of DART also implements a DART QC flag that provides
    information about how the observation was or was not assimilated.
    The DART QC flag is intended to provide information about whether the
    observation was assimilated, evaluated only, whether the assimilation resulted
-   in a 'good' observation, etc. Here is the table that should explain things: </em>
+   in a 'good' observation, etc. Here is the table that should explain things:
 </P> 
 
 <table width="80%">
@@ -106,18 +73,16 @@
    The namelist contains several unused features that are simply used 
    to facilitate the matlab plotting routines until such time as the 
    output is reformatted to a netCDF file.
-</P>
-
-<P>
-Optional namelist interface
-<A HREF="#Namelist"><em class=code>&#38;obsdiag_nml</em></A>
-may be read from file <em class=file>input.nml</em>.
+<br><br>
+   Optional namelist interface
+   <A HREF="#Namelist"><em class=code>&amp;obs_diag_nml</em></A>
+   may be read from file <em class=file>input.nml</em>.
 </P>
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<BR><HR><BR>
+<HR>
 <H2>MODULES DIRECTLY USED</H2>
 <PRE>
 types_mod
@@ -138,22 +103,31 @@ model_mod
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<BR><HR><BR>
+<HR>
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&#38;' and terminating with a slash '/'.
-<div class=namelist><pre>
-<em class=call>namelist / obsdiag_nml / </em> &#38;
-      obs_sequence_name, iskip_days, obs_select, rat_cri,  &#38;
-      input_qc_threshold, bin_width_sections, &#38;
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that filenames that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+The namelist declaration (i.e. what follows) has a different syntax, naturally.
+</P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / obs_diag_nml / </em> &amp;
+      obs_sequence_name, iskip_days, obs_select, rat_cri,  &amp;
+      input_qc_threshold, bin_width_sections, &amp;
       lonlim1, lonlim2, reg_names, verbose
-</pre></div>
+</pre>
+</div>
 
-<H3 class=indent1>Discussion</H3>
+<div class=indent1>
+<!-- Description -->
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -232,12 +206,15 @@ model_mod
 
 </TABLE>
 
+</div>
+<br>
+
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<BR><HR><BR>
+<HR>
 <H2>FILES</H2>
 <UL>
    <LI>input namelist; <em class=file>input.nml</em>
@@ -255,8 +232,10 @@ you will get a pair of files:
 </P>
 
 <H3>File formats</H3>
+<P>
 We intend to write the output as netCDF files eventually. Until then,
 here's the rosetta stone...
+</P>
 
 <TABLE>
 	<TR><TD>column 1</TD><TD>day of observation</TD></TR>
@@ -266,27 +245,32 @@ here's the rosetta stone...
 	<TR><TD>column 5</TD><TD>number of observations</TD></TR>
 	<TR><TD colspan=2>Columns 3,4,5 are repeated for each region</TD></TR>
 </TABLE>
+
+<P>
 If there are no observations in a particular region, the default value of
 -99 is used for the bias and spread. The regions themselves are logged
 in <em class=file>ObsDiagAtts.m</em>.
+</P>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<BR><HR><BR>
+<HR>
 <H2>REFERENCES</H2>
+<ol>
+<li> none </li>
+</ol>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
-<!-- Putting a <BR> after the synopsis creates a nice effect.         -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
@@ -297,27 +281,21 @@ in <em class=file>ObsDiagAtts.m</em>.
     <!-- message --><TD VALIGN=top>No Observations in sequence.</TD>
     <!-- comment --><TD VALIGN=top>Empty observation sequence file.</TD>
 </TR>
-</TR>
 
 </TABLE>
 </div>
 
-<!--==================================================================-->
-<!-- Describe the bugs.                                               -->
-<!--==================================================================-->
-
-<A NAME="KnownBugs"></A>
-<BR><HR><BR>
 <H2>KNOWN BUGS</H2>
 <P>
+none at this time
 </P>
 
 <!--==================================================================-->
-<!-- Descibe Future Plans.                                            -->
+<!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<BR><HR><BR>
+<HR>
 <H2>FUTURE PLANS</H2>
 <P>
 Change output format to netCDF, eliminate reliance on ancillary
@@ -325,24 +303,41 @@ plotting attributes file: <em class=file>ObsDiagAtts.m</em>.
 </P>
 
 <!--==================================================================-->
-<!-- Have not fleshed out this part yet ... ha ha ha                  -->
+<!-- PrivateComponents                                                -->
 <!--==================================================================-->
 
-<H3 class=indent1>Discussion</H3>
-
-None at this time.
-
-<!--==================================================================-->
-
+<A NAME="PrivateComponents"></A>
 <HR>
-<TABLE summary="">
-<TR><TD>Contact:       </TD><TD> Tim Hoar     </TD></TR>
-<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
-<HR>
+
+<!--==================================================================-->
 
 </BODY>
 </HTML>
