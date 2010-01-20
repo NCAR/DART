@@ -3575,15 +3575,24 @@ real(r8), dimension(3), intent(in)    :: old_array
 real(r8), dimension(3), intent(inout) :: new_array 
 
 integer   :: i, num_levs, top_lev, bot_lev
-integer   :: lon_which_dimid=0, lat_which_dimid=0, lon_index=0, lat_index=0
+integer   :: lon_which_dimid, lat_which_dimid, lon_index, lat_index
 integer   :: rank_kind, cam_kind, istatus
 real(r8)  :: p_surf,   frac
-logical   :: stagr_lon = .false., stagr_lat = .false.
+logical   :: stagr_lon, stagr_lat
 type(location_type)   :: dum_loc
 
 character(len=129)    :: errstring
 character(len=8)      :: dim_name
 
+! set good initial values, only differences will be changed
+stagr_lon = .false.
+stagr_lat = .false.
+lon_which_dimid = 0
+lat_which_dimid = 0
+
+! set initial values which should be overwritten in all cases
+lon_index = MISSING_I
+lat_index = MISSING_I
 new_array = MISSING_R8
 
 if (old_which == VERTISPRESSURE .or. old_which == VERTISHEIGHT  .or. &
