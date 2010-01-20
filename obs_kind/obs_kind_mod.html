@@ -8,7 +8,6 @@
 <BODY>
 <A NAME="TOP"></A>
 
-<div>
 <center>
 <A HREF="#Interface">INTERFACES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
@@ -19,7 +18,6 @@
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 </center>
-</div>
 
 <H1>MODULE obs_kind_mod</H1>
 <!-- version tag follows, do not edit --><P>$Id$</P>
@@ -132,8 +130,8 @@ may be read from file <em class=file>input.nml</em>.
 </P>
 
 <P>
-   A note about documentation style. 
-   Optional arguments are enclosed in brackets 
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
    <em class=optionalcode>[like this]</em>.
 </P>
 
@@ -508,6 +506,8 @@ in the obs_kind_info table.
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
 '&amp;' and terminating with a slash '/' for all our namelist input.
+The namelist declaration (i.e. what follows) has a different syntax, naturally.
+</P>
 <div class=namelist>
 <pre>
 <em class=call>namelist / obs_kind_nml / </em> &amp;
@@ -572,9 +572,9 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <A NAME="References"></A>
 <HR>
 <H2>REFERENCES</H2>
-<ol>
+<ul>
 <li> none </li>
-</ol>
+</ul>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
@@ -657,14 +657,14 @@ N/A
 
 <P>
 DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
-This open source software is provided by UCAR, "as is", <br>
-without charge, subject to all terms of use at <br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
 
 <TABLE border=0 cellpadding=0 width=100% summary="">
-<TR><TD valign=top>Contact:       </TD><TD> DART core group </TD></TR>
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>

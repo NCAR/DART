@@ -8,10 +8,9 @@
 <BODY>
 <A NAME="TOP"></A>
 
-<div>
 <center>
-<A HREF="#Interface">INTERFACES</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
@@ -19,7 +18,6 @@
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 </center>
-</div>
 
 <H1>MODULE MITgcm_ocean</H1>
 <!-- version tag follows, do not edit --><P>$Id$</P>
@@ -1386,7 +1384,7 @@ out a set of snapshot files used as input to the ocean model.
 
 <A NAME="get_gridsize"></A>
 <br>
-<div class="routine">
+<div class=routine>
 <em class="call">call get_gridsize( num_x, num_y, num_z)</em>
 <pre>
 integer, intent(out) :: <em class="code">num_x, num_y, num_z</em>
@@ -1426,7 +1424,7 @@ are declared the same length.
 
 <A NAME="snapshot_files_to_sv"></A>
 <br>
-<div class="routine">
+<div class=routine>
 <em class="call">call snapshot_files_to_sv(timestepcount, state_vector)</em>
 <pre>
 integer,  intent(in)    :: <em class="code">timestepcount</em>
@@ -1549,7 +1547,7 @@ successive model advance.
 
 <A NAME="timestep_to_DARTtime"></A>
 <br>
-<div class="routine">
+<div class=routine>
 <em class="call">mytime = timestep_to_DARTtime(TimeStepIndex)</em>
 <pre>
 integer,         intent(in)  :: <em class="code">TimeStepIndex</em>
@@ -1661,13 +1659,13 @@ the format used in
 </TABLE>
 
 </div>
-</br>
+<br>
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="DARTtime_to_timestepindex"></A>
 <br>
-<div class="routine">
+<div class=routine>
 <em class="call">timeindex = DARTtime_to_timestepindex(darttime)</em>
 <pre>
 type(time_type), intent(in)  :: <em class="code">darttime</em>
@@ -1740,9 +1738,9 @@ then renames them to that expected by the ocean model.
 <HR>
 <H2>NAMELISTS</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/'. Consider yourself forewarned that
-filenames that contain a '/' must be enclosed in quotes to prevent them
-from prematurely terminating the namelist.
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that character strings that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
 </P>
 <div class="namelist"><pre>
 <em class="call">namelist /model_nml/ </em> assimilation_period_days, &amp;
@@ -2177,9 +2175,9 @@ advance the ocean model, none of which are discussed here.
 <A NAME="References"></A>
 <HR>
 <H2>REFERENCES</H2>
-<ol>
+<ul>
 <li> none </li>
-</ol>
+</ul>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
@@ -2188,7 +2186,7 @@ advance the ocean model, none of which are discussed here.
 <A NAME="Errors"></A>
 <HR>
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class="errors">
+<div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH width="50%">Message</TH><TH>Comment</TH></TR>
 
@@ -2377,7 +2375,6 @@ none at this time
 <A NAME="FuturePlans"></A>
 <HR>
 <H2>FUTURE PLANS</H2>
-
 <P>
 I may put in a routine to change the <em class="unix">PARM05</em> 
 namelist parameters defining the input file names. The hack in 
@@ -2392,7 +2389,6 @@ from the namelist and rename the files at the shell level is ugly.
 <A NAME="PrivateComponents"></A>
 <HR>
 <H2>PRIVATE COMPONENTS</H2>
-
 <P>
 N/A
 </P>
@@ -2407,8 +2403,8 @@ N/A
 
 <P>
 DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
-This open source software is provided by UCAR, "as is", <br>
-without charge, subject to all terms of use at <br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
@@ -2418,7 +2414,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn log" or "svn diff" </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
