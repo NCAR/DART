@@ -1390,6 +1390,7 @@ integer,            intent(in ) :: length, num_atts
 
 ! Initialize the storage space and return
 allocate( var%vals      (length))
+var%vals = 0.0_r8
 allocate( var%atts_names(num_atts))
 allocate( var%atts_vals (num_atts))
 
