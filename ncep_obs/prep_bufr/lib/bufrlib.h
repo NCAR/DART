@@ -6,6 +6,8 @@
 /*
 ** Define a global variable for sharing of file pointers across different
 ** subprograms within the BUFRLIB software.
+**
+** DART $Id$
 */
 #ifdef BUFRLIB_GLOBAL
     FILE *pbf[2];  /* each element will automatically initialize to NULL */

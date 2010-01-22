@@ -33,6 +33,7 @@ C                           RESULTING DATE ON SOME MACHINES (E.G.,
 C                           NCEP IBM FROST/SNOW), INCREASES
 C                           PORTABILITY; UNIFIED/PORTABLE FOR WRF;
 C                           ADDED DOCUMENTATION (INCLUDING HISTORY)
+C DART $Id$
 C
 C USAGE:    I4DY (IDATE)
 C   INPUT ARGUMENT LIST:

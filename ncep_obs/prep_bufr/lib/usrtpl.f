@@ -32,6 +32,7 @@ C                           TERMINATES ABNORMALLY OR UNUSUAL THINGS
 C                           HAPPEN; COMMENTED OUT HARDWIRE OF VTMP TO
 C                           "BMISS" (10E10) WHEN IT IS > 10E9 (CAUSED
 C                           PROBLEMS ON SOME FOREIGN MACHINES)
+C DART $Id$
 C
 C USAGE:    CALL USRTPL (LUN, INVN, NBMP)
 C   INPUT ARGUMENT LIST:

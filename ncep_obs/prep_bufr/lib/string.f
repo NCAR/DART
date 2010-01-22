@@ -36,6 +36,7 @@ C                           DOCUMENTATION (INCLUDING HISTORY); OUTPUTS
 C                           MORE COMPLETE DIAGNOSTIC INFO WHEN ROUTINE
 C                           TERMINATES ABNORMALLY; CHANGED CALL FROM
 C                           BORT TO BORT2
+C DART $Id$
 C
 C USAGE:    CALL STRING (STR, LUN, I1, IO)
 C   INPUT ARGUMENT LIST:

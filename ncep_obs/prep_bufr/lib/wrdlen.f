@@ -39,6 +39,7 @@ C                           THIS ROUTINE IS CALLED (BEFORE WAS
 C                           UNDEFINED WHEN FIRST REFERENCED)
 C 2004-08-18  J. ATOR    -- ADDED SAVE FOR IFIRST FLAG AND IMMEDIATE
 C                           RETURN IF IFIRST=1
+C DART $Id$
 C
 C USAGE:    CALL WRDLEN
 C

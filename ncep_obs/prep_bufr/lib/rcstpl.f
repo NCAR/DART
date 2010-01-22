@@ -40,6 +40,7 @@ C                           IS > 10E9 (CAUSED PROBLEMS ON SOME FOREIGN
 C                           MACHINES)
 C 2004-08-09  J. ATOR    -- MAXIMUM MESSAGE LENGTH INCREASED FROM
 C                           20,000 TO 50,000 BYTES
+C DART $Id$
 C
 C USAGE:    CALL RCSTPL (LUN)
 C   INPUT ARGUMENT LIST:

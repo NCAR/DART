@@ -25,6 +25,7 @@ C                           WRF; ADDED DOCUMENTATION (INCLUDING
 C                           HISTORY) (INCOMPLETE); OUTPUTS MORE
 C                           COMPLETE DIAGNOSTIC INFO WHEN ROUTINE
 C                           TERMINATES ABNORMALLY
+C DART $Id$
 C
 C USAGE:    LSTRPS (NODE, LUN)
 C   INPUT ARGUMENT LIST:

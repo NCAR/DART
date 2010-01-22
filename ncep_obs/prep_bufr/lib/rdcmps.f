@@ -27,6 +27,7 @@ C                           CORRECT LOGIC FOR WHEN A CHARACTER VALUE IS
 C                           THE SAME FOR ALL SUBSETS IN A MESSAGE;
 C                           MAXIMUM MESSAGE LENGTH INCREASED FROM
 C                           20,000 TO 50,000 BYTES
+C DART $Id$
 C
 C USAGE:    CALL RDCMPS (LUN)
 C   INPUT ARGUMENT LIST:

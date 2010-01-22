@@ -30,6 +30,7 @@ C                           PARUTG (WHICH THIS ROUTINE CALLS) TO NO
 C                           LONGER EXPECT AN ALTERNATE RETURN TO A
 C                           STATEMENT NUMBER IN THIS ROUTINE WHICH
 C                           CALLED BORT (BORT IS NOW CALLED IN PARUTG)
+C DART $Id$
 C
 C USAGE:    CALL PARUSR (STR, LUN, I1, IO)
 C   INPUT ARGUMENT LIST:

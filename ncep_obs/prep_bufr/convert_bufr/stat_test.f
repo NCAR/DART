@@ -16,6 +16,8 @@ C
 C PROGRAM HISTORY LOG:
 C 20067-07-24  collins
 C
+C DART $Id$
+C
 C USAGE:  stat_test inputBUFRfile
 C
 C   INPUT FILES:

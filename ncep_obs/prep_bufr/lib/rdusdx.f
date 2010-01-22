@@ -41,6 +41,7 @@ C                           "011" IS RESERVED FOR DICTIONARY MESSAGES
 C                           (PREVIOUSLY WOULD STORE DATA WITH MESSAGE
 C                           TYPE "011" BUT SUCH MESSAGES WOULD BE
 C                           SKIPPED OVER WHEN READ)
+C DART $Id$
 C
 C USAGE:    CALL RDUSDX (LUNDX, LUN)
 C   INPUT ARGUMENT LIST:

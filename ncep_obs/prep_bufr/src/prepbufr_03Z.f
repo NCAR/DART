@@ -19,6 +19,7 @@ c    Assuming the string name allows the obs to be read, then the
 c    record types that will be output are now set by namelist.
 c    See the prepdecode/docs directory for the key to all the bufr codes.
 c
+c    DART $Id$
 c
       REAL*8     R8BFMS
       PARAMETER ( R8BFMS = 10.0E10 )

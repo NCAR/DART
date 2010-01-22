@@ -1,3 +1,5 @@
+# DART $Id$
+
 This file explains how to compile and run the NCEP cwordsh utility,
 which is described in detail at
 http://www.nco.ncep.noaa.gov/sib/decoders/BUFRLIB/cwordsh/,
@@ -49,4 +51,3 @@ http://www.nws.noaa.gov/disclaimer.html
     'cwordsh.x block in out')  plus, each string must be on a separate line.
     this does *not* work either:  echo 'block in out' | ./cwordsh.x
 
-    

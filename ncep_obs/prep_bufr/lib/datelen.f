@@ -27,6 +27,7 @@ C                           INFORMATION (IN CASE IT HAS NOT YET BEEN
 C                           CALLED), THIS ROUTINE DOES NOT REQUIRE IT
 C                           BUT IT MAY SOMEDAY CALL OTHER ROUTINES THAT
 C                           DO REQUIRE IT
+C DART $Id$
 C
 C USAGE:    CALL DATELEN (LEN)
 C   INPUT ARGUMENT LIST:

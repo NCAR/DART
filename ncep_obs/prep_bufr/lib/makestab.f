@@ -46,6 +46,7 @@ C                           WHICH ARE NOT EMPTY WILL NO LONGER GET
 C                           TRIPPED UP BY THIS (THIS AVOIDS THE NEED
 C                           FOR AN APPLICATION PROGRAM TO DISCONNECT
 C                           ANY EMPTY FILES VIA A CALL TO CLOSBF)
+C DART $Id$
 C
 C USAGE:    CALL MAKESTAB
 C
