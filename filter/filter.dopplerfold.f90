@@ -959,7 +959,7 @@ else if(tnum_qc == 1) then
    ! Need 1 new qc field for the DART quality control
    qc_num_inc = 1
 else
-   write(*, msgstring) 'input obs_seq file has ', tnum_qc, ' qc fields; must be < 2'
+   write(msgstring, *) 'input obs_seq file has ', tnum_qc, ' qc fields; must be < 2'
    call error_handler(E_ERR,'filter_setup_obs_sequence', msgstring, source, revision, revdate)
 endif
 
