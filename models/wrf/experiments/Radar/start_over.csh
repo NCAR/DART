@@ -1,5 +1,11 @@
 #!/bin/csh
 
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download 
+
+# DART $Id$
+
 \rm -r advance_temp*
 \rm assim_model_state*
 \rm filter_control*

@@ -1,5 +1,12 @@
 #!/bin/csh
 #
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download 
+#
+# DART $Id$
+#
+
 # Compiles pert_sounding.f90 for ocotillo
 
 #ifort -c pert_sounding_module.f90
