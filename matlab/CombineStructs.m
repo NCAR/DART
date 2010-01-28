@@ -5,10 +5,9 @@ function ostruct = CombineStructs(struct1,struct2);
 %
 %
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2009, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$

@@ -33,7 +33,7 @@
 %                               is perilous ...
 % 
 % 
-% DART/observations/utilities/threed_sphere	These functions require processing 
+% DART/diagnostics/matlab	These functions require processing 
 %                               observation sequences into netCDF files with 
 %                               "obs_seq_to_netcdf" - which currently does not preserve
 %                               all of the observation sequence metadata for some of the
@@ -41,10 +41,21 @@
 % read_obs_netcdf.m		Reads a netCDF observation sequence and returns a structure.
 % plot_obs_netcdf.m		creates a 2D or 3D plot of the observation locations 
 %                               and values - and rejected observations.
-% plot_obs_netcdf_diffs.m	Same thing, only for the difference of two observation copies
+% plot_obs_netcdf_diffs.m	ditto, only for the difference of two observation copies
 %                               - the observation and the ensemble mean, for example.
 % 
 % 
 % DART/models/<modelname>/matlab	Each model has an optional matlab directory where
 %                               the model developers are free to supply whatever functions
 %                               or scripts they deem useful.
+
+
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
