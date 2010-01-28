@@ -1,3 +1,7 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download 
+
 PROGRAM add_pert_where_high_refl
 
 ! Add 3D random but smooth perturbations to WRF fields in/near where the observations
