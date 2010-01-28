@@ -10,6 +10,16 @@ function field = map_wrf(fname, varname, copystring, levelindx, timeindx )
 % Example: 
 % map_wrf(fname, varname, copystring, levelindx, timeindx )
 
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+
 if ( nargin == 3 )
    levelindx = 1;
    timeindx  = 1;
@@ -18,17 +28,6 @@ elseif (nargin == 4 )
 elseif (nargin ~= 5 ) 
    error('Wrong number of arguments ... must have 3,4, or 5')
 end
-
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-%
-% <next few lines under version control, do not edit>
-% $URL$
-% $Id$
-% $Revision$
-% $Date$
 
 if (exist(fname,'file') ~= 2) 
    error('%s does not exist',fname)

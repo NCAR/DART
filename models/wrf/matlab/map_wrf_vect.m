@@ -1,7 +1,8 @@
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+% map_wrf_vect
+
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$
@@ -11,7 +12,7 @@
 
 % Select field to plot (U, V, W, GZ, T, MU, QV, QC, QR)
 
-     field_num = input('Input field type, 1=U, 2=V, 3=W, 4=GZ, 5=T, 6=MU, 7=QV, 8=QC, 9=QR: ');
+field_num = input('Input field type, 1=U, 2=V, 3=W, 4=GZ, 5=T, 6=MU, 7=QV, 8=QC, 9=QR: ');
 
 % Get file name of true state file
 fname = 'True_State';

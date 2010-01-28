@@ -1,13 +1,11 @@
 function [ Cp, Rd, gamma, Rv, L_c, g, T0, p0] = get_constants()
-%
 % Ideally, this would take netcdf filename as input, and
 % read required constants from file.  At present, just a
 % repository for hardwired constants.
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$

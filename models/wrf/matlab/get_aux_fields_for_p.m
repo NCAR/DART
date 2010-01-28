@@ -1,6 +1,5 @@
 function [ mu, dnw, phi, theta, qv ] =  ...
                       get_aux_fields_for_p( filename, T0, varargin )
-%
 % Retrieves various 2d and 3d fields needed to calculate pressure
 % from the netcdf file "filename".
 %
@@ -14,10 +13,9 @@ function [ mu, dnw, phi, theta, qv ] =  ...
 %          theta = full theta (3d)
 %          qv    = water-vapor mixing ratio (3d)
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$
