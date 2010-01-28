@@ -1,11 +1,10 @@
-function [post_mean post_sd weight] =...
+function [post_mean post_sd weight] = ...
    product_of_gaussians(prior_mean, prior_sd, obs, obs_err_sd) 
-% Computes mean, variance and weight of the product of two unit gaussians given the mean and standard deviation of each.
+% product_of_gaussians Computes mean, variance and weight of the product of two unit gaussians given the mean and standard deviation of each.
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2009, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$

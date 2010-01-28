@@ -1,13 +1,12 @@
 function[x_new, time_new] = lorenz_63_adv_1step(x, time)
-% Does a single time step advance for lorenz convective 3 variable model
-% using two step runge-kutta time step
+% lorenz_63)adv_1step advances the lorenz convective 3 variable model
+% for a single two step runge-kutta time step
 %
 % x is the 3-vector state, time is the 2-vector days and seconds time
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$

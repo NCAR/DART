@@ -22,18 +22,15 @@ function varargout = twod_ensemble(varargin)
 % See also: gaussian_product, oned_model, oned_ensemble, run_lorenz_63, 
 %           run_lorenz_96
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2009, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$
 % $Id$
 % $Revision$
 % $Date$
-
-% Last Modified by GUIDE v2.5 28-Mar-2009 21:43:27
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;

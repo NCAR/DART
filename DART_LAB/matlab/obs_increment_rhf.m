@@ -1,12 +1,11 @@
-function [obs_increments, err] =  obs_increment_eakf(ensemble, observation, obs_error_var)
-% Computes increments for a rank histogram filter
+function [obs_increments, err] =  obs_increment_rhf(ensemble, observation, obs_error_var)
+% obs_increment_rhf Computes increments for a rank histogram filter
 % Need to discuss the available options eventually
 % For now this implements the default options
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2009, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$

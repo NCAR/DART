@@ -1,12 +1,11 @@
 function[x_new, time_new] = lorenz_96_adv_1step(x, time)
-% Does a single time step advance for lorenz_96 40-variable model using four step runge-kutta time step
+% lorenz_96_adv_1step Does a single time step advance for lorenz_96 40-variable model using four step runge-kutta time step
 %
 % x is the 40-vector state, time is the 2-vector days and seconds time
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2009, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$
