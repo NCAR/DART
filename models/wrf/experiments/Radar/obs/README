@@ -1,0 +1,16 @@
+
+
+There are 2 observation sequence files that need to be copied
+from a web site into this directory.
+
+Go to:
+
+http://www.image.ucar.edu/pub/DART/WRF/regression/Radar/
+
+and copy both:
+
+obs_seq_17may1981.1scan.out     
+obs_seq_17may1981.out
+
+into this directory.
+

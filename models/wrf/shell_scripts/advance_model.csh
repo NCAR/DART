@@ -116,6 +116,9 @@ if ( $process == 0 ) then
      echo WARNING\: advance_model.csh could not find optional executable dependency ${CENTRALDIR}/WRF_RUN/da_wrfvar.exe
      echo
      if ( ! -x update_wrf_bc ) then
+       # if the boundary conditions are specified, we need update_wrf_bc.  otherwise, it's ok if it isn't found.
+       set SPEC_BC = `grep specified ${CENTRALDIR}/namelist.input | grep true | wc -l`
+       if ( $SPEC_BC > 0 ) then
         echo ABORT\: advance_model.csh could not find required executable dependency ${CENTRALDIR}/update_wrf_bc
         exit 1
      endif
@@ -126,8 +129,8 @@ if ( $process == 0 ) then
      echo WARNING\: da_wrfvar.exe found, using it to update LBCs on the fly
      echo
      if ( ! -x ${CENTRALDIR}/pert_wrf_bc ) then
-        echo ABORT\: advance_model.csh could not find required executable dependency ${CENTRALDIR}/pert_wrf_bc
-        exit 1
+       echo ABORT\: advance_model.csh could not find required executable dependency ${CENTRALDIR}/pert_wrf_bc
+       exit 1
      endif
      if ( ! -r ${CENTRALDIR}/WRF_RUN/be.dat ) then
         echo ABORT\: advance_model.csh could not find required readable dependency ${CENTRALDIR}/WRF_RUN/be.dat
@@ -146,6 +149,13 @@ if ( -x ${CENTRALDIR}/WRF_RUN/da_wrfvar.exe ) then
    set USE_WRFVAR = 1
 else
    set USE_WRFVAR = 0
+endif
+
+# set this flag here if the radar additive noise script is found
+if ( -e ${CENTRALDIR}/add_noise.csh ) then
+   set USE_NOISE = 1
+else
+   set USE_NOISE = 0
 endif
 
 # give the filesystem time to collect itself
@@ -289,6 +299,12 @@ while($state_copy <= $num_states)
          exit 1
       endif
    end
+
+   # radar additive noise option.  if shell script is available
+   # in the centraldir, it will be called here.
+   if ( $USE_NOISE ) then
+      ${CENTRALDIR}/add_noise.csh $wrfsecs $wrfdays $state_copy $ensemble_member $temp_dir $CENTRALDIR
+   endif
 
    ###############################################################
    # Advance the model with new BC until target time is reached. #
