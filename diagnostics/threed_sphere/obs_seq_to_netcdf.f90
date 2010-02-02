@@ -489,7 +489,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          copyvals = (/ obscopies, obs_err_var /)
 
          call get_time(obs_time,seconds,days)
-         mytime   = days + seconds/86400.0_r8
+         mytime   = days + seconds/86400.0_digits12
 
          !--------------------------------------------------------------
          ! We have one Region of interest
