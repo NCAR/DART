@@ -1,4 +1,4 @@
-# DART $Id$
+
 
 ======================================================================
 WARNING:
@@ -132,7 +132,8 @@ blocked files are A21899.blk, A21900.blk, A21901.blk, and A21902.blk.
 Each is about 400 Mb)
 
   Within subdirectory prepbufr/data use 
-    msread -fbi filename.tar /DSS/A*****.blk 
+    msrcp mss:/DSS/A*****.blk filename.tar
+    /contrib/bin/cosconvert -b filename.tar
 
 to read the NCEP BUFR data tar files from NCAR MSS (on Coral, tempest, Bluesky, etc.)
 

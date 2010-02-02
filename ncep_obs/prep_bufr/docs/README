@@ -1,5 +1,3 @@
-# DART $Id$
-
 Last updated 07/23/2003 for: 
 ds090.0 (NCEP/NCAR Global Reanalysis Products, 6-hrly, monthly 1948jan01-continuing) 
 
@@ -36,15 +34,9 @@ Prompt commands to get desired tar file (YYMM.prepqmDDDD) off of the Mass Store
 System and into a usable format:
 =================================================================================
 
-msread -fBI localfilename /DSS/AXXXXX
+msrcp mss:/DSS/AXXXXX localfilename
+/contrib/bin/cosconvert -b localfilename
 tar -xvf localfilename
-
-or 
-
-msread -ftr localfilename /DSS/AXXXXX
-cosconvert -b localfilename
-tar -xvf localfilename
-
 
 Description and instructions to use the included extraction program:
 =================================================================================

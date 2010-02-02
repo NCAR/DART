@@ -8,6 +8,7 @@
 <BODY>
 <A NAME="TOP"></A>
 
+<div>
 <center>
 <A HREF="#Instructions">INSTRUCTIONS</A> /
 <A HREF="#Namelist">NAMELIST</A> /
@@ -18,8 +19,9 @@
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 </center>
+</div>
 
-<H1>PROGRAM <em class=program>prepbufr</em></H1>
+<H1>PROGRAM prepbufr</H1>
 <!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
@@ -31,6 +33,7 @@ the intermediate files into obs_seq.out files, which is done by
 create_real_obs, as described in 
 <A HREF="../create_real_obs.html" > create_real_obs </A>.
 </P>
+
 
 <!--==================================================================-->
 
@@ -283,16 +286,20 @@ and you must contact the DSS group to get access.
 Change directories into the prep_bufr/data subdirectory.
 From a machine with access to the MSS use
 <br>
-<em class=input>msread -fbi data.tar /DSS/A#####</em><br>or<br>
-<em class=input>msread -fbi data.tar /DSS/A#####.blk</em><br>
+<em class=input>msrcp mss:/DSS/A##### data.tar</em><br>or<br>
+<em class=input>msrcp mss:/DSS/A#####.blk data.tar</em><br>
 where ##### is the data set number, to read the NCEP BUFR data tar files.
+The files which include ACARS data have a read
+password; to specify that to the 'msrcp' command, add the '-rpwd <i>pass</i>' 
+argument (where <i>pass</i> is a 1-8 character password).
 <br><br>
-If you use the 'msrcp' command instead of 'msread', you must run
-the 'cosconvert' program afterwards to convert the file into a
-readable tar file.   The files which include ACARS data have a read
-password; to specify that to the 'msread' command, add the '-r passwd' 
-argument.
-<br><br>
+You must then run the 'cosconvert' program to convert the file into a
+readable tar file. 
+<ul>
+<li>On bluefire: /contrib/bin/cosconvert -b data.tar 
+<li>On other platforms, download the appropriate version from: 
+http://www.dss.ucar.edu/libraries/io/cos_blocking/utils/
+</ul>
 Then 
 <br><br>
 <em class=input>tar -xvf data.tar </em>
@@ -498,8 +505,8 @@ Further development to get observations directly from original
 
 <P>
 DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
-This open source software is provided by UCAR, "as is",<br>
-without charge, subject to all terms of use at<br>
+This open source software is provided by UCAR, "as is", <br>
+without charge, subject to all terms of use at <br>
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
