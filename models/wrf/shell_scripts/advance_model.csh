@@ -119,8 +119,9 @@ if ( $process == 0 ) then
        # if the boundary conditions are specified, we need update_wrf_bc.  otherwise, it's ok if it isn't found.
        set SPEC_BC = `grep specified ${CENTRALDIR}/namelist.input | grep true | wc -l`
        if ( $SPEC_BC > 0 ) then
-        echo ABORT\: advance_model.csh could not find required executable dependency ${CENTRALDIR}/update_wrf_bc
-        exit 1
+         echo ABORT\: advance_model.csh could not find required executable dependency ${CENTRALDIR}/update_wrf_bc
+         exit 1
+       endif
      endif
 
    else
@@ -532,7 +533,7 @@ EOF
    cd $CENTRALDIR
 
    #  delete the temp directory for each member if desired
-   if ( $delete_temp_dir == 'true' )  ${REMOVE} ${temp_dir}
+   if ( $delete_temp_dir == true )  ${REMOVE} ${temp_dir}
    echo "Ensemble Member $ensemble_member completed"
 
    # and now repeat the entire process for any other ensemble member that
