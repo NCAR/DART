@@ -135,13 +135,13 @@ for i = 1:ndims
       case 'copy'
          start(i) = copy1;
          count(i) = copyN;
-      case {'lev','z'}
+      case {'lev','z','bottom_top_d01','bottom_top_stag_d01'}
          start(i) = level1;
          count(i) = levelN;
-      case {'lat','y','tmpj'}
+      case {'lat','y','tmpj','south_north_d01','south_north_stag_d01'}
          start(i) = lat1;
          count(i) = latN;
-      case {'lon','x','tmpi'}
+      case {'lon','x','tmpi','west_east_d01','west_east_stag_d01'}
          start(i) = lon1;
          count(i) = lonN;
       case {'statevariable','xdim','ydim','loc1d'}
@@ -160,17 +160,26 @@ function [len, status, value] = is_dimension_cartesian(fname,dimname)
 status   = 0;
 len      = 0;
 value    = [];
-Cvarinfo = nc_getvarinfo(fname, dimname);
 
-for j = 1:length(Cvarinfo.Attribute);
-   attribute = Cvarinfo.Attribute(j);
-   switch lower(attribute.Name)
-      case{'cartesian_axis'}
-         status = 1;
-         len    = Cvarinfo.Size;
-         value  = attribute.Value;
-         break
-      otherwise
+if ( nc_isvar(fname,dimname) )
+    
+    % Good - the coordinate variable exists.
+    
+    Cvarinfo = nc_getvarinfo(fname, dimname);
+
+   for j = 1:length(Cvarinfo.Attribute);
+      attribute = Cvarinfo.Attribute(j);
+      switch lower(attribute.Name)
+         case{'cartesian_axis'}
+            status = 1;
+            len    = Cvarinfo.Size;
+            value  = attribute.Value;
+            break
+          otherwise
+      end
    end
+
+else % there is no coordinate variable ... use something else
+    
 end
 

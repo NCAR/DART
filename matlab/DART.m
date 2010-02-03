@@ -2,6 +2,7 @@
 %        ensemble assimilation software. This is not intended to be an exhaustive
 %        list, but it should get you started. -- Tim
 % 
+% $Id$
 % 
 % DART/matlab			These functions explore the [Truth,] Prior,Posterior netCDF
 %                               files. Useful for "state-space" diagnostics.
@@ -48,7 +49,6 @@
 % DART/models/<modelname>/matlab	Each model has an optional matlab directory where
 %                               the model developers are free to supply whatever functions
 %                               or scripts they deem useful.
-
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at

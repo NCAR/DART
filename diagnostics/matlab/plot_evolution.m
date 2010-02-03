@@ -217,7 +217,7 @@ function myplot(plotdat)
       mean_post  = NaN;
    end
 
-   string_guess = sprintf('guess:    mean=%.5g', mean_prior);
+   string_guess = sprintf('forecast: mean=%.5g', mean_prior);
    string_analy = sprintf('analysis: mean=%.5g', mean_post);
 
    % Plot the requested quantity on the left axis.

@@ -1,5 +1,5 @@
 function obsstruct = read_obs_netcdf(fname, ObsTypeString, region, CopyString, ...
-                                     QCString, maxQC, verbose)
+                                     QCString, verbose)
 %% read_obs_netcdf reads in the netcdf flavor observation sequence file
 %                  and returns a subsetted structure.
 %
@@ -8,10 +8,9 @@ function obsstruct = read_obs_netcdf(fname, ObsTypeString, region, CopyString, .
 % region        = [0 360 -90 90 -Inf Inf];
 % CopyString    = 'NCEP BUFR observation';
 % QCString      = 'DART quality control';
-% maxQC         = 2;
 % verbose       = 1;   % anything > 0 == 'true'
 %
-% obs = read_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxQC, verbose);
+% obs = read_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, verbose);
 %
 % The return variable 'obs' is a structure. As an example ...
 %
@@ -20,17 +19,16 @@ function obsstruct = read_obs_netcdf(fname, ObsTypeString, region, CopyString, .
 %          region: [0 360 -90 90 -Inf Inf]
 %      CopyString: 'NCEP BUFR observation'
 %        QCString: 'DART quality control'
-%           maxQC: 2
 %         verbose: 1
 %      timestring: [2x20 char]
 %            lons: [2343x1 double]
 %            lats: [2343x1 double]
 %               z: [2343x1 double]
 %             obs: [2343x1 double]
-%            Ztyp: [2343x1 double]
-%        numbadqc: 993
-%              qc: [2343x1 double]
-%          badobs: [1x1 struct]
+%            Ztyp: [2343x1 int32]
+%            keys: [2343x1 int32]
+%            time: [2343x1 double]
+%              qc: [2343x1 int32]
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -53,7 +51,6 @@ obsstruct.ObsTypeString = ObsTypeString;
 obsstruct.region        = region;
 obsstruct.CopyString    = CopyString;
 obsstruct.QCString      = QCString;
-obsstruct.maxQC         = maxQC;
 obsstruct.verbose       = verbose;
 
 %% get going
@@ -65,6 +62,7 @@ QCStrings      = nc_varget(fname,'QCMetaData');
 
 t              = nc_varget(fname,'time');
 obs_type       = nc_varget(fname,'obs_type');
+obs_keys       = nc_varget(fname,'obs_keys');
 z_type         = nc_varget(fname,'which_vert');
 
 loc            = nc_varget(fname,'location');
@@ -78,6 +76,7 @@ calendar   = nc_attget(fname,'time','calendar');
 timebase   = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin = datenum(timebase(1),timebase(2),timebase(3));
 timestring = datestr(timerange + timeorigin);
+t          = t + timeorigin;
 
 obsstruct.timestring = timestring;
 
@@ -89,19 +88,10 @@ if ( verbose > 0 )
       inds   = find(obs_type == obtype);
       myz    = loc(inds,3);
      
-      fprintf('N = %6d %s obs (type %3d) between levels %.2f and %.2f\n', ...
+      fprintf('N = %6d %s (type %3d) tween levels %.2f and %.2f\n', ...
                length(inds), ObsTypeStrings(obtype,:), obtype, ...
                unique(min(myz)), unique(max(myz)))
    end
-
-%  uniquelevels = unique(loc(:,3));
-
-%  for i = 1:length(uniquelevels)
-%     mylevel = uniquelevels(i);
-%     inds    = find(loc(:,3) == mylevel);
-%     disp(sprintf('level %2d %f has %d observations',i,mylevel,length(inds)))
-%  end
-
 end
 
 %% Find observations of the correct type.
@@ -116,13 +106,18 @@ switch lower(ObsTypeString)
    otherwise % subset the desired observation type
       myind     = strmatch(ObsTypeString, ObsTypeStrings);
       if ( isempty(myind) ) 
-         error('no %s observations ... stopping',obsstruct.ObsTypeString) 
+         fprintf('FYI - no %s observations ...\n',obsstruct.ObsTypeString) 
+         inds = [];
+      else
+         inds      = find(obs_type == myind);
       end
-      inds      = find(obs_type == myind);
 end
 
-mylocs    = loc(inds,:);
-myobs     = obs(inds,mytypeind);
+myobs  =      obs(inds,mytypeind);
+mylocs =      loc(inds,:);
+mykeys = obs_keys(inds);
+myztyp =   z_type(inds);
+mytime =        t(inds);
 
 %% Find desired QC values of those observations
 
@@ -141,47 +136,11 @@ obsstruct.lons = mylocs(inds,1);
 obsstruct.lats = mylocs(inds,2);
 obsstruct.z    = mylocs(inds,3);
 obsstruct.obs  =  myobs(inds);
-obsstruct.Ztyp = z_type(inds);
+obsstruct.Ztyp = myztyp(inds);
+obsstruct.keys = mykeys(inds);
+obsstruct.time = mytime(inds);
 obsstruct.qc   = [];
-obsstruct.numbadqc = 0;
 
 if ~ isempty(myqc)
    obsstruct.qc = myqc(inds);
 end
-
-%% subset based on qc value
-%  
-
-if ( (~ isempty(myqc)) && (~ isempty(maxQC)) )
-
-   inds = find(obsstruct.qc > maxQC);
-
-   obsstruct.numbadqc = length(inds);
-   
-   if (~isempty(inds))
-       badobs.lons = obsstruct.lons(inds);
-       badobs.lats = obsstruct.lats(inds);
-       badobs.Ztyp = obsstruct.Ztyp(inds);
-       badobs.z    = obsstruct.z(   inds);
-       badobs.obs  = obsstruct.obs(inds);
-       badobs.qc   = obsstruct.qc(inds);       
-   end
-   
-   fprintf('Removing %d obs with a %s value greater than %f\n', ...
-                length(inds),QCString,maxQC)
-
-   inds = find(obsstruct.qc <= maxQC);
-
-   bob = obsstruct.lons(inds); obsstruct.lons = bob;
-   bob = obsstruct.lats(inds); obsstruct.lats = bob;
-   bob = obsstruct.Ztyp(inds); obsstruct.Ztyp = bob;
-   bob = obsstruct.z(   inds); obsstruct.z    = bob;
-   bob = obsstruct.obs( inds); obsstruct.obs  = bob;
-   bob = obsstruct.qc(  inds); obsstruct.qc   = bob;
-
-end
-
-if ( exist('badobs','var') )
-   obsstruct.badobs = badobs;
-end
-

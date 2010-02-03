@@ -1,17 +1,55 @@
 function obsstruct = plot_obs_netcdf_diffs(fname, ObsTypeString, region,  ...
-                      CopyString1, CopyString2, QCString, maxQC, verbose)
+                      CopyString1, CopyString2, QCString, maxQC, verbose, twoup)
+% plot_obs_netcdf_diffs will plot the difference between any two 'copies' of an observation-style netcdf file.
 %
+% bob = plot_obs_netcdf_diffs(fname, ObsTypeString, region, CopyString1, CopyString2, ...
+%                             QCString, maxQC, verbose, twoup);
+%
+% fname			the name of the netCDF file (from obs_seq_to_netcdf)
+%
+% ObsTypeString		the variable of interest (from ObsTypesMetaData variable) 
+%
+% region		region of interest [lonmin lonmax latmin latmax zmin zmax]
+%
+% CopyString1		the difference is taken 'CopyString2 - CopyString1'
+% CopyString2
+%
+% QCString		There are multiple QC copies 
+% maxQC			The highest QC value of interest. Anything more than this
+%			will not be differenced. The locations will be plotted on
+%			a separate axis.
+% verbose		logical flag ... if 'true', a table listing the possible 
+%			observation types and observation counts is displayed.
+%
+% twoup			logical flag indicating that both the plot of the rejected 
+%			observations and the plot of the differences is 
+%			created on the same figure window.
+%
+% The 'copies' are recorded in the netCDF 'CopyMetaData' variable - 
+% the observation types are recorded in the 'ObsTypesMetaData' variable, 
+% and the QC strings of interest are recorded in QCMetaData - so
+% ncdump -v CopyMetaData,ObsTypesMetaData,QCMetaData obs_sequence_001.nc
+% is a useful endeavor.
+%
+% $Id$
+%
+%--------------------------------------------------
+% EXAMPLE : plot the difference between the ensemble mean of the prior 
+% and the actual observation value - while rejecting any obs that had
+% a DART QC greater than 3 ( prior forward operator failed ... or worse) 
+%--------------------------------------------------
 % fname         = 'obs_sequence_001.nc';
 % ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';
 % region        = [0 360 -90 90 -Inf Inf];
 % CopyString1   = 'NCEP BUFR observation';
 % CopyString2   = 'prior ensemble mean';
 % QCString      = 'DART quality control';
-% maxQC         = 1;
+% maxQC         = 1;   % max QC to consider when taking differences.
 % verbose       = 1;   % anything > 0 == 'true'
+% twoup         = 1;   % anything > 0 == 'true'
 %
 % bob = plot_obs_netcdf_diffs(fname, ObsTypeString, region, CopyString1, CopyString2, ...
-%                       QCString, maxQC, verbose);
+%                             QCString, maxQC, verbose, twoup);
 
 % record the user input
 
@@ -21,126 +59,56 @@ function obsstruct = plot_obs_netcdf_diffs(fname, ObsTypeString, region,  ...
 %
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 
-obsstruct.fname         = fname;
-obsstruct.ObsTypeString = ObsTypeString;
-obsstruct.region        = region;
-obsstruct.CopyString1   = CopyString1;
-obsstruct.CopyString2   = CopyString2;
-obsstruct.QCString      = QCString;
-obsstruct.maxQC         = maxQC;
-obsstruct.verbose       = verbose;
-
-% get going
-
-ObsTypes       = nc_varget(fname,'ObsTypes');
-ObsTypeStrings = nc_varget(fname,'ObsTypesMetaData');
-CopyStrings    = nc_varget(fname,'CopyMetaData');
-QCStrings      = nc_varget(fname,'QCMetaData');
-
-t              = nc_varget(fname,'time');
-obs_type       = nc_varget(fname,'obs_type');
-z_type         = nc_varget(fname,'which_vert');
-
-loc            = nc_varget(fname,'location');
-obs            = nc_varget(fname,'observations');
-qc             = nc_varget(fname,'qc');
-
-my_types   = unique(obs_type);  % only ones in the file, actually.
-timeunits  = nc_attget(fname,'time','units');
-timerange  = nc_attget(fname,'time','valid_range');
-calendar   = nc_attget(fname,'time','calendar');
-timebase   = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
-timeorigin = datenum(timebase(1),timebase(2),timebase(3));
-timestring = datestr(timerange + timeorigin);
-
-% Echo summary if requested
-
-if ( verbose > 0 ) 
-   for i = 1:length(my_types)
-      obtype = my_types(i);
-      inds   = find(obs_type == obtype);
-      myz    = loc(inds,3);
-     
-      disp(sprintf('N = %6d %s obs (type %3d) between levels %.2f and %.2f', ...
-               length(inds), ObsTypeStrings(obtype,:), obtype, ...
-               unique(min(myz)), unique(max(myz))))
-   end
-
-%  uniquelevels = unique(loc(:,3));
-
-%  for i = 1:length(uniquelevels)
-%     mylevel = uniquelevels(i);
-%     inds    = find(loc(:,3) == mylevel);
-%     disp(sprintf('level %2d %f has %d observations',i,mylevel,length(inds)))
-%  end
-
+if (exist(fname,'file') ~= 2)
+   error('%s does not exist.',fname)
 end
 
-% Find observations of the correct types.
-
-myind     = strmatch(ObsTypeString,ObsTypeStrings);
-
-if ( isempty(myind) )           
-   error('no %s observations ... stopping',obsstruct.ObsTypeString)
-end
-
-mytype1   = get_copy_index(fname, CopyString1);
-mytype2   = get_copy_index(fname, CopyString2);
-inds      = find(obs_type == myind);
-mylocs    = loc(inds,:);
-myobs1    = obs(inds,mytype1);
-myobs2    = obs(inds,mytype2);
-myobs     = myobs2 - myobs1;
-
-if ~ isempty(QCString)
-   myQCind = get_qc_index(fname,  QCString);
-   myqc    = qc(inds,myQCind);
+if ( twoup > 0 ) 
+   clf; orient tall
+   positions = [0.1, 0.55, 0.8, 0.35 ; ...
+                0.1, 0.10, 0.8, 0.35 ; ...
+                0.1, 0.02, 0.8, 0.08];
 else
-   myqc    = [];
+   clf; orient landscape
+   positions = [0.1, 0.20, 0.8, 0.65 ; ...
+                0.1, 0.20, 0.8, 0.65 ; ...
+                0.1, 0.05, 0.8, 0.10];
 end
 
-clear myobs1 myobs2 obs loc qc
+%% Read the observation sequence
 
-% geographic subset if needed
+obsstruct  = read_obs_netcdf(fname, ObsTypeString, region, ...
+                    CopyString1, QCString, verbose);
 
-inds = locations_in_region(mylocs,region);
+obsstruct2 = read_obs_netcdf(fname, ObsTypeString, region, ...
+                    CopyString2, QCString, verbose);
 
-obsstruct.lons = mylocs(inds,1);
-obsstruct.lats = mylocs(inds,2);
-obsstruct.z    = mylocs(inds,3);
-obsstruct.obs  =  myobs(inds);
-obsstruct.Ztyp = z_type(inds);
-obsstruct.numbadqc = 0;
-
-if (isempty(myqc))
-   obsstruct.qc = [];
-else
-   obsstruct.qc = myqc(inds);
-end
+xdat = obsstruct2.obs - obsstruct.obs;
+obsstruct.obs = xdat;
+clear obsstruct2 xdat
 
 % subset based on qc value
 
-if ( (~ isempty(myqc)) & (~ isempty(maxQC)) )
+if ( (~ isempty(obsstruct.qc)) && (~ isempty(maxQC)) )
 
    inds = find(obsstruct.qc > maxQC);
 
-   obsstruct.numbadqc = length(inds);
-   
+   obsstruct.numflagged = length(inds);
+
    if (~isempty(inds))
-       badobs.lons = obsstruct.lons(inds);
-       badobs.lats = obsstruct.lats(inds);
-       badobs.Ztyp = obsstruct.Ztyp(inds);
-       badobs.z    = obsstruct.z(   inds);
-       badobs.obs  = obsstruct.obs(inds);
-       badobs.qc   = obsstruct.qc(inds);       
+       flaggedobs.lons = obsstruct.lons(inds);
+       flaggedobs.lats = obsstruct.lats(inds);
+       flaggedobs.Ztyp = obsstruct.Ztyp(inds);
+       flaggedobs.z    = obsstruct.z(   inds);
+       flaggedobs.obs  = obsstruct.obs( inds);
+       flaggedobs.qc   = obsstruct.qc(  inds);
    end
-   
-   disp(sprintf('Removing %d obs with a %s value greater than %f', ...
-                length(inds),QCString,maxQC))
+
+   fprintf('Removing %d obs with a %s value greater than %f\n', ...
+                length(inds),QCString,maxQC)
 
    inds = find(obsstruct.qc <= maxQC);
 
@@ -153,11 +121,8 @@ if ( (~ isempty(myqc)) & (~ isempty(maxQC)) )
 
 end
 
-%-------------------------------------------------------------------------------
-% Create graphic with area-weighted symbols for the good observations.
-%-------------------------------------------------------------------------------
-
-figure(1); clf
+%% Create graphic with area-weighted symbols for the good observations.
+%  It has happened that there have been zero good observations in a file.
 
 xmin = min(region(1:2));
 xmax = max(region(1:2));
@@ -166,110 +131,145 @@ ymax = max(region(3:4));
 zmin = min(obsstruct.z);
 zmax = max(obsstruct.z);
 
-scalearray = scaleme(obsstruct.obs,36);
-scalearray = 128 * ones(size(obsstruct.obs));
+pstruct.colorbarstring = sprintf('%s - %s',CopyString2,CopyString1);
+pstruct.region = region;
+pstruct.str3   = sprintf('%s - %s',obsstruct.timestring(1,:),obsstruct.timestring(2,:));
 
-scatter3(obsstruct.lons, obsstruct.lats, obsstruct.z, ...
-              scalearray, obsstruct.obs,'d','filled');
+if ( length(obsstruct.obs) < 1 ) 
+   fprintf('There are no ''good'' observations to plot\n')
+else
 
-axis([xmin xmax ymin ymax zmin zmax])
+   subplot('position',positions(1,:))
 
-str1 = sprintf('%s level (%.2f - %.2f)',ObsTypeString,zmin,zmax);
-str2 = sprintf('%s - %s (%d locations)',CopyString2,CopyString1,length(obsstruct.obs));
-str3 = sprintf('%s - %s',timestring(1,:),timestring(2,:));
+   % choose a symbol size based on the number of obs to plot.
 
-title( {str1, str3, str2}, 'Interpreter','none','FontSize',16);
-xlabel('longitude')
-ylabel('latitude')
+   if (length(obsstruct.obs) > 1000) 
+      pstruct.scalearray = scaleme(obsstruct.obs, 36);
+   else
+      pstruct.scalearray = 128.0 * ones(size(obsstruct.obs));
+   end
+   pstruct.clim   = [min(obsstruct.obs) max(obsstruct.obs)];
+   pstruct.str2   = sprintf('%s (%d locations)',obsstruct.CopyString,length(obsstruct.obs));
 
-if     (obsstruct.Ztyp(1) == -2) % VERTISUNDEF     = -2
-   zlabel('curious ... undefined')
-elseif (obsstruct.Ztyp(1) == -1) % VERTISSURFACE   = -1
-   zlabel('surface')
-elseif (obsstruct.Ztyp(1) ==  1) % VERTISLEVEL     =  1
-   zlabel('level')
-elseif (obsstruct.Ztyp(1) ==  2) % VERTISPRESSURE  =  2
-   set(gca,'ZDir','reverse')
-   zlabel('pressure')
-elseif (obsstruct.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
-   zlabel('height')
+   % If all the observations live on the same level ... make a 2D plot.
+
+   if ( zmin ~= zmax )
+
+      pstruct.axis = [xmin xmax ymin ymax zmin zmax];
+      pstruct.str1 = sprintf('%s level (%.2f - %.2f)',obsstruct.ObsTypeString,zmin,zmax);
+
+      plot_3D(obsstruct, pstruct);
+
+   else
+
+      pstruct.axis = [xmin xmax ymin ymax];
+      pstruct.str1 = sprintf('%s',obsstruct.ObsTypeString);
+
+      plot_2D(obsstruct, pstruct);
+
+   end
 end
 
-myworldmap;
-set(gca,'CLim',[min(obsstruct.obs) max(obsstruct.obs)])
-h = colorbar;
-set(get(h,'YLabel'),'String',ObsTypeString,'Interpreter','none')
+%% Create graphic of spatial distribution of 'flagged' observations & their QC value.
+%
+% 0     observation assimilated
+% 1     observation evaluated only
+%   --- everything above this means the prior and posterior are OK
+% 2     assimilated, but the posterior forward operator failed
+% 3     Evaluated only, but the posterior forward operator failed
+%   --- everything above this means only the prior is OK
+% 4     prior forward operator failed
+% 5     not used
+% 6     prior QC rejected
+% 7     outlier rejected
 
-%-------------------------------------------------------------------------------
-% Create graphic of spatial distribution of 'bad' observations & their QC value.
-%-------------------------------------------------------------------------------
+dartqc_strings = { ...
+   '''observation evaluated only''', ...
+   '''assimilated, but the posterior forward operator failed''', ...
+   '''evaluated only, but the posterior forward operator failed''',...
+   '''prior forward operator failed''',...
+   '''not used''',...
+   '''prior QC rejected''',...
+   '''outlier rejected''',...
+   '''reserved for future use'''};
 
-if (obsstruct.numbadqc > 0 )
+if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... carry on.
 
-   figure(2); clf
-   
-   subplot('position',[0.1 0.20 0.8 0.65])
-   scalearray = 128 * ones(size(badobs.obs));
-   
-   zmin = min(badobs.z);
-   zmax = max(badobs.z);
-   
-   scatter3(badobs.lons, badobs.lats, badobs.z, scalearray, badobs.qc,'filled')
-   
-   title( {str1, str3, 'Bad Observations'}, 'Interpreter','none','FontSize',16);
-   xlabel('longitude')
-   ylabel('latitude')
-   
-   if     (badobs.Ztyp(1) == -2) % VERTISUNDEF     = -2
-      zlabel('curious ... undefined')
-   elseif (badobs.Ztyp(1) == -1) % VERTISSURFACE   = -1
-      zlabel('surface')
-   elseif (badobs.Ztyp(1) ==  1) % VERTISLEVEL     =  1
-      zlabel('level')
-   elseif (badobs.Ztyp(1) ==  2) % VERTISPRESSURE  =  2
-      set(gca,'ZDir','reverse')
-      zlabel('pressure')
-   elseif (badobs.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
-      zlabel('height')
+   if (twoup <= 0)
+      figure(gcf+1); clf
    end
    
-   axis([region(1) region(2) ymin ymax zmin zmax])
+   subplot('position',positions(2,:))
    
-   myworldmap;
-   set(gca,'CLim',[min(badobs.qc) max(badobs.qc)])
-   h = colorbar;
-   set(get(h,'YLabel'),'String',QCString,'Interpreter','none')
+   zmin = min(flaggedobs.z);
+   zmax = max(flaggedobs.z);
+
+   prej = 100.0 * length(flaggedobs.obs) / ...
+         (length(flaggedobs.obs) + length(obsstruct.obs));
+   pstruct.scalearray = 128 * ones(size(flaggedobs.obs));
+   pstruct.colorbarstring = QCString;
+   pstruct.clim = [min(flaggedobs.qc) max(flaggedobs.qc)];
+   pstruct.str1 = sprintf('%s level (%.2f - %.2f)',obsstruct.ObsTypeString,zmin,zmax);
+   pstruct.str2 = sprintf('%s (%d ''good'', %d ''flagged'' -- %.2f %%)', obsstruct.CopyString, ...
+                      length(obsstruct.obs), length(flaggedobs.obs), prej);
+ 
+   flaggedobs.obs = flaggedobs.qc;  % plot QC values, not obs values
+   if ( zmin ~= zmax )
+
+      pstruct.axis = [xmin xmax ymin ymax zmin zmax];
+
+      plot_3D(flaggedobs, pstruct);
+
+   else
+
+      pstruct.axis = [xmin xmax ymin ymax];
+
+      plot_2D(flaggedobs, pstruct);
+
+   end
    
-   subplot('position',[0.1 0.05 0.8 0.10])
+   subplot('position',positions(3,:))
    axis off
-   
-   qcvals  = unique(badobs.qc);
-   qccount = zeros(size(qcvals));
-   for i = 1:length(qcvals)
-      qccount(i) = sum(badobs.qc == qcvals(i));
-      s{i} = sprintf('%d obs with qc == %d',qccount(i),qcvals(i));
-   end
-   
-   dy = 1.0/length(s);
-   for i = 1:length(s)
-      text(0.0, (i-1)*dy ,s{i})
-   end
 
+   %% If the QC is a DART QC, we know how to interpret them.
+
+   switch lower(strtrim(QCString))
+      case 'dart quality control',
+
+         qcvals  = unique(flaggedobs.qc); 
+         qccount = zeros(size(qcvals));
+         for i = 1:length(qcvals)
+            qccount(i) = sum(flaggedobs.qc == qcvals(i));
+            s{i} = sprintf('%d obs with qc == %d %s',qccount(i),qcvals(i), ...
+                   dartqc_strings{qcvals(i)});
+         end
+   
+         dy =  0.8*1.0/length(s);
+         for i = 1:length(s)
+            text(0.0, (i-1)*dy ,s{i})
+         end
+
+      otherwise,
+         str = sprintf('no way to interpret values of %s',strtrim(QCString));
+         text(0.0, 0.0, str)
+   end
 end
+
+
 
 function h = myworldmap
 
-%---------------------------------------------------------------------------
+%%--------------------------------------------------------------------------
 % GET THE ELEVATION DATA AND SET UP THE ASSOCIATED COORDINATE DATA
 %---------------------------------------------------------------------------
 
-load topo;                 % GET Matlab-native [180x360] ELEVATION DATASET
-lats = [-89.5:89.5];       % CREATE LAT ARRAY FOR TOPO MATRIX
-lons = [0.5:359.5];        % CREATE LON ARRAY FOR TOPO MATRIX
+load topo;               % GET Matlab-native [180x360] ELEVATION DATASET
+lats = -89.5:89.5;       % CREATE LAT ARRAY FOR TOPO MATRIX
+lons = 0.5:359.5;        % CREATE LON ARRAY FOR TOPO MATRIX
 nlon = length(lons);
 nlat = length(lats);
 
-%---------------------------------------------------------------------------
+%%--------------------------------------------------------------------------
 % IF WE NEED TO SWAP HEMISPHERES, DO SO NOW.
 % If we didn't explicitly tell it, make a guess.
 %---------------------------------------------------------------------------
@@ -281,28 +281,28 @@ if (ax(1) < -2)
    topo = [ topo(:,nlon/2+1:nlon) topo(:,1:nlon/2) ];
 end
 
-%---------------------------------------------------------------------------
+%%--------------------------------------------------------------------------
 % We need to determine the geographic subset of the elevation matrix.
 %---------------------------------------------------------------------------
 
-lon_ind1 = min(find(ax(1) <= lons));
-lon_ind2 = min(find(ax(2) <= lons));
-lat_ind1 = min(find(ax(3) <= lats));
-lat_ind2 = min(find(ax(4) <= lats));
+lon_ind1 = find(ax(1) <= lons, 1);
+lon_ind2 = find(ax(2) <= lons, 1);
+lat_ind1 = find(ax(3) <= lats, 1);
+lat_ind2 = find(ax(4) <= lats, 1);
 
-if (isempty(lon_ind1)) lon_ind1 = 1;    end;
-if (isempty(lon_ind2)) lon_ind2 = nlon; end;
-if (isempty(lat_ind1)) lat_ind1 = 1;    end;
-if (isempty(lat_ind2)) lat_ind2 = nlat; end;
+if (isempty(lon_ind1)), lon_ind1 = 1;    end;
+if (isempty(lon_ind2)), lon_ind2 = nlon; end;
+if (isempty(lat_ind1)), lat_ind1 = 1;    end;
+if (isempty(lat_ind2)), lat_ind2 = nlat; end;
 
 elev = topo(lat_ind1:lat_ind2,lon_ind1:lon_ind2);
 x    = lons(lon_ind1:lon_ind2);
 y    = lats(lat_ind1:lat_ind2);
 
-%---------------------------------------------------------------------------
+%%--------------------------------------------------------------------------
 % Contour the "subset"
 % There are differences between 6.5 and 7.0 that make changing the colors
-% of the filled contours a real pain. Providing both solutions.
+% of the filled contours a real pain.
 %---------------------------------------------------------------------------
 
 orgholdstate = ishold;
@@ -319,9 +319,7 @@ fcolor = [0.7 0.7 0.7];    % light grey
 
 [c,h] = contourf(x,y,elev,[0.0 0.0],'k-');
 
-new_level = 1000;
-
-h_patch = get(h, 'Children');
+h_patch   = get(h, 'Children');
 
 for i = 1:numel(h_patch)
     y = get(h_patch(i), 'YData');
@@ -329,7 +327,9 @@ for i = 1:numel(h_patch)
     set(h_patch(i), 'ZData', zlevel*ones(s),'FaceColor',fcolor);
 end
 
-if (orgholdstate == 0) hold off; end;
+if (orgholdstate == 0), hold off; end;
+
+
 
 
 function s = scaleme(x,minsize)
@@ -343,3 +343,81 @@ b       = minsize - slope*minx;
 
 s = x*slope + b;
 
+
+
+function h1 = plot_3D(obsstruct, pstruct)
+
+if (pstruct.clim(1) == pstruct.clim(2))
+   % If all the observations have the same value, setting the
+   % colorbar limits is a real pain. Fundamentally, I am 
+   % forcing the plot symbols to be the lowest color of the
+   % colormap and setting the colorbar to have some more
+   % colors 'on top' - that are never used.
+   cmap = colormap;
+   h = plot3(obsstruct.lons, obsstruct.lats, obsstruct.z, 'bd');
+   set(h,'MarkerFaceColor',cmap(1,:),'MarkerEdgeColor',cmap(1,:))
+   set(gca,'Clim',[pstruct.clim(1) pstruct.clim(2)+1])
+   set(gca,'XGrid','on','YGrid','on','ZGrid','on')
+
+else
+   scatter3(obsstruct.lons, obsstruct.lats, obsstruct.z, ...
+         pstruct.scalearray, obsstruct.obs, 'd', 'filled');
+end
+h1   = gca;
+clim = get(h1,'CLim');
+
+axis(pstruct.axis)
+
+title( {pstruct.str1, pstruct.str3, pstruct.str2}, 'Interpreter','none','FontSize',14);
+xlabel('longitude')
+ylabel('latitude')
+
+if     (obsstruct.Ztyp(1) == -2) % VERTISUNDEF     = -2
+   zlabel('unspecified')
+elseif (obsstruct.Ztyp(1) == -1) % VERTISSURFACE   = -1
+   zlabel('surface')
+elseif (obsstruct.Ztyp(1) ==  1) % VERTISLEVEL     =  1
+   zlabel('level')
+elseif (obsstruct.Ztyp(1) ==  2) % VERTISPRESSURE  =  2
+   set(gca,'ZDir','reverse')
+   zlabel('pressure')
+elseif (obsstruct.Ztyp(1) ==  3) % VERTISHEIGHT    =  3
+   zlabel('height')
+end
+
+myworldmap;
+set(gca,'CLim',clim)
+hb = colorbar;
+set(get(hb,'YLabel'),'String',pstruct.colorbarstring,'Interpreter','none')
+
+
+
+
+function h1 = plot_2D(obsstruct, pstruct)
+
+axis(pstruct.axis); hold on; worldmap('light');
+
+if (pstruct.clim(1) == pstruct.clim(2))
+   cmap = colormap;
+   h = plot(obsstruct.lons, obsstruct.lats, 'bd');
+   set(h,'MarkerFaceColor',cmap(1,:),'MarkerEdgeColor',cmap(1,:))
+   set(gca,'Clim',[pstruct.clim(1) pstruct.clim(2)+1])
+   set(gca,'XGrid','on','YGrid','on')
+
+else
+
+   scatter(obsstruct.lons, obsstruct.lats, ...
+         pstruct.scalearray, obsstruct.obs, 'd', 'filled');
+end
+
+h1   = gca;
+clim = get(h1,'CLim');
+
+title( {pstruct.str1, pstruct.str3, pstruct.str2}, 'Interpreter','none','FontSize',14);
+xlabel('longitude')
+ylabel('latitude')
+
+set(gca,'CLim',clim)
+h = colorbar;
+set(get(h,'YLabel'),'String',pstruct.colorbarstring,'Interpreter','none')
+hold off
