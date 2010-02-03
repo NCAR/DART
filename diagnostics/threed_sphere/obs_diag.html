@@ -115,13 +115,14 @@
        <td>The simple sum of forecast - observation. The bias of the 
            horizontal wind speed (not velocity) is also computed.</td></tr>
    <tr><td valign="top"><b>spread</b></td>
-       <td>The variance for univariate obs.
+       <td>The standard deviation of the univariate obs.
            DART does not exploit the bivariate nature of U,V winds
            and so the spread of the horizontal wind is defined as
            the sum of the spreads of the U and V components.</td></tr>
    <tr><td valign="top"><b>totalspread&nbsp;&nbsp;&nbsp;</b></td>
-       <td>The spread of the estimated observation plus the observation 
-           error variance.</td></tr>
+       <td>The total standard deviation of the estimate. We pool the
+           ensemble variance of the observation plus the observation error 
+           variance and take the square root.</td></tr>
    <tr><td valign="top"><b>Nposs</b></td>
        <td>The number of observations available to be assimilated.</td></tr>
    <tr><td valign="top"><b>Nused</b></td>
