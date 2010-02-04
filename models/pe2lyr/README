@@ -1,3 +1,11 @@
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+Wed, 28 Apr 2004
+
 These are the instructions to run pe2lyr model.
 
 I) To build the model and simply test that it runs:
