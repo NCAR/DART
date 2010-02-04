@@ -1,5 +1,5 @@
 function linked_observations(obs)
-% linked_observations(obs) is a helper function for link_obs.m
+%% linked_observations(obs) is a helper function for link_obs.m
 % linked_observations is never meant to be called directly.
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is

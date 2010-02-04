@@ -1,17 +1,20 @@
-! DART software - Copyright Â© 2004 - 2010 UCAR. This open source software is
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
-! http://www.image.ucar.edu/DAReS/DART/DART_download 
-!
-! DART $Id$
-!
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 module pert_sounding_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 ! This program adds perturbations to a sounding
 ! based on an initial sounding that's input from
 ! the file "input_sounding" - this is considered
 ! the base sounding
-
+!
 ! Written by Altug Aksoy for WRF/DART 11/09/2006
 ! Based on code by David Dowell
 
@@ -424,3 +427,4 @@ ran2=min(AM*iy,RNMX)
 return
 
 end function ran2
+

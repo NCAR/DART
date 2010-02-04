@@ -1,9 +1,9 @@
 #!/bin/csh
-
-# DART software - Copyright Â© 2004 - 2010 UCAR. This open source software is
+#
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download 
-
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
 # DART $Id$
 
 \rm -r advance_temp*
@@ -20,3 +20,10 @@
 \rm refl_obs*.txt
 \rm finished.g*
 \rm WRFOUT/*
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

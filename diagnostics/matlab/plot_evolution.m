@@ -1,5 +1,5 @@
 function plotdat = plot_evolution(fname,copystring)
-% plot_evolution plots the temporal evolution of the observation-space quantities for all possible levels, all possible variables.
+%% plot_evolution plots the temporal evolution of the observation-space quantities for all possible levels, all possible variables.
 % Part of the observation-space diagnostics routines.
 %
 % 'obs_diag' produces a netcdf file containing the diagnostics.

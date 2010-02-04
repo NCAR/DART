@@ -1,11 +1,17 @@
 #!/bin/csh
 #
-# DART software - Copyright Â© 2004 - 2010 UCAR. This open source software is
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id: $
-#
+# $Id$
 
 ../../../mkmf/mkmf -p add_pert_where_high_refl -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
  -a "../../.." path_names_add_pert_where_high_refl
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

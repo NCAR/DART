@@ -1,8 +1,14 @@
-! DART software - Copyright Â© 2004 - 2010 UCAR. This open source software is
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
-! http://www.image.ucar.edu/DAReS/DART/DART_download 
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 PROGRAM add_pert_where_high_refl
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 ! Add 3D random but smooth perturbations to WRF fields in/near where the observations
 ! indicate high reflectivity values.  The technique is somewhat like that of
