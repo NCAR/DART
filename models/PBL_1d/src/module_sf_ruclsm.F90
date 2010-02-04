@@ -2,7 +2,10 @@
 !WRF:MODEL_LAYER:PHYSICS
 !
 MODULE module_sf_ruclsm
-   USE module_wrf_error
+!
+! DART $Id$
+!
+USE module_wrf_error
 
 CONTAINS
 

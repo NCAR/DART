@@ -1,3 +1,9 @@
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 NOTE: A test case with namelists already prepared.  Change namelists input.nml and wrf1d_namelist.input at your own risk
 
 1.  Tell DART what to extract from the truth run
@@ -34,3 +40,9 @@ NOTES:
   c.  Make sure the locations are defined (init)
   d.  Put in roll and unroll
   e.  To output, add in write_atts and write_vars
+
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

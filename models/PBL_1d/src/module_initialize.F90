@@ -1,4 +1,7 @@
 MODULE module_initialize
+!
+! DART $Id$
+!
 
   USE module_model_constants
   USE module_ideal

@@ -1,5 +1,7 @@
 MODULE module_sfc_init_and_bc
-
+!
+! DART $Id$
+!
   USE time_manager_mod,      only: time_type, GREGORIAN, &
                                    set_calendar_type, print_time, &
                                    print_date, set_date, set_time, &

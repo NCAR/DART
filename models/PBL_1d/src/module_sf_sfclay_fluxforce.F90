@@ -1,15 +1,17 @@
 !WRF:MODEL_LAYER:PHYSICS
 !
 MODULE module_sf_sfclay_fluxforce
+!
+! DART $Id$
+!
+USE module_ideal
 
-  USE module_ideal
+REAL    , PARAMETER ::  VCONVC=1.
+REAL    , PARAMETER ::  CZO=0.0185
+REAL    , PARAMETER ::  OZO=1.59E-5
+REAL    , PARAMETER ::  epsilonmol=1.e-7
 
- REAL    , PARAMETER ::  VCONVC=1.
- REAL    , PARAMETER ::  CZO=0.0185
- REAL    , PARAMETER ::  OZO=1.59E-5
- REAL    , PARAMETER ::  epsilonmol=1.e-7
-
- REAL,   DIMENSION(0:1000 ),SAVE          :: PSIMTB,PSIHTB
+REAL,   DIMENSION(0:1000 ),SAVE          :: PSIMTB,PSIHTB
 
 CONTAINS
 

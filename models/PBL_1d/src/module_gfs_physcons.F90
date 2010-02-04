@@ -1,4 +1,7 @@
 module module_gfs_physcons
+!
+! DART $Id$
+!
   use module_gfs_machine,only:kind_phys
 !  Physical constants as set in NMC handbook from Smithsonian tables.
 !  Physical constants are given to 5 places.

@@ -1,6 +1,8 @@
 MODULE module_ideal
-
-  REAL,PARAMETER :: PI=3.1415926
+!
+! DART $Id$
+!
+REAL,PARAMETER :: PI=3.1415926
 
 CONTAINS
   

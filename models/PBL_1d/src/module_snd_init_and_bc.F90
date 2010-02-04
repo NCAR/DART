@@ -1,5 +1,7 @@
 MODULE module_snd_init_and_bc
-
+!
+! DART $Id$
+!
   USE types_mod,             only: r8
   USE time_manager_mod,      only: time_type, GREGORIAN, &
                                    set_calendar_type, print_time, &

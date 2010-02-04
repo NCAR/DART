@@ -1,5 +1,7 @@
 !WRF:MODEL_MP:PHYSICS
 !
+! DART $Id$
+!
 MODULE module_mp_etanew
       USE module_misc, only : wrf_dm_on_monitor
 !

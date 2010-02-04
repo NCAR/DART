@@ -1,8 +1,3 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2007, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-
 !dis
 !dis    Open Source License/Disclaimer, Forecast Systems Laboratory
 !dis    NOAA/OAR/FSL, 325 Broadway Boulder, CO 80305
@@ -39,7 +34,9 @@
 !dis
 
 MODULE map_utils
-
+!
+! DART $Id$
+!
 ! Module that defines constants, data structures, and
 ! subroutines used to convert grid indices to lat/lon
 ! and vice versa.   

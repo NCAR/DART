@@ -1,15 +1,17 @@
 !WRF:MODEL_LAYER:PHYSICS
 
-!Force restore model based on surface energy balance
+! Force restore model based on surface energy balance
 ! based on slab with additions
 
 MODULE module_sf_force_restore
 
-   REAL, PARAMETER :: DIFSL=5.e-7
+! DART $Id$
 
-   !---FACTOR TO MAKE SOIL STEP MORE CONSERVATIVE
+REAL, PARAMETER :: DIFSL=5.e-7
 
-   REAL , PARAMETER :: SOILFAC=1.25
+!---FACTOR TO MAKE SOIL STEP MORE CONSERVATIVE
+
+REAL , PARAMETER :: SOILFAC=1.25
 
 CONTAINS
 

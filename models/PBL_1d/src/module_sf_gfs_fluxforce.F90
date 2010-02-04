@@ -1,8 +1,10 @@
 !WRF:MODEL_LAYER:PHYSICS
 !
 MODULE module_sf_gfs_fluxforce
-
-  USE module_sf_gfs
+!
+! DART $Id$
+!
+USE module_sf_gfs
 
 CONTAINS
 

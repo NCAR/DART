@@ -1,5 +1,7 @@
 MODULE  module_getsm
-
+!
+! DART $Id$
+!
 CONTAINS
 
   SUBROUTINE getsmlsm (MMINLU, isltyp, ivgtyp, smcmin, smcmax)

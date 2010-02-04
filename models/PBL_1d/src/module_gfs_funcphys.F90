@@ -1,5 +1,8 @@
 !-------------------------------------------------------------------------------
 module module_gfs_funcphys
+!
+! DART $Id$
+!
 !$$$  Module Documentation Block
 !
 ! Module:    funcphys        API for basic thermodynamic physics

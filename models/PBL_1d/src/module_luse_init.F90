@@ -1,4 +1,7 @@
 MODULE module_luse_init
+!
+! DART $Id$
+!
 
 CONTAINS
 
