@@ -19,6 +19,8 @@ module model_mod
 !     There are some minor changes in my model_mod.f90 which I'd want to incorporate into
 !     this version, but I'm leaving them out for now.
 
+!     I've put in an error check in model_interpolate because of Patrick's trouble (1/10/10)
+
 
  
 !----------------------------------------------------------------------
@@ -341,8 +343,6 @@ public ::                                                            &
 
 !-----------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
-character(len=128) :: version = "$Revision$"
-character(len=128) :: tag = "$Id$"
 character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
@@ -557,6 +557,8 @@ integer                 :: ens_member
 data ens_member /0/
 logical                 :: do_out
 
+! common error string used by many subroutines
+character(len=129) :: errstring
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 integer :: nflds         ! # fields to read
@@ -658,7 +660,6 @@ contains
 integer            :: iunit, io, topog_lons, topog_lats, i, num_lons, num_lats, ncfileid
 ! calendar types listed in time_manager_mod.f90
 integer            :: calendar_type = GREGORIAN
-character(len=129) :: errstring
 integer            :: max_levs
 
 
@@ -757,7 +758,7 @@ call read_cam_coord (ncfileid, P0, 'P0      ')    ! thats a p-zero
 !------------------------------------------------------------------------
 ! # fields to read
 nflds = state_num_0d + state_num_1d + state_num_2d + state_num_3d      
-if (do_out) write(*, *) '# of fields in state vector =  ', nflds,' = sum of ', &
+if (do_out) write(*, '(A,I3,A,4I3)') '# of fields in state vector =  ', nflds,' = sum of ', &
                  state_num_0d ,state_num_1d ,state_num_2d ,state_num_3d
 
 ! CAM3 subroutine to order the state vector parts into cflds 
@@ -934,9 +935,10 @@ integer,            intent(in) :: ncfileid
 ! local workspace
 character (len=4)              :: form_version = '(I0)'
 character (len=4)              :: char_version
-character (len=129)            :: err_string
 integer                        :: part, nchars, tot_chars, i, j, k, varid, next
-integer, dimension(4)          :: int_version = (/(0,i=1,4)/)    
+integer, dimension(4)          :: int_version 
+
+int_version = (/(0,i=1,4)/)    
 
 
 ! Choose order of coordinates based on CAM version
@@ -1105,8 +1107,8 @@ do i = 1,state_num_1d
    end do Alldim1
 
    if ( s_dim_1d(i) == 0 ) then
-      write(err_string, '(A,I3,A)') ' state 1d dimension(',i,') was not assigned and = 0' 
-      call error_handler(E_ERR, 'trans_coord',trim(err_string), source, revision, revdate) 
+      write(errstring, '(A,I3,A)') ' state 1d dimension(',i,') was not assigned and = 0' 
+      call error_handler(E_ERR, 'trans_coord',trim(errstring), source, revision, revdate) 
    end if
 end do
 
@@ -1241,7 +1243,7 @@ do i = 1,nflds
       call nc_check(nf90_get_att(ncfileid, ncfldid, trim(att) ,att_vals(i) ), &
                     'nc_read_model_atts', 'get_att '//trim(att))
       att_vals(i)(nchars+1:128) = ' '
-      if (do_out) WRITE(*,'(A,1X,I6,I6,A,1X,A)') att, ncfldid, nchars, cflds(i), trim(att_vals(i))
+      if (do_out) WRITE(*,'(A,1X,I6,I6,1X,A,1X,A)') att, ncfldid, nchars, cflds(i), trim(att_vals(i))
    else
       WRITE(*,*) ncfldid, cflds(i), 'NOT AVAILABLE'
    end if
@@ -1370,7 +1372,9 @@ endif
 if (do_out) then
    PRINT*,'reading ',cfield,' using id ',ncfldid,' size ',coord_size,' resolution ', &
           var%resolution
-   WRITE(*,*) (var%vals(i),i=1,coord_size)
+   WRITE(*,*) 'first, last val: ', var%vals(1),var%vals(coord_size)
+   ! to get entire array, in case of debugging, use this instead:
+   ! WRITE(*,*) (var%vals(i),i=1,coord_size)
 end if
 
 deallocate(att_names, att_vals)
@@ -1426,7 +1430,6 @@ end subroutine end_grid_1d_instance
 integer :: i, i1, nfld
 integer, intent(in) :: nflds
 character (len = *), dimension(nflds), intent(out) :: cflds 
-character (len = 129) :: errstring
 
 allocate (TYPE_1D(state_num_1d),TYPE_2D(state_num_2d),TYPE_3D(state_num_3d))
 ! kdr where should these be deallocated?
@@ -1922,7 +1925,6 @@ integer  :: box, slice
 
 real(r8) :: lon_val, lat_val, lev_val
 
-character(len=129) :: errstring
 character(len=8)   :: dim_name
 
 ! In order to find what variable this is, and its location, I must subtract the individual 
@@ -2136,7 +2138,6 @@ integer :: xVarID,StateVarID, StateVarVarID
 integer :: P_id(num_dims)
 integer :: i, ifld, dim_id, g_id
 integer :: grid_id(grid_num_1d) 
-character(len=129)    :: errstring 
 character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
@@ -2625,7 +2626,7 @@ real(r8) :: bot_lon, top_lon, delta_lon,                                &
 integer  :: s_type, s_type_01d,s_type_2d,s_type_3d,   &
             lon_ind_below, lon_ind_above, lat_ind_below, lat_ind_above, &
             num_lons
-character (len=8) :: lon_name, lat_name, lev_name
+character (len=8)   :: lon_name, lat_name, lev_name
 
 ! Would it be better to pass state as prog_var_type (model state type) to here?
 ! As opposed to the stripped state vector. YES. This would give time interp.
@@ -2991,7 +2992,6 @@ integer,  intent(out) :: istatus
 
 real(r8)              :: bot_val, top_val, p_surf, frac
 integer               :: top_lev, bot_lev, i, vstatus, num_levs
-! character(len=129)    :: errstring
 
 ! No errors to start with
 istatus = 0
@@ -3157,9 +3157,9 @@ if (height >= model_h(1) .or. height <= model_h(num_levs)) then
    istatus = 1
    val = MISSING_R8
 ! debug
-      if (do_out) &
-      write(logfileunit,'(A,I3,1x,3F12.2)') 'get_val_height; ens_member, height, model_h(1,num_levs) = ', &
-           ens_member, height, model_h(1),model_h(num_levs)
+!      if (do_out) &
+!      write(logfileunit,'(A,I3,1x,3F12.2)') 'get_val_height; ens_member, height, model_h(1,num_levs) = ', &
+!           ens_member, height, model_h(1),model_h(num_levs)
 ! debug
 else 
 ! This should be redefined every time(?), not just for the first (arbitrary) entry.
@@ -3279,7 +3279,6 @@ type(model_type), intent(in)  :: var
 real(r8),         intent(out) :: x(:)
 
 integer :: i, j, k, nf, indx
-character(len=129) :: errstring
 
 ! Load components of state vector, starting with scalars (0D) and finishing with 3D
 ! A whole field will be loaded (by columns for 3D) before the next field is started.
@@ -3363,7 +3362,6 @@ real(r8),         intent(in)  :: x(:)
 type(model_type), intent(out) :: var
 
 integer :: i, j, k, nf, indx
-character(len=129) :: errstring
 
 ! Start copying fields from straight vector
 indx = 0
@@ -3582,29 +3580,29 @@ real(r8)  :: p_surf,   frac
 logical   :: stagr_lon, stagr_lat
 type(location_type)   :: dum_loc
 
-character(len=129)    :: errstring
 character(len=8)      :: dim_name
 
-! set good initial values, only differences will be changed
+! set good initial values, only differences will be changed.
 stagr_lon = .false.
 stagr_lat = .false.
-lon_which_dimid = 0
-lat_which_dimid = 0
 
-! set initial values which should be overwritten in all cases
-lon_index = MISSING_I
-lat_index = MISSING_I
-new_array = MISSING_R8
+! these should be set by the code below; it's an error if not.
+lon_which_dimid = MISSING_I
+lat_which_dimid = MISSING_I
+lon_index       = MISSING_I
+lat_index       = MISSING_I
+new_array       = MISSING_R8
+new_which       = MISSING_I
 
 if (old_which == VERTISPRESSURE .or. old_which == VERTISHEIGHT  .or. &
     old_which == VERTISLEVEL    .or. old_which == VERTISSURFACE .or. &
     old_which == VERTISUNDEF   ) then
-!  proceed
+   !  proceed
 else
-   write(errstring,'(''skipping obs at '',3(F9.5,1x),I2,'' vertical problem'')') &
+   ! make this a fatal error - there should be no other options for vert.
+   write(errstring,'(''obs at '',3(F9.5,1x),I2,'' has bad vertical type'')') &
                    old_array, old_which
-   call error_handler(E_MSG, 'convert_vert', errstring,source,revision,revdate)
-   return
+   call error_handler(E_ERR, 'convert_vert', errstring,source,revision,revdate)
 end if
 
 ! Find the nfld of this dart-KIND
@@ -3642,11 +3640,13 @@ if (rank_kind <= state_num_1d) then
 ! s_dimid_1d holds the single CAM dimension ids of the dimensions of the 1D fields
       lon_which_dimid = 1                             
       call coord_index(dim_name, old_array(1), lon_index)
+      lat_index = 1
    elseif (dim_name .eq.'lat     ' .or. dim_name .eq.'slat    ' ) then
       lat_which_dimid = 1
       call coord_index(dim_name, old_array(2), lat_index)
+      lon_index = 1
 
-! This may be premature; we haven not converted the 3rd dimension yet!
+! This may be premature; we have not converted the 3rd dimension yet!
 ! This may be spurious; we may not use lev_which_dimid.
 ! Similarly with other ranks
 ! Also; coordinate 'lev' is filled with 1000*(A+B), not levels 1,2,...
@@ -3712,7 +3712,7 @@ if     (lat_which_dimid == slat%dim_id) then
 elseif (lon_which_dimid == slon%dim_id) then
    stagr_lon = .true.
    p_surf = ps_stagr_lon(lon_index, lat_index)
-elseif (lon_which_dimid == 0 .or. lat_which_dimid == 0) then
+elseif (lon_which_dimid == MISSING_I .or. lat_which_dimid == MISSING_I) then
    ! one of these dimensions is missing from this variable
    p_surf = P0%vals(1)
    ! Or should this be the average of ps over the undefined dimension?
@@ -3781,13 +3781,22 @@ elseif (old_which == VERTISHEIGHT) then
    end do
    top_lev = bot_lev - 1
 
-!  write error message if not found within model level heights.
-   if (bot_lev <= num_levs) then
+   ! write warning message if not found within model level heights.
+   ! maybe this should return failure somehow?
+   if (top_lev == 1 .and. old_array(3) > model_h(1)) then
+      ! above top of model
+      frac = 1.0_r8
+      write(errstring, *) 'ob height ',old_array(3),' above CAM levels at ' &
+                          ,old_array(1) ,old_array(2) ,' for ob type',dart_kind
+      call error_handler(E_MSG, 'convert_vert', errstring,source,revision,revdate)
+   else if (bot_lev <= num_levs) then
+      ! within model levels
       frac = (old_array(3) - model_h(bot_lev)) / (model_h(top_lev) - model_h(bot_lev))
-   else
-      frac = 0.
-      write(errstring, *) 'ob height ',old_array(3),' outside range of CAM levels at ' &
-                          ,old_array(1) ,old_array(2) 
+   else 
+      ! below bottom of model
+      frac = 0.0_r8
+      write(errstring, *) 'ob height ',old_array(3),' below CAM levels at ' &
+                          ,old_array(1) ,old_array(2) ,' for ob type',dart_kind
       call error_handler(E_MSG, 'convert_vert', errstring,source,revision,revdate)
    endif
 
@@ -4195,8 +4204,9 @@ elseif (dim_name == 'ilev    ') then
    coord_len =  ilev%length
    resol     =  ilev%resolution
 else
-   indx = MISSING_I
-!  PRINT error?
+   ! should not happen; fatal error.
+   write(errstring, *) 'unexpected dim_name, ', trim(dim_name)
+   call error_handler(E_ERR, 'coord_index', errstring,source,revision,revdate)
 end if
 
 ! further check?  for blunders check that coord(1) - val is smaller than coord(2) - coord(1), etc.
@@ -4213,7 +4223,7 @@ elseif (val_local >= coord(coord_len)) then
    return
 else
    if (resol > 0.0_r8) then
-! temp output
+      ! temp output
       num_calced = num_calced + 1
       ! regularly spaced; calculate the index
       indx = NINT((val_local - coord(1))/resol) + 1
@@ -4226,7 +4236,7 @@ else
          endif
       endif
    else
-! temp output
+      ! temp output
       num_searched = num_searched + 1
       ! IRregularly spaced; search for the index
       ! Replace with a binary search?
@@ -4494,6 +4504,9 @@ integer   :: k, lon_index_local, vec_ind
 !integer :: fld_index
 !character :: cfld
 
+! So far only called from model_heights to get T and Q profiles for Tv calculation.
+! If the point at which we need T and Q is a staggered US or VS point, 
+! then T and Q must be interpolated to that point.
 ! lon_index and lat_index are the indices of the point at which we need the profiles,
 !   not necessarily one of the points where the profiles exist.
 ! stagr_xx tells where to look for profiles and what interpolating to do.
