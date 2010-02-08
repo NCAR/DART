@@ -190,11 +190,11 @@ else
 
   call init_obs_sequence(obs_seq, num_copies, num_qc, nvars*nobs)
   do i = 1, num_copies
-    meta_data = 'NCEP BUFR observation'
+    meta_data = 'MADIS observation'
     call set_copy_meta_data(obs_seq, i, meta_data)
   end do
   do i = 1, num_qc
-    meta_data = 'NCEP QC index'
+    meta_data = 'Data QC'
     call set_qc_meta_data(obs_seq, i, meta_data)
   end do
 
@@ -269,7 +269,8 @@ obsloop: do n = 1, nobs
 
   ! add specific humidity to text file
   if ( include_specific_humidity .and. tair(n) /= tair_miss .and. tdew(n) /= tdew_miss & 
-       .and. alti(n) /= alti_miss .and. qc_tair(n) == 0 .and. qc_tdew(n) == 0 .and. qc_alti(n) == 0 ) then
+       .and. alti(n) /= alti_miss .and. qc_tair(n) == 0 .and. qc_tdew(n) == 0 .and.    &
+       qc_alti(n) == 0 ) then
 
     qobs = specific_humidity(sat_vapor_pressure(tdew(n)), pres * 100.0_r8)
     qsat = specific_humidity(sat_vapor_pressure(tair(n)), pres * 100.0_r8)
@@ -300,9 +301,14 @@ obsloop: do n = 1, nobs
     else
       oerr = land_rel_hum_error(pres, tair(n), rh)    
     end if
+
+    if ( rh > 0.0_r8 .and. rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+
     call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, rh, &
                          LAND_SFC_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
     call append_obs_to_seq(obs_seq, obs)
+
+  end if
 
   end if
 
@@ -312,9 +318,14 @@ obsloop: do n = 1, nobs
 
     rh = temp_and_dewpoint_to_rh(tair(n), tdew(n))
     oerr = dewpt_error_from_rh_and_temp(tair(n), rh)
+
+    if ( rh > 0.0_r8 .and. rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+
     call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, tdew(n), &
                          LAND_SFC_DEWPOINT, oerr, oday, osec, qc, obs)
     call append_obs_to_seq(obs_seq, obs)
+
+    end if
 
 !    print*, 'temp (C), rh (%), oerr:  ', tair(n)-273.15_r8, rh*100.0_r8, oerr
 
