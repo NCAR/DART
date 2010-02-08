@@ -18,6 +18,9 @@ program convert_madis_rawin
 !                         library routines.
 !
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
+!     modified Dec. 2008 Soyoung Ha and David Dowell, NCAR/MMM
+!     - added dewpoint as an output variable
+!     - added relative humidity as an output variable
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -30,14 +33,19 @@ use      obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                                   append_obs_to_seq, init_obs_sequence, get_num_obs, &
                                   set_copy_meta_data, set_qc_meta_data
 use            meteor_mod, only : sat_vapor_pressure, specific_humidity, & 
-                                  wind_dirspd_to_uv, pres_alt_to_pres
+                                  wind_dirspd_to_uv, pres_alt_to_pres, &
+                                  temp_and_dewpoint_to_rh
 use           obs_err_mod, only : rawin_temp_error, rawin_wind_error, &
                                   rawin_pres_error, rawin_rel_hum_error
+use  dewpoint_obs_err_mod, only : dewpt_error_from_rh_and_temp, &
+                                  rh_error_from_dewpt_and_temp
 use obs_def_altimeter_mod, only : compute_altimeter
-use          obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT,  & 
-                                  RADIOSONDE_V_WIND_COMPONENT,  & 
-                                  RADIOSONDE_TEMPERATURE,       & 
-                                  RADIOSONDE_SPECIFIC_HUMIDITY, &
+use          obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT,      & 
+                                  RADIOSONDE_V_WIND_COMPONENT,      & 
+                                  RADIOSONDE_TEMPERATURE,           & 
+                                  RADIOSONDE_SPECIFIC_HUMIDITY,     &
+                                  RADIOSONDE_RELATIVE_HUMIDITY,     &
+                                  RADIOSONDE_DEWPOINT, &
                                   RADIOSONDE_SURFACE_ALTIMETER 
 use                netcdf
 
@@ -45,6 +53,13 @@ implicit none
 
 character(len=19),  parameter :: rawin_in_file  = 'rawinsonde_input.nc'
 character(len=129), parameter :: rawin_out_file = 'obs_seq.rawin'
+
+! the following logical parameters control which water-vapor variables appear in the output file
+! and whether to use the NCEP error or Lin and Hubbard (2004) moisture error model
+logical, parameter :: LH_err                    = .false.
+logical, parameter :: include_specific_humidity = .true.
+logical, parameter :: include_relative_humidity = .false.
+logical, parameter :: include_dewpoint          = .false.
 
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
@@ -54,17 +69,18 @@ character(len=80)   :: name
 character(len=19)   :: datestr
 
 integer :: oday, osec, iyear, imonth, iday, ihour, imin, isec, nman, nsig, nsound, & 
-           nmaxml, nmaxsw, nmaxst, maxobs, k, n, fid, var_id, dsec, dday
+           nmaxml, nmaxsw, nmaxst, maxobs, nvars_man, nvars_sigt, k, n, fid, var_id, dsec, dday
 
 integer, allocatable :: obscnt(:)
 
 logical :: fexist, sigwnd, sigtmp
 
-real(r8) :: obswindow, otime, lat, lon, elev, uwnd, vwnd, qobs, qsat, oerr, &
+real(r8) :: obswindow, otime, lat, lon, elev, uwnd, vwnd, qobs, qsat, dptk, oerr, &
             pres_miss, wdir_miss, wspd_miss, tair_miss, tdew_miss, prespa, & 
-            time_miss, qc, altim, qerr
+            time_miss, qc, altim, rh, qerr
 
 real(r8), allocatable :: pres(:), wdir(:), wspd(:), tair(:), tdew(:)
+integer,  allocatable :: qc_pres(:), qc_wdir(:), qc_wspd(:), qc_tair(:), qc_tdew(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs
@@ -122,7 +138,22 @@ if ( sigtmp ) then
   end do
 end if
 
-maxobs = nsound * (4 * nmaxml + 2 * nmaxsw + 2 * nmaxst + 1)
+nvars_man = 4
+nvars_sigt = 1
+if (include_specific_humidity) then
+  nvars_man = nvars_man + 1
+  nvars_sigt = nvars_sigt + 1
+end if
+if (include_relative_humidity) then
+  nvars_man = nvars_man + 1
+  nvars_sigt = nvars_sigt + 1
+end if
+if (include_dewpoint) then
+  nvars_man = nvars_man + 1
+  nvars_sigt = nvars_sigt + 1
+end if
+
+maxobs = nsound * (nvars_man * nmaxml + 2 * nmaxsw + nvars_sigt * nmaxst + 1)
 deallocate(obscnt)
 
 !  either read existing obs_seq or create a new one
@@ -137,11 +168,11 @@ else
 
   call init_obs_sequence(obs_seq, num_copies, num_qc, maxobs)
   do n = 1, num_copies
-    meta_data = 'NCEP BUFR observation'
+    meta_data = 'MADIS observation'
     call set_copy_meta_data(obs_seq, n, meta_data)
   end do
   do n = 1, num_qc
-    meta_data = 'NCEP QC index'
+    meta_data = 'Data QC'
     call set_qc_meta_data(obs_seq, n, meta_data)
   end do
 
@@ -171,6 +202,9 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
   allocate(pres(nman))  ;  allocate(tair(nman))  ;  allocate(tdew(nman))
   allocate(wdir(nman))  ;  allocate(wspd(nman))
+  
+  allocate(qc_pres(nman))  ;  allocate(qc_tair(nman))  ;  allocate(qc_tdew(nman))
+  allocate(qc_wdir(nman))  ;  allocate(qc_wspd(nman))
 
   call check( nf90_inq_varid(fid, 'prMan', var_id) )
   call check( nf90_get_var(fid,var_id,pres,start=(/ 1, n /),count=(/ nman, 1 /)) )
@@ -187,8 +221,18 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   call check( nf90_inq_varid(fid, 'wsMan', var_id) )
   call check( nf90_get_var(fid,var_id,wspd,start=(/ 1, n /),count=(/ nman, 1 /)) )
   call check( nf90_get_att(fid, var_id, '_FillValue', wspd_miss) )
+  call check( nf90_inq_varid(fid, "prManQCR", var_id) )
+  call check( nf90_get_var(fid, var_id, qc_pres,start=(/ 1, n /),count=(/ nman, 1 /)) )
+  call check( nf90_inq_varid(fid, "tpManQCR", var_id) )
+  call check( nf90_get_var(fid, var_id, qc_tair,start=(/ 1, n /),count=(/ nman, 1 /)) )
+  call check( nf90_inq_varid(fid, "tdManQCR", var_id) )
+  call check( nf90_get_var(fid, var_id, qc_tdew,start=(/ 1, n /),count=(/ nman, 1 /)) )
+  call check( nf90_inq_varid(fid, "wdManQCR", var_id) )
+  call check( nf90_get_var(fid, var_id, qc_wdir,start=(/ 1, n /),count=(/ nman, 1 /)) )
+  call check( nf90_inq_varid(fid, "wsManQCR", var_id) )
+  call check( nf90_get_var(fid, var_id, qc_wspd,start=(/ 1, n /),count=(/ nman, 1 /)) )
 
-  if ( pres(1) /= pres_miss ) then
+  if ( pres(1) /= pres_miss .and. qc_pres(1) == 0 ) then
 
     altim = compute_altimeter(pres(1), elev)
     oerr  = rawin_pres_error(pres_alt_to_pres(elev) * 0.01_r8)
@@ -206,7 +250,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
     prespa = pres(k) * 100.0_r8
 
-    if ( wdir(k) /= wdir_miss .and. wspd(k) /= wspd_miss ) then
+    if ( wdir(k) /= wdir_miss .and. wspd(k) /= wspd_miss .and. qc_wdir(k) == 0 .and. qc_wspd(k) == 0 ) then
 
       call wind_dirspd_to_uv(wdir(k), wspd(k), uwnd, vwnd)
       oerr = rawin_wind_error(pres(k))
@@ -224,7 +268,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
     end if
 
-    if ( tair(k) /= tair_miss ) then
+    if ( tair(k) /= tair_miss .and. qc_tair(k) == 0 ) then
 
       oerr = rawin_temp_error(pres(k))
       if ( tair(k) >= 180.0_r8 .and. tair(k) <= 330.0_r8 .and. oerr /= missing_r8 ) then
@@ -237,12 +281,18 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
     end if
 
-    if ( tair(k) /= tair_miss .and. tdew(k) /= tdew_miss ) then
+    if ( include_specific_humidity .and. tair(k) /= tair_miss .and. tdew(k) /= tdew_miss &
+          .and. qc_tair(k) == 0 .and. qc_tdew(k) == 0 ) then
 
-      qobs = tair(k) - tdew(k)
-      qobs = specific_humidity(sat_vapor_pressure(qobs),    prespa)
+      ! tdew is the dewpoint depression
+      dptk = tair(k) - tdew(k)
+      qobs = specific_humidity(sat_vapor_pressure(dptk),    prespa)
       qsat = specific_humidity(sat_vapor_pressure(tair(k)), prespa)
-      qerr = rawin_rel_hum_error(pres(k), tair(k), qobs / qsat)
+      if (LH_err ) then
+        qerr = rh_error_from_dewpt_and_temp(tair(k), dptk)
+      else
+        qerr = rawin_rel_hum_error(pres(k), tair(k), qobs / qsat)
+      end if
       oerr = max(qerr * qsat, 0.0001_r8)
 
       if ( qobs > 0.0_r8 .and. qobs <= 0.070_r8 .and. qerr /= missing_r8 ) then
@@ -253,8 +303,39 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
     end if
 
+    if ( include_relative_humidity .and. tair(k) /= tair_miss .and. tdew(k) /= tdew_miss &
+         .and. qc_tair(k) == 0 .and. qc_tdew(k) == 0 ) then
+
+      ! tdew is the dewpoint depression
+      dptk = tair(k) - tdew(k)
+      rh = temp_and_dewpoint_to_rh(tair(k), dptk)
+      if (LH_err ) then
+        oerr = rh_error_from_dewpt_and_temp(tair(k), dptk)
+      else
+        oerr = rawin_rel_hum_error(pres(k), tair(k), rh)
+      end if
+
+      call create_obs_type(lat, lon, prespa, VERTISPRESSURE, rh, &
+                           RADIOSONDE_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
+      call append_obs_to_seq(obs_seq, obs)
+
+    end if
+
+    if ( include_dewpoint .and. tair(k) /= tair_miss .and. tdew(k) /= tdew_miss &
+         .and. qc_tair(k) == 0 .and. qc_tdew(k) == 0 ) then
+
+      ! tdew is the dewpoint depression
+      dptk = tair(k) - tdew(k)
+      rh = temp_and_dewpoint_to_rh(tair(k), dptk)
+      oerr = dewpt_error_from_rh_and_temp(tair(k), rh)
+      call create_obs_type(lat, lon, prespa, VERTISPRESSURE, dptk, &
+                           RADIOSONDE_DEWPOINT, oerr, oday, osec, qc, obs)
+      call append_obs_to_seq(obs_seq, obs)
+
+    end if
+
   end do
-  deallocate(pres, wdir, wspd, tair, tdew)
+  deallocate(pres, wdir, wspd, tair, tdew, qc_pres, qc_wdir, qc_wspd, qc_tair, qc_tdew)
 
   !  If desired, read the significant-level temperature data, write to obs. seq.
   call check( nf90_inq_varid(fid, 'numSigT', var_id) )
@@ -263,6 +344,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   if ( sigtmp .and. nsig <= nmaxst ) then
 
     allocate(pres(nsig))  ;  allocate(tair(nsig))  ;  allocate(tdew(nsig))
+    allocate(qc_pres(nsig))  ;  allocate(qc_tair(nsig))  ;  allocate(qc_tdew(nsig))
 
     !  read significant level data
     call check( nf90_inq_varid(fid, 'prSigT', var_id) )
@@ -274,12 +356,18 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     call check( nf90_inq_varid(fid, 'tdSigT', var_id) )
     call check( nf90_get_var(fid,var_id,tdew,start=(/ 1, n /),count=(/ nsig, 1 /)) )
     call check( nf90_get_att(fid, var_id, '_FillValue', tdew_miss) )
+    call check( nf90_inq_varid(fid, "prSigTQCR", var_id) )
+    call check( nf90_get_var(fid, var_id, qc_pres,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    call check( nf90_inq_varid(fid, "tpSigTQCR", var_id) )
+    call check( nf90_get_var(fid, var_id, qc_tair,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    call check( nf90_inq_varid(fid, "tdSigTQCR", var_id) )
+    call check( nf90_get_var(fid, var_id, qc_tdew,start=(/ 1, n /),count=(/ nsig, 1 /)) )
 
     do k = 1, nsig
 
       prespa = pres(k) * 100.0_r8
 
-      if ( tair(k) /= tair_miss ) then
+      if ( tair(k) /= tair_miss .and. qc_tair(k) == 0 ) then
 
         oerr = rawin_temp_error(pres(k))
         if ( tair(k) >= 180.0_r8 .and. tair(k) <= 330.0_r8 .and. oerr /= missing_r8 ) then
@@ -292,12 +380,18 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
       end if
 
-      if ( tair(k) /= tair_miss .and. tdew(k) /= tdew_miss ) then
+      if ( include_specific_humidity .and. tair(k) /= tair_miss .and. tdew(k) /= tdew_miss &
+           .and. qc_tair(k) == 0 .and. qc_tdew(k) == 0 ) then
 
-        qobs = tair(k) - tdew(k)
-        qobs = specific_humidity(sat_vapor_pressure(qobs),    prespa)
+        ! tdew is the dewpoint depression
+        dptk = tair(k) - tdew(k)
+        qobs = specific_humidity(sat_vapor_pressure(dptk),    prespa)
         qsat = specific_humidity(sat_vapor_pressure(tair(k)), prespa)
-        qerr = rawin_rel_hum_error(pres(k), tair(k), qobs / qsat)
+        if (LH_err ) then
+          qerr = rh_error_from_dewpt_and_temp(tair(k), dptk)
+        else
+          qerr = rawin_rel_hum_error(pres(k), tair(k), qobs / qsat)
+        end if
         oerr = max(qerr * qsat, 0.0001_r8)
         if ( qobs > 0.0_r8 .and. qobs <= 0.070_r8 .and. qerr /= missing_r8 ) then
           call create_obs_type(lat, lon, prespa, VERTISPRESSURE, qobs, &
@@ -307,8 +401,38 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
       endif
 
+      if ( include_relative_humidity .and. tair(k) /= tair_miss .and. tdew(k) /= tdew_miss &
+           .and. qc_tair(k) == 0 .and. qc_tdew(k) == 0 ) then
+
+      ! tdew is the dewpoint depression
+        dptk = tair(k) - tdew(k)
+        if (LH_err ) then
+          oerr = rh_error_from_dewpt_and_temp(tair(k), dptk)
+        else
+          rh = temp_and_dewpoint_to_rh(tair(k), dptk)
+          oerr = rawin_rel_hum_error(pres(k), tair(k), rh)
+        end if
+        call create_obs_type(lat, lon, prespa, VERTISPRESSURE, rh, &
+                             RADIOSONDE_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
+        call append_obs_to_seq(obs_seq, obs)
+
+      endif
+
+      if ( include_dewpoint .and. tair(k) /= tair_miss .and. tdew(k) /= tdew_miss &
+            .and. qc_tair(k) == 0 .and. qc_tdew(k) == 0 ) then
+
+      ! tdew is the dewpoint depression
+        dptk = tair(k) - tdew(k)
+        rh = temp_and_dewpoint_to_rh(tair(k), dptk)
+        oerr = dewpt_error_from_rh_and_temp(tair(k), rh)
+        call create_obs_type(lat, lon, prespa, VERTISPRESSURE, dptk, &
+                             RADIOSONDE_DEWPOINT, oerr, oday, osec, qc, obs)
+        call append_obs_to_seq(obs_seq, obs)
+
+      endif
+
     end do
-    deallocate(pres, tair, tdew)
+    deallocate(pres, tair, tdew, qc_pres, qc_tair, qc_tdew)
 
   end if
 
@@ -319,6 +443,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   if ( sigwnd .and. nsig <= nmaxsw ) then
 
     allocate(pres(nsig))  ;  allocate(wdir(nsig))  ;  allocate(wspd(nsig))
+    allocate(qc_pres(nsig))  ;  allocate(qc_wdir(nsig))  ;  allocate(qc_wspd(nsig))
 
     !  read significant level data
     call check( nf90_inq_varid(fid, 'htSigW', var_id) )
@@ -330,11 +455,16 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     call check( nf90_inq_varid(fid, 'wsSigW', var_id) )
     call check( nf90_get_var(fid,var_id,wspd,start=(/ 1, n /),count=(/ nsig, 1 /)) )
     call check( nf90_get_att(fid, var_id, '_FillValue', wspd_miss) )
+    call check( nf90_inq_varid(fid, "wdSigTQCR", var_id) )
+    call check( nf90_get_var(fid, var_id, qc_wdir,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    call check( nf90_inq_varid(fid, "wsSigTQCR", var_id) )
+    call check( nf90_get_var(fid, var_id, qc_wspd,start=(/ 1, n /),count=(/ nsig, 1 /)) )
 
     do k = 1, nsig
 
       !  add data to the observation sequence here.
-      if ( wdir(k) /= wdir_miss .and. wspd(k) /= wspd_miss ) then
+      if ( wdir(k) /= wdir_miss .and. wspd(k) /= wspd_miss .and. qc_wdir(k) == 0  &
+           .and. qc_wspd(k) == 0 ) then
 
         call wind_dirspd_to_uv(wdir(k), wspd(k), uwnd, vwnd)
         oerr = rawin_wind_error(pres_alt_to_pres(pres(k)) * 0.01_r8)
@@ -353,7 +483,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
       end if
 
     end do
-    deallocate(pres, wdir, wspd)
+    deallocate(pres, wdir, wspd, qc_wdir, qc_wspd)
 
   end if
 

@@ -24,26 +24,26 @@ use      obs_kind_mod, only : SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT, &
                               QKSWND_U_WIND_COMPONENT, QKSWND_V_WIND_COMPONENT, &
                               RADIOSONDE_U_WIND_COMPONENT, RADIOSONDE_V_WIND_COMPONENT, &
                               RADIOSONDE_TEMPERATURE, RADIOSONDE_SPECIFIC_HUMIDITY, &
-                              DEW_POINT_TEMPERATURE, &
+                              DEWPOINT, &
                               METAR_U_10_METER_WIND, METAR_V_10_METER_WIND, METAR_TEMPERATURE_2_METER, &
                               METAR_SPECIFIC_HUMIDITY_2_METER, METAR_SURFACE_PRESSURE, METAR_POT_TEMP_2_METER, &
                               BUOY_U_WIND_COMPONENT, BUOY_V_WIND_COMPONENT, BUOY_SURFACE_PRESSURE, &
-                              BUOY_TEMPERATURE, BUOY_DEW_POINT_TEMPERATURE, &
+                              BUOY_TEMPERATURE, BUOY_DEWPOINT, &
                               SHIP_U_WIND_COMPONENT, SHIP_V_WIND_COMPONENT, SHIP_SURFACE_PRESSURE, &
-                              SHIP_TEMPERATURE, SHIP_DEW_POINT_TEMPERATURE, &
+                              SHIP_TEMPERATURE, SHIP_DEWPOINT, &
                               SYNOP_U_WIND_COMPONENT, SYNOP_V_WIND_COMPONENT, SYNOP_SURFACE_PRESSURE, &
-                              SYNOP_TEMPERATURE, SYNOP_DEW_POINT_TEMPERATURE, &
+                              SYNOP_TEMPERATURE, SYNOP_DEWPOINT, &
                               METAR_U_10_METER_WIND, METAR_V_10_METER_WIND, METAR_SURFACE_PRESSURE, &
                               METAR_TEMPERATURE_2_METER, &
                               AIREP_U_WIND_COMPONENT, AIREP_V_WIND_COMPONENT, AIREP_PRESSURE, &
-                              AIREP_TEMPERATURE, AIREP_DEW_POINT_TEMPERATURE, &
+                              AIREP_TEMPERATURE, AIREP_DEWPOINT, &
                               AMDAR_U_WIND_COMPONENT, AMDAR_V_WIND_COMPONENT, AMDAR_PRESSURE, &
-                              AMDAR_TEMPERATURE, AMDAR_DEW_POINT_TEMPERATURE, &
+                              AMDAR_TEMPERATURE, AMDAR_DEWPOINT, &
                               PILOT_U_WIND_COMPONENT, PILOT_V_WIND_COMPONENT, PILOT_PRESSURE, &
-                              PILOT_TEMPERATURE, PILOT_DEW_POINT_TEMPERATURE, &
+                              PILOT_TEMPERATURE, PILOT_DEWPOINT, &
                               PROFILER_U_WIND_COMPONENT, PROFILER_V_WIND_COMPONENT, PROFILER_PRESSURE, &
                               BOGUS_U_WIND_COMPONENT, BOGUS_V_WIND_COMPONENT, BOGUS_PRESSURE, &
-                              BOGUS_TEMPERATURE, BOGUS_DEW_POINT_TEMPERATURE, &
+                              BOGUS_TEMPERATURE, BOGUS_DEWPOINT, &
                               GPSRO_REFRACTIVITY
 use      location_mod, only : location_type, set_location, VERTISSURFACE, VERTISPRESSURE, VERTISHEIGHT
 use  time_manager_mod, only : time_type, set_date, set_calendar_type, GREGORIAN
@@ -231,7 +231,7 @@ if (Use_SoundObs .eqv. .TRUE.) then
                           u_wind_type      = RADIOSONDE_U_WIND_COMPONENT, &
                           v_wind_type      = RADIOSONDE_V_WIND_COMPONENT, &
                           temperature_type = RADIOSONDE_TEMPERATURE, &
-                          dew_point_type   = DEW_POINT_TEMPERATURE, &
+                          dew_point_type   = DEWPOINT, &
                           which_vert=VERTISPRESSURE, num_obs=num_obs, obs=obs, seq=seq)
    enddo
    write(*,101) 'Processed  OBS_TYPE    VAR#   DART#  Total_DART#'  
@@ -290,7 +290,7 @@ if (Use_SynopObs .eqv. .TRUE.) then
                           u_wind_type      = SYNOP_U_WIND_COMPONENT, &
                           v_wind_type      = SYNOP_V_WIND_COMPONENT, &
                           temperature_type = SYNOP_TEMPERATURE, &
-                          dew_point_type   = SYNOP_DEW_POINT_TEMPERATURE, &
+                          dew_point_type   = SYNOP_DEWPOINT, &
                           which_vert=VERTISSURFACE, num_obs=num_obs, obs=obs, seq=seq)
    enddo
 !  print*,'Processed ', ob%num_synop, ' SYNOP,  total obs # ', num_obs
@@ -307,7 +307,7 @@ if (Use_MetarObs .eqv. .TRUE.) then
                           u_wind_type      = METAR_U_10_METER_WIND, &
                           v_wind_type      = METAR_V_10_METER_WIND, &
                           temperature_type = METAR_TEMPERATURE_2_METER, &
-                          dew_point_type   = DEW_POINT_TEMPERATURE, &
+                          dew_point_type   = DEWPOINT, &
                           which_vert=VERTISSURFACE, num_obs=num_obs, obs=obs, seq=seq)
    enddo
 !  print*,'Processed ', ob%num_metar, ' METAR,  total obs # ', num_obs
@@ -324,7 +324,7 @@ if (Use_BuoysObs .eqv. .TRUE.) then
                           u_wind_type      = BUOY_U_WIND_COMPONENT, &
                           v_wind_type      = BUOY_V_WIND_COMPONENT, &
                           temperature_type = BUOY_TEMPERATURE, &
-                          dew_point_type   = BUOY_DEW_POINT_TEMPERATURE, &
+                          dew_point_type   = BUOY_DEWPOINT, &
                           which_vert=VERTISSURFACE, num_obs=num_obs, obs=obs, seq=seq)
    enddo
 !  print*,'Processed ', ob%num_buoys, ' BUOY ,  total obs # ', num_obs
@@ -341,7 +341,7 @@ if (Use_ShipsObs .eqv. .TRUE.) then
                           u_wind_type      = SHIP_U_WIND_COMPONENT, &
                           v_wind_type      = SHIP_V_WIND_COMPONENT, &
                           temperature_type = SHIP_TEMPERATURE, &
-                          dew_point_type   = SHIP_DEW_POINT_TEMPERATURE, &
+                          dew_point_type   = SHIP_DEWPOINT, &
                           which_vert=VERTISSURFACE, num_obs=num_obs, obs=obs, seq=seq)
    enddo
 !  print*,'Processed ', ob%num_ships, ' SHIP ,  total obs # ', num_obs
@@ -357,7 +357,7 @@ if (Use_AirepObs .eqv. .TRUE.) then
                           u_wind_type      = AIREP_U_WIND_COMPONENT, & 
                           v_wind_type      = AIREP_V_WIND_COMPONENT, &
                           temperature_type = AIREP_TEMPERATURE, &
-                          dew_point_type   = AIREP_DEW_POINT_TEMPERATURE, &
+                          dew_point_type   = AIREP_DEWPOINT, &
                           which_vert=VERTISPRESSURE, num_obs=num_obs, obs=obs, seq=seq)
    enddo
 !  print*,'Processed ', ob%num_airep, ' AIREP,  total obs # ', num_obs
@@ -373,7 +373,7 @@ if (Use_AmdarObs .eqv. .TRUE.) then
                           u_wind_type      = AMDAR_U_WIND_COMPONENT, &         
                           v_wind_type      = AMDAR_V_WIND_COMPONENT, &
                           temperature_type = AMDAR_TEMPERATURE, &
-                          dew_point_type   = AMDAR_DEW_POINT_TEMPERATURE, &
+                          dew_point_type   = AMDAR_DEWPOINT, &
                           which_vert=VERTISPRESSURE, num_obs=num_obs, obs=obs, seq=seq)
    enddo
 !  print*,'Processed ', ob%num_amdar, ' AMDAR,  total obs # ', num_obs
@@ -389,7 +389,7 @@ if (Use_PilotObs .eqv. .TRUE.) then
                           u_wind_type      = PILOT_U_WIND_COMPONENT, &
                           v_wind_type      = PILOT_V_WIND_COMPONENT, &
                           temperature_type = PILOT_TEMPERATURE, &
-                          dew_point_type   = PILOT_DEW_POINT_TEMPERATURE, &
+                          dew_point_type   = PILOT_DEWPOINT, &
                           which_vert=VERTISPRESSURE, num_obs=num_obs, obs=obs, seq=seq)
    enddo                  
 !  print*,'Processed ', ob%num_pilot, ' PILOT,  total obs # ', num_obs
@@ -405,7 +405,7 @@ if (Use_BogusObs .eqv. .TRUE.) then
                           u_wind_type      = BOGUS_U_WIND_COMPONENT, &
                           v_wind_type      = BOGUS_V_WIND_COMPONENT, &
                           temperature_type = BOGUS_TEMPERATURE, &
-                          dew_point_type   = BOGUS_DEW_POINT_TEMPERATURE, &
+                          dew_point_type   = BOGUS_DEWPOINT, &
                           which_vert=VERTISPRESSURE, num_obs=num_obs, obs=obs, seq=seq)
    enddo
 !  print*,'Processed ', ob%num_pilot, ' BOGUS,  total obs # ', num_obs

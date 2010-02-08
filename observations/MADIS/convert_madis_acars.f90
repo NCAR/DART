@@ -17,6 +17,9 @@ program convert_madis_acars
 !                         using the DART library routines.
 !
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
+!     modified Dec. 2008 Soyoung Ha and David Dowell, NCAR/MMM
+!     - added dewpoint as an output variable
+!     - added relative humidity as an output variable
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -29,7 +32,10 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
 use time_manager_mod, only : time_type, set_calendar_type, set_date, &
                              increment_time, get_time, GREGORIAN, operator(-)
 use     obs_kind_mod, only : ACARS_U_WIND_COMPONENT, ACARS_V_WIND_COMPONENT, &
-                             ACARS_TEMPERATURE, ACARS_SPECIFIC_HUMIDITY
+                             ACARS_TEMPERATURE, ACARS_SPECIFIC_HUMIDITY, &
+                             ACARS_DEWPOINT, ACARS_RELATIVE_HUMIDITY
+use dewpoint_obs_err_mod, only : dewpt_error_from_rh_and_temp, &
+                                 rh_error_from_dewpt_and_temp
 use       meteor_mod, only : pres_alt_to_pres, sat_vapor_pressure, &
                              specific_humidity, wind_dirspd_to_uv
 use      obs_err_mod, only : acars_wind_error, acars_temp_error, &
@@ -41,21 +47,29 @@ implicit none
 character(len=14),  parameter :: acars_netcdf_file = 'acars_input.nc'
 character(len=129), parameter :: acars_out_file    = 'obs_seq.acars'
 
+! the following logical parameters control which water-vapor variables appear in the output file
+! and whether to use the NCEP error or Lin and Hubbard (2004) moisture error model
+logical, parameter :: LH_err                    = .false.
+logical, parameter :: include_specific_humidity = .true.
+logical, parameter :: include_relative_humidity = .false.
+logical, parameter :: include_dewpoint          = .false.
+
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
 
 character (len=129) :: meta_data
 character (len=80)  :: name
 character (len=19)  :: datime
-integer :: rcode, ncid, varid, nobs, n, i, window_sec, dday, dsec, &
+integer :: rcode, ncid, varid, nobs, nvars, n, i, window_sec, dday, dsec, &
            oday, osec, nused, iyear, imonth, iday, ihour, imin, isec
 logical :: file_exist
-real(r8) :: palt_miss, tair_miss, relh_miss, wdir_miss, wspd_miss, uwnd, &
+real(r8) :: palt_miss, tair_miss, relh_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
             vwnd, qobs, qsat, oerr, window_hours, pres, qc, qerr
 
 integer,  allocatable :: tobs(:)
-real(r8), allocatable :: lat(:), lon(:), palt(:), tair(:), relh(:), &
+real(r8), allocatable :: lat(:), lon(:), palt(:), tair(:), relh(:), tdew(:), &
                          wdir(:), wspd(:), latu(:), lonu(:), palu(:)
+integer,  allocatable :: qc_palt(:), qc_tair(:), qc_relh(:), qc_tdew(:), qc_wdir(:), qc_wspd(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs
@@ -86,13 +100,23 @@ allocate(palt(nobs))  ;  allocate(tobs(nobs))
 allocate(tair(nobs))  ;  allocate(relh(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
 allocate(latu(nobs))  ;  allocate(lonu(nobs))
-allocate(palu(nobs))
+allocate(palu(nobs))  ;  allocate(tdew(nobs))
+
+nvars = 3
+if (include_specific_humidity) nvars = nvars + 1
+if (include_relative_humidity) nvars = nvars + 1
+if (include_dewpoint) nvars = nvars + 1
+
+allocate(qc_palt(nobs)) ;  allocate(qc_relh(nobs))
+allocate(qc_tair(nobs)) ;  allocate(qc_tdew(nobs))
+allocate(qc_wdir(nobs)) ;  allocate(qc_wspd(nobs))
+
 
 ! read the latitude array
 call check( nf90_inq_varid(ncid, "latitude", varid) )
 call check( nf90_get_var(ncid, varid, lat) )
 
-! read the latitude array
+! read the longitude array
 call check( nf90_inq_varid(ncid, "longitude", varid) )
 call check( nf90_get_var(ncid, varid, lon) )
 
@@ -106,10 +130,15 @@ call check( nf90_inq_varid(ncid, "temperature", varid) )
 call check( nf90_get_var(ncid, varid, tair) )
 call check( nf90_get_att(ncid, varid, '_FillValue', tair_miss) )
 
-! read the dew-point temperature array
+! read the relative humidity array
 call check( nf90_inq_varid(ncid, "downlinkedRH", varid) )
 call check( nf90_get_var(ncid, varid, relh) )
 call check( nf90_get_att(ncid, varid, '_FillValue', relh_miss) )
+
+! read the dew-point temperature array
+call check( nf90_inq_varid(ncid, "dewpoint", varid) )
+call check( nf90_get_var(ncid, varid, tdew) )
+call check( nf90_get_att(ncid, varid, '_FillValue', tdew_miss) )
 
 ! read the wind direction array
 call check( nf90_inq_varid(ncid, "windDir", varid) )
@@ -125,6 +154,25 @@ call check( nf90_get_att(ncid, varid, '_FillValue', wspd_miss) )
 call check( nf90_inq_varid(ncid, "timeObs", varid) )
 call check( nf90_get_var(ncid, varid, tobs) )
 
+! read the QC check for each variable
+call check( nf90_inq_varid(ncid, "altitudeQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_palt) )
+
+call check( nf90_inq_varid(ncid, "temperatureQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_tair) )
+
+call check( nf90_inq_varid(ncid, "downlinkedRHQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_relh) )
+
+call check( nf90_inq_varid(ncid, "dewpointQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_tdew) )
+
+call check( nf90_inq_varid(ncid, "windDirQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_wdir) )
+
+call check( nf90_inq_varid(ncid, "windSpeedQCR", varid) )
+call check( nf90_get_var(ncid, varid, qc_wspd) )
+
 call check( nf90_close(ncid) )
 
 !  either read existing obs_seq or create a new one
@@ -133,17 +181,17 @@ call init_obs(obs, num_copies, num_qc)
 inquire(file=acars_out_file, exist=file_exist)
 if ( file_exist ) then
 
-  call read_obs_seq(acars_out_file, 0, 0, 4*nobs, obs_seq)
+  call read_obs_seq(acars_out_file, 0, 0, nvars*nobs, obs_seq)
 
 else
 
-  call init_obs_sequence(obs_seq, num_copies, num_qc, 4*nobs)
+  call init_obs_sequence(obs_seq, num_copies, num_qc, nvars*nobs)
   do i = 1, num_copies
-    meta_data = 'NCEP BUFR observation'
+    meta_data = 'MADIS observation'
     call set_copy_meta_data(obs_seq, i, meta_data)
   end do
   do i = 1, num_qc
-    meta_data = 'NCEP QC index'
+    meta_data = 'Data QC'
     call set_qc_meta_data(obs_seq, i, meta_data)
   end do
 
@@ -154,6 +202,7 @@ obsloop: do n = 1, nobs
 
   ! determine if the observation is within the window
   time_obs = increment_time(comp_day0, mod(tobs(n),86400), tobs(n) / 86400)
+  ! note:  the "-" operator in the following command always returns a positive time difference
   call get_time((time_anal - time_obs), dsec, dday)
   if ( dsec > window_sec .or. dday > 0 ) cycle obsloop
   if ( lon(n) < 0.0_r8 )  lon(n) = lon(n) + 360.0_r8
@@ -165,11 +214,11 @@ obsloop: do n = 1, nobs
   end do
   qc = 1.0_r8
  
-  if ( palt(n) == palt_miss ) cycle obsloop  
+  if ( palt(n) == palt_miss .and. qc_palt(n) == 0 ) cycle obsloop  
   pres = pres_alt_to_pres(palt(n))
 
   ! add wind component data to obs. sequence
-  if ( wdir(n) /= wdir_miss .and. wspd(n) /= wspd_miss ) then
+  if ( wdir(n) /= wdir_miss .and. wspd(n) /= wspd_miss .and. qc_wdir(n) == 0 .and. qc_wspd(n) == 0 ) then
 
     call wind_dirspd_to_uv(wdir(n), wspd(n), uwnd, vwnd)
     oerr = acars_wind_error(pres * 0.01_r8)
@@ -187,7 +236,7 @@ obsloop: do n = 1, nobs
   end if
 
   ! add air temperature data to obs. sequence
-  if ( tair(n) /= tair_miss ) then 
+  if ( tair(n) /= tair_miss .and. qc_tair(n) == 0 ) then 
    
     oerr = acars_temp_error(pres * 0.01_r8)
     if ( tair(n) >= 180.0_r8 .and. tair(n) <= 330.0_r8 .and. oerr /= missing_r8 ) then
@@ -200,12 +249,19 @@ obsloop: do n = 1, nobs
 
   end if
 
-  ! add relative humidity data to obs. sequence, but as specific humidity
-  if ( tair(n) /= tair_miss .and. relh(n) /= relh_miss ) then
+  ! add specific humidity data to obs. sequence
+  if ( include_specific_humidity .and. tair(n) /= tair_miss .and. relh(n) /= relh_miss &
+       .and. tdew(n) /= tdew_miss .and. qc_tair(n) == 0 .and. qc_relh(n) == 0 &
+       .and. qc_tdew(n) == 0 ) then
 
     qsat = specific_humidity(sat_vapor_pressure(tair(n)), pres)
     qobs = qsat * relh(n)
-    qerr = acars_rel_hum_error(pres * 0.01_r8, tair(n), relh(n))
+    if ( LH_err ) then
+!GSR decided to get error from tdew and tair, while passing the rh from the read ob
+      qerr = rh_error_from_dewpt_and_temp(tair(n), tdew(n))
+    else 
+      qerr = acars_rel_hum_error(pres * 0.01_r8, tair(n), relh(n))
+    end if
     oerr = max(qerr * qsat, 0.0001_r8)
 
     if ( abs(qobs) < 0.1_r8 .and. qerr /= missing_r8 ) then
@@ -215,6 +271,36 @@ obsloop: do n = 1, nobs
       call append_obs_to_seq(obs_seq, obs)
 
     end if
+
+  end if
+
+  ! add relative humidity data to obs. sequence
+  if ( include_relative_humidity .and. tair(n) /= tair_miss .and. relh(n) /= relh_miss &
+       .and. tdew(n) /= tdew_miss .and. qc_tair(n) == 0 .and. qc_relh(n) == 0 &
+       .and. qc_tdew(n) == 0 ) then
+
+    if ( LH_err ) then
+!GSR decided to get error from tdew and tair, while passing the rh from the read ob
+      oerr = rh_error_from_dewpt_and_temp(tair(n), tdew(n))
+    else
+      oerr = acars_rel_hum_error(pres * 0.01_r8, tair(n), relh(n))
+    end if
+    
+    call create_obs_type(lat(n), lon(n), pres, VERTISPRESSURE, relh(n), &
+                         ACARS_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
+    call append_obs_to_seq(obs_seq, obs)
+
+  end if
+
+  ! add dew point temperature data to obs. sequence
+  if ( include_dewpoint .and. tdew(n) /= tdew_miss .and. tair(n) /= tair_miss &
+       .and. relh(n) /= relh_miss .and. qc_tair(n) == 0 .and. qc_relh(n) == 0 &
+       .and. qc_tdew(n) == 0 ) then
+
+    oerr = dewpt_error_from_rh_and_temp(tair(n), relh(n))
+    call create_obs_type(lat(n), lon(n), pres, VERTISPRESSURE, tdew(n), &
+                         ACARS_DEWPOINT, oerr, oday, osec, qc, obs)
+    call append_obs_to_seq(obs_seq, obs)
 
   end if
 

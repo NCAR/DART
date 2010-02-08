@@ -31,7 +31,7 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
                              KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE, &
                              KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE, &
                              KIND_VERTICAL_VELOCITY, KIND_RAINWATER_MIXING_RATIO, &
-                             KIND_DEW_POINT_TEMPERATURE, KIND_DENSITY, KIND_VELOCITY, &
+                             KIND_DEWPOINT, KIND_DENSITY, KIND_VELOCITY, &
                              KIND_1D_INTEGRAL, KIND_RADAR_REFLECTIVITY 
 
 use  obs_def_altimeter_mod, only: compute_altimeter

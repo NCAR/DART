@@ -17,6 +17,9 @@ program convert_madis_marine
 !                          obs_seq file using the DART library routines.
 !
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
+!     modified Dec. 2008 Soyoung Ha and David Dowell, NCAR/MMM
+!     - added dewpoint as an output variable
+!     - added relative humidity as an output variable
 !
 !
 !     modified to include QC_flag check (Soyoung Ha, NCAR/MMM, 08-04-2009)
@@ -32,14 +35,18 @@ use      obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                                   append_obs_to_seq, init_obs_sequence, get_num_obs, &
                                   set_copy_meta_data, set_qc_meta_data
 use            meteor_mod, only : sat_vapor_pressure, specific_humidity, & 
-                                  wind_dirspd_to_uv, pres_alt_to_pres
+                                  wind_dirspd_to_uv, pres_alt_to_pres, &
+                                  temp_and_dewpoint_to_rh
 use           obs_err_mod, only : fixed_marine_temp_error, fixed_marine_rel_hum_error, &
                                   fixed_marine_wind_error, fixed_marine_pres_error, &
                                   moving_marine_temp_error, moving_marine_rel_hum_error, &
                                   moving_marine_wind_error, moving_marine_pres_error
+use  dewpoint_obs_err_mod, only : dewpt_error_from_rh_and_temp, &
+                                  rh_error_from_dewpt_and_temp
 use          obs_kind_mod, only : MARINE_SFC_U_WIND_COMPONENT, MARINE_SFC_V_WIND_COMPONENT, &
-                                  MARINE_SFC_TEMPERATURE, MARINE_SFC_SPECIFIC_HUMIDITY, &
-                                  MARINE_SFC_ALTIMETER
+                                  MARINE_SFC_TEMPERATURE, MARINE_SFC_SPECIFIC_HUMIDITY,     &
+                                  MARINE_SFC_ALTIMETER, MARINE_SFC_DEWPOINT,   &
+                                  MARINE_SFC_RELATIVE_HUMIDITY
 use obs_def_altimeter_mod, only : compute_altimeter
 use                netcdf
 
@@ -47,6 +54,13 @@ implicit none
 
 character(len=15),  parameter :: marine_netcdf_file = 'marine_input.nc'
 character(len=129), parameter :: marine_out_file    = 'obs_seq.marine_sfc'
+
+! the following logical parameters control which water-vapor variables appear in the output file
+! and whether to use the NCEP error or Lin and Hubbard (2004) moisture error model
+logical, parameter :: LH_err                    = .false.
+logical, parameter :: include_specific_humidity = .true.
+logical, parameter :: include_relative_humidity = .false.
+logical, parameter :: include_dewpoint          = .false.
 
 integer, parameter   :: dsecobs = 2700,   &   ! observation window
                         num_copies = 1,   &   ! number of copies in sequence
@@ -57,11 +71,11 @@ real(r8), parameter :: def_elev = 0.0_r8
 character (len=129) :: meta_data
 character (len=80)  :: name
 character (len=19)  :: datestr
-integer :: rcode, ncid, varid, nobs, n, i, dday, dsec, oday, &
+integer :: rcode, ncid, varid, nobs, nvars, n, i, dday, dsec, oday, &
            osec, nused, iyear, imonth, iday, ihour, imin, isec
 logical :: file_exist
 real(r8) :: sfcp_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
-            vwnd, altim, palt, oerr, qobs, qerr, qsat, slp_miss, elev_miss, qc
+            vwnd, altim, palt, oerr, qobs, qerr, qsat, qobserr, rh, slp_miss, elev_miss, qc
 
 integer,  allocatable :: tobs(:), plid(:)
 real(r8), allocatable :: lat(:), lon(:), elev(:), sfcp(:), tair(:), slp(:), & 
@@ -98,6 +112,11 @@ allocate(sfcp(nobs))  ;  allocate(slp(nobs))
 allocate(tair(nobs))  ;  allocate(tdew(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
 allocate(tobs(nobs))
+
+nvars = 4
+if (include_specific_humidity) nvars = nvars + 1
+if (include_relative_humidity) nvars = nvars + 1
+if (include_dewpoint) nvars = nvars + 1
 
 allocate(qc_sfcp(nobs)) ;  allocate(qc_slp(nobs))
 allocate(qc_tair(nobs)) ;  allocate(qc_tdew(nobs))
@@ -181,17 +200,17 @@ call init_obs(obs, num_copies, num_qc)
 inquire(file=marine_out_file, exist=file_exist)
 if ( file_exist ) then
 
-  call read_obs_seq(marine_out_file, 0, 0, 5*nobs, obs_seq)
+  call read_obs_seq(marine_out_file, 0, 0, nvars*nobs, obs_seq)
 
 else
 
-  call init_obs_sequence(obs_seq, num_copies, num_qc, 5*nobs)
+  call init_obs_sequence(obs_seq, num_copies, num_qc, nvars*nobs)
   do i = 1, num_copies
-    meta_data = 'NCEP BUFR observation'
+    meta_data = 'MADIS observation'
     call set_copy_meta_data(obs_seq, i, meta_data)
   end do
   do i = 1, num_qc
-    meta_data = 'NCEP QC index'
+    meta_data = 'Data QC'
     call set_qc_meta_data(obs_seq, i, meta_data)
   end do
 
@@ -299,17 +318,22 @@ obsloop: do n = 1, nobs
 
   end if
 
-  ! add dew-point temperature data to obs. sequence, but as specific humidity
-  if ( tair(n) /= tair_miss .and. tdew(n) /= tdew_miss .and. sfcp(n) /= sfcp_miss ) then
-
-   if ( qc_tair(n) == 0 .and. qc_tdew(n) == 0 .and. qc_sfcp(n) == 0 ) then
+  ! add specific humidity to obs. sequence
+  if ( include_specific_humidity .and. tair(n) /= tair_miss .and. tdew(n) /= tdew_miss &
+       .and. sfcp(n) /= sfcp_miss .and. qc_tair(n) == 0 .and. qc_tdew(n) == 0 .and. qc_sfcp(n) == 0 ) then
 
     qobs = specific_humidity(sat_vapor_pressure(tdew(n)), sfcp(n))
     qsat = specific_humidity(sat_vapor_pressure(tair(n)), sfcp(n))
-    if ( plid(n) == 0 ) then
-      oerr = fixed_marine_rel_hum_error(palt, tair(n), qobs / qsat)
+    if ( LH_err ) then
+      qerr = rh_error_from_dewpt_and_temp(tair(n), tdew(n))
     else
-      oerr = moving_marine_rel_hum_error(palt, tair(n), qobs / qsat)
+      if ( plid(n) == 0 ) then
+!GSR - there was a bug here with the rh error assigned to oerr instead of qerr - qerr not defined
+! for calc below
+        qerr = fixed_marine_rel_hum_error(palt, tair(n), qobs / qsat)
+      else
+        qerr = moving_marine_rel_hum_error(palt, tair(n), qobs / qsat)
+      end if
     end if
     oerr = max(qerr * qsat, 0.0001_r8)
 
@@ -322,6 +346,39 @@ obsloop: do n = 1, nobs
     end if
 
   end if
+
+  ! add relative humidity data to obs. sequence
+  if ( include_relative_humidity .and. tdew(n) /= tdew_miss .and. tair(n) /= tair_miss &
+       .and. qc_tair(n) == 0 .and. qc_tdew(n) == 0 ) then
+
+    rh = temp_and_dewpoint_to_rh(tair(n), tdew(n))
+    if ( LH_err ) then
+      oerr = rh_error_from_dewpt_and_temp(tair(n), tdew(n))
+    else
+      if ( plid(n) == 0 ) then
+        oerr = fixed_marine_rel_hum_error(palt, tair(n), rh)
+      else
+        oerr = moving_marine_rel_hum_error(palt, tair(n), rh)
+      end if
+    end if
+ 
+    call create_obs_type(lat(n), lon(n), def_elev, VERTISSURFACE, rh, &
+                         MARINE_SFC_RELATIVE_HUMIDITY, oerr, &
+                         oday, osec, qc, obs)
+    call append_obs_to_seq(obs_seq, obs)
+
+  end if
+
+  ! add dew-point temperature data to obs. sequence
+  if ( include_dewpoint .and. tdew(n) /= tdew_miss .and. tair(n) /= tair_miss &
+       .and. qc_tair(n) == 0 .and. qc_tdew(n) == 0 ) then
+
+    rh = temp_and_dewpoint_to_rh(tair(n), tdew(n))
+    oerr = dewpt_error_from_rh_and_temp(tair(n), rh)
+    call create_obs_type(lat(n), lon(n), def_elev, VERTISSURFACE, tdew(n), &
+                         MARINE_SFC_DEWPOINT, oerr, &
+                         oday, osec, qc, obs)
+    call append_obs_to_seq(obs_seq, obs)
 
   end if
 

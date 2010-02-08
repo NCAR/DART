@@ -15,12 +15,14 @@ use        types_mod, only : r8, deg2rad
 implicit none
 private
 
-public :: invert_altimeter,   &
-          pres_alt_to_pres,   & 
-          sat_vapor_pressure, & 
-          specific_humidity,  &
-          theta_to_temp,      & 
-          wind_dirspd_to_uv
+public :: invert_altimeter,        &
+          pres_alt_to_pres,        & 
+          sat_vapor_pressure,      & 
+          specific_humidity,       &
+          theta_to_temp,           & 
+          wind_dirspd_to_uv,       &
+          rh_and_temp_to_dewpoint, &
+          temp_and_dewpoint_to_rh
 
 real(r8), parameter :: grav    = 9.81_r8,      & ! gravitational constant
                        Cp      = 1004.5_r8,    &
@@ -30,12 +32,13 @@ real(r8), parameter :: grav    = 9.81_r8,      & ! gravitational constant
                        R_earth = 6370.0_r8,    &
                        Pref    = 100000.0,     & ! reference pressure
                        Pralt   = 101325.0,     & ! altimeter reference P
-                       Talt    = 288.15,       & ! attimeter reference T
+                       Talt    = 288.15,       & ! altimeter reference T
                        es0C    = 611.0_r8,     & ! vapor pressure at 0 C (Pa)
-                       Tfrez   = 273.15_r8,    & ! water freezing point
-                       RvRd    = Rv/Rd,        & ! Rd/Rv
+                       Tfrez   = 273.15_r8,    & ! water freezing point (K)
+                       RvRd    = Rv/Rd,        & ! Rv/Rd
+                       RdRv    = Rd/Rv,        & ! Rd/Rv  added 11/2009
                        kappa   = Rd/Cp,        & ! kappa for pot. temp
-                       dTdzsta =0.0065          ! standard atmosphere
+                       dTdzsta =0.0065           ! standard atmosphere lapse rate K/m
 
 contains
 
@@ -108,7 +111,7 @@ function sat_vapor_pressure(tmpk)
 real(r8), intent(in) :: tmpk
 
 real(r8) :: sat_vapor_pressure
-
+! Clausius-Clapeyron w/ constant Lv in Pa
 sat_vapor_pressure = es0C * exp((Lvap/Rv)*(1.0_r8/Tfrez - 1.0_r8/tmpk))
 
 return
@@ -132,7 +135,8 @@ real(r8), intent(in) :: vapor_pres, pres
 
 real(r8) :: specific_humidity
 
-specific_humidity = (vapor_pres / (pres-vapor_pres)) / RvRd
+! 11/2009 changed to Emanuel (1994) eqn 4.1.4
+ specific_humidity = (RdRv * vapor_pres) / (pres - vapor_pres*(1.0_r8-RdRv))
 
 return
 end function specific_humidity
@@ -183,5 +187,111 @@ vwnd = -wspd * sin(deg2rad * (90.0_r8 + wdir))
 
 return
 end subroutine wind_dirspd_to_uv
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   sat_vapor_press_bolton - function that uses Bolton's approximation to
+!                            compute saturation vapor pressure given
+!                            temperature.
+!
+!   reference:  Bolton 1980, MWR, 1046-1053
+!
+!    sat_vapor_press_bolton - saturation vapor pressure (Pa)
+!    tmpk                   - temperature (K)
+!
+!     created Dec. 2008 David Dowell, NCAR/MMM
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function sat_vapor_press_bolton(tmpk)
+
+real(r8)             :: sat_vapor_press_bolton
+real(r8), intent(in) :: tmpk
+
+real(r8)             :: tmpc               ! temperature (Celsius)
+
+tmpc = tmpk - Tfrez
+if ( tmpc <= -200.0_r8 ) then
+  print*,'sat_vapor_press_bolton:  tmpc too low ',tmpc
+  stop
+end if
+sat_vapor_press_bolton = es0C * exp( 17.67_r8 * tmpc / (tmpc + 243.5_r8) )
+
+return
+end function sat_vapor_press_bolton
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   temp_and_dewpoint_to_rh - function that computes the relative humidity
+!                             given temperature and dewpoint
+!
+!    temp_and_dewpoint_to_rh - relative humidity (0.00 - 1.00)
+!    tmpk                    - temperature (Kelvin)
+!    dptk                    - dewpoint (Kelvin)
+!
+!     created Dec. 2008 David Dowell, NCAR/MMM
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function temp_and_dewpoint_to_rh(tmpk, dptk)
+
+real(r8)             :: temp_and_dewpoint_to_rh
+real(r8), intent(in) :: tmpk
+real(r8), intent(in) :: dptk
+
+real(r8)             :: e                  ! vapor pressure (Pa)
+real(r8)             :: es                 ! saturation vapor pressure (Pa)
+
+e = sat_vapor_press_bolton(dptk)
+es = sat_vapor_press_bolton(tmpk)
+
+temp_and_dewpoint_to_rh = e / es
+
+if (temp_and_dewpoint_to_rh > 1.00_r8) then
+  print*,'rh = ', temp_and_dewpoint_to_rh, ', resetting to 1.00'
+  temp_and_dewpoint_to_rh = 1.00_r8
+end if
+
+return
+end function temp_and_dewpoint_to_rh
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   rh_and_temp_to_dewpoint - function that computes the dewpoint
+!                             given relative humidity and temperature
+!
+!    rh_and_temp_to_dewpoint - dewpoint (Kelvin)
+!    rh                      - relative humidity (0.00 - 1.00)
+!    tmpk                    - temperature (Kelvin)
+!
+!     created Dec. 2008 David Dowell, NCAR/MMM
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function rh_and_temp_to_dewpoint(rh, tmpk)
+
+real(r8)             :: rh_and_temp_to_dewpoint
+real(r8), intent(in) :: rh
+real(r8), intent(in) :: tmpk
+
+real(r8)             :: e                  ! vapor pressure (Pa)
+real(r8)             :: es                 ! saturation vapor pressure (Pa)
+real(r8)             :: dptc               ! dptc (Celsius)
+
+if ( ( rh <= 0.00_r8 ) .or. ( rh > 1.00_r8 ) ) then
+  print*,'rh_and_temp_to_dewpoint:  bad rh ',rh
+  stop
+end if
+if ( rh <= 0.01_r8 ) then
+  print*,'rh_and_temp_to_dewpoint: low rh ',rh
+end if
+
+es = sat_vapor_press_bolton(tmpk)
+e = rh * es
+
+dptc = 243.5_r8 / (17.67_r8 / log(e/es0C) - 1.0_r8)
+
+rh_and_temp_to_dewpoint = dptc + Tfrez
+
+return
+end function rh_and_temp_to_dewpoint
+
 
 end module meteor_mod

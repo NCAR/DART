@@ -17,6 +17,9 @@ program convert_madis_surface
 !                           obs_seq file using the DART library routines.
 !
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
+!     modified Dec. 2008 Soyoung Ha and David Dowell, NCAR/MMM
+!     - added dewpoint as an output variable
+!     - added relative humidity as an output variable
 !
 !     modified to include QC_flag check (Soyoung Ha, NCAR/MMM, 08-04-2009)
 !
@@ -32,11 +35,15 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                              append_obs_to_seq, init_obs_sequence, get_num_obs, & 
                              set_copy_meta_data, set_qc_meta_data
 use       meteor_mod, only : sat_vapor_pressure, specific_humidity, & 
-                             wind_dirspd_to_uv, invert_altimeter, pres_alt_to_pres
+                             wind_dirspd_to_uv, invert_altimeter, pres_alt_to_pres, &
+                             temp_and_dewpoint_to_rh
 use      obs_err_mod, only : land_temp_error, land_wind_error, &
                              land_pres_error, land_rel_hum_error
+use dewpoint_obs_err_mod, only : dewpt_error_from_rh_and_temp, &
+                                 rh_error_from_dewpt_and_temp
 use     obs_kind_mod, only : LAND_SFC_U_WIND_COMPONENT, LAND_SFC_V_WIND_COMPONENT, &
                              LAND_SFC_TEMPERATURE, LAND_SFC_SPECIFIC_HUMIDITY, & 
+                             LAND_SFC_DEWPOINT, LAND_SFC_RELATIVE_HUMIDITY, &
                              LAND_SFC_ALTIMETER                
 use           netcdf
 
@@ -49,6 +56,13 @@ character(len=16),  parameter :: surface_netcdf_file = 'surface_input.nc'
 character(len=129), parameter :: surface_out_file    = 'obs_seq.land_sfc'
 logical,            parameter :: exclude_special     = .true.
 
+! the following logical parameters control which water-vapor variables appear in the output file
+! and whether to use the NCEP error or Lin and Hubbard (2004) moisture error model
+logical, parameter :: LH_err                    = .false.
+logical, parameter :: include_specific_humidity = .true.
+logical, parameter :: include_relative_humidity = .false.
+logical, parameter :: include_dewpoint          = .false.
+
 integer, parameter   :: dsecobs    = 420, &   ! observation window
                         num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
@@ -57,11 +71,11 @@ character (len=129) :: meta_data
 character (len=80)  :: name
 character (len=19)  :: datestr
 character (len=5)   :: rtype
-integer :: rcode, ncid, varid, nobs, n, i, oday, osec, dday, &
+integer :: rcode, ncid, varid, nobs, nvars, n, i, oday, osec, dday, &
            dsec, nused, iyear, imonth, iday, ihour, imin, isec
 logical :: file_exist
 real(r8) :: alti_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
-            vwnd, palt, qobs, qsat, oerr, pres, qerr, qc
+            vwnd, palt, qobs, qsat, rh, oerr, pres, qerr, qc
 
 integer,  allocatable :: tobs(:)
 real(r8), allocatable :: lat(:), lon(:), elev(:), alti(:), tair(:), & 
@@ -97,6 +111,11 @@ allocate(elev(nobs))  ;  allocate(alti(nobs))
 allocate(tair(nobs))  ;  allocate(tdew(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
 allocate(tobs(nobs))
+
+nvars = 4
+if (include_specific_humidity) nvars = nvars + 1
+if (include_relative_humidity) nvars = nvars + 1
+if (include_dewpoint) nvars = nvars + 1
 
 allocate(qc_alti(nobs))
 allocate(qc_tair(nobs)) ;  allocate(qc_tdew(nobs))
@@ -165,11 +184,11 @@ call init_obs(obs, num_copies, num_qc)
 inquire(file=surface_out_file, exist=file_exist)
 if ( file_exist ) then
 
-  call read_obs_seq(surface_out_file, 0, 0, 5*nobs, obs_seq)
+  call read_obs_seq(surface_out_file, 0, 0, nvars*nobs, obs_seq)
 
 else
 
-  call init_obs_sequence(obs_seq, num_copies, num_qc, 5*nobs)
+  call init_obs_sequence(obs_seq, num_copies, num_qc, nvars*nobs)
   do i = 1, num_copies
     meta_data = 'NCEP BUFR observation'
     call set_copy_meta_data(obs_seq, i, meta_data)
@@ -248,14 +267,17 @@ obsloop: do n = 1, nobs
 
   end if
 
-  ! add dew-point temperature data to text file, but as specific humidity
-  if ( tair(n) /= tair_miss .and. tdew(n) /= tdew_miss .and. alti(n) /= alti_miss ) then
-
-   if ( qc_tair(n) == 0 .and. qc_tdew(n) == 0 .and. qc_alti(n) == 0 ) then
+  ! add specific humidity to text file
+  if ( include_specific_humidity .and. tair(n) /= tair_miss .and. tdew(n) /= tdew_miss & 
+       .and. alti(n) /= alti_miss .and. qc_tair(n) == 0 .and. qc_tdew(n) == 0 .and. qc_alti(n) == 0 ) then
 
     qobs = specific_humidity(sat_vapor_pressure(tdew(n)), pres * 100.0_r8)
     qsat = specific_humidity(sat_vapor_pressure(tair(n)), pres * 100.0_r8)
-    qerr = land_rel_hum_error(pres, tair(n), qobs / qsat)
+    if (LH_err ) then
+      qerr = rh_error_from_dewpt_and_temp(tair(n), tdew(n))
+    else
+      qerr = land_rel_hum_error(pres, tair(n), qobs / qsat)
+    end if
     oerr = max(qerr * qsat, 0.0001_r8)
 
     if ( qobs > 0.0_r8 .and. qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
@@ -266,7 +288,35 @@ obsloop: do n = 1, nobs
 
     end if
 
-   end if
+  end if
+
+  ! add relative humidity data to text file
+  if ( include_relative_humidity .and. tdew(n) /= tdew_miss .and. tair(n) /= tair_miss &
+       .and. qc_tair(n) == 0 .and. qc_tdew(n) == 0 ) then
+
+    rh = temp_and_dewpoint_to_rh(tair(n), tdew(n))
+    if (LH_err ) then
+      oerr = rh_error_from_dewpt_and_temp(tair(n), tdew(n))
+    else
+      oerr = land_rel_hum_error(pres, tair(n), rh)    
+    end if
+    call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, rh, &
+                         LAND_SFC_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
+    call append_obs_to_seq(obs_seq, obs)
+
+  end if
+
+  ! add dew-point temperature data to text file
+  if ( include_dewpoint .and. tdew(n) /= tdew_miss .and. tair(n) /= tair_miss  &
+       .and. qc_tair(n) == 0 .and. qc_tdew(n) == 0 ) then
+
+    rh = temp_and_dewpoint_to_rh(tair(n), tdew(n))
+    oerr = dewpt_error_from_rh_and_temp(tair(n), rh)
+    call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, tdew(n), &
+                         LAND_SFC_DEWPOINT, oerr, oday, osec, qc, obs)
+    call append_obs_to_seq(obs_seq, obs)
+
+!    print*, 'temp (C), rh (%), oerr:  ', tair(n)-273.15_r8, rh*100.0_r8, oerr
 
   end if
 

@@ -63,7 +63,7 @@ integer, parameter, public :: &
     KIND_PRESSURE                    = 6, &
     KIND_VERTICAL_VELOCITY           = 7, &
     KIND_RAINWATER_MIXING_RATIO      = 8, &
-    KIND_DEW_POINT_TEMPERATURE       = 9, &
+    KIND_DEWPOINT                    = 9, &
     KIND_DENSITY                     = 10, &
     KIND_VELOCITY                    = 11, &
     KIND_RADAR_REFLECTIVITY          = 12, &
@@ -290,7 +290,7 @@ obs_kind_names( 5) = obs_kind_type(KIND_SPECIFIC_HUMIDITY, 'KIND_SPECIFIC_HUMIDI
 obs_kind_names( 6) = obs_kind_type(KIND_PRESSURE, 'KIND_PRESSURE')
 obs_kind_names( 7) = obs_kind_type(KIND_VERTICAL_VELOCITY, 'KIND_VERTICAL_VELOCITY')
 obs_kind_names( 8) = obs_kind_type(KIND_RAINWATER_MIXING_RATIO, 'KIND_RAINWATER_MIXING_RATIO')
-obs_kind_names( 9) = obs_kind_type(KIND_DEW_POINT_TEMPERATURE, 'KIND_DEW_POINT_TEMPERATURE')
+obs_kind_names( 9) = obs_kind_type(KIND_DEWPOINT, 'KIND_DEWPOINT')
 obs_kind_names(10) = obs_kind_type(KIND_DENSITY, 'KIND_DENSITY')
 obs_kind_names(11) = obs_kind_type(KIND_VELOCITY, 'KIND_VELOCITY')
 obs_kind_names(12) = obs_kind_type(KIND_RADAR_REFLECTIVITY, 'KIND_RADAR_REFLECTIVITY')
