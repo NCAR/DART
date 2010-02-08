@@ -17,7 +17,7 @@ use    utilities_mod,     only : initialize_utilities, register_module, error_ha
                                  find_namelist_in_file, check_namelist_read,           &
                                  E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp,          &
                                  do_nml_file, do_nml_term, logfileunit, &
-                                 open_file, close_file
+                                 open_file, close_file, finalize_utilities
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), print_time
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                 &
                                  get_obs_from_key, set_copy_meta_data, get_obs_def,         &
@@ -34,8 +34,7 @@ use  assim_model_mod,     only : static_init_assim_model, get_model_size,       
                                  aget_initial_condition, netcdf_file_type, init_diag_output, &
                                  aoutput_diagnostics, finalize_diag_output
    
-use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities, &
-                                 task_count, task_sync
+use mpi_utilities_mod,    only : task_count, task_sync
 
 use   random_seq_mod,     only : random_seq_type, init_random_seq, random_gaussian
 use ensemble_manager_mod, only : init_ensemble_manager, write_ensemble_restart,              &
@@ -437,9 +436,7 @@ call timestamp_message('Perfect_model done')
 !call error_handler(E_MSG,'perfect_main','FINISHED',source,revision,revdate)
 
 ! closes the log file.
-call timestamp(string1=source,string2=revision,string3=revdate,pos='end')
-
-call finalize_mpi_utilities()
+call finalize_utilities('perfect_model_obs')
 
 end subroutine perfect_main
 
@@ -447,8 +444,9 @@ end subroutine perfect_main
 
 subroutine perfect_initialize_modules_used()
 
-! Fire up mpi so we can use the ensemble manager
-call initialize_mpi_utilities('Perfect_model_obs')
+! Standard initialization (mpi not needed to use ensemble manager
+! since we are enforcing that this run as a single task).
+call initialize_utilities('perfect_model_obs')
 
 ! Initialize modules used that require it
 call register_module(source,revision,revdate)
@@ -475,14 +473,26 @@ call init_ensemble_manager(ens_handle, 1, model_size, 1)
 
 ! If not start_from_restart, use model to get ics for state and time
 if(.not. start_from_restart) then
+   call error_handler(E_MSG,'perfect_read_restart:', &
+         'Using code in model_mod to initialize ensemble')
+
    call aget_initial_condition(ens_handle%time(1), ens_handle%vars(:, 1))
 else
+   call error_handler(E_MSG,'perfect_read_restart:', &
+         'Reading in initial condition/restart data from file')
 
    ! Read in initial conditions from restart file
    if(init_time_days >= 0) then
       time1 = set_time(init_time_seconds, init_time_days)
       call read_ensemble_restart(ens_handle, 1, 1, &
          start_from_restart, restart_in_file_name, time1, force_single_file = .true.)
+
+      write(msgstring, '(A)') 'By namelist control, ignoring time found in restart file.'
+      call error_handler(E_MSG,'perfect_read_restart:',msgstring,source,revision,revdate)
+      write(msgstring, '(A,I6,1X,I5)') 'Setting initial days, seconds to ', &
+         init_time_days, init_time_seconds
+      call error_handler(E_MSG,'perfect_read_restart:',msgstring,source,revision,revdate)
+
    else
       call read_ensemble_restart(ens_handle, 1, 1, &
          start_from_restart, restart_in_file_name, force_single_file = .true.)
