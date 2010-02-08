@@ -98,6 +98,25 @@ if(.not. namelist_initialized) then
    if (do_nml_file()) write(nmlfileunit,nml=cov_cutoff_nml)
    if (do_nml_term()) write(     *     ,nml=cov_cutoff_nml)
 
+
+   if (do_output()) then
+      select case (select_localization)
+         case (1)
+            call error_handler(E_MSG,'comp_cov_factor:', &
+               'Standard Gaspari Cohn localization selected')
+         case (2)
+            call error_handler(E_MSG,'comp_cov_factor:', &
+               'Boxcar localization selected')
+         case (3)
+            call error_handler(E_MSG,'comp_cov_factor:', &
+               'Ramped localization selected')
+         case default
+            call error_handler(E_ERR,'comp_cov_factor', &
+               'Illegal value of "select_localization" in cov_cutoff_mod namelist', &
+                source, revision, revdate )
+      end select
+   endif
+
 endif
 !---------------------------------------------------------
 
