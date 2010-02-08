@@ -1,4 +1,8 @@
 /*
+ * DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+ * provided by UCAR, "as is", without charge, subject to all terms of use at
+ * http://www.image.ucar.edu/DAReS/DART/DART_download
+ *
  * convert gregorian days/seconds to and from year/month/day/hr/min/sec
  *
  * usage:  gregorian_time  days  seconds
@@ -7,11 +11,16 @@
  * nsc 12sep2007
  *     17oct2007
  *     20nov2007
+ *
+ * <next few lines under version control, do not edit>
+ * $URL$
+ * $Id$
+ * $Revision$
+ * $Date$
  */
 
 #include <stdio.h>
 #include <stdlib.h>
-
 
 /* the start of gregorian numbered days */
 #define BASE_YEAR 1601

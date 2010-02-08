@@ -1,3 +1,9 @@
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 This directory contains the larger data files needed to run WRF/DART test
 cases.  The rest of the files -- namelists, scripts, etc -- are in the DART
 subversion repository, in the models/wrf/regression directory.  Instructions

@@ -1,3 +1,9 @@
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 The DART namelist is a subset of the COAMPS forecast namelist(s).  To
 avoid having to allocate space for all the variables in the full
 namelist, we run a program that reads in the full COAMPS namelist file

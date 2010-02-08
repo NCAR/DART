@@ -1,6 +1,8 @@
 # Makefile for Fortran QuikSCAT HDF readers
 # Ted Lungu
 #
+# DART $Id$
+#
 # HDF libraries used to link the sample program
 HDFDIR= /usr/local/hdf
 HDFDIR= /contrib/hdf5-1.8.2_intel-10.1-64

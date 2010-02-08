@@ -1,3 +1,9 @@
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+
 This README was last updated June 25, 2004 by Jim Hansen.  The
 Lorenz 04 model was originally implemented in the Fiji release of
 DART.  This README has been modified for the Guam release.
@@ -359,3 +365,7 @@ clf;plot(ee)
 xlabel('obs steps');ylabel('z(10)')
 title('analysis ensemble of z(10) as a function of time')
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

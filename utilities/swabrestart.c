@@ -143,6 +143,8 @@
  * ideas for additional functionality:  
  * - could add printout at end of ensemble count found in file.
  *
+ * DART $Id$
+ *
  */
 
 #include <stdlib.h>

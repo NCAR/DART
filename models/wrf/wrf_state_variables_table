@@ -1,3 +1,9 @@
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 This table contains the description of a value, followed by the line(s)
 that should be added to the DART input.nml namelist &model_nml, 
 'wrf_state_variables' list.  All items must be strings.  The 5 columns are:

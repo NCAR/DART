@@ -1,3 +1,9 @@
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 This README was last updated July 14, 2004 by Jim Hansen.  
 It is relevant for the Guam release of DART.
 
@@ -699,6 +705,3 @@ h=plot(irad(:,1),irad(:,2),'k');
 set(h,'LineWidth',2)
 h=plot(orad(:,1),orad(:,2),'k');
 set(h,'LineWidth',2)
-
-
-

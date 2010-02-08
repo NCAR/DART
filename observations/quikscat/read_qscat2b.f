@@ -63,6 +63,9 @@ c
 c   7/13/2006 sdrad_rain_rate and adapted code for 12.5 km product reading
 C             Ted Lungu
 c  Copyright 1999-2006, California Institute of Technology
+c
+c  DART $Id$
+c
 c====================================================================
 
 c     Set Parameters

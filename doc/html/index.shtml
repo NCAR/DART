@@ -31,6 +31,7 @@
    <td width="40" valign="top">&nbsp;</td><!-- provides a little space -->
    <td valign="middle">
    <H1 align="center">The Data Assimilation Research Testbed -- DART</H1>
+
    <center><img src="DARTspaghettiSquare.gif" 
    alt="cool spaghetti plot of North America demonstrating the uncertainty among the
         ensemble members"><br>
@@ -44,6 +45,7 @@
 
    <h2 align="center">Welcome to the home page for the
    <b>D</b>ata <b>A</b>ssimilation <b>R</b>esearch <b>T</b>estbed (<b>DART</b>).</h2>
+   <!-- do not edit --><P>$Id$</P>
 
    <A NAME="index"></A>
    <h2>Overview Topics</h2>

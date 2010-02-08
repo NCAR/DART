@@ -1,3 +1,9 @@
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+
 Contained is the model_mod.f90 file for use with the Ikeda map, a 2D chaotic 
 map useful for visualization of data assimilation updating directly in state
 space.  There are three parameters:  a, b, & mu.  The state is 2D, x = [X Y].
@@ -64,4 +70,7 @@ not to include "clutter" in the version going into the repository.
 
 The extra routines are just that -- so what you gave me was perfect. Thanks!
 
-
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

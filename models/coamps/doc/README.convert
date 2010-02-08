@@ -1,3 +1,9 @@
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 In order to use the COAMPS files with DART in an asynchronous run, we
 have to be able to convert the files dumped by COAMPS into a format
 readable by DART and vice versa.  This requires several things:

@@ -1,4 +1,8 @@
 ###########################################################
+#
+# DART $Id$
+#
+###########################################################
 #ARCH Darwin Intel (e.g., juniper), ifort compiler (single-threaded, no nesting)
 #
 OMP             =

@@ -9,6 +9,8 @@
 # To permanently change options, change the settings for your platform
 # in the file arch/configure.defaults then rerun configure.
 #
+# DART $Id$
+#
 SHELL           =       /bin/sh
 DEVTOP          =       `pwd`
 LIBINCLUDE      =       .

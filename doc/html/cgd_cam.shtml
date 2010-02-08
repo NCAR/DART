@@ -15,11 +15,9 @@
       <!--#include virtual="../../common/javascript.html" -->
 </head>
 <body>
+<A NAME="top"></A>
 
 <!--#include virtual="header.html" -->
-<!-- version tag follows, do not edit --><P>$Id$</P>
-
-<A NAME="top"></A>
 
 <TABLE width="95%" align="center" border=0 cellpadding="0" cellspacing="0">
    <TR>
@@ -32,6 +30,13 @@
    <td width="40" valign="top">&nbsp;</td><!-- provides a little space -->
 
    <TD valign="top"><!-- Right HAND SIDE COLUMN -->
+
+      <center>
+      <A HREF="#Legalese">TERMS OF USE</A>
+      </center>
+
+      <H1>An overview of DART and CAM</H1>
+      <!-- do not edit --><P>$Id$</P>
 
        <P>
        DAReS has successfully incorporated <strong>CAM</strong> --

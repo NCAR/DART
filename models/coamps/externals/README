@@ -1,3 +1,9 @@
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 This externals directory is created to handle DART now being
 distributed via subversion - this means that we will no longer be able
 to track local revisions outside the COAMPS subdirectory.

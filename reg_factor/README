@@ -1,3 +1,9 @@
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 The module reg_factor_mod is an attempt to deal with sampling errors
 in ensemble filters using a hierarchical Monte Carlo approach in which
 a group of ensembles is used and the group's sample of the regression
