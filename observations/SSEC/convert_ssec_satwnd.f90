@@ -1,3 +1,15 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+program convert_ssec_satwnd
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !   convert_ssec_satwnd - program that reads ASCII satellite wind data 
@@ -7,7 +19,6 @@
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-program convert_ssec_satwnd
 
 use        types_mod, only : r8, missing_r8
 use    utilities_mod, only : get_unit

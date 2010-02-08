@@ -1,17 +1,16 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2007, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-
-! this latest addition has select by list of obs types.
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 program obs_sequence_tool
 
 ! <next few lines under version control, do not edit>
 ! $URL$
 ! $Id$
-! $Revision
-! $Date
+! $Revision$
+! $Date$
+
+! this latest addition has select by list of obs types.
 
 use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
 use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
@@ -40,9 +39,10 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
                              delete_obs_from_seq, get_next_obs_from_key, &
                              delete_obs_by_qc, delete_obs_by_copy, &
                              select_obs_by_location 
+
 implicit none
 
-! <next few lines under version control, do not edit>
+! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &

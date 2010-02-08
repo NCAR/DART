@@ -1,13 +1,6 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2007, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 ! This module supports the observation types from the SeaWinds instrument
 ! on the QuiKSCAT satellite.
@@ -24,4 +17,9 @@
 ! QKSWND_V_WIND_COMPONENT,  KIND_V_WIND_COMPONENT,  COMMON_CODE
 ! END DART PREPROCESS KIND LIST
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 

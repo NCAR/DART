@@ -1,3 +1,15 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+program convert_madis_surface
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !   convert_madis_surface - program that reads a MADIS netCDF land 
@@ -10,7 +22,6 @@
 !
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-program convert_madis_surface
 
 use        types_mod, only : r8, missing_r8
 use time_manager_mod, only : time_type, set_calendar_type, set_date, &

@@ -1,4 +1,14 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
 program advance_time
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
    !   modified from da_advance_cymdh, 
    !   - has accuracy down to second,
@@ -20,7 +30,6 @@ program advance_time
    !        advance_time 2007073006    120 -J         # advance 120 h, print year, Julian day, hour, minute and second
    !        advance_time 2007073006    0 -g           # print Gregorian day and second (since year 1601)
    !
-
 
    implicit none
 

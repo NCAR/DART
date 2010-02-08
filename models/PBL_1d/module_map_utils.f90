@@ -1,8 +1,3 @@
-! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
-! http://www.image.ucar.edu/DAReS/DART/DART_download
-
-
 !dis
 !dis    Open Source License/Disclaimer, Forecast Systems Laboratory
 !dis    NOAA/OAR/FSL, 325 Broadway Boulder, CO 80305
@@ -164,6 +159,8 @@ MODULE map_utils
 ! -------
 ! 27 Mar 2001 - Original Version
 !               Brent L. Shaw, NOAA/FSL (CSU/CIRA)
+!
+! DART $Id$
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

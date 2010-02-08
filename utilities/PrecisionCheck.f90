@@ -1,4 +1,14 @@
-      Program Precision_Check
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+program Precision_Check
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
       implicit none
 
@@ -17,7 +27,7 @@
       real(r4)    :: realr4
       real(r8)    :: realr8
 
-      double precision :: dp
+      double precision :: dp ! deliberate use of 'double precision'
 
       write(*,*)
       write(*,*)'This explores the use of the intrinisc &

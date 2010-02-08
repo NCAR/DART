@@ -1,15 +1,14 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
  
 PROGRAM gts_to_dart
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source: /home/thoar/CVS.REPOS/DART/converters/gts_to_dart.f90,v $
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name:  $
 
 use         types_mod, only : r8, missing_r8, missing_data, DEG2RAD, earth_radius
 use     utilities_mod, only : open_file, close_file, initialize_utilities, &
@@ -57,11 +56,11 @@ use gts_dart_mod
 
 implicit none
 
-! CVS Generated file description for error handling, do not edit
-character(len=128) :: &
-source   = "$Source: /home/thoar/CVS.REPOS/DART/converters/gts_to_dart.f90,v $", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$Source: /home/thoar/CVS.REPOS/DART/converters/gts_to_dart.f90,v $", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
 type(obs_type)          :: obs

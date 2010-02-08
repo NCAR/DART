@@ -1,15 +1,14 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2009, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 module airs_obs_mod
 
 ! <next few lines under version control, do not edit>
-! $URL: https://subversion.ucar.edu/DAReS/DART/trunk/observations/quikscat/quikscat_JPL_mod.f90 $
-! $Id: quikscat_JPL_mod.f90 3809 2009-04-13 16:21:33Z nancy $
-! $Revision: 3809 $
-! $Date: 2009-04-13 10:21:33 -0600 (Mon, 13 Apr 2009) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg, metadatalength
 
@@ -52,9 +51,9 @@ public :: real_obs_sequence, create_output_filename
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL: $", &
-   revision = "$Revision: 3809 $", &
-   revdate  = "$Date: 2009-04-13 10:21:33 -0600 (Mon, 13 Apr 2009) $"
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 character(len=129) :: msgstring

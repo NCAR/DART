@@ -1,3 +1,9 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! DART $Id$
+
 program test_dipole_interp
 
 ! I believe that I have done an initial test of the new interpolation
@@ -42,3 +48,8 @@ read(*, *) test_casenum
 call test_interpolation(test_casenum)
 
 end program test_dipole_interp
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Revision$
+! $Date$

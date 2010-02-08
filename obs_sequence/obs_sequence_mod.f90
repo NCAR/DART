@@ -1,7 +1,6 @@
-! Data Assimilation Research Testbed -- DART 
-! Copyright 2004-2008, Data Assimilation Research Section 
-! University Corporation for Atmospheric Research 
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 module obs_sequence_mod
 
@@ -40,8 +39,7 @@ use    utilities_mod, only : get_unit, close_file,                       &
                              E_ERR, E_WARN, E_MSG, nmlfileunit, do_output, &
                              do_nml_file, do_nml_term
 
-
-implicit none 
+implicit none
 private
 
 interface assignment(=)

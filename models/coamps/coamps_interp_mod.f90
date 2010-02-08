@@ -1,3 +1,15 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+module coamps_interp_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 !------------------------------
 ! MODULE:       coamps_interp_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -8,7 +20,6 @@
 ! This allows the use of observations that are not defined at 
 ! model grid points
 !------------------------------ 
-module coamps_interp_mod
   
   use coamps_grid_mod,      only : check_ij_within_grid,           &
                                    coamps_grid,                    &
@@ -160,11 +171,11 @@ module coamps_interp_mod
   ! BEGIN MODULE VARIABLES
   !------------------------------
 
-  ! Modified automatically by Subversion
-  character(len=128) :: &
-       source = "$URL$", &
-       revision = "$Revision$", &
-       revdate = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source = "$URL$", &
+   revision = "$Revision$", &
+   revdate = "$Date$"
 
   ! Module-level aliases - allow us to access these items passed
   ! in to the driver function throughout the module

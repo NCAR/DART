@@ -1,3 +1,15 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+module coamps_grid_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 !------------------------------
 ! MODULE:       coamps_grid_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -7,10 +19,10 @@
 ! Module containing the definition of a COAMPS grid data structure 
 ! and routines dealing with COAMPS grid information.
 !------------------------------ 
-module coamps_grid_mod
 
   use coamps_intrinsic_mod, only : ij2ll,                &
                                    ll2ij
+
   use coamps_util_mod,      only : C_REAL,               & 
                                    check_io_status,      &
                                    check_alloc_status,   &
@@ -26,6 +38,7 @@ module coamps_grid_mod
                             E_WARN,        &
                             error_handler, &
                             get_unit
+
   use types_mod,     only : r8
 
   implicit none
@@ -172,11 +185,11 @@ module coamps_grid_mod
   ! BEGIN MODULE VARIABLES
   !------------------------------
 
-  ! Modified automatically by Subversion
-  character(len=128) :: &
-       source = "$URL$", &
-       revision = "$Revision$", &
-       revdate = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source = "$URL$", &
+   revision = "$Revision$", &
+   revdate = "$Date$"
 
   logical :: module_initialized = .false.
 

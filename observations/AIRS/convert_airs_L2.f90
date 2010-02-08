@@ -1,15 +1,14 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2007, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 program convert_airs_L2
 
 ! <next few lines under version control, do not edit>
-! $URL: https://subversion.ucar.edu/DAReS/DART/trunk/observations/AIRS/convert_airs_L2.f90 $
-! $Id: convert_airs_L2.f90 3809 2009-04-13 16:21:33Z nancy $
-! $Revision: 3809 $
-! $Date: 2009-04-13 10:21:33 -0600 (Mon, 13 Apr 2009) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 ! Initial version of a program to read the AIRS retrievals for temperature
 ! and humidity. 
@@ -40,9 +39,9 @@ integer :: io, iunit, f, nfiles, index
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL: https://subversion.ucar.edu/DAReS/DART/trunk/observations/AIRS/convert_airs_L2.f90 $", &
-   revision = "$Revision: 3809 $", &
-   revdate  = "$Date: 2009-04-13 10:21:33 -0600 (Mon, 13 Apr 2009) $"
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters

@@ -1,9 +1,14 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2007, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
  
 program trans_sv_pv
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 !----------------------------------------------------------------------
 ! purpose: interface between AM2 and DART
@@ -31,6 +36,13 @@ use assim_model_mod, only : assim_model_type, static_init_assim_model, &
 use time_manager_mod, only : time_type, read_time, get_time, operator(-)
 
 implicit none
+
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
+
 integer, external :: iargc
 
 type(assim_model_type) :: x

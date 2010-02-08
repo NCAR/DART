@@ -1,9 +1,17 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 program timetest
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 use time_manager_mod, only : set_calendar_type, GREGORIAN, time_type, &
                              set_date, leap_year
-
 
 type(time_type) :: mytime
 integer :: i

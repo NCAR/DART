@@ -1,3 +1,15 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+program wrf_dart_obs_preprocess
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !   wrf_dart_obs_preprocess - WRF-DART utility program that at a
@@ -19,7 +31,6 @@
 !     created Oct. 2007 Ryan Torn, NCAR/MMM
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-program wrf_dart_obs_preprocess
 
 use        types_mod, only : r8
 use obs_sequence_mod, only : obs_sequence_type, static_init_obs_sequence, &

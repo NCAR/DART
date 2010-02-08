@@ -1,3 +1,15 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+module coamps_translate_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 !------------------------------
 ! MODULE:       coamps_translate_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -14,7 +26,6 @@
 ! the time to hours/minutes/seconds with no respect to dates 
 ! (since we're restricting to a single date-time group).
 !------------------------------ 
-module coamps_translate_mod
 
   use coamps_grid_mod,    only : check_ij_within_grid,         &
                                  coamps_grid,                  &
@@ -130,11 +141,11 @@ module coamps_translate_mod
   ! BEGIN MODULE VARIABLES
   !------------------------------
 
-  ! Modified automatically by Subversion
-  character(len=128) :: &
-       source = "$URL$", &
-       revision = "$Revision$", &
-       revdate = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source = "$URL$", &
+   revision = "$Revision$", &
+   revdate = "$Date$"
 
   ! Namelist containing the date time group and lead time information
   ! Also include information about the domain decomposition: number

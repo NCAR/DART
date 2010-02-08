@@ -1,26 +1,26 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2007, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 module model_mod
 
-  ! <next few lines under version control, do not edit>
-  ! $URL$
-  ! $Id$
-  ! $Revision$
-  ! $Date$
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
-  !----------------------------------------------------------------------
-  ! purpose: interface between AM2 and DART
-  !              Translate to/from state_vector and restart file(s)
-  !              Initialize model
-  !              Write out model fields to Prior and Posterior_Diag.nc,
-  !              Generate expected obs from model state (model_interpolate)
-  !              Find state variables (or obs) that are close to a given base observation.
-  !                  (get_close_obs)
-  ! author: Robert Pincus, CIRES/NOAA ESRL PSD1
-  !==============================================================================================
+!----------------------------------------------------------------------
+! purpose: interface between AM2 and DART
+!              Translate to/from state_vector and restart file(s)
+!              Initialize model
+!              Write out model fields to Prior and Posterior_Diag.nc,
+!              Generate expected obs from model state (model_interpolate)
+!              Find state variables (or obs) that are close to a given base observation.
+!                  (get_close_obs)
+! author: Robert Pincus, CIRES/NOAA ESRL PSD1
+!==============================================================================================
+
   use netcdf
   use types_mod,         only : r8, MISSING_R8
   use time_manager_mod,  only : time_type, set_time, print_time, set_calendar_type, GREGORIAN

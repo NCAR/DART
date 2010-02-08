@@ -1,5 +1,11 @@
      module WOD_read_routines_mod      
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 !    calls the subroutine WODread (WODread200X if the data file are in WOD05
 !    or WOD01 format or the subroutine WODread1998 if the data are in WOD98
 !    format). These subroutines do the actual reading of the ASCII format,

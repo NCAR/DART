@@ -1,10 +1,21 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+program check_in_grid
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 ! Program wrapper for ll2ij that takes its input from the file
 ! domain.dat - this allows us to quickly cal ll2ij many times for a
 ! single grid.  This is written to print out either a "T" or "F" if
 ! the lat/lon point described by the last two lines of domain.dat is
 ! in the grid or not - this is for use with actual observations to
 ! pare down the list to points that are actually within our domain.
-program check_in_grid
 
   use coamps_intrinsic_mod, only : ll2ij
 
@@ -14,7 +25,7 @@ program check_in_grid
 
   character(len=10), parameter :: FILENAME = 'domain.dat'
   integer                      :: fileid
-  real(kind=r8), dimension(16)  :: data
+  real(kind=r8), dimension(16) :: data
 
   integer :: ii
   real(kind=r8) :: grid_i, grid_j

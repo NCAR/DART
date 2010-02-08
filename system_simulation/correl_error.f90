@@ -1,7 +1,6 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2007, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 program correl_error
 
@@ -16,6 +15,12 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
    twod_gaussians, random_uniform
 
 implicit none
+
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 !!!integer, parameter :: sample_size = 1000000
 integer, parameter :: sample_size = 100000

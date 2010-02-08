@@ -1,3 +1,15 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+module model_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 !------------------------------
 ! MODULE:       model_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -9,7 +21,6 @@
 ! Monterey, California.  COAMPS is a registered trademark of the Naval
 ! Research Laboratory.
 !------------------------------ 
-module model_mod
 
   use coamps_grid_mod,     only : coamps_grid,                  &
                                   dump_grid_info,               &
@@ -134,11 +145,11 @@ module model_mod
   ! BEGIN MODULE VARIABLES
   !------------------------------
 
-  ! Modified automatically by Subversion 
-  character(len=128) :: &
-       source   = '$URL$', & 
-       revision = '$Revision$', &
-       revdate  = '$Date$'
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = '$URL$', & 
+   revision = '$Revision$', &
+   revdate  = '$Date$'
 
   ! Main model_mod namelist - not too much here as we read most of
   ! the data we need in from the COAMPS files themselves

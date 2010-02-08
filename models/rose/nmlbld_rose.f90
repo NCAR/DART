@@ -1,7 +1,6 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2007, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 program nmlbld_rose
 
@@ -19,11 +18,11 @@ program nmlbld_rose
 
    implicit none
 
-   ! version controlled file description for error handling, do not edit
-   character(len=128), parameter :: &
-      source   = "$URL$", &
-      revision = "$Revision$", &
-      revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
    logical            :: output_prog_diag = .false.
    character (len=50) :: input_dir = '../input_current/'

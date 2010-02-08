@@ -1,6 +1,6 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004, 2005, Data Assimilation Initiative, University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! GEOPOTENTIAL_HEIGHT,   KIND_GEOPOTENTIAL_HEIGHT
@@ -78,12 +78,11 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_navdas_mod
 
-! <next five lines automatically updated by CVS, do not edit>
-! $Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_navdas_mod.f90,v $
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
 ! $Revision$
 ! $Date$
-! $Author$
-! $Name: post_iceland $
 
   use        types_mod, only : r8, missing_r8, t_kelvin, gas_constant,ps0
   use    utilities_mod, only : register_module
@@ -104,11 +103,11 @@ module obs_def_navdas_mod
   public :: get_expected_air_temperature
   public :: get_expected_wind_component
 
-  ! CVS Generated file description for error handling, do not edit
-  character(len=128) :: &
-       source   = "$Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_navdas_mod.f90,v $", &
-       revision = "$Revision$", &
-       revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128) :: &
+   source   = "$Source: /home/thoar/CVS.REPOS/DART/obs_def/obs_def_navdas_mod.f90,v $", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
   logical, save :: module_initialized = .false.
 

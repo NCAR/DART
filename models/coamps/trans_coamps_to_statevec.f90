@@ -1,3 +1,15 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+program trans_coamps_to_statevec
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 ! trans_coamps_to_statevec
 ! ------------------------
 ! This program pulls pieces out of the large COAMPS restart file,
@@ -5,7 +17,6 @@
 ! what DART is seeing for easier reading into programs like MATLAB
 ! or debugging.  This program is almost identical to the
 ! trans_coamps_to_dart program but does not output time.
-program trans_coamps_to_statevec
 
   use coamps_translate_mod, only : initialize_translator,         &
                                    generate_restart_filenames,    &
@@ -18,11 +29,11 @@ program trans_coamps_to_statevec
 
   implicit none
 
-  ! Modified automatically by Subversion
-  character(len=128) :: &
-       source = "$URL$",&
-       revision = "$Revision$", &
-       revdate = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source = "$URL$",&
+   revision = "$Revision$", &
+   revdate = "$Date$"
 
   ! The translation module uses internal flags for whether it's
   ! reading or writing - these are just aliases so it's clearer

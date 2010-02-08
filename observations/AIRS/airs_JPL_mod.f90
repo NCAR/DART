@@ -2,6 +2,12 @@
 
 module airs_JPL_mod
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 ! the contents of this file are an amalgam of:
 !  airs_ret_typ.inc
 !  airs_ret_struct.inc

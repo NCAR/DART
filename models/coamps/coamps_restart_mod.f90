@@ -1,3 +1,15 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+module coamps_restart_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 !------------------------------
 ! MODULE:       coamps_restart_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -7,7 +19,6 @@
 ! Module containing the data structure and routines for dealing with
 ! COAMPS restart files and the dynamic DART state vector definition
 !------------------------------ 
-module coamps_restart_mod
 
   use coamps_grid_mod, only : coamps_grid,         &
                               get_grid_dims,       &
@@ -199,11 +210,11 @@ module coamps_restart_mod
 
   type(coamps_restart), target :: restart_info
 
-  ! Modified automatically by Subversion
-  character(len=128) :: &
-       source = "$URL$", &
-       revision = "$Revision$", &
-       revdate = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source = "$URL$", &
+   revision = "$Revision$", &
+   revdate = "$Date$"
 
   !------------------------------
   ! END MODULE VARIABLES

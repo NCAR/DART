@@ -1,3 +1,15 @@
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+
+module coamps_util_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 !------------------------------
 ! MODULE:       coamps_util_mod
 ! AUTHOR:       T. R. Whitcomb
@@ -7,7 +19,6 @@
 ! Module with various COAMPS utility routines to handle things
 ! like error checking
 !------------------------------ 
-module coamps_util_mod
   
   use types_mod,     only : r8
   use utilities_mod, only : E_ERR,         &
@@ -83,11 +94,11 @@ module coamps_util_mod
   ! BEGIN MODULE VARIABLES
   !------------------------------
 
-  ! Modified automatically by Subversion
-  character(len=128) :: &
-       source = "$URL$", &
-       revision = "$Revision$", &
-       revdate = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=128), parameter :: &
+   source = "$URL$", &
+   revision = "$Revision$", &
+   revdate = "$Date$"
 
   logical :: module_initialized = .false.
 

@@ -2,8 +2,16 @@
 ! MODULE CONSTANTS_MODULE
 !
 ! This module defines constants that are used by other modules 
+!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 module constants_module
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
    use     types_mod, only : r8
 

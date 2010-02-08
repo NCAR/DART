@@ -1,13 +1,6 @@
-! Data Assimilation Research Testbed -- DART
-! Copyright 2004-2007, Data Assimilation Research Section
-! University Corporation for Atmospheric Research
-! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
+! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 ! BEGIN DART PREPROCESS KIND LIST
 !BUOY_U_WIND_COMPONENT,        KIND_U_WIND_COMPONENT,      COMMON_CODE
@@ -106,6 +99,13 @@
 
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_gts_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
 use        types_mod, only : r8, missing_r8, gravity, gas_constant, gas_constant_v
 use    utilities_mod, only : register_module
 use     location_mod, only : location_type, set_location, get_location , &
