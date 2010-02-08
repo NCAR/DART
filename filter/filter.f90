@@ -330,7 +330,7 @@ call     trace_message('After  initializing output files')
 ! Let user know what settings the outlier threshold has, and data qc.
 if (do_output()) then
    if (outlier_threshold <= 0.0_r8) then
-      write(msgstring, *) 'No observation outlier threshold rejection will be done'
+      write(msgstring, '(A)') 'No observation outlier threshold rejection will be done'
    else
       write(msgstring, '(A,F12.6,A)') 'Will reject obs values more than', outlier_threshold, ' sigma from mean'
    endif
@@ -1052,10 +1052,27 @@ integer :: days, secs
 !!!   call init_ensemble_manager(ens_handle, ens_size + 2, model_size, 1)
 !!!endif
 
+if (do_output()) then
+   if (start_from_restart) then
+      call error_handler(E_MSG,'filter_read_restart:', &
+         'Reading in initial condition/restart data for all ensemble members from file(s)')
+   else
+      call error_handler(E_MSG,'filter_read_restart:', &
+         'Reading in a single ensemble and perturbing data for the other ensemble members')
+   endif
+endif
+
 ! Only read in initial conditions for actual ensemble members
 if(init_time_days >= 0) then
    call read_ensemble_restart(ens_handle, 1, ens_size, &
       start_from_restart, restart_in_file_name, time)
+   if (do_output()) then
+      call get_time(time, secs, days)
+      write(msgstring, '(A)') 'By namelist control, ignoring time found in restart file.'
+      call error_handler(E_MSG,'filter_read_restart:',msgstring,source,revision,revdate)
+      write(msgstring, '(A,I6,1X,I5)') 'Setting initial days, seconds to ',days,secs
+      call error_handler(E_MSG,'filter_read_restart:',msgstring,source,revision,revdate)
+   endif
 else
    call read_ensemble_restart(ens_handle, 1, ens_size, &
       start_from_restart, restart_in_file_name)
@@ -1068,7 +1085,6 @@ if(my_task_id() == 0) then
    write(msgstring, *) 'initial model time of 1st ensemble member (days,seconds) ',days,secs
    call error_handler(E_DBG,'filter_read_restart',msgstring,source,revision,revdate)
 endif
-call error_handler(E_DBG,'filter_read_restart',msgstring,source,revision,revdate)
 
 end subroutine filter_read_restart
 
