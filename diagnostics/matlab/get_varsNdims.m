@@ -1,5 +1,5 @@
 function [y, ydims] = get_varsNdims(fname);
-% Get the dimension (strings) for each atmospheric variable.
+%% Get the dimension (strings) for each atmospheric variable.
 % [y, ydims] = get_vars_dims(fname);
 %
 % fname     a netcdf file name

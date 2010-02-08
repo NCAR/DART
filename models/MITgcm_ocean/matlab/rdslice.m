@@ -1,13 +1,15 @@
-% rdslice(filename,[nx ny ...],k) returns an array of shape [nx,ny,...]
+function [arr] = rdslice(file,N,k,varargin)
+%% rdslice(filename,[nx ny ...],k) returns an array of shape [nx,ny,...]
 % read from a direct access binary file (float or double precisision) named
 % by the string 'filename'. The file may contain multi-dimensional
 % data. Note that cumsum([nx ny ...]*k) <= length of file.
 %
-% eg.   temp=rdslice('t.xyt',[160 120],4);
+% eg.   temp = rdslice('t.xyt', [160 120], 4);
 %
 % rdsclice(filename,[nx ny ...],k,type) returns an array of type 'type'.
 % where type can be one of 'real*4' or 'real*8'. The default is 'real*8'.
-function [arr] = rdslice(file,N,k,varargin)
+
+%% DART $Id$
 
 % Default word-length
 WORDLENGTH=8;

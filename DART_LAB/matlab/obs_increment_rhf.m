@@ -1,5 +1,5 @@
 function [obs_increments, err] =  obs_increment_rhf(ensemble, observation, obs_error_var)
-% obs_increment_rhf Computes increments for a rank histogram filter
+%% obs_increment_rhf Computes increments for a rank histogram filter
 % Need to discuss the available options eventually
 % For now this implements the default options
 

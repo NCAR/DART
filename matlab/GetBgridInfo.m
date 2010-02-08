@@ -1,5 +1,5 @@
 function pinfo = GetBgridInfo(pinfo_in,fname,routine);
-% GetBgridInfo   prepares a structure of information needed by the subsequent "routine"
+%% GetBgridInfo   prepares a structure of information needed by the subsequent "routine"
 %                The information is gathered via rudimentary "input" routines.
 %
 % pinfo = GetBgridInfo(pinfo_in,fname,routine);

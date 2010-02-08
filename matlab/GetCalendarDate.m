@@ -1,6 +1,5 @@
 function h = GetCalendarDate(seconds,days,calendartype)
-%
-% h = GetCalendarDate(seconds,days [,calendartype] )
+%% h = GetCalendarDate(seconds,days [,calendartype] )
 %
 % seconds, days are the DART times 
 %

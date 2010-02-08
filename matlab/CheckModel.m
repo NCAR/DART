@@ -1,5 +1,5 @@
 function vars = CheckModel(fname);
-% CheckModel   tries to ensure that a netcdf file has what we expect. 
+%% CheckModel   tries to ensure that a netcdf file has what we expect. 
 %
 % vars is a structure containing a minimal amount of metadata about the netCDF file.
 % 

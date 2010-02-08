@@ -1,5 +1,5 @@
 function varargout = oned_ensemble(varargin)
-% ONED_ENSEMBLE explore the details of ensemble data assimilation for a scalar.
+%% ONED_ENSEMBLE explore the details of ensemble data assimilation for a scalar.
 %
 %      Click on the 'Create New Ensemble' button to activate the interactive 
 %      observation generation mechanism and lay down a set of 'observations'

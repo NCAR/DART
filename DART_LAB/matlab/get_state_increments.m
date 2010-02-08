@@ -1,5 +1,5 @@
 function [state_incs] = get_state_increments(state_ens, obs_ens, obs_incs)
-% get_state_increments Computes state increments given observation increments and
+%% get_state_increments Computes state increments given observation increments and
 % the state and obs prior ensembles
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is

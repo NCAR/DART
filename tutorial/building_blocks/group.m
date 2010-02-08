@@ -1,10 +1,8 @@
-% Demonstration of how an unrelated observation evolves a 
-% State variable due to sampling error in the regression
+%% DART:group Demonstration of how an unrelated observation evolves a state variable due to sampling error in the regression
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$
@@ -12,7 +10,7 @@
 % $Revision$
 % $Date$
 
-% Begin by setting random seed to a nice controlled
+%% Begin by setting random seed to a nice controlled
 % initial value that gives nice plots
 randn('state', 0);
 
@@ -22,7 +20,7 @@ set(gcf, 'position', [1 1 6.5 6.5]);
 % Set the shape of the plot box
 %pbaspect([2.4 1 1]);
 
-% Take a look at using multiple axes here
+%% Take a look at using multiple axes here
 r1 = subplot(2, 2, 1);
 set(gca, 'linewidth', 2);
 set(gca, 'fontsize', 24);
@@ -36,12 +34,12 @@ set(gca, 'fontsize', 24);
 xlabel('Observed Variable');
 
 
-% Position the marginal and joint plot boxes
+%% Position the marginal and joint plot boxes
 set(r1, 'Position', [0.14, 0.23, 0.25, 0.6550]);
 set(r2, 'Position', [0.40, 0.23, 0.5050, 0.6550]);
 set(r3, 'Position', [0.40 0.1100 0.5050 0.1000]);
 
-% Turn off the unwanted tick labels
+%% Turn off the unwanted tick labels
 set(r2, 'Xticklabel', []);
 set(r2, 'yticklabel', []);
 set(r1, 'Xticklabel', []);

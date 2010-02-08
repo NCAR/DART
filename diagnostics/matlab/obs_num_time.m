@@ -1,5 +1,5 @@
 function obs_num_time(ddir)
-% obs_num_time(ddir)
+%% obs_num_time(ddir)
 %
 % Part of the observation-space diagnostics routines.
 %

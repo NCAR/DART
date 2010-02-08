@@ -1,4 +1,5 @@
-% wrslice(filename,arr,n,k) writes an array of shape [nx,ny,...]
+function [] = wrslice(file,arr,k,varargin)
+%% wrslice(filename,arr,n,k) writes an array of shape [nx,ny,...]
 % to a direct access binary file (float or double precisision) named
 % by the string 'filename'. The file may contain multi-dimensional
 % data. 'n' is the record number to be written where the record length
@@ -8,7 +9,8 @@
 %
 % rdsclice(filename,A,k,type) writes an array of type 'type'.
 % where type can be one of 'real*4' or 'real*8'. The default is 'real*8'.
-function [] = wrslice(file,arr,k,varargin)
+%
+% DART $Id$
 
 % Default word-length
 WORDLENGTH=8;

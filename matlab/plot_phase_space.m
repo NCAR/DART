@@ -1,4 +1,4 @@
-% plot_phase_space : Plots a 3D trajectory of (3 state variables of) a single ensemble member.
+%% plot_phase_space : Plots a 3D trajectory of (3 state variables of) a single ensemble member.
 %
 % Because it IS possible to overlay plots, the onus is on YOU to make
 % sure the current figure is "cleared" before you plot the first

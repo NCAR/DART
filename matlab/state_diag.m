@@ -1,4 +1,4 @@
-% state_diag.m uses read_state.m
+%% state_diag.m uses read_state.m
 %
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is

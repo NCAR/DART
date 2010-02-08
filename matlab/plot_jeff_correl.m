@@ -1,4 +1,4 @@
-% plot_jeff_correl.m
+%% plot_jeff_correl.m
 % Plots time series of correlation between a given variable at a given
 % time and another variable at all times in an ensemble time sequence.
 

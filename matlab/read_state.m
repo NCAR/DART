@@ -1,5 +1,5 @@
 function state = read_state( file_name )
-% read_state.m reads prior_state_diagnostics -type files.
+%% read_state.m reads prior_state_diagnostics -type files.
 %
 % USAGE: state = read_state( file_name )
 %

@@ -1,4 +1,4 @@
-% DART : Plots time series of ensemble members, mean and truth
+%% DART:plot_ens_time_series - time series of ensemble members, mean and truth
 %
 % Example 2
 % truth_file = 'True_State.nc';

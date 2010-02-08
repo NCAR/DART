@@ -1,4 +1,4 @@
-% startup.m  IFF a $HOME/matlab/startup.m exists, it is executed automatically at matlab's startup.
+%% startup.m  IFF a $HOME/matlab/startup.m exists, it is executed automatically at matlab's startup.
 %
 % The netcdf toolbox is needed for any/all DART matlab diagnostics, so this
 % block tries to locate that particular startup script.

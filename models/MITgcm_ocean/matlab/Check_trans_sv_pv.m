@@ -1,11 +1,21 @@
 function Check_trans_sv_pv
+%% Check_trans_sv_pv()  verify the packing/unpacking of the DART state vector
+% there are a lot of hardwired values ...
+
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+
 %time for timestep 0 day=128565, sec=21600
 %time for timestep 0 1953 Jan 01 06:00:00
 %time for 0000001344 day=128992, sec=21600
 %time for 0000001344 1954 Mar 04 06:00:00
-%
 
 dt = 900;
 startDate_1=19960101;

@@ -1,5 +1,5 @@
 function PlotPhaseSpace( pinfo )
-% PlotPhaseSpace: Plots trajectories of 3 variables for any ensemble member
+%% PlotPhaseSpace: Plots trajectories of 3 variables for any ensemble member
 %
 %
 % PlotPhaseSpace is intended to be called by 'plot_phase_space'

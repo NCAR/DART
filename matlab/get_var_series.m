@@ -1,5 +1,5 @@
 function var_vec = get_var_series(fname, varname, copyindex, state_var, tstart, tcount)
-%GET_VAR_SERIES Gets a particular copy of a state variable from netcdf file
+%% GET_VAR_SERIES Gets a particular copy of a state variable from netcdf file
 %
 % Retrieves a particular copy of a state variable from a file whose
 % full or relative path is specified in the file argument.

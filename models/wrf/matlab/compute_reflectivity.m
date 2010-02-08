@@ -1,4 +1,5 @@
 function ref = compute_reflectivity( qr, qg, qs, rho, temp )
+%% compute_reflectivity
 %
 % Computes reflectivity (dBz).
 %

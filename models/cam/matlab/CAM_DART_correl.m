@@ -1,5 +1,5 @@
 function CAM_DART_correl(datadir,DARTfile,DARTvarname,DARTlevel,CAMvarname,CAMlocation)
-% CAM_DART_correl  explores correlation between one CAM location and the DART ensemble
+%% CAM_DART_correl  explores correlation between one CAM location and the DART ensemble
 %
 % datadir     = '/ptmp/raeder/Cam3.6/Hist0';
 % DARTfile    = 'Pr_06_ens.nc';
@@ -10,18 +10,15 @@ function CAM_DART_correl(datadir,DARTfile,DARTvarname,DARTlevel,CAMvarname,CAMlo
 %
 % CAM_DART_correl(datadir,DARTfile,DARTvarname,DARTlevel,CAMvarname,CAMlocation)
 
-
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$
 % $Id$
 % $Revision$
 % $Date$
-
 
 posmat = [0.1 0.60 0.8 0.25;
           0.1 0.10 0.8 0.40];

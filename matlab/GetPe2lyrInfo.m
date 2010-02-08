@@ -1,5 +1,5 @@
 function pinfo = GetPe2lyrInfo(pinfo_in,fname,routine);
-% GetPe2lyrInfo   prepares a structure of information needed by the subsequent "routine"
+%% GetPe2lyrInfo   prepares a structure of information needed by the subsequent "routine"
 %                The information is gathered via rudimentary "input" routines.
 %
 % pinfo = GetPe2lyrInfo(pinfo_in,fname,routine);

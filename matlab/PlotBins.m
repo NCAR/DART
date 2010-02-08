@@ -1,5 +1,5 @@
 function PlotBins(pinfo)
-% PlotBins Plots rank histograms of ensemble mean
+%% PlotBins Plots rank histograms of ensemble mean
 %
 % PlotBins is intended to be called by 'plot_bins'.
 % The only input argument is a structure with model-dependent

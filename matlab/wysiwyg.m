@@ -1,5 +1,5 @@
 function wysiwyg
-%WYSIWYG -- this function is called with no args and merely
+%% WYSIWYG -- this function is called with no args and merely
 %       changes the size of the figure on the screen to equal
 %       the size of the figure that would be printed,
 %       according to the papersize attribute.  Use this function

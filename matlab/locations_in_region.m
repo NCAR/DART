@@ -1,5 +1,5 @@
 function inds = locations_in_region(locations, region)
-% locations_in_region returns the indices of the locations in the specified region.
+%% locations_in_region returns the indices of the locations in the specified region.
 %
 % USAGE:
 % inds = locations_in_region(locations, region);

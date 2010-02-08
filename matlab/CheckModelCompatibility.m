@@ -1,5 +1,5 @@
 function pinfo_out = CheckModelCompatibility(arg1, arg2)
-% CheckModelCompatibility tries to ensure that two netcdf files can be compared.
+%% CheckModelCompatibility tries to ensure that two netcdf files can be compared.
 % There are 2 ways to call this:  with 2 filenames, or with an already existing
 % pinfo struct (with 2 filenames and 2 2-vector arrays for start/stop times).
 % This routine fills in the 2-vectors with the time overlap region in a

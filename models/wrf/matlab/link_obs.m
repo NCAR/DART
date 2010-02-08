@@ -1,5 +1,5 @@
 function link_obs(fname,ObsTypeString)
-% link_obs generates the 'brushable' observation plots.
+%% link_obs generates the 'brushable' observation plots.
 %
 % EXAMPLE 1:
 % fname         = 'obs_sequence_013.nc';

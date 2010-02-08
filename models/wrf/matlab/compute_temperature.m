@@ -1,5 +1,5 @@
 function temp = compute_temperature( pres, theta, Cp, Rd, p0 )
-% FUNCTION compute_temperature - Computes temperature from potential temperature.
+%% FUNCTION compute_temperature - Computes temperature from potential temperature.
 %
 % Inputs:  
 %	pres     = pressure, at mass pts

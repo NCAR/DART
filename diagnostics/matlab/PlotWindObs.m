@@ -1,4 +1,4 @@
-% PlotWindObs ... a function in progress ... not for general use.
+%% PlotWindObs ... a function in progress ... not for general use.
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at

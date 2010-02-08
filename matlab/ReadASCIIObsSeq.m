@@ -1,5 +1,5 @@
 function a = ReadASCIIObsSeq(fname)
-% ReadASCIIObsSeq       reads the diagnostic output observation sequence file.
+%% ReadASCIIObsSeq       reads the diagnostic output observation sequence file.
 %
 % 
 % a = ReadASCIIObsSeq('obs_seq.final');

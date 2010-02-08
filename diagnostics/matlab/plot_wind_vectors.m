@@ -1,5 +1,5 @@
 function obs = plot_wind_vectors( fname, ncname, platform, varargin )
-% plot_wind_vectors creates maps with wind vector images overlain.
+%% plot_wind_vectors creates maps with wind vector images overlain.
 %
 % The required arguments are:
 % fname    ... the file name containing the wind observation pairs

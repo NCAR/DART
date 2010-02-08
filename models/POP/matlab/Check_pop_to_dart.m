@@ -1,5 +1,5 @@
 function [dart pop] = Check_pop_to_dart(popfile,dartfile)
-% Check_pop_to_dart : check pop_to_dart.f90 ... the conversion of a POP restart to a DART state vector file.
+%% Check_pop_to_dart : check pop_to_dart.f90 ... the conversion of a POP restart to a DART state vector file.
 %
 %  popfile = 'pop.r.nc';
 % dartfile = 'dart.ics';
@@ -9,10 +9,9 @@ function [dart pop] = Check_pop_to_dart(popfile,dartfile)
 % dartfile = '~DART/models/POP/work/perfect_ics';
 % [dart pop] = Check_pop_to_dart(popfile, dartfile);
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$

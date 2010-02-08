@@ -1,4 +1,4 @@
-% DART : summary plots of global error and spread
+%% DART:plot_total_err - summary plots of global error and spread
 % Example 1
 % truth_file = 'True_State.nc';
 % diagn_file = 'Posterior_Diag.nc';

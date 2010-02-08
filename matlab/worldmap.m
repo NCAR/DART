@@ -1,5 +1,5 @@
 function h = worldmap(ifill,lonorg,level)
-% WORLDMAP  overlays the continents on an existing figure as a F(lon,lat).
+%% WORLDMAP  overlays the continents on an existing figure as a F(lon,lat).
 %           The continents can be filled or "hollow".
 %
 %           This is not appropriate for use with a real MAP (i.e. anything

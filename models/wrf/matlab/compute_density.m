@@ -1,5 +1,5 @@
 function rho = compute_density( mu, dnw, phi )
-% FUNCTION rho : Computes density of dry air, computed from the
+%% FUNCTION rho : Computes density of dry air, computed from the
 %    hydrostatic relation for dry air: - dphi/deta = -mu alpha.
 %
 % Inputs:  

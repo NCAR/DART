@@ -1,5 +1,5 @@
 function varid = SetVariableID(vars);
-% SetVariableID   queries the user to override default variable ID's 
+%% SetVariableID   queries the user to override default variable ID's 
 %                 (i.e. model state variable indices) for different model types. 
 %
 % varid = SetVariableID(vars);

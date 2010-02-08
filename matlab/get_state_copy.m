@@ -1,5 +1,5 @@
 function state_vec = get_state_copy(fname, varname, copyindex, tstartind, tendind)
-%GET_STATE_COPY  Gets a particular copy (one ensemble member) of state from netcdf file
+%% GET_STATE_COPY  Gets a particular copy (one ensemble member) of state from netcdf file
 % Retrieves a particular copy of a state vector from a file whose
 % full or relative path is specified in the file argument.
 

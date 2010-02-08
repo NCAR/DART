@@ -1,5 +1,5 @@
 function PlotVarVarCorrel( pinfo )
-% Plots time series of correlation between a given variable at a given
+%% Plots time series of correlation between a given variable at a given
 % time and another variable at all times in an ensemble time sequence.
 % The correlation is done across ensemble members.
 %

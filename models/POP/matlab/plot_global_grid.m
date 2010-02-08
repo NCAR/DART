@@ -1,5 +1,5 @@
 function plot_global_grid(ugrid_file, tgrid_file)
-% plot_global_grid 
+%% plot_global_grid 
 % 
 % Example 1: plot the regular grid output
 %
@@ -12,10 +12,9 @@ function plot_global_grid(ugrid_file, tgrid_file)
 % plot_global_grid(2); % to plot dipole x3 grid output
 % plot_global_grid(3); % to plot regular grid with same grid as x3 in SH
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2009, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$

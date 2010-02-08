@@ -1,5 +1,5 @@
 function PlotJeffCorrel( pinfo )
-% Plots exploratory correlation plots. Don't use without talking to J. Anderson.
+%% Plots exploratory correlation plots. Don't use without talking to J. Anderson.
 %
 % Plots time series of correlation between a given variable at a given
 % time and another variable at all times in an ensemble time sequence.

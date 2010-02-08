@@ -1,16 +1,14 @@
 function h = arrow(start,stop,scale)
-
-%  ARROW(start,stop,scale)  draw a line with an arrow pointing from start to stop
+%%  ARROW(start,stop,scale)  draw a line with an arrow pointing from start to stop
 %  Draw a line with an  arrow at the end of a line
 %  start is the x,y point where the line starts
 %  stop is the x,y point where the line stops
 %  Scale is an optional argument that will scale the size of the arrows
 %  It is assumed that the axis limits are already set
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$

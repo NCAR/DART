@@ -1,5 +1,5 @@
 function[x_new, time_new] = lorenz_96_adv_1step(x, time)
-% lorenz_96_adv_1step Does a single time step advance for lorenz_96 40-variable model using four step runge-kutta time step
+%% lorenz_96_adv_1step Does a single time step advance for lorenz_96 40-variable model using four step runge-kutta time step
 %
 % x is the 40-vector state, time is the 2-vector days and seconds time
 

@@ -1,4 +1,4 @@
-% stats_wrf_prof_mem
+%% stats_wrf_prof_mem
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at

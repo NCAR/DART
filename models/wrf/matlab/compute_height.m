@@ -1,4 +1,5 @@
 function height = compute_height( phi, g )
+%% compute_height
 %
 % Inputs:
 %	phi = (full) geopotential, at w pts

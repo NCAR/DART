@@ -1,11 +1,22 @@
+%% selerad
+
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+
 load sele_obs.jan1-10;
 err = sele_obs(:, 1);
 N = size(sele_obs,1); % number of locations
 
-%----------------------------------------------------------------------
-% make a matrix of distances and then find all locations
-% within a certain radius ...
-%----------------------------------------------------------------------
+
+%% make a matrix of distances and then find all locations
+%  within a certain radius ...
 
 x = sele_obs(:,2);
 y = sele_obs(:,3);

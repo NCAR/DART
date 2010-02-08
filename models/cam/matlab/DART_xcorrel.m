@@ -1,5 +1,5 @@
 function DART_xcorrel(datadir,fname,varname1,location,varname2,level2)
-% DART_xcorrel  explores correlation between one DART location and the DART ensemble
+%% DART_xcorrel  explores correlation between one DART location and the DART ensemble
 %
 % datadir  = '/ptmp/raeder/Cam3.6/Hist0';
 % fname    = 'Pr_06_ens.nc';
@@ -10,11 +10,9 @@ function DART_xcorrel(datadir,fname,varname1,location,varname2,level2)
 %
 % DART_xcorrel(datadir,fname,varname1,location,varname2,level2)
 
-
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
 % $URL$

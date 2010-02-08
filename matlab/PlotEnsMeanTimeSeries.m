@@ -1,5 +1,5 @@
 function PlotEnsMeanTimeSeries( pinfo )
-% PlotEnsMeanTimeSeries : plots time series of ensemble members, mean and truth, if the truth exists.
+%% PlotEnsMeanTimeSeries : plots time series of ensemble members, mean and truth, if the truth exists.
 %
 % PlotEnsMeanTimeSeries is intended to be called by 'plot_ens_mean_time_series'
 % The only input argument is a structure with model-dependent

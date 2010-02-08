@@ -1,4 +1,4 @@
-%plot_reg_factor
+%% plot_reg_factor
 %
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is

@@ -1,5 +1,5 @@
 function varargout = oned_model(varargin)
-% ONED_MODEL simple ensemble data assimilation example.
+%% ONED_MODEL simple ensemble data assimilation example.
 %
 %      There are no input arguments. Simply invoke by typing the name.
 %

@@ -1,5 +1,5 @@
 function plotdat = plot_profile(fname,copystring)
-% plot_profile plots the vertical profile of the observation-space quantities for all possible levels, all possible variables.
+%% plot_profile plots the vertical profile of the observation-space quantities for all possible levels, all possible variables.
 % Part of the observation-space diagnostics routines.
 %
 % 'obs_diag' produces a netcdf file containing the diagnostics.

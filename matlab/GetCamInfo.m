@@ -1,5 +1,5 @@
 function pinfo = GetCamInfo(pstruct,routine);
-% GetCamInfo   prepares a structure of information needed by the subsequent "routine"
+%% GetCamInfo   prepares a structure of information needed by the subsequent "routine"
 %                The information is gathered via rudimentary "input" routines.
 %
 % pinfo = GetCamInfo(fname,routine);

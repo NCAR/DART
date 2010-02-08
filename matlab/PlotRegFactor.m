@@ -1,5 +1,5 @@
 function PlotRegFactor(fname,obsnum)
-% PlotRegFactor : Plots regression factor
+%% PlotRegFactor : Plots regression factor
 %
 % at present, the regression factor files are a bit non-conforming.
 % They don't have enough metadata to make for nice labelling.

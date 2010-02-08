@@ -1,6 +1,16 @@
-% plot_l05.m
+%% plot_coamps_nogfx -  Makes some diagnostic plots for DART conversion
 % ----------
-% Make some diagnostic plots for DART conversion
+% plot_l05.m
+
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
 clear all;
 close all;
@@ -27,11 +37,12 @@ member = 6;
 ijarea = 72*45;
 varnum = 2;
 spots = ((varnum-1)*ijarea+1):(varnum*ijarea);
-truth_state = squeeze(truth_fullstate(avail_times,:,spots));
+truth_state  = squeeze(truth_fullstate(avail_times,:,spots));
 prior_spread = squeeze(prior_fullstate(avail_times,2,spots));
-prior_mean = squeeze(prior_fullstate(avail_times,1,spots));
+prior_mean   = squeeze(prior_fullstate(avail_times,1,spots));
 postr_spread = squeeze(postr_fullstate(avail_times,2,spots));
-postr_mean = squeeze(prior_fullstate(avail_times,1,spots));
+postr_mean   = squeeze(prior_fullstate(avail_times,1,spots));
+
 for ii=[1:total_members]
   prior_state(:,:,ii) = squeeze(prior_fullstate(avail_times,ii,spots));
   postr_state(:,:,ii) = squeeze(postr_fullstate(avail_times,ii,spots));
@@ -47,8 +58,8 @@ end
 
 prior_spread_field = reshape(prior_spread,[72 45]).';
 postr_spread_field = reshape(postr_spread,[72 45]).';
-prior_mean_field = reshape(prior_mean,[72 45]).';
-postr_mean_field = reshape(postr_mean,[72 45]).';
+prior_mean_field   = reshape(  prior_mean,[72 45]).';
+postr_mean_field   = reshape(  postr_mean,[72 45]).';
 
 % standard contour levels
 stdlevels = linspace(min(truth_state),max(truth_state),10);

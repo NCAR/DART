@@ -1,14 +1,12 @@
-% A time series from an L63 assim
+%% DART:script19 A time series from an L63 assim
 % Identity Obs. every 24 hours with 4.0 SD
 % 4x20 ensemble, prior plotted green, obs red
 % Long background climatology in light blue 
 
-% Data Assimilation Research Testbed -- DART
-% Copyright 2004-2007, Data Assimilation Research Section
-% University Corporation for Atmospheric Research
-% Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
 % $URL$
 % $Id$
 % $Revision$

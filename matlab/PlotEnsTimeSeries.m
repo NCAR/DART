@@ -1,5 +1,5 @@
 function PlotEnsTimeSeries( pinfo )
-% PlotEnsTimeSeries: Plots time series of ensemble members, mean and truth.
+%% PlotEnsTimeSeries: Plots time series of ensemble members, mean and truth.
 %
 %
 % PlotEnsTimeSeries is intended to be called by 'plot_ens_time_series'

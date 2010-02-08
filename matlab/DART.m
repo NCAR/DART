@@ -1,4 +1,4 @@
-% DART - the list of routines useful for exploring the output of the DART 
+%% DART - the list of routines useful for exploring the output of the DART 
 %        ensemble assimilation software. This is not intended to be an exhaustive
 %        list, but it should get you started. -- Tim
 % 

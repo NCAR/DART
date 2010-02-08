@@ -1,5 +1,5 @@
 function varargout = gaussian_product(varargin)
-% GAUSSIAN_PRODUCT demonstrates the product of two gaussian distributions.
+%% GAUSSIAN_PRODUCT demonstrates the product of two gaussian distributions.
 %
 %      This is fundamental to Kalman filters and to
 %      ensemble data assimilation. Change the

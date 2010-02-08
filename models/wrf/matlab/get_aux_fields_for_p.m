@@ -1,6 +1,6 @@
 function [ mu, dnw, phi, theta, qv ] =  ...
                       get_aux_fields_for_p( filename, T0, varargin )
-% Retrieves various 2d and 3d fields needed to calculate pressure
+%% get_aux_fields_for_p - Retrieves various 2d and 3d fields needed to calculate pressure
 % from the netcdf file "filename".
 %
 % Other inputs: T0       = wrf caries theta as deviation from this value

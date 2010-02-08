@@ -1,5 +1,5 @@
 function copy_index = get_copy_index(fname, copystring)
-%GET_COPY_INDEX  Gets an index corresponding to copy meta_data string
+%% GET_COPY_INDEX  Gets an index corresponding to copy meta_data string
 % Retrieves index associated with a given copy meta_data string in 
 % file fname. If string is not found in meta_data list, a -1 is returned.
 %

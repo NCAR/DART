@@ -1,5 +1,5 @@
 function varargout = twod_ensemble(varargin)
-% TWOD_ENSEMBLE demonstrates a powerful aspect of ensemble data assimilation.
+%% TWOD_ENSEMBLE demonstrates a powerful aspect of ensemble data assimilation.
 %      The ensemble makes it possible to estimate the impact of observations 
 %      on unobserved state variables. 
 %

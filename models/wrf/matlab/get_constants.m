@@ -1,5 +1,5 @@
 function [ Cp, Rd, gamma, Rv, L_c, g, T0, p0] = get_constants()
-% Ideally, this would take netcdf filename as input, and
+%% get_constants -  Ideally, this would take netcdf filename as input, and
 % read required constants from file.  At present, just a
 % repository for hardwired constants.
 

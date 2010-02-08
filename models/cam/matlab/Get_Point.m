@@ -1,4 +1,5 @@
 function bob = Get_Point(filename,basevar,timeind,lat,lon,level,enssize)
+%% x = Get_Point(filename,basevar,timeind,lat,lon,level,enssize);
 %
 % filename = '/project/dart/raeder/J/T85_3/01_04/Prior_Diag.nc';
 % basevar = 'T';
@@ -7,7 +8,17 @@ function bob = Get_Point(filename,basevar,timeind,lat,lon,level,enssize)
 % lat = 40;      % index number, not direct lat value
 % lon = 140;     % index number, not direct lon value
 % enssize = 20;
-% x = Get_point(filename,basevar,timeind,lat,lon,level,enssize);
+% x = Get_Point(filename,basevar,timeind,lat,lon,level,enssize);
+
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
 % use some of the infinite numbers of options on getnc() to get only a
 % hyperslab of the data in the first place rather than squeeze afterwards.

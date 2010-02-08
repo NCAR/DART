@@ -1,5 +1,5 @@
 function [vrbl, vrbl_inds] = ParseAlphaNumeric(IDstring)
-% ParseAlphaNumerics -  extricates a variable name from subsequent IDs 
+%% ParseAlphaNumerics -  extricates a variable name from subsequent IDs 
 % str1 = ' X 1 3 4 89'
 % [alpha, numerics] = ParseAlphaNumerics(str1)
 % alpha = 'X'

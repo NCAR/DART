@@ -1,5 +1,5 @@
 function pres = compute_pressure( mu, dnw, phi, theta, qv, Rd,Rv,gamma,p0 )
-% FUNCTION pres : Computes pressure from gas law as in WRF.
+%% FUNCTION pres : Computes pressure from gas law as in WRF.
 %
 % CS version of Ryan's m-file.
 % Computes pressure from gas law as in WRF.

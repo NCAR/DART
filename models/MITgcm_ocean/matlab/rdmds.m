@@ -1,5 +1,5 @@
 function [AA] = rdmds(fnamearg,varargin)
-% RDMDS  Read MITgcmUV meta/data files
+%% RDMDS  Read MITgcmUV meta/data files
 %
 % A = RDMDS(FNAME)
 % A = RDMDS(FNAME,ITER)
@@ -42,8 +42,9 @@ function [AA] = rdmds(fnamearg,varargin)
 %   specified which MACHINEFORMAT is on of the following strings:
 %     'n' 'l' 'b' 'd' 'g' 'c' 'a' 's'  - see FOPEN for more details
 %  
-%  
 % $Header: /u/gcmpack/MITgcm/utils/matlab/rdmds.m,v 1.8.4.1 2002/02/06 15:48:10 heimbach Exp $
+%  
+% DART $Id$
 
 % Default options
 ieee='b';

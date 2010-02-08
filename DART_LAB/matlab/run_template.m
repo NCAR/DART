@@ -1,5 +1,5 @@
 function varargout = run_template(varargin)
-% RUN_TEMPLATE M-file for run_template.fig
+%% RUN_TEMPLATE M-file for run_template.fig
 %      RUN_TEMPLATE, by itself, creates a new RUN_TEMPLATE or raises the existing
 %      singleton*.
 %

@@ -1,6 +1,6 @@
 function obsstruct = plot_obs_netcdf_diffs(fname, ObsTypeString, region,  ...
                       CopyString1, CopyString2, QCString, maxQC, verbose, twoup)
-% plot_obs_netcdf_diffs will plot the difference between any two 'copies' of an observation-style netcdf file.
+%% plot_obs_netcdf_diffs will plot the difference between any two 'copies' of an observation-style netcdf file.
 %
 % bob = plot_obs_netcdf_diffs(fname, ObsTypeString, region, CopyString1, CopyString2, ...
 %                             QCString, maxQC, verbose, twoup);

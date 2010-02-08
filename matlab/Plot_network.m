@@ -1,4 +1,4 @@
-% Plot_network
+%% Plot_network
 %
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is

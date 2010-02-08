@@ -1,5 +1,5 @@
 function PlotSawtooth( pinfo )
-% PlotSawtooth: Plots time series of ensemble members, mean and truth.
+%% PlotSawtooth: Plots time series of ensemble members, mean and truth.
 %
 %
 % PlotSawtooth is intended to be called by 'plot_sawtooth'

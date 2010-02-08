@@ -1,5 +1,5 @@
 function plotdat = plot_rmse_xxx_evolution(fname,copystring)
-% plot_rmse_xxx_evolution plots the temporal evolution of the observation-space quantity RMSE and any other for all possible levels, all possible variables.
+%% plot_rmse_xxx_evolution plots the temporal evolution of the observation-space quantity RMSE and any other for all possible levels, all possible variables.
 % Part of the observation-space diagnostics routines.
 %
 % 'obs_diag' produces a netcdf file containing the diagnostics.

@@ -1,5 +1,5 @@
 function a = ReadObsSeq(fname)
-% ReadObsSeq       reads the diagnostic output observation sequence file.
+%% ReadObsSeq       reads the diagnostic output observation sequence file.
 %
 % The observation sequence file can be ascii or binary -- and either-endian
 % if they are binary. A couple quick checks figure out the file format.

@@ -1,10 +1,19 @@
-% cam_correl_plot
+%% cam_correl_plot
 % usage: assumes cam_correl has already been run and has set a slew of global
 % variables, and then cam_correl_read_and_plot has also been run to compute 
 % other vars.  as long as you don't change the data files, you can replot 
 % with this routine.  if you change the input files, you must rerun 
 % cam_correl_read_and_plot.
 
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
 % Construct a colormap with white for points near 0 and colors only when
 % the differences become 'significant' (use range to set that width)

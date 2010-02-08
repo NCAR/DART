@@ -1,4 +1,5 @@
 function chunk = Check_ud(fname,dsize)
+%% Check_ud a routine to check the (forcibly big-endian binary) files on a little-endian machine
 %
 % fname = 'assim_model_state_ud.0001';
 % dsize = [256 225 40];
@@ -17,6 +18,16 @@ function chunk = Check_ud(fname,dsize)
 % Udiff   = xi.U - xg.U; [min(Udiff(:)) max(Udiff(:))]
 % Vdiff   = xi.V - xg.V; [min(Vdiff(:)) max(Vdiff(:))]
 % Etadiff = xi.Eta - xg.Eta; [min(Etadiff(:)) max(Etadiff(:))]
+
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
 modelsize = prod(dsize);
 

@@ -1,4 +1,16 @@
-% obsfit.m plot of the error of analysis and guess
+%% obserr   ... uses output called obserr.dat from somewhere ... 
+
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+
+%% obsfit.m plot of the error of analysis and guess
 clf
 a_v=load('obserr.dat');
 xa_v=a_v(:,2);

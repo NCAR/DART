@@ -1,5 +1,5 @@
 function bob = get_varnames(fname)
-% get_varnames returns JUST the 'atmospheric' variable names in the netCDF file - ie - not the coordinate variables.
+%% get_varnames returns JUST the 'atmospheric' variable names in the netCDF file - ie - not the coordinate variables.
 %
 % the result is a cell array of strings ... must use {} notation to address elements.
 %

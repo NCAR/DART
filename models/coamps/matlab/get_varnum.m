@@ -1,7 +1,20 @@
+function varnum=get_varnum(restart_info_file,varname,level)
+%% varnum = get_varnum(restart_info_file, varname, level)
+%
 % Given a variable name and sigma index as well as the location of
 % the restart.vars file used for the ensemble run, generates the
 % variable number in the long state vector.
-function varnum=get_varnum(restart_info_file,varname,level)
+
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+
   % format string for the restart.vars file
   % u2 01 NOPERTS 1.0 M KIND_U_WIND UPDATE FALSE NOPOSDEF
   %fmt_str='%s %d %s %f %c %s %s %s %s';

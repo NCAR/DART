@@ -1,5 +1,5 @@
 function DiffnetCDFstate(file1,file2,outfile)
-% DiffnetCDFstate  checks to see if the netcdf pieces are available. 
+%% DiffnetCDFstate  checks to see if the netcdf pieces are available. 
 % 
 % DiffnetCDFstate(nc1, nc2, outfile);
 %

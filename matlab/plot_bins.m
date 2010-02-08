@@ -1,4 +1,4 @@
-% DART : Plots ensemble rank histograms 
+%% DART:plot_bins Plots ensemble rank histograms 
 %
 % plot_bins    interactively queries for the information needed to create
 %              ensemble rank histograms. Since different models potentially

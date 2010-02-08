@@ -1,5 +1,5 @@
 function ostruct = CombineStructs(struct1,struct2);
-% CombineStructs   all components of both stuctures are combined into one structure.
+%% CombineStructs   all components of both stuctures are combined into one structure.
 %
 % EXAMPLE:
 %

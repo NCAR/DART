@@ -1,4 +1,4 @@
-% DART : Plots space-time series of correlation between a given variable 
+%% DART:plot_correl Plots space-time series of correlation between a given variable 
 %               at a given time and other variables at all times in an 
 %               ensemble time sequence.
 %

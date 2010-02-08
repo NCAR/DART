@@ -1,4 +1,16 @@
-% Tutorial basics for the rank histogram filter (need better name)
+%% option7 Tutorial basics for the rank histogram filter (need better name)
+% all input is prompted for ... no functional form of this script.
+
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+
 % Begin by generating a sample draw from a gaussian
 close all; clear;
 

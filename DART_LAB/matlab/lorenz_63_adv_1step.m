@@ -1,5 +1,5 @@
 function[x_new, time_new] = lorenz_63_adv_1step(x, time)
-% lorenz_63)adv_1step advances the lorenz convective 3 variable model
+%% lorenz_63)adv_1step advances the lorenz convective 3 variable model
 % for a single two step runge-kutta time step
 %
 % x is the 3-vector state, time is the 2-vector days and seconds time

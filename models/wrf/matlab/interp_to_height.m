@@ -1,5 +1,5 @@
 function var_interp = interp_to_height( var_in, heights, level)
-% interp_to_height Interpolates to a height level given heights
+%% interp_to_height Interpolates to a height level given heights
 %
 % var_interp = interp_to_height( var_in, heights, level)
 %

@@ -1,5 +1,5 @@
 function PlotEnsErrSpread( pinfo )
-% PlotEnsErrSpread     Creates summary plots of error and spread 
+%% PlotEnsErrSpread     Creates summary plots of error and spread 
 %
 % PlotEnsErrSpread is intended to be called by 'plot_ens_err_spread'.
 % The only input argument is a structure with model-dependent

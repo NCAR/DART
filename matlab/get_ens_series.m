@@ -1,5 +1,5 @@
 function ens = get_ens_series(fname, varname, state_var_index, tstartind, tendind)
-%GET_ENS_SERIES: Returns matrix of time series for all members of ensemble for a variable
+%% GET_ENS_SERIES: Returns matrix of time series for all members of ensemble for a variable
 %
 % the rows of the matrix correspond to time,
 % the columns of the matrix correspond to ensemble members

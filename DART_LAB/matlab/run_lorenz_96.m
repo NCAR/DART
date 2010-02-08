@@ -1,5 +1,5 @@
 function varargout = run_lorenz_96(varargin)
-% RUN_LORENZ_96 ensemble data assimilation with a 40-variable implementation
+%% RUN_LORENZ_96 ensemble data assimilation with a 40-variable implementation
 %      of the Lorenz '96 dynamical model.
 %
 %      To demonstrate the analogue to the atmosphere, the model is a cyclic 

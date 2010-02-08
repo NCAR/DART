@@ -1,5 +1,5 @@
 function PlotCorrel( pinfo )
-% PlotCorrel   space-time series of correlation between a variable at a given
+%% PlotCorrel   space-time series of correlation between a variable at a given
 % time and all variables at all times in an ensemble time sequence.
 %
 % PlotCorrel is intended to be called by 'plot_correl'.

@@ -1,5 +1,5 @@
 function var_interp = interp_to_pressure( var_in, pressure, p_level)
-% Interpolates var_in(:,:,:) to a pressure level p_level given pressures
+%% Interpolates var_in(:,:,:) to a pressure level p_level given pressures
 % in pressures(:,:,:).  Interpolation is linear in log pressure. 
 % Set var_interp to NaN where p_level is beneath (>) pressure(1,:,:).
 

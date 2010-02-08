@@ -1,5 +1,5 @@
 function PlotTotalErr( pinfo )
-% PlotTotalErr Plots summary plots of global error and spread
+%% PlotTotalErr Plots summary plots of global error and spread
 %
 % The error is a measure of the distance between the 
 % 'ensemble mean' and the 'true_state'. The distance of the 

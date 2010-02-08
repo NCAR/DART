@@ -1,4 +1,4 @@
-% cam_correl
+%% cam_correl
 % usage: computes forward/backwards correlations based on data
 % at a single lat,lon.   the script has many global variables to set
 % and first calls a 'read data' function (which may be slow depending
@@ -8,7 +8,15 @@
 % without waiting to reread the data (assuming the data files and which
 % variable being plotted doesn't change.)
 
-
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
 %
 % global parms - set once here.   none of these have semicolons so they

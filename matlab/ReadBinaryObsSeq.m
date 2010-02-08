@@ -1,5 +1,5 @@
 function a = ReadBinaryObsSeq(fname,machineformat)
-% ReadBinaryObsSeq       reads the diagnostic output observation sequence file.
+%% ReadBinaryObsSeq       reads the diagnostic output observation sequence file.
 % 
 % machineformat = 'n';
 % a = ReadBinaryObsSeq('obs_seq.final',machineformat)

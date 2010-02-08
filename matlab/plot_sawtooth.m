@@ -1,4 +1,4 @@
-% DART : Plots time series of a state variable including updates.
+%% DART:plot_sawtooth - time series of a state variable including updates.
 %                                                                               
 % plot_sawtooth    interactively queries for the needed information.
 %              Since different models potentially need different pieces of 

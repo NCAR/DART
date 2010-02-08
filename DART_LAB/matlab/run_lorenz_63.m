@@ -1,5 +1,5 @@
 function varargout = run_lorenz_63(varargin)
-% RUN_LORENZ_63 ensemble data assimilation with the 3-variable 
+%% RUN_LORENZ_63 ensemble data assimilation with the 3-variable 
 %      Lorenz '63 dynamical model - the "butterfly" model.
 %
 %      There are 20 ensemble members in this example. The initial

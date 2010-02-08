@@ -1,5 +1,5 @@
 function vdims = nc_var_dims(ncfname,varname);
-% Get the names of the coordinate variables for each 
+%% Get the names of the coordinate variables for each 
 % of the dimensions of the variable.
 %
 % vdims = nc_var_dims(ncfname,varname);

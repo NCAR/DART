@@ -1,5 +1,5 @@
 function TimeScatter( ObsTypeInd )
-% TimeScatter( ObsTypeInd ) is a prototype function. Much work to be done. 
+%% TimeScatter( ObsTypeInd ) is a prototype function. Much work to be done. 
 %
 %	a 2D scatterplot of (typically) the prior mean 
 %		observation vs. the original observation. Both of

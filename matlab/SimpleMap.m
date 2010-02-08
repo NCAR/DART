@@ -1,5 +1,5 @@
 function h = SimpleMap(fname, varname, time, copystring, level)
-% SimpleMap plots a horizontal slice from a DART netcdf file.
+%% SimpleMap plots a horizontal slice from a DART netcdf file.
 %
 % Since WRF does not have tidy coordinate variables for lat/lon,
 % this script will not directly support WRF/DART netCDF files.

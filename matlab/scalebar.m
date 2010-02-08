@@ -1,5 +1,5 @@
    function ax=scalebar(xmin,ymin,wid,height,zmin,zmax)
-%  h = scalebar(xmin,ymin,wid,height,[zmin],[zmax])
+%%  h = scalebar(xmin,ymin,wid,height,[zmin],[zmax])
 %
 %  Makes a scale of the size and positions specified. The values 
 %  zmin, zmax are annotated at the left(bottom) and right(top) ends 

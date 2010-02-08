@@ -1,4 +1,4 @@
-% DART : summary plots of global error and spread using the smoother
+%% DART:plot_smoother_err - summary plots of global error and spread using the smoother
 % Example 1
 % diagn_file = 'Posterior_Diag.nc';
 % truth_file = 'True_State.nc';   % for smoother, is Lag_00001_Diag.nc better?

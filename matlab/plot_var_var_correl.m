@@ -1,5 +1,5 @@
-% DART : Plots time series of correlation between 
-% a given variable at a given time and another variable at all times 
+%% DART:plot_var_var_correl - time series of correlation between ...
+% a given variable at a given time and another variable at all times ...
 % in an ensemble time sequence.
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is

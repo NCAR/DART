@@ -1,5 +1,5 @@
 function [ qr, qg, qs ] = get_aux_fields_for_ref( filename, varargin )
-% [ qr, qg, qs ] = get_aux_fields_for_ref( filename, varargin )
+%% [ qr, qg, qs ] = get_aux_fields_for_ref( filename, varargin )
 %
 % Retrieves various 3d fields needed to calculate reflectivity
 % from the netcdf file "filename".

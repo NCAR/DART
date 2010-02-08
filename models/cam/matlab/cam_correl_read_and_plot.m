@@ -1,15 +1,23 @@
-% cam_correl_read_and_plot
+%% cam_correl_read_and_plot
 % usage: assumes cam_correl has already been run and has set a slew of global
 % variables.  these can be changed and then this subroutine rerun again.  
 % if you are changing the input files you must rerun this entire routine.  
 % if you are just changing plotting parameters, you can rerun 'cam_correl_plot'
 % only.
 
+%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+
 % doc for Get_Field, Get_Point funcs syntax
 % x[nlat,nlon,nens] = Get_Field(filename,basevar,timeind,level,ens_size);  
 % x[nens] = Get_Point(filename,basevar,timeind,lat,lon,level,ens_size);  
-
-
 %
 % some quick sanity checks first, and then some setup before looping
 % anything which changes based on the input files changing must be here.
