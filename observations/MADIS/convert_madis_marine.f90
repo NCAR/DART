@@ -55,12 +55,14 @@ implicit none
 character(len=15),  parameter :: marine_netcdf_file = 'marine_input.nc'
 character(len=129), parameter :: marine_out_file    = 'obs_seq.marine_sfc'
 
-! the following logical parameters control which water-vapor variables appear in the output file
-! and whether to use the NCEP error or Lin and Hubbard (2004) moisture error model
+! the following logical parameters control which water-vapor variables appear in the output file,
+! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and
+! whether the input data file has QC values.
 logical, parameter :: LH_err                    = .false.
 logical, parameter :: include_specific_humidity = .true.
 logical, parameter :: include_relative_humidity = .false.
 logical, parameter :: include_dewpoint          = .false.
+logical, parameter :: input_has_qc              = .true.
 
 integer, parameter   :: dsecobs = 2700,   &   ! observation window
                         num_copies = 1,   &   ! number of copies in sequence
@@ -174,23 +176,30 @@ call check( nf90_inq_varid(ncid, "timeObs", varid) )
 call check( nf90_get_var(ncid, varid, tobs) )
 
 ! read the QC check for each variable
-call check( nf90_inq_varid(ncid, "stationPressQCR", varid) )
-call check( nf90_get_var(ncid, varid, qc_sfcp) )
-
-call check( nf90_inq_varid(ncid, "seaLevelPressQCR", varid) )
-call check( nf90_get_var(ncid, varid, qc_slp) )
-
-call check( nf90_inq_varid(ncid, "temperatureQCR", varid) )
-call check( nf90_get_var(ncid, varid, qc_tair) )
-
-call check( nf90_inq_varid(ncid, "dewpointQCR", varid) )
-call check( nf90_get_var(ncid, varid, qc_tdew) )
-
-call check( nf90_inq_varid(ncid, "windDirQCR", varid) )
-call check( nf90_get_var(ncid, varid, qc_wdir) )
-
-call check( nf90_inq_varid(ncid, "windSpeedQCR", varid) )
-call check( nf90_get_var(ncid, varid, qc_wspd) )
+if (input_has_qc) then
+   call check( nf90_inq_varid(ncid, "stationPressQCR", varid) )
+   call check( nf90_get_var(ncid, varid, qc_sfcp) )
+   
+   call check( nf90_inq_varid(ncid, "seaLevelPressQCR", varid) )
+   call check( nf90_get_var(ncid, varid, qc_slp) )
+   
+   call check( nf90_inq_varid(ncid, "temperatureQCR", varid) )
+   call check( nf90_get_var(ncid, varid, qc_tair) )
+   
+   call check( nf90_inq_varid(ncid, "dewpointQCR", varid) )
+   call check( nf90_get_var(ncid, varid, qc_tdew) )
+   
+   call check( nf90_inq_varid(ncid, "windDirQCR", varid) )
+   call check( nf90_get_var(ncid, varid, qc_wdir) )
+   
+   call check( nf90_inq_varid(ncid, "windSpeedQCR", varid) )
+   call check( nf90_get_var(ncid, varid, qc_wspd) )
+else
+   ! if input contains no QCs, assume all are ok.
+   qc_sfcp = 0;  qc_slp  = 0
+   qc_tair = 0;  qc_tdew = 0
+   qc_wdir = 0;  qc_wspd = 0
+endif
 
 call check( nf90_close(ncid) )
 

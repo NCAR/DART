@@ -55,11 +55,13 @@ character(len=19),  parameter :: rawin_in_file  = 'rawinsonde_input.nc'
 character(len=129), parameter :: rawin_out_file = 'obs_seq.rawin'
 
 ! the following logical parameters control which water-vapor variables appear in the output file
-! and whether to use the NCEP error or Lin and Hubbard (2004) moisture error model
+! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and
+! whether the input data file has QC values.
 logical, parameter :: LH_err                    = .false.
 logical, parameter :: include_specific_humidity = .true.
 logical, parameter :: include_relative_humidity = .false.
 logical, parameter :: include_dewpoint          = .false.
+logical, parameter :: input_has_qc              = .true.
 
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
@@ -221,16 +223,23 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   call check( nf90_inq_varid(fid, 'wsMan', var_id) )
   call check( nf90_get_var(fid,var_id,wspd,start=(/ 1, n /),count=(/ nman, 1 /)) )
   call check( nf90_get_att(fid, var_id, '_FillValue', wspd_miss) )
-  call check( nf90_inq_varid(fid, "prManQCR", var_id) )
-  call check( nf90_get_var(fid, var_id, qc_pres,start=(/ 1, n /),count=(/ nman, 1 /)) )
-  call check( nf90_inq_varid(fid, "tpManQCR", var_id) )
-  call check( nf90_get_var(fid, var_id, qc_tair,start=(/ 1, n /),count=(/ nman, 1 /)) )
-  call check( nf90_inq_varid(fid, "tdManQCR", var_id) )
-  call check( nf90_get_var(fid, var_id, qc_tdew,start=(/ 1, n /),count=(/ nman, 1 /)) )
-  call check( nf90_inq_varid(fid, "wdManQCR", var_id) )
-  call check( nf90_get_var(fid, var_id, qc_wdir,start=(/ 1, n /),count=(/ nman, 1 /)) )
-  call check( nf90_inq_varid(fid, "wsManQCR", var_id) )
-  call check( nf90_get_var(fid, var_id, qc_wspd,start=(/ 1, n /),count=(/ nman, 1 /)) )
+  if (input_has_qc) then
+     call check( nf90_inq_varid(fid, "prManQCR", var_id) )
+     call check( nf90_get_var(fid, var_id, qc_pres,start=(/ 1, n /),count=(/ nman, 1 /)) )
+     call check( nf90_inq_varid(fid, "tpManQCR", var_id) )
+     call check( nf90_get_var(fid, var_id, qc_tair,start=(/ 1, n /),count=(/ nman, 1 /)) )
+     call check( nf90_inq_varid(fid, "tdManQCR", var_id) )
+     call check( nf90_get_var(fid, var_id, qc_tdew,start=(/ 1, n /),count=(/ nman, 1 /)) )
+     call check( nf90_inq_varid(fid, "wdManQCR", var_id) )
+     call check( nf90_get_var(fid, var_id, qc_wdir,start=(/ 1, n /),count=(/ nman, 1 /)) )
+     call check( nf90_inq_varid(fid, "wsManQCR", var_id) )
+     call check( nf90_get_var(fid, var_id, qc_wspd,start=(/ 1, n /),count=(/ nman, 1 /)) )
+  else
+     ! if input contains no QCs, assume all are ok.
+     qc_pres = 0
+     qc_tair = 0 ;  qc_tdew = 0
+     qc_wdir = 0 ;  qc_wspd = 0
+  endif
 
   if ( pres(1) /= pres_miss .and. qc_pres(1) == 0 ) then
 
