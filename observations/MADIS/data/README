@@ -7,3 +7,8 @@
 These are example data files.  They need to be unzipped
 and renamed in order to be used as-is.  acars.in is an
 example of the input needed for the acars program.
+
+These are older files which do not have the Data QC fields.
+To make them work with the converters, edit the converter
+source files and set 'input_has_qc' to .false. and rebuild.
+
