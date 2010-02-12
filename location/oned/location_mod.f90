@@ -15,18 +15,19 @@ module location_mod
 ! allowing an arbitrary real domain size at some point.
 
 use      types_mod, only : r8, MISSING_R8
-use  utilities_mod, only : register_module, error_handler, E_ERR
+use  utilities_mod, only : register_module, error_handler, E_ERR, nc_check
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
 private
 
-public :: location_type, get_location, set_location, &
-          set_location2, set_location_missing, is_location_in_region, &
+public :: location_type, get_location, set_location, set_location2, &
+          set_location_missing, is_location_in_region, &
           write_location, read_location, interactive_location, query_location, &
           LocationDims, LocationName, LocationLName, get_close_obs, &
           get_close_maxdist_init, get_close_obs_init, get_close_type, &
-          operator(==), operator(/=), get_dist, get_close_obs_destroy
+          operator(==), operator(/=), get_dist, get_close_obs_destroy, &
+          nc_write_location_atts, nc_get_location_varids, nc_write_location 
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -53,8 +54,15 @@ integer,              parameter :: LocationDims = 1
 character(len = 129), parameter :: LocationName = "loc1d"
 character(len = 129), parameter :: LocationLName = "location on unit circle"
 
+character(len = 129) :: errstring
+
 interface operator(==); module procedure loc_eq; end interface
 interface operator(/=); module procedure loc_ne; end interface
+
+interface set_location
+   module procedure set_location_single
+   module procedure set_location_array
+end interface set_location
 
 contains
 
@@ -151,7 +159,7 @@ end function get_location
 
 
 
-function set_location(x)
+function set_location_single(x)
 !----------------------------------------------------------------------------
 !
 ! Given a location type and a double precision value between 0 and 1
@@ -159,7 +167,7 @@ function set_location(x)
 
 implicit none
 
-type (location_type) :: set_location
+type (location_type) :: set_location_single
 real(r8), intent(in) :: x
 
 if ( .not. module_initialized ) call initialize_module
@@ -167,9 +175,36 @@ if ( .not. module_initialized ) call initialize_module
 if(x < 0.0_r8 .or. x > 1.0_r8) call error_handler(E_ERR, 'set_location', &
          'Value of x is out of 0->1 range', source, revision, revdate)
 
-set_location%x = x
+set_location_single%x = x
 
-end function set_location
+end function set_location_single
+
+
+
+function set_location_array(list)
+!----------------------------------------------------------------------------
+!
+! location semi-independent interface routine
+! given 1 float number, call the underlying set_location routine
+!
+! To make the program indifferent to the location module, sometimes
+! you just want to call 'set_location' with an array of reals.
+
+
+type (location_type) :: set_location_array
+real(r8), intent(in) :: list(:)
+
+if ( .not. module_initialized ) call initialize_module
+
+if (size(list) < 1) then
+   write(errstring,*)'requires 1 input value'
+   call error_handler(E_ERR, 'set_location_array', errstring, source, revision, revdate)
+endif
+
+set_location_array = set_location_single(list(1))
+
+end function set_location_array
+
 
 
 function set_location2(list)
@@ -368,10 +403,132 @@ end if
 
 end subroutine interactive_location
 
+
+
+  function nc_write_location_atts( ncFileID, fname, ObsNumDimID ) result (ierr)
 !----------------------------------------------------------------------------
+! function nc_write_location_atts( ncFileID, fname, ObsNumDimID ) result (ierr)
+!
+! Writes the "location module" -specific attributes to a netCDF file.
+!
 
-subroutine get_close_obs_init(gc, num, obs)
+use typeSizes
+use netcdf
 
+integer,          intent(in) :: ncFileID     ! handle to the netcdf file
+character(len=*), intent(in) :: fname        ! file name (for printing purposes)
+integer,          intent(in) :: ObsNumDimID  ! handle to the dimension that grows
+integer                      :: ierr
+
+integer :: LocDimID
+integer :: VarID
+
+if ( .not. module_initialized ) call initialize_module
+
+ierr = -1 ! assume things will fail ...
+
+! define the rank/dimension of the location information
+call nc_check(nf90_def_dim(ncid=ncFileID, name='location', len=LocationDims, &
+       dimid = LocDimID), 'nc_write_location_atts', 'def_dim:location '//trim(fname))
+
+! Define the observation location variable and attributes
+
+call nc_check(nf90_def_var(ncid=ncFileID, name='location', xtype=nf90_double, &
+          dimids=(/ LocDimID, ObsNumDimID /), varid=VarID), &
+            'nc_write_location_atts', 'location:def_var')
+
+call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', &
+       'location of observation'), 'nc_write_location_atts', 'location:long_name')
+call nc_check(nf90_put_att(ncFileID, VarID, 'storage_order',     &
+        'X'), 'nc_write_location_atts', 'location:storage_order')
+call nc_check(nf90_put_att(ncFileID, VarID, 'units',     &
+        'none'), 'nc_write_location_atts', 'location:units')
+
+! If we made it to here without error-ing out ... we're good.
+
+ierr = 0
+
+end function nc_write_location_atts
+
+
+
+  subroutine nc_get_location_varids( ncFileID, fname, LocationVarID, WhichVertVarID )
+!----------------------------------------------------------------------------
+! subroutine nc_get_location_varids( ncFileID, fname, LocationVarID, WhichVertVarID )
+!
+! Sole purpose is to query and set the LocationVarID and
+! WhichVertVarID variables from a given netCDF file.
+!
+! ncFileId         the netcdf file descriptor
+! fname            the name of the netcdf file (for error messages only)
+! LocationVarID    the integer ID of the 'location' variable in the netCDF file
+! WhichVertVarID   the integer ID of the 'which_vert' variable in the netCDF file
+!
+! In this instance, WhichVertVarID will never be defined, ... set to a bogus value
+
+use typeSizes
+use netcdf
+
+integer,          intent(in)  :: ncFileID   ! handle to the netcdf file
+character(len=*), intent(in)  :: fname      ! file name (for printing purposes)
+integer,          intent(out) :: LocationVarID, WhichVertVarID
+
+if ( .not. module_initialized ) call initialize_module
+
+call nc_check(nf90_inq_varid(ncFileID, 'location', varid=LocationVarID), &
+          'nc_get_location_varids', 'inq_varid:location '//trim(fname))
+
+WhichVertVarID = -99
+
+end subroutine nc_get_location_varids
+
+
+
+  subroutine nc_write_location(ncFileID, LocationVarID, loc, obsindex, WhichVertVarID)
+!----------------------------------------------------------------------------
+! subroutine nc_write_location(ncFileID, LocationVarID, loc, obsindex, WhichVertVarID)
+!
+! Writes a SINGLE location to the specified netCDF variable and file.
+!
+! WhichVertVarID must be set to a negative value by the 
+! lower-dimensional nc_write_location() routines.
+
+use typeSizes
+use netcdf
+
+integer,             intent(in) :: ncFileID, LocationVarID
+type(location_type), intent(in) :: loc
+integer,             intent(in) :: obsindex
+integer,             intent(in) :: WhichVertVarID
+
+real(r8), dimension(LocationDims) :: locations
+integer,  dimension(1) :: istart, icount
+
+if ( .not. module_initialized ) call initialize_module
+
+locations = get_location( loc )
+istart(1) = obsindex
+icount(1) = 1
+
+call nc_check(nf90_put_var(ncFileID, LocationVarId, locations, &
+          start=(/ 1, obsindex /), count=(/ LocationDims, 1 /) ), &
+            'nc_write_location', 'put_var:location')
+
+if ( WhichVertVarID >= 0 ) then
+
+   write(errstring,*)'WhichVertVarID supposed to be negative ... is ',WhichVertVarID
+   call error_handler(E_ERR, 'nc_write_location', errstring, source, revision, revdate)
+
+endif ! if less than zero (as it should be) ... just ignore 
+
+end subroutine nc_write_location
+
+
+
+  subroutine get_close_obs_init(gc, num, obs)
+!----------------------------------------------------------------------------
+! subroutine get_close_obs_init(gc, num, obs)
+!
 ! Initializes part of get_close accelerator that depends on the particular obs
 ! Currently not doing much in this oned location 
 
@@ -393,6 +550,7 @@ subroutine get_close_obs_destroy(gc)
 type(get_close_type), intent(inout) :: gc
 
 end subroutine get_close_obs_destroy
+
 !----------------------------------------------------------------------------
 
 subroutine get_close_maxdist_init(gc, maxdist)
@@ -449,8 +607,6 @@ implicit none
 
 logical                          :: is_location_in_region
 type(location_type), intent(in)  :: loc, minl, maxl
-
-character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 

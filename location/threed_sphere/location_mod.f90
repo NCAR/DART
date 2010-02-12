@@ -27,7 +27,7 @@ use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
 use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,    &
                            logfileunit, nmlfileunit, find_namelist_in_file, &
                            check_namelist_read, do_output, do_nml_file,     &
-                           do_nml_term, is_longitude_between
+                           do_nml_term, is_longitude_between, nc_check
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -42,7 +42,8 @@ public :: location_type, get_location, set_location,                          &
           get_close_maxdist_init, get_close_obs_init, get_close_obs_destroy,  &
           operator(==), operator(/=), VERTISUNDEF, VERTISSURFACE,             &
           VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, get_dist,                &
-          print_get_close_type
+          print_get_close_type, nc_write_location_atts, nc_write_location,    &
+          nc_get_location_varids
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -136,6 +137,11 @@ namelist /location_nml/ horiz_dist_only, vert_normalization_pressure,         &
 
 interface operator(==); module procedure loc_eq; end interface
 interface operator(/=); module procedure loc_ne; end interface
+
+interface set_location
+   module procedure set_location_single
+   module procedure set_location_array
+end interface set_location
 
 contains
 
@@ -505,17 +511,14 @@ end function get_location_lat
 
 
 
-function set_location(lon, lat, vert_loc,  which_vert)
+function set_location_single(lon, lat, vert_loc,  which_vert)
 !----------------------------------------------------------------------------
 !
 ! Puts the given longitude, latitude, and vertical location
 ! into a location datatype.  Arguments to this function are in degrees,
 ! but the values are stored as radians.
-!
 
-implicit none
-
-type (location_type) :: set_location
+type (location_type) :: set_location_single
 real(r8), intent(in) :: lon, lat
 real(r8), intent(in) :: vert_loc
 integer,  intent(in) :: which_vert
@@ -524,26 +527,49 @@ if ( .not. module_initialized ) call initialize_module
 
 if(lon < 0.0_r8 .or. lon > 360.0_r8) then
    write(errstring,*)'longitude (',lon,') is not within range [0,360]'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location_single', errstring, source, revision, revdate)
 endif
 
 if(lat < -90.0_r8 .or. lat > 90.0_r8) then
    write(errstring,*)'latitude (',lat,') is not within range [-90,90]'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location_single', errstring, source, revision, revdate)
 endif
 
-set_location%lon = lon * DEG2RAD
-set_location%lat = lat * DEG2RAD
+set_location_single%lon = lon * DEG2RAD
+set_location_single%lat = lat * DEG2RAD
 
 if(which_vert < VERTISUNDEF .or. which_vert == 0 .or. which_vert > VERTISHEIGHT) then
    write(errstring,*)'which_vert (',which_vert,') must be one of -2, -1, 1, 2, or 3'
-   call error_handler(E_ERR,'set_location', errstring, source, revision, revdate)
+   call error_handler(E_ERR,'set_location_single', errstring, source, revision, revdate)
 endif
 
-set_location%which_vert = which_vert
-set_location%vloc = vert_loc
+set_location_single%which_vert = which_vert
+set_location_single%vloc = vert_loc
 
-end function set_location
+end function set_location_single
+
+
+
+function set_location_array(list)
+!----------------------------------------------------------------------------
+!
+! location semi-independent interface routine
+! given 4 float numbers, call the underlying set_location routine
+
+type (location_type) :: set_location_array
+real(r8), intent(in) :: list(:)
+
+if ( .not. module_initialized ) call initialize_module
+
+if (size(list) < 4) then
+   write(errstring,*)'requires 4 input values'
+   call error_handler(E_ERR, 'set_location_array', errstring, source, revision, revdate)
+endif
+
+set_location_array = set_location_single(list(1), list(2), list(3), nint(list(4)))
+
+end function set_location_array
+
 
 
 function set_location2(list)
@@ -840,45 +866,143 @@ end subroutine interactive_location
 
 
 
-subroutine nc_write_location(ncFileID, LocationVarID, loc, start)
+  function nc_write_location_atts( ncFileID, fname, ObsNumDimID ) result (ierr)
 !----------------------------------------------------------------------------
+! function nc_write_location_atts( ncFileID, fname, ObsNumDimID ) result (ierr)
 !
-! Writes a SINGLE location to the specified netCDF variable and file.
+! Writes the "location module" -specific attributes to a netCDF file.
 !
 
 use typeSizes
 use netcdf
 
-implicit none
+integer,          intent(in) :: ncFileID     ! handle to the netcdf file
+character(len=*), intent(in) :: fname        ! file name (for printing purposes)
+integer,          intent(in) :: ObsNumDimID  ! handle to the dimension that grows
+integer                      :: ierr
 
-integer, intent(in)             :: ncFileID, LocationVarID
-type(location_type), intent(in) :: loc
-integer, intent(in)             :: start
+integer :: LocDimID
+integer :: VarID
 
 if ( .not. module_initialized ) call initialize_module
 
-call check(nf90_put_var(ncFileID, LocationVarID, loc%lon,  (/ start, 1 /) ))
-call check(nf90_put_var(ncFileID, LocationVarID, loc%lat,  (/ start, 2 /) ))
-call check(nf90_put_var(ncFileID, LocationVarID, loc%vloc, (/ start, 3 /) ))
+ierr = -1 ! assume things will fail ...
 
-contains
-  
-  ! Internal subroutine - checks error status after each netcdf, prints
-  !                       text message each time an error code is returned.
-  subroutine check(status)
-    integer, intent ( in) :: status
+! define the rank/dimension of the location information
+call nc_check(nf90_def_dim(ncid=ncFileID, name='location', len=LocationDims, &
+       dimid = LocDimID), 'nc_write_location_atts', 'def_dim:location '//trim(fname))
 
-    if(status /= nf90_noerr) call error_handler(E_ERR,'nc_write_location', &
-         trim(nf90_strerror(status)), source, revision, revdate )
+! Define the observation location variable and attributes
 
-  end subroutine check
+call nc_check(nf90_def_var(ncid=ncFileID, name='location', xtype=nf90_double, &
+          dimids=(/ LocDimID, ObsNumDimID /), varid=VarID), &
+            'nc_write_location_atts', 'location:def_var')
+
+call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', &
+       'location of observation'), 'nc_write_location_atts', 'location:long_name')
+call nc_check(nf90_put_att(ncFileID, VarID, 'storage_order',     &
+        'Lon Lat Vertical'), 'nc_write_location_atts', 'location:storage_order')
+call nc_check(nf90_put_att(ncFileID, VarID, 'units',     &
+        'degrees degrees which_vert'), 'nc_write_location_atts', 'location:units')
+
+! Define the ancillary vertical array and attributes
+
+call nc_check(nf90_def_var(ncid=ncFileID, name='which_vert', xtype=nf90_int, &
+          dimids=(/ ObsNumDimID /), varid=VarID), &
+            'nc_write_location_atts', 'which_vert:def_var')
+
+call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', 'vertical coordinate system code'), &
+           'nc_write_location_atts', 'which_vert:long_name')
+call nc_check(nf90_put_att(ncFileID, VarID, 'VERTISUNDEF', VERTISUNDEF), &
+           'nc_write_location_atts', 'which_vert:VERTISUNDEF')
+call nc_check(nf90_put_att(ncFileID, VarID, 'VERTISSURFACE', VERTISSURFACE), &
+           'nc_write_location_atts', 'which_vert:VERTISSURFACE')
+call nc_check(nf90_put_att(ncFileID, VarID, 'VERTISLEVEL', VERTISLEVEL), &
+           'nc_write_location_atts', 'which_vert:VERTISLEVEL')
+call nc_check(nf90_put_att(ncFileID, VarID, 'VERTISPRESSURE', VERTISPRESSURE), &
+           'nc_write_location_atts', 'which_vert:VERTISPRESSURE')
+call nc_check(nf90_put_att(ncFileID, VarID, 'VERTISHEIGHT', VERTISHEIGHT), &
+           'nc_write_location_atts', 'which_vert:VERTISHEIGHT')
+
+! If we made it to here without error-ing out ... we're good.
+
+ierr = 0
+
+end function nc_write_location_atts
+
+
+
+  subroutine nc_get_location_varids( ncFileID, fname, LocationVarID, WhichVertVarID )
+!----------------------------------------------------------------------------
+! subroutine nc_get_location_varids( ncFileID, fname, LocationVarID, WhichVertVarID )
+!
+! Sole purpose is to query and set the LocationVarID and
+! WhichVertVarID variables from a given netCDF file.
+!
+! ncFileId         the netcdf file descriptor
+! fname            the name of the netcdf file (for error messages only)
+! LocationVarID    the integer ID of the 'location' variable in the netCDF file
+! WhichVertVarID   the integer ID of the 'which_vert' variable in the netCDF file
+
+use typeSizes
+use netcdf
+
+integer,          intent(in)  :: ncFileID   ! handle to the netcdf file
+character(len=*), intent(in)  :: fname      ! file name (for printing purposes)
+integer,          intent(out) :: LocationVarID, WhichVertVarID
+
+if ( .not. module_initialized ) call initialize_module
+
+call nc_check(nf90_inq_varid(ncFileID, 'location', varid=LocationVarID), &
+          'nc_get_location_varids', 'inq_varid:location '//trim(fname))
+
+call nc_check(nf90_inq_varid(ncFileID, 'which_vert', varid=WhichVertVarID), &
+          'nc_get_location_varids', 'inq_varid:which_vert '//trim(fname))
+
+end subroutine nc_get_location_varids
+
+
+
+  subroutine nc_write_location(ncFileID, LocationVarID, loc, obsindex, WhichVertVarID)
+!----------------------------------------------------------------------------
+! subroutine nc_write_location(ncFileID, LocationVarID, loc, obsindex, WhichVertVarID)
+!
+! Writes a SINGLE location to the specified netCDF variable and file.
+!
+! WhichVertVarID must be set to a negative value by the 
+! lower-dimensional nc_write_location() routines.
+
+use typeSizes
+use netcdf
+
+integer,             intent(in) :: ncFileID, LocationVarID
+type(location_type), intent(in) :: loc
+integer,             intent(in) :: obsindex
+integer,             intent(in) :: WhichVertVarID
+
+real(r8), dimension(LocationDims) :: locations
+integer,  dimension(1) :: intval
+
+if ( .not. module_initialized ) call initialize_module
+
+locations = get_location( loc ) ! converts from radians to degrees, btw
+
+call nc_check(nf90_put_var(ncFileID, LocationVarId, locations, &
+          start=(/ 1, obsindex /), count=(/ LocationDims, 1 /) ), &
+            'nc_write_location', 'put_var:location')
+
+intval = loc%which_vert
+call nc_check(nf90_put_var(ncFileID, WhichVertVarID, intval, &
+          start=(/ obsindex /), count=(/ 1 /) ), &
+            'nc_write_location','put_var:vert' )
 
 end subroutine nc_write_location
 
-!----------------------------------------------------------------------------
+
 
 subroutine get_close_obs_init(gc, num, obs)
-
+!----------------------------------------------------------------------------
+!
 ! Initializes part of get_close accelerator that depends on the particular obs
 
 implicit none

@@ -26,14 +26,12 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              get_last_obs, destroy_obs, get_num_qc, get_qc_meta_data
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                              get_obs_def_location,  get_obs_kind, get_obs_name
-use     obs_kind_mod, only : get_obs_kind_var_type, get_obs_kind_name, &
-                             do_obs_form_pair, add_wind_names, &
-                             KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT
+use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_var_type, get_obs_kind_name
 use     location_mod, only : location_type, get_location, set_location_missing, &
                              write_location, operator(/=), operator(==), &
-                             set_location, is_location_in_region, VERTISUNDEF, &
-                             VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, &
-                             query_location
+                             set_location, is_location_in_region, query_location, &
+                             nc_write_location_atts, nc_get_location_varids, &
+                             nc_write_location
 use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
                              set_calendar_type, get_calendar_string, print_date, &
                              operator(*), operator(+), operator(-), &
@@ -63,7 +61,6 @@ character(len=128), parameter :: &
 !---------------------------------------------------------------------
 
 integer, parameter :: stringlength = 32
-logical, parameter :: DEBUG = .false.
 
 !---------------------------------------------------------------------
 ! variables associated with the observation
@@ -79,14 +76,12 @@ character(len = 129) :: obs_seq_in_file_name
 character(len = 129), allocatable, dimension(:) :: obs_seq_filenames
 
 real(r8)            :: obs_err_var
-real(r8)            :: U_obs         = 0.0_r8
-type(location_type) :: U_obs_loc
-integer             :: U_flavor, U_which_vert
-integer             :: U_type        = KIND_V_WIND_COMPONENT ! intentional mismatch
 
-integer :: flavor, wflavor ! THIS IS THE (global) 'KIND' in the obs_def_mod list. 
+integer :: flavor ! THIS IS THE (global) 'KIND' in the obs_def_mod list. 
 integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
+
 integer :: num_obs_kinds
+
 character(len=129) :: obs_seq_read_format
 logical :: pre_I_format
 
@@ -102,10 +97,13 @@ character(len = 129) :: obs_sequence_list = ''
 real(r8) :: lonlim1= MISSING_R8, lonlim2= MISSING_R8
 real(r8) :: latlim1= MISSING_R8, latlim2= MISSING_R8 
 
+logical :: debug = .false.   ! undocumented ... on purpose
 logical :: verbose = .false.
+logical :: append_to_netcdf = .false.
 
 namelist /obs_seq_to_netcdf_nml/ obs_sequence_name, obs_sequence_list, &
-                                 lonlim1, lonlim2, latlim1, latlim2, verbose
+                                 lonlim1, lonlim2, latlim1, latlim2, &
+                                 verbose, append_to_netcdf, debug
 
 !-----------------------------------------------------------------------
 ! Quantities of interest
@@ -119,9 +117,9 @@ character(len=stringlength), dimension(Ncopies) :: copy_names = &
 character(len=stringlength), allocatable, dimension(:) :: module_obs_copy_names
 character(len=stringlength), allocatable, dimension(:) :: module_qc_copy_names
 character(len=stringlength), allocatable, dimension(:) :: obs_copy_names, qc_copy_names
-character(len=stringlength), pointer,     dimension(:) :: my_obs_kind_names
+character(len=stringlength), dimension(max_obs_kinds) :: my_obs_kind_names
 
-real(r8), allocatable, dimension(:) :: qc, U_qc, copyvals, U_copyvals
+real(r8), allocatable, dimension(:) :: qc, copyvals
 real(r8), allocatable, dimension(:) :: obscopies
 
 integer,        dimension(2) :: key_bounds
@@ -130,7 +128,7 @@ real(digits12), allocatable, dimension(:)   ::  obs_times
 integer,        allocatable, dimension(:)   ::  obs_types, obs_keys
 real(r8),       allocatable, dimension(:,:) :: obs_copies
 integer,        allocatable, dimension(:,:) ::  qc_copies
-real(r8),       allocatable, dimension(:,:) ::  locations
+type(location_type), allocatable, dimension(:) ::  locations
 integer,        allocatable, dimension(:)   :: which_vert
 
 !-----------------------------------------------------------------------
@@ -138,8 +136,6 @@ integer,        allocatable, dimension(:)   :: which_vert
 !-----------------------------------------------------------------------
 
 integer  :: iepoch, ifile, num_obs_in_epoch, ngood
-real(r8) :: obsloc3(3)
-! real(r8) :: Robslon, Robslat
 
 integer  :: i, io, obsindex, ncunit
 integer  :: Nepochs
@@ -169,13 +165,19 @@ call init_obs(observation, 0, 0) ! ObsFileLoop simpler. This way we
 call init_obs(   next_obs, 0, 0) ! can destroy at the top of the loop.
 
 !----------------------------------------------------------------------
-! Define/Append the 'horizontal wind' obs_kinds to supplant the list declared
-! in obs_kind_mod.f90 i.e. if there is a RADIOSONDE_U_WIND_COMPONENT
-! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_HORIZONTAL_WIND
-! Replace calls to 'get_obs_kind_name' with variable 'my_obs_kind_names'
+! FIXME : at some point, I'd like to restrict this to just the ones
+!         in the obs_seq file ... not the ones supported. Problem is
+!         that you have to read all the obs sequence files and process
+!         the region information before you know if you have any to
+!         output. Maybe allocate more space in the netCDF header and
+!         re-enter DEFINE mode after all is said and done ...
 !----------------------------------------------------------------------
 
-num_obs_kinds = add_wind_names(my_obs_kind_names)
+num_obs_kinds = max_obs_kinds
+
+do i = 1,max_obs_kinds
+   my_obs_kind_names(i) = get_obs_kind_name(i)
+enddo
 
 !----------------------------------------------------------------------
 ! Read the namelist
@@ -196,7 +198,6 @@ if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
    call error_handler(E_ERR, 'obs_seq_to_netcdf', msgstring, source, revision, revdate)
 endif
 
-
 !----------------------------------------------------------------------
 ! SetSchedule rectifies user input and the final binning sequence.
 !----------------------------------------------------------------------
@@ -208,9 +209,8 @@ call get_time_from_schedule(TimeMin, schedule,       1, 1)
 call get_time_from_schedule(TimeMax, schedule, Nepochs, 2)
 call get_calendar_string(calendarstring)
 
-U_obs_loc = set_location_missing()
-minl = set_location(lonlim1, latlim1, 0.0_r8, VERTISUNDEF) ! vertical unimportant
-maxl = set_location(lonlim2, latlim2, 0.0_r8, VERTISUNDEF) ! vertical unimportant
+minl = set_location( (/ lonlim1, latlim1, 0.0_r8, 1 /)) ! vertical unimportant
+maxl = set_location( (/ lonlim2, latlim2, 0.0_r8, 1 /)) ! vertical unimportant
 
 !----------------------------------------------------------------------
 ! Prepare the variables
@@ -231,8 +231,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    call destroy_obs(next_obs)
    call destroy_obs_sequence(seq)  ! hopefully destroys OK without preallocate
 
-   if (allocated(qc)) deallocate( qc, U_qc, copyvals, U_copyvals,  &
-                        obs_copy_names, qc_copy_names, obscopies )
+   if (allocated(qc)) deallocate( qc, copyvals, obs_copy_names, qc_copy_names, obscopies )
 
    ! Determine the next input filename ... 
 
@@ -280,12 +279,13 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
       call error_handler(E_ERR,'obs_seq_to_netcdf',msgstring,source,revision,revdate)
    endif
 
-   allocate( copyvals(allNcopies),            qc(num_qc), &
-           U_copyvals(allNcopies),          U_qc(num_qc), &
-       obs_copy_names(allNcopies), qc_copy_names(num_qc),&
+   allocate( copyvals(allNcopies), &
+       obs_copy_names(allNcopies), &
+        qc_copy_names(num_qc),     &
+                   qc(num_qc),     &
             obscopies(num_copies))
 
-   if ( DEBUG ) then
+   if ( debug ) then
       write(*,*)
       write(*,*)'num_copies          is ',num_copies
       write(*,*)'num_qc              is ',num_qc
@@ -440,15 +440,15 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
                which_vert(            num_obs_in_epoch), &
                obs_copies(allNcopies, num_obs_in_epoch), &
                 qc_copies(    num_qc, num_obs_in_epoch), &
-                locations(         3, num_obs_in_epoch))
+                locations(            num_obs_in_epoch))
 
       call get_time_range_keys(seq, key_bounds, num_obs_in_epoch, keys)
 
       ! Append epoch number to output file names
 
-      write(ncName,'(''obs_sequence_'',i3.3,''.nc'')')iepoch
+      write(ncName,'(''obs_epoch_'',i3.3,''.nc'')')iepoch
 
-      if ( file_exist(ncName) ) then
+      if ( file_exist(ncName) .and. append_to_netcdf ) then
          ncunit = NC_Compatibility_Check(ncName, iepoch)
       else
          ncunit = InitNetCDF(ncName, iepoch)
@@ -475,9 +475,6 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          flavor      = get_obs_kind(obs_def)
          obs_time    = get_obs_def_time(obs_def)
          obs_loc     = get_obs_def_location(obs_def)
-         obsloc3     = get_location(obs_loc)
-       ! Robslon     = query_location(obs_loc,'lon')
-       ! Robslat     = query_location(obs_loc,'lat')
 
          ! replace missing values with NetCDF missing value
          where (obscopies == MISSING_R8 ) obscopies = NF90_FILL_DOUBLE
@@ -502,75 +499,33 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
          !--------------------------------------------------------------
          ! Summary of observation knowledge at this point
+         ! can replace the hardcoded 6 when the write_location function
+         ! can write to a character string.
          !--------------------------------------------------------------
 
-         if ( DEBUG ) then
-            write(*,*)'observation # ',obsindex
-            write(*,*)'key           ',keys(obsindex)
-            write(*,*)'obs_flavor    ',flavor
-            write(*,*)'lon/lat/level ',obsloc3
-            write(*,*)'copyvals      ',copyvals
-            write(*,*)'qc            ',qc
+         if ( debug ) then
+            write(6, *)'observation # ',obsindex
+            write(6, *)'key           ',keys(obsindex)
+            write(6, *)'obs_flavor    ',flavor
+            call write_location(6, obs_loc, 'ascii')
+            write(6, *)'copyvals      ',copyvals
+            write(6, *)'qc            ',qc
          endif
 
          obs_copies(:,ngood) = copyvals
           qc_copies(:,ngood) = nint(qc)
-          locations(:,ngood) = obsloc3
+          locations(  ngood) = obs_loc
           obs_times(  ngood) = mytime
           obs_types(  ngood) = flavor
            obs_keys(  ngood) = keys(obsindex)
          which_vert(  ngood) = nint(query_location(obs_loc))
-
-         !--------------------------------------------------------------
-         ! If it is a U wind component, all we need to do is save it.
-         ! It will be matched up with the subsequent V component.
-         ! At some point we have to remove the dependency that the 
-         ! U component MUST preceed the V component.
-         !--------------------------------------------------------------
-
-         if ( get_obs_kind_var_type(flavor) == KIND_U_WIND_COMPONENT ) then
-
-            U_which_vert  = which_vert(ngood)
-            U_copyvals    = copyvals
-            U_obs_loc     = obs_loc
-            U_flavor      = flavor
-            U_type        = KIND_U_WIND_COMPONENT
-            U_qc          = qc
-
-            cycle ObservationLoop
-
-         endif
-
-         !-----------------------------------------------------------
-         ! Additional work for horizontal wind (given U,V)
-         !-----------------------------------------------------------
-
-         ObsIsWindCheck: if ( get_obs_kind_var_type(flavor) == KIND_V_WIND_COMPONENT ) then
-
-            ! The big assumption is that the U wind component has
-            ! immediately preceeded the V component and has been saved.
-            ! 
-            ! We check for observation compatibility and the index for 
-            ! this wind 'kind' ... not originally in the max_obs_kind namelist.
-            ! this will be the 'wflavor' (wind) flavor.
-
-            if ((obs_loc == U_obs_loc) .and.   &
-               do_obs_form_pair(flavor,U_flavor,keys(obsindex),my_obs_kind_names,wflavor)) then
-
-            else
-               write(*,*)'time series : V with no U obs index ', keys(obsindex)
-               wflavor = -99
-            endif
-
-         endif ObsIsWindCheck
 
       !-----------------------------------------------------------------
       enddo ObservationLoop
       !-----------------------------------------------------------------
 
       if ( ngood > 0 ) call WriteNetCDF(ncunit, ncname, ngood, obs_copies, &
-                       qc_copies, locations, obs_times, obs_types, obs_keys, &
-                       which_vert) 
+                       qc_copies, locations, obs_times, obs_types, obs_keys) 
 
       call CloseNetCDF(ncunit, ncname)
 
@@ -593,22 +548,18 @@ call destroy_obs(observation)
 call destroy_obs(next_obs)
 call destroy_obs_sequence(seq)
 
-if (allocated(qc)) deallocate( qc, U_qc, copyvals, U_copyvals,  &
-                        obs_copy_names, qc_copy_names, obscopies )
+if (allocated(qc)) deallocate( qc, copyvals, obs_copy_names, qc_copy_names, obscopies )
 
 if (allocated(module_obs_copy_names)) &
    deallocate(module_obs_copy_names, module_qc_copy_names)
 
-deallocate(obs_seq_filenames, my_obs_kind_names )
+deallocate(obs_seq_filenames)
 
 call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
 
 !======================================================================
-
 CONTAINS
-
 !======================================================================
-
 
 Function InitNetCDF(fname, ibin)
 character(len=*), intent(in) :: fname
@@ -619,7 +570,6 @@ integer :: ncid, i, indx1, nlines, linelen
 integer :: LineLenDimID, nlinesDimID, stringDimID
 integer :: ObsCopyDimID, QCCopyDimID
 integer ::   TypesDimID
-integer ::     LocDimID
 integer ::  ObsNumDimID
 integer ::   VarID
 
@@ -672,10 +622,6 @@ call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_to_netcdf_revision', revi
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_to_netcdf_revdate', revdate ), &
            'InitNetCDF', 'put_att obs_seq_to_netcdf_revdate '//trim(fname))
 
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'horizontal_wind', &
-           'vector wind derived from U,V components' ), &
-           'InitNetCDF', 'put_att wind '//trim(fname))
-
 ! write all observation sequence files used
 FILEloop : do i = 1,SIZE(obs_seq_filenames)
 
@@ -692,9 +638,14 @@ enddo FILEloop
 
 !----------------------------------------------------------------------------
 ! Define the dimensions
+! Set nofill mode - supposed to be performance gain
 !----------------------------------------------------------------------------
+ 
+call nc_check(nf90_set_fill(ncid, NF90_NOFILL, i),  &
+            'obs_seq_to_netcdf:InitNetCDF', 'set_nofill '//trim(fname))
 
-! write all namelist quantities 
+! write all namelist quantities
+
 call find_textfile_dims('input.nml', nlines, linelen)
 allocate(textblock(nlines))
 textblock = ''
@@ -718,10 +669,6 @@ call nc_check(nf90_def_dim(ncid=ncid, &
 call nc_check(nf90_def_dim(ncid=ncid, &
               name='qc_copy', len = num_qc, dimid = QCCopyDimID), &
               'InitNetCDF', 'def_dim:qc_copy '//trim(fname))
-
-call nc_check(nf90_def_dim(ncid=ncid, &
-              name='location', len = 3, dimid = LocDimID), &
-              'InitNetCDF', 'def_dim:location '//trim(fname))
 
 call nc_check(nf90_def_dim(ncid=ncid, &
               name='ObsTypes', len = num_obs_kinds, dimid = TypesDimID), &
@@ -798,11 +745,6 @@ call nc_check(nf90_put_att(ncid, VarID, "long_name", "input.nml contents"), &
 ! Define the RECORD variables
 !----------------------------------------------------------------------------
 
-! Set nofill mode - supposed to be performance gain
- 
-call nc_check(nf90_set_fill(ncid, NF90_NOFILL, i),  &
-            'obs_seq_to_netcdf:InitNetCDF', 'set_nofill '//trim(fname))
-
 ! Define the observation number coordinate variable (UNLIMITED DIMENSION) 
 
 call nc_check(nf90_def_var(ncid=ncid, name='ObsIndex', xtype=nf90_int, &
@@ -846,34 +788,6 @@ call nc_check(nf90_def_var(ncid=ncid, name='obs_keys', xtype=nf90_int, &
 call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'DART key in linked list'), &
           'InitNetCDF', 'obs_keys:long_name')
 
-! Define the vertical coordinate system code
-
-call nc_check(nf90_def_var(ncid=ncid, name='which_vert', xtype=nf90_int, &
-          dimids=(/ ObsNumDimID /), varid=VarID), &
-            'InitNetCDF', 'which_vert:def_var')
-call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'vertical coordinate system code'), &
-           'InitNetCDF', 'which_vert:long_name')
-call nc_check(nf90_put_att(ncid, VarID, 'VERTISUNDEF', VERTISUNDEF), &
-           'InitNetCDF', 'which_vert:VERTISUNDEF')
-call nc_check(nf90_put_att(ncid, VarID, 'VERTISSURFACE', VERTISSURFACE), &
-           'InitNetCDF', 'which_vert:VERTISSURFACE')
-call nc_check(nf90_put_att(ncid, VarID, 'VERTISLEVEL', VERTISLEVEL), &
-           'InitNetCDF', 'which_vert:VERTISLEVEL')
-call nc_check(nf90_put_att(ncid, VarID, 'VERTISPRESSURE', VERTISPRESSURE), &
-           'InitNetCDF', 'which_vert:VERTISPRESSURE')
-call nc_check(nf90_put_att(ncid, VarID, 'VERTISHEIGHT', VERTISHEIGHT), &
-           'InitNetCDF', 'which_vert:VERTISHEIGHT')
-
-! Define the observation locations
-
-call nc_check(nf90_def_var(ncid=ncid, name='location', xtype=nf90_double, &
-          dimids=(/ LocDimID, ObsNumDimID /), varid=VarID), &
-            'InitNetCDF', 'location:def_var')
-call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'location of observation'), &
-          'InitNetCDF', 'location:long_name')
-call nc_check(nf90_put_att(ncid, VarID, 'units',     'deg_Lon deg_Lat vertical'), &
-          'InitNetCDF', 'location:units')
-
 ! Define the observation copies
 
 call nc_check(nf90_def_var(ncid=ncid, name='observations', xtype=nf90_double, &
@@ -895,6 +809,13 @@ call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'QC values'), &
           'InitNetCDF', 'qc:long_name')
 call nc_check(nf90_put_att(ncid, VarID, 'explanation', 'see QCMetaData'), &
           'InitNetCDF', 'qc:explanation')
+
+! let the location module write what it needs to ...
+
+if ( nc_write_location_atts( ncid, fname, ObsNumDimID ) /= 0 ) then
+   write(msgstring,*)'problem initializing netCDF location attributes'
+   call error_handler(E_ERR,'InitNetCDF',msgstring,source,revision,revdate)
+endif
 
 !----------------------------------------------------------------------------
 ! Leave define mode so we can fill
@@ -959,7 +880,7 @@ end Function InitNetCDF
 
 
 Subroutine WriteNetCDF(ncid, fname, ngood, obs_copies, qc_copies, &
-                       locations, obs_times, obs_types, obs_keys, which_vert) 
+                       locations, obs_times, obs_types, obs_keys ) 
 !============================================================================
 integer,                      intent(in) :: ncid
 character(len=*),             intent(in) :: fname
@@ -967,16 +888,15 @@ integer,                      intent(in) :: ngood
 
 real(r8),     dimension(:,:), intent(in) :: obs_copies
 integer,      dimension(:,:), intent(in) :: qc_copies
-real(r8),     dimension(:,:), intent(in) :: locations
+type(location_type), dimension(:), intent(in) :: locations
 real(digits12), dimension(:), intent(in) :: obs_times
 integer,        dimension(:), intent(in) :: obs_types
 integer,        dimension(:), intent(in) :: obs_keys
-integer,        dimension(:), intent(in) :: which_vert
 
-integer :: DimID, dimlen, obsindex, iobs
+integer :: DimID, dimlen, obsindex, iobs, istatus
 integer, dimension(1) :: istart, icount, intval
 
-integer :: locldimlen, obsldimlen, qcldimlen
+integer :: obsldimlen, qcldimlen
 
 integer :: ObsIndexVarID, TimeVarID, ObsTypeVarID, WhichVertVarID, &
            LocationVarID,  ObsVarID, QCVarID, ObsKeyVarID
@@ -985,9 +905,8 @@ integer :: ObsIndexVarID, TimeVarID, ObsTypeVarID, WhichVertVarID, &
 ! Find the current length of the unlimited dimension so we can add correctly.
 !----------------------------------------------------------------------------
 
-if (DEBUG) write(*,*)'DEBUG --- entering WriteNetCDF'
+if (debug) write(*,*)'DEBUG --- entering WriteNetCDF'
 
-locldimlen = size( locations,1)
 obsldimlen = size(obs_copies,1)
  qcldimlen = size( qc_copies,1)
 
@@ -1001,7 +920,7 @@ obsindex  = dimlen + 1
 istart(1) = obsindex
 icount(1) = ngood
 
-if (DEBUG) write(*,*)'DEBUG --- WriteNetCDF istart/icount ',istart(1), icount(1)
+if (debug) write(*,*)'DEBUG --- WriteNetCDF istart/icount ',istart(1), icount(1)
 
 call nc_check(nf90_inq_varid(ncid, 'ObsIndex', varid=ObsIndexVarID), &
           'WriteNetCDF', 'inq_varid:ObsIndex '//trim(fname))
@@ -1015,17 +934,13 @@ call nc_check(nf90_inq_varid(ncid, 'obs_type', varid=ObsTypeVarID), &
 call nc_check(nf90_inq_varid(ncid, 'obs_keys', varid=ObsKeyVarID), &
           'WriteNetCDF', 'inq_varid:obs_keys '//trim(fname))
 
-call nc_check(nf90_inq_varid(ncid, 'which_vert', varid=WhichVertVarID), &
-          'WriteNetCDF', 'inq_varid:which_vert '//trim(fname))
-
-call nc_check(nf90_inq_varid(ncid, 'location', varid=LocationVarID), &
-          'WriteNetCDF', 'inq_varid:location '//trim(fname))
-
 call nc_check(nf90_inq_varid(ncid, 'observations', varid=ObsVarID), &
           'WriteNetCDF', 'inq_varid:observations '//trim(fname))
 
 call nc_check(nf90_inq_varid(ncid, 'qc', varid=QCVarID), &
           'WriteNetCDF', 'inq_varid:qc '//trim(fname))
+
+call nc_get_location_varids(ncid, fname, LocationVarID, WhichVertVarID)
 
 WriteObs : do iobs = 1,ngood
 
@@ -1066,24 +981,13 @@ WriteObs : do iobs = 1,ngood
    intval = obs_keys(iobs) 
    call nc_check(nf90_put_var(ncid, ObsKeyVarId, intval, &
                  start=istart, count=icount), 'WriteNetCDF', 'put_var:obs_keys')
-   
+
    !----------------------------------------------------------------------------
-   ! call nc_check(nf90_def_var(ncid=ncid, name='which_vert', xtype=nf90_int, &
-   !           dimids=(/ ObsNumDimID /), varid=VarID), &
+   ! Using the location_mod:nc_write_location() routine.
    !----------------------------------------------------------------------------
-   intval = which_vert(iobs) 
-   call nc_check(nf90_put_var(ncid, WhichVertVarId, intval, &
-                 start=istart, count=icount), 'WriteNetCDF', 'put_var:which_vert')
-   
-   !----------------------------------------------------------------------------
-   ! call nc_check(nf90_def_var(ncid=ncid, name='location', xtype=nf90_real, &
-   !          dimids=(/ LocDimID, ObsNumDimID /), varid=VarID), &
-   !----------------------------------------------------------------------------
-   
-   call nc_check(nf90_put_var(ncid, LocationVarId, locations(:,iobs), &
-            start=(/ 1, obsindex /), count=(/ locldimlen, 1 /) ), &
-              'WriteNetCDF', 'put_var:location')
-   
+   call nc_write_location(ncid, LocationVarId,  locations(iobs), obsindex, &
+                               WhichVertVarId )
+
    !----------------------------------------------------------------------------
    ! call nc_check(nf90_def_var(ncid=ncid, name='observations', xtype=nf90_double, &
    !           dimids=(/ ObsCopyDimID, ObsNumDimID /), varid=VarID), &
@@ -1110,7 +1014,7 @@ enddo WriteObs
 
 call nc_check(nf90_sync( ncid), 'WriteNetCDF', 'sync '//trim(fname))  
 
-if (DEBUG) write(*,*)'DEBUG --- leaving WriteNetCDF'
+if (debug) write(*,*)'DEBUG --- leaving WriteNetCDF'
 
 end Subroutine WriteNetCDF
 
@@ -1120,7 +1024,7 @@ Subroutine CloseNetCDF(ncid, fname)
 integer,          intent(in) :: ncid
 character(len=*), intent(in) :: fname
 
-if ( DEBUG ) write(*,*)'DEBUG --- Closing ',trim(fname)
+if ( debug ) write(*,*)'DEBUG --- Closing ',trim(fname)
 
 call nc_check(nf90_sync( ncid), 'WriteNetCDF', 'sync '//trim(fname))  
 call nc_check(nf90_close(ncid), 'init_diag_output', 'close '//trim(fname))  
