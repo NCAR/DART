@@ -4,26 +4,7 @@
 #
 # DART $Id$
 
-This directory contains source for two programs that convert NCEP BUFR files,
-which contain observational data, into DART obs_seq file format.
+All files which used to be in this directory have been moved to
+DART/observations/NCEP.
 
-The first is in the prep_bufr directory.  This program converts the raw
-data files into an intermediate text format.  See prep_bufr/prep_bufr.html
-for detailed documentation.
-
-The second is the create_real_obs program, which has the source in
-this directory but is built with scripts in the 'work' subdirectory.
-It reads the intermediate text files and outputs DART obs_seq file format.
-See create_real_obs.html for documentation.
-
-
-7 Nov 2007:
-The latest code updates to this directory are contributed by Ryan Torn
-and include support for additional observation types and the option to
-restrict the output to only observations in a specified lat/lon box.
-
-The defaults have also changed in the scripts.  They will create 6 hour
-observation files instead of 12.  The utility 'merge_obs_seq' can be
-used to concatinate multiple observation files into daily (or longer)
-files.
 
