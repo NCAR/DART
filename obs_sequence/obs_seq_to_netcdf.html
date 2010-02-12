@@ -3,7 +3,7 @@
 <HTML>
 <HEAD>
 <TITLE>program obs_seq_to_netcdf</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -35,11 +35,11 @@
     class=program>plot_obs_netcdf.m</em>.
    <br />
    <br />
-   <a  href="../../doc/images/plot_obs_netcdf_fig1.png">
-   <img src="../../doc/images/plot_obs_netcdf_fig1.png" 
+   <a  href="../doc/images/plot_obs_netcdf_fig1.png">
+   <img src="../doc/images/plot_obs_netcdf_fig1.png" 
         alt="DART observation 3D scatterplot" height=300 /></a>
-   <a  href="../../doc/images/plot_obs_netcdf_fig2.png">
-   <img src="../../doc/images/plot_obs_netcdf_fig2.png" 
+   <a  href="../doc/images/plot_obs_netcdf_fig2.png">
+   <img src="../doc/images/plot_obs_netcdf_fig2.png" 
         alt="DART 'bad' QC 3D scatterplot" height=300 /></a>
    <br />
    <br />
@@ -56,7 +56,7 @@
    There is also a facility for exploring the spatial distributions 
    of quantities like bias between the ensemble mean and the 
    observations: 
-   <em class=file>DART/observations/utilities/threed_sphere/</em><em 
+   <em class=file>DART/diagnostics/matlab/</em><em 
        class=program>plot_obs_netcdf_diffs.m</em>.
    <br />
    <br />
@@ -66,10 +66,27 @@
    are read from file <em class=file>input.nml</em>.
 </P>
 
+
 <H3 class="indent1">What's on the horizon ...</H3>
 <P>
    <em class=program>obs_seq_to_netcdf</em> 
    is a step toward encoding our observations in netCDF files.
+<br />
+<br />
+   <em class=new>The dependence on the <em class=file>threed_sphere/location_mod.f90</em>
+   has been removed. This program will soon be available to any conforming 
+   <em class=file>location_mod.f90</em>.</em> Also, this program no longer tries
+   to construct 'wind' observations from horizontal components since the program really
+   should be faithful to preserving exactly what is in the input file. i.e. We're not
+   making stuff up.
+<br />
+<br />
+   There are more Matlab scripts in the works ... keep an eye out for a 
+   <em class=program>link_obs.m</em> script that will create several linked
+   figures with the ability to 'brush' data in one view and have those selected
+   data (and attributes) get highlighted in the other views. There are still
+   a couple nuances to the figures that I'd like to get right before I release it
+   for general consumption -- Tim.
 </P>
 
 <!--==================================================================-->
@@ -112,7 +129,7 @@ The declarations have a different syntax, naturally.
 <div class=namelist>
 <pre>
 <em class=call>namelist / obs_seq_to_netcdf_nml / </em> 
-   obs_sequence_name, obs_sequence_list, 
+   obs_sequence_name, obs_sequence_list, append_to_netcdf,
    lonlim1, lonlim2, latlim1, latlim2, verbose
 </pre>
 </div>
@@ -164,6 +181,16 @@ The declarations have a different syntax, naturally.
             Can be created by any method, including sending the output
             of the 'ls' command to a file, a text editor, or another program.
 	    Default '' - and empty string.</TD></TR>  
+
+<TR><!--contents--><TD valign=top>   append_to_netcdf   </TD>
+    <!--  type  --><TD valign=top>   logical   </TD>
+    <!--descript--><TD>This gives control over whether to overwrite or append to
+            an existing netcdf output file. It is envisioned that you may want
+            to combine multiple observation sequence files into one netcdf file
+            (i.e.&nbsp;<em class=code>append_to_netcdf=.true.</em>) to explore 
+            the effects on data coverage, etc. The default behavior is to create
+            a new <em class=file>obs_epoch_xxx.nc</em> file with every execution.<BR>
+            Default: .false. </TD></TR>  
 
 <TR><!--contents--><TD valign=top>   lonlim1   </TD>
     <!--  type  --><TD valign=top>   real      </TD>
@@ -221,7 +248,7 @@ The declarations have a different syntax, naturally.
 </P>
 
 <center>
-<img src="../../doc/images/schedule.png" alt="DART assimilation schedule" height=200>
+<img src="../doc/images/schedule.png" alt="DART assimilation schedule" height=200>
 </center>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -375,7 +402,7 @@ smallest possible delta is added to one of the assimilation edges.
         <em class="code">obs_seq_to_netcdf_nml</em> and 
         <em class="code">schedule_nml</em>.
 	</LI>
-    <LI><em class="file">obs_sequence_xxx.nc</em> is a 
+    <LI><em class="file">obs_epoch_xxx.nc</em> is a 
         netCDF output file for assimilation period 'xxx'. Each
         observation copy is preserved - as are any/all QC values/copies.
 	</LI>
@@ -399,7 +426,7 @@ smallest possible delta is added to one of the assimilation edges.
 	</LI>
 </UL>
 
-<H3 class="indent1">Discussion of obs_sequence_xxx.nc structure</H3>
+<H3 class="indent1">Discussion of obs_epoch_xxx.nc structure</H3>
 <P>
 <a href="http://www.image.ucar.edu/DAReS/Documentation/index.jsp#sequences">
 This might be a good time to review the basic observation sequence 
@@ -411,8 +438,8 @@ netCDF files. The intent is to provide everything you need to make
 sensible plots of the observations. Some important aspects are highlighted. 
 </P>
 <pre>
-[shad] % <em class="input">ncdump -v QCMetaData,CopyMetaData,ObsTypesMetaData obs_sequence_001.nc</em>
-netcdf obs_sequence_001 {
+[shad] % <em class="input">ncdump -v QCMetaData,CopyMetaData,ObsTypesMetaData obs_epoch_001.nc</em>
+netcdf obs_epoch_001 {
 dimensions:
         linelen = 129 ;
         nlines = 104 ;
@@ -449,10 +476,6 @@ variables:
         int <em class="changed">obs_type(ObsIndex)</em> ;
                 obs_type:long_name = "DART observation type" ;
                 obs_type:explanation = "see ObsTypesMetaData" ;
-        int which_vert(ObsIndex) ;
-                which_vert:long_name = "vertical coordinate system code" ;
-        double location(ObsIndex, location) ;
-                location:long_name = "location of observation" ;
                 location:units = "deg_Lon deg_Lat vertical" ;
         double observations(ObsIndex, <em class="changed">copy</em>) ;
                 observations:long_name = "org observation, estimates, etc." ;
@@ -461,12 +484,23 @@ variables:
         int qc(ObsIndex, <em class="changed">qc_copy</em>) ;
                 qc:long_name = "QC values" ;
                 qc:explanation = "see QCMetaData" ;
+        double location(ObsIndex, location) ;
+                location:long_name = "location of observation" ;
+                location:storage_order = "Lon Lat Vertical" ;
+                location:units = "degrees degrees which_vert" ;
+        int which_vert(ObsIndex) ;
+                which_vert:long_name = "vertical coordinate system code" ;
+                which_vert:VERTISUNDEF = -2 ;
+                which_vert:VERTISSURFACE = -1 ;
+                which_vert:VERTISLEVEL = 1 ;
+                which_vert:VERTISPRESSURE = 2 ;
+                which_vert:VERTISHEIGHT = 3 ;
+
 // global attributes:
                 :creation_date = "YYYY MM DD HH MM SS = 2009 05 01 16 51 18" ;
-                :obs_seq_to_netcdf_source = "$URL$" ;
-                :obs_seq_to_netcdf_revision = "$Revision$" ;
-                :obs_seq_to_netcdf_revdate = "$Date$" ;
-                :horizontal_wind = "vector wind derived from U,V components" ;
+                :obs_seq_to_netcdf_source = "$url: http://subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_to_netcdf.f90 $" ;
+                :obs_seq_to_netcdf_revision = "$revision: 4272 $" ;
+                :obs_seq_to_netcdf_revdate = "$date: 2010-02-12 14:26:40 -0700 (Fri, 12 Feb 2010) $" ;
                 :obs_seq_file_001 = "bgrid_solo/work/01_01/obs_seq.final" ;
 data:
 
@@ -558,6 +592,7 @@ observation types that do not exist in the file. Stay tuned.
 &amp;obs_seq_to_netcdf_nml
    obs_sequence_name = '',
    obs_sequence_list = 'olist',
+   append_to_netcdf  = .false.,
    lonlim1    =    0.0,
    lonlim2    =  360.0,
    latlim1    =  -80.0,
@@ -632,50 +667,42 @@ epoch      8    end 2006 Aug 03 03:00:00
  obs_seq_to_netcdf  opening /users/thoar/temp/obs_0001/obs_seq.final
  
  num_obs_in_epoch (           1 ) =       103223
- InitNetCDF  obs_sequence_001.nc is fortran unit            5
+ InitNetCDF  obs_epoch_001.nc is fortran unit            5
  num_obs_in_epoch (           2 ) =       186523
- InitNetCDF  obs_sequence_002.nc is fortran unit            5
+ InitNetCDF  obs_epoch_002.nc is fortran unit            5
  num_obs_in_epoch (           3 ) =       110395
- InitNetCDF  obs_sequence_003.nc is fortran unit            5
+ InitNetCDF  obs_epoch_003.nc is fortran unit            5
  num_obs_in_epoch (           4 ) =       191957
- InitNetCDF  obs_sequence_004.nc is fortran unit            5
+ InitNetCDF  obs_epoch_004.nc is fortran unit            5
 
  obs_seq_to_netcdf  opening /users/thoar/temp/obs_0002/obs_seq.final
 
  num_obs_in_epoch (           5 ) =        90683
- InitNetCDF  obs_sequence_005.nc is fortran unit            5
+ InitNetCDF  obs_epoch_005.nc is fortran unit            5
  num_obs_in_epoch (           6 ) =       186316
- InitNetCDF  obs_sequence_006.nc is fortran unit            5
+ InitNetCDF  obs_epoch_006.nc is fortran unit            5
  num_obs_in_epoch (           7 ) =       109465
- InitNetCDF  obs_sequence_007.nc is fortran unit            5
+ InitNetCDF  obs_epoch_007.nc is fortran unit            5
  num_obs_in_epoch (           8 ) =       197441
- InitNetCDF  obs_sequence_008.nc is fortran unit            5
+ InitNetCDF  obs_epoch_008.nc is fortran unit            5
 
  obs_seq_to_netcdf  opening /users/thoar/temp/obs_0003/obs_seq.final
  
  --------------------------------------
  Finished ... at YYYY MM DD HH MM SS = 
                  2009  5 15  9  2 56
- $URL$
- $Revision$
- $Date$
+ $url: http://subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_to_netcdf.f90 $
+ $revision: 4272 $
+ $date: 2010-02-12 14:26:40 -0700 (Fri, 12 Feb 2010) $
  --------------------------------------
 </pre>
 </div>
 
 <H3 class="indent1">Matlab helper functions</H3>
 <P>
-The Matlab <em class="file">netcdf_toolbox</em> 
-subset of functions is no longer being supported by their 
-developers, who are now supporting the 
-<a href="http://mexcdf.sourceforge.net/">snctools</a> 
-set of functions. The Matlab function <em class="program">read_obs_netcdf</em>
-uses the supported <em class="file">snctools</em> toolbox. 
-The migration away
-from the existing DART use of the <em class="file">netcdf_toolbox</em> and the CSIRO
-toolbox <em class="file">matlab_netCDF_OPeNDAP</em> (i.e. the 'getnc'
-function) is complete. This greatly eases the
-installation of the Matlab netcdf widgets.
+DART uses the <a href="http://mexcdf.sourceforge.net/">snctools</a> set of functions. 
+Our m-file <em class=file>DART/diagnostics/matlab/</em><em class="program">read_obs_netcdf</em>
+uses the <em class="file">snctools</em> toolbox. 
 <br />
 <br />
 You will need the 'normal' <em class="file">DART/matlab</em> functions
@@ -848,7 +875,8 @@ structure as a component in the <em class="code">obs</em> structure.
 
 <H2>KNOWN BUGS</H2>
 <P>
-none at this time
+Silently and happily returns a structure with zero elements if 
+there are no obs in the desired region. 
 </P>
 
 <!--==================================================================-->
