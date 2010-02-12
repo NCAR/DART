@@ -65,6 +65,14 @@
 #
 # -fdefault-real-8     force all real variables to be real*8.
 #
+# Comment about netcdf libraries:
+#  We call NetCDF from Fortran 90, so we need the fortran interface
+#  library.  In some versions of netcdf (e.g. 4.x), the fortran
+#  interfaces are built in a separate library (-lnetcdff) and the
+#  rest of the netcdf functions are in -lnetcdf.  If you get a link
+#  error with the flags below, try removing -lnetcdff, or find out
+#  where the fortran 90 interfaces live in the netcdf distribution
+#  on your system and change the LIBS variable below to match.
 # 
 
 MPIFC = mpif90
@@ -73,7 +81,7 @@ FC = gfortran
 LD = gfortran
 NETCDF = /usr/local
 INCS = -I${NETCDF}/include
-FFLAGS = -O2 $(INCS) 
-LIBS = -L${NETCDF}/lib -lnetcdf
+FFLAGS = -O2 $(INCS) -ffree-line-length-none
+LIBS = -L${NETCDF}/lib -lnetcdff -lnetcdf
 LDFLAGS = $(FFLAGS) $(LIBS)
 
