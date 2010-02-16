@@ -30,6 +30,7 @@
 ! BEGIN DART PREPROCESS KIND LIST
 ! DOPPLER_RADIAL_VELOCITY, KIND_VELOCITY
 ! RADAR_REFLECTIVITY, KIND_RADAR_REFLECTIVITY
+! RADAR_CLEARAIR_REFLECTIVITY, KIND_RADAR_REFLECTIVITY
 ! PRECIPITATION_FALL_SPEED, KIND_POWER_WEIGHTED_FALL_SPEED
 ! END DART PREPROCESS KIND LIST
 !-----------------------------------------------------------------------------
@@ -49,6 +50,8 @@
 !     call get_expected_radial_vel(state, location, obs_def%key, obs_val, istatus)
 !  case(RADAR_REFLECTIVITY)
 !     call get_expected_radar_ref(state, location, obs_val, istatus)
+!  case(RADAR_CLEARAIR_REFLECTIVITY)
+!     call get_expected_radar_ref(state, location, obs_val, istatus)
 !  case(PRECIPITATION_FALL_SPEED)
 !     call get_expected_fall_velocity(state, location, obs_val, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
@@ -60,6 +63,8 @@
 !      call read_radial_vel(obs_def%key, ifile, fileformat)
 !   case(RADAR_REFLECTIVITY)
 !      call read_radar_ref(obs_val, obs_def%key)
+!  case(RADAR_CLEARAIR_REFLECTIVITY)
+!      call read_radar_ref(obs_val, obs_def%key)
 !   case(PRECIPITATION_FALL_SPEED)
 !      continue
 ! END DART PREPROCESS READ_OBS_DEF
@@ -70,6 +75,8 @@
 !   case(DOPPLER_RADIAL_VELOCITY)
 !      call write_radial_vel(obs_def%key, ifile, fileformat)
 !   case(RADAR_REFLECTIVITY)
+!      continue
+!   case(RADAR_CLEARAIR_REFLECTIVITY)
 !      continue
 !   case(PRECIPITATION_FALL_SPEED)
 !      continue
@@ -83,6 +90,8 @@
 !   case(RADAR_REFLECTIVITY)
 !      continue
 !   case(PRECIPITATION_FALL_SPEED)
+!      continue
+!   case(RADAR_CLEARAIR_REFLECTIVITY)
 !      continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 !-----------------------------------------------------------------------------
