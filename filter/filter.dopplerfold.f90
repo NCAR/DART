@@ -1239,6 +1239,7 @@ end subroutine get_obs_ens
 
 subroutine obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, &
    seq, keys, prior_post, num_output_members, members_index, &
+   obs_val_index, OBS_KEY_COPY, &
    ens_mean_index, ens_spread_index, num_obs_in_set, &
    OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
    OBS_ERR_VAR_COPY, DART_qc_index)
@@ -1250,6 +1251,8 @@ integer,                 intent(in)    :: ens_size
 integer,                 intent(in)    :: num_obs_in_set
 integer,                 intent(in)    :: keys(num_obs_in_set), prior_post
 integer,                 intent(in)    :: num_output_members, members_index
+integer,                 intent(in)    :: obs_val_index
+integer,                 intent(in)    :: OBS_KEY_COPY
 integer,                 intent(in)    :: ens_mean_index, ens_spread_index
 type(obs_sequence_type), intent(inout) :: seq
 integer,                 intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START
@@ -1661,7 +1664,7 @@ subroutine update_observations_radar(obs_ens_handle, ens_size, seq, keys, prior_
 
 use obs_def_mod, only          : get_obs_def_key, get_obs_kind
 use obs_kind_mod, only         : DOPPLER_RADIAL_VELOCITY
-use obs_def_radar_mod, only    : get_obs_def_rad_vel
+use obs_def_radar_mod, only    : get_obs_def_radial_vel
 use location_mod, only         : location_type
 use ensemble_manager_mod, only : ensemble_type, get_my_num_copies, &
                                  all_copies_to_all_vars, all_vars_to_all_copies, &
@@ -1723,7 +1726,7 @@ do j = 1, obs_ens_handle%my_num_vars
       obs_prior_mean = obs_ens_handle%copies(OBS_PRIOR_MEAN_START, j)
       obs_val = obs_ens_handle%copies(OBS_VAL_COPY, j)
       velkey = get_obs_def_key(obs_def)
-      call get_obs_def_rad_vel(velkey, radarloc, beamdir, velnyquist)
+      call get_obs_def_radial_vel(velkey, radarloc, beamdir, velnyquist)
       if ( (velnyquist > 0.0_r8) .and. &
            (obs_prior_mean /= missing_r8) .and. (obs_val /= missing_r8) ) then
          i_real = (obs_prior_mean - obs_val) / (2.0_r8 * velnyquist)
