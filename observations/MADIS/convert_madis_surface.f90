@@ -44,7 +44,8 @@ use dewpoint_obs_err_mod, only : dewpt_error_from_rh_and_temp, &
 use     obs_kind_mod, only : LAND_SFC_U_WIND_COMPONENT, LAND_SFC_V_WIND_COMPONENT, &
                              LAND_SFC_TEMPERATURE, LAND_SFC_SPECIFIC_HUMIDITY, & 
                              LAND_SFC_DEWPOINT, LAND_SFC_RELATIVE_HUMIDITY, &
-                             LAND_SFC_ALTIMETER                
+                             LAND_SFC_ALTIMETER
+
 use           netcdf
 
 implicit none
@@ -57,13 +58,13 @@ character(len=129), parameter :: surface_out_file    = 'obs_seq.land_sfc'
 logical,            parameter :: exclude_special     = .true.
 
 ! the following logical parameters control which water-vapor variables appear in the output file,
-! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and
-! whether the input data file has QC values.
+! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and if the
+! input file has data quality control fields, whether to use or ignore them.
 logical, parameter :: LH_err                    = .false.
 logical, parameter :: include_specific_humidity = .true.
 logical, parameter :: include_relative_humidity = .false.
 logical, parameter :: include_dewpoint          = .false.
-logical, parameter :: input_has_qc              = .true.
+logical, parameter :: use_input_qc              = .true. 
 
 integer, parameter   :: dsecobs    = 420, &   ! observation window
                         num_copies = 1,   &   ! number of copies in sequence
@@ -74,8 +75,8 @@ character (len=80)  :: name
 character (len=19)  :: datestr
 character (len=5)   :: rtype
 integer :: rcode, ncid, varid, nobs, nvars, n, i, oday, osec, dday, &
-           dsec, nused, iyear, imonth, iday, ihour, imin, isec
-logical :: file_exist
+           dsec, nused, iyear, imonth, iday, ihour, imin, isec, nfrc
+logical :: file_exist, input_has_qc
 real(r8) :: alti_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
             vwnd, palt, qobs, qsat, rh, oerr, pres, qerr, qc
 
@@ -88,7 +89,7 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs
 type(time_type)         :: comp_day0, time_obs, time_anal
 
-print*,'Enter the analysis time (yyyy-mm-dd_hh:mm:ss)'
+print*,'Enter the analysis time (yyyy-mm-dd_hh:mm:ss):'
 read*,datestr
 
 ! put the analysis date into DART format
@@ -164,8 +165,14 @@ call check( nf90_get_att(ncid, varid, '_FillValue', wspd_miss) )
 call check( nf90_inq_varid(ncid, "timeObs", varid) )
 call check( nf90_get_var(ncid, varid, tobs) )
 
+! pick a random QC field and test for it.  if it's there, set
+! the 'has qc' flag to true.  otherwise, set it to false.
 ! read the QC check for each variable
-if (input_has_qc) then
+nfrc = nf90_inq_varid(ncid, "altimeterQCR", varid) 
+input_has_qc = (nfrc == nf90_noerr)
+
+! read the QC check for each variable
+if (input_has_qc .and. use_input_qc) then
    call check( nf90_inq_varid(ncid, "altimeterQCR", varid) )
    call check( nf90_get_var(ncid, varid, qc_alti) )
    
@@ -181,7 +188,7 @@ if (input_has_qc) then
    call check( nf90_inq_varid(ncid, "windSpeedQCR", varid) )
    call check( nf90_get_var(ncid, varid, qc_wspd) )
 else
-   ! if input contains no QCs, assume all are ok.
+   ! if input contains no QCs, or user said skip them. assume all are ok.
    qc_alti = 0
    qc_tair = 0 ;  qc_tdew = 0
    qc_wdir = 0 ;  qc_wspd = 0
@@ -349,8 +356,9 @@ end do obsloop
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, surface_out_file)
 call check( nf90_close(ncid) )
 
-stop
-end
+! end of main program
+
+contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -425,3 +433,5 @@ call set_qc(obs, qc_val)
 
 return
 end subroutine create_obs_type
+
+end program convert_madis_surface
