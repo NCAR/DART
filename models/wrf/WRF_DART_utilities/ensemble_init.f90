@@ -10,6 +10,12 @@ program ensemble_init
 ! $Revision$
 ! $Date$
 
+! This program is out of date compared to the other utilities in this directory.
+! I believe it could call the standard model_mod initialization routine and
+! be updated to work with the existing files, but I'm unsure about what exactly
+! it does.  So for now, I'm leaving it alone - but it's not going to work
+! correctly if used.     nsc 16 feb 2010
+
 ! Prototype to initialize ensemble for WRF EnKF 
 !  
 ! Reads:   Ensemble size, Ne    from    stdin 
@@ -45,12 +51,10 @@ use      location_mod, only : location_type, get_location, set_location, &
                               vert_is_surface, vert_is_level, vert_is_pressure, vert_is_height, &
                               VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
                               VERTISHEIGHT
-                             
-
 use    utilities_mod, only : get_unit, file_exist, open_file, &
                              close_file, error_handler, E_ERR, E_MSG, initialize_utilities, &
-                             register_module, logfileunit, nmlfileunit, timestamp, &
-                             find_namelist_in_file, check_namelist_read
+                             register_module, logfileunit, nmlfileunit, &
+                             find_namelist_in_file, check_namelist_read, finalize_utilities
 
 use netcdf
 
@@ -62,42 +66,54 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
+! miscellaneous
+integer, parameter :: max_state_variables = 100
+integer, parameter :: num_state_table_columns = 5
+integer, parameter :: num_bounds_table_columns = 4
+
 !-----------------------------------------------------------------------
 ! Model namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-logical :: output_state_vector  = .false.     ! output prognostic variables
+logical :: output_state_vector     = .false.  ! output prognostic variables
+logical :: default_state_variables = .true.   ! use default state list?
+character(len=129) :: wrf_state_variables(num_state_table_columns,max_state_variables) = 'NULL'
+character(len=129) :: wrf_state_bounds(num_bounds_table_columns,max_state_variables) = 'NULL'
 integer :: num_moist_vars       = 3
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
 integer :: assimilation_period_seconds = 21600
-logical :: surf_obs             = .true.      
-logical :: soil_data            = .true.      
-logical :: h_diab               = .false.     
-character(len = 72) :: adv_mod_command = './wrf.exe'
-real (kind=r8) :: center_search_half_length = 500000.0_r8
-integer :: center_spline_grid_scale = 10      
-integer :: vert_localization_coord = VERTISHEIGHT
-! Allow (or not) observations above the surface but below the lowest
-! sigma level.
-logical :: allow_obs_below_vol = .false.
+logical :: surf_obs             = .true.
+logical :: soil_data            = .true.
+logical :: h_diab               = .false.
 ! Max height a surface obs can be away from the actual model surface
 ! and still be accepted (in meters)
-!real (kind=r8) :: max_surface_delta = 500.0
-! candidates for adding to the WRF netcdf files:
+real (kind=r8) :: sfc_elev_max_diff  = -1.0_r8   ! could be something like 200.0_r8
+character(len = 72) :: adv_mod_command = './wrf.exe'
+real (kind=r8) :: center_search_half_length = 500000.0_r8
+real(r8) :: circulation_pres_level = 80000.0_r8
+real(r8) :: circulation_radius     = 108000.0_r8
+integer :: center_spline_grid_scale = 10
+integer :: vert_localization_coord = VERTISHEIGHT
+! Allow (or not) observations above the surface but below the lowest sigma level.
+logical :: allow_obs_below_vol = .false.
+!nc -- we are adding these to the model.nml until they appear in the NetCDF files
 logical :: polar = .false.         ! wrap over the poles
 logical :: periodic_x = .false.    ! wrap in longitude or x
 logical :: periodic_y = .false.    ! used for single column model, wrap in y
-!JPH -- single column model flag 
+!JPH -- single column model flag
 logical :: scm        = .false.    ! using the single column model
 
-
+! JPH note that soil_data and h_diab are never used and can be removed.
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, soil_data, h_diab, &
+                     default_state_variables, wrf_state_variables, &
+                     wrf_state_bounds, sfc_elev_max_diff, &
                      adv_mod_command, assimilation_period_seconds, &
                      allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
-                     polar, periodic_x, periodic_y, scm
+                     circulation_pres_level, circulation_radius, polar, &
+                     periodic_x, periodic_y, scm
 
 !-----------------------------------------------------------------------
 
@@ -124,6 +140,13 @@ read(*,*) scale    ! Read scaling       from stdin.
 
 call initialize_utilities('ensemble_init')
 call register_module(source, revision, revdate)
+
+! FIXME: i believe this program should call the wrf static_model_init code
+! to initialize the wrf static data, and then it doesn't have to read the
+! wrf model_mod namelist.  the num_moist_vars is no longer used, and there's
+! an array of fields which are going to be used in the state vector that
+! i believe should be used here instead.  see wrf_to_dart and dart_to_wrf
+! for now this program should be restructured.
 
 ! Begin by reading the namelist input
 call find_namelist_in_file("input.nml", "model_nml", iunit)
@@ -348,7 +371,7 @@ enddo
 write(logfileunit,*)'FINISHED ensemble_init.'
 write(logfileunit,*)
 
-call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
+call finalize_utilities('ensemble_init')  ! closes log file.
  
 contains
 

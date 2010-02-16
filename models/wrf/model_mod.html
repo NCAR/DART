@@ -677,8 +677,10 @@ The declarations have a different syntax, naturally.
    default_state_variables, wrf_state_variables, wrf_state_bounds,      &amp;
    output_state_vector, num_domains, calendar_type,                     &amp;
    adv_mod_command, assimilation_period_seconds, allow_obs_below_vol,   &amp;
-   vert_localization_coord, center_search_half_length, center_spline_grid_scale,   &amp;
-   polar, periodic_x, periodic_y, scm                                   &amp;
+   vert_localization_coord, sfc_elev_max_diff,                          &amp;
+   polar, periodic_x, periodic_y, scm,                                  &amp;
+   center_search_half_length, center_spline_grid_scale,                 &amp;
+   circulation_pres_level, circulation_radius,                          &amp;
    num_moist_vars, surf_obs, soil_data, h_diab
 </pre>
 </div>
@@ -794,6 +796,17 @@ This namelist is read in a file called <em class=file>input.nml</em>
     and periodic_y should also be .true. in this case.
     The default is .false.</TD></TR>
 
+<TR><!--contents--><TD valign=top>sfc_elev_max_diff           </TD>
+    <!--  type  --><TD valign=top>real(r8)                    </TD>
+    <!--descript--><TD>If > 0, the maximum difference, in meters,
+    between an observation marked as a 'surface obs' as the vertical
+    type (with the surface elevation, in meters, as the numerical
+    vertical location), and the surface elevation as defined by the
+    model.  Observations further away from the surface than this
+    threshold are rejected and not assimilated.   If the value is
+    negative, this test is skipped.  The default value is -1.0.
+    The default is .false.</TD></TR>
+
 <TR><!--contents--><TD valign=top>adv_mod_command              </TD>
     <!--  type  --><TD valign=top>character(len=32)            </TD>
     <!--descript--><TD>For single-threaded, set to 'wrf.exe'. 
@@ -814,15 +827,39 @@ This namelist is read in a file called <em class=file>input.nml</em>
 
 <TR><!--contents--><TD valign=top>center_search_half_length    </TD>
     <!--  type  --><TD valign=top>real(r8)                     </TD>
-    <!--descript--><TD>Half length (in meter) of a square box for searching 
-                       the vortex center.
-                       Default is 500000.0</TD></TR>
+    <!--descript--><TD>The model_mod now contains two schemes for
+          searching for a vortex center location.  If the old scheme
+          is compiled in, then this and the center_spline_grid_scale
+          namelist items are used.  
+          Half length (in meters) of a square box for searching 
+          the vortex center.  Default is 500000.0</TD></TR>
     
 <TR><!--contents--><TD valign=top>center_spline_grid_scale  </TD>
     <!--  type  --><TD valign=top>integer                   </TD>
-    <!--descript--><TD>Ratio of refining grid for spline-interpolation in 
-                       determining the vortex center. 
-                       Default is 10</TD></TR>
+    <!--descript--><TD>The model_mod now contains two schemes for
+          searching for a vortex center location.  If the old scheme
+          is compiled in, then this and the center_search_half_length
+          namelist items are used.  
+          Ratio of refining grid for spline-interpolation in 
+          determining the vortex center.  Default is 10</TD></TR>
+    
+<TR><!--contents--><TD valign=top>circulation_pres_level  </TD>
+    <!--  type  --><TD valign=top>real(r8)                </TD>
+    <!--descript--><TD>The model_mod now contains two schemes for
+          searching for a vortex center location.  If the new scheme
+          is compiled in, then this and the circulation_radius
+          namelist items are used.  
+          Pressure, in pascals, of xxx
+          for determining the vortex center.  Default is 80000.0</TD></TR>
+    
+<TR><!--contents--><TD valign=top>circulation_radius  </TD>
+    <!--  type  --><TD valign=top>real(r8)                </TD>
+    <!--descript--><TD>The model_mod now contains two schemes for
+          searching for a vortex center location.  If the new scheme
+          is compiled in, then this and the circulation_pres_level
+          namelist items are used.  
+          Distance, in meters, of xxx
+          for determining the vortex center.  Default is 108000.0</TD></TR>
     
 <TR><!--contents--><TD valign=top>vert_localization_coord  </TD>
     <!--  type  --><TD valign=top>integer                   </TD>
@@ -832,40 +869,23 @@ This namelist is read in a file called <em class=file>input.nml</em>
     
 <TR><!--contents--><TD valign=top>surf_obs                     </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>If true, includes U10, V10, T2, Q2, and PS 
-    in the state vector. The resulting extended state vector permits 
-    simpler observational operators for these variables. With this 
-    strategy, the surface scheme can be changed without the 
-    requirement of changing the observational operators in DART.
-    Defaults to true.  DEPRECATED -- must be .true. for now if
-    any of the surface fields are part of the wrf_state_variables list.
-    Will be removed the next time the code is reorganized.</TD></TR>
+    <!--descript--><TD>DEPRECATED -- has no effect on the code
+    and will be removed soon.</TD></TR>
 
 <TR><!--contents--><TD valign=top>soil_data                    </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>If true, soil temperature (TSLB), 
-    soil moisture (SMOIS), and soil liquid water (SH2O) 
-    are included in the state vector, and they are updated by 
-    the assimilation.
-    Defaults to true.  DEPRECATED -- has no effect on the code 
+    <!--descript--><TD>DEPRECATED -- has no effect on the code 
     and will be removed soon.</TD></TR>
 
 <TR><!--contents--><TD valign=top>h_diab                     </TD>
     <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>If true, includes H_DIABATIC in the state vector. 
-   This produces a smoother restart and reduces the spinup problem
-   during the assimilation. To use it, WRF registry needs to be changed
-   to include H_DIABATIC in WRF input/output files. This is especially 
-   useful for convective scale assimilations. Defaults to false.
-   DEPRECATED -- has no effect on the code and will be removed soon.</TD></TR>
+    <!--descript--><TD>DEPRECATED -- has no effect on the code 
+    and will be removed soon.</TD></TR>
 
 <TR><!--contents--><TD valign=top>num_moist_vars               </TD>
     <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD>Number of moist variables in the state vector
-    [0,...,7].  Defaults to 3.  DEPRECATED -- will soon have no effect
-    on the code.  For now, must be > 1 if any Q hydrometeors are
-    specified in the wrf_state_variables list.
-    Will be removed the next time the code is reorganized.</TD></TR>
+    <!--descript--><TD>DEPRECATED -- has no effect on the code 
+    and will be removed soon.</TD></TR>
 
 </TABLE>
 

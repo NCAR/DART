@@ -2,7 +2,7 @@
           "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
-<TITLE>program dart_to_wrf</TITLE>
+<TITLE>program replace_wrf_fields</TITLE>
 <link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css">
 </HEAD>
 <BODY>
@@ -19,35 +19,33 @@
 <A HREF="#Legalese">TERMS OF USE</A>
 </center>
 
-<H1>PROGRAM <em class=program>dart_to_wrf</em></H1>
-<H1>PROGRAM <em class=program>wrf_to_dart</em></H1>
+<H1>PROGRAM <em class=program>replace_wrf_fields</em></H1>
 <!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
-   Programs to convert WRF netCDF input files into DART format, and vice versa.
+   Program to copy various fields from one WRF netCDF file to another.
 </P>
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
 <HR>
-<H2>MODULES DIRECTLY USED</H2>
+<H2>MODULES USED</H2>
 <PRE>
 types_mod
-time_manager_mod
 utilities_mod
-models/wrf/WRF_DART_utilities/wrf_data_module
-assim_model_mod
-</PRE>
-
-<H2>MODULES INDIRECTLY USED</H2>
-<PRE>
-models/wrf/model_mod
-models/wrf/module_map_utils
-obs_kind_mod
-location/threed_sphere/location_mod
-random_seq_mod
+parse_args_mod
 random_nr_mod
+time_manager_mod
+null_mpi_utilities_mod
+random_seq_mod
+location/threed_sphere/location_mod
+obs_kind_mod
+wrf/module_map_utils
+wrf/model_mod
+assim_model_mod
+obs_def_mod
+obs_sequence_mod
 </PRE>
 
 <!--==================================================================-->
@@ -59,18 +57,19 @@ random_nr_mod
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
 '&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
+consider yourself forewarned that character strings that contain a '/' must be
 enclosed in quotes to prevent them from prematurely terminating the namelist.
 The namelist declaration (i.e. what follows) has a different syntax, naturally.
 </P>
 <div class=namelist>
 <pre>
-<em class=call>namelist / dart_to_wrf_nml / </em> &amp;
-    model_advance_file, dart_restart_name, adv_mod_command
-    
+<em class=call>namelist / replace_wrf_fields_nml / </em> &amp;
+    model_advance_file
 
-<em class=call>namelist / model_nml / </em> 
-
+<em class=call>namelist / model_nml / </em> &amp;
+    output_state_vector, num_moist_vars, num_domains, calendar_type, &amp;
+    surf_obs, soil_data, h_diab, adv_mod_command, assimilation_period_seconds,  &amp;
+    vert_localization_coord, center_search_half_length, center_spline_grid_scale
 </pre>
 </div>
 
@@ -80,8 +79,8 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 <P>The <em class=file>wrf_to_dart</em> program uses only the
 WRF model namelist.  See the description in
 the <a href="../model_mod.hmtl">WRF model_mod.html</a> file.
-The <em class=file>dart_to_wrf</em> program uses the model namelist
-plus an additional namelist: <em class=file>dart_to_wrf_nml</em>.
+The <em class=file>replace_wrf_fields</em> program uses the model namelist
+plus an additional namelist: <em class=file>replace_wrf_fields_nml</em>.
 </P>
 
 <P>Both namelists are read from a file 
@@ -92,8 +91,8 @@ called <em class=file>input.nml</em>
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>model_advance_file  </TD>
-    <!--  type  --><TD valign=top>logical             </TD>
+<TR><!--contents--><TD valign=top>model_advance_file    </TD>
+    <!--  type  --><TD valign=top>logical         </TD>
     <!--descript--><TD>In normal usage set this to .TRUE. so the
      model_advance.csh script can function correctly.  The input
      file will have 2 timestamps: time for model to advance to, 
@@ -101,20 +100,6 @@ called <em class=file>input.nml</em>
      file restart files after DART finishes running into wrfinput_d01
      files, for example to continue with a free run, set this to .FALSE.
      Default .TRUE. </TD></TR>
-<TR><!--contents--><TD valign=top>dart_restart_name    </TD>
-    <!--  type  --><TD valign=top>character(len=128)   </TD>
-    <!--descript--><TD>In normal usage set this to 'dart_wrf_vector'
-     so the model_advance.csh script can function correctly.  However,
-     to write the output information directly to a netcdf file with
-     a different name, set this to another value.
-     Default 'dart_wrf_vector'. </TD></TR>
-<TR><!--contents--><TD valign=top>adv_mod_command      </TD>
-    <!--  type  --><TD valign=top>character(len=128)   </TD>
-    <!--descript--><TD>In normal usage set this to './wrf.exe'
-     so the model_advance.csh script can function correctly. 
-     This information along with some time information is written
-     to a file called 'wrf.info' if this is a model advance file.
-     Default './wrf.exe'. </TD></TR>
 </TABLE>
 
 
@@ -129,10 +114,10 @@ called <em class=file>input.nml</em>
 <HR>
 <H2>FILES</H2>
 <UL>
-   <LI>input namelist : <em class=file>input.nml</em></LI>
-   <LI>Input - output WRF state netCDF files : <em class=file>wrfinput_d01,
+   <LI>input namelist ; <em class=file>input.nml</em></LI>
+   <LI>Input - output WRF state netCDF files; <em class=file>wrfinput_d01,
    wrfinput_d02, ...</em></LI>
-   <LI>Input - output dart state vector format files : <em
+   <LI>Input - output dart state vector format files ; <em
    class=file>dart_wrf_vector</em></LI>
    <LI>Input - output: <em class=file>wrf.info</em></LI>
 </UL>
@@ -235,10 +220,10 @@ in WRF. The program will also need to be updated to add parameters to be estimat
 <br>
 <div class=routine>
 <em class=call> call dart_open_and_alloc( wrf, dart, n_values, dart_unit,
-dart_to_wrf, debug )</em>
+replace_wrf_fields, debug )</em>
 <pre>
 integer,          intent(out) :: <em class=code> dart_unit </em>
-logical,          intent(in)  :: <em class=code> dart_to_wrf, debug </em>
+logical,          intent(in)  :: <em class=code> replace_wrf_fields, debug </em>
 type(wrf_dom),    intent(in)  :: <em class=code> wrf </em>
 real(r8),         pointer     :: <em class=code> dart(:) </em>
 integer,          intent(out) :: <em class=code> n_values  </em>
@@ -260,9 +245,9 @@ state vector, and allocate the dart state vector variable.
 
 <br>
 <div class=routine>
-<em class=call> call transfer_dart_wrf ( dart_to_wrf, dart, wrf, n_values_in)</em>
+<em class=call> call transfer_dart_wrf ( replace_wrf_fields, dart, wrf, n_values_in)</em>
 <pre>
-logical,          intent(in) :: <em class=code> dart_to_wrf </em>
+logical,          intent(in) :: <em class=code> replace_wrf_fields </em>
 type(wrf_dom),    intent(in) :: <em class=code> wrf </em>
 real(r8), pointer            :: <em class=code> dart(:) </em>
 integer,          intent(in) :: <em class=code> n_values_in </em>
@@ -342,7 +327,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
 
 <TABLE border=0 cellpadding=0 width=100% summary="">
-<TR><TD valign=top>Contact:       </TD><TD> Hui Liu, David Dowell </TD></TR>
+<TR><TD valign=top>Contact:       </TD><TD> Glen Romine, Nancy Collins </TD></TR>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>

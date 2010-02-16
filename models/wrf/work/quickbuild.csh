@@ -56,7 +56,8 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
-\rm -f *.o *.mod input.nml*_default
+#\rm -f *.o *.mod 
+\rm -f input.nml*_default
 
 if ( $#argv == 1 && "$1" == "-mpi" ) then
   echo "Success: All single task DART programs compiled."  
@@ -109,7 +110,8 @@ echo "build number $n is mkmf_wakeup_filter"
 csh  mkmf_wakeup_filter -mpi
 make || exit $n
 
-\rm -f *.o *.mod input.nml*_default
+#\rm -f *.o *.mod 
+\rm -f input.nml*_default
 
 echo
 echo 'time to run filter here:'

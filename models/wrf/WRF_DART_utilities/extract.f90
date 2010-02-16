@@ -12,7 +12,7 @@ PROGRAM extract
 
 use    utilities_mod, only : file_exist, open_file, close_file, &
                              error_handler, E_ERR, initialize_utilities, &
-                             timestamp, register_module, logfileunit
+                             register_module, logfileunit, finalize_utilities
 use    netcdf
 
 implicit none
@@ -110,7 +110,7 @@ call close_file(iunit)
 write(logfileunit,*)'FINISHED extract.'
 write(logfileunit,*)
 
-call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
+call finalize_utilities('Extract')   ! closes log file.
  
 contains
 

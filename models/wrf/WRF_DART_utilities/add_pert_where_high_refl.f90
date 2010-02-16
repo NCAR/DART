@@ -32,8 +32,7 @@ PROGRAM add_pert_where_high_refl
 ! output:
 
 use        types_mod, only : r8, gravity, t_kelvin, ps0, gas_constant, gas_constant_v
-use    utilities_mod, only : error_handler, E_ERR, E_MSG, initialize_utilities, &
-                             timestamp, register_module, logfileunit, file_exist
+use    utilities_mod, only : error_handler, E_ERR
 use    random_nr_mod, only : random_seq_type, init_ran1
 use   random_seq_mod, only : random_gaussian
 use    netcdf
@@ -43,7 +42,7 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL$", &
+   source   =  "$URL$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
 

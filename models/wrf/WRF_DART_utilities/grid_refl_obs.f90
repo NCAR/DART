@@ -53,8 +53,7 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
                              operator(*), operator(+), operator(-), &
                              operator(>), operator(<), operator(/), &
                              operator(/=), operator(<=)
-use    utilities_mod, only : error_handler, E_ERR, E_MSG, initialize_utilities, &
-                             timestamp, register_module, logfileunit, file_exist
+use    utilities_mod, only : error_handler, E_ERR, E_MSG, file_exist
 use    netcdf
 use    f2kcli
 

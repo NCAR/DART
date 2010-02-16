@@ -21,7 +21,7 @@ module model_mod
 !-----------------------------------------------------------------------
 
 use         types_mod, only : r8, deg2rad, missing_r8, ps0, earth_radius, &
-                              gas_constant, gas_constant_v, gravity
+                              gas_constant, gas_constant_v, gravity, pi
 
 use  time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN
 
@@ -114,7 +114,9 @@ public ::  adv_1step,       &
 public ::  get_number_domains,       &
            get_wrf_static_data,      &
            model_pressure,           &
+           model_height,             &
            pres_to_zk,               &
+           height_to_zk,             &
            get_domain_info,          &
            get_wrf_state_variables,  &
            fill_default_state_table, &
@@ -125,7 +127,8 @@ public ::  get_number_domains,       &
            get_variable_size_from_file, &
            trans_3Dto1D, trans_1Dto3D, &
            trans_2Dto1D, trans_1Dto2D, &
-           get_wrf_date, set_wrf_date
+           get_wrf_date, set_wrf_date, &
+           height_diff_check
 
 ! public parameters
 public :: max_state_variables, &
@@ -167,17 +170,18 @@ integer :: assimilation_period_seconds = 21600
 logical :: surf_obs             = .true.
 logical :: soil_data            = .true.
 logical :: h_diab               = .false.
+! Max height a surface obs can be away from the actual model surface
+! and still be accepted (in meters)
+real (kind=r8) :: sfc_elev_max_diff  = -1.0_r8   ! could be something like 200.0_r8
 character(len = 72) :: adv_mod_command = './wrf.exe'
 real (kind=r8) :: center_search_half_length = 500000.0_r8
-integer :: center_search_half_size
+real(r8) :: circulation_pres_level = 80000.0_r8
+real(r8) :: circulation_radius     = 108000.0_r8
 integer :: center_spline_grid_scale = 10
 integer :: vert_localization_coord = VERTISHEIGHT
 ! Allow (or not) observations above the surface but below the lowest
 ! sigma level.
 logical :: allow_obs_below_vol = .false.
-! Max height a surface obs can be away from the actual model surface
-! and still be accepted (in meters)
-!real (kind=r8) :: max_surface_delta = 500.0
 !nc -- we are adding these to the model.nml until they appear in the NetCDF files
 logical :: polar = .false.         ! wrap over the poles
 logical :: periodic_x = .false.    ! wrap in longitude or x
@@ -189,11 +193,12 @@ logical :: scm        = .false.    ! using the single column model
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      default_state_variables, wrf_state_variables, &
-                     wrf_state_bounds, &
+                     wrf_state_bounds, sfc_elev_max_diff, &
                      adv_mod_command, assimilation_period_seconds, &
                      allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
-                     polar, periodic_x, periodic_y, scm
+                     circulation_pres_level, circulation_radius, polar, &
+                     periodic_x, periodic_y, scm
 
 real(r8), allocatable :: ens_mean(:)
 
@@ -467,6 +472,15 @@ WRFDomains : do id=1,num_domains
    allocate(wrf%dom(id)%description(wrf%dom(id)%number_of_wrf_variables))
    allocate(wrf%dom(id)%units(wrf%dom(id)%number_of_wrf_variables))
 
+! set default bounds checking
+   allocate(wrf%dom(id)%lower_bound(wrf%dom(id)%number_of_wrf_variables))
+   allocate(wrf%dom(id)%upper_bound(wrf%dom(id)%number_of_wrf_variables))
+   allocate(wrf%dom(id)%clamp_or_fail(wrf%dom(id)%number_of_wrf_variables))
+   call set_variable_bound_defaults(wrf%dom(id)%number_of_wrf_variables, &
+                                    wrf%dom(id)%lower_bound, &
+                                    wrf%dom(id)%upper_bound, &
+                                    wrf%dom(id)%clamp_or_fail)
+
 !  build the variable indices
 !  this accounts for the fact that some variables might not be on all domains
 
@@ -499,6 +513,19 @@ WRFDomains : do id=1,num_domains
 
       if ( debug ) then
          print*,'variable size ',trim(wrf_state_variables(1,my_index)),' ',wrf%dom(id)%var_size(:,ind)
+      endif
+
+      !  add bounds checking information
+      call get_variable_bounds(wrf_state_bounds, wrf_state_variables(1,my_index), &
+                               wrf%dom(id)%lower_bound(ind), wrf%dom(id)%upper_bound(ind), &
+                               wrf%dom(id)%clamp_or_fail(ind))
+
+      if ( debug ) then
+         write(*,*) 'Bounds for variable ',  &
+         trim(wrf_state_variables(1,my_index)), &
+         ' are ',wrf%dom(id)%lower_bound(ind), &
+         wrf%dom(id)%upper_bound(ind), &
+         wrf%dom(id)%clamp_or_fail(ind)
       endif
 
       write(errstring, '(A,I4,2A)') 'state vector array ', ind, ' is ', trim(wrf_state_variables(1,my_index))
@@ -561,8 +588,11 @@ WRFDomains : do id=1,num_domains
    if ( id == 1 ) then
      wrf%dom(id)%domain_size = dart_index - 1
    else
-     wrf%dom(id)%domain_size = dart_index - 1 - wrf%dom(id-1)%domain_size
-   end if
+     wrf%dom(id)%domain_size = dart_index - 1
+     do ind = id-1, 1, -1
+       wrf%dom(id)%domain_size = wrf%dom(id)%domain_size - wrf%dom(ind)%domain_size
+     enddo
+   endif
 
 
    ! NEWVAR: If you add a new wrf array type which is not yet in this list, currently
@@ -745,15 +775,15 @@ do while (.not. var_found)
          write(errstring,*)' dart_index ',index_in
          call error_handler(E_ERR,'get_state_meta_data', 'index out of range', &
               source, revision, revdate)
-      end if
-   end if
+      endif
+   endif
    if( (index .ge. wrf%dom(id)%var_index(1,i) ) .and.  &
        (index .le. wrf%dom(id)%var_index(2,i) )       )  then
       var_found = .true.
       var_type  = wrf%dom(id)%var_type(i)
       dart_type = wrf%dom(id)%dart_kind(i)
       index = index - wrf%dom(id)%var_index(1,i) + 1
-   end if
+   endif
 end do
 
 !  now find i,j,k location.
@@ -833,6 +863,7 @@ subroutine model_interpolate(x, location, obs_kind, obs_val, istatus)
 ! modified 13 December 2006 to accomodate changes for the mpi version
 ! modified 22 October 2007 to accomodate global WRF (3.0)
 ! modified 18 November 2008 to allow unknown kinds to return without stopping
+! modified  5 February 2010 to add circulation calc for vortex obs
 
 ! arguments
 real(r8),            intent(in) :: x(:)
@@ -844,7 +875,8 @@ integer,            intent(out) :: istatus
 ! local
 logical, parameter  :: debug = .false.
 logical, parameter  :: restrict_polar = .false.
-!logical, parameter  :: restrict_polar = .true.
+logical, parameter  :: use_old_vortex = .true.   ! set to .false. to use circ code
+real(r8), parameter :: drad = pi / 18.0_r8
 real(r8)            :: xloc, yloc, zloc, xloc_u, yloc_v, xyz_loc(3)
 integer             :: i, i_u, j, j_v, k, k2
 real(r8)            :: dx,dy,dz,dxm,dym,dzm,dx_u,dxm_u,dy_v,dym_v
@@ -862,20 +894,23 @@ real(r8), allocatable, dimension(:) :: v_h, v_p
 
 ! local vars, used in finding sea-level pressure and vortex center
 real(r8), allocatable, dimension(:)   :: t1d, p1d, qv1d, z1d
-real(r8), allocatable, dimension(:,:) :: psea, pp, pd
-real(r8), allocatable, dimension(:)   :: x1d,y1d,xx1d,yy1d
-integer  :: xlen, ylen, xxlen, yylen, ii1, ii2
-real(r8) :: clat, clon, cxmin, cymin, maxwspd
-
-! center_track_*** used to define center search area
-integer :: center_track_xmin, center_track_ymin, &
-           center_track_xmax, center_track_ymax
+real(r8), allocatable, dimension(:,:) :: vfld, pp, pd, uwnd, vwnd, vort
+real(r8), allocatable, dimension(:)   :: x1d, y1d, xx1d, yy1d
+integer  :: center_search_half_size, center_track_xmin, center_track_ymin, &
+            center_track_xmax, center_track_ymax, circ_half_size, &
+            circ_xmin, circ_xmax, circ_ymin, circ_ymax, xlen, ylen, &
+            xxlen, yylen, ii1, ii2, cxlen, cylen, wind_xmin, wind_xmax, &
+            wind_ymin, wind_ymax, imax, jmax
+real(r8) :: clat, clon, cxloc, cyloc, vcrit, magwnd, maxwspd, circ, &
+            rad, circ_half_length, arcrad, asum, distgrid, dgi1, dgi2
 
 ! local vars, used in calculating density, pressure, height
 real(r8)            :: rho1 , rho2 , rho3, rho4
 real(r8)            :: pres1, pres2, pres3, pres4, pres
 logical             :: is_lev0
 
+! local var for terrain elevation check for surface stations 
+real(r8)            :: mod_sfc_elevation 
 
 ! Initialize stuff
 istatus = 0
@@ -946,8 +981,8 @@ else
          istatus = 10  ! istatus 10, if it's not used, will mean the observation is too polar
          print*, 'model_mod.f90 :: model_interpolate :: No polar observations!  istatus = ', istatus
          return
-      end if
-   end if
+      endif
+   endif
    !*****************************************************************************
    
    ! print info if debugging
@@ -970,7 +1005,6 @@ else
    call toGrid(xloc,i,dx,dxm)
    call toGrid(yloc,j,dy,dym)
    
-
    ! 0.b Vertical stuff
 
    if ( debug ) then
@@ -1045,9 +1079,42 @@ else
       zloc = 1.0_r8
       surf_var = .true.
       if(debug) print*,' obs is at the surface = ', xyz_loc(3)
+
       ! if you want to have a distance check to see if the station height
       ! is too far away from the model surface height, here is the place to
       ! reject the observation.
+
+      ! Elevation check function drawn from Ryan's wrf preprocessing code. 
+      ! The elevation is now passed in instead of calling model_interpolate:
+      ! sfc_elev_max_diff  - if < 0 routine is skipped.
+      ! mod_sfc_elevation  - interpolated model surface height at the lowest
+      !                    - model layer.
+      ! z_loc - the third array element of xyz_loc
+      ! the station elevation against the estimated model surface height at the
+      ! station location, the maximum difference in elevation allowed (m), and the
+      ! observation location. There is no check for whether the third element for
+      ! the xyz_loc array is anything other than station height in meters. The
+      ! function returns a logical where .true. means the obs station elevation
+      ! 'passed' the height check. Here, if a height check fails, set an istatus
+      ! of '1' and bail out of this routine. 
+      if ( sfc_elev_max_diff >= 0 ) then
+      ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
+
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                print*, 'model_mod.f90 :: model_interpolate :: getCorners HGT for sfc rc = ', rc
+
+            ! Interpolation for the HGT field -- HGT is NOT part of state vector x, but rather
+            !   in the associated domain meta data
+            mod_sfc_elevation = dym*( dxm*wrf%dom(id)%hgt(ll(1), ll(2)) + &
+                                       dx*wrf%dom(id)%hgt(lr(1), lr(2)) ) + &
+                                 dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
+                                       dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
+         endif
+         if ( .not. height_diff_check(sfc_elev_max_diff,xyz_loc(3),mod_sfc_elevation) ) zloc = missing_r8
+      endif
 
    elseif(vert_is_undef(location)) then
       ! the zloc value should not be used since there is no actual vertical
@@ -1219,12 +1286,12 @@ else
                      fld(k2) = utrue                  
                   else   ! must want v                  
                      fld(k2) = vtrue                  
-                  end if
+                  endif
                   
                end do
    
-            end if
-         end if
+            endif
+         endif
 
 
       ! This is for surface wind fields -- NOTE: surface winds are on Mass grid 
@@ -1269,11 +1336,11 @@ else
                ! V10 (V at 10 meters)
                else
                   fld(1) = vtrue
-               end if
+               endif
    
-            end if
-         end if
-      end if
+            endif
+         endif
+      endif
 
 
    !-----------------------------------------------------
@@ -1315,7 +1382,6 @@ else
                ! Full sensible temperature field
                fld(1) = (ts0 + a1)*(pres/ps0)**kappa
    
-   
                ! Interpolation for T field at level k+1
                ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_t)
                iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_t)
@@ -1336,8 +1402,8 @@ else
                ! Full sensible temperature field
                fld(2) = (ts0 + a1)*(pres/ps0)**kappa
    
-            end if
-         end if
+            endif
+         endif
 
       ! This is for surface temperature (T2)
       else
@@ -1361,9 +1427,9 @@ else
                
                fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
    
-            end if
-         end if
-      end if
+            endif
+         endif
+      endif
 
 
    !-----------------------------------------------------
@@ -1403,8 +1469,8 @@ else
    
                fld(2) = ts0 + dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
    
-            end if
-         end if
+            endif
+         endif
 
       ! This is for surface potential temperature (TH2)
       else
@@ -1428,9 +1494,9 @@ else
                
                fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
    
-            end if
-         end if
-      end if
+            endif
+         endif
+      endif
 
 
    !-----------------------------------------------------
@@ -1472,7 +1538,7 @@ else
 
          fld(2) = dym*( dxm*rho1 + dx*rho2 ) + dy*( dxm*rho3 + dx*rho4 )
 
-      end if
+      endif
 
 
    !-----------------------------------------------------
@@ -1511,8 +1577,8 @@ else
             
             fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
          
-         end if
-      end if
+         endif
+      endif
 
 
    !-----------------------------------------------------
@@ -1554,8 +1620,8 @@ else
                a1 = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
                fld(2) = a1 /(1.0_r8 + a1)
 
-            end if
-         end if
+            endif
+         endif
 
       ! This is for surface specific humidity (calculated from Q2)
       else
@@ -1581,9 +1647,9 @@ else
                a1 = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
                fld(1) = a1 /(1.0_r8 + a1)
 
-            end if
-         end if
-      end if
+            endif
+         endif
+      endif
 
 
    !-----------------------------------------------------
@@ -1621,8 +1687,8 @@ else
                
                fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-            end if
-         end if
+            endif
+         endif
 
       ! This is for surface QV (Q2)
       else
@@ -1647,9 +1713,9 @@ else
                
                fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-            end if
-         end if
-      end if
+            endif
+         endif
+      endif
 
 
    !-----------------------------------------------------
@@ -1687,8 +1753,8 @@ else
             ! Don't accept negative rain amounts (?)
             fld = max(0.0_r8, fld)
 
-         end if
-      end if
+         endif
+      endif
    
 
    !-----------------------------------------------------
@@ -1726,8 +1792,8 @@ else
             ! Don't accept negative rain amounts (?)
             fld = max(0.0_r8, fld)
             
-         end if
-      end if
+         endif
+      endif
    
 
    !-----------------------------------------------------
@@ -1765,8 +1831,8 @@ else
             ! Don't accept negative rain amounts (?)
             fld = max(0.0_r8, fld)
             
-         end if
-      end if
+         endif
+      endif
    
 
    !-----------------------------------------------------
@@ -1804,8 +1870,8 @@ else
             ! Don't accept negative ice amounts (?)
             fld = max(0.0_r8, fld)
             
-         end if
-      end if
+         endif
+      endif
    
    !-----------------------------------------------------
    ! 1.l Cloud Mixing Ratio (QC)
@@ -1845,8 +1911,8 @@ else
             ! Don't accept negative cloud amounts (?)
             fld = max(0.0_r8, fld)
             
-         end if
-      end if
+         endif
+      endif
    
 
    !-----------------------------------------------------
@@ -1884,8 +1950,8 @@ else
             ! Don't accept negative droplet concentrations (?)
             fld = max(0.0_r8, fld)
             
-         end if
-      end if
+         endif
+      endif
    
 
    !-----------------------------------------------------
@@ -1923,8 +1989,8 @@ else
             ! Don't accept negative ice concentrations (?)
             fld = max(0.0_r8, fld)
             
-         end if
-      end if
+         endif
+      endif
    
 
    !-----------------------------------------------------
@@ -1962,8 +2028,8 @@ else
             ! Don't accept negative snow concentrations (?)
             fld = max(0.0_r8, fld)
             
-         end if
-      end if
+         endif
+      endif
    
 
    !----------------------------------------------------
@@ -2001,8 +2067,8 @@ else
             ! Don't accept negative rain concentrations (?)
             fld = max(0.0_r8, fld)
             
-         end if
-      end if
+         endif
+      endif
    
 
    !-----------------------------------------------------
@@ -2040,8 +2106,8 @@ else
             ! Don't accept negative graupel concentrations (?)
             fld = max(0.0_r8, fld)
             
-         end if
-      end if
+         endif
+      endif
    
 
    !-----------------------------------------------------
@@ -2076,8 +2142,8 @@ else
                
             fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-         end if
-      end if
+         endif
+      endif
    
 
    !-----------------------------------------------------
@@ -2112,8 +2178,8 @@ else
                
             fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-         end if
-      end if
+         endif
+      endif
 
    !-----------------------------------------------------
    ! 1.t Pressure (P)
@@ -2151,7 +2217,7 @@ else
    
             fld(2) = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
    
-         end if
+         endif
 
       !  This is for surface pressure (PSFC)
       else
@@ -2185,11 +2251,11 @@ else
       
                   fld(1) = x(ill)
       
-               end if
+               endif
    
-            end if
-         end if
-      end if
+            endif
+         endif
+      endif
 
    !-----------------------------------------------------
    ! 1.u Vortex Center Stuff from Yongsheng
@@ -2200,151 +2266,405 @@ else
    ! the rules for now.  but if/when we add a 'get multiple values in one go'
    ! interface, then this vortex code should move out.
 
-   else if ( obs_kind == KIND_VORTEX_LAT .or. &
-             obs_kind == KIND_VORTEX_LON .or. &
-             obs_kind == KIND_VORTEX_PMIN .or. &
-             obs_kind == KIND_VORTEX_WMAX ) then
+   else if ( obs_kind == KIND_VORTEX_LAT  .or. obs_kind == KIND_VORTEX_LON .or. &
+             obs_kind == KIND_VORTEX_PMIN .or. obs_kind == KIND_VORTEX_WMAX ) then
 
       ! Check to make sure retrieved integer gridpoints are in valid range
       if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
            boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
            boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
 
-!*****************************************************************************         
-! NOTE :: with the exception of changing the original if-structure to calls of the 
-!   function boundsCheck, the below is Yongsheng's original verbatim ---
-!   *** THERE IS NO GUARANTEE THAT THIS WILL CONTINUE TO WORK WITH GLOBAL WRF ***
-!*****************************************************************************         
-
-!!   define a search box bounded by center_track_***
-     center_search_half_size = nint(center_search_half_length/wrf%dom(id)%dx)
-     center_track_xmin = max(1,i-center_search_half_size)
-     center_track_xmax = min(wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu),i+center_search_half_size)
-     center_track_ymin = max(1,j-center_search_half_size)
-     center_track_ymax = min(wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu),j+center_search_half_size)
-     if(center_track_xmin<1 .or. center_track_xmax>wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) .or. &
-        center_track_ymin<1 .or. center_track_ymax>wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) .or. &
-        center_track_xmin >= center_track_xmax .or. &
-        center_track_ymin >= center_track_ymax) then
-          print*,'i,j,center_search_half_length,center_track_xmin(max),center_track_ymin(max)'
-          print*,i,j,center_search_half_length,center_track_xmin,center_track_xmax,center_track_ymin,center_track_ymax
-         write(errstring,*)'Wrong setup in center_track_nml'
-         call error_handler(E_ERR,'model_interpolate', errstring, source, revision, revdate)
-     endif 
-
-!!   define spline interpolation box dimensions
-     xlen = center_track_xmax - center_track_xmin + 1
-     ylen = center_track_ymax - center_track_ymin + 1
-     xxlen = (center_track_xmax - center_track_xmin)*center_spline_grid_scale + 1
-     yylen = (center_track_ymax - center_track_ymin)*center_spline_grid_scale + 1
-     allocate(p1d(wrf%dom(id)%bt), t1d(wrf%dom(id)%bt))
-     allocate(qv1d(wrf%dom(id)%bt), z1d(wrf%dom(id)%bt))
-     allocate(psea(xlen,ylen))
-     allocate(pd(xlen,ylen))
-     allocate(pp(xxlen,yylen))
-     allocate(x1d(xlen))
-     allocate(y1d(ylen))
-     allocate(xx1d(xxlen))
-     allocate(yy1d(yylen))
-     maxwspd = missing_r8
-
-!!   compute sea-level pressure and max wind speed
-     if ( obs_kind == KIND_VORTEX_WMAX ) then
-
-       do i1 = center_track_xmin, center_track_xmax
-       do i2 = center_track_ymin, center_track_ymax
-
-         !if ( wrf%dom(id)%surf_obs ) then
-         if ( ( wrf%dom(id)%type_u10 >= 0 ) .and. ( wrf%dom(id)%type_v10 >= 0 ) ) then
-           maxwspd = max(maxwspd, sqrt( x(wrf%dom(id)%dart_ind(i1,i2,1,wrf%dom(id)%type_u10)) ** 2 + &
-                                        x(wrf%dom(id)%dart_ind(i1,i2,1,wrf%dom(id)%type_v10)) ** 2 ))
+         !!   define a search box bounded by center_track_***
+         center_search_half_size = nint(center_search_half_length/wrf%dom(id)%dx)
+         if ( wrf%dom(id)%periodic_x ) then
+            center_track_xmin       = i-center_search_half_size
+            center_track_xmax       = i+center_search_half_size
          else
-           maxwspd = max(maxwspd,sqrt((0.5_r8*(x(wrf%dom(id)%dart_ind(i1,  i2,1,wrf%dom(id)%type_u)) + &
-                                               x(wrf%dom(id)%dart_ind(i1+1,i2,1,wrf%dom(id)%type_u))))**2 + &
-                                      (0.5_r8*(x(wrf%dom(id)%dart_ind(i1,i2,  1,wrf%dom(id)%type_v)) + &
-                                               x(wrf%dom(id)%dart_ind(i1,i2+1,1,wrf%dom(id)%type_v))))**2))
-         end if
+            center_track_xmin = max(1,i-center_search_half_size)
+            center_track_xmax = min(wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu),i+center_search_half_size)
+         endif
+         if ( wrf%dom(id)%periodic_y ) then
+            center_track_ymin       = j-center_search_half_size
+            center_track_ymax       = j+center_search_half_size
+         else
+            center_track_ymin = max(1,j-center_search_half_size)
+            center_track_ymax = min(wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu),j+center_search_half_size)
+         endif
+         if ( center_track_xmin<1 .or. center_track_xmax>wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) .or. &
+              center_track_ymin<1 .or. center_track_ymax>wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) .or. &
+              center_track_xmin >= center_track_xmax .or. center_track_ymin >= center_track_ymax) then
 
-       enddo
-       enddo
-       fld(1) = maxwspd
+            print*,'i,j,center_search_half_length,center_track_xmin(max),center_track_ymin(max)'
+            print*,i,j,center_search_half_length,center_track_xmin,center_track_xmax,center_track_ymin,center_track_ymax
+            write(errstring,*)'Wrong setup in center_track_nml'
+            call error_handler(E_ERR,'model_interpolate', errstring, source, revision, revdate)
 
-     else
+         endif 
 
-       do i1 = center_track_xmin, center_track_xmax
-       do i2 = center_track_ymin, center_track_ymax
-          do k2 = 1,wrf%dom(id)%var_size(3,wrf%dom(id)%type_t)
-             p1d(k2) = model_pressure_t(i1,i2,k2,id,x)
-             t1d(k2) = ts0 + x(wrf%dom(id)%dart_ind(i1,i2,k2,wrf%dom(id)%type_t))
-             qv1d(k2)= x(wrf%dom(id)%dart_ind(i1,i2,k2,wrf%dom(id)%type_qv))
-             z1d(k2) = ( x(wrf%dom(id)%dart_ind(i1,i2,k2,wrf%dom(id)%type_gz))+wrf%dom(id)%phb(i1,i2,k2) + &
-                         x(wrf%dom(id)%dart_ind(i1,i2,k2+1,wrf%dom(id)%type_gz))+wrf%dom(id)%phb(i1,i2,k2+1) &
-                       )*0.5_r8/gravity
-          enddo
-          call compute_seaprs(wrf%dom(id)%bt, z1d, t1d, p1d, qv1d, &
-                            psea(i1-center_track_xmin+1,i2-center_track_ymin+1),debug)
-       enddo
-       enddo
+         if ( obs_kind == KIND_VORTEX_LAT .or. obs_kind == KIND_VORTEX_LON .or. &
+              obs_kind == KIND_VORTEX_PMIN ) then
 
-!!     spline-interpolation
-       do i1 = 1,xlen
-          x1d(i1) = (i1-1)+center_track_xmin
-       enddo
-       do i2 = 1,ylen
-          y1d(i2) = (i2-1)+center_track_ymin
-       enddo
-       do ii1 = 1,xxlen
-          xx1d(ii1) = center_track_xmin+real(ii1-1,r8)*1_r8/real(center_spline_grid_scale,r8)
-       enddo
-       do ii2 = 1,yylen
-          yy1d(ii2) = center_track_ymin+real(ii2-1,r8)*1_r8/real(center_spline_grid_scale,r8)
-       enddo
+            !!   define spline interpolation box dimensions
+            xlen = center_track_xmax - center_track_xmin + 1
+            ylen = center_track_ymax - center_track_ymin + 1
+            xxlen = (center_track_xmax - center_track_xmin)*center_spline_grid_scale + 1
+            yylen = (center_track_ymax - center_track_ymin)*center_spline_grid_scale + 1
 
-       call splie2(x1d,y1d,psea,xlen,ylen,pd)
+            allocate(x1d(xlen), y1d(ylen))  ;  allocate(xx1d(xxlen), yy1d(yylen))
+            allocate(pd(xlen,ylen))         ;  allocate(pp(xxlen,yylen))
+            allocate(vfld(xlen,ylen))
 
-       pres1 = 1.e20
-       cxmin = -1
-       cymin = -1
-       do ii1=1,xxlen
-       do ii2=1,yylen
-          call splin2(x1d,y1d,psea,pd,xlen,ylen,xx1d(ii1),yy1d(ii2),pp(ii1,ii2))
-          if (pres1 .gt. pp(ii1,ii2)) then
-             pres1=pp(ii1,ii2)
-             cxmin=xx1d(ii1)
-             cymin=yy1d(ii2)
-          endif
-       enddo
-       enddo
+            do i1 = 1,xlen
+               x1d(i1) = (i1-1)+center_track_xmin
+            enddo
+            do i2 = 1,ylen
+               y1d(i2) = (i2-1)+center_track_ymin
+            enddo
+            do ii1 = 1,xxlen
+               xx1d(ii1) = center_track_xmin+real(ii1-1,r8)*1.0_r8/real(center_spline_grid_scale,r8)
+            enddo
+            do ii2 = 1,yylen
+               yy1d(ii2) = center_track_ymin+real(ii2-1,r8)*1.0_r8/real(center_spline_grid_scale,r8)
+            enddo
 
-!!     if too close to the edge of the box, reset to observed center
-       if( cxmin-xx1d(1) < 1_r8 .or. xx1d(xxlen)-cxmin < 1_r8 .or.  &
-           cymin-yy1d(1) < 1_r8 .or. yy1d(yylen)-cymin < 1_r8 ) then
-         cxmin = xloc
-         cymin = yloc
-         call splin2(x1d,y1d,psea,pd,xlen,ylen,cxmin,cymin,pres1)
-       endif
+         endif
 
-       call ij_to_latlon(wrf%dom(id)%proj, cxmin, cymin, clat, clon)
+         if ( (obs_kind == KIND_VORTEX_LAT .or. obs_kind == KIND_VORTEX_LON) .and. (.not. use_old_vortex) ) then
 
-       if( obs_kind == KIND_VORTEX_LAT ) then
-          fld(1) = clat
-       else if( obs_kind == KIND_VORTEX_LON ) then
-          fld(1) = clon
-       else if( obs_kind == KIND_VORTEX_PMIN ) then
-           fld(1) = pres1
-       endif
+            !  determine window that one would need wind components, thus circulation
+            circ_half_size   = nint(circulation_radius/wrf%dom(id)%dx)
+            circ_half_length = circulation_radius / wrf%dom(id)%dx
 
-       endif   ! VORTEX_MAX vs others
+            if ( wrf%dom(id)%periodic_x ) then
+               circ_xmin = i-center_search_half_size-circ_half_size
+               circ_xmax = i+center_search_half_size+circ_half_size
+            else
+               circ_xmin = max(1,i-center_search_half_size-circ_half_size)
+               circ_xmax = min(wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu),i+center_search_half_size+circ_half_size)
+            endif
 
-       deallocate(p1d, t1d, qv1d, z1d)
-       deallocate(psea,pd,pp,x1d,y1d,xx1d,yy1d)
+            if ( wrf%dom(id)%periodic_y ) then
+               circ_ymin = j-center_search_half_size-circ_half_size
+               circ_ymax = j+center_search_half_size+circ_half_size
+            else
+               circ_ymin = max(1,j-center_search_half_size-circ_half_size)
+               circ_ymax = min(wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu),j+center_search_half_size+circ_half_size)
+            endif
+
+            cxlen = circ_xmax-circ_xmin+1
+            cylen = circ_ymax-circ_ymin+1
+            allocate(uwnd(cxlen+2,cylen+2))
+            allocate(vwnd(cxlen+2,cylen+2))
+            allocate(z1d(0:wrf%dom(id)%bt))
+
+            do i1 = circ_xmin-1, circ_xmax+1
+
+               ii1 = i1
+               if ( wrf%dom(id)%periodic_x ) then
+                  if ( i1 > wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) ) then
+                     ii1 = i1 - wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  elseif ( i1 < 1 ) then
+                     ii1 = i1 + wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  endif
+               else
+                  if ( i1 > wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) ) then
+                     ii1 = wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  elseif ( i1 < 1 ) then
+                     ii1 = 1
+                  endif
+               endif
+
+               do i2 = circ_ymin-1, circ_ymax+1
+
+                  ii2 = i2
+                  if ( wrf%dom(id)%periodic_y ) then
+                     if ( i2 > wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) ) then
+                        ii2 = i2 - wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu)
+                     elseif ( i2 < 1 ) then
+                        ii2 = i2 + wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu)
+                     endif
+                  else
+                     if ( i2 > wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) ) then
+                        ii2 = i2
+                     elseif ( i2 < 1 ) then
+                        ii2 = 1
+                     endif
+                  endif
+ 
+                  !  calculate the wind components at the desired pressure level
+                  do k2 = 1, wrf%dom(id)%var_size(3,wrf%dom(id)%type_t)
+                     z1d(k2) = model_pressure_t(i1,i2,k2,id,x)
+                  enddo
+                  z1d(0) = z1d(1)
+                  call pres_to_zk(circulation_pres_level, z1d, wrf%dom(id)%bt, zloc, is_lev0)
+                  k2 = floor(zloc)  ;  dxm = mod(zloc,1.0_r8)  ;  dx = 1.0_r8 - dxm
+
+                  if ( zloc >= 1.0_r8 ) then  !  vertically interpolate
+
+                     ugrid = (dx  * (x(wrf%dom(id)%dart_ind(ii1,  ii2,  k2,  wrf%dom(id)%type_u))  + &
+                                     x(wrf%dom(id)%dart_ind(ii1+1,ii2,  k2,  wrf%dom(id)%type_u))) + &
+                              dxm * (x(wrf%dom(id)%dart_ind(ii1,  ii2,  k2+1,wrf%dom(id)%type_u))  + &
+                                     x(wrf%dom(id)%dart_ind(ii1+1,ii2,  k2+1,wrf%dom(id)%type_u)))) * 0.5_r8
+                     vgrid = (dx  * (x(wrf%dom(id)%dart_ind(ii1,  ii2,  k2,  wrf%dom(id)%type_v))  + &
+                                     x(wrf%dom(id)%dart_ind(ii1,  ii2+1,k2,  wrf%dom(id)%type_v))) + &
+                              dxm * (x(wrf%dom(id)%dart_ind(ii1,  ii2,  k2+1,wrf%dom(id)%type_v))  + &
+                                     x(wrf%dom(id)%dart_ind(ii1,  ii2+1,k2+1,wrf%dom(id)%type_v)))) * 0.5_r8
+
+                  else  !  pressure level below ground.  Take model level 1 winds
+
+                     ugrid = (x(wrf%dom(id)%dart_ind(ii1,  ii2,  1,wrf%dom(id)%type_u)) + &
+                              x(wrf%dom(id)%dart_ind(ii1+1,ii2,  1,wrf%dom(id)%type_u))) * 0.5_r8
+                     vgrid = (x(wrf%dom(id)%dart_ind(ii1,  ii2,  1,wrf%dom(id)%type_v)) + &
+                              x(wrf%dom(id)%dart_ind(ii1,  ii2+1,1,wrf%dom(id)%type_v))) * 0.5_r8
+
+                  endif
+                  uwnd(i1-circ_xmin+2,i2-circ_ymin+2) = ugrid
+                  vwnd(i1-circ_xmin+2,i2-circ_ymin+2) = vgrid
+
+               enddo
+            enddo
+
+            allocate(vort(cxlen,cylen))
+            do i1 = circ_xmin, circ_xmax
+
+               dgi1 = 2.0_r8
+               if ( .not. wrf%dom(id)%periodic_x ) then
+                  if     ( i1 == 1 ) then
+                    dgi1 = 1.0_r8
+                  elseif ( i1 == wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) ) then
+                    dgi1 = 1.0_r8
+                  endif
+               endif
+
+               do i2 = circ_ymin, circ_ymax
+
+                  dgi2 = 2.0_r8
+                  if ( .not. wrf%dom(id)%periodic_x ) then
+                     if     ( i2 == 1 ) then
+                       dgi2 = 1.0_r8
+                     elseif ( i2 == wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) ) then
+                       dgi2 = 1.0_r8
+                     endif
+                  endif
+
+                  ii1  = i1-circ_xmin+1
+                  ii2  = i2-circ_ymin+1
+
+                  !  compute the vorticity for each point needed to compute circulation
+                  vort(ii1,ii2) = (vwnd(ii1+2,ii2+1) - vwnd(ii1+1,ii2+1)) / (wrf%dom(id)%dx * dgi2) + &
+                                  (vwnd(ii1+1,ii2+1) - vwnd(ii1  ,ii2+1)) / (wrf%dom(id)%dx * dgi2) - &
+                                  (uwnd(ii1+1,ii2+2) - uwnd(ii1+1,ii2+1)) / (wrf%dom(id)%dx * dgi1) - &
+                                  (uwnd(ii1+1,ii2+1) - uwnd(ii1+1,ii2  )) / (wrf%dom(id)%dx * dgi1)
+
+               enddo
+            enddo
+
+            !  loop over all grid points in search area, compute average vorticity
+            !  (circulation) within a certain distance of that grid point
+            do i1 = center_track_xmin, center_track_xmax
+            do i2 = center_track_ymin, center_track_ymax
+
+               asum = 0.0_r8  ;  circ = 0.0_r8
+               do ii1 = max(circ_xmin,i1-circ_half_size), min(circ_xmax,i1+circ_half_size)
+               do ii2 = max(circ_ymin,i2-circ_half_size), min(circ_ymax,i2+circ_half_size)
+
+                  distgrid = sqrt(real(ii1-i1,r8) ** 2 + real(ii2-i2,r8) ** 2) * wrf%dom(id)%dx
+                  if ( distgrid <= circulation_radius ) then
+
+                     asum = asum + 1.0_r8
+                     circ = circ + vort(ii1-circ_xmin+1,ii2-circ_ymin+1)
+
+                  endif
+
+               enddo
+               enddo
+
+               vfld(i1-center_track_xmin+1,i2-center_track_ymin+1) = circ / asum
+
+            enddo
+            enddo
+
+            !  find maximum in circulation through spline interpolation
+            call splie2(x1d,y1d,vfld,xlen,ylen,pd)
+
+            vcrit = -1.0e20_r8
+            cxloc = -1
+            cyloc = -1
+            do ii1 = 1, xxlen
+            do ii2 = 1, yylen
+               call splin2(x1d,y1d,vfld,pd,xlen,ylen,xx1d(ii1),yy1d(ii2),pp(ii1,ii2))
+               if (vcrit < pp(ii1,ii2)) then
+                  vcrit = pp(ii1,ii2)
+                  cxloc = xx1d(ii1)
+                  cyloc = yy1d(ii2)
+               endif
+            enddo
+            enddo
+
+            !  forward operator fails if maximum is at edge of search area
+            if ( cxloc-xx1d(1) < 1.0_r8 .or. xx1d(xxlen)-cxloc < 1.0_r8 .or. &
+                 cyloc-yy1d(1) < 1.0_r8 .or. yy1d(yylen)-cyloc < 1.0_r8 ) then
+
+               fld(:) = missing_r8
+
+            else
+
+            call ij_to_latlon(wrf%dom(id)%proj, cxloc, cyloc, clat, clon)
+
+            if ( obs_kind == KIND_VORTEX_LAT ) then
+               fld(1) = clat
+            else
+               fld(1) = clon
+            endif
+
+            endif
+
+            deallocate(uwnd, vwnd, vort, z1d)
+            deallocate(vfld, pd, pp, x1d, y1d, xx1d, yy1d)
+
+         else if ( obs_kind == KIND_VORTEX_PMIN .or. (use_old_vortex .and. & 
+                  (obs_kind == KIND_VORTEX_LAT .or. obs_kind == KIND_VORTEX_LON)) ) then
+
+            allocate(p1d(wrf%dom(id)%bt),  t1d(wrf%dom(id)%bt))
+            allocate(qv1d(wrf%dom(id)%bt), z1d(wrf%dom(id)%bt))
+
+            !  compute SLP for each grid point within the search area
+            do i1 = center_track_xmin, center_track_xmax
+
+               ii1 = i1
+               if ( wrf%dom(id)%periodic_x ) then
+                  if ( i1 > wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) ) then
+                     ii1 = i1 - wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  elseif ( i1 < 1 ) then
+                     ii1 = i1 + wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  endif
+               endif
+
+               do i2 = center_track_ymin, center_track_ymax
+
+                  ii2 = i2
+                  if ( wrf%dom(id)%periodic_y ) then
+                     if ( i2 > wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) ) then
+                        ii2 = i2 - wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu)
+                     elseif ( i2 < 1 ) then
+                        ii2 = i2 + wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu)
+                     endif
+                  endif
+
+                  do k2 = 1,wrf%dom(id)%var_size(3,wrf%dom(id)%type_t)
+
+                     p1d(k2) = model_pressure_t(ii1,ii2,k2,id,x)
+                     t1d(k2) = x(wrf%dom(id)%dart_ind(ii1,ii2,k2,wrf%dom(id)%type_t)) + ts0
+                     qv1d(k2)= x(wrf%dom(id)%dart_ind(ii1,ii2,k2,wrf%dom(id)%type_qv))
+                     z1d(k2) = (x(wrf%dom(id)%dart_ind(ii1,ii2,k2,  wrf%dom(id)%type_gz))+ &
+                                x(wrf%dom(id)%dart_ind(ii1,ii2,k2+1,wrf%dom(id)%type_gz))+ &
+                                wrf%dom(id)%phb(ii1,ii2,k2)+wrf%dom(id)%phb(ii1,ii2,k2+1))*0.5_r8/gravity
+
+                  enddo
+                  call compute_seaprs(wrf%dom(id)%bt, z1d, t1d, p1d, qv1d, &
+                                      vfld(i1-center_track_xmin+1,i2-center_track_ymin+1), debug)
+               enddo
+
+            enddo
+
+            !  find minimum in MSLP through spline interpolation
+            call splie2(x1d,y1d,vfld,xlen,ylen,pd)
+
+            vcrit = 1.0e20_r8
+            do ii1=1,xxlen
+            do ii2=1,yylen
+               call splin2(x1d,y1d,vfld,pd,xlen,ylen,xx1d(ii1),yy1d(ii2),pp(ii1,ii2))
+               if ( vcrit > pp(ii1,ii2)) then
+                 vcrit = pp(ii1,ii2)
+                 cxloc = xx1d(ii1)
+                 cyloc = yy1d(ii2)
+               endif
+            enddo
+            enddo
+
+            !  forward operator fails if maximum is at edge of search area
+            if ( cxloc-xx1d(1) < 1.0_r8 .or. xx1d(xxlen)-cxloc < 1.0_r8 .or. &
+                 cyloc-yy1d(1) < 1.0_r8 .or. yy1d(yylen)-cyloc < 1.0_r8 ) then
+
+               fld(:) = missing_r8
+
+            else
+
+            call ij_to_latlon(wrf%dom(id)%proj, cxloc, cyloc, clat, clon)
+
+            if ( obs_kind == KIND_VORTEX_PMIN ) then
+               fld(1) = vcrit
+            else if ( obs_kind == KIND_VORTEX_LAT ) then
+               fld(1) = clat
+            else
+               fld(1) = clon
+            endif
+
+            endif
+
+            deallocate(p1d, t1d, qv1d, z1d)
+            deallocate(vfld, pd, pp, x1d, y1d, xx1d, yy1d)
+
+         else if ( obs_kind == KIND_VORTEX_WMAX ) then   !  Maximum wind speed
+
+            maxwspd = 0.0_r8
+            do i1 = center_track_xmin, center_track_xmax
+
+               ii1 = i1
+               if ( wrf%dom(id)%periodic_x ) then
+                  if ( i1 > wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) ) then
+                     ii1 = i1 - wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  elseif ( i1 < 1 ) then
+                     ii1 = i1 + wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  endif
+               endif
+
+               do i2 = center_track_ymin, center_track_ymax
+
+                  ii2 = i2
+                  if ( wrf%dom(id)%periodic_y ) then
+                     if ( i2 > wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) ) then
+                        ii2 = i2 - wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu)
+                     elseif ( i2 < 1 ) then
+                        ii2 = i2 + wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu)
+                     endif
+                  endif
+
+                  if ( ( wrf%dom(id)%type_u10 >= 0 ) .and. ( wrf%dom(id)%type_v10 >= 0 ) ) then
+                     ugrid = x(wrf%dom(id)%dart_ind(ii1,ii2,1,wrf%dom(id)%type_u10))
+                     vgrid = x(wrf%dom(id)%dart_ind(ii1,ii2,1,wrf%dom(id)%type_v10))
+                  else
+                     ugrid = 0.5_r8*(x(wrf%dom(id)%dart_ind(ii1,  ii2,1,wrf%dom(id)%type_u)) + &
+                                     x(wrf%dom(id)%dart_ind(ii1+1,ii2,1,wrf%dom(id)%type_u)))
+                     vgrid = 0.5_r8*(x(wrf%dom(id)%dart_ind(ii1,ii2,  1,wrf%dom(id)%type_v)) + &
+                                     x(wrf%dom(id)%dart_ind(ii1,ii2+1,1,wrf%dom(id)%type_v)))
+                  endif
+
+                  magwnd  = sqrt(ugrid * ugrid + vgrid * vgrid)
+                  if ( magwnd > maxwspd ) then
+                     imax    = i1
+                     jmax    = i2
+                     maxwspd = magwnd
+                  endif
+
+               enddo
+            enddo
+
+            !  forward operator fails if maximum is at edge of search area
+            if ( imax == center_track_xmin .or. jmax == center_track_ymin .or. &
+                 imax == center_track_xmax .or. jmax == center_track_ymax ) then
+               fld(:) = missing_r8
+            else
+            fld(1) = maxwspd
+            endif
+
+         endif  !  if test on obs_kind
 
      endif   ! bounds check failed.
 
 !*****************************************************************************
 ! END OF VERBATIM BIT
 !*****************************************************************************
-
 
    !-----------------------------------------------------
    ! 1.v Radar Reflectivity (REFL_10CM)
@@ -2378,8 +2698,8 @@ else
                
             fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-         end if
-      end if
+         endif
+      endif
    
    !-----------------------------------------------------
    ! 1.w Geopotential Height (GZ)
@@ -2432,8 +2752,8 @@ else
                        dy *( dxm*wrf%dom(id)%phb(ul(1), ul(2), k+1)   + &
                              dx *wrf%dom(id)%phb(ur(1), ur(2), k+1) ) )  / gravity
    
-         end if
-      end if
+         endif
+      endif
 
 
    !-----------------------------------------------------
@@ -2460,7 +2780,7 @@ else
                    dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
                          dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
 
-      end if
+      endif
 
 
    !-----------------------------------------------------
@@ -2488,8 +2808,8 @@ else
 
             fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-         end if
-      end if
+         endif
+      endif
 
 
    !-----------------------------------------------------
@@ -2516,7 +2836,7 @@ else
                    dy*( dxm*real(wrf%dom(id)%land(ul(1), ul(2))) + &
                          dx*real(wrf%dom(id)%land(ur(1), ur(2))) )
 
-      end if
+      endif
 
 
    !-----------------------------------------------------
@@ -2530,7 +2850,7 @@ else
       deallocate(v_h, v_p)
       return
 
-   end if
+   endif
 
 
    !----------------------------------
@@ -2592,11 +2912,11 @@ else
                if (debug) print*, 'extrapolated obs_val = ', obs_val
             endif
             
-         end if
-      end if
-   end if
+         endif
+      endif
+   endif
 
-end if  ! end of "if ( obs_kind < 0 )"
+endif  ! end of "if ( obs_kind < 0 )"
 
 
 ! Now that we are done, check to see if a missing value somehow 
@@ -2742,7 +3062,7 @@ if(vert_is_level(location)) then
       else
          zloc  = missing_r8
          zvert = missing_r8
-      end if
+      endif
 
    elseif (wrf%dom(id)%vert_coord == VERTISHEIGHT) then
       ! need to add half a grid to get to staggered vertical coordinate
@@ -2779,7 +3099,7 @@ if(vert_is_level(location)) then
       else
          zloc  = missing_r8
          zvert = missing_r8
-      end if
+      endif
 
    ! If not VERTISPRESSURE or VERTISHEIGHT, then either return missing value or set
    !   set zvert equal to zloc if zloc is legally defined (is this right?)
@@ -2789,8 +3109,8 @@ if(vert_is_level(location)) then
       else
          zloc  = missing_r8
          zvert = missing_r8
-      end if
-   end if
+      endif
+   endif
 
 elseif(vert_is_pressure(location)) then
    ! If obs is by pressure: get corresponding mass level zk,
@@ -2844,13 +3164,13 @@ elseif(vert_is_pressure(location)) then
          else
             zloc  = missing_r8
             zvert = missing_r8
-         end if
+         endif
 
       else
          ! take pressure directly
          zvert  = xyz_loc(3)
-      end if
-   end if
+      endif
+   endif
 
 elseif(vert_is_height(location)) then
    ! If obs is by height: get corresponding mass level zk,
@@ -2903,13 +3223,13 @@ elseif(vert_is_height(location)) then
          else
             zloc  = missing_r8
             zvert = missing_r8
-         end if
+         endif
 
       else
          ! take height directly
          zvert  = xyz_loc(3)
-      end if
-   end if
+      endif
+   endif
 
 !nc -- got rid of ".or. surf_var" from elseif statement here because it can potentially be outdated
 !        in its value.  assim_tools_mod calls get_close_obs, which in turn calls vert_interpolate.
@@ -3043,7 +3363,7 @@ if (var_type == wrf%dom(id)%type_u) then
          long = long - 180.0_r8
       endif
       lat = 0.5_r8*(wrf%dom(id)%latitude(i,j) +wrf%dom(id)%latitude(i-1,j))
-   end if
+   endif
 
 elseif (var_type == wrf%dom(id)%type_v) then
 
@@ -3070,14 +3390,14 @@ elseif (var_type == wrf%dom(id)%type_v) then
       endif
       lat  = 0.5_r8*(wrf%dom(id)%latitude(i,j) +wrf%dom(id)%latitude(i,j-1))
 
-   end if
+   endif
 
 else
 
    long = wrf%dom(id)%longitude(i,j)
    lat  = wrf%dom(id)%latitude(i,j)
 
-end if
+endif
 
 do while (long <   0.0_r8)
    long = long + 360.0_r8
@@ -3514,7 +3834,6 @@ do id=1,num_domains
    call nc_check(nf90_put_att(ncFileID, hgtVarId(id), "units_long_name", "meters"), &
                  'nc_write_model_atts','put_att HGT_d0'//idom//' units_long_name')
 
-
    ! can't deal with precip yet - need to leave hard coded 
 
    if ( trim(adjustl(title(1:2))) == 'pr' .and. write_precip ) then
@@ -3693,7 +4012,6 @@ do id=1,num_domains
 
    enddo ! variables
  
-
 enddo ! domains
 
 ! Leave define mode so we can actually fill the variables.
@@ -3735,7 +4053,7 @@ do id=1,num_domains
       tmp(id) = 1
    else
       tmp(id) = 0
-   end if
+   endif
 end do
 call nc_check(nf90_put_var(ncFileID, PERIODIC_XVarID, tmp(1:num_domains) ), &
               'nc_write_model_atts','put_var PERIODIC_XVarID')
@@ -3745,7 +4063,7 @@ do id=1,num_domains
       tmp(id) = 1
    else
       tmp(id) = 0
-   end if
+   endif
 end do
 call nc_check(nf90_put_var(ncFileID, POLARVarID, tmp(1:num_domains) ), &
               'nc_write_model_atts','put var POLARVarID')
@@ -4224,7 +4542,7 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          pres2 = model_pressure_t(i-2,j,k,id,x)
          model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
 
-      end if
+      endif
 
    elseif( i == 1 ) then
 
@@ -4243,7 +4561,7 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          pres2 = model_pressure_t(i+1,j,k,id,x)
          model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
 
-      end if
+      endif
 
    else
 
@@ -4277,7 +4595,7 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          pres2 = model_pressure_t(i,j-2,k,id,x)
          model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
 
-      end if
+      endif
 
    elseif( j == 1 ) then
 
@@ -4299,7 +4617,7 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          pres2 = model_pressure_t(i,j+1,k,id,x)
          model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
 
-      end if
+      endif
 
    else
 
@@ -4576,7 +4894,7 @@ elseif( var_type == wrf%dom(id)%type_u ) then
                          +3.0_r8*(wrf%dom(id)%phb(i-1,j,k+1)+x(i2)) &
                                 -(wrf%dom(id)%phb(i-2,j,k  )+x(i1-1)) &
                                 -(wrf%dom(id)%phb(i-2,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
-      end if
+      endif
 
    elseif( i == 1 ) then
 
@@ -4609,7 +4927,7 @@ elseif( var_type == wrf%dom(id)%type_u ) then
                                 -(wrf%dom(id)%phb(i+1,j,k  )+x(i1+1)) &
                                 -(wrf%dom(id)%phb(i+1,j,k+1)+x(i2+1)) )/(4.0_r8*gravity)
 
-      end if
+      endif
 
    else
 
@@ -4666,7 +4984,7 @@ elseif( var_type == wrf%dom(id)%type_v ) then
                                 -(wrf%dom(id)%phb(i,j-2,k  )+x(i3)) &
                                 -(wrf%dom(id)%phb(i,j-2,k+1)+x(i4)) )/(4.0_r8*gravity)
 
-      end if
+      endif
 
    elseif( j == 1 ) then
 
@@ -4705,7 +5023,7 @@ elseif( var_type == wrf%dom(id)%type_v ) then
                                  -(wrf%dom(id)%phb(i,j+1,k  )+x(i3)) &
                                  -(wrf%dom(id)%phb(i,j+1,k+1)+x(i4)) )/(4.0_r8*gravity)
 
-      end if
+      endif
 
    else
 
@@ -5028,7 +5346,7 @@ SUBROUTINE splin2(x1a,x2a,ya,y2a,m,n,x1,x2,y)
       INTEGER m,n,NN
       REAL(r8), intent(in) :: x1,x2,x1a(m),x2a(n),y2a(m,n),ya(m,n)
       real(r8), intent(out) :: y
-      PARAMETER (NN=100)
+      PARAMETER (NN=200)
 !     USES spline,splint
       INTEGER j,k
       REAL(r8) y2tmp(NN),ytmp(NN),yytmp(NN)
@@ -5048,7 +5366,7 @@ SUBROUTINE splie2(x1a,x2a,ya,m,n,y2a)
       INTEGER m,n,NN
       REAL(r8), intent(in) :: x1a(m),x2a(n),ya(m,n)
       REAL(r8), intent(out) :: y2a(m,n)
-      PARAMETER (NN=100)
+      PARAMETER (NN=200)
 !     USES spline
       INTEGER j,k
       REAL(r8) y2tmp(NN),ytmp(NN)
@@ -5068,7 +5386,7 @@ SUBROUTINE spline(x,y,n,yp1,ypn,y2)
       INTEGER n,NMAX
       REAL(r8), intent(in) :: yp1,ypn,x(n),y(n)
       REAL(r8), intent(out) :: y2(n)
-      PARAMETER (NMAX=500)
+      PARAMETER (NMAX=800)
       INTEGER i,k
       REAL(r8) p,qn,sig,un,u(NMAX)
       if (yp1.gt..99e30) then
@@ -5173,7 +5491,7 @@ do while (.not. dom_found)
 print*, 'model_mod.f90 :: subroutine get_domain_info :: in empty if-case'
 
    else
-      call latlon_to_ij(wrf%dom(id)%proj,obslat,obslon,iloc,jloc)
+      call latlon_to_ij(wrf%dom(id)%proj,min(max(obslat,-89.9999999_r8),89.9999999_r8),obslon,iloc,jloc)
 
       ! Array bound checking depends on whether periodic or not -- these are
       !   real-valued indices here, so we cannot use boundsCheck  :( 
@@ -5191,7 +5509,7 @@ print*, 'model_mod.f90 :: subroutine get_domain_info :: in empty if-case'
             if ( iloc >= 1.0_r8 .and. iloc <  real(wrf%dom(id)%we,r8)+1.0_r8 .and. &
                  jloc >= 1.0_r8 .and. jloc <= real(wrf%dom(id)%sn,r8) ) &
                  dom_found = .true.
-         end if
+         endif
 
       elseif ( wrf%dom(id)%periodic_x .and. wrf%dom(id)%periodic_y ) then
             !   Periodic     X & M_grid ==> [1 we+1)    
@@ -5213,10 +5531,10 @@ print*, 'model_mod.f90 :: subroutine get_domain_info :: in empty if-case'
             if ( iloc >= 1.0_r8 .and. iloc <= real(wrf%dom(id)%we,r8) .and. &
                  jloc >= 1.0_r8 .and. jloc <= real(wrf%dom(id)%sn,r8) ) &
                  dom_found = .true.
-         end if 
-      end if
+         endif 
+      endif
 
-   end if
+   endif
 
    if (.not. dom_found) then
       id = id - 1
@@ -5278,7 +5596,7 @@ if (.not. horiz_dist_only) then
       call vert_interpolate(ens_mean, base_obs_loc, base_obs_kind, istatus1)
    elseif (base_array(3) == missing_r8) then
       istatus1 = 1
-   end if
+   endif
 endif
 
 if (istatus1 == 0) then
@@ -5315,7 +5633,7 @@ if (istatus1 == 0) then
          dist(k) = 1.0e9        
       else
          dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
-      end if
+      endif
 
    end do
 endif
@@ -5520,9 +5838,9 @@ function boundsCheck ( ind, periodic, id, dim, type )
         else  
            ! M & V-grid allow [1 we)
            if ( ind >= 1 .and. ind < wrf%dom(id)%we ) boundsCheck = .true.
-        end if
+        endif
 
-     end if
+     endif
 
    !   Latitude (y-direction) has dim == 2
    elseif ( dim == 2 ) then
@@ -5553,8 +5871,8 @@ function boundsCheck ( ind, periodic, id, dim, type )
            else
               ! M & U-grid allow integer range [0 sns) in unrestricted circumstances
               if ( ind >= 0 .and. ind < wrf%dom(id)%sns ) boundsCheck = .true.
-           end if
-        end if
+           endif
+        endif
         
      else
 
@@ -5565,9 +5883,9 @@ function boundsCheck ( ind, periodic, id, dim, type )
         else 
            ! M & U-grid allow [1 sn)
            if ( ind >= 1 .and. ind < wrf%dom(id)%sn ) boundsCheck = .true.
-        end if
+        endif
 
-     end if
+     endif
 
   elseif ( dim == 3 ) then
 
@@ -5579,13 +5897,13 @@ function boundsCheck ( ind, periodic, id, dim, type )
      else
         ! M vertical grid allows [1 bt)
         if ( ind >= 1 .and. ind < wrf%dom(id)%bt ) boundsCheck = .true.
-     end if
+     endif
   
   else
 
      print*, 'model_mod.f90 :: function boundsCheck :: dim must equal 1, 2, or 3!'
 
-  end if
+  endif
 
 
 end function boundsCheck
@@ -5638,7 +5956,7 @@ subroutine getCorners(i, j, id, type, ll, ul, lr, ur, rc)
      ll(1) = i
      ll(2) = j
 
-  end if
+  endif
 
 
   !----------------
@@ -5673,9 +5991,9 @@ subroutine getCorners(i, j, id, type, ll, ul, lr, ur, rc)
            lr(1) = ll(1) + 1
         else
            lr(1) = 1
-        end if
+        endif
         lr(2) = ll(2)
-     end if
+     endif
 
   else
 
@@ -5683,7 +6001,7 @@ subroutine getCorners(i, j, id, type, ll, ul, lr, ur, rc)
      lr(1) = ll(1) + 1
      lr(2) = ll(2)
 
-  end if
+  endif
         
 
   !----------------
@@ -5755,10 +6073,27 @@ subroutine getCorners(i, j, id, type, ll, ul, lr, ur, rc)
               ! We can confidently set to j+1
               ul(1) = ll(1)
               ul(2) = ll(2) + 1
-           end if
+           endif
 
-        end if
-     end if
+        endif
+     endif
+
+  elseif ( wrf%dom(id)%periodic_y ) then
+
+     ! Check to see what grid we have, M vs. U
+     if ( wrf%dom(id)%var_size(2,type) == wrf%dom(id)%sns ) then
+        ! V-grid is always j+1 -- do this in reference to already adjusted ll points
+        ul(1) = ll(1)
+        ul(2) = ll(2)+1
+     else
+        ! M-grid is j+1 except if we <= ind < wes, in which case it's 1
+        if ( j < wrf%dom(id)%sn ) then
+           ul(2) = ll(2) + 1
+        else
+           ul(2) = 1
+        endif
+        ul(1) = ll(1)
+     endif
 
   else
 
@@ -5766,7 +6101,7 @@ subroutine getCorners(i, j, id, type, ll, ul, lr, ur, rc)
      ul(1) = ll(1) 
      ul(2) = ll(2) + 1
 
-  end if
+  endif
      
 
   !----------------
@@ -5810,29 +6145,29 @@ subroutine getCorners(i, j, id, type, ll, ul, lr, ur, rc)
                  ur(1) = ul(1) + 1
               else
                  ur(1) = 1
-              end if
-           end if
+              endif
+           endif
 
         else
 
            ! Regardless of grid, NOT Periodic always has i+1
            ur(1) = ul(1) + 1
 
-        end if
+        endif
 
      ! If not a special j value, then we are set for the ur(1) = lr(1)
      else
 
         ur(1) = lr(1)
 
-     end if
+     endif
 
   ! If not an unrestricted polar periodic domain, then we have nothing to worry about
   else
 
      ur(1) = lr(1)
 
-  end if
+  endif
 
 end subroutine getCorners
 
@@ -5985,7 +6320,7 @@ logical, parameter    :: debug = .false.
       wrf%dom(id)%periodic_y = .false.
       wrf%dom(id)%polar = .false.      
       wrf%dom(id)%scm = .false.      
-   end if
+   endif
    if(debug) write(*,*) ' periodic_x ',wrf%dom(id)%periodic_x
    if(debug) write(*,*) ' periodic_y ',wrf%dom(id)%periodic_y
    if(debug) write(*,*) ' polar ',wrf%dom(id)%polar
@@ -6051,7 +6386,7 @@ integer               :: var_id
       write(*,*) wrf%dom(id)%mub(1,1),wrf%dom(id)%mub(wrf%dom(id)%we,1),  &
            wrf%dom(id)%mub(1,wrf%dom(id)%sn),wrf%dom(id)%mub(wrf%dom(id)%we, &
            wrf%dom(id)%sn)
-   end if
+   endif
 
    allocate(wrf%dom(id)%longitude(1:wrf%dom(id)%we,1:wrf%dom(id)%sn))
    call nc_check( nf90_inq_varid(ncid, "XLONG", var_id), &
@@ -6075,7 +6410,7 @@ integer               :: var_id
       write(*,*) wrf%dom(id)%land(1,1),wrf%dom(id)%land(wrf%dom(id)%we,1),  &
            wrf%dom(id)%land(1,wrf%dom(id)%sn),wrf%dom(id)%land(wrf%dom(id)%we, &
            wrf%dom(id)%sn)
-   end if
+   endif
 
    if(debug) then
       write(*,*) ' corners of lat '
@@ -6086,7 +6421,7 @@ integer               :: var_id
       write(*,*) wrf%dom(id)%longitude(1,1),wrf%dom(id)%longitude(wrf%dom(id)%we,1),  &
            wrf%dom(id)%longitude(1,wrf%dom(id)%sn), &
            wrf%dom(id)%longitude(wrf%dom(id)%we,wrf%dom(id)%sn)
-   end if
+   endif
 
    allocate(wrf%dom(id)%hgt(1:wrf%dom(id)%we,1:wrf%dom(id)%sn))
    call nc_check( nf90_inq_varid(ncid, "HGT", var_id), &
@@ -6110,7 +6445,7 @@ integer               :: var_id
            wrf%dom(id)%phb(wrf%dom(id)%we,1,wrf%dom(id)%bts),  &
            wrf%dom(id)%phb(1,wrf%dom(id)%sn,wrf%dom(id)%bts), &
            wrf%dom(id)%phb(wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bts)
-   end if
+   endif
 
 end subroutine read_wrf_static_data
 
@@ -6324,7 +6659,7 @@ do i = 1, row
    ! surface field, otherwise you do the full-up 3d interpolation.
    if ( wrf_state_variables(1, i) == 'PSFC' ) then
       in_state_vector(KIND_SURFACE_PRESSURE) = .true.
-   end if
+   endif
 
 enddo
 
@@ -6900,10 +7235,29 @@ tstring(15:16) = ch_minute
 tstring(17:17) = ":"
 tstring(18:19) = ch_second
 
-return
-
 end subroutine set_wrf_date
 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!    height_diff_check - function that determines whether a pair of heights
+!                        in meters are closer than the given tolerance.
+!                        returns .TRUE. if closer or equal to limit
+!
+!    max_diff_meters   - maximum difference between 2 elevations (m)
+!    height1           - first height (m)
+!    height2           - second height (m)
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function height_diff_check(max_diff_meters, height1, height2)
+ real(r8), intent(in) :: max_diff_meters, height1, height2
+ logical              :: height_diff_check
+
+height_diff_check = .true.
+
+if ( abs(height1 - height2) > max_diff_meters ) height_diff_check = .false.
+
+end function height_diff_check
 
 
 end module model_mod

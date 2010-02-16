@@ -62,15 +62,16 @@
    inf_damping                 = 1.0,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
-/
+   inf_sd_lower_bound          = 0.0,                     0.0,
+   /
 
 &smoother_nml
    num_lags              = 0,
    start_from_restart    = .false.,
    output_restart        = .false.,
    restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart'  /
+   restart_out_file_name = 'smoother_restart',
+   /
 
 # cutoff is in radians; for the earth, 0.05 is about 300 km.
 # cutoff is defined to be the half-width of the localization radius,
@@ -84,16 +85,19 @@
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
-   print_every_nth_obs             = 0  /
+   print_every_nth_obs             = 0,
+   /
 
    #output_localization_diagnostics = .false.,
    #localization_diagnostics_file   = 'localization_diagnostics',
 
 &cov_cutoff_nml
-   select_localization = 1  /
+   select_localization = 1,
+   /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.,
+   /
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
@@ -115,7 +119,8 @@
                                 'RADIOSONDE_V_WIND_COMPONENT',
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
-   evaluate_these_obs_types   = 'RADIOSONDE_SPECIFIC_HUMIDITY'  /
+   evaluate_these_obs_types   = 'RADIOSONDE_SPECIFIC_HUMIDITY',
+   /
 
 # Notes for obs_def_radar_mod_nml:
 # (1) Reflectivity limit can be applied to observations and/or forward operator.
@@ -125,25 +130,27 @@
 
 &obs_def_radar_mod_nml
    apply_ref_limit_to_obs      =   .false.,
-   reflectivity_limit_obs      =  -10.0_r8,
-   lowest_reflectivity_obs     =  -10.0_r8,
+   reflectivity_limit_obs      =  -10.0,
+   lowest_reflectivity_obs     =  -10.0,
    apply_ref_limit_to_fwd_op   =   .false.,
-   reflectivity_limit_fwd_op   =  -10.0_r8,
-   lowest_reflectivity_fwd_op  =  -10.0_r8,
+   reflectivity_limit_fwd_op   =  -10.0,
+   lowest_reflectivity_fwd_op  =  -10.0,
    max_radial_vel_obs          =   1000000,
    allow_wet_graupel           =   .false.,
-   dielectric_factor           =  0.224_r8,
-   n0_rain                     =  8.0e6_r8,
-   n0_graupel                  =  4.0e6_r8,
-   n0_snow                     =  3.0e6_r8,
-   rho_rain                    = 1000.0_r8,
-   rho_graupel                 =  400.0_r8,
-   rho_snow                    =  100.0_r8
+   microphysics_type           =       2  ,
+   allow_dbztowt_conv          =   .false.,
+   dielectric_factor           =  0.224,
+   n0_rain                     =  8.0e6,
+   n0_graupel                  =  4.0e6,
+   n0_snow                     =  3.0e6,
+   rho_rain                    = 1000.0,
+   rho_graupel                 =  400.0,
+   rho_snow                    =  100.0,
    /
 
 &assim_model_nml
    write_binary_restart_files = .true.,
-   netCDF_large_file_support  = .false.
+   netCDF_large_file_support  = .false.,
   /
 
 # Notes for model_nml:
@@ -170,15 +177,17 @@
                          'QRAIN', '0.0','NULL','CLAMP',
                          'QCLOUD','0.0','NULL','CLAMP',
    output_state_vector         = .false.,
-   num_moist_vars              = 3,
    num_domains                 = 1,
    calendar_type               = 3,
-   surf_obs                    = .true.,
    assimilation_period_seconds = 21600,
    adv_mod_command             = './wrf.exe',
    vert_localization_coord     = 3,
    center_search_half_length   = 500000.,
-   center_spline_grid_scale    = 10  /
+   center_spline_grid_scale    = 10,
+   sfc_elev_max_diff           = -1.0,
+   circulation_pres_level      = 80000.0,
+   circulation_radius          = 108000.0,
+   /
 
 # vert_normal is amount of X equiv to 1 radian in horiz distance.  
 # adjust to give a different localization in the vertical, if
@@ -192,25 +201,35 @@
    approximate_distance        = .false.,
    nlon                        = 71,
    nlat                        = 36,
-   output_box_info             = .false.  /
+   output_box_info             = .false.,
+   /
+
+&dart_to_wrf_nml
+   model_advance_file  = .true.,
+   dart_restart_name   = 'dart_wrf_vector',
+   adv_mod_command     = './wrf.exe',
+   / 
 
 &utilities_nml
    TERMLEVEL = 1,
    module_details = .false.,
    logfilename = 'dart_log.out',
    nmlfilename = 'dart_log.nml',
-   write_nml   = 'file'  /
+   write_nml   = 'file',
+   /
 
 &reg_factor_nml
    select_regression    = 1,
    input_reg_file       = "time_mean_reg",
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = "reg_diagnostics"  /
+   reg_diagnostics_file = "reg_diagnostics",
+   /
 
 &ensemble_manager_nml
    single_restart_file_in  = .true.,
    single_restart_file_out = .true.,
-   perturbation_amplitude  = 0.2  /
+   perturbation_amplitude  = 0.2,
+   /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
@@ -240,7 +259,7 @@
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
    print_obs_locations   = .false.,
-   verbose               = .false.
+   verbose               = .false.,
    /
 
 &schedule_nml
@@ -251,7 +270,7 @@
    bin_interval_days    = 0,
    bin_interval_seconds = 21600,   
    max_num_bins         = 1000,
-   print_table          = .true.
+   print_table          = .true.,
    /
    
 &obs_seq_to_netcdf_nml  
@@ -262,7 +281,7 @@
    lonlim2    =  360.0,
    latlim1    =  -90.0,
    latlim2    =   90.0,
-   verbose    = .false.   
+   verbose    = .false.,
    /
 
 &restart_file_tool_nml 
@@ -279,7 +298,7 @@
    output_is_model_advance_file = .false.,
    overwrite_advance_time       = .false.,
    new_advance_days             = -1, 
-   new_advance_secs             = -1
+   new_advance_secs             = -1,
    /
 
 &obs_sequence_tool_nml
@@ -296,6 +315,24 @@
    min_lat           = -90.0, 
    max_lat           =  90.0, 
    min_lon           =   0.0, 
-   max_lon           = 360.0
+   max_lon           = 360.0,
+   /
+
+&replace_wrf_fields_nml
+   debug = .false.,
+   fail_on_missing_field = .false.,
+   fieldnames = "SNOWC",
+                "ALBBCK",
+                "TMN",
+                "TSK",
+                "SH2O",
+                "SMOIS",
+                "SEAICE",
+                "HGT_d01",
+                "TSLB",
+                "SST",
+                "SNOWH",
+                "SNOW",
+   fieldlist_file = '',
    /
 
