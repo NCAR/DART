@@ -2,7 +2,7 @@
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-program convert_madis_surface
+program convert_madis_metar
 
 ! <next few lines under version control, do not edit>
 ! $URL$
@@ -12,9 +12,10 @@ program convert_madis_surface
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   convert_madis_surface - program that reads a MADIS netCDF land 
-!                           surface observation file and writes a DART
-!                           obs_seq file using the DART library routines.
+!   convert_madis_metar - program that reads a MADIS netCDF land 
+!                         surface observation file and writes a DART
+!                         obs_seq file using the DART library routines.
+!                         This version works on the standard METAR files.
 !
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
 !     modified Dec. 2008 Soyoung Ha and David Dowell, NCAR/MMM
@@ -22,6 +23,7 @@ program convert_madis_surface
 !     - added relative humidity as an output variable
 !
 !     modified to include QC_flag check (Soyoung Ha, NCAR/MMM, 08-04-2009)
+!     split from the mesonet version (Glen Romine, NCAR/MMM, Feb 2010)
 !
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -41,10 +43,10 @@ use      obs_err_mod, only : land_temp_error, land_wind_error, &
                              land_pres_error, land_rel_hum_error
 use dewpoint_obs_err_mod, only : dewpt_error_from_rh_and_temp, &
                                  rh_error_from_dewpt_and_temp
-use     obs_kind_mod, only : LAND_SFC_U_WIND_COMPONENT, LAND_SFC_V_WIND_COMPONENT, &
-                             LAND_SFC_TEMPERATURE, LAND_SFC_SPECIFIC_HUMIDITY, & 
-                             LAND_SFC_DEWPOINT, LAND_SFC_RELATIVE_HUMIDITY, &
-                             LAND_SFC_ALTIMETER
+use     obs_kind_mod, only : METAR_U_10_METER_WIND, METAR_V_10_METER_WIND, &
+                             METAR_TEMPERATURE_2_METER, METAR_SPECIFIC_HUMIDITY_2_METER, & 
+                             METAR_DEWPOINT_2_METER, METAR_RELATIVE_HUMIDITY_2_METER, &
+                             METAR_ALTIMETER                
 
 use           netcdf
 
@@ -53,8 +55,8 @@ implicit none
 ! COMPILE TIME OPTION:  by default this converter only processes hourly
 ! observations.  if exclude_special is set to .false., then special obs
 ! will be converted as well as the normal obs.  but this is not on by default.
-character(len=16),  parameter :: surface_netcdf_file = 'surface_input.nc'
-character(len=129), parameter :: surface_out_file    = 'obs_seq.land_sfc'
+character(len=16),  parameter :: surface_netcdf_file = 'metar_input.nc'
+character(len=129), parameter :: surface_out_file    = 'obs_seq.metar'
 logical,            parameter :: exclude_special     = .true.
 
 ! the following logical parameters control which water-vapor variables appear in the output file,
@@ -244,7 +246,7 @@ obsloop: do n = 1, nobs
     if ( alti(n) >= 89000.0_r8 .and. alti(n) <= 110000.0_r8 .and. oerr /= missing_r8 ) then
 
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, alti(n) * 0.01_r8, & 
-                           LAND_SFC_ALTIMETER, oerr, oday, osec, qc, obs)
+                           METAR_ALTIMETER, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
 
     end if
@@ -259,10 +261,10 @@ obsloop: do n = 1, nobs
     if ( abs(uwnd) < 150.0_r8 .and. abs(vwnd) < 150.0_r8 .and. oerr /= missing_r8 ) then
 
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, uwnd, &
-                           LAND_SFC_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+                           METAR_U_10_METER_WIND, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, vwnd, &
-                           LAND_SFC_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+                           METAR_V_10_METER_WIND, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
 
     end if
@@ -276,7 +278,7 @@ obsloop: do n = 1, nobs
     if ( tair(n) >= 200.0_r8 .and. tair(n) <= 335.0_r8 .and. oerr /= missing_r8 ) then
 
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, tair(n), &
-                           LAND_SFC_TEMPERATURE, oerr, oday, osec, qc, obs)
+                           METAR_TEMPERATURE_2_METER, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
 
     end if
@@ -300,7 +302,7 @@ obsloop: do n = 1, nobs
     if ( qobs > 0.0_r8 .and. qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
 
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, qobs, &
-                           LAND_SFC_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
+                           METAR_SPECIFIC_HUMIDITY_2_METER, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
 
     end if
@@ -321,7 +323,7 @@ obsloop: do n = 1, nobs
     if ( rh > 0.0_r8 .and. rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
 
     call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, rh, &
-                         LAND_SFC_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
+                         METAR_RELATIVE_HUMIDITY_2_METER, oerr, oday, osec, qc, obs)
     call append_obs_to_seq(obs_seq, obs)
 
   end if
@@ -338,7 +340,7 @@ obsloop: do n = 1, nobs
     if ( rh > 0.0_r8 .and. rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
 
     call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, tdew(n), &
-                         LAND_SFC_DEWPOINT, oerr, oday, osec, qc, obs)
+                         METAR_DEWPOINT_2_METER, oerr, oday, osec, qc, obs)
     call append_obs_to_seq(obs_seq, obs)
 
     end if
@@ -434,4 +436,4 @@ call set_qc(obs, qc_val)
 return
 end subroutine create_obs_type
 
-end program convert_madis_surface
+end program convert_madis_metar

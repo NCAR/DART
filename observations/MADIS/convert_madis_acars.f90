@@ -48,13 +48,13 @@ character(len=14),  parameter :: acars_netcdf_file = 'acars_input.nc'
 character(len=129), parameter :: acars_out_file    = 'obs_seq.acars'
 
 ! the following logical parameters control which water-vapor variables appear in the output file, 
-! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and 
-! whether the input data file has QC values.
+! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and if the
+! input file has data quality control fields, whether to use or ignore them.
 logical, parameter :: LH_err                    = .false.
 logical, parameter :: include_specific_humidity = .true.
 logical, parameter :: include_relative_humidity = .false.
 logical, parameter :: include_dewpoint          = .false.
-logical, parameter :: input_has_qc              = .true.
+logical, parameter :: use_input_qc              = .true. 
 
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
@@ -63,8 +63,9 @@ character (len=129) :: meta_data
 character (len=80)  :: name
 character (len=19)  :: datime
 integer :: rcode, ncid, varid, nobs, nvars, n, i, window_sec, dday, dsec, &
-           oday, osec, nused, iyear, imonth, iday, ihour, imin, isec
-logical :: file_exist
+           oday, osec, nused, iyear, imonth, iday, ihour, imin, isec, nfrc
+logical :: file_exist, input_has_qc
+
 real(r8) :: palt_miss, tair_miss, relh_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
             vwnd, qobs, qsat, oerr, window_hours, pres, qc, qerr
 
@@ -77,7 +78,7 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs
 type(time_type)         :: comp_day0, time_obs, time_anal
 
-print*,'Enter target assimilation time (yyyy-mm-dd_hh:mm:ss), obs window (hours)'
+print*,'Enter target assimilation time (yyyy-mm-dd_hh:mm:ss), obs window (hours): '
 read*,datime,window_hours
 
 call set_calendar_type(GREGORIAN)
@@ -156,8 +157,13 @@ call check( nf90_get_att(ncid, varid, '_FillValue', wspd_miss) )
 call check( nf90_inq_varid(ncid, "timeObs", varid) )
 call check( nf90_get_var(ncid, varid, tobs) )
 
+! pick a random QC field and test for it.  if it's there, set
+! the 'has qc' flag to true.  otherwise, set it to false.
+nfrc = nf90_inq_varid(ncid, "altitudeQCR", varid) 
+input_has_qc = (nfrc == NF90_NOERR)
+
 ! read the QC check for each variable
-if (input_has_qc) then
+if (input_has_qc .and. use_input_qc) then
    call check( nf90_inq_varid(ncid, "altitudeQCR", varid) )
    call check( nf90_get_var(ncid, varid, qc_palt) )
    
@@ -176,7 +182,7 @@ if (input_has_qc) then
    call check( nf90_inq_varid(ncid, "windSpeedQCR", varid) )
    call check( nf90_get_var(ncid, varid, qc_wspd) )
 else
-   ! if input contains no QCs, assume all are ok.
+   ! if input contains no QCs, or user said skip them. assume all are ok.
    qc_palt = 0;  qc_relh = 0
    qc_tair = 0;  qc_tdew = 0
    qc_wdir = 0;  qc_wspd = 0
@@ -322,8 +328,10 @@ end do obsloop
 
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, acars_out_file)
 
-stop
-end
+! end of main program
+
+contains
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -398,3 +406,5 @@ call set_qc(obs, qc_val)
 
 return
 end subroutine create_obs_type
+
+end program convert_madis_acars

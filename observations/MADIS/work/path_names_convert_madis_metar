@@ -1,4 +1,4 @@
-observations/MADIS/convert_madis_surface.f90
+observations/MADIS/convert_madis_metar.f90
 observations/obs_error/ncep_obs_err_mod.f90
 observations/obs_error/dewpoint_obs_err_mod.f90
 observations/MADIS/meteor_mod.f90

@@ -2,7 +2,7 @@
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-program convert_madis_marine
+program convert_madis_mesonet
 
 ! <next few lines under version control, do not edit>
 ! $URL$
@@ -12,48 +12,49 @@ program convert_madis_marine
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   convert_madis_marine - program that reads a MADIS netCDF marine
-!                          surface observation file and writes a DART
-!                          obs_seq file using the DART library routines.
+!   convert_madis_mesonet - program that reads a MADIS netCDF land 
+!                           surface observation file and writes a DART
+!                           obs_seq file using the DART library routines.
+!                           This version works on generic MESONET files.
 !
 !     created Dec. 2007 Ryan Torn, NCAR/MMM
 !     modified Dec. 2008 Soyoung Ha and David Dowell, NCAR/MMM
 !     - added dewpoint as an output variable
 !     - added relative humidity as an output variable
 !
-!
 !     modified to include QC_flag check (Soyoung Ha, NCAR/MMM, 08-04-2009)
+!     split from generic surface converter since the METAR and MESONET
+!     files differ slightly in format.  (Glen Romine, NCAR/MMM  Feb 2010)
+!
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use             types_mod, only : r8, missing_r8
-use      time_manager_mod, only : time_type, set_calendar_type, set_date, &
-                                  increment_time, get_time, operator(-), GREGORIAN
-use          location_mod, only : VERTISSURFACE
-use      obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
-                                  static_init_obs_sequence, init_obs, write_obs_seq, &
-                                  append_obs_to_seq, init_obs_sequence, get_num_obs, &
-                                  set_copy_meta_data, set_qc_meta_data
-use            meteor_mod, only : sat_vapor_pressure, specific_humidity, & 
-                                  wind_dirspd_to_uv, pres_alt_to_pres, &
-                                  temp_and_dewpoint_to_rh
-use           obs_err_mod, only : fixed_marine_temp_error, fixed_marine_rel_hum_error, &
-                                  fixed_marine_wind_error, fixed_marine_pres_error, &
-                                  moving_marine_temp_error, moving_marine_rel_hum_error, &
-                                  moving_marine_wind_error, moving_marine_pres_error
-use  dewpoint_obs_err_mod, only : dewpt_error_from_rh_and_temp, &
-                                  rh_error_from_dewpt_and_temp
-use          obs_kind_mod, only : MARINE_SFC_U_WIND_COMPONENT, MARINE_SFC_V_WIND_COMPONENT, &
-                                  MARINE_SFC_TEMPERATURE, MARINE_SFC_SPECIFIC_HUMIDITY,     &
-                                  MARINE_SFC_ALTIMETER, MARINE_SFC_DEWPOINT,   &
-                                  MARINE_SFC_RELATIVE_HUMIDITY
-use obs_def_altimeter_mod, only : compute_altimeter
-use                netcdf
+use        types_mod, only : r8, missing_r8
+use time_manager_mod, only : time_type, set_calendar_type, set_date, &
+                             increment_time, get_time, GREGORIAN, operator(-)
+use     location_mod, only : VERTISSURFACE
+use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
+                             static_init_obs_sequence, init_obs, write_obs_seq, & 
+                             append_obs_to_seq, init_obs_sequence, get_num_obs, & 
+                             set_copy_meta_data, set_qc_meta_data
+use       meteor_mod, only : sat_vapor_pressure, specific_humidity, & 
+                             wind_dirspd_to_uv, invert_altimeter, pres_alt_to_pres, &
+                             temp_and_dewpoint_to_rh
+use      obs_err_mod, only : land_temp_error, land_wind_error, &
+                             land_pres_error, land_rel_hum_error
+use dewpoint_obs_err_mod, only : dewpt_error_from_rh_and_temp, &
+                                 rh_error_from_dewpt_and_temp
+use     obs_kind_mod, only : LAND_SFC_U_WIND_COMPONENT, LAND_SFC_V_WIND_COMPONENT, &
+                             LAND_SFC_TEMPERATURE, LAND_SFC_SPECIFIC_HUMIDITY, & 
+                             LAND_SFC_DEWPOINT, LAND_SFC_RELATIVE_HUMIDITY, &
+                             LAND_SFC_ALTIMETER                
+
+use           netcdf
 
 implicit none
 
-character(len=15),  parameter :: marine_netcdf_file = 'marine_input.nc'
-character(len=129), parameter :: marine_out_file    = 'obs_seq.marine_sfc'
+character(len=16),  parameter :: surface_netcdf_file = 'mesonet_input.nc'
+character(len=129), parameter :: surface_out_file    = 'obs_seq.mesonet'
 
 ! the following logical parameters control which water-vapor variables appear in the output file,
 ! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and if the
@@ -64,33 +65,33 @@ logical, parameter :: include_relative_humidity = .false.
 logical, parameter :: include_dewpoint          = .false.
 logical, parameter :: use_input_qc              = .true. 
 
-integer, parameter   :: dsecobs = 2700,   &   ! observation window
+integer, parameter   :: dsecobs    = 420, &   ! observation window
                         num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
-
-real(r8), parameter :: def_elev = 0.0_r8
 
 character (len=129) :: meta_data
 character (len=80)  :: name
 character (len=19)  :: datestr
-integer :: rcode, ncid, varid, nobs, nvars, n, i, dday, dsec, oday, &
-           osec, nused, iyear, imonth, iday, ihour, imin, isec, nfrc
+character (len=5)   :: rtype
+integer :: rcode, ncid, varid, nobs, nvars, n, i, oday, osec, dday, &
+           dsec, nused, iyear, imonth, iday, ihour, imin, isec, nfrc
 logical :: file_exist, input_has_qc
-real(r8) :: sfcp_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
-            vwnd, altim, palt, oerr, qobs, qerr, qsat, qobserr, rh, slp_miss, elev_miss, qc
+real(r8) :: alti_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
+            vwnd, palt, qobs, qsat, rh, oerr, pres, qerr, qc
 
-integer,  allocatable :: tobs(:), plid(:)
-real(r8), allocatable :: lat(:), lon(:), elev(:), sfcp(:), tair(:), slp(:), & 
+integer,  allocatable :: tobs(:)
+real(r8), allocatable :: lat(:), lon(:), elev(:), alti(:), tair(:), & 
                          tdew(:), wdir(:), wspd(:), latu(:), lonu(:)
-integer,  allocatable :: qc_sfcp(:), qc_slp(:), qc_tair(:), qc_tdew(:), qc_wdir(:), qc_wspd(:)
+integer,  allocatable :: qc_alti(:), qc_tair(:), qc_tdew(:), qc_wdir(:), qc_wspd(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs
-type(time_type)         :: comp_day0, time_anal, time_obs
+type(time_type)         :: comp_day0, time_obs, time_anal
 
-print*,'Enter the observation date (yyyy-mm-dd_hh:mm:ss): '
+print*,'Enter the analysis time (yyyy-mm-dd_hh:mm:ss):'
 read*,datestr
 
+! put the analysis date into DART format
 call set_calendar_type(GREGORIAN)
 read(datestr(1:4),   fmt='(i4)') iyear
 read(datestr(6:7),   fmt='(i2)') imonth
@@ -102,15 +103,13 @@ time_anal = set_date(iyear, imonth, iday, ihour, imin, isec)
 call get_time(time_anal, osec, oday)
 comp_day0 = set_date(1970, 1, 1, 0, 0, 0)
 
-rcode = nf90_open(marine_netcdf_file, nf90_nowrite, ncid)
-
+rcode = nf90_open(surface_netcdf_file, nf90_nowrite, ncid)
 call check( nf90_inq_dimid(ncid, "recNum", varid) )
 call check( nf90_inquire_dimension(ncid, varid, name, nobs) )
 
 allocate( lat(nobs))  ;  allocate( lon(nobs))
 allocate(latu(nobs))  ;  allocate(lonu(nobs))
-allocate(elev(nobs))  ;  allocate(plid(nobs))
-allocate(sfcp(nobs))  ;  allocate(slp(nobs))
+allocate(elev(nobs))  ;  allocate(alti(nobs))
 allocate(tair(nobs))  ;  allocate(tdew(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
 allocate(tobs(nobs))
@@ -120,7 +119,7 @@ if (include_specific_humidity) nvars = nvars + 1
 if (include_relative_humidity) nvars = nvars + 1
 if (include_dewpoint) nvars = nvars + 1
 
-allocate(qc_sfcp(nobs)) ;  allocate(qc_slp(nobs))
+allocate(qc_alti(nobs))
 allocate(qc_tair(nobs)) ;  allocate(qc_tdew(nobs))
 allocate(qc_wdir(nobs)) ;  allocate(qc_wspd(nobs))
 
@@ -128,28 +127,18 @@ allocate(qc_wdir(nobs)) ;  allocate(qc_wspd(nobs))
 call check( nf90_inq_varid(ncid, "latitude", varid) )
 call check( nf90_get_var(ncid, varid, lat) )
 
-! read the longitude array
+! read the latitude array
 call check( nf90_inq_varid(ncid, "longitude", varid) )
 call check( nf90_get_var(ncid, varid, lon) )
 
 ! read the elevation array
 call check( nf90_inq_varid(ncid, "elevation", varid) )
 call check( nf90_get_var(ncid, varid, elev) )
-call check( nf90_get_att(ncid, varid, '_FillValue', elev_miss) )
-
-! read the platform type array
-call check( nf90_inq_varid(ncid, "dataPlatformType", varid) )
-call check( nf90_get_var(ncid, varid, plid) )
 
 ! read the altimeter setting array
-call check( nf90_inq_varid(ncid, "stationPress", varid) )
-call check( nf90_get_var(ncid, varid, sfcp) )
-call check( nf90_get_att(ncid, varid, '_FillValue', sfcp_miss) )
-
-! read the sea-level pressure array
-call check( nf90_inq_varid(ncid, "seaLevelPress", varid) )
-call check( nf90_get_var(ncid, varid, slp) )
-call check( nf90_get_att(ncid, varid, '_FillValue', slp_miss) )
+call check( nf90_inq_varid(ncid, "altimeter", varid) )
+call check( nf90_get_var(ncid, varid, alti) )
+call check( nf90_get_att(ncid, varid, '_FillValue', alti_miss) )
 
 ! read the air temperature array
 call check( nf90_inq_varid(ncid, "temperature", varid) )
@@ -172,22 +161,19 @@ call check( nf90_get_var(ncid, varid, wspd) )
 call check( nf90_get_att(ncid, varid, '_FillValue', wspd_miss) )
 
 ! read the observation time array
-call check( nf90_inq_varid(ncid, "timeObs", varid) )
+call check( nf90_inq_varid(ncid, "observationTime", varid) )
 call check( nf90_get_var(ncid, varid, tobs) )
 
 ! pick a random QC field and test for it.  if it's there, set
 ! the 'has qc' flag to true.  otherwise, set it to false.
 ! read the QC check for each variable
-nfrc = nf90_inq_varid(ncid, "stationPressQCR", varid) 
+nfrc = nf90_inq_varid(ncid, "altimeterQCR", varid) 
 input_has_qc = (nfrc == nf90_noerr)
 
 ! read the QC check for each variable
 if (input_has_qc .and. use_input_qc) then
-   call check( nf90_inq_varid(ncid, "stationPressQCR", varid) )
-   call check( nf90_get_var(ncid, varid, qc_sfcp) )
-   
-   call check( nf90_inq_varid(ncid, "seaLevelPressQCR", varid) )
-   call check( nf90_get_var(ncid, varid, qc_slp) )
+   call check( nf90_inq_varid(ncid, "altimeterQCR", varid) )
+   call check( nf90_get_var(ncid, varid, qc_alti) )
    
    call check( nf90_inq_varid(ncid, "temperatureQCR", varid) )
    call check( nf90_get_var(ncid, varid, qc_tair) )
@@ -202,20 +188,18 @@ if (input_has_qc .and. use_input_qc) then
    call check( nf90_get_var(ncid, varid, qc_wspd) )
 else
    ! if input contains no QCs, or user said skip them. assume all are ok.
-   qc_sfcp = 0;  qc_slp  = 0
-   qc_tair = 0;  qc_tdew = 0
-   qc_wdir = 0;  qc_wspd = 0
+   qc_alti = 0
+   qc_tair = 0 ;  qc_tdew = 0
+   qc_wdir = 0 ;  qc_wspd = 0
 endif
-
-call check( nf90_close(ncid) )
 
 !  either read existing obs_seq or create a new one
 call static_init_obs_sequence()
 call init_obs(obs, num_copies, num_qc)
-inquire(file=marine_out_file, exist=file_exist)
+inquire(file=surface_out_file, exist=file_exist)
 if ( file_exist ) then
 
-  call read_obs_seq(marine_out_file, 0, 0, nvars*nobs, obs_seq)
+  call read_obs_seq(surface_out_file, 0, 0, nvars*nobs, obs_seq)
 
 else
 
@@ -234,11 +218,7 @@ end if
 nused = 0
 obsloop: do n = 1, nobs
 
-  ! check the lat/lon values to see if they are ok
-  if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle obsloop
-  if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle obsloop
-
-  ! determine whether observation is close to the analysis time
+  ! determine whether observation is close to analysis time
   time_obs = increment_time(comp_day0, mod(tobs(n),86400), tobs(n) / 86400)
   call get_time((time_anal - time_obs), dsec, dday)
   if ( (dsec + dday * 86400) > dsecobs ) cycle obsloop
@@ -247,153 +227,117 @@ obsloop: do n = 1, nobs
   do i = 1, nused
     if ( lon(n) == lonu(i) .and. lat(n) == latu(i) ) cycle obsloop
   end do
-  qc = 1.0_r8  ;  
-  if ( elev(n) /= missing_r8 ) then
-    palt = pres_alt_to_pres(elev(n)) * 0.01_r8
-  else
-    palt = pres_alt_to_pres(def_elev) * 0.01_r8
-  end if
+  qc = 1.0_r8
+  palt = pres_alt_to_pres(elev(n)) * 0.01_r8
 
-  ! add altimeter data to obs_seq
-  if ( sfcp(n) /= sfcp_miss .and. elev(n) /= elev_miss .and. qc_sfcp(n) == 0 ) then
+  ! add altimeter data to text file
+  if ( alti(n) /= alti_miss .and. qc_alti(n) == 0 ) then
 
-    altim = compute_altimeter(sfcp(n) * 0.01_r8, elev(n))
-    if ( plid(n) == 0 ) then
-      oerr = fixed_marine_pres_error(palt)
-    else
-      oerr = moving_marine_pres_error(palt)
-    end if
+    pres = invert_altimeter(alti(n) * 0.01_r8, elev(n))
+    oerr = land_pres_error(palt)
+    if ( alti(n) >= 89000.0_r8 .and. alti(n) <= 110000.0_r8 .and. oerr /= missing_r8 ) then
 
-    if ( altim >= 890.0_r8 .and. altim <= 1100.0_r8 .and. oerr /= missing_r8 ) then
-
-      call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, altim, &
-                           MARINE_SFC_ALTIMETER, oerr, oday, osec, qc, obs)
-      call append_obs_to_seq(obs_seq, obs)
-
-    end if
-
-  !  if surface pressure and elevation do not exist, use SLP.
-  else if ( slp(n) /= slp_miss .and. qc_slp(n) == 0 ) then
-
-    altim = compute_altimeter(slp(n) * 0.01_r8, 0.0_r8)
-    if ( plid(n) == 0 ) then
-      oerr = fixed_marine_pres_error(palt)
-    else
-      oerr = moving_marine_pres_error(palt)
-    end if
-    
-    if ( altim >= 890.0_r8 .and. altim <= 1100.0_r8 .and. oerr /= missing_r8 ) then
-
-      call create_obs_type(lat(n), lon(n), def_elev, VERTISSURFACE, altim, &
-                           MARINE_SFC_ALTIMETER, oerr, oday, osec, qc, obs)
+      call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, alti(n) * 0.01_r8, & 
+                           LAND_SFC_ALTIMETER, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
 
     end if
 
   end if
-  if ( elev(n) == elev_miss )  elev(n) = def_elev
 
-  ! add wind component data to obs. sequence
+  ! add wind component data to text file
   if ( wdir(n) /= wdir_miss .and. wspd(n) /= wspd_miss .and. qc_wdir(n) == 0 .and. qc_wspd(n) == 0 ) then
 
     call wind_dirspd_to_uv(wdir(n), wspd(n), uwnd, vwnd)
-    if ( plid(n) == 0 ) then
-      oerr = fixed_marine_wind_error(palt)
-    else
-      oerr = moving_marine_wind_error(palt)
-    end if
+    oerr = land_wind_error(palt)
     if ( abs(uwnd) < 150.0_r8 .and. abs(vwnd) < 150.0_r8 .and. oerr /= missing_r8 ) then
 
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, uwnd, &
-                           MARINE_SFC_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+                           LAND_SFC_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, vwnd, &
-                           MARINE_SFC_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+                           LAND_SFC_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
 
     end if
 
   end if
 
-  ! add air temperature data to obs. sequence
+  ! add air temperature data to text file
   if ( tair(n) /= tair_miss .and. qc_tair(n) == 0 ) then 
 
-    if ( plid(n) == 0 ) then
-      oerr = fixed_marine_temp_error(palt)
-    else
-      oerr = moving_marine_temp_error(palt)
-    end if
+    oerr = land_temp_error(palt)
     if ( tair(n) >= 200.0_r8 .and. tair(n) <= 335.0_r8 .and. oerr /= missing_r8 ) then
 
       call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, tair(n), &
-                           MARINE_SFC_TEMPERATURE, oerr, oday, osec, qc, obs)
+                           LAND_SFC_TEMPERATURE, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
- 
+
     end if
 
   end if
 
-  ! add specific humidity to obs. sequence
-  if ( include_specific_humidity .and. tair(n) /= tair_miss .and. tdew(n) /= tdew_miss &
-       .and. sfcp(n) /= sfcp_miss .and. qc_tair(n) == 0 .and. qc_tdew(n) == 0 .and. qc_sfcp(n) == 0 ) then
+  ! add specific humidity to text file
+  if ( include_specific_humidity .and. tair(n) /= tair_miss .and. tdew(n) /= tdew_miss & 
+       .and. alti(n) /= alti_miss .and. qc_tair(n) == 0 .and. qc_tdew(n) == 0 .and.    &
+       qc_alti(n) == 0 ) then
 
-    qobs = specific_humidity(sat_vapor_pressure(tdew(n)), sfcp(n))
-    qsat = specific_humidity(sat_vapor_pressure(tair(n)), sfcp(n))
-    if ( LH_err ) then
+    qobs = specific_humidity(sat_vapor_pressure(tdew(n)), pres * 100.0_r8)
+    qsat = specific_humidity(sat_vapor_pressure(tair(n)), pres * 100.0_r8)
+    if (LH_err ) then
       qerr = rh_error_from_dewpt_and_temp(tair(n), tdew(n))
     else
-      if ( plid(n) == 0 ) then
-!GSR - there was a bug here with the rh error assigned to oerr instead of qerr - qerr not defined
-! for calc below
-        qerr = fixed_marine_rel_hum_error(palt, tair(n), qobs / qsat)
-      else
-        qerr = moving_marine_rel_hum_error(palt, tair(n), qobs / qsat)
-      end if
+      qerr = land_rel_hum_error(pres, tair(n), qobs / qsat)
     end if
     oerr = max(qerr * qsat, 0.0001_r8)
 
-    if ( qobs >= 0.0_r8 .and. qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
+    if ( qobs > 0.0_r8 .and. qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
 
-      call create_obs_type(lat(n), lon(n), def_elev, VERTISSURFACE, qobs, &
-                           MARINE_SFC_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
+      call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, qobs, &
+                           LAND_SFC_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
       call append_obs_to_seq(obs_seq, obs)
 
     end if
 
   end if
 
-  ! add relative humidity data to obs. sequence
+  ! add relative humidity data to text file
   if ( include_relative_humidity .and. tdew(n) /= tdew_miss .and. tair(n) /= tair_miss &
        .and. qc_tair(n) == 0 .and. qc_tdew(n) == 0 ) then
 
     rh = temp_and_dewpoint_to_rh(tair(n), tdew(n))
-    if ( LH_err ) then
+    if (LH_err ) then
       oerr = rh_error_from_dewpt_and_temp(tair(n), tdew(n))
     else
-      if ( plid(n) == 0 ) then
-        oerr = fixed_marine_rel_hum_error(palt, tair(n), rh)
-      else
-        oerr = moving_marine_rel_hum_error(palt, tair(n), rh)
-      end if
+      oerr = land_rel_hum_error(pres, tair(n), rh)    
     end if
- 
-    call create_obs_type(lat(n), lon(n), def_elev, VERTISSURFACE, rh, &
-                         MARINE_SFC_RELATIVE_HUMIDITY, oerr, &
-                         oday, osec, qc, obs)
+
+    if ( rh > 0.0_r8 .and. rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+
+    call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, rh, &
+                         LAND_SFC_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
     call append_obs_to_seq(obs_seq, obs)
 
   end if
 
-  ! add dew-point temperature data to obs. sequence
-  if ( include_dewpoint .and. tdew(n) /= tdew_miss .and. tair(n) /= tair_miss &
+  end if
+
+  ! add dew-point temperature data to text file
+  if ( include_dewpoint .and. tdew(n) /= tdew_miss .and. tair(n) /= tair_miss  &
        .and. qc_tair(n) == 0 .and. qc_tdew(n) == 0 ) then
 
     rh = temp_and_dewpoint_to_rh(tair(n), tdew(n))
     oerr = dewpt_error_from_rh_and_temp(tair(n), rh)
-    call create_obs_type(lat(n), lon(n), def_elev, VERTISSURFACE, tdew(n), &
-                         MARINE_SFC_DEWPOINT, oerr, &
-                         oday, osec, qc, obs)
+
+    if ( rh > 0.0_r8 .and. rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+
+    call create_obs_type(lat(n), lon(n), elev(n), VERTISSURFACE, tdew(n), &
+                         LAND_SFC_DEWPOINT, oerr, oday, osec, qc, obs)
     call append_obs_to_seq(obs_seq, obs)
+
+    end if
+
+!    print*, 'temp (C), rh (%), oerr:  ', tair(n)-273.15_r8, rh*100.0_r8, oerr
 
   end if
 
@@ -403,16 +347,16 @@ obsloop: do n = 1, nobs
 
 end do obsloop
 
-if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, marine_out_file)
+if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, surface_out_file)
+call check( nf90_close(ncid) )
 
 ! end of main program
 
 contains
 
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   check - subroutine that checks the flag from a netCDF function.  If
+!   check - subroutine that checks the flag from a netCDF function.  If 
 !           there is an error, the message is displayed.
 !
 !    istatus - netCDF output flag
@@ -428,10 +372,7 @@ implicit none
 
 integer, intent (in) :: istatus
 
-if(istatus /= nf90_noerr) then 
-  print*,'Netcdf error: ',trim(nf90_strerror(istatus))
-  stop
-end if
+if(istatus /= nf90_noerr) print*,'Netcdf error: ',trim(nf90_strerror(istatus))
 
 end subroutine check
 
@@ -458,7 +399,7 @@ end subroutine check
 subroutine create_obs_type(lat, lon, pres, vcord, obsv, okind, oerr, day, sec, qc, obs)
 
 use types_mod,        only : r8
-use obs_sequence_mod, only : obs_type, set_obs_values, set_qc, set_obs_def, init_obs
+use obs_sequence_mod, only : obs_type, set_obs_values, set_qc, set_obs_def
 use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
                              set_obs_def_error_variance, set_obs_def_location
 use     location_mod, only : location_type, set_location
@@ -468,12 +409,11 @@ implicit none
 
 integer, intent(in)         :: okind, vcord, day, sec
 real(r8), intent(in)        :: lat, lon, pres, obsv, oerr, qc
-type(obs_type), intent(out) :: obs
+type(obs_type), intent(inout) :: obs
 
 real(r8)              :: obs_val(1), qc_val(1)
 type(obs_def_type)    :: obs_def
 
-call init_obs(obs, 1, 1)
 call set_obs_def_location(obs_def, set_location(lon, lat, pres, vcord))
 call set_obs_def_kind(obs_def, okind)
 call set_obs_def_time(obs_def, set_time(sec, day))
@@ -489,4 +429,4 @@ return
 end subroutine create_obs_type
 
 
-end program convert_madis_marine
+end program convert_madis_mesonet

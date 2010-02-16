@@ -55,13 +55,13 @@ character(len=19),  parameter :: rawin_in_file  = 'rawinsonde_input.nc'
 character(len=129), parameter :: rawin_out_file = 'obs_seq.rawin'
 
 ! the following logical parameters control which water-vapor variables appear in the output file
-! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and
-! whether the input data file has QC values.
+! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and if the
+! input file has data quality control fields, whether to use or ignore them.
 logical, parameter :: LH_err                    = .false.
 logical, parameter :: include_specific_humidity = .true.
 logical, parameter :: include_relative_humidity = .false.
 logical, parameter :: include_dewpoint          = .false.
-logical, parameter :: input_has_qc              = .true.
+logical, parameter :: use_input_qc              = .true. 
 
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
@@ -71,11 +71,12 @@ character(len=80)   :: name
 character(len=19)   :: datestr
 
 integer :: oday, osec, iyear, imonth, iday, ihour, imin, isec, nman, nsig, nsound, & 
-           nmaxml, nmaxsw, nmaxst, maxobs, nvars_man, nvars_sigt, k, n, fid, var_id, dsec, dday
+           nmaxml, nmaxsw, nmaxst, maxobs, nvars_man, nvars_sigt, k, n, ncid, varid, &
+           dsec, dday, nfrc
 
 integer, allocatable :: obscnt(:)
 
-logical :: fexist, sigwnd, sigtmp
+logical :: fexist, sigwnd, sigtmp, input_has_qc
 
 real(r8) :: obswindow, otime, lat, lon, elev, uwnd, vwnd, qobs, qsat, dptk, oerr, &
             pres_miss, wdir_miss, wspd_miss, tair_miss, tdew_miss, prespa, & 
@@ -88,7 +89,7 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs
 type(time_type)         :: comp_day0, time_anal, time_obs
 
-print*,'Enter the analysis time (yyyy-mm-dd_hh:mm:ss) and window (hours)'
+print*,'Enter the analysis time (yyyy-mm-dd_hh:mm:ss), window (hours): '
 read*,datestr, obswindow
 print*,'Include significant level winds, temperature?'
 read*,sigwnd, sigtmp
@@ -111,30 +112,30 @@ call get_time(time_anal, osec, oday)
 obswindow = nint(obswindow * 3600.0_r8)
 comp_day0 = set_date(1970, 1, 1, 0, 0, 0)
 
-call check( nf90_open(rawin_in_file, nf90_nowrite, fid) )
+call check( nf90_open(rawin_in_file, nf90_nowrite, ncid) )
 
-call check( nf90_inq_dimid(fid, "recNum", var_id) )
-call check( nf90_inquire_dimension(fid, var_id, name, nsound) )
+call check( nf90_inq_dimid(ncid, "recNum", varid) )
+call check( nf90_inquire_dimension(ncid, varid, name, nsound) )
 
 allocate(obscnt(nsound))  
 nmaxml = 0  ;  nmaxsw = 0  ;  nmaxst = 0
-call check( nf90_inq_varid(fid, 'numMand', var_id) )
-call check( nf90_get_var(fid, var_id, obscnt) )
+call check( nf90_inq_varid(ncid, 'numMand', varid) )
+call check( nf90_get_var(ncid, varid, obscnt) )
 do n = 1, nsound 
   if ( obscnt(n) > nmaxml .and. obscnt(n) < 25 )  nmaxml = obscnt(n)
 end do
 
 if ( sigwnd ) then
-  call check( nf90_inq_varid(fid, 'numSigW', var_id) )
-  call check( nf90_get_var(fid, var_id, obscnt) )
+  call check( nf90_inq_varid(ncid, 'numSigW', varid) )
+  call check( nf90_get_var(ncid, varid, obscnt) )
   do n = 1, nsound
     if ( obscnt(n) > nmaxsw .and. obscnt(n) < 150 )  nmaxsw = obscnt(n)
   end do
 end if
 
 if ( sigtmp ) then
-  call check( nf90_inq_varid(fid, 'numSigT', var_id) )
-  call check( nf90_get_var(fid, var_id, obscnt) )
+  call check( nf90_inq_varid(ncid, 'numSigT', varid) )
+  call check( nf90_get_var(ncid, varid, obscnt) )
   do n = 1, nsound
     if ( obscnt(n) > nmaxst .and. obscnt(n) < 150 )  nmaxst = obscnt(n)
   end do
@@ -182,17 +183,17 @@ end if
 
 sondeloop : do n = 1, nsound !  loop over all soundings in the file 
 
-  call check( nf90_inq_varid(fid, 'staLat', var_id) )
-  call check( nf90_get_var(fid, var_id, lat,   start = (/ n /)) )
-  call check( nf90_inq_varid(fid, 'staLon', var_id) )
-  call check( nf90_get_var(fid, var_id, lon,   start = (/ n /)) )
-  call check( nf90_inq_varid(fid, 'staElev', var_id) )
-  call check( nf90_get_var(fid, var_id, elev,  start = (/ n /)) )
-  call check( nf90_inq_varid(fid, 'numMand', var_id) )
-  call check( nf90_get_var(fid, var_id, nman,  start = (/ n /)) ) 
-  call check( nf90_inq_varid(fid, 'synTime', var_id) )
-  call check( nf90_get_var(fid, var_id, otime, start = (/ n /)) )
-  !call check( nf90_get_att(fid, var_id, '_FillValue', time_miss) )
+  call check( nf90_inq_varid(ncid, 'staLat', varid) )
+  call check( nf90_get_var(ncid, varid, lat,   start = (/ n /)) )
+  call check( nf90_inq_varid(ncid, 'staLon', varid) )
+  call check( nf90_get_var(ncid, varid, lon,   start = (/ n /)) )
+  call check( nf90_inq_varid(ncid, 'staElev', varid) )
+  call check( nf90_get_var(ncid, varid, elev,  start = (/ n /)) )
+  call check( nf90_inq_varid(ncid, 'numMand', varid) )
+  call check( nf90_get_var(ncid, varid, nman,  start = (/ n /)) ) 
+  call check( nf90_inq_varid(ncid, 'synTime', varid) )
+  call check( nf90_get_var(ncid, varid, otime, start = (/ n /)) )
+  !call check( nf90_get_att(ncid, varid, '_FillValue', time_miss) )
 
   if ( otime < 0.0_r8 ) cycle sondeloop
   time_obs = increment_time(comp_day0,nint(mod(otime,86400.0_r8)),floor(otime/86400.0_r8))
@@ -208,34 +209,41 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   allocate(qc_pres(nman))  ;  allocate(qc_tair(nman))  ;  allocate(qc_tdew(nman))
   allocate(qc_wdir(nman))  ;  allocate(qc_wspd(nman))
 
-  call check( nf90_inq_varid(fid, 'prMan', var_id) )
-  call check( nf90_get_var(fid,var_id,pres,start=(/ 1, n /),count=(/ nman, 1 /)) )
-  call check( nf90_get_att(fid, var_id, '_FillValue', pres_miss) )
-  call check( nf90_inq_varid(fid, 'tpMan', var_id) )
-  call check( nf90_get_var(fid,var_id,tair,start=(/ 1, n /),count=(/ nman, 1 /)) )
-  call check( nf90_get_att(fid, var_id, '_FillValue', tair_miss) )
-  call check( nf90_inq_varid(fid, 'tdMan', var_id) )
-  call check( nf90_get_var(fid,var_id,tdew,start=(/ 1, n /),count=(/ nman, 1 /)) )
-  call check( nf90_get_att(fid, var_id, '_FillValue', tdew_miss) )
-  call check( nf90_inq_varid(fid, 'wdMan', var_id) )
-  call check( nf90_get_var(fid,var_id,wdir,start=(/ 1, n /),count=(/ nman, 1 /)) )
-  call check( nf90_get_att(fid, var_id, '_FillValue', wdir_miss) )
-  call check( nf90_inq_varid(fid, 'wsMan', var_id) )
-  call check( nf90_get_var(fid,var_id,wspd,start=(/ 1, n /),count=(/ nman, 1 /)) )
-  call check( nf90_get_att(fid, var_id, '_FillValue', wspd_miss) )
-  if (input_has_qc) then
-     call check( nf90_inq_varid(fid, "prManQCR", var_id) )
-     call check( nf90_get_var(fid, var_id, qc_pres,start=(/ 1, n /),count=(/ nman, 1 /)) )
-     call check( nf90_inq_varid(fid, "tpManQCR", var_id) )
-     call check( nf90_get_var(fid, var_id, qc_tair,start=(/ 1, n /),count=(/ nman, 1 /)) )
-     call check( nf90_inq_varid(fid, "tdManQCR", var_id) )
-     call check( nf90_get_var(fid, var_id, qc_tdew,start=(/ 1, n /),count=(/ nman, 1 /)) )
-     call check( nf90_inq_varid(fid, "wdManQCR", var_id) )
-     call check( nf90_get_var(fid, var_id, qc_wdir,start=(/ 1, n /),count=(/ nman, 1 /)) )
-     call check( nf90_inq_varid(fid, "wsManQCR", var_id) )
-     call check( nf90_get_var(fid, var_id, qc_wspd,start=(/ 1, n /),count=(/ nman, 1 /)) )
+  call check( nf90_inq_varid(ncid, 'prMan', varid) )
+  call check( nf90_get_var(ncid,varid,pres,start=(/ 1, n /),count=(/ nman, 1 /)) )
+  call check( nf90_get_att(ncid, varid, '_FillValue', pres_miss) )
+  call check( nf90_inq_varid(ncid, 'tpMan', varid) )
+  call check( nf90_get_var(ncid,varid,tair,start=(/ 1, n /),count=(/ nman, 1 /)) )
+  call check( nf90_get_att(ncid, varid, '_FillValue', tair_miss) )
+  call check( nf90_inq_varid(ncid, 'tdMan', varid) )
+  call check( nf90_get_var(ncid,varid,tdew,start=(/ 1, n /),count=(/ nman, 1 /)) )
+  call check( nf90_get_att(ncid, varid, '_FillValue', tdew_miss) )
+  call check( nf90_inq_varid(ncid, 'wdMan', varid) )
+  call check( nf90_get_var(ncid,varid,wdir,start=(/ 1, n /),count=(/ nman, 1 /)) )
+  call check( nf90_get_att(ncid, varid, '_FillValue', wdir_miss) )
+  call check( nf90_inq_varid(ncid, 'wsMan', varid) )
+  call check( nf90_get_var(ncid,varid,wspd,start=(/ 1, n /),count=(/ nman, 1 /)) )
+  call check( nf90_get_att(ncid, varid, '_FillValue', wspd_miss) )
+
+  ! pick a random QC field and test for it.  if it's there, set
+  ! the 'has qc' flag to true.  otherwise, set it to false.
+  nfrc = nf90_inq_varid(ncid, "prManQCR", varid) 
+  input_has_qc = (nfrc == nf90_noerr)
+
+  ! read the QC check for each variable
+  if (input_has_qc .and. use_input_qc) then
+     call check( nf90_inq_varid(ncid, "prManQCR", varid) )
+     call check( nf90_get_var(ncid, varid, qc_pres,start=(/ 1, n /),count=(/ nman, 1 /)) )
+     call check( nf90_inq_varid(ncid, "tpManQCR", varid) )
+     call check( nf90_get_var(ncid, varid, qc_tair,start=(/ 1, n /),count=(/ nman, 1 /)) )
+     call check( nf90_inq_varid(ncid, "tdManQCR", varid) )
+     call check( nf90_get_var(ncid, varid, qc_tdew,start=(/ 1, n /),count=(/ nman, 1 /)) )
+     call check( nf90_inq_varid(ncid, "wdManQCR", varid) )
+     call check( nf90_get_var(ncid, varid, qc_wdir,start=(/ 1, n /),count=(/ nman, 1 /)) )
+     call check( nf90_inq_varid(ncid, "wsManQCR", varid) )
+     call check( nf90_get_var(ncid, varid, qc_wspd,start=(/ 1, n /),count=(/ nman, 1 /)) )
   else
-     ! if input contains no QCs, assume all are ok.
+     ! if input contains no QCs, or user said skip them. assume all are ok.
      qc_pres = 0
      qc_tair = 0 ;  qc_tdew = 0
      qc_wdir = 0 ;  qc_wspd = 0
@@ -347,8 +355,8 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   deallocate(pres, wdir, wspd, tair, tdew, qc_pres, qc_wdir, qc_wspd, qc_tair, qc_tdew)
 
   !  If desired, read the significant-level temperature data, write to obs. seq.
-  call check( nf90_inq_varid(fid, 'numSigT', var_id) )
-  call check( nf90_get_var(fid, var_id, nsig,  start = (/ n /)) )
+  call check( nf90_inq_varid(ncid, 'numSigT', varid) )
+  call check( nf90_get_var(ncid, varid, nsig,  start = (/ n /)) )
 
   if ( sigtmp .and. nsig <= nmaxst ) then
 
@@ -356,21 +364,27 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     allocate(qc_pres(nsig))  ;  allocate(qc_tair(nsig))  ;  allocate(qc_tdew(nsig))
 
     !  read significant level data
-    call check( nf90_inq_varid(fid, 'prSigT', var_id) )
-    call check( nf90_get_var(fid,var_id,pres,start=(/ 1, n /),count=(/ nsig, 1 /)) )
-    call check( nf90_get_att(fid, var_id, '_FillValue', pres_miss) )
-    call check( nf90_inq_varid(fid, 'tpSigT', var_id) )
-    call check( nf90_get_var(fid,var_id,tair,start=(/ 1, n /),count=(/ nsig, 1 /)) )
-    call check( nf90_get_att(fid, var_id, '_FillValue', tair_miss) )
-    call check( nf90_inq_varid(fid, 'tdSigT', var_id) )
-    call check( nf90_get_var(fid,var_id,tdew,start=(/ 1, n /),count=(/ nsig, 1 /)) )
-    call check( nf90_get_att(fid, var_id, '_FillValue', tdew_miss) )
-    call check( nf90_inq_varid(fid, "prSigTQCR", var_id) )
-    call check( nf90_get_var(fid, var_id, qc_pres,start=(/ 1, n /),count=(/ nsig, 1 /)) )
-    call check( nf90_inq_varid(fid, "tpSigTQCR", var_id) )
-    call check( nf90_get_var(fid, var_id, qc_tair,start=(/ 1, n /),count=(/ nsig, 1 /)) )
-    call check( nf90_inq_varid(fid, "tdSigTQCR", var_id) )
-    call check( nf90_get_var(fid, var_id, qc_tdew,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    call check( nf90_inq_varid(ncid, 'prSigT', varid) )
+    call check( nf90_get_var(ncid,varid,pres,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    call check( nf90_get_att(ncid, varid, '_FillValue', pres_miss) )
+    call check( nf90_inq_varid(ncid, 'tpSigT', varid) )
+    call check( nf90_get_var(ncid,varid,tair,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    call check( nf90_get_att(ncid, varid, '_FillValue', tair_miss) )
+    call check( nf90_inq_varid(ncid, 'tdSigT', varid) )
+    call check( nf90_get_var(ncid,varid,tdew,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    call check( nf90_get_att(ncid, varid, '_FillValue', tdew_miss) )
+    if (input_has_qc) then
+       call check( nf90_inq_varid(ncid, "prSigTQCR", varid) )
+       call check( nf90_get_var(ncid, varid, qc_pres,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+       call check( nf90_inq_varid(ncid, "tpSigTQCR", varid) )
+       call check( nf90_get_var(ncid, varid, qc_tair,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+       call check( nf90_inq_varid(ncid, "tdSigTQCR", varid) )
+       call check( nf90_get_var(ncid, varid, qc_tdew,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    else
+       qc_pres = 0
+       qc_tair = 0
+       qc_tdew = 0
+    endif
 
     do k = 1, nsig
 
@@ -446,8 +460,8 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   end if
 
   !  If desired, read the significant-level wind data, write to obs. seq.
-  call check( nf90_inq_varid(fid, 'numSigW', var_id) )
-  call check( nf90_get_var(fid, var_id, nsig,  start = (/ n /)) )
+  call check( nf90_inq_varid(ncid, 'numSigW', varid) )
+  call check( nf90_get_var(ncid, varid, nsig,  start = (/ n /)) )
   
   if ( sigwnd .and. nsig <= nmaxsw ) then
 
@@ -455,19 +469,24 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     allocate(qc_pres(nsig))  ;  allocate(qc_wdir(nsig))  ;  allocate(qc_wspd(nsig))
 
     !  read significant level data
-    call check( nf90_inq_varid(fid, 'htSigW', var_id) )
-    call check( nf90_get_var(fid,var_id,pres,start=(/ 1, n /),count=(/ nsig, 1 /)) )
-    call check( nf90_get_att(fid, var_id, '_FillValue', pres_miss) )
-    call check( nf90_inq_varid(fid, 'wdSigW', var_id) )
-    call check( nf90_get_var(fid,var_id,wdir,start=(/ 1, n /),count=(/ nsig, 1 /)) )
-    call check( nf90_get_att(fid, var_id, '_FillValue', wdir_miss) )
-    call check( nf90_inq_varid(fid, 'wsSigW', var_id) )
-    call check( nf90_get_var(fid,var_id,wspd,start=(/ 1, n /),count=(/ nsig, 1 /)) )
-    call check( nf90_get_att(fid, var_id, '_FillValue', wspd_miss) )
-    call check( nf90_inq_varid(fid, "wdSigTQCR", var_id) )
-    call check( nf90_get_var(fid, var_id, qc_wdir,start=(/ 1, n /),count=(/ nsig, 1 /)) )
-    call check( nf90_inq_varid(fid, "wsSigTQCR", var_id) )
-    call check( nf90_get_var(fid, var_id, qc_wspd,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    call check( nf90_inq_varid(ncid, 'htSigW', varid) )
+    call check( nf90_get_var(ncid,varid,pres,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    call check( nf90_get_att(ncid, varid, '_FillValue', pres_miss) )
+    call check( nf90_inq_varid(ncid, 'wdSigW', varid) )
+    call check( nf90_get_var(ncid,varid,wdir,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    call check( nf90_get_att(ncid, varid, '_FillValue', wdir_miss) )
+    call check( nf90_inq_varid(ncid, 'wsSigW', varid) )
+    call check( nf90_get_var(ncid,varid,wspd,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    call check( nf90_get_att(ncid, varid, '_FillValue', wspd_miss) )
+    if (input_has_qc) then
+       call check( nf90_inq_varid(ncid, "wdSigTQCR", varid) )
+       call check( nf90_get_var(ncid, varid, qc_wdir,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+       call check( nf90_inq_varid(ncid, "wsSigTQCR", varid) )
+       call check( nf90_get_var(ncid, varid, qc_wspd,start=(/ 1, n /),count=(/ nsig, 1 /)) )
+    else
+       qc_wdir = 0
+       qc_wspd = 0
+    endif
 
     do k = 1, nsig
 
@@ -498,11 +517,12 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
 enddo sondeloop
 
-call check( nf90_close(fid) )
+call check( nf90_close(ncid) )
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, rawin_out_file)
 
-stop
-end
+!end of main program
+
+contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -580,3 +600,5 @@ call set_qc(obs, qc_val)
 
 return
 end subroutine create_obs_type
+
+end program convert_madis_rawin
