@@ -173,7 +173,8 @@ logical :: h_diab               = .false.
 ! Max height a surface obs can be away from the actual model surface
 ! and still be accepted (in meters)
 real (kind=r8) :: sfc_elev_max_diff  = -1.0_r8   ! could be something like 200.0_r8
-character(len = 72) :: adv_mod_command = './wrf.exe'
+! adv_mod_command moved to dart_to_wrf namelist; ignored here.
+character(len = 72) :: adv_mod_command = ''
 real (kind=r8) :: center_search_half_length = 500000.0_r8
 real(r8) :: circulation_pres_level = 80000.0_r8
 real(r8) :: circulation_radius     = 108000.0_r8
@@ -322,6 +323,16 @@ call check_namelist_read(iunit, io, "model_nml")
 ! Record the namelist values used for the run ...
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
+
+! Temporary warning until this namelist item is removed.
+if (adv_mod_command /= '') then
+   call error_handler(E_MSG, 'static_init_model:', "WARNING")
+   call error_handler(E_MSG, 'static_init_model:', &
+                      "WARNING: adv_mod_command ignored in &model_mod namelist")
+   call error_handler(E_MSG, 'static_init_model:', &
+                      "WARNING: Set the model advance command in &dart_to_wrf_nml")
+   call error_handler(E_MSG, 'static_init_model:', "WARNING")
+endif
 
 allocate(wrf%dom(num_domains))
 
