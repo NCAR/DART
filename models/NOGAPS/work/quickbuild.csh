@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id: quickbuild.csh 4203 2009-12-17 22:26:35Z thoar $
+# $Id$
 #
 # Script to manage the compilation of all components for this model;
 
@@ -119,7 +119,7 @@ echo ' for mpich run "mpd" once, then "runme_filter"'
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/POP/work/quickbuild.csh $
-# $Revision: 4203 $
-# $Date: 2009-12-17 15:26:35 -0700 (Thu, 17 Dec 2009) $
+# $URL$
+# $Revision$
+# $Date$
 

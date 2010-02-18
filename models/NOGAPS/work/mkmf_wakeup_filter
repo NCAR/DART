@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id: $
+# $Id$
 #
 # usage: mkmf_wakeup_filter [ -mpi | -nompi ]
 #
@@ -58,7 +58,7 @@ rm -f path_names_wakeup_filter.back
 exit $status
 
 # <next few lines under version control, do not edit>
-# $URL: $
-# $Revision: $
-# $Date: $
+# $URL$
+# $Revision$
+# $Date$
 

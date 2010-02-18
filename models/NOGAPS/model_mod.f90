@@ -5,10 +5,10 @@
 module model_mod
 
 ! <next few lines under version control, do not edit>
-! $URL: $
-! $Id: $
-! $Revision: $
-! $Date: $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 ! This is a template showing the interfaces required for a model to be compliant
 ! with the DART data assimilation infrastructure. The public interfaces listed
@@ -47,9 +47,9 @@ public :: get_model_size,         &
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
-   source   = "$URL: $", &
-   revision = "$Revision: $", &
-   revdate  = "$Date: $"
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 ! EXAMPLE: define model parameters here
 integer, parameter               :: model_size = 3
