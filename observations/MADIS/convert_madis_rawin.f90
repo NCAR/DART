@@ -511,7 +511,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
       end if
 
     end do
-    deallocate(pres, wdir, wspd, qc_wdir, qc_wspd)
+    deallocate(pres, wdir, wspd, qc_pres, qc_wdir, qc_wspd)
 
   end if
 
