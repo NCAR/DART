@@ -1202,10 +1202,11 @@ function set_date_gregorian(year, month, day, hours, minutes, seconds)
 
 implicit none
 
-integer, intent(in)           :: day, month, year
-integer, intent(in), optional :: seconds, minutes, hours
+integer, intent(in)           :: year, month, day 
+integer, intent(in), optional :: hours, minutes, seconds
 type(time_type)               :: set_date_gregorian
 
+integer :: totseconds, totdays
 integer :: oseconds, ominutes, ohours
 integer :: ndays, m, nleapyr
 integer :: base_year = 1601
@@ -1227,7 +1228,10 @@ if(    oseconds > 59 .or. oseconds < 0 .or. &
                           day      < 1 .or. &
        month    > 12 .or. month    < 1 .or. &
                           year     < base_year) then
-   write(errstring,*)'s,m,h,d,mn,y',oseconds,ominutes,ohours,day,month,year,' not a valid date'
+
+   write(errstring,'(''year,mon,day,hour,min,sec'',6(1x,i4),'' not a valid date.'')') &
+              year,month,day,ohours,ominutes,oseconds
+   call error_handler(E_ERR,'set_date_gregorian',errstring,source,revision,revdate)
    call error_handler(E_ERR,'set_date_gregorian',errstring,source,revision,revdate)
 endif
 
@@ -1258,8 +1262,10 @@ do m=1,month-1
  if(leap .and. m == 2) ndays = ndays + 1
 enddo
 
-set_date_gregorian%seconds = oseconds + 60*(ominutes + 60 * ohours)
-set_date_gregorian%days = day - 1 +  ndays + 365*(year - base_year - nleapyr) + 366*(nleapyr)
+totseconds = oseconds + 60*(ominutes + 60 * ohours)
+totdays    = day - 1 +  ndays + 365*(year - base_year - nleapyr) + 366*(nleapyr)
+
+set_date_gregorian = set_time(totseconds, totdays)
 
 end function set_date_gregorian
 
@@ -1272,8 +1278,8 @@ function set_date_julian(year, month, day, hours, minutes, seconds)
 
 implicit none
 
-integer, intent(in)           :: day, month, year
-integer, intent(in), optional :: seconds, minutes, hours
+integer, intent(in)           :: year, month, day
+integer, intent(in), optional :: hours, minutes, seconds
 type(time_type)               :: set_date_julian
 
 integer :: oseconds, ominutes, ohours
@@ -1296,7 +1302,8 @@ if( oseconds > 59 .or. oseconds < 0 .or. &
                        day      < 1 .or. &
     month    > 12 .or. month    < 1 .or. &
                        year     < 1) then
-   write(errstring,*)'s,m,h,d,mn,y',oseconds,ominutes,ohours,day,month,year,' not a valid date'
+   write(errstring,'(''year,mon,day,hour,min,sec'',6(1x,i4),'' not a valid date.'')') &
+              year,month,day,ohours,ominutes,oseconds
    call error_handler(E_ERR,'set_date_julian',errstring,source,revision,revdate)
 endif
 
@@ -1338,8 +1345,8 @@ function set_date_thirty(year, month, day, hours, minutes, seconds)
 
 implicit none
 
-integer, intent(in)           :: day, month, year
-integer, intent(in), optional :: seconds, minutes, hours
+integer, intent(in)           :: year, month, day
+integer, intent(in), optional :: hours, minutes, seconds
 type(time_type)               :: set_date_thirty
 
 integer :: oseconds, ominutes, ohours
@@ -1360,7 +1367,8 @@ if( oseconds > 59 .or. oseconds < 0 .or. &
     day      > 30 .or. day      < 1 .or. &
     month    > 12 .or. month    < 1 .or. &
                        year     < 1 ) then
-   write(errstring,*)'s,m,h,d,mn,y',oseconds,ominutes,ohours,day,month,year,' not a valid date'
+   write(errstring,'(''year,mon,day,hour,min,sec'',6(1x,i4),'' not a valid date.'')') &
+              year,month,day,ohours,ominutes,oseconds
    call error_handler(E_ERR,'set_date_thirty',errstring,source,revision,revdate)
 endif
 
@@ -1378,10 +1386,11 @@ function set_date_no_leap(year, month, day, hours, minutes, seconds)
 
 implicit none
 
-integer, intent(in)           :: day, month, year
-integer, intent(in), optional :: seconds, minutes, hours
+integer, intent(in)           :: year, month, day
+integer, intent(in), optional :: hours, minutes, seconds
 type(time_type)               :: set_date_no_leap
 
+integer :: totseconds, totdays
 integer :: oseconds, ominutes, ohours
 integer :: ndays, m
 
@@ -1401,7 +1410,9 @@ if( oseconds > 59 .or. oseconds < 0 .or. &
     day      > 31 .or. day      < 1 .or. &
     month    > 12 .or. month    < 1 .or. &
                        year     < 1 ) then
-   write(errstring,*)'s,m,h,d,mn,y',oseconds,ominutes,ohours,day,month,year,' not a valid date'
+
+   write(errstring,'(''year,mon,day,hour,min,sec'',6(1x,i4),'' not a valid date.'')') &
+              year,month,day,ohours,ominutes,oseconds
    call error_handler(E_ERR,'set_date_no_leap',errstring,source,revision,revdate)
 endif
 
@@ -1410,8 +1421,10 @@ do m = 1, month - 1
    ndays = ndays + days_per_month(m)
 enddo
 
-set_date_no_leap = set_time(oseconds + 60 * (ominutes + 60 * ohours), &
-   day -1 + ndays + 365 * (year - 1))
+totseconds = oseconds + 60 * (ominutes + 60 * ohours)
+totdays    = day - 1 + ndays + 365 * (year - 1)
+
+set_date_no_leap = set_time(totseconds, totdays)
 
 end function set_date_no_leap
 
@@ -1431,8 +1444,8 @@ function set_date_gregorian_mars(year, month, day, hours, minutes, seconds)
 
 implicit none
 
-integer, intent(in)           :: day, month, year
-integer, intent(in), optional :: seconds, minutes, hours
+integer, intent(in)           :: year, month, day
+integer, intent(in), optional :: hours, minutes, seconds
 type(time_type)               :: set_date_gregorian_mars
 
 integer :: oseconds, ominutes, ohours
@@ -1457,8 +1470,9 @@ if(    oseconds > 59 .or. oseconds < 0 .or. &
        ohours   > 23 .or. ohours   < 0 .or. &
                           day      < 1 .or. &
                           year     < base_year) then
-   write(errstring,*)'s,m,h,d,mn,y',oseconds,ominutes,ohours,day,month,year,' not a valid date'
-   call error_handler(E_ERR,'set_date_gregorian',errstring,source,revision,revdate)
+   write(errstring,'(''year,mon,day,hour,min,sec'',6(1x,i4),'' not a valid date.'')') &
+              year,month,day,ohours,ominutes,oseconds
+   call error_handler(E_ERR,'set_date_gregorian_mars',errstring,source,revision,revdate)
 endif
 
 ! Month has no meaning for Mars calendar
@@ -1539,7 +1553,7 @@ function increment_gregorian(time, years, months, days, hours, minutes, seconds)
 implicit none
 
 type(time_type), intent(in)           :: time
-integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
+integer,         intent(in), optional :: years, months, days, hours, minutes, seconds
 type(time_type)                       :: increment_gregorian
 
 integer :: oseconds, ominutes, ohours, odays, omonths, oyears
