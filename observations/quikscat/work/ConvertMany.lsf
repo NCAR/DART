@@ -9,13 +9,28 @@
 # I am going to process one day per task and one month at a time via the job
 # array syntax.
 #
-#BXXX -J qscat[305-334]   # nov 2007
-#BXXX -J qscat[335-365]   # dec 2007
-#BXXX -J qscat[001-031]   # jan 2008
-#BXXX -J qscat[032-060]   # feb 2008
-#BXXX -J qscat[061-091]   # mar 2008
+#BXXX -J qscat[213-243]   # aug ( 8) 2006
+#BXXX -J qscat[244-273]   # sep ( 9) 2006
+#BXXX -J qscat[274-304]   # oct (10) 2006
+#BXXX -J qscat[305-334]   # nov (11) 2006
+#BXXX -J qscat[335-365]   # dec (12) 2006
+#BXXX -J qscat[001-031]   # jan ( 1) 2007
+#BXXX -J qscat[032-059]   # feb ( 2) 2007
+#BXXX -J qscat[060-090]   # mar ( 3) 2007
+#BXXX -J qscat[091-120]   # apr ( 4) 2007
+#BXXX -J qscat[121-151]   # may ( 5) 2007
+#BXXX -J qscat[152-181]   # jun ( 6) 2007
+#BXXX -J qscat[182-212]   # jul ( 7) 2007
+#BXXX -J qscat[213-243]   # aug ( 8) 2007
+#BXXX -J qscat[244-273]   # sep ( 9) 2007
+#BXXX -J qscat[274-304]   # oct (10) 2007
+#BXXX -J qscat[305-334]   # nov (11) 2007
+#BXXX -J qscat[335-365]   # dec (12) 2007
+#BXXX -J qscat[001-031]   # jan ( 1) 2008
+#BXXX -J qscat[032-060]   # feb ( 2) 2008
+#BXXX -J qscat[061-091]   # mar ( 3) 2008
 #
-#BSUB -J qscat[032-060]
+#BSUB -J qscat[274-304]
 #BSUB -n 1
 #BSUB -q standby
 #BSUB -W 0:10
@@ -31,8 +46,8 @@
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
 
-set month = 02
-set  year = 2008
+set month = 10
+set  year = 2007
 
 if ($?LSB_HOSTS) then
 
@@ -89,6 +104,7 @@ endif
    cd /ptmp/thoar/QuikSCAT_L2B/${year}/${doy}
 
    \rm -f *obs_seq_out
+   \rm -f obs_seq.processed
 
    gunzip -q QS_S2B*.gz
 
