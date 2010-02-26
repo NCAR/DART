@@ -119,6 +119,10 @@
    time_step_days    = 0,
    time_step_seconds = 2160  /
 
+&location_nml
+   min_radius = 0.0,
+   max_radius = 100000.0 /
+
 &utilities_nml
    TERMLEVEL = 1,
    module_details = .false.,

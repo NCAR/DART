@@ -10,19 +10,13 @@ module location_mod
 ! $Revision$
 ! $Date$
 
-! Implements location interfaces for a three dimensional annulus
-! with a vertical coordinate based on the models native set of
-! discrete levels. The internal representation of the location is 
-! currently implemented as radians from 0 to 2 PI for the azimuthal
-! direction (longitude-like).  The radial distance is latitude-like,
-! and the vertical coordinate is zero at the bottom of the annulus.
-!
+! Implements location interfaces for a two dimensional cyclic region.
+! The internal representation of the location is currently implemented
+! as (x, y) from 0.0 to 1.0 in both dimensions.
 
-use      types_mod, only : r8, PI, RAD2DEG, DEG2RAD, MISSING_R8, MISSING_I
+use      types_mod, only : r8, MISSING_R8
 use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
-                           nc_check, find_namelist_in_file, check_namelist_read, &
-                           do_output, do_nml_file, do_nml_term, nmlfileunit, &
-                           open_file, close_file, nc_check, is_longitude_between
+                           nc_check
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
@@ -36,8 +30,7 @@ public :: location_type, get_location, set_location, &
           operator(==), operator(/=), get_dist, get_close_obs_destroy, &
           nc_write_location_atts, nc_get_location_varids, nc_write_location, &
           vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
-          vert_is_surface, has_vertical_localization, VERTISSURFACE, &
-          VERTISLEVEL, VERTISHEIGHT
+          vert_is_surface, has_vertical_localization
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -47,18 +40,10 @@ character(len=128), parameter :: &
 
 type location_type
    private
-   real(r8) :: azm, rad, vloc
-   integer  :: which_vert
-   ! which_vert determines if the location is by level or by height
-   ! -1 ==> obs is on surface
-   ! 1 ===> obs is by level
-   ! 3 ===> obs is by height
+   real(r8) :: x, y
 end type location_type
 
-integer, parameter :: VERTISSURFACE  = -1 ! surface
-integer, parameter :: VERTISLEVEL    =  1 ! by level
-integer, parameter :: VERTISHEIGHT   =  3 ! by height
-
+! Needed as stub but not used in this low-order model
 type get_close_type
    private
    integer  :: num
@@ -69,20 +54,9 @@ type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
 logical, save :: module_initialized = .false.
 
-integer,              parameter :: LocationDims = 3
-character(len = 129), parameter :: LocationName = "loc_annulus"
-character(len = 129), parameter :: LocationLName = &
-                                   "Annulus location: azimuthal angle, radius, and height"
-
-! really just a placeholder.  there was a comment that this code
-! needs a namelist with a min & max limit on the radius, but 
-! the code no longer has one.  
-real(r8) :: min_radius = 0.0_r8
-real(r8) :: max_radius = 100000.0_r8
-
-! FIXME: if we set mins & maxes, then we have to enforce the values
-! in various places in the code.  none of that is there at this point.
-namelist /location_nml/ min_radius, max_radius
+integer,              parameter :: LocationDims = 2
+character(len = 129), parameter :: LocationName = "loc2D"
+character(len = 129), parameter :: LocationLName = "twod cyclic locations: x, y"
 
 character(len = 129) :: errstring
 
@@ -100,28 +74,10 @@ contains
 
 subroutine initialize_module
  
-! read namelist, set up anything that needs one-time initialization
-
-integer :: iunit, io
-
-! only do this code once
 if (module_initialized) return
 
 call register_module(source, revision, revdate)
 module_initialized = .true.
-
-! Read the namelist entry
-call find_namelist_in_file("input.nml", "location_nml", iunit)
-read(iunit, nml = location_nml, iostat = io)
-call check_namelist_read(iunit, io, "location_nml")
-
-! Write the namelist values to the log file
-
-if(do_nml_file()) write(nmlfileunit, nml=location_nml)
-if(do_nml_term()) write(     *     , nml=location_nml)
-
-! copy code from threed sphere module for handing the
-! options in the vertical?  e.g. distances?
 
 end subroutine initialize_module
 
@@ -129,27 +85,24 @@ end subroutine initialize_module
 
 function get_dist(loc1, loc2, kind1, kind2)
 
-! Compute distance between 2 locations.  Right now the distance only
-! depends on the horizontal.  A namelist option might need to be added
-! that supports computing a true 3d distance.
+! Return the distance between 2 locations.  Since this is a periodic
+! domain, the shortest distance may wrap around.
 
 type(location_type), intent(in) :: loc1, loc2
 integer, optional,   intent(in) :: kind1, kind2
 real(r8)                        :: get_dist
 
-real(r8) :: x1, y1, x2, y2
+real(r8) :: x_dif, y_dif
 
 if ( .not. module_initialized ) call initialize_module
 
-! FIXME: this does not take into account any vertical separation
-! convert from cylindrical to cartesian coordinates
-x1 = loc1%rad * cos(loc1%azm)
-y1 = loc1%rad * sin(loc1%azm)
-x2 = loc2%rad * cos(loc2%azm)
-y2 = loc2%rad * sin(loc2%azm)
+! Periodic domain, if distance is greater than half wraparound the other way.
+x_dif = abs(loc1%x - loc2%x)
+if (x_dif > 0.5_r8) x_dif = 1.0_r8 - x_dif
+y_dif = abs(loc1%y - loc2%y)
+if (y_dif > 0.5_r8) y_dif = 1.0_r8 - y_dif
 
-! Returns distance in m
-get_dist = sqrt((x1 - x2)**2 + (y1 - y2)**2)
+get_dist = sqrt ( x_dif * x_dif + y_dif * y_dif)
 
 end function get_dist
 
@@ -157,7 +110,7 @@ end function get_dist
 
 function loc_eq(loc1,loc2)
  
-! Interface operator used to compare two locations.
+! interface operator used to compare two locations.
 ! Returns true only if all components are 'the same' to within machine
 ! precision.
 
@@ -168,10 +121,8 @@ if ( .not. module_initialized ) call initialize_module
 
 loc_eq = .false.
 
-if ( loc1%which_vert /= loc2%which_vert ) return
-if ( abs(loc1%azm  - loc2%azm ) > epsilon(loc1%azm ) ) return
-if ( abs(loc1%rad  - loc2%rad ) > epsilon(loc1%rad ) ) return
-if ( abs(loc1%vloc - loc2%vloc) > epsilon(loc1%vloc) ) return
+if ( abs(loc1%x  - loc2%x ) > epsilon(loc1%x ) ) return
+if ( abs(loc1%y  - loc2%y ) > epsilon(loc1%y ) ) return
 
 loc_eq = .true.
 
@@ -181,7 +132,7 @@ end function loc_eq
 
 function loc_ne(loc1,loc2)
  
-! Interface operator used to compare two locations.
+! interface operator used to compare two locations.
 ! Returns true if locations are not identical to machine precision.
 
 type(location_type), intent(in) :: loc1, loc2
@@ -197,51 +148,41 @@ end function loc_ne
 
 function get_location(loc)
  
-! Given a location type (where the azimuthal angle is in radians), this 
-! routine return the azimuthal angle in degrees, the radius, and the vert 
+! Given a location type, return the x, y
 
 type(location_type), intent(in) :: loc
-real(r8), dimension(3) :: get_location
+real(r8), dimension(2) :: get_location
 
 if ( .not. module_initialized ) call initialize_module
 
-get_location(1) = loc%azm * RAD2DEG                 
-get_location(2) = loc%rad
-get_location(3) = loc%vloc     
+get_location(1) = loc%x 
+get_location(2) = loc%y
 
 end function get_location
 
 !----------------------------------------------------------------------------
 
-function set_location_single(azm, rad, vert_loc, which_vert)
+function set_location_single(x, y)
  
-! Puts the given azimuthal angle (in degrees), radius, and vertical 
-! location into a location datatype.
+! Given an x, y pair, put the values into the location.
 
-real(r8), intent(in) :: azm, rad
-real(r8), intent(in) :: vert_loc
-integer,  intent(in) :: which_vert
+real(r8), intent(in) :: x, y
 type (location_type) :: set_location_single
 
 if ( .not. module_initialized ) call initialize_module
 
-if(azm < 0.0_r8 .or. azm > 360.0_r8) then
-   write(errstring,*)'azimuthal angle (',azm,') is not within range [0,360]'
+if(x < 0.0_r8 .or. x > 1.0_r8) then
+   write(errstring,*)'x (',x,') is not within range [0,1]'
    call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
 endif
 
-set_location_single%azm = azm * DEG2RAD
-set_location_single%rad = rad 
-
-if(which_vert /= VERTISSURFACE .and. &
-   which_vert /= VERTISLEVEL   .and. &
-   which_vert /= VERTISHEIGHT  ) then
-   write(errstring,*)'which_vert (',which_vert,') must be -1, 1 or 3'
-   call error_handler(E_ERR,'set_location', errstring, source, revision, revdate)
+if(y < 0.0_r8 .or. y > 1.0_r8) then
+   write(errstring,*)'y (',y,') is not within range [0,1]'
+   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
 endif
 
-set_location_single%which_vert = which_vert
-set_location_single%vloc = vert_loc
+set_location_single%x = x
+set_location_single%y = y
 
 end function set_location_single
 
@@ -249,20 +190,20 @@ end function set_location_single
 
 function set_location_array(list)
  
-! Location semi-independent interface routine
-! given 4 float numbers, call the underlying set_location routine
+! location semi-independent interface routine
+! given 2 float numbers, call the underlying set_location routine
 
 real(r8), intent(in) :: list(:)
 type (location_type) :: set_location_array
 
 if ( .not. module_initialized ) call initialize_module
 
-if (size(list) < 4) then
-   write(errstring,*)'requires 4 input values'
+if (size(list) < 2) then
+   write(errstring,*)'requires 2 input values'
    call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
 endif
 
-set_location_array = set_location_single(list(1), list(2), list(3), nint(list(4)))
+set_location_array = set_location_single(list(1), list(2))
 
 end function set_location_array
 
@@ -270,16 +211,14 @@ end function set_location_array
 
 function set_location_missing()
 
-! Initialize a location type to indicate the contents are unset.
+! fill in the contents to a known value.
 
 type (location_type) :: set_location_missing
 
 if ( .not. module_initialized ) call initialize_module
 
-set_location_missing%azm        = MISSING_R8
-set_location_missing%rad        = MISSING_R8
-set_location_missing%vloc       = MISSING_R8
-set_location_missing%which_vert = MISSING_I
+set_location_missing%x = MISSING_R8
+set_location_missing%y = MISSING_R8
 
 end function set_location_missing
 
@@ -300,23 +239,18 @@ if ( .not. module_initialized ) call initialize_module
 ! module for warnings about compiler bugs before you change
 ! this code.
 
-query_location = loc%which_vert
+query_location = loc%x
 
 if (.not. present(attr)) return
 
 select case(attr)
-   case ('which_vert','WHICH_VERT')
-      query_location = loc%which_vert
-   case ('rad','RAD','radius','RADIUS')
-      query_location = loc%rad
-   case ('azm','AZM','azimuth','AZIMUTH')
-      query_location = loc%azm
-   case ('vloc','VLOC')
-      query_location = loc%vloc
-   case default
-       call error_handler(E_ERR, 'query_location:', &
-          'Only "azm","rad","vloc","which_vert" are legal attributes to request from location', &
-          source, revision, revdate)
+ case ('x','X')
+   query_location = loc%x
+ case ('y','Y')
+   query_location = loc%y
+ case default
+   call error_handler(E_ERR, 'query_location; twod', &
+         'Only x or y are legal attributes to request from location', source, revision, revdate)
 end select
 
 end function query_location
@@ -325,7 +259,7 @@ end function query_location
 
 subroutine write_location(locfile, loc, fform, charstring)
  
-! Writes a location to the file.
+! Writes a 2D location to the file.
 ! additional functionality: if optional argument charstring is specified,
 ! it must be long enough to hold the string, and the location information is
 ! written into it instead of to a file.  fform must be ascii (which is the
@@ -338,10 +272,9 @@ character(len = *),  intent(out), optional :: charstring
 
 integer             :: charlength
 logical             :: writebuf
-character(len = 128) :: string1
 
-! 10 format(1x,3(f22.14,1x),i4)   ! old
-10 format(1X,F21.16,2(1X,G25.16),1X,I2)
+! 10 format(1x,2(f22.14,1x))   ! old
+10 format(1X,2(F20.16,1X)) 
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -351,12 +284,10 @@ writebuf = present(charstring)
 ! output file; test for ascii or binary, write what's asked, and return
 if (.not. writebuf) then
    if (ascii_file_format(fform)) then
-      ! Write out pressure or level along with integer tag
-      ! we know azm is between 0, 360, and which_vert is a single digit.
-      write(locfile, '(''loc3a'')' ) 
-      write(locfile, 10) loc%azm, loc%rad, loc%vloc, loc%which_vert
+      write(locfile, '(''loc2D'')' ) 
+      write(locfile, 10) loc%x, loc%y
    else
-      write(locfile) loc%azm, loc%rad, loc%vloc, loc%which_vert
+      write(locfile) loc%x, loc%y
    endif
    return
 endif
@@ -369,35 +300,19 @@ if (.not. ascii_file_format(fform)) then
        source, revision, revdate)
 endif
 
-! format the location to be more human-friendly; meaning
-! degrees instead of radians, and kilometers for height,
-! hectopascals instead of pascals for pressure, etc.
+! format the location to be more human-friendly; which in
+! this case doesn't change the value.
 
-! this must be the sum of the longest of the formats below.
-charlength = 85
+! this must be the sum of the formats below.
+charlength = 25
 
 if (len(charstring) < charlength) then
    write(errstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
    call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
 endif
 
-write(string1, '(A,F12.8,1X,G15.8,A)') 'Azm(deg)/Radius(m): ',  &
-   loc%azm*RAD2DEG, loc%rad, ' Depth:'
+write(charstring, '(A,F9.7,2X,F9.7)') 'X/Y: ',  loc%x, loc%y
 
-! i am attempting to make these line up so if you have a list of mixed
-! vertical units, they all take the same number of columns.  thus the extra
-! white space around some of the labels below.
-select case  (loc%which_vert)
-   case (VERTISSURFACE)
-      write(charstring, '(A,1X,G15.6,A)') trim(string1), loc%vloc, ' surface (hPa)'
-   case (VERTISLEVEL)
-      write(charstring, '(A,1X,F6.0,A)')  trim(string1), loc%vloc, '          level'
-   case (VERTISHEIGHT)
-      write(charstring, '(A,1X,G15.6,A)') trim(string1), loc%vloc / 1000.0_r8, ' km'
-   case default
-      write(errstring, *) 'unrecognized key for vertical type: ', loc%which_vert
-      call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
-end select
 
 end subroutine write_location
 
@@ -405,7 +320,7 @@ end subroutine write_location
 
 function read_location(locfile, fform)
  
-! Reads location from file that was written by write_location.
+! Reads a 2D location from locfile that was written by write_location. 
 ! See write_location for additional discussion.
 
 integer, intent(in)                      :: locfile
@@ -418,17 +333,14 @@ if ( .not. module_initialized ) call initialize_module
 
 if (ascii_file_format(fform)) then
    read(locfile, '(a5)' ) header
-
-   if(header /= 'loc3a') then
-      write(errstring,*)'Expected location header "loc3a" in input file, got ', header
+   if(header /= 'loc2D') then
+      write(errstring,*)'Expected location header "loc2D" in input file, got ', header 
       call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
    endif
    ! Now read the location data value
-   read(locfile, *) read_location%azm, read_location%rad, &
-                    read_location%vloc, read_location%which_vert
+   read(locfile, *) read_location%x, read_location%y
 else
-   read(locfile) read_location%azm, read_location%rad, &
-                 read_location%vloc, read_location%which_vert
+   read(locfile) read_location%x, read_location%y
 endif
 
 end function read_location
@@ -443,54 +355,29 @@ subroutine interactive_location(location, set_to_default)
 type(location_type), intent(out) :: location
 logical, intent(in), optional    :: set_to_default
 
-real(r8) :: azm, rad, minazm, maxazm, minrad, maxrad
+real(r8) :: x, y
 
 if ( .not. module_initialized ) call initialize_module
 
 ! If set_to_default is true, then just zero out and return
 if(present(set_to_default)) then
    if(set_to_default) then
-      location%azm        = 0.0_r8
-      location%rad        = 0.0_r8
-      location%vloc       = 0.0_r8
-      location%which_vert = 0    ! zero is an invalid vert type
+      location%x = 0.0
+      location%y = 0.0
       return
    endif
 endif
 
-write(*, *)'Vertical co-ordinate options'
-write(*, *)'-1 -> surface, 1 -> model level, 3 -> depth'
+write(*, *) 'Input X location for this obs: value 0 to 1 or a negative number for '
+write(*, *) 'Uniformly distributed random location'
+read(*, *) x
 
-100   read(*, *) location%which_vert
-if(location%which_vert == VERTISLEVEL ) then
-   write(*, *) 'Vertical co-ordinate model level'
-   read(*, *) location%vloc
-else if(location%which_vert == VERTISHEIGHT ) then
-   write(*, *) 'Vertical co-ordinate depth (in negative m)'
-   read(*, *) location%vloc
-   do while (location%vloc > 0)
-      write(*, *) 'Depth must be negative (zero at top of fluid), please try again'
-      read(*, *) location%vloc
-   end do
-else if(location%which_vert == VERTISSURFACE ) then
-   write(*, *) 'Vertical co-ordinate surface pressure (in hPa)'
-   read(*, *) location%vloc
-   location%vloc = 100.0 * location%vloc
-else
-   write(*, *) 'Wrong choice of which_vert try again between -1, 1, and 3'
-   go to 100
-end if
-
-write(*, *) 'Input azimuthal angle: value 0 to 360.0 or a negative number '
-write(*, *) 'for uniformly distributed random location in the horizontal.'
-read(*, *) azm
-
-do while(azm > 360.0_r8)
-   write(*, *) 'Input value greater than 360.0 is illegal, please try again'
-   read(*, *) azm
+do while(x > 1.0_r8)
+   write(*, *) 'Input value greater than 1.0 is illegal, please try again'
+   read(*, *) x
 end do
 
-if(azm < 0.0_r8) then
+if(x < 0.0_r8) then
 
    ! Need to make sure random sequence is initialized
 
@@ -499,70 +386,41 @@ if(azm < 0.0_r8) then
       ran_seq_init = .TRUE.
    endif
 
-   minazm = -1.0
-   do while (minazm < 0.0 .or. minazm > 360.0) 
-      write(*, *) 'Input minimum azimuthal angle (0 to 360.0)'
-      read(*, *) minazm
-      if (minazm < 0.0 .or. minazm > 360.0) then
-         write(*, *) 'Angle must be between 0 to 360.0'
-      endif
-   enddo
-   minazm = minazm * DEG2RAD
+   ! Uniform location from 0 to 1 for this location type
 
-   maxazm = -1.0
-   do while (maxazm < 0.0 .or. maxazm > 360.0) 
-      write(*, *) 'Input maximum azimuthal angle (0 to 360.0)'
-      read(*, *) maxazm
-      if (maxazm < 0.0 .or. maxazm > 360.0) then
-         write(*, *) 'Angle must be between 0 to 360.0'
-      endif
-   enddo
-   maxazm = maxazm * DEG2RAD
-
-   ! Azimuth is random from minazm to maxazm, handle wrap around 360.0
-   if (minazm > maxazm) maxazm = maxazm + 2.0_r8 * PI
-   location%azm = random_uniform(ran_seq) * (maxazm-minazm) + minazm
-   if (location%azm > 2.0_r8 * PI) location%azm = location%azm - 2.0_r8 * PI
-
-   minrad = -1.0
-   do while (minrad < min_radius) 
-      write(*, *) 'Input minimum radius '
-      read(*, *) minrad
-      if (minrad < min_radius) then
-         write(*, *) 'Radius must be larger or equal to ', min_radius
-      endif
-   enddo
-
-   maxrad = -1.0
-   do while (maxrad > max_radius .or. maxrad <= minrad) 
-      write(*, *) 'Input maximum radius '
-      read(*, *) maxrad
-      if (maxrad > max_radius .or. maxrad <= minrad) then
-         write(*, *) 'Radius must be greater than minrad and less than ', max_radius
-      endif
-   enddo
-
-   ! Radius must be area weighted to obtain proper random realizations
-   location%rad = sqrt(random_uniform(ran_seq)) * (maxrad-minrad) + minrad
-
-   write(*, *) 'random location is ', location%azm / DEG2RAD, &
-                                      location%rad 
+   location%x = random_uniform(ran_seq)
+   write(*, *) 'random X location is ', location%x
 
 else
+   location%x = x
+endif
 
-   rad = -1.0
-   do while (rad < min_radius .or. rad > max_radius) 
-      write(*, *) 'Input radius '
-      read(*, *) rad
-      if (rad < min_radius .or. rad > max_radius) then
-         write(*, *) 'Radius must be between ', min_radius, ' and ', max_radius
-      endif
-   enddo
+write(*, *) 'Input Y location for this obs: value 0 to 1 or a negative number for '
+write(*, *) 'Uniformly distributed random location'
+read(*, *) y
 
-   location%rad = rad
-   location%azm = azm*DEG2RAD
+do while(y > 1.0_r8)
+   write(*, *) 'Input value greater than 1.0 is illegal, please try again'
+   read(*, *) y
+end do
 
-end if
+if(y < 0.0_r8) then
+
+   ! Need to make sure random sequence is initialized
+
+   if(.not. ran_seq_init) then
+      call init_random_seq(ran_seq)
+      ran_seq_init = .TRUE.
+   endif
+
+   ! Uniform location from 0 to 1 for this location type
+
+   location%y = random_uniform(ran_seq)
+   write(*, *) 'random Y location is ', location%y
+
+else
+   location%y = y
+endif
 
 end subroutine interactive_location
 
@@ -604,24 +462,11 @@ call nc_check(nf90_put_att(ncFileID, VarID, 'location_type', &
 call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', &
         trim(LocationLName)), 'nc_write_location_atts', 'location:long_name')
 call nc_check(nf90_put_att(ncFileID, VarID, 'storage_order',     &
-        'Azimuth Radius Vertical'), 'nc_write_location_atts', 'location:storage_order')
+        'X  Y'), 'nc_write_location_atts', 'location:storage_order')
 call nc_check(nf90_put_att(ncFileID, VarID, 'units',     &
-        'degrees meters which_vert'), 'nc_write_location_atts', 'location:units')
+        'none none'), 'nc_write_location_atts', 'location:units')
 
-! Define the ancillary vertical array and attributes
-
-call nc_check(nf90_def_var(ncid=ncFileID, name='which_vert', xtype=nf90_int, &
-          dimids=(/ ObsNumDimID /), varid=VarID), &
-            'nc_write_location_atts', 'which_vert:def_var')
-
-call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', 'vertical coordinate system code'), &
-           'nc_write_location_atts', 'which_vert:long_name')
-call nc_check(nf90_put_att(ncFileID, VarID, 'VERTISSURFACE', VERTISSURFACE), &
-           'nc_write_location_atts', 'which_vert:VERTISSURFACE')
-call nc_check(nf90_put_att(ncFileID, VarID, 'VERTISLEVEL', VERTISLEVEL), &
-           'nc_write_location_atts', 'which_vert:VERTISLEVEL')
-call nc_check(nf90_put_att(ncFileID, VarID, 'VERTISHEIGHT', VERTISHEIGHT), &
-           'nc_write_location_atts', 'which_vert:VERTISHEIGHT')
+! no vertical array here.
 
 ! If we made it to here without error-ing out ... we're good.
 
@@ -639,6 +484,8 @@ subroutine nc_get_location_varids( ncFileID, fname, LocationVarID, WhichVertVarI
 ! fname            the name of the netcdf file (for error messages only)
 ! LocationVarID    the integer ID of the 'location' variable in the netCDF file
 ! WhichVertVarID   the integer ID of the 'which_vert' variable in the netCDF file
+!
+! In this instance, WhichVertVarID will never be defined, ... set to a bogus value
 
 use typeSizes
 use netcdf
@@ -652,8 +499,7 @@ if ( .not. module_initialized ) call initialize_module
 call nc_check(nf90_inq_varid(ncFileID, 'location', varid=LocationVarID), &
           'nc_get_location_varids', 'inq_varid:location '//trim(fname))
 
-call nc_check(nf90_inq_varid(ncFileID, 'which_vert', varid=WhichVertVarID), &
-          'nc_get_location_varids', 'inq_varid:which_vert '//trim(fname))
+WhichVertVarID = -99
 
 end subroutine nc_get_location_varids
 
@@ -674,20 +520,19 @@ integer,             intent(in) :: obsindex
 integer,             intent(in) :: WhichVertVarID
 
 real(r8), dimension(LocationDims) :: locations
-integer,  dimension(1) :: intval
 
 if ( .not. module_initialized ) call initialize_module
 
-locations = get_location( loc ) ! converts from radians to degrees, btw
+locations = get_location( loc )
 
 call nc_check(nf90_put_var(ncFileID, LocationVarId, locations, &
           start=(/ 1, obsindex /), count=(/ LocationDims, 1 /) ), &
             'nc_write_location', 'put_var:location')
 
-intval = loc%which_vert
-call nc_check(nf90_put_var(ncFileID, WhichVertVarID, intval, &
-          start=(/ obsindex /), count=(/ 1 /) ), &
-            'nc_write_location','put_var:vert' )
+if ( WhichVertVarID >= 0 ) then
+   write(errstring,*)'WhichVertVarID supposed to be negative ... is ',WhichVertVarID
+   call error_handler(E_ERR, 'nc_write_location', errstring, source, revision, revdate)
+endif ! if less than zero (as it should be) ... just ignore 
 
 end subroutine nc_write_location
 
@@ -731,9 +576,8 @@ end subroutine get_close_maxdist_init
 subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
    num_close, close_ind, dist)
 
-! Return how many locations are closer than cutoff distance, along with a
-! count, and the actual distances if requested.  The kinds are available if
-! more sophisticated distance computations are wanted.
+! Default version with no smarts; no need to be smart in 1D
+! Kinds are available here if one wanted to do more refined distances.
 
 type(get_close_type), intent(in)  :: gc
 type(location_type),  intent(in)  :: base_obs_loc, obs(:)
@@ -770,25 +614,23 @@ type(location_type), intent(in)  :: loc, minl, maxl
 
 if ( .not. module_initialized ) call initialize_module
 
-if ((minl%which_vert /= maxl%which_vert) .or. &
-    (minl%which_vert /= loc%which_vert)) then
-   write(errstring,*)'which_vert (',loc%which_vert,') must be same in all args'
-   call error_handler(E_ERR, 'is_location_in_region', errstring, source, revision, revdate)
-endif
-
 ! assume failure and return as soon as we are confirmed right.
 ! set to success only at the bottom after all tests have passed.
 is_location_in_region = .false.
 
-! use the code in the utils module that knows how to wrap longitude/radians.
-if (.not. is_longitude_between(loc%azm, minl%azm, maxl%azm, doradians=.true.)) return
-if ((loc%rad < minl%rad) .or. (loc%rad > maxl%rad)) return
-if ((loc%vloc < minl%vloc) .or. (loc%vloc > maxl%vloc)) return
+! FIXME: this is a doubly cyclic domain.  check if min
+! limit > max; if so, then wrap around.
+!if (minl%x <= maxl%x) .and.  ...
+if ((loc%x < minl%x) .or. (loc%x > maxl%x)) return
+if ((loc%y < minl%y) .or. (loc%y > maxl%y)) return
  
 is_location_in_region = .true.
 
 end function is_location_in_region
 
+!----------------------------------------------------------------------------
+! stubs - always say no, but allow this code to be compiled with
+!         common code that sometimes needs vertical info.
 !----------------------------------------------------------------------------
 
 function vert_is_undef(loc)
@@ -806,18 +648,12 @@ end function vert_is_undef
 
 function vert_is_surface(loc)
  
-! Given a location, return true if vertical coordinate is surface, else false.
+! Stub, always returns false.
 
 logical                          :: vert_is_surface
 type(location_type), intent(in)  :: loc
 
-if ( .not. module_initialized ) call initialize_module
-
-if(loc%which_vert == VERTISSURFACE ) then
-   vert_is_surface = .true.
-else
-   vert_is_surface = .false.
-endif
+vert_is_surface = .false.
 
 end function vert_is_surface
 
@@ -825,7 +661,7 @@ end function vert_is_surface
 
 function vert_is_pressure(loc)
  
-! Always returns false, as vertical coordinate is never pressure for the annulus.
+! Stub, always returns false.
 
 logical                          :: vert_is_pressure
 type(location_type), intent(in)  :: loc
@@ -838,18 +674,12 @@ end function vert_is_pressure
 
 function vert_is_height(loc)
  
-! Given a location, return true if vertical coordinate is height, else false.
+! Stub, always returns false.
 
 logical                          :: vert_is_height
 type(location_type), intent(in)  :: loc
 
-if ( .not. module_initialized ) call initialize_module
-
-if(loc%which_vert == VERTISHEIGHT ) then
-   vert_is_height = .true.
-else
-   vert_is_height = .false.
-endif
+vert_is_height = .false.
 
 end function vert_is_height
 
@@ -857,18 +687,12 @@ end function vert_is_height
 
 function vert_is_level(loc)
  
-! Given a location, return true if vertical coordinate is level, else false.
+! Stub, always returns false.
 
 logical                          :: vert_is_level
 type(location_type), intent(in)  :: loc
 
-if ( .not. module_initialized ) call initialize_module
-
-if(loc%which_vert == VERTISLEVEL ) then
-   vert_is_level = .true.
-else
-   vert_is_level = .false.
-endif
+vert_is_level = .false.
 
 end function vert_is_level
 
@@ -889,7 +713,7 @@ end function has_vertical_localization
 
 
 !----------------------------------------------------------------------------
-! end of location/annulus/location_mod.f90
+! end of location/twod/location_mod.f90
 !----------------------------------------------------------------------------
 
 end module location_mod

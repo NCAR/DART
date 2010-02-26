@@ -17,7 +17,7 @@ use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              error_handler, E_ERR, E_MSG, nmlfileunit,   &
                              do_nml_file, do_nml_term, get_next_filename
-use     location_mod, only : location_type, get_location, set_location2, &
+use     location_mod, only : location_type, get_location, set_location, &
                              LocationName !! , vert_is_height 
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind, &
                              get_obs_def_location
@@ -202,8 +202,8 @@ endif
 if ((minval(min_box).ne.missing_r8) .or. (maxval(min_box).ne.missing_r8) .or. &
     (minval(max_box).ne.missing_r8) .or. (maxval(max_box).ne.missing_r8)) then
    restrict_by_location = .true.
-   min_loc = set_location2(min_box)
-   max_loc = set_location2(max_box)
+   min_loc = set_location(min_box)
+   max_loc = set_location(max_box)
 else
    restrict_by_location = .false.
 endif
@@ -282,12 +282,12 @@ if ((min_lat /= -90.0_r8) .or. (max_lat /=  90.0_r8) .or. &
    min_box(2) = min_lat
    min_box(3) = 0.0_r8
    min_box(4) = -2.0_r8 !! FIXME: VERTISUNDEF, but not all loc mods have it
-   min_loc = set_location2(min_box)
+   min_loc = set_location(min_box)
    max_box(1) = max_lon
    max_box(2) = max_lat
    max_box(3) = 0.0_r8
    max_box(4) = -2.0_r8 !! FIXME: VERTISUNDEF, but not all loc mods have it
-   max_loc = set_location2(max_box)
+   max_loc = set_location(max_box)
 else
    restrict_by_location = .false.
 endif

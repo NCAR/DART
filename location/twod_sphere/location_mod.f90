@@ -18,17 +18,22 @@ module location_mod
 ! from -90 to 90 for consistency with most applications in the field.
 
 use      types_mod, only : r8, DEG2RAD, RAD2DEG, PI, MISSING_R8
-use  utilities_mod, only : register_module, error_handler, E_ERR
+use  utilities_mod, only : register_module, error_handler, E_ERR, &
+                           ascii_file_format, is_longitude_between, nc_check
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 
 implicit none
 private
 
-public :: location_type, get_dist, get_location, set_location, &
-          set_location2, set_location_missing, is_location_in_region, &
-          write_location, read_location, interactive_location, &
-          get_close_obs, alloc_get_close_obs, &
-          operator(==), operator(/=)
+public :: location_type, get_location, set_location, &
+          set_location_missing, is_location_in_region, &
+          write_location, read_location, interactive_location, query_location, &
+          LocationDims, LocationName, LocationLName, get_close_obs, &
+          get_close_maxdist_init, get_close_obs_init, get_close_type, &
+          operator(==), operator(/=), get_dist, get_close_obs_destroy, &
+          nc_write_location_atts, nc_get_location_varids, nc_write_location, &
+          vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
+          vert_is_surface, has_vertical_localization
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -41,40 +46,59 @@ type location_type
    real(r8) :: lon, lat
 end type location_type
 
+! Needed as stub but not used in this low-order model
+type get_close_type
+   private
+   integer  :: num
+   real(r8) :: maxdist
+end type get_close_type
+
 type(random_seq_type) :: ran_seq
 logical :: ran_seq_init = .false.
 logical, save :: module_initialized = .false.
 
+integer,              parameter :: LocationDims = 2
+character(len = 129), parameter :: LocationName = "loc2Dsphere"
+character(len = 129), parameter :: LocationLName = &
+                                   "twod sphere locations: lon, lat"
+
+character(len = 129) :: errstring
+
 interface operator(==); module procedure loc_eq; end interface
 interface operator(/=); module procedure loc_ne; end interface
 
+interface set_location
+   module procedure set_location_single
+   module procedure set_location_array
+end interface set_location
+
 contains
 
-
-  subroutine initialize_module
 !----------------------------------------------------------------------------
-! subroutine initialize_module
 
-   call register_module(source, revision, revdate)
-   module_initialized = .true.
+subroutine initialize_module
+ 
+if (module_initialized) return
+
+call register_module(source, revision, revdate)
+module_initialized = .true.
 
 end subroutine initialize_module
 
-
-
-function get_dist(loc1, loc2)
 !----------------------------------------------------------------------------
 
-implicit none
+function get_dist(loc1, loc2, kind1, kind2)
+
+! Returns distance in radians (independent of diameter of sphere)
 
 type(location_type), intent(in) :: loc1, loc2
-real(r8) :: get_dist
+integer, optional,   intent(in) :: kind1, kind2
+real(r8)                        :: get_dist
 
 real(r8) :: lon_dif
 
 if ( .not. module_initialized ) call initialize_module
 
-! Returns distance in radians (independent of diameter of sphere)
 
 ! Compute great circle path shortest route between two points
 lon_dif = abs(loc1%lon - loc2%lon)
@@ -89,38 +113,16 @@ endif
 
 end function get_dist
 
-
-
-function get_location(loc)
 !---------------------------------------------------------------------------
-!
-! Given a location type, return the longitude and latitude
-
-implicit none
-
-type(location_type), intent(in) :: loc
-real(r8), dimension(2) :: get_location
-
-if ( .not. module_initialized ) call initialize_module
-
-get_location(1) = loc%lon * RAD2DEG
-get_location(2) = loc%lat * RAD2DEG
-
-end function get_location
-
-
 
 function loc_eq(loc1,loc2)
-!---------------------------------------------------------------------------
-!
-! interface operator used to compare two locations.
+ 
+! Interface operator used to compare two locations.
 ! Returns true only if all components are 'the same' to within machine
 ! precision.
 
-implicit none
-
 type(location_type), intent(in) :: loc1, loc2
-logical :: loc_eq
+logical                         :: loc_eq
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -133,18 +135,15 @@ loc_eq = .true.
 
 end function loc_eq
 
-
+!---------------------------------------------------------------------------
 
 function loc_ne(loc1,loc2)
-!---------------------------------------------------------------------------
-!
-! interface operator used to compare two locations.
+ 
+! Interface operator used to compare two locations.
 ! Returns true if locations are not identical to machine precision.
 
-implicit none
-
 type(location_type), intent(in) :: loc1, loc2
-logical :: loc_ne
+logical                         :: loc_ne
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -152,54 +151,30 @@ loc_ne = (.not. loc_eq(loc1,loc2))
 
 end function loc_ne
 
-
-
-function get_location_lon(loc)
 !---------------------------------------------------------------------------
-!
-! Given a location type, return the longitude
 
-implicit none
+function get_location(loc)
+ 
+! Given a location type, return the longitude and latitude
 
 type(location_type), intent(in) :: loc
-real(r8) :: get_location_lon
+real(r8), dimension(2) :: get_location
 
 if ( .not. module_initialized ) call initialize_module
 
-get_location_lon = loc%lon * RAD2DEG    
+get_location(1) = loc%lon * RAD2DEG
+get_location(2) = loc%lat * RAD2DEG
 
-end function get_location_lon
+end function get_location
 
-
-
-function get_location_lat(loc)
-!---------------------------------------------------------------------------
-!
-! Given a location type, return the latitude
-
-implicit none
-
-type(location_type), intent(in) :: loc
-real(r8) :: get_location_lat
-
-if ( .not. module_initialized ) call initialize_module
-
-get_location_lat = loc%lat * RAD2DEG      
-
-end function get_location_lat
-
-
-
-function set_location(lon, lat)
 !----------------------------------------------------------------------------
-!
-! Given a longitude and latitude
-! puts this value into the location.
 
-implicit none
+function set_location_single(lon, lat)
+ 
+! Given a longitude and latitude, put this value into the location.
 
-type (location_type) :: set_location
 real(r8), intent(in) :: lon, lat
+type (location_type) :: set_location_single
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -213,46 +188,37 @@ if(lat < -90.0_r8 .or. lat > 90.0_r8) then
    call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
 endif
 
-set_location%lon = lon * DEG2RAD
-set_location%lat = lat * DEG2RAD
+set_location_single%lon = lon * DEG2RAD
+set_location_single%lat = lat * DEG2RAD
 
-end function set_location
+end function set_location_single
 
-
-function set_location2(list)
 !----------------------------------------------------------------------------
-!
+
+function set_location_array(list)
+ 
 ! location semi-independent interface routine
 ! given 2 float numbers, call the underlying set_location routine
 
-implicit none
-
-type (location_type) :: set_location2
 real(r8), intent(in) :: list(:)
-
-character(len=129) :: errstring
+type (location_type) :: set_location_array
 
 if ( .not. module_initialized ) call initialize_module
 
-if (size(list) /= 2) then
+if (size(list) < 2) then
    write(errstring,*)'requires 2 input values'
-   call error_handler(E_ERR, 'set_location2', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
 endif
 
-set_location2 = set_location(list(1), list(2))
+set_location_array = set_location_single(list(1), list(2))
 
-end function set_location2
+end function set_location_array
 
-
-
+!----------------------------------------------------------------------------
 
 function set_location_missing()
-!----------------------------------------------------------------------------
-!
-! Given a longitude and latitude
-! puts this value into the location.
 
-implicit none
+! Initialize a location type to indicate the contents are unset.
 
 type (location_type) :: set_location_missing
 
@@ -263,94 +229,138 @@ set_location_missing%lat = MISSING_R8
 
 end function set_location_missing
 
+!---------------------------------------------------------------------------
 
+function query_location(loc, attr)
+ 
+! Returns the value of the attribute
 
-subroutine write_location(ifile, loc, fform)
-!----------------------------------------------------------------------------
-!
-! Writes a 2D location to the file. Implemented as a subroutine but  could
-! rewrite as a function with error control info returned. For initial implementation,
-! ifile is just an integer file unit number. Probably want to replace this with ifile
-! as a file_type allowing more flexibility for IO at later point. file_type and 
-! associated operations would have to be supported. The mpp_io intefaces are a good
-! place to head with this, perhaps, when we need to extend to supporting parallel
-! platforms. 
-
-implicit none
-
-integer,                    intent(in) :: ifile
 type(location_type),        intent(in) :: loc
-character(len=*), intent(in), optional :: fform
-
-character(len=32) :: fileformat
+character(len=*), optional, intent(in) :: attr
+real(r8)                               :: query_location
 
 if ( .not. module_initialized ) call initialize_module
 
-fileformat = "ascii"   ! supply default
-if(present(fform)) fileformat = trim(adjustl(fform))
+! see the long comment in this routine in the threed_sphere
+! module for warnings about compiler bugs before you change
+! this code.
 
-! For now, output a character tag followed by the r8 value.
 
-SELECT CASE (fileformat)
-   CASE("unf", "UNF", "unformatted", "UNFORMATTED")
-      write(ifile) loc%lon, loc%lat
-   CASE DEFAULT
-      write(ifile, '(''loc2s'')' ) 
-      write(ifile, *) loc%lon, loc%lat
-END SELECT
+! the default value
+query_location = loc%lon
+if (.not. present(attr)) return
+
+select case(attr)
+ case ('lon','LON')
+   query_location = loc%lon
+ case ('lat','LAT')
+   query_location = loc%lat
+ case default
+   call error_handler(E_ERR, 'query_location; twod_sphere', &
+         'Only lon or lat are legal attributes to request from location', source, revision, revdate)
+end select
+
+end function query_location
+
+!----------------------------------------------------------------------------
+
+subroutine write_location(locfile, loc, fform, charstring)
+ 
+! Writes a location to a file.
+! additional functionality: if optional argument charstring is specified,
+! it must be long enough to hold the string, and the location information is
+! written into it instead of to a file.  fform must be ascii (which is the
+! default if not specified) to use this option.
+
+integer, intent(in)                        :: locfile
+type(location_type), intent(in)            :: loc
+character(len = *),  intent(in),  optional :: fform
+character(len = *),  intent(out), optional :: charstring
+
+integer             :: charlength
+logical             :: writebuf
+
+! 10 format(1x,2(f22.14,1x))  ! old
+10 format(1X,2(F22.16,1X)) 
+
+if ( .not. module_initialized ) call initialize_module
+
+! writing to a file (normal use) or to a character buffer?
+writebuf = present(charstring)
+
+! output file; test for ascii or binary, write what's asked, and return
+if (.not. writebuf) then
+   if (ascii_file_format(fform)) then
+      write(locfile, '(''loc2s'')' )
+      write(locfile, 10) loc%lon, loc%lat
+      !write(locfile, *) loc%lon, loc%lat
+   else
+      write(locfile) loc%lon, loc%lat
+   endif
+   return
+endif
+
+! you only get here if you're writing to a buffer and not
+! to a file, and you can't have binary format set.
+if (.not. ascii_file_format(fform)) then
+   call error_handler(E_ERR, 'write_location', &
+      'Cannot use string buffer with binary format', &
+       source, revision, revdate)
+endif
+
+! format the location to be more human-friendly; meaning
+! degrees instead of radians.
+
+! this must be the sum of the formats below.
+charlength = 39
+
+if (len(charstring) < charlength) then
+   write(errstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
+   call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+endif
+
+write(charstring, '(A,F12.8,1X,F12.8)') 'Lon/Lat(deg): ',  loc%lon*RAD2DEG, loc%lat*RAD2DEG
 
 end subroutine write_location
 
-
-
-function read_location(ifile, fform)
 !----------------------------------------------------------------------------
-!
-! Reads a 2D location from ifile that was written by write_location. 
+
+function read_location(locfile, fform)
+ 
+! Reads a location from a file that was written by write_location. 
 ! See write_location for additional discussion.
 
-implicit none
+integer, intent(in)                      :: locfile
+character(len = *), intent(in), optional :: fform
+type(location_type)                      :: read_location
 
-integer, intent(in) :: ifile
-type(location_type) :: read_location
-character(len=*), intent(in), optional :: fform
-
-character(len=5)   :: header
-character(len=129) :: errstring
-character(len=32)  :: fileformat
+character(len=5) :: header
 
 if ( .not. module_initialized ) call initialize_module
 
-fileformat = "ascii"    ! supply default
-if(present(fform)) fileformat = trim(adjustl(fform))
-
-SELECT CASE (fileformat)
-   CASE("unf", "UNF", "unformatted", "UNFORMATTED")
-      read(ifile) read_location%lon, read_location%lat
-   CASE DEFAULT
-      read(ifile, '(a5)' ) header
-      if(header /= 'loc2s') then
-         write(errstring,*)'Expected location header "loc2s" in input file, got ', header 
-         call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
-      endif
-! Now read the location data value
-      read(ifile, *) read_location%lon, read_location%lat
-END SELECT
+if (ascii_file_format(fform)) then
+   read(locfile, '(a5)' ) header
+   if(header /= 'loc2s') then
+      write(errstring,*)'Expected location header "loc2s" in input file, got ', header 
+      call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
+   endif
+   ! Now read the location data value
+   read(locfile, *) read_location%lon, read_location%lat
+else
+   read(locfile) read_location%lon, read_location%lat
+endif
 
 end function read_location
 
-
+!--------------------------------------------------------------------------
 
 subroutine interactive_location(location, set_to_default)
-!--------------------------------------------------------------------------
-!
+ 
 ! Allows for interactive input of a location. Also gives option of selecting
-! a uniformly distributed random location (what the heck).
-
-implicit none
+! a uniformly distributed random location.
 
 type(location_type), intent(out) :: location
-logical, intent(in), optional :: set_to_default
+logical, intent(in), optional    :: set_to_default
 
 real(r8) :: lon, lat
 
@@ -386,7 +396,7 @@ if(lon < 0.0_r8) then
    ! Longitude is random from 0 to 2 PI
    location%lon = random_uniform(ran_seq) * 2.0_r8 * PI
 
-   ! Latitude must be area weightedA
+   ! Latitude must be area weighted
    location%lat = asin(random_uniform(ran_seq) * 2.0_r8 - 1.0_r8)
 
    write(*, *) 'random location is ', location%lon, location%lat
@@ -403,86 +413,293 @@ end if
 
 end subroutine interactive_location
 
+!----------------------------------------------------------------------------
 
+function nc_write_location_atts( ncFileID, fname, ObsNumDimID ) result (ierr)
+ 
+! Writes the "location module" -specific attributes to a netCDF file.
+
+use typeSizes
+use netcdf
+
+integer,          intent(in) :: ncFileID     ! handle to the netcdf file
+character(len=*), intent(in) :: fname        ! file name (for printing purposes)
+integer,          intent(in) :: ObsNumDimID  ! handle to the dimension that grows
+integer                      :: ierr
+
+integer :: LocDimID
+integer :: VarID
+
+if ( .not. module_initialized ) call initialize_module
+
+ierr = -1 ! assume things will fail ...
+
+! define the rank/dimension of the location information
+call nc_check(nf90_def_dim(ncid=ncFileID, name='location', len=LocationDims, &
+       dimid = LocDimID), 'nc_write_location_atts', 'def_dim:location '//trim(fname))
+
+! Define the observation location variable and attributes
+
+call nc_check(nf90_def_var(ncid=ncFileID, name='location', xtype=nf90_double, &
+          dimids=(/ LocDimID, ObsNumDimID /), varid=VarID), &
+            'nc_write_location_atts', 'location:def_var')
+
+call nc_check(nf90_put_att(ncFileID, VarID, 'description', &
+        'location coordinates'), 'nc_write_location_atts', 'location:description')
+call nc_check(nf90_put_att(ncFileID, VarID, 'location_type', &
+        trim(LocationName)), 'nc_write_location_atts', 'location:location_type')
+call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', &
+        trim(LocationLName)), 'nc_write_location_atts', 'location:long_name')
+call nc_check(nf90_put_att(ncFileID, VarID, 'storage_order',     &
+        'Lon Lat'), 'nc_write_location_atts', 'location:storage_order')
+call nc_check(nf90_put_att(ncFileID, VarID, 'units',     &
+        'degrees degrees'), 'nc_write_location_atts', 'location:units')
+
+! No vertical for this location type.
+
+! If we made it to here without error-ing out ... we're good.
+
+ierr = 0
+
+end function nc_write_location_atts
 
 !----------------------------------------------------------------------------
 
-subroutine alloc_get_close_obs(num, obs, cutoff, obs_box)
+subroutine nc_get_location_varids( ncFileID, fname, LocationVarID, WhichVertVarID )
 
-implicit none
+! Return the LocationVarID and WhichVertVarID variables from a given netCDF file.
+!
+! ncFileId         the netcdf file descriptor
+! fname            the name of the netcdf file (for error messages only)
+! LocationVarID    the integer ID of the 'location' variable in the netCDF file
+! WhichVertVarID   the integer ID of the 'which_vert' variable in the netCDF file
+!
+! In this instance, WhichVertVarID will never be defined, ... set to a bogus value
 
-integer, intent(in) :: num
-type(location_type), intent(in) :: obs(num)
-real(r8), intent(in) :: cutoff
-integer, intent(out) :: obs_box(num)
+use typeSizes
+use netcdf
 
-! This does pre-computing for close obs; no function needed in one dimension
+integer,          intent(in)  :: ncFileID   ! handle to the netcdf file
+character(len=*), intent(in)  :: fname      ! file name (for printing purposes)
+integer,          intent(out) :: LocationVarID, WhichVertVarID
 
-return
+if ( .not. module_initialized ) call initialize_module
 
-end subroutine alloc_get_close_obs
+call nc_check(nf90_inq_varid(ncFileID, 'location', varid=LocationVarID), &
+          'nc_get_location_varids', 'inq_varid:location '//trim(fname))
 
+WhichVertVarID = -99
+
+end subroutine nc_get_location_varids
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_obs(base_ob, num, obs, cutoff, obs_box, num_close, close_ind, dist)
+subroutine nc_write_location(ncFileID, LocationVarID, loc, obsindex, WhichVertVarID)
+ 
+! Writes a SINGLE location to the specified netCDF variable and file.
+! The LocationVarID and WhichVertVarID must be the values returned from
+! the nc_get_location_varids call.
 
-! Default version with no smarts; no need to be smart in 1D
+use typeSizes
+use netcdf
 
-implicit none
+integer,             intent(in) :: ncFileID, LocationVarID
+type(location_type), intent(in) :: loc
+integer,             intent(in) :: obsindex
+integer,             intent(in) :: WhichVertVarID
 
-integer, intent(in) :: base_ob, num
-type(location_type), intent(in) :: obs(num)
-real(r8), intent(in) :: cutoff
-integer, intent(in) :: obs_box(num)
-integer, intent(out) :: num_close, close_ind(num)
-real(r8), intent(out) :: dist(num)
+real(r8), dimension(LocationDims) :: locations
+
+if ( .not. module_initialized ) call initialize_module
+
+locations = get_location( loc ) ! converts from radians to degrees, btw
+
+call nc_check(nf90_put_var(ncFileID, LocationVarId, locations, &
+          start=(/ 1, obsindex /), count=(/ LocationDims, 1 /) ), &
+            'nc_write_location', 'put_var:location')
+
+if ( WhichVertVarID >= 0 ) then
+   write(errstring,*)'WhichVertVarID supposed to be negative ... is ',WhichVertVarID
+   call error_handler(E_ERR, 'nc_write_location', errstring, source, revision, revdate)
+endif ! if less than zero (as it should be) ... just ignore 
+
+end subroutine nc_write_location
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_obs_init(gc, num, obs)
+ 
+! Initializes part of get_close accelerator that depends on the particular obs
+
+type(get_close_type), intent(inout) :: gc
+integer,              intent(in)    :: num
+type(location_type),  intent(in)    :: obs(num)
+
+! Set the value of num_obs in the structure
+gc%num = num
+
+end subroutine get_close_obs_init
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_obs_destroy(gc)
+
+type(get_close_type), intent(inout) :: gc
+
+end subroutine get_close_obs_destroy
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_maxdist_init(gc, maxdist)
+
+type(get_close_type), intent(inout) :: gc
+real(r8),             intent(in)    :: maxdist
+
+! Set the maximum distance in the structure
+gc%maxdist = maxdist
+
+end subroutine get_close_maxdist_init
+
+!----------------------------------------------------------------------------
+
+subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
+   num_close, close_ind, dist)
+
+! Default version with no smarts.
+! Kinds are available here if one wanted to do more refined distances.
+
+type(get_close_type), intent(in)  :: gc
+type(location_type),  intent(in)  :: base_obs_loc, obs(:)
+integer,              intent(in)  :: base_obs_kind, obs_kind(:)
+integer,              intent(out) :: num_close, close_ind(:)
+real(r8), optional,   intent(out) :: dist(:)
 
 integer :: i
 real(r8) :: this_dist
 
-! Return list of obs that are within cutoff and their distances
+! Return list of obs that are within maxdist and their distances
 num_close = 0
-do i = 1, num
-   this_dist = get_dist(obs(base_ob), obs(i))
-   if(this_dist <= cutoff) then
+!do i = 1, size(obs)  ! i believe this is right
+do i = 1, gc%num
+   this_dist = get_dist(base_obs_loc, obs(i), base_obs_kind, obs_kind(i))
+   if(this_dist <= gc%maxdist) then
       ! Add this ob to the list
       num_close = num_close + 1
       close_ind(num_close) = i
-      dist(num_close) = this_dist 
+      if (present(dist)) dist(num_close) = this_dist 
    endif
 end do
 
 end subroutine get_close_obs
 
-
+!----------------------------------------------------------------------------
 
 function is_location_in_region(loc, minl, maxl)
-!----------------------------------------------------------------------------
-!
+ 
 ! Returns true if the given location is between the other two.
-
-implicit none
+! will handle wrap in longitude, but not in latitude over poles.
 
 logical                          :: is_location_in_region
 type(location_type), intent(in)  :: loc, minl, maxl
 
-
-character(len=129) :: errstring
-
 if ( .not. module_initialized ) call initialize_module
-
 
 ! assume failure and return as soon as we are confirmed right.
 ! set to success only at the bottom after all tests have passed.
 is_location_in_region = .false.
 
-if ((loc%lon < minl%lon) .or. (loc%lon > maxl%lon)) return
+! latitude: we do not allow wrap of rectangular regions over the poles.
 if ((loc%lat < minl%lat) .or. (loc%lat > maxl%lat)) return
+
+! use common routine in utilities module to do all the wrapping
+if (.not. is_longitude_between(loc%lon, minl%lon, maxl%lon, doradians=.TRUE.)) return
  
 is_location_in_region = .true.
 
 end function is_location_in_region
+
+!----------------------------------------------------------------------------
+! stubs - always say no, but allow this code to be compiled with
+!         common code that sometimes needs vertical info.
+!----------------------------------------------------------------------------
+
+function vert_is_undef(loc)
+ 
+! Stub, always returns false.
+
+logical                          :: vert_is_undef
+type(location_type), intent(in)  :: loc
+
+vert_is_undef = .false.
+
+end function vert_is_undef
+
+!----------------------------------------------------------------------------
+
+function vert_is_surface(loc)
+ 
+! Stub, always returns false.
+
+logical                          :: vert_is_surface
+type(location_type), intent(in)  :: loc
+
+vert_is_surface = .false.
+
+end function vert_is_surface
+
+!----------------------------------------------------------------------------
+
+function vert_is_pressure(loc)
+ 
+! Stub, always returns false.
+
+logical                          :: vert_is_pressure
+type(location_type), intent(in)  :: loc
+
+vert_is_pressure = .false.
+
+end function vert_is_pressure
+
+!----------------------------------------------------------------------------
+
+function vert_is_height(loc)
+ 
+! Stub, always returns false.
+
+logical                          :: vert_is_height
+type(location_type), intent(in)  :: loc
+
+vert_is_height = .false.
+
+end function vert_is_height
+
+!----------------------------------------------------------------------------
+
+function vert_is_level(loc)
+ 
+! Stub, always returns false.
+
+logical                          :: vert_is_level
+type(location_type), intent(in)  :: loc
+
+vert_is_level = .false.
+
+end function vert_is_level
+
+!---------------------------------------------------------------------------
+
+function has_vertical_localization()
+ 
+! Always returns false since this type of location doesn't support
+! vertical localization.
+
+logical :: has_vertical_localization
+
+if ( .not. module_initialized ) call initialize_module
+
+has_vertical_localization = .false.
+
+end function has_vertical_localization
 
 
 !----------------------------------------------------------------------------

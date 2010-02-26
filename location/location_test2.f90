@@ -1,8 +1,9 @@
-! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
-! http://www.image.ucar.edu/DAReS/DART/DART_download
+! Data Assimilation Research Testbed -- DART
+! Copyright 2004-2007, Data Assimilation Research Section
+! University Corporation for Atmospheric Research
+! Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 
-program location_test
+program location_test2
 
 ! <next few lines under version control, do not edit>
 ! $URL$
@@ -33,7 +34,7 @@ iunit = get_unit()
 open(iunit, file = 'location_test_file')
 
 ! Set the first location
-loc1     = set_location(1.4_r8)
+loc1     = set_location(0.4_r8)
 loc2_val = get_location(loc1)
 
 if(loc2_val /= 0.4_r8) call error_handler(E_ERR,'main program unit',&
@@ -60,5 +61,5 @@ end do
 
 close(iunit)
 
-end program location_test
+end program location_test2
 
