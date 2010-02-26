@@ -118,6 +118,10 @@ integer, parameter, public :: &
     KIND_ICE_FRACTION                = 40, &
     KIND_RELATIVE_HUMIDITY           = 41
 
+! kinds for TIEgcm 
+integer, parameter, public :: &
+    KIND_ELECTRON_DENSITY            = 42
+   
 ! kinds for the MITgcm, POP ocean model
 integer, parameter, public :: &
     KIND_SALINITY                    = 50, &
