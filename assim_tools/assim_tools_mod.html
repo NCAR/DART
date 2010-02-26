@@ -187,15 +187,14 @@ inflation_only is true, otherwise the state is also updated.
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
 '&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that filenames that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
 The namelist declaration (i.e. what follows) has a different syntax, naturally.
 </P>
 <div class=namelist>
 <pre>
 <em class=call>namelist / assim_tools_nml / </em> &amp;
 filter_kind, cutoff, sort_obs_inc, print_every_nth_obs, &amp;
-spread_restoration, sampling_error_correction, adaptive_localization_threshold
+spread_restoration, sampling_error_correction, adaptive_localization_threshold, &amp;
+output_localization_diagnostics, localization_diagnostics_file
 </pre>
 </div>
 
@@ -257,6 +256,25 @@ This namelist is read in a file called <em class=file>input.nml</em>
      is tuned for a three_dimensional spherical implementation for numerical
      weather prediction models at present.
                Default: -1 </TD></TR>
+
+<TR><!--contents--><TD valign=top>output_localization_diagnostics</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD> Setting this to .TRUE. will output an additional text
+     file that contains the obs key, the obs time, the obs location, the 
+     cutoff distance and the number of other obs which are within that radius.
+     If adaptive localization is enabled, the output also contains the updated 
+     cutoff distance and the number of other obs within that new radius.  Without
+     adaptive localization there will be a text line for each observation,
+     so this file could get very large.  With adaptive localization enabled,
+     there will only be one line per observation where the radius is changed,
+     so the size of the file will depend on the number of changed cutoffs.
+               Default: .false. </TD></TR>
+
+<TR><!--contents--><TD valign=top>localization_diagnostics_file</TD>
+    <!--  type  --><TD valign=top>character(len=129)</TD>
+    <!--descript--><TD> Filename for the localization diagnostics information.
+     This file will be opened in append mode, so new information will be written
+     at the end of any existing data.
 
 <TR><!--contents--><TD valign=top>print_every_nth_obs </TD>
     <!--  type  --><TD valign=top>integer             </TD>

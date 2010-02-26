@@ -82,8 +82,10 @@
    sort_obs_inc                    = .true.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
-   print_every_nth_obs             = 0,
-   adaptive_localization_threshold = -1/
+   adaptive_localization_threshold = -1,
+   output_localization_diagnostics = .false.,
+   localization_diagnostics_file   = 'localization_diagnostics',
+   print_every_nth_obs             = 0 /
 
 &cov_cutoff_nml
    select_localization = 1  /

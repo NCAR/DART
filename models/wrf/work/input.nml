@@ -85,6 +85,8 @@
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
+   output_localization_diagnostics = .true.,
+   localization_diagnostics_file   = 'localization_diagnostics',
    print_every_nth_obs             = 0,
    /
 
@@ -188,10 +190,11 @@
    circulation_radius          = 108000.0,
    /
 
-# vert_normal is amount of X equiv to 1 radian in horiz distance.  
-# adjust to give a different localization in the vertical, if
-# horiz_dist_only is set to .false..  the default nlon/nlat should 
-# be good for most grids; nlon must be an odd number.
+# vert_normalization_X is amount of X equiv to 1 radian in horiz.
+# vert localization is 'cutoff' times the pressure/height/levels,
+# only if horiz_dist_only is set to .false. in the namelist below.
+# the default nlon/nlat should be good for most grids; 
+# nlon must be an odd number.
 &location_nml
    horiz_dist_only             = .true.,
    vert_normalization_pressure = 6666666.7,

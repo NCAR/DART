@@ -15,7 +15,8 @@ module assim_tools_mod
 use      types_mod,       only : r8, digits12, PI
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
                                  find_namelist_in_file, register_module, error_handler,   &
-                                 E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term
+                                 E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
+                                 open_file, close_file
 use       sort_mod,       only : index_sort 
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
@@ -32,7 +33,8 @@ use       cov_cutoff_mod, only : comp_cov_factor
 use       reg_factor_mod, only : comp_reg_factor
 
 use         location_mod, only : location_type, get_close_type, get_close_obs_destroy,    &
-                                 operator(==), set_location_missing
+                                 operator(==), set_location_missing, write_location,      &
+                                 LocationDims, vert_is_surface, has_vertical_localization
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             & 
                                  compute_copy_mean_var, get_var_owner_index
@@ -46,10 +48,13 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,         
                                  inflate_ens, adaptive_inflate_type,                      &
                                  deterministic_inflate, solve_quadratic
 
-use time_manager_mod,     only : time_type
+use time_manager_mod,     only : time_type, get_time
 
 use assim_model_mod,      only : get_state_meta_data, get_close_maxdist_init,             &
                                  get_close_obs_init, get_close_obs
+
+! GSR add routine to check if kind is assimilated ob type
+use obs_kind_mod,         only : assimilate_this_obs_kind
 
 implicit none
 private
@@ -95,13 +100,20 @@ logical  :: spread_restoration              = .false.
 logical  :: sampling_error_correction       = .false.
 integer  :: adaptive_localization_threshold = -1
 integer  :: print_every_nth_obs             = 0
+logical  :: output_localization_diagnostics = .false.
+character(len = 129) :: localization_diagnostics_file = "localization_diagnostics"
 ! Following only relevant for filter_kind = 8
 logical  :: rectangular_quadrature          = .true.
 logical  :: gaussian_likelihood_tails       = .false.
+! Not in the namelist; this var disables the experimental
+! linear and spherical case code in the adaptive localization 
+! sections.  to try out the alternatives, set this to .false.
+logical  :: only_area_adapt  = .true.
 
 namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    spread_restoration, sampling_error_correction, adaptive_localization_threshold, &
-   print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails
+   print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
+   output_localization_diagnostics, localization_diagnostics_file
 
 !============================================================================
 
@@ -131,8 +143,23 @@ if(spread_restoration .and. .not. filter_kind == 1) then
 endif
 
 if (do_output()) then
-   write(errstring, '(A,F18.6,A)') 'Using a localization radius of ', cutoff
+   write(errstring, '(A,F18.6)') 'The cutoff namelist value is ', cutoff
    call error_handler(E_MSG,'assim_tools_init:', errstring)
+   write(errstring, '(A,F18.6)') 'cutoff = localization half-width parameter, so'
+   call error_handler(E_MSG,'assim_tools_init:', errstring)
+   write(errstring, '(A,F18.6)') 'the effective localization radius is ', cutoff*2.0_r8
+   call error_handler(E_MSG,'assim_tools_init:', errstring)
+
+   if(adaptive_localization_threshold > 0) then
+      write(errstring, '(A,I10,A)') 'Using adaptive localization, threshold ', &
+         adaptive_localization_threshold, ' obs'
+      call error_handler(E_MSG,'assim_tools_init:', errstring)
+   endif
+
+   if(output_localization_diagnostics) then
+      call error_handler(E_MSG,'assim_tools_init:', 'Writing localization diagnostics to file:')
+      call error_handler(E_MSG,'assim_tools_init:', trim(localization_diagnostics_file))
+   endif
 endif
 
 end subroutine assim_tools_init
@@ -186,6 +213,9 @@ integer  :: base_obs_kind, my_obs_kind(obs_ens_handle%my_num_vars)
 integer  :: my_state_kind(ens_handle%my_num_vars), nth_obs
 integer  :: num_close_obs_buffered, num_close_states_buffered
 integer  :: num_close_obs_calls_made, num_close_states_calls_made
+! GSR add new count for only the 'assimilate' type close obs in the tile
+integer  :: assim_num_close_obs, localization_unit, secs, days, thiskind, rev_num_close_obs
+character(len = 102)  :: base_loc_text   ! longest location formatting possible
 
 type(location_type)  :: my_obs_loc(obs_ens_handle%my_num_vars)
 type(location_type)  :: base_obs_loc, last_base_obs_loc, last_base_states_loc
@@ -193,7 +223,7 @@ type(location_type)  :: my_state_loc(ens_handle%my_num_vars)
 type(get_close_type) :: gc_obs, gc_state
 type(obs_type)       :: observation
 type(obs_def_type)   :: obs_def
-type(time_type)      :: obs_time
+type(time_type)      :: obs_time, this_obs_time
 
 ! for performance, local copies 
 logical :: local_single_ss_inflate
@@ -206,6 +236,11 @@ logical :: get_close_buffering
 if(.not. module_initialized) then
    call assim_tools_init
    module_initialized = .true.
+endif
+
+!GSR open the dignostics file
+if(output_localization_diagnostics .and. my_task_id() == 0) then
+  localization_unit = open_file(localization_diagnostics_file, action = 'append')
 endif
 
 ! turn on and off the close buffering
@@ -470,17 +505,68 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! For adaptive localization, need number of other obs close to the chosen observation
    cutoff_rev = cutoff
    if(adaptive_localization_threshold > 0) then
-      call sum_across_tasks(num_close_obs, total_num_close_obs)
-      ! Want expected number of close observations to be reduced to some threshold
+
+      ! this does a cross-task sum, so all tasks must make this call.
+      total_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_kind, &
+                                        close_obs_dist, cutoff*2.0_r8)
+
+      ! Want expected number of close observations to be reduced to some threshold;
+      ! accomplish this by cutting the size of the cutoff distance.
       if(total_num_close_obs > adaptive_localization_threshold) then
-         ! Change the cutoff radius to get the appropriate number in the circle
-         ! This is specific to models on a sphere
-         ! Need to get thinning out of assim_tools and into something about locations
-         ! Compute a new radius if the total_num_close is greater than the desired as
-         ! 2*cutoff_rev = sqrt(2*cutoff * adaptive_localization_threshold / total_num_close_obs)
-         ! kdr cheaper calc; cutoff *sqrt(adaptive_localization_threshold / total_num_close_obs)
-         cutoff_rev =  sqrt((2.0_r8*cutoff)**2 *adaptive_localization_threshold / &
-            total_num_close_obs) / 2.0_r8
+
+         cutoff_rev = revised_distance(cutoff*2.0_r8, adaptive_localization_threshold, &
+                                       total_num_close_obs, base_obs_loc) / 2.0_r8
+
+         if ( output_localization_diagnostics ) then
+
+            ! to really know how many obs are left now, you have to 
+            ! loop over all the obs, again, count how many kinds are 
+            ! going to be assim, and explicitly check the distance and 
+            ! see if it's closer than the new cutoff ( times 2 ), and
+            ! then do a global sum to get the total.  since this costs, 
+            ! do it only when diagnostics are requested.
+
+            ! this does a cross-task sum, so all tasks must make this call.
+            rev_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_kind, &
+                                              close_obs_dist, cutoff_rev*2.0_r8)
+
+      
+            ! GSR output the new cutoff 
+            ! Here is what we might want: 
+            ! time, ob index #, ob location, new cutoff, the assimilate obs count, owner (which process has this ob)
+            ! obs_time, obs_val_index, base_obs_loc, cutoff_rev, total_num_close_obs, owner
+            ! break up the time into secs and days, and break up the location into lat, lon and height
+            ! nsc - the min info here that can't be extracted from the obs key is:
+            !  key (obs#), total_num_close_obs (close w/ original cutoff), revised cutoff & new count
+            if (my_task_id() == 0) then
+               call get_obs_def(observation, obs_def)
+               this_obs_time = get_obs_def_time(obs_def)
+               call get_time(this_obs_time,secs,days)
+               call write_location(-1, base_obs_loc, charstring=base_loc_text)
+
+               write(localization_unit,'(i8,1x,i5,1x,i8,1x,A,2(f14.5,1x,i10))') i, secs, days, &
+                     trim(base_loc_text), cutoff, total_num_close_obs, cutoff_rev, rev_num_close_obs
+            endif
+         endif
+
+      endif
+
+   else if (output_localization_diagnostics) then
+      ! if you aren't adapting but you still want to know how many obs are within the
+      ! localization radius, set the diag output.  this could be large, use carefully.
+
+      ! this does a cross-task sum, so all tasks must make this call.
+      total_num_close_obs = count_close(num_close_obs, close_obs_ind, my_obs_kind, &
+                                        close_obs_dist, cutoff*2.0_r8)
+
+      if (my_task_id() == 0) then
+         call get_obs_def(observation, obs_def)
+         this_obs_time = get_obs_def_time(obs_def)
+         call get_time(this_obs_time,secs,days)
+         call write_location(-1, base_obs_loc, charstring=base_loc_text)
+
+         write(localization_unit,'(i8,1x,i5,1x,i8,1x,A,f14.5,1x,i10)') i, secs, days, &
+               trim(base_loc_text), cutoff, total_num_close_obs
       endif
    endif
 
@@ -695,6 +781,11 @@ if (get_close_buffering .and. .true.) then
       endif
    endif
 endif
+
+!GSR close the localization diagnostics file
+if(output_localization_diagnostics .and. my_task_id() == 0) then
+  call close_file(localization_unit)
+end if
 
 end subroutine filter_assim
 
@@ -2087,7 +2178,110 @@ end subroutine set_assim_tools_trace
 
 !--------------------------------------------------------------------
 
+function revised_distance(orig_dist, newcount, oldcount, base)
+ real(r8),            intent(in) :: orig_dist
+ integer,             intent(in) :: newcount, oldcount
+ type(location_type), intent(in) :: base
 
+ real(r8)                        :: revised_distance
+ 
+! take the ratio of the old and new counts, and revise the
+! original cutoff distance to match.
+
+! for now, only allow the code to do a 2d area adaption.
+! to experiment with other schemes, set this local variable
+! to .false. at the top of the file and recompile.
+
+if (only_area_adapt) then
+
+   revised_distance = orig_dist * sqrt(real(newcount, r8) / oldcount)
+   return
+
+endif
+
+! alternatives for different dimensionalities and schemes
+
+! Change the cutoff radius to get the appropriate number 
+if (LocationDims == 1) then
+   ! linear (be careful of cyclic domains; if > domain, this is
+   ! not going to be right)
+   revised_distance = orig_dist * real(newcount, r8) / oldcount
+
+else if (LocationDims == 2) then
+   ! do an area scaling
+   revised_distance = orig_dist * sqrt(real(newcount, r8) / oldcount)
+
+else if (LocationDims == 3) then
+   ! do either a volume or area scaling (depending on whether we are
+   ! localizing in the vertical or not.)   if surface obs, assume a hemisphere
+   ! and shrink more.
+
+   if (has_vertical_localization()) then
+      ! cube root for volume
+      revised_distance = orig_dist * ((real(newcount, r8) / oldcount) &
+                                      ** 0.33333333333333333333_r8)
+
+      ! Cut the adaptive localization threshold in half again for 'surface' obs
+      if (vert_is_surface(base)) then
+         revised_distance = revised_distance * (0.5_r8 ** 0.33333333333333333333_r8)
+      endif
+   else
+      ! do an area scaling, even if 3d obs
+      revised_distance = orig_dist * sqrt(real(newcount, r8) / oldcount)
+
+      ! original code was:
+      !cutoff_rev =  sqrt((2.0_r8*cutoff)**2 * adaptive_localization_threshold / &
+      !   total_num_close_obs) / 2.0_r8
+
+      ! original comment
+      ! Need to get thinning out of assim_tools and into something about locations
+   endif
+else
+   call error_handler(E_ERR, 'revised_distance', 'unknown locations dimension, not 1, 2 or 3', &
+      source, revision, revdate)
+endif
+
+end function revised_distance
+
+!--------------------------------------------------------------------
+
+function count_close(num_close, index_list, my_kinds, dist, maxdist)
+ integer, intent(in)  :: num_close, index_list(:), my_kinds(:)
+ real(r8), intent(in) :: dist(:), maxdist
+ integer :: count_close
+
+! return the total number of items from the index_list which
+! are kinds which are going to be assimilated, and within distance.
+! this excludes items on the eval list only, not listed, or
+! items too far away.   this routine does a global communication
+! so if any MPI tasks make this call, all must.
+
+integer :: k, thiskind, local_count
+
+local_count = 0
+do k=1, num_close
+
+   ! only accept items closer than limit
+   if (dist(k) > maxdist) cycle
+
+   ! include identity obs, plus kinds on assim list.
+   ! you have to do the if tests separately because fortran allows
+   ! both parts of an if(a .or. b) test to be eval'd at the same time.
+   ! you'd be using a negative index if it was an identity obs.
+   thiskind = my_kinds(index_list(k))
+   if (thiskind < 0) then
+      local_count = local_count + 1
+   else if (assimilate_this_obs_kind(thiskind)) then
+      local_count = local_count + 1
+   endif
+end do
+
+! broadcast sums from all tasks to compute new total
+call sum_across_tasks(local_count, count_close)
+
+end function count_close
+
+!--------------------------------------------------------------------
 
 !========================================================================
 ! end module assim_tools_mod

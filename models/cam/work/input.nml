@@ -60,8 +60,11 @@
    sort_obs_inc                    = .true.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
+   adaptive_localization_threshold = -1,
+   output_localization_diagnostics = .false.,
+   localization_diagnostics_file   = 'localization_diagnostics',
    print_every_nth_obs             = 0,
-   adaptive_localization_threshold = -1/
+/
 
 &cov_cutoff_nml
    select_localization = 1  /
@@ -80,27 +83,30 @@
    netCDF_large_file_support  = .false.
   /
 
+# also a common setup:
+#   model_version        = '3.5.06',
+#   state_names_3d       = 'T','US','VS','Q','CLDLIQ','CLDICE'
 &model_nml
-   output_state_vector      = .false.,
-   model_version            = '3.1',
-   model_config_file        = 'caminput.nc',
-   state_num_0d             = 0,
-   state_num_1d             = 0,
-   state_num_2d             = 1,
-   state_num_3d             = 6,
-   state_names_2d = 'PS      '
-   state_names_3d = 'T       ','U       ','V       ','Q       ','CLDLIQ  ','CLDICE  '
-   which_vert_1d            = 0,
-   which_vert_2d            = -1,
-   which_vert_3d            = 6*1,
-   pert_names         = '        ',
-   pert_sd           = -888888.0d0,
-   pert_base_vals    = -888888.0d0,
+   output_state_vector = .false.,
+   model_version       = '3.1',
+   model_config_file   = 'caminput.nc',
+   state_num_0d        = 0,
+   state_num_1d        = 0,
+   state_num_2d        = 1,
+   state_num_3d        = 6,
+   state_names_2d      = 'PS'
+   state_names_3d      = 'T','U','V','Q','CLDLIQ','CLDICE'
+   which_vert_1d       = 0,
+   which_vert_2d       = -1,
+   which_vert_3d       = 6*1,
+   pert_names          = '',
+   pert_sd             = -888888.0d0,
+   pert_base_vals      = -888888.0d0,
    highest_obs_pressure_mb   = 100.0,
    highest_state_pressure_mb = 150.0,
    max_obs_lat_degree        = 85.0,
-   Time_step_seconds = 21600,
-   Time_step_days = 0    /
+   Time_step_seconds   = 21600,
+   Time_step_days      = 0    /
 
 ! pert_sd < 0. signals pert_base_vals to be used as the values 
 !   for each ensemble member (for 1 field), instead of the value for each field.
