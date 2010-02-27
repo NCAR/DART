@@ -2,9 +2,7 @@ assim_model/assim_model_mod.f90
 common/types_mod.f90
 location/threed_sphere/location_mod.f90
 models/rose/dynamics_testing_DA/ncdf.mod.f
-models/rose/dynamics_testing_DA/ncdf.mod.f
 models/rose/dynamics_testing_DA/params.mod.f
-models/rose/dynamics_testing_DA/restart.mod.f
 models/rose/dynamics_testing_DA/restart.mod.f
 models/rose/model_mod.f90
 models/rose/trans_pv_sv.f90
