@@ -39,6 +39,21 @@ make || exit $n
 ./preprocess || exit 99
 
 #----------------------------------------------------------------------
+# Build rose first ... the modules are used by everyone and have a
+# gazillion input files that I don't want to specify 
+# in EVERY path_names_xxxx file.
+#----------------------------------------------------------------------
+
+@ n = $n + 1
+echo
+echo
+echo "---------------------------------------------------------------"
+echo "${MODEL} build number ${n} is rose"
+
+csh mkmf_rose
+make || exit $n
+
+#----------------------------------------------------------------------
 # Build all the single-threaded targets
 #----------------------------------------------------------------------
 
@@ -48,6 +63,8 @@ foreach TARGET ( mkmf_* )
 
    switch ( $TARGET )
    case mkmf_preprocess:
+      breaksw
+   case mkmf_rose:
       breaksw
    default:
       @ n = $n + 1

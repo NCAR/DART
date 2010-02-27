@@ -28,10 +28,10 @@ use    utilities_mod, only : file_exist, open_file, close_file, &
                              do_output, find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+
 ! ROSE Modules
-!use params, only : nx, ny, nz, nbcon
 use params, only : nx, ny, nz, ntime
- 
+
 !-----------------------------------------------------------------------
 
 implicit none
@@ -52,9 +52,10 @@ public :: get_model_size,         &
           get_close_maxdist_init, &
           get_close_obs_init,     &
           get_close_obs,          &
-          ens_mean_for_model,     & 
-          !ROSE specific routines!
-          model_type, &
+          ens_mean_for_model
+
+! ROSE-specific routines 
+public :: model_type, &
           prog_var_to_vector, &
           vector_to_prog_var, &
           read_ROSE_restart, &
@@ -69,7 +70,6 @@ type model_type
 end type model_type
 
 !----------------------------------------------------------------------
-
 ! Global storage for describing ROSE model class
 integer :: model_size 
 type(time_type) :: Time_step_ROSE
@@ -105,13 +105,15 @@ namelist /rose_nml/ target_time, &
 integer, parameter :: TYPE_U0 = 0, TYPE_V0 = 1, TYPE_T0 = 2, & 
                       TYPE_U = 3, TYPE_V = 4, TYPE_T = 5, & 
                       TYPE_Q_H = 6, TYPE_Q_OH = 7, TYPE_Q_O = 8
-!----------------------------------------------------------------------
 
+!----------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
    source   = "$URL$", &
    revision = "$Revision$", &
    revdate  = "$Date$"
+
+character(len = 129) :: errstring
 
 contains
 
@@ -134,7 +136,7 @@ integer  :: seconds_of_day = 86400
 real(r8) :: d_lat, d_lon
 real(r8) :: z_m
 real(r8) :: dz = 2100.0_r8, zbot = 16800.0_r8
-character(len=129) :: err_string, nml_string
+character(len=129) :: nml_string
 
 ! Read the namelist rose_nml from the file rose.nml
 call find_namelist_in_file("rose.nml", "rose_nml", iunit)
@@ -439,7 +441,6 @@ integer :: lonVarID, latVarID, levVarID
 integer :: u1VarID, v1VarID, t1VarID, uVarID, vVarID, tVarID
 integer :: qnHVarID, qnOHVarID, qnOVarID
 
-character(len=129) :: errstring
 character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
@@ -768,7 +769,6 @@ type(model_type), intent(in) :: var
 real(r8), intent(out) :: x(:)
 
 integer :: i, j, k, nf, indx
-character(len=129) :: errstring
 
 ! Do order as ps, t, u, v, q, tracers to be consistent with b-grid
 
@@ -865,6 +865,7 @@ type(model_type), intent(inout) :: var
 deallocate(var%vars_3d)
                                                                                                          
 end subroutine end_model_instance
+
 
 subroutine update_ROSE_restart(file_name, var)
 !=======================================================================
@@ -963,7 +964,7 @@ if(file_exist(file_name)) then
    ncerr = nf_close(restart_id)
 !! error_handler !!!!!!!  
    if (ncerr .ne. NF_NOERR) then
-     print *, nf_strerror(iret)
+     print *, nf_strerror(ncerr)
      stop
    endif
 !!!!!!!!!!!!!!!!!!!!!!!!
@@ -1098,7 +1099,7 @@ if(file_exist(file_name)) then
 
 !! error_handler !!!!!!!  
    if (ncerr .ne. NF_NOERR) then
-     print *, nf_strerror(iret)
+     print *, nf_strerror(ncerr)
      stop
    endif
 !!!!!!!!!!!!!!!!!!!!!!!!
