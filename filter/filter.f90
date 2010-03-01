@@ -286,7 +286,7 @@ if(ds) then
    call smoother_read_restart(ens_handle, ens_size, model_size, time1, init_time_days)
 endif
 
-call timestamp_message('After  reading in ensemble restart filess')
+call timestamp_message('After  reading in ensemble restart files')
 call     trace_message('After  reading in ensemble restart files')
 
 call trace_message('Before initializing inflation')
