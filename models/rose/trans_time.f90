@@ -21,9 +21,10 @@ program trans_time
 !----------------------------------------------------------------------
 
 use time_manager_mod, only : time_type, get_time, operator(-)
-use  assim_model_mod, only : static_init_assim_model, init_assim_model, open_restart_read, close_restart, &
+use  assim_model_mod, only : static_init_assim_model, init_assim_model, &
+                             open_restart_read, close_restart, &
                              get_model_time, read_state_restart, assim_model_type
-use    utilities_mod, only : get_unit
+use    utilities_mod, only : get_unit, initialize_utilities
 use        types_mod, only : r8
 
 implicit none
@@ -39,6 +40,8 @@ real(r8) :: target_hours
 type(time_type)       :: dart_time(2), forecast_length
 character (len = 128) :: file_name = 'temp_ic', file_out = 'times'
 type(assim_model_type)  :: x
+
+call initialize_utilities(progname='trans_time', output_flag=.true.)
 
 ! Static init assim model calls static_init_model
 call static_init_assim_model()

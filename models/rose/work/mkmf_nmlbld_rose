@@ -6,8 +6,8 @@
 #
 # $Id$
 
-../../../mkmf/mkmf -p trans_pv_sv -t ../../../mkmf/mkmf.template -c "-Duse_netCDF" \
- -a "../../.." path_names_trans_pv_sv
+../../../mkmf/mkmf -p nmlbld_rose -t ../../../mkmf/mkmf.template -c "-Duse_netCDF" \
+ -a "../../.." path_names_nmlbld_rose
 
 exit $status
 

@@ -2,8 +2,7 @@
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
- 
-program trans_pv_sv
+program model_to_dart
 
 ! <next few lines under version control, do not edit>
 ! $URL$
@@ -18,18 +17,19 @@ program trans_pv_sv
 !         Reform fields into a state vector.
 !         Write out state vector in "proprietary" format for DART
 !
-!         based on trans_pv_sv for CAM
+!         based on model_to_dart for CAM
 !
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
-use    utilities_mod, only : get_unit
+use    utilities_mod, only : get_unit, initialize_utilities
 use        model_mod, only : model_type, init_model_instance, read_ROSE_restart, &
                              prog_var_to_vector
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
-   init_assim_model, get_model_size , set_model_state_vector, write_state_restart, &
-   set_model_time, open_restart_read, open_restart_write, close_restart, &
-   aread_state_restart
+                             init_assim_model, get_model_size , &
+                             set_model_state_vector, write_state_restart, &
+                             set_model_time, open_restart_read, &
+                             open_restart_write, close_restart, aread_state_restart
 use time_manager_mod, only : time_type
 
 implicit none
@@ -41,8 +41,8 @@ character(len=128), parameter :: &
    revdate  = "$Date$"
 
 character (len = 128) ::  &
-                          file_name = 'rose_restart.nc', & 
-                          file_out  = 'temp_ud'
+   file_name = 'rose_restart.nc', & 
+   file_out  = 'temp_ud'
 
 ! Temporary allocatable storage to read in a native format for ROSE state
 type(assim_model_type) :: x
@@ -51,8 +51,10 @@ type(time_type)        :: model_time
 real(r8), allocatable  :: x_state(:)
 integer                :: file_unit, x_size
 
+call initialize_utilities(progname='model_to_dart', output_flag=.true.)
+
 ! Static init assim model calls static_init_model
-PRINT*,'static_init_assim_model in trans_pv_sv'
+PRINT*,'static_init_assim_model in model_to_dart'
 call static_init_assim_model()
 
 ! Initialize the assim_model instance
@@ -76,10 +78,10 @@ call set_model_state_vector(x, x_state)
 call set_model_time(x, model_time)
 
 file_unit = open_restart_write(file_out)
-PRINT*,'In trans_pv_sv file_out unit = ',file_unit
+PRINT*,'In model_to_dart file_out unit = ',file_unit
 PRINT*,' '
 ! write out state vector in "proprietary" format
 call write_state_restart(x, file_unit)
 call close_restart(file_unit)
 
-end program trans_pv_sv
+end program model_to_dart

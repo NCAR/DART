@@ -6,21 +6,27 @@
 #
 # $Id$
 #
-# Standard script for use in assimilation applications
-# where the model advance is executed as a separate process.
-# Can be used with most low-order models and the bgrid model which
-# can be advanced using the integrate_model executable.
+# This script has 4 logical 'blocks':
+# 1) creates a clean, temporary directory in which to run a model instance 
+#    and copies the necessary files into the temporary directory
+# 2) converts the DART output to input expected by the model
+# 3) runs the model
+# 4) converts the model output to input expected by DART
 #
-# This script copies the necessary files into the temporary directory
-# and then executes the fortran program integrate_model.
+# The error code from the script reflects which block it failed.
 #
-# Arguments are the process number of caller, the number of state copies
-# belonging to that process, and the name of the filter_control_file for
-# that process
+# Arguments are the 
+# 1) process number of caller, 
+# 2) the number of state copies belonging to that process, and 
+# 3) the name of the filter_control_file for that process
 
 set process = $1
 set num_states = $2
 set control_file = $3
+
+#-------------------------------------------------------------------------
+# Block 1: populate a run-time directory with the bits needed to run rose.
+#-------------------------------------------------------------------------
 
 # Get unique name for temporary working directory for this process's stuff
 set temp_dir = 'advance_temp'${process}
@@ -30,35 +36,71 @@ set temp_dir = 'advance_temp'${process}
 mkdir -p $temp_dir
 cd       $temp_dir
 
-# Get the program and input.nml
-cp ../integrate_model .
+# Get the data files needed to run rose. One directory up is 'CENTRALDIR'
+
 cp ../input.nml .
+cp ../rose.nml rose.nml_default
 
 # Loop through each state
 set state_copy = 1
 set ensemble_member_line = 1
 set input_file_line = 2
 set output_file_line = 3
+
 while($state_copy <= $num_states)
-   
+
    set ensemble_member = `head -$ensemble_member_line ../$control_file | tail -1`
    set input_file      = `head -$input_file_line      ../$control_file | tail -1`
    set output_file     = `head -$output_file_line     ../$control_file | tail -1`
-   
-   # Get the ics file for this state_copy
-   mv ../$input_file temp_ic
 
-   # Advance the model saving standard out
-   # integrate_model is hardcoded to expect input in temp_ic and it creates
-   # temp_ud as output.
-   ./integrate_model >! integrate_model_out_temp
+   #----------------------------------------------------------------------
+   # Block 2: Convert the DART output file to form needed by model.
+   # We are going to take a POP netCDF restart file and simply overwrite the
+   # appropriate variables. The DART output file also has the 'advance_to'
+   # time - which must be communicated to the model ...
+   #----------------------------------------------------------------------
 
-   # Append the output from the advance to the file in the working directory
-   #cat integrate_model_out_temp >> ../integrate_model_out_temp$process
+   # The EXPECTED input DART 'initial conditions' file name is 'temp_ic'
+   # The dart_to_pop_nml:advance_time_present = .TRUE. must be set
 
-   # Move the updated state vector back up
-   # (temp_ud was created by integrate_model.)
-   mv temp_ud ../$output_file
+   ln -sfv ../$input_file temp_ic || exit 2
+   cp -p   ../rose_restart.nc  .  || exit 2
+
+   ../dart_to_model || exit 2
+
+   # Convey the new 'advance_to' time to rose via the namelist
+   # trans_time creates a teeny file called 'times' that contains
+   # the 'advance_to' time from DART in the rose format
+   # The program nmlbld_rose takes the rose template namelist and
+   # inserts the proper time and ensemble member bits.
+
+   ../trans_time
+
+   echo `cat times`        >! namelist.in
+   echo $ensemble_member   >> namelist.in
+#  echo `cat a_tunes`      >> namelist.in
+#  echo `cat p_tunes`      >> namelist.in
+
+   ../nmlbld_rose  < namelist.in
+   echo "advance_model: after nmlbld_rose"
+
+   ls -lrt   
+
+   #----------------------------------------------------------------------
+   # Block 3: Run the model
+   #----------------------------------------------------------------------
+
+   ../rose |& tee rose_out_$ensemble_member
+
+   ls -lrt
+
+   #----------------------------------------------------------------------
+   # Block 4: Convert the model output to form needed by DART
+   #----------------------------------------------------------------------
+
+   ../model_to_dart
+
+   mv temp_ud ../$output_file || exit 4
 
    @ state_copy++
    @ ensemble_member_line = $ensemble_member_line + 3
@@ -66,12 +108,14 @@ while($state_copy <= $num_states)
    @ output_file_line = $output_file_line + 3
 end
 
-# Change back to original directory and get rid of temporary directory
+# Change back to original directory 
 cd ..
-\rm -rf $temp_dir
 
-# Remove the filter_control file to signal completeion
-# Is there a need for any sleeps to avoid trouble on completing moves here?
+# After you are assured this script works as expected, you can actually 
+# remove the temporary directory. For now ... leave this commented OUT.
+#\rm -rf $temp_dir
+
+# Remove the filter_control file to signal completion
 \rm -rf $control_file
 
 exit 0

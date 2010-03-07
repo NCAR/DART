@@ -26,13 +26,14 @@ program trans_perfect_ics
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
-use    utilities_mod, only : get_unit
+use    utilities_mod, only : get_unit, initialize_utilities
 use        model_mod, only : model_type, init_model_instance, read_ROSE_restart, &
                              prog_var_to_vector
 use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
-   init_assim_model, get_model_size , set_model_state_vector, write_state_restart, &
-   set_model_time, open_restart_read, open_restart_write, close_restart, &
-   aread_state_restart
+                             init_assim_model, get_model_size , &
+                             set_model_state_vector, write_state_restart, &
+                             set_model_time, open_restart_read, open_restart_write, &
+                             close_restart, aread_state_restart
 use time_manager_mod, only : time_type, print_time
 
 implicit none
@@ -44,8 +45,8 @@ character(len=128), parameter :: &
    revdate  = "$Date$"
 
 character (len = 128) ::  &
-                          file_name = 'NMC_SOC.day151_2002.dat',& 
-                          file_out = 'perfect_ics' 
+   file_name = 'rose_restart.nc', & 
+   file_out = 'perfect_ics' 
 
 ! Temporary allocatable storage to read in a native format for ROSE state
 type(assim_model_type) :: x
@@ -54,8 +55,10 @@ type(time_type)        :: model_time
 real(r8), allocatable  :: x_state(:)
 integer                :: file_unit, x_size
 
+call initialize_utilities(progname='trans_perfect_ics', output_flag=.true.)
+
 ! Static init assim model calls static_init_model
-PRINT*,'static_init_assim_model in trans_pv_sv'
+PRINT*,'static_init_assim_model in trans_perfect_ics'
 call static_init_assim_model()
 
 ! Initialize the assim_model instance

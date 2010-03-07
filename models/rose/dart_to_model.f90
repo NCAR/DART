@@ -2,7 +2,7 @@
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
-program trans_sv_pv
+program dart_to_model
 
 ! <next few lines under version control, do not edit>
 ! $URL$
@@ -23,12 +23,12 @@ program trans_sv_pv
 !----------------------------------------------------------------------
 
 use       types_mod, only : r8
-use   utilities_mod, only : get_unit
+use   utilities_mod, only : get_unit, initialize_utilities
 use       model_mod, only : model_type, init_model_instance, &
-   vector_to_prog_var, update_ROSE_restart 
+                            vector_to_prog_var, update_ROSE_restart 
 use assim_model_mod, only : assim_model_type, static_init_assim_model, &
-   init_assim_model, get_model_size, get_model_state_vector, read_state_restart, &
-   open_restart_read, close_restart
+                            init_assim_model, get_model_size, get_model_state_vector, &
+                            read_state_restart, open_restart_read, close_restart
 use time_manager_mod, only : time_type, read_time
 
 implicit none
@@ -46,8 +46,10 @@ real(r8), allocatable  :: x_state(:)
 integer                :: file_unit, x_size
 character (len = 128)  :: file_name = 'rose_restart.nc', file_in = 'temp_ic'
 
+call initialize_utilities(progname='dart_to_model', output_flag=.true.)
+
 ! Static init assim model calls static_init_model
-PRINT*,'static_init_assim_model in trans_sv_pv'
+PRINT*,'static_init_assim_model in dart_to_model'
 
 call static_init_assim_model()
 call init_assim_model(x)
@@ -56,7 +58,7 @@ call init_assim_model(x)
 call init_model_instance(var)
 
 file_unit = open_restart_read(file_in)
-PRINT*,'In trans_sv_pv file_in unit  = ',file_unit
+PRINT*,'In dart_to_model file_in unit  = ',file_unit
 PRINT*,' '
 
 ! Read in time to which ROSE must advance.  
@@ -68,16 +70,16 @@ call close_restart(file_unit)
 ! Get the state part of the assim_model type x
 x_size = get_model_size()
 allocate(x_state(x_size))
-PRINT*,'(trans_sv_pv) getting model state vector of length ',x_size
+PRINT*,'(dart_to_model) getting model state vector of length ',x_size
 x_state = get_model_state_vector(x)
 
 ! decompose vector back into ROSE fields
-PRINT*,'(trans_sv_pv) converting vector to prog_var'
+PRINT*,'(dart_to_model) converting vector to prog_var'
 call vector_to_prog_var (x_state, var)
 deallocate (x_state)
 
 ! write fields to the binary ROSE restart file
-PRINT*,'(trans_sv_pv) updating ',trim(file_name)
+PRINT*,'(dart_to_model) updating ',trim(file_name)
 call update_ROSE_restart(file_name, var)
 
-end program trans_sv_pv
+end program dart_to_model
