@@ -6,8 +6,12 @@ cov_cutoff/cov_cutoff_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
 filter/filter.f90
 location/threed_sphere/location_mod.f90
+models/rose/dynamics_testing_DA/dynam.mod.f
 models/rose/dynamics_testing_DA/ncdf.mod.f
+models/rose/dynamics_testing_DA/params.mod.f
+models/rose/dynamics_testing_DA/phys.mod.f
 models/rose/dynamics_testing_DA/restart.mod.f
+models/rose/dynamics_testing_DA/wcont.f
 models/rose/model_mod.f90
 mpi_utilities/mpi_utilities_mod.f90
 obs_def/obs_def_mod.f90
