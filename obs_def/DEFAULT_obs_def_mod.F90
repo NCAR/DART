@@ -417,12 +417,22 @@ real(r8),                   intent(inout) :: obs_val
 character(len=*), optional, intent(in)    :: fform
 
 character(len=5)  :: header
-logical           :: is_ascii
 integer           :: o_index
+logical           :: is_ascii
+character(len=32) :: fileformat   ! here for backwards compatibility only
 
 if ( .not. module_initialized ) call initialize_module
 
 is_ascii = ascii_file_format(fform)
+
+! here for backwards compatibility only; after the next release,
+! remove this and force people in their own obs_def_xxx_mod.f90 code
+! to set the last arg to read/write to be fform instead of fileformat
+if (is_ascii) then
+   fileformat = 'formatted'
+else
+   fileformat = 'unformatted'
+endif
 
 ! Begin by reading five character ascii header, then location, kind, error variance, index
 
@@ -497,11 +507,21 @@ type(obs_def_type),         intent(in) :: obs_def
 integer,                    intent(in) :: key
 character(len=*), intent(in), optional :: fform
 
-logical :: is_ascii
+logical           :: is_ascii
+character(len=32) :: fileformat   ! here for backwards compatibility only
 
 if ( .not. module_initialized ) call initialize_module
 
 is_ascii = ascii_file_format(fform)
+
+! here for backwards compatibility only; after the next release,
+! remove this and force people in their own obs_def_xxx_mod.f90 code
+! to set the last arg to read/write to be fform instead of fileformat
+if (is_ascii) then
+   fileformat = 'formatted'
+else
+   fileformat = 'unformatted'
+endif
 
 ! Write the 5 character identifier for verbose formatted output
 if (is_ascii) write(ifile, '("obdef")')
