@@ -60,7 +60,7 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 !   case(DOPPLER_RADIAL_VELOCITY)
-!      call read_radial_vel(obs_def%key, ifile, fileformat)
+!      call read_radial_vel(obs_def%key, ifile, fform)
 !   case(RADAR_REFLECTIVITY)
 !      call read_radar_ref(obs_val, obs_def%key)
 !  case(RADAR_CLEARAIR_REFLECTIVITY)
@@ -73,7 +73,7 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 !   case(DOPPLER_RADIAL_VELOCITY)
-!      call write_radial_vel(obs_def%key, ifile, fileformat)
+!      call write_radial_vel(obs_def%key, ifile, fform)
 !   case(RADAR_REFLECTIVITY)
 !      continue
 !   case(RADAR_CLEARAIR_REFLECTIVITY)
@@ -109,7 +109,8 @@ module obs_def_radar_mod
 use        types_mod, only : r8, missing_r8, PI, deg2rad
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              check_namelist_read, find_namelist_in_file,   &
-                             nmlfileunit, do_output, do_nml_file, do_nml_term
+                             nmlfileunit, do_output, do_nml_file, do_nml_term, &
+                             ascii_file_format
 use     location_mod, only : location_type, write_location, read_location, &
                              interactive_location, get_location
 use  assim_model_mod, only : interpolate
@@ -1524,36 +1525,6 @@ write(msgstring, "(A30,A,ES28.8)") c_str, " = ", c_val
 call error_handler(E_MSG,'', msgstring, '', '', '')
 
 end subroutine pr_con
-
-!----------------------------------------------------------------------
-
-function ascii_file_format(fform)
-
-! Common routine for determining input file format.
-
-character(len=*), intent(in), optional :: fform
-logical                                :: ascii_file_format
-
-! Returns .true. if file is formatted/ascii, .false. if unformatted/binary
-! Defaults (if fform not specified) to formatted/ascii.
-
-if ( .not. module_initialized ) call initialize_module
-
-! Default to formatted/ascii.
-if ( .not. present(fform)) then
-   ascii_file_format = .true.
-   return 
-endif
-
-SELECT CASE (trim(adjustl(fform)))
-   CASE("unf", "UNF", "unformatted", "UNFORMATTED")
-      ascii_file_format = .false.
-   CASE DEFAULT
-      ascii_file_format = .true.
-END SELECT
-
-
-end function ascii_file_format
 
 !----------------------------------------------------------------------
 

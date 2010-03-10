@@ -19,12 +19,12 @@
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 !      case(RAW_STATE_1D_INTEGRAL)
-!         call read_1d_integral(obs_def%key, ifile, fileformat)
+!         call read_1d_integral(obs_def%key, ifile, fform)
 ! END DART PREPROCESS READ_OBS_DEF
 
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 !      case(RAW_STATE_1D_INTEGRAL)
-!         call write_1d_integral(obs_def%key, ifile, fileformat)
+!         call write_1d_integral(obs_def%key, ifile, fform)
 ! END DART PREPROCESS WRITE_OBS_DEF
 
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
@@ -42,7 +42,8 @@ module obs_def_1d_state_mod
 ! $Date$
 
 use        types_mod, only : r8
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+                             ascii_file_format
 use     location_mod, only : location_type, set_location, get_location 
 use  assim_model_mod, only : interpolate
 use   cov_cutoff_mod, only : comp_cov_factor
@@ -92,8 +93,11 @@ integer, intent(in)             :: key, ifile
 character(len=32), intent(in)   :: fileformat
 
 integer :: i
+logical :: is_ascii
 
 if ( .not. module_initialized ) call initialize_module
+
+is_ascii = ascii_file_format(fileformat)
 
 ! Philosophy, dump ALL information about this special obs_type at once???
 ! For now, this means you can only write ONCE (that's all we're doing 3 June 05)
@@ -101,31 +105,28 @@ if ( .not. module_initialized ) call initialize_module
 if(.not. already_written) then
    already_written = .true.   
    ! Write out the number of 1d_integral obs descriptions
-   SELECT CASE (fileformat)
-      CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-         write(ifile) num_1d_integral_obs
-      CASE DEFAULT
-         write(ifile, *) num_1d_integral_obs
-   END SELECT
+   if (is_ascii) then
+      write(ifile, *) num_1d_integral_obs
+   else
+      write(ifile)    num_1d_integral_obs
+   endif
 
    ! Write out the half_width, num_points, and localization_type for each  
    do i = 1, num_1d_integral_obs
-      SELECT CASE (fileformat)
-         CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-            write(ifile) half_width(i), num_points(i), localization_type(i) 
-         CASE DEFAULT
-            write(ifile, *) half_width(i), num_points(i), localization_type(i) 
-      END SELECT
+      if (is_ascii) then
+         write(ifile, *) half_width(i), num_points(i), localization_type(i) 
+      else
+         write(ifile)    half_width(i), num_points(i), localization_type(i) 
+      endif
    end do
 endif
 
 ! Write out the obs_def key for this observation
-SELECT CASE (fileformat)
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-      write(ifile) key
-   CASE DEFAULT
-      write(ifile, *) key
-END SELECT
+if (is_ascii) then
+   write(ifile, *) key
+else
+   write(ifile)    key
+endif
 
 end subroutine write_1d_integral
 
@@ -140,8 +141,11 @@ integer, intent(in)             :: ifile
 character(len=32), intent(in)   :: fileformat
 
 integer :: i
+logical :: is_ascii
 
 if ( .not. module_initialized ) call initialize_module
+
+is_ascii = ascii_file_format(fileformat)
 
 ! Philosophy, read ALL information about this special obs_type at once???
 ! For now, this means you can only read ONCE (that's all we're doing 3 June 05)
@@ -149,31 +153,28 @@ if ( .not. module_initialized ) call initialize_module
 if(.not. already_read) then
    already_read = .true.   
    ! Read the number of 1d_integral obs descriptions
-   SELECT CASE (fileformat)
-      CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-         read(ifile) num_1d_integral_obs
-      CASE DEFAULT
-         read(ifile, *) num_1d_integral_obs
-   END SELECT
+   if (is_ascii) then
+      read(ifile, *) num_1d_integral_obs
+   else
+      read(ifile)    num_1d_integral_obs
+   endif
    
    ! Read the half_width, num_points, and localization_type for each  
    do i = 1, num_1d_integral_obs
-      SELECT CASE (fileformat)
-         CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-            read(ifile) half_width(i), num_points(i), localization_type(i) 
-         CASE DEFAULT
-            read(ifile, *) half_width(i), num_points(i), localization_type(i) 
-      END SELECT
+      if (is_ascii) then
+         read(ifile, *) half_width(i), num_points(i), localization_type(i) 
+      else
+         read(ifile)    half_width(i), num_points(i), localization_type(i) 
+      endif
    end do
 endif
 
 ! Read in the key for this particular observation
-SELECT CASE (fileformat)
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-      read(ifile) key
-   CASE DEFAULT
-      read(ifile, *) key
-END SELECT
+if (is_ascii) then
+   read(ifile, *) key
+else
+   read(ifile)    key
+endif
 
 end subroutine read_1d_integral
 
