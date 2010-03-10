@@ -50,7 +50,8 @@ module obs_def_mod
 ! the code.
 
 use        types_mod, only : r8, missing_i, missing_r8, RAD2DEG
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+                             ascii_file_format
 use     location_mod, only : location_type, read_location, write_location, &
                              interactive_location, set_location_missing
 use time_manager_mod, only : time_type, read_time, write_time, set_time, &
@@ -416,57 +417,45 @@ real(r8),                   intent(inout) :: obs_val
 character(len=*), optional, intent(in)    :: fform
 
 character(len=5)  :: header
-character(len=32) :: fileformat
+logical           :: is_ascii
 integer           :: o_index
 
 if ( .not. module_initialized ) call initialize_module
 
-! this default should probably be 'FORMATTED' to be
-! consistent with the alternative of 'UNFORMATTED'. 
-! (in the code below anything that is not a variant of
-! unformatted is the default case so for now it does not matter.)
-fileformat = "ascii"   ! supply default
-if(present(fform)) fileformat = trim(adjustl(fform))
+is_ascii = ascii_file_format(fform)
 
 ! Begin by reading five character ascii header, then location, kind, error variance, index
 
 ! Need to add additional error checks on read
-SELECT CASE (fileformat)
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-      continue
-   CASE DEFAULT
-      read(ifile, 11) header
-11    Format(a5)
-      if(header /= 'obdef') then
-         call error_handler(E_ERR,'read_obs_def', &
-            'Expected header "obdef" in input file', source, revision, revdate)
-      endif
-END SELECT
+if (is_ascii) then
+   read(ifile, '(a5)') header
+   if(header /= 'obdef') then
+      call error_handler(E_ERR,'read_obs_def', &
+         'Expected header "obdef" in input file', source, revision, revdate)
+   endif
+endif
 
 ! Read the location, kind, time and error variance
-obs_def%location = read_location(ifile, fileformat)
-SELECT CASE (fileformat)
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-      ! Need to map to get index associated with this integer in obs_kind
-      read(ifile) o_index
-      obs_def%kind = map_def_index(o_index)
-   CASE DEFAULT
-      read(ifile, '(a5)' ) header
-      if(header /= 'kind ') then
-         call error_handler(E_ERR,'read_kind', &
-            'Expected kind header "kind " in input file', &
-             source, revision, revdate)
-      endif
-      ! Need to map to get index associated with this integer in obs_kind
-      read(ifile, *) o_index
-      ! Negative value is identity obs, doesn't need mapped
-      if(o_index < 0) then
-         obs_def%kind = o_index
-      else
-         ! Positive value must use mapping to get to proper index in obs_kind
-         obs_def%kind = map_def_index(o_index)
-      endif
-END SELECT
+obs_def%location = read_location(ifile, fform)
+if (is_ascii) then
+   read(ifile, '(a5)' ) header
+   if(header /= 'kind ') then
+      call error_handler(E_ERR,'read_kind', &
+         'Expected kind header "kind " in input file', &
+          source, revision, revdate)
+   endif
+   read(ifile, *) o_index
+else
+   read(ifile)    o_index
+endif
+
+! Negative value is identity obs, doesn't need mapped
+! Positive value must use mapping to get to proper index in obs_kind
+if(o_index < 0) then
+   obs_def%kind = o_index
+else
+   obs_def%kind = map_def_index(o_index)
+endif
 
 ! This kind may have its own module that needs to read more
 select case(obs_def%kind)
@@ -487,14 +476,13 @@ select case(obs_def%kind)
 end select
 
 ! Read the time for the observation
-obs_def%time = read_time(ifile, fileformat)
+obs_def%time = read_time(ifile, fform)
 
-SELECT CASE (fileformat)
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-      read(ifile) obs_def%error_variance
-   CASE DEFAULT
-      read(ifile, *) obs_def%error_variance
-END SELECT
+if (is_ascii) then
+   read(ifile, *) obs_def%error_variance
+else
+   read(ifile)    obs_def%error_variance
+endif
 
 end subroutine read_obs_def
 
@@ -509,35 +497,23 @@ type(obs_def_type),         intent(in) :: obs_def
 integer,                    intent(in) :: key
 character(len=*), intent(in), optional :: fform
 
-character(len=32) :: fileformat
+logical :: is_ascii
 
 if ( .not. module_initialized ) call initialize_module
 
-! this default should probably be 'FORMATTED' to be
-! consistent with the alternative of 'UNFORMATTED'. 
-! (in the code below anything that is not a variant of
-! unformatted is the default case so for now it does not matter.)
-fileformat = "ascii"   ! supply default
-if(present(fform)) fileformat = trim(adjustl(fform))
+is_ascii = ascii_file_format(fform)
 
 ! Write the 5 character identifier for verbose formatted output
-SELECT CASE (fileformat)
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-      continue
-   CASE DEFAULT
-      write(ifile, 11)
-11    format('obdef')
-END SELECT
+if (is_ascii) write(ifile, '("obdef")')
 
 ! Write out the location, kind and error variance
-call write_location(ifile, obs_def%location, fileformat)
-SELECT CASE (fileformat)
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-      write(ifile) obs_def%kind
-   CASE DEFAULT
-      write(ifile, '(''kind'')' )
-      write(ifile, *) obs_def%kind
-END SELECT
+call write_location(ifile, obs_def%location, fform)
+if (is_ascii) then
+   write(ifile, '("kind")' )
+   write(ifile, *) obs_def%kind
+else
+   write(ifile)    obs_def%kind
+endif
 
 ! This kind may have its own module that needs to write more
 select case(obs_def%kind)
@@ -557,14 +533,13 @@ select case(obs_def%kind)
          source, revision, revdate)
 end select
 
-call write_time(ifile, obs_def%time, fileformat)
+call write_time(ifile, obs_def%time, fform)
 
-SELECT CASE (fileformat)
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-      write(ifile) obs_def%error_variance
-   CASE DEFAULT
-      write(ifile, *) obs_def%error_variance
-END SELECT
+if (is_ascii) then
+   write(ifile, *) obs_def%error_variance
+else
+   write(ifile)    obs_def%error_variance
+endif
 
 end subroutine write_obs_def
 
