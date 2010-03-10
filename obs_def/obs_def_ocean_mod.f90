@@ -97,14 +97,14 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 !   case(CODAR_RADIAL_VELOCITY)
-!      call read_radial_vel(obs_def%key, ifile, fileformat)
+!      call read_radial_vel(obs_def%key, ifile, fform)
 ! END DART PREPROCESS READ_OBS_DEF
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 !   case(CODAR_RADIAL_VELOCITY)
-!      call write_radial_vel(obs_def%key, ifile, fileformat)
+!      call write_radial_vel(obs_def%key, ifile, fform)
 ! END DART PREPROCESS WRITE_OBS_DEF
 !-----------------------------------------------------------------------------
 
@@ -128,7 +128,8 @@ module obs_def_ocean_mod
 use        types_mod, only : r8, missing_r8, PI, deg2rad
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              check_namelist_read, find_namelist_in_file,   &
-                             nmlfileunit, do_output, do_nml_file, do_nml_term
+                             nmlfileunit, do_output, do_nml_file, do_nml_term, &
+                             ascii_file_format
 use     location_mod, only : location_type, write_location, read_location, &
                              interactive_location, get_location
 use  assim_model_mod, only : interpolate
@@ -252,13 +253,13 @@ if ( .not. module_initialized ) call initialize_module
 is_asciifile = ascii_file_format(fform)
 
 if (is_asciifile) then
-      ! Read the character identifier for verbose formatted output
-      read(ifile, FMT="(a5)") header
-      if(header /= 'CODAR') then
-         call error_handler(E_ERR,'read_radial_vel', &
-              "Expected header 'CODAR' in input file", &
-              source, revision, revdate)
-      endif
+   ! Read the character identifier for verbose formatted output
+   read(ifile, FMT="(a5)") header
+   if(header /= 'CODAR') then
+      call error_handler(E_ERR,'read_radial_vel', &
+           "Expected header 'CODAR' in input file", &
+           source, revision, revdate)
+   endif
 endif
 
 ! read_location is a DART library routine that expects an optional string
@@ -667,36 +668,6 @@ if (debug) then
 endif
 
 end subroutine get_expected_radial_vel
-
-!----------------------------------------------------------------------
-
-function ascii_file_format(fform)
-
-! Common routine for determining input file format. 
-
-character(len=*), intent(in), optional :: fform     
-logical                                :: ascii_file_format
-
-! Returns .true. if file is formatted/ascii, .false. if unformatted/binary
-! Defaults (if fform not specified) to formatted/ascii.
-
-if ( .not. module_initialized ) call initialize_module
-
-! Default to formatted/ascii. 
-if ( .not. present(fform)) then 
-   ascii_file_format = .true. 
-   return 
-endif
-
-SELECT CASE (trim(adjustl(fform)))
-   CASE("unf", "UNF", "unformatted", "UNFORMATTED") 
-      ascii_file_format = .false.
-   CASE DEFAULT
-      ascii_file_format = .true.
-END SELECT
-
-
-end function ascii_file_format
 
 !----------------------------------------------------------------------
 

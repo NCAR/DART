@@ -24,13 +24,13 @@
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 !      case(TES_NADIR_OBS)
-!         call read_TES_nadir_obs(obs_def%key, ifile, fileformat)
+!         call read_TES_nadir_obs(obs_def%key, ifile, fform)
 ! END DART PREPROCESS READ_OBS_DEF
 
 
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 !      case(TES_NADIR_OBS)
-!         call write_TES_nadir_obs(obs_def%key, ifile, fileformat)
+!         call write_TES_nadir_obs(obs_def%key, ifile, fform)
 ! END DART PREPROCESS WRITE_OBS_DEF
 
 
@@ -53,7 +53,8 @@ use        types_mod, only : r8, missing_r8, PI, DEG2RAD
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              check_namelist_read, find_namelist_in_file, &
                              logfileunit, nmlfileunit, do_output, file_exist, &
-                             open_file, close_file, get_unit, do_nml_file, do_nml_term
+                             open_file, close_file, get_unit, do_nml_file, do_nml_term, &
+                             ascii_file_format
 use     location_mod, only : location_type, set_location, get_location, &
                              vert_is_undef, vert_is_surface, &
                              vert_is_level, vert_is_pressure, vert_is_height, &
@@ -479,32 +480,25 @@ end subroutine get_TES_nadir
 integer,          intent(in)           :: teskey, ifile
 character(len=*), intent(in), optional :: fform
 
-character(len=32) :: fileformat
 integer :: i
 
 if ( .not. module_initialized ) call initialize_module
 
-fileformat = "ascii"   ! supply default
-if(present(fform)) fileformat = trim(adjustl(fform))
-
 ! write out obs_seq info 
-SELECT CASE ( fileformat )
-
-   CASE( "unf", "UNF", "unformatted", "UNFORMATTED" )   ! binary stuff
-      write(ifile) teskey
-      write(ifile) TES_data(teskey)%scan_length, &
+if (ascii_file_format(fform)) then
+   write(ifile,98) teskey
+   write(ifile, *) TES_data(teskey)%scan_length, &
                    TES_data(teskey)%wavenumber, &
                    TES_data(teskey)%emission_angle, &
                    TES_data(teskey)%l_sub_s
-      continue
+else
+   write(ifile) teskey
+   write(ifile) TES_data(teskey)%scan_length, &
+                TES_data(teskey)%wavenumber, &
+                TES_data(teskey)%emission_angle, &
+                TES_data(teskey)%l_sub_s
+endif
 
-   CASE default
-      write(ifile,98) teskey
-      write(ifile, *) TES_data(teskey)%scan_length, &
-                      TES_data(teskey)%wavenumber, &
-                      TES_data(teskey)%emission_angle, &
-                      TES_data(teskey)%l_sub_s
-END SELECT
 98 format('TES_nadir_obs', i8)
 
 end subroutine write_TES_nadir_obs
@@ -525,29 +519,21 @@ integer             :: keyin    ! the metadata key in the current obs sequence
 integer             :: scan_length
 real(r8)            :: wavenumber, emission_angle, l_sub_s
 character(len=13)   :: header
-character(len=32)   :: fileformat
 
 if ( .not. module_initialized ) call initialize_module
 
-fileformat = "ascii"   ! supply default
-if(present(fform)) fileformat = trim(adjustl(fform))
-
-SELECT CASE ( fileformat )
-
-   CASE( "unf", "UNF", "unformatted", "UNFORMATTED" )   ! binary stuff
-      read(ifile) keyin          ! read and throw away
-      read(ifile) scan_length, wavenumber, emission_angle, l_sub_s
-
-   CASE default
-      read(ifile, fmt='(a13, i8)') header, keyin    ! throw away keyin
-      if(header /= 'TES_nadir_obs') then
-         write(errstring,*)'Expected header "TES_nadir_obs" in input file'
-         call error_handler(E_ERR,'read_TES_nadir_obs',errstring, &
-                                  source, revision, revdate)
-      end if
-      read(ifile,*) scan_length, wavenumber, emission_angle, l_sub_s
-
-END SELECT
+if (ascii_file_format(fform)) then
+   read(ifile, fmt='(a13, i8)') header, keyin    ! throw away keyin
+   if(header /= 'TES_nadir_obs') then
+      write(errstring,*)'Expected header "TES_nadir_obs" in input file'
+      call error_handler(E_ERR,'read_TES_nadir_obs',errstring, &
+                               source, revision, revdate)
+   end if
+   read(ifile,*) scan_length, wavenumber, emission_angle, l_sub_s
+else
+   read(ifile) keyin          ! read and throw away
+   read(ifile) scan_length, wavenumber, emission_angle, l_sub_s
+endif
 
 ! increment key and set all private data for this observation
 call set_TES_nadir(teskey, scan_length, wavenumber, emission_angle, l_sub_s)

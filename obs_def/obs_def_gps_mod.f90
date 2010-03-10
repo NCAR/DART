@@ -31,13 +31,13 @@
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 !         case(GPSRO_REFRACTIVITY)
-!            call read_gpsro_ref(obs_def%key, ifile, fileformat)
+!            call read_gpsro_ref(obs_def%key, ifile, fform)
 ! END DART PREPROCESS READ_OBS_DEF
 
 
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 !         case(GPSRO_REFRACTIVITY)
-!            call write_gpsro_ref(obs_def%key, ifile, fileformat)
+!            call write_gpsro_ref(obs_def%key, ifile, fform)
 ! END DART PREPROCESS WRITE_OBS_DEF
 
 
@@ -60,7 +60,8 @@ use        types_mod, only : r8, missing_r8, RAD2DEG, DEG2RAD, PI
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              file_exist, open_file, close_file, nmlfileunit, &
                              check_namelist_read, find_namelist_in_file, &
-                             do_output, do_nml_file, do_nml_term
+                             do_output, do_nml_file, do_nml_term, &
+                             ascii_file_format
 use     location_mod, only : location_type, set_location, get_location, &
                              write_location, read_location, vert_is_height, &
                              VERTISHEIGHT
@@ -231,34 +232,25 @@ end subroutine get_gpsro_ref
 integer,          intent(in)           :: gpskey, ifile
 character(len=*), intent(in), optional :: fform
 
-character(len=32) :: fileformat
 
 if ( .not. module_initialized ) call initialize_module
 
-fileformat = "ascii"   ! supply default
-if(present(fform)) fileformat = trim(adjustl(fform))
-
 ! Write the 5 character identifier for verbose formatted output
 ! Write out the obs_def key for this observation
-SELECT CASE (fileformat)
-
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-    write(ifile) gpskey
-    write(ifile) gps_data(gpskey)%rfict, gps_data(gpskey)%step_size, &
-                 gps_data(gpskey)%ray_top, &
-                (gps_data(gpskey)%ray_direction(ii), ii=1, 3), &
-                 gps_data(gpskey)%gpsro_ref_form
-    continue
-
-
-   CASE DEFAULT
-    write(ifile,11) gpskey
-    write(ifile, *) gps_data(gpskey)%rfict, gps_data(gpskey)%step_size, &
-                    gps_data(gpskey)%ray_top, &
-                   (gps_data(gpskey)%ray_direction(ii), ii=1, 3), &
-                    gps_data(gpskey)%gpsro_ref_form
-END SELECT
+if (ascii_file_format(fform)) then
+   write(ifile,11) gpskey
+   write(ifile, *) gps_data(gpskey)%rfict, gps_data(gpskey)%step_size, &
+                   gps_data(gpskey)%ray_top, &
+                  (gps_data(gpskey)%ray_direction(ii), ii=1, 3), &
+                   gps_data(gpskey)%gpsro_ref_form
 11  format('gpsroref', i8)
+else
+   write(ifile) gpskey
+   write(ifile) gps_data(gpskey)%rfict, gps_data(gpskey)%step_size, &
+                gps_data(gpskey)%ray_top, &
+               (gps_data(gpskey)%ray_direction(ii), ii=1, 3), &
+                gps_data(gpskey)%gpsro_ref_form
+endif
 
 end subroutine write_gpsro_ref
 
@@ -282,29 +274,20 @@ integer :: keyin    ! the metadata key in the current obs sequence
 real(r8) :: nx, ny, nz, rfict0, ds, htop
 character(len=6) :: subset0
 character(len=8) :: header
-character(len=32) :: fileformat
 
 if ( .not. module_initialized ) call initialize_module
 
-fileformat = "ascii"   ! supply default
-if(present(fform)) fileformat = trim(adjustl(fform))
-
-! Read the character identifier for verbose formatted output
-SELECT CASE (fileformat)
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-
-      read(ifile) keyin          ! read and throw away
-      read(ifile) rfict0, ds, htop, nx, ny, nz, subset0
-
-   CASE DEFAULT
-      read(ifile, FMT='(a8, i8)') header, keyin    ! throw away keyin
-      if(header /= 'gpsroref') then
-          call error_handler(E_ERR,'read_gpsro_ref', &
-          'Expected header "gpsroref" in input file', source, revision, revdate)
-      endif
-      read(ifile, *) rfict0, ds, htop, nx, ny, nz, subset0
-
-END SELECT
+if (ascii_file_format(fform)) then
+   read(ifile, FMT='(a8, i8)') header, keyin    ! throw away keyin
+   if(header /= 'gpsroref') then
+       call error_handler(E_ERR,'read_gpsro_ref', &
+       'Expected header "gpsroref" in input file', source, revision, revdate)
+   endif
+   read(ifile, *) rfict0, ds, htop, nx, ny, nz, subset0
+else
+   read(ifile) keyin          ! read and throw away
+   read(ifile) rfict0, ds, htop, nx, ny, nz, subset0
+endif
 
 
 ! increment key and set all private data for this observation
