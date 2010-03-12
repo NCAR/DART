@@ -214,7 +214,7 @@ integer  :: my_state_kind(ens_handle%my_num_vars), nth_obs
 integer  :: num_close_obs_buffered, num_close_states_buffered
 integer  :: num_close_obs_calls_made, num_close_states_calls_made
 ! GSR add new count for only the 'assimilate' type close obs in the tile
-integer  :: assim_num_close_obs, localization_unit, secs, days, thiskind, rev_num_close_obs
+integer  :: localization_unit, secs, days, rev_num_close_obs
 character(len = 102)  :: base_loc_text   ! longest location formatting possible
 
 type(location_type)  :: my_obs_loc(obs_ens_handle%my_num_vars)
