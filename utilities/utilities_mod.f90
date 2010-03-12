@@ -1550,7 +1550,6 @@ integer,           intent(in) :: index
 character(len=128)            :: get_next_filename
 
 integer :: i, ios, funit
-integer :: mynlines, mylinelen, strlen
 
 character(len=512)  :: string
 
