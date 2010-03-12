@@ -20,7 +20,8 @@ module model_mod
 use        types_mod, only : r8, MISSING_R8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type,      get_close_maxdist_init, &
-                             get_close_obs_init, get_close_obs, set_location
+                             get_close_obs_init, get_close_obs, set_location, &
+                             set_location_missing
 use    utilities_mod, only : register_module, error_handler, nc_check, &
                              E_ERR, E_MSG
                              ! nmlfileunit, do_output, do_nml_file, do_nml_term,  &
@@ -216,8 +217,16 @@ integer,             intent(in) :: itype
 real(r8),           intent(out) :: obs_val
 integer,            intent(out) :: istatus
 
-! Default for successful return
-istatus = 0
+! This should be the result of the interpolation of a
+! given kind (itype) of variable at the given location.
+obs_val = MISSING_R8
+
+! The return code for successful return should be 0. 
+! Any positive number is an error.
+! Negative values are reserved for use by the DART framework.
+! Using distinct positive values for different types of errors can be
+! useful in diagnosing problems.
+istatus = 1
 
 end subroutine model_interpolate
 
@@ -248,9 +257,13 @@ subroutine get_state_meta_data(index_in, location, var_type)
 ! required for all filter applications as it is required for computing
 ! the distance between observations and state variables.
 
-integer,             intent(in)  :: index_in
-type(location_type), intent(out) :: location
+integer,             intent(in)            :: index_in
+type(location_type), intent(out)           :: location
 integer,             intent(out), optional :: var_type
+
+! these should be set to the actual location and obs kind
+location = set_location_missing()
+if (present(var_type)) var_type = 0  
 
 end subroutine get_state_meta_data
 
