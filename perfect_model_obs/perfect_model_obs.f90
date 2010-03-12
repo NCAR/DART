@@ -124,7 +124,7 @@ integer                 :: additional_qc, additional_copies, forward_unit
 integer                 :: ierr, io, istatus, num_obs_in_set, nth_obs
 integer                 :: model_size, key_bounds(2), num_qc, last_key_used
 
-real(r8)                :: true_obs(1), obs_value(1), qc(1), errvar
+real(r8)                :: true_obs(1), obs_value(1), qc(1)
 
 character(len=129)      :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
 character(len=metadatalength) :: state_meta(1)
