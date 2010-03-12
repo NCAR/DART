@@ -574,13 +574,15 @@ subroutine pert_model_state(state, pert_state, interf_provided)
 ! may do so by adding an O(0.1) magnitude perturbation to each
 ! model state variable independently. The interf_provided argument
 ! should be returned as .true. if the model wants to do its own
-! perturbing of states.
+! perturbing of states.  The returned pert_state should in any
+! case be valid, since it will be read by filter even if 
+! interf_provided is .false.
 
 real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
-pert_state      = MISSING_R8
+pert_state      = state
 interf_provided = .false.
 
 end subroutine pert_model_state
