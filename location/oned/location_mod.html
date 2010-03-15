@@ -20,15 +20,62 @@
 </center>
 
 <H1>MODULE (1D) location_mod</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<P><small>Latest subversion revision tag:
+<!-- version tag follows, do not edit --> $Id$
+</small></P>
 
 <P>
-   Provides a representation of a physical location on 1-D periodic
-   domain. A type that abstracts the location is provided along
-   with operators to compute the distance between two locations. This is
-   a member of a class of similar location modules that provide the same 
-   abstraction for different represenations of physical space (for instance
-   a three-dimensional spherical shell).
+The DART framework needs to be able to compute distances
+between locations, to pass location information to and from the
+model interface code (in model_mod.f90), and to be able to
+read and write location information to files.
+DART isolates all this location information into separate modules 
+so that the main algorithms can operate with the same code independent
+of whether the model uses latitude/longitude/height, one-d unit
+sphere coordinates, cylindrical coordinates, etc.  DART provides
+about half a dozen possible coordinate systems, and others can be added.  
+</P>
+<P>
+This locations module provides a representation of a physical location 
+on a periodic 1D domain with location values between 0 and 1.
+A type that abstracts the location is provided along
+with operators to set, get, read, write, and compute distances between 
+locations. This is a member of a class of similar location modules that 
+provide the same abstraction for different represenations of physical space.
+</P>
+<P>
+All possible location modules define the same module name 
+<em class=code>location_mod</em>.  Therefore, the DART framework and any
+user code should include a Fortran 90
+'use' statement of 'location_mod'.  The selection of exactly which
+location module is compiled is specified by the source file name
+in the <em class=file>path_names_xxx</em> file, which is read by
+the <em class=file>mkmf_xxx</em> scripts.
+</P>
+<P>
+The model-specific <em class=file>model_mod.f90</em> files need to
+define four <em class=code>get_close</em> routines, but in most cases
+they can simply put a <em class=code>use</em> statement at the top
+which uses the routines in the locations module, and they do not
+have to provide any additional code.  
+</P>
+<P>
+However, if the model interface code wants to intercept and alter
+the default behavior of the get_close routines, they are able to.
+The correct usage of the <em class=code>get_close</em> routines is as follows:
+<pre>
+<em class=code>
+call get_close_maxdist_init()  ! must be called before get_close_obs_init()
+call get_close_obs_init()
+
+call get_close_obs()           ! many, many times
+
+call get_close_obs_destroy()
+</em>
+</pre>
+Regardless of the fact that the names include the string 'obs', they are
+intended for use with any group of locations in the system, frequently
+state vector items or observations, but any location is acceptable.
 </P>
 
 <!--==================================================================-->
@@ -57,6 +104,7 @@ random_seq_mod
 <TABLE>
 <TR><TD><em class=code>use location_mod, only : </em></TD>
                    <TD><A HREF="#location_type">location_type</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_type">get_close_type</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_location">get_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_location">set_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#write_location">write_location</A></TD></TR>
@@ -64,19 +112,31 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#interactive_location">interactive_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_location_missing">set_location_missing</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#query_location">query_location</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_type">get_close_type</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_destroy">get_close_obs_destroy</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_dist">get_dist</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationDims">LocationDims</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationName">LocationName</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationLName">LocationLName</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#horiz_dist_only">horiz_dist_only</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_undef">vert_is_undef</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_surface">vert_is_surface</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_pressure">vert_is_pressure</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_level">vert_is_level</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_height">vert_is_height</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISUNDEF</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISSURFACE</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISLEVEL</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISPRESSURE</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISHEIGHT</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#equal">operator(==)</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#not_equal">operator(/=)</A></TD></TR>
 </TABLE>
 
 <P>
-Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&amp;location_nml</em> </A>
-may be read from file <em class=file>input.nml</em>.
+There is currently no namelist interface for the 1D location module.
 </P>
 
 <P>
@@ -85,13 +145,13 @@ may be read from file <em class=file>input.nml</em>.
    <em class=optionalcode>[like this]</em>.
 </P>
 
-<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
+<!--===================== DESCRIPTION OF A LOCAL TYPE =====================-->
 
 <A NAME="location_type"></A>
 <br>
-<div class=routine>
-<pre>
+<div class=type>
 <em class=call>type location_type</em>
+<pre>
    private
    real(r8) :: x
 end type location_type
@@ -107,7 +167,6 @@ one-dimensional periodic domain.
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
-
 <TR><TH align=left>Component   </TH>
     <TH align=left>Description </TH></TR>
 <TR><TD valign=top> x            </TD>
@@ -117,13 +176,13 @@ one-dimensional periodic domain.
 </div>
 <br>
 
-<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
+<!--===================== DESCRIPTION OF A LOCAL TYPE =====================-->
 
 <A NAME="get_close_type"></A>
 <br>
 <div class=type>
+<em class=call>type get_close_type</em>
 <pre>
-type get_close_type
    private
    integer  :: num
    real(r8) :: maxdist
@@ -144,7 +203,7 @@ stubs.
 <TR><TH align=left>Component   </TH>
     <TH align=left>Description </TH></TR>
 <TR><TD valign=top> num            </TD>
-    <TD>Number of observations in list</TD></TR>
+    <TD>Number of locations in list</TD></TR>
 <TR><TD valign=top> maxdist            </TD>
     <TD>Threshhold distance. Anything closer is close.</TD></TR>
 </TABLE>
@@ -159,8 +218,8 @@ stubs.
 <div class=routine>
 <em class=call> var = get_location(loc) </em>
 <pre>
-real(r8),            intent(inout) :: <em class=code>get_location</em>
-type(location_type), intent(in)    :: <em class=code>loc</em>
+real(r8)                        :: <em class=code>get_location</em>
+type(location_type), intent(in) :: <em class=code>loc</em>
 </pre>
 </div>
 
@@ -172,10 +231,10 @@ Extracts the real location value, range 0 to 1, from a location type.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>get_location&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>The real location</TD></TR>
+<TR><TD valign=top><em class=code>get_location</em></TD>
+    <TD>The real value for a location</TD></TR>
 <TR><TD valign=top><em class=code>loc</em></TD>
-    <TD>A location type</TD></TR>
+    <TD>A location derived type</TD></TR>
 </TABLE>
 
 </div>
@@ -188,8 +247,9 @@ Extracts the real location value, range 0 to 1, from a location type.
 <div class=routine>
 <em class=call> var = set_location(x) </em>
 <pre>
-type(location_type), intent(in) :: <em class=code>set_location</em>
-real(r8), intent(in)            :: <em class=code>x</em>
+type(location_type)   :: <em class=code>set_location</em>
+real(r8), intent(in)  :: <em class=code>x</em>
+
 </pre>
 </div>
 
@@ -201,10 +261,10 @@ Returns a location type with the location x.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>set_location&nbsp;&nbsp;</em></TD>
-    <TD>A location type</TD></TR>
+<TR><TD valign=top><em class=code>set_location</em></TD>
+    <TD>A location derived type</TD></TR>
 <TR><TD valign=top><em class=code>x</em></TD>
-    <TD>Location range 0 to 1</TD></TR>
+    <TD>Location value in the range 0. to 1.</TD></TR>
 </TABLE>
 
 </div>
@@ -216,11 +276,12 @@ Returns a location type with the location x.
 <br>
 <div class=routine>
 <em class=call>call write_location(locfile, loc
-     <em class=optionalcode>[,&nbsp;fform]</em>) </em>
+     <em class=optionalcode>[, fform, charstring]</em>) </em>
 <pre>
-integer,               intent(in)      :: <em class=code> locfile </em>
-type(location_type),   intent(in)      :: <em class=code> loc </em>
-character(len=*), optional, intent(in) :: <em class=optionalcode> fform </em>
+integer,               intent(in)       :: <em class=code> locfile </em>
+type(location_type),   intent(in)       :: <em class=code> loc </em>
+character(len=*), optional, intent(in)  :: <em class=optionalcode> fform </em>
+character(len=*), optional, intent(out) :: <em class=optionalcode> charstring </em>
 </pre>
 </div>
 
@@ -229,19 +290,29 @@ character(len=*), optional, intent(in) :: <em class=optionalcode> fform </em>
 
 <P>
 Given an integer IO channel of an open file and a location, writes the
-location to this file. The fform argument controls whether write is "FORMATTED"
-or "UNFORMATTED" with default being formatted.
+location to this file. The <em class=optionalcode>fform</em> argument 
+controls whether write is "FORMATTED" or "UNFORMATTED" with default 
+being formatted.  If the final <em class=optionalcode>charstring</em>
+argument is specified, the formatted location information is written
+to the character string only, and the <em class=code>locfile</em>
+argument is ignored.  
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>locfile</em></TD>
-    <TD>the unit number of the open file.</TD></TR>
+    <TD>the unit number of an open file.</TD></TR>
 
 <TR><TD valign=top><em class=code>loc</em></TD>
     <TD>location type to be written. </TD></TR>
 
 <TR><TD valign=top><em class=optionalcode>fform</em></TD>
-    <TD>Format specifier (FORMATTED or UNFORMATTED). </TD></TR>
+    <TD>Format specifier ("FORMATTED" or "UNFORMATTED"). 
+        Default is "FORMATTED" if not specified.</TD></TR>
+
+<TR><TD valign=top><em class=optionalcode>charstring</em></TD>
+    <TD>Character buffer where formatted location string is
+        written if present, and no output is written to the
+        file unit.</TD></TR>
 
 </TABLE>
 
@@ -254,7 +325,7 @@ or "UNFORMATTED" with default being formatted.
 <br>
 <div class=routine>
 <em class=call> var = read_location(locfile
-<em class=optionalcode>[,&nbsp;fform]</em>) </em>
+<em class=optionalcode>[, fform]</em>) </em>
 <pre>
 type(location_type)                    :: <em class=code>read_location</em>
 integer, intent(in)                    :: <em class=code>locfile</em>
@@ -267,16 +338,17 @@ character(len=*), optional, intent(in) :: <em class=optionalcode>fform</em>
 
 <P>
 Reads a location_type from a file open on channel locfile using format
-fform (default is formatted).
+<em class=optionalcode>fform</em> (default is formatted).
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>read_location&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>read_location</em></TD>
     <TD>Returned location type read from file</TD></TR>
 <TR><TD valign=top><em class=code>locfile</em></TD>
     <TD>Integer channel opened to a file to be read</TD></TR>
 <TR><TD valign=top><em class=optionalcode>fform</em></TD>
-    <TD>Optional format specifier (FORMATTED or UNFORMATTED)</TD></TR>
+    <TD>Optional format specifier ("FORMATTED" or "UNFORMATTED").
+        Default "FORMATTED".</TD></TR>
 </TABLE>
 
 </div>
@@ -288,7 +360,7 @@ fform (default is formatted).
 <br>
 <div class=routine>
 <em class=call> call interactive_location(location
-<em class=optionalcode>[,&nbsp;set_to_default]</em>) </em>
+<em class=optionalcode>[, set_to_default]</em>) </em>
 <pre>
 type(location_type), intent(out) :: <em class=code>location</em>
 logical, optional, intent(in)    :: <em class=optionalcode>set_to_default</em>
@@ -306,8 +378,42 @@ get one with all elements set to 0.
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>location</em></TD>
     <TD>Location created from standard input</TD></TR>
-<TR><TD valign=top><em class=optionalcode>set_to_default&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=optionalcode>set_to_default</em></TD>
     <TD>If true, sets all elements of location type to 0</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="query_location"></A>
+<br>
+<div class=routine>
+<em class=call> var = query_location(loc
+<em class=optionalcode>[, attr]</em>) </em>
+<pre>
+real(r8)                               :: <em class=code>query_location</em>
+type(location_type), intent(in)        :: <em class=code>loc</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>attr</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the location value
+if attr = 'X' or if attr is not passed.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>query_location</em></TD>
+    <TD>Returns value of x.</TD></TR>
+<TR><TD valign=top><em class=code>loc</em></TD>
+    <TD>A location type</TD></TR>
+<TR><TD valign=top><em class=optionalcode>attr</em></TD>
+    <TD>Selects 'X'</TD></TR>
 </TABLE>
 
 </div>
@@ -332,7 +438,7 @@ Returns a location with location set to missing value from types_mod.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>set_location_missing&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>set_location_missing</em></TD>
     <TD>A location set to missing value</TD></TR>
 </TABLE>
 
@@ -341,15 +447,13 @@ Returns a location with location set to missing value from types_mod.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="query_location"></A>
+<A NAME="get_close_maxdist_init"></A>
 <br>
 <div class=routine>
-<em class=call> var = query_location(loc
-<em class=optionalcode>[,&nbsp;attr]</em>) </em>
+<em class=call> call get_close_maxdist_init(gc,maxdist) </em>
 <pre>
-real(r8), intent(out)                  :: <em class=code>query_location</em>
-type(location_type), intent(in)        :: <em class=code>loc</em>
-character(len=*), optional, intent(in) :: <em class=optionalcode>attr</em>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+real(r8), intent(in)                :: <em class=code>maxdist</em>
 </pre>
 </div>
 
@@ -357,17 +461,19 @@ character(len=*), optional, intent(in) :: <em class=optionalcode>attr</em>
 <!-- Description -->
 
 <P>
-Returns the value of x (model state component of location type) 
-if attr = 'X' or if attr is not passed.
+Sets the threshhold distance. 
+Anything closer than this is deemed to be close.
+This routine must be called first, before the other 
+<em class=code>get_close</em> routines.  
+It allocates space so it is necessary to call <em class=code>get_close_obs_destroy</em>
+when completely done with getting distances between locations.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>query_location&nbsp;&nbsp;</em></TD>
-    <TD>Returns value of x.</TD></TR>
-<TR><TD valign=top><em class=code>loc</em></TD>
-    <TD>A location type</TD></TR>
-<TR><TD valign=top><em class=optionalcode>attr</em></TD>
-    <TD>Selects 'X'</TD></TR>
+<TR><TD valign=top><em class=code>gc</em></TD>
+    <TD>Data for efficiently finding close locations.</TD></TR>
+<TR><TD valign=top><em class=code>maxdist</em></TD>
+    <TD>Anything closer than this distance is a close location.</TD></TR>
 </TABLE>
 
 </div>
@@ -378,7 +484,7 @@ if attr = 'X' or if attr is not passed.
 <A NAME="get_close_obs_init"></A>
 <br>
 <div class=routine>
-<em class=call> call get_close_obs_init(gc,num,obs) </em>
+<em class=call> call get_close_obs_init(gc, num, obs)</em>
 <pre>
 type(get_close_type),             intent(inout) :: <em class=code>gc</em>
 integer,                          intent(in)    :: <em class=code>num</em>
@@ -393,6 +499,13 @@ type(location_type), dimension(:) intent(in)    :: <em class=code>obs</em>
 Initialize storage for efficient identification of locations close
 to a given location. The oned implementation is minimal and just
 records the number of locations here.
+Must be called after <em class=code>get_close_maxdist_init</em>, and
+the list of locations here must be the same as the list of locations
+passed into <em class=code>get_close_obs()</em>.  If the list changes,
+<em class=code>get_close_obs_destroy()</em> must be called, and both
+the initialization routines must be called again.
+It allocates space so it is necessary to call <em class=code>get_close_obs_destroy</em>
+when completely done with getting distances between locations.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -401,7 +514,7 @@ records the number of locations here.
         close to a given location.</TD></TR>
 <TR><TD valign=top><em class=code>num</em></TD>
     <TD>The number of locations in the list.</TD></TR>
-<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>obs</em></TD>
     <TD>The locations of each element in the list, 
         not used in 1D implementation.</TD></TR>
 </TABLE>
@@ -434,7 +547,13 @@ real(r8), dimension(:),            intent(out) :: <em class=code>dist</em>
 <P>
 Given a single location and a list of other locations, returns the indices
 of all the locations close to the single one along with the number of
-these and the distances for the close ones.
+these and the distances for the close ones.  The list of locations
+passed in via the <em class=code>obs</em> argument must be identical to
+the list of <em class=code>obs</em> passed into the most recent call
+to <em class=code>get_close_obs_init()</em>.  If the list of locations
+of interest changes <em class=code>get_close_obs_destroy()</em> must
+be called and then the two initialization routines must be called 
+before using <em class=code>get_close_obs()</em> again.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -443,14 +562,14 @@ these and the distances for the close ones.
         locations close to a given location.</TD></TR>
 <TR><TD valign=top><em class=code>base_obs_loc</em></TD>
     <TD>Single given location.</TD></TR>
-<TR><TD valign=top><em class=code>base_obs_kind&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>base_obs_kind</em></TD>
     <TD>Kind of the single location.</TD></TR>
 <TR><TD valign=top><em class=code>obs</em></TD>
-    <TD>List of observations from which close ones are to be found.</TD></TR>
+    <TD>List of locations from which close ones are to be found.</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind</em></TD>
-    <TD>Kind associated with observations in obs list.</TD></TR>
+    <TD>Kind associated with locations in obs list.</TD></TR>
 <TR><TD valign=top><em class=code>num_close</em></TD>
-    <TD>Number of observations close to the given location.</TD></TR>
+    <TD>Number of locations close to the given location.</TD></TR>
 <TR><TD valign=top><em class=code>close_ind</em></TD>
     <TD>Indices of those locations that are close.</TD></TR>
 <TR><TD valign=top><em class=code>dist</em></TD>
@@ -463,13 +582,12 @@ these and the distances for the close ones.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_close_maxdist_init"></A>
+<A NAME="get_close_obs_destroy"></A>
 <br>
 <div class=routine>
-<em class=call> call get_close_maxdist_init(gc,maxdist) </em>
+<em class=call> call get_close_obs_destroy(gc) </em>
 <pre>
 type(get_close_type), intent(inout) :: <em class=code>gc</em>
-real(r8), intent(in)                :: <em class=code>maxdist</em>
 </pre>
 </div>
 
@@ -477,25 +595,321 @@ real(r8), intent(in)                :: <em class=code>maxdist</em>
 <!-- Description -->
 
 <P>
-Sets the threshhold distance. 
-Anything closer that this is deemed to be close.
+Releases memory associated with the <em class=code>gc</em>
+derived type.  Must be called whenever the list of locations
+changes, and then <em class=code>get_close_maxdist_init</em> and
+<em class=code>get_close_obs_init</em> must be called again
+with the new locations list.
 </P>
+
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>gc</em></TD>
     <TD>Data for efficiently finding close locations.</TD></TR>
-<TR><TD valign=top><em class=code>maxdist&nbsp;&nbsp;</em></TD>
-    <TD>Anything closer than this distance is a close location.</TD></TR>
 </TABLE>
 
 </div>
 <br>
 
-<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_dist"></A>
+<br>
+<div class=routine>
+<em class=call>var = get_dist(loc1, loc2,
+ <em class=optionalcode>[, kind1, kind2]</em>) </em>
+<pre>
+real(r8)                        :: get_dist
+type(location_type), intent(in) :: <em class=code>loc1</em>
+type(location_type), intent(in) :: <em class=code>loc2</em>
+integer, optional,   intent(in) :: <em class=optionalcode>kind1</em>
+integer, optional,   intent(in) :: <em class=optionalcode>kind2</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Return the distance between 2 locations.  Since this is a periodic
+domain, the shortest distance may wrap around.
+</P>
+<P>
+The kind arguments are not used by the default location code, but
+are available to any user-supplied distance routines which want to
+do specialized calculations based on the kinds associated with each
+of the two locations.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>loc1</em></TD>
+    <TD>First of two locations to compute distance between.</TD></TR>
+<TR><TD valign=top><em class=code>loc2</em></TD>
+    <TD>Second of two locations to compute distance between.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>kind1</em></TD>
+    <TD>DART kind associated with location 1.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>kind2</em></TD>
+    <TD>DART kind associated with location 2.</TD></TR>
+
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>distance between loc1 and loc2.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="vert_is_undef"></A>
+<br>
+<div class=routine>
+<em class=call> var = vert_is_undef(loc) </em>
+<pre>
+logical                         :: <em class=code>vert_is_undef</em>
+type(location_type), intent(in) :: <em class=code>loc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Always returns false; this locations module has no vertical coordinates.
+Provided only for compile-time compatibility with other location modules.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>vert_is_undef</em></TD>
+    <TD>Always returns .FALSE.</TD></TR>
+<TR><TD valign=top><em class=code>loc</em></TD>
+    <TD>A location type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="vert_is_surface"></A>
+<br>
+<div class=routine>
+<em class=call> var = vert_is_surface(loc) </em>
+<pre>
+logical                         :: <em class=code>vert_is_surface</em>
+type(location_type), intent(in) :: <em class=code>loc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Always returns false; this locations module has no vertical coordinates.
+Provided only for compile-time compatibility with other location modules.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>vert_is_surface</em></TD>
+    <TD>Always returns .FALSE.</TD></TR>
+<TR><TD valign=top><em class=code>loc</em></TD>
+    <TD>A location type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="vert_is_pressure"></A>
+<br>
+<div class=routine>
+<em class=call> var = vert_is_pressure(loc) </em>
+<pre>
+logical                         :: <em class=code>vert_is_pressure</em>
+type(location_type), intent(in) :: <em class=code>loc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Always returns false; this locations module has no vertical coordinates.
+Provided only for compile-time compatibility with other location modules.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>vert_is_pressure</em></TD>
+    <TD>Always returns .FALSE.</TD></TR>
+<TR><TD valign=top><em class=code>loc</em></TD>
+    <TD>A location type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="vert_is_level"></A>
+<br>
+<div class=routine>
+<em class=call> var = vert_is_level(loc) </em>
+<pre>
+logical                         :: <em class=code>vert_is_level</em>
+type(location_type), intent(in) :: <em class=code>loc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Always returns false; this locations module has no vertical coordinates.
+Provided only for compile-time compatibility with other location modules.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>vert_is_level</em></TD>
+    <TD>Always returns .FALSE.</TD></TR>
+<TR><TD valign=top><em class=code>loc</em></TD>
+    <TD>A location type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="vert_is_height"></A>
+<br>
+<div class=routine>
+<em class=call> var = vert_is_height(loc) </em>
+<pre>
+logical                         :: <em class=code>vert_is_height</em>
+type(location_type), intent(in) :: <em class=code>loc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Always returns false; this locations module has no vertical coordinates.
+Provided only for compile-time compatibility with other location modules.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>vert_is_height</em></TD>
+    <TD>Always returns .FALSE.</TD></TR>
+<TR><TD valign=top><em class=code>loc</em></TD>
+    <TD>A location type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--=============== DESCRIPTION OF A ROUTINE =================-->
+
+<A NAME="has_vertical_localization"></A>
+<br>
+<div class=routine>
+<em class=call>var = has_vertical_localization()</em>
+<pre>
+logical :: has_vertical_localization
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Always returns false; this locations module has no vertical coordinates.
+Provided only for compile-time compatibility with other location modules.
+</P>
+<P>
+See note in threed_sphere locations module about the function name.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="equal"></A>
+<br>
+<div class=routine>
+<em class=call> loc1 == loc2</em>
+<pre>
+type(location_type), intent(in) :: <em class=code>loc1, loc2</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+ Returns true if the two location types have identical values, 
+ else false.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="not_equal"></A>
+<br>
+<div class=routine>
+<em class=call>loc1 /= loc2</em>
+<pre>
+type(location_type), intent(in) :: <em class=code>loc1, loc2</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+ Returns true if the two location types 
+ do NOT have identical values, else false.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="vert_constants"></A>
+<br>
+<div class=routine>
+<pre>
+<em class=call>integer, parameter :: VERTISUNDEF    = -2</em>
+<em class=call>integer, parameter :: VERTISSURFACE  = -1</em>
+<em class=call>integer, parameter :: VERTISLEVEL    =  1</em>
+<em class=call>integer, parameter :: VERTISPRESSURE =  2</em>
+<em class=call>integer, parameter :: VERTISHEIGHT   =  3</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+This locations module has no vertical coordinate, but for
+compatibility with other location modules, these are defined.
+</P>
+
+</div>
+<br>
+
+<!--=============== DESCRIPTION OF A PUBLIC CONSTANT =================-->
 
 <A NAME="LocationDims"></A>
 <br>
 <div class=routine>
+<pre>
 <em class=call>integer, parameter :: LocationDims = 1</em>
+</pre>
 </div>
 
 <div class=indent1>
@@ -511,12 +925,14 @@ location modules.
 </div>
 <br>
 
-<!--============= DESCRIPTION OF A PUBLIC CONSTANT =================-->
+<!--=============== DESCRIPTION OF A PUBLIC CONSTANT =================-->
 
 <A NAME="LocationName"></A>
 <br>
 <div class=routine>
+<pre>
 <em class=call>character(len=129), parameter :: LocationName = "loc1d"</em>
+</pre>
 </div>
 
 <div class=indent1>
@@ -524,8 +940,7 @@ location modules.
 
 <P>
 This is a <b>constant</b>. 
-A parameter to identify this location module
-in netCDF output metadata.
+A parameter to identify this location module in output metadata.
 </P>
 
 </div>
@@ -536,7 +951,9 @@ in netCDF output metadata.
 <A NAME="LocationLName"></A>
 <br>
 <div class=routine>
-<em class=call>character(len=129), parameter :: LocationLName = "location&nbsp;on&nbsp;unit&nbsp;circle"</em>
+<pre>
+<em class=call>character(len=129), parameter :: LocationLName = "location on unit circle"</em>
+</pre>
 </div>
 
 <div class=indent1>
@@ -545,11 +962,18 @@ in netCDF output metadata.
 <P>
 This is a <b>constant</b>. 
 A parameter 
-to identify this location module in netCDF output long name metadata.
+to identify this location module in output long name metadata.
 </P>
 
 </div>
 <br>
+
+<!--===================== DESCRIPTION OF A NAMELIST =====================-->
+
+<A NAME="Namelist"></A>
+<HR>
+<H2>NAMELIST</H2>
+<P>This version of the locations module does not have any namelist input.</P>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -558,12 +982,7 @@ to identify this location module in netCDF output long name metadata.
 <A NAME="FilesUsed"></A>
 <HR>
 <H2>FILES</H2>
-<TABLE border=0 >
-<TR><TH>filename</TH>
-    <TH>purpose</TH></TR>
-<TR><TD>input.nml</TD>
-    <TD>to read the location_mod namelist</TD></TR>
-</TABLE>
+<P>None.</P>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
@@ -616,8 +1035,7 @@ none at this time
 <A NAME="FuturePlans"></A>
 <HR>
 <H2>FUTURE PLANS</H2>
-<P>Eventually, a more general file descriptor type should replace the
-use of the integer unit number.
+<P>None.
 </P>
 
 <!--==================================================================-->
@@ -640,7 +1058,7 @@ N/A
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br>
 This open source software is provided by UCAR, "as is",<br>
 without charge, subject to all terms of use at<br>
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
