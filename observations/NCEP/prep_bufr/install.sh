@@ -94,7 +94,7 @@ $ff grabbufr.f ../lib/bufrlib.a -o ../exe/grabbufr.x
 echo 'Compiling the blk/ublk converter program'
  
 cd ../blk_ublk
-$ff cwordsh.f ../lib/bufrlib.a -o ../exe/cwordsh.x
+$ff cwordsh.f ../lib/bufrlib.a -o ../exe/cword.x
  
 
 #  clean up
