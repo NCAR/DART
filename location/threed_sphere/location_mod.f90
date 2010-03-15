@@ -1125,9 +1125,14 @@ close_ind = -99
 if(present(dist)) dist = -99.0_r8
 this_dist = 999999.0_r8   ! something big.
 
-! FIXME:
-! shouldn't we check size(obs) as well?  if it is 0, there's also
-! no point in going on.
+! the list of locations in the obs() argument must be the same
+! as the list of locations passed into get_close_obs_init(), so
+! gc%num and size(obs) better be the same.   if the list changes,
+! you have to destroy the old gc and init a new one.
+if (size(obs) /= gc%num) then
+   write(errstring,*)'obs() array must match one passed to get_close_obs_init()'
+   call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate)
+endif
 
 ! If num == 0, no point in going any further. 
 if (gc%num == 0) return
@@ -1138,10 +1143,9 @@ if (gc%num == 0) return
 ! exhaustive search
 if(COMPARE_TO_CORRECT) then
    cnum_close = 0
-   !do i = 1, size(obs)  ! right, i believe
-   do i = 1, gc%num      ! wrong, i believe, but it is the existing code
+   do i = 1, gc%num 
    this_dist = get_dist(base_obs_loc, obs(i), base_obs_kind, obs_kind(i))
-      if(this_dist < gc%maxdist) then
+      if(this_dist <= gc%maxdist) then
          ! Add this obs to correct list
          cnum_close = cnum_close + 1
          cclose_ind(cnum_close) = i
@@ -1195,13 +1199,13 @@ do j = 1, nlat
                endif
             else
                ! Dist isn't present; add this ob to list without computing distance
-      num_close = num_close + 1
+               num_close = num_close + 1
                close_ind(num_close) = t_ind
             endif
 
             ! If dist is present and this obs' distance is less than cutoff, add it in list
             if(present(dist) .and. this_dist <= gc%maxdist) then
-      num_close = num_close + 1
+               num_close = num_close + 1
                close_ind(num_close) = t_ind
                dist(num_close) = this_dist
             endif

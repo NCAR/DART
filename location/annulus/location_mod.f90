@@ -744,9 +744,17 @@ real(r8), optional,   intent(out) :: dist(:)
 integer :: i
 real(r8) :: this_dist
 
+! the list of locations in the obs() argument must be the same
+! as the list of locations passed into get_close_obs_init(), so
+! gc%num and size(obs) better be the same.   if the list changes,
+! you have to destroy the old gc and init a new one.
+if (size(obs) /= gc%num) then
+   write(errstring,*)'obs() array must match one passed to get_close_obs_init()'
+   call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate)
+endif
+
 ! Return list of obs that are within maxdist and their distances
 num_close = 0
-!do i = 1, size(obs)  ! i believe this is right
 do i = 1, gc%num
    this_dist = get_dist(base_obs_loc, obs(i), base_obs_kind, obs_kind(i))
    if(this_dist <= gc%maxdist) then
