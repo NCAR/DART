@@ -12,11 +12,13 @@
 #  This script is used to generate daily (3:01Z to 3:00Z of next day) decoded 
 #  NCEP reanalysis PREPBUFR text/ascii data.
 #
-# you may need additional options to submit this job to LSF;
-# e.g. -P project charge code, different queue name, etc.
+# there are two ways to run this script - either submit it to a batch
+# system (LSF job commands are included), or this script can be called
+# as a command line executable.  see the sections below for what options
+# to set at the top of the script before it is run.
 #
-#--------------------------------------------------------------
-#
+# LSF batch system settings, which will certainly need to be customized
+# for your system, e.g. -P project charge code, different queue name, etc.
 #BSUB -o prepbufr.out
 #BSUB -e prepbufr.err
 #BSUB -J prepbufr
@@ -24,12 +26,10 @@
 #BSUB -W 1:00
 #BSUB -P XXXXXXXX
 #BSUB -n 1
-
-#--------------------------------------------------------------
-#
-#  This script is used to generate daily (3:01Z to 3:00Z of next day) decoded 
-#  NCEP reanalysis PREPBUFR text/ascii data.
-#  It should be run only for days within a single month.
+# 
+# to run this from the command line, see below for a choice of whether
+# to invoke this script with 4 args: year, month, start/end day, 
+# or hardcode the dates into the script and run it by name with no args.
 #
 #--------------------------------------------------------------
 # USER SET PARAMETERS
@@ -73,10 +73,24 @@ set block = no
 # file from one day beyond the last day for this to finish ok (to get obs
 # at exactly 3Z from the next file).
 
-set year     = 1989
-set month    = 1
-set beginday = 1
-set endday   = 1
+# if this is being called by another program, and passing in the dates
+# as command line arguments (or if you just prefer to call this with args), 
+# then set commline to 'yes'.  otherwise, set the year, month, and days 
+# directly in the variables below.
+
+set commline = no
+
+if ($commline == 'yes') then
+  set year     = $argv[1]
+  set month    = $argv[2]
+  set beginday = $argv[3]
+  set endday   = $argv[4]
+else
+  set year     = 2003
+  set month    = 1
+  set beginday = 10
+  set endday   = 20
+endif
 
 # directory where the BUFR files are located.  the script assumes the
 # files will be located in subdirectories by month, with the names following
@@ -99,8 +113,8 @@ set endday   = 1
 
 set BUFR_dir = ../data
 
-# directory where DART ncep observation programs are located
-
+# directory where DART prepbufr programs are located, relative
+# to the directory where this script is going to be executed.
 set DART_exec_dir = ../exe
 
 # END USER SET PARAMETERS
@@ -122,7 +136,6 @@ set oyear = $year
 set day = $beginday
 set last = $endday
 while ( $day <= $last )
-   echo '-------------------------------------- '
 
    # clear any old intermediate (text) files
    rm -f temp_obs prepqm.in prepqm.out 
@@ -262,6 +275,8 @@ while ( $day <= $last )
       echo "moving output to ${BUFR_out}"
       mv -fv temp_obs ${BUFR_out}
    endif
+
+   rm -f prepqm.in
 
    @ day++
 end
