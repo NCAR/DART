@@ -23,7 +23,7 @@ use        types_mod, only : r8
 use    utilities_mod, only : get_unit, initialize_utilities, timestamp
 use        model_mod, only : model_type, static_init_model, get_model_size, &
                              init_model_instance, read_ROSE_restart, &
-                             prog_var_to_vector, 
+                             prog_var_to_vector 
 use  assim_model_mod, only : open_restart_write, awrite_state_restart, close_restart
 use time_manager_mod, only : time_type
 
