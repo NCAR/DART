@@ -17,8 +17,11 @@ module model_mod
 !-----------------------------------------------------------------------
 
 ! DART Modules 
-use        types_mod, only : r8, pi
-use time_manager_mod, only : time_type,set_time,print_time
+use        types_mod, only : r8, digits12, pi
+use time_manager_mod, only : time_type, set_time, print_time, get_time, &
+                             operator(<), operator(>), operator(+), &
+                             operator(-), operator(/), operator(*), &
+                             operator(==), operator(/=), set_time_missing
 use     location_mod, only : location_type, get_close_maxdist_init, &
                              get_close_obs_init, get_close_obs, &
                              set_location, get_location, query_location, &
@@ -64,6 +67,7 @@ public :: model_type, &
           vector_to_prog_var, &
           read_ROSE_restart, &
           update_ROSE_restart, &
+          update_ROSE_namelist, &
           read_ROSE_tref,&
           init_model_instance, &
           end_model_instance
@@ -72,6 +76,7 @@ public :: model_type, &
 
 type model_type
   real(r8), pointer :: vars_3d(:,:,:,:)
+  type(time_type)   :: valid_time
 end type model_type
 
 integer, parameter :: TYPE_local_U0 = 0, &
@@ -104,16 +109,16 @@ type(random_seq_type)   :: random_seq
 integer :: state_num_3d = 6             ! # of 3d fields to read from file
 namelist /model_nml/ state_num_3d
 
-logical :: output_prog_diag = .false.                          !NOT USED
-character (len=50) :: input_dir = '../input_current/'          !NOT USED
-character (len=50) :: out_dir   = '/ptmp/tmatsuo/rose/'        !NOT USED
-character (len=30) :: restart_file = 'dyn_restart_001-1999.nc' !NOT USED
-real(kind=r8) :: amp_tune = 1.                                 !NOT USED  
-real(kind=r8) :: pha_tune = 0.                                 !NOT USED
-real(kind=r8) :: target_time = 0.125 ! [hr]                    !NOT USED
-integer       :: ens_element = 1                               !NOT USED
+logical :: output_prog_diag = .false.
+character(len=128)   :: input_dir = '../input_current/'
+character(len=50)   :: out_dir   = '/ptmp/tmatsuo/rose/'
+character(len=30)   :: restart_file = 'dyn_restart_001-1999.nc'
+real(kind=r8)       :: amp_tune = 1.
+real(kind=r8)       :: pha_tune = 0.
+real(kind=digits12) :: target_time = 0.125 ! [hr] 
+integer             :: ens_element = 1
 
-namelist /rose_nml/ target_time, &
+namelist /ROSE_NML/ target_time, &
                     input_dir, out_dir, restart_file,&
                     output_prog_diag, &
                     amp_tune, pha_tune, &
@@ -154,13 +159,13 @@ real(r8) :: d_lat, d_lon
 real(r8) :: z_m
 real(r8) :: dz = 2100.0_r8, zbot = 16800.0_r8
 
-! Read the namelist rose_nml from the file rose.nml
-call find_namelist_in_file("rose.nml", "rose_nml", iunit)
-read(iunit, nml = rose_nml, iostat = io)
-call check_namelist_read(iunit, io, "rose_nml")
+! Read the namelist ROSE_NML from the file rose.nml
+call find_namelist_in_file("rose.nml", "ROSE_NML", iunit)
+read(iunit, nml = ROSE_NML, iostat = io)
+call check_namelist_read(iunit, io, "ROSE_NML")
 
-if (do_nml_file()) write(nmlfileunit, nml=rose_nml)
-if (do_nml_term()) write(     *     , nml=rose_nml)
+if (do_nml_file()) write(nmlfileunit, nml=ROSE_NML)
+if (do_nml_term()) write(     *     , nml=ROSE_NML)
 
 ! Read the namelist entry for model_mod from file input.nml
 call find_namelist_in_file("input.nml", "model_nml", iunit)
@@ -185,7 +190,7 @@ if (Time_step_seconds > seconds_of_day) then
 endif
 Time_step_ROSE = set_time(Time_step_seconds, Time_step_days)
 
-call print_time(Time_step_ROSE)
+if (do_output()) call print_time(Time_step_ROSE,'ROSE time step')
 
 ! lon: long_name = "geographic longitude", units = "degrees" ;
 d_lon = 360.0_r8/real(nx)
@@ -895,9 +900,9 @@ call nc_check(nf90_put_var( ncFileID,  tVarId, var%vars_3d(:,:,:, 6), &
 ! call nc_check(nf90_put_var( ncFileID,  qnOVarId, var%vars_3d(:,:,:, 9), &
 !            start=(/ 1, 1, 1, copyindex, timeindex /) ),'nc_write_model_vars','put_var qnH')
 
-write (*,*)'Finished filling variables ...'
+if (do_output()) write (*,*)'Finished filling variables ...'
 call nc_check(nf90_sync(ncFileID),'nc_write_model_vars','sync')
-write (*,*)'netCDF file is synched ...'
+if (do_output()) write (*,*)'netCDF file is synched ...'
 
 call end_model_instance(Var)   ! should avoid any memory leaking
 
@@ -1030,13 +1035,14 @@ end subroutine vector_to_prog_var
 
 
 
-subroutine init_model_instance(var)
+subroutine init_model_instance(var, valid_time)
 !=======================================================================
 ! subroutine init_model_instance(var)
 !
 ! Initializes an instance of a ROSE model state variable
 
-type(model_type), intent(out) :: var
+type(model_type),          intent(out) :: var
+type(time_type), optional, intent( in) :: valid_time
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1046,6 +1052,12 @@ if ( .not. module_initialized ) call static_init_model
 ! convention of having the fastest-moving index on the left.
 
 allocate(var%vars_3d(nz, nx, ny, state_num_3d))
+
+if (present(valid_time)) then
+   var%valid_time = valid_time
+else
+   var%valid_time = set_time_missing()
+endif
 
 end subroutine init_model_instance
 
@@ -1070,7 +1082,6 @@ end subroutine end_model_instance
 subroutine update_ROSE_restart(file_name, var)
 !=======================================================================
 ! update ROSE restart file fields
-!
 
   character (len = *), intent(in) :: file_name
   type(model_type),    intent(in) :: var
@@ -1085,6 +1096,8 @@ subroutine update_ROSE_restart(file_name, var)
   integer :: idd
   integer :: ncerr,  nlons, nlats, nlevs
   integer :: var_id 
+  integer, dimension(3) :: mtime
+  integer :: seconds, days
 
 !====================================================================
 
@@ -1095,11 +1108,10 @@ if( .not. file_exist(file_name)) then
   call error_handler(E_ERR,'update_ROSE_restart',msgstring,source,revision,revdate)
 endif
 
-!! error_handler !!!!!!!   
-   print *, 'update_ROSE_restart: reading restart'
-   ncerr = nf90_open( file_name, NF90_WRITE, restart_id )
-   print *, 'update_ROSE_restart: opening with'//trim(nf90_strerror(ncerr))
-!!!!!!!!!!!!!!!!!!!!!!!!
+if (do_output()) print *, 'update_ROSE_restart: reading restart'
+ncerr = nf90_open( file_name, NF90_WRITE, restart_id )
+call nc_check(ncerr, 'update_ROSE_restart','open')  ! will die if error
+if (do_output()) print *, 'update_ROSE_restart: opened with '//trim(nf90_strerror(ncerr))
 
 !... check for matching dimensions
 
@@ -1135,6 +1147,8 @@ endif
 
 ! unpack the variables into something familiar and then stuff them
 ! into the existing netCDF variables. 
+
+  call get_time(var%valid_time, seconds, days)
 
   un1 = var%vars_3d(:,:,:, 1)
   vn1 = var%vars_3d(:,:,:, 2)
@@ -1176,6 +1190,23 @@ endif
   call nc_check(  nf90_put_var(restart_id, var_id, values=tn0), &
          'update_rose_restart', 'put_var tn0')
 
+  ! FIXME - since we're not handling the year correctly in rose,
+  ! we need to capture the existing one and reuse it.
+
+  call nc_check(  nf90_inq_varid(restart_id, 'mtime', var_id), &
+            'update_rose_restart','inq_varid mtime')
+  call nc_check(nf90_get_var( restart_id, var_id, mtime) , &
+                     'update_rose_restart','get_var mtime')
+
+!  mtime(1) = cal_year  FIXME ... this is that I'm talking about
+   mtime(2) = days
+   mtime(3) = seconds
+
+  call nc_check(nf90_put_var( restart_id, var_id, mtime) , &
+                     'update_rose_restart','get_var mtime')
+
+if (do_output()) print *, 'update_ROSE_restart: mtime (year/doy/seconds):', mtime
+
   call nc_check( nf90_sync( restart_id), 'update_rose_restart', 'sync')
   call nc_check( nf90_close(restart_id), 'update_rose_restart', 'close')
 
@@ -1214,13 +1245,10 @@ if( .not. file_exist(file_name)) then
    call error_handler(E_ERR,'read_ROSE_restart',msgstring,source,revision,revdate)
 endif
 
-!! error_handler !!!!!!!   
-   print *, 'read_ROSE_restart:reading restart:', file_name
-   ncerr = nf90_open( file_name, NF90_NOWRITE, restart_id )
-   call nc_check(ncerr, 'read_ROSE_restart', 'open')
-   print *, 'read_ROSE_restart:opening with '//trim(nf90_strerror(ncerr))
-   print *, 'read_ROSE_restart:restart_id is ', restart_id
-!!!!!!!!!!!!!!!!!!!!!!!!
+if (do_output()) print *, 'read_ROSE_restart:reading restart:', file_name
+ncerr = nf90_open( file_name, NF90_NOWRITE, restart_id )
+call nc_check(ncerr, 'read_ROSE_restart', 'open')
+if (do_output()) print *, 'read_ROSE_restart:opened with '//trim(nf90_strerror(ncerr))
 
 !... check for matching dimensions
 
@@ -1313,7 +1341,7 @@ endif
 
    call nc_check(nf90_close( restart_id),'read_rose_restart','close')
 
-   print *, 'restart mtime:', mtime
+   if (do_output()) print *, 'read_ROSE_restart: mtime (year/doy/seconds):', mtime
    cal_year = mtime(1)
    doy      = mtime(2)
    utsec    = mtime(3)
@@ -1330,12 +1358,53 @@ endif
    !var%vars_3d(:,:,:,8) = qn1(:,:,:,8)  ! OH
    !var%vars_3d(:,:,:,9) = qn1(:,:,:,18) ! O
 
-   print*, "read_ROSE_restart: BEFORE model_time: utsec = ", utsec," doy = ", doy
+   ! FIXME ... this ignores years - no calendar
    model_time = set_time(utsec, doy)
-   print*, "read_ROSE_restart: AFTER model_time :"
-   call print_time(model_time)
+
+   var%valid_time = model_time
+
+   if (do_output()) call print_time(model_time, str=" read_ROSE_restart: model_time ")
 
 end subroutine read_ROSE_restart
+
+
+subroutine update_ROSE_namelist(file_name, time1, timeN, ens_member, &
+       atune, ptune )
+!=======================================================================
+! Update the ROSE namelist - especially the new target_time.
+! The target_time is actually an offset - so we need to calculate that.
+!=======================================================================
+
+character(len=*),   intent(in) :: file_name
+type(time_type),    intent(in) :: time1, timeN
+integer,            intent(in) :: ens_member
+real(r8), optional, intent(in) :: atune, ptune
+
+type(time_type) :: forecast_length
+integer :: second, day
+integer :: iunit
+
+forecast_length = timeN - time1
+call get_time(forecast_length, second, day)
+target_time = real(   day,digits12)*24.0_digits12 + &
+              real(second,digits12)/3600.0_digits12
+
+if (do_output()) then
+   PRINT*,'update_ROSE_namelist: forecast length [days seconds] ', &
+                 day, second, ' = hours ', target_time
+endif
+
+! Update the other namelist parameters 
+ens_element     = ens_member
+if (present(atune)) amp_tune = atune 
+if (present(ptune)) pha_tune = ptune 
+
+iunit = open_file(file_name, action='write')
+write(iunit, nml=ROSE_NML)
+call close_file(iunit)
+
+end subroutine update_ROSE_namelist
+
 
 
 subroutine read_ROSE_tref(file_name)

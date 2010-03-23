@@ -16,19 +16,25 @@ program dart_to_model
 ! method: Read DART state vector ("proprietary" format)
 !         Reform state vector back into ROSE fields.
 !         Replace those fields on the ROSE restart file with the new values,
-!         preserving all other information on the file.
+!         Replace the 'mtime' variable in the ROSE restart file with
+!         the 'valid time' of the DART state vector.
+!         Write a new 'ROSE_NML' namelist in file 'rose.nml'.
 !
-!         based on prog_var_to_vector and vector_to_prog_var for CAM
-!
+!         Compiler note: Rather curiously, the PG compiler reads 
+!         a namelist called 'rose_nml' and then, when writing the
+!         namelist - uses uppercase 'ROSE_NML'. Then, the next time
+!         you need to read the 'rose_nml' ... it fails! So - we 
+!         adopted the uppercase convention from the get-go. TJH
 !----------------------------------------------------------------------
 
-use       types_mod, only : r8
-use   utilities_mod, only : get_unit, initialize_utilities
-use       model_mod, only : model_type, init_model_instance, &
-                            vector_to_prog_var, update_ROSE_restart 
-use assim_model_mod, only : assim_model_type, static_init_assim_model, &
-                            init_assim_model, get_model_size, get_model_state_vector, &
-                            read_state_restart, open_restart_read, close_restart
+use        types_mod, only : r8
+use    utilities_mod, only : get_unit, initialize_utilities, E_ERR, &
+                             error_handler, timestamp
+use        model_mod, only : model_type, get_model_size, init_model_instance, &
+                             vector_to_prog_var, update_ROSE_restart, &
+                             update_ROSE_namelist, static_init_model
+use  assim_model_mod, only : assim_model_type, aread_state_restart, &
+                             open_restart_read, close_restart
 use time_manager_mod, only : time_type, read_time
 
 implicit none
@@ -39,47 +45,53 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-type(assim_model_type) :: x
 type(model_type)       :: var
-type(time_type)        :: adv_to_time
+type(time_type)        :: model_time, adv_to_time
 real(r8), allocatable  :: x_state(:)
-integer                :: file_unit, x_size
+integer                :: file_unit, x_size, ens_member, io
 character (len = 128)  :: file_name = 'rose_restart.nc', file_in = 'temp_ic'
+
+!----------------------------------------------------------------------
+! This program has one input argument that is read from STDIN ... 
+!----------------------------------------------------------------------
+
+read(*, *, iostat = io )  ens_member
+if (io /= 0 )then
+   call error_handler(E_ERR,'dart_to_model:','cannot read ens_member from STDIN', &
+         source,revision,revdate)
+endif
+
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
 
 call initialize_utilities(progname='dart_to_model', output_flag=.true.)
 
-! Static init assim model calls static_init_model
-PRINT*,'static_init_assim_model in dart_to_model'
+call static_init_model()        ! reads input.nml, etc., sets the table 
+x_size = get_model_size()       ! now that we know how big state vector is ...
+allocate(x_state(x_size))       ! allocate space for the (empty) state vector
 
-call static_init_assim_model()
-call init_assim_model(x)
-
-! Allocate the instance of the rose model type for storage
-call init_model_instance(var)
+! Open the DART model state ... 
+! Read in the time to which ROSE must advance.  
+! Read in the valid time for the model state
+! Read in state vector from DART
 
 file_unit = open_restart_read(file_in)
-PRINT*,'In dart_to_model file_in unit  = ',file_unit
-PRINT*,' '
 
-! Read in time to which ROSE must advance.  
-! Neither this, nor time in x (x%time) is used in this program
-! read in state vector from DART
-call read_state_restart(x, file_unit, adv_to_time)
+call aread_state_restart(model_time, x_state, file_unit, adv_to_time)
 call close_restart(file_unit)
 
-! Get the state part of the assim_model type x
-x_size = get_model_size()
-allocate(x_state(x_size))
-PRINT*,'(dart_to_model) getting model state vector of length ',x_size
-x_state = get_model_state_vector(x)
-
-! decompose vector back into ROSE fields
-PRINT*,'(dart_to_model) converting vector to prog_var'
-call vector_to_prog_var (x_state, var)
-deallocate (x_state)
+! Parse the vector into ROSE fields (prognostic variables)
+call init_model_instance(var, model_time)
+call vector_to_prog_var(x_state, var)
+deallocate(x_state)
 
 ! write fields to the binary ROSE restart file
-PRINT*,'(dart_to_model) updating ',trim(file_name)
 call update_ROSE_restart(file_name, var)
+call update_ROSE_namelist('rose.nml', model_time, adv_to_time, ens_member)
+
+!----------------------------------------------------------------------
+! When called with 'end', timestamp will also call finalize_utilities()
+!----------------------------------------------------------------------
+call timestamp(string1=source, pos='end')
 
 end program dart_to_model

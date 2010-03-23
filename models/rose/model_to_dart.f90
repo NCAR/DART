@@ -13,23 +13,18 @@ program model_to_dart
 !----------------------------------------------------------------------
 ! purpose: interface between ROSE and DART
 !
-! method: Read ROSE restart file (binary format).
-!         Reform fields into a state vector.
+! method: Read ROSE restart file (netCDF format).
+!         Reform fields into a DART state vector.
 !         Write out state vector in "proprietary" format for DART
-!
-!         based on model_to_dart for CAM
 !
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
-use    utilities_mod, only : get_unit, initialize_utilities
-use        model_mod, only : model_type, init_model_instance, read_ROSE_restart, &
-                             prog_var_to_vector
-use  assim_model_mod, only : assim_model_type, static_init_assim_model, &
-                             init_assim_model, get_model_size , &
-                             set_model_state_vector, write_state_restart, &
-                             set_model_time, open_restart_read, &
-                             open_restart_write, close_restart, aread_state_restart
+use    utilities_mod, only : get_unit, initialize_utilities, timestamp
+use        model_mod, only : model_type, static_init_model, get_model_size, &
+                             init_model_instance, read_ROSE_restart, &
+                             prog_var_to_vector, 
+use  assim_model_mod, only : open_restart_write, awrite_state_restart, close_restart
 use time_manager_mod, only : time_type
 
 implicit none
@@ -45,7 +40,6 @@ character (len = 128) ::  &
    file_out  = 'temp_ud'
 
 ! Temporary allocatable storage to read in a native format for ROSE state
-type(assim_model_type) :: x
 type(model_type)       :: var
 type(time_type)        :: model_time
 real(r8), allocatable  :: x_state(:)
@@ -53,35 +47,32 @@ integer                :: file_unit, x_size
 
 call initialize_utilities(progname='model_to_dart', output_flag=.true.)
 
-! Static init assim model calls static_init_model
-PRINT*,'static_init_assim_model in model_to_dart'
-call static_init_assim_model()
-
-! Initialize the assim_model instance
-call init_assim_model(x)
+! static_init_model reads input.nml, sets the geometry, model size, etc.
+call static_init_model()
 
 ! Allocate the local state vector
 x_size = get_model_size()
 allocate(x_state(x_size))
 
-! Allocate the instance of the ROSE model type for storage
+! Allocate an empty instance of the ROSE model type for storage
+! This is needed because read_ROSE_restart() requires it.  
 call init_model_instance(var)
 
-! Read the file ROSE state fragments into var
+! Read the ROSE state variables into var and set the model_time
+! to reflect the valid time of the ROSE state.
 call read_ROSE_restart(file_name, var, model_time)
 
 ! transform fields into state vector for DART
 call prog_var_to_vector(var, x_state)
 
-call set_model_state_vector(x, x_state)
-
-call set_model_time(x, model_time)
-
-file_unit = open_restart_write(file_out)
-PRINT*,'In model_to_dart file_out unit = ',file_unit
-PRINT*,' '
 ! write out state vector in "proprietary" format
-call write_state_restart(x, file_unit)
+file_unit = open_restart_write(file_out)
+call awrite_state_restart(model_time, x_state, file_unit)
 call close_restart(file_unit)
+
+!----------------------------------------------------------------------
+! When called with 'end', timestamp will also call finalize_utilities()
+!----------------------------------------------------------------------
+call timestamp(string1=source, pos='end')
 
 end program model_to_dart

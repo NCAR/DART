@@ -39,7 +39,7 @@ cd       $temp_dir
 # Get the data files needed to run rose. One directory up is 'CENTRALDIR'
 
 cp ../input.nml .
-cp ../rose.nml rose.nml_default
+cp ../rose.nml  .
 
 # Loop through each state
 set state_copy = 1
@@ -55,9 +55,9 @@ while($state_copy <= $num_states)
 
    #----------------------------------------------------------------------
    # Block 2: Convert the DART output file to form needed by model.
-   # We are going to take a POP netCDF restart file and simply overwrite the
+   # We are going to take a ROSE netCDF restart file and simply overwrite the
    # appropriate variables. The DART output file also has the 'advance_to'
-   # time - which must be communicated to the model ...
+   # time - which must be communicated to the model ... through the rose namelist
    #----------------------------------------------------------------------
 
    # The EXPECTED input DART 'initial conditions' file name is 'temp_ic'
@@ -66,31 +66,24 @@ while($state_copy <= $num_states)
    ln -sfv ../$input_file temp_ic || exit 2
    cp -p   ../rose_restart.nc  .  || exit 2
 
-   ../dart_to_model || exit 2
+#  echo "ensemble member $ensemble_member : before dart_to_model"
+#  ncdump -v mtime rose_restart.nc
 
-   # Convey the new 'advance_to' time to rose via the namelist
-   # trans_time creates a teeny file called 'times' that contains
-   # the 'advance_to' time from DART in the rose format
-   # The program nmlbld_rose takes the rose template namelist and
-   # inserts the proper time and ensemble member bits.
+   echo $ensemble_member | ../dart_to_model || exit 2
 
-   ../trans_time
-
-   echo `cat times`        >! namelist.in
-   echo $ensemble_member   >> namelist.in
-#  echo `cat a_tunes`      >> namelist.in
-#  echo `cat p_tunes`      >> namelist.in
-
-   ../nmlbld_rose  < namelist.in
-   echo "advance_model: after nmlbld_rose"
-
-   ls -lrt   
+#  ls -lrt   
 
    #----------------------------------------------------------------------
    # Block 3: Run the model
    #----------------------------------------------------------------------
 
+#  echo "ensemble member $ensemble_member : before rose"
+#  ncdump -v mtime rose_restart.nc
+
    ../rose |& tee rose_out_$ensemble_member
+
+#  echo "ensemble member $ensemble_member : after rose"
+#  ncdump -v mtime rose_restart.nc
 
    ls -lrt
 

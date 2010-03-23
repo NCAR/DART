@@ -35,8 +35,8 @@
 #BSUB -J rose_OSSE
 #BSUB -o rose_OSSE.%J.log
 #BSUB -N -u ${USER}@ucar.edu
-#BSUB -q economy
-#BSUB -n 16
+#BSUB -q standby
+#BSUB -n 1
 #BSUB -R "span[ptile=2]"
 #BSUB -W 2:00
 
@@ -119,7 +119,8 @@ echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 # Set variables containing various directory names where we will GET things
 #-----------------------------------------------------------------------------
 
-set DARTDIR = /home/coral/tmatsuo/DART/models/rose
+set DARTDIR = /fs/image/home/thoar/SVN/DART/models/rose
+set ROSEDIR = /home/coral/tmatsuo/DART/models/rose
 
 #-----------------------------------------------------------------------------
 # Get the DART executables, scripts, and input files
@@ -127,12 +128,9 @@ set DARTDIR = /home/coral/tmatsuo/DART/models/rose
 
 # executables
 
- ${COPY} ${DARTDIR}/work/trans_perfect_ics          .
  ${COPY} ${DARTDIR}/work/perfect_model_obs          .
  ${COPY} ${DARTDIR}/work/dart_to_model              .
  ${COPY} ${DARTDIR}/work/model_to_dart              .
- ${COPY} ${DARTDIR}/work/trans_time                 .
- ${COPY} ${DARTDIR}/work/nmlbld_rose                .
 
 # shell scripts
  ${COPY} ${DARTDIR}/shell_scripts/advance_model.csh .
@@ -153,9 +151,11 @@ set DARTDIR = /home/coral/tmatsuo/DART/models/rose
 #-----------------------------------------------------------------------------
 # Check that everything moved OK, and the table is set.
 # Convert a ROSE file 'rose_restart.nc' to a DART ics file 'perfect_ics'
+# 'model_to_dart' has a hardwired output filename of 'temp_ud' ...
 #-----------------------------------------------------------------------------
 
- ./trans_perfect_ics
+./model_to_dart || exit 1
+mv temp_ud perfect_ics
 
 #-----------------------------------------------------------------------------
 # Run perfect_model_obs ... harvest the observations to populate obs_seq.out

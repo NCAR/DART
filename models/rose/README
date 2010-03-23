@@ -15,3 +15,9 @@ Since the DART subversion repository intentionally
 does not contain the rose source code ...
 
 Tim Hoar 9 April 2007
+
+
+Mon Mar 22 17:23:20 MDT 2010 : the rose project has been subtantially streamlined.
+There is no need for the trans_time and build_nml routines. dart_to_model  has
+assumed those responsibilities.
+
