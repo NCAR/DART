@@ -12,10 +12,10 @@
 
 field_name = input('Input field type (U, V, W, PH, T, MU, QV, QC, QR, XLAND, VECT, HDIV): ');
 
-map_proj = {'lambert', 'ups', 'mercator'};
+map_proj   = {'lambert', 'ups', 'mercator'};
 state_name = {'True_State' 'Prior_Diag' 'Posterior_Diag'};
 
-disp('Plotting horizontal map of a linear combinaison of'); disp (state_name)
+disp('Plotting horizontal map of a linear combination of'); disp (state_name)
 
 fact = input('Input coefficients (between [ ]):');
 
@@ -29,11 +29,17 @@ else
    error('Nothing to plot.')
 end
 
-dx = getnc(fname, 'DX');
-stdlat1 = getnc(fname, 'TRUELAT1');
-stdlat2 = getnc(fname, 'TRUELAT2');
-cen_lon = getnc(fname, 'CEN_LON');
-mp = getnc(fname, 'MAP_PROJ');
+if (exist(fname,'file') ~= 2)
+   error('%s does not exist.',fname)
+end
+
+truelat1  = nc_attget(fname, nc_global, 'TRUELAT1');
+truelat2  = nc_attget(fname, nc_global, 'TRUELAT2');
+cen_lat   = nc_attget(fname, nc_global, 'CEN_LAT');
+cen_lon   = nc_attget(fname, nc_global, 'CEN_LON');
+stand_lon = nc_attget(fname, nc_global, 'STAND_LON');
+mp        = nc_attget(fname, nc_global, 'MAP_PROJ');
+dx        = nc_attget(fname, nc_global, 'DX'      );
 
 num_domains = size(dx,1);
 
@@ -48,24 +54,21 @@ else
 
 end
 
-xlon = getnc(fname, ['XLON_d0',int2str(id)]);
-we = size(xlon, 2);
-xlat = getnc(fname, ['XLAT_d0',int2str(id)]);
-sn = size(xlat, 1);
-level = getnc(fname, ['level_d0',int2str(id)]);
-bt = size(level, 1);
+xlon  = nc_varget(fname, [ 'XLON_d0',int2str(id)]); we = size( xlon, 2);
+xlat  = nc_varget(fname, [ 'XLAT_d0',int2str(id)]); sn = size( xlat, 1);
+level = nc_varget(fname, ['level_d0',int2str(id)]); bt = size(level, 1);
 
 cop = zeros(1,3);
 cop(1) = -1;
 
-if (fact(2) ~= 0.0) | (fact(3) ~= 0.0)
+if (fact(2) ~= 0.0) || (fact(3) ~= 0.0)
    if fact(2) ~= 0.0
       fname = char(state_name(2));
    else
       fname = char(state_name(3));
    end
-   ncopy = size(getnc(fname, 'copy'), 1);
-   copy_name = deblank(getnc(fname, 'CopyMetaData'));
+   ncopy = size(nc_varget(fname, 'copy'), 1);
+   copy_name = deblank(nc_varget(fname, 'CopyMetaData'));
    for icopy = 1:ncopy
       disp(['Copy # ' int2str(icopy) ' is ' copy_name(icopy,:)])
    end
@@ -75,41 +78,44 @@ else
    string2 = sprintf('True state');
 end
 
+%% FIXME ... this is horrid! use vector _something_ ...
+
 for iy = 1:sn
-   for ix = 1:we
-      if(xlon(iy,ix) > 0.0)
+for ix = 1:we
+   if(xlon(iy,ix) > 0.0)
          xlon(iy,ix) = xlon(iy,ix) - 360.0;
-      end
    end
+end
 end
 
 minlat = min(xlat(:)); maxlat = max(xlat(:));
 minlon = min(xlon(:)); maxlon = max(xlon(:));
 
-true_times = getnc(fname, 'time');
-num_true_times = size(true_times, 1)
+true_times     = nc_varget(fname, 'time');
+num_true_times = size(true_times, 1);
 
 stime = input('Initial time : ');
 ftime = input('End time : ');
 
-% Get level for free atmosphere fields
-if strcmp(field_name,'MU') | strcmp(field_name,'XLAND')
+%% Get level for free atmosphere fields
+
+if strcmp(field_name,'MU') || strcmp(field_name,'XLAND')
    field_level = 1;
    vert_coord = 1;
    lev_units = '';
 else
    vert_coord = 0;
-   while vert_coord ~= 1 & vert_coord ~= 2 & vert_coord ~= 3
+   while vert_coord ~= 1 && vert_coord ~= 2 && vert_coord ~= 3
       vert_coord = input('Input vertical coordinate: model(1), pressure(2), height(3): ');
       if vert_coord == 1
          field_level = input('Input model level: ');
-         lev_units = 'model level';
+         lev_units   = 'model level';
       elseif vert_coord == 2
          field_level = input('Input pressure level (hPa): ');
-         lev_units = 'hPa';
+         lev_units   = 'hPa';
       elseif vert_coord == 3
          field_level = input('Input height (meters): ');
-         lev_units = 'm';
+         lev_units   = 'm';
       else
          disp('Invalid choice. Please try again')
       end
@@ -120,65 +126,67 @@ var_name = [field_name,'_d0',int2str(id)];
 uname = ['U_d0',int2str(id)];
 vname = ['V_d0',int2str(id)];
 
-if strcmp(field_name,'U') | strcmp(field_name,'V') | strcmp(field_name,'VECT')
+if strcmp(field_name,'U') || strcmp(field_name,'V') || strcmp(field_name,'VECT')
    var_units = 'm/s';
-   iso = [0.5:1:5];
+   iso = 0.5:1:5;
 end
 if strcmp(field_name,'W')
    var_units = 'm/s';
-   iso = [0.01:0.01:0.1];
+   iso = 0.01:0.01:0.1;
 end
 if strcmp(field_name,'PH')
    var_units = 'm^2/s^2';
-   iso = [50:50:300];
+   iso = 50:50:300;
 end
 if strcmp(field_name,'T')
    var_units = 'K';
-   iso = [250:5:310];
+   iso = 250:5:310;
 end
 if strcmp(field_name,'MU')
    var_units = 'Pa';
-   iso = [100:100:600];
+   iso = 100:100:600;
 end
 if strcmp(field_name,'QV')
    var_units = 'kg/kg';
-   iso = [0.0001:0.0001:0.001];
+   iso = 0.0001:0.0001:0.001;
 end
 if strcmp(field_name,'QC')
    var_units = 'kg/kg';
-   iso = [0.00001:0.00001:0.0001];
+   iso = 0.00001:0.00001:0.0001;
 end
 if strcmp(field_name,'QR')
    var_units = 'kg/kg';
-   iso = [0.00001:0.00001:0.0001];
+   iso = 0.00001:0.00001:0.0001;
 end
 if strcmp(field_name,'XLAND')
    var_units = '-';
 end
 if strcmp(field_name,'HDIV')
    var_units = '(m/s)/km';
-   iso = [-0.5:0.05:0.5];
+   iso = -0.5:0.05:0.5;
 end
 if strcmp(field_name,'REF')
    var_units = 'dBZ';
-   iso = [-10:5:80];
+   iso = -10:5:80;
 end
 
 m = ceil(sqrt(ftime-stime+1));
 
-%iso = [-3:0.25:3];
-%iso = [0.1:0.2:5.25];
-%iso = [0.01:0.02:5.25];
+%iso = -3:0.25:3;
+%iso = 0.1:0.2:5.25;
+%iso = 0.01:0.02:5.25;
 
 pane = 1;
 
 for itime = stime:ftime
 
-   plot_title = sprintf('%s (%s)  %i (%s)  day = %i  sec = %i  %s',field_name,var_units,field_level,lev_units,fix(true_times(itime)),fix((true_times(itime)-fix(true_times(itime)))*86400),string2);
+   plot_title = sprintf('%s (%s)  %i (%s)  day = %i  sec = %i  %s', ...
+         field_name, var_units, field_level, lev_units, fix(true_times(itime)), ...
+         fix((true_times(itime)-fix(true_times(itime)))*86400), string2);
 
-% Extract field
+   %% Extract field
 
-   field = zeros(sn,we);
+   field  = zeros(sn,we);
    fieldu = zeros(sn,we);
    fieldv = zeros(sn,we);
 
@@ -187,58 +195,60 @@ for itime = stime:ftime
       if fact(istate) ~= 0.0
 
 	 fname = char(state_name(istate));
- %--Set up, compute pressure 
+
+         %% Set up, compute pressure 
          [ Cp, Rd, gamma, Rv, L_c, g, T0, p0 ] = get_constants ;
 
          [ mu, dnw, phi, theta, qv ] =  ...
-   get_aux_fields_for_p( fname, T0, itime, cop(istate), id ) ;
+            get_aux_fields_for_p( fname, T0, itime, cop(istate), id ) ;
 
          pres = compute_pressure( mu, dnw, phi, theta, qv, Rd,Rv,gamma,p0 ) ;
 
          var_in = zeros(bt,sn,we);
 
- %--Retrieve specified variable from netcdf file
+         %--Retrieve specified variable from netcdf file
 
          if vert_coord == 1
 
 	    if strcmp(field_name,'MU')
-	       corner = [itime cop(istate) -1 -1];
-               end_point = [itime cop(istate) -1 -1];
-               stride = [1 1 1 1];
+	       start = [itime cop(istate)  1  1] - 1;
+               count = [    1           1 -1 -1];
             elseif strcmp(field_name,'XLAND')
-               corner = [-1 -1];
-               end_point = [-1 -1];
-               stride = [1 1];
+               start = [ 1  1];
+               count = [-1 -1];
             else
-               corner = [itime cop(istate) field_level -1 -1];
-               end_point = [itime cop(istate) field_level -1 -1];
-               stride = [1 1 1 1 1];
+               start = [itime cop(istate) field_level  1  1] - 1;
+               count = [    1           1           1 -1 -1];
             end
 
 	    if strcmp(field_name,'VECT')
-               stag_field = getnc(fname,uname,corner,end_point,stride);
+
+               stag_field = nc_varget(fname,uname,start,count);
                for iy = 1:sn
                   for ix = 1:we
 	             fieldu(iy,ix) = fieldu(iy,ix) + ...
-	       fact(istate)*(stag_field(iy,ix) + stag_field(iy,ix+1))/2.0;
+	                             fact(istate)*(stag_field(iy,ix) + ...
+                                     stag_field(iy,ix+1))/2.0;
                   end
                end
-               stag_field = getnc(fname,vname,corner,end_point,stride);
+               stag_field = nc_varget(fname,vname,start,count);
                for iy = 1:sn
                   for ix = 1:we
                      fieldv(iy,ix) = fieldv(iy,ix) + ...
 	       fact(istate)*(stag_field(iy,ix) + stag_field(iy+1,ix))/2.0;
                   end
                end
+
 	    elseif strcmp(field_name,'HDIV')
-               stag_field = getnc(fname,uname,corner,end_point,stride);
+
+               stag_field = nc_varget(fname,uname,start,count);
                for iy = 1:sn
                   for ix = 1:we
                      field(iy,ix) = field(iy,ix) - ...
 	       fact(istate)*(stag_field(iy,ix+1) - stag_field(iy,ix))/dx(id);
                   end
                end
-               stag_field = getnc(fname,vname,corner,end_point,stride);
+               stag_field = nc_varget(fname,vname,start,count);
                for iy = 1:sn
                   for ix = 1:we
                      field(iy,ix) = field(iy,ix) - ...
@@ -246,9 +256,10 @@ for itime = stime:ftime
                   end
                end
 	       field = field*1000.0;
+
             else
 
-               stag_field = getnc(fname, var_name,corner,end_point,stride);
+               stag_field = nc_varget(fname, var_name,start,count);
 	       if strcmp(field_name,'U')
                   for iy = 1:sn
                      for ix = 1:we
@@ -271,11 +282,14 @@ for itime = stime:ftime
 
          elseif vert_coord == 2
 
+            start = [itime cop(istate)  1  1  1] -1;
+            count = [    1           1 -1 -1 -1];
+
 	    if strcmp(field_name,'VECT')
                var_inu = zeros(bt,sn,we);
                var_inv = zeros(bt,sn,we);
-               stag_field = getnc(fname,uname,[itime cop(istate) -1 -1 -1], ...
-				  [itime cop(istate) -1 -1 -1],[1 1 1 1 1]);
+
+               stag_field = nc_varget(fname, uname, start, count);
                for iz = 1:bt
 	          for iy = 1:sn
 	             for ix = 1:we
@@ -283,8 +297,8 @@ for itime = stime:ftime
                      end
                   end
                end
-	       stag_field = getnc(fname,vname,[itime cop(istate) -1 -1 -1], ...
-				  [itime cop(istate) -1 -1 -1],[1 1 1 1 1]);
+
+	       stag_field = nc_varget(fname, vname, start, count);
                for iz = 1:bt
 		  for iy = 1:sn
                      for ix = 1:we
@@ -292,9 +306,10 @@ for itime = stime:ftime
                      end
                   end
 	       end
+
 	    elseif strcmp(field_name,'HDIV')
-	       stag_field = getnc(fname,uname,[itime cop(istate) -1 -1 -1], ...
-				  [itime cop(istate) -1 -1 -1],[1 1 1 1 1]);
+
+	       stag_field = nc_varget(fname, uname, start, count);
                for iz = 1:bt
 		  for iy = 1:sn
 	             for ix = 1:we
@@ -303,8 +318,8 @@ for itime = stime:ftime
                      end
                   end
                end
-	       stag_field = getnc(fname,vname,[itime cop(istate) -1 -1 -1], ...
-				  [itime cop(istate) -1 -1 -1],[1 1 1 1 1]);
+
+	       stag_field = nc_varget(fname, vname, start, count);
                for iz = 1:bt
 		  for iy = 1:sn
                      for ix = 1:we
@@ -322,8 +337,7 @@ for itime = stime:ftime
                elseif strcmp(field_name,'T')     % Same here
                   stag_field = theta ;
                else
-                  stag_field = getnc(fname,var_name,[itime cop(istate) -1 -1 -1], ...
-				  [itime cop(istate) -1 -1 -1],[1 1 1 1 1]);
+                  stag_field = nc_varget(fname, var_name, start, count);
                end
 
 	       if strcmp(field_name,'U')
@@ -342,7 +356,7 @@ for itime = stime:ftime
                         end
                      end
                   end
-	       elseif strcmp(field_name,'W') | strcmp(field_name,'PH')
+	       elseif strcmp(field_name,'W') || strcmp(field_name,'PH')
 	          for iz = 1:bt
 	             for iy = 1:sn
 	                for ix = 1:we
@@ -374,15 +388,12 @@ for itime = stime:ftime
 
             height = compute_height( phi, g ) ;
 
-	    if strcmp(field_name,'REF')
+	        if strcmp(field_name,'REF')
 
-               [ qr, qg, qs ] =  ...
-   get_aux_fields_for_ref( fname, itime, cop(istate), id ) ;
+               [ qr, qg, qs ] = get_aux_fields_for_ref( fname, itime, cop(istate), id ) ;
 
-               rho = compute_density( mu, dnw, phi ) ;
-
-               temp = compute_temperature( pres, theta, Cp, Rd, p0 ) ;
-
+               rho    = compute_density( mu, dnw, phi ) ;
+               temp   = compute_temperature( pres, theta, Cp, Rd, p0 ) ;
                var_in = compute_reflectivity( qr, qg, qs, rho, temp ) ;
 
             end
@@ -396,12 +407,12 @@ for itime = stime:ftime
 
    end
 
-% Plot field
+%% Plot field
 
    subplot(m,m,pane);
 
    axesm(map_proj{mp(id)},'Origin',[0 cen_lon(id) 0],'MapParallels', ...
-	 [stdlat1(id) stdlat2(id)],...
+	 [truelat1(id) truelat2(id)],...
 	 'MapLatLimit',[minlat maxlat],'MapLonLimit',[minlon maxlon]);
    framem;
 
@@ -417,10 +428,10 @@ for itime = stime:ftime
 
       scale = ceil(we/20);
 
-% legend
+      % legend
 
-      quiverm(xlat([1:scale:sn],[1:scale:we]),xlon([1:scale:sn],[1:scale:we]), ...
-	      fieldv([1:scale:sn],[1:scale:we]),fieldu([1:scale:sn],[1:scale:we]),'k')
+      quiverm(xlat(1:scale:sn,1:scale:we),  xlon(1:scale:sn,1:scale:we), ...
+            fieldv(1:scale:sn,1:scale:we),fieldu(1:scale:sn,1:scale:we),'k')
 
    else
 
@@ -438,22 +449,19 @@ for itime = stime:ftime
 %            hm = clabelm(Cm,hm,'labelspacing',288);  set(hm,'Fontsize',12);
 %         end
 
-   if strcmp(field_name,'REF')
-     eval('dbz_colors')
-     h = pcolorm(xlat,xlon,field);
+         if strcmp(field_name,'REF')
+            eval('dbz_colors')
+            h = pcolorm(xlat,xlon,field);
+         else 
+            [C h] = contourfm(xlat,xlon,field, iso); caxis([min(iso(:)),max(iso(:))]);
+         end
 
-   else
-
-     [C h] = contourfm(xlat,xlon,field, iso); caxis([min(iso(:)),max(iso(:))]);
-
-   end
-
-%[C,h] = contour (field, iso);
-%hold on
-%[Cm,hm] = contour (field, -iso, '--');
-cb = colorbar('vert'); set(cb,'Fontsize',12);
-%clabel(C, h);
-%clabel(Cm, hm);
+         %[C,h] = contour (field, iso);
+         %hold on
+         %[Cm,hm] = contour (field, -iso, '--');
+         cb = colorbar('vert'); set(cb,'Fontsize',12);
+         %clabel(C, h);
+         %clabel(Cm, hm);
 
       end
 

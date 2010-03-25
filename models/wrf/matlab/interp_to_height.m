@@ -17,26 +17,29 @@ function var_interp = interp_to_height( var_in, heights, level)
 % $Revision$
 % $Date$
 
- [Nk Nj Ni] = size(heights) ; 
+[Nk Nj Ni] = size(heights); 
+below      = zeros(Nj,Ni);
+var_below  = zeros(Nj,Ni);
+dz         = zeros(Nj,Ni);
+dvar       = zeros(Nj,Ni);
 
- below = zeros(Nj,Ni) ;  var_below = zeros(Nj,Ni) ;
- dz =    zeros(Nj,Ni) ;       dvar = zeros(Nj,Ni) ;
+% % at each horiz. location, find highest height beneath level
+for ii = 1:Ni
+for jj = 1:Nj
 
- % at each horiz. location, find highest height beneath level
- for ii = 1:Ni; for jj = 1:Nj; 
     % kk(jj,ii) = max( find( heights(:,jj,ii) - level < 0 ) ) ;
     kk = max( find( heights(:,jj,ii) - level < 0 ) ) ;
     % if isempty(kk); disp([ kk , jj, ii ] ); end
     if isempty(kk); kk = 1; end  % level is below surface here
 
-    below(jj,ii) = heights(max(1 ,kk  ),jj,ii) ;  % height below level
-    dz(jj,ii) = heights(min(Nk,kk+1),jj,ii)    ...
-                 - heights(max(1 ,kk  ),jj,ii) ;
-    var_below(jj,ii) = var_in(max(1 ,kk  ),jj,ii) ;
-    dvar (jj,ii) = var_in(min(Nk,kk+1),jj,ii) - var_in(max(1 ,kk  ),jj,ii) ;
- end; end
+       below(jj,ii) = heights(max(1 ,kk  ),jj,ii) ;  % height below level
+          dz(jj,ii) = heights(min(Nk,kk+1),jj,ii) - heights(max(1 ,kk  ),jj,ii) ;
+   var_below(jj,ii) = var_in( max(1 ,kk  ),jj,ii) ;
+       dvar (jj,ii) = var_in( min(Nk,kk+1),jj,ii) -  var_in(max(1 ,kk  ),jj,ii) ;
+end
+end
 
- var_interp =  ( dvar ./ dz ) .* ( level - below )  + var_below ;
+var_interp =  ( dvar ./ dz ) .* ( level - below )  + var_below ;
 
- var_interp( level < heights(1,:,:) ) = NaN ;
-   % level is beneath lowest mass level
+var_interp( level < heights(1,:,:) ) = NaN ;
+% level is beneath lowest mass level

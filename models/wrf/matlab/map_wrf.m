@@ -1,14 +1,15 @@
 function field = map_wrf(fname, varname, copystring, levelindx, timeindx )
-%% map_wrf simply creates a map of a WRF field.
+%% map_wrf creates a map of a WRF field - please check what is supposed to
+%  happen with the staggering.
 %
+% (rather slow) Example: 
 % fname      = 'Prior_Diag.nc';
 % varname    = 'U_d01';
 % copystring = 'ensemble mean';
 % levelindx  = 10;
 % timeindx   = 1;
 %
-% Example: 
-% map_wrf(fname, varname, copystring, levelindx, timeindx )
+% map_wrf(fname, varname, copystring, levelindx, timeindx );
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -32,9 +33,9 @@ end
 if (exist(fname,'file') ~= 2) 
    error('%s does not exist',fname)
 end
-if ( ~ nc_isvar(fname,varname) )
-   error('%s is not a variable in %s',varname,fname)
-end
+
+varexist(fname,{varname,'time','XLON_d01','XLAT_d01','level_d01', ...
+       'TRUELAT1','TRUELAT2', 'CEN_LAT', 'CEN_LON', 'MAP_PROJ'})
 
 copyindex = get_copy_index(fname,copystring);
 
@@ -43,6 +44,7 @@ times    = nc_varget(fname,     'time'); Ntimes = size(times, 1);
 xlon     = nc_varget(fname, 'XLON_d01');  we    = size( xlon, 2);
 xlat     = nc_varget(fname, 'XLAT_d01');  sn    = size( xlat, 1);
 level    = nc_varget(fname,'level_d01');  bt    = size(level, 1);
+
 stdlat1  = nc_varget(fname, 'TRUELAT1');
 stdlat2  = nc_varget(fname, 'TRUELAT2');
 cen_lat  = nc_varget(fname,  'CEN_LAT');
@@ -127,29 +129,51 @@ for itime = timeindx
    
    % subplot(m,m,pane);
    
-   axesm(map_proj{mp},'Origin',[0 cen_lon 0],'MapParallels',[stdlat1 stdlat2],...
-         'MapLatLimit',[minlat maxlat],'MapLonLimit',[minlon maxlon]);
+   axesm(map_proj{mp}, 'Origin', [0 cen_lon 0], ...
+         'MapParallels',[stdlat1 stdlat2],...
+         'MapLatLimit',[minlat maxlat], ...
+         'MapLonLimit',[minlon maxlon]);
    % framem;
    
-   states = shaperead('usastatelo', 'UseGeoCoords', true);
-   geoshow([states.Lat],[states.Lon],'Color','black');
-   % linem(states.Lon, states.Lat, 'color', [0 0 0]);
-   
-   % axis( [-0.6 0.6 .2 1.2 ]) % This works pretty well for present CONUS domain
+%  states = shaperead('usastatelo', 'UseGeoCoords', true);
+%  geoshow([states.Lat],[states.Lon],'Color','black');
+
+   landareas = shaperead('landareas', 'UseGeoCoords', true);
+   geoshow([landareas.Lat],[landareas.Lon],'Color','black');
    
    if min(field(:)) ~= max(field(:))
 
-      disp('contouring ...')
+%     disp('contouring (slow) ...')
+%     [C h]=contourm(xlat,xlon,field) ;
+%     h = clabelm(C,h,'labelspacing',288);  set(h,'Fontsize',9);
    
-      [C h]=contourm(xlat,xlon,field) ;
-      h = clabelm(C,h,'labelspacing',288);  set(h,'Fontsize',9);
-   
-      % Can get lat,lon lines via, e.g., contourm(xlat,xlon,xlat) 
-   %  [C h]=contourm(xlat,xlon,xlat,'k') ;
-   %  h = clabelm(C,h,'labelspacing',288);  set(h,'Fontsize',9);
+      h1 = surfm(xlat,xlon,field);
    
       title(plot_title,'Interpreter','none')
-      %colorbar('vert')
+      colorbar('vert')
+   else
+      error('field is all uniform value')
    end
 
 end
+
+
+
+function varexist(filename, varnames)
+%% We already know the file exists by this point.
+% Lets check to make sure that file contains all needed variables.
+
+nvars  = length(varnames);
+gotone = ones(1,nvars);
+
+for i = 1:nvars
+   gotone(i) = nc_isvar(filename,varnames{i});
+   if ( ~ gotone(i) )
+      fprintf('\n%s is not a variable in %s\n',varnames{i},filename)
+   end
+end
+
+if ~ all(gotone) 
+   error('missing required variable ... exiting')
+end
+

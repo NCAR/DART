@@ -14,96 +14,83 @@ field_name = 'PSFC';
 
 map_proj = {'lambert', 'ups', 'mercator'};
 
-fname = 'psfc';
+fname = 'psfc.nc';
 
-nc = netcdf( [fname,'.nc'] , 'nowrite' ) ;
+%% Read map metadata
+times    = nc_varget(fname,     'time'); Ntimes = size(times, 1);
+xlon     = nc_varget(fname, 'XLON_d01');  we    = size( xlon, 2);
+xlat     = nc_varget(fname, 'XLAT_d01');  sn    = size( xlat, 1);
+level    = nc_varget(fname,'level_d01');  bt    = size(level, 1);
+stdlat1  = nc_varget(fname, 'TRUELAT1');
+stdlat2  = nc_varget(fname, 'TRUELAT2');
+cen_lat  = nc_varget(fname,  'CEN_LAT');
+cen_lon  = nc_varget(fname,  'CEN_LON');
+dt       = nc_varget(fname,       'DT');
+mp       = nc_varget(fname, 'MAP_PROJ')+1;  % convert [0,N-1] to [1,N]
+map_proj = nc_attget(fname, 'MAP_PROJ','units');
 
-stdlat1 = nc.TRUELAT1(:);
-stdlat2 = nc.TRUELAT2(:);
-cen_lon = nc.CEN_LON(:);
-mp = nc.MAP_PROJ(:);
-dt = nc.DT(:);
-
-close(nc);
-
-lon = getnc(fname, 'XLONG');
-xlon = squeeze(lon(1,:,:));
-we = size(xlon, 2);
-lat = getnc(fname, 'XLAT');
-xlat = squeeze(lat(1,:,:));
-sn = size(xlat, 1);
-
-f_size = we*sn;
-
-for iy = 1:sn
-   for ix = 1:we
-      if(xlon(iy,ix) > 0.0)
-         xlon(iy,ix) = xlon(iy,ix) - 360.0;
-      end
-   end
-end
-
-minlat = min(xlat(:)); maxlat = max(xlat(:));
-minlon = min(xlon(:)); maxlon = max(xlon(:));
-
-true_times = getnc(fname, 'Times');
-num_true_times = size(true_times, 1)
+true_times     = nc_varget(fname, 'Times');
+num_true_times = size(true_times, 1);
 
 stime = input('Initial time : ');
 ftime = input('End time : ');
 
-var_units = ' (Pa)';
-iso = [-15:2:15];
+f_size = we*sn;
 
-scrsz = get(0,'ScreenSize');
+minlat = min(xlat(:)); maxlat = max(xlat(:));
+minlon = min(xlon(:)); maxlon = max(xlon(:));
+
+var_units = ' (Pa)';
+iso       = -15:2:15;
+
+scrsz     = get(0,'ScreenSize');
 figure('Position',[1 scrsz(4)/2 0.8*scrsz(4) 0.8*scrsz(4)])
 
 m = ceil(sqrt(ftime-stime+1));
 
 pane = 1;
 
-x = [1:ftime-stime+1];
+x = 1:ftime-stime+1;
 rmse = x;
 
 for itime = stime:ftime
 
-   plot_title = [ field_name var_units ...
-			    '   ' true_times(itime,:) ];
+   plot_title = [ field_name var_units '   ' true_times(itime,:) ];
 
-% Extract field
+   % Extract two adjacent timesteps of the field and manipulate
 
-   field1 = getnc(fname, field_name,[itime -1 -1],[itime -1 -1],[1 1 1]);
-   field2 = getnc(fname, field_name,[itime+1 -1 -1],[itime+1 -1 -1],[1 1 1]);
+   start   = [itime    1  1] -1;
+   count   = [    2   -1 -1];
+   field12 = nc_varget(fname, field_name, start, count);
+   field   = (field12(2,:,:) - field12(1,:,:))/dt;
 
-field = (field2 - field1)/dt;
+   field_vec = reshape(field,f_size,1);
 
-field_vec = reshape(field,f_size,1);
+   rmse(pane) = sqrt((field_vec'*field_vec)/(f_size));
 
-rmse(pane) = sqrt((field_vec'*field_vec)/(f_size));
-
-% Plot field
+   % Plot field
 
    subplot(m,m,pane);
 
    axesm(map_proj{mp},'Origin',[0 cen_lon 0],'MapParallels', ...
-	 [stdlat1 stdlat2],...
+	 [stdlat1 stdlat2], ...
 	 'MapLatLimit',[minlat maxlat],'MapLonLimit',[minlon maxlon]);
    framem;
 
-   plotm(coast,'color',[0 0 0]);
+   plotm(coast,             'color',[0 0 0]);
    plotm(usalo('statebvec'),'color',[0 0 0]);
-   plotm(usalo('conusvec'),'color',[0 0 0]);
+   plotm(usalo( 'conusvec'),'color',[0 0 0]);
 
-%axis( [-0.65 0.65 .1 1.45 ]) % This works pretty well for present CONUS domain
+   %axis( [-0.65 0.65 .1 1.45 ]) % This works pretty well for present CONUS domain
 
    if min(min(field)) ~= max(max(field))
 
-%     [C h] = contourm(xlat,xlon,field, iso, 'r','LineWidth',2);
-[C h] = contourfm(xlat,xlon,field, iso); caxis([min(iso(:)),max(iso(:))]);
-%     h = clabelm(C,h,'labelspacing',288);  set(h,'Fontsize',12);
-     hold on
-%     [Cm hm] = contourm(xlat,xlon,field, -iso, 'b--','LineWidth',2);
-%     hm = clabelm(Cm,hm,'labelspacing',288);  set(hm,'Fontsize',12);
+      %     [C h] = contourm(xlat,xlon,field, iso, 'r','LineWidth',2);
+      [C h] = contourfm(xlat,xlon,field, iso); caxis([min(iso(:)),max(iso(:))]);
+      %     h = clabelm(C,h,'labelspacing',288);  set(h,'Fontsize',12);
+      hold on
+      %     [Cm hm] = contourm(xlat,xlon,field, -iso, 'b--','LineWidth',2);
+      %     hm = clabelm(Cm,hm,'labelspacing',288);  set(hm,'Fontsize',12);
 
    end
 
