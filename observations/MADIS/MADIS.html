@@ -18,7 +18,9 @@
 </center>
 
 <H1>MADIS Data Ingest System</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<small><P>
+<!-- version tag follows, do not edit -->$Id$
+</P></small>
 
 <P>
 The <a href="http://madis.noaa.gov/">MADIS</a>
@@ -28,6 +30,28 @@ data of a variety of types, with added Quality Control (QC)
 and integration of data from a variety of sources.
 </P>
 
+<P>
+The overall flow is:
+<ol>
+<li>convert each madis file, by platform type, into an obs_seq file.
+    one file in, one file out.  no time changes.  use the 
+    <em class=file>shell_scripts/madis_conv.csh</em> script.
+    there are script options for hourly output files, or a single daily
+    output file.</li>
+<li>if you aren't using the wrf preprocessing program, you're ready to go.</li>
+<li>if you do want to do subsequent wrf preprocessing, you need to:
+<ol>
+<li>decide on the windowing.  each platform has a different convention
+    and if you're going to put them into the wrf preprocessing you'll need
+    to have the windowing match.  use the
+    <em class=file>shell_scripts/windowing.csh</em> script.</li>
+<li>the wrf preprocessing takes a list of files and assumes they will all
+    be assimilated at the same time, for superob'ing purposes, so it should
+    match the expected assimilation window when running filter.</li>
+</ol>
+</ol>
+</P>
+
 <!--==================================================================-->
 
 <A NAME="DataSources"></A>
@@ -35,7 +59,7 @@ and integration of data from a variety of sources.
 <H2>DATA SOURCES</H2>
 
 <P>
-&nbsp;
+<a href="http://madis.noaa.gov/">http://madis.noaa.gov</a>
 </P>
 
 <!--==================================================================-->
@@ -47,6 +71,22 @@ and integration of data from a variety of sources.
 The programs in the <em class=file>DART/observations/MADIS/</em> 
 directory help to extract the data from the distribution files 
 and put them into DART observation sequence (obs_seq) file format.
+Build them in the <em class=file>work</em> directory.  In addition
+to the converters, the <em class=file>advance_time</em> and
+<em class=file>obs_sequence_tool</em> utilities will be built.
+</P>
+<P>
+Example scripts for converting batches of these files are
+in the <em class=file>shell_scripts</em> directory.  Example
+data files are in the <em class=file>data</em> directory.
+These are <em>NOT</em> intended to be turnkey scripts; they will
+certainly need to be customized for your use.  There are comments
+at the top of the scripts saying what options they include, and
+should be commented enough to indicate where changes will be
+likely to need to be made.
+</P>
+<P>The converter source code files have compile-time choices
+for outputting various types of moist variables.
 </P>
 
 <!--==================================================================-->
@@ -80,7 +120,7 @@ none
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br>
 This open source software is provided by UCAR, "as is",<br>
 without charge, subject to all terms of use at<br>
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">

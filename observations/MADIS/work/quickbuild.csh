@@ -56,7 +56,7 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
-\rm -f *.o *.mod 
+\rm -f *.o *.mod  input.nml*_default
 
 echo "Success: All ${MODEL} programs compiled."  
 

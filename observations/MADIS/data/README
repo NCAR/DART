@@ -5,10 +5,19 @@
 # DART $Id$
 
 These are example data files.  They need to be unzipped
-and renamed in order to be used as-is.  acars.in is an
-example of the input needed for the acars program.
+and either renamed or be the target of a symbolic link
+in order to be used with the converters.  See the html file
+in the parent directory for more info on how to run
+the workflow for the converters.
 
 The current version of the converters automatically detects
 if the input NetCDF files contain Data QC fields or not
-and uses them if present.
+and uses them if present.  There is a compile-time variable
+that can be set to ignore all QC information.  See the
+logical parameters near the top of the source files.
+
+Unlike previous versions of these converters, they no longer
+require input arguments, except for the rawinsonde converter,
+which needs two logical values to select whether standard level
+observations are to be output or not.
 
