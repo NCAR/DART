@@ -277,7 +277,8 @@ obsloop: do n = 1, nobs
       endif
       oerr = max(qerr * qsat, 0.0001_r8)
   
-      if ( qobs > 0.0_r8 .and. qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
+      if ( qobs >  0.0_r8  .and. &
+           qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
   
         call create_3d_obs(lat(n), lon(n), elev(n), VERTISSURFACE, qobs, &
                            LAND_SFC_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
@@ -297,7 +298,8 @@ obsloop: do n = 1, nobs
         oerr = land_rel_hum_error(pres, tair(n), rh)    
       endif
   
-      if ( rh > 0.0_r8 .and. rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+      if ( rh >  0.0_r8 .and. &
+           rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
   
         call create_3d_obs(lat(n), lon(n), elev(n), VERTISSURFACE, rh, &
                            LAND_SFC_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
@@ -313,7 +315,8 @@ obsloop: do n = 1, nobs
       rh = temp_and_dewpoint_to_rh(tair(n), tdew(n))
       oerr = dewpt_error_from_rh_and_temp(tair(n), rh)
   
-      if ( rh > 0.0_r8 .and. rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+      if ( rh >  0.0_r8 .and. &
+           rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
   
         call create_3d_obs(lat(n), lon(n), elev(n), VERTISSURFACE, tdew(n), &
                            LAND_SFC_DEWPOINT, oerr, oday, osec, qc, obs)

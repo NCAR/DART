@@ -261,7 +261,8 @@ obsloop: do n = 1, nobs
          endif
          oerr = max(qerr * qsat, 0.0001_r8)
   
-         if ( abs(qobs) < 0.1_r8 .and. qerr /= missing_r8 ) then
+         if ( qobs >  0.0_r8  .and. &
+              qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
   
             call create_3d_obs(lat(n), lon(n), pres, VERTISPRESSURE, qobs, &
                                ACARS_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
@@ -282,9 +283,13 @@ obsloop: do n = 1, nobs
             oerr = acars_rel_hum_error(pres * 0.01_r8, tair(n), relh(n))
          endif
   
-         call create_3d_obs(lat(n), lon(n), pres, VERTISPRESSURE, relh(n), &
-                            ACARS_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
-         call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+         if ( relh(n) >  0.0_r8 .and. &
+              relh(n) <= 1.5_r8 .and. oerr /= missing_r8 ) then
+
+           call create_3d_obs(lat(n), lon(n), pres, VERTISPRESSURE, relh(n), &
+                              ACARS_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
+           call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+         endif
   
       endif
   
@@ -293,10 +298,14 @@ obsloop: do n = 1, nobs
   
          oerr = dewpt_error_from_rh_and_temp(tair(n), relh(n))
   
-         call create_3d_obs(lat(n), lon(n), pres, VERTISPRESSURE, tdew(n), &
-                            ACARS_DEWPOINT, oerr, oday, osec, qc, obs)
-         call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+         if ( relh(n) >  0.0_r8 .and. &
+              relh(n) <= 1.5_r8 .and. oerr /= missing_r8 ) then
+
+           call create_3d_obs(lat(n), lon(n), pres, VERTISPRESSURE, tdew(n), &
+                              ACARS_DEWPOINT, oerr, oday, osec, qc, obs)
+           call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
+         endif
       endif
   
   endif  ! quality control/missing check on tair, tdew, and relh

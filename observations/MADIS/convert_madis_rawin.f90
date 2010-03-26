@@ -325,7 +325,8 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
         endif
         oerr = max(qerr * qsat, 0.0001_r8)
   
-        if ( qobs > 0.0_r8 .and. qobs <= 0.070_r8 .and. qerr /= missing_r8 ) then
+        if ( qobs >  0.0_r8  .and. &
+             qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
   
           call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, qobs, &
                              RADIOSONDE_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
@@ -344,9 +345,13 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
           oerr = rawin_rel_hum_error(pres(k), tair(k), rh)
         endif
   
-        call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, rh, &
-                           RADIOSONDE_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
-        call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+        if ( rh >  0.0_r8 .and. &
+             rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+
+          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, rh, &
+                             RADIOSONDE_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
+          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+        endif
 
       endif
   
@@ -355,9 +360,14 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
         rh = temp_and_dewpoint_to_rh(tair(k), dptk)
         oerr = dewpt_error_from_rh_and_temp(tair(k), rh)
   
-        call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, dptk, &
-                           RADIOSONDE_DEWPOINT, oerr, oday, osec, qc, obs)
-        call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+        if ( rh >  0.0_r8 .and. &
+             rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+
+          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, dptk, &
+                             RADIOSONDE_DEWPOINT, oerr, oday, osec, qc, obs)
+          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+
+        endif
 
       endif
 
@@ -425,7 +435,8 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
             qerr = rawin_rel_hum_error(pres(k), tair(k), qobs / qsat)
           endif
           oerr = max(qerr * qsat, 0.0001_r8)
-          if ( qobs > 0.0_r8 .and. qobs <= 0.070_r8 .and. qerr /= missing_r8 ) then
+          if ( qobs >  0.0_r8  .and. &
+               qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
   
             call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, qobs, &
                                RADIOSONDE_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
@@ -444,10 +455,15 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
             oerr = rawin_rel_hum_error(pres(k), tair(k), rh)
           endif
           
-          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, rh, &
-                             RADIOSONDE_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
-          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+          if ( rh >  0.0_r8 .and. &
+               rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+
+            call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, rh, &
+                               RADIOSONDE_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
+            call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
+          endif
+
         endif
   
         if ( include_dewpoint ) then
@@ -455,10 +471,15 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
           rh = temp_and_dewpoint_to_rh(tair(k), dptk)
           oerr = dewpt_error_from_rh_and_temp(tair(k), rh)
   
-          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, dptk, &
-                             RADIOSONDE_DEWPOINT, oerr, oday, osec, qc, obs)
-          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+          if ( rh >  0.0_r8 .and. &
+               rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+
+            call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, dptk, &
+                               RADIOSONDE_DEWPOINT, oerr, oday, osec, qc, obs)
+            call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
+          endif
+
         endif
 
       endif  ! quality control/missing check on tair and tdew

@@ -324,7 +324,8 @@ obsloop: do n = 1, nobs
       endif
       oerr = max(qerr * qsat, 0.0001_r8)
   
-      if ( qobs >= 0.0_r8 .and. qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
+      if ( qobs >  0.0_r8  .and. &
+           qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
   
         call create_3d_obs(lat(n), lon(n), def_elev, VERTISSURFACE, qobs, &
                            MARINE_SFC_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
@@ -348,10 +349,14 @@ obsloop: do n = 1, nobs
         endif
       endif
   
-      call create_3d_obs(lat(n), lon(n), def_elev, VERTISSURFACE, rh, &
-                         MARINE_SFC_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
-      call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+      if ( rh >  0.0_r8 .and. &
+           rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+
+        call create_3d_obs(lat(n), lon(n), def_elev, VERTISSURFACE, rh, &
+                           MARINE_SFC_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
+        call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
+      endif
     endif
   
     ! add dew-point temperature data to obs_seq
@@ -360,10 +365,14 @@ obsloop: do n = 1, nobs
       rh = temp_and_dewpoint_to_rh(tair(n), tdew(n))
       oerr = dewpt_error_from_rh_and_temp(tair(n), rh)
   
-      call create_3d_obs(lat(n), lon(n), def_elev, VERTISSURFACE, tdew(n), &
-                         MARINE_SFC_DEWPOINT, oerr, oday, osec, qc, obs)
-      call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+      if ( rh >  0.0_r8 .and. &
+           rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+
+        call create_3d_obs(lat(n), lon(n), def_elev, VERTISSURFACE, tdew(n), &
+                           MARINE_SFC_DEWPOINT, oerr, oday, osec, qc, obs)
+        call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
+      endif
     endif
 
   endif  ! quality control/missing check on tair, tdew
