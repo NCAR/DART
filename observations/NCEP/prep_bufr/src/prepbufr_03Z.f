@@ -1,6 +1,8 @@
 c    This is the 5th version of the BUFR preparation program for the
 c    newly revised DART version. Ps and moisture obs are outputed as well.
 c     
+c    12/2009 added additional time window flavors, specified all of the variable
+c    types. 
 c    A bug with the radiosonde T events selection j2 is fixed at 04/06/2005.
 c    and surface data is included in this version.
 c    For radiosonde T: T of Pc=1 and 6 is dry T; T of pc=8 is virtual T.
@@ -71,7 +73,7 @@ c    The pc values are the 'program codes' that tell you what processing
 c    was done on this observation.  As of now, these are unused, but could
 c    be used for selection or diagnosis.
       integer :: pc_t, pc_q, pc_u, pc_v, pc_p 
-      integer :: tqm, pqm, qqm, uqm, vqm, qctype_use(max_otype)
+      integer :: tqm, pqm, qqm, uqm, vqm
       logical :: found, uotype, uqcflag, use_this_data_real, 
      +           use_this_data_int, processed
       logical :: debug = .false.
@@ -79,14 +81,21 @@ c    be used for selection or diagnosis.
 c    Namelist Parameters
 c----------------------------------------------------------------------
 
-      real :: otype_use(max_otype),    ! report types to use
-     +        obs_window = 0.8,        ! observation time window (hours)
-     +        obs_window_cw = 1.5,     ! cloud wind obs time window (hours)
-     +        land_temp_error = 2.5,   ! assumed err surface temp. obs (K)
-     +        land_wind_error = 3.5,   ! assumed err surface wind obs (m/s)
-     +        land_moist_error = 0.2   ! assumed err surface moist. obs (%)
+      integer :: qctype_use(max_otype)  ! qc values to accept (default all)
+      real :: otype_use(max_otype),     ! report types to use (default all)
+     +        obs_window       = 1.5,   ! observation time window (+/-hours)
+     +        obs_window_upa   = 1.5,   ! sonde time window (+/-hours)
+     +        obs_window_air   = 1.5,   ! aircraft obs time window (+/-hours)
+     +        obs_window_sfc   = 0.8,   ! surface obs time window (+/-hours)
+     +        obs_window_cw    = 1.5,   ! cloud wind obs time window (+/-hours)
+     +        land_temp_error  = 2.5,   ! assumed err surface temp. obs (K)
+     +        land_wind_error  = 3.5,   ! assumed err surface wind obs (m/s)
+     +        land_moist_error = 0.2    ! assumed err surface moist. obs (%)
 
       namelist /prep_bufr_nml/ obs_window,
+     +                         obs_window_upa,
+     +                         obs_window_air,
+     +                         obs_window_sfc,
      +                         obs_window_cw,
      +                         otype_use,
      +                         qctype_use,
@@ -132,6 +141,17 @@ c----------------------------------------------------------------------
         inum_qctype = inum_qctype + 1
       enddo
 
+c     overwrite observation windows if obs_window is defined
+c----------------------------------------------------------------------
+
+      if ( obs_window > 0.0 ) then
+        print*, "Using the same observation window for all data: ",obs_window
+        obs_window_upa = obs_window
+        obs_window_air = obs_window
+        obs_window_sfc = obs_window
+        obs_window_cw  = obs_window
+      endif
+
 c    open the input bufr file and the output text file
 c----------------------------------------------------------------------
 
@@ -148,7 +168,7 @@ c    read the next station report from the input bufr file
 c----------------------------------------------------------------------
 
 10    CALL READPB  ( ibufr_unit, subset, idate, ierrpb )
- 
+
       if ( debug ) print *, 'next obs type: ', subset(1:6)
 
       idate00 = idate/100
@@ -212,14 +232,28 @@ c----------------------------------------------------------------------
      &              hour01
           GO TO 10
         ENDIF 
-      ELSE
-        IF ( hour01 .gt. obs_window ) THEN 
+      ELSE IF ( subset(1:6).eq.'ADPUPA' ) THEN
+        IF ( hour01 .gt. obs_window_upa ) THEN 
          if ( debug ) print*, 
-     &              'non-satwind outside time window, diff was: ',
-     &              hour01
+     &              'upper-air outside time window, diff was: ',
+     &              abs(time0)
           GO TO 10
         ENDIF
-      END IF
+      ELSE IF (subset(1:6).eq.'AIRCFT'.or.subset(1:6).eq.'AIRCAR') THEN
+        IF ( hour01 .gt. obs_window_air ) THEN
+          if ( debug ) print*,
+     &              'aircraft outside time window, diff was: ',
+     &              abs(time0)
+          GO TO 10
+	ENDIF
+      ELSE IF (subset(1:6).eq.'ADPSFC'.or.subset(1:6).eq.'SFCSHP') THEN
+        IF ( hour01 .gt. obs_window_sfc ) THEN
+          if ( debug ) print*,
+     &              'surface outside time window, diff was: ',
+     &              hour01
+          GO TO 10
+	ENDIF
+      ENDIF
 
 c    place the location data in the appropriate array
 c----------------------------------------------------------------------
