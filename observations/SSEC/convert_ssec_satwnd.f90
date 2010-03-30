@@ -20,18 +20,19 @@ program convert_ssec_satwnd
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use        types_mod, only : r8, missing_r8
-use    utilities_mod, only : get_unit
-use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
-                             increment_time, get_time, set_date, operator(-)
-use     location_mod, only : VERTISPRESSURE
-use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
-                             static_init_obs_sequence, init_obs, write_obs_seq, &
-                             append_obs_to_seq, init_obs_sequence, get_num_obs, &
-                             set_copy_meta_data, set_qc_meta_data
-use       meteor_mod, only : wind_dirspd_to_uv
-use      obs_err_mod, only : sat_wind_error, sat_wv_wind_error
-use     obs_kind_mod, only : SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT
+use          types_mod, only : r8, missing_r8
+use      utilities_mod, only : get_unit
+use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
+                               increment_time, get_time, set_date, operator(-)
+use       location_mod, only : VERTISPRESSURE
+use   obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
+                               static_init_obs_sequence, init_obs, write_obs_seq, &
+                               append_obs_to_seq, init_obs_sequence, get_num_obs, &
+                               set_copy_meta_data, set_qc_meta_data
+use         meteor_mod, only : wind_dirspd_to_uv
+use        obs_err_mod, only : sat_wind_error, sat_wv_wind_error
+use       obs_kind_mod, only : SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT
+use  obs_utilities_mod, only : create_3d_obs, add_obs_to_seq
 use           netcdf
 
 implicit none
@@ -44,39 +45,27 @@ integer, parameter :: nmaxwnd = 50000,  &  ! maximum number of vectors
                       num_qc     = 1       ! number of QC entries
 
 character (len=129) :: meta_data, header
-character (len=19)  :: datestr
 character (len=8)   :: datein
 character (len=6)   :: sat
 character (len=4)   :: band, hourin
 
 logical :: iruse, visuse, wvuse, swiruse, file_exist, qifile, eefile, &
-           userfqc, useqiqc, useeeqc
+           userfqc, useqiqc, useeeqc, first_obs
 
-integer :: in_unit, i, days, secs, nused, iyear, imonth, iday, ihour, & 
-           imin, isec, dsec, dday, dsecobs, qctype
-real(r8) :: obs_window, lat, lon, pres, wdir, wspd, uwnd, vwnd, oerr, &
-            latu(nmaxwnd), lonu(nmaxwnd), prsu(nmaxwnd), qc, qcthresh, &
-            rfqc, qiqc, eeqc
+integer :: in_unit, i, oday, osec, nused, iyear, imonth, iday, ihour, & 
+           imin, isec, qctype
+real(r8) :: lat, lon, pres, wdir, wspd, uwnd, vwnd, oerr, latu(nmaxwnd), &
+            lonu(nmaxwnd), prsu(nmaxwnd), qc, qcthresh, rfqc, qiqc, eeqc
 
 type(obs_sequence_type) :: obs_seq
-type(obs_type)          :: obs
-type(time_type)         :: time_anal
+type(obs_type)          :: obs, prev_obs
+type(time_type)         :: time_obs, prev_time
 
-print*,'Enter the analysis time (yyyy-mm-dd_hh:mm:ss), and window (hours)'
-read*, datestr, obs_window
 print*,'Do you want to include IR, VISIBLE, WV data, and SW IR? (T/F, 4 times)'
 read*, iruse, visuse, wvuse, swiruse 
-dsecobs = nint(obs_window * 3600.0_r8)
 
 call set_calendar_type(GREGORIAN)
-read(datestr(1:4),   fmt='(i4)') iyear
-read(datestr(6:7),   fmt='(i2)') imonth
-read(datestr(9:10),  fmt='(i2)') iday
-read(datestr(12:13), fmt='(i2)') ihour
-read(datestr(15:16), fmt='(i2)') imin
-read(datestr(18:19), fmt='(i2)') isec
-time_anal = set_date(iyear, imonth, iday, ihour, imin, isec)
-call get_time(time_anal, secs, days)
+first_obs = .true.
 
 qifile  = .false.  ;  eefile  = .false.
 userfqc = .false.  ;  useqiqc = .false.  ;  useeeqc = .false.  
@@ -127,11 +116,11 @@ else
 
   call init_obs_sequence(obs_seq, num_copies, num_qc, 2*nmaxwnd)
   do i = 1, num_copies
-    meta_data = 'NCEP BUFR observation'
+    meta_data = 'SSEC observation'
     call set_copy_meta_data(obs_seq, i, meta_data)
   end do
   do i = 1, num_qc
-    meta_data = 'NCEP QC index'
+    meta_data = 'Data QC'
     call set_qc_meta_data(obs_seq, i, meta_data)
   end do
 
@@ -166,8 +155,8 @@ obsloop: do
   read(datein(7:8), fmt='(i2)') iday
   read(hourin(1:2), fmt='(i2)') ihour
   read(hourin(3:4), fmt='(i2)') imin
-  call get_time((time_anal-set_date(iyear, imonth, iday, ihour, imin, 0)), dsec, dday)
-  if ( (dsec + dday * 86400) > dsecobs ) cycle obsloop
+  time_obs = set_date(iyear, imonth, iday, ihour, imin, 0)
+  call get_time(time_obs, osec, oday)
 
   !  check the satellite channel
   if ( trim(adjustl(band))      == 'IR'   .and. (.not. iruse)   ) cycle obsloop
@@ -194,12 +183,13 @@ obsloop: do
 
   call wind_dirspd_to_uv(wdir, wspd, uwnd, vwnd)
 
-  call create_obs_type(lat, lon, pres * 100.0_r8, VERTISPRESSURE, uwnd, &
-                       SAT_U_WIND_COMPONENT, oerr, days, secs, qc, obs)
-  call append_obs_to_seq(obs_seq, obs)
-  call create_obs_type(lat, lon, pres * 100.0_r8, VERTISPRESSURE, vwnd, &
-                       SAT_V_WIND_COMPONENT, oerr, days, secs, qc, obs)
-  call append_obs_to_seq(obs_seq, obs)
+  call create_3d_obs(lat, lon, pres * 100.0_r8, VERTISPRESSURE, uwnd, &
+                     SAT_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+  call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+
+  call create_3d_obs(lat, lon, pres * 100.0_r8, VERTISPRESSURE, vwnd, &
+                     SAT_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+  call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
   nused = nused + 1
   latu(nused) = lat
@@ -212,61 +202,5 @@ end do obsloop
 close( in_unit)
 
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, sat_wind_file)
-
-! end of main program
-
-contains
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   create_obs_type - subroutine that is used to create an observation
-!                     type from observation data.
-!
-!    lat   - latitude of observation
-!    lon   - longitude of observation
-!    pres  - pressure of observation
-!    vcord - vertical coordinate
-!    obsv  - observation value
-!    okind - observation kind
-!    oerr  - observation error
-!    day   - gregorian day
-!    sec   - gregorian second
-!    qc    - quality control value
-!    obs   - observation type
-!
-!     created Oct. 2007 Ryan Torn, NCAR/MMM
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine create_obs_type(lat, lon, pres, vcord, obsv, okind, oerr, day, sec, qc, obs)
-
-use types_mod,        only : r8
-use obs_sequence_mod, only : obs_type, set_obs_values, set_qc, set_obs_def
-use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
-                             set_obs_def_error_variance, set_obs_def_location
-use     location_mod, only : location_type, set_location
-use time_manager_mod, only : time_type, set_time
-
-implicit none
-
-integer, intent(in)           :: okind, vcord, day, sec
-real(r8), intent(in)          :: lat, lon, pres, obsv, oerr, qc
-type(obs_type), intent(inout) :: obs
-
-real(r8)              :: obs_val(1), qc_val(1)
-type(obs_def_type)    :: obs_def
-
-call set_obs_def_location(obs_def, set_location(lon, lat, pres, vcord))
-call set_obs_def_kind(obs_def, okind)
-call set_obs_def_time(obs_def, set_time(sec, day))
-call set_obs_def_error_variance(obs_def, oerr * oerr)
-call set_obs_def(obs, obs_def)
-
-obs_val(1) = obsv
-call set_obs_values(obs, obs_val)
-qc_val(1)  = qc
-call set_qc(obs, qc_val)
-
-return
-end subroutine create_obs_type
 
 end program
