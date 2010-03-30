@@ -41,7 +41,7 @@ use     obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT
                              MARINE_SFC_U_WIND_COMPONENT, LAND_SFC_U_WIND_COMPONENT, &
                              METAR_U_10_METER_WIND, GPSRO_REFRACTIVITY, &
                              SAT_U_WIND_COMPONENT, VORTEX_LAT
-use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_date
+use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time
 use        model_mod, only : static_init_model
 use           netcdf
 
@@ -114,8 +114,7 @@ character(len=80)       :: name
 character (len=19)      :: datime
 
 integer                 :: io, iunit, fid, var_id, obs_seq_file_id, num_copies, &
-                           num_qc, num_obs, max_obs_seq, nx, ny, gday, gsec, &
-                           iyear, imonth, iday, ihour, imin, isec
+                           num_qc, num_obs, max_obs_seq, nx, ny, gday, gsec
 
 logical                 :: file_exist, pre_I_format
 
@@ -124,16 +123,10 @@ type(obs_sequence_type) :: seq_all, seq_rawin, seq_sfc, seq_acars, seq_satwnd, &
 
 type(time_type)         :: anal_time, prev_time, time_obs
 
-print*,'Enter target assimilation time (yyyy-mm-dd_hh:mm:ss): '
-read*,datime
+print*,'Enter target assimilation time (gregorian day, second): '
+read*,gday,gsec
 call set_calendar_type(GREGORIAN)
-read(datime(1:4),   fmt='(i4)') iyear
-read(datime(6:7),   fmt='(i2)') imonth
-read(datime(9:10),  fmt='(i2)') iday
-read(datime(12:13), fmt='(i2)') ihour
-read(datime(15:16), fmt='(i2)') imin
-read(datime(18:19), fmt='(i2)') isec
-anal_time = set_date(iyear, imonth, iday, ihour, imin, isec)
+anal_time = set_time(gsec, gday)
 
 call static_init_obs_sequence()
 call static_init_model()
@@ -332,15 +325,15 @@ subroutine add_supplimental_obs(filename, obs_seq, max_obs_seq, plat_kind, &
                                  sfcelev, elev_max, overwrite_time, atime)
 
 use         types_mod, only : r8
-use  time_manager_mod, only : time_type
+use  time_manager_mod, only : time_type, operator(>=)
 use      location_mod, only : location_type, get_location, vert_is_pressure, &
                               vert_is_height
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, set_obs_def, &
-                              get_num_copies, get_num_qc, read_obs_seq, &
+                              get_num_copies, get_num_qc, read_obs_seq, copy_obs, &
                               get_first_obs, get_obs_def, get_next_obs, &
-                              copy_obs, insert_obs_in_seq, destroy_obs_sequence
+                              get_last_obs, insert_obs_in_seq, destroy_obs_sequence
 use       obs_def_mod, only : obs_def_type, get_obs_kind, set_obs_def_time, &
-                              get_obs_def_location
+                              get_obs_def_location, get_obs_def_time
 use      obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT, &
                               LAND_SFC_U_WIND_COMPONENT, MARINE_SFC_U_WIND_COMPONENT, &
                               METAR_U_10_METER_WIND, GPSRO_REFRACTIVITY, &
@@ -359,13 +352,14 @@ real(r8), intent(in)                   :: obs_bdy, ptop, htop, elev_max
 integer  :: nloc, okind, dom_id
 logical  :: file_exist, last_obs, pass_checks, original_observation, &
             rawinsonde_obs_check, aircraft_obs_check, surface_obs_check, &
-            sat_wind_obs_check
+            sat_wind_obs_check, first_obs
 real(r8) :: xyz_loc(3), xloc, yloc
 
 type(location_type)     :: obs_loc_list(max_obs_seq), obs_loc
 type(obs_def_type)      :: obs_def
 type(obs_sequence_type) :: supp_obs_seq
-type(obs_type)          :: obs_in, prev_obs, obs
+type(obs_type)          :: obs_in, prev_obsi, prev_obso, obs
+type(time_type)         :: obs_time, prev_time
 
 inquire(file = trim(adjustl(filename)), exist = file_exist)
 if ( .not. file_exist )  return
@@ -391,12 +385,26 @@ select case (plat_kind)
 
 end select
 
-call init_obs(obs_in,   get_num_copies(obs_seq), get_num_qc(obs_seq))
-call init_obs(obs,      get_num_copies(obs_seq), get_num_qc(obs_seq))
-call init_obs(prev_obs, get_num_copies(obs_seq), get_num_qc(obs_seq))
+call init_obs(obs_in,    get_num_copies(obs_seq), get_num_qc(obs_seq))
+call init_obs(obs,       get_num_copies(obs_seq), get_num_qc(obs_seq))
+call init_obs(prev_obsi, get_num_copies(obs_seq), get_num_qc(obs_seq))
+call init_obs(prev_obso, get_num_copies(obs_seq), get_num_qc(obs_seq))
 
 !  create list of observations in plaform sequence
 call build_obs_loc_list(obs_seq, max_obs_seq, nloc, obs_loc_list)
+
+!  find the last observation in the sequence
+if ( get_last_obs(obs_seq, prev_obso) ) then
+
+  first_obs = .false.
+  call get_obs_def(prev_obso, obs_def)
+  prev_time = get_obs_def_time(obs_def)
+
+else
+
+  first_obs = .true.
+
+end if
 
 last_obs = .false.
 call read_obs_seq(trim(adjustl(filename)), 0, 0, 0, supp_obs_seq)
@@ -416,8 +424,8 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
          yloc < (obs_bdy+1.0_r8) .or. yloc > (dble(ny)-obs_bdy-1.0_r8)) .and. &
          (dom_id == 1)) .or. dom_id < 1 ) then
 
-    prev_obs = obs_in
-    call get_next_obs(supp_obs_seq, prev_obs, obs_in, last_obs)
+    prev_obsi = obs_in
+    call get_next_obs(supp_obs_seq, prev_obsi, obs_in, last_obs)
     cycle ObsLoop
 
   end if
@@ -426,8 +434,8 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
   if ( (vert_is_pressure(obs_loc) .and. xyz_loc(3) < ptop) .or. &
        (vert_is_height(obs_loc)   .and. xyz_loc(3) > htop) ) then
 
-    prev_obs = obs_in
-    call get_next_obs(supp_obs_seq, prev_obs, obs_in, last_obs)
+    prev_obsi = obs_in
+    call get_next_obs(supp_obs_seq, prev_obsi, obs_in, last_obs)
     cycle ObsLoop
 
   end if
@@ -435,8 +443,8 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
   !  check if the observation already exists
   if ( .not. original_observation(obs_loc, obs_loc_list, nloc) ) then
 
-    prev_obs = obs_in
-    call get_next_obs(supp_obs_seq, prev_obs, obs_in, last_obs)
+    prev_obsi = obs_in
+    call get_next_obs(supp_obs_seq, prev_obsi, obs_in, last_obs)
     cycle ObsLoop
 
   end if
@@ -473,13 +481,23 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
   if ( pass_checks ) then
 
     call copy_obs(obs, obs_in)
-    !call append_obs_to_seq(obs_seq, obs)
-    call insert_obs_in_seq(obs_seq, obs)
+    call get_obs_def(obs, obs_def)
+    obs_time = get_obs_def_time(obs_def)
+
+    if (obs_time >= prev_time .and. (.not. first_obs)) then  ! same time or later than previous obs
+      call insert_obs_in_seq(obs_seq, obs, prev_obso)
+    else                                                     ! earlier, search from start of seq
+      call insert_obs_in_seq(obs_seq, obs)
+    end if
+
+    first_obs = .false.
+    prev_obso = obs
+    prev_time = obs_time
 
   end if
 
-  prev_obs = obs_in
-  call get_next_obs(supp_obs_seq, prev_obs, obs_in, last_obs)
+  prev_obsi = obs_in
+  call get_next_obs(supp_obs_seq, prev_obsi, obs_in, last_obs)
 
 end do ObsLoop
 
@@ -539,34 +557,49 @@ end subroutine create_new_obs_seq
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine build_master_sequence(seq_type, seq_all)
 
+use time_manager_mod, only : time_type, operator(>=)
 use obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs, & 
                              get_first_obs, copy_obs, insert_obs_in_seq, & 
                              get_next_obs, get_obs_def, get_num_copies, &
-                             get_num_qc
+                             get_num_qc, get_obs_def
+use      obs_def_mod, only : obs_def_type, get_obs_def_time
 
 implicit none
 
 type(obs_sequence_type), intent(in)    :: seq_type
 type(obs_sequence_type), intent(inout) :: seq_all
 
-logical :: last_obs
-type(obs_type) :: obs_in, obs, prev_obs
+logical :: last_obs, first_obs
+type(obs_def_type) :: obs_def
+type(obs_type)     :: obs_in, obs, prev_obsi, prev_obsa
+type(time_type)    :: obs_time, prev_time
 
-last_obs = .false.
-call init_obs(obs_in,   get_num_copies(seq_type), get_num_qc(seq_type))
-call init_obs(obs,      get_num_copies(seq_type), get_num_qc(seq_type))
-call init_obs(prev_obs, get_num_copies(seq_type), get_num_qc(seq_type))
+last_obs = .false.  ;  first_obs = .true.
+call init_obs(obs_in,    get_num_copies(seq_type), get_num_qc(seq_type))
+call init_obs(obs,       get_num_copies(seq_type), get_num_qc(seq_type))
+call init_obs(prev_obsi, get_num_copies(seq_type), get_num_qc(seq_type))
+call init_obs(prev_obsa, get_num_copies(seq_type), get_num_qc(seq_type))
 
 if ( .not. get_first_obs(seq_type, obs_in) )  return
 
 do while ( .not. last_obs )
 
   call copy_obs(obs, obs_in)
-  !call append_obs_to_seq(seq_all, obs)
-  call insert_obs_in_seq(seq_all, obs)
+  call get_obs_def(obs, obs_def)
+  obs_time = get_obs_def_time(obs_def)
 
-  prev_obs = obs_in
-  call get_next_obs(seq_type, prev_obs, obs_in, last_obs)
+  if (obs_time >= prev_time .and. (.not. first_obs)) then  ! same time or later than previous obs
+    call insert_obs_in_seq(seq_all, obs, prev_obsa) 
+  else                                                      ! earlier, search from start of seq
+    call insert_obs_in_seq(seq_all, obs)
+  end if
+
+  first_obs = .false.
+  prev_obsi = obs_in
+  prev_obsa = obs
+  prev_time = obs_time
+
+  call get_next_obs(seq_type, prev_obsi, obs_in, last_obs)
 
 end do
 
@@ -925,7 +958,7 @@ use      location_mod, only : location_type, get_location, vert_is_pressure, &
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, &
                               get_num_copies, get_num_qc, get_qc_meta_data, &
                               get_first_obs, get_obs_def, copy_obs, get_num_qc, &
-                              insert_obs_in_seq, get_next_obs, get_qc, set_qc, &
+                              append_obs_to_seq, get_next_obs, get_qc, set_qc, &
                               destroy_obs_sequence, read_obs_seq, set_obs_def
 use       obs_def_mod, only : obs_def_type, get_obs_kind, get_obs_def_location, &
                               set_obs_def_time
@@ -1057,8 +1090,7 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
       if ( rawinsonde_obs_check(obs_loc, okind, siglevel, sfcelev, elev_max) ) then
 
         call copy_obs(obs, obs_in)
-        !call append_obs_to_seq(rawin_seq, obs)
-        call insert_obs_in_seq(rawin_seq, obs)
+        call append_obs_to_seq(rawin_seq, obs)
 
       end if
 
@@ -1086,8 +1118,7 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
           end if
 
         end if
-        !call append_obs_to_seq(sfc_seq, obs)
-        call insert_obs_in_seq(sfc_seq, obs)
+        call append_obs_to_seq(sfc_seq, obs)
 
       endif
 
@@ -1100,8 +1131,7 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
       if ( aircraft_obs_check() ) then
 
         call copy_obs(obs, obs_in)
-        !call append_obs_to_seq(acars_seq, obs)
-        call insert_obs_in_seq(acars_seq, obs)
+        call append_obs_to_seq(acars_seq, obs)
 
       end if
 
@@ -1120,28 +1150,24 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
           end if
 
         end if
-        !call append_obs_to_seq(satwnd_seq, obs)
-        call insert_obs_in_seq(satwnd_seq, obs)
+        call append_obs_to_seq(satwnd_seq, obs)
 
       endif
 
     case ( VORTEX_LAT, VORTEX_LON, VORTEX_PMIN, VORTEX_WMAX )
 
       call copy_obs(obs, obs_in)
-      !call append_obs_to_seq(tc_seq, obs)
-      call insert_obs_in_seq(tc_seq, obs)
+      call append_obs_to_seq(tc_seq, obs)
 
     case ( GPSRO_REFRACTIVITY )
 
       call copy_obs(obs, obs_in)
-      !call append_obs_to_seq(gpsro_seq, obs)
-      call insert_obs_in_seq(gpsro_seq, obs)
+      call append_obs_to_seq(gpsro_seq, obs)
 
     case default
 
       call copy_obs(obs, obs_in)
-      !call append_obs_to_seq(other_seq, obs)
-      call insert_obs_in_seq(other_seq, obs)
+      call append_obs_to_seq(other_seq, obs)
 
   end select
 
@@ -1291,9 +1317,9 @@ use      location_mod, only : location_type, get_dist, operator(==), &
                               get_location, VERTISPRESSURE
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, &
                               get_num_copies, get_num_qc, get_first_obs, &
-                              get_next_obs, destroy_obs_sequence, &
-                              get_num_obs, get_obs_values, get_qc, &
-                              get_obs_def, insert_obs_in_seq
+                              get_next_obs, destroy_obs_sequence, get_qc, &
+                              get_num_obs, get_obs_values, get_obs_def, &
+                              append_obs_to_seq
 use       obs_def_mod, only : obs_def_type, get_obs_def_location, &
                               get_obs_kind, get_obs_def_error_variance, &
                               get_obs_def_time
@@ -1602,8 +1628,7 @@ do k = 1, nloc  !  loop over all observation locations
 
       call create_obs_type(latu, lonu, preu, VERTISPRESSURE, uwnd, &
                            ACARS_U_WIND_COMPONENT, erru, qcu, atime, obs)
-      !call append_obs_to_seq(seq, obs)
-      call insert_obs_in_seq(seq, obs)
+      call append_obs_to_seq(seq, obs)
 
     end if
 
@@ -1618,8 +1643,7 @@ do k = 1, nloc  !  loop over all observation locations
 
       call create_obs_type(latv, lonv, prev, VERTISPRESSURE, vwnd, &
                            ACARS_V_WIND_COMPONENT, errv, qcv, atime, obs)
-      !call append_obs_to_seq(seq, obs)
-      call insert_obs_in_seq(seq, obs)
+      call append_obs_to_seq(seq, obs)
 
     end if
 
@@ -1634,8 +1658,7 @@ do k = 1, nloc  !  loop over all observation locations
 
       call create_obs_type(latt, lont, pret, VERTISPRESSURE, tmpk, & 
                            ACARS_TEMPERATURE, errt, qct, atime, obs)
-      !call append_obs_to_seq(seq, obs)
-      call insert_obs_in_seq(seq, obs)
+      call append_obs_to_seq(seq, obs)
 
     end if
 
@@ -1650,8 +1673,7 @@ do k = 1, nloc  !  loop over all observation locations
 
       call create_obs_type(latq, lonq, preq, VERTISPRESSURE, qvap, & 
                            ACARS_SPECIFIC_HUMIDITY, errq, qcq, atime, obs)
-      !call append_obs_to_seq(seq, obs)
-      call insert_obs_in_seq(seq, obs)
+      call append_obs_to_seq(seq, obs)
 
     end if
 
@@ -1666,8 +1688,7 @@ do k = 1, nloc  !  loop over all observation locations
 
       call create_obs_type(latd, lond, pred, VERTISPRESSURE, dwpt, &
                            ACARS_DEWPOINT, errd, qcd, atime, obs)
-      !call append_obs_to_seq(seq, obs)
-      call insert_obs_in_seq(seq, obs)
+      call append_obs_to_seq(seq, obs)
 
     end if
 
@@ -1682,8 +1703,7 @@ do k = 1, nloc  !  loop over all observation locations
 
       call create_obs_type(latr, lonr, prer, VERTISPRESSURE, relh, &
                            ACARS_RELATIVE_HUMIDITY, errr, qcr, atime, obs)
-      !call append_obs_to_seq(seq, obs)
-      call insert_obs_in_seq(seq, obs)
+      call append_obs_to_seq(seq, obs)
 
     end if
 
@@ -1713,9 +1733,9 @@ use      location_mod, only : location_type, get_dist, operator(==), &
                               get_location, VERTISPRESSURE
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, &
                               get_num_copies, get_num_qc, get_first_obs, &
-                              get_next_obs, destroy_obs_sequence, &
-                              get_num_obs, get_obs_values, get_qc, &
-                              get_obs_def, insert_obs_in_seq
+                              get_next_obs, destroy_obs_sequence, get_qc, &
+                              get_num_obs, get_obs_values, get_obs_def, &
+                              append_obs_to_seq
 use       obs_def_mod, only : obs_def_type, get_obs_def_location, &
                               get_obs_kind, get_obs_def_error_variance, &
                               get_obs_def_time
@@ -1879,13 +1899,11 @@ do k = 1, nloc  ! loop over all locations
     !  add to observation sequence
     call create_obs_type(lat, lon, pres, VERTISPRESSURE, uwnd, &
                          SAT_U_WIND_COMPONENT, erru, qcu, atime, obs)
-    !call append_obs_to_seq(seq, obs)
-    call insert_obs_in_seq(seq, obs)
+    call append_obs_to_seq(seq, obs)
 
     call create_obs_type(lat, lon, pres, VERTISPRESSURE, vwnd, &
                          SAT_V_WIND_COMPONENT, errv, qcv, atime, obs)
-    !call append_obs_to_seq(seq, obs)
-    call insert_obs_in_seq(seq, obs)
+    call append_obs_to_seq(seq, obs)
 
   end if
 
