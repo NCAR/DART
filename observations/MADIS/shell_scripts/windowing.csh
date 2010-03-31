@@ -282,7 +282,7 @@ while ( 1 )
     # sed the input.nml to set start/stop times
     sed -e "s/BDAY/$gobef[1]/" \
         -e "s/BSEC/$gobef[2]/" \
-        -e "s/ASEC/$goaft[2]/" \
+        -e "s/ADAY/$goaft[1]/" \
         -e "s/ASEC/$goaft[2]/" input.nml.template >! input.nml
 
     # run obs_seq_tool
@@ -311,7 +311,7 @@ while ( 1 )
   # sed the input.nml to unset start/stop times
   sed -e "s/BDAY/-1/" \
       -e "s/BSEC/-1/" \
-      -e "s/ASEC/-1/" \
+      -e "s/ADAY/-1/" \
       -e "s/ASEC/-1/" input.nml.template > input.nml
 
   # run obs_seq_tool one more time to stitch these together

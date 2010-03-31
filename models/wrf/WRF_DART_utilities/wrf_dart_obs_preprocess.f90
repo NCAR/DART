@@ -58,7 +58,7 @@ character(len=129) :: file_name_input    = 'obs_seq.old',        &
                       acars_extra        = 'obs_seq.acars',      &
                       land_sfc_extra     = 'obs_seq.land_sfc',   &
                       metar_extra        = 'obs_seq.metar',      &
-                      marine_sfc_extra   = 'obs_seq.marine_sfc', &
+                      marine_sfc_extra   = 'obs_seq.marine',     &
                       sat_wind_extra     = 'obs_seq.satwnd',     &
                       gpsro_extra        = 'obs_seq.gpsro',      &
                       trop_cyclone_extra = 'obs_seq.tc'

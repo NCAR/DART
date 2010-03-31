@@ -150,9 +150,10 @@ while ( $h <= $totalhrs )
   endif
 
   # if the input is still zipped, unzip it
-  if ( -f ${infn}.gz ) gunzip ${infn}.gz
+  if ( -f $src_dir/${infn}.gz ) gunzip $src_dir/${infn}.gz
 
-  ln -sf $infn  ${type}_input.nc
+  ln -sf $src_dir/$infn  ${type}_input.nc
+
   # the rawinsonde converter needs two logicals for whether to output
   # significant level data as well as the default data.  set these to
   # T or F as you wish.  the other converters need no input.

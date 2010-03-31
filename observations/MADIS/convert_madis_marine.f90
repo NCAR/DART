@@ -64,7 +64,7 @@ use           netcdf
 implicit none
 
 character(len=15),  parameter :: marine_netcdf_file = 'marine_input.nc'
-character(len=129), parameter :: marine_out_file    = 'obs_seq.marine_sfc'
+character(len=129), parameter :: marine_out_file    = 'obs_seq.marine'
 
 ! the following logical parameters control which water-vapor variables appear in the output file,
 ! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and if the
