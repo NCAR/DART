@@ -39,7 +39,7 @@ for i = 1:num_copies,
    nowhitemd = dewhite(copy_meta_data(i,:));
 
    if strcmp(nowhitemd , nowhitecs) == 1
-      fprintf('%s is copy %3i\n', copystring,i);
+%     fprintf('%s is copy %3i\n', copystring,i);
       copy_index = i;
    end
 end

@@ -15,6 +15,7 @@ function [start, count] = GetNCindices(pinfo, whichfile, varname);
 %                    pinfo.latindex
 %                    pinfo.lonindex
 %                    pinfo.stateindex
+%                    pinfo.regionindex
 %
 % whichfile          is a character string specifying which 
 %                    filename component of 'pinfo' will be used.
@@ -60,12 +61,13 @@ if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 % If the structure has subsetting information, use it.
 % Otherwise, use the whole extent.
 
-lat1   = 0; latN   = -1;
-lon1   = 0; lonN   = -1;
-time1  = 0; timeN  = -1;
-copy1  = 0; copyN  = -1;
-level1 = 0; levelN = -1;
-state1 = 0; stateN = -1;
+lat1    = 0; latN    = -1;
+lon1    = 0; lonN    = -1;
+time1   = 0; timeN   = -1;
+copy1   = 0; copyN   = -1;
+level1  = 0; levelN  = -1;
+state1  = 0; stateN  = -1;
+region1 = 0; regionN = -1;
 
 if (isfield(pinfo,'timeindex'))
    time1 = pinfo.timeindex - 1;
@@ -90,6 +92,10 @@ end
 if (isfield(pinfo,'copyindex'))
    copy1 = pinfo.copyindex - 1;
    copyN = 1;
+end
+if (isfield(pinfo,'regionindex'))
+   region1 = pinfo.regionindex - 1;
+   regionN = 1;
 end
 
 % Determine shape of variable in question.
@@ -149,9 +155,14 @@ for i = 1:ndims
          % 'Xdim' and 'YDim' for their state variable names.
          start(i) = state1;
          count(i) = stateN;
+      case 'region'
+         start(i) = region1;
+         count(i) = regionN;
    end
 
 end
+
+count(count < 1) = -1;
 
 
 
