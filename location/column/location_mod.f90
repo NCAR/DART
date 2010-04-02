@@ -387,7 +387,7 @@ if(present(set_to_default)) then
    endif
 endif
 
-write(*, *)'Vertical co-ordinate options'
+write(*, *)'Vertical coordinate options'
 write(*, *)VERTISUNDEF,' --> vertical coordinate undefined'
 write(*, *)VERTISSURFACE,' --> surface'
 write(*, *)VERTISLEVEL,' --> model level'
@@ -396,17 +396,17 @@ write(*, *)VERTISHEIGHT,' --> height'
 
 100   read(*, *) location%which_vert
 if(location%which_vert == VERTISLEVEL ) then
-   write(*, *) 'Vertical co-ordinate model level'
+   write(*, *) 'Vertical coordinate model level'
    read(*, *) location%vloc
 else if(location%which_vert == VERTISPRESSURE ) then
-   write(*, *) 'Vertical co-ordinate Pressure (in hPa)'
+   write(*, *) 'Vertical coordinate Pressure (in hPa)'
    read(*, *) location%vloc
    location%vloc = 100.0_r8 * location%vloc
 else if(location%which_vert == VERTISHEIGHT ) then
-   write(*, *) 'Vertical co-ordinate height (in gpm)'
+   write(*, *) 'Vertical coordinate height (in gpm)'
    read(*, *) location%vloc
 else if(location%which_vert == VERTISSURFACE ) then
-   write(*, *) 'Vertical co-ordinate surface height'
+   write(*, *) 'Vertical coordinate surface height'
    read(*, *) location%vloc
 else if(location%which_vert == VERTISUNDEF ) then
    location%vloc = 0.0_r8

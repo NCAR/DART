@@ -458,22 +458,22 @@ if(present(set_to_default)) then
    endif
 endif
 
-write(*, *)'Vertical co-ordinate options'
+write(*, *)'Vertical coordinate options'
 write(*, *)'-1 -> surface, 1 -> model level, 3 -> depth'
 
 100   read(*, *) location%which_vert
 if(location%which_vert == VERTISLEVEL ) then
-   write(*, *) 'Vertical co-ordinate model level'
+   write(*, *) 'Vertical coordinate model level'
    read(*, *) location%vloc
 else if(location%which_vert == VERTISHEIGHT ) then
-   write(*, *) 'Vertical co-ordinate depth (in negative m)'
+   write(*, *) 'Vertical coordinate depth (in negative m)'
    read(*, *) location%vloc
    do while (location%vloc > 0)
       write(*, *) 'Depth must be negative (zero at top of fluid), please try again'
       read(*, *) location%vloc
    end do
 else if(location%which_vert == VERTISSURFACE ) then
-   write(*, *) 'Vertical co-ordinate surface pressure (in hPa)'
+   write(*, *) 'Vertical coordinate surface pressure (in hPa)'
    read(*, *) location%vloc
    location%vloc = 100.0 * location%vloc
 else

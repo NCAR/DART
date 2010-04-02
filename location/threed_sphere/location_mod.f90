@@ -229,7 +229,9 @@ end subroutine initialize_module
 
 function get_dist(loc1, loc2, kind1, kind2, no_vert)
 
-! Distance depends on only horizontal distance or both horizontal and vertical distance. 
+! returns the distance between 2 locations in units of radians.
+! Distance depends on only horizontal distance or both horizontal and 
+! vertical distance. 
 ! The choice is determined by horiz_dist_only and the which_vert of loc1.
 ! May want to allow return of some joint distance in the long run? 
 ! Or just a distance that is a function of all 3 things.
@@ -237,8 +239,8 @@ function get_dist(loc1, loc2, kind1, kind2, no_vert)
 ! However, this behavior can be over-ridden by the no_vert optional argument.
 ! If set to false, this will always do full 3d distance if possible. If set to
 ! true it will never do the full 3d distance. At present asking to do a vertical
-! distance computation for incompatible vertical location types results in a fatal
-! error.
+! distance computation for incompatible vertical location types results 
+! in a fatal error.
 
 ! The kinds are available if a more sophisticated distance computation is required.
 ! This generic code does not use the kinds, but several model_mods intercept this
@@ -693,7 +695,7 @@ if(present(set_to_default)) then
    endif
 endif
 
-write(*, *)'Vertical co-ordinate options'
+write(*, *)'Vertical coordinate options'
 write(*, *)VERTISUNDEF,' --> vertical coordinate undefined'
 write(*, *)VERTISSURFACE,' --> surface'
 write(*, *)VERTISLEVEL,' --> model level'
@@ -702,21 +704,21 @@ write(*, *)VERTISHEIGHT,' --> height'
 
 100   read(*, *) location%which_vert
 if(location%which_vert == VERTISLEVEL ) then
-   write(*, *) 'Vertical co-ordinate model level'
+   write(*, *) 'Vertical coordinate model level'
    read(*, *) location%vloc
 else if(location%which_vert == VERTISPRESSURE ) then
-   write(*, *) 'Vertical co-ordinate Pressure (in hPa)'
+   write(*, *) 'Vertical coordinate Pressure (in hPa)'
    read(*, *) location%vloc
    location%vloc = 100.0 * location%vloc
 else if(location%which_vert == VERTISHEIGHT ) then
-   write(*, *) 'Vertical co-ordinate height (in gpm)'
+   write(*, *) 'Vertical coordinate height (in gpm)'
    read(*, *) location%vloc
 else if(location%which_vert == VERTISSURFACE ) then
    ! most 3d sphere users want height in meters, not pressure.
    ! original code asked for pressure:
-   !write(*, *) 'Vertical co-ordinate surface pressure (in hPa)'
+   !write(*, *) 'Vertical coordinate surface pressure (in hPa)'
    !location%vloc = 100.0 * location%vloc  ! only applies to pressure
-   write(*, *) 'Vertical co-ordinate height'
+   write(*, *) 'Vertical coordinate height'
    read(*, *) location%vloc
 else if(location%which_vert == VERTISUNDEF ) then
    ! a valid floating point value, but should be unused.

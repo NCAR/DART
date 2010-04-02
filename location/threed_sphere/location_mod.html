@@ -505,11 +505,13 @@ real(r8), intent(in)                :: <em class=code>maxdist</em>
 <!-- Description -->
 
 <P>
-Sets the threshhold distance. 
+Sets the threshhold distance.  <em class=code>maxdist</em> is in
+units of radians.
 Anything closer than this is deemed to be close.
 This routine must be called first, before the other 
 <em class=code>get_close</em> routines.  
-It allocates space so it is necessary to call <em class=code>get_close_obs_destroy</em>
+It allocates space so it is necessary to call 
+<em class=code>get_close_obs_destroy</em>
 when completely done with getting distances between locations.
 </P>
 
@@ -517,7 +519,7 @@ when completely done with getting distances between locations.
 <TR><TD valign=top><em class=code>gc</em></TD>
     <TD>Data for efficiently finding close locations.</TD></TR>
 <TR><TD valign=top><em class=code>maxdist</em></TD>
-    <TD>Anything closer than this distance is a close location.</TD></TR>
+    <TD>Anything closer than this number of radians is a close location.</TD></TR>
 </TABLE>
 
 </div>
@@ -676,7 +678,8 @@ logical, optional,   intent(in) :: <em class=optionalcode>no_vert </em>
 <!-- Description -->
 
 <P>
-Returns the distance between two locations. If <em class=code>horiz_dist_only</em> 
+Returns the distance between two locations in radians. 
+If <em class=code>horiz_dist_only</em> 
 is set to .TRUE. in the locations namelist, it computes great circle 
 distance on sphere. 
 If <em class=code>horiz_dist_only</em> is false, then it
