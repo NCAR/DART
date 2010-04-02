@@ -19,48 +19,77 @@
 </center>
 
 <H1>PROGRAM <em class=program>filter</em></H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<small><P>Latest subversion revision tag:
+<!-- version tag follows, do not edit -->$Id$
+</P></small>
 
 <P>
    Main program for driving ensemble filter assimilations. 
-   <br>
-   <br>
-   The basic execution loop is:
+</P>
+<P>
+   <em class=program>filter</em> is a Fortran 90 program, and provides a large
+   number of options for controlling execution behavior and parameter configuration
+   that are driven from its namelist. 
+   See the <a href=#Namelist>namelist</a> section below for more details.
+   The number of assimilation steps to be done 
+   is controlled by the input observation sequence and by the 
+   time-stepping capabilities of the model being used in the assimilation.
 </P>
 
-<UL><LI>Read in initial conditions, observations, set up and initialize</LI>
+<P>
+   The basic execution loop is:
+</P>
+<UL><LI>Read in model initial conditions, observations, set up and initialize</LI>
     <LI>Until out of observations:
-    <UL><LI>Run model to advance data</LI>
+    <UL><LI>Run multiple copies of the model to update data states</LI>
         <LI>Assimilate all observations in the current time window</LI>
-        <LI>Repeat</LI>
+        <LI>Repeat until out of observations</LI>
     </UL></LI>
     <LI>Write out diagnostic files, restart files, 
         final observation sequence file</LI>
 </UL>
-
 <P>
    See the <A href="http://www.image.ucar.edu/DAReS/DART">DART web site</A> 
    for detailed discussion of the capabilities of the
    assimilation system, a diagram of the entire execution cycle, the options
    and features.
 </P>
-
 <P>
-   NOTE: The different types of assimilation algorithms 
+   Separate scripting can be done to support forecasts based on the
+   assimilated data states.  After filter exits, the models can be
+   run freely (with no assimilated data) further forward in time
+   using the last updated model state vectors from filter.
+</P>
+<P>
+   To do two identical runs of an ensemble, with and without assimilating
+   data, set all the observation types to be 'evaluate only' in the obs_kind_mod
+   section of the namelist and turn inflation off.  
+   The forward operators will still be called, but they will have no
+   impact on the model state.  Then the two sets of diagnostic state space
+   netcdf files can be compared to evaluate the impact of assimilating 
+   the observations, and the observation diagnostic files can also be compared.
+</P>
+<P>
+   The same source code is used for all applications of filter.
+   The code specific to the types of observations and the interface code
+   for the computational model is configured at compile time.
+   The DART directory structure is arranged slightly differently than usual
+   in that the main code is spread across a dozen directories
+   at the top level, e.g. the filter source code is in DART/filter/filter.f90.
+   Each model has a separate directory under DART/models, and under each model
+   is a work directory where the code is compiled and can be run for testing.
+   Generally when a full-size experiment is done the executables are copied
+   to a different location - e.g. scratch space on a large system - since the
+   data files for 10s to 100s of copies of a model can get very large.
+</P>
+<P>
+   The different types of assimilation algorithms 
    (EAKF, ENKF, Kernel filter, Particle filter, etc.) are determined
    by the <em class=code>&amp;assim_tools_nml:filter_kind</em> entry,
    described in <a href="../assim_tools/assim_tools_mod.html">assim_tools_mod.html</a>.
    Despite having 'filter' in the name, they are assimilation algorithms
    and so are implemented in <em class=file>assim_tools_mod.f90</em>.
 </P>
-
-<P>
-   <em class=program>filter</em> provides a number of options that are 
-   driven from its namelist. The number of assimilation steps to be done 
-   are controlled by the input observation sequence and by the 
-   time-stepping capabilities of the model being used in the assimilation.
-</P>
-
 <P>
    The filter adds a quality control field with metadata 'DART quality control'
    to the obs_seq.final file. At present, this field can have the following
@@ -91,6 +120,66 @@
    the prior ensemble mean differs from the observed value by more than a
    specified number of standard deviations, it is not used and the DART
    quality control field is set to 7.
+</P>
+
+<P>
+The detailed execution flow inside the filter program is:
+
+<ul>
+<li>Read in observations.  </li>
+<li>Read in state vector restart files.  </li>
+<li>Initialize inflation fields, possibly reading restart files. </li>
+<li>Initialize output netcdf diagnostic files. </li>
+<li>Trim off any observations if start/stop times specified. </li>
+<li>Begin main assimilation loop: </li>
+<ul>
+<li>Check model time vs observation times: </li>
+<ul>
+<li>If current assimilation window is earlier than model time, error. </li>
+<li>If current assimilation window includes model time, begin assimilating. </li>
+<li>If current assimilation window is later than model time, advance model: </li>
+<ul>
+<li>Write out current state vectors for all ensemble members. </li>
+<li>Advance the model by subroutine call or by shell script: </li>
+<ul>
+<li>Convert the data into format suitable for model. </li>
+<li>Tell the model to run up to the requested time. </li>
+<li>Convert the new data back into DART format. </li>
+</ul>
+<li>Read in new state vectors for all ensemble members. </li>
+</ul>
+</ul>
+<li>Apply prior inflation if requested. </li>
+<li>Compute ensemble of prior observation values with forward operators. </li>
+<li>Compute and write out prior state space diagnostics. </li>
+<li>Compute and write out prior observation space diagnostics. </li>
+<li>Assimilate all observations in this window: </li>
+<ul>
+<li>Get all obs locations and kinds. </li>
+<li>Get all state vector locations and kinds. </li>
+<li>For each observation: </li>
+<ul>
+<li>Compute the observation increment. </li>
+<li>Find all other obs and states within localization radius. </li>
+<li>Compute the correlation covariance between obs and state items. </li>
+<li>Apply increments weighted by correlation values. </li>
+<li>Apply increments to any remaining unassimilated observations. </li>
+<li>Loop until all observations in window processed. </li>
+</ul>
+</ul>
+<li>Apply posterior inflation if requested. </li>
+<li>Compute ensemble of posterior observation values with forward operators. </li>
+<li>Compute and write out posterior state space diagnostics. </li>
+<li>Compute and write out posterior observation space diagnostics. </li>
+<li>Loop until all observations in input file processed. </li>
+</ul>
+<li>Close diagnostic files. </li>
+<li>Write out final observation sequence file. </li>
+<li>Write out inflation restart files if requested. </li>
+<li>Write out state vector restart files if requested. </li>
+<li>Release memory for state vector and observation ensemble members. </li>
+</ul>
+  
 </P>
 
 <P>
@@ -128,9 +217,9 @@ smoother_mod
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
 '&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
+Character strings that contain a '/' must be
 enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
+The namelist declaration is:
 </P>
 <div class=namelist>
 <pre>
@@ -186,12 +275,21 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 <!-- Description -->
 
 <P>
-Controls various aspects of filter. The inflation control variables are all
+This namelist is always read from a file called <em class=file>input.nml</em>
+It controls various aspects of filter. 
+</P>
+<P>
+Particular options to be aware of are:
+async, ens_size, cutoff (localization radius), inflation flavor, outlier_threshold,
+restart filenames (including inflation), obs_sequence_in_name, horiz_dist_only,
+binary or ascii controls for state vector and observation sequence file formats.
+Some of these important items are located in other namelists, but all are in the
+same input.nml file.
+</P>
+<P>
+The inflation control variables are all
 dimensioned 2, the first value being for the prior inflation and the second
 being for the posterior inflation.
-<br>
-<br>
-This namelist is read in a file called <em class=file>input.nml</em>
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
