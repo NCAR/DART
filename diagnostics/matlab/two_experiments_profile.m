@@ -7,9 +7,9 @@ function two_experiments_profile(files, titles, varnames, qtty, prpo)
 % files = {'/ptmp/nancy/CSL/Base5/032-061s0_def_reg/obs_diag_output.nc',
 %          '/ptmp/thoar/GPS+AIRS/Sep_032-061/obs_diag_output.nc'};
 % titles = {'Base5', 'GPS+AIRS'};
-% files = {'/fs/image/home/hliu/DART/models/wrf/work/ernesto/gpsonly/obs_diag_output.nc',
-%          '/fs/image/home/hliu/DART/models/wrf/work/ernesto/ctl/obs_diag_output.nc'};
-% titles   = {'GPS only', 'Control'};
+% files = {'/fs/image/home/hliu/DART/models/wrf/work/ernesto/ctl/obs_diag_output.nc',
+%          '/fs/image/home/hliu/DART/models/wrf/work/ernesto/airsQ/obs_diag_output.nc'};
+% titles   = {'Control', 'airsQ'};
 % varnames = {'RADIOSONDE_U_WIND_COMPONENT', 'RADIOSONDE_TEMPERATURE'};
 % qtty     = 'rmse';     % rmse, spread, totalspread, bias, etc.
 % prpo     = 'analysis'; % [analy, analysis, posterior ] == posterior
@@ -44,8 +44,9 @@ end
 % set up all the stuff that is common. 
 
 commondata = check_compatibility(files, varnames, qtty);
+% DEBUG - next line is for testing only
+% commondata.nregions = 2;
 figuredata = setfigure(commondata);
-
 
 %%--------------------------------------------------------------------
 % Set some static data
@@ -94,6 +95,8 @@ for ivar = 1:nvars
       myplot( plotobj, Nrange, Drange, Yrange, figuredata);
 
    end % of loop around regions
+
+   BottomAnnotation(files)
    
    if ( ivar ~= nvars )
       disp('Pausing, hit any key to continue ...')
@@ -216,31 +219,32 @@ timeunits             = nc_attget(fname,'time','units');
 calendar              = nc_attget(fname,'time','calendar');
 timebase              = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin            = datenum(timebase(1),timebase(2),timebase(3));
-skip_seconds          = time_to_skip(4)*3600 + time_to_skip(5)*60 + time_to_skip(6);
-iskip                 = time_to_skip(3) + skip_seconds/86400;
+timefloats            = zeros(size(time_to_skip));  % stupid int32 type conversion
+timefloats(:)         = time_to_skip(:);
+skip_seconds          = timefloats(4)*3600 + timefloats(5)*60 + timefloats(6);
+iskip                 = timefloats(3) + skip_seconds/86400;
 
 plotdat.bincenters    = plotdat.bincenters + timeorigin;
 plotdat.binedges      = plotdat.binedges   + timeorigin;
 plotdat.Nbins         = length(plotdat.bincenters);
 plotdat.toff          = plotdat.bincenters(1) + iskip;
 
-plotdat.timespan      = sprintf('%s through %s',  ...
-                        datestr(min(plotdat.binedges(:))), ...
+plotdat.timespan      = sprintf('%s through %s', datestr(plotdat.toff), ...
                         datestr(max(plotdat.binedges(:))));
 
 % Get the right indices for the intended variable, regardless of the storage order
 
-plotdat.copyindex = get_copy_index(fname, copystring);
-plotdat.priorvar  = sprintf('%s_VPguess',plotdat.varname);
-plotdat.postevar  = sprintf('%s_VPanaly',plotdat.varname);
+plotdat.copyindex     = get_copy_index(fname, copystring);
+plotdat.priorvar      = sprintf('%s_VPguess',plotdat.varname);
+plotdat.postevar      = sprintf('%s_VPanaly',plotdat.varname);
 
-myinfo.diagn_file  = fname;
-myinfo.copyindex   = plotdat.copyindex;
-myinfo.regionindex = plotdat.region;
-[start, count]     = GetNCindices(myinfo,'diagn',plotdat.priorvar);
-plotdat.prior      = nc_varget(fname, plotdat.priorvar, start, count);
-[start, count]     = GetNCindices(myinfo,'diagn',plotdat.postevar);
-plotdat.poste      = nc_varget(fname, plotdat.postevar, start, count);
+myinfo.diagn_file     = fname;
+myinfo.copyindex      = plotdat.copyindex;
+myinfo.regionindex    = plotdat.region;
+[start, count]        = GetNCindices(myinfo,'diagn',plotdat.priorvar);
+plotdat.prior         = nc_varget(fname, plotdat.priorvar, start, count);
+[start, count]        = GetNCindices(myinfo,'diagn',plotdat.postevar);
+plotdat.poste         = nc_varget(fname, plotdat.postevar, start, count);
 
 % Now that we know the variable ... get the appropriate vertical information
 
@@ -310,7 +314,13 @@ plotdat.Nrange = [min(plotdat.nused(:))    max(plotdat.nposs(:))];
 
 
 function h = Stripes(x,edges)
-% EraseMode: [ {normal} | background | xor | none ]
+%% plot the subtle background stripes that indicate the vertical
+%  extent of what was averaged.
+%
+% FIXME:
+% This really should be modified to add a percentage of the data
+% range to provide space for the legend. Right now it is hardwired
+% to assume that we are plotting hPa, on a 'reverse' axis. 
 
 hold on;
 
@@ -319,9 +329,9 @@ hold on;
 % tick labels ... KEEP THEM. Later, make the dots invisible.
 
 h = plot([min(x) max(x)],[min(edges) max(edges)]);
-axlims = axis;
+axlims    = axis;
 axlims(4) = max(edges);
-axlims(3) = -100;
+axlims(3) = -100;   % This gives extra space for the legend.
 axis(axlims)
 
 xc = [ axlims(1) axlims(2) axlims(2) axlims(1) axlims(1) ];
@@ -401,7 +411,7 @@ ax2 = axes('position',get(ax1,'Position'), ...
 for i = 1:Nexp
    h2 = line(plotobj{i}.nposs, plotobj{i}.levels,'Color',figdata.expcolors{i},'Parent',ax2);
    h3 = line(plotobj{i}.nused, plotobj{i}.levels,'Color',figdata.expcolors{i},'Parent',ax2);
-   set(h2,'LineStyle','none','Marker','o');
+   set(h2,'LineStyle','none','Marker',figdata.expsymbols{i});
    set(h3,'LineStyle','none','Marker','+');
 end
 
@@ -511,6 +521,30 @@ end
 
 
 
+function BottomAnnotation(filenames)
+% annotates the filename containing the data being plotted
+nfiles = length(filenames);
+dy     = 1.0/(nfiles+1);   % vertical spacing for text
+
+subplot('position',[0.10 0.01 0.8 0.05])
+axis off
+
+for ifile = 1:nfiles
+   main = filenames{ifile};
+   if ( main(1) == '/' )   % must be a absolute pathname
+      string1 = sprintf('data file: %s',main);
+   else
+      mydir = pwd;
+      string1 = sprintf('data file: %s/%s',mydir,main);
+   end
+   ty = 1.0 - (ifile-1)*dy;
+   h = text(0.5, ty, string1);
+   set(h, 'Interpreter', 'none', 'FontSize', 8);
+   set(h, 'HorizontalAlignment','center');
+end
+
+
+
 function [xticks newticklabels] = matchingXticks(ax1, ax2)
 %% This takes the existing X ticks from ax1 (presumed nice)
 % and determines the matching labels for ax2 so we can keep
@@ -562,23 +596,23 @@ if (commondata.nregions > 4)
 elseif (commondata.nregions == 4) 
    orientation   = 'tall';
    fontsize      = 10;
-   plotlims(1,:) = [0.100 0.525 0.375 0.375];
-   plotlims(2,:) = [0.525 0.525 0.375 0.375];
-   plotlims(3,:) = [0.100 0.070 0.375 0.375];
-   plotlims(4,:) = [0.525 0.070 0.375 0.375];
+   plotlims(1,:) = [0.100 0.560 0.375 0.355];
+   plotlims(2,:) = [0.525 0.560 0.375 0.355];
+   plotlims(3,:) = [0.100 0.125 0.375 0.355];
+   plotlims(4,:) = [0.525 0.125 0.375 0.355];
 
 elseif (commondata.nregions == 3) 
    orientation   = 'landscape';
    fontsize      = 12;
-   plotlims(1,:) = [0.0700 0.12 0.265 0.75];
-   plotlims(2,:) = [0.3675 0.12 0.265 0.75];
-   plotlims(3,:) = [0.6650 0.12 0.265 0.75];
+   plotlims(1,:) = [0.0700 0.14 0.265 0.725];
+   plotlims(2,:) = [0.3675 0.14 0.265 0.725];
+   plotlims(3,:) = [0.6650 0.14 0.265 0.725];
 
 elseif (commondata.nregions == 2) 
    orientation   = 'landscape';
    fontsize      = 12;
-   plotlims(1,:) = [0.07 0.12 0.41 0.75];
-   plotlims(2,:) = [0.52 0.12 0.41 0.75];
+   plotlims(1,:) = [0.07 0.14 0.41 0.725];
+   plotlims(2,:) = [0.52 0.14 0.41 0.725];
 
 elseif (commondata.nregions == 1) 
    orientation   = 'tall';
@@ -587,7 +621,7 @@ elseif (commondata.nregions == 1)
 end
 
 figdata = struct('expcolors',  {{'k','r','m','g','b','c','y'}}, ...
-                 'expsymbols', {{'+','o','<','^','p','s','d'}}, ...
+                 'expsymbols', {{'o','s','d','p','h','s','*'}}, ...
                  'prpolines',  {{'-',':'}}, 'plotlims', plotlims, ...
                  'fontsize',fontsize, 'orientation',orientation);
 

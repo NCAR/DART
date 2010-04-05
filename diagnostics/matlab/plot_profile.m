@@ -19,7 +19,7 @@ function plotdat = plot_profile(fname,copystring)
 % plotdat = plot_profile(fname,copystring);
 
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright ï¿½ 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
@@ -36,50 +36,54 @@ end
 
 % Harvest plotting info/metadata from netcdf file.
 
-plotdat.fname              = fname;
-plotdat.copystring         = copystring;
+plotdat.fname         = fname;
+plotdat.copystring    = copystring;
 
-plotdat.binseparation      = nc_attget(fname, nc_global, 'bin_separation');
-plotdat.binwidth           = nc_attget(fname, nc_global, 'bin_width');
-time_to_skip               = nc_attget(fname, nc_global, 'time_to_skip');
-plotdat.rat_cri            = nc_attget(fname, nc_global, 'rat_cri');
-plotdat.input_qc_threshold = nc_attget(fname, nc_global, 'input_qc_threshold');
-plotdat.lonlim1            = nc_attget(fname, nc_global, 'lonlim1');
-plotdat.lonlim2            = nc_attget(fname, nc_global, 'lonlim2');
-plotdat.latlim1            = nc_attget(fname, nc_global, 'latlim1');
-plotdat.latlim2            = nc_attget(fname, nc_global, 'latlim2');
-plotdat.biasconv           = nc_attget(fname, nc_global, 'bias_convention');
+plotdat.binseparation = nc_attget(fname, nc_global, 'bin_separation');
+plotdat.binwidth      = nc_attget(fname, nc_global, 'bin_width');
+time_to_skip          = nc_attget(fname, nc_global, 'time_to_skip');
+plotdat.rat_cri       = nc_attget(fname, nc_global, 'rat_cri');
+plotdat.lonlim1       = nc_attget(fname, nc_global, 'lonlim1');
+plotdat.lonlim2       = nc_attget(fname, nc_global, 'lonlim2');
+plotdat.latlim1       = nc_attget(fname, nc_global, 'latlim1');
+plotdat.latlim2       = nc_attget(fname, nc_global, 'latlim2');
+plotdat.biasconv      = nc_attget(fname, nc_global, 'bias_convention');
 
-plotdat.bincenters         = nc_varget(fname, 'time');
-plotdat.binedges           = nc_varget(fname, 'time_bounds');
-plotdat.mlevel             = nc_varget(fname, 'mlevel');
-plotdat.plevel             = nc_varget(fname, 'plevel');
-plotdat.plevel_edges       = nc_varget(fname, 'plevel_edges');
-plotdat.hlevel             = nc_varget(fname, 'hlevel');
-plotdat.hlevel_edges       = nc_varget(fname, 'hlevel_edges');
+plotdat.bincenters    = nc_varget(fname, 'time');
+plotdat.binedges      = nc_varget(fname, 'time_bounds');
+plotdat.mlevel        = nc_varget(fname, 'mlevel');
+plotdat.plevel        = nc_varget(fname, 'plevel');
+plotdat.plevel_edges  = nc_varget(fname, 'plevel_edges');
+plotdat.hlevel        = nc_varget(fname, 'hlevel');
+plotdat.hlevel_edges  = nc_varget(fname, 'hlevel_edges');
 
-diminfo                    = nc_getdiminfo(fname,'region');
-plotdat.nregions           = diminfo.Length;
-region_names               = nc_varget(fname,'region_names');
-plotdat.region_names       = deblank(region_names);
+diminfo               = nc_getdiminfo(fname,'region');
+plotdat.nregions      = diminfo.Length;
+region_names          = nc_varget(fname,'region_names');
+plotdat.region_names  = deblank(region_names);
 
 % Coordinate between time types and dates
 
-calendar     = nc_attget(fname,'time','calendar');
-timeunits    = nc_attget(fname,'time','units');
-timebase     = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
-timeorigin   = datenum(timebase(1),timebase(2),timebase(3));
-skip_seconds = time_to_skip(4)*3600 + time_to_skip(5)*60 + time_to_skip(6);
-iskip        = time_to_skip(3) + skip_seconds/86400;
+calendar              = nc_attget(fname,'time','calendar');
+timeunits             = nc_attget(fname,'time','units');
+timebase              = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
+timeorigin            = datenum(timebase(1),timebase(2),timebase(3));
+timefloats            = zeros(size(time_to_skip));  % stupid int32 type conversion
+timefloats(:)         = time_to_skip(:);
+skip_seconds          = timefloats(4)*3600 + timefloats(5)*60 + timefloats(6);
+iskip                 = timefloats(3) + skip_seconds/86400.0;
 
-plotdat.bincenters = plotdat.bincenters + timeorigin;
-plotdat.binedges   = plotdat.binedges   + timeorigin;
-plotdat.Nbins      = length(plotdat.bincenters);
-plotdat.toff       = plotdat.bincenters(1) + iskip;
+plotdat.bincenters    = plotdat.bincenters + timeorigin;
+plotdat.binedges      = plotdat.binedges   + timeorigin;
+plotdat.Nbins         = length(plotdat.bincenters);
+plotdat.toff          = plotdat.binedges(1) + iskip;
+
+plotdat.timespan      = sprintf('%s through %s', datestr(plotdat.toff), ...
+                        datestr(max(plotdat.binedges(:))));
 
 % set up a structure with all static plotting components
 
-plotdat.xlabel    = sprintf('%s',copystring);
+plotdat.xlabel    = {sprintf('%s',copystring), plotdat.timespan};
 plotdat.linewidth = 2.0;
 
 [plotdat.allvarnames, plotdat.allvardims] = get_varsNdims(fname);
@@ -203,7 +207,7 @@ for ivar = 1:plotdat.nvars
    if (plotdat.nregions > 2)
       CenterAnnotation(plotdat.myvarname)
    end
-   % BottomAnnotation(ges)
+   BottomAnnotation(fname)
 
    % create a postscript file
    print(gcf,'-dpsc','-append',psfname);
@@ -262,61 +266,54 @@ function myplot(plotdat)
    end
 
    Stripes(plotdat.Xrange, plotdat.level_edges);
+   set(ax1,'YDir', plotdat.YDir,'YTick',plotdat.level)
+   ylabel(plotdat.level_units)
+
+   %% draw the result of the experiment
+
    hold on;
    h1 = plot(CG,plotdat.level,'k+-',CA,plotdat.level,'k+:');
-   hold off;
+
    set(h1,'LineWidth',plotdat.linewidth);
-   h = legend(h1,str_other_pr, str_other_po, 'Location', 'East');
+   h = legend(h1, str_other_pr, str_other_po);
    legend(h,'boxoff')
    set(h,'Interpreter','none')
 
-   axlims = [plotdat.Xrange plotdat.Yrange];
-   axis(axlims)
-
-   set(gca,'YDir', plotdat.YDir)
    switch plotdat.copystring
       case 'bias'
-         hold on; plot([0 0], plotdat.Yrange,'k-')
-         plotdat.xlabel = sprintf('bias (%s)',plotdat.biasconv);
+         biasline = line([0 0],plotdat.Yrange,'Color','k','Parent',ax1);
+         set(biasline,'LineWidth',2.0,'LineStyle','-.')
+         plotdat.xlabel = {sprintf('bias (%s)',plotdat.biasconv), plotdat.timespan};
       otherwise
    end
 
-   set(gca,'YTick',plotdat.level,'Ylim',plotdat.Yrange)
-   ylabel(plotdat.level_units)
-   
-   % use same X,Y limits for all plots in this region
-   nXticks = length(get(ax1,'XTick'));
-   xlimits = plotdat.Xrange;
-   xinc    = (xlimits(2)-xlimits(1))/(nXticks-1);
-   xticks  = xlimits(1):xinc:xlimits(2);
-   set(ax1,'XTick',xticks,'Xlim',xlimits)
-   
-   % create a separate scale for the number of observations
+   hold off;
+
+   %% Create another axes to use for plotting the observation counts
+
    ax2 = axes('position',get(ax1,'Position'), ...
            'XAxisLocation','top', ...
            'YAxisLocation','right',...
            'Color','none',...
            'XColor','b','YColor','b',...
-           'YLim',plotdat.Yrange, ...
-           'YDir',plotdat.YDir);
+           'YLim',get(ax1,'YLim'), ...
+           'YDir',get(ax1,'YDir'));
+
    h2 = line(nobs_poss,plotdat.level,'Color','b','Parent',ax2);
    h3 = line(nobs_used,plotdat.level,'Color','b','Parent',ax2);
    set(h2,'LineStyle','none','Marker','o');
    set(h3,'LineStyle','none','Marker','+');   
 
-   % use same number of X ticks and the same Y ticks
-  
-   xlimits = get(ax2,'XLim');
-   xinc   = (xlimits(2)-xlimits(1))/(nXticks-1);
-   xticks = xlimits(1):xinc:xlimits(2);
-   nicexticks = round(10*xticks')/10;
-   set(ax2,'YTick',get(ax1,'YTick'),'YTicklabel',[], ...
-           'XTick',          xticks,'XTicklabel',num2str(nicexticks))
-       
+   % use same Y ticks
+   set(ax2,'YTick',     get(ax1,'YTick'), ...
+           'YTicklabel',get(ax1,'YTicklabel'));
+
+   % use the same X ticks, but find the right label values
+   [xticks, newticklabels] = matchingXticks(ax1,ax2);
+   set(ax2,'XTick', xticks, 'XTicklabel', newticklabels)
+
    set(get(ax2,'Xlabel'),'String','# of obs (o=poss, +=used)')
    set(get(ax1,'Xlabel'),'String',plotdat.xlabel,'Interpreter','none')
-   set(ax1,'Position',get(ax2,'Position'))
-   grid
 
    if (plotdat.nregions <=2 )
       title({plotdat.myvarname, plotdat.myregion},  ...
@@ -341,16 +338,18 @@ set(h,'HorizontalAlignment','center', ...
 
 
 function BottomAnnotation(main)
-% annotates the directory containing the data being plotted
-subplot('position',[0.48 0.01 0.04 0.04])
+% annotates the filename containing the data being plotted
+subplot('position',[0.10 0.01 0.8 0.04])
 axis off
-bob = which(main);
-[pathstr,name,ext,versn] = fileparts(bob);
-h = text(0.0,0.5,pathstr);
-set(h,'HorizontalAlignment','center', ...
-      'VerticalAlignment','middle',...
-      'Interpreter','none',...
-      'FontSize',8)
+if ( main(1) == '/' )   % must be a absolute pathname
+   string1 = sprintf('data file: %s',main);
+else
+   mydir = pwd;
+   string1 = sprintf('data file: %s/%s',mydir,main);
+end
+h = text(0.5, 0.5, string1);
+set(h, 'Interpreter', 'none', 'FontSize', 8);
+set(h, 'HorizontalAlignment','center');
 
 
 
@@ -361,6 +360,8 @@ if ( ~(isfield(x,'allvarnames') && isfield(x,'allvardims')))
 end
 
 j = 0;
+basenames = struct([]);
+basedims  = struct([]);
 
 for i = 1:length(x.allvarnames)
    indx = findstr('time',x.allvardims{i});
@@ -373,9 +374,11 @@ for i = 1:length(x.allvarnames)
 end
 
 [b,i,j] = unique(basenames);
+y       = struct([]);
+ydims   = struct([]);
 
 for j = 1:length(i)
-   disp(sprintf('%2d is %s',j,basenames{j}))
+   fprintf('%2d is %s\n',j,basenames{j})
     y{j} = basenames{j};
 ydims{j} = basedims{j};
 end
@@ -463,17 +466,69 @@ else
 
    Yrange = [ymin ymax];
 
+   % Make sure a zero bias is visible on plot
+   switch y.copystring
+   case {'bias'}
+      if  ymax < 0
+         Yrange = [ ymin 0.0 ];
+      elseif  ymin > 0
+         Yrange = [ 0.0 ymax ];
+      end
+   end
+
    x = sort([min([Yrange(1) 0.0]) Yrange(2)] ,'ascend');
 end
 
-function Stripes(x,edges)
-% EraseMode: [ {normal} | background | xor | none ]
 
-xc = [ x(1) x(2) x(2) x(1) x(1) ];
+
+function h = Stripes(x,edges)
+%% plot the subtle background stripes that indicate the vertical
+%  extent of what was averaged.
+%
+% FIXME:
+% This really should be modified to add a percentage of the data
+% range to provide space for the legend. Right now it is hardwired
+% to assume that we are plotting hPa, on a 'reverse' axis. 
 
 hold on;
+
+% plot two little dots at the corners to make Matlab
+% choose some plot limits. Given those nice limits and
+% tick labels ... KEEP THEM. Later, make the dots invisible.
+
+h = plot([min(x) max(x)],[min(edges) max(edges)]);
+axlims    = axis;
+axlims(4) = max(edges);
+axlims(3) = -100;   % This gives extra space for the legend.
+axis(axlims)
+
+xc = [ axlims(1) axlims(2) axlims(2) axlims(1) axlims(1) ];
+
 for i = 1:2:(length(edges)-1)
   yc = [ edges(i) edges(i) edges(i+1) edges(i+1) edges(i) ];
-  fill(xc,yc,[0.8 0.8 0.8],'EraseMode','background','EdgeColor','none');
+  hf = fill(xc,yc,[0.8 0.8 0.8],'EdgeColor','none');
+  set(hf,'FaceAlpha',0.3,'EdgeAlpha',0.3)
+  set(hf,'AlphaDataMapping','none','FaceVertexAlphaData',0.3)
 end
+set(gca,'XGrid','on')
 hold off;
+set(h,'Visible','off')
+
+
+
+function [xticks newticklabels] = matchingXticks(ax1, ax2)
+%% This takes the existing X ticks from ax1 (presumed nice)
+% and determines the matching labels for ax2 so we can keep
+% at least one of the axes looking nice.
+   
+Dlimits = get(ax1,'XLim');
+DXticks = get(ax1,'XTick');
+nXticks = length(DXticks);
+xlimits = get(ax2,'XLim');
+
+slope   = (xlimits(2) - xlimits(1))/(Dlimits(2) - Dlimits(1));
+xtrcpt  = xlimits(2) -slope*Dlimits(2);
+
+xticks        = slope*DXticks + xtrcpt;
+newticklabels = num2str(round(10*xticks')/10);
+
