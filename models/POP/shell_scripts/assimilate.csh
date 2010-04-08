@@ -61,7 +61,9 @@ set  OBSDIR = /ptmp/dart/Obs_sets/WOD/${DART_OBS_DIR}
 
 foreach FILE ( input.nml filter pop_to_dart dart_to_pop )
 
-   if ( -e    ../${FILE} ) then
+   if ( -e ${CASEROOT}/${FILE} ) then
+      ${COPY}   ${CASEROOT}/${FILE} .
+   else if ( -e    ../${FILE} ) then
       ${COPY} ../${FILE} .
    else if ( -e ${DARTDIR}/${FILE} ) then
       ${COPY}   ${DARTDIR}/${FILE} .
@@ -73,7 +75,7 @@ foreach FILE ( input.nml filter pop_to_dart dart_to_pop )
 end
 
 #-------------------------------------------------------------------------
-# INFLATION COPY BLOCK
+# DART INFLATION BLOCK
 # This file is only relevant if 'inflation' is turned on -
 # i.e. if inf_flavor(1) /= 0 - AND we are in a 'restart' mode.
 #
@@ -131,16 +133,32 @@ end
 set member = 1
 while ( $member <= $ensemble_size )
 
-   set DART_IC_FILE = `printf filter_ics.%04d $member`
-   set OCN_RESTART_FILENAME = `head -1 ../rpointer.ocn.$member.restart`
-   ${LINK} ../$OCN_RESTART_FILENAME pop.r.nc
-   ${LINK} ../pop2_in.$member       pop_in
+   # Each member will do its job in its own directory.
+   # That way, we can do N of them simultaneously -
+   # they all read their OWN 'input.nml' ... the output
+   # filenames must inserted into the appropriate input.nml
 
-   ./pop_to_dart || exit 1
+   set MYTEMPDIR = member_${member}
+   mkdir -p $MYTEMPDIR
+   cd $MYTEMPDIR
 
-   ${MOVE} dart.ud $DART_IC_FILE
+   set OCN_RESTART_FILENAME = `head -1 ../../rpointer.ocn.$member.restart`
+   ${LINK} ../../$OCN_RESTART_FILENAME pop.r.nc
+   ${LINK} ../../pop2_in.$member       pop_in
+
+   # the slash in the filename screws up 'sed' ... unless
+   set DART_IC_FILE = `printf ..\\/filter_ics.%04d $member`
+
+   sed -e "s/dart.ud/${DART_IC_FILE}/" < ../input.nml >! input.nml
+
+   ../pop_to_dart &
+
+   cd ..
+
    @ member++
 end
+
+wait
 
 #-------------------------------------------------------------------------
 # Block 2: Actually run the assimilation.
@@ -175,11 +193,33 @@ setenv ORG_PATH "${PATH}"
 setenv LSF_BINDIR /contrib/lsf/tgmpatch
 setenv PATH ${LSF_BINDIR}:${PATH}
 setenv ORG_TASK_GEOMETRY "${LSB_PJL_TASK_GEOMETRY}"
-setenv NANCY_GEOMETRY_126_6NODES \
-	"{(0,29,30,31,1,32,33,34,2,35,36,37,3,38,39,40,4,41,42,43,5)(44,45,46,6,47,48,49,7,50,51,52,8,53,54,55,9,56,57,58,10,59)(60,61,11,62,63,64,12,65,66,67,13,68,69,70,14,71,72,73,15,74,75)(76,16,77,78,79,17,80,81,82,18,83,84,85,19,86,87,88,20,89,90,91)(21,92,93,94,22,95,96,97,23,98,99,100,24,101,102,103,25,104,105,106,26)(107,108,109,27,110,111,112,28,113,114,115,116,117,118,119,120,121,122,123,124,125)}"
+
+# layout 1: rr by node
+setenv NANCY_GEOMETRY_126_2NODES_RR \
+	"{(0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,118,120,122,124)(1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63,65,67,69,71,73,75,77,79,81,83,85,87,89,91,93,95,97,99,101,103,105,107,109,111,113,115,117,119,121,123,125)}";
+	
+# layout 2: flat
+setenv NANCY_GEOMETRY_126_2NODES_FL \
+	"{(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62)(63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125)}";
+
+# layout 3: rr sub block by stride
+setenv NANCY_GEOMETRY_126_2NODES_STR \
+	"{(0,64,2,66,4,68,6,70,8,72,10,74,12,76,14,78,16,80,18,82,20,84,22,86,24,88,26,90,28,92,30,94,32,96,34,98,36,100,38,102,40,104,42,106,44,108,46,110,48,112,50,114,52,116,54,118,56,120,58,122,60,124,62)(1,65,3,67,5,69,7,71,9,73,11,75,13,77,15,79,17,81,19,83,21,85,23,87,25,89,27,91,29,93,31,95,33,97,35,99,37,101,39,103,41,105,43,107,45,109,47,111,49,113,51,115,53,117,55,119,57,121,59,123,61,125,63)}";
+
 setenv NANCY_GEOMETRY_126_3NODES \
 	"{(0,29,30,31,1,32,33,34,2,35,36,37,3,38,39,40,4,41,42,43,5,44,45,46,6,47,48,49,7,50,51,52,8,53,54,55,9,56,57,58,10,59)(60,61,11,62,63,64,12,65,66,67,13,68,69,70,14,71,72,73,15,74,75,76,16,77,78,79,17,80,81,82,18,83,84,85,19,86,87,88,20,89,90,91)(21,92,93,94,22,95,96,97,23,98,99,100,24,101,102,103,25,104,105,106,26,107,108,109,27,110,111,112,28,113,114,115,116,117,118,119,120,121,122,123,124,125)}"
-setenv LSB_PJL_TASK_GEOMETRY "${NANCY_GEOMETRY_126_6NODES}"
+
+setenv NANCY_GEOMETRY_126_6NODES \
+	"{(0,29,30,31,1,32,33,34,2,35,36,37,3,38,39,40,4,41,42,43,5)(44,45,46,6,47,48,49,7,50,51,52,8,53,54,55,9,56,57,58,10,59)(60,61,11,62,63,64,12,65,66,67,13,68,69,70,14,71,72,73,15,74,75)(76,16,77,78,79,17,80,81,82,18,83,84,85,19,86,87,88,20,89,90,91)(21,92,93,94,22,95,96,97,23,98,99,100,24,101,102,103,25,104,105,106,26)(107,108,109,27,110,111,112,28,113,114,115,116,117,118,119,120,121,122,123,124,125)}"
+
+setenv NANCY_GEOMETRY_126_7NODES \
+         "{(0,7,14,21,28,35,42,49,56,63,70,77,84,91,98,105,112,119)(1,8,15,22,29,36,43,50,57,64,71,78,85,92,99,106,113,120)(2,9,16,23,30,37,44,51,58,65,72,79,86,93,100,107,114,121)(3,10,17,24,31,38,45,52,59,66,73,80,87,94,101,108,115,122)(4,11,18,25,32,39,46,53,60,67,74,81,88,95,102,109,116,123)(5,12,19,26,33,40,47,54,61,68,75,82,89,96,103,110,117,124)(6,13,20,27,34,41,48,55,62,69,76,83,90,97,104,111,118,125)}"
+
+# layout: flat
+setenv NANCY_GEOMETRY_54_1NODE \
+	"{(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53)}";
+
+setenv LSB_PJL_TASK_GEOMETRY "${NANCY_GEOMETRY_54_1NODE}"
 
 which mpirun.lsf
 
@@ -215,7 +255,7 @@ setenv PATH "${ORG_PATH}"
 setenv LSB_PJL_TASK_GEOMETRY "${ORG_TASK_GEOMETRY}"
 
 #-------------------------------------------------------------------------
-# Block 3: Update the POP restart files ... sequentially (sigh) ...
+# Block 3: Update the POP restart files ... simultaneously ...
 #
 # DART namelist settings required:
 # &filter_nml:           restart_out_file_name  = 'filter_restart'
@@ -227,17 +267,32 @@ setenv LSB_PJL_TASK_GEOMETRY "${ORG_TASK_GEOMETRY}"
 set member = 1
 while ( $member <= $ensemble_size )
 
+   # Each member will do its job in its own directory.
+   # That way, we can do N of them simultaneously -
+   # they all read their OWN 'input.nml' ... the output
+   # filenames must inserted into the appropriate input.nml
+
+   set MYTEMPDIR = member_${member}
+   mkdir -p $MYTEMPDIR
+   cd $MYTEMPDIR
+
    set DART_RESTART_FILE = `printf filter_restart.%04d $member`
-   set OCN_RESTART_FILENAME = `head -1 ../rpointer.ocn.$member.restart`
-   ${LINK} ../$OCN_RESTART_FILENAME pop.r.nc
-   ${LINK} ../pop2_in.$member       pop_in
+   ${LINK} ../$DART_RESTART_FILE dart.ic
 
-   ${LINK} $DART_RESTART_FILE dart.ic
+   set OCN_RESTART_FILENAME = `head -1 ../../rpointer.ocn.$member.restart`
+   ${LINK} ../../$OCN_RESTART_FILENAME pop.r.nc
+   ${LINK} ../../pop2_in.$member       pop_in
 
-   ./dart_to_pop || exit 3
+   cp -f ../input.nml .
+
+   ../dart_to_pop &
+
+   cd ..
 
    @ member++
 end
+
+wait
 
 #-------------------------------------------------------------------------
 # Cleanup
