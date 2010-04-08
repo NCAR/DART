@@ -145,7 +145,8 @@ c     overwrite observation windows if obs_window is defined
 c----------------------------------------------------------------------
 
       if ( obs_window > 0.0 ) then
-        print*, "Using the same observation window for all data: ",obs_window
+        print*, "Using the same observation window for all data: ",
+     &     obs_window
         obs_window_upa = obs_window
         obs_window_air = obs_window
         obs_window_sfc = obs_window
@@ -224,34 +225,34 @@ c----------------------------------------------------------------------
       IF ( ( .not. found ) .and. ( ierrpb .eq. 0 ) )  THEN
         if ( debug ) print*, 'record found w/no label match, val was: ',
      &            subset(1:6)
-        GO TO 10
+        GO TO 200
       ENDIF
       IF ( subset(1:6).eq.'SATWND' ) then
         IF ( abs(time0) .gt. obs_window_cw ) then
           if (debug) print*, 'satwnd outside time window, diff was: ',
      &              abs(time0)
-          GO TO 10
+          GO TO 200
         ENDIF 
       ELSE IF ( subset(1:6).eq.'ADPUPA' ) THEN
         IF ( abs(time0) .gt. obs_window_upa ) THEN 
          if ( debug ) print*, 
      &              'upper-air outside time window, diff was: ',
      &              abs(time0)
-          GO TO 10
+          GO TO 200
         ENDIF
       ELSE IF (subset(1:6).eq.'AIRCFT'.or.subset(1:6).eq.'AIRCAR') THEN
         IF ( abs(time0) .gt. obs_window_air ) THEN
           if ( debug ) print*,
      &              'aircraft outside time window, diff was: ',
      &              abs(time0)
-          GO TO 10
+          GO TO 200
 	ENDIF
       ELSE IF (subset(1:6).eq.'ADPSFC'.or.subset(1:6).eq.'SFCSHP') THEN
         IF ( abs(time0) .gt. obs_window_sfc ) THEN
           if ( debug ) print*,
      &              'surface outside time window, diff was: ',
      &              abs(time0)
-          GO TO 10
+          GO TO 200
 	ENDIF
       ENDIF
 
@@ -309,8 +310,9 @@ c----------------------------------------------------------------------
 c    check to see if this observation type is desired 
       if ( .NOT. USE_THIS_DATA_REAL(real(hdr(6)),otype_use,inum_otype) 
      &         ) then
-        if ( debug ) print *, 'this obs type not in use-list, num was: ', hdr(6)
-        GO TO 10
+        if (debug) print *, 'this obs type not in use-list, num was: ', 
+     &       hdr(6)
+        GO TO 200
       endif
 
       DO lv = 1, nlev  !  loop over all levels in the report
