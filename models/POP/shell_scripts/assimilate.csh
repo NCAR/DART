@@ -6,6 +6,8 @@
 #
 # $Id$
 
+# The FORCE options are not optional. 
+# the VERBOSE options are useful for debugging.
 set   MOVE = '/usr/local/bin/mv -fv'
 set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
 set   LINK = '/usr/local/bin/ln -fvs'
@@ -181,12 +183,18 @@ wait
 #
 #-------------------------------------------------------------------------
 
+# POP always needs a pop_in and a pop.r.nc to start.
+
+set OCN_RESTART_FILENAME = `head -1 ../rpointer.ocn.1.restart`
+${LINK} ../$OCN_RESTART_FILENAME pop.r.nc
+${LINK} ../pop2_in.1  pop_in
+
 # Determine proper observation sequence file.
 
 set OBSFNAME = `printf obs_seq.0Z.%04d%02d%02d ${OCN_YEAR} ${OCN_MONTH} ${OCN_DAY}`
 set OBS_FILE = ${OBSDIR}/${OBSFNAME} 
 
-${LINK} ${OBS_FILE} obs_seq.out
+${LINK} ${OBS_FILE}   obs_seq.out
 
 # FIXME: special for trying out non-monotonic task layouts.
 setenv ORG_PATH "${PATH}"
