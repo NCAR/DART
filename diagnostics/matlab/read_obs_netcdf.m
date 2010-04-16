@@ -144,3 +144,54 @@ obsstruct.qc   = [];
 if ~ isempty(myqc)
    obsstruct.qc = myqc(inds);
 end
+
+%% Try to determine if large numbers of the Z coordinate are up or down ...  
+%  The observation sequences don't actually have the units as part of the
+%  metadata. That would be 'nice'.
+
+ztypes = unique(obsstruct.Ztyp);
+
+obsstruct.numZtypes = length(ztypes);
+
+for itype = 1:obsstruct.numZtypes
+
+   if (     ztypes(itype) == -2 )   % VERTISUNDEF
+      obsstruct.Zpositivedir = 'up';
+      obsstruct.Zunits       = 'unknown';
+
+   elseif ( ztypes(itype) == -1 )   % VERTISSURFACE
+      obsstruct.Zpositivedir = 'up';
+      obsstruct.Zunits       = 'surface';
+
+   elseif ( ztypes(itype) ==  1 )   % VERTISLEVEL
+      % for example, cam level 1 is at the top of the atmosphere
+      obsstruct.Zpositivedir = 'down';
+      obsstruct.Zunits       = 'model level';
+
+   elseif ( ztypes(itype) ==  2 )   % VERTISPRESSURE
+      obsstruct.Zpositivedir = 'down';
+      obsstruct.Zunits       = 'pressure';
+
+   elseif ( ztypes(itype) ==  3 )   % VERTISHEIGHT
+      %% here is the troublemaker. 
+      obsstruct.Zpositivedir = 'up';
+      obsstruct.Zunits       = 'height';
+
+      % If the observations are from the World Ocean Database, they
+      % are probably depths. large positive numbers are near the
+      % center of the earth.
+
+      inds = strmatch('WOD', obsstruct.CopyString); 
+      if ( ~ isempty(inds) )
+         obsstruct.Zpositivedir = 'down';
+         obsstruct.Zunits       = 'depth';
+      end
+
+   else
+      error('not a known vertical coordinate system')
+   end
+
+end
+
+
+
