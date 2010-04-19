@@ -2,7 +2,9 @@ function two_experiments_profile(files, titles, varnames, qtty, prpo)
 %
 % Each variable gets its own figure.
 % Each region gets its own axis.
-% Multiple quantities (rmse, bias) can be plotted on same axis.
+%
+% I'm having some problems preserving the ticks on the left.
+% 
 % 
 % files = {'/ptmp/nancy/CSL/Base5/032-061s0_def_reg/obs_diag_output.nc',
 %          '/ptmp/thoar/GPS+AIRS/Sep_032-061/obs_diag_output.nc'};
@@ -280,7 +282,9 @@ end
 
 switch copystring
 case {'bias'}
-   plotdat.Drange = [    0    max(bob)];
+   dmin = min( [ min(bob) 0.0 ] );
+   dmax = max( [ max(bob) 0.0 ] );
+   plotdat.Drange = [ dmin dmax ];
    plotdat.xlabel = {sprintf('%s %s',copystring, plotdat.biasconv), plotdat.timespan};
 otherwise
    plotdat.Drange = [min(bob) max(bob)];
@@ -342,6 +346,7 @@ for i = 1:2:(length(edges)-1)
   set(hf,'FaceAlpha',0.3,'EdgeAlpha',0.3)
   set(hf,'AlphaDataMapping','none','FaceVertexAlphaData',0.3)
 end
+
 set(gca,'XGrid','on')
 hold off;
 set(h,'Visible','off')
