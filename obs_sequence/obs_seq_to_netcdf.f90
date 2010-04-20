@@ -444,7 +444,10 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
       call get_time_range_keys(seq, key_bounds, num_obs_in_epoch, keys)
 
-      ! Append epoch number to output file names
+      !-----------------------------------------------------------------
+      ! Append epoch number to output file names.
+      ! Clear out any existing files unless we are TRYING to append.
+      !-----------------------------------------------------------------
 
       write(ncName,'(''obs_epoch_'',i3.3,''.nc'')')iepoch
 
@@ -452,6 +455,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          ncunit = NC_Compatibility_Check(ncName, iepoch)
       else
          ncunit = InitNetCDF(ncName, iepoch)
+         append_to_netcdf = .true.
       endif
 
       ngood = 0
