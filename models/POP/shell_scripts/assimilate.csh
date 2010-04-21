@@ -93,26 +93,26 @@ end
 # geometry. I created the file offline for the gx1v6 geometry on bluefire. 
 # The inflation values are all unity.
 #
-# The strategy is to use an inflation file from CENTRALDIR if one exists - 
-# if not, grab one from the same place we get the DART bits - 
-# if not, grab the default one and hope for the best.
+# The strategy is to use the LATEST inflation file from CENTRALDIR if one exists - 
 #
-# The thought being: the first time through, CENTRALDIR doesn't have one
-# so it will either be copied from the DART tree or use a vanilla value.
 # After an assimilation, the output file will be copied back to CENTRALDIR
 # to be used for subsequent assimilations.
 #-------------------------------------------------------------------------
 
-foreach FILE ( prior_inflate_ics ) 
+foreach FILE ( prior post ) 
 
-   if ( -e    ../${FILE} ) then
-      ${LINK} ../${FILE} .
-   else if ( -e ${DARTDIR}/${FILE} ) then
-      ${LINK}   ${DARTDIR}/${FILE} .
+   # These files may or may not exist. This causes some complexity.
+   # So - we look for the 'newest' and use it. And Pray.
+
+   (ls -rt1 ../${FILE}_inflate.*.restart.* | tail -1 >! latestfile) > & /dev/null
+   set nfiles = `cat latestfile | wc -l`
+
+   if ( $nfiles > 0 ) then
+      set latest = `cat latestfile`
+      ${LINK} $latest ${FILE}_inflate_ics
    else
-      echo "DART auxiliary file $FILE not found ... starting from 1.0"
-      set INFLATEFILE =  /ptmp/thoar/gx1v6_prior_inflate_restart.be
-      ${COPY} ${INFLATEFILE} prior_inflate_ics
+      # MUST HAVE inf_initial_from_restart = .false.
+      echo "WARNING: no incoming ${FILE}_inflate.YYYY-MM-DD-00000.restart.endiansuffix"
    endif
 
 end
@@ -238,25 +238,27 @@ ${MOVE} Posterior_Diag.nc  ../Posterior_Diag.${OCN_DATE_EXT}.nc
 ${MOVE} obs_seq.final      ../obs_seq.${OCN_DATE_EXT}.final
 ${MOVE} dart_log.out       ../dart_log.${OCN_DATE_EXT}.out
 
-# FIXME: should add something for posterior_inflate_restarts ...
-if ( -e prior_inflate_restart ) then
-   # 1) rename file to reflect current date
-   # 2) must link generic name to specific date so next day
-   # we can just grab the generic name without having to
-   # parse the 'day before the current day'
-   # 3) move both to CENTRALDIR so the DART INFLATION BLOCK works next time
-   ${MOVE} prior_inflate_restart prior_inflate.${OCN_DATE_EXT}.restart.be 
-   ${LINK} prior_inflate.${OCN_DATE_EXT}.restart.be prior_inflate_ics
-   ${MOVE} prior_inflate.${OCN_DATE_EXT}.restart.be prior_inflate_ics ..
-else
-   echo "No prior_inflate_restart for ${OCN_DATE_EXT}"
-endif
+# Accomodate any possible inflation files 
 
-if ( -e prior_inflate_diag ) then
-   ${MOVE} prior_inflate_diag ../prior_inflate.${OCN_DATE_EXT}.diag
-else
-   echo "No prior_inflate_diag for ${OCN_DATE_EXT}"
-endif
+foreach INFLATION ( prior post )
+
+   if ( -e ${INFLATION}_inflate_restart ) then
+      # 1) rename file to reflect current date
+      # 2) move to CENTRALDIR so the DART INFLATION BLOCK works next time
+   
+      ${MOVE} ${INFLATION}_inflate_restart ../${INFLATION}_inflate.${OCN_DATE_EXT}.restart.be 
+
+   else
+      echo "No ${INFLATION}_inflate_restart for ${OCN_DATE_EXT}"
+   endif
+
+   if ( -e ${INFLATION}_inflate_diag ) then
+      ${MOVE} ${INFLATION}_inflate_diag ../${INFLATION}_inflate.${OCN_DATE_EXT}.diag
+   else
+      echo "No ${INFLATION}_inflate_diag for ${OCN_DATE_EXT}"
+   endif
+
+end
 
 # FIXME: special for trying out non-monotonic task layouts.
 setenv PATH "${ORG_PATH}"

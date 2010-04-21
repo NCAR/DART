@@ -443,9 +443,9 @@ do i = 1, nx
    enddo
 enddo
 
-! DEBUG to determine max_reg_list_num values for new grids ...
-! write(*,*)'u_dipole_num is ',maxval(u_dipole_num)
-! write(*,*)'t_dipole_num is ',maxval(t_dipole_num)
+if (do_output()) write(*,*)'to determine (minimum) max_reg_list_num values for new grids ...'
+if (do_output()) write(*,*)'u_dipole_num is ',maxval(u_dipole_num)
+if (do_output()) write(*,*)'t_dipole_num is ',maxval(t_dipole_num)
 
 ! Invert the temporary data structure. The total number of entries will be 
 ! the sum of the number of dipole cells for each regular cell. 
