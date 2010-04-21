@@ -27,5 +27,12 @@ function vdims = nc_var_dims(ncfname,varname);
 % $Revision$
 % $Date$
 
-varinfo = nc_getvarinfo(ncfname,varname);
-vdims   = varinfo.Dimension;
+if ( nc_isvar(ncfname, varname) )
+   varinfo = nc_getvarinfo(ncfname,varname);
+   vdims   = varinfo.Dimension;
+else
+   fprintf('%s does not have a %s variable.\n',ncfname, varname)
+   fprintf('It does have the following:\n')
+   nc_dump(ncfname)
+   error('%s does not have a %s variable.',ncfname, varname)
+end
