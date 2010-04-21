@@ -153,7 +153,7 @@ for ivar = 1:plotdat.nvars
 
    % remove any existing log file - 
    
-   lgfname = sprintf('%s_obscount.txt',plotdat.varnames{ivar});
+   lgfname = sprintf('%s_%s_obscount.txt',plotdat.varnames{ivar},plotdat.copystring);
    disp(sprintf('Removing %s from the current directory.',lgfname))
    system(sprintf('rm %s',lgfname));
    logfid = fopen(lgfname,'wt');
@@ -358,13 +358,6 @@ function myplot(plotdat)
          'Fontsize', 12, 'FontWeight', 'bold')
    end
    
-   % use same X,Y limits for all plots in this region
-   nYticks = length(get(ax1,'YTick'));
-   ylimits = plotdat.Yrange;
-   yinc    = (ylimits(2)-ylimits(1))/(nYticks-1);
-   yticks  = ylimits(1):yinc:ylimits(2);
-   set(ax1,'YTick',yticks,'Ylim',ylimits)
-   
    % create a separate scale for the number of observations
    ax2 = axes('position',get(ax1,'Position'), ...
            'XAxisLocation','top', ...
@@ -376,15 +369,13 @@ function myplot(plotdat)
    set(h2,'LineStyle','none','Marker','o');
    set(h3,'LineStyle','none','Marker','+');   
 
-   % use same number of Y ticks and the same X ticks
-   
-   ylimits = get(ax2,'YLim');
-   yinc   = (ylimits(2)-ylimits(1))/(nYticks-1);
-   yticks = ylimits(1):yinc:ylimits(2);
-   niceyticks = round(10*yticks')/10;
-   set(ax2,'XTick',get(ax1,'XTick'),'XTicklabel',[], ...
-           'YTick',          yticks,'YTicklabel',num2str(niceyticks))
-       
+   % use same X ticks - with no labels
+   set(ax2,'XTick',get(ax1,'XTick'),'XTickLabel',[])
+ 
+   % use the same Y ticks, but find the right label values
+   [yticks, newticklabels] = matchingYticks(ax1,ax2);
+   set(ax2,'YTick', yticks, 'YTickLabel', newticklabels)
+
    set(get(ax2,'Ylabel'),'String','# of obs : o=poss, +=used')
    set(get(ax1,'Ylabel'),'String',plotdat.ylabel)
    set(ax1,'Position',get(ax2,'Position'))
@@ -491,10 +482,30 @@ else
    if ( ymax > 1.0 ) 
       ymin = floor(min(glommed));
       ymax =  ceil(max(glommed));
+   elseif ( ymax < 0.0 & y.copystring == 'bias' )
+      ymax = 0.0;
    end
 
    Yrange = [ymin ymax];
 
    x = [min([Yrange(1) 0.0]) Yrange(2)];
 end
+
+
+
+function [yticks newticklabels] = matchingYticks(ax1, ax2)
+%% This takes the existing Y ticks from ax1 (presumed nice)
+% and determines the matching labels for ax2 so we can keep
+% at least one of the axes looking nice.
+
+Dlimits = get(ax1,'YLim');
+DYticks = get(ax1,'YTick');
+nYticks = length(DYticks);
+ylimits = get(ax2,'YLim');
+
+slope   = (ylimits(2) - ylimits(1))/(Dlimits(2) - Dlimits(1));
+xtrcpt  = ylimits(2) -slope*Dlimits(2);
+
+yticks        = slope*DYticks + xtrcpt;
+newticklabels = num2str(round(10*yticks')/10);
 

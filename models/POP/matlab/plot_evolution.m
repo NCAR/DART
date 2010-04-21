@@ -3,20 +3,44 @@ function plotdat = plot_evolution(fname, copystring, varargin)
 % Part of the observation-space diagnostics routines.
 %
 % 'obs_diag' produces a netcdf file containing the diagnostics.
+% obs_diag condenses the obs_seq.final information into summaries for a few specified
+% regions - on a level-by-level basis.
 %
-% USAGE: plotdat = plot_evolution(fname,copystring);
+% USAGE: plotdat = plot_evolution(fname, copystring [,varargin]);
 %
-% fname  :  netcdf file produced by 'obs_diag'
-% copystring :  'copy' string == quantity of interest. These
-%            can be any of the ones available in the netcdf 
-%            file 'CopyMetaData' variable.
-%            (ncdump -v CopyMetaData obs_diag_output.nc)
+% fname         : netcdf file produced by 'obs_diag'
+% copystring    : 'copy' string == quantity of interest. These
+%                 can be any of the ones available in the netcdf 
+%                 file 'CopyMetaData' variable.
+%                 (ncdump -v CopyMetaData obs_diag_output.nc)
+% obstypestring : 'observation type' string. Optional.
+%                 Must match something in the netcdf 
+%                 file 'ObservationTypes' variable.
+%                 (ncdump -v ObservationTypes obs_diag_output.nc)
+%                 If specified, only this observation type will be plotted.
+%                 If not specified, all observation types incluced in the netCDF file
+%                 will be plotted.
 %
-% EXAMPLE:
+% OUTPUT: two files will result for each observation type plotted. One is a 
+%         postscript file containing a page for each level - all regions.
+%         The other file is a simple text file containing summary information
+%         about how many observations were assimilated, how many were available, etc.
+%         Both of these filenames contain the observation type as part of the name.
 %
-% fname = 'obs_diag_output.nc';   % netcdf file produced by 'obs_diag'
-% copystring = 'bias';   % 'copy' string == quantity of interest
-% plotdat = plot_evolution(fname,copystring);
+% EXAMPLE 1 - plot the evolution of the bias for all observation types, all levels
+%
+% fname      = 'obs_diag_output.nc';   % netcdf file produced by 'obs_diag'
+% copystring = 'bias';                 % 'copy' string == quantity of interest
+% plotdat    = plot_evolution(fname, copystring);
+%
+%
+% EXAMPLE 2 - plot the evolution of the rmse for just the mooring temperature observations
+%             This requires that the 'MOORING_TEMPERATURE' is one of the known observation
+%             types in the netCDF file.
+%
+% fname      = 'obs_diag_output.nc';   % netcdf file produced by 'obs_diag'
+% copystring = 'rmse';                 % 'copy' string == quantity of interest
+% plotdat    = plot_evolution(fname, copystring, 'MOORING_TEMPERATURE');
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -281,7 +305,7 @@ function myplot(plotdat)
 
    string_guess = sprintf('forecast: mean=%.5g', mean_prior);
    string_analy = sprintf('analysis: mean=%.5g', mean_post);
-   plotdat.subtitle = sprintf('%s     %s     %s',plotdat.myregion,string_guess, string_analy);
+   plotdat.subtitle = sprintf('%s     %s     %s',plotdat.myregion, string_guess, string_analy);
 
    % Plot the requested quantity on the left axis.
    % The observation count will use the axis on the right.
@@ -341,13 +365,6 @@ function myplot(plotdat)
          'Fontsize', 12, 'FontWeight', 'bold')
    end
    
-   % use same X,Y limits for all plots in this region
-   nYticks = length(get(ax1,'YTick'));
-   ylimits = plotdat.Yrange;
-   yinc    = (ylimits(2)-ylimits(1))/(nYticks-1);
-   yticks  = ylimits(1):yinc:ylimits(2);
-   set(ax1,'YTick',yticks,'Ylim',ylimits)
-   
    % create a separate scale for the number of observations
    ax2 = axes('position',get(ax1,'Position'), ...
            'XAxisLocation','top', ...
@@ -359,15 +376,13 @@ function myplot(plotdat)
    set(h2,'LineStyle','none','Marker','o');
    set(h3,'LineStyle','none','Marker','+');   
 
-   % use same number of Y ticks and the same X ticks
-   
-   ylimits = get(ax2,'YLim');
-   yinc   = (ylimits(2)-ylimits(1))/(nYticks-1);
-   yticks = ylimits(1):yinc:ylimits(2);
-   niceyticks = round(10*yticks')/10;
-   set(ax2,'XTick',get(ax1,'XTick'),'XTicklabel',[], ...
-           'YTick',          yticks,'YTicklabel',num2str(niceyticks))
-       
+   % use same X ticks - with no labels
+   set(ax2,'XTick',get(ax1,'XTick'),'XTickLabel',[])
+ 
+   % use the same Y ticks, but find the right label values
+   [yticks, newticklabels] = matchingYticks(ax1,ax2);
+   set(ax2,'YTick', yticks, 'YTickLabel', newticklabels)
+
    set(get(ax2,'Ylabel'),'String','# of obs : o=poss, +=used')
    set(get(ax1,'Ylabel'),'String',plotdat.ylabel)
    set(ax1,'Position',get(ax2,'Position'))
@@ -380,7 +395,18 @@ function BottomAnnotation(main)
 % annotates the directory containing the data being plotted
 subplot('position',[0.48 0.01 0.04 0.04])
 axis off
-string1 = sprintf('data file: %s',which(main));
+fullname = which(main);   % Could be in MatlabPath
+if( isempty(fullname) )
+   if ( main(1) == '/' )  % must be a absolute pathname
+      string1 = sprintf('data file: %s',main);
+   else                   % must be a relative pathname
+      mydir = pwd;
+      string1 = sprintf('data file: %s/%s',mydir,main);
+   end
+else
+   string1 = sprintf('data file: %s',fullname);
+end
+
 h = text(0.0, 0.5, string1);
 set(h,'HorizontalAlignment','center', ...
       'VerticalAlignment','middle',...
@@ -463,10 +489,30 @@ else
    if ( ymax > 1.0 ) 
       ymin = floor(min(glommed));
       ymax =  ceil(max(glommed));
+   elseif ( ymax < 0.0 & y.copystring == 'bias' )
+      ymax = 0.0;
    end
 
    Yrange = [ymin ymax];
 
    x = [min([Yrange(1) 0.0]) Yrange(2)];
 end
+
+
+
+function [yticks newticklabels] = matchingYticks(ax1, ax2)
+%% This takes the existing Y ticks from ax1 (presumed nice)
+% and determines the matching labels for ax2 so we can keep
+% at least one of the axes looking nice.
+
+Dlimits = get(ax1,'YLim');
+DYticks = get(ax1,'YTick');
+nYticks = length(DYticks);
+ylimits = get(ax2,'YLim');
+
+slope   = (ylimits(2) - ylimits(1))/(Dlimits(2) - Dlimits(1));
+xtrcpt  = ylimits(2) -slope*Dlimits(2);
+
+yticks        = slope*DYticks + xtrcpt;
+newticklabels = num2str(round(10*yticks')/10);
 
