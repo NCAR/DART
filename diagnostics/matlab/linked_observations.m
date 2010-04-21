@@ -66,7 +66,7 @@ scatter3(obsmat(:,obs.lonindex), obsmat(:,obs.latindex), obsmat(:,obs.zindex), .
              'YDataSource',ystring, ...
              'ZDataSource',zstring);
 
-worldmap('light');
+myworldmap(obs);
 
 xlabel(obs.colnames{obs.lonindex});
 ylabel(obs.colnames{obs.latindex});
@@ -127,32 +127,34 @@ xlabel('obs count');
 ylabel('key');
 
 %% Create axes for ObsVal vs. QC scatterplot
-axes1 = axes('Parent',figure2,'Position',[0.05 0.05 0.6 0.25],'FontSize',14);
-box(axes1,'on');
-hold(axes1,'all');
-
-xstring = sprintf('obsmat(:,%d)',obs.obsindex);
-ystring = sprintf('obsmat(:,%d)',obs.qcindex);
-scatter(obsmat(:,obs.obsindex),obsmat(:,obs.qcindex),'Parent',axes1, ...
-             'DisplayName','obs vs qc', ...
-             'XDataSource',xstring, ...
-             'YDataSource',ystring);
-xlabel( obs.colnames{obs.obsindex});
-h = title(  obs.ObsTypeString);
-set(h,'Interpreter','none');
+%axes1 = axes('Parent',figure2,'Position',[0.05 0.05 0.6 0.25],'FontSize',14);
+%box(axes1,'on');
+%hold(axes1,'all');
+%
+%xstring = sprintf('obsmat(:,%d)',obs.obsindex);
+%ystring = sprintf('obsmat(:,%d)',obs.qcindex);
+%scatter(obsmat(:,obs.obsindex),obsmat(:,obs.qcindex),'Parent',axes1, ...
+%             'DisplayName','obs vs qc', ...
+%             'XDataSource',xstring, ...
+%             'YDataSource',ystring);
+%xlabel( obs.colnames{obs.obsindex});
+%h = title(  obs.ObsTypeString);
+%set(h,'Interpreter','none');
+fprintf('QC summary follows:\n')
 LabelQC(obs.colnames{obs.qcindex}, obs.qc)
 
-refreshdata
-linkdata on
+%refreshdata
+%linkdata on
 
 %% Create axes for observation vs ensemble
 % This figure is most useful when all the 'bad' obs have been
 % replaced by Matlab's NAN so as not to blow the scale.
 % The idea is - if both copies 'match', they line up on the diagonal.
 
-figure3 = figure(3); clf(figure3);
+%figure3 = figure(3); clf(figure3);
 
-axes5 = axes('Parent',figure3,'OuterPosition',[0 0 1 0.95],'FontSize',18);
+% axes5 = axes('Parent',figure3,'OuterPosition',[0 0 1 0.95],'FontSize',18);
+axes5 = axes('Parent',figure2,'Position',[0.20 0.05 0.6 0.25],'FontSize',14);
 grid(axes5,'on');
 hold(axes5,'all');
 
@@ -180,7 +182,7 @@ refreshdata
 linkdata on
 
 
-function LabelQC(QCString, qcarray)
+function s = LabelQC(QCString, qcarray)
 %% Create legend for (DART) QC values.
 %
 % 0     observation assimilated
@@ -215,10 +217,93 @@ switch lower(strtrim(QCString))
          s{i} = sprintf('%d - %s %d obs',qcvals(i), dartqc_strings{qcvals(i)+1}, qccount(i));
       end
 
-      set(gca,'YTick',qcvals,'YAxisLocation','right')
-      set(gca,'YTickLabel',char(s{:}),'FontSize',12)
+  %   set(gca,'YTick',qcvals,'YAxisLocation','right')
+  %   set(gca,'YTickLabel',char(s{:}),'FontSize',12)
 
    otherwise,
       str = sprintf('no way to interpret values of %s',strtrim(QCString));
       text(0.0, 0.0, str)
 end
+
+
+
+function h = myworldmap(obs)
+
+%%--------------------------------------------------------------------------
+% GET THE ELEVATION DATA AND SET UP THE ASSOCIATED COORDINATE DATA
+%---------------------------------------------------------------------------
+
+load topo;               % GET Matlab-native [180x360] ELEVATION DATASET
+lats = -89.5:89.5;       % CREATE LAT ARRAY FOR TOPO MATRIX
+lons = 0.5:359.5;        % CREATE LON ARRAY FOR TOPO MATRIX
+nlon = length(lons);
+nlat = length(lats);
+
+%%--------------------------------------------------------------------------
+% IF WE NEED TO SWAP HEMISPHERES, DO SO NOW.
+% If we didn't explicitly tell it, make a guess.
+%---------------------------------------------------------------------------
+
+ax   = axis;
+
+if (ax(1) < -2)
+   lons = lons - 180.0;
+   topo = [ topo(:,nlon/2+1:nlon) topo(:,1:nlon/2) ];
+end
+
+%%--------------------------------------------------------------------------
+% We need to determine the geographic subset of the elevation matrix.
+%---------------------------------------------------------------------------
+
+lon_ind1 = find(ax(1) <= lons, 1);
+lon_ind2 = find(ax(2) <= lons, 1);
+lat_ind1 = find(ax(3) <= lats, 1);
+lat_ind2 = find(ax(4) <= lats, 1);
+
+if (isempty(lon_ind1)), lon_ind1 = 1;    end;
+if (isempty(lon_ind2)), lon_ind2 = nlon; end;
+if (isempty(lat_ind1)), lat_ind1 = 1;    end;
+if (isempty(lat_ind2)), lat_ind2 = nlat; end;
+
+elev = topo(lat_ind1:lat_ind2,lon_ind1:lon_ind2);
+x    = lons(lon_ind1:lon_ind2);
+y    = lats(lat_ind1:lat_ind2);
+
+%%--------------------------------------------------------------------------
+% Contour the "subset" - and give the whole thing an appropriate zlevel
+% so the continents are either at the top of the plot (for depth), or
+% the bottom (for just about everything else.
+% There are differences between 6.5 and 7.0 that make changing the colors
+% of the filled contours a real pain.
+%---------------------------------------------------------------------------
+
+orgholdstate = ishold;
+hold on;
+
+switch  lower(obs.Zunits)
+   case 'depth'
+      set(gca,'Zdir','reverse')
+      zlevel = min(ax(5:6));
+   case 'pressure'
+      zlevel = max(ax(5:6));
+      set(gca,'Zdir','reverse')
+   otherwise
+      set(gca,'Zdir','normal')
+      zlevel = min(ax(5:6));
+end
+
+fcolor = [0.7 0.7 0.7];    % light grey
+
+[c,h] = contourf(x,y,elev,[0.0 0.0],'k-');
+
+h_patch = get(h, 'Children');
+
+for i = 1:numel(h_patch)
+    y = get(h_patch(i), 'YData');
+    s = size(y);
+    set(h_patch(i), 'ZData', zlevel*ones(s),'FaceColor',fcolor);
+end
+
+if (orgholdstate == 0), hold off; end;
+
+
