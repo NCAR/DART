@@ -354,7 +354,8 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 	    vertical profiles of rms error and bias. The year and month 
 	    values <em>must</em> be zero. Useful because it takes some 
 	    time for the assimilation to settle down from the climatological 
-	    spread at the start.<BR>
+	    spread at the start. <em class=code>time_to_skip</em> is an
+            amount of time AFTER the first edge of the first bin.<BR>
             Default: 0, 0, 1, 0, 0, 0</TD></TR>  
 
 <TR><!--contents--><TD valign=top>   max_num_bins  </TD>

@@ -3,8 +3,11 @@ function two_experiments_profile(files, titles, varnames, qtty, prpo)
 % Each variable gets its own figure.
 % Each region gets its own axis.
 %
-% I'm having some problems preserving the ticks on the left.
-% 
+% I'm having some problems preserving the ticks on the left,
+% so I used a transparent object. Because of THAT - OpenGL is the
+% default rendered, which is normally a pretty low resolution.
+% For good reproducibility, manually specify the 'painters' option when
+% printing.
 % 
 % files = {'/ptmp/nancy/CSL/Base5/032-061s0_def_reg/obs_diag_output.nc',
 %          '/ptmp/thoar/GPS+AIRS/Sep_032-061/obs_diag_output.nc'};
@@ -19,6 +22,7 @@ function two_experiments_profile(files, titles, varnames, qtty, prpo)
 % prpo     = 'both'; % prior & posterior
 %
 % two_experiments_profile(files, titles, varnames, qtty, prpo)
+% print -dpsc -painters myplot.ps
 %
 
 % <next few lines under version control, do not edit>
@@ -229,7 +233,7 @@ iskip                 = timefloats(3) + skip_seconds/86400;
 plotdat.bincenters    = plotdat.bincenters + timeorigin;
 plotdat.binedges      = plotdat.binedges   + timeorigin;
 plotdat.Nbins         = length(plotdat.bincenters);
-plotdat.toff          = plotdat.bincenters(1) + iskip;
+plotdat.toff          = plotdat.binedges(1) + iskip;
 
 plotdat.timespan      = sprintf('%s through %s', datestr(plotdat.toff), ...
                         datestr(max(plotdat.binedges(:))));
@@ -536,12 +540,19 @@ axis off
 
 for ifile = 1:nfiles
    main = filenames{ifile};
-   if ( main(1) == '/' )   % must be a absolute pathname
-      string1 = sprintf('data file: %s',main);
+
+   fullname = which(main);   % Could be in MatlabPath
+   if( isempty(fullname) )
+      if ( main(1) == '/' )  % must be a absolute pathname
+         string1 = sprintf('data file: %s',main);
+      else                   % must be a relative pathname
+         mydir = pwd;
+         string1 = sprintf('data file: %s/%s',mydir,main);
+      end
    else
-      mydir = pwd;
-      string1 = sprintf('data file: %s/%s',mydir,main);
+      string1 = sprintf('data file: %s',fullname);
    end
+
    ty = 1.0 - (ifile-1)*dy;
    h = text(0.5, ty, string1);
    set(h, 'Interpreter', 'none', 'FontSize', 8);

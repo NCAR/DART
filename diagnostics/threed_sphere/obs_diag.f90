@@ -1524,6 +1524,23 @@ write(*,*) '# big (original) QC  : ',sum(guess%NbigQC)
 write(*,*) '# bad DART QC prior  : ',sum(guess%NbadDartQC)
 write(*,*) '# bad DART QC post   : ',sum(analy%NbadDartQC)
 write(*,*)
+write(*,*) '# prior DART QC 0 : ',sum(guess%NDartQC_0)
+write(*,*) '# prior DART QC 1 : ',sum(guess%NDartQC_1)
+write(*,*) '# prior DART QC 2 : ',sum(guess%NDartQC_2)
+write(*,*) '# prior DART QC 3 : ',sum(guess%NDartQC_3)
+write(*,*) '# prior DART QC 4 : ',sum(guess%NDartQC_4)
+write(*,*) '# prior DART QC 5 : ',sum(guess%NDartQC_5)
+write(*,*) '# prior DART QC 6 : ',sum(guess%NDartQC_6)
+write(*,*) '# prior DART QC 7 : ',sum(guess%NDartQC_7)
+write(*,*)
+write(*,*) '# poste DART QC 0 : ',sum(analy%NDartQC_0)
+write(*,*) '# poste DART QC 1 : ',sum(analy%NDartQC_1)
+write(*,*) '# poste DART QC 2 : ',sum(analy%NDartQC_2)
+write(*,*) '# poste DART QC 3 : ',sum(analy%NDartQC_3)
+write(*,*) '# poste DART QC 4 : ',sum(analy%NDartQC_4)
+write(*,*) '# poste DART QC 5 : ',sum(analy%NDartQC_5)
+write(*,*) '# poste DART QC 6 : ',sum(analy%NDartQC_6)
+write(*,*) '# poste DART QC 7 : ',sum(analy%NDartQC_7)
 
 write(logfileunit,*)
 write(logfileunit,*) '# observations used  : ',sum(obs_used_in_epoch)
@@ -1535,6 +1552,24 @@ write(logfileunit,*) '# bad Level          : ',sum(guess%NbadLV(:,1,:,:))
 write(logfileunit,*) '# big (original) QC  : ',sum(guess%NbigQC)
 write(logfileunit,*) '# bad DART QC prior  : ',sum(guess%NbadDartQC)
 write(logfileunit,*) '# bad DART QC post   : ',sum(analy%NbadDartQC)
+write(logfileunit,*)
+write(logfileunit,*) '# prior DART QC 0 : ',sum(guess%NDartQC_0)
+write(logfileunit,*) '# prior DART QC 1 : ',sum(guess%NDartQC_1)
+write(logfileunit,*) '# prior DART QC 2 : ',sum(guess%NDartQC_2)
+write(logfileunit,*) '# prior DART QC 3 : ',sum(guess%NDartQC_3)
+write(logfileunit,*) '# prior DART QC 4 : ',sum(guess%NDartQC_4)
+write(logfileunit,*) '# prior DART QC 5 : ',sum(guess%NDartQC_5)
+write(logfileunit,*) '# prior DART QC 6 : ',sum(guess%NDartQC_6)
+write(logfileunit,*) '# prior DART QC 7 : ',sum(guess%NDartQC_7)
+write(logfileunit,*)
+write(logfileunit,*) '# poste DART QC 0 : ',sum(analy%NDartQC_0)
+write(logfileunit,*) '# poste DART QC 1 : ',sum(analy%NDartQC_1)
+write(logfileunit,*) '# poste DART QC 2 : ',sum(analy%NDartQC_2)
+write(logfileunit,*) '# poste DART QC 3 : ',sum(analy%NDartQC_3)
+write(logfileunit,*) '# poste DART QC 4 : ',sum(analy%NDartQC_4)
+write(logfileunit,*) '# poste DART QC 5 : ',sum(analy%NDartQC_5)
+write(logfileunit,*) '# poste DART QC 6 : ',sum(analy%NDartQC_6)
+write(logfileunit,*) '# poste DART QC 7 : ',sum(analy%NDartQC_7)
 
 if (Nidentity > 0) then
    write(*,*)'There were identity observations in this observation sequence file.'
@@ -1782,7 +1817,7 @@ CONTAINS
 
    type(time_type), intent(out) :: beg_time     ! first_bin_center
    type(time_type), intent(out) :: end_time     ! last_bin_center
-   type(time_type), intent(out) :: skip_time    ! time AFTER first_bin_center
+   type(time_type), intent(out) :: skip_time    ! time AFTER first bin leading edge
    type(time_type), intent(out) :: binsep       ! time between bin centers
    type(time_type), intent(out) :: binwidth     ! period of interest around center
    type(time_type), intent(out) :: halfbinwidth ! half that period
