@@ -188,22 +188,19 @@
 <table width="80%">
    <tr><th align="left">DART QC flag value</th><th align="left">meaning</th></tr>
    <tr><td>0</td><td>observation assimilated</td></tr>
-   <tr><td>1</td><td>observation evaluated only</td></tr>
+   <tr><td>1</td><td>observation evaluated only (because of namelist settings)</td></tr>
 
-   <tr><th align="left" colspan=2>DART QC values higher than this means the prior and posterior are OK, but ...</th></tr>
+   <tr><th align="left" colspan=2>DART QC values higher than this means the prior is OK, but ...</th></tr>
 
    <tr><td>2</td><td>assimilated, but the posterior forward operator failed</td></tr>
-   <tr><td>3</td><td>Evaluated only, but the posterior forward operator failed</td></tr>
+   <tr><td>3</td><td>evaluated only, but the posterior forward operator failed</td></tr>
 
-   <tr><th align="left" colspan=2>DART QC values higher than this means only the prior is OK, but ...</th></tr>
+   <tr><th align="left" colspan=2>DART QC values higher than this were not assimilated because ...</th></tr>
 
    <tr><td>4</td><td>prior forward operator failed</td></tr>
-   <tr><td>5</td><td>not used because of namelist control</td></tr>
-
-   <tr><th align="left" colspan=2>DART QC values higher than this are bad news.</th></tr>
-
-   <tr><td>6</td><td>prior QC rejected</td></tr>
-   <tr><td>7</td><td>outlier rejected</td></tr>
+   <tr><td>5</td><td>not used because observation type not listed in namelist</td></tr>
+   <tr><td>6</td><td>rejected because incoming observation QC too large</td></tr>
+   <tr><td>7</td><td>rejected because failed outlier threshold test</td></tr>
    <tr><td>8+</td><td>reserved for future use</td></tr>
 </table>
 
