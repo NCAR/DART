@@ -10,7 +10,10 @@
 # run the model advance if &filter_nml has async=4 (parallel filter
 # AND parallel model).  This version gets the number of ensemble members
 # and advance command out of the input.nml namelist file automatically.
-# You do have to set the
+# It also gets the async setting and sets serial vs parallel model
+# automatically.  The theory is that once you get this script working on
+# your system, you will not need to change anything here as you change the
+# number of ensemble members, async setting, or model advance command.
 #
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system
