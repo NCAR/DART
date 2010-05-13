@@ -6,7 +6,14 @@
 #
 # $Id$
 #
-# start at a generic run script for the mpi version.
+# This is an example script for how to run the filter program
+# in parallel by submitting it to a batch system.  Note that
+# this version does NOT have an async 4 option because this version
+# of the bgrid model is a serial-only program and does not use MPI.
+#
+# If you are looking for an example script for how to run async 4
+# (parallel/mpi filter AND parallel/mpi model) check the 
+# DART/models/template/shell_scripts directory.
 #
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system
@@ -15,7 +22,7 @@
 # LSF is used on the IBM   'bluevista'
 # The queues on lightning and bluevista are supposed to be similar.
 #
-# the normal way to submit to the queue is:    bsub < runme_filter
+# the normal way to submit to the queue is:    bsub < run_filter.csh
 #
 # an explanation of the most common directives follows:
 # -J Job name (master script job.csh presumes filter_server.xxxx.log)
@@ -37,7 +44,7 @@
 # PBS is used on the CGD   Linux cluster 'bangkok'
 # PBS is used on the CGD   Linux cluster 'calgary'
 # 
-# the normal way to submit to the queue is:    qsub runme_filter
+# the normal way to submit to the queue is:    qsub run_filter.csh
 # 
 # an explanation of the most common directives follows:
 # -N     Job name
@@ -57,16 +64,13 @@
 #PBS -q medium
 #PBS -l nodes=4:ppn=2
 
-# A common strategy for the beginning is to check for the existence of
-# some variables that get set by the different queuing mechanisms.
-# This way, we know which queuing mechanism we are working with,
-# and can set 'queue-independent' variables for use for the remainder
-# of the script.
+# Check for the existence of variables that are set by different 
+# queuing mechanisms.  This way, we can make a single script which
+# works for any queuing system.
 
 if ($?LS_SUBCWD) then
 
    # LSF has a list of processors already in a variable (LSB_HOSTS)
-   #  alias submit 'bsub < \!*'
 
    mpirun.lsf ./filter
    
@@ -74,33 +78,31 @@ if ($?LS_SUBCWD) then
 else if ($?PBS_O_WORKDIR) then
 
    # PBS has a list of processors in a file whose name is (PBS_NODEFILE)
-   #  alias submit 'qsub \!*'
 
    mpirun ./filter
 
-else if ($?OCOTILLO_NODEFILE) then
+else if ($?NODEFILE) then
 
-   # ocotillo is a 'special case'. It is the only cluster I know of with
-   # no queueing system.  You must generate a list of processors in a
-   # file whose name is given to the mpirun command, and the executable
-   # needs to be wrapped with a script that cds to the right directory.
-   setenv OCOTILLO_NODEFILE  ~/nodelist
-   echo "node7:2" > $OCOTILLO_NODEFILE
-   echo "node5:2" >> $OCOTILLO_NODEFILE
-   echo "node3:2" >> $OCOTILLO_NODEFILE
-   echo "node1:2" >> $OCOTILLO_NODEFILE
+   # a linux cluster with mpich or lam or openmpi and no formal
+   # queueing system. alter this to match the required nodes and
+   # to construct a simple launch script.
+
+   setenv MY_NODEFILE  ~/nodelist
+   echo "node7:2" >  $MY_NODEFILE
+   echo "node5:2" >> $MY_NODEFILE
+   echo "node3:2" >> $MY_NODEFILE
+   echo "node1:2" >> $MY_NODEFILE
 
 cat > ./filterscript <<EOF
  cd `pwd`
  ./filter
 EOF
-   mpirun -np 4 -nolocal -machinefile $OCOTILLO_NODEFILE ./filterscript
+   mpirun -np 4 -nolocal -machinefile $MY_NODEFILE ./filterscript
 
 else
 
-   # interactive - assume you are using 'lam-mpi' and that you have
+   # interactive - e.g. you are using 'lam-mpi' and you have
    # already run 'lamboot' once to start the lam server.
-   # alias submit 'mpirun \!*'
 
    mpirun -np 4 ./filter
 
