@@ -6,30 +6,33 @@
 #
 # $Id$
 #
+# Script to start an MPI version of filter, and then optionally
+# run the model advance if &filter_nml has async=4 (parallel filter
+# AND parallel model).  This version gets the number of ensemble members
+# and advance command out of the input.nml namelist file automatically.
+# You do have to set the
+#
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system
-# LSF is used on the IBM   Linux cluster 'lightning'
 # LSF is used on the IMAGe Linux cluster 'coral'
-# LSF is used on the IBM   'bluevista'
-# The queues on lightning and bluevista are supposed to be similar.
+# LSF is used on the IBM   'bluefire'
 #
 # the normal way to submit to the queue is:    bsub < run_filter.csh
 #
 # an explanation of the most common directives follows:
-# -J Job name (master script job.csh presumes filter_server.xxxx.log)
-# -o STDOUT filename
-# -e STDERR filename
-# -P      account
+# -J Job_name
+# -o STDOUT_filename
+# -e STDERR_filename
+# -P account_code_number
 # -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
-# -n number of processors  (really)
+# -n number of MPI processes (not nodes)
+# -W hh:mm  wallclock time (required on some systems)
 ##=============================================================================
 #BSUB -J filter
 #BSUB -o filter.%J.log
-#BSUB -q regular
+#BSUB -q standby
 #BSUB -n 20
-#BXXX -P 868500xx
-#BSUB -W 2:00
-#BSUB -N -u ${USER}@ucar.edu
+#BSUB -W 1:00
 #
 ##=============================================================================
 ## This block of directives constitutes the preamble for the PBS queuing system
@@ -64,25 +67,40 @@
 # mpirun -np 64 modelxxx (or whatever) for as many ensembles as you have,
 # set this to "true"
 
-# if async=4, also check that the call to advance_model.csh
-# has the right number of ensemble members below; it must match
-# the input.nml number.
-
-set parallel_model = "true"
-
-# Determine the number of ensemble members from input.nml,
-# it may exist in more than one place.
-# Parse out the filter_nml string and see which 
-# one is immediately after it ...
-
+# this script is going to determine several things by reading the input.nml
+# file which contains the &filter_nml namelist.  make sure it exists first.
 if ( ! -e input.nml ) then
    echo "ERROR - input.nml does not exist in local directory."
-   echo "ERROR - input.nml needed to determine number of ensemble members."
+   echo "ERROR - input.nml needed to determine several settings for this script."
    exit 1
 endif
 
+# detect whether the model is supposed to run as an MPI job or not
+# by reading the "async = " from the &filter_nml namelist in input.nml.
+# some namelists contain the same string - be sure to get the filter_nml one
+# by grepping for lines which follow it.
+
+set ASYNCSTRING = `grep -A 42 filter_nml input.nml | grep async`
+set ASYNC_TYPE = `echo $ASYNCSTRING[3] | sed -e "s#,##"`
+
+if ( "${ASYNC_TYPE}" == "0" || "${ASYNC_TYPE}" == "2") then
+  set parallel_model = "false"
+else if ( "${ASYNC_TYPE}" == "4") then
+set parallel_model = "true"
+else 
+  echo 'cannot autodetect async value in the filter_nml namelist in input.nml file.'
+  echo 'hardcode the parallel_model shell variable and comment out these lines.'
+  exit -1
+  set parallel_model = "false"
+endif
+
+# Determine the number of ensemble members from input.nml,
+# as well as the command for advancing the model.
+
 set ENSEMBLESTRING = `grep -A 42 filter_nml input.nml | grep ens_size`
 set NUM_ENS = `echo $ENSEMBLESTRING[3] | sed -e "s#,##"`
+set ADVANCESTRING = `grep -A 42 filter_nml input.nml | grep adv_ens_command`
+set ADV_CMD  = `echo $ADVANCESTRING[3] | sed -e "s#,##"`
 
 # A common strategy for the beginning is to check for the existence of
 # some variables that get set by the different queuing mechanisms.
@@ -93,7 +111,6 @@ set NUM_ENS = `echo $ENSEMBLESTRING[3] | sed -e "s#,##"`
 if ($?LS_SUBCWD) then
 
     # LSF has a list of processors already in a variable (LSB_HOSTS)
-    # alias submit 'bsub < \!*'
     echo "LSF - using mpirun.lsf for execution"
 
     # each filter task advances the ensembles, each running on 1 proc.
@@ -137,7 +154,7 @@ if ($?LS_SUBCWD) then
           # of processors this job is using.
 
           echo "calling model advance now:"
-          ./advance_model.csh 0 ${NUM_ENS} filter_control00000 || exit 9
+          ${ADV_CMD} 0 ${NUM_ENS} filter_control00000 || exit 9
 
           echo "restarting filter."
           mpirun.lsf ./wakeup_filter
@@ -161,7 +178,6 @@ if ($?LS_SUBCWD) then
 else if ($?PBS_O_WORKDIR) then
 
     # PBS has a list of processors in a file whose name is (PBS_NODEFILE)
-    # alias submit 'qsub \!*'
     echo "PBS - using mpirun for execution"
 
     # each filter task advances the ensembles, each running on 1 proc.
@@ -205,7 +221,7 @@ else if ($?PBS_O_WORKDIR) then
           # of processors this job is using.
 
           echo "calling model advance now:"
-          ./advance_model.csh 0 ${NUM_ENS} filter_control00000 || exit 9
+          ${ADV_CMD} 0 ${NUM_ENS} filter_control00000 || exit 9
 
           echo "restarting filter."
           mpirun ./wakeup_filter
@@ -288,7 +304,7 @@ else
           # of processors this job is using.
 
           echo "calling model advance now:"
-          ./advance_model.csh 0 ${NUM_ENS} filter_control00000 || exit 9
+          ${ADV_CMD} 0 ${NUM_ENS} filter_control00000 || exit 9
 
           echo "restarting filter."
           ${MPICMD} ./wakeup_filter
