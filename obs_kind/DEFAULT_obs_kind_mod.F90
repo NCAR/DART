@@ -21,7 +21,7 @@ module obs_kind_mod
 use    utilities_mod, only : register_module, error_handler,  &
                              E_ERR, E_MSG, E_WARN,               &
                              logfileunit, find_namelist_in_file, &
-                             check_namelist_read, do_output
+                             check_namelist_read, do_output, ascii_file_format
 
 implicit none
 private
@@ -659,56 +659,48 @@ subroutine write_obs_kind(ifile, fform, use_list)
 
 integer, intent(in)                    :: ifile
 character(len=*), intent(in), optional :: fform
-integer, intent(in), optional          :: use_list(:)
+integer,          intent(in), optional :: use_list(:)
 
-character(len=paramname_length) :: fileformat
-integer :: i
+integer :: i, ntypes
+logical :: is_ascii, restrict
 
 if ( .not. module_initialized ) call initialize_module
 
-fileformat = "ascii"   ! supply default
-if(present(fform)) fileformat = trim(adjustl(fform))
+is_ascii = ascii_file_format(fform)
 
-! Write the 5 character identifier for verbose formatted output
-SELECT CASE (fileformat)
-   ! This header needs to be written for formatted OR unformatted
-   ! If it's not present, it means to use the default old definitions
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-      write(ifile) 'obs_kind_definitions'
-   CASE DEFAULT
-      write(ifile, 11)
-11    format('obs_kind_definitions')
-END SELECT
+! Write the 20 character identifier for verbose formatted output
+if (is_ascii) then
+   write(ifile, *) 'obs_kind_definitions'
+else
+   write(ifile)    'obs_kind_definitions'
+endif
 
-! Loop through the list to write out the integer indices and strings
-! For all the defined observation types
-SELECT CASE (fileformat)
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-      ! Write the number of defined kinds, then the list
-      if (present(use_list)) then
-         write(ifile) count(use_list(:) > 0)
-      else
-         write(ifile) max_obs_specific
-      endif
-      do i = 1, max_obs_specific
-         if (present(use_list)) then
-            if (use_list(i) == 0) cycle
-         endif
-         write(ifile) obs_type_info(i)%index, obs_type_info(i)%name
-      end do
-   CASE DEFAULT
-      if (present(use_list)) then
-         write(ifile, *) count(use_list(:) > 0)
-      else
-         write(ifile, *) max_obs_specific
-      endif
-      do i = 1, max_obs_specific
-         if (present(use_list)) then
-            if (use_list(i) == 0) cycle
-         endif
-         write(ifile, *) obs_type_info(i)%index, obs_type_info(i)%name
-      end do
-END SELECT
+! If this routine is called with a list of which types are actually
+! being used, restrict the table of contents to only those.
+! Otherwise, write all known types.
+if (present(use_list)) then
+   ntypes = count(use_list(:) > 0)
+   restrict = .true.
+else
+   ntypes = max_obs_specific
+   restrict = .false.
+endif
+
+if (is_ascii) then
+   write(ifile, *) ntypes
+else
+   write(ifile)    ntypes
+endif
+
+do i = 1, max_obs_specific
+   if (restrict .and. use_list(i) == 0) cycle
+
+   if (is_ascii) then
+      write(ifile, *) obs_type_info(i)%index, obs_type_info(i)%name
+   else
+      write(ifile)    obs_type_info(i)%index, obs_type_info(i)%name
+   endif
+end do
 
 end subroutine write_obs_kind
 
@@ -727,8 +719,9 @@ logical,                    intent(in) :: pre_I_format
 character(len=*), intent(in), optional :: fform
 
 character(len=20)  :: header
-character(len=32)  :: fileformat, o_name
+character(len=paramname_length) :: o_name
 integer            :: i, num_def_kinds, o_index, list_index
+logical            :: is_ascii
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -744,67 +737,50 @@ if(pre_I_format) then
    return
 endif
 
-fileformat = "ascii"   ! supply default
-if(present(fform)) fileformat = trim(adjustl(fform))
+is_ascii = ascii_file_format(fform)
 
-! Read the 5 character identifier for verbose formatted output
-SELECT CASE (fileformat)
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-      ! Need to look for header string
-      read(ifile) header
-      if(header /= 'obs_kind_definitions') then
-         call error_handler(E_ERR, 'read_obs_kind', &
-            'Did not find obs_kind_definitions string', &
-            source, revision, revdate)
-      endif
-   CASE DEFAULT
-      read(ifile, 11) header
-11    format(a20)
-      if(header /= 'obs_kind_definitions') then
-         call error_handler(E_ERR, 'read_obs_kind', &
-            'Did not find obs_kind_definitions string', &
-            source, revision, revdate)
-      endif
-END SELECT
+! Read the 20 character identifier for verbose formatted output
+if (is_ascii) then
+   read(ifile, *) header
+else
+   read(ifile)    header
+endif
+
+if(header /= 'obs_kind_definitions') then
+   call error_handler(E_ERR, 'read_obs_kind', &
+      'Did not find obs_kind_definitions string', &
+      source, revision, revdate)
+endif
 
 ! Loop through the list to read the integer indices and strings
 ! For all the defined observation types
 ! Set up the map from kinds in the obs_sequence file to those
 ! in the data structure in this module.
-SELECT CASE (fileformat)
-   CASE ("unf", "UNF", "unformatted", "UNFORMATTED")
-      read(ifile) num_def_kinds
-      do i = 1, num_def_kinds
-         read(ifile) o_index, o_name
-         ! What is the integer associated with this o_name in this module?
-         list_index = get_obs_kind_index(o_name)
-         ! Check for error
-         if(list_index == -1) then
-            write(msg_string, *) 'Did not find observation kind ', o_name, &
-               ' in obs_kind_mod list'
-            call error_handler(E_ERR, 'read_obs_kind', msg_string, &
-               source, revision, revdate)
-         endif
-         map(1, i) = o_index
-         map(2, i) = list_index
-      end do
-   CASE DEFAULT
-      read(ifile, *) num_def_kinds
-      do i = 1, num_def_kinds
-         read(ifile, *) o_index, o_name
-         ! What is the integer associated with this o_name in this module?
-         list_index = get_obs_kind_index(o_name)
-         ! Check for error
-         if(list_index == -1) then
-            write(msg_string, *) 'Did not find observation kind ', o_name, &
-               ' in obs_kind_mod list'
-            call error_handler(E_ERR, 'read_obs_kind', msg_string, &
-               source, revision, revdate)
-         endif
-         map(1, i) = o_index
-         map(2, i) = list_index
-      end do
-END SELECT
+if (is_ascii) then
+   read(ifile, *) num_def_kinds
+else
+   read(ifile)    num_def_kinds
+endif
+
+do i = 1, num_def_kinds
+   if (is_ascii) then
+      read(ifile, *) o_index, o_name
+   else
+      read(ifile)    o_index, o_name
+   endif
+
+   ! What is the integer associated with this o_name in this module?
+   list_index = get_obs_kind_index(o_name)
+   ! Check for error
+   if(list_index == -1) then
+      write(msg_string, *) 'Did not find observation kind ', o_name, &
+         ' in obs_kind_mod list'
+      call error_handler(E_ERR, 'read_obs_kind', msg_string, &
+         source, revision, revdate)
+   endif
+   map(1, i) = o_index
+   map(2, i) = list_index
+end do
 
 end subroutine read_obs_kind
 
@@ -831,8 +807,7 @@ do i = 1, max_obs_specific
 end do
 
 ! Read the input as a string, convert to integers as appropriate 
-read(*, 11) in
-11 format(A)
+read(*, '(A)') in
 
 ! If string is a positive or negative number, convert it to integer
 read(in, *, IOSTAT = ierr) get_kind_from_menu
