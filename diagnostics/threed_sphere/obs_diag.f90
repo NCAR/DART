@@ -2550,7 +2550,7 @@ CONTAINS
    if (indx1 > 0) then ! must be _?_WIND_COMPONENT
       str3 = str1(1:indx1)//'_HORIZONTAL_WIND'
    else                ! must be _?_10_METER_WIND
-      str3 = str1(1:indx2)//'_10_METER_HORIZONTAL_WIND'
+      str3 = str1(1:indx2)//'_10_M_HORZ_WIND'
       indx1 = indx2
    endif
 
@@ -3593,7 +3593,7 @@ CONTAINS
          indxN = index(str1(1:indx1),str2(1:indx2))
          if (indxN > 0) then ! we know they are matching kinds
             nwinds = nwinds + 1
-            str3   = str1(1:indx2)//'_10_METER_HORIZONTAL_WIND'
+            str3   = str1(1:indx2)//'_10_M_HORZ_WIND'
             names(max_obs_kinds + nwinds) = str3
          endif
       endif
