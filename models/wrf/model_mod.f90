@@ -163,25 +163,18 @@ logical :: output_state_vector     = .false.  ! output prognostic variables
 logical :: default_state_variables = .true.   ! use default state list?
 character(len=129) :: wrf_state_variables(num_state_table_columns,max_state_variables) = 'NULL'
 character(len=129) :: wrf_state_bounds(num_bounds_table_columns,max_state_variables) = 'NULL'
-integer :: num_moist_vars       = 3
 integer :: num_domains          = 1
 integer :: calendar_type        = GREGORIAN
 integer :: assimilation_period_seconds = 21600
-logical :: surf_obs             = .true.
-logical :: soil_data            = .true.
-logical :: h_diab               = .false.
 ! Max height a surface obs can be away from the actual model surface
 ! and still be accepted (in meters)
 real (kind=r8) :: sfc_elev_max_diff  = -1.0_r8   ! could be something like 200.0_r8
-! adv_mod_command moved to dart_to_wrf namelist; ignored here.
-character(len = 72) :: adv_mod_command = ''
 real (kind=r8) :: center_search_half_length = 500000.0_r8
 real(r8) :: circulation_pres_level = 80000.0_r8
 real(r8) :: circulation_radius     = 108000.0_r8
 integer :: center_spline_grid_scale = 10
 integer :: vert_localization_coord = VERTISHEIGHT
-! Allow (or not) observations above the surface but below the lowest
-! sigma level.
+! Allow observations above the surface but below the lowest sigma level.
 logical :: allow_obs_below_vol = .false.
 !nc -- we are adding these to the model.nml until they appear in the NetCDF files
 logical :: polar = .false.         ! wrap over the poles
@@ -190,7 +183,19 @@ logical :: periodic_y = .false.    ! used for single column model, wrap in y
 !JPH -- single column model flag 
 logical :: scm        = .false.    ! using the single column model
 
-! JPH note that soil_data and h_diab are never used and can be removed.
+! obsolete items; ignored by this code. 
+! non-backwards-compatible change. should be removed, 
+! but see note below about namelist.
+integer :: num_moist_vars
+logical :: surf_obs, soil_data, h_diab
+
+! adv_mod_command moved to dart_to_wrf namelist; ignored here.
+character(len = 72) :: adv_mod_command = ''
+
+! num_moist_vars, surf_obs, soil_data, h_diab, and adv_mod_command
+! are IGNORED no matter what their settings in the namelist are.
+! they are obsolete, but removing them here will cause a fatal error
+! until users remove them from their input.nml files as well.
 namelist /model_nml/ output_state_vector, num_moist_vars, &
                      num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      default_state_variables, wrf_state_variables, &
@@ -3438,7 +3443,7 @@ integer              :: ierr          ! return value of function
 !-----------------------------------------------------------------
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: StateVarDimID, StateVarVarID, StateVarID, TimeDimID
+integer :: StateVarDimID, StateVarID, TimeDimID
 
 integer, dimension(num_domains) :: weDimID, weStagDimID, snDimID, snStagDimID, &
      btDimID, btStagDimID, slSDimID, tmp
@@ -3447,6 +3452,7 @@ integer :: MemberDimID, DomDimID
 integer :: DXVarID, DYVarID, TRUELAT1VarID, TRUELAT2VarID, STAND_LONVarID
 integer :: CEN_LATVarID, CEN_LONVarID, MAP_PROJVarID
 integer :: PERIODIC_XVarID, POLARVarID
+integer :: metadataID, wrfStateID, wrfDimID, WRFStateVarID, WRFStateDimID
 
 integer, dimension(num_domains) :: DNVarID, ZNUVarID, DNWVarID, phbVarID, &
      MubVarID, LonVarID, LatVarID, ilevVarID, XlandVarID, hgtVarID 
@@ -3877,21 +3883,34 @@ if ( output_state_vector ) then
    ! Create attributes for the state vector 
    !-----------------------------------------------------------------
 
-   ! Define the state vector coordinate variable
+   call nc_check(nf90_inq_dimid(ncFileID, "metadatalength", metadataID), &
+                 'nc_write_model_atts','inq_dimid metadatalength')
 
-   call nc_check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=nf90_int, &
-                 dimids=StateVarDimID, varid=StateVarVarID), &
-                 'nc_write_model_atts','def_var StateVariable')
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="WRFStateVariables", &
+                 len = wrf%dom(1)%number_of_wrf_variables,  dimid = wrfStateID), &
+                 'nc_write_model_atts','def_dim WRFStateVariables')
 
-   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "long_name", &
-                 "State Variable ID"), &
-                 'nc_write_model_atts','put_att StateVariable long_name')
-   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "units", &
-                 "indexical"), &
-                 'nc_write_model_atts','put_att StateVariable units')
-   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", &
-                 (/ 1, wrf%model_size /)), &
-                 'nc_write_model_atts','put_att StateVariable valid_range')
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="WRFVarDimension", &
+                 len = 3,  dimid = wrfDimID), &
+                 'nc_write_model_atts','def_dim WRFVarDimensionID')
+
+   ! Define the state variable name variable
+   call nc_check(nf90_def_var(ncid=ncFileID,name="WRFStateVariables", xtype=nf90_char, &
+                 dimids=(/ metadataID, wrfStateID /), varid=WRFStateVarID), &
+                 'nc_write_model_atts','def_var WRFStateVariables')
+
+   call nc_check(nf90_put_att(ncFileID, WRFStateVarID, "long_name", &
+                 "WRF State Variable Name"), &
+                 'nc_write_model_atts','put_att WRFStateVariables long_name')
+
+   ! Define the WRF state variable dimension lengths
+   call nc_check(nf90_def_var(ncid=ncFileID,name="WRFStateDimensions", xtype=nf90_int, &
+                 dimids=(/ wrfDimID, wrfStateID, DomDimID /), varid=WRFStateDimID), &
+                 'nc_write_model_atts','def_var WRFStateDimensions')
+
+   call nc_check(nf90_put_att(ncFileID, WRFStateDimID, "long_name", &
+                 "WRF State Variable Dimensions"), &
+                 'nc_write_model_atts','put_att WRFStateDimensions long_name')
 
    ! Define the actual state vector
 
@@ -3929,8 +3948,20 @@ if ( output_state_vector ) then
 
    call nc_check(nf90_enddef(ncfileID),'nc_write_model_atts','enddef')
 
-   call nc_check(nf90_put_var(ncFileID,StateVarVarID,(/ (i,i=1,wrf%model_size) /)), &
-                 'nc_write_model_atts','put_var StateVarVarID')
+   do ind = 1,wrf%dom(1)%number_of_wrf_variables
+      my_index =  wrf%dom(1)%var_index_list(ind)
+      call nc_check(nf90_put_var(ncFileID,WRFStateVarID,trim(wrf_state_variables(1,my_index)), &
+                    start = (/ 1, ind /), count = (/ len_trim(wrf_state_variables(1,my_index)),  1 /)), &
+                    'nc_write_model_atts', 'put_var WRFStateVariables')
+   enddo
+
+   do id = 1, num_domains
+      do ind = 1,wrf%dom(id)%number_of_wrf_variables
+        call nc_check(nf90_put_var(ncFileID,WRFStateDimID,wrf%dom(id)%var_size(:,ind), &
+                      start = (/ 1, ind, id /), count = (/ 3, 1, 1 /)), &
+                      'nc_write_model_atts', 'put_var WRFStateDimensions')
+      enddo
+   enddo
 
 else ! physical arrays
 
@@ -4444,7 +4475,6 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
    if (debug) &
         print*, 'model_mod.f90 :: get_model_pressure_profile :: n, v_p() ', n, v_p(1:n)
 
-   !if( wrf%dom(id)%surf_obs ) then
    if ( wrf%dom(id)%type_ps >= 0 ) then
 
       ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_ps)
@@ -4718,7 +4748,6 @@ if ( wrf%dom(id)%type_mu < 0 .or. wrf%dom(id)%type_ps < 0 ) then
        source, revision, revdate)
 endif
 
-!if(wrf%dom(id)%surf_obs ) then
 if ( wrf%dom(id)%type_ps >= 0 ) then
    ips = wrf%dom(id)%dart_ind(i,j,1,wrf%dom(id)%type_ps)
    model_pressure_s = x(ips)
