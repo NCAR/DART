@@ -120,6 +120,7 @@ echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 
 set DARTDIR = /blhome/tmatsuo/DART/models/tiegcm
 set TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
+set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28/initial/filter
 
 #-----------------------------------------------------------------------------
 # Get the DART executables, scripts, and input files
@@ -135,8 +136,8 @@ set TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
  ${COPY} ${DARTDIR}/shell_scripts/advance_model.csh .
 
 # data files
- ${COPY} ${DARTDIR}/work/obs_seq.out                .
  ${COPY} ${DARTDIR}/work/input.nml                  .
+ ${COPY} ${EXPERIMENT}/obs_seq.out                  .
 
 #-----------------------------------------------------------------------------
 # Get the tiegcm executable, control files, and data files.
@@ -145,29 +146,50 @@ set TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
  ${COPY} ${TIEGCMDIR}/tiegcm-nompi                  tiegcm
 #${COPY} ${TIEGCMDIR}/tiegcm                        .
  ${COPY} ${TIEGCMDIR}/tiegcm.nml                    .
- ${COPY} ${TIEGCMDIR}/tiegcm_s.nc                   .
 
 #-----------------------------------------------------------------------------
-# Get the tiegcm input state ... for this experiment, we are using the
-# perturb routine from model_mod() to generate the ensemble from a single state.
-# REQUIREMENT:
-# input.nml:filter_nml:start_from_restart = .FALSE.
+# Get the tiegcm input state ... for this experiment, we generated the ensemble by: 
+#
+# ${COPY} ${TIEGCMDIR}/tiegcm_s.nc                   .
+# ${COPY} ${TIEGCMDIR}/tiegcm_restart_p.nc           .
+# ./model_to_dart || exit 1
+# mv temp_ud filter_ics
+#
+# REQUIREMENT for the case where we have an initial ensemble:
+# input.nml:filter_nml:start_from_restart = .TRUE.
 # input.nml:filter_nml:restart_in_file    = 'filter_ics'
-#
-# After you have run this once, there will be _many_ initial conditions files 
-# for filter ... 
-#
-# Convert a TIEGCM file 'tiegcm_restart.nc' to a DART ics file 'filter_ics'
-# 'model_to_dart' has a hardwired output filename of 'temp_ud' ...
+#-----------------------------------------------------------------------------
+# Put all of the DART initial conditions files and all of the TIEGCM files
+# in the CENTRALDIR - preserving the ensemble member ID for each filename.
+# The advance_model.csh script will copy the appropriate files for each 
+# ensemble member into the model advance directory.
+# These files may be linked to CENTRALDIR since they get copied to the
+# model advance directory. 
 #-----------------------------------------------------------------------------
 
-${COPY} ${TIEGCMDIR}/tiegcm_restart_p.nc           .
-./model_to_dart || exit 1
-mv temp_ud filter_ics
+set ENSEMBLESTRING = `/usr/local/bin/grep -A 42 filter_nml input.nml | grep ens_size`
+set NUM_ENS = `echo $ENSEMBLESTRING[3] | sed -e "s#,##"`
+
+@ i = 1
+while ( $i <= $NUM_ENS )
+
+  set darticname  = `printf "filter_ics.%04d"          $i`
+  set tiesecond   = `printf "tiegcm_s.nc.%04d"         $i`
+  set tierestart  = `printf "tiegcm_restart_p.nc.%04d" $i`
+
+  ln -sf ${EXPERIMENT}/$darticname .
+  ln -sf ${EXPERIMENT}/$tiesecond  .
+  ln -sf ${EXPERIMENT}/$tierestart .
+
+  @ i += 1
+end
 
 #-----------------------------------------------------------------------------
 # Run filter ... 
 #-----------------------------------------------------------------------------
+
+ln -sf tiegcm_restart_p.nc.0001 tiegcm_restart_p.nc
+ln -sf tiegcm_s.nc.0001         tiegcm_s.nc
 
 mpirun.lsf ./filter || exit 2
 
@@ -175,12 +197,11 @@ echo "${JOBNAME} ($JOBID) finished at "`date`
 
 #-----------------------------------------------------------------------------
 # Move the output to storage after filter completes.
-# At this point, all the restart,diagnostic files are in the CENTRALDIR
+# At this point, all the DART restart,diagnostic files are in the CENTRALDIR
 # and need to be moved to the 'experiment permanent' directory.
-# We have had problems with some, but not all, files being moved
-# correctly, so we are adding bulletproofing to check to ensure the filesystem
-# has completed writing the files, etc. Sometimes we get here before
-# all the files have finished being written.
+#
+# TJH: At this point, the output files have pretty 'generic' names.
+# The files should be archived with the assimilation date in their name.
 #-----------------------------------------------------------------------------
 
 echo "Listing contents of CENTRALDIR before archiving"
@@ -188,9 +209,9 @@ ls -l
 
 exit
 
-${MOVE} *.data *.meta         ${experiment}/tiegcm
-${MOVE} data data.cal         ${experiment}/tiegcm
-${MOVE} STD*                  ${experiment}/tiegcm
+${MOVE} tiegcm_s.nc*               ${experiment}/tiegcm
+${MOVE} tiegcm_restart_p.nc*       ${experiment}/tiegcm
+${MOVE} tiegcm_out_*               ${experiment}/tiegcm
 
 ${MOVE} filter_restart*            ${experiment}/DART
 ${MOVE} assim_model_state_ud[1-9]* ${experiment}/DART
@@ -205,8 +226,6 @@ ${MOVE} dart_log.out               ${experiment}/DART
 ${COPY} input.nml                  ${experiment}/DART
 ${COPY} *.csh                      ${experiment}/DART
 ${COPY} $myname                    ${experiment}/DART
-
-ls -lrt
 
 exit 0
 

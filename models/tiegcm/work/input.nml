@@ -25,8 +25,8 @@
    async                    = 2,
    adv_ens_command          = "./advance_model.csh",
    ens_size                 = 4,
-   start_from_restart       = .false.,
-   output_restart           = .false.,
+   start_from_restart       = .true.,
+   output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
    restart_in_file_name     = "filter_ics",
@@ -74,8 +74,8 @@
    restart_out_file_name = 'smoother_restart'  /
 
 &ensemble_manager_nml
-   single_restart_file_in  = .true.,
-   single_restart_file_out = .true.,
+   single_restart_file_in  = .false.,
+   single_restart_file_out = .false.,
    perturbation_amplitude  = 0.2  /
 
 &assim_tools_nml

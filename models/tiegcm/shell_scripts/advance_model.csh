@@ -64,9 +64,12 @@ while($state_copy <= $num_states)
 
    # The EXPECTED input DART 'initial conditions' file name is 'temp_ic'
 
-   ln -sf  ../$input_file temp_ic     || exit 2
-   cp -p   ../tiegcm_restart_p.nc  .  || exit 2
-   cp -p   ../tiegcm_s.nc  .          || exit 2
+   set tiesecond   = `printf "tiegcm_s.nc.%04d"         $ensemble_member`
+   set tierestart  = `printf "tiegcm_restart_p.nc.%04d" $ensemble_member`
+
+   ln -sf  ../$input_file temp_ic             || exit 2
+   cp -p   ../$tiesecond  tiegcm_s.nc         || exit 2
+   cp -p   ../$tierestart tiegcm_restart_p.nc || exit 2
 
 #  echo "ensemble member $ensemble_member : before dart_to_model"
 #  ncdump -v mtime tiegcm_restart.nc
@@ -75,17 +78,17 @@ while($state_copy <= $num_states)
 
    # update tiegcm namelist variables   
    
-   set start_year     = "START_YEAR = "`head -1 namelist_update | tail -1`
-   set start_day      = "START_DAY = "`head -2 namelist_update | tail -1`
-   set source_start   = "SOURCE_START = "`head -3 namelist_update | tail -1`
-   set start          = "START = "`head -3 namelist_update | tail -1`
-   set secstart       = "SECSTART = "`head -3 namelist_update | tail -1`
-   set stop           = "STOP = "`head -4 namelist_update | tail -1`
-   set secstop        = "SECSTOP = "`head -4 namelist_update | tail -1`
-   set hist           = "HIST = "`head -5 namelist_update | tail -1`
-   set sechist        = "SECHIST = "`head -5 namelist_update | tail -1`
-   set save           = "SAVE = "`head -5 namelist_update | tail -1`
-   set secsave        = "SECSAVE = "`head -5 namelist_update | tail -1`
+   set start_year   = "START_YEAR = "`head -1 namelist_update | tail -1`
+   set start_day    = "START_DAY = "`head -2 namelist_update | tail -1`
+   set source_start = "SOURCE_START = "`head -3 namelist_update | tail -1`
+   set start        = "START = "`head -3 namelist_update | tail -1`
+   set secstart     = "SECSTART = "`head -3 namelist_update | tail -1`
+   set stop         = "STOP = "`head -4 namelist_update | tail -1`
+   set secstop      = "SECSTOP = "`head -4 namelist_update | tail -1`
+   set hist         = "HIST = "`head -5 namelist_update | tail -1`
+   set sechist      = "SECHIST = "`head -5 namelist_update | tail -1`
+   set save         = "SAVE = "`head -5 namelist_update | tail -1`
+   set secsave      = "SECSAVE = "`head -5 namelist_update | tail -1`
 
    sed -e 's/^;.*//' tiegcm.nml.original >! nml
 
@@ -104,8 +107,6 @@ while($state_copy <= $num_states)
    tiegcm.nml.original >! tiegcm.nml.update
 
    mv tiegcm.nml.update tiegcm.nml  
-
-#  ls -lrt   
 
    #----------------------------------------------------------------------
    # Block 3: Run the model
@@ -128,6 +129,12 @@ while($state_copy <= $num_states)
 
    #----------------------------------------------------------------------
    # Block 4: Convert the model output to form needed by DART
+   # AT this point, the model has updated the information in tiegcm_restart_p.nc
+   # We need to get that information back into the DART state vector.
+   #
+   # model_to_dart expects the tiegcm input file     to be 'tiegcm_restart_p.nc'
+   # model_to_dart expects the tiegcm secondary file to be 'tiegcm_s.nc'
+   # model_to_dart writes out the DART file          to be 'temp_ud'
    #----------------------------------------------------------------------
 
    ../model_to_dart

@@ -119,8 +119,9 @@ echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 # Set variables containing various directory names where we will GET things
 #-----------------------------------------------------------------------------
 
-set DARTDIR = /blhome/tmatsuo/DART/models/tiegcm
+set   DARTDIR = /blhome/tmatsuo/DART/models/tiegcm
 set TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
+set TIEGCMEXP = /ptmp/tmatsuo/ensemble/0
 
 #-----------------------------------------------------------------------------
 # Get the DART executables, scripts, and input files
@@ -136,7 +137,7 @@ set TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
  ${COPY} ${DARTDIR}/shell_scripts/advance_model.csh .
 
 # data files
- ${COPY} ${DARTDIR}/work/obs_seq.in                 .
+ ${COPY} ${TIEGCMEXP}/obs_seq.in                    .
  ${COPY} ${DARTDIR}/work/input.nml                  .
 
 #-----------------------------------------------------------------------------
@@ -147,8 +148,9 @@ set TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
  ${COPY} ${TIEGCMDIR}/tiegcm-nompi                  tiegcm
 #${COPY} ${TIEGCMDIR}/tiegcm                        .
  ${COPY} ${TIEGCMDIR}/tiegcm.nml                    .
- ${COPY} ${TIEGCMDIR}/tiegcm_restart_p.nc           .
- ${COPY} ${TIEGCMDIR}/tiegcm_s.nc                   .
+
+ ${COPY} ${TIEGCMEXP}/tiegcm_restart_p.nc           .
+ ${COPY} ${TIEGCMEXP}/tiegcm_s.nc                   .
 
 #-----------------------------------------------------------------------------
 # Check that everything moved OK, and the table is set.
@@ -161,7 +163,12 @@ mv temp_ud perfect_ics
 
 #-----------------------------------------------------------------------------
 # Run perfect_model_obs ... harvest the observations to populate obs_seq.out
+# model_mod expects a generic name // advance_model.csh expects a filename
+# with the ensemble member ID tacked on - must provide both.
 #-----------------------------------------------------------------------------
+
+ln -sf tiegcm_restart_p.nc tiegcm_restart_p.nc.0001
+ln -sf tiegcm_s.nc         tiegcm_s.nc.0001
 
 ./perfect_model_obs || exit 2
 

@@ -416,9 +416,9 @@ real(r8)              :: val_top, val_bottom, frac_lev
 ! No errors to start with
 istatus = 0
 
-! To find a layer height: what's the unit of height [cm] ?
+! To find a layer height: what's the unit of height [m] 
 h_loop:do k = 1, nlev
-  zgrid = ZGtiegcm(lon_index,lat_index,k) ![cm]
+  zgrid = ZGtiegcm(lon_index,lat_index,k)/100.0_r8 ! [m] = ZGtiegcm/100 [cm]
   if (height <= zgrid) then  
     lev_top = k
     lev_bottom = lev_top -1
@@ -559,7 +559,7 @@ else
   lev = levs(lev_index + 1)        !TN UN VN O1 defined at midpoints
 endif
 
-location = set_location(lon,lat,lev,2) ! 2 == pressure (hPa) 3 == height
+location = set_location(lon,lat,lev,2) ! 2 == pressure  3 == height
 
 ! If the type is wanted, return it
 if(present(var_type)) var_type = local_var_type
@@ -798,7 +798,7 @@ else
              'nc_write_model_atts') 
    call nc_check(nf90_put_att(ncFileID, levVarID, "long_name", "midpoint levels"),&
              'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncFileID, levVarID, "units", "hPa"),&
+   call nc_check(nf90_put_att(ncFileID, levVarID, "units", "Pa"),&
              'nc_write_model_atts')
    call nc_check(nf90_put_att(ncFileID, levVarID, "positive", "up"),&
              'nc_write_model_atts') 
@@ -808,7 +808,7 @@ else
              'nc_write_model_atts') 
    call nc_check(nf90_put_att(ncFileID, ilevVarID, "long_name", "interface levels"),&
              'nc_write_model_atts')
-   call nc_check(nf90_put_att(ncFileID, ilevVarID, "units", "hPa"),&
+   call nc_check(nf90_put_att(ncFileID, ilevVarID, "units", "Pa"),&
              'nc_write_model_atts')
    call nc_check(nf90_put_att(ncFileID, ilevVarID, "positive", "up"),&
              'nc_write_model_atts') 
@@ -1739,7 +1739,7 @@ subroutine read_TIEGCM_definition(file_name)
    call nc_check(nf90_get_var(restart_id, var_lev_id, values=levs), &
           'read_TIEGCM_definition', 'get_var lev') 
 
-   levs = p0 * exp(-levs) ![millibars] = [hPa]
+   levs = p0 * exp(-levs) * 100.0_r8 ![Pa] = 100* [millibars] = 100* [hPa]
 
    call nc_check(nf90_inq_dimid(restart_id, 'ilev', dim_ilev_id), &
           'read_TIEGCM_definition', 'inq_dimid ilev')
@@ -1751,7 +1751,7 @@ subroutine read_TIEGCM_definition(file_name)
    call nc_check(nf90_get_var(restart_id, var_ilev_id, values=ilevs), &
           'read_TIEGCM_definition', 'get_var ilev') 
 
-   ilevs = p0 * exp(-ilevs) ![millibars] = [hPa]
+   ilevs = p0 * exp(-ilevs) * 100.0_r8 ! [Pa] = 100* [millibars] = 100* [hPa]
 
    if (nlev .ne. nilev) then
      write(msgstring, *) ' nlev = ',nlev,' nilev = ',nilev, 'are different; DART assumes them to be the same'
