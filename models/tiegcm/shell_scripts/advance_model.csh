@@ -135,11 +135,16 @@ while($state_copy <= $num_states)
    # model_to_dart expects the tiegcm input file     to be 'tiegcm_restart_p.nc'
    # model_to_dart expects the tiegcm secondary file to be 'tiegcm_s.nc'
    # model_to_dart writes out the DART file          to be 'temp_ud'
+   #
+   # The updated information needs to be moved into CENTRALDIR in
+   # preparation for the next cycle.
    #----------------------------------------------------------------------
 
    ../model_to_dart
 
-   mv temp_ud ../$output_file || exit 4
+   mv temp_ud             ../$output_file || exit 4
+   mv tiegcm_s.nc         ../$tiesecond   || exit 4
+   mv tiegcm_restart_p.nc ../$tierestart  || exit 4
 
    @ state_copy++
    @ ensemble_member_line = $ensemble_member_line + 3
