@@ -2929,16 +2929,16 @@ do iline = 1,(linenumN-linenum1-linenumE+1)
       continue
 
    elseif (index(uc_string,'STARTTIME') > 0) then
-      write(nml_string,'('' startTime = '',f,'','')')0.0_r8
+      write(nml_string,'('' startTime = '',f12.6,'','')')0.0_r8
 
    elseif (index(uc_string,'DUMPFREQ') > 0) then
-      write(nml_string,'('' dumpFreq = '',f,'','')')dumpFreq
+      write(nml_string,'('' dumpFreq = '',f12.6,'','')')dumpFreq
 
    elseif (index(uc_string,'ENDTIME') > 0) then
-      write(nml_string,'('' endTime  = '',f,'','')')endTime
+      write(nml_string,'('' endTime  = '',f12.6,'','')')endTime
 
    elseif (index(uc_string,'TAVEFREQ') > 0) then
-      write(nml_string,'('' taveFreq = '',f,'','')')taveFreq
+      write(nml_string,'('' taveFreq = '',f12.8,'','')')taveFreq
 
    endif
 

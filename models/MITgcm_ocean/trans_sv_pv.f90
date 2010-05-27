@@ -122,7 +122,7 @@ call print_date(adv_to_time,'trans_sv_pv:advance_to date')
 call print_time( model_time,'trans_sv_pv:dart model time')
 call print_time(adv_to_time,'trans_sv_pv:advance_to time')
 call print_time(     offset,'trans_sv_pv:a distance of')
-write(    *      ,'(''trans_sv_pv:PARM03   endTime '',i,'' seconds'')') &
+write(    *      ,'(''trans_sv_pv:PARM03   endTime '',i8,'' seconds'')') &
                    (secs + days*SECPERDAY)
 
 call print_date( model_time,'trans_sv_pv:dart model date',logfileunit)
@@ -130,7 +130,7 @@ call print_date(adv_to_time,'trans_sv_pv:advance_to date',logfileunit)
 call print_time( model_time,'trans_sv_pv:dart model time',logfileunit)
 call print_time(adv_to_time,'trans_sv_pv:advance_to time',logfileunit)
 call print_time(     offset,'trans_sv_pv:  a distance of',logfileunit)
-write(logfileunit,'(''trans_sv_pv:PARM03   endTime '',i,'' seconds'')') &
+write(logfileunit,'(''trans_sv_pv:PARM03   endTime '',i8,'' seconds'')') &
                    (secs + days*SECPERDAY)
 
 call finalize_utilities()
