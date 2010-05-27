@@ -36,7 +36,7 @@
 #BSUB -P 35071364
 #BSUB -q debug
 #BSUB -n 4
-#BSUB -W 1:00
+#BSUB -W 2:00
 #BSUB -N -u ${USER}@ucar.edu
 
 #----------------------------------------------------------------------
@@ -118,8 +118,8 @@ echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 # Set variables containing various directory names where we will GET things
 #-----------------------------------------------------------------------------
 
-set DARTDIR = /blhome/tmatsuo/DART/models/tiegcm
-set TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
+set    DARTDIR = /blhome/tmatsuo/DART/models/tiegcm
+set  TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
 set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28/initial/filter
 
 #-----------------------------------------------------------------------------
@@ -136,8 +136,8 @@ set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28/initial/filter
  ${COPY} ${DARTDIR}/shell_scripts/advance_model.csh .
 
 # data files
- ${COPY} ${DARTDIR}/work/input.nml                  .
  ${COPY} ${EXPERIMENT}/obs_seq.out                  .
+ ${COPY} ${DARTDIR}/work/input.nml                  .
 
 #-----------------------------------------------------------------------------
 # Get the tiegcm executable, control files, and data files.
@@ -203,9 +203,6 @@ echo "${JOBNAME} ($JOBID) finished at "`date`
 # TJH: At this point, the output files have pretty 'generic' names.
 # The files should be archived with the assimilation date in their name.
 #-----------------------------------------------------------------------------
-
-echo "Listing contents of CENTRALDIR before archiving"
-ls -l
 
 exit
 

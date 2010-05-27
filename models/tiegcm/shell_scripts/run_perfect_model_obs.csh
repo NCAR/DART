@@ -39,7 +39,6 @@
 #BSUB -W 0:50
 #BSUB -N -u ${USER}@ucar.edu
 
-
 #----------------------------------------------------------------------
 # Turns out the scripts are a lot more flexible if you don't rely on 
 # the queuing-system-specific variables -- so I am converting them to
@@ -119,9 +118,9 @@ echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 # Set variables containing various directory names where we will GET things
 #-----------------------------------------------------------------------------
 
-set   DARTDIR = /blhome/tmatsuo/DART/models/tiegcm
-set TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
-set TIEGCMEXP = /ptmp/tmatsuo/ensemble/0
+set    DARTDIR = /blhome/tmatsuo/DART/models/tiegcm
+set  TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
+set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28/initial/perfect
 
 #-----------------------------------------------------------------------------
 # Get the DART executables, scripts, and input files
@@ -137,20 +136,19 @@ set TIEGCMEXP = /ptmp/tmatsuo/ensemble/0
  ${COPY} ${DARTDIR}/shell_scripts/advance_model.csh .
 
 # data files
- ${COPY} ${TIEGCMEXP}/obs_seq.in                    .
+ ${COPY} ${EXPERIMENT}/obs_seq.in                   .
  ${COPY} ${DARTDIR}/work/input.nml                  .
 
 #-----------------------------------------------------------------------------
 # Get the tiegcm executable, control files, and data files.
-# trying to use the CCSM naming conventions
 #-----------------------------------------------------------------------------
 
  ${COPY} ${TIEGCMDIR}/tiegcm-nompi                  tiegcm
 #${COPY} ${TIEGCMDIR}/tiegcm                        .
  ${COPY} ${TIEGCMDIR}/tiegcm.nml                    .
 
- ${COPY} ${TIEGCMEXP}/tiegcm_restart_p.nc           .
- ${COPY} ${TIEGCMEXP}/tiegcm_s.nc                   .
+ ${COPY} ${EXPERIMENT}/tiegcm_restart_p.nc           .
+ ${COPY} ${EXPERIMENT}/tiegcm_s.nc                   .
 
 #-----------------------------------------------------------------------------
 # Check that everything moved OK, and the table is set.
@@ -189,9 +187,9 @@ ls -l
 
 exit
 
-${MOVE} *.data *.meta         ${experiment}/tiegcm
-${MOVE} data data.cal         ${experiment}/tiegcm
-${MOVE} STD*                  ${experiment}/tiegcm
+${MOVE} tiegcm_s.nc*               ${experiment}/tiegcm
+${MOVE} tiegcm_restart_p.nc*       ${experiment}/tiegcm
+${MOVE} tiegcm_out_*               ${experiment}/tiegcm
 
 ${MOVE} filter_restart*            ${experiment}/DART
 ${MOVE} assim_model_state_ud[1-9]* ${experiment}/DART

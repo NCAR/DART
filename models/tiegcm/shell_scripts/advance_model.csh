@@ -120,7 +120,7 @@ while($state_copy <= $num_states)
 #  mpirun.lsf ../tiegcm < tiegcm.nml |& tee tiegcm_out_$ensemble_member
 
 # without mpi
-   ../tiegcm < tiegcm.nml |& tee tiegcm_out_$ensemble_member
+   ../tiegcm < tiegcm.nml >& tiegcm_out_$ensemble_member || exit 3
 
 #  echo "ensemble member $ensemble_member : after tiegcm"
 #  ncdump -v mtime tiegcm_restart.nc
@@ -140,7 +140,7 @@ while($state_copy <= $num_states)
    # preparation for the next cycle.
    #----------------------------------------------------------------------
 
-   ../model_to_dart
+   ../model_to_dart || exit 4
 
    mv temp_ud             ../$output_file || exit 4
    mv tiegcm_s.nc         ../$tiesecond   || exit 4
