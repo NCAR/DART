@@ -301,7 +301,7 @@ integer  :: i, vstatus, which_vert
 integer  :: lat_below, lat_above, lon_below, lon_above
 real(r8) :: lon_fract, temp_lon, lat_fract
 real(r8) :: lon, lat, height, lon_lat_lev(3)
-real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
+real(r8) :: bot_lon, top_lon, zero_lon, delta_lon, bot_lat, top_lat, delta_lat
 real(r8) :: val(2,2), a(2)
 
 if ( .not. module_initialized ) call static_init_model
@@ -323,34 +323,29 @@ else
 endif
 
 ! Get lon and lat grid specs
-bot_lon   = lons(1)                ! 0
-top_lon   = lons(nlon)             ! 355 
+bot_lon   = lons(1)                ! 180
+zero_lon  = lons(37)               !  0
+top_lon   = lons(nlon)             ! 175 
 delta_lon = abs((lons(1)-lons(2))) ! 5
 bot_lat   = lats(1)                ! -87.5
 top_lat   = lats(nlat)             ! 87.5
 delta_lat = abs((lats(1)-lats(2))) ! 5
 
 
-! Compute bracketing lon indices: DART [0, 360] TIEGCM [0, 355]
-if(lon >= bot_lon .and. lon <= top_lon) then !  0 <= lon <= 355 
+! Compute bracketing lon indices:  
+! TIEGCM [-180 180] = DART [180, 185, ..., 355, 0, 5, ..., 175]
+if(lon > top_lon .and. lon < bot_lon) then     ! at wraparound point [175 < lon < 180] 
+   lon_below = nlon !175
+   lon_above = 1    !180
+   lon_fract = (lon - top_lon) / delta_lon
+else if (lon >= bot_lon) then                  ! [180 <= lon <= 360]                                         
    lon_below = int((lon - bot_lon) / delta_lon) + 1
    lon_above = lon_below + 1
    lon_fract = (lon - lons(lon_below)) / delta_lon
-elseif (lon < bot_lon) then                  !  lon < 0
-   temp_lon = lon + 360.0
-   lon_below = int((temp_lon - bot_lon) / delta_lon) + 1
+else                                           ! [0 <= lon <= 175 ]                                         
+   lon_below = int((lon - zero_lon) / delta_lon) + 37
    lon_above = lon_below + 1
-   lon_fract = (temp_lon - lons(lon_below)) / delta_lon  
-
-elseif (lon >= (top_lon+delta_lon)) then     !  360 <= lon  
-   temp_lon = lon - 360.0
-   lon_below = int((temp_lon - bot_lon) / delta_lon) + 1
-   lon_above = lon_below + 1
-   lon_fract = (temp_lon - lons(lon_below)) / delta_lon  
-else                                         !  355 < lon < 360 at wraparound point
-   lon_below = nlon
-   lon_above = 1
-   lon_fract = (lon - top_lon) / delta_lon
+   lon_fract = (lon - lons(lon_below)) / delta_lon
 endif
 
 ! compute neighboring lat rows: TIEGCM [-87.5, 87.5] DART [-90, 90]
@@ -391,6 +386,7 @@ else
    obs_val = 0.
 endif
 
+!write(11,*,access='APPEND') lon, lat, lon_fract, lat_fract, a(1), a(2), obs_val
 !print*, 'model_interpolate', lon, lat, height,obs_val
 
 
@@ -419,13 +415,27 @@ istatus = 0
 ! To find a layer height: what's the unit of height [m] 
 h_loop:do k = 1, nlev
   zgrid = ZGtiegcm(lon_index,lat_index,k)/100.0_r8 ! [m] = ZGtiegcm/100 [cm]
+
+  if (k == 1 .and. zgrid > height) then 
+    istatus = 1
+    val = 0.0
+    return
+  endif
+
+  if (k == nlev .and. zgrid < height) then 
+    istatus = 1
+    val = 0.0
+    return
+  endif
+
   if (height <= zgrid) then  
     lev_top = k
     lev_bottom = lev_top -1
-    delta_z = zgrid - ZGtiegcm(lon_index,lat_index,lev_bottom)
+    delta_z = zgrid - ZGtiegcm(lon_index,lat_index,lev_bottom)/100.0_r8
     frac_lev = (zgrid - height)/delta_z
     exit h_loop
   endif
+
 enddo h_loop
 
 if (obs_kind == KIND_DENSITY) then
@@ -448,7 +458,9 @@ else
 
 end if
 
-val = frac_lev * val_bottom  +  (1.0 - frac_lev) * val_top
+val = exp(frac_lev * log(val_bottom)  +  (1.0 - frac_lev) * log(val_top))
+
+!write(11,*,access='APPEND') lat_index, lon_index, lev_top, lev_bottom, frac_lev, val_top, val_bottom, val
 
 end subroutine get_val
 
