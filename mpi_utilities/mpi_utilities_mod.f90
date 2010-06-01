@@ -40,7 +40,7 @@ module mpi_utilities_mod
 !    # array_broadcast()  Subroutine that sends a copy of the entire data 
 !                         array to all other tasks. 
 !                
-!  *** exit_all()         Subroutine that substitutes for the intrinsic exit.
+!    # exit_all()         Subroutine that substitutes for the intrinsic exit.
 !                         It calls MPI_Abort() to force other MPI tasks to
 !                         exit as well in case of error. 
 ! 
@@ -67,7 +67,7 @@ module mpi_utilities_mod
 !                         the local task ID, an error is returned.  All other
 !                         tasks must call recv before this routine returns.
 !
-!    * sum_across_tasks() Subroutine which takes a single integer argument
+!    # sum_across_tasks() Subroutine which takes a single integer argument
 !                         from each task, and returns the sum of all integers
 !                         across all tasks back to all tasks.  All tasks must
 !                         call this routine before it can compute and return
@@ -93,7 +93,7 @@ module mpi_utilities_mod
 ! 
 !    # finished_task()    Called from finalize_mpi_utilities, if async=4 
 !                         writes out a string to the model pipe to tell it 
-!                         filter is exiting.
+!                         the main executable is exiting.
 !
 !  *** make_pipe()        Function that creates a named pipe (fifo), opens it,
 !                         and returns the unit number.  Ok to call if the pipe
@@ -158,7 +158,10 @@ module mpi_utilities_mod
 use types_mod, only : r8, digits12
 use utilities_mod, only : register_module, error_handler, & 
                           E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file, &
-                          set_output, set_tasknum, initialize_utilities
+                          set_output, set_tasknum, initialize_utilities,     &
+                          nmlfileunit, do_output, do_nml_file, do_nml_term,  &
+                          find_namelist_in_file, check_namelist_read
+
 use time_manager_mod, only : time_type, get_time, set_time
 
 ! BUILD TIP 1
@@ -203,7 +206,6 @@ private
 integer :: myrank          ! my mpi number
 integer :: total_tasks     ! total mpi tasks/procs
 integer :: my_local_comm   ! duplicate communicator private to this file
-integer :: comm_size       ! if ens count < tasks, only the first N participate
 integer :: datasize        ! which MPI type corresponds to our r8 definition
 
 
@@ -219,13 +221,33 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-logical, save :: module_initialized = .false.
-logical, save :: verbose = .false.
+logical :: module_initialized   = .false.
+
+integer :: head_task             ! default 0, but N-1 if reverse_task_layout true
+logical :: print4status = .true. ! minimal messages for async4 handshake
 
 character(len = 129) :: errstring
 
-! Namelist input - placeholder for now.  mpi_utilities has no options.
-!namelist /mpi_utilities_nml/ x
+! this turns on trace messages for most MPI communications 
+logical :: verbose              = .false.   ! very very verbose, use with care
+
+! if your batch system does the task layout backwards, set this to true
+! so the last task will communicate with the script in async 4 mode.
+! as of now, mpich and mvapich do it forward, openmpi does it backwards.
+logical :: reverse_task_layout  = .false.   ! task 0 on head node; task N-1 if .true.
+
+! for large numbers of MPI tasks, you will get replicated messages, one
+! per task, if this is set to true.  however, for debugging if you need
+! messages from tasks which aren't 0, this will elicit them.  error messages
+! from any task will print regardless of this setting.
+logical :: all_tasks_print      = .false.   ! by default only messages from 0 print
+
+! NAMELIST: change the following from .false. to .true. to enable
+! the reading of this namelist.  This is the only place you need
+! to make this change.
+logical :: use_namelist = .false.
+
+namelist /mpi_utilities_nml/ reverse_task_layout, verbose, all_tasks_print
 
 contains
 
@@ -245,7 +267,7 @@ subroutine initialize_mpi_utilities(progname, alternatename)
 ! this file, and it should not be called more than once (but it does have
 ! defensive code in case that happens.)
 
-integer :: errcode
+integer :: errcode, iunit
 logical :: already
 
 if ( module_initialized ) then
@@ -293,6 +315,22 @@ if ( .not. module_initialized ) then
    module_initialized = .true.
 endif
 
+! this must come AFTER the standard utils are initialized.
+! Read the DART namelist for the mpi_utilities.
+if (use_namelist) then
+   call find_namelist_in_file('input.nml', 'mpi_utilities_nml', iunit)
+   read(iunit, nml = mpi_utilities_nml, iostat = errcode)
+   call check_namelist_read(iunit, errcode, "mpi_utilities_nml")
+else
+   errstring = ' !must edit mpi_utilities/mpi_utilities_mod.f90 to enable this namelist'
+   if (do_nml_file()) write(nmlfileunit, '(A)') trim(errstring)
+   if (do_nml_term()) write(     *     , '(A)') trim(errstring)
+endif
+
+! Record the namelist values used for the run ...
+if (do_nml_file()) write(nmlfileunit, nml=mpi_utilities_nml)
+if (do_nml_term()) write(     *     , nml=mpi_utilities_nml)
+
 
 ! duplicate the world communicator to isolate us from any other user
 ! calls to MPI.  All subsequent mpi calls here will use the local communicator
@@ -321,15 +359,17 @@ if (errcode /= MPI_SUCCESS) then
    call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
 endif
 
-! TODO: if there are fewer ensembles than tasks, all the collective routines
-! need to take that into account and not participate if they are > comm_size.
-comm_size = total_tasks
+! tell the utilities module what task number we are.
+call set_tasknum(myrank)
 
 ! Turn off non-critical log messages from all but task 0, for performance
-! TODO: this should be controlled by a namelist option, to enable selected
-!       mpi tasks to default to printing for debugging.
-if (myrank /= 0) call set_output(.FALSE.)
-call set_tasknum(myrank)
+! and for sanity (e.g. only one copy of informational messages).  can be
+! overridden by namelist if desired.
+if (all_tasks_print) then
+   call set_output(.true.)                     ! everyone gets to talk
+else
+   if (myrank /= 0) call set_output(.false.)   ! process 0 speaks for all
+endif
 
 ! Users have the option of redefining the DART r8 kind to be the same size
 ! as r4.  But when we call the MPI routines we have to know what MPI type
@@ -347,6 +387,22 @@ else
       write(errstring, *) "Using real * 4 for datasize of r8"
       call error_handler(E_MSG,'initialize_mpi_utilities: ',errstring,source,revision,revdate)
    endif
+endif
+
+! in async 4 mode, where the controlling job (usually filter) and the 
+! model are both mpi tasks and they handshake via named pipes, the tasks
+! writing and reading the named pipes must be on the same node as the 
+! one running the start script.  many MPI implementations (mpich, mvapich) 
+! put task 0 on the first node, with the script.  some (openmpi)
+! lay them out in reverse order, and task N-1 is on the same node
+! as the script.  if this is wrong, things will hang when the
+! filter task tries to advance the model - it won't be able to
+! write the 'go ahead' message to the pipe.  set this via namelist
+! to match what works on your system.
+if (reverse_task_layout) then
+   head_task = total_tasks - 1
+else
+   head_task = 0   ! normal case
 endif
 
 ! MPI successfully initialized.  Log for the record how many tasks.
@@ -1012,16 +1068,14 @@ subroutine block_task()
 
 character(len = 32) :: fifo_name, filter_to_model, model_to_filter
 integer :: rc
-logical :: verbose
-
-verbose = .true.
-
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
    call error_handler(E_ERR,'block_task', errstring, source, revision, revdate)
 endif
 
+! FIXME: this should be mpi or a string other than filter (this is generic 
+! mpi wrapper code, callable from programs other than filter.)
 filter_to_model = 'filter_to_model.lock'
 model_to_filter = 'model_to_filter.lock'
 
@@ -1033,30 +1087,31 @@ endif
 
 if (verbose) write(*,*) 'putting to sleep task id ', myrank
 
-if (myrank == 0) then
-   if (verbose) write(*,*) 'PE0 telling script to advance model'
+if (myrank == head_task) then
+   if (print4status .or. verbose) write(*,*) 'MPI job telling script to advance model'
    rc = system('echo advance > '//trim(filter_to_model)//' '//char(0))
 
-   if (verbose) write(*,*) 'PE0 waiting to read from lock file'
+   if (verbose) write(*,*) 'MPI job now waiting to read from lock file'
    rc = system('cat < '//trim(model_to_filter)//' '//char(0))
 
 else
 
 ! if you change this in any way, change the corresponding string in 
 ! restart_task() below.
+   ! FIXME: this should be 'task_lock', since it's generic code beyond filter.
    write(fifo_name, '(a, i5.5)') "filter_lock", myrank
    
    if (verbose) write(*,*) 'removing any previous lock file: '//trim(fifo_name)
    rc = system('rm -f '//trim(fifo_name)//' '//char(0))
 
-if (verbose) write(*,*) 'made fifo, named: '//trim(fifo_name)
-rc = system('mkfifo '//trim(fifo_name)//' '//char(0))
+   if (verbose) write(*,*) 'made fifo, named: '//trim(fifo_name)
+   rc = system('mkfifo '//trim(fifo_name)//' '//char(0))
 
-if (verbose) write(*,*) 'ready to read from lock file: '//trim(fifo_name)
-rc = system('cat < '//trim(fifo_name)//' '//char(0))
+   if (verbose) write(*,*) 'ready to read from lock file: '//trim(fifo_name)
+   rc = system('cat < '//trim(fifo_name)//' '//char(0))
 
-if (verbose) write(*,*) 'got response, removing lock file: '//trim(fifo_name)
-rc = system('rm -f '//trim(fifo_name)//' '//char(0))
+   if (verbose) write(*,*) 'got response, removing lock file: '//trim(fifo_name)
+   rc = system('rm -f '//trim(fifo_name)//' '//char(0))
 
 endif
 
@@ -1068,15 +1123,13 @@ subroutine restart_task()
 
 character(len = 32) :: fifo_name, filter_to_model, model_to_filter
 integer :: rc
-logical :: verbose
-
-verbose = .true.
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
    call error_handler(E_ERR,'restart_task', errstring, source, revision, revdate)
 endif
 
+! FIXME: ditto previous comment about using the string 'filter' here.
 filter_to_model = 'filter_to_model.lock'
 model_to_filter = 'model_to_filter.lock'
 
@@ -1086,23 +1139,24 @@ if (total_tasks > 99999) then
    call error_handler(E_ERR,'block_task', errstring, source, revision, revdate)
 endif
 
-! process 0 is handled differently in the code.
-if (myrank == 0) then
+! process 0 (or N-1) is handled differently in the code.
+if (myrank == head_task) then
 
-   if (verbose) write(*,*) 'PE0 script telling filter ok to restart'
+   if (print4status .or. verbose) write(*,*) 'script telling MPI job ok to restart'
    rc = system('echo restart > '//trim(model_to_filter)//' '//char(0))
 
 else
 
-if (verbose) write(*,*) 'waking up task id ', myrank
+   if (verbose) write(*,*) 'waking up task id ', myrank
 
+   ! FIXME: this should be 'task_lock', since it's generic code beyond filter.
    write(fifo_name,"(a,i5.5)") "filter_lock", myrank
 
-if (verbose) write(*,*) 'ready to write to lock file: '//trim(fifo_name)
-rc = system('echo restart > '//trim(fifo_name)//' '//char(0))
+   if (verbose) write(*,*) 'ready to write to lock file: '//trim(fifo_name)
+   rc = system('echo restart > '//trim(fifo_name)//' '//char(0))
 
-if (verbose) write(*,*) 'response was read from lock file: '//trim(fifo_name)
-
+   if (verbose) write(*,*) 'response was read from lock file: '//trim(fifo_name)
+   
 endif
 
 end subroutine restart_task
@@ -1113,9 +1167,6 @@ subroutine finished_task(async)
 
 character(len = 32) :: fifo_name, filter_to_model, model_to_filter
 integer :: rc
-logical :: verbose
-
-verbose = .true.
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -1125,14 +1176,15 @@ endif
 ! only in the async=4 case does this matter.
 if (async /= 4) return
 
+! FIXME: ditto previous comment about using the string 'filter' here.
 filter_to_model = 'filter_to_model.lock'
 model_to_filter = 'model_to_filter.lock'
 
 
-! only process 0 needs to do anything.
-if (myrank == 0) then
+! only process 0 (or N-1) needs to do anything.
+if (myrank == head_task) then
 
-   if (verbose) write(*,*) 'PE0 telling script we are done'
+   if (print4status .or. verbose) write(*,*) 'MPI task telling script we are done'
    rc = system('echo finished > '//trim(filter_to_model)//' '//char(0))
 
    
@@ -1437,10 +1489,15 @@ subroutine exit_all(exit_code)
 
 integer :: ierror
 
-! do not bother testing here if the init code was called; we are trying 
-! to exit in case of error and we want to take the other tasks down with us.
+! if we seem to have gone through the init code, call abort on our
+! private communicator.  otherwise call abort on the world comm.
+if (module_initialized) then
+   call MPI_Abort(my_local_comm,  exit_code, ierror)
+else
+   call MPI_Abort(MPI_COMM_WORLD, exit_code, ierror)
+endif
 
-   call MPI_Abort(my_local_comm, exit_code, ierror)
+! execution should never get here
 
 end subroutine exit_all
 
