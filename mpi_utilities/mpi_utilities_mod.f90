@@ -213,7 +213,7 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
-          sum_across_tasks
+          sum_across_tasks, mpi_was_init
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -1469,6 +1469,15 @@ subroutine sleep_seconds(naplength)
 end subroutine sleep_seconds
 
 !-----------------------------------------------------------------------------
+function mpi_was_init()
+ logical :: mpi_was_init
+
+! return the init status for the non-module subroutine below.
+ mpi_was_init = module_initialized
+
+end function mpi_was_init
+
+!-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
 
 end module mpi_utilities_mod
@@ -1481,6 +1490,8 @@ end module mpi_utilities_mod
 !-----------------------------------------------------------------------------
 
 subroutine exit_all(exit_code)
+ use mpi_utilities_mod, only : mpi_was_init
+
  integer, intent(in) :: exit_code
 
 ! In case of error, call this instead of the fortran intrinsic exit().
@@ -1491,7 +1502,7 @@ integer :: ierror
 
 ! if we seem to have gone through the init code, call abort on our
 ! private communicator.  otherwise call abort on the world comm.
-if (module_initialized) then
+if ( mpi_was_init() ) then
    call MPI_Abort(my_local_comm,  exit_code, ierror)
 else
    call MPI_Abort(MPI_COMM_WORLD, exit_code, ierror)
