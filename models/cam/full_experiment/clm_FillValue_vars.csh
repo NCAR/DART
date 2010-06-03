@@ -1,5 +1,12 @@
 #!/bin/csh
-
+#
+# DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
+#
 # The special values(!) which may be found on the CLM initial/restart files.
 # CLM 3.6.71 set spvals = ('1e+36' '-1e+36')
 # ICE 4.0
