@@ -346,8 +346,6 @@ if ($resol == T21) then
    set CAM_phis = $CAM_src/cam_phis.nc
    set num_lons  = 64
    set num_lats  = 32
-   # < CAM 3.6.0: 
-   set num_levs  = 26
 else if ($resol == T42) then
    # T42
    set DART_ics_1  = /ptmp/dart/CAM_init/T42/03-01-01/DART_MPI
@@ -360,8 +358,6 @@ else if ($resol == T42) then
    set CAM_phis = $CAM_src/cam_phis.nc
    set num_lons  = 128
    set num_lats  = 64
-   # < CAM 3.6.0: 
-   set num_levs  = 26
 else if ($resol == T85) then
    # T85
    set DART_ics_1  = /ptmp/dart/CAM_init/T85_cam3.5/Jul_1/DART
@@ -373,8 +369,6 @@ else if ($resol == T85) then
    # set CAM_src      = /ptmp/dart/CAM/CAM_src/Cam3/cam3.1/models/atm/cam/bld/T85_3.1-O3
    set num_lons  = 256
    set num_lats  = 128
-   # < CAM 3.6.0: 
-   set num_levs  = 26
 else if ($resol == FV4x5) then
    set DART_ics_1  = /ptmp/dart/CAM_init/FV4x5/03-01-01/DART_MPI
    set CAM_ics_1   = /ptmp/dart/CAM_init/FV4x5/03-01-01/CAM/caminput_
@@ -385,8 +379,6 @@ else if ($resol == FV4x5) then
    set CAM_phis = $CAM_src/cam_phis.nc
    set num_lons  = 72
    set num_lats  = 46
-   # < CAM 3.6.0: 
-   set num_levs  = 26
 else if ($resol == FV1.9x2.5) then
    set DART_ics_1  = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.6.26/Aug_1/DART
    set CAM_ics_1   = /ptmp/dart/CAM_init/FV1.9x2.5_cam3.6.26/Aug_1/CAM/caminput_
@@ -399,11 +391,12 @@ else if ($resol == FV1.9x2.5) then
    # Running CAM parallel (async=4) may require grid info for domain decomposition.
    set num_lons  = 144
    set num_lats  = 96
-   # < CAM 3.6.0: set num_levs  = 26
-   set num_levs = 30
    # To use real SSTs it's necessary to pass matching stream info to the ice model by a special namelist
    # which is done through casemodel.
    # This must be done (now) even for CAM < 3.6; enter 'none' and 0s in that case.
+   # Newer CAMs need specific namelist choices.
+   # Define a wordlist to test for appropriate namelist entries.
+   set cam_version = ( 3 6 71 )
    set sst = '/ptmp/dart/CAM_init/FV1.9x2.5_cam3.5/Namelistin_files/sst_HadOIBl_bc_1.9x2.5_1949_2007.nc' 
    set str_yr_first = 1949
    set str_yr_last  = 2007
@@ -415,6 +408,9 @@ endif
 #                                 '$CAM_src/namelistin' is another common choice
 # This is only used if obs_seq_1_depend = false 
 set namelist = 'cwd'
+
+set num_levs  = 26
+if ($cam_version[1] > 3 || ($cam_version[1] == 3 && $cam_version[2] > 5))  set num_levs = 30
 
 if (${parallel_cam} == true) then
    set CAM_src = ${CAM_src}-mpi                                                 
@@ -588,7 +584,7 @@ if ( $obs_seq_1_depend == false ) then
    if (-e caminput_1.nc) then
       ${REMOVE} clminput_[1-9]*.nc 
       ${REMOVE} caminput_[1-9]*.nc 
-      ${REMOVE} iceinput_[1-9]*.tar 
+      ${REMOVE} iceinput_[1-9]*.nc 
    endif
 
    # Remove any possibly stale CAM surface files
@@ -704,28 +700,28 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo "##==================================================================" >> ${job_i}
    endif
 
-   if ($parallel_cam == 'false' && $?LS_SUBCWD) then
-      # This environment variable tells how many processors on each node to use
-      # which will depend on the per-processor memory, the model memory high-water mark
-      # the ensemble size and other things.
-      # The following numbers are for bluefire (IBM Power6 chip) with ~2 Gb memory /processor
-      # and 32 processors/node.
-      if ($num_procs == 96) then
-         # want 80 members = 1*28 + 2*26
-         echo "setenv LSB_PJL_TASK_GEOMETRY \"                                                         >> ${job_i}
-         echo ' "{(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27)\'        >> ${job_i}
-         echo " (28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53)\"      >> ${job_i}
-         echo ' (54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79)}" '    >> ${job_i}
-      else if ($num_procs == 32) then
-         # I want 20 = 1*20
-         echo "setenv LSB_PJL_TASK_GEOMETRY \"                  >> ${job_i}
-         echo ' "{(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)}"'            >> ${job_i}
-      else
-         echo "parallel_cam is false, but num_procs is not 96 or 48 or 32" >> $MASTERLOG
-         exit
-      endif
-
-   endif
+#   if ($parallel_cam == 'false' && $?LS_SUBCWD) then
+#      # This environment variable tells how many processors on each node to use
+#      # which will depend on the per-processor memory, the model memory high-water mark
+#      # the ensemble size and other things.
+#      # The following numbers are for bluefire (IBM Power6 chip) with ~2 Gb memory /processor
+#      # and 32 processors/node.
+#      if ($num_procs == 96) then
+#         # want 80 members = 1*28 + 2*26
+#         echo "setenv LSB_PJL_TASK_GEOMETRY \"                                                         >> ${job_i}
+#         echo ' "{(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26)\'           >> ${job_i}
+#         echo " (27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53)\"   >> ${job_i}
+#         echo ' (54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79)}" '    >> ${job_i}
+#      else if ($num_procs == 32) then
+#         # I want 20 = 1*20
+#         echo "setenv LSB_PJL_TASK_GEOMETRY \"                  >> ${job_i}
+#         echo ' "{(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19)}"'            >> ${job_i}
+#      else
+#         echo "parallel_cam is false, but num_procs is not 96 or 48 or 32" >> $MASTERLOG
+#         exit
+#      endif
+#
+#   endif
 
    echo "set myname = "'$0'"     # this is the name of this script"            >> ${job_i}
    echo "set CENTRALDIR =  ${CENTRALDIR} "                                     >> ${job_i}
@@ -803,14 +799,28 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    else if ($obs_seq_freq > 0) then
 #     Subtract off the days in months before the current month
 #     one month at a time
-      @ month = $mo - 1
-      if ($month == 0) @ month = 12
-      @ seq_in_month = $days_in_mo[$month] * $obs_seq_freq
-      while ($seq > $seq_in_month)
-          @ seq = $seq - $seq_in_month
+#      @ month = $mo - 1
+#      if ($month == 0) @ month = 12
+#      @ seq_in_month = $days_in_mo[$month] * $obs_seq_freq
+#      while ($seq > $seq_in_month)
+#          @ seq = $seq - $seq_in_month
+#          @ month = $month - 1
+#          if ($month == 0) @ month = 12
+#          @ seq_in_month = $days_in_mo[$month] * $obs_seq_freq
+#      end
+      @ month = $mo
+      @ yr = $year
+      @ seq_in_mo = $days_in_mo[$month] * $obs_seq_freq
+      if ($month == 2 && ($yr % 4) == 0) @ seq_in_mo = $seq_in_mo + $obs_seq_freq
+      while ($seq > $seq_in_mo)
           @ month = $month - 1
-          if ($month == 0) @ month = 12
+          if ($month == 0) then
+             @ month = 12
+             @ yr--
+          endif
           @ seq_in_month = $days_in_mo[$month] * $obs_seq_freq
+          if ($month == 2 && ($yr % 4) == 0) @ seq_in_month = $seq_in_month + $obs_seq_freq
+          @ seq = $seq - $seq_in_month
       end
       @ month = $mo
       if ($month < 10) set month = 0$month
@@ -1024,6 +1034,8 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       echo 'if (! -d ${NHOME}) mkdir ${NHOME} '                            >> ${job_i}
       echo 'setenv HOME ${NHOME} '                                         >> ${job_i}
       echo "${run_command} ./filter &"                                     >> ${job_i}
+# kdr add in bkill code from async = 2, below, to prevent job_i from finishing 'OK'
+#     after filter dies from , e.g., wrong date.
       echo 'setenv HOME ${OHOME} '                                         >> ${job_i}
       echo " "                                                             >> ${job_i}
       echo 'while ( -e filter_to_model.lock )          '                   >> ${job_i}
@@ -1076,6 +1088,10 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
       # Run the filter in async=2 mode.
       # runs filter, which tells the model to model advance and assimilates obs
       echo "${run_command} ./filter "                                    >> ${job_i}
+      echo 'if ($status != 0) then '                                     >> ${job_i}
+      echo '   touch FILTER_DIED '                                       >> ${job_i}
+      echo '   bkill $LSB_JOBID '                                        >> ${job_i}
+      echo 'endif  '                                                     >> ${job_i}
    endif
 
    #-----------------
@@ -1196,7 +1212,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo 'while ($n <= '"${num_ens})    ;# loop over all ensemble members "            >> ${job_i}
    echo '   set CAMINPUT = caminput_${n}.nc  '                                        >> ${job_i}
    echo '   set CLMINPUT = clminput_${n}.nc  '                                        >> ${job_i}
-   echo '   set ICEINPUT = iceinput_${n}.tar     '                                        >> ${job_i}
+   echo '   set ICEINPUT = iceinput_${n}.nc     '                                     >> ${job_i}
 
    echo " "                                                                           >> ${job_i}
    echo '   if ( -e $CAMINPUT && ! -z $CAMINPUT) then '                               >> ${job_i}
@@ -1253,7 +1269,7 @@ while($i <= $obs_seq_n) ;# start i/obs_seq loop
    echo '   while ($ens <= '$num_ens" )  "                                            >> ${job_i}
    echo "      cp ${CAM_ics_1}"'${ens}'".nc   ${out_full}/CAM "                       >> ${job_i}
    echo "      cp ${CLM_ics_1}"'${ens}'".nc   ${out_full}/CLM "                       >> ${job_i}
-   echo "      cp ${ICE_ics_1}"'${ens}'".tar  ${out_full}/ICE "                       >> ${job_i}
+   echo "      cp ${ICE_ics_1}"'${ens}'".nc   ${out_full}/ICE "                       >> ${job_i}
 #   echo "      cp $ICE_ics_1:h/"'*-${ens}\.cice\.r\.volpn\.[0-9]*'" ${out_full}/ICE " >> ${job_i}
    echo "      @ ens++  "                                                             >> ${job_i}
    echo "   end  "                                                                    >> ${job_i}

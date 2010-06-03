@@ -10,14 +10,12 @@
 # on a file (Posterior usually) and put each timeslot into CAM initial file format.
 # The non-state fields are ensemble averages of all the caminput_#.nc from the same 
 # timeslot.
-#
-# The CLM ensemble clminput_#.nc (all non-state fields) is ensemble averaged, 
-# and then the snow fields are overwritten using the algorithm from 
-# cam#.#.#/models/lnd/clm2/src/main/snowdp2lev.F90
-# packaged as an NCO script, which is used by ncap2.
-# ncap2 may need to be updated to NCO 3.9.4 or later.
+
+# The CLM ensemble clminput_#.nc (all are non-state fields) is ensemble averaged by NCO, 
+# and then the snow and water fields are overwritten using the fortran program clm_ens_avg.
 
 # set echo verbose
+
 
 # Called from auto_diag2ms_LSF.csh with
 #   ../../analyses2initial.csh no_MS '.' Posterior copy 1 ${obs_seq}H              >>& $saved
@@ -115,15 +113,57 @@ if (! -e ${kind}.nc) then
       rm time_copy_slab.nc avgd_copy_out.nc re-order* 
 
       #-----------
-      # CLM; ensemble average of the clminput files.   ncra can't be used because files
-      #      have no record dimension.  This will have incorrect snow and water fields.
+      # CLM; 
+      # Check that clminput_##.nc files have the _FillValue set, so that averaging will ignore
+      # those members with spvals.
+      set num_Fills = 0
+      set num_Fills = `ncdump -h clminput_1.nc | grep FillValue | wc -l`
+      # Add the _FillValue attribute to the fields which might need it
+      if ($num_Fills[1] == 0) then
+         if (-e ../../../clm_FillValue_fields) then
+            set num_ens = `ls -l clminput_*.nc | wc -l`
+            set ens = 1
+            while ($ens <= $num_ens[1])
+               # clm_FillValue_fields needs to have at least 1 line consisting of
+               # spval [space] associated_fields (separated by |) (with optional wildcard characters)
+               # Then the quoting must proceed as shown.
+               # ncatted -O -h -a           _FillValue,"$include_Fills",c,d,1.0e36  clminput_${ens}.nc
+               #   ncatted -O -h -a _FillValue,'T_REF2M_MAX_INST(_R|_U)?',m,d,-1.0e36 clminput_${ens}.nc
+               # If a field in Fills is not on the files, NO ERROR will result.
+               # -h prevents the addition of the FillValue attr from being added to the history global attr.
+               # ,c means create this attr for vars which don't have it.
+               # ,d means this attr will be type 'double', which is the type of most variables.
+               #    Will it be converted to integer for those variables? Only SNLSNO is in this category
+               #    and it will be handled manually in clm_ens_avg.f90
+               set num_spvals = `wc -l ../../../clm_FillValue_fields`
+               set spv = 1
+               while ($spv <= $num_spvals[1])
+                  set Fills = `head -$spv ../../../clm_FillValue_fields | tail -1`
+                  ncatted -O -h -a _FillValue,"$Fills[2]",c,d,$Fills[1] clminput_${ens}.nc
+                  @ spv++
+               end
+               @ ens++
+            end
+         else
+            echo "Need a clm_FillValue_fields in the CENTRAL directory"
+         endif
+      endif
+
+      # Ensemble average of the clminput files.   
+      # ncra can't be used because files have no record dimension.  
+      # This will have incorrect snow and water fields.
+      # Anything excluded from averaging (with -x -v vars) will not appear on output file,
+      # even if output file pre-exists with those vars on it.
       ncea -O -o clm_ens_avg.nc clminput_[1-9]*.nc 
 
       # Create a file of the ensemble of the snow and water fields which need to be fixed.
       set cat_flds = 'DZSNO,H2OSNO,H2OSOI_LIQ,H2OSOI_ICE,SNLSNO,SNOWDP,T_SOISNO'
-      set cat_flds = "${cat_flds},snw_rds,qflx_snofrz_lyr,mss_bcpho,mss_bcphi,mss_ocpho,mss_ocphi"
-      set cat_flds = "${cat_flds},mss_dst1,mss_dst2,mss_dst3,mss_dst4"
-      set cat_flds = "${cat_flds},flx_absdv,flx_absdn,flx_absiv,flx_absin"
+      ncdump -h clminput_1.nc | grep snw_rds        > /dev/null
+      if ($status == 0) then
+         set cat_flds = "${cat_flds},snw_rds,qflx_snofrz_lyr,mss_bcpho,mss_bcphi,mss_ocpho,mss_ocphi"
+         set cat_flds = "${cat_flds},mss_dst1,mss_dst2,mss_dst3,mss_dst4"
+         set cat_flds = "${cat_flds},flx_absdv,flx_absdn,flx_absiv,flx_absin"
+      endif
       ncecat -u ensemble -v ${cat_flds} -o snow_water_ens.nc clminput_[1-9]*.nc
 
       # Fix the snow fields with fortran program clm_ens_avg.f90 (different versions for 
@@ -137,12 +177,22 @@ if (! -e ${kind}.nc) then
       cp clminput_1.nc clm_${out_name}
       ncks -A -x -v '^timemgr' -o clm_${out_name} clm_ens_avg.nc
 
-# Remove files which won't be removed after archiving in auto_diag2ms_LSF.csh
+      # Added for comparison of forecasts with member 1 vs the ens avg.
+      cp clminput_1.nc clm_init_memb1_${yrmoday}$hours[$time].nc 
+
+      # Remove files which won't be removed after archiving in auto_diag2ms_LSF.csh
       rm snow_water_ens.nc input.nml dart*
 
       #-----------
-      # ICE; no averaging available yet; use the first ensemble member as the "analysis"
-      cp iceinput_1.tar     ice_init_memb1_${yrmoday}$hours[$time].tar
+      # ICE; 
+      # The ensemble average is simple, even though (because?) the ICE files have no variable attributes,
+      # there are no coordinate variables corresponding to the dimensions, and 3.6.71 has *global* 
+      # missing_ and Fill_ Value attributes set to 0 (instead of the spval used in CICE; 1e+30).
+      # ncea pruning unused dimensions doesn't seem to be a problem (yet).
+      ncea -O -o ice_${out_name} iceinput_[1-9]*.nc
+
+      # Also save the first ensemble member as the "analysis"
+      if (-e iceinput_1.nc) cp iceinput_1.nc     ice_init_memb1_${yrmoday}$hours[$time].nc
 
       cd ..
       @ time++
