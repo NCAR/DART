@@ -499,6 +499,8 @@ call nc_check(nf90_open(path = trim(file_out), mode = nf90_write, ncid = ncfilei
 
 ! Multi-level fields
 call write_real(ncfileid, 'DZSNO',           num_levsno,num_col, dzsno )
+call write_real(ncfileid, 'ZSNO',            num_levsno,num_col,  zsno )
+call write_real(ncfileid, 'ZISNO',           num_levsno,num_col, zisno )
 call write_real(ncfileid, 'T_SOISNO',        num_levsno,num_col, t_soisno )
 call write_real(ncfileid, 'H2OSOI_ICE',      num_levsno,num_col, h2osoi_ice )
 call write_real(ncfileid, 'H2OSOI_LIQ',      num_levsno,num_col, h2osoi_liq )
