@@ -159,6 +159,7 @@ use types_mod, only : r8, digits12
 use utilities_mod, only : register_module, error_handler, & 
                           E_ERR, E_WARN, E_MSG, E_DBG, get_unit, close_file, &
                           set_output, set_tasknum, initialize_utilities,     &
+                          finalize_utilities,                                &
                           nmlfileunit, do_output, do_nml_file, do_nml_term,  &
                           find_namelist_in_file, check_namelist_read
 
@@ -223,6 +224,7 @@ character(len=128), parameter :: &
 
 logical :: module_initialized   = .false.
 
+character(len = 129) :: saved_progname = ''
 integer :: head_task             ! default 0, but N-1 if reverse_task_layout true
 logical :: print4status = .true. ! minimal messages for async4 handshake
 
@@ -307,6 +309,16 @@ if (myrank == 0) then
    call initialize_utilities(progname, alternatename, .true.)
 else
    call initialize_utilities(progname, alternatename, .false.)
+endif
+
+! save a copy of the initial program name for use in finalize.
+! make sure it is not too long to fit into our variable.
+if (present(progname)) then
+   if (len_trim(progname) <= len(saved_progname)) then
+      saved_progname = trim(progname)
+   else
+      saved_progname = progname(1:len(saved_progname))
+   endif
 endif
 
 if ( .not. module_initialized ) then
@@ -438,6 +450,13 @@ endif
 ! give the async=4 case a chance to tell the script to shut down.
 if (present(async)) then
    call finished_task(async)
+endif
+
+! close the log files and write a timestamp
+if (saved_progname /= '') then
+   call finalize_utilities(saved_progname)
+else
+   call finalize_utilities()
 endif
 
 ! For the SGI implementation of MPI in particular, sync before shutting

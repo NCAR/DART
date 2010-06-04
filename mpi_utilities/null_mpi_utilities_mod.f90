@@ -149,7 +149,7 @@ module mpi_utilities_mod
 use types_mod, only        : r8, digits12
 use utilities_mod, only    : register_module, error_handler,             &
                              initialize_utilities, get_unit, close_file, & 
-                             E_ERR, E_WARN, E_MSG, E_DBG
+                             E_ERR, E_WARN, E_MSG, E_DBG, finalize_utilities
 use time_manager_mod, only : time_type, set_time
 
 
@@ -196,6 +196,8 @@ character(len=128), parameter :: &
 
 logical, save :: module_initialized = .false.
 
+character(len = 129) :: saved_progname = ''
+
 character(len = 129) :: errstring
 
 ! Namelist input - placeholder for now; no options yet in this module.
@@ -228,6 +230,14 @@ endif
 
 call initialize_utilities(progname, alternatename)
 
+if (present(progname)) then
+   if (len_trim(progname) < len(saved_progname)) then
+      saved_progname = trim(progname)
+   else
+      saved_progname = progname(1:len(saved_progname))
+   endif
+endif
+
 if ( .not. module_initialized ) then
    ! Initialize the module with utilities
    call register_module(source, revision, revdate)
@@ -258,16 +268,17 @@ subroutine finalize_mpi_utilities(callfinalize, async)
  logical, intent(in), optional :: callfinalize
  integer, intent(in), optional :: async
 
-! Shut down MPI cleanly.  This must be done before the program exits; on
-! some implementations of MPI the final I/O flushes are not done until this
-! is called.  The optional argument can prevent us from calling MPI_Finalize,
-! so that user code can continue to use MPI after this returns.  For good
-! coding practice you should not call any other routines in this file
-! after calling this routine.
+! Shut down cleanly.  Call normal utilities finalize if we have actually
+! ever called initialize.  Otherwise there is nothing to do in the null case.
 
 
-if ( .not. module_initialized ) call initialize_mpi_utilities()
+if ( .not. module_initialized ) return
 
+if (saved_progname /= '') then
+   call finalize_utilities(saved_progname)
+else
+   call finalize_utilities()
+endif
 
 end subroutine finalize_mpi_utilities
 
