@@ -290,7 +290,7 @@ if(ds) then
    call smoother_read_restart(ens_handle, ens_size, model_size, time1, init_time_days)
 endif
 
-call timestamp_message('After  reading in ensemble restart filess')
+call timestamp_message('After  reading in ensemble restart files')
 call     trace_message('After  reading in ensemble restart files')
 
 call trace_message('Before initializing inflation')
@@ -771,19 +771,13 @@ if(my_task_id() == 0) then
    write(logfileunit,*)
 endif
 
-! Master task must close the log file; the magic 'end'
-! flag does that in the timestamp routine.
-! FIXME: when i commit the updated util mod, remove this line.
-! finalize_utilities() will write the final timestamp.
-if(my_task_id() == 0) call timestamp(source,revision,revdate,'end')
-
 ! YOU CAN NO LONGER WRITE TO THE LOG FILE BELOW THIS!
 ! After the call to finalize below, you cannot write to
 ! any fortran unit number.
 
 ! Make this the very last thing done, especially for SGI systems.
-! It shuts down MPI, and if you try to write after that, they can
-! can discard output that is written after mpi is finalized, or 
+! It shuts down MPI and if you try to write after that, some libraries
+! choose to discard output that is written after mpi is finalized, or 
 ! worse, the processes can hang.
 call finalize_mpi_utilities(async=async)
 
