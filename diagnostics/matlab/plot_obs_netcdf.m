@@ -111,6 +111,7 @@ pstruct.str3   = sprintf('%s - %s',obsstruct.timestring(1,:),obsstruct.timestrin
 
 if ( length(obsstruct.obs) < 1 ) 
    fprintf('There are no ''good'' observations to plot\n')
+   return
 else
 
    subplot('position',positions(1,:))
@@ -300,6 +301,8 @@ for i = 1:numel(h_patch)
     y = get(h_patch(i), 'YData');
     s = size(y);
     set(h_patch(i), 'ZData', zlevel*ones(s),'FaceColor',fcolor);
+    set(h_patch(i),'AlphaDataMapping','none','FaceVertexAlphaData',0.3)
+    set(h_patch(i),'FaceAlpha',0.3)
 end
 
 if (orgholdstate == 0), hold off; end;
