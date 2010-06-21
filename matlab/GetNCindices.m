@@ -141,7 +141,7 @@ for i = 1:ndims
       case 'copy'
          start(i) = copy1;
          count(i) = copyN;
-      case {'lev','z','bottom_top_d01','bottom_top_stag_d01'}
+      case {'surface','undef','hlevel','mlevel','plevel','height','lev','z','bottom_top_d01','bottom_top_stag_d01'}
          start(i) = level1;
          count(i) = levelN;
       case {'lat','y','tmpj','south_north_d01','south_north_stag_d01'}
@@ -158,6 +158,8 @@ for i = 1:ndims
       case 'region'
          start(i) = region1;
          count(i) = regionN;
+      otherwise
+         disp('GetNCindices encountered unknown coordinate variable %s',dimname)
    end
 
 end
