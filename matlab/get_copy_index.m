@@ -47,13 +47,12 @@ end
 % Provide modest error support
 
 if (copy_index < 0)
-   fprintf('ERROR: %s is not a valid metadata string for file %s\n', ...
+   fprintf('WARNING: %s is not a valid metadata string for file %s\n', ...
                 copystring, fname)
    disp('valid metadata strings are: ')
    for i = 1:num_copies,
       fprintf('%s\n',deblank(copy_meta_data(i,:)))
    end
-   error('please try again')
 end
 
 function str2 = dewhite(str1)
