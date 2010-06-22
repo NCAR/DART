@@ -19,7 +19,6 @@ function two_experiments_profile(files, titles, varnames, qtty, prpo)
 % qtty     = 'rmse';     % rmse, spread, totalspread, bias, etc.
 % prpo     = 'analysis'; % [analy, analysis, posterior ] == posterior
 % prpo     = 'forecast'; % [guess, forecast, prior     ] == prior
-% prpo     = 'both'; % prior & posterior
 %
 % two_experiments_profile(files, titles, varnames, qtty, prpo)
 % print -dpsc -painters myplot.ps
