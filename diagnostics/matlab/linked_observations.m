@@ -211,18 +211,23 @@ switch lower(strtrim(QCString))
 
       qcvals  = unique(qcarray);
       qccount = zeros(size(qcvals));
-      s = cell(length(qcvals),1);
       for i = 1:length(qcvals)
          qccount(i) = sum(qcarray == qcvals(i));
-         s{i} = sprintf('%d - %s %d obs',qcvals(i), dartqc_strings{qcvals(i)+1}, qccount(i));
+         fprintf('(%s == %d) %10d obs [%s]\n',strtrim(QCString), qcvals(i), ...
+                            qccount(i), dartqc_strings{qcvals(i)+1});
       end
 
   %   set(gca,'YTick',qcvals,'YAxisLocation','right')
   %   set(gca,'YTickLabel',char(s{:}),'FontSize',12)
 
    otherwise,
-      str = sprintf('no way to interpret values of %s',strtrim(QCString));
-      text(0.0, 0.0, str)
+
+      qcvals  = unique(qcarray);
+      qccount = zeros(size(qcvals));
+      for i = 1:length(qcvals)
+         qccount(i) = sum(qcarray == qcvals(i));
+         fprintf('(%s == %d) %10d obs\n',strtrim(QCString), qcvals(i), qccount(i));
+      end
 end
 
 
