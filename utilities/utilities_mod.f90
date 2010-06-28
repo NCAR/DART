@@ -473,11 +473,14 @@ contains
    function file_exist (file_name)
 
       character(len=*), intent(in) :: file_name
-      logical  file_exist
+      logical :: file_exist
+      integer :: trimlen
 
       if ( .not. module_initialized ) call initialize_utilities
 
-      inquire (file=file_name(1:len_trim(file_name)), exist=file_exist)
+      trimlen = len_trim(file_name)
+
+      inquire (file=file_name(1:trimlen), exist=file_exist)
 
    end function file_exist
 
@@ -486,7 +489,7 @@ contains
    function get_unit () result (iunit)
 
       integer :: i, iunit
-      logical :: open
+      logical :: available
 
       if ( .not. module_initialized ) call initialize_utilities
 
@@ -494,8 +497,8 @@ contains
 
       iunit = -1
       do i = 10, 80
-         inquire (i, opened=open)
-         if (.not.open) Then
+         inquire (i, opened=available)
+         if (.not. available) then
             iunit = i
             exit
          endif
@@ -1253,9 +1256,10 @@ character(len = *), intent(in) :: nml_name
 integer, intent(out)           :: iunit
 logical, intent(in), optional :: write_to_logfile_in
 
-character(len = 169) :: nml_string, test_string
+character(len = 169) :: nml_string, test_string, string1
 integer              :: io
 logical              :: write_to_logfile
+
 
 ! Decide if there is a logfile or not
 write_to_logfile = .true.
@@ -1263,13 +1267,18 @@ if(present(write_to_logfile_in)) write_to_logfile = write_to_logfile_in
 
 ! Check for file existence; no file is an error
 if(file_exist(trim(namelist_file_name))) then
-   ! Open the file
+
    iunit = open_file(trim(namelist_file_name), action = 'read')
 
-   ! Now look for the start of a namelist with &nml_name
-   test_string = '&' // trim(adjustl(nml_name))
-
    ! Read each line until end of file is found
+   ! Look for the start of a namelist with &nml_name
+   ! Convert test string to all uppercase ... since that is
+   ! what happens if Fortran writes a namelist.
+
+   string1 = adjustl(nml_name)
+   call to_upper(string1)             ! works in-place
+   test_string = '&' // trim(string1)
+
    do
       read(iunit, '(A)', iostat = io) nml_string
       if(io /= 0) then
@@ -1289,10 +1298,15 @@ if(file_exist(trim(namelist_file_name))) then
             call exit_all(88) 
          endif
       else
-         if(trim(adjustl(nml_string)) == trim(adjustl(test_string))) then
+
+         string1 = adjustl(nml_string)
+         call to_upper(string1)
+
+         if(trim(string1) == trim(test_string)) then
             rewind(iunit)
             return
          endif
+
       endif
    end do
 else
