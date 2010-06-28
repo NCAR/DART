@@ -86,7 +86,7 @@ integer, allocatable :: obscnt(:)
 
 logical :: fexist, sigwnd, sigtmp, first_obs
 
-real(r8) :: obswindow, otime, lat, lon, elev, uwnd, vwnd, qobs, qsat, dptk, oerr, &
+real(r8) :: otime, lat, lon, elev, uwnd, vwnd, qobs, qsat, dptk, oerr, &
             pres_miss, wdir_miss, wspd_miss, tair_miss, tdew_miss, prespa, & 
             qc, altim, rh, qerr  ! , time_miss
 real(r8), allocatable :: latu(:), lonu(:)
@@ -115,6 +115,8 @@ endif
 ! put the reference date into DART format
 call set_calendar_type(GREGORIAN)
 comp_day0 = set_date(1970, 1, 1, 0, 0, 0)
+
+first_obs = .true.
 
 
 call nc_check( nf90_open(rawin_in_file, nf90_nowrite, ncid), &

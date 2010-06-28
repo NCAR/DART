@@ -82,8 +82,7 @@ integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
 
 character (len=129) :: meta_data
 character (len=5)   :: rtype
-integer  :: ncid, nobs, nvars, n, i, oday, osec, &
-            dsec, nused, iyear, imonth, iday, ihour, imin, isec
+integer  :: ncid, nobs, nvars, n, i, oday, osec, nused
 logical  :: file_exist, first_obs
 real(r8) :: alti_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
             vwnd, palt, qobs, qsat, rh, oerr, pres, qerr, qc
