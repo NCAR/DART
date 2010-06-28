@@ -103,7 +103,7 @@ while($state_copy <= $num_states)
       cp -pv ../${RESTARTFILE} pop.r.nc || exit 2
    
    else
-      echo "Pointer file for ensemble member $ensemble_member is missing."
+      echo "ERROR: Pointer file for ensemble member $ensemble_member is missing."
       echo "Looking for "`pwd`" ../rpointer.ocn.${ensemble_member}.restart"
       echo "Exiting ... (pointer file not found in CENTRALDIR)"
       exit 2
@@ -129,7 +129,17 @@ while($state_copy <= $num_states)
    # filename can be predicted from the pop_in namelist information.
    #----------------------------------------------------------------------
 
+   rm -f ocn.log.*
+
    mpirun.lsf ../pop || exit 3
+
+   grep "Successful completion of POP run" ocn.log.*
+   set popstatus = $status
+   if ( $popstatus != 0 ) then
+      echo "ERROR - POP ensemble member $ensemble_member did not complete successfully" 
+      echo "ERROR - POP ensemble member $ensemble_member did not complete successfully" 
+      exit 3 
+   endif
    
    #----------------------------------------------------------------------
    # Block 4: Convert the ocean model output to form needed by DART
@@ -138,9 +148,18 @@ while($state_copy <= $num_states)
    ls -lrt
 
    # POP makes a new restart file and updates the pointer file
+   # Rename the POP pointer file contents to contain the ensemble member info
+
    set RESTARTFILE = `head -1 rpointer.ocn.restart`
-   echo "POP member $ensemble_member made restart file $RESTARTFILE"
-   ln -svf ${RESTARTFILE} pop.r.nc || exit 2
+   set NEWFILE = `echo $RESTARTFILE | sed -e "s/pop/pop.$ensemble_member/"`
+   echo "POP member $ensemble_member made restart file $NEWFILE"
+
+   mv -v $RESTARTFILE $NEWFILE
+  
+   echo $NEWFILE         >! rpointer.ocn.restart 
+   echo "RESTART_FMT=nc" >> rpointer.ocn.restart
+
+   ln -svf ${NEWFILE} pop.r.nc || exit 4
    
    # pop_to_dart reads the restart file after the model advance and writes
    # out an updated DART 'initial conditions' file. This initial conditions
@@ -153,7 +172,7 @@ while($state_copy <= $num_states)
    # Move the updated files back to 'centraldir'
    mv -v dart.ud ../$output_file || exit 4
    mv -v rpointer.ocn.restart ../rpointer.ocn.${ensemble_member}.restart || exit 4
-   mv -v ${RESTARTFILE} ../${RESTARTFILE} || exit 4
+   mv -v ${NEWFILE} ../${NEWFILE} || exit 4
 
    # bookkeeping
 

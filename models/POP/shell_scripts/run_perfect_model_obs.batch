@@ -78,7 +78,7 @@ echo "${JOBNAME} ($JOBID) submitted   from $ORIGINALDIR"
 echo "${JOBNAME} ($JOBID) submitted   from $MYHOST"
 echo "${JOBNAME} ($JOBID) running in queue $MYQUEUE"
 echo "${JOBNAME} ($JOBID) running       on $host"
-echo "${JOBNAME} ($JOBID) started   at "`date`
+echo "${JOBNAME} ($JOBID) started      at "`date`
 echo
 
 #----------------------------------------------------------------------

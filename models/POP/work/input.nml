@@ -179,6 +179,10 @@
    nmlfilename = 'dart_log.nml'
   /
 
+&mpi_utilities_nml
+   reverse_task_layout = .false.,
+   /
+
 # Gregorian: 12 Z 1 January 1996 <==> DART: 144270 days 43200 seconds
 # Gregorian: 12 Z 1 January 2000 <==> DART: 145731 days 43200 seconds
 
