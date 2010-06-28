@@ -2,7 +2,7 @@
           "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
-<TITLE>program dart_to_wrf</TITLE>
+<TITLE>program dart_to_wrf/wrf_to_dart</TITLE>
 <link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css">
 </HEAD>
 <BODY>
@@ -24,7 +24,12 @@
 <!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>
-   Programs to convert WRF netCDF input files into DART format, and vice versa.
+   This document describes both programs that 
+   convert WRF netCDF input files into DART format, and vice versa.
+   <br />
+   <br />
+   For the sake of convenience, we will use <em class=file>wrfinput_d01</em>
+   to mean the WRF input file - no matter how many domains are used.
 </P>
 
 <!--==================================================================-->
@@ -67,7 +72,6 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 <pre>
 <em class=call>namelist / dart_to_wrf_nml / </em> &amp;
     model_advance_file, dart_restart_name, adv_mod_command
-    
 
 <em class=call>namelist / model_nml / </em> 
 
@@ -80,7 +84,7 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 <P>The <em class=file>wrf_to_dart</em> program uses only the
 WRF model namelist.  See the description in
 the <a href="../model_mod.hmtl">WRF model_mod.html</a> file.
-The <em class=file>dart_to_wrf</em> program uses the model namelist
+The <em class=program>dart_to_wrf</em> program uses the model namelist
 plus an additional namelist: <em class=file>dart_to_wrf_nml</em>.
 </P>
 
@@ -94,26 +98,35 @@ called <em class=file>input.nml</em>
     <TH align=left>Description </TH></TR>
 <TR><!--contents--><TD valign=top>model_advance_file  </TD>
     <!--  type  --><TD valign=top>logical             </TD>
-    <!--descript--><TD>In normal usage set this to .TRUE. so the
-     model_advance.csh script can function correctly.  The input
-     file will have 2 timestamps: time for model to advance to, 
-     and current time, plus the data.  However, to convert the
-     file restart files after DART finishes running into wrfinput_d01
-     files, for example to continue with a free run, set this to .FALSE.
+    <!--descript--><TD>
+     The <em class=program>advance_model.csh</em> 
+     script requires this to be to <b>.TRUE.</b> to utilize the 
+     temporary/intermediary <em class=file>assim_model_state_ic</em> files. 
+     To insert the information from a DART restart/initial conditions 
+     file into <em class=file>wrfinput_d01</em> this should be 
+     set to <b>.FALSE.</b> (i.e. for a free run of WRF).
+     This allows <em class=program>dart_to_wrf</em> to be able to convert
+     both types of DART restart files: those with two timestamp records 
+     followed by the model state, and those with a single timestamp record 
+     followed by the model state (the type most commonly encountered if the 
+     assimilation is successfull). 
      Default .TRUE. </TD></TR>
 <TR><!--contents--><TD valign=top>dart_restart_name    </TD>
     <!--  type  --><TD valign=top>character(len=128)   </TD>
-    <!--descript--><TD>In normal usage set this to 'dart_wrf_vector'
-     so the model_advance.csh script can function correctly.  However,
-     to write the output information directly to a netcdf file with
-     a different name, set this to another value.
+    <!--descript--><TD>
+     The <em class=program>advance_model.csh</em> 
+     script requires this to be to <b>'dart_wrf_vector'</b>.
+     To write the output information from a DART restart file with
+     a different name, set this to another value, say 'filter_ics'.
+     Remember to change <em class=code>model_advance_file</em> to 
+     <em class=code>.FALSE</em> if the input file has a single
+     timestamp record.
      Default 'dart_wrf_vector'. </TD></TR>
 <TR><!--contents--><TD valign=top>adv_mod_command      </TD>
     <!--  type  --><TD valign=top>character(len=128)   </TD>
-    <!--descript--><TD>In normal usage set this to './wrf.exe'
-     so the model_advance.csh script can function correctly. 
-     This information along with some time information is written
-     to a file called 'wrf.info' if this is a model advance file.
+    <!--descript--><TD>
+     The <em class=program>advance_model.csh</em> 
+     script requires this to be to <b>'./wrf.exe'</b>.
      Default './wrf.exe'. This value used to be set in the
      wrf &amp;model_mod namelist, but has moved to here.</TD></TR>
 </TABLE>
@@ -133,14 +146,14 @@ called <em class=file>input.nml</em>
    <LI>input namelist : <em class=file>input.nml</em></LI>
    <LI>Input - output WRF state netCDF files : <em class=file>wrfinput_d01,
    wrfinput_d02, ...</em></LI>
-   <LI>Input - output dart state vector format files : <em
-   class=file>dart_wrf_vector</em></LI>
+   <LI>Input - output DART state vector format files : 
+   <em class=file>dart_wrf_vector</em></LI>
    <LI>Input - output: <em class=file>wrf.info</em></LI>
 </UL>
 
 <H3>File formats</H3>
 
-<P>In the conversion from dart to WRF, the <em class=file>dart_wrf_vector</em>
+<P>In the conversion from DART to WRF, the <em class=file>dart_wrf_vector</em>
 file is usually one of the <em class=file>assim_model_state_ic#</em> that the
 filter writes out to advance the ensemble. As input, the dart_wrf_vector
 includes the target time in addition to the valid time at the beginning of the
@@ -150,12 +163,12 @@ class=file>assim_model_state_ud#</em> as input to the filter for the next
 assimilation cycle.
 </P>
 
-<P>The file <em class=file>wrf.info</em> contains the target dart time, the valid
-dart time, the valid date, the number of domains, and the command used to
+<P>The file <em class=file>wrf.info</em> contains the target DART time, the valid
+DART time, the valid date, the number of domains, and the command used to
 executed the WRF model. The file <em class=file>wrf.info</em> is created in the
-conversion from dart to WRF. In the conversion from WRF back to dart, the
+conversion from DART to WRF. In the conversion from WRF back to DART, the
 target time is read from the file <em class=file>wrf.info</em>, which should
-then be the valid time. This will be the time written to the dart vector
+then be the valid time. This will be the time written to the DART vector
 file. The rest of the information in the file <em class=file>wrf.info</em> is
 only used by the program ensemble_init and by the script advance_model.csh.
 </P>
@@ -250,8 +263,8 @@ integer,          intent(out) :: <em class=code> n_values  </em>
 <!-- Description -->
 
 <P>
-Open a dart state vector file, determine the length of the dart
-state vector, and allocate the dart state vector variable.
+Open a DART state vector file, determine the length of the DART
+state vector, and allocate the DART state vector variable.
 </P>
 
 </div>
@@ -274,7 +287,7 @@ integer,          intent(in) :: <em class=code> n_values_in </em>
 <!-- Description -->
 
 <P>
-Transfer from dart state vector to a wrf structure, or vice versa.
+Transfer from DART state vector to a wrf structure, or vice versa.
 </P>
 
 </div>
