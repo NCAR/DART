@@ -20,10 +20,30 @@
 </center>
 
 <H1>PROGRAM <em class=program>replace_wrf_fields</em></H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<P><small>Latest subversion revision tag:
+<!-- version tag follows, do not edit -->$Id$
+</small></P>
 
 <P>
-   Program to copy various fields from one WRF netCDF file to another.
+Program to copy various fields from one WRF netCDF file to another.
+</P>
+<P>
+There are many existing utilities to process netCDF files, including the 
+NCO operators and NCL scripts, which have more functionality than this
+program.  The only purpose for having this one is that it is a standalone
+program with no prerequisites or dependencies other than the netCDF libraries.  
+If you already have other tools available, they can do the same functions that 
+this program does.
+</P>
+This program copies the given data fields from the
+input file to the output file, failing if their sizes, shapes, or data types
+do not match exactly.
+The expected use is to copy fields which are updated
+by the WRF program but are not part of the DART state vector,
+for example, sea surface temperature or soil fields.
+After DART has updated the WRF restart <em class=file>wrfinput_d01</em>
+file, this program can be used to update other fields in the file
+before running the model.
 </P>
 
 <!--==================================================================-->
@@ -35,17 +55,6 @@
 types_mod
 utilities_mod
 parse_args_mod
-random_nr_mod
-time_manager_mod
-null_mpi_utilities_mod
-random_seq_mod
-location/threed_sphere/location_mod
-obs_kind_mod
-wrf/module_map_utils
-wrf/model_mod
-assim_model_mod
-obs_def_mod
-obs_sequence_mod
 </PRE>
 
 <!--==================================================================-->
@@ -57,49 +66,53 @@ obs_sequence_mod
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
 '&amp;' and terminating with a slash '/' for all our namelist input.
-consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
 </P>
 <div class=namelist>
 <pre>
 <em class=call>namelist / replace_wrf_fields_nml / </em> &amp;
-    model_advance_file
-
-<em class=call>namelist / model_nml / </em> &amp;
-    output_state_vector, num_moist_vars, num_domains, calendar_type, &amp;
-    surf_obs, soil_data, h_diab, adv_mod_command, assimilation_period_seconds,  &amp;
-    vert_localization_coord, center_search_half_length, center_spline_grid_scale
+                 fieldnames, fieldlist_file,  &amp;
+                 fail_on_missing_field, debug
 </pre>
 </div>
 
 <div class=indent1>
 <!-- Description -->
 
-<P>The <em class=file>wrf_to_dart</em> program uses only the
-WRF model namelist.  See the description in
-the <a href="../model_mod.hmtl">WRF model_mod.html</a> file.
-The <em class=file>replace_wrf_fields</em> program uses the model namelist
-plus an additional namelist: <em class=file>replace_wrf_fields_nml</em>.
-</P>
-
-<P>Both namelists are read from a file 
-called <em class=file>input.nml</em>
+<P>The namelist is read from a file called <em class=file>input.nml</em>
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>model_advance_file    </TD>
-    <!--  type  --><TD valign=top>logical         </TD>
-    <!--descript--><TD>In normal usage set this to .TRUE. so the
-     model_advance.csh script can function correctly.  The input
-     file will have 2 timestamps: time for model to advance to, 
-     and current time, plus the data.  However, to convert the
-     file restart files after DART finishes running into wrfinput_d01
-     files, for example to continue with a free run, set this to .FALSE.
+<TR><!--contents--><TD valign=top>fieldnames    </TD>
+    <!--  type  --><TD valign=top>character(len=129) (:)   </TD>
+    <!--descript--><TD>An array of ASCII field names to be copied from
+     the input netCDF file to the output netCDF file.  The names must
+     match exactly, and the size and shape of the data must be the
+     same in the input and output files for the data to be copied.
+     If the field names are set here, the fieldlist_file item must
+     be "".
+     Default "" (empty list) </TD></TR>
+<TR><!--contents--><TD valign=top>fieldlist_file    </TD>
+    <!--  type  --><TD valign=top>character(len=129)  </TD>
+    <!--descript--><TD>An alternative to an explicit list of
+     field names to copy.  This is a single string, the name of
+     a file which contains a single field name, one per line.
+     If this option is set, the fieldnames namelist item must be "".
+     Default "" (empty filename) </TD></TR>
+<TR><!--contents--><TD valign=top>fail_on_missing_field</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD>If any fields in the input list are not
+     found in either the input or output netcdf files, fail if this
+     is set to true.  If false, a warning message will be printed
+     but execution will continue.
      Default .TRUE. </TD></TR>
+<TR><!--contents--><TD valign=top>debug</TD>
+    <!--  type  --><TD valign=top>logical </TD>
+    <!--descript--><TD>If true, print out debugging messages about which
+     fields are found in the input and output files.
+     Default .FALSE. </TD></TR>
 </TABLE>
 
 
@@ -117,31 +130,13 @@ called <em class=file>input.nml</em>
    <LI>input namelist ; <em class=file>input.nml</em></LI>
    <LI>Input - output WRF state netCDF files; <em class=file>wrfinput_d01,
    wrfinput_d02, ...</em></LI>
-   <LI>Input - output dart state vector format files ; <em
-   class=file>dart_wrf_vector</em></LI>
-   <LI>Input - output: <em class=file>wrf.info</em></LI>
+   <LI>fieldlist_file (if specified in namelist)</LI>
 </UL>
 
 <H3>File formats</H3>
 
-<P>In the conversion from dart to WRF, the <em class=file>dart_wrf_vector</em>
-file is usually one of the <em class=file>assim_model_state_ic#</em> that the
-filter writes out to advance the ensemble. As input, the dart_wrf_vector
-includes the target time in addition to the valid time at the beginning of the
-file. As output, the dart_wrf_vector includes only the valid time at the
-beginning of the file and is usually renamed as <em
-class=file>assim_model_state_ud#</em> as input to the filter for the next
-assimilation cycle.
-</P>
-
-<P>The file <em class=file>wrf.info</em> contains the target dart time, the valid
-dart time, the valid date, the number of domains, and the command used to
-executed the WRF model. The file <em class=file>wrf.info</em> is created in the
-conversion from dart to WRF. In the conversion from WRF back to dart, the
-target time is read from the file <em class=file>wrf.info</em>, which should
-then be the valid time. This will be the time written to the dart vector
-file. The rest of the information in the file <em class=file>wrf.info</em> is
-only used by the program ensemble_init and by the script advance_model.csh.
+<P>This utility works on any pair of netCDF files, doing a simple read
+and copy from one to the other.
 </P>
 
 <!--==================================================================-->
@@ -166,25 +161,25 @@ only used by the program ensemble_init and by the script advance_model.csh.
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>dart_open_and_alloc, transfer_dart_wrf</TD>
-    <!-- message --><TD VALIGN=top>n_moist = is too large.</TD>
-    <!-- comment --><TD VALIGN=top>The maximum number of moist variables is
-    7. In order, they are [qv, qc, qr, qi, qs, qg, qnice]</TD></TR>
+<TR><!-- routine --><TD VALIGN=top>replace_wrf_fields</TD>
+    <!-- message --><TD VALIGN=top>Usage: echo infile.nc outfile.nc | ./replace_wrf_fields</TD>
+    <!-- comment --><TD VALIGN=top>The program did not read 2 filenames from the console.</TD></TR>
 
-<TR><!-- routine --><TD VALIGN=top>transfer_dart_wrf</TD>
-    <!-- message --><TD VALIGN=top>n_values differ in transfer</TD>
-    <!-- comment --><TD VALIGN=top>If you get to this point, there would an
-    inconsistency between subroutines dart_open_and_alloc and transfer_dart_wrf.</TD></TR>
+<TR><!-- routine --><TD VALIGN=top>replace_wrf_fields</TD>
+    <!-- message --><TD VALIGN=top>cannot specify both fieldnames and fieldlist_file</TD>
+    <!-- comment --><TD VALIGN=top>In the namelist you must either specify an explicit list
+    of fieldnames to copy between the files, or give a single filename which contains the
+    list of field names.  You cannot specify both.</TD></TR>
 
-<TR><!-- routine --><TD VALIGN=top>trans_2d</TD>
-    <!-- message --><TD VALIGN=top>nx, ny, not compatible</TD>
-    <!-- comment --><TD VALIGN=top>Dimensions nx, ny incompatible with incoming
-    array a2d.</TD></TR>
+<TR><!-- routine --><TD VALIGN=top>replace_wrf_fields</TD>
+    <!-- message --><TD VALIGN=top><it>field</it> not found in input/output file</TD>
+    <!-- comment --><TD VALIGN=top>If 'fail_on_missing_field' is true in the namelist and
+    a field is not found in either the input or output file.</TD></TR>
 
-<TR><!-- routine --><TD VALIGN=top>trans_3d</TD>
-    <!-- message --><TD VALIGN=top>nx, ny, nz, not compatible</TD>
-    <!-- comment --><TD VALIGN=top>Dimensions nx, ny, nz incompatible with incoming
-    array a3d.</TD></TR>
+<TR><!-- routine --><TD VALIGN=top>replace_wrf_fields</TD>
+    <!-- message --><TD VALIGN=top><it>field</it> does not match</TD>
+    <!-- comment --><TD VALIGN=top>If the input and output files have different sizes,
+    number of dimensions, or data types, the program cannot copy the data.</TD></TR>
 
 </TABLE>
 </div>
@@ -202,9 +197,7 @@ none
 <HR>
 <H2>FUTURE PLANS</H2>
 <P>
-This program has to be updated when new prognostic variables are included
-in the state vector, e.g. when tracers or chemical species are evolved
-in WRF. The program will also need to be updated to add parameters to be estimated.
+none.
 </P>
 
 <!--==================================================================-->
@@ -215,99 +208,6 @@ in WRF. The program will also need to be updated to add parameters to be estimat
 <HR>
 <H2>PRIVATE COMPONENTS</H2>
 
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<br>
-<div class=routine>
-<em class=call> call dart_open_and_alloc( wrf, dart, n_values, dart_unit,
-replace_wrf_fields, debug )</em>
-<pre>
-integer,          intent(out) :: <em class=code> dart_unit </em>
-logical,          intent(in)  :: <em class=code> replace_wrf_fields, debug </em>
-type(wrf_dom),    intent(in)  :: <em class=code> wrf </em>
-real(r8),         pointer     :: <em class=code> dart(:) </em>
-integer,          intent(out) :: <em class=code> n_values  </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Open a dart state vector file, determine the length of the dart
-state vector, and allocate the dart state vector variable.
-</P>
-
-</div>
-<br>
-
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<br>
-<div class=routine>
-<em class=call> call transfer_dart_wrf ( replace_wrf_fields, dart, wrf, n_values_in)</em>
-<pre>
-logical,          intent(in) :: <em class=code> replace_wrf_fields </em>
-type(wrf_dom),    intent(in) :: <em class=code> wrf </em>
-real(r8), pointer            :: <em class=code> dart(:) </em>
-integer,          intent(in) :: <em class=code> n_values_in </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Transfer from dart state vector to a wrf structure, or vice versa.
-</P>
-
-</div>
-<br>
-
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<br>
-<div class=routine>
-<em class=call> call trans_2d( one_to_two, a1d, a2d, nx, ny )</em>
-<pre>
-integer,  intent(in) :: <em class=code> nx,ny </em>
-real(r8), intent(in) :: <em class=code> a1d(:) </em>
-real(r8), intent(in) :: <em class=code> a2d(nx,ny) </em>
-logical,  intent(in) :: <em class=code> one_to_two </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Transfer data from a 2D array into a 1D array, or vice versa.
-</P>
-
-</div>
-<br>
-
-<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
-
-<br>
-<div class=routine>
-<em class=call> call trans_3d( one_to_three, a1d, a3d, nx, ny, nz )</em>
-<pre>
-integer,  intent(in) :: <em class=code> nx,ny,nz </em>
-real(r8), intent(in) :: <em class=code> a1d(:) </em>
-real(r8), intent(in) :: <em class=code> a3d(:,:,:) </em>
-logical,  intent(in) :: <em class=code> one_to_three </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Transfer data from a 3D array into a 1D array, or vice versa.
-</P>
-
-</div>
 <br>
 
 <!--==================================================================-->
@@ -319,7 +219,7 @@ Transfer data from a 3D array into a 1D array, or vice versa.
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br>
 This open source software is provided by UCAR, "as is",<br>
 without charge, subject to all terms of use at<br>
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">

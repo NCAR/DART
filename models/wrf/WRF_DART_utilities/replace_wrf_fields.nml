@@ -1,5 +1,7 @@
 &replace_wrf_fields_nml
-   debug = .false.,
+   fieldnames = '',
+   fieldlist_file = '',
    fail_on_missing_field = .true.
+   debug = .false.,
    /
 
