@@ -40,6 +40,32 @@
 #BSUB -R "span[ptile=2]"
 #BSUB -W 2:00
 #BSUB -m  "cr0128en cr0129en cr0130en cr0131en cr0132en cr0133en cr0134en cr0135en cr0136en cr0137en cr0138en cr0139en cr0140en cr0141en cr0202en cr0201en"
+#
+##=============================================================================
+## This block of directives constitutes the preamble for the PBS queuing system
+## PBS is used on the CGD Linux cluster 'bangkok'
+## PBS is used on the CGD Linux cluster 'calgary'
+##
+## the normal way to submit to the queue is:    qsub run_filter
+##
+## an explanation of the most common directives follows:
+## -N     Job name
+## -r n   Declare job non-rerunable
+## -e <arg>  filename for standard error
+## -o <arg>  filename for standard out
+## -q <arg>   Queue name (small, medium, long, verylong)
+## -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok
+##                     and calgary, there is no way to 'share' the processors
+##                     on the node with another job, so you might as well use
+##                     them both. (ppn == Processors Per Node)
+##=============================================================================
+#
+#PBS -N POP_OSSE
+#PBS -r n
+#PBS -e POP_OSSE.err
+#PBS -o POP_OSSE.log
+#PBS -q medium
+#PBS -l nodes=8:ppn=2
 
 #----------------------------------------------------------------------
 # Turns out the scripts are a lot more flexible if you don't rely on 
@@ -47,13 +73,31 @@
 # 'generic' names and using the generics throughout the remainder.
 #----------------------------------------------------------------------
 
-if ($?LSB_HOSTS) then
+if ($?LSB_QUEUE) then
+
+   #-------------------------------------------------------------------
+   # This is used by LSF
+   #-------------------------------------------------------------------
 
    setenv ORIGINALDIR $LS_SUBCWD
-   setenv JOBNAME     $LSB_OUTPUTFILE:ar
+   setenv JOBNAME     $LSB_JOBNAME
    setenv JOBID       $LSB_JOBID
    setenv MYQUEUE     $LSB_QUEUE
    setenv MYHOST      $LSB_SUB_HOST
+   setenv MPI         csh
+
+else if ($?PBS_QUEUE) then
+
+   #-------------------------------------------------------------------
+   # This is used by PBS
+   #-------------------------------------------------------------------
+
+   setenv ORIGINALDIR $PBS_O_WORKDIR
+   setenv JOBNAME     $PBS_JOBNAME
+   setenv JOBID       $PBS_JOBID
+   setenv MYQUEUE     $PBS_QUEUE
+   setenv MYHOST      $PBS_O_HOST
+   setenv MPI         csh
 
 else
 
@@ -65,19 +109,20 @@ else
    setenv JOBNAME     POP
    setenv JOBID       $$
    setenv MYQUEUE     Interactive
-   setenv MYHOST      $host
+   setenv MYHOST      $HOST
+   setenv MPI         csh
 
 endif
 
 #----------------------------------------------------------------------
-# Just an echo of job attributes
+# Just an echo of the job attributes
 #----------------------------------------------------------------------
 
 echo
 echo "${JOBNAME} ($JOBID) submitted   from $ORIGINALDIR"
 echo "${JOBNAME} ($JOBID) submitted   from $MYHOST"
 echo "${JOBNAME} ($JOBID) running in queue $MYQUEUE"
-echo "${JOBNAME} ($JOBID) running       on $host"
+echo "${JOBNAME} ($JOBID) running       on $HOST"
 echo "${JOBNAME} ($JOBID) started      at "`date`
 echo
 
@@ -137,8 +182,8 @@ set POPFILE = `head -1 ${POPDIR}/rpointer.ocn.20.restart`
  ${COPY} ${DARTDIR}/shell_scripts/advance_model.csh .
 
 # data files
- ${COPY} ${DARTDIR}/work/obs_seq.in                 .
  ${COPY} ${DARTDIR}/work/input.nml                  .
+ ${COPY} ${DARTDIR}/work/obs_seq.in                 .
 
 #-----------------------------------------------------------------------------
 # Get the POP executable, control files, and data files.

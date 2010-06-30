@@ -128,10 +128,11 @@ while($state_copy <= $num_states)
    # last restart. The LANL version has no such mechanism, but the 
    # filename can be predicted from the pop_in namelist information.
    #----------------------------------------------------------------------
+   # the value of MPI is inherited
 
    rm -f ocn.log.*
 
-   mpirun.lsf ../pop || exit 3
+   ${MPI} ../pop || exit 3
 
    grep "Successful completion of POP run" ocn.log.*
    set popstatus = $status

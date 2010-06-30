@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id: $
+# $Id$
 #
 # Script to assimilate observations using DART and the POP ocean model.
 # This presumes two directories exists that contain all the required bits
@@ -25,6 +25,7 @@
 # -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
 # -n number of processors  (really)
 ##=============================================================================
+#
 #BSUB -J filter
 #BSUB -o filter.%J.log
 #BSUB -q regular
@@ -51,12 +52,13 @@
 ##                     on the node with another job, so you might as well use
 ##                     them both. (ppn == Processors Per Node)
 ##=============================================================================
+#
 #PBS -N filter
 #PBS -r n
 #PBS -e filter.err
 #PBS -o filter.log
-#PBS -q dedicated
-#PBS -l nodes=10:ppn=2
+#PBS -q medium
+#PBS -l nodes=8:ppn=2
 
 #----------------------------------------------------------------------
 # Turns out the scripts are a lot more flexible if you don't rely on 
@@ -93,7 +95,7 @@ else if ($?PBS_QUEUE) then
 else
 
    #-------------------------------------------------------------------
-   # You can run this interactively too ... in certain circumstances
+   # You can run this interactively to check syntax, file motion, etc.
    #-------------------------------------------------------------------
 
    setenv ORIGINALDIR `pwd`
@@ -113,7 +115,7 @@ echo "${JOBNAME} ($JOBID) submitted   from $ORIGINALDIR"
 echo "${JOBNAME} ($JOBID) submitted   from $MYHOST"
 echo "${JOBNAME} ($JOBID) running in queue $MYQUEUE"
 echo "${JOBNAME} ($JOBID) running       on $HOST"
-echo "${JOBNAME} ($JOBID) started   at "`date`
+echo "${JOBNAME} ($JOBID) started      at "`date`
 echo
 
 #----------------------------------------------------------------------
@@ -391,7 +393,7 @@ if ($?LSB_QUEUE || $?PBS_QUEUE) then
           ./advance_model.csh 0 ${ensemble_size} filter_control00000 || exit 9
 
           echo "restarting filter."
-          mpirun.lsf ./wakeup_filter
+          ${MPI} ./wakeup_filter
 
         else
 
@@ -431,18 +433,18 @@ else
 #   for compas
     setenv NUM_PROCS `cat nodelist-pgi | wc -l`
     set MPIRUN = /opt/mpich/myrinet/pgi/bin/mpirun
-    set MPICMD = $MPIRUN -np $NUM_PROCS -nolocal -machinefile nodelist-pgi
+    setenv MPI "$MPIRUN -np $NUM_PROCS -nolocal -machinefile nodelist-pgi"
 
 #   for atlas-pgi
     setenv NUM_PROCS `cat nodelist-pgi | wc -l`
     set MPIRUN = /share/apps/mpich1/pgi/bin/mpirun
-    set MPICMD = $MPIRUN -np $NUM_PROCS -nolocal -machinefile nodelist-pgi
+    setenv MPI "$MPIRUN -np $NUM_PROCS -nolocal -machinefile nodelist-pgi"
 
 #   for atlas-gfortran
     set MPIRUN = /share/apps/openmpi/gfortran/bin/mpirun
-    set MPICMD = $MPIRUN --hostfile nodelist-gfortran --mca mtl mx --mca pml cm -np 72
+    setenv MPI "$MPIRUN --hostfile nodelist-gfortran --mca mtl mx --mca pml cm -np 72"
 
-    echo "MPICMD = ${MPICMD}"
+    echo "MPI = ${MPI}"
 
     # filter runs in parallel until time to do a model advance,
     # and then this script starts up the mitgcmuv jobs, each one
@@ -458,7 +460,7 @@ else
     # this starts filter but also returns control back to
     # this script immediately.
 
-    (setenv HOME $filterhome; ${MPICMD} ./filter) &
+    (setenv HOME $filterhome; ${MPI} ./filter) &
 
     while ( -e filter_to_model.lock )
 
@@ -481,7 +483,7 @@ else
           ./advance_model.csh 0 ${ensemble_size} filter_control00000 || exit 9
 
           echo "restarting filter."
-          ${MPICMD} ./wakeup_filter
+          ${MPI} ./wakeup_filter
 
         else
 
@@ -531,12 +533,13 @@ ${MOVE} dart_log.out               ${experiment}/DART
 ${COPY} input.nml                  ${experiment}/DART
 ${COPY} *.csh                      ${experiment}/DART
 ${COPY} $myname                    ${experiment}/DART
+
 ls -lrt
 
-exit $status
+exit 0
 
 # <next few lines under version control, do not edit>
-# $URL:$
-# $Revision: $
-# $Date: $
+# $URL$
+# $Revision$
+# $Date$
 
