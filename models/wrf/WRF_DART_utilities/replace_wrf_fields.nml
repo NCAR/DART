@@ -1,5 +1,5 @@
 &replace_wrf_fields_nml
-   fieldnames = '',
+   fieldnames = 'SST',
    fieldlist_file = '',
    fail_on_missing_field = .true.
    debug = .false.,
