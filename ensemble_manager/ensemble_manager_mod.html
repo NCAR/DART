@@ -843,9 +843,24 @@ This namelist is read in a file called <em class=file>input.nml</em>
     <!--descript--><TD>True if all copies written to a single file.
       False for one file per copy. Default: .true.</TD></TR>
 <TR><!--contents--><TD valign=top>perturbation_amplitude</TD>
-    <!--  type  --><TD>real(r8)</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
     <!--descript--><TD>Perturbation standard deviation for generating 
-      ensemble members if assim_model_mod will not do it. 
+      ensemble member initial conditions if the model's model_mod does 
+      not provide code in a pert_model_state() routine to generate them
+      another way.
+      <br />Random noise values drawn from a gaussian distribution with this 
+      standard deviation will be added to the data in a single initial 
+      ensemble member to generate the rest of the members.
+      <br />This option is more frequently used in the low order models 
+      and less frequently used in large models.  This is in part due
+      to the different scales of real geophysical variable values, and the
+      resulting inconsistencies between related field values.  
+      A more successful initial condition generation
+      strategy is to generate climatological distributions from long model
+      runs which have internally consistent structures and values and then
+      use observations with a 'spin-up' period of assimilation to shape
+      the initial states into a set of members with enough spread and which
+      match the current set of observations.
       Default: 0.2_r8</TD></TR>
 </TABLE>
 
