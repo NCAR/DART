@@ -56,7 +56,7 @@ echo '/advance_time_present'  >> ex_commands
 echo ':s/\.false\./\.true\./' >> ex_commands
 echo ':wq'                    >> ex_commands
 
-( ex input.nml < ex_commands )
+( ex input.nml < ex_commands ) >& /dev/null
 \rm -f ex_commands
 
 # copy the files used by 
@@ -64,7 +64,7 @@ foreach FILE ( ../horiz_grid.gx3v5.* \
                ../topography.gx3v5.* \
                ../vert_grid.gx3v5    \
                ../*_contents )
-   ln -sf $FILE . || exit 1
+   ln -sfv $FILE . || exit 1
 end
 
 echo 'listing now that the table has been set ...'

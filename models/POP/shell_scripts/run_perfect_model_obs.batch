@@ -34,12 +34,12 @@
 #BXXX -b 18:00
 #BSUB -J POP_OSSE
 #BSUB -o POP_OSSE.%J.log
-#BSUB -N -u ${USER}@ucar.edu
 #BSUB -q economy
 #BSUB -n 16
 #BSUB -R "span[ptile=2]"
+#BSUB -P 86850054
 #BSUB -W 2:00
-#BSUB -m  "cr0128en cr0129en cr0130en cr0131en cr0132en cr0133en cr0134en cr0135en cr0136en cr0137en cr0138en cr0139en cr0140en cr0141en cr0202en cr0201en"
+#BSUB -N -u ${USER}@ucar.edu
 #
 ##=============================================================================
 ## This block of directives constitutes the preamble for the PBS queuing system
@@ -84,7 +84,7 @@ if ($?LSB_QUEUE) then
    setenv JOBID       $LSB_JOBID
    setenv MYQUEUE     $LSB_QUEUE
    setenv MYHOST      $LSB_SUB_HOST
-   setenv MPI         csh
+   setenv MPI         mpirun.lsf
 
 else if ($?PBS_QUEUE) then
 
@@ -97,7 +97,7 @@ else if ($?PBS_QUEUE) then
    setenv JOBID       $PBS_JOBID
    setenv MYQUEUE     $PBS_QUEUE
    setenv MYHOST      $PBS_O_HOST
-   setenv MPI         csh
+   setenv MPI         mpirun
 
 else
 
@@ -140,7 +140,7 @@ set myname = $0          # this is the name of this script
 
 # some systems don't like the -v option to any of the following 
 
-set OSTYPE = `uname -s` 
+set OSTYPE = `uname -s`
 switch ( ${OSTYPE} )
    case IRIX64:
       setenv REMOVE 'rm -rf'
