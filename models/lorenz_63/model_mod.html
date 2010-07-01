@@ -8,9 +8,22 @@
 <BODY>
 <A NAME="TOP"></A>
 
+<div>
 <center>
-<A HREF="#Interface">INTERFACES</A> /
-<A HREF="#Namelist">NAMELIST</A> /
+<strong><big><big><big>DART Project Documentation</big></big></big></strong> <br />
+<table width=80% border=0 summary="" cellpadding=0>
+<tr>
+<td align=center valign=middle>
+<a href="../../index.html">DART Documentation Main Index</a> </td>
+<td align=center valign=middle>
+<img src="../../doc/html/Dartboard9.png" alt="DART project logo" height=50 width=100> </td>
+<td align=center valign=middle>
+<small>Subversion info for this html file: <br />
+<!-- version tag follows, do not edit -->$Id$ </small> </td>
+</tr>
+</table> <br />
+<A HREF="#Interface">INTERFACES</A> / 
+<A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
@@ -18,10 +31,9 @@
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 </center>
+</div>
 
 <H1>MODULE model_mod (Lorenz_63)</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
-
 <P>
 DART interface module for the Lorenz-63 model. The 17 public interfaces
 are standardized for all DART compliant models. These interfaces allow
@@ -29,18 +41,45 @@ DART to advance the model, get the model state and metadata describing
 this state, find state variables that are close to a given location, 
 and do spatial interpolation for model state variables. The distinctive
 part of the model interfaces is the namelist.
-<br><br>
-This is the  3-variable model as described in: &nbsp;
-Lorenz, E. N. 1963. Deterministic nonperiodic flow.
-&nbsp;<i>J.&nbsp;Atmos.&nbsp;Sci.</i>&nbsp;<b>20</b>, 130-141.
-<br><br>
-The system of equations is:
 </P>
+<P>
+This is the  3-variable model as described in:
+<blockquote>Lorenz, E. N. 1963. Deterministic nonperiodic flow. 
+<i>J. Atmos. Sci.</i> <b>20</b>, 130-141. </blockquote>
+It was developed as a simplified model to study
+convection rolls in the atmosphere.
+Plotting the location of the X, Y, Z values as they progress
+through time traces out the classic 'butterfly' attractor plot 
+which has become an iconic image of chaotic systems:<br /><br />
+<!-- public domain image obtained from wikipedia -->
+<img src="./lorenz_63_thumb.png" alt="plot of Lorenz 63 attractor">
+</P>
+<P>
+The system of equations is:
 <pre>
 X' = -sigma*X + sigma*Y
 Y' = -XZ + rX - Y
 Z' =  XY -bZ
 </pre>
+The values for the constants are settable by namelist
+(<a href="#Namelist">see below</a>).
+The default values are:
+<pre>
+      r = 28.0_r8
+  sigma = 10.0_r8
+      b = 8.0_r8 / 3.0_r8
+
+ runga-kutta delta t:    0.01 seconds
+ assimilation time step: 60 minutes
+</pre>
+</P>
+<P>
+This model is an interesting data assimilation test in that 
+different ensemble members may bifurcate over to the
+other lobe of the attractor on different cycles.  Also, as they
+diverge from each other they do not spread out uniformly
+in 3D space, but spread along the linear attractor lines.
+</P>
 
 <!--==================================================================-->
 
@@ -56,8 +95,6 @@ utilities_mod
 
 <!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
 <!--==================================================================-->
 <!--Note to authors. The first row of the table is different.         -->
 <!--==================================================================-->
@@ -153,7 +190,7 @@ although it is not used for the computation.
 <TR><TD valign=top><em class=code>x</em></TD>
     <TD>State vector of length model_size.</TD></TR>
 
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>time</em></TD>
     <TD>Specifies time of the initial model state.</TD></TR>
 
 </TABLE>
@@ -167,7 +204,7 @@ although it is not used for the computation.
 <br>
 <div class=routine>
 <em class=call>call get_state_meta_data (index_in, location, 
-                          <em class=optionalcode>[,&nbsp;var_type]</em> )</em>
+                          <em class=optionalcode>[, var_type]</em> )</em>
 <pre>
 integer,             intent(in)  :: <em class=code>index_in</em>
 type(location_type), intent(out) :: <em class=code>location</em>
@@ -188,7 +225,7 @@ at 2/3 on a cyclic [0, 1] domain. The variable type is always returned as 1.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>index_in&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>index_in</em></TD>
     <TD>Index of state vector element about which information is requested.</TD></TR>
 
 <TR><TD valign=top><em class=code>location</em></TD>
@@ -233,7 +270,7 @@ and istatus is always returned as 0 (successful interpolation).
 <TR><TD valign=top><em class=code>x</em></TD>
     <TD>A model state vector.</TD></TR>
 
-<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>location</em></TD>
     <TD>Location to which to interpolate.</TD></TR>
 
 <TR><TD valign=top><em class=code>itype</em></TD>
@@ -271,7 +308,7 @@ The time step defaults to 1 hour but is settable by namelist.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>var</em></TD>
     <TD>Smallest time step of model.</TD></TR>
 
 </TABLE>
@@ -347,7 +384,7 @@ Sets time to 0 in this model.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>time</em></TD>
     <TD>Initial model time.</TD></TR>
 
 </TABLE>
@@ -377,7 +414,7 @@ Values chosen here are 0.1 for all three state variables.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>x</em></TD>
     <TD>Initial conditions for state vector.</TD></TR>
 
 </TABLE>
@@ -410,7 +447,7 @@ file opened to a file identified by ncFileID.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>ncFileID</em></TD>
     <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
 
 <TR><TD valign=top><em class=code>ierr</em></TD>
@@ -453,7 +490,7 @@ a single file to include multiple ensemble estimates of the state.
 <TR><TD valign=top><em class=code>statevec</em></TD>
     <TD>A model state vector.</TD></TR>
 
-<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>copyindex</em></TD>
     <TD> Integer index of copy to be written.</TD></TR>
 
 <TR><TD valign=top><em class=code>timeindex</em></TD>
@@ -497,7 +534,7 @@ and so returns .false. for interf_provided.
 <TR><TD valign=top><em class=code>pert_state</em></TD>
     <TD>Perturbed state vector: NOT returned.</TD></TR>
 
-<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>interf_provided</em></TD>
     <TD>Returned false; interface is not implemented.</TD></TR>
 
 </TABLE>
@@ -561,7 +598,7 @@ get_close_obs_init()</A> for the documentation of this subroutine.
 <div class=routine>
 <em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind,
   obs, obs_kind, num_close, close_ind
-  <em class=optionalcode>[,&nbsp;dist]</em>) </em>
+  <em class=optionalcode>[, dist]</em>) </em>
 <pre>
 type(get_close_type), intent(in)  :: <em class=code>gc</em>
 type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
@@ -606,7 +643,7 @@ A NULL INTERFACE in this model.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ens_mean&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>ens_mean</em></TD>
     <TD>State vector containing the ensemble mean.</TD></TR>
 
 </TABLE>
@@ -686,7 +723,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
     <TD>to read the model_mod namelist</TD></TR>
 <TR><TD>Prior_Diag.nc</TD>
     <TD>the time-history of the model state before assimilation</TD></TR>
-<TR><TD>Posterior_Diag.nc&nbsp;</TD>
+<TR><TD>Posterior_Diag.nc</TD>
     <TD>the time-history of the model state after assimilation</TD></TR>
 <TR><TD>dart_log.out [default name]</TD>
     <TD>the run-time diagnostic output</TD></TR>
@@ -764,7 +801,7 @@ N/A
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br>
 This open source software is provided by UCAR, "as is",<br>
 without charge, subject to all terms of use at<br>
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
@@ -776,7 +813,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
