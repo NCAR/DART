@@ -33,7 +33,7 @@ function obsstruct = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, .
 %
 % bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxgoodQC, verbose, twoup);
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright ï¿½ 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
@@ -137,7 +137,7 @@ else
 
    else
 
-      pstruct.axis = [xmin xmax ymin ymax];
+      pstruct.axis = [xmin xmax ymin ymax ];
       pstruct.str1 = sprintf('%s',obsstruct.ObsTypeString);
 
       plot_2D(obsstruct, pstruct);
@@ -293,14 +293,19 @@ end
 
 fcolor = [0.7 0.7 0.7];    % light grey
 
+myclim = get(gca,'CLim');
 [c,h] = contourf(x,y,elev,[0.0 0.0],'k-');
+set(gca,'CLim',myclim)
 
 h_patch   = get(h, 'Children');
 
 for i = 1:numel(h_patch)
     y = get(h_patch(i), 'YData');
     s = size(y);
-    set(h_patch(i), 'ZData', zlevel*ones(s),'FaceColor',fcolor);
+    if ( exist('zlevel','var') )
+       set(h_patch(i), 'ZData', zlevel*ones(s));
+    end
+    set(h_patch(i),'FaceColor',fcolor);
     set(h_patch(i),'AlphaDataMapping','none','FaceVertexAlphaData',0.3)
     set(h_patch(i),'FaceAlpha',0.3)
 end
@@ -373,7 +378,7 @@ set(get(hb,'YLabel'),'String',pstruct.colorbarstring,'Interpreter','none')
 
 function h1 = plot_2D(obsstruct, pstruct)
 
-axis(pstruct.axis); hold on; worldmap('light');
+axis(pstruct.axis);
 
 if (pstruct.clim(1) == pstruct.clim(2))
    cmap = colormap;
@@ -384,7 +389,7 @@ if (pstruct.clim(1) == pstruct.clim(2))
 
 else
 
-   scatter(obsstruct.lons, obsstruct.lats, ...
+   scatter3(obsstruct.lons, obsstruct.lats, zeros(size(obsstruct.obs)), ...
          pstruct.scalearray, obsstruct.obs, 'd', 'filled');
 end
 
@@ -395,7 +400,9 @@ title( {pstruct.str1, pstruct.str3, pstruct.str2}, 'Interpreter','none','FontSiz
 xlabel('longitude')
 ylabel('latitude')
 
+myworldmap;
 set(gca,'CLim',clim)
-h = colorbar;
-set(get(h,'YLabel'),'String',pstruct.colorbarstring,'Interpreter','none')
-hold off
+hb = colorbar;
+set(get(hb,'YLabel'),'String',pstruct.colorbarstring,'Interpreter','none')
+view(0,90)
+
