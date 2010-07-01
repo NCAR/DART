@@ -37,7 +37,7 @@ use  time_manager_mod, only : time_type, set_calendar_type, set_date, operator(>
 use      location_mod, only : VERTISPRESSURE
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               static_init_obs_sequence, init_obs, write_obs_seq, & 
-                              init_obs_sequence, get_num_obs, & 
+                              init_obs_sequence, get_num_obs, &
                               set_copy_meta_data, set_qc_meta_data
 use        meteor_mod, only : pres_alt_to_pres, sat_vapor_pressure, &
                               specific_humidity, wind_dirspd_to_uv
@@ -195,13 +195,13 @@ obsloop: do n = 1, nobs
 
   ! Check for duplicate observations
   do i = 1, nused
-    if ( lon(n) == lonu(i) .and. &
-         lat(n) == latu(i) .and. &
+    if ( lon(n)  == lonu(i) .and. &
+         lat(n)  == latu(i) .and. &
          tobs(n) == tobu(i) .and. & 
          palt(n) == palu(i) ) cycle obsloop
   end do
 
-  if ( palt(n) == palt_miss .and. qc_palt(n) == 0 ) cycle obsloop  
+  if ( palt(n) == palt_miss .or. qc_palt(n) == 0 ) cycle obsloop  
   pres = pres_alt_to_pres(palt(n))
 
   ! extract actual time of observation in file into oday, osec.
