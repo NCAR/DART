@@ -405,7 +405,7 @@ being for the posterior inflation.
 <TR><!--contents--><TD valign=top>num_output_obs_members</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD>Number of ensemble members to be included in the 
-                       observation sequence file. Default: 0</TD></TR>
+                       output observation sequence file. Default: 0</TD></TR>
 
 <TR><!--contents--><TD valign=top>output_interval</TD>
     <!--  type  --><TD valign=top>integer</TD>
@@ -435,8 +435,17 @@ being for the posterior inflation.
                        This is the 'istatus' error return code from the model
                        interpolate routine.  An ascii text file 'prior_forward_op_errors'
                        and/or 'post_forward_op_errors' will be created in the
-                       current directory.  Each line will contain an observation key
-                       number, the ensemble member number, and the istatus return code.
+                       current directory.  For each ensemble member which returns a
+                       non-zero return code, a line will be written to this file.
+                       Each line will have three values listed: 
+                       the observation number, the ensemble member number, and 
+                       the istatus return code.  Be cautious when turning this option
+                       on.  The number of lines in this file can be up to 
+                       the number of observations times the number of ensemble members
+                       times the number of assimilation cycles performed.
+                       This option is generally most useful when run with a 
+                       small observation sequence file and a small number of 
+                       ensemble members to diagnose forward operator problems.
                        Default: .false.</TD></TR>
 
 <TR><!--contents--><TD valign=top>output_timestamps</TD>
