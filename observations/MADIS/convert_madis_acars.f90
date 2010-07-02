@@ -201,7 +201,7 @@ obsloop: do n = 1, nobs
          palt(n) == palu(i) ) cycle obsloop
   end do
 
-  if ( palt(n) == palt_miss .or. qc_palt(n) == 0 ) cycle obsloop  
+  if ( palt(n) == palt_miss .or. qc_palt(n) /= 0 ) cycle obsloop  
   pres = pres_alt_to_pres(palt(n))
 
   ! extract actual time of observation in file into oday, osec.
