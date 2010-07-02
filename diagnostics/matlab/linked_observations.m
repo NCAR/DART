@@ -66,6 +66,9 @@ scatter3(obsmat(:,obs.lonindex), obsmat(:,obs.latindex), obsmat(:,obs.zindex), .
              'YDataSource',ystring, ...
              'ZDataSource',zstring);
 
+axlims = axis;
+axis([ obs.region(1:4) axlims(5) axlims(6)]);
+
 myworldmap(obs);
 
 xlabel(obs.colnames{obs.lonindex});
@@ -307,6 +310,8 @@ for i = 1:numel(h_patch)
     y = get(h_patch(i), 'YData');
     s = size(y);
     set(h_patch(i), 'ZData', zlevel*ones(s),'FaceColor',fcolor);
+    set(h_patch(i),'AlphaDataMapping','none','FaceVertexAlphaData',0.3)
+    set(h_patch(i),'FaceAlpha',0.3)
 end
 
 if (orgholdstate == 0), hold off; end;
