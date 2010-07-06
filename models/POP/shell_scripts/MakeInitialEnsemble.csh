@@ -106,30 +106,6 @@ cp ${POPDIR}/vert_grid.gx3v5             .
 #-------------------------------------------------------------------------
 # Ensure the namelists have the right values.
 #-------------------------------------------------------------------------
-# We need to run the editor in batch mode.  If you have 'vim' it needs
-# one flag; if you have only the older vanilla 'vi' you need another.
-# On several systems 'vi' is a link to 'vim' and uses the newer syntax
-# so you cannot distinguish which flag will be needed based only on name.
-# First try to run 'vim' by full name and then back off to plain 'vi'
-# if it is not found.  Punt if neither is found.
-#-------------------------------------------------------------------------
-set VI_EXE = `which vim`
-if ( -x "${VI_EXE}" ) then
-   setenv VI 'vim -e'
-else
-   set VI_EXE = `which vi`
-   if ( -x "${VI_EXE}" ) then
-      setenv VI 'vi -s'
-   else
-      echo ""
-      echo "Neither the vim nor the vi editor were found.  This script"
-      echo "cannot continue unless it can use one of them to update"
-      echo "the test input namelist files."
-      echo ""
-      exit 2
-   endif
-endif
-
 # Need to modify rest of input.nml for test run
 # Essentially, we want the namelist block to look like:
 #&restart_file_tool_nml
@@ -148,23 +124,22 @@ endif
 #   new_advance_days             =  -1,
 #   new_advance_secs             =  -1   /
 
-echo ':0'                               >! vi_script
-echo '/restart_file_tool_nml'           >> vi_script
-echo '/input_file_name'                 >> vi_script
-echo ':s/filter_restart/dart.ics/'      >> vi_script
-echo '/write_binary_restart_files'      >> vi_script
-echo ':s/.false./.true./'               >> vi_script
-echo '/overwrite_data_time'             >> vi_script
-echo ':s/.false./.true./'               >> vi_script
-echo '/new_data_days'                   >> vi_script
-echo ':s/-1/145731/'                    >> vi_script
-echo '/new_data_secs'                   >> vi_script
-echo ':s/-1/0/'                         >> vi_script
-echo ':wq'                              >> vi_script
+echo ':0'                               >! ex_commands
+echo '/restart_file_tool_nml'           >> ex_commands
+echo '/input_file_name'                 >> ex_commands
+echo ':s/filter_restart/dart.ics/'      >> ex_commands
+echo '/write_binary_restart_files'      >> ex_commands
+echo ':s/.false./.true./'               >> ex_commands
+echo '/overwrite_data_time'             >> ex_commands
+echo ':s/.false./.true./'               >> ex_commands
+echo '/new_data_days'                   >> ex_commands
+echo ':s/-1/145731/'                    >> ex_commands
+echo '/new_data_secs'                   >> ex_commands
+echo ':s/-1/0/'                         >> ex_commands
+echo ':wq'                              >> ex_commands
 
-( ${VI} input.nml < vi_script)
-
-\rm -f vi_script
+( ex input.nml < ex_commands) >& /dev/null
+\rm -f ex_commands
 
 #-------------------------------------------------------------------------
 # Loop over all the restart files.

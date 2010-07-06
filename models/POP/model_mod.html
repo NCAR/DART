@@ -8,7 +8,20 @@
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/html/Dartboard9.png" alt="DART project logo" height=70 >
+    </td>
+    <td>
+       <P><a href="../../index.html">DART Documentation Main Index</a><br />
+          <small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Interface">INTERFACES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
@@ -17,249 +30,266 @@
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
 <H1>MODULE model_mod (POP)</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
 
-<P>
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-   FIXME
-</p>
-   <a name="observation"></a>
-   <BR>
-   <h4 class="indent1">Observations</h4>
-<p>
-   The observations for the ocean model were the first observations 
-   of oceanic quantities, so there is an 
-   <em class="file">obs_def/obs_def_ocean_mod.f90</em>
-   file containing the novel observation definitions like 
-   <em>salinity, sea surface height, current components ...</em>. 
-   In keeping with the DART philosophy, there is a concept of
-   inheritance between platform-specific observations like
-   <em>DRIFTER_U_CURRENT_COMPONENT</em> and the general 
-   <em>U_CURRENT_COMPONENT</em>.
-   Using the specific types when possible will allow flexibility 
-   specifying what kinds of observations to assimilate. 
-   <A href="create_ocean_obs.html">create_ocean_obs</a> is the program
-   to create a DART observation sequence from a very particular ASCII file.
- </p>
+<P>The <strong>Parallel Ocean Program (POP)</strong> may now be used with the 
+   <strong>Data Assimilation Research Testbed (DART)</strong>.
+   Both main variants - <a href="http://climate.lanl.gov/Models/POP/">LANL POP</a> and
+   <a href="http://www.cesm.ucar.edu/models/cesm1.0/pop2/">CESM1.0 POP2</a> have been 
+   tested. At present (July 2010), we are assimilating salinity and temperature 
+   observations from the World Ocean Database (2005) with the intention of switching
+   to the World Ocean Database (2010) as needed.
+   <br />
+   <br />
+   The following POP variables are extracted from the POP netCDF restart files and
+   are conveyed to DART:
+   <em class=code>SALT_CUR</em>,
+   <em class=code>TEMP_CUR</em>,
+   <em class=code>UVEL_CUR</em>,
+   <em class=code>VVEL_CUR</em>, and 
+   <em class=code>PSURF_CUR</em>. These variables are then adjusted to be consistent
+   with real observations and stuffed back into the same netCDF restart files.
+   Since DART is an ensemble algorithm, there are multiple restart files for a 
+   single restart time: one for each ensemble member. Creating the initial ensemble
+   of ocean states is an area of active research. At present, it may be sufficient
+   to use a climatological ensemble; e.g., using the restarts for '1 January 00Z' 
+   from 50 consecutive years. Experience has shown that having a paired (unique)
+   atmospheric forcing maintains the ensemble spread better than simply forcing
+   all the ocean ensemble members with one single atmospheric state.
+   <br />
+   <br />
+   DART reads the grid information for POP from the files specified in 
+   POP's <em class=code>&amp;grid_nml</em>.
+   When DART is responsible for starting/stopping POP, the information is 
+   conveyed through POP's <em class=code>&amp;time_manager_nml</em>. 
+</P>
 
-   <a name="conversions"></a>
-   <BR>
-   <h4 class="indent1">Converting between DART and the model</h4>
- <p>
-   There are a set of support programs: 
- </p>
+<div class=indent1>
+   <h2><a href="http://www.cesm.ucar.edu/models/cesm1.0/pop2/">CESM1.0 POP2</a></h2>
+   <P>
+      was tested and run in production on NCAR's bluefire computer from IBM.
+      This implementation is a significant departure from the DART 'business as usual' 
+      model in that DART is not responsible for advancing the model - in this case,
+      ALL of CESM! Instead, the CESM Interactive Ensemble facility is used to manage 
+      the ensemble and the Flux Coupler is responsible for stopping POP at the times 
+      required to perform an assimilation. DART simply runs 'end-to-end' at every
+      assimilation time, while CESM runs continuously. This is a complete role-reversal
+      from the normal DART operation but was relatively simple to implement because
+      CESM had infrastructure to exploit. 
+      <br />
+      <br />
+      Several modifications to CESM CASEROOT scripts will be required and will be 
+      documented more later in this document.  The 
+      <em class=file>DART/models/POP/shell_scripts/</em><em class=program>assimilate.csh</em>
+      script is inserted into the CESM run script. The Flux Coupler stops POP every 
+      midnight and all the observations within +/- 12 hours are assimilated.
+      The observation sequence files have been parsed into 'daylong' chunks and
+      have names derived from the date to facilitate manipulation in the UNIX shell.
+      <br />
+      <br />
+      The DART components were built with the following settings:
+   </P>
+   <pre>
+      MPIFC = mpxlf95_r
+      MPILD = mpxlf95_r
+      FC = xlf90_r
+      LD = xlf90_r
+      INCS = -I/usr/local/lib64/r4i4 -I/usr/local/include
+      LIBS = -L/usr/local/lib64/r4i4 -lnetcdf
+      FFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -b64 -qarch=auto -qmaxmem=-1 -O2 $(INCS)
+      LDFLAGS = $(FFLAGS) $(LIBS)
+   </pre>
+</div> 
+
+<div class=indent1>
+   <h2><a href="http://climate.lanl.gov/Models/POP/">LANL POP</a></h2>
+   <P>
+      is invoked the same way as any other high-order model.
+      <b>Important</b>: This interface was tested with the LANL/POP 2_0_1 version 
+      of POP ...  but STILL CANNOT BE USED for assimilation until the POP code is 
+      modified to do a forward euler timestep for an 'assimilation' restart.
+      <br />
+      <br />
+      DART is invoked and POP is started/stopped multiple times.
+      It was checked in the gx3v5 geometry and POP was built in the 'default' 
+      configuration: one which requires no forcing files, no boundary conditions, 
+      etc., so I have no idea what to expect when confronting this with real
+      observations ...
+   </P>
+   <pre>
+      setenv ARCHDIR linux
+      gmake OPTIMIZE=no COUPLED=no
+   </pre>
+   <P>
+      Given the wide range of input files and modes for running POP - 
+      the DART scripts will surely have to be modified to accomodate moving
+      the boundary/forcing files required for different usage patterns.
+      <br />
+      <br />
+      There are several scripts in the <em class=file>DART/models/POP/shell_scripts</em>
+      directory that are employed when using DART to assimilate with a LANL/POP
+      model: <em class=program>advance_model.csh</em>,
+      <em class=program>run_perfect_model_obs.batch</em>, and
+      <em class=program>run_filter.batch</em>&nbsp;. 
+      <br />
+      <br />
+      The DART components compile and run on our Intel-based cluster running SLES10 
+      with the ifort 10.1 20090203 compiler with the following flags 
+      (the value of NETCDF was appropriate for our system):
+   </P>
+   <pre>
+      MPIFC = mpif90
+      MPILD = mpif90
+      FC = ifort
+      LD = ifort
+      INCS = -I$(NETCDF)/include
+      LIBS = -L$(NETCDF)/lib -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
+      FFLAGS = -O0 -fpe0 -vec-report0 -assume byterecl $(INCS)
+      LDFLAGS = $(FFLAGS) $(LIBS)
+   </pre>
+   <P>
+      Intel-based machines are natively little-endian, so I like to append 
+      a ".le" suffix on all binary files.
+      <br />
+      <br />
+      On our machine, with the openmpi framework, it is necessary to specify 
+      <em class=file>input.nml</em><em class=code>:&amp;mpi_utilities_nml:reverse_task_layout = .true.,</em >
+      to be able to simultaneously run (2) MPI programs on the same set of nodes.
+   </P>
+</div> 
+
+<div class=indent1>
+   <h3>Observations.</h3>
+   <P>
+      The observations come from the 
+      <a href="http://www.nodc.noaa.gov/OC5/WOD05/pr_wod05.html">World Ocean Database 2005</a>
+      and are processed by DART routines in the
+   <a href="../../observations/WOD/WOD.html">DART/observations/WOD</a> directory.  
+   </P>
+</div>
+
+<a name="conversions"></a>
+<div class=indent1>
+   <h3>Converting between DART files and POP restart files.</h3>
+   <P>Only POP netCDF format restart files are supported. Yes, really.
+      It gets better.
+      Since the POP restart files do not have the actual grid information
+      in them, that information must be read from binary files (for the horizontal)
+      and an ascii file (for the vertical). Since I'm always working on both
+      big- and little-endian machines, I have a devil of a time keeping my
+      binary files straight. 
+      All of DART/POP is predicated on using pointer files to contain the 
+      names of the POP restart netCDF files. It turns out to be really
+      useful to dereference the pointer file and link the result to a presumed 
+      name for use by the program unit. Otherwise, we were endlessly mucking about
+      with trying to dynamically change namelists, etc. in our scripts. Ugly.
+      <br />
+      <br />
+      There are two programs and one module:
+   </P>
    <table width="100%" cellpadding="10">
-   <tr><td valign="top"><a href="trans_pv_sv.html">trans_pv_sv.f90</a></td>
-       <td>converts the ocean model snapshot files into a DART-compatible format
-      </td></tr>
-    
-   <tr><td valign="top"><a href="trans_sv_pv.html">trans_sv_pv.f90</a></td>
-       <td>converts the DART output into snapshot files to be used as 
-           ocean model input datasets (specified in 
-           <em class="file">data</em><em class="code">&amp;PARM05</em>); creates
-           a new <em class="file">data</em> namelist file 
-           (<em class="file">data.DART</em>) containing the correct 
-            <em class="code">&amp;PARM03;startTime,endTime</em> values to advance
-           the ocean model the expected amount; and creates
-           a new <em class="file">data.cal</em> namelist file 
-           (<em class="file">data.cal.DART</em>) containing the calendar information.
-      </td></tr>
-
-   <tr><td valign="top"><A href="create_ocean_obs.html">create_ocean_obs.f90</a></td>
-       <td>create observation sequence files
+   <tr><td valign="top"><a href="pop_to_dart.html">pop_to_dart.f90</a></td>
+       <td>converts the POP restart file <em class=file>pop.r.nc</em> into a 
+       DART-compatible file normally called <em class=file>dart.ud</em>&nbsp;.
+       There must also be a <em class=file>pop_in</em> namelist for POP
+       (since this specifies the names of the grid files). 
+       We usually wind up linking the dereferenced
+       pointer file name to a static name that is used by DART.
+       To that end, <em class=file>rpointer.ocn.restart</em> points to 
+       <em class=file>pop.r.nc</em> for this program.
+       </td>
+   </tr>
+   <tr><td valign="top"><a href="dart_to_pop.html">dart_to_pop.f90</a></td>
+       <td>inserts the DART output into an existing POP restart netCDF file by
+       overwriting the 
+       <em class=code>SALT_CUR</em>,
+       <em class=code>TEMP_CUR</em>,
+       <em class=code>UVEL_CUR</em>,
+       <em class=code>VVEL_CUR</em>, and 
+       <em class=code>PSURF_CUR</em> variables in the POP restart netCDF file.
+       There are two different types of DART output files, so there is a namelist
+       option to specify if the DART file has two time records or just one 
+       (if there are two, the first one is the 'advance_to' time, followed 
+       by the 'valid_time' of the ensuing state). <em class=program>dart_to_pop</em>
+       requires the POP restart file have a name of <em class=file>pop.r.nc</em>,
+       the POP input namelist <em class=file>pop_in</em> must exist, as do the
+       geometry files specified by <em class=file>pop_in</em>.
+       If the DART file contains an 'advance_to' time, 
+       <em class=program>dart_to_pop</em> creates a new 
+       <em class=code>&amp;time_manager_nml</em> for POP in a file called
+       <em class=file>pop_in.DART</em> which can be used to control the
+       length of the POP integration.
+       </td>
+   </tr>
+   <tr><td valign="top"><A href="dart_pop_mod.html">dart_pop_mod.f90</a></td>
+       <td>is the module containing many support routines that are used by
+       both <em class=program>pop_to_dart</em>, <em class=program>dart_to_pop</em>,
+       and the POP&nbsp;<em class=program>model_mod</em>.
       </td></tr>
    </table>
+</div>
 
- <p>
-   The data assimilation period is controlled in the
-   <em class="file">input.nml</em><em class="code">&amp;model_nml</em>
-   namelist. In combination with the ocean model dynamics timestep
-   <em class="file">data</em><em class="code">&amp;PARM03:deltaTClock</em>
-   this determines the amount of time the model will advance for each
-   assimilation cycle.
- </p>
+<a name="InitialEnsemble"></a>
+<div class=indent1>
+   <h3>Generating the initial ensemble.</h3>
+   <P>
+      Creating the initial ensemble of ocean states is an area of active research.
+      The POP model cannot take one single model state and generate its own 
+      ensemble (typically done with <a href="#pert_model_state">pert_model_state</a>).
+      <br />
+      <br />
+      The ensemble has to come from 'somewhere else'. 
+      At present, it may be sufficient to use a climatological ensemble; e.g., 
+      using the POP restarts for '1 January 00Z' from 50 consecutive years 
+      from a hindcast experiment.
+      <br />
+      <br />
+      There is a <em class="program">shell_scripts/MakeInitialEnsemble.csh</em> 
+      script that is intended to demonstrate how to convert a set of POP netCDF 
+      restart files into a set of DART files that have a consistent timestamp. 
+      If you simply convert each POP file to a DART file using 
+      <em class=program>dart_to_pop</em>, each DART file will have a 'valid&nbsp;time'
+      that reflects the POP time of that state - instead of an ensemble of states
+      reflecting one single time. The
+      <a href="../../../utilities/restart_file_utility.f90">restart_file_utility</a> 
+      can be used to overwrite the timestep in the header of each DART initial 
+      conditions file. The namelist for this program must look something like:
+   </P>
+   <pre>
+   &amp;restart_file_tool_nml
+     input_file_name              = "<em class=changed>dart.ics</em>",
+     output_file_name             = "filter_updated_restart",
+     ens_size                     = 1,
+     single_restart_file_in       = .true.,
+     single_restart_file_out      = .true.,
+     write_binary_restart_files   = .true.,
+     overwrite_data_time          = <em class=changed>.true.</em>,
+     new_data_days                = <em class=changed>145731</em>,
+     new_data_secs                = <em class=changed>0</em>,
+     input_is_model_advance_file  = .false.,
+     output_is_model_advance_file = .false.,
+     overwrite_advance_time       = .false.,
+     new_advance_days             = -1,
+     new_advance_secs             = -1,
+     gregorian_cal                = .true.  /</pre>
+   <P>
+      The time of days&nbsp;=&nbsp;<em class=changed>145731</em> 
+      seconds&nbsp;=&nbsp;<em class=changed>0</em> relates to 00Z&nbsp;1&nbsp;Jan&nbsp;2000 in the DART world.
+      <br />
+      <br />
+      BTW - Experience has shown that having a paired (unique) atmospheric forcing 
+      maintains the ensemble spread better than simply forcing all the ocean 
+      ensemble members with one single atmospheric state.
+   </P>
+</div>
 
-   <a name="InitialEnsemble"></a>
-   <BR>
-   <h4 class="indent1">Generating the initial ensemble</h4>
-<p>
-   The POP model cannot (as of Oct 2008) take one single model state 
-   and generate its own ensemble (typically done with 
-   <a href="#pert_model_state">pert_model_state</a>). This means I don't really
-   know how to perform a 'perfect model' experiment until I find a way to
-   correctly perturb a single state to create an ensemble.
-   <BR>
-   <BR>
-   The ensemble has to come from 'somewhere else'. I ran the model forward 
-   (outside the DART framework) for 14 days and output snapshot files ever 12 hours.
-   One state vector can be generated from a set of snapshot files using 
-   <em class="program">trans_pv_sv</em>.
-   I called this my 'initial ensemble' - it's better than nothing, but it is ENTIRELY
-   unknown if this creates an intial ensemble with sufficient spread. Just for
-   comparison, the initial ensemble for the atmospheric models is derived from
-   'climatological' values. If they need an 80-member ensemble for July 14, 2008;
-   they use the July 1 estimates of the atmosphere from 1900 to 1979. By the time
-   they assimilate (every 6 hours) for several days, things are on-track.
-   <BR>
-   <BR>
-   There is a <em class="program">shell_scripts/MakeInitialEnsemble.csh</em> script
-   that was intended to automate this process - with modest success. It does 
-   illustrate the steps needed to convert each snapshot file to a DART initial
-   conditions file and then run the
-   <a href="../../../utilities/restart_file_utility.f90">restart_file_utility</a> 
-   to overwrite the timestep in the header of the initial conditions file. After
-   you have created all the initial conditions files, you can simply 'cat' them
-   all together.  Even if the script doesn't work <em>out-of-the-box</em>, it 
-   should be readable enough to be some help.
-</p>
-   <a name="BigEndian"></a>
-   <BR>
-   <h4 class="indent1">Fortran direct-access big-endian data files</h4>
-<p>
-   The POP model uses Fortran direct-access big-endian data files.
-   It is up to you to determine the proper compiler flags to compile DART 
-   such that DART can read and write these files. Every compiler/architecture
-   is different, but we have put notes in each <em class="file">mkmf.template</em>
-   if we know how to achieve this.
-</p>
-   <a name="ModelTimestepping"></a>
-   <BR>
-   <h4 class="indent1">Controlling the model advances</h4>
-<p>
-   The assimilation period is specified by two namelist parameters 
-   in the <em class="file">input.nml</em><em class="code">&amp;model_nml</em> namelist:
-   <em class="code">assimilation_period_days</em> and
-   <em class="code">assimilation_period_seconds</em>.
-   Normally, all observations within (+/-) HALF of the total assimilation 
-   period are used in the assimilation.
-   <BR>
-   <BR>
-   The time of the initial conditions is specified by two namelist parameters 
-   in the <em class="file">input.nml</em><em class="code">&amp;model_nml</em> namelist:
-   <em class="code">init_time_days</em> and
-   <em class="code">init_time_seconds</em>; depending on the settings of these
-   parameters, the times may or may not come directly from the DART initial 
-   conditions files.
-   <BR>
-   <BR>
-   The ocean model <b>MUST always</b> start from the input datasets defined 
-   in the <em class="file">data</em><em class="code">&amp;PARM05</em> namelist. 
-   Apparently, this requires 
-   <em class="file">data</em><em class="code">&amp;PARM03:startTime</em> to be <b>0.0</b>. 
-   One of the DART support routines (<a href="trans_sv_pv.html">trans_sv_pv</a>) 
-   converts the DART state vector to the files used in 
-   <em class="file">data</em><em class="code">&amp;PARM05</em> and creates new 
-   <em class="file">data.cal</em><em class="code">&amp;CAL_NML</em> and 
-   <em class="file">data</em><em class="code">&amp;PARM03</em> namelists with
-   values appropriate to advance the model to the desired time.
-   <BR>
-   <BR>
-   The ocean model then 
-   advances till <em class="file">data</em><em class="code">&amp;PARM03:endTime</em> 
-   and writes out snapshot files. <a href="trans_pv_sv.html">trans_pv_sv</a> converts the 
-   snapshot files to a DART-compatible file which is ingested by 
-   <em class="program">filter</em>. <em class="program">filter</em> also reads 
-   the observation sequence file to determine which observations are 
-   within the assimilation window, assimilates them, and writes out a 
-   set of restart files, one for each ensemble member.  
-   <em class="program">filter</em> then waits for each instance of the 
-   ocean model (one instance for each ensemble member) to advance to 
-   <em class="file">data</em><em class="code">&amp;PARM03:endTime</em>.
-   The whole process repeats 
-   until 1) there are no more observations to assimilate (i.e. the
-   observation sequence file is exhausted) or 2) the time specified by 
-   <em class="file">input.nml</em><em class="code">&amp;filter_nml:last_obs_days,last_obs_seconds</em> 
-   has been reached.
-<p>
-
-   <a name="GettingStarted"></a>
-   <BR>
-   <h4 class="indent1">Getting Started</h4>
-<P>
-   I always like running something akin to a 'perfect model' experiment to start.
-   Since I have not come up with a good way to perturb a single model state to
-   generate an ensemble, here's the next best thing. Please keep in mind that the
-   details for running each program are covered in their own documentation.
-</P>
-   <ol>
-      <li>create a set of initial conditions for DART as described in 
-      <a href="#InitialEnsemble">Generating the intial ensemble</a> and keep a copy
-      of the 'middle' snapshot - then use it as the initial condition
-      for <em class="program">perfect_model_obs</em>.</li>
-      <li>create a TINY set of 'perfect' observations in the normal fashion:
-      <a href="../../../obs_sequence/create_obs_sequence.html">create_obs_sequence</a>
-      and then 
-      <a href="../../../obs_sequence/create_fixed_network_seq.html">create_fixed_network_seq</a>
-      to create an empty observation sequence file (usually called 
-      <em class="file">obs_seq.in</em>) 
-      </li>
-      <li>modify <em class="file">data</em>, 
-                 <em class="file">data.cal</em>, and
-                 <em class="file">input.nml</em> to control
-          the experiment and populate the observation sequence file by
-          running <a href="../../../perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>
-      </li>
-      <li>Now use the full ensemble of initial conditions from Step 1 and run 
-          <a href="../../../filter/filter.html">filter</a></li>
-   </ol>
-<P>
-   A perfectly sensible approach to get to know the system would be to try to 
-</P>
+<a name="POP_OSSE"></a>
+<div class=indent1>
+   <h3>Generating a set of observations for a 'perfect model' experiment using the LANL/POP executable and scripts.</h3>
+   <P>
+      A perfectly sensible approach to get to know the system would be to try to 
+   </P>
    <ol>
      <li>assimilate data for the first assimilation period and stop. Do not advance
          the model at all. The filter namelist can control all of this and you do
@@ -269,22 +299,91 @@
          period and stop.</li>
      <li>advance, assimilate and advance again. This tests the whole DART facility.</li>
    </ol>
+   <P>
+      I always like running something akin to a 'perfect model' experiment to start.
+      Since I have not come up with a good way to perturb a single model state to
+      generate an ensemble, here's the next best thing. The details for running 
+      each program are covered in their own documentation.
+   </P>
+   <ol>
+      <li>Create a set of initial conditions for DART by running one instance of POP 
+         for a very long time and saving restart files 'every so often'.
+         Use one of these as the initial condition
+         for <em class="program">perfect_model_obs</em> and the rest as the
+	 ensemble for the assimilation experiment. Since no one in their right 
+	 mind would use a high-resolution model for a proof-of-concept case
+	 (hint, hint), running a low-resolution model for a 'very long time' should
+	 not be a problem.
+      </li>
 
-   <a name="ExploringOutput"></a>
-   <h4 class="indent1">Exploring the Output</h4>
-<P>
-   Is pretty much like any other model. The netCDF files have the model
-   prognostic variables before and after the assimilation. There are Matlab&#174;
-   scripts for perusing the netCDF files in the <em class="file">DART/matlab</em>
-   directory. There are Matlab&#174; scripts for exploring the performance of the
-   assimilation in observation-space (after running 
-   <a href="../../../diagnostics/threed_sphere/obs_diag.html">obs_diag</a> to 
-   explore the <em class="file">obs_seq.final</em> file) - use the scripts starting
-   with 'plot_', i.e. <em class="file">DART/diagnostics/matlab/plot_*.m</em>.  
-   As always, there are some model-specific item you should know about in
-   <em class="file">DART/models/POP/matlab</em>, and 
-   <em class="file">DART/models/POP/shell_scripts</em>.
+      <li>create a TINY (i.e. 1) set of 'perfect' observations in the normal fashion:
+         <a href="../../../obs_sequence/create_obs_sequence.html">create_obs_sequence</a>
+         and then 
+         <a href="../../../obs_sequence/create_fixed_network_seq.html">create_fixed_network_seq</a>
+         to create an empty observation sequence file 
+         (usually called <em class="file">obs_seq.in</em>).
+	 The programs will prompt you for all the information they require.
+	 Read their documentation if necessary.
+	 </li>
+
+      <li>break the <em class="file">pop_in</em> namelist that comes with POP into
+          two pieces - one called <em class="file">pop_in.part1</em>, 
+	  that contains the <em class=code>&amp;time_manager_nml</em> and 
+	  put the rest in <em class="file">pop_in.part2</em>. The 
+	  <em class=code>&amp;time_manager_nml</em> will be repeatedly updated
+	  as the POP model is repeatedly called by 
+	  <em class=program>advance_model.csh</em>.
+      </li>
+
+      <li>modify <em class="file">POP/work/input.nml</em> as needed.
+      </li>
+
+      <li>modify 
+         <em class=file>DART/models/POP/shell_scripts</em><em class=program>run_perfect_model_obs.batch</em> 
+         to reflect the location of your DART directory, the POP directory, 
+	 and which POPFILE to use as the initial condition.
+      </li>
+
+      <li>Run the experiment and populate the observation sequence file by
+          executing/submitting the script 
+	  <em class=file>DART/models/POP/shell_scripts/</em><em class=program>run_perfect_model_obs.batch</em>.
+	  The script may require some modification, but not much. 
+	  Please let me know if I can improve the readability or comments. 
+	  <em class=program>run_perfect_model_obs.batch</em> runs 
+	  <a href="../../perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>
+      </li>
+
+      <li><em class=program>run_filter.batch</em> runs 
+          <a href="../../filter/filter.html">filter</a> in a similar fashion.
+	  I have not finished the documentation for this yet.
+      </li>
+   </ol>
+</div>
+
+
+<a name="ExploringOutput"></a>
+<div class=indent1>
+   <h3>Exploring the Output.</h3>
+   <P>
+      Is pretty much like any other model. The netCDF files have the model 
+      prognostic variables before and after the assimilation. 
+      There are Matlab&#174; scripts for perusing the netCDF files in the 
+      <em class="file">DART/matlab</em> directory. 
+      There are Matlab&#174; scripts for exploring the performance of the 
+      assimilation in observation-space (after running 
+      <a href="../../diagnostics/threed_sphere/obs_diag.html">obs_diag</a> 
+      to explore the <em class="file">obs_seq.final</em> file) - use the 
+      scripts starting with 'plot_', i.e. 
+      <em class="file">DART/diagnostics/matlab/plot_*.m</em>.
+      As always, there are some model-specific item you should know about in 
+      <em class="file">DART/models/POP/matlab</em>, and 
+      <em class="file">DART/models/POP/shell_scripts</em>.
+      <br />
+      <br />
+      It is also worthwhile to convert your obs_seq.final file to a netCDF format
+      obs_sequence file with <a href="../../obs_sequence/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
 </P>
+</div>
 
 <!--==================================================================-->
 
@@ -1803,7 +1902,7 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
 <TR><!--contents--><TD valign=top>output_state_vector</TD>
     <!--  type  --><TD valign=top>logical <em class="unit">[default:&nbsp;.true.]</em></TD>
     <!--descript--><TD>The switch to determine the form of the state vector in the
-                       output netcdf files. If <em class="code">.true.</em> 
+                       output netCDF files. If <em class="code">.true.</em> 
                        the state vector will be output exactly as DART uses it 
                        ... one long array.  If <em class="code">.false.</em>, 
                        the state vector is parsed into prognostic variables and 
