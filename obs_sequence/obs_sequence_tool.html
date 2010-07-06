@@ -141,6 +141,17 @@ For example:
    gregorian_cal      = .true.
 /
 </pre>
+The time range is inclusive on both ends;
+observations with times equal to the boundary times will 
+be copied to the output.
+To split a single input file up into proper subsets
+(no replicated observations), the first time of the following
+output sequence should be +1 second from the last time of the previous 
+output sequence.   If the goal is to match an observation sequence file
+with an assimilation window during the execution of the 
+<em class="program">filter</em> program, the windows should be centered 
+around the assimilation time starting at minus 1/2 the window time 
+plus 1 second, and ending at exactly plus 1/2 the window time.
 
 <A NAME="keepobs"></A>
 <h3>Subset by Observation Type</h3>
