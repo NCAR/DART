@@ -205,6 +205,23 @@ em.file{
     color:green; 
     font-style:typewriter}
 
+em.nav{
+    font-style:normal;
+    color:white;}
+
+em.sub{
+    color:peru;
+    font-style:normal;
+    font-size:1.2em;}
+
+em.head{
+    color:white; 
+    font-style:normal; 
+    font-size:1.2em;}
+
+em.italic{
+    font-style:italic}
+
 em.red{
     color:crimson; 
     font-style:normal}
@@ -221,26 +238,16 @@ em.teal{
     color:cornflowerblue; 
     font-style:normal}
 
-em.sub{
-    color:peru;
-    font-style:normal;
-    font-size:1.2em;}
-
-em.head{
-    color:white; 
-    font-style:normal; 
-    font-size:1.2em;}
-
-em.italic{
-    font-style:italic;
-    color:red;}
-
 em{
     font-style:normal;
     color:red;}
 
-em.nav{
-    font-style:normal;
-    color:white;}
+.top {
+    font-size: 8pt;
+    clear: both;
+    float: right;
+    margin-top: -10px;
+    margin-left: 5px;
+}
 
 # RGB(204,204,204) == "#CCCCCC"

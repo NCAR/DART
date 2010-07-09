@@ -1,9 +1,10 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
 <HTML>
 <HEAD>
 <TITLE>module model_mod (POP)</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -11,7 +12,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard9.png" alt="DART project logo" height=70 >
+    <img src="../../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P><a href="../../index.html">DART Documentation Main Index</a><br />
@@ -22,8 +23,8 @@
 </tr>
 </table>
 
-<A HREF="#Interface">INTERFACES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
@@ -39,7 +40,7 @@
    <a href="http://www.cesm.ucar.edu/models/cesm1.0/pop2/">CESM1.0 POP2</a> have been 
    tested. At present (July 2010), we are assimilating salinity and temperature 
    observations from the World Ocean Database (2005) with the intention of switching
-   to the World Ocean Database (2010) as needed.
+   to the World Ocean Database (2009) as needed.
    <br />
    <br />
    The following POP variables are extracted from the POP netCDF restart files and
@@ -245,7 +246,7 @@
       from a hindcast experiment.
       <br />
       <br />
-      There is a <em class="program">shell_scripts/MakeInitialEnsemble.csh</em> 
+      There is a <em class=program>shell_scripts/MakeInitialEnsemble.csh</em> 
       script that is intended to demonstrate how to convert a set of POP netCDF 
       restart files into a set of DART files that have a consistent timestamp. 
       If you simply convert each POP file to a DART file using 
@@ -293,7 +294,7 @@
    <ol>
      <li>assimilate data for the first assimilation period and stop. Do not advance
          the model at all. The filter namelist can control all of this and you do
-         not need to have a working <em class="program">advance_model.csh</em>
+         not need to have a working <em class=program>advance_model.csh</em>
          script, or even a working ocean model (as long as you have input data files).</li>
      <li>advance the model first and then assimilate data for the first assimilation 
          period and stop.</li>
@@ -309,7 +310,7 @@
       <li>Create a set of initial conditions for DART by running one instance of POP 
          for a very long time and saving restart files 'every so often'.
          Use one of these as the initial condition
-         for <em class="program">perfect_model_obs</em> and the rest as the
+         for <em class=program>perfect_model_obs</em> and the rest as the
 	 ensemble for the assimilation experiment. Since no one in their right 
 	 mind would use a high-resolution model for a proof-of-concept case
 	 (hint, hint), running a low-resolution model for a 'very long time' should
@@ -321,21 +322,21 @@
          and then 
          <a href="../../../obs_sequence/create_fixed_network_seq.html">create_fixed_network_seq</a>
          to create an empty observation sequence file 
-         (usually called <em class="file">obs_seq.in</em>).
+         (usually called <em class=file>obs_seq.in</em>).
 	 The programs will prompt you for all the information they require.
 	 Read their documentation if necessary.
 	 </li>
 
-      <li>break the <em class="file">pop_in</em> namelist that comes with POP into
-          two pieces - one called <em class="file">pop_in.part1</em>, 
+      <li>break the <em class=file>pop_in</em> namelist that comes with POP into
+          two pieces - one called <em class=file>pop_in.part1</em>, 
 	  that contains the <em class=code>&amp;time_manager_nml</em> and 
-	  put the rest in <em class="file">pop_in.part2</em>. The 
+	  put the rest in <em class=file>pop_in.part2</em>. The 
 	  <em class=code>&amp;time_manager_nml</em> will be repeatedly updated
 	  as the POP model is repeatedly called by 
 	  <em class=program>advance_model.csh</em>.
       </li>
 
-      <li>modify <em class="file">POP/work/input.nml</em> as needed.
+      <li>modify <em class=file>POP/work/input.nml</em> as needed.
       </li>
 
       <li>modify 
@@ -368,16 +369,16 @@
       Is pretty much like any other model. The netCDF files have the model 
       prognostic variables before and after the assimilation. 
       There are Matlab&#174; scripts for perusing the netCDF files in the 
-      <em class="file">DART/matlab</em> directory. 
+      <em class=file>DART/matlab</em> directory. 
       There are Matlab&#174; scripts for exploring the performance of the 
       assimilation in observation-space (after running 
       <a href="../../diagnostics/threed_sphere/obs_diag.html">obs_diag</a> 
-      to explore the <em class="file">obs_seq.final</em> file) - use the 
+      to explore the <em class=file>obs_seq.final</em> file) - use the 
       scripts starting with 'plot_', i.e. 
-      <em class="file">DART/diagnostics/matlab/plot_*.m</em>.
+      <em class=file>DART/diagnostics/matlab/plot_*.m</em>.
       As always, there are some model-specific item you should know about in 
-      <em class="file">DART/models/POP/matlab</em>, and 
-      <em class="file">DART/models/POP/shell_scripts</em>.
+      <em class=file>DART/models/POP/matlab</em>, and 
+      <em class=file>DART/models/POP/shell_scripts</em>.
       <br />
       <br />
       It is also worthwhile to convert your obs_seq.final file to a netCDF format
@@ -386,9 +387,201 @@
 </div>
 
 <!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Consider yourself forewarned that character strings that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+<div class=namelist><pre>
+<em class=call>namelist /model_nml/ </em> output_state_vector, &amp;
+          assimilation_period_days, assimilation_period_seconds, &amp;
+          model_perturbation_amplitude, debug
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>This namelist is read in a file called <em class=file>input.nml</em>.
+   This namelist provides control over the assimilation period for the model.
+   All observations within (+/-) half of the assimilation period are assimilated.
+   The assimilation period is the minimum amount of time the model can be advanced,
+   and checks are performed to ensure that the assimilation window is a multiple of
+   the ocean model dynamical timestep.
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+
+
+<TR><!--contents--><TD valign=top>output_state_vector</TD>
+    <!--  type  --><TD valign=top>logical <em class=units>[default:&nbsp;.true.]</em></TD>
+    <!--descript--><TD valign=top>The switch to determine the form of the state vector in the
+                       output netCDF files. If <em class=code>.true.</em> 
+                       the state vector will be output exactly as DART uses it 
+                       ... one long array.  If <em class=code>.false.</em>, 
+                       the state vector is parsed into prognostic variables and 
+                       output that way -- much easier to use with 'ncview', for
+                       example.</TD></TR>
+
+<TR><!--contents--><TD valign=top>assimilation_period_days</TD>
+    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;1]</em></TD>
+    <!--descript--><TD valign=top>The number of days to advance the model for each assimilation.
+                       </TD></TR>
+
+<TR><!--contents--><TD valign=top>assimilation_period_seconds</TD>
+    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;0]</em></TD>
+    <!--descript--><TD valign=top>In addition to <em class=code>assimilation_period_days</em>, 
+                    the number of seconds to advance the model for each assimilation.
+                       </TD></TR>
+
+<TR><!--contents--><TD valign=top>model_perturbation_amplitude</TD>
+    <!--  type  --><TD valign=top>real(r8) <em class=units>[default:&nbsp;0.2]</em></TD>
+    <!--descript--><TD valign=top> Reserved for future use.
+                  <!-- The amount of noise to add when trying to perturb a single
+                       state vector to create an ensemble. Only used when 
+<em class=file>input.nml</em><em class=code>&amp;filter_nml:start_from_restart = .false.</em>
+                       See also 
+                       <a href="#InitialEnsemble">Generating the initial ensemble</a> 
+                       at the start of this document. units: standard deviation 
+                       of a gaussian distribution with the mean at the value of 
+                       the state vector element. --> </TD></TR> 
+
+<TR><!--contents--><TD valign=top>debug</TD>
+    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;0]</em></TD>
+    <!--descript--><TD valign=top>The switch to specify the run-time verbosity.
+                       <em class=code>0</em> is as quiet as it gets.
+                       <em class=code>&gt; 1</em> provides more run-time messages.
+                       <em class=code>&gt; 5</em> provides ALL run-time messages.
+                       All values above 0 will also write a netCDF file of the grid 
+                       information and perform a grid interpolation test.</TD></TR>
+
+</TABLE>
+
+<H3 class=indent1>Example</H3>
+
+<pre>
+&amp;model_nml
+   assimilation_period_days     = 1, 
+   assimilation_period_seconds  = 0, 
+   model_perturbation_amplitude = 0.2, 
+   output_state_vector          = .false.,
+   debug                        = 0   /
+</pre>
+
+</div>
+<br />
+
+<!--==================================================================-->
+
+<A NAME="time_manager_nml"></A>
+<br />
+<div class=namelist><pre>
+<em class=call>namelist /time_manager_nml/ </em> runid, stop_option, stop_count, &amp;
+       time_mix_opt, fit_freq, time_mix_freq, dt_option, dt_count, impcor, laccel, &amp;
+       accel_file, dtuxcel, allow_leapyear, date_separator, &amp;
+       iyear0, imonth0, iday0, ihour0, iminute0, isecond0
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+   This namelist is read in a file called <em class=file>pop_in</em>&nbsp;.
+   This namelist is the same one that is used by the ocean model and is used 
+   to control the integration length of POP. It is unimportant for the CESM/POP 
+   experiments but is critically important for the LANL/POP experiments.
+   The values are explained in full in the POP documentation. The DART code
+   reads the namelist and simply overwrites several values with the new time
+   integration information. All the other values are unchanged. 
+   <br />
+   <br />
+   <em class=program>dart_to_pop</em> writes out a new 
+   <em class=code>&amp;time_manager_nml</em> in <em class=file>pop_in.DART</em>
+   if the DART state being converted has the 'advance_to_time' record in it.
+   This is the case during the middle of a DART experiment, but is not 
+   typically encountered if one is working with DART 'initial conditions' 
+   or 'restart' files. The <em class=file>pop_in.DART</em> must be concatenated
+   with the other namelists needed by POP into a file called 
+   <em class=file>pop_in</em>&nbsp;. We have chosen to store the other 
+   namelists (which contain static information) in a file called 
+   <em class=file>pop_in.part2</em>. Initially, the 
+   <em class=code>time_manager_nml</em> is stored in a companion file called 
+   <em class=file>pop_in.part1</em> and the two files are concatenated into
+   the expected <em class=file>pop_in</em> - then, during the course of an
+   assimilation experiment, DART keeps writing out a new 
+   <em class=code>time_manager_nml</em> with new integration information - 
+   which gets appended with the static information in 
+   <em class=file>pop_in.part2</em>&nbsp;
+   <br />
+   <br />
+   If you are running the support programs in a standalone fashion 
+   (as you might if you are converting restart files into an intial ensemble),
+   the 'valid time' of the model state comes from the restart file 
+   -&nbsp;NOT&nbsp;- the namelist. You can always patch the times in the 
+   headers with <em class=program>restart_file_utility</em>.
+   <br />
+   <br />
+   Only the namelist variables of interest to DART are discussed. All
+   other namelist variables are ignored by DART - but mean something to POP.
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+
+<TR><!--contents--><TD valign=top>stop_option</TD>
+    <!--  type  --><TD valign=top>character <em class=units>[default:&nbsp;'nday']</em></TD>
+    <!--descript--><TD valign=top>The units for <em class=code>stop_count</em>.</TD></TR>
+
+<TR><!--contents--><TD valign=top>stop_count</TD>
+    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;1]</em></TD>
+    <!--descript--><TD valign=top>The duration of the model integration. The units 
+                                  come from <em class=code>stop_option</em>.</TD></TR>
+</TABLE>
+
+<H3 class=indent1>Example</H3>
+
+<pre>
+&amp;time_manager_nml
+  runid          = 'gx3v5'
+  stop_option    = <em class=input>'nday'</em>
+  stop_count     = <em class=input>1</em>
+  time_mix_opt   = 'avgfit'
+  fit_freq       = 1
+  time_mix_freq  = 17
+  dt_option      = 'auto_dt'
+  dt_count       = 1
+  impcor         = .true.
+  laccel         = .false.
+  accel_file     = 'unknown_accel_file'
+  dtuxcel        = 1.0
+  allow_leapyear = .true.
+  iyear0         = 2000
+  imonth0        = 1
+  iday0          = 1
+  ihour0         = 0
+  iminute0       = 0
+  isecond0       = 0
+  date_separator = '-'
+   /
+</pre>
+</div>
+<br />
+
+<!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 
 <PRE>
@@ -399,6 +592,7 @@ utilities_mod
 obs_kind_mod
 mpi_utilities_mod
 random_seq_mod
+dart_pop_mod
 </PRE>
 
 <!--==================================================================-->
@@ -410,33 +604,17 @@ random_seq_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <P>
 Only a select number of interfaces used are discussed here.
+Each module has its own discussion of their routines. 
 </P>
 
-<TABLE>
-<TR><TD><em class="call">use location_mod, only : </em></TD>
-                   <TD><A HREF="../../location/threed_sphere/location_mod.html#location_type">location_type</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="../../location/threed_sphere/location_mod.html#get_location">get_location</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="../../location/threed_sphere/location_mod.html#set_location">set_location</A></TD></TR>
-</TABLE>
-
-<P>
-The ocean model namelists <em class="file">data</em>, and 
-<em class="file">data.cal</em> <em class=strong>MUST</em> be 
-present. These namelists are needed to reconstruct the valid time of the 
-snapshot files created by the ocean model. Be aware that as DART advances
-the model, the <em class="file">data</em> namelist gets modified to reflect
-the current time of the model output.
-</P>
-
-
-<TABLE>
-<TR><TD colspan="2">Required Interface Routines</TD></TR>
-<TR><TD><em class=call>use model_mod, only : </em></TD>
+<h3 class=indent1>Required Interface Routines</h3>
+<TABLE width=50%>
+<TR><TD><em class=call>use model_mod,&nbsp;only&nbsp;:</em></TD>
                    <TD><A HREF="#get_model_size">get_model_size</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data">get_state_meta_data</A></TD></TR>
@@ -453,33 +631,52 @@ the current time of the model output.
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
+</TABLE>
 
-<TR><TD colspan="2">Unique Interface Routines</TD></TR>
+<h3 class=indent1>Unique Interface Routines</h3>
+<TABLE width=50%>
 <TR><TD><em class=call>use model_mod, only : </em></TD>
-                   <TD><A HREF="#POP_meta_type">POP_meta_type</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#read_meta">read_meta</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#write_meta">write_meta</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#prog_var_to_vector">prog_var_to_vector</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#vector_to_prog_var">vector_to_prog_var</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#read_snapshot">read_snapshot</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#write_snapshot">write_snapshot</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_gridsize">get_gridsize</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#snapshot_files_to_sv">snapshot_files_to_sv</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#sv_to_snapshot_files">sv_to_snapshot_files</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#timestep_to_DARTtime">timestep_to_DARTtime</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#DARTtime_to_POPtime">DARTtime_to_POPtime</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#DARTtime_to_timestepindex">DARTtime_to_timestepindex</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#write_data_namelistfile">write_data_namelistfile</A></TD></TR>
+                   <TD><A HREF="#get_gridsize">get_gridsize</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#restart_file_to_sv">restart_file_to_sv</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#sv_to_restart_file">sv_to_restart_file</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_pop_restart_filename">get_pop_restart_filename</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#test_interpolation">test_interpolation</A></TD></TR>
 </TABLE>
 
 <P>
-Ocean model namelist interfaces <em class="code">&amp;PARM03</em>,
-<em class="code">&amp;PARM04</em>, and 
-<em class="code">&amp;PARM04</em> are read from 
-file <em class="file">data</em>.
-Ocean model namelist interface <em class="code">&amp;CAL_NML</em>,
-is read from file <em class="file">data.cal</em>.
+Ocean model namelist interfaces <em class=code>&amp;PARM03</em>,
+<em class=code>&amp;PARM04</em>, and 
+<em class=code>&amp;PARM04</em> are read from 
+file <em class=file>data</em>.
+Ocean model namelist interface <em class=code>&amp;CAL_NML</em>,
+is read from file <em class=file>data.cal</em>.
 </P>
+
+<TABLE>
+<TR><TD><em class=call>use location_mod, only : </em></TD>
+    <TD><A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">get_close_obs</A></TD></TR>
+</TABLE>
+
+<P>The presence of 'dry' gridpoints causes a little extra work for the
+   <em class=program>get_close_obs()</em> routine. The routine normally
+   comes from the <em class=program>location_mod</em> which has no notion
+   of wet/dry grid cell attributes. As such, the POP 
+   <em class=program>model_mod</em> will be augmenting the work done by
+   <em class=program>location_mod/get_close_obs()</em>&nbsp;.
+   <br />
+   <br />
+   Fundamentally, the <em class=program>location_mod</em> calculates and returns 
+   all the 'close' observations.  DART is designed such that the routine that 
+   uses the list of close observations is in <em class=file>model_mod.f90</em>. 
+   Consequently, the POP <em class=program>model_mod</em> can take that 
+   information and adjust as necessary. This creates some logistical issues 
+   in that the POP model_mod needs to intercept all calls to 
+   <em class=program>location_mod:get_close_obs()</em> - which can be achieved 
+   with the following syntax:
+</P>
+<pre>
+   use location_mod, only : loc_get_close_obs =&gt; get_close_obs
+</pre>
 
 <P>
    A note about documentation style.
@@ -487,10 +684,14 @@ is read from file <em class="file">data.cal</em>.
    <em class=optionalcode>[like this]</em>.
 </P>
 
+<!--==================================================================-->
+<H3 class=indent1>Required Interface Routines</H3>
+<!--==================================================================-->
+
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_model_size"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>model_size = get_model_size( )</em>
 <pre>
@@ -514,12 +715,12 @@ Required.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="adv_1step"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call adv_1step(x, time)</em>
 <pre>
@@ -532,9 +733,9 @@ type(time_type),        intent(in)    :: <em class=code>time</em>
 <!-- Description -->
 
 <P>
-<em class="code">adv_1step</em>
+<em class=code>adv_1step</em>
 is not used for the POP model.
-Advancing the model is done through the <em class="program">advance_model</em> script.
+Advancing the model is done through the <em class=program>advance_model</em> script.
 This is a NULL_INTERFACE, provided only for compatibility with the DART requirements.
 </P>
 
@@ -549,12 +750,12 @@ This is a NULL_INTERFACE, provided only for compatibility with the DART requirem
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_state_meta_data"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call get_state_meta_data (index_in, location, 
                           <em class=optionalcode>[,&nbsp;var_type]</em> )</em>
@@ -569,15 +770,15 @@ integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
 <!-- Description -->
 
 <P>
-<em class="code">get_state_meta_data</em>
+<em class=code>get_state_meta_data</em>
 returns metadata about a given element of the DART representation of the 
 model state vector. Since the DART model state vector is a 1D array and the
-native model grid is multidimensional, <em class="code">get_state_meta_data</em>  
+native model grid is multidimensional, <em class=code>get_state_meta_data</em>  
 returns information about the native model state vector representation. Things
-like the <em class="code">location</em>, or the type of the variable 
+like the <em class=code>location</em>, or the type of the variable 
 (for instance: salinity, temperature, u current component, ...). 
 The integer values used to indicate different variable types in 
-<em class="code">var_type</em> are themselves defined as public interfaces 
+<em class=code>var_type</em> are themselves defined as public interfaces 
 to model_mod if required.
 </P>
 
@@ -588,8 +789,8 @@ to model_mod if required.
 
 <TR><TD valign=top><em class=code>location</em></TD>
     <TD>Returns the 3D location of the indexed state variable.
-        The <em class="code">location_ type</em> comes from
-        <em class="file">DART/location/threed_sphere/location_mod.f90</em>.
+        The <em class=code>location_ type</em> comes from
+        <em class=file>DART/location/threed_sphere/location_mod.f90</em>.
         Note that the lat/lon are specified in degrees by the user but are converted
         to radians internally.</TD></TR>
 
@@ -597,27 +798,27 @@ to model_mod if required.
     <TD>Returns the type of the indexed state variable as an optional argument.
         The type is one of the list of supported observation types, found in
         the block of code starting 
-        <em class="code">!&nbsp;Integer&nbsp;definitions&nbsp;for&nbsp;DART&nbsp;TYPES</em>
-        in <em class="file">DART/obs_kind/obs_kind_mod.f90</em> 
+        <em class=code>!&nbsp;Integer&nbsp;definitions&nbsp;for&nbsp;DART&nbsp;TYPES</em>
+        in <em class=file>DART/obs_kind/obs_kind_mod.f90</em> 
         </TD></TR>
 
 </TABLE>
 
 <P>
-The list of supported variables in <em class="file">DART/obs_kind/obs_kind_mod.f90</em>
-is created by <em class="program">preprocess</em> using the entries in 
-<em class="file">input.nml</em>[<em class="code">&amp;preprocess_nml, &amp;obs_kind_nml</em>], 
-<em class="file">DEFAULT_obs_kin_mod.F90</em> and
-<em class="file">obs_def_ocean_mod.f90</em>.
+The list of supported variables in <em class=file>DART/obs_kind/obs_kind_mod.f90</em>
+is created by <em class=program>preprocess</em> using the entries in 
+<em class=file>input.nml</em>[<em class=code>&amp;preprocess_nml, &amp;obs_kind_nml</em>], 
+<em class=file>DEFAULT_obs_kin_mod.F90</em> and
+<em class=file>obs_def_ocean_mod.f90</em>.
 </P>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="model_interpolate"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call model_interpolate(x, location, itype, obs_val, istatus)</em>
 <pre>
@@ -633,17 +834,17 @@ integer,                intent(out) :: <em class=code>istatus</em>
 <!-- Description -->
 
 <P>
-Given a model state, <em class="code">model_interpolate</em> returns the value of 
+Given a model state, <em class=code>model_interpolate</em> returns the value of 
 the desired observation type (which could be a state variable) that would be 
 observed at the desired location. The interpolation method is either
 completely specified by the model, or uses some standard 2D or 3D scalar
 interpolation routines.
-Put another way, <em class="code">model_interpolate</em> will apply the forward
+Put another way, <em class=code>model_interpolate</em> will apply the forward
 operator <strong>H</strong> to the model state to create an observation at the desired 
 location.
-<BR>
-<BR>
-If the interpolation is valid, <em class="code">istatus = 0</em>. 
+<br />
+<br />
+If the interpolation is valid, <em class=code>istatus = 0</em>. 
 In the case where the observation operator is not defined at the given 
 location (e.g. the observation is below the lowest model level, above the top
 level, or 'dry'), interp_val is returned as 0.0 and istatus = 1. 
@@ -665,17 +866,17 @@ level, or 'dry'), interp_val is returned as 0.0 and istatus = 1.
 
 <TR><TD valign=top><em class=code>istatus</em></TD>
     <TD>Integer flag indicating the success of the interpolation.
-       <BR>success == 0, failure == anything else</TD></TR>
+       <br />success == 0, failure == anything else</TD></TR>
 
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_model_time_step"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>var = get_model_time_step()</em>
 <pre>
@@ -687,18 +888,16 @@ type(time_type) :: <em class=code>get_model_time_step</em>
 <!-- Description -->
 
 <P>
-<em class="code">get_model_time_step</em>
+<em class=code>get_model_time_step</em>
 returns the forecast length to be used as the "model base time step" in the filter.
 This is the minimum amount of time the model can be advanced by 
-<em class="program">filter</em>.  
+<em class=program>filter</em>.  
 <em class="strong">This is also the assimilation window</em>. 
 All observations within (+/-) one half of the forecast
 length are used for the assimilation.
-In the <em class="program">POP</em> case, this is set from 
-the namelist values for <em class="file">input.nml</em><em
-class="code">&amp;model_nml:assimilation_period_days, assimilation_period_seconds</em>,
-after ensuring the forecast length is a multiple of the ocean model dynamical timestep
-declared by <em class="file">data</em><em class="code">&amp;PARM03:deltaTClock</em>.
+In the <em class=program>POP</em> case, this is set from 
+the namelist values for <em class=file>input.nml</em><em
+class=code>&amp;model_nml:assimilation_period_days, assimilation_period_seconds</em>.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -708,18 +907,13 @@ declared by <em class="file">data</em><em class="code">&amp;PARM03:deltaTClock</
 
 </TABLE>
 
-<P>
-Please read the note concerning 
-<a href="#ModelTimestepping">Controlling&nbsp;the&nbsp;model&nbsp;advances</a>
-</P>
-
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="static_init_model"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call static_init_model()</em>
 </div>
@@ -728,31 +922,40 @@ Please read the note concerning
 <!-- Description -->
 
 <P>
-<em class="code">static_init_model</em>
+<em class=code>static_init_model</em>
 is called for runtime initialization of the model. 
-The namelists are read to determine runtime configuration of the model, the calendar
-information, the grid coordinates, etc. There are no input arguments and no return values. 
+The namelists are read to determine runtime configuration of the model, 
+the grid coordinates, etc. There are no input arguments and no return values. 
 The routine sets module-local private attributes that can then be queried by the
 public interface routines.
-<BR><BR>
-The namelists (all mandatory) are:<BR>
-<em class="file">input.nml</em><em class="code">&amp;model_mod_nml</em>,<BR>
-<em class="file">data.cal</em><em class="code">&amp;CAL_NML</em>,<BR>
-<em class="file">data</em><em class="code">&amp;PARM03</em>,<BR>
-<em class="file">data</em><em class="code">&amp;PARM04</em>, and <BR>
-<em class="file">data</em><em class="code">&amp;PARM05</em>.
+<br />
+<br />
+See the POP documentation for all namelists in <em class=file>pop_in</em>&nbsp;.
+Be aware that DART reads the POP <em class=code>&amp;grid_nml</em> namelist
+to get the filenames for the horizontal and vertical grid information as well
+as the topography information.
+<br />
+<br />
+The namelists (all mandatory) are:<br />
+<em class=file>input.nml</em><em class=code>&amp;model_mod_nml</em>,<br />
+<em class=file>pop_in</em><em class=code>&amp;time_manager_nml</em>,<br />
+<em class=file>pop_in</em><em class=code>&amp;io_nml</em>,<br />
+<em class=file>pop_in</em><em class=code>&amp;init_ts_nml</em>,<br />
+<em class=file>pop_in</em><em class=code>&amp;restart_nml</em>,<br />
+<em class=file>pop_in</em><em class=code>&amp;domain_nml</em>, and<br />
+<em class=file>pop_in</em><em class=code>&amp;grid_nml</em>.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="end_model"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call end_model()</em>
 </div>
@@ -761,22 +964,22 @@ The namelists (all mandatory) are:<BR>
 <!-- Description -->
 
 <P>
-<em class="code">end_model</em>
+<em class=code>end_model</em>
 is used to clean up storage for the model, etc. 
 when the model is no longer needed. There are no arguments and no return values.
-This is required by DART but nothing needs to be done for the POP model.
+The grid variables are deallocated.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="init_time"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call init_time(time)</em>
 <pre>
@@ -788,12 +991,12 @@ type(time_type), intent(out) :: <em class=code>time</em>
 <!-- Description -->
 
 <P>
-<em class="code">init_time</em>
+<em class=code>init_time</em>
 returns the time at which the model will start if no input initial conditions are
 to be used. This is frequently used to spin-up models from rest, but is not
 meaningfully supported for the POP model.  
 The only time this routine would get called is if the 
-<em class="file">input.nml</em><em class="code">&amp;perfect_model_obs_nml:start_from_restart</em> is .false., which is
+<em class=file>input.nml</em><em class=code>&amp;perfect_model_obs_nml:start_from_restart</em> is .false., which is
 not supported in the POP model.
 </P>
 
@@ -801,17 +1004,17 @@ not supported in the POP model.
 
 <TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>the starting time for the model if no initial conditions are to be supplied.
-    As of Oct 2008, this is hardwired to 0.0</TD></TR>
+    This is hardwired to 0.0</TD></TR>
 
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="init_conditions"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call init_conditions(x)</em>
 <pre>
@@ -823,7 +1026,7 @@ real(r8), dimension(:), intent(out) :: <em class=code>x</em>
 <!-- Description -->
 
 <P>
-<em class="code">init_conditions</em>
+<em class=code>init_conditions</em>
 returns default initial conditions for model; generally used for spinning up
 initial model states. For the POP model it is just a stub because 
 the initial state is always provided by the input files.
@@ -832,17 +1035,18 @@ the initial state is always provided by the input files.
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
 <TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Initial conditions for state vector.</TD></TR>
+    <TD>Initial conditions for state vector.
+    This is hardwired to 0.0</TD></TR>
 
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="nc_write_model_atts"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>ierr = nc_write_model_atts(ncFileID)</em>
 <pre>
@@ -855,14 +1059,17 @@ integer, intent(in) :: <em class=code>ncFileID</em>
 <!-- Description -->
 
 <P>
-<em class="code">nc_write_model_atts</em>
+<em class=code>nc_write_model_atts</em>
 writes model-specific attributes to an opened netCDF file:
 In the POP case, this includes information like the 
-coordinate variables (the grid arrays: XG, XC, YG, YC, ZG, ZC,&nbsp;...), 
+coordinate variables (the grid arrays: ULON, ULAT, TLON, TLAT, ZG, ZC, KMT, KMU), 
 information from some of the namelists, and either the 1D state 
-vector or the prognostic variables (S,T,U,V,Eta). All the required 
-information (except for the netCDF file identifier) is obtained 
-from the scope of the <em class="unix">model_mod</em> module.
+vector or the prognostic variables (SALT,TEMP,UVEL,VVEL,PSURF). 
+All the required information (except for the netCDF file identifier) 
+is obtained from the scope of the <em class=program>model_mod</em> module.
+Both the <em class=file>input.nml</em> and <em class=file>pop_in</em> files
+are preserved in the netCDF file as variables <em class=code>inputnml</em> and
+<em class=code>pop_in</em>, respectively.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -876,28 +1083,28 @@ from the scope of the <em class="unix">model_mod</em> module.
 </TABLE>
 
 <P>
-<em class="code">nc_write_model_atts</em>
+<em class=code>nc_write_model_atts</em>
 is responsible for the model-specific attributes in the following DART-output netCDF files:
-<em class="file">True_State.nc</em>, 
-<em class="file">Prior_Diag.nc</em>, and 
-<em class="file">Posterior_Diag.nc</em>.
+<em class=file>True_State.nc</em>, 
+<em class=file>Prior_Diag.nc</em>, and 
+<em class=file>Posterior_Diag.nc</em>.
 </P>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="nc_write_model_vars"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
 <pre>
-integer                            :: <em class=code>nc_write_model_vars</em>
 integer,                intent(in) :: <em class=code>ncFileID</em>
 real(r8), dimension(:), intent(in) :: <em class=code>statevec</em>
 integer,                intent(in) :: <em class=code>copyindex</em>
 integer,                intent(in) :: <em class=code>timeindex</em>
+integer                            :: <em class=code>ierr</em>
 </pre>
 </div>
 
@@ -905,16 +1112,16 @@ integer,                intent(in) :: <em class=code>timeindex</em>
 <!-- Description -->
 
 <P>
-<em class="code">nc_write_model_vars</em>
+<em class=code>nc_write_model_vars</em>
 writes a copy of the state variables to a NetCDF file. Multiple copies of the
 state for a given time are supported, allowing, for instance, a single file to
 include multiple ensemble estimates of the state. Whether the state vector is 
-parsed into prognostic variables (S,T,U,V,Eta) or simply written as a 1D array is
-controlled by 
-<em class="file">input.nml</em><em class="code">&amp;model_mod_nml:output_state_vector</em>.
-If <em class="code">output_state_vector&nbsp;=&nbsp;.true.</em> the state vector is 
+parsed into prognostic variables (SALT, TEMP, UVEL, VVEL, PSURF) or simply written 
+as a 1D array is controlled by 
+<em class=file>input.nml</em><em class=code>&amp;model_mod_nml:output_state_vector</em>.
+If <em class=code>output_state_vector&nbsp;=&nbsp;.true.</em> the state vector is 
 written as a 1D array (the simplest case, but hard to explore with the diagnostics).
-If <em class="code">output_state_vector&nbsp;=&nbsp;.false.</em> the state vector is 
+If <em class=code>output_state_vector&nbsp;=&nbsp;.false.</em> the state vector is 
 parsed into prognostic variables before being written.
 </P>
 
@@ -927,7 +1134,7 @@ parsed into prognostic variables before being written.
     <TD>A model state vector.</TD></TR>
 
 <TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD> Integer index of copy to be written.</TD></TR>
+    <TD>Integer index of copy to be written.</TD></TR>
 
 <TR><TD valign=top><em class=code>timeindex</em></TD>
     <TD>The timestep counter for the given state.</TD></TR>
@@ -938,12 +1145,12 @@ parsed into prognostic variables before being written.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="pert_model_state"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call pert_model_state(state, pert_state, interf_provided)</em>
 <pre>
@@ -953,35 +1160,26 @@ logical,                intent(out) :: <em class=code>interf_provided</em>
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
-
+<div class=indent1> <!-- Description -->
 <P>
-Given a model state, <em class="code">pert_model_state</em> produces a 
+Given a model state, <em class=code>pert_model_state</em> produces a 
 perturbed model state. This is used to generate ensemble initial conditions 
 perturbed around some control trajectory state when one is preparing to 
 spin-up ensembles.  Since the DART state vector for the POP model 
-contains both 'wet' and 'dry' cells, (the 'dry' cells having a value of a 
-perfect 0.0 - not my choice) it is imperative to provide an interface to 
-perturb <strong>just</strong> the wet cells 
-(<em class="code">interf_provided == .true.</em>).
-<BR><BR>
-At present (Oct 2008) the magnitude of the perturbation is wholly determined by 
-<em class="file">input.nml</em><em class="code">&amp;model_mod_nml:model_perturbation_amplitude</em>
-and <strong>utterly, completely fails</strong>. The resulting model states 
-cause a fatal error when being read in by the ocean model - something like
-</P>
-<pre>
-*** ERROR *** S/R INI_THETA: theta = 0 identically. 
-If this is intentional you will need to edit ini_theta.F to avoid this safety check
-</pre>
-<P>
-A more robust perturbation mechanism is needed (see, for example this routine 
-in the CAM model_mod.f90). Until then, you can avoid using this
-routine by using your own ensemble of initial conditions. This is determined by setting
-<em class="file">input.nml</em><em class="code">&amp;filter_nml:start_from_restart = .false.</em>
-See also <a href="#InitialEnsemble">Generating the initial ensemble</a> 
-at the start of this document.
+contains both 'wet' and 'dry' cells, it is imperative to provide an 
+interface to perturb <strong>just</strong> the wet cells 
+(<em class=code>interf_provided == .true.</em>).
+<br />
+<br />
+The magnitude of the perturbation is wholly determined by 
+<em class=file>input.nml</em><em class=code>&amp;model_mod_nml:model_perturbation_amplitude</em>
+and <strong>utterly, completely fails</strong>.
+<br />
+<br />
+A more robust perturbation mechanism is needed. 
+Until then, avoid using this routine by using your own ensemble of initial conditions. 
+This is determined by setting
+<em class=file>input.nml</em><em class=code>&amp;filter_nml:start_from_restart = .false.</em>
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -994,18 +1192,18 @@ at the start of this document.
 
 <TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>Because of the 'wet/dry' issue discussed above, this is always 
-        <em class="code">.true.</em>, indicating a model-specific perturbation 
+        <em class=code>.true.</em>, indicating a model-specific perturbation 
         is available.</TD></TR>
 
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_close_maxdist_init"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call get_close_maxdist_init(gc, maxdist)</em>
 <pre>
@@ -1023,12 +1221,12 @@ Pass-through to the 3-D sphere locations module. See
 </P>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_close_obs_init"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call get_close_obs_init(gc, num, obs)</em>
 <pre>
@@ -1048,25 +1246,25 @@ get_close_obs_init()</A> for the documentation of this subroutine.
 </P>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_close_obs"></A>
-<br>
+<br />
 <div class=routine>
-<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind,
-  obs, obs_kind, num_close, close_ind
+<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &amp;<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;num_close, close_ind
   <em class=optionalcode>[,&nbsp;dist]</em>) </em>
 <pre>
-type(get_close_type), intent(in)  :: <em class=code>gc</em>
-type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
-integer,              intent(in)  :: <em class=code>base_obs_kind</em>
-type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
-integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
-integer,              intent(out) :: <em class=code>num_close</em>
-integer,              intent(out) :: <em class=code>close_ind(:)</em>
-real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
+type(get_close_type),              intent(in ) :: <em class=code>gc</em>
+type(location_type),               intent(in ) :: <em class=code>base_obs_loc</em>
+integer,                           intent(in ) :: <em class=code>base_obs_kind</em>
+type(location_type), dimension(:), intent(in ) :: <em class=code>obs</em>
+integer,             dimension(:), intent(in ) :: <em class=code>obs_kind</em>
+integer,                           intent(out) :: <em class=code>num_close</em>
+integer,             dimension(:), intent(out) :: <em class=code>close_ind</em>
+real(r8), optional,  dimension(:), intent(out) :: <em class=optionalcode>dist</em>
 </pre>
 </div>
 
@@ -1074,22 +1272,61 @@ real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
 <!-- Description -->
 
 <P>
-Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">
-get_close_obs()</A> for the documentation of this subroutine.
+Given a DART location (referred to as "base") and a set of locations, and a
+definition of 'close' - return a subset of locations that are 'close', as well
+as their distances to the DART location and their indices. This routine intentionally
+masks a routine of the same name in <em class=program>location_mod</em> because we
+want to be able to discriminate against selecting 'dry land' locations.
+<br />
+<br />
+Given a single location and a list of other locations, returns the indices
+of all the locations close to the single one along with the number of
+these and the distances for the close ones.  The list of locations
+passed in via the <em class=code>obs</em> argument must be identical to
+the list of <em class=code>obs</em> passed into the most recent call
+to <em class=code>get_close_obs_init()</em>.  If the list of locations
+of interest changes, <em class=code>get_close_obs_destroy()</em> must
+be called and then the two initialization routines must be called
+before using <em class=code>get_close_obs()</em> again.
+<br />
+<br />
+For vertical distance computations, the general philosophy is to convert all
+vertical coordinates to a common coordinate. This coordinate type is defined
+in the namelist with the variable "vert_localization_coord".
 </P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gc</em></TD>
+    <TD>Structure to allow efficient identification of
+        locations 'close' to a given location.</TD></TR>
+<TR><TD valign=top><em class=code>base_obs_loc</em></TD>
+    <TD>Single given location.</TD></TR>
+<TR><TD valign=top><em class=code>base_obs_kind</em></TD>
+    <TD>Kind of the single location.</TD></TR>
+<TR><TD valign=top><em class=code>obs</em></TD>
+    <TD>List of candidate locations.</TD></TR>
+<TR><TD valign=top><em class=code>obs_kind</em></TD>
+    <TD>Kind associated with candidate locations.</TD></TR>
+<TR><TD valign=top><em class=code>num_close</em></TD>
+    <TD>Number of locations close to the given location.</TD></TR>
+<TR><TD valign=top><em class=code>close_ind</em></TD>
+    <TD>Indices of those locations that are close.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>dist</em></TD>
+    <TD>Distance between given location and the
+        close ones identified in close_ind.</TD></TR>
+</TABLE>
+
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="ens_mean_for_model"></A>
-<BR>
+<br />
 <div class="routine">
-<em class="call">call ens_mean_for_model(ens_mean)</em>
+<em class=call>call ens_mean_for_model(ens_mean)</em>
 <pre>
-real(r8), dimension(:), intent(in) :: <em class="code">ens_mean</em>
+real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
 </pre>
 </div>
 
@@ -1097,9 +1334,8 @@ real(r8), dimension(:), intent(in) :: <em class="code">ens_mean</em>
 <!-- Description -->
 
 <P>
-<em class="code">ens_mean_for_model</em>
-saves a copy of the ensemble mean to module-local storage. Sometimes
-the ensemble mean is needed rather than individual copy estimates.
+<em class=code>ens_mean_for_model</em>
+normally saves a copy of the ensemble mean to module-local storage.
 This is a NULL_INTERFACE for the POP model. At present there is
 no application which requires module-local storage of the ensemble mean.
 No storage is allocated.
@@ -1107,414 +1343,29 @@ No storage is allocated.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class="code">ens_mean</em></TD>
+<TR><TD valign=top><em class=code>ens_mean</em></TD>
     <TD>State vector containing the ensemble mean.</TD></TR>
 
 </TABLE>
 
 </div>
-<br>
+<br />
 
-<BR><HR><BR>
-<!--==================================================================-->
-<H1>Unique Interface Routines</H1>
-<!--==================================================================-->
-<BR><HR><BR>
 
-<!--=================== DESCRIPTION OF A LOCAL TYPE ====================-->
 
-<A NAME="POP_meta_type"></A>
-<BR><BR>
-<div class=type>
-<pre>
-<em class="call">type POP_meta_type</em>
-   private
-   integer           :: nDims
-   integer           :: dimList(3)
-   character(len=32) :: dataprec
-   integer           :: reclen
-   integer           :: nrecords
-   integer           :: timeStepNumber
-end type POP_meta_type
-</pre>
-</div>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3 class=indent1>Unique Interface Routines</H3>
 
-<div class=indent1>
-<!-- Description -->
 
-<P>
-<em class="code">POP_meta_type</em> is a derived type used to codify
-the metadata associated with a snapshot file.
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Component  </TH>
-    <TH align=left>Description          </TH></TR>
-<TR><TD valign=top>nDims                </TD>
-    <TD>the number of dimensions for the associated object. 
-        S,T,U,V all have nDims==3, Eta has nDims==2</TD></TR>
-<TR><TD valign=top>dimList              </TD>
-    <TD>the extent of each of the dimensions</TD></TR>
-<TR><TD valign=top>dataprec             </TD>
-    <TD>a character string depicting the precision of the data storage. 
-        Commonly 'float32'                </TD></TR>
-<TR><TD valign=top>reclen               </TD>
-    <TD>the record length needed to correctly read using Fortran direct-access.
-    This is tricky business. Each vendor has their own units for record length.
-    Sometimes it is bytes, sometimes words, sometimes ???. See comments in code 
-    for <em class="code">item_size_direct_access</em></TD></TR>
-<TR><TD valign=top>nrecords             </TD>
-    <TD>the number of records (either 2D or 3D hyperslabs) in the snapshot file</TD></TR>
-<TR><TD valign=top>timeStepNumber       </TD>
-    <TD>the timestep number ... the snapshot filenames are constructed using the
-    timestepcount as the unique part of the filename. To determine the valid time
-    of the snapshot, you must multiply the timeStepNumber by the amount of time
-    in each timestep and add the start time.</TD></TR>
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="read_meta"></A>
-<BR>
-<div class="routine">
-<em class="call">metadata = read_meta(fbase <em class="optionalcode">[, vartype]</em>)</em>
-<pre>
-character(len=*),           intent(in)  :: <em class="code"> fbase </em>
-character(len=*), OPTIONAL, intent(in)  :: <em class=optionalcode> vartype </em>
-type(POP_meta_type),        intent(out) :: <em class="code"> metadata </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class="code">read_meta</em>
-reads the metadata file for a particular snapshot file. This routine is primarily
-bulletproofing, since the snapshot files tend to move around a lot. I don't want
-to use a snapshot file from a 70-level case in a 40-level experiment; and without
-checking the metadata, you'd never know. The metadata for the file originally comes
-from the namelist values specifying the grid resolution, etc. If the metadata file 
-exists, the metadata in the file is compared to the original specifications. If the 
-metadata file does not exist, no comparison is done.
-<BR><BR>
-The filename is fundamentally comprised of three parts. Take 'U.0000000024.meta' for
-example. The first part of the name is the variable, the second part of the name is
-the timestepnumber, the last part is the file extension. For various reasons, sometimes
-it is convenient to call this function without the building the entire filename outside
-the function and then passing it in as an argument. Since the '.meta' extension seems
-to be fixed, we will only concern ourselves with building the 'base' part of the
-filename, i.e., the first two parts.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class="code">fbase</em></TD>
-    <TD>If <em class=optionalcode> vartype </em> is
-    supplied, this is simply the timestepnumber converted to a character string of length
-    10. For example, '0000000024'. If <em class=optionalcode> vartype </em> is
-    <strong>not</strong> supplied, it is the entire filename without the extension; 
-    'U.0000000024', for example. </TD></TR>
-
-<TR><TD valign=top><em class=optionalcode>vartype</em></TD>
-    <TD>is an optional argument specifying the first part of the snapshot filename.
-        Generally, 'S','T','U','V', or 'Eta'.</TD></TR>
-
-<TR><TD valign=top><em class="code">metadata</em></TD>
-    <TD>The return value of the function is the metadata for the file, packed
-    into a user-derived variable type specifically designed for the purpose.</TD></TR>
-
-</TABLE>
-
-<H3 class=indent1>Example</H3>
-<pre>
-metadata = read_meta('U.0000000024')
- ... or ...
-metadata = read_meta('0000000024','U')
-</pre>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="write_meta"></A>
-<BR>
-<div class="routine">
-<em class="call">call write_meta(metadata, filebase)</em>
-<pre>
-type(POP_meta_type),        intent(in) :: <em class="code"> metadata </em>
-character(len=*),           intent(in) :: <em class="code"> filebase </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class="code">write_meta</em>
-writes a metadata file. This routine is called by routines 
-<em class="code">write_2d_snapshot</em>, and 
-<em class="code">write_3d_snapshot</em> to support converting the DART state
-vector to something the ocean model can ingest.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class="code">metadata</em></TD>
-    <TD>The user-derived varible, filled with the metadata for the file.</TD></TR>
-
-<TR><TD valign=top><em class="code">filebase</em></TD>
-    <TD>the filename without the extension; 
-    'U.0000000024', for example. (see the Description in <em class="code">read_meta</em>)
-    </TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="prog_var_to_vector"></A>
-<BR>
-<div class="routine">
-<em class="call">call prog_var_to_vector(s,t,u,v,eta,x)</em>
-<pre>
-real(r4), dimension(:,:,:), intent(in)  :: <em class="code">s,t,u,v</em>
-real(r4), dimension(:,:),   intent(in)  :: <em class="code">eta</em>
-real(r8), dimension(:),     intent(out) :: <em class="code">x</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class="code">prog_var_to_vector</em>
-packs the prognostic variables [S,T,U,V,Eta] read from the snapshot files 
-into a DART vector. The DART vector is simply a 1D vector that includes all
-the 'dry' cells as well as the 'wet' ones. This routine is not presently
-used (since we never have [S,T,U,V,Eta] as such in memory). See
-<a href="#snapshot_files_to_sv">snapshot_files_to_sv</a>.
- 
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class="code">s,t,u,v</em></TD>
-    <TD>The 3D arrays read from the individual snapshot files.</TD></TR>
-
-<TR><TD valign=top><em class="code">eta</em></TD>
-    <TD>The 2D array read from its snapshot file.</TD></TR>
-
-<TR><TD valign=top><em class="code">x</em></TD>
-    <TD>the 1D array containing the concatenated s,t,u,v,eta variables.
-    To save storage, it is possible to modify the definition of <em class="code">r8</em>
-    in <em class="file">DART/common/types_mod.f90</em> to be the same as that
-    of <em class="code">r4</em>.
-    </TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="vector_to_prog_var"></A>
-<BR>
-<div class="routine">
-<em class="call">call vector_to_prog_var(x,varindex,hyperslab)</em>
-<pre>
-real(r8), dimension(:),     intent(in)  :: <em class="code">x</em>
-integer,                    intent(in)  :: <em class="code">varindex</em>
-real(r4), dimension(:,:,:), intent(out) :: <em class="code">hyperslab</em> -or-
-real(r4), dimension(:,:),   intent(out) :: <em class="code">hyperslab</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class="code">vector_to_prog_var</em>
-unpacks a prognostic variable [S,T,U,V,Eta] from the DART vector <em class="code">x</em>.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class="code">x</em></TD>
-    <TD>the 1D array containing the 1D DART state vector.</TD></TR>
-
-<TR><TD valign=top><em class="code">varindex</em></TD>
-    <TD>an integer code specifying which variable to unpack. The following parameters 
-    are in module storage:
-<pre>
-integer, parameter :: S_index   = 1
-integer, parameter :: T_index   = 2
-integer, parameter :: U_index   = 3
-integer, parameter :: V_index   = 4
-integer, parameter :: Eta_index = 5
-</pre>
-</TD></TR>
-
-<TR><TD valign=top><em class="code">hyperslab</em></TD>
-    <TD>The N-D array containing the prognostic variable. The function is 
-    overloaded to be able to return both 2D and 3D arrays.</TD></TR>
-
-</TABLE>
-
-<H3 class=indent1>Example</H3>
-
-<pre>
-call vector_to_prog_var(statevec,V_index,data_3d)
- - or - 
-call vector_to_prog_var(statevec,Eta_index,data_2d)
-</pre>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="read_snapshot"></A>
-<BR>
-<div class="routine">
-<em class="call">call read_snapshot(fbase, x, timestep, vartype)</em>
-<pre>
-character(len=*),           intent(in)  :: <em class="code">fbase</em>
-real(r4), dimension(:,:,:), intent(out) :: <em class="code">x</em> - or - 
-real(r4), dimension(:,:),   intent(out) :: <em class="code">x</em>
-integer,                    intent(out) :: <em class="code">timestep</em>
-character(len=*), optional, intent(in)  :: <em class="optionalcode">vartype</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class="code">read_snapshot</em>
-reads a snapshot file and returns a hyperslab that includes all
-the 'dry' cells as well as the 'wet' ones. By design, the POP model
-writes out Fortran direct-access big-endian binary files, independent of
-the platform. Since it is not guaranteed that the binary file we need to read
-is on the same architecture that created the file, getting the compiler settings
-in <em class="file">mkmf.template</em> correct to read Fortran direct-access big-endian
-binary files is <strong>imperative</strong> to the process. Since each compiler
-issues its own error, there's no good way to even summarize the error messages you
-are likely to encounter by improperly reading the binary files. Read each template file
-for hints about the proper settings. See also the section 
-<a href="#BigEndian">Fortran direct-access big-endian datafiles</a> 
-in the "Discussion" of this document.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class="code">fbase</em></TD>
-    <TD>The 'base' portion of the filename, i.e., without the [.meta, .data] extension.
-        If <em class="optionalcode">vartype</em> is supplied, 
-        <em class="optionalcode">vartype</em> is prepended to 
-        <em class="code">fbase</em> to create the 'base' portion of the filename.
-    </TD></TR>
-
-<TR><TD valign=top><em class="code">x</em></TD>
-    <TD>The hyperslab containing what is read. The function is overloaded to
-        be able to return a 2D or 3D array. <em class="code">x</em> 
-        must be allocated before the call to 
-        <em class="code">read_snapshot</em>.</TD></TR>
-
-<TR><TD valign=top><em class="code">timestep</em></TD>
-    <TD>the timestepcount in the <em class="code">'fbase'</em>.meta file, if
-        the .meta file exists. Provided for bulletproofing. 
-    </TD></TR>
-
-<TR><TD valign=top><em class="optionalcode">vartype</em></TD>
-    <TD>The character string representing the 'prognostic variable' portion of the
-        snapshot filename. Commonly 'S','T','U','V', or 'Eta'.
-        If supplied, this is prepended to <em class="code">fbase</em> to create 
-        the 'base' portion of the filename.
-    </TD></TR>
-
-</TABLE>
-
-<H3 class=indent1>Example</H3>
-
-<pre>
-real(r4), allocatable :: data_2d_array(:,:), data_3d_array(:,:,:)
-...
-allocate(data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz))
-...
-call read_snapshot('S.0000000024', data_3d_array, timestepcount_out)
-call read_snapshot(  '0000000024', data_2d_array, timestepcount_out, 'Eta')
-call read_snapshot(  '0000000024', data_3d_array, timestepcount_out, 'T')
-...
-</pre>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="write_snapshot"></A>
-<BR>
-<div class="routine">
-<em class="call">call write_snapshot(x, fbase, timestepcount)</em>
-<pre>
-real(r4), dimension(:,:),   intent(in) :: <em class="code">x</em> - or -
-real(r4), dimension(:,:,:), intent(in) :: <em class="code">x</em>
-character(len=*),           intent(in) :: <em class="code">fbase</em>
-integer, optional,          intent(in) :: <em class="optionalcode">timestepcount</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class="code">write_snapshot</em>
-writes a hyperslab of data to a snapshot file and corresponding metadata file. 
-This routine is an integral 
-part of <a href="#sv_to_snapshot_files">sv_to_snapshot_files</a>, the 
-routine that is responsible for unpacking the DART state vector and writing 
-out a set of snapshot files used as input to the ocean model.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class="code">x</em></TD>
-    <TD>The hyperslab containing the prognostic variable data to be written.
-        The function is overloaded to be able to ingest a 2D or 3D array.
-        </TD></TR>
-
-<TR><TD valign=top><em class="code">fbase</em></TD>
-    <TD>The 'base' portion of the filename, i.e., without the [.meta, .data] extension.
-    </TD></TR>
-
-<TR><TD valign=top><em class="code">timestepcount</em></TD>
-    <TD>the timestepcount to be written into the <em class="code">'fbase'</em>.meta file.
-        If none is supplied, <em class="code">timestepcount</em> is 0. 
-        I'm not sure this is ever used, since the timestepcount can be gotten 
-        from <em class="code">fbase</em>.
-    </TD></TR>
-
-</TABLE>
-
-</div>
-<br>
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_gridsize"></A>
-<BR>
+<br />
 <div class="routine">
-<em class="call">call get_gridsize( num_x, num_y, num_z)</em>
+<em class=call>call get_gridsize( num_x, num_y, num_z )</em>
 <pre>
-integer, intent(out) :: <em class="code">num_x, num_y, num_z</em>
+integer, intent(out) :: <em class=code>num_x, num_y, num_z</em>
 </pre>
 </div>
 
@@ -1522,40 +1373,43 @@ integer, intent(out) :: <em class="code">num_x, num_y, num_z</em>
 <!-- Description -->
 
 <P>
-<em class="code">get_gridsize</em>
-returns the dimensions of the compute domain. The gridsize is determined from
-<em class="file">data</em><em class="code">&amp;PARM04:delY,delX</em>, and
-<em class="code">delZ</em> when the namelist is read by 
-<em class="code">static_init_model</em>.  The POP model is 
-interesting in that it has a staggered grid but all grid variables 
-are declared the same length.
+<em class=code>get_gridsize</em>
+returns the dimensions of the compute domain.
+The horizontal gridsize is determined from <em class=file>pop.r.nc</em>.
+The values of the horizontal grid cells is determined from the binary file
+specified in the
+<em class=file>pop_in</em><em class=routine>&amp;grid_nml:horiz_grid_file</em> setting.
+<em class=file>pop_in</em><em class=routine>&amp;grid_nml:vert_grid_file</em> specifies
+the name of the ASCII file containing the number and values of the vertical levels.
+The actual values (not just the size) is needed by <em class=routine>get_state_meta_data()</em>.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class="code">num_x</em></TD>
+<TR><TD valign=top><em class=code>num_x</em></TD>
     <TD>The number of longitudinal gridpoints.</TD></TR>
 
-<TR><TD valign=top><em class="code">num_y</em></TD>
+<TR><TD valign=top><em class=code>num_y</em></TD>
     <TD>The number of latitudinal gridpoints.</TD></TR>
 
-<TR><TD valign=top><em class="code">num_z</em></TD>
+<TR><TD valign=top><em class=code>num_z</em></TD>
     <TD>The number of vertical gridpoints.</TD></TR>
 
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="snapshot_files_to_sv"></A>
-<BR>
+<A NAME="restart_file_to_sv"></A>
+<br />
 <div class="routine">
-<em class="call">call snapshot_files_to_sv(timestepcount, state_vector)</em>
+<em class=call>call restart_file_to_sv(filename, state_vector, model_time)</em>
 <pre>
-integer,  intent(in)    :: <em class="code">timestepcount</em>
-real(r8), intent(inout) :: <em class="code">state_vector</em>
+character(len=*),       intent(in)    :: <em class=code>filename</em>
+real(r8), dimension(:), intent(inout) :: <em class=code>state_vector</em>
+type(time_type),        intent(out)   :: <em class=code>model_time</em>
 </pre>
 </div>
 
@@ -1563,238 +1417,44 @@ real(r8), intent(inout) :: <em class="code">state_vector</em>
 <!-- Description -->
 
 <P>
-<em class="code">snapshot_files_to_sv</em>
-reads the snapshot files for a given timestepcount and concatenates them
-into a DART-compliant 1D array. All the snapshot filenames are constructed
-given the <em class="code">timestepcount</em> - read the 'Description' 
-section of <a href="#read_meta">read_meta</a>, particularly the second paragraph.
+   <em class=code>restart_file_to_sv</em>
+   Reads <em class=code>SALT_CUR</em>, <em class=code>TEMP_CUR</em>,
+         <em class=code>UVEL_CUR</em>, <em class=code>VVEL_CUR</em>, and 
+         <em class=code>PSURF_CUR</em> from a POP netCDF format restart 
+   file and packs them into a DART state vector. The DART vector is simply 
+   a 1D vector that includes all the 'dry' cells as well as the 'wet' ones.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class="code">timestepcount</em></TD>
-    <TD>The integer that corresponds to the middle portion of the snapshot
-        filename.</TD></TR>
+<TR><TD valign=top><em class=code>filename</em></TD>
+    <TD>The name of the netCDF format POP restart file.</TD></TR>
 
-<TR><TD valign=top><em class="code">state_vector</em></TD>
-    <TD>The 1D array of the DART state vector.</TD></TR>
+<TR><TD valign=top><em class=code>state_vector</em></TD>
+    <TD>The 1D array to be used by DART.</TD></TR>
 
-</TABLE>
-
-<P>
-The files are read in this order [S,T,U,V,Eta]
-(almost alphabetical!) and the multidimensional arrays are unwrapped with the
-leftmost index being the fastest-varying. You shouldn't need to know this,
-but it is critical to the way 
-<em class="code">prog_var_to_vector</em> and 
-<em class="code">vector_to_prog_var</em> 
-navigate the array. 
-</P>
-<pre>
-do k = 1, Nz   ! depth
-do j = 1, Ny   ! latitudes
-do i = 1, Nx   ! longitudes
-   state_vector(indx) = data_3d_array(i, j, k)
-   indx = indx + 1
-enddo
-enddo
-enddo
-</pre>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="sv_to_snapshot_files"></A>
-<BR>
-<div class="routine">
-<em class="call">call sv_to_snapshot_files(state_vector, date1, date2)</em>
-<pre>
-real(r8), intent(in)    :: <em class="code">state_vector</em>
-integer,  intent(in)    :: <em class="code">date1, date2</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class="code">sv_to_snapshot_files</em>
-takes the DART state vector and creates a set of snapshot files. The filenames
-of these snapshot files is different than that of snapshot files created by
-the ocean model. See the 'Notes' section for an explanation.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class="code">state_vector</em></TD>
-    <TD>The DART 1D state vector.</TD></TR>
-
-<TR><TD valign=top><em class="code">date1</em></TD>
-    <TD>The year/month/day of the valid time for the state vector,
-        in YYYYMMDD format - an 8-digit integer.
-        This is the same format as 
-        <em class="file">data.cal</em><em class="code">&amp;CAL_NML:startDate_1</em>
-    </TD></TR>
-
-<TR><TD valign=top><em class="code">date2</em></TD>
-    <TD>The hour/min/sec of the valid time for the state vector,
-        in HHMMSS format. This is the same format as 
-        <em class="file">data.cal</em><em class="code">&amp;CAL_NML:startDate_2</em>
-    </TD></TR>
-
-</TABLE>
-
-<P>Since the snapshot files have the potential to move around a lot,
-I thought it best to have a more descriptive name than simply 
-the snapshot number.  DART creates snapshot files with names like 
-<em class="file">S.19960718.060000.data</em> to let you know it is 
-a snapshot file for 06Z 18 July 1996. This is intended to make it
-easier to create initial conditions files and, should the assimilation
-fail, inform as to _when_ the assimilation failed. Since DART needs the
-ocean model to coldstart 
-(<em class="file">data</em><em class="code">&amp;PARM02:startTime = 0.0</em>)
-for every model advance, every snapshot file has the same timestamp.  
-The <em class="program">advance_model.csh</em> script actually has to rename
-the DART-written snapshot files to that declared by the 
-<em class="file">data</em><em class="code">&amp;PARM05</em> namelist, so
-the name is not really critical from that perspective. 
-<strong>However</strong>, the components of the DART-derived snapshot files
-<strong>are</strong> used to create an appropriate 
-<em class="file">data.cal</em><em class="code">&amp;CAL_NML</em> for each
-successive model advance.
-</P>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="timestep_to_DARTtime"></A>
-<BR>
-<div class="routine">
-<em class="call">mytime = timestep_to_DARTtime(TimeStepIndex)</em>
-<pre>
-integer,         intent(in)  :: <em class="code">TimeStepIndex</em>
-type(time_type), intent(out) :: <em class="code">mytime</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class="code">timestep_to_DARTtime</em>
-combines the <em class="code">TimeStepIndex</em> with the time per timestep
-(from <em class="file">data</em><em class="code">&amp;PARM03</em>) and the 
-start date supplied by 
-<em class="file">data.cal</em><em class="code">&amp;CAL_NML</em> to form a
-Gregorian calendar date which is then converted to a DART time object. 
-As of Oct 2008, this <em class="code">model_mod</em> 
-is forced to use the Gregorian calendar.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class="code">TimeStepIndex</em></TD>
-    <TD>an integer referring to the ocean model timestep ... the middle part of
-        the ocean-model-flavor snapshot filename.</TD></TR>
-
-<TR><TD valign=top><em class="code">mytime</em></TD>
-    <TD>The DART representation of the time indicated by the 
-        <em class="code">TimeStepIndex</em></TD></TR>
-
-</TABLE>
-
-<P>
-The time per timestep is something I don't understand that well.
-The 
-<em class="file">data</em><em class="code">&amp;PARM03</em> namelist has
-three variables:
-<em class="code">deltaTmom</em>,
-<em class="code">deltaTtracer</em>, and
-<em class="code">deltaTClock</em>. Since I don't know which one is
-relavent, and every case I looked at had them set to be the same, I decided
-to require that they all be identical and then it wouldn't matter which one
-I used. The values are checked when the namelist is read.
-<pre>
-! Time stepping parameters are in PARM03
-call find_namelist_in_file("data", "PARM03", iunit)
-read(iunit, nml = PARM03, iostat = io)
-call check_namelist_read(iunit, io, "PARM03")
-
-if ((deltaTmom   == deltaTtracer) .and. &amp;
-    (deltaTmom   == deltaTClock ) .and. &amp;
-    (deltaTClock == deltaTtracer)) then
-   timestep       = deltaTmom                    ! need a time_type version
-else
-   write(msgstring,*)"namelist PARM03 has deltaTmom /= deltaTtracer /= deltaTClock"
-   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
-   write(msgstring,*)"values were ",deltaTmom, deltaTtracer, deltaTClock
-   call error_handler(E_MSG,"static_init_model", msgstring, source, revision, revdate)
-   write(msgstring,*)"At present, DART only supports equal values."
-   call error_handler(E_ERR,"static_init_model", msgstring, source, revision, revdate)
-endif
-</pre>  
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="DARTtime_to_POPtime"></A>
-<BR>
-<div class="routine">
-<em class="call">call DARTtime_to_POPtime(darttime, date1, date2)</em>
-<pre>
-type(time_type), intent(in)  :: <em class="code">darttime</em>
-integer,         intent(out) :: <em class="code">date1, date2</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class="code">DARTtime_to_POPtime</em>
-converts the DART time to a pair of integers that are compatible with
-the format used in 
-<em class="file">data.cal</em><em class="code">&amp;CAL_NML</em>
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class="code">darttime</em></TD>
-    <TD>The DART time to be converted.</TD></TR>
-
-<TR><TD valign=top><em class="code">date1</em></TD>
-    <TD>The year/month/day component of the time
-        in YYYYMMDD format - an 8-digit integer.
-        This is the same format as 
-        <em class="file">data.cal</em><em class="code">&amp;CAL_NML:startDate_1</em>
-    </TD></TR>
-
-<TR><TD valign=top><em class="code">date2</em></TD>
-    <TD>The hour/min/sec component of the time
-        in HHMMSS format. This is the same format as 
-        <em class="file">data.cal</em><em class="code">&amp;CAL_NML:startDate_2</em>
+<TR><TD valign=top><em class=code>model_time</em></TD>
+    <TD>the 1D array containing the concatenated SALT,TEMP,UVEL,VVEL,PSURF variables.
+    To save storage, it is possible to modify the definition of <em class=code>r8</em>
+    in <em class=file>DART/common/types_mod.f90</em> to be the same as that
+    of <em class=code>r4</em>.
     </TD></TR>
 
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="DARTtime_to_timestepindex"></A>
-<BR>
+<A NAME="sv_to_restart_file"></A>
+<br />
 <div class="routine">
-<em class="call">timeindex = DARTtime_to_timestepindex(darttime)</em>
+<em class=call>call sv_to_restart_file(state_vector, filename, statedate)</em>
 <pre>
-type(time_type), intent(in)  :: <em class="code">darttime</em>
-integer,         intent(out) :: <em class="code">timeindex</em>
+real(r8), dimension(:), intent(in) :: <em class=code>state_vector</em>
+character(len=*),       intent(in) :: <em class=code>filename</em>
+type(time_type),        intent(in) :: <em class=code>statedate</em>
 </pre>
 </div>
 
@@ -1802,480 +1462,114 @@ integer,         intent(out) :: <em class="code">timeindex</em>
 <!-- Description -->
 
 <P>
-<em class="code">DARTtime_to_timestepindex</em>
-converts the DART time to an integer representing the number of
-timesteps since the date in 
-<em class="file">data.cal</em><em class="code">&amp;CAL_NML</em>,
-i.e., the start of the model run. The size of each timestep is
-determined as discussed in the 
-<a href="#timestep_to_DARTtime">timestep_to_DARTtime</a> section.
+<em class=code>sv_to_restart_file</em>
+updates the SALT_CUR, TEMP_CUR, UVEL_CUR, VVEL_CUR, and PSURF_CUR variables
+in the POP netCDF-format restart file with values from 
+the DART vector <em class=code>state_vector</em>. The time in the
+file must match the <em class=code>statedate</em>.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class="code">darttime</em></TD>
-    <TD>The DART time to be converted.</TD></TR>
+<TR><TD valign=top><em class=code>state_vector</em></TD>
+    <TD>the 1D array containing the DART state vector.</TD></TR>
 
-<TR><TD valign=top><em class="code">timeindex</em></TD>
-    <TD>The number of timesteps corresponding to
-        the DARTtime ...
+<TR><TD valign=top><em class=code>filename</em></TD>
+    <TD>the netCDF-format POP restart file to be updated.
+</TD></TR>
+
+<TR><TD valign=top><em class=code>statedate</em></TD>
+    <TD>the 'valid_time' of the DART state vector.
     </TD></TR>
 
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="write_data_namelistfile"></A>
-<BR>
+<A NAME="get_pop_restart_filename"></A>
+<br />
 <div class="routine">
-<em class="call">call write_data_namelistfile()</em>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-There are no input arguments to 
-<em class="code">write_data_namelistfile</em>.
-<em class="code">write_data_namelistfile</em>
-reads the <em class="file">data</em> namelist file and creates an 
-almost-identical copy named <em class="file">data.DART</em> that differs 
-only in the namelist parameters that control the model advance. 
-<br><br>
-(NOTE) <em class="program">advance_model.csh</em> is designed to first run  
-<em class="file">trans_sv_pv</em> to create appropriate 
-<em class="file">data.DART</em> and 
-<em class="file">data.cal.DART</em> files.  The script
-then renames them to that expected by the ocean model.
-</P>
-
-</div>
-<br>
-
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
-<!--==================================================================-->
-
-<A NAME="Namelist"></A>
-<HR>
-<H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-<div class="namelist"><pre>
-<em class="call">namelist /model_nml/ </em> assimilation_period_days, &amp;
-     assimilation_period_seconds, output_state_vector, model_perturbation_amplitude
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>This namelist is read in a file called <em class="file">input.nml</em>.
-   This namelist provides control over the assimilation period for the model.
-   All observations within (+/-) half of the assimilation period are assimilated.
-   The assimilation period is the minimum amount of time the model can be advanced,
-   and checks are performed to ensure that the assimilation window is a multiple of
-   the ocean model dynamical timestep indicated by <em class="code">PARM03:deltaTClock</em>.
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-
-<TR><!--contents--><TD valign=top>assimilation_period_days</TD>
-    <!--  type  --><TD valign=top>integer <em class="unit">[default:&nbsp;7]</em></TD>
-    <!--descript--><TD>The number of days to advance the model for each assimilation.
-                       </TD></TR>
-
-<TR><!--contents--><TD valign=top>assimilation_period_seconds</TD>
-    <!--  type  --><TD valign=top>integer <em class="unit">[default:&nbsp;0]</em></TD>
-    <!--descript--><TD>In addition to <em class="unix">assimilation_period_days</em>, 
-                    the number of seconds to advance the model for each assimilation.
-                       </TD></TR>
-
-<TR><!--contents--><TD valign=top>output_state_vector</TD>
-    <!--  type  --><TD valign=top>logical <em class="unit">[default:&nbsp;.true.]</em></TD>
-    <!--descript--><TD>The switch to determine the form of the state vector in the
-                       output netCDF files. If <em class="code">.true.</em> 
-                       the state vector will be output exactly as DART uses it 
-                       ... one long array.  If <em class="code">.false.</em>, 
-                       the state vector is parsed into prognostic variables and 
-                       output that way -- much easier to use with 'ncview', for
-                       example.</TD></TR>
-
-<TR><!--contents--><TD valign=top>model_perturbation_amplitude</TD>
-    <!--  type  --><TD valign=top>real(r8) <em class="unit">[default:&nbsp;0.2]</em></TD>
-    <!--descript--><TD>The amount of noise to add when trying to perturb a single
-                       state vector to create an ensemble. Only needed when 
-<em class="file">input.nml</em><em class="code">&amp;filter_nml:start_from_restart = .false.</em>
-                       See also 
-                       <a href="#InitialEnsemble">Generating the initial ensemble</a> 
-                       at the start of this document. units: standard deviation 
-                       of a gaussian distribution with the mean at the value of 
-                       the state vector element.</TD></TR> 
-</TABLE>
-
-<H3 class=indent1>Example</H3>
-
+<em class=call>call get_pop_restart_filename( filename )</em>
 <pre>
-&amp;model_nml
-   assimilation_period_days     = 1, 
-   assimilation_period_seconds  = 0, 
-   model_perturbation_amplitude = 0.2, 
-   output_state_vector          = .false.  /
-</pre>
-
-</div>
-<br>
-
-<!--==================================================================-->
-
-<A NAME="namelist_cal_nml"></A>
-<BR>
-<div class="namelist"><pre>
-<em class="call">namelist /CAL_NML/ </em> TheCalendar, startDate_1, startDate_2, calendarDumps
+character(len=*), intent(out) :: <em class=code>filename</em>
 </pre>
 </div>
 
 <div class=indent1>
 <!-- Description -->
-
-<P>This namelist is read in a file called <em class="file">data.cal</em>
-This namelist is the same one that is used by the ocean model. 
-The values <strong>must</strong> correspond to the date at the
-start of an experiment. This is more important for 
-<em class="file">create_ocean_obs, trans_pv_sv</em> than
-for <em class="file">filter</em> and <a href="trans_sv_pv.html">trans_sv_pv</a> since 
-<em class="file">trans_sv_pv</em> takes the start time of the experiment from the DART
-initial conditions file and actually writes a new <em class="file">data.cal.DART</em> and a new
-<em class="file">data.DART</em> file.
-<em class="file">advance_model.csh</em> renames
-<em class="file">data.DART</em> and
-<em class="file">data.cal.DART</em> to be used for the model advance. 
-<br>
-<br>
-Still, the files must exist before DART runs to avoid unnecessarily complex logic.
-If you are running the support programs in a standalone fashion (as you might if
-you are converting snapshot files into an intial ensemble), it is critical that 
-the values in this namelist are correct to have accurate times in the headers of
-the restart files. You can always patch the times in the headers with 
-<em class="file">restart_file_utility</em>.
-</P>
-
-</div>
-<br>
-
-<!--==================================================================-->
-
-<A NAME="namelist_parm03"></A>
-<BR>
-<div class="namelist"><pre>
-<em class="call">namelist /PARM03/ </em> startTime, endTime, deltaTmom, &amp;
-                        deltaTtracer, deltaTClock, dumpFreq, taveFreq, ...
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>This namelist is read in a file called <em class="file">data</em>.
-This namelist is the same one that is used by the ocean model. 
-Only the variables listed here are used by the DART programs, there
-are more variables that are used only by the ocean model.
-<br>
-<br>
-There are two scenarios of interest for this namelist.
-</P>
-<ol>
-<li> During an experiment, the <em class="file">advance_model.csh</em> 
-script is invoked by <em class="program">filter</em> and the namelist 
-is read by <em class="program">trans_sv_pv</em> and REWRITTEN for 
-use by the ocean model. Since this all happens in a local directory 
-for the model advance, only a copy of the input 
-<em class="file">data</em> file is overwritten. The intent is that 
-the <em class="file">data</em> file is preserved 'perfectly' except
-for the values in <em class="code">&amp;PARM03</em> that pertain to 
-controlling the model advance: 
-<em class="code">endTime</em>,
-<em class="code">dumpFreq</em>, and
-<em class="code">taveFreq</em>.
-</li>
-<li> Outside the confines of <em class="program">trans_sv_pv</em>, 
-this namelist is always simply read and is unchanged.</li>
-</ol>
-
-<TABLE border="0" cellpadding="10" width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>startTime</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD valign=top>This <strong>must</strong> be 0.0
-                       to tell the ocean model to read from the input files 
-    named in <em class="file">data</em><em class="code">&amp;PARM05</em>.
-                       </TD></TR> 
-
-<TR><!--contents--><TD valign=top>endTime</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD valign=top>The number of seconds for one model advance.
-                       (normally set by <em class="program">trans_sv_pv</em>)
-                       </TD></TR> 
-
-<TR><!--contents--><TD valign=top>deltaTmom, deltaTtracer, deltaTClock</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD valign=top>These are used when trying to interpret the
-                       timestepcount in the snapshot files. They must all be
-                       identical unless someone can tell me which one is used
-                       when the ocean model creates snapshot filenames. 
-                       </TD></TR> 
-
-<TR><!--contents--><TD valign=top>dumpFreq, taveFreq</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD valign=top>Set to the same value value as 
-                       <em class="code">endTime</em>. I have never run with
-                       different settings, my one concern would be how this
-                       affects a crappy piece of logic in  
-                       <em class="program">advance_model.csh</em> that requires
-                       there to be exactly ONE set of snapshot files - and that
-                       they correspond to the completed model advance.  
-                       </TD></TR> 
-</TABLE>
 
 <P>
-This namelist is the same one that is used by the ocean model. Only some of
-the namelist variables are needed by DART; the rest are ignored by DART 
-but could be needed by the ocean model. Here is a fragment for a daily 
-assimilation timestep with the model dynamics having a much shorter timestep.
+<em class=code>get_pop_restart_filename</em>
+is actually a 'pass-through' to a routine of the same name in 
+<em class=file>dart_pop_mod.f90</em>, since the filename is in
+module storage in <em class=program>dart_pop_mod</em>.
+
 </P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>filename&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The name of the POP restart file. Hardcoded to <em class=file>pop.r.nc</em>&nbsp;.
+    This simplifies the scripting portions - dereference the pointer files, make a link
+    to <em class=file>pop.r.nc</em> and you're done.
+    </TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="test_interpolation"></A>
+<br />
+<div class="routine">
+<em class=call>call test_interpolation( test_casenum )</em>
 <pre>
-<em class="call">&amp;PARM03</em> 
- startTime          = 0.,
-   endTime          = 86400.,
- deltaTmom          = 900.,
- deltaTtracer       = 900.,
- deltaTClock        = 900.,
- dumpFreq           = 86400.,
- taveFreq           = 86400.,
-...
-</pre>
-<P>
-This would result in snapshot files with names like
-<em class="file">[S,T,U,V,Eta].0000000096.data</em> since 86400/900&nbsp;=&nbsp;96.
-These values remain fixed for the entire assimilation experiment, the only
-thing that changes from the ocean model's perspective is a new 
-<em class="file">data.cal</em> gets created for every new assimilation cycle.
-<em class="program">filter</em> is responsible for starting and stopping the ocean
-model. The DART model state has a valid time associated with it, this information
-is used to create the new <em class="file">data.cal</em>.
-</P>
-
-</div>
-<br>
-
-<!--==================================================================-->
-
-<A NAME="namelist_parm04"></A>
-<BR>
-<div class="namelist"><pre>
-<em class="call">namelist /PARM04/ </em> phiMin, thetaMin, delY, delX, delZ, ...
+integer, intent(in) :: <em class=code>test_casenum</em>
 </pre>
 </div>
 
 <div class=indent1>
 <!-- Description -->
 
-<P>This namelist is read in a file called <em class="file">data</em>.
-This namelist is the same one that is used by the ocean model. 
-Only the variables listed here are used by the DART programs, there
-are more variables that are used only by the ocean model.
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-
-<TR><!--contents--><TD valign=top>phiMin</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD valign=top>The latitude of the southmost grid edge.
-                   In degrees.
-                   </TD></TR> 
-
-<TR><!--contents--><TD valign=top>thetaMin</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD valign=top>The longitude of the leftmost grid edge.
-                   In degrees.
-                   </TD></TR> 
-
-<TR><!--contents--><TD valign=top>delY</TD>
-    <!--  type  --><TD valign=top>real(r8), dimension(1024) </TD>
-    <!--descript--><TD valign=top>The latitudinal distance between grid cell edges. 
-                   In degrees. The array has a default value of 0.0. 
-                   The number of non-zero entries determines the number of latitudes.  
-                   <a href="#static_init_model">static_init_model()</a> 
-                   converts the namelist values to grid centroids and edges.
-                   </TD></TR> 
-
-<TR><!--contents--><TD valign=top>delX</TD>
-    <!--  type  --><TD valign=top>real(r8), dimension(1024) </TD>
-    <!--descript--><TD valign=top>The longitudinal distance between grid cell edges. 
-                   In degrees. The array has a default value of 0.0. 
-                   The number of non-zero entries determines the number of longitudes.  
-                   <a href="#static_init_model">static_init_model()</a> 
-                   converts the namelist values to grid centroids and edges.
-                   </TD></TR> 
-
-<TR><!--contents--><TD valign=top>delZ</TD>
-    <!--  type  --><TD valign=top>real(r8), dimension(512) </TD>
-    <!--descript--><TD valign=top>The vertical distance between grid cell edges  
-                   i.e., the thickness of the layer. 
-                   In meters. The array has a default value of 0.0. 
-                   The number of non-zero entries determines the number of depths.  
-                   <a href="#static_init_model">static_init_model()</a> 
-                   converts the namelist values to grid centroids and edges.
-                   </TD></TR> 
-</TABLE>
-
 <P>
-This namelist is the same one that is used by the ocean model. Only some of
-the namelist variables are needed by DART; the rest are ignored by DART 
-but could be needed by the ocean model.
-Here is a fragment for a (NY=225, NX=256, NZ=...) grid 
-</P>
-<pre>
-<em class="call">&amp;PARM04</em> 
- phiMin   =     8.4,
- thetaMin =   262.0,
- delY     = 225*0.1,
- delX     = 256*0.1,
- delZ     =  5.0037,
-             5.5860,
-             6.2725,
-             7.0817,
-             8.0350,
-             9.1575,
-            10.4786,
-            12.0322,
-            13.8579,
-            16.0012,
-              ...
-</pre>
-<P>
-Note that the <em class="unix">225*0.1</em> construct exploits the Fortran 
-repeat mechanism to achieve 225 evenly-spaced gridpoints without having to manually
-enter 225 identical values. No such construct exists for the unevenly-spaced 
-vertical layer thicknesses, so each layer thickness is explicitly entered.
+<em class=code>test_interpolation</em>
+is a rigorous test of the interpolation routine and relies completely
+on data files that are not normally distributed with DART. This routine
+is only used by <em class=file>test_dipole_interp.f90</em> and is not 
+normally part of the user-callable routines.
 </P>
 
 </div>
-<br>
-
-<!--==================================================================-->
-
-<A NAME="namelist_parm05"></A>
-<BR>
-<div class="namelist"><pre>
-<em class="call">namelist /PARM05/ </em> bathyFile, hydrogSaltFile, hydrogThetaFile, &amp;
-                 uVelInitFile, vVelInitFile, pSurfInitFile
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>This namelist is read in a file called <em class="file">data</em>.
-The only DART component to use this namelist is the shell script responsible
-for advancing the model - <em class="program">advance_model.csh</em>.
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-
-<TR><!--contents--><TD valign=top>bathyFile</TD>
-    <!--  type  --><TD valign=top>character(len=*)</TD>
-    <!--descript--><TD valign=top>The Fortran direct-access big-endian 
-                   binary file containing the bathymetry.
-                   </TD></TR> 
-
-<TR><!--contents--><TD valign=top>hydrogSaltFile</TD>
-    <!--  type  --><TD valign=top>character(len=*)</TD>
-    <!--descript--><TD valign=top>The Fortran direct-access big-endian 
-                   binary (snapshot) file containing the salinity.
-                   <em class="file">S.0000000096.data</em>, for example.
-                   Units: psu
-                   </TD></TR> 
-
-<TR><!--contents--><TD valign=top>hydrogThetaFile</TD>
-    <!--  type  --><TD valign=top>character(len=*)</TD>
-    <!--descript--><TD valign=top>The Fortran direct-access big-endian 
-                   binary (snapshot) file containing the temperatures.
-                   <em class="file">T.0000000096.data</em>, for example.
-                   Units: degrees C
-                   </TD></TR> 
-
-<TR><!--contents--><TD valign=top>uVelInitFile</TD>
-    <!--  type  --><TD valign=top>character(len=*)</TD>
-    <!--descript--><TD valign=top>The Fortran direct-access big-endian 
-                   binary (snapshot) file containing the U current velocities.
-                   <em class="file">U.0000000096.data</em>, for example.
-                   Units: m/s
-                   </TD></TR> 
-
-<TR><!--contents--><TD valign=top>vVelInitFile</TD>
-    <!--  type  --><TD valign=top>character(len=*)</TD>
-    <!--descript--><TD valign=top>The Fortran direct-access big-endian 
-                   binary (snapshot) file containing the V current velocities.
-                   <em class="file">V.0000000096.data</em>, for example.
-                   Units: m/s
-                   </TD></TR> 
-
-<TR><!--contents--><TD valign=top>pSurfInitFile</TD>
-    <!--  type  --><TD valign=top>character(len=*)</TD>
-    <!--descript--><TD valign=top>The Fortran direct-access big-endian 
-                   binary (snapshot) file containing the sea surface heights.
-                   <em class="file">Eta.0000000096.data</em>, for example.
-                   Units: m
-                   </TD></TR> 
-
-</TABLE>
-
-<P>
-This namelist specifies the input files to the ocean model. DART must create these
-input files. <em class="program">advance_model.csh</em> has an ugly block of code
-that actually 'reads' this namelist and extracts the names of the input files
-expected by the ocean model. 
-<em class="program">advance_model.csh</em> then <strong>renames</strong> the 
-snapshot files to be that expected by the ocean model. For this reason (and several
-others) a DART experiment occurrs in a separate directory we call CENTRALDIR,
-and each model advance happens in a run-time subdirectory.
-The data files copied to the run-time directory are deemed to be volatile, 
-i.e., we can overwrite them and change them during the course of an experiment. 
-</P>
-
-</div>
-<br>
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 
-<TABLE border=0 >
+<TABLE border=0 width=100%>
 <TR><TH align=left>filename</TH>
     <TH align=left>purpose</TH></TR>
 <TR><TD>input.nml</TD>
     <TD>to read the model_mod namelist</TD></TR>
+<TR><TD>pop_in</TD>
+    <TD>to read the model_mod namelist</TD></TR>
+<TR><TD>pop.r.nc</TD>
+    <TD>provides grid dimensions and 'valid_time' of the model state</TD></TR>
+<TR><TD><em class=code>&amp;grid_nml</em> "horiz_grid_file"</TD>
+    <TD>contains the values of the horizontal grid</TD></TR>
+<TR><TD><em class=code>&amp;grid_nml</em> "vert_grid_file"</TD>
+    <TD>contains the number and values of the vertical levels</TD></TR>
+<TR><TD>True_State.nc</TD>
+    <TD>the time-history of the "true" model state from an OSSE</TD></TR>
 <TR><TD>Prior_Diag.nc</TD>
     <TD>the time-history of the model state before assimilation</TD></TR>
 <TR><TD>Posterior_Diag.nc&nbsp;</TD>
@@ -2286,13 +1580,14 @@ i.e., we can overwrite them and change them during the course of an experiment.
     <TD>the record of all the namelists actually USED - 
         contains the default values</TD></TR>
 </TABLE>
+<br />
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none </li>
@@ -2303,181 +1598,46 @@ i.e., we can overwrite them and change them during the course of an experiment.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH width="50%">Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
-    <!-- message --><TD VALIGN=top>... At present, DART only supports equal
+<TR><!-- routine --><TD VALIGN=top>update_reg_list</TD>
+    <!-- message --><TD VALIGN=top>max_reg_list_num&nbsp;(##)&nbsp;is&nbsp;too&nbsp;small&nbsp;...&nbsp;increase
 values.</TD>
-    <!-- comment --><TD VALIGN=top>namelist PARM03 has deltaTmom /=
-deltaTtracer /= deltaTClock</TD>
+    <!-- comment --><TD VALIGN=top>The max_reg_list_num controls the size of temporary 
+    storage used for initializing the regular grid. Four arrays of size 
+    num_reg_x*num_reg_y*max_reg_list_num are needed. The initialization
+    fails and returns an error if max_reg_list_num is too small. A value of
+    30 is sufficient for the x3 POP grid with 180 regular lon and lat boxes 
+    and a value of 80 is sufficient for for the x1 grid. Look at the output
+    from <em class=program>init_dipole_interp()</em> for values for new grids.</TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
-    <!-- message --><TD VALIGN=top>could not figure out number of
-longitudes from delX in namelist</TD>
-    <!-- comment --><TD VALIGN=top>Every entry in PARM04:delX is a perfect
-zero [the default value] ... indicating there are no longitudes. That can't be good.</TD>
+<TR><!-- routine --><TD VALIGN=top>restart_file_to_sv</TD>
+    <!-- message --><TD VALIGN=top>cannot open file "xxxx" for reading</TD>
+    <!-- comment --><TD VALIGN=top>The POP restart file "xxxx" does not exist.</TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
-    <!-- message --><TD VALIGN=top>could not figure out number of
-latitudes from delY in namelist</TD>
-    <!-- comment --><TD VALIGN=top>Every entry in PARM04:delY is a perfect
-zero [the default value] ... indicating there are no latitudes.</TD>
+<TR><!-- routine --><TD VALIGN=top>restart_file_to_sv</TD>
+    <!-- message --><TD VALIGN=top>'WARNING!!!   year 0 not supported; setting to year 1</TD>
+    <!-- comment --><TD VALIGN=top>Some POP restart files have year 0 ... which is not
+    supported in a Gregorian calendar. Our intent here is to do data assimilation,
+    normally 'real' observations have 'real' dates.</TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
-    <!-- message --><TD VALIGN=top>could not figure out number of
-depth levelss from delZ in namelist</TD>
-    <!-- comment --><TD VALIGN=top>Every entry in PARM04:delZ is a perfect
-zero [the default value] ... indicating there are no depth levels.</TD>
+<TR><!-- routine --><TD VALIGN=top>sv_to_restart_file</TD>
+    <!-- message --><TD VALIGN=top>current time /= model time. FATAL error.</TD>
+    <!-- comment --><TD VALIGN=top>The DART time does not match the time of the POP restart file.
+    This message is preceeded by several lines indicating the expected times of both DART and POP.</TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
-    <!-- message --><TD VALIGN=top>unable to parse line &#60;*&#62; 
-                                   from &#60;some_file&#62;  </TD>
-    <!-- comment --><TD VALIGN=top>unable to match character string
-'nDims&nbsp;=&nbsp;[' in the snapshot metadata file.
-</TD>
-
-<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
-    <!-- message --><TD VALIGN=top>unable to determine nDims
-                                   from &#60;some_file&#62;  </TD>
-    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
-'nDims&nbsp;=&nbsp;[' but the value cannot be understood.
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
-    <!-- message --><TD VALIGN=top>unable to read line &#60;*&#62; 
-                                   from &#60;some_file&#62;  </TD>
-    <!-- comment --><TD VALIGN=top>no comment.
-</TD>
-
-<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
-    <!-- message --><TD VALIGN=top>unable to parse dimList(&#60;*&#62;)
-                                   from &#60;some_file&#62; </TD>
-    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
-'dimList&nbsp;=&nbsp;[' but the value cannot be understood.
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
-    <!-- message --><TD VALIGN=top>unable to determine dimList
-                                   from &#60;some_file&#62; </TD>
-    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
-'dimList&nbsp;=&nbsp;[' but the values are all nonsensical.
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
-    <!-- message --><TD VALIGN=top>unable to parse dataprec
-                                   from &#60;some_file&#62; </TD>
-    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
-'dataprec&nbsp;=&nbsp;[' but the value cannot be understood.
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
-    <!-- message --><TD VALIGN=top>unable to determine dataprec
-                                   from &#60;some_file&#62; </TD>
-    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
-'dataprec&nbsp;=&nbsp;[' but the values are all nonsensical.
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
-    <!-- message --><TD VALIGN=top>unable to parse nrecords
-                                   from &#60;some_file&#62; </TD>
-    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
-'nrecords&nbsp;=&nbsp;[' but the value cannot be understood.
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
-    <!-- message --><TD VALIGN=top>unable to determine nrecords
-                                   from &#60;some_file&#62; </TD>
-    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
-'nrecords&nbsp;=&nbsp;[' but the values are all nonsensical.
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
-    <!-- message --><TD VALIGN=top>unable to parse timeStepNumber
-                                   from &#60;some_file&#62; </TD>
-    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
-'timeStepNumber&nbsp;=&nbsp;[' but the value cannot be understood.
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_meta</TD>
-    <!-- message --><TD VALIGN=top>unable to determine timeStepNumber
-                                   from &#60;some_file&#62; </TD>
-    <!-- comment --><TD VALIGN=top>snapshot metadata file has the string
-'timeStepNumber&nbsp;=&nbsp;[' but the values are all nonsensical.
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>write_meta</TD>
-    <!-- message --><TD VALIGN=top>unable to open file
-                                   &#60;some_file&#62; for writing</TD>
-    <!-- comment --><TD VALIGN=top>no comment.
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_Nd_snapshot</TD>
-    <!-- message --><TD VALIGN=top>storage mode mismatch for
-                                   &#60;some_file&#62; </TD>
-    <!-- comment --><TD VALIGN=top>DART is expecting a 32bit float in the
-snapshot file. This is tricky to check, since it is possible to
-redefine the <em class="unix">r4</em> storage type (in <em
-class="file">common/types_mod.f90</em>) to be a 64bit float, in which case
-you don't want to get a 32bit float. This check must be manually disabled
-by editing the logic in <em class="code">read_Nd_snapshot</em> to handle
-the case where the snapshot file storage is 64bit.
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_Nd_snapshot</TD>
-    <!-- message --><TD VALIGN=top>dim 1 does not match delX grid size
-                    from namelist ...  </TD>
-    <!-- comment --><TD VALIGN=top>the snapshot file metadata does not
-match the number of longitudes inferred from PARM04:delX
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_Nd_snapshot</TD>
-    <!-- message --><TD VALIGN=top>dim 2 does not match delY grid size
-                    from namelist ...  </TD>
-    <!-- comment --><TD VALIGN=top>the snapshot file metadata does not
-match the number of latitudes inferred from PARM04:delY
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_Nd_snapshot</TD>
-    <!-- message --><TD VALIGN=top>dim 3 does not match delZ grid size
-                    from namelist ...  </TD>
-    <!-- comment --><TD VALIGN=top>the snapshot file metadata does not
-match the number of depths inferred from PARM04:delZ
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_Nd_snapshot</TD>
-    <!-- message --><TD VALIGN=top>cannot open (&#60;*&#62;) 
-                                   &#60;some_file&#62; for reading</TD>
-    <!-- comment --><TD VALIGN=top>the (&#60;*&#62;) is the Fortran error code 
-</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>read_Nd_snapshot</TD>
-    <!-- message --><TD VALIGN=top>unable to read (&#60;*&#62;) snapshot file
-                                   &#60;some_file&#62;</TD>
-    <!-- comment --><TD VALIGN=top>the (&#60;*&#62;) is the Fortran error code 
-</TD>
+<TR><!-- routine --><TD VALIGN=top>test_interpolation</TD>
+    <!-- message --><TD VALIGN=top>mismatch nx,nx_temp ##,## or ny,ny_temp ##,##</TD>
+    <!-- comment --><TD VALIGN=top>The file sizes do not match the expected sizes for the
+    interpolation test case being performed.</TD>
 </TR>
 
 </TABLE>
@@ -2493,10 +1653,16 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
-none at this time
+<em class=file>dart_pop_mod</em>:<em class=code>set_model_time_step()</em> 
+must ensure the forecast length is a multiple of the ocean model 
+dynamical timestep declared by ????
+<br />
+<br />
+Provide a better mechanism for generating a set of perturbed initial 
+conditions - <em class=code>pert_model_state()</em> 
 </P>
 
 <!--==================================================================-->
@@ -2504,7 +1670,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -2515,13 +1681,13 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
-This open source software is provided by UCAR, "as is",<br>
-without charge, subject to all terms of use at<br>
+DART software - Copyright &#169; 2004 - 2010 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
