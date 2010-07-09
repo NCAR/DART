@@ -73,8 +73,8 @@
 # On lightning, load the 'lsf' module to get mpif90 in your path.
 # (as well as the 'pgi' module.)
 
-MPIFC = mpif90
-MPILD = mpif90
+MPIFC = ftn
+MPILD = ftn
 FC = ftn
 LD = ftn
 NETCDF = /opt/cray/netcdf/4.0.1.3/netcdf-pgi
