@@ -19,12 +19,14 @@
 </center>
 
 <H1>WOD Observations</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<small>Last subversion update of this doc file:<P>
+<!-- version tag follows, do not edit -->$Id$
+</P></small>
 
 <P>
 The WOD (World Ocean Database) data is a collection of data from various
-data sources, combined into a single format with uniform treatment.
-The <a href="http://www.nodc.noaa.gov/OC5/WOD05/pr_wod05.html">WOD 2005 page</a> 
+sources, combined into a single format with uniform treatment.
+The <a href="http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html">WOD 2009 page</a> 
 has detailed information about the repository, observations, and datasets.
 The programs in this directory convert from the packed ASCII files
 found in the repository into 
@@ -46,14 +48,18 @@ values during the assimilation.
 <H2>DATA SOURCES</H2>
 
 <P>
-Data from the WOD05 can be downloaded interactively from
-<a href="http://www.nodc.noaa.gov/OC5/SELECT/dbsearch/dbsearch.html">here</a>.
+Data from the WOD09 can be downloaded interactively from links on
+<a href="http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html">this page</a>.
+One suggestion is to pick the 'sorted by year link' and download the
+files (you can select multiple years at once) for each data type for
+the years of interest.  Make sure to select the standard level versions
+of each dataset.
 </P>
 
 <P>
 UCAR/NCAR users with access to the DSS data repository can download
-WOD05 files from
-<a href="http://dss.ucar.edu/datazone/dsszone/ds285.0/#WOD05">here</a>.
+WOD09 files from
+<a href="http://dss.ucar.edu/datazone/dsszone/ds285.0/#WOD09">here</a>.
 A UCAR DSS userid is required to access this page.  The files to use
 are named "yearly_*_STD.tar".
 </P>
@@ -62,10 +68,10 @@ are named "yearly_*_STD.tar".
 Requested citation if you use this data:
 </P>
 <pre>
-T.P. Boyer, J.I. Antonov, H.E. Garcia, D.R. Johnson, R.A. Locarnini, 
-A.V. Mishonov, M.T. Pitcher, O.K. Baranova, and I.V. Smolyar, 2006.  
-World Ocean Database 2005. S. Levitus, Ed., NODC Atlas NESDIS 60,  
-U.S. Government Printing Office, Wash., D.C., 190 pp., DVDs. 
+Johnson, D.R., T.P. Boyer, H.E. Garcia, R.A. Locarnini, O.K. Baranova, and M.M. Zweng, 
+2009. World Ocean Database 2009 Documentation. Edited by Sydney Levitus. NODC 
+Internal Report 20, NOAA Printing Office, Silver Spring, MD, 175 pp.  
+Available at http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html. 
 </pre>
 
 <!--==================================================================-->
@@ -91,7 +97,7 @@ a <em class=file>quickbuild.csh</em> script
 to build all necessary executables.
 <br> 
 <br>
-Optional namelist interface
+Namelist 
 <A HREF="#Namelist"> <em class=code>&amp;wod_to_obs_nml</em> </A>
 may be read from file <em class=file>input.nml</em>.
 </P>
@@ -134,6 +140,7 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
    wod_out_file,
    avg_obs_per_file,
    debug,
+   timedebug,
    max_casts,
    no_output_file,
    print_every_nth_cast,
@@ -216,6 +223,12 @@ This namelist is read in a file called <em class=file>input.nml</em>
                        out debugging information.
                        Default: .FALSE. (no debug info printed) </TD></TR>
   
+<TR><!--contents--><TD valign=top>timedebug</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD>If set to .TRUE., the program will print 
+                       out specialized time-related debugging information.
+                       Default: .FALSE. (no debug info printed) </TD></TR>
+  
 <TR><!--contents--><TD valign=top>max_casts</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD>If set to a value greater than 0, the program will only
@@ -278,9 +291,19 @@ values or whether there are some codes we should accept.
 <HR>
 <H2>FUTURE PLANS</H2>
 <P>
-This converter is currently being used on WOD05 data, but as soon as the
-WOD09 data is available (data up to 2009), the same program should be
-able to convert those files as well.
+This converter is currently being used on WOD09 data, but the standard
+files generally stop with early 2009 data.  There are subsequent additional
+new obs files available from the download site.
+</P>
+<P>
+The fractional-time field, and sometimes the day-of-month field in a
+small percentage of the obs have bad values.  The program currently
+discards these obs, but it may be possible to recover the original
+good day number and/or time of day.  There is a subroutine at the end
+of the <em class="file">wod_to_obs.f90</em> file which contains all
+the reject/accept/correction information for the year, month, day, time
+fields.  To accept or correct the times on more obs, edit this subroutine
+and make the necessary changes.
 </P>
 
 <!--==================================================================-->
@@ -292,7 +315,7 @@ able to convert those files as well.
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br>
 This open source software is provided by UCAR, "as is",<br>
 without charge, subject to all terms of use at<br>
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
