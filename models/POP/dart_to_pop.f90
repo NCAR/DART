@@ -30,7 +30,7 @@ use time_manager_mod, only : time_type, get_time, print_time, print_date, &
                              operator(-), set_time
 use        model_mod, only : static_init_model, sv_to_restart_file, &
                              get_model_size, get_model_time_step, &
-                             set_model_end_time, get_pop_restart_filename
+                             get_pop_restart_filename
 use     dart_pop_mod, only : write_pop_namelist
 
 implicit none
@@ -54,7 +54,6 @@ namelist /dart_to_pop_nml/ dart_to_pop_input_file, &
 !----------------------------------------------------------------------
 
 integer               :: iunit, io, x_size
-integer               :: secs, days
 type(time_type)       :: model_time, adv_to_time
 real(r8), allocatable :: statevector(:)
 character (len = 128) :: pop_restart_filename = 'no_pop_restart_file'

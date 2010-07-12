@@ -54,8 +54,8 @@ public :: get_model_size,         &
           get_state_meta_data,    &
           model_interpolate,      &
           get_model_time_step,    &
-          end_model,              &
           static_init_model,      &
+          end_model,              &
           init_time,              &
           init_conditions,        &
           nc_write_model_atts,    &
@@ -64,13 +64,12 @@ public :: get_model_size,         &
           get_close_maxdist_init, &
           get_close_obs_init,     &
           get_close_obs,          &
-          ens_mean_for_model,     &
-          test_interpolation
+          ens_mean_for_model
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
-public :: POP_meta_type, get_gridsize, set_model_end_time, &
-          restart_file_to_sv, sv_to_restart_file, get_pop_restart_filename
+public :: get_gridsize, restart_file_to_sv, sv_to_restart_file, &
+          get_pop_restart_filename, test_interpolation
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -165,16 +164,6 @@ type(time_type) :: model_time, model_timestep
 
 integer :: model_size    ! the state vector length
 
-! /pkg/mdsio/mdsio_write_meta.F writes the .meta files 
-type POP_meta_type
-!  private
-   integer :: nDims
-   integer :: dimList(3)
-   character(len=32) :: dataprec
-   integer :: reclen
-   integer :: nrecords
-   integer :: timeStepNumber    ! optional
-end type POP_meta_type
 
 INTERFACE vector_to_prog_var
       MODULE PROCEDURE vector_to_2d_prog_var
@@ -1692,26 +1681,6 @@ end function get_model_time_step
 
 
 
-subroutine set_model_end_time(adv_to_offset)
-!------------------------------------------------------------------
-!
-! sets PARM03:endTime to reflect the time when the model will stop. 
-! endTime is in module storage 
-
-type(time_type), intent(in) :: adv_to_offset
-
-integer :: secs, days
-
-if ( .not. module_initialized ) call static_init_model
-
-call get_time(adv_to_offset, secs, days)
-
-endTime = (secs + days*SECPERDAY)
-
-end subroutine set_model_end_time
-
-
-
 subroutine get_state_meta_data(index_in, location, var_type)
 !------------------------------------------------------------------
 !
@@ -2036,11 +2005,11 @@ if (debug > 0)    print *, 'pop namelist: nlines, linelen = ', nlines, linelen
 if (has_pop_namelist) then 
    allocate(textblock(nlines))
    textblock = ''
-   
+
    call nc_check(nf90_def_dim(ncid=ncFileID, name='nlines', &
                  len = nlines, dimid = nlinesDimID), &
                  'nc_write_model_atts', 'def_dim nlines ')
-   
+
    call nc_check(nf90_def_var(ncFileID,name='pop_in', xtype=nf90_char,    &
                  dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
                  'nc_write_model_atts', 'def_var pop_in')
@@ -2048,6 +2017,7 @@ if (has_pop_namelist) then
                  'contents of pop_in namelist'), 'nc_write_model_atts', 'put_att pop_in')
 
 endif
+
 !-------------------------------------------------------------------------------
 ! Here is the extensible part. The simplest scenario is to output the state vector,
 ! parsing the state vector into model-specific parts is complicated, and you need
@@ -2105,11 +2075,6 @@ else
    ! Create the (empty) Coordinate Variables and the Attributes
    !----------------------------------------------------------------------------
 
-   call nc_check(nf90_def_var(ncFileID,name='POPnml', xtype=nf90_char,    &
-                 dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
-                 'nc_write_model_atts', 'def_var POPnml')
-   call nc_check(nf90_put_att(ncFileID, nmlVarID, 'long_name',       &
-                 'namelist.input contents'), 'nc_write_model_atts', 'put_att POPnml')
 
    ! U,V Grid Longitudes
    call nc_check(nf90_def_var(ncFileID,name='ULON', xtype=nf90_real, &
@@ -3083,59 +3048,57 @@ end subroutine write_grid_netcdf
 
 
 subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
-                         obs_loc, obs_kind, num_close, close_ind, dist)
+                         obs, obs_kind, num_close, close_ind, dist)
 !------------------------------------------------------------------
 
-! Given a DART ob (referred to as "base") and a set of obs priors or state
-! variables (obs_loc, obs_kind), returns the subset of close ones to the
-! "base" ob, their indices, and their distances to the "base" ob...
+! Given a DART location (referred to as "base") and a set of candidate
+! locations & kinds (obs, obs_kind), returns the subset close to the
+! "base", their indices, and their distances to the "base" ...
 
 ! For vertical distance computations, general philosophy is to convert all
 ! vertical coordinates to a common coordinate. This coordinate type is defined
 ! in the namelist with the variable "vert_localization_coord".
 
-! Note that both base_obs_loc and obs_loc are intent(inout), meaning that
-! these locations are possibly modified here and returned as such to the
-! calling routine.  The calling routine is always filter_assim and these arrays
-! are local arrays within filter_assim. In other words, these modifications
-! will only matter within filter_assim, but will not propagate backwards to
-! filter.
+type(get_close_type),              intent(in) :: gc
+type(location_type),               intent(in) :: base_obs_loc
+integer,                           intent(in) :: base_obs_kind
+type(location_type), dimension(:), intent(in) :: obs
+integer,             dimension(:), intent(in) :: obs_kind
+integer,                           intent(out):: num_close
+integer,             dimension(:), intent(out):: close_ind
+real(r8),  optional, dimension(:), intent(out):: dist
 
-type(get_close_type), intent(in)     :: gc
-type(location_type),  intent(inout)  :: base_obs_loc, obs_loc(:)
-integer,              intent(in)     :: base_obs_kind, obs_kind(:)
-integer,              intent(out)    :: num_close, close_ind(:)
-real(r8),             intent(out)    :: dist(:)
-
-integer                :: t_ind, k
-
+integer :: t_ind, k
 
 ! Initialize variables to missing status
+
 num_close = 0
 close_ind = -99
-dist      = 1.0e9   !something big and positive (far away)
-
+if (present(dist)) dist = 1.0e9   !something big and positive (far away)
 
 ! Get all the potentially close obs but no dist (optional argument dist(:)
 ! is not present) This way, we are decreasing the number of distance
 ! computations that will follow.  This is a horizontal-distance operation and
 ! we don't need to have the relevant vertical coordinate information yet 
-! (for obs_loc).
-call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+! (for obs).
+
+call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
                        num_close, close_ind)
 
 ! Loop over potentially close subset of obs priors or state variables
+if (present(dist)) then
 do k = 1, num_close
 
    t_ind = close_ind(k)
 
    ! if dry land, leave original 1e9 value.  otherwise, compute real dist.
    if (obs_kind(t_ind) /= KIND_DRY_LAND) then
-      dist(k) = get_dist(base_obs_loc, obs_loc(t_ind), &
+      dist(k) = get_dist(base_obs_loc,       obs(t_ind), &
                          base_obs_kind, obs_kind(t_ind))
    endif
 
 enddo
+endif
 
 end subroutine get_close_obs
 
