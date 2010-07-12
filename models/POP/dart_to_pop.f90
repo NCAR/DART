@@ -13,24 +13,27 @@ program dart_to_pop
 !----------------------------------------------------------------------
 ! purpose: interface between DART and the POP model
 !
-! method: Read DART state vector (in file 'assim_model_state_ic') and 
-!         overwrite values in a POP 'restart' file.
-!         Must do something with the advance-to time.
+! method: Read DART state vector and overwrite values in a POP restart file.
+!         If the DART state vector has an 'advance_to_time' present, a
+!         file called pop_in.DART is created with a time_manager_nml namelist 
+!         appropriate to advance POP to the requested time.
 !
-! author: Tim Hoar 25 Jun 09
+!         The dart_to_pop_nml namelist setting for advance_time_present 
+!         determines whether or not the input file has an 'advance_to_time'.
+!         Typically, only temporary files like 'assim_model_state_ic' have
+!         an 'advance_to_time'.
+!
+! author: Tim Hoar 25 Jun 09, revised 12 July 2010
 !----------------------------------------------------------------------
 
-use        types_mod, only : r4, r8, SECPERDAY
-use    utilities_mod, only : E_ERR, E_WARN, E_MSG, error_handler, open_file, &
-                             initialize_utilities, timestamp, &
+use        types_mod, only : r8
+use    utilities_mod, only : initialize_utilities, timestamp, &
                              find_namelist_in_file, check_namelist_read, &
                              logfileunit
 use  assim_model_mod, only : open_restart_read, aread_state_restart, close_restart
-use time_manager_mod, only : time_type, get_time, print_time, print_date, &
-                             operator(-), set_time
+use time_manager_mod, only : time_type, print_time, print_date, operator(-)
 use        model_mod, only : static_init_model, sv_to_restart_file, &
-                             get_model_size, get_model_time_step, &
-                             get_pop_restart_filename
+                             get_model_size, get_pop_restart_filename
 use     dart_pop_mod, only : write_pop_namelist
 
 implicit none
@@ -46,7 +49,7 @@ character(len=128), parameter :: &
 !------------------------------------------------------------------
 
 character (len = 128) :: dart_to_pop_input_file   = 'dart.ic'
-logical               :: advance_time_present     = .TRUE.
+logical               :: advance_time_present     = .false.
 
 namelist /dart_to_pop_nml/ dart_to_pop_input_file, &
                            advance_time_present

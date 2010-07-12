@@ -25,9 +25,8 @@ program pop_to_dart
 ! author: Tim Hoar 6/24/09
 !----------------------------------------------------------------------
 
-use        types_mod, only : r4, r8
-use    utilities_mod, only : E_ERR, E_WARN, E_MSG, error_handler, logfileunit, &
-                             initialize_utilities, timestamp, &
+use        types_mod, only : r8
+use    utilities_mod, only : initialize_utilities, timestamp, &
                              find_namelist_in_file, check_namelist_read
 use        model_mod, only : restart_file_to_sv, static_init_model, &
                              get_model_size, get_pop_restart_filename
