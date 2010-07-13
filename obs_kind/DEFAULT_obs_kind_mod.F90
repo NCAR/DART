@@ -668,9 +668,14 @@ if ( .not. module_initialized ) call initialize_module
 
 is_ascii = ascii_file_format(fform)
 
-! Write the 20 character identifier for verbose formatted output
+! Write the 20 character identifier to indicate the start of a kind table.
+! To maintain complete backwards compatibility with the original read 
+! code this string must start in column 1.  
+! you cannot use: write(ifile, *) 'string'  because the output string
+! will start in col 2.  the string either has to be part of the format
+! argument to write(), or you have to use a separate format statement.
 if (is_ascii) then
-   write(ifile, *) 'obs_kind_definitions'
+   write(ifile,  "('obs_kind_definitions')")   ! see note above!
 else
    write(ifile)    'obs_kind_definitions'
 endif
@@ -739,7 +744,8 @@ endif
 
 is_ascii = ascii_file_format(fform)
 
-! Read the 20 character identifier for verbose formatted output
+! Read the 20 character identifier which identifies the start 
+! of the obstype number/name table for this sequence file.
 if (is_ascii) then
    read(ifile, *) header
 else
