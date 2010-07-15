@@ -53,14 +53,14 @@ contains
 !-------------------------------------------------
 
 function real_obs_sequence (obsfile, year, month, day, max_num, &
-          lon1, lon2, lat1, lat2, codar)
+          lon1, lon2, lat1, lat2, hfradar)
 !------------------------------------------------------------------------------
 !  this function is to prepare data to DART sequence format
 !
 character(len=129), intent(in) :: obsfile
 integer,            intent(in) :: year, month, day, max_num
 real(r8),           intent(in) :: lon1, lon2, lat1, lat2
-logical,            intent(in) :: codar
+logical,            intent(in) :: hfradar
 
 type(obs_sequence_type) :: real_obs_sequence
 
@@ -129,7 +129,7 @@ defkey  = 1
 
 obsloop:  do
 
-   if (codar) then
+   if (hfradar) then
       read(obs_unit,*,end=200) lon, lat, vloc, angle, obs_value, which_vert, var2, aqc, &
                                  obs_kind_name, startdate1, startdate2, id
    else
@@ -143,7 +143,7 @@ obsloop:  do
   !print*,' which_vert var2 aqc ',which_vert, var2, aqc
   !print*,' obs_kind_name ',obs_kind_name
   !print*,' date1 date2 ',startdate1, startdate2
-  !if (codar) print*, 'angle id ',angle, id
+  !if (hfradar) print*, 'angle id ',angle, id
 
    ! Calculate the DART time from the observation time 
    yy =     startdate1/10000
@@ -207,7 +207,7 @@ obsloop:  do
    
    call real_obs(num_copies, num_qc, obs, lon, lat, vloc, obs_value, &
                  var2, aqc, obstype, which_vert, seconds, days,      &
-                 codar, defkey, id, angle)
+                 hfradar, defkey, id, angle)
    
    if(obs_num == 1) then ! for the first observation 
 
@@ -259,13 +259,13 @@ end function real_obs_sequence
 
 subroutine real_obs(num_copies, num_qc, obs, lon, lat, vloc, obs_value, &
                       var2, aqc, obs_kind, which_vert, seconds, days,   &
-                      codar, defkey, id, angle)
+                      hfradar, defkey, id, angle)
 !------------------------------------------------------------------------------
 integer,        intent(in)    :: num_copies, num_qc
 type(obs_type), intent(inout) :: obs
 real(r8),       intent(in)    :: lon, lat, vloc, obs_value, var2, aqc, angle
 integer,        intent(in)    :: obs_kind, which_vert, seconds, days, id
-logical,        intent(in)    :: codar
+logical,        intent(in)    :: hfradar
 integer,        intent(inout) :: defkey
 
 integer            :: i
@@ -278,7 +278,7 @@ if ( .not. module_initialized ) call initialize_module
 
 call real_obs_def(obsdef0, lon, lat, vloc, &
                     var2, obs_kind, which_vert, seconds, days)
-if (codar) then
+if (hfradar) then
    ! this routine increments defkey and stores the private info in
    ! the ocean module until time to write.
    call set_radial_vel(defkey, id, angle)

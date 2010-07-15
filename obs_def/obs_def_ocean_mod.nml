@@ -1,5 +1,6 @@
 
-&obs_def_codar_mod_nml
-   max_radial_vel_obs          =   1000000,
+&obs_def_ocean_nml
+   max_radial_vel_obs = 1000000,
+   debug              = .false.,
    /
 

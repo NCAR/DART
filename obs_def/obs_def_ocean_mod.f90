@@ -58,7 +58,7 @@
 !SATELLITE_SSH,                 KIND_SEA_SURFACE_HEIGHT,    COMMON_CODE
 !SATELLITE_SSS,                 KIND_SALINITY,              COMMON_CODE
 !DRY_LAND,                      KIND_DRY_LAND,              COMMON_CODE
-!CODAR_RADIAL_VELOCITY,         KIND_VELOCITY
+!HFRADAR_RADIAL_VELOCITY,       KIND_VELOCITY
 ! END DART PREPROCESS KIND LIST
 
 ! From Ibrahim - 19 May 2009
@@ -78,7 +78,7 @@
 ! so to compute 'OBS_value' we need to read the observation file to get the ANGLE, 
 ! and that's basically the only difference with the assimilation of the other 
 ! types of observations. We also need to introduce the new obs type 
-! (CODAR_RADIAL_VELOCITY)."
+! (HFRADAR_RADIAL_VELOCITY)."
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -89,28 +89,28 @@
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
-!  case(CODAR_RADIAL_VELOCITY)
+!  case(HFRADAR_RADIAL_VELOCITY)
 !     call get_expected_radial_vel(state, location, obs_def%key, obs_val, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS READ_OBS_DEF
-!   case(CODAR_RADIAL_VELOCITY)
+!   case(HFRADAR_RADIAL_VELOCITY)
 !      call read_radial_vel(obs_def%key, ifile, fform)
 ! END DART PREPROCESS READ_OBS_DEF
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
-!   case(CODAR_RADIAL_VELOCITY)
+!   case(HFRADAR_RADIAL_VELOCITY)
 !      call write_radial_vel(obs_def%key, ifile, fform)
 ! END DART PREPROCESS WRITE_OBS_DEF
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
-!   case(CODAR_RADIAL_VELOCITY)
+!   case(HFRADAR_RADIAL_VELOCITY)
 !      call interactive_radial_vel(obs_def%key)
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 !-----------------------------------------------------------------------------
@@ -161,16 +161,18 @@ character(len=129) :: msgstring ! For error message content
 type radial_vel_type
    private
    integer   :: instrument_id       ! ID number for data source
-   real(r8)  :: beam_angle          ! angle of beam
+   real(r8)  :: beam_angle          ! angle of beam (radians)
 end type radial_vel_type
 
 ! Cumulative index into radial velocity metadata array
 integer :: velkeycount = 0 
+character(len=32) :: header, str1
                              
 ! namelist items
-integer  :: max_radial_vel_obs         = 1000000
+integer :: max_radial_vel_obs = 1000000
+logical :: debug = .false.   ! set to .true. to enable debug printout
 
-namelist /obs_def_ocean_mod_nml/ max_radial_vel_obs
+namelist /obs_def_ocean_nml/ max_radial_vel_obs, debug
 
 ! Module global storage for auxiliary obs data, allocated in init routine
 type(radial_vel_type), allocatable :: radial_vel_data(:)
@@ -200,13 +202,13 @@ module_initialized = .true.
 call register_module(source, revision, revdate)
 
 ! Read the namelist entry.
-call find_namelist_in_file("input.nml", "obs_def_ocean_mod_nml", iunit)
-read(iunit, nml = obs_def_ocean_mod_nml, iostat = io)
-call check_namelist_read(iunit, io, "obs_def_ocean_mod_nml")
+call find_namelist_in_file("input.nml", "obs_def_ocean_nml", iunit)
+read(iunit, nml = obs_def_ocean_nml, iostat = io)
+call check_namelist_read(iunit, io, "obs_def_ocean_nml")
 
 ! Record the namelist values used for the run ... 
-if (do_nml_file()) write(nmlfileunit, nml=obs_def_ocean_mod_nml)
-if (do_nml_term()) write(     *     , nml=obs_def_ocean_mod_nml)
+if (do_nml_file()) write(nmlfileunit, nml=obs_def_ocean_nml)
+if (do_nml_term()) write(     *     , nml=obs_def_ocean_nml)
 
 ! Allocate space for the auxiliary information associated with each obs
 ! This code must be placed after reading the namelist, so the user can
@@ -233,16 +235,17 @@ end subroutine initialize_module
 subroutine read_radial_vel(velkey, ifile, fform)
 
 ! Main read subroutine for the radial velocity observation auxiliary data.
+! The beam_angle is expected to be in degrees in the file.
+! The beam_angle will be converted to radians in the module storage.
 
 integer,          intent(out)          :: velkey
 integer,          intent(in)           :: ifile
 character(len=*), intent(in), optional :: fform
 
-character(len=8)    :: header
-logical             :: is_asciifile
-integer             :: instrument_id
-real(r8)            :: beam_angle
-integer             :: oldkey
+logical  :: is_asciifile
+integer  :: instrument_id
+real(r8) :: beam_angle
+integer  :: oldkey
 
 ! instrument id: Arbitrary number to distinguish different sources of
 !  the data.  Not used in any of this code, but carried along in case
@@ -254,19 +257,22 @@ is_asciifile = ascii_file_format(fform)
 
 if (is_asciifile) then
    ! Read the character identifier for verbose formatted output
-   read(ifile, FMT="(a5)") header
-   if(header /= 'CODAR') then
+   read(ifile, FMT="(a)") header
+   str1 = adjustl(header)
+
+   if(str1(1:7) /= 'HFRADAR') then
+      write(msgstring,*)"Expected header 'HFRADAR' in input file, got ", str1(1:7)
       call error_handler(E_ERR,'read_radial_vel', &
-           "Expected header 'CODAR' in input file", &
-           source, revision, revdate)
+           msgstring, source, revision, revdate)
    endif
 endif
 
 ! read_location is a DART library routine that expects an optional string
 ! arg, but the other two read routines are local to this module and we can
 ! tell them exactly what format to be reading because we already know it.
-instrument_id    = read_instrument_id (ifile, is_asciifile)
-beam_angle       = read_beam_angle    (ifile, is_asciifile)
+instrument_id = read_instrument_id (ifile, is_asciifile)
+beam_angle    = read_beam_angle    (ifile, is_asciifile)
+beam_angle    = beam_angle*deg2rad
 
 ! Read in the velkey for this particular observation, however, it will
 ! be discarded and a new, unique key will be generated in the set routine.
@@ -305,13 +311,13 @@ call velkey_out_of_range(velkey)
 is_asciifile = ascii_file_format(fform)
 
 if (is_asciifile) then
-   ! Write the 5 character identifier for verbose formatted output
-   write(ifile, "('CODAR')")
+   ! Write the 7 character identifier for verbose formatted output
+   write(ifile, "('HFRADAR')")
 endif
 
 ! Extract the values for this key and call the appropriate write routines.
 instrument_id = radial_vel_data(velkey)%instrument_id
-beam_angle    = radial_vel_data(velkey)%beam_angle
+beam_angle    = radial_vel_data(velkey)%beam_angle*rad2deg
 
 ! These two write routines are local to this module, and we have already 
 ! figured out if it is a unformatted/binary file or formatted/ascii, so 
@@ -344,17 +350,16 @@ integer, intent(in) :: ifile
 logical, intent(in) :: is_asciiformat
 integer             :: read_instrument_id
 
-character(len=5)   :: header
 integer            :: instrument_id
 
 if ( .not. module_initialized ) call initialize_module
 
-
 if (is_asciiformat) then
-   read(ifile, "(a5)" ) header
+   read(ifile, "(a)" ) header
+   str1 = adjustl(header)
 
-   if(header /= 'InsID') then
-      write(msgstring,*)"Expected Instrument ID header 'InsID' in input file, got ", header
+   if(str1(1:5) /= 'InsID') then
+      write(msgstring,*)"Expected Instrument ID header 'InsID' in input file, got ", str1(1:5)
       call error_handler(E_ERR, 'read_instrument_id', msgstring, source, revision, revdate)  
    endif
    ! Read the instrument id data value into temporary
@@ -405,17 +410,17 @@ integer, intent(in) :: ifile
 logical, intent(in) :: is_asciiformat
 real(r8)            :: read_beam_angle
 
-character(len=5)   :: header
-real(r8)           :: beam_angle
+real(r8)            :: beam_angle
 
 if ( .not. module_initialized ) call initialize_module
 
 
 if (is_asciiformat) then
-   read(ifile, "(a5)" ) header
+   read(ifile, "(a)" ) header
+   str1 = adjustl(header)
 
-   if(header /= 'angle') then
-      write(msgstring,*)"Expected beam_angle header 'angle' in input file, got ", header
+   if(str1(1:5) /= 'angle') then
+      write(msgstring,*)"Expected beam_angle header 'angle' in input file, got ", str1(1:5)
       call error_handler(E_ERR, 'read_beam_angle', msgstring, source, revision, revdate)  
    endif
    ! Now read the beam_angle data value into temporaries
@@ -434,7 +439,7 @@ if (beam_angle < 0.0_r8 .or. beam_angle > 360.0_r8 ) then
 endif
 
 ! set function return value
-read_beam_angle = beam_angle
+read_beam_angle = beam_angle*deg2rad
 
 end function read_beam_angle
 
@@ -444,7 +449,8 @@ end function read_beam_angle
 
 subroutine write_beam_angle(ifile, beam_angle, is_asciiformat)
 
-! Writes beam_angle to obs file.
+! Writes beam_angle to obs file. Internally, the angles are in
+! radians. When they are written, they are converted to degrees.
 
 integer,  intent(in) :: ifile
 real(r8), intent(in) :: beam_angle
@@ -454,9 +460,9 @@ if ( .not. module_initialized ) call initialize_module
 
 if (is_asciiformat) then
    write(ifile, "('angle')" ) 
-   write(ifile, *) beam_angle
+   write(ifile, *) beam_angle*rad2deg
 else
-   write(ifile)    beam_angle
+   write(ifile)    beam_angle*rad2deg
 endif
 
 end subroutine write_beam_angle
@@ -622,12 +628,10 @@ integer,             intent(out) :: istatus
 ! The along-beam component of the 3-d ocean surface velocity is computed 
 ! from the u, v fields plus the beam_angle:
 !  return_value = U*cos(angle) + V*sin(angle)
-!
 
 
 real(r8) :: u, v
 real(r8) :: debug_location(3) 
-logical  :: debug = .false.   ! set to .true. to enable debug printout
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -645,8 +649,8 @@ if (istatus /= 0) then
    return
 endif
 
-radial_vel = u * cos(radial_vel_data(velkey)%beam_angle) + &
-             v * sin(radial_vel_data(velkey)%beam_angle)
+radial_vel = u * cos(radial_vel_data(velkey)%beam_angle*deg2rad) + &
+             v * sin(radial_vel_data(velkey)%beam_angle*deg2rad)
 
 ! Good return code. 
 istatus = 0
@@ -662,7 +666,8 @@ if (debug) then
                                     debug_location(2)*deg2rad, debug_location(3)
    print *, 'interpolated u: ', u
    print *, 'interpolated v: ', v
-   print *, 'angle: ', radial_vel_data(velkey)%beam_angle
+   print *, 'angle (deg): ', radial_vel_data(velkey)%beam_angle
+   print *, 'angle (rad): ', radial_vel_data(velkey)%beam_angle*deg2rad
    print *, 'final radial_vel: ', radial_vel
    print *, 'istatus: ', istatus
 endif

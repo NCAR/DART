@@ -44,7 +44,7 @@ integer :: year = 1996, month =1, day =1, tot_days = 31
 integer :: max_num = 800000
 character(len = 129) :: fname = 'raw_ocean_obs.txt'
 character(len = 129) :: output_name = 'raw_ocean_obs_seq.out'
-logical :: codar = .false.
+logical :: hfradar = .false.
 
 real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lon2 = 360.0_r8,  &   !  upper longitude bound 
@@ -52,7 +52,7 @@ real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lat2 =  90.0_r8       !  upper latitude bound
 
 namelist /create_ocean_obs_nml/ year, month, day, tot_days, max_num, &
-        fname, output_name, lon1, lon2, lat1, lat2, codar
+        fname, output_name, lon1, lon2, lat1, lat2, hfradar
 
 ! ----------------------------------------------------------------------
 ! start of executable program code
@@ -77,7 +77,7 @@ if (do_output()) write(     *     , nml=create_ocean_obs_nml)
 
 ! The file is read and parsed into a DART observation sequence linked list
 seq = real_obs_sequence(fname, year, month, day1, max_num, &
-                         lon1, lon2, lat1, lat2, codar)
+                         lon1, lon2, lat1, lat2, hfradar)
 
 call write_obs_seq(seq, output_name)
 

@@ -132,7 +132,8 @@
                                 'SATELLITE_MICROWAVE_SST',
                                 'SATELLITE_INFRARED_SST',
                                 'SATELLITE_SSH',
-                                'SATELLITE_SSS'  /
+                                'SATELLITE_SSS',
+                                'HFRADAR_RADIAL_VELOCITY'  /
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
@@ -298,10 +299,10 @@
    lon2     = 360.0,
    lat1     = -90.0,
    lat2     =  90.0,
-   codar    = .false.
+   hfradar  = .false.
  /
 
-# Maximum number of CODAR observations in one observation sequence.
+# Maximum number of HFRADAR observations in one observation sequence.
 &obs_def_ocean_nml
    max_radial_vel_obs = 1000000
  /
@@ -312,23 +313,23 @@
 # must be set to '' to avoid ambiguity.
 
 &obs_seq_to_netcdf_nml
-   obs_sequence_name = 'obs_seq.final',
+   obs_sequence_name = 'hfr/obs_seq.final',
    obs_sequence_list = '',
    append_to_netcdf  = .false.,
    lonlim1    =    0.0,
    lonlim2    =  360.0,
    latlim1    =  -90.0,
    latlim2    =   90.0,
-   verbose    = .false.
+   verbose    = .true.
    /
 
 &schedule_nml
    calendar       = 'Gregorian',
-   first_bin_start =  2008, 9, 7, 0, 0, 0 ,
-   first_bin_end   =  2008, 9, 7, 2, 0, 0 ,
-   last_bin_end    =  2008, 9,11, 0, 0, 0 ,
+   first_bin_start =  2008,  6,  1,  0,  0,  0,
+   first_bin_end   =  2008,  6,  2,  0,  0,  0,
+   last_bin_end    =  2008,  6, 30,  0,  0,  0,
    bin_interval_days    = 0,
-   bin_interval_seconds = 21600,
+   bin_interval_seconds = 86400,
    max_num_bins         = 1000,
    print_table          = .true.
    /
