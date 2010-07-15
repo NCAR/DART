@@ -48,7 +48,7 @@ echo " "
 # starting filter.   (they are visible from the head node that is
 # running this script, but once you start aprun, you must have
 # your executables and data files under /ptmp.)
-cp -fv filter input.nml obs_seq.out filter_ics  /ptmp/${LOGNAME}/work
+cp -fv filter input.nml obs_seq.out filter_ics  /ptmp/${PBS_O_LOGNAME}/work
 echo " "
 
 cd /ptmp/${PBS_O_LOGNAME}/work
