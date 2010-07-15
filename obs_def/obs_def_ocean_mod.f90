@@ -161,7 +161,7 @@ character(len=129) :: msgstring ! For error message content
 type radial_vel_type
    private
    integer   :: instrument_id       ! ID number for data source
-   real(r8)  :: beam_angle          ! angle of beam (radians)
+   real(r8)  :: beam_angle          ! angle of beam (degrees)
 end type radial_vel_type
 
 ! Cumulative index into radial velocity metadata array
@@ -235,8 +235,7 @@ end subroutine initialize_module
 subroutine read_radial_vel(velkey, ifile, fform)
 
 ! Main read subroutine for the radial velocity observation auxiliary data.
-! The beam_angle is expected to be in degrees in the file.
-! The beam_angle will be converted to radians in the module storage.
+! The beam_angle is expected to have units of degrees.
 
 integer,          intent(out)          :: velkey
 integer,          intent(in)           :: ifile
@@ -272,7 +271,6 @@ endif
 ! tell them exactly what format to be reading because we already know it.
 instrument_id = read_instrument_id (ifile, is_asciifile)
 beam_angle    = read_beam_angle    (ifile, is_asciifile)
-beam_angle    = beam_angle*deg2rad
 
 ! Read in the velkey for this particular observation, however, it will
 ! be discarded and a new, unique key will be generated in the set routine.
@@ -317,7 +315,7 @@ endif
 
 ! Extract the values for this key and call the appropriate write routines.
 instrument_id = radial_vel_data(velkey)%instrument_id
-beam_angle    = radial_vel_data(velkey)%beam_angle*rad2deg
+beam_angle    = radial_vel_data(velkey)%beam_angle
 
 ! These two write routines are local to this module, and we have already 
 ! figured out if it is a unformatted/binary file or formatted/ascii, so 
@@ -410,10 +408,11 @@ integer, intent(in) :: ifile
 logical, intent(in) :: is_asciiformat
 real(r8)            :: read_beam_angle
 
-real(r8)            :: beam_angle
+real(r8) :: beam_angle
 
 if ( .not. module_initialized ) call initialize_module
 
+beam_angle = missing_r8
 
 if (is_asciiformat) then
    read(ifile, "(a)" ) header
@@ -431,7 +430,7 @@ else
 endif
 
 ! Check for illegal values 
-if (beam_angle < 0.0_r8 .or. beam_angle > 360.0_r8 ) then
+if (beam_angle <= 0.0_r8 .or. beam_angle >= 360.0_r8 ) then
    write(msgstring,*) "beam_angle value must be between 0 and 360, got: ", &
                        beam_angle
    call error_handler(E_ERR, 'read_beam_angle', msgstring, &
@@ -439,7 +438,7 @@ if (beam_angle < 0.0_r8 .or. beam_angle > 360.0_r8 ) then
 endif
 
 ! set function return value
-read_beam_angle = beam_angle*deg2rad
+read_beam_angle = beam_angle
 
 end function read_beam_angle
 
@@ -460,9 +459,9 @@ if ( .not. module_initialized ) call initialize_module
 
 if (is_asciiformat) then
    write(ifile, "('angle')" ) 
-   write(ifile, *) beam_angle*rad2deg
+   write(ifile, *) beam_angle
 else
-   write(ifile)    beam_angle*rad2deg
+   write(ifile)    beam_angle
 endif
 
 end subroutine write_beam_angle
@@ -538,20 +537,17 @@ if ( .not. module_initialized ) call initialize_module
 
 ! Get information from user about id, angle.
 
-
 write(*, *) 
 write(*, *) 'Beginning to inquire for information on instrument id.'
 write(*, *)
 
 call interactive_instrument_id(instrument_id)
 
-
 write(*, *) 
 write(*, *) 'Beginning to inquire for information on radar beam angle.'
 write(*, *)
 
 call interactive_beam_angle(beam_angle)
-
 
 call set_radial_vel(velkey, instrument_id, beam_angle )
 
@@ -583,22 +579,15 @@ end subroutine interactive_instrument_id
 
 subroutine interactive_beam_angle(beam_angle)
 
-! Prompt for beam angle information in azimuth/elevation degrees.
+! Prompt for beam angle information in degrees.
 
 real(r8), intent(out) :: beam_angle
 
-real(r8) :: az
-
-az = -1.0
-do while (az < 0.0_r8 .or. az > 360.0_r8) 
-   write(*, *) 'Input the beam angle in degrees (0 <= az <= 360):'
-   read(*, *) az
+beam_angle = missing_r8
+do while (beam_angle <= 0.0_r8 .or. beam_angle >= 360.0_r8) 
+   write(*, *) 'Input the beam angle in degrees (0 <= beam_angle <= 360):'
+   read(*, *) beam_angle
 end do
-
-! Convert to radians and compute the actual values stored with the observation.
-az = az * deg2rad
-
-beam_angle = az
 
 end subroutine interactive_beam_angle
 
