@@ -1,4 +1,4 @@
-function field = map_wrf(fname, varname, copystring, levelindx, timeindx )
+function h = map_wrf(fname, varname, copystring, levelindx, timeindx )
 %% map_wrf creates a map of a WRF field - please check what is supposed to
 %  happen with the staggering.
 %
@@ -45,6 +45,12 @@ xlon     = nc_varget(fname, 'XLON_d01');  we    = size( xlon, 2);
 xlat     = nc_varget(fname, 'XLAT_d01');  sn    = size( xlat, 1);
 level    = nc_varget(fname,'level_d01');  bt    = size(level, 1);
 
+calendar    = nc_attget(fname, 'time','calendar');
+timeunits   = nc_attget(fname, 'time','units');
+timebase    = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
+timeorigin  = datenum(timebase(1),timebase(2),timebase(3));
+timestrings = datestr(times + timeorigin, 0);
+
 stdlat1  = nc_varget(fname, 'TRUELAT1');
 stdlat2  = nc_varget(fname, 'TRUELAT2');
 cen_lat  = nc_varget(fname,  'CEN_LAT');
@@ -56,8 +62,13 @@ map_proj(inds) = ' ';
 [a b] = strread(map_proj,'%s %s','delimiter',' ');
 map_proj = lower(b);
 
+%% Check to make sure longitudes are [0, 360]
+inds = xlon < 0;
+xlon(inds) = xlon(inds) + 360;
 minlat = min(xlat(:)); maxlat = max(xlat(:));
 minlon = min(xlon(:)); maxlon = max(xlon(:));
+hunk.xlat = xlat;
+hunk.xlon = xlon;
 
 %% Set up map projection
 %  may have to translate their projections to matlabs keywords
@@ -93,7 +104,8 @@ end
 
 for itime = timeindx
 
-   plot_title = sprintf('%s %s levelindex %d time %f',fname,varname,levelindx,times(timeindx));
+   plot_title = {fname, ...
+         sprintf('levelindex %d %s %s',levelindx,varname,timestrings(itime,:))};
 
    %% Determine the hyperslab indexing
    
@@ -128,19 +140,27 @@ for itime = timeindx
    % Plot field
    
    % subplot(m,m,pane);
+
+   switch lower(map_proj{mp})
+   case 'mercator'
+      axesm(map_proj{mp}, ...
+            'MapParallels',[stdlat1], ...
+            'MapLatLimit',[minlat maxlat], ...
+            'MapLonLimit',[minlon maxlon]);
+      h = gridm('on');
+      % mlabel on;
+      % plabel on;
    
-   axesm(map_proj{mp}, 'Origin', [0 cen_lon 0], ...
-         'MapParallels',[stdlat1 stdlat2],...
-         'MapLatLimit',[minlat maxlat], ...
-         'MapLonLimit',[minlon maxlon]);
-   % framem;
+   otherwise
+      fprintf('projection %s is not yet supported\n',map_proj{mp})
+   end
    
 %  states = shaperead('usastatelo', 'UseGeoCoords', true);
 %  geoshow([states.Lat],[states.Lon],'Color','black');
 
    landareas = shaperead('landareas', 'UseGeoCoords', true);
    geoshow([landareas.Lat],[landareas.Lon],'Color','black');
-   
+
    if min(field(:)) ~= max(field(:))
 
 %     disp('contouring (slow) ...')
@@ -150,7 +170,8 @@ for itime = timeindx
       h1 = surfm(xlat,xlon,field);
    
       title(plot_title,'Interpreter','none')
-      colorbar('vert')
+      h2 = colorbar('vert');
+      set(get(h2,'YLabel'),'String',varinfo.units)
    else
       error('field is all uniform value')
    end
