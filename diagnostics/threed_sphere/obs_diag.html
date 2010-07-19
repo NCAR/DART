@@ -127,6 +127,50 @@
        <td>The number of observations available to be assimilated.</td></tr>
    <tr><td valign="top"><b>Nused</b></td>
        <td>The number of observations that were assimilated.</td></tr>
+   <tr><td valign="top"><b>NbigQC</b></td>
+       <td>the number of observations that had an undesirable 
+           (original) QC value;</td></tr>
+   <tr><td valign="top"><b>NbadIZ</b></td>
+       <td>the number of observations that had an undesirable 
+           Innovation&nbsp;Z;</td></tr>
+   <tr><td valign="top"><b>NbadUV</b></td>
+       <td>the number of velocity observations that had a matching component 
+           that was not assimilated;</td></tr>
+   <tr><td valign="top"><b>NbadLV</b></td>
+       <td>the number of observations that were above or below the highest 
+           or lowest model level, respectively;</td></tr> 
+   <tr><td valign="top"><b>rmse</b></td>
+       <td>the rmse of the ensemble;</td></tr> 
+   <tr><td valign="top"><b>bias</b></td> 
+       <td>the bias of the ensemble (forecast-observation);</td></tr> 
+   <tr><td valign="top"><b>spread</b></td>
+       <td>the spread of the ensemble; and the</td></tr> 
+   <tr><td valign="top"><b>totalspread</b></td>
+       <td>pooled spread of the observation (knowing its observational error) 
+           and the ensemble.</td></tr> 
+   <tr><td valign="top"><b>NbadDARTQC&nbsp;&nbsp;&nbsp;</b></td>
+       <td>the number of observations that had a DART QC value 
+           (&gt; 1 for a prior, &gt; 3 for a posterior)</td></tr> 
+   <tr><td valign="top"><b>observation</b></td>
+       <td>the mean of the observation values</td></tr> 
+   <tr><td valign="top"><b>ens_mean</b></td>
+       <td>the ensemble mean of the model estimates of the observation values</td></tr> 
+   <tr><td valign="top"><b>N_DARTqc_0</b></td>
+       <td>the number of observations that had a DART QC value of 0</td></tr> 
+   <tr><td valign="top"><b>N_DARTqc_1</b></td>
+       <td>the number of observations that had a DART QC value of 1</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_2</b></td>
+       <td>the number of observations that had a DART QC value of 2</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_3</b></td>
+       <td>the number of observations that had a DART QC value of 3</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_4</b></td>
+       <td>the number of observations that had a DART QC value of 4</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_5</b></td>
+       <td>the number of observations that had a DART QC value of 5</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_6</b></td>
+       <td>the number of observations that had a DART QC value of 6</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_7</b></td>
+       <td>the number of observations that had a DART QC value of 7</td></tr>
    </table>
 
 <P>
@@ -178,8 +222,6 @@
 </OL>
 
 <P>
-   The Jamaica release of DART also implements a DART QC flag that provides
-   information about how the observation was or was not assimilated.
    The DART QC flag is intended to provide information about whether the
    observation was assimilated, evaluated only, whether the assimilation resulted
    in a 'good' observation, etc. Here is the table that should explain things:
