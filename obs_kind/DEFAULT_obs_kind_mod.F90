@@ -130,6 +130,7 @@ integer, parameter, public :: &
 ! kinds for generic parameters that aren't going to be
 ! directly observed but are going to be adjusted by the
 ! assimilation.
+integer, parameter, public :: &
     KIND_1D_PARAMETER                = 43, &
     KIND_2D_PARAMETER                = 44, &
     KIND_3D_PARAMETER                = 45
