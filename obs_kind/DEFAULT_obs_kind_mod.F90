@@ -127,6 +127,13 @@ integer, parameter, public :: &
 integer, parameter, public :: &
     KIND_ELECTRON_DENSITY            = 42
    
+! kinds for generic parameters that aren't going to be
+! directly observed but are going to be adjusted by the
+! assimilation.
+    KIND_1D_PARAMETER                = 43, &
+    KIND_2D_PARAMETER                = 44, &
+    KIND_3D_PARAMETER                = 45
+
 ! kinds for the MITgcm, POP ocean model
 integer, parameter, public :: &
     KIND_SALINITY                    = 50, &
@@ -336,6 +343,9 @@ obs_kind_names(39) = obs_kind_type(KIND_CLOUD_FRACTION, 'KIND_CLOUD_FRACTION')
 obs_kind_names(40) = obs_kind_type(KIND_ICE_FRACTION, 'KIND_ICE_FRACTION')
 obs_kind_names(41) = obs_kind_type(KIND_RELATIVE_HUMIDITY, 'KIND_RELATIVE_HUMIDITY')
 obs_kind_names(42) = obs_kind_type(KIND_ELECTRON_DENSITY, 'KIND_ELECTRON_DENSITY')
+obs_kind_names(43) = obs_kind_type(KIND_1D_PARAMETER, 'KIND_1D_PARAMETER')
+obs_kind_names(44) = obs_kind_type(KIND_2D_PARAMETER, 'KIND_2D_PARAMETER')
+obs_kind_names(45) = obs_kind_type(KIND_3D_PARAMETER, 'KIND_3D_PARAMETER')
 obs_kind_names(50) = obs_kind_type(KIND_SALINITY, 'KIND_SALINITY')
 obs_kind_names(51) = obs_kind_type(KIND_U_CURRENT_COMPONENT, 'KIND_U_CURRENT_COMPONENT')
 obs_kind_names(52) = obs_kind_type(KIND_V_CURRENT_COMPONENT, 'KIND_V_CURRENT_COMPONENT')
