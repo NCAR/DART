@@ -809,7 +809,7 @@ m4 -D_FCST_=$fcst_hour -D_MAX_DOM_=$MAX_DOM \
 #  -------   perturb the wrfbdy files  --------
          pert_wrf_bc > output.pert_wrf_bc.\${g_date[0]}_\${g_date[1]} 2>&1
 
-         mv wrfbdy_this \$OUTPUT/wrfbdy_\${g_date[0]}_\${g_date[1]}_\$ie
+         mv wrfbdy_this \$OUTPUT/wrfbdy_d01_\${g_date[0]}_\${g_date[1]}_\$ie
          ln -sf \$OUTPUT/wrfinput_d01_\${g_date[0]}_\${g_date[1]}_\$ie wrfinput_this
       fi
 
