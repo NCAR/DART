@@ -152,7 +152,7 @@ logical :: usingCartesianGrid, usingCylindricalGrid, &
            usingSphericalPolarGrid, usingCurvilinearGrid, &
            deepAtmosphere
 real(r8) :: dxSpacing, dySpacing, delX(max_nx), delY(max_ny), &
-            phiMin, thetaMin, rSphere, &
+            ygOrigin, xgOrigin, rSphere, &
             Ro_SeaLevel, delZ(max_nz), delP, delR(max_nr), delRc(max_nr+1), &
             rkFac, groundAtK1
 character(len=MAX_LEN_FNAM) :: delXFile, delYFile, &
@@ -195,7 +195,7 @@ NAMELIST /PARM03/ &
 NAMELIST /PARM04/ &
       usingCartesianGrid, usingCylindricalGrid, &
       dxSpacing, dySpacing, delX, delY, delXFile, delYFile, &
-      usingSphericalPolarGrid, phiMin, thetaMin, rSphere, &
+      usingSphericalPolarGrid, ygOrigin, xgOrigin, rSphere, &
       usingCurvilinearGrid, horizGridFile, deepAtmosphere, &
       Ro_SeaLevel, delZ, delP, delR, delRc, delRFile, delRcFile, &
       rkFac, groundAtK1
@@ -464,8 +464,8 @@ allocate(XG(Nx), YG(Ny), ZG(Nz))
 
 ! XG (the grid edges) and XC (the grid centroids) must be computed.
 
-XG(1) = thetaMin
-XC(1) = thetaMin + 0.5_r8 * delX(1)
+XG(1) = xgOrigin
+XC(1) = xgOrigin + 0.5_r8 * delX(1)
 do i=2, Nx
  XG(i) = XG(i-1) + delX(i-1)
  XC(i) = XC(i-1) + 0.5_r8 * delX(i-1) + 0.5_r8 * delX(i) 
@@ -473,8 +473,8 @@ enddo
 
 ! YG (the grid edges) and YC (the grid centroids) must be computed.
 
-YG(1) = phiMin
-YC(1) = phiMin + 0.5_r8 * delY(1)
+YG(1) = ygOrigin
+YC(1) = ygOrigin + 0.5_r8 * delY(1)
 do i=2, Ny
  YG(i) = YG(i-1) + delY(i-1)
  YC(i) = YC(i-1) + 0.5_r8 * delY(i-1) + 0.5_r8 * delY(i) 

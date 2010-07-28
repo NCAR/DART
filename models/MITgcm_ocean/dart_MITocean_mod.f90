@@ -18,7 +18,8 @@ use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
                              set_obs_def_key
 use time_manager_mod, only : time_type, get_date, set_time, GREGORIAN, &
                              set_date, set_calendar_type, get_time, &
-                             print_date, print_time, operator(>=)
+                             print_date, print_time, operator(>=), &
+                             operator(<), operator(>), operator(+)  
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, &
                              E_ERR, E_MSG, timestamp, is_longitude_between
@@ -52,13 +53,14 @@ contains
 
 !-------------------------------------------------
 
-function real_obs_sequence (obsfile, year, month, day, max_num, &
+function real_obs_sequence (obsfile, time1, timeN, max_num, &
           lon1, lon2, lat1, lat2, hfradar)
 !------------------------------------------------------------------------------
 !  this function is to prepare data to DART sequence format
 !
 character(len=129), intent(in) :: obsfile
-integer,            intent(in) :: year, month, day, max_num
+type(time_type),    intent(in) :: time1, timeN
+integer,            intent(in) :: max_num
 real(r8),           intent(in) :: lon1, lon2, lat1, lat2
 logical,            intent(in) :: hfradar
 
@@ -76,7 +78,7 @@ integer :: obs_unit, id, defkey
 integer :: which_vert, obstype
 
 real (r8) :: lon, lat, vloc, obs_value
-real (r8) :: aqc, var2, lonc, angle
+real (r8) :: aqc, var2, angle
 type(time_type) :: time, pre_time
 
 character(len = 32) :: obs_kind_name
@@ -155,6 +157,13 @@ obsloop:  do
    time = set_date(yy,mn,dd,hh,mm,ss)
    call get_time(time,seconds,days)
 
+   ! reject observations outside the time window
+   if ( (time < time1) .or. (time > timeN) ) then
+      call print_date(time, ' skipping time outside desired window ... ')
+      iskip = iskip + 1
+      cycle obsloop
+   endif
+
    ! verify the latitude is not outside valid limits
    if ((lat >  90.0_r8) .or. (lat < -90.0_r8)) then
       write(*,*) 'invalid location.  lon,lat = ', lon, lat
@@ -165,8 +174,8 @@ obsloop:  do
    ! reject observations outside the bounding box
    if(lat < lat1 .or. lat > lat2 .or. &
       .not. is_longitude_between(lon, lon1, lon2)) then
-     iskip = iskip + 1
-     cycle obsloop
+      iskip = iskip + 1
+      cycle obsloop
    endif
 
    ! and now make sure lon is between 0 and 360, so the

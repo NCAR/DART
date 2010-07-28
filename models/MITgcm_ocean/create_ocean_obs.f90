@@ -15,14 +15,17 @@ program create_ocean_obs
 ! an assimilation interval of 1 day - so all observations will be
 ! redefined to occur at NOON on the day they were observed.
 
-use types_mod,        only : r8, deg2rad, PI
-use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
-                             static_init_obs_sequence, destroy_obs_sequence 
+use         types_mod, only : r8, deg2rad, PI
+use  obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
+                              static_init_obs_sequence, destroy_obs_sequence 
 use dart_MITocean_mod, only : real_obs_sequence
-use    utilities_mod, only : initialize_utilities, register_module, &
-                             do_output, logfileunit, &
-                             error_handler, timestamp, E_ERR, E_MSG, &
-                             find_namelist_in_file, check_namelist_read
+use     utilities_mod, only : initialize_utilities, register_module, &
+                              do_output, logfileunit, &
+                              error_handler, timestamp, E_ERR, E_MSG, &
+                              find_namelist_in_file, check_namelist_read
+use  time_manager_mod, only : time_type, set_date, set_time, print_date, &
+                              operator(+), set_calendar_type, GREGORIAN
+  
 
 implicit none
 
@@ -34,13 +37,14 @@ character(len=128), parameter :: &
 
 type(obs_sequence_type) :: seq
 
-integer :: iunit, io, day1
+integer :: iunit, io
+type(time_type) :: time1, timeN
 
 ! ----------------------------------------------------------------------
 ! Declare namelist parameters
 ! ----------------------------------------------------------------------
         
-integer :: year = 1996, month =1, day =1, tot_days = 31
+integer :: year = 1996, month = 1, day = 1, tot_days = 31
 integer :: max_num = 800000
 character(len = 129) :: fname = 'raw_ocean_obs.txt'
 character(len = 129) :: output_name = 'raw_ocean_obs_seq.out'
@@ -75,8 +79,15 @@ call error_handler(E_MSG,'create_ocean_obs','create_ocean_obs_nml values are',' 
 if (do_output()) write(logfileunit, nml=create_ocean_obs_nml)
 if (do_output()) write(     *     , nml=create_ocean_obs_nml)
 
+! Real observations are required to use the Gregorian calendar.
+call set_calendar_type(GREGORIAN)
+time1 = set_date(year, month, day)
+timeN = time1 + set_time(0,tot_days)
+call print_date(time1,str='First date of interest')
+call print_date(timeN,str='Last  date of interest')
+
 ! The file is read and parsed into a DART observation sequence linked list
-seq = real_obs_sequence(fname, year, month, day1, max_num, &
+seq = real_obs_sequence(fname, time1, timeN, max_num, &
                          lon1, lon2, lat1, lat2, hfradar)
 
 call write_obs_seq(seq, output_name)

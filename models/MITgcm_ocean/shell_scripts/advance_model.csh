@@ -66,22 +66,22 @@ end
 foreach FILE ( lev05_monthly_sss_relax.bin \
                lev05_monthly_sst_relax.bin \
                run-off.bin_1x1             \
-               ncep_air_19960101.bin       \
-               ncep_dlwrf_19960101.bin     \
-               ncep_dswrf_19960101.bin     \
-               ncep_nswrs_19960101.bin     \
-               ncep_prate_19960101.bin     \
-               ncep_shum_19960101.bin      \
-               ncep_uwnd_19960101.bin      \
-               ncep_vwnd_19960101.bin      )
+               ncep_air_2008.bin      \
+               ncep_dlwrf_2008.bin    \
+               ncep_dswrf_2008.bin    \
+               ncep_nswrs_2008.bin    \
+               ncep_prate_2008.bin    \
+               ncep_shum_2008.bin     \
+               ncep_uwnd_2008.bin     \
+               ncep_vwnd_2008.bin      )
    ln -sf ../inputs/$FILE . || exit 1
 end
 
 # link the files used by data.obcs&OBCS_PARM01 - open boundaries
-foreach FILE ( Rs_SobcsE_52_01_nPx1.bin    Rs_SobcsN_52_01_nPy1.bin \
-               Rs_TobcsE_52_01_nPx1.bin    Rs_TobcsN_52_01_nPy1.bin \
-               Rs_UobcsE_52_01_nPx1_c1.bin Rs_UobcsN_52_01_nPy1.bin \
-               Rs_VobcsE_52_01_nPx1.bin    Rs_VobcsN_52_01_nPy1_c1.bin)
+foreach FILE ( Rs_SobcsE_2008_7DAY_GOM_Jan01_nPx1.bin Rs_SobcsN_2008_7DAY_GOM_Jan01_nPy1.bin \
+               Rs_TobcsE_2008_7DAY_GOM_Jan01_nPx1.bin Rs_TobcsN_2008_7DAY_GOM_Jan01_nPy1.bin \
+               Rs_UobcsE_2008_7DAY_GOM_Jan01_nPx1_c1.bin Rs_UobcsN_2008_7DAY_GOM_Jan01_nPy1.bin \
+               Rs_VobcsE_2008_7DAY_GOM_Jan01_nPx1.bin Rs_VobcsN_2008_7DAY_GOM_Jan01_nPy1_c1.bin)
    ln -sf ../inputs/$FILE . || exit 1
 end
 
@@ -193,16 +193,16 @@ while($state_copy <= $num_states)
       # At some point in the future, the MPIRUN variable should not be hardwired
       # to an architecture-specific value.
 
-      if ( -e ../nodelist-pgi ) then
+      if ( -e ../nodelist ) then
 
-         setenv NUM_PROCS `cat ../nodelist-pgi | wc -l`
+         setenv NUM_PROCS `cat ../nodelist | wc -l`
 
 # compas
 #        set MPIRUN = /opt/mpich/myrinet/pgi/bin/mpirun
 # atlas
          set MPIRUN = /share/apps/mpich1/pgi/bin/mpirun
 
-         $MPIRUN -np $NUM_PROCS -nolocal -machinefile ../nodelist-pgi ../mitgcmuv || exit 3
+         $MPIRUN -np $NUM_PROCS -nolocal -machinefile ../nodelist ../mitgcmuv || exit 3
 
       else
          echo "ERROR - there is no CENTRALDIR/nodelist for this execution."

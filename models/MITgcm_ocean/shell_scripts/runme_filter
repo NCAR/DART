@@ -117,7 +117,7 @@ if ($?LS_SUBCWD) then
       # this starts filter but also returns control back to
       # this script immediately.
 
-      (setenv HOME $filterhome; mpirun.lsf ./filter) &
+      (setenv HOME $filterhome; mpirun.lsf ./filter || mpirun.lsf ./filter_done ) &
 
       while ( -e filter_to_model.lock )
 
@@ -244,18 +244,23 @@ else
     #echo "node1:2" >> $MYNODEFILE
 
 #   for compas
-    setenv NUM_PROCS `cat nodelist-pgi | wc -l`
-    set MPIRUN = /opt/mpich/myrinet/pgi/bin/mpirun
-    set MPICMD = $MPIRUN -np $NUM_PROCS -nolocal -machinefile nodelist-pgi
+#    setenv NUM_PROCS `cat nodelist-pgi | wc -l`
+#    set MPIRUN = /opt/mpich/myrinet/pgi/bin/mpirun
+#    set MPICMD = $MPIRUN -np $NUM_PROCS -nolocal -machinefile nodelist-pgi
 
 #   for atlas-pgi
-    setenv NUM_PROCS `cat nodelist-pgi | wc -l`
-    set MPIRUN = /share/apps/mpich1/pgi/bin/mpirun
-    set MPICMD = $MPIRUN -np $NUM_PROCS -nolocal -machinefile nodelist-pgi
+#    setenv NUM_PROCS `cat nodelist-pgi | wc -l`
+#    set MPIRUN = /share/apps/mpich1/pgi/bin/mpirun
+#    set MPICMD = $MPIRUN -np $NUM_PROCS -nolocal -machinefile nodelist-pgi
+
+#   for atlas-mpi32
+    setenv NUM_PROCS `cat nodelist | wc -l`
+    set MPIRUN = /share/apps/mpich-32/pgi/bin/mpirun
+    set MPICMD = "$MPIRUN -np $NUM_PROCS -nolocal -machinefile nodelist"
 
 #   for atlas-gfortran
-    set MPIRUN = /share/apps/openmpi/gfortran/bin/mpirun
-    set MPICMD = $MPIRUN --hostfile nodelist-gfortran --mca mtl mx --mca pml cm -np 72
+#    set MPIRUN = /share/apps/openmpi/gfortran/bin/mpirun
+#    set MPICMD = $MPIRUN --hostfile nodelist-gfortran --mca mtl mx --mca pml cm -np 72
 
     echo "MPICMD = ${MPICMD}"
 
