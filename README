@@ -6,15 +6,22 @@
 
 Welcome to DART, the Data Assimilation Research Testbed.
 
-(See below for status info from May 2009.)
+See the project web pages:
+ http://www.image.ucar.edu/DAReS/DART
 
-(See the bottom of this note for the update details for
-the 2 June 2008 commit.)
+General documentation in HTML format is in the doc subdirectory.
+Additionally, all parts of the DART system include HTML files in 
+the respective model and source directories.  There is an
+index.html file in the top level directory which references 
+all the other doc files.
 
+A Matlab/PDF introduction is in the DARTLAB directory.
+There are a set of PDF presentations, along with 
+hands-on Matlab exercises.  This starts with a very
+basic introduction to data assimilation, and covers
+several fundamental algorithms in the system.
 
-Documentation is in HTML format in the doc subdirectory.
-
-Tutorial materials are in PDF and Framemaker format in the
+A slightly more advanced tutorial in PDF format is in the
 tutorial subdirectory.  Start with the index file which
 explains what each subsection covers.
 
@@ -38,14 +45,14 @@ Finally, if you have 'matlab' installed on your system,
 add $DART/matlab to your matlab search path and run
 the 'plot_total_err' diagnostic script while in the
 models/lorenz_63/work directory.  If the output plots 
-and looks reasonable, you're great!  Congrats.  
+and looks reasonable (error level stays around 2 and
+doesn't grow unbounded), you're great!  Congrats.  
 
 
 If any of these steps fail, or you don't know how to
 do them, go to the DART project web page below for
 very detailed instructions that should get you over
 any bumps in the process.
-
 
 
 See the (new and very much improved) project web pages at:
@@ -60,6 +67,7 @@ your model or observation types.
 
 Thank you -
 The DART Development Team.
+dart at ucar.edu
 
 
 26 May 2009
