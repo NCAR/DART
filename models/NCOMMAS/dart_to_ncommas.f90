@@ -29,12 +29,14 @@ program dart_to_ncommas
 use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, timestamp, &
                              find_namelist_in_file, check_namelist_read, &
-                             logfileunit
+                             logfileunit, open_file, close_file
 use  assim_model_mod, only : open_restart_read, aread_state_restart, close_restart
 use time_manager_mod, only : time_type, print_time, print_date, operator(-)
 use        model_mod, only : static_init_model, sv_to_restart_file, &
                              get_model_size 
-use dart_ncommas_mod, only : write_ncommas_namelist, get_ncommas_restart_filename
+use dart_ncommas_mod, only : write_ncommas_namelist, &
+                             get_ncommas_restart_filename, &
+                             get_base_time
 
 implicit none
 
@@ -48,18 +50,18 @@ character(len=128), parameter :: &
 ! The namelist variables
 !------------------------------------------------------------------
 
-character (len = 128) :: dart_to_ncommas_input_file   = 'dart.ic'
-logical               :: advance_time_present     = .false.
+character (len = 128) :: dart_to_ncommas_input_file = 'dart.ic'
+logical               :: advance_time_present       = .false.
+character (len = 128) :: ncommas_restart_filename   = 'ncommas_restart.nc'
 
 namelist /dart_to_ncommas_nml/ dart_to_ncommas_input_file, &
-                           advance_time_present
+                           advance_time_present, ncommas_restart_filename
 
 !----------------------------------------------------------------------
 
-integer               :: iunit, io, x_size
-type(time_type)       :: model_time, adv_to_time
+integer               :: iunit, io, x_size, diff1, diff2
+type(time_type)       :: model_time, adv_to_time, base_time
 real(r8), allocatable :: statevector(:)
-character (len = 128) :: ncommas_restart_filename = 'no_ncommas_restart_file'
 logical               :: verbose              = .FALSE.
 
 !----------------------------------------------------------------------
@@ -111,7 +113,12 @@ call close_restart(iunit)
 call sv_to_restart_file(statevector, ncommas_restart_filename, model_time)
 
 if ( advance_time_present ) then
-   call write_ncommas_namelist(model_time, adv_to_time)
+   base_time = get_base_time(ncommas_restart_file)
+   call get_time((model_time  - base_time), diff1)
+   call get_time((adv_to_time - base_time), diff2)
+   iunit = open_file('times', 'write')
+   write(iunit, '(I8, I8)') diff1, diff2
+   call close_file(iunit)
 endif
 
 !----------------------------------------------------------------------
