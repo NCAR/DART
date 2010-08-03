@@ -31,7 +31,7 @@ use    utilities_mod, only : initialize_utilities, timestamp, &
                              find_namelist_in_file, check_namelist_read, &
                              logfileunit, open_file, close_file
 use  assim_model_mod, only : open_restart_read, aread_state_restart, close_restart
-use time_manager_mod, only : time_type, print_time, print_date, operator(-)
+use time_manager_mod, only : time_type, print_time, print_date, operator(-), get_time
 use        model_mod, only : static_init_model, sv_to_restart_file, &
                              get_model_size 
 use dart_ncommas_mod, only : write_ncommas_namelist, &
@@ -113,7 +113,7 @@ call close_restart(iunit)
 call sv_to_restart_file(statevector, ncommas_restart_filename, model_time)
 
 if ( advance_time_present ) then
-   base_time = get_base_time(ncommas_restart_file)
+   base_time = get_base_time(ncommas_restart_filename)
    call get_time((model_time  - base_time), diff1)
    call get_time((adv_to_time - base_time), diff2)
    iunit = open_file('times', 'write')

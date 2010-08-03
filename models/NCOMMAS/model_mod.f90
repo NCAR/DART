@@ -49,7 +49,8 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT,        &   ! index 1
                              KIND_RAINWATER_MIXING_RATIO,  &   ! index 10
                              KIND_ICE_MIXING_RATIO,        &   ! index 11
                              KIND_SNOW_MIXING_RATIO,       &   ! index 12
-                             KIND_GRAUPEL_MIXING_RATIO         ! index 13
+                             KIND_GRAUPEL_MIXING_RATIO,    &   ! index 13
+                             get_obs_kind_name
 
 use mpi_utilities_mod, only: my_task_id
 
@@ -171,6 +172,21 @@ character(len=128) :: progvarnames(nfields) = &
                          (/ 'U   ', 'V   ', 'W   ', 'TH  ', 'DBZ ', &
                             'WZ  ', 'PI  ', 'QV  ', 'QC  ', 'QR  ', &
                             'QI  ', 'QS  ', 'QH  ' /)
+
+integer :: progvarkinds(nfields) = (/ &
+   KIND_U_WIND_COMPONENT, &
+   KIND_V_WIND_COMPONENT, &
+   KIND_VERTICAL_VELOCITY, &
+   KIND_POTENTIAL_TEMPERATURE, &
+   KIND_RADAR_REFLECTIVITY, &
+   KIND_VERTICAL_VORTICITY, &
+   KIND_EXNER_FUNCTION, &
+   KIND_VAPOR_MIXING_RATIO, &
+   KIND_CLOUDWATER_MIXING_RATIO, &
+   KIND_RAINWATER_MIXING_RATIO, &
+   KIND_ICE_MIXING_RATIO, &
+   KIND_SNOW_MIXING_RATIO, &
+   KIND_GRAUPEL_MIXING_RATIO  /)
 
 integer :: start_index(nfields)
 
@@ -480,10 +496,12 @@ do ivar = 1, nfields
 
    enddo DimensionLoop
 
-   progvar(ivar)%varsize = varsize
-   progvar(ivar)%index1  = index1
-   progvar(ivar)%indexN  = index1 + varsize - 1 
-   index1                = index1 + varsize      ! sets up for next variable
+   progvar(ivar)%varsize     = varsize
+   progvar(ivar)%index1      = index1
+   progvar(ivar)%indexN      = index1 + varsize - 1 
+   index1                    = index1 + varsize      ! sets up for next variable
+   progvar(ivar)%dart_kind   = progvarkinds(ivar)
+   progvar(ivar)%kind_string = get_obs_kind_name(progvar(ivar)%dart_kind)
 
    if (do_output()) then
       write(logfileunit,*) ivar,trim(progvar(ivar)%varname)
@@ -494,6 +512,8 @@ do ivar = 1, nfields
       write(logfileunit,*) '  varsize   ',progvar(ivar)%varsize
       write(logfileunit,*) '  index1    ',progvar(ivar)%index1
       write(logfileunit,*) '  indexN    ',progvar(ivar)%indexN
+      write(logfileunit,*) '  dart_kind ',progvar(ivar)%dart_kind
+      write(logfileunit,*) '  kind_string ',progvar(ivar)%kind_string
 
       write(     *     ,*) ivar,trim(progvar(ivar)%varname)
       write(     *     ,*) '  long_name ',trim(progvar(ivar)%long_name)
@@ -503,6 +523,8 @@ do ivar = 1, nfields
       write(     *     ,*) '  varsize   ',progvar(ivar)%varsize
       write(     *     ,*) '  index1    ',progvar(ivar)%index1
       write(     *     ,*) '  indexN    ',progvar(ivar)%indexN
+      write(     *     ,*) '  dart_kind ',progvar(ivar)%dart_kind
+      write(     *     ,*) '  kind_string ',progvar(ivar)%kind_string
    endif
 
 enddo
@@ -1129,35 +1151,35 @@ else
    ! Staggered grid causes some logistical problems.
    !----------------------------------------------------------------------------
 
-   call vector_to_prog_var(statevec, S_index, data_3d)
+   call vector_to_prog_var(statevec, 0, data_3d)
    where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
    call nc_check(NF90_inq_varid(ncFileID, 'SALT', VarID), &
                 'nc_write_model_vars', 'S inq_varid '//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 'nc_write_model_vars', 'S put_var '//trim(filename))
 
-   call vector_to_prog_var(statevec, T_index, data_3d)
+   call vector_to_prog_var(statevec, 0, data_3d)
    where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
    call nc_check(NF90_inq_varid(ncFileID, 'TEMP', VarID), &
                 'nc_write_model_vars', 'T inq_varid '//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 'nc_write_model_vars', 'T put_var '//trim(filename))
 
-   call vector_to_prog_var(statevec, U_index, data_3d)
+   call vector_to_prog_var(statevec, 0, data_3d)
    where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
    call nc_check(NF90_inq_varid(ncFileID, 'UVEL', VarID), &
                 'nc_write_model_vars', 'U inq_varid '//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 'nc_write_model_vars', 'U put_var '//trim(filename))
 
-   call vector_to_prog_var(statevec, V_index, data_3d)
+   call vector_to_prog_var(statevec, 0, data_3d)
    where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
    call nc_check(NF90_inq_varid(ncFileID, 'VVEL', VarID), &
                 'nc_write_model_vars', 'V inq_varid '//trim(filename))
    call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
                 'nc_write_model_vars', 'V put_var '//trim(filename))
 
-   call vector_to_prog_var(statevec, PSURF_index, data_2d)
+   call vector_to_prog_var(statevec, 0, data_2d)
    where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
    call nc_check(NF90_inq_varid(ncFileID, 'PSURF', VarID), &
                 'nc_write_model_vars', 'PSURF inq_varid '//trim(filename))
@@ -1380,16 +1402,17 @@ if ( .not. file_exist(filename) ) then
    call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
 endif
 
-model_time = get_state_time(filename)
+
+call nc_check(nf90_open(trim(filename), nf90_nowrite, ncid), &
+             'restart_file_to_sv','open '//trim(filename))
+
+model_time = get_state_time(ncid, filename)
 
 if (do_output()) &
     call print_time(model_time,'time for restart file '//trim(filename))
 if (do_output()) &
     call print_date(model_time,'date for restart file '//trim(filename))
 
-
-call nc_check(nf90_open(trim(filename), nf90_nowrite, ncid), &
-             'restart_file_to_sv','open '//trim(filename))
 
 ! Start counting and filling the state vector one item at a time,
 ! repacking the Nd arrays into a single 1d list of numbers.
@@ -1491,6 +1514,9 @@ do ivar=1, nfields
    endif
 
 enddo
+
+call nc_check(nf90_close(ncid), &
+             'restart_file_to_sv','close '//trim(filename))
 
 end subroutine restart_file_to_sv
 
@@ -2614,22 +2640,24 @@ integer, intent(in)  :: index_in
 integer, intent(out) :: lat_index, lon_index, height_index
 integer, intent(out) :: var_type
 
-integer :: startind, offset
+integer :: startind, offset, var_index
 
 if ( .not. module_initialized ) call static_init_model
 
 if (debug > 5) print *, 'asking for meta data about index ', index_in
 
-call get_state_kind(index_in, var_type, startind, offset)
+call get_state_kind(index_in, var_index, var_type, startind, offset)
 
-if (startind == start_index(PSURF_index)) then
-  height_index = 1
-else
-  height_index = (offset / (nxc * nyc)) + 1
-endif
+! FIXME:  this should be using progvar(var_index)%numdims, %dimlens(:), %index1, etc.
 
-lat_index = (offset - ((height_index-1)*nxc*nyc)) / nxc + 1
-lon_index =  offset - ((height_index-1)*nxc*nyc) - ((lat_index-1)*nxc) + 1
+! wrong.
+height_index = 1
+
+! old code
+!lat_index = (offset - ((height_index-1)*nxc*nyc)) / nxc + 1
+!lon_index =  offset - ((height_index-1)*nxc*nyc) - ((lat_index-1)*nxc) + 1
+lat_index = 1
+lon_index = 1
 
 if (debug > 5) print *, 'lon, lat, height index = ', lon_index, lat_index, height_index
 
@@ -2637,7 +2665,7 @@ end subroutine get_state_indices
 
 
 
-subroutine get_state_kind(index_in, var_type, startind, offset)
+subroutine get_state_kind(index_in, var_index, var_type, startind, offset)
 !------------------------------------------------------------------
 !
 ! Given an integer index into the state vector structure, returns the kind,
@@ -2645,61 +2673,30 @@ subroutine get_state_kind(index_in, var_type, startind, offset)
 ! the block of this kind.
 
 integer, intent(in)  :: index_in
-integer, intent(out) :: var_type, startind, offset
+integer, intent(out) :: var_index, var_type, startind, offset
+
+integer :: i
 
 if ( .not. module_initialized ) call static_init_model
 
 if (debug > 5) print *, 'asking for meta data about index ', index_in
 
-! FIXME ... start indexes are not right.
+do i = 1, nfields
+   if ((index_in >= progvar(i)%index1) .and. (index_in <= progvar(i)%indexN)) then
+      var_index = i
+      var_type = progvar(i)%dart_kind
+      startind = progvar(i)%index1
+      offset = index_in - startind
 
-if (index_in < start_index(S_index+1)) then
-   var_type = KIND_U_WIND_COMPONENT           ! index 1
-   startind = start_index(S_index)
-else if (index_in < start_index(T_index+1)) then
-   var_type = KIND_V_WIND_COMPONENT           ! index 2
-   startind = start_index(T_index)
-else if (index_in < start_index(U_index+1)) then
-   var_type = KIND_VERTICAL_VELOCITY          ! index 3
-   startind = start_index(U_index)
-else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_POTENTIAL_TEMPERATURE      ! index 4
-   startind = start_index(V_index)
-else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_RADAR_REFLECTIVITY         ! index 5
-   startind = start_index(V_index)
-else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_VERTICAL_VORTICITY         ! index 6
-   startind = start_index(V_index)
-else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_EXNER_FUNCTION             ! index 7
-   startind = start_index(V_index)
-else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_VAPOR_MIXING_RATIO         ! index 8
-   startind = start_index(V_index)
-else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_CLOUDWATER_MIXING_RATIO    ! index 9 
-   startind = start_index(V_index)
-else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_RAINWATER_MIXING_RATIO     ! index 10
-   startind = start_index(V_index)
-else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_ICE_MIXING_RATIO           ! index 11
-   startind = start_index(V_index)
-else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_SNOW_MIXING_RATIO          ! index 12
-   startind = start_index(V_index)
-else
-   var_type = KIND_GRAUPEL_MIXING_RATIO       ! index 13
-   startind = start_index(V_index)
-endif
+      if (debug > 5) print *, 'var type = ', var_type
+      if (debug > 5) print *, 'startind = ', startind
+      if (debug > 5) print *, 'offset = ', offset
 
-! local offset into this var array
-offset = index_in - startind
+      return
+   endif
+enddo
 
-if (debug > 5) print *, 'var type = ', var_type
-if (debug > 5) print *, 'startind = ', startind
-if (debug > 5) print *, 'offset = ', offset
+! shouldn't get here.
 
 end subroutine get_state_kind
 

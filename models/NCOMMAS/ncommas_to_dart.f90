@@ -48,8 +48,10 @@ character(len=128), parameter :: &
 !-----------------------------------------------------------------------
 
 character (len = 128) :: ncommas_to_dart_output_file  = 'dart.ud'
+character (len = 128) :: ncommas_restart_filename = 'restart.nc' 
 
-namelist /ncommas_to_dart_nml/ ncommas_to_dart_output_file
+namelist /ncommas_to_dart_nml/ ncommas_to_dart_output_file, &
+                               ncommas_restart_filename
 
 !----------------------------------------------------------------------
 ! global storage
@@ -58,7 +60,6 @@ namelist /ncommas_to_dart_nml/ ncommas_to_dart_output_file
 integer               :: io, iunit, x_size
 type(time_type)       :: model_time
 real(r8), allocatable :: statevector(:)
-character (len = 128) :: ncommas_restart_filename = 'no_ncommas_restart_filename' 
 logical               :: verbose = .FALSE.
 
 !----------------------------------------------------------------------
