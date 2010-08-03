@@ -376,6 +376,8 @@ integer :: ncid, VarID, numdims, dimlen, varsize
 integer :: iunit, io, ivar, i, index1, indexN
 integer :: ss, dd
 
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+
 if ( module_initialized ) return ! only need to do this once.
 
 ! Print module information to log file and stdout.
@@ -440,6 +442,10 @@ call get_grid(nxc, nxe, nyc, nye, nzc, nze, &
 call nc_check( nf90_open(trim(ncommas_filename), NF90_NOWRITE, ncid), &
                   'static_init_model', 'open '//trim(ncommas_filename))
 
+! Find the Time (Unlimited) dimension - so we can skip it.
+call nc_check(nf90_Inquire(ncid,nDimensions,nVariables,nAttributes,unlimitedDimID),&
+                    'static_init_model', 'inquire '//trim(ncommas_filename))
+
 index1  = 1;
 indexN  = 0;
 do ivar = 1, nfields 
@@ -465,18 +471,24 @@ do ivar = 1, nfields
    progvar(ivar)%numdims = numdims
 
    varsize = 1
-   do i = 1,numdims
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
+   DimensionLoop : do i = 1,numdims
+
+      if (dimIDs(i) == unlimitedDimID) then
+         dimlen = 1
+      else   
+         write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
+         call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
                                           'static_init_model', string1)
+      endif
       progvar(ivar)%dimlens(i) = dimlen
       varsize = varsize * dimlen
-   enddo
+
+   enddo DimensionLoop
 
    progvar(ivar)%varsize = varsize
    progvar(ivar)%index1  = index1
    progvar(ivar)%indexN  = index1 + varsize - 1 
-   index1                = index1 + varsize - 1  ! sets up for next variable
+   index1                = index1 + varsize      ! sets up for next variable
 
    if (do_output()) then
       write(logfileunit,*) ivar,trim(progvar(ivar)%varname)
@@ -1355,7 +1367,7 @@ integer  :: i, j, k, ivar, indx
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: varname 
 integer :: VarID, numdims, dimlen
-integer :: ncid, iyear, imonth, iday, ihour, iminute, isecond, nc_rc
+integer :: ncid, year, month, day, hour, minute, second, nc_rc
 character(len=256) :: myerrorstring 
 
 if ( .not. module_initialized ) call static_init_model
@@ -1368,17 +1380,8 @@ state_vector = MISSING_R8
 ! "The time recorded in the ncommas2 restart files is the current time,
 ! which corresponds to the time of the XXXX_CUR variables.
 !
-! current time is determined from iyear, imonth, iday, and *seconds_this_day*
+! current time is determined from year, month, day, hour, minute, second, and *time*
 !
-! The ihour, iminute, and isecond variables are used for internal
-! model counting purposes, but because isecond is rounded to the nearest
-! integer, it is possible that using ihour,iminute,isecond information
-! on the restart file to determine the exact curtime would give you a 
-! slightly wrong answer."
-!
-! DART only knows about integer number of seconds, so using the rounded one
-! is what we would have to do anyway ... and we already have a set_date routine
-! that takes ihour, iminute, isecond information.
 
 if ( .not. file_exist(filename) ) then
    write(string1,*) 'cannot open file ', trim(filename),' for reading.'
@@ -1387,28 +1390,28 @@ endif
 
 call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
                   'restart_file_to_sv', 'open '//trim(filename))
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iyear'  , iyear), &
-                  'restart_file_to_sv', 'get_att iyear')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'imonth' , imonth), &
-                  'restart_file_to_sv', 'get_att imonth')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iday'   , iday), &
-                  'restart_file_to_sv', 'get_att iday')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ihour'  , ihour), &
-                  'restart_file_to_sv', 'get_att ihour')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
-                  'restart_file_to_sv', 'get_att iminute')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
-                  'restart_file_to_sv', 'get_att isecond')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'YEAR'  , year), &
+                  'restart_file_to_sv', 'get_att year')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MONTH' , month), &
+                  'restart_file_to_sv', 'get_att month')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'DAY'   , day), &
+                  'restart_file_to_sv', 'get_att day')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'HOUR'  , hour), &
+                  'restart_file_to_sv', 'get_att hour')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MINUTE', minute), &
+                  'restart_file_to_sv', 'get_att minute')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'SECOND', second), &
+                  'restart_file_to_sv', 'get_att second')
 
 ! FIXME: we don't allow a real year of 0 - add one for now, but
 ! THIS MUST BE FIXED IN ANOTHER WAY!
-if (iyear == 0) then
+if (year == 0) then
   call error_handler(E_MSG, 'restart_file_to_sv', &
                      'WARNING!!!   year 0 not supported; setting to year 1')
-  iyear = 1
+  year = 1
 endif
 
-model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
+model_time = set_date(year, month, day, hour, minute, second)
 
 if (do_output()) &
     call print_time(model_time,'time for restart file '//trim(filename))
@@ -1528,7 +1531,7 @@ real(r8),         intent(in) :: state_vector(:)
 character(len=*), intent(in) :: filename 
 type(time_type),  intent(in) :: statedate
 
-integer :: iyear, imonth, iday, ihour, iminute, isecond
+integer :: year, month, day, hour, minute, second
 type(time_type) :: ncommas_time
 
 ! temp space to hold data while we are writing it
@@ -1557,20 +1560,20 @@ endif
 
 call nc_check( nf90_open(trim(filename), NF90_WRITE, ncid), &
                   'sv_to_restart_file', 'open '//trim(filename))
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iyear'  , iyear), &
-                  'sv_to_restart_file', 'get_att iyear')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'imonth' , imonth), &
-                  'sv_to_restart_file', 'get_att imonth')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iday'   , iday), &
-                  'sv_to_restart_file', 'get_att iday')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ihour'  , ihour), &
-                  'sv_to_restart_file', 'get_att ihour')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
-                  'sv_to_restart_file', 'get_att iminute')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
-                  'sv_to_restart_file', 'get_att isecond')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'year'  , year), &
+                  'sv_to_restart_file', 'get_att year')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'month' , month), &
+                  'sv_to_restart_file', 'get_att month')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'day'   , day), &
+                  'sv_to_restart_file', 'get_att day')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'hour'  , hour), &
+                  'sv_to_restart_file', 'get_att hour')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'minute', minute), &
+                  'sv_to_restart_file', 'get_att minute')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'second', second), &
+                  'sv_to_restart_file', 'get_att second')
 
-ncommas_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
+ncommas_time = set_date(year, month, day, hour, minute, second)
 
 if ( ncommas_time /= statedate ) then
    call print_time(statedate,'DART current time',logfileunit) 
