@@ -12,12 +12,13 @@ module dart_ncommas_mod
 
 use        types_mod, only : r8, rad2deg, PI, SECPERDAY
 use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, &
-                             print_date, print_time, operator(==), operator(-)
+                             print_date, print_time, &
+                             operator(==), operator(-), operator(+)
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, nc_check, &
                              find_namelist_in_file, check_namelist_read, &
                              E_ERR, E_MSG, timestamp, find_textfile_dims, &
-                             logfileunit
+                             logfileunit, do_output
 
 use typesizes
 use netcdf
@@ -26,6 +27,7 @@ implicit none
 private
 
 public :: set_model_time_step, grid_type, get_grid_dims, get_grid, &
+          get_base_time, get_state_time, &
           write_ncommas_namelist, get_ncommas_restart_filename
 
 ! version controlled file description for error handling, do not edit
@@ -59,12 +61,21 @@ type(grid_type) ::  grid
 ! The ncommas restart manager namelist variables
 !------------------------------------------------------------------
 
-character(len=256) :: ic_filename      = 'ncommas.r.nc'
+character(len=256) :: ic_filename      = 'ncommas.nc'
 !character(len=256) :: restart_filename = 'dart_ncommas_mod_restart_filename_not_set'
 character(len= 64) :: ew_boundary_type, ns_boundary_type
 
 namelist /restart_nml/ ic_filename, ew_boundary_type, ns_boundary_type
 
+INTERFACE get_base_time
+      MODULE PROCEDURE get_base_time_ncid
+      MODULE PROCEDURE get_base_time_fname
+END INTERFACE
+
+INTERFACE get_state_time
+      MODULE PROCEDURE get_state_time_ncid
+      MODULE PROCEDURE get_state_time_fname
+END INTERFACE
 
 !======================================================================
 contains
@@ -274,6 +285,195 @@ end subroutine get_grid
 
 
 
+function get_base_time_ncid( ncid )
+!------------------------------------------------------------------
+! The restart netcdf files have the start time of the experiment.
+! The time array contains the time trajectory since then.
+! This routine returns the start time of the experiment.
+
+type(time_type) :: get_base_time_ncid
+
+integer, intent(in) :: ncid
+
+integer :: year, month, day, hour, minute, second
+
+if ( .not. module_initialized ) call initialize_module
+
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'YEAR'  , year), &
+                  'get_base_time', 'get_att year')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MONTH' , month), &
+                  'get_base_time', 'get_att month')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'DAY'   , day), &
+                  'get_base_time', 'get_att day')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'HOUR'  , hour), &
+                  'get_base_time', 'get_att hour')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MINUTE', minute), &
+                  'get_base_time', 'get_att minute')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'SECOND', second), &
+                  'get_base_time', 'get_att second')
+
+get_base_time_ncid = set_date(year, month, day, hour, minute, second)
+
+end function get_base_time_ncid
+
+
+
+function get_base_time_fname(filename)
+!------------------------------------------------------------------
+! The restart netcdf files have the start time of the experiment.
+! The time array contains the time trajectory since then.
+! This routine returns the start time of the experiment.
+
+type(time_type) :: get_base_time_fname
+
+character(len=*), intent(in) :: filename
+
+integer :: ncid, year, month, day, hour, minute, second
+
+if ( .not. module_initialized ) call initialize_module
+
+if ( .not. file_exist(filename) ) then
+   write(string1,*) 'cannot open file ', trim(filename),' for reading.'
+   call error_handler(E_ERR,'get_base_time',string1,source,revision,revdate)
+endif
+
+call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
+                  'get_base_time', 'open '//trim(filename))
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'YEAR'  , year), &
+                  'get_base_time', 'get_att year')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MONTH' , month), &
+                  'get_base_time', 'get_att month')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'DAY'   , day), &
+                  'get_base_time', 'get_att day')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'HOUR'  , hour), &
+                  'get_base_time', 'get_att hour')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MINUTE', minute), &
+                  'get_base_time', 'get_att minute')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'SECOND', second), &
+                  'get_base_time', 'get_att second')
+call nc_check(nf90_close(ncid), 'get_base_time', 'close '//trim(filename))
+
+get_base_time_fname = set_date(year, month, day, hour, minute, second)
+
+end function get_base_time_fname
+
+
+
+function get_state_time_ncid( ncid, filename )
+!------------------------------------------------------------------
+! the initialize_module ensures that the ncommas namelists are read.
+! The restart times in the ncommas_in&restart_nml are used to define
+! appropriate assimilation timesteps.
+!
+type(time_type)              :: get_state_time_ncid
+integer,          intent(in) :: ncid
+character(len=*), intent(in) :: filename
+
+integer         :: VarID, numdims, dimlen
+type(time_type) :: model_offset, base_time
+
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
+integer, allocatable, dimension(:)    :: mytimes
+
+if ( .not. module_initialized ) call initialize_module
+
+base_time = get_base_time(ncid)
+
+call nc_check( nf90_inq_varid(ncid, 'TIME', VarID), &
+                  'get_state_time', 'inq_varid TIME '//trim(filename))
+
+call nc_check(nf90_inquire_variable(ncid, VarId, dimids=dimIDs, ndims=numdims), &
+                  'get_state_time', 'inquire TIME '//trim(filename))
+
+if ( numdims > 1 ) then
+   write(string1,*) 'TIME is not expected to have ',numdims,' dimensions.'
+   call error_handler(E_ERR,'get_state_time',string1,source,revision,revdate)
+endif
+
+call nc_check(nf90_inquire_dimension(ncid, dimIDs(1), len=dimlen), &
+            'get_state_time', 'inquire time dimension length '//trim(filename))
+
+allocate(mytimes(dimlen))
+
+call nc_check( nf90_get_var(ncid, VarID, mytimes ), &
+                  'get_state_time', 'get_var TIME '//trim(filename))
+
+write(*,*)' temporal offset is (in seconds) is ',maxval(mytimes)
+model_offset = set_time(maxval(mytimes))
+
+get_state_time_ncid = base_time + model_offset
+
+if (do_output()) &
+    call print_time(get_state_time_ncid,'time for restart file '//trim(filename))
+if (do_output()) &
+    call print_date(get_state_time_ncid,'date for restart file '//trim(filename))
+
+deallocate(mytimes)
+
+end function get_state_time_ncid
+
+
+
+function get_state_time_fname(filename)
+!------------------------------------------------------------------
+! the initialize_module ensures that the ncommas namelists are read.
+! The restart times in the ncommas_in&restart_nml are used to define
+! appropriate assimilation timesteps.
+!
+type(time_type) :: get_state_time_fname
+character(len=*), intent(in) :: filename
+
+integer         :: ncid, VarID, numdims, dimlen
+type(time_type) :: model_offset, base_time
+
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
+integer, allocatable, dimension(:)    :: mytimes
+
+if ( .not. module_initialized ) call initialize_module
+
+if ( .not. file_exist(filename) ) then
+   write(string1,*) 'cannot open file ', trim(filename),' for reading.'
+   call error_handler(E_ERR,'get_state_time',string1,source,revision,revdate)
+endif
+
+call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
+                  'get_base_time', 'open '//trim(filename))
+
+base_time = get_base_time(ncid)
+
+call nc_check( nf90_inq_varid(ncid, 'TIME', VarID), &
+                  'get_state_time', 'inq_varid TIME '//trim(filename))
+
+call nc_check(nf90_inquire_variable(ncid, VarId, dimids=dimIDs, ndims=numdims), &
+                  'get_state_time', 'inquire TIME '//trim(filename))
+
+if ( numdims > 1 ) then
+   write(string1,*) 'TIME is not expected to have ',numdims,' dimensions.'
+   call error_handler(E_ERR,'get_state_time',string1,source,revision,revdate)
+endif
+
+call nc_check(nf90_inquire_dimension(ncid, dimIDs(1), len=dimlen), &
+            'get_state_time', 'inquire time dimension length '//trim(filename))
+
+allocate(mytimes(dimlen))
+
+call nc_check( nf90_get_var(ncid, VarID, mytimes ), &
+                  'get_state_time', 'get_var TIME '//trim(filename))
+call nc_check(nf90_close(ncid), 'get_state_time', 'close '//trim(filename))
+
+write(*,*)' temporal offset is (in seconds) is ',maxval(mytimes)
+model_offset = set_time(maxval(mytimes))
+
+get_state_time_fname = base_time + model_offset
+
+if (do_output()) &
+    call print_time(get_state_time_fname,'time for restart file '//trim(filename))
+if (do_output()) &
+    call print_date(get_state_time_fname,'date for restart file '//trim(filename))
+
+deallocate(mytimes)
+
+end function get_state_time_fname
 
 
 
@@ -460,6 +660,104 @@ if ( .not. module_initialized ) call initialize_module
 filename   = trim(ic_filename)
 
 end subroutine get_ncommas_restart_filename
+
+
+
+
+!From netCDF file we need the following variables:
+!
+!xg_pos(1), yg_pos(1), lat (variable), lon(variable)
+!
+!
+!xctrue(:) = xc(:) + xg_pos(1)
+!yctrue(:) = yc(:) + yg_pos(1)
+!
+!xetrue(:) = xe(:) + xg_pos(1)
+!yetrue(:) = ye(:) + yg_pos(1)
+!
+!
+!DO j = 1,ny-1
+! DO i = 1,nx-1
+!    CALL XY_TO_LL(new_lat, new_lon, 0, xctrue(i), yctrue(j), lat, lon)
+!    slat(i,j) = new_lat
+!    slon(i,j) = new_lon 
+! ENDDO
+!ENDDO
+!
+!DO j = 1,ny-1
+! DO i = 1,nx
+!    CALL XY_TO_LL(new_lat, new_lon, 0, xetrue(i), yctrue(j), lat, lon)
+!    ulat(i,j) = new_lat
+!    ulon(i,j) = new_lon 
+! ENDDO
+!ENDDO
+!
+!DO j = 1,ny
+! DO i = 1,nx-1
+!    CALL XY_TO_LL(new_lat, new_lon, 0, xctrue(i), yetrue(j), lat, lon)
+!    vlat(i,j) = new_lat
+!    vlon(i,j) = new_lon 
+! ENDDO
+!ENDDO
+!
+!
+!!############################################################################
+!!
+!!     ##################################################################
+!!     ######                                                                                                                              ######
+!!     ######                                     SUBROUTINE XY_TO_LL                                         ######
+!!     ######                                                                                                                              ######
+!!     ##################################################################
+!!
+!!
+!!     PURPOSE:
+!!
+!!     This subroutine computes the projected (lat, lon) coordinates of the
+!!     point (x, y) relative to (lat0, lon0).  Various map projections
+!!     are possible.
+!!
+!!############################################################################
+!!
+!!     Author:  David Dowell
+!!
+!!     Creation Date:  25 February 2005
+!!     Modified:  12 April 2005 (changed units of rearth, x, and y from km to m)
+!!
+!!############################################################################
+!
+! SUBROUTINE XY_TO_LL(lat, lon, map_proj, x, y, lat0, lon0)
+!
+! implicit none
+!
+!! Passed variables
+!
+!   integer map_proj            ! map projection:
+!                               !   0 = flat earth
+!                               !   1 = oblique azimuthal
+!                               !   2 = Lambert conformal
+!
+!   real x, y                   ! distance (m)
+!   real lat0, lon0             ! coordinates (rad) of origin (where x=0, y=0)
+!
+!! Returned variables
+!
+!   real lat, lon               ! coordinates (rad) of point
+!
+!! Local variables
+!
+!   real rearth; parameter(rearth=1000.0 * 6367.0)      ! radius of earth (m)
+!
+!   if (map_proj.eq.0) then
+!     lat = lat0 + y / rearth
+!     lon = lon0 + x / ( rearth * cos(0.5*(lat0+lat)) )
+!   else
+!     write(*,*) 'map projection unavailable:  ', map_proj
+!     stop
+!   endif
+!
+!   RETURN
+!   END
+
 
 
 end module dart_ncommas_mod
