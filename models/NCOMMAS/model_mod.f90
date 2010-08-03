@@ -10,7 +10,7 @@ module model_mod
 ! $Revision$
 ! $Date$
 
-! This is the interface between the ncommas ocean model and DART.
+! This is the interface between the ncommas model and DART.
 
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8, SECPERDAY, MISSING_R8, rad2deg, PI
@@ -399,7 +399,7 @@ if (do_output()) write(     *     , nml=model_nml)
 
 !---------------------------------------------------------------
 ! Set the time step ... causes ncommas namelists to be read.
-! Ensures model_timestep is multiple of 'ocean_dynamics_timestep'
+! Ensures model_timestep is multiple of 'dynamics_timestep'
 
 call set_calendar_type( calendar )   ! comes from model_mod_nml
 
@@ -1361,8 +1361,13 @@ real(r8),         intent(inout) :: state_vector(:)
 type(time_type),  intent(out)   :: model_time
 
 ! temp space to hold data while we are reading it
-real(r8) :: data_2d_array(nxc,nyc), data_3d_array(nxc,nyc,nzc)
+integer  :: mystart(1), mycount(1)
 integer  :: i, j, k, ivar, indx
+real(r8), allocatable, dimension(:)        :: data_1d(1)
+real(r8), allocatable, dimension(:,:)      :: data_2d_array
+real(r8), allocatable, dimension(:,:,:)    :: data_3d_array
+real(r8), allocatable, dimension(:,:,:,:)  :: data_4d_array
+real(r8), allocatable, dimension(:,:,:,:,:) :: data_5d_array
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: varname 
@@ -1376,12 +1381,8 @@ state_vector = MISSING_R8
 
 ! Check that the input file exists ... 
 ! Read the time data. 
-! Note from Nancy Norton as pertains time:
-! "The time recorded in the ncommas2 restart files is the current time,
-! which corresponds to the time of the XXXX_CUR variables.
 !
 ! current time is determined from year, month, day, hour, minute, second, and *time*
-!
 
 if ( .not. file_exist(filename) ) then
    write(string1,*) 'cannot open file ', trim(filename),' for reading.'
@@ -1402,6 +1403,17 @@ call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MINUTE', minute), &
                   'restart_file_to_sv', 'get_att minute')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'SECOND', second), &
                   'restart_file_to_sv', 'get_att second')
+
+! FIXME - Use the temporal offset 
+call nc_check( nf90_inq_varid(ncid, 'TIME', VarID), &
+                  'restart_file_to_sv', 'inq_varid TIME '//trim(filename))
+
+mystart(1) = 1
+mycount(1) = 1
+call nc_check( nf90_get_var(ncid, VarID, data_1d_array, start=mystart, count=mycount ), &
+                  'restart_file_to_sv', 'get_var TIME '//trim(filename))
+
+write(*,*)' temporal offset is ',data_1d_array
 
 ! FIXME: we don't allow a real year of 0 - add one for now, but
 ! THIS MUST BE FIXED IN ANOTHER WAY!
@@ -1424,17 +1436,16 @@ if (do_output()) &
 
 indx = 1
 
-! fill SALT, TEMP, UVEL, VVEL in that order
 ! The ncommas restart files have two time steps for each variable,
 ! the variables are named SALT_CUR and SALT_OLD ... for example.
 ! We are only interested in the CURrent time step.
 
-do ivar=1, n3dfields
+do ivar=1, nfields
 
-   varname = trim(progvarnames(ivar))//'_CUR'
+   varname = trim(progvar(ivar)%varname)
    myerrorstring = trim(filename)//' '//trim(varname)
 
-   ! Is the netCDF variable the right shape?
+   ! determine the shape of the netCDF variable 
 
    call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
             'restart_file_to_sv', 'inq_varid '//trim(myerrorstring))
@@ -1442,26 +1453,51 @@ do ivar=1, n3dfields
    call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
             'restart_file_to_sv', 'inquire '//trim(myerrorstring))
 
-   if (numdims /= 3) then
-      write(string1,*) trim(myerrorstring),' does not have exactly 3 dimensions'
-      call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
-   endif
-
    do i = 1,numdims
       write(string1,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
             'restart_file_to_sv', string1)
 
-      if (dimlen /= size(data_3d_array,i)) then
-         write(string1,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
+      if ( dimlen /= progvar(ivar)%dimlens(i) ) then
+         write(string1,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',progvar(ivar)%dimlens(i)
          call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
       endif
-   enddo   
+   enddo
+
+   if (numdims == 1) then
+      allocate(data_1d_array(progvar(ivar)%dimlens(1)))
+      call nc_check(nf90_get_var(ncid, VarID, data_1d_array), &
+            'restart_file_to_sv', 'get_var '//trim(varname))
+   elseif (numdims == 2) then
+      allocate(data_2d_array(progvar(ivar)%dimlens(1),  &
+                             progvar(ivar)%dimlens(2)))
+      call nc_check(nf90_get_var(ncid, VarID, data_2d_array), &
+            'restart_file_to_sv', 'get_var '//trim(varname))
+   elseif (numdims == 3) then
+      allocate(data_3d_array(progvar(ivar)%dimlens(1),  &
+                             progvar(ivar)%dimlens(2),  &
+                             progvar(ivar)%dimlens(3)))
+      call nc_check(nf90_get_var(ncid, VarID, data_3d_array), &
+            'restart_file_to_sv', 'get_var '//trim(varname))
+   elseif (numdims == 4) then
+      allocate(data_4d_array(progvar(ivar)%dimlens(1),  &
+                             progvar(ivar)%dimlens(2),  &
+                             progvar(ivar)%dimlens(3),  &
+                             progvar(ivar)%dimlens(4)))
+      call nc_check(nf90_get_var(ncid, VarID, data_4d_array), &
+            'restart_file_to_sv', 'get_var '//trim(varname))
+   elseif (numdims == 5) then
+      allocate(data_5d_array(progvar(ivar)%dimlens(1),  &
+                             progvar(ivar)%dimlens(2),  &
+                             progvar(ivar)%dimlens(3),  &
+                             progvar(ivar)%dimlens(4),  &
+                             progvar(ivar)%dimlens(5)))
+      call nc_check(nf90_get_var(ncid, VarID, data_5d_array), &
+            'restart_file_to_sv', 'get_var '//trim(varname))
+   else
+   endif
 
    ! Actually get the variable and stuff it into the array
-
-   call nc_check(nf90_get_var(ncid, VarID, data_3d_array), 'restart_file_to_sv', &
-                'get_var '//trim(varname))
 
    do k = 1, nzc   ! size(data_3d_array,3)
    do j = 1, nyc   ! size(data_3d_array,2)
@@ -1469,50 +1505,6 @@ do ivar=1, n3dfields
       state_vector(indx) = data_3d_array(i, j, k)
       indx = indx + 1
    enddo
-   enddo
-   enddo
-
-enddo
-
-! and finally, PSURF (and any other 2d fields)
-do ivar=(n3dfields+1), (n3dfields+n2dfields)
-
-   varname = trim(progvarnames(ivar))//'_CUR'
-   myerrorstring = trim(varname)//' '//trim(filename)
-
-   ! Is the netCDF variable the right shape?
-
-   call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
-            'restart_file_to_sv', 'inq_varid '//trim(myerrorstring))
-
-   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
-            'restart_file_to_sv', 'inquire '//trim(myerrorstring))
-
-   if (numdims /= 2) then
-      write(string1,*) trim(myerrorstring),' does not have exactly 2 dimensions'
-      call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
-   endif
-
-   do i = 1,numdims
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            'restart_file_to_sv', string1)
-
-      if (dimlen /= size(data_2d_array,i)) then
-         write(string1,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
-         call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
-      endif
-   enddo   
-
-   ! Actually get the variable and stuff it into the array
-
-   call nc_check(nf90_get_var(ncid, VarID, data_2d_array), 'restart_file_to_sv', &
-                'get_var '//trim(varname))
-
-   do j = 1, nyc   ! size(data_3d_array,2)
-   do i = 1, nxc   ! size(data_3d_array,1)
-      state_vector(indx) = data_2d_array(i, j)
-      indx = indx + 1
    enddo
    enddo
 
@@ -1541,7 +1533,7 @@ integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname 
 character(len=256)                    :: myerrorstring 
 
-integer :: i, ivar, ncid, VarID, numdims, dimlen
+integer :: i, ivar, ncid, VarID, numdims, dimlen, nowseconds
 
 !----------------------------------------------------------------------
 ! Get the show underway
@@ -1578,7 +1570,7 @@ ncommas_time0 = set_date(year, month, day, hour, minute, second)
 
 ! have to open TIME variable (not attribute) to get number of seconds
 ! since time 0 for current time.  put that into nowseconds
-nowseconds = 300   ! get this from netcdf
+nowseconds = 300   ! FIXME - get this from netcdf
 ncommas_time = ncommas_time0 + set_time(nowseconds)
 
 if ( ncommas_time /= statedate ) then
