@@ -1532,7 +1532,7 @@ character(len=*), intent(in) :: filename
 type(time_type),  intent(in) :: statedate
 
 integer :: year, month, day, hour, minute, second
-type(time_type) :: ncommas_time
+type(time_type) :: ncommas_time, ncommas_time0
 
 ! temp space to hold data while we are writing it
 real(r8) :: data_2d_array(nxc,nyc), data_3d_array(nxc,nyc,nzc)
@@ -1560,20 +1560,26 @@ endif
 
 call nc_check( nf90_open(trim(filename), NF90_WRITE, ncid), &
                   'sv_to_restart_file', 'open '//trim(filename))
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'year'  , year), &
-                  'sv_to_restart_file', 'get_att year')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'month' , month), &
-                  'sv_to_restart_file', 'get_att month')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'day'   , day), &
-                  'sv_to_restart_file', 'get_att day')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'hour'  , hour), &
-                  'sv_to_restart_file', 'get_att hour')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'minute', minute), &
-                  'sv_to_restart_file', 'get_att minute')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'second', second), &
-                  'sv_to_restart_file', 'get_att second')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'YEAR'  , year), &
+                  'sv_to_restart_file', 'get_att YEAR')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MONTH' , month), &
+                  'sv_to_restart_file', 'get_att MONTH')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'DAY'   , day), &
+                  'sv_to_restart_file', 'get_att DAY')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'HOUR'  , hour), &
+                  'sv_to_restart_file', 'get_att HOUR')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MINUTE', minute), &
+                  'sv_to_restart_file', 'get_att MINUTE')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'SECOND', second), &
+                  'sv_to_restart_file', 'get_att SECOND')
 
-ncommas_time = set_date(year, month, day, hour, minute, second)
+! initial time
+ncommas_time0 = set_date(year, month, day, hour, minute, second)
+
+! have to open TIME variable (not attribute) to get number of seconds
+! since time 0 for current time.  put that into nowseconds
+nowseconds = 300   ! get this from netcdf
+ncommas_time = ncommas_time0 + set_time(nowseconds)
 
 if ( ncommas_time /= statedate ) then
    call print_time(statedate,'DART current time',logfileunit) 
@@ -1589,6 +1595,8 @@ if (do_output()) &
 if (do_output()) &
     call print_date(ncommas_time,'date of restart file '//trim(filename))
 
+! FIXME: this needs to change.   read the namelist to see what variables
+! are in the state vector and write them out in a loop.
 ! fill S, T, U, V in that order
 do ivar=1, n3dfields
 
