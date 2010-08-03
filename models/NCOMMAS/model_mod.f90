@@ -50,14 +50,14 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT,        &   ! index 1
                              KIND_ICE_MIXING_RATIO,        &   ! index 11
                              KIND_SNOW_MIXING_RATIO,       &   ! index 12
                              KIND_GRAUPEL_MIXING_RATIO,    &   ! index 13
-                             get_obs_kind_name
+                             get_raw_obs_kind_name
 
 use mpi_utilities_mod, only: my_task_id
 
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
-use  dart_ncommas_mod, only: set_model_time_step, grid_type,    &
-                             get_grid_dims, get_grid, get_base_time, get_state_time,  &
+use  dart_ncommas_mod, only: set_model_time_step, grid_type, get_grid, &
+                             get_grid_dims, get_base_time, get_state_time, &
                              get_ncommas_restart_filename, write_ncommas_namelist
 
 use typesizes
@@ -501,10 +501,11 @@ do ivar = 1, nfields
    progvar(ivar)%indexN      = index1 + varsize - 1 
    index1                    = index1 + varsize      ! sets up for next variable
    progvar(ivar)%dart_kind   = progvarkinds(ivar)
-   progvar(ivar)%kind_string = get_obs_kind_name(progvar(ivar)%dart_kind)
+   progvar(ivar)%kind_string = get_raw_obs_kind_name(progvar(ivar)%dart_kind)
 
    if (do_output()) then
-      write(logfileunit,*) ivar,trim(progvar(ivar)%varname)
+      write(logfileunit,*)
+      write(logfileunit,*) trim(progvar(ivar)%varname),' variable number ',ivar
       write(logfileunit,*) '  long_name ',trim(progvar(ivar)%long_name)
       write(logfileunit,*) '  units     ',trim(progvar(ivar)%units)
       write(logfileunit,*) '  numdims   ',progvar(ivar)%numdims
@@ -515,7 +516,8 @@ do ivar = 1, nfields
       write(logfileunit,*) '  dart_kind ',progvar(ivar)%dart_kind
       write(logfileunit,*) '  kind_string ',progvar(ivar)%kind_string
 
-      write(     *     ,*) ivar,trim(progvar(ivar)%varname)
+      write(     *     ,*)
+      write(     *     ,*) trim(progvar(ivar)%varname),' variable number ',ivar
       write(     *     ,*) '  long_name ',trim(progvar(ivar)%long_name)
       write(     *     ,*) '  units     ',trim(progvar(ivar)%units)
       write(     *     ,*) '  numdims   ',progvar(ivar)%numdims
@@ -1109,12 +1111,17 @@ integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
+character(len=NF90_MAX_NAME)          :: varname 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: VarID
+integer :: i, ivar, VarID, numdims, dimlen
 
-real(r8), dimension(nxc,nyc,nzc) :: data_3d
-real(r8), dimension(nxc,nyc)    :: data_2d
-character(len=128)  :: filename
+real(r8), allocatable, dimension(:)       :: data_1d
+real(r8), allocatable, dimension(:,:)     :: data_2d
+real(r8), allocatable, dimension(:,:,:)   :: data_3d
+real(r8), allocatable, dimension(:,:,:,:) :: data_4d
+
+character(len=128) :: filename
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1148,43 +1155,49 @@ else
    !----------------------------------------------------------------------------
    ! We need to process the prognostic variables.
    ! Replace missing values (0.0) with netcdf missing value.
-   ! Staggered grid causes some logistical problems.
    !----------------------------------------------------------------------------
 
-   call vector_to_prog_var(statevec, 0, data_3d)
-   where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, 'SALT', VarID), &
-                'nc_write_model_vars', 'S inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                'nc_write_model_vars', 'S put_var '//trim(filename))
+   do ivar = 1,nfields
 
-   call vector_to_prog_var(statevec, 0, data_3d)
-   where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, 'TEMP', VarID), &
-                'nc_write_model_vars', 'T inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                'nc_write_model_vars', 'T put_var '//trim(filename))
+      varname = trim(progvar(ivar)%varname)
+      string2 = trim(filename)//' '//trim(varname)
 
-   call vector_to_prog_var(statevec, 0, data_3d)
-   where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, 'UVEL', VarID), &
-                'nc_write_model_vars', 'U inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                'nc_write_model_vars', 'U put_var '//trim(filename))
+      ! ensure netCDF variable is conformable 
+      ! the TIME (unlimited) dimension will be skipped
 
-   call vector_to_prog_var(statevec, 0, data_3d)
-   where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, 'VVEL', VarID), &
-                'nc_write_model_vars', 'V inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                'nc_write_model_vars', 'V put_var '//trim(filename))
+      call nc_check(nf90_inq_varid(ncFileID, varname, VarID), &
+            'nc_write_model_vars', 'inq_varid '//trim(string2))
 
-   call vector_to_prog_var(statevec, 0, data_2d)
-   where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, 'PSURF', VarID), &
-                'nc_write_model_vars', 'PSURF inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
-                'nc_write_model_vars', 'PSURF put_var '//trim(filename))
+      call nc_check(nf90_inquire_variable(ncFileID,VarId,dimids=dimIDs,ndims=numdims), &
+            'nc_write_model_vars', 'inquire '//trim(string2))
+
+      ConformableDimensions : do i = 1,numdims
+         if ( dimIDs(i) == unlimitedDimID ) cycle ConformableDimensions
+
+         write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
+         call nc_check(nf90_inquire_dimension(ncFileID, dimIDs(i), len=dimlen), &
+               'nc_write_model_vars', string1)
+
+         if ( dimlen /= progvar(ivar)%dimlens(i) ) then
+            write(string1,*) trim(string2),'dim/dimlen',i,dimlen,'not',progvar(ivar)%dimlens(i)
+            call error_handler(E_ERR,'nc_write_model_vars',string1,source,revision,revdate)
+         endif
+      enddo ConformableDimensions
+
+!     if ( progvar(ivar)%numdims == 1) then
+!     elseif ( progvar(ivar)%numdims == 1) then
+!     else
+!     endif
+
+!     call vector_to_prog_var(statevec, S_index, data_3d)
+!     where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
+!     call nc_check(NF90_inq_varid(ncFileID, 'SALT', VarID), &
+!                  'nc_write_model_vars', 'S inq_varid '//trim(filename))
+!     call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
+!                  'nc_write_model_vars', 'S put_var '//trim(filename))
+
+   enddo
+
 
 endif
 
@@ -1402,8 +1415,7 @@ if ( .not. file_exist(filename) ) then
    call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
 endif
 
-
-call nc_check(nf90_open(trim(filename), nf90_nowrite, ncid), &
+call nc_check(nf90_open(trim(filename), NF90_NOWRITE, ncid), &
              'restart_file_to_sv','open '//trim(filename))
 
 model_time = get_state_time(ncid, filename)
@@ -1412,7 +1424,6 @@ if (do_output()) &
     call print_time(model_time,'time for restart file '//trim(filename))
 if (do_output()) &
     call print_date(model_time,'date for restart file '//trim(filename))
-
 
 ! Start counting and filling the state vector one item at a time,
 ! repacking the Nd arrays into a single 1d list of numbers.

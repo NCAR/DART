@@ -57,10 +57,10 @@ namelist /ncommas_to_dart_nml/ ncommas_to_dart_output_file, &
 ! global storage
 !----------------------------------------------------------------------
 
+logical               :: verbose = .TRUE.
 integer               :: io, iunit, x_size
 type(time_type)       :: model_time
 real(r8), allocatable :: statevector(:)
-logical               :: verbose = .FALSE.
 
 !----------------------------------------------------------------------
 

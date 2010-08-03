@@ -154,7 +154,7 @@
 
 
 &ncommas_to_dart_nml
-   ncommas_to_dart_output_file  = 'dart.ud',
+   ncommas_to_dart_output_file  = 'dart.ud'
   /
 
 
