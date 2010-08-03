@@ -162,6 +162,10 @@ integer, parameter, public :: &
     KIND_SOIL_TEMPERATURE            = 74, &  ! missing from WRF model_mod (?)
     KIND_SOIL_LIQUID_WATER           = 75     ! missing from WRF model_mod (?)
 
+! kinds for NCOMMAS  (Lou W., Ted M.)
+integer, parameter, public :: &
+    KIND_VERTICAL_VORTICITY          = 76
+
 ! kinds for vortex tracking (WRF - yongsheng)
 integer, parameter, public :: &
     KIND_VORTEX_LON                  = 81, &
@@ -347,6 +351,7 @@ obs_kind_names(42) = obs_kind_type(KIND_ELECTRON_DENSITY, 'KIND_ELECTRON_DENSITY
 obs_kind_names(43) = obs_kind_type(KIND_1D_PARAMETER, 'KIND_1D_PARAMETER')
 obs_kind_names(44) = obs_kind_type(KIND_2D_PARAMETER, 'KIND_2D_PARAMETER')
 obs_kind_names(45) = obs_kind_type(KIND_3D_PARAMETER, 'KIND_3D_PARAMETER')
+
 obs_kind_names(50) = obs_kind_type(KIND_SALINITY, 'KIND_SALINITY')
 obs_kind_names(51) = obs_kind_type(KIND_U_CURRENT_COMPONENT, 'KIND_U_CURRENT_COMPONENT')
 obs_kind_names(52) = obs_kind_type(KIND_V_CURRENT_COMPONENT, 'KIND_V_CURRENT_COMPONENT')
@@ -354,15 +359,19 @@ obs_kind_names(53) = obs_kind_type(KIND_SEA_SURFACE_HEIGHT, 'KIND_SEA_SURFACE_HE
 obs_kind_names(54) = obs_kind_type(KIND_DRY_LAND, 'KIND_DRY_LAND')
 obs_kind_names(55) = obs_kind_type(KIND_SEA_SURFACE_PRESSURE, 'KIND_SEA_SURFACE_PRESSURE')
 obs_kind_names(56) = obs_kind_type(KIND_W_CURRENT_COMPONENT, 'KIND_W_CURRENT_COMPONENT')
+
 obs_kind_names(60) = obs_kind_type(KIND_INFRARED_RADIANCE, 'KIND_INFRARED_RADIANCE')
 obs_kind_names(61) = obs_kind_type(KIND_INFRARED_BRIGHT_TEMP, 'KIND_INFRARED_BRIGHT_TEMP')
 obs_kind_names(62) = obs_kind_type(KIND_LANDMASK, 'KIND_LANDMASK')
+
 obs_kind_names(70) = obs_kind_type(KIND_SKIN_TEMPERATURE, 'KIND_SKIN_TEMPERATURE')
 obs_kind_names(71) = obs_kind_type(KIND_NADIR_RADIANCE, 'KIND_NADIR_RADIANCE')
 obs_kind_names(72) = obs_kind_type(KIND_TRACER_1_MIXING_RATIO, 'KIND_TRACER_1_MIXING_RATIO')
 obs_kind_names(73) = obs_kind_type(KIND_TRACER_2_MIXING_RATIO, 'KIND_TRACER_2_MIXING_RATIO')
 obs_kind_names(74) = obs_kind_type(KIND_SOIL_TEMPERATURE, 'KIND_SOIL_TEMPERATURE')
 obs_kind_names(75) = obs_kind_type(KIND_SOIL_LIQUID_WATER, 'KIND_SOIL_LIQUID_WATER')
+obs_kind_names(76) = obs_kind_type(KIND_VERTICAL_VORTICITY, 'KIND_VERTICAL_VORTICITY')
+
 obs_kind_names(81) = obs_kind_type(KIND_VORTEX_LON, 'KIND_VORTEX_LON')
 obs_kind_names(82) = obs_kind_type(KIND_VORTEX_LAT, 'KIND_VORTEX_LAT')
 obs_kind_names(83) = obs_kind_type(KIND_VORTEX_PMIN, 'KIND_VORTEX_PMIN')

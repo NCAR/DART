@@ -37,19 +37,19 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              open_file, file_exist, find_textfile_dims,        &
                              file_to_text
 
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT,      &   ! index 1
-                             KIND_V_WIND_COMPONENT,      &   ! index 2
-                             KIND_VERTICAL_VELOCITY,     &   ! index 3
-                             KIND_POTENTIAL_TEMPERATURE, &   ! index 4
-                             KIND_RADAR_REFLECTIVITY,    &   ! index 5
-                             KIND_VERTICAL_VORTICITY,    &   ! index 6
-                             KIND_PERT_EXNER,            &   ! index 7
-                             KIND_VAPOR_MIXING_RATIO,    &   ! index 8
-                             KIND_CLOUD_MIXING_RATIO,    &   ! index 9 
-                             KIND_RAIN_MIXING_RATIO,     &   ! index 10
-                             KIND_ICE_MIXING_RATIO,      &   ! index 11
-                             KIND_SNOW_MIXING_RATIO,     &   ! index 12
-                             KIND_GRAUPEL_MIXING_RATIO       ! index 13
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT,        &   ! index 1
+                             KIND_V_WIND_COMPONENT,        &   ! index 2
+                             KIND_VERTICAL_VELOCITY,       &   ! index 3
+                             KIND_POTENTIAL_TEMPERATURE,   &   ! index 4
+                             KIND_RADAR_REFLECTIVITY,      &   ! index 5
+                             KIND_VERTICAL_VORTICITY,      &   ! index 6
+                             KIND_EXNER_FUNCTION,          &   ! index 7
+                             KIND_VAPOR_MIXING_RATIO,      &   ! index 8
+                             KIND_CLOUDWATER_MIXING_RATIO, &   ! index 9 
+                             KIND_RAINWATER_MIXING_RATIO,  &   ! index 10
+                             KIND_ICE_MIXING_RATIO,        &   ! index 11
+                             KIND_SNOW_MIXING_RATIO,       &   ! index 12
+                             KIND_GRAUPEL_MIXING_RATIO         ! index 13
 
 use mpi_utilities_mod, only: my_task_id
 
@@ -125,7 +125,7 @@ namelist /model_nml/  &
 ! scalar PSFC long_name = "SURFACE PRESSURE"
 ! scalar TSFC long_name = "SURFACE TEMPERATURE AT GROUND"
 ! scalar QSFC long_name = "SURFACE MIXING RATIO AT GROUND"
-!  U    long_name = "X-WIND COMPONENT"      float   U(TIME, ZC, YC, XE)
+!  U    long_name = "X-WIND COMPONENT"      float   U(TIME, ZC, YC, XE) 
 !  V    long_name = "Y-WIND COMPONENT"      float   V(TIME, ZC, YE, XC)
 !  W    long_name = "Z-WIND COMPONENT"      float   W(TIME, ZE, YC, XC)
 !  TH   long_name = "POTENTIAL TEMPERATURE" float  TH(TIME, ZC, YC, XC)
@@ -189,28 +189,23 @@ integer :: nxe=-1, nye=-1, nze=-1    ! staggered grid positions
 ! locations of cell centers (C) and edges (E) for each axis.
 real(r8), allocatable :: ZC(:), ZE(:)
 
-! These arrays store the longitude and latitude of the lower left corner of
-! each of the dipole u quadrilaterals and t quadrilaterals.
-real(r8), allocatable :: ULAT(:,:), ULON(:,:)
-real(r8), allocatable :: VLAT(:,:), VLON(:,:)
-real(r8), allocatable :: WLAT(:,:), WLON(:,:)
+! These arrays store the longitude and latitude of the lower left corner
+real(r8), allocatable :: ULAT(:,:), ULON(:,:)  ! XE,YC
+real(r8), allocatable :: VLAT(:,:), VLON(:,:)  ! XC,YE
+real(r8), allocatable :: WLAT(:,:), WLON(:,:)  ! XC,YC
 
-real(r8)        :: endTime
-real(r8)        :: ocean_dynamics_timestep = 900.0_r4
-integer         :: timestepcount = 0
-type(time_type) :: model_time, model_timestep
-
-integer :: model_size    ! the state vector length
-
-real(r8), allocatable :: ens_mean(:)
-
+integer               :: model_size      ! the state vector length
+type(time_type)       :: model_time      ! valid time of the model state
+type(time_type)       :: model_timestep  ! smallest time to adv model
+real(r8), allocatable :: ens_mean(:)     ! may be needed for forward ops
 
 INTERFACE vector_to_prog_var
       MODULE PROCEDURE vector_to_2d_prog_var
       MODULE PROCEDURE vector_to_3d_prog_var
 END INTERFACE
 
-
+!------------------------------------------------
+! These bits are left over from the POP dipole grid.
 !------------------------------------------------
 
 ! The regular grid used for dipole interpolation divides the sphere into
@@ -255,15 +250,19 @@ logical :: dipole_grid
 
 contains
 
+
+
 !==================================================================
 ! All the REQUIRED interfaces come first - just by convention.
 !==================================================================
 
+
+
 function get_model_size()
 !------------------------------------------------------------------
-!
-! Returns the size of the model as an integer. Required for all
-! applications.
+! Done - TJH.
+! Returns the size of the model as an integer. 
+! Required for all applications.
 
 integer :: get_model_size
 
@@ -277,7 +276,7 @@ end function get_model_size
 
 subroutine adv_1step(x, time)
 !------------------------------------------------------------------
-!
+! Done - TJH.
 ! Does a single timestep advance of the model. The input value of
 ! the vector x is the starting condition and x is updated to reflect
 ! the changed state after a timestep. The time argument is intent
@@ -318,7 +317,7 @@ integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
-real(r8) :: lat, lon, height
+real(r8):: lat, lon, height
 integer :: lon_index, lat_index, height_index, local_var
 
 call get_state_indices(index_in, lat_index, lon_index, height_index, local_var)
@@ -1957,13 +1956,13 @@ else if(obs_type == KIND_RADAR_REFLECTIVITY) then
    base_offset = start_index(5)
 else if(obs_type == KIND_VERTICAL_VORTICITY) then
    base_offset = start_index(6)
-else if(obs_type == KIND_PERT_EXNER) then
+else if(obs_type == KIND_EXNER_FUNCTION) then
    base_offset = start_index(7)
 else if(obs_type == KIND_VAPOR_MIXING_RATIO) then
    base_offset = start_index(8)
-else if(obs_type == KIND_CLOUD_MIXING_RATIO) then
+else if(obs_type == KIND_CLOUDWATER_MIXING_RATIO) then
    base_offset = start_index(9)
-else if(obs_type == KIND_RAIN_MIXING_RATIO) then
+else if(obs_type == KIND_RAINWATER_MIXING_RATIO) then
    base_offset = start_index(10)
 else if(obs_type == KIND_ICE_MIXING_RATIO) then
    base_offset = start_index(11)
@@ -2688,16 +2687,16 @@ else if (index_in < start_index(V_index+1)) then
    var_type = KIND_VERTICAL_VORTICITY         ! index 6
    startind = start_index(V_index)
 else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_PERT_EXNER                 ! index 7
+   var_type = KIND_EXNER_FUNCTION             ! index 7
    startind = start_index(V_index)
 else if (index_in < start_index(V_index+1)) then
    var_type = KIND_VAPOR_MIXING_RATIO         ! index 8
    startind = start_index(V_index)
 else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_CLOUD_MIXING_RATIO         ! index 9 
+   var_type = KIND_CLOUDWATER_MIXING_RATIO    ! index 9 
    startind = start_index(V_index)
 else if (index_in < start_index(V_index+1)) then
-   var_type = KIND_RAIN_MIXING_RATIO          ! index 10
+   var_type = KIND_RAINWATER_MIXING_RATIO     ! index 10
    startind = start_index(V_index)
 else if (index_in < start_index(V_index+1)) then
    var_type = KIND_ICE_MIXING_RATIO           ! index 11
