@@ -29,9 +29,10 @@ use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, timestamp, &
                              find_namelist_in_file, check_namelist_read
 use        model_mod, only : restart_file_to_sv, static_init_model, &
-                             get_model_size, get_ncommas_restart_filename
+                             get_model_size
 use  assim_model_mod, only : awrite_state_restart, open_restart_write, close_restart
 use time_manager_mod, only : time_type, print_time, print_date
+use dart_ncommas_mod, only : get_ncommas_restart_filename
 
 use netcdf
 implicit none

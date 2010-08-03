@@ -33,8 +33,8 @@ use    utilities_mod, only : initialize_utilities, timestamp, &
 use  assim_model_mod, only : open_restart_read, aread_state_restart, close_restart
 use time_manager_mod, only : time_type, print_time, print_date, operator(-)
 use        model_mod, only : static_init_model, sv_to_restart_file, &
-                             get_model_size, get_ncommas_restart_filename
-use     dart_ncommas_mod, only : write_ncommas_namelist
+                             get_model_size 
+use dart_ncommas_mod, only : write_ncommas_namelist, get_ncommas_restart_filename
 
 implicit none
 
