@@ -56,7 +56,7 @@ use mpi_utilities_mod, only: my_task_id
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
 use  dart_ncommas_mod, only: set_model_time_step, grid_type,    &
-                             get_grid_dims, get_grid,           &
+                             get_grid_dims, get_grid, get_base_time, get_state_time,  &
                              get_ncommas_restart_filename, write_ncommas_namelist
 
 use typesizes
@@ -144,6 +144,7 @@ namelist /model_nml/  &
 !        Example: WRF input.nml sets kind_string, etc.
 !------------------------------------------------------------------
 
+! FIXME: this ought to be set by the length of the namelist.
 integer, parameter :: n3dfields = 13
 integer, parameter :: n2dfields = 0
 integer, parameter :: nfields   = n3dfields + n2dfields
@@ -170,12 +171,6 @@ character(len=128) :: progvarnames(nfields) = &
                          (/ 'U   ', 'V   ', 'W   ', 'TH  ', 'DBZ ', &
                             'WZ  ', 'PI  ', 'QV  ', 'QC  ', 'QR  ', &
                             'QI  ', 'QS  ', 'QH  ' /)
-
-integer, parameter :: S_index     = 1
-integer, parameter :: T_index     = 2
-integer, parameter :: U_index     = 3
-integer, parameter :: V_index     = 4
-integer, parameter :: PSURF_index = 5
 
 integer :: start_index(nfields)
 
@@ -1362,12 +1357,11 @@ type(time_type),  intent(out)   :: model_time
 
 ! temp space to hold data while we are reading it
 integer  :: mystart(1), mycount(1)
-integer  :: i, j, k, ivar, indx
-real(r8), allocatable, dimension(:)        :: data_1d(1)
-real(r8), allocatable, dimension(:,:)      :: data_2d_array
-real(r8), allocatable, dimension(:,:,:)    :: data_3d_array
-real(r8), allocatable, dimension(:,:,:,:)  :: data_4d_array
-real(r8), allocatable, dimension(:,:,:,:,:) :: data_5d_array
+integer  :: i, j, k, l, ni, nj, nk, nl, ivar, indx
+real(r8), allocatable, dimension(:)         :: data_1d_array
+real(r8), allocatable, dimension(:,:)       :: data_2d_array
+real(r8), allocatable, dimension(:,:,:)     :: data_3d_array
+real(r8), allocatable, dimension(:,:,:,:)   :: data_4d_array
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: varname 
@@ -1380,66 +1374,32 @@ if ( .not. module_initialized ) call static_init_model
 state_vector = MISSING_R8
 
 ! Check that the input file exists ... 
-! Read the time data. 
-!
-! current time is determined from year, month, day, hour, minute, second, and *time*
 
 if ( .not. file_exist(filename) ) then
    write(string1,*) 'cannot open file ', trim(filename),' for reading.'
    call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
 endif
 
-call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
-                  'restart_file_to_sv', 'open '//trim(filename))
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'YEAR'  , year), &
-                  'restart_file_to_sv', 'get_att year')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MONTH' , month), &
-                  'restart_file_to_sv', 'get_att month')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'DAY'   , day), &
-                  'restart_file_to_sv', 'get_att day')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'HOUR'  , hour), &
-                  'restart_file_to_sv', 'get_att hour')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MINUTE', minute), &
-                  'restart_file_to_sv', 'get_att minute')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'SECOND', second), &
-                  'restart_file_to_sv', 'get_att second')
-
-! FIXME - Use the temporal offset 
-call nc_check( nf90_inq_varid(ncid, 'TIME', VarID), &
-                  'restart_file_to_sv', 'inq_varid TIME '//trim(filename))
-
-mystart(1) = 1
-mycount(1) = 1
-call nc_check( nf90_get_var(ncid, VarID, data_1d_array, start=mystart, count=mycount ), &
-                  'restart_file_to_sv', 'get_var TIME '//trim(filename))
-
-write(*,*)' temporal offset is ',data_1d_array
-
-! FIXME: we don't allow a real year of 0 - add one for now, but
-! THIS MUST BE FIXED IN ANOTHER WAY!
-if (year == 0) then
-  call error_handler(E_MSG, 'restart_file_to_sv', &
-                     'WARNING!!!   year 0 not supported; setting to year 1')
-  year = 1
-endif
-
-model_time = set_date(year, month, day, hour, minute, second)
+model_time = get_state_time(filename)
 
 if (do_output()) &
     call print_time(model_time,'time for restart file '//trim(filename))
 if (do_output()) &
     call print_date(model_time,'date for restart file '//trim(filename))
 
+
+call nc_check(nf90_open(trim(filename), nf90_nowrite, ncid), &
+             'restart_file_to_sv','open '//trim(filename))
+
 ! Start counting and filling the state vector one item at a time,
-! repacking the 3d arrays into a single 1d list of numbers.
-! These must be a fixed number and in a fixed order.
+! repacking the Nd arrays into a single 1d list of numbers.
 
 indx = 1
 
-! The ncommas restart files have two time steps for each variable,
-! the variables are named SALT_CUR and SALT_OLD ... for example.
-! We are only interested in the CURrent time step.
-
+! If these arrays have an extra dimension (like TIME), and it is only 1,
+! we might have to make the query code smarter, and might have to set
+! a start and count on the get_var() calls.  If it is more than 1, then
+! we have a problem.
 do ivar=1, nfields
 
    varname = trim(progvar(ivar)%varname)
@@ -1465,48 +1425,70 @@ do ivar=1, nfields
    enddo
 
    if (numdims == 1) then
-      allocate(data_1d_array(progvar(ivar)%dimlens(1)))
+      ni = progvar(ivar)%dimlens(1)
+      allocate(data_1d_array(ni))
       call nc_check(nf90_get_var(ncid, VarID, data_1d_array), &
             'restart_file_to_sv', 'get_var '//trim(varname))
+      do i = 1, ni   ! size(data_1d_array,1)
+         state_vector(indx) = data_1d_array(i)
+         indx = indx + 1
+      enddo
+      deallocate(data_1d_array)
    elseif (numdims == 2) then
-      allocate(data_2d_array(progvar(ivar)%dimlens(1),  &
-                             progvar(ivar)%dimlens(2)))
+      ni = progvar(ivar)%dimlens(1)
+      nj = progvar(ivar)%dimlens(2)
+      allocate(data_2d_array(ni, nj))
       call nc_check(nf90_get_var(ncid, VarID, data_2d_array), &
             'restart_file_to_sv', 'get_var '//trim(varname))
+      do j = 1, nj   ! size(data_2d_array,2)
+      do i = 1, ni   ! size(data_2d_array,1)
+         state_vector(indx) = data_2d_array(i, j)
+         indx = indx + 1
+      enddo
+      enddo
+      deallocate(data_2d_array)
    elseif (numdims == 3) then
-      allocate(data_3d_array(progvar(ivar)%dimlens(1),  &
-                             progvar(ivar)%dimlens(2),  &
-                             progvar(ivar)%dimlens(3)))
+      ni = progvar(ivar)%dimlens(1)
+      nj = progvar(ivar)%dimlens(2)
+      nk = progvar(ivar)%dimlens(3)
+      allocate(data_3d_array(ni, nj, nk))
       call nc_check(nf90_get_var(ncid, VarID, data_3d_array), &
             'restart_file_to_sv', 'get_var '//trim(varname))
+   
+      do k = 1, nk   ! size(data_3d_array,3)
+      do j = 1, nj   ! size(data_3d_array,2)
+      do i = 1, ni   ! size(data_3d_array,1)
+         state_vector(indx) = data_3d_array(i, j, k)
+         indx = indx + 1
+      enddo
+      enddo
+      enddo
+
+      deallocate(data_3d_array)
    elseif (numdims == 4) then
-      allocate(data_4d_array(progvar(ivar)%dimlens(1),  &
-                             progvar(ivar)%dimlens(2),  &
-                             progvar(ivar)%dimlens(3),  &
-                             progvar(ivar)%dimlens(4)))
+      ni = progvar(ivar)%dimlens(1)
+      nj = progvar(ivar)%dimlens(2)
+      nk = progvar(ivar)%dimlens(3)
+      nl = progvar(ivar)%dimlens(4)
+      allocate(data_4d_array(ni, nj, nk, nl))
       call nc_check(nf90_get_var(ncid, VarID, data_4d_array), &
             'restart_file_to_sv', 'get_var '//trim(varname))
-   elseif (numdims == 5) then
-      allocate(data_5d_array(progvar(ivar)%dimlens(1),  &
-                             progvar(ivar)%dimlens(2),  &
-                             progvar(ivar)%dimlens(3),  &
-                             progvar(ivar)%dimlens(4),  &
-                             progvar(ivar)%dimlens(5)))
-      call nc_check(nf90_get_var(ncid, VarID, data_5d_array), &
-            'restart_file_to_sv', 'get_var '//trim(varname))
+      do l = 1, nl   ! size(data_4d_array,3)
+      do k = 1, nk   ! size(data_4d_array,3)
+      do j = 1, nj   ! size(data_4d_array,2)
+      do i = 1, ni   ! size(data_4d_array,1)
+         state_vector(indx) = data_4d_array(i, j, k, l)
+         indx = indx + 1
+      enddo
+      enddo
+      enddo
+      enddo
+      deallocate(data_4d_array)
    else
+      write(string1, *) 'no support for data array of dimension ', numdims
+      call error_handler(E_ERR,'restart_file_to_sv', string1, &
+                        source,revision,revdate)
    endif
-
-   ! Actually get the variable and stuff it into the array
-
-   do k = 1, nzc   ! size(data_3d_array,3)
-   do j = 1, nyc   ! size(data_3d_array,2)
-   do i = 1, nxc   ! size(data_3d_array,1)
-      state_vector(indx) = data_3d_array(i, j, k)
-      indx = indx + 1
-   enddo
-   enddo
-   enddo
 
 enddo
 
@@ -1523,7 +1505,7 @@ real(r8),         intent(in) :: state_vector(:)
 character(len=*), intent(in) :: filename 
 type(time_type),  intent(in) :: statedate
 
-integer :: year, month, day, hour, minute, second
+integer :: year, month, day, hour, minute, second, nowseconds
 type(time_type) :: ncommas_time, ncommas_time0
 
 ! temp space to hold data while we are writing it
@@ -1533,7 +1515,7 @@ integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname 
 character(len=256)                    :: myerrorstring 
 
-integer :: i, ivar, ncid, VarID, numdims, dimlen, nowseconds
+integer :: i, ivar, ncid, VarID, numdims, dimlen
 
 !----------------------------------------------------------------------
 ! Get the show underway
