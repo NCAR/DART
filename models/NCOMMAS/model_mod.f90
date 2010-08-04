@@ -1391,7 +1391,6 @@ real(r8),         intent(inout) :: state_vector(:)
 type(time_type),  intent(out)   :: model_time
 
 ! temp space to hold data while we are reading it
-integer  :: mystart(1), mycount(1)
 integer  :: i, j, k, l, ni, nj, nk, nl, ivar, indx
 real(r8), allocatable, dimension(:)         :: data_1d_array
 real(r8), allocatable, dimension(:,:)       :: data_2d_array
@@ -1542,116 +1541,66 @@ real(r8),         intent(in) :: state_vector(:)
 character(len=*), intent(in) :: filename 
 type(time_type),  intent(in) :: statedate
 
-integer :: year, month, day, hour, minute, second, nowseconds
-type(time_type) :: ncommas_time, ncommas_time0
-
 ! temp space to hold data while we are writing it
-real(r8) :: data_2d_array(nxc,nyc), data_3d_array(nxc,nyc,nzc)
+integer  :: i, j, k, l, ni, nj, nk, nl, ivar, indx
+real(r8), allocatable, dimension(:)         :: data_1d_array
+real(r8), allocatable, dimension(:,:)       :: data_2d_array
+real(r8), allocatable, dimension(:,:,:)     :: data_3d_array
+real(r8), allocatable, dimension(:,:,:,:)   :: data_4d_array
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
-character(len=NF90_MAX_NAME)          :: varname 
-character(len=256)                    :: myerrorstring 
-
-integer :: i, ivar, ncid, VarID, numdims, dimlen
-
-!----------------------------------------------------------------------
-! Get the show underway
-!----------------------------------------------------------------------
+character(len=NF90_MAX_NAME) :: varname 
+integer :: VarID, numdims, dimlen
+integer :: ncid, year, month, day, hour, minute, second, nc_rc
+character(len=256) :: myerrorstring 
 
 if ( .not. module_initialized ) call static_init_model
 
-! Check that the input file exists. 
-! make sure the time tag in the restart file matches 
-! the current time of the DART state ...
+! Check that the output file exists ... 
 
-if ( .not. file_exist(filename)) then
-   write(string1,*)trim(filename),' does not exist. FATAL error.'
-   call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate) 
+if ( .not. file_exist(filename) ) then
+   write(string1,*) 'cannot open file ', trim(filename),' for writing.'
+   call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
 endif
 
-call nc_check( nf90_open(trim(filename), NF90_WRITE, ncid), &
-                  'sv_to_restart_file', 'open '//trim(filename))
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'YEAR'  , year), &
-                  'sv_to_restart_file', 'get_att YEAR')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MONTH' , month), &
-                  'sv_to_restart_file', 'get_att MONTH')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'DAY'   , day), &
-                  'sv_to_restart_file', 'get_att DAY')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'HOUR'  , hour), &
-                  'sv_to_restart_file', 'get_att HOUR')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'MINUTE', minute), &
-                  'sv_to_restart_file', 'get_att MINUTE')
-call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'SECOND', second), &
-                  'sv_to_restart_file', 'get_att SECOND')
+call nc_check(nf90_open(trim(filename), NF90_WRITE, ncid), &
+             'sv_to_restart_file','open '//trim(filename))
 
-! initial time
-ncommas_time0 = set_date(year, month, day, hour, minute, second)
+! make sure the time in the file is the same as the time on the data
+! we are trying to insert.  we are only updating part of the contents
+! of the ncommas restart file, and state vector contents from a different
+! time won't be consistent with the rest of the file.
 
-! have to open TIME variable (not attribute) to get number of seconds
-! since time 0 for current time.  put that into nowseconds
-nowseconds = 300   ! FIXME - get this from netcdf
-ncommas_time = ncommas_time0 + set_time(nowseconds)
+model_time = get_state_time(ncid, filename)
 
-if ( ncommas_time /= statedate ) then
-   call print_time(statedate,'DART current time',logfileunit) 
-   call print_time( ncommas_time,'ncommas  current time',logfileunit) 
-   call print_time(statedate,'DART current time') 
-   call print_time( ncommas_time,'ncommas  current time') 
+if ( model_time /= statedate ) then
+   call print_time(model_time,'DART current time',logfileunit) 
+   call print_time( statedate,'ncommas  current time',logfileunit) 
+   call print_time(model_time,'DART current time') 
+   call print_time( statedate,'ncommas  current time') 
    write(string1,*)trim(filename),' current time /= model time. FATAL error.'
    call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate) 
 endif
 
 if (do_output()) &
-    call print_time(ncommas_time,'time of restart file '//trim(filename))
+    call print_time(statedate,'time of restart file '//trim(filename))
 if (do_output()) &
-    call print_date(ncommas_time,'date of restart file '//trim(filename))
+    call print_date(statedate,'date of restart file '//trim(filename))
 
-! FIXME: this needs to change.   read the namelist to see what variables
-! are in the state vector and write them out in a loop.
-! fill S, T, U, V in that order
-do ivar=1, n3dfields
+! Start filling the real Nd arrays from the single 1d state vector.
 
-   varname = trim(progvarnames(ivar))//'_CUR'
+indx = 1
+
+! If these arrays have an extra dimension (like TIME), and it is only 1,
+! we might have to make the query code smarter, and might have to set
+! a start and count on the get_var() calls.  If it is more than 1, then
+! we have a problem.
+do ivar=1, nfields
+
+   varname = trim(progvar(ivar)%varname)
    myerrorstring = trim(filename)//' '//trim(varname)
 
-   ! Is the netCDF variable the right shape?
-   call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
-            'sv_to_restart_file', 'inq_varid '//trim(myerrorstring))
-
-   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
-            'sv_to_restart_file', 'inquire '//trim(myerrorstring))
-
-   if (numdims /= 3) then
-      write(string1,*) trim(myerrorstring),' does not have exactly 3 dimensions'
-      call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
-   endif
-
-   do i = 1,numdims
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            'sv_to_restart_file', string1)
-
-      if (dimlen /= size(data_3d_array,i)) then
-         write(string1,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
-         call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
-      endif
-   enddo
-
-   call vector_to_prog_var(state_vector, ivar, data_3d_array)
-
-   ! Actually stuff it into the netcdf file
-   call nc_check(nf90_put_var(ncid, VarID, data_3d_array), &
-            'sv_to_restart_file', 'put_var '//trim(myerrorstring))
-
-enddo
-
-! and finally, PSURF (and any other 2d fields)
-do ivar=(n3dfields+1), (n3dfields+n2dfields)
-
-   varname = trim(progvarnames(ivar))//'_CUR'
-   myerrorstring = trim(varname)//' '//trim(filename)
-
-   ! Is the netCDF variable the right shape?
+   ! determine the shape of the netCDF variable 
 
    call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
             'sv_to_restart_file', 'inq_varid '//trim(myerrorstring))
@@ -1659,30 +1608,94 @@ do ivar=(n3dfields+1), (n3dfields+n2dfields)
    call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
             'sv_to_restart_file', 'inquire '//trim(myerrorstring))
 
-   if (numdims /= 2) then
-      write(string1,*) trim(myerrorstring),' does not have exactly 2 dimensions'
-      call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
-   endif
-
    do i = 1,numdims
       write(string1,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
             'sv_to_restart_file', string1)
 
-      if (dimlen /= size(data_2d_array,i)) then
-         write(string1,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
+      if ( dimlen /= progvar(ivar)%dimlens(i) ) then
+         write(string1,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',progvar(ivar)%dimlens(i)
          call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
       endif
    enddo
 
-   call vector_to_prog_var(state_vector, ivar, data_2d_array)
+   if (numdims == 1) then
+      ni = progvar(ivar)%dimlens(1)
+      allocate(data_1d_array(ni))
 
-   call nc_check(nf90_put_var(ncid, VarID, data_2d_array), &
-            'sv_to_restart_file', 'put_var '//trim(myerrorstring))
+      do i = 1, ni   ! size(data_1d_array,1)
+         data_1d_array(i) = state_vector(indx) 
+         indx = indx + 1
+      enddo
+
+      call nc_check(nf90_put_var(ncid, VarID, data_1d_array), &
+            'sv_to_restart_file', 'put_var '//trim(varname))
+      deallocate(data_1d_array)
+   elseif (numdims == 2) then
+      ni = progvar(ivar)%dimlens(1)
+      nj = progvar(ivar)%dimlens(2)
+      allocate(data_2d_array(ni, nj))
+
+      do j = 1, nj   ! size(data_2d_array,2)
+      do i = 1, ni   ! size(data_2d_array,1)
+         data_2d_array(i, j) = state_vector(indx) 
+         indx = indx + 1
+      enddo
+      enddo
+
+      call nc_check(nf90_put_var(ncid, VarID, data_2d_array), &
+            'sv_to_restart_file', 'put_var '//trim(varname))
+      deallocate(data_2d_array)
+   elseif (numdims == 3) then
+      ni = progvar(ivar)%dimlens(1)
+      nj = progvar(ivar)%dimlens(2)
+      nk = progvar(ivar)%dimlens(3)
+      allocate(data_3d_array(ni, nj, nk))
+   
+      do k = 1, nk   ! size(data_3d_array,3)
+      do j = 1, nj   ! size(data_3d_array,2)
+      do i = 1, ni   ! size(data_3d_array,1)
+         data_3d_array(i, j, k) = state_vector(indx) 
+         indx = indx + 1
+      enddo
+      enddo
+      enddo
+
+      call nc_check(nf90_put_var(ncid, VarID, data_3d_array), &
+            'sv_to_restart_file', 'put_var '//trim(varname))
+      deallocate(data_3d_array)
+   elseif (numdims == 4) then
+      ni = progvar(ivar)%dimlens(1)
+      nj = progvar(ivar)%dimlens(2)
+      nk = progvar(ivar)%dimlens(3)
+      nl = progvar(ivar)%dimlens(4)
+      allocate(data_4d_array(ni, nj, nk, nl))
+
+      do l = 1, nl   ! size(data_4d_array,3)
+      do k = 1, nk   ! size(data_4d_array,3)
+      do j = 1, nj   ! size(data_4d_array,2)
+      do i = 1, ni   ! size(data_4d_array,1)
+         data_4d_array(i, j, k, l) = state_vector(indx) 
+         indx = indx + 1
+      enddo
+      enddo
+      enddo
+      enddo
+
+      call nc_check(nf90_put_var(ncid, VarID, data_4d_array), &
+            'sv_to_restart_file', 'put_var '//trim(varname))
+      deallocate(data_4d_array)
+   else
+      write(string1, *) 'no support for data array of dimension ', numdims
+      call error_handler(E_ERR,'sv_to_restart_file', string1, &
+                        source,revision,revdate)
+   endif
 
 enddo
 
-call nc_check(nf90_close(ncid), 'sv_to_restart_file', 'close '//trim(filename))
+call nc_check(nf90_close(ncid), &
+             'sv_to_restart_file','close '//trim(filename))
+
 
 end subroutine sv_to_restart_file
 
