@@ -552,6 +552,9 @@ do ivar = 1, nfields
 
 enddo
 
+call nc_check( nf90_close(ncid), &
+                  'static_init_model', 'close '//trim(ncommas_restart_filename))
+
 model_size = progvar(nfields)%indexN
 
 if ( debug > 5 ) then
@@ -2085,9 +2088,7 @@ logical  :: masked
 if ( .not. module_initialized ) call static_init_model
 
 ! Succesful return has istatus of 0
-istatus = 0
-
-!FIXME
+istatus = 1
 
 end subroutine lon_lat_interpolate
 
@@ -3035,37 +3036,34 @@ call nc_check(nf90_inq_varid(ncid, 'YG_POS', VarID), 'get_grid', 'inq_varid YG_P
 !                        'get_grid', 'inquire_variable ZE '//trim(ncommas_restart_filename))
 call nc_check(nf90_get_var(ncid, VarID, yg_pos), 'get_grid', 'get_var YG_POS '//trim(ncommas_restart_filename))
 
-
-   print*, 'LAT,LON,xg_pos,yg_pos = ',lat0,lon0,xg_pos,yg_pos
-      
-   call xy_to_ll(lat, lon, 0, xg_pos, yg_pos, lat0, lon0)
-
-   print*, 'lat/lon of grid origin is ',lat,lon
+call nc_check(nf90_close(ncid), 'get_grid','close '//trim(ncommas_restart_filename) )
    
-   DO i = 1,nxc
+DO j = 1,nye
+DO i = 1,nxc
      call xy_to_ll(lat, lon, 0, xc(i)+xg_pos, yg_pos, lat0, lon0)
-     WLON(i,1:nyc) = lon
-     VLON(i,1:nye) = lon
-   ENDDO
+     IF (  j /= nye ) WLON(i,j) = lon
+     VLON(i,j) = lon
+ENDDO
+ENDDO
 
-   DO j = 1,nyc
+DO j = 1,nyc
      call xy_to_ll(lat, lon, 0, xg_pos, yc(j)+yg_pos, lat0, lon0)
      WLAT(1:nxc,j) = lat
      ULAT(1:nxe,j) = lat
-   ENDDO
+ENDDO
 
-   DO i = 1,nxe
+DO j = 1,nyc
+DO i = 1,nxe
      call xy_to_ll(lat, lon, 0, xe(i)+xg_pos, yg_pos, lat0, lon0)
-     ULON(i,1:nyc) = lon
-   ENDDO
+     ULON(i,j) = lon
+ENDDO
+ENDDO
 
-   DO j = 1,nye
+DO j = 1,nye
      call xy_to_ll(lat, lon, 0, xg_pos, ye(j)+yg_pos, lat0, lon0)
      VLAT(1:nxc,j) = lat
-   ENDDO
+ENDDO
    
-! ensure [0,360) [-90,90]
-
 where (ULON <   0.0_r8) ULON = ULON + 360.0_r8
 where (ULON > 360.0_r8) ULON = ULON - 360.0_r8
 where (VLON <   0.0_r8) VLON = VLON + 360.0_r8
@@ -3074,11 +3072,8 @@ where (VLON > 360.0_r8) VLON = VLON - 360.0_r8
 where (ULAT < -90.0_r8) ULAT = -90.0_r8
 where (ULAT >  90.0_r8) ULAT =  90.0_r8
 
-! tidy up
-
-call nc_check(nf90_close(ncid), 'get_grid','close '//trim(ncommas_restart_filename) )
-
 end subroutine get_grid
+
 
 !############################################################################
 !
@@ -3106,32 +3101,29 @@ end subroutine get_grid
 
       subroutine xy_to_ll(lat, lon, map_proj, x, y, lat0, lon0)
 
-      implicit none
-
 !---- Passed variables
 
-      integer, intent(in) :: map_proj            ! map projection:
-                                  !   0 = flat earth
-                                  !   1 = oblique azimuthal
-                                  !   2 = Lambert conformal
-      real(r8), intent(in) :: x, y                   ! distance (m)
-      real(r8), intent(in) :: lat0, lon0             ! coordinates (rad) of origin (where x=0, y=0)
+      integer, intent(in) :: map_proj      ! map projection:
+                                           !   0 = flat earth
+                                           !   1 = oblique azimuthal
+                                           !   2 = Lambert conformal
+      real(r8), intent(in) :: x, y         ! distance (m)
+      real(r8), intent(in) :: lat0, lon0   ! coordinates (rad) of origin (where x=0, y=0)
 
 !---- Returned variables
 
-      real(r8), intent(out) :: lat, lon               ! coordinates (rad) of point
+      real(r8), intent(out) :: lat, lon    ! coordinates (rad) of point
 
 !---- Local variables
 
-      real rearth; parameter(rearth=1000.0 * 6367.0)      ! radius of earth (m)
+      real rearth; parameter(rearth=1000.0_r8 * 6367.0_r8) ! radius of earth (m)
 
-
-      if (map_proj.eq.0) then
+      if (map_proj == 0) then
         lat = lat0 + y / rearth
-        lon = lon0 + x / ( rearth * cos(0.5*(lat0+lat)) )
+        lon = lon0 + x / ( rearth * cos(0.5_r8*(lat0+lat)) )
       else
-        write(*,*) 'map projection unavailable:  ', map_proj
-        stop
+        write(string1,*) 'map projection ', map_proj,' unavailable.'
+        call error_handler(E_ERR,'xy_to_ll',string1,source,revision,revdate)
       endif
 
       return
