@@ -2971,15 +2971,16 @@ real(r8), dimension(NXE) :: XE
 real(r8), dimension(NYC) :: YC
 real(r8), dimension(NYE) :: YE
 
+real(r8) :: lat0, lon0, xg_pos, yg_pos, lat, lon
+
 ! real(r8), dimension(nx,ny), intent(out) :: ULAT, ULON, TLAT, TLON
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname
 integer                               :: VarID, numdims, dimlen
 integer                               :: ncid, dimid
+integer                               :: i,j
 
-
-if ( .not. module_initialized ) call static_init_model
 
 ! get the ball rolling ...
 
@@ -3020,7 +3021,55 @@ call nc_check(nf90_inq_varid(ncid, 'ZE', VarID), 'get_grid', 'inq_varid ZE '//tr
 !                        'get_grid', 'inquire_variable ZE '//trim(ncommas_restart_filename))
 call nc_check(nf90_get_var(ncid, VarID, ZE), 'get_grid', 'get_var ZE '//trim(ncommas_restart_filename))
 
-! FIXME - need to convert these things to radians to store in the grid variables.
+call nc_check(nf90_inq_varid(ncid, 'LAT', VarID), 'get_grid', 'inq_varid LAT '//trim(ncommas_restart_filename))
+!call nc_check(nf90_inquire_variable(ncid, VarId, dimids=dimIDs, ndims=numdims), &
+!                        'get_grid', 'inquire_variable ZE '//trim(ncommas_restart_filename))
+call nc_check(nf90_get_var(ncid, VarID, lat0), 'get_grid', 'get_var LAT '//trim(ncommas_restart_filename))
+
+call nc_check(nf90_inq_varid(ncid, 'LON', VarID), 'get_grid', 'inq_varid LON '//trim(ncommas_restart_filename))
+!call nc_check(nf90_inquire_variable(ncid, VarId, dimids=dimIDs, ndims=numdims), &
+!                        'get_grid', 'inquire_variable ZE '//trim(ncommas_restart_filename))
+call nc_check(nf90_get_var(ncid, VarID, lon0), 'get_grid', 'get_var LON '//trim(ncommas_restart_filename))
+
+call nc_check(nf90_inq_varid(ncid, 'XG_POS', VarID), 'get_grid', 'inq_varid XG_POS '//trim(ncommas_restart_filename))
+!call nc_check(nf90_inquire_variable(ncid, VarId, dimids=dimIDs, ndims=numdims), &
+!                        'get_grid', 'inquire_variable ZE '//trim(ncommas_restart_filename))
+call nc_check(nf90_get_var(ncid, VarID, xg_pos), 'get_grid', 'get_var XG_POS '//trim(ncommas_restart_filename))
+
+call nc_check(nf90_inq_varid(ncid, 'YG_POS', VarID), 'get_grid', 'inq_varid YG_POS '//trim(ncommas_restart_filename))
+!call nc_check(nf90_inquire_variable(ncid, VarId, dimids=dimIDs, ndims=numdims), &
+!                        'get_grid', 'inquire_variable ZE '//trim(ncommas_restart_filename))
+call nc_check(nf90_get_var(ncid, VarID, yg_pos), 'get_grid', 'get_var YG_POS '//trim(ncommas_restart_filename))
+
+  print*, 'LAT,LON,xg_pos,yg_pos = ',lat0,lon0,xg_pos,yg_pos
+      
+     
+      
+      call xy_to_ll(lat, lon, 0, xg_pos, yg_pos, lat0, lon0)
+   print*, 'lat/lon of grid origin is ',lat,lon
+   
+   DO i = 1,nxc
+     call xy_to_ll(lat, lon, 0, xc(i)+xg_pos, yg_pos, lat0, lon0)
+     WLON(i,1:nyc) = lon
+     VLON(i,1:nye) = lon
+   ENDDO
+
+   DO j = 1,nyc
+     call xy_to_ll(lat, lon, 0, xg_pos, yc(j)+yg_pos, lat0, lon0)
+     WLAT(1:nxc,j) = lat
+     ULAT(1:nxe,j) = lat
+   ENDDO
+
+   DO i = 1,nxe
+     call xy_to_ll(lat, lon, 0, xe(i)+xg_pos, yg_pos, lat0, lon0)
+     ULON(i,1:nyc) = lon
+   ENDDO
+
+   DO j = 1,nye
+     call xy_to_ll(lat, lon, 0, xg_pos, ye(j)+yg_pos, lat0, lon0)
+     VLAT(1:nxc,j) = lat
+   ENDDO
+   
 ! FIXME - need to allocate the pointers in the grid variables, etc.
 
 ! call calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
@@ -3034,13 +3083,13 @@ call nc_check(nf90_get_var(ncid, VarID, ZE), 'get_grid', 'get_var ZE '//trim(nco
 
 ! ensure [0,360) [-90,90]
 
-! where (ULON <   0.0_r8) ULON = ULON + 360.0_r8
-! where (ULON > 360.0_r8) ULON = ULON - 360.0_r8
-! where (TLON <   0.0_r8) TLON = TLON + 360.0_r8
-! where (TLON > 360.0_r8) TLON = TLON - 360.0_r8
+ where (ULON <   0.0_r8) ULON = ULON + 360.0_r8
+ where (ULON > 360.0_r8) ULON = ULON - 360.0_r8
+ where (VLON <   0.0_r8) VLON = VLON + 360.0_r8
+ where (VLON > 360.0_r8) VLON = VLON - 360.0_r8
 !
-! where (ULAT < -90.0_r8) ULAT = -90.0_r8
-! where (ULAT >  90.0_r8) ULAT =  90.0_r8
+ where (ULAT < -90.0_r8) ULAT = -90.0_r8
+ where (ULAT >  90.0_r8) ULAT =  90.0_r8
 ! where (TLAT < -90.0_r8) TLAT = -90.0_r8
 ! where (TLAT >  90.0_r8) TLAT =  90.0_r8
 
@@ -3049,6 +3098,63 @@ call nc_check(nf90_get_var(ncid, VarID, ZE), 'get_grid', 'get_var ZE '//trim(nco
 call nc_check(nf90_close(ncid), 'get_grid','close '//trim(ncommas_restart_filename) )
 
 end subroutine get_grid
+
+!############################################################################
+!
+!     ##################################################################
+!     ######                                                      ######
+!     ######                   SUBROUTINE XY_TO_LL                ######
+!     ######                                                      ######
+!     ##################################################################
+!
+!
+!     PURPOSE:
+!
+!     This subroutine computes the projected (lat, lon) coordinates of the
+!     point (x, y) relative to (lat0, lon0).  Various map projections
+!     are possible.
+!
+!############################################################################
+!
+!     Author:  David Dowell
+!
+!     Creation Date:  25 February 2005
+!     Modified:  12 April 2005 (changed units of rearth, x, and y from km to m)
+!
+!############################################################################
+
+      subroutine xy_to_ll(lat, lon, map_proj, x, y, lat0, lon0)
+
+      implicit none
+
+!---- Passed variables
+
+      integer, intent(in) :: map_proj            ! map projection:
+                                  !   0 = flat earth
+                                  !   1 = oblique azimuthal
+                                  !   2 = Lambert conformal
+      real(r8), intent(in) :: x, y                   ! distance (m)
+      real(r8), intent(in) :: lat0, lon0             ! coordinates (rad) of origin (where x=0, y=0)
+
+!---- Returned variables
+
+      real(r8), intent(out) :: lat, lon               ! coordinates (rad) of point
+
+!---- Local variables
+
+      real rearth; parameter(rearth=1000.0 * 6367.0)      ! radius of earth (m)
+
+
+      if (map_proj.eq.0) then
+        lat = lat0 + y / rearth
+        lon = lon0 + x / ( rearth * cos(0.5*(lat0+lat)) )
+      else
+        write(*,*) 'map projection unavailable:  ', map_proj
+        stop
+      endif
+
+      return
+end subroutine xy_to_ll
 
 
 
