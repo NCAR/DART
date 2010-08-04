@@ -50,7 +50,8 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT,        &   ! index 1
                              KIND_ICE_MIXING_RATIO,        &   ! index 11
                              KIND_SNOW_MIXING_RATIO,       &   ! index 12
                              KIND_GRAUPEL_MIXING_RATIO,    &   ! index 13
-                             get_raw_obs_kind_name
+                             paramname_length,             &
+                             get_raw_obs_kind_index
 
 use mpi_utilities_mod, only: my_task_id
 
@@ -118,11 +119,8 @@ namelist /model_nml/  &
 
 !------------------------------------------------------------------
 !
-! The DART state vector will consist of:  
+!  The DART state vector may consist of things like:  
 !
-! scalar PSFC long_name = "SURFACE PRESSURE"
-! scalar TSFC long_name = "SURFACE TEMPERATURE AT GROUND"
-! scalar QSFC long_name = "SURFACE MIXING RATIO AT GROUND"
 !  U    long_name = "X-WIND COMPONENT"      float   U(TIME, ZC, YC, XE) 
 !  V    long_name = "Y-WIND COMPONENT"      float   V(TIME, ZC, YE, XC)
 !  W    long_name = "Z-WIND COMPONENT"      float   W(TIME, ZE, YC, XC)
@@ -137,15 +135,19 @@ namelist /model_nml/  &
 !  QS   long_name = "SNOW MIXING RATIO"     float  QS(TIME, ZC, YC, XC)
 !  QH   long_name = "GRAUPEL MIXING RATIO"  float  QH(TIME, ZC, YC, XC)
 !
-! FIXME: make this completely namelist driven,
-!        both contents and order of vars.
-!        Example: WRF input.nml sets kind_string, etc.
+!  The variables in the ncommas restart file that are used to create the 
+!  DART state vector are specified in the input.nml:ncommas_vars_nml namelist.
+!
 !------------------------------------------------------------------
 
-! FIXME: this ought to be set by the length of the namelist.
-integer, parameter :: n3dfields = 13
-integer, parameter :: n2dfields = 0
-integer, parameter :: nfields   = n3dfields + n2dfields
+integer, parameter :: max_state_variables = 80
+integer, parameter :: num_state_table_columns = 2
+character(len=NF90_MAX_NAME) :: ncommas_state_variables(max_state_variables * num_state_table_columns ) = ' '
+character(len=NF90_MAX_NAME) :: variable_table(max_state_variables, num_state_table_columns )
+
+namelist /ncommas_vars_nml/ ncommas_state_variables
+
+integer :: nfields
 
 ! Everything needed to describe a variable
 
@@ -160,25 +162,13 @@ type progvartype
    integer :: index1      ! location in dart state vector of first occurrence
    integer :: indexN      ! location in dart state vector of last  occurrence
    integer :: dart_kind
-   character(len=32) :: kind_string
+   character(len=paramname_length) :: kind_string
 end type progvartype
 
-type(progvartype), dimension(nfields) :: progvar
-
-character(len=128) :: progvarnames(nfields) = &
-                         (/ 'U   ', 'V   ', 'W   ', 'TH  ', 'DBZ ', &
-                            'WZ  ', 'PI  ', 'QV  ', 'QC  ', 'QR  ', &
-                            'QI  ', 'QS  ', 'QH  ' /)
-
-integer :: progvarkinds(nfields) = (/ &
-   KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_VERTICAL_VELOCITY,  &
-   KIND_POTENTIAL_TEMPERATURE, KIND_RADAR_REFLECTIVITY,                   &
-   KIND_VERTICAL_VORTICITY, KIND_EXNER_FUNCTION, KIND_VAPOR_MIXING_RATIO, &
-   KIND_CLOUDWATER_MIXING_RATIO, KIND_RAINWATER_MIXING_RATIO,             &
-   KIND_ICE_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, KIND_GRAUPEL_MIXING_RATIO  /)
+type(progvartype), dimension(max_state_variables) :: progvar
 
 ! Grid parameters - the values will be read from a
-! standard ncommas namelist and filled in here.
+! ncommas restart file. 
 
 ! Each spatial dimension has a staggered counterpart.
 integer :: nxc=-1, nyc=-1, nzc=-1    ! scalar grid positions
@@ -405,6 +395,7 @@ subroutine static_init_model()
 ! Local variables - all the important ones have module scope
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname
+character(len=paramname_length)       :: kind_string
 integer :: ncid, VarID, numdims, dimlen, varsize
 integer :: iunit, io, ivar, i, index1, indexN
 integer :: ss, dd
@@ -429,6 +420,12 @@ call check_namelist_read(iunit, io, 'model_nml')
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
 if (do_output()) write(logfileunit, nml=model_nml)
 if (do_output()) write(     *     , nml=model_nml)
+
+! Read the NCOMMAS variable list to populate DART state vector
+! Once parsed, the values will be recorded for posterity
+call find_namelist_in_file('input.nml', 'ncommas_vars_nml', iunit)
+read(iunit, nml = ncommas_vars_nml, iostat = io)
+call check_namelist_read(iunit, io, 'ncommas_vars_nml')
 
 !---------------------------------------------------------------
 ! Set the time step ... causes ncommas namelists to be read.
@@ -459,19 +456,22 @@ call get_grid(nxc, nxe, nyc, nye, nzc, nze, &
               ULAT, ULON, VLAT, VLON, WLAT, WLON, ZC, ZE)
 
 !---------------------------------------------------------------
-! compute the offsets into the state vector for the start of each
+! Compile the list of ncommas variables to use in the creation
+! of the DART state vector. Required to determine model_size.
+!
+! Verify all variables are in the ncommas restart file
+!
+! Compute the offsets into the state vector for the start of each
 ! different variable type. Requires reading shapes from the NCOMMAS
 ! restart file.
 !
-! FIXME - this should go in dart_ncommas_mod.f90 
-! as well as the progvartype declaration, should be query routines.
-!
-! Record where in the state vector the data type changes
-! from one type to another, by computing the starting
-! index for each block of data.
+! Record the extent of the data type in the state vector.
 
 call nc_check( nf90_open(trim(ncommas_restart_filename), NF90_NOWRITE, ncid), &
                   'static_init_model', 'open '//trim(ncommas_restart_filename))
+
+call verify_state_variables( ncommas_state_variables, ncid, ncommas_restart_filename, &
+                             nfields, variable_table )
 
 ! Find the Time (Unlimited) dimension - so we can skip it.
 call nc_check(nf90_Inquire(ncid,nDimensions,nVariables,nAttributes,unlimitedDimID),&
@@ -481,11 +481,14 @@ index1  = 1;
 indexN  = 0;
 do ivar = 1, nfields 
 
-   varname = adjustl(progvarnames(ivar))
-   string2 = trim(ncommas_restart_filename)//' '//trim(varname)
+   varname                   = trim(variable_table(ivar,1))
+   kind_string               = trim(variable_table(ivar,2))
+   progvar(ivar)%varname     = varname
+   progvar(ivar)%kind_string = kind_string
+   progvar(ivar)%dart_kind   = get_raw_obs_kind_index( progvar(ivar)%kind_string ) 
+   progvar(ivar)%dimlens     = 0
 
-   progvar(ivar)%varname = trim(varname)
-   progvar(ivar)%dimlens = 0
+   string2 = trim(ncommas_restart_filename)//' '//trim(varname)
 
    call nc_check(nf90_inq_varid(ncid, trim(varname), VarID), &
             'static_init_model', 'inq_varid '//trim(string2))
@@ -520,32 +523,30 @@ do ivar = 1, nfields
    progvar(ivar)%index1      = index1
    progvar(ivar)%indexN      = index1 + varsize - 1 
    index1                    = index1 + varsize      ! sets up for next variable
-   progvar(ivar)%dart_kind   = progvarkinds(ivar)
-   progvar(ivar)%kind_string = get_raw_obs_kind_name(progvar(ivar)%dart_kind)
 
-   if (do_output()) then
+   if ( debug > 5 ) then
       write(logfileunit,*)
       write(logfileunit,*) trim(progvar(ivar)%varname),' variable number ',ivar
-      write(logfileunit,*) '  long_name ',trim(progvar(ivar)%long_name)
-      write(logfileunit,*) '  units     ',trim(progvar(ivar)%units)
-      write(logfileunit,*) '  numdims   ',progvar(ivar)%numdims
-      write(logfileunit,*) '  dimlens   ',progvar(ivar)%dimlens(1:progvar(ivar)%numdims)
-      write(logfileunit,*) '  varsize   ',progvar(ivar)%varsize
-      write(logfileunit,*) '  index1    ',progvar(ivar)%index1
-      write(logfileunit,*) '  indexN    ',progvar(ivar)%indexN
-      write(logfileunit,*) '  dart_kind ',progvar(ivar)%dart_kind
+      write(logfileunit,*) '  long_name   ',trim(progvar(ivar)%long_name)
+      write(logfileunit,*) '  units       ',trim(progvar(ivar)%units)
+      write(logfileunit,*) '  numdims     ',progvar(ivar)%numdims
+      write(logfileunit,*) '  dimlens     ',progvar(ivar)%dimlens(1:progvar(ivar)%numdims)
+      write(logfileunit,*) '  varsize     ',progvar(ivar)%varsize
+      write(logfileunit,*) '  index1      ',progvar(ivar)%index1
+      write(logfileunit,*) '  indexN      ',progvar(ivar)%indexN
+      write(logfileunit,*) '  dart_kind   ',progvar(ivar)%dart_kind
       write(logfileunit,*) '  kind_string ',progvar(ivar)%kind_string
 
       write(     *     ,*)
       write(     *     ,*) trim(progvar(ivar)%varname),' variable number ',ivar
-      write(     *     ,*) '  long_name ',trim(progvar(ivar)%long_name)
-      write(     *     ,*) '  units     ',trim(progvar(ivar)%units)
-      write(     *     ,*) '  numdims   ',progvar(ivar)%numdims
-      write(     *     ,*) '  dimlens   ',progvar(ivar)%dimlens(1:progvar(ivar)%numdims)
-      write(     *     ,*) '  varsize   ',progvar(ivar)%varsize
-      write(     *     ,*) '  index1    ',progvar(ivar)%index1
-      write(     *     ,*) '  indexN    ',progvar(ivar)%indexN
-      write(     *     ,*) '  dart_kind ',progvar(ivar)%dart_kind
+      write(     *     ,*) '  long_name   ',trim(progvar(ivar)%long_name)
+      write(     *     ,*) '  units       ',trim(progvar(ivar)%units)
+      write(     *     ,*) '  numdims     ',progvar(ivar)%numdims
+      write(     *     ,*) '  dimlens     ',progvar(ivar)%dimlens(1:progvar(ivar)%numdims)
+      write(     *     ,*) '  varsize     ',progvar(ivar)%varsize
+      write(     *     ,*) '  index1      ',progvar(ivar)%index1
+      write(     *     ,*) '  indexN      ',progvar(ivar)%indexN
+      write(     *     ,*) '  dart_kind   ',progvar(ivar)%dart_kind
       write(     *     ,*) '  kind_string ',progvar(ivar)%kind_string
    endif
 
@@ -553,7 +554,7 @@ enddo
 
 model_size = progvar(nfields)%indexN
 
-if (do_output()) then
+if ( debug > 5 ) then
   write(logfileunit, *)'grid: nx[ce], ny[ce], nz[ce] = ', nxc, nxe, nyc, nye, nzc, nze
   write(     *     , *)'grid: nx[ce], ny[ce], nz[ce] = ', nxc, nxe, nyc, nye, nzc, nze
   write(logfileunit, *)'model_size = ', model_size
@@ -1209,7 +1210,7 @@ else
 !     else
 !     endif
 
-!     call vector_to_prog_var(statevec, S_index, data_3d)
+!     call vector_to_prog_var(statevec, progvar(ivar), data_3d)
 !     where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
 !     call nc_check(NF90_inq_varid(ncFileID, 'SALT', VarID), &
 !                  'nc_write_model_vars', 'S inq_varid '//trim(filename))
@@ -2726,36 +2727,33 @@ end subroutine get_state_kind
 
 
 
-subroutine vector_to_2d_prog_var(x, varindex, data_2d_array)
+subroutine vector_to_2d_prog_var(x, progvar, data_2d_array)
 !------------------------------------------------------------------
 ! convert the values from a 1d fortran array, starting at an offset,
 ! into a 2d fortran array.  the 2 dims are taken from the array size.
 !
 real(r8), dimension(:),   intent(in)  :: x
-integer,                  intent(in)  :: varindex
+type(progvartype),        intent(in)  :: progvar
 real(r8), dimension(:,:), intent(out) :: data_2d_array
 
 integer :: i,j,ii
 integer :: dim1,dim2
-character(len=128) :: varname
 
 if ( .not. module_initialized ) call static_init_model
 
 dim1 = size(data_2d_array,1)
 dim2 = size(data_2d_array,2)
 
-varname = progvarnames(varindex)
-
 if (dim1 /= nxc) then
-   write(string1,*)trim(varname),' 2d array dim 1 ',dim1,' /= ',nxc
+   write(string1,*)trim(progvar%varname),' 2d array dim 1 ',dim1,' /= ',nxc
    call error_handler(E_ERR,'vector_to_2d_prog_var',string1,source,revision,revdate) 
 endif
 if (dim2 /= nyc) then
-   write(string1,*)trim(varname),' 2d array dim 2 ',dim2,' /= ',nyc
+   write(string1,*)trim(progvar%varname),' 2d array dim 2 ',dim2,' /= ',nyc
    call error_handler(E_ERR,'vector_to_2d_prog_var',string1,source,revision,revdate) 
 endif
 
-ii = progvar(varindex)%index1
+ii = progvar%index1
 
 do j = 1,nyc   ! latitudes
 do i = 1,nxc   ! longitudes
@@ -2768,18 +2766,17 @@ end subroutine vector_to_2d_prog_var
 
 
 
-subroutine vector_to_3d_prog_var(x, varindex, data_3d_array)
+subroutine vector_to_3d_prog_var(x, progvar, data_3d_array)
 !------------------------------------------------------------------
 ! convert the values from a 1d fortran array, starting at an offset,
 ! into a 3d fortran array.  the 3 dims are taken from the array size.
 !
 real(r8), dimension(:),     intent(in)  :: x
-integer,                    intent(in)  :: varindex
+type(progvartype),          intent(in)  :: progvar
 real(r8), dimension(:,:,:), intent(out) :: data_3d_array
 
 integer :: i,j,k,ii
 integer :: dim1,dim2,dim3
-character(len=128) :: varname
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2787,22 +2784,20 @@ dim1 = size(data_3d_array,1)
 dim2 = size(data_3d_array,2)
 dim3 = size(data_3d_array,3)
 
-varname = progvarnames(varindex)
-
 if (dim1 /= nxc) then
-   write(string1,*)trim(varname),' 3d array dim 1 ',dim1,' /= ',nxc
+   write(string1,*)trim(progvar%varname),' 3d array dim 1 ',dim1,' /= ',nxc
    call error_handler(E_ERR,'vector_to_3d_prog_var',string1,source,revision,revdate) 
 endif
 if (dim2 /= nyc) then
-   write(string1,*)trim(varname),' 3d array dim 2 ',dim2,' /= ',nyc
+   write(string1,*)trim(progvar%varname),' 3d array dim 2 ',dim2,' /= ',nyc
    call error_handler(E_ERR,'vector_to_3d_prog_var',string1,source,revision,revdate) 
 endif
 if (dim3 /= nzc) then
-   write(string1,*)trim(varname),' 3d array dim 3 ',dim3,' /= ',nzc
+   write(string1,*)trim(progvar%varname),' 3d array dim 3 ',dim3,' /= ',nzc
    call error_handler(E_ERR,'vector_to_3d_prog_var',string1,source,revision,revdate) 
 endif
 
-ii = progvar(varindex)%index1
+ii = progvar%index1
 
 do k = 1,nzc   ! vertical
 do j = 1,nyc   ! latitudes
@@ -2986,7 +2981,6 @@ integer                               :: i,j
 
 call nc_check(nf90_open(trim(ncommas_restart_filename), nf90_nowrite, ncid), 'get_grid', 'open '//trim(ncommas_restart_filename))
 
-
 ! fixme - in a perfect world - 
 ! Get the variable ID
 ! Check to make sure it is the right shape
@@ -3041,11 +3035,11 @@ call nc_check(nf90_inq_varid(ncid, 'YG_POS', VarID), 'get_grid', 'inq_varid YG_P
 !                        'get_grid', 'inquire_variable ZE '//trim(ncommas_restart_filename))
 call nc_check(nf90_get_var(ncid, VarID, yg_pos), 'get_grid', 'get_var YG_POS '//trim(ncommas_restart_filename))
 
-  print*, 'LAT,LON,xg_pos,yg_pos = ',lat0,lon0,xg_pos,yg_pos
+
+   print*, 'LAT,LON,xg_pos,yg_pos = ',lat0,lon0,xg_pos,yg_pos
       
-     
-      
-      call xy_to_ll(lat, lon, 0, xg_pos, yg_pos, lat0, lon0)
+   call xy_to_ll(lat, lon, 0, xg_pos, yg_pos, lat0, lon0)
+
    print*, 'lat/lon of grid origin is ',lat,lon
    
    DO i = 1,nxc
@@ -3070,28 +3064,15 @@ call nc_check(nf90_get_var(ncid, VarID, yg_pos), 'get_grid', 'get_var YG_POS '//
      VLAT(1:nxc,j) = lat
    ENDDO
    
-! FIXME - need to allocate the pointers in the grid variables, etc.
-
-! call calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
-
-! convert from radians to degrees
-
-!ULAT = ULAT * rad2deg
-!ULON = ULON * rad2deg
-!TLAT = TLAT * rad2deg
-!TLON = TLON * rad2deg
-
 ! ensure [0,360) [-90,90]
 
- where (ULON <   0.0_r8) ULON = ULON + 360.0_r8
- where (ULON > 360.0_r8) ULON = ULON - 360.0_r8
- where (VLON <   0.0_r8) VLON = VLON + 360.0_r8
- where (VLON > 360.0_r8) VLON = VLON - 360.0_r8
-!
- where (ULAT < -90.0_r8) ULAT = -90.0_r8
- where (ULAT >  90.0_r8) ULAT =  90.0_r8
-! where (TLAT < -90.0_r8) TLAT = -90.0_r8
-! where (TLAT >  90.0_r8) TLAT =  90.0_r8
+where (ULON <   0.0_r8) ULON = ULON + 360.0_r8
+where (ULON > 360.0_r8) ULON = ULON - 360.0_r8
+where (VLON <   0.0_r8) VLON = VLON + 360.0_r8
+where (VLON > 360.0_r8) VLON = VLON - 360.0_r8
+
+where (ULAT < -90.0_r8) ULAT = -90.0_r8
+where (ULAT >  90.0_r8) ULAT =  90.0_r8
 
 ! tidy up
 
@@ -3269,15 +3250,9 @@ allocate(mytimes(dimlen))
 call nc_check( nf90_get_var(ncid, VarID, mytimes ), &
                   'get_state_time', 'get_var TIME '//trim(filename))
 
-write(*,*)' temporal offset is (in seconds) is ',maxval(mytimes)
 model_offset = set_time(maxval(mytimes))
 
 get_state_time_ncid = base_time + model_offset
-
-if (do_output()) &
-    call print_time(get_state_time_ncid,'time for restart file '//trim(filename))
-if (do_output()) &
-    call print_date(get_state_time_ncid,'date for restart file '//trim(filename))
 
 deallocate(mytimes)
 
@@ -3335,11 +3310,6 @@ model_offset = set_time(maxval(mytimes))
 
 get_state_time_fname = base_time + model_offset
 
-if (do_output()) &
-    call print_time(get_state_time_fname,'time for restart file '//trim(filename))
-if (do_output()) &
-    call print_date(get_state_time_fname,'date for restart file '//trim(filename))
-
 deallocate(mytimes)
 
 end function get_state_time_fname
@@ -3359,52 +3329,6 @@ if ( .not. module_initialized ) call static_init_model
    set_model_time_step = set_time(0, 1) ! (seconds, days)
 
 end function set_model_time_step
-
-
-
-
-subroutine write_ncommas_namelist(model_time, adv_to_time)
-!------------------------------------------------------------------
-!
-  type(time_type), INTENT(IN) :: model_time, adv_to_time
-! type(time_type) :: offset
-! 
-! integer :: iunit, secs, days
-! 
-! if ( .not. module_initialized ) call static_init_model
-! 
-! offset = adv_to_time - model_time
-! call get_time(offset, secs, days)
-! 
-! if (secs /= 0 ) then
-!    write(string1,*)'adv_to_time has seconds == ',secs,' must be zero'
-!    call error_handler(E_ERR,'write_ncommas_namelist', string1, source, revision, revdate)
-! endif
-
-! call print_date( model_time,'write_ncommas_namelist:dart model date')
-! call print_date(adv_to_time,'write_ncommas_namelist:advance_to date')
-! call print_time( model_time,'write_ncommas_namelist:dart model time')
-! call print_time(adv_to_time,'write_ncommas_namelist:advance_to time')
-! call print_time(     offset,'write_ncommas_namelist:a distance of')
-! write( *,'(''write_ncommas_namelist:TIME_MANAGER_NML   STOP_COUNT '',i10,'' days'')') days
-
-!Convey the information to the namelist 'stop option' and 'stop count'
-
-!if ( trim(stop_option) == 'nday' ) then
-!   stop_count = days
-!else
-!  call error_handler(E_ERR,'write_ncommas_namelist', &
-!             'stop_option must be "nday"', source, revision, revdate)
-!endif
-
-! iunit = open_file('ncommas_in.DART',form='formatted',action='rewind')
-! write(iunit, nml=restart_nml)
-! write(iunit, '('' '')')
-! close(iunit)
-
-end subroutine write_ncommas_namelist
-
-
 
 
 
@@ -3529,101 +3453,68 @@ filename = trim(ncommas_restart_filename)
 end subroutine get_ncommas_restart_filename
 
 
+!------------------------------------------------------------------
 
 
-!From netCDF file we need the following variables:
-!
-!xg_pos(1), yg_pos(1), lat (variable), lon(variable)
-!
-!
-!xctrue(:) = xc(:) + xg_pos(1)
-!yctrue(:) = yc(:) + yg_pos(1)
-!
-!xetrue(:) = xe(:) + xg_pos(1)
-!yetrue(:) = ye(:) + yg_pos(1)
-!
-!
-!DO j = 1,ny-1
-! DO i = 1,nx-1
-!    CALL XY_TO_LL(new_lat, new_lon, 0, xctrue(i), yctrue(j), lat, lon)
-!    slat(i,j) = new_lat
-!    slon(i,j) = new_lon 
-! ENDDO
-!ENDDO
-!
-!DO j = 1,ny-1
-! DO i = 1,nx
-!    CALL XY_TO_LL(new_lat, new_lon, 0, xetrue(i), yctrue(j), lat, lon)
-!    ulat(i,j) = new_lat
-!    ulon(i,j) = new_lon 
-! ENDDO
-!ENDDO
-!
-!DO j = 1,ny
-! DO i = 1,nx-1
-!    CALL XY_TO_LL(new_lat, new_lon, 0, xctrue(i), yetrue(j), lat, lon)
-!    vlat(i,j) = new_lat
-!    vlon(i,j) = new_lon 
-! ENDDO
-!ENDDO
-!
-!
-!!############################################################################
-!!
-!!     ##################################################################
-!!     ######                                                                                                                              ######
-!!     ######                                     SUBROUTINE XY_TO_LL                                         ######
-!!     ######                                                                                                                              ######
-!!     ##################################################################
-!!
-!!
-!!     PURPOSE:
-!!
-!!     This subroutine computes the projected (lat, lon) coordinates of the
-!!     point (x, y) relative to (lat0, lon0).  Various map projections
-!!     are possible.
-!!
-!!############################################################################
-!!
-!!     Author:  David Dowell
-!!
-!!     Creation Date:  25 February 2005
-!!     Modified:  12 April 2005 (changed units of rearth, x, and y from km to m)
-!!
-!!############################################################################
-!
-! SUBROUTINE XY_TO_LL(lat, lon, map_proj, x, y, lat0, lon0)
-!
-! implicit none
-!
-!! Passed variables
-!
-!   integer map_proj            ! map projection:
-!                               !   0 = flat earth
-!                               !   1 = oblique azimuthal
-!                               !   2 = Lambert conformal
-!
-!   real x, y                   ! distance (m)
-!   real lat0, lon0             ! coordinates (rad) of origin (where x=0, y=0)
-!
-!! Returned variables
-!
-!   real lat, lon               ! coordinates (rad) of point
-!
-!! Local variables
-!
-!   real rearth; parameter(rearth=1000.0 * 6367.0)      ! radius of earth (m)
-!
-!   if (map_proj.eq.0) then
-!     lat = lat0 + y / rearth
-!     lon = lon0 + x / ( rearth * cos(0.5*(lat0+lat)) )
-!   else
-!     write(*,*) 'map projection unavailable:  ', map_proj
-!     stop
-!   endif
-!
-!   RETURN
-!   END
+subroutine verify_state_variables( state_variables, ncid, filename, ngood, table )
+
+character(len=*), dimension(:),   intent(in)  :: state_variables
+integer,                          intent(in)  :: ncid
+character(len=*),                 intent(in)  :: filename
+integer,                          intent(out) :: ngood
+character(len=*), dimension(:,:), intent(out) :: table
+
+integer :: nrows, ncols, i, varid
+character(len=NF90_MAX_NAME) :: varname
+character(len=NF90_MAX_NAME) :: dartstr
+
+if ( .not. module_initialized ) call static_init_model
+
+nrows = size(table,1)
+ncols = size(table,2)
+
+ngood = 0
+MyLoop : do i = 1, nrows
+
+   varname    = trim(state_variables(2*i -1))
+   dartstr    = trim(state_variables(2*i   ))
+   table(i,1) = trim(varname)
+   table(i,2) = trim(dartstr)
+
+   if ( table(i,1) == ' ' .and. table(i,2) == ' ' ) exit MyLoop ! Found end of list.
+
+   if ( table(i,1) == ' ' .or. table(i,2) == ' ' ) then
+      string1 = 'ncommas_vars_nml:ncommas_state_variables not fully specified'
+      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
+   endif
+
+   ! Make sure variable exists in netCDF file
+
+   write(string1,'(''there is no variable '',a,'' in '',a)') trim(varname), trim(filename)
+   call nc_check(NF90_inq_varid(ncid, trim(varname), varid), &
+                 'verify_state_variables', trim(string1))
+
+   ! Make sure DART kind is valid
+
+   if( get_raw_obs_kind_index(dartstr) < 0 ) then
+      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
+      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
+   endif
+
+   ! Record the contents of the DART state vector 
+
+   write(*,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
+
+   ngood = ngood + 1
+enddo MyLoop
+
+if (ngood == nrows) then
+   string1 = 'WARNING: There is a possibility you need to increase ''max_state_variables'''
+   write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
+   call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate,string2)
+endif
+
+end subroutine verify_state_variables
 
 
 !===================================================================
