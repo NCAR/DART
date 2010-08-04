@@ -52,7 +52,7 @@ public :: do_obs_form_pair, add_wind_names
 ! F90 currently has a maximum length of 32 characters for the NAME of
 ! any Fortran PARAMETER. 
 
-integer, parameter :: paramname_length = 32
+integer, parameter, public :: paramname_length = 32
 
 ! Definition and public access to the observation types/kinds
 ! Unique index values associated with each observation type and 
@@ -512,7 +512,8 @@ character(len = paramname_length) :: get_obs_kind_name
 if ( .not. module_initialized ) call initialize_module
 
 if (obs_kind_ind < 1 .or. obs_kind_ind > max_obs_specific) then
-   write(msg_string, *) 'index out of range 1<=val<=', max_obs_specific
+   write(msg_string,'(''index out of range 1 <= '',i6,'' <= '',i6)') &
+                                       obs_kind_ind, max_obs_specific
    call error_handler(E_ERR, 'get_obs_kind_name', msg_string, &
                       source, revision, revdate)
 endif
