@@ -28,13 +28,11 @@ program ncommas_to_dart
 use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, timestamp, &
                              find_namelist_in_file, check_namelist_read
-use        model_mod, only : restart_file_to_sv, static_init_model, &
-                             get_model_size
+use        model_mod, only : get_model_size, restart_file_to_sv, &
+                             get_ncommas_restart_filename
 use  assim_model_mod, only : awrite_state_restart, open_restart_write, close_restart
 use time_manager_mod, only : time_type, print_time, print_date
-use dart_ncommas_mod, only : get_ncommas_restart_filename
 
-use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
@@ -47,11 +45,9 @@ character(len=128), parameter :: &
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character (len = 128) :: ncommas_to_dart_output_file  = 'dart.ud'
-character (len = 128) :: ncommas_restart_filename = 'restart.nc' 
+character(len=128) :: ncommas_to_dart_output_file  = 'dart.ud'
 
-namelist /ncommas_to_dart_nml/ ncommas_to_dart_output_file, &
-                               ncommas_restart_filename
+namelist /ncommas_to_dart_nml/ ncommas_to_dart_output_file
 
 !----------------------------------------------------------------------
 ! global storage
@@ -61,27 +57,19 @@ logical               :: verbose = .TRUE.
 integer               :: io, iunit, x_size
 type(time_type)       :: model_time
 real(r8), allocatable :: statevector(:)
+character(len=256)    :: ncommas_restart_filename
 
-!----------------------------------------------------------------------
+!======================================================================
 
 call initialize_utilities(progname='ncommas_to_dart', output_flag=verbose)
 
 !----------------------------------------------------------------------
-! Call model_mod:static_init_model(), which reads the namelists
-! to set calendar type, starting date, deltaT, etc.
-!----------------------------------------------------------------------
-
-call static_init_model()
-
-!----------------------------------------------------------------------
-! Read the namelist to get the input and output filenames.
+! Read the namelist to get the output filename.
 !----------------------------------------------------------------------
 
 call find_namelist_in_file("input.nml", "ncommas_to_dart_nml", iunit)
 read(iunit, nml = ncommas_to_dart_nml, iostat = io)
 call check_namelist_read(iunit, io, "ncommas_to_dart_nml") ! closes, too.
-
-call get_ncommas_restart_filename( ncommas_restart_filename )
 
 write(*,*)
 write(*,'(''ncommas_to_dart:converting ncommas restart file '',A, &
@@ -89,11 +77,14 @@ write(*,'(''ncommas_to_dart:converting ncommas restart file '',A, &
        trim(ncommas_restart_filename), trim(ncommas_to_dart_output_file)
 
 !----------------------------------------------------------------------
-! Now that we know the names, get to work.
+! get to work
 !----------------------------------------------------------------------
 
 x_size = get_model_size()
 allocate(statevector(x_size))
+
+call get_ncommas_restart_filename( ncommas_restart_filename )
+
 call restart_file_to_sv(ncommas_restart_filename, statevector, model_time) 
 
 iunit = open_restart_write(ncommas_to_dart_output_file)

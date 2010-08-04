@@ -33,10 +33,7 @@ use    utilities_mod, only : initialize_utilities, timestamp, &
 use  assim_model_mod, only : open_restart_read, aread_state_restart, close_restart
 use time_manager_mod, only : time_type, print_time, print_date, operator(-), get_time
 use        model_mod, only : static_init_model, sv_to_restart_file, &
-                             get_model_size 
-use dart_ncommas_mod, only : write_ncommas_namelist, &
-                             get_ncommas_restart_filename, &
-                             get_base_time
+                             get_model_size, get_base_time, get_ncommas_restart_filename
 
 implicit none
 
@@ -52,13 +49,13 @@ character(len=128), parameter :: &
 
 character (len = 128) :: dart_to_ncommas_input_file = 'dart.ic'
 logical               :: advance_time_present       = .false.
-character (len = 128) :: ncommas_restart_filename   = 'ncommas_restart.nc'
 
 namelist /dart_to_ncommas_nml/ dart_to_ncommas_input_file, &
-                           advance_time_present, ncommas_restart_filename
+                           advance_time_present
 
 !----------------------------------------------------------------------
 
+character(len=256)    :: ncommas_restart_filename
 integer               :: iunit, io, x_size, diff1, diff2
 type(time_type)       :: model_time, adv_to_time, base_time
 real(r8), allocatable :: statevector(:)
