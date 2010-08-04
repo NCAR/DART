@@ -174,21 +174,11 @@ character(len=128) :: progvarnames(nfields) = &
                             'QI  ', 'QS  ', 'QH  ' /)
 
 integer :: progvarkinds(nfields) = (/ &
-   KIND_U_WIND_COMPONENT, &
-   KIND_V_WIND_COMPONENT, &
-   KIND_VERTICAL_VELOCITY, &
-   KIND_POTENTIAL_TEMPERATURE, &
-   KIND_RADAR_REFLECTIVITY, &
-   KIND_VERTICAL_VORTICITY, &
-   KIND_EXNER_FUNCTION, &
-   KIND_VAPOR_MIXING_RATIO, &
-   KIND_CLOUDWATER_MIXING_RATIO, &
-   KIND_RAINWATER_MIXING_RATIO, &
-   KIND_ICE_MIXING_RATIO, &
-   KIND_SNOW_MIXING_RATIO, &
-   KIND_GRAUPEL_MIXING_RATIO  /)
-
-integer :: start_index(nfields)
+   KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_VERTICAL_VELOCITY,  &
+   KIND_POTENTIAL_TEMPERATURE, KIND_RADAR_REFLECTIVITY,                   &
+   KIND_VERTICAL_VORTICITY, KIND_EXNER_FUNCTION, KIND_VAPOR_MIXING_RATIO, &
+   KIND_CLOUDWATER_MIXING_RATIO, KIND_RAINWATER_MIXING_RATIO,             &
+   KIND_ICE_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, KIND_GRAUPEL_MIXING_RATIO  /)
 
 ! Grid parameters - the values will be read from a
 ! standard ncommas namelist and filled in here.
@@ -1933,7 +1923,7 @@ integer,            intent(out) :: istatus
 
 ! Local storage
 real(r8)       :: loc_array(3), llon, llat, lheight
-integer        :: base_offset, offset, ind
+integer        :: base_offset, offset, ind, i, ival
 integer        :: hgt_bot, hgt_top
 real(r8)       :: hgt_fract
 real(r8)       :: top_val, bot_val
@@ -1979,38 +1969,18 @@ endif
 ! Do horizontal interpolations for the appropriate levels
 ! Find the basic offset of this field
 
-if(obs_type == KIND_U_WIND_COMPONENT) then
-   base_offset = start_index(1)
-else if(obs_type == KIND_V_WIND_COMPONENT) then
-   base_offset = start_index(2)
-else if(obs_type == KIND_VERTICAL_VELOCITY) then
-   base_offset = start_index(3)
-else if(obs_type == KIND_POTENTIAL_TEMPERATURE) then
-   base_offset = start_index(4)
-else if(obs_type == KIND_RADAR_REFLECTIVITY) then
-   base_offset = start_index(5)
-else if(obs_type == KIND_VERTICAL_VORTICITY) then
-   base_offset = start_index(6)
-else if(obs_type == KIND_EXNER_FUNCTION) then
-   base_offset = start_index(7)
-else if(obs_type == KIND_VAPOR_MIXING_RATIO) then
-   base_offset = start_index(8)
-else if(obs_type == KIND_CLOUDWATER_MIXING_RATIO) then
-   base_offset = start_index(9)
-else if(obs_type == KIND_RAINWATER_MIXING_RATIO) then
-   base_offset = start_index(10)
-else if(obs_type == KIND_ICE_MIXING_RATIO) then
-   base_offset = start_index(11)
-else if(obs_type == KIND_SNOW_MIXING_RATIO) then
-   base_offset = start_index(12)
-else if(obs_type == KIND_GRAUPEL_MIXING_RATIO) then
-   base_offset = start_index(13)
-else
-   ! Not a legal type for interpolation, return istatus error
+ival = -1
+do i = i, nfields
+   if (progvar(ival)%dart_kind == obs_type) exit
+enddo
+
+! Not a legal type for interpolation, return istatus error
+if (ival < 0) then
    istatus = 15
    return
 endif
 
+base_offset = progvar(ival)%index1
 
 if (debug > 1) print *, 'base offset now ', base_offset
 
@@ -2755,7 +2725,7 @@ if (dim2 /= nyc) then
    call error_handler(E_ERR,'vector_to_2d_prog_var',string1,source,revision,revdate) 
 endif
 
-ii = start_index(varindex)
+ii = progvar(varindex)%index1
 
 do j = 1,nyc   ! latitudes
 do i = 1,nxc   ! longitudes
@@ -2802,7 +2772,7 @@ if (dim3 /= nzc) then
    call error_handler(E_ERR,'vector_to_3d_prog_var',string1,source,revision,revdate) 
 endif
 
-ii = start_index(varindex)
+ii = progvar(varindex)%index1
 
 do k = 1,nzc   ! vertical
 do j = 1,nyc   ! latitudes
