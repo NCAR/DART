@@ -1564,10 +1564,10 @@ call nc_check(nf90_open(trim(filename), NF90_WRITE, ncid), &
 model_time = get_state_time(ncid, filename)
 
 if ( model_time /= statedate ) then
-   call print_time(model_time,'DART current time',logfileunit) 
-   call print_time( statedate,'ncommas  current time',logfileunit) 
-   call print_time(model_time,'DART current time') 
-   call print_time( statedate,'ncommas  current time') 
+   call print_time( statedate,'DART current time',logfileunit) 
+   call print_time(model_time,'ncommas  current time',logfileunit) 
+   call print_time( statedate,'DART current time') 
+   call print_time(model_time,'ncommas  current time') 
    write(string1,*)trim(filename),' current time /= model time. FATAL error.'
    call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate) 
 endif

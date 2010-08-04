@@ -116,7 +116,7 @@ if ( advance_time_present ) then
    base_time = get_base_time(ncommas_restart_filename)
    call get_time((model_time  - base_time), diff1)
    call get_time((adv_to_time - base_time), diff2)
-   iunit = open_file('times', 'write')
+   iunit = open_file('times', action='write')
    write(iunit, '(I8, I8)') diff1, diff2
    call close_file(iunit)
 endif
