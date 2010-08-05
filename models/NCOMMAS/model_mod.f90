@@ -37,20 +37,10 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              open_file, file_exist, find_textfile_dims,        &
                              file_to_text
 
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT,        &   ! index 1
-                             KIND_V_WIND_COMPONENT,        &   ! index 2
-                             KIND_VERTICAL_VELOCITY,       &   ! index 3
-                             KIND_POTENTIAL_TEMPERATURE,   &   ! index 4
-                             KIND_RADAR_REFLECTIVITY,      &   ! index 5
-                             KIND_VERTICAL_VORTICITY,      &   ! index 6
-                             KIND_EXNER_FUNCTION,          &   ! index 7
-                             KIND_VAPOR_MIXING_RATIO,      &   ! index 8
-                             KIND_CLOUDWATER_MIXING_RATIO, &   ! index 9 
-                             KIND_RAINWATER_MIXING_RATIO,  &   ! index 10
-                             KIND_ICE_MIXING_RATIO,        &   ! index 11
-                             KIND_SNOW_MIXING_RATIO,       &   ! index 12
-                             KIND_GRAUPEL_MIXING_RATIO,    &   ! index 13
-                             paramname_length,             &
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT,   &
+                             KIND_V_WIND_COMPONENT,   &
+                             KIND_VERTICAL_VELOCITY,  &
+                             paramname_length,        &
                              get_raw_obs_kind_index
 
 use mpi_utilities_mod, only: my_task_id
@@ -156,7 +146,9 @@ type progvartype
    character(len=NF90_MAX_NAME) :: varname
    character(len=NF90_MAX_NAME) :: long_name
    character(len=NF90_MAX_NAME) :: units
+   character(len=NF90_MAX_NAME) :: storder
    integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens
+   integer :: originalnumdims
    integer :: numdims
    integer :: varsize     ! prod(dimlens(1:numdims))
    integer :: index1      ! location in dart state vector of first occurrence
@@ -187,34 +179,23 @@ type(time_type)       :: model_time      ! valid time of the model state
 type(time_type)       :: model_timestep  ! smallest time to adv model
 real(r8), allocatable :: ens_mean(:)     ! may be needed for forward ops
 
-INTERFACE vector_to_prog_var
-      MODULE PROCEDURE vector_to_2d_prog_var
-      MODULE PROCEDURE vector_to_3d_prog_var
-END INTERFACE
-
 ! set this to true if you want to print out the current time
 ! after each N observations are processed, for benchmarking.
 logical :: print_timestamps = .false.
 integer :: print_every_Nth  = 10000
-
-type grid_type
-   private
-   integer  :: nx, ny, nz         ! determines if by level, height, pressure, ...
-   real(r8), pointer ::  lon(:,:) ! lon stored in radians
-   real(r8), pointer ::  lat(:,:) ! lat stored in radians
-   real(r8), pointer :: vloc(:,:) ! height stored in meters
-end type grid_type
-
-type(grid_type) :: Ugrid
-type(grid_type) :: Vgrid
-type(grid_type) :: Wgrid
-type(grid_type) ::  grid
 
 !------------------------------------------------------------------
 ! The ncommas restart manager namelist variables
 !------------------------------------------------------------------
 
 character(len= 64) :: ew_boundary_type, ns_boundary_type
+
+INTERFACE vector_to_prog_var
+      MODULE PROCEDURE vector_to_1d_prog_var
+      MODULE PROCEDURE vector_to_2d_prog_var
+      MODULE PROCEDURE vector_to_3d_prog_var
+      MODULE PROCEDURE vector_to_4d_prog_var
+END INTERFACE
 
 INTERFACE get_base_time
       MODULE PROCEDURE get_base_time_ncid
@@ -396,11 +377,11 @@ subroutine static_init_model()
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname
 character(len=paramname_length)       :: kind_string
-integer :: ncid, VarID, numdims, dimlen, varsize
+integer :: ncid, VarID, numdims, dimlen, varsize, nc_rc
 integer :: iunit, io, ivar, i, index1, indexN
 integer :: ss, dd
-
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
+integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeDimID
+logical :: shapeok
 
 if ( module_initialized ) return ! only need to do this once.
 
@@ -463,7 +444,7 @@ call get_grid(nxc, nxe, nyc, nye, nzc, nze, &
 !
 ! Compute the offsets into the state vector for the start of each
 ! different variable type. Requires reading shapes from the NCOMMAS
-! restart file.
+! restart file. As long as TIME is the LAST dimension, we're OK.
 !
 ! Record the extent of the data type in the state vector.
 
@@ -473,9 +454,20 @@ call nc_check( nf90_open(trim(ncommas_restart_filename), NF90_NOWRITE, ncid), &
 call verify_state_variables( ncommas_state_variables, ncid, ncommas_restart_filename, &
                              nfields, variable_table )
 
-! Find the Time (Unlimited) dimension - so we can skip it.
-call nc_check(nf90_Inquire(ncid,nDimensions,nVariables,nAttributes,unlimitedDimID),&
+TimeDimID = FindTimeDimension( ncid )
+
+if (TimeDimID < 0 ) then
+   write(string1,*)'unable to find a dimension named TIME Time or time.'
+   call error_handler(E_MSG,'static_init_model', string1, source, revision, revdate)
+endif
+
+call nc_check(nf90_Inquire(ncid,nDimensions,nVariables,nAttributes,unlimitedDimID), &
                     'static_init_model', 'inquire '//trim(ncommas_restart_filename))
+
+if ( (TimeDimID > 0) .and. (unlimitedDimID > 0) .and. (TimeDimID /= unlimitedDimID)) then
+   write(string1,*)'IF TIME is not the unlimited dimension, I am lost.'
+   call error_handler(E_MSG,'static_init_model', string1, source, revision, revdate)
+endif
 
 index1  = 1;
 indexN  = 0;
@@ -493,6 +485,9 @@ do ivar = 1, nfields
    call nc_check(nf90_inq_varid(ncid, trim(varname), VarID), &
             'static_init_model', 'inq_varid '//trim(string2))
 
+   call nc_check( nf90_get_att(ncid, VarId, 'type' , progvar(ivar)%storder), &
+            'static_init_model', 'get_att type '//trim(string2))
+
    call nc_check( nf90_get_att(ncid, VarId, 'long_name' , progvar(ivar)%long_name), &
             'static_init_model', 'get_att long_name '//trim(string2))
 
@@ -501,23 +496,44 @@ do ivar = 1, nfields
 
    call nc_check(nf90_inquire_variable(ncid, VarId, dimids=dimIDs, ndims=numdims), &
             'static_init_model', 'inquire '//trim(string2))
+   progvar(ivar)%originalnumdims = numdims
 
-   progvar(ivar)%numdims = numdims
-
+   ! TIME is the unlimited dimension, and in Fortran, this is always the
+   ! LAST dimension in this loop. Since we are not concerned with it, we
+   ! need to skip it. 
    varsize = 1
+   dimlen  = 1
+   progvar(ivar)%numdims = 0
    DimensionLoop : do i = 1,numdims
 
-      if (dimIDs(i) == unlimitedDimID) then
-         dimlen = 1
-      else   
-         write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
-         call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
+      if (dimIDs(i) == TimeDimID) cycle DimensionLoop
+      
+      write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
+      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
                                           'static_init_model', string1)
-      endif
+
+      progvar(ivar)%numdims = progvar(ivar)%numdims + 1 
       progvar(ivar)%dimlens(i) = dimlen
       varsize = varsize * dimlen
 
    enddo DimensionLoop
+
+   ! Make sure the storage order is as we expect.
+   shapeok = .false.
+   if (progvar(ivar)%numdims == 1) then
+      if (trim(progvar(ivar)%storder) ==   'x1d') shapeok = .true.
+      if (trim(progvar(ivar)%storder) ==   'y1d') shapeok = .true.
+      if (trim(progvar(ivar)%storder) ==   'z1d') shapeok = .true.
+   elseif (progvar(ivar)%numdims == 2) then
+      if (trim(progvar(ivar)%storder) ==  'xy2d') shapeok = .true.
+   elseif (progvar(ivar)%numdims == 3) then
+      if (trim(progvar(ivar)%storder) == 'xyz3d') shapeok = .true.
+   endif
+   if ( .not. shapeok ) then
+      write(string1,*)'unable to handle storage order of '//trim(progvar(ivar)%storder)
+      call error_handler(E_ERR,'static_init_model', string1, source, revision, revdate, &
+                                              text2=string2)
+   endif
 
    progvar(ivar)%varsize     = varsize
    progvar(ivar)%index1      = index1
@@ -527,8 +543,10 @@ do ivar = 1, nfields
    if ( debug > 5 ) then
       write(logfileunit,*)
       write(logfileunit,*) trim(progvar(ivar)%varname),' variable number ',ivar
+      write(logfileunit,*) '  type        ',trim(progvar(ivar)%storder)
       write(logfileunit,*) '  long_name   ',trim(progvar(ivar)%long_name)
       write(logfileunit,*) '  units       ',trim(progvar(ivar)%units)
+      write(logfileunit,*) '  orgnalndims ',progvar(ivar)%originalnumdims
       write(logfileunit,*) '  numdims     ',progvar(ivar)%numdims
       write(logfileunit,*) '  dimlens     ',progvar(ivar)%dimlens(1:progvar(ivar)%numdims)
       write(logfileunit,*) '  varsize     ',progvar(ivar)%varsize
@@ -539,8 +557,10 @@ do ivar = 1, nfields
 
       write(     *     ,*)
       write(     *     ,*) trim(progvar(ivar)%varname),' variable number ',ivar
+      write(     *     ,*) '  type        ',trim(progvar(ivar)%storder)
       write(     *     ,*) '  long_name   ',trim(progvar(ivar)%long_name)
       write(     *     ,*) '  units       ',trim(progvar(ivar)%units)
+      write(     *     ,*) '  orgnalndims ',progvar(ivar)%originalnumdims
       write(     *     ,*) '  numdims     ',progvar(ivar)%numdims
       write(     *     ,*) '  dimlens     ',progvar(ivar)%dimlens(1:progvar(ivar)%numdims)
       write(     *     ,*) '  varsize     ',progvar(ivar)%varsize
@@ -681,7 +701,7 @@ integer :: wlonVarID, wlatVarID
 integer :: ZEVarID, ZCVarID
 
 ! for the prognostic variables
-integer :: SVarID, TVarID, UVarID, VVarID, PSURFVarID 
+integer :: VarID
 
 !----------------------------------------------------------------------
 ! variables for the namelist output
@@ -1208,17 +1228,60 @@ else
          endif
       enddo ConformableDimensions
 
-!     if ( progvar(ivar)%numdims == 1) then
-!     elseif ( progvar(ivar)%numdims == 1) then
-!     else
-!     endif
+      if (     progvar(ivar)%numdims == 1) then
 
-!     call vector_to_prog_var(statevec, progvar(ivar), data_3d)
-!     where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-!     call nc_check(NF90_inq_varid(ncFileID, 'SALT', VarID), &
-!                  'nc_write_model_vars', 'S inq_varid '//trim(filename))
-!     call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-!                  'nc_write_model_vars', 'S put_var '//trim(filename))
+         allocate(data_1d(progvar(ivar)%dimlens(1)))
+         call vector_to_prog_var(statevec, progvar(ivar), data_1d)
+         where (data_1d == 0.0_r8) data_1d = NF90_FILL_REAL
+         call nc_check(NF90_inq_varid(ncFileID, varname, VarID), &
+                   'nc_write_model_vars', 'inq_varid '//trim(string2))
+         call nc_check(nf90_put_var(ncFileID,VarID,data_1d,start=(/1,copyindex,timeindex/)),&
+                   'nc_write_model_vars', 'put_var '//trim(string2))
+         deallocate(data_1d)
+
+      elseif ( progvar(ivar)%numdims == 2) then
+
+         allocate(data_2d( progvar(ivar)%dimlens(1),  progvar(ivar)%dimlens(2) ))
+         call vector_to_prog_var(statevec, progvar(ivar), data_2d)
+         where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
+         call nc_check(NF90_inq_varid(ncFileID, varname, VarID), &
+                   'nc_write_model_vars', 'inq_varid '//trim(string2))
+         call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
+                   'nc_write_model_vars', 'put_var '//trim(string2))
+         deallocate(data_2d)
+
+      elseif ( progvar(ivar)%numdims == 3) then
+
+         allocate(data_3d(progvar(ivar)%dimlens(1), &
+                          progvar(ivar)%dimlens(2), &
+                          progvar(ivar)%dimlens(3)))
+         call vector_to_prog_var(statevec, progvar(ivar), data_3d)
+         where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
+         call nc_check(NF90_inq_varid(ncFileID, varname, VarID), &
+                   'nc_write_model_vars', 'inq_varid '//trim(string2))
+         call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
+                   'nc_write_model_vars', 'put_var '//trim(string2))
+         deallocate(data_3d)
+
+      elseif ( progvar(ivar)%numdims == 4) then
+
+         allocate(data_4d(progvar(ivar)%dimlens(1), &
+                          progvar(ivar)%dimlens(2), &
+                          progvar(ivar)%dimlens(3), &
+                          progvar(ivar)%dimlens(4)))
+         call vector_to_prog_var(statevec, progvar(ivar), data_4d)
+         where (data_4d == 0.0_r8) data_4d = NF90_FILL_REAL
+         call nc_check(NF90_inq_varid(ncFileID, varname, VarID), &
+                   'nc_write_model_vars', 'inq_varid '//trim(string2))
+         call nc_check(nf90_put_var(ncFileID,VarID,data_4d,start=(/1,1,1,1,copyindex,timeindex/)),&
+                   'nc_write_model_vars', 'put_var '//trim(string2))
+         deallocate(data_4d)
+
+      else
+
+         ! FIXME put an error message here
+
+      endif
 
    enddo
 
@@ -1254,7 +1317,7 @@ real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
-integer :: i, var_type
+integer :: i
 logical, save :: random_seq_init = .false.
 
 if ( .not. module_initialized ) call static_init_model
@@ -1421,10 +1484,10 @@ real(r8), allocatable, dimension(:,:)       :: data_2d_array
 real(r8), allocatable, dimension(:,:,:)     :: data_3d_array
 real(r8), allocatable, dimension(:,:,:,:)   :: data_4d_array
 
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
 character(len=NF90_MAX_NAME) :: varname 
-integer :: VarID, numdims, dimlen
-integer :: ncid, year, month, day, hour, minute, second, nc_rc
+integer :: VarID, ncNdims, dimlen
+integer :: ncid, TimeDimID, TimeDimLength
 character(len=256) :: myerrorstring 
 
 if ( .not. module_initialized ) call static_init_model
@@ -1444,19 +1507,28 @@ call nc_check(nf90_open(trim(filename), NF90_NOWRITE, ncid), &
 model_time = get_state_time(ncid, filename)
 
 if (do_output()) &
-    call print_time(model_time,'time for restart file '//trim(filename))
+    call print_time(model_time,'time in restart file '//trim(filename))
 if (do_output()) &
-    call print_date(model_time,'date for restart file '//trim(filename))
+    call print_date(model_time,'date in restart file '//trim(filename))
 
 ! Start counting and filling the state vector one item at a time,
 ! repacking the Nd arrays into a single 1d list of numbers.
 
-indx = 1
+! The DART prognostic variables are only defined for a single time.
+! We already checked the assumption that variables are xy2d or xyz3d ...
+! IF the netCDF variable has a TIME dimension, it must be the last dimension,
+! and we need to read the LAST timestep and effectively squeeze out the
+! singleton dimension when we stuff it into the DART state vector. 
 
-! If these arrays have an extra dimension (like TIME), and it is only 1,
-! we might have to make the query code smarter, and might have to set
-! a start and count on the get_var() calls.  If it is more than 1, then
-! we have a problem.
+TimeDimID = FindTimeDimension( ncid )
+
+if ( TimeDimID > 0 ) then
+   call nc_check(nf90_inquire_dimension(ncid, TimeDimID, len=TimeDimLength), &
+            'restart_file_to_sv', 'inquire timedimlength '//trim(filename))
+else
+   TimeDimLength = 0
+endif
+
 do ivar=1, nfields
 
    varname = trim(progvar(ivar)%varname)
@@ -1467,10 +1539,14 @@ do ivar=1, nfields
    call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
             'restart_file_to_sv', 'inq_varid '//trim(myerrorstring))
 
-   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
+   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=ncNdims), &
             'restart_file_to_sv', 'inquire '//trim(myerrorstring))
 
-   do i = 1,numdims
+   mystart = 1   ! These are arrays, actually.
+   mycount = 1
+   ! Only checking the shape of the variable - sans TIME
+   DimCheck : do i = 1,progvar(ivar)%numdims
+
       write(string1,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
             'restart_file_to_sv', string1)
@@ -1479,61 +1555,85 @@ do ivar=1, nfields
          write(string1,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',progvar(ivar)%dimlens(i)
          call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
       endif
-   enddo
 
-   if (numdims == 1) then
-      ni = progvar(ivar)%dimlens(1)
+      mycount(i) = dimlen
+
+   enddo DimCheck
+
+   where(dimIDs == TimeDimID) mystart = TimeDimLength
+   where(dimIDs == TimeDimID) mycount = 1   ! only the latest one
+
+   if ( debug > 5 ) then
+      write(*,*)trim(varname)//' start is ',mystart(1:ncNdims)
+      write(*,*)trim(varname)//' count is ',mycount(1:ncNdims)
+   endif
+
+   indx = progvar(ivar)%index1
+
+   if (ncNdims == 1) then
+
+      ! If the single dimension is TIME, we only need a scalar.
+      ! Pretty sure this cant happen given the test for x1d,y1d,z1d. 
+      ni = mycount(1)
       allocate(data_1d_array(ni))
-      call nc_check(nf90_get_var(ncid, VarID, data_1d_array), &
+      call nc_check(nf90_get_var(ncid, VarID, data_1d_array, &
+        start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
             'restart_file_to_sv', 'get_var '//trim(varname))
-      do i = 1, ni   ! size(data_1d_array,1)
+      do i = 1, ni
          state_vector(indx) = data_1d_array(i)
          indx = indx + 1
       enddo
       deallocate(data_1d_array)
-   elseif (numdims == 2) then
-      ni = progvar(ivar)%dimlens(1)
-      nj = progvar(ivar)%dimlens(2)
+
+   elseif (ncNdims == 2) then
+
+      ni = mycount(1)
+      nj = mycount(2)
       allocate(data_2d_array(ni, nj))
-      call nc_check(nf90_get_var(ncid, VarID, data_2d_array), &
+      call nc_check(nf90_get_var(ncid, VarID, data_2d_array, &
+        start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
             'restart_file_to_sv', 'get_var '//trim(varname))
-      do j = 1, nj   ! size(data_2d_array,2)
-      do i = 1, ni   ! size(data_2d_array,1)
+      do j = 1, nj
+      do i = 1, ni
          state_vector(indx) = data_2d_array(i, j)
          indx = indx + 1
       enddo
       enddo
       deallocate(data_2d_array)
-   elseif (numdims == 3) then
-      ni = progvar(ivar)%dimlens(1)
-      nj = progvar(ivar)%dimlens(2)
-      nk = progvar(ivar)%dimlens(3)
+
+   elseif (ncNdims == 3) then
+
+      ni = mycount(1)
+      nj = mycount(2)
+      nk = mycount(3)
       allocate(data_3d_array(ni, nj, nk))
-      call nc_check(nf90_get_var(ncid, VarID, data_3d_array), &
+      call nc_check(nf90_get_var(ncid, VarID, data_3d_array, &
+        start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
             'restart_file_to_sv', 'get_var '//trim(varname))
-   
-      do k = 1, nk   ! size(data_3d_array,3)
-      do j = 1, nj   ! size(data_3d_array,2)
-      do i = 1, ni   ! size(data_3d_array,1)
+      do k = 1, nk
+      do j = 1, nj
+      do i = 1, ni
          state_vector(indx) = data_3d_array(i, j, k)
          indx = indx + 1
       enddo
       enddo
       enddo
-
       deallocate(data_3d_array)
-   elseif (numdims == 4) then
-      ni = progvar(ivar)%dimlens(1)
-      nj = progvar(ivar)%dimlens(2)
-      nk = progvar(ivar)%dimlens(3)
-      nl = progvar(ivar)%dimlens(4)
+
+   elseif (ncNdims == 4) then
+
+      ni = mycount(1)
+      nj = mycount(2)
+      nk = mycount(3)
+      nl = mycount(4)
       allocate(data_4d_array(ni, nj, nk, nl))
-      call nc_check(nf90_get_var(ncid, VarID, data_4d_array), &
+      call nc_check(nf90_get_var(ncid, VarID, data_4d_array, &
+        start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
             'restart_file_to_sv', 'get_var '//trim(varname))
-      do l = 1, nl   ! size(data_4d_array,3)
-      do k = 1, nk   ! size(data_4d_array,3)
-      do j = 1, nj   ! size(data_4d_array,2)
-      do i = 1, ni   ! size(data_4d_array,1)
+      do l = 1, nl
+      do k = 1, nk
+      do j = 1, nj
+      do i = 1, ni
          state_vector(indx) = data_4d_array(i, j, k, l)
          indx = indx + 1
       enddo
@@ -1541,10 +1641,19 @@ do ivar=1, nfields
       enddo
       enddo
       deallocate(data_4d_array)
+
    else
-      write(string1, *) 'no support for data array of dimension ', numdims
+      write(string1, *) 'no support for data array of dimension ', ncNdims
       call error_handler(E_ERR,'restart_file_to_sv', string1, &
                         source,revision,revdate)
+   endif
+
+   indx = indx - 1
+   if ( indx /= progvar(ivar)%indexN ) then
+      write(string1, *)'Variable '//trim(varname)//' filled wrong.'
+      write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',indx
+      call error_handler(E_ERR,'restart_file_to_sv', string1, &
+                        source,revision,revdate,text2=string2)
    endif
 
 enddo
@@ -1575,7 +1684,7 @@ real(r8), allocatable, dimension(:,:,:,:)   :: data_4d_array
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: varname 
 integer :: VarID, numdims, dimlen
-integer :: ncid, year, month, day, hour, minute, second, nc_rc
+integer :: ncid
 character(len=256) :: myerrorstring 
 
 if ( .not. module_initialized ) call static_init_model
@@ -2069,8 +2178,8 @@ subroutine lon_lat_interpolate(x, lon, lat, var_type, height, interp_val, istatu
 ! NOTE: Using array sections to pass in the x array may be inefficient on some
 ! compiler/platform setups. Might want to pass in the entire array with a base
 ! offset value instead of the section if this is an issue.
-! This routine works for either the dipole or a regular lat-lon grid.
-! Successful interpolation returns istatus=0.
+!
+! Successful interpolation returns istatus = 0
 
 real(r8),            intent(in) :: x(:)
 real(r8),            intent(in) :: lon, lat
@@ -2078,17 +2187,10 @@ integer,             intent(in) :: var_type, height
 real(r8),           intent(out) :: interp_val
 integer,            intent(out) :: istatus
 
-! Local storage
-integer  :: lat_bot, lat_top, lon_bot, lon_top, num_inds, start_ind
-integer  :: x_ind, y_ind, i
-real(r8) :: p(4), x_corners(4), y_corners(4), xbot, xtop
-real(r8) :: lon_fract, lat_fract
-logical  :: masked
-
 if ( .not. module_initialized ) call static_init_model
 
-! Succesful return has istatus of 0
-istatus = 1
+interp_val = MISSING_R8
+istatus = 1 ! assume_the_worst
 
 end subroutine lon_lat_interpolate
 
@@ -2098,8 +2200,6 @@ end subroutine lon_lat_interpolate
 function get_val(lon_index, lat_index, nlon, x, var_type, height)
 
 ! Returns the value from a single level array given the lat and lon indices
-! 'masked' returns true if this is NOT a valid grid location (e.g. land, or
-! below the ocean floor in shallower areas).
 
 integer,     intent(in) :: lon_index, lat_index, nlon, var_type, height
 real(r8),    intent(in) :: x(:)
@@ -2128,7 +2228,7 @@ real(r8),           intent(out) :: lon_fract, lat_fract
 integer,            intent(out) :: found_x, found_y, istatus
 
 ! Local storage
-integer  :: lon_status, lat_status, lon_top, lat_top
+integer  :: lat_status, lon_top, lat_top
 
 ! Succesful return has istatus of 0
 istatus = 0
@@ -2478,7 +2578,7 @@ real(r8), intent(out) :: interp_val
 ! checks showed accuracy to seven decimal places on all tests.
 
 integer :: i
-real(r8) :: m(3, 3), v(3), r(3), a, x_corners(4), lon, lon_mean
+real(r8) :: m(3, 3), v(3), r(3), a, x_corners(4), lon
 
 ! Watch out for wraparound on x_corners.
 lon = lon_in
@@ -2493,23 +2593,6 @@ if(maxval(x_corners) - minval(x_corners) > 180.0_r8) then
       if(x_corners(i) < 180.0_r8) x_corners(i) = x_corners(i) + 360.0_r8
    enddo
 endif
-
-
-!*******
-! Problems with extremes in polar cell interpolation can be reduced
-! by this block, but it is not clear that it is needed for actual
-! ocean grid data
-! Find the mean longitude of corners and remove
-!!!lon_mean = sum(x_corners) / 4.0_r8
-!!!x_corners = x_corners - lon_mean
-!!!lon = lon - lon_mean
-! Multiply everybody by the cos of the latitude
-!!!do i = 1, 4
-   !!!x_corners(i) = x_corners(i) * cos(y_corners(i) * deg2rad)
-!!!enddo
-!!!lon = lon * cos(lat * deg2rad)
-
-!*******
 
 
 ! Fit a surface and interpolate; solve for 3x3 matrix
@@ -2728,6 +2811,30 @@ end subroutine get_state_kind
 
 
 
+subroutine vector_to_1d_prog_var(x, progvar, data_1d_array)
+!------------------------------------------------------------------
+! convert the values from a 1d fortran array, starting at an offset,
+! into a 1d fortran array.
+!
+real(r8), dimension(:),   intent(in)  :: x
+type(progvartype),        intent(in)  :: progvar
+real(r8), dimension(:),   intent(out) :: data_1d_array
+
+integer :: i,ii
+
+if ( .not. module_initialized ) call static_init_model
+
+ii = progvar%index1
+
+do i = 1, progvar%dimlens(1)
+   data_1d_array(i) = x(ii)
+   ii = ii + 1
+enddo
+
+end subroutine vector_to_1d_prog_var
+
+
+
 subroutine vector_to_2d_prog_var(x, progvar, data_2d_array)
 !------------------------------------------------------------------
 ! convert the values from a 1d fortran array, starting at an offset,
@@ -2738,26 +2845,13 @@ type(progvartype),        intent(in)  :: progvar
 real(r8), dimension(:,:), intent(out) :: data_2d_array
 
 integer :: i,j,ii
-integer :: dim1,dim2
 
 if ( .not. module_initialized ) call static_init_model
 
-dim1 = size(data_2d_array,1)
-dim2 = size(data_2d_array,2)
-
-if (dim1 /= nxc) then
-   write(string1,*)trim(progvar%varname),' 2d array dim 1 ',dim1,' /= ',nxc
-   call error_handler(E_ERR,'vector_to_2d_prog_var',string1,source,revision,revdate) 
-endif
-if (dim2 /= nyc) then
-   write(string1,*)trim(progvar%varname),' 2d array dim 2 ',dim2,' /= ',nyc
-   call error_handler(E_ERR,'vector_to_2d_prog_var',string1,source,revision,revdate) 
-endif
-
 ii = progvar%index1
 
-do j = 1,nyc   ! latitudes
-do i = 1,nxc   ! longitudes
+do j = 1,progvar%dimlens(2)
+do i = 1,progvar%dimlens(1)
    data_2d_array(i,j) = x(ii)
    ii = ii + 1
 enddo
@@ -2777,32 +2871,14 @@ type(progvartype),          intent(in)  :: progvar
 real(r8), dimension(:,:,:), intent(out) :: data_3d_array
 
 integer :: i,j,k,ii
-integer :: dim1,dim2,dim3
 
 if ( .not. module_initialized ) call static_init_model
 
-dim1 = size(data_3d_array,1)
-dim2 = size(data_3d_array,2)
-dim3 = size(data_3d_array,3)
-
-if (dim1 /= nxc) then
-   write(string1,*)trim(progvar%varname),' 3d array dim 1 ',dim1,' /= ',nxc
-   call error_handler(E_ERR,'vector_to_3d_prog_var',string1,source,revision,revdate) 
-endif
-if (dim2 /= nyc) then
-   write(string1,*)trim(progvar%varname),' 3d array dim 2 ',dim2,' /= ',nyc
-   call error_handler(E_ERR,'vector_to_3d_prog_var',string1,source,revision,revdate) 
-endif
-if (dim3 /= nzc) then
-   write(string1,*)trim(progvar%varname),' 3d array dim 3 ',dim3,' /= ',nzc
-   call error_handler(E_ERR,'vector_to_3d_prog_var',string1,source,revision,revdate) 
-endif
-
 ii = progvar%index1
 
-do k = 1,nzc   ! vertical
-do j = 1,nyc   ! latitudes
-do i = 1,nxc   ! longitudes
+do k = 1,progvar%dimlens(3)
+do j = 1,progvar%dimlens(2)
+do i = 1,progvar%dimlens(1)
    data_3d_array(i,j,k) = x(ii)
    ii = ii + 1
 enddo
@@ -2810,6 +2886,36 @@ enddo
 enddo
 
 end subroutine vector_to_3d_prog_var
+
+
+
+subroutine vector_to_4d_prog_var(x, progvar, data_4d_array)
+!------------------------------------------------------------------
+! convert the values from a 1d fortran array, starting at an offset,
+! into a 4d fortran array.  the 3 dims are taken from the array size.
+!
+real(r8), dimension(:),       intent(in)  :: x
+type(progvartype),            intent(in)  :: progvar
+real(r8), dimension(:,:,:,:), intent(out) :: data_4d_array
+
+integer :: i,j,k,m,ii
+
+if ( .not. module_initialized ) call static_init_model
+
+ii = progvar%index1
+
+do m = 1,progvar%dimlens(4)
+do k = 1,progvar%dimlens(3)
+do j = 1,progvar%dimlens(2)
+do i = 1,progvar%dimlens(1)
+   data_4d_array(i,j,k,m) = x(ii)
+   ii = ii + 1
+enddo
+enddo
+enddo
+enddo
+
+end subroutine vector_to_4d_prog_var
 
 
 
@@ -2957,11 +3063,6 @@ integer, intent(in) :: NZE   ! Number of Vertical grid edges
 real(r8), dimension(:,:), intent(out) :: ULAT, ULON, VLAT, VLON, WLAT, WLON
 real(r8), dimension( : ), intent(out) :: ZC, ZE
 
-! type(grid_type), intent(out) :: Ugrid  ! (ZC, YC, XE)
-! type(grid_type), intent(out) :: Vgrid  ! (ZC, YE, XC)
-! type(grid_type), intent(out) :: Wgrid  ! (ZE, YC, XC)
-! type(grid_type), intent(out) ::  grid  ! (ZC, YC, XC)
-
 real(r8), dimension(NXC) :: XC
 real(r8), dimension(NXE) :: XE
 real(r8), dimension(NYC) :: YC
@@ -2969,14 +3070,11 @@ real(r8), dimension(NYE) :: YE
 
 real(r8) :: lat0, lon0, xg_pos, yg_pos, lat, lon
 
-! real(r8), dimension(nx,ny), intent(out) :: ULAT, ULON, TLAT, TLON
-
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
-character(len=NF90_MAX_NAME)          :: varname
-integer                               :: VarID, numdims, dimlen
-integer                               :: ncid, dimid
-integer                               :: i,j
-
+! integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
+! integer :: numdims
+integer :: VarID
+integer :: ncid
+integer :: i,j
 
 ! get the ball rolling ...
 
@@ -3503,10 +3601,34 @@ enddo MyLoop
 if (ngood == nrows) then
    string1 = 'WARNING: There is a possibility you need to increase ''max_state_variables'''
    write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
-   call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate,string2)
+   call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate,text2=string2)
 endif
 
 end subroutine verify_state_variables
+
+
+function FindTimeDimension(ncid) result(timedimid)
+
+! Find the Time Dimension ID in a netCDF file.
+! If there is none - (spelled the obvious way) - the routine
+! returns a negative number. You don't HAVE to have a TIME dimension.
+
+integer                      :: timedimid
+integer,          intent(in) :: ncid
+
+integer :: nc_rc
+
+TimeDimID = -1 ! same as the netCDF library routines. 
+nc_rc = nf90_inq_dimid(ncid,'TIME',dimid=TimeDimID)
+if ( nc_rc /= NF90_NOERR ) then ! did not find it - try another spelling
+   nc_rc = nf90_inq_dimid(ncid,'Time',dimid=TimeDimID)
+   if ( nc_rc /= NF90_NOERR ) then ! did not find it - try another spelling
+      nc_rc = nf90_inq_dimid(ncid,'time',dimid=TimeDimID)
+   endif
+endif
+
+end function FindTimeDimension
+
 
 
 !===================================================================
