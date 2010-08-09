@@ -302,7 +302,7 @@ end subroutine adv_1step
 !     
 !     Variables needed to be stored in the MODEL_MODULE data structure
 !
-!       PROGVARS => Module's data structure
+!       PROGVAR => Module's data structure
 !
 !############################################################################
 
@@ -735,7 +735,7 @@ integer :: wlonVarID, wlatVarID
 integer :: ZEVarID, ZCVarID
 
 ! for the prognostic variables
-integer :: VarID
+integer :: ivar, VarID
 
 !----------------------------------------------------------------------
 ! variables for the namelist output
@@ -758,8 +758,10 @@ character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=NF90_MAX_NAME) :: str1
+character(len=NF90_MAX_NAME) :: varname
+integer, dimension(NF90_MAX_VAR_DIMS) :: mydimids
+integer :: i, myndims
 
-integer :: i
 character(len=128)  :: filename
 
 if ( .not. module_initialized ) call static_init_model
@@ -1037,77 +1039,43 @@ else
    ! Create the (empty) Prognostic Variables and the Attributes
    !----------------------------------------------------------------------------
 
-!    call nc_check(nf90_def_var(ncid=ncFileID, name='SALT', xtype=nf90_real, &
-!          dimids = (/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=SVarID),&
-!          'nc_write_model_atts', 'S def_var '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, SVarID, 'long_name', 'salinity'), &
-!          'nc_write_model_atts', 'S long_name '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, SVarID, 'units', 'kg/kg'), &
-!          'nc_write_model_atts', 'S units '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, SVarID, 'missing_value', NF90_FILL_REAL), &
-!          'nc_write_model_atts', 'S missing '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, SVarID, '_FillValue', NF90_FILL_REAL), &
-!          'nc_write_model_atts', 'S fill '//trim(filename))
-! 
-! 
-!    call nc_check(nf90_def_var(ncid=ncFileID, name='TEMP', xtype=nf90_real, &
-!          dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=TVarID),&
-!          'nc_write_model_atts', 'T def_var '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, TVarID, 'long_name', 'Potential Temperature'), &
-!          'nc_write_model_atts', 'T long_name '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, TVarID, 'units', 'deg C'), &
-!          'nc_write_model_atts', 'T units '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, TVarID, 'units_long_name', 'degrees celsius'), &
-!          'nc_write_model_atts', 'T units_long_name '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, TVarID, 'missing_value', NF90_FILL_REAL), &
-!          'nc_write_model_atts', 'T missing '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, TVarID, '_FillValue', NF90_FILL_REAL), &
-!          'nc_write_model_atts', 'T fill '//trim(filename))
-! 
-! 
-!    call nc_check(nf90_def_var(ncid=ncFileID, name='UVEL', xtype=nf90_real, &
-!          dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=UVarID),&
-!          'nc_write_model_atts', 'U def_var '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, UVarID, 'long_name', 'U velocity'), &
-!          'nc_write_model_atts', 'U long_name '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, UVarID, 'units', 'cm/s'), &
-!          'nc_write_model_atts', 'U units '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, UVarID, 'units_long_name', 'centimeters per second'), &
-!          'nc_write_model_atts', 'U units_long_name '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, UVarID, 'missing_value', NF90_FILL_REAL), &
-!          'nc_write_model_atts', 'U missing '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, UVarID, '_FillValue', NF90_FILL_REAL), &
-!          'nc_write_model_atts', 'U fill '//trim(filename))
-! 
-! 
-!    call nc_check(nf90_def_var(ncid=ncFileID, name='VVEL', xtype=nf90_real, &
-!          dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=VVarID),&
-!          'nc_write_model_atts', 'V def_var '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, VVarID, 'long_name', 'V Velocity'), &
-!          'nc_write_model_atts', 'V long_name '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, VVarID, 'units', 'cm/s'), &
-!          'nc_write_model_atts', 'V units '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, VVarID, 'units_long_name', 'centimeters per second'), &
-!          'nc_write_model_atts', 'V units_long_name '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, VVarID, 'missing_value', NF90_FILL_REAL), &
-!          'nc_write_model_atts', 'V missing '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, VVarID, '_FillValue', NF90_FILL_REAL), &
-!          'nc_write_model_atts', 'V fill '//trim(filename))
-! 
-! 
-!    call nc_check(nf90_def_var(ncid=ncFileID, name='PSURF', xtype=nf90_real, &
-!          dimids=(/NlonDimID,NlatDimID,MemberDimID,unlimitedDimID/),varid=PSURFVarID), &
-!          'nc_write_model_atts', 'PSURF def_var '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, PSURFVarID, 'long_name', 'surface pressure'), &
-!          'nc_write_model_atts', 'PSURF long_name '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, PSURFVarID, 'units', 'dyne/cm2'), &
-!          'nc_write_model_atts', 'PSURF units '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, PSURFVarID, 'missing_value', NF90_FILL_REAL), &
-!          'nc_write_model_atts', 'PSURF missing '//trim(filename))
-!    call nc_check(nf90_put_att(ncFileID, PSURFVarID, '_FillValue', NF90_FILL_REAL), &
-!          'nc_write_model_atts', 'PSURF fill '//trim(filename))
+   do ivar=1, nfields
 
+      varname = trim(progvar(ivar)%varname)
+      string1 = trim(filename)//' '//trim(varname)
+
+      ! match shape of the variable to the dimension IDs
+
+      call define_var_dims(progvar(ivar), myndims, mydimids, MemberDimID, unlimitedDimID, &
+                      NxcDimID, NycDimID, NzcDimID, NxeDimID, NyeDimID, NzeDimID, & 
+                      nxc     , nyc     , nzc     , nxe     , nye     , nze      )
+
+      ! define the variable and set the attributes
+
+      call nc_check(nf90_def_var(ncid=ncFileID, name=trim(varname), xtype=nf90_real, &
+                    dimids = mydimids(1:myndims), varid=VarID),&
+                    'nc_write_model_atts', trim(string1)//' def_var' )
+
+      call nc_check(nf90_put_att(ncFileID, VarID, 'type', trim(progvar(ivar)%storder)), &
+           'nc_write_model_atts', trim(string1)//' put_att storage type' )
+
+      call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', trim(progvar(ivar)%long_name)), &
+           'nc_write_model_atts', trim(string1)//' put_att long_name' )
+
+      call nc_check(nf90_put_att(ncFileID, VarID, 'units', trim(progvar(ivar)%units)), &
+           'nc_write_model_atts', trim(string1)//' put_att units' )
+
+      call nc_check(nf90_put_att(ncFileID, VarID, 'missing_value', NF90_FILL_REAL), &
+           'nc_write_model_atts', trim(string1)//' put_att missing_value' )
+
+      call nc_check(nf90_put_att(ncFileID, VarID, '_FillValue', NF90_FILL_REAL), &
+           'nc_write_model_atts', trim(string1)//' put_att _FillValue' )
+
+   enddo
+
+   !----------------------------------------------------------------------------
    ! Finished with dimension/variable definitions, must end 'define' mode to fill.
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_enddef(ncfileID), 'prognostic enddef '//trim(filename))
 
@@ -2437,6 +2405,24 @@ call nc_check(nf90_get_var(  ncid, VarID, hgt_offset), 'get_grid',   'get_var HG
 
 call nc_check(nf90_close(ncid), 'get_grid','close '//trim(ncommas_restart_filename) )
 
+! A little sanity check
+
+if ( debug > 1 ) then
+
+   write(*,*)'xc range ',minval(xc),maxval(xc)
+   write(*,*)'xe range ',minval(xe),maxval(xe)
+   write(*,*)'yc range ',minval(yc),maxval(yc)
+   write(*,*)'ye range ',minval(ye),maxval(ye)
+   write(*,*)'zc range ',minval(zc),maxval(zc)
+   write(*,*)'ze range ',minval(ze),maxval(ze)
+   write(*,*)'ref_lat/LAT    ',ref_lat
+   write(*,*)'ref_lon/LON    ',ref_lon
+   write(*,*)'xg_pos/XG_POS  ',xg_pos
+   write(*,*)'yg_pos/YG_POS  ',yg_pos
+   write(*,*)'hgt_offset/HGT ',hgt_offset
+
+endif
+
 ! Here convert model vertical height to height above sea level
 
 zc(:) = zc(:) + hgt_offset
@@ -2480,7 +2466,6 @@ IF( debug > 5 ) THEN
   ENDDO 
 ENDIF
 
-
 ! IF WE DO THIS, THEN CAN ASSUME THAT LON > 0 IN LL_TO_XY
 where (ULON <   0.0_r8) ULON = ULON + 360.0_r8
 where (ULON > 360.0_r8) ULON = ULON - 360.0_r8
@@ -2495,6 +2480,18 @@ where (VLAT < -90.0_r8) VLAT = -90.0_r8
 where (VLAT >  90.0_r8) VLAT =  90.0_r8
 where (WLAT < -90.0_r8) WLAT = -90.0_r8
 where (WLAT >  90.0_r8) WLAT =  90.0_r8
+
+! Print a little summary.
+if ( debug > 1 ) then
+   write(*,*)'ulon longitude range ',minval(ulon),maxval(ulon)
+   write(*,*)'ulat latitude  range ',minval(ulat),maxval(ulat)
+
+   write(*,*)'vlon longitude range ',minval(vlon),maxval(vlon)
+   write(*,*)'vlat latitude  range ',minval(vlat),maxval(vlat)
+
+   write(*,*)'wlon longitude range ',minval(wlon),maxval(wlon)
+   write(*,*)'wlat latitude  range ',minval(wlat),maxval(wlat)
+endif
 
 return
 end subroutine get_grid
@@ -3106,6 +3103,69 @@ end function linterp1D
 
   return
   end subroutine xy_to_ll
+
+
+
+
+subroutine define_var_dims(myprogvar, ndims, dimids, memberdimid, unlimiteddimid, &
+                       nxcdimid, nycdimid, nzcdimid, nxedimid, nyedimid, nzedimid, & 
+                       nxc     , nyc     , nzc     , nxe     , nye     , nze      )
+
+type(progvartype),     intent(in)  :: myprogvar
+integer,               intent(out) :: ndims
+integer, dimension(:), intent(out) :: dimids
+integer,               intent(in)  :: memberdimid, unlimiteddimid
+integer,               intent(in)  :: nxcdimid, nycdimid, nzcdimid, nxedimid, nyedimid, nzedimid
+integer,               intent(in)  :: nxc     , nyc     , nzc     , nxe     , nye     , nze
+
+select case( myprogvar%storder ) 
+case('xyz3d')
+
+      ndims = 5
+
+      dimids(1) = nxcdimid
+      dimids(2) = nycdimid
+      dimids(3) = nzcdimid
+      dimids(4) = memberdimid
+      dimids(5) = unlimitedDimid
+
+      if (myprogvar%dimlens(1) == nxe) dimids(1) = nxedimid
+      if (myprogvar%dimlens(2) == nye) dimids(2) = nyedimid
+      if (myprogvar%dimlens(3) == nze) dimids(3) = nzedimid
+
+case('xy2d')
+
+      ndims = 4
+
+      dimids(1) = nxcdimid
+      dimids(2) = nycdimid
+      dimids(3) = memberdimid
+      dimids(4) = unlimitedDimid
+
+      if (myprogvar%dimlens(1) == nxe) dimids(1) = nxedimid
+      if (myprogvar%dimlens(2) == nye) dimids(2) = nyedimid
+
+case('x1d','y1d','z1d')
+
+      ndims = 3
+
+      dimids(1) = nxcdimid
+      dimids(2) = memberdimid
+      dimids(3) = unlimitedDimid
+
+      if (myprogvar%dimlens(1) == nxe) dimids(1) = nxedimid
+
+case default
+
+      write(string1,*)'unknown storage order '//trim(myprogvar%storder)//& 
+                              ' for variable '//trim(myprogvar%varname)
+      call error_handler(E_ERR,'define_var_dims',string1,source,revision,revdate)
+
+end select
+
+return
+end subroutine define_var_dims
+
 
 !===================================================================
 ! End of model_mod
