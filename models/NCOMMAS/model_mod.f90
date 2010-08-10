@@ -436,7 +436,7 @@ if (do_output()) write(     *     , nml=model_nml)
 
 ! Read the NCOMMAS variable list to populate DART state vector
 ! Once parsed, the values will be recorded for posterity
-call find_namelist_in_file('input.nml', 'ncommas_vars_nml', iunit)
+call find_namelist_in_file('ncommas_vars.nml', 'ncommas_vars_nml', iunit)
 read(iunit, nml = ncommas_vars_nml, iostat = io)
 call check_namelist_read(iunit, io, 'ncommas_vars_nml')
 
@@ -577,7 +577,7 @@ do ivar = 1, nfields
    progvar(ivar)%indexN      = index1 + varsize - 1 
    index1                    = index1 + varsize      ! sets up for next variable
 
-   if ( debug > 5 ) then
+   if ( debug > 0 ) then
       write(logfileunit,*)
       write(logfileunit,*) trim(progvar(ivar)%varname),' variable number ',ivar
       write(logfileunit,*) '  type        ',trim(progvar(ivar)%storder)
@@ -614,7 +614,7 @@ call nc_check( nf90_close(ncid), &
 
 model_size = progvar(nfields)%indexN
 
-if ( debug > 5 ) then
+if ( debug > 0 ) then
   write(logfileunit, *)'grid: nx[ce], ny[ce], nz[ce] = ', nxc, nxe, nyc, nye, nzc, nze
   write(     *     , *)'grid: nx[ce], ny[ce], nz[ce] = ', nxc, nxe, nyc, nye, nzc, nze
   write(logfileunit, *)'model_size = ', model_size
@@ -762,7 +762,7 @@ character(len=NF90_MAX_NAME) :: varname
 integer, dimension(NF90_MAX_VAR_DIMS) :: mydimids
 integer :: i, myndims
 
-character(len=128)  :: filename
+character(len=128) :: filename
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -775,7 +775,7 @@ ierr = -1 ! assume things go poorly
 ! which netcdf file is involved.
 !--------------------------------------------------------------------
 
-write(filename, '(a, i3)') 'ncFileID', ncFileID
+write(filename,*) 'ncFileID', ncFileID
 
 !-------------------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file, 
@@ -834,7 +834,7 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model',  'ncommas' ), &
 ! Determine shape of most important namelist
 !-------------------------------------------------------------------------------
 
-call find_textfile_dims('ncommas_in', nlines, linelen)
+call find_textfile_dims('ncommas_vars.nml', nlines, linelen)
 if (nlines > 0) then
   has_ncommas_namelist = .true.
 else
@@ -1013,11 +1013,8 @@ else
                  'nc_write_model_atts', 'ZE cartesian_axis '//trim(filename))
    call nc_check(nf90_put_att(ncFileID, ZEVarID, 'units', 'meters'),  &
                  'nc_write_model_atts', 'ZE units '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZEVarID, 'positive', 'down'),  &
+   call nc_check(nf90_put_att(ncFileID, ZEVarID, 'positive', 'up'),  &
                  'nc_write_model_atts', 'ZE units '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZEVarID, 'comment', &
-                 'more positive is closer to the center of the earth'),  &
-                 'nc_write_model_atts', 'ZE comment '//trim(filename))
 
    ! heights
    call nc_check(nf90_def_var(ncFileID,name='ZC',xtype=nf90_real, &
@@ -1029,11 +1026,8 @@ else
                  'nc_write_model_atts', 'ZC cartesian_axis '//trim(filename))
    call nc_check(nf90_put_att(ncFileID, ZCVarID, 'units', 'meters'),  &
                  'nc_write_model_atts', 'ZC units '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'positive', 'down'),  &
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'positive', 'up'),  &
                  'nc_write_model_atts', 'ZC units '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'comment', &
-                 'more positive is closer to the center of the earth'),  &
-                 'nc_write_model_atts', 'ZC comment '//trim(filename))
 
    !----------------------------------------------------------------------------
    ! Create the (empty) Prognostic Variables and the Attributes
@@ -1062,14 +1056,10 @@ else
       call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', trim(progvar(ivar)%long_name)), &
            'nc_write_model_atts', trim(string1)//' put_att long_name' )
 
+      call nc_check(nf90_put_att(ncFileID, VarID, 'DART_kind', trim(progvar(ivar)%kind_string)), &
+           'nc_write_model_atts', trim(string1)//' put_att dart_kind' )
       call nc_check(nf90_put_att(ncFileID, VarID, 'units', trim(progvar(ivar)%units)), &
            'nc_write_model_atts', trim(string1)//' put_att units' )
-
-      call nc_check(nf90_put_att(ncFileID, VarID, 'missing_value', NF90_FILL_REAL), &
-           'nc_write_model_atts', trim(string1)//' put_att missing_value' )
-
-      call nc_check(nf90_put_att(ncFileID, VarID, '_FillValue', NF90_FILL_REAL), &
-           'nc_write_model_atts', trim(string1)//' put_att _FillValue' )
 
    enddo
 
@@ -1110,7 +1100,7 @@ endif
 !-------------------------------------------------------------------------------
 
 if (has_ncommas_namelist) then
-   call file_to_text('ncommas_in', textblock)
+   call file_to_text('ncommas_vars.nml', textblock)
    call nc_check(nf90_put_var(ncFileID, nmlVarID, textblock ), &
                  'nc_write_model_atts', 'put_var nmlVarID')
    deallocate(textblock)
@@ -1127,7 +1117,7 @@ end function nc_write_model_atts
 
 
 
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
+function nc_write_model_vars( ncFileID, state_vec, copyindex, timeindex ) result (ierr)         
 !------------------------------------------------------------------
 ! TJH 24 Oct 2006 -- Writes the model variables to a netCDF file.
 !
@@ -1152,20 +1142,21 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 ! NF90_CLOSE            ! close: save updated netCDF dataset
 
 integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: statevec
+real(r8), dimension(:), intent(in) :: state_vec
 integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
 integer                            :: ierr          ! return value of function
 
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
 character(len=NF90_MAX_NAME)          :: varname 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
-integer :: i, ivar, VarID, numdims, dimlen
+integer :: i, ivar, VarID, ncNdims, dimlen
+integer :: TimeDimID, CopyDimID
 
-real(r8), allocatable, dimension(:)       :: data_1d
-real(r8), allocatable, dimension(:,:)     :: data_2d
-real(r8), allocatable, dimension(:,:,:)   :: data_3d
-real(r8), allocatable, dimension(:,:,:,:) :: data_4d
+real(r8), allocatable, dimension(:)       :: data_1d_array
+real(r8), allocatable, dimension(:,:)     :: data_2d_array
+real(r8), allocatable, dimension(:,:,:)   :: data_3d_array
+real(r8), allocatable, dimension(:,:,:,:) :: data_4d_array
 
 character(len=128) :: filename
 
@@ -1186,39 +1177,43 @@ write(filename, '(a, i3)') 'ncFileID', ncFileID
 ! make sure ncFileID refers to an open netCDF file, 
 !-------------------------------------------------------------------------------
 
-call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
-              'nc_write_model_vars', 'inquire '//trim(filename))
+call nc_check(nf90_inq_dimid(ncFileID, 'copy', dimid=CopyDimID), &
+            'nc_write_model_vars', 'inq_dimid copy '//trim(filename))
+
+call nc_check(nf90_inq_dimid(ncFileID, 'time', dimid=TimeDimID), &
+            'nc_write_model_vars', 'inq_dimid time '//trim(filename))
 
 if ( output_state_vector ) then
 
    call nc_check(NF90_inq_varid(ncFileID, 'state', VarID), &
                  'nc_write_model_vars', 'state inq_varid '//trim(filename))
-   call nc_check(NF90_put_var(ncFileID,VarID,statevec,start=(/1,copyindex,timeindex/)),&
+   call nc_check(NF90_put_var(ncFileID,VarID,state_vec,start=(/1,copyindex,timeindex/)),&
                  'nc_write_model_vars', 'state put_var '//trim(filename))
 
 else
 
    !----------------------------------------------------------------------------
    ! We need to process the prognostic variables.
-   ! Replace missing values (0.0) with netcdf missing value.
    !----------------------------------------------------------------------------
 
-   do ivar = 1,nfields
+   do ivar = 1,nfields  ! Very similar to loop in sv_to_restart_file
 
       varname = trim(progvar(ivar)%varname)
       string2 = trim(filename)//' '//trim(varname)
 
-      ! ensure netCDF variable is conformable 
-      ! the TIME (unlimited) dimension will be skipped
+      ! Ensure netCDF variable is conformable with progvar quantity.
+      ! The TIME and Copy dimensions are intentionally not queried
+      ! by looping over the dimensions stored in the progvar type.
 
       call nc_check(nf90_inq_varid(ncFileID, varname, VarID), &
             'nc_write_model_vars', 'inq_varid '//trim(string2))
 
-      call nc_check(nf90_inquire_variable(ncFileID,VarId,dimids=dimIDs,ndims=numdims), &
+      call nc_check(nf90_inquire_variable(ncFileID,VarId,dimids=dimIDs,ndims=ncNdims), &
             'nc_write_model_vars', 'inquire '//trim(string2))
 
-      ConformableDimensions : do i = 1,numdims
-         if ( dimIDs(i) == unlimitedDimID ) cycle ConformableDimensions
+      mystart = 1   ! These are arrays, actually
+      mycount = 1
+      DimCheck : do i = 1,progvar(ivar)%numdims
 
          write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
          call nc_check(nf90_inquire_dimension(ncFileID, dimIDs(i), len=dimlen), &
@@ -1226,58 +1221,97 @@ else
 
          if ( dimlen /= progvar(ivar)%dimlens(i) ) then
             write(string1,*) trim(string2),'dim/dimlen',i,dimlen,'not',progvar(ivar)%dimlens(i)
-            call error_handler(E_ERR,'nc_write_model_vars',string1,source,revision,revdate)
+            write(string2,*)' but it should be.'
+            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
+                            source, revision, revdate, text2=string2)
          endif
-      enddo ConformableDimensions
 
-      if (     progvar(ivar)%numdims == 1) then
+         mycount(i) = dimlen
 
-         allocate(data_1d(progvar(ivar)%dimlens(1)))
-         call vector_to_prog_var(statevec, progvar(ivar), data_1d)
-         where (data_1d == 0.0_r8) data_1d = NF90_FILL_REAL
-         call nc_check(NF90_inq_varid(ncFileID, varname, VarID), &
-                   'nc_write_model_vars', 'inq_varid '//trim(string2))
-         call nc_check(nf90_put_var(ncFileID,VarID,data_1d,start=(/1,copyindex,timeindex/)),&
+      enddo DimCheck
+
+     ! FIXME - wouldn't hurt to make sure each of these match something.
+     !         could then eliminate the if ncndims /= xxx checks below.
+
+      where(dimIDs == CopyDimID) mystart = copyindex
+      where(dimIDs == CopyDimID) mycount = 1
+      where(dimIDs == TimeDimID) mystart = timeindex
+      where(dimIDs == TimeDimID) mycount = 1
+
+      if ( debug > 1 ) then
+         write(*,*)'nc_write_model_vars '//trim(varname)//' start is ',mystart(1:ncNdims)
+         write(*,*)'nc_write_model_vars '//trim(varname)//' count is ',mycount(1:ncNdims)
+      endif
+
+      if (     progvar(ivar)%numdims == 1 ) then
+
+         if ( ncNdims /= 3 ) then
+            write(string1,*)trim(varname),' no room for copy,time dimensions.'
+            write(string2,*)'netcdf file should have 3 dimensions, has ',ncNdims
+            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
+                            source, revision, revdate, text2=string2)
+         endif
+
+         allocate(data_1d_array( progvar(ivar)%dimlens(1) ) )
+         call vector_to_prog_var(state_vec, progvar(ivar), data_1d_array)
+         call nc_check(nf90_put_var(ncFileID, VarID, data_1d_array, &
+             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
                    'nc_write_model_vars', 'put_var '//trim(string2))
-         deallocate(data_1d)
+         deallocate(data_1d_array)
 
-      elseif ( progvar(ivar)%numdims == 2) then
+      elseif ( progvar(ivar)%numdims == 2 ) then
 
-         allocate(data_2d( progvar(ivar)%dimlens(1),  progvar(ivar)%dimlens(2) ))
-         call vector_to_prog_var(statevec, progvar(ivar), data_2d)
-         where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
-         call nc_check(NF90_inq_varid(ncFileID, varname, VarID), &
-                   'nc_write_model_vars', 'inq_varid '//trim(string2))
-         call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
+         if ( ncNdims /= 4 ) then
+            write(string1,*)trim(varname),' no room for copy,time dimensions.'
+            write(string2,*)'netcdf file should have 4 dimensions, has ',ncNdims
+            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
+                            source, revision, revdate, text2=string2)
+         endif
+
+         allocate(data_2d_array( progvar(ivar)%dimlens(1),  &
+                                 progvar(ivar)%dimlens(2) ))
+         call vector_to_prog_var(state_vec, progvar(ivar), data_2d_array)
+         call nc_check(nf90_put_var(ncFileID, VarID, data_2d_array, &
+             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
                    'nc_write_model_vars', 'put_var '//trim(string2))
-         deallocate(data_2d)
+         deallocate(data_2d_array)
 
       elseif ( progvar(ivar)%numdims == 3) then
 
-         allocate(data_3d(progvar(ivar)%dimlens(1), &
-                          progvar(ivar)%dimlens(2), &
-                          progvar(ivar)%dimlens(3)))
-         call vector_to_prog_var(statevec, progvar(ivar), data_3d)
-         where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-         call nc_check(NF90_inq_varid(ncFileID, varname, VarID), &
-                   'nc_write_model_vars', 'inq_varid '//trim(string2))
-         call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
+         if ( ncNdims /= 5 ) then
+            write(string1,*)trim(varname),' no room for copy,time dimensions.'
+            write(string2,*)'netcdf file should have 5 dimensions, has ',ncNdims
+            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
+                            source, revision, revdate, text2=string2)
+         endif
+
+         allocate(data_3d_array( progvar(ivar)%dimlens(1), &
+                                 progvar(ivar)%dimlens(2), &
+                                 progvar(ivar)%dimlens(3)))
+         call vector_to_prog_var(state_vec, progvar(ivar), data_3d_array)
+         call nc_check(nf90_put_var(ncFileID, VarID, data_3d_array, &
+             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
                    'nc_write_model_vars', 'put_var '//trim(string2))
-         deallocate(data_3d)
+         deallocate(data_3d_array)
 
       elseif ( progvar(ivar)%numdims == 4) then
 
-         allocate(data_4d(progvar(ivar)%dimlens(1), &
-                          progvar(ivar)%dimlens(2), &
-                          progvar(ivar)%dimlens(3), &
-                          progvar(ivar)%dimlens(4)))
-         call vector_to_prog_var(statevec, progvar(ivar), data_4d)
-         where (data_4d == 0.0_r8) data_4d = NF90_FILL_REAL
-         call nc_check(NF90_inq_varid(ncFileID, varname, VarID), &
-                   'nc_write_model_vars', 'inq_varid '//trim(string2))
-         call nc_check(nf90_put_var(ncFileID,VarID,data_4d,start=(/1,1,1,1,copyindex,timeindex/)),&
+         if ( ncNdims /= 6 ) then
+            write(string1,*)trim(varname),' no room for copy,time dimensions.'
+            write(string2,*)'netcdf file should have 6 dimensions, has ',ncNdims
+            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
+                            source, revision, revdate, text2=string2)
+         endif
+
+         allocate(data_4d_array( progvar(ivar)%dimlens(1), &
+                                 progvar(ivar)%dimlens(2), &
+                                 progvar(ivar)%dimlens(3), &
+                                 progvar(ivar)%dimlens(4)))
+         call vector_to_prog_var(state_vec, progvar(ivar), data_4d_array)
+         call nc_check(nf90_put_var(ncFileID, VarID, data_4d_array, &
+             start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
                    'nc_write_model_vars', 'put_var '//trim(string2))
-         deallocate(data_4d)
+         deallocate(data_4d_array)
 
       else
 
@@ -1570,9 +1604,9 @@ do ivar=1, nfields
    where(dimIDs == TimeDimID) mystart = TimeDimLength
    where(dimIDs == TimeDimID) mycount = 1   ! only the latest one
 
-   if ( debug > 5 ) then
-      write(*,*)trim(varname)//' start is ',mystart(1:ncNdims)
-      write(*,*)trim(varname)//' count is ',mycount(1:ncNdims)
+   if ( debug > 1 ) then
+      write(*,*)'restart_file_to_sv '//trim(varname)//' start is ',mystart(1:ncNdims)
+      write(*,*)'restart_file_to_sv '//trim(varname)//' count is ',mycount(1:ncNdims)
    endif
 
    indx = progvar(ivar)%index1
@@ -1675,14 +1709,14 @@ end subroutine restart_file_to_sv
 subroutine sv_to_restart_file(state_vector, filename, statedate)
 !------------------------------------------------------------------
 ! Writes the current time and state variables from a dart state
-! vector (1d fortran array) into a ncommas netcdf restart file.
+! vector (1d array) into a ncommas netcdf restart file.
 !
 real(r8),         intent(in) :: state_vector(:)
 character(len=*), intent(in) :: filename 
 type(time_type),  intent(in) :: statedate
 
 ! temp space to hold data while we are writing it
-integer  :: i, j, k, l, ni, nj, nk, nl, ivar, indx
+integer :: i, ni, nj, nk, nl, ivar
 real(r8), allocatable, dimension(:)         :: data_1d_array
 real(r8), allocatable, dimension(:,:)       :: data_2d_array
 real(r8), allocatable, dimension(:,:,:)     :: data_3d_array
@@ -1691,8 +1725,7 @@ real(r8), allocatable, dimension(:,:,:,:)   :: data_4d_array
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
 character(len=NF90_MAX_NAME) :: varname 
 integer :: VarID, ncNdims, dimlen
-integer :: ncid, TimeDimID, TimeDimLength
-character(len=256) :: myerrorstring 
+integer :: ncFileID, TimeDimID, TimeDimLength
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1703,7 +1736,7 @@ if ( .not. file_exist(filename) ) then
    call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
 endif
 
-call nc_check(nf90_open(trim(filename), NF90_WRITE, ncid), &
+call nc_check(nf90_open(trim(filename), NF90_WRITE, ncFileID), &
              'sv_to_restart_file','open '//trim(filename))
 
 ! make sure the time in the file is the same as the time on the data
@@ -1711,7 +1744,7 @@ call nc_check(nf90_open(trim(filename), NF90_WRITE, ncid), &
 ! of the ncommas restart file, and state vector contents from a different
 ! time won't be consistent with the rest of the file.
 
-model_time = get_state_time(ncid, filename)
+model_time = get_state_time(ncFileID, filename)
 
 if ( model_time /= statedate ) then
    call print_time( statedate,'DART current time',logfileunit) 
@@ -1734,10 +1767,10 @@ if (do_output()) &
 ! and we need to read the LAST timestep and effectively squeeze out the
 ! singleton dimension when we stuff it into the DART state vector. 
 
-TimeDimID = FindTimeDimension( ncid )
+TimeDimID = FindTimeDimension( ncFileID )
 
 if ( TimeDimID > 0 ) then
-   call nc_check(nf90_inquire_dimension(ncid, TimeDimID, len=TimeDimLength), &
+   call nc_check(nf90_inquire_dimension(ncFileID, TimeDimID, len=TimeDimLength), &
             'sv_to_restart_file', 'inquire timedimlength '//trim(filename))
 else
    TimeDimLength = 0
@@ -1746,28 +1779,31 @@ endif
 do ivar=1, nfields
 
    varname = trim(progvar(ivar)%varname)
-   myerrorstring = trim(filename)//' '//trim(varname)
+   string2 = trim(filename)//' '//trim(varname)
 
-   ! determine the shape of the netCDF variable 
+   ! Ensure netCDF variable is conformable with progvar quantity.
+   ! The TIME and Copy dimensions are intentionally not queried
+   ! by looping over the dimensions stored in the progvar type.
 
-   call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
-            'sv_to_restart_file', 'inq_varid '//trim(myerrorstring))
+   call nc_check(nf90_inq_varid(ncFileID, varname, VarID), &
+            'sv_to_restart_file', 'inq_varid '//trim(string2))
 
-   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=ncNdims), &
-            'sv_to_restart_file', 'inquire '//trim(myerrorstring))
+   call nc_check(nf90_inquire_variable(ncFileID,VarId,dimids=dimIDs,ndims=ncNdims), &
+            'sv_to_restart_file', 'inquire '//trim(string2))
 
    mystart = 1   ! These are arrays, actually.
    mycount = 1
-   ! Only checking the shape of the variable - sans TIME
    DimCheck : do i = 1,progvar(ivar)%numdims
 
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
+      write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
+      call nc_check(nf90_inquire_dimension(ncFileID, dimIDs(i), len=dimlen), &
             'sv_to_restart_file', string1)
 
       if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-         write(string1,*) trim(myerrorstring),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
-         call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
+         write(string1,*) trim(string2),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
+         write(string2,*)' but it should be.'
+         call error_handler(E_ERR, 'sv_to_restart_file', string1, &
+                         source, revision, revdate, text2=string2)
       endif
 
       mycount(i) = dimlen
@@ -1777,24 +1813,17 @@ do ivar=1, nfields
    where(dimIDs == TimeDimID) mystart = TimeDimLength
    where(dimIDs == TimeDimID) mycount = 1   ! only the latest one
 
-   if ( debug > 5 ) then
+   if ( debug > 1 ) then
       write(*,*)'sv_to_restart_file '//trim(varname)//' start is ',mystart(1:ncNdims)
       write(*,*)'sv_to_restart_file '//trim(varname)//' count is ',mycount(1:ncNdims)
    endif
 
-   indx = progvar(ivar)%index1
-
    if (ncNdims == 1) then
       ni = mycount(1)
       allocate(data_1d_array(ni))
-
-      do i = 1, ni
-         data_1d_array(i) = state_vector(indx) 
-         indx = indx + 1
-      enddo
-
-      call nc_check(nf90_put_var(ncid, VarID, data_1d_array, &
-        start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
+      call vector_to_prog_var(state_vector, progvar(ivar), data_1d_array)
+      call nc_check(nf90_put_var(ncFileID, VarID, data_1d_array, &
+            start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
             'sv_to_restart_file', 'put_var '//trim(varname))
       deallocate(data_1d_array)
 
@@ -1803,15 +1832,9 @@ do ivar=1, nfields
       ni = mycount(1)
       nj = mycount(2)
       allocate(data_2d_array(ni, nj))
+      call vector_to_prog_var(state_vector, progvar(ivar), data_2d_array)
 
-      do j = 1, nj
-      do i = 1, ni
-         data_2d_array(i, j) = state_vector(indx) 
-         indx = indx + 1
-      enddo
-      enddo
-
-      call nc_check(nf90_put_var(ncid, VarID, data_2d_array, &
+      call nc_check(nf90_put_var(ncFileID, VarID, data_2d_array, &
         start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
             'sv_to_restart_file', 'put_var '//trim(varname))
       deallocate(data_2d_array)
@@ -1822,17 +1845,9 @@ do ivar=1, nfields
       nj = mycount(2)
       nk = mycount(3)
       allocate(data_3d_array(ni, nj, nk))
-   
-      do k = 1, nk
-      do j = 1, nj
-      do i = 1, ni
-         data_3d_array(i, j, k) = state_vector(indx) 
-         indx = indx + 1
-      enddo
-      enddo
-      enddo
+      call vector_to_prog_var(state_vector, progvar(ivar), data_3d_array)
 
-      call nc_check(nf90_put_var(ncid, VarID, data_3d_array, &
+      call nc_check(nf90_put_var(ncFileID, VarID, data_3d_array, &
         start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
             'sv_to_restart_file', 'put_var '//trim(varname))
       deallocate(data_3d_array)
@@ -1844,19 +1859,9 @@ do ivar=1, nfields
       nk = mycount(3)
       nl = mycount(4)
       allocate(data_4d_array(ni, nj, nk, nl))
+      call vector_to_prog_var(state_vector, progvar(ivar), data_4d_array)
 
-      do l = 1, nl   ! size(data_4d_array,3)
-      do k = 1, nk   ! size(data_4d_array,3)
-      do j = 1, nj   ! size(data_4d_array,2)
-      do i = 1, ni   ! size(data_4d_array,1)
-         data_4d_array(i, j, k, l) = state_vector(indx) 
-         indx = indx + 1
-      enddo
-      enddo
-      enddo
-      enddo
-
-      call nc_check(nf90_put_var(ncid, VarID, data_4d_array, &
+      call nc_check(nf90_put_var(ncFileID, VarID, data_4d_array, &
         start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
             'sv_to_restart_file', 'put_var '//trim(varname))
       deallocate(data_4d_array)
@@ -1867,17 +1872,9 @@ do ivar=1, nfields
                         source,revision,revdate)
    endif
 
-   indx = indx - 1
-   if ( indx /= progvar(ivar)%indexN ) then
-      write(string1, *)'Variable '//trim(varname)//' filled wrong.'
-      write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',indx
-      call error_handler(E_ERR,'sv_to_restart_file', string1, &
-                        source,revision,revdate,text2=string2)
-   endif
-
 enddo
 
-call nc_check(nf90_close(ncid), &
+call nc_check(nf90_close(ncFileID), &
              'sv_to_restart_file','close '//trim(filename))
 
 end subroutine sv_to_restart_file
@@ -1974,7 +1971,7 @@ subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
   llat      = loc_array(2)
   lheight   = loc_array(3)
 
-  IF (debug > 1) print *, 'requesting interpolation at ', llon, llat, lheight
+  IF (debug > 2) print *, 'requesting interpolation at ', llon, llat, lheight
 
   IF( vert_is_height(location) ) THEN        ! Nothing to do 
   
@@ -2013,7 +2010,7 @@ subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
 
   base_offset = progvar(nf)%index1
 
-  IF (debug > 1) print *, 'base offset now ', base_offset
+  IF (debug > 2) print *, 'base offset now ', base_offset
 
 ! Not implemented...
 
@@ -2027,7 +2024,7 @@ subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
 
   CALL ll_to_xy(xi, yi, 0, ref_lat, ref_lon, llat, llon, .true.)
   
-  IF( debug > 1 ) THEN
+  IF( debug > 2 ) THEN
     print *, 'XMIN / X-LOC from lat/lon / XMAX:  ', xe(1), xi, xe(nxe)
     print *, 'YMIN / Y-LOC from lat/lon / YMAX:  ', ye(1), yi, ye(nye)
   ENDIF
@@ -2092,7 +2089,7 @@ subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
     zf = (zc(kloc+1) - lheight) / (zc(kloc+1) - zc(kloc))
   ENDIF
 
-  IF( debug > 1 ) THEN
+  IF( debug > 2 ) THEN
     print *, "ILOC:  ", iloc
     print *, "XI = ", xi
     print *, "XF = ", xf
@@ -2141,8 +2138,8 @@ end subroutine model_interpolate
 
 subroutine vector_to_1d_prog_var(x, progvar, data_1d_array)
 !------------------------------------------------------------------
-! convert the values from a 1d fortran array, starting at an offset,
-! into a 1d fortran array.
+! convert the values from a 1d array, starting at an offset,
+! into a 1d array.
 !
 real(r8), dimension(:),   intent(in)  :: x
 type(progvartype),        intent(in)  :: progvar
@@ -2159,6 +2156,14 @@ do i = 1, progvar%dimlens(1)
    ii = ii + 1
 enddo
 
+ii = ii - 1
+if ( ii /= progvar%indexN ) then
+   write(string1, *)'Variable '//trim(progvar%varname)//' filled wrong.'
+   write(string2, *)'Should have ended at ',progvar%indexN,' actually ended at ',ii
+   call error_handler(E_ERR,'vector_to_1d_prog_var', string1, &
+                    source, revision, revdate, text2=string2)
+endif
+
 end subroutine vector_to_1d_prog_var
 
 
@@ -2167,8 +2172,8 @@ end subroutine vector_to_1d_prog_var
 
 subroutine vector_to_2d_prog_var(x, progvar, data_2d_array)
 !------------------------------------------------------------------
-! convert the values from a 1d fortran array, starting at an offset,
-! into a 2d fortran array.  the 2 dims are taken from the array size.
+! convert the values from a 1d array, starting at an offset,
+! into a 2d array.
 !
 real(r8), dimension(:),   intent(in)  :: x
 type(progvartype),        intent(in)  :: progvar
@@ -2187,6 +2192,14 @@ do i = 1,progvar%dimlens(1)
 enddo
 enddo
 
+ii = ii - 1
+if ( ii /= progvar%indexN ) then
+   write(string1, *)'Variable '//trim(progvar%varname)//' filled wrong.'
+   write(string2, *)'Should have ended at ',progvar%indexN,' actually ended at ',ii
+   call error_handler(E_ERR,'vector_to_2d_prog_var', string1, &
+                    source, revision, revdate, text2=string2)
+endif
+
 end subroutine vector_to_2d_prog_var
 
 
@@ -2195,8 +2208,8 @@ end subroutine vector_to_2d_prog_var
 
 subroutine vector_to_3d_prog_var(x, progvar, data_3d_array)
 !------------------------------------------------------------------
-! convert the values from a 1d fortran array, starting at an offset,
-! into a 3d fortran array.  the 3 dims are taken from the array size.
+! convert the values from a 1d array, starting at an offset,
+! into a 3d array.
 !
 real(r8), dimension(:),     intent(in)  :: x
 type(progvartype),          intent(in)  :: progvar
@@ -2217,6 +2230,14 @@ enddo
 enddo
 enddo
 
+ii = ii - 1
+if ( ii /= progvar%indexN ) then
+   write(string1, *)'Variable '//trim(progvar%varname)//' filled wrong.'
+   write(string2, *)'Should have ended at ',progvar%indexN,' actually ended at ',ii
+   call error_handler(E_ERR,'vector_to_3d_prog_var', string1, &
+                    source, revision, revdate, text2=string2)
+endif
+
 end subroutine vector_to_3d_prog_var
 
 
@@ -2225,8 +2246,8 @@ end subroutine vector_to_3d_prog_var
 
 subroutine vector_to_4d_prog_var(x, progvar, data_4d_array)
 !------------------------------------------------------------------
-! convert the values from a 1d fortran array, starting at an offset,
-! into a 4d fortran array.  the 3 dims are taken from the array size.
+! convert the values from a 1d array, starting at an offset,
+! into a 4d array.
 !
 real(r8), dimension(:),       intent(in)  :: x
 type(progvartype),            intent(in)  :: progvar
@@ -2248,6 +2269,14 @@ enddo
 enddo
 enddo
 enddo
+
+ii = ii - 1
+if ( ii /= progvar%indexN ) then
+   write(string1, *)'Variable '//trim(progvar%varname)//' filled wrong.'
+   write(string2, *)'Should have ended at ',progvar%indexN,' actually ended at ',ii
+   call error_handler(E_ERR,'vector_to_4d_prog_var', string1, &
+                    source, revision, revdate, text2=string2)
+endif
 
 end subroutine vector_to_4d_prog_var
 
@@ -2457,11 +2486,12 @@ ENDDO
 
 ! check:
 
-IF( debug > 5 ) THEN
+IF( debug > 2 ) THEN
   DO j = 1,nyc,4
     DO i = 1,nxc,4
       call ll_to_xy(x, y, 0, ref_lat, ref_lon, wlat(i,j), wlon(i,j),.true.)
-      write(*,*) 'i,j,x,y,x1,y1: ',i,j,xc(i), yc(j),x,y
+      call xy_to_ll(lat, lon, 0, xc(i), yc(j), ref_lat, ref_lon)
+      write(*,*) 'i,j,x,y,x1,y1: ',i,j,xc(i), yc(j),x,y,wlat(i,j),wlon(i,j),lat,lon
     ENDDO  
   ENDDO 
 ENDIF
@@ -2764,8 +2794,10 @@ MyLoop : do i = 1, nrows
 
    ! Record the contents of the DART state vector 
 
-   write(logfileunit,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
-   write(     *     ,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
+   if ( debug > 0 ) then
+      write(logfileunit,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
+      write(     *     ,*)'variable ',i,' is ',trim(table(i,1)), ' ', trim(table(i,2))
+   endif
 
    ngood = ngood + 1
 enddo MyLoop
@@ -2803,6 +2835,7 @@ if ( nc_rc /= NF90_NOERR ) then ! did not find it - try another spelling
 endif
 
 end function FindTimeDimension
+
 
 
 !###########################################################################
@@ -2982,15 +3015,15 @@ end function linterp1D
        llon1 = lon1 * deg2rad
        llon2 = lon2 * deg2rad
       ENDIF
-    ENDIF
-
+     ELSE
 ! Try and be smart, in case user is stupid (like me!) - Note, this check will not work with lats ~ equator,
 ! nor lons near in western Europe, or mid-Pacific
 
-    IF( abs(llat1) >  2.0_r8*PI ) llat1 = llat1 * deg2rad
-    IF( abs(llat2) >  2.0_r8*PI ) llat2 = llat2 * deg2rad
-    IF( abs(llon1) >  2.0_r8*PI ) llon1 = llon1 * deg2rad
-    IF( abs(llon2) >  2.0_r8*PI ) llon2 = llon2 * deg2rad
+      IF( abs(llat1) >  2.0_r8*PI ) llat1 = llat1 * deg2rad
+      IF( abs(llat2) >  2.0_r8*PI ) llat2 = llat2 * deg2rad
+      IF( abs(llon1) >  2.0_r8*PI ) llon1 = llon1 * deg2rad
+      IF( abs(llon2) >  2.0_r8*PI ) llon2 = llon2 * deg2rad
+    ENDIF
 
     if (llon1 < 0.0_r8) then
       llon1p = llon1+2.0_r8*PI
@@ -3013,7 +3046,6 @@ end function linterp1D
 
   return
   end subroutine ll_to_xy
-
 
 
 !############################################################################
@@ -3080,9 +3112,11 @@ end function linterp1D
 ! Try and be smart, in case user is stupid (like me!) - Note, this check will not work with lats ~ equator,
 ! nor lons near in western Europe, or mid-Pacific
 
+   IF ( .not. present(degrees) ) THEN
     IF( abs(llat1) .gt. 2.0_r8*PI ) llat1 = llat1 * deg2rad
     IF( abs(llon1) .gt. 2.0_r8*PI ) llon1 = llon1 * deg2rad
-
+   ENDIF
+   
     IF (map_proj.eq.0) THEN
       lat = llat1 + y / rearth
       lon = llon1 + x / ( rearth * cos(0.5_r8*(llat1+lat)) )
@@ -3098,9 +3132,10 @@ end function linterp1D
       ENDIF
     ENDIF
 
+   IF ( .not. present(degrees) ) THEN
     IF( abs(lat1) > 2.0_r8*PI ) lat = lat * rad2deg ! / deg2rad   ! User inputs were in degrees (we think)
     IF( abs(lon1) > 2.0_r8*PI ) lon = lon * rad2deg ! / deg2rad
-
+   ENDIF
   return
   end subroutine xy_to_ll
 
