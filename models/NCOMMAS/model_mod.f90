@@ -732,6 +732,8 @@ integer :: NxeDimID, NyeDimID, NzeDimID
 integer :: ulonVarID, ulatVarID
 integer :: vlonVarID, vlatVarID
 integer :: wlonVarID, wlatVarID
+integer :: XEVarID, XCVarID
+integer :: YEVarID, YCVarID
 integer :: ZEVarID, ZCVarID
 
 ! for the prognostic variables
@@ -1003,31 +1005,87 @@ else
    call nc_check(nf90_put_att(ncFileID, wlatVarID, 'valid_range', (/ -90.0_r8, 90.0_r8 /)), &
                  'nc_write_model_atts', 'wlat valid_range '//trim(filename))
 
-   ! heights
-   call nc_check(nf90_def_var(ncFileID,name='ZE', xtype=nf90_real, &
-                 dimids=NzeDimID, varid= ZEVarID), &
-                 'nc_write_model_atts', 'ZE def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZEVarID, 'long_name', 'height at grid edges'), &
-                 'nc_write_model_atts', 'ZE long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZEVarID, 'cartesian_axis', 'Z'),   &
-                 'nc_write_model_atts', 'ZE cartesian_axis '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZEVarID, 'units', 'meters'),  &
-                 'nc_write_model_atts', 'ZE units '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZEVarID, 'positive', 'up'),  &
-                 'nc_write_model_atts', 'ZE units '//trim(filename))
+   ! X-Grid Centers
+   call nc_check(nf90_def_var(ncFileID,name='XC',xtype=nf90_real, &
+                       dimids=NxcDimID,varid=XCVarID), &
+                     'nc_write_model_atts', 'XC def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, XCVarID, 'type', 'x1d'),  &
+                 'nc_write_model_atts','XC type '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, XCVarID, 'long_name', 'SCALAR GRID POSITION IN X'), &
+                 'nc_write_model_atts','XC long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, XCVarID, 'units', 'meters'),  &
+                 'nc_write_model_atts','XC units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, XCVarID, 'cartesian_axis', 'X'),   &
+                 'nc_write_model_atts','XC cartesian_axis '//trim(filename))
 
-   ! heights
+   ! X-Grid Edges
+   call nc_check(nf90_def_var(ncFileID,name='XE', xtype=nf90_real, &
+                     dimids=NxeDimID, varid= XEVarID), &
+                     'nc_write_model_atts', 'XE def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, XEVarID, 'type', 'x1d'),  &
+                 'nc_write_model_atts','XE type '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, XEVarID, 'long_name', 'STAGGERED GRID POSITION IN X'), &
+                 'nc_write_model_atts','XE long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, XEVarID, 'units', 'meters'),  &
+                 'nc_write_model_atts','XE units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, XEVarID, 'cartesian_axis', 'X'),   &
+                 'nc_write_model_atts','XE cartesian_axis '//trim(filename))
+
+   ! Y-Grid Centers
+   call nc_check(nf90_def_var(ncFileID,name='YC', xtype=nf90_real, &
+                     dimids=NycDimID, varid= YCVarID), &
+                     'nc_write_model_atts', 'YC def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, YCVarID, 'type', 'y1d'),  &
+                 'nc_write_model_atts','YC type '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, YCVarID, 'long_name', 'SCALAR GRID POSITION IN Y'), &
+                 'nc_write_model_atts','YC long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, YCVarID, 'units', 'meters'),  &
+                 'nc_write_model_atts','YC units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, YCVarID, 'cartesian_axis', 'Y'),   &
+                 'nc_write_model_atts','YC cartesian_axis '//trim(filename))
+
+   ! Y-Grid Edges
+   call nc_check(nf90_def_var(ncFileID,name='YE',xtype=nf90_real, &
+                       dimids=NyeDimID,varid=YEVarID), &
+                     'nc_write_model_atts', 'YE def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, YEVarID, 'type', 'y1d'),  &
+                 'nc_write_model_atts','YE type '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, YEVarID, 'long_name', 'STAGGERED GRID POSITION IN Y'), &
+                 'nc_write_model_atts','YE long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, YEVarID, 'units', 'meters'),  &
+                 'nc_write_model_atts','YE units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, YEVarID, 'cartesian_axis', 'Y'),   &
+                 'nc_write_model_atts','YE cartesian_axis '//trim(filename))
+
+   ! Z-Grid Centers
    call nc_check(nf90_def_var(ncFileID,name='ZC',xtype=nf90_real, &
-                 dimids=NzcDimID,varid=ZCVarID), &
-                 'nc_write_model_atts', 'ZC def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'long_name', 'height at grid centroids'), &
-                 'nc_write_model_atts', 'ZC long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'cartesian_axis', 'Z'),   &
-                 'nc_write_model_atts', 'ZC cartesian_axis '//trim(filename))
+                       dimids=NzcDimID,varid=ZCVarID), &
+                     'nc_write_model_atts', 'ZC def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'type', 'z1d'),  &
+                 'nc_write_model_atts','ZC type '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'long_name', 'SCALAR GRID POSITION IN Z'), &
+                 'nc_write_model_atts','ZC long_name '//trim(filename))
    call nc_check(nf90_put_att(ncFileID, ZCVarID, 'units', 'meters'),  &
-                 'nc_write_model_atts', 'ZC units '//trim(filename))
+                 'nc_write_model_atts','ZC units '//trim(filename))
    call nc_check(nf90_put_att(ncFileID, ZCVarID, 'positive', 'up'),  &
-                 'nc_write_model_atts', 'ZC units '//trim(filename))
+                 'nc_write_model_atts','ZC units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZCVarID, 'cartesian_axis', 'Z'),   &
+                 'nc_write_model_atts','ZC cartesian_axis '//trim(filename))
+
+   ! Z-Grid Edges
+   call nc_check(nf90_def_var(ncFileID,name='ZE', xtype=nf90_real, &
+                     dimids=NzeDimID, varid= ZEVarID), &
+                     'nc_write_model_atts', 'ZE def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZEVarID, 'type', 'z1d'),  &
+                 'nc_write_model_atts','ZE type '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZEVarID, 'long_name', 'STAGGERED GRID POSITION IN Z'), &
+                 'nc_write_model_atts','ZE long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZEVarID, 'units', 'meters'),  &
+                 'nc_write_model_atts','ZE units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZEVarID, 'positive', 'up'),  &
+                 'nc_write_model_atts','ZE units '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID, ZEVarID, 'cartesian_axis', 'Z'),   &
+                 'nc_write_model_atts','ZE cartesian_axis '//trim(filename))
 
    !----------------------------------------------------------------------------
    ! Create the (empty) Prognostic Variables and the Attributes
@@ -1087,6 +1145,16 @@ else
                 'nc_write_model_atts', 'WLON put_var '//trim(filename))
    call nc_check(nf90_put_var(ncFileID, wlatVarID, WLAT ), &
                 'nc_write_model_atts', 'WLAT put_var '//trim(filename))
+
+   call nc_check(nf90_put_var(ncFileID, XCVarID, XC ), &
+                'nc_write_model_atts', 'XC put_var '//trim(filename))
+   call nc_check(nf90_put_var(ncFileID, XEVarID, XE ), &
+                'nc_write_model_atts', 'XE put_var '//trim(filename))
+
+   call nc_check(nf90_put_var(ncFileID, YCVarID, YC ), &
+                'nc_write_model_atts', 'YC put_var '//trim(filename))
+   call nc_check(nf90_put_var(ncFileID, YEVarID, YE ), &
+                'nc_write_model_atts', 'YE put_var '//trim(filename))
 
    call nc_check(nf90_put_var(ncFileID, ZCVarID, ZC ), &
                 'nc_write_model_atts', 'ZC put_var '//trim(filename))
