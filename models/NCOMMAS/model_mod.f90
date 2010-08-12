@@ -317,23 +317,23 @@ subroutine get_state_meta_data(index_in, location, var_type)
 ! Local variables
 
   integer  :: nxp, nyp, nzp, var_index, iloc, jloc, kloc, nf, n
-  integer  :: index, lat_index, lon_index
+  integer  :: myindx, lat_index, lon_index, index2
   real(r8) :: height
 
   if ( .not. module_initialized ) call static_init_model
   
-  index = -1
-  nf    = -1
+  myindx = -1
+  nf     = -1
   
-  DO n = 1,nfields
-    IF( progvar(n)%index1 < index_in <= progvar(n)%indexN ) THEN
+  FindIndex : DO n = 1,nfields
+    IF( (progvar(n)%index1 < index_in) .and. (index_in <= progvar(n)%indexN) ) THEN
       nf = n
-      index = index_in - progvar(n)%index1
-      EXIT
+      myindx = index_in - progvar(n)%index1
+      EXIT FindIndex
     ENDIF
-  ENDDO
+  ENDDO FindIndex 
   
-  IF( index == -1 ) THEN
+  IF( myindx == -1 ) THEN
      write(string1,*) 'Problem, cannot find base_offset, index_in is: ', index_in
      call error_handler(E_ERR,'get_state_meta_data',string1,source,revision,revdate)
   ENDIF
@@ -342,21 +342,25 @@ subroutine get_state_meta_data(index_in, location, var_type)
   nyp = progvar(nf)%dimlens(2)
   nzp = progvar(nf)%dimlens(3)
 
-  kloc  = 1 + index / (nxp*nyp)
-  index = index - (kloc-1)*nyp*nxp
-  jloc  = 1 + index / nxp
-  index = index - (jloc-1)*nxp
-  iloc  = index
+  index2 = myindx
+  kloc   = 1 + myindx / (nxp*nyp)
+  myindx = myindx - (kloc-1)*nyp*nxp
+  jloc   = 1 + myindx / nxp
+  myindx = myindx - (jloc-1)*nxp
+  iloc   = myindx
   
   lat_index    = jloc
   lon_index    = iloc
   height       = zc(kloc)
   
-  IF (debug > 5) print *, 'lon, lat, height index = ', lon_index, lat_index, kloc
+  IF (debug > 5) THEN
+    write(*,FMT='("INDEX_IN / INDEX / NVAR / NXP, NYP, NZP: ",2(i10,2x),4(i5,2x))') index_in, index2, nf, nxp, nyp, nzp
+    write(*,FMT='("                       ILOC, JLOC, KLOC: ",3(i5,2x))') lon_index, lat_index, kloc
+    write(*,FMT='("                                  X/Y/Z: ",3(f10.1,2x))') xc(lon_index), yc(lat_index), height
+  ENDIF
   
-! Here we assume two things:
-! 1)  the first three arrays in the state variable structure will be U, V, W
-! 2)  everything else in the state variable is at grid-centers
+! Here we assume:
+! That anything not a velocity is zone centered.
   
   IF(progvar(nf)%dart_kind == KIND_U_WIND_COMPONENT) THEN
     location = set_location(ulon(iloc,jloc), ulat(iloc,jloc), height, VERTISHEIGHT)
@@ -2093,8 +2097,8 @@ subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
   CALL ll_to_xy(xi, yi, 0, ref_lat, ref_lon, llat, llon, .true.)
   
   IF( debug > 2 ) THEN
-    print *, 'XMIN / X-LOC from lat/lon / XMAX:  ', xe(1), xi, xe(nxe)
-    print *, 'YMIN / Y-LOC from lat/lon / YMAX:  ', ye(1), yi, ye(nye)
+    print *, 'Ref_LON / OBS_LON / XMIN / X-LOC from lat/lon / XMAX:  ', ref_lon, llon, xe(1), xi, xe(nxe)
+    print *, 'Ref_LAT / OBS_LAT / YMIN / Y-LOC from lat/lon / YMAX:  ', ref_lat, llat, ye(1), yi, ye(nye)
   ENDIF
   
 ! Using nf, get the true dimensions of the variable
