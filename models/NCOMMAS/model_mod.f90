@@ -326,7 +326,7 @@ subroutine get_state_meta_data(index_in, location, var_type)
   nf     = -1
   
   FindIndex : DO n = 1,nfields
-    IF( (progvar(n)%index1 < index_in) .and. (index_in <= progvar(n)%indexN) ) THEN
+    IF( (progvar(n)%index1 <= index_in) .and. (index_in <= progvar(n)%indexN) ) THEN
       nf = n
       myindx = index_in - progvar(n)%index1
       EXIT FindIndex
