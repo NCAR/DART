@@ -319,6 +319,7 @@ subroutine get_state_meta_data(index_in, location, var_type)
   integer  :: nxp, nyp, nzp, var_index, iloc, jloc, kloc, nf, n
   integer  :: myindx, lat_index, lon_index, index2
   real(r8) :: height
+  real(r8) :: x1,y1
 
   if ( .not. module_initialized ) call static_init_model
   
@@ -328,7 +329,7 @@ subroutine get_state_meta_data(index_in, location, var_type)
   FindIndex : DO n = 1,nfields
     IF( (progvar(n)%index1 <= index_in) .and. (index_in <= progvar(n)%indexN) ) THEN
       nf = n
-      myindx = index_in - progvar(n)%index1
+      myindx = index_in - progvar(n)%index1 + 1
       EXIT FindIndex
     ENDIF
   ENDDO FindIndex 
@@ -343,20 +344,39 @@ subroutine get_state_meta_data(index_in, location, var_type)
   nzp = progvar(nf)%dimlens(3)
 
   index2 = myindx
-  kloc   = 1 + myindx / (nxp*nyp)
+  kloc   = 1 + (myindx-1) / (nxp*nyp)
   myindx = myindx - (kloc-1)*nyp*nxp
-  jloc   = 1 + myindx / nxp
+  jloc   = 1 + (myindx-1) / nxp
   myindx = myindx - (jloc-1)*nxp
   iloc   = myindx
   
-  lat_index    = jloc
-  lon_index    = iloc
-  height       = zc(kloc)
+  lat_index = jloc
+  lon_index = iloc
+
+  IF ( progvar(nf)%dart_kind == KIND_VERTICAL_VELOCITY ) THEN
+        height = ze(kloc)
+  ELSE
+        height = zc(kloc)
+  ENDIF
   
   IF (debug > 5) THEN
+
+    IF ( progvar(nf)%dart_kind == KIND_U_WIND_COMPONENT ) THEN
+       x1 = xe(lon_index)
+    ELSE
+       x1 = xc(lon_index)
+    ENDIF
+    
+    IF ( progvar(nf)%dart_kind == KIND_V_WIND_COMPONENT ) THEN
+       y1 = ye(lat_index)
+    ELSE
+       y1 = yc(lat_index)
+    ENDIF
+
     write(*,FMT='("INDEX_IN / INDEX / NVAR / NXP, NYP, NZP: ",2(i10,2x),4(i5,2x))') index_in, index2, nf, nxp, nyp, nzp
     write(*,FMT='("                       ILOC, JLOC, KLOC: ",3(i5,2x))') lon_index, lat_index, kloc
-    write(*,FMT='("                                  X/Y/Z: ",3(f10.1,2x))') xc(lon_index), yc(lat_index), height
+    write(*,FMT='("                                  X/Y/Z: ",3(f10.1,2x))') x1,y1, height
+
   ENDIF
   
 ! Here we assume:
