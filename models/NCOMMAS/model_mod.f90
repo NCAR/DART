@@ -316,7 +316,7 @@ subroutine get_state_meta_data(index_in, location, var_type)
   
 ! Local variables
 
-  integer  :: nxp, nyp, nzp, var_index, iloc, jloc, kloc, nf, n
+  integer  :: nxp, nyp, nzp, iloc, jloc, kloc, nf, n
   integer  :: myindx, lat_index, lon_index, index2
   real(r8) :: height
   real(r8) :: x1,y1
@@ -432,7 +432,7 @@ subroutine static_init_model()
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname
 character(len=paramname_length)       :: kind_string
-integer :: ncid, VarID, numdims, dimlen, varsize, nc_rc
+integer :: ncid, VarID, numdims, dimlen, varsize
 integer :: iunit, io, ivar, i, index1, indexN
 integer :: ss, dd
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeDimID
@@ -639,8 +639,8 @@ call nc_check( nf90_close(ncid), &
 model_size = progvar(nfields)%indexN
 
 if ( debug > 0 ) then
-  write(logfileunit, *)'grid: nx[ce], ny[ce], nz[ce] = ', nxc, nxe, nyc, nye, nzc, nze
-  write(     *     , *)'grid: nx[ce], ny[ce], nz[ce] = ', nxc, nxe, nyc, nye, nzc, nze
+  write(logfileunit,'("grid: nx[ce], ny[ce], nz[ce] =",6(1x,i5))') nxc, nxe, nyc, nye, nzc, nze
+  write(     *     ,'("grid: nx[ce], ny[ce], nz[ce] =",6(1x,i5))') nxc, nxe, nyc, nye, nzc, nze
   write(logfileunit, *)'model_size = ', model_size
   write(     *     , *)'model_size = ', model_size
 endif
@@ -1241,7 +1241,6 @@ integer                            :: ierr          ! return value of function
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
 character(len=NF90_MAX_NAME)          :: varname 
-integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: i, ivar, VarID, ncNdims, dimlen
 integer :: TimeDimID, CopyDimID
 
@@ -1697,8 +1696,8 @@ do ivar=1, nfields
    where(dimIDs == TimeDimID) mycount = 1   ! only the latest one
 
    if ( debug > 1 ) then
-      write(*,*)'restart_file_to_sv '//trim(varname)//' start is ',mystart(1:ncNdims)
-      write(*,*)'restart_file_to_sv '//trim(varname)//' count is ',mycount(1:ncNdims)
+      write(*,*)'restart_file_to_sv '//trim(varname)//' start = ',mystart(1:ncNdims)
+      write(*,*)'restart_file_to_sv '//trim(varname)//' count = ',mycount(1:ncNdims)
    endif
 
    indx = progvar(ivar)%index1
@@ -1852,7 +1851,6 @@ if (do_output()) &
 if (do_output()) &
     call print_date(statedate,'date of restart file '//trim(filename))
 
-
 ! The DART prognostic variables are only defined for a single time.
 ! We already checked the assumption that variables are xy2d or xyz3d ...
 ! IF the netCDF variable has a TIME dimension, it must be the last dimension,
@@ -1910,7 +1908,7 @@ do ivar=1, nfields
       write(*,*)'sv_to_restart_file '//trim(varname)//' count is ',mycount(1:ncNdims)
    endif
 
-   if (ncNdims == 1) then
+   if (progvar(ivar)%numdims == 1) then
       ni = mycount(1)
       allocate(data_1d_array(ni))
       call vector_to_prog_var(state_vector, progvar(ivar), data_1d_array)
@@ -1919,7 +1917,7 @@ do ivar=1, nfields
             'sv_to_restart_file', 'put_var '//trim(varname))
       deallocate(data_1d_array)
 
-   elseif (ncNdims == 2) then
+   elseif (progvar(ivar)%numdims == 2) then
 
       ni = mycount(1)
       nj = mycount(2)
@@ -1931,7 +1929,7 @@ do ivar=1, nfields
             'sv_to_restart_file', 'put_var '//trim(varname))
       deallocate(data_2d_array)
 
-   elseif (ncNdims == 3) then
+   elseif (progvar(ivar)%numdims == 3) then
 
       ni = mycount(1)
       nj = mycount(2)
@@ -1944,7 +1942,7 @@ do ivar=1, nfields
             'sv_to_restart_file', 'put_var '//trim(varname))
       deallocate(data_3d_array)
 
-   elseif (ncNdims == 4) then
+   elseif (progvar(ivar)%numdims == 4) then
 
       ni = mycount(1)
       nj = mycount(2)
@@ -2040,7 +2038,7 @@ subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
 
   real(r8)         :: loc_array(3), llon, llat
   real(r8)         :: lheight
-  integer          :: base_offset, offset
+  integer          :: base_offset
   integer          :: nf, i, n0, n1
   integer          :: iloc, jloc, kloc, nxp, nyp, nzp
   real(r8)         :: xi, yi, xf, yf, zf, q1, q2, vt, vb
@@ -2475,11 +2473,8 @@ real(r8), dimension( : ), intent(out) :: XC, XE, YC, YE, ZC, ZE
 real(r8),                 intent(out) :: ref_lat, ref_lon
 real(r8),                 intent(out) :: xg_pos, yg_pos, hgt_offset
 
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
-character(len=NF90_MAX_NAME)          :: varname
-integer                               :: VarID, numdims, dimlen
-integer                               :: ncid, dimid
-integer                               :: i,j
+integer  :: ncid, VarID
+integer  :: i,j
 real(r8) :: x,y,lat,lon
 
 ! Read the netcdf file data
