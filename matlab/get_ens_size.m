@@ -1,5 +1,5 @@
 function ens_size = get_ens_size(fname)
-%% get_ens_size  Returns the size of the ensemble.
+%% GET_ENS_SIZE  returns the number of ensemble members in the netCDF file. 
 %
 % Example:
 % fname = 'Prior_Diag.nc';
@@ -26,7 +26,7 @@ if size(copy_meta_data, 2) == 1
    copy_meta_data = transpose(copy_meta_data);
 end
 
-% Figure out which copy is the matching one
+%% Figure out which copy is the matching one - ignoring whitespace
 ens_size = 0;
 for i = 1:num_copies,
 
