@@ -1,4 +1,4 @@
-function [start, count] = GetNCindices(pinfo, whichfile, varname);
+function [start, count] = GetNCindices(pinfo, whichfile, varname)
 %% GETNCindices returns a start,count array for use with nc_getvar.
 % At present, all times, all copies for a specific level,lat,lon.
 % Does not assume anything about the dimension of the variable.
@@ -42,18 +42,17 @@ function [start, count] = GetNCindices(pinfo, whichfile, varname);
 %         start = [  1 NaN pinfo.levelindex pinfo.latindex pinfo.lonindex ];
 %         count = [ -1 NaN pinfo.levelindex pinfo.latindex pinfo.lonindex ];
 %      end
-
 switch lower(whichfile)
-   case 'prior'
-      fname = pinfo.prior_file;
-   case 'posterior'
-      fname = pinfo.posterior_file;
-   case 'truth'
-      fname = pinfo.truth_file;
-   case 'diagn'
-      fname = pinfo.diagn_file;
-   otherwise
-      fname = pinfo.fname;
+    case 'prior'
+        fname = pinfo.prior_file;
+    case 'posterior'
+        fname = pinfo.posterior_file;
+    case 'truth'
+        fname = pinfo.truth_file;
+    case 'diagn'
+        fname = pinfo.diagn_file;
+    otherwise
+        fname = pinfo.fname;
 end
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
@@ -134,34 +133,52 @@ for i = 1:ndims
       % hope for is a standard dimension name [time,copy,lat,lon,lev]
    end
 
-   switch lower(dimname) % loop over all likely coordinate variables
-      case {'time','t'}
-         start(i) = time1;
-         count(i) = timeN;
-      case 'copy'
-         start(i) = copy1;
-         count(i) = copyN;
-      case {'surface','undef','hlevel','mlevel','plevel','height','lev','z','bottom_top_d01','bottom_top_stag_d01'}
-         start(i) = level1;
-         count(i) = levelN;
-      case {'lat','y','tmpj','south_north_d01','south_north_stag_d01'}
-         start(i) = lat1;
-         count(i) = latN;
-      case {'lon','x','tmpi','west_east_d01','west_east_stag_d01'}
-         start(i) = lon1;
-         count(i) = lonN;
-      case {'statevariable','xdim','ydim','loc1d'}
-         % the lorenz_96_2scale has the unfortunate choice of 
-         % 'Xdim' and 'YDim' for their state variable names.
-         start(i) = state1;
-         count(i) = stateN;
-      case 'region'
-         start(i) = region1;
-         count(i) = regionN;
-      otherwise
-         disp('GetNCindices encountered unknown coordinate variable %s',dimname)
+   if (length(dimname) >= 4)
+       switch lower(dimname(1:4)) % loop over all likely coordinate variables
+           case 'time'
+               start(i) = time1;
+               count(i) = timeN;
+           case 'copy'
+               start(i) = copy1;
+               count(i) = copyN;
+           case {'surf','unde','hlev','mlev','plev','heig','leve','bott'}
+               start(i) = level1;
+               count(i) = levelN;
+           case {'tmpj','sout'}
+               start(i) = lat1;
+               count(i) = latN;
+           case {'tmpi','west'}
+               start(i) = lon1;
+               count(i) = lonN;
+           case {'stat','xdim','ydim','loc1d'}
+               % the lorenz_96_2scale has the unfortunate choice of
+               % 'Xdim' and 'YDim' for their state variable names.
+               start(i) = state1;
+               count(i) = stateN;
+           case 'regi'
+               start(i) = region1;
+               count(i) = regionN;
+           otherwise
+               fprintf('GetNCindices encountered unknown coordinate variable %s\n',dimname)
+       end
+   else
+       switch lower(dimname) % loop over all likely coordinate variables
+           case 't'
+               start(i) = time1;
+               count(i) = timeN;
+           case {'lev','z'}
+               start(i) = level1;
+               count(i) = levelN;
+           case {'lat','y'}
+               start(i) = lat1;
+               count(i) = latN;
+           case {'lon','x'}
+               start(i) = lon1;
+               count(i) = lonN;
+           otherwise
+               fprintf('GetNCindices encountered unknown coordinate variable %s\n',dimname)
+       end
    end
-
 end
 
 count(count < 1) = -1;
