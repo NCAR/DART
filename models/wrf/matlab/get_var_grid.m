@@ -27,7 +27,6 @@ function output = get_var_grid(fname, varname)
 %% Copy the global attributes of interest
 filename    = fname;
 varname     = varname;
-memoryorder = deblank(nc_attget(fname,varname,'MemoryOrder'));
 
 if (exist(fname,'file') ~= 2)
    error('%s does not exist',fname)
@@ -37,33 +36,57 @@ if (nc_isvar(fname,varname) ~= 1 )
    error('%s does not exist in %s',varname,fname)
 end
 
-bob      = nc_info(fname);
-DARTfile = -1;
-
 %% Look for a telltale DART attribute to determine DART file or WRF file.
+
+bob = nc_info(fname);
 
 for i = 1:length(bob.Attribute)
    if (strcmpi(bob.Attribute(i).Name, 'model'))
-       DARTfile               = 1;
-       Zname         = 'ZNU_d01';
-       Zname_stag    = 'ZNW_d01';
-       Zdimname      = 'bottom_top_d01';
-       Zdimname_stag = 'bottom_top_stag_d01';
+       chunk.DARTfile               = 1;
+       chunk.Zname         = 'ZNU_d01';
+       chunk.Zname_stag    = 'ZNW_d01';
+       chunk.Zdimname      = 'bottom_top_d01';
+       chunk.Zdimname_stag = 'bottom_top_stag_d01';
        break
    else
-       Zname         = 'ZNU';
-       Zname_stag    = 'ZNW';
-       Zdimname      = 'bottom_top';
-       Zdimname_stag = 'bottom_top_stag';
+       chunk.DARTfile      = -1;
+       chunk.Zname         = 'ZNU';
+       chunk.Zname_stag    = 'ZNW';
+       chunk.Zdimname      = 'bottom_top';
+       chunk.Zdimname_stag = 'bottom_top_stag';
    end
 end
 
-x = nc_getdiminfo(fname,Zdimname);      bottom_top      = x.Length;
-x = nc_getdiminfo(fname,Zdimname_stag); bottom_top_stag = x.Length;
+x = nc_getdiminfo(fname,chunk.Zdimname);      chunk.bottom_top      = x.Length;
+x = nc_getdiminfo(fname,chunk.Zdimname_stag); chunk.bottom_top_stag = x.Length;
 
 %% Get the variable information so we can query the dimensions etc.
+%  "old-school" DART variables do not have a memoryorder, so we must guess.
 
 varinfo = nc_getvarinfo(filename, varname);
+
+memoryorder = [];
+for i = 1:length(varinfo.Attribute)
+   attname = varinfo.Attribute(i).Name;
+   switch lower(attname)
+      case 'memoryorder'
+         memoryorder = deblank(varinfo.Attribute(i).Value);
+   end
+end
+
+% here's the guess part
+
+if (isempty(memoryorder))
+
+  if     ( length(varinfo.Size) == 3 ) 
+     memoryorder = 'Z';
+  elseif ( length(varinfo.Size) == 4 ) 
+     memoryorder = 'XY';
+  elseif ( length(varinfo.Size) == 5 ) 
+     memoryorder = 'XYZ';
+  end
+
+end
 
 switch lower(memoryorder)
 case '0'   % Time
@@ -73,56 +96,86 @@ case 'z'   % Time, bottom_top
    error('unsupported storage order (%s) for %s',memoryorder, varname)
    
 case 'xy'  % Time, south_north, west_east
-   coordinates     = nc_attget(fname, varname, 'coordinates');
-   bob             = strread(coordinates,'%s');
-   output.xvarname = char(bob(1,:));
-   output.yvarname = char(bob(2,:));
-   output.xvar     = nc_varget(fname, output.xvarname);
-   output.yvar     = nc_varget(fname, output.yvarname);
+
+   coordinates      = strread(nc_attget(fname, varname, 'coordinates'),'%s');
+   output.xvarname  = char(bob(1,:));
+   output.yvarname  = char(bob(2,:));
+   output.xvar      = double(nc_varget(fname, output.xvarname));
+   output.yvar      = double(nc_varget(fname, output.yvarname));
    
 case 'xyz' % .... you get the picture
-   coordinates     = nc_attget(fname, varname, 'coordinates');
-   bob             = strread(coordinates,'%s');
-   output.xvarname = char(bob(1,:));
-   output.yvarname = char(bob(2,:));
 
-   % WRF doesn't provide the same mechanism for a Z coordinate
-   % find dimension index for vert
-   bob = strfind(lower(varinfo.Dimension), 'bottom') ;
-   zindex = -1;
-   for i = 1:length(bob)
-      if ( bob{i} == 1 )
-         zindex = i;
-         output.zdimname = varinfo.Dimension{i};
-         output.zdimsize = varinfo.Size(i);
-      end
-   end
-   if (zindex < 0) 
-      error('dagnabbit')
-   end
-   if (    output.zdimsize == bottom_top )
-           output.zvarname =  Zname;
-   elseif (output.zdimsize == bottom_top_stag )
-           output.zvarname =  Zname_stag;
-   else
-       error('gollygoshdagnabbit')
-   end
+   bob = get_z_info(fname, varname, chunk);
 
-   output.xvar      = nc_varget(fname,output.xvarname);
-   output.yvar      = nc_varget(fname,output.yvarname);
-   output.zvar      = nc_varget(fname,output.zvarname);
+   coordinates      = strread(nc_attget(fname, varname, 'coordinates'),'%s');
+   output.xvarname  = char(coordinates(1,:));
+   output.yvarname  = char(coordinates(2,:));
+   output.zvarname  = bob.zvarname;
+
+   output.zvarlabel = bob.zvarlabel;
+   output.zvarunits = bob.zvarunits;
+
+   output.xvar = double(nc_varget(fname,output.xvarname));
+   output.yvar = double(nc_varget(fname,output.yvarname));
+   output.zvar = double(nc_varget(fname,output.zvarname));
    
 otherwise
    error('unknown storage order (%s) for %s',memoryorder, varname)
 end
 
-inds              = output.xvar < 0;
-output.xvar(inds) = output.xvar(inds) + 360;
-output.minlon     = min(output.xvar(:));
-output.maxlon     = max(output.xvar(:));
+inds              = output.xvar < 0.0;
+output.xvar(inds) = output.xvar(inds) + 360.0;
 
-%% Set the latitude limits - must check for southern hemisphere
 
-absmin            = min(abs(output.yvar(:)));
-output.minlat     = min(output.yvar(:));
-output.maxlat     = max(output.yvar(:));
+%======================================================================
+
+
+function zinfo = get_z_info(fname, varname, chunk);
+% There is not much help determining metadata for the Z coordinate
+% Must match dimensions and make educated guesses.
+
+   varinfo = nc_getvarinfo(fname, varname);
+
+   bob = strfind(lower(varinfo.Dimension), 'bottom');
+   zindex = -1;
+   for i = 1:length(bob)
+      if ( bob{i} == 1 )
+         zindex = i;
+         zinfo.zdimname = varinfo.Dimension{i};
+         zinfo.zdimsize = varinfo.Size(i);
+      end
+   end
+
+   if (zindex < 0) 
+      error('dagnabbit')
+   end
+   if (    zinfo.zdimsize == chunk.bottom_top )
+           zinfo.zvarname =  chunk.Zname;
+   elseif (zinfo.zdimsize == chunk.bottom_top_stag )
+           zinfo.zvarname =  chunk.Zname_stag;
+   else
+       error('gollygoshdagnabbit')
+   end
+
+   % get the units for the Z variable being used.
+   % preserve whatever units are being used
+   % preserve whatever the long_name or description is (presumably either one works)
+   % use the first word of the long name as the 'label' ... usually 'eta' or 'height' or ...
+
+   if (nc_isvar(fname,zinfo.zvarname))
+
+      varinfo = nc_getvarinfo(fname, zinfo.zvarname);
+      for i = 1:length(varinfo.Attribute)
+         switch lower(varinfo.Attribute(i).Name)
+            case 'units'
+               zinfo.zvarunits = varinfo.Attribute(i).Value;
+            case {'description','long_name'}
+               zinfo.zvarlongname = varinfo.Attribute(i).Value;
+               zinfo.zvarlabel = sscanf(varinfo.Attribute(i).Value,'%s',1);
+         end
+      end
+
+   else
+      error('unable to find vertical variable %s in %s',output.zvarname,fname)
+   end
+
