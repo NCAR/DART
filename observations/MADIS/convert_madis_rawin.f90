@@ -505,8 +505,8 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     call getvar_real_2d(ncid, "wsSigW", n, nsig, wspd, wspd_miss)
 
     if (use_input_qc) then
-       call get_or_fill_QC_2d(ncid, "wdSigTQCR", n, nsig, qc_wdir)
-       call get_or_fill_QC_2d(ncid, "wsSigTQCR", n, nsig, qc_wspd)
+       call get_or_fill_QC_2d(ncid, "wdSigWQCR", n, nsig, qc_wdir)
+       call get_or_fill_QC_2d(ncid, "wsSigWQCR", n, nsig, qc_wspd)
     else
        qc_wdir = 0
        qc_wspd = 0
