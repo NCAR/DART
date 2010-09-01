@@ -19,13 +19,33 @@
 </center>
 
 <H1>PROGRAM <em class=program>integrate_model</em></H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<P><small>Latest subversion revision tag:
+<!-- version tag follows, do not edit -->$Id$
+</small></P>
 
 <P>
-  Main program to advance models that include an adv_1step interface
-  forward in time. Normally used to allow asynchronous filter to be
-  used in simplest way with such models (for instance Lorenz_96 and
-  the GFDL B-grid models).  
+  Generic main program which can be compiled with a model-specific
+  <em class="file">model_mod.f90</em> file.  The model must provide
+  an <em class="code">adv_1step()</em> subroutine which advances one
+  copy of the model forward in time.  
+</P><P>
+  The executable built by this program can be used by the serial
+  program <em class="program">perfect_model_obs</em>, or 
+  either the serial
+  or parallel version of the <em class="program">filter</em> program.  
+  This program is called by the default script in the template directory
+  called <em class="code">advance_model.csh</em>, and is selected by
+  setting the corresponding <em class="code">"async = "</em> namelist 
+  setting to 2.
+</P><P>
+  This program only advances a single ensemble member per execution and 
+  is expected to be run as a serial program.
+  It can be compiled with the MPI wrappers and called with mpirun with more
+  than 1 task, however, it will
+  only call the model advance subroutine from a single task (task 0).  
+  This can be
+  useful in testing various scripting options using simpler and smaller
+  models in preparation for running a larger parallel model.
 </P>
 
 <!--==================================================================-->
@@ -61,9 +81,9 @@ There is no namelist for this program.
 <A NAME="FilesUsed"></A>
 <HR>
 <H2>FILES</H2>
-<UL><LI>inputfile (temp_ic)
-    <LI>integrate_model.nml 
-    <LI>outputfile (temp_ud)
+<UL> <LI>inputfile (temp_ic)
+<!-- <LI>integrate_model.nml  (?does not currently exist) -->
+     <LI>outputfile (temp_ud)
 </UL>
 
 <!--==================================================================-->
@@ -89,9 +109,8 @@ There is no namelist for this program.
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>integrate_model</TD>
-    <!-- message --><TD VALIGN=top>Only use single proces</TD>
-    <!-- comment --><TD VALIGN=top>Only a single mpi process can be used to 
-                    advance with integrate_model.</TD>
+    <!-- message --><TD VALIGN=top>none</TD>
+    <!-- comment --><TD VALIGN=top>none</TD>
 </TR>
 </TABLE>
 </div>
@@ -109,7 +128,16 @@ none
 <HR>
 <H2>FUTURE PLANS</H2>
 <P>
-none
+This program could have a namelist.
+Possible items for the namelist include
+the names of the input and output files, and the
+format of the updated model state in the output files.
+Right now the names are hardcoded and the format is always
+binary (for more accurate numerical fidelity), but for
+debugging human-readable ascii files can be more useful.
+</P><P>
+A true MPI version of this program could advance multiple
+ensemble members at a time, one per MPI task.
 </P>
 
 <!--==================================================================-->
@@ -121,7 +149,7 @@ none
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br>
 This open source software is provided by UCAR, "as is",<br>
 without charge, subject to all terms of use at<br>
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
