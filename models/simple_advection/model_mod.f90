@@ -596,7 +596,7 @@ ierr = 0                      ! assume normal termination
 ! which netcdf file is involved.
 !--------------------------------------------------------------------
 
-write(filename, '(a, i3)') 'ncFileID', ncFileID
+write(filename,*) 'ncFileID', ncFileID
 
 !--------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file 
@@ -895,7 +895,7 @@ integer :: first, last
 ! which netcdf file is involved.
 !--------------------------------------------------------------------
 
-write(filename, '(a, i3)') 'ncFileID', ncFileID
+write(filename,*) 'ncFileID', ncFileID
 
 
 ierr = 0                      ! assume normal termination

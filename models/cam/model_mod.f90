@@ -2152,7 +2152,7 @@ ierr = 0     ! assume normal termination
 !    More dimensions, variables and attributes will be added in this routine.
 !-------------------------------------------------------------------------------
 
-write(errstring,'(I4)') ncFileID
+write(errstring,*) 'ncFileID', ncFileID
 call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
               'nc_write_model_atts', 'Inquire '//trim(errstring))
 call nc_check(nf90_Redef(ncFileID), 'nc_write_model_atts', 'Redef '//trim(errstring))

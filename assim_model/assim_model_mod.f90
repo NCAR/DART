@@ -1132,13 +1132,13 @@ timeindex = nc_get_tindex(ncFileID, model_time)
 if ( timeindex < 0 ) then
    call get_time(model_time,is1,id1)
    write(msgstring,*)'model time (d,s)',id1,is1,' not in ',ncFileID%fname
-   write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i3)') &
+   write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i10)') &
           id1,is1,timeindex,ncFileID%ncid
    call error_handler(E_ERR,'aoutput_diagnostics', msgstring, source, revision, revdate)
 endif
 
    call get_time(model_time,is1,id1)
-   write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i3)') &
+   write(msgstring,'(''model time (d,s) ('',i8,i5,'') is index '',i6, '' in ncFileID '',i10)') &
           id1,is1,timeindex,ncFileID%ncid
    call error_handler(E_DBG,'aoutput_diagnostics', msgstring, source, revision, revdate)
 
@@ -1500,7 +1500,7 @@ if ( timeindex <= 0 ) then   ! There was no match. Either the model
 
       timeindex = nc_append_time(ncFileID, statetime)
 
-      write(msgstring,'(''appending model time (d,s) ('',i8,i5,'') as index '',i6, '' in ncFileID '',i3)') &
+      write(msgstring,'(''appending model time (d,s) ('',i8,i5,'') as index '',i6, '' in ncFileID '',i10)') &
           days,secs,timeindex,ncid
       call error_handler(E_DBG,'nc_get_tindex',msgstring,source,revision,revdate)
 

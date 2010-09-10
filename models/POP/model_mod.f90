@@ -1934,7 +1934,7 @@ ierr = -1 ! assume things go poorly
 ! which netcdf file is involved.
 !--------------------------------------------------------------------
 
-write(filename, '(a, i3)') 'ncFileID', ncFileID
+write(filename,*) 'ncFileID', ncFileID
 
 !-------------------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file, 
@@ -2360,7 +2360,7 @@ ierr = -1 ! assume things go poorly
 ! which netcdf file is involved.
 !--------------------------------------------------------------------
 
-write(filename, '(a, i3)') 'ncFileID', ncFileID
+write(filename,*) 'ncFileID', ncFileID
 
 !-------------------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file, 
