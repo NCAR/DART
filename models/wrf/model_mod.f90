@@ -1,4 +1,4 @@
-! DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+! DART software - Copyright  2004 - 2010 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
@@ -4129,7 +4129,8 @@ if ( output_state_vector ) then
                     'nc_write_model_atts','put_att state '//trim(attname))
       endif
 
-      ! coordinates
+      ! coordinates - define the name of the (sometimes staggered) 
+      !               coordinate variables to use to decode locations
       attname = trim(wrf_state_variables(1,my_index))//'_coordinates'
       if ( nf90_inquire_attribute(ncFileID,StateVarID,trim(attname)) &
            /= NF90_NOERR ) then
@@ -4141,7 +4142,6 @@ if ( output_state_vector ) then
          else
            coordinate_char = "XLONG_d0"//idom//" XLAT_d0"//idom
          end if
-! need to check if this is a staggered grid variable
          call nc_check(nf90_put_att(ncFileID, StateVarId, trim(attname),&
                     trim(coordinate_char)), &
                     'nc_write_model_atts','put_att state '//trim(attname))
@@ -4215,7 +4215,7 @@ do id=1,num_domains
            dimids_3D(3)=slSDimID(id)
          else
            write(errstring,*)'Could not determine dim_id for vertical dimension to output variable '//varname
-           call error_handler(E_ERR,'nc_write_atts',errstring,source, revision,revdate)
+           call error_handler(E_ERR,'nc_write_model_atts',errstring,source, revision,revdate)
          endif
 
          if ( debug ) write(*,*) '3D with dim ids ',dimids_3D
