@@ -158,6 +158,7 @@ type progvartype
    character(len=NF90_MAX_NAME) :: storder
    integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens
    integer :: originalnumdims
+   integer :: posdef
    integer :: numdims
    integer :: varsize     ! prod(dimlens(1:numdims))
    integer :: index1      ! location in dart state vector of first occurrence
@@ -437,7 +438,6 @@ integer :: iunit, io, ivar, i, index1, indexN
 integer :: ss, dd
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeDimID
 logical :: shapeok
-integer :: dimtime
 
 if ( module_initialized ) return ! only need to do this once.
 
@@ -551,6 +551,9 @@ do ivar = 1, nfields
    call nc_check( nf90_get_att(ncid, VarId, 'long_name' , progvar(ivar)%long_name), &
             'static_init_model', 'get_att long_name '//trim(string2))
 
+   call nc_check( nf90_get_att(ncid, VarId, 'posdef' , progvar(ivar)%posdef), &
+            'static_init_model', 'get_att posdef '//trim(string2))
+
    call nc_check( nf90_get_att(ncid, VarId, 'units' , progvar(ivar)%units), &
             'static_init_model', 'get_att units '//trim(string2))
 
@@ -563,7 +566,6 @@ do ivar = 1, nfields
    ! need to skip it. 
    varsize = 1
    dimlen  = 1
-   dimtime = 0
    progvar(ivar)%numdims = 0
    DimensionLoop : do i = 1,numdims
 
@@ -591,7 +593,7 @@ do ivar = 1, nfields
       if (trim(progvar(ivar)%storder) == 'xyz3d') shapeok = .true.
    endif
    if ( .not. shapeok ) then
-      write(string1,*)'unable to handle storage order of '//trim(progvar(ivar)%storder)//' numdims,timedim = ',progvar(ivar)%numdims,dimtime
+      write(string1,*)'unable to handle storage order of '//trim(progvar(ivar)%storder)//' numdims = ',progvar(ivar)%numdims
       call error_handler(E_ERR,'static_init_model', string1, source, revision, revdate, &
                                               text2=string2)
    endif
@@ -1262,7 +1264,7 @@ ierr = -1 ! assume things go poorly
 ! which netcdf file is involved.
 !--------------------------------------------------------------------
 
-write(filename, '(a, i3)') 'ncFileID', ncFileID
+write(filename,*) 'ncFileID', ncFileID
 
 !-------------------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file, 
@@ -1306,15 +1308,15 @@ else
       mycount = 1
       DimCheck : do i = 1,progvar(ivar)%numdims
 
-         write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
+         write(string1,'(a,i2,A)') 'inquire dimension ',i,trim(string2)
          call nc_check(nf90_inquire_dimension(ncFileID, dimIDs(i), len=dimlen), &
-               'nc_write_model_vars', string1)
+               'nc_write_model_vars', trim(string1))
 
          if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-            write(string1,*) trim(string2),'dim/dimlen',i,dimlen,'not',progvar(ivar)%dimlens(i)
+            write(string1,*) trim(string2),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
             write(string2,*)' but it should be.'
-            call error_handler(E_ERR, 'nc_write_model_vars', string1, &
-                            source, revision, revdate, text2=string2)
+            call error_handler(E_ERR, 'nc_write_model_vars', trim(string1), &
+                            source, revision, revdate, text2=trim(string2))
          endif
 
          mycount(i) = dimlen
@@ -1684,7 +1686,7 @@ do ivar=1, nfields
             'restart_file_to_sv', string1)
 
       if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-         write(string1,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',progvar(ivar)%dimlens(i)
+         write(string1,*) trim(myerrorstring),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
          call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
       endif
 
@@ -1923,6 +1925,10 @@ do ivar=1, nfields
       nj = mycount(2)
       allocate(data_2d_array(ni, nj))
       call vector_to_prog_var(state_vector, progvar(ivar), data_2d_array)
+      
+      if ( progvar(ivar)%posdef == 1 ) then
+        where ( data_2d_array < 0 ) data_2d_array = 0
+      endif
 
       call nc_check(nf90_put_var(ncFileID, VarID, data_2d_array, &
         start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
@@ -1936,6 +1942,10 @@ do ivar=1, nfields
       nk = mycount(3)
       allocate(data_3d_array(ni, nj, nk))
       call vector_to_prog_var(state_vector, progvar(ivar), data_3d_array)
+
+      if ( progvar(ivar)%posdef == 1 ) then
+        where ( data_3d_array < 0 ) data_3d_array = 0
+      endif
 
       call nc_check(nf90_put_var(ncFileID, VarID, data_3d_array, &
         start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
