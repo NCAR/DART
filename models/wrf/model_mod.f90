@@ -3356,67 +3356,22 @@ subroutine get_wrf_horizontal_location( i, j, var_type, id, long, lat )
 integer,  intent(in)  :: i,j,var_type, id
 real(r8), intent(out) :: long, lat
 
-! find lat and long, must
-! correct for possible u or v staggering in x, y
+! given i, j indices into the horizontal grid return the lat/long.
+! if u or v staggering use the staggered grids, otherwise use the mass 
+! grid.  this code has changed -- earlier versions only had the mass 
+! grid available and used it to compute cell midpoints and called them 
+! the staggered points.  now that all three grids are being read, look 
+! up the point locations directly from the appropriate array.
 
 if (var_type == wrf%dom(id)%type_u) then
-
-   if (i == 1) then
-      long = wrf%dom(id)%longitude(1,j) - &
-           0.5_r8*(wrf%dom(id)%longitude(2,j)-wrf%dom(id)%longitude(1,j))
-      if ( abs(wrf%dom(id)%longitude(2,j) - wrf%dom(id)%longitude(1,j)) > 180.0_r8 ) then
-         long = long - 180.0_r8
-      endif
-      lat = wrf%dom(id)%latitude(1,j) - &
-           0.5_r8*(wrf%dom(id)%latitude(2,j)-wrf%dom(id)%latitude(1,j))
-   else if (i == wrf%dom(id)%wes) then
-      long = wrf%dom(id)%longitude(i-1,j) + &
-           0.5_r8*(wrf%dom(id)%longitude(i-1,j)-wrf%dom(id)%longitude(i-2,j))
-      if ( abs(wrf%dom(id)%longitude(i-1,j) - wrf%dom(id)%longitude(i-2,j)) > 180.0_r8 ) then
-         long = long - 180.0_r8
-      endif
-      lat = wrf%dom(id)%latitude(i-1,j) + &
-           0.5_r8*(wrf%dom(id)%latitude(i-1,j)-wrf%dom(id)%latitude(i-2,j))
-   else
-      long = 0.5_r8*(wrf%dom(id)%longitude(i,j)+wrf%dom(id)%longitude(i-1,j))
-      if ( abs(wrf%dom(id)%longitude(i,j) - wrf%dom(id)%longitude(i-1,j)) > 180.0_r8 ) then
-         long = long - 180.0_r8
-      endif
-      lat = 0.5_r8*(wrf%dom(id)%latitude(i,j) +wrf%dom(id)%latitude(i-1,j))
-   endif
-
+   long = wrf%dom(id)%longitude_u(i,j)
+   lat  = wrf%dom(id)%latitude_u(i,j)
 elseif (var_type == wrf%dom(id)%type_v) then
-
-   if (j == 1) then
-      long = wrf%dom(id)%longitude(i,1) - &
-           0.5_r8*(wrf%dom(id)%longitude(i,2)-wrf%dom(id)%longitude(i,1))
-      if ( abs(wrf%dom(id)%longitude(i,2) - wrf%dom(id)%longitude(i,1)) > 180.0_r8 ) then
-         long = long - 180.0_r8
-      endif
-      lat = wrf%dom(id)%latitude(i,1) - &
-           0.5_r8*(wrf%dom(id)%latitude(i,2)-wrf%dom(id)%latitude(i,1))
-   else if (j == wrf%dom(id)%sns) then
-      long = wrf%dom(id)%longitude(i,j-1) + &
-           0.5_r8*(wrf%dom(id)%longitude(i,j-1)-wrf%dom(id)%longitude(i,j-2))
-      if ( abs(wrf%dom(id)%longitude(i,j-1) - wrf%dom(id)%longitude(i,j-2)) > 180.0_r8 ) then
-         long = long - 180.0_r8
-      endif
-      lat = wrf%dom(id)%latitude(i,j-1) + &
-           0.5_r8*(wrf%dom(id)%latitude(i,j-1)-wrf%dom(id)%latitude(i,j-2))
-   else
-      long = 0.5_r8*(wrf%dom(id)%longitude(i,j)+wrf%dom(id)%longitude(i,j-1))
-      if ( abs(wrf%dom(id)%longitude(i,j) - wrf%dom(id)%longitude(i,j-1)) > 180.0_r8 ) then
-         long = long - 180.0_r8
-      endif
-      lat  = 0.5_r8*(wrf%dom(id)%latitude(i,j) +wrf%dom(id)%latitude(i,j-1))
-
-   endif
-
+   long = wrf%dom(id)%longitude_v(i,j)
+   lat  = wrf%dom(id)%latitude_v(i,j)
 else
-
    long = wrf%dom(id)%longitude(i,j)
    lat  = wrf%dom(id)%latitude(i,j)
-
 endif
 
 do while (long <   0.0_r8)
