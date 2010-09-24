@@ -32,7 +32,6 @@ setenv cosmic_pw   yyy
 
 # assumes all data predownloaded, and will be deleted afterwards
 # by hand.
-./cosmic_to_obsseq.csh 20070930 ../cosmic no no
 ./cosmic_to_obsseq.csh 20071001 ../cosmic no no
 ./cosmic_to_obsseq.csh 20071002 ../cosmic no no
 ./cosmic_to_obsseq.csh 20071003 ../cosmic no no
