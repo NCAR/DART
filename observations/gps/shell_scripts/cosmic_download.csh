@@ -127,7 +127,7 @@ if ( ! -d ${datea} ) then
 endif
 
 cd ${datea}
-ln -sf ../input.nml .
+ln -sf ${DART_WORK_DIR}/input.nml .
 
 echo $datea
 set jyyyydd = `echo $datea 0 -j | ../${DATE_PROG}` 
