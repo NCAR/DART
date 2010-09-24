@@ -125,7 +125,6 @@ while ( $datea < $datee )
   set   mm = `echo $datea | cut -b5-6`
   set   dd = `echo $datea | cut -b7-8`
   set   hh = `echo $datea | cut -b9-10` 
-  echo ${yyyy}-${mm}-${dd}_${hh}:00:00  > convert_cosmic_input
 
   rm -f flist
   @ nhours = 2 * $download_window  ;  set n = 1
@@ -153,8 +152,8 @@ while ( $datea < $datee )
       echo $nfiles ' to process for file ' $datea 
   endif
 
-  ./convert_cosmic_gps_cdf < convert_cosmic_input >>! convert_output_log
-  rm -rf cosmic_gps_input.nc convert_cosmic_input  flist
+  ./${CONV_PROG} >>! convert_output_log
+  rm -rf cosmic_gps_input.nc  flist
 
   set datef = $datea
   if ( `echo $datea | cut -b9-10` == '00' ) then

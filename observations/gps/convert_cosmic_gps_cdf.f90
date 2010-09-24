@@ -20,26 +20,27 @@ program convert_cosmic_gps_cdf
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use        types_mod, only : r8, metadatalength
-use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
-                             increment_time, get_time, set_date, operator(-),  &
-                             print_date
-use    utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
-                             check_namelist_read, nmlfileunit, do_nml_file,   &
-                             get_next_filename, error_handler, E_ERR, E_MSG, &
-                             nc_check, find_textfile_dims, do_nml_term
-use     location_mod, only : VERTISHEIGHT, set_location
-use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
-                             static_init_obs_sequence, init_obs, destroy_obs, &
-                             write_obs_seq, init_obs_sequence, get_num_obs,   &
-                             insert_obs_in_seq, destroy_obs_sequence,         &
-                             set_copy_meta_data, set_qc_meta_data, set_qc,    & 
-                             set_obs_values, set_obs_def, insert_obs_in_seq
-use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
-                             set_obs_def_error_variance, set_obs_def_location, &
-                             set_obs_def_key
-use  obs_def_gps_mod, only : set_gpsro_ref
-use     obs_kind_mod, only : GPSRO_REFRACTIVITY
+use          types_mod, only : r8, metadatalength
+use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
+                               increment_time, get_time, set_date, operator(-),  &
+                               print_date
+use      utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
+                               check_namelist_read, nmlfileunit, do_nml_file,   &
+                               get_next_filename, error_handler, E_ERR, E_MSG, &
+                               nc_check, find_textfile_dims, do_nml_term
+use       location_mod, only : VERTISHEIGHT, set_location
+use   obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
+                               static_init_obs_sequence, init_obs, destroy_obs, &
+                               write_obs_seq, init_obs_sequence, get_num_obs,   &
+                               insert_obs_in_seq, destroy_obs_sequence,         &
+                               set_copy_meta_data, set_qc_meta_data, set_qc,    & 
+                               set_obs_values, set_obs_def, insert_obs_in_seq
+use   obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
+                               set_obs_def_error_variance, set_obs_def_location, &
+                               set_obs_def_key
+use    obs_def_gps_mod, only : set_gpsro_ref
+use       obs_kind_mod, only : GPSRO_REFRACTIVITY
+use  obs_utilities_mod, only : add_obs_to_seq
 
 use           netcdf
 
@@ -60,10 +61,9 @@ character (len=129) :: msgstring, next_infile
 character (len=80)  :: name
 character (len=19)  :: datestr
 character (len=6)   :: subset
-integer :: rcode, ncid, varid, nlevels, k, nfiles, num_new_obs,  &
-           aday, asec, dday, dsec, oday, osec,                   &
-           iyear, imonth, iday, ihour, imin, isec,               &
-           glat, glon, zloc, obs_num, io, iunit, nobs, filenum, dummy
+integer :: rcode, ncid, varid, nlevels, k, nfiles, num_new_obs, oday, osec, &
+           iyear, imonth, iday, ihour, imin, isec, glat, glon, zloc, obs_num, &
+           io, iunit, nobs, filenum, dummy
 logical :: file_exist, first_obs, did_obs, from_list = .false.
 real(r8) :: hght_miss, refr_miss, azim_miss, oerr,               & 
             qc, lato, lono, hghto, refro, azimo, wght, nx, ny,   & 
@@ -75,7 +75,7 @@ real(r8), allocatable :: lat(:), lon(:), hght(:), refr(:), azim(:), &
 type(obs_def_type)      :: obs_def
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
-type(time_type)         :: time_obs, time_anal
+type(time_type)         :: time_obs, time_anal, prev_time
 
 !------------------------------------------------------------------------
 !  Declare namelist parameters
@@ -84,43 +84,22 @@ type(time_type)         :: time_obs, time_anal
 integer, parameter :: nmaxlevels = 200   !  max number of observation levels
 
 logical  :: local_operator = .true.   ! see html file for more on non/local
-logical  :: overwrite_time = .false.  ! careful - see note below
 real(r8) :: obs_levels(nmaxlevels) = -1.0_r8
-real(r8) :: obs_window = 12.0     ! accept obs within +/- hours from anal time
 real(r8) :: ray_ds = 5000.0_r8    ! delta stepsize (m) along ray, nonlocal op
 real(r8) :: ray_htop = 15000.0_r8 ! max height (m) for nonlocal op
 character(len=128) :: gpsro_netcdf_file     = 'cosmic_gps_input.nc'
 character(len=128) :: gpsro_netcdf_filelist = 'cosmic_gps_input_list'
 character(len=128) :: gpsro_out_file        = 'obs_seq.gpsro'
 
-namelist /convert_cosmic_gps_nml/ obs_levels, local_operator, obs_window, &
-                                  ray_ds, ray_htop, gpsro_netcdf_file,    &
-                                  gpsro_netcdf_filelist, gpsro_out_file 
-
-
-! 'overwrite_time' replaces the actual observation times with the
-! analysis time for all obs.  this is intentionally not in the namelist
-! because we think observations should preserve the original times in all
-! cases.  but one of our users had a special request to overwrite the time
-! with the synoptic time, so there is code in this converter to do that
-! if this option is set to .true.  but we still don't encourage its use.
+namelist /convert_cosmic_gps_nml/ obs_levels, local_operator, ray_ds,   &
+                                  ray_htop, gpsro_netcdf_file,          &
+                                  gpsro_netcdf_filelist, gpsro_out_file
 
 ! initialize some values
 obs_num = 1
 qc = 0.0_r8
-
-print*,'Enter the target assimilation time (yyyy-mm-dd_hh:mm:ss)'
-read*,datestr
-
+first_obs = .true.
 call set_calendar_type(GREGORIAN)
-read(datestr(1:4),   fmt='(i4)') iyear
-read(datestr(6:7),   fmt='(i2)') imonth
-read(datestr(9:10),  fmt='(i2)') iday
-read(datestr(12:13), fmt='(i2)') ihour
-read(datestr(15:16), fmt='(i2)') imin
-read(datestr(18:19), fmt='(i2)') isec
-time_anal = set_date(iyear, imonth, iday, ihour, imin, isec)
-call get_time(time_anal, asec, aday)
 
 !  read the necessary parameters from input.nml
 call initialize_utilities()
@@ -149,17 +128,6 @@ do k = 2, nlevels
   end if
 end do
 
-!  should error check the window some
-if (obs_window <= 0.0_r8 .or. obs_window > 24.0_r8) then
-    call error_handler(E_ERR, 'convert_cosmic_gps_cdf',       &
-                       'Bad value for obs_window (hours)',    &
-                       source, revision, revdate)
-else
-   ! convert to seconds
-   obs_window = obs_window * 3600.0_r8
-endif
-
-
 ! cannot have both a single filename and a list; the namelist must
 ! shut one off.
 if (gpsro_netcdf_file /= '' .and. gpsro_netcdf_filelist /= '') then
@@ -184,14 +152,15 @@ call init_obs(prev_obs, num_copies, num_qc)
 inquire(file=gpsro_out_file, exist=file_exist)
 if ( file_exist ) then
 
-print *, "found existing obs_seq file, appending to ", trim(gpsro_out_file)
+   print *, "found existing obs_seq file, appending to ", trim(gpsro_out_file)
    call read_obs_seq(gpsro_out_file, 0, 0, num_new_obs, obs_seq)
 
 else
 
-print *, "no existing obs_seq file, creating ", trim(gpsro_out_file)
-print *, "max entries = ", num_new_obs
+  print *, "no existing obs_seq file, creating ", trim(gpsro_out_file)
+  print *, "max entries = ", num_new_obs
   call init_obs_sequence(obs_seq, num_copies, num_qc, num_new_obs)
+
   do k = 1, num_copies
     meta_data = 'COSMIC GPS observation'
     call set_copy_meta_data(obs_seq, k, meta_data)
@@ -231,23 +200,6 @@ fileloop: do      ! until out of files
    
    time_obs = set_date(iyear, imonth, iday, ihour, imin, isec)
    call get_time(time_obs,  osec, oday)
-   
-   ! time1-time2 is always positive no matter the relative magnitudes
-   call get_time(time_anal-time_obs,dsec,dday)
-   if ( real(dsec+dday*86400) > obs_window ) then
-     call error_handler(E_MSG, 'convert_cosmic_gps_cdf: ',         &
-                        'Input file '//trim(next_infile), &
-                         source, revision, revdate)
-     write(msgstring, '(A,F8.4,A)') 'Ignored because obs time > ', &
-                       obs_window / 3600.0, ' hours from analysis time'
-     call error_handler(E_MSG, '', msgstring,        &
-                        source, revision, revdate)
-     call print_date(time_obs,  '    observation time: ')
-     call print_date(time_anal, '  window center time: ')
-
-     filenum = filenum + 1
-     cycle fileloop
-   end if
    
    call nc_check( nf90_inq_dimid(ncid, "MSL_alt", varid), 'inq dimid MSL_alt')
    call nc_check( nf90_inquire_dimension(ncid, varid, name, nobs), 'inq dim MSL_alt')
@@ -347,11 +299,7 @@ fileloop: do      ! until out of files
      call set_gpsro_ref(obs_num, nx, ny, nz, rfict, ray_ds, ray_htop, subset)
      call set_obs_def_location(obs_def,set_location(lono,lato,hghto,VERTISHEIGHT))
      call set_obs_def_kind(obs_def, GPSRO_REFRACTIVITY)
-     if (overwrite_time) then   ! generally do not want to do this here.
-        call set_obs_def_time(obs_def, set_time(asec, aday))
-     else
-        call set_obs_def_time(obs_def, set_time(osec, oday))
-     endif
+     call set_obs_def_time(obs_def, set_time(osec, oday))
      call set_obs_def_error_variance(obs_def, oerr * oerr)
      call set_obs_def_key(obs_def, obs_num)
      call set_obs_def(obs, obs_def)
@@ -360,22 +308,10 @@ fileloop: do      ! until out of files
      call set_obs_values(obs, obs_val)
      qc_val(1)  = qc
      call set_qc(obs, qc_val)
-   
-     ! first one, insert with no prev.  otherwise, since all times will be the
-     ! same for this column, insert with the prev obs as the starting point.
-     ! (this code used to call append, but calling insert makes it work even if
-     ! the input files are processed out of strict time order, which one message
-     ! i got seemed to indicate was happening...)
-     if (first_obs) then
-        call insert_obs_in_seq(obs_seq, obs)
-        first_obs = .false.
-   !print *, 'inserting first obs'
-     else
-        call insert_obs_in_seq(obs_seq, obs, prev_obs)
-   !print *, 'inserting other obs'
-     endif
+
+     call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+
      obs_num = obs_num+1
-     prev_obs = obs
 
      if (.not. did_obs) did_obs = .true.
    
@@ -397,12 +333,12 @@ if (did_obs) then
    ! minor stab at cleanup, in the off chance this will someday get turned
    ! into a subroutine in a module.  probably not all that needs to be done,
    ! but a start.
-!print *, 'calling destroy_obs'
    call destroy_obs(obs)
-   call destroy_obs(prev_obs)
-print *, 'skipping destroy_seq'
-   ! get core dumps here, not sure why?
-   !if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
+! if obs == prev_obs then you can't delete the same obs twice.
+! buf if they differ, then it's a leak.  for now, don't delete prev
+! since the program is exiting here anyway.
+   !call destroy_obs(prev_obs)
+   if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
 endif
 
 ! END OF MAIN ROUTINE

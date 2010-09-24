@@ -7,7 +7,7 @@
 The intent for the scripts in this directory are:
 
 Summary:  
-1) Run ./quickbuild.csh to compile everything.  
+1) cd to the ../work directory and run ./quickbuild.csh to compile everything.  
 2) Edit cosmic_download.csh and cosmic_to_obsseq.csh once to set DART_DIR.
 3) Edit ./download_script.csh to set the cosmic name, pw, and dates.  Run it.
 4) Edit ./convert_script.csh to set the cosmic name, pw, and dates.  Run it.
@@ -26,7 +26,7 @@ Run quickbuild.csh and it should compile all the executables needed
 to do the GPS conversion into DART obs_sequence files.
 
 
-2) download_script.csh (and cosmic_download.csh):
+2) download_script.csh (which calls cosmic_download.csh):
 
 Edit cosmic_download.csh once to set the DART_DIR to where you have
 downloaded the DART distribution.  (There are a few additional options
@@ -38,7 +38,7 @@ cosmic web site user name and password, and set the days for which you
 want to download data.
 
 
-3) convert_script.csh (and cosmic_to_obsseq.csh):
+3) convert_script.csh (which calls cosmic_to_obsseq.csh):
 
 Edit cosmic_to_obsseq.csh once to set the DART_DIR to where you have
 downloaded the DART distribution.  (There are a few additional options

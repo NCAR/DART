@@ -32,19 +32,20 @@ setenv cosmic_pw   yyy
 
 # assumes all data predownloaded, and will be deleted afterwards
 # by hand.
-./cosmic_to_obsseq.csh 20061101 ../cosmic no no
-./cosmic_to_obsseq.csh 20061102 ../cosmic no no
-./cosmic_to_obsseq.csh 20061103 ../cosmic no no
-./cosmic_to_obsseq.csh 20061104 ../cosmic no no
-./cosmic_to_obsseq.csh 20061105 ../cosmic no no
-./cosmic_to_obsseq.csh 20061106 ../cosmic no no
-./cosmic_to_obsseq.csh 20061107 ../cosmic no no
+./cosmic_to_obsseq.csh 20070930 ../cosmic no no
+./cosmic_to_obsseq.csh 20071001 ../cosmic no no
+./cosmic_to_obsseq.csh 20071002 ../cosmic no no
+./cosmic_to_obsseq.csh 20071003 ../cosmic no no
+./cosmic_to_obsseq.csh 20071004 ../cosmic no no
+./cosmic_to_obsseq.csh 20071005 ../cosmic no no
+./cosmic_to_obsseq.csh 20071006 ../cosmic no no
+./cosmic_to_obsseq.csh 20071007 ../cosmic no no
 
 ## example of using both, curr and next for on-demand download and cleanup.
-#./cosmic_to_obsseq.csh 20061101 ../cosmic both curr
-#./cosmic_to_obsseq.csh 20061102 ../cosmic next curr
-#./cosmic_to_obsseq.csh 20061103 ../cosmic next curr
-#./cosmic_to_obsseq.csh 20061104 ../cosmic next both
+#./cosmic_to_obsseq.csh 20071001 ../cosmic both curr
+#./cosmic_to_obsseq.csh 20071002 ../cosmic next curr
+#./cosmic_to_obsseq.csh 20071003 ../cosmic next curr
+#./cosmic_to_obsseq.csh 20071004 ../cosmic next both
 
 exit 0
 

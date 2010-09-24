@@ -56,7 +56,6 @@
 setenv DART_DIR      /home/user/DART
 
 setenv DART_WORK_DIR  ${DART_DIR}/observations/gps/work
-setenv CONV_PROG      convert_cosmic_gps_cdf
 setenv DATE_PROG      advance_time
 
 set chatty=yes
