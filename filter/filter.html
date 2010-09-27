@@ -3,29 +3,48 @@
 <HTML>
 <HEAD>
 <TITLE>program filter</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
+<div>
 <center>
+<strong><big><big><big>DART Project Documentation</big></big></big></strong> <br />
+<table width=80% border=0 summary="" cellpadding=0>
+<tr>
+<td align=center valign=middle>
+<a href="../index.html">DART Documentation Main Index</a> </td>
+<td align=center valign=middle>
+<img src="../doc/html/Dartboard9.png" alt="DART project logo" height=50 width=100> </td>
+<td align=center valign=middle>
+<small><small>Subversion info for this html file: <br />
+<!-- version tag follows, do not edit -->$Id$ 
+</small></small> </td>
+</tr>
+</table> <br />
+<A HREF="#Overview">OVERVIEW</A> / 
+<A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#Modules">MODULES</A> /
-<A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 </center>
+</div>
 
-<H1>PROGRAM <em class=program>filter</em></H1>
-<small><P>Latest subversion revision tag:
-<!-- version tag follows, do not edit -->$Id$
-</P></small>
+<!--==================================================================-->
 
+<H1>PROGRAM filter</H1>
 <P>
    Main program for driving ensemble filter assimilations. 
 </P>
+
+<A NAME="Overview"></A>
+<HR>
+<H2>OVERVIEW</H2>
+
 <P>
    <em class=program>filter</em> is a Fortran 90 program, and provides a large
    number of options for controlling execution behavior and parameter configuration
@@ -43,7 +62,7 @@
     <LI>Until out of observations:
     <UL><LI>Run multiple copies of the model to update data states</LI>
         <LI>Assimilate all observations in the current time window</LI>
-        <LI>Repeat until out of observations</LI>
+        <LI>Repeat</LI>
     </UL></LI>
     <LI>Write out diagnostic files, restart files, 
         final observation sequence file</LI>
@@ -79,7 +98,7 @@
    Each model has a separate directory under DART/models, and under each model
    is a work directory where the code is compiled and can be run for testing.
    Generally when a full-size experiment is done the executables are copied
-   to a different location - e.g. scratch space on a large system - since the
+   to a different location - e.g. scratch space on a large filesystem - since the
    data files for 10s to 100s of copies of a model can get very large.
 </P>
 <P>
@@ -183,30 +202,12 @@ The detailed execution flow inside the filter program is:
 </P>
 
 <P>
-Optional namelist interface
+Namelist
 <A HREF="#Namelist"> <em class=code>&amp;filter_nml</em> </A>
-may be read from file <em class=file>input.nml</em>.
+will be read from file <em class=file>input.nml</em>.
 </P>
 
-<!--==================================================================-->
-
-<A NAME="Modules"></A>
-<HR>
-<H2>MODULES USED</H2>
-<PRE>
-types_mod
-obs_sequence_mod
-obs_def_mod
-time_manager_mod
-utilities_mod
-assim_model_mod
-assim_tools_mod
-obs_model_mod
-ensemble_manager_mod
-adaptive_inflate_mod
-mpi_utilities_mod
-smoother_mod
-</PRE>
+</P>
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST ====================-->
@@ -275,7 +276,7 @@ The namelist declaration is:
 <!-- Description -->
 
 <P>
-This namelist is always read from a file called <em class=file>input.nml</em>
+This namelist is always read from a file called <em class=file>input.nml</em>.
 It controls various aspects of filter. 
 </P>
 <P>
@@ -615,6 +616,28 @@ being for the posterior inflation.
 <br>
 
 <!--==================================================================-->
+<!-- Describe the modules used by this program.                       -->
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<HR>
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+obs_sequence_mod
+obs_def_mod
+time_manager_mod
+utilities_mod
+assim_model_mod
+assim_tools_mod
+obs_model_mod
+ensemble_manager_mod
+adaptive_inflate_mod
+mpi_utilities_mod
+smoother_mod
+</PRE>
+
+<!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
@@ -718,7 +741,7 @@ computed once is needed.
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br>
 This open source software is provided by UCAR, "as is",<br>
 without charge, subject to all terms of use at<br>
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
