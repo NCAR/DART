@@ -29,7 +29,7 @@ use time_manager_mod,     only : time_type, set_time, get_time, print_time,   &
                                  operator(<=), operator(>=)
 use ensemble_manager_mod, only : get_ensemble_time, ensemble_type
 use mpi_utilities_mod,    only : my_task_id, task_sync, task_count, block_task, &
-                                 sum_across_tasks
+                                 sum_across_tasks, shell_execute
 
 implicit none
 private
@@ -46,8 +46,10 @@ logical :: module_initialized  = .false.
 integer :: print_timestamps    = 0
 integer :: print_trace_details = 0
 
+logical :: debug = .false.   ! set to true to get more status msgs
+
 ! Module storage for writing error messages
-character(len = 129) :: errstring
+character(len = 129) :: errstring, errstring1, errstring2
 
 contains
 
@@ -288,7 +290,7 @@ character(len = 129)                                   :: system_string
 
 type(time_type) :: time_step, ens_time
 integer         :: is1, is2, id1, id2, my_num_state_copies, global_ens_index
-integer         :: i, control_unit, ic_file_unit, ud_file_unit
+integer         :: i, control_unit, ic_file_unit, ud_file_unit, rc
 integer         :: need_advance, any_need_advance
 
 
@@ -405,13 +407,20 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
          ! Arguments to advance model script are unique id and number of copies
          write(system_string, '(i10, 1x, i10)') my_task_id(), my_num_state_copies
         
+         if (debug) write(*,*) 'iam ', my_task_id(), ' ready to execute shell command'
+
          ! Issue a system command with arguments my_task, my_num_copies, and control_file
-         call system(trim(adv_ens_command)//' '//trim(system_string)//' '//trim(control_file_name))
+         rc = shell_execute(trim(adv_ens_command)//' '//trim(system_string)//' '//trim(control_file_name))
+         if (debug) write(*,*) 'iam ', my_task_id(), ' shell execute returns ', rc
+         if (debug) write(*,*) 'iam ', my_task_id(), ' checking existance of file ', trim(control_file_name)
       
          ! if control file is still here, the advance failed
          if(file_exist(control_file_name)) then
-           write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
-           call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
+           write(errstring, "(A)")'If advance script finishes ok it removes '//trim(control_file_name)
+           write(errstring1,"(A)")'It still exists, so 1+ members listed in that file failed to run'
+           write(errstring2,"(A)")'Check the output of the model or script to find the error.'
+           call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate, &
+                              text2=errstring1, text3=errstring2)
          endif
       endif
 
@@ -458,8 +467,11 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
 
       ! if control file is still here, the advance failed
       if(file_exist(control_file_name)) then
-         write(errstring,*)'control file for task ',my_task_id(),' still exists; model advance failed'
-         call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate)
+        write(errstring, "(A)")'If advance script finishes ok it removes '//trim(control_file_name)
+        write(errstring1,"(A)")'It still exists, so 1+ members listed in that file failed to run'
+        write(errstring2,"(A)")'Check the output of the model or script to find the error.'
+        call error_handler(E_ERR,'advance_state', errstring, source, revision, revdate, &
+                           text2=errstring1, text3=errstring2)
       endif
 
    else
