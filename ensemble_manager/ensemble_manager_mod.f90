@@ -831,10 +831,10 @@ integer,  allocatable :: var_list(:), copy_list(:)
 real(r8), allocatable :: transfer_temp(:)
 integer               :: num_copies, num_vars, my_num_vars, my_num_copies
 integer               :: max_num_vars, max_num_copies, num_copies_to_receive
-integer               :: sending_pe, recv_pe, k, sv, var, num_vars_to_send
+integer               :: sending_pe, recv_pe, k, sv, num_vars_to_send
 integer               :: global_ens_index
 
-! for now, only output if there is a label
+! only output if there is a label
 if (present(label)) then
    call timestamp_message('vars_to_copies start: '//label, alltasks=.true.)
 endif
@@ -909,7 +909,7 @@ end do RECEIVING_PE_LOOP
 ! Free up the temporary storage
 deallocate(var_list, transfer_temp, copy_list)
 
-! for now, only output if there is a label
+! only output if there is a label
 if (present(label)) then
    call timestamp_message('vars_to_copies   end: '//label, alltasks=.true.)
 endif
@@ -934,7 +934,7 @@ integer               :: sending_pe, recv_pe, k, sv, copy, num_copies_to_send
 integer               :: global_ens_index
 logical :: oldval
 
-! for now, only output if there is a label
+! only output if there is a label
 if (present(label)) then
    call timestamp_message('copies_to_vars start: '//label, alltasks=.true.)
 endif
@@ -1009,7 +1009,7 @@ end do RECEIVING_PE_LOOP
 ! Free up the temporary storage
 deallocate(var_list, transfer_temp, copy_list)
 
-! for now, only output if there is a label
+! only output if there is a label
 if (present(label)) then
    call timestamp_message('copies_to_vars   end: '//label, alltasks=.true.)
 endif
