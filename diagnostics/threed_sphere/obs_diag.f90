@@ -299,6 +299,7 @@ type(time_type) :: TimeMin, TimeMax    ! of the entire period of interest
 type(time_type) :: beg_time, end_time  ! of the particular bin
 type(time_type) :: binsep, binwidth, halfbinwidth 
 type(time_type) :: seqT1, seqTN        ! first,last time in entire observation sequence
+type(time_type) :: AllseqT1, AllseqTN  ! first,last time in ALL observation sequences
 type(time_type) :: obs_time, skip_time
 
 character(len = 129) :: ncName, locName, msgstring
@@ -719,6 +720,12 @@ ObsFileLoop : do ifile=1, 1000
    endif
    call get_obs_def(obsN,   obs_def)
    seqTN = get_obs_def_time(obs_def)
+
+   ! Capture a little information to assist in an error message if the 
+   ! namelist input does not intersect the observation sequence file.
+
+   if ( ifile == 1 ) AllseqT1 = seqT1
+                     AllseqTN = seqTN
 
    call print_time(seqT1,'First observation time',logfileunit)
    call print_time(seqTN,'Last  observation time',logfileunit)
@@ -1595,6 +1602,7 @@ write(*,*) '# poste DART QC 4 : ',sum(analy%NDartQC_4)
 write(*,*) '# poste DART QC 5 : ',sum(analy%NDartQC_5)
 write(*,*) '# poste DART QC 6 : ',sum(analy%NDartQC_6)
 write(*,*) '# poste DART QC 7 : ',sum(analy%NDartQC_7)
+write(*,*)
 
 write(logfileunit,*)
 write(logfileunit,*) '# observations used  : ',sum(obs_used_in_epoch)
@@ -1624,6 +1632,7 @@ write(logfileunit,*) '# poste DART QC 4 : ',sum(analy%NDartQC_4)
 write(logfileunit,*) '# poste DART QC 5 : ',sum(analy%NDartQC_5)
 write(logfileunit,*) '# poste DART QC 6 : ',sum(analy%NDartQC_6)
 write(logfileunit,*) '# poste DART QC 7 : ',sum(analy%NDartQC_7)
+write(logfileunit,*)
 
 if (Nidentity > 0) then
    write(*,*)'There were identity observations in this observation sequence file.'
@@ -1635,6 +1644,23 @@ if (Nidentity > 0) then
    write(logfileunit,*)'At present, obs_diag does not support the analysis of identity '
    write(logfileunit,*)'observations. In general, identity observation are explored with'
    write(logfileunit,*)'state space diagnostics, i.e. take a peek in the matlab directory'
+endif
+
+!----------------------------------------------------------------------
+! If the namelist input does not result in some observations, print
+! a little summary that may result in better user input.
+!----------------------------------------------------------------------
+
+if ( sum(obs_used_in_epoch) == 0 ) then
+
+   call print_date(AllseqT1,'First observation date')
+   call print_date( TimeMin,'First requested   date')
+   call print_date(AllseqTN,'Last  observation date')
+   call print_date( TimeMax,'Last  requested   date')
+
+   write(msgstring,*)'No observations in requested time bins.'
+   call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
+
 endif
 
 !----------------------------------------------------------------------
