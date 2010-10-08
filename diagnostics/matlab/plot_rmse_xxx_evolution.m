@@ -441,10 +441,10 @@ end
 [b,i,j] = unique(basenames);
 y     = cell(length(i),1);
 ydims = cell(length(i),1);
-for j = 1:length(i)
-   disp(sprintf('%2d is %s',j,basenames{j}))
-    y{j} = basenames{j};
-ydims{j} = basedims{j};
+for k = 1:length(i)
+   disp(sprintf('%2d is %s',k,basenames{i(k)}))
+    y{k} = basenames{i(k)};
+ydims{k} = basedims{i(k)};
 end
 
 

@@ -381,10 +381,10 @@ end
 y       = struct([]);
 ydims   = struct([]);
 
-for j = 1:length(i)
-   fprintf('%2d is %s\n',j,basenames{j})
-    y{j} = basenames{j};
-ydims{j} = basedims{j};
+for k = 1:length(i)
+   fprintf('%2d is %s\n',k,basenames{i(k)})
+    y{k} = basenames{i(k)};
+ydims{k} = basedims{i(k)};
 end
 
 
