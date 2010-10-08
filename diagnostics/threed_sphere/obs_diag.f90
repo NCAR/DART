@@ -23,7 +23,7 @@ program obs_diag
 ! 'priorspred' should really be 'priorvar' since you have to accumulate variances 
 ! the math is correct as it is, but the variable names don't make it easy ...
 
-use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_R4
+use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_R4, metadatalength
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
                              get_obs_from_key, get_obs_def, get_copy_meta_data, &
                              get_obs_time_range, get_time_range_keys, get_num_obs, &
@@ -56,6 +56,7 @@ use    utilities_mod, only : open_file, close_file, register_module, &
                              next_file, get_next_filename, find_textfile_dims, &
                              file_to_text
 use         sort_mod, only : sort
+use   random_seq_mod, only : random_seq_type, init_random_seq, several_random_gaussians
 
 use typeSizes
 use netcdf
@@ -113,6 +114,12 @@ integer :: prior_spread_index, posterior_spread_index
 integer :: flavor, wflavor ! THIS IS THE (global) 'KIND' in the obs_def_mod list. 
 integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
 integer :: num_obs_kinds
+
+! variables used primarily/exclusively for the rank histogram
+integer :: ens_size, rank_histogram_bin
+type(random_seq_type) :: ran_seq
+real(r8) :: obs_error_variance
+
 character(len=129) :: obs_seq_read_format
 logical :: pre_I_format
 logical :: only_print_locations = .false.
@@ -122,8 +129,9 @@ real(r8), dimension(1) :: obs
 real(r8) :: obs_err_var
 
 integer,  allocatable, dimension(:) :: keys
+integer,  allocatable, dimension(:) :: ens_copy_index
 
-logical :: out_of_range, is_there_one, keeper
+logical :: out_of_range, is_there_one, keeper, create_rank_histogram
 
 !---------------------------------------------------------------------
 ! variables associated with quality control
@@ -221,6 +229,7 @@ type TLRV_type
    real(r8), dimension(:,:,:,:), pointer :: observation, ens_mean
    integer,  dimension(:,:,:,:), pointer :: NDartQC_0, NDartQC_1, NDartQC_2, NDartQC_3
    integer,  dimension(:,:,:,:), pointer :: NDartQC_4, NDartQC_5, NDartQC_6, NDartQC_7
+   integer,  dimension(:,:,:,:,:), pointer :: hist_bin
 end type TLRV_type
 
 type LRV_type
@@ -379,6 +388,10 @@ if (verbose) then
    enddo
 endif
 
+!----------------------------------------------------------------------
+! SetTime rectifies user input and the final binning sequence.
+!----------------------------------------------------------------------
+
 call SetTime(beg_time, end_time, binsep, binwidth, halfbinwidth, &
      TimeMin, TimeMax, Nepochs, bincenter, binedges, epoch_center, epoch_edges, &
      obs_used_in_epoch)
@@ -398,7 +411,7 @@ Nlevels = maxval((/ Nplevels, Nhlevels, Nmlevels /))
 
 write(*,*)'level dimension can be ',Nlevels
 
-allocate(obs_seq_filenames(Nepochs*4))
+allocate(obs_seq_filenames(Nepochs*40))
 obs_seq_filenames = 'null'
 
 allocate(guess%rmse(       Nepochs, Nlevels, Nregions, num_obs_kinds), &
@@ -774,9 +787,37 @@ ObsFileLoop : do ifile=1, 1000
    ! You can still plot locations, but that's it.
    !--------------------------------------------------------------------
 
+   ! Make sure this observation sequence file has the same number of
+   ! ensemble members as 'the last one' ...
+
+   ens_size = GetEnsSize()
+
+   if (ens_size > 0) then
+      if (allocated(ens_copy_index)) then
+         if (size(ens_copy_index) /= ens_size) then
+            write(msgstring,'(''expecting '',i3,'' ensemble members, got '',i3)') &
+                                       size(ens_copy_index), ens_size
+            call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
+         endif
+      else
+         ! This should happen exactly once, if at all.
+         allocate(guess%hist_bin( Nepochs, Nlevels, Nregions, num_obs_kinds, ens_size+1))
+         allocate(ens_copy_index(ens_size))
+         guess%hist_bin    = 0
+         call init_random_seq(ran_seq, seed=23)
+      endif
+      create_rank_histogram = .true.
+   else
+      write(*,*) 'Cannot create rank histogram.'
+      create_rank_histogram = .false.
+   endif
+
+   ! Each observation sequence file can have its copies in any order.
+
    call SetIndices( obs_index, qc_index, dart_qc_index, &
             prior_mean_index,   posterior_mean_index,   &
-            prior_spread_index, posterior_spread_index  )
+            prior_spread_index, posterior_spread_index, &
+            ens_copy_index )
 
    if ( any( (/ prior_mean_index,     prior_spread_index, &
             posterior_mean_index, posterior_spread_index /) < 0) ) then
@@ -859,9 +900,9 @@ ObsFileLoop : do ifile=1, 1000
          if(vert_is_pressure(obs_loc)) obslevel = 0.01_r8 * obsloc3(3)
 
          ! same sort of thing for the scale factors 
-         obs_err_var = get_obs_def_error_variance(obs_def) * &
-                       scale_factor(flavor) * &
-                       scale_factor(flavor)
+         obs_error_variance = get_obs_def_error_variance(obs_def)
+         obs_err_var = obs_error_variance * &
+                       scale_factor(flavor) * scale_factor(flavor)
 
          !--------------------------------------------------------------
          ! Check consistency of the vertical coordinate system 
@@ -1049,6 +1090,17 @@ ObsFileLoop : do ifile=1, 1000
          endif
 
          !--------------------------------------------------------------
+         ! Calculate the rank histogram bin (once!) if needed,
+         ! even if the QC value is bad.
+         !--------------------------------------------------------------
+
+         if ( create_rank_histogram ) then
+            call get_obs_values(observation, copyvals)
+            rank_histogram_bin = Rank_Histogram(copyvals, obs_index, &
+                 obs_error_variance, ens_size, ens_copy_index)
+         endif
+
+         !--------------------------------------------------------------
          ! We have Nregions of interest
          !--------------------------------------------------------------
 
@@ -1136,7 +1188,8 @@ ObsFileLoop : do ifile=1, 1000
             !-----------------------------------------------------------
 
             call Bin4D(qc_integer, iepoch, level_index, iregion, flavor, &
-                     obs(1), obs_err_var, pr_mean, pr_sprd, po_mean, po_sprd)
+                     obs(1), obs_err_var, pr_mean, pr_sprd, po_mean, po_sprd, &
+                     rank_histogram_bin)
 
             !-----------------------------------------------------------
             ! Additional work for horizontal wind (given U,V)
@@ -1183,6 +1236,7 @@ ObsFileLoop : do ifile=1, 1000
                   call Bin4D(maxval( (/qc_integer, U_qc/) ), &
                        iepoch, level_index, iregion, wflavor, &
                        obs(1),  obs_err_var,   pr_mean,   pr_sprd,   po_mean,   po_sprd,  &
+                       rank_histogram_bin, &
                        U_obs, U_obs_err_var, U_pr_mean, U_pr_sprd, U_po_mean, U_po_sprd   )
                endif
 
@@ -1603,6 +1657,9 @@ deallocate(guess%rmse,        guess%bias,      guess%spread,    guess%totspread,
            guess%NDartQC_0,   guess%NDartQC_1, guess%NDartQC_2, guess%NDartQC_3, &
            guess%NDartQC_4,   guess%NDartQC_5, guess%NDartQC_6, guess%NDartQC_7) 
 
+if ( create_rank_histogram ) &
+deallocate(guess%hist_bin, ens_copy_index)
+
 deallocate(analy%rmse,        analy%bias,      analy%spread,    analy%totspread, &
            analy%observation, analy%ens_mean,  analy%Nposs,     analy%Nused,     &
            analy%NbigQC,      analy%NbadIZ,    analy%NbadUV,    analy%NbadLV,    &
@@ -1974,17 +2031,48 @@ CONTAINS
 
 
 
-   Subroutine  SetIndices( obs_index, qc_index, dart_qc_index,        &
-                           prior_mean_index,   posterior_mean_index,  &
-                           prior_spread_index, posterior_spread_index ) 
+   Function GetEnsSize()
+!-----------------------------------------------------------------------
+!  Loop over all the metadata to count the number of ensemble members
+!  available in the observation sequence file. We need this count to 
+!  allocate space for the rank histogram information. Since the rank
+!  histogram will be created for the priors only ...
+!-----------------------------------------------------------------------
 
-   integer, intent(out) :: obs_index, qc_index, dart_qc_index, &
-                           prior_mean_index,   posterior_mean_index, &
-                           prior_spread_index, posterior_spread_index
+   integer :: GetEnsSize
 
    ! Using 'seq' from global scope
 
    integer :: i
+
+   GetEnsSize = 0
+
+   MetaDataLoop : do i=1, get_num_copies(seq)
+      if(index(get_copy_meta_data(seq,i), 'prior ensemble member') > 0) &
+                   GetEnsSize = GetEnsSize + 1
+   enddo MetaDataLoop
+
+   write(msgstring,'(''There are '',i4,'' ensemble members.'')') GetEnsSize
+   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+
+   end Function GetEnsSize
+
+
+
+   Subroutine  SetIndices( obs_index, qc_index, dart_qc_index,        &
+                           prior_mean_index,   posterior_mean_index,  &
+                           prior_spread_index, posterior_spread_index,&
+                           ens_copy_index )
+
+   integer, intent(out) :: obs_index, qc_index, dart_qc_index, &
+                           prior_mean_index,   posterior_mean_index, &
+                           prior_spread_index, posterior_spread_index
+   integer, dimension(:), intent(out) :: ens_copy_index
+
+   ! Using 'seq' from global scope
+
+   integer :: i, ens_size, ens_count
+   character(len=metadatalength) :: metadata
 
    obs_index              = -1
    prior_mean_index       = -1
@@ -1994,17 +2082,25 @@ CONTAINS
    qc_index               = -1
    dart_qc_index          = -1
 
+   ens_size  = size(ens_copy_index)
+   ens_count = 0
+
    MetaDataLoop : do i=1, get_num_copies(seq)
-      if(index(get_copy_meta_data(seq,i), 'observation'              ) > 0) &
-                          obs_index = i
-      if(index(get_copy_meta_data(seq,i), 'prior ensemble mean'      ) > 0) &
-                   prior_mean_index = i
-      if(index(get_copy_meta_data(seq,i), 'posterior ensemble mean'  ) > 0) &
-               posterior_mean_index = i
-      if(index(get_copy_meta_data(seq,i), 'prior ensemble spread'    ) > 0) &
-                 prior_spread_index = i
-      if(index(get_copy_meta_data(seq,i), 'posterior ensemble spread') > 0) &
-             posterior_spread_index = i
+
+      metadata = adjustl(get_copy_meta_data(seq,i))
+
+      if(index(metadata,'observation'              ) > 0)              obs_index = i
+      if(index(metadata,'prior ensemble mean'      ) > 0)       prior_mean_index = i
+      if(index(metadata,'posterior ensemble mean'  ) > 0)   posterior_mean_index = i
+      if(index(metadata,'prior ensemble spread'    ) > 0)     prior_spread_index = i
+      if(index(metadata,'posterior ensemble spread') > 0) posterior_spread_index = i
+      if(index(metadata,'posterior ensemble spread') > 0) posterior_spread_index = i
+
+      if(index(metadata, 'prior ensemble member') > 0) then
+         ens_count = ens_count + 1
+         ens_copy_index(ens_count) = i
+      endif
+
    enddo MetaDataLoop
 
    ! Hmnnn ... sometimes the first QC field is 'Quality Control' or 'NCEP QC index'
@@ -2589,7 +2685,7 @@ CONTAINS
 
 
    Subroutine Bin4D(iqc, iepoch, ilevel, iregion, flavor, &
-                obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd, &
+                obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd, rank, &
                   uobs, uobserrvar, uprmean, uprsprd, upomean, uposprd)
    !----------------------------------------------------------------------
    ! The 'guess' and 'analysis' structures are globally scoped.
@@ -2610,8 +2706,9 @@ CONTAINS
    ! spread.  Since the observation error is not included as output from 
    ! obs_diag, it is not possible to compute this quantity now.
 
-   integer,  intent(in) :: iqc, iepoch, ilevel, iregion, flavor
+   integer,  intent(in)           :: iqc, iepoch, ilevel, iregion, flavor
    real(r8), intent(in)           :: obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd
+   integer,  intent(in)           :: rank
    real(r8), intent(in), optional ::   uobs, uobserrvar, uprmean, uprsprd, upomean, uposprd
 
    real(r8) :: priorsqerr      ! PRIOR     Squared Error
@@ -2710,6 +2807,14 @@ CONTAINS
       call RPE(analy%totspread(  iepoch,ilevel,iregion,flavor), postspredplus)
 
    endif
+
+   ! The rank histogram binning is a bit of a peculiar situation.
+   ! Only the prior is of interest ... so DART QCs of 0 1 2 3 are 'good'.
+   ! There is some debate about whether we should be considering the 
+   ! 'outlier' observations (DART QC == 7) - perhaps a namelist? FIXME
+
+   if ( create_rank_histogram .and. any(iqc == (/ 0, 1, 2, 3, 7 /)) )  &
+      call IPE(guess%hist_bin(iepoch,ilevel,iregion,flavor,rank), 1)
 
    end Subroutine Bin4D
 
@@ -2861,6 +2966,7 @@ CONTAINS
    integer :: HlevIntDimID, HlevIntVarID
    integer :: MlevIntDimID, MlevIntVarID
    integer ::  BoundsDimID,  BoundsVarID  
+   integer ::    RankDimID,    RankVarID  
    integer ::  StringDimID
 
    integer :: TimeBoundsVarID, RegionNamesVarID
@@ -2919,8 +3025,9 @@ CONTAINS
               'definition : sqrt(sum[var(u) + var(v)]/nobs)' ), &
               'WriteNetCDF', 'put_att wind spread '//trim(fname))
 
-
+   !----------------------------------------------------------------------------
    ! write all namelist quantities 
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'first_bin_center', first_bin_center ), &
               'WriteNetCDF', 'put_att first_bin_center '//trim(fname))
@@ -2947,7 +3054,10 @@ CONTAINS
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'latlim2', latlim2(1:Nregions) ), &
               'WriteNetCDF', 'put_att latlim2 '//trim(fname))
 
+   !----------------------------------------------------------------------------
    ! write all observation sequence files used
+   !----------------------------------------------------------------------------
+
    FILEloop : do i = 1,SIZE(obs_seq_filenames)
 
      indx1 = index(obs_seq_filenames(i),'null')
@@ -2964,7 +3074,10 @@ CONTAINS
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'NumIdentityObs', Nidentity ), &
               'WriteNetCDF', 'put_att identity '//trim(fname))
 
+   !----------------------------------------------------------------------------
    ! write all 'known' observation types
+   !----------------------------------------------------------------------------
+
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'comment', &
               'All known observation types follow. &
               &Also see ObservationTypes variable.' ), &
@@ -3031,7 +3144,15 @@ CONTAINS
               name='stringlength', len = stringlength, dimid = StringDimID), &
               'WriteNetCDF', 'stringlength:def_dim '//trim(fname))
 
+   if (create_rank_histogram) then
+   call nc_check(nf90_def_dim(ncid=ncid, &
+              name='rank_bins', len = ens_size+1,  dimid = RankDimID), &
+              'WriteNetCDF', 'rank_bins:def_dim '//trim(fname))
+   endif
+
+   !----------------------------------------------------------------------------
    ! Define the types of derived quantities - aka - 'copies'
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='copy', xtype=nf90_int, &
              dimids=CopyDimID, varid=CopyVarID), &
@@ -3039,7 +3160,9 @@ CONTAINS
    call nc_check(nf90_put_att(ncid, CopyVarID, 'explanation', 'see CopyMetaData'), &
              'WriteNetCDF', 'copy:explanation')
 
+   !----------------------------------------------------------------------------
    ! Define the observation types - needed to be a coordinate variable
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='obstypes', xtype=nf90_int, &
              dimids=TypesDimID, varid=TypesVarID), &
@@ -3047,7 +3170,9 @@ CONTAINS
    call nc_check(nf90_put_att(ncid, TypesVarID, 'explanation', 'see ObservationTypes'), &
              'WriteNetCDF', 'types:explanation')
 
+   !----------------------------------------------------------------------------
    ! Define the regions coordinate variable and attributes
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='region', xtype=nf90_int, &
              dimids=RegionDimID, varid=RegionVarID), 'WriteNetCDF', 'region:def_var')
@@ -3058,7 +3183,9 @@ CONTAINS
    call nc_check(nf90_put_att(ncid, RegionVarID, 'valid_range', (/1,Nregions/)), &
              'WriteNetCDF', 'region:valid_range')
 
+   !----------------------------------------------------------------------------
    ! Define the model level coordinate variable and attributes
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='mlevel', xtype=nf90_int, &
              dimids=MlevelDimID, varid=MlevelVarID), 'WriteNetCDF', 'mlevel:def_var')
@@ -3072,7 +3199,9 @@ CONTAINS
               (/ minval(mlevel(1:Nmlevels)), maxval(mlevel(1:Nmlevels)) /)), &
              'WriteNetCDF', 'mlevel:valid_range')
 
+   !----------------------------------------------------------------------------
    ! Define the model level interface coordinate variable and attributes
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='mlevel_edges', xtype=nf90_real, &
              dimids=MlevIntDimID, varid=MlevIntVarID), 'WriteNetCDF', 'mlevel_edges:def_var')
@@ -3086,7 +3215,9 @@ CONTAINS
       (/ minval(mlevel_edges(1:Nmlevels+1)), maxval(mlevel_edges(1:Nmlevels+1)) /)), &
              'WriteNetCDF', 'mlevel_edges:valid_range')
 
+   !----------------------------------------------------------------------------
    ! Define the pressure level coordinate variable and attributes
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='plevel', xtype=nf90_real, &
              dimids=PlevelDimID, varid=PlevelVarID), 'WriteNetCDF', 'plevel:def_var')
@@ -3100,7 +3231,9 @@ CONTAINS
       (/ minval(plevel(1:Nplevels)), maxval(plevel(1:Nplevels)) /)), &
              'WriteNetCDF', 'plevel:valid_range')
 
+   !----------------------------------------------------------------------------
    ! Define the pressure level interface coordinate variable and attributes
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='plevel_edges', xtype=nf90_real, &
              dimids=PlevIntDimID, varid=PlevIntVarID), 'WriteNetCDF', 'plevel_edges:def_var')
@@ -3114,7 +3247,9 @@ CONTAINS
       (/ minval(plevel_edges(1:Nplevels+1)), maxval(plevel_edges(1:Nplevels+1)) /)), &
              'WriteNetCDF', 'plevel_edges:valid_range')
 
+   !----------------------------------------------------------------------------
    ! Define the height level coordinate variable and attributes
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='hlevel', xtype=nf90_real, &
            dimids=HlevelDimID, varid=HlevelVarID), 'WriteNetCDF', 'hlevel:def_var')
@@ -3128,7 +3263,9 @@ CONTAINS
       (/ minval(hlevel(1:Nhlevels)), maxval(hlevel(1:Nhlevels)) /)), &
              'WriteNetCDF', 'hlevel:valid_range')
 
+   !----------------------------------------------------------------------------
    ! Define the height level interface coordinate variable and attributes
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='hlevel_edges', xtype=nf90_real, &
            dimids=HlevIntDimID, varid=HlevIntVarID), 'WriteNetCDF', 'hlevel_edges:def_var')
@@ -3142,14 +3279,18 @@ CONTAINS
       (/ minval(hlevel_edges(1:Nhlevels+1)), maxval(hlevel_edges(1:Nhlevels+1)) /)), &
              'WriteNetCDF', 'hlevel_edges:valid_range')
 
+   !----------------------------------------------------------------------------
    ! Define 'bounds' dimension
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='bounds', xtype=nf90_int, &
              dimids=BoundsDimID, varid=BoundsVarID), 'WriteNetCDF', 'bounds:def_var')
    call nc_check(nf90_put_att(ncid, BoundsVarID, 'valid_range', (/1,2/)), &
              'WriteNetCDF', 'bounds:valid_range')
 
+   !----------------------------------------------------------------------------
    ! Define the time coordinate variable and attributes
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='time', xtype=nf90_double, &
              dimids=TimeDimID, varid=TimeVarID), 'WriteNetCDF', 'time:def_var')
@@ -3169,7 +3310,9 @@ CONTAINS
              (/ epoch_center(1), epoch_center(Nepochs) /)), &
              'WriteNetCDF', 'time:valid_range')
 
+   !----------------------------------------------------------------------------
    ! Define the time edges coordinate variable and attributes
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='time_bounds', xtype=nf90_double, &
              dimids=(/ BoundsDimID, TimeDimID/), varid=TimeBoundsVarID), &
@@ -3184,7 +3327,9 @@ CONTAINS
              (/ epoch_edges(1,1), epoch_edges(2,Nepochs) /)), &
              'WriteNetCDF', 'time_bounds:valid_range')
 
-   ! Define the regions variable ... an unusual coordinate variable IMHO
+   !----------------------------------------------------------------------------
+   ! Define the unusual coordinate variables
+   !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_var(ncid=ncid, name='region_names', xtype=nf90_char, &
              dimids=(/ StringDimID, RegionDimID /), varid=RegionNamesVarID), &
@@ -3207,7 +3352,20 @@ CONTAINS
          'table relating integer to observation type string'), &
              'WriteNetCDF', 'typesmeta:comment')
 
+   if ( create_rank_histogram ) then
+   call nc_check(nf90_def_var(ncid=ncid, name='rank_bins', xtype=nf90_int, &
+             dimids=(/ RankDimID /), varid=RankVarID), &
+             'WriteNetCDF', 'rank_bins:def_var')
+   call nc_check(nf90_put_att(ncid, RankVarID, 'long_name', 'rank histogram bins'), &
+             'WriteNetCDF', 'rank_bins:long_name')
+   call nc_check(nf90_put_att(ncid, RankVarID, 'comment', &
+         'position of the observation among the sorted noisy ensemble members'), &
+             'WriteNetCDF', 'rank_bins:comment')
+   endif
+
+   !----------------------------------------------------------------------------
    ! Set nofill mode - supposed to be performance gain
+   !----------------------------------------------------------------------------
  
    call nc_check(nf90_set_fill(ncid, NF90_NOFILL, i),  &
             'obs_diag:WriteNetCDF', 'set_nofill '//trim(fname))
@@ -3215,6 +3373,7 @@ CONTAINS
    !----------------------------------------------------------------------------
    ! Leave define mode so we can fill
    !----------------------------------------------------------------------------
+
    call nc_check(nf90_enddef(ncid), 'WriteNetCDF', 'enddef '//trim(fname))
 
    !----------------------------------------------------------------------------
@@ -3271,7 +3430,11 @@ CONTAINS
    !----------------------------------------------------------------------------
 
    if (verbose) write(*,*)'summary for Priors of time-level-region vars' 
-   ierr = WriteTLRV(ncid, guess,    TimeDimID, CopyDimID, RegionDimID)
+   if ( create_rank_histogram ) then
+      ierr = WriteTLRV(ncid, guess, TimeDimID, CopyDimID, RegionDimID, RankDimID)
+   else
+      ierr = WriteTLRV(ncid, guess, TimeDimID, CopyDimID, RegionDimID)
+   endif
    if (verbose) write(*,*)'summary for Posteriors of time-level-region vars' 
    ierr = WriteTLRV(ncid, analy,    TimeDimID, CopyDimID, RegionDimID)
    ierr = WriteLRV( ncid, guessAVG,            CopyDimID, RegionDimID)
@@ -3287,17 +3450,20 @@ CONTAINS
    end Subroutine WriteNetCDF
 
 
-   Function WriteTLRV(ncid, vrbl, TimeDimID, CopyDimID, RegionDimID)
-   integer,         intent(in) :: ncid
-   type(TLRV_type), intent(in) :: vrbl
-   integer,         intent(in) :: TimeDimID, CopyDimID, RegionDimID
+   Function WriteTLRV(ncid, vrbl, TimeDimID, CopyDimID, RegionDimID, RankDimID)
+   integer,           intent(in) :: ncid
+   type(TLRV_type),   intent(in) :: vrbl
+   integer,           intent(in) :: TimeDimID, CopyDimID, RegionDimID
+   integer, optional, intent(in) :: RankDimID
    integer :: WriteTLRV
 
    integer :: nobs, Nlevels, ivar, itime, ilevel, iregion
+   integer :: Nbins, irank
    character(len=40) :: string1
 
-   integer :: VarID, LevelDimID, oldmode
-   real(r4), allocatable, dimension(:,:,:,:) :: chunk
+   integer :: VarID, VarID2, LevelDimID, oldmode
+   real(r4), allocatable, dimension(:,:,:,:) :: rchunk
+   integer,  allocatable, dimension(:,:,:,:) :: ichunk
 
    FLAVORS : do ivar = 1,num_obs_kinds
 
@@ -3314,34 +3480,34 @@ CONTAINS
 
       Nlevels = FindVertical(ncid, ivar, LevelDimID)
 
-      allocate(chunk(Nregions,Nlevels,Ncopies,Nepochs))
-      chunk = MISSING_R4
+      allocate(rchunk(Nregions,Nlevels,Ncopies,Nepochs))
+      rchunk = MISSING_R4
 
       do itime   = 1,Nepochs
       do ilevel  = 1,Nlevels
       do iregion = 1,Nregions
 
-         chunk(iregion,ilevel, 1,itime) = vrbl%Nposs(      itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 2,itime) = vrbl%Nused(      itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 3,itime) = vrbl%NbigQC(     itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 4,itime) = vrbl%NbadIZ(     itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 5,itime) = vrbl%NbadUV(     itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 6,itime) = vrbl%NbadLV(     itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 7,itime) = vrbl%rmse(       itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 8,itime) = vrbl%bias(       itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel, 9,itime) = vrbl%spread(     itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,10,itime) = vrbl%totspread(  itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,11,itime) = vrbl%NbadDartQC( itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,12,itime) = vrbl%observation(itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,13,itime) = vrbl%ens_mean(   itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,14,itime) = vrbl%NDartQC_0(  itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,15,itime) = vrbl%NDartQC_1(  itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,16,itime) = vrbl%NDartQC_2(  itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,17,itime) = vrbl%NDartQC_3(  itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,18,itime) = vrbl%NDartQC_4(  itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,19,itime) = vrbl%NDartQC_5(  itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,20,itime) = vrbl%NDartQC_6(  itime,ilevel,iregion,ivar)
-         chunk(iregion,ilevel,21,itime) = vrbl%NDartQC_7(  itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel, 1,itime) = vrbl%Nposs(      itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel, 2,itime) = vrbl%Nused(      itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel, 3,itime) = vrbl%NbigQC(     itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel, 4,itime) = vrbl%NbadIZ(     itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel, 5,itime) = vrbl%NbadUV(     itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel, 6,itime) = vrbl%NbadLV(     itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel, 7,itime) = vrbl%rmse(       itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel, 8,itime) = vrbl%bias(       itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel, 9,itime) = vrbl%spread(     itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel,10,itime) = vrbl%totspread(  itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel,11,itime) = vrbl%NbadDartQC( itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel,12,itime) = vrbl%observation(itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel,13,itime) = vrbl%ens_mean(   itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel,14,itime) = vrbl%NDartQC_0(  itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel,15,itime) = vrbl%NDartQC_1(  itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel,16,itime) = vrbl%NDartQC_2(  itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel,17,itime) = vrbl%NDartQC_3(  itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel,18,itime) = vrbl%NDartQC_4(  itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel,19,itime) = vrbl%NDartQC_5(  itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel,20,itime) = vrbl%NDartQC_6(  itime,ilevel,iregion,ivar)
+         rchunk(iregion,ilevel,21,itime) = vrbl%NDartQC_7(  itime,ilevel,iregion,ivar)
 
       enddo
       enddo
@@ -3365,12 +3531,45 @@ CONTAINS
       call nc_check(nf90_set_fill(ncid, NF90_NOFILL, oldmode),  &
               'WriteTLRV', 'set_nofill '//trim(vrbl%string))
 
+      ! The rank histogram has no 'copy' dimension, so it must be handled differently.
+
+      if (present(RankDimID)) then
+
+         string1 = trim(adjustl(str1))//'_'//trim(adjustl(vrbl%string))//'_RankHist'
+         Nbins   = size(vrbl%hist_bin,5)
+
+         allocate(ichunk(Nregions,Nlevels,Nbins,Nepochs))
+         ichunk = 0
+
+         do itime   = 1,Nepochs
+         do ilevel  = 1,Nlevels
+         do iregion = 1,Nregions
+         do irank   = 1,Nbins
+
+         ichunk(iregion,ilevel,irank,itime) = vrbl%hist_bin(itime,ilevel,iregion,ivar,irank)
+
+         enddo
+         enddo
+         enddo
+         enddo
+
+         call nc_check(nf90_def_var(ncid, name=string1, xtype=nf90_int, &
+                dimids=(/ RegionDimID, LevelDimID, RankDimID, TimeDimID /), &
+                varid=VarID2), 'WriteTLRV', 'rank_hist:def_var')
+
+      endif
+
       call nc_check(nf90_enddef(ncid), 'WriteTLRV', 'enddef ')
 
-      call nc_check(nf90_put_var(ncid, VarID, chunk ), &
-              'WriteTLRV', 'time_bounds:put_var')
+      call nc_check(nf90_put_var(ncid, VarID, rchunk ), &
+              'WriteTLRV', 'realchunk:put_var')
+      deallocate(rchunk)
 
-      deallocate(chunk)
+      if (present(RankDimID)) then
+         call nc_check(nf90_put_var(ncid, VarID2, ichunk ), &
+                 'WriteTLRV', 'intchunk:put_var')
+         deallocate(ichunk)
+      endif
 
    enddo FLAVORS
 
@@ -3648,5 +3847,80 @@ CONTAINS
    endif
 
    end Subroutine ObsLocationsExist
+
+
+
+   Function Rank_Histogram(copyvalues, obs_index, &
+                       error_variance, ens_size, ens_copy_index ) result(rank) 
+
+   ! Calculates the bin/rank
+   ! We don't care about the QC value. If the ob wasn't assimilated
+   ! the bin is meaningless.
+
+   real(r8),dimension(:), intent(in)  :: copyvalues
+   integer,               intent(in)  :: obs_index
+   real(r8),              intent(in)  :: error_variance
+   integer,               intent(in)  :: ens_size
+   integer, dimension(:), intent(in)  :: ens_copy_index
+   integer                            :: rank
+
+   ! Local Variables
+
+   real(r8)                      :: obsvalue, mean, stddev
+   real(r8), dimension(ens_size) :: ensemble_values
+   real(r8), dimension(ens_size) :: sampling_noise
+
+   ! Grab the observation value from the myriad copy values.
+
+   obsvalue = copyvalues(obs_index)
+   mean     = 0.0_r8
+   stddev   = sqrt(error_variance)
+
+   ! Grab the ensemble member values from the myriad copy values.
+   ! It should be noted that the ensemble values here WILL INCLUDE the 
+   ! application of any prior inflation value ...
+
+   do i = 1,ens_size
+      ensemble_values(i) = copyvalues(ens_copy_index(i)) 
+   enddo 
+
+   ! Create an array of 'observation error' ~ N(0,sigma) 
+   ! ran_seq is 'global' and has been initialized already  
+
+   call several_random_gaussians(ran_seq, mean, stddev, ens_size, sampling_noise)
+
+   ! Add the 'sampling noise' to the ensemble values, 
+   ! sort, and find the rank of the observation. Simple.
+
+   ensemble_values = sort(ensemble_values + sampling_noise)
+ ! ensemble_values = sort(ensemble_values) ! DEBUG - U-shaped valley, here we come.
+
+   rank = 0
+   RankLoop : do i = 1,ens_size
+
+      if ( obsvalue <= ensemble_values(i) ) then
+         rank = i
+         exit RankLoop
+      endif
+
+   enddo RankLoop
+
+   if (rank == 0) then ! ob is larger than largest ensemble member.
+     rank = ens_size + 1 
+   endif
+
+   ! DEBUG block
+
+   if ( 2 == 1 )  then
+      write(*,*)'observation error variance is ',error_variance
+      write(*,*)'observation          value is ',obsvalue
+      write(*,*)'observation           rank is ',rank
+      write(*,*)'noisy ensemble values are '
+      write(*,*)ensemble_values
+      write(*,*)
+   endif
+
+   end Function Rank_Histogram
+
 
 end program obs_diag
