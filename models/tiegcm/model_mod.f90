@@ -17,7 +17,7 @@ module model_mod
 !------------------------------------------------------------------
 
 ! DART Modules
-use        types_mod, only : r8, digits12
+use        types_mod, only : r8, digits12, missing_r8
 use time_manager_mod, only : time_type, set_calendar_type, set_time_missing, &
                              set_time, get_time, print_time, &
                              set_date, get_date, print_date, & 
@@ -383,11 +383,8 @@ if(istatus /= 1) then
    end do
    obs_val = lat_fract * a(2) + (1.0 - lat_fract) * a(1)
 else
-   obs_val = 0.
+   obs_val = missing_r8
 endif
-
-!write(11,*,access='APPEND') lon, lat, lon_fract, lat_fract, a(1), a(2), obs_val
-!print*, 'model_interpolate', lon, lat, height,obs_val
 
 
 end subroutine model_interpolate
@@ -460,7 +457,6 @@ end if
 
 val = exp(frac_lev * log(val_bottom)  +  (1.0 - frac_lev) * log(val_top))
 
-!write(11,*,access='APPEND') lat_index, lon_index, lev_top, lev_bottom, frac_lev, val_top, val_bottom, val
 
 end subroutine get_val
 
