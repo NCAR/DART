@@ -24,8 +24,7 @@ function plotdat = plot_profile(fname,copystring)
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
-% $URL:
-% https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_profile.m $
+% $URL$
 % $Id$
 % $Revision$
 % $Date$

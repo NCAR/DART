@@ -43,10 +43,10 @@ function plotdat = plot_rank_histogram(fname, timeindex, varargin)
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % <next few lines under version control, do not edit>
-% $URL: $
-% $Id: $
-% $Revision: $
-% $Date: $
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
 if nargin == 2
    nvars = 0;
@@ -289,7 +289,8 @@ function myplot(plotdat)
    % Plot 
    
    subplot(plotdat.nregions,1,plotdat.region);
-   bar(plotdat.rank_hist);
+   bar(plotdat.rank_hist, 1.0);
+   set(gca,'TickDir','out')
 
    axlims = axis;
    axlims = [0 plotdat.Nrhbins+1 0 axlims(4)];
@@ -297,6 +298,7 @@ function myplot(plotdat)
 
    h = text(plotdat.Nrhbins/2, 0.9*axlims(4),plotdat.myregion);
    set(h,'FontSize',14,'FontWeight','Bold')
+   set(h,'HorizontalAlignment','center')
 
    xlabel({'Observation Rank (among ensemble members)',obsstring})
    ylabel('count')
@@ -331,7 +333,7 @@ else
    string1 = sprintf('data file: %s',fullname);
 end
 
-h = text(0.0, 0.5, string1);
+h = text(0.0, 0.0, string1);
 set(h,'HorizontalAlignment','center', ...
       'VerticalAlignment','middle',...
       'Interpreter','none',...
