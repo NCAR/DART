@@ -34,9 +34,10 @@
 #BSUB -J filter
 #BSUB -o filter.%J.log
 #BSUB -P 35071364
-#BSUB -q debug
-#BSUB -n 4
-#BSUB -W 2:00
+#BSUB -q standby
+#BSUB -n 64
+#BSUB -R "span[ptile=64]"
+#BSUB -W 2:30
 #BSUB -N -u ${USER}@ucar.edu
 
 #----------------------------------------------------------------------
@@ -145,7 +146,6 @@ set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28/initial/filter
 
  ${COPY} ${TIEGCMDIR}/tiegcm-nompi                  tiegcm
 #${COPY} ${TIEGCMDIR}/tiegcm                        .
- ${COPY} ${TIEGCMDIR}/tiegcm.nml                    .
 
 #-----------------------------------------------------------------------------
 # Get the tiegcm input state ... for this experiment, we generated the ensemble by: 
@@ -176,10 +176,12 @@ while ( $i <= $NUM_ENS )
   set darticname  = `printf "filter_ics.%04d"          $i`
   set tiesecond   = `printf "tiegcm_s.nc.%04d"         $i`
   set tierestart  = `printf "tiegcm_restart_p.nc.%04d" $i`
+  set tieinp      = `printf "tiegcm.nml.%04d"          $i`
 
   ln -sf ${EXPERIMENT}/$darticname .
   ln -sf ${EXPERIMENT}/$tiesecond  .
   ln -sf ${EXPERIMENT}/$tierestart .
+  ln -sf ${EXPERIMENT}/$tieinp     .
 
   @ i += 1
 end
