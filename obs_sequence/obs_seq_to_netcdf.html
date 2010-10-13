@@ -3,14 +3,29 @@
 <HTML>
 <HEAD>
 <TITLE>program obs_seq_to_netcdf</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Modules">MODULES</A> /
+<H1>PROGRAM <em class=program>obs_seq_to_netcdf</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#Usage">USAGE </A> /
 <A HREF="#References">REFERENCES</A> /
@@ -18,10 +33,8 @@
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>PROGRAM <em class=program>obs_seq_to_netcdf</em></H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
 
 <P>
    <em class=program>obs_seq_to_netcdf</em> 
@@ -87,32 +100,6 @@
    data (and attributes) get highlighted in the other views. There are still
    a couple nuances to the figures that I'd like to get right before I release it
    for general consumption -- Tim.
-</P>
-
-<!--==================================================================-->
-
-<A NAME="Modules"></A>
-<HR>
-<H2>OTHER MODULES USED</H2>
-<PRE>
-location_mod
-netcdf
-obs_def_mod
-obs_kind_mod
-obs_sequence_mod
-schedule_mod
-time_manager_mod
-typeSizes
-types_mod
-utilities_mod
-</PRE>
-<P>
-Naturally, the program must be compiled with support for the observation
-types contained in the observation sequence files, so
-<em class="program">preprocess</em> must be run to build appropriate
-<em class="file">obs_def_mod</em> and 
-<em class="file">obs_kind_mod</em> modules - which may need specific
-obs_def_?????.f90 files.
 </P>
 
 <!--==================================================================-->
@@ -388,6 +375,34 @@ Historically, DART has always taken observations
 precisely on an edge to be part of the subsequent assimilation cycle.
 The smallest amount of time representable to DART is 1 second, so the
 smallest possible delta is added to one of the assimilation edges.
+</P>
+
+<!--==================================================================-->
+<!-- Describe the Modules Used by this module.                        -->
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<HR>
+<H2>OTHER MODULES USED</H2>
+<PRE>
+location_mod
+netcdf
+obs_def_mod
+obs_kind_mod
+obs_sequence_mod
+schedule_mod
+time_manager_mod
+typeSizes
+types_mod
+utilities_mod
+</PRE>
+<P>
+Naturally, the program must be compiled with support for the observation
+types contained in the observation sequence files, so
+<em class="program">preprocess</em> must be run to build appropriate
+<em class="file">obs_def_mod</em> and 
+<em class="file">obs_kind_mod</em> modules - which may need specific
+obs_def_?????.f90 files.
 </P>
 
 <!--==================================================================-->
