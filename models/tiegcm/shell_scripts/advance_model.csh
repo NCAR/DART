@@ -41,7 +41,6 @@ cd       $temp_dir
 # Get the data files needed to run tiegcm. One directory up is 'CENTRALDIR'
 
 cp ../input.nml .
-cp ../tiegcm.nml  tiegcm.nml.original
 
 # Loop through each state
 set state_copy = 1
@@ -66,10 +65,12 @@ while($state_copy <= $num_states)
 
    set tiesecond   = `printf "tiegcm_s.nc.%04d"         $ensemble_member`
    set tierestart  = `printf "tiegcm_restart_p.nc.%04d" $ensemble_member`
+   set tieinp      = `printf "tiegcm.nml.%04d"          $ensemble_member`
 
    ln -sf  ../$input_file temp_ic             || exit 2
    cp -p   ../$tiesecond  tiegcm_s.nc         || exit 2
    cp -p   ../$tierestart tiegcm_restart_p.nc || exit 2
+   cp -p   ../$tieinp     tiegcm.nml.original || exit 2
 
 #  echo "ensemble member $ensemble_member : before dart_to_model"
 #  ncdump -v mtime tiegcm_restart.nc
