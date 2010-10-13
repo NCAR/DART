@@ -27,7 +27,7 @@ h4.indent2{font-size:1.00em; margin-left:4%}
 div.box   { 
     border:solid; 
     border-width:thin; 
-    width:100% }
+    width:100%;}
 
 div.namelist {
     background-color: rgb(225,225,225);
@@ -147,11 +147,11 @@ p.head{
 li{ font-size: 1.0em; }
 
 a.optionalcode{ color:red;  font-style:typewriter; }
-a.code   {      color:blue; font-style:typewriter; }
-a:link   { color: rgb(  0,   0, 153) } /* for unvisited links */
-a:visited{ color: rgb(153,   0, 153) } /* for visited links */
-a:active { color: rgb(255,   0, 102) } /* when link is clicked */
-a:hover  { color: rgb(  0,  96, 255) } /* when mouse is over link */
+a.code    {     color:blue; font-style:typewriter; }
+a.link    { color: rgb(  0,   0, 153) } /* for unvisited links */
+a.visited { color: rgb(153,   0, 153) } /* for visited links */
+a.active  { color: rgb(255,   0, 102) } /* when link is clicked */
+a.hover   { color: rgb(  0,  96, 255) } /* when mouse is over link */
 
 td{font-weight:normal;}
 form{font-weight:normal;}
@@ -164,21 +164,21 @@ pre.indent1{
 
 em.units{
     color:crimson; 
-    font-style:normal}
+    font-style:normal;}
 
 em.code{
     color:blue;
-    font-style:typewriter}
+    font-style:typewriter;}
 
 em.changed{
     color:blue; 
     font-style:typewriter; 
-    background-color: #FFCCFF}
+    background-color: #FFCCFF;}
 
 em.removed{
     color:blue; 
     font-style:typewriter; 
-    text-decoration:line-through}
+    text-decoration:line-through;}
 
 em.call{
     color:blue; 
@@ -187,23 +187,23 @@ em.call{
 
 em.input{
     color:magenta; 
-    font-weight:bold}
+    font-weight:bold;}
 
 em.option{
     color:blue; 
-    font-style:italic}
+    font-style:italic;}
 
 em.optionalcode{
     color:red; 
-    font-style:typewriter}
+    font-style:typewriter;}
 
 em.program{
     color:green; 
-    font-style:italic}
+    font-style:italic;}
 
 em.file{
     color:green; 
-    font-style:typewriter}
+    font-style:typewriter;}
 
 em.nav{
     font-style:normal;
@@ -220,23 +220,23 @@ em.head{
     font-size:1.2em;}
 
 em.italic{
-    font-style:italic}
+    font-style:italic;}
 
 em.red{
     color:crimson; 
-    font-style:normal}
+    font-style:normal;}
 
 em.green{
     color:green; 
-    font-style:normal}
+    font-style:normal;}
 
 em.Navy{
     color:Navy; 
-    font-style:normal}
+    font-style:normal;}
 
 em.teal{
     color:cornflowerblue; 
-    font-style:normal}
+    font-style:normal;}
 
 em{
     font-style:normal;
@@ -250,4 +250,4 @@ em{
     margin-left: 5px;
 }
 
-# RGB(204,204,204) == "#CCCCCC"
+/* # RGB(204,204,204) == "#CCCCCC" */
