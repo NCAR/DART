@@ -3,14 +3,29 @@
 <HTML>
 <HEAD>
 <TITLE>program obs_diag</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Modules">MODULES</A> /
+<H1>PROGRAM <em class=program>obs_diag</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">INTERFACES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#Usage">USAGE </A> / 
 <A HREF="#References">REFERENCES</A> /
@@ -18,21 +33,23 @@
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>PROGRAM <em class=program>obs_diag</em></H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
 
 <P>
    Main program for evaluating filter performance in observation space. 
-   There is also the ability to ingest an observation sequence file and 
-   simply output the observation locations - more on that later.
+   Primarily, the prior or posterior ensemble mean (and spread) are compared 
+   to the observation and several quantities are calculated. These quantities
+   are then saved in a netCDF file that has all the metadata to create
+   meaningful figures.
    <br />
    <br />
    Each <em class="file">obs_seq.final</em> file contains an observation 
    sequence that has multiple 'copies' of the observation. One copy is
-   the actual observation, another copy is the estimate of the observation 
-   from ensemble member 1, ... etc. If the original observation sequence 
+   the actual observation, another copy is the prior ensemble mean estimate 
+   of the observation, one is the spread of the prior ensemble estimate,
+   one may be the prior estimate from ensemble member 1, ... etc. 
+   If the original observation sequence 
    is the result of a 'perfect model' experiment, there is an additional
    copy called the 'truth' - the noise-free expected observation given 
    the true model state. Since this copy does not, in general, exist for
@@ -42,16 +59,35 @@
    recompile. Caveat emptor.
    <br />
    <br />
-   The models "expected" observations are compared against the actual
-   observations in various ways.
    Each ensemble member applies a forward operator to the state to compute
    the "expected" value of an observation. Given multiple estimates of 
    the observation, several quantities can be calculated. It is possible to
    compute the expected observations from the state vector before 
    assimilating (the "guess", "forecast", or "prior") or after the
-   assimilation (the "analysis", or "posterior").<BR>
-   <img src="../../doc/html/obs_diag_evolution_example.png" width="375">
-   <img src="../../doc/html/obs_diag_profile_example.png" width="375">
+   assimilation (the "analysis", or "posterior"). 
+   <br />
+   <br />
+   Even with <em class="file">input.nml</em>:<em class="code">filter_nml:num_output_obs_members</em> 
+   set to <em class="code">0</em>; the full [prior,posterior] ensemble mean and
+   [prior,posterior] ensemble spread are preserved in the 
+   <em class="file">obs_seq.final</em> file. Consequently, the ensemble means and
+   spreads are used to calculate the diagnostics.
+
+   If the 
+   <em class="file">input.nml</em>:<em class="code">filter_nml:num_output_obs_members</em> 
+   is set to <em class="code">80</em> (for example); the first 80 ensemble members 
+   prior and posterior "expected" values of the observation are also included. 
+   In this case, the <em class="file">obs_seq.final</em> file contains enough 
+   information to calculate a rank histogram, while the ensemble means are still
+   used for all the other calculations.
+   <table width="100%"><tr>
+   <td rowspan=2><img src="../../doc/html/obs_diag_evolution_example.png" width="300">
+   <td rowspan=2><img src="../../doc/html/obs_diag_profile_example.png" width="300">
+   <td><img src="../../doc/html/RankHistogram_ncview.png" width="200"></td>
+   </tr>
+   <tr><td><img src="../../doc/html/RankHistogram_matlab.png" width="200"></td>
+   </tr>
+   </table>
    <br />
    There are two versions of this program, one for high-order models that have
    real observations and another for low-order models. Since this program
@@ -70,13 +106,19 @@
    <br />
    <br />
    <em class="program">obs_diag</em> is designed to explore the effect of 
-   the assimilation in two ways 1) as a function of time for a particular 
-   variable and level (this is the figure on the left) and 2) as a 
-   time-averaged vertical profile (figure on the right).
-   These figures were created by a couple Matlab&#174; scripts that query 
+   the assimilation in three ways; 1) as a function of time for a particular 
+   variable and level (this is the figure on the left), 2) as a 
+   time-averaged vertical profile (figure in the middle), and sometimes 
+   3) in terms of a rank histogram - "Where does the actual observation rank 
+   relative to the  rest of the ensemble?" (figures on the right).
+   The rank histogram information can easily be plotted with <a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</a>,
+   a free third-party piece of software; the rest of the
+   figures were created by several Matlab&#174; scripts that query 
    the <em class="file">obs_diag_output.nc</em> file: 
-   <em class="file">DART/diagnostics/matlab/</em><em class="program">plot_evolution.m</em> 
-   and <em class="program">plot_profile.m</em>. Each of these takes as input a 
+   <em class="file">DART/diagnostics/matlab/</em>
+   <a href=https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_evolution.m>plot_evolution.m</a> ,
+   <a href=https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_profile.m>plot_profile.m</a>, and 
+   <a href=https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_rank_histogram.m>plot_rank_histogram.m</a>. Each of these takes as input a 
    file name and a 'quantity' to plot ('rmse','spread','totalspread', ...)
    and exhaustively plots the quantity (for every variable, every level, 
    every region) in a single matlab figure window  - and creates a series 
@@ -193,9 +235,17 @@
    The 3D <em class=program>obs_diag</em> has:
 </P>
 <OL>
+   <LI>the ability to create rank histograms <em>IFF</em> the prior
+   ensemble members are preserved in the <em class=file>obs_seq.final</em> file,
+   </LI>
+
+   <LI><em>deprecated - use</em> <em class=program>obs_seq_to_netcdf</em> <em>instead</em>
+       <em class="removed">the ability to output a text file of the locations of the observations
+       to facilitate scatterplots of observation density by type and QC value,</em></LI>
+
    <LI>an improved capacity for reading multiple 
-   <em class=file>obs_seq.final</em> files (that don't require an 
-   arcane naming convention),</LI>
+   <em class=file>obs_seq.final</em> files (see the namelist entry for
+   <em class=code>obs_sequence_list</em>)</LI>
 
    <LI>a greatly expanded namelist control (including multiple, user-defined 
    levels),</LI>
@@ -204,21 +254,19 @@
    (instead of MANY impenetrable plain text files) -- complete with all 
    the metadata needed to make sensible, accurate graphics,</LI>
 
-   <LI>removed the <em class="removed">obs_select</em> namelist variable,</LI>
-
    <LI>better reporting of the times/dates it encounters in the input files, 
    making it easier to set the namelist parameters 
    <em class=code>first_bin_center, last_bin_center</em>,</LI>
 
    <LI>regions that can "wrap" in longitude,</LI>
 
-   <LI>the ability to output a text file of the locations of the observations
-       to facilitate scatterplots of observation density by type and QC value,</LI>
-
    <LI>discontinued the rejection of observations based on the 
    <em class=code>rat_cri</em> or <em class=code>input_qc_threshold</em> 
    namelist variables (the counts of these are available in the 
    netCDF file as <b>NbadQC</b> and <b>NbadIZ</b>, respectively).</LI>
+
+   <LI>removed the <em class="removed">obs_select</em> namelist variable,</LI>
+
 </OL>
 
 <P>
@@ -251,26 +299,6 @@
    <A HREF="#Namelist"><em class=code>&amp;obs_diag_nml</em></A>
    may be read from file <em class=file>input.nml</em>.
 </P>
-
-<!--==================================================================-->
-
-<A NAME="Modules"></A>
-<HR>
-<H2>OTHER MODULES USED</H2>
-<PRE>
-obs_sequence_mod
-obs_kind_mod
-obs_def_mod (and possibly other obs_def_xxx mods)
-assim_model_mod
-random_seq_mod
-random_nr_mod
-model_mod
-location_mod
-types_mod
-time_manager_mod
-utilities_mod
-sort_mod
-</PRE>
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
@@ -529,6 +557,26 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 
 </div>
 <br>
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<HR>
+<H2>OTHER MODULES USED</H2>
+<PRE>
+obs_sequence_mod
+obs_kind_mod
+obs_def_mod (and possibly other obs_def_xxx mods)
+assim_model_mod
+random_seq_mod
+random_nr_mod
+model_mod
+location_mod
+types_mod
+time_manager_mod
+utilities_mod
+sort_mod
+</PRE>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
