@@ -36,7 +36,7 @@
 #BSUB -P 35071364
 #BSUB -q debug
 #BSUB -n 1
-#BSUB -W 0:50
+#BSUB -W 1:00
 #BSUB -N -u ${USER}@ucar.edu
 
 #----------------------------------------------------------------------
@@ -145,10 +145,10 @@ set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28/initial/perfect
 
  ${COPY} ${TIEGCMDIR}/tiegcm-nompi                  tiegcm
 #${COPY} ${TIEGCMDIR}/tiegcm                        .
- ${COPY} ${TIEGCMDIR}/tiegcm.nml                    .
 
  ${COPY} ${EXPERIMENT}/tiegcm_restart_p.nc           .
  ${COPY} ${EXPERIMENT}/tiegcm_s.nc                   .
+ ${COPY} ${EXPERIMENT}/tiegcm.nml                    .
 
 #-----------------------------------------------------------------------------
 # Check that everything moved OK, and the table is set.
@@ -167,6 +167,7 @@ mv temp_ud perfect_ics
 
 ln -sf tiegcm_restart_p.nc tiegcm_restart_p.nc.0001
 ln -sf tiegcm_s.nc         tiegcm_s.nc.0001
+ln -sf tiegcm.nml          tiegcm.nml.0001
 
 ./perfect_model_obs || exit 2
 
