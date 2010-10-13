@@ -3,8 +3,22 @@
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 
 ! BEGIN DART PREPROCESS KIND LIST
-! DEWPOINT,             KIND_DEWPOINT
-! DEWPOINT_2_METER,     KIND_DEWPOINT
+! DEWPOINT,                KIND_DEWPOINT
+! DEWPOINT_2_METER,        KIND_DEWPOINT
+! BUOY_DEWPOINT,           KIND_DEWPOINT
+! SHIP_DEWPOINT,           KIND_DEWPOINT
+! SYNOP_DEWPOINT,          KIND_DEWPOINT
+! AIREP_DEWPOINT,          KIND_DEWPOINT
+! AMDAR_DEWPOINT,          KIND_DEWPOINT
+! PILOT_DEWPOINT,          KIND_DEWPOINT
+! BOGUS_DEWPOINT,          KIND_DEWPOINT
+! METAR_DEWPOINT_2_METER,  KIND_DEWPOINT
+! RADIOSONDE_DEWPOINT,     KIND_DEWPOINT
+! DROPSONDE_DEWPOINT,      KIND_DEWPOINT
+! AIRCRAFT_DEWPOINT,       KIND_DEWPOINT
+! ACARS_DEWPOINT,          KIND_DEWPOINT
+! MARINE_SFC_DEWPOINT,     KIND_DEWPOINT
+! LAND_SFC_DEWPOINT,       KIND_DEWPOINT
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -14,22 +28,62 @@
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(DEWPOINT)
 !            call get_expected_dew_point(state, location, 1, obs_val, istatus)
+!         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT)
+!            call get_expected_dew_point(state, location, 1, obs_val, istatus)
+!         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
+!            call get_expected_dew_point(state, location, 1, obs_val, istatus)
 !         case(DEWPOINT_2_METER)
+!            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+!         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
+!            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+!         case(MARINE_SFC_DEWPOINT, LAND_SFC_DEWPOINT)
+!            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+!         case(METAR_DEWPOINT_2_METER)
 !            call get_expected_dew_point(state, location, 2, obs_val, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 !         case(DEWPOINT, DEWPOINT_2_METER)
 !            continue
+!         case(METAR_DEWPOINT_2_METER)
+!            continue
+!         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT)
+!            continue
+!         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
+!            continue
+!         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
+!            continue
+!         case(MARINE_SFC_DEWPOINT, LAND_SFC_DEWPOINT)
+!            continue
 ! END DART PREPROCESS READ_OBS_DEF
 
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 !         case(DEWPOINT, DEWPOINT_2_METER)
 !            continue
+!         case(METAR_DEWPOINT_2_METER)
+!            continue
+!         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT)
+!            continue
+!         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
+!            continue
+!         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
+!            continue
+!         case(MARINE_SFC_DEWPOINT, LAND_SFC_DEWPOINT)
+!            continue
 ! END DART PREPROCESS WRITE_OBS_DEF
 
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
 !         case(DEWPOINT, DEWPOINT_2_METER)
+!            continue
+!         case(METAR_DEWPOINT_2_METER)
+!            continue
+!         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT)
+!            continue
+!         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
+!            continue
+!         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
+!            continue
+!         case(MARINE_SFC_DEWPOINT, LAND_SFC_DEWPOINT)
 !            continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
