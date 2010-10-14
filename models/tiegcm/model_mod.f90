@@ -352,7 +352,7 @@ endif
 ! NEED TO BE VERY CAREFUL ABOUT POLES; WHAT'S BEING DONE IS NOT GREAT!
 if(lat >= bot_lat .and. lat <= top_lat) then ! -87.5 <= lat <= 87.5
    lat_below = int((lat - bot_lat) / delta_lat) + 1
-   lat_above = lat_above + 1
+   lat_above = lat_below + 1
    lat_fract = (lat - lats(lat_below) ) / delta_lat
 else if(lat < bot_lat) then ! South of bottom lat 
    lat_below = 1
@@ -1604,7 +1604,7 @@ subroutine read_TIEGCM_restart(file_name, var, model_time)
    call nc_check(nf90_inq_dimid(restart_id, 'mtimedim', dim_id), &
           'read_TIEGCM_restart', 'inq_dimid mtimedim')
    call nc_check(nf90_inquire_dimension(restart_id, dim_id, len=dim_len), &
-          'read_TIEGCM_definition', 'inquire_dimension mtimedim')  
+          'read_TIEGCM_restart', 'inquire_dimension mtimedim')  
    if (dim_len .ne. nmtime) then
      write(msgstring, *) trim(file_name), ' mtimedim = ',dim_len, ' DART expects ', nmtime
      call error_handler(E_ERR,'read_TIEGCM_restart',msgstring,source,revision,revdate)
