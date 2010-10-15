@@ -162,6 +162,9 @@ integer, dimension(0:QC_MAX) :: qc_counter = 0
 real(r8), allocatable, dimension(:) :: qc
 real(r8), allocatable, dimension(:) :: copyvals
 
+integer, parameter, dimension(5) :: hist_qcs = (/ 0, 1, 2, 3, 7 /)
+integer :: numqcvals
+
 !-----------------------------------------------------------------------
 ! Namelist with (some scalar) default values
 !-----------------------------------------------------------------------
@@ -190,6 +193,7 @@ real(r8):: input_qc_threshold    = 3.0_r8    ! maximum NCEP QC factor
 logical :: print_mismatched_locs = .false.
 logical :: print_obs_locations   = .false.
 logical :: verbose               = .false.
+logical :: outliers_in_histogram = .false.
 
 namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,                 &
                        first_bin_center, last_bin_center,                     &
@@ -197,7 +201,7 @@ namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,                 &
                        plevel, hlevel, mlevel, rat_cri, input_qc_threshold,   &
                        Nregions, lonlim1, lonlim2, latlim1, latlim2,          &
                        reg_names, print_mismatched_locs, print_obs_locations, &
-                       obs_sequence_list, verbose
+                       obs_sequence_list, verbose, outliers_in_histogram
 
 !-----------------------------------------------------------------------
 ! Variables used to accumulate the statistics.
@@ -351,6 +355,17 @@ if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
 endif
 
 !----------------------------------------------------------------------
+! Check to see if we are including the outlier observations in the
+! rank histogram calculation.
+!----------------------------------------------------------------------
+
+if ( outliers_in_histogram ) then
+   numqcvals = size(hist_qcs)
+else
+   numqcvals = size(hist_qcs) - 1
+endif
+
+!----------------------------------------------------------------------
 ! Now that we have input, do some checking and setup
 !----------------------------------------------------------------------
 
@@ -412,7 +427,7 @@ Nlevels = maxval((/ Nplevels, Nhlevels, Nmlevels /))
 
 write(*,*)'level dimension can be ',Nlevels
 
-allocate(obs_seq_filenames(Nepochs*40))
+allocate(obs_seq_filenames(Nepochs*400))
 obs_seq_filenames = 'null'
 
 allocate(guess%rmse(       Nepochs, Nlevels, Nregions, num_obs_kinds), &
@@ -2747,6 +2762,7 @@ CONTAINS
    real(r8) :: postspredplus   ! POSTERIOR (spread,variance**)
 
    real(r8) :: priormean, postmean, obsmean
+   integer  :: myrank
 
    logical, dimension(6) :: optionals
 
@@ -2769,6 +2785,12 @@ CONTAINS
       priorspredplus = prsprd**2 + obserrvar + uprsprd**2 + uobserrvar
       postspredplus  = posprd**2 + obserrvar + uposprd**2 + uobserrvar
 
+      ! If we are working with 'horizontal winds', we do not have enough
+      ! information to recreate the appropriate rank histogram. We will 
+      ! set the rank to a bogus value which will ensure it does not get 
+      ! counted.
+      myrank = -99
+
    else if ( any(optionals) ) then
       call error_handler(E_ERR,'Bin4D','wrong number of optional arguments', &
                          source,revision,revdate)
@@ -2784,6 +2806,8 @@ CONTAINS
       obsmean        = obsval
       priormean      = prmean
       postmean       = pomean
+
+      myrank = rank
    endif
 
    !----------------------------------------------------------------------
@@ -2837,10 +2861,12 @@ CONTAINS
    ! The rank histogram binning is a bit of a peculiar situation.
    ! Only the prior is of interest ... so DART QCs of 0 1 2 3 are 'good'.
    ! There is some debate about whether we should be considering the 
-   ! 'outlier' observations (DART QC == 7) - perhaps a namelist? FIXME
+   ! 'outlier' observations (DART QC == 7), so that is namelist controlled.
 
-   if ( create_rank_histogram .and. any(iqc == (/ 0, 1, 2, 3, 7 /)) )  &
-      call IPE(guess%hist_bin(iepoch,ilevel,iregion,flavor,rank), 1)
+   if (     (myrank > 0) .and. create_rank_histogram ) then
+      if ( any(iqc == hist_qcs(1:numqcvals) ) )  &
+         call IPE(guess%hist_bin(iepoch,ilevel,iregion,flavor,myrank), 1)
+   endif
 
    end Subroutine Bin4D
 
@@ -3050,6 +3076,21 @@ CONTAINS
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'horizontal_wind_spread', &
               'definition : sqrt(sum[var(u) + var(v)]/nobs)' ), &
               'WriteNetCDF', 'put_att wind spread '//trim(fname))
+
+   if ( create_rank_histogram ) then
+      call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'DART_QCs_in_histogram', &
+              hist_qcs(1:numqcvals) ), &
+              'WriteNetCDF', 'put_att qcs in histogram '//trim(fname))
+
+      if ( outliers_in_histogram ) then
+      call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'outliers_in_histogram', &
+              'TRUE' ), 'WriteNetCDF', 'put_att outliers histogram '//trim(fname))
+      else
+      call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'outliers_in_histogram', &
+              'FALSE' ), 'WriteNetCDF', 'put_att outliers histogram '//trim(fname))
+      endif
+
+   endif
 
    !----------------------------------------------------------------------------
    ! write all namelist quantities 
@@ -3484,7 +3525,7 @@ CONTAINS
    integer :: WriteTLRV
 
    integer :: nobs, Nlevels, ivar, itime, ilevel, iregion
-   integer :: Nbins, irank
+   integer :: Nbins, irank, ndata
    character(len=40) :: string1
 
    integer :: VarID, VarID2, LevelDimID, oldmode
@@ -3559,29 +3600,37 @@ CONTAINS
 
       ! The rank histogram has no 'copy' dimension, so it must be handled differently.
 
+      ndata = 0
       if (present(RankDimID)) then
 
          string1 = trim(adjustl(str1))//'_'//trim(adjustl(vrbl%string))//'_RankHist'
          Nbins   = size(vrbl%hist_bin,5)
+         ndata   = sum(vrbl%hist_bin(:,:,:,ivar,:))
 
-         allocate(ichunk(Nregions,Nlevels,Nbins,Nepochs))
-         ichunk = 0
+         if ( ndata > 0 ) then
 
-         do itime   = 1,Nepochs
-         do ilevel  = 1,Nlevels
-         do iregion = 1,Nregions
-         do irank   = 1,Nbins
+            allocate(ichunk(Nregions,Nlevels,Nbins,Nepochs))
+            ichunk = 0
 
-         ichunk(iregion,ilevel,irank,itime) = vrbl%hist_bin(itime,ilevel,iregion,ivar,irank)
+            do itime   = 1,Nepochs
+            do ilevel  = 1,Nlevels
+            do iregion = 1,Nregions
+            do irank   = 1,Nbins
+   
+            ichunk(iregion,ilevel,irank,itime) = vrbl%hist_bin(itime,ilevel,iregion,ivar,irank)
 
-         enddo
-         enddo
-         enddo
-         enddo
+            enddo
+            enddo
+            enddo
+            enddo
 
-         call nc_check(nf90_def_var(ncid, name=string1, xtype=nf90_int, &
+            call nc_check(nf90_def_var(ncid, name=string1, xtype=nf90_int, &
                 dimids=(/ RegionDimID, LevelDimID, RankDimID, TimeDimID /), &
                 varid=VarID2), 'WriteTLRV', 'rank_hist:def_var')
+         else
+            write(logfileunit,*)'Variable '//string1//' has ',ndata,'"rank"able observations.'
+            write(     *     ,*)'Variable '//string1//' has ',ndata,'"rank"able observations.'
+         endif
 
       endif
 
@@ -3591,7 +3640,7 @@ CONTAINS
               'WriteTLRV', 'realchunk:put_var')
       deallocate(rchunk)
 
-      if (present(RankDimID)) then
+      if (present(RankDimID) .and. (ndata > 0) ) then
          call nc_check(nf90_put_var(ncid, VarID2, ichunk ), &
                  'WriteTLRV', 'intchunk:put_var')
          deallocate(ichunk)

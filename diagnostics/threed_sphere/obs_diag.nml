@@ -27,5 +27,6 @@
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
    print_obs_locations   = .false.,
+   outliers_in_histogram = .false.,
    verbose               = .false.  /
 
