@@ -98,6 +98,8 @@ plotdat.lonlim2            = nc_attget(fname, nc_global, 'lonlim2');
 plotdat.latlim1            = nc_attget(fname, nc_global, 'latlim1');
 plotdat.latlim2            = nc_attget(fname, nc_global, 'latlim2');
 plotdat.biasconv           = nc_attget(fname, nc_global, 'bias_convention');
+plotdat.outlierstring      = nc_attget(fname, nc_global, 'outliers_in_histogram');
+plotdat.QCsusedstring      = nc_attget(fname, nc_global, 'DART_QCs_in_histogram');
 
 % Make sure the time index makes sense.
 
@@ -301,7 +303,12 @@ function myplot(plotdat)
    set(h,'HorizontalAlignment','center')
 
    xlabel({'Observation Rank (among ensemble members)',obsstring})
-   ylabel('count')
+
+   if ( strcmp(plotdat.outlierstring,  'TRUE'))
+      ylabel('count - including outlier observations')
+   else
+      ylabel('count')
+   end
 
    % more annotation ...
 
