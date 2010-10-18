@@ -3628,8 +3628,8 @@ CONTAINS
                 dimids=(/ RegionDimID, LevelDimID, RankDimID, TimeDimID /), &
                 varid=VarID2), 'WriteTLRV', 'rank_hist:def_var')
          else
-            write(logfileunit,*)'Variable '//string1//' has ',ndata,'"rank"able observations.'
-            write(     *     ,*)'Variable '//string1//' has ',ndata,'"rank"able observations.'
+            write(logfileunit,*)string1//' has ',ndata,'"rank"able observations.'
+            write(     *     ,*)string1//' has ',ndata,'"rank"able observations.'
          endif
 
       endif
