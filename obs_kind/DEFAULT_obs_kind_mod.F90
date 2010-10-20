@@ -135,6 +135,11 @@ integer, parameter, public :: &
     KIND_2D_PARAMETER                = 44, &
     KIND_3D_PARAMETER                = 45
 
+! kinds for CHAMP upper atmosphere computations
+integer, parameter, public :: &
+    KIND_ATOMIC_OXYGEN_MIXING_RATIO  = 46, &
+    KIND_MOLEC_OXYGEN_MIXING_RATIO   = 47
+
 ! kinds for the MITgcm, POP ocean model
 integer, parameter, public :: &
     KIND_SALINITY                    = 50, &
@@ -351,6 +356,8 @@ obs_kind_names(42) = obs_kind_type(KIND_ELECTRON_DENSITY, 'KIND_ELECTRON_DENSITY
 obs_kind_names(43) = obs_kind_type(KIND_1D_PARAMETER, 'KIND_1D_PARAMETER')
 obs_kind_names(44) = obs_kind_type(KIND_2D_PARAMETER, 'KIND_2D_PARAMETER')
 obs_kind_names(45) = obs_kind_type(KIND_3D_PARAMETER, 'KIND_3D_PARAMETER')
+obs_kind_names(46) = obs_kind_type(KIND_ATOMIC_OXYGEN_MIXING_RATIO, 'KIND_ATOMIC_OXYGEN_MIXING_RATIO')
+obs_kind_names(47) = obs_kind_type(KIND_MOLEC_OXYGEN_MIXING_RATIO, 'KIND_MOLEC_OXYGEN_MIXING_RATIO')
 
 obs_kind_names(50) = obs_kind_type(KIND_SALINITY, 'KIND_SALINITY')
 obs_kind_names(51) = obs_kind_type(KIND_U_CURRENT_COMPONENT, 'KIND_U_CURRENT_COMPONENT')
