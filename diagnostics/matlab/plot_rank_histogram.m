@@ -30,12 +30,19 @@ function plotdat = plot_rank_histogram(fname, timeindex, varargin)
 % plotdat   = plot_rank_histogram(fname, timeindex);
 %
 %
-% EXAMPLE 2 - rank histogram for the radiosonde temperature observations.
+% EXAMPLE 2 - rank histogram for a particular timestep of radiosonde temperature observations.
 %             This requires knowledge that 'RADIOSONDE_TEMPERATURE' is an
 %             observation type in the netCDF file.
 %
 % fname     = 'obs_diag_output.nc'; % netcdf file produced by 'obs_diag'
 % timeindex = 3;                    % plot the histogram for the third timestep 
+% plotdat   = plot_rank_histogram(fname, timeindex, 'RADIOSONDE_TEMPERATURE');
+%
+%
+% EXAMPLE 3 - single rank histogram for all timesteps of radiosonde temperature observations.
+%
+% fname     = 'obs_diag_output.nc'; % netcdf file produced by 'obs_diag'
+% timeindex = -1;                   % use ALL available timesteps
 % plotdat   = plot_rank_histogram(fname, timeindex, 'RADIOSONDE_TEMPERATURE');
 
 %% DART software - Copyright � 2004 - 2010 UCAR. This open source software is
@@ -75,7 +82,6 @@ end
 % Harvest plotting info/metadata from netcdf file.
 
 plotdat.fname         = fname;
-plotdat.timeindex     = timeindex;
 plotdat.timecenters   = nc_varget(fname,'time');
 plotdat.timeedges     = nc_varget(fname,'time_bounds');
 plotdat.mlevel        = nc_varget(fname,'mlevel');
@@ -128,8 +134,14 @@ plotdat.timeedges   = plotdat.timeedges   + timeorigin;
 plotdat.Ntimes      = length(plotdat.timecenters);
 plotdat.toff        = plotdat.timecenters(1) + iskip;
 
-plotdat.timespan    = sprintf('%s -- %s', datestr(plotdat.timeedges(timeindex,1),21), ...
-                                       datestr(plotdat.timeedges(timeindex,2),21));
+if ( timeindex < 1 )
+   plotdat.timeindex = 1:plotdat.Ntimes;
+   plotdat.timespan = sprintf('%s -- %s', datestr(min(plotdat.timeedges(:,1)),21), ...
+                                          datestr(max(plotdat.timeedges(:,2)),21));
+else
+   plotdat.timespan = sprintf('%s -- %s', datestr(plotdat.timeedges(timeindex,1),21), ...
+                                          datestr(plotdat.timeedges(timeindex,2),21));
+end
 
 % set up a structure with all static plotting components
 
@@ -207,6 +219,13 @@ for ivar = 1:plotdat.nvars
    rhist_raw = nc_varget(fname, plotdat.rhistvar); 
    rhist = reshape(rhist_raw, plotdat.Ntimes,  plotdat.Nrhbins, ...
                               plotdat.nlevels, plotdat.nregions);
+                          
+   % Collapse the time dimension if need be. 
+   if ( timeindex < 0 )  
+      guess             = sum(guess,1); 
+      rhist             = sum(rhist,1); 
+      plotdat.timeindex = 1;
+   end
 
    % check to see if there is anything to plot
    nposs = sum(guess(plotdat.timeindex,plotdat.Npossindex,:,:));
