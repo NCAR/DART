@@ -139,6 +139,7 @@ if ( timeindex < 1 )
    plotdat.timespan = sprintf('%s -- %s', datestr(min(plotdat.timeedges(:,1)),21), ...
                                           datestr(max(plotdat.timeedges(:,2)),21));
 else
+   plotdat.timeindex = timeindex;
    plotdat.timespan = sprintf('%s -- %s', datestr(plotdat.timeedges(timeindex,1),21), ...
                                           datestr(plotdat.timeedges(timeindex,2),21));
 end
