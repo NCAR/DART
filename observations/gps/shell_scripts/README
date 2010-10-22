@@ -4,13 +4,15 @@
 #
 # DART $Id$
 
-The intent for the scripts in this directory are:
+Description of the scripts provided to process the COSMIC and 
+CHAMP GPS radio occultation data.
 
-Summary:  
+Summary of workflow:  
 1) cd to the ../work directory and run ./quickbuild.csh to compile everything.  
-2) Edit cosmic_download.csh and cosmic_to_obsseq.csh once to set DART_DIR.
-3) Edit ./download_script.csh to set the cosmic name, pw, and dates.  Run it.
-4) Edit ./convert_script.csh to set the cosmic name, pw, and dates.  Run it.
+2) Edit ./cosmic_to_obsseq.csh once to set the directory where the DART
+    code is installed, and your COSMIC web site user name and password.
+3) Edit ./convert_script.csh to set the days of data to download/convert/remove.
+4) Run ./convert_script.csh
 5) For additional days repeat steps 3 and 4.
 
 
@@ -26,47 +28,30 @@ Run quickbuild.csh and it should compile all the executables needed
 to do the GPS conversion into DART obs_sequence files.
 
 
-2) download_script.csh (which calls cosmic_download.csh):
-
-Edit cosmic_download.csh once to set the DART_DIR to where you have
-downloaded the DART distribution.  (There are a few additional options
-in this script, but the distribution version should be good for most users.)
-After this you should be able to ignore this script.
-
-Edit and run the download_script.csh.  You will need to set your
-cosmic web site user name and password, and set the days for which you 
-want to download data.
-
-
-3) convert_script.csh (which calls cosmic_to_obsseq.csh):
+2) cosmic_to_obsseq.csh:
 
 Edit cosmic_to_obsseq.csh once to set the DART_DIR to where you have
 downloaded the DART distribution.  (There are a few additional options
 in this script, but the distribution version should be good for most users.)
-After this you should be able to ignore this script.
+If you are downloading data from the COSMIC web site, set your
+web page user name and password.  After this you should be able to 
+ignore this script.
 
-Edit and run the convert_script.csh.  You will need to set your
-cosmic web site user name and password, and set the days for which you 
-want to convert data into DART obs_sequence files.
 
-There are options on the convert_script.csh to bypass step 2 and do both
-the download and convert in a single step. For one or two days this
-might be a good option, but it is common to have problems during the download.
-It is easier to restart the download separately from the conversion
-if you're using the separate download script.  Also, the conversion needs
-3 hours from the following day to create a file which has all obs within
-the window (usually 3 hours) from the center time (usually 0Z).  So if the
-download is done as a part of the script it must download 2 days, do the
-conversion, and then move on to the next day.  The script is currently
-not smart enough to avoid redownloading data, so if you are converting
-multiple consecutive days it will redownload the next day's data anyway
-and will not realize you already have it.  It cannot simply look for the
-existance of a directory since that complicates restarting failed or
-partial downloads.  It is also risky to automatically delete the data files
-in the script, since if there are errors (full file system, etc) that
-don't cause the script to exit, you will delete the data files and not
-have the converted obs files.  This is all only a consideration because
-currently it is slow to download the data.  If that becomes faster, then
-most of the discussion in this paragraph is moot.
+2) convert_script.csh:
+
+A wrapper script that calls the converter script a day at a time.
+Set the days of data you want to download/convert/remove.  See the
+comments at the top of this script for the various options to set.  
+Rerun this script for all data you need.
+
+
+
+It can be risky to use the automatic delete/cleanup option - if there are
+any errors in the script or conversion (file system full, bad file format,
+etc) and the script doesn't exit, it can delete the input files before 
+the conversion has succeeded.  But if you have file quota concerns
+this allows you to keep the total disk usage lower.
+
 
 

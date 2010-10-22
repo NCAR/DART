@@ -7,44 +7,59 @@
 # $Id$
 #
 # Main script:
-# generate multiple days of gps observations
+#    generate multiple days of gps observations
 #
-# calls the cosmic_to_obsseq script with 4 args:
+# calls the cosmic_to_obsseq script with 5 args:
 #
 #  - the date in YYYYMMDD format
-#  - the working directory location
-#  - whether to download the data automatically from the cosmic web site 
-#     (downloading data requires signing up for a username/password to 
-#     access the site, and then setting the username and password here 
-#     before running this script.)  set to 'no' if the data has already been
-#     downloaded separately before now.  set to 'both' to download both the
-#     current day plus the next day (needed to get the first N hours of the
-#     following day for assimilation windows centered on midnight).  set to
-#     'next' if the current day's data is already downloaded.
+#  - the processing directory location, relative to the 'work' dir.
+#  - whether to download the data automatically from the cosmic web site.
+#     'yes' will do the download, 'no' assumes the data is already downloaded
+#     and on local disk.  (downloading data requires signing up for a 
+#     username/password to access the site, and then setting the username 
+#     and password in the cosmic_to_obsseq script before running it.)
+#  - whether to convert the data.  set to 'yes' to make obs_seq files (the
+#     usual use of this script). 'no' if just downloading or just cleaning up.
 #  - whether to delete the data automatically from the local disk after the
-#     conversion is done.  values are 'no', 'curr', or 'both'.  'curr' deletes
-#     the current day but leaves the following day.  'both' deletes both
-#     the current and next day's data.
+#     conversion is done.  valid values are 'yes' or 'no'.
 #
 
-setenv cosmic_user xxx
-setenv cosmic_pw   yyy
+# examples of common use follow.  
 
-# assumes all data predownloaded, and will be deleted afterwards
-# by hand.
-./cosmic_to_obsseq.csh 20071001 ../cosmic no no
-./cosmic_to_obsseq.csh 20071002 ../cosmic no no
-./cosmic_to_obsseq.csh 20071003 ../cosmic no no
-./cosmic_to_obsseq.csh 20071004 ../cosmic no no
-./cosmic_to_obsseq.csh 20071005 ../cosmic no no
-./cosmic_to_obsseq.csh 20071006 ../cosmic no no
-./cosmic_to_obsseq.csh 20071007 ../cosmic no no
+# download only:
+./cosmic_to_obsseq.csh 20071001 ../cosmic yes no no
+./cosmic_to_obsseq.csh 20071002 ../cosmic yes no no
+./cosmic_to_obsseq.csh 20071003 ../cosmic yes no no
+./cosmic_to_obsseq.csh 20071004 ../cosmic yes no no
+./cosmic_to_obsseq.csh 20071005 ../cosmic yes no no
 
-## example of using both, curr and next for on-demand download and cleanup.
-#./cosmic_to_obsseq.csh 20071001 ../cosmic both curr
-#./cosmic_to_obsseq.csh 20071002 ../cosmic next curr
-#./cosmic_to_obsseq.csh 20071003 ../cosmic next curr
-#./cosmic_to_obsseq.csh 20071004 ../cosmic next both
+# convert only.  assume all data already downloaded:
+./cosmic_to_obsseq.csh 20071001 ../cosmic no yes no
+./cosmic_to_obsseq.csh 20071002 ../cosmic no yes no
+./cosmic_to_obsseq.csh 20071003 ../cosmic no yes no
+./cosmic_to_obsseq.csh 20071004 ../cosmic no yes no
+./cosmic_to_obsseq.csh 20071005 ../cosmic no yes no
+
+# download and convert, not removing files:
+./cosmic_to_obsseq.csh 20071001 ../cosmic yes yes no
+./cosmic_to_obsseq.csh 20071002 ../cosmic yes yes no
+./cosmic_to_obsseq.csh 20071003 ../cosmic yes yes no
+./cosmic_to_obsseq.csh 20071004 ../cosmic yes yes no
+./cosmic_to_obsseq.csh 20071005 ../cosmic yes yes no
+
+# clean up only after verifying conversion worked:
+./cosmic_to_obsseq.csh 20071001 ../cosmic no no yes
+./cosmic_to_obsseq.csh 20071002 ../cosmic no no yes
+./cosmic_to_obsseq.csh 20071003 ../cosmic no no yes
+./cosmic_to_obsseq.csh 20071004 ../cosmic no no yes
+./cosmic_to_obsseq.csh 20071005 ../cosmic no no yes
+
+# download, convert, and clean up all in one go:
+./cosmic_to_obsseq.csh 20071001 ../cosmic yes yes yes
+./cosmic_to_obsseq.csh 20071002 ../cosmic yes yes yes
+./cosmic_to_obsseq.csh 20071003 ../cosmic yes yes yes
+./cosmic_to_obsseq.csh 20071004 ../cosmic yes yes yes
+./cosmic_to_obsseq.csh 20071005 ../cosmic yes yes yes
 
 exit 0
 
