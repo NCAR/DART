@@ -1092,6 +1092,7 @@ if ( .not. module_initialized ) call static_init_model
 ! check the land/ocean bottom map and return if not valid water cell.
 if(is_dry_land(var_type, lon_index, lat_index, height)) then
    masked = .true.
+   get_val = MISSING_R8
    return
 endif
 
