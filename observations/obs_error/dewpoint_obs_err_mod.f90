@@ -39,10 +39,10 @@ real(r8)             :: dewpt_error_from_rh_and_temp
 real(r8), intent(in) :: tmpk                   ! temperature (Kelvin)
 real(r8), intent(in) :: rh_in                  ! relative humidity (0.00-1.00)
 
-real(r8), parameter  :: rh_error = 0.10_r8     ! guess for instrument + representativeness error
+real(r8), parameter  :: rh_error = 0.05_r8     ! guess for instrument + representativeness error
 real(r8), parameter  :: t_error = 1.0_r8       ! guess for instrument + representativeness error
 
-real(r8), parameter  :: rh_min = 0.10_r8
+real(r8), parameter  :: rh_min = 0.20_r8
 real(r8), parameter  :: rh_max = 1.00_r8
 real(r8), parameter  :: delta_rh = 0.01_r8     ! perturbation for finite differencing
 real(r8), parameter  :: delta_t  = 0.1_r8      ! perturbation for finite differencing
