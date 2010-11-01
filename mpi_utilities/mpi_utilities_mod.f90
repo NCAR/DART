@@ -73,6 +73,9 @@ module mpi_utilities_mod
 !                         call this routine before it can compute and return
 !                         the value.
 !
+!   # get_dart_mpi_comm() This code creates a private communicator for use by
+!                         the routines in this file.  This function returns it.
+!
 !   Lower level utility routines which interact with the utilities_mod.f90 
 !   code to open a named pipe per MPI task, read and write from them, and
 !   close and/or remove them.
@@ -204,17 +207,17 @@ private
 
 !   ---- private data for mpi_utilities ----
 
-integer :: myrank          ! my mpi number
-integer :: total_tasks     ! total mpi tasks/procs
-integer :: my_local_comm   ! duplicate communicator private to this file
-integer :: datasize        ! which MPI type corresponds to our r8 definition
+integer :: myrank        = -1  ! my mpi number
+integer :: total_tasks   = -1  ! total mpi tasks/procs
+integer :: my_local_comm =  0  ! duplicate communicator private to this file
+integer :: datasize      =  0  ! which MPI type corresponds to our r8 definition
 
 
 public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
-          sum_across_tasks, mpi_was_init
+          sum_across_tasks, get_dart_mpi_comm
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -225,18 +228,23 @@ character(len=128), parameter :: &
 logical :: module_initialized   = .false.
 
 character(len = 129) :: saved_progname = ''
-integer :: head_task             ! default 0, but N-1 if reverse_task_layout true
+character(len = 129) :: shell_name = ''   ! if needed, add ksh, tcsh, bash, etc
+integer :: head_task = 0         ! def 0, but N-1 if reverse_task_layout true
 logical :: print4status = .true. ! minimal messages for async4 handshake
 
 character(len = 129) :: errstring
 
 ! this turns on trace messages for most MPI communications 
-logical :: verbose              = .false.   ! very very verbose, use with care
+logical :: verbose        = .false.   ! very very very verbose, use with care
+logical :: async2_verbose = .false.   ! messages only for system() in async2
+logical :: async4_verbose = .false.   ! messages only for block/restart async4
 
 ! if your batch system does the task layout backwards, set this to true
 ! so the last task will communicate with the script in async 4 mode.
 ! as of now, mpich and mvapich do it forward, openmpi does it backwards.
 logical :: reverse_task_layout  = .false.   ! task 0 on head node; task N-1 if .true.
+logical :: separate_node_sync   = .false.   ! true if tasks & script do not share nodes
+logical :: create_local_comm    = .true.    ! make a private communicator
 
 ! for large numbers of MPI tasks, you will get replicated messages, one
 ! per task, if this is set to true.  however, for debugging if you need
@@ -303,6 +311,11 @@ if (errcode /= MPI_SUCCESS) then
    call exit(-99)
 endif
 
+! give this a temporary initial value, in case we call the abort code.
+! later down, we will dup the world comm and use a private comm for
+! our communication.
+my_local_comm = MPI_COMM_WORLD
+
 ! pass the arguments through so the utilities can log the program name
 ! only PE0 gets to output, whenever possible.
 if (myrank == 0) then
@@ -347,14 +360,13 @@ if (do_nml_term()) write(     *     , nml=mpi_utilities_nml)
 ! duplicate the world communicator to isolate us from any other user
 ! calls to MPI.  All subsequent mpi calls here will use the local communicator
 ! and not the global world comm.
-call MPI_Comm_dup(MPI_COMM_WORLD, my_local_comm, errcode)
-! option here: do not duplicate communicator, use world.   comment in the next
-! two lines and comment out the previous one to try this.
-!!my_local_comm = MPI_COMM_WORLD
-!!errcode = MPI_SUCCESS
-if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a,i8)') 'MPI_Comm_dup returned error code ', errcode
-   call error_handler(E_ERR,'initialize_mpi_utilities', errstring, source, revision, revdate)
+if (create_local_comm) then
+   call MPI_Comm_dup(MPI_COMM_WORLD, my_local_comm, errcode)
+   if (errcode /= MPI_SUCCESS) then
+      write(errstring, '(a,i8)') 'MPI_Comm_dup returned error code ', errcode
+      call error_handler(E_ERR,'initialize_mpi_utilities', errstring, &
+                         source, revision, revdate)
+   endif
 endif
 
 ! find out who we are (0 to N-1).
@@ -1488,13 +1500,13 @@ subroutine sleep_seconds(naplength)
 end subroutine sleep_seconds
 
 !-----------------------------------------------------------------------------
-function mpi_was_init()
- logical :: mpi_was_init
+function get_dart_mpi_comm()
+ integer :: get_dart_mpi_comm
 
-! return the init status for the non-module subroutine below.
- mpi_was_init = module_initialized
+! return our private communicator (or world, if no private created)
+ get_dart_mpi_comm = my_local_comm
 
-end function mpi_was_init
+end function get_dart_mpi_comm
 
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
@@ -1509,7 +1521,7 @@ end module mpi_utilities_mod
 !-----------------------------------------------------------------------------
 
 subroutine exit_all(exit_code)
- use mpi_utilities_mod, only : mpi_was_init
+ use mpi_utilities_mod, only : get_dart_mpi_comm
 
  integer, intent(in) :: exit_code
 
@@ -1519,13 +1531,11 @@ subroutine exit_all(exit_code)
 
 integer :: ierror
 
-! if we seem to have gone through the init code, call abort on our
-! private communicator.  otherwise call abort on the world comm.
-if ( mpi_was_init() ) then
-   call MPI_Abort(my_local_comm,  exit_code, ierror)
-else
-   call MPI_Abort(MPI_COMM_WORLD, exit_code, ierror)
-endif
+! if we made a local communicator, call abort on it.
+! otherwise call abort on the world comm.
+
+!print *, 'calling abort on comm ', get_dart_mpi_comm()
+call MPI_Abort(get_dart_mpi_comm(),  exit_code, ierror)
 
 ! execution should never get here
 
