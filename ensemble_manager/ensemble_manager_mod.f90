@@ -277,8 +277,7 @@ integer,              intent(in)    :: start_copy, end_copy
 logical, optional,    intent(in)    :: force_single_file
 
 ! Large temporary storage to be avoided if possible
-! LARGE ARRAY ON STACK -- make this a pointer and allocate it from heap?
-real(r8)                            :: ens(ens_handle%num_vars)
+real(r8), pointer                   :: ens(:)
 type(time_type)                     :: ens_time
 integer                             :: iunit, i, global_index
 integer                             :: owner, owners_index
@@ -300,8 +299,9 @@ if(single_restart_file_out .or. single_file_forced) then
    ! Single restart file is written only by the master_pe
    if(my_pe == 0) then
       iunit = open_restart_write(file_name)
-      
+
       ! Loop to write each ensemble member
+      allocate(ens(ens_handle%num_vars))   ! used to be on stack.
       do i = start_copy, end_copy
          ! Figure out where this ensemble member is being stored
          call get_copy_owner_index(i, owner, owners_index)
@@ -318,6 +318,7 @@ if(single_restart_file_out .or. single_file_forced) then
             call awrite_state_restart(ens_time, ens, iunit)
          endif
       end do
+      deallocate(ens)
       call close_restart(iunit)
    else
       ! If I'm not the master pe with a single restart, I must send my copies
