@@ -287,7 +287,7 @@ subroutine get_var_2d_real_cdf( fname, var, data, &
 
 !  get the data
 
-  call check( nf90_get_var(cdfid, id_data, data, start = (/ 1, 1, 1 /)) )
+  call check( nf90_get_var(cdfid, id_data, data, start = (/ 1, 1, time /)) )
 
   if(debug) write(unit=*, fmt='(a,e24.12)') ' Sample data=', data(1,1)
 
