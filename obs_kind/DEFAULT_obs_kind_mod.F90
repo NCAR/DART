@@ -726,7 +726,9 @@ else
 endif
 
 do i = 1, max_obs_specific
-   if (restrict .and. use_list(i) == 0) cycle
+   if (restrict) then
+       if (use_list(i) == 0) cycle
+   endif
 
    if (is_ascii) then
       write(ifile, *) obs_type_info(i)%index, obs_type_info(i)%name
