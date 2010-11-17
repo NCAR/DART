@@ -1,0 +1,470 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>PROGRAM obs_selection</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>obs_selection</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Examples">EXAMPLES</A> /
+<A HREF="#Building">BUILDING</A> /
+<A HREF="#Discussion">DISCUSSION</A> /
+<A HREF="#FAQ">FAQ</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+This specialized tool selects out a subset of the input observations.
+For a more general purpose tool, see the 
+<a href="obs_sequence_tool.hmtl>obs_sequence_tool</a>.
+The tool which creates the input selection file is
+<a href="obs_seq_coverage.hmtl>obs_seq_coverage</a>.
+This tool takes a selected list of observation
+types, times, and locations, and extracts only the matching
+observations out of a longer set of obs_sequence files.
+</P>
+<P>
+The actions of the <em class=code>obs_selection</em> program
+are controlled by a Fortran namelist, read from a file named
+<em class=file>input.nml</em> in the current directory.  A detailed
+description of each namelist item is described in the
+<a href="#Namelist">namelist section</a> of this document.
+The names used in this discussion refer to these namelist items.
+</P>
+
+<P>
+The following section contains examples of common usages for this tool.
+Below that are more details about DART observation sequence files, the
+structure of individual observations, and general background information.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<HR>
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+</P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / obs_selection_nml / </em> 
+        filename_seq, filename_seq_list, num_input_files, filename_out,
+        selection_file, print_only, gregorian_cal
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+This <em class=code>&amp;obs_selection</em> namelist is read from 
+the <em class=file>input.nml</em> file.
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+<TR><!--contents--><TD valign=top>num_input_files</TD>
+    <!--  type  --><TD>integer</TD>
+    <!--descript--><TD>The number of observation sequence files to process.
+                       Maximum of 500.  If left 0, the length is set by the
+                       number of input files given.  If non-zero, must match
+                       the given input file list length.
+                       Default: 0</TD></TR>
+<TR><!--contents--><TD valign=top>filename_seq</TD>
+    <!--  type  --><TD>character(len=129), dimension(500)</TD>
+    <!--descript--><TD>The array of names of the observation sequence files to process.
+                       With the F90 namelist mechanism, it is only necessary
+                       to specify the names you are going to use, not all.
+                       Default: ''</TD></TR>
+<TR><!--contents--><TD valign=top>filename_seq_list</TD>
+    <!--  type  --><TD>character(len=129)</TD>
+    <!--descript--><TD>The name of a text file which contains, one per line,
+                       the names of the observation sequence files to process.
+                       You can only specify one of filename_seq OR 
+                       filename_seq_list, not both.
+                       Default: ''</TD></TR>
+<TR><!--contents--><TD valign=top>filename_out</TD>
+    <!--  type  --><TD>character(len=129)</TD>
+    <!--descript--><TD>The name of the resulting output observation sequence file.
+                       Default: 'obs_seq.processed'</TD></TR>
+<TR><!--contents--><TD valign=top>print_only</TD>
+    <!--  type  --><TD>logical</TD>
+    <!--descript--><TD>If .TRUE., do not create an output file, but print a summary of the
+                       number and types of each observation in each input file, and then
+                       the number of observations and types which would have been created in
+                       an output file.  If other namelist selections are specified (e.g. start
+                       and end times, select by observation type, qc value, etc) the summary
+                       message will include the results of that processing.
+                       Default: .false.</TD></TR>
+<TR><!--contents--><TD valign=top>first_obs_days</TD>
+    <!--  type  --><TD>integer</TD>
+    <!--descript--><TD>If non-negative, restrict the timestamps of the observations
+                       copied to the output file to be equal to or after this day number
+                       (specified in the Gregorian calendar; day number since 1600).
+                       Default: -1, process all observations</TD></TR>
+<TR><!--contents--><TD valign=top>first_obs_seconds</TD>
+    <!--  type  --><TD>integer</TD>
+    <!--descript--><TD>If non-negative, restrict the timestamps of the observations
+                       copied to the output file to be equal to or after this time.
+                       Default: -1, process all observations</TD></TR>
+<TR><!--contents--><TD valign=top>last_obs_days</TD>
+    <!--  type  --><TD>integer</TD>
+    <!--descript--><TD>If non-negative, restrict the timestamps of the observations
+                       copied to the output file to be equal to or before this date
+                       (specified in the Gregorian calendar; day number since 1600).
+                       Default: -1, process all observations</TD></TR>
+<TR><!--contents--><TD valign=top>last_obs_seconds</TD>
+    <!--  type  --><TD>integer</TD>
+    <!--descript--><TD>If non-negative, restrict the timestamps of the observations
+                       copied to the output file to be equal to or before this time.
+                       Default: -1, process all observations</TD></TR>
+<TR><!--contents--><TD valign=top>obs_types</TD>
+    <!--  type  --><TD>character(len=32), dimension(500)</TD>
+    <!--descript--><TD>The array of observation type names to process.  If any names
+                       specified, then based on the setting of <em class=code>keep_types</em>,
+                       these observation types will either be the only types kept in the
+                       output file, or they will be removed and all other types will be copied
+                       to the output file.
+                       Default: empty list </TD></TR>
+<TR><!--contents--><TD valign=top>keep_types</TD>
+    <!--  type  --><TD>logical</TD>
+    <!--descript--><TD>Ignored unless one or more observation types are specified in the
+                       <em class=code>obs_types</em> namelist.  If .TRUE., only the specified
+                       observation types will be copied to the output file; if .FALSE., all
+                       types except the listed ones will be copied to the output file.
+                       Default: .true.</TD></TR>
+<TR><!--contents--><TD valign=top>min_lat</TD>
+    <!--  type  --><TD>real(r8)</TD>
+    <!--descript--><TD>If specified, the minimum latitude, in degrees, of observations
+                       to be copied to the output file.  This assumes compiling with 
+                       the 3d-sphere locations module.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>max_lat</TD>
+    <!--  type  --><TD>real(r8)</TD>
+    <!--descript--><TD>If specified, the maximum latitude, in degrees, of observations
+                       to be copied to the output file.  This assumes compiling with 
+                       the 3d-sphere locations module.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>min_lon</TD>
+    <!--  type  --><TD>real(r8)</TD>
+    <!--descript--><TD>If specified, the minimum longitude, in degrees, of observations
+                       to be copied to the output file.  This assumes compiling with 
+                       the 3d-sphere locations module.  If min_lon is more than max_lon,
+                       wrap across 360 to 0 is assumed.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>max_lon</TD>
+    <!--  type  --><TD>real(r8)</TD>
+    <!--descript--><TD>If specified, the maximum longitude, in degrees, of observations
+                       to be copied to the output file.  This assumes compiling with 
+                       the 3d-sphere locations module.  If min_lon is more than max_lon,
+                       wrap across 360 to 0 is assumed.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>min_box</TD>
+    <!--  type  --><TD>real(r8)(:)</TD>
+    <!--descript--><TD>If the locations are 1D, set a min value here instead of using
+                       the lat/lon box values.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>max_box</TD>
+    <!--  type  --><TD>real(r8)(:)</TD>
+    <!--descript--><TD>If the locations are 1D, set a max value here instead of using
+                       the lat/lon box values.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>qc_metadata</TD>
+    <!--  type  --><TD>character</TD>
+    <!--descript--><TD>If specified, the metadata string describing one of the quality
+                       control (QC) fields in the input observation sequence files.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>min_qc</TD>
+    <!--  type  --><TD>real</TD>
+    <!--descript--><TD>If specified, the minimum qc value in the QC field matching the
+                       qc_metadata name that will be copied to the output file. 
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>max_qc</TD>
+    <!--  type  --><TD>real</TD>
+    <!--descript--><TD>If specified, the maximum qc value in the QC field matching the
+                       qc_metadata name that will be copied to the output file. 
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>copy_type</TD>
+    <!--  type  --><TD>character(len=32)</TD>
+    <!--descript--><TD>If specified, the string name of an observation type to be copied
+                       to the output file only if the min and max values specified are in range.
+                       All other observation types are discarded if this option is specified.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>copy_metadata</TD>
+    <!--  type  --><TD>character</TD>
+    <!--descript--><TD>If specified, the metadata string describing one of the data
+                       copy fields in the input observation sequence files.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>min_copy</TD>
+    <!--  type  --><TD>real</TD>
+    <!--descript--><TD>If specified, the minimum value in the data copy field matching the
+                       copy_metadata name that will be copied to the output file. 
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>max_copy</TD>
+    <!--  type  --><TD>real</TD>
+    <!--descript--><TD>If specified, the maximum value in the data copy field matching the
+                       copy_metadata name that will be copied to the output file. 
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>gregorian_cal</TD>
+    <!--  type  --><TD>logical</TD>
+    <!--descript--><TD>If .TRUE., the dates of the first and last observations in each file
+                       will be printed in both (day/seconds) format and in gregorian calendar
+                       year/month/day hour:min:sec format.  Set this to .false. if the observations
+                       were not created with gregorian calendar times.
+                       Default: .TRUE.</TD></TR>
+<TR><!--contents--><TD valign=top>edit_copy_metadata</TD>
+    <!--  type  --><TD>logical</TD>
+    <!--descript--><TD>If true, replace the output file metadata strings with the list
+                       specified in the new_copy_metadata list.
+                       Default: .false.</TD></TR>
+<TR><!--contents--><TD valign=top>new_copy_metadata</TD>
+    <!--  type  --><TD>character(len=*)(:)</TD>
+    <!--descript--><TD>List of new metadata strings.  Use with care, there is no error checking
+                       to ensure you are doing a valid replacement.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>edit_copies</TD>
+    <!--  type  --><TD>logical</TD>
+    <!--descript--><TD>If true, subset or rearrange the actual data copies in the output.
+                       The new_copy_index list controls the output order of copies from the
+                       input files.
+                       Default: .false.</TD></TR>
+<TR><!--contents--><TD valign=top>new_copy_index</TD>
+    <!--  type  --><TD>integer(:)</TD>
+    <!--descript--><TD>An array of integers, which control how copies in the input are
+                       moved to the output sequence.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>edit_qc_metadata</TD>
+    <!--  type  --><TD>logical</TD>
+    <!--descript--><TD>If true, replace the output file metadata strings with the list
+                       specified in the new_qc_metadata list.
+                       Default: .false.</TD></TR>
+<TR><!--contents--><TD valign=top>new_qc_metadata</TD>
+    <!--  type  --><TD>character(len=*)(:)</TD>
+    <!--descript--><TD>List of new metadata strings.  Use with care, there is no error checking
+                       to ensure you are doing a valid replacement.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>edit_qcs</TD>
+    <!--  type  --><TD>logical</TD>
+    <!--descript--><TD>If true, subset or rearrange the actual data qcs in the output.
+                       The new_qc_index list controls the output order of qcs from the
+                       input files.
+                       Default: .false.</TD></TR>
+<TR><!--contents--><TD valign=top>new_qc_index</TD>
+    <!--  type  --><TD>integer(:)</TD>
+    <!--descript--><TD>An array of integers, which control how qcs in the input are
+                       moved to the output sequence.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>synonym_copy_list</TD>
+    <!--  type  --><TD>character(len=*)(:)</TD>
+    <!--descript--><TD>An array of strings which are to be considered synonyms in the copy
+                       metadata strings for all the input obs seq files.
+                       Any string in this list
+                       will match any other string.  The first obs sequence file to copy
+                       observations to the output file will set the actual values used,
+                       unless they are explicitly overridden by edit_copy_metadata.
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>synonym_qc_list</TD>
+    <!--  type  --><TD>character(len=*)(:)</TD>
+    <!--descript--><TD>An array of strings which are to be considered synonyms in the qc
+                       metadata strings for all the input obs seq files.
+                       Any string in this list
+                       will match any other string.  The first obs sequence file to qc
+                       observations to the output file will set the actual values used,
+                       unless they are explicitly overridden by edit_qc_metadata.
+                       Default: none</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+
+<A NAME="Examples"></A>
+<HR>
+<H2>EXAMPLES</H2>
+
+FIXME!!
+
+<A NAME="keepval"></A>
+<h3>Subset by Observation or QC Value</h3>
+<P>
+You can specify a min, max data value and/or min, max qc value,
+and only those within the range will be kept.  There is no exclude option.
+For the data value, you must also specify an observation type since
+different types have different units and valid ranges.  For example:
+</P>
+<pre>
+# keep only observations with a DART QC of 0:
+   qc_metadata        = 'Dart quality control',
+   min_qc             = 0,
+   max_qc             = 0,
+
+# keep only radiosonde temp obs between 250 and 300 K:
+   copy_metadata      = 'NCEP BUFR observation',
+   copy_type          = 'RADIOSONDE_TEMPERATURE',
+   min_copy           = 250.0,
+   max_copy           = 300.0,
+</pre>
+
+<!--==================================================================-->
+
+<A NAME="Building"></A>
+<HR>
+<H2>BUILDING</H2>
+
+<P>
+Most <tt>$DART/models/*/work</tt> directories will build the tool along with
+other executable programs.  It is also possible to build the
+tool in the <tt>$DART/observations/utilities</tt> directory.
+The <tt>preprocess</tt> program must be built and run first, to define
+what set of observation types will be supported.  See the 
+<a href="../preprocess/preprocess.html">preprocess documentation</a>
+for more details on how to define the list and run it.
+The combined list of all observation types which will be encountered
+over all input files must be in the preprocess input list.
+The other important choice when building the tool is to include a
+compatible locations module.  For the low-order models,
+the <tt>oned</tt> module should be used; for real-world observations,
+the <tt>threed_sphere</tt> module should be used.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="OtherModulesUsed"></A>
+<HR>
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+time_manager_mod
+obs_def_mod
+obs_sequence_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<HR>
+<H2>FILES</H2>
+<UL><LI><em class="file">input.nml</em></LI>
+    <LI>The input files specified in the <em class="code">filename_seq</em>
+        namelist variable.</LI>
+    <LI>The output file specified in the <em class="code">filename_out</em>
+        namelist variable.</LI>
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<HR>
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<HR>
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>obs_selection</TD>
+    <!-- message --><TD VALIGN=top>num_input_files &gt; max_num_input_files. 
+		    change max_num_input_files in source file</TD>
+    <!-- comment --><TD VALIGN=top>The default is 500 files.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>obs_selection</TD>
+    <!-- message --><TD VALIGN=top>num_input_files and filename_seq mismatch</TD>
+    <!-- comment --><TD VALIGN=top>The number of filenames does not match
+                        the filename count.</TD>
+</TR>
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<HR>
+<H2>FUTURE PLANS</H2>
+<P>
+Long laundry list of things this tool could do, including:
+</P>
+<UL>
+<LI>Remove duplicates (difficult to accurately compare floating
+    point values, but identical obs should be possible to recognize,
+    or some epsilon could be specified.)</LI>
+</UL>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>
