@@ -294,7 +294,9 @@
    lonlim2    =  360.0,
    latlim1    =  -90.0,
    latlim2    =   90.0,
-   verbose    = .true.,
+   nTmin      =      8,
+   nTmax      =      8,
+   verbose    = .false.,
    /
 
 &restart_file_tool_nml
