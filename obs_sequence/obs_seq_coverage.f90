@@ -89,11 +89,14 @@ type station
    type(time_type), pointer :: times(:)
 end type station
 
+logical,       allocatable, dimension(:) :: DesiredStations
 type(station), allocatable, dimension(:) :: stations
 integer :: num_stations  ! This is the current number of unique locations
 integer :: max_stations  ! This is the largest possible number of uniq locs
 integer :: station_id    ! the index (into stations) of an existing location
 integer :: timeindex     ! the index (into the time array of a station)
+integer :: num_output    ! total number of desired locations and times found
+integer :: num_max       ! most number of desired times found at any location
 
 integer, parameter :: stringlength = 32
 
@@ -112,7 +115,6 @@ character(len = 129), allocatable, dimension(:) :: obs_seq_filenames
 
 integer :: flavor, flavor_of_interest
 integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
-integer :: num_obs_kinds
 
 character(len=129) :: obs_seq_read_format
 logical :: pre_I_format
@@ -128,13 +130,16 @@ character(len = 129) :: obs_of_interest   = 'all'
 
 real(r8) :: lonlim1= MISSING_R8, lonlim2= MISSING_R8
 real(r8) :: latlim1= MISSING_R8, latlim2= MISSING_R8 
+integer  :: nTmin = 0   ! minimum number of times required
+integer  :: nTmax = 0   ! maximum number of times required
 
 logical :: debug = .false.   ! undocumented ... on purpose
 logical :: verbose = .false.
 
 namelist /obs_seq_coverage_nml/ obs_sequence_name, obs_sequence_list, &
                                  lonlim1, lonlim2, latlim1, latlim2, &
-                                 obs_of_interest, verbose, debug
+                                 nTmin, nTmax, obs_of_interest, &
+                                 verbose, debug
 
 !-----------------------------------------------------------------------
 ! Quantities of interest
@@ -149,7 +154,6 @@ character(len=stringlength), allocatable, dimension(:) :: module_obs_copy_names
 character(len=stringlength), allocatable, dimension(:) ::        obs_copy_names
 character(len=stringlength), allocatable, dimension(:) :: module_qc_copy_names
 character(len=stringlength), allocatable, dimension(:) ::        qc_copy_names
-character(len=stringlength),  dimension(max_obs_kinds) :: obs_kind_names
 
 real(r8), allocatable, dimension(:)   :: qc
 integer,  dimension(max_obs_kinds) :: obs_kinds_inds = 0
@@ -163,7 +167,7 @@ integer  :: i, io, ncunit
 
 type(time_type) :: obs_time
 
-character(len = 129) :: ncName, msgstring
+character(len = 129) :: ncName, string1, string2, string3
 
 !=======================================================================
 ! Get the party started
@@ -185,21 +189,6 @@ max_stations = 4000
 call initialize_stations(max_stations, stations)
 
 !----------------------------------------------------------------------
-! FIXME : at some point, I'd like to restrict this to just the ones
-!         in the obs_seq file ... not the ones supported. Problem is
-!         that you have to read all the obs sequence files and process
-!         the region information before you know if you have any to
-!         output. Maybe allocate more space in the netCDF header and
-!         re-enter DEFINE mode after all is said and done ...
-!----------------------------------------------------------------------
-
-num_obs_kinds = max_obs_kinds
-
-do i = 1,max_obs_kinds
-   obs_kind_names(i) = get_obs_kind_name(i)
-enddo
-
-!----------------------------------------------------------------------
 ! Read the namelist
 !----------------------------------------------------------------------
 
@@ -211,19 +200,28 @@ call check_namelist_read(ncunit, io, 'obs_seq_coverage_nml')
 if (do_nml_file()) write(nmlfileunit, nml=obs_seq_coverage_nml)
 if (do_nml_term()) write(    *      , nml=obs_seq_coverage_nml)
 
+! Check the user input for sanity
+if (nTmin > nTmax) then
+   write(string1,*)'namelist: nTmin (',nTmin,') must be <= nTmax (',nTmax,')' 
+   call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, revdate)
+endif
+if (nTmin < 0) then
+   write(string1,*)'nTmin must be > 0, was read as ',nTmin
+   call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, revdate)
+endif
 if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
-   write(msgstring,*)'specify "obs_sequence_name" or "obs_sequence_list"'
-   call error_handler(E_MSG, 'obs_seq_coverage', msgstring, source, revision, revdate)
-   write(msgstring,*)'set other to an empty string ... i.e. ""'
-   call error_handler(E_ERR, 'obs_seq_coverage', msgstring, source, revision, revdate)
+   write(string1,*)'specify "obs_sequence_name" or "obs_sequence_list"'
+   write(string2,*)'set other to an empty string ... i.e. ""'
+   call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, &
+                     revdate, text2=string2)
 endif
 
 flavor_of_interest = get_obs_kind_index(obs_of_interest)
 obs_kinds_inds(flavor_of_interest) = 1
 
 if (flavor_of_interest < 0) then
-   write(msgstring,*)trim(obs_of_interest),' is not a known observation type.'
-   call error_handler(E_ERR, 'obs_seq_coverage', msgstring, source, revision, revdate)
+   write(string1,*)trim(obs_of_interest),' is not a known observation type.'
+   call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, revdate)
 endif
 
 if (verbose) write(*,*)trim(adjustl(obs_of_interest)),' is type ',flavor_of_interest
@@ -265,12 +263,12 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    endif
 
    if ( file_exist(trim(obs_seq_in_file_name)) ) then
-      write(msgstring,*)'opening ', trim(obs_seq_in_file_name)
-      call error_handler(E_MSG,'obs_seq_coverage',msgstring,source,revision,revdate)
+      write(string1,*)'opening ', trim(obs_seq_in_file_name)
+      call error_handler(E_MSG,'obs_seq_coverage',string1,source,revision,revdate)
    else
-      write(msgstring,*)trim(obs_seq_in_file_name),&
+      write(string1,*)trim(obs_seq_in_file_name),&
                         ' does not exist. Finishing up.'
-      call error_handler(E_MSG,'obs_seq_coverage',msgstring,source,revision,revdate)
+      call error_handler(E_MSG,'obs_seq_coverage',string1,source,revision,revdate)
       exit ObsFileLoop
    endif
 
@@ -295,8 +293,8 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    allNcopies = num_copies + Ncopies
 
    if ((num_qc <= 0) .or. (num_copies <=0)) then
-      write(msgstring,*)'need at least 1 qc and 1 observation copy'
-      call error_handler(E_ERR,'obs_seq_coverage',msgstring,source,revision,revdate)
+      write(string1,*)'need at least 1 qc and 1 observation copy'
+      call error_handler(E_ERR,'obs_seq_coverage',string1,source,revision,revdate)
    endif
 
    allocate( obs_copy_names(allNcopies), qc_copy_names(num_qc), qc(num_qc))
@@ -326,15 +324,15 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    call read_obs_seq(obs_seq_in_file_name, 0, 0, 0, seq)
 
    do i=1, num_copies
-         msgstring = trim(get_copy_meta_data(seq,i))//'                          '
-         obs_copy_names(i) = msgstring(1:stringlength)
+         string1 = trim(get_copy_meta_data(seq,i))//'                          '
+         obs_copy_names(i) = string1(1:stringlength)
    enddo
    do i=1, Ncopies
          obs_copy_names(num_copies+i) = trim(copy_names(i))
    enddo
    do i=1, num_qc
-         msgstring = trim(get_qc_meta_data(seq,i))//'                          '
-         qc_copy_names(i) = msgstring(1:stringlength)
+         string1 = trim(get_qc_meta_data(seq,i))//'                          '
+         qc_copy_names(i) = string1(1:stringlength)
    enddo
 
    if ( ifile == 1 ) then ! record the metadata for comparison
@@ -343,42 +341,42 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
                 module_qc_copy_names(num_qc) )
 
       do i=1, num_copies
-         msgstring = trim(get_copy_meta_data(seq,i))//'                          '
-         module_obs_copy_names(i) = msgstring(1:stringlength)
+         string1 = trim(get_copy_meta_data(seq,i))//'                          '
+         module_obs_copy_names(i) = string1(1:stringlength)
       enddo
       do i=1, Ncopies
          module_obs_copy_names(num_copies+i) = trim(copy_names(i))
       enddo
       do i=1, num_qc
-         msgstring = trim(get_qc_meta_data(seq,i))//'                          '
-         module_qc_copy_names(i) = msgstring(1:stringlength)
+         string1 = trim(get_qc_meta_data(seq,i))//'                          '
+         module_qc_copy_names(i) = string1(1:stringlength)
       enddo
 
    else ! Compare all subsequent files' metadata to the first one
 
       do i = 1,allNcopies
          if (trim(obs_copy_names(i)) /= trim(module_obs_copy_names(i))) then
-            write(msgstring,'(''obs copy '',i3,'' from '',a)') i,trim(obs_seq_in_file_name)
-            call error_handler(E_MSG,'obs_seq_coverage',msgstring,source,revision,revdate)
-            msgstring = 'does not match the same observation copy from the first file.'
-            call error_handler(E_MSG,'obs_seq_coverage',msgstring,source,revision,revdate)
-            write(msgstring,'(''obs copy >'',a,''<'')') trim(obs_copy_names(i))
-            call error_handler(E_MSG,'obs_seq_coverage',msgstring,source,revision,revdate)
-            write(msgstring,'(''expected >'',a,''<'')') trim(module_obs_copy_names(i))
-            call error_handler(E_ERR,'obs_seq_coverage',msgstring,source,revision,revdate)
+            write(string1,'(''obs copy '',i3,'' from '',a)') i,trim(obs_seq_in_file_name)
+            call error_handler(E_MSG,'obs_seq_coverage',string1,source,revision,revdate)
+
+            string1 = 'does not match the same observation copy from the first file.'
+            write(string2,'(''obs copy >'',a,''<'')') trim(obs_copy_names(i))
+            write(string3,'(''expected >'',a,''<'')') trim(module_obs_copy_names(i))
+            call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, &
+                                            revdate,text2=string2,text3=string3)
          endif
       enddo
 
       do i = 1,num_qc
          if (trim(qc_copy_names(i)) /= trim(module_qc_copy_names(i))) then
-            write(msgstring,'(''qc copy '',i3,'' from '',a)') i,trim(obs_seq_in_file_name)
-            call error_handler(E_MSG,'obs_seq_coverage',msgstring,source,revision,revdate)
-            msgstring = 'does not match the same qc copy from the first file.'
-            call error_handler(E_MSG,'obs_seq_coverage',msgstring,source,revision,revdate)
-            write(msgstring,'(''qc  copy '',a)') trim(qc_copy_names(i))
-            call error_handler(E_MSG,'obs_seq_coverage',msgstring,source,revision,revdate)
-            write(msgstring,'(''expected '',a)') trim(module_qc_copy_names(i))
-            call error_handler(E_ERR,'obs_seq_coverage',msgstring,source,revision,revdate)
+            write(string1,'(''qc copy '',i3,'' from '',a)') i,trim(obs_seq_in_file_name)
+            call error_handler(E_MSG,'obs_seq_coverage',string1,source,revision,revdate)
+
+            string1 = 'does not match the same qc copy from the first file.'
+            write(string2,'(''qc  copy '',a)') trim(qc_copy_names(i))
+            write(string3,'(''expected '',a)') trim(module_qc_copy_names(i))
+            call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, &
+                                            revdate,text2=string2,text3=string3)
          endif
       enddo
 
@@ -423,8 +421,8 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
          if ( station_id < 1 ) then
             station_id = add_new_station(flavor, obs_loc, stations)
-         else
-            if (verbose) write(*,*)'obs(',nread,') matches station ',station_id
+      !  else
+      !     if (verbose) write(*,*)'obs(',nread,') matches station ',station_id
          endif
 
          if (    is_time_new( obs_time, station_id, stations, timeindex) ) &
@@ -444,17 +442,47 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    enddo ObservationLoop
    !--------------------------------------------------------------------
 
-   if (verbose) write(*,*)'End of Loop for ',trim(obs_seq_in_file_name)
-
 enddo ObsFileLoop
 
-if (1 == 1) call print_summary
+! Output a netCDF file of 'all' observations locations and times.
+! Used to explore what is available.
 
 write(ncName,'(''obs_coverage.nc'')')
-
 ncunit = InitNetCDF(ncName)
 call WriteNetCDF(ncunit, ncName, stations)
 call CloseNetCDF(ncunit, ncName)
+
+! Determine which stations match the temporal selection requirements
+
+allocate(DesiredStations(num_stations))
+DesiredStations = .FALSE.
+num_output = 0
+num_max = stations(i)%ntimes
+
+TimeLoop : do i = 1,num_stations
+
+   if (stations(i)%ntimes > num_max) num_max = stations(i)%ntimes 
+
+   if ( (stations(i)%ntimes >= nTmin) .and. &
+        (stations(i)%ntimes <= nTmax) ) then
+      DesiredStations(i) = .TRUE.
+      num_output = num_output + stations(i)%ntimes 
+   endif
+
+enddo TimeLoop
+
+! if no stations are selected, do something.
+
+if (num_output < 1) then
+   write(string1,*)'No location had at least ',nTmin,' reporting times.'
+   write(string2,*)'Most was ',num_max
+   call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, &
+                      revdate, text2=string2)
+endif
+
+! Output the file of desired observation locations and times.
+! Used to subset the observation sequence files.
+call print_summary
 
 !-----------------------------------------------------------------------
 ! Really, really, done.
@@ -471,6 +499,7 @@ if (allocated(obs_copy_names))        deallocate(obs_copy_names)
 if (allocated(module_obs_copy_names)) deallocate(module_obs_copy_names)
 if (allocated(module_qc_copy_names )) deallocate(module_qc_copy_names )
 if (allocated(obs_seq_filenames))     deallocate(obs_seq_filenames)
+if (allocated(DesiredStations))       deallocate(DesiredStations)
 
 call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
 
@@ -650,8 +679,8 @@ TimeLoop : do i = 1,stationlist(stationid)%ntimes
    ! Check to see if the increment is smaller
    ! if it is, then we know which one to overwrite
    if (obdelta < stndelta) then
-      if (verbose) call print_time(stationlist(stationid)%times(i),'replacing ')
-      if (verbose) call print_time(ObsTime,'with this observation time')
+      if (debug) call print_time(stationlist(stationid)%times(i),'replacing ')
+      if (debug) call print_time(ObsTime,'with this observation time')
       timeindex = i
       exit TimeLoop
    endif
@@ -752,7 +781,7 @@ endif
 ! Stuff the time in the appropriate slot ... finally.
 stationlist(stationid)%times(timeindex) = ObsTime
 
-if (verbose) write(*,*)'Stuffing time into ',stationid, &
+if (debug) write(*,*)'Stuffing time into ',stationid, &
                 ' at ', timeindex,  &
                 ' of ', size(stationlist(stationid)%times)
 
@@ -788,17 +817,17 @@ InitNetCDF = 0
 call nc_check(nf90_create(path = trim(fname), cmode = nf90_share, &
          ncid = ncid), 'obs_seq_coverage:InitNetCDF', 'create '//trim(fname))
 
-write(msgstring,*)trim(ncName), ' is fortran unit ',ncid
-call error_handler(E_MSG,'InitNetCDF',msgstring,source,revision,revdate)
+write(string1,*)trim(ncName), ' is fortran unit ',ncid
+call error_handler(E_MSG,'InitNetCDF',string1,source,revision,revdate)
 
 !----------------------------------------------------------------------------
 ! Write Global Attributes 
 !----------------------------------------------------------------------------
 
 call DATE_AND_TIME(crdate,crtime,crzone,values)
-write(msgstring,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
+write(string1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
                values(1), values(2), values(3), values(5), values(6), values(7)
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'creation_date', trim(msgstring) ), &
+call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'creation_date', trim(string1) ), &
            'InitNetCDF', 'put_att creation_date '//trim(fname))
 
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_coverage_source', source ), &
@@ -809,6 +838,10 @@ call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_coverage_revdate', revdat
            'InitNetCDF', 'put_att obs_seq_coverage_revdate '//trim(fname))
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_of_interest', obs_of_interest ), &
            'InitNetCDF', 'put_att obs_of_interest '//trim(fname))
+call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'nTmin', nTmin ), &
+           'InitNetCDF', 'put_att nTmin '//trim(fname))
+call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'nTmax', nTmax ), &
+           'InitNetCDF', 'put_att nTmax '//trim(fname))
 
 ! write all observation sequence files used
 FILEloop : do i = 1,SIZE(obs_seq_filenames)
@@ -817,9 +850,9 @@ FILEloop : do i = 1,SIZE(obs_seq_filenames)
 
   if (indx1 > 0) exit FILEloop
 
-  write(msgstring,'(''obs_seq_file_'',i3.3)')i
+  write(string1,'(''obs_seq_file_'',i3.3)')i
   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, &
-         trim(msgstring), trim(obs_seq_filenames(i)) ), &
+         trim(string1), trim(obs_seq_filenames(i)) ), &
          'InitNetCDF', 'put_att:filenames')
 
 enddo FILEloop
@@ -885,8 +918,8 @@ call nc_check(nf90_put_att(ncid, VarID, "long_name", "input.nml contents"), &
 ! let the location module write what it needs to ...
 
 if ( nc_write_location_atts( ncid, fname, StationsDimID ) /= 0 ) then
-   write(msgstring,*)'problem initializing netCDF location attributes'
-   call error_handler(E_ERR,'InitNetCDF',msgstring,source,revision,revdate)
+   write(string1,*)'problem initializing netCDF location attributes'
+   call error_handler(E_ERR,'InitNetCDF',string1,source,revision,revdate)
 endif
 
 ! Define the observation time 
@@ -1051,8 +1084,8 @@ allocate(stations(Nstations))
 N = size(stations)
 
 if (N /= Nstations) then
-   write(msgstring,*)'wanted ',Nstations,' allocated ',N
-   call error_handler(E_ERR, 'initialize_stations', msgstring, source, revision, revdate)
+   write(string1,*)'wanted ',Nstations,' allocated ',N
+   call error_handler(E_ERR, 'initialize_stations', string1, source, revision, revdate)
 endif
 
 do i = 1,N
@@ -1090,36 +1123,53 @@ end subroutine destroy_stations
 
 subroutine print_summary
 
-! Just to print a summary of the stations we found, etc.
+! print a summary of the stations we found, etc.
+! Extended to write out a file containing the observation 
+! definitions of the desired observations. This file is used
+! to subset the 'big' observation sequence files to harvest 
+! the observations used to validate the forecast. 
 
 integer :: sec1,secN,day1,dayN
 type(obs_def_type) :: obs_def
 
-integer :: iunit
+integer :: iunit, j
 
 iunit = get_unit()
 open(iunit,file='obs_defs.txt',form='formatted', &
                 action='write', position='rewind')
-! FIXME ... num_stations not exactly accurate for stations with multiple times.
-write(iunit,*)'num_stations ',num_stations
+
+! num_output is the result of traversing the list of stations and times
+! and finding the intersection with the user input. How many stations
+! and times fit the requirements.
+write(iunit,*)'num_definitions ',num_output
+
 call write_obs_kind(iunit, fform='formatted', use_list=obs_kinds_inds)
 call set_obs_def_error_variance(obs_def, MISSING_R8)
 call set_obs_def_kind(          obs_def, flavor_of_interest)
 
-write(*,*)'There are ',num_stations,' stations for '//trim(obs_of_interest)
+write(*,*)'There are ',num_output,' locs/times for '//trim(obs_of_interest)
+write(*,*)'only interested in locations with between ', nTmin, nTmax,' obs times.' 
 write(*,*)'minlon/minlat ', lonlim1, latlim1 
 write(*,*)'maxlon/maxlat ', lonlim2, latlim2
-do i = 1,num_stations
+
+Summary : do i = 1,num_stations
+
+   if ( .not. DesiredStations(i) ) cycle Summary
+
+   call set_obs_def_location(obs_def, stations(i)%location)
+   TimeLoop : do j = 1,stations(i)%ntimes
+      call set_obs_def_time(obs_def, stations(i)%times(j))
+      call write_obs_def(iunit, obs_def, i, 'formatted')
+   enddo TimeLoop
+
+   if (verbose) then
    call get_time(stations(i)%first_time,sec1,day1)
    call get_time(stations(i)%last_time, secN,dayN)
    write(*,'(''station '',i6,'' has '',i3,'' ['',i7,1x,i5,'' and '',i7,1x,i5,'']'')') &
        i,stations(i)%ntimes,day1,sec1,dayN,secN
+   endif
 
-   call set_obs_def_location(obs_def, stations(i)%location)
-   call set_obs_def_time(    obs_def, stations(i)%times(1)) ! FIXME ... multiple times
-   call write_obs_def(iunit, obs_def, i, 'formatted')
-
-enddo
+enddo Summary
 
 end subroutine print_summary
 
