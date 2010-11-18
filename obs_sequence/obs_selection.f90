@@ -87,7 +87,7 @@ character(len = 129) :: filename_seq_list = ''
 character(len = 129) :: filename_out  = 'obs_seq.processed'
 logical              :: process_file(max_num_input_files)
 
-character(len = 129) :: selections_file = 'obs_def.txt'
+character(len = 129) :: selections_file = 'obsdef_mask.txt'
 
 logical  :: selections_is_obs_seq = .false.
 logical  :: print_only            = .false.

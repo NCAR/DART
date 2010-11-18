@@ -115,6 +115,11 @@ the <em class=file>input.nml</em> file.
     <!--  type  --><TD>character(len=129)</TD>
     <!--descript--><TD>The name of the resulting output observation sequence file.
                        Default: 'obs_seq.processed'</TD></TR>
+<TR><!--contents--><TD valign=top>selections_file</TD>
+    <!--  type  --><TD>character(len=129)</TD>
+    <!--descript--><TD>The name of the input file containing the mask of observation
+                       definitions (the textfile output of obs_seq_coverage).
+                       Default: 'obsdef_mask.txt'</TD></TR>
 <TR><!--contents--><TD valign=top>print_only</TD>
     <!--  type  --><TD>logical</TD>
     <!--descript--><TD>If .TRUE., do not create an output file, but print a summary of the

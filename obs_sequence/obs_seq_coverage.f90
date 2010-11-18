@@ -124,6 +124,8 @@ logical :: last_ob_flag
 ! Namelist with (some scalar) default values
 !-----------------------------------------------------------------------
 
+character(len = 129) :: textfile_out      = 'obsdef_mask.txt'
+character(len = 129) :: netcdf_out        = 'obsdef_mask.nc'
 character(len = 129) :: obs_sequence_name = 'obs_seq.final'
 character(len = 129) :: obs_sequence_list = ''
 character(len = 129) :: obs_of_interest   = 'all'
@@ -139,7 +141,7 @@ logical :: verbose = .false.
 namelist /obs_seq_coverage_nml/ obs_sequence_name, obs_sequence_list, &
                                  lonlim1, lonlim2, latlim1, latlim2, &
                                  nTmin, nTmax, obs_of_interest, &
-                                 verbose, debug
+                                 verbose, debug, textfile_out, netcdf_out
 
 !-----------------------------------------------------------------------
 ! Quantities of interest
@@ -447,10 +449,10 @@ enddo ObsFileLoop
 ! Output a netCDF file of 'all' observations locations and times.
 ! Used to explore what is available.
 
-write(ncName,'(''obs_coverage.nc'')')
-ncunit = InitNetCDF(ncName)
-call WriteNetCDF(ncunit, ncName, stations)
-call CloseNetCDF(ncunit, ncName)
+ncName = adjustl(netcdf_out)
+ncunit = InitNetCDF(trim(ncName))
+call WriteNetCDF(ncunit, trim(ncName), stations)
+call CloseNetCDF(ncunit, trim(ncName))
 
 ! Determine which stations match the temporal selection requirements
 
@@ -1135,7 +1137,7 @@ type(obs_def_type) :: obs_def
 integer :: iunit, j
 
 iunit = get_unit()
-open(iunit,file='obs_defs.txt',form='formatted', &
+open(iunit,file=trim(textfile_out), form='formatted', &
                 action='write', position='rewind')
 
 ! num_output is the result of traversing the list of stations and times
