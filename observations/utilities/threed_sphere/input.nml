@@ -87,9 +87,50 @@
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
    print_obs_locations   = .false.,
-   verbose               = .false.
+   verbose               = .false.,
    /
 
+&obs_seq_coverage_nml
+   obs_sequence_list = 'obs_coverage_list.txt',
+   obs_sequence_name = '',        
+   obs_of_interest = 'METAR_U_10_METER_WIND',
+   lonlim1    =    0.0,
+   lonlim2    =  360.0,
+   latlim1    =  -90.0,
+   latlim2    =   90.0,
+   nTmin      =      8,
+   nTmax      =      8,
+   verbose    = .false.,
+   /
+
+# selections_file is a list of obs_defs output
+# from the obs_seq_coverage utility.
+
+&obs_selection_nml
+   filename_seq        = 'obs_seq.out', 
+   filename_seq_list   = '', 
+   filename_out        = 'obs_seq.processed', 
+   selections_file     = 'obs_defs.txt', 
+   print_only          = .false., 
+   gregorian_cal       = .true.,
+/
+
+&restart_file_tool_nml
+   input_file_name              = "filter_restart",        
+   output_file_name             = "filter_updated_restart",
+   ens_size                     = 1,
+   single_restart_file_in       = .true.,
+   single_restart_file_out      = .true.,
+   write_binary_restart_files   = .true.,
+   overwrite_data_time          = .false.,
+   new_data_days                = -1,  
+   new_data_secs                = -1,
+   input_is_model_advance_file  = .false.,
+   output_is_model_advance_file = .false.,
+   overwrite_advance_time       = .false.,
+   new_advance_days             = -1, 
+   new_advance_secs             = -1,
+   /
 
 &obs_sequence_tool_nml
    num_input_files = 1, 
