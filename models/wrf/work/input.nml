@@ -262,6 +262,7 @@
    print_mismatched_locs = .false.,
    print_obs_locations   = .false.,
    verbose               = .false.,
+   outliers_in_histogram = .false.,
    /
 
 &schedule_nml
