@@ -1,19 +1,12 @@
 
-# num_input_files does not need to be set; it will
-# be computed based on the number of files found in
-# the given list.  if you do set the number to 
-# something other than 0, it must match exactly
-# the length of the list or it is an error.
+# selections_file is a list of obs_defs output
+# from the obs_seq_coverage utility.
 
-# selections_file is a list of obs_defs outpu
-# from the obs_by_station utility.
-
-namelist /obs_selection_nml/ &
-   num_input_files     = 0, 
+&obs_selection_nml
    filename_seq        = 'obs_seq.out', 
    filename_seq_list   = '', 
-   filename_out        = 'obs_seq.processed', &
-   selections_file     = 'obs_def.txt', 
+   filename_out        = 'obs_seq.processed', 
+   selections_file     = 'obs_defs.txt', 
    print_only          = .false., 
    gregorian_cal       = .true.,
 /
