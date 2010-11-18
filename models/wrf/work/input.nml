@@ -299,6 +299,18 @@
    verbose    = .false.,
    /
 
+# selections_file is a list of obs_defs output
+# from the obs_seq_coverage utility.
+
+&obs_selection_nml
+   filename_seq        = 'obs_seq.out', 
+   filename_seq_list   = '', 
+   filename_out        = 'obs_seq.processed', 
+   selections_file     = 'obs_defs.txt', 
+   print_only          = .false., 
+   gregorian_cal       = .true.,
+/
+
 &restart_file_tool_nml
    input_file_name              = "filter_restart",        
    output_file_name             = "filter_updated_restart",
