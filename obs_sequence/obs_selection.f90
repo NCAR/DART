@@ -72,13 +72,14 @@ integer, parameter      :: print_every = 20
 ! Namelist input with default values
 
 ! max_num_input_files : maximum number of input sequence files to be processed
-integer, parameter :: max_num_input_files = 500
-integer :: num_input_files = 0
-
-! lazy, pick a big number
-integer, parameter :: max_obs_input_types = 500
-character(len = obstypelength) :: obs_types(max_obs_input_types) = ''
-integer :: num_obs_input_types
+! lazy, pick big numbers.  make them bigger if too small.
+integer, parameter               :: max_num_input_files = 1000
+integer, parameter               :: max_obs_input_types = 500
+character(len = obstypelength)   :: obs_types(max_obs_input_types) = ''
+integer                          :: num_input_files = 0
+integer                          :: num_obs_input_types
+type(obs_def_type),  allocatable :: obs_def_list(:)
+integer                          :: obs_def_count
 
 
 character(len = 129) :: filename_seq(max_num_input_files) = ''
@@ -88,17 +89,14 @@ logical              :: process_file(max_num_input_files)
 
 character(len = 129) :: selections_file = 'obs_def.txt'
 
-type(obs_def_type),  allocatable :: obs_def_list(:)
-integer                          :: obs_def_count
-
-! 256 is an arb max of number of copies for data and qc
-logical  :: print_only = .false.
-logical  :: gregorian_cal = .true.
+logical  :: selections_is_obs_seq = .false.
+logical  :: print_only            = .false.
+logical  :: gregorian_cal         = .true.
 
 
 namelist /obs_selection_nml/ &
          num_input_files, filename_seq, filename_seq_list, filename_out, &
-         selections_file, print_only, gregorian_cal
+         selections_file, selections_is_obs_seq, print_only, gregorian_cal
 
 !----------------------------------------------------------------
 ! Start of the program:
@@ -138,7 +136,7 @@ call handle_filenames(filename_seq, filename_seq_list, num_input_files)
 ! (earlier versions of this file had the test before the namelist read - duh.)
 if (gregorian_cal) call set_calendar_type(GREGORIAN)
 
-call read_selection_list(selections_file, obs_def_list, obs_def_count)
+call read_selection_list(selections_file, selections_is_obs_seq, obs_def_list, obs_def_count)
 
 ! end of namelist processing and setup
 
@@ -360,7 +358,7 @@ call destroy_obs_sequence(seq_out)
 call destroy_obs(     obs_in )
 call destroy_obs(next_obs_in )
 call destroy_obs(     obs_out)
-call destroy_obs(prev_obs_out)
+!call destroy_obs(prev_obs_out)
 
 call timestamp(source,revision,revdate,'end')
 
@@ -824,44 +822,88 @@ enddo QCMetaData
 end subroutine print_metadata
 
 !---------------------------------------------------------------------
-subroutine read_selection_list(select_file, selection_list, selection_count)
- character(len=*),                intent(in) :: select_file
+subroutine read_selection_list(select_file, select_is_seq, &
+                               selection_list, selection_count)
+ character(len=*),                intent(in)  :: select_file
+ logical,                         intent(in)  :: select_is_seq
  type(obs_def_type), allocatable, intent(out) :: selection_list(:)
  integer,                         intent(out) :: selection_count
 
+ ! the plan:
  ! open file
  ! read count
  ! call read_obs_def right number of times
  ! close file
 
- integer :: iunit, count, i
- character(len=12) :: label    ! must be 'num_stations'
+ integer :: iunit, count, i, copies, qcs
+ character(len=15) :: label    ! must be 'num_definitions'
+ type(obs_type) :: obs, prev_obs
+ type(obs_sequence_type) :: seq_in
+ logical :: is_this_last
  real(r8) :: dummy
 
- iunit = open_file(select_file, form='formatted', action='read')
+ ! if the list of which obs to select comes from the coverage tool,
+ ! it's a list of obs_defs.   if it's a full obs_seq file, then
+ ! use the normal tools and just pull out the list of obs_defs.
+ if (.not. select_is_seq) then
+     iunit = open_file(select_file, form='formatted', action='read')
+    
+     read(iunit, *) label, count
+     if (label /= 'num_definitions') then
+         call error_handler(E_ERR,'obs_selection', &
+           'bad format, expected "num_definitions" at start of selection file', &
+            source,revision,revdate)
+     endif
+    
+     allocate(selection_list(count))
+    
+     ! set up the mapping table for the kinds here
+     call read_obs_kind(iunit, .false.)
+    
+     do i = 1, count
+         call read_obs_def(iunit, selection_list(i), 0, dummy)
+     enddo
+    
+     call close_file(iunit)
+ else
+    
+     call read_obs_seq(select_file, 0, 0, 0, seq_in)
 
- read(iunit, *) label, count
- if (label /= 'num_stations') then
-    print *, 'bad format, expected xx'
-    stop
+     count  = get_num_obs(seq_in)
+     copies = get_num_copies(seq_in)
+     qcs    = get_num_qc(seq_in)
+
+     call init_obs(obs,      copies, qcs)
+     call init_obs(prev_obs, copies, qcs)
+
+     allocate(selection_list(count))
+    
+     if (.not. get_first_obs(seq_in, obs)) then
+         call error_handler(E_ERR,'obs_selection', &
+           'empty obs_seq for selection file', &
+            source,revision,revdate)
+     endif
+
+     is_this_last = .false.
+     do i = 1, count
+         if (is_this_last) exit 
+
+         call get_obs_def(obs, selection_list(i))
+
+         prev_obs = obs
+         call get_next_obs(seq_in, prev_obs, obs, is_this_last)
+     enddo
+    
+    call destroy_obs(obs)
+    call destroy_obs_sequence(seq_in)
  endif
-
- allocate(selection_list(count))
-
- ! set up the mapping table for the kinds here
- call read_obs_kind(iunit, .false.)
-
- do i = 1, count
-     call read_obs_def(iunit, selection_list(i), 0, dummy)
- enddo
-
- call close_file(iunit)
 
  selection_count = count
 
 end subroutine read_selection_list
 
-! compare location, time, type
+
+! compare horiz location, time, type - ignores vertical
 !---------------------------------------------------------------------
 function good_selection(obs_in, selection_list, selection_count)
  type(obs_type),     intent(in) :: obs_in
