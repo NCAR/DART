@@ -1,9 +1,27 @@
 
+! notes on the gps namelist items:
+!  only one of file or filelist can be specified:
+!   file is a single input source. 
+!   filelist is the name of a text file containing a list of 
+!    filenames, one per line, to convert into a single output file.
+!
+!  local operator is a single tangent-point calculation
+!  non-local operator integrates along the ray-path
+!
+!  obs_levels are specified in kilometers
+!  ray delta-step and top ray height are specified in meters
+!
+!  ray_ds and ray_htop are ignored for local operator.
+!  for the non-local operator, ray_ds is the integration length
+!  of each step along the ray path, starting from the tangent
+!  point and going out in each of the two directions.  
+!  ray_htop is the height at which the integration stops, when
+!  the next end point exceeds this height.
+!
+!  obs_window is obsolete and should be removed from your namelist.
+!  use the obs_sequence_tool to select obs within a particular 
+!  time-window.
 
-! local operator does not do ray-path reconstruction
-! obs levels are in kilometers
-! flist contains a list of input filenames to convert into a single
-!  output file
 &convert_cosmic_gps_nml
   gpsro_netcdf_file = '',
   gpsro_netcdf_filelist = 'flist',
