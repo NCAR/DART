@@ -39,6 +39,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
 use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
                              set_obs_def_error_variance, set_obs_def_location, &
                              set_obs_def_key
+use obs_kind_mod,     only : get_obs_kind_name
 
 ! FIXME: i don't have all the actual kinds yet (bottle? underway? )
 ! but it's closer than before.  must have obs_def_ocean_mod.f90 in preprocess list.
@@ -79,13 +80,13 @@ use obs_kind_mod, only : &
          DOPPLER_W_CURRENT_COMPONENT,   KIND_W_CURRENT_COMPONENT,      &
          SATELLITE_MICROWAVE_SST,       SATELLITE_INFRARED_SST,        &
          SATELLITE_SSH,                 SATELLITE_SSS,                 &
-         CODAR_RADIAL_VELOCITY,         KIND_VELOCITY
+         HFRADAR_RADIAL_VELOCITY,       KIND_VELOCITY
 
 
 ! not clean interface; going for working code first.
 use WOD_read_routines_mod, only : WODREADDART, depth, temp, ierror, iderror,  &
-                      maxlevel, maxcalc, kdim, maxtcode, maxtax, maxpinf, bmiss, &
-                      isec, sechead
+                      maxlevel, maxcalc, kdim, maxtcode, maxtax, maxpinf,     &
+                      bmiss, isec, sechead
 
 
 
@@ -101,11 +102,11 @@ character(len=128), parameter :: &
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
 
-character (len=129) :: meta_data, msgstring, next_infile
+character (len=129) :: meta_data, msgstring, next_infile, cdummy
 character (len=80)  :: name
 character (len=19)  :: datestr
 character (len=6)   :: subset
-integer :: rcode, ncid, varid, j, k, nfiles, num_new_obs, castid
+integer :: rcode, ncid, varid, j, k, nfiles, num_new_obs, castid, l
 integer :: aday, asec, dday, dsec, oday, osec                   
 integer :: obsyear, obsmonth, obsday, obshour, obsmin, obssec
 integer :: zloc, obs_num, io, iunit, filenum, dummy, i_qc, nc_rc
@@ -120,8 +121,8 @@ real(r8) :: hght_miss, refr_miss, azim_miss, terr, serr,         &
 real :: dtime, lato, lono
 real(r8) :: obslat, obslon, obsdepth
 
-! platform codes
-integer :: ptype(2, 16) = (/  &
+! platform codes - reshape required by latest XLF compiler.
+integer :: ptype(2, 16) = reshape( (/  &
    MBT_TEMPERATURE,     MBT_SALINITY,      &   ! ptype(1)  = MBT
    XBT_TEMPERATURE,     XBT_SALINITY,      &   ! ptype(2)  = XBT
    DBT_TEMPERATURE,     DBT_SALINITY,      &   ! ptype(3)  = DBT
@@ -137,16 +138,18 @@ integer :: ptype(2, 16) = (/  &
    APB_TEMPERATURE,     APB_SALINITY,      &   ! ptype(13) = animal
    0,                   0,                 &   ! ptype(14) = bucket
    GLIDER_TEMPERATURE,  GLIDER_SALINITY,   &   ! ptype(15) = glider
-   MBT_TEMPERATURE,     MBT_SALINITY  /)       ! ptype(16) = microBT
+   MBT_TEMPERATURE,     MBT_SALINITY  /),  &   ! ptype(16) = microBT
+   (/ 2, 16 /)  )  ! reshape 1d array into (2,16)
 
 
 real(r8), allocatable :: lat(:), lon(:), dep(:), err(:) !, d_qc(:)
 
-type(obs_def_type)      :: obs_def
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: obs_time, delta_time, prev_time
 
+integer :: histbin(-1:26) = 0  ! for time debug
+integer :: histcount = 0       ! for time debug
 integer :: temp_type, salt_type, good_temp, good_salt, bad_temp, bad_salt
 integer :: salt_qc(10), temp_qc(10)
 
@@ -159,6 +162,7 @@ character(len=128) :: wod_input_filelist = ''
 character(len=128) :: wod_out_file       = 'obs_seq.wod'
 integer            :: avg_obs_per_file   = 500000
 logical            :: debug              = .false.
+logical            :: timedebug          = .false.
 logical            :: print_qc_summary   = .true.
 integer            :: max_casts          = -1
 logical            :: no_output_file     = .false.
@@ -170,7 +174,7 @@ namelist /wod_to_obs_nml/ &
    wod_input_file, wod_input_filelist, wod_out_file,   &
    avg_obs_per_file, debug, max_casts, no_output_file, &
    print_every_nth_cast, print_qc_summary,             &
-   temperature_error, salinity_error
+   temperature_error, salinity_error, timedebug
 
 ! start of executable code
 
@@ -278,63 +282,40 @@ print *, 'opening file ', trim(next_infile)
    ! this comes back as 1 when the file has all been read.
    if (ieof == 1) exit castloop
 
+   ! see what data we have
+   if (nvar == 0) then
+      goto 20 ! inc counter, cycle castloop
+   endif
+
 !print *, 'obsyear, obsmonth, obsday = ', obsyear, obsmonth, obsday
 !print *, 'levels = ', levels
 !print *, 'lato, lono = ', lato, lono
 
-   ! FIXME: need to gather:
+   ! need to gather:
    !   time (year, month, day, time), lat, lon, depth, obs type, ?.
 
    ! start out with converting the real time.
+   ! do error check first.  if fail, cycle here
+   ! this routine alters bad days and times to be valid, or
+   ! returns a failure and we loop here.
+   if (.not. date_ok(obsyear, obsmonth, obsday, &
+                     dtime, bmiss, castid)) goto 20 
  
-   ! at least 2 files have dates of 2/29 on non-leap years.  test for
-   ! that and reject those obs.  also found a 9/31, apparently without
-   ! a bad cast qc.   the 2/29s were examined and determined to be a bad
-   ! conversion - should be mar 1  the 9/31s were recording errors and
-   ! based on the other obs, should have been 9/30.
-
-   ! don't do the year test unless this is leap day.
-   if ((obsmonth == 2) .and. (obsday == 29)) then
-      ! jan 1st always exists.  set this so we can test for leap year.
-      obs_time = set_date(obsyear, 1, 1)
-      if (.not. leap_year(obs_time)) then
-         print *, 'cast number: ', castid
-         print *, 'date says:  ', obsyear, obsmonth, obsday
-         print *, 'which does not exist in this year; setting to mar 1'
-         ! convert this to mar 1 (date conversion error)
-         obsmonth = 3
-         obsday = 1
-      endif
-   endif
-   if ((obsmonth == 9) .and. (obsday == 31)) then
-      print *, 'cast number: ', castid
-      print *, 'date says:  ', obsyear, obsmonth, obsday
-      print *, 'which does not exist in any year; setting to sept 30'
-      ! convert this to sept 30 (apparent date input error)
-      obsmonth = 9
-      obsday = 30
-   endif
-
-   ! convert to integer days and seconds, and add on to reference time.
-   if (dtime == bmiss) then
-      obssec = 0
-   else
-      obssec = int(dtime * 86400.0)
-   endif
-   ! fixme?
-   if (obsday == 0) then
-      obsday = 1
-   endif
+   ! convert fractional hours (0-24) to integer days and seconds
+   !  and add on to reference time.  dtime was set to 0 if it was
+   !  missing in the date_ok() routine.
+   obssec = int(dtime * 3600.0)
    delta_time = set_time(obssec)
    obs_time = set_date(obsyear, obsmonth, obsday) + delta_time
    call get_time(obs_time,  osec, oday)
 !print *, 'oday, osec = ', oday, osec
 !call print_date(obs_time)
    
-
-   ! see what data we have
-   if (nvar == 0) then
-      goto 20 ! inc counter, cycle castloop
+   if (debug) then
+      print *, ' --- '
+      print *, 'cast number: ', castid
+      print *, 'obsyear,month,day,time = ', obsyear, obsmonth, obsday, dtime
+      print *, 'lato, lono = ', lato, lono
    endif
 
    have_temp = .false.
@@ -362,7 +343,14 @@ print *, 'opening file ', trim(next_infile)
    if (debug) then
       print *, 'num levels: ', levels
       print *, 'has temp, salinity: ', have_temp, have_salt
-      print *, 'temp, salinity type: ', temp_type, salt_type
+      if (have_temp) then
+         cdummy = get_obs_kind_name(temp_type)
+         print *, 'temp type/name: ', temp_type, trim(cdummy)
+      endif 
+      if (have_salt) then
+         cdummy = get_obs_kind_name(salt_type)
+         print *, 'salt type/name: ', salt_type, trim(cdummy)
+      endif 
       call print_date(obs_time, 'obs time')
    endif
    
@@ -392,9 +380,19 @@ print *, 'opening file ', trim(next_infile)
       endif
    endif
    
+   if (debug) then
+      if (ierror(1) /= 0) print *, 'whole temp cast discarded, ierror == ', ierror(1)
+      if (ierror(2) /= 0) print *, 'whole salt cast discarded, ierror == ', ierror(2)
+   endif
+
    obsloop: do k = 1, levels
    
      obsdepth = depth(k)
+
+      if (debug) then
+         write(*, "(A,F6.0,F8.3,F4.0,F8.3,F4.0)") "depth, temp/salt value,qc: ",&
+                    depth(k), temp(k,1), iderror(k,1), temp(k, 2), iderror(k,2)
+      endif
 
      ! ierror is whole cast error
      if (have_temp .and. ierror(1) == 0 .and. &
@@ -403,34 +401,11 @@ print *, 'opening file ', trim(next_infile)
 
          ! set location - incoming obs are -180 to 180 in longitude;
          ! dart wants 0 to 360.  (also, r8)
-         call set_obs_def_location(obs_def, &
-                           set_location(obslon, obslat, obsdepth,VERTISHEIGHT))
-         call set_obs_def_kind(obs_def, temp_type)
-         call set_obs_def_time(obs_def, obs_time)
-    
-         call set_obs_def_error_variance(obs_def, terr * terr)
-         call set_obs_def_key(obs_def, obs_num)
-         call set_obs_def(obs, obs_def)
-   
-!print *, 'temp = ', temp(k, 1)
-         obs_val(1) = temp(k, 1)
-         call set_obs_values(obs, obs_val)
-         qc_val(1)  = iderror(k, 1)  ! iderror is per-depth error
-         call set_qc(obs, qc_val)
-    
-         ! first one, insert with no prev.  otherwise, since all times will be the
-         ! same for this column, insert with the prev obs as the starting point.
-         ! (the first insert with no prev means it will search for the right
-         ! time ordered starting point.)
-         if (prev_time > obs_time) then
-            call insert_obs_in_seq(obs_seq, obs)
-         else
-            call insert_obs_in_seq(obs_seq, obs, prev_obs)
-         endif
-         obs_num = obs_num+1
-         prev_obs = obs
-         prev_time = obs_time
- 
+         call fill_obs(obs, obs_num, obslon, obslat, obsdepth, temp_type, &
+                 obs_time, terr, real(temp(k, 1), r8), real(iderror(k, 1), r8))
+
+         call add_obs(obs_seq, obs, obs_time, prev_obs, prev_time)
+
          if (.not. did_obs) did_obs = .true.
       endif
 
@@ -440,34 +415,11 @@ print *, 'opening file ', trim(next_infile)
           salt_type > 0 .and. temp(k, 2) /= bmiss &
          .and. (.not. no_output_file)) then   
 
-         call set_obs_def_location(obs_def, &
-                           set_location(obslon, obslat, obsdepth,VERTISHEIGHT))
-         call set_obs_def_kind(obs_def, salt_type)
-         call set_obs_def_time(obs_def, obs_time)
-    
-         call set_obs_def_error_variance(obs_def, serr * serr)
-         call set_obs_def_key(obs_def, obs_num)
-         call set_obs_def(obs, obs_def)
-   
-!print *, 'salt = ', temp(k, 2) / 1000.0_r8
-         obs_val(1) = temp(k, 2) / 1000.0_r8
-         call set_obs_values(obs, obs_val)
-         qc_val(1)  = iderror(k, 2)
-         call set_qc(obs, qc_val)
-    
-         ! first one, insert with no prev.  otherwise, since all times will be the
-         ! same for this column, insert with the prev obs as the starting point.
-         ! (the first insert with no prev means it will search for the right
-         ! time ordered starting point.)
-         if (prev_time > obs_time) then
-            call insert_obs_in_seq(obs_seq, obs)
-         else
-            call insert_obs_in_seq(obs_seq, obs, prev_obs)
-         endif
-         obs_num = obs_num+1
-         prev_obs = obs
-         prev_time = obs_time
- 
+         call fill_obs(obs, obs_num, obslon, obslat, obsdepth, salt_type, &
+               obs_time, serr, temp(k, 2) / 1000.0_r8, real(iderror(k, 2), r8))
+
+         call add_obs(obs_seq, obs, obs_time, prev_obs, prev_time)
+
          if (.not. did_obs) did_obs = .true.
       endif 
 
@@ -536,17 +488,227 @@ print *, 'ready to write, nobs = ', get_num_obs(obs_seq)
    if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
 endif
 
+! histogram of times, debug only
+if (timedebug) then
+   print *, "total obs examined = ", histcount
+   print *, "bin -1 is < 0"
+   print *, "bin 0 is == 0"
+   print *, "bin 25 is > 24 but != 99.9"
+   print *, "bin 26 is == 99.9"
+   print *, " "
+   print *, 'bin    count'
+   do l=lbound(histbin, 1), ubound(histbin, 1)
+      print *, l, histbin(l)
+   enddo
+endif
+
 call timestamp(source,revision,revdate,'end')
 call finalize_utilities()
 
 ! END OF MAIN ROUTINE
 
-! contains
+contains
 
 ! local subroutines/functions follow
 
-! something to set the err var - make it a subroutine so we can muck with it
+! subroutine to fill an obs.  assumes loc is 3d, and vert is in meters.
+subroutine fill_obs(obs, onum, olon, olat, odepth, otype, otime, oerr, &
+                    oval, oqc)
+ type(obs_type),  intent(inout) :: obs
+ integer,         intent(inout) :: onum
+ real(r8),        intent(in)    :: olon, olat, odepth, oerr, oval, oqc
+ integer,         intent(in)    :: otype
+ type(time_type), intent(in)    :: otime
 
-! subroutine to fill an obs?
+type(obs_def_type) :: obs_def
+real(r8)           :: valarr(1), qcarr(1)
+
+call set_obs_def_location(obs_def, &
+                          set_location(olon, olat, odepth, VERTISHEIGHT))
+call set_obs_def_kind(obs_def, otype)
+call set_obs_def_time(obs_def, otime)
+    
+call set_obs_def_error_variance(obs_def, oerr * oerr)
+call set_obs_def_key(obs_def, onum)
+call set_obs_def(obs, obs_def)
+
+valarr(1) = oval
+call set_obs_values(obs, valarr)
+qcarr(1)  = oqc
+call set_qc(obs, qcarr)
+
+onum = onum + 1
+
+end subroutine fill_obs
+    
+! add an obs to the sequence.  if prev_time same or earlier
+! than obs time, insert with search starting from prev obs.
+subroutine add_obs(seq, obs, obs_time, prev_obs, prev_time)
+ type(obs_sequence_type),   intent(inout) :: seq
+ type(obs_type),            intent(inout) :: obs, prev_obs
+ type(time_type),           intent(in)    :: obs_time
+ type(time_type),           intent(inout) :: prev_time
+
+logical, save :: first_obs = .true.
+
+if (first_obs .or. prev_time > obs_time) then
+   call insert_obs_in_seq(obs_seq, obs)
+   first_obs = .false.
+else
+   call insert_obs_in_seq(obs_seq, obs, prev_obs)
+endif
+
+prev_obs  = obs
+prev_time = obs_time
+
+end subroutine add_obs
+
+! date check, since a lot of these obs seem to have bad times/dates.
+! modify testmonth, testday, dtime if we know what the right answer is.
+! return .TRUE. if date ok, .FALSE. if bad and not fixable.
+function date_ok(testyear, testmonth, testday, dtime, bmiss, castid)
+ integer,  intent(inout) :: testyear, testmonth, testday
+ real,     intent(inout) :: dtime    ! note real, not real(r8), to match 
+ real,     intent(in)    :: bmiss    ! WOD-supplied code which uses reals
+ integer,  intent(in)    :: castid
+ 
+ logical :: date_ok
+
+integer :: days_per_month(12) = (/31,28,31,30,31,30,31,31,30,31,30,31/)
+type(time_type) :: test_time
+
+! at least 2 files have dates of 2/29 on non-leap years.  test for
+! that and fix those dates.  also found a 9/31, apparently without
+! a bad cast qc.   the 2/29s were examined and determined to be a bad
+! conversion - should be mar 1  the 9/31s were recording errors and
+! based on the other obs, should have been 9/30.
+
+10 format (A,I9,A,I6,I4,I4,F6.2)
+
+! bad month - return fail
+if (testmonth <= 0 .or. testmonth > 12) then
+   write(*, 10) 'cast number: ', castid, ' date, dtime: ', testyear, testmonth, testday, dtime
+   write(*, *)  ' bad month number, discarding observation'
+   date_ok = .FALSE.
+   return 
+endif
+
+! try to estimate the time shifting error impacts from old code.
+if (timedebug) then
+   histcount = histcount + 1
+   if (dtime == bmiss) then
+      ! no count.  it is ok since we discarded it before
+   else if (dtime < 0.0) then
+      histbin(-1) = histbin(-1) + 1
+   else if (dtime == 0.0) then
+      histbin(0) = histbin(0) + 1
+   else if (dtime == 99.9) then
+      histbin(26) = histbin(26) + 1
+   else if (dtime > 24.0) then
+      histbin(25) = histbin(25) + 1
+   else
+      histbin(int(dtime)) = histbin(int(dtime)) + 1
+   endif
+endif
+
+! check time - if standard missing value, don't squawk.
+! otherwise, note the cast number and original value, and
+! then set to 0, or fail.
+if (dtime == bmiss) then
+   dtime = 0.0
+else if (dtime == 99.90) then
+   ! seems to be an alternative missing value in some few cases.
+   ! got confirmation from WOD providers that this was an incorrect
+   ! missing value and future versions of the WOD will use the standard
+   ! 'missing_value' read out of the file (bmiss in this subroutine, 
+   ! appears to be something like -999.99)
+   write(*, 10) 'cast number: ', castid, ' date, dtime: ', testyear, testmonth, testday, dtime
+   write(*, *)  ' setting to 0 and continuing'
+   dtime = 0.0
+else if (dtime < 0) then
+   write(*, 10) 'cast number: ', castid, ' date, dtime: ', testyear, testmonth, testday, dtime
+   write(*, *)  ' setting to 0 and continuing'
+   dtime = 0.0
+else if (dtime > 24.0) then
+   write(*, 10) 'cast number: ', castid, ' date, dtime: ', testyear, testmonth, testday, dtime
+   ! some obs seem to have more than 24 hours in the time variable.
+   ! got confirmation from WOD providers that some appear to be keypunch
+   ! entry errors.  this field should never be > 24.  for now, set to 0
+   ! because the date is believed to be good.
+   !write(*, *)  ' discarding obs'
+   !date_ok = .FALSE.
+   !return 
+   write(*, *)  ' setting to 0 and continuing'
+   dtime = 0.0
+endif
+
+! good day - return success
+if (testday > 0 .and. testday <= days_per_month(testmonth)) then
+   date_ok = .TRUE.
+   return 
+endif
+ 
+! don't do the year test unless this is leap day.
+if ((testmonth == 2) .and. (testday == 29)) then
+   ! jan 1st always exists.  set this so we can test for leap year.
+   test_time = set_date(testyear, 1, 1)
+   if (.not. leap_year(test_time)) then
+      write(*, 10) 'cast number: ', castid, ' date, dtime: ', testyear, testmonth, testday, dtime
+      write(*, *)  ' does not exist in this non-leap year; setting to mar 1'
+      ! convert this to mar 1 (date conversion error)
+      testmonth = 3
+      testday = 1
+   endif
+   date_ok = .TRUE.
+   return 
+endif
+
+! day 0 is possibly a processing error, but actual day is currently unknown.
+! i have been advised to discard these, which i am reluctantly going to do.
+if (testday == 0) then
+   write(*, 10) 'cast number: ', castid, ' date, dtime: ', testyear, testmonth, testday, dtime
+   write(*, *)  ' does not exist; discarding obs'
+   date_ok = .FALSE.
+   return 
+   ! alternative code - keep obs and set day to 1 and time to 0.
+   !write(*, *)  ' setting day to 1, dtime to 0'
+   !testday = 1
+   !dtime = 0.0
+   !date_ok = .TRUE.
+   return 
+endif
+
+! if only 1 > end of month, set to end of month and succeed.
+! if more than 1 > end of month, fail.
+! found other files with 4/31 and 6/39 as dates. 
+if (testday > days_per_month(testmonth)+1) then
+   write(*, 10) 'cast number: ', castid, ' date, dtime: ', testyear, testmonth, testday, dtime
+   write(*, *)  ' does not exist; discarding obs'
+   date_ok = .FALSE.
+   return 
+endif
+
+! not sure this is a good idea; maybe should discard these obs?
+if (testday == days_per_month(testmonth)+1) then
+   write(*, 10) 'cast number: ', castid, ' date, dtime: ', testyear, testmonth, testday, dtime
+   write(*, *)  ' does not exist; assuming rollover to day 1, month+1, dtime to 0'
+   dtime = 0.0
+   testday = 1
+   testmonth = testmonth + 1
+   if (testmonth > 12) then
+      testmonth = 1
+      testyear = testyear + 1
+   endif
+   date_ok = .TRUE.
+   return 
+endif
+
+! shouldn't get here.  assume bad date.
+write(*, 10) 'cast number: ', castid, ' date, dtime: ', testyear, testmonth, testday, dtime
+write(*, *)  ' bad date; discarding obs'
+date_ok = .FALSE.
+return 
+
+end function date_ok
 
 end program
