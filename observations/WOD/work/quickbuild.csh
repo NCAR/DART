@@ -44,10 +44,6 @@ foreach TARGET ( mkmf_* )
    switch ( $TARGET )
    case mkmf_preprocess:
       breaksw
-   case mkmf_advance_time:
-      echo "If advance_time fails to build with gfortran, edit the source"
-      echo "and comment out the interface block for iargc() and try again."
-      # fall through!
    default:
       @ n = $n + 1
       echo
