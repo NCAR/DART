@@ -5,11 +5,12 @@
 ! flist contains a list of input filenames to convert into a single
 !  output file
 &wod_to_obs_nml
-  wod_input_file = '',
-  wod_input_filelist = 'ilist',
-  wod_out_file = 'obs_seq2000.wod',
+  wod_input_file = '../data/XBTS2005',
+  wod_input_filelist = '',
+  wod_out_file = 'obs_seq2005-XBT.wod',
   avg_obs_per_file = 500000,
   debug = 0,
+  timedebug = 0,
   max_casts = -1,
   print_every_nth_cast = 1000,
  /
