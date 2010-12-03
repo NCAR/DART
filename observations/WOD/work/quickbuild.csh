@@ -56,6 +56,8 @@ foreach TARGET ( mkmf_* )
    endsw
 end
 
+\rm -f *.o *.mod input.nml.*_default
+
 echo "Success: All DART programs compiled."  
 
 exit 0
