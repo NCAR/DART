@@ -57,7 +57,7 @@ start_d=(`echo ${start_year}${mon2}${day2}00 0 -g | ${EXEDIR}/advance_time`)
 
 # these are a string in the format YYYYMMDDHH
 # do them here to prime the loop below which first takes them apart.
-currday=(`echo ${start_year}${mon2}${day2}00   0  | ${EXEDIR}/advance_time`)
+currday=(`echo ${start_year}${mon2}${day2}00   0 | ${EXEDIR}/advance_time`)
 nextday=(`echo ${start_year}${mon2}${day2}00 +1d | ${EXEDIR}/advance_time`)
 prevday=(`echo ${start_year}${mon2}${day2}00 -1d | ${EXEDIR}/advance_time`)
 
