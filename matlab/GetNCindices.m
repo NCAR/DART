@@ -150,7 +150,7 @@ for i = 1:ndims
            case {'tmpi','west'}
                start(i) = lon1;
                count(i) = lonN;
-           case {'stat','xdim','ydim','loc1d'}
+           case {'stat','xdim','ydim','loc1'}
                % the lorenz_96_2scale has the unfortunate choice of
                % 'Xdim' and 'YDim' for their state variable names.
                start(i) = state1;
