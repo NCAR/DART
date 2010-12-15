@@ -102,3 +102,9 @@ print(3,'-dpng','undamped-damped')
 print(1,'-dpsc','VS_undamped')
 print(2,'-dpsc','VS_damped')
 print(3,'-dpsc','undamped-damped')
+
+% Turns out - index 113 (of 256) is precisely zero on the difference plot.
+% figure(3)
+% bob = gauss3; bob(113,:) = 1; colormap(bob)
+% bob = gauss3; bob(112:114,:) = 1; colormap(bob)
+% bob = gauss3; bob(111:115,:) = 1; colormap(bob)
