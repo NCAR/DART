@@ -79,39 +79,43 @@
 ! and that's basically the only difference with the assimilation of the other 
 ! types of observations. We also need to introduce the new obs type 
 ! (HFRADAR_RADIAL_VELOCITY)."
+ 
+! changed all occurences of xxx_radial_vel to xxx_hf_radial_vel (for high 
+! frequency) since otherwise the external names here collide with those
+! external names in the radar module (for weather radars, e.g. nexrad).  nsc.
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-!  use obs_def_ocean_mod, only : write_radial_vel, read_radial_vel,           &
-!                            interactive_radial_vel, get_expected_radial_vel
+!  use obs_def_ocean_mod, only : write_hf_radial_vel, read_hf_radial_vel,           &
+!                            interactive_hf_radial_vel, get_expected_hf_radial_vel
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !  case(HFRADAR_RADIAL_VELOCITY)
-!     call get_expected_radial_vel(state, location, obs_def%key, obs_val, istatus)
+!     call get_expected_hf_radial_vel(state, location, obs_def%key, obs_val, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 !   case(HFRADAR_RADIAL_VELOCITY)
-!      call read_radial_vel(obs_def%key, ifile, fform)
+!      call read_hf_radial_vel(obs_def%key, ifile, fform)
 ! END DART PREPROCESS READ_OBS_DEF
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 !   case(HFRADAR_RADIAL_VELOCITY)
-!      call write_radial_vel(obs_def%key, ifile, fform)
+!      call write_hf_radial_vel(obs_def%key, ifile, fform)
 ! END DART PREPROCESS WRITE_OBS_DEF
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
 !   case(HFRADAR_RADIAL_VELOCITY)
-!      call interactive_radial_vel(obs_def%key)
+!      call interactive_hf_radial_vel(obs_def%key)
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 !-----------------------------------------------------------------------------
 
@@ -139,8 +143,8 @@ use     obs_kind_mod, only : KIND_U_CURRENT_COMPONENT, &
 implicit none
 private
 
-public :: read_radial_vel, write_radial_vel, interactive_radial_vel,       &
-          get_expected_radial_vel, get_obs_def_radial_vel, set_radial_vel
+public :: read_hf_radial_vel, write_hf_radial_vel, interactive_hf_radial_vel,       &
+          get_expected_hf_radial_vel, get_obs_def_hf_radial_vel, set_hf_radial_vel
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -154,7 +158,7 @@ character(len=129) :: msgstring ! For error message content
 
 ! Derived type for radial velocity.  Contains auxiliary information stored
 ! with each obs of this type; used to compute the forward operator.
-! See more extensive comments in the interactive_radial_vel() routine for
+! See more extensive comments in the interactive_hf_radial_vel() routine for
 ! expected units, etc.  The instrument ID is currently unused, but may be
 ! useful for post processing or diagnostics.
 
@@ -232,7 +236,7 @@ end subroutine initialize_module
 !----------------------------------------------------------------------
 
 
-subroutine read_radial_vel(velkey, ifile, fform)
+subroutine read_hf_radial_vel(velkey, ifile, fform)
 
 ! Main read subroutine for the radial velocity observation auxiliary data.
 ! The beam_angle is expected to have units of degrees.
@@ -261,7 +265,7 @@ if (is_asciifile) then
 
    if(str1(1:7) /= 'HFRADAR') then
       write(msgstring,*)"Expected header 'HFRADAR' in input file, got ", str1(1:7)
-      call error_handler(E_ERR,'read_radial_vel', &
+      call error_handler(E_ERR,'read_hf_radial_vel', &
            msgstring, source, revision, revdate)
    endif
 endif
@@ -282,15 +286,15 @@ endif
 
 ! Generate new unique radial velocity observation key, and set the contents
 ! of the private defined type.
-call set_radial_vel(velkey, instrument_id, beam_angle )
+call set_hf_radial_vel(velkey, instrument_id, beam_angle )
 
-end subroutine read_radial_vel
+end subroutine read_hf_radial_vel
 
 
 !----------------------------------------------------------------------
 
 
-subroutine write_radial_vel(velkey, ifile, fform)
+subroutine write_hf_radial_vel(velkey, ifile, fform)
 
 ! Write radial velocity auxiliary information to the obs_seq file.
 
@@ -333,7 +337,7 @@ else
    write(ifile) velkey
 endif
 
-end subroutine write_radial_vel
+end subroutine write_hf_radial_vel
 
 
 !----------------------------------------------------------------------
@@ -342,7 +346,7 @@ end subroutine write_radial_vel
 function read_instrument_id(ifile, is_asciiformat)
 
 ! Reads instrument id from file that was written by write_instrument_id.
-! See read_radial_vel for additional discussion.
+! See read_hf_radial_vel for additional discussion.
 
 integer, intent(in) :: ifile
 logical, intent(in) :: is_asciiformat
@@ -402,7 +406,7 @@ end subroutine write_instrument_id
 function read_beam_angle(ifile, is_asciiformat)
 
 ! Reads beam_angle from file that was written by write_beam_angle.
-! See read_radial_vel for additional discussion.
+! See read_hf_radial_vel for additional discussion.
 
 integer, intent(in) :: ifile
 logical, intent(in) :: is_asciiformat
@@ -470,7 +474,7 @@ end subroutine write_beam_angle
 !----------------------------------------------------------------------
 
 
-subroutine get_obs_def_radial_vel(velkey, instrument_id, beam_angle)
+subroutine get_obs_def_hf_radial_vel(velkey, instrument_id, beam_angle)
 
 ! Return the auxiliary contents of a given radial velocity observation
 
@@ -484,13 +488,13 @@ call velkey_out_of_range(velkey)
 instrument_id = radial_vel_data(velkey)%instrument_id
 beam_angle    = radial_vel_data(velkey)%beam_angle
 
-end subroutine get_obs_def_radial_vel
+end subroutine get_obs_def_hf_radial_vel
 
 
 !----------------------------------------------------------------------
 
 
-subroutine set_radial_vel(velkey, instrument_id, beam_angle )
+subroutine set_hf_radial_vel(velkey, instrument_id, beam_angle )
 
 ! Common code to increment the current key count, and set the private
 ! contents of this observation's auxiliary data.
@@ -512,20 +516,20 @@ call velkey_out_of_range(velkey)
 radial_vel_data(velkey)%instrument_id = instrument_id
 radial_vel_data(velkey)%beam_angle    = beam_angle
    
-end subroutine set_radial_vel 
+end subroutine set_hf_radial_vel 
 
 
 !----------------------------------------------------------------------
 
 
-subroutine interactive_radial_vel(velkey)
+subroutine interactive_hf_radial_vel(velkey)
 
 ! Interactively reads in auxiliary information for a radial velocity obs.
 
 integer, intent(out) :: velkey
 
-! Uses the local subroutines interactive_instrument_id and set_radial_vel.
-! See read_radial_vel for more information.
+! Uses the local subroutines interactive_instrument_id and set_hf_radial_vel.
+! See read_hf_radial_vel for more information.
 
 ! velkey is internally incremented in the set routine, and only counts 
 ! the index for this specialized observation kind. 
@@ -549,14 +553,14 @@ write(*, *)
 
 call interactive_beam_angle(beam_angle)
 
-call set_radial_vel(velkey, instrument_id, beam_angle )
+call set_hf_radial_vel(velkey, instrument_id, beam_angle )
 
 write(*, *) 
 write(*, *) 'End of specialized section for radial velocity.'
 write(*, *) 'You will now have to enter the regular obs information.'
 write(*, *)
 
-end subroutine interactive_radial_vel
+end subroutine interactive_hf_radial_vel
 
 
 !----------------------------------------------------------------------
@@ -595,7 +599,7 @@ end subroutine interactive_beam_angle
 !----------------------------------------------------------------------
 
 
-subroutine get_expected_radial_vel(state_vector, location, velkey, &
+subroutine get_expected_hf_radial_vel(state_vector, location, velkey, &
                                    radial_vel, istatus)
 
 ! This is the main forward operator routine for radar Doppler velocity.
@@ -661,7 +665,7 @@ if (debug) then
    print *, 'istatus: ', istatus
 endif
 
-end subroutine get_expected_radial_vel
+end subroutine get_expected_hf_radial_vel
 
 !----------------------------------------------------------------------
 
@@ -677,8 +681,8 @@ if (velkey <= max_radial_vel_obs) return
 ! Bad news.  Tell the user.
 write(msgstring, *) 'velkey (',velkey,') exceeds max_radial_vel_obs (', &
                      max_radial_vel_obs,')'
-call error_handler(E_MSG,'set_radial_vel', msgstring, '', '', '')
-call error_handler(E_ERR,'set_radial_vel', &
+call error_handler(E_MSG,'set_hf_radial_vel', msgstring, '', '', '')
+call error_handler(E_ERR,'set_hf_radial_vel', &
                    'Increase max_radial_vel_obs in namelist', &
                    source, revision, revdate)
 
