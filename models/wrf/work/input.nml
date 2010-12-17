@@ -110,6 +110,7 @@
                               '../../../obs_def/obs_def_radar_mod.f90',
                               '../../../obs_def/obs_def_metar_mod.f90',
                               '../../../obs_def/obs_def_dew_point_mod.f90',
+                              '../../../obs_def/obs_def_rel_humidity_mod.f90',
                               '../../../obs_def/obs_def_altimeter_mod.f90',
                               '../../../obs_def/obs_def_gps_mod.f90',
                               '../../../obs_def/obs_def_vortex_mod.f90',
