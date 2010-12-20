@@ -346,8 +346,6 @@ xc = [ axlims(1) axlims(2) axlims(2) axlims(1) axlims(1) ];
 for i = 1:2:(length(edges)-1)
   yc = [ edges(i) edges(i) edges(i+1) edges(i+1) edges(i) ];
   hf = fill(xc,yc,[0.8 0.8 0.8],'EdgeColor','none');
-  set(hf,'FaceAlpha',0.3,'EdgeAlpha',0.3)
-  set(hf,'AlphaDataMapping','none','FaceVertexAlphaData',0.3)
 end
 
 set(gca,'XGrid','on')
@@ -367,7 +365,7 @@ iregion = plotobj{1}.region;
 ax1   = subplot('position',figdata.plotlims(iregion,:));
 
 Stripes(Drange, plotobj{1}.level_edges);
-set(ax1,'YDir',plotobj{1}.YDir,'YTick',sort(plotobj{1}.levels))
+set(ax1,'YDir',plotobj{1}.YDir,'YTick',sort(plotobj{1}.levels),'Layer','top')
 set(ax1,'YAxisLocation','left')
 hold on
      

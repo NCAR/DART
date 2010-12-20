@@ -278,7 +278,7 @@ function myplot(plotdat)
    end
 
    Stripes(plotdat.Xrange, plotdat.level_edges);
-   set(ax1,'YDir', plotdat.YDir,'YTick',plotdat.level)
+   set(ax1,'YDir', plotdat.YDir,'YTick',plotdat.level,'Layer','top')
    ylabel(plotdat.level_units)
 
    %% draw the result of the experiment
@@ -509,8 +509,6 @@ xc = [ axlims(1) axlims(2) axlims(2) axlims(1) axlims(1) ];
 for i = 1:2:(length(edges)-1)
   yc = [ edges(i) edges(i) edges(i+1) edges(i+1) edges(i) ];
   hf = fill(xc,yc,[0.8 0.8 0.8],'EdgeColor','none');
-  set(hf,'FaceAlpha',0.3,'EdgeAlpha',0.3)
-  set(hf,'AlphaDataMapping','none','FaceVertexAlphaData',0.3)
 end
 set(gca,'XGrid','on')
 hold off;
