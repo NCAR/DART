@@ -98,7 +98,8 @@ integer :: timeindex     ! the index (into the time array of a station)
 integer :: num_output    ! total number of desired locations and times found
 integer :: num_max       ! most number of desired times found at any location
 
-integer, parameter :: stringlength = 32
+integer, parameter :: STRINGLENGTH = 32
+integer, parameter :: MAX_OBS_INPUT_TYPES = 500  ! lazy, just going big
 
 !---------------------------------------------------------------------
 ! variables associated with the observation
@@ -128,7 +129,7 @@ character(len = 129) :: textfile_out      = 'obsdef_mask.txt'
 character(len = 129) :: netcdf_out        = 'obsdef_mask.nc'
 character(len = 129) :: obs_sequence_name = 'obs_seq.final'
 character(len = 129) :: obs_sequence_list = ''
-character(len = 129) :: obs_of_interest   = 'all'
+character(len = STRINGLENGTH) :: obs_of_interest(MAX_OBS_INPUT_TYPES) = ''
 
 real(r8) :: lonlim1= MISSING_R8, lonlim2= MISSING_R8
 real(r8) :: latlim1= MISSING_R8, latlim2= MISSING_R8 
@@ -149,13 +150,13 @@ namelist /obs_seq_coverage_nml/ obs_sequence_name, obs_sequence_list, &
 
 integer, parameter :: Ncopies = 1
 integer :: allNcopies
-character(len=stringlength), dimension(Ncopies) :: copy_names = &
+character(len=STRINGLENGTH), dimension(Ncopies) :: copy_names = &
    (/ 'observation error variance' /)
 
-character(len=stringlength), allocatable, dimension(:) :: module_obs_copy_names
-character(len=stringlength), allocatable, dimension(:) ::        obs_copy_names
-character(len=stringlength), allocatable, dimension(:) :: module_qc_copy_names
-character(len=stringlength), allocatable, dimension(:) ::        qc_copy_names
+character(len=STRINGLENGTH), allocatable, dimension(:) :: module_obs_copy_names
+character(len=STRINGLENGTH), allocatable, dimension(:) ::        obs_copy_names
+character(len=STRINGLENGTH), allocatable, dimension(:) :: module_qc_copy_names
+character(len=STRINGLENGTH), allocatable, dimension(:) ::        qc_copy_names
 
 real(r8), allocatable, dimension(:)   :: qc
 integer,  dimension(max_obs_kinds) :: obs_kinds_inds = 0
@@ -218,15 +219,29 @@ if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
                      revdate, text2=string2)
 endif
 
-flavor_of_interest = get_obs_kind_index(obs_of_interest)
-obs_kinds_inds(flavor_of_interest) = 1
+!----------------------------------------------------------------------
+! Determine if the desired observation types exist
+!----------------------------------------------------------------------
 
-if (flavor_of_interest < 0) then
-   write(string1,*)trim(obs_of_interest),' is not a known observation type.'
-   call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, revdate)
-endif
+TypeLoop : do i = 1,MAX_OBS_INPUT_TYPES
 
-if (verbose) write(*,*)trim(adjustl(obs_of_interest)),' is type ',flavor_of_interest
+   if ( (len(obs_of_interest(i)) == 0) .or. &
+        (obs_of_interest(i) == "") ) exit TypeLoop
+
+   string2 = adjustl(obs_of_interest(i))
+
+   flavor_of_interest = get_obs_kind_index(trim(string2))
+
+   if (flavor_of_interest < 0) then
+      write(string1,*)trim(string2),' is not a known observation type.'
+      call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, revdate)
+   endif
+
+   if (verbose) write(*,*)trim(string2),' is type ',flavor_of_interest
+
+   obs_kinds_inds(flavor_of_interest) = 1 ! indicate that we want this one
+
+enddo TypeLoop
 
 !====================================================================
 !====================================================================
@@ -327,14 +342,14 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
    do i=1, num_copies
          string1 = trim(get_copy_meta_data(seq,i))//'                          '
-         obs_copy_names(i) = string1(1:stringlength)
+         obs_copy_names(i) = string1(1:STRINGLENGTH)
    enddo
    do i=1, Ncopies
          obs_copy_names(num_copies+i) = trim(copy_names(i))
    enddo
    do i=1, num_qc
          string1 = trim(get_qc_meta_data(seq,i))//'                          '
-         qc_copy_names(i) = string1(1:stringlength)
+         qc_copy_names(i) = string1(1:STRINGLENGTH)
    enddo
 
    if ( ifile == 1 ) then ! record the metadata for comparison
@@ -344,14 +359,14 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
       do i=1, num_copies
          string1 = trim(get_copy_meta_data(seq,i))//'                          '
-         module_obs_copy_names(i) = string1(1:stringlength)
+         module_obs_copy_names(i) = string1(1:STRINGLENGTH)
       enddo
       do i=1, Ncopies
          module_obs_copy_names(num_copies+i) = trim(copy_names(i))
       enddo
       do i=1, num_qc
          string1 = trim(get_qc_meta_data(seq,i))//'                          '
-         module_qc_copy_names(i) = string1(1:stringlength)
+         module_qc_copy_names(i) = string1(1:STRINGLENGTH)
       enddo
 
    else ! Compare all subsequent files' metadata to the first one
@@ -413,10 +428,11 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
       !-----------------------------------------------------------------
       ! determine if obs is a new location or time at an existing loc
+      ! first : reject if not in desired region or not a type we want
       !-----------------------------------------------------------------
 
       if ( is_location_in_region(obs_loc,minl,maxl) .and. &
-           (flavor == flavor_of_interest) ) then
+           (obs_kinds_inds(flavor) > 0) ) then
 
          ngood      = ngood + 1
          station_id = find_station_location(flavor, obs_loc, stations) 
@@ -446,14 +462,6 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
 enddo ObsFileLoop
 
-! Output a netCDF file of 'all' observations locations and times.
-! Used to explore what is available.
-
-ncName = adjustl(netcdf_out)
-ncunit = InitNetCDF(trim(ncName))
-call WriteNetCDF(ncunit, trim(ncName), stations)
-call CloseNetCDF(ncunit, trim(ncName))
-
 ! Determine which stations match the temporal selection requirements
 
 allocate(DesiredStations(num_stations))
@@ -472,6 +480,14 @@ TimeLoop : do i = 1,num_stations
    endif
 
 enddo TimeLoop
+
+! Output a netCDF file of 'all' observations locations and times.
+! Used to explore what is available.
+
+ncName = adjustl(netcdf_out)
+ncunit = InitNetCDF(trim(ncName))
+call WriteNetCDF(ncunit, trim(ncName), stations)
+call CloseNetCDF(ncunit, trim(ncName))
 
 ! if no stations are selected, do something.
 
@@ -807,7 +823,7 @@ integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 
 character(len=129), allocatable, dimension(:) :: textblock
 
-integer :: nmost
+integer :: nmost, ntypes
 
 if(.not. byteSizesOK()) then
     call error_handler(E_ERR,'InitNetCDF', &
@@ -823,7 +839,7 @@ write(string1,*)trim(ncName), ' is fortran unit ',ncid
 call error_handler(E_MSG,'InitNetCDF',string1,source,revision,revdate)
 
 !----------------------------------------------------------------------------
-! Write Global Attributes 
+! Write Global Attributes (mostly namelist input, that sort of thing)
 !----------------------------------------------------------------------------
 
 call DATE_AND_TIME(crdate,crtime,crzone,values)
@@ -838,12 +854,29 @@ call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_coverage_revision', revis
            'InitNetCDF', 'put_att obs_seq_coverage_revision '//trim(fname))
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_coverage_revdate', revdate ), &
            'InitNetCDF', 'put_att obs_seq_coverage_revdate '//trim(fname))
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_of_interest', obs_of_interest ), &
-           'InitNetCDF', 'put_att obs_of_interest '//trim(fname))
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'nTmin', nTmin ), &
            'InitNetCDF', 'put_att nTmin '//trim(fname))
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'nTmax', nTmax ), &
            'InitNetCDF', 'put_att nTmax '//trim(fname))
+
+! Write all desired observation types.
+! As a sanity check - do it from our working array.
+ntypes = 0
+TYPELOOP : do i = 1,size(obs_kinds_inds)
+
+   if (obs_kinds_inds(i) < 1) cycle TYPELOOP
+
+   ntypes = ntypes + 1
+
+   ! create unique netCDF attribute name
+   write(string1,'(''obs_of_interest_'',i3.3)') ntypes
+
+   ! decode the index into an observation type name
+   string2 = adjustl(get_obs_kind_name(i))
+
+   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, string1, string2 ), &
+              'InitNetCDF', 'put_att obs_of_interest '//trim(fname))
+enddo TYPELOOP
 
 ! write all observation sequence files used
 FILEloop : do i = 1,SIZE(obs_seq_filenames)
@@ -874,8 +907,10 @@ call nc_check(nf90_def_dim(ncid=ncid, &
 call nc_check(nf90_def_var(ncid=ncid, name="stations", xtype=nf90_int, &
              dimids = (/ StationsDimID /), varid=VarID), &
              'InitNetCDF', 'stations:def_var')
-call nc_check(nf90_put_att(ncid, VarID, "long_name", "station index"), &
+call nc_check(nf90_put_att(ncid, VarID, "long_name", "desired station flag"), &
              'InitNetCDF', 'stations:long_name')
+call nc_check(nf90_put_att(ncid, VarID, "description", "1 == good station"), &
+             'InitNetCDF', 'stations:description')
 
 ! Find the station with the longest time array and define a dimension.
 nmost = 0
@@ -902,7 +937,7 @@ call nc_check(nf90_def_dim(ncid=ncid, &
               'InitNetCDF', 'def_dim:nlines '//'input.nml')
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='stringlength', len = stringlength, dimid = StringDimID), &
+              name='stringlength', len = STRINGLENGTH, dimid = StringDimID), &
               'InitNetCDF', 'def_dim:stringlength '//trim(fname))
 
 ! Define the variable to record the input parameters ... the namelist
@@ -917,6 +952,15 @@ call nc_check(nf90_put_att(ncid, VarID, "long_name", "input.nml contents"), &
 ! Define the RECORD variables
 !----------------------------------------------------------------------------
 
+! Define the observation type
+
+call nc_check(nf90_def_var(ncid=ncid, name='obs_type', xtype=nf90_char, &
+          dimids=(/ StringDimID, StationsDimID /), varid=VarID), &
+          'InitNetCDF', 'obs_type:def_var')
+call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
+          'observation type string at this station'), &
+          'InitNetCDF', 'obs_type:put_att long_name')
+
 ! let the location module write what it needs to ...
 
 if ( nc_write_location_atts( ncid, fname, StationsDimID ) /= 0 ) then
@@ -924,7 +968,42 @@ if ( nc_write_location_atts( ncid, fname, StationsDimID ) /= 0 ) then
    call error_handler(E_ERR,'InitNetCDF',string1,source,revision,revdate)
 endif
 
-! Define the observation time 
+! Define the number of observation times
+
+call nc_check(nf90_def_var(ncid=ncid, name='ntimes', xtype=nf90_int, &
+          dimids=(/ StationsDimID /), varid=VarID), &
+          'InitNetCDF', 'ntimes:def_var')
+call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
+          'number of observation times at this station'), &
+          'InitNetCDF', 'ntimes:put_att long_name')
+
+! Define the first valid observation time
+
+call nc_check(nf90_def_var(ncid=ncid, name='first_time', xtype=nf90_double, &
+          dimids=(/ StationsDimID /), varid=VarID), &
+          'InitNetCDF', 'first_time:def_var')
+call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
+          'first valid observation time at this station'), &
+          'InitNetCDF', 'first_time:put_att long_name')
+call nc_check(nf90_put_att(ncid, VarID, 'units',     'days since 1601-1-1'), &
+          'InitNetCDF', 'first_time:put_att units')
+call nc_check(nf90_put_att(ncid, VarID, 'calendar',  'Gregorian'), &
+          'InitNetCDF', 'first_time:put_att calendar')
+
+! Define the last valid observation time
+
+call nc_check(nf90_def_var(ncid=ncid, name='last_time', xtype=nf90_double, &
+          dimids=(/ StationsDimID /), varid=VarID), &
+          'InitNetCDF', 'last_time:def_var')
+call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
+          'last valid observation time at this station'), &
+          'InitNetCDF', 'last_time:put_att long_name')
+call nc_check(nf90_put_att(ncid, VarID, 'units',     'days since 1601-1-1'), &
+          'InitNetCDF', 'last_time:put_att units')
+call nc_check(nf90_put_att(ncid, VarID, 'calendar',  'Gregorian'), &
+          'InitNetCDF', 'last_time:put_att calendar')
+
+! Define the observation times
 
 call nc_check(nf90_def_var(ncid=ncid, name='time', xtype=nf90_double, &
           dimids=(/ TimeDimID, StationsDimID /), varid=VarID), &
@@ -939,13 +1018,6 @@ call nc_check(nf90_put_att(ncid, VarID, 'missing_value', 0.0_digits12), &
           'InitNetCDF', 'time:put_att missing')
 call nc_check(nf90_put_att(ncid, VarID, '_FillValue',    0.0_digits12), &
           'InitNetCDF', 'time:put_att fill_value')
-
-call nc_check(nf90_def_var(ncid=ncid, name='ntimes', xtype=nf90_int, &
-          dimids=(/ StationsDimID /), varid=VarID), &
-          'InitNetCDF', 'ntimes:def_var')
-call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
-          'number of observation times at this location'), &
-          'InitNetCDF', 'ntimes:put_att long_name')
 
 !----------------------------------------------------------------------------
 ! Leave define mode so we can fill
@@ -989,9 +1061,11 @@ integer :: DimID, ntimes, stationindex, days, secs, i
 integer, dimension(1) :: istart, icount
 
 integer :: StationVarID, TimeVarID, NTimesVarID, &
+           T1VarID, TNVarID, ObsTypeVarID, &
            LocationVarID, WhichVertVarID
 
 real(digits12), allocatable, dimension(:) :: mytimes
+integer, dimension(size(DesiredStations)) :: gooduns
 
 !----------------------------------------------------------------------------
 ! Find the current length of the unlimited dimension so we can add correctly.
@@ -1001,8 +1075,12 @@ if (debug) write(*,*)'DEBUG --- entering WriteNetCDF'
 
 call nc_check(nf90_inq_varid(ncid, 'stations', varid=StationVarID), &
                    'WriteNetCDF', 'inq_varid:stationindex '//trim(fname))
-call nc_check(nf90_put_var(ncid, StationVarID, (/ (i,i=1,num_stations) /)), &
-                   'WriteNetCDF', 'put_var:stationindex')
+
+gooduns = 0
+where(DesiredStations) gooduns = 1
+
+call nc_check(nf90_put_var(ncid, StationVarID, gooduns), &
+                   'WriteNetCDF', 'put_var:gooduns '//trim(fname))
 
 call nc_check(nf90_inq_varid(ncid, 'time', varid=TimeVarID), &
           'WriteNetCDF', 'inq_varid:time '//trim(fname))
@@ -1012,8 +1090,17 @@ call nc_check(nf90_inq_dimid(ncid, 'time', dimid=DimID), &
 call nc_check(nf90_inquire_dimension(ncid, DimID, len=ntimes), &
            'WriteNetCDF', 'inquire time ntimes '//trim(fname))
 
+call nc_check(nf90_inq_varid(ncid, 'obs_type', varid=ObsTypeVarID), &
+          'WriteNetCDF', 'inq_varid:obs_type '//trim(fname))
+
 call nc_check(nf90_inq_varid(ncid, 'ntimes', varid=NTimesVarID), &
           'WriteNetCDF', 'inq_varid:ntimes '//trim(fname))
+
+call nc_check(nf90_inq_varid(ncid, 'first_time', varid=T1VarID), &
+          'WriteNetCDF', 'inq_varid:first_time '//trim(fname))
+
+call nc_check(nf90_inq_varid(ncid, 'last_time', varid=TNVarID), &
+          'WriteNetCDF', 'inq_varid:last_time '//trim(fname))
 
 call nc_get_location_varids(ncid, fname, LocationVarID, WhichVertVarID)
 
@@ -1024,7 +1111,25 @@ WriteObs : do stationindex = 1,num_stations
    ntimes    = stations(stationindex)%ntimes
    istart(1) = stationindex
    icount(1) = 1
-   
+
+   string1 = get_obs_kind_name(stations(stationindex)%obs_type)
+
+   call nc_check(nf90_put_var(ncid, ObsTypeVarId, string1, &
+                start=(/ 1, stationindex /), count=(/ len_trim(string1), 1 /) ), &
+                'WriteNetCDF', 'put_var:obs_type_string')
+
+   call get_time(stations(stationindex)%first_time, secs, days)
+   mytimes(1) = days + secs/(60.0_digits12 * 60.0_digits12 * 24.0_digits12)
+   call nc_check(nf90_put_var(ncid, T1VarId, (/ mytimes(1) /), &
+                start=(/ stationindex /), count=(/ 1 /) ), &
+                'WriteNetCDF', 'put_var:first_time')
+
+   call get_time(stations(stationindex)%last_time, secs, days)
+   mytimes(1) = days + secs/(60.0_digits12 * 60.0_digits12 * 24.0_digits12)
+   call nc_check(nf90_put_var(ncid, TNVarId, (/ mytimes(1) /), &
+                start=(/ stationindex /), count=(/ 1 /) ), &
+                'WriteNetCDF', 'put_var:last_time')
+
    call nc_check(nf90_put_var(ncid, NTimesVarId, (/ ntimes /), &
                 start=istart, count=icount), 'WriteNetCDF', 'put_var:ntimes')
 
@@ -1040,7 +1145,7 @@ WriteObs : do stationindex = 1,num_stations
    call nc_check(nf90_put_var(ncid, TimeVarId, mytimes, &
                 start=(/ 1, stationindex /), count=(/ ntimes, 1 /) ), &
                 'WriteNetCDF', 'put_var:times')
-   
+
    !----------------------------------------------------------------------------
    ! Using the location_mod:nc_write_location() routine.
    !----------------------------------------------------------------------------
@@ -1134,7 +1239,7 @@ subroutine print_summary
 integer :: sec1,secN,day1,dayN
 type(obs_def_type) :: obs_def
 
-integer :: iunit, j
+integer :: iunit, i, j
 
 iunit = get_unit()
 open(iunit,file=trim(textfile_out), form='formatted', &
@@ -1149,10 +1254,18 @@ call write_obs_kind(iunit, fform='formatted', use_list=obs_kinds_inds)
 call set_obs_def_error_variance(obs_def, MISSING_R8)
 call set_obs_def_kind(          obs_def, flavor_of_interest)
 
-write(*,*)'There are ',num_output,' locs/times for '//trim(obs_of_interest)
-write(*,*)'only interested in locations with between ', nTmin, nTmax,' obs times.' 
+write(*,*)'There are ',num_output,' locs/times.'
+write(*,*)'Only interested in locations with between ', nTmin, nTmax,' obs times.' 
 write(*,*)'minlon/minlat ', lonlim1, latlim1 
 write(*,*)'maxlon/maxlat ', lonlim2, latlim2
+write(*,*)'between ', nTmin, nTmax,' obs times for observation types:' 
+
+TYPELOOP : do i = 1,size(obs_kinds_inds) 
+   if (obs_kinds_inds(i) < 1) cycle TYPELOOP
+   string2 = adjustl(get_obs_kind_name(i))
+   write(*,*)'i,obs_kind_inds(i)',i,obs_kinds_inds(i),trim(string2)
+enddo TYPELOOP
+write(*,*)
 
 Summary : do i = 1,num_stations
 
