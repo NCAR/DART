@@ -835,7 +835,7 @@ InitNetCDF = 0
 call nc_check(nf90_create(path = trim(fname), cmode = nf90_share, &
          ncid = ncid), 'obs_seq_coverage:InitNetCDF', 'create '//trim(fname))
 
-write(string1,*)trim(ncName), ' is fortran unit ',ncid
+write(string1,*)trim(fname), ' is fortran unit ',ncid
 call error_handler(E_MSG,'InitNetCDF',string1,source,revision,revdate)
 
 !----------------------------------------------------------------------------
