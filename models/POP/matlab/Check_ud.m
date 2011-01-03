@@ -2,12 +2,12 @@ function [dart pop] = Check_ud(popfile,dartfile)
 %% Check_ud : check pop_to_dart.f90 ... the conversion of a POP restart to a DART state vector file.
 %
 %  popfile = 'pop.r.nc' 
-% dartfile = 'assim_model_state_ud';
-% x        = Check_ud(popfile, dartfile);
+% dartfile = 'dart.ics';
+% x        = Check_pop_to_dart(popfile, dartfile);
 %
-%  popfile = '/fs/image/home/thoar/SVN/DART/models/POP/work/cx3.dart.001.pop.r.0002-01-01-00000.nc';
-% dartfile = '/fs/image/home/thoar/SVN/DART/models/POP/work/perfect_ics';
-% [dart pop] = Check_ud(popfile, dartfile);
+%  popfile = '~DART/models/POP/work/cx3.dart.001.pop.r.0002-01-01-00000.nc';
+% dartfile = '~DART/models/POP/work/perfect_ics';
+% [dart pop] = Check_pop_to_dart(popfile, dartfile);
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -20,10 +20,22 @@ function [dart pop] = Check_ud(popfile,dartfile)
 % $Date$
 
 % Read the original POP file values.
-% The nc_varget() function returns the variables with the fastest 
-% varying dimension on the right. This is opposite to the Fortran
-% convention of the fastest varying dimension on the left ... so 
-% one of the variables must be permuted in order to be compared.
+if (exist(popfile,'file') ~= 2)
+   error('POP file %s does not exist.',popfile)
+end
+if (exist(dartfile,'file') ~= 2)
+   error('DART file %s does not exist.',dartfile)
+end
+
+iyear   = nc_attget(popfile,nc_global,'iyear');
+imonth  = nc_attget(popfile,nc_global,'imonth');
+iday    = nc_attget(popfile,nc_global,'iday');
+ihour   = nc_attget(popfile,nc_global,'ihour');
+iminute = nc_attget(popfile,nc_global,'iminute');
+isecond = nc_attget(popfile,nc_global,'isecond');
+
+fprintf('POP year  month  day  hour  minute  second %d %d %d %d %d %d\n',  ...
+        iyear,imonth,iday,ihour,iminute,isecond);
 
 pop.S     = nc_varget(popfile,  'SALT_CUR');
 pop.T     = nc_varget(popfile,  'TEMP_CUR');
@@ -57,6 +69,9 @@ trec1   = fread(fid,1,'int32');
 seconds = fread(fid,1,'int32');
 days    = fread(fid,1,'int32');
 trecN   = fread(fid,1,'int32');
+
+fprintf('need to know POP calendar for better comparison.\n', days,seconds);
+fprintf('DART days seconds %d %d\n', days,seconds);
 
 if (trec1 ~= trecN) 
    error('first record mismatch')
@@ -129,6 +144,12 @@ fwrite(fid, datvec, 'float64');
 fwrite(fid,   recN, 'int32');
 fclose(fid);
 
+
+
+% The nc_varget() function returns the variables with the fastest 
+% varying dimension on the right. This is opposite to the Fortran
+% convention of the fastest varying dimension on the left ... so 
+% one of the variables must be permuted in order to be compared.
 
 function C = get_3D_permuted(fid, shape, typestr)
 datasize = prod(shape);
