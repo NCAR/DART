@@ -26,8 +26,6 @@ integer           :: year, month, day, hour, minute, second
 integer           :: jday
 integer           :: days, seconds
 
-integer :: days_per_month(12) = (/31,28,31,30,31,30,31,31,30,31,30,31/)
-
 !  days prior to beginning of each month (non&) leap year
 
 integer, parameter, dimension( 13) :: &

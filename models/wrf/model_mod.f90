@@ -919,10 +919,9 @@ real(r8), allocatable, dimension(:)   :: x1d, y1d, xx1d, yy1d
 integer  :: center_search_half_size, center_track_xmin, center_track_ymin, &
             center_track_xmax, center_track_ymax, circ_half_size, &
             circ_xmin, circ_xmax, circ_ymin, circ_ymax, xlen, ylen, &
-            xxlen, yylen, ii1, ii2, cxlen, cylen, wind_xmin, wind_xmax, &
-            wind_ymin, wind_ymax, imax, jmax
+            xxlen, yylen, ii1, ii2, cxlen, cylen, imax, jmax
 real(r8) :: clat, clon, cxloc, cyloc, vcrit, magwnd, maxwspd, circ, &
-            rad, circ_half_length, arcrad, asum, distgrid, dgi1, dgi2
+            circ_half_length, asum, distgrid, dgi1, dgi2
 
 ! local vars, used in calculating density, pressure, height
 real(r8)            :: rho1 , rho2 , rho3, rho4

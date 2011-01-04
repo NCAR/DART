@@ -111,7 +111,6 @@ namelist /wrf_obs_preproc_nml/file_name_input, file_name_output,      &
 
 character(len=129)      :: obs_seq_read_format
 character(len=80)       :: name
-character (len=19)      :: datime
 
 integer                 :: io, iunit, fid, var_id, obs_seq_file_id, num_copies, &
                            num_qc, num_obs, max_obs_seq, nx, ny, gday, gsec
@@ -121,7 +120,7 @@ logical                 :: file_exist, pre_I_format
 type(obs_sequence_type) :: seq_all, seq_rawin, seq_sfc, seq_acars, seq_satwnd, &
                            seq_tc, seq_gpsro, seq_other
 
-type(time_type)         :: anal_time, prev_time, time_obs
+type(time_type)         :: anal_time
 
 print*,'Enter target assimilation time (gregorian day, second): '
 read*,gday,gsec

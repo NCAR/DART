@@ -57,7 +57,6 @@ character(len=NF90_MAX_NAME) :: argwords(3)
 
 character(len=NF90_MAX_NAME) :: infile, outfile
 character(len=NF90_MAX_NAME) :: nextfield
-integer :: fieldindex
 logical :: from_file
 
 character(len=128) :: msgstring, msgstring2, tmpstring

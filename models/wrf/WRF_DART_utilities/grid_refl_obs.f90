@@ -84,7 +84,7 @@ type(location_type)         :: ob_loc
 integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
 character(len=129) :: obs_seq_read_format
 logical :: pre_I_format
-logical :: is_there_one, out_of_range
+logical :: out_of_range
 integer :: key_bounds(2)
 integer :: num_obs_in_time_period
 integer :: num_refl_obs
