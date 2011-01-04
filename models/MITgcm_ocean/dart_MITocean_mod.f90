@@ -29,7 +29,7 @@ use obs_sequence_mod, only : init_obs_sequence, init_obs, insert_obs_in_seq, &
                              copy_obs, set_copy_meta_data, set_qc_meta_data, set_obs_def, &
                              get_first_obs, get_last_obs, get_obs_def
 use     obs_kind_mod, only : get_obs_kind_index
-use obs_def_ocean_mod, only : set_radial_vel
+use obs_def_ocean_mod, only : set_hf_radial_vel
 
 implicit none
 private
@@ -290,7 +290,7 @@ call real_obs_def(obsdef0, lon, lat, vloc, &
 if (hfradar) then
    ! this routine increments defkey and stores the private info in
    ! the ocean module until time to write.
-   call set_radial_vel(defkey, id, angle)
+   call set_hf_radial_vel(defkey, id, angle)
    call set_obs_def_key(obsdef0, defkey)
 endif
 

@@ -117,7 +117,7 @@ if ($?LS_SUBCWD) then
       # this starts filter but also returns control back to
       # this script immediately.
 
-      (setenv HOME $filterhome; mpirun.lsf ./filter || mpirun.lsf ./filter_done ) &
+      (setenv HOME $filterhome; mpirun.lsf ./filter) &
 
       while ( -e filter_to_model.lock )
 
