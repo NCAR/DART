@@ -75,11 +75,17 @@ MPIFC = mpif90
 MPILD = mpif90
 FC = f90
 LD = f90
-NETCDF = /Users/thoar/Absoft
-INCS = ${NETCDF}/include
+
+# If your NETCDF environment variable is not set correctly, 
+# uncomment the following line and set value properly. 
+# NETCDF = /Users/thoar/Absoft
+
+INCS =   ${NETCDF}/include
 LIBS = -L${NETCDF}/lib -lnetcdf
- FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -Rb -Rc -g -p$(INCS)
+FFLAGS  = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -Rb -Rc -g -p$(INCS)
+LDFLAGS = -unixlib $(FFLAGS) $(LIBS)
+
+
 #FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -Rb -Rc -p$(INCS)
 #FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -N113 -f free -Rb -Rc -p$(INCS) -I$(INCS)
 #FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -Rb -Rc -N26 -p$(INCS) -I$(INCS)
-LDFLAGS = -unixlib $(FFLAGS) $(LIBS)

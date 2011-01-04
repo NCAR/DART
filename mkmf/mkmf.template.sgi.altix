@@ -60,9 +60,13 @@ MPIFC = ifort
 MPILD = ifort -lmpi
 FC = ifort
 LD = ifort
-NETCDF = /opt/pd/netcdf/3.6.0-p1/
+
+# If your NETCDF environment variable is not set correctly, 
+# uncomment the following line and set value properly. 
+# NETCDF = /opt/pd/netcdf/3.6.0-p1
+
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf 
-FFLAGS = -C -O0 $(INCS)
-LDFLAGS =   -O0 $(INCS) $(LIBS)
+FFLAGS  = -O0 $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS)
 

@@ -77,13 +77,16 @@ MPIFC = mpif90
 MPILD = mpif90
 FC = pgf90
 LD = pgf90
-NETCDF = /usr/local/netcdf-pgi
-INCS = -I$(NETCDF)/include
 
-FFLAGS = -O2 $(INCS)
+# If your NETCDF environment variable is not set correctly, 
+# uncomment the following line and set value properly. 
+# NETCDF = /usr/local/netcdf-pgi
+
+INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
-LDFLAGS = $(INCS) $(LIBS)
+FFLAGS  = -O2 $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this for flags:
-#FFLAGS = -O0 -Ktrap=fp -pc 64 $(INCS)
+#FFLAGS = -O0 -C -Ktrap=fp -pc 64 $(INCS)
 

@@ -22,7 +22,11 @@ MPILD = sxmpif90
 FC = sxmpif90
 LD = sxmpif90
 CC = sxmpic++
+
+# If your NETCDF environment variable is not set correctly, 
+# uncomment the following line and set value properly. 
 NETCDF = /opt/sx/netcdf
+
 CPPFLAGS = -D__SXdbl4
 FFLAGS = -dw -Wf"-A dbl4" -R2 -ts. -Pmulti -Chopt -I$(NETCDF)/include
 CFLAGS = -Xa

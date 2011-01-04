@@ -52,8 +52,12 @@ MPIFC = mpif90
 MPILD = mpif90
 FC = xlf90
 LD = xlf90
-NETCDF = /Users/thoar/netcdf-3.5.1
+
+# If your NETCDF environment variable is not set correctly, 
+# uncomment the following line and set value properly. 
+# NETCDF = /Users/thoar/netcdf-3.5.1
+
 INCS = -I${NETCDF}/include
-FFLAGS = -qsuffix=f=f90:cpp=F90 -qarch=auto -qmaxmem=-1 -O0 -C $(INCS)
 LIBS = -L${NETCDF}/lib -lnetcdf
-LDFLAGS = $(LIBS)
+FFLAGS = -qsuffix=f=f90:cpp=F90 -qarch=auto -qmaxmem=-1 -O2 $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS)

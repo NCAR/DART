@@ -90,8 +90,9 @@ MPILD = mpif90
 FC = ifort
 LD = ifort
 
-# this will probably need to be customized for your machine.
-#NETCDF = /contrib/netcdf
+# If your NETCDF environment variable is not set correctly, 
+# uncomment the following line and set value properly. 
+# NETCDF = /contrib/netcdf
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
@@ -99,5 +100,10 @@ FFLAGS  = -O2 -mp -fpe0 $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this instead:
-#FFLAGS  = -C -check noarg_temp_created -pc64 -fpe0 -mp -O0 $(INCS)
+# FFLAGS = -C -check noarg_temp_created -fpe0 -mp -O0 -g -convert big_endian $(INCS)
+# FFLAGS = -C -check noarg_temp_created -fpe0 -vec-report0 -fp-model precise -O0 -g $(INCS)
+# FFLAGS = -fpe0 -vec-report0 -O3 -g $(INCS)
+#        -warn argument_checking,declarations,uncalled,uninitialized,unused \
+# Some optimized (BLAS, LAPACK) libraries are available with:
+# LIBS = -L$(NETCDF)/lib -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
 

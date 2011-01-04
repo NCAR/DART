@@ -23,16 +23,19 @@
 # Compiler Information [f90 -version]:
 #    MIPSpro Compilers: Version 7.4.3m
 #
-#
+
 MPIFC = f90
 MPILD = f90 -lmpi
 FC = f90
 LD = f90 
+
 # NETCDF is location of include (header) files, 
 # NETCDFLIB is location of modules and libs
+
 NETCDF = /usr/local
 NETCDFLIB = /usr/local/lib64/r4i4
-INCS = -I$(NETCDF)/include -I$(NETCDFLIB)
-FFLAGS = -64 -i4 -r8 -O0 $(INCS)
+
+INCS = -I$(NETCDFLIB) -I$(NETCDF)/include 
 LIBS = -L$(NETCDFLIB) -lnetcdf
-LDFLAGS = -64 -dont_warn_unused $(INCS) $(LIBS)
+FFLAGS = -64 -i4 -r8 -O0 $(INCS)
+LDFLAGS = -dont_warn_unused $(FFLAGS) $(LIBS)

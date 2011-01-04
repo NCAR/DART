@@ -44,13 +44,20 @@
 #MPIFC=$(MPI_HOME)/bin/mpif90
 #MPILD=$(MPI_HOME)/bin/mpif90
 #----------------------------------------------------------------------
+
 MPIFC=mpif90
 MPILD=mpif90
 FC = pathf90
 LD = pathf90
-NETCDF  = /home/lightning/thoar/netcdf-3.6.0p1-pathcc-pathf90-2.0-64
-LIBS    = -L$(NETCDF)/lib -lnetcdf
-FFLAGS  = -O2 -I$(NETCDF)/include
+
+# If your NETCDF environment variable is not set correctly, 
+# uncomment the following line and set value properly. 
+# NETCDF = /home/lightning/thoar/netcdf-3.6.0p1-pathcc-pathf90-2.0-64
+
+INCS = -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdf
+FFLAGS  = -O2 $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
+
 # for development/debugging, use these flags instead:
 #FFLAGS = -Wuninitialized -ffortran-bounds-check -fullwarn -O0 -I$(NETCDF)/include

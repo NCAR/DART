@@ -55,33 +55,19 @@
 # If you add the -Mprof=func flag to get profiling information, you must
 # add it to both FFLAGS and LDFLAGS.
 #
-# Compiler versions we have run this on:
-#
-# Compiler Information (pgf90 -V):
-#  pgf90 6.0-1 64-bit target on x86-64 Linux 
-#  Copyright 1989-2000, The Portland Group, Inc.  All Rights Reserved.
-#  Copyright 2000-2005, STMicroelectronics, Inc.  All Rights Reserved.
-#
-# Compiler Information (pgf90 -V):
-#  pgf90 6.1-1 32-bit target on x86 Linux 
-#  Copyright 1989-2000, The Portland Group, Inc.  All Rights Reserved.
-#  Copyright 2000-2005, STMicroelectronics, Inc.  All Rights Reserved.
-
-# The machine 'fisher' has no mpi; use mkmf_xxx without the -mpi flag 
-#  when building the executables in the model/*/work directories.
-#
-# On lightning, load the 'lsf' module to get mpif90 in your path.
-# (as well as the 'pgi' module.)
 
 MPIFC = ftn
 MPILD = ftn
 FC = ftn
 LD = ftn
-NETCDF = /opt/cray/netcdf/4.0.1.3/netcdf-pgi
-INCS = -I$(NETCDF)/include
 
-FFLAGS = -O2 $(INCS)
+# If your NETCDF environment variable is not set correctly, 
+# uncomment the following line and set value properly.
+# NETCDF = /opt/cray/netcdf/4.0.1.3/netcdf-pgi
+
+INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
+FFLAGS  = -O2 $(INCS)
 LDFLAGS = $(INCS) $(LIBS)
 
 # for development or debugging, use this for flags:

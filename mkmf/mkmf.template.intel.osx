@@ -33,13 +33,19 @@ MPIFC = mpif90
 MPILD = mpif90
 FC = ifort
 LD = ifort
-NETCDF = /usr/local
+
+# If your NETCDF environment variable is not set correctly, 
+# uncomment the following line and set value properly. 
+# NETCDF = /usr/local
+
 INCS = -I${NETCDF}/include
 LIBS = -L${NETCDF}/lib -lnetcdf
+
 # for Intel 9.x:
-FFLAGS = $(INCS) -O2 
+FFLAGS  = $(INCS) -O2 
 LDFLAGS = $(INCS) -Wl,-stack_size,10000000 $(LIBS)
+
 # for Intel 10.x:
-#FFLAGS = $(INCS) -O2 -m64 -heap-arrays
+#FFLAGS  = $(INCS) -O2 -m64 -heap-arrays -vec-report0 -fpe0
 #LDFLAGS = $(INCS) $(LIBS)
 

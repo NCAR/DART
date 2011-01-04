@@ -65,9 +65,13 @@ MPIFC = mpif90
 MPILD = mpif90
 FC = g95
 LD = g95
-NETCDF = /usr/local/netcdf
+
+# If your NETCDF environment variable is not set correctly, 
+# uncomment the following line and set value properly. 
+# NETCDF = /usr/local/netcdf
+
 INCS = -I${NETCDF}/include
-FFLAGS = -O2 $(INCS) 
 LIBS = -L${NETCDF}/lib -lnetcdf
+FFLAGS  = -O2 $(INCS) 
 LDFLAGS = $(FFLAGS) $(LIBS)
 

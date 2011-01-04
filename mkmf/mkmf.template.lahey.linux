@@ -79,10 +79,14 @@ MPIFC = mpif90
 MPILD = mpif90
 FC = lf95
 LD = lf95
-NETCDF = /contrib/netcdf/3.5.1-lahey-6.2-32
+
+# If your NETCDF environment variable is not set correctly, 
+# uncomment the following line and set value properly. 
+# NETCDF = /contrib/netcdf/3.5.1-lahey-6.2-32
+
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdf
-FFLAGS = -Wa,--32 --trap --wide --o2 $(INCS)
+FFLAGS  = -Wa,--32 --trap --wide --o2 $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for debugging or development, here are some suggested flags:

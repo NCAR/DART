@@ -32,6 +32,10 @@
 #    successfully compiled other fortran code with that compiler, but we have
 #    not tried it with DART yet.)
 # 
+#    NOTE: The 4.1.2 compiler made the HORRIBLE choice of changing the default 
+#    record header size for unformatted writes such that it was incompatible 
+#    with every existing binary file. Specifying -frecord-marker=4 is crucial
+#    to have any hope of success.
 # 
 # 2. The netCDF software library package.  See:
 #      http://www.unidata.ucar.edu/software/netcdf
@@ -65,6 +69,8 @@
 #
 # -fdefault-real-8     force all real variables to be real*8.
 #
+# -ffpe-trap=invalid,overflow,precision,denormal,underflow
+#
 # Comment about netcdf libraries:
 #  We call NetCDF from Fortran 90, so we need the fortran interface
 #  library.  In some versions of netcdf (e.g. 4.x), the fortran
@@ -79,9 +85,15 @@ MPIFC = mpif90
 MPILD = mpif90
 FC = gfortran
 LD = gfortran
-NETCDF = /usr/local
+
+# If your NETCDF environment variable is not set correctly, 
+# uncomment the following line and set value properly. 
+# NETCDF = /usr/local
+
 INCS = -I${NETCDF}/include
-FFLAGS = -O2 $(INCS) -ffree-line-length-none
 LIBS = -L${NETCDF}/lib -lnetcdff -lnetcdf
+FFLAGS  = -O2 $(INCS) -ffree-line-length-none
 LDFLAGS = $(FFLAGS) $(LIBS)
+
+#FFLAGS = -O0 -fbounds-check -frecord-marker=4 -ffpe-trap=invalid $(INCS) 
 

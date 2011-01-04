@@ -40,7 +40,7 @@
 #   -qdpc                     double precision constants
 #   -qrealsize=8              autopromote (more than you think)
 #   -qintsize=4               ditto
-#
+
 MPIFC = mpxlf95_r
 MPILD = mpxlf95_r
 FC = xlf90_r
