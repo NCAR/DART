@@ -9,6 +9,7 @@ files from the WRF-Var release, the var/obsproc directory:
 
 DA_Define_Structures.f90
 DA_Constants.f90
+module_obs.f90
 
 Copy them here before trying to build the executables in
 the work directory.
