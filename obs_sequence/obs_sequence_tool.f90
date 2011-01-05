@@ -57,7 +57,7 @@ integer                 :: size_seq_out, num_copies_out, num_qc_out
 integer                 :: num_inserted, iunit, io, i, j, total_num_inserted
 integer                 :: max_num_obs, file_id, remaining_obs_count
 integer                 :: first_seq
-character(len = 129)    :: read_format, meta_data
+character(len = metadatalength) :: read_format, meta_data
 logical                 :: pre_I_format, all_gone
 logical                 :: trim_first, trim_last
 character(len = 129)    :: msgstring
@@ -750,7 +750,7 @@ integer :: num_copies1, num_qc1
 integer :: num_copies2, num_qc2
 integer :: num_copies , num_qc, i, j
 logical :: have_match1, have_match2
-character(len=129) :: str1, str2
+character(len=metadatalength) :: str1, str2
 character(len=255) :: msgstring1, msgstring2
 
 num_copies1 = get_num_copies(seq1)
@@ -1315,7 +1315,7 @@ type(obs_sequence_type), intent(in) :: seq1
 character(len=*), optional :: fname1
 
 integer :: num_copies , num_qc, i
-character(len=129) :: str1
+character(len=metadatalength) :: str1
 character(len=255) :: msgstring1
 
 num_copies = get_num_copies(seq1)

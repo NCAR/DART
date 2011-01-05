@@ -797,7 +797,7 @@ integer,                     intent(out)   :: prior_obs_spread_index, posterior_
 ! THese are the prior and posterior state output files and the observation sequence
 ! output file which contains both prior and posterior data.
 
-character(len=129) :: prior_meta_data, posterior_meta_data
+character(len=metadatalength) :: prior_meta_data, posterior_meta_data
 ! The 4 is for ensemble mean and spread plus inflation mean and spread
 ! The Prior file contains the prior inflation mean and spread only
 ! Posterior file contains the posterior inflation mean and spread only
@@ -917,8 +917,8 @@ type(obs_sequence_type), intent(inout) :: seq
 integer,                 intent(out)   :: in_obs_copy, obs_val_index
 integer,                 intent(out)   :: input_qc_index, DART_qc_index
 
-character(len = 129) :: qc_meta_data = 'DART quality control'
-character(len = 129) :: no_qc_meta_data = 'No incoming data QC'
+character(len = metadatalength) :: qc_meta_data = 'DART quality control'
+character(len = metadatalength) :: no_qc_meta_data = 'No incoming data QC'
 character(len = 129) :: obs_seq_read_format
 integer              :: obs_seq_file_id, num_obs_copies
 integer              :: tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, qc_num_inc, num_qc

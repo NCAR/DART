@@ -11,7 +11,7 @@ PROGRAM select
 ! $Revision$
 ! $Date$
 
-use        types_mod, only : r8
+use        types_mod, only : r8, metadatalength
 use    utilities_mod, only : initialize_utilities, timestamp, &
                              register_module, logfileunit
 use obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, &
@@ -54,7 +54,7 @@ real(r8), dimension(3)  :: loc
 integer           :: i
 integer           :: num_obs, num_copies, num_qc, real_seq_num_obs
 
-character(len = 129) :: meta_data
+character(len = metadatalength) :: meta_data
 
 character(len = 129) :: out_file_name = 'obs_seq.out', &
                          in_file_name = 'obs_seq.in'

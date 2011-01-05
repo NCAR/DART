@@ -20,7 +20,7 @@ module obs_sequence_mod
 ! copy subroutines. USERS MUST BE VERY CAREFUL TO NOT DO DEFAULT ASSIGNMENT
 ! FOR THESE TYPES THAT HAVE COPY SUBROUTINES.
 
-use        types_mod, only : r8, DEG2RAD, MISSING_R8
+use        types_mod, only : r8, DEG2RAD, MISSING_R8, metadatalength
 use     location_mod, only : location_type, interactive_location, &
                              is_location_in_region
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
@@ -84,8 +84,8 @@ type obs_sequence_type
    ! F95 allows pointers to be initialized to a known value.
    ! However, if you get an error on the following lines from your
    ! compiler, remove the => NULL() from the end of the 5 lines below.
-   character(len = 129), pointer :: copy_meta_data(:)  => NULL()
-   character(len = 129), pointer :: qc_meta_data(:)    => NULL()
+   character(len = metadatalength), pointer :: copy_meta_data(:)  => NULL()
+   character(len = metadatalength), pointer :: qc_meta_data(:)    => NULL()
    integer :: first_time
    integer :: last_time
 !   integer :: first_avail_time, last_avail_time
@@ -430,7 +430,7 @@ function get_copy_meta_data(seq, copy_num)
 
 type(obs_sequence_type), intent(in) :: seq
 integer, intent(in) :: copy_num
-character(len=129) :: get_copy_meta_data
+character(len=metadatalength) :: get_copy_meta_data
 
 ! Should have an error check for copy_num range
 get_copy_meta_data = seq%copy_meta_data(copy_num)
@@ -443,7 +443,7 @@ function get_qc_meta_data(seq, qc_num)
 
 type(obs_sequence_type), intent(in) :: seq
 integer, intent(in) :: qc_num
-character(len=129) :: get_qc_meta_data
+character(len=metadatalength) :: get_qc_meta_data
 
 ! Should have an error check for qc_num range
 get_qc_meta_data = seq%qc_meta_data(qc_num)
@@ -1008,7 +1008,7 @@ subroutine add_copies(seq, num_to_add)
 type(obs_sequence_type), intent(inout) :: seq
 integer, intent(in) :: num_to_add
 
-character(len = 129) :: meta_temp(seq%num_copies)
+character(len = metadatalength) :: meta_temp(seq%num_copies)
 real(r8) :: values_temp(seq%num_copies)
 integer :: i, old_num
 
@@ -1057,7 +1057,7 @@ subroutine add_qc(seq, num_to_add)
 type(obs_sequence_type), intent(inout) :: seq
 integer,                    intent(in) :: num_to_add
 
-character(len = 129) :: qc_temp(seq%num_copies)
+character(len = metadatalength) :: qc_temp(seq%num_copies)
 real(r8)             :: values_temp(seq%num_copies)
 integer              :: i, old_num
 
@@ -1212,7 +1212,7 @@ do i = 1, num_copies
    if(read_format == 'unformatted') then
       read(file_id, iostat=io) seq%copy_meta_data(i)
    else
-      read(file_id, '(a129)', iostat=io) seq%copy_meta_data(i)
+      read(file_id, '(a)', iostat=io) seq%copy_meta_data(i)
    endif
    if (io /= 0) then
       ! Read error of some type
@@ -1227,7 +1227,7 @@ do i = 1, num_qc
    if(read_format == 'unformatted') then
       read(file_id, iostat=io) seq%qc_meta_data(i)
    else
-      read(file_id, '(a129)', iostat=io) seq%qc_meta_data(i)
+      read(file_id, '(a)', iostat=io) seq%qc_meta_data(i)
    endif
    if (io /= 0) then
       ! Read error of some type

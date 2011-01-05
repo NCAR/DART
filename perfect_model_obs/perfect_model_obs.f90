@@ -126,7 +126,7 @@ integer                 :: model_size, key_bounds(2), num_qc, last_key_used
 
 real(r8)                :: true_obs(1), obs_value(1), qc(1)
 
-character(len=129)      :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
+character(len=metadatalength) :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
 character(len=metadatalength) :: state_meta(1)
 
 logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format

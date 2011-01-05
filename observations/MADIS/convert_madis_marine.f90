@@ -33,33 +33,33 @@ program convert_madis_marine
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use         types_mod, only : r8, missing_r8
+use         types_mod, only : r8, missing_r8, metadatalength
 use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
-                                  increment_time, get_time, operator(-), GREGORIAN
+                              increment_time, get_time, operator(-), GREGORIAN
 use      location_mod, only : VERTISSURFACE
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               static_init_obs_sequence, init_obs, write_obs_seq, & 
                               init_obs_sequence, get_num_obs, & 
                               set_copy_meta_data, set_qc_meta_data
-use        meteor_mod, only : sat_vapor_pressure, specific_humidity, & 
-                                  wind_dirspd_to_uv, pres_alt_to_pres, &
-                              temp_and_dewpoint_to_rh
-use           obs_err_mod, only : fixed_marine_temp_error, fixed_marine_rel_hum_error, &
-                                  fixed_marine_wind_error, fixed_marine_pres_error, &
-                                  moving_marine_temp_error, moving_marine_rel_hum_error, &
-                                  moving_marine_wind_error, moving_marine_pres_error
+use           meteor_mod, only : sat_vapor_pressure, specific_humidity, & 
+                                 wind_dirspd_to_uv, pres_alt_to_pres, &
+                                 temp_and_dewpoint_to_rh
+use          obs_err_mod, only : fixed_marine_temp_error, fixed_marine_rel_hum_error, &
+                                 fixed_marine_wind_error, fixed_marine_pres_error, &
+                                 moving_marine_temp_error, moving_marine_rel_hum_error, &
+                                 moving_marine_wind_error, moving_marine_pres_error
 use dewpoint_obs_err_mod, only : dewpt_error_from_rh_and_temp, &
                                  rh_error_from_dewpt_and_temp
-use          obs_kind_mod, only : MARINE_SFC_U_WIND_COMPONENT, MARINE_SFC_V_WIND_COMPONENT, &
-                                  MARINE_SFC_TEMPERATURE, MARINE_SFC_SPECIFIC_HUMIDITY,     &
-                                  MARINE_SFC_ALTIMETER, MARINE_SFC_DEWPOINT,   &
-                                  MARINE_SFC_RELATIVE_HUMIDITY
+use         obs_kind_mod, only : MARINE_SFC_U_WIND_COMPONENT, MARINE_SFC_V_WIND_COMPONENT, &
+                                 MARINE_SFC_TEMPERATURE, MARINE_SFC_SPECIFIC_HUMIDITY,     &
+                                 MARINE_SFC_ALTIMETER, MARINE_SFC_DEWPOINT,   &
+                                 MARINE_SFC_RELATIVE_HUMIDITY
 use obs_def_altimeter_mod, only : compute_altimeter
-use  obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
-                               create_3d_obs, getvar_int, getdimlen, set_missing_name
+use     obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
+                                  create_3d_obs, getvar_int, getdimlen, set_missing_name
 
-use           netcdf
+use netcdf
 
 implicit none
 
@@ -80,7 +80,7 @@ integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
 
 real(r8), parameter :: def_elev = 0.0_r8
 
-character (len=129) :: meta_data
+character (len=metadatalength) :: meta_data
 integer  :: ncid, nobs, nvars, n, i, oday, osec, nused
 logical  :: file_exist, first_obs
 real(r8) :: sfcp_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &

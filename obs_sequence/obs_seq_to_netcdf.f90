@@ -897,7 +897,7 @@ real(digits12), dimension(:), intent(in) :: obs_times
 integer,        dimension(:), intent(in) :: obs_types
 integer,        dimension(:), intent(in) :: obs_keys
 
-integer :: DimID, dimlen, obsindex, iobs, istatus
+integer :: DimID, dimlen, obsindex, iobs
 integer, dimension(1) :: istart, icount, intval
 
 integer :: obsldimlen, qcldimlen

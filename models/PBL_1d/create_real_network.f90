@@ -18,7 +18,7 @@ program create_real_network_seq
 ! create_obs_sequence.  This would be run in place of both create_fixed_network
 ! and perfect_model_obs.
 
-use        types_mod, only : r8, missing_r8, missing_i
+use        types_mod, only : r8, missing_r8, missing_i, metadatalength
 use    utilities_mod, only : timestamp, register_module, open_file, &
                              close_file, find_namelist_in_file, &
                              error_handler, check_namelist_read, &
@@ -76,7 +76,7 @@ integer                 :: num_obs, obs_kind_ind
 real(r8)                :: this_obs_val, this_qc_val
 real(r8), dimension(:), allocatable :: obs_vals, qc_vals, qc_sequence
 logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
-character(len=129)      :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
+character(len=metadatalength) :: copy_meta_data(2), qc_meta_data, obs_seq_read_format
 integer                 :: wrf_rnd_seed = -1
 
 ! Record the current time, date, etc. to the logfile

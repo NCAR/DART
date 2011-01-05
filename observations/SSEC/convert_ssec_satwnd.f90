@@ -20,7 +20,7 @@ program convert_ssec_satwnd
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use          types_mod, only : r8, missing_r8
+use          types_mod, only : r8, missing_r8, metadatalength
 use      utilities_mod, only : get_unit
 use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
                                increment_time, get_time, set_date, operator(-)
@@ -33,7 +33,8 @@ use         meteor_mod, only : wind_dirspd_to_uv
 use        obs_err_mod, only : sat_wind_error, sat_wv_wind_error
 use       obs_kind_mod, only : SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT
 use  obs_utilities_mod, only : create_3d_obs, add_obs_to_seq
-use           netcdf
+
+use netcdf
 
 implicit none
 
@@ -44,10 +45,11 @@ integer, parameter :: nmaxwnd = 50000,  &  ! maximum number of vectors
                       num_copies = 1,   &  ! number of copies in sequence
                       num_qc     = 1       ! number of QC entries
 
-character (len=129) :: meta_data, header
-character (len=8)   :: datein
-character (len=6)   :: sat
-character (len=4)   :: band, hourin
+character(len=metadatalength) :: meta_data
+character(len=129) :: header
+character(len=8)   :: datein
+character(len=6)   :: sat
+character(len=4)   :: band, hourin
 
 logical :: iruse, visuse, wvuse, swiruse, file_exist, qifile, eefile, &
            userfqc, useqiqc, useeeqc, first_obs

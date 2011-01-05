@@ -30,11 +30,11 @@ program convert_madis_acars
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use         types_mod, only : r8, missing_r8
+use         types_mod, only : r8, missing_r8, metadatalength
+use      location_mod, only : VERTISPRESSURE
 use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, operator(>=), &
                               increment_time, get_time, operator(-), GREGORIAN
-use      location_mod, only : VERTISPRESSURE
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               static_init_obs_sequence, init_obs, write_obs_seq, & 
                               init_obs_sequence, get_num_obs, &
@@ -48,10 +48,10 @@ use dewpoint_obs_err_mod, only : dewpt_error_from_rh_and_temp, &
 use      obs_kind_mod, only : ACARS_U_WIND_COMPONENT, ACARS_V_WIND_COMPONENT, &
                               ACARS_TEMPERATURE, ACARS_SPECIFIC_HUMIDITY, &
                               ACARS_DEWPOINT, ACARS_RELATIVE_HUMIDITY
-use  obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
-                               create_3d_obs, getvar_int, getdimlen, set_missing_name
+use obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
+                              create_3d_obs, getvar_int, getdimlen, set_missing_name
 
-use           netcdf
+use netcdf
 
 implicit none
 
@@ -70,7 +70,7 @@ logical, parameter :: use_input_qc              = .true.
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
 
-character (len=129) :: meta_data
+character (len=metadatalength) :: meta_data
 integer :: ncid, nobs, nvars, n, i, oday, osec, nused
            
 logical  :: file_exist, first_obs

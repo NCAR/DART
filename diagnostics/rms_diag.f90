@@ -14,7 +14,7 @@ program rms_diag
 ! of time between a truth found in one file, priors found in 
 ! another, and posterior found in a third.
 
-use       types_mod, only : r8
+use       types_mod, only : r8, metadatalength
 use    location_mod, only : location_type
 use assim_model_mod, only : init_diag_input, get_diag_input_copy_meta_data, &
    get_model_state_vector, input_diagnostics, assim_model_type, &
@@ -30,8 +30,8 @@ character(len=128), parameter :: &
 
 integer :: prior_unit, posterior_unit, truth_unit, ens_size, model_size, copies
 type(location_type), allocatable :: location(:)
-character(len = 129), allocatable :: meta_data(:)
-character(len = 129) :: prior_file, posterior_file, truth_file, global_meta_data
+character(len = metadatalength), allocatable :: meta_data(:), global_meta_data
+character(len = 129) :: prior_file, posterior_file, truth_file
 integer :: i, j, num_samples
 real(r8), allocatable :: prior(:, :), posterior(:, :), truth(:)
 type(assim_model_type) :: truth_state, prior_state, posterior_state
