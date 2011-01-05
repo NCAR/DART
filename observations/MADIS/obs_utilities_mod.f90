@@ -167,7 +167,7 @@ end subroutine getdimlen
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   getvar_real - subroutine that inquires, gets the variable, and fills 
+!   set_missing_name - subroutine that inquires, gets the variable, and fills 
 !            in the missing value attribute if that arg is present.
 !            gets the entire array, no start or count specified.
 !
