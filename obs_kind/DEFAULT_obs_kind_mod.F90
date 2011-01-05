@@ -563,11 +563,14 @@ character(len = *), intent(in)  :: obs_kind_name
 integer                         :: get_obs_kind_index
 
 integer :: i
+character(len=len(obs_kind_name)) :: string1
 
 if ( .not. module_initialized ) call initialize_module
 
+string1 = adjustl(obs_kind_name)
+
 do i = 1, max_obs_specific
-   if(trim(adjustl(obs_kind_name)) == trim(adjustl(obs_type_info(i)%name))) then
+   if(trim(string1) == trim(obs_type_info(i)%name) ) then
       get_obs_kind_index = i
       return
    endif
@@ -591,11 +594,14 @@ character(len=*), intent(in)  :: obs_kind_name
 integer                       :: get_raw_obs_kind_index
 
 integer :: i
+character(len=len(obs_kind_name)) :: string1
   
 if (.not. module_initialized) call initialize_module
 
+string1 = adjustl(obs_kind_name)
+
 do i = 1, max_obs_generic
-   if(trim(adjustl(obs_kind_name)) == trim(adjustl(obs_kind_names(i)%name))) then
+   if(trim(string1) == trim(obs_kind_names(i)%name)) then
       get_raw_obs_kind_index = i
       return
    end if
@@ -921,7 +927,7 @@ do ivar = 2,max_obs_kinds
    indx2  = index(str2,'_V_WIND_COMPONENT') - 1
    indx2N = len_trim(str2)
 
-   if ( DEBUG ) write(*,*)'Checking ',ivar, indx1, indx2, trim(adjustl(str2))
+   if ( DEBUG ) write(*,*)'Checking ',ivar, indx1, indx2, trim(str2)
 
    if ((indx1 > 0) .and. (indx2 > 0)) then ! we know we have u,v wind components
 
