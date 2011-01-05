@@ -77,7 +77,6 @@ logical, parameter :: use_input_qc              = .true.
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
 
-character (len=129) :: meta_data
 integer :: ncid, nobs, nvars, n, i, oday, osec, nused
 logical  :: file_exist, first_obs
 real(r8) :: alti_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
@@ -170,12 +169,10 @@ else
   ! create a new one
   call init_obs_sequence(obs_seq, num_copies, num_qc, nvars*nobs)
   do i = 1, num_copies
-    meta_data = 'MADIS observation'
-    call set_copy_meta_data(obs_seq, i, meta_data)
+    call set_copy_meta_data(obs_seq, i, 'MADIS observation')
   end do
   do i = 1, num_qc
-    meta_data = 'Data QC'
-    call set_qc_meta_data(obs_seq, i, meta_data)
+    call set_qc_meta_data(obs_seq, i, 'Data QC')
   end do
 
 endif

@@ -20,7 +20,7 @@ program convert_cosmic_gps_cdf
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use          types_mod, only : r8, metadatalength
+use          types_mod, only : r8
 use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
                                increment_time, get_time, set_date, operator(-),  &
                                print_date
@@ -56,7 +56,6 @@ character(len=128), parameter :: &
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
 
-character (len=metadatalength) :: meta_data
 character (len=129) :: msgstring, next_infile
 character (len=80)  :: name
 character (len=19)  :: datestr
@@ -162,12 +161,10 @@ else
   call init_obs_sequence(obs_seq, num_copies, num_qc, num_new_obs)
 
   do k = 1, num_copies
-    meta_data = 'COSMIC GPS observation'
-    call set_copy_meta_data(obs_seq, k, meta_data)
+    call set_copy_meta_data(obs_seq, k, 'COSMIC GPS observation')
   end do
   do k = 1, num_qc
-    meta_data = 'COSMIC QC'
-    call set_qc_meta_data(obs_seq, k, meta_data)
+    call set_qc_meta_data(obs_seq, k, 'COSMIC QC')
   end do
 
 end if

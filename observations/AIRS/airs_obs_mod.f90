@@ -10,7 +10,7 @@ module airs_obs_mod
 ! $Revision$
 ! $Date$
 
-use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg, metadatalength
+use types_mod,        only : r4, r8, digits12, deg2rad, rad2deg
 
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def,     &
                              write_obs_def, destroy_obs_def,                   &
@@ -125,8 +125,6 @@ real(r8) :: sintheta, costheta, dirvar, speedvar
 
 type(time_type) :: obs_time, base_time, pre_time, time
 
-character(len = metadatalength) :: meta_data
-
 if ( .not. module_initialized ) call initialize_module
 
 num_copies  = 1
@@ -137,13 +135,11 @@ call init_obs_sequence(real_obs_sequence, num_copies, num_qc, max_num)
 
 ! set meta data of obs_seq
 do i = 1, num_copies
-   meta_data = 'observation'  
-   call set_copy_meta_data(real_obs_sequence, i, meta_data)
+   call set_copy_meta_data(real_obs_sequence, i, 'observation')
 end do
 
 do i = 1, num_qc
-   meta_data = 'AIRS QC'
-   call set_qc_meta_data(real_obs_sequence, i, meta_data)
+   call set_qc_meta_data(real_obs_sequence, i, 'AIRS QC')
 end do
 
 ! Initialize the obs variables

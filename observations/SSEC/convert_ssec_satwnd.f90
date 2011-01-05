@@ -20,7 +20,7 @@ program convert_ssec_satwnd
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use          types_mod, only : r8, missing_r8, metadatalength
+use          types_mod, only : r8, missing_r8
 use      utilities_mod, only : get_unit
 use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
                                increment_time, get_time, set_date, operator(-)
@@ -45,7 +45,6 @@ integer, parameter :: nmaxwnd = 50000,  &  ! maximum number of vectors
                       num_copies = 1,   &  ! number of copies in sequence
                       num_qc     = 1       ! number of QC entries
 
-character(len=metadatalength) :: meta_data
 character(len=129) :: header
 character(len=8)   :: datein
 character(len=6)   :: sat
@@ -118,12 +117,10 @@ else
 
   call init_obs_sequence(obs_seq, num_copies, num_qc, 2*nmaxwnd)
   do i = 1, num_copies
-    meta_data = 'SSEC observation'
-    call set_copy_meta_data(obs_seq, i, meta_data)
+    call set_copy_meta_data(obs_seq, i, 'SSEC observation')
   end do
   do i = 1, num_qc
-    meta_data = 'Data QC'
-    call set_qc_meta_data(obs_seq, i, meta_data)
+    call set_qc_meta_data(obs_seq, i, 'Data QC')
   end do
 
 end if

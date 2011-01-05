@@ -135,7 +135,6 @@ real (r8) :: bin_beg, bin_end
 
 character(len = 8 ) :: obsdate
 character(len = 80) :: obsfile, label
-character(len = 129) :: copy_meta_data, qc_meta_data
 character(len = 6 ) :: subset
 logical :: pass
 
@@ -151,13 +150,11 @@ call init_obs_sequence(real_obs_sequence, num_copies, num_qc, max_num)
 ! set meta data of obs_seq
 
 do i = 1, num_copies
-   copy_meta_data = 'NCEP BUFR observation'  
-   call set_copy_meta_data(real_obs_sequence, i, copy_meta_data)
+   call set_copy_meta_data(real_obs_sequence, i, 'NCEP BUFR observation')
 end do
 
 do i = 1, num_qc
-   qc_meta_data = 'NCEP QC index'
-   call set_qc_meta_data(real_obs_sequence, i, qc_meta_data)
+   call set_qc_meta_data(real_obs_sequence, i, 'NCEP QC index')
 end do
 
 ! Initialize the obs variable

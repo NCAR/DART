@@ -33,7 +33,7 @@ program convert_madis_marine
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use         types_mod, only : r8, missing_r8, metadatalength
+use         types_mod, only : r8, missing_r8
 use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
                               increment_time, get_time, operator(-), GREGORIAN
@@ -80,7 +80,6 @@ integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
 
 real(r8), parameter :: def_elev = 0.0_r8
 
-character (len=metadatalength) :: meta_data
 integer  :: ncid, nobs, nvars, n, i, oday, osec, nused
 logical  :: file_exist, first_obs
 real(r8) :: sfcp_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
@@ -176,12 +175,10 @@ else
   ! create a new one
   call init_obs_sequence(obs_seq, num_copies, num_qc, nvars*nobs)
   do i = 1, num_copies
-    meta_data = 'MADIS observation'
-    call set_copy_meta_data(obs_seq, i, meta_data)
+    call set_copy_meta_data(obs_seq, i, 'MADIS observation')
   end do
   do i = 1, num_qc
-    meta_data = 'Data QC'
-    call set_qc_meta_data(obs_seq, i, meta_data)
+    call set_qc_meta_data(obs_seq, i, 'Data QC')
   end do
 
 endif

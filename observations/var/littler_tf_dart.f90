@@ -68,8 +68,7 @@ character(len = 129) :: msgstring
 integer              :: n_no_support
 
 character(len = 129) :: dart_file_name     = 'obs_seq.out', &
-                        littler_file_name = 'little-r.dat', &
-                        copy_meta_data, qc_meta_data
+                        littler_file_name = 'little-r.dat'
 
 integer              :: calendar_type      = GREGORIAN
 
@@ -534,10 +533,8 @@ else
    ! Initialize an obs_sequence structure
    call init_obs_sequence(dart_seq, num_copies, num_qc, max_num_obs)
 
-   copy_meta_data = 'littler observations'
-   call set_copy_meta_data(dart_seq, 1, copy_meta_data)
-   copy_meta_data = 'littler QC'
-   call set_qc_meta_data(dart_seq, 1, qc_meta_data)
+   call set_copy_meta_data(dart_seq, 1, 'littler observations')
+   call set_qc_meta_data(  dart_seq, 1, 'littler QC')
 
    iunit = open_file(littler_file_name, action = 'read')
 

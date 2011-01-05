@@ -15,8 +15,8 @@ use     utilities_mod, only : open_file, close_file, initialize_utilities, &
                               register_module, logfileunit, E_MSG, timestamp, &
                               error_handler, find_namelist_in_file, check_namelist_read
 use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, insert_obs_in_seq, &
-                              set_copy_meta_data, set_qc_meta_data, write_obs_seq, assignment(=), &
-                              init_obs, static_init_obs_sequence, set_obs_def, set_obs_values, set_qc
+                              write_obs_seq, init_obs, assignment(=), &
+                              static_init_obs_sequence, set_obs_def, set_obs_values, set_qc
 use       obs_def_mod, only : set_obs_def_location, set_obs_def_error_variance, &
                               set_obs_def_kind, set_obs_def_time, set_obs_def_key, &
                               obs_def_type

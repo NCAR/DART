@@ -102,7 +102,7 @@ character(len=128), parameter :: &
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
 
-character (len=129) :: meta_data, msgstring, next_infile, cdummy
+character (len=129) :: msgstring, next_infile, cdummy
 character (len=80)  :: name
 character (len=19)  :: datestr
 character (len=6)   :: subset
@@ -229,12 +229,10 @@ endif
 print *, "max entries = ", num_new_obs
 call init_obs_sequence(obs_seq, num_copies, num_qc, num_new_obs)
 do k = 1, num_copies
-   meta_data = 'WOD observation'
-   call set_copy_meta_data(obs_seq, k, meta_data)
+   call set_copy_meta_data(obs_seq, k, 'WOD observation')
 end do
 do k = 1, num_qc
-   meta_data = 'WOD QC'
-   call set_qc_meta_data(obs_seq, k, meta_data)
+   call set_qc_meta_data(obs_seq, k, 'WOD QC')
 end do
 
 did_obs = .false.

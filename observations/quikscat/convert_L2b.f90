@@ -31,7 +31,7 @@ implicit none
 ! Declare local parameters
 ! ----------------------------------------------------------------------
 
-character(len=256)      :: datafile, output_name, dartfile, string1
+character(len=256)      :: datafile, output_name, dartfile
 type(orbit_type)        :: orbit
 type(obs_sequence_type) :: seq
 

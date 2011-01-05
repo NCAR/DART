@@ -76,7 +76,6 @@ integer           :: num_obs, num_obs_last, num_copies, num_qc, max_num_obs=8000
 !real(r8)          :: lat,lon,pressure, height
 !real(r8)          :: windspd, winddir, uu, vv, tk, td, rh, qv
 
-character(len = 129) :: copy_meta_data, qc_meta_data
 character(len=80) :: dummy
 
 logical           :: valid
@@ -210,10 +209,8 @@ num_qc = 1
 ! Initialize an obs_sequence structure
 call init_obs_sequence(seq, num_copies, num_qc, max_num_obs)
 
-copy_meta_data = 'WRFVAR 2.1 GTS observations'
-qc_meta_data = 'WRFVAR OBSPROC Quality Control'
-call set_copy_meta_data(seq, 1, copy_meta_data)
-call set_qc_meta_data(seq, 1, qc_meta_data)
+call set_copy_meta_data(seq, 1, 'WRFVAR 2.1 GTS observations')
+call set_qc_meta_data(  seq, 1, 'WRFVAR OBSPROC Quality Control')
 
 call init_obs(obs, num_copies, num_qc)
 
