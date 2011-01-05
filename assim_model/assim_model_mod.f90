@@ -955,6 +955,7 @@ character(len = *), intent(in) :: file_name
 integer :: ios, ios_out
 !!logical :: old_output_state
 type(time_type) :: temp_time
+character(len=64) :: string2
 
 if ( .not. module_initialized ) call static_init_assim_model()
 
@@ -991,7 +992,7 @@ if ( .not. module_initialized ) call static_init_assim_model()
 open_restart_read = get_unit()
 read_format = 'formatted'
 open(unit   = open_restart_read, &
-     file   = trim(file_name),         &
+     file   = trim(file_name),   &
      form   = read_format,       &
      action = 'read',            &
      status = 'old',             &
@@ -1011,7 +1012,7 @@ close(open_restart_read)
 open_restart_read = get_unit()
 read_format = 'unformatted'
 open(unit   = open_restart_read, &
-     file   = trim(file_name),         &
+     file   = trim(file_name),   &
      form   = read_format,       &
      action = 'read',            &
      status = 'old',             &
@@ -1028,10 +1029,11 @@ endif
 
 ! Otherwise, neither format works. Have a fatal error.
 11 continue
-write(msgstring, *) 'Problem opening file ',trim(adjustl(file_name))
-call error_handler(E_MSG,'open_restart_read',msgstring,source,revision,revdate)
-write(msgstring, *) 'OPEN status was ',ios
-call error_handler(E_ERR,'open_restart_read',msgstring,source,revision,revdate)
+
+write(msgstring, *) 'Problem opening file ',trim(file_name)
+write( string2 , *) 'OPEN status was ',ios
+call error_handler(E_ERR, 'open_restart_read', msgstring, &
+     source, revision, revdate, text2=string2)
 
 end function open_restart_read
 
