@@ -71,10 +71,27 @@ foreach FILE ( input.nml filter pop_to_dart dart_to_pop )
       ${COPY}   ${DARTDIR}/${FILE} .
    else
       echo "DART required file $FILE not found ... ERROR"
-      stop
+      exit 1
    endif
 
 end
+
+#-------------------------------------------------------------------------
+# This is the file for the sampling error correction.
+# Each ensemble size has its own file.
+# It is static - it does not need to be archived, etc.
+# It is only needed if 
+# input.nml:&assim_tools_nml:sampling_error_correction = .true.,
+#-------------------------------------------------------------------------
+
+set SAMP_ERR_FILE = ${DARTDIR}/system_simulation/final_full.${ensemble_size}
+
+if ( -e ${SAMP_ERR_FILE}/ ) then
+   ${COPY} ${SAMP_ERR_FILE} .
+else
+   echo "WARNING: no sampling error correction file for this ensemble size."
+   echo "warning: looking for system_simulation/final_full.${ensemble_size}"
+endif
 
 #-------------------------------------------------------------------------
 # DART INFLATION BLOCK

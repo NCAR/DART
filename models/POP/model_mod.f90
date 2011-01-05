@@ -15,7 +15,7 @@ module model_mod
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8, SECPERDAY, MISSING_R8, rad2deg, PI
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
-                             print_time, print_date, set_calendar_type,        &
+                             print_time, print_date,                           &
                              operator(*),  operator(+), operator(-),           &
                              operator(>),  operator(<), operator(/),           &
                              operator(/=), operator(<=)
@@ -226,7 +226,6 @@ subroutine static_init_model()
 ! Called to do one time initialization of the model. In this case,
 ! it reads in the grid information.
 
-character(len=32):: calendar
 integer :: iunit, io
 integer :: ss, dd
 
@@ -938,7 +937,7 @@ integer,            intent(out) :: istatus
 
 ! Local storage
 integer  :: lat_bot, lat_top, lon_bot, lon_top, num_inds, start_ind
-integer  :: x_ind, y_ind, i
+integer  :: x_ind, y_ind
 real(r8) :: p(4), x_corners(4), y_corners(4), xbot, xtop
 real(r8) :: lon_fract, lat_fract
 logical  :: masked
@@ -1121,7 +1120,7 @@ real(r8),           intent(out) :: lon_fract, lat_fract
 integer,            intent(out) :: found_x, found_y, istatus
 
 ! Local storage
-integer  :: lon_status, lat_status, lon_top, lat_top
+integer  :: lat_status, lon_top, lat_top
 
 ! Succesful return has istatus of 0
 istatus = 0
@@ -1485,7 +1484,8 @@ real(r8), intent(out) :: interp_val
 ! checks showed accuracy to seven decimal places on all tests.
 
 integer :: i
-real(r8) :: m(3, 3), v(3), r(3), a, x_corners(4), lon, lon_mean
+real(r8) :: m(3, 3), v(3), r(3), a, x_corners(4), lon
+! real(r8) :: lon_mean
 
 ! Watch out for wraparound on x_corners.
 lon = lon_in
@@ -2514,7 +2514,7 @@ integer  :: i, j, k, ivar, indx
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: varname 
 integer :: VarID, numdims, dimlen
-integer :: ncid, iyear, imonth, iday, ihour, iminute, isecond, nc_rc
+integer :: ncid, iyear, imonth, iday, ihour, iminute, isecond
 character(len=256) :: myerrorstring 
 
 if ( .not. module_initialized ) call static_init_model
