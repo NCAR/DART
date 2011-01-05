@@ -4,11 +4,14 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL: https://subversion.ucar.edu/DAReS/DART/trunk/models/wrf/work/mkmf_perfect_model_obs $
-# $Id: mkmf_perfect_model_obs 3440 2008-07-01 23:07:15Z thoar $
-# $Revision: 3440 $
-# $Date: 2008-07-01 17:07:15 -0600 (Tue, 01 Jul 2008) $
-#
+# $Id$
+
 ../../../mkmf/mkmf -p replace_wrf_fields -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
  -a "../../.." path_names_replace_wrf_fields
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
