@@ -1768,6 +1768,8 @@ function ascii_file_format(fform)
 character(len=*), intent(in), optional :: fform
 logical                                :: ascii_file_format
 
+character(len=129) :: lj_fform ! Left Justified version of optional argument 
+
 ! Returns .true. for formatted/ascii file, .false. is unformatted/binary
 ! Defaults (if fform not specified) to formatted/ascii.
 
@@ -1779,7 +1781,17 @@ if ( .not. present(fform)) then
    return
 endif
 
-SELECT CASE (trim(adjustl(fform)))
+! Check to make sure we don't put 10lbs of stuff in a 5lb bag
+
+if (len(fform) > len(lj_fform)) then
+   write(msgstring,*)'fform is long: increase len of lj_fform to ',&
+                     len(fform),' and recompile.'
+   call error_handler(E_ERR,'ascii_file_format', msgstring, source, revision, revdate)
+endif
+
+lj_fform = adjustl(fform)
+
+SELECT CASE (trim(lj_fform))
    CASE("unf", "UNF", "unformatted", "UNFORMATTED")
       ascii_file_format = .false.
    CASE DEFAULT
