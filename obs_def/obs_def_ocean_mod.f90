@@ -155,9 +155,10 @@ character(len=128), parameter :: &
 logical :: module_initialized = .false.
 
 character(len=129) :: msgstring ! For error message content
+character(len= 32) :: header, str1
 
-! Derived type for radial velocity.  Contains auxiliary information stored
-! with each obs of this type; used to compute the forward operator.
+! Derived type to contain the metadata for radial velocity observations.
+! Contains auxiliary information used to compute the forward operator.
 ! See more extensive comments in the interactive_hf_radial_vel() routine for
 ! expected units, etc.  The instrument ID is currently unused, but may be
 ! useful for post processing or diagnostics.
@@ -168,18 +169,16 @@ type radial_vel_type
    real(r8)  :: beam_angle          ! angle of beam (degrees)
 end type radial_vel_type
 
-! Cumulative index into radial velocity metadata array
-integer :: velkeycount = 0 
-character(len=32) :: header, str1
-                             
+! Module storage for radial velocity metadata, allocated in init routine.
+! Cumulative index into radar metadata array
+integer :: metadata_index = 0 
+type(radial_vel_type), allocatable :: radial_vel_metadata(:)
+
 ! namelist items
 integer :: max_radial_vel_obs = 1000000
 logical :: debug = .false.   ! set to .true. to enable debug printout
 
 namelist /obs_def_ocean_nml/ max_radial_vel_obs, debug
-
-! Module global storage for auxiliary obs data, allocated in init routine
-type(radial_vel_type), allocatable :: radial_vel_data(:)
 
 contains
 
@@ -218,7 +217,7 @@ if (do_nml_term()) write(     *     , nml=obs_def_ocean_nml)
 ! This code must be placed after reading the namelist, so the user can
 ! increase or decrease the number of obs supported and use more or less
 ! memory at run time.
-allocate(radial_vel_data(max_radial_vel_obs), stat = rc)
+allocate(radial_vel_metadata(max_radial_vel_obs), stat = rc)
 if (rc /= 0) then
    write(msgstring, *) 'initial allocation failed for radial vel obs data,', &
                        'itemcount = ', max_radial_vel_obs
@@ -308,7 +307,7 @@ real(r8) :: beam_angle
 if ( .not. module_initialized ) call initialize_module
 
 ! Simple error check on key number before accessing the array
-call velkey_out_of_range(velkey)
+call velkey_out_of_range(velkey,'write_hf_radial_vel')
 
 is_asciifile = ascii_file_format(fform)
 
@@ -318,8 +317,8 @@ if (is_asciifile) then
 endif
 
 ! Extract the values for this key and call the appropriate write routines.
-instrument_id = radial_vel_data(velkey)%instrument_id
-beam_angle    = radial_vel_data(velkey)%beam_angle
+instrument_id = radial_vel_metadata(velkey)%instrument_id
+beam_angle    = radial_vel_metadata(velkey)%beam_angle
 
 ! These two write routines are local to this module, and we have already 
 ! figured out if it is a unformatted/binary file or formatted/ascii, so 
@@ -483,10 +482,10 @@ integer,   intent(out) :: instrument_id
 real(r8),  intent(out) :: beam_angle
 
 ! Simple error check on key number before accessing the array
-call velkey_out_of_range(velkey)
+call velkey_out_of_range(velkey,'get_obs_def_hf_radial_vel')
 
-instrument_id = radial_vel_data(velkey)%instrument_id
-beam_angle    = radial_vel_data(velkey)%beam_angle
+instrument_id = radial_vel_metadata(velkey)%instrument_id
+beam_angle    = radial_vel_metadata(velkey)%beam_angle
 
 end subroutine get_obs_def_hf_radial_vel
 
@@ -506,15 +505,15 @@ real(r8), intent(in)  :: beam_angle
 if ( .not. module_initialized ) call initialize_module
 
 ! The total velocity metadata key count from all sequences
-velkeycount = velkeycount + 1
-velkey = velkeycount             ! set the return value
+metadata_index = metadata_index + 1
+velkey         = metadata_index
    
 ! Simple error check on key number before accessing the array
 ! This errors out if too key value now too large.
-call velkey_out_of_range(velkey)
+call velkey_out_of_range(velkey,'set_hf_radial_vel')
 
-radial_vel_data(velkey)%instrument_id = instrument_id
-radial_vel_data(velkey)%beam_angle    = beam_angle
+radial_vel_metadata(velkey)%instrument_id = instrument_id
+radial_vel_metadata(velkey)%beam_angle    = beam_angle
    
 end subroutine set_hf_radial_vel 
 
@@ -629,7 +628,7 @@ real(r8) :: debug_location(3)
 if ( .not. module_initialized ) call initialize_module
 
 ! Simple error check on key number before accessing the array
-call velkey_out_of_range(velkey)
+call velkey_out_of_range(velkey,'get_expected_hf_radial_vel')
 
 call interpolate(state_vector, location, KIND_U_CURRENT_COMPONENT, u, istatus)
 if (istatus /= 0) then
@@ -642,8 +641,8 @@ if (istatus /= 0) then
    return
 endif
 
-radial_vel = u * cos(radial_vel_data(velkey)%beam_angle*deg2rad) + &
-             v * sin(radial_vel_data(velkey)%beam_angle*deg2rad)
+radial_vel = u * cos(radial_vel_metadata(velkey)%beam_angle*deg2rad) + &
+             v * sin(radial_vel_metadata(velkey)%beam_angle*deg2rad)
 
 ! Good return code. 
 istatus = 0
@@ -652,15 +651,15 @@ if (debug) then
    debug_location = get_location(location)
    print *
    print *, 'radial velocity key: ', velkey
-   print *, 'instrument id: ', radial_vel_data(velkey)%instrument_id
+   print *, 'instrument id: ', radial_vel_metadata(velkey)%instrument_id
    print *, 'obs location (deg): ', debug_location(1),         &
                                     debug_location(2),         debug_location(3)
    print *, 'obs location (rad): ', debug_location(1)*deg2rad, &
                                     debug_location(2)*deg2rad, debug_location(3)
    print *, 'interpolated u: ', u
    print *, 'interpolated v: ', v
-   print *, 'angle (deg): ', radial_vel_data(velkey)%beam_angle
-   print *, 'angle (rad): ', radial_vel_data(velkey)%beam_angle*deg2rad
+   print *, 'angle (deg): ', radial_vel_metadata(velkey)%beam_angle
+   print *, 'angle (rad): ', radial_vel_metadata(velkey)%beam_angle*deg2rad
    print *, 'final radial_vel: ', radial_vel
    print *, 'istatus: ', istatus
 endif
@@ -669,11 +668,12 @@ end subroutine get_expected_hf_radial_vel
 
 !----------------------------------------------------------------------
 
-subroutine velkey_out_of_range(velkey)
+subroutine velkey_out_of_range(velkey, callingroutine)
 
 ! Range check velkey and trigger a fatal error if larger than allocated array.
 
-integer, intent(in) :: velkey
+integer,          intent(in) :: velkey
+character(len=*), intent(in) :: callingroutine
 
 ! fine -- no problem.
 if (velkey <= max_radial_vel_obs) return
@@ -681,17 +681,13 @@ if (velkey <= max_radial_vel_obs) return
 ! Bad news.  Tell the user.
 write(msgstring, *) 'velkey (',velkey,') exceeds max_radial_vel_obs (', &
                      max_radial_vel_obs,')'
-call error_handler(E_MSG,'set_hf_radial_vel', msgstring, '', '', '')
 call error_handler(E_ERR,'set_hf_radial_vel', &
-                   'Increase max_radial_vel_obs in namelist', &
-                   source, revision, revdate)
+          'Increase max_radial_vel_obs in namelist', &
+          source, revision, revdate, text2=msgstring, text3=callingroutine)
 
 end subroutine velkey_out_of_range
 
-
 !----------------------------------------------------------------------
-
-
 
 end module obs_def_ocean_mod
 ! END DART PREPROCESS MODULE CODE
