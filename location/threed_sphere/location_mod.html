@@ -731,10 +731,10 @@ type(get_close_type),              intent(in)  :: <em class=code>gc</em>
 type(location_type),               intent(in)  :: <em class=code>base_obs_loc</em>
 integer,                           intent(in)  :: <em class=code>base_obs_kind</em>
 type(location_type), dimension(:), intent(in)  :: <em class=code>obs</em>
-integer, dimension(:),             intent(in)  :: <em class=code>obs_kind</em>
+integer,             dimension(:), intent(in)  :: <em class=code>obs_kind</em>
 integer,                           intent(out) :: <em class=code>num_close</em>
-integer, dimension(:),             intent(out) :: <em class=code>close_ind</em>
-real(r8), dimension(:),            intent(out) :: <em class=code>dist</em>
+integer,             dimension(:), intent(out) :: <em class=code>close_ind</em>
+real(r8), optional,  dimension(:), intent(out) :: <em class=optionalcode>dist</em>
 </pre>
 </div>
 
@@ -769,7 +769,7 @@ before using <em class=code>get_close_obs()</em> again.
     <TD>Number of locations close to the given location.</TD></TR>
 <TR><TD valign=top><em class=code>close_ind</em></TD>
     <TD>Indices of those locations that are close.</TD></TR>
-<TR><TD valign=top><em class=code>dist</em></TD>
+<TR><TD valign=top><em class=optionalcode>dist</em></TD>
     <TD>Distance between given location and the 
         close ones identified in close_ind.</TD></TR>
 </TABLE>
