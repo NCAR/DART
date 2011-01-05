@@ -9,19 +9,19 @@
 
 # This is the right set for coral.
 #----------------------------------------------------------------------
- set JPGDIR = /contrib/jpeg-6b_intel-10.1-64
- set HDFDIR = /contrib/HDF4.2r4_intel-10.1-64
- set MYLIBS = "-lmfhdf -ldf -ljpeg -lz -lm"
- set MYINCDIR = "-I${HDFDIR}/include -I${JPGDIR}/include"
- set MYLIBDIR = "-L${HDFDIR}/lib     -L${JPGDIR}/lib"
+#set JPGDIR = /contrib/jpeg-6b_intel-10.1-64
+#set HDFDIR = /contrib/HDF4.2r4_intel-10.1-64
+#set MYLIBS = "-lmfhdf -ldf -ljpeg -lz -lm"
+#set MYINCDIR = "-I${HDFDIR}/include -I${JPGDIR}/include"
+#set MYLIBDIR = "-L${HDFDIR}/lib     -L${JPGDIR}/lib"
 
 
 # This is the right set for the DASG cluster.
 #----------------------------------------------------------------------
-#set HDFDIR = /contrib/HDF4.2r4/intel-10-64
-#set MYLIBS = "-lmfhdf -ldf -ljpeg -lz -lm"
-#set MYINCDIR = "-I${HDFDIR}/include"
-#set MYLIBDIR = "-L${HDFDIR}/lib"
+ set HDFDIR = /contrib/HDF4.2r4/intel-10-64
+ set MYLIBS = "-lmfhdf -ldf -ljpeg -lz -lm"
+ set MYINCDIR = "-I${HDFDIR}/include"
+ set MYLIBDIR = "-L${HDFDIR}/lib"
 
 ../../../mkmf/mkmf -p convert_L2b -t ../../../mkmf/mkmf.template \
  -l "${MYINCDIR} -L/usr/lib64 ${MYLIBDIR} ${MYLIBS}" \

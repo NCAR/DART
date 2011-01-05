@@ -6,12 +6,22 @@
 #
 # $Id$
 
-set JPGDIR = .
+set JPGDIR = /usr
+set JPGLIB = ${JPGDIR}/lib64
+set JPGINC = ${JPGDIR}/include
+
 set HDFDIR = /fs/local/apps/hdf4.2r4-intel
+set HDFLIB = ${HDFDIR}/lib
+set HDFINC = ${HDFDIR}/include
+
+set EOSDIR = /contrib/HDF-EOS2.16v1.00/intel-10.1-64
+set EOSLIB = ${EOSDIR}/lib
+set EOSINC = ${EOSDIR}/include
+
 set MYLIBS = "-lhdfeos -lmfhdf -ldf -ljpeg -lz  -lm"
 
-set MYINCDIR = "-I${HDFDIR}/include -I${JPGDIR}/include"
-set MYLIBDIR = "-L${HDFDIR}/lib     -L${JPGDIR}/lib         -L.."
+set MYINCDIR = "-I${EOSDIR}/include -I${HDFDIR}/include -I${JPGDIR}/include"
+set MYLIBDIR = "-L${EOSDIR}/lib     -L${HDFDIR}/lib     -L${JPGDIR}/lib"
 
 #-o "-ffixed-line-length-132 -I${HDFDIR}/include -L/usr/lib64 -L${HDFDIR}/lib ${HDFLIBS}" \
 
