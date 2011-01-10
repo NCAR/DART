@@ -46,6 +46,161 @@ that allows each observation to update all state variables that are close
 to it at the same time is described in Anderson (2007).
 </P>
 
+<A NAME="FilterTypes"></A>
+<P>
+Available observation space filter types include:
+<ul>
+<li> 1 = EAKF 
+<li> 2 = ENKF
+<li> 3 = Kernel filter
+<li> 4 = Particle filter
+<li> 5 = Random draw from posterior  (talk to Jeff before using)
+<li> 6 = Deterministic draw from posterior with fixed kurtosis (ditto)
+<li> 7 = Boxcar kernel filter
+<li> 8 = alternative Boxcar (ditto)
+</ul>
+Most users use type 1, the EAKF.
+</P>
+
+
+<A NAME="Localization"></A>
+<P>
+<br>
+<em>Localization</em> controls how far the impact of an observation extends.
+The namelist items related to localization are spread over several
+different individual namelists, so we have made a single collected 
+description of them here along with some guidance on setting the values.
+<br>
+<br>
+This discussion centers on the mechanics of how you control
+localization in DART with the namelist items, and a little bit about
+pragmatic approaches to picking the values.  There is no discussion
+about the theory behind localization - contact Jeff Anderson for more
+details.
+Additionally, the discussion here applies specifically to models using
+the 3d_sphere location module.  The same process takes place in 1d
+models but the details of the location module namelist is different.
+<br>
+<br>
+The following namelist items related to 3d-sphere localization
+are all found in the <em class=file>input.nml</em> file:
+<dl>
+<dt>
+<em>&amp;assim_tools_nml :: cutoff<br></em>
+valid values: 0.0 to infinity
+<dd>
+This is the value, in radians, of the half-width of the localization
+radius (this follows the terminology of an early paper on localization).
+For each observation, a state vector item increment is computed based
+on the covariance values.  Then a multiplier, based on the 'select_localization'
+setting (see below) decreases the increment as the distance
+between the obs and the state vector item increases.  In all cases
+if the distance exceeds 2*cutoff, the increment is 0.
+<br>
+<br>
+<dt>
+<em>&amp;cov_cutoff_nml :: select_localization<br></em>
+valid values: 1=Gaspari-Cohn; 2=Boxcar; 3=Ramped Boxcar
+<dd>
+Controls the shape of the multiplier function applied to the
+computed increment as the distance increases between the obs
+and the state vector item.
+<ul>
+<li>Type 1 has a value of 1 at 0 distance, 0 at 2*cutoff, and
+decreases in an approximation of a gaussian in between.
+<li>Type 2 is 1 from 0 to 2*cutoff, and then 0 beyond.  
+<li>Type 3 is 1 to cutoff and then ramps linearly down to 0 at 2*cutoff.
+</ul>   
+Most users use type 1 localization.
+<br>
+<br>
+<dt>
+<em>&amp;location_nml :: horiz_dist_only<br></em>
+valid values:  .true., .false.
+<dd>
+If set to .true., then the vertical location of all items, observations
+and state vector both, are ignored when computing distances
+between pairs of locations.  This has the effect that all items within
+a vertical-cylindrical area are considered the same distance away.
+<br>
+<br>
+If set to .false., then the full 3d separation is computed.  Since
+the localization is computed in radians, the 2d distance is easy
+to compute but a scaling factor must be given for the vertical
+since vertical coordinates can be in meters, pressure, or model levels.
+See below for the 'vert_normalization_xxx' namelist items.
+<br>
+<br>
+<dt>
+<em>&amp;location_nml :: vert_normalization_{pressure,height,level}<br></em>
+valid values: real numbers, in pascals, meters, and index, respectively
+<dd>
+If 'horiz_dist_only' is set to .true., these are ignored.  If set to .false.,
+these are required.  They are the amount of that quantity that is
+equivalent to 1 radian in the horizontal.  If the model is an
+earth-based one, then one radian is roughly 6366 kilometers, so if
+vert_normalization_height is set to 6366000 meters, then the localization
+cutoff will be a perfect sphere.  If you want to localize over a larger
+distance in the vertical than horizontal, use a larger value.  If you want
+to localize more sharply in the vertical, use a smaller number.
+<br>
+<br>
+<dt>
+<em>&amp;assim_tools_nml :: adaptive_localization_threshold<br></em>
+valid values: integer counts, or -1 to disable
+<dd>
+Used to dynamically shrink the localization cutoff in areas of dense
+observations.  If set to something larger than 0, first the number of
+other observations within 2*cutoff is computed.  If it is larger than this
+given threshold, the cutoff is decreased proportionally so if the 
+observations were evenly distributed in space, the number of 
+observations within 2*revised_cutoff
+would now be the threshold value.  The cutoff value is computed
+for each observation as it is assimilated, so can be different for 
+each one.
+<br>
+<br>
+<dt>
+<em>&amp;assim_tools_nml :: output_localization_diagnostics<br></em>
+valid values: .true., .false.
+<dd>
+If .true. and if adaptive localization is on, a single text line is printed 
+to a file giving the original cutoff and number of observations, and the 
+revised cutoff and new number of counts within this smaller cutoff for any 
+observation which has nearby observations which exceed the adaptive threshold count.
+<br>
+<br>
+<dt>
+<em>&amp;assim_tools_nml :: localization_diagnostics_file <br></em>
+valid values: text string
+<dd>
+Name of the file where the adaptive localization diagnostic 
+information is written.
+</dl>
+</P>
+<P>
+Usually global model users do not use adaptive localization
+unless they have observations which are closely clustered in some areas
+and sparse in other.  Most people use Gaspari-Cohn covariance cutoff.
+Most localize in the vertical, but tend to use large values so as to
+not disturb vertical structures.  The value of the cutoff itself is the
+item most often changed in a sensitivity run to pick a good general
+value, and then left as-is for subsequent runs.
+</P>
+<P>
+In general, the approach to setting good values for localization is to err
+on the larger side - to estimate for all types of observations under all
+conditions, what the farthest feasible impact or correlated structure size
+would be.  The downsides of guessing too large are 1) run time is slower, 
+and 2) there can be spurious correlations between state vector items and 
+observations
+which aren't physically related and noise can creep into the assimilation
+results this way.   The downside of guessing too small is that state vector
+items that should get an impact from an observation won't.  This might
+disrupt organized features in a field and the model may take more time
+to recover/reconstruct the feature.
+</P>
+
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 <!--==================================================================-->
