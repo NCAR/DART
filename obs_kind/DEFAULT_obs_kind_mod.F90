@@ -156,7 +156,7 @@ integer, parameter, public :: &
     KIND_INFRARED_BRIGHT_TEMP        = 61, &
     KIND_LANDMASK                    = 62
                                      
-! kinds for planetary remote sensing (wglawson)
+! kinds for planetary remote sensing (wglawson, c.lee)
 integer, parameter, public :: &
     KIND_SKIN_TEMPERATURE            = 70, &
     KIND_NADIR_RADIANCE              = 71, &
@@ -170,6 +170,13 @@ integer, parameter, public :: &
 ! kinds for NCOMMAS  (Lou W., Ted M.)
 integer, parameter, public :: &
     KIND_VERTICAL_VORTICITY          = 76
+
+! more kinds for planetary remote sensing (c.lee)
+integer, parameter, public :: &
+    KIND_SURFACE_ALBEDO              = 77, &
+    KIND_SURFACE_EMISSIVITY          = 78, &
+    KIND_DUST_OPACITY_7MB            = 79, &
+    KIND_THC                         = 80
 
 ! kinds for vortex tracking (WRF - yongsheng)
 integer, parameter, public :: &
@@ -378,7 +385,10 @@ obs_kind_names(73) = obs_kind_type(KIND_TRACER_2_MIXING_RATIO, 'KIND_TRACER_2_MI
 obs_kind_names(74) = obs_kind_type(KIND_SOIL_TEMPERATURE, 'KIND_SOIL_TEMPERATURE')
 obs_kind_names(75) = obs_kind_type(KIND_SOIL_LIQUID_WATER, 'KIND_SOIL_LIQUID_WATER')
 obs_kind_names(76) = obs_kind_type(KIND_VERTICAL_VORTICITY, 'KIND_VERTICAL_VORTICITY')
-
+obs_kind_names(77) = obs_kind_type(KIND_SURFACE_ALBEDO, 'KIND_SURFACE_ALBEDO')
+obs_kind_names(78) = obs_kind_type(KIND_SURFACE_EMISSIVITY, 'KIND_SURFACE_EMISSIVITY')
+obs_kind_names(79) = obs_kind_type(KIND_DUST_OPACITY_7MB, 'KIND_DUST_OPACITY_7MB')
+obs_kind_names(80) = obs_kind_type(KIND_THC, 'KIND_THC')
 obs_kind_names(81) = obs_kind_type(KIND_VORTEX_LON, 'KIND_VORTEX_LON')
 obs_kind_names(82) = obs_kind_type(KIND_VORTEX_LAT, 'KIND_VORTEX_LAT')
 obs_kind_names(83) = obs_kind_type(KIND_VORTEX_PMIN, 'KIND_VORTEX_PMIN')
