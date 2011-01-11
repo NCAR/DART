@@ -54,34 +54,35 @@ public :: interval_alarm, repeat_alarm
 
 ! List of available calendar types
 public :: THIRTY_DAY_MONTHS,    JULIAN,    GREGORIAN,  NOLEAP,   NO_CALENDAR, &
-          GREGORIAN_MARS
+          GREGORIAN_MARS,   SOLAR_MARS
 
 ! Subroutines and functions involving relations between time and calendar
 public :: set_calendar_type, get_calendar_type, get_calendar_string
 public :: set_date,       set_date_gregorian,         set_date_julian, &
                           set_date_thirty,            set_date_no_leap, &
-                          set_date_gregorian_mars
+                          set_date_gregorian_mars, set_date_solar_mars
 public :: get_date,       get_date_gregorian,         get_date_julian, &
                           get_date_thirty,            get_date_no_leap, &
-                          get_date_gregorian_mars
+                          get_date_gregorian_mars, get_date_solar_mars
 public :: increment_date, increment_gregorian,        increment_julian, &
                           increment_thirty,           increment_no_leap, &
-                          increment_gregorian_mars
+                          increment_gregorian_mars, increment_solar_mars
 public :: decrement_date, decrement_gregorian,        decrement_julian, &
                           decrement_thirty,           decrement_no_leap, &
-                          decrement_gregorian_mars
+                          decrement_gregorian_mars, decrement_solar_mars
 public :: days_in_month,  days_in_month_gregorian,    days_in_month_julian, &
                           days_in_month_no_leap,      days_in_month_thirty, &
-                          days_in_month_gregorian_mars
+                          days_in_month_gregorian_mars, days_in_month_solar_mars
 public :: leap_year,      leap_year_gregorian,        leap_year_julian, &
                           leap_year_no_leap,          leap_year_thirty, &
-                          leap_year_gregorian_mars
+                          leap_year_gregorian_mars, leap_year_solar_mars
 public :: length_of_year, length_of_year_thirty,      length_of_year_julian, &
                           length_of_year_gregorian,   length_of_year_no_leap, &
-                          length_of_year_gregorian_mars
+                          length_of_year_gregorian_mars, length_of_year_solar_mars
 public :: days_in_year,   days_in_year_thirty,        days_in_year_julian, &
                           days_in_year_gregorian,     days_in_year_no_leap, &
-                          days_in_year_gregorian_mars
+                          days_in_year_gregorian_mars, days_in_year_solar_mars
+
 public :: month_name
 
 public :: julian_day
@@ -99,10 +100,11 @@ character(len=128), parameter :: &
 ! Global data to define calendar type
 integer, parameter :: THIRTY_DAY_MONTHS = 1,      JULIAN = 2, &
                       GREGORIAN = 3,              NOLEAP = 4, &
-                      NO_CALENDAR = 0,            GREGORIAN_MARS = 5
+                      NO_CALENDAR = 0,            GREGORIAN_MARS = 5, &
+                      SOLAR_MARS = 6
 ! FIXME: should be a namelist to select default calendar.  make no calendar the
 ! default for now
-integer, private :: calendar_type = NO_CALENDAR, max_type = 5
+integer, private :: calendar_type = NO_CALENDAR, max_type = 6
 
 ! Define number of days per month
 integer, private :: days_per_month(12) = (/31,28,31,30,31,30,31,31,30,31,30,31/)
@@ -779,6 +781,10 @@ WhichCalendar : do i = 0, max_type
            calendar_type  = GREGORIAN_MARS
            found_calendar = .true.
            exit WhichCalendar
+   elseif ( cstring == 'SOLAR_MARS' ) then
+           calendar_type  = SOLAR_MARS
+           found_calendar = .true.
+           exit WhichCalendar
    elseif ( cstring == 'GREGORIAN' ) then
            calendar_type  = GREGORIAN
            found_calendar = .true.
@@ -833,6 +839,7 @@ do i = 0,max_type
    if (calendar_type ==         GREGORIAN) mystring = 'GREGORIAN'
    if (calendar_type ==       NO_CALENDAR) mystring = 'NO_CALENDAR'
    if (calendar_type ==    GREGORIAN_MARS) mystring = 'GREGORIAN_MARS'
+   if (calendar_type ==        SOLAR_MARS) mystring = 'SOLAR_MARS'
    if (calendar_type == THIRTY_DAY_MONTHS) mystring = 'THIRTY_DAY_MONTHS'
 enddo
 
@@ -874,6 +881,9 @@ case(NOLEAP)
 case(GREGORIAN_MARS)
    ! NOTE: "month" has no meaning in Mars calendar
    call get_date_gregorian_mars(time, year, month, day, hour, minute, second)
+case(SOLAR_MARS)
+   ! NOTE: "month" has no meaning in Mars calendar
+   call get_date_solar_mars(time, year, month, day, hour, minute, second)
 case default
    write(errstring,*)'type is ',calendar_type,' must be one of ', &
                       THIRTY_DAY_MONTHS,GREGORIAN,JULIAN,NOLEAP,GREGORIAN_MARS
@@ -1147,6 +1157,64 @@ second = t - 60 * minute
 end subroutine get_date_gregorian_mars
 
 
+subroutine get_date_solar_mars(time, year, month, day, hour, minute, second)
+!------------------------------------------------------------------------
+!
+! Computes date corresponding to time for solar MARS calendar
+! wgl - we need this to easily map from MarsWRF calendar to time_type
+!         NOTE :: "month" has no meaning for the Mars calendar
+!         ALSO :: the first day of the year is day 1, not 0
+!         PlanetWRF wrfout files follow :: YYYY-DDDDD_HH:MM:SS
+!
+! CL New method uses Mars Solar Date with no concept of 'year' in the date string
+! The year still starts on day 1
+! year is always 1
+
+implicit none
+
+type(time_type), intent(in)  :: time
+integer,         intent(out) :: second, minute, hour, day, month, year
+
+integer :: t
+integer :: num_days, iyear, days_this_year
+
+! "base_year" for Mars will be defined as 1 (earliest wrfout file has year = 1)
+integer, parameter :: base_year= 1
+
+if ( .not. module_initialized ) call time_manager_init
+
+year = 1
+num_days = time%days
+
+111 continue
+
+
+! No need to deal with months on Mars -- make it 1 by default so that other
+!    functions do not break (like print_date and month_name)
+month = 1
+
+! Need to add 1 because Mars has NO day 0
+day = num_days + 1
+
+!cl Time here corresponds to Martian Local Mean Solar Time (LMST), which is what the model 
+!cl uses without telling anybody. Essentially, we assume that the Sun 'moves' at a constant
+!cl rate across the sky, completing a circle in 24 Mars hours, and we arbitrarily split the 
+!cl Mars hour into 3600 Mars seconds, which correspons to roughly 1.02 SI seconds
+!cl Inside WRF, Mars delta seconds are converted to SI delta seconds, and the Mars LMST
+!cl is used to calculate the position of the sun either as (LMST)*360/24 or (LTST)*360/24. where 
+!cl LTST is Local True Solar Time, accounting for variable Solar day length
+!cl with orbit (Equation Of Time).
+! Find hour,minute and second
+
+t      = time%seconds
+hour   = t / (60 * 60)
+t      = t - hour * (60 * 60)
+minute = t / 60
+second = t - 60 * minute
+
+end subroutine get_date_solar_mars
+
+
 !========================================================================
 ! END OF get_date BLOCK
 !========================================================================
@@ -1186,9 +1254,11 @@ case(NOLEAP)
    set_date =   set_date_no_leap(year, month, day, ohours, ominutes, oseconds)
 case(GREGORIAN_MARS)
    set_date =   set_date_gregorian_mars(year, month, day, ohours, ominutes, oseconds)
+case(SOLAR_MARS)
+   set_date =   set_date_solar_mars(year, month, day, ohours, ominutes, oseconds)
 case default
    write(errstring,*)'type is ',calendar_type,' must be one of ', &
-                      THIRTY_DAY_MONTHS,GREGORIAN,JULIAN,NOLEAP,GREGORIAN_MARS
+                      THIRTY_DAY_MONTHS,GREGORIAN,JULIAN,NOLEAP,GREGORIAN_MARS,SOLAR_MARS
    call error_handler(E_ERR,'set_date',errstring,source,revision,revdate)
 end select
 end function set_date
@@ -1484,6 +1554,64 @@ set_date_gregorian_mars%days = day - 1 + 669*(year - base_year)
 
 end function set_date_gregorian_mars
 
+function set_date_solar_mars(year, month, day, hours, minutes, seconds)
+!------------------------------------------------------------------------
+!
+! Computes time corresponding to date for gregorian MARS calendar.
+! wgl - we need this to easily map from MarsWRF calendar to time_type
+!         NOTE :: "month" has no meaning for the Mars calendar
+!         ALSO :: the first day of the year is day 1, not 0
+!         PlanetWRF wrfout files follow :: YYYY-DDDDD_HH:MM:SS
+!
+!cl number of days in year is now 100000, and there can only be 1 year.
+!cl valid until 2050 Earth date, by which time WRF will not be used.
+
+implicit none
+
+integer, intent(in)           :: year, month, day
+integer, intent(in), optional :: hours, minutes, seconds
+type(time_type)               :: set_date_solar_mars
+
+integer :: oseconds, ominutes, ohours
+
+! "base_year" for Mars will be defined as 1 (earliest wrfout file has year = 1)
+integer :: base_year = 1
+
+if ( .not. module_initialized ) call time_manager_init
+
+! Missing optionals are set to 0
+
+oseconds = 0; if(present(seconds)) oseconds = seconds
+ominutes = 0; if(present(minutes)) ominutes = minutes
+ohours   = 0; if(present(hours  ))   ohours = hours
+
+! Need to check for bogus dates
+
+! Do not bother checking month bounds because it has no meaning (though it should
+!   be set to 1)
+if(    oseconds > 59 .or. oseconds < 0 .or. &
+       ominutes > 59 .or. ominutes < 0 .or. &
+       ohours   > 23 .or. ohours   < 0 .or. &
+                          day      < 1 .or. &
+                          year     < base_year) then
+   write(errstring,'(''year,mon,day,hour,min,sec'',6(1x,i4),'' not a valid date.'')') &
+              year,month,day,ohours,ominutes,oseconds
+   call error_handler(E_ERR,'set_date_solar_mars',errstring,source,revision,revdate)
+endif
+
+! Month has no meaning for Mars calendar
+
+! Currently there is no leap year defined for Mars
+
+
+set_date_solar_mars%seconds = oseconds + 60*(ominutes + 60 * ohours)
+
+!cl set_date_solar_mars%days = day - 1 + 669*(year - base_year)
+!cl number of days in year changed to 100000 to allow MSD orbital calculation
+!cl to allow simpler interface between data and model in the assimilation
+set_date_solar_mars%days = day - 1 !this is always 0 -> + 100000*(year - base_year)
+
+end function set_date_solar_mars
 
 !=========================================================================
 ! END OF set_date BLOCK
@@ -1535,6 +1663,9 @@ case(NOLEAP)
                                      ohours, ominutes, oseconds)
 case(GREGORIAN_MARS)
    increment_date = increment_gregorian_mars(time, oyears, omonths, odays, &
+                                     ohours, ominutes, oseconds)
+case(SOLAR_MARS)
+   increment_date = increment_solar_mars(time, oyears, omonths, odays, &
                                      ohours, ominutes, oseconds)
 case default
    write(errstring,*)'calendar type (',calendar_type,') must be one of ', &
@@ -1834,6 +1965,28 @@ increment_gregorian_mars = time
 
 end function increment_gregorian_mars
 
+function increment_solar_mars(time, years, months, days, hours, minutes, seconds)
+!-------------------------------------------------------------------------
+!
+! Given time and some date increment, computes new time for gregorian MARS calendar.
+
+implicit none
+
+type(time_type), intent(in)           :: time
+integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
+type(time_type)                       :: increment_solar_mars
+
+!integer :: oseconds, ominutes, ohours, odays, omonths, oyears
+!integer :: csecond, cminute, chour, cday, cmonth, cyear
+
+if ( .not. module_initialized ) call time_manager_init
+
+call error_handler(E_ERR,'increment_solar_mars','not implemented',source,revision,revdate)
+
+! FIXME: set a return value to avoid compiler warnings
+increment_solar_mars = time
+
+end function increment_solar_mars
 
 
 !=========================================================================
@@ -1886,6 +2039,9 @@ case(NOLEAP)
                        ohours, ominutes, oseconds)
 case(GREGORIAN_MARS)
    decrement_date = decrement_gregorian_mars(time, oyears, omonths, odays, &
+                       ohours, ominutes, oseconds)
+case(SOLAR_MARS)
+   decrement_date = decrement_solar_mars(time, oyears, omonths, odays, &
                        ohours, ominutes, oseconds)
 case default
    write(errstring,*)'calendar type (',calendar_type,') not allowed.'
@@ -2180,6 +2336,28 @@ decrement_gregorian_mars = time
 
 end function decrement_gregorian_mars
 
+function decrement_solar_mars(time, years, months, days, hours, minutes, seconds)
+!-------------------------------------------------------------------------
+!
+! Given time and some date decrement, computes new time for gregorian MARS calendar.
+
+implicit none
+
+type(time_type), intent(in)           :: time
+integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
+type(time_type)                       :: decrement_solar_mars
+
+!integer :: oseconds, ominutes, ohours, odays, omonths, oyears
+!integer :: csecond, cminute, chour, cday, cmonth, cyear
+
+if ( .not. module_initialized ) call time_manager_init
+
+call error_handler(E_ERR,'decrement_gregorian','not implemented',source,revision,revdate)
+
+! FIXME: set a return value to avoid compiler warnings
+decrement_solar_mars = time
+
+end function decrement_solar_mars
 
 
 !=========================================================================
@@ -2214,6 +2392,8 @@ case(NOLEAP)
    days_in_month = days_in_month_no_leap(time)
 case(GREGORIAN_MARS)
    days_in_month = days_in_month_gregorian_mars(time)
+case(SOLAR_MARS)
+   days_in_month = days_in_month_solar_mars(time)
 case default
    write(errstring,*)'Invalid calendar type (',calendar_type,')'
    call error_handler(E_ERR,'days_in_month',errstring,source,revision,revdate)
@@ -2319,6 +2499,25 @@ days_in_month_gregorian_mars = -1
 
 end function days_in_month_gregorian_mars
 
+function days_in_month_solar_mars(time)
+!--------------------------------------------------------------------------
+!
+! Returns the number of days in a gregorian MARS month.
+
+implicit none
+
+type(time_type), intent(in) :: time
+integer                     :: days_in_month_solar_mars
+
+if ( .not. module_initialized ) call time_manager_init
+
+call error_handler(E_ERR,'days_in_month_solar_mars', &
+                  'not implemented; Mars has no months',&
+                  source,revision,revdate)
+days_in_month_solar_mars = -1
+
+end function days_in_month_solar_mars
+
 
 !==========================================================================
 ! END OF days_in_month BLOCK
@@ -2349,6 +2548,8 @@ case(NOLEAP)
    leap_year = leap_year_no_leap(time)
 case(GREGORIAN_MARS)
    leap_year = leap_year_gregorian_mars(time)
+case(SOLAR_MARS)
+   leap_year = leap_year_solar_mars(time)
 case default
    write(errstring,*)'invalid calendar type (',calendar_type,')'
    call error_handler(E_ERR,'leap_year',errstring,source,revision,revdate)
@@ -2458,6 +2659,26 @@ leap_year_gregorian_mars = .FALSE.
 
 end function leap_year_gregorian_mars
 
+function leap_year_solar_mars(time)
+!--------------------------------------------------------------------------
+!
+! Is this a leap year for gregorian calendar?
+! trick question: answer is always no.
+
+implicit none
+
+type(time_type), intent(in) :: time
+logical                     :: leap_year_solar_mars
+
+if ( .not. module_initialized ) call time_manager_init
+
+call error_handler(E_MSG,'leap_year_solar_mars', &
+                  'not implemented; Mars has no leap year',&
+                   source,revision,revdate)
+
+leap_year_solar_mars = .FALSE.
+
+end function leap_year_solar_mars
 
 
 !==========================================================================
@@ -2489,6 +2710,8 @@ case(NOLEAP)
    length_of_year = length_of_year_no_leap()
 case(GREGORIAN_MARS)
    length_of_year = length_of_year_gregorian_mars()
+case(SOLAR_MARS)
+   length_of_year = length_of_year_solar_mars()
 case default
    write(errstring,*)'invalid calendar type (',calendar_type,')'
    call error_handler(E_ERR,'length_of_year',errstring,source,revision,revdate)
@@ -2574,6 +2797,18 @@ length_of_year_gregorian_mars = set_time(0, 669)
 
 end function length_of_year_gregorian_mars
 
+function length_of_year_solar_mars()
+!---------------------------------------------------------------------------
+
+implicit none
+
+type(time_type) :: length_of_year_solar_mars
+
+if ( .not. module_initialized ) call time_manager_init
+
+length_of_year_solar_mars = set_time(0, 669)
+
+end function length_of_year_solar_mars
 
 !==========================================================================
 ! END OF length_of_year BLOCK
@@ -2605,6 +2840,8 @@ case(NOLEAP)
    days_in_year = days_in_year_no_leap(time)
 case(GREGORIAN_MARS)
    days_in_year = days_in_year_gregorian_mars(time)
+case(SOLAR_MARS)
+   days_in_year = days_in_year_solar_mars(time)
 case default
    write(errstring,*)'invalid calendar type (',calendar_type,')'
    call error_handler(E_ERR,'days_in_year',errstring,source,revision,revdate)
@@ -2699,6 +2936,23 @@ days_in_year_gregorian_mars = 669
 
 end function days_in_year_gregorian_mars
 
+function days_in_year_solar_mars(time)
+!---------------------------------------------------------------------------
+
+implicit none
+
+type(time_type), intent(in) :: time
+integer                     :: days_in_year_solar_mars
+
+if ( .not. module_initialized ) call time_manager_init
+
+!CL METHOD, with realistic rotation
+days_in_year_solar_mars = 100000 
+! 100000 days is the maximum number of days representable in the format used by planetWRF for days
+! we ignore the years and assume that 'days' represents the Mars Solar Date (MSD)
+! from MSD we can calculate all required astronomical data using Allison and McEwan(2000)
+
+end function days_in_year_solar_mars
 
 !==========================================================================
 ! END OF days_in_year BLOCK
@@ -2870,6 +3124,14 @@ if ( .not. module_initialized ) call time_manager_init
         write (unit_in,10)       'DATE: ', y,mon(1:3),' ',d,' ',h,':',m,':',s
      endif
 10   format (a,i4,1x,a3,a1,i3.3,3(a1,i2.2))
+  else if (calendar_type == SOLAR_MARS ) then
+     mon = 'sol'
+     if (present(str)) then
+        write (unit_in,12) trim(str)//' ', y,mon(1:3),' ',d,' ',h,':',m,':',s
+     else
+        write (unit_in,12)       'DATE: ', y,mon(1:3),' ',d,' ',h,':',m,':',s
+     endif
+12   format (a,i4,1x,a3,a1,i5.5,3(a1,i2.2))
 
   ! if not Mars, then use Earth calendar
   else
@@ -3005,6 +3267,12 @@ if (calendar_type == GREGORIAN) then
    read(*, *) year, month, day, hour, minute, second
    time = set_date(year, month, day, hour, minute, second)
 elseif (calendar_type == GREGORIAN_MARS) then
+   write(*, *) 'input date (as integers): year day hour minute second'
+   read(*, *) year, day, hour, minute, second
+   ! NOTE: "month" has no meaning for Mars calendar
+   month = 1
+   time = set_date(year, month, day, hour, minute, second)
+elseif (calendar_type == SOLAR_MARS) then
    write(*, *) 'input date (as integers): year day hour minute second'
    read(*, *) year, day, hour, minute, second
    ! NOTE: "month" has no meaning for Mars calendar
