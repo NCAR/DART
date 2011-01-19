@@ -352,10 +352,12 @@ else
    Vqc      =      Vqc(inds);
    U        =        U(inds);
    V        =        V(inds);
-   Upr      =      Upr(inds);
-   Vpr      =      Vpr(inds);
-   Upo      =      Upo(inds);
-   Vpo      =      Vpo(inds);
+   if ( size(obsmat,2) > 10 )
+      Upr   =      Upr(inds);
+      Vpr   =      Vpr(inds);
+      Upo   =      Upo(inds);
+      Vpo   =      Vpo(inds);
+   end
    times    =    times(inds);
 end
 
