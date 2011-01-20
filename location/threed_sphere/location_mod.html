@@ -38,7 +38,7 @@
 <P>
 The DART framework needs to be able to compute distances
 between locations, to pass location information to and from the
-model interface code (in model_mod.f90), and to be able to
+model interface code (model_mod.f90), and to be able to
 read and write location information to files.
 DART isolates all this location information into separate modules 
 so that the main algorithms can operate with the same code independent
@@ -48,7 +48,7 @@ about half a dozen possible coordinate systems, and others can be added.
 The most common one for geophysical models is this one: threed_sphere.
 </P>
 <P>
-This locations module provides a representation of a physical location 
+This location module provides a representation of a physical location 
 on a 3-D spherical shell, using latitude and longitude plus a vertical
 component with choices of vertical coordinate type such as pressure or 
 height in meters.
@@ -57,43 +57,137 @@ with operators to set, get, read, write, and compute distances between
 locations. This is a member of a class of similar location modules that 
 provide the same abstraction for different represenations of physical space.
 </P>
+<H4>Location-independent code</H4>
 <P>
-All possible location modules define the same module name 
+All types of location modules define the same module name 
 <em class=code>location_mod</em>.  Therefore, the DART framework and any
 user code should include a Fortran 90
-'use' statement of 'location_mod'.  The selection of exactly which
-location module is compiled is specified by the source file name
-in the <em class=file>path_names_xxx</em> file, which is read by
+<em class=code>use</em> statement of <em class=code>location_mod</em>.  
+The selection of which
+location module will be compiled into the program
+is controlled by which source file name is specified 
+in the <em class=file>path_names_xxx</em> file, which is used by
 the <em class=file>mkmf_xxx</em> scripts.
 </P>
 <P>
-The model-specific <em class=file>model_mod.f90</em> files need to
-define four <em class=code>get_close</em> routines, but in most cases
-they can simply put a <em class=code>use</em> statement at the top
-which uses the routines in the locations module, and they do not
-have to provide any additional code.  
+All types of location modules define the same Fortran 90 derived type
+<em class=code>location_type</em>.
+Programs that need to pass location information to subroutines
+but do not need to interpret the contents can declare, receive, and pass this
+derived type around in their code independent of which location module
+is specified at compile time.  Model and location-independent utilities
+should be written in this way.
+However, as soon as the contents of the location type needs to
+be accessed by user code then it becomes dependent on the
+exact type of location module that it is compiled with.
+</P>
+<H4>Usage of distance routines</H4>
+<A NAME="Distance"></A>
+<P>
+Regardless of the fact that the distance subroutine names include the string 'obs', 
+there is nothing specific to observations in these routines.  They work to
+compute distances between any set of locations.  The most frequent use
+of these routines in the filter code is to compute the distance between
+a single observation and items in the state vector, and also between a single
+observation and other nearby observations.
+However, any source for locations is supported.
 </P>
 <P>
-However, if the model interface code wants to intercept and alter
-the default behavior of the get_close routines, they are able to.
-The correct usage of the <em class=code>get_close</em> routines is as follows:
+In simpler location modules (like the <em class=file>oned</em> version)
+there is no need for anything other than a brute force search between
+the base location and all available state vector locations.  However in
+the case of large geophysical models which typically
+use the <em class=file>threed_sphere</em>
+locations code, the brute-force search time is prohibitive.  
+The location code pre-processes all locations into a set of <em>bins</em>
+and then only needs to search the lists of locations in nearby bins when looking
+for locations that are within a specified distance.
+
+The expected calling sequence of the <em class=code>get_close</em> routines 
+is as follows:
 <pre>
 <em class=code>
-call get_close_maxdist_init()  ! must be called before get_close_obs_init()
+call get_close_maxdist_init()  ! is called before get_close_obs_init()
 call get_close_obs_init()
 
-call get_close_obs()           ! many, many times
+call get_close_obs()           ! called many, many times
 
 call get_close_obs_destroy()
 </em>
 </pre>
-Regardless of the fact that the names include the string 'obs', they are
-intended for use with any group of locations in the system, frequently
-state vector items or observations, but any location is acceptable.
+In the <em class=file>threed_sphere</em> implementation the
+first routine initializes some data structures, the second one
+bins up the list of locations, and then the third one is called
+multiple times to find all locations within a given radius of
+some reference location, and to optionally
+compute the exact separation distance from the reference location.
+The last routine deallocates the space.  See the documentation 
+below for the specific details for each routine.
 </P>
 <P>
-The 4 <em class=code>get_close</em> routines are fully implemented
-in this version (threed_sphere) of the locations module.
+All 4 of these routines must be present in every location module
+but in most other versions
+all but <em class=code>get_close_obs()</em> are stubs.
+In this <em class=file>threed_sphere</em> version
+of the locations module all are fully implemented.
+</P>
+</P>
+<H4>Interaction with model_mod.f90 code</H4>
+<A NAME="ModelMod"></A>
+<P>
+The filter and other DART programs could call the 
+<em class=code>get_close</em> routines directly, but typically
+do not.  They declare them (in a <em class=code>use</em> statement)
+to be in the <em class=code>model_mod</em> module, and all
+model interface modules are required to supply them.  However
+in many cases the model_mod only needs to contain another
+<em class=code>use</em> statement declaring them to come
+from the <em class=code>location_mod</em> module.
+Thus they 'pass through' the model_mod but the user does
+not need to provide a subroutine or any code for them.
+</P>
+<P>
+However, if the model interface code wants to intercept and alter
+the default behavior of the get_close routines, it is able to.
+Typically the model_mod still calls the location_mod routines and
+then adjusts the results before passing them back to the calling code.
+To do that, the model_mod must be able to call the routines in
+the location_mod which have the same names as the subroutines it
+is providing.  To allow the compiler to distinguish which routine
+is to be called where, we use the Fortran 90 feature which allows
+a module routine to be renamed in the use statement.  For example,
+a common case is for the model_mod to want to supply additions to
+the get_close_obs() routine only.  At the top of the model_mod code
+it would declare:
+<pre>
+<em class=code>
+use location_mod, only :: location_get_close_obs => get_close_obs,    &
+                          get_close_maxdist_init, get_close_obs_init, &
+                          get_close_obs_destroy
+</em>
+</pre>
+That makes calls to the maxdist_init, init, and destroy routines simply pass
+through to the code in the location_mod, but the model_mod must supply
+a get_close_obs() subroutine.  When it wants to call the code in the 
+location_mod it calls <em class=code>location_get_close_obs()</em>.
+</P>
+<P>
+One use pattern is for the model_mod to call the location get_close_obs()
+routine without the <em class=code>dist</em> argument.  This returns a list
+of any potentially close locations without computing the exact distance
+from the base location.  At this point the list of locations is a copy
+and the model_mod routine is free to alter the list in any way it chooses:
+it can change the locations to make certain types of locations appear
+closer or further away from the base location; it can convert the vertical
+coordinates into a common coordinate type so that calls to the 
+<em class=code>get_dist()</em> routine can do full 3d distance computations
+and not just 2d (the vertical coordinates must match between the base
+location and the locations in the list in order to compute a 3d distance).
+Then typically the model_mod code loops over the list calling the
+<em class=code>get_dist()</em> routine to get the actual distances
+to be returned to the calling code.  To localize in the vertical in a
+particular unit type, this is the place where the conversion to that
+vertical unit should be done.
 </P>
 
 <!--=====================================================================-->
@@ -751,6 +845,17 @@ to <em class=code>get_close_obs_init()</em>.  If the list of locations
 of interest changes <em class=code>get_close_obs_destroy()</em> must
 be called and then the two initialization routines must be called 
 before using <em class=code>get_close_obs()</em> again.
+</P>
+<P>
+If called without the optional <em class=optionalcode>dist</em> argument,
+all locations that are potentially close are returned, which is likely a
+superset of the locations that are within the threshold distance specified in
+the <em class=code>get_close_maxdist_init()</em> call.  This can be
+useful to collect a list of potential locations, and then to convert
+all the vertical coordinates into one consistent unit (pressure, height
+in meters, etc), and then the list can be looped over, calling
+get_dist() directly to get the exact distance, either including vertical
+or not depending on the setting of <em class=code>horiz_dist_only</em>.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
