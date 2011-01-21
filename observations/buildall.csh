@@ -9,14 +9,16 @@
 set SNAME = $0
 set clobber
 
-foreach dir ( */work )
+set startdir=`pwd`
+
+foreach dir ( */oned */threed_sphere */*/work */work )
  cd $dir
  echo building in $dir
  echo
 
- ./quickbuild.csh || exit 1
+ ./quickbuild.csh || echo ERROR unsuccessful build in $dir
 
- cd ../..
+ cd $startdir
 end
 
 exit 0
