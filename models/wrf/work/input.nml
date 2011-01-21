@@ -209,8 +209,16 @@
 
 &dart_to_wrf_nml
    model_advance_file  = .true.,
-   dart_restart_name   = 'dart_wrf_vector',
    adv_mod_command     = './wrf.exe',
+   dart_restart_name   = 'dart_wrf_vector',
+   print_data_ranges   = .false.,
+   debug               = .false.
+   / 
+
+&wrf_to_dart_nml
+   dart_restart_name   = 'dart_wrf_vector',
+   print_data_ranges   = .false.,
+   debug               = .false.
    / 
 
 &utilities_nml

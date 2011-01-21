@@ -2,4 +2,6 @@
    model_advance_file = .true.,
    dart_restart_name = 'dart_wrf_vector',
    adv_mod_command   = './wrf.exe',
+   print_data_ranges = .false.,
+   debug             = .false.,
  /

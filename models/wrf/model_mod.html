@@ -36,7 +36,23 @@
 <H2>Overview</H2>
 
 <P>
-DART interface module for the WRF model. The 17 public interfaces
+DART interface module for the WRF model.   There is extensive documentation
+for running a WRF/DART assimilation on the 
+<a href="https://wiki.ucar.edu/display/DARTusers/DART+Users+Home+Page">DART Wiki</a>.  
+Send email to
+<a href="mailto:dart@ucar.edu">dart@ucar.edu</a> to get added to the access list.
+</P>
+<P>
+The WRF model_mod reads a <em class=file>wrfinput_d01</em>
+file to get WRF grid and surface elevation information.  The actual state
+data is read from a filter initial condition/restart file (typically
+called 'filter_ics' or 'filter_restart') but the WRF input NetCDF file
+in the current directory must match the configuration used when generating
+the IC files.   See the <a href="WRF_DART_utilities/dart_to_wrf.html">wrf_to_dart</a>
+documentation for more information on how to generate DART IC/restart files
+given WRF NetCDF files.
+</P>
+<P>The 17 public interfaces
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
@@ -266,13 +282,14 @@ This namelist is read in a file called <em class=file>input.nml</em>
 
 <TR><!--contents--><TD valign=top>adv_mod_command              </TD>
     <!--  type  --><TD valign=top>character(len=32)            </TD>
-    <!--descript--><TD>DEPRECATED -- moved to the &amp;dart_to_wrf
-    namelist.  Currently has no effect on the code and will be 
+    <!--descript--><TD>DEPRECATED -- A variable with the same name
+    has moved to the 
+    <a href=WRF_DART_utilities/dart_to_wrf.html#Namelist>&amp;dart_to_wrf</a>
+    namelist and does the same function from there.  
+    This one has no effect on the code and will be 
     removed soon. (Old description: For single-threaded, set to 'wrf.exe'. 
     For MPI, supports nesting, set to something like, for example, 
-    'mpirun -np number-of-prcessors wrf.exe'.)  A variable with 
-    the same name is in the &amp;dart_to_wrf namelist and does 
-    this same function now.</TD></TR>
+    'mpirun -np number-of-prcessors wrf.exe'.)  </TD></TR>
 
 </TABLE>
 
@@ -1359,7 +1376,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
 
 <TABLE border=0 cellpadding=0 width=100% summary="">
-<TR><TD>Contact:       </TD><TD> Hui Liu, David Dowell </TD></TR>
+<TR><TD>Contact:       </TD><TD> Hui Liu, Glen Romine, Chris Synder, David Dowell </TD></TR>
 <TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>

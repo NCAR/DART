@@ -1,44 +1,54 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>program dart_to_wrf/wrf_to_dart</TITLE>
-<link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Modules">MODULES</A> /
+<H1>PROGRAM <em class=program>dart_to_wrf</em></H1>
+<H1>PROGRAM <em class=program>wrf_to_dart</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>PROGRAM <em class=program>dart_to_wrf</em></H1>
-<H1>PROGRAM <em class=program>wrf_to_dart</em></H1>
-<P><small>Latest subversion revision tag:
-<!-- version tag follows, do not edit -->$Id$
-</small></P>
+<H2>Overview</H2>
 
 <P>
-This document describes both programs that 
-convert WRF netCDF input files into DART format, and vice versa.
+This document describes both of the two programs that convert WRF netCDF 
+input files into DART format, and vice versa.
 <br />
 <br />
 For the sake of convenience, we will use <em class=file>wrfinput_d01</em>
 to mean the WRF input file - no matter how many domains are used.
 </P>
 <P>
-These programs are generally used in two different places during an assimilation.
-One is explicitly by the user, or by a user-written script, to set up initial
+These programs are used in two different places during an assimilation.
+One is to set up initial
 condition files for DART, or to convert the final files from an assimilation
 run into initial condition files for WRF to continue a free forecast run.
-The other way is internally during the execution of an assimilation run,
+The other is internally during the execution of an assimilation run,
 when DART needs to execute WRF to advance the model state between
 observation assimilation phases.  There are slight differences in the
 requirements for the namelist settings between these two cases, which will
@@ -46,20 +56,24 @@ be described below.
 </P>
 <H2>The wrf_to_dart Program</H2>
 <P>
-The <em class=program>wrf_to_dart</em> program reads the <em class=code>&amp;model_nml</em>
+The <em class=program>wrf_to_dart</em> program reads the 
+<a href="../model_mod.html#Namelist>&amp;model_nml</a>
 namelist item <em class=code>wrf_state_variables</em> to determine which fields
 in the WRF netCDF input file (typically <em class=file>wrfinput_d01</em>)
 to read and put into the DART state vector.  The order of the fields
 in the state vector is determined by the order the fields are listed in
 the namelist, so they must remain consistent between running this utility
-and executing an assimilation with DART.  The output filename is 
+and executing an assimilation with DART.  The default output filename is 
 <em class=file>dart_wrf_vector</em>.  The file can be renamed afterwards
 to be something like <em class=file>filter_ics</em> or 
-<em class=file>filter_restart.####</em>.  Note that the input filename
-for the filter program is a namelist setting in <em class=code>&amp;filter_nml</em>.  
-Also note that the control of whether DART expects a single input file 
+<em class=file>filter_restart.####</em>, or changed by a setting in
+the <a href="#Namelist">&amp;wrf_to_dart_nml</a> namelist.
+The input filename for the filter program is 
+a namelist setting in <a href="../../../filter.html#Namelist>&amp;filter_nml</a>.  
+Control of whether DART expects a single input file 
 with all ensemble member data or a single file per ensemble member is
-controlled by namelist settings in the <em class=code>&amp;ensemble_manager_nml</em>
+controlled by namelist settings in the 
+<a href="../../../ensemble_manager/ensemble_manager_mod.html#Namelist>&amp;ensemble_manager_nml</a>
 namelist.  
 For WRF it is more common to have a single file per ensemble member because of the
 sizes of the files.
@@ -96,7 +110,8 @@ for running WRF, having consistent data outside of the state variables.
 <P>
 <em class=program>dart_to_wrf</em> also has an additional namelist in 
 the <em class=file>input.nml</em> file, 
-<em class=code>&amp;dart_to_wrf_nml</em>.  The input filename is set there,
+<a href="#Namelist">&amp;dart_to_wrf_nml</a>.  
+The input filename is set there,
 with a default of <em class=file>dart_wrf_vector</em>.  The output filename is
 always <em class=file>wrfinput_d01</em> for a single domain.  If the DART
 state vector contains multiple domains, files <em class=file>wrfinput_d02, 
@@ -120,29 +135,6 @@ amount of time before the next assimilation cycle.
 </P>
 
 <!--==================================================================-->
-
-<A NAME="Modules"></A>
-<HR>
-<H2>MODULES DIRECTLY USED</H2>
-<PRE>
-types_mod
-time_manager_mod
-utilities_mod
-models/wrf/WRF_DART_utilities/wrf_data_module
-assim_model_mod
-</PRE>
-
-<H2>MODULES INDIRECTLY USED</H2>
-<PRE>
-models/wrf/model_mod
-models/wrf/module_map_utils
-obs_kind_mod
-location/threed_sphere/location_mod
-random_seq_mod
-random_nr_mod
-</PRE>
-
-<!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 <!--==================================================================-->
 
@@ -155,7 +147,11 @@ random_nr_mod
 <div class=namelist>
 <pre>
 <em class=call>namelist / dart_to_wrf_nml / </em> &amp;
-    model_advance_file, dart_restart_name, adv_mod_command
+    model_advance_file, dart_restart_name, adv_mod_command, &amp;
+    print_data_ranges, debug
+
+<em class=call>namelist / wrf_to_dart_nml / </em> &amp;
+    dart_restart_name, print_data_ranges, debug
 
 <em class=call>namelist / model_nml / </em> 
 
@@ -165,15 +161,18 @@ random_nr_mod
 <div class=indent1>
 <!-- Description -->
 
-<P>The <em class=file>wrf_to_dart</em> program uses only the
-WRF model namelist.  See the description in
-the <a href="../model_mod.hmtl">WRF model_mod.html</a> file.
-The <em class=program>dart_to_wrf</em> program uses the model namelist
-plus an additional namelist: <em class=file>dart_to_wrf_nml</em>.
-</P>
-
-<P>Both namelists are read from a file 
-called <em class=file>input.nml</em>
+<P>Both converters have their own namelist, and additionally
+read the WRF model namelist.  See the description of the model
+namelist in the <a href="../model_mod.html#Namelist">WRF model_mod</a> file.
+The <em class=program>dart_to_wrf</em> program uses the namelist
+<em class=file>dart_to_wrf_nml</em>, and
+the <em class=program>wrf_to_dart</em> program uses the namelist
+<em class=file>wrf_to_dart_nml</em>.
+All namelists are read from a file 
+called <em class=file>input.nml</em>.  
+</P> 
+<P>
+The <em class=file>dart_to_wrf_nml</em> contains:
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -219,12 +218,97 @@ called <em class=file>input.nml</em>
      the necessary time information is written into 
      a file called 'wrf.info'.
      Default './wrf.exe'. This value used to be set in the
-     WRF &amp;model_mod namelist, but has moved to here.</TD></TR>
+     WRF &amp;model_nml namelist, but has moved to here.</TD></TR>
+<TR><!--contents--><TD valign=top>print_data_ranges   </TD>
+    <!--  type  --><TD valign=top>logical             </TD>
+    <!--descript--><TD>
+     The default value of this is <b>.FALSE.</b> to minimize
+     the amount of output printed during the conversion of each
+     ensemble member's data from DART format to WRF.
+     Setting this to <b>.TRUE.</b> will allow you to
+     examine the data min and max of each type of data as it is
+     converted (e.g. U, V, T, Q, etc).  This is useful for
+     diagnosing problems when data values go outside expected ranges.
+     In the <a href="../model_mod.html#Namelist">&amp;model_nml</a> namelist
+     there are options to set data limits during this conversion
+     so if the assimilation has pushed data outside the legal
+     bounds (e.g. 0.0-1.0), the conversion can quit or set out-of-range
+     values to the legal limits.  If this namelist item is true, both
+     the original and new data limits will be printed.
+     Default .FALSE. </TD></TR>
+<TR><!--contents--><TD valign=top>debug               </TD>
+    <!--  type  --><TD valign=top>logical             </TD>
+    <!--descript--><TD>
+     The default value of this is <b>.FALSE.</b>.  This prints
+     verbose output about the sizes of each type of data, the
+     offset into the linearized state vector, the data time information, etc.
+     It is recommended to be used only when diagnosing problems.
+     Default .FALSE. </TD></TR>
+</TABLE>
+
+<P>
+The <em class=file>wrf_to_dart_nml</em> contains:
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+<TR><!--contents--><TD valign=top>dart_restart_name    </TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
+    <!--descript--><TD>
+     Set this to the default value of <b>'dart_wrf_vector'</b> to
+     work with the <em class=program>advance_model.csh</em> script.
+     To write the input information to a DART restart file with
+     a different name, set this to another value, e.g. 'filter_ics'.
+     Default 'dart_wrf_vector'. </TD></TR>
+<TR><!--contents--><TD valign=top>print_data_ranges   </TD>
+    <!--  type  --><TD valign=top>logical             </TD>
+    <!--descript--><TD>
+     The default value of this is <b>.FALSE.</b> to minimize
+     the amount of output printed during the conversion of each
+     ensemble member's data from WRF to DART format.
+     Setting this to <b>.TRUE.</b> will allow you to
+     examine the data min and max of each type of data as it is
+     converted (e.g. U, V, T, Q, etc).  This is useful for
+     diagnosing problems when data values go outside expected ranges.
+     Default .FALSE. </TD></TR>
+<TR><!--contents--><TD valign=top>debug               </TD>
+    <!--  type  --><TD valign=top>logical             </TD>
+    <!--descript--><TD>
+     The default value of this is <b>.FALSE.</b>.  This prints
+     verbose output about the sizes of each type of data, the
+     offset into the linearized state vector, the data time information, etc.
+     It is recommended to be used only when diagnosing problems.
+     Default .FALSE. </TD></TR>
 </TABLE>
 
 
 </div>
 <br>
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<HR>
+<H2>MODULES DIRECTLY USED</H2>
+<PRE>
+types_mod
+time_manager_mod
+utilities_mod
+models/wrf/WRF_DART_utilities/wrf_data_module
+assim_model_mod
+</PRE>
+
+<H2>MODULES INDIRECTLY USED</H2>
+<PRE>
+models/wrf/model_mod
+models/wrf/module_map_utils
+obs_kind_mod
+location/threed_sphere/location_mod
+random_seq_mod
+random_nr_mod
+</PRE>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -250,8 +334,8 @@ file is usually one of the <em class=file>assim_model_state_ic#</em> that the
 filter writes out to advance the ensemble. As input, the dart_wrf_vector
 includes the target time in addition to the valid time at the beginning of the
 file. As output, the dart_wrf_vector includes only the valid time at the
-beginning of the file and is usually renamed as <em
-class=file>assim_model_state_ud#</em> as input to the filter for the next
+beginning of the file and is usually renamed as 
+<em class=file>assim_model_state_ud#</em> as input to the filter for the next
 assimilation cycle.
 </P>
 
@@ -315,16 +399,6 @@ none
 <P>
 none.
 </P>
-
-<!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<HR>
-<H2>PRIVATE COMPONENTS</H2>
-
-<br>
 
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->

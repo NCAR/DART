@@ -10,8 +10,9 @@ PROGRAM dart_to_wrf
 ! $Revision$
 ! $Date$
 
-use        types_mod, only : r8, missing_r8
-use time_manager_mod, only : time_type, write_time, get_date, julian_day
+use        types_mod, only : r8, missing_r8, PI, DEG2RAD
+use time_manager_mod, only : time_type, write_time, get_date, julian_day, &
+                             print_time, print_date
 use    utilities_mod, only : get_unit, error_handler, E_ERR, E_MSG, &
                              initialize_utilities, register_module, &
                              logfileunit, nmlfileunit, &
@@ -34,40 +35,47 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-
 !-----------------------------------------------------------------------
 ! dart_to_wrf namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-logical :: model_advance_file = .TRUE.
+logical            :: model_advance_file = .TRUE.
+logical            :: debug = .false.
+logical            :: print_data_ranges = .false.
 character(len=128) :: dart_restart_name = 'dart_wrf_vector'
 character(len=72)  :: adv_mod_command   = './wrf.exe'
 
-namelist /dart_to_wrf_nml/ model_advance_file, dart_restart_name, adv_mod_command
+namelist /dart_to_wrf_nml/ model_advance_file, dart_restart_name, &
+                           adv_mod_command, print_data_ranges, debug
 
 !-------------------------------------------------------------
 
-logical, parameter :: debug = .true.
+character(len=129) :: wrf_state_variables(num_state_table_columns,max_state_variables)
+character(len=129) :: my_field
 
 type(wrf_static_data_for_dart) :: wrf
 
-character(len=129) :: wrf_state_variables(num_state_table_columns,max_state_variables)
-
 real(r8), pointer :: dart(:)
 real(r8), pointer :: wrf_var_3d(:,:,:), wrf_var_2d(:,:)
+real(r8)          :: minl, maxl
 type(time_type)   :: dart_time(2)
-integer            :: number_dart_values, num_domains, ndays, &
+integer           :: number_dart_values, num_domains, ndays, &
                      year, month, day, hour, minute, second
-integer            :: ind, dart_ind, my_index, io
+integer           :: ind, dart_ind, my_index, io
 character(len=19) :: timestring
-character(len=2)   :: idom
+character(len=2)  :: idom
 
-integer            :: ncid(50), var_id, id, iunit, dart_unit
+integer, parameter :: max_dom = 10    ! max nested wrf domains
+integer           :: ncid(max_dom), var_id, id, iunit, dart_unit
 
-write(*,*) 'DART to WRF'
+if (debug) print*, 'DART to WRF'
 
 call initialize_utilities('dart_to_wrf')
 call register_module(source, revision, revdate)
+
+call error_handler(E_MSG,'dart_to_wrf', &
+   'Converting a DART state vector to a WRF netcdf file', &
+   source, revision, revdate)
 
 call static_init_assim_model()
 
@@ -80,18 +88,15 @@ call check_namelist_read(iunit, io, "dart_to_wrf_nml")
 if (do_nml_file()) write(nmlfileunit, nml=dart_to_wrf_nml)
 if (do_nml_term()) write(     *     , nml=dart_to_wrf_nml)
 
+! debug enables all printing
+if (debug) print_data_ranges = .true.
+
 call get_wrf_state_variables(wrf_state_variables)
 
 num_domains        = get_number_domains()
 number_dart_values = get_model_size()
 
-call error_handler(E_MSG,'dart_to_wrf', &
-   'Converting a dart_state_vector to a WRF netcdf file', &
-   source, revision, revdate)
-
-if ( debug ) then
-   print*,'dart vector size ',number_dart_values
-endif
+if ( debug ) print*,'Dart state vector length: ',number_dart_values
 
 ! allocate dart state vector
 allocate(dart(number_dart_values))
@@ -105,11 +110,15 @@ dart_unit = open_restart_read(dart_restart_name)
 ! this is a dart restart file or an advance_model file.
 if (model_advance_file) then
 
-   write (*, *) 'reading dart model-advance data from file ', trim(dart_restart_name)
+   write (*, *) 'reading dart model-advance data from file: ', trim(dart_restart_name)
    call aread_state_restart(dart_time(2), dart, dart_unit, dart_time(1))
+   write (*, *) ' '
+
+   call print_time(dart_time(1),str='Advance-to Gregorian date from restart file:')
+   call print_date(dart_time(1),str='(Calendar date)                            :')
 
    ! record wrf.info
-   write (*, *) 'writing wrf.info file '
+   write (*, *) 'writing wrf.info file'
    iunit = get_unit()
    open(unit = iunit, file = 'wrf.info')
    call write_time(iunit, dart_time(1))
@@ -123,12 +132,16 @@ if (model_advance_file) then
 
 else
 
-   write (*, *) 'reading dart restart/ic data from file ', trim(dart_restart_name)
+   write (*, *) 'reading dart restart/ic data from file: ', trim(dart_restart_name)
    call aread_state_restart(dart_time(2), dart, dart_unit)
    dart_time(1) = dart_time(2)
    call get_date(dart_time(2), year, month, day, hour, minute, second)
+   write (*, *) ' '
 
 endif
+
+call print_time(dart_time(2),str='Current data Gregorian date from restart file:')
+call print_date(dart_time(2),str='(Calendar date)                              :')
 
 call close_restart(dart_unit)
 
@@ -136,25 +149,49 @@ call close_restart(dart_unit)
 call set_wrf_date(timestring, year, month, day, hour, minute, second)
 ndays = julian_day(year, month, day)
 
-! loop through domains again and pull each variable from the state
+! loop through domains and pull each variable from the state
 dart_ind = 1
 WRFDomains2 : do id = 1,num_domains
 
+   write (*, *) ' '
    wrf = get_wrf_static_data(id)
-   write(idom,'(I2.2)') id
-   write (*, *) 'overwriting state data in wrfinput_d' // idom
+   write(idom,'(i2.2)') id
+   write (*, *) 'overwriting state data in: wrfinput_d' // idom
+
+   if (debug) then
+      write (*, *) ' '
+      minl = minval(wrf%latitude)
+      maxl = maxval(wrf%latitude)
+      write(*,"(A,2F16.6)") 'latitude: min/max vals: ', minl, maxl
+      write(*,"(A,2F16.6)") '               radians: ', &
+                            minl * DEG2RAD, maxl * DEG2RAD
+      minl = minval(wrf%longitude)
+      maxl = maxval(wrf%longitude)
+      write(*,"(A,2F16.6)") 'longitude: min/max vals: ', minl, maxl
+      if (minl <   0.0_r8) minl = minl + 360.0_r8
+      if (maxl <   0.0_r8) maxl = maxl + 360.0_r8
+      if (minl > 360.0_r8) minl = minl - 360.0_r8
+      if (maxl > 360.0_r8) maxl = maxl - 360.0_r8
+      write(*,"(A,2F16.6)") '               radians: ', &
+                            minl * DEG2RAD, maxl * DEG2RAD
+      write(*,*) 'model top: ', wrf%p_top / 100.0_r8, ' hPa'
+   endif
+
+   if (print_data_ranges) write(*,*) ' '
 
    call nc_check( nf90_open('wrfinput_d' // idom, NF90_WRITE, ncid(id)), &
-                  'wrf_to_dart', 'open wrfinput_d' // idom )
+                  'dart_to_wrf', 'open wrfinput_d' // idom )
+ 
 
    do ind = 1,wrf%number_of_wrf_variables
+
+      if (debug) print*, ' ' 
 
       ! actual location in state variable table
       my_index = wrf%var_index_list(ind)
 
-      if ( debug ) then
-         write(*,*) 'Rolling up variable ',trim(wrf_state_variables(1,my_index))
-      endif
+      my_field = trim(wrf_state_variables(1, my_index))
+      if (debug) print*, 'field: ', trim(my_field)
 
       ! get stagger and variable size
       call nc_check( nf90_inq_varid(ncid(id),wrf_state_variables(1,my_index), &
@@ -164,8 +201,8 @@ WRFDomains2 : do id = 1,num_domains
       if (  wrf%var_size(3,ind) == 1 ) then
 
          if ( debug ) then
-            write(*,*) trim(wrf_state_variables(1,my_index)),' is 2D'
-            write(*,*) 'size  ',wrf%var_size(:,ind)
+            write(*,"(A,2(A,I5))") trim(my_field), ': 2D, size: ', wrf%var_size(1,ind), &
+                                    ' by ', wrf%var_size(2,ind)
          endif
 
          allocate(wrf_var_2d(wrf%var_size(1,ind),wrf%var_size(2,ind)))
@@ -175,19 +212,22 @@ WRFDomains2 : do id = 1,num_domains
          call trans_1Dto2D( dart(dart_ind:), wrf_var_2d, &
                             wrf%var_size(1,ind), wrf%var_size(2,ind))
 
+         if ( print_data_ranges ) write(*,"(A,2F16.6)") trim(my_field)//': data min/max before bounds: ', &
+                                minval(wrf_var_2d), maxval(wrf_var_2d)
+
          ! check bounds and fail if requested
          if ( trim(wrf%clamp_or_fail(my_index)) == 'FAIL' ) then
 
             if (minval(wrf_var_2d) < wrf%lower_bound(my_index) ) then
                call error_handler(E_ERR,'dart_to_wrf', &
-               'Variable '//trim(wrf_state_variables(1,my_index))// &
-               ' failed lower bounds check.', source, revision,revdate)
+               'Variable '//trim(my_field)// &
+               ' failed lower bounds check.', source,revision,revdate)
             endif
 
             if (maxval(wrf_var_2d) > wrf%upper_bound(my_index) ) then
                call error_handler(E_ERR,'dart_to_wrf', &
-               'Variable '//trim(wrf_state_variables(1,my_index))// &
-               ' failed upper bounds check.', source, revision,revdate)
+               'Variable '//trim(my_field)// &
+               ' failed upper bounds check.', source,revision,revdate)
             endif
 
          endif ! bounds check failure request
@@ -196,8 +236,8 @@ WRFDomains2 : do id = 1,num_domains
          if ( wrf%lower_bound(my_index) /= missing_r8 ) then
 
             if ( debug ) then
-              write(*,*) 'Setting lower bound ',wrf%lower_bound(my_index),' on ', &
-                          trim(wrf_state_variables(1,my_index))
+              print*, 'Setting lower bound ',wrf%lower_bound(my_index),' on ', &
+                       trim(my_field)
             endif
 
             wrf_var_2d = max(wrf%lower_bound(my_index),wrf_var_2d)
@@ -208,13 +248,16 @@ WRFDomains2 : do id = 1,num_domains
          if ( wrf%upper_bound(my_index) /= missing_r8 ) then
 
             if ( debug ) then
-              write(*,*) 'Setting upper bound ',wrf%upper_bound(my_index),' on ', &
-                          trim(wrf_state_variables(1,my_index))
+              print*, 'Setting upper bound ',wrf%upper_bound(my_index),' on ', &
+                       trim(my_field)
             endif
 
             wrf_var_2d = min(wrf%upper_bound(my_index),wrf_var_2d)
 
          endif
+
+         if ( print_data_ranges ) write(*,"(A,2F16.6)") trim(my_field)//': data min/max after  bounds: ', &
+                                minval(wrf_var_2d), maxval(wrf_var_2d)
 
          call nc_check( nf90_put_var(ncid(id), var_id, wrf_var_2d), &
                         'dart_to_wrf','put_var ' // wrf_state_variables(1,my_index) )
@@ -224,8 +267,8 @@ WRFDomains2 : do id = 1,num_domains
       else
 
          if ( debug ) then
-            write(*,*) trim(wrf_state_variables(1,my_index)),' is 3D'
-            write(*,*) 'size  ',wrf%var_size(:,ind)
+            write(*,"(A,3(A,I5))") trim(my_field), ': 3D, size: ', wrf%var_size(1,ind), &
+                                    " by ", wrf%var_size(2, ind), " by ", wrf%var_size(3, ind)
          endif
 
          allocate(wrf_var_3d(wrf%var_size(1,ind),wrf%var_size(2,ind),wrf%var_size(3,ind)))
@@ -235,19 +278,22 @@ WRFDomains2 : do id = 1,num_domains
          call trans_1Dto3D( dart(dart_ind:), wrf_var_3d, wrf%var_size(1,ind), &
                             wrf%var_size(2,ind), wrf%var_size(3,ind))
 
+         if ( print_data_ranges ) write(*,"(A,2F16.6)") trim(my_field)//': data min/max before bounds: ', &
+                                minval(wrf_var_3d), maxval(wrf_var_3d)
+
          ! check bounds and fail if requested
          if ( trim(wrf%clamp_or_fail(my_index)) == 'FAIL' ) then
 
             if (minval(wrf_var_3d) < wrf%lower_bound(my_index) ) then
                call error_handler(E_ERR,'dart_to_wrf', &
-               'Variable '//trim(wrf_state_variables(1,my_index))// &
-               ' failed lower bounds check.', source, revision,revdate)
+               'Variable '//trim(my_field)// &
+               ' failed lower bounds check.', source,revision,revdate)
             endif
 
             if (maxval(wrf_var_3d) > wrf%upper_bound(my_index) ) then
                call error_handler(E_ERR,'dart_to_wrf', &
-               'Variable '//trim(wrf_state_variables(1,my_index))// &
-               ' failed upper bounds check.', source, revision,revdate)
+               'Variable '//trim(my_field)// &
+               ' failed upper bounds check.', source,revision,revdate)
             endif
 
          endif ! bounds check failure request
@@ -257,7 +303,7 @@ WRFDomains2 : do id = 1,num_domains
 
             if ( debug ) then
               write(*,*) 'Setting lower bound ',wrf%lower_bound(my_index),' on ', &
-                          trim(wrf_state_variables(1,my_index))
+                          trim(my_field)
             endif
 
             wrf_var_3d = max(wrf%lower_bound(my_index),wrf_var_3d)
@@ -269,7 +315,7 @@ WRFDomains2 : do id = 1,num_domains
 
             if ( debug ) then
               write(*,*) 'Setting upper bound ',wrf%upper_bound(my_index),' on ', &
-                          trim(wrf_state_variables(1,my_index))
+                          trim(my_field)
             endif
 
             wrf_var_3d = min(wrf%upper_bound(my_index),wrf_var_3d)
@@ -279,11 +325,16 @@ WRFDomains2 : do id = 1,num_domains
          call nc_check( nf90_put_var(ncid(id), var_id, wrf_var_3d), &
                         'dart_to_wrf', 'put_var ' // wrf_state_variables(1,my_index) )
 
+         if ( print_data_ranges ) write(*,"(A,2F16.6)") trim(my_field)//': data min/max after  bounds: ', &
+                                minval(wrf_var_3d), maxval(wrf_var_3d)
+
          deallocate(wrf_var_3d)
 
       endif 
 
+      if (debug) write(*,"(A,I9)") trim(my_field)//': starts at offset into state vector: ', dart_ind
       dart_ind = dart_ind + wrf%var_size(1,ind) * wrf%var_size(2,ind) * wrf%var_size(3,ind)
+      if (debug) write(*,"(A,I9)") trim(my_field)//': ends at offset into state vector:   ', dart_ind-1
  
    enddo
 
