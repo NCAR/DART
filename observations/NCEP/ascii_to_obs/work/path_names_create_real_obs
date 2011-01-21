@@ -1,5 +1,6 @@
 observations/NCEP/ascii_to_obs/create_real_obs.f90
 observations/NCEP/ascii_to_obs/real_obs_mod.f90
+observations/utilities/obs_utilities_mod.f90
 obs_sequence/obs_sequence_mod.f90
 obs_kind/obs_kind_mod.f90
 obs_def/obs_def_mod.f90

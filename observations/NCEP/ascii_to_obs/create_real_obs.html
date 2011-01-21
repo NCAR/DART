@@ -1,26 +1,40 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-          "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <HTML>
 <HEAD>
 <TITLE>program create_real_obs</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Modules">MODULES</A> /
+<H1>PROGRAM create_real_obs</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Instructions">INSTRUCTIONS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>PROGRAM <em class=program>create_real_obs</em></H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
 
 <P>
    Translating NCEP BUFR files into DART obs_seq.out files 
@@ -42,18 +56,6 @@
    which may be read from file <em class=file>input.nml</em>.
 </P>
 
-
-<!--==================================================================-->
-
-<A NAME="Modules"></A>
-<HR>
-<H2>MODULES USED</H2>
-<PRE>
-types_mod
-obs_sequence_mod
-real_obs_mod
-utilities_mod
-</PRE>
 
 <!--==================================================================-->
 
@@ -114,6 +116,9 @@ The default namelist values are:
    max_num    = 800000,
    select_obs = 0,
    ObsBase    = 'temp_obs.',
+   include_specific_humidity = .true.,
+   include_relative_humidity = .false.,
+   include_dewpoint = .false.,
    ADPUPA     = .false.,
    AIRCAR     = .false.,
    AIRCFT     = .false.,
@@ -185,8 +190,9 @@ The output files look like "obs_seq200703dd", with dd = 1,...,31.
 '&amp;' and terminating with a slash '/' for all our namelist input.
 <div class=namelist><pre>
 <em class=call>namelist / ncepobs_nml / </em> &amp;
-year, month, day, tot_days, max_num, select_obs, ObsBase, 
-      ADPUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, 
+      year, month, day, tot_days, max_num, select_obs, ObsBase,  &amp;
+      include_specific_humidity, include_relative_humidity, include_dewpoint, &amp;
+      ADPUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &amp;
       obs_U, obs_V, obs_T, obs_PS, obs_QV, lat1, lat2, lon1, lon2, obs_time
 </pre>
 </div>
@@ -245,6 +251,13 @@ This namelist is read in a file called <em class=file>input.nml</em>
     <!--descript--><TD>Path that contains the decoded NCEP BUFR daily
                         observation files.  Must end with a '/temp_obs.'
                        </TD></TR>
+
+<TR><!--contents--><TD valign=top>include_specific_humidity, include_relative_humidity, include_dewpoint</TD>
+    <!--  type  --><TD valign=top>logical </TD>
+    <!--descript--><TD>Controls which moisture observations are created.  The default
+                       is to create only specific humidity obs, but any, all, or none can
+                       be requested.  Set to .TRUE. to output that obs type, .FALSE.
+                       skips it. </TD></TR>
 
 <TR><!--contents--><TD valign=top>ADPUPA        </TD>
     <!--  type  --><TD valign=top>logical       </TD>
@@ -352,6 +365,29 @@ This namelist is read in a file called <em class=file>input.nml</em>
 
 </div>
 <br>
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<HR>
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+obs_utilities_mod
+obs_sequence_mod
+obs_kind_mod
+obs_def_mod
+assim_model_mod
+model_mod
+cov_cutoff_mod
+location_mod
+random_seq_mod
+random_nr_mod
+time_manager_mod
+null_mpi_utilities_mod
+real_obs_mod
+</PRE>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->

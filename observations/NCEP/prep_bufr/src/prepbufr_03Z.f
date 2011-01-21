@@ -1,25 +1,30 @@
+c    Almost identical to the prepbufr.f program - adds 24 hours to obs
+c    after midnight and before 3Z of the second day.  intended to be
+c    run on 6Z input files only, where it outputs only obs at 3Z exactly.
+c
+c    Yet another revision of the BUFR preparation program.  It has options
+c    to output specific humidity, relative humidity, or dewpoint obs, under
+c    namelist control.  New code added by Ryan Torn.  14 Jan 2011
+c    (Requires the matching update to the create_real_obs program.)
+c
 c    This is the 5th version of the BUFR preparation program for the
 c    newly revised DART version. Ps and moisture obs are outputed as well.
 c     
 c    12/2009 added additional time window flavors, specified all of the variable
-c    types. 
+c    types.   (this is planned to be removed and observation windowing done
+c    as a post process.  14jan2011)
+c
 c    A bug with the radiosonde T events selection j2 is fixed at 04/06/2005.
 c    and surface data is included in this version.
 c    For radiosonde T: T of Pc=1 and 6 is dry T; T of pc=8 is virtual T.
 c    For Aircraft T: No moistuerobs and all T are dry T
 c    For Surface obs, the T of pc=1 is already virtual T.
 c
-c    I tried to remove the code in the READPB() routine which selects
-c    obs based on the string name, since we have a namelist control for
-c    the numeric observation report type (which identifies specific
-c    satellites and data sources, and can be matched to the obs used
-c    in NCEP assimilations).  But when I tried to run that way, I got
-c    a read error from the original BUFR file.  My guess is that some
-c    of the records (SATBOG or SFCBOG in particular) have some different
-c    requirements for reading that I do not understand yet.
-c    Assuming the string name allows the obs to be read, then the
-c    record types that will be output are now set by namelist.
+c    the READPB() routine currently has a select for obs types based on 
+c    name; this should be removed and completely under namelist control.
+c    the previously encountered problem was fixed and not related to this.
 c    See the prepdecode/docs directory for the key to all the bufr codes.
+c
 c
 c    DART $Id$
 c
@@ -475,10 +480,10 @@ c    i feel ok setting it to something that will fit in an I2 field.
             write(lunobs, 800) tdata, ttype, tqm, subset(1:6), pc_t
             processed = .true.
 
-          else
+          else  
             if ( debug ) print *, 'skip temp, toe,tob,tqm,pqm = ',
      &           toe, tob, tqm, pqm
-          endif
+          endif   ! if use_this_data
         endif
 
 c    write out temperature observation of SFCSHP, ADPSFC
@@ -505,7 +510,7 @@ c----------------------------------------------------------------------
            else
              if ( debug ) print *, 'skip temp; tob,tqm,pqm = ',
      &        tob, tqm, pqm
-           endif
+           endif   ! if use_this_data
         endif
 
 c    write out moisture observation from ADPUPA
@@ -519,6 +524,8 @@ c----------------------------------------------------------------------
 
 c           compute the error of specific moisture based on RH obs error
 
+            qoe_rh = qoe
+
             es   = es0 * (tob / t0) ** fact1 * exp(fact2*(fact3-1./tob))
             qsat = eps * es / (pob - omeps * es)
             qoe  = max(0.1, qoe * qsat * 1000.0) ! to g/kg, set min value
@@ -530,21 +537,40 @@ c           compute the error of specific moisture based on RH obs error
               qoe = 1.0e10
             endif
 
-            qdata(1) = qoe
-            qdata(4) = ppb
-            qdata(5) = qob
-
             if (qoe .lt. 9.9) then  ! skip large qoe obs.
-              if (pc_q > 99) pc_q = 99
-              write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
-              processed = .true.
-            else
-               if ( debug ) print *, 'skip moist, qoe,qob,qqm,pqm = ',
-     &          qoe, qpb, qqm, pqm
-            endif
 
-          endif
-  
+              if (pc_q > 99) pc_q = 99
+              processed = .true.
+
+              ! specific humidity
+              qdata(1) = qoe
+              qdata(4) = ppb
+              qdata(5) = qob
+              qdata(6) = 0.0
+              write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
+
+              !  write RH data to file
+              qdata(1) = qoe_rh
+              qdata(5) = qob / (qsat * 1000.0)
+              qdata(6) = 1.0
+              write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
+
+              !  write dew point data to file
+              eo = (qsat * (1.0-qoe_rh) * pob) / 
+     &             (eps + omeps * qsat * (1.0-qoe_rh))
+              qdata(1) = tob - 1.0 / (1.0/t0 - (rv/l0) * log(eo/es0))
+              eo = (qob * pob * 0.001) / (eps + omeps * qob * 0.001)
+              qdata(5) = 1.0 / (1.0/t0 - (rv/l0) * log(eo/es0))
+              qdata(6) = 2.0
+              write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
+
+            endif  ! qoe not too large
+
+         else
+            if ( debug ) print *, 'skip moist, qoe,qob,qqm,pqm = ',
+     &          qoe, qpb, qqm, pqm
+         endif   ! if use_this_data
+
         endif
 
 c    write out moisture observation from SFCSHP ADPSFC
@@ -556,9 +582,11 @@ c----------------------------------------------------------------------
      &        use_this_data_int(pqm,qctype_use,inum_qctype) .and.
      &        qob .lt. 1.0e9                                ) then
 
-            es   = es0 * (tob / t0) ** fact1 * exp(fact2*(fact3-1./tob))
-            qsat = eps * es / (pob - omeps * es)
-            qoe  = max(0.1, qoe * qsat * 1000.0) ! to g/kg, set min value
+           qoe_rh = qoe
+
+           es   = es0 * (tob / t0) ** fact1 * exp(fact2*(fact3-1./tob))
+           qsat = eps * es / (pob - omeps * es)
+           qoe  = max(0.1, qoe * qsat * 1000.0) ! to g/kg, set min value
 
            if( .not. use_this_data_int(tqm,qctype_use,inum_qctype)) then
              if ( debug ) print*, 'surface bad = ', qoe  
@@ -569,21 +597,40 @@ c             ! the T obs cannot be used for qoe
            if ( qtype .gt. 200 )  qtype = qtype - 100
            if ( qtype .eq. 184 )  qtype = 183
 
-           qdata(1) = qoe
-           qdata(4) = zob
-           qdata(5) = qob
-
            if(qoe .lt. 9.9) then   ! skip large qoe obs
+
              if (pc_q > 99) pc_q = 99
-             write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
              processed = .true.
-           endif
+
+             ! specific humidity
+             qdata(1) = qoe
+             qdata(4) = zob
+             qdata(5) = qob
+             qdata(6) = 0.0
+             write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
+
+             !  write RH data to file
+             qdata(1) = qoe_rh
+             qdata(5) = qob / qsat
+             qdata(6) = 1.0
+             write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
+
+             !  write dew point data to file
+             eo = (qsat * (1.0-qoe_rh) * pob) / 
+     &            (eps + omeps * qsat * (1.0-qoe_rh))
+             qdata(1) = tob - 1.0 / (1.0/t0 - (rv/l0) * log(eo/es0))
+             eo = (qob * pob * 0.001) / (eps + omeps * qob * 0.001)
+             qdata(5) = 1.0 / (1.0/t0 - (rv/l0) * log(eo/es0))
+             qdata(6) = 2.0
+             write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
+
+           endif  ! if qoe not too large
 
           else
                if ( debug ) print *, 'skip moist, qob,qqm,pqm = ',
      &          qob, qqm, pqm
-          endif
-      
+          endif   ! if use_this_data
+
         endif
 
 c    write out surface pressure observations
@@ -609,7 +656,7 @@ c----------------------------------------------------------------------
            else
              if ( debug ) print *, 'skip press, poe,pob,pqm,z,s = ',
      &          poe, pob, pqm, zob, stat_elv
-          endif
+          endif   ! if use_this_data
 
         endif
 
@@ -642,7 +689,7 @@ c----------------------------------------------------------------------
           else
              if ( debug ) print *, 'skip wind, uoe,uob,uqm,pqm = ',
      &          uoe, uob, uqm, pqm
-          endif
+          endif  ! if use_this_data
   
         endif
 
@@ -676,7 +723,7 @@ c----------------------------------------------------------------------
           else
              if ( debug ) print *, 'skip wind, uob,uqm,pqm = ',
      &          uob, uqm, pqm
-          endif
+          endif   ! if use_this_data
 
         endif
 

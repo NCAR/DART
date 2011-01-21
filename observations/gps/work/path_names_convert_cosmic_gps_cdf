@@ -1,5 +1,5 @@
 observations/gps/convert_cosmic_gps_cdf.f90
-observations/MADIS/obs_utilities_mod.f90
+observations/utilities/obs_utilities_mod.f90
 assim_tools/assim_tools_mod.f90
 adaptive_inflate/adaptive_inflate_mod.f90
 sort/sort_mod.f90

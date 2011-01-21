@@ -60,10 +60,15 @@ real(r8) :: lon1 =   0.0_r8,  &   !  lower longitude bound
             lat1 = -90.0_r8,  &   !  lower latitude bound
             lat2 =  90.0_r8       !  upper latitude bound
 
+logical  :: include_specific_humidity = .true.,  &
+            include_relative_humidity = .false., &
+            include_dewpoint          = .false.
+
 namelist /ncepobs_nml/ year, month, day, tot_days, max_num, select_obs,  &
         ObsBase, ADPUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
         obs_U, obs_V, obs_T, obs_PS, obs_QV, daily_file, lon1, lon2, & 
-        lat1, lat2, obs_time
+        lat1, lat2, obs_time, include_specific_humidity, &
+        include_relative_humidity, include_dewpoint
 
 ! ----------------------------------------------------------------------
 ! Select observation types using NCEP categories (when select_obs /= 0).
@@ -126,8 +131,9 @@ do ii = 1, tot_days
 
     seq = real_obs_sequence(year, month, day1, hour1, max_num, select_obs, &
          ObsBase, ADPUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
-         obs_U, obs_V, obs_T, obs_PS, obs_QV, bin_beg(kkk), bin_end(kkk), & 
-         lon1, lon2, lat1, lat2, obs_time)
+         obs_U, obs_V, obs_T, obs_PS, obs_QV, include_specific_humidity, &
+         include_relative_humidity, include_dewpoint, bin_beg(kkk), &
+         bin_end(kkk), lon1, lon2, lat1, lat2, obs_time)
 
     ! output the daily sequence to a file
     if(.not. daily_file) output_name = 'obs_seq'//obsdate//obstime(kkk)

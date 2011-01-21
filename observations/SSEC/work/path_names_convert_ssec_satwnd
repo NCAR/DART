@@ -1,7 +1,7 @@
 observations/SSEC/convert_ssec_satwnd.f90
 observations/obs_error/ncep_obs_err_mod.f90
 observations/MADIS/meteor_mod.f90
-observations/MADIS/obs_utilities_mod.f90
+observations/utilities/obs_utilities_mod.f90
 location/threed_sphere/location_mod.f90
 obs_sequence/obs_sequence_mod.f90
 obs_kind/obs_kind_mod.f90
