@@ -106,13 +106,26 @@ valid values: 1=Gaspari-Cohn; 2=Boxcar; 3=Ramped Boxcar
 Controls the shape of the multiplier function applied to the
 computed increment as the distance increases between the obs
 and the state vector item.
-<ul>
-<li>Type 1 has a value of 1 at 0 distance, 0 at 2*cutoff, and
-decreases in an approximation of a gaussian in between.
-<li>Type 2 is 1 from 0 to 2*cutoff, and then 0 beyond.  
-<li>Type 3 is 1 to cutoff and then ramps linearly down to 0 at 2*cutoff.
-</ul>   
 Most users use type 1 localization.
+<table border=0 summary="" cellpadding=0>
+<tr>
+<td>
+<ul>
+<li>Type 1 (Gaspari-Cohn) has a value of 1 at 0 distance, 0 at 2*cutoff, and
+decreases in an approximation of a gaussian in between.
+<br> <br>
+<li>Type 2 (Boxcar) is 1 from 0 to 2*cutoff, and then 0 beyond.  
+<br> <br>
+<li>Type 3 (Ramped Boxcar) is 1 to cutoff and then ramps linearly down to 0 at 2*cutoff.
+</ul>   
+</td>
+<td>
+<a href="../doc/images/cutoff_fig.png">
+<img src="../doc/images/cutoff_fig.png" alt="Shapes of Cutoff curves" height=240 border=0 />
+</a>
+</tr>
+</table>
+Click image for larger version.
 <br>
 <br>
 <dt>
