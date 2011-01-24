@@ -14,11 +14,14 @@ module obs_utilities_mod
 use        types_mod, only : r8, MISSING_R8, MISSING_I
 use    utilities_mod, only : nc_check
 use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
-                             set_obs_def_error_variance, set_obs_def_location
+                             set_obs_def_error_variance, set_obs_def_location, &
+                             get_obs_def_time, get_obs_def_location,           &
+                             get_obs_kind, get_obs_def_error_variance
 use obs_sequence_mod, only : obs_sequence_type, obs_type, insert_obs_in_seq, &
-                             set_obs_values, set_qc, set_obs_def
-use time_manager_mod, only : time_type, operator(>=), set_time
-use     location_mod, only : set_location
+                             set_obs_values, set_qc, set_obs_def, get_qc,    &
+                             get_obs_values, get_obs_def
+use time_manager_mod, only : time_type, operator(>=), set_time, get_time
+use     location_mod, only : set_location, location_type, get_location, query_location
 
 
 use netcdf
@@ -27,6 +30,7 @@ implicit none
 private
 
 public :: create_3d_obs,    &
+          query_3d_obs,     &
           add_obs_to_seq,   &
           getdimlen,        &
           getvar_real,      &
@@ -88,6 +92,65 @@ qc_val(1)  = qc
 call set_qc(obs, qc_val)
 
 end subroutine create_3d_obs
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   query_3d_obs - subroutine that takes an observation and extracts the
+!                   parts from it.
+!
+!       NOTE: assumes the code is using the threed_sphere locations module, 
+!             that the observation has a single data value and a single
+!             qc value, and that this obs type has no additional required
+!             data (e.g. gps and radar obs need additional data per obs)
+!
+!    obs   - observation type (in)
+!    lat   - latitude of observation (all the rest out)
+!    lon   - longitude of observation
+!    vval  - vertical coordinate
+!    vkind - kind of vertical coordinate (pressure, level, etc)
+!    obsv  - observation value
+!    okind - observation kind
+!    oerr  - observation error
+!    day   - gregorian day
+!    sec   - gregorian second
+!    qc    - quality control value
+!
+!     created Apr. 2010, nancy collins, ncar/image
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine query_3d_obs(obs, lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc)
+ type(obs_type), intent(in)  :: obs
+ integer,        intent(out) :: okind, vkind, day, sec
+ real(r8),       intent(out) :: lat, lon, vval, obsv, oerr, qc
+
+real(r8)              :: obs_val(1), qc_val(1), locvals(3)
+type(obs_def_type)    :: obs_def
+type(location_type)   :: loc
+
+! get the obs_def out of the obs.  it has the location, time, kind;
+! basically everything except the actual obs value and qc.
+call get_obs_def(obs, obs_def)
+
+loc = get_obs_def_location(obs_def)
+locvals = get_location(loc)
+lon  = locvals(1)
+lat  = locvals(2)
+vval = locvals(3)
+vkind = query_location(loc)
+
+okind = get_obs_kind(obs_def)
+call get_time(get_obs_def_time(obs_def), sec, day)
+
+oerr = sqrt(get_obs_def_error_variance(obs_def))
+
+! now get the value and qc from the obs_type.
+call get_obs_values(obs, obs_val)
+obsv = obs_val(1) 
+call get_qc(obs, qc_val)
+qc = qc_val(1)
+
+end subroutine query_3d_obs
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
