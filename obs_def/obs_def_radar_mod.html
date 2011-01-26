@@ -8,7 +8,22 @@
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
+<H1>MODULE <em class=program>obs_def_radar_mod</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Interface">INTERFACES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#FilesUsed">FILES</A> /
@@ -17,10 +32,8 @@
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>MODULE obs_def_radar_mod</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
 
 <P>
 DART radar observation module, including the observation operators for the
@@ -45,7 +58,8 @@ in the model state.
 Author and Contact information: 
 </P>
 <UL>
-<LI>Radar Science:  David Dowell, ddowell at ucar.edu</LI>
+<LI>Radar Science:  David Dowell, david.dowell at noaa.gov, 
+                    Glen Romine,  romine at ucar.edu</LI>
 <LI>DART Code:  Nancy Collins, nancy at ucar.edu</LI>
 <LI>Original DART/Radar work:  Alain Caya</LI>
 </UL>
@@ -97,7 +111,7 @@ users can change the value in this code if necessary.</LI>
 <PRE>
 types_mod
 utilities_mod
-location_mod (most likely threed_sphere)
+location_mod (threed_sphere)
 assim_model_mod
 obs_kind_mod
 </PRE>
@@ -127,9 +141,9 @@ obs_kind_mod
 </TABLE>
 
 <P>
-Optional namelist interface
+Namelist interface
 <A HREF="#Namelist"> <em class=code>&amp;obs_def_radar_mod_nml</em> </A>
-may be read from file <em class=file>input.nml</em>.
+is read from file <em class=file>input.nml</em>.
 </P>
 
 <P>
@@ -679,6 +693,7 @@ Density (kg m^-3) of each hydrometeor type.  The default of 100.0 is for the
 Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
                    </TD></TR>
 
+<!-- FIXME: add max values, remove dbz, missing r8 probably not good val? -->
 </TABLE>
 
 </div>
@@ -691,7 +706,7 @@ Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
 <A NAME="FilesUsed"></A>
 <HR>
 <H2>FILES</H2>
-<UL><LI>A DART observation sequence file.
+<UL><LI>A DART observation sequence file containing Radar obs.
 </UL>
 
 <!--==================================================================-->
@@ -735,7 +750,7 @@ Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
     <!-- message --><TD VALIGN=top>velkey (val) exceeds max_radial_vel_obs (maxval)</TD>
     <!-- comment --><TD VALIGN=top>The number of radial velocity observations exceeds 
                                    the array size allocated in the module. 
-                                   Need to increase max_radial_vel_obs count in namelist</TD>
+                                   Need to increase max_radial_vel_obs count in namelist.</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>read_nyquist_velocity</TD>
     <!-- message --><TD VALIGN=top>bad value for nyquist velocity</TD>
@@ -1282,7 +1297,7 @@ of the following values: <em class=code>"unformatted", "UNFORMATTED",
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br>
 This open source software is provided by UCAR, "as is",<br>
 without charge, subject to all terms of use at<br>
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
