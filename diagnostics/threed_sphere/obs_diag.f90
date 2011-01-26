@@ -37,7 +37,7 @@ use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_var_type, get_obs_kind_
                              KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT
 use     location_mod, only : location_type, get_location, set_location_missing,   &
                              write_location, operator(/=), is_location_in_region, &
-                             set_location,                                        &
+                             set_location, query_location,                        &
                              vert_is_undef,    VERTISUNDEF,    &
                              vert_is_surface,  VERTISSURFACE,  &
                              vert_is_level,    VERTISLEVEL,    &
@@ -902,6 +902,7 @@ ObsFileLoop : do ifile=1, 1000
          obs_time = get_obs_def_time(obs_def)
          obs_loc  = get_obs_def_location(obs_def)
          obsloc3  = get_location(obs_loc)
+         ivert    = nint(query_location(obs_loc))
 
          obslon   = obsloc3(1) ! [  0, 360]
          obslat   = obsloc3(2) ! [-90,  90]
