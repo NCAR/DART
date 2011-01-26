@@ -75,11 +75,6 @@ type(location_type)     :: obs_loc, minl, maxl
 character(len = 129) :: obs_seq_in_file_name
 character(len = 129), allocatable, dimension(:) :: obs_seq_filenames
 
-! Storage with fixed size for observation space diagnostics
-real(r8), dimension(1) :: prior_mean, posterior_mean, prior_spread, posterior_spread
-real(r8) :: pr_mean, po_mean ! same as above, without useless dimension 
-real(r8) :: pr_sprd, po_sprd ! same as above, without useless dimension
-
 ! We are treating winds as a vector pair, but we are handling the
 ! observations serially. Consequently, we exploit the fact that
 ! the U observations are _followed_ by the V observations.
@@ -89,14 +84,9 @@ real(r8)            :: U_obs_err_var = 0.0_r8
 type(location_type) :: U_obs_loc
 integer             :: U_flavor
 integer             :: U_type        = KIND_V_WIND_COMPONENT ! intentional mismatch
-real(r8)            :: U_pr_mean     = 0.0_r8
-real(r8)            :: U_pr_sprd     = 0.0_r8
-real(r8)            :: U_po_mean     = 0.0_r8
-real(r8)            :: U_po_sprd     = 0.0_r8
 integer             :: U_qc          = 0
 
-integer :: obs_index, prior_mean_index, posterior_mean_index
-integer :: prior_spread_index, posterior_spread_index
+integer :: obs_index
 integer :: flavor, wflavor ! THIS IS THE (global) 'KIND' in the obs_def_mod list. 
 integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
 integer :: num_obs_kinds
@@ -136,7 +126,6 @@ integer             :: qc_integer
 integer, parameter  :: QC_MAX = 7
 integer, parameter  :: QC_MAX_PRIOR     = 3
 integer, parameter  :: QC_MAX_POSTERIOR = 1
-integer, dimension(0:QC_MAX) :: qc_counter = 0
 real(r8), allocatable, dimension(:) :: qc
 real(r8), allocatable, dimension(:) :: copyvals
 
@@ -183,8 +172,6 @@ type(time_type) :: obs_time
 
 character(len = 129) :: ncName, windName, msgstring, calendarstring
 
-integer  :: Nidentity  = 0   ! identity observations
-
 !=======================================================================
 ! Get the party started
 !=======================================================================
@@ -222,7 +209,7 @@ call set_regular_schedule(schedule) ! also sets calendar type
 
 Nepochs = get_schedule_length(schedule)
 call get_time_from_schedule(TimeMin, schedule,       1, 1)
-call get_time_from_schedule(TimeMax, schedule, Nepochs, 1)
+call get_time_from_schedule(TimeMax, schedule, Nepochs, 2)
 call get_calendar_string(calendarstring)
 
 U_obs_loc = set_location_missing()
