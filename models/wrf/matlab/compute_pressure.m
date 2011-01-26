@@ -1,4 +1,4 @@
-function pres = compute_pressure( mu, dnw, phi, theta, qv, Rd,Rv,gamma,p0 )
+function pres = compute_pressure( mu, dnw, phi, theta, qv, Rd, Rv, gamma, p0 )
 %% FUNCTION pres : Computes pressure from gas law as in WRF.
 %
 % CS version of Ryan's m-file.
@@ -11,8 +11,8 @@ function pres = compute_pressure( mu, dnw, phi, theta, qv, Rd,Rv,gamma,p0 )
 %	mu    =   (full) dry hydrostatic surf. press (2d)
 %	dnw   =   intervals between w levels, at mass pts
 %	phi   =   (full) geopotential, at w pts
-%       theta =   (full) potential temperature, at mass pts 
-%       qv    =   water-vapor mixing ratio, at mass pts 
+%   theta =   (full) potential temperature, at mass pts 
+%   qv    =   water-vapor mixing ratio, at mass pts 
 %	Rd,Rv,gamma,p0
 %	      =   dry and moist gas constants, c_p/c_v, reference pressure
 % Output:
@@ -20,7 +20,7 @@ function pres = compute_pressure( mu, dnw, phi, theta, qv, Rd,Rv,gamma,p0 )
 %
 % See wrf subroutine calc_p_rho_phi.
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright ï¿½ 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
@@ -30,8 +30,8 @@ function pres = compute_pressure( mu, dnw, phi, theta, qv, Rd,Rv,gamma,p0 )
 % $Revision$
 % $Date$
 
-phi_eta = phi(2:end,:,:) - phi(1:end-1,:,:) ) ./ repmat( dnw(:), [1 size(mu)];
-alpha = -phi_eta ./ repmat( reshape( mu, [1 size(mu)] ), [ length(dnw) 1 1 ] );
+phi_eta = (phi(2:end,:,:) - phi(1:end-1,:,:)) ./ repmat(dnw(:), [1 size(mu)]);
+alpha   = -phi_eta ./ repmat( reshape( mu, [1 size(mu)] ), [ length(dnw) 1 1 ] );
 
 %% Gas law: 
-pres = p0 * ( Rd * theta .* (1 + (Rd/Rv)*qv ) ./ ( p0 * alpha ) ).^gamma ;
+pres = p0 * ( Rd * theta .* (1 + (Rv/Rd)*qv ) ./ ( p0 * alpha ) ).^gamma ;
