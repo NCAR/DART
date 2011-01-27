@@ -4,68 +4,94 @@
 <HEAD>
 <TITLE>module obs_def_1d_state_mod</TITLE>
 <link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
+<link rel="shortcut icon" href="../doc/html/dart.ico" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
+<H1>MODULE <em class=program>obs_def_1d_state_mod</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Interface">INTERFACES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
+
 </center>
 
-<H1>MODULE obs_def_1d_state_mod</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
 
+<H2>Overview</H2>
 <P>
-Beginning with the I-release of DART, a more flexible, powerful (and complicated)
-mechanism for incorporating new types of observations is part of DART. The
+There is a flexible mechanism built into the DART framework
+for defining, at compile time, the list of observation types
+to be supported by the executables.  This can be changed at
+any time by adding or removing items from a namelist and 
+rebuilding the programs.  The
 special obs_def module being described here is used by the program 
 <em class="unix">preprocess</em>
-to insert appropriate code sections into a DEFAULT_obs_def module and a 
-DEFAULT_obs_kind module to generate the 
+to insert appropriate code sections into a 
+<a href="DEFAULT_obs_def_mod.html">DEFAULT_obs_def module</a>
+and a 
+<a href="../obs_kind/DEFAULT_obs_kind_mod.html">DEFAULT_obs_kind module</a>
+to generate
 <em class="file">obs_def_mod.f90</em> and 
 <em class="file">obs_kind_mod.f90</em>
 that are used by 
 <em class="unix">filter</em> and other DART programs.
 This module is intended to provide a prototype for those
 developing more complicated specialized observation definition modules.
-<br><br>
-This is an extended format Fortran90 module that provides the definition
+<br /><br />
+This is an extended format Fortran 90 module that provides the definition
 for observation types designed for use with idealized low-order models
 that use the 1D location module and can be thought of as having a state
 vector that is equally spaced on a 1D cyclic domain. The two observation types
 are: a straight linear interpolation to a point on a [0,1] domain called
-a RAW_STATE_VARIABLE; an area-weighted 'integral' of the state variable
+a RAW_STATE_VARIABLE; and an area-weighted 'integral' of the state variable
 over some part of the cyclic 1D domain. The second type can be used to
 do idealized studies related to remote sensing observations that are
 best thought of as weighted integrals of some quantity over a finite volume.
-<br><br>
+<br /><br />
 The second observation type is referred to as a RAW_STATE_1D_INTEGRAL. It
-has an associated half_width and localization type (see cov_cutoff module)
+has an associated half_width and localization type (see the
+<a href="../cov_cutoff/cov_cutoff_mod.html">cov_cutoff module</a>
+documentation)
 and a number of points at which to compute the associated integral by 
 quadrature. The location of the observation defines the center of mass of
 the integral. The integral is centered around the location and extends
 outward on each side to 2*half_width. The weight associated with the
 integral is defined by the weight of the localization function (for
-instance Gaspari Cohn) selected by the localization in the cov_cutoff
-module. The number of points are used to equally divide the range for
+instance Gaspari Cohn) using the same localization options as
+defined by the cov_cutoff module. 
+The number of points are used to equally divide the range for
 computing the integral by quadrature.
-<br><br>
+<br /><br />
 This module was partly motivated to provide a prototype for those
 developing more complicated specialized observation definition modules.
-Special observation modules like this contain Fortran90 code PLUS additional
+Special observation modules like this contain Fortran 90 code PLUS additional
 specially formatted commented code that is used to guide the preprocess program
 in constructing the obs_def_mod.f90 and obs_kind_mod.f90. These specially
 formatted comments are most conveniently placed at the beginning of the module
 and comprise seven sections, each beginning and ending with a special F90
-comment line that must be included VERBATIM. The seven sections and their
-specific instances for the 1d_raw_state_mod are:
+comment line that must be included VERBATIM. 
+<br /><br />
+The seven sections and their specific instances for the 1d_raw_state_mod are:
 </P>
 
 <OL>
@@ -74,11 +100,11 @@ A list of all observation types defined by this module and their associated
 generic kinds (see obs_kind module). The header line is followed by lines
 that have the observation type name (an all caps Fortran 90 identifier) and
 their associated generic kind identifier from the obs_kind module.
-If there is no special processing needed for an observation type,
-and no additional data needed beyond the standard contents of an observation,
-then a third word on the line, the <em class="unix">COMMON_CODE</em> will
+If there is no special processing needed for an observation type
+and no additional data needed beyond the standard contents of an observation
+then a third word on the line, <em class="unix">COMMON_CODE</em>, will
 instruct the preprocess program to automatically generate all stubs and
-code needed for this type.  For observation types needing any special code
+code needed for this type.  For observation types needing special code
 or additional data, this word should not be specified and the user must
 supply the code manually.
 <pre>
@@ -87,85 +113,88 @@ supply the code manually.
 ! RAW_STATE_1D_INTEGRAL, KIND_1D_INTEGRAL 
 ! END DART PREPROCESS KIND LIST 
 </pre>
-<br><br>
+<br /><br />
 </li>
 
 <li>
 A list of all the use statements that the completed obs_def_mod.f90
 must have in order to use the public interfaces provided by this special
-obs_def module.  This is optional if there are no external interfaces.
+obs_def module.  This section is optional if there are no external interfaces.
 <pre>
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE 
 !   use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral, 
 !                                    interactive_1d_integral, get_expected_1d_integral 
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE 
 </pre>
-<br><br>
+<br /><br />
 </li>
 
 <li>
 Case statement entries for each observation type defined by this special
 obs_def module stating how to compute the forward observation operator.
-Not required if COMMON_CODE was specified, otherwise
-there must be a case statement entry for each
-type of observation.
+Not permitted if COMMON_CODE was specified (because the case statement
+will be automatically generated), otherwise there must be a case 
+statement entry for each type of observation.
 <pre>
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(RAW_STATE_1D_INTEGRAL) 
 !            call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus) 
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF 
 </pre>
-<br><br>
+<br /><br />
 </li>
 
 <li>
 Case statement entries for each observation type defined by this special
 obs_def module stating how to read any extra required information from an
 obs sequence file.  
-Not required if COMMON_CODE was specified, otherwise
-there must be a case statement entry for each
-type of observation defined even if no special action is required
-(just put in a continue.) 
+Not permitted if COMMON_CODE was specified (because the case statement
+will be automatically generated), otherwise there must be a case 
+statement entry for each type of observation defined even if no 
+special action is required. (In that case put a 'continue' statement
+as the body of the case instead of a subroutine call.)
 <pre>
 ! BEGIN DART PREPROCESS READ_OBS_DEF 
 !      case(RAW_STATE_1D_INTEGRAL) 
-!         call read_1d_integral(obs_def%key, ifile, fileformat) 
+!         call read_1d_integral(obs_def%key, ifile, fform) 
 ! END DART PREPROCESS READ_OBS_DEF 
 </pre>
-<br><br>
+<br /><br />
 </li>
 
 <li>
 Case statement entries for each observation type defined by this special
 obs_def module stating how to write any extra required information to an
 obs sequence file.
-Not required if COMMON_CODE was specified, otherwise
-there must be a case statement entry for each
-type of observation defined even if no special action is required
-(just put in a continue.) 
+Not permitted if COMMON_CODE was specified (because the case statement
+will be automatically generated), otherwise there must be a case 
+statement entry for each type of observation defined even if no 
+special action is required. (In that case put a 'continue' statement
+as the body of the case instead of a subroutine call.)
 <pre>
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF 
 !      case(RAW_STATE_1D_INTEGRAL) 
-!         call write_1d_integral(obs_def%key, ifile, fileformat) 
+!         call write_1d_integral(obs_def%key, ifile, fform) 
 ! END DART PREPROCESS WRITE_OBS_DEF 
 </pre>
-<br><br>
+<br /><br />
 </li>
 
 <li>
 Case statement entries for each observation type defined by this special
 obs_def module stating how to interactively create any extra required information.
-Not required if COMMON_CODE was specified, otherwise
-there must be a case statement entry for each
-type of observation defined even if no special action is required
-(just put in a continue.) 
+Not permitted if COMMON_CODE was specified (because the case statement
+will be automatically generated), otherwise there must be a case 
+statement entry for each type of observation defined even if no 
+special action is required. (In that case put a 'continue' statement
+as the body of the case instead of a subroutine call.)
 <pre>
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF 
 !      case(RAW_STATE_1D_INTEGRAL) 
 !         call interactive_1d_integral(obs_def%key) 
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF 
 </pre>
-<br><br>
+<br /><br />
 </li>
 
 <li>
@@ -182,7 +211,7 @@ module obs_def_1d_state_mod
 end module obs_def_1d_state_mod
 ! END DART PREPROCESS MODULE CODE
 </pre>
-<br><br>
+<br /><br />
 </li>
 </ol>
 
@@ -190,7 +219,7 @@ end module obs_def_1d_state_mod
 
 <!--==================================================================-->
 
-<A NAME="OtherModulesUsed"></A>
+<A NAME="Modules"></A>
 <HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
@@ -225,13 +254,13 @@ cov_cutoff_mod
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 
 <A NAME="write_1d_integral"></A>
-<br>
+<br />
 <div class=routine>
-<em class=call> call write_1d_integral(key, ifile, fileformat) </em>
+<em class=call> call write_1d_integral(igrkey, ifile, fform) </em>
 <pre>
-integer,           intent(in) :: <em class=code>key</em>
-integer,           intent(in) :: <em class=code>ifile</em>
-character(len=32), intent(in) :: <em class=code>fileformat</em>
+integer,          intent(in) :: <em class=code>igrkey</em>
+integer,          intent(in) :: <em class=code>ifile</em>
+character(len=*), intent(in) :: <em class=code>fform</em>
 </pre>
 </div>
 
@@ -240,37 +269,39 @@ character(len=32), intent(in) :: <em class=code>fileformat</em>
 
 <P>
 Writes out the extra information for observation with unique identifier
-key for a 1d_integral observation kind. This information includes a header
-which identifies the total numbe of 1d_integral observations in the whole
-sequence (this is only written on the first call) followed by the half-width,
-localization type and number of quadrature points for
-this observation,
+key for a 1d_integral observation kind.  This includes the half-width,
+localization type and number of quadrature points for this observation.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
-    <TD>Unique integer key associated with the observation being 
-        processed.</TD></TR>
+<TR><TD valign=top><em class=code>igrkey&nbsp;&nbsp;</em></TD>
+    <TD>Unique integer key associated with the 1d integral
+        observation being processed.  This is not the same as
+        the key that all types of observations have and uniquely
+        distinguishes all observations from each other; this 
+        is a key that is only set and retrieved by this code
+        for 1d integral observations.  It is stored in the obs_def
+        derived type, not in the main obs_type definition.</TD></TR>
 <TR><TD valign=top><em class=code>ifile&nbsp;&nbsp;</em></TD>
     <TD>Unit number on which observation sequence file is open</TD></TR>
-<TR><TD valign=top><em class=code>fileformat&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>fform&nbsp;&nbsp;</em></TD>
     <TD>String noting whether file is opened for 'formatted' 
         or 'unformatted' IO.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 
 <A NAME="read_1d_integral"></A>
-<br>
+<br />
 <div class=routine>
-<em class=call> call read_1d_integral(key, ifile, fileformat) </em>
+<em class=call> call read_1d_integral(igrkey, ifile, fform) </em>
 <pre>
-integer,           intent(out) :: <em class=code>key</em>
-integer,           intent(in)  :: <em class=code>ifile</em>
-character(len=32), intent(in)  :: <em class=code>fileformat</em>
+integer,          intent(out) :: <em class=code>igrkey</em>
+integer,          intent(in)  :: <em class=code>ifile</em>
+character(len=*), intent(in)  :: <em class=code>fform</em>
 </pre>
 </div>
 
@@ -279,35 +310,37 @@ character(len=32), intent(in)  :: <em class=code>fileformat</em>
 
 <P>
 Reads the extra information for observation with unique identifier
-key for a 1d_integral observation kind. This information includes a header
-which identifies the total numbe of 1d_integral observations in the whole
-sequence (this is only read on the first call) followed by the half-width,
-localization type and number of quadrature points for
-this observation,
+key for a 1d_integral observation kind. This information includes the
+half-width, localization type and number of quadrature points for
+this observation.
+The key that is returned is uniquely associated with the definition
+that has been created and is used by this module to keep track
+of the associated parameters for this observation.
+</P>
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>igrkey&nbsp;&nbsp;</em></TD>
     <TD>Unique integer key associated with the observation being 
        processed.</TD></TR>
 <TR><TD valign=top><em class=code>ifile&nbsp;&nbsp;</em></TD>
     <TD>Unit number on which observation sequence file is open</TD></TR>
-<TR><TD valign=top><em class=code>fileformat&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>fform&nbsp;&nbsp;</em></TD>
     <TD>String noting whether file is opened for 'formatted' or 
         'unformatted' IO.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
 
 <A NAME="interactive_1d_integral"></A>
-<br>
+<br />
 <div class=routine>
-<em class=call> call interactive_1d_integral(key) </em>
+<em class=call> call interactive_1d_integral(igrkey) </em>
 <pre>
-integer, intent(out) :: <em class=code>key</em>
+integer, intent(out) :: <em class=code>igrkey</em>
 </pre>
 </div>
 
@@ -323,24 +356,24 @@ points) for this key.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>igrkey&nbsp;&nbsp;</em></TD>
     <TD>Unique identifier associated with the created observation definition 
         in the obs sequence.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_expected_1d_integral"></A>
-<br>
+<br />
 <div class=routine>
-<em class=call> call get_expected_1d_integral(state, location, key, val, istatus) </em>
+<em class=call> call get_expected_1d_integral(state, location, igrkey, val, istatus) </em>
 <pre>
 real(r8), intent(in)            :: <em class=code>state</em>
 type(location_type), intent(in) :: <em class=code>location</em>
-integer, intent(in)             :: <em class=code>key</em>
+integer, intent(in)             :: <em class=code>igrkey</em>
 real(r8), intent(out)           :: <em class=code>val</em>
 integer, intent(out)            :: <em class=code>istatus</em>
 </pre>
@@ -351,6 +384,9 @@ integer, intent(out)            :: <em class=code>istatus</em>
 
 <P>
 Computes the forward observation operator for a 1d integral observation.
+Calls the <em class="code">interpolate()</em> routine multiple times
+to invoke the forward operator code in whatever model this has been 
+compiled with.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -358,17 +394,18 @@ Computes the forward observation operator for a 1d integral observation.
     <TD>Model state vector (or extended state vector).</TD></TR>
 <TR><TD valign=top><em class=code>location&nbsp;&nbsp;</em></TD>
     <TD>Location of this observation.</TD></TR>
-<TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>igrkey&nbsp;&nbsp;</em></TD>
     <TD>Unique integer key associated with this observation.</TD></TR>
 <TR><TD valign=top><em class=code>val&nbsp;&nbsp;</em></TD>
     <TD>Returned value of forward observation operator.</TD></TR>
 <TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
-    <TD>Returned as 0 if forward operator was successfully computed, 
-        else returned non-zero.</TD></TR>
+    <TD>Returns 0 if forward operator was successfully computed, 
+        else returns a positive value.  (Negative values are
+        reserved for system use.)</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -403,8 +440,8 @@ Computes the forward observation operator for a 1d integral observation.
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>interactive_1d_integral</TD>
-    <!-- message --><TD VALIGN=top>Not enough space for a 1d_integral_obs. 
-                  Can only have max_1d_integral_obs (currently _____).</TD>
+    <!-- message --><TD VALIGN=top>Out of space, max_1d_integral_obs limit NNNN
+                                   (currently 1000).</TD>
     <!-- comment --><TD VALIGN=top> There is only room for a fixed number of
      1d integral observations. The max number is defined by max_1d_integral_obs.
      Set this to a larger value if more are needed. </TD>
@@ -430,17 +467,6 @@ none at this time
 </P>
 
 <!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<HR>
-<H2>PRIVATE COMPONENTS</H2>
-<P>
-N/A
-</P>
-
-<!--==================================================================-->
 <!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
 
@@ -449,9 +475,9 @@ N/A
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
-This open source software is provided by UCAR, "as is",<br>
-without charge, subject to all terms of use at<br>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
