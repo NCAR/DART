@@ -1589,7 +1589,7 @@ if (len_trim(string) > len(get_next_filename)) then
                       source, revision, revdate)   
 endif
 
-get_next_filename = string(1:len(get_next_filename))
+get_next_filename = adjustl(string(1:len(get_next_filename)))
 call close_file(funit)
 
 end function get_next_filename
