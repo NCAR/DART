@@ -17,7 +17,7 @@ module model_mod
 !------------------------------------------------------------------
 
 ! DART Modules
-use        types_mod, only : r8, digits12, missing_r8
+use        types_mod, only : r8, digits12, missing_r8, i4
 use time_manager_mod, only : time_type, set_calendar_type, set_time_missing, &
                              set_time, get_time, print_time, &
                              set_date, get_date, print_date, & 
@@ -39,9 +39,10 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &! just for definition
                              KIND_PRESSURE,         &! for neutral density obs
                              KIND_ELECTRON_DENSITY, &! for Ne obs 
                              KIND_ATOMIC_OXYGEN_MIXING_RATIO,   &! for neutral
-                             KIND_MOLEC_OXYGEN_MIXING_RATIO  ! density obs
+                             KIND_MOLEC_OXYGEN_MIXING_RATIO,    &! density obs
+                             KIND_1D_PARAMETER
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
-  
+use mpi_utilities_mod,only : my_task_id  
 use typesizes
 use netcdf
 
@@ -73,7 +74,8 @@ public :: model_type,             &
           read_TIEGCM_restart,    &
           update_TIEGCM_restart,  &
           read_TIEGCM_definition, &
-          read_TIEGCM_secondary
+          read_TIEGCM_secondary,  &
+          read_TIEGCM_namelist
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -89,11 +91,11 @@ integer                               :: nilev, nlev, nlon, nlat
 real(r8),dimension(:),    allocatable :: lons, lats, levs, ilevs, plevs, pilevs
 real(r8),dimension(:,:,:),allocatable :: ZGtiegcm !! auxiliary variable(geopotential height[cm])
 real                                  :: TIEGCM_missing_value !! global attribute
-
-integer                               :: time_step_seconds = 120 ! tiegcm time step
-integer                               :: time_step_days = 0      ! tiegcm time step
-character (len=19)                    :: restart_file = 'tiegcm_restart_p.nc'
+integer                               :: time_step_seconds 
+integer                               :: time_step_days    
+character (len=19)                    :: restart_file   = 'tiegcm_restart_p.nc'
 character (len=11)                    :: secondary_file = 'tiegcm_s.nc'
+character (len=10)                    :: namelist_file  = 'tiegcm.nml' 
 
 integer, parameter                    :: TYPE_local_NE    = 0  
 integer, parameter                    :: TYPE_local_TN    = 1  
@@ -112,6 +114,7 @@ integer                               :: model_size
                                         
 type model_type
   real(r8), pointer                   :: vars_3d(:,:,:,:)
+  real(r8), pointer                   :: vars_1d(:)
   type(time_type)                     :: valid_time
 end type model_type
 
@@ -122,10 +125,11 @@ integer                               :: state_num_3d = 11
                                           ! O1 O1_NM (O2 O2_NM NO NO_NM excluded for now)    
                                           ! -- midpoint levels; top slot missing --
                                           ! TN TN_NM UN UN_NM VN VN_NM
+integer                               :: state_num_1d = 1                                          
 logical                               :: output_state_vector = .false.
                                           ! .true.  results in a "state-vector" netCDF file
                                           ! .false. results in a "prognostic-var" netCDF file
-namelist /model_nml/ output_state_vector, state_num_3d
+namelist /model_nml/ output_state_vector, state_num_3d, state_num_1d
 
 logical                               :: first_pert_call = .true.
 type(random_seq_type)                 :: random_seq
@@ -177,8 +181,11 @@ call read_TIEGCM_definition(restart_file)
 ! Reading in Geopotential Height from TIEGCM secondary output file
 call read_TIEGCM_secondary(secondary_file)
 
+! Reading in TIEGCM namelist input file (just for definition)
+call read_TIEGCM_namelist(namelist_file)
+
 ! Compute overall model size 
-model_size = nlon * nlat * nlev * state_num_3d
+model_size = nlon * nlat * nlev * state_num_3d + state_num_1d
 
 if (do_output()) write(*,*)'nlon = ',nlon
 if (do_output()) write(*,*)'nlat = ',nlat
@@ -190,8 +197,6 @@ call set_calendar_type('Gregorian')
 
 ! The time_step in terms of a time type must also be initialized.
 time_step = set_time(time_step_seconds, time_step_days)
-
-
 
 end subroutine static_init_model
 
@@ -536,8 +541,12 @@ function get_index(lat_index, lon_index, lev_index, var_type)
 !
 integer,  intent(in) :: lat_index, lon_index, lev_index, var_type
 integer              :: get_index
+integer              :: initial_3d_index
 
-get_index = 1 + var_type + (lev_index -1)*state_num_3d           &
+initial_3d_index     = 1 
+
+get_index =   initial_3d_index                                   &
+              + var_type + (lev_index -1)*state_num_3d           &
                          + (lat_index -1)*state_num_3d*nlev      &
                          + (lon_index -1)*state_num_3d*nlev*nlat
 
@@ -578,10 +587,20 @@ integer, optional,   intent(out) :: var_type
 
 integer  :: indx, num_per_col, col_num, col_elem
 integer  :: lon_index, lat_index, lev_index
-real(r8) :: lon, lat, lev
+real(r8) :: lon, lat, lev, height
 integer  :: local_var_type, var_type_temp
 
 if ( .not. module_initialized ) call static_init_model
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+if (index_in >= (model_size - state_num_1d + 1)) then
+    local_var_type = KIND_1D_PARAMETER
+               lat = lats(1)      !return a fake value 
+               lon = lons(1)      !return a fake value
+               lev = pilevs(1)    !return a fake value
+            height = ZGtiegcm(1, 1, 1)/100.0_r8 !return a fake value 
+else 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! Easier to compute with a 0 to size -1 index
 indx = index_in -1
@@ -634,13 +653,27 @@ else
    call error_handler(E_ERR,"get_state_meta_data", msgstring, source, revision, revdate)
 endif
 
-if (var_type_temp == 0) then                !NE defined at interface levels
-  lev = pilevs(lev_index + 1)
-else
-  lev = plevs(lev_index + 1)        !TN UN VN O1 defined at midpoints
+if (var_type_temp == 0) then   !NE defined at interface levels
+   lev = pilevs(lev_index + 1)
+height = ZGtiegcm(lon_index + 1, lat_index + 1, lev_index + 1)/100.0_r8 ! [m] = ZGtiegcm/100 [cm]
+else                           !TN UN VN O1 defined at midpoints
+   lev = plevs(lev_index + 1)        
+   if (lev_index + 2 <= nlev) then
+      height = 0.50_r8/100.0_r8 * (ZGtiegcm(lon_index+1,lat_index+1,lev_index+1) &
+                                 + ZGtiegcm(lon_index+1,lat_index+1,lev_index+2)) 
+   else                        
+      !TIEGCM: top midpoint slot contains missing values for TN UN
+      !DART:   filled with values at nlev - 1 midpoint    
+      height = 0.50_r8/100.0_r8 * (ZGtiegcm(lon_index+1,lat_index+1,nlev-1) &
+                                 + ZGtiegcm(lon_index+1,lat_index+1,nlev)) 
+   endif                             
 endif
 
-location = set_location(lon,lat,lev,2) ! 2 == pressure  3 == height
+endif
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!location = set_location(lon,lat,lev,2)   ! 2 == pressure  
+location = set_location(lon,lat,height,3) ! 3 == height
 
 ! If the type is wanted, return it
 if(present(var_type)) var_type = local_var_type
@@ -716,9 +749,11 @@ integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
 
 integer :: TNVarID, TN_NMVarID, UNVarID, UN_NMVarID, VNVarID, VN_NMVarID
 integer :: O1VarID, O1_NMVarID, O2VarID, O2_NMVarID 
-integer :: NEVarID
+integer :: NEVarID, F107VarID
 integer :: lonDimID, latDimID, levDimID, ilevDimID
 integer :: lonVarID, latVarID, levVarID, ilevVarID
+integer :: paraDimID 
+integer :: len1 = 1
 
 ! we are going to need these to record the creation date in the netCDF file.
 ! This is entirely optional, but nice.
@@ -847,6 +882,8 @@ else
              & len = nlev, dimid =   levDimID),  'nc_write_model_atts')
    call nc_check(nf90_def_dim(ncid=ncFileID, name="ilev", &
              & len = nilev, dimid =  ilevDimID), 'nc_write_model_atts')
+   call nc_check(nf90_def_dim(ncid=ncFileID, name="1dparameter", &
+             & len = len1,    dimid = paraDimID), 'nc_write_model_atts')
    
    !----------------------------------------------------------------------------
    ! Create the (empty) Variables and the Attributes
@@ -901,6 +938,12 @@ else
    !----------------------------------------------------------------------------
    ! Create attributes for the state vector
    !----------------------------------------------------------------------------
+
+   call nc_check(nf90_def_var(ncid=ncFileID, name="F107", xtype=nf90_real, &
+       dimids = (/ paraDimID, MemberDimID, unlimitedDimID /), &
+       varid  = F107VarID), 'nc_write_model_atts')
+   call nc_check(nf90_put_att(ncFileID, F107VarID, "long_name", "f107"), &
+          'nc_write_model_atts')
 
    call nc_check(nf90_def_var(ncid=ncFileID, name="NE", xtype=nf90_real, &
        dimids = (/ lonDimID, latDimID, ilevDimID, MemberDimID, unlimitedDimID /), &
@@ -1055,7 +1098,7 @@ integer         :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer         :: StateVarID
 integer         :: TNVarID, TN_NMVarID, UNVarID, UN_NMVarID, VNVarID, VN_NMVarID  
 integer         :: O1VarID, O1_NMVarID, O2VarID, O2_NMVarID
-integer         :: NEVarID
+integer         :: NEVarID, F107VarID
 
 type(model_type):: var 
 
@@ -1104,6 +1147,13 @@ else
    ! call check(NF90_inq_varid(ncFileID, "ps", psVarID), "ps inq_varid")
    ! call check(nf90_put_var( ncFileID, psVarID, global_Var%ps, &
    !                          start=(/ 1, 1, copyindex, timeindex /) ), "ps put_var")
+
+    
+   call nc_check(NF90_inq_varid(ncFileID, 'F107', F107VarID), &
+          'nc_write_model_vars', 'F107 inq_varid') 
+   call nc_check(nf90_put_var( ncFileID, F107VarID, var%vars_1d(1), & 
+                 start=(/ 1, copyindex, timeindex /) ), &
+          'nc_write_model_vars', 'F107 put_var') 
 
    call nc_check(NF90_inq_varid(ncFileID, 'NE',    NEVarID), &
           'nc_write_model_vars', 'NE inq_varid') 
@@ -1215,21 +1265,18 @@ if ( .not. module_initialized ) call static_init_model
 interf_provided = .true.
 
 ! If first call initialize random sequence
+! CAUTION: my_task_id is NOT emsemble member number
+! For example, my_task_id will be in [0,N-1]
+! if a single instance of the model using N MPI tasks.
 if(first_pert_call) then
-   call init_random_seq(random_seq)
+   call init_random_seq(random_seq,my_task_id())
    first_pert_call = .false.
 endif
 
 do i = 1, get_model_size()
    call get_state_meta_data(i, temp_loc, variable_type)
-   if(variable_type == KIND_U_WIND_COMPONENT           .or. &
-      variable_type == KIND_V_WIND_COMPONENT           .or. &
-      variable_type == KIND_TEMPERATURE                .or. & 
-      variable_type == KIND_ATOMIC_OXYGEN_MIXING_RATIO .or. & 
-      variable_type == KIND_MOLEC_OXYGEN_MIXING_RATIO  .or. & 
-      variable_type == KIND_ELECTRON_DENSITY ) then
-      pert_state(i) = &
-       & random_gaussian(random_seq, state(i), state(i)*0.01)
+   if(variable_type == KIND_1D_PARAMETER) then
+      pert_state(i) = random_gaussian(random_seq,state(i),20.0_r8)
    else
       pert_state(i) = state(i)
    endif
@@ -1253,6 +1300,7 @@ integer :: i, j, k, nf, indx
 if ( .not. module_initialized ) call static_init_model
 
 indx = 0
+
 loop_longitude: do i = 1, nlon       
    loop_latitude: do j = 1, nlat     
         loop_level: do k = 1, nlev 
@@ -1263,6 +1311,11 @@ loop_longitude: do i = 1, nlon
                     enddo loop_level
                   enddo loop_latitude
                 enddo loop_longitude
+
+loop_1d_var: do nf = 1, state_num_1d
+               indx = indx + 1
+               x(indx) = var%vars_1d(nf)
+enddo loop_1d_var
 
 if(indx /= model_size) then
    write(msgstring, *) 'indx ',indx,' model_size ',model_size,' must be equal '
@@ -1286,6 +1339,7 @@ integer                       :: i, j, k, nf, indx
 if ( .not. module_initialized ) call static_init_model
 
 indx = 0
+
 loop_longitude: do i = 1, nlon       
    loop_latitude: do j = 1, nlat     
         loop_level: do k = 1, nlev 
@@ -1297,13 +1351,17 @@ loop_longitude: do i = 1, nlon
                   enddo loop_latitude
                 enddo loop_longitude
 
+loop_1d_var: do nf = 1, state_num_1d
+               indx = indx + 1
+               var%vars_1d(nf) = x(indx)
+enddo loop_1d_var
+
 if(indx /= model_size) then
    write(msgstring, *) 'indx ',indx,' model_size ',model_size,' must be equal '
    call error_handler(E_ERR, 'vector_to_prog_var', msgstring, source, revision, revdate)
 endif
 
 end subroutine vector_to_prog_var
-
 
 
 subroutine init_model_instance(var,valid_time)
@@ -1318,7 +1376,9 @@ type(time_type), optional, intent(in)  :: valid_time
 if ( .not. module_initialized ) call static_init_model
   
 allocate(var%vars_3d(nlon, nlat, nlev, state_num_3d))
-  
+
+allocate(var%vars_1d(state_num_1d))
+
 if (present(valid_time)) then
    var%valid_time = valid_time
 else
@@ -1340,6 +1400,7 @@ type(model_type), intent(inout) :: var
 if ( .not. module_initialized ) call static_init_model
                                                                                       
 deallocate(var%vars_3d)
+deallocate(var%vars_1d)
                                                                                   
 end subroutine end_model_instance
 
@@ -1975,6 +2036,198 @@ subroutine read_TIEGCM_secondary(file_name)
    call nc_check(nf90_close(restart_id),'read_TIEGCM_secondary', 'close')   
 
 end subroutine read_TIEGCM_secondary
+
+
+subroutine read_TIEGCM_namelist(file_name,var)
+!=======================================================================
+!
+! Read in TIEGCM namelist input 
+!
+ character (len = *),        intent(in)     :: file_name
+ type(model_type), optional, intent(out)    :: var
+ integer  :: iunit, io
+ integer  :: daysec = 86400 
+
+!---------------------------------------------------------------------------------- 
+! 1/3/2011, the namelist definition taken from $TGCMROOT/tiegcm1.93/src/input.F
+!           the following parameter values are from params.F
+!           modify the namelist definition for future tiegcm updates
+!
+      integer,parameter :: mxind_time = 500 ! max number of time-dependent solar index points
+      integer,parameter :: mxhvols = 100    ! max number of output history file
+      integer,parameter :: mxseries = 10    ! max number of time series for primary histories
+      integer,parameter :: mxfsech = 100    ! max number of fields on secondary histories
+!
+! Namelist user input variables:
+!
+      character(len=80)::&
+     &  label,           &! optional generic text label for this run
+     &  tempdir,         &! temporary directory 
+     &  magvol,          &! file name or mss path to magnetic data file
+     &  amievol           ! file or mss path of amie data file (optional)
+!
+! date and calday are no longer supported, and are replaced by start_day, 
+! start_year, and calendar_advance. Date and calday are retained here so 
+! error usage statements can be issued if user sets one of them.
+!
+      integer ::         &
+     &  start_day,       &! starting day of year (integer 0->365)
+     &  start_year,      &! starting year (4-digit integer yyyy)
+     &  calendar_advance,&! if > 0, advance calendar day from start_day
+     &  date(3),         &! old: model starting year, day ( 2 ints yyyy,dd)
+     &  calday,          &! old: starting calendar day (0-mxday)
+     &  mxday,           &! calendar day (0-mxday)
+     &  step,            &! model time step (integer seconds)
+     &  dispose,         &! dispose output files to mss if dispose==1 or 2
+     &  eddy_dif,        &! 0/1 flag for DOY dependent eddy diffusion (difk, dift, xmue)
+     &  dynamo,          &! 0/1 flag for dynamo
+     &  tideann,         &! 0/1 flag for annual tide (deprecated as of May 2008)
+     &  aurora,          &! 0/1 flag for aurora
+     &  ntask_lat,       &! number of tasks in latitude  dimension
+     &  ntask_lon         ! number of tasks in longitude dimension
+      real ::            &
+     &  tide(10),        &! semidiurnal tide amplitudes and phases
+     &  tide2(2),        &! diurnal tide amplitude and phase
+     &  tide3m3(2),      &! 2-day wave amplitude and phase
+     &  f107,            &! 10.7 cm daily solar flux
+     &  f107a,           &! 10.7 cm average (81-day) solar flux
+     &  colfac            ! collision factor
+!
+! Input parameters that can be either constant or time-dependent:
+      real ::            &
+     &  power,           &! hemispheric power (gw) (hpower on histories)
+     &  ctpoten,         &! cross-cap potential (volts)
+     &  bximf,           &! BX component of IMF
+     &  byimf,           &! BY component of IMF
+     &  bzimf,           &! BZ component of IMF in nT
+     &  swvel,           &! Solar wind velocity in km/s
+     &  swden,           &! Solar wind density in #/cm3
+     &  al,              &! AL lower magnetic auroral activity index in nT
+     &  kp                ! Kp index
+      real,dimension(4,mxind_time) :: power_time,ctpoten_time,           &
+     &  bximf_time,byimf_time,bzimf_time,swvel_time,swden_time,al_time,  &
+     &  kp_time
+      integer ::                                                         &
+     &  ntimes_ctpoten,ntimes_power,ntimes_bximf,ntimes_byimf,           &
+     &  ntimes_bzimf,ntimes_swden,ntimes_swvel,ntimes_al,ntimes_kp
+      logical :: aluse    ! logical to use AL in Weimer 2001 model or not
+!
+! Parameters as read from namelist:
+      real :: rd_power,rd_ctpoten,rd_f107,rd_f107a,rd_bximf,rd_byimf,    &
+     &  rd_bzimf,rd_swvel,rd_swden,rd_kp
+!
+! If indices_interp==1, time-dependent indices (power_time, ctpoten_time, etc)
+! will be interpolated to model time, otherwise they will change only
+! when the given values change. This has no effect on indices given as constants.
+!
+      integer :: indices_interp=1 
+!
+! Import data file names:
+!
+      integer,parameter :: mxlen_filename=80
+      character(len=mxlen_filename) ::                                   &
+!
+! 4/2/08 btf: Introducing Weimer 2005 model (wei05sc.F).
+!             Retain ability to call either the 2001 or 2005 weimer models
+!             for now, to facilitate comparison runs, so potential_model
+!             can be either WEIMER01 or WEIMER05.
+!
+     &  potential_model,   &! electric potential model used
+                            ! Values can be 'HEELIS', 'WEIMER', or 'NONE'
+                            ! If absent, the default value is set to 'HEELIS'
+     &  weimer_ncfile,     &! path to netcdf weimer01 coefficients file
+     &  wei05sc_ncfile,    &! path to netcdf data files for weimer05 model
+     &  gpi_ncfile,        &! mss path or file path to netcdf gpi data file
+     &  ncep_ncfile,       &! ncep data file (time-gcm only)
+     &  see_ncfile,        &! mss path or file path to netcdf SEE flux data file
+     &  imf_ncfile,        &! mss path or disk file path to netcdf IMF data file
+     &  gswm_mi_di_ncfile, &! gswm migrating diurnal data file
+     &  gswm_mi_sdi_ncfile,&! gswm migrating semi-diurnal data file
+     &  gswm_nm_di_ncfile, &! gswm non-migrating diurnal data file
+     &  gswm_nm_sdi_ncfile,&! gswm non-migrating semi-diurnal data file
+     &  saber_ncfile,      &! SABER data (T,Z)
+     &  tidi_ncfile         ! TIDI data (U,V)
+!
+!     integer,parameter :: ngpivars = 4
+!     real :: gpi_vars(ngpivars) ! f107,f107a,power,ctpoten
+!     character(len=16) ::
+!    |  gpi_names(ngpivars)      ! names of gpi_vars
+!
+! Primary history user input (dimension parameters are in params.h):
+      character(len=80) :: &
+     &  source,            &! file containing source history (optional)
+        output(mxhvols)     ! output file(s) (required)
+      integer ::           &
+     &  source_start(3),   &! source history model time
+     &  start(3,mxseries), &! primary history model start time(s)
+     &  stop(3,mxseries),  &! primary history model stop time(s)
+     &  hist(3,mxseries),  &! primary history disk write frequency
+     &  save(3,mxseries),  &! primary history file save frequency
+     &  mxhist_prim,       &! max number of histories per primary file
+     &  msreten,           &! retention period for history files
+     &  noutput             ! number of output files given
+!
+! Secondary history user input (dimension parameters are in params.h):
+      character(len=80) ::   &
+     &  secsource,           &! file containing source sec_history (for mhd)
+     &  secout(mxhvols)       ! secondary history output file(s)
+      character(len=16) ::   &
+     &  secflds(mxfsech)      ! secondary history output fields
+      integer ::             &
+     &  secstart(3,mxseries),&! secondary history model start time(s)
+     &  secstop(3,mxseries), &! secondary history model stop time(s)
+     &  sechist(3,mxseries), &! secondary history disk write frequency
+     &  secsave(3,mxseries), &! secondary history file save frequency
+     &  mxhist_sech,         &! max number of histories per secondary file
+     &  sech_nbyte            ! 4 or 8: write real or double values to secondary file
+!
+! Namelist for read:
+      namelist/tgcm_input/                                        & 
+     &  label,tempdir,magvol,amievol,date,calday,step,dispose,    &
+     &  source,source_start,output,start,stop,hist,save,          &
+     &  secout,secstart,secstop,sechist,secsave,secflds,          &
+     &  potential_model,eddy_dif,dynamo,tide,tide2,tide3m3,       &
+     &  f107,f107a,power,ctpoten,bximf,byimf,bzimf,swvel,swden,al,&
+     &  kp,colfac,tideann,aurora,gpi_ncfile,gswm_mi_di_ncfile,    &
+     &  gswm_mi_sdi_ncfile,gswm_nm_di_ncfile,gswm_nm_sdi_ncfile,  &
+     &  mxhist_prim,mxhist_sech,msreten,ntask_lat,ntask_lon,      &
+     &  start_day,start_year,calendar_advance,see_ncfile,         &
+     &  ctpoten_time,power_time,bximf_time,byimf_time,bzimf_time, &
+     &  kp_time,al_time,swden_time,swvel_time,indices_interp,     &
+     &  imf_ncfile,saber_ncfile,tidi_ncfile,sech_nbyte
+     
+!---------------------------------------------------------------------------------- 
+
+ if( .not. file_exist(file_name)) then
+   write(msgstring,*) trim(adjustl(file_name)),' not available.'
+   call error_handler(E_ERR,'read_TIEGCM_namelist',msgstring,source,revision,revdate)
+ endif
+
+ if (do_output()) print *, 'read_TIEGCM_namelist: reading restart:', file_name
+
+!! Read the namelist entry tgcm_input from tiegcm.nml
+ call find_namelist_in_file("tiegcm.nml", "tgcm_input", iunit)
+ read(iunit, nml = tgcm_input, iostat = io)
+ call check_namelist_read(iunit, io, "tgcm_input")
+
+ if (step >= daysec) then
+    time_step_days    = int(step/daysec)
+    time_step_seconds = mod(step,daysec)
+ else
+    time_step_days    = 0
+    time_step_seconds = step
+ endif
+
+ if (present(var)) then
+  var%vars_1d(1) = f107    !        f10.7 cm flux
+! var%vars_1d(2) = power   !        hemispheric power 
+! var%vars_1d(3) = ctpoten !        cross-polar-cap potential
+ endif
+
+ !print*, 'read_TIEGCM_namelist_definition: time_step_days = ', time_step_days
+ !print*, 'read_TIEGCM_namelist_definition: time_step_seconds = ', time_step_seconds
+
+end subroutine read_TIEGCM_namelist
 
 
 
