@@ -36,7 +36,7 @@
 #BSUB -P 35071364
 #BSUB -q debug
 #BSUB -n 1
-#BSUB -W 1:00
+#BSUB -W 6:00
 #BSUB -N -u ${USER}@ucar.edu
 
 #----------------------------------------------------------------------
@@ -120,7 +120,7 @@ echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 
 set    DARTDIR = /blhome/tmatsuo/DART/models/tiegcm
 set  TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
-set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28/initial/perfect
+set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28
 
 #-----------------------------------------------------------------------------
 # Get the DART executables, scripts, and input files
@@ -136,7 +136,7 @@ set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28/initial/perfect
  ${COPY} ${DARTDIR}/shell_scripts/advance_model.csh .
 
 # data files
- ${COPY} ${EXPERIMENT}/obs_seq.in                   .
+ ${COPY} ${EXPERIMENT}/initial/obs_seq.in           .
  ${COPY} ${DARTDIR}/work/input.nml                  .
 
 #-----------------------------------------------------------------------------
@@ -146,9 +146,15 @@ set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28/initial/perfect
  ${COPY} ${TIEGCMDIR}/tiegcm-nompi                  tiegcm
 #${COPY} ${TIEGCMDIR}/tiegcm                        .
 
- ${COPY} ${EXPERIMENT}/tiegcm_restart_p.nc           .
- ${COPY} ${EXPERIMENT}/tiegcm_s.nc                   .
- ${COPY} ${EXPERIMENT}/tiegcm.nml                    .
+ ${COPY} ${EXPERIMENT}/initial/tiegcm_restart_p.nc  .
+ ${COPY} ${EXPERIMENT}/initial/tiegcm_s.nc          .
+ ${COPY} ${EXPERIMENT}/initial/tiegcm.nml           tiegcm.nml.original
+
+#-----------------------------------------------------------------------------
+# Remove all the comments that follow (;) symbol from tiegcm.nml namelist file
+#-----------------------------------------------------------------------------
+
+sed -e 's/;.*//' -e '/^$/ d' tiegcm.nml.original >! tiegcm.nml
 
 #-----------------------------------------------------------------------------
 # Check that everything moved OK, and the table is set.
@@ -188,20 +194,17 @@ ls -l
 
 exit
 
-${MOVE} tiegcm_s.nc*               ${experiment}/tiegcm
-${MOVE} tiegcm_restart_p.nc*       ${experiment}/tiegcm
-${MOVE} tiegcm_out_*               ${experiment}/tiegcm
+${MOVE} tiegcm_s.nc.0001           ${EXPERIMENT}/perfect/tiegcm_s.nc
+${MOVE} tiegcm_restart_p.nc.0001   ${EXPERIMENT}/perfect/tiegcm_restart_p.nc
+${MOVE} tiegcm.nml                 ${EXPERIMENT}/perfect
+${MOVE} obs_seq.out                ${EXPERIMENT}/perfect
+${MOVE} True_State.nc              ${EXPERIMENT}/perfect
+${MOVE} perfect_restart            ${EXPERIMENT}/perfect
 
-${MOVE} filter_restart*            ${experiment}/DART
-${MOVE} assim_model_state_ud[1-9]* ${experiment}/DART
-${MOVE} assim_model_state_ic[1-9]* ${experiment}/DART
-${MOVE} Posterior_Diag.nc          ${experiment}/DART
-${MOVE} Prior_Diag.nc              ${experiment}/DART
-${MOVE} obs_seq.final              ${experiment}/DART
-${MOVE} dart_log.out               ${experiment}/DART
-
+${MOVE} tiegcm_out_1               ${EXPERIMENT}/perfect/tiegcm_out
+${MOVE} dart_log.out               ${EXPERIMENT}/perfect
+${MOVE} dart_log.nml               ${EXPERIMENT}/perfect
 # Good style dictates that you save the scripts so you can see what worked.
-
 ${COPY} input.nml                  ${experiment}/DART
 ${COPY} *.csh                      ${experiment}/DART
 ${COPY} $myname                    ${experiment}/DART
