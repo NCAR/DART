@@ -70,7 +70,7 @@ while($state_copy <= $num_states)
    ln -sf  ../$input_file temp_ic             || exit 2
    cp -p   ../$tiesecond  tiegcm_s.nc         || exit 2
    cp -p   ../$tierestart tiegcm_restart_p.nc || exit 2
-   cp -p   ../$tieinp     tiegcm.nml.original || exit 2
+   cp -p   ../$tieinp     tiegcm.nml          || exit 2
 
 #  echo "ensemble member $ensemble_member : before dart_to_model"
 #  ncdump -v mtime tiegcm_restart.nc
@@ -78,33 +78,35 @@ while($state_copy <= $num_states)
    ../dart_to_model || exit 2         # dart_to_model generate namelist_update
 
    # update tiegcm namelist variables   
-   
-   set start_year   = "START_YEAR = "`head -1 namelist_update | tail -1`
-   set start_day    = "START_DAY = "`head -2 namelist_update | tail -1`
-   set source_start = "SOURCE_START = "`head -3 namelist_update | tail -1`
-   set start        = "START = "`head -3 namelist_update | tail -1`
-   set secstart     = "SECSTART = "`head -3 namelist_update | tail -1`
-   set stop         = "STOP = "`head -4 namelist_update | tail -1`
-   set secstop      = "SECSTOP = "`head -4 namelist_update | tail -1`
-   set hist         = "HIST = "`head -5 namelist_update | tail -1`
-   set sechist      = "SECHIST = "`head -5 namelist_update | tail -1`
-   set save         = "SAVE = "`head -5 namelist_update | tail -1`
-   set secsave      = "SECSAVE = "`head -5 namelist_update | tail -1`
 
-   sed -e 's/^;.*//' tiegcm.nml.original >! nml
+   cp -p tiegcm.nml tiegcm.nml.original
+
+   set start_year   = " START_YEAR = "`head -1 namelist_update | tail -1`
+   set start_day    = " START_DAY = "`head -2 namelist_update | tail -1`
+   set source_start = " SOURCE_START = "`head -3 namelist_update | tail -1`
+   set start        = " START = "`head -3 namelist_update | tail -1`
+   set secstart     = " SECSTART = "`head -3 namelist_update | tail -1`
+   set stop         = " STOP = "`head -4 namelist_update | tail -1`
+   set secstop      = " SECSTOP = "`head -4 namelist_update | tail -1`
+   set hist         = " HIST = "`head -5 namelist_update | tail -1`
+   set sechist      = " SECHIST = "`head -5 namelist_update | tail -1`
+   set save         = " SAVE = "`head -5 namelist_update | tail -1`
+   set secsave      = " SECSAVE = "`head -5 namelist_update | tail -1`
+   set f107         = " F107 = "`head -6 namelist_update | tail -1`
 
    sed \
-   -e 's/'"`grep 'START_YEAR' nml | cut -d';' -f1`"'/'"$start_year"'/' \
-   -e 's/'"`grep 'START_DAY' nml | cut -d';' -f1`"'/'"$start_day"'/' \
-   -e 's/'"`grep 'SOURCE_START' nml | cut -d';' -f1`"'/'"$source_start"'/' \
-   -e 's/'"`grep 'START' nml | cut -d';' -f1 | head -4 | tail -1`"'/'"$start"'/' \
-   -e 's/'"`grep 'STOP' nml | cut -d';' -f1 | head -1`"'/'"$stop"'/' \
-   -e 's/'"`grep 'HIST' nml | cut -d';' -f1 | head -1`"'/'"$hist"'/' \
-   -e 's/'"`grep 'SAVE' nml | cut -d';' -f1 | head -1`"'/'"$save"'/' \
-   -e 's/'"`grep 'SECSTART' nml | cut -d';' -f1`"'/'"$secstart"'/' \
-   -e 's/'"`grep 'SECSTOP' nml | cut -d';' -f1`"'/'"$secstop"'/' \
-   -e 's/'"`grep 'SECHIST' nml | cut -d';' -f1`"'/'"$sechist"'/' \
-   -e 's/'"`grep 'SECSAVE' nml | cut -d';' -f1`"'/'"$secsave"'/' \
+   -e 's/'"`grep 'START_YEAR' tiegcm.nml.original`"'/'"$start_year"'/' \
+   -e 's/'"`grep 'START_DAY' tiegcm.nml.original`"'/'"$start_day"'/' \
+   -e 's/'"`grep 'SOURCE_START' tiegcm.nml.original`"'/'"$source_start"'/' \
+   -e 's/'"`grep 'START' tiegcm.nml.original | head -4 | tail -1`"'/'"$start"'/' \
+   -e 's/'"`grep 'STOP' tiegcm.nml.original | head -1`"'/'"$stop"'/' \
+   -e 's/'"`grep 'HIST' tiegcm.nml.original | head -1`"'/'"$hist"'/' \
+   -e 's/'"`grep 'SAVE' tiegcm.nml.original | head -1`"'/'"$save"'/' \
+   -e 's/'"`grep 'SECSTART' tiegcm.nml.original`"'/'"$secstart"'/' \
+   -e 's/'"`grep 'SECSTOP' tiegcm.nml.original`"'/'"$secstop"'/' \
+   -e 's/'"`grep 'SECHIST' tiegcm.nml.original`"'/'"$sechist"'/' \
+   -e 's/'"`grep 'SECSAVE' tiegcm.nml.original`"'/'"$secsave"'/' \
+   -e 's/'"`grep 'F107' tiegcm.nml.original | head -1`"'/'"$f107"'/' \
    tiegcm.nml.original >! tiegcm.nml.update
 
    mv tiegcm.nml.update tiegcm.nml  
@@ -146,6 +148,8 @@ while($state_copy <= $num_states)
    mv temp_ud             ../$output_file || exit 4
    mv tiegcm_s.nc         ../$tiesecond   || exit 4
    mv tiegcm_restart_p.nc ../$tierestart  || exit 4
+   mv tiegcm.nml          ../$tieinp      || exit 4
+   mv tiegcm_out_*        ../.            || exit 4
 
    @ state_copy++
    @ ensemble_member_line = $ensemble_member_line + 3
