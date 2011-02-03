@@ -156,6 +156,12 @@ if (io /= 0 )then
    call error_handler(E_ERR,'dart_to_model:','cannot write target_time mtime (day/hour/minute) to STDOUT', &
          source,revision,revdate)
 endif
+!F107
+write(file_unit, *, iostat = io )  var%vars_1d(1)
+if (io /= 0 )then
+   call error_handler(E_ERR,'dart_to_model:','cannot write f107 (var%vars_1d) to STDOUT', &
+         source,revision,revdate)
+endif
 
 close(file_unit)
 
