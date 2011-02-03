@@ -34,10 +34,10 @@
 #BSUB -J filter
 #BSUB -o filter.%J.log
 #BSUB -P 35071364
-#BSUB -q standby
+#BSUB -q regular
 #BSUB -n 64
 #BSUB -R "span[ptile=64]"
-#BSUB -W 2:30
+#BSUB -W 3:00
 #BSUB -N -u ${USER}@ucar.edu
 
 #----------------------------------------------------------------------
@@ -121,7 +121,7 @@ echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 
 set    DARTDIR = /blhome/tmatsuo/DART/models/tiegcm
 set  TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
-set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28/initial/filter
+set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28
 
 #-----------------------------------------------------------------------------
 # Get the DART executables, scripts, and input files
@@ -137,7 +137,7 @@ set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28/initial/filter
  ${COPY} ${DARTDIR}/shell_scripts/advance_model.csh .
 
 # data files
- ${COPY} ${EXPERIMENT}/obs_seq.out                  .
+ ${COPY} ${EXPERIMENT}/initial/obs_seq.out          .
  ${COPY} ${DARTDIR}/work/input.nml                  .
 
 #-----------------------------------------------------------------------------
@@ -178,10 +178,12 @@ while ( $i <= $NUM_ENS )
   set tierestart  = `printf "tiegcm_restart_p.nc.%04d" $i`
   set tieinp      = `printf "tiegcm.nml.%04d"          $i`
 
-  ln -sf ${EXPERIMENT}/$darticname .
-  ln -sf ${EXPERIMENT}/$tiesecond  .
-  ln -sf ${EXPERIMENT}/$tierestart .
-  ln -sf ${EXPERIMENT}/$tieinp     .
+  ln -sf ${EXPERIMENT}/initial/$darticname .
+  ln -sf ${EXPERIMENT}/initial/$tiesecond  .
+  ln -sf ${EXPERIMENT}/initial/$tierestart .
+  ln -sf ${EXPERIMENT}/initial/$tieinp     tiegcm.nml.original 
+
+  sed -e 's/;.*//' -e '/^$/ d' tiegcm.nml.original >! $tieinp
 
   @ i += 1
 end
@@ -192,6 +194,7 @@ end
 
 ln -sf tiegcm_restart_p.nc.0001 tiegcm_restart_p.nc
 ln -sf tiegcm_s.nc.0001         tiegcm_s.nc
+ln -sf tiegcm.nml.0001          tiegcm.nml
 
 mpirun.lsf ./filter || exit 2
 
