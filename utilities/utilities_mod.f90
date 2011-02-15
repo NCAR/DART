@@ -30,6 +30,20 @@ module utilities_mod
 !      close_file       Closes the given unit_number. If the file is 
 !                       already closed, nothing happens.
 !
+!      initialize_utilities    Call this routine once before using any
+!                              of the other routines in this file.  If you
+!                              are using the MPI library, do not call this
+!                              routine -- call mpi_initialize_utilities instead.
+!                              It will call this routine as part of initializing
+!                              the MPI code.
+!
+!      finalize_utilities      Call this routine at the end of a program to close
+!                              the log file and flush pending output.  For an MPI
+!                              program, call mpi_finalize_utilities instead.
+!
+!      dump_unit_attributes    A debug routine that dumps out a long list of
+!                              attributes that can be queried from an open file unit.
+!
 !      print_version_number    Prints out a routine name and
 !                              version number to a specified unit
 !
@@ -43,6 +57,15 @@ module utilities_mod
 !                       messages should be output.  Controlled by the setting
 !                       made from set_output.  Useful for messages which cannot
 !                       go through the normal error handler (e.g. namelists).
+!
+!      find_namelist_in_file   Opens the namelist file and verifies the given
+!                              namelist name exists.  If found, rewind the file
+!                              and return true.  Then a F90 namelist read command
+!                              can be used to read in the namelist values.
+!                              Otherwise, print an error message and terminate.
+!
+!      check_namelist_read    Confirms that a namelist read was successful. 
+!                             If it failed print an error message and terminate.
 !
 !      set_nml_output   Set the status of printing namelist data.  By default,
 !                       only print to the nml log file.  Can be set to print
