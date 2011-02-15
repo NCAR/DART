@@ -150,6 +150,12 @@ integer, parameter, public :: &
     KIND_SEA_SURFACE_PRESSURE        = 55, &
     KIND_W_CURRENT_COMPONENT         = 56
  
+! proposed new kinds for COSMIC GPS/RO obs
+! (currently unused)
+integer, parameter, public :: &
+    KIND_OCCULTATION_REFRACTIVITY    = 57, &
+    KIND_OCCULTATION_EXCESSPHASE     = 58
+
 ! kinds for satellite radiances (jason o.)
 integer, parameter, public :: &
     KIND_INFRARED_RADIANCE           = 60, &
@@ -373,7 +379,8 @@ obs_kind_names(53) = obs_kind_type(KIND_SEA_SURFACE_HEIGHT, 'KIND_SEA_SURFACE_HE
 obs_kind_names(54) = obs_kind_type(KIND_DRY_LAND, 'KIND_DRY_LAND')
 obs_kind_names(55) = obs_kind_type(KIND_SEA_SURFACE_PRESSURE, 'KIND_SEA_SURFACE_PRESSURE')
 obs_kind_names(56) = obs_kind_type(KIND_W_CURRENT_COMPONENT, 'KIND_W_CURRENT_COMPONENT')
-
+obs_kind_names(57) = obs_kind_type(KIND_OCCULTATION_REFRACTIVITY, 'KIND_OCCULTATION_REFRACTIVITY')
+obs_kind_names(58) = obs_kind_type(KIND_OCCULTATION_EXCESSPHASE, 'KIND_OCCULTATION_EXCESSPHASE')
 obs_kind_names(60) = obs_kind_type(KIND_INFRARED_RADIANCE, 'KIND_INFRARED_RADIANCE')
 obs_kind_names(61) = obs_kind_type(KIND_INFRARED_BRIGHT_TEMP, 'KIND_INFRARED_BRIGHT_TEMP')
 obs_kind_names(62) = obs_kind_type(KIND_LANDMASK, 'KIND_LANDMASK')
@@ -728,6 +735,13 @@ endif
 ! being used, restrict the table of contents to only those.
 ! Otherwise, write all known types.
 if (present(use_list)) then
+   ! make sure the list is the right length
+   if (size(use_list) /= max_obs_specific) then
+      call error_handler(E_ERR, 'write_obs_kind', &
+         'use_list(:) must be the same length as number of types', &
+         source, revision, revdate)
+   endif
+
    ntypes = count(use_list(:) > 0)
    restrict = .true.
 else
