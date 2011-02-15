@@ -43,7 +43,12 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-integer, external :: iargc
+interface
+  integer function iargc()
+  end function iargc
+end interface
+
+!integer, external :: iargc
 
 type(assim_model_type) :: x
 type(model_type)       :: var

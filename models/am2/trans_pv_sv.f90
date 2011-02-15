@@ -36,7 +36,12 @@ use time_manager_mod, only : time_type, read_time, set_time, set_date
 
 implicit none
 
-integer, external :: iargc
+interface
+  integer function iargc()
+  end function iargc
+end interface
+
+!integer, external :: iargc
 
 character (len = 128) :: dartSVout, RstFileIn, TrcFileIn
 character (len = 256) :: string1, string2
