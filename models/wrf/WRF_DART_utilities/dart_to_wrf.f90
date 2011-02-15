@@ -65,8 +65,8 @@ integer           :: ind, dart_ind, my_index, io
 character(len=19) :: timestring
 character(len=2)  :: idom
 
-integer, parameter :: max_dom = 10    ! max nested wrf domains
-integer           :: ncid(max_dom), var_id, id, iunit, dart_unit
+integer, parameter :: max_dom = 50    ! max nested wrf domains
+integer            :: ncid(max_dom), var_id, id, iunit, dart_unit
 
 if (debug) print*, 'DART to WRF'
 
