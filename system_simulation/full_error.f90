@@ -35,15 +35,15 @@ character(len=128), parameter :: &
    revdate  = "$Date$"
 
 
-integer, parameter :: num_times = 1
-integer, parameter :: num_samples =  100000000
+integer, parameter :: num_times   = 1
+integer, parameter :: num_samples = 100000000
 
 
 ! ---------------
 ! namelist items
 
 integer            :: ens_size = 80
-character(len=128) :: output_filename = 'full_error'
+character(len=128) :: output_filename = 'final_full'
 
 namelist /full_error_nml/ ens_size, output_filename
 
