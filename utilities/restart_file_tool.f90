@@ -19,10 +19,10 @@ use time_manager_mod,    only : time_type, operator(<), operator(==),      &
                                 set_calendar_type, GREGORIAN, NO_CALENDAR, &
                                 get_calendar_type
 
-use utilities_mod,       only : initialize_utilities, register_module,     &
+use utilities_mod,       only : register_module, do_output,                &
                                 error_handler, nmlfileunit, E_MSG, E_ERR,  &
                                 timestamp, find_namelist_in_file,          &
-                                check_namelist_read, do_output, logfileunit, &
+                                check_namelist_read, logfileunit,          &
                                 do_nml_file, do_nml_term
                                 
 use assim_model_mod,     only : static_init_assim_model, get_model_size,   &
@@ -95,6 +95,7 @@ namelist /restart_file_tool_nml/  &
 
 ! This program should only be run with a single process
 call initialize_mpi_utilities('restart_file_tool')
+
 if(task_count() > 1) &
    call error_handler(E_ERR,'restart_file_tool','Only use single process', &
                       source,revision,revdate)
@@ -355,9 +356,7 @@ endif
 ! Early exit for the 'print_only' option
 10 continue
 
-call timestamp(source,revision,revdate,'end') ! closes the log file.
-
-call finalize_mpi_utilities()
+call finalize_mpi_utilities()   ! now closes log file, too
 
 contains
 
