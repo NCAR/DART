@@ -10,9 +10,21 @@ program full_error
 ! $Revision$
 ! $Date$
 
-use types_mod, only : r8
+! Correct covariances for fixed ensemble sizes.
+! See Anderson, J. L., 2011: Localization and Sampling Error Correction
+!   in Ensemble Kalman Filter Data Assimilation. 
+! Submitted for publication, Jan 2011.  Contact author.
+
+! This version of the program reads the ensemble size and base filename
+! for the output from a namelist.
+
+use types_mod,      only : r8
+use utilities_mod,  only : open_file, close_file, error_handler,       &
+                           find_namelist_in_file, check_namelist_read, &
+                           do_nml_file, do_nml_term, nmlfileunit,      &
+                           initialize_utilities, finalize_utilities, E_ERR
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &          
-   twod_gaussians, random_uniform
+                           twod_gaussians, random_uniform
 
 implicit none
 
@@ -22,33 +34,67 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-integer, parameter :: num_times = 1, num_points =  100000000
-!!!integer, parameter :: num_times = 1, num_points =  10000000
-integer, parameter :: ens_size = 80
+
+integer, parameter :: num_times = 1
+integer, parameter :: num_samples =  100000000
+
+
+! ---------------
+! namelist items
+
+integer            :: ens_size = 80
+character(len=128) :: output_filename = 'full_error'
+
+namelist /full_error_nml/ ens_size, output_filename
+
 
 type (random_seq_type) :: ran_id
-real(r8) :: pairs(2, ens_size), temp(ens_size)
+real(r8), allocatable  :: pairs(:,:), temp(:)
+
 real(r8) :: zero_2(2) = 0.0, cov(2, 2)
 real(r8) :: t_correl, correl_mean, sample_correl, alpha, beta
 real(r8) :: s_mean(2), s_var(2), reg_mean, reg_sd, t_sd1, t_sd2, true_correl_mean
 real(r8) :: tcorrel_sum(201), reg_sum(201), reg_2_sum(201)
-integer i, j, k, bin_num, bin_count(201)
+
+integer  :: i, j, k, bin_num, bin_count(201)
+integer  :: iunit, io
+
+character(len=132) :: outname, errstring
+character(len=16)  :: formstring
+
+!
+! start of executable code
+!
+
+call initialize_utilities('full_error')
+
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "full_error_nml", iunit, .false.)
+read(iunit, nml = full_error_nml, iostat = io)
+call check_namelist_read(iunit, io, "full_error_nml", .false.)
+
+! Record the namelist values used for the run
+if (do_nml_file()) write(nmlfileunit, nml=full_error_nml)
+if (do_nml_term()) write(     *     , nml=full_error_nml)
+
+call close_file(iunit)
 
 call init_random_seq(ran_id)
 
-
 write(*, *) 'stats for ensemble size ', ens_size
 
-bin_count = 0
+allocate(pairs(2, ens_size), temp(ens_size))
+
+bin_count   = 0
 tcorrel_sum = 0.0_r8
-reg_sum = 0.0_r8
-reg_2_sum = 0.0_r8
+reg_sum     = 0.0_r8
+reg_2_sum   = 0.0_r8
 
 ! Uniformly distributed sequence of true correlations  
-do j = 1, num_points
+do j = 1, num_samples
    ! Assume that true correlation is uniform [-1,1]
-   t_correl = -1.0_r8 + 2.0_r8 * ((j - 1) / (num_points - 1.0_r8))
-   if(j > num_points) t_correl = 0.0_r8
+   t_correl = -1.0_r8 + 2.0_r8 * ((j - 1) / (num_samples - 1.0_r8))
+   if(j > num_samples) t_correl = 0.0_r8
 
    do k = 1, num_times
 
@@ -56,8 +102,10 @@ do j = 1, num_points
       t_sd2 = 1.0_r8
 
       ! Generate the covariance matrix for this correlation
-      cov(1, 1) = t_sd1**2;    cov(2, 2) = t_sd2**2
-      cov(1, 2) = t_correl * t_sd1 * t_sd2; cov(2, 1) = cov(1, 2)
+      cov(1, 1) = t_sd1**2
+      cov(2, 2) = t_sd2**2
+      cov(1, 2) = t_correl * t_sd1 * t_sd2
+      cov(2, 1) = cov(1, 2)
    
       ! Loop to generate an ensemble size sample from this correl
       ! Generate a random sample of size ens_size from something with this correlation
@@ -68,7 +116,8 @@ do j = 1, num_points
       ! Compute the sample correlation
       call comp_correl(pairs, ens_size, sample_correl)
 
-      ! Bin statistics for each 0.01 sample correlation bin; start with just mean true correlation
+      ! Bin statistics for each 0.01 sample correlation bin; 
+      !  start with just mean true correlation
       bin_num = (sample_correl + 1.0_r8) / 0.01_r8   + 1
       ! Keep a sum of the sample_correl and squared to compute standard deviation
       tcorrel_sum(bin_num) = tcorrel_sum(bin_num) + t_correl
@@ -89,26 +138,66 @@ do j = 1, num_points
    end do
 end do
 
+! make the size of the integer output .X, .XX, .XXX, etc
+! depending on the number of decimal digits in the value.
+if (ens_size < 10) then
+   formstring = '(2A,I1)'
+else if (ens_size < 100) then
+   formstring = '(2A,I2)'
+else if (ens_size < 1000) then
+   formstring = '(2A,I3)'
+else if (ens_size < 10000) then
+   formstring = '(2A,I4)'
+else if (ens_size < 100000) then
+   formstring = '(2A,I5)'
+else 
+   formstring = '(2A,I8)'
+endif
 
-do i = 1, 201
-   if(bin_count(i) > 0) then
-      ! Compute the standard deviation of the true correlations
-      true_correl_mean = tcorrel_sum(i) / bin_count(i)
-      reg_mean = reg_sum(i) / bin_count(i)
-      reg_sd = sqrt((reg_2_sum(i) - bin_count(i) * reg_mean**2) / (bin_count(i) - 1))
+! filename
+write(outname, formstring) trim(output_filename), '.', ens_size
 
-      if(reg_sd <= 0.0_r8) then
-         alpha = 1.0_r8
-      else
-         !!!beta = reg_mean**2 / reg_sd**2
-      ! CRAZY IDEA???
-         beta = reg_mean**2 / (reg_sd**2 * (1.0_r8 + 1.0_r8 / ens_size))
-         alpha = beta / (1.0_r8 + beta)
-      endif
+! text file, overwrite existing file if present
+iunit = open_file(outname, 'formatted', 'write')
 
-      write(*, *) 'bin, count, mean ', i, bin_count(i), true_correl_mean, alpha
+! always generate exactly 200 entries in the output file
+do i = 1, 200
+   ! must have at least 2 counts to compute a std dev
+   if(bin_count(i) <= 1) then
+      write(errstring, *) 'Bin ', i, ' has ', bin_count(i), ' counts'
+      call error_handler(E_ERR,'full_error', errstring, &
+         source, revision, revdate, text2="All bins must have at least 2 counts")
    endif
+   
+   ! Compute the standard deviation of the true correlations
+   true_correl_mean = tcorrel_sum(i) / bin_count(i)
+   reg_mean = reg_sum(i) / bin_count(i)
+   reg_sd = sqrt((reg_2_sum(i) - bin_count(i) * reg_mean**2) / (bin_count(i) - 1))
+
+   if(reg_sd <= 0.0_r8) then
+      alpha = 1.0_r8
+   else
+      !!!beta = reg_mean**2 / reg_sd**2
+   ! Correct for bias in the standard deviation for very small ensembles, too 
+      beta = reg_mean**2 / (reg_sd**2 * (1.0_r8 + 1.0_r8 / ens_size))
+      alpha = beta / (1.0_r8 + beta)
+   endif
+
+   write(*, *) 'bin, count, mean ', i, bin_count(i), true_correl_mean, alpha
+   write(iunit, 10)   i, bin_count(i), true_correl_mean, alpha
 end do
+
+10 format (I4,I9,2G25.16)
+
+call close_file(iunit)
+
+! print out just to stdout how many counts, if any, fell beyond bin 200
+write(*, *) 'bin, count, mean ', 201, bin_count(201), 0, 0
+
+deallocate(pairs, temp)
+
+call finalize_utilities()
+
 end program full_error
 
 
