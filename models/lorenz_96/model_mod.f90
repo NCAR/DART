@@ -529,7 +529,7 @@ enddo
 call nc_check(nf90_sync(ncFileID), &
               'nc_write_model_atts', 'sync, '//trim(filename))
 
-write (*,*)'Model attributes written, netCDF file synched ...'
+! write (*,*)'Model attributes written, netCDF file synched ...'
 
 end function nc_write_model_atts
 
