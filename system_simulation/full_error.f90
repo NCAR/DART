@@ -187,7 +187,7 @@ do i = 1, 200
    write(iunit, 10)   i, bin_count(i), true_correl_mean, alpha
 end do
 
-10 format (I4,I9,2G25.16)
+10 format (I4,I9,2G25.14)
 
 call close_file(iunit)
 
@@ -198,26 +198,23 @@ deallocate(pairs, temp)
 
 call finalize_utilities()
 
-end program full_error
+! end of main program
 
-
+contains
 
 !-----------------------------------------------------
 
 subroutine comp_correl(ens, n, correl)
 
-use types_mod, only : r8
-
-implicit none
-
-integer, intent(in) :: n
-real(r8), intent(in) :: ens(2, n)
+integer,  intent(in)  :: n
+real(r8), intent(in)  :: ens(2, n)
 real(r8), intent(out) :: correl
+
 real(r8) :: sum_x, sum_y, sum_xy, sum_x2, sum_y2
 
 
-sum_x = sum(ens(2, :))
-sum_y = sum(ens(1, :))
+sum_x  = sum(ens(2, :))
+sum_y  = sum(ens(1, :))
 sum_xy = sum(ens(2, :) * ens(1, :))
 sum_x2 = sum(ens(2, :) * ens(2, :))
 
@@ -233,21 +230,18 @@ end subroutine comp_correl
 
 subroutine sample_mean_var(x, n, mean, var)
 
-use types_mod, only : r8
-
-implicit none
-
-integer, intent(in) :: n
-real(r8), intent(in) :: x(n)
+integer,  intent(in)  :: n
+real(r8), intent(in)  :: x(n)
 real(r8), intent(out) :: mean, var
 
 real(r8) :: sx, s_x2
 
-sx = sum(x)
+sx   = sum(x)
 s_x2 = sum(x * x)
 mean = sx / n
-var = (s_x2 - sx**2 / n) / (n - 1)
+var  = (s_x2 - sx**2 / n) / (n - 1)
 
 end subroutine sample_mean_var
 
 
+end program full_error
