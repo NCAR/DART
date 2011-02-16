@@ -13,7 +13,7 @@ module obs_model_mod
 use types_mod,            only : r8
 use utilities_mod,        only : register_module, error_handler,     &
                                  E_ERR, E_MSG, E_WARN,               &
-                                 get_unit, file_exist, do_output
+                                 get_unit, file_exist, do_output, set_output
 use assim_model_mod,      only : aget_closest_state_time_to, get_model_time_step, &
                                  open_restart_write, open_restart_read,           &
                                  awrite_state_restart, close_restart, adv_1step,  &
@@ -45,6 +45,14 @@ character(len=128), parameter :: &
 logical :: module_initialized  = .false.
 integer :: print_timestamps    = 0
 integer :: print_trace_details = 0
+
+! how to write out the state vector for the model_advance
+! generally you want this to be binary for speed/accuracy.
+! however in cases of needing to see what's going on, ascii
+! can be nice.  note that this is independent of the setting
+! for binary/ascii for restart/ic files.  these model advance
+! files are never seen by the user if all is working as expected.
+character(len=16) :: write_format = 'unformatted'
 
 logical :: debug = .false.   ! set to true to get more status msgs
 
@@ -161,7 +169,7 @@ if (print_trace_details > 0) then
       start_time = ens_time - delta_time / 2 + set_time(1, 0)
    endif
    end_time = ens_time + delta_time / 2
-   call timechat(ens_time,    'move_ahead', .false.,   'Current model data time:               ')
+   call timechat(ens_time,    'move_ahead', .false.,  'Current model data time:               ')
    call timechat(start_time,  'move_ahead', .false.,  'Current assimilation window starts at: ')
    call timechat(end_time,    'move_ahead', .false.,  'Current assimilation window ends at:   ')
    !call timechat(delta_time,  'move_ahead', .false., 'Width of assimilation window:          ')
@@ -184,7 +192,7 @@ end_time = time2 + delta_time / 2
 
 ! Output very brief current start and end time at the message level
 if (print_trace_details == 0) then
-   call timechat(start_time,  'move_ahead', .false.,   'Next assimilation window starts at: ')
+   call timechat(start_time,  'move_ahead', .false.,  'Next assimilation window starts at: ')
    call timechat(end_time,    'move_ahead', .false.,  'Next assimilation window ends   at: ')
 endif
 
@@ -201,7 +209,7 @@ if(next_time < start_time .or. next_time > end_time .or. print_trace_details > 0
 
 
    if (time2 /= ens_time) then
-      call timechat(next_time,   'move_ahead', .false.,  'Next available observation time:       ')
+      call timechat(next_time,   'move_ahead', .false., 'Next available observation time:       ')
       call timechat(time2,       'move_ahead', .false., 'Next data time should be:              ', &
          'Not within current window, model will be called to advance state.')
       call timechat(start_time,  'move_ahead', .false., 'Next assimilation window starts at:    ')
@@ -218,24 +226,27 @@ if(next_time < start_time .or. next_time > end_time .or. print_trace_details > 0
    !call error_handler(E_MSG, ' ', ' ')
 
    if (next_time < start_time .or. next_time > end_time) then
-      !call timechat(start_time,  'move_ahead', .false., 'Next assimilation window starts at:    ')
-      !call timechat(end_time,    'move_ahead', .false., 'Next assimilation window ends   at:    ')
       if (next_time < start_time) then
          call error_handler(E_MSG, 'move_ahead', &
             'Next observation cannot be earlier than start of new time window')
-         call error_handler(E_MSG, 'move_ahead', &
-            'If this is the start of the obs_seq file, ')
-         call error_handler(E_MSG, 'move_ahead', &
-            'use filter namelist to set first obs or data init time.')
+         call timechat(next_time,   'move_ahead', .false., 'Next available observation      at:    ')
+         call timechat(start_time,  'move_ahead', .false., 'Next assimilation window starts at:    ')
+         call timechat(ens_time,    'move_ahead', .false., 'Current model data time:               ')
+         errstring1 = 'If this is the start of the obs_seq file, '
+         errstring2 = 'use filter namelist to set first obs or data init time.'
       else
          call error_handler(E_MSG, 'move_ahead', &
             'Next observation is later than end of new time window')
-         call error_handler(E_MSG, 'move_ahead', &  
-            'should not happen; code has miscomputed how far to advance, somehow')
+         call timechat(next_time,   'move_ahead', .false., 'Next available observation      at:    ')
+         call timechat(end_time,    'move_ahead', .false., 'Next assimilation window ends   at:    ')
+         call timechat(ens_time,    'move_ahead', .false., 'Current model data time:               ')
+         errstring1 = 'should not happen; code has miscomputed how far to advance'
+         errstring2 = ''
       endif
       call error_handler(E_MSG, ' ', ' ')
       call error_handler(E_ERR, 'move_ahead', &
-        'Inconsistent model state/observation times, cannot continue', source, revision, revdate)
+        'Inconsistent model state/observation times, cannot continue', &
+         source, revision, revdate, text2=errstring1, text3=errstring2)
    endif
 endif
 
@@ -248,8 +259,6 @@ call get_obs_time_range(seq, start_time, end_time, key_bounds, num_obs_in_set, &
 ! ok, not really a time detail, but if turned off, the output is pretty much
 ! the same as the original.
 if (print_trace_details > 0) then
-   !call timechat(start_time, 'move_ahead', .false., 'Next assimilation window starts at:    ')
-   !call timechat(end_time,   'move_ahead', .false., 'Next assimilation window ends at:      ')
    write (errstring, '(A,I8,A)') 'Next assimilation window contains up to ', &
                                   num_obs_in_set, ' observations'
    call error_handler(E_MSG, 'move_ahead', errstring)
@@ -362,7 +371,7 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
 
       ! Open a restart file and write state following a target time
       ! Force writing to binary to have bit-wise reproducing advances
-      ic_file_unit = open_restart_write(trim(ic_file_name(i)), "unformatted")
+      ic_file_unit = open_restart_write(trim(ic_file_name(i)), write_format)
       call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), ic_file_unit, target_time)
       call close_restart(ic_file_unit)
 
@@ -496,20 +505,27 @@ end if SHELL_ADVANCE_METHODS
 ! any process that owns members, check that they advanced ok.
 if (have_members(ens_handle, ens_size)) then
 
-   ! Get the time of the ensemble, assume consistent across all ensemble copies
-   call get_ensemble_time(ens_handle, 1, ens_time)
-   
-   if (ens_time /= target_time .or. print_trace_details > 0) then
+   do i = 1, my_num_state_copies
 
+      ! Get times of all ensemble members, one by one, to catch errors
+      ! when some advanced ok but not all even if they appeared to.
+      call get_ensemble_time(ens_handle, i, ens_time)
+      
       ! error out if model state did not advance to when requested.
       if (ens_time /= target_time) then
+         ! make sure times print out on whatever task this is (it uses msgs)
+         call set_output(.true.)
          call timechat(ens_time,    'advance_state', .true.,   'Model advance time is now:             ')
          call timechat(target_time, 'advance_state', .false.,  'Model advance time NOT what requested: ')
-         call error_handler(E_ERR, 'advance_state', 'Model advance complete but model time not correct')
-      else
-         !call error_handler(E_MSG, '', '')
-         call error_handler(E_MSG, 'advance_state', 'Model advance complete, model time updated to requested time')
+       
+         write(errstring2, *) 'in timestamp on ensemble member ', ens_handle%my_copies(i)
+         call error_handler(E_ERR,  'advance_state', 'Model advance complete but model time not correct', &
+                            source, revision, revdate, text2=errstring2)
       endif
+   enddo
+
+   if (print_trace_details > 0) then
+      call error_handler(E_MSG, 'advance_state', 'Model advance complete, model time updated to requested time')
    endif
 
 endif
@@ -562,7 +578,7 @@ endif
 
 ! should not reach here with valid values of async.
 write(errstring,*) 'input.nml - async is ',async,' must be 0, 2, 4 or 5'
-call error_handler(E_ERR, 'work_to_do', errstring, '', '', '')
+call error_handler(E_ERR, 'work_to_do', errstring, source, revision, revdate)
 
 end subroutine wait_if_needed
 
