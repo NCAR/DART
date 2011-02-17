@@ -42,6 +42,22 @@ which generates the auxiliary information needed when
 using sampling error correction in the filter.
 </P>
 <P>
+To enable the sampling error correction algorithm in
+the filter, set the namelist item
+<a href="../assim_tools/assim_tools_mod.html#Namelist">
+&amp;assim_tools_nml :: sampling_error_correction</a>
+to true, and copy the corresponding ensemble size 
+file into the run directory.  A set of precomputed
+files for various ensemble sizes can be found in the
+<em class=file>system_simulation/full_error_precomputed_tables</em>
+directory.  To generate a file for a different ensemble
+size, build the executables in the work directory,
+set the ens_size namelist item in the input.nml namelist file,
+and run full_error.  It generates a large number of samples
+and may take between 10-40 minutes to run, depending on the
+ensemble size and the speed of your processor.
+</P>
+<P>
 Talk to Jeff Anderson about the other programs in
 this directory.
 </P>

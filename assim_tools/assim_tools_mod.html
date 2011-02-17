@@ -43,51 +43,49 @@ correction algorithms for both mean and spread. In addition, algorithms
 to do a variety of flavors of filters including the EAKF, ENKF, particle 
 filter, and kernel filters are included. The parallel implementation 
 that allows each observation to update all state variables that are close
-to it at the same time is described in Anderson (2007).
+to it at the same time is described in Anderson and Collins (2007).
 </P>
 
-<H4>Filter Types</H4>
 <A NAME="FilterTypes"></A>
+<H4>Filter Types</H4>
 <P>
 Available observation space filter types include:
 <ul>
-<li> 1 = EAKF 
-<li> 2 = ENKF
+<li> 1 = EAKF (Ensemble Adjustment Kalman Filter)
+<li> 2 = ENKF (Ensemble Kalman Filter)
 <li> 3 = Kernel filter
 <li> 4 = Particle filter
 <li> 5 = Random draw from posterior  (talk to Jeff before using)
 <li> 6 = Deterministic draw from posterior with fixed kurtosis (ditto)
 <li> 7 = Boxcar kernel filter
-<li> 8 = alternative Boxcar (ditto)
+<li> 8 = Rank histogram filter (see Anderson 2011)
 </ul>
 Most users use type 1, the EAKF.
 </P>
 
 
-<H4>Localization</H4>
 <A NAME="Localization"></A>
+<H4>Localization</H4>
 <P>
 <em>Localization</em> controls how far the impact of an observation extends.
 The namelist items related to localization are spread over several
 different individual namelists, so we have made a single collected 
 description of them here along with some guidance on setting the values.
-<br>
-<br>
+<br /> <br />
 This discussion centers on the mechanics of how you control
 localization in DART with the namelist items, and a little bit about
 pragmatic approaches to picking the values.  There is no discussion
 about the theory behind localization - contact Jeff Anderson for more
 details.
 Additionally, the discussion here applies specifically to models using
-the 3d_sphere location module.  The same process takes place in 1d
+the 3d-sphere location module.  The same process takes place in 1d
 models but the details of the location module namelist is different.
-<br>
-<br>
+<br /> <br />
 The following namelist items related to 3d-sphere localization
 are all found in the <em class=file>input.nml</em> file:
 <dl>
 <dt>
-<em>&amp;assim_tools_nml :: cutoff<br></em>
+<em>&amp;assim_tools_nml :: cutoff</em><br />
 valid values: 0.0 to infinity
 <dd>
 This is the value, in radians, of the half-width of the localization
@@ -97,10 +95,9 @@ on the covariance values.  Then a multiplier, based on the 'select_localization'
 setting (see below) decreases the increment as the distance
 between the obs and the state vector item increases.  In all cases
 if the distance exceeds 2*cutoff, the increment is 0.
-<br>
-<br>
+<br /> <br />
 <dt>
-<em>&amp;cov_cutoff_nml :: select_localization<br></em>
+<em>&amp;cov_cutoff_nml :: select_localization</em><br />
 valid values: 1=Gaspari-Cohn; 2=Boxcar; 3=Ramped Boxcar
 <dd>
 Controls the shape of the multiplier function applied to the
@@ -113,9 +110,9 @@ Most users use type 1 localization.
 <ul>
 <li>Type 1 (Gaspari-Cohn) has a value of 1 at 0 distance, 0 at 2*cutoff, and
 decreases in an approximation of a gaussian in between.
-<br> <br>
+<br /> <br />
 <li>Type 2 (Boxcar) is 1 from 0 to 2*cutoff, and then 0 beyond.  
-<br> <br>
+<br /> <br />
 <li>Type 3 (Ramped Boxcar) is 1 to cutoff and then ramps linearly down to 0 at 2*cutoff.
 </ul>   
 </td>
@@ -126,28 +123,25 @@ decreases in an approximation of a gaussian in between.
 </tr>
 </table>
 Click image for larger version.
-<br>
-<br>
+<br /> <br />
 <dt>
-<em>&amp;location_nml :: horiz_dist_only<br></em>
+<em>&amp;location_nml :: horiz_dist_only</em><br />
 valid values:  .true., .false.
 <dd>
 If set to .true., then the vertical location of all items, observations
 and state vector both, are ignored when computing distances
 between pairs of locations.  This has the effect that all items within
 a vertical-cylindrical area are considered the same distance away.
-<br>
-<br>
+<br /> <br />
 If set to .false., then the full 3d separation is computed.  Since
 the localization is computed in radians, the 2d distance is easy
 to compute but a scaling factor must be given for the vertical
 since vertical coordinates can be in meters, pressure, or model levels.
 See below for the 'vert_normalization_xxx' namelist items.
-<br>
-<br>
+<br /> <br />
 <dt>
-<em>&amp;location_nml :: vert_normalization_{pressure,height,level}<br></em>
-valid values: real numbers, in pascals, meters, and index, respectively
+<em>&amp;location_nml :: vert_normalization_{pressure,height,level,scale_height}</em><br />
+valid values: real numbers, in pascals, meters, index, and value respectively
 <dd>
 If 'horiz_dist_only' is set to .true., these are ignored.  If set to .false.,
 these are required.  They are the amount of that quantity that is
@@ -159,8 +153,7 @@ distance in the vertical than horizontal, use a larger value.  If you want
 to localize more sharply in the vertical, use a smaller number.
 The type of localization used is set by which type of vertical coordinate 
 the observations and state vector items have.
-<br>
-<br>
+<br /> <br />
 If you have observations with different vertical coordinates (e.g. pressure
 and height), or if your observations have a different vertical coordinate
 than your state vector items, or if you want to localize in a different
@@ -170,10 +163,9 @@ will need to modify or add a <em class=code>get_close()</em> routine
 in your <em class=file>model_mod.f90</em> file.  See the discussion in
 the <a href="../location/threed_sphere/location_mod.html">location module</a>
 documentation for how to transform vertical coordinates before localization.
-<br>
-<br>
+<br /> <br />
 <dt>
-<em>&amp;assim_tools_nml :: adaptive_localization_threshold<br></em>
+<em>&amp;assim_tools_nml :: adaptive_localization_threshold</em><br />
 valid values: integer counts, or -1 to disable
 <dd>
 Used to dynamically shrink the localization cutoff in areas of dense
@@ -185,39 +177,84 @@ observations within 2*revised_cutoff
 would now be the threshold value.  The cutoff value is computed
 for each observation as it is assimilated, so can be different for 
 each one.
-<br>
-<br>
+<br /> <br />
 <dt>
-<em>&amp;assim_tools_nml :: output_localization_diagnostics<br></em>
+<em>&amp;assim_tools_nml :: adaptive_cutoff_floor</em><br />
+valid values: 0.0 to infinity, or -1 to disable
+<dd>
+If using adaptive localization (adaptive_localization_threshold 
+set to a value greater than 0), then this value can be used to
+set a minimum cutoff distance below which the adaptive code will
+not shrink.  Set to -1 to disable.  Ignored if not using
+adaptive localization.
+<br /> <br />
+<dt>
+<em>&amp;assim_tools_nml :: output_localization_diagnostics</em><br />
 valid values: .true., .false.
 <dd>
 If .true. and if adaptive localization is on, a single text line is printed 
 to a file giving the original cutoff and number of observations, and the 
 revised cutoff and new number of counts within this smaller cutoff for any 
 observation which has nearby observations which exceed the adaptive threshold count.
-<br>
-<br>
+<br /> <br />
 <dt>
-<em>&amp;assim_tools_nml :: localization_diagnostics_file <br></em>
+<em>&amp;assim_tools_nml :: localization_diagnostics_file </em><br />
 valid values: text string
 <dd>
 Name of the file where the adaptive localization diagnostic 
 information is written.
+<br /> <br />
+<dt>
+<em>&amp;assim_tools_nml :: special_localization_obs_types </em><br />
+valid values: list of 1 or more text strings
+<dd>
+The cutoff localization setting is less critical in DART than
+it might be in other situations since during the assimilation DART
+computes the covariances between observations and nearby state
+vector locations and that is the major factor in controlling the
+impact an observation has.  For conventional observations 
+fine-tuning the cutoff based on observation type is not recommended
+(it is possible to do more harm than good with it).
+But in certain special cases
+there may be valid reasons to want to change the localization cutoff
+distances drastically for certain kinds of observations.  This and
+the following namelist items allow this.
+<br /> <br />
+Optional list of observation types (e.g. "RADAR_REFLECTIVITY",
+"AIRS_RADIANCE") which will use a different cutoff distance.
+Any observation types not listed here will use the standard cutoff
+distance (set by the 'cutoff' namelist value).  This is only
+implemented for the threed_sphere location module (the one
+used by most geophysical models.)
+<br /> <br />
+<dt>
+<em>&amp;assim_tools_nml :: special_localization_cutoffs </em><br />
+valid values: list of 1 or more real values, 0.0 to infinity
+<dd>
+A list of real values, the same length as the list of observation
+types, to be used as the cutoff value for each of the given
+observation types.  This is only
+implemented for the threed_sphere location module (the one
+used by most geophysical models.)
+</dd>
 </dl>
 </P>
 <P>
-Usually global model users do not use adaptive localization
-unless they have observations which are closely clustered in some areas
-and sparse in other.  Most people use Gaspari-Cohn covariance cutoff.
-Most localize in the vertical, but tend to use large values so as to
-not disturb vertical structures.  The value of the cutoff itself is the
+There are a large set of options for localization.  Individual cases
+may differ but in general the following guidelines might help.
+Most users use the Gaspari-Cohn covariance cutoff type.
+The value of the cutoff itself is the
 item most often changed in a sensitivity run to pick a good general
 value, and then left as-is for subsequent runs.
+Most localize in the vertical, but tend to use large values so as to
+not disturb vertical structures.  
+Users do not generally use adaptive localization, unless their
+observations are very dense in some areas and sparse in others.
 </P>
 <P>
-In general, the approach to setting good values for localization is to err
+The advice for setting good values for the cutoff value is to err
 on the larger side - to estimate for all types of observations under all
-conditions, what the farthest feasible impact or correlated structure size
+conditions what the farthest feasible impact or correlated structure size
 would be.  The downsides of guessing too large are 1) run time is slower, 
 and 2) there can be spurious correlations between state vector items and 
 observations
@@ -243,8 +280,10 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 <pre>
 <em class=call>namelist / assim_tools_nml / </em> &amp;
 filter_kind, cutoff, sort_obs_inc, print_every_nth_obs, &amp;
-spread_restoration, sampling_error_correction, adaptive_localization_threshold, &amp;
-output_localization_diagnostics, localization_diagnostics_file
+spread_restoration, sampling_error_correction, &amp;
+adaptive_localization_threshold, adaptive_cutoff_floor, &amp;
+output_localization_diagnostics, localization_diagnostics_file, &amp;
+special_localization_obs_types, special_localization_cutoffs
 </pre>
 </div>
 
@@ -264,7 +303,9 @@ This namelist is read in a file called <em class=file>input.nml</em>
     <!--  type  --><TD valign=top>integer      </TD>
     <!--descript--><TD>Selects the variant of filter 
         to be used. 1=EAKF, 2=ENKF, 3=Kernel filter, 
-        4=particle filter.  7=Boxcar kernel filter Default: 1.</TD></TR>
+        4=particle filter,  7=Boxcar kernel filter,
+        8=Rank Histogram Filter. 
+        Default: 1.</TD></TR>
 
 <TR><!--contents--><TD valign=top>cutoff     </TD>
     <!--  type  --><TD valign=top>real(r8)   </TD>
@@ -289,11 +330,14 @@ This namelist is read in a file called <em class=file>input.nml</em>
 
 <TR><!--contents--><TD valign=top>sampling_error_correction</TD>
     <!--  type  --><TD valign=top>logical                  </TD>
-    <!--descript--><TD> True uses special input files generated by correl_error.f90
-     in system_simulation to reduce errors in the regression step. Special input
-     files corresponding with the ensemble size being used are required. This 
-     option is not yet fully supported. Contact the DART developers group if you 
-     have questions. 
+    <!--descript--><TD> True uses special input files generated by full_error.f90
+     in the system_simulation directory to reduce errors in the regression step. 
+     Special input files corresponding with the ensemble size being used are required.  
+     The files have the name "final_full.X" where X is the number of ensemble members,
+     and most common ensemble sizes have precomputed files in that same directory.
+     There is no dependence on which model is being used, only on the number of
+     ensemble members.  The input file must exist in the directory where the filter
+     program is executing.
                Default: false </TD></TR>
 
 <TR><!--contents--><TD valign=top>adaptive_localization_threshold</TD>
@@ -306,6 +350,14 @@ This namelist is read in a file called <em class=file>input.nml</em>
      is tuned for a three_dimensional spherical implementation for numerical
      weather prediction models at present.
                Default: -1 </TD></TR>
+
+<TR><!--contents--><TD valign=top>adaptive_cutoff_floor</TD>
+    <!--  type  --><TD valign=top>real</TD>
+    <!--descript--><TD> If adaptive localization is enabled and if this value is
+     greater than 0, then the adaptive cutoff distance will be set to a value no 
+     smaller than the distance specified here.  This guarentees a minimum cutoff 
+     value even in regions of very dense observations.
+               Default: -1.0 </TD></TR>
 
 <TR><!--contents--><TD valign=top>output_localization_diagnostics</TD>
     <!--  type  --><TD valign=top>logical</TD>
@@ -324,21 +376,41 @@ This namelist is read in a file called <em class=file>input.nml</em>
     <!--  type  --><TD valign=top>character(len=129)</TD>
     <!--descript--><TD> Filename for the localization diagnostics information.
      This file will be opened in append mode, so new information will be written
-     at the end of any existing data.
+     at the end of any existing data.  
+               Default: "localization_diagnostics"</TD></TR>
+
+<TR><!--contents--><TD valign=top>special_localization_obs_types</TD>
+    <!--  type  --><TD valign=top>character(len=32), dimension(:)</TD>
+    <!--descript--><TD>Optional list of observation types (e.g. "RADAR_REFLECTIVITY",
+                       "RADIOSONDE_TEMPERATURE") which will use a different cutoff
+                       value other than the default specified by the 'cutoff' namelist.
+                       This is only implemented for the 'threed_sphere' locations module.
+               Default: 'null' (string to indicate an empty list)</TD></TR>
+
+<TR><!--contents--><TD valign=top>special_localization_cutoffs</TD>
+    <!--  type  --><TD valign=top>real(r8), dimension(:)</TD>
+    <!--descript--><TD>Optional list of real values which must be the same 
+                       length and in the same order as the observation types list
+                       given for the 'special_localization_obs_types' item.  
+                       These values will set a different cutoff distance for localization
+                       based on the type of the observation currently being assimilated.
+                       Any observation type not in the list will use the default cutoff value.  
+                       This is only implemented for the 'threed_sphere' locations module.
+               Default: MISSING_R8</TD></TR>
 
 <TR><!--contents--><TD valign=top>print_every_nth_obs </TD>
     <!--  type  --><TD valign=top>integer             </TD>
     <!--descript--><TD> If set to a value <em class=code>N</em> greater than 0, 
-             the observation assimilation loop prints out a progress message 
-             every <em class=code>N</em>th observations.  This can be useful to
-             estimate the expected run time for a large observation file, 
-             or to verify progress is being made in cases with suspected problems.
+                        the observation assimilation loop prints out a progress message 
+                        every <em class=code>N</em>th observations.  This can be useful to
+                        estimate the expected run time for a large observation file, 
+                        or to verify progress is being made in cases with suspected problems.
              Default: 0 </TD></TR>
 
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--==================================================================-->
 
@@ -393,7 +465,7 @@ may be read from file <em class=file>input.nml</em>.
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="filter_assim"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call filter_assim(ens_handle, obs_ens_handle, obs_seq, keys, 
 ens_size, num_groups, obs_val_index, inflate, ens_mean_copy, ens_sd_copy, 
@@ -482,7 +554,7 @@ inflation_only is true, otherwise the state is also updated.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -507,7 +579,20 @@ inflation_only is true, otherwise the state is also updated.
 <H2>REFERENCES</H2>
 <OL>
 <LI>Anderson, Jeffrey L. "A Local Least Squares Framework for Ensemble Filtering"
-April 2003, MWR 131, pp 634-642</LI>
+April 2003, MWR 131, pp 634-642,
+doi: 10.1175/1520-0493(2003)131<0634:ALLSFF>2.0.CO;2</LI>
+<LI> Anderson, J., Collins, N., 2007,
+"Scalable Implementations of Ensemble Filter Algorithms for Data Assimilation"
+Journal of Atmospheric and Oceanic Technology, 24, 1452-1463,
+doi: 10.1175/JTECH2049.1</LI>
+<LI>Anderson, Jeffrey L. "A Non-Gaussian Ensemble Filter Update for Data Assimilation"
+November 2010, MWR 139, pp 4186-4198,
+DOI: 10.1175/2010MWR3253.1</LI>
+<LI>Anderson, J. L. (2011),
+"Localization and Sampling Error Correction
+in Ensemble Kalman Filter Data Assimilation"
+Submitted for publication, Jan 2011.  
+Contact author.</LI>
 </OL>
 
 <!--==================================================================-->
@@ -588,9 +673,9 @@ N/A
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
-This open source software is provided by UCAR, "as is",<br>
-without charge, subject to all terms of use at<br>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>

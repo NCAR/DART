@@ -48,12 +48,13 @@
    time-stepping capabilities of the model being used in the assimilation.
 </P>
 
+<H4>Overview of Program Flow</H4>
 <P>
    The basic execution loop is:
 </P>
 <UL><LI>Read in model initial conditions, observations, set up and initialize</LI>
     <LI>Until out of observations:
-    <UL><LI>Run multiple copies of the model to update data states</LI>
+    <UL><LI>Run multiple copies of the model to get forecasts of model state</LI>
         <LI>Assimilate all observations in the current time window</LI>
         <LI>Repeat</LI>
     </UL></LI>
@@ -66,16 +67,22 @@
    assimilation system, a diagram of the entire execution cycle, the options
    and features.
 </P>
+<H4>Free run/Forecast After Assimilation</H4>
 <P>
-   Separate scripting can be done to support forecasts based on the
-   assimilated data states.  After filter exits, the models can be
+   Separate scripting can be done to support forecasts starting from the
+   analyzed model states.  After filter exits, the models can be
    run freely (with no assimilated data) further forward in time
    using the last updated model state vectors from filter.
 </P>
+<H4>Verification/Comparison Without Assimilation</H4>
 <P>
-   To do two identical runs of an ensemble, with and without assimilating
-   data, set all the observation types to be 'evaluate only' in the obs_kind_mod
-   section of the namelist and turn inflation off.  
+   To compare results of an experiment with and without assimilating data, 
+   do one run assimilating the observations.  Then do a second run where
+   all the observation types are moved to the 
+   <em class="code">evaluate_these_obs_types</em>
+   list in the <em class="code">&amp;obs_kind_nml</em>
+   section of the namelist.  Also turn inflation off by setting both 
+   <em class="code">inf_flavor</em> values to 0 in the &amp;filter_nml namelist.  
    The forward operators will still be called, but they will have no
    impact on the model state.  Then the two sets of diagnostic state space
    netcdf files can be compared to evaluate the impact of assimilating 
@@ -94,6 +101,7 @@
    to a different location - e.g. scratch space on a large filesystem - since the
    data files for 10s to 100s of copies of a model can get very large.
 </P>
+<H4>Types of Filters available</H4>
 <P>
    The different types of assimilation algorithms 
    (EAKF, ENKF, Kernel filter, Particle filter, etc.) are determined
@@ -102,6 +110,7 @@
    Despite having 'filter' in the name, they are assimilation algorithms
    and so are implemented in <em class=file>assim_tools_mod.f90</em>.
 </P>
+<H4>DART Quality Control Flag added to Output Observation Sequence File</H4>
 <P>
    The filter adds a quality control field with metadata 'DART quality control'
    to the obs_seq.final file. At present, this field can have the following
@@ -128,12 +137,16 @@
 </TABLE>
 
 <P>
-   The filter also can perform an outlier threshold test on observations. If
-   the prior ensemble mean differs from the observed value by more than a
-   specified number of standard deviations, it is not used and the DART
-   quality control field is set to 7.
+   The outlier test computes the difference between the observation value
+   and the prior ensemble mean.  It then computes a standard deviation by
+   taking the square root of the sum of the observation error variance and
+   the prior ensemble variance for the observation.  If the difference
+   between the ensemble mean and the observation value is more than the
+   specified number of standard deviations, then the observation is not
+   used and the DART quality control field is set to 7.
 </P>
 
+<H4>Detailed Program Execution Flow</H4>
 <P>
 The detailed execution flow inside the filter program is:
 
@@ -163,7 +176,8 @@ The detailed execution flow inside the filter program is:
 </ul>
 <li>Apply prior inflation if requested. </li>
 <li>Compute ensemble of prior observation values with forward operators. </li>
-<li>Compute and write out prior state space diagnostics. </li>
+<li>Compute and write out prior state space diagnostics. (Note this is AFTER
+    any prior inflation has been applied.)</li>
 <li>Compute and write out prior observation space diagnostics. </li>
 <li>Assimilate all observations in this window: </li>
 <ul>
@@ -171,9 +185,9 @@ The detailed execution flow inside the filter program is:
 <li>Get all state vector locations and kinds. </li>
 <li>For each observation: </li>
 <ul>
-<li>Compute the observation increment. </li>
+<li>Compute the observation increments. </li>
 <li>Find all other obs and states within localization radius. </li>
-<li>Compute the correlation covariance between obs and state items. </li>
+<li>Compute the covariance between obs and state variables. </li>
 <li>Apply increments weighted by correlation values. </li>
 <li>Apply increments to any remaining unassimilated observations. </li>
 <li>Loop until all observations in window processed. </li>
@@ -194,12 +208,316 @@ The detailed execution flow inside the filter program is:
   
 </P>
 
+<H4>Getting Started</H4>
 <P>
-Namelist
-<A HREF="#Namelist"> <em class=code>&amp;filter_nml</em> </A>
-will be read from file <em class=file>input.nml</em>.
+Running a successful assimilation takes careful diagnostic work and
+experimentation
+iterations to find the best settings for your specific case.  The basic
+Kalman filter can be coded in only a handful of lines; the hard work is 
+making the right choices to compensate for sampling errors,
+model bias, observation error, lack of model divergence, variations
+in observation density in space and time, random correlations, etc.  
+There are tools built into DART to deal with most of these problems
+but it takes careful work to apply them correctly.
+</P> <P>
+If you are adding a new model or a new observation type, we suggest
+you assimilate exactly one observation, with no model advance, 
+with inflation turned off, with a large cutoff, and with the 
+outlier threshold off (see below for how to set these namelist 
+items).  Run an assimilation.  Look at the obs_seq.final file
+to see what the forward operator computed.  Use ncdiff to difference
+the Prior and Posterior Diag NetCDF files and look at the changes
+(the "innovations") in the various model fields.  Is it in the right
+location for that observation?  Does it have a reasonable value?
+Then assimilate a group of observations and check the results 
+carefully.  This will be your baseline case.
+Then one by one enable each of the items below, checking each time
+to see what is the effect on the results.
+</P> <P>
+Suggestions for the most common namelist settings and features built
+into DART for running a successful assimilation include:
+<ul>
+<li>Ensemble Size</li>
+<P>
+In practice, ensemble sizes between 20 and 100 seem to work best.  
+Fewer than 20-30 members leads to statistical errors which are too large.
+More than
+100 members takes longer to run with very little return, and eventually
+the results get worse again.  Often the limit on the number of members
+is based on the size of the model since you have to run N copies
+of the model each time you move forward in time.  If you can,
+start with 50-60 members and then experiment with fewer or more
+once you have a set of baseline results to compare it with.
+The namelist setting for ensemble size is
+<em class="code">&amp;filter_nml :: ens_size </em>
+</P>
+<li>Localization</li>
+<P>
+There are two main advantages to using localization.  One is it avoids
+an observation impacting unrelated state variables because of spurious
+corelations.  The other is that especially for large models it improves
+run-time performance because only points within the localization
+radius need to be considered.  Because of the way the parallelization
+was implemented in DART, localization was easy to add and
+using it usually results in a very large performance gain. 
+See <a href="../assim_tools/assim_tools_mod.html#Localization">here</a>
+for a discussion of localization-related namelist items.
+</P>
+<li>Inflation</li>
+<P>
+Since the filter is being run with a fixed number of ensembles
+which is usually small compared to the number of degrees of freedom
+of the model (i.e. the size of the state vector), the tendency
+is for all the ensemble members to collapse towards a single solution.
+Inflation increases the spread of the members in a systematic way
+to avoid problems of collapse.  There are several sophisticated
+options on inflation, including spatial and temporal adaptive
+and damping options, which help deal with observations which
+vary in density over time and location.
+See <a href="#Inflation">here</a>
+for a discussion of inflation-related namelist items.
+</P>
+<li>Outlier Rejection</li>
+<P>
+Outlier rejection can be used to avoid bad observations (ones
+where the value was recorded in error or the processing has an
+error and a non-physical value was generated).  It also avoids
+observations which have accurate values but the mean of the
+ensemble members is so far from the observation value that
+assimilating it would result in unacceptably large increments
+that might destablize the model run.  If the difference between
+the observation and the prior ensemble mean is more than N standard
+deviations from the square root of the sum of the 
+prior ensemble and observation error variance, the observation will
+be rejected.
+The namelist setting for the number of standard deviations
+to include is
+<em class="code">&amp;filter_nml :: outlier_threshold </em>
+and we typically suggest starting with a value of 3.0.
+</P>
+<li>Sampling Error</li>
+<P>
+For small ensemble sizes a table of expected statistical error 
+distributions can be generated before running DART.  Corrections
+accounting for these errors are applied during the assimilation 
+to increase the ensemble
+spread which can improve the assimilation results.  
+The namelist item to enable this option is 
+<em class="code">&amp;assim_tools_nml :: sampling_error_correction</em>.
+Additionally you will need to have a 
+precomputed correction file <em class="file">final_full.X</em>,
+where X matches your ensemble size, in the run directory.
+See the description of the namelist item in the
+<a href="../assim_tools/assim_tools_mod.html#Namelist">
+&amp;assim_tools_nml</a> namelist, and 
+<a href="../system_simulation/system_simulation.html">look here</a>
+for instructions on where to find (or how to generate) 
+the auxiliary file needed by this code.
+See Anderson (2011).
+</P>
+</ul>
+
 </P>
 
+<A NAME="Inflation"></A>
+<H4>Discussion of Inflation Options</H4>
+<P>
+There are two choices for the basic type of inflation:
+observation space or state space.  Almost all users use state
+space inflation and the rest of this discussion applies
+to this type.  (If you are interested in observation
+space inflation, talk to Jeff first.)
+</P> <P>
+State space inflation changes the spread of a set of ensemble members
+without changing the mean value.  The algorithm computes the mean 
+and standard deviation for each variable in the state vector 
+in turn, and then moves the values away from the mean in such a 
+way that the mean remains unchanged. The resulting standard deviation
+is (generally) larger than before.  It can be applied to the
+Prior state, before observations are assimilated (the most
+frequently used case), or it can be applied to the Posterior
+state, after assimilation.  See Anderson (2007), Anderson (2009).
+</P> <P>
+Inflation can be a single value applied to all
+state space variables over all times.  It can 
+be a single value per state space variable, constant
+in time.  And finally, it can vary with time, adapting
+to different densities of observations in time and space.
+To enable state space inflation, see the 'flavor' 
+namelist options below.
+See the 'start_from_restart' options to set
+a single value verses a value per state space variable.
+To allow the values to adapt through time in each 
+assimilation window see the 'sd_initial' description.
+There are additional options to damp inflation through time. 
+In regions
+where the density of observations varies in time the damping
+slowly lowers the inflation values in the absence of new
+observations at those locations.
+In practice with large geophysical models using damped
+inflation has been a successful strategy.
+See the section describing 'inf_damping'.
+</P> <P>
+The following namelist items related to inflation
+are all found in the <em class=file>input.nml</em> file,
+in the &amp;filter_nml namelist. 
+The detailed descriptions are in the
+<a href="#Namelist">namelist</a> section below.
+Here we try to give some basic advice about
+commonly used values and suggestions for
+where to start.
+In the namelist each entry has
+two values.  The first is for Prior inflation
+and the second is for Posterior inflation.
+If 'flavor' is 0, all other settings for that
+column are ignored.
+<dl>
+<dt>
+<em>&amp;filter_nml :: flavor</em><br />
+valid values: 0, 1, 2, 3
+<dd>
+Set the type of Prior and Posterior inflation applied
+to the state vector.  Values mean:
+<table border=0 cellpadding=3 width=100%>
+   <tr><td>0:</td><td> No inflation </td></tr>
+   <tr><td>1:</td><td> Observation space inflation </td></tr>
+   <tr><td>2:</td><td> Spatially-varying state space inflation </td></tr>
+   <tr><td>3:</td><td> Spatially-fixed state space inflation </td></tr>
+</table>
+In practice
+we recommend starting with no inflation at all (both values
+0), and then when first trying out inflation start with type 2 
+prior inflation and no inflation (0) for posterior.
+<br /> <br />
+<dt>
+<em>&amp;filter_nml :: inf_deterministic</em><br />
+valid values: .true. or .false.
+<dd>
+Recommend always using .true..
+<br /> <br />
+<dt>
+<em>&amp;filter_nml :: inf_initial</em><br />
+valid values: real numbers, usually 1.0 or slightly larger
+<dd>
+If not reading in inflation values from a restart file,
+the initial value to set for the inflation.  Generally
+we recommend starting with just slightly above 1.0, 
+maybe 1.02, for a slight amount of initial inflation.
+<br /> <br />
+<dt>
+<em>&amp;filter_nml :: inf_sd_initial</em><br />
+valid values: 0.0 to infinity, or -1 to disable
+<dd>
+This namelist setting controls whether the inflation
+values evolve with time or not.  A negative value prevents
+the inflation values from being updated, so they are
+constant throughout the run.  If positive, the inflation
+values evolve through time.  Even though we talk
+about a single inflation value, the inflation has
+a gaussian distribution with a mean and standard deviation.
+We use the mean value when we inflate, and the
+standard deviation indicates how sure 
+of the value we are. Larger standard deviation values are 
+less sure and the inflation value will vary more quickly 
+with time.
+Smaller values are more sure and the time evolution will
+be slower since we are more confident that the mean is correct.
+We have had good results setting this and inf_sd_lower_bound
+to 0.6 for large geophysical models.
+<br /> <br />
+<dt>
+<em>&amp;filter_nml :: inf_lower_bound</em><br />
+valid values: real numbers, usually 1.0 or slightly larger
+<dd>
+If inflation is time-evolving (see inf_sd_initial namelist item above),
+then this sets the lowest value the inflation can evolve to.
+We recommend a setting of 1.0.
+<br /> <br />
+<dt>
+<em>&amp;filter_nml :: inf_upper_bound</em><br />
+valid values: real numbers, usually 1.0 or slightly larger
+<dd>
+If inflation is time-evolving (see inf_sd_initial namelist item above),
+then this sets the largest value the inflation can evolve to.
+We recommend a setting of 100.0, although if the inflation
+values reach those levels there is probably a problem
+with the assimilation.
+<br /> <br />
+<dt>
+<em>&amp;filter_nml :: inf_sd_lower_bound</em><br />
+valid values: 0.0 to infinity, or -1 to disable
+<dd>
+If the setting of <em class="code">inf_sd_initial</em> is
+-1.0 (to disable time evolution of inflation) then set
+this to the same value.  Otherwise, set a lower value
+that the standard deviation of the inflation cannot fall
+below.  As the width of the inflation distribution changes,
+this sets a lower bound for the value.  Lower values will
+let the inflation vary more slowly with time; larger values
+will allow the inflation to adapt in time more quickly.
+We have had good results setting this and inf_sd_initial
+to 0.6 for large geophysical models.
+<br /> <br />
+<dt>
+<em>&amp;filter_nml :: inf_damping</em><br />
+valid values: 0.0 to 1.0
+<dd>
+Applies if inflation is time-evolving.
+The difference between the current inflation value and 1.0 
+is multiplied by this factor before the next assimilation cycle. 
+0.0 turns all inflation off by clamping the inflation value to 1.0.
+1.0 turns damping off by leaving the original inflation value unchanged.
+We have had good results in large geophysical models setting
+this to a value of 0.9, which damps slowly.  Damping appears to
+particularly help in cases where there are dense clusters of observations
+at irregular times.  Areas that are heavily observed evolve
+large inflation values to prevent the ensemble members from becoming
+too close to one another.  However once the area is unobserved 
+there was no mechanism to cause the inflation values to drop 
+back down to smaller levels.  The damping factor accomplishes this.
+<br /> <br />
+<dt>
+<em>&amp;filter_nml :: output_restart </em><br />
+valid values: text string
+<dd>
+The name of the file to write the inflation and
+standard deviation values into.  This can be used
+to let spatially-varying inflation values evolve 
+in a spinup phase, and then be read in and used as
+fixed values in further runs.  Or if a long assimilation
+run is executed in separate jobs steps and time-varying
+inflation is used, then the restart file from the
+previous job step must be supplied as an input file
+for the next step.  This filename sets where the output
+is going to be written.  Note that there is only a single
+inflation value and a single standard deviation value
+per state vector variable will be written, so the total 
+file size will be two times the state vector length 
+(times the number of bytes in a real value).
+<br /> <br />
+</dl>
+
+</P> <P>
+The suggested procedure for testing inflation options 
+is to start without
+any (both 'flavor' values set to 0).  Then enable Prior
+state space, spatially-varying inflation, with no Posterior
+inflation (set 'flavor' to [2, 0]).  Then try damped
+inflation (set 'inf_damping' to 0.9 and set 'inf_sd_initial'
+and 'inf_sd_lower_bound' to 0.6).  The inflation values and
+standard deviation are written out to the Prior_Diag.nc
+and Posterior_Diag.nc files as the last 2 'copies', so 
+the inflation fields can be plotted (we often use 
+<a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</a>
+).  
+Expected inflation values are generally in the 1 to 10 range; 
+if values grow much larger than this it usually indicates
+a problem with the assimilation.
+
+</P> <P>
+Namelist
+<A HREF="#Namelist"> <em class=code>&amp;filter_nml</em> </A>
+is always read from file <em class=file>input.nml</em>.
 </P>
 
 <!--==================================================================-->
@@ -468,13 +786,13 @@ being for the posterior inflation.
                        time becomes dominated by the volume of output. 
                        Default: .false.</TD></TR>
 
-<TR><TD colspan=3>All subsequent variables are arrays of length 2.<br>
+<TR><TD colspan=3>All subsequent variables are arrays of length 2.<br />
                   The first element is for the prior, the second element is 
                   for the posterior</TD></TR>
 
 <TR><!--contents--><TD valign=top>inf_flavor</TD>
     <!--  type  --><TD valign=top>integer array (len=2)</TD>
-    <!--descript--><TD>Inflation flavor for [prior, posterior]<br>
+    <!--descript--><TD>Inflation flavor for [prior, posterior]<br />
                        0&nbsp;=&nbsp;none,
                        1&nbsp;=&nbsp;obs_space, 
                        2&nbsp;=&nbsp;spatially-varying&nbsp;state&nbsp;space,
@@ -606,7 +924,7 @@ being for the posterior inflation.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--==================================================================-->
 <!-- Describe the modules used by this program.                       -->
@@ -652,15 +970,72 @@ smoother_mod
 <HR>
 <H2>REFERENCES</H2>
 <ul>
-<li>Anderson,&nbsp;J.,&nbsp;T.&nbsp;Hoar,&nbsp;K.&nbsp;Raeder,
-    H.&nbsp;Liu,&nbsp;N.&nbsp;Collins,&nbsp;R.&nbsp;Torn,
-    and&nbsp;A.&nbsp;Arellano,&nbsp;2009:<br>
-    The Data Assimilation Research Testbed: A Community Facility. 
-    <span style="font-style: italic;">Bull. Amer. Meteor. Soc.</span>,
-    <span style="font-weight: bold;">90</span>, 1283-1296.<br>
-    <a href="http://ams.allenpress.com/perlserv/?doi=10.1175%2F2009BAMS2618.1&request=get-abstract">DOI: 10.1175/2009BAMS2618.1</a></li>
+<li>Anderson, J. L., 2001: 
+An Ensemble Adjustment Kalman Filter for Data Assimilation.
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">129</span>, 2884-2903.<br />
+<a href="http://dx.doi.org/10.1175/1520-0493(2001)129<2884:AEAKFF>2.0.CO;2"
+target="_blank" >
+doi: 10.1175/1520-0493(2001)129<2884:AEAKFF>2.0.CO;2</a> </li>
+<br />
+<li>Anderson, J. L., 2003:
+A Local Least Squares Framework for Ensemble Filtering.
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">131</span>, 634-642.<br />
+<a href="http://dx.doi.org/10.1175/1520-0493(2003)131<0634:ALLSFF>2.0.CO;2"
+target="_blank" >
+doi: 10.1175/1520-0493(2003)131<0634:ALLSFF>2.0.CO;2</a></li>
+<br />
+<li>Anderson, J. L., 2007: 
+An adaptive covariance inflation error correction algorithm for ensemble filters.
+<span style="font-style: italic;">Tellus A</span>,
+<span style="font-weight: bold;">59</span>, 210-224.<br />
+<a href="http://dx.doi.org/10.1111/j.1600-0870.2006.00216.x
+target="_blank" >
+doi: 10.1111/j.1600-0870.2006.00216.x </a></li>
+<br />
+<li>Anderson, J. L., 2007:
+Exploring the need for localization in ensemble data 
+assimilation using a hierarchical ensemble filter.
+<span style="font-style: italic;">Physica D</span>,
+<span style="font-weight: bold;">230</span>, 99-111.<br />
+<a href="http://dx.doi.org/10.1016/j.physd.2006.02.011"
+target="_blank" >
+doi:10.1016/j.physd.2006.02.011</a></li>
+<br />
+<li>Anderson, J., T. Hoar, K. Raeder, H. Liu,
+N. Collins, R. Torn, and  A. Arellano, 2009:
+The Data Assimilation Research Testbed: A Community Facility.
+<span style="font-style: italic;">Bull. Amer. Meteor. Soc.</span>,
+<span style="font-weight: bold;">90</span>, 1283-1296.<br />
+<a href="http://dx.doi.org/10.1175/2009BAMS2618.1"
+target="_blank" >
+doi: 10.1175/2009BAMS2618.1</a></li>
+<br />
+<li>Anderson, J. L., 2009: 
+Spatially and temporally varying adaptive covariance inflation for ensemble filters.
+<span style="font-style: italic;">Tellus A</span>,
+<span style="font-weight: bold;">61</span>, 72-83.<br />
+<a href="http://dx.doi.org/10.1111/j.1600-0870.2008.00361.x"
+target="_blank" >
+doi: 10.1111/j.1600-0870.2008.00361.x</a></li>
+<br />
+<li>Anderson, J. L., 2010:
+A Non-Gaussian Ensemble Filter Update for Data Assimilation.
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">139</span>, 4186-4198.<br />
+<a href="http://dx.doi.org/10.1175/2010MWR3253.1"
+target="_blank" >
+doi: 10.1175/2010MWR3253.1</a></lI>
+<br />
+<li>Anderson, J. L., 2011:
+Localization and Sampling Error Correction
+in Ensemble Kalman Filter Data Assimilation. 
+Submitted for publication, Jan 2011.  
+Contact author.</li>
+
 </ul>
-<br>
+<br />
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
@@ -734,19 +1109,19 @@ computed once is needed.
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &copy; 2004 - 2010 UCAR.<br>
-This open source software is provided by UCAR, "as is",<br>
-without charge, subject to all terms of use at<br>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
 
 <TABLE border=0 cellpadding=0 width=100% summary="">
-<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
-<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
-<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
-<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Contact: </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision: </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source: </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date: </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change History: </TD><TD> try "svn log" or "svn diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
