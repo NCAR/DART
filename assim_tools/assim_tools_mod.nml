@@ -5,9 +5,15 @@
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
+   adaptive_cutoff_floor           = -1.0,
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = "localization_diagnostics",
    print_every_nth_obs             = 0,
    rectangular_quadrature          = .true.,
-   gaussian_likelihood_tails       = .false.  /
+   gaussian_likelihood_tails       = .false.,
+/
+
+# specify these in the same order, the same number of items
+#   special_localization_obs_types  = "",
+#   special_localization_cutoffs    = -1,
 

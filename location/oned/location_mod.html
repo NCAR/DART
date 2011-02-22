@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>module location_mod</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/html/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -469,10 +470,12 @@ Returns a location with location set to missing value from types_mod.
 <A NAME="get_close_maxdist_init"></A>
 <br>
 <div class=routine>
-<em class=call> call get_close_maxdist_init(gc,maxdist) </em>
+<em class=call> call get_close_maxdist_init(gc,maxdist
+<em class=optionalcode>, [maxdist_list]</em>) </em>
 <pre>
 type(get_close_type), intent(inout) :: <em class=code>gc</em>
 real(r8), intent(in)                :: <em class=code>maxdist</em>
+real(r8), intent(in), optional      :: <em class=optionalcode>maxdist_list(:)</em>
 </pre>
 </div>
 
@@ -493,6 +496,8 @@ when completely done with getting distances between locations.
     <TD>Data for efficiently finding close locations.</TD></TR>
 <TR><TD valign=top><em class=code>maxdist</em></TD>
     <TD>Anything closer than this distance is a close location.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>maxdist_list</em></TD>
+    <TD>Ignored for this location type.</TD></TR>
 </TABLE>
 
 </div>

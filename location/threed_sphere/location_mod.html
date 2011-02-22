@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>module location_mod</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/html/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -207,7 +208,8 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 <pre>
 <em class=call>namelist / location_nml / </em> &amp;
    horiz_dist_only, vert_normalization_pressure, vert_normalization_height, &amp;
-   vert_normalization_level, approximate_distance, nlon, nlat, output_box_info
+   vert_normalization_level, vert_normalization_scale_height, &amp;
+   approximate_distance, nlon, nlat, output_box_info, maintain_original_vert
 </pre>
 </div>
 
@@ -298,10 +300,21 @@ This namelist is read in a file called <em class=file>input.nml</em> .
     <!--  type  --><TD valign=top>real(r8)</TD>
     <!--descript--><TD>How many geopotential meters should be equal 
                        to one radian?  Default: 10000.0</TD></TR>
+<TR><!--contents--><TD valign=top>vert_normalization_scale_height</TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
+    <!--descript--><TD>How many scale heights should be equal to one radian? 
+                Default: 5.0</TD></TR>
 <TR><!--contents--><TD valign=top>vert_normalization_level</TD>
     <!--  type  --><TD valign=top>real(r8)</TD>
     <!--descript--><TD>How many model levels should be equal to one radian? 
                 Default: 20.0</TD></TR>
+<TR><!--contents--><TD valign=top>maintain_original_vert</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD>If using per-type specialized localization distances
+                (see <a href="../../assim_tools/assim_tools_mod.html#Namelist>assim_tools_mod</a>
+                by default the vertical distances are altered also.  To maintain
+                the original vertical scaling while changing the horizontal, set this
+                to true.  Default: .false.</TD></TR>
 <TR><!--contents--><TD valign=top>approximate_distance</TD>
     <!--  type  --><TD valign=top>logical</TD>
     <!--descript--><TD> If true, uses a table lookup for fast approximate
@@ -376,6 +389,7 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_undef">vert_is_undef</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_surface">vert_is_surface</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_pressure">vert_is_pressure</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_scale_height">vert_is_scale_height</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_level">vert_is_level</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_height">vert_is_height</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISUNDEF</A></TD></TR>
@@ -383,6 +397,7 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISLEVEL</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISPRESSURE</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISHEIGHT</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISSCALEHEIGHT</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#equal">operator(==)</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#not_equal">operator(/=)</A></TD></TR>
 </TABLE>
@@ -429,8 +444,8 @@ three-d spherical shell.
 <TR><TD valign=top> vloc       </TD>
     <TD>vertical location, units as selected by which_vert</TD></TR>
 <TR><TD valign=top> which_vert </TD>
-    <TD>type of vertical location: -2=no vert location; -1=surface; 
-        1=level; 2=pressure; 3=height</TD></TR>
+    <TD>type of vertical location: -2=no specific vert location; -1=surface; 
+        1=level; 2=pressure; 3=height, 4=scale height</TD></TR>
 </TABLE>
 
 The vertical types have parameters defined for them so they
@@ -739,10 +754,12 @@ types module.
 <A NAME="get_close_maxdist_init"></A>
 <br>
 <div class=routine>
-<em class=call> call get_close_maxdist_init(gc,maxdist) </em>
+<em class=call> call get_close_maxdist_init(gc,maxdist,
+<em class=optionalcode>[maxdist_list]</em>) </em>
 <pre>
 type(get_close_type), intent(inout) :: <em class=code>gc</em>
 real(r8), intent(in)                :: <em class=code>maxdist</em>
+real(r8), intent(in), optional      :: <em class=optionalcode>maxdist_list(:)</em>
 </pre>
 </div>
 
@@ -759,12 +776,31 @@ It allocates space so it is necessary to call
 <em class=code>get_close_obs_destroy</em>
 when completely done with getting distances between locations.
 </P>
+<P>
+If the last optional argument is not specified, maxdist
+applies to all locations.  If the last argument is specified,
+it must be a list of exactly the length of the number of
+specific types in the obs_kind_mod.f90 file.
+This length can be queried with the
+<a href="../../obs_kind/obs_kind_mod.html#get_num_obs_kinds">
+get_num_obs_kinds()</a> function to get count of obs types.
+It allows a different maximum distance to be set per base type
+when get_close() is called.
+</P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>gc</em></TD>
     <TD>Data for efficiently finding close locations.</TD></TR>
 <TR><TD valign=top><em class=code>maxdist</em></TD>
     <TD>Anything closer than this number of radians is a close location.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>maxdist</em></TD>
+    <TD>If specified, must be a list of real values.  The length of
+        the list must be exactly the same length as the number of
+        observation types defined in the obs_def_kind.f90 file.
+        (See <a href="../../obs_kind/obs_kind_mod.html#get_num_obs_kinds">
+        get_num_obs_kinds()</a> to get count of obs types.)
+        The values in this list are used for the obs types as the
+        close distance instead of the maxdist argument.</TD></TR>
 </TABLE>
 
 </div>
@@ -1069,6 +1105,35 @@ Returns true if which_vert is for pressure, else false.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
+<A NAME="vert_is_scale_height"></A>
+<br>
+<div class=routine>
+<em class=call> var = vert_is_scale_height(loc) </em>
+<pre>
+logical                         :: <em class=code>vert_is_scale_height</em>
+type(location_type), intent(in) :: <em class=code>loc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns true if which_vert is for scale_height, else false.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>vert_is_scale_height</em></TD>
+    <TD>Returns true if vertical coordinate type is scale_height</TD></TR>
+<TR><TD valign=top><em class=code>loc</em></TD>
+    <TD>A location type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
 <A NAME="vert_is_level"></A>
 <br>
 <div class=routine>
@@ -1208,11 +1273,12 @@ type(location_type), intent(in) :: <em class=code>loc1, loc2</em>
 <br>
 <div class=routine>
 <pre>
-<em class=call>integer, parameter :: VERTISUNDEF    = -2</em>
-<em class=call>integer, parameter :: VERTISSURFACE  = -1</em>
-<em class=call>integer, parameter :: VERTISLEVEL    =  1</em>
-<em class=call>integer, parameter :: VERTISPRESSURE =  2</em>
-<em class=call>integer, parameter :: VERTISHEIGHT   =  3</em>
+<em class=call>integer, parameter :: VERTISUNDEF       = -2</em>
+<em class=call>integer, parameter :: VERTISSURFACE     = -1</em>
+<em class=call>integer, parameter :: VERTISLEVEL       =  1</em>
+<em class=call>integer, parameter :: VERTISPRESSURE    =  2</em>
+<em class=call>integer, parameter :: VERTISHEIGHT      =  3</em>
+<em class=call>integer, parameter :: VERTISSCALEHEIGHT =  4</em>
 </pre>
 </div>
 
@@ -1277,7 +1343,7 @@ A parameter to identify this location module in output metadata.
 <div class=routine>
 <pre>
 <em class=call>character(len=129), parameter :: LocationLName = <br>
-       "threed sphere locations: lon, lat, lev or pressure"</em>
+       "threed sphere locations: lon, lat, vertical"</em>
 </pre>
 </div>
 
@@ -1286,7 +1352,7 @@ A parameter to identify this location module in output metadata.
 
 <P>
 This is a <b>constant</b>. 
-A parameter set to "threed sphere locations: lon, lat, lev or pressure" used 
+A parameter set to "threed sphere locations: lon, lat, vertical" used 
 to identify this location module in output long name metadata.
 </P>
 
@@ -1350,12 +1416,14 @@ to identify this location module in output long name metadata.
     <!-- comment --><TD VALIGN=top>Is it really a latitude?</TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>set_location</TD>
-    <!-- message --><TD VALIGN=top>which_vert (#) must be one of 1, 2, or 3</TD>
+    <!-- message --><TD VALIGN=top>which_vert (#) must be one of -2, -1, 1, 2, 3, or 4</TD>
     <!-- comment --><TD VALIGN=top>Vertical coordinate type restricted to:<BR>
+               -2 = no specific vertical location <BR>
                -1 = surface value <BR>
-                1 = level <BR>
+                1 = (model) level <BR>
                 2 = pressure <BR>
-                3 = height <BR></TD>
+                3 = height <BR>
+                4 = scale height <BR></TD>
 </TR>
 <TR><!-- routine --><TD VALIGN=top>read_location</TD>
     <!-- message --><TD VALIGN=top>Expected location header "loc3d" in input file, got ___</TD>

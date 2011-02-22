@@ -513,10 +513,12 @@ end subroutine get_close_obs_destroy
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_maxdist_init(gc, maxdist)
+subroutine get_close_maxdist_init(gc, maxdist, maxdist_list)
 
 type(get_close_type), intent(inout) :: gc
 real(r8),             intent(in)    :: maxdist
+real(r8), intent(in), optional      :: maxdist_list(:)
+
 
 ! Set the maximum distance in the structure
 gc%maxdist = maxdist

@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>module assim_tools_mod</TITLE>
 <link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/html/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -58,7 +59,7 @@ Available observation space filter types include:
 <li> 5 = Random draw from posterior  (talk to Jeff before using)
 <li> 6 = Deterministic draw from posterior with fixed kurtosis (ditto)
 <li> 7 = Boxcar kernel filter
-<li> 8 = Rank histogram filter (see Anderson 2011)
+<li> 8 = Rank histogram filter (see Anderson 2010)
 </ul>
 Most users use type 1, the EAKF.
 </P>
@@ -221,7 +222,7 @@ distances drastically for certain kinds of observations.  This and
 the following namelist items allow this.
 <br /> <br />
 Optional list of observation types (e.g. "RADAR_REFLECTIVITY",
-"AIRS_RADIANCE") which will use a different cutoff distance.
+"AIRS_TEMPERATURE") which will use a different cutoff distance.
 Any observation types not listed here will use the standard cutoff
 distance (set by the 'cutoff' namelist value).  This is only
 implemented for the threed_sphere location module (the one
@@ -577,23 +578,46 @@ inflation_only is true, otherwise the state is also updated.
 <A NAME="References"></A>
 <HR>
 <H2>REFERENCES</H2>
-<OL>
-<LI>Anderson, Jeffrey L. "A Local Least Squares Framework for Ensemble Filtering"
-April 2003, MWR 131, pp 634-642,
-doi: 10.1175/1520-0493(2003)131<0634:ALLSFF>2.0.CO;2</LI>
-<LI> Anderson, J., Collins, N., 2007,
-"Scalable Implementations of Ensemble Filter Algorithms for Data Assimilation"
-Journal of Atmospheric and Oceanic Technology, 24, 1452-1463,
-doi: 10.1175/JTECH2049.1</LI>
-<LI>Anderson, Jeffrey L. "A Non-Gaussian Ensemble Filter Update for Data Assimilation"
-November 2010, MWR 139, pp 4186-4198,
-DOI: 10.1175/2010MWR3253.1</LI>
-<LI>Anderson, J. L. (2011),
-"Localization and Sampling Error Correction
-in Ensemble Kalman Filter Data Assimilation"
-Submitted for publication, Jan 2011.  
+<UL>
+<li>Anderson, J. L., 2001:
+An Ensemble Adjustment Kalman Filter for Data Assimilation.
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">129</span>, 2884-2903.<br />
+<a href="http://dx.doi.org/10.1175/1520-0493(2001)129<2884:AEAKFF>2.0.CO;2"
+target="_blank" >
+doi: 10.1175/1520-0493(2001)129<2884:AEAKFF>2.0.CO;2</a> </li>
+<br />
+<li>Anderson, J. L., 2003:
+A Local Least Squares Framework for Ensemble Filtering.
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">131</span>, 634-642.<br />
+<a href="http://dx.doi.org/10.1175/1520-0493(2003)131<0634:ALLSFF>2.0.CO;2"
+target="_blank" >
+doi: 10.1175/1520-0493(2003)131<0634:ALLSFF>2.0.CO;2</a></li>
+<br />
+<li>Anderson, J., Collins, N., 2007:
+Scalable Implementations of Ensemble Filter Algorithms for Data Assimilation.
+<span style="font-style: italic;">Journal of Atmospheric and Oceanic Technology</span>, 
+<span style="font-weight: bold;">24</span>, 1452-1463.<br />
+<a href="http://dx.doi.org/10.1175/JTECH2049.1"
+target="_blank" >doi: 10.1175/JTECH2049.1</a></li>
+<br />
+<li>Anderson, J. L., 2010:
+A Non-Gaussian Ensemble Filter Update for Data Assimilation.
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">139</span>, 4186-4198.<br />
+<a href="http://dx.doi.org/10.1175/2010MWR3253.1"
+target="_blank" >
+doi: 10.1175/2010MWR3253.1</a></lI>
+<br />
+<LI>Anderson, J. L., 2011:,
+Localization and Sampling Error Correction
+in Ensemble Kalman Filter Data Assimilation.
+<span style="font-style: italic;">Submitted for publication</span>, Jan 2011.  
 Contact author.</LI>
-</OL>
+
+</UL>
+<br />
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
@@ -612,8 +636,8 @@ Contact author.</LI>
 </TR>
 
 <TR><!-- routine --><TD VALIGN=top>obs_increment</TD>
-    <!-- message --><TD VALIGN=top>Illegal value of filter_kind in assim_tools namelist [1-4 OK]</TD>
-    <!-- comment --><TD VALIGN=top>Only 1-6 currently supported.</TD>
+    <!-- message --><TD VALIGN=top>Illegal value of filter_kind in assim_tools namelist [1-8 OK]</TD>
+    <!-- comment --><TD VALIGN=top>Only 1-4,8 currently supported.</TD>
 </TR>
 
 <TR><!-- routine --><TD VALIGN=top>obs_increment_eakf <BR>

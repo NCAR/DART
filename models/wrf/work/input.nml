@@ -161,6 +161,7 @@
 #     1 = model level
 #     2 = pressure
 #     3 = height
+#     4 = scale height
 
 # set default_state_variables to .false. to use the explicit list.
 # otherwise it uses a hardcoded default list: U, V, W, PH, T, MU, QV only.
@@ -194,13 +195,15 @@
 # vert_normalization_X is amount of X equiv to 1 radian in horiz.
 # vert localization is 'cutoff' times the pressure/height/levels,
 # only if horiz_dist_only is set to .false. in the namelist below.
-# the default nlon/nlat should be good for most grids; 
-# nlon must be an odd number.
+# the default nlon/nlat should be good for most experiments. it sets 
+# an internal structure that speeds up searches.  don't change it
+# based on your grid size.  nlon must be an odd number.
 &location_nml
    horiz_dist_only             = .true.,
    vert_normalization_pressure = 6666666.7,
    vert_normalization_height   = 5000000.0,
    vert_normalization_level    = 2666.7,
+   vert_normalization_scale_height = 10.0,
    approximate_distance        = .false.,
    nlon                        = 71,
    nlat                        = 36,

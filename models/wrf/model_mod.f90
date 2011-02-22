@@ -21,7 +21,8 @@ module model_mod
 !-----------------------------------------------------------------------
 
 use         types_mod, only : r8, deg2rad, missing_r8, ps0, earth_radius, &
-                              gas_constant, gas_constant_v, gravity, pi
+                              gas_constant, gas_constant_v, gravity, pi,  &
+                              digits12
 
 use  time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN
 
@@ -30,8 +31,9 @@ use      location_mod, only : location_type, get_location, set_location, &
                               LocationDims, LocationName, LocationLName, &
                               query_location, vert_is_undef, vert_is_surface, &
                               vert_is_level, vert_is_pressure, vert_is_height, &
-                              VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
-                              VERTISHEIGHT,&
+                              vert_is_scale_height, VERTISUNDEF, VERTISSURFACE, &
+                              VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, &
+                              VERTISSCALEHEIGHT, &
                               get_close_type, get_dist, get_close_maxdist_init, &
                               get_close_obs_init, loc_get_close_obs => get_close_obs
 
@@ -41,6 +43,10 @@ use     utilities_mod, only : file_exist, open_file, close_file, &
                               find_namelist_in_file, check_namelist_read, &
                               find_textfile_dims, file_to_text, &
                               do_nml_file, do_nml_term
+
+use  mpi_utilities_mod, only : my_task_id
+
+use     random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
@@ -208,6 +214,10 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
 
 real(r8), allocatable :: ens_mean(:)
 
+! if you need to check backwards compatibility, set this to .true.
+! otherwise, leave it as false to use the more correct geometric height
+logical :: use_geopotential_height = .false.
+
 character(len = 20) :: wrf_nml_file = 'namelist.input'
 logical :: have_wrf_nml_file = .false.
 integer :: num_obs_kinds = 0
@@ -251,7 +261,7 @@ TYPE wrf_static_data_for_dart
    logical  :: scm
 
    integer  :: domain_size
-   integer  :: vert_coord
+   integer  :: localization_coord
    real(r8), dimension(:),     pointer :: znu, dn, dnw, zs, znw
    real(r8), dimension(:,:),   pointer :: mub, hgt
    real(r8), dimension(:,:),   pointer :: latitude, latitude_u, latitude_v
@@ -385,17 +395,19 @@ endif
 call set_calendar_type(calendar_type)
 
 ! Store vertical localization coordinate
-! Only 3 are allowed: level(1), pressure(2), or height(3)
+! Only 4 are allowed: level(1), pressure(2), height(3), or scale height(4)
 ! Everything else is assumed height
 if (vert_localization_coord == VERTISLEVEL) then
-   wrf%dom(:)%vert_coord = VERTISLEVEL
+   wrf%dom(:)%localization_coord = VERTISLEVEL
 elseif (vert_localization_coord == VERTISPRESSURE) then
-   wrf%dom(:)%vert_coord = VERTISPRESSURE
+   wrf%dom(:)%localization_coord = VERTISPRESSURE
 elseif (vert_localization_coord == VERTISHEIGHT) then
-   wrf%dom(:)%vert_coord = VERTISHEIGHT
+   wrf%dom(:)%localization_coord = VERTISHEIGHT
+elseif (vert_localization_coord == VERTISSCALEHEIGHT) then
+   wrf%dom(:)%localization_coord = VERTISSCALEHEIGHT
 else
    write(errstring,*)'vert_localization_coord must be one of ', &
-                     VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT
+                     VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, VERTISSCALEHEIGHT
    call error_handler(E_MSG,'static_init_model', errstring, source, revision,revdate)
    write(errstring,*)'vert_localization_coord is ', vert_localization_coord
    call error_handler(E_ERR,'static_init_model', errstring, source, revision,revdate)
@@ -654,8 +666,6 @@ WRFDomains : do id=1,num_domains
 
 enddo WRFDomains 
 
-write(*,*)
-
 wrf%model_size = dart_index - 1
 allocate (ens_mean(wrf%model_size))
 write(errstring,*) ' wrf model size is ',wrf%model_size
@@ -746,6 +756,9 @@ subroutine get_state_meta_data(index_in, location, var_type_out, id_out)
 ! form of the call has a second intent(out) optional argument kind.
 ! Maybe a functional form should be added?
 
+! this version has an optional last argument that is never called by
+! any of the dart code, which can return the wrf domain number.
+
 integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type_out, id_out
@@ -755,6 +768,7 @@ integer  :: index, ip, jp, kp
 integer  :: nz, ny, nx
 logical  :: var_found
 real(r8) :: lon, lat, lev
+character(len=129) :: string1
 
 integer :: i, id
 logical, parameter :: debug = .false.
@@ -764,23 +778,33 @@ if(debug) then
    call error_handler(E_MSG,'get_state_meta_data',errstring,' ',' ',' ')
 endif
 
-! index_in can be negative if ob is identity ob...
+! identity obs come in with a negative value - absolute
+! index into the state vector.  obs_def_mod code calls this
+! with -1 * identity_index so it's always positive, but the 
+! code here in vert_convert() passes in the raw obs_kind 
+! so it could, indeed, be negative.
 index = abs(index_in)
 
-var_found = .false.
-
-!  first find var_type
-
+! dump out a list of all domains and variable types
 if(debug) then
    do id=1,num_domains
       do i=1, wrf%dom(id)%number_of_wrf_variables
          write(errstring,*)' domain, var, var_type(i) = ',id,i,wrf%dom(id)%var_type(i)
-         call error_handler(E_MSG,'get_state_meta_data',errstring,' ',' ',' ')
+         call error_handler(E_MSG,'get_state_meta_data',errstring)
       enddo
    enddo
 endif
 
-! first find var_type and domain id
+! loop through the wrf vars (U, V, PS, etc) in state vector, starting
+! at domain 1.  see if the start/end index range in the 1d state vector
+! includes the requested index.  if you get to the end of the list of vars 
+! and you haven't found it yet, bump up the domain number and start 
+! search over from the start of the wrf var list.
+! if you get to the end of the domains and you haven't found the
+! valid range, the index must be larger than the state vector
+! which is a fatal error.
+
+var_found = .false.
 i = 0
 id = 1
 do while (.not. var_found)
@@ -790,11 +814,10 @@ do while (.not. var_found)
       if (id < num_domains) then
          id = id + 1
       else
-         write(errstring,*)' size of vector ',wrf%model_size
-         call error_handler(E_MSG,'get_state_meta_data', errstring, ' ', ' ', ' ')
-         write(errstring,*)' dart_index ',index_in
-         call error_handler(E_ERR,'get_state_meta_data', 'index out of range', &
-              source, revision, revdate)
+         write(string1,*)' size of state vector = ',wrf%model_size
+         write(errstring,*)' dart_index ',index_in, ' is out of range'
+         call error_handler(E_ERR,'get_state_meta_data', errstring, &
+              source, revision, revdate, text2=string1)
       endif
    endif
    if( (index .ge. wrf%dom(id)%var_index(1,i) ) .and.  &
@@ -827,24 +850,27 @@ if(debug) write(*,*) ' Var type: ',var_type
 call get_wrf_horizontal_location( ip, jp, var_type, id, lon, lat )
 
 ! now convert to desired vertical coordinate (defined in the namelist)
-if (wrf%dom(id)%vert_coord == VERTISLEVEL) then
+if (wrf%dom(id)%localization_coord == VERTISLEVEL) then
    ! here we need level index of mass grid
    if( (var_type == wrf%dom(id)%type_w ) .or. (var_type == wrf%dom(id)%type_gz) ) then
       lev = real(kp) - 0.5_r8
    else
       lev = real(kp)
    endif
-elseif (wrf%dom(id)%vert_coord == VERTISPRESSURE) then
+elseif (wrf%dom(id)%localization_coord == VERTISPRESSURE) then
    ! directly convert to pressure
    lev = model_pressure(ip,jp,kp,id,var_type,ens_mean)
-elseif (wrf%dom(id)%vert_coord == VERTISHEIGHT) then
+elseif (wrf%dom(id)%localization_coord == VERTISHEIGHT) then
    lev = model_height(ip,jp,kp,id,var_type,ens_mean)
+elseif (wrf%dom(id)%localization_coord == VERTISSCALEHEIGHT) then
+   lev = -log(model_pressure(ip,jp,kp,id,var_type,ens_mean) / &
+              model_pressure(ip,jp,1,id,wrf%dom(id)%type_mu,ens_mean))
 endif
 
 if(debug) write(*,*) 'lon, lat, lev: ',lon, lat, lev
 
 ! convert to DART location type
-location = set_location(lon, lat, lev, wrf%dom(id)%vert_coord)
+location = set_location(lon, lat, lev, wrf%dom(id)%localization_coord)
 
 ! return DART variable kind if requested
 if(present(var_type_out)) var_type_out = dart_type
@@ -974,7 +1000,7 @@ else
       xloc = 1.0_r8
       yloc = 1.0_r8
    endif
-    
+
    ! check that we obtained a valid domain id number
    if (id==0) then
       istatus = 1
@@ -2409,7 +2435,7 @@ else
                         ii2 = 1
                      endif
                   endif
- 
+
                   !  calculate the wind components at the desired pressure level
                   do k2 = 1, wrf%dom(id)%var_size(3,wrf%dom(id)%type_t)
                      z1d(k2) = model_pressure_t(i1,i2,k2,id,x)
@@ -2609,15 +2635,15 @@ else
 
             else
 
-            call ij_to_latlon(wrf%dom(id)%proj, cxloc, cyloc, clat, clon)
+              call ij_to_latlon(wrf%dom(id)%proj, cxloc, cyloc, clat, clon)
 
-            if ( obs_kind == KIND_VORTEX_PMIN ) then
-               fld(1) = vcrit
-            else if ( obs_kind == KIND_VORTEX_LAT ) then
-               fld(1) = clat
-            else
-               fld(1) = clon
-            endif
+              if ( obs_kind == KIND_VORTEX_PMIN ) then
+                fld(1) = vcrit
+              else if ( obs_kind == KIND_VORTEX_LAT ) then
+                fld(1) = clat
+              else
+                fld(1) = clon
+              endif
 
             endif
 
@@ -2674,7 +2700,7 @@ else
                  imax == center_track_xmax .or. jmax == center_track_ymax ) then
                fld(:) = missing_r8
             else
-            fld(1) = maxwspd
+               fld(1) = maxwspd
             endif
 
          endif  !  if test on obs_kind
@@ -2723,7 +2749,6 @@ else
    !-----------------------------------------------------
    ! 1.w Geopotential Height (GZ)
 
-   ! Geopotential Height has been added by Ryan Torn to accommodate altimeter observations.
    !   GZ is on the ZNW grid (bottom_top_stagger), so its bottom-most level is defined to
    !   be at eta = 1 (the surface).  Thus, we have a 3D variable that contains a surface
    !   variable; the same is true for W as well.  If one wants to observe the surface value
@@ -2958,11 +2983,12 @@ end subroutine model_interpolate
 !#######################################################################
 
 
-subroutine vert_interpolate(x, location, obs_kind, istatus)
+subroutine vert_convert(x, location, obs_kind, istatus)
 
 ! This subroutine converts a given ob/state vertical coordinate to
-! the vertical coordinate type requested through the model_mod namelist.
-
+! the vertical localization coordinate type requested through the 
+! model_mod namelist.
+!
 ! Notes: (1) obs_kind is only necessary to check whether the ob
 !            is an identity ob.
 !        (2) This subroutine can convert both obs' and state points'
@@ -2976,18 +3002,21 @@ subroutine vert_interpolate(x, location, obs_kind, istatus)
 !            in distance computations, this is actually the "expected"
 !            vertical coordinate, so that computed distance is the
 !            "expected" distance. Thus, under normal circumstances,
-!            x that is supplied to vert_interpolate should be the
+!            x that is supplied to vert_convert should be the
 !            ensemble mean. Nevertheless, the subroutine has the
 !            functionality to operate on any DART state vector that
 !            is supplied to it.
 
 real(r8),            intent(in)    :: x(:)
-integer,             intent(in)    :: obs_kind
 type(location_type), intent(inout) :: location
+integer,             intent(in)    :: obs_kind
 integer,             intent(out)   :: istatus
 
-real(r8)            :: xloc, yloc, zloc, xyz_loc(3), zvert
-integer             :: id, i, j, k, rc
+! changed zloc to zin and zout, since the point of this routine
+! is to convert zloc from one value to another.  ztype{in,out}
+! are the vertical types as defined by the 3d sphere locations mod.
+real(r8)            :: xloc, yloc, zin, xyz_loc(3), zout, zk
+integer             :: id, i, j, k, rc, ztypein, ztypeout
 real(r8)            :: dx,dy,dz,dxm,dym,dzm
 integer, dimension(2) :: ll, lr, ul, ur
 
@@ -2995,26 +3024,49 @@ real(r8), allocatable, dimension(:) :: v_h, v_p
 
 ! local vars, used in calculating pressure and height
 real(r8)            :: pres1, pres2, pres3, pres4
-real(r8)            :: presa, presb
+real(r8)            :: presa, presb, psurf
 real(r8)            :: hgt1, hgt2, hgt3, hgt4, hgta, hgtb
 logical             :: lev0
 
-! assume success.
-istatus = 0
+! assume failure.
+istatus = 1
 
-! first off, check if ob is identity ob
+! first off, check if ob is identity ob.  if so get_state_meta_data() will 
+! return location information already in the requested vertical type.
 if (obs_kind < 0) then
    call get_state_meta_data(obs_kind,location)
+   istatus = 0
    return
 endif
 
-! for observations/state vars without a specific defined vertical location,
-! return OK without altering location.
-if(vert_is_undef(location)) return
+! if the existing coord is already in the requested vertical units
+! or if the vert is 'undef' which means no specifically defined
+! vertical coordinate, return now. 
+ztypein  = nint(query_location(location, 'which_vert'))
+ztypeout = vert_localization_coord
+if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
+   istatus = 0
+   return
+endif
 
+! we do need to convert the vertical.  start by
+! extracting the location lat/lon/vert values.
 xyz_loc = get_location(location)
 
-! first obtain domain id, and mass points (i,j)
+! the routines below will use zin as the incoming vertical value
+! and zout as the new outgoing one.  start out assuming failure
+! (zout = missing) and wait to be pleasantly surprised when it works.
+zin  = xyz_loc(3)
+zout = missing_r8
+
+! if the vertical is missing to start with, return it the same way
+! with the requested type as out.
+if (zin == missing_r8) then
+   location = set_location(xyz_loc(1),xyz_loc(2),missing_r8,ztypeout)
+   return
+endif
+
+! first obtain domain id, and where we are in the grid (xloc,yloc)
 if ( .not. scm ) then
    call get_domain_info(xyz_loc(1),xyz_loc(2),id,xloc,yloc)
 else
@@ -3023,11 +3075,10 @@ else
    yloc = 1.0_r8
 endif
  
+! cannot find domain info, return error.  set location to missing value
+! but using requested vertical coord.  istatus already set above.
 if (id==0) then
-   ! Note: need to reset location using the namelist variable directly because
-   ! wrf%dom(id)%vert_coord is not defined for id=0
-   location = set_location(xyz_loc(1),xyz_loc(2),missing_r8,vert_localization_coord)
-   istatus = 1
+   location = set_location(xyz_loc(1),xyz_loc(2),missing_r8,ztypeout)
    return
 endif
 
@@ -3036,270 +3087,519 @@ endif
 call toGrid(xloc,i,dx,dxm)
 call toGrid(yloc,j,dy,dym)
 
-! Determine corresponding model level for obs location
-! This depends on the obs vertical coordinate
-! Obs vertical coordinate will also be converted to the desired
-! vertical coordinate as specified by the namelist variable
-! "vert_localization_coord" (stored in wrf structure pointer "vert_coord")
-if(vert_is_level(location)) then
-   ! If obs is by model level: get neighboring mass level indices
-   ! and compute weights to zloc
-   zloc = xyz_loc(3)
-   ! convert obs vert coordinate to desired coordinate type
-   if (wrf%dom(id)%vert_coord == VERTISPRESSURE) then
-      call toGrid(zloc,k,dz,dzm)
+! Check that integer indices of Mass grid are in valid ranges for the given
+!   boundary conditions (i.e., periodicity).  if not, bail here.
+if ( .not. boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .or. &
+     .not. boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
+   location = set_location(xyz_loc(1),xyz_loc(2),missing_r8,ztypeout)
+   return
+endif
 
-      ! Check that integer indices of Mass grid are in valid ranges for the given
-      !   boundary conditions (i.e., periodicity)
-      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
-           boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+! Get indices of corners (i,i+1,j,j+1), which depend on periodicities.
+! since the boundsCheck routines succeeded, this call should never fail
+! so make it a fatal error if it does return an error code.
+call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+if ( rc /= 0 ) then
+   write(errstring,*) 'for i,j: ', i, j, ' getCorners rc = ', rc
+   call error_handler(E_ERR,'model_mod.f90::vert_convert', errstring, &
+                      source, revision, revdate)
+endif
 
-         ! Get indices of corners (i,i+1,j,j+1), which depend on periodicities
-         call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-         if ( rc .ne. 0 ) &
-              print*, 'model_mod.f90 :: vert_interpolate :: getCorners rc = ', rc
+! at this point we have set:  xloc, yloc, i, j, ll, ul, lr, ur, zin, id,
+! dx, dxm, dy, dym  already, and i, j have been checked to verify they 
+! are valid values for this grid.  if you need k, dz, dzm below you still 
+! need to compute and validate them first.
 
-         ! need to compute pressure at all neighboring mass points
-         ! and interpolate
-         presa = model_pressure_t(ll(1), ll(2), k  ,id,x)
-         presb = model_pressure_t(ll(1), ll(2), k+1,id,x)
-         pres1 = dzm*presa + dz*presb
-         presa = model_pressure_t(lr(1), lr(2), k  ,id,x)
-         presb = model_pressure_t(lr(1), lr(2), k+1,id,x)
-         pres2 = dzm*presa + dz*presb
-         presa = model_pressure_t(ul(1), ul(2), k  ,id,x)
-         presb = model_pressure_t(ul(1), ul(2), k+1,id,x)
-         pres3 = dzm*presa + dz*presb
-         presa = model_pressure_t(ur(1), ur(2), k  ,id,x)
-         presb = model_pressure_t(ur(1), ur(2), k+1,id,x)
-         pres4 = dzm*presa + dz*presb
-         zvert = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+! Convert the incoming vertical type (ztypein) into the vertical 
+! localization coordinate given in the namelist (ztypeout).
 
-      ! If the boundsCheck functions return an unsatisfactory integer index, then set
-      !   fld as missing data
-      else
-         zloc  = missing_r8
-         zvert = missing_r8
-      endif
+! convert from:
+select case (ztypein)
 
-   elseif (wrf%dom(id)%vert_coord == VERTISHEIGHT) then
+! -------------------------------------------------------
+! incoming vertical coordinate is 'model level number'
+! -------------------------------------------------------
+case (VERTISLEVEL)
+
+   ! convert into:
+   select case (ztypeout)
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'model level number'
+   ! outgoing vertical coordinate should be 'pressure' in Pa
+   ! -------------------------------------------------------
+   case (VERTISPRESSURE)
+
+      ! get neighboring mass level indices & compute weights to zin
+      call toGrid(zin,k,dz,dzm)
+
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
+
+      ! compute pressure at all neighboring mass points and interpolate
+      presa = model_pressure_t(ll(1), ll(2), k  ,id,x)
+      presb = model_pressure_t(ll(1), ll(2), k+1,id,x)
+      pres1 = dzm*presa + dz*presb
+      presa = model_pressure_t(lr(1), lr(2), k  ,id,x)
+      presb = model_pressure_t(lr(1), lr(2), k+1,id,x)
+      pres2 = dzm*presa + dz*presb
+      presa = model_pressure_t(ul(1), ul(2), k  ,id,x)
+      presb = model_pressure_t(ul(1), ul(2), k+1,id,x)
+      pres3 = dzm*presa + dz*presb
+      presa = model_pressure_t(ur(1), ur(2), k  ,id,x)
+      presb = model_pressure_t(ur(1), ur(2), k+1,id,x)
+      pres4 = dzm*presa + dz*presb
+      zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+   
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'model level number'
+   ! outgoing vertical coordinate should be 'height' in meters
+   ! -------------------------------------------------------
+   case (VERTISHEIGHT) 
+
+      ! get neighboring mass level indices & compute weights to zin
       ! need to add half a grid to get to staggered vertical coordinate
-      call toGrid(zloc+0.5,k,dz,dzm)
+      call toGrid(zin+0.5_r8,k,dz,dzm)
 
-      ! Check to make sure retrieved integer gridpoints are in valid range
-      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
-           boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_gz ) ) then
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_gz)) goto 100
 
-         ! Get indices of corners (i,i+1,j,j+1), which depend on periodicities
-         call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-         if ( rc .ne. 0 ) &
-              print*, 'model_mod.f90 :: vert_interpolate :: getCorners rc = ', rc
+      ! compute height at all neighboring mass points and interpolate
+      hgta = model_height_w(ll(1), ll(2), k  ,id,x)
+      hgtb = model_height_w(ll(1), ll(2), k+1,id,x)
+      hgt1 = dzm*hgta + dz*hgtb
+      hgta = model_height_w(lr(1), lr(2), k  ,id,x)
+      hgtb = model_height_w(lr(1), lr(2), k+1,id,x)
+      hgt2 = dzm*hgta + dz*hgtb
+      hgta = model_height_w(ul(1), ul(2), k  ,id,x)
+      hgtb = model_height_w(ul(1), ul(2), k+1,id,x)
+      hgt3 = dzm*hgta + dz*hgtb
+      hgta = model_height_w(ur(1), ur(2), k  ,id,x)
+      hgtb = model_height_w(ur(1), ur(2), k+1,id,x)
+      hgt4 = dzm*hgta + dz*hgtb
+      zout = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
 
-         ! need to compute pressure at all neighboring mass points
-         ! and interpolate
-         hgta = model_height_w(ll(1), ll(2), k  ,id,x)
-         hgtb = model_height_w(ll(1), ll(2), k+1,id,x)
-         hgt1 = dzm*hgta + dz*hgtb
-         hgta = model_height_w(lr(1), lr(2), k  ,id,x)
-         hgtb = model_height_w(lr(1), lr(2), k+1,id,x)
-         hgt2 = dzm*hgta + dz*hgtb
-         hgta = model_height_w(ul(1), ul(2), k  ,id,x)
-         hgtb = model_height_w(ul(1), ul(2), k+1,id,x)
-         hgt3 = dzm*hgta + dz*hgtb
-         hgta = model_height_w(ur(1), ur(2), k  ,id,x)
-         hgtb = model_height_w(ur(1), ur(2), k+1,id,x)
-         hgt4 = dzm*hgta + dz*hgtb
-         zvert = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
 
-      ! If the boundsCheck functions return an unsatisfactory integer index, then set
-      !   fld as missing data
-      else
-         zloc  = missing_r8
-         zvert = missing_r8
-      endif
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'model level number'
+   ! outgoing vertical coordinate should be 'scale height' 
+   ! -------------------------------------------------------
+   case (VERTISSCALEHEIGHT)
 
-   ! If not VERTISPRESSURE or VERTISHEIGHT, then either return missing value or set
-   !   set zvert equal to zloc if zloc is legally defined (is this right?)
-   else
-      if ( boundsCheck( k, .false., id, dim=3, type=wrf%dom(id)%type_t ) ) then
-         zvert = zloc
-      else
-         zloc  = missing_r8
-         zvert = missing_r8
-      endif
-   endif
+      ! get neighboring mass level indices & compute weights to zin
+      call toGrid(zin,k,dz,dzm)
 
-elseif(vert_is_pressure(location)) then
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
+
+      ! pressure at height
+      presa = model_pressure_t(ll(1), ll(2), k  ,id,x)
+      presb = model_pressure_t(ll(1), ll(2), k+1,id,x)
+      pres1 = dzm*presa + dz*presb
+      presa = model_pressure_t(lr(1), lr(2), k  ,id,x)
+      presb = model_pressure_t(lr(1), lr(2), k+1,id,x)
+      pres2 = dzm*presa + dz*presb
+      presa = model_pressure_t(ul(1), ul(2), k  ,id,x)
+      presb = model_pressure_t(ul(1), ul(2), k+1,id,x)
+      pres3 = dzm*presa + dz*presb
+      presa = model_pressure_t(ur(1), ur(2), k  ,id,x)
+      presb = model_pressure_t(ur(1), ur(2), k+1,id,x)
+      pres4 = dzm*presa + dz*presb
+      zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+      ! surface pressure
+      pres1 = model_pressure_s(ll(1), ll(2), id, x)
+      pres2 = model_pressure_s(lr(1), lr(2), id, x)
+      pres3 = model_pressure_s(ul(1), ul(2), id, x) 
+      pres4 = model_pressure_s(ur(1), ur(2), id, x)
+      zout = -log(zout / (dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )))
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'model level number'
+   ! outgoing vertical coordinate is unrecognized
+   ! -------------------------------------------------------
+   case default 
+      write(errstring,*) 'Requested vertical coordinate not recognized: ', ztypeout
+      call error_handler(E_ERR,'vert_convert', errstring, &
+                         source, revision, revdate,  &
+                         text2='Incoming vertical coordinate was model level.')
+
+
+   end select   ! incoming vert was model level
+
+
+! -------------------------------------------------------
+! incoming vertical coordinate is 'pressure' in Pa
+! -------------------------------------------------------
+case (VERTISPRESSURE)
+
    ! If obs is by pressure: get corresponding mass level zk,
-   ! then get neighboring mass level indices
-   ! and compute weights to zloc
+   ! then get neighboring mass level indices and compute weights 
+
+   ! get model pressure profile and
+   ! get pressure vertical co-ordinate in model level number
    allocate(v_p(0:wrf%dom(id)%bt))
-   ! get model pressure profile
    call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
-   ! get pressure vertical co-ordinate
-   call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc,lev0)
+   call pres_to_zk(zin, v_p, wrf%dom(id)%bt,zk,lev0)
    deallocate(v_p)
-   ! convert obs vert coordinate to desired coordinate type
-   if (zloc==missing_r8) then
-      zvert = missing_r8
-   else
-      if (wrf%dom(id)%vert_coord == VERTISLEVEL) then
-         zvert = zloc
-      elseif (wrf%dom(id)%vert_coord == VERTISHEIGHT) then
-         ! adding 0.5 to get to the staggered vertical grid
-         ! because height is on staggered vertical grid
-         call toGrid(zloc+0.5,k,dz,dzm)
 
-         ! Check to make sure retrieved integer gridpoints are in valid range
-         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
-              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_gz ) ) then
+   ! if you cannot get a model level out of the pressure profile, bail to end
+   if (zk == missing_r8) goto 100
 
-            ! Get indices of corners (i,i+1,j,j+1), which depend on periodicities
-            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-            if ( rc .ne. 0 ) &
-                 print*, 'model_mod.f90 :: vert_interpolate :: getCorners rc = ', rc
+   ! convert into:
+   select case (ztypeout)
 
-            ! need to compute pressure at all neighboring mass points
-            ! and interpolate
-            hgta = model_height_w(ll(1), ll(2), k  ,id,x)
-            hgtb = model_height_w(ll(1), ll(2), k+1,id,x)
-            hgt1 = dzm*hgta + dz*hgtb
-            hgta = model_height_w(lr(1), lr(2), k  ,id,x)
-            hgtb = model_height_w(lr(1), lr(2), k+1,id,x)
-            hgt2 = dzm*hgta + dz*hgtb
-            hgta = model_height_w(ul(1), ul(2), k  ,id,x)
-            hgtb = model_height_w(ul(1), ul(2), k+1,id,x)
-            hgt3 = dzm*hgta + dz*hgtb
-            hgta = model_height_w(ur(1), ur(2), k  ,id,x)
-            hgtb = model_height_w(ur(1), ur(2), k+1,id,x)
-            hgt4 = dzm*hgta + dz*hgtb
-            zvert = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
-            
-         ! If the boundsCheck functions return an unsatisfactory integer index, then set
-         !   fld as missing data
-         else
-            zloc  = missing_r8
-            zvert = missing_r8
-         endif
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'pressure' in Pa
+   ! outgoing vertical coordinate should be 'model level'
+   ! -------------------------------------------------------
+   case (VERTISLEVEL)
+      ! pres_to_zk() above converted pressure into a real number
+      ! of vertical model levels, including the fraction.
+      zout = zk
 
-      else
-         ! take pressure directly
-         zvert  = xyz_loc(3)
-      endif
-   endif
 
-elseif(vert_is_height(location)) then
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'pressure' in Pa
+   ! outgoing vertical coordinate should be 'height' in meters
+   ! -------------------------------------------------------
+   case (VERTISHEIGHT)
+      ! adding 0.5 to get to the staggered vertical grid
+      ! because height is on staggered vertical grid
+      call toGrid(zk+0.5,k,dz,dzm)
+
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_gz)) goto 100
+
+      ! compute height at all neighboring mass points and interpolate
+      hgta = model_height_w(ll(1), ll(2), k  ,id,x)
+      hgtb = model_height_w(ll(1), ll(2), k+1,id,x)
+      hgt1 = dzm*hgta + dz*hgtb
+      hgta = model_height_w(lr(1), lr(2), k  ,id,x)
+      hgtb = model_height_w(lr(1), lr(2), k+1,id,x)
+      hgt2 = dzm*hgta + dz*hgtb
+      hgta = model_height_w(ul(1), ul(2), k  ,id,x)
+      hgtb = model_height_w(ul(1), ul(2), k+1,id,x)
+      hgt3 = dzm*hgta + dz*hgtb
+      hgta = model_height_w(ur(1), ur(2), k  ,id,x)
+      hgtb = model_height_w(ur(1), ur(2), k+1,id,x)
+      hgt4 = dzm*hgta + dz*hgtb
+      zout = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'pressure' in Pa
+   ! outgoing vertical coordinate should be 'scale height' 
+   ! -------------------------------------------------------
+   case (VERTISSCALEHEIGHT)
+      call toGrid(zk,k,dz,dzm)
+
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
+
+      ! compute surface pressure at all neighboring mass points and interpolate
+      pres1 = model_pressure_s(ll(1), ll(2), id, x)
+      pres2 = model_pressure_s(lr(1), lr(2), id, x)
+      pres3 = model_pressure_s(ul(1), ul(2), id, x)
+      pres4 = model_pressure_s(ur(1), ur(2), id, x)
+      zout = -log(zin / (dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )))
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'pressure'
+   ! outgoing vertical coordinate is unrecognized
+   ! -------------------------------------------------------
+   case default 
+      write(errstring,*) 'Requested vertical coordinate not recognized: ', ztypeout
+      call error_handler(E_ERR,'vert_convert', errstring, &
+                         source, revision, revdate,  &
+                         text2='Incoming vertical coordinate was pressure.')
+
+
+   end select   ! incoming vert was pressure
+
+
+! -------------------------------------------------------
+! incoming vertical coordinate is 'height' in meters
+! -------------------------------------------------------
+case (VERTISHEIGHT)
+
    ! If obs is by height: get corresponding mass level zk,
-   ! then get neighboring mass level indices
-   ! and compute weights to zloc
+   ! then get neighboring mass level indices and compute weights
+
+   ! get model height profile and
+   ! get height vertical co-ordinate in model level number 
    allocate(v_h(0:wrf%dom(id)%bt))
-   ! get model height profile
    call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
-   ! get height vertical co-ordinate
-   call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc,lev0)
+   call height_to_zk(zin, v_h, wrf%dom(id)%bt,zk,lev0)
    deallocate(v_h)
-   ! convert obs vert coordinate to desired coordinate type
-   if (zloc==missing_r8) then
-      zvert = missing_r8
-   else
-      if (wrf%dom(id)%vert_coord == VERTISLEVEL) then
-         zvert = zloc
-      elseif (wrf%dom(id)%vert_coord == VERTISPRESSURE) then
-         call toGrid(zloc,k,dz,dzm)
 
-         ! Check that integer indices of Mass grid are in valid ranges for the given
-         !   boundary conditions (i.e., periodicity)
-         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
-              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+   ! convert into:
+   select case (ztypeout)
 
-            ! Get indices of corners (i,i+1,j,j+1), which depend on periodicities
-            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-            if ( rc .ne. 0 ) &
-                 print*, 'model_mod.f90 :: vert_interpolate :: getCorners rc = ', rc
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'height' in meters
+   ! outgoing vertical coordinate should be 'model level'
+   ! -------------------------------------------------------
+   case (VERTISLEVEL)
+      ! height_to_zk() above converted pressure into a real number
+      ! of vertical model levels, including the fraction.
+      zout = zk
 
-            ! need to compute pressure at all neighboring mass points
-            ! and interpolate
-            presa = model_pressure_t(ll(1), ll(2), k  ,id,x)
-            presb = model_pressure_t(ll(1), ll(2), k+1,id,x)
-            pres1 = dzm*presa + dz*presb
-            presa = model_pressure_t(lr(1), lr(2), k  ,id,x)
-            presb = model_pressure_t(lr(1), lr(2), k+1,id,x)
-            pres2 = dzm*presa + dz*presb
-            presa = model_pressure_t(ul(1), ul(2), k  ,id,x)
-            presb = model_pressure_t(ul(1), ul(2), k+1,id,x)
-            pres3 = dzm*presa + dz*presb
-            presa = model_pressure_t(ur(1), ur(2), k  ,id,x)
-            presb = model_pressure_t(ur(1), ur(2), k+1,id,x)
-            pres4 = dzm*presa + dz*presb
-            zvert = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
-         ! If the boundsCheck functions return an unsatisfactory integer index, then set
-         !   fld as missing data
-         else
-            zloc  = missing_r8
-            zvert = missing_r8
-         endif
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'height' in meters
+   ! outgoing vertical coordinate should be 'pressure' in Pa
+   ! -------------------------------------------------------
+   case (VERTISPRESSURE)
+      call toGrid(zk,k,dz,dzm)
 
-      else
-         ! take height directly
-         zvert  = xyz_loc(3)
-      endif
-   endif
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
 
-!nc -- got rid of ".or. surf_var" from elseif statement here because it can potentially be outdated
-!        in its value.  assim_tools_mod calls get_close_obs, which in turn calls vert_interpolate.
-!        This calling order can potentially cut model_interpolate out of the loop, and it is only
-!        within model_interpolate where surf_var can change its value.
-elseif(vert_is_surface(location)) then
-   zloc = 1.0_r8
-   ! convert obs vert coordinate to desired coordinate type
-   if (wrf%dom(id)%vert_coord == VERTISLEVEL) then
-      zvert = zloc
-   elseif (wrf%dom(id)%vert_coord == VERTISPRESSURE) then
-      ! need to compute surface pressure at all neighboring mass points
-      ! and interpolate
-      call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-      if ( rc .ne. 0 ) &
-           print*, 'model_mod.f90 :: vert_interpolate :: getCorners rc = ', rc
+      ! compute pressure at all neighboring mass points and interpolate
+      presa = model_pressure_t(ll(1), ll(2), k  ,id,x)
+      presb = model_pressure_t(ll(1), ll(2), k+1,id,x)
+      pres1 = dzm*presa + dz*presb
+      presa = model_pressure_t(lr(1), lr(2), k  ,id,x)
+      presb = model_pressure_t(lr(1), lr(2), k+1,id,x)
+      pres2 = dzm*presa + dz*presb
+      presa = model_pressure_t(ul(1), ul(2), k  ,id,x)
+      presb = model_pressure_t(ul(1), ul(2), k+1,id,x)
+      pres3 = dzm*presa + dz*presb
+      presa = model_pressure_t(ur(1), ur(2), k  ,id,x)
+      presb = model_pressure_t(ur(1), ur(2), k+1,id,x)
+      pres4 = dzm*presa + dz*presb
+      zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'height' in meters
+   ! outgoing vertical coordinate should be 'scale height'
+   ! -------------------------------------------------------
+   case (VERTISSCALEHEIGHT)
+      call toGrid(zk,k,dz,dzm)
+
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
+
+      ! pressure at height
+      presa = model_pressure_t(ll(1), ll(2), k  ,id,x)
+      presb = model_pressure_t(ll(1), ll(2), k+1,id,x)
+      pres1 = dzm*presa + dz*presb
+      presa = model_pressure_t(lr(1), lr(2), k  ,id,x)
+      presb = model_pressure_t(lr(1), lr(2), k+1,id,x)
+      pres2 = dzm*presa + dz*presb
+      presa = model_pressure_t(ul(1), ul(2), k  ,id,x)
+      presb = model_pressure_t(ul(1), ul(2), k+1,id,x)
+      pres3 = dzm*presa + dz*presb
+      presa = model_pressure_t(ur(1), ur(2), k  ,id,x)
+      presb = model_pressure_t(ur(1), ur(2), k+1,id,x)
+      pres4 = dzm*presa + dz*presb
+      zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+ 
+      ! surface pressure
+      pres1 = model_pressure_s(ll(1), ll(2), id, x)
+      pres2 = model_pressure_s(lr(1), lr(2), id, x)
+      pres3 = model_pressure_s(ul(1), ul(2), id, x) 
+      pres4 = model_pressure_s(ur(1), ur(2), id, x)
+      zout = -log(zout / (dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )))
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'height' in meters
+   ! outgoing vertical coordinate is unrecognized
+   ! -------------------------------------------------------
+   case default 
+      write(errstring,*) 'Requested vertical coordinate not recognized: ', ztypeout
+      call error_handler(E_ERR,'vert_convert', errstring, &
+                         source, revision, revdate,  &
+                         text2='Incoming vertical coordinate was height.')
+
+
+   end select   ! incoming vert was height
+
+
+! -------------------------------------------------------
+! incoming vertical coordinate is 'scale height' 
+! -------------------------------------------------------
+case (VERTISSCALEHEIGHT)
+
+   ! If obs is by scale height: compute the surface pressure, 
+   ! get corresponding mass level zk, then get neighboring mass 
+   ! level indices and compute weights
+
+   pres1 = model_pressure_s(ll(1), ll(2), id,x) 
+   pres2 = model_pressure_s(lr(1), lr(2), id,x)
+   pres3 = model_pressure_s(ul(1), ul(2), id,x) 
+   pres4 = model_pressure_s(ur(1), ur(2), id,x) 
+   psurf = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+   ! get model pressure profile and
+   ! get pressure vertical co-ordinate in model level number
+   allocate(v_p(0:wrf%dom(id)%bt))
+   call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
+   call pres_to_zk(exp(-zin)*psurf, v_p, wrf%dom(id)%bt,zk,lev0)
+   deallocate(v_p)
+
+   ! if you cannot get a model level out of the pressure profile, bail to end
+   if (zk == missing_r8) goto 100
+
+   ! convert into:
+   select case (ztypeout)
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'scale height'
+   ! outgoing vertical coordinate should be 'model level'
+   ! -------------------------------------------------------
+   case (VERTISLEVEL)
+      ! pres_to_zk() above converted scale height/pressure into 
+      ! a real number of vertical model levels, including the fraction.
+      zout = zk
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'scale height'
+   ! outgoing vertical coordinate should be 'height' in meters
+   ! -------------------------------------------------------
+   case (VERTISHEIGHT)
+      ! adding 0.5 to get to the staggered vertical grid
+      ! because height is on staggered vertical grid
+      call toGrid(zk+0.5,k,dz,dzm)
+
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_gz)) goto 100
+
+      ! compute height at all neighboring mass points and interpolate
+      hgta = model_height_w(ll(1), ll(2), k  ,id,x)
+      hgtb = model_height_w(ll(1), ll(2), k+1,id,x)
+      hgt1 = dzm*hgta + dz*hgtb
+      hgta = model_height_w(lr(1), lr(2), k  ,id,x)
+      hgtb = model_height_w(lr(1), lr(2), k+1,id,x)
+      hgt2 = dzm*hgta + dz*hgtb
+      hgta = model_height_w(ul(1), ul(2), k  ,id,x)
+      hgtb = model_height_w(ul(1), ul(2), k+1,id,x)
+      hgt3 = dzm*hgta + dz*hgtb
+      hgta = model_height_w(ur(1), ur(2), k  ,id,x)
+      hgtb = model_height_w(ur(1), ur(2), k+1,id,x)
+      hgt4 = dzm*hgta + dz*hgtb
+      zout = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'scale height'
+   ! outgoing vertical coordinate should be 'pressure' in Pa
+   ! -------------------------------------------------------
+   case (VERTISPRESSURE)
+      zout = exp(-zin)*psurf
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'scale height'
+   ! outgoing vertical coordinate is unrecognized
+   ! -------------------------------------------------------
+   case default 
+      write(errstring,*) 'Requested vertical coordinate not recognized: ', ztypeout
+      call error_handler(E_ERR,'vert_convert', errstring, &
+                         source, revision, revdate,  &
+                         text2='Incoming vertical coordinate was scale height.')
+
+
+   end select   ! incoming vert was scale height
+
+! -------------------------------------------------------
+! incoming vertical coordinate is 'surface' (assumes zin is height in meters)
+! -------------------------------------------------------
+case(VERTISSURFACE)
+
+   ! convert into:
+   select case (ztypeout)
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'surface'
+   ! outgoing vertical coordinate should be 'model level'
+   ! -------------------------------------------------------
+   case (VERTISLEVEL)
+      zout = 1.0_r8
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'surface'
+   ! outgoing vertical coordinate should be 'pressure' in Pa
+   ! -------------------------------------------------------
+   case (VERTISPRESSURE)
+
+      ! compute surface pressure at all neighboring mass points
       pres1 = model_pressure_s(ll(1), ll(2), id,x)
       pres2 = model_pressure_s(lr(1), lr(2), id,x)
       pres3 = model_pressure_s(ul(1), ul(2), id,x)
       pres4 = model_pressure_s(ur(1), ur(2), id,x)
-      zvert = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
-   else
-      ! a surface ob is assumed to have height as vertical coordinate...
-      ! this may need to be revised if this is not always true (in which
-      ! case, just need to uncomment below lines to get terrain height
+      zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'surface'
+   ! outgoing vertical coordinate should be 'scale height' 
+   ! -------------------------------------------------------
+   case (VERTISSCALEHEIGHT)
+      zout = -log(1.0_r8)
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'surface'
+   ! outgoing vertical coordinate should be 'height' in meters
+   ! -------------------------------------------------------
+   case (VERTISHEIGHT)
+      ! a surface ob is assumed to have height as vertical coordinate.
+      ! this code needs to be revised if this is not true 
+      ! (in that case uncomment lines below to get terrain height
       ! from model)
-      zvert = xyz_loc(3)
-      !! directly interpolate terrain height at neighboring mass points
-      !zvert = dym*( dxm*wrf%dom(id)%hgt(i,j) + &
-      !             dx*wrf%dom(id)%hgt(i+1,j) ) + &
-      !        dy*( dxm*wrf%dom(id)%hgt(i,j+1) + &
-      !             dx*wrf%dom(id)%hgt(i+1,j+1) )
-   endif
+      zout = zin
+      !! or: directly interpolate terrain height at neighboring mass points
+      !zout = dym*( dxm*wrf%dom(id)%hgt(i,  j) + &
+      !              dx*wrf%dom(id)%hgt(i+1,j) ) + &
+      !        dy*( dxm*wrf%dom(id)%hgt(i,  j+1) + &
+      !              dx*wrf%dom(id)%hgt(i+1,j+1) )
 
-! original code had a test for undefined vertical here.  now tested for
-! and returned at start of routine.
 
-else
-   write(errstring,*) 'Vertical coordinate not recognized: ',nint(query_location(location,'which_vert'))
-   call error_handler(E_ERR,'vert_interpolate', errstring, &
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'surface'
+   ! outgoing vertical coordinate is unrecognized
+   ! -------------------------------------------------------
+   case default 
+      write(errstring,*) 'Requested vertical coordinate not recognized: ', ztypeout
+      call error_handler(E_ERR,'vert_convert', errstring, &
+                         source, revision, revdate,  &
+                         text2='Incoming vertical coordinate was surface.')
+
+
+   end select   ! incoming vert was surface
+
+
+! -------------------------------------------------------
+! incoming vertical coordinate has no case section
+! -------------------------------------------------------
+case default
+   write(errstring,*) 'Incoming vertical coordinate type not recognized: ',ztypein
+   call error_handler(E_ERR,'vert_convert', errstring, &
         source, revision, revdate)
 
-endif
+end select   ! incoming z vertical type
 
-if(zvert == missing_r8) istatus = 1
 
-! Reset location   
-location = set_location(xyz_loc(1),xyz_loc(2),zvert,wrf%dom(id)%vert_coord)
+! on error, come here.  istatus was set to 1 and zout to missing_r8
+! so unless they have been reset to good values, things did not work.
+100 continue 
 
-end subroutine vert_interpolate
+! Returned location 
+location = set_location(xyz_loc(1),xyz_loc(2),zout,ztypeout)
+
+! Set successful return code only if zout has good value
+if(zout /= missing_r8) istatus = 0
+
+end subroutine vert_convert
 
 
 !#######################################################################
@@ -4343,8 +4643,6 @@ enddo
 
 call nc_check(nf90_sync(ncFileID),'nc_write_model_atts','sync')
 
-write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...'
-
 end function nc_write_model_atts
 
 
@@ -4463,9 +4761,7 @@ endif
 ! Flush the buffer and leave netCDF file open
 !-----------------------------------------------------------------
 
-write (*,*)'Finished filling variables ...'
 call nc_check(nf90_sync(ncFileID), 'nc_write_model_vars','sync')
-write (*,*)'netCDF file is synched ...'
 
 end function nc_write_model_vars
 
@@ -4736,7 +5032,7 @@ if( (var_type == wrf%dom(id)%type_w) .or. (var_type == wrf%dom(id)%type_gz) ) th
 
    if( k == 1 ) then
 
-      pres1 = model_pressure_t(i,j,k,id,x)
+      pres1 = model_pressure_t(i,j,k,  id,x)
       pres2 = model_pressure_t(i,j,k+1,id,x)
       model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
 
@@ -4748,7 +5044,7 @@ if( (var_type == wrf%dom(id)%type_w) .or. (var_type == wrf%dom(id)%type_gz) ) th
 
    else
 
-      pres1 = model_pressure_t(i,j,k,id,x)
+      pres1 = model_pressure_t(i,j,k,  id,x)
       pres2 = model_pressure_t(i,j,k-1,id,x)
       model_pressure = (pres1 + pres2)/2.0_r8
 
@@ -4765,7 +5061,7 @@ elseif( var_type == wrf%dom(id)%type_u ) then
 
          ! We are at seam in longitude, take first and last M-grid points
          pres1 = model_pressure_t(i-1,j,k,id,x)
-         pres2 = model_pressure_t(1,j,k,id,x)
+         pres2 = model_pressure_t(1,  j,k,id,x)
          model_pressure = (pres1 + pres2)/2.0_r8
          
       else
@@ -4783,14 +5079,14 @@ elseif( var_type == wrf%dom(id)%type_u ) then
       if ( wrf%dom(id)%periodic_x ) then
 
          ! We are at seam in longitude, take first and last M-grid points
-         pres1 = model_pressure_t(i,j,k,id,x)
+         pres1 = model_pressure_t(i,             j,k,id,x)
          pres2 = model_pressure_t(wrf%dom(id)%we,j,k,id,x)
          model_pressure = (pres1 + pres2)/2.0_r8
          
       else
 
          ! If not periodic, then try extrapolating
-         pres1 = model_pressure_t(i,j,k,id,x)
+         pres1 = model_pressure_t(i,  j,k,id,x)
          pres2 = model_pressure_t(i+1,j,k,id,x)
          model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
 
@@ -4798,7 +5094,7 @@ elseif( var_type == wrf%dom(id)%type_u ) then
 
    else
 
-      pres1 = model_pressure_t(i,j,k,id,x)
+      pres1 = model_pressure_t(i,  j,k,id,x)
       pres2 = model_pressure_t(i-1,j,k,id,x)
       model_pressure = (pres1 + pres2)/2.0_r8
 
@@ -4840,13 +5136,13 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
 
          pres1 = model_pressure_t(off,j,k,id,x)
-         pres2 = model_pressure_t(i,j,k,id,x)
+         pres2 = model_pressure_t(i,  j,k,id,x)
          model_pressure = (pres1 + pres2)/2.0_r8
 
       ! If not periodic, then try extrapolating
       else
 
-         pres1 = model_pressure_t(i,j,k,id,x)
+         pres1 = model_pressure_t(i,j,  k,id,x)
          pres2 = model_pressure_t(i,j+1,k,id,x)
          model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
 
@@ -4854,7 +5150,7 @@ elseif( var_type == wrf%dom(id)%type_v ) then
 
    else
 
-      pres1 = model_pressure_t(i,j,k,id,x)
+      pres1 = model_pressure_t(i,j,  k,id,x)
       pres2 = model_pressure_t(i,j-1,k,id,x)
       model_pressure = (pres1 + pres2)/2.0_r8
 
@@ -4906,8 +5202,6 @@ if (wrf%dom(id)%type_qv < 0 .or. wrf%dom(id)%type_t < 0) then
        source, revision, revdate)
 endif
 
-!!$iqv = get_wrf_index(i,j,k,TYPE_QV,id)
-!!$it  = get_wrf_index(i,j,k,TYPE_T,id)
 iqv = wrf%dom(id)%dart_ind(i,j,k,wrf%dom(id)%type_qv)
 it  = wrf%dom(id)%dart_ind(i,j,k,wrf%dom(id)%type_t)
 
@@ -4934,7 +5228,7 @@ real(r8)              :: model_pressure_s
 integer  :: ips, imu
 
 ! make sure one of these is good.
-if ( wrf%dom(id)%type_mu < 0 .or. wrf%dom(id)%type_ps < 0 ) then
+if ( wrf%dom(id)%type_mu < 0 .and. wrf%dom(id)%type_ps < 0 ) then
   call error_handler(E_ERR, 'model_pressure_s:', &
       'One of MU or PSFC must be in state vector to compute surface pressure', &
        source, revision, revdate)
@@ -4979,15 +5273,12 @@ if (wrf%dom(id)%type_mu < 0 .or. wrf%dom(id)%type_gz < 0) then
        source, revision, revdate)
 endif
 
-!!$imu = get_wrf_index(i,j,1,TYPE_MU,id)
-!!$iph = get_wrf_index(i,j,k,TYPE_GZ,id)
-!!$iphp1 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
-imu = wrf%dom(id)%dart_ind(i,j,1,wrf%dom(id)%type_mu)
-iph = wrf%dom(id)%dart_ind(i,j,k,wrf%dom(id)%type_gz)
+imu   = wrf%dom(id)%dart_ind(i,j,1,  wrf%dom(id)%type_mu)
+iph   = wrf%dom(id)%dart_ind(i,j,k,  wrf%dom(id)%type_gz)
 iphp1 = wrf%dom(id)%dart_ind(i,j,k+1,wrf%dom(id)%type_gz)
 
-ph_e = ( (x(iphp1) + wrf%dom(id)%phb(i,j,k+1)) - (x(iph) + wrf%dom(id)%phb(i,j,k)) ) &
-     /wrf%dom(id)%dnw(k)
+ph_e = ( (x(iphp1) + wrf%dom(id)%phb(i,j,k+1)) &
+       - (x(iph)   + wrf%dom(id)%phb(i,j,k  )) ) / wrf%dom(id)%dnw(k)
 
 ! now calculate rho = - mu / dphi/deta
 
@@ -5001,13 +5292,15 @@ subroutine get_model_height_profile(i,j,dx,dy,dxm,dym,n,x,id,v_h)
 
 ! Calculate the model height profile on half (mass) levels,
 ! horizontally interpolated at the observation location.
+! This routine used to compute geopotential heights; it now
+! computes geometric heights.
 
 integer,  intent(in)  :: i,j,n,id
 real(r8), intent(in)  :: dx,dy,dxm,dym
 real(r8), intent(in)  :: x(:)
 real(r8), intent(out) :: v_h(0:n)
 
-real(r8)  :: fll(n+1)
+real(r8)  :: fll(n+1), geop, lat
 integer   :: ill,iul,ilr,iur,k, rc
 integer, dimension(2) :: ll, lr, ul, ur
 logical   :: debug = .false.
@@ -5032,11 +5325,17 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_gz
       ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_gz)
       iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_gz)
 
-      fll(k) = ( dym*( dxm*( wrf%dom(id)%phb(ll(1),ll(2),k) + x(ill) ) + &
-                        dx*( wrf%dom(id)%phb(lr(1),lr(2),k) + x(ilr) ) ) + &
-                  dy*( dxm*( wrf%dom(id)%phb(ul(1),ul(2),k) + x(iul) ) + &
-                        dx*( wrf%dom(id)%phb(ur(1),ur(2),k) + x(iur) ) ) )/gravity
+      geop = ( dym*( dxm*( wrf%dom(id)%phb(ll(1),ll(2),k) + x(ill) ) + &
+                      dx*( wrf%dom(id)%phb(lr(1),lr(2),k) + x(ilr) ) ) + &
+                dy*( dxm*( wrf%dom(id)%phb(ul(1),ul(2),k) + x(iul) ) + &
+                      dx*( wrf%dom(id)%phb(ur(1),ur(2),k) + x(iur) ) ) )/gravity
 
+      lat = ( wrf%dom(id)%latitude(ll(1),ll(2)) + &
+              wrf%dom(id)%latitude(lr(1),lr(2)) + &
+              wrf%dom(id)%latitude(ul(1),ul(2)) + &
+              wrf%dom(id)%latitude(ur(1),ur(2)) ) / 4.0_r8
+
+      fll(k) = compute_geometric_height(geop, lat)
    end do
 
    do k=1,n
@@ -5072,11 +5371,15 @@ end subroutine get_model_height_profile
 
 function model_height(i,j,k,id,var_type,x)
 
+! This routine used to compute geopotential heights; it now
+! computes geometric heights.
+
 integer,  intent(in)  :: i,j,k,id,var_type
 real(r8), intent(in)  :: x(:)
 real(r8)              :: model_height
 
 integer   :: i1, i2, i3, i4, off
+real(r8)  :: geop, lat
 
 model_height = missing_r8
 
@@ -5089,9 +5392,9 @@ endif
 ! If W-grid (on ZNW levels), then we are fine because it is native to GZ
 if( (var_type == wrf%dom(id)%type_w) .or. (var_type == wrf%dom(id)%type_gz) ) then
 
-!!$   i1 = get_wrf_index(i,j,k,wrf%dom(id)%type_gz,id)
    i1 = wrf%dom(id)%dart_ind(i,j,k,wrf%dom(id)%type_gz)
-   model_height = (wrf%dom(id)%phb(i,j,k)+x(i1))/gravity
+   geop = (wrf%dom(id)%phb(i,j,k)+x(i1))/gravity
+   model_height = compute_geometric_height(geop, wrf%dom(id)%latitude(i, j))
 
 ! If U-grid, then height is defined between U points, both in horizontal 
 !   and in vertical, so average -- averaging depends on longitude periodicity
@@ -5105,27 +5408,39 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          ! We are at the seam in longitude, so take first and last mass points
          i1 = wrf%dom(id)%dart_ind(i-1,j,k  ,wrf%dom(id)%type_gz)
          i2 = wrf%dom(id)%dart_ind(i-1,j,k+1,wrf%dom(id)%type_gz)
-         i3 = wrf%dom(id)%dart_ind(1,j,k  ,wrf%dom(id)%type_gz)
-         i4 = wrf%dom(id)%dart_ind(1,j,k+1,wrf%dom(id)%type_gz)
+         i3 = wrf%dom(id)%dart_ind(1,  j,k  ,wrf%dom(id)%type_gz)
+         i4 = wrf%dom(id)%dart_ind(1,  j,k+1,wrf%dom(id)%type_gz)
 
-         model_height = ( ( wrf%dom(id)%phb(i-1,j,k  ) + x(i1) ) &
-                         +( wrf%dom(id)%phb(i-1,j,k+1) + x(i2) ) &
-                         +( wrf%dom(id)%phb(1  ,j,k  ) + x(i3) ) &
-                         +( wrf%dom(id)%phb(1  ,j,k+1) + x(i4) ) )/(4.0_r8*gravity)
+         geop = ( (wrf%dom(id)%phb(i-1,j,k  ) + x(i1)) &
+                 +(wrf%dom(id)%phb(i-1,j,k+1) + x(i2)) &
+                 +(wrf%dom(id)%phb(1  ,j,k  ) + x(i3)) &
+                 +(wrf%dom(id)%phb(1  ,j,k+1) + x(i4)) )/(4.0_r8*gravity)
+         
+         lat = ( wrf%dom(id)%latitude(i-1,j)  &
+                +wrf%dom(id)%latitude(i-1,j)  &
+                +wrf%dom(id)%latitude(1  ,j)  &
+                +wrf%dom(id)%latitude(1  ,j) ) / 4.0_r8
+
+         model_height = compute_geometric_height(geop, lat)
          
       else
-
-!!$      i1 = get_wrf_index(i-1,j,k  ,wrf%dom(id)%type_gz,id)
-!!$      i2 = get_wrf_index(i-1,j,k+1,wrf%dom(id)%type_gz,id)
 
          ! If not periodic, then try extrapolating
          i1 = wrf%dom(id)%dart_ind(i-1,j,k  ,wrf%dom(id)%type_gz)
          i2 = wrf%dom(id)%dart_ind(i-1,j,k+1,wrf%dom(id)%type_gz)
 
-         model_height = ( 3.0_r8*(wrf%dom(id)%phb(i-1,j,k  )+x(i1)) &
-                         +3.0_r8*(wrf%dom(id)%phb(i-1,j,k+1)+x(i2)) &
-                                -(wrf%dom(id)%phb(i-2,j,k  )+x(i1-1)) &
-                                -(wrf%dom(id)%phb(i-2,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
+         geop = ( 3.0_r8*(wrf%dom(id)%phb(i-1,j,k  )+x(i1)) &
+                 +3.0_r8*(wrf%dom(id)%phb(i-1,j,k+1)+x(i2)) &
+                        -(wrf%dom(id)%phb(i-2,j,k  )+x(i1-1)) &
+                        -(wrf%dom(id)%phb(i-2,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
+
+         lat = ( 3.0_r8*wrf%dom(id)%latitude(i-1,j)  &
+                +3.0_r8*wrf%dom(id)%latitude(i-1,j)  &
+                       -wrf%dom(id)%latitude(i-2,j)  &
+                       -wrf%dom(id)%latitude(i-2,j)) / 4.0_r8
+
+         model_height = compute_geometric_height(geop, lat)
+
       endif
 
    elseif( i == 1 ) then
@@ -5140,38 +5455,54 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          i3 = wrf%dom(id)%dart_ind(off,j,k  ,wrf%dom(id)%type_gz)
          i4 = wrf%dom(id)%dart_ind(off,j,k+1,wrf%dom(id)%type_gz)
 
-         model_height = ( ( wrf%dom(id)%phb(i  ,j,k  ) + x(i1) ) &
-                         +( wrf%dom(id)%phb(i  ,j,k+1) + x(i2) ) &
-                         +( wrf%dom(id)%phb(off,j,k  ) + x(i3) ) &
-                         +( wrf%dom(id)%phb(off,j,k+1) + x(i4) ) )/(4.0_r8*gravity)
+         geop = ( (wrf%dom(id)%phb(i  ,j,k  ) + x(i1)) &
+                 +(wrf%dom(id)%phb(i  ,j,k+1) + x(i2)) &
+                 +(wrf%dom(id)%phb(off,j,k  ) + x(i3)) &
+                 +(wrf%dom(id)%phb(off,j,k+1) + x(i4)) )/(4.0_r8*gravity)
          
-      else
+         lat = ( wrf%dom(id)%latitude(i  ,j)  &
+                +wrf%dom(id)%latitude(i  ,j)  &
+                +wrf%dom(id)%latitude(off,j)  &
+                +wrf%dom(id)%latitude(off,j)) / 4.0_r8
 
-!!$      i1 = get_wrf_index(i,j,k  ,wrf%dom(id)%type_gz,id)
-!!$      i2 = get_wrf_index(i,j,k+1,wrf%dom(id)%type_gz,id)
+         model_height = compute_geometric_height(geop, lat)
+
+      else
 
          ! If not periodic, then try extrapolating
          i1 = wrf%dom(id)%dart_ind(i,j,k  ,wrf%dom(id)%type_gz)
          i2 = wrf%dom(id)%dart_ind(i,j,k+1,wrf%dom(id)%type_gz)
          
-         model_height = ( 3.0_r8*(wrf%dom(id)%phb(i  ,j,k  )+x(i1)) &
-                         +3.0_r8*(wrf%dom(id)%phb(i  ,j,k+1)+x(i2)) &
-                                -(wrf%dom(id)%phb(i+1,j,k  )+x(i1+1)) &
-                                -(wrf%dom(id)%phb(i+1,j,k+1)+x(i2+1)) )/(4.0_r8*gravity)
+         geop = ( 3.0_r8*(wrf%dom(id)%phb(i  ,j,k  )+x(i1))   &
+                 +3.0_r8*(wrf%dom(id)%phb(i  ,j,k+1)+x(i2))   &
+                        -(wrf%dom(id)%phb(i+1,j,k  )+x(i1+1)) &
+                        -(wrf%dom(id)%phb(i+1,j,k+1)+x(i2+1)) )/(4.0_r8*gravity)
+
+         lat = ( 3.0_r8*wrf%dom(id)%latitude(i  ,j)  &
+                +3.0_r8*wrf%dom(id)%latitude(i  ,j)  &
+                       -wrf%dom(id)%latitude(i+1,j)  &
+                       -wrf%dom(id)%latitude(i+1,j)) / 4.0_r8
+
+         model_height = compute_geometric_height(geop, lat)
 
       endif
 
    else
 
-!!$      i1 = get_wrf_index(i,j,k  ,wrf%dom(id)%type_gz,id)
-!!$      i2 = get_wrf_index(i,j,k+1,wrf%dom(id)%type_gz,id)
       i1 = wrf%dom(id)%dart_ind(i,j,k  ,wrf%dom(id)%type_gz)
       i2 = wrf%dom(id)%dart_ind(i,j,k+1,wrf%dom(id)%type_gz)
 
-      model_height = ( (wrf%dom(id)%phb(i  ,j,k  )+x(i1)) &
-                      +(wrf%dom(id)%phb(i  ,j,k+1)+x(i2)) &
-                      +(wrf%dom(id)%phb(i-1,j,k  )+x(i1-1)) &
-                      +(wrf%dom(id)%phb(i-1,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
+      geop = ( (wrf%dom(id)%phb(i  ,j,k  )+x(i1))   &
+              +(wrf%dom(id)%phb(i  ,j,k+1)+x(i2))   &
+              +(wrf%dom(id)%phb(i-1,j,k  )+x(i1-1)) &
+              +(wrf%dom(id)%phb(i-1,j,k+1)+x(i2-1)) )/(4.0_r8*gravity)
+
+      lat = (  wrf%dom(id)%latitude(i  ,j)  &
+              +wrf%dom(id)%latitude(i  ,j)  &
+              +wrf%dom(id)%latitude(i-1,j)  &
+              +wrf%dom(id)%latitude(i-1,j)) / 4.0_r8
+
+      model_height = compute_geometric_height(geop, lat)
 
    endif
 
@@ -5193,17 +5524,19 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          i3 = wrf%dom(id)%dart_ind(i  ,j-1,k  ,wrf%dom(id)%type_gz)
          i4 = wrf%dom(id)%dart_ind(i  ,j-1,k+1,wrf%dom(id)%type_gz)
 
-         model_height = ( (wrf%dom(id)%phb(off,j-1,k  )+x(i1)) &
-                         +(wrf%dom(id)%phb(off,j-1,k+1)+x(i2)) &
-                         +(wrf%dom(id)%phb(i  ,j-1,k  )+x(i3)) &
-                         +(wrf%dom(id)%phb(i  ,j-1,k+1)+x(i4)) )/(4.0_r8*gravity)
+         geop = ( (wrf%dom(id)%phb(off,j-1,k  )+x(i1)) &
+                 +(wrf%dom(id)%phb(off,j-1,k+1)+x(i2)) &
+                 +(wrf%dom(id)%phb(i  ,j-1,k  )+x(i3)) &
+                 +(wrf%dom(id)%phb(i  ,j-1,k+1)+x(i4)) )/(4.0_r8*gravity)
          
-      else
+         lat = ( wrf%dom(id)%latitude(off,j-1)  &
+                +wrf%dom(id)%latitude(off,j-1)  &
+                +wrf%dom(id)%latitude(i  ,j-1)  &
+                +wrf%dom(id)%latitude(i  ,j-1)) / 4.0_r8
 
-!!$      i1 = get_wrf_index(i,j-1,k  ,TYPE_GZ,id)
-!!$      i2 = get_wrf_index(i,j-1,k+1,TYPE_GZ,id)
-!!$      i3 = get_wrf_index(i,j-2,k  ,TYPE_GZ,id)
-!!$      i4 = get_wrf_index(i,j-2,k+1,TYPE_GZ,id)
+         model_height = compute_geometric_height(geop, lat)
+
+      else
 
          ! If not periodic, then try extrapolating
          i1 = wrf%dom(id)%dart_ind(i,j-1,k  ,wrf%dom(id)%type_gz)
@@ -5211,10 +5544,17 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          i3 = wrf%dom(id)%dart_ind(i,j-2,k  ,wrf%dom(id)%type_gz)
          i4 = wrf%dom(id)%dart_ind(i,j-2,k+1,wrf%dom(id)%type_gz)
 
-         model_height = ( 3.0_r8*(wrf%dom(id)%phb(i,j-1,k  )+x(i1)) &
-                         +3.0_r8*(wrf%dom(id)%phb(i,j-1,k+1)+x(i2)) &
-                                -(wrf%dom(id)%phb(i,j-2,k  )+x(i3)) &
-                                -(wrf%dom(id)%phb(i,j-2,k+1)+x(i4)) )/(4.0_r8*gravity)
+         geop = ( 3.0_r8*(wrf%dom(id)%phb(i,j-1,k  )+x(i1)) &
+                 +3.0_r8*(wrf%dom(id)%phb(i,j-1,k+1)+x(i2)) &
+                        -(wrf%dom(id)%phb(i,j-2,k  )+x(i3)) &
+                        -(wrf%dom(id)%phb(i,j-2,k+1)+x(i4)) )/(4.0_r8*gravity)
+
+         lat = ( 3.0_r8*wrf%dom(id)%latitude(i,j-1)  &
+                +3.0_r8*wrf%dom(id)%latitude(i,j-1)  &
+                       -wrf%dom(id)%latitude(i,j-2)  &
+                       -wrf%dom(id)%latitude(i,j-2)) / 4.0_r8
+
+         model_height = compute_geometric_height(geop, lat)
 
       endif
 
@@ -5232,17 +5572,19 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          i3 = wrf%dom(id)%dart_ind(i  ,j,k  ,wrf%dom(id)%type_gz)
          i4 = wrf%dom(id)%dart_ind(i  ,j,k+1,wrf%dom(id)%type_gz)
 
-         model_height = ( (wrf%dom(id)%phb(off,j,k  )+x(i1)) &
-                         +(wrf%dom(id)%phb(off,j,k+1)+x(i2)) &
-                         +(wrf%dom(id)%phb(i  ,j,k  )+x(i3)) &
-                         +(wrf%dom(id)%phb(i  ,j,k+1)+x(i4)) )/(4.0_r8*gravity)
+         geop = ( (wrf%dom(id)%phb(off,j,k  )+x(i1)) &
+                 +(wrf%dom(id)%phb(off,j,k+1)+x(i2)) &
+                 +(wrf%dom(id)%phb(i  ,j,k  )+x(i3)) &
+                 +(wrf%dom(id)%phb(i  ,j,k+1)+x(i4)) )/(4.0_r8*gravity)
          
-      else
+         lat = ( wrf%dom(id)%latitude(off,j)  &
+                +wrf%dom(id)%latitude(off,j)  &
+                +wrf%dom(id)%latitude(i  ,j)  &
+                +wrf%dom(id)%latitude(i  ,j)) / 4.0_r8
 
-!!$      i1 = get_wrf_index(i,j  ,k  ,wrf%dom(id)%type_gz,id)
-!!$      i2 = get_wrf_index(i,j  ,k+1,wrf%dom(id)%type_gz,id)
-!!$      i3 = get_wrf_index(i,j+1,k  ,wrf%dom(id)%type_gz,id)
-!!$      i4 = get_wrf_index(i,j+1,k+1,wrf%dom(id)%type_gz,id)
+         model_height = compute_geometric_height(geop, lat)
+
+      else
 
          ! If not periodic, then try extrapolating
          i1 = wrf%dom(id)%dart_ind(i,j  ,k  ,wrf%dom(id)%type_gz)
@@ -5250,58 +5592,75 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          i3 = wrf%dom(id)%dart_ind(i,j+1,k  ,wrf%dom(id)%type_gz)
          i4 = wrf%dom(id)%dart_ind(i,j+1,k+1,wrf%dom(id)%type_gz)
 
-         model_height = ( 3.0_r8*(wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
-                         +3.0_r8*(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
-                                 -(wrf%dom(id)%phb(i,j+1,k  )+x(i3)) &
-                                 -(wrf%dom(id)%phb(i,j+1,k+1)+x(i4)) )/(4.0_r8*gravity)
+         geop = ( 3.0_r8*(wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
+                 +3.0_r8*(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
+                        -(wrf%dom(id)%phb(i,j+1,k  )+x(i3)) &
+                        -(wrf%dom(id)%phb(i,j+1,k+1)+x(i4)) )/(4.0_r8*gravity)
+
+         lat = ( 3.0_r8*wrf%dom(id)%latitude(i,j  )  &
+                +3.0_r8*wrf%dom(id)%latitude(i,j  )  &
+                       -wrf%dom(id)%latitude(i,j+1)  &
+                       -wrf%dom(id)%latitude(i,j+1)) / 4.0_r8
+
+         model_height = compute_geometric_height(geop, lat)
 
       endif
 
    else
 
-!!$      i1 = get_wrf_index(i,j  ,k  ,TYPE_GZ,id)
-!!$      i2 = get_wrf_index(i,j  ,k+1,TYPE_GZ,id)
-!!$      i3 = get_wrf_index(i,j-1,k  ,TYPE_GZ,id)
-!!$      i4 = get_wrf_index(i,j-1,k+1,TYPE_GZ,id)
       i1 = wrf%dom(id)%dart_ind(i,j  ,k  ,wrf%dom(id)%type_gz)
       i2 = wrf%dom(id)%dart_ind(i,j  ,k+1,wrf%dom(id)%type_gz)
       i3 = wrf%dom(id)%dart_ind(i,j-1,k  ,wrf%dom(id)%type_gz)
       i4 = wrf%dom(id)%dart_ind(i,j-1,k+1,wrf%dom(id)%type_gz)
 
-      model_height = ( (wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
-                      +(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
-                      +(wrf%dom(id)%phb(i,j-1,k  )+x(i3)) &
-                      +(wrf%dom(id)%phb(i,j-1,k+1)+x(i4)) )/(4.0_r8*gravity)
+      geop = ( (wrf%dom(id)%phb(i,j  ,k  )+x(i1)) &
+              +(wrf%dom(id)%phb(i,j  ,k+1)+x(i2)) &
+              +(wrf%dom(id)%phb(i,j-1,k  )+x(i3)) &
+              +(wrf%dom(id)%phb(i,j-1,k+1)+x(i4)) )/(4.0_r8*gravity)
+
+      lat = ( wrf%dom(id)%latitude(i,j  )  &
+             +wrf%dom(id)%latitude(i,j  )  &
+             +wrf%dom(id)%latitude(i,j-1)  &
+             +wrf%dom(id)%latitude(i,j-1)) / 4.0_r8
+
+      model_height = compute_geometric_height(geop, lat)
 
    endif
 
-elseif( var_type == wrf%dom(id)%type_mu .or. var_type == wrf%dom(id)%type_ps .or. &
+elseif( var_type == wrf%dom(id)%type_mu .or. &
+        var_type == wrf%dom(id)%type_ps .or. &
         var_type == wrf%dom(id)%type_tsk) then
 
    model_height = wrf%dom(id)%hgt(i,j)
 
-elseif( var_type == wrf%dom(id)%type_tslb .or. var_type == wrf%dom(id)%type_smois .or. &
+elseif( var_type == wrf%dom(id)%type_tslb  .or. &
+        var_type == wrf%dom(id)%type_smois .or. &
         var_type == wrf%dom(id)%type_sh2o ) then
 
    model_height = wrf%dom(id)%hgt(i,j) - wrf%dom(id)%zs(k)
 
-elseif( var_type == wrf%dom(id)%type_u10 .or. var_type == wrf%dom(id)%type_v10 ) then
+elseif( var_type == wrf%dom(id)%type_u10 .or. &
+        var_type == wrf%dom(id)%type_v10 ) then
 
    model_height = wrf%dom(id)%hgt(i,j) + 10.0_r8
 
-elseif( var_type == wrf%dom(id)%type_t2 .or. var_type == wrf%dom(id)%type_th2 .or. var_type == wrf%dom(id)%type_q2 ) then
+elseif( var_type == wrf%dom(id)%type_t2  .or. &
+        var_type == wrf%dom(id)%type_th2 .or. &
+        var_type == wrf%dom(id)%type_q2 ) then
 
    model_height = wrf%dom(id)%hgt(i,j) + 2.0_r8
 
 else
 
-!!$   i1 = get_wrf_index(i,j,k  ,TYPE_GZ,id)
-!!$   i2 = get_wrf_index(i,j,k+1,TYPE_GZ,id)
    i1 = wrf%dom(id)%dart_ind(i,j,k  ,wrf%dom(id)%type_gz)
    i2 = wrf%dom(id)%dart_ind(i,j,k+1,wrf%dom(id)%type_gz)
 
-   model_height = ( (wrf%dom(id)%phb(i,j,k  )+x(i1)) &
-                   +(wrf%dom(id)%phb(i,j,k+1)+x(i2)) )/(2.0_r8*gravity)
+   geop = ( (wrf%dom(id)%phb(i,j,k  )+x(i1)) &
+           +(wrf%dom(id)%phb(i,j,k+1)+x(i2)) )/(2.0_r8*gravity)
+
+   lat = wrf%dom(id)%latitude(i,j)
+
+   model_height = compute_geometric_height(geop, lat)
 
 endif
 
@@ -5319,6 +5678,7 @@ real(r8), intent(in)  :: x(:)
 real(r8)              :: model_height_w
 
 integer   :: i1
+real(r8)  :: geop
 
 if (wrf%dom(id)%type_gz < 0) then
   call error_handler(E_ERR, 'model_height_w:', &
@@ -5328,7 +5688,8 @@ endif
 
 i1 = wrf%dom(id)%dart_ind(i,j,k,wrf%dom(id)%type_gz)
 
-model_height_w = (wrf%dom(id)%phb(i,j,k) + x(i1))/gravity
+geop = (wrf%dom(id)%phb(i,j,k) + x(i1))/gravity
+model_height_w = compute_geometric_height(geop, wrf%dom(id)%latitude(i, j))
 
 end function model_height_w
 
@@ -5337,16 +5698,94 @@ end function model_height_w
 
 subroutine pert_model_state(state, pert_state, interf_provided)
 
-! Perturbs a model state for generating initial ensembles
-! Returning interf_provided means go ahead and do this with uniform
-! small independent perturbations.
+! Perturbs a single model state for generating initial ensembles.
+! WARNING - this routine is not a substitute for a good set
+! of real initial condition files.  Intended as a last resort,
+! this routine should be used to start a long free-run model 
+! advance to spin-up a set of internally consistent states with 
+! their own structure before assimilating a set of obserations.
 
 real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
-interf_provided = .false.
-pert_state = state
+real(r8)              :: pert_amount = 0.02   ! 2%
+
+real(r8)              :: pert_ampl, range
+real(r8)              :: minv, maxv, temp
+type(random_seq_type) :: random_seq
+integer               :: id, i, j, s, e
+integer, save :: counter = 1
+
+! generally you do not want to perturb a single state
+! to begin an experiment - unless you make minor perturbations
+! and then run the model free for long enough that differences
+! develop which contain actual structure. if you comment
+! out the next 4 lines, the subsequent code is a pert routine which 
+! can be used to add minor perturbations which can be spun up.
+! note that as written, if all values in a field are identical
+! (i.e. 0.0) this routine will not change those values, since
+! it won't make a new value outside the original min/max of that
+! variable in the state vector.
+
+call error_handler(E_ERR,'pert_model_state', &
+                  'WRF model cannot be started from a single vector', &
+                  source, revision, revdate, &
+                  text2='see comments in wrf/model_mod.f90::pert_model_state()')
+
+! NOT REACHED unless preceeding 4 lines commented out
+
+! start of pert code
+interf_provided = .true.
+
+! the first time through get the task id (0:N-1)
+! and set a unique seed per task.  this won't
+! be consistent between different numbers of mpi
+! tasks, but at least it will reproduce with
+! multiple runs with the same task count.
+! best i can do since this routine doesn't have
+! the ensemble member number as an argument
+! (which i think it needs for consistent seeds).
+!
+! this only executes the first time since counter
+! gets incremented after the first use and the value
+! is saved between calls.
+if (counter == 1) counter = counter + (my_task_id() * 1000)
+
+call init_random_seq(random_seq, counter)
+counter = counter + 1
+
+! do the perturbation per domain, per variable type
+do id=1, num_domains
+   do i=1, wrf%dom(id)%number_of_wrf_variables
+      ! starting and ending indices in the linear state vect
+      s = wrf%dom(id)%var_index(1, i)
+      e = wrf%dom(id)%var_index(2, i)
+      ! original min/max data values of each type
+      minv = minval(state(s:e))
+      maxv = maxval(state(s:e))
+      !! Option 1:
+      !! make the perturbation amplitude N% of the total
+      !! range of this variable.  values could vary a lot
+      !! over some of the types, like pressure
+      !range = maxv - minv
+      !pert_ampl = pert_amount * range
+      do j=s, e
+         ! once you change pert_state, state is changed as well
+         ! since they are the same storage as called from filter.
+         ! you have to save it if you want to use it again.
+         temp = state(j)  ! original value
+         ! Option 2: perturb each value individually
+         !! make the perturbation amplitude N% of this value
+         pert_ampl = pert_amount * temp
+         pert_state(j) = random_gaussian(random_seq, state(j), pert_ampl)
+         ! keep it from exceeding the original range
+         pert_state(j) = max(minv, pert_state(j))
+         pert_state(j) = min(maxv, pert_state(j))
+      enddo
+   enddo
+enddo
+
 
 end subroutine pert_model_state
 
@@ -5790,7 +6229,7 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
 ! coordinates to a common coordinate. This coordinate type is defined in the namelist
 ! with the variable "vert_localization_coord".
 
-! Vertical conversion is carried out by the subroutine vert_interpolate.
+! Vertical conversion is carried out by the subroutine vert_convert.
 
 ! Note that both base_obs_loc and obs_loc are intent(inout), meaning that these
 ! locations are possibly modified here and returned as such to the calling routine.
@@ -5824,8 +6263,8 @@ base_array = get_location(base_obs_loc)
 base_which = nint(query_location(base_obs_loc))
 
 if (.not. horiz_dist_only) then
-   if (base_which /= wrf%dom(1)%vert_coord) then
-      call vert_interpolate(ens_mean, base_obs_loc, base_obs_kind, istatus1)
+   if (base_which /= wrf%dom(1)%localization_coord) then
+      call vert_convert(ens_mean, base_obs_loc, base_obs_kind, istatus1)
    elseif (base_array(3) == missing_r8) then
       istatus1 = 1
    endif
@@ -5851,15 +6290,15 @@ if (istatus1 == 0) then
       ! This should only be necessary for obs priors, as state location information already
       ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
       if (.not. horiz_dist_only) then
-         if (local_obs_which /= wrf%dom(1)%vert_coord) then
-            call vert_interpolate(ens_mean, local_obs_loc, obs_kind(t_ind), istatus2)
+         if (local_obs_which /= wrf%dom(1)%localization_coord) then
+            call vert_convert(ens_mean, local_obs_loc, obs_kind(t_ind), istatus2)
             ! Store the "new" location into the original full local array
             obs_loc(t_ind) = local_obs_loc
          endif
       endif
 
       ! Compute distance - set distance to a very large value if vert coordinate is missing
-      ! or vert_interpolate returned error (istatus2=1)
+      ! or vert_convert returned error (istatus2=1)
       local_obs_array = get_location(local_obs_loc)
       if (((.not. horiz_dist_only).and.(local_obs_array(3) == missing_r8)).or.(istatus2 == 1)) then
          dist(k) = 1.0e9        
@@ -7526,6 +7965,71 @@ height_diff_check = .true.
 if ( abs(height1 - height2) > max_diff_meters ) height_diff_check = .false.
 
 end function height_diff_check
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!    compute_geometric_ht - subroutine the converts geopotential height
+!                        into geometric height.
+!
+!     geopot -- input real value geopotential height
+!     lat    -- latitude of input (longitude not needed)
+!
+!     output is real value geometric height
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function compute_geometric_height(geopot, lat)
+ real(r8), intent(in)  :: geopot
+ real(r8), intent(in)  :: lat
+ real(r8)              :: compute_geometric_height
+
+
+! -----------------------------------------------------------------------*/
+   real(digits12) :: pi2, latr
+   real(digits12) :: semi_major_axis, semi_minor_axis, grav_polar, grav_equator
+   real(digits12) :: earth_omega, grav_constant, flattening, somigliana
+   real(digits12) :: grav_ratio, sin2, termg, termr, grav, eccentricity
+
+!  Parameters below from WGS-84 model software inside GPS receivers.
+   parameter(semi_major_axis = 6378.1370d3)    ! (m)
+   parameter(semi_minor_axis = 6356.7523142d3) ! (m)
+   parameter(grav_polar = 9.8321849378)        ! (m/s2)
+   parameter(grav_equator = 9.7803253359)      ! (m/s2)
+   parameter(earth_omega = 7.292115d-5)        ! (rad/s)
+   parameter(grav_constant = 3.986004418d14)   ! (m3/s2)
+   parameter(grav = 9.80665d0)                 ! (m/s2) WMO std g at 45 deg lat
+   parameter(eccentricity = 0.081819d0)        ! unitless
+   parameter(pi2 = 3.14159265358979d0/180.d0)
+
+!  Derived geophysical constants
+   parameter(flattening = (semi_major_axis-semi_minor_axis) / semi_major_axis)
+
+   parameter(somigliana = (semi_minor_axis/semi_major_axis)*(grav_polar/grav_equator)-1.d0)
+
+   parameter(grav_ratio = (earth_omega*earth_omega * &
+                semi_major_axis*semi_major_axis * semi_minor_axis)/grav_constant)
+
+
+   latr = lat * (pi2)        ! in radians
+   sin2  = sin(latr) * sin(latr)
+   termg = grav_equator * ( (1.d0+somigliana*sin2) / &
+           sqrt(1.d0-eccentricity*eccentricity*sin2) )
+   termr = semi_major_axis / (1.d0 + flattening + grav_ratio - 2.d0*flattening*sin2)
+
+   ! geometric height conversion.  in the special case that you're trying to
+   ! reproduce an old result and want to use the original geopotential height
+   ! instead of converting it, set 'use_geopotential_height' to .true. at the
+   ! top of this file.  Otherwise the normal conversion to geometric height is
+   ! what you want here; we agreed that height was going to be in terms of
+   ! geometric height when we did the conversions.
+
+   if (use_geopotential_height) then
+      compute_geometric_height = geopot
+   else
+      compute_geometric_height = (termr*geopot) / ( (termg/grav) * termr - geopot )
+   endif
+
+end function compute_geometric_height
+
 
 
 end module model_mod

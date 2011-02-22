@@ -30,6 +30,7 @@ use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_for
                            check_namelist_read, do_output, do_nml_file,              &
                            do_nml_term, is_longitude_between
 use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
+use   obs_kind_mod, only : get_num_obs_kinds, get_obs_kind_name
 use mpi_utilities_mod, only : my_task_id, task_count
 
 implicit none
@@ -43,9 +44,9 @@ public :: location_type, get_location, set_location, &
           operator(==), operator(/=), get_dist, get_close_obs_destroy, &
           nc_write_location_atts, nc_get_location_varids, nc_write_location, &
           vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
-          vert_is_surface, has_vertical_localization, &
+          vert_is_surface, vert_is_scale_height, has_vertical_localization, &
           VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
-          VERTISHEIGHT, print_get_close_type, horiz_dist_only
+          VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type, horiz_dist_only
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
@@ -56,11 +57,12 @@ character(len=128), parameter :: &
 ! The possible values for the location_type%which_vert component.
 ! These are intended to be PRIVATE to this module. Do not make public.
 
-integer, parameter :: VERTISUNDEF    = -2 ! has no vertical location (undefined)
-integer, parameter :: VERTISSURFACE  = -1 ! surface value
-integer, parameter :: VERTISLEVEL    =  1 ! by level
-integer, parameter :: VERTISPRESSURE =  2 ! by pressure
-integer, parameter :: VERTISHEIGHT   =  3 ! by height
+integer, parameter :: VERTISUNDEF       = -2 ! has no vertical location (undefined)
+integer, parameter :: VERTISSURFACE     = -1 ! surface value
+integer, parameter :: VERTISLEVEL       =  1 ! by level
+integer, parameter :: VERTISPRESSURE    =  2 ! by pressure
+integer, parameter :: VERTISHEIGHT      =  3 ! by height
+integer, parameter :: VERTISSCALEHEIGHT =  4 ! by scale height
 
 type location_type
    private
@@ -71,21 +73,24 @@ end type location_type
 ! Type to facilitate efficient computation of observations close to a given location
 type get_close_type
    private
-   integer  :: num
-   real(r8) :: maxdist
-   integer, pointer :: lon_offset(:, :)     ! (nlat, nlat); 
-   integer, pointer :: obs_box(:)           ! (nobs); List of obs indices in boxes
-   integer, pointer :: count(:, :)          ! (nlon, nlat); # of obs in each box
-   integer, pointer :: start(:, :)          ! (nlon, nlat); Start of list of obs in this box
-   real(r8)         :: bot_lat, top_lat     ! Bottom and top latitudes of latitude boxes
-   real(r8)         :: bot_lon, top_lon     ! Bottom and top longitudes of longitude boxes
-   real(r8)         :: lon_width, lat_width ! Width of boxes in lon and lat
-   logical          :: lon_cyclic           ! Do boxes wraparound in longitude?
+   integer           :: num
+   real(r8)          :: maxdist
+   integer, pointer  :: lon_offset(:, :)     ! (nlat, nlat); 
+   integer, pointer  :: obs_box(:)           ! (nobs); List of obs indices in boxes
+   integer, pointer  :: count(:, :)          ! (nlon, nlat); # of obs in each box
+   integer, pointer  :: start(:, :)          ! (nlon, nlat); Start of list of obs in this box
+   real(r8)          :: bot_lat, top_lat     ! Bottom and top latitudes of latitude boxes
+   real(r8)          :: bot_lon, top_lon     ! Bottom and top longitudes of longitude boxes
+   real(r8)          :: lon_width, lat_width ! Width of boxes in lon and lat
+   logical           :: lon_cyclic           ! Do boxes wraparound in longitude?
+   integer           :: num_types            ! if > 0, cutoffs per type
+   real(r8), pointer :: special_maxdist(:)
+   real(r8)          :: original_maxdist
 end type get_close_type
 
 type(random_seq_type) :: ran_seq
-logical :: ran_seq_init = .false.
-logical, save :: module_initialized = .false.
+logical               :: ran_seq_init = .false.
+logical, save         :: module_initialized = .false.
 
 integer,              parameter :: LocationDims = 3
 character(len = 129), parameter :: LocationName = "loc3Dsphere"
@@ -95,7 +100,8 @@ character(len = 129), parameter :: LocationLName = &
 character(len = 129) :: errstring
 
 ! Global storage for vertical distance normalization factors
-real(r8) :: vert_normalization(3)
+real(r8)              :: vert_normalization(4)
+real(r8), allocatable :: special_vert_norm(:,:)  ! if doing per-type
 
 ! Global storage for fast approximate sin and cosine lookups
 ! PAR For efficiency for small cases might want to fill tables as needed
@@ -109,40 +115,46 @@ logical :: COMPARE_TO_CORRECT = .false.
 
 !-----------------------------------------------------------------
 ! Namelist with default values
-! horiz_dist_only == .true.  -> Only the great circle horizontal distance is
-!                               computed in get_dist.
-! horiz_dist_only == .false. -> Square root of sum of squared horizontal and
-!                               normalized vertical dist computed in get_dist
-! vert_normalization_pressure   Number pascals that give a distance equivalent
-!                               to one radian in horizontal
-! vert_normalization_height  -> Number meters that give a distance equivalent 
-!                               to one radian in horizontal
-! vert_normalization_level   -> Number levels that give a distance equivalent
-!                               to one radian in horizontal
-! approximate_distance       -> Use a faster table lookup for the trig math.
-!                               Works well for global models and large areas,
-!                               and improves performance.  For smaller regions
-!                               might introduce banding, so leave .false.
-! nlon                       -> Number longitude boxes for get_close_obs 
-!                               nlon MUST BE ODD
-! nlat                       -> Number latitude boxes for get_close_obs
+! horiz_dist_only == .true.       -> Only the great circle horizontal distance is
+!                                    computed in get_dist.
+! horiz_dist_only == .false.      -> Square root of sum of squared horizontal and
+!                                    normalized vertical dist computed in get_dist
+! vert_normalization_pressure     -> Number pascals that give a distance equivalent
+!                                    to one radian in horizontal
+! vert_normalization_height       -> Number meters that give a distance equivalent 
+!                                    to one radian in horizontal
+! vert_normalization_level        -> Number levels that give a distance equivalent
+!                                    to one radian in horizontal
+! vert_normalization_scale_height -> Number scale heights that give a distance 
+!                                    equivalent to one radian in horizontal
+! approximate_distance            -> Use a faster table lookup for the trig math.
+!                                    Works well for global models and large areas,
+!                                    and improves performance.  For smaller regions
+!                                    might introduce banding, so leave .false.
+! nlon                            -> Number longitude boxes for get_close_obs 
+!                                    nlon MUST BE ODD
+! nlat                            -> Number latitude boxes for get_close_obs
 
-logical  :: horiz_dist_only             = .true.
-real(r8) :: vert_normalization_pressure = 100000.0_r8
-real(r8) :: vert_normalization_height   = 10000.0_r8
-real(r8) :: vert_normalization_level    = 20.0_r8 
-logical  :: approximate_distance        = .false.
-integer  :: nlon                        = 71
-integer  :: nlat                        = 36
-logical  :: output_box_info             = .false.
+logical  :: horiz_dist_only                 = .true.
+real(r8) :: vert_normalization_pressure     = 100000.0_r8
+real(r8) :: vert_normalization_height       = 10000.0_r8
+real(r8) :: vert_normalization_level        = 20.0_r8
+real(r8) :: vert_normalization_scale_height = 5.0_r8
+logical  :: maintain_original_vert          = .false. 
+logical  :: approximate_distance            = .false.
+integer  :: nlon                            = 71
+integer  :: nlat                            = 36
+logical  :: output_box_info                 = .false.
 ! should be fixed in the code - but leave this here for now.
 ! search for this variable below in the code for more info
-logical  :: num_tasks_insensitive       = .false.
-integer  :: print_box_level             = 0
+logical  :: num_tasks_insensitive           = .false.
+integer  :: print_box_level                 = 0
 
-namelist /location_nml/ horiz_dist_only, vert_normalization_pressure,         &
-   vert_normalization_height, vert_normalization_level, approximate_distance, &
-   nlon, nlat, output_box_info, print_box_level, num_tasks_insensitive
+namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
+   vert_normalization_height, vert_normalization_level,               &
+   vert_normalization_scale_height, approximate_distance, nlon, nlat, &
+   output_box_info, print_box_level, num_tasks_insensitive,           &
+   maintain_original_vert
 
 !-----------------------------------------------------------------
 
@@ -190,6 +202,7 @@ endif
 vert_normalization(1) = vert_normalization_level
 vert_normalization(2) = vert_normalization_pressure
 vert_normalization(3) = vert_normalization_height
+vert_normalization(4) = vert_normalization_scale_height
 
 if (horiz_dist_only) then
    call error_handler(E_MSG,'location_mod:', &
@@ -199,11 +212,13 @@ else
    call error_handler(E_MSG,'location_mod:', &
       'Including vertical separation when computing distances:', &
       source,revision,revdate)
-   write(str1,'(A,f17.5)') '      # pascals ~ 1 horiz radian: ', vert_normalization_pressure
+   write(str1,'(A,f17.5)') '       # pascals ~ 1 horiz radian: ', vert_normalization_pressure
    call error_handler(E_MSG,'location_mod:',str1,source,revision,revdate)
-   write(str1,'(A,f17.5)') '       # meters ~ 1 horiz radian: ', vert_normalization_height
+   write(str1,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', vert_normalization_height
    call error_handler(E_MSG,'location_mod:',str1,source,revision,revdate)
-   write(str1,'(A,f17.5)') ' # model levels ~ 1 horiz radian: ', vert_normalization_level
+   write(str1,'(A,f17.5)') '  # model levels ~ 1 horiz radian: ', vert_normalization_level
+   call error_handler(E_MSG,'location_mod:',str1,source,revision,revdate)
+   write(str1,'(A,f17.5)') ' # scale heights ~ 1 horiz radian: ', vert_normalization_scale_height
    call error_handler(E_MSG,'location_mod:',str1,source,revision,revdate)
 endif
 
@@ -240,12 +255,17 @@ function get_dist(loc1, loc2, kind1, kind2, no_vert)
 ! If set to false, this will always do full 3d distance if possible. If set to
 ! true it will never do the full 3d distance. At present asking to do a vertical
 ! distance computation for incompatible vertical location types results 
-! in a fatal error.
+! in a fatal error unless one of the vertical types is UNDEFINED.
 
-! The kinds are available if a more sophisticated distance computation is required.
-! This generic code does not use the kinds, but several model_mods intercept this
-! call and compute their own distances based on kind, and so the interface needs
-! to match how the higher level call will be made.
+! In spite of the names, the 3rd and 4th argument are actually specific types
+! (e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_TEMPERATURE).  The types are part of
+! the interface in case user-code wants to do a more sophisticated distance
+! calculation based on the base or target types.  In the usual case this
+! code still doesn't use the types, but there's an undocumented feature that
+! allows you to maintain the original vertical normalization even when
+! changing the cutoff distance in the horizontal.  For that to work we
+! do need to know the type, and we use the type of loc1 to control it.
+! 
 
 type(location_type), intent(in) :: loc1, loc2
 integer, optional,   intent(in) :: kind1, kind2
@@ -292,8 +312,8 @@ else
    endif
 endif
 
-! Now compute a vertical distance if requested, 
-! Highest priority is optional no_vert argument, test it first
+! Now compute a vertical distance if requested.  Highest priority is
+! the optional no_vert argument, so test it first.
 if(present(no_vert)) then
    comp_h_only = no_vert
 ! Namelist horizontal only has second highest priority
@@ -321,7 +341,17 @@ if(.not. comp_h_only) then
 
    ! Compute the difference and divide by the appropriate normalization factor
    ! Normalization factor computes relative distance in vertical compared to one radian
-   vert_dist = abs(loc1%vloc - loc2%vloc) / vert_normalization(loc1%which_vert)
+   ! This is new - if per-type localization distances given, use the kind of loc1
+   ! to determine the vertical mapping distance.  it defaults to the 4 standard ones,
+   ! but can be specified separately if desired.
+
+   ! note that per-type vertical conversion factors are a global here, and were set
+   ! by the last call to gc_init that specified per/type cutoffs.
+   if (allocated(special_vert_norm)) then 
+      vert_dist = abs(loc1%vloc - loc2%vloc) / special_vert_norm(loc1%which_vert, kind1)
+   else
+      vert_dist = abs(loc1%vloc - loc2%vloc) / vert_normalization(loc1%which_vert)
+   endif
 
    ! Spherical distance shape is computed here, other flavors can be computed
    get_dist = sqrt(get_dist**2 + vert_dist**2)
@@ -456,8 +486,8 @@ endif
 set_location_single%lon = lon * DEG2RAD
 set_location_single%lat = lat * DEG2RAD
 
-if(which_vert < VERTISUNDEF .or. which_vert == 0 .or. which_vert > VERTISHEIGHT) then
-   write(errstring,*)'which_vert (',which_vert,') must be one of -2, -1, 1, 2, or 3'
+if(which_vert < VERTISUNDEF .or. which_vert == 0 .or. which_vert > VERTISSCALEHEIGHT) then
+   write(errstring,*)'which_vert (',which_vert,') must be one of -2, -1, 1, 2, 3, or 4'
    call error_handler(E_ERR,'set_location', errstring, source, revision, revdate)
 endif
 
@@ -631,6 +661,8 @@ select case  (loc%which_vert)
       write(charstring, '(A,1X,F12.7,A)') trim(string1), loc%vloc / 100.0_r8, '  hPa'
    case (VERTISHEIGHT)
       write(charstring, '(A,1X,F12.7,A)') trim(string1), loc%vloc / 1000.0_r8, '  km'
+   case (VERTISSCALEHEIGHT)
+      write(charstring, '(A,1X,F12.7,A)') trim(string1), loc%vloc, '  scale ht'
    case default
       write(errstring, *) 'unrecognized key for vertical type: ', loc%which_vert
       call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
@@ -662,10 +694,10 @@ if (ascii_file_format(fform)) then
    endif
    ! Now read the location data value
    read(locfile, *)read_location%lon, read_location%lat, &
-                 read_location%vloc, read_location%which_vert
+                   read_location%vloc, read_location%which_vert
 else
    read(locfile)read_location%lon, read_location%lat, &
-              read_location%vloc, read_location%which_vert
+                read_location%vloc, read_location%which_vert
 endif
 
 end function read_location
@@ -701,6 +733,7 @@ write(*, *)VERTISSURFACE,' --> surface'
 write(*, *)VERTISLEVEL,' --> model level'
 write(*, *)VERTISPRESSURE,' --> pressure'
 write(*, *)VERTISHEIGHT,' --> height'
+write(*, *)VERTISSCALEHEIGHT,' --> scale height'
 
 100   read(*, *) location%which_vert
 if(location%which_vert == VERTISLEVEL ) then
@@ -719,6 +752,9 @@ else if(location%which_vert == VERTISSURFACE ) then
    !write(*, *) 'Vertical coordinate surface pressure (in hPa)'
    !location%vloc = 100.0 * location%vloc  ! only applies to pressure
    write(*, *) 'Vertical coordinate height'
+   read(*, *) location%vloc
+else if(location%which_vert == VERTISSCALEHEIGHT ) then
+   write(*, *) 'Vertical coordinate scale height (-ln(p/ps))'
    read(*, *) location%vloc
 else if(location%which_vert == VERTISUNDEF ) then
    ! a valid floating point value, but should be unused.
@@ -851,6 +887,8 @@ call nc_check(nf90_put_att(ncFileID, VarID, 'VERTISPRESSURE', VERTISPRESSURE), &
            'nc_write_location_atts', 'which_vert:VERTISPRESSURE')
 call nc_check(nf90_put_att(ncFileID, VarID, 'VERTISHEIGHT', VERTISHEIGHT), &
            'nc_write_location_atts', 'which_vert:VERTISHEIGHT')
+call nc_check(nf90_put_att(ncFileID, VarID, 'VERTISSCALEHEIGHT', VERTISSCALEHEIGHT), &
+           'nc_write_location_atts', 'which_vert:VERTISSCALEHEIGHT')
 
 ! If we made it to here without error-ing out ... we're good.
 
@@ -1072,15 +1110,27 @@ subroutine get_close_obs_destroy(gc)
 type(get_close_type), intent(inout) :: gc
 
 deallocate(gc%obs_box, gc%lon_offset, gc%count, gc%start)
+if (gc%num_types > 0) deallocate(gc%special_maxdist)
+! since this is a global, keep it around.  it is always allocated
+! the same size and can be reused for any gc.
+!if (allocated(special_vert_norm)) deallocate(special_vert_norm)
 
 end subroutine get_close_obs_destroy
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_maxdist_init(gc, maxdist)
+subroutine get_close_maxdist_init(gc, maxdist, maxdist_list)
 
 type(get_close_type), intent(inout) :: gc
 real(r8),             intent(in)    :: maxdist
+real(r8), intent(in), optional      :: maxdist_list(:)
+
+character(len=129) :: str1
+integer :: i
+! a bit of a hack - it only prints the first time this routine is
+! called.  in filter it's called twice with the same args and this
+! code is counting on that.  
+logical, save :: firsttime = .true.
 
 ! Allocate the storage for the grid dependent boxes
 allocate(gc%lon_offset(nlat, nlat), gc%count(nlon, nlat), gc%start(nlon, nlat))
@@ -1088,8 +1138,64 @@ gc%lon_offset = -1
 gc%count      = -1
 gc%start      = -1
 
-! Set the maximum distance in the structure
+! set the default value.  if there is a list and any distance in the list 
+! is larger, use that instead.  (the boxes need to be calculated based on 
+! the largest possible distance).
 gc%maxdist = maxdist
+gc%original_maxdist = maxdist
+gc%num_types = 0
+
+if (present(maxdist_list)) then
+   gc%num_types = get_num_obs_kinds()
+   if (size(maxdist_list) .ne. gc%num_types) then
+      write(errstring,'(A,I8,A,I8)')'maxdist_list len must equal number of kinds, ', &
+                                    size(maxdist_list), ' /= ', gc%num_types
+      call error_handler(E_ERR, 'get_close_maxdist_init', errstring, source, revision, revdate)
+   endif
+   allocate(gc%special_maxdist(gc%num_types))
+   if (.not.allocated(special_vert_norm)) &
+      allocate(special_vert_norm(4, gc%num_types))  ! fill from namelist here, or assim_tools?
+  
+   gc%special_maxdist(:) = maxdist_list(:)
+   gc%maxdist = maxval(gc%special_maxdist)
+
+   ! by default, the vertical changes along with the horizontal to keep 
+   ! the aspect ratio of the elipsoid constant.
+   special_vert_norm(1, :) = vert_normalization_level
+   special_vert_norm(2, :) = vert_normalization_pressure
+   special_vert_norm(3, :) = vert_normalization_height
+   special_vert_norm(4, :) = vert_normalization_scale_height
+
+   ! keep the original vertical distance constant even as you change
+   ! the horizontal localization distance.
+   if (maintain_original_vert) then
+      special_vert_norm(1, :) = vert_normalization_level        * &
+                                   (gc%original_maxdist / maxdist_list(:))
+      special_vert_norm(2, :) = vert_normalization_pressure     * &
+                                   (gc%original_maxdist / maxdist_list(:))
+      special_vert_norm(3, :) = vert_normalization_height       * & 
+                                   (gc%original_maxdist / maxdist_list(:))
+      special_vert_norm(4, :) = vert_normalization_scale_height * & 
+                                   (gc%original_maxdist / maxdist_list(:))
+      if (firsttime) then
+         do i = 1, gc%num_types
+            if (abs(gc%original_maxdist - maxdist_list(i)) < 1.0e-14_r8) cycle 
+    
+            write(str1,'(2A)') 'Altering vertical normalization for type ', get_obs_kind_name(i)
+            call error_handler(E_MSG,'location_mod:',str1,source,revision,revdate)
+            write(str1,'(A,f17.5)') '       # pascals ~ 1 horiz radian: ', special_vert_norm(2, i)
+            call error_handler(E_MSG,'location_mod:',str1,source,revision,revdate)
+            write(str1,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', special_vert_norm(3, i)
+            call error_handler(E_MSG,'location_mod:',str1,source,revision,revdate)
+            write(str1,'(A,f17.5)') '  # model levels ~ 1 horiz radian: ', special_vert_norm(1, i)
+            call error_handler(E_MSG,'location_mod:',str1,source,revision,revdate)
+            write(str1,'(A,f17.5)') ' # scale heights ~ 1 horiz radian: ', special_vert_norm(4, i)
+            call error_handler(E_MSG,'location_mod:',str1,source,revision,revdate)
+         enddo
+         firsttime = .false.
+      endif
+   endif
+endif
 
 end subroutine get_close_maxdist_init
 
@@ -1098,12 +1204,8 @@ end subroutine get_close_maxdist_init
 subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
    num_close, close_ind, dist)
 
-! FIXME: is this comment still an issue?  there is caching done at the
-! place this routine is called in the assimilation loop, which might be
-! good enough.
-!!!ADD IN SOMETHING TO USE EFFICIENTLY IF IT"S AT SAME LOCATION AS PREVIOUS OB!!!
-
-! The kinds are available to do more sophisticated distance computations if needed
+! In spite of the names, the specific types are available to do a more
+! sophisticated distance computation if needed.
 
 type(get_close_type), intent(in)  :: gc
 type(location_type),  intent(in)  :: base_obs_loc, obs(:)
@@ -1115,7 +1217,7 @@ real(r8), optional,   intent(out) :: dist(:)
 ! but don't compute any distances
 
 integer :: lon_box, lat_box, i, j, k, n_lon, lon_ind, n_in_box, st, t_ind
-real(r8) :: this_dist
+real(r8) :: this_dist, this_maxdist
 
 ! Variables needed for comparing against correct case
 integer :: cnum_close, cclose_ind(size(obs))
@@ -1140,6 +1242,14 @@ endif
 if (gc%num == 0) return
 
 
+! set a local variable for what the maxdist is in this particular case.
+! if per-type distances are set, use those.  otherwise, use the global val.
+if (gc%num_types > 0) then
+   this_maxdist = gc%special_maxdist(base_obs_kind)
+else
+   this_maxdist = gc%maxdist
+endif
+
 !--------------------------------------------------------------
 ! For validation, it is useful to be able to compare against exact
 ! exhaustive search
@@ -1147,7 +1257,7 @@ if(COMPARE_TO_CORRECT) then
    cnum_close = 0
    do i = 1, gc%num 
    this_dist = get_dist(base_obs_loc, obs(i), base_obs_kind, obs_kind(i))
-      if(this_dist <= gc%maxdist) then
+      if(this_dist <= this_maxdist) then
          ! Add this obs to correct list
          cnum_close = cnum_close + 1
          cclose_ind(cnum_close) = i
@@ -1206,7 +1316,7 @@ do j = 1, nlat
             endif
 
             ! If dist is present and this obs' distance is less than cutoff, add it in list
-            if(present(dist) .and. this_dist <= gc%maxdist) then
+            if(present(dist) .and. this_dist <= this_maxdist) then
                num_close = num_close + 1
                close_ind(num_close) = t_ind
                dist(num_close) = this_dist
@@ -1999,6 +2109,25 @@ else
 endif
 
 end function vert_is_level
+
+!---------------------------------------------------------------------------
+
+function vert_is_scale_height(loc)
+
+! Given a location, return true if vertical coordinate is scale height, else false
+
+logical                          :: vert_is_scale_height
+type(location_type), intent(in)  :: loc
+
+if ( .not. module_initialized ) call initialize_module
+
+if(loc%which_vert == VERTISSCALEHEIGHT ) then
+   vert_is_scale_height = .true.
+else
+   vert_is_scale_height = .false.
+endif
+
+end function vert_is_scale_height
 
 !---------------------------------------------------------------------------
 
