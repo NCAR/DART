@@ -591,25 +591,30 @@
       <h2>DART Contact list</h2>
       <p>
       We're a very small group, so the contact list is pretty short.
-      We don't have a central contact email address, but we all know how
-      to forward email to each other. So no matter who you send the email TO,
-      it will find its way to the best person. Pretty cool, eh?
+      Our central email contact is <a href="mailto:dart@ucar.edu">dart@ucar.edu</a>.
+      Or if you want to contact us individually, here is our information:
       </p>
       <table width="95%"  border="0" align="center" cellpadding="0" cellspacing="0">
       <tr><th align="left">general</th>
-          <th align="left">general</th>
+          <th align="left">general/diagnostics</th>
           <th align="left">platforms/mpi</th>
           <th align="left">CAM</th>
+          <th align="left">WRF</th>
+          <th align="left">GPS Radio Occultation</th>
       </tr>
       <tr><td>Jeff Anderson</td>
           <td>Tim Hoar</td>
           <td>Nancy Collins</td>
           <td>Kevin Raeder</td>
+          <td>Glen Romine</td>
+          <td>Hui Liu</td>
       </tr>
       <tr><td>jla&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
           <td>thoar&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
           <td>nancy&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
           <td>raeder&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
+          <td>romine&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
+          <td>hliu&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
       </tr>
       </table>
 

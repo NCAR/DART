@@ -4,22 +4,36 @@
 <HEAD>
 <TITLE>program restart_file_tool</TITLE>
 <link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
+<link href="../doc/html/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Modules">MODULES</A> /
+<H1>PROGRAM <em class=program>restart_file_tool</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>PROGRAM <em class=program>restart_file_tool</em></H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
 
 <P>
 Utility program to alter the data timestamp in a DART restart file,
@@ -69,21 +83,6 @@ found in the $DART/utilities directory.  See the extensive comment section
 at the top of that file for an explanation of the details of moving binary
 files between incompatible systems.
 </P>
-
-<!--==================================================================-->
-
-<A NAME="Modules"></A>
-<HR>
-<H2>MODULES USED</H2>
-<PRE>
-types_mod
-time_manager_mod
-utilities_mod
-assim_model_mod
-obs_model_mod
-ensemble_manager_mod
-mpi_utilities_mod
-</PRE>
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST ====================-->
@@ -211,6 +210,21 @@ This namelist is read in a file called <em class=file>input.nml</em>
 
 </div>
 <br>
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<HR>
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+time_manager_mod
+utilities_mod
+assim_model_mod
+obs_model_mod
+ensemble_manager_mod
+mpi_utilities_mod
+</PRE>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->

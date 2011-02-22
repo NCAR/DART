@@ -4,22 +4,36 @@
 <HEAD>
 <TITLE>PROGRAM perfect_model_obs</TITLE>
 <link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
+<link href="../doc/html/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Modules">MODULES</A> /
+<H1>PROGRAM <em class=program>perfect_model_obs</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>PROGRAM <em class=program>perfect_model_obs</em></H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
 
 <P>
    Main program for creating synthetic observation sequences given a
@@ -31,24 +45,6 @@
    analogous to that used by the filter program.
 </P>
 
-<!--==================================================================-->
-
-<A NAME="Modules"></A>
-<HR>
-<H2>MODULES USED</H2>
-<PRE>
-types_mod
-utilities_mod
-time_manager_mod
-obs_sequence_mod
-obs_def_mod
-obs_model_mod
-assim_model_mod
-mpi_utilities_mod
-random_seq_mod
-ensemble_manager_mod
-</PRE>
-
 <!--================================================================-->
 <!--============== DESCRIPTION OF A NAMELIST ========================-->
 <!--================================================================-->
@@ -58,9 +54,8 @@ ensemble_manager_mod
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
 '&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
+Character strings that contain a '/' must be
 enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
 </P>
 <div class=namelist>
 <pre>
@@ -224,6 +219,24 @@ This namelist is read in a file called <em class=file>input.nml</em>
 
 </div>
 <br>
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<HR>
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+time_manager_mod
+obs_sequence_mod
+obs_def_mod
+obs_model_mod
+assim_model_mod
+mpi_utilities_mod
+random_seq_mod
+ensemble_manager_mod
+</PRE>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->

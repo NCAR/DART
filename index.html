@@ -4,11 +4,12 @@
 <HEAD>
 <TITLE>DART Documentation Index</TITLE>
 <link rel="stylesheet" type="text/css" href="doc/html/doc.css" />
+<link href="doc/html/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<H1>DART Documentation Index</H1>
+<H1>DART Documentation Main Index</H1>
 
 <table border=0 summary="" cellpadding=5>
 <tr>
@@ -16,7 +17,7 @@
     <img src="doc/html/Dartboard9.png" alt="DART project logo" height=70 />
     </td>
     <td>
-       <P><!-- Jump to <a href="index.html">DART Documentation Main Index</a --><br />
+       <P><!-- already here: Jump to <a href="index.html">DART Documentation Main Index</a --><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
           $Id$</small></small>
@@ -25,17 +26,66 @@
 </table>
 
 <A HREF="#Programs">Programs</A> /
-<A HREF="#Models">MODELS</A> /
-<A HREF="#Namelists">NAMELIST</A> /
-<A HREF="#Modules">MODULES</A> /
-<A HREF="#OtherDocs">OTHER DOCUMENTATION</A> /
-<A HREF="#KitchenSink">ALL DOCUMENTS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
+<A HREF="#Models">Models</A> /
+<A HREF="#Namelists">Namelist</A> /
+<A HREF="#Modules">Modules</A> /
+<A HREF="#OtherDocs">Other Documentation</A> /
+<A HREF="#KitchenSink">All Documents</A> /
+<A HREF="#Legalese">Terms of Use</A>
 
 <H2>Overview</H2>
 
 <P>
-This page contains links to all the documentation for this DART release.
+The Data Assimilation Research Testbed (DART) is a public-domain,
+community facility for doing research on and applying ensemble
+data assimilation techniques over a variety of models and observation types.
+It includes many example models and support for 
+common observation types and for different filter types.
+It also includes material for teaching and learning the basic
+principles of data assimilation.
+</P><P>
+DART strives to implement general solutions 
+which work over a range of models and observation types, 
+and to develop theory-based algorithms that solve the many 
+real problems encountered when doing ensemble data assimilation.
+The algorithms in DART are tested on both simple one-dimensional
+models (e.g. the Lorenz series of models) as well as full-up
+3D NWP (Numerical Weather Prediction) models and GCMs (Global Climate Models).
+The basic Kalman filter code can be written in a few lines.
+In practice, however, there are a variety of difficulties
+resulting from sampling error, model bias, observation error, 
+lack of model divergence, variations in observation density in 
+space and time, etc.
+There are tools built into the DART framework to address
+many of these problems.
+</P> <P>
+To get started, look here:
+<ul>
+<li>Our extensive <a href="http://www.image.ucar.edu/DAReS/">web pages</a></li>
+<li>Documentation for the 
+main assimilation program <a href="filter/filter.html">filter</a></li>
+<li>Documentation for the other related 
+<a href="#Programs">programs</a> that come with DART</li>
+<li>Documentation for <a href="observations/observations.html">observation 
+types</a> supported by DART</li>
+<li>Documentation for the Matlab <a href="#Diagnostics">diagnostic tools
+types</a></li>
+<li>Discussion of <a href="assim_tools/assim_tools_mod.html">localization</a>,
+<a href="filter/filter.html#Inflation">inflation</a></li>
+<li>The web pages specific to <a href="#Models">each model</a></li>
+<li>The web pages specific to <a href="#Observations">each observation type</a></li>
+</ul>
+</P>
+<P>
+The best way to get to know the DART software is to follow along while 
+reading the tutorial documents in the <em class="file">DART_LAB</em>
+and then the <em class="file">DART/tutorial</em> directory.
+</P>
+<P>
+The remainder of this page
+contains links to all the documentation for this DART release.
+</P>
+<P>
 The latest official release was named "Jamaica" but that was quite a
 while ago. We have been making significant code improvements since then
 and now recommend people check out the head of the trunk branch of the
@@ -44,17 +94,14 @@ last release may be helpful.  See the overview
 <a href="doc/html/Jamaica_release.html">doc/html/Jamaica_release.html</a> and
 the differences from the previous release are highlighted in
 <a href="doc/html/Jamaica_diffs_from_I.html">doc/html/Jamaica_diffs_from_I.html</a>.
-&nbsp;General DART documentation can be found in the 
+</P>
+<P>
+General DART documentation can be found in the 
 <em class="file">doc/html</em> directory.
 Every source file has a corresponding .html file that contains 
 specifics for public interfaces in each of the DART
 modules, for the executable programs which come with DART, and for
 how to interface new models into the DART system.
-<br>
-<br>
-The best way to get to know the DART software is to follow along while 
-reading the tutorial documents in the <em class="file">DART_LAB</em>
-and then the <em class="file">DART/tutorial</em> directory.
 </P>
 
 <!--==================================================================-->
@@ -122,6 +169,7 @@ The executable programs that come with DART include:
 <A HREF="filter/wakeup_filter.html">program wakeup_filter</A> - needed when running a parallel model advance
 </pre>
 
+<A NAME="Diagnostics"></A>
 <P>
 The diagnostic programs that process observations after being assimilated
 by DART include:
@@ -135,6 +183,7 @@ by DART include:
 <A HREF="diagnostics/rms_diag.f90">program rms_diag</A> - example code to compute diagnostics
 </pre>
 
+<A NAME="Observations"></A>
 <P>
 The executable programs that convert observations into DART format include:
 </P>
