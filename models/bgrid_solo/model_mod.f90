@@ -100,6 +100,8 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
+logical, save :: module_initialized = .false.
+
 !-----------------------------------------------------------------------
 ! bgrid_prog_var_mod:prog_var_type
 ! data structure that contains all prognostic fields and tracers
@@ -253,6 +255,8 @@ type(time_type) :: Time_next
 
 !!!integer :: i, j, k
 
+if ( .not. module_initialized ) call static_init_model
+
 ! Convert the vector to a B-grid native state representation
 call vector_to_prog_var(x, get_model_size(), global_Var)
 
@@ -309,6 +313,9 @@ subroutine static_init_model()
 ! INitializes class data for a B-grid model (all the stuff that needs to
 ! be done once.
 
+if ( module_initialized ) return ! only need to do this once.
+
+module_initialized = .true.
 
 call fms_init()
 call atmos_model_init()
@@ -320,7 +327,6 @@ end subroutine static_init_model
 subroutine init_model_instance(Var)
 
 ! Initializes an instance (Var) of a B-grid model state variable
-
 
 type(prog_var_type), intent(out) :: Var
 
@@ -350,6 +356,8 @@ real(r8), allocatable, dimension(:) :: eta, peta
 integer :: ix, jx, kx
 ! Havana no longer distinguishes prognostic tracers
 !!!integer :: ix, jx, kx, nt, ntp
+
+if ( .not. module_initialized ) call static_init_model
 
 ! Need to initialize var???
 call init_model_instance(global_Var)
@@ -842,8 +850,9 @@ end subroutine bgrid_physics
 
 function get_model_size()
 
-
 integer :: get_model_size
+
+if ( .not. module_initialized ) call static_init_model
 
 get_model_size = model_size
 
@@ -1009,6 +1018,8 @@ function get_model_time_step()
 
 type(time_type) :: get_model_time_step
 
+if ( .not. module_initialized ) call static_init_model
+
 ! Time_step_atmos is global static storage
 get_model_time_step =  Time_step_atmos
 
@@ -1045,6 +1056,8 @@ integer :: num_t_lons, num_t_lats, num_v_lons, num_v_lats
 integer :: col_num, col_elem, v_index
 integer :: lat_index, lon_index
 real(r8) :: lon, lat, lev
+
+if ( .not. module_initialized ) call static_init_model
 
 ! Get the bounds for storage on Temp and Velocity grids
 tis = Dynam%Hgrid%Tmp%is; tie = Dynam%Hgrid%Tmp%ie
@@ -1153,6 +1166,7 @@ real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
 real(r8) :: lon_fract, lat_fract, val(2, 2), temp_lon, a(2)
 real(r8) :: lon, lat, level, lon_lat_lev(3), pressure
 
+if ( .not. module_initialized ) call static_init_model
 
 ! All interps okay for now
 istatus = 0
@@ -1500,6 +1514,8 @@ subroutine init_time(i_time)
 
 type(time_type), intent(out) :: i_time
 
+if ( .not. module_initialized ) call static_init_model
+
 i_time = mTime
 
 end subroutine init_time
@@ -1563,6 +1579,8 @@ character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=NF90_MAX_NAME) :: str1
 !-----------------------------------------------------------------------------------------
+
+if ( .not. module_initialized ) call static_init_model
 
 ierr = 0     ! assume normal termination
 
@@ -1905,6 +1923,8 @@ integer :: vis, vie, vjs, vje       ! velocity    grid start/stop
 integer :: kub, klb
 integer :: nTmpI, nTmpJ, nVelI, nVelJ, nlev, ntracer
 
+if ( .not. module_initialized ) call static_init_model
+
 ierr = 0     ! assume normal termination
 
 !-------------------------------------------------------------------------------
@@ -2038,6 +2058,8 @@ real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
+if ( .not. module_initialized ) call static_init_model
+
 interf_provided = .false.
 
 ! you *cannot* set this to junk. in at least one
@@ -2055,9 +2077,11 @@ end subroutine pert_model_state
 
 subroutine ens_mean_for_model(ens_mean)
 !------------------------------------------------------------------
-! Not used in low-order models
+! Not used in this model.
 
 real(r8), intent(in) :: ens_mean(:)
+
+if ( .not. module_initialized ) call static_init_model
 
 end subroutine ens_mean_for_model
 
