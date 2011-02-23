@@ -352,19 +352,23 @@ end subroutine set_obs_def_time
 
 !----------------------------------------------------------------------------
 
-subroutine get_expected_obs_from_def(key, obs_def, obs_kind_ind, state, &
-   obs_val, istatus, assimilate_this_ob, evaluate_this_ob)
+subroutine get_expected_obs_from_def(key, obs_def, obs_kind_ind, ens_index, &
+   state, state_time, obs_val, istatus, assimilate_this_ob, evaluate_this_ob)
 
 ! Compute forward operator for a particular obs_def
-integer, intent(in) :: key
-type(obs_def_type), intent(in) :: obs_def
-integer, intent(in) :: obs_kind_ind
-real(r8), intent(in) :: state(:)
-real(r8), intent(out) :: obs_val
-integer, intent(out) :: istatus
-logical, intent(out) :: assimilate_this_ob, evaluate_this_ob
+integer,            intent(in)  :: key
+type(obs_def_type), intent(in)  :: obs_def
+integer,            intent(in)  :: obs_kind_ind, ens_index
+real(r8),           intent(in)  :: state(:)
+type(time_type),    intent(in)  :: state_time
+real(r8),           intent(out) :: obs_val
+integer,            intent(out) :: istatus
+logical,            intent(out) :: assimilate_this_ob, evaluate_this_ob
 
 type(location_type) :: location
+type(time_type)     :: obs_time
+integer             :: obs_key
+real(r8)            :: error_var
 
 ! Load up the assimilate and evaluate status for this observation kind
 assimilate_this_ob = assimilate_this_obs_kind(obs_kind_ind)
@@ -372,12 +376,42 @@ evaluate_this_ob = evaluate_this_obs_kind(obs_kind_ind)
 
 ! If not being assimilated or evaluated return with missing_r8 and istatus 0
 if(assimilate_this_ob .or. evaluate_this_ob) then
-   location = get_obs_def_location(obs_def)
-   ! Compute the forward operator;
+   ! for speed, access directly instead of using accessor functions
+   location  = obs_def%location
+   obs_time  = obs_def%time
+   obs_key   = obs_def%key
+   error_var = obs_def%error_variance
+
+   ! Compute the forward operator.  In spite of the variable name,
+   ! obs_kind_ind is in fact a 'type' index number.  use the function
+   ! get_obs_kind_var_type from the obs_kind_mod if you want to map
+   ! from a specific type to a generic kind.  the third argument of
+   ! a call to the 'interpolate()' function must be a kind index and
+   ! not a type.  normally the preprocess program does this for you.
    select case(obs_kind_ind)
 
+      ! arguments available to an obs_def forward operator code are:
+      !   state        -- the entire model state vector
+      !   state_time   -- the time of the state vector data
+      !   ens_index    -- the ensemble number
+      !   location     -- observation location
+      !   obs_kind_ind -- the index of the observation specific type 
+      !   obs_time     -- the time of the observation
+      !   error_var    -- the observation error variance
+      !
+      ! the routine must return values for:
+      !   obs_val -- the computed forward operator value
+      !   istatus -- return code: 0=ok, >0 is error, <0 reserved for system use
+      !
+      ! to call interpolate() directly, the arg list MUST BE:
+      !  interpolate(state, location, KIND_xxx, obs_val, istatus)
+      !
+      ! the preprocess program generates lines like this automatically,
+      ! and this matches the interfaces in each model_mod.f90 file.
+      !
       ! CASE statements and algorithms for specific observation kinds are
       ! inserted here by the DART preprocess program.
+
       ! DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF INSERTED HERE
 
       ! If the observation kind is not available, it is an error. The DART 

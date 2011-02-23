@@ -542,8 +542,8 @@ AdvanceTime : do
   
    call trace_message('Before observation space diagnostics')
    ! Do prior observation space diagnostics and associated quality control
-   call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, seq, keys, &
-      PRIOR_DIAG, num_output_obs_members, in_obs_copy + 1, &
+   call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, &
+      seq, keys, PRIOR_DIAG, num_output_obs_members, in_obs_copy+1, &
       obs_val_index, OBS_KEY_COPY, &                                 ! new
       prior_obs_mean_index, prior_obs_spread_index, num_obs_in_set, &
       OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START, OBS_GLOBAL_QC_COPY, &
@@ -651,8 +651,8 @@ AdvanceTime : do
    call trace_message('Before posterior obs space diagnostics')
 
    ! Do posterior observation space diagnostics
-   call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, seq, keys, &
-      POSTERIOR_DIAG, num_output_obs_members, in_obs_copy + 2, &
+   call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, &
+      seq, keys, POSTERIOR_DIAG, num_output_obs_members, in_obs_copy+2, &
       obs_val_index, OBS_KEY_COPY, &                             ! new
       posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
       OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_START, OBS_GLOBAL_QC_COPY, &
@@ -1191,7 +1191,8 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
          !       obs_ens_handle%vars(j:j, k), istatus, assimilate_this_ob, evaluate_this_ob)
          ! and keys is intent in only, vars intent out only.
          thiskey(1) = keys(j)
-         call get_expected_obs(seq, thiskey, ens_handle%vars(:, k), &
+         call get_expected_obs(seq, thiskey, &
+            global_ens_index, ens_handle%vars(:, k), ens_handle%time(1), &
             thisvar, istatus, assimilate_this_ob, evaluate_this_ob)
          obs_ens_handle%vars(j, k) = thisvar(1)
          ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only

@@ -169,6 +169,15 @@ precisely formatted comments, and possibly module code sections:
 Any fortran use statements for public subroutines or
 variables from other modules should be placed between
 these lines, with comment characters in the first column.
+<br><br>
+For example, if the forward operator code includes a module
+then a use statement like:
+<pre>
+use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral, &
+                                 interactive_1d_integral, get_expected_1d_integral
+</pre>
+needs to be added to the obs_def_mod so the listed subroutines
+are available to be called.
 </li>
 
 <li><pre>
@@ -181,6 +190,43 @@ expected observation value based on the current values
 of the state vector.  
 The code must be in comments,
 with the comment character in the first column.
+<br><br>
+The variables available to be passed to subroutines or used
+in this section of code are:
+<table>
+<tr><td><em class=code>state</em></td>
+    <td>the entire model state vector</td></tr>
+<tr><td><em class=code>state_time</em></td>
+    <td>the time of the state data</td></tr>
+<tr><td><em class=code>ens_index</em></td>
+    <td>the ensemble member number</td></tr>
+<tr><td><em class=code>location</em></td>
+    <td>the observation location</td></tr>
+<tr><td><em class=code>obs_kind_ind&nbsp;</em></td>
+    <td>the index of the specific observation type</td></tr>
+<tr><td><em class=code>obs_time</em></td>
+    <td>the time of the observation</td></tr>
+<tr><td><em class=code>error_val</em></td>
+    <td>the observation error variance</td></tr>
+</table>
+<br>
+The routine must fill in the values of these variables:
+<table>
+<tr><td><em class=code>obs_val&nbsp;</em></td>
+    <td>the computed forward operator value </td></tr>
+<tr><td><em class=code>istatus</em></td>
+    <td>return code: 0=ok, >0 is error, <0 reserved for system use</td></tr>
+</table>
+<br>
+To call a model_mod interpolate routine directly, the
+argument list must match exactly:
+<pre>
+interpolate(state, location, KIND_xxx, obs_val, istatus)
+</pre>
+This can be useful if the forward operator needs to retrieve values
+for fields which are typically found in a model and then compute
+a derived value from them.
+
 </li>
 
 <li><pre>
@@ -196,6 +242,28 @@ be provided, but the code can simply be
 <em class="unix">continue</em>.
 The code must be in comments,
 with the comment character in the first column.
+<br><br>
+The variables available to be passed to subroutines or used
+in this section of code are:
+<table>
+<tr><td><em class=code>ifile</em></td>
+    <td>the open unit number positioned ready to read, read-only</td></tr>
+<tr><td><em class=code>obs_def&nbsp;</em></td>
+    <td>the rest of the obs_def derived type for this obs, read-write</td></tr>
+<tr><td><em class=code>key</em></td>
+    <td>the index observation number in this sequence, read-only</td></tr>
+<tr><td><em class=code>obs_val</em></td>
+    <td>the observation value, if needed.  in general should not be changed</td></tr>
+<tr><td><em class=code>is_ascii</em></td>
+    <td>logical to indicate how the file was opened, formatted or unformatted</td></tr>
+</table>
+<br>
+The usual use of this routine is to read in additional metadata
+per observation and to set the private key in the <em class=code>obs_def</em>
+to indicate which index to use for this observation to look up the
+corresponding metadata in arrays or derived types.  Do not confuse
+the key in the obs_def with the key argument to this routine; the latter
+is the global observation sequence number for this observation.
 </li>
 
 <li><pre>
@@ -211,6 +279,25 @@ be provided, but the code can simply be
 <em class="unix">continue</em>.
 The code must be in comments,
 with the comment character in the first column.
+<br><br>
+The variables available to be passed to subroutines or used
+in this section of code are:
+<table>
+<tr><td><em class=code>ifile</em></td>
+    <td>the open unit number positioned ready to write, read-only</td></tr>
+<tr><td><em class=code>obs_def&nbsp;</em></td>
+    <td>the rest of the obs_def derived type for this obs, read-only</td></tr>
+<tr><td><em class=code>key</em></td>
+    <td>the index observation number in this sequence, read-only</td></tr>
+<tr><td><em class=code>is_ascii</em></td>
+    <td>logical to indicate how the file was opened, formatted or unformatted</td></tr>
+</table>
+<br>
+The usual use of this routine is to write the additional metadata
+for this observation based on the private key 
+in the <em class=code>obs_def</em>.  Do not confuse this with
+the key in the subroutine call which is the observation number
+relative to the entire observation sequence file.
 </li>
 
 <li><pre>
@@ -227,6 +314,22 @@ be provided, but the code can simply be
 <em class="unix">continue</em>.
 The code must be in comments,
 with the comment character in the first column.
+<br><br>
+The variables available to be passed to subroutines or used
+in this section of code are:
+<table>
+<tr><td><em class=code>obs_def&nbsp;</em></td>
+    <td>the rest of the obs_def derived type for this obs, read-write</td></tr>
+<tr><td><em class=code>key</em></td>
+    <td>the index observation number in this sequence, read-only</td></tr>
+</table>
+<br>
+The DART code will prompt for the rest of the obs_def values
+(location, type, value, error) but any additional metadata needed
+by this observation type should be prompted to, and read from,
+the console (e.g. <em class=code>write(*,*)</em>, and 
+<em class=code>read(*, *)</em>).  The code will generally set the 
+<em class=code>obs_def%key</em> value as part of setting the metadata.
 </li>
 
 <li><pre>
@@ -239,6 +342,11 @@ must surround the module definitions.  Unlike all the
 other sections, this comment pair is optional, and if
 used, the code must not be in comments;
 it will be copied verbatim over to the output file.
+<br><br>
+Generally the code for a forward operator should
+be defined inside a module, to keep module variables
+and other private subroutines from colliding with
+unrelated routines and variables in other forward operator files.
 </li>
 
 </ol>
@@ -304,9 +412,10 @@ end module obs_def_1d_state_mod
 </pre>
 <P>
 See the <a href="obs_def_1d_state_mod.html">obs_def_1d_state_mod</a> 
-documentation for more details and examples of each section.
-<br>
-<br>
+documentation for more details and examples of each section.  Also see
+<a href="obs_def_wind_speed_mod.f90">obs_def_wind_speed_mod.f90</a> for
+an example of a 3D geophysical forward operator.
+<br> <br>
 In addition to collecting and managing any additional observation 
 type-specific code, this module provides the definition of the
 obs_def_type derived type, and a collection of subroutines for creating,
@@ -815,12 +924,15 @@ Sets time for an observation definition.
 <br>
 <div class=routine>
 <em class=call> call get_expected_obs_from_def(key, obs_def, obs_kind_ind,
-  state, obs_val, istatus, assimilate_this_ob, evaluate_this_ob) </em>
+  ens_index, state, state_time, obs_val, istatus, 
+  assimilate_this_ob, evaluate_this_ob) </em>
 <pre>
 integer,            intent(in)  :: <em class=code>key</em>
 type(obs_def_type), intent(in)  :: <em class=code>obs_def</em>
 integer,            intent(in)  :: <em class=code>obs_kind_ind</em>
+integer,            intent(in)  :: <em class=code>ens_index</em>
 real(r8),           intent(in)  :: <em class=code>state(:)</em>
+type(time_type),    intent(in)  :: <em class=code>state_time</em>
 real(r8),           intent(out) :: <em class=code>obs_val</em>
 integer,            intent(out) :: <em class=code>istatus</em>
 logical,            intent(out) :: <em class=code>assimilate_this_ob</em>
@@ -842,11 +954,15 @@ Compute the observation (forward) operator for a particular obs definition.
     <TD>The input obs_def</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind_ind&nbsp;&nbsp;</em></TD>
     <TD>The obs kind</TD></TR>
+<TR><TD valign=top><em class=code>ens_index&nbsp;&nbsp;</em></TD>
+    <TD>The ensemble member number of this state vector</TD></TR>
 <TR><TD valign=top><em class=code>state&nbsp;&nbsp;</em></TD>
     <TD>Model state vector</TD></TR>
+<TR><TD valign=top><em class=code>state_time&nbsp;&nbsp;</em></TD>
+    <TD>Time of the data in the model state vector</TD></TR>
 <TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
-    <TD>Returned integer describing problems with applying 
-		  forward operator (0 means OK).</TD></TR>
+    <TD>Returned integer describing problems with applying forward 
+        operator (0 == OK, >0 == error, <0 reserved for sys use).</TD></TR>
 <TR><TD valign=top><em class=code>assimilate_this_ob&nbsp;&nbsp;</em></TD>
     <TD>Indicates whether to assimilate this obs or not</TD></TR>
 <TR><TD valign=top><em class=code>evaluate_this_ob&nbsp;&nbsp;</em></TD>

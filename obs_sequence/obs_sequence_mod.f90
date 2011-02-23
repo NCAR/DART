@@ -322,27 +322,29 @@ end function interactive_obs_sequence
 
 !---------------------------------------------------------
 
-subroutine get_expected_obs(seq, keys, state, obs_vals, istatus, &
-   assimilate_this_ob, evaluate_this_ob)
+subroutine get_expected_obs(seq, keys, ens_index, state, state_time, &
+   obs_vals, istatus, assimilate_this_ob, evaluate_this_ob)
 
 ! Compute forward operator for set of obs in sequence
 
 type(obs_sequence_type), intent(in)  :: seq
 integer,                 intent(in)  :: keys(:)
+integer,                 intent(in)  :: ens_index
 real(r8),                intent(in)  :: state(:)
+type(time_type),         intent(in)  :: state_time
 real(r8),                intent(out) :: obs_vals(:)
 integer,                 intent(out) :: istatus
 logical,                 intent(out) :: assimilate_this_ob, evaluate_this_ob
 
-integer             :: num_obs, i
+integer              :: num_obs, i
 !type(location_type) :: location
-type(obs_type)      :: obs
-type(obs_def_type)  :: obs_def
-integer             :: obs_kind_ind
+type(obs_type)       :: obs
+type(obs_def_type)   :: obs_def
+integer              :: obs_kind_ind
 
 num_obs = size(keys)
 
-! NEED to initialize istatus  to okay value
+! NEED to initialize istatus to okay value
 istatus = 0
 
 ! Initialize the observation type
@@ -364,8 +366,9 @@ do i = 1, num_obs
       assimilate_this_ob = .true.; evaluate_this_ob = .false.
 ! Otherwise do forward operator for this kind
    else
-      call get_expected_obs_from_def(keys(i), obs_def, obs_kind_ind, state, obs_vals(i), &
-         istatus, assimilate_this_ob, evaluate_this_ob)
+      call get_expected_obs_from_def(keys(i), obs_def, obs_kind_ind, &
+         ens_index, state, state_time, obs_vals(i), istatus, &
+         assimilate_this_ob, evaluate_this_ob)
    endif
 end do
 

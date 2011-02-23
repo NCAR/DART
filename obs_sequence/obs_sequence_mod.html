@@ -2006,12 +2006,14 @@ assignment(=).
 <A NAME="get_expected_obs"></A>
 <br>
 <div class=routine>
-<em class=call> call get_expected_obs(seq, keys, state, obs_vals, 
-      istatus, assimilate_this_ob, evaluate_this_ob) </em>
+<em class=call> call get_expected_obs(seq, keys, ens_index, state, 
+      state_time, obs_vals, istatus, assimilate_this_ob, evaluate_this_ob) </em>
 <pre>
 type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
 integer, dimension(:),   intent(in)  :: <em class=code>keys</em>
+integer,                 intent(in)  :: <em class=code>ens_index</em>
 real(r8), dimension(:),  intent(in)  :: <em class=code>state</em>
+type(time_type),         intent(in)  :: <em class=code>state_time</em>
 real(r8), dimension(:),  intent(out) :: <em class=code>obs_vals</em>
 integer,                 intent(out) :: <em class=code>istatus</em>
 logical,                 intent(out) :: <em class=code>assimilate_this_ob</em>
@@ -2035,8 +2037,12 @@ can also be a list for computational efficiency.
     <TD>An observation sequence</TD></TR>
 <TR><TD valign=top><em class=code>keys&nbsp;&nbsp;</em></TD>
     <TD>List of integer keys that specify observations in seq</TD></TR>
+<TR><TD valign=top><em class=code>ens_index&nbsp;&nbsp;</em></TD>
+    <TD>The ensemble number for this state vector</TD></TR>
 <TR><TD valign=top><em class=code>state&nbsp;&nbsp;</em></TD>
     <TD>Model state vector</TD></TR>
+<TR><TD valign=top><em class=code>state_time&nbsp;&nbsp;</em></TD>
+    <TD>The time of the state data</TD></TR>
 <TR><TD valign=top><em class=code>obs_vals&nbsp;&nbsp;</em></TD>
     <TD>Returned expected values of the observations</TD></TR>
 <TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>

@@ -343,7 +343,8 @@ AdvanceTime: do
       endif
 
       ! Compute the observations from the state
-      call get_expected_obs(seq, keys(j:j), ens_handle%vars(:, 1), &
+      call get_expected_obs(seq, keys(j:j), &
+         1, ens_handle%vars(:, 1), ens_handle%time(1), &
          true_obs(1:1), istatus, assimilate_this_ob, evaluate_this_ob)
 
       ! Get the observational error covariance (diagonal at present)
