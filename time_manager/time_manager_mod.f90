@@ -1961,7 +1961,10 @@ if ( .not. module_initialized ) call time_manager_init
 call error_handler(E_ERR,'increment_gregorian_mars','not implemented',source,revision,revdate)
 
 ! FIXME: set a return value to avoid compiler warnings
+! This code is never reached ... the error_handler() terminates before this. 
 increment_gregorian_mars = time
+if (present(years)) &
+write(*,*)'stop complaining about',years,months,days,hours,minutes,seconds
 
 end function increment_gregorian_mars
 
@@ -1984,6 +1987,7 @@ if ( .not. module_initialized ) call time_manager_init
 call error_handler(E_ERR,'increment_solar_mars','not implemented',source,revision,revdate)
 
 ! FIXME: set a return value to avoid compiler warnings
+! This code is never reached ... the error_handler() terminates before this. 
 increment_solar_mars = time
 
 end function increment_solar_mars
@@ -2332,7 +2336,10 @@ if ( .not. module_initialized ) call time_manager_init
 call error_handler(E_ERR,'decrement_gregorian','not implemented',source,revision,revdate)
 
 ! FIXME: set a return value to avoid compiler warnings
+! This code is never reached ... the error_handler() terminates before this. 
 decrement_gregorian_mars = time
+if (present(years)) &
+write(*,*)'stop complaining about',years,months,days,hours,minutes,seconds
 
 end function decrement_gregorian_mars
 
@@ -2355,6 +2362,7 @@ if ( .not. module_initialized ) call time_manager_init
 call error_handler(E_ERR,'decrement_gregorian','not implemented',source,revision,revdate)
 
 ! FIXME: set a return value to avoid compiler warnings
+! This code is never reached ... the error_handler() terminates before this. 
 decrement_solar_mars = time
 
 end function decrement_solar_mars
