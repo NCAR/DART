@@ -176,6 +176,27 @@ foreach MODEL ( 9var lorenz_63 lorenz_84 lorenz_96 lorenz_96_2scale \
 end
 endif
 
+echo
+echo
+echo
+echo "=================================================================="
+echo "Testing observation converters at "`date`
+echo "=================================================================="
+echo
+
+echo "Not all observation converters are expected to build; you may"
+echo "not have all the necessary supporting libraries.  So errors here"
+echo "are not fatal."
+
+cd ${DARTHOME}/observations
+./buildall.csh
+
+echo
+echo "=================================================================="
+echo "Observation converter testing complete at "`date`
+echo "=================================================================="
+echo
+
 #----------------------------------------------------------------------
 # Lots of tests for L96, and one for bgrid_solo (for the 3d loc stuff)
 #----------------------------------------------------------------------
