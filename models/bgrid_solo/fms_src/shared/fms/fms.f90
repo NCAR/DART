@@ -214,8 +214,8 @@ integer :: log_unit
 
 !  ---- version number -----
 
-  character(len=128) :: version = '$Id$'
-  character(len=128) :: tagname = '$Name:  $'
+  character(len=128) :: version = '$Revision$'
+  character(len=128) :: tagname = '$Id$'
 
   logical :: module_is_initialized = .FALSE.
 

@@ -210,9 +210,9 @@ module mpp_mod
   implicit none
   private
   character(len=128), private :: version= &
-       '$Id$'
+       '$Revision$'
   character(len=128), private :: tagname= &
-       '$Name$'
+       '$Id$'
 
 !various lengths (see shpalloc) are estimated in "words" which are 32bit on SGI, 64bit on Cray
 !these are also the expected sizeof of args to MPI/shmem libraries

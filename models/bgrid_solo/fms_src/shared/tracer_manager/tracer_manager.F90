@@ -133,8 +133,8 @@ end type tracer_name_type
 
 type(tracer_type)  :: tracers(MAX_TRACER_FIELDS)
 
-character(len=128) :: version = '$Id$'
-character(len=128) :: tagname = '$Name$'
+character(len=128) :: version = '$Revision$'
+character(len=128) :: tagname = '$Id$'
 logical            :: module_is_initialized = .false.
 
 logical            :: verbose_local

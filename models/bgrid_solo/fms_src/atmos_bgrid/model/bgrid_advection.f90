@@ -78,8 +78,9 @@ private
 
  real(r8) :: c4  = -1./6.
 
- character(len=128) :: version='$Id$'
- character(len=128) :: tagname='$Name$'
+ character(len=128) :: version='$Revision$'
+ character(len=128) :: tagname='$Id$'
+
  logical :: stability_check = .false.
  logical :: do_log = .true.
 

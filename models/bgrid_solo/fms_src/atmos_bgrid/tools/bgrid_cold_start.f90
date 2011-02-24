@@ -63,8 +63,8 @@ namelist /bgrid_cold_start_nml/ nlon, nlat, nlev, pref, tref, equal_vert_spacing
 
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id$'
-character(len=128) :: tag = '$Name$'
+character(len=128) :: version = '$Revision$'
+character(len=128) :: tag = '$Id$'
 
 !-----------------------------------------------------------------------
 

@@ -83,8 +83,8 @@ integer :: id_ucomp_sq, id_vcomp_sq, id_temp_sq, id_omega_sq, &
 
 !-----------------------------------------------------------------------
 
- character(len=128) :: version = '$Id$'
- character(len=128) :: tag = '$Name$'
+ character(len=128) :: version = '$Revision$'
+ character(len=128) :: tag = '$Id$'
 
 !-----------------------------------------------------------------------
 

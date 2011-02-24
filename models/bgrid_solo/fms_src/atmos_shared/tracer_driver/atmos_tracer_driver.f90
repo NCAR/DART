@@ -174,8 +174,8 @@ integer, allocatable :: local_indices(:)
 type(time_type) :: Time
 
 !---- version number -----
-character(len=128) :: version = '$Id$'
-character(len=128) :: tagname = '$Name$'
+character(len=128) :: version = '$Revision$'
+character(len=128) :: tagname = '$Id$'
 !-----------------------------------------------------------------------
 
 contains

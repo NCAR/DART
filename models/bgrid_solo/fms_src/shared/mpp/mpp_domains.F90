@@ -142,9 +142,9 @@ module mpp_domains_mod
   implicit none
   private
   character(len=128), private :: version= &
-       '$Id$'
+       '$Revision$'
   character(len=128), private :: tagname= &
-       '$Name$'
+       '$Id$'
   character(len=128), private :: version_update_domains2D, version_global_reduce, version_global_sum, version_global_field
 
 !parameters used to define domains: these are passed to the flags argument of mpp_define_domains

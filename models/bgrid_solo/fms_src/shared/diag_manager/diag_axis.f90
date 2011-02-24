@@ -91,9 +91,9 @@ integer, parameter :: FATAL = 2
  logical :: module_is_initialized = .FALSE.
 
  character(len=128) :: &
-   version='$Id$'
+   version='$Revision$'
  character(len=128) :: &
-   tagname='$Name$'
+   tagname='$Id$'
 
 contains
 
@@ -132,7 +132,7 @@ integer ::  index, ierr, axlen
 integer ::  i, set
 
  if ( .not.module_is_initialized ) then
-      call write_version_number( version, tagname )
+      call write_( version, tagname )
  endif
 
 !---- is there an axis set? ----

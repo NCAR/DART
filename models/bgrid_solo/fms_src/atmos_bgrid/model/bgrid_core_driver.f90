@@ -72,8 +72,8 @@ public  bgrid_dynam_type, bgrid_core_driver_init, &
         bgrid_core_time_diff, get_bottom_data, put_bottom_data
 
 !-----------------------------------------------------------------------
-character(len=128) :: version =  '$Id$'
-character(len=128) :: tag =  '$Name$'
+character(len=128) :: version =  '$Revision$'
+character(len=128) :: tag =  '$Id$'
 !-----------------------------------------------------------------------
 !
 !             NAMELIST INPUT: bgrid_core_driver_nml

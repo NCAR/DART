@@ -87,8 +87,8 @@ end interface
 ! private data
 
 logical :: do_log = .true.
-character(len=128) :: version='$Id$'
-character(len=128) :: tagname='$Name$'
+character(len=128) :: version='$Revision$'
+character(len=128) :: tagname='$Id$'
 
 integer :: unit_in
 logical :: read_pssl

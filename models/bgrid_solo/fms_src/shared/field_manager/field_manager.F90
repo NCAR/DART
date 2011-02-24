@@ -129,8 +129,8 @@ private
 !   Ice model.
 ! </DATA>
 
-character(len=128) :: version = '$Id$'
-character(len=128) :: tagname = '$Name$'
+character(len=128) :: version = '$Revision$'
+character(len=128) :: tagname = '$Id$'
 
 integer, private :: num_fields = 0
 integer, parameter, public :: NUM_MODELS = 5

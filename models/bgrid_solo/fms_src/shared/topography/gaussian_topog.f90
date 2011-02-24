@@ -97,8 +97,8 @@ public :: gaussian_topog_init, get_gaussian_topog
 
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id$'
-character(len=128) :: tagname = '$Name$'
+character(len=128) :: version = '$Revision$'
+character(len=128) :: tagname = '$Id$'
 
 logical :: do_nml = .true.
 logical :: module_is_initialized = .FALSE.

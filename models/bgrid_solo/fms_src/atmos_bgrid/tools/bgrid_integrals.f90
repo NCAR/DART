@@ -121,8 +121,8 @@ end interface
    logical :: do_chksum  = .false.
    logical :: do_decomp_check = .true.
 
-   character(len=128) :: version = '$Id$'
-   character(len=128) :: tag = '$Name$'
+   character(len=128) :: version = '$Revision$'
+   character(len=128) :: tag = '$Id$'
 
    character(len=256) :: frmat   ! format used for standard intergals
 

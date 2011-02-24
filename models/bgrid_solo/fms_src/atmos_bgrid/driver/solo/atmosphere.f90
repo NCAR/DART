@@ -77,8 +77,8 @@ public  atmosphere,      &
 
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id$'
-character(len=128) :: tag = '$Name$'
+character(len=128) :: version = '$Revision$'
+character(len=128) :: tag = '$Id$'
 
 !-----------------------------------------------------------------------
 !---- namelist (saved in file input.nml) ----

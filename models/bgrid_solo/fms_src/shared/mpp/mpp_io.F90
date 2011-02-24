@@ -341,9 +341,9 @@ module mpp_io_mod
   private
 
   character(len=128), private :: version= &
-       '$Id$'
+       '$Revision$'
   character(len=128), private :: tagname= &
-       '$Name$'
+       '$Id$'
 
   integer, private :: pe, npes
 

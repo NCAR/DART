@@ -168,9 +168,8 @@ character (len=10) :: time_unit_list(6) = (/'seconds   ', 'minutes   ', &
 character (len = 7) :: avg_name = 'average'
 
 ! version number of this module
-  character(len=128) :: version = '$Id$'
-  character(len=128) :: tagname = '$Name$'  
-
+  character(len=128) :: version = '$Revision$'
+  character(len=128) :: tagname = '$Id$'
 
 ! <INTERFACE NAME="send_data">
 

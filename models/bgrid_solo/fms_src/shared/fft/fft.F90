@@ -184,9 +184,9 @@ integer :: leng, leng1, leng2, lenc    ! related to transform size
 
 logical :: module_is_initialized=.false.
 
-!  cvs version and tag name
-character(len=128) :: version = '$Id$'
-character(len=128) :: tagname = '$Name$'
+!  svn version and tag name
+character(len=128) :: version = '$Revision$'
+character(len=128) :: tagname = '$Id$'
 
 !-----------------------------------------------------------------------
 !

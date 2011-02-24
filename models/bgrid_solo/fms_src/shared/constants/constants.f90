@@ -53,8 +53,8 @@ use fms_mod, only: write_version_number
 implicit none
 private
 
-character(len=128) :: version='$Id$'
-character(len=128) :: tagname='$Name$'
+character(len=128) :: version='$Revision$'
+character(len=128) :: tagname='$Id$'
 logical :: do_log = .true.
 logical :: module_is_initialized = .FALSE.
 !-----------------------------------------------------------------------

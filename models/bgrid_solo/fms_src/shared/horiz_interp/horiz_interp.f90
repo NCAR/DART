@@ -233,8 +233,9 @@ use constants_mod, only: pi
  end type
 
 !-----------------------------------------------------------------------
- character(len=128) :: version = '$Id$'
- character(len=128) :: tagname = '$Name$'
+ character(len=128) :: version = '$Revision$'
+ character(len=128) :: tagname = '$Id$'
+
  logical :: do_vers = .true.
  logical :: module_is_initialized = .FALSE.
  integer :: num_iters = 4

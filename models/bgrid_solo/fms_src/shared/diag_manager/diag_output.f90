@@ -124,9 +124,9 @@ end type
 logical :: module_is_initialized = .FALSE.
 
 character(len=128), private :: version= &
-  '$Id$'
+  '$Revision$'
 character(len=128), private :: tagname= &
-  '$Name$'
+  '$Id$'
 
 contains
 

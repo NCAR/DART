@@ -78,8 +78,8 @@ public  wet_deposition,    &
 !---- version number -----
 logical :: module_is_initialized = .FALSE.
 
-character(len=128) :: version = '$Id$'
-character(len=128) :: tagname = '$Name$'
+character(len=128) :: version = '$Revision$'
+character(len=128) :: tagname = '$Id$'
 
 character(len=7), parameter :: mod_name = 'tracers'
 !-----------------------------------------------------------------------

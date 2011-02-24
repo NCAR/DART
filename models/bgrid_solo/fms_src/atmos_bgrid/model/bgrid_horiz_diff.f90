@@ -84,8 +84,8 @@ public   horiz_diff, horiz_diff_init
 !!!!!!!!!!!!!!!!!!!!!   calgary values = (/ 1.00, 0.50, 0.10 /)
 !!!!!!!!!!!!!!!!!!!!!    bombay values = (/ 1.00, 1.00, 0.50 /)
 
- character(len=128) :: version='$Id$'
- character(len=128) :: tagname='$Name$'
+ character(len=128) :: version='$Revision$'
+ character(len=128) :: tagname='$Id$'
  logical :: do_log = .true.
 
 !  timing data

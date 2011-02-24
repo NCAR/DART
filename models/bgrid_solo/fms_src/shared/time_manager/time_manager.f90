@@ -143,7 +143,7 @@ interface operator (//);  module procedure time_real_divide; end interface
 
 !======================================================================
 
-character(len=128) :: version='$Id$'
+character(len=128) :: version='$Revision$'
 character(len=128) :: tagname='$Id$'
 logical :: do_init = .true.
 

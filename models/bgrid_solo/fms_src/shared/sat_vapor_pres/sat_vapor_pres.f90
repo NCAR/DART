@@ -200,8 +200,8 @@ private
 !-----------------------------------------------------------------------
 !  cvs version and tag name
 
-character(len=128) :: version = '$Id$'
-character(len=128) :: tagname = '$Name$'
+character(len=128) :: version = '$Revision$'
+character(len=128) :: tagname = '$Id$'
 
 !-----------------------------------------------------------------------
 !  parameters for table size and resolution

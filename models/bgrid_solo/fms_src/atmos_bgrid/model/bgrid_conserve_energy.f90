@@ -60,8 +60,8 @@ use         constants_mod, only: CP, GRAV
 !------------------------------------------------------------------
 
 ! private module data
- character(len=128) :: version = '$Id$'
- character(len=128) :: tag = '$Name$'
+ character(len=128) :: version = '$Revision$'
+ character(len=128) :: tag = '$Id$'
 
 ! for diagnostics
  character(len=8) :: mod_name = 'dynamics'
