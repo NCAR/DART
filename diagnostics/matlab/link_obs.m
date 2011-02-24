@@ -73,7 +73,7 @@ verbose = 1;
 obs  = read_obs_netcdf(fname, ObsTypeString, region, ObsCopyString, QCString, verbose);
 copy = read_obs_netcdf(fname, ObsTypeString, region,    CopyString, QCString, 0);
 
-if ( length(obs.lons) == 0 )
+if ( isempty(obs.lons) )
     error('There are no %s observations in the region specified in %s', ObsTypeString, fname)
 end
 
@@ -103,7 +103,7 @@ global obsmat
 obsmat = zeros(length(obs.lons),9);
 obsmat(:,obs.lonindex ) = obs.lons; obs.colnames{obs.lonindex}  = 'longitude';
 obsmat(:,obs.latindex ) = obs.lats; obs.colnames{obs.latindex}  = 'latitude';
-obsmat(:,obs.zindex   ) = obs.z   ; obs.colnames{obs.zindex}    = obs.Zunits;;
+obsmat(:,obs.zindex   ) = obs.z   ; obs.colnames{obs.zindex}    = obs.Zunits;
 obsmat(:,obs.obsindex ) = obs.obs ; obs.colnames{obs.obsindex}  = ObsCopyString;
 obsmat(:,obs.copyindex) = copy.obs; obs.colnames{obs.copyindex} = CopyString;
 obsmat(:,obs.qcindex  ) = obs.qc  ; obs.colnames{obs.qcindex}   = QCString;
@@ -114,8 +114,8 @@ obsmat(:,obs.indindex ) = 1:length(obs.time); obs.colnames{obs.indindex} = 'inde
 %% Replace all ill-posed copies with 
 % This should really check to see if the copy is a 'mean' or 'spread' ...
 
-iscalculated = ~isempty(findstr(lower(obs.colnames{obs.copyindex}),'mean')) | ...
-               ~isempty(findstr(lower(obs.colnames{obs.copyindex}),'spread'));
+iscalculated = ~isempty(strfind(lower(obs.colnames{obs.copyindex}),'mean')) | ...
+               ~isempty(strfind(lower(obs.colnames{obs.copyindex}),'spread'));
 
 if iscalculated
    disp('replacing copies with [1 < QC flag < 5] with NaN')
