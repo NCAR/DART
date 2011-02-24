@@ -933,7 +933,6 @@ integer               :: num_copies, num_vars, my_num_vars, my_num_copies
 integer               :: max_num_vars, max_num_copies, num_vars_to_receive
 integer               :: sending_pe, recv_pe, k, sv, copy, num_copies_to_send
 integer               :: global_ens_index
-logical :: oldval
 
 ! only output if there is a label
 if (present(label)) then
