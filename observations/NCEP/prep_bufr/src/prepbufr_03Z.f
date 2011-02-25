@@ -611,7 +611,7 @@ c             ! the T obs cannot be used for qoe
 
              !  write RH data to file
              qdata(1) = qoe_rh
-             qdata(5) = qob / qsat
+             qdata(5) = qob / (qsat * 1000.0)
              qdata(6) = 1.0
              write(lunobs, 800) qdata, qtype, qqm, subset(1:6), pc_q
 
