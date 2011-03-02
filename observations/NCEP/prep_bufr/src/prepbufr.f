@@ -563,10 +563,10 @@ c----------------------------------------------------------------------
      &        use_this_data_int(pqm,qctype_use,inum_qctype) .and.
      &        qob .lt. 1.0e9                                ) then
 
-           qoe_rh = qoe
-
            es   = es0 * (tob / t0) ** fact1 * exp(fact2*(fact3-1./tob))
            qsat = eps * es / (pob - omeps * es)
+           if (qoe .gt. 1.e9) qoe = land_moist_error
+           qoe_rh = qoe
            qoe  = max(0.1, qoe * qsat * 1000.0) ! to g/kg, set min value
 
            if( .not. use_this_data_int(tqm,qctype_use,inum_qctype)) then
