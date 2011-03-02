@@ -478,7 +478,7 @@ there was no mechanism to cause the inflation values to drop
 back down to smaller levels.  The damping factor accomplishes this.
 <br /> <br />
 <dt>
-<em>&amp;filter_nml :: output_restart </em><br />
+<em>&amp;filter_nml :: inf_output_restart </em><br />
 valid values: text string
 <dd>
 The name of the file to write the inflation and
@@ -562,6 +562,7 @@ The namelist declaration is:
   input_qc_threshold,
   outlier_threshold,
   output_forward_op_errors,
+  output_restart_mean,
   output_timestamps,
   output_inflation,
   trace_execution,
@@ -759,6 +760,17 @@ being for the posterior inflation.
                        This option is generally most useful when run with a 
                        small observation sequence file and a small number of 
                        ensemble members to diagnose forward operator problems.
+                       Default: .false.</TD></TR>
+
+<TR><!--contents--><TD valign=top>output_restart_mean</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD>True means output a restart file which contains
+                       the ensemble mean.  The file name will use the value
+                       of the namelist item
+                       '&amp;filter_nml::restart_out_file_name' 
+                       as the base, with the string '.mean' appended.
+                       Even if '&amp;ensemble_manager_nml::single_restart_file_out' 
+                       is .true., the mean data will be written to a separate file.
                        Default: .false.</TD></TR>
 
 <TR><!--contents--><TD valign=top>output_timestamps</TD>

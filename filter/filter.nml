@@ -21,6 +21,7 @@
    input_qc_threshold       =  3.0,
    outlier_threshold        = -1.0,
    output_forward_op_errors = .false.,
+   output_restart_mean      = .false.,
    output_timestamps        = .false.,
    output_inflation         = .true.,
    trace_execution          = .false.,

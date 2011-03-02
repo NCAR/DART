@@ -78,8 +78,9 @@ integer, parameter :: PRIOR_DIAG = 0, POSTERIOR_DIAG = 2
 ! Namelist input with default values
 !
 integer  :: async = 0, ens_size = 20
-logical  :: start_from_restart = .false.
-logical  :: output_restart     = .false.
+logical  :: start_from_restart  = .false.
+logical  :: output_restart      = .false.
+logical  :: output_restart_mean = .false.
 integer  :: tasks_per_model_advance = 1
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
@@ -137,7 +138,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds,  &
    first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds,              &
    obs_window_days, obs_window_seconds,                                             &
-   num_output_state_members, num_output_obs_members,                                &
+   num_output_state_members, num_output_obs_members, output_restart_mean,           &
    output_interval, num_groups, outlier_threshold, trace_execution,                 &
    input_qc_threshold, output_forward_op_errors, output_timestamps,                 &
    inf_flavor, inf_initial_from_restart, inf_sd_initial_from_restart,               &
@@ -747,6 +748,10 @@ call trace_message('After  writing inflation restart files if required')
 call trace_message('Before writing state restart files if requested')
 if(output_restart) &
    call write_ensemble_restart(ens_handle, restart_out_file_name, 1, ens_size)
+if(output_restart_mean) &
+   call write_ensemble_restart(ens_handle, trim(restart_out_file_name)//'.mean', &
+                               ENS_MEAN_COPY, ENS_MEAN_COPY, .true.)
+
 if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')
 
