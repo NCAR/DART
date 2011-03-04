@@ -144,24 +144,28 @@ will be read from file <em class=file>input.nml</em>.
 
 <TR><!--contents--><TD valign=top>reverse_task_layout</TD>
     <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>If running async=4 mode (parallel filter
-       and parallel model advance) with the OpenMPI library,
-       this must be .TRUE. .  The synchronizing
-       mechanism between the scripting and the filter executable will
-       fail otherwise.  Default: .FALSE.</TD></TR>
+    <!--descript--><TD>The synchronizing mechanism between the job script
+       and the parallel filter in async=4 mode relies on the script and
+       task 0 running on the same node (in the same memory space if the
+       nodes have multiple processors).  Some MPI implementations (OpenMPI
+       being the most commonly used one) lay the tasks out so that the last
+       task is on the same node as the script.  If the async 4 model advance
+       never starts but there are no error messages, try setting this to 
+       .TRUE. before running.  See also the 'async4_verbose' flag below.
+                       Default: .FALSE.</TD></TR>
 
 <TR><!--contents--><TD valign=top>all_tasks_print</TD>
     <!--  type  --><TD valign=top>logical</TD>
     <!--descript--><TD>In the parallel filter, informational messages only 
        print from task 0 to avoid N copies of the same messages.  Error
        messages and warnings print no matter which task they occur in.  
-       If this variable is set to true, messages will print 
+       If this variable is set to true, even messages will print 
        from all tasks.  Default: .FALSE. </TD></TR>
 
 <TR><!--contents--><TD valign=top>verbose</TD>
     <!--  type  --><TD valign=top>logical</TD>
     <!--descript--><TD>USE WITH CAUTION!  This flag enables debugging
-       print messages for every MPI call - sends, receives, syncs - and
+       print messages for every MPI call - sends, receives, barriers - and
        is very, very verbose.  In most cases the size of the output file
        will exceed the filesystem limits or will cause the executable to
        run so slowly that it will not be useful.  However in small
@@ -186,8 +190,8 @@ will be read from file <em class=file>input.nml</em>.
     <!--descript--><TD>If running on compute nodes which do not have the
         expected default shell for async=2 or async=4 mode, specify the
         full pathname of the shell to execute the script.   Not normally
-        needed on most systems we run on  (Cray execute nodes being an
-        exception.)  Default: '' </TD></TR>
+        needed on most systems we run on. (However, at least one type of Cray
+        system has this need.)  Default: '' </TD></TR>
 
 <TR><!--contents--><TD valign=top>separate_node_sync</TD>
     <!--  type  --><TD valign=top>logical</TD>

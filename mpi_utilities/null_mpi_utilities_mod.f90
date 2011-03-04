@@ -331,10 +331,11 @@ end subroutine task_sync
 
 !-----------------------------------------------------------------------------
 
-subroutine send_to(dest_id, srcarray, time)
+subroutine send_to(dest_id, srcarray, time, label)
  integer, intent(in) :: dest_id
  real(r8), intent(in) :: srcarray(:)
  type(time_type), intent(in), optional :: time
+ character(len=*), intent(in), optional :: label
 
 ! Send the srcarray to the destination id.
 ! If time is specified, it is also sent in a separate communications call.  
@@ -361,10 +362,11 @@ end subroutine send_to
 
 !-----------------------------------------------------------------------------
 
-subroutine receive_from(src_id, destarray, time)
+subroutine receive_from(src_id, destarray, time, label)
  integer, intent(in) :: src_id
  real(r8), intent(out) :: destarray(:)
  type(time_type), intent(out), optional :: time
+ character(len=*), intent(in), optional :: label
 
 ! Receive data into the destination array from the src task.
 ! If time is specified, it is received in a separate communications call.  

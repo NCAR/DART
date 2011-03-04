@@ -250,14 +250,16 @@ logical :: create_local_comm    = .true.    ! make a private communicator
 ! per task, if this is set to true.  however, for debugging if you need
 ! messages from tasks which aren't 0, this will elicit them.  error messages
 ! from any task will print regardless of this setting.
-logical :: all_tasks_print      = .false.   ! by default only messages from 0 print
+logical :: all_tasks_print      = .false.   ! by default only msgs from 0 print
 
 ! NAMELIST: change the following from .false. to .true. to enable
 ! the reading of this namelist.  This is the only place you need
 ! to make this change.
 logical :: use_namelist = .false.
 
-namelist /mpi_utilities_nml/ reverse_task_layout, verbose, all_tasks_print
+namelist /mpi_utilities_nml/ reverse_task_layout, all_tasks_print, &
+                             verbose, async2_verbose, async4_verbose, &
+                             shell_name, separate_node_sync, create_local_comm
 
 contains
 
@@ -576,10 +578,11 @@ end subroutine task_sync
 
 !-----------------------------------------------------------------------------
 
-subroutine send_to(dest_id, srcarray, time)
+subroutine send_to(dest_id, srcarray, time, label)
  integer, intent(in) :: dest_id
  real(r8), intent(in) :: srcarray(:)
  type(time_type), intent(in), optional :: time
+ character(len=*), intent(in), optional :: label
 
 ! Send the srcarray to the destination id.
 ! If time is specified, it is also sent in a separate communications call.  
@@ -605,7 +608,11 @@ if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
    call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
 endif
 
-if (verbose) write(*,*) "PE", myrank, ": send_to itemsize ", size(srcarray), " dest ", dest_id
+if (present(label)) then
+   write(*,*) trim(label)//" PE", myrank, ": send_to itemsize ", size(srcarray), " dest ", dest_id
+else if (verbose) then
+   write(*,*) "PE", myrank, ": send_to itemsize ", size(srcarray), " dest ", dest_id
+endif
 
 ! use my task id as the tag; unused at this point.
 tag = myrank
@@ -647,10 +654,11 @@ end subroutine send_to
 
 !-----------------------------------------------------------------------------
 
-subroutine receive_from(src_id, destarray, time)
+subroutine receive_from(src_id, destarray, time, label)
  integer, intent(in) :: src_id
  real(r8), intent(inout) :: destarray(:)
  type(time_type), intent(out), optional :: time
+ character(len=*), intent(in), optional :: label
 
 ! Receive data into the destination array from the src task.
 ! If time is specified, it is received in a separate communications call.  
@@ -677,7 +685,11 @@ if ((src_id < 0) .or. (src_id >= total_tasks)) then
    call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
 endif
 
-if (verbose) write(*,*) "PE", myrank, ": receive_from itemsize ", size(destarray), " src ", src_id
+if (present(label)) then
+   write(*,*) trim(label)//" PE", myrank, ": receive_from itemsize ", size(destarray), " src ", src_id
+else if (verbose) then
+   write(*,*) "PE", myrank, ": receive_from itemsize ", size(destarray), " src ", src_id
+endif
 
 ! send_to uses its own id as the tag.
 tag = src_id
@@ -1097,7 +1109,7 @@ subroutine block_task()
 ! the MPI job which spreads out on all the PEs for this job
 ! and writes into the file from the correct PE.
 
-character(len = 32) :: fifo_name, filter_to_model, model_to_filter
+character(len = 32) :: fifo_name, filter_to_model, model_to_filter, non_pipe
 integer :: rc
 
 if ( .not. module_initialized ) then
@@ -1109,6 +1121,7 @@ endif
 ! mpi wrapper code, callable from programs other than filter.)
 filter_to_model = 'filter_to_model.lock'
 model_to_filter = 'model_to_filter.lock'
+non_pipe = 'filter_to_model.file'
 
 ! the i5.5 format below will not handle task counts larger than this.
 if (total_tasks > 99999) then
@@ -1116,14 +1129,39 @@ if (total_tasks > 99999) then
    call error_handler(E_ERR,'block_task', errstring, source, revision, revdate)
 endif
 
-if (verbose) write(*,*) 'putting to sleep task id ', myrank
+! make it so we only have to test 1 or 2 things here instead of 3
+! when deciding whether to print status messages.
+if (verbose) async4_verbose = .TRUE.
 
-if (myrank == head_task) then
-   if (print4status .or. verbose) write(*,*) 'MPI job telling script to advance model'
+if ((myrank == head_task) .and. separate_node_sync) then
+
+   if (async4_verbose) then
+      write(*,*)  'checking master task host'
+      rc = system('echo master task running on host `hostname`'//' '//char(0))
+      if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   endif
+
+   if (async4_verbose .or. print4status) write(*,*) 'MPI job telling script to advance model'
+   rc = system('echo advance > '//trim(non_pipe)//' '//char(0))
+   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+
+endif
+
+if ((myrank == head_task) .and. .not. separate_node_sync) then
+
+   if (async4_verbose) then
+      write(*,*)  'checking master task host'
+      rc = system('echo master task running on host `hostname`'//' '//char(0))
+      if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   endif
+
+   if (async4_verbose .or. print4status) write(*,*) 'MPI job telling script to advance model'
    rc = system('echo advance > '//trim(filter_to_model)//' '//char(0))
+   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
-   if (verbose) write(*,*) 'MPI job now waiting to read from lock file'
-   rc = system('cat < '//trim(model_to_filter)//' '//char(0))
+   if (async4_verbose) write(*,*) 'MPI job now waiting to read from lock file'
+   rc = system('cat < '//trim(model_to_filter)//'> /dev/null '//char(0))
+   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
 else
 
@@ -1132,27 +1170,49 @@ else
    ! FIXME: this should be 'task_lock', since it's generic code beyond filter.
    write(fifo_name, '(a, i5.5)') "filter_lock", myrank
    
-   if (verbose) write(*,*) 'removing any previous lock file: '//trim(fifo_name)
-   rc = system('rm -f '//trim(fifo_name)//' '//char(0))
+   if (async4_verbose) then
+      write(*,*)  'checking slave task host'
+      rc = system('echo '//trim(fifo_name)//' accessed from host `hostname`'//' '//char(0))
+      if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   endif
 
-   if (verbose) write(*,*) 'made fifo, named: '//trim(fifo_name)
+   if (async4_verbose) write(*,*) 'removing any previous lock file: '//trim(fifo_name)
+   rc = system('rm -f '//trim(fifo_name)//' '//char(0))
+   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+
+   if (async4_verbose) write(*,*) 'made fifo, named: '//trim(fifo_name)
    rc = system('mkfifo '//trim(fifo_name)//' '//char(0))
+   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
-   if (verbose) write(*,*) 'ready to read from lock file: '//trim(fifo_name)
-   rc = system('cat < '//trim(fifo_name)//' '//char(0))
+   if (async4_verbose) write(*,*) 'ready to read from lock file: '//trim(fifo_name)
+   rc = system('cat < '//trim(fifo_name)//'> /dev/null '//char(0))
+   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
-   if (verbose) write(*,*) 'got response, removing lock file: '//trim(fifo_name)
+   if (async4_verbose) write(*,*) 'got response, removing lock file: '//trim(fifo_name)
    rc = system('rm -f '//trim(fifo_name)//' '//char(0))
+   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
 endif
+
+! make sure all tasks get here before any get to proceed further.
+! this hides a multitude of sins.  it could also cause
+! tasks to hang forever, but right now it also makes some
+! systems able to run async 4.  maybe this should be namelist
+! selectable.  something named 'horrible_mpi_hack = .true.'
+! if tasks are hanging out here instead of reading the lock files,
+! they are burning cpu cycles and competing with the model advances.
+! but, it works, as opposed to not working.
+call task_sync()
 
 end subroutine block_task
 
 !-----------------------------------------------------------------------------
 subroutine restart_task()
 
+! companion to block_task.  must be called by a different executable
+! and it writes into the named pipes to restart the waiting task.
 
-character(len = 32) :: fifo_name, filter_to_model, model_to_filter
+character(len = 32) :: fifo_name, model_to_filter
 integer :: rc
 
 if ( .not. module_initialized ) then
@@ -1161,7 +1221,6 @@ if ( .not. module_initialized ) then
 endif
 
 ! FIXME: ditto previous comment about using the string 'filter' here.
-filter_to_model = 'filter_to_model.lock'
 model_to_filter = 'model_to_filter.lock'
 
 ! the i5.5 format below will not handle task counts larger than this.
@@ -1170,24 +1229,38 @@ if (total_tasks > 99999) then
    call error_handler(E_ERR,'block_task', errstring, source, revision, revdate)
 endif
 
-! process 0 (or N-1) is handled differently in the code.
-if (myrank == head_task) then
+! make it so we only have to test 1 or 2 things here instead of 3
+! when deciding whether to print status messages.
+if (verbose) async4_verbose = .TRUE.
 
-   if (print4status .or. verbose) write(*,*) 'script telling MPI job ok to restart'
+! process 0 (or N-1) is handled differently in the code.
+if ((myrank == head_task) .and. .not. separate_node_sync) then
+
+   if (async4_verbose) then
+      rc = system('echo master task running on host `hostname`'//' '//char(0))
+      if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   endif
+
+   if (async4_verbose .or. print4status) write(*,*) 'script telling MPI job ok to restart'
    rc = system('echo restart > '//trim(model_to_filter)//' '//char(0))
+   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
 
 else
 
-   if (verbose) write(*,*) 'waking up task id ', myrank
+   if (async4_verbose) write(*,*) 'waking up task id ', myrank
 
    ! FIXME: this should be 'task_lock', since it's generic code beyond filter.
    write(fifo_name,"(a,i5.5)") "filter_lock", myrank
 
-   if (verbose) write(*,*) 'ready to write to lock file: '//trim(fifo_name)
-   rc = system('echo restart > '//trim(fifo_name)//' '//char(0))
+   if (async4_verbose) then
+      rc = system('echo '//trim(fifo_name)//' accessed from host `hostname`'//' '//char(0))
+      if (rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+   endif
 
-   if (verbose) write(*,*) 'response was read from lock file: '//trim(fifo_name)
-   
+   if (async4_verbose) write(*,*) 'ready to write to lock file: '//trim(fifo_name)
+   rc = system('echo restart > '//trim(fifo_name)//' '//char(0))
+   if (async4_verbose .and. rc /= 0) write(*, *) 'system command returned nonzero rc, ', rc
+
 endif
 
 end subroutine restart_task
@@ -1196,7 +1269,7 @@ end subroutine restart_task
 subroutine finished_task(async)
  integer, intent(in) :: async
 
-character(len = 32) :: fifo_name, filter_to_model, model_to_filter
+character(len = 32) :: fifo_name, filter_to_model, non_pipe
 integer :: rc
 
 if ( .not. module_initialized ) then
@@ -1209,14 +1282,18 @@ if (async /= 4) return
 
 ! FIXME: ditto previous comment about using the string 'filter' here.
 filter_to_model = 'filter_to_model.lock'
-model_to_filter = 'model_to_filter.lock'
+non_pipe = 'filter_to_model.file'
 
 
 ! only process 0 (or N-1) needs to do anything.
 if (myrank == head_task) then
 
    if (print4status .or. verbose) write(*,*) 'MPI task telling script we are done'
-   rc = system('echo finished > '//trim(filter_to_model)//' '//char(0))
+   if (separate_node_sync) then
+      rc = system('echo finished > '//trim(non_pipe)//' '//char(0))
+   else
+      rc = system('echo finished > '//trim(filter_to_model)//' '//char(0))
+   endif
 
    
 endif
@@ -1263,7 +1340,7 @@ if ( .not. module_initialized ) then
 endif
 
 write(fname, "(a,i4.4)") trim(pipename)//".", myrank
-print *, "fname now = ", trim(fname)
+!print *, "fname now = ", trim(fname)
 
 ! check to see if the pipe already exists; if so, we've got the unit number
 ! (directly into the output value) and we're done.  otherwise, make it and
@@ -1396,6 +1473,8 @@ logical :: all_at_once
 integer :: i, errcode, dummy(1)
 integer :: status(MPI_STATUS_SIZE)
 
+   if (verbose) async2_verbose = .true.
+
    ! default to everyone running concurrently, but if set and not true,
    ! serialize the calls to system() so they do not step on each other.
    if (present(serialize)) then
@@ -1404,15 +1483,16 @@ integer :: status(MPI_STATUS_SIZE)
       all_at_once = .TRUE.
    endif
 
-   if (verbose) write(*,*) "system string is: ", trim(execute_string)
+   if (async2_verbose) write(*,*) "PE", myrank, ": system string is: ", trim(execute_string)
    shell_execute = -1
 
    ! this is the normal (default) case
    if (all_at_once) then
 
       ! all tasks call system at the same time
-      shell_execute = system(trim(execute_string)//' '//char(0))
-      if (verbose) write(*,*) "execution returns, rc = ", shell_execute
+      !shell_execute = system(trim(execute_string)//' '//char(0))
+      shell_execute = system(trim(shell_name)//' '//trim(execute_string)//' '//char(0))
+      if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
       return
    endif
@@ -1426,8 +1506,8 @@ integer :: status(MPI_STATUS_SIZE)
    if (myrank == 0) then
 
       ! my turn to execute
-      shell_execute = system(trim(execute_string)//' '//char(0))
-      if (verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
+      shell_execute = system(trim(shell_name)//' '//trim(execute_string)//' '//char(0))
+      if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
       if (total_tasks > 1) then
          ! tell next task it can continue
@@ -1451,8 +1531,8 @@ integer :: status(MPI_STATUS_SIZE)
       endif
 
       ! my turn to execute
-      shell_execute = system(trim(execute_string)//' '//char(0))
-      if (verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
+      shell_execute = system(trim(shell_name)//' '//trim(execute_string)//' '//char(0))
+      if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
       ! and now tell (me+1) to go
       call MPI_Send(dummy, 1, MPI_INTEGER, myrank+1, myrank+1, my_local_comm, errcode)
@@ -1473,8 +1553,8 @@ integer :: status(MPI_STATUS_SIZE)
       endif
 
       ! my turn to execute
-      shell_execute = system(trim(execute_string)//' '//char(0))
-      if (verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
+      shell_execute = system(trim(shell_name)//' '//trim(execute_string)//' '//char(0))
+      if (async2_verbose) write(*,*) "PE", myrank, ": execution returns, rc = ", shell_execute
 
    endif
        
