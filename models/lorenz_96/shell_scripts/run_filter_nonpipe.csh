@@ -6,6 +6,14 @@
 #
 # $Id$
 #
+# This version of the script is intended for machines where the script
+# runs on a different node than any of the MPI tasks.  Normally we use
+# pipes to synchronize between the filter program and the script, but
+# if they aren't on the same nodes, pipes won't work.  This one uses
+# a normal file to handshake -- but if the script is indeed running on
+# the same node as any of the MPI tasks, it will be polling the file
+# while the filter is running, and it will slow down the execution.
+#
 # Script to start an MPI version of filter, and then optionally
 # run the model advance if &filter_nml has async=4 (parallel filter
 # AND parallel model).  This version gets the number of ensemble members
@@ -174,8 +182,7 @@ else
     # running in parallel. then it runs wakeup_filter to wake
     # up filter so it can continue.
 
-    \rm -f model_to_filter.lock filter_to_model.lock
-    mkfifo model_to_filter.lock filter_to_model.lock
+    \rm -f filter_to_model.file
 
     set filterhome = ~/.filter$$
     if ( ! -e $filterhome) mkdir $filterhome
@@ -185,14 +192,21 @@ else
 
     (setenv HOME $filterhome; ${MPICMD} ./filter) &
 
-    while ( -e filter_to_model.lock )
+    set alldone = no
 
-        set todo=`cat < filter_to_model.lock`
+    while ( $alldone == "no" )
+    
+        while ( ! -e filter_to_model.file )
+           sleep 1
+        end
+
+        set todo=`cat < filter_to_model.file`
         echo "todo received, value = ${todo}"
 
         if ( "${todo}" == "finished" ) then
           echo "main script: filter done."
           wait
+          set alldone = yes
           break
 
         else if ( "${todo}" == "advance" ) then
@@ -205,20 +219,22 @@ else
           echo "calling model advance now:"
           ${ADV_CMD} 0 ${NUM_ENS} filter_control00000 || exit 9
 
+          rm filter_to_model.file
+
           echo "restarting filter."
           ${MPICMD} ./wakeup_filter
 
         else
 
           echo "main script: unexpected value received."
+          set alldone = yes
           break
 
         endif
 
     end
 
-    echo "filter finished, removing pipes."
-    \rm -f model_to_filter.lock filter_to_model.lock
+    echo "filter finished."
 
     if ( -d $filterhome) rmdir $filterhome
 

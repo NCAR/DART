@@ -25,3 +25,19 @@ run_filter.lynx.sh -
 a special-purpose script for running on the NCAR Cray system.  Uses
 Torque/Moab for the batch system.
 
+run_filter_nonpipe.sh -
+in async 4 mode the script and at least one of the MPI tasks
+must be running on the same node so they can use pipes to 
+synchronise model advances and assimilation.  however, if the
+batch nodes are distinct from where the script is running
+they have to use a normal file to coordinate.  this is an
+example script using a normal file to handshake.  the input.nml
+namelist file must have &mpi_utilities_mod : separate_node_sync
+set to .true., and the mpi namelist must be enabled by
+editing mpi_utilities/mpi_utilities_mod.f90 and setting
+'use_namelist' to .true. and recompiling.
+
+note that the non-pipe script polls the filesystem once each second.
+if the script is actually running on a batch node, it will slow down 
+the MPI job.
+
