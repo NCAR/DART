@@ -179,6 +179,7 @@
    rat_cri            = 3.0,
    input_qc_threshold = 3.0,
    Nregions   = 4,
+   hlevel = 0, 100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000, 1000000,
    lonlim1    =   0.0,   0.0,   0.0, 235.0,
    lonlim2    = 360.0, 360.0, 360.0, 295.0,
    latlim1    =  20.0, -80.0, -20.0,  25.0,
@@ -186,9 +187,35 @@
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
    print_obs_locations   = .false.,
-   verbose               = .false.
+   verbose               = .true.
+   /
+
+# obs_seq_to_netcdf also requires the schedule_nml.
+# In this context, schedule_nml defines how many netcdf files get created.
+# Each 'bin' results in an obs_epoch_xxxx.nc file.
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.final',
+   obs_sequence_list = '',
+   append_to_netcdf  = .false.,
+   lonlim1    =    0.0,
+   lonlim2    =  360.0,
+   latlim1    =  -90.0,
+   latlim2    =   90.0,
+   verbose    = .false.,
    /
  
+&schedule_nml
+   calendar        = 'Gregorian',
+   first_bin_start =  2002, 3, 28, 0, 0, 0 ,
+   first_bin_end   =  2002, 3, 29, 0, 0, 0 ,
+   last_bin_end    =  2002, 3, 29, 0, 0, 0 ,
+   bin_interval_days    = 0,
+   bin_interval_seconds = 86400,
+   max_num_bins         = 1000,
+   print_table          = .true.,
+   /
+
 &obs_sequence_tool_nml
    num_input_files   = 1,
    filename_seq      = 'obs_seq.out',
