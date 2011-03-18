@@ -3060,7 +3060,7 @@ CONTAINS
               'WriteNetCDF', 'put_att obs_diag_revdate '//trim(fname))
 
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'bias_convention', &
-              'forecast - observation' ), 'WriteNetCDF', 'put_att bias '//trim(fname))
+              'model - observation' ), 'WriteNetCDF', 'put_att bias '//trim(fname))
 
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'horizontal_wind', &
               'vector wind derived from U,V components' ), &
