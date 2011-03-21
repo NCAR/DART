@@ -83,7 +83,7 @@ real(r8)           :: tc_sonde_radii           = -1.0_r8  ! remove sonde obs clo
 
 !  aircraft-specific parameters
 logical            :: superob_aircraft         = .false.  ! super-ob aircraft data
-real(r8)           :: aircraft_horiz_int       = 36000.0_r8 ! horizontal interval for super-ob
+real(r8)           :: aircraft_horiz_int       = 36.0_r8  ! horizontal interval for super-ob (km)
 real(r8)           :: aircraft_pres_int        = 2500.0_r8  ! pressure interval for super-ob
 
 !  sat wind specific parameters
