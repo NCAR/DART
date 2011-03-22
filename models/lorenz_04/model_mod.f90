@@ -106,6 +106,16 @@ call check_namelist_read(iunit, io, "model_nml")
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
+! if K is even, H = K/2 and the first/last summation 
+! terms are divided by 2.  if K is odd, H = (K-1)/2 and 
+! the first and last terms are taken as-is.  this code
+! only implements the algorithm for even K so test for it.
+if (int((K+1)/2) /= int(K/2)) then
+   call error_handler(E_ERR,'static_init_model',&
+         'Model only handles even values of K', &
+          source, revision, revdate)
+endif
+
 ! Create storage for locations
 allocate(state_loc(model_size))
 
@@ -136,8 +146,6 @@ do i = - smooth_steps, smooth_steps
    ri = ri + 1.0_r8
    a(j) = alpha - beta*abs(ri)
 end do
-a(1)=a(1)/2.00_r8
-a(2*smooth_steps+1)=a(2*smooth_steps+1)/2.00_r8
 
 ! defining parameters to help reduce the number of operations in the calculation
 ! of dz/dt
@@ -465,6 +473,7 @@ lctnfrac = lctn - int(lctn)
 obs_val = (1.0_r8 - lctnfrac) * x(lower_index) + lctnfrac * x(upper_index)
 
 if(1 == 1) return
+! code returns here - the code below in this subroutine is not executed.
 
 !!!obs_val = obs_val ** 2
 !!!if(1 == 1) return
