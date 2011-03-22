@@ -1,7 +1,7 @@
 function link_obs(fname, ObsTypeString, ObsCopyString, CopyString, QCString, region)
 %% link_obs generates the 'brushable' observation plots.
 %
-% 	Three figures will be generated. In order to make any sense of this
+% 	Three figures will be generated.
 %
 %	Figure 1 will have a 3D geographic scatterplot.
 %
@@ -53,6 +53,14 @@ function link_obs(fname, ObsTypeString, ObsCopyString, CopyString, QCString, reg
 % region        = [0 360 -90 90 -Inf Inf];
 % link_obs('obs_epoch_002.nc','RADIOSONDE_TEMPERATURE', 'observation', ...
 %          'prior ensemble member 3', 'DART quality control', region)
+%
+% IMPORTANT: click on the little paintbrush icon in order to activate the
+% 'brushable' feature on the plots. Once that is highlighted, any observations
+% selected in one view become highlighted in ALL the views. 
+%
+% ALSO IMPORTANT: If you are using the Matlab GUI, doubleclick on 'obsmat' in
+% the the Workspace window to generate a spreadsheet-like view of the 
+% observations which is also linked to the data brushing.
 
 %% DART software - Copyright � 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
