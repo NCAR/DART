@@ -237,7 +237,7 @@ if (do_output()) then
          adaptive_localization_threshold, ' obs'
       call error_handler(E_MSG,'assim_tools_init:', errstring)
       if(adaptive_cutoff_floor > 0) then
-         write(errstring, '(A,I10,A)') 'Minimum cutoff will not go below ', &
+         write(errstring, '(A,F18.6)') 'Minimum cutoff will not go below ', &
             adaptive_cutoff_floor
          call error_handler(E_MSG,'assim_tools_init:', 'Using adaptive localization cutoff floor.', &
                             text2=errstring)
@@ -277,7 +277,7 @@ real(r8) :: reg_factor
 real(r8) :: net_a(num_groups), reg_coef(num_groups), correl(num_groups)
 real(r8) :: cov_factor, obs(1), obs_err_var, my_inflate, my_inflate_sd
 real(r8) :: varying_ss_inflate, varying_ss_inflate_sd
-real(r8) :: ss_inflate_base, obs_qc, cutoff_rev
+real(r8) :: ss_inflate_base, obs_qc, cutoff_rev, cutoff_orig
 real(r8) :: gamma, ens_obs_mean, ens_obs_var, ens_var_deflate
 real(r8) :: r_mean, r_var
 real(r8) :: orig_obs_prior_mean(num_groups), orig_obs_prior_var(num_groups)
@@ -605,8 +605,16 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
    endif
 
-   ! set the cutoff default
-   cutoff_rev = cutoff_list(base_obs_kind)
+   ! set the cutoff default, keep a copy of the original value, and avoid
+   ! looking up the cutoff in a list if the incoming obs is an identity ob
+   ! (and therefore has a negative kind).
+   if (base_obs_kind >= 0) then
+      cutoff_orig = cutoff_list(base_obs_kind)
+   else
+      cutoff_orig = cutoff
+   endif
+
+   cutoff_rev = cutoff_orig
 
    ! For adaptive localization, need number of other obs close to the chosen observation
    if(adaptive_localization_threshold > 0) then
@@ -651,8 +659,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                call write_location(-1, base_obs_loc, charstring=base_loc_text)
 
                write(localization_unit,'(i8,1x,i5,1x,i8,1x,A,2(f14.5,1x,i10))') i, secs, days, &
-                     trim(base_loc_text), cutoff_list(base_obs_kind), total_num_close_obs,     &
-                     cutoff_rev, rev_num_close_obs
+                     trim(base_loc_text), cutoff_orig, total_num_close_obs, cutoff_rev, rev_num_close_obs
             endif
          endif
 
