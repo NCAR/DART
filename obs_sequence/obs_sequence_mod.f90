@@ -1052,18 +1052,16 @@ seq%copy_meta_data(1:old_num) = meta_temp
 seq%copy_meta_data(old_num+1 : old_num + num_to_add) = 'Copy metadata not initialized'
 
 ! Loop through all the observations, copy and increase size
-!??? WHAT IS THE STORY WITH NUM_OBS WHEN A DELETION IS DONE???
 do i = 1, seq%max_num_obs
 
 ! Copy the existing values
-   if(old_num > 0 .and. i < seq%num_obs) then
-      values_temp = seq%obs(i)%values
-   end if
+   if(old_num > 0) values_temp = seq%obs(i)%values
 
 ! Deallocate, reallocate and copy
    deallocate(seq%obs(i)%values)
    allocate(seq%obs(i)%values(old_num + num_to_add))
    seq%obs(i)%values(1:old_num) = values_temp
+   seq%obs(i)%values(old_num+1:old_num+num_to_add) = MISSING_r8
 
 end do
 
@@ -1101,18 +1099,16 @@ seq%qc_meta_data(1:old_num) = qc_temp
 seq%qc_meta_data(old_num+1 : old_num + num_to_add) = 'QC metadata not initialized'
 
 ! Loop through all the observations, copy and increase size
-!??? WHAT IS THE STORY WITH NUM_OBS WHEN A DELETION IS DONE???
 do i = 1, seq%max_num_obs
 
 ! Copy the existing values
-   if(old_num > 0 .and. i < seq%num_obs) then
-      values_temp = seq%obs(i)%qc
-   end if
+   if(old_num > 0) values_temp = seq%obs(i)%qc
 
 ! Deallocate, reallocate and copy
    deallocate(seq%obs(i)%qc)
    allocate(seq%obs(i)%qc(old_num + num_to_add))
    seq%obs(i)%qc(1:old_num) = values_temp
+   seq%obs(i)%qc(old_num+1:old_num+num_to_add) = 0.0_r8
 
 end do
 
@@ -2218,16 +2214,43 @@ subroutine copy_partial_obs(obs1, obs2, numcopies, copylist, &
                             numqc, qclist)
 
 ! Copy from obs2 to obs1, the entire contents of the
-! obs def, but only the copies and qcs listed (in order)
+! obs def, but only the copies and qcs as listed (in order)
+! Special value (0) means leave space but there is
+! no existing value to copy.
 
 type(obs_type), intent(inout) :: obs1
 type(obs_type), intent(in) :: obs2
 integer, intent(in) :: numcopies, copylist(:), numqc, qclist(:)
 
-integer :: i
+integer :: i, ival
 
-! this needs idiotproofing - e.g. bad indices in the copylist
-! or qc list -- without too much expense in time.
+! only basic idiotproofing - detect bad indices in the lists
+! without too much expense in time.  no checks here that length
+! of lists are >= num sizes.
+
+! numcopies and numqc are the new outgoing sizes in obs1.
+! check the index lists to be sure they are >= 0 and <= size
+! of existing data in obs2.  
+ival = min(minval(copylist(1:numcopies)), minval(qclist(1:numqc)))
+if (ival < 0) then
+   write(msgstring, '(A,I8,A)') 'index list value, ', ival, ' must be >= 0'
+   call error_handler(E_ERR, 'copy_partial_obs:', msgstring, &
+               source, revision, revdate)
+endif
+ival = maxval(copylist(1:numcopies))
+if (ival > size(obs2%values)) then
+   write(msgstring, '(A,I8,A,I8)') 'index list value, ', ival, &
+      ' is larger than copies length, ', size(obs2%values)
+   call error_handler(E_ERR, 'copy_partial_obs:', msgstring, &
+               source, revision, revdate)
+endif
+ival = maxval(qclist(1:numqc))
+if (ival > size(obs2%qc)) then
+   write(msgstring, '(A,I8,A,I8)') 'index list value, ', ival, &
+      ' is larger than qc length, ', size(obs2%qc)
+   call error_handler(E_ERR, 'copy_partial_obs:', msgstring, &
+               source, revision, revdate)
+endif
 
 obs1%key = obs2%key
 call copy_obs_def(obs1%def, obs2%def)
@@ -2251,12 +2274,18 @@ else
 endif
 
 do i = 1, numcopies
-   ! error checks here?  if copylist(i) > numcopies or < 1, err out
-   obs1%values(i) = obs2%values(copylist(i))
+   if (copylist(i) == 0) then
+       obs1%values(i) = MISSING_R8
+   else
+       obs1%values(i) = obs2%values(copylist(i))
+   endif
 enddo
 do i = 1, numqc
-   ! and here?  if qclist(i) > numqc or < 1, err out
-   obs1%qc(i) = obs2%qc(qclist(i))
+   if (qclist(i) == 0) then
+      obs1%qc(i) = 0.0_r8
+   else
+      obs1%qc(i) = obs2%qc(qclist(i))
+   endif
 enddo
 
 obs1%prev_time = obs2%prev_time

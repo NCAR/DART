@@ -20,7 +20,11 @@
    edit_qc_metadata     = .false.,
    new_qc_metadata      = '',
    edit_copies          = .false.,
+   new_copy_index       = -1,
+   new_copy_data        = -888888.
    edit_qc              = .false.,
+   new_qc_index         = -1,
+   new_qc_data          = 0.
    synonymous_copy_list = '',
    synonymous_qc_list   = '', 
 /
@@ -60,6 +64,14 @@
 !   new_copy_index = 1, 2, 81, 82
 !   edit_qcs       = .true.,
 !   new_qc_index   =  2
+!
+! add a new copy or qc by using 0 as the index number:
+!   edit_copies    = .true.,
+!   new_copy_index = 1, 2, 0, 81, 82
+!   new_copy_data  = 5.0,
+!   edit_qcs       = .true.,
+!   new_qc_index   =  1, 2, 0, 0
+!   new_qc_data    = 0.0, 3.0
 !
 ! allow different metadata strings in multiple files to match:
 !   synonymous_copy_list = 'NCEP BUFR observations', 'observations',

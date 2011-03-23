@@ -61,12 +61,12 @@ The actions of the <em class=code>obs_sequence_tool</em> program
 are controlled by a Fortran namelist, read from a file named
 <em class=file>input.nml</em> in the current directory.  A detailed
 description of each namelist item is described in the
-<a href="#Namelist">namelist section</a> of this document.
-The names used in this discussion refer to these namelist items.
+<a href="#Namelist">namelist section</a> below.
 </P>
 
 <P>
-The following section contains examples of common usages for this tool.
+The <a href="#Examples">examples section</a> of this document below
+has extensive examples of common usages for this tool.
 Below that are more details about DART observation sequence files, the
 structure of individual observations, and general background information.
 </P>
@@ -80,9 +80,6 @@ structure of individual observations, and general background information.
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
 '&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
 </P>
 <div class=namelist>
 <pre>
@@ -96,8 +93,8 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
         min_copy, max_copy, copy_metadata, copy_type, 
         edit_copy_metadata, new_copy_metadata,
         edit_qc_metadata, new_qc_metadata,
-        edit_copies, new_copy_index, 
-        edit_qcs, new_qc_index
+        edit_copies, new_copy_index, new_copy_data,
+        edit_qcs, new_qc_index, new_qc_data,
         synonym_copy_list, synonym_qc_list,
         print_only, 
         gregorian_cal,
@@ -283,7 +280,18 @@ the <em class=file>input.nml</em> file.
 <TR><!--contents--><TD valign=top>new_copy_index</TD>
     <!--  type  --><TD>integer(:)</TD>
     <!--descript--><TD>An array of integers, which control how copies in the input are
-                       moved to the output sequence.
+                       moved to the output sequence.  The values must be between 0 and
+                       the number of copies in the input sequence.  They can be repeated
+                       to replicate an existing copy; they can be specified in any order
+                       to reorder the entries; they can include the value 0 to insert a new
+                       copy. -1 ends the list.  If -1 is specified as the first value, all
+                       copies will be deleted
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>new_copy_data</TD>
+    <!--  type  --><TD>real(:)</TD>
+    <!--descript--><TD>An array of reals. The length should correspond to the number of 0s
+                       in the new_copy_index list, and will be the data value for the new
+                       copies.  This value will be constant for all observations.
                        Default: none</TD></TR>
 <TR><!--contents--><TD valign=top>edit_qc_metadata</TD>
     <!--  type  --><TD>logical</TD>
@@ -297,14 +305,25 @@ the <em class=file>input.nml</em> file.
                        Default: none</TD></TR>
 <TR><!--contents--><TD valign=top>edit_qcs</TD>
     <!--  type  --><TD>logical</TD>
-    <!--descript--><TD>If true, subset or rearrange the actual data qcs in the output.
-                       The new_qc_index list controls the output order of qcs from the
+    <!--descript--><TD>If true, subset or rearrange the actual data QCs in the output.
+                       The new_qc_index list controls the output order of QCs from the
                        input files.
                        Default: .false.</TD></TR>
 <TR><!--contents--><TD valign=top>new_qc_index</TD>
     <!--  type  --><TD>integer(:)</TD>
-    <!--descript--><TD>An array of integers, which control how qcs in the input are
-                       moved to the output sequence.
+    <!--descript--><TD>An array of integers, which control how QCs in the input are
+                       moved to the output sequence.  The values must be between 0 and
+                       the number of QCs in the input sequence.  They can be repeated
+                       to replicate an existing QCs; they can be specified in any order
+                       to reorder the entries; they can include the value 0 to insert a new
+                       qc. -1 ends the list.  If -1 is specified as the first value, all
+                       QCs will be deleted
+                       Default: none</TD></TR>
+<TR><!--contents--><TD valign=top>new_qc_data</TD>
+    <!--  type  --><TD>real(:)</TD>
+    <!--descript--><TD>An array of reals. The length should correspond to the number of 0s
+                       in the new_qc_index list, and will be the data value for the new
+                       QCs.  This value will be constant for all observations.
                        Default: none</TD></TR>
 <TR><!--contents--><TD valign=top>synonym_copy_list</TD>
     <!--  type  --><TD>character(len=*)(:)</TD>
@@ -512,8 +531,7 @@ be converted on the same kind of platform as it was created on before
 being moved to another architecture.  At this point in time, there are
 only 2 remaining incompatible platforms:  IBM systems based on PowerPC
 chips, and everything else (which is Intel or AMD).
-<br>
-<br>
+</P><P>
 Any number of input files and selection options can be specified, as well,
 but for a simple conversion, leave all other input namelist items unset.
 </P>
@@ -541,12 +559,11 @@ will allow any copy listed to match any other copy on that list, and
 same with the QC values.  If the output metadata strings are not 
 specified (see below), then the actual metadata strings from the first 
 file which is used will set the output metadata strings.
-<br>
-<br>
+</P><P>
 To rename or override, with care, existing metadata strings in a file,
 set the appropriate edit strings to true, and set the same number
 of copies and/or QC values as will be in the output file.  
-Note that this will simply
+Note that this will 
 replace, without warning, whatever is originally listed as metadata.
 You can really mangle things here, so use this with caution:
 </P>
@@ -564,8 +581,7 @@ You can really mangle things here, so use this with caution:
 <P>
 The log file will print out what input strings are being replaced;
 check this carefully to be sure you are doing what you expect.
-<br>
-<br>
+</P><P>
 If you use both a synonym list and the edit list, the output file will
 have the specified edit list strings for metadata.
 </P>
@@ -573,9 +589,9 @@ have the specified edit list strings for metadata.
 <A NAME="editdata"></A>
 <h3>Altering the number of Copies or QC values</h3>
 <P>
-To delete some of the copies or qc values in each observation, specify
-the copy numbers which are to be passed through, and list them in the 
-exact order they should appear in the output:
+To delete some of the copies or QC values in each observation, specify
+the copy or QC index numbers which are to be passed through, and list 
+them in the exact order they should appear in the output:
 </P>
 <pre>
    edit_copies = .true.,
@@ -587,23 +603,85 @@ exact order they should appear in the output:
 <P>
 This will create an output sequence file with only 4 copies; the original
 first and second copies, and copies 81 and 82.  The original metadata will
-be retained.  It will have only the second QC value.
-<br>
-<br>
-If you also specify new metadata strings, specify them in the order
-and the number of strings that will appear in the output file, regardless
-of how many copies or qc values there were in the original input files.
-<br>
-<br>
-If necessary, you can simply reorder copies or qc values by
-specifying the same number of index values as currently exists,
-but list them in a different order.  Use caution here; there are
-no checks to be sure values have not been replicated.  I suppose
-there might actually be a use for this at some point, so it isn't
-prohibited.  Note that the only other thing that people might want
-to do at some point is to take the copies from an observation in
-one file and add them to the copies in another file.  This is not
-supported (yet).
+be retained.  It will have only the second QC value from the original file.
+</P><P>
+If you are editing the copies or QCs and also specifying new metadata 
+strings, use the number and order appropriate to the output file
+regardless of how many copies or QC values there were in the original 
+input files.
+</P><P>
+You can use these index lists to reorder copies or QC values by
+specifying the same number of index values as currently exist
+but list them in a different order.  Index values can be repeated
+multiple times in a list.  This will duplicate both the metadata
+string as well as the data values for the copy or QC.
+</P><P>
+To delete all copies or QCs specify -1 as the first (only) entry in 
+the new index list.
+</P>
+<pre>
+   edit_qcs = .true.,
+   new_qc_index = -1, 
+</pre>
+</P><P>
+To add copies or QCs, use 0 as the index value.
+</P>
+<pre>
+   edit_copies = .true.,
+   new_copy_index = 1, 2, 0, 81, 82, 0
+   new_copy_data = 3.0, 8.0,
+
+   edit_qcs = .true.,
+   new_qc_index = 2, 1, 3, 0,
+   new_qc_data = 1.0,
+</pre>
+<P>
+This will insert 2 new copies in each observation and give
+them values of 3.0 and 8.0 in all observations.  There is no 
+way to insert a different value on a per-obs basis.  This example
+will also reorder the 3 existing QC values and then add 1 new 
+QC value of 1 in all observations.  The 'edit_copy_metadata' and
+'edit_qc_metadata' flags with the 'new_copy_metadata' and 
+'new_qc_metadata' lists can be used to set the metadata names 
+of the new copies and QCs.
+</P>
+<pre>
+   edit_copies = .true.,
+   new_copy_index = 1, 0, 2, 0,
+   new_copy_data = 3.0, 8.0,
+   edit_copy_metadata = .true.,
+   new_copy_metadata = 'observation', 'new copy 1',
+                       'truth',       'new copy 2',
+
+   edit_qcs = .true.,
+   new_qc_index = 0, 2,
+   new_qc_data = 0.0,
+   edit_qc_metadata = .true.,
+   new_qc_metadata = 'dummy QC', 'DART QC',
+</pre>
+<P>
+To remove an existing QC value and add a QC value of 0
+for all observations, run with:
+</P>
+<pre>
+   edit_qcs = .true.,
+   new_qc_index = 0,
+   new_qc_data = 0.0,
+   edit_qc_metadata = .true.,
+   new_qc_metadata = 'dummy QC',
+</pre>
+<P>
+to add a constant QC of 0 for all observations,
+with a metadata label of 'dummy QC'.
+</P>
+<P>
+It would be useful to allow copies or QCs from one file to be
+combined, obs by obs, with those from another file.  However,
+it isn't easy to figure out how to ensure the observations in
+multiple files are in exactly the same order so data from
+the same obs are being combined.  Also how to specify what
+should be combined is a bit complicated.  So this functionality
+is NOT available in this tool.
 </P>
 
 <A NAME="print"></A>
@@ -751,7 +829,7 @@ section below outlines several common scenerios.
 <P>
 The tool now also allows the number of copies to be changed, but only
 to select subsets or reorder them.  It is not yet possible to merge copies
-or qcs from observations in different files into a 
+or QCs from observations in different files into a 
 single observation with more copies.
 </P>
 
@@ -882,6 +960,120 @@ obs_sequence_mod
     <!-- message --><TD VALIGN=top>num_input_files and filename_seq mismatch</TD>
     <!-- comment --><TD VALIGN=top>The number of filenames does not match
                         the filename count.</TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top>use either lat/lon box or min/max box but not both
+                    </TD>
+    <!-- comment --><TD VALIGN=top>When selecting a region you can specify a box by
+                     latitude/longitude namelist limits, or you can use the 
+                     min/max box namelist lists but not both.
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top> can only use lat/lon box with 2d/3d sphere locations
+                    </TD>
+    <!-- comment --><TD VALIGN=top>
+                     The lat/lon limits work only for the 2D and 3D sphere locations.
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top>min_lat must be less than max_lat 
+                    </TD>
+    <!-- comment --><TD VALIGN=top>adjust region limits so min is less than max
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top>min_lat cannot be less than -90.0 degrees<br>
+                                   max_lat cannot be greater than 90.0 degrees<br>
+                                   min_lon cannot be greater than 360.0 degrees<br>
+                                   max_lon cannot be greater than 360.0 degrees<br>
+                    </TD>
+    <!-- comment --><TD VALIGN=top>fix latitude limits to be within -90 to 90, 
+                     longitude limits to be 0 to 360.  if longitude is negative,
+                     360 will be added so values of -180 to 180 are ok.
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top> min_lon cannot exactly equal max_lon<br>
+                                    min_lat cannot exactly equal max_lat
+                    </TD>
+    <!-- comment --><TD VALIGN=top> the region select box must have a positive volume
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top> must specify the metadata name of a QC field
+                    </TD>
+    <!-- comment --><TD VALIGN=top> if selecting observations by QC value, you must 
+                      specify the metadata string for which QC field to use.
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top> must specify the metadata name of a copy field
+                    </TD>
+    <!-- comment --><TD VALIGN=top> if selecting observations by value, you must
+                      specify the metadata string for which copy field to use.
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top> first time cannot be later than last time
+                    </TD>
+    <!-- comment --><TD VALIGN=top> if selecting a time range, the interval must 
+                      be legal
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top> new_copy_index values must be between 0 and N
+                    </TD>
+    <!-- comment --><TD VALIGN=top> if reordering or selecting only certain copies
+                      the list must only include valid indices from the input sequence 
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top> new_qc_index values must be between 0 and N
+                    </TD>
+    <!-- comment --><TD VALIGN=top> if reordering or selecting only certain QCs
+                      the list must only include valid indices from the input sequence 
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top>All input files are empty or all obs excluded by time/type/location
+                    </TD>
+    <!-- comment --><TD VALIGN=top> The selection criteria has excluded all the 
+                    possible observations, or none of the input observation sequence 
+                    files contain observations.
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top>Internal error trying to process file
+                    </TD>
+    <!-- comment --><TD VALIGN=top> Shouldn't happen.  Contact the DART development
+                     team with details of how this occurred.
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top>observations must be in increasing time order
+                    </TD>
+    <!-- comment --><TD VALIGN=top> one or more of the input observation sequence files
+                     has out-of-time-order observations.  This should not happen if
+                     the input file was created with DART subroutines.
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top>cannot specify both filename_seq and filename_seq_list
+                    </TD>
+    <!-- comment --><TD VALIGN=top> in the input namelist, you can either give a file
+                     or a list of files for the 'filename_seq' item, or you can give
+                     the name of a file that contains the names in 'filename_seq_list',
+                     but you cannot specify both.  set one of these to ''.
+                    </TD>
+
+<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
+    <!-- message --><TD VALIGN=top>contains no filenames
+                    </TD>
+    <!-- comment --><TD VALIGN=top> the 'filename_seq_list' file contains no filenames
+                     to be used as input observation sequence files
+                    </TD>
+
 </TR>
 </TABLE>
 </div>
@@ -918,6 +1110,11 @@ Long laundry list of things this tool could do, including:
     based on a time interval. Now with the <em>schedule</em> type,
     specifying the intervals is easy; need a way to generate the
     output filenames with a pattern.</LI>
+<LI>Eventually move to NetCDF for observation sequence files.  The
+    complication is that it's possible for observations to contain
+    additional information on a per-type basis, which means the
+    arrays of data are no longer the same size.  Perhaps features of
+    NetCDF 4 can be used in this case. </LI>
 </UL>
 
 <!--==================================================================-->
@@ -929,7 +1126,7 @@ Long laundry list of things this tool could do, including:
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright &#169; 2004 - 2010 UCAR.<br>
+DART software - Copyright &copy; 2004 - 2010 UCAR.<br>
 This open source software is provided by UCAR, "as is",<br>
 without charge, subject to all terms of use at<br>
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
