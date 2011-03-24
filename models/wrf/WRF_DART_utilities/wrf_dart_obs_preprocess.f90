@@ -115,6 +115,8 @@ character(len=80)       :: name
 integer                 :: io, iunit, fid, var_id, obs_seq_file_id, num_copies, &
                            num_qc, num_obs, max_obs_seq, nx, ny, gday, gsec
 
+real(r8)                :: real_nx, real_ny
+
 logical                 :: file_exist, pre_I_format
 
 type(obs_sequence_type) :: seq_all, seq_rawin, seq_sfc, seq_acars, seq_satwnd, &
@@ -147,6 +149,15 @@ call nc_check( nf90_inquire_dimension(fid, var_id, name, ny), &
                'main', 'inquire dimension south_north' )
 call nc_check( nf90_close(fid), 'main', 'close wrfinput_d01' )
 
+! several places need a real(r8) version of nx and ny, so set them up
+! here so they're ready to use.  previous versions of this code used
+! the conversions dble(nx) but that doesn't work if you are compiling
+! this code with r8 redefined to be r4.  on some platforms it corrupts
+! the arguments to the function call.  these vars are guarenteed to be
+! the right size for code compiled with reals as either r8 or r4.
+real_nx = nx
+real_ny = ny
+
 !  if obs_seq file exists, read in the data, otherwise, create a blank one.
 inquire(file = trim(adjustl(file_name_input)), exist = file_exist)
 if ( file_exist ) then
@@ -171,7 +182,7 @@ call create_new_obs_seq(num_copies, num_qc, 100,         seq_tc)
 call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_other)
 
 !  read input obs_seq file, divide into platforms
-call read_and_parse_input_seq(file_name_input, dble(nx), dble(ny), obs_boundary, &
+call read_and_parse_input_seq(file_name_input, real_nx, real_ny, obs_boundary, &
 include_sig_data, obs_pressure_top, obs_height_top, sfc_elevation_check, &
 sfc_elevation_tol, overwrite_ncep_sfc_qc, overwrite_ncep_satwnd_qc, &
 overwrite_obs_time, anal_time, seq_rawin, seq_sfc, seq_acars, seq_satwnd, & 
@@ -269,7 +280,7 @@ write(6,*) 'Total number of observations:', get_num_obs(seq_all)
 
 !  increase the observation error along the lateral boundary
 if ( increase_bdy_error ) call increase_obs_err_bdy(seq_all, &
-                              obsdistbdy, maxobsfac, dble(nx), dble(ny))
+                              obsdistbdy, maxobsfac, real_nx, real_ny)
 
 !  write the observation sequence to file
 call write_obs_seq(seq_all, file_name_output)
@@ -353,6 +364,8 @@ logical  :: file_exist, last_obs, pass_checks, original_observation, &
             rawinsonde_obs_check, aircraft_obs_check, surface_obs_check, &
             sat_wind_obs_check, first_obs
 real(r8) :: xyz_loc(3), xloc, yloc
+real(r8) :: real_nx, real_ny
+
 
 type(location_type)     :: obs_loc_list(max_obs_seq), obs_loc
 type(obs_def_type)      :: obs_def
@@ -362,6 +375,10 @@ type(time_type)         :: obs_time, prev_time
 
 inquire(file = trim(adjustl(filename)), exist = file_exist)
 if ( .not. file_exist )  return
+
+! see comment in main routine about why these are needed
+real_nx = nx
+real_ny = ny
 
 select case (plat_kind)
 
@@ -419,8 +436,8 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
   call get_domain_info(xyz_loc(1),xyz_loc(2),dom_id,xloc,yloc)
 
   !  check if the observation is within the domain
-  if ( ((xloc < (obs_bdy+1.0_r8) .or. xloc > (dble(nx)-obs_bdy-1.0_r8) .or. &
-         yloc < (obs_bdy+1.0_r8) .or. yloc > (dble(ny)-obs_bdy-1.0_r8)) .and. &
+  if ( ((xloc < (obs_bdy+1.0_r8) .or. xloc > (real_nx-obs_bdy-1.0_r8) .or. &
+         yloc < (obs_bdy+1.0_r8) .or. yloc > (real_ny-obs_bdy-1.0_r8)) .and. &
          (dom_id == 1)) .or. dom_id < 1 ) then
 
     prev_obsi = obs_in
