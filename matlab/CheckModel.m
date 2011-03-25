@@ -268,6 +268,32 @@ switch lower(model)
 
        vars.vars = varnames;
 
+   case 'wrf'
+
+      % A more robust way would be to use the netcdf low-level ops:
+      % bob = var(f);   % bob is a cell array of ncvars
+      % name(bob{1})    % is the variable name string
+      % bob{1}(:)       % is the value of the netcdf variable  (no offset/scale)
+      % get_varsNdims() ALMOST works ... except for WRF.
+
+      varnames    = {'U','V','W','PH','MU','QVAPOR','QCLOUD'};
+      num_vars    = length(varnames);
+      dinfo       = nc_getdiminfo(fname,'domain');  % no graceful error
+      num_domains = dinfo.Length;
+      dinfo       = nc_getdiminfo(fname,'bottom_top_d01');  % no graceful error
+      num_levels  = dinfo.Length;
+
+      vars = struct('model',model, ...
+              'num_state_vars',num_vars, ...
+              'num_ens_members',num_copies, ...
+              'time_series_length',num_times, ...
+              'num_unstaggered_levels',num_levels, ...
+              'num_domains',num_domains, ...
+              'min_ens_mem',min(copy), ...
+              'max_ens_mem',max(copy));
+
+      vars.vars = varnames;
+
    otherwise
 
       error('model %s unknown',model)
@@ -281,7 +307,7 @@ function x = dim_length(fname,dimname)
 
 y = nc_isvar(fname,dimname);
 if (y < 1)
-   error('%s has no %s dimension/coordinate variable',fname,varname)
+   error('%s has no %s dimension/coordinate variable',fname,dimname)
 end
 bob = nc_getdiminfo(fname,dimname);
 x   = bob.Length;

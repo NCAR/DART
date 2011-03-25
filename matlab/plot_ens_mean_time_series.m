@@ -20,18 +20,22 @@
 % $Revision$
 % $Date$
 
-if (exist('truth_file','var') ~= 1)
-   truth_file = input('Input name of True State file; <cr> for True_State.nc\n','s');
-   if isempty(truth_file)
-      truth_file = 'True_State.nc';
-   end
-end
-
 if (exist('diagn_file','var') ~=1)
+   disp(' ')
    disp('Input name of prior or posterior diagnostics file;')
    diagn_file = input('<cr> for Prior_Diag.nc\n','s');
    if isempty(diagn_file)
       diagn_file = 'Prior_Diag.nc';
+   end
+end
+
+if (exist('truth_file','var') ~= 1)
+   disp(' ')
+   disp('OPTIONAL: if you have the true state and want it superimposed, provide')
+   disp('        : the name of the input file. If not, enter a dummy filename.')
+   truth_file = input('Input name of True State file; <cr> for True_State.nc\n','s');
+   if isempty(truth_file)
+      truth_file = 'True_State.nc';
    end
 end
 
@@ -77,6 +81,12 @@ switch lower(vars.model)
    %  pinfo.copies        = length(pinfo.copyindices);
       pinfo.truth_file    = truth_file;
       pinfo.diagn_file    = diagn_file;
+
+   case 'wrf'
+
+      pinfo = GetWRFInfo(pinfo, diagn_file, 'PlotEnsMeanTimeSeries');
+      pinfo.truth_file = truth_file;
+      pinfo.diagn_file = diagn_file;
 
    case 'pe2lyr'
 

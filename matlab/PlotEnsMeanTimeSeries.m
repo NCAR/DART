@@ -184,7 +184,7 @@ switch lower(pinfo.model)
             legend boxoff
       end
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf'}
 
       clf;
 
@@ -303,8 +303,14 @@ var = nc_varget(fname, pinfo.var, start, count);
 
 function PlotLocator(pinfo)
    plot(pinfo.longitude,pinfo.latitude,'pb','MarkerSize',12,'MarkerFaceColor','b');
-   axis([0 360 -90 90])
-   worldmap;
+   axlims = axis;
+   axlims = axlims + [-20 20 -20 20];
+   axis(axlims)
+   if (axlims(2) < 0)
+       worldmap('hollow','dateline');
+   else
+       worldmap('hollow','greenwich');
+   end
    axis image
    grid on
 
