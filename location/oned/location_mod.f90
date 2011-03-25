@@ -517,8 +517,12 @@ subroutine get_close_maxdist_init(gc, maxdist, maxdist_list)
 
 type(get_close_type), intent(inout) :: gc
 real(r8),             intent(in)    :: maxdist
-real(r8), intent(in), optional      :: maxdist_list(:)
+real(r8), optional,   intent(in)    :: maxdist_list(:)
 
+if (present(maxdist_list)) then
+   write(errstring,*)'oned locations does not support different cutoff distances by type'
+   call error_handler(E_ERR, 'get_close_maxdist_init', errstring, source, revision, revdate)
+endif
 
 ! Set the maximum distance in the structure
 gc%maxdist = maxdist
