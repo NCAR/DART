@@ -358,7 +358,7 @@ plotdat.Nrange = [min(plotdat.nused(:))    max(plotdat.nposs(:))];
 function myplot( plotobj, Nrange, Drange, Yrange, figdata)
 %% myplot Creates a graphic for one region
 
-Nexp    = size(plotobj,2);
+Nexp    = length(plotobj);
 iregion = plotobj{1}.region;
     
 %% Create the background
@@ -450,13 +450,16 @@ set(ax2,'YTick', yticks, 'YTicklabel', newticklabels)
 % Annotate - gets pretty complicated for multiple
 % regions on one page. Trying to maximize content, minimize clutter.
 
-annotate( ax1, ax2, plotobj{i}, figdata)
+annotate( ax1, ax2, plotobj{1}, figdata)
 
 lh = legend(hd,legstr);
 legend(lh,'boxoff');
 
+% The legend linesizes should match - 2 is hardwired - suprises me.
+
 set(lh,'FontSize',figdata.fontsize);
 kids = get(lh,'Children');
+set(kids,'LineWidth',2.0);
 
 
 function annotate(ax1, ax2, plotobj, figdata)

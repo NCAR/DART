@@ -357,7 +357,7 @@ set(h,'Visible','off')
 function myplot( plotobj, Nrange, Drange, Yrange, figdata)
 %% Create graphic for one region
 
-Nexp    = size(Nrange,2);
+Nexp    = length(plotobj);
 iregion = plotobj{1}.region;
     
 %% Create the background stripes, etc.
@@ -431,19 +431,18 @@ set(ax2,'XTick', xticks, 'XTicklabel', newticklabels)
 
 % Annotate the whole thing - gets pretty complicated for multiple
 % regions on one page. Trying to maximize content, minimize clutter.
+% Any plot object will do for annotating region,levels,etc
 
-annotate( ax1, ax2, plotobj{i}, figdata)
+annotate( ax1, ax2, plotobj{1}, figdata)
 
 lh = legend(hd,legstr);
 legend(lh,'boxoff');
 
+% The legend linesizes should match - 2 is hardwired - suprises me.
+
 set(lh,'FontSize',figdata.fontsize);
 kids = get(lh,'Children');
-if (length(kids) < 8)
-   set(kids([2 5]),'LineWidth',2.0);
-else
-   set(kids([2 5 8 11]),'LineWidth',2.0);
-end
+set(kids,'LineWidth',2.0);
 
 
 function annotate(ax1, ax2, plotobj, figdata)
@@ -633,7 +632,7 @@ elseif (commondata.nregions == 1)
    plotlims(1,:) = [0.10 0.12 0.8 0.75];
 end
 
-figdata = struct('expcolors',  {{'k','r','m','g','b','c','y'}}, ...
+figdata = struct('expcolors',  {{'k','r','g','m','b','c','y'}}, ...
                  'expsymbols', {{'o','s','d','p','h','s','*'}}, ...
                  'prpolines',  {{'-',':'}}, 'plotlims', plotlims, ...
                  'fontsize',fontsize, 'orientation',orientation);
