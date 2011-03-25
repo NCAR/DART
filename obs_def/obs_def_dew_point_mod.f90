@@ -12,6 +12,7 @@
 ! AMDAR_DEWPOINT,          KIND_DEWPOINT
 ! PILOT_DEWPOINT,          KIND_DEWPOINT
 ! BOGUS_DEWPOINT,          KIND_DEWPOINT
+! AIRS_DEWPOINT,           KIND_DEWPOINT
 ! METAR_DEWPOINT_2_METER,  KIND_DEWPOINT
 ! RADIOSONDE_DEWPOINT,     KIND_DEWPOINT
 ! DROPSONDE_DEWPOINT,      KIND_DEWPOINT
@@ -28,10 +29,11 @@
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(DEWPOINT)
 !            call get_expected_dew_point(state, location, 1, obs_val, istatus)
-!         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT)
+!         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT, AIRS_DEWPOINT)
 !            call get_expected_dew_point(state, location, 1, obs_val, istatus)
 !         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
 !            call get_expected_dew_point(state, location, 1, obs_val, istatus)
+!
 !         case(DEWPOINT_2_METER)
 !            call get_expected_dew_point(state, location, 2, obs_val, istatus)
 !         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
@@ -49,7 +51,7 @@
 !            continue
 !         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT)
 !            continue
-!         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
+!         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT, AIRS_DEWPOINT)
 !            continue
 !         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
 !            continue
@@ -64,7 +66,7 @@
 !            continue
 !         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT)
 !            continue
-!         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
+!         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT, AIRS_DEWPOINT)
 !            continue
 !         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
 !            continue
@@ -79,7 +81,7 @@
 !            continue
 !         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT)
 !            continue
-!         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
+!         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT, AIRS_DEWPOINT)
 !            continue
 !         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
 !            continue
