@@ -38,7 +38,6 @@
 <P>
    Main program for driving ensemble filter assimilations. 
 </P>
-
 <P>
    <em class=program>filter</em> is a Fortran 90 program, and provides a large
    number of options for controlling execution behavior and parameter configuration
@@ -47,12 +46,30 @@
    The number of assimilation steps to be done 
    is controlled by the input observation sequence and by the 
    time-stepping capabilities of the model being used in the assimilation.
+</P><P>
+   This overview includes these subsections:
+<UL><LI> <A href="#ProgramFlow">Program Flow</A> </LI>
+    <LI> <A href="#FilterTypes">Filter Types</A> </LI>
+    <LI> <A href="#GettingStarted">Getting Started</A> </LI>
+    <LI> <A href="#FreeRun">Free Model Run after Assimilation</A> </LI>
+    <LI> <A href="#EvalOnly">Evaluate a Model State against Observations</A> </LI>
+    <LI> <A href="#Verify">Compare Results with and without Assimilation</A> </LI>
+    <LI> <A href="#QCVals">DART Quality Control Values on Output</A> </LI>
+    <LI> <A href="#Inflation">Description of Inflation Options</A> </LI>
+    <LI> <A href="#DetailedProgramFlow">Detailed Program Flow</A> </LI>
+</UL>
+   See the <A href="http://www.image.ucar.edu/DAReS/DART">DART web site</A> 
+   for more documentation, including a discussion of the capabilities of the
+   assimilation system, a diagram of the entire execution cycle, the options
+   and features.
 </P>
 
+
+<A NAME="ProgramFlow"></A>
 <H4>Overview of Program Flow</H4>
 <P>
    The basic execution loop is:
-</P>
+<br />
 <UL><LI>Read in model initial conditions, observations, set up and initialize</LI>
     <LI>Until out of observations:
     <UL><LI>Run multiple copies of the model to get forecasts of model state</LI>
@@ -62,34 +79,9 @@
     <LI>Write out diagnostic files, restart files, 
         final observation sequence file</LI>
 </UL>
-<P>
-   See the <A href="http://www.image.ucar.edu/DAReS/DART">DART web site</A> 
-   for detailed discussion of the capabilities of the
-   assimilation system, a diagram of the entire execution cycle, the options
-   and features.
-</P>
-<H4>Free run/Forecast After Assimilation</H4>
-<P>
-   Separate scripting can be done to support forecasts starting from the
-   analyzed model states.  After filter exits, the models can be
-   run freely (with no assimilated data) further forward in time
-   using the last updated model state vectors from filter.
-</P>
-<H4>Verification/Comparison Without Assimilation</H4>
-<P>
-   To compare results of an experiment with and without assimilating data, 
-   do one run assimilating the observations.  Then do a second run where
-   all the observation types are moved to the 
-   <em class="code">evaluate_these_obs_types</em>
-   list in the <em class="code">&amp;obs_kind_nml</em>
-   section of the namelist.  Also turn inflation off by setting both 
-   <em class="code">inf_flavor</em> values to 0 in the &amp;filter_nml namelist.  
-   The forward operators will still be called, but they will have no
-   impact on the model state.  Then the two sets of diagnostic state space
-   netcdf files can be compared to evaluate the impact of assimilating 
-   the observations, and the observation diagnostic files can also be compared.
-</P>
-<P>
+The time of the observations in the input observation sequence file
+controls the length of execution of filter.
+</P> <P>
    The same source code is used for all applications of filter.
    The code specific to the types of observations and the interface code
    for the computational model is configured at compile time.
@@ -102,6 +94,8 @@
    to a different location - e.g. scratch space on a large filesystem - since the
    data files for 10s to 100s of copies of a model can get very large.
 </P>
+
+<A NAME="FilterTypes"></A>
 <H4>Types of Filters available</H4>
 <P>
    The different types of assimilation algorithms 
@@ -111,109 +105,13 @@
    Despite having 'filter' in the name, they are assimilation algorithms
    and so are implemented in <em class=file>assim_tools_mod.f90</em>.
 </P>
-<H4>DART Quality Control Flag added to Output Observation Sequence File</H4>
-<P>
-   The filter adds a quality control field with metadata 'DART quality control'
-   to the obs_seq.final file. At present, this field can have the following
-   values:
-</P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-   <TR><TD>0:</TD><TD> Observation is okay </TD></TR>
-   <TR><TD>1:</TD><TD> Observation was evaluated only but not
-      used in the assimilation </TD></TR>
-   <TR><TD>2:</TD><TD> The observation was used but one or more of
-      the posterior forward observation operators failed </TD></TR>
-   <TR><TD>3:</TD><TD> The observation
-      was evaluated only but not used AND one or more of the posterior 
-      forward observation operators failed </TD></TR>
-   <TR><TD>4:</TD><TD> One or more prior forward observation
-      operators failed so the observation was not used </TD></TR>
-   <TR><TD>5:</TD><TD> The observation was
-      not used because it was not selected in the namelist to be assimilated
-      or evaluated </TD></TR>
-   <TR><TD>6:</TD><TD> The prior quality control value was too high so the
-      observation was not used.  </TD></TR>
-   <TR><TD>7:</TD><TD> Outlier test failed (see below)</TR>
-</TABLE>
-
-<P>
-   The outlier test computes the difference between the observation value
-   and the prior ensemble mean.  It then computes a standard deviation by
-   taking the square root of the sum of the observation error variance and
-   the prior ensemble variance for the observation.  If the difference
-   between the ensemble mean and the observation value is more than the
-   specified number of standard deviations, then the observation is not
-   used and the DART quality control field is set to 7.
-</P>
-
-<H4>Detailed Program Execution Flow</H4>
-<P>
-The detailed execution flow inside the filter program is:
-
-<ul>
-<li>Read in observations.  </li>
-<li>Read in state vector restart files.  </li>
-<li>Initialize inflation fields, possibly reading restart files. </li>
-<li>Initialize output netcdf diagnostic files. </li>
-<li>Trim off any observations if start/stop times specified. </li>
-<li>Begin main assimilation loop: </li>
-<ul>
-<li>Check model time vs observation times: </li>
-<ul>
-<li>If current assimilation window is earlier than model time, error. </li>
-<li>If current assimilation window includes model time, begin assimilating. </li>
-<li>If current assimilation window is later than model time, advance model: </li>
-<ul>
-<li>Write out current state vectors for all ensemble members. </li>
-<li>Advance the model by subroutine call or by shell script: </li>
-<ul>
-<li>Convert the data into format suitable for model. </li>
-<li>Tell the model to run up to the requested time. </li>
-<li>Convert the new data back into DART format. </li>
-</ul>
-<li>Read in new state vectors for all ensemble members. </li>
-</ul>
-</ul>
-<li>Apply prior inflation if requested. </li>
-<li>Compute ensemble of prior observation values with forward operators. </li>
-<li>Compute and write out prior state space diagnostics. (Note this is AFTER
-    any prior inflation has been applied.)</li>
-<li>Compute and write out prior observation space diagnostics. </li>
-<li>Assimilate all observations in this window: </li>
-<ul>
-<li>Get all obs locations and kinds. </li>
-<li>Get all state vector locations and kinds. </li>
-<li>For each observation: </li>
-<ul>
-<li>Compute the observation increments. </li>
-<li>Find all other obs and states within localization radius. </li>
-<li>Compute the covariance between obs and state variables. </li>
-<li>Apply increments weighted by correlation values. </li>
-<li>Apply increments to any remaining unassimilated observations. </li>
-<li>Loop until all observations in window processed. </li>
-</ul>
-</ul>
-<li>Apply posterior inflation if requested. </li>
-<li>Compute ensemble of posterior observation values with forward operators. </li>
-<li>Compute and write out posterior state space diagnostics. </li>
-<li>Compute and write out posterior observation space diagnostics. </li>
-<li>Loop until all observations in input file processed. </li>
-</ul>
-<li>Close diagnostic files. </li>
-<li>Write out final observation sequence file. </li>
-<li>Write out inflation restart files if requested. </li>
-<li>Write out state vector restart files if requested. </li>
-<li>Release memory for state vector and observation ensemble members. </li>
-</ul>
-  
-</P>
-
+<A NAME="GettingStarted"></A>
 <H4>Getting Started</H4>
 <P>
-Running a successful assimilation takes careful diagnostic work and
-experimentation
-iterations to find the best settings for your specific case.  The basic
+Running a successful assimilation takes careful diagnostic work 
+and experiment iterations to find the best settings for your 
+specific case.  The basic
 Kalman filter can be coded in only a handful of lines; the hard work is 
 making the right choices to compensate for sampling errors,
 model bias, observation error, lack of model divergence, variations
@@ -230,10 +128,26 @@ to see what the forward operator computed.  Use ncdiff to difference
 the Prior and Posterior Diag NetCDF files and look at the changes
 (the "innovations") in the various model fields.  Is it in the right
 location for that observation?  Does it have a reasonable value?
+</P> <P>
 Then assimilate a group of observations and check the results 
-carefully.  This will be your baseline case.
-Then one by one enable each of the items below, checking each time
-to see what is the effect on the results.
+carefully. Run the observation diagnostics and look at the total
+error and spread.  Look carefully at the number of observations
+being assimilated compared to how many are available.  Assimilations
+that are not working can give good looking statistics if they reject
+all but the few observations that happen to match the current state.
+The errors should grow as the model advances and then shrink when
+new observations are assimilated, so a time-plot of the RMSE
+should show a sawtooth pattern.  The initial error might be large
+but it should decrease and then reach a roughly stable level.
+The spread should remain constant, at a value around the expected 
+observation error level.
+If the spread is too small that is ok for the baseline case; 
+several of the DART facilities described below are intended to 
+compensate for ensemble members getting too close to each other.
+Once you believe you have a working assimilation case, this
+will be your baseline case.
+Then one by one enable or tune each of the items below, checking 
+each time to see what is the effect on the results.
 </P> <P>
 Suggestions for the most common namelist settings and features built
 into DART for running a successful assimilation include:
@@ -318,6 +232,104 @@ See Anderson (2011).
 </P>
 </ul>
 
+</P>
+
+<A NAME="FreeRun"></A>
+<H4>Free run/Forecast After Assimilation</H4>
+<P>
+   Separate scripting can be done to support forecasts starting from the
+   analyzed model states.  After filter exits, the models can be
+   run freely (with no assimilated data) further forward in time
+   using one or more of the last updated model states from filter.
+   Since all ensemble members are equally likely a member can be
+   selected at random, or a member close to the mean can be chosen.
+   See the <a href="../utilities/closest_member_tool.html">closest_member_tool</a>
+   for one way to select a "close" member.  The ensemble mean is available to
+   be used, but since it is a combination of all the member states it
+   may not have self-consistent features, so using a single member is
+   usually preferred.
+</P>
+
+<A NAME="EvalOnly"></A>
+<H4>Evaluating Observations Without Assimilation</H4>
+<P>
+   Filter can be used
+   to evaluate the accuracy of a single model state based on a set of
+   available observations. 
+   Convert the model data
+   into a single DART state vector, and either copy or link it so there
+   appear to be 2 separate ensemble members (which are identical).
+   Set the filter namelist ensemble size to 2
+   by setting 
+   <em class="code">ens_size</em> to 2 in the
+   &amp;filter_nml namelist.
+   Turn off the outlier threshold and both Prior and Posterior inflation
+   by setting 
+   <em class="code">outlier_threshold</em> to -1, and
+   both the <em class="code">inf_flavor</em> values to 0 in the
+   same &amp;filter_nml namelist.
+   Set all observation types to be 'evaluate-only' and have no types
+   in the 'assimilate' list by listing all types in the
+   <em class="code">evaluate_these_obs_types</em>
+   list in the <em class="code">&amp;obs_kind_nml</em>
+   section of the namelist, and none in the assimilation list.  
+   Run filter as usual, including model advances if needed.
+   Run observation diagnostics on the resulting obs_seq.final file to
+   compute the difference between the observed values and the
+   predicted values from this model state.
+</P>
+
+<A NAME="Verify"></A>
+<H4>Verification/Comparison With and Without Assimilation</H4>
+<P>
+   To compare results of an experiment with and without assimilating data, 
+   do one run assimilating the observations.  Then do a second run where
+   all the observation types are moved to the 
+   <em class="code">evaluate_these_obs_types</em>
+   list in the <em class="code">&amp;obs_kind_nml</em>
+   section of the namelist.  Also turn inflation off by setting both 
+   <em class="code">inf_flavor</em> values to 0 in the &amp;filter_nml namelist.  
+   The forward operators will still be called, but they will have no
+   impact on the model state.  Then the two sets of diagnostic state space
+   netcdf files can be compared to evaluate the impact of assimilating 
+   the observations, and the observation diagnostic files can also be compared.
+</P>
+
+<A NAME="QCVals"></A>
+<H4>DART Quality Control Flag added to Output Observation Sequence File</H4>
+<P>
+   The filter adds a quality control field with metadata 'DART quality control'
+   to the obs_seq.final file. At present, this field can have the following
+   values:
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+   <TR><TD>0:</TD><TD> Observation is okay </TD></TR>
+   <TR><TD>1:</TD><TD> Observation was evaluated only but not
+      used in the assimilation </TD></TR>
+   <TR><TD>2:</TD><TD> The observation was used but one or more of
+      the posterior forward observation operators failed </TD></TR>
+   <TR><TD>3:</TD><TD> The observation
+      was evaluated only but not used AND one or more of the posterior 
+      forward observation operators failed </TD></TR>
+   <TR><TD>4:</TD><TD> One or more prior forward observation
+      operators failed so the observation was not used </TD></TR>
+   <TR><TD>5:</TD><TD> The observation was
+      not used because it was not selected in the namelist to be assimilated
+      or evaluated </TD></TR>
+   <TR><TD>6:</TD><TD> The prior quality control value was too high so the
+      observation was not used.  </TD></TR>
+   <TR><TD>7:</TD><TD> Outlier test failed (see below)</TR>
+</TABLE>
+
+<P>
+   The outlier test computes the difference between the observation value
+   and the prior ensemble mean.  It then computes a standard deviation by
+   taking the square root of the sum of the observation error variance and
+   the prior ensemble variance for the observation.  If the difference
+   between the ensemble mean and the observation value is more than the
+   specified number of standard deviations, then the observation is not
+   used and the DART quality control field is set to 7.
 </P>
 
 <A NAME="Inflation"></A>
@@ -515,7 +527,72 @@ Expected inflation values are generally in the 1 to 10 range;
 if values grow much larger than this it usually indicates
 a problem with the assimilation.
 
-</P> <P>
+</P> 
+
+<A NAME="DetailedProgramFlow"></A>
+<H4>Detailed Program Execution Flow</H4>
+<P>
+The detailed execution flow inside the filter program is:
+
+<ul>
+<li>Read in observations.  </li>
+<li>Read in state vector restart files.  </li>
+<li>Initialize inflation fields, possibly reading restart files. </li>
+<li>Initialize output netcdf diagnostic files. </li>
+<li>Trim off any observations if start/stop times specified. </li>
+<li>Begin main assimilation loop: </li>
+<ul>
+<li>Check model time vs observation times: </li>
+<ul>
+<li>If current assimilation window is earlier than model time, error. </li>
+<li>If current assimilation window includes model time, begin assimilating. </li>
+<li>If current assimilation window is later than model time, advance model: </li>
+<ul>
+<li>Write out current state vectors for all ensemble members. </li>
+<li>Advance the model by subroutine call or by shell script: </li>
+<ul>
+<li>Convert the data into format suitable for model. </li>
+<li>Tell the model to run up to the requested time. </li>
+<li>Convert the new data back into DART format. </li>
+</ul>
+<li>Read in new state vectors for all ensemble members. </li>
+</ul>
+</ul>
+<li>Apply prior inflation if requested. </li>
+<li>Compute ensemble of prior observation values with forward operators. </li>
+<li>Compute and write out prior state space diagnostics. (Note this is AFTER
+    any prior inflation has been applied.)</li>
+<li>Compute and write out prior observation space diagnostics. </li>
+<li>Assimilate all observations in this window: </li>
+<ul>
+<li>Get all obs locations and kinds. </li>
+<li>Get all state vector locations and kinds. </li>
+<li>For each observation: </li>
+<ul>
+<li>Compute the observation increments. </li>
+<li>Find all other obs and states within localization radius. </li>
+<li>Compute the covariance between obs and state variables. </li>
+<li>Apply increments weighted by correlation values. </li>
+<li>Apply increments to any remaining unassimilated observations. </li>
+<li>Loop until all observations in window processed. </li>
+</ul>
+</ul>
+<li>Apply posterior inflation if requested. </li>
+<li>Compute ensemble of posterior observation values with forward operators. </li>
+<li>Compute and write out posterior state space diagnostics. </li>
+<li>Compute and write out posterior observation space diagnostics. </li>
+<li>Loop until all observations in input file processed. </li>
+</ul>
+<li>Close diagnostic files. </li>
+<li>Write out final observation sequence file. </li>
+<li>Write out inflation restart files if requested. </li>
+<li>Write out state vector restart files if requested. </li>
+<li>Release memory for state vector and observation ensemble members. </li>
+</ul>
+  
+</P>
+
+<P>
 Namelist
 <A HREF="#Namelist"> <em class=code>&amp;filter_nml</em> </A>
 is always read from file <em class=file>input.nml</em>.
