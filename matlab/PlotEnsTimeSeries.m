@@ -218,7 +218,7 @@ switch lower(pinfo.model)
             legend boxoff
       end
 
-   case {'fms_bgrid','pe2lyr'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf'}
 
       clf;
 
@@ -327,8 +327,6 @@ end
 % Subfunctions
 %======================================================================
 
-
-
 function x = dim_length(fname,dimname)
 y = nc_isvar(fname,dimname);
 if (y < 1)
@@ -354,9 +352,6 @@ var = nc_varget(fname, pinfo.var, start, count);
 
 
 
-
-
-
 function var = GetEns(fname, pinfo)
 % Gets a time-series of all copies of a prognostic variable 
 % at a particular 3D location (level, lat, lon).
@@ -372,7 +367,7 @@ if ( isempty(copyindices) )
    disp('To be a valid ensemble member, the CopyMetaData for the member')
    disp('must start with the character string ''ensemble member''')
    disp('None of them in do in your file.')
-   fprintf('%s claims to have %d copies\n',fname, num_copies)
+   fprintf('%s claims to have 0 copies\n',fname)
    error('netcdf file has no ensemble members.')
 end
 ens_num     = length(copyindices);
@@ -390,10 +385,14 @@ var = bob(:,copyindices);
 
 function PlotLocator(pinfo)
    plot(pinfo.longitude,pinfo.latitude,'pb','MarkerSize',12,'MarkerFaceColor','b');
-   axis([0 360 -90 90])
-   worldmap;
-   axis image
+   axlims = axis;
+   axlims = axlims + [-20 20 -20 20];
    grid on
-
-
+   axis image
+   axis(axlims)
+   if (axlims(2) < 0)
+       worldmap('hollow','dateline');
+   else
+       worldmap('hollow','greenwich');
+   end
 

@@ -305,13 +305,12 @@ function PlotLocator(pinfo)
    plot(pinfo.longitude,pinfo.latitude,'pb','MarkerSize',12,'MarkerFaceColor','b');
    axlims = axis;
    axlims = axlims + [-20 20 -20 20];
+   grid on
+   axis image
    axis(axlims)
    if (axlims(2) < 0)
        worldmap('hollow','dateline');
    else
        worldmap('hollow','greenwich');
    end
-   axis image
-   grid on
-
 

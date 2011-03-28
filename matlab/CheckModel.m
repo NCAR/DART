@@ -270,17 +270,14 @@ switch lower(model)
 
    case 'wrf'
 
-      % A more robust way would be to use the netcdf low-level ops:
-      % bob = var(f);   % bob is a cell array of ncvars
-      % name(bob{1})    % is the variable name string
-      % bob{1}(:)       % is the value of the netcdf variable  (no offset/scale)
-      % get_varsNdims() ALMOST works ... except for WRF.
+      % requires a 'domain' and 'bottom_top_d01' dimension.
+      % without both of these, it will fail in an ugly fashion.
 
-      varnames    = {'U','V','W','PH','MU','QVAPOR','QCLOUD'};
+      varnames    = get_DARTvars(fname);
       num_vars    = length(varnames);
-      dinfo       = nc_getdiminfo(fname,'domain');  % no graceful error
+      dinfo       = nc_getdiminfo(fname,'domain');
       num_domains = dinfo.Length;
-      dinfo       = nc_getdiminfo(fname,'bottom_top_d01');  % no graceful error
+      dinfo       = nc_getdiminfo(fname,'bottom_top_d01');
       num_levels  = dinfo.Length;
 
       vars = struct('model',model, ...

@@ -57,7 +57,7 @@ num_domains = dinfo.Length;
 
 dID    = 1;
 if (num_domains > 1) 
-   dID = GetDomain(num_domains);  % Determine prognostic variable
+   dID = GetDomain(num_domains);
 end
 
 dn      = varget(fname, sprintf(     'DN_d%02d',dID));
@@ -76,21 +76,12 @@ xland   = varget(fname, sprintf(  'XLAND_d%02d',dID));
 phb     = varget(fname, sprintf(    'PHB_d%02d',dID));
 hgt     = varget(fname, sprintf(    'HGT_d%02d',dID));
 
-prognostic_bases = {'U', 'V', 'W', 'PH', 'T', ...
-          'MU', 'QVAPOR', 'QCLOUD', 'QRAIN', 'QICE'};
-
-for i = 1:length(prognostic_bases)
-   prognostic_vars{i} = sprintf('%s_d%02d',prognostic_bases{i},dID);
-end
-
-varexist(fname, prognostic_vars)
-
 switch lower(deblank(routine))
 
    case {'plotbins','plotenserrspread','plotensmeantimeseries','plotenstimeseries'}
 
-      pgvar           = GetVarString(prognostic_vars); % Determine prognostic variable
-      [level, lvlind] = GetLevel(fname,pgvar);         % Determine level and index
+      pgvar           = GetVarString(pinfo_in.vars);     % Determine prognostic variable
+      [level, lvlind] = GetLevel(fname,pgvar);           % Determine level and index
       [lat, lon, latind, lonind] = GetLatLon(fname, pgvar);
 
       pinfo.model      = model;
@@ -106,14 +97,14 @@ switch lower(deblank(routine))
    case 'plotcorrel'
 
       disp('Getting information for the ''base'' variable.')
-       base_var                = GetVarString(prognostic_vars);
+       base_var                = GetVarString(pinfo_in.vars);
       [base_time, base_tmeind] = GetTime(times);
       [base_lvl,  base_lvlind] = GetLevel(fname,base_var);
       [base_lat,  base_latind] = GetLatitude( base_var,TmpJ,VelJ);
       [base_lon,  base_lonind] = GetLongitude(base_var,TmpI,VelI);
 
       disp('Getting information for the ''comparison'' variable.')
-       comp_var               = GetVarString(prognostic_vars,          base_var);
+       comp_var               = GetVarString(pinfo_in.vars,          base_var);
       [comp_lvl, comp_lvlind] = GetLevel(fname,comp_var,base_lvl);
 
       pinfo.model       = model;
@@ -134,14 +125,14 @@ switch lower(deblank(routine))
    case 'plotvarvarcorrel'
 
       disp('Getting information for the ''base'' variable.')
-       base_var                = GetVarString(prognostic_vars);
+       base_var                = GetVarString(pinfo_in.vars);
       [base_time, base_tmeind] = GetTime(times);
       [base_lvl , base_lvlind] = GetLevel(fname,base_var);
       [base_lat , base_latind] = GetLatitude( base_var,TmpJ,VelJ);
       [base_lon , base_lonind] = GetLongitude(base_var,TmpI,VelI);
 
       disp('Getting information for the ''comparison'' variable.')
-       comp_var               = GetVarString(prognostic_vars,          base_var);
+       comp_var               = GetVarString(pinfo_in.vars,          base_var);
       [comp_lvl, comp_lvlind] = GetLevel(fname,comp_var,base_lvl);
       [comp_lat, comp_latind] = GetLatitude( comp_var,TmpJ,VelJ, base_lat);
       [comp_lon, comp_lonind] = GetLongitude(comp_var,TmpI,VelI, base_lon);
@@ -167,7 +158,7 @@ switch lower(deblank(routine))
 
    case 'plotsawtooth'
 
-       pgvar          = GetVarString(prognostic_vars);
+       pgvar          = GetVarString(pinfo_in.vars);
       [level, lvlind] = GetLevel(fname,pgvar);   % Determine level and index
       [lat  , latind] = GetLatitude( pgvar,TmpJ,VelJ);
       [lon  , lonind] = GetLongitude(pgvar,TmpI,VelI);
@@ -192,19 +183,19 @@ switch lower(deblank(routine))
    case 'plotphasespace'
 
       disp('Getting information for the ''X'' variable.')
-       var1                   = GetVarString(prognostic_vars);
+       var1                   = GetVarString(pinfo_in.vars);
       [var1_lvl, var1_lvlind] = GetLevel(fname,var1);
       [var1_lat, var1_latind] = GetLatitude( var1, TmpJ, VelJ);
       [var1_lon, var1_lonind] = GetLongitude(var1, TmpI, VelI);
 
       disp('Getting information for the ''Y'' variable.')
-       var2                   = GetVarString(prognostic_vars,        var1    );
+       var2                   = GetVarString(pinfo_in.vars,        var1    );
       [var2_lvl, var2_lvlind] = GetLevel(fname,var2,var1_lvl);
       [var2_lat, var2_latind] = GetLatitude( var2, TmpJ, VelJ, var1_lat);
       [var2_lon, var2_lonind] = GetLongitude(var2, TmpI, VelI, var1_lon);
 
       disp('Getting information for the ''Z'' variable.')
-       var3                   = GetVarString(prognostic_vars,        var1    );
+       var3                   = GetVarString(pinfo_in.vars,        var1    );
       [var3_lvl, var3_lvlind] = GetLevel(fname,var3,var1_lvl);
       [var3_lat, var3_latind] = GetLatitude( var3, TmpJ, VelJ, var1_lat);
       [var3_lon, var3_lonind] = GetLongitude(var3, TmpI, VelI, var1_lon);
@@ -376,7 +367,6 @@ else
 
 end
 
-
 % Determine a sensible default.
 if (nargin > 2)
    latind = deflat;
@@ -398,10 +388,10 @@ varstring = input('we''ll use the closest (no syntax required)\n','s');
 if ~isempty(varstring)
    nums = str2num(varstring);
    if (length(nums) ~= 2) 
-      error('Did not get two numbers for the lat lon pair.')
+      error('Did not get two indices for the lat lon pair.')
    end
-   lat = nums(1);
-   lon = nums(2);
+   latind = nums(1);
+   lonind = nums(2);
 end
 
 % Find the closest lat/lon location to the requested one.
@@ -418,11 +408,11 @@ end
 latinds = 1:nlat;
 loninds = 1:nlon;
 
-d      = abs(lat - latinds);  % crude distance
+d      = abs(latind - latinds);  % crude distance
 ind    = find(min(d) == d);   % multiple minima possible 
 latind = ind(1);              % use the first one
 
-d      = abs(lon - loninds);  % crude distance
+d      = abs(lonind - loninds);  % crude distance
 ind    = find(min(d) == d);   % multiple minima possible 
 lonind = ind(1);              % use the first one
 

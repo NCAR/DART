@@ -1,4 +1,9 @@
-%% DART:plot_ens_time_series - time series of ensemble members, mean and truth
+%% DART:plot_ens_time_series - time series of ensemble and truth (if available)
+%                                                                               
+% plot_ens_time_series    interactively queries for the needed information.
+%              Since different models potentially need different pieces of 
+%              information ... the model types are determined and additional 
+%              user input may be queried.
 %
 % Example 2
 % truth_file = 'True_State.nc';
@@ -15,15 +20,8 @@
 % $Revision$
 % $Date$
 
-if (exist('truth_file','var') ~= 1)
-   disp('If the True_State.nc exists, it will be plotted. If not, don''t worry.')
-   truth_file = input('Input name of True State file; <cr> for True_State.nc\n','s');
-   if isempty(truth_file)
-      truth_file = 'True_State.nc';
-   end
-end
-
 if (exist('diagn_file','var') ~=1)
+   disp(' ')
    disp('Input name of prior or posterior diagnostics file;')
    diagn_file = input('<cr> for Prior_Diag.nc\n','s');
    if isempty(diagn_file)
@@ -31,67 +29,78 @@ if (exist('diagn_file','var') ~=1)
    end
 end
 
-vars  = CheckModel(diagn_file);   % also gets default values for this model.
+if (exist('truth_file','var') ~= 1)
+   disp(' ')
+   disp('OPTIONAL: if you have the true state and want it superimposed, provide')
+   disp('        : the name of the input file. If not, enter a dummy filename.')
+   truth_file = input('Input name of True State file; <cr> for True_State.nc\n','s');
+   if isempty(truth_file)
+      truth_file = 'True_State.nc';
+   end
+end
+
+pinfo = CheckModel(diagn_file); % also gets default values for this model.
 
 if (exist(truth_file,'file')==2)
-   pinfo = CheckModelCompatibility(truth_file, diagn_file);
-else
-   pinfo.truth_file = [];
-end
-truth_file = pinfo.truth_file;
-pinfo.model = vars.model;
 
-switch lower(vars.model)
+   MyInfo = CheckModelCompatibility(truth_file, diagn_file);
+
+   % Combine the information from CheckModel and CheckModelCompatibility
+   mynames = fieldnames(MyInfo);
+
+   for ifield = 1:length(mynames)
+      myname = mynames{ifield};
+      if ( isfield(pinfo,myname) ), warning('%s already exists in pinfo\n'); end
+      eval(sprintf('pinfo.%s = MyInfo.%s;',myname,myname));
+   end
+else
+   truth_file = [];
+end
+pinfo.diagn_file = diagn_file;
+pinfo.truth_file = truth_file;
+
+clear MyInfo mynames myname ifield
+
+%% For each model, do what needs to be done.
+
+switch lower(pinfo.model)
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
 	 'forced_lorenz_96','lorenz_04','ikeda','simple_advection'}
 
-      varid = SetVariableID(vars);      % queries for variable IDs if needed.
-      pinfo = setfield(pinfo,'truth_file', truth_file);
-      pinfo = setfield(pinfo,'diagn_file', diagn_file);
-      pinfo = setfield(pinfo,'var'       , varid.var);
-      pinfo = setfield(pinfo,'var_inds'  , varid.var_inds);
-      %pinfo = struct('truth_file', truth_file, ...
-      %               'diagn_file', diagn_file, ...
-      %               'var'       , varid.var, ...
-      %               'var_inds'  , varid.var_inds);
+      varid = SetVariableID(pinfo);      % queries for variable IDs if needed.
+      pinfo.var        = varid.var;
+      pinfo.var_inds   = varid.var_inds;
 
-    % disp(sprintf('Comparing %s and \n          %s', pinfo.truth_file, pinfo.diagn_file))
-    % disp(sprintf('Using Variable %s IDs %s', pinfo.var,num2str(pinfo.var_inds)))
+      fprintf('Comparing %s and \n          %s\n', pinfo.truth_file, pinfo.diagn_file)
+      disp(['Using State Variable IDs ', num2str(pinfo.var_inds)])
+      clear varid
 
    case 'fms_bgrid'
 
-      varid = SetVariableID(vars);      % queries for variable IDs if needed.
       pinfo = GetBgridInfo(pinfo, diagn_file, 'PlotEnsTimeSeries');
-      pinfo.truth_file = truth_file;   % known to be compatible.
-      pinfo.diagn_file = diagn_file;   % known to be compatible.
 
    case 'cam'
 
-      vars.truth_file     = truth_file; 
-      vars.diagn_file     = diagn_file; 
-      vars.prior_file     = []; 
-      vars.posterior_file = []; 
-      pinfo               = GetCamInfo(vars, 'PlotEnsTimeSeries');
-      pinfo.truth_file    = truth_file;
-      pinfo.diagn_file    = diagn_file;
+      pinfo.prior_file     = [];
+      pinfo.posterior_file = [];
+      pinfo                = GetCamInfo(pinfo, 'PlotEnsTimeSeries');
+
+   case 'wrf'
+
+      pinfo = GetWRFInfo(pinfo, diagn_file, 'PlotEnsTimeSeries');
 
    case 'pe2lyr'
 
-      varid = SetVariableID(vars);      % queries for variable IDs if needed.
       pinfo = GetPe2lyrInfo(pinfo, diagn_file, 'PlotEnsTimeSeries');
-      pinfo.truth_file = truth_file;   % known to be compatible.
-      pinfo.diagn_file = diagn_file;   % known to be compatible.
 
    case 'mitgcm_ocean'
 
-      varid = SetVariableID(vars);      % queries for variable IDs if needed.
-      pinfo = GetPe2lyrInfo(pinfo, diagn_file, 'PlotEnsTimeSeries');
-      pinfo.truth_file = truth_file;   % known to be compatible.
-      pinfo.diagn_file = diagn_file;   % known to be compatible.
+      pinfo = GetMITgcm_oceanInfo(pinfo, diagn_file, 'PlotEnsTimeSeries');
 
    otherwise
-      error('model %s not implemented yet', vars.model)
+
+      error('model %s not implemented yet', pinfo.model)
 
 end
 
