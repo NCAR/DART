@@ -99,6 +99,10 @@ switch lower(pinfo.model)
 
       pinfo = GetCamInfo(pinfo, diagn_file, 'PlotCorrel');
 
+   case 'wrf'
+
+      pinfo = GetWRFInfo(pinfo, diagn_file, 'PlotCorrel');
+
    case 'pe2lyr'
 
       pinfo = GetPe2lyrInfo(pinfo, diagn_file, 'PlotCorrel');

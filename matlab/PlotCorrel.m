@@ -22,7 +22,7 @@ function PlotCorrel( pinfo )
 % pinfo.base_time      = 238;        % ditto
 % PlotCorrel(pinfo)                  % generates a plot
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright ï¿½ 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
@@ -160,6 +160,81 @@ switch(lower(model))
       ax = get(h,'Position');
      %set(h,'Position',[ax(1) ax(2) ax(3)/2 ax(4)]);
 
+   case 'wrf'
+
+      % We are going to correlate one var/time/lvl/lat/lon  with
+      % all other lats/lons for a var/time/lvl   
+
+      clf;
+
+      times = nc_varget(pinfo.fname, 'time');
+
+      % Get the plotting lat/lon for the comparison variable.
+      % This is the variable that has a spatial extent.
+
+      varinfo = nc_getvarinfo(pinfo.fname, pinfo.comp_var);
+      latdim  = find(strncmp('south_north',varinfo.Dimension,length('south_north')) > 0);
+      londim  = find(strncmp(  'west_east',varinfo.Dimension,length(  'west_east')) > 0);
+      ny      = varinfo.Size(latdim);
+      nx      = varinfo.Size(londim);
+      nxny    = nx*ny;
+
+      % Each of the WRF variables has a 'coordinate' attribute signifying which
+      % of the 6 possible lat/lon variables is appropriate.
+
+      coordinates{1} = sscanf(nc_attget(pinfo.fname,pinfo.comp_var,'coordinates'),'%s %*s');
+      coordinates{2} = sscanf(nc_attget(pinfo.fname,pinfo.comp_var,'coordinates'),'%*s %s');
+      latcoord = find(strncmp('XLAT',coordinates,length('XLAT')) > 0);
+      loncoord = find(strncmp('XLON',coordinates,length('XLON')) > 0);
+      latmat   = nc_varget(pinfo.fname,coordinates{latcoord});
+      lonmat   = nc_varget(pinfo.fname,coordinates{loncoord});
+      latunits = nc_attget(pinfo.fname,coordinates{latcoord},'units');
+      lonunits = nc_attget(pinfo.fname,coordinates{latcoord},'units');
+      
+      inds = (lonmat < 0); % Convert to 0,360 to minimize dateline probs.
+      lonmat(inds) = lonmat(inds) + 360.0;
+
+      % Get the actual goods ... and perform the correlation
+
+      base_mem = Get1Ens( pinfo.fname, pinfo.base_var, pinfo.base_tmeind, ... 
+                    pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
+
+      comp_ens = GetEnsLevel( pinfo.fname,       pinfo.comp_var, ...
+                              pinfo.base_tmeind, pinfo.comp_lvlind);
+
+      nmembers = size(comp_ens,1);
+
+      corr = zeros(nxny,1);
+
+      for i = 1:nxny,
+         x = corrcoef(base_mem, comp_ens(:, i));
+         corr(i) = x(1, 2);
+      end 
+
+      correl = reshape(corr,[ny nx]);
+
+      % Plot it up ...
+
+      [cs,h] = contour(lonmat,latmat,correl,-1:0.2:1);
+      clabel(cs,h,'FontSize',12,'Color','k','Rotation',0);
+      hold on;
+      plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
+                 'MarkerSize',12,'MarkerFaceColor','k');
+      s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %s', ...
+           model, pinfo.base_var, pinfo.base_lvl, ...
+             pinfo.base_lat, pinfo.base_lon, datestr(pinfo.base_time));
+
+      s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
+               pinfo.comp_var, pinfo.comp_lvl, nmembers); 
+      title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
+      xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
+      ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
+      worldmap;
+      axis image
+      h = colorbar; 
+      ax = get(h,'Position');
+     %set(h,'Position',[ax(1) ax(2) ax(3)/2 ax(4)]);
+
    case 'mitgcm_ocean'
 
       % We are going to correlate one var/time/lvl/lat/lon  with
@@ -289,9 +364,9 @@ function slice = Get1Ens(fname, var, tmeind, lvlind, latind, lonind)
 
 % find which are actual ensemble members
 metadata    = nc_varget(fname,'CopyMetaData');           % get all the metadata
-copyindices = strmatch('ensemble member',metadata);  % find all 'member's
+copyindices = strmatch('ensemble member',metadata); % find all 'member's
 
-if ( isempty(copyindices) )
+if ( length(copyindices) == 1 && copyindices == 1 )
    fprintf('%s has no valid ensemble members\n',fname)
    disp('To be a valid ensemble member, the CopyMetaData for the member')
    disp('must start with the character string ''ensemble member''')
@@ -325,7 +400,7 @@ function slice = GetEnsLevel(fname, var, tmeind, lvlind)
 
 % find which are actual ensemble members
 metadata    = nc_varget(fname,'CopyMetaData');           % get all the metadata
-copyindices = strmatch('ensemble member',metadata);  % find all 'member's
+copyindices = strmatch('ensemble member',metadata); % find all 'member's
 
 if ( isempty(copyindices) )
    fprintf('%s has no valid ensemble members\n',fname)

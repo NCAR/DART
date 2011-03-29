@@ -37,6 +37,14 @@ varexist(fname, {'copy','time'})
 copy       = nc_varget(fname,'copy');
 times      = nc_varget(fname,'time');
 
+% Coordinate between time types and dates
+
+timeunits  = nc_attget(fname,'time','units');
+timebase   = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
+timeorigin = datenum(timebase(1),timebase(2),timebase(3));
+dates      = times + timeorigin;
+
+
 dx         = varget(fname,        'DX');
 dy         = varget(fname,        'DY');
 truelat1   = varget(fname,  'TRUELAT1');
@@ -97,15 +105,14 @@ switch lower(deblank(routine))
    case 'plotcorrel'
 
       disp('Getting information for the ''base'' variable.')
-       base_var                = GetVarString(pinfo_in.vars);
-      [base_time, base_tmeind] = GetTime(times);
-      [base_lvl,  base_lvlind] = GetLevel(fname,base_var);
-      [base_lat,  base_latind] = GetLatitude( base_var,TmpJ,VelJ);
-      [base_lon,  base_lonind] = GetLongitude(base_var,TmpI,VelI);
+       base_var                  = GetVarString(pinfo_in.vars);
+      [base_time, base_tmeind]   = GetTime(dates);
+      [base_lvl,  base_lvlind]   = GetLevel(fname, base_var);
+      [base_lat, base_lon, base_latind, base_lonind] = GetLatLon(fname, base_var);
 
       disp('Getting information for the ''comparison'' variable.')
-       comp_var               = GetVarString(pinfo_in.vars,          base_var);
-      [comp_lvl, comp_lvlind] = GetLevel(fname,comp_var,base_lvl);
+       comp_var               = GetVarString(pinfo_in.vars, base_var);
+      [comp_lvl, comp_lvlind] = GetLevel(fname, comp_var, base_lvl);
 
       pinfo.model       = model;
       pinfo.fname       = fname;
@@ -126,7 +133,7 @@ switch lower(deblank(routine))
 
       disp('Getting information for the ''base'' variable.')
        base_var                = GetVarString(pinfo_in.vars);
-      [base_time, base_tmeind] = GetTime(times);
+      [base_time, base_tmeind] = GetTime(dates);
       [base_lvl , base_lvlind] = GetLevel(fname,base_var);
       [base_lat , base_latind] = GetLatitude( base_var,TmpJ,VelJ);
       [base_lon , base_lonind] = GetLongitude(base_var,TmpI,VelI);
@@ -271,19 +278,35 @@ if ~isempty(varstring), pgvar = deblank(varstring); end
 
 function [time, timeind] = GetTime(times, deftime)
 %----------------------------------------------------------------------
-if (nargin == 2), time = deftime; else time = mean(times); end
+% Query for the time of interest.
 
-fprintf('Default time is %f, if this is OK, <cr>;\n',time)
-fprintf('If not, enter a time between %.4f and %.4f, we use the closest.\n', ...
-                         min(times),max(times))
+ntimes = length(times);
+
+% Determine a sensible default.
+if (nargin == 2),
+   time = deftime;
+else
+   if (ntimes < 2) 
+      tindex = round(ntimes/2);
+   else
+      tindex = 1;
+   end
+   time = times(tindex);
+end
+
+fprintf('Default time is %s (index %d), if this is OK, <cr>;\n',datestr(time),tindex)
+fprintf('If not, enter an index between %d and %d \n',1,ntimes)
+fprintf('Pertaining to %s and %s \n',datestr(times(1)),datestr(times(ntimes)))
 varstring = input('(no syntax required)\n','s');
 
-if ~isempty(varstring), time  = str2num(varstring); end 
+if ~isempty(varstring), tindex = str2num(varstring); end 
 
-d       = abs(time - times);  % crude distance
-ind     = find(min(d) == d);  % multiple minima possible 
-timeind = ind(1);             % use the first one
-time    = times(timeind);
+timeinds = 1:ntimes;
+d        = abs(tindex - timeinds); % crude distance
+ind      = find(min(d) == d);      % multiple minima possible 
+timeind  = ind(1);                 % use the first one
+time     = times(timeind);
+
 
 
 function [level, lvlind] = GetLevel(fname, pgvar, deflevel)

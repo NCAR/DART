@@ -52,6 +52,8 @@ switch lower(model)
               'max_ens_mem',max(copy), ...
               'def_state_vars',def_state_vars);
 
+      vars.fname = fname;
+
    case {'lorenz_96', 'lorenz_04'}
 
       num_vars      = dim_length(fname,'StateVariable'); % determine # of state varbls
@@ -72,6 +74,8 @@ switch lower(model)
               'min_ens_mem',min(copy), ...
               'max_ens_mem',max(copy), ...
               'def_state_vars',def_state_vars);
+
+      vars.fname = fname;
 
    case 'forced_lorenz_96'
 
@@ -106,6 +110,8 @@ switch lower(model)
               'def_state_vars',def_state_vars, ...
               'def_force_vars',def_force_vars);
 
+      vars.fname = fname;
+
    case 'lorenz_96_2scale'
 
       num_X  = dim_length(fname,'Xdim'); % # of X variables
@@ -130,6 +136,8 @@ switch lower(model)
               'min_Y_var',    min(Ydim), 'max_Y_var',    max(Ydim), ...
               'min_ens_mem',  min(copy), 'max_ens_mem',  max(copy), ...
               'def_state_vars',def_X_inds);
+
+      vars.fname = fname;
 
    case 'simple_advection'
 
@@ -157,7 +165,9 @@ switch lower(model)
               'max_state_var'     ,num_locs, ...
               'def_state_vars'    ,def_inds, ...
               'num_vars'          ,length(varnames));
-      vars.vars = varnames;
+
+      vars.vars  = varnames;
+      vars.fname = fname;
 
    case 'fms_bgrid'
 
@@ -184,7 +194,8 @@ switch lower(model)
               'min_ens_mem',min(copy), ...
               'max_ens_mem',max(copy));
 
-      vars.vars = varnames;
+      vars.vars  = varnames;
+      vars.fname = fname;
 
    case 'cam'
 
@@ -204,8 +215,9 @@ switch lower(model)
               'time_series_length',num_times, ...
               'min_ens_mem',min(copy), ...
               'max_ens_mem',max(copy) );
-         %    'max_ens_mem',max(copy), ...
-         %    'varnames',varnames);
+
+      vars.vars  = varnames;
+      vars.fname = fname;
 
    case 'pbl_1d'
 
@@ -228,6 +240,8 @@ switch lower(model)
               'min_ens_mem',min(copy), ...
               'max_ens_mem',max(copy));
 
+      vars.fname = fname;
+
    case 'pe2lyr'
 
       % Since this is a 3D model, only the most rudimentary information
@@ -245,7 +259,8 @@ switch lower(model)
               'min_ens_mem',min(copy), ...
               'max_ens_mem',max(copy) );
 
-      vars.vars = varnames;
+      vars.vars  = varnames;
+      vars.fname = fname;
 
    case 'mitgcm_ocean'
 
@@ -266,7 +281,8 @@ switch lower(model)
               'min_ens_mem',min(copy), ...
               'max_ens_mem',max(copy) );
 
-       vars.vars = varnames;
+      vars.vars  = varnames;
+      vars.fname = fname;
 
    case 'wrf'
 
@@ -289,7 +305,8 @@ switch lower(model)
               'min_ens_mem',min(copy), ...
               'max_ens_mem',max(copy));
 
-      vars.vars = varnames;
+      vars.vars  = varnames;
+      vars.fname = fname;
 
    otherwise
 
