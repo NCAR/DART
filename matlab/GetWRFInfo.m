@@ -368,25 +368,26 @@ lonstag = regexp(varinfo.Dimension{londim},'.stag.');
 
 % get the domain id from the pgvar string
 
-dID = 1;
+indx = strfind(pgvar,'_d');
+dID  = pgvar(indx:length(pgvar));
 
 if ( isempty(latstag) && isempty(lonstag) )
 
    % Both unstaggered.
-   latmat = nc_varget(fname, 'XLAT_d01');
-   lonmat = nc_varget(fname,'XLONG_d01');
+   latmat = nc_varget(fname,sprintf( 'XLAT%s',dID));
+   lonmat = nc_varget(fname,sprintf('XLONG%s',dID));
 
 elseif ( isempty(latstag) )
 
    % LAT unstaggered, LON staggered.
-   latmat = nc_varget(fname, 'XLAT_U_d01');
-   lonmat = nc_varget(fname,'XLONG_U_d01');
+   latmat = nc_varget(fname,sprintf( 'XLAT_U%s',dID));
+   lonmat = nc_varget(fname,sprintf('XLONG_U%s',dID));
 
 else
 
    % LAT staggered, LON unstaggered.
-   latmat = nc_varget(fname, 'XLAT_V_d01');
-   lonmat = nc_varget(fname,'XLONG_V_d01');
+   latmat = nc_varget(fname,sprintf( 'XLAT_V%s',dID));
+   lonmat = nc_varget(fname,sprintf('XLONG_V%s',dID));
 
 end
 

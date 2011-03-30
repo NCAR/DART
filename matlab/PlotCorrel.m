@@ -198,14 +198,28 @@ switch(lower(model))
 
       base_mem = Get1Ens( pinfo.fname, pinfo.base_var, pinfo.base_tmeind, ... 
                     pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
-
+      if (std(base_mem) == 0.0) 
+          warning('%s at level %d lat %d lon %d time %s is a constant\n',pinfo.base_var,...
+             pinfo.base_lvlind,pinfo.base_latind,pinfo.base_lonind,datestr(pinfo.base_time))
+          error('Cannot calculate correlation coefficient with a constant.')
+      end
+      
       comp_ens = GetEnsLevel( pinfo.fname,       pinfo.comp_var, ...
                               pinfo.base_tmeind, pinfo.comp_lvlind);
-
+      if (std(comp_ens(:)) == 0.0) 
+          warning('%s at level %d time %s is a constant\n',pinfo.comp_var,...
+             pinfo.comp_lvlind, datestr(pinfo.base_time))
+          error('Cannot calculate correlation coefficient with a constant.')
+      end
+      
       nmembers = size(comp_ens,1);
 
       corr = zeros(nxny,1);
 
+      % Really should check to see if each comp_ens is a constant value as
+      % well - this is slow enough already.
+      
+      fprintf('Performing correlations at %d locations ...\n',nxny)
       for i = 1:nxny,
          x = corrcoef(base_mem, comp_ens(:, i));
          corr(i) = x(1, 2);
