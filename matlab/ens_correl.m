@@ -14,16 +14,17 @@ function corr = ens_correl(base_var, base_time, state_var)
 
 % Extract sample of base at base time
 
-base_ens = base_var(base_time, :);
+base_ens  = base_var(base_time, :);
 
-% size(base_var)
-% size(base_time)
-% size(state_var)
-% size(base_ens)
+% preallocate space for result
+
+num_times = size(state_var, 1);
+corr      = zeros(num_times,1);
+corr(:)   = NaN;
 
 % Loop through time to correlate with the other ensemble series
-num_times = size(state_var, 1);
 for i = 1:num_times
    x = corrcoef(base_ens, state_var(i, :));
    corr(i) = x(1, 2);
-end 
+end
+

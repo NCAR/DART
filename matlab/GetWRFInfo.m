@@ -44,7 +44,6 @@ timebase   = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin = datenum(timebase(1),timebase(2),timebase(3));
 dates      = times + timeorigin;
 
-
 dx         = varget(fname,        'DX');
 dy         = varget(fname,        'DY');
 truelat1   = varget(fname,  'TRUELAT1');
@@ -94,6 +93,7 @@ switch lower(deblank(routine))
 
       pinfo.model      = model;
       pinfo.fname      = fname;
+      pinfo.times      = dates;
       pinfo.var        = pgvar;
       pinfo.level      = level;
       pinfo.levelindex = lvlind;
@@ -116,6 +116,7 @@ switch lower(deblank(routine))
 
       pinfo.model       = model;
       pinfo.fname       = fname;
+      pinfo.times       = dates;
       pinfo.base_var    = base_var;
       pinfo.comp_var    = comp_var;
       pinfo.base_time   = base_time;
@@ -134,18 +135,17 @@ switch lower(deblank(routine))
       disp('Getting information for the ''base'' variable.')
        base_var                = GetVarString(pinfo_in.vars);
       [base_time, base_tmeind] = GetTime(dates);
-      [base_lvl , base_lvlind] = GetLevel(fname,base_var);
-      [base_lat , base_latind] = GetLatitude( base_var,TmpJ,VelJ);
-      [base_lon , base_lonind] = GetLongitude(base_var,TmpI,VelI);
+      [base_lvl , base_lvlind] = GetLevel(fname, base_var);
+      [base_lat, base_lon, base_latind, base_lonind] = GetLatLon(fname, base_var);
 
       disp('Getting information for the ''comparison'' variable.')
-       comp_var               = GetVarString(pinfo_in.vars,          base_var);
-      [comp_lvl, comp_lvlind] = GetLevel(fname,comp_var,base_lvl);
-      [comp_lat, comp_latind] = GetLatitude( comp_var,TmpJ,VelJ, base_lat);
-      [comp_lon, comp_lonind] = GetLongitude(comp_var,TmpI,VelI, base_lon);
+       comp_var               = GetVarString(pinfo_in.vars,      base_var);
+      [comp_lvl, comp_lvlind] = GetLevel(fname, comp_var, base_lvl);
+      [comp_lat, comp_lon, comp_latind, comp_lonind] = GetLatLon(fname, comp_var, base_latind, base_lonind);
 
       pinfo.model       = model;
       pinfo.fname       = fname;
+      pinfo.times       = dates;
       pinfo.base_var    = base_var;
       pinfo.comp_var    = comp_var;
       pinfo.base_time   = base_time;
@@ -174,6 +174,7 @@ switch lower(deblank(routine))
       copy            = length(copyindices);
 
       pinfo.model          = model;
+      pinfo.times          = dates;
       pinfo.var_names      = pgvar;
      %pinfo.truth_file     = [];
      %pinfo.prior_file     = pinfo.prior_file;
@@ -217,6 +218,7 @@ switch lower(deblank(routine))
 
       pinfo.model       = model;
       pinfo.fname       = fname;
+      pinfo.times       = dates;
       pinfo.var1name    = var1;
       pinfo.var2name    = var2;
       pinfo.var3name    = var3;
@@ -285,6 +287,7 @@ ntimes = length(times);
 % Determine a sensible default.
 if (nargin == 2),
    time = deftime;
+   tindex = find(times == deftime);
 else
    if (ntimes < 2) 
       tindex = round(ntimes/2);

@@ -36,7 +36,6 @@ if (exist(pinfo.fname,'file') ~= 2), error('%s does not exist.',pinfo.fname), en
 
 % Get some file-specific information.
 model      = nc_attget(pinfo.fname,nc_global,'model');
-timeunits  = nc_attget(pinfo.fname,'time','units');
 varinfo    = nc_getvarinfo(pinfo.fname, pinfo.base_var);
 
 for i = 1:length(varinfo.Dimension)
@@ -109,7 +108,6 @@ switch(lower(model))
 
       clf;
 
-      times = nc_varget(pinfo.fname, 'time');
       switch lower(pinfo.comp_var)
          case {'ps','t'}
             lats     = nc_varget(pinfo.fname,'TmpJ'); ny = length(lats);
@@ -166,8 +164,6 @@ switch(lower(model))
       % all other lats/lons for a var/time/lvl   
 
       clf;
-
-      times = nc_varget(pinfo.fname, 'time');
 
       % Get the plotting lat/lon for the comparison variable.
       % This is the variable that has a spatial extent.
@@ -256,8 +252,6 @@ switch(lower(model))
 
       clf;
 
-      times      = nc_varget(pinfo.fname,'time');
-
       switch lower(pinfo.comp_var)
          case {'u'}
             lats     = nc_varget(pinfo.fname,'YC'); ny = length(lats);
@@ -320,7 +314,6 @@ switch(lower(model))
 
       lats     = nc_varget(pinfo.fname,'lat'); ny = length(lats);
       lons     = nc_varget(pinfo.fname,'lon'); nx = length(lons);
-      times    = nc_varget(pinfo.fname,'time');
       latunits = nc_attget(pinfo.fname,'lat','units');
       lonunits = nc_attget(pinfo.fname,'lon','units');
 

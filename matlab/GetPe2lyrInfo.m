@@ -35,6 +35,13 @@ lats   = nc_varget(fname,'lat');
 
 prognostic_vars  = {'u','v','z'};
 
+% Coordinate between time types and dates
+
+timeunits  = nc_attget(fname,'time','units');
+timebase   = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
+timeorigin = datenum(timebase(1),timebase(2),timebase(3));
+dates      = times + timeorigin;
+
 switch lower(deblank(routine))
 
    case {'plotbins','plotenserrspread','plotensmeantimeseries','plotenstimeseries'}
@@ -46,6 +53,7 @@ switch lower(deblank(routine))
 
       pinfo = setfield(pinfo, 'model'     , model );
       pinfo = setfield(pinfo, 'fname'     , fname );
+      pinfo = setfield(pinfo, 'times'     , dates );
       pinfo = setfield(pinfo, 'var'       , pgvar );
       pinfo = setfield(pinfo, 'level'     , level );
       pinfo = setfield(pinfo, 'levelindex', lvlind);
@@ -58,7 +66,7 @@ switch lower(deblank(routine))
 
       disp('Getting information for the ''base'' variable.')
        base_var                = GetVar(prognostic_vars);
-      [base_time, base_tmeind] = GetTime(     base_var,times);
+      [base_time, base_tmeind] = GetTime(     base_var,dates);
       [base_lvl,  base_lvlind] = GetLevel(    base_var,levels);
       [base_lat,  base_latind] = GetLatitude( base_var,lats);
       [base_lon,  base_lonind] = GetLongitude(base_var,lons);
@@ -86,7 +94,7 @@ switch lower(deblank(routine))
 
       disp('Getting information for the ''base'' variable.')
        base_var                = GetVar(prognostic_vars);
-      [base_time, base_tmeind] = GetTime(     base_var,times);
+      [base_time, base_tmeind] = GetTime(     base_var,dates);
       [base_lvl , base_lvlind] = GetLevel(    base_var,levels);
       [base_lat , base_latind] = GetLatitude( base_var,lats);
       [base_lon , base_lonind] = GetLongitude(base_var,lons);
@@ -99,6 +107,7 @@ switch lower(deblank(routine))
 
       pinfo = setfield(pinfo, 'model', model);
       pinfo = setfield(pinfo, 'fname', fname);
+      pinfo = setfield(pinfo, 'times', dates);
       pinfo = setfield(pinfo, 'base_var', base_var);
       pinfo = setfield(pinfo, 'comp_var', comp_var);
       pinfo = setfield(pinfo, 'base_time', base_time);
@@ -127,6 +136,7 @@ switch lower(deblank(routine))
       copy            = length(copyindices);
 
       pinfo = setfield(pinfo, 'model'         , model);
+      pinfo = setfield(pinfo, 'times'         , dates);
       pinfo = setfield(pinfo, 'var_names'     , pgvar);
       pinfo = setfield(pinfo, 'truth_file'    , []);
       %pinfo = setfield(pinfo, 'prior_file'    , pinfo.prior_file);
@@ -170,6 +180,7 @@ switch lower(deblank(routine))
 
       pinfo = setfield(pinfo, 'model', model);
       pinfo = setfield(pinfo, 'fname', fname);
+      pinfo = setfield(pinfo, 'times', dates);
       pinfo = setfield(pinfo, 'var1name'   , var1);
       pinfo = setfield(pinfo, 'var2name'   , var2);
       pinfo = setfield(pinfo, 'var3name'   , var3);
