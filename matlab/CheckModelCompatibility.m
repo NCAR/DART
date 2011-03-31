@@ -22,8 +22,6 @@ function pinfo_out = CheckModelCompatibility(arg1, arg2)
 if (nargin == 1)      % better be a pinfo struct with at least these fields
   file1 = arg1.truth_file;  % string
   file2 = arg1.diagn_file;  % string
-  time1 = arg1.truth_time;  % [a,b] array
-  time2 = arg1.diagn_time;  % [a,b] array
   pinfo_out = arg1;
 elseif (nargin == 2)  % pair of filenames
   file1 = arg1;             % truth_file
@@ -38,10 +36,10 @@ if ( exist(file1,'file') ~= 2 ), error('(file1) %s does not exist.',file1); end
 if ( exist(file2,'file') ~= 2 ), error('(file2) %s does not exist.',file2); end
 
 % set this up for later
-pinfo_out = setfield(pinfo_out, 'truth_time', [-1,-1]);
-pinfo_out = setfield(pinfo_out, 'diagn_time', [-1,-1]);
+pinfo_out.truth_time = [-1,-1];
+pinfo_out.diagn_time = [-1,-1];
 
-% Get some information from the file1
+%% Get some information from the file1
 tmodel  = nc_attget(file1,nc_global,'model');
 
 if (isempty(tmodel)) 
@@ -50,15 +48,18 @@ end
 
 tnum_copies = dim_length(file1,'copy');
 tnum_times  = dim_length(file1,'time');
-ttimes      =  nc_varget(file1,'time');
+times       = nc_varget( file1,'time');
+timeunits   = nc_attget( file1,'time','units');
+timebase    = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
+timeorigin  = datenum(timebase(1),timebase(2),timebase(3));
+ttimes      = times + timeorigin;
 
 [tnum_vars,tdims] = ModelDimension(file1,tmodel);
 if ( tnum_vars <= 0 )
    error('Unable to determine resolution of %s.',file1)
 end
 
-
-% Get some information from the file2
+%% Get some information from the file2
 dmodel  = nc_attget(file1,nc_global,'model');
 
 if (isempty(dmodel)) 
@@ -67,7 +68,11 @@ end
 
 dnum_copies = dim_length(file2,'copy');
 dnum_times  = dim_length(file2,'time');
-dtimes      =  nc_varget(file2,'time');
+times       = nc_varget( file2,'time');
+timeunits   = nc_attget( file2,'time','units');
+timebase    = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
+timeorigin  = datenum(timebase(1),timebase(2),timebase(3));
+dtimes      = times + timeorigin;
 
 [dnum_vars,ddims] = ModelDimension(file2,dmodel);
 if ( dnum_vars <= 0 )
@@ -80,7 +85,7 @@ if (strcmp(tmodel,dmodel) ~= 1)
    fprintf('%s has model %s\n',file2,dmodel)
    error('no No NO ... models must be the same')
 end
-pinfo_out = setfield(pinfo_out, 'model', tmodel);
+pinfo_out.model = tmodel;
 
 if (prod(tnum_vars) ~= prod(dnum_vars))
    fprintf('%s has %d state variables\n',file1,prod(tnum_vars))
@@ -223,11 +228,18 @@ x   = bob.Length;
 
 
 function [x,y] = ModelDimension(fname,modelname)
-
+% Check the base geometry of the grid
 x = 0;
 y = NaN;
 
 switch lower(modelname)
+
+   case 'wrf'
+      diminfo = nc_getdiminfo(fname,  'west_east_d01'); dnum_lons = diminfo.Length;
+      diminfo = nc_getdiminfo(fname,'south_north_d01'); dnum_lats = diminfo.Length;
+      diminfo = nc_getdiminfo(fname, 'bottom_top_d01'); dnum_lvls = diminfo.Length;
+         x = 3;
+         y = [dnum_lons dnum_lats dnum_lvls];
 
    case 'cam'
       dnum_lons = dim_length(fname,'lon');

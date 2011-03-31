@@ -173,9 +173,14 @@ switch lower(deblank(routine))
       [var3_lat, var3_latind] = GetLatitude( var3, TmpJ, VelJ, var1_lat);
       [var3_lon, var3_lonind] = GetLongitude(var3, TmpI, VelI, var1_lon);
 
-      % query for ensemble member
-      s1 = input('Input ensemble member metadata STRING. <cr> for ''true state''  ','s');
-      if isempty(s1), ens_mem = 'true state'; else ens_mem = s1; end
+      % query for ensemble member string
+      metadata   = nc_varget(fname,'CopyMetaData');
+      [N,M]      = size(metadata);
+      cell_array = mat2cell(metadata, ones(1,N), M);
+      ens_mem    = strtrim(cell_array{1});
+      str1 = sprintf('Input ensemble member metadata STRING. <cr> for ''%s''   ',ens_mem);
+      s1   = input(str1,'s');
+      if ~ isempty(s1), ens_mem = s1; end
 
       % query for line type
       s1 = input('Input line type string. <cr> for ''k-''  ','s');

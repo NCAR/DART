@@ -91,6 +91,7 @@ switch lower(vars.model)
 end
 
 pinfo
+
 PlotEnsErrSpread( pinfo )
 
 clear vars

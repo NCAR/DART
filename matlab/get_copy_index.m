@@ -48,7 +48,7 @@ end
 
 if (copy_index < 0)
    fprintf('WARNING: %s is not a valid metadata string for file %s\n', ...
-                copystring, fname)
+                strtrim(copystring), fname)
    disp('valid metadata strings are: ')
    for i = 1:num_copies,
       fprintf('%s\n',deblank(copy_meta_data(i,:)))

@@ -107,9 +107,8 @@ switch lower(tmodel)
             subplot(3, 1, j);
                plot(times,err, 'b', ...
                     times,ens_spread(:, ivar), 'r');
-               s1 = sprintf('%s model Var %d Ensemble Error Spread for %s', ...
-                            tmodel, ivar, pinfo.diagn_file);
-               title(s1,'interpreter','none','fontweight','bold')
+               s1 = sprintf('%s model Var %d Ensemble Error Spread', tmodel, ivar);
+               title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
                legend(string1,string2,0)
                legend boxoff
                xlabel(sprintf('model time (%d timesteps)',tnum_times))
@@ -139,9 +138,8 @@ switch lower(tmodel)
             subplot(length(pinfo.var_inds), 1, iplot);
                plot(times,err, 'b', ...
                     times,ens_spread(:, ivar), 'r');
-               s1 = sprintf('%s model Var %d Ensemble Error Spread for %s', ...
-                            tmodel, ivar, pinfo.diagn_file);
-               title(s1,'interpreter','none','fontweight','bold')
+               s1 = sprintf('%s model Var %d Ensemble Error Spread', tmodel, ivar);
+               title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
                legend(string1,string2,0)
                legend boxoff
                xlabel(sprintf('model time (%d timesteps)',tnum_times))
@@ -170,15 +168,11 @@ switch lower(tmodel)
          string2 = ['time-mean Ensemble Spread = ' num2str(spreadTotal)];
 
          plot(times,err, 'b', times,ens_spread, 'r');
-         s1 = sprintf('%s model Var %s Ensemble Error Spread for %s', ...
-                            tmodel, pinfo.var, pinfo.diagn_file);
-         title(s1,'interpreter','none','fontweight','bold');
 
-      title({ ...
-        sprintf('Ensemble Mean Error, Ensemble Spread  %s ''%s'' for %s', ...
-                tmodel, pinfo.var, pinfo.diagn_file), ...
-        sprintf('level %d lat %.2f lon %.2f',pinfo.level, pinfo.latitude, ...
-                 pinfo.longitude)}, 'interpreter','none','fontweight','bold');
+         s1 = sprintf('Ensemble Mean Error, Ensemble Spread %s ''%s''',tmodel,pinfo.var);
+         s2 = sprintf('level %d lat %.2f lon %.2f', ...
+                       pinfo.level, pinfo.latitude, pinfo.longitude);
+         title({s1, s2, pinfo.diagn_file},'interpreter','none','fontweight','bold');
 
          legend(string1,string2,0);
          legend boxoff

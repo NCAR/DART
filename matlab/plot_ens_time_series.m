@@ -104,7 +104,7 @@ switch lower(pinfo.model)
 
 end
 
-pinfo % echo for posterity.
+pinfo
 
 PlotEnsTimeSeries( pinfo )
 clear vars varid

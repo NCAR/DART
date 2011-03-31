@@ -1,5 +1,6 @@
-function varid = SetCopyID2(fname);
-%% SetCopyID2 queries for the copy index for a set of ensemble members of a specific netCDF file.
+function [varid copymetadata] = SetCopyID2(fname);
+%% SetCopyID2 queries for the copy indices in a specific netCDF file.
+%  pays no attention to what the copy metadata means.
 
 %% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -44,8 +45,13 @@ else
    ensmems = sscanf(IDstring,'%d');  % convert text to numbers
    if ( ensmems(1) < 0 )             % dont want any
       varid = [];
+      copymetadata = [];
    else                              % we want these
       varid = ensmems;
    end
+end
+
+for i = 1:length(varid)
+   copymetadata{i} = metadata(varid(i),:);
 end
 

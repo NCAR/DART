@@ -86,11 +86,11 @@ switch(lower(model))
       clf;
       
       contour(correl,-1:0.2:1);
-      s1 = sprintf('%s Correlation of variable %s index %d, T = %d of %s', ...
-               model, pinfo.base_var, base_var_index, base_time, pinfo.fname);
+      s1 = sprintf('%s Correlation of variable %s index %d, T = %d', ...
+               model, pinfo.base_var, base_var_index, base_time);
       s2 = sprintf('against all variables, all times, %d ensemble members', ...
                size(state_var,2)); 
-      title({s1,s2},'interpreter','none','fontweight','bold')
+      title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
       xlabel('time (timestep #)')
       ylabel('state variable (index)')
       set(gca,'YTick',1:num_vars)
@@ -143,13 +143,13 @@ switch(lower(model))
       contour(lons,lats,correl,-1:0.2:1); hold on;
       plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
                  'MarkerSize',12,'MarkerFaceColor','k');
-      s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f of %s', ...
+      s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f', ...
            model, pinfo.base_var, pinfo.base_lvl, ...
-             pinfo.base_lat, pinfo.base_lon, pinfo.base_time, pinfo.fname);
+             pinfo.base_lat, pinfo.base_lon, pinfo.base_time);
 
       s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
                pinfo.comp_var, pinfo.comp_lvl, nmembers); 
-      title({s1,s2},'interpreter','none','fontweight','bold')
+      title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
       xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
       ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
       worldmap;
@@ -290,13 +290,13 @@ switch(lower(model))
       contour(lons,lats,correl,-1:0.2:1); hold on;
       plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
                  'MarkerSize',12,'MarkerFaceColor','k');
-      s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f of %s', ...
+      s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f', ...
            model, pinfo.base_var, pinfo.base_lvl, ...
-             pinfo.base_lat, pinfo.base_lon, pinfo.base_time, pinfo.fname);
+             pinfo.base_lat, pinfo.base_lon, pinfo.base_time);
 
       s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
                pinfo.comp_var, pinfo.comp_lvl, nmembers); 
-      title({s1,s2},'interpreter','none','fontweight','bold')
+      title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
       xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
       ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
       worldmap;
@@ -337,13 +337,13 @@ switch(lower(model))
       contour(lons,lats,correl,-1:0.2:1); hold on;
       plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
                  'MarkerSize',12,'MarkerFaceColor','k');
-      s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f of %s', ...
+      s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f', ...
            model, pinfo.base_var, pinfo.base_lvl, ...
-             pinfo.base_lat, pinfo.base_lon, pinfo.base_time, pinfo.fname);
+             pinfo.base_lat, pinfo.base_lon, pinfo.base_time);
 
       s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
                pinfo.comp_var, pinfo.comp_lvl, nmembers); 
-      title({s1,s2},'interpreter','none','fontweight','bold')
+      title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
       xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
       ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
       worldmap;

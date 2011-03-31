@@ -166,19 +166,17 @@ switch lower(deblank(routine))
    case 'plotsawtooth'
 
        pgvar          = GetVarString(pinfo_in.vars);
-      [level, lvlind] = GetLevel(fname,pgvar);   % Determine level and index
-      [lat  , latind] = GetLatitude( pgvar,TmpJ,VelJ);
-      [lon  , lonind] = GetLongitude(pgvar,TmpI,VelI);
-      %[copy , lonind] = GetCopies(pgvar,copy);
-      copyindices     = SetCopyID(fname);
+      [level, lvlind] = GetLevel(pinfo_in.prior_file, pgvar);
+      [lat, lon, latind, lonind] = GetLatLon(pinfo_in.prior_file, pgvar);
+      [copyindices, copymetadata]= SetCopyID2(pinfo_in.prior_file);
       copy            = length(copyindices);
 
       pinfo.model          = model;
+      pinfo.truth_file     = pinfo_in.truth_file;
+      pinfo.prior_file     = pinfo_in.prior_file;
+      pinfo.posterior_file = pinfo_in.posterior_file;
       pinfo.times          = dates;
       pinfo.var_names      = pgvar;
-     %pinfo.truth_file     = [];
-     %pinfo.prior_file     = pinfo.prior_file;
-     %pinfo.posterior_file = pinfo.posterior_file;
       pinfo.level          = level;
       pinfo.levelindex     = lvlind;
       pinfo.latitude       = lat;
@@ -188,29 +186,44 @@ switch lower(deblank(routine))
       pinfo.copies         = copy;
       pinfo.copyindices    = copyindices;
 
+      % Hui has a habit of cutting out the rest of the ensemble members
+      % from the posterior, but leaving them in the prior. Thanks.
+      % So now I have to figure out if the posterior and prior copy metadata match.
+
+      for i = 1:copy,
+         copyi = get_copy_index(pinfo_in.posterior_file,copymetadata{i}); 
+         pstruct.postcopyindices = copyi;
+      end
+
+      if ( any(pstruct.postcopyindices < 1) )
+         error('The prior copy does not exist in the posterior file.')
+      end
+
    case 'plotphasespace'
 
       disp('Getting information for the ''X'' variable.')
        var1                   = GetVarString(pinfo_in.vars);
       [var1_lvl, var1_lvlind] = GetLevel(fname,var1);
-      [var1_lat, var1_latind] = GetLatitude( var1, TmpJ, VelJ);
-      [var1_lon, var1_lonind] = GetLongitude(var1, TmpI, VelI);
+      [var1_lat, var1_lon, var1_latind, var1_lonind] = GetLatLon(fname, var1);
 
       disp('Getting information for the ''Y'' variable.')
        var2                   = GetVarString(pinfo_in.vars,        var1    );
       [var2_lvl, var2_lvlind] = GetLevel(fname,var2,var1_lvl);
-      [var2_lat, var2_latind] = GetLatitude( var2, TmpJ, VelJ, var1_lat);
-      [var2_lon, var2_lonind] = GetLongitude(var2, TmpI, VelI, var1_lon);
+      [var2_lat, var2_lon, var2_latind, var2_lonind] = GetLatLon(fname, var2);
 
       disp('Getting information for the ''Z'' variable.')
        var3                   = GetVarString(pinfo_in.vars,        var1    );
       [var3_lvl, var3_lvlind] = GetLevel(fname,var3,var1_lvl);
-      [var3_lat, var3_latind] = GetLatitude( var3, TmpJ, VelJ, var1_lat);
-      [var3_lon, var3_lonind] = GetLongitude(var3, TmpI, VelI, var1_lon);
+      [var3_lat, var3_lon, var3_latind, var3_lonind] = GetLatLon(fname, var3);
 
-      % query for ensemble member
-      s1 = input('Input ensemble member metadata STRING. <cr> for ''true state''  ','s');
-      if isempty(s1), ens_mem = 'true state'; else ens_mem = s1; end
+      % query for ensemble member string
+      metadata   = nc_varget(fname,'CopyMetaData');
+      [N,M]      = size(metadata);
+      cell_array = mat2cell(metadata, ones(1,N), M);
+      ens_mem    = strtrim(cell_array{1});
+      str1 = sprintf('Input ensemble member metadata STRING. <cr> for ''%s''   ',ens_mem);
+      s1   = input(str1,'s');
+      if ~ isempty(s1), ens_mem = s1; end
 
       % query for line type
       s1 = input('Input line type string. <cr> for ''k-''  ','s');

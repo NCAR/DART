@@ -131,8 +131,8 @@ switch lower(pinfo.model)
                legend('Ensemble Mean','True State',0);
             end
 
-            title(sprintf('%s Variable %d of %s',pinfo.model,ivar,pinfo.diagn_file), ...
-                     'interpreter','none','fontweight','bold')
+            s1 = sprintf('%s Variable %d',pinfo.model,ivar);
+            title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
             xlabel(sprintf('model time (%d timesteps)',num_times))
             legend boxoff
       end
@@ -178,8 +178,8 @@ switch lower(pinfo.model)
                hold on; plot(times,truth,'b'); hold off;
                legend('Ensemble Mean','True State',0)
             end
-            title(sprintf('%s Variable %d of %s',pinfo.model,ivar,pinfo.diagn_file), ...
-                     'interpreter','none','fontweight','bold')
+            s1 = sprintf('%s Variable %d',pinfo.model,ivar);
+            title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
             xlabel(sprintf('model time (%d timesteps)',num_times))
             legend boxoff
       end
@@ -205,7 +205,7 @@ switch lower(pinfo.model)
                             pinfo.model, pinfo.var, pinfo.diagn_file);
          s2 = sprintf('level %d lat %.2f lon %.2f', ...
                     pinfo.level, pinfo.latitude, pinfo.longitude);
-         title({s1,s2},'interpreter','none','fontweight','bold')
+         title({s1,s2,pinfo.diagn_file},'interpreter','none','fontweight','bold')
 
          if (have_truth)
             truth = GetCopy(pinfo.truth_file, truth_index,      pinfo , ...
@@ -244,8 +244,7 @@ switch lower(pinfo.model)
          subplot(2,1,2)
             plot(times,ens_mean,'r','LineWidth',2);
             legend('Ensemble Mean', 0)
-            s1 = sprintf('%s model ''%s'' %s Ensemble Mean ', ...
-                 pinfo.model, pinfo.var, pinfo.diagn_file);
+            s1 = sprintf('%s model ''%s'' Ensemble Mean', pinfo.model, pinfo.var);
             s2 = sprintf('level index %d lat %.2f lon %.2f', ...
                        pinfo.levelindex, pinfo.latitude, pinfo.longitude);
 
@@ -254,13 +253,13 @@ switch lower(pinfo.model)
                                   pinfo.truth_time(1), pinfo.truth_time(2)) ;
                hold on; plot(times,truth,'b','LineWidth',2); hold off;
                legend('Ensemble Mean','True State',0);
-               s1 = sprintf('%s model ''%s'' %s Truth and Ensemble Mean ', ...
-                               pinfo.model, pinfo.var, pinfo.diagn_file);
+               s1 = sprintf('%s model ''%s'' Truth and Ensemble Mean', ...
+                               pinfo.model, pinfo.var);
             end
 
             %plot(times,ens_mean,'r','LineWidth',2); %      again - on top
 
-            title({s1,s2},'interpreter','none','fontweight','bold')
+            title({s1,s2,pinfo.diagn_file},'interpreter','none','fontweight','bold')
             xlabel(sprintf('time (%s) %d timesteps',timeunits, num_times))
             ylabel(varunits)
             legend boxoff

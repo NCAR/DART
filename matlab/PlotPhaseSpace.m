@@ -163,10 +163,7 @@ switch lower(model)
       end
       legend boxoff
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean'}
-
-      disp('PlotPhaseSpace')
-      pinfo
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf'}
 
       ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);   % errors out if no ens_mem 
       
@@ -190,19 +187,22 @@ switch lower(model)
          % title(sprintf('%s ensemble member %d of %s',model,ens_mem_id,pinfo.fname), ...
          %    'interpreter','none','fontweight','bold')
          title('The Attractor','fontweight','bold')
-         xlabel(sprintf('%s %d %.2f %.2f', ...
-               pinfo.var1name, pinfo.var1_lvl, pinfo.var1_lat, pinfo.var1_lon))
-         ylabel(sprintf('%s %d %.2f %.2f', ...
-               pinfo.var2name, pinfo.var2_lvl, pinfo.var2_lat, pinfo.var2_lon))
-         zlabel(sprintf('%s %d %.2f %.2f', ...
-               pinfo.var3name, pinfo.var3_lvl, pinfo.var3_lat, pinfo.var3_lon))
+         hx = xlabel(sprintf('%s %d %.2f %.2f', ...
+               pinfo.var1name, pinfo.var1_lvl, pinfo.var1_lat, pinfo.var1_lon));
+         hy = ylabel(sprintf('%s %d %.2f %.2f', ...
+               pinfo.var2name, pinfo.var2_lvl, pinfo.var2_lat, pinfo.var2_lon));
+         hz = zlabel(sprintf('%s %d %.2f %.2f', ...
+               pinfo.var3name, pinfo.var3_lvl, pinfo.var3_lat, pinfo.var3_lon));
+         set(hx,'interpreter','none')
+         set(hy,'interpreter','none')
+         set(hz,'interpreter','none')
       
          s = sprintf('%s %s %s %s %s %s', pinfo.var1name, pinfo.var2name, pinfo.var3name, ...
                                               model, pinfo.fname, pinfo.ens_mem);
          h = legend(s,0);
          [legh, objh, outh, outm] = legend;
          set(objh(1),'interpreter','none')
-      
+
       else
          % Must add salient information to the legend.
          % legh     handle to the legend axes

@@ -46,7 +46,7 @@ num_copies = dim_length(pinfo.fname,'copy');
 
 switch lower(model)
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf'}
 
       clf;
 
@@ -69,11 +69,11 @@ switch lower(model)
           model, pinfo.base_var, pinfo.base_time, pinfo.base_lvl, ...
           pinfo.base_lat, pinfo.base_lon);
 
-      s2 = sprintf('with ''%s'', lvl = %d, lat = %.2f, lon= %.2f, %d ensemble members -- %s', ...
+      s2 = sprintf('with ''%s'', lvl = %d, lat = %.2f, lon= %.2f, %d ensemble members', ...
           pinfo.comp_var, pinfo.comp_lvl, pinfo.comp_lat, pinfo.comp_lon, ...
-          nmembers, pinfo.fname); 
+          nmembers); 
 
-      title({s1,s2},'interpreter','none','fontweight','bold')
+      title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
       xlabel(sprintf('time (%s) %d timesteps',timeunits, num_times))
       ylabel('correlation')
       
@@ -82,7 +82,6 @@ switch lower(model)
       hold on;
       plot([pinfo.base_time pinfo.base_time],[ -1 1 ],'k:', ...
            [ax(1)         ax(2)],[  0 0 ],'k:')
-
 
    otherwise
 
@@ -123,8 +122,8 @@ switch lower(model)
       s1 = sprintf('%s Correlation of variable %s %d, T = %d, with variable %s %d', ...
                model, pinfo.base_var, pinfo.base_var_index, pinfo.base_time, ...
                       pinfo.state_var, pinfo.state_var_index);
-      s2 = sprintf('%d ensemble members -- %s', nmembers, pinfo.fname); 
-      title({s1,s2},'interpreter','none','fontweight','bold')
+      s2 = sprintf('%d ensemble members', nmembers); 
+      title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
       xlabel('time (timestep #)')
       ylabel('correlation')
       

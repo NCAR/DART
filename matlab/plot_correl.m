@@ -126,5 +126,7 @@ switch lower(pinfo.model)
 
 end
 
+pinfo
+
 PlotCorrel( pinfo );
 clear inputstring inds str1 vrbl vrbl_inds diminfo num_copies

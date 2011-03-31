@@ -37,8 +37,8 @@ disp(sprintf('Comparing %s and \n          %s', truth_file, diagn_file))
 pinfo = CheckModel(diagn_file);
 pinfo.truth_file = truth_file;
 pinfo.diagn_file = diagn_file;
-pinfo.truth_time = [1, -1];    % The temporal intersection happens in PlotTotalErr.m
-pinfo.diagn_time = [1, -1];
+
+% Temporal Intersection happens in PlotTotalErr:CheckModelCompatibility()
 
 PlotTotalErr( pinfo );
 clear pinfo

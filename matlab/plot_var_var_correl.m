@@ -32,6 +32,7 @@ if (num_copies <= 3)
 end 
 
 pinfo = CheckModel(fname); % also gets default values for this file.
+pinfo.fname = fname;
 
 switch lower(pinfo.model) 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04', ...

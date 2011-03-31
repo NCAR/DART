@@ -31,36 +31,36 @@ if (num_copies <= 3)
    error('Sorry -- %s does not have enough ensemble members to correlate.',fname)
 end 
 
-vars = CheckModel(fname);   % also gets default values for this file.
+pinfo = CheckModel(fname); % also gets default values for this file.
 pinfo.fname = fname;
 
-switch lower(vars.model) 
+switch lower(pinfo.model) 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04', ...
 	 'forced_lorenz_96','ikeda'}
 
       inputstring = input( ...
            sprintf('Input index for base variable (between %d and %d, inclusive)  ', ...
-           vars.min_state_var, vars.max_state_var), 's');
+           pinfo.min_state_var, pinfo.max_state_var), 's');
       pinfo.base_var_index = str2num(deblank(inputstring));
 
       inputstring = input( ...
            sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
-           vars.time_series_length),'s');
+           pinfo.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
       inputstring = input( ...
            sprintf('Input variable index for correlation (between %d and %d, inclusive)  ', ...
-           vars.min_state_var, vars.max_state_var), 's');
+           pinfo.min_state_var, pinfo.max_state_var), 's');
       pinfo.state_var_index = str2num(deblank(inputstring));
 
-      pinfo.base_var  = vars.def_var;
-      pinfo.state_var = vars.def_var;
+      pinfo.base_var  = pinfo.def_var;
+      pinfo.state_var = pinfo.def_var;
 
    case {'lorenz_96_2scale'}
 
       fprintf('Your choice of variables is ''X'' or ''Y''\n')
-      fprintf('''X'' can range from %d to %d\n', vars.min_X_var, vars.max_X_var)
-      fprintf('''Y'' can range from %d to %d\n', vars.min_Y_var, vars.max_Y_var)
+      fprintf('''X'' can range from %d to %d\n', pinfo.min_X_var, pinfo.max_X_var)
+      fprintf('''Y'' can range from %d to %d\n', pinfo.min_Y_var, pinfo.max_Y_var)
 
       % parsing the result of this one is a bit tricky.
       inputstring = input('Input base variable and index i.e.  X 5\n','s');
@@ -68,7 +68,7 @@ switch lower(vars.model)
 
       inputstring = input( ...
            sprintf('Input time index for base point (between 1 and %d, inclusive) \n', ...
-           vars.time_series_length),'s');
+           pinfo.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
       % parsing the result of this one is a bit tricky.
@@ -78,18 +78,18 @@ switch lower(vars.model)
    case {'simple_advection'}
 
       disp('Your choice of variables are:')
-      disp(vars.vars)
+      disp(pinfo.vars)
       fprintf('the indices (locations) can range from %d to %d, inclusive\n', ...
-           vars.min_state_var, vars.max_state_var)
+           pinfo.min_state_var, pinfo.max_state_var)
 
       str1 = sprintf('Input base variable and index i.e. %s %d\n', ...
-                      vars.def_var,vars.def_state_vars(1));
+                      pinfo.def_var,pinfo.def_state_vars(1));
       inputstring = input(str1,'s');
       [pinfo.base_var, pinfo.base_var_index] = ParseAlphaNumerics(inputstring);
 
       inputstring = input( ...
            sprintf('Input time index for base point (between 1 and %d, inclusive)  ', ...
-           vars.time_series_length),'s');
+           pinfo.time_series_length),'s');
       pinfo.base_time = str2num(deblank(inputstring));
 
       inputstring = input('Input variable and index for correlation \n','s');
@@ -98,6 +98,10 @@ switch lower(vars.model)
    case 'fms_bgrid'
 
       pinfo = GetBgridInfo(pinfo, fname, 'PlotVarVarCorrel');
+
+   case 'wrf'
+
+      pinfo = GetWRFInfo(pinfo, fname, 'PlotVarVarCorrel');
 
    case 'cam'
 
@@ -113,9 +117,12 @@ switch lower(vars.model)
 
    otherwise
 
-      error('model %s not implemented yet', vars.model)
+      error('model %s not implemented yet', pinfo.model)
 
 end
 
+pinfo
+
 PlotJeffCorrel( pinfo )
-clear vars inputstring fname
+
+clear inputstring diminfo num_copies

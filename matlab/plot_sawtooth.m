@@ -75,14 +75,14 @@ switch lower(pstruct.model)
    case 'fms_bgrid'
 
       pstruct = GetBgridInfo(pstruct, prior_file, 'PlotSawtooth');
-      pstruct.prior_file     = prior_file;
-      pstruct.posterior_file = posterior_file;
 
    case 'pe2lyr'
 
       pstruct = GetPe2lyrInfo(pstruct, prior_file, 'PlotSawtooth');
-      pstruct.prior_file     = prior_file;
-      pstruct.posterior_file = posterior_file;
+
+   case 'wrf'
+
+      pstruct = GetWRFInfo(pstruct, prior_file, 'PlotSawtooth');
 
    case 'cam'
 

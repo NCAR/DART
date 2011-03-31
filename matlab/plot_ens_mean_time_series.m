@@ -50,7 +50,7 @@ if (exist(truth_file,'file')==2)
 
    for ifield = 1:length(mynames)
       myname = mynames{ifield};
-      if ( isfield(pinfo,myname) ), warning('%s already exists in pinfo\n'); end
+      if ( isfield(pinfo,myname) ), warning('%s already exists in pinfo\n',myname); end
       eval(sprintf('pinfo.%s = MyInfo.%s;',myname,myname));
    end
 else

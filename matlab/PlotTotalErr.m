@@ -75,9 +75,8 @@ switch lower(model)
       plot(times,err, 'b', times,err_spread, 'r');
       legend(string1,string2,0)
       legend boxoff
-      title(sprintf('%s Total Error over all %d variables for %s',...
-                    model, num_vars, pinfo.diagn_file), ...
-            'interpreter','none','fontweight','bold')
+      s1 = sprintf('%s Total Error over all %d variables', model, num_vars);
+      title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
       xlabel(sprintf('model time (%d timesteps)',num_times))
       ylabel('Total Error')
 
@@ -116,9 +115,8 @@ switch lower(model)
       plot(times,err, 'b', times,err_spread, 'r');
       legend(string1,string2,0)
       legend boxoff
-      title(sprintf('%s Total Error over all %d variables for %s',...
-                    model, num_vars, pinfo.diagn_file), ...
-            'interpreter','none','fontweight','bold')
+      s1 = sprintf('%s Total Error over all %d variables',model,num_vars);
+      title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
       xlabel(sprintf('model time (%d timesteps)',num_times))
       ylabel('Total Error')
 
@@ -167,9 +165,8 @@ switch lower(model)
       plot(times,err, 'b', times,err_spread, 'r');
       legend(string1,string2,0)
       legend boxoff
-      title(sprintf('%s Total Error over statevars %d to %d for %s',...
-                    model, ind1, indN, pinfo.diagn_file), ...
-            'interpreter','none','fontweight','bold')
+      s1 = sprintf('%s Total Error over statevars %d to %d', model, ind1, indN);
+      title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
       xlabel(sprintf('model time (%d timesteps)',num_times))
       ylabel('Total Error')
 
@@ -198,9 +195,8 @@ switch lower(model)
       plot(times,err, 'b', times,err_spread, 'r');
       legend(string1,string2,0)
       legend boxoff
-      title(sprintf('%s Total Error over statevars %d to %d for %s',...
-                    model, ind1, indN, pinfo.diagn_file), ...
-            'interpreter','none','fontweight','bold')
+      s1 = sprintf('%s Total Error over statevars %d to %d', model, ind1, indN);
+      title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
       xlabel(sprintf('model time (%d timesteps)',num_times))
       ylabel('Total Error')
 
@@ -427,7 +423,7 @@ for ivar=1:pinfo.num_state_vars,
  
       varunits = nc_attget(pinfo.truth_file, pinfo.vars{ivar}, 'units');
 
-      s1 = sprintf('%s %s Ensemble Mean for %s', model,pinfo.vars{ivar},pinfo.diagn_file);
+      s1 = sprintf('%s %s Ensemble Mean', model,pinfo.vars{ivar});
 
       switch lower(pinfo.vars{ivar})
          case {'ps'}
@@ -451,7 +447,7 @@ for ivar=1:pinfo.num_state_vars,
       grid on;
       xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times))
       ylabel(sprintf('global-area-weighted distance (%s)',varunits))
-      title(s1,'interpreter','none','fontweight','bold')
+      title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
 
 end
 
@@ -584,7 +580,7 @@ for ivar=1:pinfo.num_state_vars,
    figure(ivar); clf;
       varunits = nc_attget(pinfo.truth_file,pinfo.vars{ivar},'units');
 
-      s1 = sprintf('%s %s Ensemble Mean for %s', model,pinfo.vars{ivar},pinfo.diagn_file);
+      s1 = sprintf('%s %s Ensemble Mean', model,pinfo.vars{ivar});
 
       switch lower(pinfo.vars{ivar})
          case {'ssh'}
@@ -608,7 +604,7 @@ for ivar=1:pinfo.num_state_vars,
       grid on;
       xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times))
       ylabel(sprintf('global-area-weighted distance (%s)',varunits))
-      title(s1,'interpreter','none','fontweight','bold')
+      title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
 
 end
 
@@ -696,7 +692,7 @@ for ivar=1:pinfo.num_state_vars,
 
       varunits = nc_attget(pinfo.truth_file, pinfo.vars{ivar}, 'units');
 
-      s1 = sprintf('%s %s Ensemble Mean for %s', model,pinfo.vars{ivar},pinfo.diagn_file);
+      s1 = sprintf('%s %s Ensemble Mean for %s', model,pinfo.vars{ivar});
 
       switch lower(pinfo.vars{ivar})
          case {'ps'}
@@ -720,7 +716,7 @@ for ivar=1:pinfo.num_state_vars,
       grid on;
       xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times))
       ylabel(sprintf('global-area-weighted distance (%s)',varunits))
-      title(s1,'interpreter','none','fontweight','bold')
+      title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
 
 end
 
