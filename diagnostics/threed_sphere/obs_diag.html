@@ -78,8 +78,8 @@
    is set to <em class="code">80</em> (for example); the first 80 ensemble members 
    prior and posterior "expected" values of the observation are also included. 
    In this case, the <em class="file">obs_seq.final</em> file contains enough 
-   information to calculate a rank histogram, while the ensemble means are still
-   used for all the other calculations.
+   information to calculate a rank histograms, verify forecasts, etc. 
+   The ensemble means are still used for many other calculations.
    <table width="100%"><tr>
    <td rowspan=2><a href="../../doc/html/obs_diag_evolution_example.png"><img src="../../doc/html/obs_diag_evolution_example.png" width="300"></a>
    <td rowspan=2><a href="../../doc/html/obs_diag_profile_example.png"><img src="../../doc/html/obs_diag_profile_example.png" width="300"></a>
@@ -127,7 +127,7 @@
    <br />
    <br />
    <em class="program">obs_diag</em>
-   is not explicitly designed to take explore OSSE's.  In general, it is 
+   is not explicitly designed to explore OSSE's.  In general, it is 
    used for 'real' observations and looks through the metadata for
    the observation sequence to identify which 'copy' is labeled 'observation'.
    It is THAT copy that is used as the noisy estimate of the truth.
@@ -147,7 +147,7 @@
    files and calculates the following quantities (in no particular order) 
    for an arbitrary number of regions and levels. It is necessary to query
    the <em class=code>CopyMetaData</em> variable to determine the storage order
-   ( i.e. "which copy is what?").
+   (i.e. "which copy is what?").
 </P>
 
    <table width="90%">
@@ -733,6 +733,16 @@ Please note:
     IFF it is possible to calculate a rank histogram in the first place.</li>
 </ol>
 
+
+<table width="100%">
+<tr><td><a href="../../doc/html/RankHistogram_ncview.png"><img src="../../doc/html/RankHistogram_ncview.png" width="200"></a></td>
+    <td><a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#ncview_histogram">Instructions for viewing the rank histogram with ncview</a>.</td>
+</tr>
+<tr><td><a href="../../doc/html/RankHistogram_matlab.png"><img src="../../doc/html/RankHistogram_matlab.png" width="200"></a></td>
+    <td><a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#mat_obs">Instructions for viewing the rank histogram with Matlab</a>.</td>
+</tr>
+</table>
+
 <!--==================================================================-->
 <!-- Discuss  typical usage of obs_diag.                              -->
 <!--==================================================================-->
@@ -742,8 +752,9 @@ Please note:
 <H2>USAGE</H2>
 
 <P>
-Obs_diag is built in .../DART/models/<em class=italic>your_model</em>/work, in the same way
-as the other DART components.
+<em class="program">obs_diag</em> is built in 
+.../DART/models/<em class=italic>your_model</em>/work, 
+in the same way as the other DART components.
 </P>
 
 <H3 class=indent1>multiple observation sequence files</H3>
@@ -786,14 +797,17 @@ You can either specify the name of a file containing a list of files (in
 
 
 
-<H3 class=indent1>Example: creating a rank histogram from observation sequence files 
-spanning&nbsp;30&nbsp;days.</H3>
-<table width=90%>
-<tr><td>In this example, we are generating an <em class=file>obs_diag_output.nc</em> 
-   file that will have exactly ONE timestep in it - for the entire globe - and we 
-   will NOT be using outlier observations in the rank histogram. Lets presume 
-   that all your <em class=file>obs_seq.final</em> files are in alphabetically-nice 
-   directories:</td>
+<H3 class=indent1>Example: observation sequence files spanning&nbsp;30&nbsp;days.</H3>
+<table width=95%>
+<tr><td>In this example, we will be accumulating metrics for 30 days over the 
+   entire globe. The <em class=file>obs_diag_output.nc</em> file will have 
+   exactly ONE timestep in it (so it won't be much use for the 
+   <em class="program">plot_evolution</em> functions) - but the 
+   <em class="program">plot_profile</em> functions and the 
+   <em class="program">plot_rank_histogram</em> function will be used to
+   explore the assimilation. By way of an example, we will NOT be using 
+   outlier observations in the rank histogram. Lets presume that all your 
+   <em class=file>obs_seq.final</em> files are in alphabetically-nice directories:</td>
    <td>&nbsp;&nbsp;<img src="../../doc/html/RankHistogram_matlab.png" width="200"></a></td>
 </tr>
 </table>
@@ -878,8 +892,10 @@ in the netCDF file.
 <br />
 <br />
 Now that you have the <em class=file>obs_diag_output.nc</em>, you can explore it with
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#mat_obs">plot_profile.m, plot_bias_xxx_profile.m, or plot_rmse_xxx_profile.m</a>,
+and look at the rank histograms with 
 <a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</a> or
-<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_rank_histogram.m">plot_rank_histogram.m</a>.
+<em class="program">plot_rank_histogram.m</em>.
 </P>
 
   
