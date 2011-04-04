@@ -244,11 +244,10 @@ use typeSizes
 use types_mod,         only : r8, MISSING_I, MISSING_R8, gravity_const => gravity
 !          add after verification against Hui's tests;  gas_constant_v,gas_constant,ps0,PI,DEG2RAD
 
-use time_manager_mod,  only : time_type, set_time, print_time, set_calendar_type,                &
-                              THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR
+use time_manager_mod,  only : time_type, set_time, set_date, print_time, print_date, set_calendar_type
 use utilities_mod,     only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
                               register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
-                              logfileunit, nmlfileunit, do_output, nc_check
+                              logfileunit, nmlfileunit, do_output, nc_check, get_unit
 use mpi_utilities_mod, only : my_task_id, task_count
 
 !-------------------------------------------------------------------------
@@ -526,7 +525,7 @@ integer           :: impact_kind_index = -1
 ! by numerical stability concerns for repeated restarting in leapfrog.
 integer :: Time_step_seconds = 21600, Time_step_days = 0
 
-namelist /model_nml/ output_state_vector , model_version , model_config_file & 
+namelist /model_nml/ output_state_vector , model_version , cam_phis, model_config_file & 
                      ,state_num_0d   ,state_num_1d   ,state_num_2d   ,state_num_3d &
                      ,state_names_0d ,state_names_1d ,state_names_2d ,state_names_3d &
                      ,                which_vert_1d  ,which_vert_2d  ,which_vert_3d &
@@ -556,8 +555,8 @@ integer                 :: ens_member
 data ens_member /0/
 logical                 :: do_out
 
-! common error string used by many subroutines
-character(len=129) :: errstring
+! common message string used by many subroutines
+character(len=129) :: msgstring
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 integer :: nflds         ! # fields to read
@@ -657,17 +656,15 @@ contains
 ! name netcdf file. 
 
 integer            :: iunit, io, topog_lons, topog_lats, i, num_lons, num_lats, ncfileid
-! calendar types listed in time_manager_mod.f90
-integer            :: calendar_type = GREGORIAN
 integer            :: max_levs
-
 
 ! Register the module
 call register_module(source, revision, revdate)
 
 ! setting calendar type
+! calendar types listed in time_manager_mod.f90
 ! this information is NOT passed to CAM; it must be set in the CAM namelist
-call set_calendar_type(calendar_type)
+call set_calendar_type('GREGORIAN')
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "model_nml", iunit)
@@ -677,14 +674,14 @@ call check_namelist_read(iunit, io, "model_nml")
 ! set the printed output logical variable to reduce printed output;
 ! depends on whether this is being called by trans_... (read ens member # from file 'element' )
 ! or by filter (multiple processes, printout controlled by do_output())
+
 if (file_exist('element')) then
-! debug; fix this ugliness
-   open(unit = 99, file='element', form = 'formatted')
-   read(99,*) ens_member
-   close(99)
+   iunit = get_unit()
+   open(unit = iunit, file='element', form = 'formatted')
+   read(iunit,*) ens_member
+   close(iunit)
    do_out = .false.
    if (ens_member == 1) do_out = .true.
-   !write(*,*) 'do_out = ',do_out
 else
    do_out = do_output()
    !write(*,*) 'do_out = ',do_out
@@ -786,20 +783,20 @@ if (file_exist(cam_phis)) then
    if (do_out) write(*, *) 'file_name for surface geopotential height is ', trim(cam_phis)
 
    call read_topog_size(ncfileid, topog_lons, topog_lats)
-   ! debug
+
    if (do_out) write(*,*) 'topog_lons, _lats = ',topog_lons, topog_lats
 
    num_lons = dim_sizes(find_name('lon     ',dim_names))
    num_lats = dim_sizes(find_name('lat     ',dim_names))
 
    if (topog_lons /= num_lons .or. topog_lats /= num_lats) then
-      write(errstring,'(A,4I4)') 'horizontal dimensions mismatch of initial files and topog ' &
+      write(msgstring,'(A,4I4)') 'horizontal dimensions mismatch of initial files and topog ' &
             ,num_lons, topog_lons, num_lats, topog_lats
-      call error_handler(E_ERR, 'static_init_model', trim(errstring), source, revision, revdate)
+      call error_handler(E_ERR, 'static_init_model', trim(msgstring), source, revision, revdate)
    end if
 else
-   write(errstring,'(2A)') trim(cam_phis),' is missing; find a CAM history file (h0) to provide PHIS' 
-   call error_handler(E_ERR, 'static_init_model', trim(errstring), source, revision, revdate)
+   write(msgstring,'(2A)') trim(cam_phis),' is missing; find a CAM history file (h0) to provide PHIS' 
+   call error_handler(E_ERR, 'static_init_model', trim(msgstring), source, revision, revdate)
 end if
 
 ! Read surface geopotential from cam_phis for use in vertical interpolation in height.
@@ -1106,8 +1103,8 @@ do i = 1,state_num_1d
    end do Alldim1
 
    if ( s_dim_1d(i) == 0 ) then
-      write(errstring, '(A,I3,A)') ' state 1d dimension(',i,') was not assigned and = 0' 
-      call error_handler(E_ERR, 'trans_coord',trim(errstring), source, revision, revdate) 
+      write(msgstring, '(A,I3,A)') ' state 1d dimension(',i,') was not assigned and = 0' 
+      call error_handler(E_ERR, 'trans_coord',trim(msgstring), source, revision, revdate) 
    end if
 end do
 
@@ -1481,8 +1478,8 @@ do i=1,state_num_3d
 end do
 
 if (nfld .ne. nflds) then
-   write(errstring, *) 'nfld = ',nfld,', nflds = ',nflds,' must be equal '
-   call error_handler(E_ERR, 'order_state_fields', errstring, source, revision, revdate)
+   write(msgstring, *) 'nfld = ',nfld,', nflds = ',nflds,' must be equal '
+   call error_handler(E_ERR, 'order_state_fields', msgstring, source, revision, revdate)
 elseif (do_out) then
    write(logfileunit,'(/A/)') 'State vector is composed of '
 !   write(logfileunit,'((8(A8,1X)))') (cflds(i),i=1,nflds)
@@ -1588,18 +1585,22 @@ end subroutine map_kinds
 
 ! Module I/O to/from DART and files
 
-   subroutine read_cam_init(file_name, var)
+   subroutine read_cam_init(file_name, var, model_time)
 !=======================================================================
-! subroutine read_cam_init(file_name, var)
+! subroutine read_cam_init(file_name, var, model_time)
 !
 
-character(len = *), intent(in)  :: file_name
-type(model_type),   intent(out) :: var
+character(len = *),        intent(in)  :: file_name
+type(model_type),          intent(out) :: var
+type(time_type), optional, intent(out) :: model_time
 
 ! Local workspace
 integer :: i, k, n, m, ifld  ! grid and constituent indices
-integer :: ncfileid, ncfldid
+integer :: ncfileid, ncfldid, dimid, varid, dimlen
 real(r8), allocatable :: temp_3d(:,:,:), temp_2d(:,:)
+
+integer :: iyear, imonth, iday, ihour, imin, isec, rem
+integer, allocatable, dimension(:) :: datetmp, datesec
 
 !----------------------------------------------------------------------
 ! read CAM 'initial' file domain info
@@ -1719,6 +1720,58 @@ do i=1, state_num_3d
       end do
    end if
 end do
+
+! Read the time of the current state.
+! All the caminput.nc files I have seen have two variables of 
+! length 'time' (the unlimited dimension): date, datesec
+! The rest of the routine presumes there is but one time in the file -
+! print warning message if this is not the case.
+
+if (present( model_time)) then
+
+   call nc_check(nf90_inq_dimid(ncfileid, 'time', dimid), &
+          'read_cam_init', 'inq_dimid time '//trim(file_name))
+   call nc_check(nf90_inquire_dimension(ncfileid, dimid, len=dimlen), &
+          'read_cam_init', 'inquire_dimension time '//trim(file_name))
+
+   if (dimlen /= 1) then
+       write(msgstring,*)'UNUSUAL - ',trim(file_name),' has',dimlen,'times. Expected 1.'
+       call error_handler(E_MSG, 'read_cam_init', msgstring, source, revision, revdate)
+   endif
+
+   allocate(datetmp(dimlen), datesec(dimlen))
+
+   call nc_check(nf90_inq_varid(ncfileid, 'date', varid), &
+          'read_cam_init', 'inq_varid date '//trim(file_name))
+   call nc_check(nf90_get_var(ncfileid, varid, values=datetmp), &
+          'read_cam_init', 'get_var date '//trim(file_name))
+
+   call nc_check(nf90_inq_varid(ncfileid, 'datesec', varid), &
+          'read_cam_init', 'inq_varid datesec '//trim(file_name))
+   call nc_check(nf90_get_var(ncfileid, varid, values=datesec), &
+          'read_cam_init', 'get_var datesec '//trim(file_name))
+
+   ! The 'date' is YYYYMMDD ... datesec is 'current seconds of current day'
+   iyear  = datetmp(dimlen) / 10000
+   rem    = datetmp(dimlen) - iyear*10000
+   imonth = rem / 100
+   iday   = rem - imonth*100
+
+   ihour  = datesec(dimlen) / 3600
+   rem    = datesec(dimlen) - ihour*3600
+   imin   = rem / 60
+   isec   = rem - imin*60
+
+   model_time = set_date(iyear,imonth,iday,ihour,imin,isec)
+
+   if (do_out) then
+      call print_date(model_time,'read_cam_init:CAM input date')
+      call print_time(model_time,'read_cam_init:CAM input time')
+   endif
+
+   deallocate(datetmp, datesec)
+
+endif
 
 call nc_check(nf90_close(ncfileid), 'read_cam_init', 'closing '//trim(file_name))
 
@@ -2047,9 +2100,9 @@ end do
 
 ! This will malfunction for fields that are filled with MISSING_r8 for lat_val or lon_val.
 if (lon_val == MISSING_r8 .or. lat_val == MISSING_r8 ) then
-   write(errstring, *) 'Field ',cflds(nfld),' has no lon or lat dimension.  ', &
+   write(msgstring, *) 'Field ',cflds(nfld),' has no lon or lat dimension.  ', &
          'What should be specified for it in the call to location?'
-   call error_handler(E_ERR, 'get_state_meta_data', errstring, source, revision, revdate)
+   call error_handler(E_ERR, 'get_state_meta_data', msgstring, source, revision, revdate)
 else
    location = set_location(lon_val, lat_val, lev_val, which_vert)  
 endif
@@ -2152,10 +2205,10 @@ ierr = 0     ! assume normal termination
 !    More dimensions, variables and attributes will be added in this routine.
 !-------------------------------------------------------------------------------
 
-write(errstring,*) 'ncFileID', ncFileID
+write(msgstring,*) 'ncFileID', ncFileID
 call nc_check(nf90_Inquire(ncFileID, nDimensions, nVariables, nAttributes, unlimitedDimID), &
-              'nc_write_model_atts', 'Inquire '//trim(errstring))
-call nc_check(nf90_Redef(ncFileID), 'nc_write_model_atts', 'Redef '//trim(errstring))
+              'nc_write_model_atts', 'Inquire '//trim(msgstring))
+call nc_check(nf90_Redef(ncFileID), 'nc_write_model_atts', 'Redef '//trim(msgstring))
 
 !-------------------------------------------------------------------------------
 ! We need the dimension ID for the number of copies
@@ -2167,8 +2220,8 @@ call nc_check(nf90_inq_dimid(ncid=ncFileID, name="time", dimid=  TimeDimID), &
               'nc_write_model_atts', 'inq_dimid time')
 
 if ( TimeDimID /= unlimitedDimId ) then
-  write(errstring,*)'Time dimension ID ',TimeDimID,'must match Unlimited Dimension ID ',unlimitedDimId
-  call error_handler(E_ERR,'nc_write_model_atts', errstring, source, revision, revdate)
+  write(msgstring,*)'Time dimension ID ',TimeDimID,'must match Unlimited Dimension ID ',unlimitedDimId
+  call error_handler(E_ERR,'nc_write_model_atts', msgstring, source, revision, revdate)
 end if
 
 !-------------------------------------------------------------------------------
@@ -3070,8 +3123,8 @@ else
 !      if (abs((val - pressure)/val) > 1.0E-12) then
 !         ! We're looking for a pressure on a model level, which is exactly what p_col provides,
 !! NOT HERE; that happens in get_val_level
-!         write(errstring, *) 'val /= pressure = ',val,pressure,' when val is a P obs '
-!         call error_handler(E_WARN, 'get_val_pressure', errstring, source, revision, revdate)
+!         write(msgstring, *) 'val /= pressure = ',val,pressure,' when val is a P obs '
+!         call error_handler(E_WARN, 'get_val_pressure', msgstring, source, revision, revdate)
 !      end if
    else 
    ! Pobs end
@@ -3326,9 +3379,9 @@ end do
 do nf= 1, state_num_3d
 
 !   if (do_out) then
-!      write(errstring, '(A,4I5)') 'fld, nlons, nlats, nlevs ',nf &
+!      write(msgstring, '(A,4I5)') 'fld, nlons, nlats, nlevs ',nf &
 !                          ,s_dim_3d(2,nf),s_dim_3d(3,nf),s_dim_3d(1,nf)
-!      call error_handler(E_MSG, 'prog_var_to_vector', errstring, source, revision, revdate)
+!      call error_handler(E_MSG, 'prog_var_to_vector', msgstring, source, revision, revdate)
 !   endif
 
    do i=1,s_dim_3d(3,nf)   !lats
@@ -3343,8 +3396,8 @@ end do
 
 ! Temporary check
 if (indx /= model_size) then
-   write(errstring, *) 'indx ',indx,' model_size ',model_size,' must be equal '
-   call error_handler(E_ERR, 'prog_var_to_vector', errstring, source, revision, revdate)
+   write(msgstring, *) 'indx ',indx,' model_size ',model_size,' must be equal '
+   call error_handler(E_ERR, 'prog_var_to_vector', msgstring, source, revision, revdate)
 end if
 
 end subroutine prog_var_to_vector
@@ -3392,9 +3445,9 @@ end do
 ! 3D fields; see comments in prog_var_to_vect
 do nf = 1, state_num_3d
 !   if (do_out) then
-!      write(errstring, '(A,4I5)') 'fld, nlons, nlats, nlevs ',nf &
+!      write(msgstring, '(A,4I5)') 'fld, nlons, nlats, nlevs ',nf &
 !                       ,s_dim_3d(2,nf),s_dim_3d(3,nf),s_dim_3d(1,nf)
-!      call error_handler(E_MSG, 'vector_to_prog_var', errstring, source, revision, revdate)
+!      call error_handler(E_MSG, 'vector_to_prog_var', msgstring, source, revision, revdate)
 !   end if
    do i = 1, s_dim_3d(3,nf)
    do j = 1, s_dim_3d(2,nf)
@@ -3408,8 +3461,8 @@ end do
 
 ! Temporary check
 if (indx /= model_size) then
-   write(errstring, *) 'indx ',indx,' model_size ',model_size,' must be equal '
-   call error_handler(E_ERR, 'vector_to_prog_var', errstring, source, revision, revdate)
+   write(msgstring, *) 'indx ',indx,' model_size ',model_size,' must be equal '
+   call error_handler(E_ERR, 'vector_to_prog_var', msgstring, source, revision, revdate)
 end if
 
 end subroutine vector_to_prog_var
@@ -3599,9 +3652,9 @@ if (old_which == VERTISPRESSURE .or. old_which == VERTISHEIGHT  .or. &
    !  proceed
 else
    ! make this a fatal error - there should be no other options for vert.
-   write(errstring,'(''obs at '',3(F9.5,1x),I2,'' has bad vertical type'')') &
+   write(msgstring,'(''obs at '',3(F9.5,1x),I2,'' has bad vertical type'')') &
                    old_array, old_which
-   call error_handler(E_ERR, 'convert_vert', errstring,source,revision,revdate)
+   call error_handler(E_ERR, 'convert_vert', msgstring,source,revision,revdate)
 end if
 
 ! Find the nfld of this dart-KIND
@@ -3785,26 +3838,26 @@ elseif (old_which == VERTISHEIGHT) then
    if (top_lev == 1 .and. old_array(3) > model_h(1)) then
       ! above top of model
       frac = 1.0_r8
-      write(errstring, *) 'ob height ',old_array(3),' above CAM levels at ' &
+      write(msgstring, *) 'ob height ',old_array(3),' above CAM levels at ' &
                           ,old_array(1) ,old_array(2) ,' for ob type',dart_kind
-      call error_handler(E_MSG, 'convert_vert', errstring,source,revision,revdate)
+      call error_handler(E_MSG, 'convert_vert', msgstring,source,revision,revdate)
    else if (bot_lev <= num_levs) then
       ! within model levels
       frac = (old_array(3) - model_h(bot_lev)) / (model_h(top_lev) - model_h(bot_lev))
    else 
       ! below bottom of model
       frac = 0.0_r8
-      write(errstring, *) 'ob height ',old_array(3),' below CAM levels at ' &
+      write(msgstring, *) 'ob height ',old_array(3),' below CAM levels at ' &
                           ,old_array(1) ,old_array(2) ,' for ob type',dart_kind
-      call error_handler(E_MSG, 'convert_vert', errstring,source,revision,revdate)
+      call error_handler(E_MSG, 'convert_vert', msgstring,source,revision,revdate)
    endif
 
    new_array(3) = (1.0_r8 - frac) * p_col(bot_lev) + frac * p_col(top_lev)
    new_which    = 2
 
 else
-   write(errstring, *) 'model which_vert = ',old_which,' not handled in convert_vert '
-   call error_handler(E_ERR, 'convert_vert', errstring,source,revision,revdate)
+   write(msgstring, *) 'model which_vert = ',old_which,' not handled in convert_vert '
+   call error_handler(E_ERR, 'convert_vert', msgstring,source,revision,revdate)
 end if
 
 return
@@ -4204,8 +4257,8 @@ elseif (dim_name == 'ilev    ') then
    resol     =  ilev%resolution
 else
    ! should not happen; fatal error.
-   write(errstring, *) 'unexpected dim_name, ', trim(dim_name)
-   call error_handler(E_ERR, 'coord_index', errstring,source,revision,revdate)
+   write(msgstring, *) 'unexpected dim_name, ', trim(dim_name)
+   call error_handler(E_ERR, 'coord_index', msgstring,source,revision,revdate)
 end if
 
 ! further check?  for blunders check that coord(1) - val is smaller than coord(2) - coord(1), etc.

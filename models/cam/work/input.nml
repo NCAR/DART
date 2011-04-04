@@ -81,21 +81,28 @@
 &assim_model_nml
    write_binary_restart_files = .true.,
    netCDF_large_file_support  = .false.
-  /
+   /
+
+&cam_to_dart_nml
+   /
+
 
 # also a common setup:
-#   model_version        = '3.5.06',
-#   state_names_3d       = 'T','US','VS','Q','CLDLIQ','CLDICE'
+#   model_version       = '3.5.06',
+#   model_version       = '4.0.1',
+#   state_names_3d      = 'T','US','VS','Q','CLDLIQ','CLDICE'
+#   model_version       = '3.1',
+#   state_names_3d      = 'T','U','V','Q','CLDLIQ','CLDICE'
 &model_nml
    output_state_vector = .false.,
-   model_version       = '3.1',
+   model_version       = '4.0.1',
    model_config_file   = 'caminput.nc',
    state_num_0d        = 0,
    state_num_1d        = 0,
    state_num_2d        = 1,
    state_num_3d        = 6,
    state_names_2d      = 'PS'
-   state_names_3d      = 'T','U','V','Q','CLDLIQ','CLDICE'
+   state_names_3d      = 'T','US','VS','Q','CLDLIQ','CLDICE'
    which_vert_1d       = 0,
    which_vert_2d       = -1,
    which_vert_3d       = 6*1,
@@ -134,8 +141,6 @@
     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
   input_files              = '../../../obs_def/obs_def_gps_mod.f90',
-                             '../../../obs_def/obs_def_QuikSCAT_mod.f90',
-                             '../../../obs_def/obs_def_GWD_mod.f90',
                              '../../../obs_def/obs_def_altimeter_mod.f90',
                              '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'
    /
