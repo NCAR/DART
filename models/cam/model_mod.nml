@@ -2,6 +2,7 @@
    output_state_vector = .false.,
    model_version       = '3.0',
    model_config_file   = 'caminput.nc',
+   cam_phis            = 'cam_phis.nc',
    state_num_0d        = 0,
    state_num_1d        = 0,
    state_num_2d        = 1,
@@ -20,5 +21,7 @@
    highest_state_pressure_mb = 150.0,
    max_obs_lat_degree        = 90.0,
    Time_step_seconds         = 21600,
-   Time_step_days            = 0  /
+   Time_step_days            = 0,
+   impact_only_same_kind     = ' ',
+   /
 

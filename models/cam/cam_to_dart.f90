@@ -44,7 +44,7 @@ character(len=128), parameter :: &
 !-----------------------------------------------------------------------
 
 character (len = 128) :: cam_to_dart_input_file  = 'caminput.nc'
-character (len = 128) :: cam_to_dart_output_file = 'temp_ud'
+character (len = 128) :: cam_to_dart_output_file = 'dart_ics'
 
 namelist /cam_to_dart_nml/ cam_to_dart_input_file, cam_to_dart_output_file
 
