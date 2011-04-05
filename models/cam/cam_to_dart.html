@@ -50,6 +50,14 @@
    <a href="../../utilities/restart_file_tool.html">restart_file_tool</a> if desired.
    <br />
    <br />
+   Some CAM restart files are from climatological runs and have a valid time that
+   predates the use of the Gregorian calendar. In such instances, the year component
+   of the original date is changed to be a valid Gregorian year (by adding 1601).
+   A warning is issued to the screen and to the logfile. Please use the
+   <a href="../../utilities/restart_file_tool.html">restart_file_tool</a> to change
+   this time.  
+   <br />
+   <br />
    Conditions required for successful execution of <em class=program>cam_to_dart</em>:
 </P>
 

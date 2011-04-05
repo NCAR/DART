@@ -556,7 +556,7 @@ data ens_member /0/
 logical                 :: do_out
 
 ! common message string used by many subroutines
-character(len=129) :: msgstring
+character(len=129) :: msgstring, string2
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 integer :: nflds         ! # fields to read
@@ -1762,11 +1762,27 @@ if (present( model_time)) then
    imin   = rem / 60
    isec   = rem - imin*60
 
+   ! some cam files are from before the start of the gregorian calendar. 
+   ! since these are 'arbitrary' years, just change the offset.
+
+   if (iyear < 1601) then
+      write(logfileunit,*)' '
+      write(     *     ,*)' '
+      write(msgstring,*)'WARNING - ',trim(file_name),' changing year from ',iyear,'to',iyear+1601
+      call error_handler(E_MSG, 'read_cam_init', msgstring, source, revision, &
+                   revdate, text2='to make it a valid Gregorian date.')
+      write(logfileunit,*)' '
+      write(     *     ,*)' '
+      iyear = iyear + 1601
+   endif
+
    model_time = set_date(iyear,imonth,iday,ihour,imin,isec)
 
    if (do_out) then
-      call print_date(model_time,'read_cam_init:CAM input date')
-      call print_time(model_time,'read_cam_init:CAM input time')
+      call print_date(model_time,' read_cam_init ... input date')
+      call print_time(model_time,' read_cam_init ... input time')
+      call print_date(model_time,' read_cam_init ... input date',logfileunit)
+      call print_time(model_time,' read_cam_init ... input time',logfileunit)
    endif
 
    deallocate(datetmp, datesec)
