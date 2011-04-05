@@ -1,7 +1,7 @@
 function h = map_wrf(fname, varname, levelindx, timeindx, copystring )
 %% map_wrf creates an image of a WRF field without using the mapping toolbox.
 %
-% Example using a DART-style diagnostic file, i.e.:
+%% Example using a DART-style diagnostic file, i.e.:
 %
 % fname      = '/glade/proj3/image/hliu/200812new/cwb_icbc/12_01/Prior_Diag.nc';
 % varname    = 'U_d01';
@@ -13,7 +13,7 @@ function h = map_wrf(fname, varname, levelindx, timeindx, copystring )
 % axis off;
 %
 %
-% Example using a WRF netCDF file:
+%% Example using a WRF netCDF file:
 %
 % fname      = '/glade/proj3/image/hliu/ICBC_from_cwb/wrfinput_d01';
 % levelindx  = 10;
@@ -22,7 +22,7 @@ function h = map_wrf(fname, varname, levelindx, timeindx, copystring )
 % worldmap;   % superimpose some low-res coastlines 
 % axis off;
 %
-% layer on the locations of some observations:
+%% layer on the locations of some observations:
 %
 % obsfile = 'obs_epoch_001.nc';
 % ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';
