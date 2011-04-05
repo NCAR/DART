@@ -21,7 +21,7 @@ function two_experiments_profile(files, titles, varnames, qtty, prpo)
 % prpo     = 'forecast'; % [guess, forecast, prior     ] == prior
 %
 % two_experiments_profile(files, titles, varnames, qtty, prpo)
-% print -dpsc -painters myplot.ps
+% print -dpdf myplot.pdf
 %
 
 % <next few lines under version control, do not edit>

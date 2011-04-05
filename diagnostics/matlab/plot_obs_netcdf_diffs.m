@@ -28,7 +28,7 @@ function obsstruct = plot_obs_netcdf_diffs(fname, ObsTypeString, region,  ...
 % The 'copies' are recorded in the netCDF 'CopyMetaData' variable - 
 % the observation types are recorded in the 'ObsTypesMetaData' variable, 
 % and the QC strings of interest are recorded in QCMetaData - so
-% ncdump -v CopyMetaData,ObsTypesMetaData,QCMetaData obs_sequence_001.nc
+% ncdump -v CopyMetaData,ObsTypesMetaData,QCMetaData obs_epoch_001.nc
 % is a useful endeavor.
 %
 % $Id$
@@ -38,7 +38,7 @@ function obsstruct = plot_obs_netcdf_diffs(fname, ObsTypeString, region,  ...
 % and the actual observation value - while rejecting any obs that had
 % a DART QC greater than 3 ( prior forward operator failed ... or worse) 
 %--------------------------------------------------
-% fname         = 'obs_sequence_001.nc';
+% fname         = 'obs_epoch_001.nc';
 % ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';
 % region        = [0 360 -90 90 -Inf Inf];
 % CopyString1   = 'NCEP BUFR observation';
