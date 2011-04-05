@@ -1,17 +1,42 @@
-function h = map_wrf(fname, varname, copystring, levelindx, timeindx )
-%% map_wrf creates a map of a WRF field - please check what is supposed to
-%  happen with the staggering.
+function h = map_wrf(fname, varname, levelindx, timeindx, copystring )
+%% map_wrf creates an image of a WRF field without using the mapping toolbox.
 %
-% (rather slow) Example: 
-% fname      = 'Prior_Diag.nc';
+% Example using a DART-style diagnostic file, i.e.:
+%
+% fname      = '/glade/proj3/image/hliu/200812new/cwb_icbc/12_01/Prior_Diag.nc';
 % varname    = 'U_d01';
 % copystring = 'ensemble mean';
 % levelindx  = 10;
 % timeindx   = 1;
+% map_wrf(fname, varname, levelindx, timeindx, copystring);
+% worldmap;
+% axis off;
 %
-% map_wrf(fname, varname, copystring, levelindx, timeindx );
+%
+% Example using a WRF netCDF file:
+%
+% fname      = '/glade/proj3/image/hliu/ICBC_from_cwb/wrfinput_d01';
+% levelindx  = 10;
+% timeindx   = 1;
+% map_wrf(fname, 'U', levelindx, timeindx);
+% worldmap;   % superimpose some low-res coastlines 
+% axis off;
+%
+% layer on the locations of some observations:
+%
+% obsfile = 'obs_epoch_001.nc';
+% ObsTypeString = 'RADIOSONDE_U_WIND_COMPONENT';
+% region        = [0 360 -90 90 -Inf Inf];
+% CopyString    = 'observation';
+% QCString      = 'DART quality control';
+% verbose       = 1;   % anything > 0 == 'true'
+% obs = read_obs_netcdf(obsfile, ObsTypeString, region, CopyString, QCString, verbose);
+% hold on;
+% plot(obs.lons, obs.lats, 'kd', 'MarkerFaceColor','k')
+%
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+
+%% DART software - Copyright ï¿½ 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
@@ -30,50 +55,20 @@ elseif (nargin ~= 5 )
    error('Wrong number of arguments ... must have 3,4, or 5')
 end
 
+% Check to ensure the file and the desired variable exist
+
 if (exist(fname,'file') ~= 2) 
    error('%s does not exist',fname)
 end
 
-varexist(fname,{varname,'time','XLON_d01','XLAT_d01','level_d01', ...
-       'TRUELAT1','TRUELAT2', 'CEN_LAT', 'CEN_LON', 'MAP_PROJ'})
+varexist(fname,{varname})
 
-copyindex = get_copy_index(fname,copystring);
+%% Get the dimension information.
 
-%% Read map metadata
-times    = nc_varget(fname,     'time'); Ntimes = size(times, 1);
-xlon     = nc_varget(fname, 'XLON_d01');  we    = size( xlon, 2);
-xlat     = nc_varget(fname, 'XLAT_d01');  sn    = size( xlat, 1);
-level    = nc_varget(fname,'level_d01');  bt    = size(level, 1);
-
-calendar    = nc_attget(fname, 'time','calendar');
-timeunits   = nc_attget(fname, 'time','units');
-timebase    = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
-timeorigin  = datenum(timebase(1),timebase(2),timebase(3));
-timestrings = datestr(times + timeorigin, 0);
-
-stdlat1  = nc_varget(fname, 'TRUELAT1');
-stdlat2  = nc_varget(fname, 'TRUELAT2');
-cen_lat  = nc_varget(fname,  'CEN_LAT');
-cen_lon  = nc_varget(fname,  'CEN_LON');
-mp       = nc_varget(fname, 'MAP_PROJ')+1;  % convert [0,N-1] to [1,N]
-map_proj = nc_attget(fname, 'MAP_PROJ','units');
-inds     = find((map_proj == ',') | (map_proj == '='));
-map_proj(inds) = ' ';
-[a b] = strread(map_proj,'%s %s','delimiter',' ');
-map_proj = lower(b);
-
-%% Check to make sure longitudes are [0, 360]
-inds = xlon < 0;
-xlon(inds) = xlon(inds) + 360;
-minlat = min(xlat(:)); maxlat = max(xlat(:));
-minlon = min(xlon(:)); maxlon = max(xlon(:));
-hunk.xlat = xlat;
-hunk.xlon = xlon;
-
-%% Set up map projection
-%  may have to translate their projections to matlabs keywords
-
-fprintf('map projection is %s\n',map_proj{mp})
+xy          = GetWRFlatlon( fname, varname);
+levels      = GetWRFlevels( fname, varname);
+times       = GetWRFtimes(  fname, varname);
+timestrings = datestr(times,31);
 
 %% Get the variable units, description, etc.
 % Determine variable to plot ...
@@ -93,14 +88,13 @@ for i = 1:length(varinfo.Attribute)
    end
 end
 
-% iso = [0.5:1:5];
-% iso = [0.01:0.01:0.1];
-% iso = [50:50:300];
-% iso = [0.5:0.5:5];
-% iso = [100:100:600];
-% iso = [0.0001:0.0001:0.001];
-% iso = [0.00001:0.00001:0.0001];
-% iso = [0.00001:0.00001:0.0001];
+copydim = find(strncmp('copy',varinfo.Dimension,length('copy')));
+
+if (isempty(copydim))
+   copyindex = NaN;
+else
+   copyindex = get_copy_index(fname,copystring);
+end
 
 for itime = timeindx
 
@@ -110,71 +104,22 @@ for itime = timeindx
    %% Determine the hyperslab indexing
    
    myinfo.diagn_file = fname;
-   myinfo.copyindex  = copyindex;
+   if (isfinite(copyindex)), myinfo.copyindex  = copyindex; end
    myinfo.levelindex = levelindx;
    myinfo.timeindex  = timeindx;
    [start, count]    = GetNCindices(myinfo, 'diagn', varname);
    
    % Extract field
    
-   stag_field = nc_varget(fname, varname, start, count);
-   field      = zeros(sn,we);
-
-   switch lower(varname)
-     case {'u','u10_d01','u_d01'}
-        for iy = 1:sn
-        for ix = 1:we
-           field(iy,ix) = (stag_field(iy,ix) + stag_field(iy,ix+1))/2.0;
-        end
-        end
-     case {'v','v10_d01','v_d01'}
-        for iy = 1:sn
-        for ix = 1:we
-           field(iy,ix) = (stag_field(iy,ix) + stag_field(iy+1,ix))/2.0;
-        end
-        end
-     otherwise
-        field = stag_field;
-   end
+   datmat = double(nc_varget(fname, varname, start, count));
    
-   % Plot field
+   clf; 
+   h = pcolor(xy.lonmat, xy.latmat, datmat);
+   set(h,'LineStyle','none');
    
-   % subplot(m,m,pane);
-
-   switch lower(map_proj{mp})
-   case 'mercator'
-      axesm(map_proj{mp}, ...
-            'MapParallels',[stdlat1], ...
-            'MapLatLimit',[minlat maxlat], ...
-            'MapLonLimit',[minlon maxlon]);
-      h = gridm('on');
-      % mlabel on;
-      % plabel on;
-   
-   otherwise
-      fprintf('projection %s is not yet supported\n',map_proj{mp})
-   end
-   
-%  states = shaperead('usastatelo', 'UseGeoCoords', true);
-%  geoshow([states.Lat],[states.Lon],'Color','black');
-
-   landareas = shaperead('landareas', 'UseGeoCoords', true);
-   geoshow([landareas.Lat],[landareas.Lon],'Color','black');
-
-   if min(field(:)) ~= max(field(:))
-
-%     disp('contouring (slow) ...')
-%     [C h]=contourm(xlat,xlon,field) ;
-%     h = clabelm(C,h,'labelspacing',288);  set(h,'Fontsize',9);
-   
-      h1 = surfm(xlat,xlon,field);
-   
-      title(plot_title,'Interpreter','none')
-      h2 = colorbar('vert');
-      set(get(h2,'YLabel'),'String',varinfo.units)
-   else
-      error('field is all uniform value')
-   end
+   title(plot_title,'Interpreter','none')
+   h2 = colorbar('vert');
+   set(get(h2,'YLabel'),'String',varinfo.units)
 
 end
 
@@ -190,11 +135,69 @@ gotone = ones(1,nvars);
 for i = 1:nvars
    gotone(i) = nc_isvar(filename,varnames{i});
    if ( ~ gotone(i) )
-      fprintf('\n%s is not a variable in %s\n',varnames{i},filename)
+      warning('\n%s is not a variable in %s\n',varnames{i},filename)
    end
 end
 
 if ~ all(gotone) 
    error('missing required variable ... exiting')
 end
+
+
+
+function xy = GetWRFlatlon(fname, varname);
+%% Each of the WRF variables has a 'coordinate' attribute signifying which
+% of the 6 possible lat/lon variables is appropriate.
+
+coordinates{1} = sscanf(nc_attget(fname,varname,'coordinates'),'%s %*s');
+coordinates{2} = sscanf(nc_attget(fname,varname,'coordinates'),'%*s %s');
+
+latcoord       = find(strncmp('XLAT', coordinates, length('XLAT')) > 0);
+loncoord       = find(strncmp('XLON', coordinates, length('XLON')) > 0);
+xy.latmat      = nc_varget(fname, coordinates{latcoord});
+xy.lonmat      = nc_varget(fname, coordinates{loncoord});
+xy.latunits    = nc_attget(fname, coordinates{latcoord},'units');
+xy.lonunits    = nc_attget(fname, coordinates{latcoord},'units');
+
+inds = (xy.lonmat < 0); % Convert to 0,360 to minimize dateline probs.
+xy.lonmat(inds) = xy.lonmat(inds) + 360.0;
+
+
+
+function levels = GetWRFlevels(fname, varname);
+%% Return the appropriate vertical indices.
+
+varinfo = nc_getvarinfo(fname,varname);
+lvlind  = find(strncmp('bottom_top',varinfo.Dimension,length('bottom_top')));
+nlevels = varinfo.Size(lvlind);
+levels  = 1:nlevels;
+
+
+
+function times = GetWRFtimes(fname, varname);
+%% Return the appropriate time coordinates.
+%  DART files use 'time' as a real array
+%  WRF  files use 'Time' as a character string
+
+varinfo = nc_getvarinfo(fname,varname);
+timeind = find(strncmp('time',varinfo.Dimension,length('time')));
+
+if (isempty(timeind)) % WRF flavor Time variable.
+    timeind = find(strncmp('Time',varinfo.Dimension,length('Time')));
+    if (isempty(timeind)), error('%s has no time information. Dying.'); end
+    timestr  = nc_varget(fname, 'Times');  % Note the plural ... seeth.
+    timebase = sscanf(timestr,'%d%*c%d%*c%d%*c%d%*c%d%*c%d'); % YYYY MM DD HH MM SS
+    times    = datenum(timebase');
+
+else
+    times       = nc_varget(fname, 'time');
+    calendar    = nc_attget(fname, 'time','calendar');
+    timeunits   = nc_attget(fname, 'time','units');
+    timebase    = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
+    timeorigin  = datenum(timebase(1),timebase(2),timebase(3));
+    times       = times + timeorigin;
+ 
+end
+
+
 
