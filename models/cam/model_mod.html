@@ -3,24 +3,37 @@
 <HTML>
 <HEAD>
 <TITLE>module model_mod (CAM)</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Interface">INTERFACES</A> /
+<H1>MODULE model_mod (CAM)</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>MODULE model_mod (CAM)</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
 
 <P>
 The 17 public interfaces in model_mod
@@ -87,6 +100,160 @@ using CAM and parallel architecture computers, including:
     <LI> space requirements of various CAM resolutions</LI>
 </UL> 
 
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<HR>
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+The declarations have a different syntax, naturally.
+</P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / model_nml / </em> &amp;
+     output_state_vector,  model_version,  model_config_file,          &amp;  
+       state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d,   &amp;  
+     state_names_0d, state_names_1d, state_names_2d, state_names_3d,   &amp;
+                      which_vert_1d,  which_vert_2d,  which_vert_3d,   &amp;
+     pert_names, pert_sd, pert_base_vals,                              &amp;
+     highest_obs_pressure_mb, highest_state_pressure_mb,               &amp;
+     max_obs_lat_degree, Time_step_seconds, Time_step_days
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
+The specification of lists of names and numbers for the various dimensions 
+enables the very flexible definition of the state vector.  It can be
+done via the namelist, instead of recompiling DART for each different set.
+One hurdle that still remains is that distinct filter_ics are
+necessary for each separate set of fields which compose the state vector.
+</P>
+
+<P>
+The dimension of these lists is currently hardwired to size 100. 
+If more variables types need to be assimilated (e.g. many chemical species),
+look for the integer parameter MAX_STATE_NAMES in the source code
+and change it to a long enough value and recompile DART.
+Longer term we intend to investigate using 2 different nameslists
+inside model_mod; one for setting the length of the lists and another
+to actually read in the data which fills the lists.
+</P>
+
+<P>
+The values for which_vert_#d is described in 
+DART/location/threed_sphere/location_mod.html.
+</P>
+
+<P>
+The names of the fields to put into the state vector come from the CAM initial
+file field names.
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+<TR><!--contents--><TD valign=top>output_state_vector  </TD>
+    <!--  type  --><TD valign=top>logical              </TD>
+    <!--descript--><TD>Controls the output to netCDF files. 
+     If .true., output the raw dart state vector. If .false.,
+     output the prognostic flavor (gridded data) for easier 
+     plotting (recommended).  Defaults to .false.</TD></TR>
+<TR><!--contents--><TD valign=top>model_version        </TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
+    <!--descript--><TD>The number of the CAM version being 
+       used, i.e. '3.0.7'.  (no letters allowed, so rename cam3_0_p1)
+                     Default = '3.0' .</TD></TR>
+<TR><!--contents--><TD valign=top>model_config_file    </TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
+    <!--descript--><TD>CAM initial file used to provide 
+       configuration information.  Default 'caminput.nc'.</TD></TR>
+<TR><!--contents--><TD valign=top>state_num_#d, #=0,1,2,3   </TD>
+    <!--  type  --><TD valign=top>integer                   </TD>
+    <!--descript--><TD>Numbers of fields of various dimensions to put 
+                     into the state vector.
+                     Defaults state_num_0d=0, _1d=0, _2d=1, _3d=4 .</TD></TR>
+<TR><!--contents--><TD valign=top>state_names_#d, #=0,1,2,3        </TD>
+    <!--  type  --><TD valign=top>character(len=8), dimension(100)  </TD>
+    <!--descript--><TD>Names of fields of various dimensions to put 
+                      into the state vector.  Defaults
+<PRE>state_names_0d='        ', state_names_1d='        ',
+state_names_2d='PS      '
+state_names_3d='T       ','U       ','V       ','Q       '</PRE>
+     </TD></TR>
+<TR><!--contents--><TD valign=top>which_vert_#d, #=1,2,3           </TD>
+    <!--  type  --><TD valign=top>integer, dimension(100)           </TD>
+    <!--descript--><TD>Vertical location types of fields in 
+                 state_names_#d.  Defaults 
+                       <UL><LI> which_vert_1d = state_num_1d*-2, 
+                           <LI> which_vert_2d = state_num_2d*-1, 
+                           <LI> which_vert_3d = state_num_3d* 1 </UL> </TD></TR>
+<TR><!--contents--><TD valign=top>pert_names                         </TD>
+    <!--  type  --><TD valign=top>character(len=8), dimension(100)    </TD>
+    <!--descript--><TD>List of field(s) whose values need to be changed at or before 
+                       the beginning of an assimilation.  To make filter generate
+                       an ensemble from a single model state by randomly perturbing it,
+                       list the fields to be perturbed here.  To make trans_pv_sv_pert0
+                       reset a single field to a constant value, list that field here.
+                       Trans_pv_sv_pert0 would be run as many times as there are ensemble
+                       members (see pert_base_vals), in order to provide spread to that 
+                       variable. 
+                       Defaults <BR>
+                      <PRE>pert_names='        ' </PRE></TD></TR>
+<TR><!--contents--><TD valign=top>pert_sd                            </TD>
+    <!--  type  --><TD valign=top>real(r8), dimension(100)    </TD>
+    <!--descript--><TD>If positive, it's the standard deviation of the 
+     perturbation for each field in the pert_names list (filter).  
+     If negative, then pert_names can contain only one entry, and that field 
+     will be set to a different constant value for each ensemble member 
+     (trans_pv_sv_pert0).  Those values come from pert_base_vals.
+                       Defaults to a MISSING real value and
+                       unused unless pert_names is set.  </TD></TR>
+<TR><!--contents--><TD valign=top>pert_base_vals              </TD>
+    <!--  type  --><TD valign=top>real(r8), dimension(100)    </TD>
+    <!--descript--><TD>If pert_sd (yes, 'sd') is negative, this is the list of 
+       values to use for each ensemble member when perturbing the single 
+       field named in pert_names.
+       Otherwise, it's the list of values to which the fieldS listed in
+       pert_names will be reset if filter is told to create an ensemble from
+       a single state vector.
+       Defaults to a MISSING real value and unused unless pert_names 
+       is set and pert_base_vals is /= this missing value (-888888.0d0).  </TD></TR>
+<TR><!--contents--><TD valign=top>max_obs_lat_degree             </TD>
+    <!--  type  --><TD valign=top>real(r8)                       </TD>
+    <!--descript--><TD>Observations closer to the poles than this 
+                       latitude will be ignored.
+                       Default 90 degrees </TD></TR>
+<TR><!--contents--><TD valign=top>highest_obs_pressure_mb       </TD>
+    <!--  type  --><TD valign=top>real(r8)                      </TD>
+    <!--descript--><TD>Observations higher than this pressure are ignored.
+                       Default  150.0 hPa </TD></TR>
+<TR><!--contents--><TD valign=top>highest_state_pressure_mb     </TD>
+    <!--  type  --><TD valign=top>real(r8)                      </TD>
+    <!--descript--><TD>Influence of all obs on model points higher than 
+                       this is reduced.
+                       Default  150.0 hPa </TD></TR>
+<TR><!--contents--><TD valign=top>Time_step_seconds          </TD>
+    <!--  type  --><TD valign=top>real(r8)                   </TD>
+    <!--descript--><TD>Forecast duration (the part &#60; 1 day)
+                       Default  21600 sec </TD></TR>
+<TR><!--contents--><TD valign=top>Time_step_days             </TD>
+    <!--  type  --><TD valign=top>real(r8)                   </TD>
+    <!--descript--><TD>Forecast duration (the part &#62; 24*3600 sec)
+                       Default  0 days </TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
@@ -608,10 +775,10 @@ the basic state field, but an actual physical size.
 </P>
 
 <P>
-This subroutine is also used by trans_pv_sv_pert0 for the off-line
+This subroutine is also used by <em class=program>trans_pv_sv_pert0</em> for the off-line
 perturbation of fields the model considers to be parameters.  In this use a
 new random sequence seed must be provided via an input file ("ens_member")
-for each ensemble member, since trans_pv_sv_pert0 is executed once for each
+for each ensemble member, since <em class=program>trans_pv_sv_pert0</em> is executed once for each
 member and can't keep a series of different seeds intact.  
 </P>
 
@@ -738,157 +905,6 @@ state is always to be provided from input files.
 <TR><TD valign=top><em class=code>x</em></TD>
     <TD>Model state vector.</TD></TR>
 
-</TABLE>
-
-</div>
-<br>
-
-<!--===================== DESCRIPTION OF A NAMELIST =====================-->
-
-<A NAME="Namelist"></A>
-<HR>
-<H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-The declarations have a different syntax, naturally.
-</P>
-<div class=namelist>
-<pre>
-<em class=call>namelist / model_nml / </em> &amp;
-     output_state_vector,  model_version,  model_config_file,          &amp;  
-       state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d,   &amp;  
-     state_names_0d, state_names_1d, state_names_2d, state_names_3d,   &amp;
-                      which_vert_1d,  which_vert_2d,  which_vert_3d,   &amp;
-     pert_names, pert_sd, pert_base_vals,                              &amp;
-     highest_obs_pressure_mb, highest_state_pressure_mb,               &amp;
-     max_obs_lat_degree, Time_step_seconds, Time_step_days
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-The specification of lists of names and numbers for the various dimensions 
-enables the very flexible definition of the state vector.  It can be
-done via the namelist, instead of recompiling DART for each different set.
-One hurdle that still remains is that distinct filter_ics are
-necessary for each separate set of fields which compose the state vector.
-</P>
-
-<P>
-The dimension of these lists is currently hardwired to size 100. 
-If more variables types need to be assimilated (e.g. many chemical species),
-look for the integer parameter MAX_STATE_NAMES in the source code
-and change it to a long enough value and recompile DART.
-Longer term we intend to investigate using 2 different nameslists
-inside model_mod; one for setting the length of the lists and another
-to actually read in the data which fills the lists.
-</P>
-
-<P>
-The values for which_vert_#d is described in 
-DART/location/threed_sphere/location_mod.html.
-</P>
-
-<P>
-The names of the fields to put into the state vector come from the CAM initial
-file field names.
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>output_state_vector  </TD>
-    <!--  type  --><TD valign=top>logical              </TD>
-    <!--descript--><TD>Controls the output to netCDF files. 
-     If .true., output the raw dart state vector. If .false.,
-     output the prognostic flavor (gridded data) for easier 
-     plotting (recommended).  Defaults to .false.</TD></TR>
-<TR><!--contents--><TD valign=top>model_version        </TD>
-    <!--  type  --><TD valign=top>character(len=128)   </TD>
-    <!--descript--><TD>The number of the CAM version being 
-       used, i.e. '3.0.7'.  (no letters allowed, so rename cam3_0_p1)
-                     Default = '3.0' .</TD></TR>
-<TR><!--contents--><TD valign=top>model_config_file    </TD>
-    <!--  type  --><TD valign=top>character(len=128)   </TD>
-    <!--descript--><TD>CAM initial file used to provide 
-       configuration information.  Default 'caminput.nc'.</TD></TR>
-<TR><!--contents--><TD valign=top>state_num_#d, #=0,1,2,3   </TD>
-    <!--  type  --><TD valign=top>integer                   </TD>
-    <!--descript--><TD>Numbers of fields of various dimensions to put 
-                     into the state vector.
-                     Defaults state_num_0d=0, _1d=0, _2d=1, _3d=4 .</TD></TR>
-<TR><!--contents--><TD valign=top>state_names_#d, #=0,1,2,3        </TD>
-    <!--  type  --><TD valign=top>character(len=8), dimension(100)  </TD>
-    <!--descript--><TD>Names of fields of various dimensions to put 
-                      into the state vector.  Defaults
-<PRE>state_names_0d='        ', state_names_1d='        ',
-state_names_2d='PS      '
-state_names_3d='T       ','U       ','V       ','Q       '</PRE>
-     </TD></TR>
-<TR><!--contents--><TD valign=top>which_vert_#d, #=1,2,3           </TD>
-    <!--  type  --><TD valign=top>integer, dimension(100)           </TD>
-    <!--descript--><TD>Vertical location types of fields in 
-                 state_names_#d.  Defaults 
-                       <UL><LI> which_vert_1d = state_num_1d*-2, 
-                           <LI> which_vert_2d = state_num_2d*-1, 
-                           <LI> which_vert_3d = state_num_3d* 1 </UL> </TD></TR>
-<TR><!--contents--><TD valign=top>pert_names                         </TD>
-    <!--  type  --><TD valign=top>character(len=8), dimension(100)    </TD>
-    <!--descript--><TD>List of field(s) whose values need to be changed at or before 
-                       the beginning of an assimilation.  To make filter generate
-                       an ensemble from a single model state by randomly perturbing it,
-                       list the fields to be perturbed here.  To make trans_pv_sv_pert0
-                       reset a single field to a constant value, list that field here.
-                       Trans_pv_sv_pert0 would be run as many times as there are ensemble
-                       members (see pert_base_vals), in order to provide spread to that 
-                       variable. 
-                       Defaults <BR>
-                      <PRE>pert_names='        ' </PRE></TD></TR>
-<TR><!--contents--><TD valign=top>pert_sd                            </TD>
-    <!--  type  --><TD valign=top>real(r8), dimension(100)    </TD>
-    <!--descript--><TD>If positive, it's the standard deviation of the 
-     perturbation for each field in the pert_names list (filter).  
-     If negative, then pert_names can contain only one entry, and that field 
-     will be set to a different constant value for each ensemble member 
-     (trans_pv_sv_pert0).  Those values come from pert_base_vals.
-                       Defaults to a MISSING real value and
-                       unused unless pert_names is set.  </TD></TR>
-<TR><!--contents--><TD valign=top>pert_base_vals              </TD>
-    <!--  type  --><TD valign=top>real(r8), dimension(100)    </TD>
-    <!--descript--><TD>If pert_sd (yes, 'sd') is negative, this is the list of 
-       values to use for each ensemble member when perturbing the single 
-       field named in pert_names.
-       Otherwise, it's the list of values to which the fieldS listed in
-       pert_names will be reset if filter is told to create an ensemble from
-       a single state vector.
-       Defaults to a MISSING real value and unused unless pert_names 
-       is set and pert_base_vals is /= this missing value (-888888.0d0).  </TD></TR>
-<TR><!--contents--><TD valign=top>max_obs_lat_degree             </TD>
-    <!--  type  --><TD valign=top>real(r8)                       </TD>
-    <!--descript--><TD>Observations closer to the poles than this 
-                       latitude will be ignored.
-                       Default 90 degrees </TD></TR>
-<TR><!--contents--><TD valign=top>highest_obs_pressure_mb       </TD>
-    <!--  type  --><TD valign=top>real(r8)                      </TD>
-    <!--descript--><TD>Observations higher than this pressure are ignored.
-                       Default  150.0 hPa </TD></TR>
-<TR><!--contents--><TD valign=top>highest_state_pressure_mb     </TD>
-    <!--  type  --><TD valign=top>real(r8)                      </TD>
-    <!--descript--><TD>Influence of all obs on model points higher than 
-                       this is reduced.
-                       Default  150.0 hPa </TD></TR>
-<TR><!--contents--><TD valign=top>Time_step_seconds          </TD>
-    <!--  type  --><TD valign=top>real(r8)                   </TD>
-    <!--descript--><TD>Forecast duration (the part &#60; 1 day)
-                       Default  21600 sec </TD></TR>
-<TR><!--contents--><TD valign=top>Time_step_days             </TD>
-    <!--  type  --><TD valign=top>real(r8)                   </TD>
-    <!--descript--><TD>Forecast duration (the part &#62; 24*3600 sec)
-                       Default  0 days </TD></TR>
 </TABLE>
 
 </div>
