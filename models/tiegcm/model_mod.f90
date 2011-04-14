@@ -521,12 +521,15 @@ else
 
 endif
 
-if ((obs_kind == KIND_ELECTRON_DENSITY) .or. &
-    (obs_kind == KIND_PRESSURE) ) then
+if (obs_kind == KIND_PRESSURE) then
 
   val = exp(frac_lev * log(val_bottom)  +  (1.0 - frac_lev) * log(val_top))
 
-else
+else 
+!KIND_ELECTRON_DENSITY 
+!KIND_TEMPERATURE 
+!KIND_MOLEC_OXYGEN_MIXING_RATIO
+!KIND_ATOMIC_OXYGEN_MIXING_RATIO
 
   val = frac_lev * val_bottom  +  (1.0 - frac_lev) * val_top
 
