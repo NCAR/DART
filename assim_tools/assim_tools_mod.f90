@@ -236,7 +236,7 @@ if (do_output()) then
       write(errstring, '(A,I10,A)') 'Using adaptive localization, threshold ', &
          adaptive_localization_threshold, ' obs'
       call error_handler(E_MSG,'assim_tools_init:', errstring)
-      if(adaptive_cutoff_floor > 0.0_r8) then
+      if(adaptive_cutoff_floor > 0) then
          write(errstring, '(A,F18.6)') 'Minimum cutoff will not go below ', &
             adaptive_cutoff_floor
          call error_handler(E_MSG,'assim_tools_init:', 'Using adaptive localization cutoff floor.', &
@@ -247,10 +247,6 @@ if (do_output()) then
    if(output_localization_diagnostics) then
       call error_handler(E_MSG,'assim_tools_init:', 'Writing localization diagnostics to file:')
       call error_handler(E_MSG,'assim_tools_init:', trim(localization_diagnostics_file))
-   endif
-
-   if(sampling_error_correction) then
-      call error_handler(E_MSG,'assim_tools_init:', 'Using Sampling Error Correction')
    endif
 endif
 
@@ -584,9 +580,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       grp_bot = grp_beg(group)
       grp_top = grp_end(group)
       obs_prior_mean(group) = sum(obs_prior(grp_bot:grp_top)) / grp_size
-      obs_prior_var(group) = sum((obs_prior(grp_bot:grp_top) - obs_prior_mean(group))**2) / &
-         (grp_size - 1)
-      if (obs_prior_var(group) < 0.0_r8) obs_prior_var(group) = 0.0_r8
+      obs_prior_var(group)  = sum(obs_prior(grp_bot:grp_top) * obs_prior(grp_bot:grp_top)) - &
+         grp_size * obs_prior_mean(group)**2
    end do
 
    ! Need to get obs density first in case of adaptive localization
@@ -743,7 +738,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                obs_prior_var(group), obs_inc(grp_bot:grp_top), &
                ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
                increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
-         else
+            else
             call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
                obs_prior_var(group), obs_inc(grp_bot:grp_top), &
                ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
@@ -893,7 +888,7 @@ if (get_close_buffering .and. .true.) then
                 num_close_obs_buffered + num_close_states_buffered
       if (num_close_obs_buffered+num_close_obs_calls_made+ &
           num_close_states_buffered+num_close_states_calls_made > 0) then 
-         print *, "Percent saved: ", 100.0_r8 * &
+         print *, "Percent saved: ", 100. * &
                    (real(num_close_obs_buffered+num_close_states_buffered, r8) /  &
                    (num_close_obs_calls_made+num_close_obs_buffered+ &
                     num_close_states_calls_made+num_close_states_buffered))
@@ -1427,15 +1422,15 @@ real(r8),           intent(out)   :: state_inc(ens_size), reg_coef
 real(r8),           intent(inout) :: net_a
 real(r8), optional, intent(inout) :: correl_out
 
-real(r8) :: obs_state_cov
+real(r8) :: t(ens_size), obs_state_cov
 real(r8) :: restoration_inc(ens_size), state_mean, state_var, correl
 real(r8) :: factor, exp_true_correl, mean_factor
 
 ! For efficiency, just compute regression coefficient here unless correl is needed
-state_mean = sum(state) / ens_size
-obs_state_cov = sum( (state - state_mean) * (obs - obs_prior_mean) ) / (ens_size - 1)
+t = obs - obs_prior_mean
+obs_state_cov = sum(t * state)
 
-if (obs_prior_var > 0.0_r8) then
+if (obs_prior_var /= 0.0_r8) then
    reg_coef = obs_state_cov/obs_prior_var
 else
    reg_coef = 0.0_r8
@@ -1444,9 +1439,8 @@ endif
 ! If correl_out is present, need correl for adaptive inflation
 ! Also needed for file correction below
 if(present(correl_out) .or. sampling_error_correction) then
-   state_var = sum((state - state_mean)**2) / (ens_size - 1)
-   if (state_var < 0.0_r8) state_var = 0.0_r8
-   if ((obs_prior_var <= 0.0_r8) .or. (state_var <= 0.0_r8)) then
+   state_var = sum(state * state) - sum(state)**2 / ens_size
+   if(obs_prior_var * state_var <= 0.0_r8) then
       correl = 0.0_r8
    else
       correl = obs_state_cov / sqrt(obs_prior_var * state_var)
@@ -1461,6 +1455,7 @@ if(present(correl_out)) correl_out = correl
 ! Get the expected actual correlation and the regression weight reduction factor
 if(sampling_error_correction) then
    call get_correction_from_file(ens_size, correl, mean_factor, exp_true_correl)
+   !write(*, *) correl, exp_true_correl, mean_factor
    ! Watch out for division by zero; if correl is really small regression is safely 0
    if(abs(correl) > 0.001) then
       reg_coef = reg_coef * (exp_true_correl / correl) * mean_factor
@@ -1493,7 +1488,7 @@ if(spread_restoration) then
    ! the reciprocal of the ensemble_size (slope = 0.80 / ens_size). These are empirical
    ! for now. See also README in spread_restoration_paper documentation.
    !!!factor = 1.0_r8 / (1.0_r8 + (net_a - 1.0_r8) * (0.8_r8 / ens_size)) - 1.0_r8
-   factor = 1.0_r8 / (1.0_r8 + (net_a - 1.0_r8) / (-2.4711_r8 + 1.6386_r8 * ens_size)) - 1.0_r8
+   factor = 1.0_r8 / (1.0_r8 + (net_a - 1.0_r8) / (-2.4711 + 1.6386 * ens_size)) - 1.0_r8
    !!!factor = 1.0_r8 / (1.0_r8 + (net_a**2 - 1.0_r8) * (-0.0111_r8 + .8585_r8 / ens_size)) - 1.0_r8
 
    ! Variance restoration
@@ -1501,15 +1496,6 @@ if(spread_restoration) then
    restoration_inc = factor * (state - state_mean)
    state_inc = state_inc + restoration_inc
 endif
-
-!! NOTE:  if requested to be returned, correl_out is set further up in the
-!! code, before the sampling error correction, if enabled, is applied.
-!! this means it's returning a different larger value than the correl 
-!! being returned here.  it's used by the adaptive inflation and so the
-!! inflation will see a slightly different correlation value.  it isn't
-!! clear that this is a bad thing; it means the inflation might be a bit
-!! larger than it would otherwise.  before we move any code this would
-!! need to be studied to see what the real impact would be.
 
 end subroutine update_from_obs_inc
 
@@ -1568,7 +1554,8 @@ if(first_get_correction) then
    first_get_correction = .false.
 endif
 
-! Interpolate to get values of expected correlation and mean_factor
+
+! First quick modification of correl to expected true correl for test (should interp)
 if(scorrel < -1.0_r8) then
    correl = -1.0_r8
    mean_factor = 1.0_r8
@@ -1576,41 +1563,28 @@ else if(scorrel > 1.0_r8) then
    correl = 1.0_r8
    mean_factor = 1.0_r8
 else if(scorrel <= -0.995_r8) then
-   fract = (scorrel + 1.0_r8) / 0.005_r8
+   fract = (scorrel + 1.0_r8) / 0.05_r8
    correl = (exp_true_correl(1) + 1.0_r8) * fract - 1.0_r8
    mean_factor = (alpha(1) - 1.0_r8) * fract + 1.0_r8
 else if(scorrel >= 0.995_r8) then
-   fract = (scorrel - 0.995_r8) / 0.005_r8
+   fract = (scorrel - 0.995_r8) / 0.05_r8
    correl = (1.0_r8 - exp_true_correl(200)) * fract + exp_true_correl(200)
    mean_factor = (1.0_r8 - alpha(200)) * fract + alpha(200)
 else
-   !low_indx = floor((scorrel + 0.995_r8) / 0.01_r8 + 1.0_r8)
-   !if(low_indx < 1) low_indx = 1
-   !if(low_indx > 199) low_indx = 199
-   low_indx = min(floor((scorrel + 0.995_r8) / 0.01_r8 + 1.0_r8), 199)
-   low_correl = -0.995_r8 + (low_indx - 1) * 0.01_r8
+   low_indx = floor((scorrel + 0.995_r8) / 0.01_r8 + 1.0_r8)
+   low_correl = -0.995_r8 + (low_indx - 1) * 0.01
    low_exp_correl = exp_true_correl(low_indx)
    low_alpha = alpha(low_indx)
    high_indx = low_indx + 1
-   high_correl = low_correl + 0.01_r8
+   high_correl = low_correl + 0.01
    high_exp_correl = exp_true_correl(high_indx)
-   high_alpha = alpha(high_indx)
+   high_alpha = alpha(low_indx)
    fract = (scorrel - low_correl) / (high_correl - low_correl)
    correl = (high_exp_correl - low_exp_correl) * fract + low_exp_correl
    mean_factor = (high_alpha - low_alpha) * fract + low_alpha
 endif
 
-expected_true_correl = correl 
-
-! Don't want Monte Carlo interpolation problems to put us outside of a
-! ratio between 0 and 1 for expected_true_correl / sample_correl
-! If they have different signs, expected should just be 0
-if(expected_true_correl * scorrel <= 0.0_r8) then
-   expected_true_correl = 0.0_r8
-else if(abs(expected_true_correl) > abs(scorrel)) then
-   ! If same sign, expected should not be bigger in absolute value
-   expected_true_correl = scorrel
-endif 
+expected_true_correl = correl
 
 end subroutine get_correction_from_file
 
