@@ -117,7 +117,8 @@ obsloop: do    ! no end limit - have the loop break when input ends
    !  location: lat, lon, and height in pressure or meters
    !  time: when the observation was taken
    !  type: from the DART list of obs types
-   !  error: very important - the instrument error plus model error
+   !  error: very important - the instrument error plus representativeness error
+   !        (see html file for more info)
 
    ! assume here a line is a type (1/2), location, time, value, obs error
 

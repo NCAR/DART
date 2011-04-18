@@ -2,25 +2,40 @@
           "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
-<TITLE>MADIS Data</TITLE>
+<TITLE>program text_to_obs</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link href="../../doc/html/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Overview">OVERVIEW</A> /
+<H1>PROGRAM <em class=program>text_to_obs</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#DataSources">DATA SOURCES</A> /
 <A HREF="#Programs">PROGRAMS</A> /
-<A HREF="#KnownBugs">KNOWN BUGS</A> /
-<A HREF="#FuturePlans">FUTURE PLANS</A> /
+<A HREF="#Decisions">DECISIONS</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> / 
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>Simple Text File to DART Converter</H1>
-<small><P>
-<!-- version tag follows, do not edit -->$Id$
-</P></small>
+<H1>Overview</H1>
+
+<H4>Text File to DART Converter</H4>
 
 <P>
 If you have observations in spreadsheet or column format, in text, 
@@ -29,20 +44,26 @@ are a template for how to convert these observations
 into a format suitable for DART use.
 </P>
 <P>
-The workflow is you collect the needed information about each
+The workflow is usually: 
+<ul>
+<li>read in the needed information about each
 observation - location, time, data value, observation type - from 
-your data source, and then
-call a series of DART library routines to construct a derived type that
-contains all the observation information.  Then another set of DART library
-routines puts them into a time-sorted series.  And finally, the last
-routine is a write subroutine that writes out the series to a file.
+a data source (usually a file)</li>
+<li>call a series of DART library routines to construct a derived type that
+contains all the information about a single observation</li>
+<li>call another set of DART library
+routines to put it into a time-sorted series</li>
+<li>repeat the last 2 steps until all observations are processed</li>
+<li>finally, call a write subroutine that writes out the entire series to a file in 
+a format that DART can read in</li>
+</ul>
 It is not recommended that you try to mimic the ascii file format
 by other means; the format is subject to change and the library routines
 will continue to be supported even if the physical format changes.
 </P>
 <P>
 If your input data is in some kind of format like netCDF or HDF,
-then one of the other converters (the MADIS ones for netCDF) might
+then one of the other converters (e.g. the MADIS ones for netCDF) might
 be a better starting place for adapting code.
 </P>
 
@@ -54,10 +75,12 @@ be a better starting place for adapting code.
 <H2>DATA SOURCES</H2>
 
 <P>
-This part is up to you.  You will need a location, a value,
-a type, and some kind of error estimate.  The error estimate
-can be hardcoded in the converter if it's not available in
-the input data.
+This part is up to you.  
+For each observation you will need a location, a data value,
+a type, a time, and some kind of error estimate.  The error 
+estimate can be hardcoded in the converter if they are not 
+available in the input data.  See below for more details on 
+selecting an appropriate error value.
 </P>
 
 <!--==================================================================-->
@@ -66,29 +89,33 @@ the input data.
 <HR>
 <H2>PROGRAMS</H2>
 <P>
-The <em class=file>text_to_obs.f90</em> file is the main converter.
-Look at the source code where it reads the sample data file.  You will
-almost certainly need to change the read to match your data.  The
-sample code provided reads in each text line into a character buffer
-and then uses reads from that buffer to parse up the data items.
-</P>
-<P>
+The <em class=file>text_to_obs.f90</em> file is the source
+for the main converter program.
+Look at the source code where it reads the example data file.  You will
+almost certainly need to change the "read" statement to match your data
+format.  The example code 
+reads each text line into a character buffer
+and then reads from that buffer to parse up the data items.
+</P> <P>
 To compile and test,
 go into the work subdirectory and run the <em class=file>quickbuild.csh</em>
 script to build the converter and a couple of general purpose utilities.
-<em class=file>advance_time</em> helps compute times, and
+<em class=file>advance_time</em> helps with calendar and time computations,
+and the
 <em class=file>obs_sequence_tool</em> manipulates DART observation files
 once they have been created.
 </P>
 <P>
-To add different observation types, look in the 
+To change the observation types, look in the 
 <em class=file>DART/obs_def</em> directory.  If you can
 find an obs_def_XXX_mod.f90 file with an appropriate set
-of observations, put that name in the <em class=file>input.nml</em>
-namelist file, in the &amp;preprocess_nml namelist, 'input_files'.
-Multiples can be listed.  Then run quickbuild.csh again to remake
-the table of supported observation types before trying to recompile
-the source code.
+of observation types, change the 'use' lines in the converter
+source to include those types.  Then add that filename in the 
+<em class=file>input.nml</em> namelist file
+to the &amp;preprocess_nml namelist, the 'input_files' variable.
+Multiple files can be listed.  Then run quickbuild.csh again.
+It remakes the table of supported observation types before 
+trying to recompile the source code.
 </P>
 <P>
 An example script for converting batches of files is
@@ -99,6 +126,117 @@ certainly need to be customized for your use.  There are comments
 at the top of the script saying what options they include, and
 should be commented enough to indicate where changes will be
 likely to need to be made.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Decisions"></A>
+<HR>
+<H2>DECISIONS YOU MIGHT NEED TO MAKE</H2>
+
+<H4>Time</H4>
+
+<P>
+The basic time type in DART is a pair of integers; one for
+the day number and one for the number of seconds.  For some
+of the simple models which aren't direct geophysical models
+time can start at day 0 and increment in any appropriate
+number of seconds or days.  For a model of a real-world system
+it is likely to have observations with a year/month/day,
+hour/min/seconds timestamp.  There are routines in DART
+to convert back and forth between the (day-number/seconds) 
+format and a variety of (year/month/day) calendars. 
+See <a href="../../time_manager/time_manager_mod.html#time_type">here</a>
+for more details on how DART stores time information and
+the types of available calendars.
+</P>
+
+<H4>Error</H4>
+
+<P>
+Each observation must specify an associated error.
+There is an error value per individual observation.
+It can be a constant value for all observations
+of that type, or it
+can vary by location, by height, by magnitude of the
+observed value, etc.  
+This value is the expected instrument error plus
+the representativeness error of the model.  
+The model error includes deficiencies
+in the equations representing the processes of the system
+as well as errors introduced by representing a continuous
+system as a series of discrete points.
+While the instrument error and the representativeness error
+could be specified separately, they each have the same
+impact on the assimilation and can be difficult to determine
+with any real accuracy.  For simplicity, in DART (and
+most current assimilation software) they are
+combined and specified as a single value.
+</P><P>
+The instrument error is generally supplied by the instrument
+maker.  Sadly, however, it is frequently surprisingly
+difficult to find these values.
+For the representativeness error, a set of artificial
+observations could be generated with the 
+<a href="../../perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>
+program and an assimilation experiment could be run to
+generate an estimate of the error in the model.
+In practice however most people make an educated guess
+on the values of the error and then start with a larger than
+expected value and decrease it based on the results of
+running some test assimilations.
+For these tests the namelist for the
+<a href="../../filter/filter.html#Namelist">outlier threshold</a> 
+should be disabled by setting it to -1 (the default value is 3). 
+This value controls whether the observation is rejected
+because the observed value is too far from the ensemble mean.
+</P><P>
+If the diagnostics show that the difference between the mean of
+the forward operators and the observed value is consistently 
+smaller than the specified observation error, then the error 
+is probably too large.  
+A too-large error reduces the impact of an
+observation on the state.
+If the specified observation error is too small it is
+likely the observation will be rejected when the outlier
+threshold is enabled, and the observation will not be 
+assimilated.  It is important
+to look at the output observation sequence files after an assimilation
+to see how many observations were assimilated or rejected, and at
+the error and spread of the ensemble mean compared to the observation
+values.
+</P><P>
+One last recommendation: if possible, the Prior forward operator values
+should be compared against the observations after several assimilation
+cycles.  If you plot results using the Posterior values
+it is always possible for the assimilation to overfit the
+observations and look good on the diagnostic plots.  But the
+actual test is to then advance the model and look at how the
+forecast of the state compares to the observations.
+</P>
+
+<H4>Types</H4>
+
+<P>
+All observations have to have a specific 'type'.  
+There are namelist controls
+to turn on and off the assimilation of observations at run-time
+by type, or to only evaluate the forward operator for an observation
+but have no impact on the state.  
+Several of the diagnostics also group observations by
+type to give aggregate statistics after an assimilation.
+Generally types are based on both the observing platform or
+instrument as well as the kind of observation, 
+e.g. RADIOSONDE_TEMPERATURE, ARGO_SALINITY, etc.
+Each type is associated with a single underlying generic 'kind',
+which controls what forward operator code is called inside the
+model, e.g. KIND_TEMPERATURE, KIND_DENSITY, etc.
+</P><P>
+See <a href="../../obs_def/obs_def_mod.html">here</a> for more
+details on how to use and add new DART types.
+The DART obs_kind_mod.f90 defines a list of already defined
+observation kinds, and users can either use existing observation
+types in 'obs_def_xxx_mod.f90' files, or define their own.
 </P>
 
 <!--==================================================================-->
