@@ -239,6 +239,20 @@ observation kinds, and users can either use existing observation
 types in 'obs_def_xxx_mod.f90' files, or define their own.
 </P>
 
+<H4>Locations</H4>
+
+<P>
+The two most common choices for specifying the location of an
+observation are the 
+<a href="../../location/threed_sphere/location_mod.html">threed_sphere</a>
+and the
+<a href="../../location/oned/location_mod.html">oned</a>
+locations.  For observations of a real-world system, the 3D Sphere
+is generally the best choice.  For low-order, 1D models, the oned
+locations are the most commonly used.  The observation locations
+need to match the type of locations used in the model.
+</P> 
+
 <!--==================================================================-->
 <!-- Describe the bugs.                                               -->
 <!--==================================================================-->
