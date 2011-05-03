@@ -30,6 +30,7 @@ set -eua
 #  CPLAT - platform type (linux, sgi, aix, sun, macosx)
 #  ------------------------------------------------------------------------
  
+# this choice here should really be compiler, i.e. ifort, pgi, gfortran
 #CPLAT=macosx
 CPLAT=linux
 #CPLAT=aix
@@ -42,8 +43,10 @@ then
    cc=cc; ff=f77
 elif [ $CPLAT = linux ]
 then
+# possible different compiler choices
 #   cc=cc; ff=pgf90
-   cc=cc; ff=ifort
+#   cc=icc; ff=ifort
+    cc='gcc -DUNDERSCORE -O'; ff='ifort -O'
 elif [ $CPLAT = aix ]
 then
    cc='cc -O'; ff='f77 -O'
