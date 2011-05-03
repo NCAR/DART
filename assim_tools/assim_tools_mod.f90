@@ -1462,7 +1462,7 @@ if(present(correl_out)) correl_out = correl
 if(sampling_error_correction) then
    call get_correction_from_file(ens_size, correl, mean_factor, exp_true_correl)
    ! Watch out for division by zero; if correl is really small regression is safely 0
-   if(abs(correl) > 0.001) then
+   if(abs(correl) > 0.001_r8) then
       reg_coef = reg_coef * (exp_true_correl / correl) * mean_factor
    else
       reg_coef = 0.0_r8
