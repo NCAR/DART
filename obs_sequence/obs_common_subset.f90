@@ -72,8 +72,7 @@ integer                 :: max_num_obs1, max_num_obs2, file_id
 integer                 :: num_rejected_badqc, num_rejected_diffqc
 integer                 :: num_rejected_other
 character(len = 129)    :: read_format
-logical                 :: pre_I_format, all_gone
-logical                 :: trim_first, trim_last, cal
+logical                 :: pre_I_format, cal
 character(len = 256)    :: msgstring, msgstring1, msgstring2
 character(len = 164)    :: filename_out1, filename_out2
 
@@ -525,8 +524,7 @@ subroutine compare_metadata(seq1, seq2, fname1, fname2)
 
 integer :: num_copies1, num_qc1
 integer :: num_copies2, num_qc2
-integer :: num_copies , num_qc, i, j
-logical :: have_match1, have_match2
+integer :: num_copies , num_qc, i
 character(len=metadatalength) :: str1, str2
 character(len=255) :: msgstring3
 
@@ -880,7 +878,6 @@ function good_match(obs_in1, obs_in2, qc_index, qc_threshold)
  integer,        intent(in) :: qc_index, qc_threshold
  logical :: good_match
 
-integer :: i
 type(obs_def_type)  :: base_obs_def,  test_obs_def
 integer             :: base_obs_type, test_obs_type
 type(time_type)     :: base_obs_time, test_obs_time

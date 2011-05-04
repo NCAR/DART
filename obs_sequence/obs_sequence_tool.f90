@@ -120,14 +120,12 @@ logical  :: edit_copies = .false.
 integer  :: new_copy_index(long_lists) = -1
 integer  :: copy_index_len = 0
 real(r8) :: new_copy_data(long_lists) = MISSING_R8
-integer  :: copy_data_len = 0
 logical  :: edit_qc_metadata = .false.
 character(len=metadatalength) :: new_qc_metadata(long_lists)   = ''
 logical  :: edit_qcs = .false.
 integer  :: new_qc_index(long_lists) = -1
 integer  :: qc_index_len = 0
 real(r8) :: new_qc_data(long_lists) = MISSING_R8
-integer  :: qc_data_len = 0
 character(len=metadatalength) :: synonymous_copy_list(long_lists) = ''
 character(len=metadatalength) :: synonymous_qc_list(long_lists)   = ''
 logical  :: keep_types = .true.
@@ -1380,7 +1378,6 @@ integer,        intent(in)    :: new_qc_index(:)
 real(r8),       intent(in)    :: new_qc_data(:)
 
 integer :: i, j
-character(len=129) :: msgstring1
 
 if (edit_copies) then     
    j = 1
