@@ -27,7 +27,7 @@ use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name, get_obs_kind_inde
                              read_obs_kind
 use time_manager_mod, only : time_type, operator(>), print_time, set_time, &
                              print_date, set_calendar_type, GREGORIAN,     &
-                             operator(/=)
+                             operator(/=), NO_CALENDAR, get_calendar_type
 use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
                              init_obs, assignment(=), get_obs_def, &
                              init_obs_sequence, static_init_obs_sequence, &
@@ -58,11 +58,10 @@ logical                 :: is_there_one, is_this_last
 integer                 :: size_seq_in, num_copies_in, num_qc_in
 integer                 :: size_seq_out, num_copies_out, num_qc_out
 integer                 :: num_inserted, iunit, io, i, j, total_num_inserted
-integer                 :: max_num_obs, file_id, remaining_obs_count
+integer                 :: max_num_obs, file_id
 integer                 :: first_seq
 character(len = 129)    :: read_format, meta_data
-logical                 :: pre_I_format, all_gone
-logical                 :: trim_first, trim_last
+logical                 :: pre_I_format, cal
 character(len = 129)    :: msgstring
 
 ! could go into namelist if you wanted more control
@@ -75,9 +74,7 @@ integer, parameter      :: print_every = 20
 ! lazy, pick big numbers.  make them bigger if too small.
 integer, parameter               :: max_num_input_files = 1000
 integer, parameter               :: max_obs_input_types = 500
-character(len = obstypelength)   :: obs_types(max_obs_input_types) = ''
 integer                          :: num_input_files = 0
-integer                          :: num_obs_input_types
 type(obs_def_type),  allocatable :: obs_def_list(:)
 integer                          :: obs_def_count
 
@@ -91,12 +88,12 @@ character(len = 129) :: selections_file = 'obsdef_mask.txt'
 
 logical  :: selections_is_obs_seq = .false.
 logical  :: print_only            = .false.
-logical  :: gregorian_cal         = .true.
+character(len=32) :: calendar     = 'Gregorian'
 
 
 namelist /obs_selection_nml/ &
          num_input_files, filename_seq, filename_seq_list, filename_out, &
-         selections_file, selections_is_obs_seq, print_only, gregorian_cal
+         selections_file, selections_is_obs_seq, print_only, calendar
 
 !----------------------------------------------------------------
 ! Start of the program:
@@ -130,11 +127,10 @@ if (do_nml_term()) write(     *     , nml=obs_selection_nml)
 
 call handle_filenames(filename_seq, filename_seq_list, num_input_files)
 
-! if you are not using a gregorian cal, set this to false in the namelist.
-! if users need it, we could add a calendar type integer to the namelist,
-! if users want to specify a particular calendar which is not gregorian.
-! (earlier versions of this file had the test before the namelist read - duh.)
-if (gregorian_cal) call set_calendar_type(GREGORIAN)
+! set the calendar type, and set a flag to say whether it is something
+! other than no_calendar.  note that cal is set as a logical.
+call set_calendar_type(calendar)
+cal = (get_calendar_type() /= NO_CALENDAR)
 
 call read_selection_list(selections_file, selections_is_obs_seq, obs_def_list, obs_def_count)
 
@@ -490,8 +486,7 @@ subroutine compare_metadata(seq1, seq2, fname1, fname2)
 
 integer :: num_copies1, num_qc1
 integer :: num_copies2, num_qc2
-integer :: num_copies , num_qc, i, j
-logical :: have_match1, have_match2
+integer :: num_copies , num_qc, i
 character(len=129) :: str1, str2
 character(len=255) :: msgstring1, msgstring2
 
@@ -642,10 +637,8 @@ endif
 is_this_last = .false.
 
 call get_obs_def(obs, this_obs_def)
-call print_time(get_obs_def_time(this_obs_def), ' First timestamp: ')
-if (gregorian_cal) then
-   call print_date(get_obs_def_time(this_obs_def), '   Gregorian day: ')
-endif
+         call print_time(get_obs_def_time(this_obs_def), ' First timestamp: ')
+if (cal) call print_date(get_obs_def_time(this_obs_def), '   which is date: ')
 
 ObsLoop : do while ( .not. is_this_last)
 
@@ -663,10 +656,8 @@ ObsLoop : do while ( .not. is_this_last)
    if (.not. is_this_last) then 
       obs = next_obs
    else
-      call print_time(get_obs_def_time(this_obs_def), '  Last timestamp: ')
-      if (gregorian_cal) then
-         call print_date(get_obs_def_time(this_obs_def), '   Gregorian day: ')
-      endif
+               call print_time(get_obs_def_time(this_obs_def), '  Last timestamp: ')
+      if (cal) call print_date(get_obs_def_time(this_obs_def), '   which is date: ')
    endif
 
 enddo ObsLoop
@@ -756,10 +747,10 @@ ObsLoop : do while ( .not. is_this_last)
 
    if (last_time > this_time) then
       ! bad time order of observations in linked list
-      call print_time(last_time, ' previous timestamp: ')
-      if (gregorian_cal) call print_date(last_time, '   Gregorian day: ')
-      call print_time(this_time, ' next timestamp: ')
-      if (gregorian_cal) call print_date(this_time, '   Gregorian day: ')
+               call print_time(last_time, ' previous timestamp: ')
+      if (cal) call print_date(last_time, '      which is date: ')
+               call print_time(this_time, '     next timestamp: ')
+      if (cal) call print_date(this_time, '      which is date: ')
 
       key = get_obs_key(obs)
       write(msgstring,*)'obs number ', key, ' has earlier time than previous obs'
