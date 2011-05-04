@@ -46,9 +46,11 @@ identifies the closest member.
 The ensemble mean is optionally written out from filter by setting a namelist
 option in the <a href="../filter/filter.html#Namelist">filter namelist</a>
 to output the ensemble mean in restart file format at the end of a run.
-Restart files contain only the bare state vector, so no information
-about the location or variable type is available.  The difference is computed
-point by point across the ensemble members.
+The difference is computed point by point across the ensemble members.
+There is an option to restrict the computation to just a subset of the
+entire state vector by listing one or more generic kinds.
+In this case, only state vector items matching one of these kinds
+will contribute to the total difference value.
 </P><P>
 Available methods are:
 <dl>
@@ -65,13 +67,13 @@ mean vector and the corresponding item in each ensemble member
 normalized by the mean value,
 accumulated over the entire state vector.
 </dd>
-<dt>3 - simple RMSE difference:</dt>
+<dt>3 - simple RMS difference:</dt>
 <dd>
 The square root of the accumulated sum of the 
 square of the difference between each item in the mean vector 
 and the corresponding item in each ensemble member.
 </dd>
-<dt>4 - normalized RMSE difference:</dt>
+<dt>4 - normalized RMS difference:</dt>
 <dd>
 The square root of the accumulated sum of the 
 square of the normalized difference between each item in the mean 
@@ -119,7 +121,8 @@ is read from file <em class=file>input.nml</em>.
 <pre>
 <em class=call>namelist / closest_member_tool_nml / </em> 
    input_file_name, output_file_name, 
-   ens_size, single_restart_file_in, difference_method
+   ens_size, single_restart_file_in, difference_method,
+   use_only_kinds
 </pre>
 </div>
 
@@ -168,11 +171,22 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <table>
 <tr><td>1 &nbsp;</td><td>simple absolute difference</td></tr>
 <tr><td>2</td><td>normalized absolute difference</td></tr>
-<tr><td>3</td><td>simple RMSE difference</td></tr>
-<tr><td>4</td><td>normalized RMSE difference</td></tr>
+<tr><td>3</td><td>simple RMS difference</td></tr>
+<tr><td>4</td><td>normalized RMS difference</td></tr>
 </table>
 
                   Default 4</TD></TR>
+<TR><!--contents--><TD valign=top>use_only_kinds</TD>
+    <!--  type  --><TD valign=top>character(len=32)</TD>
+    <!--descript--><TD valign=top>If unspecified, all items in the state vector
+                  contribute to the total difference.  If one or more kinds
+                  are listed here, only items in the state vector of these kinds
+                  contribute to the total difference.  These are the generic kinds,
+                  such as KIND_TEMPERATURE, KIND_U_WIND_COMPONENT, KIND_DENSITY, etc.
+                  and not specific types like RADIOSONDE_TEMPERATURE.  Consult the 
+                  model interface code to determine which possible kinds are returned by the
+          <a href="../models/model_mod.html#get_state_meta_data">get_state_meta_data()</a> routine.
+                  Default ''.</TD></TR>
 </TABLE>
 
 </div>
