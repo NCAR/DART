@@ -328,7 +328,7 @@
    selections_file       = 'obsdef_mask.txt', 
    selections_is_obs_seq = .false.,
    print_only            = .false., 
-   gregorian_cal         = .true.,
+   calendar              = 'gregorian',
 /
 
 &restart_file_tool_nml
