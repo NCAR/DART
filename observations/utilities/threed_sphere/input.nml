@@ -114,7 +114,7 @@
    filename_out        = 'obs_seq.processed', 
    selections_file     = 'obs_defs.txt', 
    print_only          = .false., 
-   gregorian_cal       = .true.,
+   calendar            = 'gregorian',
 /
 
 &restart_file_tool_nml
