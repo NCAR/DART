@@ -452,7 +452,7 @@ endif
 ! the filename_seq array and set the count.
 if (filename_seq_list1 /= '') then
    source1 = 'filename_seq_list1'
-   
+   from_file1 = .true.
 else
    source1 = 'filename_seq1'
    from_file1 = .false.
