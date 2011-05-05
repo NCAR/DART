@@ -134,124 +134,13 @@ likely to need to be made.
 <HR>
 <H2>DECISIONS YOU MIGHT NEED TO MAKE</H2>
 
-<H4>Time</H4>
-
 <P>
-The basic time type in DART is a pair of integers; one for
-the day number and one for the number of seconds.  For some
-of the simple models which aren't direct geophysical models
-time can start at day 0 and increment in any appropriate
-number of seconds or days.  For a model of a real-world system
-it is likely to have observations with a year/month/day,
-hour/min/seconds timestamp.  There are routines in DART
-to convert back and forth between the (day-number/seconds) 
-format and a variety of (year/month/day) calendars. 
-See <a href="../../time_manager/time_manager_mod.html#time_type">here</a>
-for more details on how DART stores time information and
-the types of available calendars.
+See the discussion in the
+<a href="../observations.html#Decisions">observations introduction</a> 
+page about what options are available for the things you need to
+specify.  These include setting a time, specifying an expected error,
+setting a location, and an observation type.
 </P>
-
-<H4>Error</H4>
-
-<P>
-Each observation must specify an associated error.
-There is an error value per individual observation.
-It can be a constant value for all observations
-of that type, or it
-can vary by location, by height, by magnitude of the
-observed value, etc.  
-This value is the expected instrument error plus
-the representativeness error of the model.  
-The model error includes deficiencies
-in the equations representing the processes of the system
-as well as errors introduced by representing a continuous
-system as a series of discrete points.
-While the instrument error and the representativeness error
-could be specified separately, they each have the same
-impact on the assimilation and can be difficult to determine
-with any real accuracy.  For simplicity, in DART (and
-most current assimilation software) they are
-combined and specified as a single value.
-</P><P>
-The instrument error is generally supplied by the instrument
-maker.  Sadly, however, it is frequently surprisingly
-difficult to find these values.
-For the representativeness error, a set of artificial
-observations could be generated with the 
-<a href="../../perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>
-program and an assimilation experiment could be run to
-generate an estimate of the error in the model.
-In practice however most people make an educated guess
-on the values of the error and then start with a larger than
-expected value and decrease it based on the results of
-running some test assimilations.
-For these tests the namelist for the
-<a href="../../filter/filter.html#Namelist">outlier threshold</a> 
-should be disabled by setting it to -1 (the default value is 3). 
-This value controls whether the observation is rejected
-because the observed value is too far from the ensemble mean.
-</P><P>
-If the diagnostics show that the difference between the mean of
-the forward operators and the observed value is consistently 
-smaller than the specified observation error, then the error 
-is probably too large.  
-A too-large error reduces the impact of an
-observation on the state.
-If the specified observation error is too small it is
-likely the observation will be rejected when the outlier
-threshold is enabled, and the observation will not be 
-assimilated.  It is important
-to look at the output observation sequence files after an assimilation
-to see how many observations were assimilated or rejected, and at
-the error and spread of the ensemble mean compared to the observation
-values.
-</P><P>
-One last recommendation: if possible, the Prior forward operator values
-should be compared against the observations after several assimilation
-cycles.  If you plot results using the Posterior values
-it is always possible for the assimilation to overfit the
-observations and look good on the diagnostic plots.  But the
-actual test is to then advance the model and look at how the
-forecast of the state compares to the observations.
-</P>
-
-<H4>Types</H4>
-
-<P>
-All observations have to have a specific 'type'.  
-There are namelist controls
-to turn on and off the assimilation of observations at run-time
-by type, or to only evaluate the forward operator for an observation
-but have no impact on the state.  
-Several of the diagnostics also group observations by
-type to give aggregate statistics after an assimilation.
-Generally types are based on both the observing platform or
-instrument as well as the kind of observation, 
-e.g. RADIOSONDE_TEMPERATURE, ARGO_SALINITY, etc.
-Each type is associated with a single underlying generic 'kind',
-which controls what forward operator code is called inside the
-model, e.g. KIND_TEMPERATURE, KIND_DENSITY, etc.
-</P><P>
-See <a href="../../obs_def/obs_def_mod.html">here</a> for more
-details on how to use and add new DART types.
-The DART obs_kind_mod.f90 defines a list of already defined
-observation kinds, and users can either use existing observation
-types in 'obs_def_xxx_mod.f90' files, or define their own.
-</P>
-
-<H4>Locations</H4>
-
-<P>
-The two most common choices for specifying the location of an
-observation are the 
-<a href="../../location/threed_sphere/location_mod.html">threed_sphere</a>
-and the
-<a href="../../location/oned/location_mod.html">oned</a>
-locations.  For observations of a real-world system, the 3D Sphere
-is generally the best choice.  For low-order, 1D models, the oned
-locations are the most commonly used.  The observation locations
-need to match the type of locations used in the model.
-</P> 
 
 <!--==================================================================-->
 <!-- Describe the bugs.                                               -->
