@@ -97,7 +97,7 @@ character(len = 129), parameter :: LocationName = "loc3Dsphere"
 character(len = 129), parameter :: LocationLName = &
                                    "threed sphere locations: lon, lat, vertical"
 
-character(len = 129) :: errstring
+character(len = 512) :: errstring
 
 ! Global storage for vertical distance normalization factors
 real(r8)              :: vert_normalization(4)
@@ -111,7 +111,7 @@ real(r8) :: my_sin(-630:630), my_cos(-630:630), my_acos(-1000:1000)
 integer :: last_maxdist = -1.0
 
 ! Option for verification using exhaustive search
-logical :: COMPARE_TO_CORRECT = .false.
+logical :: COMPARE_TO_CORRECT = .false.    ! normally false
 
 !-----------------------------------------------------------------
 ! Namelist with default values
@@ -145,10 +145,10 @@ logical  :: approximate_distance            = .false.
 integer  :: nlon                            = 71
 integer  :: nlat                            = 36
 logical  :: output_box_info                 = .false.
-! should be fixed in the code - but leave this here for now.
-! search for this variable below in the code for more info
-logical  :: num_tasks_insensitive           = .false.
 integer  :: print_box_level                 = 0
+! obsolete now - code fixed.  leave in for backwards compatibility
+! but does nothing now.
+logical  :: num_tasks_insensitive           = .false.
 
 namelist /location_nml/ horiz_dist_only, vert_normalization_pressure, &
    vert_normalization_height, vert_normalization_level,               &
@@ -191,6 +191,12 @@ call check_namelist_read(iunit, io, "location_nml")
 
 if(do_nml_file()) write(nmlfileunit, nml=location_nml)
 if(do_nml_term()) write(     *     , nml=location_nml)
+
+! deprecated namelist item
+if (num_tasks_insensitive) then
+  call error_handler(E_MSG, 'location_mod:', &
+                    'WARNING: namelist item "num_tasks_insensitive" is deprecated and will be removed in the future')
+endif
 
 ! Make sure that the number of longitudes, nlon, for get_close_obs is odd
 if(nlon / 2 * 2 == nlon) then
@@ -1329,9 +1335,16 @@ end do
 !------------------------ Verify by comparing to exhaustive search --------------
 if(COMPARE_TO_CORRECT) then
    ! Do comparisons against full search
-   if(num_close /= cnum_close) then
-      write(*, *) 'ERROR: num_close, cnum_close', num_close, cnum_close
-      stop
+   if((num_close /= cnum_close) .and. present(dist)) then
+      write(errstring, *) 'get_close (', num_close, ') should equal exhaustive search (', cnum_close, ')'
+      call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate, &
+                         text2='optional arg "dist" is present; we are computing exact distances', &
+                         text3='the exhaustive search should find an identical number of locations')
+   else if (num_close < cnum_close) then
+      write(errstring, *) 'get_close (', num_close, ') should not be smaller than exhaustive search (', cnum_close, ')'
+      call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate, &
+                         text2='optional arg "dist" not present; we are returning a superset of close locations', &
+                         text3='the exhaustive search should find an equal or lesser number of locations')
    endif
 endif
 !--------------------End of verify by comparing to exhaustive search --------------
@@ -1351,109 +1364,108 @@ integer,              intent(in)    :: num
 type(location_type),  intent(in)    :: obs(num)
 
 real(r8) :: min_lat, max_lat, beg_box_lon, end_box_lon, first_obs_lon, last_obs_lon
-real(r8) :: longitude_range, degrees
+real(r8) :: longitude_range, degrees, lon_dist
 integer  :: i, indx, gap_start, gap_end, gap_length
-logical  :: lon_box_full(360)
+logical  :: lon_box_full(360), old_out
 
-! Initialize boxes used to see where observations are
+! Initialize boxes used to see where observations are.
+! Assume regional until we prove that we have to use the
+! entire 360 in longitude.
 lon_box_full = .false.
+gc%lon_cyclic = .false.
 
 ! Figure out domain over which an additional obs MIGHT be close to one in this set
+! If any points within maxdist of the poles, our boxes have to cover all 360 of
+! longitude - no point in trying to restrict boxes to a region of the globe.
 min_lat = minval(obs(:)%lat) - gc%maxdist
 max_lat = maxval(obs(:)%lat) + gc%maxdist
-if(min_lat < -PI / 2.0_r8) min_lat = -PI / 2.0_r8
-if(max_lat > PI / 2.0_r8) max_lat = PI / 2.0_r8
+if(min_lat <= -PI / 2.0_r8) then
+   min_lat = -PI / 2.0_r8
+   gc%lon_cyclic = .true.
+endif 
+if(max_lat >= PI / 2.0_r8) then
+   max_lat = PI / 2.0_r8
+   gc%lon_cyclic = .true.
+endif
 
 ! Put this into storage for this get_close_type
 gc%bot_lat = min_lat
-gc%top_lat  = max_lat
+gc%top_lat = max_lat
 gc%lat_width = (max_lat - min_lat) / nlat
-if(COMPARE_TO_CORRECT) write(*, *) 'min and max lat and width', gc%bot_lat, gc%top_lat, gc%lat_width
+! don't have to do all this work if we already know it has to be cyclic
+if (.not. gc%lon_cyclic) then
 
-! Finding the longitude range is tricky because of cyclic nature
-! Want to find minimum range spanned by obs even if they wrap-around Greenwich
-! Would like to do this without sorting if possible at low-cost
-! First, partition into 360 1-degree boxes and find the biggest gap
-do i = 1, num
-   degrees = obs(i)%lon * 180.0_r8 / PI
-   ! If the value of the longitude is very close to an integer number of degrees
-   ! a roundoff can occur that leads to an assignment in the wrong box.  We avoid this
-   ! by first testing to see if this is possible and then setting both boxes to full.
-   ! If this is not the case, then we fill the box the observation is in.
-   if (abs(degrees - nint(degrees)) < 0.00001_r8) then
-      indx = nint(degrees)
-      if(indx <   1) indx = 360
-      lon_box_full(indx) = .true.
-
-      indx = nint(degrees) + 1
-      if(indx > 360) indx = 1
-      lon_box_full(indx) = .true.
-   else
-      indx = floor(degrees) + 1
-      lon_box_full(indx) = .true.
-   endif
-end do
-
-! Find the longest sequence of empty boxes
-call find_longest_gap(lon_box_full, 360, gap_start, gap_end, gap_length)
-
-! FIXME:  if this block is skipped, the code works exactly the same on any number 
-! of mpi processes, but it is a performance hit, especially for a regional model,
-! or for a group of observations which only cover a small area of the globe.  
-!
-! the default is to go ahead and use this code, but if you're trying to get bit-wise 
-! reproducibility as you change the number of mpi tasks for a job, set 
-! 'num_tasks_insensitive' to .true. in the nml.  (this is intentionally not
-! documented because we need to just fix the bug at some point soon.)
-!
-! The 'find_longest_gap()' call above detects if all the locations are located 
-! in less than a hemisphere of the globe, and if so it shrinks the total area 
-! covered by the boxes to that area.  That will be faster because each box will
-! have fewer locations in it, and it will be easy to exclude locations outside
-! the total region.
-!
-! However, in higher latitudes it might not cover all possible locations that 
-! are within 2*maxdist of the edges of the box.  i can't reconstruct the exact
-! problem but i'm sure it has something to do with distances in meters vs
-! distances in radians, as you go to higher and higher latitudes.
-! Anyway, the outcome is that an observation very close to the edge of the boxes
-! and within 2*maxdist might actually be ignored as 'too far away', and that
-! translates into an observation that doesn't impact the right number of grid 
-! points.  the actual impact is tiny, but in chaotic models any difference 
-! persists and grows.  the rest of the system is bit-wise reproducible over 
-! any number of mpi tasks, except for this bug.
-
-if (.not. num_tasks_insensitive .and. gap_length > 0) then
-   ! There is a gap; figure out obs that are closest to ends of non-gap
-   beg_box_lon = (gap_end / 180.0_r8) * PI
-   end_box_lon = ((gap_start -1) / 180.0_r8) * PI
-   first_obs_lon = find_closest_to_start(beg_box_lon, obs, num)
-   last_obs_lon  = find_closest_to_end  (end_box_lon, obs, num)
-   ! Determine the final longitude range
-   longitude_range = last_obs_lon - first_obs_lon
-   if(longitude_range <= 0.0_r8) longitude_range = longitude_range + 2.0_r8 * PI
+   ! Finding the longitude range is tricky because of cyclic nature
+   ! Want to find minimum range spanned by obs even if they wrap-around Greenwich
+   ! Would like to do this without sorting if possible at low-cost
+   ! First, partition into 360 1-degree boxes and find the biggest gap
+   do i = 1, num
+      degrees = obs(i)%lon * 180.0_r8 / PI
+      ! If the value of the longitude is very close to an integer number of degrees
+      ! a roundoff can occur that leads to an assignment in the wrong box.  We avoid this
+      ! by first testing to see if this is possible and then setting both boxes to full.
+      ! If this is not the case, then we fill the box the observation is in.
+      if (abs(degrees - nint(degrees)) < 0.00001_r8) then
+         indx = nint(degrees)
+         if(indx <   1) indx = 360
+         lon_box_full(indx) = .true.
    
-   ! Add on the extra distance needed for the boxes
+         indx = nint(degrees) + 1
+         if(indx > 360) indx = 1
+         lon_box_full(indx) = .true.
+      else
+         indx = floor(degrees) + 1
+         lon_box_full(indx) = .true.
+      endif
+   end do
+   
+   ! Find the longest sequence of empty boxes
+   call find_longest_gap(lon_box_full, 360, gap_start, gap_end, gap_length)
+   
+   if (gap_length > 0) then
 
-   ! To avoid any hard thinking about wraparound with sub-domain boxes
-   ! Must span less than 180 degrees to get smaller boxes
-   ! If addition of halos for close obs fills more than half of space things go 0 to 2PI
-   if(longitude_range + 2.0_r8 * gc%maxdist > PI) then
-      first_obs_lon = 0.0_r8
-      last_obs_lon  = 2.0_r8 * PI
-      gc%lon_cyclic = .true.
+      ! There is a gap; figure out obs that are closest to ends of non-gap
+      beg_box_lon = (gap_end / 180.0_r8) * PI
+      end_box_lon = ((gap_start -1) / 180.0_r8) * PI
+      first_obs_lon = find_closest_to_start(beg_box_lon, obs, num)
+      last_obs_lon  = find_closest_to_end  (end_box_lon, obs, num)
+      ! Determine the final longitude range
+      longitude_range = last_obs_lon - first_obs_lon
+      if(longitude_range <= 0.0_r8) longitude_range = longitude_range + 2.0_r8 * PI
+      
+      ! Add on the extra distance needed for the boxes
+      ! To avoid any hard thinking about wraparound with sub-domain boxes
+      ! Must span less than 180 degrees to get smaller boxes
+      ! If addition of halos for close obs fills more than half of space 
+      ! things go 0 to 2PI
+
+      ! other places we are computing in radians.  here we are computing in
+      ! lat/lon, and you can't just add maxdist to the edges - that doesn't
+      ! take into account the great-circle distance.  the separation in longitude
+      ! varies with latitude.  compute the delta longitude based on the most
+      ! poleward latitude and add that onto the edges of both boxes.  that
+      ! overestimates for points closer to the equator, but that's better
+      ! than underestimating and excluding points that are within maxdist.
+      lon_dist = find_del_lon(minval(obs(:)%lat), maxval(obs(:)%lat), gc%maxdist)
+
+      if(longitude_range + 2.0_r8 * lon_dist > PI) then
+         gc%lon_cyclic = .true.
+      else
+         first_obs_lon = first_obs_lon - lon_dist
+         if(first_obs_lon < 0.0_r8    ) first_obs_lon = first_obs_lon + 2.0_r8 * PI
+         last_obs_lon  = last_obs_lon + lon_dist
+         if(last_obs_lon > 2.0_r8 * PI) last_obs_lon  = last_obs_lon  - 2.0_r8 * PI
+         gc%lon_cyclic = .false.
+      endif
    else
-      first_obs_lon = first_obs_lon - gc%maxdist 
-      if(first_obs_lon < 0.0_r8) first_obs_lon = first_obs_lon + 2.0_r8 * PI
-      last_obs_lon   = last_obs_lon + gc%maxdist 
-      if(last_obs_lon > 2.0_r8 * PI) last_obs_lon = last_obs_lon - 2.0_r8 * PI
-      gc%lon_cyclic = .false.
+      ! No gap was found: all 360 boxes had an observation in them
+      gc%lon_cyclic = .true.
    endif
-else
-   ! No gap was found: all 360 boxes had an observation in them
+endif
+
+if (gc%lon_cyclic) then
    first_obs_lon = 0.0_r8
    last_obs_lon  = 2.0_r8 * PI
-   gc%lon_cyclic = .true.
 endif
 
 ! Put in storage for structure
@@ -1462,7 +1474,16 @@ gc%top_lon = last_obs_lon
 longitude_range = last_obs_lon - first_obs_lon
 if(longitude_range <= 0.0_r8) longitude_range = longitude_range + 2.0_r8 * PI
 gc%lon_width = longitude_range / nlon
-if(COMPARE_TO_CORRECT) write(*, *) 'lon bot, top, width ', gc%bot_lon, gc%top_lon, gc%lon_width
+
+if(COMPARE_TO_CORRECT) then
+   old_out = do_output()
+   call set_output(.true.)
+   write(errstring, *) 'lat bot, top, width ', gc%bot_lat, gc%top_lat, gc%lat_width
+   call error_handler(E_MSG, 'find_box_ranges', errstring)
+   write(errstring, *) 'lon bot, top, width ', gc%bot_lon, gc%top_lon, gc%lon_width
+   call error_handler(E_MSG, 'find_box_ranges', errstring)
+   call set_output(old_out)
+endif
 
 end subroutine find_box_ranges
 
@@ -1681,6 +1702,45 @@ end function get_lon_box
 
 !----------------------------------------------------------------------------
 
+function find_del_lon(minlat, maxlat, maxdist)
+ 
+! for the given latitudes, find the furthest longitude that is still
+! within maxdist away.  this will be at a different latitude at any
+! location other than the equator.  all values specified in radians.
+! distance returned in radians.  if either lat is closer to the pole
+! than maxdist, it returns 2*PI.
+
+real(r8), intent(in) :: minlat, maxlat, maxdist
+real(r8)             :: find_del_lon
+
+real(r8) :: a, b, c
+real(r8) :: latval, poleward_lat
+
+! find the most poleward of the two latitudes
+poleward_lat = max(abs(minlat), abs(maxlat))
+
+! if either latitude is within maxdist of either pole, return 2 PI
+! because you are now covering all possible longitudes.
+if (poleward_lat + maxdist > (PI / 2.0_r8)) then
+   find_del_lon = 2.0_r8 * PI
+   return
+endif
+
+! compute some values we will reuse a couple times
+a = cos(maxdist)
+b = sin(poleward_lat)
+c = cos(poleward_lat)
+
+! lat at which max offset is found
+latval = asin(b/a)
+
+! distance to furthest lon, at latval
+find_del_lon = acos((a - (b*sin(latval))) / (c*cos(latval)))
+
+end function find_del_lon
+
+!----------------------------------------------------------------------------
+
 subroutine print_get_close_type(gc, amount)
  
 ! print out debugging statistics, or optionally print out a full
@@ -1714,7 +1774,7 @@ been_called = been_called + 1
 ! short version.  (this value prints about 5-6 lines of data.)
 ! to get a full dump, change print_box_level to 2 or more in the namelist.
 howmuch = 0
-sample = 30
+sample = 10
 mytask = my_task_id() 
 alltasks = task_count()
 iam0 = (mytask == 0)
@@ -1727,23 +1787,42 @@ if (howmuch == -8) then
    if (.not. write_now) howmuch = 0
 endif
 
+!! SPECIAL - debugging
+! if you enable debugging, maybe you want to turn it off for really
+! large counts?  often it's easy to construct a case that has a lot of
+! locations from the state vector in one set of boxes, but just a few
+! locations from the observations in another.  this lets you turn off
+! the debugging level for the large set and leave it on for the small.
+!if (gc%num > 100) howmuch = 0
+
 ! print the get_close_type derived type values
 
 if (howmuch /= 0 .and. iam0) then
-   write(errstring,*) 'get_close_type values for PE0 are:'
-   call error_handler(E_MSG, 'locations_mod', errstring)
+   write(errstring,*) 'get_close_type values:'
+   call error_handler(E_MSG, 'loc', errstring)
+
    write(errstring,*) ' num = ', gc%num
-   call error_handler(E_MSG, 'locations_mod', errstring)
-   write(errstring,*) ' maxdist = ', gc%maxdist
-   call error_handler(E_MSG, 'locations_mod', errstring)
-   write(errstring,*) ' bot_lat, top_lat = ', gc%bot_lat, gc%top_lat
-   call error_handler(E_MSG, 'locations_mod', errstring)
-   write(errstring,*) ' bot_lon, top_lon = ', gc%bot_lon, gc%top_lon
-   call error_handler(E_MSG, 'locations_mod', errstring)
-   write(errstring,*) ' lon_width, lat_width = ', gc%lon_width, gc%lat_width
-   call error_handler(E_MSG, 'locations_mod', errstring)
+   call error_handler(E_MSG, 'loc', errstring)
+
+   write(errstring,*) ' nlon, nlat = ', nlon, nlat
+   call error_handler(E_MSG, 'loc', errstring)
+
+   write(errstring,"(A,F12.6)") ' maxdist = ', gc%maxdist
+   call error_handler(E_MSG, 'loc', errstring)
+   write(errstring, "(A,3(F12.6))") ' latbox: bot, top, width = ', gc%bot_lat, gc%top_lat, gc%lat_width
+   call error_handler(E_MSG, 'loc', errstring)
+   write(errstring, "(A,3(F12.6))") ' lonbox: bot, top, width = ', gc%bot_lon, gc%top_lon, gc%lon_width
+   call error_handler(E_MSG, 'loc', errstring)
+
+   write(errstring,"(A,F12.6)") ' maxdist = ', RAD2DEG*gc%maxdist
+   call error_handler(E_MSG, 'loc', errstring)
+   write(errstring, "(A,3(F12.6))") ' latbox: bot, top, width = ', RAD2DEG*gc%bot_lat, RAD2DEG*gc%top_lat, RAD2DEG*gc%lat_width
+   call error_handler(E_MSG, 'loc', errstring)
+   write(errstring, "(A,3(F12.6))") ' lonbox: bot, top, width = ', RAD2DEG*gc%bot_lon, RAD2DEG*gc%top_lon, RAD2DEG*gc%lon_width
+   call error_handler(E_MSG, 'loc', errstring)
+
    write(errstring,*) ' lon_cyclic = ', gc%lon_cyclic
-   call error_handler(E_MSG, 'locations_mod', errstring)
+   call error_handler(E_MSG, 'loc', errstring)
 endif
 
 ! this one can be very large.   print only the first nth unless
@@ -1756,10 +1835,12 @@ if (associated(gc%obs_box)) then
       call error_handler(E_MSG, 'locations_mod', errstring)
    endif
    if (howmuch > 1) then
-      write(errstring,*) ' obs_box(',i,') =', gc%obs_box    ! (nobs)
+      ! DEBUG
+      write(errstring,"(A,I8,A,36(I8,1X))") ' obs_box(',i,') =', gc%obs_box(1:min(i,36))  ! (nobs)
+      !write(errstring,*) ' obs_box(',i,') =', gc%obs_box    ! (nobs)
       call error_handler(E_MSG, 'locations_mod', errstring)
    else if(howmuch > 0) then
-      write(errstring,*) ' obs_box(',i,') =', gc%obs_box(1:min(i,sample+1))    ! (nobs)
+      write(errstring,*) ' obs_box(',i,') =', gc%obs_box(1:min(i,sample+1))
       call error_handler(E_MSG, 'locations_mod', errstring)
       write(errstring,*) '  <rest of obs_box omitted>'
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1781,10 +1862,14 @@ if (associated(gc%start)) then
       call error_handler(E_MSG, 'locations_mod', errstring)
    endif
    if (howmuch > 1) then
-      write(errstring,*) ' start(',i,j,') =', gc%start    ! (nlon, nlat)
+      write(errstring,*) ' start(',i,j,') ='              ! (nlon, nlat)
       call error_handler(E_MSG, 'locations_mod', errstring)
+      do k=1, j
+         write(errstring,"(36(I8,1X))") gc%start(1:min(i,36), k)
+         call error_handler(E_MSG, 'locations_mod', errstring)
+      enddo
    else if (howmuch > 0) then
-      write(errstring,*) ' start(',i,j,') =', gc%start(1:min(i,sample), 1)    ! (nlon, nlat)
+      write(errstring,*) ' start(',i,j,') =', gc%start(1:min(i,sample), 1)
       call error_handler(E_MSG, 'locations_mod', errstring)
       write(errstring,*) '  <rest of start omitted>'
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1805,10 +1890,14 @@ if (associated(gc%lon_offset)) then
       call error_handler(E_MSG, 'locations_mod', errstring)
    endif
    if (howmuch > 1) then
-      write(errstring,*) ' lon_offset(',i,j,') =', gc%lon_offset    ! (nlon, nlat)
+      write(errstring,*) ' lon_offset(',i,j,') ='                   ! (nlat, nlat)
       call error_handler(E_MSG, 'locations_mod', errstring)
+      do k=1, j
+         write(errstring,"(36(I8,1X))") gc%lon_offset(1:min(i,36), k) 
+         call error_handler(E_MSG, 'locations_mod', errstring)
+      enddo
    else if (howmuch > 0) then
-      write(errstring,*) ' lon_offset(',i,j,') =', gc%lon_offset(1:min(i,sample), 1)    ! (nlon, nlat)
+      write(errstring,*) ' lon_offset(',i,j,') =', gc%lon_offset(1:min(i,sample), 1)
       call error_handler(E_MSG, 'locations_mod', errstring)
       write(errstring,*) '  <rest of lon_offset omitted>'
       call error_handler(E_MSG, 'locations_mod', errstring)
@@ -1830,10 +1919,14 @@ if (associated(gc%count)) then
       call error_handler(E_MSG, 'locations_mod', errstring)
    endif
    if (howmuch > 1) then
-      write(errstring,*) ' count(',i,j,') =', gc%count    ! (nlon, nlat)
+      write(errstring,*) ' count(',i,j,') ='              ! (nlon, nlat)
       call error_handler(E_MSG, 'locations_mod', errstring)
+      do k=1, j
+         write(errstring,"(36(I8,1X))") gc%count(1:min(i,36), k) 
+         call error_handler(E_MSG, 'locations_mod', errstring)
+      enddo
    else if (howmuch > 0) then
-      write(errstring,*) ' count(',i,j,') =', gc%count(1:min(i,sample), 1)    ! (nlon, nlat)
+      write(errstring,*) ' count(',i,j,') =', gc%count(1:min(i,sample), 1)
       call error_handler(E_MSG, 'locations_mod', errstring)
       write(errstring,*) '  <rest of count omitted>'
       call error_handler(E_MSG, 'locations_mod', errstring)

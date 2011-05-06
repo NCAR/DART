@@ -265,8 +265,8 @@ The central angle between a point at latitude <tt>&phi;<sub>s</sub></tt>
 and a second point at latitude <tt>&phi;<sub>f</sub></tt> that are separated 
 in longitude by <tt>&Delta;&lambda;</tt> is <br> <br>
 <tt>
-&nbsp;&nbsp;&theta = cos<sup>-1</sup>(sin&phi;<sub>s</sub>sin&phi;<sub>f</sub> + 
-   cos&phi;<sub>s</sub>cos&phi<sub>f</sub>cos&Delta;&lambda;) 
+&nbsp;&nbsp;&theta; = cos<sup>-1</sup>(sin&phi;<sub>s</sub>sin&phi;<sub>f</sub> + 
+   cos&phi;<sub>s</sub>cos&phi;<sub>f</sub>cos&Delta;&lambda;) 
 </tt> <br> <br>
 Taking the cos of both sides gives <br> <br>
 <tt>
@@ -276,18 +276,18 @@ Taking the cos of both sides gives <br> <br>
 Solving for <tt>cos&Delta;&lambda;</tt> gives <br> <br>
 <tt>
 &nbsp;&nbsp;cos&Delta;&lambda; 
-    = <sup>(<i>a</i> - <i>b</i>&nbsp;sin&phi<sub>f</sub>)</sup><big>/</big><sub>(<i>c</i>&nbsp;cos&phi;<sub>f</sub>)</sub>
+    = <sup>(<i>a</i> - <i>b</i>&nbsp;sin&phi;<sub>f</sub>)</sup><big>/</big><sub>(<i>c</i>&nbsp;cos&phi;<sub>f</sub>)</sub>
     = <sup><i>a</i></sup><big>/</big><sub><i>c</i></sub>&nbsp;sec&phi;<sub>f</sub> - 
       <sup><i>b</i></sup><big>/</big><sub><i>c</i></sub>&nbsp;tan&phi;<sub>f</sub> 
 </tt> <br> <br>
 where <tt><i>a</i> = cos&theta;</tt> , 
 <tt><i>b</i> = sin&phi;<sub>s</sub></tt> , 
-and <tt><i>c</i> = cos&phi<sub>s</sub></tt> . 
+and <tt><i>c</i> = cos&phi;<sub>s</sub></tt> . 
 We want to maximize <tt>&Delta;&lambda;</tt> which implies minimizing   
 <tt>cos&Delta;&lambda;</tt> subject to constraints. Taking the 
 derivative with respect to <tt>&phi;<sub>f</sub></tt> gives  <br> <br>
 <tt>
-&nbsp;&nbsp;<i><sup>(d</i>&nbsp;cos&Delta;&lambda;)</sup><big>/</big><sub>(<i>d</i>&phi;<sub>f</sub>)</sub> = 
+&nbsp;&nbsp;<sup>(<i>d</i>&nbsp;cos&Delta;&lambda;)</sup><big>/</big><sub>(<i>d</i>&phi;<sub>f</sub>)</sub> = 
    <sup><i>a</i></sup><big>/</big><sub><i>c</i></sub>&nbsp;sec&phi;<sub>f</sub>&nbsp;tan&phi;<sub>f</sub>
  - <sup><i>b</i></sup><big>/</big><sub><i>c</i></sub>&nbsp;sec<sup>2</sup>&phi;<sub>f</sub> = 0
 </tt> <br> <br>
@@ -301,6 +301,17 @@ Solving in the constrained range from 0 to PI/2 gives <br> <br>
 <tt>
 &nbsp;&nbsp; sin&phi;<sub>f</sub> = <sup><i>b</i></sup><big>/</big><sub><i>a</i></sub> = 
    <sup>sin&phi;<sub>s</sub></sup><big>/</big><sub>cos&theta;</sub>
+</tt> <br> <br>
+So knowing 
+base point (<tt>&phi;<sub>s</sub></tt>,
+<tt>&lambda;<sub>s</sub></tt>),
+latitude <tt>&phi;<sub>f</sub></tt>, and
+distance <tt>&theta;</tt> we can use the great circle equation to find
+the longitude difference at the greatest separation point <br> <br>
+<tt>
+&nbsp;&nbsp; &Delta;&lambda; = cos<sup>-1</sup><big>(</big><sup>(<i>a</i> - 
+(<i>b</i>&nbsp;sin&phi;<sub>f</sub>))</sup> 
+ <big>/</big> <sub>(<i>c</i>&nbsp;cos&phi;<sub>f</sub>)</sub><big>)</big>
 </tt> <br> <br>
 Note that if the angle between the base point and a pole is less than 
 or equal to the central angle, all longitude differences will occur 
