@@ -937,6 +937,7 @@ num_obs_copies = 2 * num_output_obs_members + 4
 ! The one that exists would be the NCEP and perfect_model_obs generated values in general
 call read_obs_seq_header(obs_sequence_in_name, tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, &
    obs_seq_file_id, obs_seq_read_format, pre_I_format, close_the_file = .true.)
+
 if(tnum_qc == 0) then
    input_qc_index = 1
    DART_qc_index = 2
@@ -999,6 +1000,55 @@ call error_handler(E_ERR,'get_obs_copy_index', &
       source, revision, revdate)
 
 end function get_obs_copy_index
+
+!-------------------------------------------------------------------------
+
+function get_obs_qc_index(seq)
+
+type(obs_sequence_type), intent(in) :: seq
+integer                             :: get_obs_qc_index
+
+integer :: i
+
+! Determine which qc, if any, has the incoming obs qc
+! this is tricky because we have never specified what string
+! the metadata has to have.  look for 'qc' or 'QC' and the
+! first metadata that matches (much like 'observation' above)
+! is the winner.
+!--------
+do i = 1, get_num_qc(seq)
+   get_obs_qc_index = i
+   ! Need to look for 'QC' or 'qc'
+   if(index(get_copy_meta_data(seq, i), 'QC') > 0) return
+   if(index(get_copy_meta_data(seq, i), 'qc') > 0) return
+end do
+! Falling off end means 'QC' or 'qc' not found; not fatal!
+
+get_obs_qc_index = -1
+
+end function get_obs_qc_index
+
+!-------------------------------------------------------------------------
+
+function get_obs_dartqc_index(seq)
+
+type(obs_sequence_type), intent(in) :: seq
+integer                             :: get_obs_dartqc_index
+
+integer :: i
+
+! Determine which qc, if any, has the DART qc
+!--------
+do i = 1, get_num_qc(seq)
+   get_obs_dartqc_index = i
+   ! Need to look for 'DART quality control'
+   if(index(get_copy_meta_data(seq, i), 'DART quality control') > 0) return
+end do
+! Falling off end means 'DART quality control' not found; not fatal!
+
+get_obs_dartqc_index = -1
+
+end function get_obs_dartqc_index
 
 !-------------------------------------------------------------------------
 
@@ -1250,10 +1300,12 @@ integer,                 intent(in)    :: OBS_PRIOR_MEAN_START, OBS_PRIOR_VAR_ST
 integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
 
-integer               :: j, k, ens_offset, forward_min, forward_max, forward_unit, ivalue
-real(r8)              :: error, diff_sd, ratio, obs_temp(num_obs_in_set)
+integer               :: j, k, ens_offset, forward_min, forward_max
+integer               :: forward_unit, ivalue, low_qc_limit, high_qc_limit
+real(r8)              :: error, diff_sd, ratio
+real(r8), allocatable :: obs_temp(:), obs_qc(:), forward_temp(:)
 real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
-real(r8)              :: forward_temp(num_obs_in_set), rvalue(1)
+real(r8)              :: rvalue(1)
 logical               :: do_outlier
 
 
@@ -1280,6 +1332,8 @@ if(output_forward_op_errors) then
          forward_unit = open_file('post_forward_op_errors', 'formatted', 'append')
       endif
    endif
+ 
+   allocate(forward_temp(num_obs_in_set))
 
    do k = 1, ens_size
       ! Get this copy to PE 0
@@ -1293,6 +1347,9 @@ if(output_forward_op_errors) then
          end do
       endif
    end do
+
+   deallocate(forward_temp)
+
    ! PE 0 does the output for each copy in turn
    if(my_task_id() == 0) then
       call close_file(forward_unit)
@@ -1382,20 +1439,50 @@ enddo
 ! Is this next call really needed, or does it already exist on input???
 call all_copies_to_all_vars(obs_ens_handle)
 
-! Output the ensemble mean
+! allocate temp space for sending data
+allocate(obs_temp(num_obs_in_set), obs_qc(num_obs_in_set))
+
+! set non-computed means & sd to missing values in the output diag file.   
+! for priors, the lowest good dart qc is 3, for posteriors its 1.
+! in either case, we want to see values that were only rejected because
+! of outlier threshold, so allow dart qc values 7 (and up?)
+if (prior_post == PRIOR_DIAG) then
+   low_qc_limit = 3
+else
+   low_qc_limit = 1
+endif
+high_qc_limit = 7
+
+! Update the qc global value
+! First get this copy on pe 0 and keep it around
+call get_copy(0, obs_ens_handle, OBS_GLOBAL_QC_COPY, obs_qc)
+! Only pe 0 gets to write the observations for this time
+if(my_task_id() == 0) then
+   ! Loop through the observations for this time
+   do j = 1, obs_ens_handle%num_vars
+      rvalue(1) = obs_qc(j)
+      call replace_qc(seq, keys(j), rvalue, DART_qc_index)
+   end do
+endif
+
+! Update the ensemble mean
 ! Get this copy to process 0
 call get_copy(0, obs_ens_handle, OBS_PRIOR_MEAN_START, obs_temp)
 ! Only pe 0 gets to write the sequence
 if(my_task_id() == 0) then
      ! Loop through the observations for this time
      do j = 1, obs_ens_handle%num_vars
-      ! update the mean in each obs
-      rvalue(1) = obs_temp(j)
+      ! update the mean in each obs if it was assimilated ok.
+      if ((obs_qc(j) <= low_qc_limit) .or. (obs_qc(j) >= high_qc_limit)) then
+         rvalue(1) = obs_temp(j)
+      else
+         rvalue(1) = missing_r8    ! if qc bad, set to missing
+      endif
       call replace_obs_values(seq, keys(j), rvalue, ens_mean_index)
      end do
   endif
 
-! If requested, output the ensemble spread
+! Update the ensemble spread
 ! Get this copy to process 0
 call get_copy(0, obs_ens_handle, OBS_PRIOR_VAR_START, obs_temp)
 ! Only pe 0 gets to write the sequence
@@ -1403,15 +1490,19 @@ if(my_task_id() == 0) then
    ! Loop through the observations for this time
    do j = 1, obs_ens_handle%num_vars
       ! update the spread in each obs
-      rvalue(1) = sqrt(obs_temp(j))
+      if ((obs_qc(j) <= low_qc_limit) .or. (obs_qc(j) >= high_qc_limit)) then
+         rvalue(1) = sqrt(obs_temp(j))
+      else
+         rvalue(1) = missing_r8    ! if qc bad, set to missing
+      endif
       call replace_obs_values(seq, keys(j), rvalue, ens_spread_index)
    end do
 endif
 
 ! May be possible to only do this after the posterior call...
-! Output any requested ensemble members
+! Update any requested ensemble members
 ens_offset = members_index + 4
-! Output all of these ensembles that are required to sequence file
+! Update all of these ensembles that are required to sequence file
 do k = 1, num_output_members
    ! Get this copy on pe 0
    call get_copy(0, obs_ens_handle, k, obs_temp)
@@ -1427,17 +1518,8 @@ do k = 1, num_output_members
    endif
 end do
 
-! Output the qc global value
-! First get this copy on pe 0
-call get_copy(0, obs_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
-! Only pe 0 gets to write the observations for this time
-if(my_task_id() == 0) then
-   ! Loop through the observations for this time
-   do j = 1, obs_ens_handle%num_vars
-      rvalue(1) = obs_temp(j)
-      call replace_qc(seq, keys(j), rvalue, DART_qc_index)
-   end do
-endif
+! clean up.
+deallocate(obs_temp, obs_qc)
 
 end subroutine obs_space_diagnostics
 
