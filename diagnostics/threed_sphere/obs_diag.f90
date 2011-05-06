@@ -113,7 +113,7 @@ integer :: obs_index, prior_mean_index, posterior_mean_index
 integer :: prior_spread_index, posterior_spread_index
 integer :: flavor, wflavor ! THIS IS THE (global) 'KIND' in the obs_def_mod list. 
 integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
-integer :: num_obs_kinds
+integer :: num_obs_types
 
 ! variables used primarily/exclusively for the rank histogram
 integer :: ens_size, rank_histogram_bin
@@ -233,7 +233,7 @@ type TLRV_type
    real(r8), dimension(:,:,:,:), pointer :: observation, ens_mean
    integer,  dimension(:,:,:,:), pointer :: NDartQC_0, NDartQC_1, NDartQC_2, NDartQC_3
    integer,  dimension(:,:,:,:), pointer :: NDartQC_4, NDartQC_5, NDartQC_6, NDartQC_7
-   integer,  dimension(:,:,:,:,:), pointer :: hist_bin
+   integer,  dimension(:,:,:,:,:), pointer :: hist_bin => NULL()
 end type TLRV_type
 
 type LRV_type
@@ -289,7 +289,9 @@ integer,  allocatable, dimension(:) :: which_vert ! relates kind of level for ea
 real(r8), allocatable, dimension(:) :: scale_factor ! to convert to plotting units
 integer,  allocatable, dimension(:) :: ob_defining_vert ! obs index defining vert coord type
 
-character(len = stringlength), pointer, dimension(:) :: my_obs_kind_names
+! List of observations types augmented with 'WIND' types if need be.
+! Replace calls to 'get_obs_kind_name' ---> index into 'obs_type_strings'
+character(len = stringlength), pointer, dimension(:) :: obs_type_strings
 
 ! These pairs of variables are used when we diagnose which observations 
 ! are far from the background.
@@ -323,14 +325,15 @@ call static_init_obs_sequence()  ! Initialize the obs sequence module
 ! Define/Append the 'horizontal wind' obs_kinds to supplant the list declared
 ! in obs_kind_mod.f90 i.e. if there is a RADIOSONDE_U_WIND_COMPONENT
 ! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_HORIZONTAL_WIND
-! Replace calls to 'get_obs_kind_name' with variable 'my_obs_kind_names'
+! Replace calls to 'get_obs_kind_name' with variable 'obs_type_strings'
 !----------------------------------------------------------------------
 
-num_obs_kinds = grok_observation_names(my_obs_kind_names)
+num_obs_types = grok_observation_names(obs_type_strings)
 
-allocate( which_vert(num_obs_kinds), &
-        scale_factor(num_obs_kinds), &
-    ob_defining_vert(num_obs_kinds))
+allocate( which_vert(num_obs_types), &
+        scale_factor(num_obs_types), &
+    ob_defining_vert(num_obs_types)  )
+
 which_vert       = VERTISUNDEF
 scale_factor     = 1.0_r8
 ob_defining_vert = -1
@@ -408,7 +411,7 @@ endif
 ! SetTime rectifies user input and the final binning sequence.
 !----------------------------------------------------------------------
 
-call SetTime(beg_time, end_time, binsep, binwidth, halfbinwidth, &
+call SetTime(beg_time, end_time, binsep, halfbinwidth, &
      TimeMin, TimeMax, Nepochs, bincenter, binedges, epoch_center, epoch_edges, &
      obs_used_in_epoch)
 
@@ -430,27 +433,27 @@ write(*,*)'level dimension can be ',Nlevels
 allocate(obs_seq_filenames(Nepochs*400))
 obs_seq_filenames = 'null'
 
-allocate(guess%rmse(       Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%bias(       Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%spread(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%totspread(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%observation(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%ens_mean(   Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%Nposs(      Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%Nused(      Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NbigQC(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NbadIZ(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NbadUV(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NbadLV(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NbadDartQC( Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NDartQC_0(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NDartQC_1(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NDartQC_2(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NDartQC_3(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NDartQC_4(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NDartQC_5(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NDartQC_6(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         guess%NDartQC_7(  Nepochs, Nlevels, Nregions, num_obs_kinds)  )
+allocate(guess%rmse(       Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%bias(       Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%spread(     Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%totspread(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%observation(Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%ens_mean(   Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%Nposs(      Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%Nused(      Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NbigQC(     Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NbadIZ(     Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NbadUV(     Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NbadLV(     Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NbadDartQC( Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NDartQC_0(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NDartQC_1(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NDartQC_2(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NDartQC_3(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NDartQC_4(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NDartQC_5(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NDartQC_6(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         guess%NDartQC_7(  Nepochs, Nlevels, Nregions, num_obs_types)  )
 
 guess%rmse        = 0.0_r8
 guess%bias        = 0.0_r8
@@ -478,29 +481,29 @@ guess%string        = 'guess'
 guess%num_times     = Nepochs
 guess%num_levels    = Nlevels
 guess%num_regions   = Nregions
-guess%num_variables = num_obs_kinds
+guess%num_variables = num_obs_types
 
-allocate(analy%rmse(       Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%bias(       Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%spread(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%totspread(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%observation(Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%ens_mean(   Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%Nposs(      Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%Nused(      Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NbigQC(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NbadIZ(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NbadUV(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NbadLV(     Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NbadDartQC( Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NDartQC_0(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NDartQC_1(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NDartQC_2(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NDartQC_3(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NDartQC_4(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NDartQC_5(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NDartQC_6(  Nepochs, Nlevels, Nregions, num_obs_kinds), &
-         analy%NDartQC_7(  Nepochs, Nlevels, Nregions, num_obs_kinds)  )
+allocate(analy%rmse(       Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%bias(       Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%spread(     Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%totspread(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%observation(Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%ens_mean(   Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%Nposs(      Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%Nused(      Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NbigQC(     Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NbadIZ(     Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NbadUV(     Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NbadLV(     Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NbadDartQC( Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NDartQC_0(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NDartQC_1(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NDartQC_2(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NDartQC_3(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NDartQC_4(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NDartQC_5(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NDartQC_6(  Nepochs, Nlevels, Nregions, num_obs_types), &
+         analy%NDartQC_7(  Nepochs, Nlevels, Nregions, num_obs_types)  )
 
 analy%rmse        = 0.0_r8
 analy%bias        = 0.0_r8
@@ -528,29 +531,29 @@ analy%string        = 'analy'
 analy%num_times     = Nepochs
 analy%num_levels    = Nlevels
 analy%num_regions   = Nregions
-analy%num_variables = num_obs_kinds
+analy%num_variables = num_obs_types
 
-allocate(guessAVG%rmse(       Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%bias(       Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%spread(     Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%totspread(  Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%observation(Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%ens_mean(   Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%Nposs(      Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%Nused(      Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NbigQC(     Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NbadIZ(     Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NbadUV(     Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NbadLV(     Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NbadDartQC( Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NDartQC_0(  Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NDartQC_1(  Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NDartQC_2(  Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NDartQC_3(  Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NDartQC_4(  Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NDartQC_5(  Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NDartQC_6(  Nlevels, Nregions, num_obs_kinds), &
-         guessAVG%NDartQC_7(  Nlevels, Nregions, num_obs_kinds)  )
+allocate(guessAVG%rmse(       Nlevels, Nregions, num_obs_types), &
+         guessAVG%bias(       Nlevels, Nregions, num_obs_types), &
+         guessAVG%spread(     Nlevels, Nregions, num_obs_types), &
+         guessAVG%totspread(  Nlevels, Nregions, num_obs_types), &
+         guessAVG%observation(Nlevels, Nregions, num_obs_types), &
+         guessAVG%ens_mean(   Nlevels, Nregions, num_obs_types), &
+         guessAVG%Nposs(      Nlevels, Nregions, num_obs_types), &
+         guessAVG%Nused(      Nlevels, Nregions, num_obs_types), &
+         guessAVG%NbigQC(     Nlevels, Nregions, num_obs_types), &
+         guessAVG%NbadIZ(     Nlevels, Nregions, num_obs_types), &
+         guessAVG%NbadUV(     Nlevels, Nregions, num_obs_types), &
+         guessAVG%NbadLV(     Nlevels, Nregions, num_obs_types), &
+         guessAVG%NbadDartQC( Nlevels, Nregions, num_obs_types), &
+         guessAVG%NDartQC_0(  Nlevels, Nregions, num_obs_types), &
+         guessAVG%NDartQC_1(  Nlevels, Nregions, num_obs_types), &
+         guessAVG%NDartQC_2(  Nlevels, Nregions, num_obs_types), &
+         guessAVG%NDartQC_3(  Nlevels, Nregions, num_obs_types), &
+         guessAVG%NDartQC_4(  Nlevels, Nregions, num_obs_types), &
+         guessAVG%NDartQC_5(  Nlevels, Nregions, num_obs_types), &
+         guessAVG%NDartQC_6(  Nlevels, Nregions, num_obs_types), &
+         guessAVG%NDartQC_7(  Nlevels, Nregions, num_obs_types)  )
 
 guessAVG%rmse        = 0.0_r8
 guessAVG%bias        = 0.0_r8
@@ -577,29 +580,29 @@ guessAVG%NDartQC_7   = 0
 guessAVG%string        = 'VPguess'
 guessAVG%num_levels    = Nlevels
 guessAVG%num_regions   = Nregions
-guessAVG%num_variables = num_obs_kinds
+guessAVG%num_variables = num_obs_types
 
-allocate(analyAVG%rmse(       Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%bias(       Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%spread(     Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%totspread(  Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%observation(Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%ens_mean(   Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%Nposs(      Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%Nused(      Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NbigQC(     Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NbadIZ(     Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NbadUV(     Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NbadLV(     Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NbadDartQC( Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NDartQC_0(  Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NDartQC_1(  Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NDartQC_2(  Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NDartQC_3(  Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NDartQC_4(  Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NDartQC_5(  Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NDartQC_6(  Nlevels, Nregions, num_obs_kinds), &
-         analyAVG%NDartQC_7(  Nlevels, Nregions, num_obs_kinds)  )
+allocate(analyAVG%rmse(       Nlevels, Nregions, num_obs_types), &
+         analyAVG%bias(       Nlevels, Nregions, num_obs_types), &
+         analyAVG%spread(     Nlevels, Nregions, num_obs_types), &
+         analyAVG%totspread(  Nlevels, Nregions, num_obs_types), &
+         analyAVG%observation(Nlevels, Nregions, num_obs_types), &
+         analyAVG%ens_mean(   Nlevels, Nregions, num_obs_types), &
+         analyAVG%Nposs(      Nlevels, Nregions, num_obs_types), &
+         analyAVG%Nused(      Nlevels, Nregions, num_obs_types), &
+         analyAVG%NbigQC(     Nlevels, Nregions, num_obs_types), &
+         analyAVG%NbadIZ(     Nlevels, Nregions, num_obs_types), &
+         analyAVG%NbadUV(     Nlevels, Nregions, num_obs_types), &
+         analyAVG%NbadLV(     Nlevels, Nregions, num_obs_types), &
+         analyAVG%NbadDartQC( Nlevels, Nregions, num_obs_types), &
+         analyAVG%NDartQC_0(  Nlevels, Nregions, num_obs_types), &
+         analyAVG%NDartQC_1(  Nlevels, Nregions, num_obs_types), &
+         analyAVG%NDartQC_2(  Nlevels, Nregions, num_obs_types), &
+         analyAVG%NDartQC_3(  Nlevels, Nregions, num_obs_types), &
+         analyAVG%NDartQC_4(  Nlevels, Nregions, num_obs_types), &
+         analyAVG%NDartQC_5(  Nlevels, Nregions, num_obs_types), &
+         analyAVG%NDartQC_6(  Nlevels, Nregions, num_obs_types), &
+         analyAVG%NDartQC_7(  Nlevels, Nregions, num_obs_types)  )
 
 analyAVG%rmse        = 0.0_r8
 analyAVG%bias        = 0.0_r8
@@ -626,7 +629,7 @@ analyAVG%NDartQC_7   = 0
 analyAVG%string        = 'VPanaly'
 analyAVG%num_levels    = Nlevels
 analyAVG%num_regions   = Nregions
-analyAVG%num_variables = num_obs_kinds
+analyAVG%num_variables = num_obs_types
 
 !----------------------------------------------------------------------
 ! Open file for histogram of innovations, as a function of standard deviation.
@@ -677,8 +680,7 @@ ObsFileLoop : do ifile=1, 1000
    ! Read in information about observation sequence so we can allocate
    ! observations. We need info about how many copies, qc values, etc.
 
-   obs_seq_in_file_name     = trim(adjustl(obs_seq_in_file_name)) ! Lahey requirement
-   obs_seq_filenames(ifile) = trim(adjustl(obs_seq_in_file_name))
+   obs_seq_filenames(ifile) = trim(   obs_seq_in_file_name)
 
    call read_obs_seq_header(obs_seq_in_file_name, &
              num_copies, num_qc, num_obs, max_num_obs, &
@@ -701,14 +703,14 @@ ObsFileLoop : do ifile=1, 1000
       write(logfileunit,*)'num_qc              is ',num_qc
       write(logfileunit,*)'num_obs             is ',num_obs
       write(logfileunit,*)'max_num_obs         is ',max_num_obs
-      write(logfileunit,*)'obs_seq_read_format is ',trim(adjustl(obs_seq_read_format))
+      write(logfileunit,*)'obs_seq_read_format is ',trim(obs_seq_read_format)
       write(logfileunit,*)'pre_I_format        is ',pre_I_format
       write(    *      ,*)
       write(    *      ,*)'num_copies          is ',num_copies
       write(    *      ,*)'num_qc              is ',num_qc
       write(    *      ,*)'num_obs             is ',num_obs
       write(    *      ,*)'max_num_obs         is ',max_num_obs
-      write(    *      ,*)'obs_seq_read_format is ',trim(adjustl(obs_seq_read_format))
+      write(    *      ,*)'obs_seq_read_format is ',trim(obs_seq_read_format)
       write(    *      ,*)'pre_I_format        is ',pre_I_format
    endif
 
@@ -777,9 +779,9 @@ ObsFileLoop : do ifile=1, 1000
    else
       if (verbose) then
          write(logfileunit,*)'seqTN > TimeMin ... using ', &
-                             trim(adjustl(obs_seq_in_file_name))
+                             trim(obs_seq_in_file_name)
          write(    *      ,*)'seqTN > TimeMin ... using ', &
-                             trim(adjustl(obs_seq_in_file_name))
+                             trim(obs_seq_in_file_name)
       endif
    endif
 
@@ -798,7 +800,7 @@ ObsFileLoop : do ifile=1, 1000
       if (allocated(copyvals)) deallocate( copyvals )
       exit ObsFileLoop
    else
-      if (verbose) write(*,*)'seqT1 < TimeMax ... using ',trim(adjustl(obs_seq_in_file_name))
+      if (verbose) write(*,*)'seqT1 < TimeMax ... using ',trim(obs_seq_in_file_name)
    endif
 
    !--------------------------------------------------------------------
@@ -823,12 +825,13 @@ ObsFileLoop : do ifile=1, 1000
          endif
       else
          ! This should happen exactly once, if at all.
-         allocate(guess%hist_bin( Nepochs, Nlevels, Nregions, num_obs_kinds, ens_size+1))
+         allocate(guess%hist_bin( Nepochs, Nlevels, Nregions, num_obs_types, ens_size+1))
          allocate(ens_copy_index(ens_size))
          guess%hist_bin    = 0
          call init_random_seq(ran_seq, seed=23)
       endif
       create_rank_histogram = .true.
+      if (verbose) write(*,*) 'Creating rank histogram with ',ens_size+1,' bins.'
    else
       write(*,*) 'Cannot create rank histogram.'
       create_rank_histogram = .false.
@@ -876,9 +879,9 @@ ObsFileLoop : do ifile=1, 1000
           ! Append epoch number to name
           write(locName,'(a,i3.3,a)') 'observation_locations.', iepoch, '.dat'
           if (file_exist(locName)) then
-             lunit = open_file(trim(adjustl(locName)),form='formatted',action='append')
+             lunit = open_file(locName, form='formatted', action='append')
           else
-             lunit = open_file(trim(adjustl(locName)),form='formatted',action='rewind')
+             lunit = open_file(locName, form='formatted', action='rewind')
              write(lunit, '(a)') '     lon         lat      lev       kind     key   QCval'
           endif
       endif
@@ -1120,7 +1123,7 @@ ObsFileLoop : do ifile=1, 1000
          if ( create_rank_histogram ) then
             call get_obs_values(observation, copyvals)
             rank_histogram_bin = Rank_Histogram(copyvals, obs_index, &
-                 obs_error_variance, ens_size, ens_copy_index)
+                 obs_error_variance, ens_copy_index)
          endif
 
          !--------------------------------------------------------------
@@ -1380,8 +1383,8 @@ ObsFileLoop : do ifile=1, 1000
    enddo EpochLoop
 
    if (verbose) then
-      write(logfileunit,*)'End of EpochLoop for ',trim(adjustl(obs_seq_in_file_name))
-      write(     *     ,*)'End of EpochLoop for ',trim(adjustl(obs_seq_in_file_name))
+      write(logfileunit,*)'End of EpochLoop for ',trim(obs_seq_in_file_name)
+      write(     *     ,*)'End of EpochLoop for ',trim(obs_seq_in_file_name)
    endif
 
    call destroy_obs(obs1)
@@ -1401,8 +1404,8 @@ enddo ObsFileLoop
 
 if (verbose) then
    do ivar   = 1,SIZE(which_vert)
-      write(logfileunit,*)'which_vert(',ivar,' of ',num_obs_kinds,') = ',which_vert(ivar)
-      write(     *     ,*)'which_vert(',ivar,' of ',num_obs_kinds,') = ',which_vert(ivar)
+      write(logfileunit,*)'which_vert(',ivar,' of ',num_obs_types,') = ',which_vert(ivar)
+      write(     *     ,*)'which_vert(',ivar,' of ',num_obs_types,') = ',which_vert(ivar)
    enddo
 endif
 
@@ -1411,7 +1414,7 @@ if (verbose) then
    write(     *     ,*)'Normalizing time-level-region-variable quantities.'
 endif
 
-do ivar   = 1,num_obs_kinds
+do ivar   = 1,num_obs_types
 do iregion= 1,Nregions
 do ilev   = 1,Nlevels
 do iepoch = 1,Nepochs
@@ -1509,7 +1512,7 @@ if (verbose) then
    write(     *     ,*)'Normalize quantities for all levels.'
 endif
 
-do ivar=1,num_obs_kinds
+do ivar=1,num_obs_types
 do iregion=1, Nregions
 do ilev=1, Nlevels
 
@@ -1669,13 +1672,18 @@ endif
 
 if ( sum(obs_used_in_epoch) == 0 ) then
 
-   call print_date(AllseqT1,'First observation date')
-   call print_date( TimeMin,'First requested   date')
-   call print_date(AllseqTN,'Last  observation date')
-   call print_date( TimeMax,'Last  requested   date')
+   call print_date(AllseqT1,' First observation date')
+   call print_date(AllseqTN,' Last  observation date')
+   call print_date( TimeMin,' First requested   date')
+   call print_date( TimeMax,' Last  requested   date')
 
-   write(msgstring,*)'No observations in requested time bins.'
-   call error_handler(E_ERR,'obs_diag',msgstring,source,revision,revdate)
+   write(    *      ,*)
+   write(logfileunit,*)
+
+   write(msgstring,*)'WARNING: NO OBSERVATIONS in requested time bins.'
+   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
+   call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
 
 endif
 
@@ -1699,8 +1707,9 @@ deallocate(guess%rmse,        guess%bias,      guess%spread,    guess%totspread,
            guess%NDartQC_0,   guess%NDartQC_1, guess%NDartQC_2, guess%NDartQC_3, &
            guess%NDartQC_4,   guess%NDartQC_5, guess%NDartQC_6, guess%NDartQC_7) 
 
-if ( create_rank_histogram ) &
-deallocate(guess%hist_bin, ens_copy_index)
+if (associated(guess%hist_bin)) deallocate(guess%hist_bin)
+
+if (allocated(ens_copy_index)) deallocate(ens_copy_index)
 
 deallocate(analy%rmse,        analy%bias,      analy%spread,    analy%totspread, &
            analy%observation, analy%ens_mean,  analy%Nposs,     analy%Nused,     &
@@ -1727,7 +1736,7 @@ deallocate(analyAVG%rmse,        analyAVG%bias,        analyAVG%spread,     &
 
 deallocate(epoch_center, epoch_edges, bincenter, obs_used_in_epoch)
 
-deallocate(my_obs_kind_names, which_vert, scale_factor)
+deallocate(obs_type_strings, which_vert, scale_factor)
 
 call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
 
@@ -1752,28 +1761,30 @@ CONTAINS
       ! the scale_factor should be defined to reflect the type, which are not
       ! guaranteed to be numbered sequentially ... vortices 81, for example
 
-      character(len = stringlength) :: obs_kind_name
+      character(len = stringlength) :: obs_string
       integer :: ivar
 
       scale_factor = 1.0_r8
    
-      ! The scale_factor array is dimensioned from obs_kind_mod:num_obs_kinds
+      ! The scale_factor array is dimensioned from obs_kind_mod:num_obs_types
 
       do ivar = 1,SIZE(scale_factor)
 
-         obs_kind_name = my_obs_kind_names(ivar)
+         obs_string = obs_type_strings(ivar)
 
-         if ( index(obs_kind_name,'SURFACE_PRESSURE') > 0 ) &
+         if ( index(obs_string,'SURFACE_PRESSURE') > 0 ) &
                 scale_factor(ivar) = 0.01_r8
 
-         if ( index(obs_kind_name,'SPECIFIC_HUMIDITY') > 0 ) &
+         if ( index(obs_string,'SPECIFIC_HUMIDITY') > 0 ) &
                 scale_factor(ivar) = 1000.0_r8
 
          ! Somehow, we should plot statistics on the dBZ scale for these ...
          ! scale_factor(KIND_RADAR_REFLECTIVITY) = 10log10(z)
 
-         write(     *     ,*)'scaling of ',scale_factor(ivar),obs_kind_name
-         write(logfileunit,*)'scaling of ',scale_factor(ivar),obs_kind_name
+         if (verbose) then
+            write(     *     ,*)'scaling of ',scale_factor(ivar),obs_string
+            write(logfileunit,*)'scaling of ',scale_factor(ivar),obs_string
+         endif
 
       enddo
 
@@ -1781,12 +1792,12 @@ CONTAINS
 
 
 
-   Subroutine SetTime(beg_time, end_time, binsep, binwidth, halfbinwidth, &
+   Subroutine SetTime(beg_time, end_time, binsep, halfbinwidth, &
         TimeMin, TimeMax, Nepochs, bincenter, binedges, epoch_center, epoch_edges, &
         obs_used_in_epoch)
 
       type(time_type), intent(in)  :: beg_time, end_time  ! of the particular bin
-      type(time_type), intent(in)  :: binsep, binwidth, halfbinwidth
+      type(time_type), intent(in)  :: binsep, halfbinwidth
       type(time_type), intent(out) :: TimeMin, TimeMax
       integer,         intent(out) :: Nepochs
 
@@ -2111,9 +2122,9 @@ CONTAINS
                            prior_spread_index, posterior_spread_index
    integer, dimension(:), intent(out) :: ens_copy_index
 
-   ! Using 'seq' from global scope
+   ! Using 'seq' and 'ens_size' from global scope
 
-   integer :: i, ens_size, ens_count
+   integer :: i, ens_count
    character(len=metadatalength) :: metadata
 
    obs_index              = -1
@@ -2124,12 +2135,11 @@ CONTAINS
    qc_index               = -1
    dart_qc_index          = -1
 
-   ens_size  = size(ens_copy_index)
    ens_count = 0
 
    MetaDataLoop : do i=1, get_num_copies(seq)
 
-      metadata = adjustl(get_copy_meta_data(seq,i))
+      metadata = get_copy_meta_data(seq,i)
 
       if(index(metadata,'observation'              ) > 0)              obs_index = i
       if(index(metadata,'prior ensemble mean'      ) > 0)       prior_mean_index = i
@@ -2200,42 +2210,42 @@ CONTAINS
    !--------------------------------------------------------------------
 
    write(msgstring,'(''observation      index '',i2,'' metadata '',a)') &
-        obs_index, trim(adjustl(get_copy_meta_data(seq,obs_index)))
+        obs_index, trim(get_copy_meta_data(seq,obs_index))
    call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
 
    if (prior_mean_index > 0 ) then
       write(msgstring,'(''prior mean       index '',i2,'' metadata '',a)') &
-           prior_mean_index, trim(adjustl(get_copy_meta_data(seq,prior_mean_index)))
+           prior_mean_index, trim(get_copy_meta_data(seq,prior_mean_index))
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
 
    if (posterior_mean_index > 0 ) then
       write(msgstring,'(''posterior mean   index '',i2,'' metadata '',a)') &
-           posterior_mean_index, trim(adjustl(get_copy_meta_data(seq,posterior_mean_index)))
+           posterior_mean_index, trim(get_copy_meta_data(seq,posterior_mean_index))
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate) 
    endif
 
    if (prior_spread_index > 0 ) then
       write(msgstring,'(''prior spread     index '',i2,'' metadata '',a)') &
-           prior_spread_index, trim(adjustl(get_copy_meta_data(seq,prior_spread_index)))
+           prior_spread_index, trim(get_copy_meta_data(seq,prior_spread_index))
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
 
    if (posterior_spread_index > 0 ) then
       write(msgstring,'(''posterior spread index '',i2,'' metadata '',a)') &
-           posterior_spread_index, trim(adjustl(get_copy_meta_data(seq,posterior_spread_index)))
+           posterior_spread_index, trim(get_copy_meta_data(seq,posterior_spread_index))
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
 
    if (qc_index > 0 ) then
       write(msgstring,'(''Quality Control      index '',i2,'' metadata '',a)') &
-           qc_index,      trim(adjustl(get_qc_meta_data(seq,     qc_index)))
+           qc_index,      trim(get_qc_meta_data(seq,     qc_index))
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
 
    if (dart_qc_index > 0 ) then
       write(msgstring,'(''DART quality control index '',i2,'' metadata '',a)') &
-           dart_qc_index, trim(adjustl(get_qc_meta_data(seq,dart_qc_index)))
+           dart_qc_index, trim(get_qc_meta_data(seq,dart_qc_index))
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
 
@@ -2702,16 +2712,16 @@ CONTAINS
       call error_handler(E_WARN,'obs_diag',msgstring,source,revision,revdate)
    endif
 
-   ! Find the derived type in our augmented list.
+   ! Find the derived type in our augmented list in global storage.
 
-   MyKind : do ivar = 1,num_obs_kinds
-      indx1 = index(str3, my_obs_kind_names(ivar))
+   MyType : do ivar = 1,num_obs_types
+      indx1 = index(str3, obs_type_strings(ivar))
       if (indx1 > 0) then
          flavor = ivar
          CheckMate = 0
-         exit MyKind
+         exit MyType
       endif
-   enddo MyKind
+   enddo MyType
 
    ! If we have checked all the types and not found a match ... 
 
@@ -3006,7 +3016,7 @@ CONTAINS
    Subroutine WriteNetCDF(fname)
    character(len=129), intent(in) :: fname
 
-   integer :: ncid, i, indx1
+   integer :: ncid, i, indx1, nobs, typesdimlen
    integer ::  RegionDimID,  RegionVarID
    integer ::  MlevelDimID,  MlevelVarID
    integer ::  PlevelDimID,  PlevelVarID
@@ -3037,8 +3047,10 @@ CONTAINS
    call nc_check(nf90_create(path = trim(fname), cmode = nf90_share, &
             ncid = ncid), 'obs_diag:WriteNetCDF', 'create '//trim(fname))
 
-   write(msgstring,*)trim(ncName), ' is fortran unit ',ncid
-   call error_handler(E_MSG,'WriteNetCDF',msgstring,source,revision,revdate)
+   if (verbose) then
+      write(msgstring,*)trim(ncName), ' is fortran unit ',ncid
+      call error_handler(E_MSG,'WriteNetCDF',msgstring,source,revision,revdate)
+   endif
 
    !----------------------------------------------------------------------------
    ! Write Global Attributes 
@@ -3143,29 +3155,56 @@ CONTAINS
               'WriteNetCDF', 'put_att identity '//trim(fname))
 
    !----------------------------------------------------------------------------
-   ! write all 'known' observation types
+   ! Write all observation types that are used. Requires counting how many
+   ! observations for each observation type.
    !----------------------------------------------------------------------------
 
    call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'comment', &
-              'All known observation types follow. &
-              &Also see ObservationTypes variable.' ), &
-              'WriteNetCDF', 'put_att latlim2 '//trim(fname))
+           'All used observation types follow. &
+           &ObservationTypes variable has all types known.' ), &
+           'WriteNetCDF', 'put_att obstypes comment '//trim(fname))
+
+   typesdimlen = 0
    do ivar = 1,max_obs_kinds
-     call nc_check(nf90_put_att(ncid, NF90_GLOBAL, &
-            trim(adjustl(my_obs_kind_names(ivar))), ivar ), &
+
+      nobs = sum(analy%Nposs(:,:,:,ivar))
+
+      if (nobs > 0) then
+         typesdimlen = typesdimlen + 1
+
+         call nc_check(nf90_put_att(ncid, NF90_GLOBAL, &
+            trim(obs_type_strings(ivar)), ivar ), &
             'WriteNetCDF', 'region_names:obs_kinds')
+      endif
    enddo
+
+   if (typesdimlen < 1) then
+      call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'comment', &
+              'NO OBSERVATIONS. Check input time window &
+              &against observation times.' ), &
+              'WriteNetCDF', 'put_att empty file comment '//trim(fname))
+      call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'continued', &
+              'NO OBSERVATIONS. Expected if using an obs_seq.out'), &
+              'WriteNetCDF', 'put_att empty file comment '//trim(fname))
+   endif
 
    !----------------------------------------------------------------------------
    ! Define the dimensions
    !----------------------------------------------------------------------------
 
    call nc_check(nf90_def_dim(ncid=ncid, &
+              name='time',   len = NF90_UNLIMITED,   dimid = TimeDimID), &
+              'WriteNetCDF', 'time:def_dim '//trim(fname))
+   call nc_check(nf90_def_dim(ncid=ncid, &
+              name='bounds',   len = 2,  dimid = BoundsDimID), &
+              'WriteNetCDF', 'bounds:def_dim '//trim(fname))
+
+   call nc_check(nf90_def_dim(ncid=ncid, &
               name='copy', len = Ncopies,            dimid = CopyDimID), &
               'WriteNetCDF', 'copy:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
-              name='obstypes', len = max_obs_kinds,  dimid = TypesDimID), &
+              name='obstypes', len = max_obs_kinds,    dimid = TypesDimID), &
               'WriteNetCDF', 'types:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
@@ -3200,13 +3239,6 @@ CONTAINS
    call nc_check(nf90_def_dim(ncid=ncid, &
               name='hlevel_edges', len = Nhlevels+1, dimid = HlevIntDimID), &
               'WriteNetCDF', 'hlevel_edges:def_dim '//trim(fname))
-
-   call nc_check(nf90_def_dim(ncid=ncid, &
-              name='time',   len = NF90_UNLIMITED,   dimid = TimeDimID), &
-              'WriteNetCDF', 'time:def_dim '//trim(fname))
-   call nc_check(nf90_def_dim(ncid=ncid, &
-              name='bounds',   len = 2,  dimid = BoundsDimID), &
-              'WriteNetCDF', 'bounds:def_dim '//trim(fname))
 
    call nc_check(nf90_def_dim(ncid=ncid, &
               name='stringlength', len = stringlength, dimid = StringDimID), &
@@ -3458,7 +3490,7 @@ CONTAINS
    call nc_check(nf90_put_var(ncid, TypesVarId, (/ (i,i=1,max_obs_kinds) /) ), &
               'WriteNetCDF', 'types:put_var')
 
-   call nc_check(nf90_put_var(ncid, TypesMetaVarID, my_obs_kind_names(1:max_obs_kinds)), &
+   call nc_check(nf90_put_var(ncid, TypesMetaVarID, obs_type_strings(1:max_obs_kinds)), &
               'WriteNetCDF', 'typesmeta:put_var')
 
    call nc_check(nf90_put_var(ncid, RegionVarID, (/ (i,i=1,Nregions) /) ), &
@@ -3497,12 +3529,14 @@ CONTAINS
    ! write the data we took such pains to collate ...
    !----------------------------------------------------------------------------
 
+   if (verbose) write(*,*) ! a little whitespace
    if (verbose) write(*,*)'summary for Priors of time-level-region vars' 
    if ( create_rank_histogram ) then
       ierr = WriteTLRV(ncid, guess, TimeDimID, CopyDimID, RegionDimID, RankDimID)
    else
       ierr = WriteTLRV(ncid, guess, TimeDimID, CopyDimID, RegionDimID)
    endif
+   if (verbose) write(*,*) ! a little whitespace
    if (verbose) write(*,*)'summary for Posteriors of time-level-region vars' 
    ierr = WriteTLRV(ncid, analy,    TimeDimID, CopyDimID, RegionDimID)
    ierr = WriteLRV( ncid, guessAVG,            CopyDimID, RegionDimID)
@@ -3533,16 +3567,15 @@ CONTAINS
    real(r4), allocatable, dimension(:,:,:,:) :: rchunk
    integer,  allocatable, dimension(:,:,:,:) :: ichunk
 
-   FLAVORS : do ivar = 1,num_obs_kinds
+   FLAVORS : do ivar = 1,num_obs_types
 
       nobs = sum(vrbl%Nposs(:,:,:,ivar))
+      if (nobs < 1) cycle FLAVORS
 
       if (verbose) then
          write(*,'(i4,1x,(a32),1x,i8,1x,'' obs@vert '',i3,f11.3)') ivar, &
-          my_obs_kind_names(ivar), nobs, which_vert(ivar), scale_factor(ivar)
+          obs_type_strings(ivar), nobs, which_vert(ivar), scale_factor(ivar)
       endif
-
-      if (nobs < 1) cycle FLAVORS
 
       ! determine what kind of levels to use ... models, pressure, height ...
 
@@ -3585,8 +3618,8 @@ CONTAINS
 
       ! Create netCDF variable name
       
-      str1 = my_obs_kind_names(ivar)
-      string1 = trim(adjustl(str1))//'_'//trim(adjustl(vrbl%string))
+      str1 = obs_type_strings(ivar)
+      string1 = trim(str1)//'_'//adjustl(vrbl%string)
 
       call nc_check(nf90_def_var(ncid, name=string1, xtype=nf90_real, &
              dimids=(/ RegionDimID, LevelDimID, CopyDimID, TimeDimID /), &
@@ -3604,7 +3637,7 @@ CONTAINS
       ndata = 0
       if (present(RankDimID)) then
 
-         string1 = trim(adjustl(str1))//'_'//trim(adjustl(vrbl%string))//'_RankHist'
+         string1 = trim(string1)//'_RankHist'
          Nbins   = size(vrbl%hist_bin,5)
          ndata   = sum(vrbl%hist_bin(:,:,:,ivar,:))
 
@@ -3667,7 +3700,7 @@ CONTAINS
    integer :: VarID, LevelDimID, oldmode
    real(r4), allocatable, dimension(:,:,:) :: chunk
 
-   FLAVORS : do ivar = 1,num_obs_kinds
+   FLAVORS : do ivar = 1,num_obs_types
 
       nobs = sum(vrbl%Nposs(:,:,ivar))
       if (nobs < 1) cycle FLAVORS
@@ -3711,8 +3744,8 @@ CONTAINS
 
       ! Create netCDF variable name
       
-      str1 = my_obs_kind_names(ivar)
-      string1 = trim(adjustl(str1))//'_'//trim(adjustl(vrbl%string))
+      str1 = obs_type_strings(ivar)
+      string1 = trim(str1)//'_'//adjustl(vrbl%string)
 
       call nc_check(nf90_def_var(ncid, name=string1, xtype=nf90_real, &
              dimids=(/ RegionDimID, LevelDimID, CopyDimID /), &
@@ -3788,7 +3821,7 @@ CONTAINS
    ! Define/Append the 'horizontal wind' obs_kinds to supplant the list declared
    ! in obs_kind_mod.f90 i.e. if there is a RADIOSONDE_U_WIND_COMPONENT
    ! and a RADIOSONDE_V_WIND_COMPONENT, there must be a RADIOSONDE_HORIZONTAL_WIND
-   ! Replace calls to 'get_obs_kind_name' with variable 'my_obs_kind_names'
+   ! Replace calls to 'get_obs_kind_name' with variable 'obs_type_strings'
    !----------------------------------------------------------------------
 
    character(len=stringlength), pointer :: my_names(:) ! INTENT OUT, btw
@@ -3830,8 +3863,6 @@ CONTAINS
       str2   = names(ivar)
       indx2  = index(str2,'_V_WIND_COMPONENT') - 1
       indx2N = len_trim(str2)
-
-   !  write(*,*)'Checking ',ivar, indx1, indx2, trim(adjustl(str2))
 
       if ((indx1 > 0) .and. (indx2 > 0)) then             ! we know we have u,v wind components
 
@@ -3927,7 +3958,7 @@ CONTAINS
 
 
    Function Rank_Histogram(copyvalues, obs_index, &
-                       error_variance, ens_size, ens_copy_index ) result(rank) 
+                       error_variance, ens_copy_index ) result(rank) 
 
    ! Calculates the bin/rank
    ! We don't care about the QC value. If the ob wasn't assimilated
@@ -3936,7 +3967,6 @@ CONTAINS
    real(r8),dimension(:), intent(in)  :: copyvalues
    integer,               intent(in)  :: obs_index
    real(r8),              intent(in)  :: error_variance
-   integer,               intent(in)  :: ens_size
    integer, dimension(:), intent(in)  :: ens_copy_index
    integer                            :: rank
 

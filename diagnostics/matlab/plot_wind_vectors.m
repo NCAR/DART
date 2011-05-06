@@ -1,33 +1,43 @@
-function obs = plot_wind_vectors( fname, ncname, platform, varargin )
+function data = plot_wind_vectors( fname, platform, CopyString, QCString, varargin )
 %% plot_wind_vectors creates maps with wind vector images overlain.
 %
 % The required arguments are:
-% fname    ... the file name containing the wind observation pairs
-% ncname   ... the output netCDF file from obs_diag.f90 (for some metadata)
+% fname    ... the output netCDF file from obs_seq_to_netcdf
 % platform ... a string to represent the observation platform.
+%              usually 'RADIOSONDE', 'SAT', 'METAR', ... get hints from:
+%              ncdump -v ObsTypesMetaData obs_epoch_xxx.nc | grep _U_  
+% CopyString ... which observation copy is of interest? 
+%              ncdump -v CopyMetaData obs_epoch_xxx.nc
+% QCString   ... which QC copy is of interest?
+%              ncdump -v QCMetaData obs_epoch_xxx.nc
 % 
 % The optional arguments are:
-% levels      ... specifies the vertical area of interest. If not present,
-%                 all vertical levels are used.
-% region      ... specifies that horizontal area of interest. If not present,
+% region      ... specifies that horizontal & vertical area of interest. If not present,
 %                 all available observations are used. 
 % scalefactor ... provides control over the plotted size of the 
 %                 wind vectors. A smaller number results in a 
 %                 bigger wind vector. If not present, a value of 10.0 is
 %                 used.
 %
-% fname    = 'wind_vectors.006.dat';
-% ncname   = 'obs_to_table_output.nc';
-% platform = 'RADIOSONDE';
-% levels   = [1020 500];
-% region   = [0 360 0 90];    % 
+% EXAMPLE 1:
+% fname        = 'obs_epoch_001.nc';
+% platform     = 'SAT';    % usually 'RADIOSONDE', 'SAT', 'METAR', ...
+% CopyString   = 'NCEP BUFR observation';
+% QCString     = 'DART quality control';
+% region       = [0 360 0 90 1020 500];    % 
 % scalefactor = 5;     % reference arrow magnitude
 %
-% obs = plot_wind_vectors(fname, ncname, platform, ...
-%         'levels', levels, 'region', region, 'scalefactor', scalefactor);
+% obs = plot_wind_vectors(fname, platform, CopyString, QCString, ...
+%         'region', region, 'scalefactor', scalefactor);
 %
+%
+% EXAMPLE 2 (CONUS domain):
+%
+% region = [210 310 12 65 -Inf Inf];
+% obs = plot_wind_vectors('obs_epoch_001.nc', 'SAT', ...
+%       'NCEP BUFR observation', 'DART quality control','region',region);
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright ï¿½ 2004 - 2010 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
@@ -37,37 +47,56 @@ function obs = plot_wind_vectors( fname, ncname, platform, varargin )
 % $Revision$
 % $Date$
 
-narg = nargin;
+% Set sensible defaults
 
-if narg == 3 
+region      = [0 360 -90 90 -Inf Inf];
+scalefactor = 10;
 
-   levels   = [];
-   region   = [];
-   scalefactor = 10;
+% Harvest input
 
-else
+if nargin ~= 4 
+   [region, scalefactor] = parseinput(varargin{:});
+end
 
-   [levels, region, scalefactor] = parseinput(varargin{:});
+%% Start the ball rolling
 
+if (exist(fname,'file') ~= 2) 
+   error('%s does not exist',fname)
 end
 
 data.filename    = fname;
-data.ncname      = ncname;
 data.platform    = platform;
-data.levels      = levels;
+data.copystring  = CopyString;
+data.qcstring    = QCString;
 data.region      = region;
 data.scalefactor = scalefactor;
 
-f = netcdf(ncname,'nowrite');
-data.platforms = f{'ObservationTypes'}(:);
-data.timeunits = f{'time_bounds'}.units(:);
-close(f);
+%% Read the observation sequence
 
-timebase   = sscanf(data.timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
-data.timeorigin = datenum(timebase(1),timebase(2),timebase(3));
-obs        = Load_Parse(data);
+[UtypeString, VtypeString] = FindObsType( fname, platform );
+verbose = 0;
+Uobs = read_obs_netcdf(fname, UtypeString, region, CopyString, QCString, verbose);
+Vobs = read_obs_netcdf(fname, VtypeString, region, CopyString, QCString, verbose);
 
-if  isempty(obs)
+if (length(Uobs.obs) ~= length(Vobs.obs))
+   error('Houston, we have a problem.')
+end
+
+lonmismatch = Uobs.lons ~= Vobs.lons;
+latmismatch = Uobs.lats ~= Vobs.lats;
+  zmismatch = Uobs.z    ~= Vobs.z;
+
+if ( sum(lonmismatch) ~= 0),
+   warning('DART:UVcollocaton','There are %d mismatched (in longitude) observations',sum(lonmismatch))
+end 
+if ( sum(latmismatch) ~= 0),
+   warning('DART:UVcollocaton','There are %d mismatched (in latitude) observations',sum(latmismatch))
+end 
+if ( sum(zmismatch) ~= 0),
+   warning('DART:UVcollocaton','There are %d mismatched (in vertical) observations',sum(zmismatch))
+end 
+
+if (sum(lonmismatch) == length(lonmismatch))
    clf;
    axis([0 1 0 1]); axis image
    h = text(0.5,0.5,sprintf('%s has no %s data',data.filename,data.platform));
@@ -75,56 +104,84 @@ if  isempty(obs)
    return
 end
 
-obs.times  = obs.times + data.timeorigin;
-t1         = datestr(min(obs.times));
-t2         = datestr(max(obs.times));
+%% must only use the observations that are co-located to 
+%  set up the plotting structure.
+
+inds = ((Uobs.lons == Vobs.lons) & ...
+        (Uobs.lats == Vobs.lats) & ...
+        (Uobs.z    == Vobs.z));
+
+data.time = Uobs.time(inds);
+data.lon  = Uobs.lons(inds);
+data.lat  = Uobs.lats(inds);
+data.z    = Uobs.z(inds);
+data.Uqc  = Uobs.qc(inds);
+data.Vqc  = Vobs.qc(inds);
+data.U    = Uobs.obs(inds);
+data.V    = Vobs.obs(inds);
+data.level1    = min(Uobs.z);
+data.levelN    = max(Uobs.z);
+data.levstring = sprintf('%.2f to %.2f',data.level1,data.levelN);
+
+%% Start the Plotting
 
 clf;
-axlims     = DrawBackground( obs );
+axish = gca;
+axlims = DrawBackground( data );
+set(axish,'Layer','top')
 
-
-goodUV = find( (obs.Uqc < 1) & (obs.Vqc < 1));
-baadUV = find( (obs.Uqc > 1) & (obs.Vqc > 1));
-goodU  = find( (obs.Uqc < 1) & (obs.Vqc > 0));
-goodV  = find( (obs.Vqc < 1) & (obs.Uqc > 0));
+if ( isfinite(strfind(lower(QCString),'dart')) )
+   % We know how to interpret QC codes
+   goodUV = find( (data.Uqc < 2) & (data.Vqc < 2));
+   baadUV = find( (data.Uqc > 1) & (data.Vqc > 1));
+   goodU  = find( (data.Uqc < 2) & (data.Vqc > 1));
+   goodV  = find( (data.Uqc > 1) & (data.Vqc < 2));
+else
+   % We do not know how to interpret QC codes, so they
+   % are all 'good'
+   baadUV = [];
+   goodU  = [];
+   goodV  = [];
+end
 
 legh   = [];
 legstr = {};
 
 if ~ isempty(goodUV)
-   hgood  = obs2plot(obs, goodUV, [0 0 0] );
+   hgood  = obs2plot(data, goodUV, [0 0 0] );
    legh   = [legh; hgood];
-   legstr{length(legstr)+1} = sprintf('%d good',length(goodUV));
+   legstr{length(legstr)+1} = sprintf('%d ''good''',length(goodUV));
 end
 
 if ~ isempty(baadUV)
-   hbaadUV = obs2plot(obs, baadUV, [1 0 0] );
+   hbaadUV = obs2plot(data, baadUV, [1 0 0] );
    legh    = [legh; hbaadUV];
-   legstr{length(legstr)+1} = sprintf('%d badUbadV',length(baadUV));
+   legstr{length(legstr)+1} = sprintf('%d ''badU  badV''',length(baadUV));
 end
 
 if ~ isempty(goodU)
-   hgoodU = obs2plot(obs, goodU, [0 1 0] );
+   hgoodU = obs2plot(data, goodU, [0 1 0] );
    legh   = [legh; hgoodU];
-   legstr{length(legstr)+1} = sprintf('%d goodUbadV',length(goodU));
+   legstr{length(legstr)+1} = sprintf('%d ''goodU badV''',length(goodU));
 end
 
 if ~ isempty(goodV)
-   hgoodV = obs2plot(obs, goodV, [0 0 1] );
+   hgoodV = obs2plot(data, goodV, [0 0 1] );
    legh   = [legh; hgoodV];
-   legstr{length(legstr)+1} = sprintf('%d badUgoodV',length(goodV));
+   legstr{length(legstr)+1} = sprintf('%d ''badU  goodV''',length(goodV));
 end
 
+t1 = datestr(min(data.time),'yyyy-mm-dd HH:MM:SS');
+t2 = datestr(max(data.time),'yyyy-mm-dd HH:MM:SS');
 h = title({sprintf('%s %s %s',t1,platform,t2), ...
-           sprintf('levels %s ',obs.levelstring)});
+           sprintf('levels %s ',data.levstring)});
 set(h,'FontSize',18)
 
 h = xlabel(data.filename); set(h,'Interpreter','none');
 
-legend(legh,legstr,'Location','NorthWestOutside')
+legend(legh,legstr,'Location','Best')
 
 hold off;
-
 
 
 function axlims = DrawBackground( obs )
@@ -134,14 +191,14 @@ if  isempty(obs.region)
    % Figure out bounds of the data
    axlims = [ min(obs.lon) max(obs.lon) min(obs.lat) max(obs.lat) ] ;
 else
-   axlims = obs.region;
+   axlims = obs.region(1:4);
 end
 
 % It is nice to have a little padding around the perimeter
 dx = 0.05 * (axlims(2) - axlims(1));
 dy = 0.05 * (axlims(4) - axlims(3));
-
-axis(axlims + [-dx dx -dy dy])
+axlims(1:4) = axlims(1:4) + [-dx dx -dy dy];
+axis(axlims)
 axis image
 
 % It is nice to know where the land is
@@ -181,237 +238,75 @@ set(h2,'Color',colspec)
 
 
 
-function obs = Load_Parse( data )
+function [ustring, vstring] = FindObsType( ncname, platform )
 %======================================================================
 % Makes no attempt to find/replace/identify MISSING values
 %
 % data.filename     incoming filename with the data
 % data.ncname       incoming filename with the metadata
 % data.platform     the observation platform of interest
-% data.levels       the top/bottom levels of interest
 % data.region       the region of interest [xmin xmax ymin ymax]
 % data.scalefactor  the reference wind vector magnitude
 % data.platforms    the observation platforms in the incoming file
 % data.timeunits    the units string e.g. 'days since yyyy-mm-dd'
 % data.timeorigin
 
-obsmat = load(data.filename);
+ObsTypeStrings = nc_varget(ncname,'ObsTypesMetaData');
 
 % Find the types of data in the obs_sequence file for this epoch.
+% Turns out all the winds are either xxxx_U_WIND_COMPONENT or xxxx_U_10_METER_WIND
+% so either way, they start out xxxx_U_
 
-platformIDs = unique(obsmat(:,1));
-uid         = floor(platformIDs/100);
-vid         = platformIDs - uid*100;
-Ustrings    = data.platforms(uid,:);
-Vstrings    = data.platforms(vid,:);
+utarget = sprintf('%s_U_',strtrim(platform));
+vtarget = sprintf('%s_V_',strtrim(platform));
+n       = length(utarget);
+ustring = [];
+vstring = [];
 
-nplatforms = length(uid);
-pid        = [];
-obs        = [];
-levelstring = [];
-regionstring = [];
+for i = 1:size(ObsTypeStrings,1)
 
-% This block divines the platform string and companion obs_kinds 
-% from the netCDF file metadata - the only reason we need the netCDF file.
+   utf = strncmpi(ObsTypeStrings(i,:),utarget,n);
+   vtf = strncmpi(ObsTypeStrings(i,:),vtarget,n);
 
-for i = 1:nplatforms
-   uindex = findstr(Ustrings(i,:),'_U_WIND_COMPONENT') - 1;
-   vindex = findstr(Vstrings(i,:),'_V_WIND_COMPONENT') - 1;
-
-   if (isempty(uindex) | isempty(vindex)) 
-      uindex = findstr(Ustrings(i,:),'_U_10_METER_WIND') - 1;
-      vindex = findstr(Vstrings(i,:),'_V_10_METER_WIND') - 1;
+   if ( utf )
+      ustring = ObsTypeStrings(i,:);
+      uindex  = i;
+   end 
+   if ( vtf )
+      vstring = ObsTypeStrings(i,:);
+      vindex  = i;
    end 
 
-   Ubase  = Ustrings(i,1:uindex);
-   Vbase  = Vstrings(i,1:vindex);
-
-   if ~strcmp(Ubase,Vbase)
-      error('U and V wind component platforms do not match')
-   end
-
-   % Determine what numeric pid corresponds to the desired platform string
-   if strcmp(lower(Ubase),lower(data.platform))
-      pid = platformIDs(i);
-   end
-
-   % echo a little informational statement about how many obs of
-   % this type there are in this assimilation period.
-   inds = find(obsmat(:,1) == platformIDs(i));
-   nobs = length(inds);
-
-   disp(sprintf('%6d %14s observations in %s (%4d)',nobs,Ubase,data.filename,platformIDs(i)))
-
 end
 
-% This block extracts just the desired observations based on platform.
-
-if isempty(pid)
-   disp(sprintf('no %s observations in %s', data.platform, data.filename))
-   return
+if ( isempty(ustring) || isempty(vstring) )
+   error('no %s winds in %s',platform,ncname)
 end
 
-inds   = find(obsmat(:,1) == pid);
+% echo a little informational statement about the number of obs
 
-if isempty(inds)
-   disp(sprintf('no %s observations (type %d) in %s',data.platform, pid, data.filename))
-   return
+obs_type = nc_varget(ncname,'obs_type');
+numU     = sum(obs_type == uindex);
+numV     = sum(obs_type == vindex);
+fprintf('%8d %s observations in %s\n', numU, ustring, ncname)
+fprintf('%8d %s observations in %s\n', numV, vstring, ncname)
+
+if (numU ~= numV)
+   error('Different number of U,V observations. Dying ...')
 end
 
-platform = obsmat(inds, 1);
-day      = obsmat(inds, 2);
-seconds  = obsmat(inds, 3);
-lon      = obsmat(inds, 4);
-lat      = obsmat(inds, 5);
-level    = obsmat(inds, 6);
-Uqc      = obsmat(inds, 7);
-Vqc      = obsmat(inds, 8);
-U        = obsmat(inds, 9);
-V        = obsmat(inds,10);
-if ( size(obsmat,2) > 10 )
-   Upr   = obsmat(inds,11);
-   Vpr   = obsmat(inds,12);
-   Upo   = obsmat(inds,13);
-   Vpo   = obsmat(inds,14);
-end
-times    = day + seconds/86400;
-
-%--------------------------------------------------
-% Subset the levels of interest
-%--------------------------------------------------
-
-if ( isempty(data.levels) ) 
-   % then we want all levels, do nothing ...
-   level1 = min(level);
-   levelN = max(level);
-
-   levelstring = sprintf('all (%.2f to %.2f)',level1,levelN);
-else
-   level1 = min(data.levels);
-   levelN = max(data.levels);
-
-   levelstring = sprintf('%.2f to %.2f',level1,levelN);
-
-   inds = find ((level >= level1) & (level <= levelN));
-
-   if (length(inds) == 0)
-      disp(sprintf('no %s observations in %s', data.platform, levelstring))
-      return
-   end
-
-   platform = platform(inds);
-   day      =      day(inds);
-   seconds  =  seconds(inds);
-   lon      =      lon(inds);
-   lat      =      lat(inds);
-   level    =    level(inds);
-   Uqc      =      Uqc(inds);
-   Vqc      =      Vqc(inds);
-   U        =        U(inds);
-   V        =        V(inds);
-   if ( size(obsmat,2) > 10 )
-      Upr   =      Upr(inds);
-      Vpr   =      Vpr(inds);
-      Upo   =      Upo(inds);
-      Vpo   =      Vpo(inds);
-   end
-   times    =    times(inds);
-end
-
-%--------------------------------------------------
-% Subset the region of interest
-% for the moment, we are not supporting wrapping at Greenwich.
-%--------------------------------------------------
-
-if isempty(data.region)
-   % then we want the entire dataset, do nothing ... 
-   regionstring = 'global';
-else
-   lon1 = data.region(1);
-   lonN = data.region(2);
-   lat1 = data.region(3);
-   latN = data.region(4);
-
-   regionstring = sprintf('(%.2f -> %.2f, %.2f -> %.2f)',lon1,lonN,lat1,latN);
-
-   inds = find ((lon >= lon1) & (lon <= lonN) & ...
-                (lat >= lat1) & (lat <= latN));
-
-   if (length(inds) == 0)
-      disp(sprintf('no %s observations in %s', data.platform, regionstring))
-      return
-   end
-
-   platform = platform(inds);
-   day      =      day(inds);
-   seconds  =  seconds(inds);
-   lon      =      lon(inds);
-   lat      =      lat(inds);
-   level    =    level(inds);
-   Uqc      =      Uqc(inds);
-   Vqc      =      Vqc(inds);
-   U        =        U(inds);
-   V        =        V(inds);
-   if ( size(obsmat,2) > 10 )
-      Upr   =      Upr(inds);
-      Vpr   =      Vpr(inds);
-      Upo   =      Upo(inds);
-      Vpo   =      Vpo(inds);
-   end
-   times    =    times(inds);
-end
-
-%--------------------------------------------------
-% Insert NaN's for missing values
-%--------------------------------------------------
-
-U(   U   < -900) = NaN;
-V(   V   < -900) = NaN;
-if ( size(obsmat,2) > 10 )
-   Upr( Upr < -900) = NaN;
-   Vpr( Vpr < -900) = NaN;
-   Upo( Upo < -900) = NaN;
-   Vpo( Vpo < -900) = NaN;
-end
-
-%--------------------------------------------------
-% Create the output structure.
-%--------------------------------------------------
-
-obs.platform    = platform;
-obs.day         = day;
-obs.seconds     = seconds;
-obs.lon         = lon;
-obs.lat         = lat;
-obs.level       = level;
-obs.Uqc         = Uqc;
-obs.Vqc         = Vqc;
-obs.U           = U;
-obs.V           = V;
-if ( size(obsmat,2) > 10 )
-   obs.Upr      = Upr;
-   obs.Vpr      = Vpr;
-   obs.Upo      = Upo;
-   obs.Vpo      = Vpo;
-end
-obs.times       = times;
-obs.levels      = data.levels;
-obs.region      = data.region;
-obs.scalefactor = data.scalefactor;
-obs.levelstring = levelstring;
 
 
-function [levels, region, scalefactor] = parseinput(varargin)
+function [region, scalefactor] = parseinput(varargin)
 %======================================================================
 % try to parse the input pairs ... which must be pairs
 
 if (mod(length(varargin),2) ~= 0)
-   error('Wrong number (%d) of optional arguments. Must be parameter/value pairs: ''levels'',[1000 500]',length(varargin)) 
+   error('Wrong number (%d) of optional arguments. Must be parameter/value pairs: ''region'',[0 360 -90 90 1020 500]',length(varargin)) 
 end
 
 npairs = length(varargin)/2;
 
-levels      = [];
 region      = [];
 scalefactor = 10.0;
 
@@ -428,15 +323,12 @@ for i = 1:2:length(varargin)
    end
 end
 
-% Make sure the levels array has a top/bottom
-if  ~ isempty(levels)
-end
-
-% Make sure the geographic array makes sense
-if  ~ isempty(region)
-end
-
-% Make sure the scalefactor makes sense
-if  ~ isempty(scalefactor)
+if (length(region) < 4)
+   region = [0 360 -90 90 -Inf Inf];
+elseif (length(region) == 4)
+   region = [region -Inf Inf];
+elseif (length(region) ~= 6)
+   warning('DART:region input','region must be length 4 or 6') 
+   error('Unable to interpret region - %s',num2str(region))
 end
 
