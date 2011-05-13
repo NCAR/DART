@@ -111,14 +111,13 @@ else if ($?PBS_O_WORKDIR) then
 
 else if ($?OCOTILLO_NODEFILE) then
 
-   # ocotillo is a 'special case'. It is the only cluster I know of with
-   # no queueing system.  You must generate a list of processors in a 
-   # file whose name is in $OCOTILLO_NODEFILE.  For example ... 
-   # setenv OCOTILLO_NODEFILE  my_favorite_processors
-   # echo "node1"  > $OCOTILLO_NODEFILE
-   # echo "node5" >> $OCOTILLO_NODEFILE
-   # echo "node7" >> $OCOTILLO_NODEFILE
-   # echo "node3" >> $OCOTILLO_NODEFILE
+   # no queueing system.  Many possible options here.  If you need a list
+   # of processors in a file, this makes one. For example ... 
+   # setenv NODEFILE  my_favorite_processors.list
+   # echo "node1"  > $NODEFILE
+   # echo "node5" >> $NODEFILE
+   # echo "node7" >> $NODEFILE
+   # echo "node3" >> $NODEFILE
 
    set CENTRALDIR = `pwd`
    set JOBNAME = DARTCAM
@@ -132,8 +131,6 @@ else if ($?OCOTILLO_NODEFILE) then
 else
 
    # interactive
-   # YOU need to know if you are using the PBS or LSF queuing
-   # system ... and set 'submit' accordingly.
 
    set CENTRALDIR = `pwd`
    set JOBNAME = DARTCAM
@@ -179,23 +176,51 @@ echo "CENTRALDIR is "`pwd`
 # Set variables containing various directory names where we will GET things
 #-----------------------------------------------------------------------------
 
-set DARTDIR = /home/coral/${user}/dart/DART
-set DARTCAMDIR = ${DARTDIR}/models/cam
-set CAMDATADIR = /fs/image/home/${user}/CAMDATA
+# where the DART executables are:
+set DARTDIR = /home/${user}/DART
+
+# where the CAM executables are, and what the case build name was:
+set CAMsrc = /home/${user}/Cam3/cam3.1/models/atm/cam/bld
+set CAMcase = T21-O2
+
+# where the CAM data files are:
+set CAMdata = /home/${user}/CAMDATA
+
+# where a precomputed set of initial condition files are
+set DARTics  = /home/${user}/CAM_init/T21x80/03-01-01/DART_lunes
+set CAMics   = /home/${user}/CAM_init/T21x80/03-01-01/CAM/caminput_
+set CLMics   = /home/${user}/CAM_init/T21x80/03-01-01/CLM/clminput_
 
 #-----------------------------------------------------------------------------
 # Get the DARTCAM executables and scripts
 #-----------------------------------------------------------------------------
 
+set DARTCAMDIR = ${DARTDIR}/models/cam
 ${COPY} ${DARTCAMDIR}/work/filter                     .
-${COPY} ${DARTCAMDIR}/work/assim_region               .
-${COPY} ${DARTCAMDIR}/work/trans_date_to_dart         .
-${COPY} ${DARTCAMDIR}/work/trans_pv_sv                .
-${COPY} ${DARTCAMDIR}/work/trans_pv_sv_time0          .
-${COPY} ${DARTCAMDIR}/work/trans_sv_pv                .
-${COPY} ${DARTCAMDIR}/work/trans_time                 .
+${COPY} ${DARTCAMDIR}/work/dart_to_cam                .
+${COPY} ${DARTCAMDIR}/work/cam_to_dart                .
 ${COPY} ${DARTCAMDIR}/shell_scripts/advance_model.csh .
 ${COPY} ${DARTCAMDIR}/shell_scripts/run-pc.csh        .
+
+${COPY} ${CAMdata}/input.nml   .
+${COPY} ${CAMdata}/obs_seq.out .
+
+#-----------------------------------------------------------------------------
+# Determine the number of ensemble members from input.nml,
+# It may exist in more than one place - we will use the first instance.
+# Parse out the filter_nml string and use the next hunk of lines.
+# ditto for the advance command
+#-----------------------------------------------------------------------------
+
+set ENSEMBLESTRING = `grep -A 42 filter_nml input.nml | grep ens_size`
+set  ADVANCESTRING = `grep -A 42 filter_nml input.nml | grep adv_ens_command`
+set  ensemble_size = `echo $ENSEMBLESTRING[3] | sed -e "s#,##"`
+set        ADV_CMD = `echo  $ADVANCESTRING[3] | sed -e 's#,##' -e 's#"##g'`
+
+set num_ens = $ensemble_size
+
+
+echo "There are ${num_ens} ensemble members."
 
 #-----------------------------------------------------------------------------
 # Get the necessary data files -- this is the hard part.
@@ -208,49 +233,33 @@ ${COPY} ${DARTCAMDIR}/shell_scripts/run-pc.csh        .
 # the restart_in_file_name gets an ensemble member number appended to it.
 #-----------------------------------------------------------------------------
 
-${COPY} ${CAMDATADIR}/input.nml                       .
-${COPY} ${CAMDATADIR}/obs_seq.out                     .
+# This copies the initial conditions for the correct number
+# of ensemble members, and renames them with the ensemble number
+# as a file extension.  in all cases the extension is 4 digits,
+# so use 'printf' to add leading 0s to the ensemble number.
 
-# try to discover the ensemble size from the input.nml
-# this is some gory shell programming ... all to do 'something simple'
-
-grep ens_size input.nml >! ensstring.$$
-set  STRING = "1,$ s#,##g"
-set ensstring = `sed -e "$STRING" ensstring.$$`
-set num_ens = $ensstring[3]
-
-${REMOVE} ensstring.$$
-
-echo "There are ${num_ens} ensemble members."
-
-# This just copies just the initial conditions for the correct number
-# of ensemble members.
-
-set DARTics  = /ptmp/raeder/CAM_init/T21x80/03-01-01/DART_lunes
 
 set n = 1
 while($n <= ${num_ens})
-   set from = ${DARTics}/filter_ic*[.0]$n
-   ${COPY} $from filter_ic_old.$from:e
+   set from = `printf "%s.%04d" ${DARTics}/filter_ic $n`
+   set to   = `printf "%s.%04d" filter_ic_old        $n`
+   echo copying $from to $to
+   ${COPY} $from $to
    @ n++ 
 end
 
-${COPY} ${CAMDATADIR}/namelistin                      .
-${COPY} ${CAMDATADIR}/caminput.nc                     .
-${COPY} ${CAMDATADIR}/clminput.nc                     .
-set CAMics = /ptmp/raeder/CAM_init/T21x80/03-01-01/CAM/caminput_
-set CLMics = /ptmp/raeder/CAM_init/T21x80/03-01-01/CLM/clminput_
+${COPY} ${CAMdata}/namelistin                      .
+${COPY} ${CAMdata}/caminput.nc                     .
+${COPY} ${CAMdata}/clminput.nc                     .
 
 #-----------------------------------------------------------------------------
 # T21
-# inflate_1_ic is the wrong size, but I need to set it to something
 # The CAMsrc directory is MORE than just the location of the executable.
 # There are more support widgets expected in the directory tree.
 #-----------------------------------------------------------------------------
 
-# set inflate_1_ic = ../Pre-J/Exp4/01_62/DART
+set CAMexe = ${CAMsrc}/${CAMcase}
 
-set CAMsrc = /home/coral/raeder/Cam3/cam3.1/models/atm/cam/bld/T21-O2
 
 #-----------------------------------------------------------------------------
 # Ensure the (output) experiment directory exists
@@ -284,18 +293,14 @@ endif
    set  STRING = "1,$ s#'##g"
    set ensstring = `sed -e "$STRING" topo_file`
    set topo_name = $ensstring[3]
-#   ln -s $topo_name topog_file.nc
-   cp $topo_name topog_file.nc
-   chmod 644 topog_file.nc
-   ${REMOVE} topo_file
+   cp $topo_name cam_phis.nc
 
 #-----------------------------------------------------------------------------
 # Some information about CAM must be made available to advance_model.csh
-# filter_server.csh spawns advance_ens.csh which spawns advance_model.csh
 # 'casemodel' is required (by advance_model.csh) to be in the Central directory
 #-----------------------------------------------------------------------------
 
-echo "${experiment} ${CAMsrc} ${CAMics} ${CLMics}" >! casemodel
+echo "${experiment} ${CAMexe} ${CAMics} ${CLMics}" >! casemodel
 
 #-----------------------------------------------------------------------------
 # Runs filter which integrates the results of model advances  (async=2).
@@ -306,16 +311,6 @@ echo "${experiment} ${CAMsrc} ${CAMics} ${CLMics}" >! casemodel
 submit filter
 
 #-----------------------------------------------------------------------------
-# When filter.f90 finished, it creates a file  called 'go_end_filter' in this
-# runtime directory (i.e. CENTRALDIR). The existence of 'go_end_filter' is
-# enough to signal filter_server.csh 
-#
-# time to end. 
-# filter_server.csh is in an infinite loop looking for the existence
-# of any of three files: 
-#      go_advance_model   (time to advance the ensemble members)
-#      go_assim_regions   (time to assimilate the observations)
-#      go_end_filter      (time to end)
 #-----------------------------------------------------------------------------
 
 echo "Finished at "`date`
@@ -333,18 +328,18 @@ echo "Finished at "`date`
 echo "Listing contents of CENTRALDIR before archiving"
 ls -l
 
-${MOVE} clminput_[1-9]*.nc         ${experiment}/CLM
 
 ${MOVE} cam_out_temp[1-9]*         ${experiment}/CAM
 ${MOVE} caminput_[1-9]*.nc         ${experiment}/CAM
+
+${MOVE} clminput_[1-9]*.nc         ${experiment}/CLM
 
 ${MOVE} filter_ic_old*             ${experiment}/DART
 ${MOVE} filter_ic_new*             ${experiment}/DART
 ${MOVE} assim_model_state_ud[1-9]* ${experiment}/DART
 ${MOVE} assim_model_state_ic[1-9]* ${experiment}/DART
 #${MOVE} inflate_ic_new             ${experiment}/DART
-#${MOVE} filter_control             ${experiment}/DART
-#${MOVE} run_job.log                ${experiment}/DART   # filter_server runtime log
+
 ${MOVE} Posterior_Diag.nc          ${experiment}/DART
 ${MOVE} Prior_Diag.nc              ${experiment}/DART
 ${MOVE} obs_seq.final              ${experiment}/DART
@@ -363,17 +358,9 @@ ${COPY} $myname                    ${experiment}
 # CAM leaves a bunch of remnants in your $HOME directory.
 # I have not figured out how to use them ... so I clean up.
 
-${REMOVE} ~/lnd.*.rpointer topog_file.nc
+${REMOVE} ~/lnd.*.rpointer topog_file.nc 
 
 ls -lrt
-
-echo "Depending on when filter_server.csh finishes, you may wind up"
-echo "with a couple files called filter_server.xxxx.[log,err]"
-echo "You could/should move them to ${experiment}/DART"
-echo "filter_server.csh will also remove the semaphor file go_end_filter,"
-echo "so do not remove it. If it still exists after filter_server has completed"
-echo "something is wrong ..."
-echo "Cheers."
 
 exit 0
 

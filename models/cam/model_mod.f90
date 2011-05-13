@@ -4,109 +4,47 @@
 
 module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
-
-
-
-! kdr This came from Nancy for doing comparisons with Pincus runs,
-!     where we want to limit the impact of cloud liquid water to only cloud liquid water.
-!     There are some minor changes in my model_mod.f90 which I'd want to incorporate into
-!     this version, but I'm leaving them out for now.
-
-!     I've put in an error check in model_interpolate because of Patrick's trouble (1/10/10)
-
 
  
 !----------------------------------------------------------------------
-! purpose: interface between CAM and DART
-!              Translate to/from state_vector and caminput.nc,
-!              Initialize model,
-!              Write out CAM fields to Prior and Posterior_Diag.nc,
-!              Generate expected obs from model state (model_interpolate)
-!              Find state variables (or obs) that are close to a given base observation.
-!                  (get_close_obs)
-!              Provide randomly perturbed fields for initial ensemble in filter.(pert_model_state)
-
+! Interface code between CAM and DART.  Contains the required 16 interfaces
+!  as specified by DART.  Also contains several utility routines which help
+!  translate between CAM and DART formats, and deal with time.
 !
-! method: trans_pv_sv reads CAM 'initial' file (netCDF format),
-!         reforms fields into a state vector.
-!         DART assimilates obs, modifying the values of the state vector.
-!         This requires get_close_obs to find state variables to be modified by each ob.
-!         Reform state vector back into CAM fields via trans_sv_pv.
-!         Replace those fields on the CAM initial file with the new values,
-!         preserving all other information on the file.
-!         Also read hybrid coordinate coefficients from CAM input file (for plevs_cam)
+!  Contains a perturb routine for generating initial ensembles.  Does not
+!  provide adv_1step or init_conditions because CAM is a separate executable
+!  and cannot be called as a subroutine.
 !
-! author: Kevin Raeder 2/14/03  and 8/1/03
-!         based on prog_var_to_vector and vector_to_prog_var by Jeff Anderson
+!  This module intercepts the get_close_obs() calls and alters the distances
+!  for obs at the top of the model so they do not impact the state.
+! 
+!  This module keeps a copy of the ensemble mean in module global storage and
+!  uses it for computing the pressure-to-height conversions.
 !
-! modified: Tim Hoar 02 Sep 03 
-!         nc_write_model_atts, nc_write_model_vars now write out "prognostic"
-!         files instead of a nondescript state variable vector glom
+!  See the subversion code logs for history of this module.
 !
-! augmented; Kevin Raeder 7/1/04 for CAM3.0 and to use namelist input for
-!         lists of fields to include in state vector.
-!         'CAM3' marks changes
-!         Later;?
-!         Also; read field attributes from netcdf file and write them out 
-!         from nc_write_model_atts, instead of hard-coded there.
-!
-! augmented; Kevin Raeder (code from Hui Liu and CAM) 4/2006 to add vertical interpolation
-!         in height.  Also add checks of requested fields for interpolation.
-!
-! mostly rewritten: Kevin Raeder  9-10/2006 to merge FV and eulerian versions,
-!         and lay groundwork for future, non-rectangular coordinate systems.
-!         Also adapt to MPI mode of DART.
-
-!     OVERVIEW; 
+!  During the assimilation stage, only a piece of the state vector is available to each 
+!  process, and each process calls parts of model_mod.  In order to handle the conversion 
+!  of vertical coordinates of obs and/or state variables into a consistent coordinate, 
+!  an entire state vector is needed, so the ensemble mean is passed to model_mod before 
+!  the assimilation starts.  This is NOT done for model_interpolate; the whole vector is
+!  available, and should be used.  All locations are now converted to a standard coordinate 
+!  (pressure), instead of always converting the state vertical location to that of the ob.
+!  The highest_obs_level and ..._height_m variables are derived from highest_obs_pressure_mb
+!  namelist variable.
 !     
-!     This module interfaces with the MPI version of DART.  
-!
-!        model_get_close_states has been replaced with new interfaces, including get_close_obs, 
-!     which uses location_mod:get_close_obs.  This allows model_mod to use the 
-!     "generic efficient search algorithm" in DART to find the obs/state variables that
-!     are close to the given base obs, and to modify the distances according to any desired 
-!     criteria (obs_kinds, height above a threshold, etc).  
-!
-!     During the assimilation stage, only a piece of the state vector is available to each 
-!     process, and each process calls parts of model_mod.  In order to handle the conversion 
-!     of vertical coordinates of obs and/or state variables into a consistent coordinate, 
-!     an entire state vector is needed, so the ensemble mean is passed to model_mod before 
-!     the assimilation starts.  This is NOT done for model_interpolate; the whole vector is
-!     available, and should be used.  All locations are now converted to a standard coordinate 
-!     (pressure), instead of always converting the state vertical location to that of the ob.
-!     The highest_obs_level and ..._height_m variables are derived from highest_obs_pressure_mb
-!     namelist variable.
+!  This module has been rewritten to handle both the eulerian and finite volume core versions 
+!  of CAM (they have different grids), and hopefully the semi-lagrangian dynamics core, 
+!  and even lay some groundwork for future dynamical cores (such as HOMME) which are column 
+!  oriented, with irregular horizontal grids.
 !     
-!     This module has been rewritten to handle both the eulerian and finite volume core versions 
-!     of CAM (they have different grids), and hopefully the semi-lagrangian dynamics core, 
-!     and even lay some groundwork for future dynamical cores (such as HOMME) which are column 
-!     oriented, with irregular horizontal grids.
+!  The coordinate orders of fields stored in various forms have also been simplified.
+!  For example; various vintages of CAM 3D fields may be read in with (lon, lat, lev) or 
+!  (lon, lev, lat).  These are uniformly converted to (lev, lon, lat) for use in model_mod.
+!  This latter form is different than pre MPI model_mods.  Then such fields are stored in
+!  the state vector with the same coordinate order.  They are converted back to the modern
+!  CAM coordinate order when written to caminput.nc files.
 !     
-!     The coordinate orders of fields stored in various forms have also been simplified.
-!     For example; various vintages of CAM 3D fields may be read in with (lon, lat, lev) or 
-!     (lon, lev, lat).  These are uniformly converted to (lev, lon, lat) for use in model_mod.
-!     This latter form is different than pre MPI model_mods.  Then such fields are stored in
-!     the state vector with the same coordinate order.  They are converted back to the modern
-!     CAM coordinate order when written to caminput.nc files.
-!     
-!     The organization of the state vector has been changed from the B-grid style to a field 
-!     and column oriented form; see prog_var_to_vector and vector_to_prog_var.  This allows 
-!     each field to have different dimensions than all the others.  The fields are still grouped 
-!     by the rank of the array used to store them in CAM form; 0d, 1d, 2d, and 3d.  In the 3d case 
-!     all the values of a field for one column are stored contiguously, to speed up vertical 
-!     interpolations and calculations of heights on model levels.  The dimensions of each field 
-!     are stored in globally available arrays ([sf]_dim_#d) and there are functions and subroutines 
-!     for accessing the needed information (see ./model_mod.html).
-!     
-!     Observations on pressure levels or heights require various pieces of the state vector
-!     in order to calculate the expected observation.  Just the surface pressure is needed for 
-!     the former, while PS plus the temperature and moisture profiles are needed for the heights.  
 !     These may be needed on the regular A-grid (thermodynamic variables) and grids staggered 
 !     relative to the A-grid.   Currently, PS for the A-grid and the 2 staggered grids is 
 !     stored for global access and pressures and heights on model levels are (re)calculated
@@ -244,10 +182,13 @@ use typeSizes
 use types_mod,         only : r8, MISSING_I, MISSING_R8, gravity_const => gravity
 !          add after verification against Hui's tests;  gas_constant_v,gas_constant,ps0,PI,DEG2RAD
 
-use time_manager_mod,  only : time_type, set_time, set_date, print_time, print_date, set_calendar_type
+use time_manager_mod,  only : time_type, set_time, set_date, print_time, print_date,  &
+                              set_calendar_type, get_calendar_type, operator(-),      &
+                              get_time, get_date
 use utilities_mod,     only : open_file, close_file, find_namelist_in_file, check_namelist_read, &
                               register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
-                              logfileunit, nmlfileunit, do_output, nc_check, get_unit
+                              logfileunit, nmlfileunit, do_output, nc_check, get_unit, do_nml_file, &
+                              do_nml_term
 use mpi_utilities_mod, only : my_task_id, task_count
 
 !-------------------------------------------------------------------------
@@ -327,16 +268,21 @@ use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 implicit none
 private
 
-! The last three lines are for interfaces to CAM specific programs; transXXX, etc.
+! The first block are the 16 required interfaces.  The following block
+! are additional useful interfaces that utility programs can call.
 public ::                                                            &
    static_init_model, get_model_size, get_model_time_step,           &
    pert_model_state, get_state_meta_data, model_interpolate,         &
    nc_write_model_atts, nc_write_model_vars,                         &
    init_conditions, init_time, adv_1step, end_model,                 &
+   get_close_maxdist_init, get_close_obs_init, get_close_obs,        &
+   ens_mean_for_model
+
+public ::                                                            &
    model_type, prog_var_to_vector, vector_to_prog_var,               &
    read_cam_init, read_cam_init_size,                                &
    init_model_instance, end_model_instance, write_cam_init,          &
-   get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
+   write_cam_times
 
 
 !-----------------------------------------------------------------------
@@ -351,8 +297,7 @@ character(len=128), parameter :: &
 ! DART form of ensemble mean, global storage for use by get_close_obs:convert_vert 
 ! Ensemble mean is used so that the same "state" will be used for the height calculations
 ! on all processors, for all ensemble members.
-! Nancy; need allocatable here if it's an argument passed into a subroutine, with space
-! allocated in another module?
+! This is allocated in static_init_model().
 real(r8), allocatable :: ens_mean(:)      
 
 !----------------------------------------------------------------------
@@ -481,7 +426,8 @@ integer :: state_num_1d = 0              ! # of 1d fields to read from file
 integer :: state_num_2d = 1              ! # of 2d fields to read from file
 integer :: state_num_3d = 4              ! # of 3d fields to read from file
 
-! make these allocatable?  Where would I define the default values?
+! These can't be allocatable since they are namelist items.  They have to
+! have a fixed size at compile time.
 integer, parameter :: MAX_STATE_NAMES = 100
 character(len=8),dimension(MAX_STATE_NAMES) :: state_names_0d = (/('        ',iii=1,MAX_STATE_NAMES)/)
 character(len=8),dimension(MAX_STATE_NAMES) :: state_names_1d = (/('        ',iii=1,MAX_STATE_NAMES)/)
@@ -525,19 +471,27 @@ integer           :: impact_kind_index = -1
 ! by numerical stability concerns for repeated restarting in leapfrog.
 integer :: Time_step_seconds = 21600, Time_step_days = 0
 
-namelist /model_nml/ output_state_vector , model_version , cam_phis, model_config_file & 
-                     ,state_num_0d   ,state_num_1d   ,state_num_2d   ,state_num_3d &
-                     ,state_names_0d ,state_names_1d ,state_names_2d ,state_names_3d &
-                     ,                which_vert_1d  ,which_vert_2d  ,which_vert_3d &
-                     ,pert_names ,pert_sd ,pert_base_vals &
-                     ,highest_obs_pressure_mb , highest_state_pressure_mb  &
-                     ,max_obs_lat_degree ,Time_step_seconds ,Time_step_days &
-                     ,impact_only_same_kind
+! set to .true. to get more details about the state vector and the
+! CAM fields and sizes in the init code.
+logical :: print_details = .false.
+
+
+namelist /model_nml/ output_state_vector, model_version, cam_phis, model_config_file, & 
+                       state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d,  &
+                     state_names_0d, state_names_1d, state_names_2d, state_names_3d,  &
+                                      which_vert_1d,  which_vert_2d,  which_vert_3d,  &
+                     pert_names, pert_sd, pert_base_vals,                             &
+                     highest_obs_pressure_mb, highest_state_pressure_mb,              &
+                     max_obs_lat_degree, Time_step_seconds, Time_step_days,           &
+                     impact_only_same_kind, print_details
                      
 
 !---- end of namelist (found in file input.nml) ----
 !----------------------------------------------------------------------
 ! Derived parameters
+
+! make sure static init code only called once
+logical :: module_initialized = .false.
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 type(time_type) :: Time_step_atmos
@@ -551,8 +505,7 @@ type(random_seq_type)   :: random_seq
 ! for a cold start.
 integer                 :: num_tasks
 integer                 :: my_task
-integer                 :: ens_member
-data ens_member /0/
+integer                 :: ens_member = 0
 logical                 :: do_out
 
 ! common message string used by many subroutines
@@ -658,6 +611,10 @@ contains
 integer            :: iunit, io, topog_lons, topog_lats, i, num_lons, num_lats, ncfileid
 integer            :: max_levs
 
+! only execute this code once
+if (module_initialized) return
+
+
 ! Register the module
 call register_module(source, revision, revdate)
 
@@ -695,15 +652,16 @@ else
 end if
 
 ! Record the namelist values 
-if (do_out) write(nmlfileunit, nml=model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+if (do_nml_term()) write(    *      , nml=model_nml)
 
 ! Set the model minimum time step from the namelist seconds and days input
 Time_step_atmos = set_time(Time_step_seconds, Time_step_days)
 ! kdr debug
-if (do_out) call print_time(Time_step_atmos)
+if (print_details .and. do_out) call print_time(Time_step_atmos)
 
 ! read CAM 'initial' file domain info
-call nc_check(nf90_open(path = trim(model_config_file), mode = nf90_write, ncid = ncfileid), &
+call nc_check(nf90_open(path = trim(model_config_file), mode = nf90_nowrite, ncid = ncfileid), &
              'static_init_model', 'opening '//trim(model_config_file))
 
 ! Get sizes of dimensions/coordinates from netcdf and put in global storage.
@@ -721,7 +679,10 @@ end do
 do i=1,state_num_3d 
    model_size = model_size + s_dim_3d(1,i) * s_dim_3d(2,i) * s_dim_3d(3,i)
 end do
-if (do_out) write(*, *) 'CAM size initialized as ', model_size
+if (do_out) then
+   write(msgstring, '(A,I9)') 'CAM state vector size: ', model_size
+   call error_handler(E_MSG, '', msgstring)
+endif
 
 ! Allocate space for longitude and latitude global arrays
 ! and Allocate space for hybrid vertical coord coef arrays
@@ -754,8 +715,8 @@ call read_cam_coord (ncfileid, P0, 'P0      ')    ! thats a p-zero
 !------------------------------------------------------------------------
 ! # fields to read
 nflds = state_num_0d + state_num_1d + state_num_2d + state_num_3d      
-if (do_out) write(*, '(A,I3,A,4I3)') '# of fields in state vector =  ', nflds,' = sum of ', &
-                 state_num_0d ,state_num_1d ,state_num_2d ,state_num_3d
+if (print_details .and. do_out) write(*, '(A,I3,A,4I3)') '# of fields in state vector =  ', nflds, &
+                 ' = sum of ', state_num_0d ,state_num_1d ,state_num_2d ,state_num_3d
 
 ! CAM3 subroutine to order the state vector parts into cflds 
 ! cflds is needed for reading attributes
@@ -780,11 +741,11 @@ call nc_check(nf90_close(ncfileid), &
 if (file_exist(cam_phis)) then
    call nc_check(nf90_open(path = trim(cam_phis), mode = nf90_nowrite, ncid = ncfileid), &
               'static_init_model', 'opening '//trim(cam_phis))
-   if (do_out) write(*, *) 'file_name for surface geopotential height is ', trim(cam_phis)
+   if (print_details .and. do_out) write(*, *) 'file_name for surface geopotential height is ', trim(cam_phis)
 
    call read_topog_size(ncfileid, topog_lons, topog_lats)
 
-   if (do_out) write(*,*) 'topog_lons, _lats = ',topog_lons, topog_lats
+   if (print_details .and. do_out) write(*,*) 'topog_lons, _lats = ',topog_lons, topog_lats
 
    num_lons = dim_sizes(find_name('lon     ',dim_names))
    num_lats = dim_sizes(find_name('lat     ',dim_names))
@@ -828,6 +789,9 @@ if (len_trim(impact_only_same_kind) > 0) then
    impact_kind_index = get_raw_obs_kind_index(impact_only_same_kind)
 endif
 
+! make sure we only come through here once
+module_initialized = .true.
+
 end subroutine static_init_model
 
 
@@ -848,6 +812,11 @@ integer :: i,j
 ! learn how many dimensions are defined in this file.
 call nc_check(nf90_inquire(ncfileid, num_dims), 'read_cam_init_size', 'inquire num_dims')
 
+if (allocated(dim_ids) .or. allocated(dim_names) .or. allocated(dim_sizes)) then
+   write(msgstring, *) 'dim_ids, dim_names, and/or dim_sizes already allocated'
+   call error_handler(E_ERR, 'read_cam_init_size', msgstring, source, revision, revdate)
+endif
+
 ! where to deallocate?
 allocate (dim_ids(num_dims), dim_names(num_dims), dim_sizes(num_dims))
 
@@ -857,7 +826,7 @@ do i = 1,num_dims
    dim_ids(i) = i
    call nc_check(nf90_inquire_dimension(ncfileid, i, dim_names(i), dim_sizes(i)), &
                  'read_cam_init_size', 'inquire for '//trim(dim_names(i)))
-   if (do_out) write(*,*) 'Dims info = ',i, trim(dim_names(i)), dim_sizes(i)
+   if (print_details .and. do_out) write(*,*) 'Dims info = ',i, trim(dim_names(i)), dim_sizes(i)
 end do
 
 ! Find and store shapes of all the state vector fields.  Grouped by rank of fields into 
@@ -897,7 +866,7 @@ else
 endif
 
 !debug   where will this be written?
-if (do_out .and. .false.) then
+if (print_details .and. do_out .and. .false.) then
    if (state_num_1d > 0) then
       write(*,*) 's_dim_1d = ',s_dim_1d
       write(*,*) (s_dim_max(i,1),i=1,3)
@@ -954,8 +923,14 @@ do i=1,tot_chars+1
       char_version(nchars:nchars) = model_version(i:i)
    end if
 end do
-if (do_out) WRITE(*,'(A,A10,4(I3,2X))') 'model_version, version(1:4) = ' &
-                            ,model_version,(int_version(i),i=1,4)
+if (do_out) then
+   if (print_details) then
+      write(*,'(A,A10,4(I3,2X))') 'model_version, version(1:4) = ' &
+                                  ,model_version,(int_version(i),i=1,4)
+   else
+      call error_handler(E_MSG, '', 'CAM model version: '//trim(model_version))
+   endif
+endif
    
 ! assume cam3.0.7 format to start
 ! test on version cam3.0.3
@@ -1158,13 +1133,13 @@ character (len=8),               intent(in)  :: cfield
 integer :: ncfldid
 integer :: n,m, slon_index, slat_index, lat_index, lon_index
 
-!if (do_out) PRINT*,'read_cam_horiz; reading ',cfield
+!if (print_details .and. do_out) PRINT*,'read_cam_horiz; reading ',cfield
 call nc_check(nf90_inq_varid(ncfileid, trim(cfield), ncfldid), &
               'read_cam_horiz', 'inq_varid '//trim(cfield))
 call nc_check(nf90_get_var(ncfileid, ncfldid, var, start=(/1,1,1/), &
            count=(/dim1, dim2, 1/)), 'read_cam_horiz', trim(cfield))
 
-!if (do_out) PRINT*,'read_cam_horiz; reading ',cfield,' using id ',ncfldid, dim1, dim2
+!if (print_details .and. do_out) PRINT*,'read_cam_horiz; reading ',cfield,' using id ',ncfldid, dim1, dim2
 
 ! assign values to phis grids for use by the rest of the module.
 if (cfield == 'PHIS    ') then
@@ -1226,7 +1201,7 @@ character (len=128), dimension(nflds), intent(out)  :: att_vals
 !           ncid = ncfileid))
 
 ! read CAM 'initial' file attribute desired
-if (do_out) PRINT*,'reading ',trim(att)
+if (print_details .and. do_out) PRINT*,'reading ',trim(att)
 do i = 1,nflds
    call nc_check(nf90_inq_varid(ncfileid, trim(cflds(i)), ncfldid), 'nc_read_model_atts', &
                  'inq_varid '//trim(cflds(i)))
@@ -1239,7 +1214,7 @@ do i = 1,nflds
       call nc_check(nf90_get_att(ncfileid, ncfldid, trim(att) ,att_vals(i) ), &
                     'nc_read_model_atts', 'get_att '//trim(att))
       att_vals(i)(nchars+1:128) = ' '
-      if (do_out) WRITE(*,'(A,1X,I6,I6,1X,A,1X,A)') att, ncfldid, nchars, cflds(i), trim(att_vals(i))
+      if (print_details .and. do_out) WRITE(*,'(A,1X,I6,I6,1X,A,1X,A)') att, ncfldid, nchars, cflds(i), trim(att_vals(i))
    else
       WRITE(*,*) ncfldid, cflds(i), 'NOT AVAILABLE'
    end if
@@ -1365,7 +1340,7 @@ else
    end do Res
 endif
 
-if (do_out) then
+if (print_details .and. do_out) then
    PRINT*,'reading ',cfield,' using id ',ncfldid,' size ',coord_size,' resolution ', &
           var%resolution
    WRITE(*,*) 'first, last val: ', var%vals(1),var%vals(coord_size)
@@ -1481,25 +1456,32 @@ if (nfld .ne. nflds) then
    write(msgstring, *) 'nfld = ',nfld,', nflds = ',nflds,' must be equal '
    call error_handler(E_ERR, 'order_state_fields', msgstring, source, revision, revdate)
 elseif (do_out) then
-   write(logfileunit,'(/A/)') 'State vector is composed of '
-!   write(logfileunit,'((8(A8,1X)))') (cflds(i),i=1,nflds)
-   do i=1,state_num_0d
-      write(logfileunit,'(/A,I4)') cflds(i), TYPE_1D(i)
-   end do
-   i1 = state_num_0d
-   do i=1,state_num_1d
-      write(logfileunit,'(/A,I4)') cflds(i1+i), TYPE_1D(i)
-   end do
-   i1 = i1 + state_num_1d
-   do i=1,state_num_2d
-      write(logfileunit,'(/A,I4)') cflds(i1+i), TYPE_2D(i)
-   end do
-   i1 = i1 + state_num_2d
-   do i=1,state_num_3d
-      write(logfileunit,'(/A,I4)') cflds(i1+i), TYPE_3D(i)
-   end do
-   write(logfileunit,'(/A)') 'TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q = ' 
-   write(logfileunit,'((8(I8,1X)))') TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q
+   if (print_details) then
+      write(logfileunit,'(/A/)') 'State vector is composed of these fields: '
+   !   write(logfileunit,'((8(A8,1X)))') (cflds(i),i=1,nflds)
+      do i=1,state_num_0d
+         write(logfileunit,'(/A,I4)') cflds(i), TYPE_1D(i)
+      end do
+      i1 = state_num_0d
+      do i=1,state_num_1d
+         write(logfileunit,'(/A,I4)') cflds(i1+i), TYPE_1D(i)
+      end do
+      i1 = i1 + state_num_1d
+      do i=1,state_num_2d
+         write(logfileunit,'(/A,I4)') cflds(i1+i), TYPE_2D(i)
+      end do
+      i1 = i1 + state_num_2d
+      do i=1,state_num_3d
+         write(logfileunit,'(/A,I4)') cflds(i1+i), TYPE_3D(i)
+      end do
+      write(logfileunit,'(/A)') 'TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q = ' 
+      write(logfileunit,'((8(I8,1X)))') TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q
+   else
+      call error_handler(E_MSG, '', 'State vector is composed of these fields: ')
+      do i = 1,nflds
+         call error_handler(E_MSG, '', trim(cflds(i)))
+      enddo
+   endif
 end if
 
 return
@@ -1561,7 +1543,7 @@ if (TYPE_CLDICE /= MISSING_I) cam_to_dart_kinds(TYPE_CLDICE) = KIND_CLOUD_ICE
 ! cam_to_dart_kinds(TYPE_LCWAT) = KIND_CLOUD_WATER  ?  
 
 
-if (do_out) then
+if (print_details .and. do_out) then
    write(*,*) 'OBS_KIND   FIELD_TYPE'
    do i=1,100
       if (dart_to_cam_kinds(i) /= MISSING_I) write(*,'(2I8)') i, dart_to_cam_kinds(i)
@@ -1590,9 +1572,9 @@ end subroutine map_kinds
 ! subroutine read_cam_init(file_name, var, model_time)
 !
 
-character(len = *),        intent(in)  :: file_name
-type(model_type),          intent(out) :: var
-type(time_type), optional, intent(out) :: model_time
+character(len = *),        intent(in)    :: file_name
+type(model_type),          intent(inout) :: var
+type(time_type), optional, intent(out)   :: model_time
 
 ! Local workspace
 integer :: i, k, n, m, ifld  ! grid and constituent indices
@@ -1604,7 +1586,7 @@ integer, allocatable, dimension(:) :: datetmp, datesec
 
 !----------------------------------------------------------------------
 ! read CAM 'initial' file domain info
-call nc_check(nf90_open(path = trim(file_name), mode = nf90_write, ncid = ncfileid), &
+call nc_check(nf90_open(path = trim(file_name), mode = nf90_nowrite, ncid = ncfileid), &
       'read_cam_init', 'opening '//trim(file_name))
 
 ! The temporary arrays into which fields are read are dimensioned by the largest values of
@@ -1629,7 +1611,7 @@ do i= 1, state_num_0d
    ifld = ifld + 1
    call nc_check(nf90_inq_varid(ncfileid, trim(cflds(ifld)), ncfldid), &
                 'read_cam_init', 'inq_varid '//trim(cflds(ifld)))
-   if (do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
+   if (print_details .and. do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
 !  fields on file are 1D; TIME(=1)
    call nc_check(nf90_get_var(ncfileid, ncfldid, var%vars_0d(i) ), &
                 'read_cam_init', 'get_var '//trim(cflds(ifld)))
@@ -1644,7 +1626,7 @@ do i= 1, state_num_1d
 ! debug; remove next two lines when I'm sure I don't need them.  Also for 2d and 3d
 ! done in trans_coord already
 !   call check(nf90_inquire_variable(ncfileid, ncfldid, dimids=f_dimid_1d(1:2,i)))
-   if (do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
+   if (print_details .and. do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
    
    ! s_dim_1d should = f_dim_1d
    call nc_check(nf90_get_var(ncfileid, ncfldid, var%vars_1d(1:s_dim_1d(i), i) &
@@ -1659,7 +1641,7 @@ do i= 1, state_num_2d
                 'read_cam_init', 'inq_varid '//trim(cflds(ifld)))
 ! done in trans_coord already
 !   call check(nf90_inquire_variable(ncfileid, ncfldid, dimids=f_dimid_2d(1:3,i)))
-   if (do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
+   if (print_details .and. do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
    ! fields on file are 3D; lon, lat, (usually) and then  TIME(=1)
    ! Need to use temp_Nd here too; I am coding for not knowing what 2 of the 3 dimensions the
    ! 2d fields will have.
@@ -1688,7 +1670,7 @@ do i=1, state_num_3d
 ! done in trans_coord already
 !   call nc_check(nf90_inquire_variable(ncfileid, ncfldid, dimids=f_dimid_3d(1:4,i)), &
 !                 'read_cam_init')
-   if (do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
+   if (print_details .and. do_out) PRINT*,'reading ',cflds(ifld),' using id ',ncfldid
 !  fields on file are 4D; lon, lev, lat, TIME(=1) 
 !                     or; lon, lat, lev, TIME
    call nc_check(nf90_get_var(ncfileid, ncfldid                                                 &
@@ -1811,10 +1793,10 @@ integer  :: i
 
 call nc_check(nf90_def_var(ncFileID, name=c_name, xtype=nf90_double, dimids=dim_id, &
                         varid=c_id), 'write_cam_coord_def', 'def_var '//trim(c_name))
-!if (do_out) write(*,'(/A,A)') 'write_cam_coord_def;  ', trim(c_name)
+!if (print_details .and. do_out) write(*,'(/A,A)') 'write_cam_coord_def;  ', trim(c_name)
 
 do i=1,coord%num_atts
-!   if (do_out) then
+!   if (print_details .and. do_out) then
 !!      nch = len_trim(coord%atts_vals(i))
 !!                 i,trim(coord%atts_names(i)),' ', coord%atts_vals(i)(1:nch)
 !      write(*,*) '   i, att_name, att_val', &
@@ -1828,16 +1810,20 @@ return
 
 end subroutine write_cam_coord_def
 
-   subroutine write_cam_init(file_name, var)
+   subroutine write_cam_init(file_name, var, model_time)
 !=======================================================================
-! subroutine write_cam_init(file_name, var)
+! subroutine write_cam_init(file_name, var, model_time)
 
 ! write CAM 'initial' file fields that have been updated
 
-character (len = *), intent(in) :: file_name
-type(model_type),    intent(in) :: var
+character (len = *), intent(in)           :: file_name
+type(model_type),    intent(in)           :: var
+type(time_type),     intent(in), optional :: model_time
 
 integer               :: i, k, n, m, ifld, ncfileid, ncfldid, f_dim1, f_dim2
+integer               :: iyear, imonth, iday, ihour, imin, isec
+integer               :: dimid, dimlen, varid
+integer, allocatable, dimension(:) :: datetmp, datesec
 real(r8), allocatable :: temp_3d(:,:,:), temp_2d(:,:)
 
 ! Read CAM 'initial' file domain info
@@ -1853,7 +1839,7 @@ allocate (temp_3d(f_dim_max(1,3),f_dim_max(2,3),f_dim_max(3,3)))
 allocate (temp_2d(f_dim_max(1,2),f_dim_max(2,2)))
 
 
-if (do_out) write(*,*) 'write_cam_init; f_dim_max(:2) = ',f_dim_max(1,2),f_dim_max(2,2)
+if (print_details .and. do_out) write(*,*) 'write_cam_init; f_dim_max(:2) = ',f_dim_max(1,2),f_dim_max(2,2)
 
 ifld = 0
 ! 0d fields are first
@@ -1882,9 +1868,16 @@ end do
 ! 2d fields ; tricky because coordinates may have been rearranged to put them in the order
 ! of (lev, lon, lat) choosing only 2.  The original coordinate order is in f_dimid_2d.
 ! debug 
-! if (do_out) write(*,'(A/A)') 'write_cam_init 2D',' i f_dim1 f_dim2'
+! if (print_details .and. do_out) write(*,'(A/A)') 'write_cam_init 2D',' i f_dim1 f_dim2'
 
 do i = 1, state_num_2d
+   ! special code:  check and error out if the PS field has gone negative
+   if (state_names_2d(i) == 'PS') then
+      if (minval(var%vars_2d(:,:,i)) < 0._r8) then
+         write(msgstring, *)'PS has negative values; should not happen'
+         call error_handler(E_ERR, 'write_cam_init', msgstring, source, revision, revdate)
+      endif
+   endif
    if (f_dimid_2d(1,i) == s_dimid_2d(1,i)) then
       ! model_mod and caminput store this variable with the same coordinate order.
 
@@ -1896,7 +1889,7 @@ do i = 1, state_num_2d
       end do
       end do
 ! debug
-!      if (do_out) write(*,'(3I3,2F14.6)') i, f_dim1, f_dim2  , temp_2d(1,1), temp_2d(f_dim1, f_dim2)
+!      if (print_details .and. do_out) write(*,'(3I3,2F14.6)') i, f_dim1, f_dim2  , temp_2d(1,1), temp_2d(f_dim1, f_dim2)
    elseif (f_dimid_2d(1,i) == s_dimid_2d(2,i)) then
       ! model_mod and caminput store this variable with transposed coordinate order.
       f_dim1 = s_dim_2d(2,i)
@@ -1925,6 +1918,19 @@ end do
 
 ! 3d fields; all 3 coordinates are present, and the order for model_mod fields is always the same.
 do i = 1, state_num_3d
+   ! special code:  set a minimum threshold for certain variables
+   if (state_names_3d(i) == 'Q') then
+      where (var%vars_3d(:,:,:,i) < 1.e-12_r8) var%vars_3d(:,:,:,i) = 1.e-12_r8
+   else if (state_names_3d(i) == 'CLDLIQ' .or. &
+            state_names_3d(i) == 'CLDICE') then
+      where (var%vars_3d(:,:,:,i) < 0._r8)     var%vars_3d(:,:,:,i) = 0._r8
+   else if (state_names_3d(i) == 'T') then
+      if (minval(var%vars_3d(:,:,:,i)) < 0._r8) then
+         write(msgstring, *)'T has negative values; should not happen'
+         call error_handler(E_ERR, 'write_cam_init', msgstring, source, revision, revdate)
+      endif
+   endif
+
    !  Repackage depending on coord_order then write the dummy variable.
    if (coord_order == 1) then
       ! lon,lev,lat as in original CAM
@@ -1960,11 +1966,117 @@ do i = 1, state_num_3d
                  'write_cam_init', 'put_var '//trim(cflds(ifld)))
 end do
 
+! If model_time specified, write the time of the current state.
+! All the caminput.nc files I have seen have two variables of 
+! length 'time' (the unlimited dimension): date, datesec
+! The rest of the routine presumes there is but one time in the file -
+! print warning message if this is not the case.
+
+if (present( model_time)) then
+
+   call nc_check(nf90_inq_dimid(ncfileid, 'time', dimid), &
+          'write_cam_init', 'inq_dimid time '//trim(file_name))
+   call nc_check(nf90_inquire_dimension(ncfileid, dimid, len=dimlen), &
+          'write_cam_init', 'inquire_dimension time '//trim(file_name))
+
+   if (dimlen /= 1) then
+       write(msgstring,*)'UNUSUAL - ',trim(file_name),' has',dimlen,'times. Expected 1.'
+       call error_handler(E_MSG, 'write_cam_init', msgstring, source, revision, revdate)
+   endif
+
+   allocate(datetmp(dimlen), datesec(dimlen))
+
+
+   call nc_check(nf90_inq_varid(ncfileid, 'date', varid), &
+          'write_cam_init', 'inq_varid date '//trim(file_name))
+   call nc_check(nf90_get_var(ncfileid, varid, values=datetmp), &
+          'write_cam_init', 'get_var date '//trim(file_name))
+
+   call nc_check(nf90_inq_varid(ncfileid, 'datesec', varid), &
+          'write_cam_init', 'inq_varid datesec '//trim(file_name))
+   call nc_check(nf90_get_var(ncfileid, varid, values=datesec), &
+          'write_cam_init', 'get_var datesec '//trim(file_name))
+
+   call get_date(model_time, iyear, imonth, iday, ihour, imin, isec)
+
+
+   ! The 'date' is YYYYMMDD ... datesec is 'current seconds of current day'
+   datetmp(dimlen) = iyear*10000 + imonth*100 + iday
+   datesec(dimlen) = ihour*3600 + imin*60 + isec
+
+   call nc_check(nf90_put_var(ncfileid, varid, values=datetmp), &
+          'write_cam_init', 'put_var date '//trim(file_name))
+
+   call nc_check(nf90_put_var(ncfileid, varid, values=datesec), &
+          'write_cam_init', 'put_var datesec '//trim(file_name))
+
+   deallocate(datetmp, datesec)
+
+endif
+
 call nc_check(nf90_close(ncfileid), 'write_cam_init', 'close cam initial file')
 
 deallocate (temp_3d, temp_2d)
 
 end subroutine write_cam_init
+
+
+   subroutine write_cam_times(model_time, adv_time)
+!=======================================================================
+! subroutine write_cam_times(model_time, adv_time)
+
+! writes model time and advance time into a file called 'times'
+
+type(time_type), intent(in) :: model_time, adv_time
+
+integer :: tfile_unit, cal_type, cam_date, cam_tod, nhtfrq
+integer :: year, month, day, hour, minute, second
+type(time_type) :: forecast_length
+
+
+tfile_unit = open_file("times", "formatted", "write")
+
+! end time is first, then beginning time 
+!  -namelist "&camexp START_YMD=$times[3] START_TOD=$times[4] 
+!                     STOP_YMD=$times[1] STOP_TOD=$times[2] NHTFRQ=$times[5] " 
+
+call get_date(adv_time, year, month, day, hour, minute, second)
+
+cam_date = year*10000 + month*100 + day
+cam_tod  = hour*3600  + minute*60 + second
+
+write (tfile_unit,'(I8.8,1X,I8)') cam_date, cam_tod
+
+call get_date(model_time, year, month, day, hour, minute, second)
+
+cam_date = year*10000 + month*100 + day
+cam_tod  = hour*3600  + minute*60 + second
+
+write (tfile_unit,'(I8.8,1X,I8)') cam_date, cam_tod
+
+! calculate number of hours in forecast, and pass to history tape 
+! write frequency
+
+forecast_length = adv_time - model_time
+
+call get_time(forecast_length, second, day)
+
+hour = second/3600
+minute = mod(second,3600)
+if (minute.ne.0) &
+   call error_handler(E_ERR, 'write_cam_times', &
+      ' not integer number of hours; nhtfrq error', source, revision, revdate);
+
+! convert to hours, and negative to signal units are hours
+
+! nhtfrq = -1*((((year-1)*365 + (month-1))*30 + (day-1))*24 + hour)
+nhtfrq = -1*(day*24 + hour)
+write (tfile_unit,'(I8)') nhtfrq
+
+close(tfile_unit)
+
+
+end subroutine write_cam_times
 
 
    subroutine get_state_meta_data(index_in, location, var_kind)
@@ -2276,7 +2388,7 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","CAM"),               
 ! and some will be used to define the coordinate variables below.
 ! They have different dimids for this file than they had for caminput.nc
 ! P_id serves as a map between the 2 sets.
-if (do_out) write(*,*) ' dimens,       name,  size, cam dim_id, P[oste]rior id'
+if (print_details .and. do_out) write(*,*) ' dimens,       name,  size, cam dim_id, P[oste]rior id'
 do i = 1,num_dims
    if (trim(dim_names(i)) /= 'time')  then
       call nc_check(nf90_def_dim (ncid=ncFileID, name=trim(dim_names(i)), len=dim_sizes(i),  &
@@ -2284,7 +2396,7 @@ do i = 1,num_dims
    else
      P_id(i) = 0
    endif
-   if (do_out) write(*,'(I5,1X,A13,1X,3(I7,2X))') i,trim(dim_names(i)),dim_sizes(i), dim_ids(i), P_id(i)
+   if (print_details .and. do_out) write(*,'(I5,1X,A13,1X,3(I7,2X))') i,trim(dim_names(i)),dim_sizes(i), dim_ids(i), P_id(i)
 end do
 call nc_check(nf90_def_dim(ncid=ncFileID, name="scalar",   len = 1,   dimid = ScalarDimID) &
              ,'nc_write_model_atts', 'def_dim scalar')
@@ -2368,7 +2480,7 @@ if (P0%label /= '        ')  then
    call write_cam_coord_def(ncFileID,'P0      ',P0  , dim_id, grid_id(g_id))
 end if
 
-if (do_out) then
+if (print_details .and. do_out) then
 do i=1,grid_num_1d
    write(*,*) 'grid_ = ', i, grid_id(i), trim(grid_names_1d(i))
 end do
@@ -2489,7 +2601,7 @@ else
 ! The default values of 'start' and 'count'  write out the whole thing.
 !-------------------------------------------------------------------------------
 
-if (do_out) write(*,*) 'nc_write_model_atts; filling coords'
+if (print_details .and. do_out) write(*,*) 'nc_write_model_atts; filling coords'
 
 if (lon%label  /= '        ')                                                                     &
     call nc_check(nf90_put_var(ncFileID, grid_id(find_name('lon     ',grid_names_1d)),  lon%vals) &
@@ -3225,7 +3337,7 @@ if (height >= model_h(1) .or. height <= model_h(num_levs)) then
    istatus = 1
    val = MISSING_R8
 ! debug
-!      if (do_out) &
+!      if (print_details .and. do_out) &
 !      write(logfileunit,'(A,I3,1x,3F12.2)') 'get_val_height; ens_member, height, model_h(1,num_levs) = ', &
 !           ens_member, height, model_h(1),model_h(num_levs)
 ! debug
@@ -3246,7 +3358,7 @@ else
       ! but still calculate the expected obs.
       istatus = 2
 ! debug
-!      if (do_out) &
+!      if (print_details .and. do_out) &
 !      write(*,'(A,I3,1x,2F12.2)') 'get_val_height; ens_member, height, highest_obs_height_m = ', &
 !           ens_member, height, highest_obs_height_m
    else
@@ -3394,7 +3506,7 @@ end do
 !  in memory than in the previous/Bgrid structure.
 do nf= 1, state_num_3d
 
-!   if (do_out) then
+!   if (print_details .and. do_out) then
 !      write(msgstring, '(A,4I5)') 'fld, nlons, nlats, nlevs ',nf &
 !                          ,s_dim_3d(2,nf),s_dim_3d(3,nf),s_dim_3d(1,nf)
 !      call error_handler(E_MSG, 'prog_var_to_vector', msgstring, source, revision, revdate)
@@ -3460,7 +3572,7 @@ end do
 
 ! 3D fields; see comments in prog_var_to_vect
 do nf = 1, state_num_3d
-!   if (do_out) then
+!   if (print_details .and. do_out) then
 !      write(msgstring, '(A,4I5)') 'fld, nlons, nlats, nlevs ',nf &
 !                       ,s_dim_3d(2,nf),s_dim_3d(3,nf),s_dim_3d(1,nf)
 !      call error_handler(E_MSG, 'vector_to_prog_var', msgstring, source, revision, revdate)
@@ -4074,6 +4186,12 @@ end subroutine pert_model_state
 ! Reads in restart initial conditions  -- noop for CAM
 
 real(r8), intent(inout) :: x(:)
+
+call error_handler(E_ERR,"init_conditions", &
+                  "WARNING!!  CAM model has no built-in default state", &
+                  source, revision, revdate, &
+                  text2="cannot run with 'start_from_restart = .false.'", &
+                  text3="use 'cam_to_dart' to create a CAM state vector file")
 
 end subroutine init_conditions
 
@@ -4942,9 +5060,6 @@ end subroutine end_model_instance
 !=======================================================================
 ! subroutine adv_1step(x, Time)
 !
-! Does single time-step advance for B-grid model with vector state as
-! input and output. This is a modified version of subroutine atmosphere
-! in original bgrid_solo_atmosphere driver.
 
 real(r8), intent(inout) :: x(:)
 
@@ -4954,6 +5069,13 @@ type(time_type), intent(in) :: Time
 
 ! This is a no-op for CAM; only asynch integration
 ! Can be used to test the assim capabilities with a null advance
+
+! make it an error by default; comment these calls out to actually
+! test assimilations with null advance.
+
+call error_handler(E_ERR,'adv_1step', &
+                  'CAM model cannot be called as a subroutine; async cannot = 0', &
+                  source, revision, revdate)
 
 end subroutine adv_1step
 
@@ -4997,4 +5119,12 @@ end subroutine init_time
 !#######################################################################
 
 end module model_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
+
 

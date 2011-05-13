@@ -10,7 +10,7 @@
 # when the model advance is executed as a separate process.
 # Called by the filter executable (for async=2 or 4)
 # Calls run-cam.csh, the CAM execution script.
-# Calls 3 translation routines to translate time and model state.
+# Calls translation program to translate time and model state.
 # Runs on one of the compute nodes allotted to the filter executable.
 #
 # Arguments are 
@@ -21,8 +21,6 @@
 set process = $1
 set num_states = $2
 set control_file = $3
-
-set retry_max = 2
 
 # Get unique name for temporary working directory for this process's stuff
 set temp_dir = 'advance_temp'${process}
@@ -90,7 +88,6 @@ while($state_copy <= $num_states)
    # the previous script used element instead of ensemble_number.  make them
    # the same for now.
    set element = $ensemble_number
-   touch cam_out_temp
    echo "starting ${myname} for ens member $element at "`date` >> cam_out_temp
 
    # get model state initial conditions for this ensemble member
@@ -109,165 +106,102 @@ while($state_copy <= $num_states)
     
    # Need a base CAM initial file into which to copy state vector from filter.
    # c[al]minput_$element also carry along CAM/CLM fields which are not updated
-   #      by the filter (not part of the filter model state).
-   # First look for c[al]minput.nc resulting from the previous advance of this ensemble
-   #      member from within the same day/obs_seq.out time span (in CENTRALDIR)
-   # Failing that, look for the results of the last advance of this ensemble member
-   #      of the previous obs_seq.out (i.e. in CENTRALDIR/exp_name/day/CAM)
-   # Failing that (when starting an experiment which has no spun up set of members)
-   #      get a copy of a single CAM initial file (usually from somewhere independent
-   #      of this experiment, i.e. /scratch/.../New_state/T42_GWD/CAM/caminput_0.nc)
+   #  by the filter (not part of the filter model state).
+   # Look for c[al]minput.nc resulting from the previous advance of this ensemble
+   #  member from within the same day/obs_seq.out time span (in CENTRALDIR)
+   # When starting an experiment which has no spun up set of members, you
+   #  should have already copied the single CAM initial file (e.g. campinput_0.nc)
+   #  from the CAM build directory into the CENTRALDIR and made N copies of it.
    
    if (-e     ${CENTRALDIR}/caminput_${element}.nc) then
       ${COPY} ${CENTRALDIR}/caminput_${element}.nc caminput.nc
-      echo "CENTRALDIR caminput comes from ${CENTRALDIR}/caminput_${element}.nc" >> cam_out_temp
-   else if (-e ${cam_init}${element}.nc) then
-      ${COPY}  ${cam_init}${element}.nc caminput.nc
-      echo "cam_init caminput comes from ${cam_init}${element}.nc" >> cam_out_temp
+      echo "caminput comes from ${CENTRALDIR}/caminput_${element}.nc" >> cam_out_temp
    else
-      ${COPY}  ${cam_init}0.nc caminput.nc
-      echo "DEFAULT caminput comes from ${cam_init}0.nc" >> cam_out_temp
+      echo ERROR - need $CENTRALDIR/caminput_${element}.nc to exist
+      echo ERROR - need $CENTRALDIR/caminput_${element}.nc to exist >> cam_out_temp
+      exit -${element}
    endif
    
    if ( -e     ${CENTRALDIR}/clminput_${element}.nc) then
        ${COPY} ${CENTRALDIR}/clminput_${element}.nc clminput.nc
-   else if (-e ${clm_init}${element}.nc) then
-       ${COPY} ${clm_init}${element}.nc clminput.nc
    else
-       ${COPY} ${clm_init}0.nc clminput.nc
+      echo ERROR - need $CENTRALDIR/clminput_${element}.nc to exist
+      echo ERROR - need $CENTRALDIR/clminput_${element}.nc to exist >> cam_out_temp
+      exit -${element}
    endif
    
-# Pond restart files have unchangable names like
-# FV_2deg-noleap-O2-Dev20-5-10.cice.r.volpn.2003-06-01-21600
-# Get iceinput and the related restart files for meltpond and aero
-   if ( -e     ${CENTRALDIR}/iceinput_${element}.tar) then
-       tar -x -f ${CENTRALDIR}/iceinput_${element}.tar
-   else if (-e ${ice_init}${element}.tar) then
-       tar -x -f ${ice_init}${element}.tar 
+   if ( -e     ${CENTRALDIR}/iceinput_${element}.nc) then
+       ${COPY} ${CENTRALDIR}/iceinput_${element}.nc iceinput.nc
    else
-       # no ice restart file available; start it with ice_in = 'default' via existence of iceinput
-       # in run-cam.csh
+      echo ERROR - need $CENTRALDIR/iceinput_${element}.nc to exist
+      echo ERROR - need $CENTRALDIR/iceinput_${element}.nc to exist >> cam_out_temp
+      exit -${element}
+      # or if no ice restart file available; start it with ice_in = 'default' 
+      # via existence of iceinput in run-cam.csh
    endif
    
+   # topography infomation
    ${LINK} ${CENTRALDIR}/cam_phis.nc .
 
-   # create 'times' file for CAM from DART times in assim_model_state_ic#
-   # This info is passed to CAM through the creation of its namelist
-   if (-e temp_ic && -e ${CENTRALDIR}/trans_time) then
-      echo 'advance_model; executing trans_time '`date` >> cam_out_temp
-      ${CENTRALDIR}/trans_time                          >> cam_out_temp
-      ls -lt                                            >> cam_out_temp
+   # translate DART state vector into a CAM caminput.nc file, and create an
+   # ascii 'times' file, which will be used to set the namelist for cam to tell
+   # it how far to advance the model.
+   if (-e temp_ic && -e ${CENTRALDIR}/dart_to_cam) then
+      echo 'advance_model; executing dart_to_cam '`date` >> cam_out_temp
+      ${CENTRALDIR}/dart_to_cam                          >> cam_out_temp
+      ls -lt                                             >> cam_out_temp
       ${COPY} times ${CENTRALDIR}
    else
-      echo "ERROR: either ic file $element or trans_time not available for trans_time" >> cam_out_temp
-      exit 1
+      echo "ERROR: either temp_ic file for $element or dart_to_cam not available" >> cam_out_temp
+      exit -${element}
    endif
    
-   # Create an initial CAM.nc file from the DART state vector
-   # Times are handled separately in trans_time
-   echo ' '                           >> cam_out_temp
-   echo 'Executing trans_sv_pv'       >> cam_out_temp
-   ${CENTRALDIR}/trans_sv_pv          >> cam_out_temp
-   ls -ltR >> cam_out_temp
-   
    # advance cam 
-   #   echo executing: ${model:h}/run-cam.csh ${case}-$element $model ${CENTRALDIR} >> cam_out_temp
-      set retry = 0
-      while ($retry < $retry_max)
-         echo executing: ${CENTRALDIR}/run-cam.csh ${case}-$element $model ${CENTRALDIR} \
-              >> cam_out_temp
-         ${CENTRALDIR}/run-cam.csh ${case}-$element $model ${CENTRALDIR}  >>& cam_out_temp
+   echo executing: ${CENTRALDIR}/run-cam.csh ${case}-$element $model ${CENTRALDIR}  >> cam_out_temp
+   ${CENTRALDIR}/run-cam.csh ${case}-$element $model ${CENTRALDIR}  >>& cam_out_temp
    
-         grep 'END OF MODEL RUN' cam_out_temp > /dev/null
-         if ($status == 0) then
-            set retry = $retry_max
+   grep 'END OF MODEL RUN' cam_out_temp > /dev/null
+   if ($status == 0) then
       # Extract the new state vector information from the new caminput.nc and
-      # put it in temp_ud (time followed by state)
-            echo ' '                           >> cam_out_temp
-            echo 'Executing trans_pv_sv'       >> cam_out_temp
-            ${CENTRALDIR}/trans_pv_sv       >> cam_out_temp
+      # put it in '$output_file' (time followed by state)
+      echo ' '                           >> cam_out_temp
+      echo 'Executing cam_to_dart'       >> cam_out_temp
+      ${CENTRALDIR}/cam_to_dart          >> cam_out_temp
    
-      # Save CLM and CAM files for storage of analyses in CAM initial file format (analyses2initial)
-            # get the forecast time, which is the time of this CLM initial file
-            set seconds = (`head -1 times`)
-            if ($seconds[2] == 0) then
-               set hour = 24
-            else
-               @ hour = $seconds[2] / 3600
-            endif
-            if ($hour < 10) set hour = 0$hour
-            # Directory for storing CAM initial files until they can be averaged during
-            # archiving for analyses
-            if (! -d ${CENTRALDIR}/H${hour}) mkdir ${CENTRALDIR}/H${hour}
       # Move updated state vector and new CAM/CLM initial files back to experiment
       # directory for use by filter and the next advance.
-      # Store them in H## directories for later generation of  ensemble average CAM and CLM 
-      # initial file after all members are done.
-            ${MOVE} temp_ud         ${CENTRALDIR}/$output_file
-            ${MOVE} namelist        ${CENTRALDIR}
-            ${MOVE} caminput.nc     ${CENTRALDIR}/H${hour}/caminput_${element}.nc
-            ${MOVE} clminput.nc     ${CENTRALDIR}/H${hour}/clminput_${element}.nc
-            if (-e iceinput.tar) \
-            ${MOVE} iceinput.tar    ${CENTRALDIR}/H${hour}/iceinput_${element}.tar
 
-            set save_hist = `head -8 ${CENTRALDIR}/casemodel | tail -1`
-            if ($save_hist == 'true') then
-               set hist = `ls *.h0.*`
-               echo "advance_model: hist is "$hist                                  >> cam_out_temp
-               ${MOVE} $hist           ${CENTRALDIR}/H${hour}
-               # redundant element #;  /$hist:r_${element}.nc
-            endif
-
-            # link the new initial files into the CENTRAL directory where filter will find them.
-            ${LINK} ${CENTRALDIR}/H${hour}/caminput_${element}.nc \
-                    ${CENTRALDIR}/caminput_${element}.nc
-            ${LINK} ${CENTRALDIR}/H${hour}/clminput_${element}.nc \
-                    ${CENTRALDIR}/clminput_${element}.nc
-            if (-e iceinput.tar) \
-            ${LINK} ${CENTRALDIR}/H${hour}/iceinput_${element}.tar \
-                    ${CENTRALDIR}/iceinput_${element}.tar
+      ${MOVE} dart_ics        ${CENTRALDIR}/$output_file
+      ${MOVE} namelist        ${CENTRALDIR}
+      ${MOVE} caminput.nc     ${CENTRALDIR}/caminput_${element}.nc
+      ${MOVE} clminput.nc     ${CENTRALDIR}/clminput_${element}.nc
+      ${MOVE} iceinput.nc     ${CENTRALDIR}/iceinput_${element}.nc
    
-            echo "finished ${myname} for ens member $element at "`date` >> cam_out_temp
-            ${COPY} cam_out_temp ${CENTRALDIR}/H${hour}/cam_out_temp$element
-            ${MOVE} cam_out_temp ${CENTRALDIR}/cam_out_temp$element
-         else
-            @ retry++
-            if ($retry < $retry_max) then
-# Add section to make CAM write out something every time step during this retry.
-# Could be added to casemodel, but be careful of how run-cam.csh uses the number of
-# lines in casemodel.
-               echo "WARNING - CAM $element stopped abnormally; will be retried"
-               echo "WARNING - CAM $element stopped abnormally; will be retried" >> cam_out_temp
-               echo "===========================================================" >> cam_out_temp
-            else
-               set DEADDIR = ${temp_dir}_dead
-               echo "WARNING - CAM $element stopped abnormally; see $DEADDIR"
-               echo "WARNING - CAM $element stopped abnormally; see $DEADDIR" >> cam_out_temp
-               ${COPY} cam_out_temp ${CENTRALDIR}/cam_out_temp${element}_died
-               mkdir $DEADDIR
-               ${MOVE} * $DEADDIR
-               exit -${element}
-            endif
-         endif
-      end
+      echo "finished ${myname} for ens member $element at "`date` >> cam_out_temp
+      ${COPY} cam_out_temp ${CENTRALDIR}/H${hour}/cam_out_temp$element
+      ${MOVE} cam_out_temp ${CENTRALDIR}/cam_out_temp$element
+   else
+      echo "WARNING - CAM $element stopped abnormally"
+      echo "WARNING - CAM $element stopped abnormally" >> cam_out_temp
+      echo "=========================================" >> cam_out_temp
+      exit -${element}
+   endif
+end
 
    # if this process needs to advance more than one model, read the next set of
    # filenames and ensemble number at the top of this loop.
 
    @ state_copy++
    @ ensemble_number_line = $ensemble_number_line + 3
-   @ input_file_line = $input_file_line + 3
-   @ output_file_line = $output_file_line + 3
+   @ input_file_line      = $input_file_line + 3
+   @ output_file_line     = $output_file_line + 3
 end
 
 cd ${CENTRALDIR}
 
-# lightnings filesystem was misbehaving if you removed the directory.
-# it was more reliable if you just left the directory empty. It's bogus, but true.
 ${REMOVE} $temp_dir/*
 
 # Remove the filter_control file to signal completion
-# Is there a need for any sleeps to avoid trouble on completing moves here?
 \rm -rf $control_file
 
 exit 0

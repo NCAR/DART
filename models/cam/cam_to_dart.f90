@@ -23,7 +23,8 @@ program cam_to_dart
 
 use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, finalize_utilities, do_output, &
-                             check_namelist_read, find_namelist_in_file, nmlfileunit
+                             check_namelist_read, find_namelist_in_file, nmlfileunit, &
+                             do_nml_file, do_nml_term
 use        model_mod, only : model_type, init_model_instance, end_model_instance, &
                              prog_var_to_vector, read_cam_init
 use  assim_model_mod, only : static_init_assim_model, get_model_size, &
@@ -62,8 +63,8 @@ read(iunit, nml = cam_to_dart_nml, iostat = io)
 call check_namelist_read(iunit, io, "cam_to_dart_nml")
 
 ! Record the namelist values 
-if (do_output()) write(nmlfileunit, nml=cam_to_dart_nml)
-if (do_output()) write(     *     , nml=cam_to_dart_nml)
+if (do_nml_file()) write(nmlfileunit, nml=cam_to_dart_nml)
+if (do_nml_term()) write(     *     , nml=cam_to_dart_nml)
 
 ! Static init assim model sets the output file format (binary/ascii)
 ! and calls static_init_model

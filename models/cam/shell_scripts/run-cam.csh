@@ -52,7 +52,6 @@ setenv CSMDATA     /fis/cgd/cseg/csm/inputdata
 
 ## $wrkdir is a working directory where the model will be built and run.
 #  DART; it's the temp directory in which advance_model runs.
-# set wrkdir       = $PWD       
 set wrkdir       = `pwd`
 ## $cfgdir is the directory containing the CAM configuration scripts.
 #          and subdirectories with various configurations of this CAM version
