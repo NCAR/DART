@@ -136,7 +136,7 @@ logical :: out_of_range, is_there_one, keeper, create_rank_histogram
 !---------------------------------------------------------------------
 ! variables associated with quality control
 !
-! qc_index  reflects the 'original' QC value of the observation, if any.
+! org_qc_index reflects the 'original' QC value of the observation, if any.
 !           Most frequently represents the value NCEP assigned to their
 !           observations.
 !
@@ -153,7 +153,7 @@ logical :: out_of_range, is_there_one, keeper, create_rank_histogram
 ! 7     outlier rejected
 ! 8+    reserved for future use
 
-integer             :: qc_index, dart_qc_index
+integer             :: org_qc_index, dart_qc_index
 integer             :: qc_integer, my_qc_integer
 integer, parameter  :: QC_MAX = 8
 integer, parameter  :: QC_MAX_PRIOR     = 3
@@ -839,7 +839,7 @@ ObsFileLoop : do ifile=1, 1000
 
    ! Each observation sequence file can have its copies in any order.
 
-   call SetIndices( obs_index, qc_index, dart_qc_index, &
+   call SetIndices( obs_index, org_qc_index, dart_qc_index, &
             prior_mean_index,   posterior_mean_index,   &
             prior_spread_index, posterior_spread_index, &
             ens_copy_index )
@@ -969,8 +969,8 @@ ObsFileLoop : do ifile=1, 1000
 
             if (dart_qc_index > 0) then 
                my_qc_integer =      nint(qc(dart_qc_index))
-            elseif  (qc_index > 0) then
-               my_qc_integer = -1 * nint(qc(     qc_index))
+            elseif (org_qc_index > 0) then
+               my_qc_integer = -1 * nint(qc(org_qc_index))
             else
                my_qc_integer = -99
             endif
@@ -1116,8 +1116,8 @@ ObsFileLoop : do ifile=1, 1000
          endif
 
          !--------------------------------------------------------------
-         ! Calculate the rank histogram bin (once!) if needed,
-         ! even if the QC value is bad.
+         ! If needed, calculate the rank histogram bin (once!) for 
+         ! this observation - even if the QC value is bad.
          !--------------------------------------------------------------
 
          if ( create_rank_histogram ) then
@@ -1136,7 +1136,8 @@ ObsFileLoop : do ifile=1, 1000
             if ( .not. keeper ) cycle Areas
 
             !-----------------------------------------------------------
-            ! Reject observations too high or too low.
+            ! Reject observations too high or too low without counting it
+            ! as a possible observation for this region.
             !-----------------------------------------------------------
 
             if ( level_index < 1 .or. level_index > Nlevels )   then
@@ -1151,8 +1152,8 @@ ObsFileLoop : do ifile=1, 1000
             ! Count original QC values 'of interest' ...
             !-----------------------------------------------------------
 
-            if( qc_index > 0 ) then
-               if (qc(qc_index) > input_qc_threshold ) then
+            if (      org_qc_index  > 0 ) then
+               if (qc(org_qc_index) > input_qc_threshold ) then
                call IPE(guess%NbigQC(iepoch,level_index,iregion,flavor), 1)
                call IPE(analy%NbigQC(iepoch,level_index,iregion,flavor), 1)
                endif
@@ -1160,7 +1161,6 @@ ObsFileLoop : do ifile=1, 1000
 
             !-----------------------------------------------------------
             ! Count DART QC values 
-            ! FIXME ... should these be different for prior/posterior?
             !-----------------------------------------------------------
 
             if (        qc_integer == 0 ) then
@@ -1281,8 +1281,8 @@ ObsFileLoop : do ifile=1, 1000
             ! vertical statistical part
             !-----------------------------------------------------------
 
-            if( qc_index > 0 ) then
-               if (qc(qc_index) > input_qc_threshold ) then
+            if (      org_qc_index  > 0 ) then
+               if (qc(org_qc_index) > input_qc_threshold ) then
                call IPE(guessAVG%NbigQC(level_index,iregion,flavor), 1)
                call IPE(analyAVG%NbigQC(level_index,iregion,flavor), 1)
                endif
@@ -2112,12 +2112,12 @@ CONTAINS
 
 
 
-   Subroutine  SetIndices( obs_index, qc_index, dart_qc_index,        &
+   Subroutine  SetIndices( obs_index, org_qc_index, dart_qc_index,        &
                            prior_mean_index,   posterior_mean_index,  &
                            prior_spread_index, posterior_spread_index,&
                            ens_copy_index )
 
-   integer, intent(out) :: obs_index, qc_index, dart_qc_index, &
+   integer, intent(out) :: obs_index, org_qc_index, dart_qc_index, &
                            prior_mean_index,   posterior_mean_index, &
                            prior_spread_index, posterior_spread_index
    integer, dimension(:), intent(out) :: ens_copy_index
@@ -2132,7 +2132,7 @@ CONTAINS
    posterior_mean_index   = -1
    prior_spread_index     = -1
    posterior_spread_index = -1
-   qc_index               = -1
+   org_qc_index           = -1
    dart_qc_index          = -1
 
    ens_count = 0
@@ -2160,9 +2160,9 @@ CONTAINS
 
    QCMetaDataLoop : do i=1, get_num_qc(seq)
       if(index(  get_qc_meta_data(seq,i), 'Quality Control'          ) > 0) &
-                           qc_index = i
+                       org_qc_index = i
       if(index(  get_qc_meta_data(seq,i), 'NCEP QC index'            ) > 0) &
-                           qc_index = i
+                       org_qc_index = i
       if(index(  get_qc_meta_data(seq,i), 'DART quality control'     ) > 0) &
                       dart_qc_index = i
    enddo QCMetaDataLoop
@@ -2187,7 +2187,7 @@ CONTAINS
       write(msgstring,*)'metadata:posterior ensemble spread not found' 
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate) 
    endif
-   if (               qc_index < 0 ) then 
+   if (           org_qc_index < 0 ) then 
       write(msgstring,*)'metadata:Quality Control not found' 
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
@@ -2237,9 +2237,9 @@ CONTAINS
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
 
-   if (qc_index > 0 ) then
+   if (org_qc_index > 0 ) then
       write(msgstring,'(''Quality Control      index '',i2,'' metadata '',a)') &
-           qc_index,      trim(get_qc_meta_data(seq,     qc_index))
+            org_qc_index, trim(get_qc_meta_data(seq,org_qc_index))
       call error_handler(E_MSG,'obs_diag',msgstring,source,revision,revdate)
    endif
 
