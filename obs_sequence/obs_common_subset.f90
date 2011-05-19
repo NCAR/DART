@@ -418,7 +418,7 @@ character(len=*), intent(inout) :: filename_seq1(:), filename_seq2(:)
 character(len=*), intent(in)    :: filename_seq_list1, filename_seq_list2
 integer,          intent(out)   :: num_input_files
 
-integer :: index
+integer :: indx
 logical :: from_file1, from_file2
 character(len=32) :: source1, source2
 
@@ -466,16 +466,16 @@ else
 endif
 
 ! the point of this loop is to count up how many pairs of input seq files we have.
-do index = 1, max_num_input_files
+do indx = 1, max_num_input_files
    if (from_file1) &
-      filename_seq1(index) = get_next_filename(filename_seq_list1, index)
+      filename_seq1(indx) = get_next_filename(filename_seq_list1, indx)
    if (from_file2) &
-      filename_seq2(index) = get_next_filename(filename_seq_list2, index)
+      filename_seq2(indx) = get_next_filename(filename_seq_list2, indx)
 
    ! a pair of empty names ends the list and we return with the count.
    ! (unless both lists are empty and then we're unhappy)
-   if ((filename_seq1(index) == '') .and. (filename_seq2(index) == '')) then
-      if (index == 1) then
+   if ((filename_seq1(indx) == '') .and. (filename_seq2(indx) == '')) then
+      if (indx == 1) then
          call error_handler(E_ERR,'obs_common_subset', &
              trim(source1)//' contains no filenames', &
              source,revision,revdate)
@@ -483,17 +483,17 @@ do index = 1, max_num_input_files
 
       ! if this isn't the first entry, we are at the end of the list.
       ! set the return count before going.
-      num_input_files = index - 1
+      num_input_files = indx - 1
       return
 
    ! catch the cases where the lists aren't the same length, 2 longer than 1
-   else if (filename_seq1(index) == '') then
+   else if (filename_seq1(indx) == '') then
          call error_handler(E_ERR,'obs_common_subset', &
              trim(source2)//' contains more filenames than '//trim(source1), &
              source,revision,revdate)
 
    ! catch the other case where the lists aren't the same length, 1 longer than 2
-   else if (filename_seq2(index) == '') then
+   else if (filename_seq2(indx) == '') then
          call error_handler(E_ERR,'obs_common_subset', &
              trim(source1)//' contains more filenames than '//trim(source2), &
              source,revision,revdate)
@@ -934,7 +934,6 @@ if (base_qc > qc_threshold) then
    num_rejected_badqc = num_rejected_badqc + 1
    return
 endif
-
 
 ! all match - good return.
 good_match = .true.
