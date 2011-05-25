@@ -5,7 +5,7 @@
 % The beauty of addpath is that if the desired directory is already 
 % in your path, nothing happens, so there is no harm trying.
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

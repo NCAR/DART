@@ -5,7 +5,7 @@ function ens_size = get_ens_size(fname)
 % fname = 'Prior_Diag.nc';
 % ens_size = get_ens_size(fname);
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

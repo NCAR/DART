@@ -11,7 +11,7 @@ function bob = get_DARTvars(fname)
 % nvars = length(DARTvars);
 % disp(sprintf('first atmospheric variable (of %d) is %s',nvars,DARTvars{1}))
 
-%% DART software - Copyright � 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

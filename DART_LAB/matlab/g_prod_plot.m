@@ -1,7 +1,7 @@
 function [prior_mean, prior_sd, obs_mean, obs_err_sd, is_err] = g_prod_plot(h)
 %% g_prod_plot Updates the plot of the prior and observation gaussians
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

@@ -9,7 +9,7 @@ function h = ray(x,y)
 % y = [9 9; 8 8; 2 4; 7 5; 4 5; 4 2];
 % clf; ray(x,y); axis([0 10 0 10]); grid
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

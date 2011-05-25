@@ -22,7 +22,7 @@ function varargout = twod_ensemble(varargin)
 % See also: gaussian_product, oned_model, oned_ensemble, run_lorenz_63, 
 %           run_lorenz_96
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

@@ -2,7 +2,7 @@ function Check_trans_sv_pv
 %% Check_trans_sv_pv()  verify the packing/unpacking of the DART state vector
 % there are a lot of hardwired values ...
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

@@ -10,7 +10,7 @@ function a = ReadASCIIObsSeq(fname)
 % The file contains a linked list which we are reading sequentially.
 % The resulting sequence "a.obs" is NOT guaranteed to be in a temporally ascending order.
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

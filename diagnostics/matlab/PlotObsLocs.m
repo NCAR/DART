@@ -96,7 +96,7 @@ function phandle = PlotObsLocs(in_dartqc, in_box, in_typelist, in_epochlist, ...
 %               subsequent plots will overwrite earlier ones, so this input
 %               can be used to customize the name.
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

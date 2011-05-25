@@ -1,7 +1,7 @@
 %% DART:script16 Plot errors associated with finite size correlation
 % correl_error.f90 in system_simulation in DART generates input
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

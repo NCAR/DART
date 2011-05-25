@@ -42,7 +42,7 @@ function plotdat = plot_evolution(fname, copystring, varargin)
 % copystring = 'rmse';                 % 'copy' string == quantity of interest
 % plotdat    = plot_evolution(fname, copystring, 'RADIOSONDE_TEMPERATURE');
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

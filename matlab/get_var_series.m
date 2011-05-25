@@ -11,7 +11,7 @@ function var_vec = get_var_series(fname, varname, copyindex, state_var, tstart, 
 % state_var = 3;            % state variable index
 % var_vec   = get_var_series(fname, varname, copyindex, state_var);
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

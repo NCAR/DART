@@ -19,7 +19,7 @@ function inds = locations_in_region(locations, region)
 % EXAMPLE: vertical subsetting
 % inds = locations_in_region(locations,[0 360 -90 90 0 1000]); % Everything  between 0,1000
  
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %

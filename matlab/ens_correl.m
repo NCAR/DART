@@ -2,7 +2,7 @@ function corr = ens_correl(base_var, base_time, state_var)
 %% ens_correl  Computes correlation of a variable at a time to a time series of
 % another variable (could be the same one)
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
