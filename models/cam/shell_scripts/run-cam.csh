@@ -69,7 +69,7 @@ if ( ! -x cam ) then
        echo 'use cam and config_cache.xml from ' $camroot
     else
        echo 'cam is not found; must be pre-built and stored in ' $camroot
-       exit
+       exit 3
     endif
 else
    echo 'cam exists in ' $wrkdir
@@ -120,15 +120,17 @@ if ($ensstring[1] == 3) then
          echo 'version < 3.5.30'
       endif
       echo 'version 3.5.x'
-   else if ($ensstring[2] == 6 && $#ensstring == 3 ) then
+   endif
+endif
+if (($ensstring[1] == 3 && $ensstring[2] > 6)   ||   $ensstring[1] >= 4 ) then
       echo 'version > 3.6.0'
       set dir_arg = '-dir'
       # Get info from job_mpi.csh/casemodel about the cice_nl for build-namelist for CAM 3.6.26
       # /ptmp/raeder/Cam3.6/Dev20-1/obs_0029/ICE/iceinput_ 1949 2007 ......./sst_file.nc
       # NO! advance_model puts the ice IC file in a generic name for this script to find
       set list = `head -5 ${CENTRALDIR}/casemodel | tail -1`
-      if (-e iceinput) then
-         set ice_ic = iceinput
+      if (-e iceinput.nc) then
+         set ice_ic = iceinput.nc
       else
          set ice_ic = default
       endif
@@ -141,18 +143,21 @@ if ($ensstring[1] == 3) then
       set cice_nl = "&ice     stream_year_first=$str_yr_first stream_year_last=$str_yr_last" 
       set cice_nl = "$cice_nl  model_year_align=$str_yr_first ice_ic='$ice_ic'"
       set cice_nl = "$cice_nl stream_domfilename='$sst' stream_fldfilename='$sst' /"
+#     Fix the default value, which derails the gregorian calendar in ice_calendar.F90
+      set cice_nl = "$cice_nl &setup_nml year_init=1 /"
       echo $cice_nl
    endif
-   if (($ensstring[2] == 5 && $ensstring[3] >= 30) || $ensstring[2] == 6) then
+   if (($ensstring[1] == 3 && $ensstring[2] == 5 && $ensstring[3] >= 30) || \
+       ($ensstring[1] == 3 && $ensstring[2] >= 6)                        || \
+       ($ensstring[1] >= 4                                                   )) then
       if (! $?CSMDATA ) then
          echo "run-cam.csh; CSMDATA must be defined in here for > Cam3.5.30"
-         exit
+         exit 2
       endif
       if (! -d $CSMDATA ) then
          echo "run-cam.csh; CSMDATA = $CSMDATA must exist for > Cam3.5.30"
-         exit
+         exit 2
       endif
-      echo 'version 3.5.x'
    endif
 endif
 if ($ensstring[1] <= 2) then
@@ -174,8 +179,8 @@ ls -lt
 # job_mpi.csh has calculated num_procs to make nprocs be correct,
 # and the helpful condition is satisfied in the namelist below.
 set length_casemodel = `wc -l ${CENTRALDIR}/casemodel`
-if ($length_casemodel[1] == 9) then
-   set list = `head -9 ${CENTRALDIR}/casemodel | tail -1`
+if ($length_casemodel[1] == 8) then
+   set list = `head -8 ${CENTRALDIR}/casemodel | tail -1`
    set num_procs  = $list[1]
    set lev_blocks = $list[2]
    set lat_blocks = $list[3]
@@ -198,7 +203,7 @@ if ($cam_version == 'single-namelist') then
 else if ($cam_version == 'multi-namelist') then
    # This builds all the *_in namelists CAM3.5 needs
 
-   if ($cice_nl == '') then
+   if ("$cice_nl" == '') then
       $cfgdir/build-namelist -v $verbosity \
         -case     ${camroot:t}-$case \
         -runtype  startup \
@@ -225,7 +230,7 @@ echo "finished build-namelist ..."
 # Run CAM
 # run_command is how *filter* is run, and may not be how CAM is run.
 set parallel_cam = `head -6 ${CENTRALDIR}/casemodel | tail -1`
-if ($parallel_cam == true) then
+if ($parallel_cam[1] == 'true') then
    # async=4;  filter is parallel and CAM is too
    set run_command = `head -7 ${CENTRALDIR}/casemodel | tail -1`
 else
@@ -252,34 +257,51 @@ ls -l *\.[hir]*
 
 # in DART caminput, clminput and maybe iceinput and a history file
 # need to be saved for each "element" of the ensemble
-mv *cam2\.i\.* caminput.nc
-if ($cam_version == 'single-namelist') then
-   mv *clm2\.i\.*\.nc clminput.nc
+ls *cam2\.i\.*
+if ($status == 0) then
+   mv *cam2\.i\.* caminput.nc
 else
-   mv *clm2\.r\.*\.nc     clminput.nc
+   echo "No cam2.i. (caminput.nc) file available from CAM; ABORTING"
+   exit 4
+endif
 
-   # Generically named files (caminput_#.nc...) are overwritten for each obs_seq,
-   # but volpn files have unique names which must be manually removed, except the last
-   # of each obs_seq.  So remove this old one since we have the new one from the 
-   # latest forecast.
-   ls *\.cice\.r\.[0-9]*
+if ($cam_version == 'single-namelist') then
+   ls *clm2\.i\.*
    if ($status == 0) then
-      mv *\.cice\.r\.[0-9]*  iceinput
-      # preserve only the youngest meltpond(volpn) and aero restart files
-      set ice_restarts = `ls -t *.cice.r.[a-z]*.*`
-      tar -c -f iceinput.tar  iceinput $ice_restarts[1-2]
+      mv *clm2\.i\.*\.nc clminput.nc
+   else
+      echo "No clm2.i. (caminput.nc) file available from CAM; ABORTING"
+      exit 5
+   endif
+else
+   ls *clm2\.r\.*\.nc
+   if ($status == 0) then
+      mv *clm2\.r\.*\.nc     clminput.nc
+   else
+      echo "No clm2.r. (clminput.nc) file available from CAM; ABORTING"
+      exit 5
    endif
 
-   # move only the youngest h0 file
-   set save_hist = `head -8 ${CENTRALDIR}/casemodel | tail -1`
-   if ($save_hist == 'true') then
-      set hist = `ls -t *\.h0\.*`
-      echo hist is $hist
-      echo hist1 is $hist[1]
+   ls *\.cice\.r\.*.nc
+   if ($status == 0) then
+      mv *\.cice\.r\.*.nc  iceinput.nc
+   else
+      echo "No cice.r. (iceinput.nc) file available from CAM; ABORTING"
+      exit 6
+   endif
+
+
+# 
+# move only the youngest h0 file
+   set hist = `ls -t *\.h0\.*`
+   echo hist is $hist
+   if ($#hist > 0) then
       mv $hist[1]    hide_hist
    endif
 endif
 
+# mv *\.h0\.* ${CENTRALDIR}/cam_phis_good.nc
+# ls *\.[hir]*\.[0-9]*
 # Remove 'leftovers' ONLY if CAM completed correctly (old ice initials need to
 # hang around for the retry)
 grep 'END OF MODEL RUN' cam_out_temp > /dev/null
@@ -288,10 +310,12 @@ if ($status == 0) then
    echo "removed .[hir]."
 endif
 # restore file to meaningful name advance_model expects
-if (-e hide_hist) mv hide_hist $hist[1]
+if (-e hide_hist ) then
+   mv hide_hist $hist[1]
+endif
 
 echo ' '
-ls -l ${wrkdir}/*input*
+ls -l ${wrkdir}/*input* ${wrkdir}/*\.h*
 
 exit 0
 

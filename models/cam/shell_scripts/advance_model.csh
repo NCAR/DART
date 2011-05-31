@@ -147,7 +147,8 @@ while($state_copy <= $num_states)
    # ascii 'times' file, which will be used to set the namelist for cam to tell
    # it how far to advance the model.
    if (-e temp_ic && -e ${CENTRALDIR}/dart_to_cam) then
-      echo 'advance_model; executing dart_to_cam '`date` >> cam_out_temp
+      echo ' '                                           >> cam_out_temp
+      echo 'advance_model: executing dart_to_cam '`date` >> cam_out_temp
       ${CENTRALDIR}/dart_to_cam                          >> cam_out_temp
       ls -lt                                             >> cam_out_temp
       ${COPY} times ${CENTRALDIR}

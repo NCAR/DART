@@ -6,7 +6,6 @@
 #
 # $Id$
 #
-#
 # The special values(!) which may be found on the CLM initial/restart files.
 # CLM 3.6.71 set spvals = ('1e+36' '-1e+36')
 # ICE 4.0
@@ -79,4 +78,10 @@ end
    
 rm varstring spvals
 
-exit
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+
