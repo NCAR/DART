@@ -21,7 +21,7 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  set_qc_meta_data, get_expected_obs, get_first_obs,          &
                                  get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
                                  delete_seq_tail, replace_obs_values, replace_qc,            &
-                                 destroy_obs_sequence
+                                 destroy_obs_sequence, get_qc_meta_data
 use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                  operator(-), print_time
@@ -1003,6 +1003,28 @@ end function get_obs_copy_index
 
 !-------------------------------------------------------------------------
 
+function get_obs_prior_index(seq)
+
+type(obs_sequence_type), intent(in) :: seq
+integer                             :: get_obs_prior_index
+
+integer :: i
+
+! Determine which copy in sequence has prior mean, if any.
+!--------
+do i = 1, get_num_copies(seq)
+   get_obs_prior_index = i
+   ! Need to look for 'prior mean'
+   if(index(get_copy_meta_data(seq, i), 'prior ensemble mean') > 0) return
+end do
+! Falling of end means 'prior mean' not found; not fatal!
+
+get_obs_prior_index = -1
+
+end function get_obs_prior_index
+
+!-------------------------------------------------------------------------
+
 function get_obs_qc_index(seq)
 
 type(obs_sequence_type), intent(in) :: seq
@@ -1019,10 +1041,12 @@ integer :: i
 do i = 1, get_num_qc(seq)
    get_obs_qc_index = i
    ! Need to look for 'QC' or 'qc'
-   if(index(get_copy_meta_data(seq, i), 'QC') > 0) return
-   if(index(get_copy_meta_data(seq, i), 'qc') > 0) return
+   if(index(get_qc_meta_data(seq, i), 'QC') > 0) return
+   if(index(get_qc_meta_data(seq, i), 'qc') > 0) return
+   if(index(get_qc_meta_data(seq, i), 'Quality Control') > 0) return
+   if(index(get_qc_meta_data(seq, i), 'QUALITY CONTROL') > 0) return
 end do
-! Falling off end means 'QC' or 'qc' not found; not fatal!
+! Falling off end means 'QC' string not found; not fatal!
 
 get_obs_qc_index = -1
 
@@ -1042,7 +1066,7 @@ integer :: i
 do i = 1, get_num_qc(seq)
    get_obs_dartqc_index = i
    ! Need to look for 'DART quality control'
-   if(index(get_copy_meta_data(seq, i), 'DART quality control') > 0) return
+   if(index(get_qc_meta_data(seq, i), 'DART quality control') > 0) return
 end do
 ! Falling off end means 'DART quality control' not found; not fatal!
 
