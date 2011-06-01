@@ -61,10 +61,10 @@
 module obs_def_wind_speed_mod
 
 ! <next few lines under version control, do not edit>
-! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/coamps/externals/obs_def/obs_def_navdas_mod.f90 $
-! $Id: obs_def_navdas_mod.f90 4259 2010-02-08 17:22:10Z thoar $
-! $Revision: 4259 $
-! $Date: 2010-02-08 17:22:10 +0000 (Mon, 08 Feb 2010) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
 
 use        types_mod, only : r8, missing_r8
 use    utilities_mod, only : register_module
@@ -80,9 +80,9 @@ public :: get_expected_windspeed
 
 ! version controlled file description for error handling, do not edit
 character(len=128) :: &
-   source   = "$URL: $", &
-   revision = "$Revision: 4259 $", &
-   revdate  = "$Date: 2010-02-08 17:22:10 +0000 (Mon, 08 Feb 2010) $"
+   source   = "$URL$", &
+   revision = "$Revision$", &
+   revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
