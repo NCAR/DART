@@ -7,7 +7,7 @@
 ** Define a global variable for sharing of file pointers across different
 ** subprograms within the BUFRLIB software.
 **
-** DART $Id: bufrlib.h 4225 2010-01-22 23:24:16Z thoar $
+** DART $Id$
 */
 #ifdef BUFRLIB_GLOBAL
     FILE *pbf[2];  /* each element will automatically initialize to NULL */
