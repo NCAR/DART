@@ -81,7 +81,7 @@ module model_mod
 ! > new filter_ics for the cases I've distributed
 ! > init2ud script for them to create their own.
 !      list of files that script/model_mod needs; 
-!          trans_pv_sv_time0  (the executable)
+!          cam_to_dart+restart_file_tool (was trans_pv_sv_time0)  (the executable)
 !          input.nml:perfect_model_nml (with the date+time to put in the filter_ics files)
 !          cam_phis.nc  (for static_init_model to get PHIS)
 !          caminput_#.nc  (to convert into filter_ic.####)
@@ -451,7 +451,7 @@ integer , dimension(MAX_STATE_NAMES) :: which_vert_3d = (/( 1,iii=1,MAX_STATE_NA
 ! the  subroutine which sorts state_names?
 ! Yes, use two namelists model_nml_1 and model_nml_2 at future date
 
-! list of fields which trans_pv_sv_pert0 needs to perturb because they're
+! list of fields which this code needs to perturb because they're
 ! constant valued model parameters and show no spread when start_from_restart = .true.
 character (len=8),dimension(MAX_STATE_NAMES) :: pert_names     = (/('        ',iii=1,MAX_STATE_NAMES)/)
 real(r8)         ,dimension(MAX_STATE_NAMES) :: pert_sd        = (/(-888888.0d0,iii=1,MAX_STATE_NAMES)/)
@@ -629,7 +629,7 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, "model_nml")
 
 ! set the printed output logical variable to reduce printed output;
-! depends on whether this is being called by trans_... (read ens member # from file 'element' )
+! depends on whether this is being called by dart_to_cam (read ens member # from file 'element' )
 ! or by filter (multiple processes, printout controlled by do_output())
 
 if (file_exist('element')) then
@@ -1595,9 +1595,6 @@ call nc_check(nf90_open(path = trim(file_name), mode = nf90_nowrite, ncid = ncfi
 ! so f_dim_max(4,3) and f_dim_max(3,2) are the non-spatial dimensions to ignore here.
 allocate (temp_3d(f_dim_max(1,3),f_dim_max(2,3),f_dim_max(3,3)) &
          ,temp_2d(f_dim_max(1,2),f_dim_max(2,2)) )
-
-! Imported from trans_pv_sv.  Nancy; is this a better place for it?
-! call init_model_instance(var)
 
 ! read CAM 'initial' file fields desired
 
@@ -4029,7 +4026,7 @@ real(r8)                :: pert_val
 
 ! FIX for 1D 0D  fields?
 
-! trans_pv_sv_pert0.f90 needs to perturb model parameters for the filter_ics.
+! perturb model parameters for the filter_ics.
 ! Use the (single) state value as the "ens_mean" here.
 
 interf_provided = .true.
