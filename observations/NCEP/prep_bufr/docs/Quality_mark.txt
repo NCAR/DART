@@ -1,4 +1,4 @@
-# DART $Id: Quality_mark.txt 4225 2010-01-22 23:24:16Z thoar $
+# DART $Id$
 (qm)
 
 Table 7.   Code table for observation quality markers (last revised 1/30/2002). 

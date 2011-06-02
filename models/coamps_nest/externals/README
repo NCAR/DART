@@ -1,3 +1,5 @@
+# DART $Id$
+
 This externals directory is created to handle DART now being
 distributed via subversion - this means that we will no longer be able
 to track local revisions outside the COAMPS subdirectory.

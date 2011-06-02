@@ -2,7 +2,7 @@
 !     innovation vector flat file format
 ! 
 ! rcs keywords: $RCSfile$ 
-!               $Revision: 2479 $ $Date: 2006-08-21 00:41:09 +0000 (Mon, 21 Aug 2006) $ 
+!               $Revision$ $Date$ 
 ! SCCS IDENTIFICATION:  %W% %G% 
 !                       %U% %P% 
 !

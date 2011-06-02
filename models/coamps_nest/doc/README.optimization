@@ -1,3 +1,5 @@
+# DART $Id$
+
 Optimization hints for DART/COAMPS
 
 When dealing with a large model with a number of configuration options,

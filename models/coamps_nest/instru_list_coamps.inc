@@ -1,5 +1,5 @@
 ! rcs keywords: $RCSfile$ 
-!               $Revision: 2820 $ $Date: 2010-07-26 14:35:27 -0500 (Mon, 26 Jul 2010) $ 
+!               $Revision$ $Date$ 
 ! SCCS IDENTIFICATION:  %W% %G% 
 !                       %U% %P% 
 !

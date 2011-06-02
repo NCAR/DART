@@ -1,6 +1,17 @@
 % Given a NetCDF file corresponding to the DART-generated true
 % state (TrueState.nc), plot the field specified for the number of
 % times specified
+
+%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+
 clear all;
 close all;
 
