@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id: mkmf_convert_madis_surface 4208 2009-12-24 22:39:39Z thoar $
+# $Id$
 
 ../../../mkmf/mkmf -p convert_madis_metar -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
  -a "../../.." path_names_convert_madis_metar
@@ -12,7 +12,7 @@
 exit $status
 
 # <next few lines under version control, do not edit>
-# $URL: https://subversion.ucar.edu/DAReS/DART/trunk/observations/MADIS/work/mkmf_convert_madis_surface $
-# $Revision: 4208 $
-# $Date: 2009-12-24 15:39:39 -0700 (Thu, 24 Dec 2009) $
+# $URL$
+# $Revision$
+# $Date$
 

@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id: run_perfect_model_obs.batch 4406 2010-07-01 19:30:55Z thoar $
+# $Id$
 #
 # Top level script to generate observations and a TRUE state.
 #
@@ -265,7 +265,7 @@ ls -lrt
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: http://subversion.ucar.edu/DAReS/DART/trunk/models/NCOMMAS/shell_scripts/run_perfect_model_obs.batch $
-# $Revision: 4406 $
-# $Date: 2010-07-01 13:30:55 -0600 (Thu, 01 Jul 2010) $
+# $URL$
+# $Revision$
+# $Date$
 

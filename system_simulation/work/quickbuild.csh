@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id: quickbuild.csh 4504 2010-09-24 21:05:09Z nancy $
+# $Id$
 #
 # This script compiles all executables in this directory.
 
@@ -38,7 +38,7 @@ echo "Success: All DART programs compiled."
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/gps/work/quickbuild.csh $
-# $Revision: 4504 $
-# $Date: 2010-09-24 15:05:09 -0600 (Fri, 24 Sep 2010) $
+# $URL$
+# $Revision$
+# $Date$
 
