@@ -238,9 +238,11 @@ in their <em class=file>path_names_*</em> files.
 </LI>
 
 <LI>The <em class=file>DART/mpi_utilities</em> directory as distributed 
-works with all compilers except for gfortran.  In <em class=file>
+now works with all compilers except for gfortran.  In <em class=file>
 DART/mpi_utilities</em> is a <em class=program>./fixsystem</em> script that
 when executed will change the source files so they will compile with gfortran.
+Previous releases compiled with gfortran as distributed but
+no other compilers.
 </LI>
 
 </OL>
@@ -256,12 +258,36 @@ when executed will change the source files so they will compile with gfortran.
 <P>
 
 <UL>
-<LI>inflation damping</LI>
-<LI>sampling error correction</LI>
-<LI>adaptive localization? +diagnostics</LI>
-<LI>scale height vertical localization option in 3d models</LI>
-<LI>cam supports FV code, PBS scripting</LI>
-<LI>boxcar kernel filter</LI>
+<LI>Inflation Damping</LI>
+    <UL><LI>Handles the case where observation density is irregular in time,
+        e.g. areas which were densely observed at one point are no longer
+        observed.  Adaptive inflation values can grow large where the observations
+        are dense, and if that region is no longer observed the inflation is
+        not recomputed.  Inflation damping shrinks the inflation values and
+        compensates for this. See the <a href="../../filter/filter.html#Inflation">
+        inflation documentation</a> for more details and paper references.</LI></UL>
+<LI>Sampling Error Correction</LI>
+    <UL><LI>Compensates for the numbers of ensembles being small compared to the
+        number of degrees of freedom in the system.  See the
+        last item in <a href="../../filter/filter.html#GettingStarted">this list</a>
+        for more details.</LI></UL>
+<LI>Adaptive Localization and Localization Diagnostics</LI>
+    <UL><LI>See <a href="../../assim_tools/assim_tools_mod.html#Localization">here</a>
+         for a discussion of localization-related issues.</LI></UL>
+<LI>Scale height vertical localization option in 3d models</LI>
+    <UL><LI>See <a href="../../location/threed_sphere/location_mod.html#Namelist">here</a>
+         for a discussion of specifying vertical localization in term of
+         scale height, and <a href="http://en.wikipedia.org/wiki/Scale_height">here</a>
+         for a Wikipedia discussion of how Scale Height is defined.</LI></UL>
+<LI>CAM supports FV code, PBS scripting</LI>
+<LI>Boxcar Kernel Filter Option</LI>
+<LI>undefined vertical location for obs</LI>
+<LI>schedule module for repeated time intervals</LI>
+<LI>support for a Mars calendar in time manager</LI>
+<LI>corrections to make the smoother run correctly</LI>
+<LI>option to output all echo of namelist values to a separate log file</LI>
+<LI>the copyright has changed from GPL to an NCAR-specific one
+which is found <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">here</a>.
 </UL>
 
 </P>
@@ -286,6 +312,13 @@ when executed will change the source files so they will compile with gfortran.
 
 </P>
 
+<P>
+The <em class=file>DART/models/template</em> directory contains sample
+files for adding a new model.  See 
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#adding_a_model">
+this section</a> of the DART web pages for more help on adding a new model.
+</P>
+
 <!--==================================================================-->
 
 <A NAME="ChangedModels"></A>
@@ -295,8 +328,31 @@ when executed will change the source files so they will compile with gfortran.
 <P>
 
 <UL>
-<LI>wrf</LI>
-<LI>cam</LI>
+<LI>WRF</LI>
+<UL>
+<LI>The WRF fields in the DART state vector are namelist settable,
+with the order of the names in the namelist controlling the order
+in the state vector.  No assumptions are made about number of moist
+variables; all WRF fields must be listed explicitly.  The conversion
+tools (<a href="../../models/wrf/WRF_DART_utilities/dart_to_wrf.html">
+dart_to_wrf and wrf_to_dart</a>) use this same namelist, so it is
+simpler to avoid mismatches between the DART restart files and
+what the WRF model_mod is expecting.</LI>
+<LI>Support for the single column version of WRF has been incorporated into
+the standard WRF model_mod.</LI>
+</UL>
+<LI>CAM</LI>
+<UL>
+<LI>support for versions 4 and 5 of CAM, including tar files of changes
+that must be made to the CAM source tree and incorporated into the CAM
+executable</LI>
+<LI>support leap years</LI>
+<LI>use CLM restart file instead of initial file</LI>
+<LI>various scripting changes to support archiving </LI>
+<LI>save information from CAM for ocean and land forcing</LI>
+<LI>scripts to archive months of obs_seq.finals</LI>
+</UL>
+</LI>
 </UL>
 
 </P>
@@ -305,24 +361,74 @@ when executed will change the source files so they will compile with gfortran.
 
 <A NAME="NewObs"></A>
 <HR>
-<H2>New Observations</H2>
+<H2>New Observation Types/Sources</H2>
 
 <P>
 
 <UL>
 <LI>madis</LI>
 <LI>ssec</LI>
-<LI>airs </LI>
+<LI>airs</LI>
 <LI>quikscat</LI>
 <LI>wod</LI>
+<LI>codar</LI>
 <LI>gtspp</LI>
-<LI>radar</LI>
 <LI>var</LI>
 <LI>text</LI>
 <LI>altimeter</LI>
+<LI>Mars TES radiances</LI>
 <LI>optional vortex op (only in wrf)</LI>
 </UL>
 
+</P>
+
+<P>
+All the observation converters have moved to their own
+top level directory <em class=file>observations</em>.
+</P>
+
+<P>
+The GPS forward operators aren't new with this release, but the code
+has been revised several times.  In particular, there is an optional
+namelist to set the maximum number of GPS obs supported in a single
+execution of filter or the obs diag program.  Generally the default
+value is large enough for anything less than a couple days, but if
+you are running a month or longer of diagnostics for a time series
+you can easily exceed the compiled in maximum.  
+See the GPS documentation for 
+<a href="../../observations/GPS/gps.html">
+creating GPS observation files</a>
+or <a href="../../obs_def/obs_def_gps_mod.html">the forward
+operator documentation</a>.
+</P>
+
+<P>
+There are two modules to set observation error values when
+creating new observation sequence files. One contains the
+default values used by NCEP, and the other contains the values
+used by ECMWF.  See the <a href="../../observations/obs_error/README">
+DART/observations/obs_error/README</a> file for more details.
+</P>
+
+<P>
+The radar module was completely overhauled and the namelist
+changed substantially.  See the item above in the
+<a href="#Nonbackward">non-backward compatible</a> changes 
+section for details.
+</P>
+
+<P>
+The scripting for converting NCEP prepbufr observations has been
+improved.  There are options to enable or disable the 'blocking' conversion,
+to create 6 hour or daily output files, to swap bytes for little-endian
+machines, and to run up to a month of conversions in parallel if you
+have parallel hardware available.
+</P>
+
+<P>
+There is a <em class=file>DART/observations/utilities</em> directory
+where generic utilities can be built which are not dependent on any
+one particular module.
 </P>
 
 <!--==================================================================-->
@@ -334,14 +440,22 @@ when executed will change the source files so they will compile with gfortran.
 <P>
 
 <UL>
+<LI>DARTLAB</LI>
 <LI>linkobs</LI>
 <LI>rank histograms</LI>
 <LI>two experiment comparisons</LI>
 <LI>native netcdf support in matlab</LI>
-<LI>wrf support</LI>
+<LI>matlab support for wrf</LI>
+<LI>regression tests for wrf</LI>
 <LI>other new model support</LI>
 <LI>better web pages</LI>
+<LI>plot wind vectors in matlab?</LI>
 <LI>top level index page in distribution</LI>
+<LI>optional detailed execution trace messages from filter</LI>
+<LI>input.nml contents written out to diag netCDF files</LI>
+<LI>better error checking in obs_sequence creation to avoid out-of-time-order
+    observations being inserted by incorrect programs</LI>
+<LI>better error checking in the open_file() routine</LI>
 </UL>
 
 </P>
@@ -361,8 +475,19 @@ when executed will change the source files so they will compile with gfortran.
 <LI>select common subsets</LI>
 <LI>restart file tool</LI>
 <LI>wrf obs preprocessor tool</LI>
+<LI>closest member tool</LI>
+<LI>fill inflation tool</LI>
 </UL>
 
+Minor items:
+<UL>
+<LI>The observation type table at the top of all obs_seq files
+now only contains the types actually found in the file.</LI>
+<LI>Most tools which work with obs_seq files now have two
+namelist items to specify the input: an explicit list of
+input files, or the name of a file which contains the list
+of files.</LI>
+</UL>
 </P>
 
 <!--==================================================================-->
