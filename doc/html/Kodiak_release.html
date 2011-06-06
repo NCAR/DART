@@ -1,0 +1,395 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>DART Kodiak Release Notes</TITLE>
+<link rel="stylesheet" type="text/css" href="doc/html/doc.css" />
+<link href="doc/html/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>DART Kodiak Release Notes</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P><!-- already here: Jump to <a href="index.html">DART Documentation Main Index</a --><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Overview">Overview</A> /
+<A HREF="#Nonbackward">Non-backwards Compatible Changes</A> /
+<A HREF="#NewFeatures">New Features</A> /
+<A HREF="#NewModels">New Models</A> /
+<A HREF="#ChangedModels">Changed Models</A> /
+<A HREF="#NewObs">New Observations</A> /
+<A HREF="#NewDiags">New Diagnostics and Documentation</A> /
+<A HREF="#NewUtilities">New Utilities</A> /
+<A HREF="#Legalese">Terms of Use</A>
+
+<!--==================================================================-->
+
+<A NAME="Overview"></A>
+<H2>Overview</H2>
+
+<P>
+If you have been updating from the head of the DART subversion
+repository, you will not notice much difference between that
+and the Kodiak release.  If you are still running the Jamaica
+release, there are a lot of new models, new observation types,
+capabilities in the assimilation tools, new diagnostics, and
+new utilities.  There is a very short list of non-backwards
+compatible changes
+(<a href="#Nonbackward">see below</a>), and then a long list
+of new options and functions.
+</P>
+
+<P>
+In recent years we have been adding new functionality to the
+head of the subversion trunk and just testing it and keeping it
+in working order, maintaining backwards compatibility.  We now
+have many development tasks which will require non-compatible
+changes in interfaces and behavior.   Further DART development
+will occur on a branch, so checking out either the Kodiak branch
+or the head of the repository is the recommended way to update
+your DART tree.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Nonbackward"></A>
+<HR>
+<H2>Non-backwards Compatible Changes</H2>
+
+<P>
+Changes in the Kodiak release which are <em>not</em> backwards compatible
+with the Jamaica release (svn revision number 2857, 12 April 2007):
+<OL>
+
+<LI> &amp;filter_nml used to have a single entry to control whether
+to read in both the inflation values and standard deviations 
+from a file or use the settings in the namelist.  The old namelist
+item, <em class=code>inf_start_from_file</em>, has been replaced by
+two items that allow the inflation values and the standard deviation
+to be read in separately.  The new namelist items are
+<em class=code>inf_initial_from_file</em> and 
+<em class=code>inf_sd_initial_from_file</em>.  See the
+<a href="filter/filter.html#Namelist">filter namelist</a>
+documentation for more details.
+</LI>
+
+<LI>The WRF/DART converter program used to be called
+<em class=program>dart_tf_wrf</em>, had no namelist, 
+and you entered <tt>T</tt> or <tt>F</tt> to indicate 
+which direction you were converting.  Now we have
+<a href="models/wrf/WRF_DART_utilities/wrf_to_dart.html">wrf_to_dart</a> 
+and
+<a href="models/wrf/WRF_DART_utilities/dart_to_wrf.html">dart_to_wrf</a> 
+each with a namelist to control various options.
+</LI>
+
+<LI>The CAM/DART converter programs used to be called
+<em class=program>trans_sv_pv</em> and <em class=program>trans_pv_sv</em>, 
+with no namelists, and with several specialized variants 
+(e.g. <em class=program>trans_pv_sv_time0</em>).
+Now we have 
+<a href="models/cam/cam_to_dart.html">cam_to_dart</a> and 
+<a href="models/cam/dart_to_cam.html">dart_to_cam</a>, each with
+a namelist to control various options.
+</LI>
+
+<LI>The <em class=code>obs_def_radar_mod.f90</em> radar observation
+module was completely rewritten and the namelist has changed substantially.
+See the <a href="obs_def/obs_def_radar_mod.html">module documentation</a> 
+for details.
+
+For example, the defaults for the old code were:
+<pre><tt>
+&amp;obs_def_radar_mod_nml
+   convert_to_dbz            =  .true. ,
+   dbz_threshold             =   0.001 ,
+   apply_ref_limit_to_obs    = .false. ,
+   reflectivity_limit_obs    =     0.0 ,
+   lowest_reflectivity_obs   = -888888.0,
+   apply_ref_limit_to_state  = .false. ,
+   reflectivity_limit_state  =     0.0 ,
+   lowest_reflectivity_state = -888888.0 /
+</tt></pre>
+
+and the new ones are:
+
+<pre><tt>
+&amp;obs_def_radar_mod_nml
+   apply_ref_limit_to_obs     =  .true. ,
+   reflectivity_limit_obs     =     0.0 ,
+   lowest_reflectivity_obs    =     0.0 ,
+   apply_ref_limit_to_fwd_op  =  .true. ,
+   reflectivity_limit_fwd_op  =     0.0 ,
+   lowest_reflectivity_fwd_op =     0.0 ,
+   dielectric_factor          =   0.224 ,
+   n0_rain                    =   8.0e6 ,
+   n0_graupel                 =   4.0e6 ,
+   n0_snow                    =   3.0e6 ,
+   rho_rain                   =  1000.0 ,
+   rho_graupel                =   400.0 ,
+   rho_snow                   =   100.0 ,
+   allow_wet_graupel          = .false.,
+   microphysics_type          =       3 ,
+   allow_dbztowt_conv         = .false. /
+</tt></pre>
+</LI>
+
+
+<LI>The WRF &amp;model_mod namelist has changed.  It now
+requires a <em class=code>wrf_state_variables</em> list to choose which
+WRF fields are put into the state vector.  The order of the
+field names in the list sets the order of the fields in the
+state vector.  See the
+<a href="models/wrf/model_mod.html#Namelist">WRF model_mod</a> 
+documentation for details.  Although they haven't been removed
+from the namelist, the following items have no effect
+on the code anymore:
+
+<UL>
+<LI>num_moist_vars</LI>
+<LI>surf_obs</LI>
+<LI>soil_data</LI>
+<LI>h_diab</LI>
+</UL
+
+</LI>
+
+<LI>The WRF model_mod now computes geometric heights
+instead of geopotential heights.  It also uses the staggered
+grids as read in from the <em class=file>wrfinput_dNN</em> file(s) 
+instead of interpolating in the non-staggered grid to get
+individual cell corners.
+</LI>
+
+<LI>The code in <em class=file>filter.f90</em> was corrected 
+to match the documentation for how the namelist item
+<a href="filter/filter.html#Namelist">
+<em class=code>input_qc_threshold</em></a> is handled.
+In the Jamaica release, observations with 
+incoming data QC values greater than
+or equal to the namelist setting were discarded.  
+Now only incoming data QC values greater than the 
+<em class=code>input_qc_threshold</em> are discarded 
+(values equal to the threshold are now kept).
+</LI>
+
+<LI>The <em class=program>merge_obs_seq</em> utility
+has been replaced by the more comprehensive
+<a href="obs_sequence/obs_sequence_tool.html">
+<em class=program>obs_sequence_tool</em></a> utility.
+</LI>
+
+<LI>The prepbufr observation converter was located in the
+<em class=file>DART/ncep_obs</em> directory in the
+last release.   It has been moved to be with the other
+programs that convert various types of observation files
+into DART format.  It is now located in 
+<em class=file>DART/observations/NCEP</em>.
+</LI>
+
+<LI>The sampling error correction generator program in
+<em class=file>DART/system_simulation</em> now has a 
+namelist &amp;full_error_nml.  See the
+<a href="system_simulation/system_simulation.html">documentation</a>
+for more details.
+</LI>
+
+<LI>Most <em class=file>work</em> directories now have 
+a <em class=program>quickbuild.csh</em> script
+which recompiles all the executables
+instead of a 
+<em class=program>workshop_setup.csh</em> script.  
+(Those directories used in the tutorial have both.)  
+To control whether <em class=program>filter</em> is
+compiled with or without MPI (as a parallel program or
+not) the <em class=program>quickbuild.csh</em> script
+takes the optional arguments <em class=code>-mpi</em> or
+<em class=code>-nompi</em>.
+</LI>
+
+<LI>The <em class=program>preprocess</em> program was 
+changed so that any obs_def files with module definitions
+are directly included in the single 
+<em class=file>obs_def_mod.f90</em> file.
+This means that as you add and delete obs_def modules 
+from your &amp;preprocess_nml namelist and rerun 
+<em class=program>preprocess</em> you no longer have to 
+add and delete different obs_def modules from your 
+<em class=file>path_names_*</em> files.
+</LI>
+
+<LI>The utilities module now calls a function in the mpi_utilities code to
+exit MPI jobs cleanly.  This requires that non-mpi programs now
+include the <em class=file>null_mpi_utilities_mod.f90</em> file 
+in their <em class=file>path_names_*</em> files.
+</LI>
+
+<LI>The <em class=file>DART/mpi_utilities</em> directory as distributed 
+works with all compilers except for gfortran.  In <em class=file>
+DART/mpi_utilities</em> is a <em class=program>./fixsystem</em> script that
+when executed will change the source files so they will compile with gfortran.
+</LI>
+
+</OL>
+
+</P>
+
+<!--==================================================================-->
+
+<A NAME="NewFeatures"></A>
+<HR>
+<H2>New Features</H2>
+
+<P>
+
+<UL>
+<LI>inflation damping</LI>
+<LI>sampling error correction</LI>
+<LI>adaptive localization? +diagnostics</LI>
+<LI>scale height vertical localization option in 3d models</LI>
+<LI>cam supports FV code, PBS scripting</LI>
+<LI>boxcar kernel filter</LI>
+</UL>
+
+</P>
+
+<!--==================================================================-->
+
+<A NAME="NewModels"></A>
+<HR>
+<H2>New Models</H2>
+
+<P>
+
+<UL>
+<LI>pop</LI>
+<LI>ncommas</LI>
+<LI>coamps</LI>
+<LI>am2</LI>
+<LI>mitgcm_ocean</LI>
+<LI>simple_advection</LI>
+<LI>global/planet wrf</LI>
+</UL>
+
+</P>
+
+<!--==================================================================-->
+
+<A NAME="ChangedModels"></A>
+<HR>
+<H2>Changed Models</H2>
+
+<P>
+
+<UL>
+<LI>wrf</LI>
+<LI>cam</LI>
+</UL>
+
+</P>
+
+<!--==================================================================-->
+
+<A NAME="NewObs"></A>
+<HR>
+<H2>New Observations</H2>
+
+<P>
+
+<UL>
+<LI>madis</LI>
+<LI>ssec</LI>
+<LI>airs </LI>
+<LI>quikscat</LI>
+<LI>wod</LI>
+<LI>gtspp</LI>
+<LI>radar</LI>
+<LI>var</LI>
+<LI>text</LI>
+<LI>altimeter</LI>
+<LI>optional vortex op (only in wrf)</LI>
+</UL>
+
+</P>
+
+<!--==================================================================-->
+
+<A NAME="NewDiagnostics"></A>
+<HR>
+<H2>New Diagnostics and Documentation</H2>
+
+<P>
+
+<UL>
+<LI>linkobs</LI>
+<LI>rank histograms</LI>
+<LI>two experiment comparisons</LI>
+<LI>native netcdf support in matlab</LI>
+<LI>wrf support</LI>
+<LI>other new model support</LI>
+<LI>better web pages</LI>
+<LI>top level index page in distribution</LI>
+</UL>
+
+</P>
+
+<!--==================================================================-->
+
+<A NAME="NewUtilities"></A>
+<HR>
+<H2>New Utilities</H2>
+
+<P>
+
+<UL>
+<LI>obs_to_netcdf</LI>
+<LI>obs coverage</LI>
+<LI>obs selection</LI>
+<LI>select common subsets</LI>
+<LI>restart file tool</LI>
+<LI>wrf obs preprocessor tool</LI>
+</UL>
+
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR>
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2011 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>
