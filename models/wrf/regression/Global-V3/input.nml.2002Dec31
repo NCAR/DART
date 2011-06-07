@@ -124,6 +124,9 @@
    reflectivity_limit_state  =     0.0 ,
    lowest_reflectivity_state =     0.0 /
 
+&obs_def_gps_nml
+   max_gpsro_obs = 100000 /
+
 &assim_model_nml
    write_binary_restart_files = .true.  /
 
