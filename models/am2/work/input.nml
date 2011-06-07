@@ -177,6 +177,10 @@
 &mpi_utilities_nml
    /
 
+&obs_def_gps_nml
+  max_gpsro_obs = 100000,
+   / 
+
 &obs_sequence_tool_nml
    filename_seq      = 'obs_seq.test',
    filename_out      = 'obs_seq.processed',

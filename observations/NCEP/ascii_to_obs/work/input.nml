@@ -46,6 +46,10 @@
 &obs_kind_nml
    /
 
+&obs_def_gps_nml
+  max_gpsro_obs = 100000,
+  / 
+
 &preprocess_nml
     input_obs_kind_mod_file = '../../../../obs_kind/DEFAULT_obs_kind_mod.F90',
    output_obs_kind_mod_file = '../../../../obs_kind/obs_kind_mod.f90',

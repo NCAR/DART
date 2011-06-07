@@ -245,6 +245,10 @@
    perturbation_amplitude  = 0.2,
    /
 
+&obs_def_gps_nml
+   max_gpsro_obs = 100000,
+   / 
+
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
 # year   month   day   hour   minute   second

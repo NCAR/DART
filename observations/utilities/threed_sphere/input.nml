@@ -28,6 +28,10 @@
 &location_nml
    /
 
+&obs_def_gps_nml
+   max_gpsro_obs = 100000,
+  / 
+
 &obs_sequence_nml
    write_binary_obs_sequence = .false.  /
 

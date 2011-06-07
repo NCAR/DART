@@ -100,6 +100,7 @@ logical, save :: module_initialized = .false.
 ! the local has no additional metadata; the nonlocal needs one of these
 ! allocated and filled in.
 integer :: max_gpsro_obs = 100000
+
 type gps_nonlocal_type
    private
    character(len=6) :: gpsro_ref_form
@@ -111,10 +112,7 @@ end type gps_nonlocal_type
 
 type(gps_nonlocal_type), allocatable :: gps_data(:)
 
-!! NAMELIST: comment this in to allow user to increase the total number of
-!! gps obs allowed via namelist instead of recompiling.  also comment code
-!! in one other place below, also marked NAMELIST.
-!namelist /obs_def_gps_nml/ max_gpsro_obs
+namelist /obs_def_gps_nml/ max_gpsro_obs
 
 character(len=129) :: msgstring
 integer  :: ii
@@ -138,19 +136,16 @@ module_initialized = .true.
 ! global count of all gps observations from any input file
 keycount = 0
 
-!! NAMELIST: comment this code in to enable namelist setting of max
-!! start NAMELIST
-!! Read the namelist entry
-!! find max number of gps obs which can be stored, and initialize type
-!call find_namelist_in_file("input.nml", "obs_def_gps_nml", iunit)
-!read(iunit, nml = obs_def_gps_nml, iostat = rc)
-!call check_namelist_read(iunit, rc, "obs_def_gps_nml")
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "obs_def_gps_nml", iunit)
+read(iunit, nml = obs_def_gps_nml, iostat = rc)
+call check_namelist_read(iunit, rc, "obs_def_gps_nml")
 
-!! Record the namelist values used for the run ...
-!if (do_nml_file()) write(nmlfileunit, nml=obs_def_gps_nml)
-!if (do_nml_term()) write(     *     , nml=obs_def_gps_nml)
-!! end NAMELIST
+! Record the namelist values used for the run ...
+if (do_nml_file()) write(nmlfileunit, nml=obs_def_gps_nml)
+if (do_nml_term()) write(     *     , nml=obs_def_gps_nml)
 
+! find max number of gps obs which can be stored, and initialize type
 allocate(gps_data(max_gpsro_obs), stat = rc)
 if (rc /= 0) then
    write(msgstring, *) 'initial allocation failed for gps observation data,', &
