@@ -248,6 +248,12 @@ Previous releases compiled with gfortran as distributed but
 no other compilers.
 </LI>
 
+<LI>The GPS Radio Occultation observation forward operator code now
+requires a namelist, <em class=code>&amp;obs_def_gps_nml</em>.  See the
+<a href='../../obs_def/obs_def_gps_mod.html#Namelist">GPS documentation</a> 
+for details on what to add.  All <em class=file>input.nml</em> files in
+the repository have had this added if they have the GPS module in their
+<em class=code>&amp;preprocess_nml</em> namelist.
 </OL>
 
 </P>
