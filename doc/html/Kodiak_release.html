@@ -204,7 +204,10 @@ into DART format.  It is now located in
 <em class=file>DART/system_simulation</em> now has a 
 namelist &amp;full_error_nml.  See the
 <a href="../../system_simulation/system_simulation.html">documentation</a>
-for more details.
+for more details.  Tables for 40 common ensemble sizes are
+pregenerated in the 
+<em class=file>DART/system_simulation/final_full_precomputed_tables</em> 
+directory.
 </LI>
 
 <LI>Most <em class=file>work</em> directories now have 
@@ -283,9 +286,34 @@ no other compilers.
 <LI>Boxcar Kernel Filter Option</LI>
 <LI>undefined vertical location for obs</LI>
 <LI>schedule module for repeated time intervals</LI>
-<LI>support for a Mars calendar in time manager</LI>
+<LI>support for 2 different Mars calendars in time manager</LI>
+    <UL><LI>Gregorian Mars</LI>
+        <LI>Solar Mars</LI>
+    </UL>
 <LI>corrections to make the smoother run correctly</LI>
+<LI>forward operators now have access to the ensemble number and
+the state time if they want to make use of this information</LI>
 <LI>option to output all echo of namelist values to a separate log file</LI>
+<LI>large file support for netCDF</LI>
+<LI>better support for adaptive localization</LI>
+<LI>option to localize with different distances based on observation type</LI>
+<LI>the error handler can take up to 3 lines of text, so you can give more
+informative error messages on exit</LI>
+<LI>option to output ensemble mean in restart file format when filter exits</LI>
+<LI>performance improvement in the internal transposes for very large state
+vectors.  all_vars_to_all_copies() now has a single receiver and multiple
+senders, which is much faster than the converse.</LI>
+<LI>Better support for users who redefine R8 to be R4, so that filter runs
+in single precision.  Fixed code which was technically correct but numerically
+unstable in single precision when computing variance and covariances.</LI>
+<LI>Fixed a case in the 3D sphere locations code which made it possible that
+some observations and state variables at higher latitudes might not be
+impacted by observations which were barely within the localization cutoff.</LI>
+<LI>When one or more ensemble members fail to compute a valid forward operator,
+the prior and/or posterior mean and standard deviation will be set to MISSING_R8
+in the output obs_seq.final file in addition to setting the DART QC flag.</LI>
+<LI>Use less stack space by allocating large arrays instead of
+declaring them as local (stack) variables in routines</LI>
 <LI>the copyright has changed from GPL to an NCAR-specific one
 which is found <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">here</a>.
 </UL>
@@ -301,13 +329,27 @@ which is found <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">here
 <P>
 
 <UL>
-<LI>pop</LI>
-<LI>ncommas</LI>
-<LI>coamps</LI>
-<LI>am2</LI>
-<LI>mitgcm_ocean</LI>
+<LI>POP</LI>
+<LI>NCOMMAS</LI>
+<LI>COAMPS<br>
+An updated version of the COAMPS model interfaces and scripts.
+Contributed by Alex Reinecke, NRL, Monterey.
+<br<br>>
+The primary differences from the original COAMPS model code are:
+<br>
+ - the ability to assimilate nested domains<br>
+ - assimilates real observations<br>
+ - a simplified way to specify the state vector<br>
+ - I/O COAMPS data files<br>
+ - extensive script updates to accommodate additional HPC environments<br>
+<br>
+   </LI>
+<LI>NOGAPS</LI>
+<LI>AM2</LI>
+<LI>MITgcm_Ocean</LI>
 <LI>simple_advection</LI>
-<LI>global/planet wrf</LI>
+<LI>global/planet WRF</LI>
+<LI>TIEgcm</LI>
 </UL>
 
 </P>
@@ -340,7 +382,28 @@ simpler to avoid mismatches between the DART restart files and
 what the WRF model_mod is expecting.</LI>
 <LI>Support for the single column version of WRF has been incorporated into
 the standard WRF model_mod.</LI>
+<LI>advance_model.csh script reworked by Josh Hacker, Ryan Torn, and 
+Glen Romine to add function and simplify the script.  
+It now supports a restart-file-per-member, simplifies
+the time computations by using the advance_time executable, and handles
+boundary files more cleanly.  Plus added many additional comments, and ways
+to select various options by setting shell variables at the top of the script.</LI>
+<LI>Updates from Tim and Glen:<br>
+ - Changed the variable name for the longitude array to better
+match that used in WRF: XLON_d0* to XLONG_d0*<br>
+ - Added the staggered coordinate variables (XLONG_U_d0*, XLAT_U_d0*, XLONG_V_d0*, XLAT_V_d0*, ZNW_d0*)<br>
+- Use the staggered variables to look up point locations when interpolating
+in a staggered grid.  Old code used to compute the staggered points from the
+unstaggered grid, which was slightly inaccurate.<br>
+ - Added additional attribute information, supporting long_name, description
+(same info as long_name which is the standard, but WRF calls this attribute
+'description'), units (previously supported) and named coordinates for the X
+and Y directions (in keeping with WRF, we do not name the vertical coordinate).
+</LI>
+<LI>New scripts to generate LBC (lateral boundary condition) files
+for WRF runs.</LI>
 </UL>
+
 <LI>CAM</LI>
 <UL>
 <LI>support for versions 4 and 5 of CAM, including tar files of changes
@@ -351,9 +414,36 @@ executable</LI>
 <LI>various scripting changes to support archiving </LI>
 <LI>save information from CAM for ocean and land forcing</LI>
 <LI>scripts to archive months of obs_seq.finals</LI>
+<LI>Added the changes needed to the CAM build tree for CAM 4.0.x</LI>
+<LI>Updates to CAM documentation to bring it in sync with the
+current code.</LI>
+<LI>All trans routines replaced with: dart_to_cam, cam_to_dart,
+and advance_time.</LI>
+<LI>Minor changes to CAM model_mod, including adding a routine to
+write out the times file so utilities can call it in a single
+location, plus additional optional arg on write routine.</LI>
+<LI>Most debugging output is off by default; a new namelist
+item 'print_details' will re-enable the original output.</LI>
+<LI>Added build support for new tools (closest member, common
+subset, fill inflation) and removed for obsolete (merge obs).</LI>
+<LI>The original 'trans' build files and src are now in a
+'deprecated' directory so if users need them for backwards
+compatibility, they are still available.</LI>
+<LI>The archive scripts are updated for the HPSS (hsi) and
+the MSS versions (msrcp) are removed.</LI>
+<LI>The shell_scripts and full_experiment scripts are updated.</LI>
+
+
 </UL>
-</LI>
+
+<LI>Lorenz 2004/2005</LI>
+<UL>
+<LI>Fixed a bug in the model advance code which was
+doing an extra divide by 2, causing incorrect results.
 </UL>
+
+</UL>
+
 
 </P>
 
@@ -366,18 +456,31 @@ executable</LI>
 <P>
 
 <UL>
-<LI>madis</LI>
-<LI>ssec</LI>
-<LI>airs</LI>
-<LI>quikscat</LI>
-<LI>wod</LI>
-<LI>codar</LI>
-<LI>gtspp</LI>
-<LI>var</LI>
-<LI>text</LI>
-<LI>altimeter</LI>
+<LI>MADIS<br>
+Converters for METAR, Mesonet, Rawinsondes, ACARS, Marine,
+and Satellite Wind observations.  Optionally output moisture obs
+as specific humidity, relative humidity, and/or dewpoint obs.</LI>
+<LI>SSEC<br>
+Convert Satellite Wind obs to DART format.</LI>
+<LI>AIRS<br>
+</LI>
+<LI>QUIKscat<br>
+</LI>
+<LI>GTSPP<br>
+Ocean obs</LI>
+<LI>WOD<br>
+World Ocean Database (currently 2009) Temperature and Salinity obs</LI>
+<LI>CODAR</LI>
+<LI>VAR</LI>
+<LI>Text<br>
+reads text files, good template for obs without
+some kind of data library code (netCDF, HDF, etc)</LI>
+<LI>Altimeter</LI>
+<LI>Dropsonde<br>
+separate from Radiosondes</LI>
 <LI>Mars TES radiances</LI>
-<LI>optional vortex op (only in wrf)</LI>
+<LI>optional vortex position obs<br>
+(currently only implemented in wrf model_mod)</LI>
 </UL>
 
 </P>
@@ -389,7 +492,7 @@ top level directory <em class=file>observations</em>.
 
 <P>
 The GPS forward operators aren't new with this release, but the code
-has been revised several times.  In particular, there is an optional
+has been revised several times.  In particular, there is a new
 namelist to set the maximum number of GPS obs supported in a single
 execution of filter or the obs diag program.  Generally the default
 value is large enough for anything less than a couple days, but if
@@ -400,6 +503,8 @@ See the GPS documentation for
 creating GPS observation files</a>
 or <a href="../../obs_def/obs_def_gps_mod.html">the forward
 operator documentation</a>.
+There are also heavily revised scripts which download and convert multiple days
+of GPS obs at a time, with options to delete downloaded files automatically.
 </P>
 
 <P>
@@ -440,22 +545,28 @@ one particular module.
 <P>
 
 <UL>
-<LI>DARTLAB</LI>
+<LI><a href="../../DART_LAB/DART_LAB.html">DART_LAB</a><br>
+Matlab GUI presentation of fundamental assimilation concepts</LI>
 <LI>linkobs</LI>
 <LI>rank histograms</LI>
-<LI>two experiment comparisons</LI>
-<LI>native netcdf support in matlab</LI>
+<LI>two (or more) experiment comparisons</LI>
+<LI>native netcdf support in matlab<br>
+Does not depend on CSIRO and netcdf_toolbox; now uses snctools</LI>
 <LI>matlab support for wrf</LI>
 <LI>regression tests for wrf</LI>
 <LI>other new model support</LI>
 <LI>better web pages</LI>
-<LI>plot wind vectors in matlab?</LI>
+<LI>plot wind vectors from netcdf obs files</LI>
+<LI>plot correlations</LI>
 <LI>top level index page in distribution</LI>
 <LI>optional detailed execution trace messages from filter</LI>
 <LI>input.nml contents written out to diag netCDF files</LI>
 <LI>better error checking in obs_sequence creation to avoid out-of-time-order
     observations being inserted by incorrect programs</LI>
 <LI>better error checking in the open_file() routine</LI>
+<LI>individual html pages have links back to the index page, have the
+namelists moved up to be the first thing in the page after the
+Overview, and other minor formatting improvements</LI>
 </UL>
 
 </P>
@@ -474,9 +585,18 @@ one particular module.
 <LI>obs selection</LI>
 <LI>select common subsets</LI>
 <LI>restart file tool</LI>
-<LI>wrf obs preprocessor tool</LI>
+<LI>advance time tool</LI>
+<LI>wrf obs preprocessor tool<br>
+Observation preprocessor which is WRF aware, from Ryan Torn.
+Will select obs only within the wrf domain, will superob,
+will select only particular obs types based on the namelist.</LI>
+<LI>replace_wrf_fields<br>
+wrf specific tool that moves netcdf variables from one
+file to another.  field names to be moved can be specified
+directly in the namelist or can be listed in a separate file</LI>
 <LI>closest member tool</LI>
 <LI>fill inflation tool</LI>
+<LI>model_mod_check</LI>
 </UL>
 
 Minor items:
@@ -487,7 +607,89 @@ now only contains the types actually found in the file.</LI>
 namelist items to specify the input: an explicit list of
 input files, or the name of a file which contains the list
 of files.</LI>
+<LI>The <em class=file>DART/shell_scripts</em> directory contains
+example scripts which loop over multiple days, in formats for
+various shell syntaxes.  They are intended as an example for use
+in advance_model or job scripts, or observation conversion 
+programs added by users.
 </UL>
+</P>
+
+<P>Details on internal changes to the locations_mod:
+<UL>
+<LI>Small functional change for all the location_mods, but large amounts of code
+reformatting, bringing infrequently used location types up to date
+with current code, making versions internally consistent with each
+other, and minor bug fixes in little-used types of locations.</LI>
+<LI>added the option to format a location into a human-friendly ascii format,
+independent of which location module is being linked with.  useful for code
+which needs to stay location-independent, such as generic tools.</LI>
+<LI>removed 'simple_threed_sphere' which was only different from the full
+'threed_sphere' in that the vertical could only be one type.  added a
+'twod' type, which is a periodic (x,y) location in the domain [0-1] in
+both dimensions.</LI>
+<LI>added netcdf write routines which have the same calling interface for
+all types of locations.  opens the right dimensionality arrays, and
+writes into them with an appropriate set of attributes.  useful for code
+that wants to store a list of locations in a netcdf file but needs to
+work with multiple location types (like generic tools).</LI>
+<LI>renamed the internal location derived type variables in the annulus
+to be azm and rad (azimuth and radius), instead of lat and lon.  it makes
+the code clearer as to what is being used for what.  also added a missing
+namelist that the comments indicated should be there, for min and max
+values of the radius, and added the code to enforce those limits.</LI>
+<LI>changed the default format for writing ascii locations to be 16 decimal
+digits instead of 14.  this is intended to avoid problems with roundoff
+error.  note that this will change, very slightly, the numeric values
+if you read/write locations in ascii -- but in my tests they now match
+more closely the actual machine values that you'd get if you read/wrote
+in binary format.</LI>
+<LI>made all the code call a consistent routine in the utilities module
+to decide if the intent is to write locations in ascii or binary.
+the default code is now in a single place instead of being implemented
+in every different location module.  uses the 'ascii_file_format()'
+function from the utilities_mod.</LI>
+<LI>the interactive_locations subroutine no longer suggests hectopascals
+as the units for the vertical if you give a vertical type of 'surface'.
+many users create surface observations with a numerical value of meters,
+so they can compute differences between observations which should be
+located at the surface and where the model thinks the surface is.
+users can continue to input pressure if they want.  they will need to
+input it as pascals instead of hectopascals, and the prompting text
+will no longer suggest which units should be used.</LI>
+<LI>any generic utility can call the 'vert_is_xxx()' functions and
+even if the locations module has no vertical component it will return
+false, so utility code can be compiled independently of the locations
+module it is linked with.</LI>
+<LI>the order of the subroutines and functions in the code has been
+made consistent between each location module, so it's easier to
+use diff and xdiff between different types of locations modules.
+now for the most part only actual code differences will be found,
+instead of comments, white space, and order of code in the source.</LI>
+<LI>added an overloaded set_location() routine that takes a fortran
+array of values, to set a single location in an location-independent
+form.  the code checks for the proper number of input arguments in
+the list, and then calls the standard set_location() to do the actual
+work.  this allows generic tools to pass through things from a namelist
+which are appropriate for different location types without needing
+special case code.</LI>
+<LI>the 2 kind arguments to get_close() are marked as optional, so the
+routine can be called with them but they aren't required inside the
+location modules - none of the standard code uses the kinds.  user code
+can intercept this call and is welcome to require and use the kinds,
+but the location code in the location_mod does not need them.</LI>
+<LI>added code to make the 'is_location_in_region()' function do an
+accurate computation for annulus, column, and the twod_sphere versions.</LI>
+<LI>removed obsolete 'alloc_get_close_type()' functions in some of the
+little-used location mod types, and added versions of the current
+collection of get_close_type functions.</LI>
+<LI>made the get_close_type private, since no other code outside the
+location_mod should be able to access the contents of the derived type.</LI>
+<LI>added test directories and test cases for each of the location types.
+the 'location_test.f90' source is at the top level directory, and the
+'testall.csh' script will run the tests for each of the locations types.</LI>
+</UL>
+
 </P>
 
 <!--==================================================================-->
