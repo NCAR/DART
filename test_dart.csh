@@ -220,13 +220,14 @@ set MatlabExists=$status
 if ( $MatlabExists == 0 ) then
 
    set fname = dart.matlabcheck.$$
+   touch $fname
 
    echo "fname = '"$fname"';"        >! batchscript.m
    echo "addpath ${DARTHOME}/matlab" >> batchscript.m 
    echo "ChecknetCDFuse(fname);"     >> batchscript.m
    echo "quit"                       >> batchscript.m
 
-   matlab -nosplash -nojvm -r batchscript
+   matlab -nosplash -nodesktop -r batchscript
    ${REMOVE} batchscript.m
 
    set MatlabResult = `tail -1 $fname`
