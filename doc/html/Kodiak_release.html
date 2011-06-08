@@ -475,31 +475,37 @@ doing an extra divide by 2, causing incorrect results.
 <P>
 
 <UL>
-<LI>MADIS<br>
+<LI><a href="../../observations/MADIS/MADIS.html">MADIS</a><br>
 Converters for METAR, Mesonet, Rawinsondes, ACARS, Marine,
 and Satellite Wind observations.  Optionally output moisture obs
 as specific humidity, relative humidity, and/or dewpoint obs.</LI>
-<LI>SSEC<br>
+<LI><a href="../../observations/SSEC/SSEC.html">SSEC</a><br>
 Convert Satellite Wind obs to DART format.</LI>
-<LI>AIRS<br>
-</LI>
-<LI>QUIKscat<br>
-</LI>
-<LI>GTSPP<br>
+<LI><a href="../../observations/AIRS/AIRS.html">AIRS</a><br>
+Satellite observed Temperature and Moisture obs.  </LI>
+<LI><a href="../../observations/quikscat/quikscat.html">QUIKscat</a><br>
+Satellite observed surface winds.  </LI>
+<LI><a href="../../observations/GTSPP/GTSPP.html">GTSPP</a><br>
 Ocean obs</LI>
-<LI>WOD<br>
+<LI><a href="../../observations/WOD/WOD.html">WOD</a><br>
 World Ocean Database (currently 2009) Temperature and Salinity obs</LI>
-<LI>CODAR</LI>
-<LI>VAR</LI>
-<LI>Text<br>
-reads text files, good template for obs without
-some kind of data library code (netCDF, HDF, etc)</LI>
-<LI>Altimeter</LI>
-<LI>Dropsonde<br>
-separate from Radiosondes</LI>
-<LI>Mars TES radiances</LI>
-<LI>optional vortex position obs<br>
-(currently only implemented in wrf model_mod)</LI>
+<LI><a href="../../obs_def/obs_def_ocean_mod.f90">CODAR</a><br>
+High frequency radar obs of ocean surface velocity.</LI>
+<LI><a href="../../observations/var/var.html">VAR</a><br>
+Little-r and radar obs</LI>
+<LI><a href="../../observations/text/text_to_obs.html">Text</a><br>
+Reads text data files, a good template for converting obs stored in
+files without some kind of data library format (netCDF, HDF, etc)</a></LI>
+<LI><a href="../../obs_def/obs_def_altimeter_mod.f90">Altimeter</a><br>
+From a variety of sources.</LI>
+<LI><a href="../../obs_def/obs_def_dewpoint_mod.f90">Dewpoint</a><br>
+From a variety of sources.</LI>
+<LI><a href="../../obs_def/obs_def_reanalysis_bufr_mod.f90">Dropsonde</a><br>
+Sonde type separate from standard Radiosondes</LI>
+<LI><a href="../../obs_def/obs_def_TES_nadir_mod.f90">Mars TES radiances</a></LI>
+<LI>hurricane/tropical storm vortex position<br>
+(currently only implemented in 
+<a href="../../models/wrf/model_mod.html">wrf model_mod</a>)</LI>
 </UL>
 
 </P>
@@ -552,7 +558,7 @@ have parallel hardware available.
 <P>
 There is a <em class=file>DART/observations/utilities</em> directory
 where generic utilities can be built which are not dependent on any
-one particular module.
+particular model.
 </P>
 
 <!--==================================================================-->
@@ -634,80 +640,6 @@ programs added by users.
 </UL>
 </P>
 
-<P>Details on internal changes to the locations_mod:
-<UL>
-<LI>Small functional change for all the location_mods, but large amounts of code
-reformatting, bringing infrequently used location types up to date
-with current code, making versions internally consistent with each
-other, and minor bug fixes in little-used types of locations.</LI>
-<LI>added the option to format a location into a human-friendly ascii format,
-independent of which location module is being linked with.  useful for code
-which needs to stay location-independent, such as generic tools.</LI>
-<LI>removed 'simple_threed_sphere' which was only different from the full
-'threed_sphere' in that the vertical could only be one type.  added a
-'twod' type, which is a periodic (x,y) location in the domain [0-1] in
-both dimensions.</LI>
-<LI>added netcdf write routines which have the same calling interface for
-all types of locations.  opens the right dimensionality arrays, and
-writes into them with an appropriate set of attributes.  useful for code
-that wants to store a list of locations in a netcdf file but needs to
-work with multiple location types (like generic tools).</LI>
-<LI>renamed the internal location derived type variables in the annulus
-to be azm and rad (azimuth and radius), instead of lat and lon.  it makes
-the code clearer as to what is being used for what.  also added a missing
-namelist that the comments indicated should be there, for min and max
-values of the radius, and added the code to enforce those limits.</LI>
-<LI>changed the default format for writing ascii locations to be 16 decimal
-digits instead of 14.  this is intended to avoid problems with roundoff
-error.  note that this will change, very slightly, the numeric values
-if you read/write locations in ascii -- but in my tests they now match
-more closely the actual machine values that you'd get if you read/wrote
-in binary format.</LI>
-<LI>made all the code call a consistent routine in the utilities module
-to decide if the intent is to write locations in ascii or binary.
-the default code is now in a single place instead of being implemented
-in every different location module.  uses the 'ascii_file_format()'
-function from the utilities_mod.</LI>
-<LI>the interactive_locations subroutine no longer suggests hectopascals
-as the units for the vertical if you give a vertical type of 'surface'.
-many users create surface observations with a numerical value of meters,
-so they can compute differences between observations which should be
-located at the surface and where the model thinks the surface is.
-users can continue to input pressure if they want.  they will need to
-input it as pascals instead of hectopascals, and the prompting text
-will no longer suggest which units should be used.</LI>
-<LI>any generic utility can call the 'vert_is_xxx()' functions and
-even if the locations module has no vertical component it will return
-false, so utility code can be compiled independently of the locations
-module it is linked with.</LI>
-<LI>the order of the subroutines and functions in the code has been
-made consistent between each location module, so it's easier to
-use diff and xdiff between different types of locations modules.
-now for the most part only actual code differences will be found,
-instead of comments, white space, and order of code in the source.</LI>
-<LI>added an overloaded set_location() routine that takes a fortran
-array of values, to set a single location in an location-independent
-form.  the code checks for the proper number of input arguments in
-the list, and then calls the standard set_location() to do the actual
-work.  this allows generic tools to pass through things from a namelist
-which are appropriate for different location types without needing
-special case code.</LI>
-<LI>the 2 kind arguments to get_close() are marked as optional, so the
-routine can be called with them but they aren't required inside the
-location modules - none of the standard code uses the kinds.  user code
-can intercept this call and is welcome to require and use the kinds,
-but the location code in the location_mod does not need them.</LI>
-<LI>added code to make the 'is_location_in_region()' function do an
-accurate computation for annulus, column, and the twod_sphere versions.</LI>
-<LI>removed obsolete 'alloc_get_close_type()' functions in some of the
-little-used location mod types, and added versions of the current
-collection of get_close_type functions.</LI>
-<LI>made the get_close_type private, since no other code outside the
-location_mod should be able to access the contents of the derived type.</LI>
-<LI>added test directories and test cases for each of the location types.
-the 'location_test.f90' source is at the top level directory, and the
-'testall.csh' script will run the tests for each of the locations types.</LI>
-</UL>
 
 </P>
 
