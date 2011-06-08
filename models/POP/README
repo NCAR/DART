@@ -119,9 +119,9 @@ assimilated Jan 4th, 1998.
 "cam23"	explains the forcing
 ".2"	was some experiment number
 
-set CASENAME = c.cam48.timing1
+set CASENAME = c.camorg48.inf2
 set TEMPLATECASE = /gpfs/proj2/fis/cgd/oce/yeager/home/ccsm_runs/ccsm4.0_IE/c.cam48.pio
-set TEMPLATECASE = /blhome/thoar/CCSM_POP/c.cam48.inf
+set TEMPLATECASE = /blhome/thoar/CCSM_POP/c.camorg48.inf
 
 mkdir ~thoar/CCSM_POP/${CASENAME}
 
@@ -158,7 +158,7 @@ rm -rf poe* logs/* timing/* MachinesHist/*
 <entry id="CONTINUE_RUN"    value="FALSE"  />    
 <entry id="POST_DATA_ASSIM" value="FALSE"  />    
 <entry id="RESUBMIT"        value="0"  />    
-<entry id="STOP_N"          value="3"  />    
+<entry id="STOP_N"          value="2"  />    
 
 # After all the xml files have been configured - populate Buildconf with 
 # valid namelists and run scripts and streams. There has to be a stream
@@ -188,10 +188,28 @@ cd ..
 # modify the run script to include the assimilate.csh script after
 # CSM EXECUTION HAS FINISHED and before
 # FOR POSTPROCESSING
+# and a bunch of other edits ...
 
-hand edit $CASE.bluefire.run   to include assimilate.csh
-hand edit assimilate.csh to reference YOUR DART instance
-hand edit the DART input.nml to reflect your assimilation experiment
+hand edit $CASE.bluefire.run        to include assimilate.csh
+hand edit $CASE.bluefire.l_archive  to have more than a 3 hour limit
+hand edit assimilate.csh            to reference YOUR DART instance
+hand edit the DART input.nml        to reflect your assimilation experiment
+hand edit Tools/st_archive.sh       to archive what you want
+comment out the following three lines from Tools/ccsm_l_archive.csh:
+$UTILROOT/Tools/ccsm_msmkdir ${lsmdir0}
+    $UTILROOT/Tools/ccsm_msmkdir ${lsmdir1}
+    $UTILROOT/Tools/ccsm_msmkdir ${lsmdir2}
+
+foreach FILE ( bluefire.run bluefire.l_archive )
+      set OLDCASE = $TEMPLATECASE:t
+      xxdiff ${CASENAME}.${FILE} ${TEMPLATECASE}/${OLDCASE}.${FILE}
+end
+
+foreach FILE ( assimilate.csh input.nml \
+     Tools/st_archive.sh Tools/ccsm_l_archive.csh )
+      xxdiff $FILE ${TEMPLATECASE}/$FILE
+end
+
 
 #
 # STAGE the restart files for the N oceans
@@ -203,7 +221,9 @@ hand edit the DART input.nml to reflect your assimilation experiment
 # in the restarts directory
 cd /ptmp/thoar/${CASENAME}/run
 
-# ln -s /gpfs/proj2/ccsm/ocn/DART/gx1v6_restarts/c.b12.001 restarts
+ln -s /gpfs/proj2/ccsm/ocn/DART/gx1v6_restarts/c.b12.001 restarts
+
+ - OR -
 
 # From Steve - Wed Apr  7 12:19:03 MDT 2010
 #
@@ -225,7 +245,12 @@ cd /ptmp/thoar/${CASENAME}/run
 # /ccsm/ocn/DART/gx1v6_restarts/core2/ensavg.nc
 # /ccsm/ocn/DART/gx1v6_restarts/core2/ensrms.nc
 #
-# The spread is bigger in the latter and I think we should use something like this in our next production run.
+# I already converted all of them to netcdf go to
+# /ccsm/ocn/DART/gx1v6_restarts/core2/
+# and do 'ls */*.nc'
+#
+# The spread is bigger in the latter and I think we should use 
+# something like this in our next production run.
 
 ln -s /gpfs/proj2/ccsm/ocn/DART/gx1v6_restarts/core2 restarts
 
@@ -267,7 +292,6 @@ Modify the env_run.xml bits as follows:
 
 Change the input.nml to reflect the 'start from restart' selections.
 
-
 #----------------------------------------------------------------------
 # To remove all traces of a failed experiment and restart 
 # Steve Yeager: Tue Mar 23 11:41:26 MDT 2010:
@@ -289,4 +313,5 @@ To rerun, I would do the following:
 
 5) resubmit:
 	bsub < ${CASENAME}.bluefire.run
+
 
