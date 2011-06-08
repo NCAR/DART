@@ -3,15 +3,9 @@ function two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind
 % Each variable gets its own figure.
 % Each region gets its own axis.
 %
-% I'm having some problems preserving the ticks on the left,
-% so I used a transparent object. Because of THAT - OpenGL is the
-% default rendered, which is normally a pretty low resolution.
-% For good reproducibility, manually specify the 'painters' option when
-% printing.
-% 
-% files = {'/fs/image/home/thoar/DART/models/POP/work/dart.005/obs_diag_output.nc', ...
+% files = {'/fs/image/home/thoar/DART/models/POP/work/dart.005.6/obs_diag_output.nc', ...
 %          '/fs/image/home/thoar/DART/models/POP/work/c.cam23.2/obs_diag_output.nc', ...
-%          '/fs/image/home/thoar/DART/models/POP/work/c.cam48v3.serr.c020/obs_diag_output.nc'};
+%          '/fs/image/home/thoar/DART/models/POP/work/c.da48/obs_diag_output.nc'};
 % titles   = {'23 POP 1 DATM', '23 POP 23 CAM', '48 POP 48 CAM'};
 % varnames = {'XBT_TEMPERATURE', 'CTD_SALINITY'};
 % qtty     = 'spread';     % rmse, spread, totalspread, bias, etc.
@@ -20,9 +14,30 @@ function two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind
 % prpo     = 'forecast'; % [guess, forecast, prior     ] == prior
 % levelind = 1;
 %
-% two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind)
-% print -dpsc -painters myplot.ps
+% varnames = {'FLOAT_SALINITY', 'FLOAT_TEMPERATURE', 'DRIFTER_TEMPERATURE', ...
+%           'MOORING_SALINITY', 'MOORING_TEMPERATURE', 'BOTTLE_SALINITY', ...
+%           'BOTTLE_TEMPERATURE', 'CTD_SALINITY', 'CTD_TEMPERATURE', ...
+%           'MBT_TEMPERATURE', 'XBT_TEMPERATURE', 'APB_TEMPERATURE'};
 %
+% two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind)
+% print -dpdf myplot.pdf
+%
+% files = {'/fs/image/home/thoar/DART/models/POP/work/dart.005.6/obs_diag_output.nc', ...
+%          '/fs/image/home/thoar/DART/models/POP/work/c.da48/obs_diag_output.nc'};
+% titles   = {'23 POP 1 DATM', '48 POP 48 CAM'};
+% qtty     = 'spread';     % rmse, spread, totalspread, bias, etc.
+% prpo     = 'forecast';   % [guess, forecast, prior     ] == prior
+% levelind = 2;
+%
+% varnames = {'MOORING_TEMPERATURE', 'CTD_SALINITY', 'APB_TEMPERATURE'};
+% varnames = {'MOORING_TEMPERATURE'};
+% varnames = {'CTD_SALINITY'};
+% varnames = {'APB_TEMPERATURE'};
+% varnames = {'XBT_TEMPERATURE'};
+%
+% two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind)
+
+ 
 % <next few lines under version control, do not edit>
 % $URL$
 % $Id$
@@ -62,6 +77,7 @@ for ivar = 1:nvars
    for ireg = 1:commondata.nregions
 
       figure(ireg);
+      orient landscape;
       clf;
 
       %---------------------------------------------------------------------
@@ -398,6 +414,15 @@ for i = 1:Nexp
       hd(iexp)     = plot(plotobj{i}.bincenters, plotobj{i}.poste, lty,'LineWidth', 2.0);
       legstr{iexp} = plotobj{i}.title;
    end
+end
+
+%% Plot a bias line.
+switch plotobj{1}.copystring
+case {'bias'}
+      axlims = axis;
+      biasline = line(axlims(1:2),[0 0],'Color','k','Parent',ax1);
+      set(biasline,'LineWidth',1.0,'LineStyle','-')
+otherwise
 end
 
 %% hokey effort to decide to plot months/days vs. daynum vs.
