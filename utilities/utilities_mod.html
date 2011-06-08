@@ -377,7 +377,7 @@ to register when first called.
 <br>
 <div class=routine>
 <em class=call> call error_handler(level, routine, text, src, rev, rdate 
-              <em class=optionalcode>[, aut]</em>) </em>
+              <em class=optionalcode>[, aut, text2, text3]</em>) </em>
 <pre>
 integer, intent(in)                    :: <em class=code>level</em>
 character(len=*), intent(in)           :: <em class=code>routine</em>
@@ -386,6 +386,8 @@ character(len=*), intent(in)           :: <em class=code>src</em>
 character(len=*), intent(in)           :: <em class=code>rev</em>
 character(len=*), intent(in)           :: <em class=code>rdate</em>
 character(len=*), optional, intent(in) :: <em class=optionalcode>aut</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>text2</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>text3</em>
 </pre>
 </div>
 
@@ -417,6 +419,10 @@ ations.</TD></TR>
     <TD>Revision date of source file.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>aut&nbsp;&nbsp;</em></TD>
     <TD>Author of routine.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>text2&nbsp;&nbsp;</em></TD>
+    <TD>If specified, the second line of text for the error message.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>text3&nbsp;&nbsp;</em></TD>
+    <TD>If specified, the third line of text for the error message.</TD></TR>
 </TABLE>
 
 </div>
