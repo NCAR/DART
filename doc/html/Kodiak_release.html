@@ -269,7 +269,7 @@ the repository have had this added if they have the GPS module in their
 <P>
 
 <UL>
-<LI>Inflation Damping</LI>
+<LI>Inflation Damping
     <UL><LI>Handles the case where observation density is irregular in time,
         e.g. areas which were densely observed at one point are no longer
         observed.  Adaptive inflation values can grow large where the observations
@@ -277,53 +277,110 @@ the repository have had this added if they have the GPS module in their
         not recomputed.  Inflation damping shrinks the inflation values and
         compensates for this. See the <a href="../../filter/filter.html#Inflation">
         inflation documentation</a> for more details and paper references.</LI></UL>
-<LI>Sampling Error Correction</LI>
+</LI>
+<LI>Sampling Error Correction
     <UL><LI>Compensates for the numbers of ensembles being small compared to the
         number of degrees of freedom in the system.  See the
         last item in <a href="../../filter/filter.html#GettingStarted">this list</a>
         for more details.</LI></UL>
-<LI>Adaptive Localization and Localization Diagnostics</LI>
+</LI>
+<LI>Adaptive Localization and Localization Diagnostics
     <UL><LI>See <a href="../../assim_tools/assim_tools_mod.html#Localization">here</a>
          for a discussion of localization-related issues.</LI></UL>
-<LI>Scale height vertical localization option in 3d models</LI>
+</LI>
+<LI>Scale height vertical localization option in 3d models
     <UL><LI>See <a href="../../location/threed_sphere/location_mod.html#Namelist">here</a>
          for a discussion of specifying vertical localization in term of
          scale height, and <a href="http://en.wikipedia.org/wiki/Scale_height">here</a>
          for a Wikipedia discussion of how Scale Height is defined.</LI></UL>
-<LI>CAM supports FV code, PBS scripting</LI>
-<LI>Boxcar Kernel Filter Option</LI>
-<LI>undefined vertical location for obs</LI>
-<LI>schedule module for repeated time intervals</LI>
-<LI>support for 2 different Mars calendars in time manager</LI>
+</LI>
+<LI>CAM supports FV code, PBS scripting
+    <UL><LI>See <a href="../../models/cam/model_mod.html">here</a> for details
+         on the features of the CAM/DART system</LI></UL>
+</LI>
+<LI>Boxcar Kernel Filter Option
+    <UL><LI>See 
+    <a href="../../assim_tools/assim_tools_mod.html#FilterTypes">here</a> for
+     how to select it in the namelist.
+    </LI></UL>
+</LI>
+<LI>Option for "undefined vertical location" for obs using the 3d sphere locations
+    <UL><LI>See 
+    <a href="../../location/threed_sphere/location_mod.html">here</a> for how to
+     specify it when creating observations.
+    </LI></UL>
+</LI>
+<LI>Schedule module for repeated time intervals
+    <UL><LI>See documentation <a href="../../time_manager/schedule_mod.html">here</a>
+    </LI></UL>
+</LI>
+<LI>Support for 2 different Mars calendars in time manager
     <UL><LI>Gregorian Mars</LI>
         <LI>Solar Mars</LI>
     </UL>
-<LI>corrections to make the smoother run correctly</LI>
-<LI>forward operators now have access to the ensemble number and
-the state time if they want to make use of this information</LI>
-<LI>option to output all echo of namelist values to a separate log file</LI>
-<LI>large file support for netCDF</LI>
-<LI>better support for adaptive localization</LI>
-<LI>option to localize with different distances based on observation type</LI>
-<LI>the error handler can take up to 3 lines of text, so you can give more
-informative error messages on exit</LI>
-<LI>option to output ensemble mean in restart file format when filter exits</LI>
-<LI>performance improvement in the internal transposes for very large state
+</LI>
+<LI>Code corrections to make the smoother run correctly
+</LI>
+<LI>Forward operators now have access to the ensemble number and
+the state time if they want to make use of this information
+    <UL><LI>See the "Get Expected Obs From Def" section of this
+    <a href="../../obs_def/obs_def_mod.html">obs_def</a> documentation
+    for details on how to use these values.</LI></UL>
+</LI>
+<LI>Option to output all echo of namelist values to a separate log file
+    <UL><LI>See the
+    <a href="../../utilities/utilities_mod.html#Namelist">utilities module
+    documentation</a> for how to select where the namelist contents are output.</LI></UL>
+</LI>
+<LI>Large file support for netCDF
+    <UL><LI>See the
+    <a href="http://www.unidata.ucar.edu/software/netcdf/faq-lfs.html">Unidata
+    netCDF documentation</a> pages for more information about what large file
+    support gives you and what it is compatible with.</LI></UL>
+</LI>
+<LI>Better support for adaptive localization
+    <UL><LI>See the
+    <a href="../../assim_tools/assim_tools_mod.html#Localization">Localization
+    section</a> of the assim_tools documentation for details.</LI></UL>
+</LI>
+<LI>Option to localize with different distances based on observation type
+    <UL><LI>See the
+    <a href="../../assim_tools/assim_tools_mod.html#Localization">Localization
+    section</a> of the assim_tools documentation for details.</LI></UL>
+</LI>
+<LI>The error handler can take up to 3 lines of text, so you can give more
+informative error messages on exit
+    <UL><LI>See the
+    <a href="../../utilities/utilities_mod.html#Interface">utilities module</a>
+    documentation for details.</LI></UL>
+</LI>
+<LI>Option to output ensemble mean in restart file format when filter exits
+    <UL><LI>See the
+    <a href="../../filter/filter.html#Namelist">filter program namelist</a>
+    documentation for details.</LI></UL>
+</LI>
+<LI>Performance improvement in the internal transposes for very large state
 vectors.  all_vars_to_all_copies() now has a single receiver and multiple
-senders, which is much faster than the converse.</LI>
+senders, which is much faster than the converse.
+</LI>
 <LI>Better support for users who redefine R8 to be R4, so that filter runs
 in single precision.  Fixed code which was technically correct but numerically
-unstable in single precision when computing variance and covariances.</LI>
+unstable in single precision when computing variance and covariances.
+</LI>
 <LI>Fixed a case in the 3D sphere locations code which made it possible that
 some observations and state variables at higher latitudes might not be
-impacted by observations which were barely within the localization cutoff.</LI>
+impacted by observations which were barely within the localization cutoff.
+</LI>
 <LI>When one or more ensemble members fail to compute a valid forward operator,
 the prior and/or posterior mean and standard deviation will be set to MISSING_R8
-in the output obs_seq.final file in addition to setting the DART QC flag.</LI>
+in the output obs_seq.final file in addition to setting the DART QC flag.
+</LI>
 <LI>Use less stack space by allocating large arrays instead of
-declaring them as local (stack) variables in routines</LI>
-<LI>the copyright has changed from GPL to an NCAR-specific one
+declaring them as local (stack) variables in routines
+</LI>
+<LI>The copyright has changed from GPL (GNU) to an NCAR-specific one
 which is found <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">here</a>.
+</LI>
 </UL>
 
 </P>
