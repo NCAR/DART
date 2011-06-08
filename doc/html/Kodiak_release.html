@@ -371,6 +371,9 @@ unstable in single precision when computing variance and covariances.
 some observations and state variables at higher latitudes might not be
 impacted by observations which were barely within the localization cutoff.
 </LI>
+<LI>The observation type table at the top of all obs_seq files
+now only contains the types actually found in the file.
+</LI>
 <LI>When one or more ensemble members fail to compute a valid forward operator,
 the prior and/or posterior mean and standard deviation will be set to MISSING_R8
 in the output obs_seq.final file in addition to setting the DART QC flag.
@@ -687,17 +690,16 @@ directly in the namelist or can be listed in a separate file</LI>
 
 Minor items:
 <UL>
-<LI>The observation type table at the top of all obs_seq files
-now only contains the types actually found in the file.</LI>
-<LI>Most tools which work with obs_seq files now have two
-namelist items to specify the input: an explicit list of
-input files, or the name of a file which contains the list
-of files.</LI>
+<LI>Most tools which work with observation sequence files now 
+have the namelist option
+to specify the input files in one of two methods: an explicit list of
+input obs_seq files, or the name of a file which contains the list
+of obs_seq files.</LI>
 <LI>The <em class=file>DART/shell_scripts</em> directory contains
 example scripts which loop over multiple days, in formats for
 various shell syntaxes.  They are intended as an example for use
 in advance_model or job scripts, or observation conversion 
-programs added by users.
+programs contributed by users.
 </UL>
 </P>
 
