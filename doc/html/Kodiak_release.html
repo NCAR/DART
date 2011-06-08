@@ -250,10 +250,12 @@ no other compilers.
 
 <LI>The GPS Radio Occultation observation forward operator code now
 requires a namelist, <em class=code>&amp;obs_def_gps_nml</em>.  See the
-<a href='../../obs_def/obs_def_gps_mod.html#Namelist">GPS documentation</a> 
+<a href="../../obs_def/obs_def_gps_mod.html#Namelist">GPS documentation</a> 
 for details on what to add.  All <em class=file>input.nml</em> files in
 the repository have had this added if they have the GPS module in their
 <em class=code>&amp;preprocess_nml</em> namelist.
+</LI>
+
 </OL>
 
 </P>
@@ -335,12 +337,16 @@ which is found <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">here
 <P>
 
 <UL>
-<LI>POP</LI>
-<LI>NCOMMAS</LI>
-<LI>COAMPS<br>
+<LI><a href="../../models/POP/model_mod.html">POP</a><br>
+<a href="http://www.cesm.ucar.edu/models/ccsm2.0.1/pop/">Ocean model in CESM</a>
+and <a href="http://climate.lanl.gov/Models/POP/">stand-alone version from
+Los Alamos</a></LI>
+<LI><a href="http://code.google.com/p/enkf-nssl-commas">NCOMMAS</a><br>
+Mesoscale Atmospheric Model from NSSL, Norman, OK</LI>
+<LI><a href="http://www.nrlmry.navy.mil/coamps-web/web/home">COAMPS</a><br>
 An updated version of the COAMPS model interfaces and scripts.
 Contributed by Alex Reinecke, NRL, Monterey.
-<br<br>>
+<br>
 The primary differences from the original COAMPS model code are:
 <br>
  - the ability to assimilate nested domains<br>
@@ -348,14 +354,21 @@ The primary differences from the original COAMPS model code are:
  - a simplified way to specify the state vector<br>
  - I/O COAMPS data files<br>
  - extensive script updates to accommodate additional HPC environments<br>
-<br>
-   </LI>
-<LI>NOGAPS</LI>
-<LI>AM2</LI>
-<LI>MITgcm_Ocean</LI>
-<LI>simple_advection</LI>
-<LI>global/planet WRF</LI>
-<LI>TIEgcm</LI>
+</LI>
+<!-- <LI>NOGAPS</LI> -->
+<LI><a href="http://data1.gfdl.noaa.gov/~arl/pubrel/m/am2/doc/">AM2</a><br>
+ The GFDL Atmosphere model</LI>
+<LI><a href="../../models/MITgcm_ocean/model_mod.html">MITgcm_ocean</a><br>
+The <a href="http://paoc2001.mit.edu/cmi/development/ocean.htm">ocean component</a>
+of the MIT global model suite.
+</LI>
+<LI><a href="../../models/simple_avection/simple_avection.html">simple_advection</a><br>
+A simple model of advecting tracers such as CO</LI>
+<LI><a href="http://planetwrf.com/">global/planet WRF</a><br>
+A version of the WRF weather model adapted for other planets.</LI>
+<LI><a href="http://cism.hao.ucar.edu/models_tiegcm.html">TIEgcm</a><br>
+A thermosphere and ionosphere model from the NCAR HAO (High Altitude 
+Observatory) Division.</LI>
 </UL>
 
 </P>
