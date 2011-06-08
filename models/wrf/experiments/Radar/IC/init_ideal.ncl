@@ -20,6 +20,7 @@ begin
 ;
 ; Routines originally developed by David Dowell and Altug Aksoy. Conversion to ncl 
 ; by Glen Romine.
+; Updated Dec. 2010 to account for the modified model_mod for wind locations
 ;
 ; Note that running the default ideal.exe inserts a thermal bubble (3K) in the 
 ; center of the domain
@@ -144,17 +145,20 @@ begin
                           "HGT_M", "MAPFAC_M",   "MAPFAC_U",  "MAPFAC_V",   \
                       "MAPFAC_MX", "MAPFAC_MY", "MAPFAC_UX", "MAPFAC_UY",   \
                       "MAPFAC_VX", "MAPFAC_VY",  "SINALPHA",  "COSALPHA",   \
-                              "E",         "F"/)
+                              "E",         "F", \
+                        "XLONG_U",  "XLONG_V",     "XLAT_U",    "XLAT_V"/)
   tmpl_field_names = (/    "XLAT",     "XLONG",      "CLAT",     "CLONG",  \
                             "HGT",  "MAPFAC_M",  "MAPFAC_U",  "MAPFAC_V",  \
                       "MAPFAC_MX", "MAPFAC_MY", "MAPFAC_UX", "MAPFAC_UY",  \
                       "MAPFAC_VX", "MAPFAC_VY",  "SINALPHA",  "COSALPHA",  \
-                              "E",         "F"/)
+                              "E",         "F", \
+                        "XLONG_U",  "XLONG_V",     "XLAT_U",    "XLAT_V"/)
 ; index values:                 0,           1,           2,           3, 
 ;                               4,           5,           6,           7,
 ;                               8,           9,          10,          11,
 ;                              12,          13,          14,          15,
-;                              16,          17
+;                              16,          17,          
+;                              18,          19,          20,          21
 ; Open the template and geography files and replace the global fields
   in_template_file = addfile(wrfin_file+".nc","w")
   in_geog_file = addfile(wrfgeo_file,"r")
@@ -397,6 +401,12 @@ begin
         delete(swap_var)
       end do
    end if
+; copy over the U and V point lat/lon
+   do i=18,21
+      swap_var = in_geog_file->$geog_field_names(i)$(:,:,:)
+      in_template_file->$tmpl_field_names(i)$=(/swap_var(:,:,:)/)
+      delete(swap_var)
+   end do
    print(" ")
 ; 
 ; Time to add in the bubbles/noise:
