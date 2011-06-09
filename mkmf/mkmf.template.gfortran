@@ -97,3 +97,5 @@ LDFLAGS = $(FFLAGS) $(LIBS)
 
 #FFLAGS = -O0 -fbounds-check -frecord-marker=4 -ffpe-trap=invalid $(INCS) 
 
+# The following libraries are commonly needed if netCDF4 was built with HDF5 support.
+#LIBS = -L${NETCDF}/lib -lnetcdf -lcurl -lhdf5_hl -lhdf5 -lz  -lm
