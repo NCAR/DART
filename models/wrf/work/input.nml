@@ -19,7 +19,7 @@
    output_forward_op_errors = .false.,
    print_every_nth_obs   = -1,
    silence               = .false.,
-  /
+   /
 
 &filter_nml
    async                    = 2,
@@ -154,7 +154,7 @@
 &assim_model_nml
    write_binary_restart_files = .true.,
    netCDF_large_file_support  = .false.,
-  /
+   /
 
 # Notes for model_nml:
 # (1) vert_localization_coord must be one of:
@@ -333,7 +333,17 @@
    selections_is_obs_seq = .false.,
    print_only            = .false., 
    calendar              = 'gregorian',
-/
+   /
+
+&obs_seq_verify_nml
+   obs_sequence_list = '',
+   obs_sequence_name = 'obs_seq.forecast',        
+   station_template  = 'obsdef_mask.nc', 
+   netcdf_out        = 'forecast.nc', 
+   obtype_string     = 'METAR_U_10_METER_WIND',
+   verbose           = .true.,
+   debug             = .false.,
+   /
 
 &restart_file_tool_nml
    input_file_name              = "filter_restart",        

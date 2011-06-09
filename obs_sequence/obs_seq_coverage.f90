@@ -18,9 +18,9 @@ program obs_seq_coverage
 ! The observation sequence file only contains lat/lon/level/which_vert,
 ! so this is all we have to work with.
 !
-! From: Soyoung Ha <syha@ucar.edu>
+! From: Soyoung Ha 
 ! Date: November 5, 2010 12:00:22 PM MDT
-! To: Tim Hoar <thoar@ucar.edu>, Nancy Collins <nancy@ucar.edu>
+! To: Tim Hoar, Nancy Collins
 ! Subject: obs_seq.out on bluefire
 !
 ! Hi Tim and Nancy,
@@ -39,13 +39,14 @@ program obs_seq_coverage
 
 !-----------------------------------------------------------------------
 
-use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_R4
+use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_R4, &
+                             metadatalength, obstypelength
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
                              get_obs_def, get_copy_meta_data, &
                              get_next_obs, init_obs, init_obs_sequence, &
-                             assignment(=), get_num_copies, static_init_obs_sequence, &
-                             get_qc, destroy_obs_sequence, read_obs_seq_header, & 
-                             destroy_obs, get_qc_meta_data
+                             assignment(=), get_num_copies, get_num_qc, get_qc, &
+                             static_init_obs_sequence, destroy_obs_sequence, destroy_obs, &
+                             read_obs_seq_header, get_qc_meta_data
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind, write_obs_def, &
                              get_obs_def_location, set_obs_def_time, &
                              set_obs_def_location, set_obs_def_kind, set_obs_def_error_variance
@@ -56,9 +57,12 @@ use     location_mod, only : location_type, get_location, set_location_missing, 
                              set_location, is_location_in_region, query_location, &
                              nc_write_location_atts, nc_get_location_varids, &
                              nc_write_location, LocationDims
-use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
-                             set_time_missing, operator(>), operator(<), operator(==), &
-                             operator(<=), operator(-), operator(+), operator(/=)
+use time_manager_mod, only : time_type, set_date, set_time, get_time, &
+                             set_calendar_type, get_calendar_string, &
+                             print_time, print_date, &
+                             operator(+), operator(-), operator(<), operator(>), &
+                             operator(==), operator(/=), operator(<=), operator(/), &
+                             operator(>=), operator(*)
 use    utilities_mod, only : get_unit, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, nmlfileunit, timestamp, &
@@ -96,9 +100,7 @@ integer :: max_stations  ! This is the largest possible number of uniq locs
 integer :: station_id    ! the index (into stations) of an existing location
 integer :: timeindex     ! the index (into the time array of a station)
 integer :: num_output    ! total number of desired locations and times found
-integer :: num_max       ! most number of desired times found at any location
 
-integer, parameter :: STRINGLENGTH = 32
 integer, parameter :: MAX_OBS_INPUT_TYPES = 500  ! lazy, just going big
 
 !---------------------------------------------------------------------
@@ -109,7 +111,6 @@ type(obs_sequence_type) :: seq
 type(obs_type)          :: obs1, obs2
 type(obs_def_type)      :: obs_def
 type(location_type)     :: obs_loc, minl, maxl
-real(r8), dimension(LocationDims) :: locarray
 
 character(len = 129) :: obs_seq_in_file_name
 character(len = 129), allocatable, dimension(:) :: obs_seq_filenames
@@ -125,52 +126,71 @@ logical :: last_ob_flag
 ! Namelist with (some scalar) default values
 !-----------------------------------------------------------------------
 
+character(len = 129) :: obs_sequence_list = 'obs_coverage_list.txt'
+character(len = 129) :: obs_sequence_name = ''
+character(len = obstypelength) :: obs_of_interest(MAX_OBS_INPUT_TYPES) = ''
 character(len = 129) :: textfile_out      = 'obsdef_mask.txt'
 character(len = 129) :: netcdf_out        = 'obsdef_mask.nc'
-character(len = 129) :: obs_sequence_name = 'obs_seq.final'
-character(len = 129) :: obs_sequence_list = ''
-character(len = STRINGLENGTH) :: obs_of_interest(MAX_OBS_INPUT_TYPES) = ''
+character(len = 129) :: calendar          = 'Gregorian'
 
-real(r8) :: lonlim1= MISSING_R8, lonlim2= MISSING_R8
-real(r8) :: latlim1= MISSING_R8, latlim2= MISSING_R8 
-integer  :: nTmin = 0   ! minimum number of times required
-integer  :: nTmax = 0   ! maximum number of times required
+integer, dimension(6) :: first_analysis = (/ 2003, 1, 1, 0, 0, 0 /)
+integer, dimension(6) ::  last_analysis = (/ 2003, 1, 2, 0, 0, 0 /)
+integer  :: forecast_length_days          = 1
+integer  :: forecast_length_seconds       = 0
+integer  :: verification_interval_seconds = 21600 ! 6 hours
+real(r8) :: temporal_coverage_percent     = 100.0 ! all times required
+real(r8) :: lonlim1 = MISSING_R8
+real(r8) :: lonlim2 = MISSING_R8
+real(r8) :: latlim1 = MISSING_R8
+real(r8) :: latlim2 = MISSING_R8
+logical  :: verbose = .false.
+logical  :: debug   = .false.   ! undocumented ... on purpose
 
-logical :: debug = .false.   ! undocumented ... on purpose
-logical :: verbose = .false.
-
-namelist /obs_seq_coverage_nml/ obs_sequence_name, obs_sequence_list, &
-                                 lonlim1, lonlim2, latlim1, latlim2, &
-                                 nTmin, nTmax, obs_of_interest, &
-                                 verbose, debug, textfile_out, netcdf_out
+namelist /obs_seq_coverage_nml/ obs_sequence_list, obs_sequence_name, &
+              obs_of_interest, textfile_out, netcdf_out, calendar, &
+              first_analysis, last_analysis, forecast_length_days, &
+              forecast_length_seconds, verification_interval_seconds, &
+              temporal_coverage_percent, lonlim1, lonlim2, latlim1, latlim2, &
+              verbose, debug
 
 !-----------------------------------------------------------------------
 ! Quantities of interest
 !-----------------------------------------------------------------------
 
-integer, parameter :: Ncopies = 1
-integer :: allNcopies
-character(len=STRINGLENGTH), dimension(Ncopies) :: copy_names = &
-   (/ 'observation error variance' /)
+integer ::       qc_index   ! copy index of the original qc value
+integer ::  dart_qc_index   ! copy index of the DART qc value
 
-character(len=STRINGLENGTH), allocatable, dimension(:) :: module_obs_copy_names
-character(len=STRINGLENGTH), allocatable, dimension(:) ::        obs_copy_names
-character(len=STRINGLENGTH), allocatable, dimension(:) :: module_qc_copy_names
-character(len=STRINGLENGTH), allocatable, dimension(:) ::        qc_copy_names
+character(len=metadatalength), allocatable, dimension(:) :: module_obs_copy_names
+character(len=metadatalength), allocatable, dimension(:) ::        obs_copy_names
+character(len=metadatalength), allocatable, dimension(:) :: module_qc_copy_names
+character(len=metadatalength), allocatable, dimension(:) ::        qc_copy_names
 
-real(r8), allocatable, dimension(:)   :: qc
 integer,  dimension(max_obs_kinds) :: obs_kinds_inds = 0
+real(r8),        allocatable, dimension(:)   :: qc_values
+type(time_type), allocatable, dimension(:)   :: all_verif_times
+type(time_type), allocatable, dimension(:,:) :: verification_times
+real(digits12),  allocatable, dimension(:,:) :: experiment_Tr8
+type(time_type) :: verification_stride, half_stride
+
+integer :: num_analyses             ! # of fcsts from first_analysis to last_analysis
+integer :: num_verify_per_fcst
+integer :: num_verification_times   ! number of verification times - total
+integer :: nT_minimum               ! will settle for this many verif times - total
 
 !-----------------------------------------------------------------------
 ! General purpose variables
 !-----------------------------------------------------------------------
 
 integer  :: ifile, nread, ngood
-integer  :: i, io, ncunit
+integer  :: i, j, io, ncunit
 
-type(time_type) :: obs_time
+type(time_type) :: obs_time, no_time, last_possible_time
 
 character(len = 129) :: ncName, string1, string2, string3
+
+! ~# of degrees for 1/2 meter at Earth equator 
+! 360 deg-earth/(40000 km-earth * 1000m-km)
+real(r8), parameter :: HALF_METER = 180.0_r8 / (40000.0_r8 * 1000.0_r8)
 
 !=======================================================================
 ! Get the party started
@@ -183,13 +203,7 @@ call static_init_obs_sequence()  ! Initialize the obs sequence module
 call init_obs(obs1, 0, 0)
 call init_obs(obs2, 0, 0)
 call init_obs_sequence(seq,0,0,0)
-
-! Allocate a hunk of stations. If we fill this up, we will
-! have to create temporary storage, copy, deallocate, reallocate  ...
-
-num_stations = 0
-max_stations = 4000
-call initialize_stations(max_stations, stations)
+no_time = set_time(0,0)
 
 !----------------------------------------------------------------------
 ! Read the namelist
@@ -204,14 +218,12 @@ if (do_nml_file()) write(nmlfileunit, nml=obs_seq_coverage_nml)
 if (do_nml_term()) write(    *      , nml=obs_seq_coverage_nml)
 
 ! Check the user input for sanity
-if (nTmin > nTmax) then
-   write(string1,*)'namelist: nTmin (',nTmin,') must be <= nTmax (',nTmax,')' 
+if (temporal_coverage_percent < 100.0_r8) then
+   write(string1,*)'namelist: temporal_coverage_percent (',temporal_coverage_percent,&
+                   ') must be == 100.0 for now.)' 
    call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, revdate)
 endif
-if (nTmin < 0) then
-   write(string1,*)'nTmin must be > 0, was read as ',nTmin
-   call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, revdate)
-endif
+
 if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
    write(string1,*)'specify "obs_sequence_name" or "obs_sequence_list"'
    write(string2,*)'set other to an empty string ... i.e. ""'
@@ -219,9 +231,13 @@ if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
                      revdate, text2=string2)
 endif
 
-!----------------------------------------------------------------------
+call set_calendar_type(calendar)
+call get_calendar_string(calendar)
+
+minl = set_location( (/ lonlim1, latlim1, 0.0_r8, 1.0_r8 /)) ! vertical unimportant
+maxl = set_location( (/ lonlim2, latlim2, 0.0_r8, 1.0_r8 /)) ! vertical unimportant
+
 ! Determine if the desired observation types exist
-!----------------------------------------------------------------------
 
 TypeLoop : do i = 1,MAX_OBS_INPUT_TYPES
 
@@ -243,11 +259,34 @@ TypeLoop : do i = 1,MAX_OBS_INPUT_TYPES
 
 enddo TypeLoop
 
+! Set the verification time array (global storage)
+
+call set_required_times(first_analysis, last_analysis, &
+          forecast_length_days, forecast_length_seconds, &
+          verification_interval_seconds, temporal_coverage_percent)
+
+if (verbose) then
+   write(*,*) ! whitespace
+   write(*,*)'At least',nT_minimum,' observations times are required at:'
+   do i=1,num_verification_times
+      write(string1,*)'verification # ',i,' at '
+      call print_date(all_verif_times(i),trim(string1))
+   enddo
+   write(*,*) ! whitespace
+endif
+
+last_possible_time = all_verif_times(num_verification_times) + half_stride
+
+! Allocate a hunk of stations. If we fill this up, we will
+! have to create temporary storage, copy, deallocate, reallocate  ...
+
+num_stations = 0
+max_stations = 4000
+call initialize_stations(max_stations, stations)
+
 !====================================================================
 !====================================================================
 
-minl = set_location( (/ lonlim1, latlim1, 0.0_r8, 1.0_r8 /)) ! vertical unimportant
-maxl = set_location( (/ lonlim2, latlim2, 0.0_r8, 1.0_r8 /)) ! vertical unimportant
 
 !----------------------------------------------------------------------
 ! Prepare the variables
@@ -266,7 +305,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    call destroy_obs(obs2)
    call destroy_obs_sequence(seq)
 
-   if (allocated(qc))             deallocate(qc)
+   if (allocated(qc_values))      deallocate(qc_values)
    if (allocated(qc_copy_names))  deallocate(qc_copy_names)
    if (allocated(obs_copy_names)) deallocate(obs_copy_names)
 
@@ -286,6 +325,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
       write(string1,*)trim(obs_seq_in_file_name),&
                         ' does not exist. Finishing up.'
       call error_handler(E_MSG,'obs_seq_coverage',string1,source,revision,revdate)
+      write(*,*) ! whitespace
       exit ObsFileLoop
    endif
 
@@ -307,14 +347,12 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
    ! I am taking the observational error variance and making it one of the copies
 
-   allNcopies = num_copies + Ncopies
-
    if ((num_qc <= 0) .or. (num_copies <=0)) then
       write(string1,*)'need at least 1 qc and 1 observation copy'
       call error_handler(E_ERR,'obs_seq_coverage',string1,source,revision,revdate)
    endif
 
-   allocate( obs_copy_names(allNcopies), qc_copy_names(num_qc), qc(num_qc))
+   allocate( obs_copy_names(num_copies), qc_copy_names(num_qc), qc_values(num_qc))
 
    if ( debug ) then
       write(*,*)
@@ -341,37 +379,37 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    call read_obs_seq(obs_seq_in_file_name, 0, 0, 0, seq)
 
    do i=1, num_copies
-         string1 = trim(get_copy_meta_data(seq,i))//'                          '
-         obs_copy_names(i) = string1(1:STRINGLENGTH)
-   enddo
-   do i=1, Ncopies
-         obs_copy_names(num_copies+i) = trim(copy_names(i))
+         string1 = trim(get_copy_meta_data(seq,i))
+         obs_copy_names(i) = adjustl(string1)
    enddo
    do i=1, num_qc
-         string1 = trim(get_qc_meta_data(seq,i))//'                          '
-         qc_copy_names(i) = string1(1:STRINGLENGTH)
+         string1 = trim(get_qc_meta_data(seq,i))
+         qc_copy_names(i) = adjustl(string1)
    enddo
+
+   call find_our_copies(seq, qc_index, dart_qc_index)
 
    if ( ifile == 1 ) then ! record the metadata for comparison
 
-      allocate(module_obs_copy_names(allNcopies), &
+      allocate(module_obs_copy_names(num_copies), &
                 module_qc_copy_names(num_qc) )
 
       do i=1, num_copies
-         string1 = trim(get_copy_meta_data(seq,i))//'                          '
-         module_obs_copy_names(i) = string1(1:STRINGLENGTH)
-      enddo
-      do i=1, Ncopies
-         module_obs_copy_names(num_copies+i) = trim(copy_names(i))
+         module_obs_copy_names(i) = obs_copy_names(i)
       enddo
       do i=1, num_qc
-         string1 = trim(get_qc_meta_data(seq,i))//'                          '
-         module_qc_copy_names(i) = string1(1:STRINGLENGTH)
+         module_qc_copy_names(i) = qc_copy_names(i)
       enddo
 
    else ! Compare all subsequent files' metadata to the first one
 
-      do i = 1,allNcopies
+      if (num_copies /= size(module_obs_copy_names)) then
+            write(string1,'(''num_copies '',i3,'' does not match '',i3)') &
+                              num_copies, size(module_obs_copy_names) 
+            call error_handler(E_ERR,'obs_seq_coverage',string1,source,revision,revdate)
+      endif
+
+      do i = 1,num_copies
          if (trim(obs_copy_names(i)) /= trim(module_obs_copy_names(i))) then
             write(string1,'(''obs copy '',i3,'' from '',a)') i,trim(obs_seq_in_file_name)
             call error_handler(E_MSG,'obs_seq_coverage',string1,source,revision,revdate)
@@ -414,42 +452,50 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    ObservationLoop : do nread = 1,num_obs
    !--------------------------------------------------------------------
 
-      if ( verbose .and. (mod(nread,1000) == 0) ) &
+      if ( verbose .and. (mod(nread,10000) == 0) ) &
          write(*,*)'Processing obs ',nread,' of ',num_obs
 
-      call get_obs_def(obs1, obs_def)
-      call get_qc(     obs1,      qc)
-
-      flavor   = get_obs_kind(obs_def)
-      obs_time = get_obs_def_time(obs_def)
+      call get_obs_def(obs1,          obs_def)
+      flavor   = get_obs_kind(        obs_def)
+      obs_time = get_obs_def_time(    obs_def)
       obs_loc  = get_obs_def_location(obs_def)
 
-      if (verbose .and. (nread == 1)) call print_time(obs_time,'First observation time')
+      call get_qc( obs1, qc_values)
 
-      !-----------------------------------------------------------------
-      ! determine if obs is a new location or time at an existing loc
-      ! first : reject if not in desired region or not a type we want
-      !-----------------------------------------------------------------
-
-      if ( is_location_in_region(obs_loc,minl,maxl) .and. &
-           (obs_kinds_inds(flavor) > 0) ) then
-
-         ngood      = ngood + 1
-         station_id = find_station_location(flavor, obs_loc, stations) 
-
-         if ( station_id < 1 ) then
-            station_id = add_new_station(flavor, obs_loc, stations)
-      !  else
-      !     if (verbose) write(*,*)'obs(',nread,') matches station ',station_id
-         endif
-
-         if (    is_time_new( obs_time, station_id, stations, timeindex) ) &
-            call update_time( obs_time, station_id, stations, timeindex)
-
-      else
-         locarray = get_location(obs_loc)
-         if (debug) write(*,*)'obs(',nread,') type ',flavor,'is not wanted',locarray
+      if (verbose .and. (nread == 1)) then
+         call print_time(obs_time,'First observation time')
+         call print_date(obs_time,'First observation date')
+         write(*,*) ! whitespace
       endif
+
+      if (obs_time > last_possible_time) exit ObsFileLoop
+
+      !-----------------------------------------------------------------
+      ! * reject if not in desired region
+      ! * reject if not a type we want [tracked in obs_kinds_inds(:)]
+      ! * reject if dart_qc exists and is a 4 ...
+      !-----------------------------------------------------------------
+
+      if ( .not. is_location_in_region(obs_loc,minl,maxl) ) goto 100
+      if ( obs_kinds_inds(flavor) <= 0) goto 100
+      if ( dart_qc_index > 0 ) then
+         if (qc_values(dart_qc_index) == 4) goto 100
+      endif 
+
+      ngood      = ngood + 1
+
+      ! determine if obs is a new location or time at an existing loc
+
+      station_id = find_station_location(flavor, obs_loc, stations) 
+
+      if ( station_id < 1 ) then
+            station_id = add_new_station(flavor, obs_loc, stations)
+      endif
+
+      if ( is_time_wanted( obs_time, station_id, stations, timeindex) ) &
+         call update_time( obs_time, station_id, stations, timeindex)
+
+ 100  continue
 
       call get_next_obs(seq, obs1, obs2, last_ob_flag)
       if (.not. last_ob_flag) obs1 = obs2
@@ -467,19 +513,24 @@ enddo ObsFileLoop
 allocate(DesiredStations(num_stations))
 DesiredStations = .FALSE.
 num_output = 0
-num_max = stations(i)%ntimes
 
-TimeLoop : do i = 1,num_stations
+do i = 1,num_stations
 
-   if (stations(i)%ntimes > num_max) num_max = stations(i)%ntimes 
+   stations(i)%ntimes = 0
 
-   if ( (stations(i)%ntimes >= nTmin) .and. &
-        (stations(i)%ntimes <= nTmax) ) then
+   do j = 1,num_verification_times
+      if (stations(i)%times(j) /= no_time) &
+         stations(i)%ntimes = stations(i)%ntimes + 1
+   enddo
+
+   if (stations(i)%ntimes >= nT_minimum) then
       DesiredStations(i) = .TRUE.
-      num_output = num_output + stations(i)%ntimes 
+      num_output = num_output + 1
    endif
 
-enddo TimeLoop
+enddo
+
+if (verbose) write(*,*)'There were ',num_output,' stations matching the input criterion.'
 
 ! Output a netCDF file of 'all' observations locations and times.
 ! Used to explore what is available.
@@ -492,15 +543,14 @@ call CloseNetCDF(ncunit, trim(ncName))
 ! if no stations are selected, do something.
 
 if (num_output < 1) then
-   write(string1,*)'No location had at least ',nTmin,' reporting times.'
-   write(string2,*)'Most was ',num_max
+   write(string1,*)'No location had at least ',nT_minimum,' reporting times.'
    call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, &
                       revdate, text2=string2)
 endif
 
 ! Output the file of desired observation locations and times.
 ! Used to subset the observation sequence files.
-call print_summary
+call write_obsdefs
 
 !-----------------------------------------------------------------------
 ! Really, really, done.
@@ -511,7 +561,7 @@ call destroy_obs(obs2)
 call destroy_obs_sequence(seq)
 call destroy_stations(stations)
 
-if (allocated(qc))                    deallocate(qc)
+if (allocated(qc_values))             deallocate(qc_values)
 if (allocated(qc_copy_names))         deallocate(qc_copy_names)
 if (allocated(obs_copy_names))        deallocate(obs_copy_names)
 if (allocated(module_obs_copy_names)) deallocate(module_obs_copy_names)
@@ -525,8 +575,14 @@ call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
 CONTAINS
 !======================================================================
 
+
 function find_station_location(ObsType, ObsLocation, stationlist) result(station_id)
 ! Simply try to find a matching lat/lon for an observation type
+! The lons/lats get yanked around "a lot" - being converted from ASCII radians
+! to r8 degrees to r8 radians to r8 degrees and then checked for "equality".
+! So - we're actually just checking to see if the lat/lon is within something
+! like 500 cm either direction. Seems like a reasonable definition of 'match'.
+!
 integer,                     intent(in)    :: ObsType
 type(location_type),         intent(in)    :: ObsLocation
 type(station), dimension(:), intent(inout) :: stationlist
@@ -546,12 +602,9 @@ FindLoop : do i = 1,num_stations
    londiff = abs(obslocarray(1) - stnlocarray(1)) 
    latdiff = abs(obslocarray(2) - stnlocarray(2)) 
 
-   if ( (londiff <= epsilon(londiff)) .and. &
-        (latdiff <= epsilon(latdiff)) .and. &
+   if ( (londiff <= HALF_METER) .and. &
+        (latdiff <= HALF_METER) .and. &
         (ObsType == stationlist(i)%obs_type) ) then
-
- ! if ( (ObsLocation == stationlist(i)%location)  .and.  &
- !      (ObsType     == stationlist(i)%obs_type) ) then
 
       station_id = i
       exit FindLoop
@@ -561,6 +614,8 @@ enddo FindLoop
 
 end function find_station_location
 
+
+!============================================================================
 
 
 function add_new_station(ObsType, ObsLocation, stationlist) result(station_id)
@@ -655,104 +710,67 @@ stationlist(station_id)%location   = ObsLocation
 end function add_new_station
 
 
+!============================================================================
 
-function is_time_new(ObsTime, stationid, stationlist, timeindex)
 
-! Determine if the observation time is not already in the registry
-! of the times for the particular station.
+function is_time_wanted(ObsTime, stationid, stationlist, timeindex)
+
+! The station has a list of the observation times closest to the
+! verification times. Determine if the observation time is closer to
+! the verification time than what we already have.
 
 type(time_type),             intent(in)  :: ObsTime
 integer,                     intent(in)  :: stationid
 type(station), dimension(:), intent(in)  :: stationlist
 integer,                     intent(out) :: timeindex
-logical                                  :: is_time_new
+logical                                  :: is_time_wanted
 
-type(time_type) :: stnhour, obhour, stndelta, obdelta
+type(time_type) :: stndelta, obdelta
 integer :: i
-logical :: have_this_hour
 
-have_this_hour = .FALSE.
-timeindex      = 0
+timeindex = 0
+is_time_wanted = .FALSE.
 
-if ( stationlist(stationid)%ntimes   == 0 ) then 
-   is_time_new = .TRUE.
-   timeindex   = 1
-   return
-endif
+! the time_minus function always returns a positive difference
 
-TimeLoop : do i = 1,stationlist(stationid)%ntimes
+TimeLoop : do i = 1,num_verification_times
 
-   stnhour  = nearest_hour(stationlist(stationid)%times(i))
-   obhour   = nearest_hour(ObsTime)
+   obdelta = ObsTime - all_verif_times(i)
 
-   ! Make sure we only compare observations to the same hour
-   if (stnhour /= obhour) cycle TimeLoop
+   ! If observation is not within half a verification step,
+   ! try the next one. 
+   if (obdelta >= half_stride) cycle TimeLoop 
 
-   have_this_hour = .TRUE.
+   stndelta = stationlist(stationid)%times(i) - all_verif_times(i)
 
-   ! the time_minus function always returns a positive difference
-   stndelta = stationlist(stationid)%times(i) - stnhour
-   obdelta  = ObsTime - obhour
-
-   ! Check to see if the increment is smaller
-   ! if it is, then we know which one to overwrite
+   ! Check to see if the observation is closer to the verification time
+   ! than the one we have.
    if (obdelta < stndelta) then
       if (debug) call print_time(stationlist(stationid)%times(i),'replacing ')
       if (debug) call print_time(ObsTime,'with this observation time')
       timeindex = i
+      is_time_wanted = .TRUE.
       exit TimeLoop
    endif
 
 enddo TimeLoop
 
-if (have_this_hour .and. (timeindex == 0) ) then
-   ! the time we already have is closer than the candidate
-   is_time_new = .FALSE.
-elseif ( have_this_hour ) then ! candidate is closer
-   is_time_new = .TRUE.
-else                           ! must be a new observation hour
-   is_time_new = .TRUE.
-   timeindex = stationlist(stationid)%ntimes + 1
-endif
-
-end function is_time_new
+end function is_time_wanted
 
 
-
-function nearest_hour(sometime)
-! Return the hour nearest to the input time
-type(time_type), intent(in) :: sometime
-type(time_type)             :: nearest_hour
-
-type(time_type) :: thirty, tplus30
-integer :: days, hours, secs
-
-thirty  = set_time(60*30-1,0) ! almost thirty minutes
-tplus30 = sometime + thirty
-call get_time(tplus30, secs, days)
-hours   = secs/(60*60)
-
-nearest_hour = set_time(hours*60*60, days)
-
-if (debug) call print_time(sometime,    'input      time')
-if (debug) call print_time(nearest_hour,'top of the hour')
-
-end function nearest_hour
-
+!============================================================================
 
 
 subroutine update_time(ObsTime, stationid, stationlist, timeindex)
 
+! The station has a list of the observation times closest to the
+! verification times. 
 ! Add a new time to the station registry.
-! If there is no additional space, must take action.
 
 type(time_type),             intent(in)    :: ObsTime
 integer,                     intent(in)    :: stationid
 type(station), dimension(:), intent(inout) :: stationlist
 integer,                     intent(in)    :: timeindex
-
-type(time_type), allocatable, dimension(:) :: temptimes
-integer :: ntimes
 
 ! Update stuff that seems like a good idea, 
 ! but I don't really know if I'll use it ...
@@ -766,45 +784,20 @@ if ( stationlist(stationid)%first_time > ObsTime ) &
 if ( stationlist(stationid)%last_time  < ObsTime ) &
      stationlist(stationid)%last_time  = ObsTime   
 
-! Do we need to make room for the new time
+if (debug) write(*,*)'Stuffing time into station ',stationid,' at timestep ', timeindex
 
-ntimes = size(stationlist(stationid)%times)
-
-if ( (stationlist(stationid)%ntimes >= ntimes) .and. &
-     (timeindex > stationlist(stationid)%ntimes) ) then
-
-   allocate(temptimes(ntimes))
-   temptimes = stationlist(stationid)%times
-
-   if (associated(stationlist(stationid)%times)) then
-      deallocate( stationlist(stationid)%times )
-      nullify(    stationlist(stationid)%times )
-   endif
-
-   allocate( stationlist(stationid)%times(2*ntimes) )
-   stationlist(stationid)%times(1:ntimes) = temptimes(1:ntimes)
-
-   deallocate(temptimes)
-
-endif
-
-! If the time is new one, increment counter
-if (timeindex > stationlist(stationid)%ntimes) then
-   stationlist(stationid)%ntimes = stationlist(stationid)%ntimes + 1
-   if (debug) write(*,*)'Adding a new time to ',stationid, &
-                   ' count ', stationlist(stationid)%ntimes, &
-                   ' of ', size(stationlist(stationid)%times)
-endif
+! as long as ntimes /= 0 we are OK.
+! When the stations get written to the netCDF file, count the
+! number of non-zero times in the times array for a real count.
+stationlist(stationid)%ntimes = timeindex
 
 ! Stuff the time in the appropriate slot ... finally.
 stationlist(stationid)%times(timeindex) = ObsTime
 
-if (debug) write(*,*)'Stuffing time into ',stationid, &
-                ' at ', timeindex,  &
-                ' of ', size(stationlist(stationid)%times)
-
 end subroutine update_time
 
+
+!============================================================================
 
 
 Function InitNetCDF(fname)
@@ -813,8 +806,8 @@ integer                      :: InitNetCDF
 
 integer :: ncid, i, indx1, nlines, linelen
 integer :: LineLenDimID, nlinesDimID, stringDimID
-integer :: TimeDimID, StationsDimID
-integer :: VarID
+integer :: TimeDimID, StationsDimID, FcstDimID, VerifyDimID
+integer :: VarID, FcstVarID, VerifVarID, ExperimentVarID
 
 character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
@@ -822,8 +815,12 @@ character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 
 character(len=129), allocatable, dimension(:) :: textblock
+real(digits12),     allocatable, dimension(:) :: mytimes
+integer,            allocatable, dimension(:) :: forecast_length
 
-integer :: nmost, ntypes
+integer :: ntypes, secs, days, ndims, mylen
+
+integer, dimension(nf90_max_var_dims) :: dimIDs
 
 if(.not. byteSizesOK()) then
     call error_handler(E_ERR,'InitNetCDF', &
@@ -832,10 +829,10 @@ endif
 
 InitNetCDF = 0
 
-call nc_check(nf90_create(path = trim(fname), cmode = nf90_share, &
+call nc_check(nf90_create(path = trim(fname), cmode = nf90_clobber, &
          ncid = ncid), 'obs_seq_coverage:InitNetCDF', 'create '//trim(fname))
 
-write(string1,*)trim(fname), ' is fortran unit ',ncid
+if (debug) write(string1,*)trim(fname), ' is fortran unit ',ncid
 call error_handler(E_MSG,'InitNetCDF',string1,source,revision,revdate)
 
 !----------------------------------------------------------------------------
@@ -854,10 +851,14 @@ call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_coverage_revision', revis
            'InitNetCDF', 'put_att obs_seq_coverage_revision '//trim(fname))
 call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'obs_seq_coverage_revdate', revdate ), &
            'InitNetCDF', 'put_att obs_seq_coverage_revdate '//trim(fname))
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'nTmin', nTmin ), &
-           'InitNetCDF', 'put_att nTmin '//trim(fname))
-call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'nTmax', nTmax ), &
-           'InitNetCDF', 'put_att nTmax '//trim(fname))
+call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'min_steps_required', nT_minimum ), &
+           'InitNetCDF', 'put_att min_steps_required '//trim(fname))
+call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'forecast_length_days', &
+        forecast_length_days ), 'InitNetCDF', 'put_att forecast days '//trim(fname))
+call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'forecast_length_seconds', &
+        forecast_length_seconds ), 'InitNetCDF', 'put_att forecast seconds '//trim(fname))
+call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'verification_interval_seconds', &
+        verification_interval_seconds ), 'InitNetCDF', 'put_att verif interval '//trim(fname))
 
 ! Write all desired observation types.
 ! As a sanity check - do it from our working array.
@@ -898,29 +899,81 @@ enddo FILEloop
 !----------------------------------------------------------------------------
  
 call nc_check(nf90_set_fill(ncid, NF90_NOFILL, i),  &
-             'obs_seq_coverage:InitNetCDF', 'set_nofill '//trim(fname))
+            'InitNetCDF', 'set_fill '//trim(fname))
+
+! the number of stations
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-             name='stations', len = NF90_UNLIMITED, dimid = StationsDimID), &
-             'InitNetCDF', 'def_dim:stations '//trim(fname))
+             name='station', len = NF90_UNLIMITED, dimid = StationsDimID), &
+             'InitNetCDF', 'def_dim:station '//trim(fname))
 
-call nc_check(nf90_def_var(ncid=ncid, name="stations", xtype=nf90_int, &
+call nc_check(nf90_def_var(ncid=ncid, name='station', xtype=nf90_int, &
              dimids = (/ StationsDimID /), varid=VarID), &
-             'InitNetCDF', 'stations:def_var')
-call nc_check(nf90_put_att(ncid, VarID, "long_name", "desired station flag"), &
-             'InitNetCDF', 'stations:long_name')
-call nc_check(nf90_put_att(ncid, VarID, "description", "1 == good station"), &
-             'InitNetCDF', 'stations:description')
+             'InitNetCDF', 'station:def_var')
+call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'desired station flag'), &
+             'InitNetCDF', 'station:long_name')
+call nc_check(nf90_put_att(ncid, VarID, 'description', '1 == good station'), &
+             'InitNetCDF', 'station:description')
 
-! Find the station with the longest time array and define a dimension.
-nmost = 0
-do i = 1,num_stations
-   if (stations(i)%ntimes > nmost) nmost = stations(i)%ntimes
-enddo
+! the number of verification times
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='time', len = nmost, dimid = TimeDimID), &
+              name='time', len = num_verification_times, dimid = TimeDimID), &
               'InitNetCDF', 'def_dim:time '//trim(fname))
+
+call nc_check(nf90_def_var(ncid=ncid, name='time', xtype=nf90_double, &
+             dimids = (/ TimeDimID /), varid=VarID), &
+             'InitNetCDF', 'time:def_var')
+call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'verification time'), &
+             'InitNetCDF', 'time:long_name')
+call nc_check(nf90_put_att(ncid, VarID, 'units',     'days since 1601-1-1'), &
+             'InitNetCDF', 'time:put_att units')
+call nc_check(nf90_put_att(ncid, VarID, 'calendar',  trim(calendar)), &
+             'InitNetCDF', 'time:put_att calendar')
+
+! the number of supported forecasts
+
+call nc_check(nf90_def_dim(ncid=ncid, &
+              name='analysisT', len = num_analyses, dimid = FcstDimID), &
+              'InitNetCDF', 'def_dim:analysisT '//trim(fname))
+call nc_check(nf90_def_var(ncid=ncid, name='analysisT', xtype=nf90_double, &
+             dimids = (/ FcstDimID /), varid=FcstVarID), &
+             'InitNetCDF', 'analysisT:def_var')
+call nc_check(nf90_put_att(ncid, FcstVarID, 'long_name', 'analysis (start) time of each forecast'), &
+             'InitNetCDF', 'analysisT:long_name')
+call nc_check(nf90_put_att(ncid, FcstVarID, 'units',     'days since 1601-1-1'), &
+             'InitNetCDF', 'analysisT:put_att units')
+call nc_check(nf90_put_att(ncid, FcstVarID, 'calendar',  trim(calendar)), &
+             'InitNetCDF', 'analysisT:put_att calendar')
+
+! the number of verification times per forecast
+
+call nc_check(nf90_def_dim(ncid=ncid, &
+              name='forecast_lead',len= num_verify_per_fcst,dimid=VerifyDimID), &
+              'InitNetCDF', 'def_dim:forecast_lead '//trim(fname))
+call nc_check(nf90_def_var(ncid=ncid, name='forecast_lead', xtype=nf90_int, &
+             dimids = (/ VerifyDimID /), varid=VerifVarID), &
+             'InitNetCDF', 'forecast_lead:def_var')
+call nc_check(nf90_put_att(ncid, VerifVarID, 'long_name', 'current forecast length'), &
+             'InitNetCDF', 'forecast_lead:long_name')
+call nc_check(nf90_put_att(ncid, VerifVarID, 'units',     'seconds'), &
+             'InitNetCDF', 'forecast_lead:put_att units')
+
+! the verification times for each forecast
+
+call nc_check(nf90_def_var(ncid=ncid, name='verification_times', xtype=nf90_double, &
+             dimids = (/ VerifyDimID, FcstDimID /), varid=ExperimentVarID), &
+             'InitNetCDF', 'experiment:def_var')
+call nc_check(nf90_put_att(ncid, ExperimentVarID, 'long_name', 'verification times during each forecast run'), &
+             'InitNetCDF', 'experiment:long_name')
+call nc_check(nf90_put_att(ncid, ExperimentVarID, 'units',     'days since 1601-1-1'), &
+             'InitNetCDF', 'experiment:put_att units')
+call nc_check(nf90_put_att(ncid, ExperimentVarID, 'calendar',  trim(calendar)), &
+             'InitNetCDF', 'experiment:put_att calendar')
+call nc_check(nf90_put_att(ncid, ExperimentVarID, 'rows',  'each forecast'), &
+             'InitNetCDF', 'experiment:put_att rows')
+call nc_check(nf90_put_att(ncid, ExperimentVarID, 'cols',  'each verification time'), &
+             'InitNetCDF', 'experiment:put_att cols')
 
 ! write all namelist quantities
 
@@ -929,23 +982,23 @@ allocate(textblock(nlines))
 textblock = ''
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name="linelen", len = len(textblock(1)), dimid = linelenDimID), &
+              name='linelen', len = len(textblock(1)), dimid = linelenDimID), &
               'InitNetCDF', 'def_dim:linelen '//'input.nml')
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name="nlines", len = nlines, dimid = nlinesDimID), &
+              name='nlines', len = nlines, dimid = nlinesDimID), &
               'InitNetCDF', 'def_dim:nlines '//'input.nml')
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='stringlength', len = STRINGLENGTH, dimid = StringDimID), &
-              'InitNetCDF', 'def_dim:stringlength '//trim(fname))
+              name='stringlength', len = obstypelength, dimid = StringDimID), &
+              'InitNetCDF', 'def_dim:obstypelength '//trim(fname))
 
 ! Define the variable to record the input parameters ... the namelist
 
-call nc_check(nf90_def_var(ncid=ncid, name="namelist", xtype=nf90_char, &
+call nc_check(nf90_def_var(ncid=ncid, name='namelist', xtype=nf90_char, &
              dimids = (/ linelenDimID, nlinesDimID /), varid=VarID), &
              'InitNetCDF', 'namelist:def_var')
-call nc_check(nf90_put_att(ncid, VarID, "long_name", "input.nml contents"), &
+call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'input.nml contents'), &
              'InitNetCDF', 'namelist:long_name')
 
 !----------------------------------------------------------------------------
@@ -987,7 +1040,7 @@ call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
           'InitNetCDF', 'first_time:put_att long_name')
 call nc_check(nf90_put_att(ncid, VarID, 'units',     'days since 1601-1-1'), &
           'InitNetCDF', 'first_time:put_att units')
-call nc_check(nf90_put_att(ncid, VarID, 'calendar',  'Gregorian'), &
+call nc_check(nf90_put_att(ncid, VarID, 'calendar',  trim(calendar)), &
           'InitNetCDF', 'first_time:put_att calendar')
 
 ! Define the last valid observation time
@@ -1000,22 +1053,22 @@ call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
           'InitNetCDF', 'last_time:put_att long_name')
 call nc_check(nf90_put_att(ncid, VarID, 'units',     'days since 1601-1-1'), &
           'InitNetCDF', 'last_time:put_att units')
-call nc_check(nf90_put_att(ncid, VarID, 'calendar',  'Gregorian'), &
+call nc_check(nf90_put_att(ncid, VarID, 'calendar',  trim(calendar)), &
           'InitNetCDF', 'last_time:put_att calendar')
 
 ! Define the observation times
 
-call nc_check(nf90_def_var(ncid=ncid, name='time', xtype=nf90_double, &
+call nc_check(nf90_def_var(ncid=ncid, name='ReportTime', xtype=nf90_double, &
           dimids=(/ TimeDimID, StationsDimID /), varid=VarID), &
-          'InitNetCDF', 'time:def_var')
-call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'time of observation'), &
-          'InitNetCDF', 'time:put_att long_name')
+          'InitNetCDF', 'ReportTime:def_var')
+call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'report time of observation'), &
+          'InitNetCDF', 'ReportTime:put_att long_name')
 call nc_check(nf90_put_att(ncid, VarID, 'units',     'days since 1601-1-1'), &
-          'InitNetCDF', 'time:put_att units')
-call nc_check(nf90_put_att(ncid, VarID, 'calendar',  'Gregorian'), &
-          'InitNetCDF', 'time:put_att calendar')
+          'InitNetCDF', 'ReportTime:put_att units')
+call nc_check(nf90_put_att(ncid, VarID, 'calendar',  trim(calendar)), &
+          'InitNetCDF', 'ReportTime:put_att calendar')
 call nc_check(nf90_put_att(ncid, VarID, 'missing_value', 0.0_digits12), &
-          'InitNetCDF', 'time:put_att missing')
+          'InitNetCDF', 'ReportTime:put_att missing')
 call nc_check(nf90_put_att(ncid, VarID, '_FillValue',    0.0_digits12), &
           'InitNetCDF', 'time:put_att fill_value')
 
@@ -1033,11 +1086,71 @@ call file_to_text('input.nml', textblock)
 
 call nc_check(nf90_inq_varid(ncid, 'namelist', varid=VarID), &
            'InitNetCDF', 'inq_varid:namelist '//trim(fname))
-
 call nc_check(nf90_put_var(ncid, VarID, textblock ), &
            'InitNetCDF', 'put_var:namelist')
 
 deallocate(textblock)
+
+! Fill all possible verification times
+
+call nc_check(nf90_inq_varid(ncid, 'time', varid=VarID), &
+           'InitNetCDF', 'inq_varid:time '//trim(fname))
+
+allocate(mytimes(num_verification_times))
+mytimes = 0.0_digits12
+do i = 1,num_verification_times
+   call get_time(all_verif_times(i),secs,days)
+   mytimes(i) = days + secs/(60.0_digits12 * 60.0_digits12 * 24.0_digits12)
+enddo
+call nc_check(nf90_put_var(ncid, VarID, mytimes ), &
+           'InitNetCDF', 'put_var:all_verif_times')
+deallocate(mytimes)
+
+! Fill forecast start times
+! Each of the first N verification times may be used to start a forecast.
+
+allocate(mytimes(num_analyses))
+mytimes = 0.0_digits12
+do i = 1,num_analyses
+   call get_time(all_verif_times(i),secs,days)
+   mytimes(i) = days + secs/(60.0_digits12 * 60.0_digits12 * 24.0_digits12)
+enddo
+call nc_check(nf90_put_var(ncid, FcstVarID, mytimes ), &
+           'InitNetCDF', 'put_var:forecast start times')
+deallocate(mytimes)
+
+! Fill verification_interval_seconds ... this is the forecast length (seconds) ...
+
+allocate(forecast_length(num_verify_per_fcst))
+forecast_length = 0
+do i = 1,num_verify_per_fcst
+   forecast_length(i) = (i-1)*verification_interval_seconds
+enddo
+call nc_check(nf90_put_var(ncid, VerifVarID, forecast_length ), &
+           'InitNetCDF', 'put_var:forecast_length')
+deallocate(forecast_length)
+
+! Fill verification_times into netCDF.
+! Each row is a separate forecast.
+! Each column is the full date of the forecast/verification time.
+
+call nc_check(nf90_inq_varid(ncid, 'verification_times', varid=VarID ), &
+           'InitNetCDF', 'inq_varid:verification_times')
+
+call nc_check(nf90_inquire_variable(ncid, VarID, ndims=ndims, dimids=dimIDs), &
+           'InitNetCDF', 'inquire experiment ndims ')
+
+if (debug) then
+do i = 1,ndims
+   write(string1,*)'verification_times inquire dimid(',i,')'
+   call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=mylen), &
+           'InitNetCDF', string1)
+   write(*,*)'verification_times dimension ',i,' has length ',mylen
+enddo
+endif
+
+call nc_check(nf90_put_var(ncid, ExperimentVarID, experiment_Tr8 ), &
+            'InitNetCDF', 'put_var:verification_times')
 
 !----------------------------------------------------------------------------
 ! Finish up ...
@@ -1050,9 +1163,10 @@ InitNetCDF = ncid
 end Function InitNetCDF
 
 
+!============================================================================
+
 
 Subroutine WriteNetCDF(ncid, fname, stations)
-!============================================================================
 integer,                     intent(in) :: ncid
 character(len=*),            intent(in) :: fname
 type(station), dimension(:), intent(in) :: stations
@@ -1067,13 +1181,13 @@ integer :: StationVarID, TimeVarID, NTimesVarID, &
 real(digits12), allocatable, dimension(:) :: mytimes
 integer, dimension(size(DesiredStations)) :: gooduns
 
+character(len=obstypelength) :: string32(1) ! MUST BE A '2D' ARRAY
+
 !----------------------------------------------------------------------------
 ! Find the current length of the unlimited dimension so we can add correctly.
 !----------------------------------------------------------------------------
 
-if (debug) write(*,*)'DEBUG --- entering WriteNetCDF'
-
-call nc_check(nf90_inq_varid(ncid, 'stations', varid=StationVarID), &
+call nc_check(nf90_inq_varid(ncid, 'station', varid=StationVarID), &
                    'WriteNetCDF', 'inq_varid:stationindex '//trim(fname))
 
 gooduns = 0
@@ -1082,7 +1196,7 @@ where(DesiredStations) gooduns = 1
 call nc_check(nf90_put_var(ncid, StationVarID, gooduns), &
                    'WriteNetCDF', 'put_var:gooduns '//trim(fname))
 
-call nc_check(nf90_inq_varid(ncid, 'time', varid=TimeVarID), &
+call nc_check(nf90_inq_varid(ncid, 'ReportTime', varid=TimeVarID), &
           'WriteNetCDF', 'inq_varid:time '//trim(fname))
 
 call nc_check(nf90_inq_dimid(ncid, 'time', dimid=DimID), &
@@ -1112,10 +1226,16 @@ WriteObs : do stationindex = 1,num_stations
    istart(1) = stationindex
    icount(1) = 1
 
-   string1 = get_obs_kind_name(stations(stationindex)%obs_type)
+   ! Must go through Herculean tasks to create 'blank-filled' strings
+   ! for the obs_type variable. Dunno why this is so hard.
 
-   call nc_check(nf90_put_var(ncid, ObsTypeVarId, string1, &
-                start=(/ 1, stationindex /), count=(/ len_trim(string1), 1 /) ), &
+   string1     = ' '
+   string32(1) = ' '
+   string1 = get_obs_kind_name(stations(stationindex)%obs_type)
+   write(string32(1),'(A)') string1(1:obstypelength)
+
+   call nc_check(nf90_put_var(ncid, ObsTypeVarId, string32, &
+                start=(/ 1, stationindex /), count=(/ obstypelength, 1 /) ), &
                 'WriteNetCDF', 'put_var:obs_type_string')
 
    call get_time(stations(stationindex)%first_time, secs, days)
@@ -1162,10 +1282,10 @@ deallocate(mytimes)
 
 call nc_check(nf90_sync( ncid), 'WriteNetCDF', 'sync '//trim(fname))  
 
-if (debug) write(*,*)'DEBUG --- leaving WriteNetCDF'
-
 end Subroutine WriteNetCDF
 
+
+!============================================================================
 
 
 Subroutine CloseNetCDF(ncid, fname)
@@ -1174,11 +1294,13 @@ character(len=*), intent(in) :: fname
 
 if ( debug ) write(*,*)'DEBUG --- Closing ',trim(fname)
 
-call nc_check(nf90_sync( ncid), 'WriteNetCDF', 'sync '//trim(fname))  
-call nc_check(nf90_close(ncid), 'init_diag_output', 'close '//trim(fname))  
+call nc_check(nf90_sync( ncid), 'CloseNetCDF', 'sync '//trim(fname))  
+call nc_check(nf90_close(ncid), 'CloseNetCDF', 'close '//trim(fname))  
 
 end Subroutine CloseNetCDF
 
+
+!============================================================================
 
 
 subroutine initialize_stations(Nstations, stations)
@@ -1199,14 +1321,16 @@ do i = 1,N
    stations(i)%obs_type   = 0
    stations(i)%location   = set_location_missing()
    stations(i)%ntimes     = 0
-   allocate( stations(i)%times( 24 ) )
-   stations(i)%first_time = set_time_missing()
-   stations(i)%last_time  = set_time_missing()
-   stations(i)%times      = set_time_missing()
+   allocate( stations(i)%times( num_verification_times ) )
+   stations(i)%first_time = no_time
+   stations(i)%last_time  = no_time
+   stations(i)%times      = no_time
 enddo
 
 end subroutine initialize_stations
 
+
+!============================================================================
 
 
 subroutine destroy_stations(stations)
@@ -1228,13 +1352,15 @@ if (allocated(stations)) deallocate(stations)
 end subroutine destroy_stations
 
 
-subroutine print_summary
+!============================================================================
 
-! print a summary of the stations we found, etc.
-! Extended to write out a file containing the observation 
-! definitions of the desired observations. This file is used
-! to subset the 'big' observation sequence files to harvest 
-! the observations used to validate the forecast. 
+
+subroutine write_obsdefs
+
+! Write out a file containing the observation definitions of the desired 
+! observations. This file is used to subset the 'big' observation sequence 
+! files to harvest the observations used to validate the forecast. 
+! Also, print a summary of the stations we found, etc.
 
 integer :: sec1,secN,day1,dayN
 type(obs_def_type) :: obs_def
@@ -1252,41 +1378,276 @@ write(iunit,*)'num_definitions ',num_output
 
 call write_obs_kind(iunit, fform='formatted', use_list=obs_kinds_inds)
 call set_obs_def_error_variance(obs_def, MISSING_R8)
-call set_obs_def_kind(          obs_def, flavor_of_interest)
 
+write(*,*) ! whitespace
 write(*,*)'There are ',num_output,' locs/times.'
-write(*,*)'Only interested in locations with between ', nTmin, nTmax,' obs times.' 
+write(*,*)'Only interested in locations with at least ', nT_minimum,' obs times.' 
 write(*,*)'minlon/minlat ', lonlim1, latlim1 
 write(*,*)'maxlon/maxlat ', lonlim2, latlim2
-write(*,*)'between ', nTmin, nTmax,' obs times for observation types:' 
+write(*,*) ! whitespace
 
-TYPELOOP : do i = 1,size(obs_kinds_inds) 
-   if (obs_kinds_inds(i) < 1) cycle TYPELOOP
-   string2 = adjustl(get_obs_kind_name(i))
-   write(*,*)'i,obs_kind_inds(i)',i,obs_kinds_inds(i),trim(string2)
-enddo TYPELOOP
-write(*,*)
+if ( debug ) then
+   TYPELOOP : do i = 1,size(obs_kinds_inds) 
+      if (obs_kinds_inds(i) < 1) cycle TYPELOOP
+      string2 = adjustl(get_obs_kind_name(i))
+      write(*,*)'i,obs_kind_inds(i)',i,obs_kinds_inds(i),trim(string2)
+   enddo TYPELOOP
+   write(*,*)
+endif
 
 Summary : do i = 1,num_stations
 
    if ( .not. DesiredStations(i) ) cycle Summary
 
+   call set_obs_def_kind(    obs_def, stations(i)%obs_type)
    call set_obs_def_location(obs_def, stations(i)%location)
    TimeLoop : do j = 1,stations(i)%ntimes
-      call set_obs_def_time(obs_def, stations(i)%times(j))
+      call set_obs_def_time( obs_def, stations(i)%times(j))
       call write_obs_def(iunit, obs_def, i, 'formatted')
    enddo TimeLoop
 
    if (verbose) then
    call get_time(stations(i)%first_time,sec1,day1)
    call get_time(stations(i)%last_time, secN,dayN)
-   write(*,'(''station '',i6,'' has '',i3,'' ['',i7,1x,i5,'' and '',i7,1x,i5,'']'')') &
+   write(*,'(''station '',i6,'' has '',i3,'' obs between ['',i7,1x,i5,'' and '',i7,1x,i5,'']'')') &
        i,stations(i)%ntimes,day1,sec1,dayN,secN
    endif
 
 enddo Summary
 
-end subroutine print_summary
+close(iunit)
+
+end subroutine write_obsdefs
+
+
+!============================================================================
+
+
+subroutine set_required_times(analysis1, analysisN, flen_days, &
+          flen_seconds, v_int_seconds, coverage_pcnt )
+!-------------------------------------------------------------------------------
+! Setting the required times for the verification consists of knowing
+! the time of the first analysis through the time of the last analysis plus
+! the forecast length (from the last analysis) AND the frequency of the
+! verification_interval_seconds. An example with three analysis and 
+! 4 verify times per forecast. Results in 7 total times needed to verify.
+!
+! analysis1      o          o          o          o
+!            analysis2      o          o          o          o
+!                       analysis3      o          o          o          o
+!    |
+!    |__________________________________________________________________|
+!    T1                                                                 TN
+!    V1         V2         V3         V4         V5         V6          V7
+!
+! Global variables modified/set by this routine:
+!
+! num_verify_per_fcst      the number of verification times per forecast
+! num_analyses             the number of forecast experiments
+! num_verification_times   the total number of verification times for ALL experiments
+! nT_minimum               the minimum number of verif times we can live with
+! verification_times       a matrix of times: rows are forecast runs,
+!                                             columns are verification times
+! experiment_Tr8           same as verification_times ... just in digits12 format
+
+
+integer, dimension(:), intent(in)  :: analysis1     ! time of first analysis
+integer, dimension(:), intent(in)  :: analysisN     ! time of last  analysis
+integer,               intent(in)  :: flen_days     ! forecast length (days)
+integer,               intent(in)  :: flen_seconds  ! forecast length (seconds)
+integer,               intent(in)  :: v_int_seconds ! verification interval (seconds)
+real(r8),              intent(in)  :: coverage_pcnt ! temporal coverage percentage
+
+! declare some local variables
+
+type(time_type) :: flen    ! forecast length
+type(time_type) :: T1, TN, TimeMax, thistime, nexttime
+
+integer :: i, j, nsteps, seconds, days
+real(digits12) :: steps
+
+verification_stride = set_time(v_int_seconds,0)         ! global variable
+half_stride         = verification_stride / 2
+flen                = set_time(flen_seconds, flen_days) ! set the forecast length
+
+T1   = set_date(analysis1(1), analysis1(2), analysis1(3), &
+                analysis1(4), analysis1(5), analysis1(6) )
+
+TN   = set_date(analysisN(1), analysisN(2), analysisN(3), &
+                analysisN(4), analysisN(5), analysisN(6) )
+
+if ( TN < T1 ) then
+   write(string1,*)'namelist: last_analysis must be >= first analysis'
+   call error_handler(E_ERR,'set_required_times',string1,source,revision,revdate)
+endif
+
+! Check to make sure the forecast length is a multiple
+! of the verification interval.
+
+steps    = flen / verification_stride     ! time_manager_mod:time_real_divide
+nsteps   = nint(steps)
+nexttime = verification_stride * nsteps   ! time_manager_mod:time_scalar_divide 
+
+if (nexttime /= flen) then
+   call print_time(verification_stride,'verification stride')
+   call print_time(flen,    'original forecast length')
+   call print_time(nexttime,'implied  forecast length')
+   write(string1,*)'namelist: forecast length is not a multiple of the verification interval'
+   write(string2,*)'check forecast_length_[days,seconds] and verification_interval_seconds'
+   call error_handler(E_ERR, 'set_required_times', string1, &
+            source, revision, revdate, text2=string2)
+endif
+
+num_verify_per_fcst = nsteps+1   ! SET GLOBAL VALUE
+
+if (verbose) then
+   write(*,*) ! a little whitespace
+   write(*,*)'There are ',num_verify_per_fcst,' verification times per forecast.' 
+endif
+
+! Check to make sure the last analysis is a multiple number
+! of verification intervals from the first analysis.
+! If we were to launch a forecast at every possible verification 
+! time (between analysis1 and analsyisN), how many would that be? 
+! Generates a list of potential analysis times.
+! FIXME - pathological cases ... 3 hour verification, but
+! FIXME - analysis times separated by 1 hour ??? 
+
+if (TN /= T1) then
+
+   thistime = TN - T1
+   steps    = thistime / verification_stride ! time_manager_mod:time_real_divide
+   nsteps   = nint(steps)
+   nexttime = verification_stride * nsteps   ! time_manager_mod:time_scalar_divide 
+
+   if (nexttime /= thistime) then
+      call print_time(verification_stride,'verification stride')
+      call print_time(thistime,'original analysis duration')
+      call print_time(nexttime,'implied  analysis duration')
+
+      ! FIXME - offer a last analysis time ... T1 + nint(steps)*verification_stride
+
+      write(string1,*)'namelist: last analysis time is not a multiple of the verification interval'
+      write(string2,*)'check [first,last]_analysis and verification_interval_seconds'
+      call error_handler(E_ERR, 'set_required_times', string1, &
+            source, revision, revdate, text2=string2)
+   endif
+
+   num_analyses = nsteps+1   ! SET GLOBAL VALUE
+else
+   num_analyses = 1   ! SET GLOBAL VALUE
+endif
+
+if (verbose) write(*,*)'There are ',num_analyses,' supported forecasts.' 
+
+! Now that we know the start/end/stride are correct, 
+! figure out the total number of verification times we need.
+
+TimeMax  = TN + flen ! The time of the last verification
+thistime = TimeMax - T1
+steps    = thistime / verification_stride
+nsteps   = nint(steps)
+nexttime = verification_stride * nsteps
+
+if (nexttime /= thistime) then
+   call print_time(verification_stride,'verification stride')
+   call print_time(thistime,'total time interval')
+   call print_time(nexttime,'implied total time')
+   write(string1,*)'bad logic on Tims part. Should not be able to get here.'
+   call error_handler(E_ERR,'set_required_times',string1,source,revision,revdate)
+endif
+
+num_verification_times = nsteps+1  ! SET GLOBAL VALUE
+if (verbose) write(*,*)'There are ',num_verification_times,' total times we need observations.' 
+
+if (allocated(all_verif_times)) deallocate(all_verif_times)
+if (allocated(  verification_times)) deallocate(  verification_times)
+if (allocated(  experiment_Tr8))   deallocate(  experiment_Tr8)
+allocate(all_verif_times(num_verification_times))
+allocate(verification_times(num_analyses,num_verify_per_fcst))
+allocate(experiment_Tr8(num_verify_per_fcst,num_analyses)) ! TRANSPOSED for netCDF
+
+! Fill the desired verification times
+all_verif_times(1) = T1
+do i=2,num_verification_times
+   all_verif_times(i) = all_verif_times(i-1) + verification_stride
+enddo
+
+! Use those desired times to fill the times for each forecast experiment
+do i = 1,num_analyses   ! SET GLOBAL VALUE
+     verification_times(i, 1:num_verify_per_fcst) = &
+   all_verif_times(i:(i+num_verify_per_fcst-1))
+enddo
+
+! Use those to create the matching array of real(digits12)
+
+do j = 1,num_verify_per_fcst
+do i = 1,num_analyses
+   call get_time(verification_times(i,j),seconds,days)
+   experiment_Tr8(j,i) = days + seconds/(86400.0_digits12)
+enddo
+enddo
+
+nT_minimum = nint(num_verification_times * coverage_pcnt/100.0_r8)   ! SET GLOBAL VALUE
+
+if (debug) then
+   write(*,*) ! whitespace
+   write(*,*)'At least',nT_minimum,' observations times are required at:'
+   do i=1,num_verification_times
+      write(string1,*)'verification # ',i,' at '
+      call print_date(all_verif_times(i),trim(string1))
+   enddo
+   write(*,*) ! whitespace
+endif
+
+end subroutine set_required_times
+
+
+!============================================================================
+
+
+subroutine find_our_copies(myseq, qcindex, dart_qcindex)
+!----------------------------------------------------------------------------
+!
+type(obs_sequence_type), intent(in)  :: myseq
+integer,                 intent(out) :: qcindex
+integer,                 intent(out) :: dart_qcindex
+
+integer :: i
+
+     qcindex = -1
+dart_qcindex = -1
+
+! Sometimes the first QC field is 'Quality Control' or 'NCEP QC index'
+! to me ... they mean the same thing.
+
+QCMetaDataLoop : do i=1, get_num_qc(myseq)
+   if(index(get_qc_meta_data(myseq,i),'Quality Control'     ) > 0)      qcindex = i
+   if(index(get_qc_meta_data(myseq,i),'NCEP QC index'       ) > 0)      qcindex = i
+   if(index(get_qc_meta_data(myseq,i),'DART quality control') > 0) dart_qcindex = i
+enddo QCMetaDataLoop
+
+if (      qcindex < 0 ) then
+   write(string1,*)'metadata:Quality Control copyindex not found'
+   call error_handler(E_MSG,'find_qc_indices',string1,source,revision,revdate)
+endif
+if ( dart_qcindex < 0 ) then
+   write(string1,*)'metadata:DART quality control copyindex not found'
+   call error_handler(E_MSG,'find_qc_indices',string1,source,revision,revdate)
+endif
+
+! Just echo what we know
+
+if (verbose) then
+   write(*,*)'QC index',     qcindex,' ',trim(get_qc_meta_data(myseq,     qcindex))
+   write(*,*)'QC index',dart_qcindex,' ',trim(get_qc_meta_data(myseq,dart_qcindex))
+   write(*,*)
+endif
+
+end subroutine find_our_copies
+
+
+!============================================================================
 
 
 end program obs_seq_coverage
