@@ -404,8 +404,9 @@ Los Alamos</a></LI>
 <LI><a href="http://code.google.com/p/enkf-nssl-commas">NCOMMAS</a><br>
 Mesoscale Atmospheric Model from NSSL, Norman, OK</LI>
 <LI><a href="http://www.nrlmry.navy.mil/coamps-web/web/home">COAMPS</a><br>
-An updated version of the COAMPS model interfaces and scripts.
-Contributed by Alex Reinecke, NRL, Monterey.
+The original version of the COAMPS interface code and scripts
+was contributed by Tim Whitcomb, NRL, Monterey.
+An updated version was contributed by Alex Reinecke, NRL, Monterey.
 <br>
 The primary differences from the original COAMPS model code are:
 <br>
@@ -577,6 +578,9 @@ Sonde type separate from standard Radiosondes</LI>
 <P>
 All the observation converters have moved to their own
 top level directory <em class=file>observations</em>.
+See the <a href="../../observations/observations.html">overview 
+documentation</a> for general information on creating observation
+files for use in the ensemble assimilation system.
 </P>
 
 <P>
@@ -669,23 +673,68 @@ Overview, and other minor formatting improvements</LI>
 <P>
 
 <UL>
-<LI>obs_to_netcdf</LI>
-<LI>obs coverage</LI>
-<LI>obs selection</LI>
-<LI>select common subsets</LI>
-<LI>restart file tool</LI>
-<LI>advance time tool</LI>
-<LI>wrf obs preprocessor tool<br>
-Observation preprocessor which is WRF aware, from Ryan Torn.
-Will select obs only within the wrf domain, will superob,
-will select only particular obs types based on the namelist.</LI>
-<LI>replace_wrf_fields<br>
-wrf specific tool that moves netcdf variables from one
-file to another.  field names to be moved can be specified
-directly in the namelist or can be listed in a separate file</LI>
-<LI>closest member tool</LI>
-<LI>fill inflation tool</LI>
-<LI>model_mod_check</LI>
+<LI>convert obs_seq files to netCDF<br>
+</LI>
+<LI>observation coverage<br>
+</LI>
+<LI>observation selection<br>
+</LI>
+<LI><a href="../../obs_sequence/obs_common_subset.html">
+select common observation subsets</a><br>
+A tool that operates on two (will be extended to more) <em class=file>obs_seq.final</em> 
+files which were output from two different runs of filter.  Assumes the same 
+<em class=file>obs_seq.out</em> input file was used in both cases.  Outputs two new
+<em class=file>obs_seq.final.new</em> files containing only the observations which were
+assimilated in both experiments.  It makes a comparision with the diagnostic tools easier
+to interpret.
+</LI>
+<LI><a href="../../utilities/restart_file_tool.html">restart file tool</a><br>
+Generic tool that works on any DART restart file.  It is compiled with
+the corresponding model_mod which tells it how large the state vector is.
+It can alter the timestamps on the data, add or remove model advance times,
+split a single file into 1-per-ensemble or the reverse, and can be used
+to convert between ASCII and binary formats.
+</LI>
+<LI><a href="../../time_manager/advance_time.html">advance time tool</a><br>
+A generic utility for adding intervals to a Gregorian calendar date and printing
+out the new date, including handling leap year and month and year rollovers.  
+The original code was part of the WRF distribution; this version uses the 
+DART time manager subroutines to do the time computations.  It reads from
+the console/standard input to avoid trying to handle command line arguments
+in a compiler-independent manner, and outputs in various formats depending
+on what is requested via additional flags.
+</LI>
+<LI>WRF observation preprocessor tool<br>
+Observation preprocessor which is WRF aware, contributed by Ryan Torn.
+Will select obs only within the WRF domain, will superob,
+will select only particular obs types based on the namelist.
+</LI>
+<LI><a href="../../utilities/closest_member_tool.html">closest member tool</a><br>
+Combined with the new filter option to output the ensemble mean values in
+a DART restart file format, this tool allows you to select the N <i>closest</i>
+members, where there are multiple choices for how the metric is computed.
+There are also ways to select a subset of the state vector by item kind
+(as returned from the <a href="../../models/model_mod.html#get_state_meta_data">
+get_state_meta_data() routine</a> and compute the metric only on those values.
+</LI>
+<LI><a href="../../adaptive_inflate/fill_inflation_restart.html">fill inflation tool</a><br>
+Small tool that fills inflation restart files with constant initial inflation
+and standard deviation values.  Often the first step of a multi-step assimilation
+job differs in the namelist only for how the initial inflation values are defined.
+Running this tool creates the equivalent of an IC file for inflation, so the
+first job step can start from a restart file as all subsequent job steps do and
+allows the use of a single <em class=file>input.nml</em> file.
+</LI>
+<LI>replace WRF fields tool<br>
+WRF-specific tool that moves netCDF variables from one
+file to another.  Field names to be moved can be specified
+directly in the namelist or can be listed in a separate file.</LI>
+<LI><a href="../../utilities/model_mod_check.html">
+model_mod verification/check tool</a><br>
+Tool to help when creating a new model interface file (usually named 
+<em class=file>model_mod.f90</em>).  Calls routines to help with
+debugging.
+</LI>
 </UL>
 
 Minor items:
