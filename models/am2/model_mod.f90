@@ -433,7 +433,7 @@ contains
     ! Make sure ncFileID refers to an open netCDF file, and then put into define mode.
     !    More dimensions, variables and attributes will be added in this routine.
     !
-    write(errstring,'(I4)') ncFileID
+    write(errstring,*) 'ncFileID is', ncFileID
     call nc_check(nf90_Inquire(ncFileID, unlimitedDimID = unlimitedDimID), &
                   'nc_write_model_atts', 'Inquire '// trim(errstring))
     call nc_check(nf90_Redef(ncFileID), 'nc_write_model_atts', 'Redef '// trim(errstring))

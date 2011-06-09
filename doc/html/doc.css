@@ -220,6 +220,7 @@ em.head{
     font-size:1.2em;}
 
 em.italic{
+    color:black; 
     font-style:italic;}
 
 em.red{
