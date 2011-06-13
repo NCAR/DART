@@ -51,6 +51,7 @@ to it at the same time is described in Anderson and Collins (2007).
 <H4>Filter Types</H4>
 <P>
 Available observation space filter types include:
+</P>
 <ul>
 <li> 1 = EAKF (Ensemble Adjustment Kalman Filter)
 <li> 2 = ENKF (Ensemble Kalman Filter)
@@ -61,6 +62,7 @@ Available observation space filter types include:
 <li> 7 = Boxcar kernel filter
 <li> 8 = Rank histogram filter (see Anderson 2010)
 </ul>
+<P>
 Most users use type 1, the EAKF.
 </P>
 
@@ -72,7 +74,7 @@ Most users use type 1, the EAKF.
 The namelist items related to localization are spread over several
 different individual namelists, so we have made a single collected 
 description of them here along with some guidance on setting the values.
-<br /> <br />
+</P> <P>
 This discussion centers on the mechanics of how you control
 localization in DART with the namelist items, and a little bit about
 pragmatic approaches to picking the values.  There is no discussion
@@ -81,9 +83,10 @@ details.
 Additionally, the discussion here applies specifically to models using
 the 3d-sphere location module.  The same process takes place in 1d
 models but the details of the location module namelist is different.
-<br /> <br />
+</P> <P>
 The following namelist items related to 3d-sphere localization
 are all found in the <em class=file>input.nml</em> file:
+</P>
 <dl>
 <dt>
 <em>&amp;assim_tools_nml :: cutoff</em><br />
@@ -239,7 +242,6 @@ implemented for the threed_sphere location module (the one
 used by most geophysical models.)
 </dd>
 </dl>
-</P>
 <P>
 There are a large set of options for localization.  Individual cases
 may differ but in general the following guidelines might help.
@@ -585,36 +587,40 @@ An Ensemble Adjustment Kalman Filter for Data Assimilation.
 <span style="font-weight: bold;">129</span>, 2884-2903.<br />
 <a href="http://dx.doi.org/10.1175/1520-0493%282001%29129%3C2884%3AAEAKFF%3E2.0.CO%3B2"
 target="_blank" >
-doi: 10.1175/1520-0493(2001)129&lt;2884:AEAKFF&gt;2.0.CO;2</a> </li>
+doi: 10.1175/1520-0493(2001)129&lt;2884:AEAKFF&gt;2.0.CO;2</a> 
 <br />
+</li>
 <li>Anderson, J. L., 2003:
 A Local Least Squares Framework for Ensemble Filtering.
 <span style="font-style: italic;">Mon. Wea. Rev.</span>,
 <span style="font-weight: bold;">131</span>, 634-642.<br />
 <a href="http://dx.doi.org/10.1175/1520-0493%282003%29131%3C0634%3AALLSFF%3E2.0.CO%3B2"
 target="_blank" >
-doi: 10.1175/1520-0493(2003)131&lt;0634:ALLSFF&gt;2.0.CO;2</a></li>
+doi: 10.1175/1520-0493(2003)131&lt;0634:ALLSFF&gt;2.0.CO;2</a>
 <br />
+</li>
 <li>Anderson, J., Collins, N., 2007:
 Scalable Implementations of Ensemble Filter Algorithms for Data Assimilation.
 <span style="font-style: italic;">Journal of Atmospheric and Oceanic Technology</span>, 
 <span style="font-weight: bold;">24</span>, 1452-1463.<br />
 <a href="http://dx.doi.org/10.1175/JTECH2049.1"
-target="_blank" >doi: 10.1175/JTECH2049.1</a></li>
+target="_blank" >doi: 10.1175/JTECH2049.1</a>
 <br />
+</li>
 <li>Anderson, J. L., 2010:
 A Non-Gaussian Ensemble Filter Update for Data Assimilation.
 <span style="font-style: italic;">Mon. Wea. Rev.</span>,
 <span style="font-weight: bold;">139</span>, 4186-4198.<br />
 <a href="http://dx.doi.org/10.1175/2010MWR3253.1"
 target="_blank" >
-doi: 10.1175/2010MWR3253.1</a></lI>
+doi: 10.1175/2010MWR3253.1</a>
 <br />
-<LI>Anderson, J. L., 2011:,
+</li>
+<li>Anderson, J. L., 2011:,
 Localization and Sampling Error Correction
 in Ensemble Kalman Filter Data Assimilation.
 <span style="font-style: italic;">Submitted for publication</span>, Jan 2011.  
-Contact author.</LI>
+Contact author.</li>
 
 </UL>
 <br />
