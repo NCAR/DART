@@ -10,7 +10,7 @@ See the bottom of this file for quick-start instructions.
 Extensive on-line documentation is on the project web pages:
  http://www.image.ucar.edu/DAReS/DART
 
-A Matlab/PDF introduction is in the DARTLAB directory.  There are a set
+A Matlab/PDF introduction is in the DART_LAB directory.  There are a set
 of PDF presentations, along with hands-on Matlab exercises.  This starts
 with a very basic introduction to data assimilation, and covers several
 fundamental algorithms in the system.
