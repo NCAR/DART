@@ -48,6 +48,7 @@
    time-stepping capabilities of the model being used in the assimilation.
 </P><P>
    This overview includes these subsections:
+</P>
 <UL><LI> <A href="#ProgramFlow">Program Flow</A> </LI>
     <LI> <A href="#FilterTypes">Filter Types</A> </LI>
     <LI> <A href="#GettingStarted">Getting Started</A> </LI>
@@ -58,6 +59,7 @@
     <LI> <A href="#Inflation">Description of Inflation Options</A> </LI>
     <LI> <A href="#DetailedProgramFlow">Detailed Program Flow</A> </LI>
 </UL>
+<P>
    See the <A href="http://www.image.ucar.edu/DAReS/DART">DART web site</A> 
    for more documentation, including a discussion of the capabilities of the
    assimilation system, a diagram of the entire execution cycle, the options
@@ -69,7 +71,7 @@
 <H4>Overview of Program Flow</H4>
 <P>
    The basic execution loop is:
-<br />
+</P>
 <UL><LI>Read in model initial conditions, observations, set up and initialize</LI>
     <LI>Until out of observations:
     <UL><LI>Run multiple copies of the model to get forecasts of model state</LI>
@@ -79,6 +81,7 @@
     <LI>Write out diagnostic files, restart files, 
         final observation sequence file</LI>
 </UL>
+<P>
 The time of the observations in the input observation sequence file
 controls the length of execution of filter.
 </P> <P>
@@ -151,8 +154,9 @@ each time to see what is the effect on the results.
 </P> <P>
 Suggestions for the most common namelist settings and features built
 into DART for running a successful assimilation include:
+</P>
 <ul>
-<li>Ensemble Size</li>
+<li>Ensemble Size
 <P>
 In practice, ensemble sizes between 20 and 100 seem to work best.  
 Fewer than 20-30 members leads to statistical errors which are too large.
@@ -165,8 +169,8 @@ start with 50-60 members and then experiment with fewer or more
 once you have a set of baseline results to compare it with.
 The namelist setting for ensemble size is
 <em class="code">&amp;filter_nml :: ens_size </em>
-</P>
-<li>Localization</li>
+</P></li>
+<li>Localization
 <P>
 There are two main advantages to using localization.  One is it avoids
 an observation impacting unrelated state variables because of spurious
@@ -177,8 +181,8 @@ was implemented in DART, localization was easy to add and
 using it usually results in a very large performance gain. 
 See <a href="../assim_tools/assim_tools_mod.html#Localization">here</a>
 for a discussion of localization-related namelist items.
-</P>
-<li>Inflation</li>
+</P></li>
+<li>Inflation
 <P>
 Since the filter is being run with a fixed number of ensembles
 which is usually small compared to the number of degrees of freedom
@@ -191,8 +195,8 @@ and damping options, which help deal with observations which
 vary in density over time and location.
 See <a href="#Inflation">here</a>
 for a discussion of inflation-related namelist items.
-</P>
-<li>Outlier Rejection</li>
+</P></li>
+<li>Outlier Rejection
 <P>
 Outlier rejection can be used to avoid bad observations (ones
 where the value was recorded in error or the processing has an
@@ -209,8 +213,8 @@ The namelist setting for the number of standard deviations
 to include is
 <em class="code">&amp;filter_nml :: outlier_threshold </em>
 and we typically suggest starting with a value of 3.0.
-</P>
-<li>Sampling Error</li>
+</P></li>
+<li>Sampling Error
 <P>
 For small ensemble sizes a table of expected statistical error 
 distributions can be generated before running DART.  Corrections
@@ -229,10 +233,9 @@ See the description of the namelist item in the
 for instructions on where to find (or how to generate) 
 the auxiliary file needed by this code.
 See Anderson (2011).
-</P>
+</P></li>
 </ul>
 
-</P>
 
 <A NAME="FreeRun"></A>
 <H4>Free run/Forecast After Assimilation</H4>
@@ -384,6 +387,7 @@ two values.  The first is for Prior inflation
 and the second is for Posterior inflation.
 If 'flavor' is 0, all other settings for that
 column are ignored.
+</P>
 <dl>
 <dt>
 <em>&amp;filter_nml :: flavor</em><br />
@@ -510,7 +514,7 @@ file size will be two times the state vector length
 <br /> <br />
 </dl>
 
-</P> <P>
+<P>
 The suggested procedure for testing inflation options 
 is to start without
 any (both 'flavor' values set to 0).  Then enable Prior
@@ -533,6 +537,7 @@ a problem with the assimilation.
 <H4>Detailed Program Execution Flow</H4>
 <P>
 The detailed execution flow inside the filter program is:
+</P>
 
 <ul>
 <li>Read in observations.  </li>
@@ -540,34 +545,35 @@ The detailed execution flow inside the filter program is:
 <li>Initialize inflation fields, possibly reading restart files. </li>
 <li>Initialize output netcdf diagnostic files. </li>
 <li>Trim off any observations if start/stop times specified. </li>
-<li>Begin main assimilation loop: </li>
+<li>Begin main assimilation loop:
 <ul>
-<li>Check model time vs observation times: </li>
+<li>Check model time vs observation times: 
 <ul>
 <li>If current assimilation window is earlier than model time, error. </li>
 <li>If current assimilation window includes model time, begin assimilating. </li>
-<li>If current assimilation window is later than model time, advance model: </li>
+<li>If current assimilation window is later than model time, advance model:
 <ul>
 <li>Write out current state vectors for all ensemble members. </li>
-<li>Advance the model by subroutine call or by shell script: </li>
+<li>Advance the model by subroutine call or by shell script:
 <ul>
 <li>Convert the data into format suitable for model. </li>
 <li>Tell the model to run up to the requested time. </li>
 <li>Convert the new data back into DART format. </li>
 </ul>
+</li>
 <li>Read in new state vectors for all ensemble members. </li>
-</ul>
-</ul>
+</ul></li>
+</ul></li>
 <li>Apply prior inflation if requested. </li>
 <li>Compute ensemble of prior observation values with forward operators. </li>
 <li>Compute and write out prior state space diagnostics. (Note this is AFTER
     any prior inflation has been applied.)</li>
 <li>Compute and write out prior observation space diagnostics. </li>
-<li>Assimilate all observations in this window: </li>
+<li>Assimilate all observations in this window:
 <ul>
 <li>Get all obs locations and kinds. </li>
 <li>Get all state vector locations and kinds. </li>
-<li>For each observation: </li>
+<li>For each observation:
 <ul>
 <li>Compute the observation increments. </li>
 <li>Find all other obs and states within localization radius. </li>
@@ -575,14 +581,14 @@ The detailed execution flow inside the filter program is:
 <li>Apply increments weighted by correlation values. </li>
 <li>Apply increments to any remaining unassimilated observations. </li>
 <li>Loop until all observations in window processed. </li>
-</ul>
-</ul>
+</ul></li>
+</ul></li>
 <li>Apply posterior inflation if requested. </li>
 <li>Compute ensemble of posterior observation values with forward operators. </li>
 <li>Compute and write out posterior state space diagnostics. </li>
 <li>Compute and write out posterior observation space diagnostics. </li>
 <li>Loop until all observations in input file processed. </li>
-</ul>
+</ul></li>
 <li>Close diagnostic files. </li>
 <li>Write out final observation sequence file. </li>
 <li>Write out inflation restart files if requested. </li>
@@ -590,8 +596,6 @@ The detailed execution flow inside the filter program is:
 <li>Release memory for state vector and observation ensemble members. </li>
 </ul>
   
-</P>
-
 <P>
 Namelist
 <A HREF="#Namelist"> <em class=code>&amp;filter_nml</em> </A>
@@ -1066,24 +1070,27 @@ An Ensemble Adjustment Kalman Filter for Data Assimilation.
 <span style="font-weight: bold;">129</span>, 2884-2903.<br />
 <a href="http://dx.doi.org/10.1175/1520-0493%282001%29129%3C2884%3AAEAKFF%3E2.0.CO%3B2"
 target="_blank" >
-doi: 10.1175/1520-0493(2001)129&lt;2884:AEAKFF&gt;2.0.CO;2</a> </li>
+doi: 10.1175/1520-0493(2001)129&lt;2884:AEAKFF&gt;2.0.CO;2</a> 
 <br />
+</li>
 <li>Anderson, J. L., 2003:
 A Local Least Squares Framework for Ensemble Filtering.
 <span style="font-style: italic;">Mon. Wea. Rev.</span>,
 <span style="font-weight: bold;">131</span>, 634-642.<br />
 <a href="http://dx.doi.org/10.1175/1520-0493%282003%29131%3C0634%3AALLSFF%3E2.0.CO%3B2"
 target="_blank" >
-doi: 10.1175/1520-0493(2003)131&lt;0634:ALLSFF&gt;2.0.CO;2</a></li>
+doi: 10.1175/1520-0493(2003)131&lt;0634:ALLSFF&gt;2.0.CO;2</a>
 <br />
+</li>
 <li>Anderson, J. L., 2007: 
 An adaptive covariance inflation error correction algorithm for ensemble filters.
 <span style="font-style: italic;">Tellus A</span>,
 <span style="font-weight: bold;">59</span>, 210-224.<br />
 <a href="http://dx.doi.org/10.1111/j.1600-0870.2006.00216.x"
 target="_blank" >
-doi: 10.1111/j.1600-0870.2006.00216.x </a></li>
+doi: 10.1111/j.1600-0870.2006.00216.x </a>
 <br />
+</li>
 <li>Anderson, J. L., 2007:
 Exploring the need for localization in ensemble data 
 assimilation using a hierarchical ensemble filter.
@@ -1091,24 +1098,27 @@ assimilation using a hierarchical ensemble filter.
 <span style="font-weight: bold;">230</span>, 99-111.<br />
 <a href="http://dx.doi.org/10.1016/j.physd.2006.02.011"
 target="_blank" >
-doi:10.1016/j.physd.2006.02.011</a></li>
+doi:10.1016/j.physd.2006.02.011</a>
 <br />
+</li>
 <li>Anderson, J., Collins, N., 2007:
 Scalable Implementations of Ensemble Filter Algorithms for Data Assimilation.
 <span style="font-style: italic;">Journal of Atmospheric and Oceanic Technology</span>, 
 <span style="font-weight: bold;">24</span>, 1452-1463.<br />
 <a href="http://dx.doi.org/10.1175/JTECH2049.1"
 target="_blank" >
-doi: 10.1175/JTECH2049.1</a></li>
+doi: 10.1175/JTECH2049.1</a>
 <br />
+</li>
 <li>Anderson, J. L., 2009: 
 Spatially and temporally varying adaptive covariance inflation for ensemble filters.
 <span style="font-style: italic;">Tellus A</span>,
 <span style="font-weight: bold;">61</span>, 72-83.<br />
 <a href="http://dx.doi.org/10.1111/j.1600-0870.2008.00361.x"
 target="_blank" >
-doi: 10.1111/j.1600-0870.2008.00361.x</a></li>
+doi: 10.1111/j.1600-0870.2008.00361.x</a>
 <br />
+</li>
 <li>Anderson, J., T. Hoar, K. Raeder, H. Liu,
 N. Collins, R. Torn, and  A. Arellano, 2009:
 The Data Assimilation Research Testbed: A Community Facility.
@@ -1116,16 +1126,18 @@ The Data Assimilation Research Testbed: A Community Facility.
 <span style="font-weight: bold;">90</span>, 1283-1296.<br />
 <a href="http://dx.doi.org/10.1175/2009BAMS2618.1"
 target="_blank" >
-doi: 10.1175/2009BAMS2618.1</a></li>
+doi: 10.1175/2009BAMS2618.1</a>
 <br />
+</li>
 <li>Anderson, J. L., 2010:
 A Non-Gaussian Ensemble Filter Update for Data Assimilation.
 <span style="font-style: italic;">Mon. Wea. Rev.</span>,
 <span style="font-weight: bold;">139</span>, 4186-4198.<br />
 <a href="http://dx.doi.org/10.1175/2010MWR3253.1"
 target="_blank" >
-doi: 10.1175/2010MWR3253.1</a></lI>
+doi: 10.1175/2010MWR3253.1</a>
 <br />
+</li>
 <li>Anderson, J. L., 2011:
 Localization and Sampling Error Correction
 in Ensemble Kalman Filter Data Assimilation. 
