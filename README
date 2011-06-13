@@ -5,194 +5,67 @@
 # DART $Id$
 
 Welcome to DART, the Data Assimilation Research Testbed.
+See the bottom of this file for quick-start instructions.
 
-See the project web pages:
+Extensive on-line documentation is on the project web pages:
  http://www.image.ucar.edu/DAReS/DART
 
-General documentation in HTML format is in the doc subdirectory.
-Additionally, all parts of the DART system include HTML files in 
-the respective model and source directories.  There is an
-index.html file in the top level directory which references 
-all the other doc files.
+A Matlab/PDF introduction is in the DARTLAB directory.  There are a set
+of PDF presentations, along with hands-on Matlab exercises.  This starts
+with a very basic introduction to data assimilation, and covers several
+fundamental algorithms in the system.
 
-A Matlab/PDF introduction is in the DARTLAB directory.
-There are a set of PDF presentations, along with 
-hands-on Matlab exercises.  This starts with a very
-basic introduction to data assimilation, and covers
-several fundamental algorithms in the system.
+A slightly more advanced tutorial in PDF format is in the tutorial
+subdirectory.  Start with the index file which explains what each
+subsection covers.
 
-A slightly more advanced tutorial in PDF format is in the
-tutorial subdirectory.  Start with the index file which
-explains what each subsection covers.
+The DART Kodiak release documentation is on the web:
+ http://www.image.ucar.edu/DAReS/DART/Kodiak_release.html
 
+and also in the subversion tree here at:
+ doc/html/Kodiak_release.html
 
-Quick-start for the impatient:
+General documentation in HTML format is in the doc/html directory, plus
+all parts of the DART system include HTML files in the respective model
+and source directories.  There is an index.html file in the top level
+directory which references all the other doc files.
 
-Go into the mkmf directory and copy over the closest
-mkmf.template.compiler.system file into mkmf.template.
+There is a mailing list where we summarize updates to the DART repository
+and notify users about recent bug fixes.  It is not generally used for
+discussion so it's a low-traffic list.  To add yourself go here and
+click on 'Dart-users', and if you use WRF see 'wrfdart-users' also:
+ http://mailman.ucar.edu/mailman/listinfo/
 
-Edit to set the NETCDF directory location if not in
-/usr/lib (which is hardly ever true).
-
-If you are using gfortran, go into the mpi_utilities
-directory and run the ./fixsystem shell script.
-
-Go into models/lorenz_63/work and run ./quickbuild.csh.
-
-If it compiles, hooray.  Run './perfect_model_obs' 
-and then './filter'.  If it runs, hooray again. 
-Finally, if you have 'matlab' installed on your system,
-add $DART/matlab to your matlab search path and run
-the 'plot_total_err' diagnostic script while in the
-models/lorenz_63/work directory.  If the output plots 
-and looks reasonable (error level stays around 2 and
-doesn't grow unbounded), you're great!  Congrats.  
-
-
-If any of these steps fail, or you don't know how to
-do them, go to the DART project web page below for
-very detailed instructions that should get you over
-any bumps in the process.
-
-
-See the (new and very much improved) project web pages at:
-
-http://www.image.ucar.edu/DAReS/DART
-
-
-Contact us for more help or for more information on
-other models already using DART or for how to add
-your model or observation types.
-
+Contact us for more help or for more information on other models already
+using DART or for how to add your model or observation types.
 
 Thank you -
 The DART Development Team.
 dart at ucar.edu
 
 
-26 May 2009
+Quick-start for the impatient:
 
-Over the last year we have been making incremental updates to the code tree.
-Most of these are backward compatible and so we didn't make a big fuss over them.
-We anticipate a new public release sometime in the late fall, at which time
-we will be adding non-backward-compatible features.  But in the meantime, we
-do strive to keep the most recent files on the subversion trunk in perfect
-working order; we don't leave the trunk broken for any amount of time.
-So you should feel comfortable updating on a regular basis.  We do post items
-on the DART users mailing list whenever anything significant has been added.
-Go here, and add yourself to 'Dart-users' to get these updates:
+Go into the 'mkmf' directory and copy over the closest
+mkmf.template.compiler.system file into 'mkmf.template'.
 
-http://mailman.ucar.edu/mailman/listinfo/
+Edit it to set the NETCDF directory location if not in /usr/local
+or comment it out and set $NETCDF in your environment.
 
-It is not generally used for discussion, so it's a low-traffic list.
+If you are using gfortran, go into the 'mpi_utilities' directory and run
+the './fixsystem' shell script.
 
+Go into 'models/lorenz_63/work' and run './quickbuild.csh'.
 
-2 June 2008
-
-A large amount of new code was committed.  The main DART html page documents
-the most important user-visible changes.  This list is more detail and
-includes some smaller changes.
-
-1. The most visible change is that the preprocess program, and the generation 
-of the observation obs_def and obs_kind files has been streamlined for most
-kinds of observations.  See the html files in the obs_kind and obs_def
-directories, and look at the obs_def_reanalysis_mod.f90 file for an example
-of how observation types which have no additional data other than the 
-observation value and error need be defined.
-
-Additionally, the preprocess program now combines any observation module code
-into the single obs_def_mod.f90 file.  so your path_names_* files only need 
-to include obs_kind_mod.f90 and obs_def_mod.f90, and as you add or delete 
-observation types you no longer need to edit your path names files to add or
-remove individual obs_def modules (like gps, altimeter, etc).  This should
-simplify working with different observation types.
+If it compiles, hooray.  Run './perfect_model_obs' and then './filter'.
+If it runs, hooray again.  Finally, if you have Matlab installed on
+your system, add '$DART/matlab' to your matlab search path and run the
+'plot_total_err' diagnostic script while in the 'models/lorenz_63/work'
+directory.  If the output plots and looks reasonable (error level stays
+around 2 and doesn't grow unbounded), you're great!  Congrats.
 
 
-2. Observation sequence files now write out a table of contents for only the
-actual observation types which occur in that file.  That means you can look
-at the top of the obs_seq files (if in ascii) to see what types are really
-there.  It also means the obs_seq files are more portable, in that you only
-have to compile your programs to include observation types that are going to
-be processed.  The obs_seq files are now also written out with a 'max_obs'
-value of the actual size of the file, which saves memory at run time.
-As part of a general code cleanup, the obs_sequence_mod.f90 file now sets
-pointers to NULL inside the derived types.  This appears to be supported on
-every Fortran compiler we have access to, but if you have problems compiling
-it, please 1) let us know, and 2) look in the source code for the comments
-which tell you how to revert to the original version.
-
-
-3. The MPI parallel version of filter would sometimes exit without killing all
-the other tasks, and would hang until the job scheduler killed it or the user
-went in and killed it by hand.  There is now a call to MPI_Abort() which should
-notify all other tasks and exit cleanly.  This change does require that all
-programs which use the utilities module also include either the 
-null_mpi_utilities module (for all single-task programs), or the
-mpi_utilities module (for parallel programs like filter).  We have updated all
-path_names_* files in the repository, but if you have your own path_names
-files, they may need one of the mpi modules added to them. 
-
-
-4. The way the mpi_utilities modules were distributed before, they worked for
-only the gfortran compiler and no others.  This required going in and editing
-them by hand.  This commit changes the default so that only people using the
-gfortran compiler need edit the mpi and null mpi modules.  There is a shell
-program 'fixsystem' which will do the editing automatically for gfortran users.
-All others should be able to compile without editing.
-
-
-5. All model work directories now have a 'quickbuild.csh' script which
-recompiles all executables in that directory.  The 'workshop_setup.csh'
-scripts have been removed from the models which are not used by the
-tutorial workshop.  In the future they may become more customized for the
-tutorials, and so for general use, the quickbuild script is recommended.
-
-
-6. Some of the large model directories now have a 'full_experiment'
-directory where the more complicated scripts are placed for multi-day
-filter advances.  The single filter run scripts remain in the previous
-'shell_scripts' directory for each model.
-
-
-7. The restart_file_utility now prints out times in both gregorian day count
-format and the more recognizable Y/M/D format.
-
-
-8. We have made an attempt to minimize the amount of spurious output that
-goes into the dart_log.out file, so it is easier to see real error messages
-and important status information.  As part of this, by default now the
-namelist information will be written to a separate file called 'dart_log.nml'.
-It can be reset to 'dart_log.out' in the utilities namelist to combine it
-again with the rest of the dart output.  
-
-There is a new utilities namelist item called 'module_details' which 
-defaults to .true. but can be set to .false. to suppress the module 
-registration messages.
-
-The location module box output is now off by default.  Set the 
-'output_box_info' item in the locations namelist to .true. to turn them
-back on.
-
-
-9. The names of the default state vector files which are written out
-directly before the model advance have changed their naming convention
-slightly.  The previous names followed the pattern:  assim_model_state_ud00000
-and the new names will follow this: assim_model_state_ud.0000
-This makes the model advance filenames consistent with how filter restart
-files are read and written.
-
-This change should be invisible to users since the names are written out
-to the filter_control files and are parsed by the advance_model script.
-This change makes it easier for shell scripts that do parse or create files
-for the state-vector to program-vector conversion and it allows the
-restart_file_utility to work seamlessly on model advance files as well as
-restart files.
-
-
-10. The test_dart.csh script has been updated.  If the MPI shell environment
-variable is defined, the bgrid_solo model will be compiled with MPI.  The
-test script also now makes use of the quickbuild.csh scripts to build each
-model.
-
-
+If any of these steps fail or you don't know how to do them, go to the
+DART project web page listed above for very detailed instructions that
+should get you over any bumps in the process.
 
