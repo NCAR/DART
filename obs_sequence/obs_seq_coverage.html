@@ -63,8 +63,9 @@ not be used anyway ...
 include the locations and times for each of the desired observation types. This file
 is read by <a href="obs_selection.html">obs_selection</a> and combined with the raw
 observation sequence files to create the observation sequence file appropriate for 
-use in a forecast.</li>
+use in a forecast.
 <br />
+</li>
 <li><em class="file">obsdef_mask.nc</em> contains information needed to be able
 to plot the times and locations of the observations in a manner to help explore 
 the design of the verification locations/network. 
@@ -100,7 +101,7 @@ has a verification interval of 6 hours and a forecast length of 24 hours. We ado
 convention of also including the initial conditions (a "nowcast") in the 
 "forecast", so there are 5 times of interest - which we will call 
 <em class="option">verification times</em> and are represented by 
-<img src="../doc/images/verification_time_icon.png" alt="verification icon" width=2.5% />.
+<img src="../doc/images/verification_time_icon.png" alt="verification icon" width=3% />.
 The candidate observation sequence files are scanned to select all the
 observations that are <strong>closest</strong> to the verification times.
 The difference in time between the "nowcast" and the "forecast" is the
@@ -389,7 +390,7 @@ utilities_mod
 <H2>FILES</H2>
 <UL>
    <LI><em class="file">input.nml</em> is used for 
-       <em class="option">obs_seq_coverage_nml</em></LI><br />
+       <em class="option">obs_seq_coverage_nml</em><br /></LI>
    
    <LI>A text file containing the metadata for the observations to be used
        for forecast evaluation is created. This file is subsequently
@@ -398,7 +399,7 @@ utilities_mod
        single observation sequence file 
        (<em class="file">obs_seq.evaluate</em>) for the forecast step.
        <br />
-       (<em class="file">obsdef_mask.txt</em> is the default name)</LI><br />
+       (<em class="file">obsdef_mask.txt</em> is the default name)<br /></LI>
    <LI>A netCDF file containing the metadata for a much larger set of 
        observations that may be used is created. This file is subsequently
        required by <a href="obs_seq_coverage.html">obs_seq_coverage</a> to
@@ -467,7 +468,7 @@ entire globe every 6 hours for 2 days starting 18Z 8 Jun 2008:
    /
 </pre>
 </div>
-</P>
+<P>
 The first step is to create a file containing the list of observation 
 sequence files you want to use. This can be done with the unix 
 command 'ls' with the -1 option (that's a number one) to put one 
@@ -562,7 +563,6 @@ First observation date 2008 Jun 08 17:53:00
 ...
 </pre>
 </div>
-<p>
 <H4 class=indent1>Discussion</H4>
 <p>
 Note that the values of <em class="code">ASSIMILATE_THESE_OBS_TYPES</em> and
@@ -708,7 +708,8 @@ files into one compact file to use in your ensemble forecast.
 <H2>REFERENCES</H2>
 <ul>
 <li> none - but this seems like a good place to start:
-   <a href="http://www.cawcr.gov.au/projects/verification/">The Centre for Australian Weather and Climate Research - Forecast Verification Issues, Methods and FAQ</li>
+   <a href="http://www.cawcr.gov.au/projects/verification/">The Centre for Australian Weather and Climate Research - Forecast Verification Issues, Methods and FAQ</a>
+</li>
 </ul>
 
 <!--==================================================================-->
