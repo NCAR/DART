@@ -72,6 +72,8 @@ your DART tree.
 <P>
 Changes in the Kodiak release which are <em>not</em> backwards compatible
 with the Jamaica release (svn revision number 2857, 12 April 2007):
+</P>
+
 <OL>
 
 <LI> &amp;filter_nml used to have a single entry to control whether
@@ -163,7 +165,7 @@ on the code anymore:
 <LI>surf_obs</LI>
 <LI>soil_data</LI>
 <LI>h_diab</LI>
-</UL
+</UL>
 
 </LI>
 
@@ -258,15 +260,12 @@ the repository have had this added if they have the GPS module in their
 
 </OL>
 
-</P>
 
 <!--==================================================================-->
 
 <A NAME="NewFeatures"></A>
 <HR>
 <H2>New Features</H2>
-
-<P>
 
 <UL>
 <LI>Inflation Damping
@@ -391,7 +390,6 @@ which is found <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">here
 </LI>
 </UL>
 
-</P>
 
 <!--==================================================================-->
 
@@ -399,7 +397,6 @@ which is found <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">here
 <HR>
 <H2>New Models</H2>
 
-<P>
 
 <UL>
 <LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/POP/model_mod.html">POP</a><br>
@@ -441,8 +438,6 @@ A thermosphere and ionosphere model from the NCAR HAO (High Altitude
 Observatory) Division.</LI>
 </UL>
 
-</P>
-
 <P>
 The <em class=file>DART/models/template</em> directory contains sample
 files for adding a new model.  See 
@@ -456,10 +451,8 @@ this section</a> of the DART web pages for more help on adding a new model.
 <HR>
 <H2>Changed Models</H2>
 
-<P>
-
 <UL>
-<LI>WRF</LI>
+<LI>WRF
 <UL>
 <LI>The WRF fields in the DART state vector are namelist settable,
 with the order of the names in the namelist controlling the order
@@ -493,7 +486,10 @@ and Y directions (in keeping with WRF, we do not name the vertical coordinate).
 for WRF runs.</LI>
 </UL>
 
-<LI>CAM</LI>
+<br> 
+</LI>
+
+<LI>CAM
 <UL>
 <LI>support for versions 4 and 5 of CAM, including tar files of changes
 that must be made to the CAM source tree and incorporated into the CAM
@@ -521,28 +517,26 @@ compatibility, they are still available.</LI>
 <LI>The archive scripts are updated for the HPSS (hsi) and
 the MSS versions (msrcp) are removed.</LI>
 <LI>The shell_scripts and full_experiment scripts are updated.</LI>
-
-
 </UL>
 
-<LI>Lorenz 2004/2005</LI>
+<br> 
+</LI>
+
+<LI>Lorenz 2004/2005
 <UL>
 <LI>Fixed a bug in the model advance code which was
-doing an extra divide by 2, causing incorrect results.
+doing an extra divide by 2, causing incorrect results. </LI>
+</UL>
+</LI>
+
 </UL>
 
-</UL>
-
-
-</P>
 
 <!--==================================================================-->
 
 <A NAME="NewObs"></A>
 <HR>
 <H2>New Observation Types/Sources</H2>
-
-<P>
 
 <UL>
 <LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/MADIS/MADIS.html">MADIS</a><br>
@@ -565,7 +559,7 @@ High frequency radar obs of ocean surface velocity.</LI>
 Little-r and radar obs</LI>
 <LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/text/text_to_obs.html">Text</a><br>
 Reads text data files, a good template for converting obs stored in
-files without some kind of data library format (netCDF, HDF, etc)</a></LI>
+files without some kind of data library format (netCDF, HDF, etc)</LI>
 <LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_def/obs_def_altimeter_mod.f90">Altimeter</a><br>
 From a variety of sources.</LI>
 <LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_def/obs_def_dewpoint_mod.f90">Dewpoint</a><br>
@@ -577,8 +571,6 @@ Sonde type separate from standard Radiosondes</LI>
 (currently only implemented in 
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/wrf/model_mod.html">wrf model_mod</a>)</LI>
 </UL>
-
-</P>
 
 <P>
 All the observation converters have moved to their own
@@ -640,8 +632,6 @@ particular model.
 <HR>
 <H2>New Diagnostics and Documentation</H2>
 
-<P>
-
 <UL>
 <LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/DART_LAB/DART_LAB.html">DART_LAB</a><br>
 Matlab GUI presentation of fundamental assimilation concepts</LI>
@@ -667,15 +657,11 @@ namelists moved up to be the first thing in the page after the
 Overview, and other minor formatting improvements</LI>
 </UL>
 
-</P>
-
 <!--==================================================================-->
 
 <A NAME="NewUtilities"></A>
 <HR>
 <H2>New Utilities</H2>
-
-<P>
 
 <UL>
 <LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_to_netcdf.html">convert obs_seq files to netCDF</a><br>
@@ -757,10 +743,7 @@ various shell syntaxes.  They are intended as an example for use
 in advance_model or job scripts, or observation conversion 
 programs contributed by users.
 </UL>
-</P>
 
-
-</P>
 
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->
