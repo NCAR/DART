@@ -195,6 +195,7 @@ Normal circumstances indicate that you are trying to put a new model into
 DART, so to be able to build and run <em class="program">model_mod_check</em>,
 you will need to create a <em class="file">path_names_model_mod_check</em>
 file with the following contents:
+</P>
 <pre>
 assim_model/assim_model_mod.f90
 common/types_mod.f90
@@ -221,13 +222,13 @@ script and figure out what to change. Once they exist:
 [~/DART/models/yourmodel/work] % <em class="input">./model_mod_check</em>
 </pre>
 </div>
-</P>
 
 <P>
 Unlike other DART components, you are expected
 to modify <em class="file">model_mod_check.f90</em> to suit your needs as
 you develop your <em class="program">model_mod</em>. The code is roughly 
 divided into the following categories:
+</P>
 <ol><li>Check the geometry information,</li>
     <li>write a trivial restart file,</li>
     <li>read either a restart file,</li>
@@ -235,7 +236,6 @@ divided into the following categories:
     <li>check the metadata, and</li>
     <li>[optionally] run a test of the model interpolation routine.</li>
 </ol>
-</P>
 
 <H3 class=indent1>Checking the Geometry Information:</H3>
 <P>
