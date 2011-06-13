@@ -123,10 +123,12 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 <br />
 <br />
    You can specify <strong>either</strong>
-   <em class="option">obs_sequence_name</em>
+   <em class=option>obs_sequence_name</em>
    <strong>or</strong>
-   <em class="option">obs_sequence_list</em> -- not both.
-   One of them has to be an empty string ... i.e. <em class="option">''</em>.
+   <em class=option>obs_sequence_list</em> -- not both.
+   One of them has to be an empty string ... i.e. <em class=option>'&nbsp;'</em>.
+   <!-- i put the space between the single quotes because otherwise it looks
+        like one double quote.  nsc  -->
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -237,13 +239,13 @@ utilities/utilities_mod
 <H2>FILES</H2>
 <UL>
    <LI><em class="file">input.nml</em> is used for 
-       <em class="option">obs_seq_verify_nml</em></LI><br />
+       <em class="option">obs_seq_verify_nml</em><br /></LI>
    
    <LI>A netCDF file containing the metadata for the verification network.
        This file is created by <a href="obs_seq_coverage.html">obs_seq_coverage</a> to
        define the desired times and locations for the verification.
        <br />
-      (<em class="file">obsdef_mask.nc</em> is the default name)</LI><br />
+      (<em class="file">obsdef_mask.nc</em> is the default name)<br /></LI>
 
    <LI>One or more observation sequence files from <em class="program">filter</em> run
        in <em class="option">forecast</em> mode - meaning all the observations were
@@ -254,7 +256,7 @@ utilities/utilities_mod
        analysis time and the filename extension must reflect the analysis time
        used to start the forecast.
        <br />
-      (<em class="file">obs_seq.forecast.YYYYMMDDHH</em> is the default name)</LI><br />
+      (<em class="file">obs_seq.forecast.YYYYMMDDHH</em> is the default name)<br /></LI>
 
    <LI>Every execution of <em class="program">obs_seq_verify</em> results in 
        one netCDF file that contains the observation being verified. If
@@ -505,35 +507,34 @@ variables:
 [thoar@mirage2 work]$ 
 </pre>
 </div>
-<p>
+<br />
 <H4 class=indent1>Discussion</H4>
-<p>
+
 <ul><li> the values of <em class="option">ASSIMILATE_THESE_OBS_TYPES</em> and
     <em class="option">EVALUATE_THESE_OBS_TYPES</em> are completely irrelevant
     - again - since <em class="program">obs_seq_verify</em> is not actually 
-    doing an assimilation.</li><br />
+    doing an assimilation.<br /></li>
 
 <li>The analysis time from the filename is used to determine which analysis 
     from <em class="file">obsdef_mask.nc</em> is being considered, and 
-    which set of verification times to look for. This is important.</li><br />
+    which set of verification times to look for. This is important.<br /></li>
 
 <li>The individual <em class="code">prior ensemble member</em> copies
     must be present! Since there are no observations being assimilated, 
-    there is no reason to choose the posteriors over the priors.</li><br />
+    there is no reason to choose the posteriors over the priors.<br /></li>
 
 <li>There are 221 locations reporting METAR_U_10_METER_WIND observations at
-    all 9 requested verification times.</li><br />
+    all 9 requested verification times.<br /></li>
 
 <li>The <em class="file">METAR_U_10_METER_WIND_forecast.nc</em> file has all
     the metadata to be able to interpret the <em class="option">METAR_U_10_METER_WIND</em>
-    variable.</li><br />
+    variable.<br /></li>
 
 <li>The <em class="option">analysisT</em> dimension is the netCDF record/unlimited
     dimension. Should you want to increase the strength of the statistical results,
     you should be able to trivially <em class="program">ncrcat</em> more (compatible)
-    netCDF files together.</li><br />
+    netCDF files together.<br /></li>
 </ul>
-</p>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
@@ -543,8 +544,8 @@ variables:
 <HR>
 <H2>REFERENCES</H2>
 <ul>
-<li> none - but this seems like a good place to start:
-   <a href="http://www.cawcr.gov.au/projects/verification/">The Centre for Australian Weather and Climate Research - Forecast Verification Issues, Methods and FAQ</li>
+<li> none - but this seems like a good place to start:<br />
+   <a href="http://www.cawcr.gov.au/projects/verification/">The Centre for Australian Weather and Climate Research - Forecast Verification Issues, Methods and FAQ</a></li>
 </ul>
 
 <!--==================================================================-->
