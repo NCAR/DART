@@ -31,7 +31,7 @@
 <A HREF="#NewModels">New Models</A> /
 <A HREF="#ChangedModels">Changed Models</A> /
 <A HREF="#NewObs">New Observations</A> /
-<A HREF="#NewDiags">New Diagnostics and Documentation</A> /
+<A HREF="#NewDiagnostics">New Diagnostics and Documentation</A> /
 <A HREF="#NewUtilities">New Utilities</A> /
 <A HREF="#Legalese">Terms of Use</A>
 
@@ -632,30 +632,177 @@ particular model.
 <HR>
 <H2>New Diagnostics and Documentation</H2>
 
+<P>
+<strong>Better Web Pages.</strong>
+We've put a lot of effort into expanding
+our documentation, but there's always room for more. For example, please check out the Matlab 
+diagnostics section: <a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#mat_obs">http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#mat_obs</a> or the pages
+outlining the observation sequence file contents: <a href="http://www.image.ucar.edu/DAReS/DART/DART_Observations.php#obs_seq_overview">http://www.image.ucar.edu/DAReS/DART/DART_Observations.php#obs_seq_overview</a>.
+<br />
+<br />
+<strong>Please let us know where we are lacking.</strong>
+</P>
+
 <UL>
+<LI>There is now a 
+    <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/index.html">DART/index.html</a>
+    in the DART distribution to quickly guide you to any of the documentation for the 
+    routines or modules.
+</LI>
+
 <LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/DART_LAB/DART_LAB.html">DART_LAB</a><br>
 Matlab GUI presentation of fundamental assimilation concepts</LI>
-<LI>linkobs</LI>
-<LI>rank histograms</LI>
-<LI>two (or more) experiment comparisons</LI>
-<LI>native netcdf support in matlab<br>
-Does not depend on CSIRO and netcdf_toolbox; now uses snctools</LI>
-<LI>matlab support for wrf</LI>
+
+<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/link_obs.m">link_obs.m</a><br />
+    allows one to view multiple observation attributes simultaneously and dynamically 
+    select subsets of observations in one view and have those same obs highlighted 
+    in the other views. Commonly called 'data brushing'.</LI>
+
+<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/threed_sphere/obs_diag.html">obs_diag</a>
+    has undergone extensive revision. User-defined levels for all coordinate (height/pressure/etc), arbitrary
+    number of regions, the inclusion of separate copies for all DART QC values, can 
+    creates rank histograms from the <em class=file>obs_seq.final</em> files, if possible, and more.</LI>
+
+<LI>Comparing two (or more) experiments<br />
+    <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/two_experiments_profile.m">two_experiments_profile.m</a> and 
+    <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/two_experiments_evolution.m">two_experiments_evolution.m</a>
+    compare <strong>multiple</strong> (not just two) <em class=file>obs_diag_output.nc</em>
+    files on the same graphic to allow for easy examination of experiment attributes
+    (rmse, biase, etc.). Some new utilities for subsetting observation sequence files in order to 
+    make fair comparisons are described below.</LI>
+
+<LI><a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#configure_matlab">Simpler netCDF support in Matlab.</a><br />
+    The DART Matlab routines no longer depend on 4 third-party toolboxes, we are down to just
+    <a href="http://mexcdf.sourceforge.net/downloads/">mexnc</a> and 
+    <a href="http://mexcdf.sourceforge.net/downloads/">snctools</a>. Soon, we may just use snctools!</LI>
+
+<LI>Matlab support for CAM.<br />
+    CAM is now fully supported for all the Matlab interfaces that are used in the demos -
+    this includes the state-space tools in <em class=file>DART/matlab</em> that allow for 
+    determining correlations among state variables, among other things. 
+    </LI>
+
+<LI>Matlab support for WRF.<br />
+    WRF is now fully supported for all the Matlab interfaces that are used in the demos -
+    this predominanty includes the state-space tools in <em class=file>DART/matlab</em>
+    like <em class=program>plot_total_err</em>.
+    The <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/wrf/matlab/map_wrf.m">map_wrf.m</a> function can finally plot WRF fields now that the required metadata is part of the
+    <em class=file>Posterior_Diag.nc</em>,
+    <em class=file>Prior_Diag.nc</em>, and (not required)
+    <em class=file>True_State.nc</em> files. It's a small step to augment this routine to make
+    publication-quality figures of WRF fields.
+    </LI>
+
 <LI>regression tests for wrf</LI>
-<LI>other new model support</LI>
-<LI>better web pages</LI>
-<LI>plot wind vectors from netcdf obs files</LI>
-<LI>plot correlations</LI>
-<LI>top level index page in distribution</LI>
-<LI>optional detailed execution trace messages from filter</LI>
-<LI>input.nml contents written out to diag netCDF files</LI>
-<LI>better error checking in obs_sequence creation to avoid out-of-time-order
-    observations being inserted by incorrect programs</LI>
-<LI>better error checking in the open_file() routine</LI>
-<LI>individual html pages have links back to the index page, have the
-namelists moved up to be the first thing in the page after the
-Overview, and other minor formatting improvements</LI>
+
+<LI>other new model support<br />
+    The <em class=file>simple_advection</em> and <em class=file>MITgcm_ocean</em> are fully
+    supported in the Matlab diagnostics.
+</LI>
+
+<LI>Optional detailed execution trace messages from
+    <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/filter/filter.html">filter</a> by setting
+    the namelist variable <em class=code>trace_execution</em>.</LI>
+
+<LI><em class=file>input.nml</em> contents preserved in <em class=file>True_State.nc</em>, 
+    <em class=file>Prior_Diag.nc</em>, and <em class=file>Posterior_Diag.nc</em> as 
+    variable <em class=code>inputnml</em>.</LI>
+
+<LI>Better error checking in obs_sequence creation to avoid out-of-time-order
+    observations being inserted by incorrect programs.</LI>
+
+<LI>Better error checking in the <em class=program>utilities_mod</em>
+    <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/utilities/utilities_mod.html#open_file">open_file</a>() routine.</LI>
+
+<LI>In the DART code tree, individual html pages have links back to the index page, 
+    the namelists are moved up to be more prominent, and have other minor 
+    formatting improvements.</LI>
+
+<LI>The following Matlab observation-space diagnostic routines have been <strong>removed</strong>:
+    <table width = 100% cellpadding=2>
+    <tr><td valign=top>fit_ens_mean_time.m    </td>
+        <td>plotted the temporal evolution of the ensemble mean of some quantity.</td></tr>
+    <tr><td valign=top>fit_ens_spread_time.m  </td>
+        <td>plotted the temporal evolution of the ensemble spread of some quantity.</td></tr>
+    <tr><td valign=top>fit_mean_spread_time.m </td>
+        <td>plotted the temporal evolution of the mean and spread of some quantity.</td></tr>
+    <tr><td valign=top>obs_num_time.m         </td>
+        <td>plotted the temporal evolution of the observation density. </td></tr>
+    <tr><td valign=top>fit_ens_mean_vertical.m</td>
+        <td>plotted the vertical profile of the ensemble mean of some quantity.</td></tr>
+    <tr><td valign=top>fit_ens_bias_vertical.m</td>
+        <td>plotted the vertical profile of the bias of the ensemble mean of some quantity.</td></tr>
+    <tr><td valign=top>obs_num_vertical.m     </td>
+        <td>plotted the vertical profile of the observation density.</td></tr>
+    </table>
+</LI>
+
+<LI>The following Matlab observation-space diagnostic routines have been <strong>added</strong>:
+    <table width = 100% cellpadding=2>
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_profile.m">plot_profile.m</a></td>
+        <td>plots the vertical profile of any quantity for any copy with an overlay of 
+            the observation density and number of observations assimilated.</td></tr>
+
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_rmse_xxx_profile.m">plot_rmse_xxx_profile.m</a></td>
+        <td>plots the vertical profile of the rmse and any quantity for any copy with an
+            overlay of the observation density and number of observations assimilated.</td></tr>
+
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_bias_xxx_profile.m">plot_bias_xxx_profile.m</a></td>
+        <td>plots the vertical profile of the bias and any quantity for any copy with an 
+            overlay of the observation density and number of observations assimilated.</td></tr>
+
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/two_experiments_profile.m">two_experiments_profile.m</a></td>
+        <td>plots the vertical profile of any quantity for any copy for multiple experiments 
+            with an overlay of the observation density and number of observations assimilated 
+            in each experiment.</td></tr>
+
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_evolution.m">plot_evolution.m</a></td>
+        <td>plots the temporal evolution of any quantity for any copy with an overlay of 
+            the observation density and number of observations assimilated.</td></tr>
+
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_rmse_xxx_evolution.m">plot_rmse_xxx_evolution.m</a></td>
+        <td>plots the temporal evolution of the rmse and any quantity for any copy with an 
+            overlay of the observation density and number of observations assimilated.</td></tr>
+
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/two_experiments_evolution.m">two_experiments_evolution.m</a></td>
+        <td>plots the temporal evolution for any quantity for any copy for multiple 
+            experiements with an overlay of the observation density and number of 
+            observations assimilated in each experiment.</td></tr>
+
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/read_obs_netcdf.m">read_obs_netcdf.m</a></td>
+        <td>reads a netCDF format observation sequence file. Simply need a single copy 
+            and a single qc - no actual observation required. </td></tr>
+
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_obs_netcdf.m">plot_obs_netcdf.m</a></td>
+        <td>reads and plots the locations and values of any copy of the observations in 
+            a DART netCDF format observation sequence file.</td></tr>
+
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_obs_netcdf_diffs.m">plot_obs_netcdf_diffs.m</a></td>
+        <td>reads and plots the locations and the difference of any two copies of the 
+            observations in a DART netCDF format observation sequence file.</td></tr>
+
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_wind_vectors.m">plot_wind_vectors.m</a></td>
+        <td>reads and plots the wind vectors of the observations in a DART netCDF format 
+            observation sequence file (created by 
+            <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_to_netcdf.html">obs_seq_to_netcdf.f90</a>)</td></tr>
+
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/link_obs.m">link_obs.m</a></td>
+        <td>data brushing tool. Explores many facets of the observations simultaneously. </td></tr>
+
+    <tr><td valign=top><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_rank_histogram.m">plot_rank_histogram.m</a></td>
+        <td>If the ensemble members were preserved in the <em class=file>obs_seq.final</em> 
+            file, <em class=program>obs_diag</em> will create rank histogram information 
+            and store it in the <em class=file>obs_diag_output.nc</em> file. 
+            <em class=program>plot_rank_histogram.m</em> will plot it.
+            There are instructions on how to view the results with <em class=program>ncview</em> 
+            or <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_rank_histogram.m">plot_rank_histogram.m</a> 
+            on the 
+            <a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#obs_diagnostics">DART Observation-space Diagnostics</a> 
+            page.</td></tr>
+    </table>
+</LI>
 </UL>
+
 
 <!--==================================================================-->
 
@@ -664,23 +811,42 @@ Overview, and other minor formatting improvements</LI>
 <H2>New Utilities</H2>
 
 <UL>
-<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_to_netcdf.html">convert obs_seq files to netCDF</a><br>
+<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_to_netcdf.html"
+    >obs_seq_to_netcdf</a><br />
+    Almost any DART observation sequences may be converted to a netCDF format file. I still haven't figured out how to succinctly store
+    some of the radar observation metadata, but the observation values, locations, QC values etc. will be converted. This allows for variety
+    of new diagnostics.  
 </LI>
-<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_coverage.html">observation coverage</a><br>
+
+<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_coverage.html"
+    >obs_seq_coverage</a><br />
+    is a step towards determining what locations and quantities are repeatedly observed during a specific time interval. This
+    may be used to determine a network of observations that will be used to verify forecasts. 
 </LI>
-<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_selection.html">observation selection</a><br>
+
+<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_selection.html"
+    >obs_selection</a><br />
+    is an optional companion routine to <em class=program>obs_seq_coverage</em>. This thins the observation sequence files to contain
+    just the desired set of observations to use in the forecast step. There's no point evaluating all the observations that
+    will not be used in the verification ...
 </LI>
-<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_verify.html">observation verification</a><br>
+
+<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_verify.html"
+    >obs_seq_verify</a><br />
+    is a companion routine to <em class=program>obs_seq_coverage</em>. This creates a netCDF file with variables that should
+    make the calculation of skill scores, etc. <em>easy</em>. Variables like:
+    <tt>METAR_U_10_METER_WIND(analysisT,&nbsp;stations,&nbsp;levels,&nbsp;copy,&nbsp;nmembers,&nbsp;forecast_lead)</tt>
 </LI>
-<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_common_subset.html">
-select common observation subsets</a><br>
+
+<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_common_subset.html"
+    >select common observation subsets</a><br>
 A tool that operates on two (will be extended to more) <em class=file>obs_seq.final</em> 
 files which were output from two different runs of filter.  Assumes the same 
 <em class=file>obs_seq.out</em> input file was used in both cases.  Outputs two new
 <em class=file>obs_seq.final.new</em> files containing only the observations which were
-assimilated in both experiments.  It makes a comparision with the diagnostic tools easier
-to interpret.
+assimilated in both experiments.  It allows for a fair comparision with the diagnostic tools.
 </LI>
+
 <LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/utilities/restart_file_tool.html">restart file tool</a><br>
 Generic tool that works on any DART restart file.  It is compiled with
 the corresponding model_mod which tells it how large the state vector is.
@@ -718,7 +884,8 @@ Running this tool creates the equivalent of an IC file for inflation, so the
 first job step can start from a restart file as all subsequent job steps do and
 allows the use of a single <em class=file>input.nml</em> file.
 </LI>
-<LI>replace WRF fields tool<br>
+<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/wrf/WRF_DART_utilities/replace_wrf_fields.html"
+>replace WRF fields tool</a><br>
 WRF-specific tool that moves netCDF variables from one
 file to another.  Field names to be moved can be specified
 directly in the namelist or can be listed in a separate file.</LI>
