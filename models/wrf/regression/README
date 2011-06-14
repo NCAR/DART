@@ -18,6 +18,7 @@ the location of where to download the data.
 The current contents are:
 
 CONUS-V2: WRF Version 2, continental US.
+CONUS-V3: WRF Version 3, continental US.
 Global-V3: WRF Version 3, Global 
 Radar: WRF Version 2, surface radar obs
 
