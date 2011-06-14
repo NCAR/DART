@@ -331,7 +331,7 @@ call aoutput_diagnostics(ncFileID, model_time, statevector, 1)
 call nc_check( finalize_diag_output(ncFileID), 'model_mod_check:main', 'finalize')
 </pre>
 
-<H3 class=indent1>Check the metadata, and</H3>
+<H3 class=indent1>Check the metadata, and ... </H3>
 <P>It is critical to return the correct metadata for any given index into
 the DART state vector. This code block tests the two most common features of
 the metadata. As a bonus, this routine is also quite useful to determine
@@ -347,7 +347,7 @@ call check_meta_data( x_ind )
 call find_closest_gridpoint( loc_of_interest )
 </pre>
 
-<H3 class=indent1>[optionally] run a test of the model interpolation routine.</H3>
+<H3 class=indent1>... [optionally] run a test of the model interpolation routine.</H3>
 <P>
 If you like, and you have a <em class="program">test_interpolate</em> subroutine,
 this would be the place to run it.
@@ -364,9 +364,9 @@ call test_interpolate(statevector, test_pressure = 500.0_r8, &amp;
 <A NAME="References"></A>
 <HR>
 <H2>REFERENCES</H2>
-<ol>
+<ul>
 <li> none </li>
-</ol>
+</ul>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->

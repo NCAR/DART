@@ -35,6 +35,7 @@ program with no prerequisites or dependencies other than the netCDF libraries.
 If you already have other tools available, they can do the same functions that 
 this program does.
 </P>
+<P>
 This program copies the given data fields from the
 input file to the output file, failing if their sizes, shapes, or data types
 do not match exactly.
@@ -172,12 +173,12 @@ and copy from one to the other.
     list of field names.  You cannot specify both.</TD></TR>
 
 <TR><!-- routine --><TD VALIGN=top>replace_wrf_fields</TD>
-    <!-- message --><TD VALIGN=top><it>field</it> not found in input/output file</TD>
+    <!-- message --><TD VALIGN=top><i>field</i> not found in input/output file</TD>
     <!-- comment --><TD VALIGN=top>If 'fail_on_missing_field' is true in the namelist and
     a field is not found in either the input or output file.</TD></TR>
 
 <TR><!-- routine --><TD VALIGN=top>replace_wrf_fields</TD>
-    <!-- message --><TD VALIGN=top><it>field</it> does not match</TD>
+    <!-- message --><TD VALIGN=top><i>field</i> does not match</TD>
     <!-- comment --><TD VALIGN=top>If the input and output files have different sizes,
     number of dimensions, or data types, the program cannot copy the data.</TD></TR>
 

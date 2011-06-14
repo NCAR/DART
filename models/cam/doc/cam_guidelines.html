@@ -57,11 +57,11 @@
 !!
 -->
 
-<A HREF="#CALLING TREE">CALLING TREE</A> /
-<A HREF="#SET-UP">SET-UP</A> /
-<A HREF="#INITIAL FILES">INITIAL ENSEMBLE</A> /
-<A HREF="#FILE CONTENTS">FILE CONTENTS</A> /
-<A HREF="#OUTPUT DIRECTORY">OUTPUT DIRECTORY</A> /
+<A HREF="#CALLINGTREE">CALLING TREE</A> /
+<A HREF="#SETUP">SET-UP</A> /
+<A HREF="#INITIALFILES">INITIAL ENSEMBLE</A> /
+<A HREF="#FILECONTENTS">FILE CONTENTS</A> /
+<A HREF="#OUTPUTDIRECTORY">OUTPUT DIRECTORY</A> /
 <A HREF="#HINTS">HINTS</A> /
 <A HREF="#SPACE">SPACE</A>
 <!--  <A HREF="#FLOW CHART">FLOW CHART</A> / -->
@@ -130,19 +130,19 @@ before contacting raeder'at'ucar.edu.
 The sequence of operations for assimilating a single obs_seq.out file follows.
 The functionality of each operation has been restricted to one "domain".
 A script/program is specific to:
+</P>
 <UL>
    <LI> a machine where the experiment is run (e.g. NCARS IBM Power6 'bluefire'); </LI>
    <LI> a model version used in the assimilation (e.g. CAM 4.0.1); </LI>
    <LI> the filter version; </LI>
    <LI> or the experiment being conducted using the choices for the previous 3.</LI>
 </UL>
-</P>
 
 <P>
 <A HREF="../model_mod.html">Go to cam/model_mod page</A>  
 </P> 
 
-<A NAME="CALLING TREE"></A>
+<A NAME="CALLINGTREE"></A>
 <HR>
 <H2>CALLING TREE</H2>
 
@@ -190,7 +190,7 @@ async=2, 3, or 4 is:
     <!--location--><TD> Central/Experiment/obs_####. Archives diagnostic output. </TD></TR>
 <TR><!-- script --><TD valign=top><pre>      -> analyses2initial.csh</pre></TD>
     <!-- domain --><TD valign=top> machine </TD>
-    <!--location--><TD> Central/Experiment/obs_####/H##  Generates analyses in CAM,CLM,CICE initial files.  May also save CAM .h0. history files (but <A HREF="#SMALL H0"> make them small </A>!) </TD></TR>
+    <!--location--><TD> Central/Experiment/obs_####/H##  Generates analyses in CAM,CLM,CICE initial files.  May also save CAM .h0. history files (but <A HREF="#SMALLH0"> make them small </A>!) </TD></TR>
 <TR><!-- script --><TD valign=top><pre>         -> NetCDF operators </pre></TD>
     <!-- domain --><TD valign=top> machine </TD>
     <!--location--><TD> Central/Experiment/obs_####/H##  Averaging of CAM,CLM,CICE fields. </TD></TR>
@@ -201,7 +201,7 @@ async=2, 3, or 4 is:
 </TABLE>
 
 
-<!-- <A NAME="FLOW CHART"></A>
+<!-- <A NAME="FLOWCHART"></A>
 <HR>
 <H2>FLOW CHART</H2>
 <P>
@@ -214,7 +214,7 @@ moving files will be found in the scripts.
 
 
 <!--===============================================-->
-<A NAME="SET-UP"></A>
+<A NAME="SETUP"></A>
 <HR>
 <H2>EXPERIMENT SET-UP</H2>
 <P>
@@ -222,25 +222,28 @@ moving files will be found in the scripts.
 Instructions for setting up a DART/CAM in "stand-alone" mode assimilation.
 This section does not describe setting up assimilations within the CESM
 framework (available in late 2011?).
+</P>
 
 <BR>
 
-<OL TYPE="A">   
+<OL TYPE=A>   
    
-   <LI>DART</LI>
-      <OL TYPE="0">
+   <LI>DART
+      <OL TYPE=1>
          <LI>Register and check out DART from the 
-             <A href="http://www2.image.ucar.edu/forms/dart-software-download">download site</A>.  <BR>
+             <A href="http://www2.image.ucar.edu/forms/dart-software-download">download site</A>.  </LI>
          <LI>In .../DART/mkmf link mkmf.template to 
              the mkmf.template.xxxx which is appropriate for your computer 
              (or make one of your own).  </LI>
          <LI> cd to .../DART/models/cam/work and edit input.nml:preprocess_nml:input_files 
              to choose obs_def source code files to load via the preprocessor.  
 <!-- ??? link to obs_def_mod.html? -->
-             The default file (obs_def_reanalysis_bufr_mod.f90) will handle 
-	     observations from NCEP reanalysis BUFR files.  (Warning; assimilating the
+             The default file <em class=file>
+             <a href="../../../../obs_def/obs_def_reanalysis_bufr_mod.f90">
+             obs_def/obs_def_reanalysis_bufr_mod.f90</a></em> will handle 
+	     observations from NCEP reanalysis BUFR files.  (Warning: assimilating the
 	     obs in the example GPS obs_seq.out file available from the 
-             <A HREF="http://www.image.ucar.edu/pub/DART/Obs_sets ">DART Obs_sets site</A>
+             <A HREF="http://www.image.ucar.edu/pub/DART/Obs_sets">DART Obs_sets site</A>
 	     requires loading more than just the obs_def_gps_mod.f90.)</LI>
          <LI>Script DART/models/cam/work/quick_build.csh is recommended for compiling 
              the package.  
@@ -254,9 +257,10 @@ framework (available in late 2011?).
              to fit in the memory of a single processor, so this is only suitable
              for low resolution, small ensemble testing.
      </OL>
+     </LI>
 
-   <LI> CAM </LI>
-      <OL TYPE="1">
+   <LI> CAM 
+      <OL TYPE=1>
    
          <LI> Put the DART modifications 
              (.../DART/models/cam/Cam[version#]_DART_mods.tar),
@@ -282,33 +286,33 @@ framework (available in late 2011?).
 <!-- ??? Links to discussions of these and other possible namelistin entries? -->
              <pre>
              CAM 3.1 - 3.5
-                &camexp
+                &amp;camexp
                  ncdata         = 'caminput.nc'
                  caseid         = 'whatever_you_want'
                  nsrest         = 0
                  calendar       = 'GREGORIAN'
                  inithist       = 'ENDOFRUN'
                 /
-                &clmexp
+                &amp;clmexp
                  finidat        = 'clminput.nc'
                 /
              CAM 3.6 - 4.?
-                &seq_timemgr_inparm
+                &amp;seq_timemgr_inparm
                  calendar       = 'GREGORIAN'
                  restart_n      = 12
                  restart_option = 'nsteps'
                  stop_option    = 'date'
                 /
-                &cam_inparm
+                &amp;cam_inparm
                  ncdata   = 'caminput.nc'
                  inithist = 'ENDOFRUN'
                  div24del2flag = 4,
                  nhtfrq = -6
                 /
-                &clm_inparm
+                &amp;clm_inparm
                  finidat = 'clminput.nc'
                 /
-                &dom_inparm
+                &amp;dom_inparm
                  bndtvs  = '/your/SST/file/here/resolution/cam_version/sst_HadOIBl_bc_1.9x2.5_1949_2007.nc'
                  sstcyc  = .false.
                 /
@@ -320,9 +324,9 @@ framework (available in late 2011?).
                 >  stop_ymd       = 20021201
                 >  stop_tod       = 0
              </PRE>
-             <A NAME="SMALL H0"></A>
+             <A NAME="SMALLH0"></A>
              If you want to make the .h0. history files small and focused, for archiving:
-                add to &cam_inparm
+                add to &amp;cam_inparm
              <PRE>
                    empty_htapes    = .true.,
                    mfilt           =  1
@@ -362,28 +366,28 @@ framework (available in late 2011?).
              (Matching is important; CAM checks that the CLM initial file has the expected
               grid parameters.)
              Only the grid information is used from these files, so their dates don't matter.</LI>
-   
       </OL>
-   <LI> Set up an experiment central directory ("Central" here) where there's 
-   enough <A HREF="#SPACE">space </A> for output.  </LI>
-         <LI>Copy the DART namelist file (DART/models/cam/work/input.nml)
-             into one called "input_1.nml" in Central.</LI>
-   
-         <LI>Copy DART/models/cam/shell_scripts/job_mpi.csh  to Central </UL>
+      </LI>
 
-   <LI>EXPERIMENT</LI>
    
-       <OL TYPE="1">
+       <LI> Set up an experiment central directory ("Central" here) where there's 
+              enough <A HREF="#SPACE">space </A> for output.  </LI>
+       <LI>Copy the DART namelist file (DART/models/cam/work/input.nml)
+             into one called "input_1.nml" in Central.</LI>
+       <LI>Copy DART/models/cam/shell_scripts/job_mpi.csh  to Central </LI>
+
+   <LI>EXPERIMENT
+   
+       <OL TYPE=1>
 
           <LI>If you need to make up synthetic observations get create_obs_sequence, 
              create_fixed_network_seq and perfect_model_obs and learn how to use them.  
-<!-- ??? links? -->
-             Otherwise, use the obs_seq.out files provided 
-             <A href:"http://www.image.ucar.edu/pub/DART/Obs_sets ">here</A>
+             Otherwise, use the obs_seq.out files provided  
+             <A href="http://www.image.ucar.edu/pub/DART/Obs_sets">here</A>
              or similar 'real observations' files.
           </LI>
           <LI>Edit job_mpi.csh.  It has more detailed instructions about how to:
-              <UL TYPE=" ">
+              <UL>
                  <LI>define experiment output directory names</LI>
                  <LI>tell it whether CAM is MPI or OpenMP</LI>
 <!-- ??? OpenMP updates; more here?   and in scripts -->
@@ -394,9 +398,9 @@ framework (available in late 2011?).
                      <A HREF="http://www.image.ucar.edu/pub/DART/Obs_sets"> here.</A></LI>
                  <LI>find and provide the path name of the obs_seq.out files</LI>
 		 <LI>find and provide the path name of the filter_ic[.#] files.
-		     Such an ensemble can be created from <A HREF="#INITIAL FILES">CAM initial files</A>
+		     Such an ensemble can be created from <A HREF="#INITIALFILES">CAM initial files</A>
                      using <A HREF="../cam_to_dart.html">
-		     .../DART/models/cam/cam_to_dart.f90</A>. </LI>
+		     cam_to_dart</A>. </LI>
                  <LI>define which CAM and CLM initial files to use.  
                      Some initial and filter_ic files are available from 
                      the NCAR Mass Store:/RAEDER/DAI/CAM_init/[Resol]_[model_version] and more from
@@ -409,7 +413,7 @@ framework (available in late 2011?).
    
           <LI>Edit input_1.nml to configure the assimilation of the first obs_seq.out.
               Be sure that 
-              <UL TYPE=" ">
+              <UL>
                  <LI>filenames listed in it agree with what's required by job_mpi.csh
                      and what is or will be available in the Central directory. </LI>
                  <LI>start from restart is .true. if you have an initial ensemble,
@@ -423,19 +427,21 @@ framework (available in late 2011?).
               </UL>
           </LI>
           <LI>Copy input_1.nml to input_n.nml and edit input_n.nml. 
-<!-- ??? Nancy has a plan for only needing 1 input.nml.  But will that work if the initial
-         ensemble has the wrong time(s)? -->
+<!-- Using the 'restart_file_tool' you can set the data times on the restart files.
+     Using the 'fill_inflation_restart' tool you can initialize inflation restarts.
+     Then you can have a single 'input.nml' which you use for all job steps.  -->
               Set start_from_restart to .true.  
               Change init_time_days = -1, init_time_seconds = -1.</LI>
 	  <LI> Run the experiment by executing job_mpi.csh, 
 	       either through the batch queue or interactively. </LI>
 <!--          <LI>(MORE?  my conventions to make them work with job.csh?   or a whole new topic; )</LI> -->
        </OL>
+       </LI>
 </OL>
-</P>
+
 
 <!--===============================================-->
-<A NAME="INITIAL FILES"></A>
+<A NAME="INITIALFILES"></A>
 <HR>
 <H2>CAM INITIAL ENSEMBLES</H2>
 <P>
@@ -446,10 +452,10 @@ Strategies for generating an initial ensemble from which DART can start.
 All of these strategies require converting CAM initial file(s) into 
       filter_ic.#### files, which is done by the 
       <A HREF="../cam_to_dart.html"> same method.  </A>
-<OL TYPE="1">
+<OL TYPE=1>
 <LI> MINIMAL WORK; Get an ensemble of filter and CAM/CLM[/CICE] initial files
      from someone else (DART has a few dates for a few model cores and resolutions
-     <A HREF="http://www.image.ucar.edu/pub/DART/Obs_sets ">here</A>.
+     <A HREF="http://www.image.ucar.edu/pub/DART/Obs_sets">here</A>.
      This limits the investigations you can undertake,
      but is the fastest and cheapest way to start assimilating.
 </LI>
@@ -466,13 +472,13 @@ All of these strategies require converting CAM initial file(s) into
      This will make the ensemble advance long enough to balance the fields,
      without being perturbed by the assimilation of any observations.
 <PRE>
-&filter_nml
+&amp;filter_nml
    ...
    start_from_restart       = .false.,
    restart_in_file_name     = "filter_ic",
    ...
 /
-&model_nml
+&amp;model_nml
    ...
    pert_names         = 'T       ','US      ','VS      '
    pert_sd           = 1.0d0,2.0d0,2.0d0
@@ -526,7 +532,7 @@ Convert each of the CAM initial files into a filter_ic.#### file (cam_to_dart.f9
 </OL>
 
 <!--===============================================-->
-<A NAME="FILE CONTENTS"></A>
+<A NAME="FILECONTENTS"></A>
 <HR>
 <H2>FILE CONTENTS</H2>
 <P>
@@ -537,6 +543,7 @@ for diagrams and flowcharts showing DART under the various async options.
 
 The contents of some of the files which appear there are listed here.
 # refers to the list of ensemble members.
+</P>
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>FILE   </TH>
@@ -602,15 +609,14 @@ The contents of some of the files which appear there are listed here.
    are derived.  </TD></TR>
 
 </TABLE>
-</P>
 
 <!--===============================================-->
-<A NAME="OUTPUT DIRECTORY"></A>
+<A NAME="OUTPUTDIRECTORY"></A>
 <HR>
 <H2>OUTPUT DIRECTORY </H2>
 <P>
-
 Organization of output directories: 
+</P>
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>DIRECTORY   </TH>
@@ -662,7 +668,8 @@ Organization of output directories:
      to be averaged for analyses archiving by auto_diag2hpss_LSF.csh.</TD></TR>
 </TABLE>
 
-<BR><pre>
+<BR>
+<pre>
 A typical pathname for a restart file in my case would be:
 /scratch/raeder/T21x80/Taper1/obs_0003/DART/filter_ic#
                 |      |      |        |    restart file(s)
@@ -672,26 +679,26 @@ A typical pathname for a restart file in my case would be:
                 Central directory (resolution x num_ens_members)
 </pre>
 
-<BR><BR>
+<P>
 You may also want to make a subdirectory within Experiment 
 for each set of obs_space postscript and .dat files created by obs_diag and matlab.
-
 </P>
 
 <!--===============================================-->
 <A NAME="HINTS"></A>
 <HR>
 <H2>HELPFUL HINTS</H2>
-<P>
 
+<P>
 In the following, MPI filter uses all of the requested processors.
 There is flexibility in how the ensemble of CAMs uses them.
 The choice of async and number of processors to use 
 will depend on the memory available on each node, 
 as well as the number of processors available.
 See also models/cam/doc/html/filter_async_modes.html in the DART code tree, after registering.
+</P>
 
-<BR><BR>
+<P>
 For async = 2 use the ensemble size, available compute nodes, processors/node  ,
 and memory/node to figure how many nodes to request.  
 Make this request in job_mpi.csh.  
@@ -699,51 +706,51 @@ For example, on a machine with 8 processors/node, and running an assimilation
 with an ensemble of 80 members (recommended), it's efficient to request 5 (or 10) nodes.
 This will advance the single-process CAMs in 2 (or 1) batches of 40 (80).  
 That's assuming that each node has the memory to accomodate 8 CAMs.
+</P>
 
-<BR><BR>
+<P>
 async = 4 runs an ensemble of pure-MPI CAMs 1 at a time and is usually a poor choice for CAM 
 assimilations because the start-up process for CAM is single process
 and takes significant time.  
 So all but one of the processors wait a long time while CAM is setting itself up,
 then they all work for a short time to make the short forecast, 
 and then repeat for the next ensemble member.
+</P>
 
-<BR><BR>
+<P>
 async = 3 is part way between async = 2 and 4.  
 CAM must be compiled with pure OpenMP parallelism.
 Then the MPI filter can execute multiple CAMs simultaneously on several processors each.
 The start-up for each is still a single process, 
 but a smaller fraction of the processors wait.  
 This mode will make reasonably efficient use of hundreds of processors.
+</P>
 
-<BR><BR>
-
+<P>
 Each batch of restart data can be saved to a mass store using (a modified) 
 auto_re2hpss and retrieved using models/cam/full_experiment/hpss2restart.  
 Execute the commands with no arguments to see instructions.  
 Then package files of each ensemble member together, and then bundle batches 
 of ensemble members together for efficient storage in a directory named 
 similarly to the one where they exist on the main computer.
-
-
-<BR><BR>
+</P>
 
 <!-- If you're not running job_mpi.csh as a batch job,
      run it as 'nohup ./job_mpi.csh >& /dev/null &', to protect the job from being cutoff
      by the closure of the window in which it was executed. -->
 
-<BR><BR>
-
+<P>
 Modify and use alias 'rmtemp' to remove the temporary files from
 the central directory where the experiment is run, after a run bombs and
 before running another experiment.
+</P>
 <pre>
 alias rmtemp 'rm *_ud* *_ic[0-9]* cam_*_temp* c[al]minput_[1-9]*.nc  \
               *control filter_ic_old* obs_seq.out times'
 </pre>
+<P>
 Needless to say, be careful that you don't name files you want to keep in such a way that
 they'll be deleted by this.
-
 </P>
 
 
@@ -751,9 +758,10 @@ they'll be deleted by this.
 <A NAME="SPACE"></A>
 <HR>
 <H2>SPACE REQUIREMENTS</H2>
-<P>
 
+<P>
 Space requirements (Mb per ensemble member) for several CAM resolutions.
+</P>
 
 <BR><BR>
 
@@ -772,9 +780,10 @@ Space requirements (Mb per ensemble member) for several CAM resolutions.
 <TR><TD>FV0.9x1.25 CAM5 trop_mam3</TD><TD> 80. </TD><TD>500. </TD><TD> 205. </TD><TD> ???  + " </TD></TR>
 </TABLE>
 
-obs_seq.final typically ranges from 50-150 Mb, independent of model resolution.
-Compression can meaningfully reduce the size of the NetCDF and obs_seq.final files for archiving.
-
+<P>
+obs_seq.final typically ranges from 50-150 Mb, independent of model
+resolution.  Compression can meaningfully reduce the size of the NetCDF and
+obs_seq.final files for archiving.  
 </P>
 
 <P>

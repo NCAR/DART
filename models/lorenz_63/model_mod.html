@@ -45,18 +45,21 @@ part of the model interfaces is the namelist.
 </P>
 <P>
 This is the  3-variable model as described in:
+</P>
 <blockquote>Lorenz, E. N. 1963. Deterministic nonperiodic flow. 
 <i>J. Atmos. Sci.</i> <b>20</b>, 130-141. </blockquote>
+<P>
 It was developed as a simplified model to study
 convection rolls in the atmosphere.
 Plotting the location of the X, Y, Z values as they progress
 through time traces out the classic 'butterfly' attractor plot 
 which has become an iconic image of chaotic systems:<br /><br />
+</P>
 <!-- public domain image obtained from wikipedia -->
 <img src="./lorenz_63_thumb.png" alt="plot of Lorenz 63 attractor">
-</P>
 <P>
 The system of equations is:
+</P>
 <pre>
 X' = -sigma*X + sigma*Y
 Y' = -XZ + rX - Y
@@ -73,7 +76,6 @@ The default values are:
  runga-kutta delta t:    0.01 seconds
  assimilation time step: 60 minutes
 </pre>
-</P>
 <P>
 This model is an interesting data assimilation test in that 
 different ensemble members may bifurcate over to the

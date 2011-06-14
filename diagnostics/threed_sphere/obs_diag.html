@@ -42,8 +42,8 @@
    to the observation and several quantities are calculated. These quantities
    are then saved in a netCDF file that has all the metadata to create
    meaningful figures.
-   <br />
-   <br />
+</P>
+<P>
    Each <em class="file">obs_seq.final</em> file contains an observation 
    sequence that has multiple 'copies' of the observation. One copy is
    the actual observation, another copy is the prior ensemble mean estimate 
@@ -57,16 +57,16 @@
    'observation'. It may, in some instances be useful to compare against
    the 'truth', in which case you will have to hand-edit the code and 
    recompile. Caveat emptor.
-   <br />
-   <br />
+</P>
+<P>
    Each ensemble member applies a forward operator to the state to compute
    the "expected" value of an observation. Given multiple estimates of 
    the observation, several quantities can be calculated. It is possible to
    compute the expected observations from the state vector before 
    assimilating (the "guess", "forecast", or "prior") or after the
    assimilation (the "analysis", or "posterior"). 
-   <br />
-   <br />
+</P>
+<P>
    Even with <em class="file">input.nml</em>:<em class="code">filter_nml:num_output_obs_members</em> 
    set to <em class="code">0</em>; the full [prior,posterior] ensemble mean and
    [prior,posterior] ensemble spread are preserved in the 
@@ -80,6 +80,7 @@
    In this case, the <em class="file">obs_seq.final</em> file contains enough 
    information to calculate a rank histograms, verify forecasts, etc. 
    The ensemble means are still used for many other calculations.
+</P>
    <table width="100%"><tr>
    <td rowspan=2><a href="../../doc/html/obs_diag_evolution_example.png"><img src="../../doc/html/obs_diag_evolution_example.png" width="300"></a>
    <td rowspan=2><a href="../../doc/html/obs_diag_profile_example.png"><img src="../../doc/html/obs_diag_profile_example.png" width="300"></a>
@@ -88,7 +89,8 @@
    <tr><td><a href="../../doc/html/RankHistogram_matlab.png"><img src="../../doc/html/RankHistogram_matlab.png" width="200"></a></td>
    </tr>
    </table>
-   <br />
+
+<P>
    There are two versions of this program, one for high-order models that have
    real observations and another for low-order models. Since this program
    is fundamentally interested in the response as a function of region, the 
@@ -98,13 +100,13 @@
    to investigate. The low-order models output simple text files instead of
    netCDF files - the intent is to move these toward netCDF files in the near
    future.
-   <br />
-   <br />
+</P>
+<P>
    Identity observations (only possible from "perfect model experiments") 
    are already explored with state-space diagnostics,
    so <em class=program>obs_diag</em> simply skips them.
-   <br />
-   <br />
+</P>
+<P>
    <em class="program">obs_diag</em> is designed to explore the effect of 
    the assimilation in three ways; 1) as a function of time for a particular 
    variable and level (this is the figure on the left), 2) as a 
@@ -124,15 +126,15 @@
    The rank histogram information can easily be plotted with <a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</a>,
    a free third-party piece of software or with 
    <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_rank_histogram.m">plot_rank_histogram.m</a>.
-   <br />
-   <br />
+</P>
+<P>
    <em class="program">obs_diag</em>
    is not explicitly designed to explore OSSE's.  In general, it is 
    used for 'real' observations and looks through the metadata for
    the observation sequence to identify which 'copy' is labeled 'observation'.
    It is THAT copy that is used as the noisy estimate of the truth.
-   <br />
-   <br />
+</P>
+<P>
    The observation sequence files contain only the time of the observation, 
    nothing of the assimilation interval, etc. - so it requires user guidance 
    to declare what sort of temporal binning for the temporal evolution 
@@ -141,8 +143,8 @@
    the observation sequence. The actual algorithm is that the user input for
    the start date and bin width set up a sequence that ends in one of two ways ...
    the last time is reached or the number of bins has been reached. 
-   <br />
-   <br />
+</P>
+<P>
    <em class=program>obs_diag</em> reads <em class=file>obs_seq.final</em>
    files and calculates the following quantities (in no particular order) 
    for an arbitrary number of regions and levels. It is necessary to query
@@ -808,7 +810,7 @@ You can either specify the name of a file containing a list of files (in
    explore the assimilation. By way of an example, we will NOT be using 
    outlier observations in the rank histogram. Lets presume that all your 
    <em class=file>obs_seq.final</em> files are in alphabetically-nice directories:</td>
-   <td>&nbsp;&nbsp;<img src="../../doc/html/RankHistogram_matlab.png" width="200"></a></td>
+   <td>&nbsp;&nbsp;<img src="../../doc/html/RankHistogram_matlab.png" width="200"></td>
 </tr>
 </table>
 <pre>
@@ -901,7 +903,8 @@ and look at the rank histograms with
   
 <H3 class=indent1><em class=removed>Example: plotting locations</em> deprecated</H3>
 <P>
-<strong>please convert your observation sequence file to netCDF format with <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a></strong> and use 
+<strong>please convert your observation sequence file to netCDF format with <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
+and use 
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_obs_netcdf.m">plot_obs_netcdf.m</a></strong>.
 </P>
 

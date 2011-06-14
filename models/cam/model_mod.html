@@ -110,16 +110,16 @@ observational operators.
 Help with several aspects of
 <A HREF="doc/cam_guidelines.html" > setting up assimilation experiments </A> 
 using CAM and parallel architecture computers is available:
+</P>
 <UL>
-    <LI> <A HREF="doc/cam_guidelines.html#SET-UP"> experiment set-up </A> </LI>
-    <LI> <A HREF="doc/cam_guidelines.html#INITIAL FILES">creating initial ensembles </A> </LI>
-    <LI> <A HREF="doc/cam_guidelines.html#CALLING TREE"> script and executable calling tree </A> </LI>
-    <LI> <A HREF="doc/cam_guidelines.html#OUTPUT DIRECTORY"> output directory structure for use by obs_diag </A> </LI>
-    <LI> <A HREF="doc/cam_guidelines.html#FILE CONTENTS"> file contents and purposes </A> </LI>
+    <LI> <A HREF="doc/cam_guidelines.html#SETUP"> experiment set-up </A> </LI>
+    <LI> <A HREF="doc/cam_guidelines.html#INITIALFILES">creating initial ensembles </A> </LI>
+    <LI> <A HREF="doc/cam_guidelines.html#CALLINGTREE"> script and executable calling tree </A> </LI>
+    <LI> <A HREF="doc/cam_guidelines.html#OUTPUTDIRECTORY"> output directory structure for use by obs_diag </A> </LI>
+    <LI> <A HREF="doc/cam_guidelines.html#FILECONTENTS"> file contents and purposes </A> </LI>
     <LI> <A HREF="doc/cam_guidelines.html#HINTS"> helpful hints </A> </LI>
     <LI> <A HREF="doc/cam_guidelines.html#SPACE"> space requirements of various CAM resolutions </A> </LI>
 </UL> 
-</P>
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
@@ -128,21 +128,21 @@ using CAM and parallel architecture computers is available:
 <HR>
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&' and terminating with a slash '/'.
+'&amp;' and terminating with a slash '/'.
+</P>
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml / </em> &
-     output_state_vector,  model_version,  model_config_file,                &  
-       state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d,         &  
-     state_names_0d, state_names_1d, state_names_2d, state_names_3d,         &
-                      which_vert_1d,  which_vert_2d,  which_vert_3d,         &
-     pert_names, pert_sd, pert_base_vals,                                    &
-     highest_obs_pressure_mb, highest_state_pressure_mb ,max_obs_lat_degree, &
+<em class=call>namelist / model_nml / </em> &amp;
+     output_state_vector,  model_version,  model_config_file,                &amp;  
+       state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d,         &amp;  
+     state_names_0d, state_names_1d, state_names_2d, state_names_3d,         &amp;
+                      which_vert_1d,  which_vert_2d,  which_vert_3d,         &amp;
+     pert_names, pert_sd, pert_base_vals,                                    &amp;
+     highest_obs_pressure_mb, highest_state_pressure_mb ,max_obs_lat_degree, &amp;
      Time_step_seconds, Time_step_days, impact_only_same_kind, print_details
     
 </pre>
 </div>
-</P>
 
 <P>
 This namelist is read from a file called <em class=file>input.nml</em>
@@ -259,11 +259,11 @@ state_names_3d='T       ','U       ','V       ','Q       '</PRE>
                        Default  150.0 hPa </TD></TR>
 <TR><!--contents--><TD valign=top>Time_step_seconds          </TD>
     <!--  type  --><TD valign=top>real(r8)                   </TD>
-    <!--descript--><TD>Minimum forecast duration (the part &#60; 1 day)
+    <!--descript--><TD>Minimum forecast duration (the part &lt; 1 day)
                        Default  21600 sec </TD></TR>
 <TR><!--contents--><TD valign=top>Time_step_days             </TD>
     <!--  type  --><TD valign=top>real(r8)                   </TD>
-    <!--descript--><TD>Minimum forecast duration (the part &#62; 24*3600 sec)
+    <!--descript--><TD>Minimum forecast duration (the part &gt; 24*3600 sec)
                        Default  0 days </TD></TR>
 <TR><!--contents--><TD valign=top>impact_only_same_kind             </TD>
     <!--  type  --><TD valign=top>character(len=32)                 </TD>
@@ -283,7 +283,7 @@ state_names_3d='T       ','U       ','V       ','Q       '</PRE>
 
 <!--==================================================================-->
 
-<A NAME="OTHER MODULES USED"></A>
+<A NAME="OTHERMODULESUSED"></A>
 <HR>
 <H2>OTHER MODULES USED</H2>
 <PRE>
@@ -382,8 +382,7 @@ is read from file <em class=file>input.nml</em>.
 <A NAME="static_init_model"></A>
 <div class=routine>
 <em class=call>call static_init_model( )</em>
-<pre>
-</pre></div>
+</div>
 
 <div class=indent1>
 <P>
@@ -454,7 +453,7 @@ of ways is provided. </TD></TR>
 saves a local copy of the ensemble means which can be used for 
 computing vertical heights, for example.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>ens_mean&nbsp; &nbsp; </em></TD>
      <TD>Ensemble mean state vector</TD></TR>
  </TABLE>
@@ -495,7 +494,7 @@ The choice of initial files instead of restart files restricts the
 assimilation from using "time steps" which are too small.  This is because
 CAM uses a leapfrog time scheme, but the initial files store only a 
 single timestep.  The initial forecast step is a simple forward step, so if 
-repeated short forecasts (&#60; ~9 model time steps) are made, the model 
+repeated short forecasts (&lt; ~9 model time steps) are made, the model 
 becomes unstable.
 In the long run, a more general extended interface may be required that specifies 
 the models range of time stepping possibilities.
@@ -590,7 +589,7 @@ type(model_type), intent(out) :: <em class=code>var</em>
 <P>
 Reads state vector fields from a CAM initial file.  Fields are specified in model_mod.nml.
 </P>
-<TABLE width=100% border=0 summary="" celpadding=3>
+<TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
     <TD>CAM initial file name.</TD></TR>
 <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
@@ -613,7 +612,7 @@ Reads state vector fields from a CAM initial file.  Fields are specified in mode
  <P>
  Write fields that have been updated by assimilation to the CAM 'initial' file.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
      <TD>Name of CAM initial file to which var will be written.</TD></TR>
  <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
@@ -694,7 +693,7 @@ get_val_pressure.
  <P>
  Insert CAM fields (N-D) into DART state vector array (1-D)
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Structure containing all the fields of the state vector.</TD></TR>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
@@ -717,7 +716,7 @@ get_val_pressure.
  <P>
  Extract CAM fields (N-D) from state vector (1-D).
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
      <TD>DART state vector.</TD></TR>
  <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
@@ -766,9 +765,9 @@ which reduces the influence of observations on model points above some altitude.
 Currently namelist variables <em class="code">highest_obs_pressure_mb</em> and
 <em class="code">highest_state_pressure_mb</em> control this.
 All observations on height and level are handled automatically, using the 
-ensemble mean for calculations. The influence declines 
+ensemble mean for calculations. For CAM with 26 vertical levels, the influence declines 
 to 0 above model level 6 for <em class="code">highest_obs_pressure_mb = 150</em>
-( &#126; model level 12).
+( ~&nbsp;model level 12).
 </P>
 </div>
 
@@ -912,8 +911,7 @@ module that is used to support time computations throughout the facility. </TD><
 <A NAME="end_model"></A>
 <div class=routine>
 <em class=call>call end_model( )</em>
-<pre>
-</pre></div>
+</div>
 
 <div class=indent1>
 <P>
@@ -1040,7 +1038,7 @@ utility routines.
  <P>
  Gets the number of lons, lats and levels from a netcdf CAM initial file
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
      <TD>CAM initial file.</TD></TR>
  <TR><TD valign=top><em class=code>num_lons&nbsp; &nbsp; </em></TD>
@@ -1070,7 +1068,7 @@ utility routines.
  # = 1,2,3 for the numbers of dimensions of the variables.
  </P>
 
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>ncfileid&nbsp; &nbsp; </em></TD>
      <TD>The file ID number of the caminput.nc file.</TD></TR>
  </TABLE>
@@ -1100,7 +1098,7 @@ utility routines.
  Reads the grid size from the cam_phis.nc file, which contains the surface
  elevation data.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>ncfileid&nbsp; &nbsp; </em></TD>
      <TD>The file ID number of the cam_phis.nc file.</TD></TR>
  <TR><TD valign=top><em class=code>num_nlons&nbsp; &nbsp; </em></TD>
@@ -1129,7 +1127,7 @@ utility routines.
  Read a 2-D field from a NetCDF file, so far just surface height (phis)
  from cam_phis.nc.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>ncfileid&nbsp; &nbsp; </em></TD>
      <TD>The file ID number of the caminput.nc file.</TD></TR>
  <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
@@ -1159,7 +1157,7 @@ utility routines.
  <P>
  Reads the value of an attribute for each of the fields in cflds.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>att&nbsp; &nbsp; </em></TD>
      <TD>The name of an attribute of the fields on a CAM initial file.</TD></TR>
  <TR><TD valign=top><em class=code>att_vals&nbsp; &nbsp; </em></TD>
@@ -1186,7 +1184,7 @@ utility routines.
  <P>
  Reads a coordinate array and metadata from a CAM initial file.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>A coordinate array from a CAM initial file.</TD></TR>
  <TR><TD valign=top><em class=code>idim&nbsp; &nbsp; </em></TD>
@@ -1217,7 +1215,7 @@ utility routines.
  one structure.  The rest of <em class=code>var</em> is filled 
  in read_cam_coord.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>The coordinate variable to read from caminput.nc.</TD></TR>
  <TR><TD valign=top><em class=code>length&nbsp; &nbsp; </em></TD>
@@ -1254,7 +1252,7 @@ utility routines.
  <P>
  Deallocate the array components of the variable of defined type grid_1d_type.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Coordinate variable and metadata.</TD></TR>
  </TABLE>
@@ -1277,7 +1275,7 @@ utility routines.
  Also assigns field TYPE_ variables for use by get_state_meta_data,
  and other routines.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>cflds&nbsp; &nbsp; </em></TD>
      <TD>Master list of CAM fields to be incorporated in the DART state vector.</TD></TR>
  <TR><TD valign=top><em class=code>nflds&nbsp; &nbsp; </em></TD>
@@ -1329,7 +1327,7 @@ utility routines.
   Define a coordinate variable on the P[oste]rior_Diag.nc file
   and write some of it's attributes there.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>c_name&nbsp; &nbsp; </em></TD>
      <TD> Coordinate name.</TD></TR>
  <TR><TD valign=top><em class=code>ncFileID&nbsp; &nbsp; </em></TD>
@@ -1368,7 +1366,7 @@ utility routines.
  above the lower of highest_obs_level and the models highest level,
  and below the lowest model level are excluded.  So are PS and Q observations.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
      <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
@@ -1412,7 +1410,7 @@ utility routines.
  above the lower of highest_obs_pressure_mb and the model's highest level,
  and below the lowest model level are excluded.  
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
      <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
@@ -1456,7 +1454,7 @@ utility routines.
  above the lower of highest_obs_height_m and the model's highest level,
  and below the lowest model level are excluded.  So are PS and Q observations.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
      <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
@@ -1495,7 +1493,7 @@ utility routines.
  <P>
  Extracts the value of a field at a specified location from the DART state vector.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
      <TD>The value of the obs_kind variable at a grid point, from state vector x.</TD></TR>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
@@ -1533,7 +1531,7 @@ utility routines.
   Uses model information and subroutines to convert the vertical location of an ob
   (prior, model state variable, or actual ob) into the standard vertical coordinate (pressure).
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>old_array&nbsp; &nbsp; </em></TD>
      <TD>The location array of the incoming ob.</TD></TR>
  <TR><TD valign=top><em class=code>old_which&nbsp; &nbsp; </em></TD>
@@ -1569,7 +1567,7 @@ utility routines.
   Function to generate the state vector index corresponding to the grid location
   and variable given.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>lev_ind&nbsp; &nbsp; </em></TD>
      <TD>Level of the desired variable.</TD></TR>
  <TR><TD valign=top><em class=code>lon_ind&nbsp; &nbsp; </em></TD>
@@ -1600,7 +1598,7 @@ utility routines.
   Function to return the index of a character string as found within a list
   of character strings, typically variable or dimension names.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>nam&nbsp; &nbsp; </em></TD>
      <TD>The string to be found within <em class=code>list</em>.</TD></TR>
  <TR><TD valign=top><em class=code>list&nbsp; &nbsp; </em></TD>
@@ -1627,7 +1625,7 @@ utility routines.
   Given the name of the coordinate to be searched and the index into that array,
   returns the coordinate value  in either lon_val, lat_val, or lev_val.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>dim_name&nbsp; &nbsp; </em></TD>
      <TD>The name of the dimension being searched for the value at an index.</TD></TR>
  <TR><TD valign=top><em class=code>indx&nbsp; &nbsp; </em></TD>
@@ -1667,7 +1665,7 @@ utility routines.
   Returns the index of the closest coordinate value.
   Optionally returns the next closest index too, which may be < or > the closest.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>dim_name&nbsp; &nbsp; </em></TD>
      <TD>The name of the dimension being searched for the value at an index.</TD></TR>
  <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
@@ -1699,7 +1697,7 @@ utility routines.
   Subroutine to put the ensemble average PS into a globally defined array.
   Also provides PS on the FV staggered grids, if needed.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>vec&nbsp; &nbsp; </em></TD>
      <TD>The ensemble average state vector.</TD></TR>
  </TABLE>
@@ -1723,7 +1721,7 @@ utility routines.
  Define the pressures of the CAM data levels (layer midpoints) from the
  coordinate definitions and the surface pressure.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>ncol&nbsp; &nbsp; </em></TD>
      <TD>Number of columns of pressures to calculate (DART-CAM uses 1)</TD></TR>
  <TR><TD valign=top><em class=code>ncold&nbsp; &nbsp; </em></TD>
@@ -1753,7 +1751,7 @@ utility routines.
  <P>
  This routine calculates geometrical height (m) at mid-layers of the CAM model
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
      <TD>DART state vector.</TD></TR>
  <TR><TD valign=top><em class=code>lon_index&nbsp; &nbsp; </em></TD>
@@ -1790,7 +1788,7 @@ utility routines.
  <P>
   Interpolate the (4) nearest profiles to the needed location for the desired variable.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>prof&nbsp; &nbsp; </em></TD>
      <TD>The profile which results from the interpolation.</TD></TR>
  <TR><TD valign=top><em class=code>vec&nbsp; &nbsp; </em></TD>
@@ -1823,7 +1821,7 @@ utility routines.
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="dcz2"></A>
  <div class=routine>
-    <em class=call> call dcz2(ps,phis0,tv,hprb,hyba,hybb,kmax,idim,imax,pmln, &
+    <em class=call> call dcz2(ps,phis0,tv,hprb,hyba,hybb,kmax,idim,imax,pmln, &amp;
                             hypdln,hyalph,pterm,z2) </em>
  <pre>
  real(r8), dimension(idim), intent(in)           :: <em class=code>ps</em>
@@ -1853,7 +1851,7 @@ utility routines.
  bottom as in CCM2.  This field is on full model levels (aka
  "midpoints") not half levels.  See code for more history.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>ps&nbsp; &nbsp; </em></TD>
      <TD>Surface pressure (pascals).</TD></TR>
  <TR><TD valign=top><em class=code>phis0&nbsp; &nbsp; </em></TD>
@@ -1902,7 +1900,7 @@ utility routines.
  <P>
  Convert a geopotential altitude to mean sea level altitude.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>gph2gmh&nbsp; &nbsp; </em></TD>
      <TD>MSL altitude, in km.</TD></TR>
  <TR><TD valign=top><em class=code>h&nbsp; &nbsp; </em></TD>
@@ -1934,7 +1932,7 @@ utility routines.
  author     Bill Schreiner   5/95
 
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>xlat&nbsp; &nbsp; </em></TD>
      <TD>latitude in radians.</TD></TR>
  <TR><TD valign=top><em class=code>alt&nbsp; &nbsp; </em></TD>
@@ -1959,7 +1957,7 @@ utility routines.
  Initializes an instance of a cam model state variable; all the fields
  specified for the state vector.
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Structure which contains all the fields of various dimensions which are
   in the DART state vector.</TD></TR>
@@ -1989,7 +1987,7 @@ utility routines.
  <P>
  Ends an instance of a cam model_type state variable
  </P>
- <TABLE width=100% border=0 summary="" celpadding=3>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>Structure which contains all the fields included in the state vector.</TD></TR>
  </TABLE>
@@ -2101,7 +2099,6 @@ GPS observations require that highest_obs_pressure_mb be <= 100 mb (hPa).
 <A NAME="FuturePlans"></A>
 <HR>
 <H2>FUTURE PLANS</H2>
-<P>
 <UL>
 <LI> Implement a strategy for assimilating surface observations. </LI>
 <LI> Accomodate future CAMs which may have non-rectangular grids, e.g. HOMME. </LI>
@@ -2111,7 +2108,6 @@ GPS observations require that highest_obs_pressure_mb be <= 100 mb (hPa).
      on NCEP BUFR values. </LI> ?? -->
 <LI> Incorporate CLM variables into state vector. </LI>
 </UL>
-</P>
 
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->

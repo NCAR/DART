@@ -103,6 +103,7 @@ for locations that are within a specified distance.
 </P> <P>
 The expected calling sequence of the <em class=code>get_close</em> routines 
 is as follows:
+</P>
 <pre>
 <em class=code>
 call get_close_maxdist_init()  ! is called before get_close_obs_init()
@@ -113,6 +114,7 @@ call get_close_obs()           ! called many, many times
 call get_close_obs_destroy()
 </em>
 </pre>
+<P>
 In the <em class=file>threed_sphere</em> implementation the
 first routine initializes some data structures, the second one
 bins up the list of locations, and then the third one is called
@@ -154,13 +156,15 @@ a module routine to be renamed in the use statement.  For example,
 a common case is for the model_mod to want to supply additions to
 the get_close_obs() routine only.  At the top of the model_mod code
 it would declare:
+</P>
 <pre>
 <em class=code>
-use location_mod, only :: location_get_close_obs => get_close_obs,    &
-                          get_close_maxdist_init, get_close_obs_init, &
+use location_mod, only :: location_get_close_obs => get_close_obs,    &amp;
+                          get_close_maxdist_init, get_close_obs_init, &amp;
                           get_close_obs_destroy
 </em>
 </pre>
+<P>
 That makes calls to the maxdist_init, init, and destroy routines simply pass
 through to the code in the location_mod, but the model_mod must supply
 a get_close_obs() subroutine.  When it wants to call the code in the 
