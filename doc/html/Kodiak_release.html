@@ -289,9 +289,11 @@ the repository have had this added if they have the GPS module in their
 </LI>
 <LI>Scale height vertical localization option in 3d models
     <UL><LI>See <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/location/threed_sphere/location_mod.html#Namelist">here</a>
-         for a discussion of specifying vertical localization in term of
+         for a discussion of specifying vertical localization in terms of
          scale height, and <a href="http://en.wikipedia.org/wiki/Scale_height">here</a>
-         for a Wikipedia discussion of how Scale Height is defined.</LI></UL>
+         for a Wikipedia discussion of how scale height is defined.  Note that 
+         there is no support in the diagnostic Matlab routines for observations
+         using scale height as the vertical coordinate.</LI></UL>
 </LI>
 <LI>CAM supports FV code, PBS scripting
     <UL><LI>See <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/cam/model_mod.html">here</a> for details
@@ -693,7 +695,13 @@ Matlab GUI presentation of fundamental assimilation concepts</LI>
     publication-quality figures of WRF fields.
     </LI>
 
-<LI>regression tests for wrf</LI>
+<LI><a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/wrf/regression">Regression tests</a> for WRF<br />
+   WRF test cases for WRF V2 and V3 for CONUS (Continental or Contiguous
+   United States), a Global WRF case, and a Radar test case.  The data files
+   are on a web server because they are too large to add to the repository.
+   The README files in each directory gives instructions on how to download them.
+</LI>
+
 
 <LI>other new model support<br />
     The <em class=file>simple_advection</em> and <em class=file>MITgcm_ocean</em> are fully
