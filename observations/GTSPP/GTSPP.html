@@ -3,24 +3,37 @@
 <HTML>
 <HEAD>
 <TITLE>GTSPP Observations</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Overview">OVERVIEW</A> /
+<H1>GTSPP Observations</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#DataSources">DATA SOURCES</A> /
-<A HREF="#Programs">PROGRAMS</A> /
-<A HREF="#Modules">MODULES USED</A> /
+<A HREF="#Programs">PROGRAMS</A> / 
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#KnownBugs">KNOWN BUGS</A> /
+<A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">FUTURE PLANS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>GTSPP Observations</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
+
 
 <P>
 GTSPP (Global Temperature-Salinity Profile Program) data measures
@@ -35,7 +48,7 @@ DART observation sequence (obs_seq) file format.
 <!--==================================================================-->
 
 <A NAME="DataSources"></A>
-<HR>
+<HR />
 <H2>DATA SOURCES</H2>
 
 <P>
@@ -67,7 +80,7 @@ and only those with a QC of 1 are retained.
 <!--==================================================================-->
 
 <A NAME="Programs"></A>
-<HR>
+<HR />
 <H2>PROGRAMS</H2>
 
 <P>
@@ -78,8 +91,8 @@ format often called DART "obs_seq" format.
 The files in this directory, a combination
 of C shell scripts and a Fortran source executable,
 do this data conversion.
-<br>
-<br>
+<br />
+<br />
 Optional namelist interface
 <A HREF="#Namelist"> <em class=code>&amp;gtspp_to_obs_nml</em></A>
 may be read from file <em class=file>input.nml</em>.
@@ -88,7 +101,7 @@ may be read from file <em class=file>input.nml</em>.
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<HR />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -108,7 +121,7 @@ netcdf
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<HR />
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
 '&amp;' and terminating with a slash '/' for all our namelist input.
@@ -176,12 +189,12 @@ This namelist is read in a file called <em class=file>input.nml</em>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<HR>
+<HR />
 <H2>KNOWN BUGS</H2>
 <P>
 Does not have correct code for setting observation error variance yet.
@@ -193,7 +206,7 @@ Also, not sure if the incoming data qc is strict enough.
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<HR />
 <H2>FUTURE PLANS</H2>
 <P>
 none
@@ -204,13 +217,13 @@ none
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<HR />
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright 2004 - 2011 UCAR.<br>
-This open source software is provided by UCAR, "as is",<br>
-without charge, subject to all terms of use at<br>
+DART software - Copyright 2004 - 2011 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>

@@ -3,37 +3,37 @@
 <HTML>
 <HEAD>
 <TITLE>GPS Observations</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<div>
-<center>
-<strong><big><big><big>DART Project Documentation</big></big></big></strong> <br />
-<table width=80% border=0 summary="" cellpadding=0>
+<H1>GPS Observations</H1>
+
+<table border=0 summary="" cellpadding=5>
 <tr>
-<td align=center valign=middle>
-<a href="../../index.html">DART Documentation Main Index</a> </td>
-<td align=center valign=middle>
-<img src="../../doc/html/Dartboard9.png" alt="DART project logo" height=50 width=100> </td>
-<td align=center valign=middle>
-<small><small>Subversion info for this html file: <br />
-<!-- version tag follows, do not edit -->$Id$ </small></small> </td>
+    <td valign=middle>
+    <img src="../../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
 </tr>
-</table> <br />
-<A HREF="#Overview">OVERVIEW</A> /
+</table>
+
 <A HREF="#DataSources">DATA SOURCES</A> /
-<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#Programs">PROGRAMS</A> / 
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#Modules">MODULES USES</A> /
-<A HREF="#KnownBugs">KNOWN BUGS</A> /
+<A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">FUTURE PLANS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
-</div>
 
-<H1>GPS Observations</H1>
+<H2>Overview</H2>
+
 
 <P>
 GPS Radio Occultation data are being returned
@@ -43,8 +43,8 @@ project.
 The programs in this directory extract the
 data from the distribution files and put them into
 DART observation sequence (obs_seq) file format.
-<br>
-<br>
+</P>
+<P>
 The COSMIC satellites measure the phase delay caused
 by deviation of the
 straight-line path of the GPS satellite signal as
@@ -66,7 +66,7 @@ previously were poorly observed.
 <!--==================================================================-->
 
 <A NAME="DataSources"></A>
-<HR>
+<HR />
 <H2>DATA SOURCES</H2>
 
 <P>
@@ -94,7 +94,7 @@ profiles together in a tar file to make it simpler to download the raw data.
 <!--==================================================================-->
 
 <A NAME="Programs"></A>
-<HR>
+<HR />
 <H2>PROGRAMS</H2>
 
 <P>
@@ -105,8 +105,8 @@ format often called DART "obs_seq" format.
 The files in this directory (a combination
 of C shell scripts and a Fortran source executable)
 do this data conversion.
-<br>
-<br>
+</P>
+<P>
 The shell_scripts directory contains several example scripts, including one 
 which downloads the raw data files a day at a time (download_script.csh), 
 and one which executes the conversion program (convert_script.csh).  
@@ -117,14 +117,14 @@ lengthy.  You probably want to download as a separate preprocess step
 and do not use the script options to automatically delete the input files.
 Keep the files around until you are sure you are satisified with the
 output files and then delete them by hand.
-<br>
-<br>
+</P>
+<P>
 The conversion executable <em class=file>convert_cosmic_gps_cdf</em>, 
 reads the namelist
 <A HREF="#Namelist"> <em class=code>&amp;convert_cosmic_gps_nml</em> </A>
 from the file <em class=file>input.nml</em>.
-<br>
-<br>
+</P>
+<P>
 The namelist lets you select from one of two different forward
 operators.  The 'local' forward operator computes the expected
 observation value at a single point: the requested height at the
@@ -137,8 +137,8 @@ operators was negligible.  This choice is made at the time of
 the conversion, and the type of operator is stored in the observation,
 so at runtime the corresponding forward operator will be used to
 compute the expected observation value.
-<br>
-<br>
+</P>
+<P>
 The namelist also lets you specify at what heights you want
 observations to be extracted.  The raw data is very dense in
 the vertical; using all values would not results in a set of
@@ -153,7 +153,7 @@ revise the code to avoid the initial vertical binning step.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<HR />
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
 '&amp;' and terminating with a slash '/' for all our namelist input.
@@ -237,12 +237,12 @@ This namelist is read in a file called <em class=file>input.nml</em>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<HR />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -260,7 +260,7 @@ netcdf
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<HR>
+<HR />
 <H2>KNOWN BUGS</H2>
 <P>
 Some COSMIC files seem to have internal times which differ from the
@@ -277,7 +277,7 @@ Times really outside the window can be excluded in a separate step using the
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<HR />
 <H2>FUTURE PLANS</H2>
 <P>
 The current code bins the data into 200 vertical bins as a first step,
@@ -293,13 +293,13 @@ to remove the intermediate binning step.
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<HR />
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright 2004 - 2011 UCAR.<br>
-This open source software is provided by UCAR, "as is",<br>
-without charge, subject to all terms of use at<br>
+DART software - Copyright 2004 - 2011 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>

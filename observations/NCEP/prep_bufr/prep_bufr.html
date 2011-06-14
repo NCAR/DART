@@ -3,24 +3,36 @@
 <HTML>
 <HEAD>
 <TITLE>program prepbufr</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Instructions">INSTRUCTIONS</A> / 
-<A HREF="#Namelist">NAMELIST</A> / 
-<A HREF="#FilesUsed">FILES</A> /
-<A HREF="#References">REFERENCES</A> /
-<A HREF="#Errors">ERRORS</A> /
-<A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
-<A HREF="#Legalese">TERMS OF USE</A>
-</center>
-
 <H1>PROGRAM <em class=program>prepbufr</em></H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> / 
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
 
 <P>
 Translating NCEP BUFR files into DART obs_seq.out files (input
@@ -35,7 +47,7 @@ create_real_obs, as described in
 <!--==================================================================-->
 
 <A NAME="Instructions"></A>
-<HR>
+<HR />
 <H2>INSTRUCTIONS</H2>
 <P>
 The prep_bufr package is free-standing and has not been completely
@@ -282,25 +294,27 @@ and you must contact the DSS group to get access.
 <P>
 Change directories into the prep_bufr/data subdirectory.
 From a machine with access to the MSS use
-<br>
-<em class=input>msrcp mss:/DSS/A##### data.tar</em><br>or<br>
-<em class=input>msrcp mss:/DSS/A#####.blk data.tar</em><br>
+<br />
+<em class=input>msrcp mss:/DSS/A##### data.tar</em><br />or<br />
+<em class=input>msrcp mss:/DSS/A#####.blk data.tar</em><br />
 where ##### is the data set number, to read the NCEP BUFR data tar files.
 The files which include ACARS data have a read
 password; to specify that to the 'msrcp' command, add the '-rpwd <i>pass</i>' 
 argument (where <i>pass</i> is a 1-8 character password).
-<br><br>
+<br /><br />
 You must then run the 'cosconvert' program to convert the file into a
 readable tar file. 
+</P>
 <ul>
 <li>On bluefire: /contrib/bin/cosconvert -b data.tar 
 <li>On other platforms, download the appropriate version from: 
 http://www.dss.ucar.edu/libraries/io/cos_blocking/utils/
 </ul>
+<P>
 Then 
-<br><br>
+<br /><br />
 <em class=input>tar -xvf data.tar </em>
-<br><br>
+<br /><br />
 will yield individual 6-hourly
 NCEP BUFR data files for the observations in the +/- 3-hour time windows
 of 00Z,  06Z, 12Z, and 18Z of each day.  Note that DART obs_seq files are
@@ -357,7 +371,7 @@ the create_obs_seq.csh script in step 2.
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<HR />
 <H2>OTHER MODULES USED</H2>
 <P>
 This is a piece of code that is intended to be 'close' to the original,
@@ -371,7 +385,7 @@ This code does not use any DART modules.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<HR />
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
 '&amp;' and terminating with a slash '/' for all our namelist input.
@@ -437,14 +451,14 @@ This namelist is read in a file called <em class=file>input.nml</em>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<HR />
 <H2>FILES</H2>
 <UL><LI>input file(s); NCEP BUFR  observation files named using ObsBase 
         with the  "yymmddhh" date tag on the end.  Input to grabbufr if big- to 
@@ -460,7 +474,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<HR />
 <H2>REFERENCES</H2>
 DART/observations/NCEP/prep_bufr/docs/*  (NCEP text files describing the BUFR files)
 
@@ -469,7 +483,7 @@ DART/observations/NCEP/prep_bufr/docs/*  (NCEP text files describing the BUFR fi
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<HR />
 <H2>ERROR CODES and CONDITIONS</H2>
 <P>
 this space intentionally left blank
@@ -485,7 +499,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<HR />
 <H2>FUTURE PLANS</H2>
 <P>
 Further development to get observations directly from original
@@ -497,13 +511,13 @@ Further development to get observations directly from original
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<HR />
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright 2004 - 2011 UCAR.<br>
-This open source software is provided by UCAR, "as is", <br>
-without charge, subject to all terms of use at <br>
+DART software - Copyright 2004 - 2011 UCAR.<br />
+This open source software is provided by UCAR, "as is", <br />
+without charge, subject to all terms of use at <br />
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>

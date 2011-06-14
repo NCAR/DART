@@ -3,23 +3,36 @@
 <HTML>
 <HEAD>
 <TITLE>QuikSCAT SeaWinds Data</TITLE>
-<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Overview">OVERVIEW</A> /
+<H1>QuikSCAT SeaWinds Data</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/html/Dartboard9.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#DataSources">DATA SOURCES</A> /
-<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#Programs">PROGRAMS</A> / 
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
-<A HREF="#KnownBugs">KNOWN BUGS</A> /
+<A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">FUTURE PLANS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>QuikSCAT SeaWinds Data</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
 
 <P>
 NASA's QuikSCAT mission is described in 
@@ -41,8 +54,8 @@ scans. The azimuthal diversity of the radar returns affects the
 error characteristics of the retrieved wind speeds and directions,
 as does rain, interference of land in the radar footprint, and very
 low wind speeds.  Hence, not all wind retrievals are created equal.
-<br />
-<br />
+</P>
+<P>
 The algorithm that converts the 'sigma naughts' (the measure of radar
 backscatter) into wind speeds and directions has multiple solutions.
 Each candidate solution is called an 'ambiguity', and there are several
@@ -71,7 +84,7 @@ makes several assumptions:
 <!--==================================================================-->
 
 <A NAME="DataSources"></A>
-<HR>
+<HR />
 <H2>DATA SOURCES</H2>
 
 <P>
@@ -84,8 +97,8 @@ to read these files directly, you will need to install the HDF4
 libraries (which can be downloaded from 
 <a href="http://www.hdfgroup.org/products/hdf4/"
 >http://www.hdfgroup.org/products/hdf4/</a>)
-<br />
-<br />
+</P>
+<P>
 If you go to the official JPL data distribution site
 <a href="http://podaac.jpl.nasa.gov/DATA_CATALOG/quikscatinfo.html"
 >http://podaac.jpl.nasa.gov/DATA_CATALOG/quikscatinfo.html</a>, 
@@ -101,7 +114,7 @@ any <em class="program">obs_sequence_tool</em> in the
 <!--==================================================================-->
 
 <A NAME="Programs"></A>
-<HR>
+<HR />
 <H2>PROGRAMS</H2>
 
 <P>There are several programs that are distributed from the JPL www-site,
@@ -151,8 +164,8 @@ use the ASCII format. Using the binary format (i.e.
 <em class="input">obs_sequence_nml:write_binary_obs_sequence = .true.</em>)
 will result in observation sequence files that are about <em>half</em>
 the size of the ASCII format.
-<br />
-<br />
+</P>
+<P>
 Since there are about 14 QuikSCAT orbits per day, it may be useful to
 convert individual orbits to an observation sequence file and then
 concatenate multiple observation sequence files into one file per day.
@@ -178,7 +191,7 @@ plotted with
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<HR />
 <H2>NAMELIST</H2>
 <P>We adhere to the F90 standard of starting a namelist with an ampersand
 '&amp;' and terminating with a slash '/' for all our namelist input.
@@ -198,8 +211,8 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 
 <P>
 This namelist is read in a file called <em class=file>input.nml</em>.
-<br />
-<br />
+</P>
+<P>
 It is possible to restrict the output observation sequence to contain
 data from a region of interest throught the use of the namelist
 parameters. If you need a region that spans the Prime Meridian,
@@ -266,14 +279,14 @@ the South Atlantic), simply specify <em class="input">lon1 = 300, lon2 =
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--==================================================================-->
 <!-- Describe the bugs.                                               -->
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<HR>
+<HR />
 <H2>KNOWN BUGS</H2>
 <P>
 There are no known bugs at this time.
@@ -284,7 +297,7 @@ There are no known bugs at this time.
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<HR />
 <H2>FUTURE PLANS</H2>
 <ol>
    <li>There is one bit of error-checking that I did not survive the
@@ -307,13 +320,13 @@ There are no known bugs at this time.
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<HR />
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright 2004 - 2011 UCAR.<br>
-This open source software is provided by UCAR, "as is",<br>
-without charge, subject to all terms of use at<br>
+DART software - Copyright 2004 - 2011 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
