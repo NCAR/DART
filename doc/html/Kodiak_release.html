@@ -33,6 +33,7 @@
 <A HREF="#NewObs">New Observations</A> /
 <A HREF="#NewDiagnostics">New Diagnostics and Documentation</A> /
 <A HREF="#NewUtilities">New Utilities</A> /
+<A HREF="#KnownProblems">Known Problems</A> /
 <A HREF="#Legalese">Terms of Use</A>
 
 <!--==================================================================-->
@@ -65,8 +66,8 @@ your DART tree.
 
 <!--==================================================================-->
 
+<div><hr /><p align=right><a href="#"><small>[top]</small></a></p></div>
 <A NAME="Nonbackward"></A>
-<HR>
 <H2>Non-backwards Compatible Changes</H2>
 
 <P>
@@ -263,8 +264,8 @@ the repository have had this added if they have the GPS module in their
 
 <!--==================================================================-->
 
+<div><hr /><p align=right><a href="#"><small>[top]</small></a></p></div>
 <A NAME="NewFeatures"></A>
-<HR>
 <H2>New Features</H2>
 
 <UL>
@@ -395,8 +396,8 @@ which is found <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">here
 
 <!--==================================================================-->
 
+<div><hr /><p align=right><a href="#"><small>[top]</small></a></p></div>
 <A NAME="NewModels"></A>
-<HR>
 <H2>New Models</H2>
 
 
@@ -449,8 +450,8 @@ this section</a> of the DART web pages for more help on adding a new model.
 
 <!--==================================================================-->
 
+<div><hr /><p align=right><a href="#"><small>[top]</small></a></p></div>
 <A NAME="ChangedModels"></A>
-<HR>
 <H2>Changed Models</H2>
 
 <UL>
@@ -536,8 +537,8 @@ doing an extra divide by 2, causing incorrect results. </LI>
 
 <!--==================================================================-->
 
+<div><hr /><p align=right><a href="#"><small>[top]</small></a></p></div>
 <A NAME="NewObs"></A>
-<HR>
 <H2>New Observation Types/Sources</H2>
 
 <UL>
@@ -630,8 +631,8 @@ particular model.
 
 <!--==================================================================-->
 
+<div><hr /><p align=right><a href="#"><small>[top]</small></a></p></div>
 <A NAME="NewDiagnostics"></A>
-<HR>
 <H2>New Diagnostics and Documentation</H2>
 
 <P>
@@ -814,8 +815,8 @@ Matlab GUI presentation of fundamental assimilation concepts</LI>
 
 <!--==================================================================-->
 
+<div><hr /><p align=right><a href="#"><small>[top]</small></a></p></div>
 <A NAME="NewUtilities"></A>
-<HR>
 <H2>New Utilities</H2>
 
 <UL>
@@ -919,13 +920,27 @@ in advance_model or job scripts, or observation conversion
 programs contributed by users.
 </UL>
 
+<!--==================================================================-->
+
+<div><hr /><p align=right><a href="#"><small>[top]</small></a></p></div>
+<A NAME="KnownProblems"></A>
+<H2>Known Problems</H2>
+
+<UL>
+<LI>We get an internal compiler error when
+compiling the <em class=file>obs_diag</em> program for the B-grid
+model on a Linux machine using the gfortran compiler version 4.1.2.
+If you get this error try a newer version of the Gnu compiler tools.
+We have used 4.3 and 4.4 successfully.
+</LI>
+</UL>
 
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
 
+<div><hr /><p align=right><a href="#"><small>[top]</small></a></p></div>
 <A NAME="Legalese"></A>
-<HR>
 <H2>Terms of Use</H2>
 
 <P>
