@@ -53,7 +53,65 @@ UPDATE COMMENTS
 <H2>Overview</H2>
 
 <P>
-This is the DART interface module for the stand-alone CAM model,
+DAReS has successfully incorporated CAM -- The Community Atmosphere Model --
+into the DART framework. It is being actively used by graduate students,
+post-graduates, and scientists at universities and research labs. Others are
+only using analyses for their time period and resolution of interest,
+produced here at NCAR using DART-CAM. In addition to the standard DART
+features described elsewhere, current capabilities (Jamaica-release) include
+the abilities to:
+</P>
+
+<UL>
+<LI>Use either the Eulerian or finite-volume core.</LI>
+<LI>Use any resolution of CAM without recompiling DART. The standard resolutions of 
+T21, T42, T85, FV 2x2.5 and 4x5 have been tested.</LI>
+<LI>Assimilate a variety of observations; to date the observations 
+successfully assimilated include the NCEP reanalysis BUFR obs (T,U,V), 
+Global Positioning System radio occultation obs, and MOPITT carbon monoxide 
+(when a chemistry model is incorporated into FV CAM). Research is under way to 
+assimilate surface observations, specific humidity, cloud liquid water, and aerosols.</LI>
+<LI>Specify, via namelist entries, the CAM (initial file) variables which will be 
+directly affected by the observations. This allows users to change the model state 
+without recompiling.</LI>
+<LI>Generate analyses on the CAM grid which are of comparable quality to those 
+produced by operational centers, but which have only CAM model error in them, 
+rather than the model error of the models used at the centers.</LI>
+<LI>Generate such analyses with as few as 20 ensemble members.</LI>
+</UL>
+
+<P>
+In addition to the standard DART package there is a collection of initial
+condition files at the large file website
+http://www.image.ucar.edu/pub/DART/CAM that are helpful for interfacing CAM
+with DART. More information and instructions for setting up assimilation
+experiments are available in the DART/models/cam/model_mod.html documentation
+and links.
+</P>
+
+<P>
+Sample sets of observations, which can be used with DART-CAM assimilations,
+can be found at http://www.image.ucar.edu/pub/DART/Obs_sets/ of which the
+NCEP BUFR observations are the most widely used. More information and
+instructions for setting up assimilation experiments are available in the
+DART/models/cam/model_mod.html documentation and links.
+</P>
+
+<P>
+Experience on a variety of machines has shown that it is a very good idea to
+make sure your run-time environment has the following:
+</P>
+
+<pre>
+limit stacksize unlimited
+
+limit datasize unlimited
+</pre>
+
+
+<P>
+This page contains the documentation for 
+the DART interface module for the separate-executable CAM model,
 using the either the Eulerian and Finite Volume dynamical core,
 soon the HOMME core on the cubed sphere,
 and possibly the Semi-Lagrangian core. 
@@ -68,6 +126,7 @@ Non-state variables, which are updated by the forecasts, are also
 carried forward by the CAM and CLM initial files.
 For CAM 3.6 and later the ICE restart files also carry along non-state variables.
 <!-- (non-NetCDF before cice4_0_20090603 ~? cam3_6_41.). -->
+We anticipate integrating DART with the full CESM of CAM in the near future.
 </P>
 
 <P>
@@ -77,7 +136,7 @@ state vector via model_mod namelist entries.   This may include quantities
 the model considers to be parameters, although ongoing research is
 being conducted into the difficulties and meaning of 
 tuning  model parameters of various kinds by this method.
-The CLM incorporated in the stand-alone CAM is currently (2011-4)
+The CLM incorporated in the separate-executable CAM is currently (as of 6/2011)
 treated as a parameterization.  That is, none of its variables
 are incorporated into the DART state vector.
 For each distinct set of fields comprizing a state vector, 
@@ -92,7 +151,7 @@ where the observations are made.  Model_interpolate can be queried for any
 (non-surface) variable in the state vector (which are variables native to
 CAM) plus pressure on height levels.  The default state vector is PS, T,
 U, V, Q, CLDLIQ, CLDICE.  
-Variables which are not on the initial file 
+Variables which are not in the initial file 
 <A HREF="./doc/cam_guidelines.html" >can be added </A> , 
 but minor modifications to model_mod.f90 (and perhaps CAM) may be necessary.  
 </P>

@@ -69,26 +69,48 @@
 
 <!--===============================================-->
 <A NAME="OVERVIEW"></A>
-<H2>DART-CAM OVERVIEW</H2>
+<H2>DART-CAM Setup Overview</H2>
 
 <P>
-The up-to-date overview will always be available at 
-<a href="http://www.image.ucar.edu/DAReS/DART/cgd_cam.shtml">
-http://www.image.ucar.edu/DAReS/DART/cgd_cam.shtml</a>
+This document gives specific help in setting up a
+DART-CAM experiment for the first time.
+Unless you just came from there, also see the
+<a href="../model_mod.html">model_mod</a> documentation
+on the code-level interfaces and namelist values for DART-CAM.
 </P>
 
+<P>
+Usually a run of DART-CAM involves executing multiple sequential
+batch job steps, each step consisting of a day's worth
+of assimilation.  Between job steps the output from the
+previous job step must be saved or moved to be used as
+input for the next job step.  Files may need to be archived
+or postprocessed.  And finally, DART is a parallel MPI program
+and CAM can be compiled as a serial job, an OpenMP parallel job,
+or an MPI parallel job.  On some systems an MPI parallel job
+cannot start another MPI parallel job, so running both a
+parallel DART and parallel CAM as a single job can be hard.
+</P>
 
 <P>
-For the <A HREF="../../../../doc/html/Kodiak_release.html"> Kodiak_release </A>
-and beyond, the async=3 (.../input.nml:filter_nml) option 
-has been given a new functionality; advancing several purely OpenMP CAMs at once.
-This contrasts with async = 4, which runs each purely MPI CAM on all available processors
-in sequence.
+The DART distribution comes with some scripts which will probably
+have to be customizes for other users.  The <em class=file>shell_scripts</em>
+directory contains simple example scripts.  The <em class=file>
+full_experiment</em> directory contains scripts which do a full-up
+experiment with multiple days and automatic archiving.
+</P>
 
-Async=2 also runs an MPI filter, but a single-threaded CAM.
-This will advance 1 ensemble member on each processor 
-(up to the lesser of the number of ensemble members or the number of processors).  
+<P>
+For parallelism options it is fastest to run a serial (single-threaded)
+or OpenMP CAM with a parallel DART.  This is selected by compiling
+CAM with the proper options, and then setting the <em class=code>async</em>
+namelist variable in the <a href="../../../filter/filter.html#Namelist">&amp;filter_nml</a>
+namelist to 2.   If there is not enough memory to run CAM as a serial
+job CAM can be compiled as a parallel program using MPI and then the
+<em class=code>async</em> value is set to 4 instead.
+</P>
 
+<P>
 For the short forecasts (6 hours) typically needed for assimilation,
 and on machines with at least as many processors as ensemble members,
 async=4 is usually much less efficient than async=2.
@@ -98,11 +120,10 @@ async=4 (parallel CAM) leaves most of the processors idling for most of the time
 async=2 lets all the start-up phases run at the same time on all of the processors.
 The drawback of async=2 is that there may not be enough memory on a single
 processor to handle a whole CAM.
-Async = 3 will be between 2 and 4, and depend on the distribution of processors.
 </P>
 
 <P>
-async=2, 3, and 4 allow users to control the assimilation through a single script,
+async=2 and 4 allow users to control the assimilation through a single script,
 'job_mpi.csh'.
 job_mpi.csh has a section of user set parameters which define many aspects of
 the assimilation.  
@@ -113,12 +134,6 @@ the parts of which are defined in job_mpi.csh.
 It submits all of those scripts to the batch scheduler,
 where they run in succession as resources become available.
 Each obs_seq batch script executes the programs layed out in the calling tree (below).
-</P>
-
-<P>
-These options have been tested for DART-CAM in batch submission environments 
-PBS and LSF on Linux clusters and IBM AIX.
-<!-- ??? Nancy; how much of an overstatement is this?  -->
 </P>
 
 <P>
@@ -144,11 +159,11 @@ A script/program is specific to:
 
 <A NAME="CALLINGTREE"></A>
 <HR>
-<H2>CALLING TREE</H2>
+<H2>Calling Tree</H2>
 
 <P>
 The calling tree for the scripts and fortran executables when running under
-async=2, 3, or 4 is:
+async=2 or 4 is:
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -203,7 +218,7 @@ async=2, 3, or 4 is:
 
 <!-- <A NAME="FLOWCHART"></A>
 <HR>
-<H2>FLOW CHART</H2>
+<H2>Flow Chart</H2>
 <P>
 The tasks of each script, and communication between them,  are summarized in a 
 <A HREF="flow_5.xfig.gif" > flow chart </A>.
@@ -216,7 +231,7 @@ moving files will be found in the scripts.
 <!--===============================================-->
 <A NAME="SETUP"></A>
 <HR>
-<H2>EXPERIMENT SET-UP</H2>
+<H2>Experiment Set-Up</H2>
 <P>
 
 Instructions for setting up a DART/CAM in "stand-alone" mode assimilation.
@@ -248,7 +263,7 @@ framework (available in late 2011?).
          <LI>Script DART/models/cam/work/quick_build.csh is recommended for compiling 
              the package.  
 	     It is set up to compile and run the preprocessor, 
-	     compile filter and wakeup_filter as MPI processes (async=2, 3, and 4),
+	     compile filter and wakeup_filter as MPI processes (async=2 and 4),
              and compile all other executables (but not CAM) as single process programs.  
              If you want a single-process filter, quick_build.csh can take -nompi 
              as an argument, which will build filter and wakeup_filter that way.
@@ -443,7 +458,7 @@ framework (available in late 2011?).
 <!--===============================================-->
 <A NAME="INITIALFILES"></A>
 <HR>
-<H2>CAM INITIAL ENSEMBLES</H2>
+<H2>CAM Initial Ensembles</H2>
 <P>
 
 Strategies for generating an initial ensemble from which DART can start.
@@ -534,7 +549,7 @@ Convert each of the CAM initial files into a filter_ic.#### file (cam_to_dart.f9
 <!--===============================================-->
 <A NAME="FILECONTENTS"></A>
 <HR>
-<H2>FILE CONTENTS</H2>
+<H2>File Contents</H2>
 <P>
 
 See the <A HREF="../../../doc/html/Kodiak_release.html"> Kodiak release notes </A>
@@ -613,7 +628,7 @@ The contents of some of the files which appear there are listed here.
 <!--===============================================-->
 <A NAME="OUTPUTDIRECTORY"></A>
 <HR>
-<H2>OUTPUT DIRECTORY </H2>
+<H2>Output Directory </H2>
 <P>
 Organization of output directories: 
 </P>
@@ -687,7 +702,7 @@ for each set of obs_space postscript and .dat files created by obs_diag and matl
 <!--===============================================-->
 <A NAME="HINTS"></A>
 <HR>
-<H2>HELPFUL HINTS</H2>
+<H2>Helpful Hints</H2>
 
 <P>
 In the following, MPI filter uses all of the requested processors.
@@ -719,6 +734,8 @@ and then repeat for the next ensemble member.
 
 <P>
 async = 3 is part way between async = 2 and 4.  
+It is part of an experimental version of the code which is in 
+the general release yet.
 CAM must be compiled with pure OpenMP parallelism.
 Then the MPI filter can execute multiple CAMs simultaneously on several processors each.
 The start-up for each is still a single process, 
@@ -757,7 +774,7 @@ they'll be deleted by this.
 <!--===============================================-->
 <A NAME="SPACE"></A>
 <HR>
-<H2>SPACE REQUIREMENTS</H2>
+<H2>Space Requirements</H2>
 
 <P>
 Space requirements (Mb per ensemble member) for several CAM resolutions.
