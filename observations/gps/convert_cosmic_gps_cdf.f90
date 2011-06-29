@@ -661,6 +661,9 @@ real(r8), intent(out) :: lref
 integer  :: bot_lev, k
 real(r8) :: fract
 
+bot_lev = -1
+fract = 0.0_r8
+
 !  Search down through height levels
 do k = 2, nobs
   if ( height >= hghtp(k) ) then
@@ -669,6 +672,22 @@ do k = 2, nobs
     exit
   endif
 end do
+
+! the hghtp() array is currently an interpolated list of levels
+! and on at least 1 PGI compiler version computing the lowest value 
+! rounds enough that a height exactly equal to the lowest level 
+! compares as less than instead of equal.  so test and if it's very very 
+! close to the lowest level then return it as equal; otherwise it's 
+! an internally inconsistent input file.
+if (bot_lev < 0) then
+  if (abs(height - hghtp(nobs)) < 0.00001) then
+     bot_lev = nobs
+     fract = 0.0_r8
+  else
+     call error_handler(E_ERR, 'bad level, below lowest in file', &
+                       source, revision, revdate)
+  endif
+endif
 
 lref = (1.0_r8 - fract) * refp(bot_lev) + fract * refp(bot_lev-1)
 
