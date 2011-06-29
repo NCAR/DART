@@ -69,8 +69,8 @@ set endday   = $argv[4]
 # files will be located in subdirectories by month, with the names following
 # the pattern YYYYMM, and then inside the subdirectories, the files are
 # named by the pattern 'prepqmYYMMDDHH'.  for example, if the dir below
-# is the default ../data, then the 6Z file for jan 1st, 1989 would be:
-#  ../data/198901/prepqm89010106
+# is the default ../data, then the 6Z file for nov 4th, 2010 would be:
+#  ../data/201011/prepqm10110406
 # but the conventions for names of prepqm files have changed over the years,
 # so if the prepqm files do *not* follow this pattern, you will have to edit
 # the BUFR_in variable in the script below to match the filenames you have.

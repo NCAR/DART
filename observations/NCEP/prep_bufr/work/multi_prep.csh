@@ -29,10 +29,10 @@
 # USER SETTINGS HERE
 
 # Set year, month, days for to pass as args to prepbufr.csh
-set year     = 2002
-set month    =   10
-set startday =   21
-set endday   =   31
+set year     = 2010
+set month    =   11
+set startday =    1
+set endday   =   30
 
 # Subdirectory base name.  If running multiple months at the
 # same time, must have different base names.  (could add month
