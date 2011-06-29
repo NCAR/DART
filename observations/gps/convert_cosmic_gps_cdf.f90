@@ -252,9 +252,10 @@ fileloop: do      ! until out of files
      call interp_height_wght(hght, obs_levels(k), nobs, zloc, wght)
      if ( zloc < 1 )  cycle obsloop2
    
+     ! lon(zloc) and lon(zloc+1) range from -180 to +180
+     ! call a subroutine to handle the wrap point.
+     lono = compute_lon_wrap(lon(zloc), lon(zloc+1), wght)
      lato  = wght * lat(zloc)  + (1.0_r8 - wght) * lat(zloc+1)
-     lono  = wght * lon(zloc)  + (1.0_r8 - wght) * lon(zloc+1)
-     if ( lono < 0.0_r8 )  lono = lono + 360.0_r8
      hghto = wght * hght(zloc) + (1.0_r8 - wght) * hght(zloc+1)
      hghto = hghto * 1000.0_r8
      refro = wght * refr(zloc) + (1.0_r8 - wght) * refr(zloc+1)
@@ -851,5 +852,64 @@ z(3) = x(1)*y(2) - x(2)*y(1)
 
 return
 end subroutine vprod
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   compute_lon_wrap - interpolate between 2 longitude values taking
+!                      into account the wrap at -180 degrees
+!
+!    lon1, lon2 - longitude in degrees between -180 and +180
+!    weight - interpolation weight between lon1 and lon2 (0 to 1)
+! 
+!    returns interpolated longitude between 0 and 360 degrees.
+!
+! if the longitudes are the same sign (both negative or both positive)
+! then do the interpolation with the original values.  if the signs
+! are different then we need to decide if they are crossing 0 (where we
+! still use the original values) or if they are crossing the -180/180 line
+! and we have to wrap the negative value.
+
+! to decide between the 0 and 180 cases, take the positive value and subtract 
+! the negative value (which adds it on) and see if the sum is > 180.  if not, 
+! we're at the 0 crossing and we do nothing.  if yes, then we add 360 to the 
+! negative value and interpolate between two positive values.   in either case
+! once we have the result, if it's < 0 add 360 so the longitude returned is
+! between 0 and 360 in longitude.
+!
+! this does not try to do anything special if the profile is tracking directly
+! over one of the poles.  this is because at the exact poles all longitudes are
+! identical, so being off in the longitude in any direction won't be a large
+! difference in real distance.
+!
+!     created nancy collins NCAR/IMAGe
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function compute_lon_wrap(lon1, lon2, weight)
+
+real(r8), intent(in) :: lon1, lon2, weight
+real(r8) :: compute_lon_wrap
+
+real(r8) :: lon1a, lon2a, lono
+
+! r/w temporaries in case we have to change the value.  
+lon1a = lon1
+lon2a = lon2
+
+
+! if different signs and crossing the -180/180 boundary, add 360
+! to the negative value.
+if (lon1 <= 0.0_r8 .and. lon2 >= 0.0_r8) then
+   if (lon2 - lon1 > 180.0_r8) lon1a = lon1a + 360.0_r8
+else if (lon1 >= 0.0_r8 .and. lon2 <= 0.0_r8) then
+   if (lon1 - lon2 > 180.0_r8) lon2a = lon2a + 360.0_r8
+endif
+
+! linear interpolation, and make return value between 0 and 360.
+lono  = weight * lon1a  + (1.0_r8 - weight) * lon2a
+if (lono < 0.0_r8) lono = lono + 360.0_r8
+
+compute_lon_wrap = lono
+
+end function compute_lon_wrap
 
 end program
