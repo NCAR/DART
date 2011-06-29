@@ -203,7 +203,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   ! the original code had a line to get the fill value here but it
   ! was commented out.  is there one?  do we need it?
 
-  if (nman <= 0 .or. nman > nmaxml) cycle sondeloop
+  if (nman < 0 .or. nman > nmaxml) cycle sondeloop
 
   if ( otime < 0.0_r8 ) cycle sondeloop
 
@@ -227,152 +227,154 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   ! extract actual time of observation in file into oday, osec.
   call get_time(time_obs, osec, oday)
 
-  allocate(pres(nman))  ;  allocate(tair(nman))  ;  allocate(tdew(nman))
-  allocate(wdir(nman))  ;  allocate(wspd(nman))
-
-  allocate(qc_pres(nman))  ;  allocate(qc_tair(nman))  ;  allocate(qc_tdew(nman))
-  allocate(qc_wdir(nman))  ;  allocate(qc_wspd(nman))
-
-  call getvar_real_2d(ncid, "prMan", n, nman, pres, pres_miss)
-  call getvar_real_2d(ncid, "tpMan", n, nman, tair, tair_miss)
-  call getvar_real_2d(ncid, "tdMan", n, nman, tdew, tdew_miss)
-  call getvar_real_2d(ncid, "wdMan", n, nman, wdir, wdir_miss)
-  call getvar_real_2d(ncid, "wsMan", n, nman, wspd, wspd_miss)
-
-  ! if user says to use QC, read them in or fill if not there
-  if (use_input_qc) then
-     call get_or_fill_QC_2d(ncid, "prManQCR", n, nman, qc_pres)
-     call get_or_fill_QC_2d(ncid, "tpManQCR", n, nman, qc_tair)
-     call get_or_fill_QC_2d(ncid, "tdManQCR", n, nman, qc_tdew)
-     call get_or_fill_QC_2d(ncid, "wdManQCR", n, nman, qc_wdir)
-     call get_or_fill_QC_2d(ncid, "wsManQCR", n, nman, qc_wspd)
-  else
-     qc_pres = 0
-     qc_tair = 0 ;  qc_tdew = 0
-     qc_wdir = 0 ;  qc_wspd = 0
+  if (nman > 0) then
+    allocate(pres(nman))  ;  allocate(tair(nman))  ;  allocate(tdew(nman))
+    allocate(wdir(nman))  ;  allocate(wspd(nman))
+  
+    allocate(qc_pres(nman))  ;  allocate(qc_tair(nman))  ;  allocate(qc_tdew(nman))
+    allocate(qc_wdir(nman))  ;  allocate(qc_wspd(nman))
+  
+    call getvar_real_2d(ncid, "prMan", n, nman, pres, pres_miss)
+    call getvar_real_2d(ncid, "tpMan", n, nman, tair, tair_miss)
+    call getvar_real_2d(ncid, "tdMan", n, nman, tdew, tdew_miss)
+    call getvar_real_2d(ncid, "wdMan", n, nman, wdir, wdir_miss)
+    call getvar_real_2d(ncid, "wsMan", n, nman, wspd, wspd_miss)
+  
+    ! if user says to use QC, read them in or fill if not there
+    if (use_input_qc) then
+       call get_or_fill_QC_2d(ncid, "prManQCR", n, nman, qc_pres)
+       call get_or_fill_QC_2d(ncid, "tpManQCR", n, nman, qc_tair)
+       call get_or_fill_QC_2d(ncid, "tdManQCR", n, nman, qc_tdew)
+       call get_or_fill_QC_2d(ncid, "wdManQCR", n, nman, qc_wdir)
+       call get_or_fill_QC_2d(ncid, "wsManQCR", n, nman, qc_wspd)
+    else
+       qc_pres = 0
+       qc_tair = 0 ;  qc_tdew = 0
+       qc_wdir = 0 ;  qc_wspd = 0
+    endif
+  
+    if ( pres(1) /= pres_miss .and. qc_pres(1) == 0 ) then
+  
+      altim = compute_altimeter(pres(1), elev)
+      oerr  = rawin_pres_error(pres_alt_to_pres(elev) * 0.01_r8)
+      if ( altim >= 890.0_r8 .and. altim <= 1100.0_r8 .and. oerr /= missing_r8 ) then
+  
+        call create_3d_obs(lat, lon, elev, VERTISSURFACE, altim, &
+                           RADIOSONDE_SURFACE_ALTIMETER, oerr, oday, osec, qc, obs)
+        call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+  
+      endif
+  
+    endif
+  
+    do k = 2, nman   ! obtain the mandatory level data
+  
+      prespa = pres(k) * 100.0_r8
+  
+      if ( wdir(k) /= wdir_miss .and. qc_wdir(k) == 0 .and. &
+           wspd(k) /= wspd_miss .and. qc_wspd(k) == 0  ) then
+  
+        call wind_dirspd_to_uv(wdir(k), wspd(k), uwnd, vwnd)
+        oerr = rawin_wind_error(pres(k))
+        if ( abs(uwnd) <= 150.0_r8 .and. & 
+             abs(vwnd) <= 150.0_r8 .and. oerr /= missing_r8 ) then
+  
+          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, uwnd, &
+                             RADIOSONDE_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+   
+          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, vwnd, &
+                             RADIOSONDE_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+  
+        endif
+  
+      endif
+  
+      if ( tair(k) /= tair_miss .and. qc_tair(k) == 0 ) then
+  
+        oerr = rawin_temp_error(pres(k))
+        if ( tair(k) >= 180.0_r8 .and. &
+             tair(k) <= 330.0_r8 .and. oerr /= missing_r8 ) then
+  
+          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, tair(k), &
+                             RADIOSONDE_TEMPERATURE, oerr, oday, osec, qc, obs)
+          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+  
+        endif
+  
+      endif
+    
+      ! if the air and dewpoint obs are both ok, then see which of the possible
+      ! three types of moisture obs to generate.
+      if ( tair(k) /= tair_miss .and. qc_tair(k) == 0 .and. &
+           tdew(k) /= tdew_miss .and. qc_tdew(k) == 0  ) then
+  
+        ! tdew is the dewpoint depression
+        dptk = tair(k) - tdew(k)
+  
+        if ( include_specific_humidity ) then
+  
+          qobs = specific_humidity(sat_vapor_pressure(dptk),    prespa)
+          qsat = specific_humidity(sat_vapor_pressure(tair(k)), prespa)
+          if ( LH_err ) then
+            qerr = rh_error_from_dewpt_and_temp(tair(k), dptk)
+          else
+            qerr = rawin_rel_hum_error(pres(k), tair(k), qobs / qsat)
+          endif
+          oerr = max(qerr * qsat, 0.0001_r8)
+    
+          if ( qobs >  0.0_r8  .and. &
+               qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
+    
+            call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, qobs, &
+                               RADIOSONDE_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
+            call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+    
+          endif
+    
+        endif
+    
+        if ( include_relative_humidity ) then
+    
+          rh = temp_and_dewpoint_to_rh(tair(k), dptk)
+          if ( LH_err ) then
+            oerr = rh_error_from_dewpt_and_temp(tair(k), dptk)
+          else
+            oerr = rawin_rel_hum_error(pres(k), tair(k), rh)
+          endif
+    
+          if ( rh >  0.0_r8 .and. &
+               rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+  
+            call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, rh, &
+                               RADIOSONDE_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
+            call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+          endif
+  
+        endif
+    
+        if ( include_dewpoint ) then
+  
+          rh = temp_and_dewpoint_to_rh(tair(k), dptk)
+          oerr = dewpt_error_from_rh_and_temp(tair(k), rh)
+    
+          if ( rh >  0.0_r8 .and. &
+               rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
+  
+            call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, dptk, &
+                               RADIOSONDE_DEWPOINT, oerr, oday, osec, qc, obs)
+            call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+  
+          endif
+  
+        endif
+  
+      endif  ! quality control/missing check on tair, tdew
+  
+    end do
+    deallocate(pres, wdir, wspd, tair, tdew, qc_pres, qc_wdir, qc_wspd, qc_tair, qc_tdew)
   endif
-
-  if ( pres(1) /= pres_miss .and. qc_pres(1) == 0 ) then
-
-    altim = compute_altimeter(pres(1), elev)
-    oerr  = rawin_pres_error(pres_alt_to_pres(elev) * 0.01_r8)
-    if ( altim >= 890.0_r8 .and. altim <= 1100.0_r8 .and. oerr /= missing_r8 ) then
-
-      call create_3d_obs(lat, lon, elev, VERTISSURFACE, altim, &
-                         RADIOSONDE_SURFACE_ALTIMETER, oerr, oday, osec, qc, obs)
-      call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
-
-    endif
-
-  endif
-
-  do k = 2, nman   ! obtain the mandatory level data
-
-    prespa = pres(k) * 100.0_r8
-
-    if ( wdir(k) /= wdir_miss .and. qc_wdir(k) == 0 .and. &
-         wspd(k) /= wspd_miss .and. qc_wspd(k) == 0  ) then
-
-      call wind_dirspd_to_uv(wdir(k), wspd(k), uwnd, vwnd)
-      oerr = rawin_wind_error(pres(k))
-      if ( abs(uwnd) <= 150.0_r8 .and. & 
-           abs(vwnd) <= 150.0_r8 .and. oerr /= missing_r8 ) then
-
-        call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, uwnd, &
-                           RADIOSONDE_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
-        call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
- 
-        call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, vwnd, &
-                           RADIOSONDE_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
-        call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
-
-      endif
-
-    endif
-
-    if ( tair(k) /= tair_miss .and. qc_tair(k) == 0 ) then
-
-      oerr = rawin_temp_error(pres(k))
-      if ( tair(k) >= 180.0_r8 .and. &
-           tair(k) <= 330.0_r8 .and. oerr /= missing_r8 ) then
-
-        call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, tair(k), &
-                           RADIOSONDE_TEMPERATURE, oerr, oday, osec, qc, obs)
-        call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
-
-      endif
-
-    endif
-  
-    ! if the air and dewpoint obs are both ok, then see which of the possible
-    ! three types of moisture obs to generate.
-    if ( tair(k) /= tair_miss .and. qc_tair(k) == 0 .and. &
-         tdew(k) /= tdew_miss .and. qc_tdew(k) == 0  ) then
-
-      ! tdew is the dewpoint depression
-      dptk = tair(k) - tdew(k)
-
-      if ( include_specific_humidity ) then
-
-        qobs = specific_humidity(sat_vapor_pressure(dptk),    prespa)
-        qsat = specific_humidity(sat_vapor_pressure(tair(k)), prespa)
-        if ( LH_err ) then
-          qerr = rh_error_from_dewpt_and_temp(tair(k), dptk)
-        else
-          qerr = rawin_rel_hum_error(pres(k), tair(k), qobs / qsat)
-        endif
-        oerr = max(qerr * qsat, 0.0001_r8)
-  
-        if ( qobs >  0.0_r8  .and. &
-             qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
-  
-          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, qobs, &
-                             RADIOSONDE_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
-          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
-  
-        endif
-  
-      endif
-  
-      if ( include_relative_humidity ) then
-  
-        rh = temp_and_dewpoint_to_rh(tair(k), dptk)
-        if ( LH_err ) then
-          oerr = rh_error_from_dewpt_and_temp(tair(k), dptk)
-        else
-          oerr = rawin_rel_hum_error(pres(k), tair(k), rh)
-        endif
-  
-        if ( rh >  0.0_r8 .and. &
-             rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
-
-          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, rh, &
-                             RADIOSONDE_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
-          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
-        endif
-
-      endif
-  
-      if ( include_dewpoint ) then
-
-        rh = temp_and_dewpoint_to_rh(tair(k), dptk)
-        oerr = dewpt_error_from_rh_and_temp(tair(k), rh)
-  
-        if ( rh >  0.0_r8 .and. &
-             rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
-
-          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, dptk, &
-                             RADIOSONDE_DEWPOINT, oerr, oday, osec, qc, obs)
-          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
-
-        endif
-
-      endif
-
-    endif  ! quality control/missing check on tair, tdew
-
-  end do
-  deallocate(pres, wdir, wspd, tair, tdew, qc_pres, qc_wdir, qc_wspd, qc_tair, qc_tdew)
 
   !  If desired, read the significant-level temperature data, write to obs_seq
   call getvar_int_1d_1val(ncid, "numSigT", n, nsig )
