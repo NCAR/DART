@@ -88,16 +88,16 @@ if ($commline == 'yes') then
 else
   set year     = 2010
   set month    = 11
-  set beginday = 10
-  set endday   = 20
+  set beginday = 20
+  set endday   = 30
 endif
 
 # directory where the BUFR files are located.  the script assumes the
 # files will be located in subdirectories by month, with the names following
 # the pattern YYYYMM, and then inside the subdirectories, the files are
 # named by the pattern 'prepqmYYMMDDHH'.  for example, if the dir below
-# is the default ../data, then the 6Z file for nov 4th, 2010 would be:
-#  ../data/201011/prepqm10110406
+# is the default ../data, then the 6Z file for nov 27th, 2010 would be:
+#  ../data/201011/prepqm10112706
 # but the conventions for names of prepqm files have changed over the years,
 # so if the prepqm files do *not* follow this pattern, you will have to edit
 # the BUFR_in variable in the script below to match the filenames you have.
