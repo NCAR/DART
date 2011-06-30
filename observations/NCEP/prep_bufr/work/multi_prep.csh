@@ -30,7 +30,7 @@
 
 # Set year, month, days for to pass as args to prepbufr.csh
 set year     = 2010
-set month    =   11
+set month    =   12
 set startday =    1
 set endday   =   30
 

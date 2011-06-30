@@ -87,7 +87,7 @@ if ($commline == 'yes') then
   set endday   = $argv[4]
 else
   set year     = 2010
-  set month    = 11
+  set month    = 12
   set beginday = 20
   set endday   = 30
 endif
