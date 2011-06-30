@@ -169,7 +169,7 @@ else
 
 end if
 
-allocate(hghtp(nlevels))  ;  allocate(refrp(nlevels))
+
 did_obs = .false.
 
 ! main loop that does either a single file or a list of files
@@ -206,6 +206,7 @@ fileloop: do      ! until out of files
    call nc_check( nf90_get_att(ncid,nf90_global,'rfict',rfict),'get_att rfict')
    rfict = rfict * 1000.0_r8
    
+   allocate(hghtp(nobs)) ;  allocate(refrp(nobs))
    allocate( lat(nobs))  ;  allocate( lon(nobs))
    allocate(hght(nobs))  ;  allocate(refr(nobs))
    allocate(azim(nobs))
@@ -235,16 +236,10 @@ fileloop: do      ! until out of files
    
    call nc_check( nf90_close(ncid) , 'close file')
    
-   obsloop: do k = 1, nlevels
-   
-     call interp_height_wght(hght, obs_levels(k), nobs, zloc, wght)
-     if ( zloc < 1 )  cycle obsloop
-     hghtp(nlevels-k+1) = obs_levels(k) * 1000.0_r8
-     refrp(nlevels-k+1) = exp( wght * log(refr(zloc)) + & 
-                       (1.0_r8 - wght) * log(refr(zloc+1)) ) * 1.0e-6_r8
-   
-   end do obsloop
-   
+   ! convert units here.
+   hghtp(:) = hght(:) * 1000.0_r8
+   refrp(:) = refr(:) * 1.0e-6_r8
+    
    first_obs = .true.
    
    obsloop2: do k = 1, nlevels
@@ -281,7 +276,7 @@ fileloop: do      ! until out of files
    
        !  compute the excess phase
        call excess(refrp, hghtp, lono, lato, hghto, nx, & 
-                   ny, nz, rfict, ray_ds, ray_htop, phs, nlevels)
+                   ny, nz, rfict, ray_ds, ray_htop, phs, nobs)
    
        !  if too high, phs will return as 0.  cycle loop here.
        if (phs <= 0) cycle obsloop2
@@ -316,7 +311,7 @@ fileloop: do      ! until out of files
    end do obsloop2
 
   ! clean up and loop if there is another input file
-  deallocate( lat, lon, hght, refr, azim )
+  deallocate( lat, lon, hght, refr, azim, hghtp, refrp)
 
   filenum = filenum + 1
 
@@ -664,14 +659,21 @@ real(r8) :: fract
 bot_lev = -1
 fract = 0.0_r8
 
+! make sure it's not higher than the highest available level.
+if (height > hghtp(1)) then
+   write(msgstring, *) 'requested height is ', height, '; highest available is ', hghtp(1)
+   call error_handler(E_ERR, 'bad level, above highest in file', &
+                      source, revision, revdate, text2=msgstring)
+endif
+
 !  Search down through height levels
-do k = 2, nobs
+heights: do k = 2, nobs
   if ( height >= hghtp(k) ) then
     bot_lev = k
     fract = (hghtp(k) - height) / (hghtp(k) - hghtp(k-1))
-    exit
+    exit heights
   endif
-end do
+end do heights
 
 ! the hghtp() array is currently an interpolated list of levels
 ! and on at least 1 PGI compiler version computing the lowest value 
@@ -680,12 +682,13 @@ end do
 ! close to the lowest level then return it as equal; otherwise it's 
 ! an internally inconsistent input file.
 if (bot_lev < 0) then
-  if (abs(height - hghtp(nobs)) < 0.00001) then
+  if (abs(height - hghtp(nobs)) < 0.00001_r8) then
      bot_lev = nobs
      fract = 0.0_r8
   else
+     write(msgstring, *) 'requested height is ', height, '; lowest available is ', hghtp(nobs)
      call error_handler(E_ERR, 'bad level, below lowest in file', &
-                       source, revision, revdate)
+                       source, revision, revdate, text2=msgstring)
   endif
 endif
 
