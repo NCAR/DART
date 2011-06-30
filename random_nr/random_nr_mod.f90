@@ -65,6 +65,10 @@ integer j
 
 if ( .not. module_initialized ) call initialize_module
 
+if (temp >= ic1) then
+    call error_handler(E_ERR,' ran1', 'Use negative seed or seed smaller than 54000', source, revision, revdate)
+endif
+
 ! Initialize the generator for use with
 ! repeatable sequences
 
@@ -105,7 +109,7 @@ s%ix2 = mod(ia2*s%ix2 + ic2, m2)
 s%ix3 = mod(ia3*s%ix3 + ic3, m3)
 j = 1 + (97*s%ix3) / m3
 if(j > 97 .or. j < 1) then
-      call error_handler(E_ERR,' ran1', 'Fatal error in random_nr_mod', source, revision, revdate)
+    call error_handler(E_ERR,' ran1', 'Fatal error in random_nr_mod', source, revision, revdate)
 endif
 ran1 = s%r(j)
 s%r(j) = (s%ix1 + s%ix2*rm2)*rm1

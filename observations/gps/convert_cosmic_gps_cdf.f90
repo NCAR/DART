@@ -169,7 +169,7 @@ else
 
 end if
 
-allocate(hghtp(nlevels))  ;  allocate(refrp(nlevels))
+
 did_obs = .false.
 
 ! main loop that does either a single file or a list of files
@@ -206,6 +206,7 @@ fileloop: do      ! until out of files
    call nc_check( nf90_get_att(ncid,nf90_global,'rfict',rfict),'get_att rfict')
    rfict = rfict * 1000.0_r8
    
+   allocate(hghtp(nobs)) ;  allocate(refrp(nobs))
    allocate( lat(nobs))  ;  allocate( lon(nobs))
    allocate(hght(nobs))  ;  allocate(refr(nobs))
    allocate(azim(nobs))
@@ -235,16 +236,10 @@ fileloop: do      ! until out of files
    
    call nc_check( nf90_close(ncid) , 'close file')
    
-   obsloop: do k = 1, nlevels
-   
-     call interp_height_wght(hght, obs_levels(k), nobs, zloc, wght)
-     if ( zloc < 1 )  cycle obsloop
-     hghtp(nlevels-k+1) = obs_levels(k) * 1000.0_r8
-     refrp(nlevels-k+1) = exp( wght * log(refr(zloc)) + & 
-                       (1.0_r8 - wght) * log(refr(zloc+1)) ) * 1.0e-6_r8
-   
-   end do obsloop
-   
+   ! convert units here.
+   hghtp(:) = hght(:) * 1000.0_r8
+   refrp(:) = refr(:) * 1.0e-6_r8
+    
    first_obs = .true.
    
    obsloop2: do k = 1, nlevels
@@ -252,9 +247,10 @@ fileloop: do      ! until out of files
      call interp_height_wght(hght, obs_levels(k), nobs, zloc, wght)
      if ( zloc < 1 )  cycle obsloop2
    
+     ! lon(zloc) and lon(zloc+1) range from -180 to +180
+     ! call a subroutine to handle the wrap point.
+     lono = compute_lon_wrap(lon(zloc), lon(zloc+1), wght)
      lato  = wght * lat(zloc)  + (1.0_r8 - wght) * lat(zloc+1)
-     lono  = wght * lon(zloc)  + (1.0_r8 - wght) * lon(zloc+1)
-     if ( lono < 0.0_r8 )  lono = lono + 360.0_r8
      hghto = wght * hght(zloc) + (1.0_r8 - wght) * hght(zloc+1)
      hghto = hghto * 1000.0_r8
      refro = wght * refr(zloc) + (1.0_r8 - wght) * refr(zloc+1)
@@ -280,7 +276,7 @@ fileloop: do      ! until out of files
    
        !  compute the excess phase
        call excess(refrp, hghtp, lono, lato, hghto, nx, & 
-                   ny, nz, rfict, ray_ds, ray_htop, phs, nlevels)
+                   ny, nz, rfict, ray_ds, ray_htop, phs, nobs)
    
        !  if too high, phs will return as 0.  cycle loop here.
        if (phs <= 0) cycle obsloop2
@@ -315,7 +311,7 @@ fileloop: do      ! until out of files
    end do obsloop2
 
   ! clean up and loop if there is another input file
-  deallocate( lat, lon, hght, refr, azim )
+  deallocate( lat, lon, hght, refr, azim, hghtp, refrp)
 
   filenum = filenum + 1
 
@@ -660,14 +656,41 @@ real(r8), intent(out) :: lref
 integer  :: bot_lev, k
 real(r8) :: fract
 
+bot_lev = -1
+fract = 0.0_r8
+
+! make sure it's not higher than the highest available level.
+if (height > hghtp(1)) then
+   write(msgstring, *) 'requested height is ', height, '; highest available is ', hghtp(1)
+   call error_handler(E_ERR, 'bad level, above highest in file', &
+                      source, revision, revdate, text2=msgstring)
+endif
+
 !  Search down through height levels
-do k = 2, nobs
+heights: do k = 2, nobs
   if ( height >= hghtp(k) ) then
     bot_lev = k
     fract = (hghtp(k) - height) / (hghtp(k) - hghtp(k-1))
-    exit
+    exit heights
   endif
-end do
+end do heights
+
+! the hghtp() array is currently an interpolated list of levels
+! and on at least 1 PGI compiler version computing the lowest value 
+! rounds enough that a height exactly equal to the lowest level 
+! compares as less than instead of equal.  so test and if it's very very 
+! close to the lowest level then return it as equal; otherwise it's 
+! an internally inconsistent input file.
+if (bot_lev < 0) then
+  if (abs(height - hghtp(nobs)) < 0.00001_r8) then
+     bot_lev = nobs
+     fract = 0.0_r8
+  else
+     write(msgstring, *) 'requested height is ', height, '; lowest available is ', hghtp(nobs)
+     call error_handler(E_ERR, 'bad level, below lowest in file', &
+                       source, revision, revdate, text2=msgstring)
+  endif
+endif
 
 lref = (1.0_r8 - fract) * refp(bot_lev) + fract * refp(bot_lev-1)
 
@@ -851,5 +874,64 @@ z(3) = x(1)*y(2) - x(2)*y(1)
 
 return
 end subroutine vprod
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   compute_lon_wrap - interpolate between 2 longitude values taking
+!                      into account the wrap at -180 degrees
+!
+!    lon1, lon2 - longitude in degrees between -180 and +180
+!    weight - interpolation weight between lon1 and lon2 (0 to 1)
+! 
+!    returns interpolated longitude between 0 and 360 degrees.
+!
+! if the longitudes are the same sign (both negative or both positive)
+! then do the interpolation with the original values.  if the signs
+! are different then we need to decide if they are crossing 0 (where we
+! still use the original values) or if they are crossing the -180/180 line
+! and we have to wrap the negative value.
+
+! to decide between the 0 and 180 cases, take the positive value and subtract 
+! the negative value (which adds it on) and see if the sum is > 180.  if not, 
+! we're at the 0 crossing and we do nothing.  if yes, then we add 360 to the 
+! negative value and interpolate between two positive values.   in either case
+! once we have the result, if it's < 0 add 360 so the longitude returned is
+! between 0 and 360 in longitude.
+!
+! this does not try to do anything special if the profile is tracking directly
+! over one of the poles.  this is because at the exact poles all longitudes are
+! identical, so being off in the longitude in any direction won't be a large
+! difference in real distance.
+!
+!     created nancy collins NCAR/IMAGe
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function compute_lon_wrap(lon1, lon2, weight)
+
+real(r8), intent(in) :: lon1, lon2, weight
+real(r8) :: compute_lon_wrap
+
+real(r8) :: lon1a, lon2a, lono
+
+! r/w temporaries in case we have to change the value.  
+lon1a = lon1
+lon2a = lon2
+
+
+! if different signs and crossing the -180/180 boundary, add 360
+! to the negative value.
+if (lon1 <= 0.0_r8 .and. lon2 >= 0.0_r8) then
+   if (lon2 - lon1 > 180.0_r8) lon1a = lon1a + 360.0_r8
+else if (lon1 >= 0.0_r8 .and. lon2 <= 0.0_r8) then
+   if (lon1 - lon2 > 180.0_r8) lon2a = lon2a + 360.0_r8
+endif
+
+! linear interpolation, and make return value between 0 and 360.
+lono  = weight * lon1a  + (1.0_r8 - weight) * lon2a
+if (lono < 0.0_r8) lono = lono + 360.0_r8
+
+compute_lon_wrap = lono
+
+end function compute_lon_wrap
 
 end program
