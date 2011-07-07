@@ -219,7 +219,7 @@ while ( 1 )
     # NAMES:  the pattern here must match how you choose how you chose
     # to name the obs_seq files converted from each of the original MADIS files.
     # there are a variety of strings available to help you construct a
-    # filename: $this_type is metar, # marine, etc.  ${fbef},${aft} is 
+    # filename: $this_type is metar, marine, etc.  ${fbef},${faft} is 
     # a time string YYYYMMDDHH.  if you choose to name the obs_seq files
     # something other than the full time string, you can parse them up
     # the same as $curtime above.  if you do change the name scheme,
@@ -234,7 +234,8 @@ while ( 1 )
       echo $src_base_dir/obs_seq_${this_type}_${faftdy}  >>! obstemp
     endif
 
-    while ( $gwbef[1] >= $gobef[1] && $gwbef[2] > $gobef[2]) 
+    while ( ( $gwbef[1] >  $gobef[1] )  || \
+            ( $gwbef[1] == $gobef[1] && $gwbef[2] > $gobef[2] ) )
       set  wbef=(`echo  $wbef  -1h    | ./advance_time` )
       set gwbef=(`echo  $wbef   0  -g | ./advance_time` )
 
@@ -254,7 +255,8 @@ while ( 1 )
       #echo 'back start:' $wbef \( $gwbef \) to $waft \( $gwaft \)
     end
 
-    while ( $gwaft[1] <= $goaft[1] && $gwaft[2] < $goaft[2]) 
+    while ( ( $gwaft[1] <  $goaft[1] ) || \
+            ( $gwaft[1] == $goaft[1] && $gwaft[2] < $goaft[2]) )
       set  waft=(`echo  $waft  +1h    | ./advance_time` )
       set gwaft=(`echo  $waft   0  -g | ./advance_time` )
 
@@ -286,7 +288,7 @@ while ( 1 )
         -e "s/ASEC/$goaft[2]/" input.nml.template >! input.nml
 
     # run obs_seq_tool
-    ./obs_sequence_tool
+    ./obs_sequence_tool 
  
     # do something with the output, and clear the input
     # if you want to change the output filename, do it here 
