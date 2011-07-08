@@ -199,13 +199,7 @@ switch lower(model)
 
    case 'cam'
 
-      % A more robust way would be to use the netcdf low-level ops:
-      % bob = var(f);     % bob is a cell array of ncvars
-      % name(bob{1})       % is the variable name string
-      % bob{1}(:)          % is the value of the netcdf variable  (no offset/scale)
-      % have not yet figured out a way to only use non-coordinate variables.
-
-      varnames = {'PS','T','U','V','Q','CLDLIQ','CLDICE'};
+      varnames = get_DARTvars(fname);
       num_vars = length(varnames);
       nlevels  = dim_length(fname,'lev'); % determine # of state variables
 

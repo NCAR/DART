@@ -163,7 +163,7 @@ switch lower(model)
       end
       legend boxoff
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf','cam'}
 
       ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);   % errors out if no ens_mem 
       

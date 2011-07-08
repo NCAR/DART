@@ -1,4 +1,4 @@
-function pinfo = GetCamInfo(pstruct,routine);
+function pinfo = GetCamInfo(pstruct,fname,routine);
 %% GetCamInfo   prepares a structure of information needed by the subsequent "routine"
 %                The information is gathered via rudimentary "input" routines.
 %
@@ -17,41 +17,35 @@ function pinfo = GetCamInfo(pstruct,routine);
 % $Revision$
 % $Date$
 
-if (isfield(pstruct,'truth_file') && exist(pstruct.truth_file,'file') )
-       fname = pstruct.truth_file;
-elseif (isfield(pstruct,'diagn_file') && exist(pstruct.diagn_file,'file') )
-       fname = pstruct.diagn_file;
-elseif (isfield(pstruct,'prior_file') && exist(pstruct.prior_file,'file') )
-       fname = pstruct.prior_file;
-elseif (isfield(pstruct,'posterior_file') && exist(pstruct.posterior_file,'file') )
-       fname = pstruct.posterior_file;
-elseif (isfield(pstruct,'fname') && exist(pstruct.fname,'file') )
-       fname = pstruct.fname;
-end
+if (exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
+pinfo  = pstruct;
 model  = nc_attget(fname,nc_global,'model');
 
 if strcmpi(model,'cam') ~= 1
    error('Not so fast, this is not a cam model.')
 end
 
-pinfo  = pstruct;
+%% Get the domain-independent information.
+
+varexist(fname, {'copy','time'})
 
 copy   = nc_varget(fname,'copy');
 times  = nc_varget(fname,'time');
+
+% Coordinate between time types and dates
+
+timeunits  = nc_attget(fname,'time','units');
+timebase   = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
+timeorigin = datenum(timebase(1),timebase(2),timebase(3));
+dates      = times + timeorigin;
+
 ilevel = nc_varget(fname,'ilev');    % interfaces
 levels = nc_varget(fname, 'lev');    % midpoints
 lon    = nc_varget(fname, 'lon');
 lat    = nc_varget(fname, 'lat');
 
-% A more robust way would be to use the netcdf low-level ops:
-% bob = var(f);     % bob is a cell array of ncvars
-% name(bob{1})       % is the variable name string
-% bob{1}(:)          % is the value of the netcdf variable  (no
-% offset/scale)
-% have not yet figured out a way to only use non-coordinate variables.
-
-prognostic_vars = {'PS','T','U','V','Q','CLDLIQ','CLDICE'};
+prognostic_vars = get_DARTvars(fname);
 num_vars = length(prognostic_vars);
 
 switch lower(deblank(routine))
@@ -64,6 +58,7 @@ switch lower(deblank(routine))
       [lon  , lonind] = GetLongitude(pgvar,lon);
 
       pinfo.model      = model;
+      pinfo.times      = dates;
       pinfo.var        = pgvar;
       pinfo.level      = level;
       pinfo.levelindex = lvlind;
@@ -77,7 +72,7 @@ switch lower(deblank(routine))
 
       disp('Getting information for the ''base'' variable.')
        base_var                = GetVar(prognostic_vars);
-      [base_time, base_tmeind] = GetTime(     base_var,times);
+      [base_time, base_tmeind] = GetTime(dates);
       [base_lvl,  base_lvlind] = GetLevel(    base_var,levels);
       [base_lat,  base_latind] = GetLatitude( base_var,lat);
       [base_lon,  base_lonind] = GetLongitude(base_var,lon);
@@ -87,6 +82,7 @@ switch lower(deblank(routine))
       [comp_lvl, comp_lvlind] = GetLevel(    comp_var,levels,    base_lvlind);
 
       pinfo.model       = model; 
+      pinfo.times       = dates;
       pinfo.base_var    = base_var;
       pinfo.comp_var    = comp_var;
       pinfo.base_time   = base_time;
@@ -105,7 +101,7 @@ switch lower(deblank(routine))
 
       disp('Getting information for the ''base'' variable.')
        base_var                = GetVar(prognostic_vars);
-      [base_time, base_tmeind] = GetTime(     base_var,times);
+      [base_time, base_tmeind] = GetTime(dates);
       [base_lvl , base_lvlind] = GetLevel(    base_var,levels);
       [base_lat , base_latind] = GetLatitude( base_var,lat);
       [base_lon , base_lonind] = GetLongitude(base_var,lon);
@@ -117,6 +113,7 @@ switch lower(deblank(routine))
       [comp_lon, comp_lonind] = GetLongitude(comp_var,lon,base_lon);
 
       pinfo.model       = model;
+      pinfo.times       = dates;
       pinfo.base_var    = base_var;
       pinfo.comp_var    = comp_var;
       pinfo.base_time   = base_time;
@@ -144,6 +141,7 @@ switch lower(deblank(routine))
  %    [  lon, lonind] = GetCopies(pgvar,xxx);
 
       pinfo.model          = model;
+      pinfo.times          = dates;
       pinfo.var_names      = pgvar;
       pinfo.truth_file     = [];
       pinfo.prior_file     = pstruct.prior_file;
@@ -191,6 +189,7 @@ switch lower(deblank(routine))
       if isempty(s1), ltype = 'k-'; else ltype = s1; end
 
       pinfo.model       = model;
+      pinfo.times       = dates;
       pinfo.var1name    = var1;
       pinfo.var2name    = var2;
       pinfo.var3name    = var3;
@@ -237,21 +236,39 @@ inds        = strfind(pgvar,',');
 pgvar(inds) = '';
 
 
-function [time, timeind] = GetTime(pgvar, times, deftime)
-%----------------------------------------------------------------------
-if (nargin == 3), time = deftime; else time = mean(times); end
 
-fprintf('Default time is %f, if this is OK, <cr>;\n',time)
-fprintf('If not, enter a time between %.4f and %.4f, we use the closest.\n', ...
-                         min(times),max(times))
+function [time, timeind] = GetTime(times, deftime)
+%----------------------------------------------------------------------
+% Query for the time of interest.
+
+ntimes = length(times);
+
+% Determine a sensible default.
+if (nargin == 2),
+   time = deftime;
+   tindex = find(times == deftime);
+else
+   if (ntimes < 2)
+      tindex = round(ntimes/2);
+   else
+      tindex = 1;
+   end
+   time = times(tindex);
+end
+
+fprintf('Default time is %s (index %d), if this is OK, <cr>;\n',datestr(time),tindex)
+fprintf('If not, enter an index between %d and %d \n',1,ntimes)
+fprintf('Pertaining to %s and %s \n',datestr(times(1)),datestr(times(ntimes)))
 varstring = input('(no syntax required)\n','s');
 
-if ~isempty(varstring), time  = str2num(varstring); end 
+if ~isempty(varstring), tindex = str2num(varstring); end
 
-d       = abs(time - times);    % crude distance
-ind     = find(min(d) == d);  % multiple minima possible 
-timeind = ind(1);             % use the first one
-time    = times(timeind);
+timeinds = 1:ntimes;
+d        = abs(tindex - timeinds); % crude distance
+ind      = find(min(d) == d);      % multiple minima possible 
+timeind  = ind(1);                 % use the first one
+time     = times(timeind);
+
 
 
 function [level, lvlind] = GetLevel(pgvar, levels, deflevel)
@@ -359,3 +376,24 @@ if ( prod(Dlat1) == 1 )
 else
    dist   = reshape(acos(ang1 + ang2)*r,Dlat2);
 end
+
+
+function varexist(filename, varnames)
+%% We already know the file exists by this point.
+% Lets check to make sure that file contains all needed variables.
+% Fatally die if they do not exist.
+
+nvars  = length(varnames);
+gotone = ones(1,nvars);
+
+for i = 1:nvars
+   gotone(i) = nc_isvar(filename,varnames{i});
+   if ( ~ gotone(i) )
+      fprintf('\n%s is not a variable in %s\n',varnames{i},filename)
+   end
+end
+
+if ~ all(gotone)
+   error('missing required variable ... exiting')
+end
+

@@ -50,7 +50,7 @@ if (exist(truth_file,'file')==2)
 
    for ifield = 1:length(mynames)
       myname = mynames{ifield};
-      if ( isfield(pinfo,myname) ), warning('%s already exists in pinfo\n'); end
+      if ( isfield(pinfo,myname) ), warning('plot_ens_time_series: pinfo.%s already exists\n',myname); end
       eval(sprintf('pinfo.%s = MyInfo.%s;',myname,myname));
    end
 else
@@ -84,7 +84,7 @@ switch lower(pinfo.model)
 
       pinfo.prior_file     = [];
       pinfo.posterior_file = [];
-      pinfo                = GetCamInfo(pinfo, 'PlotEnsTimeSeries');
+      pinfo                = GetCamInfo(pinfo, diagn_file, 'PlotEnsTimeSeries');
 
    case 'wrf'
 

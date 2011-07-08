@@ -68,7 +68,7 @@ switch lower(vars.model)
    case 'cam'
 
       pinfo = CombineStructs(pinfo,vars);
-      pinfo = GetCamInfo(pinfo, 'PlotBins');
+      pinfo = GetCamInfo(pinfo, diagn_file, 'PlotBins');
 
    case 'pe2lyr'
 

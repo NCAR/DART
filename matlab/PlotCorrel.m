@@ -305,7 +305,7 @@ switch(lower(model))
       ax = get(h,'Position');
      %set(h,'Position',[ax(1) ax(2) ax(3)/2 ax(4)]);
 
-   case 'pe2lyr'
+   case {'pe2lyr','cam'}
 
       % We are going to correlate one var/time/lvl/lat/lon  with
       % all other lats/lons for a var/time/lvl   

@@ -5,25 +5,11 @@ function PlotJeffCorrel( pinfo )
 % time and another variable at all times in an ensemble time sequence.
 % The correlation is done across ensemble members.
 %
-% PlotVarVarCorrel is intended to be called by 'plot_var_var_correl'
+% PlotJeffCorrel is intended to be called by 'plot_jeff_correl'
 %
-% USAGE: PlotVarVarCorrel(fname, base_var_index, base_time, state_var_index)
+% USAGE: PlotJeffCorrel(pinfo)
 %
-% pinfo is a structure with the following necessary components:
-% fname
-% base_var_index    index of one of the state variables to correlate  
-% base_time         index of the time of interest (timestep)
-% state_var_index   index of the other state variable of interest.
-%
-% Example  (lorenz 63 model with 1000 timesteps)
-%%--------------------------------------------------------
-% pinfo.fname = 'Posterior_Diag.nc';
-% pinfo.base_var          = 'state';
-% pinfo.base_var_index    = 2;
-% pinfo.base_time         = 500;
-% pinfo.state_var         = 'state';
-% pinfo.state_var_index   = 1;
-% PlotVarVarCorrel( pinfo )
+% pinfo is a model-dependent structure. 
 
 %% DART software - Copyright 2004 - 2011 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -35,7 +21,7 @@ function PlotJeffCorrel( pinfo )
 % $Revision$
 % $Date$
 
-if (exist(pinfo.fname) ~= 2), error('%s does not exist.',pinfo.fname), end
+if (exist(pinfo.fname,'file') ~= 2), error('%s does not exist.',pinfo.fname), end
 
 % Get some file-specific information.
 
@@ -46,7 +32,7 @@ num_copies = dim_length(pinfo.fname,'copy');
 
 switch lower(model)
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf','cam'}
 
       clf;
 
@@ -57,13 +43,12 @@ switch lower(model)
       nmembers = size(comp_mem,2);
 
       correl = jeff_correl(base_mem, pinfo.base_tmeind, comp_mem);
-      times  = nc_varget(pinfo.fname,'time');
 
       subplot(2,1,1)
          PlotLocator(pinfo)
 
       subplot(2,1,2)
-         plot(times,correl);
+         plot(pinfo.times,correl);
 
       s1 = sprintf('%s Correlation of ''%s'', T = %d, lvl = %d, lat = %.2f, lon=%.2f', ...
           model, pinfo.base_var, pinfo.base_time, pinfo.base_lvl, ...
@@ -74,7 +59,7 @@ switch lower(model)
           nmembers); 
 
       title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
-      xlabel(sprintf('time (%s) %d timesteps',timeunits, num_times))
+      datetick('x','yyyymmmdd HH:MM')
       ylabel('correlation')
       
       % call out the time index in question, and put a corr==0 reference line.
@@ -82,6 +67,7 @@ switch lower(model)
       hold on;
       plot([pinfo.base_time pinfo.base_time],[ -1 1 ],'k:', ...
            [ax(1)         ax(2)],[  0 0 ],'k:')
+
 
    otherwise
 
@@ -149,7 +135,7 @@ x   = bob.Length;
 
 
 
-function var = GetEns( fname, var, lvlind, latind, lonind)
+function var = GetEns( fname, varname, lvlind, latind, lonind)
 % Gets a time-series of all copies of a prognostic variable 
 % at a particular 3D location (level, lat, lon).
 % Determining just the ensemble members (and not mean, spread ...)
@@ -174,9 +160,9 @@ myinfo.diagn_file = fname;
 myinfo.levelindex = lvlind;
 myinfo.latindex   = latind;
 myinfo.lonindex   = lonind;
-[start, count]    = GetNCindices(myinfo,'diagn',var);
+[start, count]    = GetNCindices(myinfo,'diagn',varname);
 
-bob = nc_varget(fname, var, start, count); % 'bob' is only 2D 
+bob = nc_varget(fname, varname, start, count); % 'bob' is only 2D 
 var = bob(:,copyindices);
 
 

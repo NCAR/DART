@@ -261,7 +261,7 @@ switch lower(model)
 
    otherwise
 
-      disp(sprintf('unknown model %s -- doing nothing',model))
+      disp(sprintf('unsupported model %s -- doing nothing',model))
 
 end
 
