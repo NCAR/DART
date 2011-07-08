@@ -184,7 +184,7 @@ switch lower(pinfo.model)
             legend boxoff
       end
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf','cam'}
 
       clf;
 
@@ -218,52 +218,6 @@ switch lower(pinfo.model)
          xlabel(sprintf('time (%s) %d timesteps',timeunits, num_times))
          ylabel(varunits)
 
-   case 'cam'
-
-      clf;
-
-      var_names = strread(pinfo.var_names,'%s','delimiter',' ');
-      nfigs = length(var_names);  % each variable gets its own figure
-      iplot = 0;
-
-      for ivar = 1:nfigs
-
-         iplot = iplot + 1;
-         figure(iplot); clf;
-
-         pinfo.var  = var_names{ivar};
-
-         timeunits = nc_attget(pinfo.diagn_file, 'time',    'units');
-         varunits  = nc_attget(pinfo.diagn_file, pinfo.var, 'units');
-
-         subplot(2,1,1)
-            PlotLocator(pinfo);
-
-         ens_mean = GetCopy(pinfo.diagn_file, ens_mean_index, pinfo, ...
-                            pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
-         subplot(2,1,2)
-            plot(times,ens_mean,'r','LineWidth',2);
-            legend('Ensemble Mean', 0)
-            s1 = sprintf('%s model ''%s'' Ensemble Mean', pinfo.model, pinfo.var);
-            s2 = sprintf('level index %d lat %.2f lon %.2f', ...
-                       pinfo.levelindex, pinfo.latitude, pinfo.longitude);
-
-            if ( have_truth )
-               truth    = GetCopy(pinfo.truth_file, truth_index, pinfo, ...
-                                  pinfo.truth_time(1), pinfo.truth_time(2)) ;
-               hold on; plot(times,truth,'b','LineWidth',2); hold off;
-               legend('Ensemble Mean','True State',0);
-               s1 = sprintf('%s model ''%s'' Truth and Ensemble Mean', ...
-                               pinfo.model, pinfo.var);
-            end
-
-            %plot(times,ens_mean,'r','LineWidth',2); %      again - on top
-
-            title({s1,s2,pinfo.diagn_file},'interpreter','none','fontweight','bold')
-            xlabel(sprintf('time (%s) %d timesteps',timeunits, num_times))
-            ylabel(varunits)
-            legend boxoff
-      end
 
    otherwise
       error('model %s unknown.',pinfo.model)

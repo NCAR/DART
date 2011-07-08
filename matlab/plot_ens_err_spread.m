@@ -47,10 +47,10 @@ switch lower(vars.model)
 	 'lorenz_04','forced_lorenz_96','ikeda','simple_advection'}
 
       varid = SetVariableID(vars);
-      pinfo = setfield(pinfo,'truth_file', truth_file);
-      pinfo = setfield(pinfo,'diagn_file', diagn_file);
-      pinfo = setfield(pinfo,'var'       , varid.var);
-      pinfo = setfield(pinfo,'var_inds'  , varid.var_inds);
+      pinfo.truth_file = truth_file;
+      pinfo.diagn_file = diagn_file;
+      pinfo.var        = varid.var;
+      pinfo.var_inds   = varid.var_inds;
       %pinfo = struct('truth_file', truth_file, ...
       %               'diagn_file', diagn_file, ...
       %               'var'       , varid.var, ...
@@ -68,9 +68,8 @@ switch lower(vars.model)
 
    case 'cam'
 
-      pinfo = GetCamInfo(pinfo, truth_file, 'PlotEnsErrSpread');
-      pinfo.truth_file = truth_file;
-      pinfo.diagn_file = diagn_file;
+      pinfo = CombineStructs(pinfo,vars);
+      pinfo = GetCamInfo(pinfo, 'PlotEnsErrSpread');
 
    case 'pe2lyr'
 

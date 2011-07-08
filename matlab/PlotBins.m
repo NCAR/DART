@@ -39,7 +39,7 @@ function PlotBins(pinfo)
 % $Revision$
 % $Date$
 
-pinfo = CheckModelCompatibility(pinfo)
+pinfo = CheckModelCompatibility(pinfo);
 
 % Get the state for the truth
 truth_index = get_copy_index(pinfo.truth_file,'true state');
@@ -123,7 +123,7 @@ switch lower(true_model)
          axis tight
       end
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','cam'}
 
       % It is intended that all 3D models have all the required information
       % set in the corresponding Get<model>Info.m script.

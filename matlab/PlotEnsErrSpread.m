@@ -146,7 +146,7 @@ switch lower(tmodel)
                ylabel('distance')
       end
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','cam'}
 
       clf;
 
@@ -209,7 +209,7 @@ for i = 1:length(varinfo.Dimension)
          count(i) = tendind - tstartind + 1;
          break
       otherwise
-end
+   end
 end
 var = nc_varget(fname, pinfo.var, start, count);
 

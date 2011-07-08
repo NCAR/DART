@@ -55,10 +55,10 @@ switch lower(vars.model)
 	 'lorenz_04', 'forced_lorenz_96','ikeda','simple_advection'}
 
       varid = SetVariableID(vars);      % queries for variable IDs
-      pinfo = setfield(pinfo, 'truth_file', truth_file);
-      pinfo = setfield(pinfo, 'diagn_file', diagn_file);
-      pinfo = setfield(pinfo, 'var'       , varid.var);
-      pinfo = setfield(pinfo, 'var_inds'  , varid.var_inds);
+      pinfo.truth_file = truth_file;
+      pinfo.diagn_file = diagn_file;
+      pinfo.var        = varid.var;
+      pinfo.var_inds   = varid.var_inds;
       clear varid
 
    case 'fms_bgrid'
@@ -67,7 +67,8 @@ switch lower(vars.model)
 
    case 'cam'
 
-      pinfo = GetCamInfo(pinfo, diagn_file, 'PlotBins');
+      pinfo = CombineStructs(pinfo,vars);
+      pinfo = GetCamInfo(pinfo, 'PlotBins');
 
    case 'pe2lyr'
 
