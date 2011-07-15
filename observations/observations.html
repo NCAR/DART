@@ -64,7 +64,7 @@ there is a two-step process with two programs and an ASCII intermediate file.
 We are currently leaning towards single-step conversions but either
 approach can be used for new programs.
 </P><P>
-In many cases, the original datasets are in a standard scientific
+Frequently the original datasets are in a standard scientific
 format like netCDF, HDF, or BUFR, and library routines for those
 formats can be used to read in the original observation data.
 </P><P>
@@ -91,7 +91,7 @@ location module is being used.
 </P>
 
 <P>
-This directory is a work in progress.  There are currently 
+There are currently 
 some additional observation sources and types which we are in the process
 of collecting information and conversion programs for and which will
 eventually be added to this directory.  In the meantime, if you have
@@ -118,6 +118,10 @@ here for your own use.
 Formats read by the existing converters
 include NetCDF, HDF, little-r, text, Prepbufr,
 amongst others.
+</P>
+<P>
+See the <a href="#Programs">Programs</a> section below for a list of
+the current converter programs.
 </P>
 
 <!--==================================================================-->
@@ -149,7 +153,8 @@ usually are distributed with a year/month/day,
 hour/min/seconds timestamp.  There are routines in DART
 to convert back and forth between the (day-number/seconds) 
 format and a variety of (year/month/day) calendars. 
-See <a href="../time_manager/time_manager_mod.html#time_type">here</a>
+See <a href="../time_manager/time_manager_mod.html#time_type">the
+time manager documentation</a>
 for more details on how DART stores time information and
 the types of available calendars.  Some climate models which do
 long runs (100s or 1000s of years) use a modified calendar
@@ -168,10 +173,10 @@ there is no problem.
 <H4>Error</H4>
 
 <P>
-Observation must specify an associated expected error.
-Each individual observation stores its own value,
-so it can be a constant value for all observations or it
-can vary by location, by height, by magnitude of the
+Observations must specify an associated expected error.
+Each individual observation stores its own error value,
+so it can be a constant value for all observations of that
+type or it can vary by location, by height, by magnitude of the
 observed value, etc.  
 This value is the expected instrument error plus
 the representativeness error of the model.  
@@ -216,7 +221,8 @@ threshold is enabled, and the observation will not be
 assimilated.  It is important
 to look at the output observation sequence files after an assimilation
 to see how many observations were assimilated or rejected, and also at
-the RMSE versus the total spread.  
+the RMSE (<a href="http://www.wikipedia.org/wiki/RMSE">root mean squared error</a>) 
+versus the total spread.  
 DART includes Matlab diagnostic routines
 to create these types of plots.  
 The observation RMSE and total spread should be roughly
@@ -282,7 +288,26 @@ need to match the type of locations used in the model.
 <P>
 The DART/observations directory contains a variety of converter programs
 to read various external formats and convert the observations into the
-format requried by DART.  In addition this external program produces
+format required by DART.</P>  
+
+<P>The current list of converters include:</P>
+<UL>
+<LI><a href="AIRS/AIRS.html">AIRS</a></LI>
+<LI><a href="GTSPP/GTSPP.html">GTSPP</a></LI>
+<LI><a href="MADIS/MADIS.html">MADIS</a></LI>
+<LI><a href="NCEP/prep_bufr/prep_bufr.html">NCEP (prepbufr->ascii)</a></LI>
+<LI><a href="NCEP/ascii_to_obs/create_real_obs.html">NCEP (ascii->obs_seq)</a></LI>
+<LI><a href="SSEC/SSEC.html">SSEC</a></LI>
+<LI><a href="WOD/WOD.html">WOD</a></LI>
+<LI><a href="gps/gps.html">GPS</a></LI>
+<LI><a href="quikscat/QuikSCAT.html">QuikSCAT</a></LI>
+<LI><a href="radar/radar.html">Radar</a></LI>
+<LI><a href="text/text_to_obs.html">Text</a></LI>
+<LI><a href="var/littler_tf_dart.html">Var (little-r)</a></LI>
+<LI><a href="var/rad_3dvar_to_dart.html">Var (radar)</a></LI>
+</UL>
+<P>
+In addition the following external program produces
 DART observation sequence files:
 </P>
 <ul>
