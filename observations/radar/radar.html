@@ -73,11 +73,29 @@ radar data; for more information contact us.
 <H2>PROGRAMS</H2>
 
 <P>
-<em class="code">create_radar_obs</em> generates one or more
+<em class="code">create_obs_radar_sequence</em> generates one or more
 sets of synthetic radar observations.  Change into the 
 <em class="code">work</em> subdirectory and run
 <em class="code">quickbuild.csh</em> to build this program.
 </P>
+
+<P>Many DART users working with radar observations are using
+the WRF Weather and Research Forecast model.  See the 
+<a href="../../models/wrf/regression/Radar/README">WRF tests directory</a> 
+for pointers to data to run a radar test case.
+</P>
+<P>In addition to the programs available in the DART distribution,
+the following external program produces DART observation sequence files:
+</P>
+<ul>
+<li><a href="http://code.google.com/p/opaws/">
+     Observation Processing And Wind Synthesis (OPAWS)</a>:
+     OPAWS can process NCAR Dorade (sweep) and NCAR EOL Foray (netcdf) radar data.
+     It analyzes (grids) data in either two-dimensions (on the conical surface of
+     each sweep) or three-dimensions (Cartesian). Analyses are output in netcdf,
+     Vis5d, and/or DART (Data Assimilation Research Testbed) formats.
+</li>
+</ul>
 
 <!--==================================================================-->
 <!-- Describe the bugs.                                               -->
