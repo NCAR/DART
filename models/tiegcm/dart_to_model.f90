@@ -157,10 +157,18 @@ if (io /= 0 )then
          source,revision,revdate)
 endif
 !F107
-write(file_unit, *, iostat = io )  var%vars_1d(1)
-if (io /= 0 )then
-   call error_handler(E_ERR,'dart_to_model:','cannot write f107 (var%vars_1d) to STDOUT', &
+if (size(var%vars_1d) > 0) then
+  write(file_unit, *, iostat = io )  var%vars_1d(1)
+  if (io /= 0 )then
+    call error_handler(E_ERR,'dart_to_model:','cannot write f107 (var%vars_1d) to STDOUT', &
          source,revision,revdate)
+  endif
+else
+  write(file_unit, *, iostat = io ) 'NA'
+  if (io /= 0 )then
+    call error_handler(E_ERR,'dart_to_model:','cannot write f107 (var%vars_1d) to STDOUT', &
+         source,revision,revdate)
+  endif
 endif
 
 close(file_unit)
