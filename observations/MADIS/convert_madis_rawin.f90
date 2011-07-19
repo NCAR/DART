@@ -55,8 +55,10 @@ use          obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT,      &
                                   RADIOSONDE_RELATIVE_HUMIDITY,     &
                                   RADIOSONDE_DEWPOINT,              &
                                   RADIOSONDE_SURFACE_ALTIMETER 
-use     obs_utilities_mod, only : add_obs_to_seq, create_3d_obs, &
-                                  getdimlen, getvar_int, set_missing_name
+use     obs_utilities_mod, only : add_obs_to_seq, create_3d_obs,           &
+                                  getdimlen, getvar_int, set_missing_name, &
+                                  getvar_real_1d_1val, getvar_int_1d_1val, &
+                                  getvar_real_2d_slice, get_or_fill_QC_2d_slice
 
 use           netcdf
 
@@ -234,19 +236,19 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     allocate(qc_pres(nman))  ;  allocate(qc_tair(nman))  ;  allocate(qc_tdew(nman))
     allocate(qc_wdir(nman))  ;  allocate(qc_wspd(nman))
   
-    call getvar_real_2d(ncid, "prMan", n, nman, pres, pres_miss)
-    call getvar_real_2d(ncid, "tpMan", n, nman, tair, tair_miss)
-    call getvar_real_2d(ncid, "tdMan", n, nman, tdew, tdew_miss)
-    call getvar_real_2d(ncid, "wdMan", n, nman, wdir, wdir_miss)
-    call getvar_real_2d(ncid, "wsMan", n, nman, wspd, wspd_miss)
+    call getvar_real_2d_slice(ncid, "prMan", n, nman, pres, pres_miss)
+    call getvar_real_2d_slice(ncid, "tpMan", n, nman, tair, tair_miss)
+    call getvar_real_2d_slice(ncid, "tdMan", n, nman, tdew, tdew_miss)
+    call getvar_real_2d_slice(ncid, "wdMan", n, nman, wdir, wdir_miss)
+    call getvar_real_2d_slice(ncid, "wsMan", n, nman, wspd, wspd_miss)
   
     ! if user says to use QC, read them in or fill if not there
     if (use_input_qc) then
-       call get_or_fill_QC_2d(ncid, "prManQCR", n, nman, qc_pres)
-       call get_or_fill_QC_2d(ncid, "tpManQCR", n, nman, qc_tair)
-       call get_or_fill_QC_2d(ncid, "tdManQCR", n, nman, qc_tdew)
-       call get_or_fill_QC_2d(ncid, "wdManQCR", n, nman, qc_wdir)
-       call get_or_fill_QC_2d(ncid, "wsManQCR", n, nman, qc_wspd)
+       call get_or_fill_QC_2d_slice(ncid, "prManQCR", n, nman, qc_pres)
+       call get_or_fill_QC_2d_slice(ncid, "tpManQCR", n, nman, qc_tair)
+       call get_or_fill_QC_2d_slice(ncid, "tdManQCR", n, nman, qc_tdew)
+       call get_or_fill_QC_2d_slice(ncid, "wdManQCR", n, nman, qc_wdir)
+       call get_or_fill_QC_2d_slice(ncid, "wsManQCR", n, nman, qc_wspd)
     else
        qc_pres = 0
        qc_tair = 0 ;  qc_tdew = 0
@@ -385,14 +387,14 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     allocate(qc_pres(nsig))  ;  allocate(qc_tair(nsig))  ;  allocate(qc_tdew(nsig))
 
     !  read significant level data
-    call getvar_real_2d(ncid, "prSigT", n, nsig, pres, pres_miss)
-    call getvar_real_2d(ncid, "tpSigT", n, nsig, tair, tair_miss)
-    call getvar_real_2d(ncid, "tdSigT", n, nsig, tdew, tdew_miss)
+    call getvar_real_2d_slice(ncid, "prSigT", n, nsig, pres, pres_miss)
+    call getvar_real_2d_slice(ncid, "tpSigT", n, nsig, tair, tair_miss)
+    call getvar_real_2d_slice(ncid, "tdSigT", n, nsig, tdew, tdew_miss)
 
     if (use_input_qc) then
-       call get_or_fill_QC_2d(ncid, "prSigTQCR", n, nsig, qc_pres)
-       call get_or_fill_QC_2d(ncid, "tpSigTQCR", n, nsig, qc_tair)
-       call get_or_fill_QC_2d(ncid, "tdSigTQCR", n, nsig, qc_tdew)
+       call get_or_fill_QC_2d_slice(ncid, "prSigTQCR", n, nsig, qc_pres)
+       call get_or_fill_QC_2d_slice(ncid, "tpSigTQCR", n, nsig, qc_tair)
+       call get_or_fill_QC_2d_slice(ncid, "tdSigTQCR", n, nsig, qc_tdew)
     else
        qc_pres = 0
        qc_tair = 0
@@ -498,13 +500,13 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     allocate(qc_pres(nsig))  ;  allocate(qc_wdir(nsig))  ;  allocate(qc_wspd(nsig))
 
     !  read significant level data
-    call getvar_real_2d(ncid, "htSigW", n, nsig, pres, pres_miss)
-    call getvar_real_2d(ncid, "wdSigW", n, nsig, wdir, wdir_miss)
-    call getvar_real_2d(ncid, "wsSigW", n, nsig, wspd, wspd_miss)
+    call getvar_real_2d_slice(ncid, "htSigW", n, nsig, pres, pres_miss)
+    call getvar_real_2d_slice(ncid, "wdSigW", n, nsig, wdir, wdir_miss)
+    call getvar_real_2d_slice(ncid, "wsSigW", n, nsig, wspd, wspd_miss)
 
     if (use_input_qc) then
-       call get_or_fill_QC_2d(ncid, "wdSigWQCR", n, nsig, qc_wdir)
-       call get_or_fill_QC_2d(ncid, "wsSigWQCR", n, nsig, qc_wspd)
+       call get_or_fill_QC_2d_slice(ncid, "wdSigWQCR", n, nsig, qc_wdir)
+       call get_or_fill_QC_2d_slice(ncid, "wsSigWQCR", n, nsig, qc_wspd)
     else
        qc_wdir = 0
        qc_wspd = 0
@@ -553,167 +555,5 @@ if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, rawin_out_file)
 
 !end of main program
 call finalize_utilities()
-
-contains
-
-! specialized versions of the netcdf get routines that seem to be
-! pretty specific to this version of the code, so i didn't put them
-! in the general observations utilities file.
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   getvar_real_1d_1val - subroutine that inquires, gets the variable, and fills 
-!            in the missing value attribute if that arg is present.
-!            takes a single start, uses count=1, returns a scalar
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      start - starting index in the 1d array
-!      dout - output value.  real(r8)
-!      dmiss - value that signals a missing value   real(r8), optional
-!
-!     created 11 Mar 2010,  nancy collins,  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine getvar_real_1d_1val(ncid, varname, start, dout, dmiss)
- integer,            intent(in)   :: ncid
- character(len = *), intent(in)   :: varname
- integer,            intent(in)   :: start
- real(r8),           intent(out)  :: dout
- real(r8), optional, intent(out)  :: dmiss
-
-integer :: varid
-
-! read the data for the requested array, and get the fill value
-call nc_check( nf90_inq_varid(ncid, varname, varid), &
-               'getvar_real', 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, dout, start = (/ start /) ), &
-               'getvar_real', 'getting var '// trim(varname))
-
-if (present(dmiss)) &
-   call nc_check( nf90_get_att(ncid, varid, '_FillValue', dmiss), &
-               'getvar_real', 'getting attr "_FillValue" for '//trim(varname))
-
-end subroutine getvar_real_1d_1val
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   getvar_int_1d_1val - subroutine that inquires, gets the variable, and fills 
-!            in the missing value attribute if that arg is present.
-!            takes a single start, uses count=1, returns a scalar
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      start - starting index in the 1d array
-!      dout - output value.  int
-!      dmiss - value that signals a missing value   int, optional
-!
-!     created 11 Mar 2010,  nancy collins,  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine getvar_int_1d_1val(ncid, varname, start, dout, dmiss)
- integer,            intent(in)   :: ncid
- character(len = *), intent(in)   :: varname
- integer,            intent(in)   :: start
- integer,            intent(out)  :: dout
- integer,  optional, intent(out)  :: dmiss
-
-integer :: varid
-
-! read the data for the requested array, and get the fill value
-call nc_check( nf90_inq_varid(ncid, varname, varid), &
-               'getvar_int_1d_1val', 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, dout, start = (/ start /) ), &
-               'getvar_int_1d_1val', 'getting var '// trim(varname))
-
-if (present(dmiss)) &
-   call nc_check( nf90_get_att(ncid, varid, '_FillValue', dmiss), &
-               'getvar_int_1d_1val', 'getting attr "_FillValue" for '//trim(varname))
-
-end subroutine getvar_int_1d_1val
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   getvar_real_2d - subroutine that inquires, gets the variable, and fills 
-!            in the missing value attribute if that arg is present.
-!     SPECIALIZED for this use - assumes start = (/ 1, n /) and count = (/ m, 1 /)
-!           so takes a scalar start, count, returns a 1d_array
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      start - starting index in the 2d array.  integer
-!      count - nitems to get. integer
-!      darray - output array.  real(r8)
-!      dmiss - value that signals a missing value   real(r8), optional
-!
-!     created 11 Mar 2010,  nancy collins,  ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine getvar_real_2d(ncid, varname, start, count, darray, dmiss)
- integer,            intent(in)   :: ncid
- character(len = *), intent(in)   :: varname
- integer,            intent(in)   :: start
- integer,            intent(in)   :: count
- real(r8),           intent(out)  :: darray(:)
- real(r8), optional, intent(out)  :: dmiss
-
-integer :: varid
-
-! read the data for the requested array, and get the fill value
-call nc_check( nf90_inq_varid(ncid, varname, varid), &
-               'getvar_real_2d', 'inquire var '// trim(varname))
-call nc_check( nf90_get_var(ncid, varid, darray, &
-                start=(/ 1, start /), count=(/ count, 1 /) ), &
-               'getvar_real_2d', 'getting var '// trim(varname))
-
-if (present(dmiss)) &
-   call nc_check( nf90_get_att(ncid, varid, '_FillValue', dmiss), &
-               'getvar_real_2d', 'getting attr "_FillValue" for '//trim(varname))
-
-end subroutine getvar_real_2d
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!   get_or_fill_QC_2d - subroutine which gets the requested netcdf variable
-!           but if it isn't there, it fills the array with 0s.  not an
-!           error if it's not present.  assumes integer data array
-!     SPECIALIZED for this use - assumes start = (/ 1, n /) and count = (/ m, 1 /)
-!           so takes a scalar start, count, returns a 1d_array
-!           also prints out a message if fill used.
-!
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      start - starting index in the 2d array.  integer
-!      count - nitems to get. integer
-!      darray - output array.  integer
-!
-!     created Mar 8, 2010    nancy collins, ncar/image
-!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine get_or_fill_QC_2d(ncid, varname, start, count, darray)
- integer,            intent(in)    :: ncid
- character(len = *), intent(in)    :: varname
- integer,            intent(in)    :: start
- integer,            intent(in)    :: count
- integer,            intent(inout) :: darray(:)
-
-integer :: varid, nfrc
-
-! test to see if variable is present.  if yes, read it in.
-! otherwise, set to fill value, or 0 if none given.
-
-nfrc = nf90_inq_varid(ncid, varname, varid)
-if (nfrc == NF90_NOERR) then
-   call nc_check( nf90_get_var(ncid, varid, darray, &
-                  start=(/ 1, start /), count=(/ count, 1 /) ), &
-                  'get_or_fill_int_2d', 'reading '//trim(varname) )
-else
-   darray = 0
-   if (start == 1) & 
-     print *, 'QC field named ' // trim(varname) // ' was not found in input, 0 used instead'
-endif
-
-end subroutine get_or_fill_QC_2d
 
 end program convert_madis_rawin
