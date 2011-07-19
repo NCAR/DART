@@ -22,7 +22,8 @@ program model_to_dart
 use        types_mod, only : r8
 use    utilities_mod, only : get_unit, initialize_utilities, timestamp
 use        model_mod, only : model_type, static_init_model, get_model_size, &
-                             init_model_instance, read_TIEGCM_restart, &
+                             init_model_instance, read_TIEGCM_restart,      &
+                             read_TIEGCM_secondary,                         &
                              read_TIEGCM_namelist, prog_var_to_vector 
 use  assim_model_mod, only : open_restart_write, awrite_state_restart, close_restart
 use time_manager_mod, only : time_type
@@ -37,7 +38,8 @@ character(len=128), parameter :: &
 
 character (len = 128) ::  &
    file_namelist = 'tiegcm.nml', &
-   file_name     = 'tiegcm_restart_p.nc', & 
+   file_name1    = 'tiegcm_restart_p.nc', & 
+   file_name2    = 'tiegcm_s.nc', & 
    file_out      = 'temp_ud'
 
 ! Temporary allocatable storage to read in a native format for TIEGCM state
@@ -61,7 +63,8 @@ call init_model_instance(var)
 
 ! Read the TIEGCM state variables into var and set the model_time
 ! to reflect the valid time of the TIEGCM state.
-call read_TIEGCM_restart(file_name, var, model_time)
+call read_TIEGCM_restart(file_name1, var, model_time)
+call read_TIEGCM_secondary(file_name2, var)
 
 ! Read the TIEGCM input variables into var
 call read_TIEGCM_namelist(file_namelist, var)
