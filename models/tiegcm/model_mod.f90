@@ -15,7 +15,7 @@ module model_mod
 !
 !------------------------------------------------------------------
 ! DART Modules
-use        types_mod, only : r8, digits12, missing_r8, i4
+use        types_mod, only : r8, digits12, missing_r8, i4, PI
 use time_manager_mod, only : time_type, set_calendar_type, set_time_missing,        &
                              set_time, get_time, print_time,                        &
                              set_date, get_date, print_date,                        & 
@@ -807,7 +807,7 @@ integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
 
 integer :: TNVarID, TN_NMVarID, UNVarID, UN_NMVarID, VNVarID, VN_NMVarID
 integer :: O1VarID, O1_NMVarID, O2VarID, O2_NMVarID 
-integer :: NEVarID, F107VarID
+integer :: NEVarID, F107VarID, ZGVarID
 integer :: lonDimID, latDimID, levDimID, ilevDimID
 integer :: lonVarID, latVarID, levVarID, ilevVarID
 integer :: paraDimID 
@@ -940,7 +940,7 @@ else
    call nc_check(nf90_def_dim(ncid=ncFileID, name="ilev", &
              & len = nilev, dimid =  ilevDimID), 'nc_write_model_atts')
 
-   if (state_num_1d > 1) then          
+   if (state_num_1d > 0) then          
    call nc_check(nf90_def_dim(ncid=ncFileID, name="onedparameter", &
              & len = state_num_1d, dimid = paraDimID), 'nc_write_model_atts')
    endif
@@ -999,7 +999,7 @@ else
    ! Create attributes for the state vector
    !----------------------------------------------------------------------------
 
-   if (state_num_1d > 1) then          
+   if (state_num_1d > 0) then          
    call nc_check(nf90_def_var(ncid=ncFileID, name="F107", xtype=nf90_real, &
        dimids = (/ paraDimID, MemberDimID, unlimitedDimID /), &
        varid  = F107VarID), 'nc_write_model_atts')
@@ -1007,6 +1007,15 @@ else
           'nc_write_model_atts')
    endif
           
+   call nc_check(nf90_def_var(ncid=ncFileID, name="ZG", xtype=nf90_real, &
+       dimids = (/ lonDimID, latDimID, levDimID, MemberDimID, unlimitedDimID /), &
+       varid  = ZGVarID), 'nc_write_model_atts')
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, "long_name", &
+          "geopotential height calculated with varying gravity"), &
+          'nc_write_model_atts')
+   call nc_check(nf90_put_att(ncFileID, ZGVarID, "units", "cm"), &
+          'nc_write_model_atts')
+
    call nc_check(nf90_def_var(ncid=ncFileID, name="TN", xtype=nf90_real, &
        dimids = (/ lonDimID, latDimID, levDimID, MemberDimID, unlimitedDimID /), &
        varid  = TNVarID), 'nc_write_model_atts')
@@ -1161,7 +1170,7 @@ integer         :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer         :: StateVarID
 integer         :: TNVarID, TN_NMVarID, UNVarID, UN_NMVarID, VNVarID, VN_NMVarID  
 integer         :: O1VarID, O1_NMVarID, O2VarID, O2_NMVarID
-integer         :: NEVarID, F107VarID
+integer         :: NEVarID, F107VarID, ZGVarID
 
 type(model_type):: var 
 
@@ -1211,7 +1220,7 @@ else
    ! call check(nf90_put_var( ncFileID, psVarID, global_Var%ps, &
    !                          start=(/ 1, 1, copyindex, timeindex /) ), "ps put_var")
     
-   if (state_num_1d > 1) then          
+   if (state_num_1d > 0) then          
    call nc_check(NF90_inq_varid(ncFileID, 'F107', F107VarID),       &
           'nc_write_model_vars', 'F107 inq_varid') 
    call nc_check(nf90_put_var( ncFileID, F107VarID, var%vars_1d(1), & 
@@ -1219,10 +1228,17 @@ else
           'nc_write_model_vars', 'F107 put_var') 
    endif
 
+   call nc_check(NF90_inq_varid(ncFileID, 'ZG',    ZGVarID),    &
+          'nc_write_model_vars', 'ZG inq_varid')
+   call nc_check(nf90_put_var( ncFileID, ZGVarID,               & 
+                 var%vars_3d(:,:,:,TYPE_local_ZG+1),            & 
+                 start=(/ 1, 1, 1, copyindex, timeindex /) ),   &
+          'nc_write_model_vars', 'ZG put_var')     
+
    call nc_check(NF90_inq_varid(ncFileID, 'TN',    TNVarID),    &
           'nc_write_model_vars', 'TN inq_varid')
    call nc_check(nf90_put_var( ncFileID, TNVarID,               & 
-                 var%vars_3d(:,:,:,TYPE_local_TN),              & 
+                 var%vars_3d(:,:,:,TYPE_local_TN+1),            & 
                  start=(/ 1, 1, 1, copyindex, timeindex /) ),   &
           'nc_write_model_vars', 'TN put_var')     
 
@@ -1477,7 +1493,7 @@ type(model_type), intent(inout) :: var
 if ( .not. module_initialized ) call static_init_model
                                                                                       
 deallocate(var%vars_3d)
-if (state_num_1d > 1) deallocate(var%vars_1d)
+if (state_num_1d > 0) deallocate(var%vars_1d)
                                                                                   
 end subroutine end_model_instance
 
@@ -2352,7 +2368,7 @@ subroutine read_TIEGCM_namelist(file_name,var)
     time_step_seconds = step
  endif
 
- if ((state_num_1d > 1) .and. present(var)) then
+ if ((state_num_1d > 0) .and. present(var)) then
   var%vars_1d(1) = f107    !        f10.7 cm flux
  endif
 
@@ -2420,7 +2436,7 @@ do k = 1, num_close
      if (estimate_parameter) then
          dist(k) = dist(k)*0.25_r8
      else !not estimate_parameter
-         dist(k) = 1.0e9
+         dist(k) = 2.0_r8 * PI
      endif
 
   endif
