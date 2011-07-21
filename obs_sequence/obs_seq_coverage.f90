@@ -99,7 +99,8 @@ integer :: num_stations  ! This is the current number of unique locations
 integer :: max_stations  ! This is the largest possible number of uniq locs
 integer :: station_id    ! the index (into stations) of an existing location
 integer :: timeindex     ! the index (into the time array of a station)
-integer :: num_output    ! total number of desired locations and times found
+integer :: num_out_stat  ! total number of desired stations found
+integer :: num_out_total ! total number of desired locations * times found
 
 integer, parameter :: MAX_OBS_INPUT_TYPES = 500  ! lazy, just going big
 
@@ -512,7 +513,8 @@ enddo ObsFileLoop
 
 allocate(DesiredStations(num_stations))
 DesiredStations = .FALSE.
-num_output = 0
+num_out_stat = 0
+num_out_total = 0
 
 do i = 1,num_stations
 
@@ -525,12 +527,14 @@ do i = 1,num_stations
 
    if (stations(i)%ntimes >= nT_minimum) then
       DesiredStations(i) = .TRUE.
-      num_output = num_output + 1
+      num_out_stat  = num_out_stat + 1
+      num_out_total = num_out_total + stations(i)%ntimes
    endif
 
 enddo
 
-if (verbose) write(*,*)'There were ',num_output,' stations matching the input criterion.'
+if (verbose) write(*,*)'There were ',num_out_stat,' stations matching the input criterion.'
+if (verbose) write(*,*)'There were ',num_out_total,' stations*times matching the input criterion.'
 
 ! Output a netCDF file of 'all' observations locations and times.
 ! Used to explore what is available.
@@ -542,7 +546,7 @@ call CloseNetCDF(ncunit, trim(ncName))
 
 ! if no stations are selected, do something.
 
-if (num_output < 1) then
+if (num_out_stat < 1) then
    write(string1,*)'No location had at least ',nT_minimum,' reporting times.'
    call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, &
                       revdate, text2=string2)
@@ -1371,16 +1375,16 @@ iunit = get_unit()
 open(iunit,file=trim(textfile_out), form='formatted', &
                 action='write', position='rewind')
 
-! num_output is the result of traversing the list of stations and times
+! num_out_total is the result of traversing the list of stations and times
 ! and finding the intersection with the user input. How many stations
 ! and times fit the requirements.
-write(iunit,*)'num_definitions ',num_output
+write(iunit,*)'num_definitions ',num_out_total
 
 call write_obs_kind(iunit, fform='formatted', use_list=obs_kinds_inds)
 call set_obs_def_error_variance(obs_def, MISSING_R8)
 
 write(*,*) ! whitespace
-write(*,*)'There are ',num_output,' locs/times.'
+write(*,*)'There are ',num_out_total,' locs/times.'
 write(*,*)'Only interested in locations with at least ', nT_minimum,' obs times.' 
 write(*,*)'minlon/minlat ', lonlim1, latlim1 
 write(*,*)'maxlon/maxlat ', lonlim2, latlim2
