@@ -334,7 +334,7 @@ switch(lower(model))
 
       correl = reshape(corr,[ny nx]);
 
-      contour(lons,lats,correl,-1:0.2:1); hold on;
+      contour(lons,lats,correl,[-1:0.2:-0.2 0.2:0.2:1.0]); hold on;
       plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
                  'MarkerSize',12,'MarkerFaceColor','k');
       s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f', ...
@@ -349,8 +349,55 @@ switch(lower(model))
       worldmap;
       axis image
       h = colorbar; 
-      % ax = get(h,'Position');
-      % set(h,'Position',[ax(1) ax(2) ax(3)/2 ax(4)]);
+
+   case {'tiegcm'}
+
+      % We are going to correlate one var/time/lvl/lat/lon  with
+      % all other lats/lons for a var/time/lvl   
+
+      clf;
+
+      lats     = nc_varget(pinfo.fname,'lat'); ny = length(lats);
+      lons     = nc_varget(pinfo.fname,'lon'); nx = length(lons);
+      latunits = nc_attget(pinfo.fname,'lat','units');
+      lonunits = nc_attget(pinfo.fname,'lon','units');
+
+      inds = find(lons >= 180);
+      lons(inds) = lons(inds) - 360.0; 
+
+      nxny     = nx*ny;
+
+      base_mem = Get1Ens( pinfo.fname, pinfo.base_var,    pinfo.base_tmeind, ... 
+                    pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
+      comp_ens = GetEnsLevel( pinfo.fname,       pinfo.comp_var, ...
+                              pinfo.base_tmeind, pinfo.comp_lvlind);
+      nmembers = size(comp_ens,1);
+
+      corr = zeros(nxny,1);
+
+      for i = 1:nxny,
+         x = corrcoef(base_mem, comp_ens(:, i));
+         corr(i) = x(1, 2);
+      end
+
+      correl = reshape(corr,[ny nx]);
+
+      contour(lons,lats,correl,[-1:0.2:-0.2 0.2:0.2:1.0]); hold on;
+%     imagesc(lons,lats,correl); set(gca,'YDir','normal'); hold on;
+      plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
+                 'MarkerSize',12,'MarkerFaceColor','k');
+      s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f', ...
+           model, pinfo.base_var, pinfo.base_lvl, ...
+             pinfo.base_lat, pinfo.base_lon, pinfo.base_time);
+
+      s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
+               pinfo.comp_var, pinfo.comp_lvl, nmembers); 
+      title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
+      xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
+      ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
+      worldmap('hollow','dateline');
+      axis image
+      h = colorbar; 
 
    otherwise
 

@@ -141,7 +141,7 @@ for i = 1:ndims
            case 'copy'
                start(i) = copy1;
                count(i) = copyN;
-           case {'surf','unde','hlev','mlev','plev','heig','leve','bott'}
+           case {'surf','unde','hlev','mlev','plev','heig','leve','bott','ilev'}
                start(i) = level1;
                count(i) = levelN;
            case {'tmpj','sout'}
