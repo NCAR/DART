@@ -98,7 +98,7 @@ switch lower(pinfo.model)
 
             plot(times,   ens_mean,'r','LineWidth',2.0); hold on;
             plot(times,ens_members,'g');
-            if (exist('legendstr')) 
+            if (exist('legendstr','var')) 
                 legend(legendstr, 'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
                plot(pinfo.truth_times, truth,'b','LineWidth',2); % again, to put 'on top'
             else
@@ -138,7 +138,7 @@ switch lower(pinfo.model)
 
             plot(times,   ens_mean,'r','LineWidth',2.0); hold on;
             plot(times,ens_members,'g');
-            if (exist('legendstr'))
+            if (exist('legendstr','var'))
                legend(legendstr, 'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
                plot(pinfo.truth_times,   truth,'b','LineWidth',2); % again, to put 'on top'
             else
@@ -168,7 +168,7 @@ switch lower(pinfo.model)
       title(sprintf('%s Attractors for %s', pinfo.model, pinfo.diagn_file), ...    
                  'interpreter','none','fontweight','bold');
 
-      if (exist('legendstr'))
+      if (exist('legendstr','var'))
          legend(legendstr,'Ensemble Mean',0);
       else
          legend(          'Ensemble Mean',0);
@@ -203,7 +203,7 @@ switch lower(pinfo.model)
             plot(times,   ens_mean,'r','LineWidth',2); hold on;
             plot(times,ens_members,'g');
 
-            if (exist('legendstr'))
+            if (exist('legendstr','var'))
                legend(legendstr, 'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
                plot(pinfo.truth_times,   truth,'b','LineWidth',2); % again, to put 'on top'
             else
@@ -218,7 +218,7 @@ switch lower(pinfo.model)
             legend boxoff
       end
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf','cam'}
 
       clf;
 
@@ -245,7 +245,7 @@ switch lower(pinfo.model)
          plot(times,   ens_mean,'r','LineWidth',2); hold on;
          plot(times,ens_members,'g');
 
-         if (exist('legendstr'))
+         if (exist('legendstr','var'))
             legend(legendstr, 'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
             plot(pinfo.truth_times,   truth,'b','LineWidth',2); % again, to put 'on top'
          else
@@ -261,60 +261,6 @@ switch lower(pinfo.model)
          xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times));
          ylabel(varunits);
          legend boxoff
-
-   case 'cam'
-
-      clf;
-
-      var_names = strread(pinfo.var_names,'%s','delimiter',' ');
-      nfigs = length(var_names);  % each variable gets its own figure
-      iplot = 0;
-
-      for ivar = 1:nfigs
-
-         iplot = iplot + 1;
-         figure(iplot); clf;
-
-         pinfo.var  = var_names{ivar};
-
-         timeunits = nc_attget(pinfo.diagn_file, 'time',    'units');
-         varunits  = nc_attget(pinfo.diagn_file, pinfo.var, 'units');
-
-         subplot(2,1,1)
-            PlotLocator(pinfo);
-
-         subplot(2,1,2)
-
-            if ( have_truth )
-               truth     = GetCopy(pinfo.truth_file, truth_index,   pinfo );
-               plot(pinfo.truth_times, truth,'b','LineWidth',2); hold on;
-               legendstr = 'True State';
-            end
-
-            ens_mean    = GetCopy(pinfo.diagn_file, ens_mean_index, pinfo );
-            ens_members = GetEns( pinfo.diagn_file,                 pinfo );
-            nmembers    = size(ens_members,2);
-
-            plot(times,   ens_mean,'r','LineWidth',2); hold on;
-            plot(times,ens_members,'g'); 
-
-            if (exist('legendstr'))
-               legend(legendstr, 'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
-               plot(pinfo.truth_times,   truth,'b','LineWidth',2); % again, to put 'on top'
-            else
-               legend(           'Ensemble Mean', sprintf('Ensemble Members (%d)',nmembers), 0);
-            end
-
-            s1 = sprintf('%s model ''%s'' %s Ensemble Members ', ...
-                               pinfo.model, pinfo.var, pinfo.diagn_file);
-            s2 = sprintf('level index %d lat %.2f lon %.2f', ...
-                       pinfo.levelindex, pinfo.latitude, pinfo.longitude);
-            title({s1,s2},'interpreter','none','fontweight','bold');
-            xlabel(sprintf('time (%s) %d timesteps',timeunits,num_times));
-            ylabel(varunits);
-            legend boxoff
-            hold off;
-      end
 
    otherwise
 

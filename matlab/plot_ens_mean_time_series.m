@@ -82,9 +82,7 @@ switch lower(pinfo.model)
 
    case 'cam'
 
-      pinfo.prior_file     = [];
-      pinfo.posterior_file = [];
-      pinfo                = GetCamInfo(pinfo, 'PlotEnsMeanTimeSeries');
+      pinfo = GetCamInfo(pinfo, diagn_file, 'PlotEnsMeanTimeSeries');
 
    case 'wrf'
 

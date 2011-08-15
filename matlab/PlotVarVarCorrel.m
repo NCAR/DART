@@ -36,6 +36,7 @@ function PlotVarVarCorrel( pinfo )
 if (exist(pinfo.fname,'file') ~= 2), error('%s does not exist.',pinfo.fname), end
 
 % Get some file-specific information.
+
 model      = nc_attget(pinfo.fname, nc_global, 'model');
 timeunits  = nc_attget(pinfo.fname, 'time',    'units');
 
@@ -43,7 +44,7 @@ timeunits  = nc_attget(pinfo.fname, 'time',    'units');
 
 switch lower(model)
 
-   case {'fms_bgrid','pe2lyr','wrf'}
+   case {'fms_bgrid','pe2lyr','wrf','cam'}
 
       clf;
 
@@ -172,7 +173,7 @@ function var = GetEns( fname, varname, lvlind, latind, lonind)
 % is the hard part.
 
 % find which are actual ensemble members
-metadata    = nc_varget(fname,'CopyMetaData');           % get all the metadata
+metadata    = nc_varget(fname,'CopyMetaData');       % get all the metadata
 copyindices = strmatch('ensemble member',metadata);  % find all 'member's
 
 if ( isempty(copyindices) )
@@ -185,6 +186,7 @@ if ( isempty(copyindices) )
 end
 ens_num     = length(copyindices);
 
+% Get all ensemble members, just return desired ones.
 myinfo.diagn_file = fname;
 myinfo.levelindex = lvlind;
 myinfo.latindex   = latind;

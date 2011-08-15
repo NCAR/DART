@@ -86,7 +86,7 @@ switch lower(pstruct.model)
 
    case 'cam'
 
-      pstruct = GetCamInfo(pstruct,'PlotSawtooth');
+      pstruct = GetCamInfo(pstruct, prior_file, 'PlotSawtooth');
       pstruct.copyindices = SetCopyID2(pstruct.prior_file);
       pstruct.copies      = length(pstruct.copyindices);
 

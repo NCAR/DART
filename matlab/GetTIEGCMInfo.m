@@ -1,8 +1,8 @@
-function pinfo = GetCamInfo(pstruct,fname,routine);
-%% GetCamInfo   prepares a structure of information needed by the subsequent "routine"
+function pinfo = GetTIEGCMInfo(pstruct,fname,routine);
+%% GetTIEGCMInfo   prepares a structure of information needed by the subsequent "routine"
 %                The information is gathered via rudimentary "input" routines.
 %
-% pinfo = GetCamInfo(pstruct,routine);
+% pinfo = GetTIEGCMInfo(pstruct,routine);
 %
 % pstruct   structure containing the names of the truth_file and the diagn_file of the DART netcdf file
 % routine   name of subsequent plot routine.
@@ -22,8 +22,8 @@ if (exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 pinfo  = pstruct;
 model  = nc_attget(fname,nc_global,'model');
 
-if strcmpi(model,'cam') ~= 1
-   error('Not so fast, this is not a cam model.')
+if strcmpi(model,'TIEGCM') ~= 1
+   error('Not so fast, this is not a TIEGCM model.')
 end
 
 %% Get the domain-independent information.
@@ -44,6 +44,10 @@ ilevel = nc_varget(fname,'ilev');    % interfaces
 levels = nc_varget(fname, 'lev');    % midpoints
 lon    = nc_varget(fname, 'lon');
 lat    = nc_varget(fname, 'lat');
+
+
+inds = find(lon >= 180);
+lon(inds) = lon(inds) - 360.0;
 
 prognostic_vars = get_DARTvars(fname);
 num_vars = length(prognostic_vars);
@@ -221,7 +225,7 @@ end
 
 function pgvar = GetVar(prognostic_vars, defvar)
 %----------------------------------------------------------------------
-if (nargin == 2), pgvar = defvar; else pgvar = 'PS'; end
+if (nargin == 2), pgvar = defvar; else pgvar = prognostic_vars{1}; end
 
 str = sprintf(' %s ',prognostic_vars{1});
 for i = 2:length(prognostic_vars),
@@ -274,32 +278,23 @@ time     = times(timeind);
 function [level, lvlind] = GetLevel(pgvar, levels, deflevel)
 %----------------------------------------------------------------------
 % level and lvlind will not be equal for all models, (and probably
-% shouldn't for cam ... but for future expansion ...
+% shouldn't for TIEGCM ... but for future expansion ...
 if (nargin == 3), lvlind = deflevel; else lvlind = 1; end
 
-if strcmpi(pgvar,'ps') ==1 
-   disp('''PS'' only has one level, using it.')
-   level  = 1;
-   lvlind = 1;
-else
-   fprintf('Default level (index) is  %d, if this is OK, <cr>;\n',lvlind)
-   fprintf('If not, enter a level between %d and %d, inclusive ...\n', ...
+fprintf('Default level (index) is  %d, if this is OK, <cr>;\n',lvlind)
+fprintf('If not, enter a level between %d and %d, inclusive ...\n', ...
                          1,length(levels))
-   varstring = input('we''ll use the closest (no syntax required)\n','s');
+varstring = input('we''ll use the closest (no syntax required)\n','s');
 
-   if ~isempty(varstring), lvlind = str2num(varstring); end 
+if ~isempty(varstring), lvlind = str2num(varstring); end 
 
-   % d      = abs(level - levels);  % crude distance
-   % ind    = find(min(d) == d);    % multiple minima possible 
-   % lvlind = ind(1);               % use the first one
-   level  = levels(lvlind);
-end
+level  = levels(lvlind);
 
 
 
 function [lon, lonind] = GetLongitude(pgvar, lons, deflon)
 %----------------------------------------------------------------------
-if (nargin == 3), lon = deflon; else lon = 255.0; end
+if (nargin == 3), lon = deflon; else lon = 255.0-360.0; end
 
 fprintf('Default longitude is %f, if this is OK, <cr>;\n',lon)  
 fprintf('If not, enter a longitude between %.2f and %.2f, we use the closest.\n', ...
@@ -331,51 +326,6 @@ ind    = find(min(d) == d);  % multiple minima possible
 latind = ind(1);             % use the first one
 lat    = lats(latind);
 
-
-
-function dist = arcdist(lat,lon,lat2,lon2)
-
-% arcdist  great arc distance (km) between points on an earth-like sphere.
-%
-% function dist = arcdist(lat,lon,latvec,lonvec)
-%
-% lat,lon    MUST be scalars 
-% lat1,lon1  lat1,lon1 can be any shape (but must match each other)
-%
-% enter: 
-%       lat1,lon1 = lat, lon (in degrees)
-%       lat2,lon2 = lat, lon (for loc 2)
-% returns:
-%       dist = [vector of] great arc distance between points
-%
-% Assumes a spherical earth and fractional lat/lon coords
-%
-% Example (1 degree at the equator):  
-% dist = arcdist(0.0,0.0,0.0,1.0)	% 1 degree longitude
-% dist = arcdist(0.0,0.0,1.0,0.0)       % 1 degree latitude
-% dist = arcdist(60.0,0.0,60.0,1.0)     % 1 degree longitude at a high latitude
-% dist = arcdist(40.0,-105.251,42.996,-78.84663)  % over the river and ...
-
-r      = 6378.136;		% equatorial radius of earth in km
-
-Dlat2 = size(lat2);
-Dlon2 = size(lon2);
-
-Lat2   = lat2(:);
-Lon2   = lon2(:);
-
-alpha  = abs(Lon2 - lon)*pi/180;
-colat1 =    (90   - Lat2)*pi/180;
-colat2 =    (90   - lat)*pi/180;
-
-ang1   = cos(colat2).*cos(colat1);
-ang2   = sin(colat2).*sin(colat1).*cos(alpha);
-
-if ( prod(Dlat1) == 1 ) 
-   dist   = acos(ang1 + ang2)*r;
-else
-   dist   = reshape(acos(ang1 + ang2)*r,Dlat2);
-end
 
 
 function varexist(filename, varnames)

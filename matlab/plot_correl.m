@@ -120,6 +120,10 @@ switch lower(pinfo.model)
 
       pinfo = GetMITgcm_oceanInfo(pinfo, diagn_file, 'PlotCorrel');
 
+   case 'tiegcm'
+
+      pinfo = GetTIEGCMInfo(pinfo, diagn_file, 'PlotCorrel');
+
    otherwise
 
       error('model %s not implemented yet', pinfo.model)
