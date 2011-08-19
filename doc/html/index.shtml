@@ -45,15 +45,14 @@
 
    <h2 align="center">Welcome to the home page for the
    <b>D</b>ata <b>A</b>ssimilation <b>R</b>esearch <b>T</b>estbed (<b>DART</b>).</h2>
-   <!-- do not edit --><P>$Id$</P>
 
    <A NAME="index"></A>
-   <h2>Overview Topics</h2>
+   <h2>Quick Guide Topics</h2>
    <ul> 
 
-      <li>Here is some 
+      <li>Here are some 
       <a href="http://en.wikipedia.org/wiki/Data_assimilation">introductory 
-      material</a> on the general concepts of Data Assimilation.</li>
+      materials</a> on the general concepts of Data Assimilation.</li>
       <!-- should be ensemble_data_assimilation.html eventually with
            local lore, but for now, use wikipedia. -->
 
@@ -82,19 +81,19 @@
    <P>
    The DART software provides a flexible, extensible framework for conducting
    data assimilation research on a wide variety of models and observations.
-   In order to facilitate the incorporation of new models (which, in the 
+   In order to facilitate the incorporation of new models (which in the 
    Atmospheric Science community are generally written in F90), the DART 
    software is written primarily in F90. The noteable exceptions are the
-   shell scripts that control execution and the Matlab&#174; diagnostic scripts.
+   shell scripts that control execution and the Matlab&reg; diagnostic scripts.
    <br><br>
-   The DART system comes with many models - ranging from 1-dimensional
-   Lorenz systems to the dynamical core of a full atmospheric model. 
+   The DART system comes with many models -- ranging from 1-dimensional
+   Lorenz systems to full global atmospheric and ocean models. 
    DART also has an extensive tutorial that explains typical DART experiments
    and explores many aspects of ensemble data assimilation.
    The tutorial is an entire directory in the DART software distribution, so
    it can be browsed (it is a series of .pdf files)   
    <a href="#download">Download the DART source code</a> and follow the instructions 
-   on <A HREF="Jamaica_release.html">the web page for the current release</A> for
+   on <A HREF="Kodiak_release.html">the web page for the current release</A> for
    instructions on how to build an executable, run the "workshop" experiments, 
    and look at the results.
    </P>
@@ -127,13 +126,13 @@
    document describing the required interfaces. That document exists in the 
    DART code - <code>DART/models/model_mod.html</code> - as does all the most 
    current documentation.
-   Every(?) DART program/module has a matching piece of documentation.
+   Almost every DART program/module has a matching piece of documentation.
    <br><br>
-   Starting with the J release, there is an option to compile with the MPI
+   Starting with the Jamaica release there is an option to compile with the MPI
    (Message Passing Interface) libraries in order to run the assimilation
    step in parallel on hardware with multiple CPUs.  Note that this is
-   optional; MPI is not required to run the J release.  If you do want
-   to run in parallel, then we also require a working MPI library
+   optional; MPI is not required to run DART.  If you do want
+   to run in parallel then we also require a working MPI library
    and appropriate cluster or SMP hardware.
    See the <a href="mpi_intro.html">MPI&nbsp;intro</a> for more information on
    running with the MPI option.
@@ -149,13 +148,13 @@
    DART is intended to be highly portable - and has even run successfully on 
    Windows machines running the cygwin environment. Those instructions are under 
    development and so are not included in the following table. The most current 
-   version of DART (Jamaica) has been tested on the following: 
+   version of DART has been tested on the following: 
    </p>
    <TABLE border=0 cellpadding=2 width=100%>
-   <TR><TH align="left">hardware      </TH>
-       <TH align="left">O/S           </TH>
-       <TH align="left">F90 compiler  </TH>
-       <TH align="left">batch manager </TH>
+   <TR><TH align="left">hardware          </TH>
+       <TH align="left">O/S               </TH>
+       <TH align="left">F90 compiler      </TH>
+       <TH align="left">batch manager/mpi </TH>
        </TR>
 
    <TR><TD>Intel cluster/SMP/32 bit      </TD>
@@ -190,7 +189,7 @@
 
    <TR><TD>IBM Power 5+  </TD>
           <TD>AIX 5.3    </TD>
-          <TD>XLF 10.1.0 </TD>
+          <TD>XLF 12.1.0 </TD>
 	  <TD>LSF        </TD>
           </TR>
 
@@ -198,6 +197,18 @@
           <TD>Fedora Core 4 </TD>
           <TD>Intel 9.0     </TD>
 	  <TD>none          </TD>
+          </TR>
+
+   <TR><TD>Macbook Pro (Intel)       </TD>
+          <TD>Mac OS X 10.6.8        </TD>
+          <TD>Intel F90 11.1         </TD>
+	  <TD>OpenMPI                </TD>
+          </TR>
+
+   <TR><TD>Macbook Pro (Intel)       </TD>
+          <TD>Mac OS X 10.6.8        </TD>
+          <TD>gfortran 4.5.2         </TD>
+	  <TD>OpenMPI                </TD>
           </TR>
 
    <TR><TD>PowerBook G4 (PowerPC)    </TD>
@@ -268,7 +279,7 @@
 
    <TR><TD>Linux cluster     </TD>
           <TD>Intel          </TD>
-          <TD>Intel 9.1      </TD>
+          <TD>Intel 11.1     </TD>
           <TD>PBS            </TD>
 	  </TR>
    </TABLE>
@@ -276,15 +287,16 @@
       <A NAME="download"></A>
       <H1>DART code distributions</H1>
       <P>
-      DART is distributed primarily through an anonymous-access readonly 
+      DART is distributed through an anonymous-access readonly 
       Subversion (<b>SVN</b>) repository.  This makes updates and 
       comparisons between your sandbox and the latest, greatest version of the 
-      code trivially easy. The same cannot be said with a TAR file.
+      code trivially easy. The same cannot be said for a TAR file.
       If you are not familiar with SVN (the client application of subversion),
       you should take a stroll through my 
-      <a href="http://www.image.ucar.edu/~thoar/svn_primer.html">svn primer</a>
-      If you cannot (i.e. are firewalled out) use svn, please let me know and 
-      I'll send you a tarfile ... as a last resort.
+      <a href="http://www.image.ucar.edu/~thoar/svn_primer.html">svn primer</a>.
+      If you cannot use svn (e.g. are firewalled out), please let me (Tim) know and 
+      I'll send you a tarfile as a last resort. 
+      See the <a href="#contact">contact info</a> section for email addresses.
       <br>
       <br>
       Since the DART software is still an area of active research, there are
@@ -295,58 +307,56 @@
       I solemnly swear to protect your email address like it is my own!
       <br>
       <br>
-      <a href="/DAReS/DART/DART_download">download instructions for the latest releases.</a>
+      <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">download instructions for the latest release.</a>
       <br>
-      <br>
-      The Jamaica version of DART (the latest 'official' release) has the following 
-      attributes for <strong>this</strong> file. Since svn uses 'mixed revisions', 
-      files in the distribution will have different revision numbers.  If you download
-      the 'trunk' (the latest version) - the revision numbers are assuredly different.
-      </P>
-
-      <TABLE summary="">     
-      <TR><TD>Revision:    </TD><TD>Revision:&nbsp;2857</TD></TR>
-      <TR><TD>Source:      </TD><TD>URL:&nbsp;http://subversion.ucar.edu/DAReS/DART/trunk/doc/html/index.shtml </TD></TR>
-      <TR><TD>Change&nbsp;Date:&nbsp;</TD><TD>Date:&nbsp;2007-04-12&nbsp;10:44:44&nbsp;-0600&nbsp;(Thu,&nbsp;12&nbsp;Apr&nbsp;2007)&nbsp; </TD></TR>
-      </TABLE>
       <br>
       <TABLE border=0 cellpadding=2 width=100%>
-      <TR><TH align="left" width="15%">version</TH>
-          <TH align="left" width="15%">date</TH>
-          <TH align="left" width="15%">instructions</TH>
-          <TH align="left">most noteable change(s)</TH>
+      <THEAD align=left valign=top>
+      <TBODY align=left valign=top>
+      <TR><TH width="15%">version</TH>
+          <TH width="15%">date</TH>
+          <TH width="15%">instructions</TH>
+          <TH>most noteable change(s)</TH>
       </TR>
 
-      <TR><!--version--><TD valign=top><A HREF="/DAReS/DART/DART_download">trunk</A></TD>
-          <!--   date--><TD valign=top>today</TD>
-          <!--instruc--><TD valign=top>included in distrib.</TD>
-	  <!-- change--><TD>varies, see next section below for details
+      <TR><!--version--><TD><A HREF="http://www.image.ucar.edu/DAReS/DART/DART_download">kodiak</A></TD>
+          <!--   date--><TD>30&nbsp;Jun&nbsp;2011</TD>
+          <!--instruc--><TD><A HREF="Kodiak_release.html">[doc]</A></TD>
+	  <!-- change--><TD>Damped Inflation, Sampling Error Correction, Boxcar 
+           Kernel Filter option, support for new models, new observation types, new
+           diagnostics, new utilities.  See documentation for more details.
                             </TD></TR>
 
-      <TR><!--version--><TD valign=top><A HREF="/DAReS/DART/DART_download">jamaica</A></TD>
-          <!--   date--><TD valign=top>12&nbsp;Apr&nbsp;2007</TD>
-          <!--instruc--><TD valign=top><A HREF="Jamaica_release.html">[doc]</A></TD>
+      <TR><!--version--><TD><A HREF="http://www.image.ucar.edu/DAReS/DART/DART_download">trunk</A></TD>
+          <!--   date--><TD>today</TD>
+          <!--instruc--><TD>included in distrib.</TD>
+	  <!-- change--><TD>varies
+                            </TD></TR>
+
+      <TR><!--version--><TD>jamaica</TD>
+          <!--   date--><TD>12&nbsp;Apr&nbsp;2007</TD>
+          <!--instruc--><TD><A HREF="Jamaica_release.html">[doc]</A></TD>
 	  <!-- change--><TD>vertical localization, extensive testing of MPI implementation,
 	                    full documentation for new algorithms, new tutorial sections<BR>
                             <A HREF="Jamaica_diffs_from_I.html">change log</A>
                             </TD></TR>
 
-      <TR><!--version--><TD valign=top><A HREF="/DAReS/DART/DART_download">pre_j</A></TD>
-          <!--   date--><TD valign=top>02&nbsp;Oct&nbsp;2006</TD>
-          <!--instruc--><TD valign=top><A HREF="pre_j_release.html">[doc]</A></TD>
+      <TR><!--version--><TD>pre_j</TD>
+          <!--   date--><TD>02&nbsp;Oct&nbsp;2006</TD>
+          <!--instruc--><TD><A HREF="pre_j_release.html">[doc]</A></TD>
 	  <!-- change--><TD>contains an updated scalable filter algorithm<BR>
                             </TD></TR>
 
-      <TR><!--version--><TD valign=top>post_iceland</TD>
-          <!--   date--><TD valign=top>20&nbsp;Jun&nbsp;2006</TD>
-          <!--instruc--><TD valign=top><A HREF="Post_Iceland_release.html">[doc]</A></TD>
+      <TR><!--version--><TD>post_iceland</TD>
+          <!--   date--><TD>20&nbsp;Jun&nbsp;2006</TD>
+          <!--instruc--><TD><A HREF="Post_Iceland_release.html">[doc]</A></TD>
           <!-- change--><TD>observation-space adaptive inflation, bug fixes,<BR>
                             merge_obs_sequence support ...<BR>
                             <A HREF="PostI_diffs_from_I.html">change log</A></TD></TR>
 
-      <TR><!--version--><TD valign=top>iceland</TD>
-          <!--   date--><TD valign=top>23&nbsp;Nov&nbsp;2005</TD>
-          <!--instruc--><TD valign=top><A HREF="Iceland_release.html">[doc]</A></TD>
+      <TR><!--version--><TD>iceland</TD>
+          <!--   date--><TD>23&nbsp;Nov&nbsp;2005</TD>
+          <!--instruc--><TD><A HREF="Iceland_release.html">[doc]</A></TD>
           <!-- change--><TD>huge expansion of real observation capability<BR>
                             better namelist processing, PBL_1d available.<BR>
                             <A HREF="I_diffs_from_workshop.html">change log</A></TD></TR>
@@ -396,146 +406,12 @@
       </TABLE>
       <BR>
 
-      <A NAME="RadarChanges"></A>
-      <H2>User-Visible changes to the DART radar module (obs_def_radar_mod.f90) version 3657 (circa 18&nbsp;Nov&nbsp;2008)</H2>
-      <P>For users of previous versions of <em class="file">obs_def_radar_mod.f90</em>,
-         here are a list of changes which are <b>not</b> backward compatible:
-      </P>
-	 <UL>
-         <LI>The 
-         <em class="file">obs_def_radar_mod</em>:<em class="code">obs_def_radar_mod_nml</em>
-         namelist has changed quite a bit; some items were removed, 
-	 some added, and some renamed. See the 
-         <em class="file">obs_def_radar_mod.html</em>
-         documentation for the namelist for current item names and default values.</li>
-
-	 <LI>Some constants which depend on the microphysics scheme have been 
-	 added to the 
-         <em class="file">obs_def_radar_mod</em>:<em class="code">obs_def_radar_mod_nml</em>
-         namelist to make it easier to change the values for 
-	 different schemes, but the defaults have also changed.  Verify they 
-	 are appropriate for the scheme being used.</li>
-
-	 <LI>The interactive create routine prompts for the beam direction 
-	 differently now.  It takes <em>azimuth</em> and <em>elevation</em>, 
-         and then does the trigonometry to compute the three internal values 
-         which are stored in the file. The previous version prompted for the 
-         internal values directly.</li>
-
-	 <LI>The value for gravity is currently hardcoded in this module.  
-	 Previous versions of this code used the gravity constant in the DART 
-	 <em class="file">types_mod.f90</em> code, but in reality the code 
-	 should be using whatever value of gravity is being used in the model 
-	 code.  For now, the value is at least separated so users can change 
-	 the value in this code if necessary.</li>
-
-	 <LI>The <em class="routine">get_expected_xxxx</em> routines try to call 
-	 the <em class="file">model_mod</em>:<em class="code">model_interpolate()</em> 
-         routine for 
-	 <em class="code">KIND_POWER_WEIGHTED_FALL_SPEED</em> and 
-	 <em class="code">KIND_RADAR_REFLECTIVITY</em> values. If they are not 
-	 available, then the code calls the 
-         <em class="file">model_mod</em>:<em class="code">model_interpolate()</em> 
-         routine for several other kinds and computes these quantities.  
-         However, this requires that the
-         <em class="file">model_mod</em>:<em class="code">model_interpolate()</em> 
-	 code returns gracefully if the kind is unknown or unsupported.</li>
-
-         <LI>
-         <b>WRF users take note!</b> All versions of WRF's
-         <em class="file">model_mod.f90</em> before V.3657 used to 
-	 print an error message and stop if the kind was unknown.  The updated 
-	 version in the repository (V.3657) which went in with the corresponding 
-         <em class="file">obs_def_radar_mod.f90</em> radar code has been 
-	 changed to return an error status code but continue if the kind is 
-	 unknown. The <em class="file">DEFAULT_obs_kind_mod.F90</em> file also 
-	 needs to be updated to define these new KINDs.</li>
-
-	 </UL>
-
-      <A NAME="BigChanges"></A>
-      <H2>User-Visible changes to the TRUNK (circa 2 Jun 2008)</H2>
-      <P>
-      Some ideas are just too good to postpone till the next major release.  The following
-      changes to the DART trunk code may require you to take additional action after an update:
-      </P>
-
-    <ol>
-      <li style="padding: 0.5em">
-      Additional function added to the <em class="unix">preprocess</em> program also 
-      means that you now only 
-      need to have <em class= "file">obs_def_mod.f90</em> in your 
-      <em class="file">path_names_*</em> files and it will include the code 
-      for all other <em class= "file">obs_def_*</em> modules automatically.
-      If you have additional obs_def lines for gps, altimeter, or other 
-      specialized obs_def files, they must be removed or you will get an 
-      error similar to this:
-        <div class="unix">
-          AMBIGUOUS: Module obs_def_gps_mod is associated with
-          ../../../obs_def/obs_def_gps_mod.f90 as well as
-          ../../../obs_def/obs_def_mod.f90.
-        </div>
-      Adding and removing various obs_def files now only involves changing the 
-      <em class="unix">&amp;preprocess_nml:input_files</em> namelist item in the 
-      <em class="file">input.nml</em> file.
-      We will update all <em class="file">path_names_*</em> files 
-      in the DART subversion (svn) repository; this only applies to files you have 
-      that are not under svn control.
-      </li>
-
-      <li style="padding: 0.5em">
-      All model work directories now have a <em class= "file">quickbuild.csh</em> script 
-      instead of <em class= "file">workshop_setup.csh</em>. The workshop script still 
-      exists in some model directories, but may change in upcoming releases to accomodate
-      DART tutorial workshops. The quickbuild script recompiles all the programs;
-      it does not try to run any of them. By default it builds all small models without
-      MPI, and builds the large models (CAM, WRF, AM2) with MPI. It takes 
-      <em class="code">-mpi</em> and <em class="code">-nompi</em> arguments.
-      </li>
-
-      <li style="padding: 0.5em">
-      The MPI version of <em class="file">filter</em> would sometimes not kill the 
-      entire job if one task failed. This resulted in jobs hanging and using up computing 
-      resources unnecessarily. We added a new routine to the 
-      <em class="file">utilities_mod.f90</em> called 
-      <em class= "unix">exit_all()</em>.  For MPI-enabled jobs it calls 
-      <em class= "unix">MPI_Abort()</em> to inform all other tasks that one
-      has failed.  This should cause an MPI job to exit immediately on error.
-      Nothing new happens for programs which do not use MPI.
-      However, this change requires adding the 
-      <em class="file">mpi_utilities/null_mpi_utilities_mod.f90</em> file to many of the
-      <em class="file">path_names_*</em> files where it was not required before.
-      It might also require adding <em class= "unix">time_manager/time_manager.f90</em>
-      if it is not already there.
-      We will update all <em class="file">path_names_*</em> files
-      in the DART subversion repository, but you may have programs of your own that use
-      <em class="unix">utilities_mod</em> routines - in which case your programs
-      will now need to link with <em class= "unix">null_mpi_utilities_mod</em>.
-      Without it, the error you see will be similar to this:<br>
-        <div class="unix">
-          /usr/bin/ld: Undefined symbols:<br>
-          _exit_all_
-        </div>
-      </li>
-
-      <li style="padding: 0.5em">
-      The default mpi interface utility code should now compile as-is
-      for every supported compiler <em class="italic">except</em> gfortran.
-      (You should no longer need to go into the code and edit the interface
-      block for the system function.)
-      If you are using the gfortran compiler,
-      in the <em class="file">$DART/mpi_utilities</em>
-      directory you will find a script called <em class="file">fixsystem</em>
-      that you can run to make the file compile without having to edit it
-      by hand.
-      </li>
-    </ol>
 
       <A NAME="teach"></A>
       <H2>DART Tutorial Materials and Presentations</H2>
       <P>
       The DART system comes with an extensive set of tutorial materials, working
-      models of several different levels of complexity, and data to be assimilated.
+      models with several different levels of complexity, and data to be assimilated.
       It has been used in several multi-day workshops and can be used as the basis 
       to teach a section on Data Assimilation. <!--add refs to people doing this already-->
       Download the DART software distribution and look in the <code>tutorial</code>
