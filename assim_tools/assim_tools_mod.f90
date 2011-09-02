@@ -16,7 +16,7 @@ use      types_mod,       only : r8, digits12, PI, missing_r8
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
                                  find_namelist_in_file, register_module, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
-                                 open_file, close_file
+                                 open_file, close_file, timestamp
 use       sort_mod,       only : index_sort 
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
@@ -468,9 +468,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if (nth_obs == 0) then
       write(errstring, '(A,1x,I8,1x,A,I8)') 'Processing observation ', i, &
                                          ' of ', obs_ens_handle%num_vars
-      call error_handler(E_MSG,'filter_assim',errstring)
-! or if you want timestamps:
-!     call timestamp(errstring, pos="debug")
+      if (print_timestamps == 0) then
+         call error_handler(E_MSG,'filter_assim',errstring)
+      else
+         call timestamp(trim(errstring), pos="brief")
+      endif
    endif
 
    ! Every pe has information about obs sequence
