@@ -864,7 +864,7 @@ elseif (wrf%dom(id)%localization_coord == VERTISHEIGHT) then
    lev = model_height(ip,jp,kp,id,var_type,ens_mean)
 elseif (wrf%dom(id)%localization_coord == VERTISSCALEHEIGHT) then
    lev = -log(model_pressure(ip,jp,kp,id,var_type,ens_mean) / &
-              model_pressure(ip,jp,1,id,wrf%dom(id)%type_mu,ens_mean))
+              model_surface_pressure(ip,jp,id,var_type,ens_mean))
 endif
 
 if(debug) write(*,*) 'lon, lat, lev: ',lon, lat, lev
@@ -5172,6 +5172,137 @@ else
 endif
 
 end function model_pressure
+
+!#######################################################
+
+function model_surface_pressure(i,j,id,var_type,x)
+
+! Calculate the surface pressure at grid point (i,j), domain id.
+! The grid is defined according to var_type.
+
+integer,  intent(in)  :: i,j,id,var_type
+real(r8), intent(in)  :: x(:)
+real(r8)              :: model_surface_pressure
+
+integer  :: off
+real(r8) :: pres1, pres2
+
+model_surface_pressure = missing_r8
+
+
+! If U-grid, then pressure is defined between U points, so average --
+!   averaging depends on longitude periodicity
+if( var_type == wrf%dom(id)%type_u ) then
+
+   if( i == wrf%dom(id)%var_size(1,wrf%dom(id)%type_u) ) then
+
+      ! Check to see if periodic in longitude
+      if ( wrf%dom(id)%periodic_x ) then
+
+         ! We are at seam in longitude, take first and last M-grid points
+         pres1 = model_pressure_s(i-1,j,id,x)
+         pres2 = model_pressure_s(1,  j,id,x)
+         model_surface_pressure = (pres1 + pres2)/2.0_r8
+         
+      else
+
+         ! If not periodic, then try extrapolating
+         pres1 = model_pressure_s(i-1,j,id,x)
+         pres2 = model_pressure_s(i-2,j,id,x)
+         model_surface_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+      endif
+
+   elseif( i == 1 ) then
+
+      ! Check to see if periodic in longitude
+      if ( wrf%dom(id)%periodic_x ) then
+
+         ! We are at seam in longitude, take first and last M-grid points
+         pres1 = model_pressure_s(i,             j,id,x)
+         pres2 = model_pressure_s(wrf%dom(id)%we,j,id,x)
+         model_surface_pressure = (pres1 + pres2)/2.0_r8
+         
+      else
+
+         ! If not periodic, then try extrapolating
+         pres1 = model_pressure_s(i,  j,id,x)
+         pres2 = model_pressure_s(i+1,j,id,x)
+         model_surface_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+      endif
+
+   else
+
+      pres1 = model_pressure_s(i,  j,id,x)
+      pres2 = model_pressure_s(i-1,j,id,x)
+      model_surface_pressure = (pres1 + pres2)/2.0_r8
+
+   endif
+
+! If V-grid, then pressure is defined between V points, so average --
+!   averaging depends on polar periodicity
+elseif( var_type == wrf%dom(id)%type_v ) then
+
+   if( j == wrf%dom(id)%var_size(2,wrf%dom(id)%type_v) ) then
+
+      ! Check to see if periodic in latitude (polar)
+      if ( wrf%dom(id)%polar ) then
+
+         ! The upper corner is 180 degrees of longitude away
+         off = i + wrf%dom(id)%we/2
+         if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
+
+         pres1 = model_pressure_s(off,j-1,id,x)
+         pres2 = model_pressure_s(i  ,j-1,id,x)
+         model_surface_pressure = (pres1 + pres2)/2.0_r8
+
+      ! If not periodic, then try extrapolating
+      else
+
+         pres1 = model_pressure_s(i,j-1,id,x)
+         pres2 = model_pressure_s(i,j-2,id,x)
+         model_surface_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+      endif
+
+   elseif( j == 1 ) then
+
+      ! Check to see if periodic in latitude (polar)
+      if ( wrf%dom(id)%polar ) then
+
+         ! The lower corner is 180 degrees of longitude away
+         off = i + wrf%dom(id)%we/2
+         if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
+
+         pres1 = model_pressure_s(off,j,id,x)
+         pres2 = model_pressure_s(i,  j,id,x)
+         model_surface_pressure = (pres1 + pres2)/2.0_r8
+
+      ! If not periodic, then try extrapolating
+      else
+
+         pres1 = model_pressure_s(i,j,  id,x)
+         pres2 = model_pressure_s(i,j+1,id,x)
+         model_surface_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+
+      endif
+
+   else
+
+      pres1 = model_pressure_s(i,j,  id,x)
+      pres2 = model_pressure_s(i,j-1,id,x)
+      model_surface_pressure = (pres1 + pres2)/2.0_r8
+
+   endif
+
+else
+
+   model_surface_pressure = model_pressure_s(i,j,id,x)
+
+endif
+
+end function model_surface_pressure
 
 !#######################################################
 
