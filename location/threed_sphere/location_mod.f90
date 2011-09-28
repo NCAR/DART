@@ -326,8 +326,11 @@ if(present(no_vert)) then
 else 
    comp_h_only = horiz_dist_only
 endif
-! Finally, if which_vert has no vertical definition for either location do only horizontal
+
+! If which_vert has no vertical definition for either location do only horizontal
 if(loc1%which_vert == VERTISUNDEF .or. loc2%which_vert == VERTISUNDEF) comp_h_only = .true.
+! If both verts are surface, do only horizontal
+if(loc1%which_vert == VERTISSURFACE .and. loc2%which_vert == VERTISSURFACE) comp_h_only = .true.
 
 ! Add in vertical component if required
 if(.not. comp_h_only) then
