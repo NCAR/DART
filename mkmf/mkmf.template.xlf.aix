@@ -30,6 +30,9 @@
 #   -C                        array bounds checking
 #   -qfullpath -g             for totalview
 #
+#   to abort when computing with (signalling) NaNs 
+#   -qsigtrap=xl__trcedump -qflttrap=ov:zero:inv:en
+#
 # FFLAGS   useful for benchmarking
 #   -O0                       turn off optimization
 #

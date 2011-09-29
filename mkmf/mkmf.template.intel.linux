@@ -72,7 +72,7 @@ LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this instead:
 # FFLAGS = -C -check noarg_temp_created -ftz -vec-report0 -fp-model precise -O0 -g \
-#        -warn argument_checking,declarations,uncalled,uninitialized,unused $(INCS)
+#        -warn argument_checking,declarations,uncalled,unused -debug full -ftrapuv $(INCS)
 # FFLAGS = -ftz -vec-report0 -O3 -g $(INCS)
 # Some optimized (BLAS, LAPACK) libraries may be available with:
 # LIBS = -L$(NETCDF)/lib -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
