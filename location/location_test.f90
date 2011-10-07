@@ -24,7 +24,7 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
-type(location_type) :: loc0(6), loc1, loc2, loc3, loc4, locA(5), locB(5)
+type(location_type) :: loc0(6), loc1, loc2, loc3, loc4, locA(7), locB(5)
 integer             :: iunit, iunit1, iunit2, i
 real(r8)            :: loc2_val, lon, lat
 character(len=102)  :: testbuf
