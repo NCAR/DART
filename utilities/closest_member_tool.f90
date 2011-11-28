@@ -248,7 +248,7 @@ if (single_restart_file_in) then
       if (mean_time /= member_time) then
          call print_time(mean_time, "time of ensemble mean data")
          call print_time(member_time, "time of ensemble member data")
-         write(msgstring, *) 'member ', i, ' has a different timestamp than mean'
+         write(msgstring, *) 'member ', ens, ' has a different timestamp than mean'
          call error_handler(E_ERR,'closest_member_tool', msgstring)
       endif
 
@@ -281,7 +281,7 @@ else
       if (mean_time /= member_time) then
          call print_time(mean_time, "time of ensemble mean data")
          call print_time(member_time, "time of ensemble member data")
-         write(msgstring, *) 'member ', i, ' has a different timestamp than mean'
+         write(msgstring, *) 'member ', ens, ' has a different timestamp than mean'
          call error_handler(E_ERR,'closest_member_tool', msgstring)
       endif
 
