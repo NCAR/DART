@@ -185,7 +185,7 @@ while($state_copy <= $num_states)
    if ( ( -d $temp_dir ) & ( $individual_members == "true" ) ) then
 
       cd $temp_dir
-      set rmlist = ( `ls | grep -v wrfinput_d0?` )
+      set rmlist = ( `ls | grep -v wrfinput_d0.` )
       ${REMOVE} $rmlist
 
    else
