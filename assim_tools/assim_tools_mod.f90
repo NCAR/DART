@@ -1429,7 +1429,7 @@ real(r8),           intent(out)   :: state_inc(ens_size), reg_coef
 real(r8),           intent(inout) :: net_a
 real(r8), optional, intent(inout) :: correl_out
 
-real(r8) :: obs_state_cov
+real(r8) :: obs_state_cov, intermed
 real(r8) :: restoration_inc(ens_size), state_mean, state_var, correl
 real(r8) :: factor, exp_true_correl, mean_factor
 
@@ -1444,14 +1444,28 @@ else
 endif
 
 ! If correl_out is present, need correl for adaptive inflation
-! Also needed for file correction below
+! Also needed for file correction below.
+
+! WARNING: we have had several different numerical problems in this
+! section, especially with users running in single precision floating point.
+! Be very cautious if changing any code in this section, taking into
+! account underflow and overflow for 32 bit floats.
+
 if(present(correl_out) .or. sampling_error_correction) then
-   state_var = sum((state - state_mean)**2) / (ens_size - 1)
-   if (state_var < 0.0_r8) state_var = 0.0_r8
-   if ((obs_prior_var <= 0.0_r8) .or. (state_var <= 0.0_r8)) then
+   if (obs_state_cov == 0.0_r8 .or. obs_prior_var <= 0.0_r8) then
       correl = 0.0_r8
    else
-      correl = obs_state_cov / sqrt(obs_prior_var * state_var)
+      state_var = sum((state - state_mean)**2) / (ens_size - 1)
+      if (state_var <= 0.0_r8) then
+         correl = 0.0_r8
+      else
+         intermed = sqrt(obs_prior_var) * sqrt(state_var)
+         if (intermed <= 0.0_r8) then
+            correl = 0.0_r8
+         else
+            correl = obs_state_cov / intermed
+         endif
+      endif
    endif
    if(correl >  1.0_r8) correl =  1.0_r8
    if(correl < -1.0_r8) correl = -1.0_r8
