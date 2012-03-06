@@ -35,6 +35,7 @@ character(len=128), parameter :: &
    revision = "$Revision$", &
    revdate  = "$Date$"
 
+character(len=128) :: errstring
 
 CONTAINS
 
@@ -477,6 +478,13 @@ subroutine get_times_cdf( fname, time_name, times, n_times, max_times, debug )
 !  get the times
 
   n_times = idims(2)
+  if (n_times > max_times) then
+    write(errstring, '(2(A,I6))') 'number of times in file ', n_times, &
+                                  '  is larger than allocated space ', max_times
+    call error_handler(E_ERR, 'get_times_cdf', errstring, source, revision, revdate, &
+                       text2='increase max_times in [pert,update]_wrf_bc.f90 and recompile')
+  endif
+
   do i=1,idims(2)
     istart(1) = 1
     iend(1) = idims(1)
