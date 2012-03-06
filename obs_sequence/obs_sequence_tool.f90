@@ -1633,7 +1633,7 @@ end subroutine handle_filenames
 !#! real(r8)           :: oldvar, newvar
 !#! 
 !#! 
-!#! call get_obs_def(obs, this_obs_def)
+!#! call get_obs_def(this_obs, this_obs_def)
 !#! this_obs_kind = get_obs_kind(this_obs_def)
 !#! 
 !#! ! ignore identity obs
