@@ -753,7 +753,7 @@ else if(location%which_vert == VERTISPRESSURE ) then
    read(*, *) location%vloc
    location%vloc = 100.0 * location%vloc
 else if(location%which_vert == VERTISHEIGHT ) then
-   write(*, *) 'Vertical coordinate height (in gpm)'
+   write(*, *) 'Vertical coordinate height (in meters)'
    read(*, *) location%vloc
 else if(location%which_vert == VERTISSURFACE ) then
    ! most 3d sphere users want height in meters, not pressure.
