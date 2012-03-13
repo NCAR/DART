@@ -86,11 +86,11 @@ logical :: fexist, sigwnd, sigtmp, first_obs
 
 real(r8) :: otime, lat, lon, elev, uwnd, vwnd, qobs, qsat, dptk, oerr, &
             pres_miss, wdir_miss, wspd_miss, tair_miss, tdew_miss, prespa, & 
-            qc, altim, rh, qerr  ! , time_miss
+            qc, altim, rh, qerr, hght_miss, HGHT_THRESHOLD  ! , time_miss
 real(r8), allocatable :: latu(:), lonu(:)
 
-real(r8), allocatable :: pres(:), wdir(:), wspd(:), tair(:), tdew(:)
-integer,  allocatable :: qc_pres(:), qc_wdir(:), qc_wspd(:), qc_tair(:), qc_tdew(:)
+real(r8), allocatable :: pres(:), wdir(:), wspd(:), tair(:), tdew(:), hght(:)
+integer,  allocatable :: qc_pres(:), qc_wdir(:), qc_wspd(:), qc_tair(:), qc_tdew(:), qc_hght(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
@@ -310,6 +310,15 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
       if ( tair(k) /= tair_miss .and. qc_tair(k) == 0 .and. &
            tdew(k) /= tdew_miss .and. qc_tdew(k) == 0  ) then
   
+        ! before we start computing things based on the dewpoint,
+        ! make sure it isn't larger than the air temp.  if it is
+        ! more than a degree larger, skip it completely.  if it is
+        ! less, set them equal and continue.
+        if (tdew(n) > tair(n)) then
+           if (tdew(n) > tair(n) + 1.0_r8) goto 100
+           tdew(n) = tair(n)
+        endif
+
         ! tdew is the dewpoint depression
         dptk = tair(k) - tdew(k)
   
@@ -376,6 +385,8 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     deallocate(pres, wdir, wspd, tair, tdew, qc_pres, qc_wdir, qc_wspd, qc_tair, qc_tdew)
   endif
 
+100 continue
+
   !  If desired, read the significant-level temperature data, write to obs_seq
   call getvar_int_1d_1val(ncid, "numSigT", n, nsig )
 
@@ -421,6 +432,15 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
       ! three types of moisture obs to generate.
       if ( tair(k) /= tair_miss .and. qc_tair(k) == 0 .and. &
            tdew(k) /= tdew_miss .and. qc_tdew(k) == 0  ) then
+
+        ! before we start computing things based on the dewpoint,
+        ! make sure it isn't larger than the air temp.  if it is
+        ! more than a degree larger, skip it completely.  if it is
+        ! less, set them equal and continue.
+        if (tdew(n) > tair(n)) then
+           if (tdew(n) > tair(n) + 1.0_r8) goto 200
+           tdew(n) = tair(n)
+        endif
 
         ! tdew is the dewpoint depression
         dptk = tair(k) - tdew(k)
@@ -489,16 +509,18 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
   endif
 
+200 continue
+
   !  If desired, read the significant-level wind data, write to obs_seq
   call getvar_int_1d_1val(ncid, "numSigW", n, nsig )
   
   if ( sigwnd .and. nsig <= nmaxsw ) then
 
-    allocate(pres(nsig))     ;  allocate(wdir(nsig))     ;  allocate(wspd(nsig))
-    allocate(qc_pres(nsig))  ;  allocate(qc_wdir(nsig))  ;  allocate(qc_wspd(nsig))
+    allocate(hght(nsig))     ;  allocate(wdir(nsig))     ;  allocate(wspd(nsig))
+    allocate(qc_hght(nsig))  ;  allocate(qc_wdir(nsig))  ;  allocate(qc_wspd(nsig))
 
     !  read significant level data
-    call getvar_real_2d(ncid, "htSigW", n, nsig, pres, pres_miss)
+    call getvar_real_2d(ncid, "htSigW", n, nsig, hght, hght_miss)
     call getvar_real_2d(ncid, "wdSigW", n, nsig, wdir, wdir_miss)
     call getvar_real_2d(ncid, "wsSigW", n, nsig, wspd, wspd_miss)
 
@@ -514,18 +536,22 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
       !  add data to the observation sequence here.
       if ( wdir(k) /= wdir_miss .and. qc_wdir(k) == 0 .and. &
-           wspd(k) /= wspd_miss .and. qc_wspd(k) == 0  ) then
+           wspd(k) /= wspd_miss .and. qc_wspd(k) == 0 .and. &
+           hght(k) /= hght_miss ) then
 
         call wind_dirspd_to_uv(wdir(k), wspd(k), uwnd, vwnd)
-        oerr = rawin_wind_error(pres_alt_to_pres(pres(k)) * 0.01_r8)
+        ! the pres_alt_to_pres() fails above 44km, so give any obs above
+        ! this height the same wind error value as 40km.
+        HGHT_THRESHOLD = 40000.0_r8   
+        oerr = rawin_wind_error(pres_alt_to_pres(min(hght(k),HGHT_THRESHOLD)) * 0.01_r8)
         if ( abs(uwnd) <= 150.0_r8 .and. & 
              abs(vwnd) <= 150.0_r8 .and. oerr /= missing_r8 ) then
 
-          call create_3d_obs(lat, lon, pres(k), VERTISHEIGHT, uwnd, &
+          call create_3d_obs(lat, lon, hght(k), VERTISHEIGHT, uwnd, &
                              RADIOSONDE_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
           call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
-          call create_3d_obs(lat, lon, pres(k), VERTISHEIGHT, vwnd, &
+          call create_3d_obs(lat, lon, hght(k), VERTISHEIGHT, vwnd, &
                              RADIOSONDE_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
           call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
@@ -534,7 +560,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
       endif
 
     end do
-    deallocate(pres, wdir, wspd, qc_pres, qc_wdir, qc_wspd)
+    deallocate(hght, wdir, wspd, qc_hght, qc_wdir, qc_wspd)
 
   endif
 
