@@ -5840,13 +5840,13 @@ real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
 logical,  intent(out) :: interf_provided
 
-real(r8)              :: pert_amount = 0.02   ! 2%
+real(r8)              :: pert_amount = 0.005   ! 0.5%
 
 real(r8)              :: pert_ampl, range
 real(r8)              :: minv, maxv, temp
 type(random_seq_type) :: random_seq
 integer               :: id, i, j, s, e
-integer, save :: counter = 1
+integer, save         :: counter = 0
 
 ! generally you do not want to perturb a single state
 ! to begin an experiment - unless you make minor perturbations
@@ -5869,19 +5869,20 @@ call error_handler(E_ERR,'pert_model_state', &
 ! start of pert code
 interf_provided = .true.
 
-! the first time through get the task id (0:N-1)
-! and set a unique seed per task.  this won't
-! be consistent between different numbers of mpi
-! tasks, but at least it will reproduce with
-! multiple runs with the same task count.
-! best i can do since this routine doesn't have
-! the ensemble member number as an argument
-! (which i think it needs for consistent seeds).
+! the first time through get the task id (0:N-1) and set a unique seed 
+! per task.  this should reproduce from run to run if you keep the number
+! of MPI tasks the same.  it WILL NOT reproduce if the number of tasks changes.
+! if this routine could at some point get the global ensemble member number
+! as an argument, that would be unique and the right thing to use as a seed.
 !
-! this only executes the first time since counter
-! gets incremented after the first use and the value
-! is saved between calls.
-if (counter == 1) counter = counter + (my_task_id() * 1000)
+! the line below only executes the first time since counter gets incremented 
+! after the first use and the value is saved between calls.  it is trying to 
+! generate a unique base number, and then just increments by 1 each subsequent 
+! time it is called (which only happens if there are multiple ensemble 
+! members/task).  it is assuming there are no more than 1000 ensembles/task,
+! which seems safe given the current sizes of state vecs and hardware memory.
+
+if (counter == 0) counter = ((my_task_id()+1) * 1000)
 
 call init_random_seq(random_seq, counter)
 counter = counter + 1
