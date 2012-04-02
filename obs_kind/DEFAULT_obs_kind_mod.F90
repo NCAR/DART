@@ -140,6 +140,10 @@ integer, parameter, public :: &
     KIND_ATOMIC_OXYGEN_MIXING_RATIO  = 46, &
     KIND_MOLEC_OXYGEN_MIXING_RATIO   = 47
 
+! kinds for tendencies
+integer, parameter, public :: &
+    KIND_ALTIMETER_TENDENCY          = 48
+
 ! kinds for the MITgcm, POP ocean model
 integer, parameter, public :: &
     KIND_SALINITY                    = 50, &
