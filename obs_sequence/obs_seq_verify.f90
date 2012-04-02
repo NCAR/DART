@@ -383,17 +383,16 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    ! The first trip through sets the module_obs_copy_names so we can
    ! be sure we are stuffing compatible objects into the same slots 
    if ( ifile == 1 ) then
-      module_obs_copy_names = obs_copy_names
+      module_obs_copy_names = obs_copy_names(copy_indices(1:ensemble_size))
    else
-      ! FIXME more robust checks
+      ! Check to make sure the ensemble members are in the expected copies
       do i = 1,ensemble_size
          if ( obs_copy_names(copy_indices(i)) /= module_obs_copy_names(i) ) then
-         
-            write(string1,*)'mismatch in observation copies ',&
-                             trim(obs_copy_names(copy_indices(i)))
-            string2 = trim(module_obs_copy_names(i))
+            write(string1,'(''module has '',A)') trim(module_obs_copy_names(i))
+            write(string2,'(A,'' has '',A)') trim(obs_seq_in_file_name), &
+                                             trim(obs_copy_names(copy_indices(i)))
             call error_handler(E_ERR,'obs_seq_verify', &
-               string1,source,revision,revdate,text2=string2)
+               'mismatch in observation copies',source,revision,revdate,text2=string1,text3=string2)
          endif
       enddo
    endif
