@@ -433,7 +433,7 @@ endif
 
 ! order is u,v,z 
 if(mytype == KIND_U_WIND_COMPONENT) then
-   indx = (level-1)*nlats*nlons+(lat_index-1)*nlons + lat_index
+   indx =               (level-1)*nlats*nlons+(lat_index-1)*nlons + lon_index
 else if(mytype == KIND_V_WIND_COMPONENT) then
    indx = 2*nlats*nlons+(level-1)*nlats*nlons+(lat_index-1)*nlons + lon_index
 else if(mytype == KIND_GEOPOTENTIAL_HEIGHT) then
