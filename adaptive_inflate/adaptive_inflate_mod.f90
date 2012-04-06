@@ -16,10 +16,10 @@ use types_mod,            only : r8, PI
 use time_manager_mod,     only : time_type, get_time, set_time
 use utilities_mod,        only : file_exist, get_unit, register_module, &
                                  error_handler, E_ERR, E_MSG
-use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq, &
-                                 random_uniform
+use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq
 use ensemble_manager_mod, only : ensemble_type, all_vars_to_all_copies, all_copies_to_all_vars, &
-                                 read_ensemble_restart, write_ensemble_restart
+                                 read_ensemble_restart, write_ensemble_restart, get_copy_owner_index
+use mpi_utilities_mod,    only : my_task_id, send_to, receive_from
 
 implicit none
 private
@@ -92,49 +92,19 @@ integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_in
 character(len = *),          intent(in)    :: label
 
 character(len = 128) :: det, tadapt, sadapt, akind, rsread, nmread
-integer :: restart_unit, io
+integer  :: restart_unit, io, owner, owners_index
+real(r8) :: minmax_mean(2), minmax_sd(2)
 
-! Write to log file what kind of inflation is being used.
-if(deterministic) then
-  det = 'deterministic,'
-else
-  det = 'random-noise,'
-endif
-if (sd_initial > inf_lower_bound) then
-   det = trim(det) // ' covariance adaptive,'
-endif
-if (inf_lower_bound < 1.0_r8) then
-   det = trim(det) // ' deflation permitted,'
-endif
-if (sd_initial > 0.0_r8) then
-  tadapt = ' time-adaptive,'
-else
-  tadapt = ' time-constant,'
-endif
+! Record the module version if this is first initialize call
+if(.not. initialized) then
+   initialized = .true.
+   call register_module(source, revision, revdate)
 
-select case(inf_flavor)
-   case (0)
-      det = ''
-      tadapt = ''
-      sadapt = ''
-      akind = 'None '
-   case (1)
-      sadapt = ''
-      akind = ' observation-space'
-   case (2)
-      sadapt = ' spatially-varying,'
-      akind = ' state-space '
-   case (3)
-      sadapt = ' spatially-constant,'
-      akind = ' state-space'
-   case default
-      write(errstring, *) 'Illegal inflation value for ', label
-      call error_handler(E_ERR, 'adaptive_inflate_init', errstring, source, revision, revdate)
-end select
-! say in plain english what kind of inflation was selected.
-write(errstring, '(4A)') &
-   trim(det), trim(tadapt), trim(sadapt), trim(akind)
-call error_handler(E_MSG, trim(label) // ' inflation:', errstring, source, revision, revdate)
+   ! If non-deterministic inflation is being done, need to initialize random sequence.
+   ! use the task id number (plus 1 since they start at 0) to set the initial seed.
+   ! NOTE: non-deterministic inflation does NOT reproduce as process count is varied!
+   if(.not. deterministic) call init_random_seq(inflate_handle%ran_seq, my_task_id()+1)
+endif
 
 ! more information for users to document what they selected in the nml:
 ! if flavor > 0, look at read_from_restart for both mean and sd.
@@ -183,21 +153,16 @@ inflate_handle%sd_lower_bound     = sd_lower_bound
 ! Set obs_diag unit to -1 indicating it has not been opened yet
 inflate_handle%obs_diag_unit = -1
 
-! Record the module version if this is first initialize call
-if(.not. initialized) then
-   initialized = .true.
-   call register_module(source, revision, revdate)
-endif
-
-! If non-deterministic inflation is being done, need to initialize random sequence
-! NOTE: non-deterministic inflation does NOT reproduce as process count is varied!
-if(.not. deterministic) call init_random_seq(inflate_handle%ran_seq)
-
 ! Cannot support non-determistic inflation and an inf_lower_bound < 1
 if(.not. deterministic .and. inf_lower_bound < 1.0_r8) then
    write(errstring, *) 'Cannot have non-deterministic inflation and inf_lower_bound < 1'
    call error_handler(E_ERR, 'adaptive_inflate_init', errstring, source, revision, revdate)
 endif
+
+! give this an initial value which defaults to time-constant inflation
+! change it below if the value(s) are > 0
+minmax_mean(:) = 0.0_r8
+minmax_sd(:)   = 0.0_r8
 
 !------ Block for state space inflation initialization ------
 
@@ -214,9 +179,16 @@ if(inf_flavor >= 2) then
          errstring, source, revision, revdate)
    endif
 
-   ! Read in initial values from file OR get from subroutine arguments
+   ! set this, and then below if sd values are from a file, compute them
+   ! and send the value to PE0 if not already there.
+   minmax_sd = sd_initial
+
+   ! Read in initial values from file OR get from namelist arguments
+
    ! If either mean, sd, or both are to be read from the restart file, read them in.
-   ! Then test to see if either are to be overwritten, and do it.
+   ! There is no option to read only one; to get either you have to read both.
+   ! If one is to be set from the namelist, it gets overwritten in the block below
+   ! this one.
    if(mean_from_restart .or. sd_from_restart) then
       ! the .true. below is 'start_from_restart', which tells the read routine to
       ! read in the full number of ensemble members requested (as opposed to reading
@@ -224,21 +196,81 @@ if(inf_flavor >= 2) then
       call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
          .true., in_file_name, force_single_file = .true.)
    endif
-   ! If one or both are false, we need to transpose and then set the values
+   ! Now, if one or both values come from the namelist (i.e. is a single static
+   ! value), write or overwrite the arrays here.
    if (.not. mean_from_restart .or. .not. sd_from_restart) then
-      ! Get initial values from higher level; requires pe's to have all copies of some vars
-      call all_vars_to_all_copies(ens_handle)
-      if (.not. mean_from_restart) ens_handle%copies(ss_inflate_index, :)    = inf_initial
-      if (.not.   sd_from_restart) ens_handle%copies(ss_inflate_sd_index, :) = sd_initial
-      call all_copies_to_all_vars(ens_handle)
+      ! original code required an expensive transpose which is not necessary.
+      ! if setting initial values from the namelist, find out which task has the
+      ! inflation and inf sd values and set them only on that task.  this saves us
+      ! a transpose.
+      if (.not. mean_from_restart) then
+         call get_copy_owner_index(ss_inflate_index, owner, owners_index)
+         if (owner == my_task_id()) ens_handle%vars(:, owners_index) = inf_initial
+      endif
+      if (.not. sd_from_restart) then
+         call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
+         if (owner == my_task_id()) ens_handle%vars(:, owners_index) = sd_initial
+      endif
+   endif
+
+   ! this block figures out what the min/max value of the mean/sd is
+   ! if we are reading in the values from a restart file.  it is used
+   ! in diagnostic output so it needs to get to PE0.  we also could check it
+   ! against the limits in the namelist to be sure the file values aren't
+   ! already outside the requested limits. (not sure that's necessary -
+   ! depends on when the code that changes the values imposes the limits.)
+   if (mean_from_restart) then
+      call get_copy_owner_index(ss_inflate_index, owner, owners_index)
+      ! if inflation array is already on PE0, just figure out the
+      ! largest value in the array and we're done.
+      if (owner == 0) then
+         minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
+         minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
+      else
+         ! someone else has the inf array.  have the owner send the min/max
+         ! values to PE0.  after this point only PE0 has the right value
+         ! in minmax_mean, but it is the only one who is going to print below.
+         if (my_task_id() == 0) then
+            call receive_from(owner, minmax_mean)
+         else if (my_task_id() == owner) then
+            minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
+            minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
+            call send_to(0, minmax_mean)
+         endif
+      endif
+   endif
+   if (sd_from_restart) then
+      call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
+      ! if inflation sd array is already on PE0, just figure out the
+      ! largest value in the array and we're done.
+      if (owner == 0) then
+         minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
+         minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
+      else
+         ! someone else has the sd array.  have the owner send the min/max
+         ! values to PE0.  after this point only PE0 has the right value
+         ! in minmax_sd, but it is the only one who is going to print below.
+         if (my_task_id() == 0) then
+            call receive_from(owner, minmax_sd)
+         else if (my_task_id() == owner) then
+            minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
+            minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
+            call send_to(0, minmax_sd)
+         endif
+      endif
    endif
    
    ! Inflation type 3 is spatially-constant.  Make sure the entire array is set to that
-   ! value; the computation only uses index 1, but the diagnostics write out the entire
-   ! array and it will be misleading if not constant.
+   ! value. the computation only uses index 1, but the diagnostics write out the entire
+   ! array and it will be misleading if not constant.  the inf values were set above.  
+   ! if they were set by namelist, this code changes nothing.  but if they were read in
+   ! from a file, then it is possible the values vary across the array.  these lines
+   ! ensure the entire array contains a single constant value to match what the code uses.
    if(inf_flavor == 3) then
-      ens_handle%copies(ss_inflate_index, :)    = ens_handle%copies(ss_inflate_index, 1) 
-      ens_handle%copies(ss_inflate_sd_index, :) = ens_handle%copies(ss_inflate_sd_index, 1) 
+      call get_copy_owner_index(ss_inflate_index, owner, owners_index)
+      if (owner == my_task_id()) ens_handle%vars(:, owners_index) = ens_handle%vars(1, owners_index)
+      call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
+      if (owner == my_task_id()) ens_handle%vars(:, owners_index) = ens_handle%vars(1, owners_index)
    endif
 
 !------ Block for obs. space inflation initialization ------
@@ -247,7 +279,7 @@ if(inf_flavor >= 2) then
 else if(inf_flavor == 1) then
 
    ! Initialize observation space inflation values from restart files
-   ! Only values are inflation, inflation_sd
+   ! Only single values for inflation, inflation_sd (not arrays)
    if(mean_from_restart .or. sd_from_restart) then
       ! Open the file
       restart_unit = get_unit()
@@ -272,6 +304,64 @@ else if(inf_flavor == 1) then
    if (.not. mean_from_restart) inflate_handle%inflate = inf_initial
    if (.not.   sd_from_restart) inflate_handle%sd      = sd_initial
 
+endif
+
+! Write to log file what kind of inflation is being used.
+! This used to be at the start, but if you are starting from a restart
+! file then you can't tell what sd values are being read in until here.
+if(deterministic) then
+  det = 'deterministic,'
+else
+  det = 'random-noise,'
+endif
+if (inflate_handle%sd_lower_bound > inf_lower_bound) then
+   det = trim(det) // ' covariance adaptive,'
+endif
+if (inflate_handle%inf_lower_bound < 1.0_r8) then
+   det = trim(det) // ' deflation permitted,'
+endif
+if (minmax_sd(2) > 0.0_r8) then
+  tadapt = ' time-adaptive,'
+else
+  tadapt = ' time-constant,'
+endif
+
+select case(inf_flavor)
+   case (0)
+      det = ''
+      tadapt = ''
+      sadapt = ''
+      akind = 'None '
+   case (1)
+      sadapt = ''
+      akind = ' observation-space'
+   case (2)
+      sadapt = ' spatially-varying,'
+      akind = ' state-space '
+   case (3)
+      sadapt = ' spatially-constant,'
+      akind = ' state-space'
+   case default
+      write(errstring, *) 'Illegal inflation value for ', label
+      call error_handler(E_ERR, 'adaptive_inflate_init', errstring, source, revision, revdate)
+end select
+
+! say in plain english what kind of inflation was selected.
+write(errstring, '(4A)') &
+   trim(det), trim(tadapt), trim(sadapt), trim(akind)
+call error_handler(E_MSG, trim(label) // ' inflation:', errstring, source, revision, revdate)
+
+if (inf_flavor > 0) then
+   if (mean_from_restart) then
+      write(errstring, '(A, F8.3, A, F8.3)') &
+         'inf mean   from restart file: min value: ', minmax_mean(1), ' max value: ', minmax_mean(2)
+      call error_handler(E_MSG, trim(label) // ' inflation:', errstring, source, revision, revdate)
+   endif
+   if (sd_from_restart) then
+      write(errstring, '(A, F8.3, A, F8.3)') &
+         'inf stddev from restart file: min value: ', minmax_sd(1), ' max value: ', minmax_sd(2)
+      call error_handler(E_MSG, trim(label) // ' inflation:', errstring, source, revision, revdate)
+   endif
 endif
 
 end subroutine adaptive_inflate_init
