@@ -93,7 +93,7 @@ call static_init_obs_sequence
 
 ! fail if we are not initializing from OBS (this could be easily modified
 ! to get values from WRF, and may come in handy later!
-if ( init_f_type /= 'OBS' ) then
+if ( init_f_type == 'WRF' ) then
   call error_handler(E_ERR, 'create_real_network', &
      'CANNOT PRODUCE OBS SEQUENCE FROM WRF OUTPUT YET', source, revision, revdate)
 endif
@@ -121,7 +121,6 @@ call init_obs(new_obs, num_copies, num_qc)
    init_time = increment_time(init_time,start_forecast,0)
    flen_time = set_time(forecast_length,0) 
    end_time  = init_time + flen_time
-   real_obs_period = max(real_obs_period,interval_smos)
 
    call get_time(init_time,seconds,days)
 
@@ -129,11 +128,7 @@ call init_obs(new_obs, num_copies, num_qc)
    obs_seq_period = set_time(real_obs_period, 0)
    obs_list_period = set_time(interval_smos, 0)
 
-   if ( interval_smos >= real_obs_period ) then
-      num_times = (end_time - start_seq_time) / set_time(interval_smos,0) + 1
-   else
-      num_times = (end_time - start_seq_time) / set_time(real_obs_period,0) + 1
-   endif
+   num_times = (end_time - start_seq_time) / set_time(real_obs_period,0) + 1
 
    ! time information comes from the wrf1d_namelist.input
    ! only supports regularly-repeating obs right now

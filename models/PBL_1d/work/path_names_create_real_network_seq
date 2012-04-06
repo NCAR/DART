@@ -3,7 +3,7 @@ obs_kind/obs_kind_mod.f90
 obs_def/obs_def_mod.f90
 assim_model/assim_model_mod.f90
 models/PBL_1d/model_mod.f90
-models/PBL_1d/create_real_network/create_real_network.f90
+models/PBL_1d/create_real_network.f90
 common/types_mod.f90
 location/threed_sphere/location_mod.f90
 random_seq/random_seq_mod.f90
