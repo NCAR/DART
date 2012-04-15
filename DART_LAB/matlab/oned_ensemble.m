@@ -78,29 +78,29 @@ help oned_ensemble
 handles.output = hObject;
 
 % Insert the ensemble structure into this
-handles.ens_size       = 0;
-handles.ens_members    = 0;
-handles.h_obs_plot     = 0;
-handles.h_update_ens   = 0;
-handles.h_ens_member   = 0;
-handles.h_obs_ast      = 0;
-handles.h_update_lines = 0;
-handles.observation    = 0;
-handles.obs_error_sd   = 0;
-handles.inflation      = 1.5;
-handles.plot_inflation = false;
-handles.h_inf_ens_member      = 0;
-handles.h_inf_up_ens   = 0;
-handles.h_inf_lines    = 0;
-handles.h_inf_axis     = 0;
+handles.ens_size         = 0;
+handles.ens_members      = 0;
+handles.h_obs_plot       = 0;
+handles.h_update_ens     = 0;
+handles.h_ens_member     = 0;
+handles.h_obs_ast        = 0;
+handles.h_update_lines   = 0;
+handles.observation      = 0;
+handles.obs_error_sd     = 0;
+handles.inflation        = 1.5;
+handles.plot_inflation   = false;
+handles.h_inf_ens_member = 0;
+handles.h_inf_up_ens     = 0;
+handles.h_inf_lines      = 0;
+handles.h_inf_axis       = 0;
 
 % Update handles structure
 guidata(hObject, handles);
 
 % Get the initial observation, obs_error_sd and inflation from the gui
-handles.observation = str2double(get(handles.edit_observation, 'String'));
+handles.observation  = str2double(get(handles.edit_observation,  'String'));
 handles.obs_error_sd = str2double(get(handles.edit_obs_error_sd, 'String'));
-handles.inflation = str2double(get(handles.edit_inflation, 'String'));
+handles.inflation    = str2double(get(handles.edit_inflation,    'String'));
 
 % Go ahead and plot the initial observational error distribution
 handles.h_obs_plot = plot_gaussian(handles.observation, handles.obs_error_sd, 1);
@@ -123,6 +123,11 @@ plot([lower upper], [0 0], 'k', 'Linewidth', 2);
 
 % Update handles structure
 guidata(hObject, handles);
+
+% Reset focus to the menu gui window
+% Setting the axes clears the legend, gcbo restores focus
+axes(handles.axes1);
+
 
 % UIWAIT makes oned_ensemble wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -153,22 +158,22 @@ function pushbutton_create_new_Callback(hObject, eventdata, handles)
 
 % Disable the update ensemble button and all other active buttons
 set(handles.pushbutton_update_ens, 'Enable', 'Off');
-set(handles.edit_observation, 'Enable', 'Off');
-set(handles.edit_obs_error_sd, 'Enable', 'Off');
-set(handles.edit_inflation, 'Enable', 'Off');
+set(handles.edit_observation,      'Enable', 'Off');
+set(handles.edit_obs_error_sd,     'Enable', 'Off');
+set(handles.edit_inflation,        'Enable', 'Off');
 
 % Clear out any old ensemble members if they exist
-set(handles.h_ens_member, 'Visible', 'off');
-set(handles.h_inf_ens_member, 'Visible', 'off');
+set(handles.h_ens_member,          'Visible', 'off');
+set(handles.h_inf_ens_member,      'Visible', 'off');
 
-set(handles.h_update_lines, 'Visible', 'off');
-set(handles.h_inf_lines, 'Visible', 'off');
-set(handles.h_inf_axis, 'Visible', 'off');
+set(handles.h_update_lines,        'Visible', 'off');
+set(handles.h_inf_lines,           'Visible', 'off');
+set(handles.h_inf_axis,            'Visible', 'off');
 
 % Turn off any old update points
-set(handles.h_update_ens, 'Visible', 'off');
-set(handles.h_inf_up_ens, 'Visible', 'off');
-set(handles.h_inf_ens_member, 'Visible', 'off');
+set(handles.h_update_ens,          'Visible', 'off');
+set(handles.h_inf_up_ens,          'Visible', 'off');
+set(handles.h_inf_ens_member,      'Visible', 'off');
 
 clear_labels(handles);
 
@@ -179,7 +184,7 @@ lower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_member
 upper = max(handles.observation + 3*handles.obs_error_sd, max(handles.ens_members));
 axis([lower upper -0.4 1]);
 
-set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
+set(gca, 'YTick',      [0 0.2 0.4 0.6 0.8]);
 set(gca, 'YTickLabel', [0 0.2 0.4 0.6 0.8]);
 
 % Messages should start 1/10 of the way across the screen
@@ -239,21 +244,21 @@ end
 
 % Ensemble created, comupte mean and sd, clean up and return
 % Set the global gui storage
-handles.ens_size = ens_size;
+handles.ens_size    = ens_size;
 handles.ens_members = x;
 
 % Update handles structure
 guidata(hObject, handles);
 
 % Turn off the data entry messages
-set(h_click, 'Visible', 'off');
+set(h_click,  'Visible', 'off');
 set(h_finish, 'Visible', 'off');
 
 % Enable the update ensemble button
 set(handles.pushbutton_update_ens, 'Enable', 'On');
-set(handles.edit_observation, 'Enable', 'On');
-set(handles.edit_obs_error_sd, 'Enable', 'On');
-set(handles.edit_inflation, 'Enable', 'On');
+set(handles.edit_observation,      'Enable', 'On');
+set(handles.edit_obs_error_sd,     'Enable', 'On');
+set(handles.edit_inflation,        'Enable', 'On');
 
 
 %----------------------------------------------------------------------
@@ -269,21 +274,21 @@ function edit_observation_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of edit_observation as a double
 
 % Turn off any old updated points
-set(handles.h_update_ens, 'Visible', 'off');
-set(handles.h_inf_up_ens, 'Visible', 'off');
+set(handles.h_update_ens,     'Visible', 'off');
+set(handles.h_inf_up_ens,     'Visible', 'off');
 set(handles.h_inf_ens_member, 'Visible', 'off');
 
 % Remove mean and sd of old posterior
 clear_labels(handles);
 
 % And the lines in between
-set(handles.h_update_lines, 'Visible', 'off');
-set(handles.h_inf_lines, 'Visible', 'off');
-set(handles.h_inf_axis, 'Visible', 'off');
+set(handles.h_update_lines,        'Visible', 'off');
+set(handles.h_inf_lines,           'Visible', 'off');
+set(handles.h_inf_axis,            'Visible', 'off');
 
 % Enable things that an error might have turned off
-set(handles.edit_obs_error_sd, 'Enable', 'on')
-set(handles.edit_inflation, 'Enable', 'on')
+set(handles.edit_obs_error_sd,     'Enable', 'on')
+set(handles.edit_inflation,        'Enable', 'on')
 set(handles.pushbutton_create_new, 'Enable', 'on')
 
 % Only enable the update ensemble pushbutton if an ensemble has been created
@@ -292,14 +297,14 @@ if(handles.ens_size > 0)
 end
 
 % Get the value of the observation
-if(isfinite(str2double(get(hObject, 'String'))))
+if(isfinite(     str2double(get(hObject, 'String'))))
    observation = str2double(get(hObject, 'String'));
 else
    set(handles.edit_observation, 'String', '???');
 
    % Disable other input to guarantee only one error at a time!
-   set(handles.edit_obs_error_sd, 'Enable', 'off')
-   set(handles.edit_inflation, 'Enable', 'off')
+   set(handles.edit_obs_error_sd,     'Enable', 'off')
+   set(handles.edit_inflation,        'Enable', 'off')
    set(handles.pushbutton_create_new, 'Enable', 'off')
    set(handles.pushbutton_update_ens, 'Enable', 'off')
    return
@@ -322,7 +327,7 @@ lower = min(handles.observation - 3*handles.obs_error_sd, min(handles.ens_member
 upper = max(handles.observation + 3*handles.obs_error_sd, max(handles.ens_members));
 axis([lower upper -0.4 1]);
 
-set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
+set(gca, 'YTick',      [0 0.2 0.4 0.6 0.8]);
 set(gca, 'YTickLabel', [0 0.2 0.4 0.6 0.8]);
 
 hold on
@@ -360,21 +365,21 @@ function edit_obs_error_sd_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of edit_obs_error_sd as a double
 
 % Turn off any old updated points
-set(handles.h_update_ens, 'Visible', 'off');
-set(handles.h_inf_up_ens, 'Visible', 'off');
-set(handles.h_inf_ens_member, 'Visible', 'off');
+set(handles.h_update_ens,          'Visible', 'off');
+set(handles.h_inf_up_ens,          'Visible', 'off');
+set(handles.h_inf_ens_member,      'Visible', 'off');
 
 % Remove mean and sd of old posterior
 clear_labels(handles);
 
 % And the lines in between
-set(handles.h_update_lines, 'Visible', 'off');
-set(handles.h_inf_lines, 'Visible', 'off');
-set(handles.h_inf_axis, 'Visible', 'off');
+set(handles.h_update_lines,        'Visible', 'off');
+set(handles.h_inf_lines,           'Visible', 'off');
+set(handles.h_inf_axis,            'Visible', 'off');
 
 % Enable things that an error might have turned off
-set(handles.edit_observation, 'Enable', 'on')
-set(handles.edit_inflation, 'Enable', 'on')
+set(handles.edit_observation,      'Enable', 'on')
+set(handles.edit_inflation,        'Enable', 'on')
 set(handles.pushbutton_create_new, 'Enable', 'on')
 
 % Only enable the update ensemble pushbutton if an ensemble has been created
@@ -383,15 +388,15 @@ if(handles.ens_size > 0)
 end
 
 % Get the value of the observation
-if(isfinite(str2double(get(hObject, 'String'))) && ...
-   str2double(get(hObject, 'String')) > 0)
+if(isfinite(      str2double(get(hObject, 'String'))) && ...
+                  str2double(get(hObject, 'String')) > 0)
    obs_error_sd = str2double(get(hObject, 'String'));
 else
    set(handles.edit_obs_error_sd, 'String', '???');
 
    % Disable other input to guarantee only one error at a time!
-   set(handles.edit_observation, 'Enable', 'off')
-   set(handles.edit_inflation, 'Enable', 'off')
+   set(handles.edit_observation,      'Enable', 'off')
+   set(handles.edit_inflation,        'Enable', 'off')
    set(handles.pushbutton_create_new, 'Enable', 'off')
    set(handles.pushbutton_update_ens, 'Enable', 'off')
    return
@@ -412,7 +417,7 @@ axis([lower upper -0.4 1]);
 
 set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 2);
 
-set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
+set(gca, 'YTick',      [0 0.2 0.4 0.6 0.8]);
 set(gca, 'YTickLabel', [0 0.2 0.4 0.6 0.8]);
 
 hold on
@@ -477,8 +482,8 @@ function pushbutton_update_ens_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Turn off any old points
-set(handles.h_update_ens, 'Visible', 'off');
-set(handles.h_inf_up_ens, 'Visible', 'off');
+set(handles.h_update_ens,     'Visible', 'off');
+set(handles.h_inf_up_ens,     'Visible', 'off');
 set(handles.h_inf_ens_member, 'Visible', 'off');
 
 % Remove mean and sd of old posterior
@@ -486,8 +491,8 @@ clear_labels(handles);
 
 % And the lines in between
 set(handles.h_update_lines, 'Visible', 'off');
-set(handles.h_inf_lines, 'Visible', 'off');
-set(handles.h_inf_axis, 'Visible', 'off');
+set(handles.h_inf_lines,    'Visible', 'off');
+set(handles.h_inf_axis,     'Visible', 'off');
 
 ensemble = handles.ens_members;
 
@@ -549,8 +554,8 @@ end
 
 % Update mean and sd of old posterior
 inf_prior_sd = std(inf_ens(1:handles.ens_size));
-set(handles.text9, 'String', ['Inflated = ', num2str(prior_mean)]);
-set(handles.text9, 'Visible', 'on');
+set(handles.text9,  'String', ['Inflated = ', num2str(prior_mean)]);
+set(handles.text9,  'Visible', 'on');
 set(handles.text10, 'String', ['Inflated = ', num2str(inf_prior_sd)]);
 set(handles.text10, 'Visible', 'on');
 
@@ -619,13 +624,12 @@ function checkbox_inflation_Callback(hObject, eventdata, handles)
 function clear_labels(handles)
 
 % Turns off all labels except for the prior mean and SD
-set(handles.text9, 'Visible', 'off');
+set(handles.text7,  'Visible', 'off');
+set(handles.text8,  'Visible', 'off');
+set(handles.text9,  'Visible', 'off');
 set(handles.text10, 'Visible', 'off');
-set(handles.text8, 'Visible', 'off');
-set(handles.text7, 'Visible', 'off');
-set(handles.text12, 'Visible', 'off');
 set(handles.text11, 'Visible', 'off');
-
+set(handles.text12, 'Visible', 'off');
 
 
 
@@ -639,21 +643,21 @@ function edit_inflation_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of edit_inflation as a double
 
 % Turn off any old updated points
-set(handles.h_update_ens, 'Visible', 'off');
-set(handles.h_inf_up_ens, 'Visible', 'off');
-set(handles.h_inf_ens_member, 'Visible', 'off');
+set(handles.h_update_ens,          'Visible', 'off');
+set(handles.h_inf_up_ens,          'Visible', 'off');
+set(handles.h_inf_ens_member,      'Visible', 'off');
 
 % Remove mean and sd of old posterior
 clear_labels(handles);
 
 % And the lines in between
-set(handles.h_update_lines, 'Visible', 'off');
-set(handles.h_inf_lines, 'Visible', 'off');
-set(handles.h_inf_axis, 'Visible', 'off');
+set(handles.h_update_lines,        'Visible', 'off');
+set(handles.h_inf_lines,           'Visible', 'off');
+set(handles.h_inf_axis,            'Visible', 'off');
 
 % Enable things that an error might have turned off
-set(handles.edit_observation, 'Enable', 'on')
-set(handles.edit_obs_error_sd, 'Enable', 'on')
+set(handles.edit_observation,      'Enable', 'on')
+set(handles.edit_obs_error_sd,     'Enable', 'on')
 set(handles.pushbutton_create_new, 'Enable', 'on')
 
 % Only enable the update ensemble pushbutton if an ensemble has been created
@@ -662,15 +666,15 @@ if(handles.ens_size > 0)
 end
 
 % Get the value of the observation
-if(isfinite(str2double(get(hObject, 'String'))) && ...
-   str2double(get(hObject, 'String')) > 0)
+if(isfinite(   str2double(get(hObject, 'String'))) && ...
+               str2double(get(hObject, 'String')) > 0)
    inflation = str2double(get(hObject, 'String'));
 else
    set(handles.edit_inflation, 'String', '???');
 
    % Disable other input to guarantee only one error at a time!
-   set(handles.edit_observation, 'Enable', 'off')
-   set(handles.edit_obs_error_sd, 'Enable', 'off')
+   set(handles.edit_observation,      'Enable', 'off')
+   set(handles.edit_obs_error_sd,     'Enable', 'off')
    set(handles.pushbutton_create_new, 'Enable', 'off')
    set(handles.pushbutton_update_ens, 'Enable', 'off')
    return
@@ -691,7 +695,7 @@ axis([lower upper -0.4 1]);
 
 set(handles.h_obs_plot, 'Color', 'r', 'Linestyle', '--', 'Linewidth', 2);
 
-set(gca, 'YTick', [0 0.2 0.4 0.6 0.8]);
+set(gca, 'YTick',      [0 0.2 0.4 0.6 0.8]);
 set(gca, 'YTickLabel', [0 0.2 0.4 0.6 0.8]);
 
 hold on
