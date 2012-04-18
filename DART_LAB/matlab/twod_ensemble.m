@@ -66,25 +66,26 @@ help twod_ensemble
 handles.output = hObject;
 
 % Insert the ensemble structure into this
-handles.ens_size = 0;
-handles.ens_members = 0;
-handles.h_update_ens = 0;
-handles.h_ens_member = 0;
-handles.h_best_fit = 0;
+handles.ens_size        = 0;
+handles.ens_members     = 0;
+handles.h_update_ens    = 0;
+handles.h_ens_member    = 0;
+handles.h_best_fit      = 0;
 handles.h_marg_obs_plot = 0;
-handles.h_obs_ast = 0;
-handles.h_obs_marg = 0;
-handles.h_gui_marg = 0;
-handles.h_unobs = 0;
-handles.h_marg = 0;
-handles.h_marg_update = 0;
-handles.h_marg_inc = 0;
-handles.h_marg_state = 0;
-handles.h_state_inc = 0;
-handles.h_joint_update = 0;
-handles.h_joint_inc = 0;
-handles.h_correl = 0;
-handles.first_correl = true;
+handles.h_obs_ast       = 0;
+handles.h_obs_marg      = 0;
+handles.h_gui_marg      = 0;
+handles.h_unobs         = 0;
+handles.h_marg          = 0;
+handles.h_marg_update   = 0;
+handles.h_marg_inc      = 0;
+handles.h_marg_state    = 0;
+handles.h_state_inc     = 0;
+handles.h_joint_update  = 0;
+handles.h_joint_inc     = 0;
+handles.h_correl        = 0;
+handles.first_correl    = true;
+
 % Also include the subplot handles r1, r2, r3
 handles.r1 = 0;
 handles.r2 = 0;
@@ -94,10 +95,10 @@ handles.r3 = 0;
 guidata(hObject, handles);
 
 % Go ahead and plot the initial observational error distribution
-h_observation = get(handles.edit1);
+h_observation  = get(handles.edit1);
 h_obs_error_sd = get(handles.edit2);
-observation = str2double(h_observation.String);
-obs_error_sd = str2double(h_obs_error_sd.String);
+observation    = str2double(h_observation.String);
+obs_error_sd   = str2double(h_obs_error_sd.String);
 
 % Plot this on the marginal plot on the gui figure
 handles.h_marg_obs_plot = plot_gaussian(observation, obs_error_sd, 1);
@@ -117,7 +118,6 @@ handles.h_obs_ast = plot(observation, 0, 'r*', 'MarkerSize', 16);
 
 % Plot an axis; display is fixed from x = 0 to 10
 plot([0 10], [0 0], 'k', 'LineWidth', 2);
-
 
 % Setup the joint distribution plot plus the two marginals
 figure(1)
