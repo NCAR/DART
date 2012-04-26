@@ -286,12 +286,12 @@ obsloop:  do
 
    if(obs_prof == 5) then
      if ( zob2 == 0.0_r8 .and. inc_specific_humidity ) then
-    obs_kind_gen = KIND_SPECIFIC_HUMIDITY
-    if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_SPECIFIC_HUMIDITY
+       obs_kind_gen = KIND_SPECIFIC_HUMIDITY
+       if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_SPECIFIC_HUMIDITY
        if(obstype == 130 .or. obstype == 131) obs_kind = AIRCRAFT_SPECIFIC_HUMIDITY
        if(obstype == 133                    ) obs_kind = ACARS_SPECIFIC_HUMIDITY
-    if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_SPECIFIC_HUMIDITY
-    if(obstype == 181 .or. obstype == 183) obs_kind = LAND_SFC_SPECIFIC_HUMIDITY
+       if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_SPECIFIC_HUMIDITY
+       if(obstype == 181 .or. obstype == 183) obs_kind = LAND_SFC_SPECIFIC_HUMIDITY
      else if ( zob2 == 1.0_r8 .and. inc_relative_humidity ) then
        obs_kind_gen = KIND_RELATIVE_HUMIDITY
        if(obstype == 120 .or. obstype == 132) obs_kind = RADIOSONDE_RELATIVE_HUMIDITY
@@ -308,40 +308,40 @@ obsloop:  do
        if(obstype == 181 .or. obstype == 183) obs_kind = LAND_SFC_DEWPOINT
      endif
    endif
-    
+
    if(obs_prof == 3) then
-    obs_kind_gen = KIND_SURFACE_PRESSURE
-    if(obstype == 120                    ) obs_kind = RADIOSONDE_SURFACE_ALTIMETER
-    if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_ALTIMETER
-    if(obstype == 181                    ) obs_kind = LAND_SFC_ALTIMETER
+     obs_kind_gen = KIND_SURFACE_PRESSURE
+     if(obstype == 120                    ) obs_kind = RADIOSONDE_SURFACE_ALTIMETER
+     if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_ALTIMETER
+     if(obstype == 181                    ) obs_kind = LAND_SFC_ALTIMETER
    endif
 
    if(obs_prof == 2) then
-    obs_kind_gen = KIND_U_WIND_COMPONENT
-    if(obstype == 220 .or. obstype == 232) obs_kind = RADIOSONDE_U_WIND_COMPONENT
-    if(obstype == 221                    ) obs_kind = RADIOSONDE_U_WIND_COMPONENT
-    if(obstype == 230 .or. obstype == 231) obs_kind = AIRCRAFT_U_WIND_COMPONENT
-    if(obstype == 233                    ) obs_kind = ACARS_U_WIND_COMPONENT
-    if(obstype == 242 .or. obstype == 243) obs_kind = SAT_U_WIND_COMPONENT
-    if(obstype == 245 .or. obstype == 246) obs_kind = SAT_U_WIND_COMPONENT
-    if(obstype == 252 .or. obstype == 253) obs_kind = SAT_U_WIND_COMPONENT
-    if(obstype == 255                    ) obs_kind = SAT_U_WIND_COMPONENT
-    if(obstype == 280 .or. obstype == 282) obs_kind = MARINE_SFC_U_WIND_COMPONENT
-    if(obstype == 281 .or. obstype == 284) obs_kind = LAND_SFC_U_WIND_COMPONENT
+     obs_kind_gen = KIND_U_WIND_COMPONENT
+     if(obstype == 220 .or. obstype == 232) obs_kind = RADIOSONDE_U_WIND_COMPONENT
+     if(obstype == 221                    ) obs_kind = RADIOSONDE_U_WIND_COMPONENT
+     if(obstype == 230 .or. obstype == 231) obs_kind = AIRCRAFT_U_WIND_COMPONENT
+     if(obstype == 233                    ) obs_kind = ACARS_U_WIND_COMPONENT
+     if(obstype == 242 .or. obstype == 243) obs_kind = SAT_U_WIND_COMPONENT
+     if(obstype == 245 .or. obstype == 246) obs_kind = SAT_U_WIND_COMPONENT
+     if(obstype == 252 .or. obstype == 253) obs_kind = SAT_U_WIND_COMPONENT
+     if(obstype == 255                    ) obs_kind = SAT_U_WIND_COMPONENT
+     if(obstype == 280 .or. obstype == 282) obs_kind = MARINE_SFC_U_WIND_COMPONENT
+     if(obstype == 281 .or. obstype == 284) obs_kind = LAND_SFC_U_WIND_COMPONENT
    endif
 
    if(obs_prof == 9) then
-    obs_kind_gen = KIND_V_WIND_COMPONENT
-    if(obstype == 220 .or. obstype == 232) obs_kind = RADIOSONDE_V_WIND_COMPONENT
-    if(obstype == 221                    ) obs_kind = RADIOSONDE_V_WIND_COMPONENT
-    if(obstype == 230 .or. obstype == 231) obs_kind = AIRCRAFT_V_WIND_COMPONENT
-    if(obstype == 233                    ) obs_kind = ACARS_V_WIND_COMPONENT
-    if(obstype == 242 .or. obstype == 243) obs_kind = SAT_V_WIND_COMPONENT
-    if(obstype == 245 .or. obstype == 246) obs_kind = SAT_V_WIND_COMPONENT
-    if(obstype == 252 .or. obstype == 253) obs_kind = SAT_V_WIND_COMPONENT
-    if(obstype == 255                    ) obs_kind = SAT_V_WIND_COMPONENT
-    if(obstype == 280 .or. obstype == 282) obs_kind = MARINE_SFC_V_WIND_COMPONENT
-    if(obstype == 281 .or. obstype == 284) obs_kind = LAND_SFC_V_WIND_COMPONENT
+     obs_kind_gen = KIND_V_WIND_COMPONENT
+     if(obstype == 220 .or. obstype == 232) obs_kind = RADIOSONDE_V_WIND_COMPONENT
+     if(obstype == 221                    ) obs_kind = RADIOSONDE_V_WIND_COMPONENT
+     if(obstype == 230 .or. obstype == 231) obs_kind = AIRCRAFT_V_WIND_COMPONENT
+     if(obstype == 233                    ) obs_kind = ACARS_V_WIND_COMPONENT
+     if(obstype == 242 .or. obstype == 243) obs_kind = SAT_V_WIND_COMPONENT
+     if(obstype == 245 .or. obstype == 246) obs_kind = SAT_V_WIND_COMPONENT
+     if(obstype == 252 .or. obstype == 253) obs_kind = SAT_V_WIND_COMPONENT
+     if(obstype == 255                    ) obs_kind = SAT_V_WIND_COMPONENT
+     if(obstype == 280 .or. obstype == 282) obs_kind = MARINE_SFC_V_WIND_COMPONENT
+     if(obstype == 281 .or. obstype == 284) obs_kind = LAND_SFC_V_WIND_COMPONENT
    endif
 
    if (obs_kind < 0) then
@@ -376,16 +376,18 @@ obsloop:  do
           (SATWND .and. (subset =='SATWND'))       ) then
 
          ! then select the obs kind requested
-         if( (obs_T  .and. (obs_kind_gen == KIND_TEMPERATURE ))      .or. &
-             (obs_U  .and. (obs_kind_gen == KIND_U_WIND_COMPONENT )) .or. &
-             (obs_V  .and. (obs_kind_gen == KIND_V_WIND_COMPONENT )) .or. &
-             (obs_PS .and. (obs_kind_gen == KIND_SURFACE_PRESSURE))  .or. &
-             (obs_QV .and. (obs_kind_gen == KIND_SPECIFIC_HUMIDITY))      ) then
+         if( (obs_T                 .and. (obs_kind_gen == KIND_TEMPERATURE ))      .or. &
+             (obs_U                 .and. (obs_kind_gen == KIND_U_WIND_COMPONENT )) .or. &
+             (obs_V                 .and. (obs_kind_gen == KIND_V_WIND_COMPONENT )) .or. &
+             (obs_PS                .and. (obs_kind_gen == KIND_SURFACE_PRESSURE))  .or. &
+             (obs_QV                .and. (obs_kind_gen == KIND_SPECIFIC_HUMIDITY)) .or. &
+             (inc_relative_humidity .and. (obs_kind_gen == KIND_RELATIVE_HUMIDITY)) .or. &
+             (inc_dewpoint          .and. (obs_kind_gen == KIND_DEWPOINT)) ) then
              pass = .false.
          endif
 
       endif
-     
+
       ! if pass is still true, we want to ignore this obs.
       if(pass) then
          iskip(fail_notwanted) = iskip(fail_notwanted) + 1
@@ -414,7 +416,7 @@ obsloop:  do
       print*, 'Max limit for observation count reached.  Increase value in namelist'
       stop
    endif
-   
+
    ! set vertical coordinate for upper-air observations
    if (subset == 'AIRCAR' .or. subset == 'AIRCFT' .or. &
        subset == 'SATWND' .or. subset == 'ADPUPA' ) then
