@@ -461,8 +461,8 @@ if (num_kind_assimilate > 0) then
          endif
       end do
       ! Falling off the end is an error
-      write(err_string, *) trim(assimilate_these_obs_types(i)), &
-         ' from obs_kind_nml is not a legal observation kind'
+      write(err_string, *) '"',trim(assimilate_these_obs_types(i)), &
+         '" from obs_kind_nml is not a legal observation kind to assimilate'
       call error_handler(E_ERR, 'initialize_module', err_string, source, revision, revdate)
       44 continue
    end do
@@ -479,8 +479,8 @@ if (num_kind_evaluate > 0) then
          endif
       end do
       ! Falling off the end is an error
-      write(err_string, *) trim(evaluate_these_obs_types(i)), &
-         ' from obs_kind_nml is not a legal observation kind'
+      write(err_string, *) '"',trim(evaluate_these_obs_types(i)), &
+         '" from obs_kind_nml is not a legal observation kind to evaluate'
       call error_handler(E_ERR, 'initialize_module', err_string, source, revision, revdate)
       55 continue
    end do
