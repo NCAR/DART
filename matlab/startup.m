@@ -23,69 +23,71 @@ elseif ( exist('/usr/local/matlab/ncstartup.m') == 2 )
    ncstartup;                     % Adds the netCDF operators
 end
 
-% See if we have succeeded in adding the netcdf operators.
+%% See if we have succeeded in adding the netcdf operators.
 
-if ( exist('nc_varget') ~= 2 ) 
+if ( exist('nc_varget','file') ~= 2 ) 
    disp('Sorry. Unable to locate the snctools matlab operators.')
    error('The DART diagnostics will not run.')
 end
 
-% Try to intelligently add the general DART tools.
+%% Customizations specific for DART:
+% Try to intelligently add the DART tools.
 
 mydir    = pwd;
-dartloc  = strfind(mydir,'/DART/')+4;
-dartpath = sprintf('%s/matlab',mydir(1:dartloc));
-
-disp(sprintf('\nWelcome to DART ...'))
-disp(sprintf('\nYour current directory is  %s',mydir))
-
-if ( ~isempty(dartloc) )
-   path(dartpath,path);
-   disp(sprintf('Using general tools in     %s',dartpath))
+dartloc  = strfind(mydir,'/models')-1;
+dartlabloc = strfind(mydir,'/DART_LAB')-1;
+if (isempty(dartloc) && isempty(dartlabloc))
+   return
 end
 
-% Try to intelligently add the observation-space DART tools.
+fprintf('\nWelcome to DART ...')
+fprintf('\nYour current directory is  %s\n',mydir)
+
+%% DART/matlab directory ... 
+
+dartpath = sprintf('%s/matlab',mydir(1:dartloc));
+if (exist(dartpath,'dir')==7)
+   addpath(dartpath,'-BEGIN');
+   fprintf('Using general tools in     %s\n',dartpath)
+end
+
+%% add the observation-space DART tools ...
 
 dartpath = sprintf('%s/diagnostics/matlab',mydir(1:dartloc));
-
 if ( ~isempty(dartloc) )
-   path(dartpath,path);
-   disp(sprintf('observation-space tools in %s',dartpath))
+   addpath(dartpath,'-BEGIN');
+   fprintf('observation-space tools in %s\n',dartpath)
 end
 
-% Try to intelligently add the observation-space netCDF DART tools.
+%% add the DART_LAB/matlab directory ... 
 
-dartpath = sprintf('%s/observations/utilities/threed_sphere',mydir(1:dartloc));
-
-if ( ~isempty(dartloc) )
-   path(dartpath,path);
-   disp(sprintf('obs-seq netCDF tools in    %s',dartpath))
+dartpath = sprintf('%s/DART_LAB/matlab',mydir(1:dartloc));
+if (exist(dartpath,'dir')==7)
+   addpath(dartpath,'-BEGIN');
+   fprintf('Using DART_LAB tools in    %s\n',dartpath)
 end
 
-% Try to intelligently add the DART model-specific tools.
+%% You can be in a model/work directory, need more.
 % If the cwd is a '<model>/work' directory, check to see if there is a 
 % parallel '<model>/matlab' directory.
 
-mydir    = pwd;
 dartloc  = strfind(mydir,'/work')-1;
-dartpath = sprintf('%s/matlab',mydir(1:dartloc));
-
 if ( ~isempty(dartloc) )
+   dartpath = sprintf('%s/matlab',mydir(1:dartloc));
    if ( exist(dartpath,'dir') == 7 )
-      path(dartpath,path);
-      disp(sprintf('Using matlab scripts in    %s',dartpath))
+      addpath(dartpath,'-BEGIN');
+      fprintf('model-specific scripts in  %s\n',dartpath)
    end
 end
 
-% Customizations specific for DART:
+%% summarize 
 
-datadir = '.';
-truth_file = fullfile(datadir,'True_State.nc');
-diagn_file = fullfile(datadir,'Prior_Diag.nc');
+truth_file = fullfile(mydir,'True_State.nc');
+diagn_file = fullfile(mydir,'Prior_Diag.nc');
 
 disp(' ')
-disp(sprintf('the default data directory is          %s',datadir))
-disp(sprintf('which means your default TRUTH file is %s',truth_file))
-disp(sprintf('and your default    DIAGNOSTIC file is %s',diagn_file))
+fprintf('the default data directory is          %s\n',mydir)
+fprintf('which means your default TRUTH file is %s\n',truth_file)
+fprintf('and your default    DIAGNOSTIC file is %s\n',diagn_file)
 disp('To change your defaults, set ''truth_file'' and/or ''diagn_file'' accordingly.')
 
