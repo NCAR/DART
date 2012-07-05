@@ -6426,6 +6426,8 @@ if (istatus1 == 0) then
             call vert_convert(ens_mean, local_obs_loc, obs_kind(t_ind), istatus2)
             ! Store the "new" location into the original full local array
             obs_loc(t_ind) = local_obs_loc
+         else
+            istatus2 = 0
          endif
       endif
 
