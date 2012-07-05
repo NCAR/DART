@@ -118,14 +118,6 @@ endif
 # At this point MPICMD should be set to start an mpi job.
 echo using MPICMD = ${MPICMD}
 
-# if async=2, e.g. you are going to run './modelxxx', single process
-# (or possibly 'mpirun -np 1 ./modelxxx'), so each processor advances
-# one ensemble independently of the others, leave this as false.
-#
-# if async=4, e.g. all the processors advance each modelxxx in turn with
-# mpirun -np 64 modelxxx (or whatever) for as many ensembles as you have,
-# set this to "true"
-
 # this script is going to determine several things by reading the input.nml
 # file which contains the &filter_nml namelist.  make sure it exists first.
 if ( ! -e input.nml ) then
@@ -134,10 +126,17 @@ if ( ! -e input.nml ) then
    exit 1
 endif
 
-# detect whether the model is supposed to run as an MPI job or not
+# detect whether the model advance is going to run as an MPI job or not
 # by reading the "async = " from the &filter_nml namelist in input.nml.
 # some namelists contain the same string - be sure to get the filter_nml one
-# by grepping for lines which follow it.
+# by grepping for lines which follow it.   async 4 is normally used for
+# a model that runs in parallel with MPI; async 2 is for a serial model.
+# async 2 is simpler and usually faster than async 4.  the case that is
+# not handled here is what we generally call async 5 where filter only
+# runs for a single assimilation window and a script like this one
+# advances the model any way it wants to after filter exits.  then
+# a new filter job is started for each next assimilation cycle, alternating
+# with model advances.
 
 set ASYNCSTRING = `grep -A 42 filter_nml input.nml | grep async`
 set ASYNC_TYPE = `echo $ASYNCSTRING[3] | sed -e "s#,##"`
