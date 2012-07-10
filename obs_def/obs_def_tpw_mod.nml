@@ -1,0 +1,7 @@
+&obs_def_tpw_nml
+   model_levels = .true.            ! if true, use model levels, ignores num_pres_int
+   pressure_top = 20000.0           ! top pressure in pascals
+   num_pressure_intervals = 40      ! num pressure intervals if model_levels = F
+   separate_surface_level = .true.  ! false: level 1 of 3d grid is sfc
+                                    ! true: sfc is separate from 3d grid
+   /

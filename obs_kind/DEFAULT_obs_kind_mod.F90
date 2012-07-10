@@ -166,6 +166,10 @@ integer, parameter, public :: &
     KIND_INFRARED_BRIGHT_TEMP        = 61, &
     KIND_LANDMASK                    = 62
                                      
+! kind for accumulated value - total water in a column
+integer, parameter, public :: &
+    KIND_TOTAL_PRECIPITABLE_WATER    = 63
+
 ! kinds for planetary remote sensing (wglawson, c.lee)
 integer, parameter, public :: &
     KIND_SKIN_TEMPERATURE            = 70, &
@@ -389,6 +393,7 @@ obs_kind_names(58) = obs_kind_type(KIND_OCCULTATION_EXCESSPHASE, 'KIND_OCCULTATI
 obs_kind_names(60) = obs_kind_type(KIND_INFRARED_RADIANCE, 'KIND_INFRARED_RADIANCE')
 obs_kind_names(61) = obs_kind_type(KIND_INFRARED_BRIGHT_TEMP, 'KIND_INFRARED_BRIGHT_TEMP')
 obs_kind_names(62) = obs_kind_type(KIND_LANDMASK, 'KIND_LANDMASK')
+obs_kind_names(63) = obs_kind_type(KIND_TOTAL_PRECIPITABLE_WATER, 'KIND_TOTAL_PRECIPITABLE_WATER')
 
 obs_kind_names(70) = obs_kind_type(KIND_SKIN_TEMPERATURE, 'KIND_SKIN_TEMPERATURE')
 obs_kind_names(71) = obs_kind_type(KIND_NADIR_RADIANCE, 'KIND_NADIR_RADIANCE')
