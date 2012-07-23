@@ -68,8 +68,8 @@
 <UL>
    <LI>a valid <em class=file>input.nml</em> namelist file for DART</LI>
    <LI>a CAM 'phis' netCDF file [default: <em class=file>cam_phis.nc</em>]</LI>
-   <LI>a DART restart file [default: <em class=file>dart_ics</em>].</LI>
-   <LI>a CAM restart file [default: <em class=file>caminput.nc</em>] (read and written).</LI>
+   <LI>a DART restart file [default: <em class=file>dart_ics</em>] (read)</LI>
+   <LI>a CAM restart file [default: <em class=file>caminput.nc</em>] (read and written)</LI>
 </UL>
 
 <P>
@@ -96,7 +96,8 @@ The namelist declaration is:
 <div class=namelist>
 <pre>
 <em class=call>namelist / dart_to_cam_nml / </em> 
-   dart_to_cam_input_file, dart_to_cam_output_file
+   dart_to_cam_input_file, dart_to_cam_output_file, &amp;
+   advance_time_present
 </pre>
 </div>
 
@@ -112,15 +113,22 @@ This namelist is always read from a file called <em class=file>input.nml</em>.
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
 
-<TR><!--contents--><TD valign=top>dart_to_cam_input_file&nbsp;&nbsp;&nbsp;</TD>
-    <!--  type  --><TD valign=top>character(len=128)&nbsp;&nbsp;&nbsp;</TD>
+<TR><!--contents--><TD valign=top>dart_to_cam_input_file</TD>
+    <!--  type  --><TD valign=top>character(len=128)</TD>
     <!--descript--><TD>The name of the DART restart file containing the CAM state. 
                        <em class=units>[default: 'dart_ics']</em></TD></TR>
 
-<TR><!--contents--><TD valign=top>dart_to_cam_output_file&nbsp;&nbsp;&nbsp;</TD>
-    <!--  type  --><TD valign=top>character(len=128)&nbsp;&nbsp;&nbsp;</TD>
+<TR><!--contents--><TD valign=top>dart_to_cam_output_file</TD>
+    <!--  type  --><TD valign=top>character(len=128)</TD>
     <!--descript--><TD>The name of the CAM restart netcdf file.
                        <em class=units>[default: 'caminput.nc']</em></TD></TR>
+
+<TR><!--contents--><TD valign=top>advance_time_present</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD>Set to .false. for DART initial condition
+                       and restart files.  Use the default setting for the files
+                       written by filter during a model advance.
+                       <em class=units>[default: .true.]</em></TD></TR>
 
 </TABLE>
 
@@ -154,7 +162,8 @@ utilities_mod.f90
 <H2>FILES Read</H2>
 <UL>
     <LI>DART namelist file; <em class=file>input.nml</em></LI>
-    <LI>DART initial conditions/restart file; e.g. <em class=file>dart_ics</em></LI>
+    <LI>DART initial conditions/restart file; e.g. <em class=file>dart_ics</em> (read)</LI>
+    <LI>CAM restart file; <em class=file>caminput.nc</em> (read and written)</LI>
     <LI>CAM "phis" file specified in <em class=code>&amp;model_nml::cam_phis</em> 
         (normally <em class=file>cam_phis.nc</em>)</LI>
 </UL>
