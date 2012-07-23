@@ -54,8 +54,6 @@ type(time_type)        :: model_time, adv_to_time
 real(r8), allocatable  :: statevector(:)
 integer                :: file_unit, vecsize, iunit, io
 
-! NSC needs namelist to say if model advance or not
-
 !-----------------------------------------------------------------------------
 ! start of program
 !-----------------------------------------------------------------------------
