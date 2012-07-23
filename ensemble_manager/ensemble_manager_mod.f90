@@ -49,7 +49,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           get_my_vars,                compute_copy_mean,        compute_copy_mean_sd,   &
           get_copy,                   put_copy,                 all_vars_to_all_copies, &
           all_copies_to_all_vars,     read_ensemble_restart,    write_ensemble_restart, &
-          compute_copy_mean_var,      get_copy_owner_index
+          compute_copy_mean_var,      get_copy_owner_index,     set_ensemble_time
 
 type ensemble_type
    !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
@@ -164,9 +164,8 @@ logical,              intent(in),    optional :: force_single_file
 ! goes in copy 6, the second in copy 7, etc. This lets higher level determine
 ! where other copies like mean, inflation, etc., are stored.
 
-! Would like to avoid num_vars size storage
-! LARGE ARRAY ON STACK -- make this a pointer and allocate it from heap?
-real(r8)                            :: ens(ens_handle%num_vars)
+! Changed recently to allocatable to avoid num_vars size storage on stack
+real(r8), allocatable               :: ens(:)
 integer                             :: iunit, i, j
 character(len = LEN(file_name) + 5) :: this_file_name
 character(len = 4)                  :: extension
@@ -201,6 +200,8 @@ if(single_restart_file_in .or. .not. start_from_restart .or. &
    ! Single restart file is read only by master_pe and then distributed
    if(my_pe == 0) iunit = open_restart_read(file_name)
 
+   allocate(ens(ens_handle%num_vars))
+
    ! Loop through the total number of copies
    do i = start_copy, end_copy
       ! Only master_pe does reading. Everybody can do their own perturbing
@@ -216,6 +217,8 @@ if(single_restart_file_in .or. .not. start_from_restart .or. &
       call put_copy(0, ens_handle, i, ens, ens_time)
 
    end do
+
+   deallocate(ens)
 
    ! Master pe must close the file it's been reading
    if(my_pe == 0) call close_restart(iunit)
@@ -276,8 +279,8 @@ character(len = *),   intent(in)    :: file_name
 integer,              intent(in)    :: start_copy, end_copy
 logical, optional,    intent(in)    :: force_single_file
 
-! Large temporary storage to be avoided if possible
-real(r8), pointer                   :: ens(:)
+! Avoid large ensemble-size arrays on stack.  Allocate only if needed.
+real(r8), allocatable               :: ens(:)
 type(time_type)                     :: ens_time
 integer                             :: iunit, i, global_index
 integer                             :: owner, owners_index
@@ -475,6 +478,25 @@ if(my_pe == owner) then
 endif
 
 end subroutine put_copy
+
+!-----------------------------------------------------------------
+
+subroutine set_ensemble_time(ens_handle, indx, mtime)
+
+! Sets the time of an ensemble member indexed by local storage on this pe.
+
+type(ensemble_type), intent(inout) :: ens_handle
+integer,             intent(in)    :: indx
+type(time_type),     intent(in)    :: mtime
+
+if(indx < 1 .or. indx > ens_handle%my_num_copies) then
+   write(errstring, *) 'indx: ', indx, ' cannot exceed ', ens_handle%my_num_copies
+   call error_handler(E_ERR,'get_ensemble_time', errstring, source, revision, revdate)
+endif
+
+ens_handle%time(indx) = mtime
+
+end subroutine set_ensemble_time
 
 !-----------------------------------------------------------------
 
