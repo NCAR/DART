@@ -1814,7 +1814,7 @@ end subroutine write_cam_coord_def
 ! write CAM 'initial' file fields that have been updated
 
 character (len = *), intent(in)           :: file_name
-type(model_type),    intent(in)           :: var
+type(model_type),    intent(inout)        :: var
 type(time_type),     intent(in), optional :: model_time
 
 integer               :: i, k, n, m, ifld, ncfileid, ncfldid, f_dim1, f_dim2
