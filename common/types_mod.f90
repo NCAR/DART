@@ -73,7 +73,7 @@ integer, parameter :: obstypelength  = 32 ! set by compiler/param limits
 
 integer,       PARAMETER ::  SECPERDAY = 24*60*60
 
-real(kind=r8), parameter :: PI = 3.1415926535897932346_r8
+real(kind=r8), parameter :: PI = 3.14159265358979323846_r8
 real(kind=r8), parameter :: DEG2RAD = PI / 180.0_r8
 real(kind=r8), parameter :: RAD2DEG = 180.0_r8 / PI
 
