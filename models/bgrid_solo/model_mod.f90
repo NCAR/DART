@@ -1099,7 +1099,7 @@ if(indx < t_grid_size) then
       local_var_type = TYPE_PS 
    else ! Rest of variables are temperature and tracers
 
-      lev = int((col_elem  + 1)/ (1 + ntracers))
+      lev = int(col_elem / (1 + ntracers))
       var_type_temp = mod(col_elem - 1, 1 + ntracers)
 
       ! First element on each level is T, 
