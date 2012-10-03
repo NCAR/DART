@@ -435,6 +435,8 @@ EOF
 
       ${REMOVE} script.sed namelist.input
       cat >! script.sed << EOF
+         /run_days/c\
+         run_days                   = 0,
          /run_hours/c\
          run_hours                  = 0,
          /run_minutes/c\

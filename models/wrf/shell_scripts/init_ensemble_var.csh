@@ -92,6 +92,8 @@ while ( $n <= $NUM_ENS )
    ${REMOVE} script.sed
    @ seed_array2 = $n * 1000
    cat >! script.sed << EOF
+   /run_days/c\
+   run_days                   = 0,
    /run_hours/c\
    run_hours                  = 0,
    /run_minutes/c\
