@@ -60,7 +60,7 @@ character(len=129) :: msgstring
 
 logical :: DEBUG = .false.
 
-real(r8), parameter :: mb_to_Pa = 100.0  ! millibars to pascals
+real(r8), parameter :: mb_to_Pa = 100.0_r8  ! millibars to pascals
 
 ! the sizes of the Temperature arrays are:
 !   (AIRS_RET_STDPRESSURELAY, AIRS_RET_GEOXTRACK, AIRS_RET_GEOTRACK)
@@ -112,16 +112,15 @@ type(obs_def_type)      :: obs_def
 type(obs_type)          :: obs, prev_obs
 type(location_type)     :: obs_loc
 
-integer :: i, irow, icol, ivert, num_copies, num_qc
+integer :: i, irow, icol, ivert, num_copies, num_qc, istart
 integer :: days, seconds
 integer :: obs_num, temperature_top_index, humidity_top_index
 integer :: which_vert, tobstype, qobstype
 
-real(r4) :: speed, dir
 real(r8) :: olon, olat, vloc
 real(r8) :: obs_value, obs_var
 real(r8) :: tqc, qqc, latlon(3)
-real(r8) :: sintheta, costheta, dirvar, speedvar
+real(r8) :: midpres, log_lower, log_upper
 
 type(time_type) :: obs_time, base_time, pre_time, time
 
@@ -163,13 +162,13 @@ call debug_print_size_check(granule)
 ! to specific humidity here.  Original units: gm/kg - scale to kg/kg first.
 
 where (granule%H2OMMRStd > min_MMR_threshold) 
-   Q = (granule%H2OMMRStd / 1000.) / ( 1.0 + (granule%H2OMMRStd/1000.0))
+   Q = (granule%H2OMMRStd / 1000.0_r8) / ( 1.0_r8 + (granule%H2OMMRStd/1000.0_r8))
 elsewhere
-   Q = 0.0
+   Q = 0.0_r8
 endwhere
 
 where (granule%H2OMMRStdErr > 0.0_r8) 
-   Q_err = (granule%H2OMMRStdErr / 1000.) / ( 1.0 + (granule%H2OMMRStdErr/1000.0))
+   Q_err = (granule%H2OMMRStdErr / 1000.0_r8) / ( 1.0_r8 + (granule%H2OMMRStdErr/1000.0_r8))
 elsewhere
    Q_err = 0.0_r8   ! is this really ok?
 endwhere
@@ -178,21 +177,26 @@ endwhere
 ! that is still below it in each profile.  that will be become the loop end.
 ! default to doing the whole column
 temperature_top_index = size(granule%pressStd)
-do i = 1, size(granule%pressStd)
-   if (granule%pressStd(i) < top_pressure_level) then
+tloop: do i = 1, size(granule%pressStd)
+   if (granule%pressStd(i) <= top_pressure_level) then
       temperature_top_index = i
-      exit
+      exit tloop
    endif
-enddo
+enddo tloop
 if (DEBUG) print *, 'temp_top_index = ', temperature_top_index
 
-humidity_top_index = size(granule%pressH2O)
-do i = 1, size(granule%pressH2O)
-   if (granule%pressH2O(i) < top_pressure_level) then
-      humidity_top_index = i
-      exit
+! temperature obs are on pressure levels.  moisture obs are the mean
+! of the layer bounded by the given pressure level below and the next 
+! higher layer above, so make sure we are always one level below the
+! top.  the loop further down will use i and i+1 as the bounding
+! levels for the moisture obs.
+humidity_top_index = size(granule%pressH2O) - 1
+mloop: do i = 1, size(granule%pressH2O)
+   if (granule%pressH2O(i) <= top_pressure_level) then
+      humidity_top_index = i - 1
+      exit mloop
    endif
-enddo
+enddo mloop
 if (DEBUG) print *, 'humd_top_index = ', humidity_top_index
 
 !  loop over all observations within the file
@@ -204,7 +208,7 @@ which_vert = VERTISPRESSURE
 ! rows are along-track, stepping in the direction the satellite is moving
 rowloop:  do irow=1,AIRS_RET_GEOTRACK
 
-   ! if we're going to subset, we could cycle here
+   ! if we're going to subset rows, we will cycle here
    if (row_thin > 0) then
       if (modulo(irow, row_thin) /= 1) cycle rowloop
    endif
@@ -212,7 +216,7 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
    ! columns are across-track, varying faster than rows.
    colloop:  do icol=1,AIRS_RET_GEOXTRACK
 
-      ! if we're going to subset, ditto
+      ! if we're going to subset columns, ditto
       if (col_thin > 0) then
          if (modulo(icol, col_thin) /= 1) cycle colloop
       endif
@@ -255,6 +259,7 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
          obs_var = granule%TAirStdErr(ivert, icol, irow) * &
                    granule%TAirStdErr(ivert, icol, irow)
 
+         ! temperature values are located directly at the pressure levels
          vloc = granule%pressStd(ivert) * mb_to_Pa
 
          call real_obs(num_copies, num_qc, obs, olon, olat, vloc, obs_value, &
@@ -280,7 +285,8 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
  
       enddo vert_T_loop
 
-      vert_Q_loop:  do ivert=1,humidity_top_index
+      istart = granule%nSurfStd(icol, irow)
+      vert_Q_loop:  do ivert=istart,humidity_top_index
 
          if (granule%Qual_H2O(icol, irow) > 0) exit vert_Q_loop
 
@@ -290,11 +296,20 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
          !---------------------------------------------------------------
    
          ! if original MMR data was -9999, that is apparently a missing val
-         if (granule%H2OMMRStd(ivert, irow, icol) == -9999.0_r8) cycle vert_Q_loop
+         if (granule%H2OMMRStd(ivert, icol, irow) == -9999.0_r8) cycle vert_Q_loop
 
          obs_value = Q(ivert, icol, irow)
          obs_var = Q_err(ivert, icol, irow) * Q_err(ivert, icol, irow)
-         vloc = granule%pressH2O(ivert) * mb_to_Pa
+
+         ! moisture obs are the mean of the layer with the bottom at
+         ! the given pressure.  compute the midpoint (in log space)
+         ! between this level and the level above it, and use that for
+         ! the moisture obs location.  see AIRS.html for more info on
+         ! layers vs levels.
+         log_lower = log(granule%pressH2O(ivert))
+         log_upper = log(granule%pressH2O(ivert+1))
+         midpres = exp((log_lower + log_upper) / 2.0_r8)
+         vloc = midpres * mb_to_Pa
 
          call real_obs(num_copies, num_qc, obs, olon, olat, vloc, obs_value, &
                        obs_var, qqc, AIRS_SPECIFIC_HUMIDITY, which_vert, seconds, days)
@@ -490,6 +505,8 @@ call check_size(size(granule%H2OMMRStd),                         &
    AIRS_RET_H2OPRESSURELAY*AIRS_RET_GEOXTRACK*AIRS_RET_GEOTRACK, &
    'H2OMMRStd (MMR)','real_obs_sequence')
 
+if (DEBUG) print *, 'AIRS_RET_H2OPRESSURELEV = ', AIRS_RET_H2OPRESSURELEV
+if (DEBUG) print *, 'AIRS_RET_H2OPRESSURELAY = ', AIRS_RET_H2OPRESSURELAY
 if (DEBUG) print *, 'first  row MMR', granule%H2OMMRStd(:, 1, 1)
 if (DEBUG) print *, 'second col MMR', granule%H2OMMRStd(:, 2, 1)
 if (DEBUG) print *, 'second col MMR', granule%H2OMMRStd(:, 1, 2)

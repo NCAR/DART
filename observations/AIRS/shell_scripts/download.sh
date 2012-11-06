@@ -49,7 +49,7 @@ while (( d <= totaldays)) ; do
 
 
   echo getting ${year}${month}${day}.tar from mass store
-  msrcp mss:/MIJEONG/AIRS/V5/L2/${year}${month}/${year}${month}${day}.tar .
+  hsi get /MIJEONG/AIRS/V5/L2/${year}${month}/${year}${month}${day}.tar 
 
 
   # advance the day; the output is YYYYMMDD00

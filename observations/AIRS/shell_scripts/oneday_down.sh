@@ -68,10 +68,10 @@ while (( d <= totaldays)) ; do
   echo starting AIRS to obs ${year}${month}${day}
   echo gregorian: $greg
 
-  # download the tar file from the mss first
+  # download the tar file from the hpss first
   if [[ "$download" = "true" ]]; then
     echo getting ${year}${month}${day}.tar from mass store
-    (cd ../tars; msrcp mss:/MIJEONG/AIRS/V5/L2/${year}${month}/${year}${month}${day}.tar . )
+    (cd ../tars; hsi get /MIJEONG/AIRS/V5/L2/${year}${month}/${year}${month}${day}.tar )
   fi
 
   # assume the original collection of data (hdf files, one per swath)
