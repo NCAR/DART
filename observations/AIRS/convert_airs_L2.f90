@@ -35,7 +35,7 @@ character(len=256)      :: datafile(1), output_name, dartfile, msgstring
 type(airs_granule_type) :: granule
 type(obs_sequence_type) :: seq
 
-integer :: io, iunit, f, nfiles, index
+integer :: io, iunit, index
 
 ! version controlled file description for error handling, do not edit
 character(len=128), parameter :: &
