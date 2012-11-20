@@ -207,7 +207,7 @@ obsloop: do n = 1, nobs
         tobs(n) == tobu(i) ) cycle obsloop
   end do
 
-  if ( elev(n) /= missing_r8 ) then
+  if ( elev(n) /= elev_miss ) then
     palt = pres_alt_to_pres(elev(n)) * 0.01_r8
   else
     palt = pres_alt_to_pres(def_elev) * 0.01_r8
