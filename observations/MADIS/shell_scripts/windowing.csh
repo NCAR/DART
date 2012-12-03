@@ -71,11 +71,16 @@ endif
 # on the analysis time computed from this increment.
 # valid strings look like +1h30m, +2h, +20m, +1d, etc. 
 set time_window = +1h
-#set time_window = +2h
 
 # set this to true if the input files are daily.
 # set it to false if the input files are hourly.
 set daily = true
+
+# set this to true if you want the script to fail if any
+# input files are missing.  if it is ok for some files to
+# not exist at some times, set this to false and the script
+# will continue to run even if no output files are created.
+set missing_fatal = true
 
 # set this list to all the types that should be processed
 # if you reorder or change this list, you must also update
@@ -94,12 +99,8 @@ set type_list=(metar mesonet acars marine rawin)
 # the order of these MUST match the type_list array above.
 set win_before=( -7m  -7m -15m -30m+1s -30m+1s)
 set win_after =( +7m  +7m +15m +30m    +30m)
-#set win_before=(-30m+1s -30m+1s -30m+1s -30m+1s -30m+1s)
-#set win_after =(+30m    +30m    +30m    +30m    +30m)
 
 # locations for input madis netcdf files, output dart obs_seq files
-#set src_base_dir = /Volumes/joshua3/romine/data/STEP2009/MADIS/
-#set out_dir      = /users/romine/step09/MADIS/obs_sequence/conus
 set src_base_dir = ../data
 set out_dir      = ../data
 
@@ -125,6 +126,22 @@ set file_win_after =(+45m +59m +59m +45m +30m)
 # year boundaries.  make sure all values have leading 0s if they
 # are < 10.  do the end time first so we can use the same values
 # to set the initial hour while we are doing the total hours calc.
+
+if ( ! -x ./advance_time ) then
+   echo 'FATAL ERROR:'
+   echo 'advance_time program not found in current directory.'
+   echo 'should be built by the quickbuild.csh script in the'
+   echo 'MADIS/work directory. put a copy here and try again.'
+   exit 1
+endif
+
+if ( ! -x ./obs_sequence_tool ) then
+   echo 'FATAL ERROR:'
+   echo 'obs_sequence_tool program not found in current directory.'
+   echo 'should be built by the quickbuild.csh script in the'
+   echo 'MADIS/work directory. put a copy here and try again.'
+   exit 1
+endif
 
 # the output of advance time with the -g input is:
 #   gregorian_day_number  seconds
@@ -162,7 +179,11 @@ while ( 1 )
   set gregday=$g[1]
   set gregsec=$g[2]
 
-  if ($gregday >= $end_t[1]  &&  $gregsec > $end_t[2]) break
+  # if the current day is beyond the end day, we are done.  break out of loop.
+  # if the current day is equal to end day, check the seconds to see if we quit.
+  # otherwise, do the loop again.
+  if ($gregday > $end_t[1]) break
+  if ($gregday == $end_t[1]  &&  $gregsec > $end_t[2]) break
 
   # status/debug - comment in or out as desired.
   echo ' '
@@ -227,8 +248,6 @@ while ( 1 )
     if ($daily != 'true') then
       echo $src_base_dir/obs_seq_${this_type}_${fbef}  >>! obstemp
       echo $src_base_dir/obs_seq_${this_type}_${faft}  >>! obstemp
-      #echo $src_base_dir/${this_type}/obs_seq.${fbef}  >>! obstemp
-      #echo $src_base_dir/${this_type}/obs_seq.${faft}  >>! obstemp
     else
       echo $src_base_dir/obs_seq_${this_type}_${fbefdy}  >>! obstemp
       echo $src_base_dir/obs_seq_${this_type}_${faftdy}  >>! obstemp
@@ -247,7 +266,6 @@ while ( 1 )
       # NAMES:
       if ($daily != 'true') then
         echo $src_base_dir/obs_seq_${this_type}_${fbef}  >>! obstemp
-        #echo $src_base_dir/${this_type}/obs_seq.${fbef}  >>! obstemp
       else
         echo $src_base_dir/obs_seq_${this_type}_${fbefdy}  >>! obstemp
       endif
@@ -268,7 +286,6 @@ while ( 1 )
       # NAMES:
       if ($daily != 'true') then
         echo $src_base_dir/obs_seq_${this_type}_${faft}  >>! obstemp
-        #echo $src_base_dir/${this_type}/obs_seq.${faft}  >>! obstemp
       else
         echo $src_base_dir/obs_seq_${this_type}_${faftdy}  >>! obstemp
       endif
@@ -295,9 +312,21 @@ while ( 1 )
     set out_name = $out_dir/obs_seq_${this_type}_${curtime}
 
     # move output to name by type, time, and save a copy
-    # in a list for a final merge of all types
-    mv obs_seq.out $out_name
-    echo $out_name >>! newobslist
+    # in a list for a final merge of all types.  make sure
+    # the output file was created before adding it to the
+    # list of files to be merged.
+
+    if ( -e obs_seq.out ) then
+       mv obs_seq.out $out_name
+       echo $out_name >>! newobslist
+    else
+       echo "$out_name not created; merge was unsuccessful."
+       echo ' execution error, or input file(s) do not exist.'
+       if ($missing_fatal == 'true') then
+          echo 'exiting with fatal error'
+          exit 1
+       endif
+    endif
 
     rm -f obsflist
 
