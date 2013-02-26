@@ -519,6 +519,14 @@ pi2    = c2*pi
 pih    = p5*pi
 radian = 180.0_r8/pi
 
+! initialize these arrays to 0. in the code below there is
+! a column that is referenced by a where() construct before 
+! those values are set.  make sure that it doesn't cause a
+! floating point exception from random memory bits which aren't
+! valid floating point numbers.
+TLAT(:,:) = c0
+TLON(:,:) = c0
+
 do j=2,ny
 do i=2,nx
 
