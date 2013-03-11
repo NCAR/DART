@@ -90,7 +90,8 @@ type(obs_sequence_type), intent(in)    :: seq
 integer,                 intent(in)    :: last_key_used
 type(time_type),         intent(in)    :: window_time
 integer,                 intent(out)   :: key_bounds(2), num_obs_in_set
-type(time_type),         intent(out)   :: curr_ens_time, next_ens_time
+type(time_type),         intent(inout) :: curr_ens_time
+type(time_type),         intent(out)   :: next_ens_time
 
 type(time_type)    :: next_time, time2, start_time, end_time, delta_time, ens_time
 type(obs_type)     :: observation
@@ -107,7 +108,7 @@ endif
 num_obs_in_set  =   0
 key_bounds(1:2) = -99
 leaving_early   =   .false.
-curr_ens_time   = set_time(0,0)
+!curr_ens_time   = set_time(0,0)
 next_ens_time   = set_time(0,0)
 
 
