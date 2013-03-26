@@ -60,7 +60,7 @@ integer                 :: first_seq
 character(len = metadatalength) :: read_format, meta_data
 logical                 :: pre_I_format, all_gone
 logical                 :: trim_first, trim_last
-character(len = 129)    :: msgstring
+character(len = 255)    :: msgstring
 
 ! could go into namelist if you wanted more control
 integer, parameter      :: print_every = 20000
