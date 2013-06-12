@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module obs_err_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use        types_mod, only : r8, missing_r8
 
@@ -18,13 +14,14 @@ private
 integer,  parameter :: nobs_level = 33
 real(r8)           :: obs_prs(nobs_level)
 
-data obs_prs/   0.0_r8,   1.0_r8,   2.0_r8,   3.0_r8,   4.0_r8, &
-                5.0_r8,  10.0_r8,  20.0_r8,  30.0_r8,  40.0_r8, &
-               50.0_r8,  75.0_r8, 100.0_r8, 150.0_r8, 200.0_r8, &
-              250.0_r8, 300.0_r8, 350.0_r8, 400.0_r8, 450.0_r8, &
-              500.0_r8, 550.0_r8, 600.0_r8, 650.0_r8, 700.0_r8, & 
-              750.0_r8, 800.0_r8, 850.0_r8, 900.0_r8, 950.0_r8, & 
-              1000.0_r8, 1050.0_r8, 1100.0_r8/
+! this array is ordered from top of atm down to surface
+data obs_prs/   0.0_r8,    1.0_r8,    2.0_r8,   3.0_r8,   4.0_r8, &
+                5.0_r8,   10.0_r8,   20.0_r8,  30.0_r8,  40.0_r8, &
+               50.0_r8,   75.0_r8,  100.0_r8, 150.0_r8, 200.0_r8, &
+              250.0_r8,  300.0_r8,  350.0_r8, 400.0_r8, 450.0_r8, &
+              500.0_r8,  550.0_r8,  600.0_r8, 650.0_r8, 700.0_r8, &
+              750.0_r8,  800.0_r8,  850.0_r8, 900.0_r8, 950.0_r8, &
+             1000.0_r8, 1050.0_r8, 1100.0_r8/
 
 public :: fixed_marine_pres_error,      &
           fixed_marine_rel_hum_error,   &
@@ -56,6 +53,8 @@ public :: drop_pres_error,              &
           drop_rel_hum_error,           &
           drop_temp_error,              &
           drop_wind_error
+
+public :: prof_wind_error        
 
 contains
 
@@ -438,6 +437,31 @@ return
 end function drop_wind_error
 
 
+function prof_wind_error(pres)
+
+real(r8), intent(in) :: pres  !  (mb)
+
+integer  :: k0
+real(r8) :: obs_err(nobs_level), wght, prof_wind_error
+
+data obs_err/ 3.7902_r8, 3.7997_r8, 3.8008_r8, 3.8006_r8, 3.7995_r8, &
+              3.7924_r8, 3.7654_r8, 3.6912_r8, 3.5278_r8, 3.2342_r8, &
+              2.8106_r8, 2.3461_r8, 1.9945_r8, 1.7914_r8, 1.6938_r8, &
+              1.6377_r8, 1.5902_r8, 1.5445_r8, 1.5150_r8, 1.5225_r8, &
+              1.5700_r8, 1.6504_r8, 1.7469_r8, 1.8341_r8, 1.8947_r8, &
+              1.9288_r8, 1.9390_r8, 1.9362_r8, 1.9392_r8, 1.9652_r8, &
+              2.0075_r8, 2.0468_r8, 2.0694_r8 /
+
+call find_pressure_level_weight(pres, k0, wght)
+prof_wind_error = wght * obs_err(k0) + (1.0_r8 - wght) * obs_err(k0+1)
+prof_wind_error = dble(nint(prof_wind_error * 10000.0_r8)) * 0.0001_r8
+
+return
+end function prof_wind_error
+
+
+! uses global obs_prs() array.  assumes order of pressure values in
+! the array starts at the top and ends at the surface.
 subroutine find_pressure_level_weight(pres, zloc, wght)
 
 real(r8), intent(in)  :: pres
@@ -451,7 +475,7 @@ if ( pres < obs_prs(1) .or. pres > obs_prs(nobs_level) ) then
   stop
 end if
 
-do k = 1, nobs_level
+do k = 2, nobs_level
 
   if ( pres <= obs_prs(k) )  then
     zloc = k - 1
@@ -465,5 +489,10 @@ end do
 return
 end subroutine find_pressure_level_weight
 
-
 end module obs_err_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

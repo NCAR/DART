@@ -1,14 +1,10 @@
 %% cfull_ens_error
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 % Plots ensemble errors for all fields and levels, assumes
 % that first copy of data is ensemble mean. Should test and
@@ -133,3 +129,8 @@ plot_temp = reshape(rms(:, 4, :), [num_times num_level]);
 plot(1:num_times, plot_temp);
 title 'Errors for V'
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

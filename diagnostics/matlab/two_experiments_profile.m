@@ -22,13 +22,12 @@ function two_experiments_profile(files, titles, varnames, qtty, prpo)
 %
 % two_experiments_profile(files, titles, varnames, qtty, prpo)
 % print -dpdf myplot.pdf
-%
 
-% <next few lines under version control, do not edit>
-% $URL$
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
 % $Id$
-% $Revision$
-% $Date$
 
 %%--------------------------------------------------------------------
 % Decode,Parse,Check the input
@@ -436,7 +435,7 @@ set(ax2,'XTick', xticks, 'XTicklabel', newticklabels)
 annotate( ax1, ax2, plotobj{1}, figdata)
 
 lh = legend(hd,legstr);
-legend(lh,'boxoff');
+legend(lh,'boxoff','Interpreter','none');
 
 % The legend linesizes should match - 2 is hardwired - suprises me.
 
@@ -638,3 +637,11 @@ figdata = struct('expcolors',  {{'k','r','g','m','b','c','y'}}, ...
                  'fontsize',fontsize, 'orientation',orientation);
 
 clf; orient(gcf, orientation)
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module obs_sequence_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! WARNING OPERATOR OVERLOAD FOR EQUIVALENCE???
 ! FURTHER WARNING: Compiler problems exist with the use of assignment(=) in
@@ -70,10 +66,10 @@ public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
 public :: obs_cov_type
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type obs_sequence_type
    private
@@ -322,7 +318,7 @@ end function interactive_obs_sequence
 
 !---------------------------------------------------------
 
-subroutine get_expected_obs(seq, keys, ens_index, state, state_time, &
+subroutine get_expected_obs(seq, keys, ens_index, state, state_time, isprior, &
    obs_vals, istatus, assimilate_this_ob, evaluate_this_ob)
 
 ! Compute forward operator for set of obs in sequence
@@ -332,6 +328,7 @@ integer,                 intent(in)  :: keys(:)
 integer,                 intent(in)  :: ens_index
 real(r8),                intent(in)  :: state(:)
 type(time_type),         intent(in)  :: state_time
+logical,                 intent(in)  :: isprior
 real(r8),                intent(out) :: obs_vals(:)
 integer,                 intent(out) :: istatus
 logical,                 intent(out) :: assimilate_this_ob, evaluate_this_ob
@@ -367,7 +364,7 @@ do i = 1, num_obs
 ! Otherwise do forward operator for this kind
    else
       call get_expected_obs_from_def(keys(i), obs_def, obs_kind_ind, &
-         ens_index, state, state_time, obs_vals(i), istatus, &
+         ens_index, state, state_time, isprior, obs_vals(i), istatus, &
          assimilate_this_ob, evaluate_this_ob)
    endif
 end do
@@ -1746,9 +1743,9 @@ if (qc_index > seq%num_qc) then
    call error_handler(E_ERR,'delete_obs_by_qc', msgstring, &
                       source, revision, revdate)
 endif
-! Ok for min/max to be missing_r8; if both specified, min must be < max.
-if (qc_min /= missing_r8 .and. qc_max /= missing_r8 .and. qc_min >= qc_max) then
-   write(msgstring,*) 'qc_min must be less than qc_max'
+! Ok for min/max to be missing_r8; if both specified, min must be <= max.
+if (qc_min /= missing_r8 .and. qc_max /= missing_r8 .and. qc_min > qc_max) then
+   write(msgstring,*) 'qc_min must be less than or equal qc_max'
    call error_handler(E_ERR,'delete_obs_by_qc', msgstring, &
                       source, revision, revdate)
 endif
@@ -1839,10 +1836,10 @@ if (copy_index > seq%num_copies) then
    call error_handler(E_ERR,'delete_obs_by_copy', msgstring, &
                       source, revision, revdate)
 endif
-! Ok for min/max to be missing_r8; if both specified, min must be < max.
+! Ok for min/max to be missing_r8; if both specified, min must be <= max.
 if (copy_min /= missing_r8 .and. copy_max /= missing_r8 .and. &
-    copy_min >= copy_max) then
-   write(msgstring,*) 'copy_min must be less than copy_max'
+    copy_min > copy_max) then
+   write(msgstring,*) 'copy_min must be less than or equal copy_max'
    call error_handler(E_ERR,'delete_obs_by_copy', msgstring, &
                       source, revision, revdate)
 endif
@@ -2689,3 +2686,9 @@ end function get_num_key_range
 
 
 end module obs_sequence_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

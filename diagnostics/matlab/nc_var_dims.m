@@ -17,15 +17,11 @@ function vdims = nc_var_dims(ncfname,varname);
 %    disp(sprintf('variable %s dimension %d is %s',varname,i,vdims{i}))
 % end
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if ( nc_isvar(ncfname, varname) )
    varinfo = nc_getvarinfo(ncfname,varname);
@@ -36,3 +32,11 @@ else
    nc_dump(ncfname)
    error('%s does not have a %s variable.',ncfname, varname)
 end
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

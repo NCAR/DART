@@ -37,10 +37,10 @@
 
 <P>
 This specialized tool selects out a subset of the input observations.
-For a more general purpose tool, see the 
-<a href="obs_sequence_tool.hmtl">obs_sequence_tool</a>.
+For a more general purpose tool, see the
+<a href="obs_sequence_tool.html">obs_sequence_tool</a>.
 The tool which creates the input selection file is
-<a href="obs_seq_coverage.hmtl">obs_seq_coverage</a>.
+<a href="obs_seq_coverage.html">obs_seq_coverage</a>.
 This tool takes a selected list of observation
 types, times, and locations, and extracts only the matching
 observations out of a longer set of obs_sequence files.
@@ -66,7 +66,7 @@ The names used in this discussion refer to these namelist items.
 </P>
 <div class=namelist>
 <pre>
-<em class=call>namelist / obs_selection_nml / </em> 
+<em class=call>namelist / obs_selection_nml / </em>
         filename_seq, filename_seq_list, num_input_files, filename_out,
         selection_file, print_only, calendar
 </pre>
@@ -75,7 +75,7 @@ The names used in this discussion refer to these namelist items.
 <div class=indent1><!-- Description -->
 
 <P>
-This <em class=code>&amp;obs_selection</em> namelist is read from 
+This <em class=code>&amp;obs_selection</em> namelist is read from
 the <em class=file>input.nml</em> file.
 </P>
 
@@ -85,7 +85,7 @@ the <em class=file>input.nml</em> file.
     <TH align=left>Description </TH></TR>
 <TR><!--contents--><TD valign=top>filename_seq</TD>
     <!--  type  --><TD>character(len=129), dimension(500)</TD>
-    <!--descript--><TD>The array of names of the observation sequence files to process, 
+    <!--descript--><TD>The array of names of the observation sequence files to process,
                        up to a max count of 500 files. (Specify only the actual number of
                        input files.  It is not necessary to specify 500 entries.)
                        Default: ''</TD></TR>
@@ -94,7 +94,7 @@ the <em class=file>input.nml</em> file.
     <!--descript--><TD>An alternative way to specify the list of input files.
                        The name of a text file which contains, one per line,
                        the names of the observation sequence files to process.
-                       You can only specify one of filename_seq OR 
+                       You can only specify one of filename_seq OR
                        filename_seq_list, not both.
                        Default: ''</TD></TR>
 <TR><!--contents--><TD valign=top>num_input_files</TD>
@@ -111,7 +111,7 @@ the <em class=file>input.nml</em> file.
 <TR><!--contents--><TD valign=top>selections_file</TD>
     <!--  type  --><TD>character(len=129)</TD>
     <!--descript--><TD>The name of the input file containing the mask of observation
-                       definitions (the textfile output of obs_seq_coverage).
+                       definitions (the textfile output of <a href="obs_seq_coverage.html">obs_seq_coverage</a>).
                        Default: 'obsdef_mask.txt'</TD></TR>
 <TR><!--contents--><TD valign=top>print_only</TD>
     <!--  type  --><TD>logical</TD>
@@ -123,8 +123,8 @@ the <em class=file>input.nml</em> file.
 <TR><!--contents--><TD valign=top>calendar</TD>
     <!--  type  --><TD>character(len=32)</TD>
     <!--descript--><TD>Set to the name of the calendar; only controls the
-         printed output for the dates of the first and last observations in 
-         the file.  Set this to "no_calendar" if the 
+         printed output for the dates of the first and last observations in
+         the file.  Set this to "no_calendar" if the
          observations are not using any calendar.
                        Default "gregorian".</TD></TR>
 </TABLE>
@@ -143,7 +143,7 @@ Most <tt>$DART/models/*/work</tt> directories will build the tool along with
 other executable programs.  It is also possible to build the
 tool in the <tt>$DART/observations/utilities</tt> directory.
 The <tt>preprocess</tt> program must be built and run first, to define
-what set of observation types will be supported.  See the 
+what set of observation types will be supported.  See the
 <a href="../preprocess/preprocess.html">preprocess documentation</a>
 for more details on how to define the list and run it.
 The combined list of all observation types which will be encountered
@@ -180,10 +180,10 @@ obs_sequence_mod
 <A NAME="FilesUsed"></A>
 <HR>
 <H2>FILES</H2>
-<UL><LI><em class="file">input.nml</em></LI>
-    <LI>The input files specified in the <em class="code">filename_seq</em>
+<UL><LI><em class=file>input.nml</em></LI>
+    <LI>The input files specified in the <em class=code>filename_seq</em>
         namelist variable.</LI>
-    <LI>The output file specified in the <em class="code">filename_out</em>
+    <LI>The output file specified in the <em class=code>filename_out</em>
         namelist variable.</LI>
 </UL>
 
@@ -210,7 +210,7 @@ obs_sequence_mod
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>obs_selection</TD>
-    <!-- message --><TD VALIGN=top>num_input_files &gt; max_num_input_files. 
+    <!-- message --><TD VALIGN=top>num_input_files &gt; max_num_input_files.
 		    change max_num_input_files in source file</TD>
     <!-- comment --><TD VALIGN=top>The default is 500 files.</TD>
 </TR>

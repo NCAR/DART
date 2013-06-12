@@ -1,8 +1,8 @@
 #!/bin/sh 
 #
+# This file is not protected by the DART copyright agreement.
 # DART $Id$
 #
-
 #  ------------------------------------------------------------------------
 #  This script will make executables which extract data
 #  from ADP BUFR input files, and place the data into a basic text file.
@@ -112,5 +112,4 @@ exit 0
 # $URL$
 # $Revision$
 # $Date$
-
 

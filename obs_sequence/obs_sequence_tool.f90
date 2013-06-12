@@ -1,19 +1,15 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program obs_sequence_tool
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! this latest addition has select by list of obs types.
 
 use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
-use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
+use    utilities_mod, only : finalize_utilities, register_module, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              error_handler, E_ERR, E_MSG, nmlfileunit,   &
                              do_nml_file, do_nml_term, get_next_filename
@@ -43,10 +39,10 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq_in, seq_out
 type(obs_type)          :: obs_in, next_obs_in
@@ -361,6 +357,18 @@ if(last_obs_seconds >= 0 .or. last_obs_days >= 0) then
 else
    trim_last = .false.
 endif
+
+if (trim_first) then
+   call print_time(first_obs_time,    'Excluding observations before: ')
+   if (gregorian_cal) &
+      call print_date(first_obs_time, '       which is Gregorian day: ')
+endif
+if (trim_last) then
+   call print_time(last_obs_time,     'Excluding observations  after: ')
+   if (gregorian_cal) &
+      call print_date(last_obs_time,  '       which is Gregorian day: ')
+endif
+
 if (trim_first .and. trim_last) then
    if (first_obs_time > last_obs_time) then
       call error_handler(E_ERR,'obs_sequence_tool', 'first time cannot be later than last time', &
@@ -740,7 +748,9 @@ call destroy_obs(next_obs_in )
 call destroy_obs(     obs_out)
 call destroy_obs(prev_obs_out)
 
-call timestamp(source,revision,revdate,'end')
+call error_handler(E_MSG, 'obs_sequence_tool', 'Finished successfully.',source,revision,revdate)
+call finalize_utilities()
+
 
 contains
 
@@ -1184,10 +1194,9 @@ endif
 is_this_last = .false.
 
 call get_obs_def(obs, this_obs_def)
-call print_time(get_obs_def_time(this_obs_def), ' First timestamp: ')
-if (gregorian_cal) then
+call print_time(get_obs_def_time(this_obs_def),    '  First obs time: ')
+if (gregorian_cal) &
    call print_date(get_obs_def_time(this_obs_def), '   Gregorian day: ')
-endif
 
 ObsLoop : do while ( .not. is_this_last)
 
@@ -1205,10 +1214,9 @@ ObsLoop : do while ( .not. is_this_last)
    if (.not. is_this_last) then 
       obs = next_obs
    else
-      call print_time(get_obs_def_time(this_obs_def), '  Last timestamp: ')
-      if (gregorian_cal) then
+      call print_time(get_obs_def_time(this_obs_def),    '   Last obs time: ')
+      if (gregorian_cal) &
          call print_date(get_obs_def_time(this_obs_def), '   Gregorian day: ')
-      endif
    endif
 
 enddo ObsLoop
@@ -1533,7 +1541,7 @@ integer,          intent(inout) :: num_input_files
 
 integer :: index
 logical :: from_file
-character(len=32) :: source
+character(len=32) :: fsource
 
 ! ok, here's the new logic:
 ! if the user specifies neither filename_seq nor filename_seq_list, we
@@ -1571,10 +1579,10 @@ endif
 ! if they have specified a file which contains a list, read it into
 ! the filename_seq array and set the count.
 if (filename_seq_list /= '') then
-   source = 'filename_seq_list'
+   fsource = 'filename_seq_list'
    from_file = .true.
 else
-   source = 'filename_seq'
+   fsource = 'filename_seq'
    from_file = .false.
 endif
 
@@ -1585,7 +1593,7 @@ do index = 1, max_num_input_files
    if (filename_seq(index) == '') then
       if (index == 1) then
          call error_handler(E_ERR,'obs_sequence_tool', &
-             trim(source)//' contains no filenames', &
+             'namelist item '//trim(fsource)//' contains no filenames', &
              source,revision,revdate)
       endif
       ! leaving num_input_files unspecified (or set to 0) means use
@@ -1602,7 +1610,7 @@ do index = 1, max_num_input_files
          write(msgstring, *) 'if num_input_files is not 0, it must match the number of filenames specified'
          call error_handler(E_MSG,'obs_sequence_tool', msgstring)
          write(msgstring, *) 'num_input_files is ', num_input_files, &
-                     ' but '//trim(source)//' has filecount ', index - 1
+                     ' but namelist item '//trim(fsource)//' has filecount ', index - 1
          call error_handler(E_ERR,'obs_sequence_tool', msgstring, &
             source,revision,revdate)
          
@@ -1667,3 +1675,9 @@ end subroutine handle_filenames
 
 !---------------------------------------------------------------------
 end program obs_sequence_tool
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

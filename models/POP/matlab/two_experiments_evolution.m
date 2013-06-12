@@ -37,12 +37,11 @@ function two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind
 %
 % two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind)
 
- 
-% <next few lines under version control, do not edit>
-% $URL$
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
 % $Id$
-% $Revision$
-% $Date$
 
 %%--------------------------------------------------------------------
 % Decode,Parse,Check the input
@@ -240,8 +239,6 @@ plotdat.ncopies       = length(nc_varget(fname,'copy'));
 
 plotdat.binseparation      = nc_attget(fname, nc_global, 'bin_separation');
 plotdat.binwidth           = nc_attget(fname, nc_global, 'bin_width');
-plotdat.rat_cri            = nc_attget(fname, nc_global, 'rat_cri');
-plotdat.input_qc_threshold = nc_attget(fname, nc_global, 'input_qc_threshold');
 plotdat.lonlim1            = nc_attget(fname, nc_global, 'lonlim1');
 plotdat.lonlim2            = nc_attget(fname, nc_global, 'lonlim2');
 plotdat.latlim1            = nc_attget(fname, nc_global, 'latlim1');
@@ -632,3 +629,10 @@ figdata = struct('expcolors',  {{'k','r','b','g','m','c','y'}}, ...
                  'fontsize',fontsize, 'orientation',orientation);
 
 clf; orient(gcf, orientation)
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program model_to_dart
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !----------------------------------------------------------------------
 ! purpose: interface between ROSE and DART
@@ -20,7 +16,8 @@ program model_to_dart
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
-use    utilities_mod, only : get_unit, initialize_utilities, timestamp
+use    utilities_mod, only : get_unit, initialize_utilities, finalize_utilities, &
+                             error_handler, E_MSG
 use        model_mod, only : model_type, static_init_model, get_model_size, &
                              init_model_instance, read_ROSE_restart, &
                              prog_var_to_vector 
@@ -30,10 +27,10 @@ use time_manager_mod, only : time_type
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 character (len = 128) ::  &
    file_name = 'rose_restart.nc', & 
@@ -70,9 +67,13 @@ file_unit = open_restart_write(file_out)
 call awrite_state_restart(model_time, x_state, file_unit)
 call close_restart(file_unit)
 
-!----------------------------------------------------------------------
-! When called with 'end', timestamp will also call finalize_utilities()
-!----------------------------------------------------------------------
-call timestamp(string1=source, pos='end')
+call error_handler(E_MSG,'model_to_dart','Finished successfully.',source,revision,revdate)
+call finalize_utilities()
 
 end program model_to_dart
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

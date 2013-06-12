@@ -1,19 +1,15 @@
 function ens_size = get_ens_size(fname)
-%% GET_ENS_SIZE  returns the number of ensemble members in the netCDF file. 
+%% GET_ENS_SIZE  returns the number of ensemble members in the netCDF file.
 %
 % Example:
 % fname = 'Prior_Diag.nc';
 % ens_size = get_ens_size(fname);
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
@@ -52,3 +48,11 @@ function str2 = dewhite(str1)
 % internal function to remove whitespace from a character string
 i = find( ~isspace(str1) );
 str2 = str1(i);
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

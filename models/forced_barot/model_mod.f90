@@ -1,42 +1,37 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module model_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
-! This is a non-divergent barotropic model on the sphere. Currently makes
-! use of NAG based transforms which are not available on NCAR systems.
+! This is a non-divergent barotropic model on the sphere.
+! use the 2d sphere locations mod to compile
 
 use types_mod, only : r8
+use location_mod, only : location_type, set_location, get_location
+use kinds_mod, only : KIND_VERTICAL_VORTICITY
+
+! FIXME: we don't have these in the repos
 use transforms_mod
 use ncd_file_mod
-use nag_wrap_mod,     only : g05ddf_wrap
-use loc_and_dist_mod, only : loc_type, get_dist, set_loc
 
 implicit none
 private
 
 public :: init_model, get_model_size, lat_max, num_lon, init_conditions, & 
    adv_1step, advance, &
-   output, barot_to_dp, dp_to_barot, delta_t, adv_true_state, &
-   dp_to_grid, lon, lat, model_state_location, diag_output_index, &
+   barot_to_dp, dp_to_barot, delta_t, &
+   dp_to_grid, lon, lat, get_state_meta_data, diag_output_index, &
    num_fourier, num_spherical, model_output, trans_spherical_to_grid, &
-   get_close_pts, grid_to_dp, state_loc
+   grid_to_dp
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
-
-! Flag for using real data or perfect model
-logical, parameter :: use_real_data = .false.
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! Truncation for T42 follows:
 ! Reduced grid
@@ -58,19 +53,23 @@ logical, parameter :: use_real_data = .false.
 
 real, parameter :: radius = 6.4e6, omega = 7.292e-5
 
-real :: dif_days, delta_t, real_time
+real    :: dif_days, delta_t, real_time
 complex :: force(0:num_fourier, 0:num_spherical)
 integer :: fourier_lim, spherical_lim
 
 
 ! Following is for standard dynamical systems interface; physical space
+! FIXME: why not times 2 here?
 integer, parameter :: model_size = lat_max * num_lon
+
+! FIXME: i believe the variable here is psi, which is a complex.  
+! we need real values in the state vector.  papers say the equations
+! solve for vorticity (nu) and psi is the streamfunction.  
+! but don't we need a pair of values then for each location?
 
 ! Definitions of lats and lons
 real(r8) :: lat(lat_max), lon(num_lon)
 
-! Define the location of the state variables in module storage
-type(loc_type) :: state_loc(model_size)
 
 ! Define output indices for diagnostics
 integer :: diag_output_index(9) 
@@ -79,54 +78,43 @@ contains
 
 
 
-  subroutine output(x, time)
+
+ suboutine get_state_meta_data(index_in, location, var_type)
 !---------------------------------------------------------------------
-! subroutine output(x, time)
 
-implicit none
+integer,             intent(in)  :: index_in
+type(location_type), intent(out) :: location
+integer, optional,   intent(out) :: var_type
 
-real, intent(in) :: x(model_size)
-real, intent(in) :: time
-
-end subroutine output
-
-
-
-  function model_state_location()
-!---------------------------------------------------------------------
-! function model_state_location()
-
-implicit none
-
-type (loc_type) :: model_state_location(model_size)
 
 integer :: i, j, index
-real    :: rlat(lat_max), rlon(num_lon)
 
-! Compute the lat and lons for the Gaussian grid and put them in storage
+! apparently this code expects lat to vary fastest
+! in the linear state vector array
+i = (index_in / lat_max) + 1
+j = index_in - ((i-1) * lat_max)
 
-call get_deg_lat(rlat)
-call get_deg_lon(rlon)
+location = set_location(lon(i), lat(j))
 
-lat = rlat
-lon = rlon
+! original code, going other way - here j is the fastest
+! index which is C order, not Fortran:
+!do i = 1, num_lon
+!   do j = 1, lat_max
+!      index = j + (i - 1)*lat_max
+!      call set_loc(model_state_location(index), lon(i), lat(j))
+!   end do
+!end do
 
-! Load these into structure
+if (present(var_type)) then
+   var_type = KIND_VERTICAL_VORTICITY  ! FIXME - complex?  U,V velocity? flux?
+endif
 
-do i = 1, num_lon
-   do j = 1, lat_max
-      index = j + (i - 1)*lat_max
-      call set_loc(model_state_location(index), lon(i), lat(j))
-   end do
-end do
-
-end function model_state_location
+end subroutine get_state_meta_data
 
 
 
-  subroutine barot_init(dif_days_in, delt, force_in, fourier_lim_in, spherical_lim_in)
+  subroutine barot_init(force_in)
 !---------------------------------------------------------------------
-! subroutine barot_init(dif_days_in, delt, force_in, fourier_lim_in, spherical_lim_in)
 !
 ! Calls the initialization routines for the spherical harmonic transforms.
 ! Sets del8 diffusion time on smallest wave, forcing coefficient and
@@ -134,42 +122,15 @@ end function model_state_location
 
 implicit none
 
-real,    intent(in) :: dif_days_in, delt
 complex, intent(in) :: force_in(0:num_fourier, 0:num_spherical)
-integer, intent(in) :: fourier_lim_in, spherical_lim_in
 
-real    :: rlat(lat_max), rlon(num_lon)
 integer :: i, j
 
 call initialize_transforms(radius, num_windows, lat_max, num_lon, &
    num_fourier, fourier_inc, num_spherical, .false., .true., .true., 0.0)
 
-dif_days      = dif_days_in
-delta_t       = delt
 real_time     = 0.0
 force         = force_in
-fourier_lim   = fourier_lim_in
-spherical_lim = spherical_lim_in
-
-! Compute the lat and lons for the Gaussian grid and put them in storage
-
-call get_deg_lat(rlat)
-call get_deg_lon(rlon)
-
-lat = rlat
-lon = rlon
-
-! Quick temporary output of model grid
-!do i = 1, num_lon
-!   do j = 1, lat_max
-!      if(j /= 1 .and. j /= lat_max) then
-!         write(*, *) rlon(i), rlat(j), 1e11
-!      else
-!         write(*, *) rlon(i), 0.99 * rlat(j), 1e11
-!      endif
-!   end do
-!end do
-!if(1 == 1) stop
 
 end subroutine barot_init
 
@@ -487,19 +448,6 @@ end subroutine model_output
 
 
 
-subroutine init_model()
-!-------------------------------------------------------------------------
-!
-! For historical reasons, init_conditions does the model initialization
-! for the barotropic model. This should be rewritten at some point.
-! WARNING: If barotropic model is given a run-time resolution
-! setting capability this will have to be changed.
-
-end subroutine init_model
-
-
-
-
 !-------------------------------------------------------------------------
 ! Following subroutines are for standard dynamical systems interface.
 ! WARNING: The dynamical systems routines all use real(r8),
@@ -507,19 +455,14 @@ end subroutine init_model
 !-------------------------------------------------------------------------
 
 
-
-  subroutine init_conditions(x)
+ subroutine static_init_model()
 !-------------------------------------------------------------------------
-! subroutine init_conditions(x)
-
-implicit none
-
-real(r8), intent(out) :: x(model_size)
 
 complex, dimension(0:num_fourier, 0:num_spherical) :: psisp, force_in
 complex :: temp
 integer :: m, n
 real    :: delt, dif_days_in
+real    :: rlat(lat_max), rlon(num_lon)
 
 ! Define the interesting indexes for variables to do diag output; span lats
 
@@ -527,10 +470,45 @@ do m = 1, 9
    diag_output_index(m) = (m - 1) * (lat_max / 9.0) + 1
 end do
 
+! Compute the lat and lons for the Gaussian grid and put them in storage
+
+call get_deg_lat(rlat)
+call get_deg_lon(rlon)
+
+lon = rlon
+lat = rlat
+
+!  add in some del8 diffusion and forcing
+! Used for t21 and t42 reduced grid with forcing
+dif_days = 2.0
+! Used for t21 or t42 unforced for real data
+!dif_days = 100.0
+
+
+! Set timestep
+! For t21 reduced grid
+!delta_t = 3600.0
+! For t42 reduced grid, t42 unforced or t21 unforced with real data
+delta_t = 1800.0
+
+fourier_lim = 4
+spherical_lim = 10
+
+end subroutine static_init_model
+
+
+  subroutine init_conditions(x)
+!-------------------------------------------------------------------------
+
+real(r8), intent(out) :: x(model_size)
+
+complex, dimension(0:num_fourier, 0:num_spherical) :: psisp, force_in
+complex :: temp
+integer :: m, n
+
 ! Let's read in one of the old format files to act as an initial condition
 !open(unit = 10, file = '/home/jla/psi/t21psijan80sp')
 !open(unit = 11, file = '/home/jla/psi/t21psijan14sp')
-!open(unit = 11, file = '/net/jla/t21psijan14sp')
 
 ! Unit 81 is used for real data runs;
 
@@ -541,37 +519,17 @@ open(unit = 81, file = '/t90/jla/assim/work/nov_to_mar')
 force_in = 0.0; psisp = 0.0
 do n = 0, 21
    do m = 0, n
-!      read(10, 31) temp
  31   format(1x, 2(e10.4, 1x))
-!      if(n <= num_fourier) force_in(m, n - m) = temp
-!      read(11, 31) temp
       read(81, 31) temp
       if(n <= num_fourier) psisp(m, n - m) = temp
    end do
 end do
 
-!close(unit = 11)
 
 force_in = psisp
 
-!  add in some del8 diffusion and forcing
-!dif_days_in = 1.0
-!dif_days_in = 0.95
-!dif_days_in = 0.80
-! Used for t21 and t42 reduced grid with forcing
-dif_days_in = 2.0
-! Used for t21 or t42 unforced for real data
-!dif_days_in = 100.0
-
-
-! Set timestep
-! For t21 reduced grid
-!delt = 3600.0
-! For t42 reduced grid, t42 unforced or t21 unforced with real data
-delt = 1800.0
-
 !  initialize the triangular model; limits on fourier and spherical
-call barot_init(dif_days_in, delt, force_in, 4, 10)
+call barot_init(force_in)
 
 ! Convert the psisp field for ics to format for dynamical systems
 x = barot_to_dp(psisp)
@@ -689,57 +647,6 @@ end function grid_to_dp
 
 
 
-  subroutine adv_true_state(x)
-!-------------------------------------------------------------------------
-! subroutine adv_true_state(x)
-
-implicit none
-
-real(r8), intent(inout) :: x(model_size)
-
-integer  :: m, n
-real(r8) :: x_grid(num_lon, lat_max)
-complex, dimension(0:num_fourier, 0:num_spherical) :: psisp
-
-if(.not. use_real_data) then
-   call adv_1step(x)
-else
-
-   ! Have real data every day
-
-   real_time = real_time + delta_t * 48.0
-
-   write(*, *) 'real time is ', real_time
-
-   if(int(real_time / (24. * 3600.)) * (24. * 3600.)  == real_time) then
-      write(*, *) 'updating observed state'
-
-      ! WARNING: Remember that old model uses TOTAL wavenumber
-
-      psisp = 0.0
-      do n = 0, 21
-         do m = 0, n
- 31         format(1x, 2(e10.4, 1x))
-            read(81, 31) psisp(m, n - m)
-         end do
-      end do
-   
-      write(*, *) 'Observed 4, 4 is ', psisp(4, 4)
-
-      ! Next need to convert this to current model resolution single dimension state
-
-      x_grid = dble(dp_to_grid(barot_to_dp(psisp)))
-
-      ! RETURN X as FULL STATE SPACE STATE
-
-      x = barot_to_dp(psisp)
-   endif
-endif
-
-end subroutine adv_true_state
-
-
-
   subroutine adv_1step(x)
 !-------------------------------------------------------------------------
 ! subroutine adv_1step(x)
@@ -757,12 +664,7 @@ integer :: i
 psisp = dp_to_barot(x)      ! Convert to spectral, advance for 24 steps
 
 ! TEMPORARY KLUGE TO GET 24 hours for real data at T42: additional 24 steps
-
-if(use_real_data) then
-   psisp = forwrd(psisp, 48)
-else
-   psisp = forwrd(psisp, 24)
-endif
+psisp = forwrd(psisp, 24)
 
 x = barot_to_dp(psisp)      ! Convert back to grid dp
 
@@ -813,90 +715,14 @@ x = barot_to_dp(psisp)        ! Convert back to grid dp
 end subroutine filter
 
 
-!subroutine get_close_pts(list, num)
-!-------------------------------------------------------------------------
-!subroutine get_close_pts(list, num)
-
-! In the long run, this is too big for big models, will need another way?
-
-!implicit none
-
-!integer, intent(in) :: num
-!integer, intent(out) :: list(model_size, num)
-!real(r8):: dist(num)
-!integer :: lon_id(num), lat_id(num)
-!integer :: i, j, k, ii, jj, ind, ind2, j_lo, j_hi, base_index, index
-!real(r8) :: tdist
-!real :: rlat(lat_max), rlon(num_lon)
-!type (loc_type) :: a, b
-
-
-! Get lats and longs
-!call get_deg_lat(rlat)
-!call get_deg_lon(rlon)
-!lat = dble(rlat)
-!lon = dble(rlon)
-
-! Get distances for each latitude row, lons are just uniform offset
-!do j = 1, lat_max
-
-! Initialize the temporary list
-!   dist(:) = huge(dist)
-!   lon_id = 0
-!   lat_id = 0
-
-!   a%lon = 0.0
-!   a%lat = lat(j)
-!   do ii = 0, num_lon - 1
-! For efficiency, limit number of latitudes searched
-!      j_lo = j - (sqrt(1.0 * num) / 2.0 + 1.0)
-!      if(j_lo < 1) j_lo = 1
-!      j_hi = j + (sqrt(1.0 * num) / 2.0 + 1.0)
-!      if(j_hi > lat_max) j_hi = lat_max
-      
-!      do jj = j_lo, j_hi
-!         b%lon = lon(ii + 1)
-!         b%lat = lat(jj)
-!         tdist = get_dist(a, b)
-! Insert this distance into the list that holds num
-!         do ind = 1, num
-!            if(tdist < dist(ind)) then
-!               do ind2 = num, ind + 1, -1
-!                  dist(ind2) = dist(ind2 - 1)
-!                  lon_id(ind2) = lon_id(ind2 - 1)
-!                  lat_id(ind2) = lat_id(ind2 - 1)
-!               end do
-!               dist(ind) = tdist
-!               lon_id(ind) = ii
-!               lat_id(ind) = jj
-!               goto 10
-!            endif
-!         end do
-! 10   end do
-!   end do
-! Now load up close points for each lon point in this lat row
-!   do i = 1, num_lon
-!      base_index = j + (i - 1) * lat_max
-!      write(*, *) 'base i, j, index ', i, j, base_index
-!      do k = 1, num
-!         ii = i + lon_id(k)
-!         if(ii > num_lon) ii = ii - num_lon
-!         jj = lat_id(k)
-!         index = jj + (ii - 1) * lat_max
-!!         write(*, *) 'neighbor ', k, ' lon lat ind ', ii, jj, index
-!         list(base_index, k) = index
-!      end do
-!   end do
-!end do
-
-!end subroutine get_close_pts
-
-
-
-
-
 !-------------------------------------------------------------------------
 ! End of model_mod.f90
 !-------------------------------------------------------------------------
 
 end module model_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

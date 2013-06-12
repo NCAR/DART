@@ -1,6 +1,8 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 !-----------------------------------------------------------------------------
 ! DART radar observation module, including the observation operators for the
@@ -100,12 +102,6 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_radar_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
 use        types_mod, only : r8, missing_r8, PI, deg2rad
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              check_namelist_read, find_namelist_in_file,   &
@@ -131,10 +127,10 @@ public :: read_radar_ref, get_expected_radar_ref,                          &
           get_expected_fall_velocity
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 logical :: module_initialized = .false.
 
@@ -1604,3 +1600,9 @@ end subroutine check_namelist_limits
 end module obs_def_radar_mod
 ! END DART PREPROCESS MODULE CODE
 !-----------------------------------------------------------------------------
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

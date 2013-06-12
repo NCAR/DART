@@ -1,28 +1,24 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program test_diff
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
 use     types_mod,  only : r4, r8, digits12
-use utilities_mod,  only : register_module, error_handler, E_ERR, &
-                           initialize_utilities, timestamp, &
+use utilities_mod,  only : register_module, error_handler, E_ERR, E_MSG, &
+                           initialize_utilities, finalize_utilities, &
                            find_namelist_in_file, check_namelist_read
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 integer, parameter :: n = 1000000
 integer :: i, iunit, io
@@ -124,7 +120,15 @@ write(*, *) 'sample mean distance  ', r4mean_dist / n
 write(*, *) 'predicted distance    ', sqrt(mean**2 + sd1**2 + sd2**2)
 write(*, *) ''
 
+call error_handler(E_MSG, 'test_diff', 'Finished successfully.',&
+                   source,revision,revdate)
+call finalize_utilities()
 
-call timestamp(source,revision,revdate,'end')
 
 end program test_diff
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

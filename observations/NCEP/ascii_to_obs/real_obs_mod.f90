@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module real_obs_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use types_mod,        only : r8, rad2deg, PI
 use obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
@@ -81,10 +77,10 @@ private
 public :: real_obs_sequence
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 
 logical, save :: module_initialized = .false.
@@ -122,7 +118,7 @@ integer :: days, seconds
 integer :: day0, sec0
 integer :: hour, imin, sec
 integer :: obs_num, calender_type
-type(time_type) :: current_day, next_day, time_obs, prev_time
+type(time_type) :: current_day, time_obs, prev_time
 
 integer, parameter :: num_fail_kinds = 6
 integer :: iskip(num_fail_kinds)
@@ -143,8 +139,8 @@ character(len=32) :: skip_reasons(num_fail_kinds) = (/ &
 
 integer :: obs_unit
 integer :: obs_prof, obs_kind, obs_kind_gen, which_vert, iqc, obstype, pc
-real (r8) :: obs_err, lon, lat, lev, zob, time, pre_time, rcount, zob2
-real (r8) :: vloc, obs_value, aqc, var2
+real (r8) :: obs_err, lon, lat, lev, zob, time, rcount, zob2
+real (r8) :: vloc, obs_value, aqc
 
 real (r8) :: bin_beg, bin_end
 
@@ -505,3 +501,9 @@ end subroutine initialize_module
 
 
 end module real_obs_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

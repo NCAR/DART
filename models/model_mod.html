@@ -250,14 +250,10 @@ integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
 
 <P>
 Given an integer index into the state vector structure, returns the
-associated location. A second intent(out) optional argument kind
-can be returned if the model has more than one type of field (for
-instance temperature and zonal wind component). This routine could
-also be called get_state_location_plus() since it returns not the 
-data value, but the location of that value, plus an optional 
-variable type (e.g. U_WIND or V_WIND). 
-This interface is required for all applications as it is used 
-to compute the distance between observations and state variables. 
+associated location. A second intent(out) optional argument 
+returns the generic kind of this item, e.g. KIND_TEMPERATURE,
+KIND_DENSITY, KIND_SALINITY, KIND_U_WIND_COMPONENT. 
+This interface is required to be functional for all applications.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -269,7 +265,7 @@ to compute the distance between observations and state variables.
     <TD>The location of state variable element.</TD></TR>
 
 <TR><TD valign=top><em class=optionalcode>var_type</em></TD>
-    <TD>The type of the state variable element.</TD></TR>
+    <TD>The generic kind of the state variable element.</TD></TR>
 
 </TABLE>
 
@@ -295,14 +291,16 @@ integer,                intent(out) :: <em class=code>istatus</em>
 <!-- Description -->
 
 <P>
-Given a state vector, a location, and a model state variable type,
+Given a state vector, a location, and a model state variable kind
 interpolates the state variable field to that location and returns 
 the value in obs_val. The istatus variable should be returned as
 0 unless there is some problem in computing the interpolation in
-which case an alternate value should be returned. The itype variable
-is a model specific integer that specifies the type of field (for 
-instance temperature, zonal wind component, etc.). In low order
-models that have no notion of types of variables, this argument can
+which case a positive value should be returned. The itype variable
+is one of the KIND parameters defined in the
+<a href="../../obs_kind/obs_kind_mod.html">obs_kind_mod.f90</a> file
+and defines which generic kind of item is being interpolated.
+In low order
+models that have no notion of kinds of variables this argument may
 be ignored. For applications in which only perfect model experiments
 with identity observations (i.e. only the value of a particular
 state variable is observed), this can be a NULL INTERFACE.
@@ -318,7 +316,7 @@ Otherwise it is required (which is the most common case).
     <TD>Location to which to interpolate.</TD></TR>
 
 <TR><TD valign=top><em class=code>itype</em></TD>
-    <TD>Type of state field to be interpolated.</TD></TR>
+    <TD>Kind of state field to be interpolated.</TD></TR>
 
 <TR><TD valign=top><em class=code>obs_val</em></TD>
     <TD> The interpolated value from the model.</TD></TR>
@@ -503,7 +501,7 @@ state vector, but that variable gets filled as the model advances.
 can be used for any model as-is.  The generic code prepares a
 file which will have the state vector written as a single 1-D array
 of data.  This routine can be modified to save the data in form
-more closely related to the actual grid shape and variable type,
+more closely related to the actual grid shape and variable kind,
 and could also be extended to write additional attributes if desired.
 This routine is required for all models.
 <br><br>
@@ -514,7 +512,7 @@ The typical sequence for adding new dimensions, variables, attributes:
 NF90_OPEN             ! open existing netCDF dataset               
    NF90_redef         ! put into define mode                       
    NF90_def_dim       ! define additional dimensions (if any)     
-   NF90_def_var       ! define variables: from name, type, and dims
+   NF90_def_var       ! define variables: from name, kind, and dims
    NF90_put_att       ! assign attribute values                    
 NF90_ENDDEF           ! end definitions: leave define mode         
    NF90_put_var       ! provide values for variable                
@@ -558,7 +556,7 @@ to a netCDF file.
 <em class=code>models/template/model_mod.f90</em> contains code that
 can be used for any model as-is.  It writes the state vector as a single
 1-D array of data.  The code can be modified to write out the data in a
-form more closely resembling the computational grid and variable types if
+form more closely resembling the computational grid and variable kind if
 if desired.
 This routine is required for all models.
 <br><br>
@@ -569,7 +567,7 @@ Typical sequence for adding new dimensions,variables,attributes:
 NF90_OPEN             ! open existing netCDF dataset               
    NF90_redef         ! put into define mode                       
    NF90_def_dim       ! define additional dimensions (if any)      
-   NF90_def_var       ! define variables: from name, type, and dims
+   NF90_def_var       ! define variables: from name, kind, and dims
    NF90_put_att       ! assign attribute values                    
 NF90_ENDDEF           ! end definitions: leave define mode         
    NF90_put_var       ! provide values for variable                

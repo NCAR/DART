@@ -1,4 +1,0 @@
-&create_real_network
-  seconds_start = 43200
-  obs_period = 3600   /
-  

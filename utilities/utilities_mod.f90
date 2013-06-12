@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module utilities_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !-----------------------------------------------------------------------
 !
@@ -141,7 +137,7 @@ module utilities_mod
 !
 !-----------------------------------------------------------------------
 
-use types_mod, only : r8, PI
+use types_mod, only : r4, r8, digits12, i4, i8, PI
 use netcdf
 
 implicit none
@@ -185,11 +181,10 @@ interface
 end interface
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
-
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 character(len = 169) :: msgstring
 
@@ -228,7 +223,7 @@ contains
    integer :: iunit, io
 
    character(len=129) :: lname
-
+   character(len=169) :: string1,string2,string3
 
       if ( module_initialized ) then ! nothing to do
 
@@ -348,6 +343,25 @@ contains
             endif
             if (do_nml_file()) write(nmlfileunit, nml=utilities_nml)
             if (do_nml_term()) write(     *     , nml=utilities_nml)
+         endif
+
+         ! Record the values used for variable types:
+         if (do_output_flag .and. print_debug) then
+        
+            write(     *     ,*)  ! a little whitespace is nice
+            write(logfileunit,*)  ! a little whitespace is nice
+
+            write(string1,*)'..  digits12 is ',digits12
+            write(string2,*)'r8       is ',r8
+            write(string3,*)'r4       is ',r4
+            call error_handler(E_DBG, 'initialize_utilities', string1, &
+                               source, revision, revdate, text2=string2, text3=string3)
+
+            write(string1,*)'..  integer  is ',kind(iunit) ! any integer variable will do
+            write(string2,*)'i8       is ',i8
+            write(string3,*)'i4       is ',i4
+            call error_handler(E_DBG, 'initialize_utilities', string1, &
+                               source, revision, revdate, text2=string2, text3=string3)
          endif
 
       endif
@@ -964,12 +978,8 @@ end subroutine error_handler
       endif
 
       if (rc /= 0) then
-         call error_handler(E_MSG,'open_file', &
-                            'Trying to open file "'//trim(fname)//'" for '//act)
-         call error_handler(E_ERR,'open_file', &
-                            'Cannot open file "' // trim(fname) // '"', &
-                            source, revision, revdate)
-
+         write(msgstring,*)'Cannot open file "'//trim(fname)//'" for '//trim(act)
+         call error_handler(E_ERR, msgstring, source, revision, revdate)
       endif
    endif
 
@@ -1481,10 +1491,11 @@ end subroutine to_upper
 subroutine find_textfile_dims( fname, nlines, linelen )
 ! Determines the number of lines and maximum line length
 ! of the file. Sometimes you need to know this stuff.
-character(len=*), intent(IN)  :: fname
-integer,          intent(OUT) :: nlines, linelen
+character(len=*),  intent(IN)  :: fname
+integer,           intent(OUT) :: nlines
+integer, optional, intent(OUT) :: linelen
 
-integer :: i, mylen, ios, funit
+integer :: i, maxlen, mylen, ios, funit
 
 character(len=1024) :: oneline
 character(len=129)  :: error_msg
@@ -1492,13 +1503,13 @@ character(len=129)  :: error_msg
 ! if there is no file, return -1 for both counts
 if (.not. file_exist(fname)) then
   nlines = -1
-  linelen = -1
+  if (present(linelen)) linelen = -1
   return
 endif
 
 ! the file exists, go count things up.
 nlines  = 0
-linelen = 0
+maxlen  = 0
 funit   = open_file(fname, form="FORMATTED", action="READ")
 
 READLOOP : do i = 1,100000
@@ -1514,11 +1525,13 @@ READLOOP : do i = 1,100000
    nlines = nlines + 1
    mylen  = len_trim(oneline)
 
-   if (mylen > linelen) linelen = mylen
+   if (mylen > maxlen) maxlen = mylen
 
 enddo READLOOP
 
 call close_file(funit)
+
+if (present(linelen)) linelen = maxlen
 
 end subroutine find_textfile_dims
 
@@ -1689,7 +1702,7 @@ character(len=129), SAVE :: dir_base
 character(len=129), SAVE :: filename
 character(len=129), SAVE :: dir_ext
 
-integer :: slashindex, splitindex, i, strlen
+integer :: slashindex, splitindex, i, strlen, ios
 
 if (len(fname) > len(dir_base) ) then
    write(msgstring,*)'input filename not guaranteed to fit in local variables'
@@ -1745,8 +1758,13 @@ if (ifile == 1) then ! First time through ... find things.
          dir_base   = dir_name(1:splitindex-1)
          dir_ext    = dir_name(splitindex+1:slashindex-1)
          dir_prec   = slashindex - splitindex - 1
-
-         read(dir_ext,*) filenum
+    
+         read(dir_ext,*,iostat=ios) filenum
+         if(ios /= 0) then
+            ! Directory has an '_' separating two alphabetic parts
+            ! Nothing to increment.
+            filenum = -1
+         endif
       endif
 
    else ! we have one single file - on the first trip through
@@ -1830,3 +1848,8 @@ end function ascii_file_format
 
 end module utilities_mod
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

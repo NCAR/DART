@@ -1,14 +1,11 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module cov_cutoff_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use     types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
@@ -22,10 +19,10 @@ private
 public :: comp_cov_factor
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 
 !============================================================================
@@ -48,7 +45,7 @@ contains
 
 
 
-function comp_cov_factor(z_in, c, obs_loc, obs_kind, target_loc, target_kind, &
+function comp_cov_factor(z_in, c, obs_loc, obs_type, target_loc, target_kind, &
    localization_override)
 !----------------------------------------------------------------------
 ! function comp_cov_factor(z_in, c)
@@ -74,7 +71,7 @@ implicit none
 
 real(r8),                      intent(in) :: z_in, c
 type(location_type), optional, intent(in) :: obs_loc, target_loc
-integer,             optional, intent(in) :: obs_kind, target_kind
+integer,             optional, intent(in) :: obs_type, target_kind
 integer,             optional, intent(in) :: localization_override
 real(r8)                                  :: comp_cov_factor
 
@@ -185,3 +182,9 @@ endif
 end function comp_cov_factor
 
 end module cov_cutoff_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

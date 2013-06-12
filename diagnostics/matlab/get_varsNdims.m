@@ -19,15 +19,11 @@ function [y, ydims] = get_varsNdims(fname);
 % >> plotdat.allvardims{20}
 %    region plevel copy time
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 ALLvarnames = get_varnames(fname);
 Nvarnames   = length(ALLvarnames);
@@ -41,3 +37,11 @@ for i = 1:Nvarnames
    ydims{i} = sprintf('%s ',varinfo.Dimension{:});
 
 end
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

@@ -1,4 +1,11 @@
 #!/bin/bash
+#
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
 
 function PBS_DIRECTIVE
 {
@@ -228,3 +235,9 @@ export ACCOUNT_CHALLENGE
 export JOB_ARRAY_AVAILABLE
 
 }
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

@@ -1,12 +1,8 @@
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 clear all;
 close all;
@@ -208,3 +204,9 @@ title (['Difference between Prior and Posterior Estimates: ' ...
         '31 August 1999 : \tau = ' sprintf('%dhrs',avail_times ...
                                            + 11)]);
 %saveas(difffig,'difference','png');
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

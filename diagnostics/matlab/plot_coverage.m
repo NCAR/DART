@@ -6,15 +6,11 @@ function obs = plot_coverage(fname)
 %
 % plot_coverage(fname)
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if (exist(fname,'file') ~= 2)
    error('%s does not exist.',fname)
@@ -254,4 +250,10 @@ end
 
 if (orgholdstate == 0), hold off; end;
 
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

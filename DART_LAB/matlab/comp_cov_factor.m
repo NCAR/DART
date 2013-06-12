@@ -1,15 +1,11 @@
 function cov_factor = comp_cov_factor(z_in, c)
 %% comp_cov_factor Gaspari Cohn cutoff, z_in is the distance while c is the cutoff
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 z = abs(z_in);
 
@@ -23,3 +19,8 @@ else
    cov_factor = ((((r/12 -0.5)*r +0.625)*r +5.0/3.0)*r -5.0)*r + 4.0 - 2.0 / (3.0 * r);
 end
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

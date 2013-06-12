@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program trans_dart_to_coamps
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! trans_dart_to_coamps
 ! --------------------
@@ -33,10 +29,10 @@ program trans_dart_to_coamps
   implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source = "$URL$",&
-   revision = "$Revision$", &
-   revdate = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
   ! The translation module uses internal flags for whether it's
   ! reading or writing - these are just aliases so it's clearer
@@ -68,3 +64,9 @@ character(len=128), parameter :: &
 
   call finalize_translator()
 end program trans_dart_to_coamps
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

@@ -6,15 +6,11 @@ function [dart modl] = Check_ncommas_to_dart(modlfile, dartfile )
 %
 % [dart modl] = Check_ncommas_to_dart(modlfile, dartfile );
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 % Read the original NCOMMAS file values.
 if (exist(modlfile,'file') ~= 2)
@@ -64,3 +60,8 @@ dQS = nc_varget(dartfile, 'QS'); dart.QS = permute(dQS, [3 2 1]);
  Wdiffs =  modl.W(:,:,:,2) -  dart.W; [min( Wdiffs(:)) max( Wdiffs(:))]
 QSdiffs = modl.QS(:,:,:,2) - dart.QS; [min(QSdiffs(:)) max(QSdiffs(:))]
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

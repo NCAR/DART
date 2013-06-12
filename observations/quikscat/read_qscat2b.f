@@ -1,3 +1,6 @@
+c This code is not protected by the DART copyright agreement.
+c DART $Id$
+
       program read_qscat2b
 
 c====================================================================
@@ -489,4 +492,8 @@ c     Terminate access to the array data set.
       retn = sfendacc(sds_id)
       end
 
-
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

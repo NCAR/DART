@@ -196,13 +196,13 @@
    latlim2    =  80.0, -20.0,  20.0,  55.0,
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
-   print_obs_locations   = .false.,
    verbose               = .true.
    /
 
 # obs_seq_to_netcdf also requires the schedule_nml.
 # In this context, schedule_nml defines how many netcdf files get created.
 # Each 'bin' results in an obs_epoch_xxxx.nc file.
+# default is to put everything into one 'bin'.
 
 &obs_seq_to_netcdf_nml
    obs_sequence_name = 'obs_seq.final',
@@ -214,14 +214,14 @@
    latlim2    =   90.0,
    verbose    = .false.,
    /
- 
+
 &schedule_nml
    calendar        = 'Gregorian',
-   first_bin_start =  2002, 3, 28, 0, 0, 0 ,
-   first_bin_end   =  2002, 3, 29, 0, 0, 0 ,
-   last_bin_end    =  2002, 3, 29, 0, 0, 0 ,
-   bin_interval_days    = 0,
-   bin_interval_seconds = 86400,
+   first_bin_start =  1601,  1,  1,  0,  0,  0,
+   first_bin_end   =  2999,  1,  1,  0,  0,  0,
+   last_bin_end    =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,
+   bin_interval_seconds = 0,
    max_num_bins         = 1000,
    print_table          = .true.,
    /

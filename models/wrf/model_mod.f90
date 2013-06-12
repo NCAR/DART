@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module model_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! Assimilation interface for WRF model
 
@@ -52,7 +48,8 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
                               KIND_SPECIFIC_HUMIDITY, KIND_SURFACE_ELEVATION, &
                               KIND_PRESSURE, KIND_VERTICAL_VELOCITY, &
-                              KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, &
+                              KIND_DENSITY, KIND_FLASH_RATE_2D, &
+                              KIND_RAINWATER_MIXING_RATIO, KIND_HAIL_MIXING_RATIO, &
                               KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
                               KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, &
                               KIND_CONDENSATIONAL_HEATING, KIND_VAPOR_MIXING_RATIO, &
@@ -60,8 +57,11 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
                               KIND_DROPLET_NUMBER_CONCENTR, KIND_SNOW_NUMBER_CONCENTR, &
                               KIND_RAIN_NUMBER_CONCENTR, KIND_GRAUPEL_NUMBER_CONCENTR, &
+                              KIND_HAIL_NUMBER_CONCENTR, KIND_HAIL_VOLUME, &
+                              KIND_GRAUPEL_VOLUME, KIND_DIFFERENTIAL_REFLECTIVITY, &
+                              KIND_RADAR_REFLECTIVITY, KIND_POWER_WEIGHTED_FALL_SPEED, &
+                              KIND_SPECIFIC_DIFFERENTIAL_PHASE, &
                               KIND_VORTEX_LAT, KIND_VORTEX_LON, &
-                              KIND_RADAR_REFLECTIVITY, KIND_POWER_WEIGHTED_FALL_SPEED,&
                               KIND_VORTEX_PMIN, KIND_VORTEX_WMAX, &
                               KIND_SKIN_TEMPERATURE, KIND_LANDMASK, &
                               get_raw_obs_kind_index, get_num_raw_obs_kinds, &
@@ -147,10 +147,10 @@ public :: wrf_dom, wrf_static_data_for_dart
 
 !-----------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! miscellaneous
 integer, parameter :: max_state_variables = 100
@@ -182,6 +182,11 @@ integer :: center_spline_grid_scale = 10
 integer :: vert_localization_coord = VERTISHEIGHT
 ! Allow observations above the surface but below the lowest sigma level.
 logical :: allow_obs_below_vol = .false.
+! Do the interpolation of pressure values only after taking the log (.true.)
+! vs doing a linear interpolation directly in pressure units (.false.)
+logical :: log_vert_interp  = .true.
+logical :: log_horz_interpM = .false.
+logical :: log_horz_interpQ = .false.
 !nc -- we are adding these to the model.nml until they appear in the NetCDF files
 logical :: polar = .false.         ! wrap over the poles
 logical :: periodic_x = .false.    ! wrap in longitude or x
@@ -276,15 +281,19 @@ TYPE wrf_static_data_for_dart
    ! JPH local variables to hold type indices
    integer :: type_u, type_v, type_w, type_t, type_qv, type_qr, type_hdiab, &
               type_qndrp, type_qnsnow, type_qnrain, type_qngraupel, type_qnice, &
-              type_qc, type_qg, type_qi, type_qs, type_gz, type_refl, type_fall_spd
+              type_qc, type_qg, type_qi, type_qs, type_gz, type_refl, type_fall_spd, &
+              type_dref, type_spdp, type_qh, type_qnhail, type_qhvol, type_qgvol
+
    integer :: type_u10, type_v10, type_t2, type_th2, type_q2, &
-              type_ps, type_mu, type_tsk, type_tslb, type_sh2o, type_smois
+              type_ps, type_mu, type_tsk, type_tslb, type_sh2o, &
+              type_smois, type_2dflash
 
    integer :: number_of_wrf_variables
    integer, dimension(:,:), pointer :: var_index
    integer, dimension(:,:), pointer :: var_size
    integer, dimension(:),   pointer :: var_type
    integer, dimension(:),   pointer :: var_index_list
+   logical, dimension(:),   pointer :: var_update_list
    integer, dimension(:),   pointer :: dart_kind
    integer, dimension(:,:), pointer :: land
    real(r8), dimension(:), pointer  :: lower_bound,upper_bound
@@ -307,7 +316,7 @@ real(r8) :: stdlon,truelat1,truelat2 !,latinc,loninc
 
 ! have a single, module global error string (rather than 
 ! replicate it in each subroutine and use up more stack space)
-character(len=129) :: errstring
+character(len=129) :: errstring, msgstring2, msgstring3
 
 contains
 
@@ -325,6 +334,7 @@ logical, parameter    :: debug = .false.
 integer               :: ind, i, j, k, id, dart_index
 integer               :: my_index
 integer               :: var_element_list(max_state_variables)
+logical               :: var_update_list(max_state_variables)
 
 
 !----------------------------------------------------------------------
@@ -343,12 +353,10 @@ if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Temporary warning until this namelist item is removed.
 if (adv_mod_command /= '') then
-   call error_handler(E_MSG, 'static_init_model:', "WARNING")
+   msgstring2 = "Set the model advance command in the &dart_to_wrf_nml namelist"
    call error_handler(E_MSG, 'static_init_model:', &
-                      "WARNING: adv_mod_command ignored in &model_mod namelist")
-   call error_handler(E_MSG, 'static_init_model:', &
-                      "WARNING: Set the model advance command in &dart_to_wrf_nml")
-   call error_handler(E_MSG, 'static_init_model:', "WARNING")
+         "WARNING: adv_mod_command ignored in &model_mod namelist", &
+          text2=msgstring2)
 endif
 
 allocate(wrf%dom(num_domains))
@@ -357,12 +365,11 @@ allocate(wrf%dom(num_domains))
 if ( default_state_variables ) then
   wrf_state_variables = 'NULL'
   call fill_default_state_table(wrf_state_variables)
+  msgstring2 = 'Set "default_state_variables" to .false. in the namelist'
+  msgstring3 = 'to use the "wrf_state_variables" list instead.'
   call error_handler(E_MSG, 'static_init_model:', &
-      'Using predefined wrf variable list for dart state vector.')
-  call error_handler(E_MSG, 'static_init_model:', &
-      'Set "default_state_variables" to .false. in the namelist')
-  call error_handler(E_MSG, 'static_init_model:', &
-      'to use the "wrf_state_variables" list instead.')
+                  'Using predefined wrf variable list for dart state vector.', &
+                   text2=msgstring2, text3=msgstring3)
 
 endif
 
@@ -406,11 +413,11 @@ elseif (vert_localization_coord == VERTISHEIGHT) then
 elseif (vert_localization_coord == VERTISSCALEHEIGHT) then
    wrf%dom(:)%localization_coord = VERTISSCALEHEIGHT
 else
-   write(errstring,*)'vert_localization_coord must be one of ', &
+   write(msgstring2,*)'vert_localization_coord must be one of ', &
                      VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, VERTISSCALEHEIGHT
-   call error_handler(E_MSG,'static_init_model', errstring, source, revision,revdate)
    write(errstring,*)'vert_localization_coord is ', vert_localization_coord
-   call error_handler(E_ERR,'static_init_model', errstring, source, revision,revdate)
+   call error_handler(E_ERR,'static_init_model', errstring, source, revision,revdate, &
+                      text2=msgstring2)
 endif
 
 ! the agreement amongst the dart/wrf users was that there was no need to
@@ -482,7 +489,7 @@ WRFDomains : do id=1,num_domains
 !-------------------------------------------------------
 
 ! get the number of wrf variables wanted in this domain's state
-   wrf%dom(id)%number_of_wrf_variables = get_number_of_wrf_variables(id,wrf_state_variables,var_element_list)
+   wrf%dom(id)%number_of_wrf_variables = get_number_of_wrf_variables(id,wrf_state_variables,var_element_list, var_update_list)
 
 ! allocate and store the table locations of the variables valid on this domain
    allocate(wrf%dom(id)%var_index_list(wrf%dom(id)%number_of_wrf_variables))
@@ -490,6 +497,10 @@ WRFDomains : do id=1,num_domains
 
 ! allocation for wrf variable types 
    allocate(wrf%dom(id)%var_type(wrf%dom(id)%number_of_wrf_variables))
+
+! allocation for update/nocopyback/noupdate
+   allocate(wrf%dom(id)%var_update_list(wrf%dom(id)%number_of_wrf_variables))
+   wrf%dom(id)%var_update_list = var_update_list(1:wrf%dom(id)%number_of_wrf_variables)
 
 ! allocation for dart kinds
    allocate(wrf%dom(id)%dart_kind(wrf%dom(id)%number_of_wrf_variables))
@@ -642,13 +653,17 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_qr     = get_type_ind_from_type_string(id,'QRAIN')
    wrf%dom(id)%type_qc     = get_type_ind_from_type_string(id,'QCLOUD')
    wrf%dom(id)%type_qg     = get_type_ind_from_type_string(id,'QGRAUP')
+   wrf%dom(id)%type_qh     = get_type_ind_from_type_string(id,'QHAIL')
    wrf%dom(id)%type_qi     = get_type_ind_from_type_string(id,'QICE')
    wrf%dom(id)%type_qs     = get_type_ind_from_type_string(id,'QSNOW')
+   wrf%dom(id)%type_qgvol  = get_type_ind_from_type_string(id,'QVGRAUPEL')
+   wrf%dom(id)%type_qhvol  = get_type_ind_from_type_string(id,'QVHAIL')
    wrf%dom(id)%type_qnice  = get_type_ind_from_type_string(id,'QNICE')
    wrf%dom(id)%type_qndrp  = get_type_ind_from_type_string(id,'QNDRP')
    wrf%dom(id)%type_qnsnow = get_type_ind_from_type_string(id,'QNSNOW')
    wrf%dom(id)%type_qnrain = get_type_ind_from_type_string(id,'QNRAIN')
    wrf%dom(id)%type_qngraupel = get_type_ind_from_type_string(id,'QNGRAUPEL')
+   wrf%dom(id)%type_qnhail = get_type_ind_from_type_string(id,'QNHAIL')
    wrf%dom(id)%type_u10    = get_type_ind_from_type_string(id,'U10')
    wrf%dom(id)%type_v10    = get_type_ind_from_type_string(id,'V10')
    wrf%dom(id)%type_t2     = get_type_ind_from_type_string(id,'T2')
@@ -657,10 +672,13 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_ps     = get_type_ind_from_type_string(id,'PSFC')
    wrf%dom(id)%type_mu     = get_type_ind_from_type_string(id,'MU')
    wrf%dom(id)%type_tsk    = get_type_ind_from_type_string(id,'TSK')
+   wrf%dom(id)%type_2dflash = get_type_ind_from_type_string(id,'FLASH_RATE_2D')
    wrf%dom(id)%type_tslb   = get_type_ind_from_type_string(id,'TSLB')
    wrf%dom(id)%type_smois  = get_type_ind_from_type_string(id,'SMOIS')
    wrf%dom(id)%type_sh2o   = get_type_ind_from_type_string(id,'SH2O')
    wrf%dom(id)%type_refl   = get_type_ind_from_type_string(id,'REFL_10CM')
+   wrf%dom(id)%type_dref   = get_type_ind_from_type_string(id,'DIFF_REFL_10CM')
+   wrf%dom(id)%type_spdp   = get_type_ind_from_type_string(id,'SPEC_DIFF_10CM')
    wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'FALL_SPD_Z_WEIGHTED')
    wrf%dom(id)%type_hdiab  = get_type_ind_from_type_string(id,'H_DIABATIC')
 
@@ -1216,7 +1234,8 @@ else
    ! 1.f Specific Humidity (SH, SH2)
    ! 1.g Vapor Mixing Ratio (QV, Q2)
    ! 1.h Rainwater Mixing Ratio (QR)
-   ! 1.i Graupel Mixing Ratio (QG)
+   ! 1.i.1 Graupel Mixing Ratio (QG)
+   ! 1.i.2 Hail Mixing Ratio (QH)
    ! 1.j Snow Mixing Ratio (QS)
    ! 1.k Ice Mixing Ratio (QI)
    ! 1.l Cloud Mixing Ratio (QC)
@@ -1224,12 +1243,15 @@ else
    ! 1.n Ice Number Concentration (QNICE)
    ! 1.o Snow Number Concentration (QNSNOW)
    ! 1.p Rain Number Concentration (QNRAIN)
-   ! 1.q Graupel Number Concentration (QNGRAUPEL)
+   ! 1.q.1 Graupel Number Concentration (QNGRAUPEL) 
+   ! 1.q.2 Hail Number Concentration (QNHAIL)
    ! 1.r Previous time step condensational heating (H_DIABATIC)
    ! 1.s Reflectivity weighted precip fall speed (FALL_SPD_Z_WEIGHTED)
    ! 1.t Pressure (P)
    ! 1.u Vortex Center Stuff from Yongsheng
-   ! 1.v Radar Reflectivity (REFL_10CM)
+   ! 1.v.1 Radar Reflectivity (REFL_10CM)
+   ! 1.v.2 Differential Reflectivity (DIFF_REFL_10CM)
+   ! 1.v.3 Specific Differential Phase (SPEC_DIFF_10CM)
    ! 1.w Geopotential Height (GZ)
    ! 1.x Surface Elevation (HGT)
    ! 1.y Surface Skin Temperature (TSK)
@@ -1732,6 +1754,9 @@ else
                
                fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
+               ! Don't accept negative water vapor amounts (?)
+               fld = max(0.0_r8, fld)
+
             endif
          endif
 
@@ -1757,6 +1782,9 @@ else
                iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_q2)
                
                fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+               ! Don't accept negative water vapor amounts (?)
+               fld = max(0.0_r8, fld)
 
             endif
          endif
@@ -1803,7 +1831,7 @@ else
    
 
    !-----------------------------------------------------
-   ! 1.i Graupel Mixing Ratio (QG)
+   ! 1.i.1 Graupel Mixing Ratio (QG)
    else if( obs_kind == KIND_GRAUPEL_MIXING_RATIO ) then
 
       ! Confirm that QG is in the DART state vector
@@ -1834,12 +1862,49 @@ else
                
             fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-            ! Don't accept negative rain amounts (?)
+            ! Don't accept negative graupel amounts (?)
             fld = max(0.0_r8, fld)
             
          endif
       endif
-   
+
+   !-----------------------------------------------------
+   ! 1.i.2 Hail Mixing Ratio (QH)
+   else if( obs_kind == KIND_HAIL_MIXING_RATIO ) then
+
+      ! Confirm that QH is in the DART state vector
+      if ( wrf%dom(id)%type_qh >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners QH rc = ', rc
+
+            ! Interpolation for QH field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_qh)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_qh)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_qh)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_qh)
+
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Interpolation for QH field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_qh)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_qh)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_qh)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_qh)
+
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Don't accept negative hail amounts (?)
+            fld = max(0.0_r8, fld)
+
+         endif
+      endif
 
    !-----------------------------------------------------
    ! 1.j Snow Mixing Ratio (QS)
@@ -1873,7 +1938,7 @@ else
                
             fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-            ! Don't accept negative rain amounts (?)
+            ! Don't accept negative snow amounts (?)
             fld = max(0.0_r8, fld)
             
          endif
@@ -1992,7 +2057,7 @@ else
                
             fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-            ! Don't accept negative droplet concentrations (?)
+            ! Don't accept negative droplet number concentrations (?)
             fld = max(0.0_r8, fld)
             
          endif
@@ -2031,7 +2096,7 @@ else
                
             fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-            ! Don't accept negative ice concentrations (?)
+            ! Don't accept negative ice number concentrations (?)
             fld = max(0.0_r8, fld)
             
          endif
@@ -2070,7 +2135,7 @@ else
                
             fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-            ! Don't accept negative snow concentrations (?)
+            ! Don't accept negative snow number concentrations (?)
             fld = max(0.0_r8, fld)
             
          endif
@@ -2109,7 +2174,7 @@ else
                
             fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-            ! Don't accept negative rain concentrations (?)
+            ! Don't accept negative rain number concentrations (?)
             fld = max(0.0_r8, fld)
             
          endif
@@ -2117,7 +2182,7 @@ else
    
 
    !-----------------------------------------------------
-   ! 1.q Graupel Number Concentration (QNGRAUPEL)
+   ! 1.q.1 Graupel Number Concentration (QNGRAUPEL)
    else if( obs_kind == KIND_GRAUPEL_NUMBER_CONCENTR ) then
 
       ! Confirm that QNGRAUPEL is in the DART state vector
@@ -2148,12 +2213,49 @@ else
                
             fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
 
-            ! Don't accept negative graupel concentrations (?)
+            ! Don't accept negative graupel number concentrations (?)
             fld = max(0.0_r8, fld)
             
          endif
       endif
-   
+
+   ! 1.q.2 Hail Number Concentration (QNHAIL)
+   else if( obs_kind == KIND_HAIL_NUMBER_CONCENTR ) then
+
+      ! Confirm that QNHAIL is in the DART state vector
+      if ( wrf%dom(id)%type_qnhail >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners QNHAIL rc = ', rc
+
+            ! Interpolation for QNHAIL field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_qnhail)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_qnhail)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_qnhail)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_qnhail)
+
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Interpolation for QNHAIL field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_qnhail)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_qnhail)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_qnhail)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_qnhail)
+
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Don't accept negative hail number concentrations (?)
+            fld = max(0.0_r8, fld)
+
+         endif
+      endif
+ 
 
    !-----------------------------------------------------
    ! 1.r Previous time step condensational heating (H_DIABATIC)
@@ -2712,7 +2814,7 @@ else
 !*****************************************************************************
 
    !-----------------------------------------------------
-   ! 1.v Radar Reflectivity (REFL_10CM)
+   ! 1.v.1 Radar Reflectivity (REFL_10CM)
    else if( obs_kind == KIND_RADAR_REFLECTIVITY ) then
 
       ! Confirm that REFL is in the DART state vector
@@ -2745,7 +2847,77 @@ else
 
          endif
       endif
-   
+
+   !-----------------------------------------------------
+   ! 1.v.2 Differential Reflectivity (DIFF_REFL_10CM)
+   else if( obs_kind == KIND_DIFFERENTIAL_REFLECTIVITY ) then
+
+      ! Confirm that DREF is in the DART state vector
+      if ( wrf%dom(id)%type_dref >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+  
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners DREF rc = ', rc
+
+            ! Interpolation for DREF field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_dref)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_dref)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_dref)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_dref)
+
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Interpolation for DREF field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_dref)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_dref)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_dref)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_dref)
+
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+         endif
+      endif
+
+   !-----------------------------------------------------
+   ! 1.v.3 Specific Differential Phase (SPEC_DIFF_10CM)
+   else if( obs_kind == KIND_SPECIFIC_DIFFERENTIAL_PHASE ) then
+
+      ! Confirm that SPDP is in the DART state vector
+      if ( wrf%dom(id)%type_spdp >= 0 ) then
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( k, .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+ 
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners SPDP rc = ', rc
+
+            ! Interpolation for SPDP field at level k
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_spdp)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_spdp)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_spdp)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_spdp)
+
+            fld(1) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+            ! Interpolation for SPDP field at level k+1
+            ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k+1, wrf%dom(id)%type_spdp)
+            iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k+1, wrf%dom(id)%type_spdp)
+            ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k+1, wrf%dom(id)%type_spdp)
+            iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k+1, wrf%dom(id)%type_spdp)
+
+            fld(2) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+
+         endif
+      endif
+ 
    !-----------------------------------------------------
    ! 1.w Geopotential Height (GZ)
 
@@ -4817,13 +4989,12 @@ subroutine init_conditions(x)
 ! Following changed to intent(inout) for ifc compiler;should be like this
   real(r8), intent(inout) :: x(:)
 
-call error_handler(E_MSG,'init_conditions:', &
-                  'WARNING!!  WRF model has no built-in default state')
-call error_handler(E_MSG,'init_conditions:', &
-                  "cannot run with 'start_from_restart = .false.' ")
+msgstring2 = "cannot run with 'start_from_restart = .false.' "
+msgstring3 = 'use ensemble_init in the WRF utils dir, or use wrf_to_dart'
 call error_handler(E_ERR,'init_conditions', &
-                  'use ensemble_init in the WRF utils dir, or use wrf_to_dart', &
-                  source, revision, revdate)
+                  'WARNING!!  WRF model has no built-in default state', &
+                  source, revision, revdate, &
+                  text2=msgstring2, text3=msgstring3)
 
 end subroutine init_conditions
 
@@ -4873,7 +5044,11 @@ subroutine pres_to_zk(pres, mdl_v, n3, zk, lev0)
   ! sigma value but set lev0 true
   if(pres <= mdl_v(0) .and. pres > mdl_v(1)) then
     lev0 = .true.
+    if (log_vert_interp) then
+       zk = (log(mdl_v(0)) - log(pres))/(log(mdl_v(0)) - log(mdl_v(1)))
+    else
     zk = (mdl_v(0) - pres)/(mdl_v(0) - mdl_v(1))
+    endif
     return
    endif
 
@@ -4881,7 +5056,11 @@ subroutine pres_to_zk(pres, mdl_v, n3, zk, lev0)
   ! as a real number, including the fraction between the levels.
   do k = 1,n3-1
      if(pres <= mdl_v(k) .and. pres >= mdl_v(k+1)) then
+        if (log_vert_interp) then
+           zk = real(k) + (log(mdl_v(k)) - log(pres))/(log(mdl_v(k)) - log(mdl_v(k+1)))
+        else
         zk = real(k) + (mdl_v(k) - pres)/(mdl_v(k) - mdl_v(k+1))
+        endif
         exit
      endif
   enddo
@@ -4957,7 +5136,8 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
       pres2 = model_pressure_t(lr(1), lr(2), k,id,x)
       pres3 = model_pressure_t(ul(1), ul(2), k,id,x)
       pres4 = model_pressure_t(ur(1), ur(2), k,id,x)
-      v_p(k) = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+      v_p(k) = interp_4pressure(pres1, pres2, pres3, pres4, dx, dxm, dy, dym)
    enddo
 
    if (debug) &
@@ -4966,15 +5146,15 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
    if ( wrf%dom(id)%type_ps >= 0 ) then
 
       ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_ps)
-      iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_ps)
       ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_ps)
+      iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_ps)
       iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_ps)
 
       ! I'm not quite sure where this comes from, but I will trust them on it....
       if ( x(ill) /= 0.0_r8 .and. x(ilr) /= 0.0_r8 .and. x(iul) /= 0.0_r8 .and. &
            x(iur) /= 0.0_r8 ) then
 
-         v_p(0) = dym*( dxm*x(ill) + dx*x(ilr) ) + dy*( dxm*x(iul) + dx*x(iur) )
+         v_p(0) = interp_4pressure(x(ill), x(ilr), x(iul), x(iur), dx, dxm, dy, dym)
 
       else
 
@@ -4983,8 +5163,8 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
          pres3 = model_pressure_t(ul(1), ul(2), 2,id,x)
          pres4 = model_pressure_t(ur(1), ur(2), 2,id,x)
 
-         v_p(0) = (3.0_r8*v_p(1) - &
-              dym*( dxm*pres1 + dx*pres2 ) - dy*( dxm*pres3 + dx*pres4 ))/2.0_r8
+         v_p(0) = interp_4pressure(pres1, pres2, pres3, pres4, dx, dxm, dy, dym, &
+                  extrapolate=.true., edgep=v_p(1))
 
       endif
 
@@ -4995,8 +5175,8 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
       pres3 = model_pressure_t(ul(1), ul(2), 2,id,x)
       pres4 = model_pressure_t(ur(1), ur(2), 2,id,x)
 
-      v_p(0) = (3.0_r8*v_p(1) - &
-           dym*( dxm*pres1 + dx*pres2 ) - dy*( dxm*pres3 + dx*pres4 ))/2.0_r8
+      v_p(0) = interp_4pressure(pres1, pres2, pres3, pres4, dx, dxm, dy, dym, &
+               extrapolate=.true., edgep=v_p(1))
 
    endif
 
@@ -5034,19 +5214,19 @@ if( (var_type == wrf%dom(id)%type_w) .or. (var_type == wrf%dom(id)%type_gz) ) th
 
       pres1 = model_pressure_t(i,j,k,  id,x)
       pres2 = model_pressure_t(i,j,k+1,id,x)
-      model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+      model_pressure = interp_pressure(pres1, pres2, extrapolate=.true.)
 
    elseif( k == wrf%dom(id)%var_size(3,wrf%dom(id)%type_w) ) then
 
       pres1 = model_pressure_t(i,j,k-1,id,x)
       pres2 = model_pressure_t(i,j,k-2,id,x)
-      model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+      model_pressure = interp_pressure(pres1, pres2, extrapolate=.true.)
 
    else
 
       pres1 = model_pressure_t(i,j,k,  id,x)
       pres2 = model_pressure_t(i,j,k-1,id,x)
-      model_pressure = (pres1 + pres2)/2.0_r8
+      model_pressure = interp_pressure(pres1, pres2)
 
    endif
 
@@ -5062,14 +5242,14 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          ! We are at seam in longitude, take first and last M-grid points
          pres1 = model_pressure_t(i-1,j,k,id,x)
          pres2 = model_pressure_t(1,  j,k,id,x)
-         model_pressure = (pres1 + pres2)/2.0_r8
+         model_pressure = interp_pressure(pres1, pres2, vertical=.false.)
          
       else
 
          ! If not periodic, then try extrapolating
          pres1 = model_pressure_t(i-1,j,k,id,x)
          pres2 = model_pressure_t(i-2,j,k,id,x)
-         model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+         model_pressure = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
 
       endif
 
@@ -5081,14 +5261,14 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          ! We are at seam in longitude, take first and last M-grid points
          pres1 = model_pressure_t(i,             j,k,id,x)
          pres2 = model_pressure_t(wrf%dom(id)%we,j,k,id,x)
-         model_pressure = (pres1 + pres2)/2.0_r8
+         model_pressure = interp_pressure(pres1, pres2, vertical=.false.)
          
       else
 
          ! If not periodic, then try extrapolating
          pres1 = model_pressure_t(i,  j,k,id,x)
          pres2 = model_pressure_t(i+1,j,k,id,x)
-         model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+         model_pressure = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
 
       endif
 
@@ -5096,7 +5276,7 @@ elseif( var_type == wrf%dom(id)%type_u ) then
 
       pres1 = model_pressure_t(i,  j,k,id,x)
       pres2 = model_pressure_t(i-1,j,k,id,x)
-      model_pressure = (pres1 + pres2)/2.0_r8
+      model_pressure = interp_pressure(pres1, pres2, vertical=.false.)
 
    endif
 
@@ -5115,14 +5295,14 @@ elseif( var_type == wrf%dom(id)%type_v ) then
 
          pres1 = model_pressure_t(off,j-1,k,id,x)
          pres2 = model_pressure_t(i  ,j-1,k,id,x)
-         model_pressure = (pres1 + pres2)/2.0_r8
+         model_pressure = interp_pressure(pres1, pres2, vertical=.false.)
 
       ! If not periodic, then try extrapolating
       else
 
          pres1 = model_pressure_t(i,j-1,k,id,x)
          pres2 = model_pressure_t(i,j-2,k,id,x)
-         model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+         model_pressure = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
 
       endif
 
@@ -5137,14 +5317,14 @@ elseif( var_type == wrf%dom(id)%type_v ) then
 
          pres1 = model_pressure_t(off,j,k,id,x)
          pres2 = model_pressure_t(i,  j,k,id,x)
-         model_pressure = (pres1 + pres2)/2.0_r8
+         model_pressure = interp_pressure(pres1, pres2, vertical=.false.)
 
       ! If not periodic, then try extrapolating
       else
 
          pres1 = model_pressure_t(i,j,  k,id,x)
          pres2 = model_pressure_t(i,j+1,k,id,x)
-         model_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+         model_pressure = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
 
       endif
 
@@ -5152,7 +5332,7 @@ elseif( var_type == wrf%dom(id)%type_v ) then
 
       pres1 = model_pressure_t(i,j,  k,id,x)
       pres2 = model_pressure_t(i,j-1,k,id,x)
-      model_pressure = (pres1 + pres2)/2.0_r8
+      model_pressure = interp_pressure(pres1, pres2, vertical=.false.)
 
    endif
 
@@ -5202,14 +5382,14 @@ if( var_type == wrf%dom(id)%type_u ) then
          ! We are at seam in longitude, take first and last M-grid points
          pres1 = model_pressure_s(i-1,j,id,x)
          pres2 = model_pressure_s(1,  j,id,x)
-         model_surface_pressure = (pres1 + pres2)/2.0_r8
+         model_surface_pressure = interp_pressure(pres1, pres2, vertical=.false.)
          
       else
 
          ! If not periodic, then try extrapolating
          pres1 = model_pressure_s(i-1,j,id,x)
          pres2 = model_pressure_s(i-2,j,id,x)
-         model_surface_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+         model_surface_pressure = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
 
       endif
 
@@ -5221,14 +5401,14 @@ if( var_type == wrf%dom(id)%type_u ) then
          ! We are at seam in longitude, take first and last M-grid points
          pres1 = model_pressure_s(i,             j,id,x)
          pres2 = model_pressure_s(wrf%dom(id)%we,j,id,x)
-         model_surface_pressure = (pres1 + pres2)/2.0_r8
+         model_surface_pressure = interp_pressure(pres1, pres2, vertical=.false.)
          
       else
 
          ! If not periodic, then try extrapolating
          pres1 = model_pressure_s(i,  j,id,x)
          pres2 = model_pressure_s(i+1,j,id,x)
-         model_surface_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+         model_surface_pressure = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
 
       endif
 
@@ -5236,7 +5416,7 @@ if( var_type == wrf%dom(id)%type_u ) then
 
       pres1 = model_pressure_s(i,  j,id,x)
       pres2 = model_pressure_s(i-1,j,id,x)
-      model_surface_pressure = (pres1 + pres2)/2.0_r8
+      model_surface_pressure = interp_pressure(pres1, pres2, vertical=.false.)
 
    endif
 
@@ -5255,14 +5435,14 @@ elseif( var_type == wrf%dom(id)%type_v ) then
 
          pres1 = model_pressure_s(off,j-1,id,x)
          pres2 = model_pressure_s(i  ,j-1,id,x)
-         model_surface_pressure = (pres1 + pres2)/2.0_r8
+         model_surface_pressure = interp_pressure(pres1, pres2, vertical=.false.)
 
       ! If not periodic, then try extrapolating
       else
 
          pres1 = model_pressure_s(i,j-1,id,x)
          pres2 = model_pressure_s(i,j-2,id,x)
-         model_surface_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+         model_surface_pressure = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
 
       endif
 
@@ -5277,14 +5457,14 @@ elseif( var_type == wrf%dom(id)%type_v ) then
 
          pres1 = model_pressure_s(off,j,id,x)
          pres2 = model_pressure_s(i,  j,id,x)
-         model_surface_pressure = (pres1 + pres2)/2.0_r8
+         model_surface_pressure = interp_pressure(pres1, pres2, vertical=.false.)
 
       ! If not periodic, then try extrapolating
       else
 
          pres1 = model_pressure_s(i,j,  id,x)
          pres2 = model_pressure_s(i,j+1,id,x)
-         model_surface_pressure = (3.0_r8*pres1 - pres2)/2.0_r8
+         model_surface_pressure = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
 
       endif
 
@@ -5292,7 +5472,7 @@ elseif( var_type == wrf%dom(id)%type_v ) then
 
       pres1 = model_pressure_s(i,j,  id,x)
       pres2 = model_pressure_s(i,j-1,id,x)
-      model_surface_pressure = (pres1 + pres2)/2.0_r8
+      model_surface_pressure = interp_pressure(pres1, pres2, vertical=.false.)
 
    endif
 
@@ -5377,6 +5557,128 @@ endif
 
 
 end function model_pressure_s
+
+!#######################################################
+
+function interp_pressure(p1, p2, extrapolate, vertical)
+ 
+! interpolate halfway between pressures 1 and 2 in log units.
+! if extrapolate is true, extrapolate where 1 is the edge and
+! 2 is the inner value, going 1/2 grid cell out.
+
+real(r8), intent(in)           :: p1, p2
+logical,  intent(in), optional :: extrapolate
+logical,  intent(in), optional :: vertical
+real(r8)                       :: interp_pressure
+
+logical  :: do_interp
+logical  :: is_vert
+real(r8) :: intermediate
+
+! default is to do interpolation; only extrapolate if the optional
+! arg is specified and if it is true.
+do_interp = .true.
+if (present(extrapolate)) then
+   if (extrapolate) do_interp = .false.
+endif
+
+! if vert is specified and is false, check log_horz_interpM instead
+! of log_vert_interp to decide log vs linear interpolation for the
+! Midpoint value.  default is to do vertical interpolation.
+is_vert = .true.
+if (present(vertical)) then
+   is_vert = vertical
+endif
+
+! once we like the results, remove the log_vert_interp test.
+if (do_interp) then
+   if ((      is_vert .and. log_vert_interp )  .or. &
+       (.not. is_vert .and. log_horz_interpM)) then
+      interp_pressure = exp((log(p1) + log(p2))/2.0_r8)
+   else
+      interp_pressure = (p1 + p2)/2.0_r8
+   endif
+else
+   if ((      is_vert .and. log_vert_interp )  .or. &
+       (.not. is_vert .and. log_horz_interpM)) then
+      intermediate = (3.0_r8*log(p1) - log(p2))/2.0_r8
+      if (intermediate <= 0.0_r8) then
+         interp_pressure = p1
+      else
+         interp_pressure = exp(intermediate)
+      endif
+   else
+      interp_pressure = (3.0_r8*p1 - p2)/2.0_r8
+   endif
+endif
+
+end function interp_pressure
+
+!#######################################################
+
+function interp_4pressure(p1, p2, p3, p4, dx, dxm, dy, dym, extrapolate, edgep)
+ 
+! given 4 corners of a quad, where the p1, p2, p3 and p4 points are
+! respectively:  lower left, lower right, upper left, upper right
+! and dx is the distance in x, dxm is 1.0-dx, dy is distance in y
+! and dym is 1.0-dy, interpolate the pressure while converted to log.
+! if extrapolate is true, extrapolate where edgep is the edge pressure
+! and the 4 points and dx/dy give the location of the inner point.
+
+real(r8), intent(in)           :: p1, p2, p3, p4
+real(r8), intent(in)           :: dx, dxm, dy, dym
+logical,  intent(in), optional :: extrapolate
+real(r8), intent(in), optional :: edgep
+real(r8)                       :: interp_4pressure
+
+logical  :: do_interp
+real(r8) :: intermediate
+real(r8) :: l1, l2, l3, l4
+
+! default is to do interpolation; only extrapolate if the optional
+! arg is specified and if it is true.  for extrapolation 'edgep' is
+! required; it is unused for interpolation.
+do_interp = .true.
+if (present(extrapolate)) then
+   if (extrapolate) do_interp = .false.
+endif
+
+if (.not. do_interp .and. .not. present(edgep)) then
+  call error_handler(E_ERR, 'interp_4pressure:', &
+      'edgep must be specified for extrapolation.  internal error.', &
+       source, revision, revdate)
+endif
+
+if (log_horz_interpQ) then
+   l1 = log(p1)
+   l2 = log(p2)
+   l3 = log(p3)
+   l4 = log(p4)
+endif
+
+! once we like the results, remove the log_horz_interpQ test.
+if (do_interp) then
+   if (log_horz_interpQ) then
+      interp_4pressure = exp(dym*( dxm*l1 + dx*l2 ) + dy*( dxm*l3 + dx*l4 ))
+   else
+      interp_4pressure = dym*( dxm*p1 + dx*p2 ) + dy*( dxm*p3 + dx*p4 )
+   endif
+else
+   if (log_horz_interpQ) then
+      intermediate = (3.0_r8*log(edgep) - &
+                 dym*( dxm*l1 + dx*l2 ) - dy*( dxm*l3 + dx*l4 ))/2.0_r8
+      if (intermediate <= 0.0_r8) then
+         interp_4pressure = edgep
+      else
+         interp_4pressure = exp(intermediate)
+      endif
+   else
+      interp_4pressure = (3.0_r8*edgep - &
+                 dym*( dxm*p1 + dx*p2 ) - dy*( dxm*p3 + dx*p4 ))/2.0_r8
+   endif
+endif
+
+end function interp_4pressure
 
 !#######################################################
 
@@ -6286,12 +6588,13 @@ do while (.not. dom_found)
 
    ! Checking for exact equality on real variable types is generally a bad idea.
 
-   if( (wrf%dom(id)%proj%hemi ==  1.0_r8 .and. obslat == -90.0_r8) .or. &
-       (wrf%dom(id)%proj%hemi == -1.0_r8 .and. obslat ==  90.0_r8) .or. &
-       (wrf%dom(id)%proj%code == PROJ_MERC .and. abs(obslat) >= 90.0_r8) ) then
+   if( (wrf%dom(id)%proj%hemi ==  1.0_r8 .and. obslat < -90.0_r8) .or. &
+       (wrf%dom(id)%proj%hemi == -1.0_r8 .and. obslat >  90.0_r8) .or. &
+       (wrf%dom(id)%proj%code == PROJ_MERC .and. abs(obslat) > 90.0_r8) ) then
 
-!nc -- strange that there is nothing in this if-case structure
-print*, 'model_mod.f90 :: subroutine get_domain_info :: in empty if-case'
+      ! catch latitudes that are out of range - ignore them but print out a warning.
+      write(errstring, *) 'obs with latitude out of range: ', obslat
+      call error_handler(E_MSG, 'model_mod', errstring)
 
    else
       call latlon_to_ij(wrf%dom(id)%proj,min(max(obslat,-89.9999999_r8),89.9999999_r8),obslon,iloc,jloc)
@@ -7597,14 +7900,14 @@ end subroutine fill_dart_kinds_table
 !--------------------------------------------
 !--------------------------------------------
 
-integer function get_number_of_wrf_variables(id, state_table, var_element_list)
+integer function get_number_of_wrf_variables(id, state_table, var_element_list, var_update_list)
 
 integer, intent(in) :: id
 character(len=*), intent(in) :: state_table(num_state_table_columns,max_state_variables) 
 integer, intent(out), optional :: var_element_list(max_state_variables)
+logical, intent(out), optional :: var_update_list(max_state_variables)
+
 integer :: ivar, num_vars
-! was this for debugging?  seems unused.
-!character(len=129) :: my_string
 logical :: debug = .false.
 
 if ( present(var_element_list) ) var_element_list = -1
@@ -7613,11 +7916,18 @@ ivar = 1
 num_vars = 0
 do while ( trim(state_table(5,ivar)) /= 'NULL' ) 
 
-   !my_string = state_table(5,ivar)
-
    if ( variable_is_on_domain(state_table(5,ivar),id) ) then
       num_vars = num_vars + 1
       if ( present(var_element_list) ) var_element_list(num_vars) = ivar
+
+      if (present(var_update_list)) then
+         if (state_table(4,ivar) == 'NO_COPY_BACK') then
+            var_update_list(num_vars) = .false.
+         else
+            var_update_list(num_vars) = .true.
+         endif
+      endif
+
    endif
 
    ivar = ivar + 1
@@ -8167,3 +8477,9 @@ end function compute_geometric_height
 
 
 end module model_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

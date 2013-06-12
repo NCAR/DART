@@ -1,6 +1,8 @@
-! innov_to_obs_seq
-! --------------------
-! 
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
 program innov_to_obs_seq
 
    use navdas_innov_mod, only : seq,                         &
@@ -24,10 +26,11 @@ program innov_to_obs_seq
 
   implicit none
 
-  character(len=128) :: &
-       source   = " ",  &
-       revision = " ",  &
-       revdate  = " "
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
   character(len=*), parameter :: routine = 'innov_to_obs_seq'
 
@@ -55,3 +58,9 @@ program innov_to_obs_seq
   call terminate_navdas_innov_mod()
 
 end program innov_to_obs_seq
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

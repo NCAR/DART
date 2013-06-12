@@ -41,12 +41,12 @@
 sequence files to determine which observation locations report 
 frequently enough to be useful for a verification study. The big picture
 is to be able to pare down a large set of observations into a compact
-observation sequence file to run through <em class="program">filter</em>
+observation sequence file to run through <em class=program>filter</em>
 with all of the intended observation types flagged as 
-<em class="option">evaluate_only</em>. DART's forward operators then
+<em class=option>evaluate_only</em>. DART's forward operators then
 get applied and all the forecasts are preserved in a 
-standard <em class="file">obs_seq.final</em> file - perhaps more 
-appropriately called <em class="file">obs_seq.forecast</em>!
+standard <em class=file>obs_seq.final</em> file - perhaps more 
+appropriately called <em class=file>obs_seq.forecast</em>!
 Paring down the input observation sequence file cuts down on the unnecessary
 application of the forward operator to create observation copies that will
 not be used anyway ... 
@@ -55,10 +55,10 @@ not be used anyway ...
 <img src="../doc/images/forecasting_diagram.png" alt="forecast evaluation schematic" width=90% />
 
 <P>
-<em class="program">obs_seq_coverage</em> results in two output files:
+<em class=program>obs_seq_coverage</em> results in two output files:
 </P>
 <ul>
-<li><em class="file">obsdef_mask.txt</em> contains the list of observation definitions
+<li><em class=file>obsdef_mask.txt</em> contains the list of observation definitions
 (but not the observations themselves) that are desired. The observation definitions
 include the locations and times for each of the desired observation types. This file
 is read by <a href="obs_selection.html">obs_selection</a> and combined with the raw
@@ -66,10 +66,10 @@ observation sequence files to create the observation sequence file appropriate f
 use in a forecast.
 <br />
 </li>
-<li><em class="file">obsdef_mask.nc</em> contains information needed to be able
+<li><em class=file>obsdef_mask.nc</em> contains information needed to be able
 to plot the times and locations of the observations in a manner to help explore 
 the design of the verification locations/network. 
-<em class="file">obsdef_mask.nc</em> is <em class=strong>required</em> by
+<em class=file>obsdef_mask.nc</em> is <em class=strong>required</em> by
 <a href="obs_seq_verify.html">obs_seq_verify</a>, the program
 that reorders the observations into a structure that  
 makes it easy to calculate statistics like ROC, etc.</li>
@@ -81,7 +81,7 @@ what observations will be used to verify a forecast. Since it is 'standard pract
 to make several forecasts to build statistical strength, it is important
 to use the SAME set of observation locations for all the forecasts that will
 be verified together. To make the discussion easier, let's define the
-<em class="option">verification network</em> as the set of locations and times
+<em class=option>verification network</em> as the set of locations and times
 for a particular observation type. 
 <br />
 <br />
@@ -92,20 +92,20 @@ For some very high resolution applications, this may be insufficient, but there 
 <br />
 <br />
 The only complicated part of determining the verification network is the
-temporal component. The initial time (usually an <em class="option">analysis time</em> 
+temporal component. The initial time (usually an <em class=option>analysis time</em> 
 from a previous assimilation), the 
-<em class="option">verification interval</em>, and the 
-<em class="option">forecast length</em> 
+<em class=option>verification interval</em>, and the 
+<em class=option>forecast length</em> 
 completely specify the temporal aspect of a forecast. The following example
 has a verification interval of 6 hours and a forecast length of 24 hours. We adopt the 
 convention of also including the initial conditions (a "nowcast") in the 
 "forecast", so there are 5 times of interest - which we will call 
-<em class="option">verification times</em> and are represented by 
+<em class=option>verification times</em> and are represented by 
 <img src="../doc/images/verification_time_icon.png" alt="verification icon" width=3% />.
 The candidate observation sequence files are scanned to select all the
 observations that are <strong>closest</strong> to the verification times.
 The difference in time between the "nowcast" and the "forecast" is the
-<em class="option">forecast lead</em>.
+<em class=option>forecast lead</em>.
 <br />
 <br />
 <img src="../doc/images/simple_forecast.png" alt="simple forecast" width=60% />
@@ -124,14 +124,14 @@ small set of observations - a problem we will deal with later.
 The diagram below illustrates the logic behind determining the list of
 verification times for a pretty common scenario: a 24-hour forecast with a
 forecast lead of 6 hours, repeated the next day. 
-The <em class="option">first_analysis</em> is at VT1 - let's call it 00Z day 1.
+The <em class=option>first_analysis</em> is at VT1 - let's call it 00Z day 1.
 We need to have observations available at: <br />
 VT1 (00Z day1),
 VT2 (06Z day1), 
 VT3 (12Z day1), 
 VT4 (18Z day1), and 
 VT5 (24Z day1 / 00Z day2).
-The <em class="option">last_analysis</em> starts at VT5 00Z day 2 and must verify at<br />
+The <em class=option>last_analysis</em> starts at VT5 00Z day 2 and must verify at<br />
 VT5 (00Z day2),
 VT6 (06Z day2), 
 VT7 (12Z day2), 
@@ -146,7 +146,7 @@ Note that, if you wanted to, you could launch forecasts at VT2, VT3, and VT4 wit
 adding extra constraints on the verification network. 
 <em class=program>obs_seq_coverage</em> simply provides these possible 
 forecasts "for free", there is no assumption about <strong>needing</strong> them.
-We will use the variable <em class="option">verification_times</em> to describe
+We will use the variable <em class=option>verification_times</em> to describe
 the complete set of times for all possible forecasts. In our example above,
 there are 5 possible forecasts, each forecast consisting of 5 verification 
 times (the analysis time and the 4 forecast lead times). As such, there are
@@ -201,10 +201,10 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 <br />
 <br />
    You can specify <strong>either</strong>
-   <em class="option">obs_sequence_name</em>
+   <em class=option>obs_sequence_name</em>
    <strong>or</strong>
-   <em class="option">obs_sequence_list</em> -- not both.
-   One of them has to be an empty string ... i.e. <em class="option">''</em>.
+   <em class=option>obs_sequence_list</em> -- not both.
+   One of them has to be an empty string ... i.e. <em class=option>''</em>.
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -220,12 +220,12 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
             everything to the right, and a directory structure to the left.
             The directory structure is then queried to see if it can be
             incremented to handle a sequence of observation files.
-            The default behavior of <em class="program">obs_seq_coverage</em>
+            The default behavior of <em class=program>obs_seq_coverage</em>
             is to look for additional files to include until the files
             are exhausted or an <em class=file>obs_seq.final</em> file
             is found that contains observations beyond the timeframe of
             interest.<br />e.g. 'obsdir_001/obs_seq.final' will cause
-            <em class="program">obs_seq_coverage</em> to look for
+            <em class=program>obs_seq_coverage</em> to look for
             'obsdir_002/obs_seq.final', and so on.<br />
             If this is set, <em class=option>obs_sequence_list</em> must be set to ''.
             <br />
@@ -270,7 +270,7 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
             of the verification times.
             This file is used in conjunction with
             <a href="obs_seq_verify.html">obs_seq_verify</a> to reorder the
-            <em class="file">obs_seq.forecast</em> into a structure that will
+            <em class=file>obs_seq.forecast</em> into a structure that will
             facilitate calculating the statistics and scores of the forecasts.
             <br />
             Default: 'obsdef_mask.nc'</TD></TR>
@@ -334,7 +334,7 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 <TR><!--contents--><TD valign=top> lonlim2 </TD>
     <!--  type  --><TD valign=top> real </TD>
     <!--descript--><TD>Easternmost longitude of desired region.
-            <em class="new">If any of these values is <b>less than</b>
+            <em class=new>If any of these values is <b>less than</b>
             the westernmost values, it defines a region that spans the
             prime meridian. No problem.</em> It is perfectly acceptable
             to specify lonlim1 = 330 , lonlim2 = 50 to identify a region
@@ -389,23 +389,23 @@ utilities_mod
 <HR>
 <H2>FILES</H2>
 <UL>
-   <LI><em class="file">input.nml</em> is used for 
-       <em class="option">obs_seq_coverage_nml</em><br /></LI>
+   <LI><em class=file>input.nml</em> is used for 
+       <em class=option>obs_seq_coverage_nml</em><br /></LI>
    
    <LI>A text file containing the metadata for the observations to be used
        for forecast evaluation is created. This file is subsequently
        required by <a href="obs_selection.html">obs_selection</a> to
        subset the set of input observation sequence files into a
        single observation sequence file 
-       (<em class="file">obs_seq.evaluate</em>) for the forecast step.
+       (<em class=file>obs_seq.evaluate</em>) for the forecast step.
        <br />
-       (<em class="file">obsdef_mask.txt</em> is the default name)<br /></LI>
+       (<em class=file>obsdef_mask.txt</em> is the default name)<br /></LI>
    <LI>A netCDF file containing the metadata for a much larger set of 
        observations that may be used is created. This file is subsequently
        required by <a href="obs_seq_coverage.html">obs_seq_coverage</a> to
        define the desired times and locations for the verification.
        <br />
-       (<em class="file">obsdef_mask.nc</em> is the default name)</LI>
+       (<em class=file>obsdef_mask.nc</em> is the default name)</LI>
 </UL>
 
 <!--==================================================================-->
@@ -437,34 +437,34 @@ time is selected, the others are ignored.
 In this example, we are generating an <em class=file>obsdef_mask.txt</em>
 file for a single forecast. All the required input observation sequence 
 filenames will be contained in a file referenced by the 
-<em class="option">obs_sequence_list</em> variable. We'll also restrict 
+<em class=option>obs_sequence_list</em> variable. We'll also restrict 
 the observations to a specific rectangular (in Lat/Lon) region.
 It is convenient to turn on the verbose option the first time
 to get a feel for the logic. Here are the namelist settings if you want to
 verify the METAR_U_10_METER_WIND and METAR_V_10_METER_WIND observations over the
 entire globe every 6 hours for 2 days starting 18Z 8 Jun 2008:
 </p>
-<div class="routine">
+<div class=routine>
 <pre>
 &amp;obs_seq_coverage_nml
    obs_sequence_name  = '',
-   obs_sequence_list  = <em class="input">'obs_file_list.txt'</em>,
-   obs_of_interest    = <em class="input">'METAR_U_10_METER_WIND'</em>,
-                        <em class="input">'METAR_V_10_METER_WIND'</em>,
+   obs_sequence_list  = <em class=input>'obs_file_list.txt'</em>,
+   obs_of_interest    = <em class=input>'METAR_U_10_METER_WIND'</em>,
+                        <em class=input>'METAR_V_10_METER_WIND'</em>,
    textfile_out       = 'obsdef_mask.txt',
    netcdf_out         = 'obsdef_mask.nc',
    calendar           = 'Gregorian',
-   first_analysis     = <em class="input"> 2008, 6, 8, 18, 0, 0 </em>,
-   last_analysis      = <em class="input"> 2008, 6, 8, 18, 0, 0 </em>,
-   forecast_length_days          = <em class="input">2</em>,
-   forecast_length_seconds       = <em class="input">0</em>,
-   verification_interval_seconds = <em class="input">21600</em>,
+   first_analysis     = <em class=input> 2008, 6, 8, 18, 0, 0 </em>,
+   last_analysis      = <em class=input> 2008, 6, 8, 18, 0, 0 </em>,
+   forecast_length_days          = <em class=input>2</em>,
+   forecast_length_seconds       = <em class=input>0</em>,
+   verification_interval_seconds = <em class=input>21600</em>,
    temporal_coverage_percent     = 100.0,
-   lonlim1            = <em class="input">   0.0</em>,
-   lonlim2            = <em class="input"> 360.0</em>,
-   latlim1            = <em class="input"> -90.0</em>,
-   latlim2            = <em class="input">  90.0</em>,
-   verbose            = <em class="input">.true.</em>,
+   lonlim1            = <em class=input>   0.0</em>,
+   lonlim2            = <em class=input> 360.0</em>,
+   latlim1            = <em class=input> -90.0</em>,
+   latlim2            = <em class=input>  90.0</em>,
+   verbose            = <em class=input>.true.</em>,
    /
 </pre>
 </div>
@@ -495,7 +495,7 @@ you may want to save the run-time output to a file.
 It is convenient to turn on the verbose option the first time.
 Here is a portion of the run-time output:
 </p>
-<div class="unix">
+<div class=unix>
 <pre>
 [thoar@mirage2 work]$ ./obs_seq_coverage | &amp; tee my.log
  Starting program obs_seq_coverage
@@ -565,15 +565,15 @@ First observation date 2008 Jun 08 17:53:00
 </div>
 <H4 class=indent1>Discussion</H4>
 <p>
-Note that the values of <em class="code">ASSIMILATE_THESE_OBS_TYPES</em> and
-<em class="code">EVALUATE_THESE_OBS_TYPES</em> are completely irrelevant - 
+Note that the values of <em class=code>ASSIMILATE_THESE_OBS_TYPES</em> and
+<em class=code>EVALUATE_THESE_OBS_TYPES</em> are completely irrelevant - 
 since we're not actually doing an assimilation. 
 The <strong>BIG</strong> difference between the two output files is 
-that <em class="file">obsdef_mask.txt</em> contains the metadata 
-for just the matching observations while <em class="file">obsdef_mask.nc</em> 
+that <em class=file>obsdef_mask.txt</em> contains the metadata 
+for just the matching observations while <em class=file>obsdef_mask.nc</em> 
 contains the metadata for all candidate locations as well as a lot of
 information about the desired verification times. It is possible to explore
-<em class="file">obsdef_mask.nc</em> to review the selection criteria to
+<em class=file>obsdef_mask.nc</em> to review the selection criteria to
 include observations/"stations" that do not perfectly match the original selection
 criteria.
 <br />
@@ -582,7 +582,7 @@ Now that you have the <em class=file>obsdef_mask.nc</em>, you can explore it wit
 <a href="http://www.unidata.ucar.edu/software/netcdf/docs/netcdf/ncdump.html">ncdump</a>.
 </p>
 
-<div class="unix">
+<div class=unix>
 <pre>
 netcdf obsdef_mask {
 dimensions:
@@ -687,15 +687,15 @@ times required for the verification. Dump the <em class=option>obs_type</em> var
 to see what station has what observation type.
 <br />
 <br />
-The <em class="option">stations</em> variable is fundamentally a flag that
+The <em class=option>stations</em> variable is fundamentally a flag that
 indicates if the station has all of the desired verification times. Combine
 that information with the <em class=option>obs_type</em> and 
-<em class="option">location</em> to determine where your verifications of
+<em class=option>location</em> to determine where your verifications of
 any particular observation type will take place.
 <br />
 <br />
-Now that you have the <em class="file">obsdef_mask.txt</em>, you can run 
-<em class="program">obs_selection.f90</em> to subset the observation sequence
+Now that you have the <em class=file>obsdef_mask.txt</em>, you can run 
+<a href="obs_selection.html">obs_selection</a> to subset the observation sequence
 files into one compact file to use in your ensemble forecast.
 </P>
 
@@ -739,7 +739,7 @@ files into one compact file to use in your ensemble forecast.
     <!-- message --><TD VALIGN=top>'xxxxxx ' is not a known observation type.'</TD>
     <!-- comment --><TD VALIGN=top>one of the <em class=option>obs_of_interest</em>
           namelist entries specifies an observation type that is not supported.
-          Perhaps you need to rerun <em class="program">preprocess</em> with support
+          Perhaps you need to rerun <em class=program>preprocess</em> with support
           for the observation, or perhaps it is spelled incorrectly. All
           DART observation types are strictly uppercase.</TD></TR>
 
@@ -766,16 +766,16 @@ files into one compact file to use in your ensemble forecast.
 <TR><!-- routine --><TD VALIGN=top>set_required_times</TD>
     <!-- message --><TD VALIGN=top>'namelist: forecast length is not a multiple of the verification interval'</TD>
     <!-- comment --><TD VALIGN=top>The namelist settings for 
-          <em class="option">forecast_length_[days,seconds]</em> and 
-          <em class="option">verification_interval_seconds</em> do not make sense. 
+          <em class=option>forecast_length_[days,seconds]</em> and 
+          <em class=option>verification_interval_seconds</em> do not make sense. 
                Refer to <a href="#coverage">the forecast time diagram</a>.
 
 <TR><!-- routine --><TD VALIGN=top>set_required_times</TD>
     <!-- message --><TD VALIGN=top>'namelist: last analysis time is not a multiple of the verification interval'</TD>
     <!-- comment --><TD VALIGN=top>The namelist settings for 
-          <em class="option">first_analysis</em> and 
-          <em class="option">last_analysis</em> are not separated by a multiple of 
-          <em class="option">verification_interval_seconds</em>. 
+          <em class=option>first_analysis</em> and 
+          <em class=option>last_analysis</em> are not separated by a multiple of 
+          <em class=option>verification_interval_seconds</em>. 
                Refer to <a href="#coverage">the forecast time diagram</a>.
 
 </TD></TR>

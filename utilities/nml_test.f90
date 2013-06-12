@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program nml_test
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use     types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,       &
@@ -19,10 +15,9 @@ use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,       &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-! split into separate lines; getting too long for the absoft compiler
-character(len=128), parameter :: source = &
- "$URL$"
-character(len=128), parameter :: revision = "$Revision$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
@@ -88,3 +83,9 @@ end subroutine initialize_module
 !----------------------------------------------------------------------
 
 end program
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

@@ -5,15 +5,11 @@
 % if you are just changing plotting parameters, you can rerun 'cam_correl_plot'
 % only.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 % doc for Get_Field, Get_Point funcs syntax
 % x[nlat,nlon,nens] = Get_Field(filename,basevar,timeind,level,ens_size);  
@@ -92,3 +88,9 @@ end
 %
 
 cam_correl_plot
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

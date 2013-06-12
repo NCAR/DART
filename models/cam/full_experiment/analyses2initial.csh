@@ -1,10 +1,10 @@
 #!/bin/csh
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 #
 # Extract the mean copy for each state vector field from each of the timeslots 
 # on a file (Posterior usually) and put each timeslot into CAM initial file format.

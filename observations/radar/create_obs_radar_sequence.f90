@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program create_obs_radar_sequence
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! This program creates a group of observations as would be returned from a
 ! radar observation system. The radar location, sweep angle, elevations,
@@ -31,9 +27,9 @@ program create_obs_radar_sequence
  
  
 use         types_mod, only : r8, deg2rad, rad2deg, earth_radius, missing_r8
-use     utilities_mod, only : timestamp, register_module,                  &
+use     utilities_mod, only : timestamp, register_module, finalize_utilities, &
                               open_file, close_file, error_handler, E_ERR, &
-                              initialize_utilities, register_module
+                              initialize_utilities, register_module, E_MSG
 use  time_manager_mod, only : set_time
 use      location_mod, only : location_type, interactive_location, &
                               query_location, set_location, VERTISHEIGHT
@@ -51,13 +47,11 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs,         &
 
 implicit none
 
-! Version controlled file description for error handling, do not edit.
-character(len=128), parameter :: &
-   source = "$URL$"
-character(len=128), parameter :: revision = "$Revision$"
-character(len=128), parameter :: & 
-   revdate = "$Date$"
-
+! version controlled file description for error handling, do not edit.
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
 character(len = 129)    :: file_name
@@ -94,9 +88,12 @@ write(*, *) 'Input filename for sequence (  set_def.out   usually works well)'
 read(*, *) file_name
 call write_obs_seq(seq, file_name)
 
-! Clean up
 call destroy_obs_sequence(seq)
-call timestamp(source,revision,revdate,pos='end')
+
+call error_handler(E_MSG,'create_obs_radar_sequence','Finished successfully.',&
+                   source,revision,revdate)
+call finalize_utilities()
+
 
 contains
 
@@ -114,7 +111,7 @@ function simulate_radar_sequence()
 ! observation locations based on user input.
 
 type(obs_sequence_type) :: simulate_radar_sequence
-type(obs_type)          :: obs, prev_obs
+type(obs_type)          :: obs
 type(obs_def_type)      :: obs_def
 type(location_type)     :: radar_location, obs_location
 
@@ -129,7 +126,6 @@ integer                 :: i_gate, num_gate, i_radar, num_radar
 integer                 :: i, max_num_obs, select_obstype
 integer                 :: num_copies, num_qc, defkey, elev_type, days, secs
 integer                 :: which_vert, rc
-character(len=129)      :: msgstring
 logical                 :: qc
 
 
@@ -480,3 +476,9 @@ end subroutine fillin_obsdef
 !----------------------------------------------------------------------
 
 end program create_obs_radar_sequence
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

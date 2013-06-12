@@ -37,11 +37,11 @@ knows when to recompile affected source (i.e, files
 containing <tt>#ifdef</tt>s that have been changed since the
 last invocation);
 <li>It will run on any unix platform that has perl version 5 installed;
-<li>It is free, and released under GPL. GFDL users can copy 
+<li>It is free, and released under GPL. GFDL users can copy
 (or, better still, directly invoke) the file
 <tt>/net/vb/public/bin/mkmf</tt>. External users can download the
 source <a href="ftp://ftp.gfdl.gov/pub/vb/mkmf/mkmf">
-                ftp://ftp.gfdl.gov/pub/vb/mkmf/mkmf</a>. 
+                ftp://ftp.gfdl.gov/pub/vb/mkmf/mkmf</a>.
 Current public revision is 4.12.
 
 </ul>
@@ -84,8 +84,8 @@ macros or commands written to the beginning of the makefile;
 
 <li><tt>-v</tt> is a verbosity flag to <tt>mkmf</tt>;
 
-<li><tt>-w</tt> generates compile rules which use the `wrapper' commands 
-MPIFC and MPILD instead of FC and LD.  These can then be defined as 
+<li><tt>-w</tt> generates compile rules which use the `wrapper' commands
+MPIFC and MPILD instead of FC and LD.  These can then be defined as
 the mpif90 compile scripts to ease changing between an MPI and non-MPI
 version;
 
@@ -118,7 +118,7 @@ match invalidating all subsequent ones. See the <a
 href="#examples">Examples</a> section for a closer look at precedence rules.
 
 <p>The makefile currently runs <tt>$(FC)</tt> on fortran files
-and <tt>$(CC)</tt> on C files (unless the <tt>-w</tt> flag is specified). 
+and <tt>$(CC)</tt> on C files (unless the <tt>-w</tt> flag is specified).
 Flags to the compiler can be set
 in <tt>$(FFLAGS)</tt> or <tt>$(CFLAGS)</tt>. The final
 loader step executes <tt>$(LD)</tt>. Flags to the loader can be
@@ -127,7 +127,7 @@ set in <tt>$(LDFLAGS)</tt>.  Preprocessor flags are used by
 and can be set in <tt>$(CPPFLAGS)</tt>. These macros have a
 default meaning on most systems, and can be modified in the template
 file. The predefined macros can be discovered by running <tt>make
--p</tt>.  
+-p</tt>.
 
 <p>In addition, the macro <tt>$(CPPDEFS)</tt> is applied to the
 preprocessor. This can contain the <tt>cpp #define</tt>s which
@@ -135,7 +135,7 @@ may change from run to run. <tt>cpp</tt> options that do not
 change between compilations should be placed in
 <tt>$(CPPFLAGS)</tt>.
 
-<p>If the <tt>-w</tt> flag is given the commands run are 
+<p>If the <tt>-w</tt> flag is given the commands run are
 <tt>$(MPIFC)</tt> on fortran files, <tt>$(MPICC)</tt> on C files,
 and <tt>$(MPILD)</tt> for the loader step. The flags retain their
 same values with or without the <tt>-w</tt> flag. (This is a local
@@ -293,7 +293,7 @@ c.f90
 following <tt>Makefile</tt>:
 
 <p><pre>
-# Makefile created by mkmf $Id$ 
+# Makefile created by mkmf $Id$
 
 
 .DEFAULT:
@@ -355,7 +355,7 @@ make
 The new Makefile looks like this:
 
 <p><pre>
-# Makefile created by mkmf $Id$ 
+# Makefile created by mkmf $Id$
 
 
 .DEFAULT:

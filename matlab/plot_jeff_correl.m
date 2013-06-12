@@ -2,18 +2,14 @@
 % Plots time series of correlation between a given variable at a given
 % time and another variable at all times in an ensemble time sequence.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if (exist('fname','var') ~=1)
-   disp('Input name of file;')
+   disp('Input name of file:')
    fname = input('<cr> for Prior_Diag.nc\n','s');
    if isempty(fname)
       fname = 'Prior_Diag.nc';
@@ -27,14 +23,13 @@ if (exist(fname,'file') ~=2 ), error('%s does not exist.',fname); end
 diminfo    = nc_getdiminfo(fname,'copy');
 num_copies = diminfo.Length; % determine # of ensemble members
 
-if (num_copies <= 3) 
+if (num_copies <= 3)
    error('Sorry -- %s does not have enough ensemble members to correlate.',fname)
-end 
+end
 
 pinfo = CheckModel(fname); % also gets default values for this file.
-pinfo.fname = fname;
 
-switch lower(pinfo.model) 
+switch lower(pinfo.model)
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04', ...
 	 'forced_lorenz_96','ikeda'}
 
@@ -95,25 +90,33 @@ switch lower(pinfo.model)
       inputstring = input('Input variable and index for correlation \n','s');
       [pinfo.state_var, pinfo.state_var_index] = ParseAlphaNumerics(inputstring);
 
-   case 'fms_bgrid'
+   case {'fms_bgrid'}
 
       pinfo = GetBgridInfo(pinfo, fname, 'PlotVarVarCorrel');
 
-   case 'wrf'
+   case {'wrf'}
 
       pinfo = GetWRFInfo(pinfo, fname, 'PlotVarVarCorrel');
 
-   case 'cam'
+   case {'cam'}
 
       pinfo = GetCamInfo(pinfo, fname, 'PlotVarVarCorrel');
 
-   case 'pe2lyr'
+   case {'pe2lyr'}
 
       pinfo = GetPe2lyrInfo(pinfo, fname, 'PlotVarVarCorrel');
 
-   case 'mitgcm_ocean'
+   case {'mitgcm_ocean'}
 
       pinfo = GetMITgcm_oceanInfo(pinfo, fname, 'PlotVarVarCorrel');
+
+   case {'mpas_atm'}
+
+      pinfo = GetMPAS_ATMInfo(pinfo, fname, 'PlotVarVarCorrel');
+
+   case {'sqg'}
+
+      pinfo = GetSqgInfo(pinfo, fname, 'PlotVarVarCorrel');
 
    otherwise
 
@@ -126,3 +129,11 @@ pinfo
 PlotJeffCorrel( pinfo )
 
 clear inputstring diminfo num_copies
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

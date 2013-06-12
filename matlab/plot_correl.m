@@ -1,22 +1,18 @@
-%% DART:plot_correl Plots space-time series of correlation between a given variable 
-%               at a given time and other variables at all times in an 
+%% DART:plot_correl Plots space-time series of correlation between a given variable
+%               at a given time and other variables at all times in an
 %               ensemble time sequence.
 %
 % plot_correl  interactively queries for the information needed to create
 %              the desired correlations.
-%              Since different models potentially need different pieces 
-%              of information ... the model types are determined and 
+%              Since different models potentially need different pieces
+%              of information ... the model types are determined and
 %              additional user input may be queried.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if (exist('diagn_file','var') ~=1)
    disp('Input name of prior or posterior diagnostics file;')
@@ -24,21 +20,16 @@ if (exist('diagn_file','var') ~=1)
    if isempty(diagn_file)
       diagn_file = 'Prior_Diag.nc';
    end
-end 
+end
 
 if ( exist(diagn_file,'file') ~= 2 ), error('%s does not exist.',diagn_file); end
 
+pinfo = CheckModel(diagn_file);
+
 % check to make sure they are using a file with some ensemble members.
-
-diminfo    = nc_getdiminfo(diagn_file,'copy');
-num_copies = diminfo.Length; % determine # of ensemble members
-
-if (num_copies <= 3)
+if (pinfo.num_ens_members <= 3)
    error('Sorry -- %s does not have enough ensemble members to correlate.',diagn_file)
 end
-
-pinfo = CheckModel(diagn_file); 
-pinfo.fname = diagn_file;
 
 switch lower(pinfo.model)
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_04', ...
@@ -100,29 +91,41 @@ switch lower(pinfo.model)
       fprintf('Correlating variable %s index %d at time %d.\n', ...
            pinfo.base_var,pinfo.base_var_index, pinfo.base_time)
 
-   case 'fms_bgrid'
+   case {'fms_bgrid'}
 
       pinfo = GetBgridInfo(pinfo, diagn_file, 'PlotCorrel');
 
-   case 'cam'
+   case {'cam'}
 
       pinfo = GetCamInfo(pinfo, diagn_file, 'PlotCorrel');
 
-   case 'wrf'
+   case {'clm'}
+
+      pinfo = GetClmInfo(pinfo, diagn_file, 'PlotCorrel');
+
+   case {'wrf'}
 
       pinfo = GetWRFInfo(pinfo, diagn_file, 'PlotCorrel');
 
-   case 'pe2lyr'
+   case {'pe2lyr'}
 
       pinfo = GetPe2lyrInfo(pinfo, diagn_file, 'PlotCorrel');
 
-   case 'mitgcm_ocean'
+   case {'mitgcm_ocean'}
 
       pinfo = GetMITgcm_oceanInfo(pinfo, diagn_file, 'PlotCorrel');
 
-   case 'tiegcm'
+   case {'tiegcm'}
 
       pinfo = GetTIEGCMInfo(pinfo, diagn_file, 'PlotCorrel');
+
+   case {'mpas_atm'}
+
+      pinfo = GetMPAS_ATMInfo(pinfo, diagn_file, 'PlotCorrel');
+
+   case {'sqg'}
+
+      pinfo = GetSqgInfo(pinfo, diagn_file, 'PlotCorrel');
 
    otherwise
 
@@ -133,4 +136,12 @@ end
 pinfo
 
 PlotCorrel( pinfo );
-clear inputstring inds str1 vrbl vrbl_inds diminfo num_copies
+clear inputstring inds str1 vrbl vrbl_inds diminfo
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

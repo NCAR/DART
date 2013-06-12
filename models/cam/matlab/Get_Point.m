@@ -10,15 +10,11 @@ function bob = Get_Point(filename,basevar,timeind,lat,lon,level,enssize)
 % enssize = 20;
 % x = Get_Point(filename,basevar,timeind,lat,lon,level,enssize);
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 % use some of the infinite numbers of options on getnc() to get only a
 % hyperslab of the data in the first place rather than squeeze afterwards.
@@ -36,4 +32,9 @@ bob = getnc(filename, basevar, bl_corner, ur_corner, -1,-1,-1,-1, squeeze_it);
 %   function values = getnc(file, varid, corner, end_point, stride, order, ...
 %                           change_miss, new_miss, squeeze_it, rescale_opts)
  
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

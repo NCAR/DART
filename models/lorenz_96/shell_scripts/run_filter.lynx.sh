@@ -1,10 +1,10 @@
 #!/bin/sh
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 #
 # The general example run script is 'run_filter.csh' in this same
 # directory.  This is a specialized version of the script that runs
@@ -71,4 +71,8 @@ echo " "
 
 exit 0
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

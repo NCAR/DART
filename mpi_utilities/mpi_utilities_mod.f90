@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module mpi_utilities_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !-----------------------------------------------------------------------------
 !
@@ -56,16 +52,23 @@ module mpi_utilities_mod
 !    # iam_task0()        Function which returns .TRUE. if task id is 0,
 !                         .FALSE. for anything else.
 !
-!    # broadcast_send()   Subroutine which takes two r8 arrays and broadcasts
-!                         them to all other tasks.  If sending ID is not the
-!                         same as the local task ID, an error is returned.
-!                         Does not return until all other tasks have called
-!                         recv to pick up the data.
+!    # broadcast_send()   Subroutine which takes up to 5 real arrays and up to 
+!                         5 scalar reals and broadcasts them to all other tasks.
+!                         One array is required; the rest are optional.
+!                         If sender ID is not the same as the local task ID
+!                         it is an error.  This call does not return until
+!                         all other tasks have called broadcast_recv() to pick
+!                         up the data.  The arg lists for the data arrays and
+!                         scalar values must match exactly between send/recv.
 !
-!    # broadcast_recv()   Subroutine which receives two r8 arrays from the 
-!                         sending task ID.  If the sending ID is the same as
-!                         the local task ID, an error is returned.  All other
-!                         tasks must call recv before this routine returns.
+!    # broadcast_recv()   Subroutine which takes up to 5 real arrays and up to 
+!                         5 scalar reals and receives them from a sending task.
+!                         One array is required; the rest are optional.
+!                         If sender ID is the same as the local task ID
+!                         it is an error.  This call does not return until
+!                         all other tasks have called broadcast_recv() to pick
+!                         up the data.  The arg lists for the data arrays and
+!                         scalar values must match exactly between send/recv.
 !
 !    # sum_across_tasks() Subroutine which takes a single integer argument
 !                         from each task, and returns the sum of all integers
@@ -220,10 +223,10 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           sum_across_tasks, get_dart_mpi_comm
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 logical :: module_initialized   = .false.
 
@@ -233,6 +236,12 @@ integer :: head_task = 0         ! def 0, but N-1 if reverse_task_layout true
 logical :: print4status = .true. ! minimal messages for async4 handshake
 
 character(len = 129) :: errstring
+
+! for broadcasts, pack small messages into larger ones.  remember that the
+! byte size will be this count * 8 because we only communicate r8s.  (unless
+! the code is compiled with r8 redefined as r4, in which case it's * 4).
+integer, parameter :: PACKLIMIT1 = 8
+integer, parameter :: PACKLIMIT2 = 512
 
 ! this turns on trace messages for most MPI communications 
 logical :: verbose        = .false.   ! very very very verbose, use with care
@@ -791,7 +800,7 @@ itemcount = size(array)
 !if (verbose) then
 !   if (myrank == root) write(*,*) "PE", myrank, ": bcast itemsize here ", itemcount
 !endif
-!!if (verbose) write(*,*) "PE", myrank, ": bcast itemsize ", itemcount, " root ", root
+!if (verbose) write(*,*) "PE", myrank, ": bcast itemsize ", itemcount, " root ", root
 
 call MPI_Bcast(array, itemcount, datasize, root, my_local_comm, errcode)
 if (errcode /= MPI_SUCCESS) then
@@ -948,13 +957,19 @@ subroutine broadcast_send(from, array1, array2, array3, array4, array5, &
  real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:)
  real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
 
+! this must be paired with the same number of broadcast_recv()s on all 
+! other tasks.  it will not return until all tasks in the communications 
+! group have made the call.
+
 ! cover routine for array broadcast.  one additional sanity check -- make 
 ! sure the 'from' matches my local task id.  also, these arrays are
 ! intent(in) here, but they call a routine which is intent(inout) so they
 ! must be the same here.
  
- real(r8) :: local(5)
- logical :: dolocal
+real(r8) :: packbuf1(PACKLIMIT1), packbuf2(PACKLIMIT2)
+real(r8) :: local(5)
+logical  :: doscalar, morethanone
+integer  :: itemcount, sindex, eindex
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -968,40 +983,44 @@ if (from /= myrank) then
    call error_handler(E_ERR,'broadcast_send', errstring, source, revision, revdate)
 endif
 
-! this must be paired with the same number of broadcast_recv()s on all 
-! other tasks.  it will not return until all tasks in the communications 
-! group have made the call.
-call array_broadcast(array1, from)
-if (present(array2)) call array_broadcast(array2, from)
-if (present(array3)) call array_broadcast(array3, from)
-if (present(array4)) call array_broadcast(array4, from)
-if (present(array5)) call array_broadcast(array5, from)
+! for relatively small array sizes, pack them into a single send/recv pair.
+call countup(array1, array2, array3, array4, array5, &
+             scalar1, scalar2, scalar3, scalar4, scalar5, &
+             itemcount, morethanone, doscalar)
 
-dolocal = .false.
-local = 0.0_r8
+! try to use the smallest buffer possible
+if (itemcount <= PACKLIMIT1 .and. morethanone) then
 
-if (present(scalar1)) then
-  dolocal = .true.
-  local(1) = scalar1
-endif
-if (present(scalar2)) then
-  dolocal = .true.
-  local(2) = scalar2
-endif
-if (present(scalar3)) then
-  dolocal = .true.
-  local(3) = scalar3
-endif
-if (present(scalar4)) then
-  dolocal = .true.
-  local(4) = scalar4
-endif
-if (present(scalar5)) then
-  dolocal = .true.
-  local(5) = scalar5
+   call packit(packbuf1, array1, array2, array3, array4, array5, doscalar, &
+                         scalar1, scalar2, scalar3, scalar4, scalar5)
+
+   call array_broadcast(packbuf1, from)
+
+else if (itemcount <= PACKLIMIT2 .and. morethanone) then
+
+   call packit(packbuf2, array1, array2, array3, array4, array5, doscalar, &
+                         scalar1, scalar2, scalar3, scalar4, scalar5)
+
+   call array_broadcast(packbuf2, from)
+
+else
+
+   call array_broadcast(array1, from)
+
+   if (morethanone) then
+      if (present(array2)) call array_broadcast(array2, from)
+      if (present(array3)) call array_broadcast(array3, from)
+      if (present(array4)) call array_broadcast(array4, from)
+      if (present(array5)) call array_broadcast(array5, from)
+      
+      if (doscalar) then
+         call packscalar(local, scalar1, scalar2, scalar3, scalar4, scalar5)
+         call array_broadcast(local, from)
+      endif
+
+   endif
 endif
 
-if (dolocal) call array_broadcast(local, from)
 
 end subroutine broadcast_send
 
@@ -1014,13 +1033,20 @@ subroutine broadcast_recv(from, array1, array2, array3, array4, array5, &
  real(r8), intent(inout), optional :: array2(:), array3(:), array4(:), array5(:)
  real(r8), intent(inout), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
 
+! this must be paired with broadcast_send() on all other tasks, and it must 
+! match exactly the number of args in the sending call.
+! it will not return until all tasks in the communications group have
+! made the call.
+
 ! cover routine for array broadcast.  one additional sanity check -- make 
 ! sure the 'from' is not the same as my local task id.  these arrays are
 ! intent(out) here, but they call a routine which is intent(inout) so they
 ! must be the same here.
 
- real(r8) :: local(5)
- logical :: dolocal
+real(r8) :: packbuf1(PACKLIMIT1), packbuf2(PACKLIMIT2)
+real(r8) :: local(5)
+logical :: doscalar, morethanone
+integer :: itemcount, sindex, eindex
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -1034,23 +1060,265 @@ if (from == myrank) then
    call error_handler(E_ERR,'broadcast_recv', errstring, source, revision, revdate)
 endif
 
-! this must be paired with broadcast_send() on all other tasks, and it must 
-! match exactly the number of args in the sending call.
-! it will not return until all tasks in the communications group have
-! made the call.
-call array_broadcast(array1, from)
-if (present(array2)) call array_broadcast(array2, from)
-if (present(array3)) call array_broadcast(array3, from)
-if (present(array4)) call array_broadcast(array4, from)
-if (present(array5)) call array_broadcast(array5, from)
+! for relatively small array sizes, pack them into a single send/recv pair.
+call countup(array1, array2, array3, array4, array5, &
+             scalar1, scalar2, scalar3, scalar4, scalar5, &
+             itemcount, morethanone, doscalar)
 
-dolocal = .false.
+if (itemcount <= PACKLIMIT1 .and. morethanone) then
+
+   call array_broadcast(packbuf1, from)
+
+   call unpackit(packbuf1, array1, array2, array3, array4, array5, doscalar, &
+                           scalar1, scalar2, scalar3, scalar4, scalar5)
+
+else if (itemcount <= PACKLIMIT2 .and. morethanone) then
+
+   call array_broadcast(packbuf2, from)
+
+   call unpackit(packbuf2, array1, array2, array3, array4, array5, doscalar, &
+                           scalar1, scalar2, scalar3, scalar4, scalar5)
+
+else
+
+   call array_broadcast(array1, from)
+
+   if (morethanone) then
+      if (present(array2)) call array_broadcast(array2, from)
+      if (present(array3)) call array_broadcast(array3, from)
+      if (present(array4)) call array_broadcast(array4, from)
+      if (present(array5)) call array_broadcast(array5, from)
+   
+      if (doscalar) then
+         call array_broadcast(local, from)
+         call unpackscalar(local, scalar1, scalar2, scalar3, &
+                           scalar4, scalar5)
+      endif
+
+   endif
+
+endif
+
+end subroutine broadcast_recv
+
+!-----------------------------------------------------------------------------
+subroutine countup(array1, array2, array3, array4, array5, &
+                   scalar1, scalar2, scalar3, scalar4, scalar5, &
+                   numitems, morethanone, doscalar)
+ real(r8), intent(in)           :: array1(:)
+ real(r8), intent(in), optional :: array2(:), array3(:), array4(:), array5(:)
+ real(r8), intent(in), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+ integer,  intent(out)          :: numitems
+ logical,  intent(out)          :: morethanone, doscalar
+
+! figure out how many items are in the specified arrays, total.
+! also note if there's more than a single array (array1) to send,
+! and if there are any scalars specified.
+
+morethanone = .false.
+numitems = size(array1)
+
+if (present(array2)) then
+   numitems = numitems + size(array2)
+   morethanone = .true.
+endif
+if (present(array3)) then
+   numitems = numitems + size(array3)
+   morethanone = .true.
+endif
+if (present(array4)) then
+   numitems = numitems + size(array4)
+   morethanone = .true.
+endif
+if (present(array5)) then
+   numitems = numitems + size(array5)
+   morethanone = .true.
+endif
+if (present(scalar1)) then 
+   numitems = numitems + 1
+   morethanone = .true.
+   doscalar = .true.
+endif
+if (present(scalar2)) then
+   numitems = numitems + 1
+   morethanone = .true.
+   doscalar = .true.
+endif
+if (present(scalar3)) then
+   numitems = numitems + 1
+   morethanone = .true.
+   doscalar = .true.
+endif
+if (present(scalar4)) then
+   numitems = numitems + 1
+   morethanone = .true.
+   doscalar = .true.
+endif
+if (present(scalar5)) then
+   numitems = numitems + 1
+   morethanone = .true.
+   doscalar = .true.
+endif
+
+end subroutine countup
+
+!-----------------------------------------------------------------------------
+subroutine packit(buf, array1, array2, array3, array4, array5, doscalar, &
+                       scalar1, scalar2, scalar3, scalar4, scalar5)
+ real(r8), intent(out)          :: buf(:)
+ real(r8), intent(in)           :: array1(:)
+ real(r8), intent(in), optional :: array2(:), array3(:), array4(:), array5(:)
+ logical,  intent(in)           :: doscalar
+ real(r8), intent(in), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+
+integer :: sindex, eindex
+
+sindex = 1
+eindex = sindex + size(array1) - 1
+buf(sindex:eindex) = array1(:)
+sindex = eindex+1
+
+if (present(array2)) then
+   eindex = sindex + size(array2) - 1
+   buf(sindex:eindex) = array2(:)
+   sindex = eindex+1
+endif
+
+if (present(array3)) then
+   eindex = sindex + size(array3) - 1
+   buf(sindex:eindex) = array3(:)
+   sindex = eindex+1
+endif
+
+if (present(array4)) then
+   eindex = sindex + size(array4) - 1
+   buf(sindex:eindex) = array4(:)
+   sindex = eindex+1
+endif
+
+if (present(array5)) then
+   eindex = sindex + size(array5) - 1
+   buf(sindex:eindex) = array5(:)
+   sindex = eindex+1
+endif
+
+if (doscalar) then
+   if (present(scalar1)) then
+      buf(sindex) = scalar1
+      sindex = sindex+1
+   endif
+
+   if (present(scalar2)) then
+      buf(sindex) = scalar2
+      sindex = sindex+1
+   endif
+
+   if (present(scalar3)) then
+      buf(sindex) = scalar3
+      sindex = sindex+1
+   endif
+
+   if (present(scalar4)) then
+      buf(sindex) = scalar4
+      sindex = sindex+1
+   endif
+
+   if (present(scalar5)) then
+      buf(sindex) = scalar5
+      sindex = sindex+1
+   endif
+endif
+
+end subroutine packit
+
+!-----------------------------------------------------------------------------
+subroutine unpackit(buf, array1, array2, array3, array4, array5, doscalar, &
+                         scalar1, scalar2, scalar3, scalar4, scalar5)
+ real(r8), intent(in)            :: buf(:)
+ real(r8), intent(out)           :: array1(:)
+ real(r8), intent(out), optional :: array2(:), array3(:), array4(:), array5(:)
+ logical,  intent(in)            :: doscalar
+ real(r8), intent(out), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+
+integer :: sindex, eindex
+
+sindex = 1
+eindex = sindex + size(array1) - 1
+array1(:) = buf(sindex:eindex)
+sindex = eindex+1
+
+if (present(array2)) then
+   eindex = sindex + size(array2) - 1
+   array2(:) = buf(sindex:eindex)
+   sindex = eindex+1
+endif
+
+if (present(array3)) then
+   eindex = sindex + size(array3) - 1
+   array3(:) = buf(sindex:eindex) 
+   sindex = eindex+1
+endif
+
+if (present(array4)) then
+   eindex = sindex + size(array4) - 1
+   array4(:) = buf(sindex:eindex)
+   sindex = eindex+1
+endif
+
+if (present(array5)) then
+   eindex = sindex + size(array5) - 1
+   array5(:) = buf(sindex:eindex)
+   sindex = eindex+1
+endif
+
+if (doscalar) then
+   if (present(scalar1)) then
+      scalar1 = buf(sindex)
+      sindex = sindex+1
+   endif
+   
+   if (present(scalar2)) then
+      scalar2 = buf(sindex)
+      sindex = sindex+1
+   endif
+   
+   if (present(scalar3)) then
+      scalar3 = buf(sindex)
+      sindex = sindex+1
+   endif
+   
+   if (present(scalar4)) then
+      scalar4 = buf(sindex)
+      sindex = sindex+1
+   endif
+   
+   if (present(scalar5)) then
+      scalar5 = buf(sindex)
+      sindex = sindex+1
+   endif
+endif
+
+end subroutine unpackit
+
+!-----------------------------------------------------------------------------
+subroutine packscalar(local, scalar1, scalar2, scalar3, scalar4, scalar5)
+ real(r8), intent(out)          :: local(5) 
+ real(r8), intent(in), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
+
 local = 0.0_r8
+      
+if (present(scalar1)) local(1) = scalar1
+if (present(scalar2)) local(2) = scalar2
+if (present(scalar3)) local(3) = scalar3
+if (present(scalar4)) local(4) = scalar4
+if (present(scalar5)) local(5) = scalar5
 
-if (present(scalar1) .or. present(scalar2) .or. present(scalar3) &
-                     .or. present(scalar4) .or. present(scalar5)) dolocal = .true.
-
-if (dolocal) call array_broadcast(local, from)
+end subroutine packscalar
+   
+!-----------------------------------------------------------------------------
+subroutine unpackscalar(local, scalar1, scalar2, scalar3, scalar4, scalar5)
+ real(r8), intent(in)            :: local(5) 
+ real(r8), intent(out), optional :: scalar1, scalar2, scalar3, scalar4, scalar5
 
 if (present(scalar1)) scalar1 = local(1)
 if (present(scalar2)) scalar2 = local(2)
@@ -1058,8 +1326,8 @@ if (present(scalar3)) scalar3 = local(3)
 if (present(scalar4)) scalar4 = local(4)
 if (present(scalar5)) scalar5 = local(5)
 
-end subroutine broadcast_recv
-
+end subroutine unpackscalar
+   
 !-----------------------------------------------------------------------------
 subroutine sum_across_tasks(addend, sum)
  integer, intent(in) :: addend
@@ -1621,3 +1889,8 @@ call MPI_Abort(get_dart_mpi_comm(),  exit_code, ierror)
 
 end subroutine exit_all
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

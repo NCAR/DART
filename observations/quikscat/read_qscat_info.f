@@ -1,3 +1,6 @@
+c This code is not protected by the DART copyright agreement.
+c DART $Id$
+
       program read_qscat_info
 
 c====================================================================
@@ -240,3 +243,9 @@ c     Read all of the metadata lines
 
       return
       end
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

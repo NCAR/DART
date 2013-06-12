@@ -1,18 +1,14 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module gts_dart_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
 use         types_mod, only : r8, missing_r8, missing_data, DEG2RAD, earth_radius
 use     utilities_mod, only : open_file, close_file, initialize_utilities, &
-                              register_module, logfileunit, E_MSG, timestamp, &
+                              register_module, logfileunit, E_MSG, &
                               error_handler, find_namelist_in_file, check_namelist_read
 use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, insert_obs_in_seq, &
                               write_obs_seq, init_obs, assignment(=), &
@@ -677,3 +673,9 @@ SUBROUTINE print_gts_obs_single(gtsobs, &
 end subroutine print_gts_obs_single
 
 END module gts_dart_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

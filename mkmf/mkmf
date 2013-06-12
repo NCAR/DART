@@ -1,14 +1,7 @@
 #!/usr/bin/perl
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# <next few lines under version control, do not edit>
-# $URL$
-# $Id$
-# $Revision$
-# $Date$
+# This file is not protected by the DART copyright agreement.
+# DART $Id$
 
 #-----------------------------------------------------------------------
 #              mkmf: Perl script for makefile construction
@@ -17,7 +10,7 @@
 #         SGI/GFDL Princeton University
 #
 # Full web documentation for mkmf:
-#     http://www.gfdl.gov/~vb/mkmf.html
+#     http://www.gfdl.noaa.gov/~vb/mkmf.html
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -267,7 +260,7 @@ foreach $target ( @targets ) {
 #before proceeding, dump namelist file if any
 if ( @nml_list ) {
   unlink $nmlfile if -e $nmlfile;
-  open NMLFILE, ">$nmlfile"; 
+  open NMLFILE, ">$nmlfile";
   foreach ( @nml_list ) {
     open THISNML, "$_";
     while (<THISNML>) {
@@ -471,3 +464,9 @@ close MAKEFILE;
 print " $opt_m is ready.\n";
 
 exec 'make', '-f', $opt_m if $opt_x;
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

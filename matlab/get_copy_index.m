@@ -1,6 +1,6 @@
 function copy_index = get_copy_index(fname, copystring)
 %% GET_COPY_INDEX  Gets an index corresponding to copy meta_data string
-% Retrieves index associated with a given copy meta_data string in 
+% Retrieves index associated with a given copy meta_data string in
 % file fname. If string is not found in meta_data list, a -1 is returned.
 %
 % Example:
@@ -8,15 +8,11 @@ function copy_index = get_copy_index(fname, copystring)
 % copystring = 'ensemble member 5';
 % copy_index = get_copy_index(fname, copystring);
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
@@ -55,7 +51,16 @@ if (copy_index < 0)
    end
 end
 
+
 function str2 = dewhite(str1)
-% internal function to remove whitespace from a character string
-i = find( ~isspace(str1) );
-str2 = str1(i);
+%  function to remove ALL whitespace from a character string
+
+str2 = str1(~isspace(str1));
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

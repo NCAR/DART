@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module dart_pop_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use        types_mod, only : r8, rad2deg, PI, SECPERDAY
 use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, &
@@ -17,7 +13,7 @@ use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, 
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, nc_check, &
                              find_namelist_in_file, check_namelist_read, &
-                             E_ERR, E_MSG, timestamp, find_textfile_dims, &
+                             E_ERR, E_MSG, find_textfile_dims, &
                              logfileunit
 
 use typesizes
@@ -32,10 +28,10 @@ public :: get_pop_calendar, set_model_time_step, &
           write_pop_namelist, get_pop_restart_filename
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = '$URL$', &
-   revision = '$Revision$', &
-   revdate  = '$Date$'
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 character(len=256) :: msgstring
 logical, save :: module_initialized = .false.
@@ -707,3 +703,9 @@ end subroutine get_pop_restart_filename
 
 
 end module dart_pop_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

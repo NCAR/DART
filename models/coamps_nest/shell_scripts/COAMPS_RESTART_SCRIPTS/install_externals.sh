@@ -1,5 +1,12 @@
 #!/bin/bash
 #
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
+#
 # SCRIPT:   install_externals.sh
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
@@ -122,3 +129,9 @@ echo "Using DART root directory $dart_dir"
 # Start processing the externals - as long as the directory structure in
 # "externals" mirrors that of the main DART directory, this should work
 traverse_tree "${dart_dir}/${EXTERNALS_PATH}"
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

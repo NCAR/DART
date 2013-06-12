@@ -1,10 +1,10 @@
 #!/bin/csh
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 #
 # this script loops over days, calling the GPS convert script
 # once per day.  it can roll over month and year boundaries.
@@ -13,16 +13,53 @@
 # built and exist in the current directory, and advance_time
 # requires a minimal input.nml namelist file (empty utilities_nml only).
 
-# set the first and last days.  can roll over month and year boundaries.
-set start_year=2007
-set start_month=12
-set start_day=30
+# -------------------
 
-set end_year=2008
-set end_month=1
-set end_day=10
+# set the first and last days.  can roll over month and year boundaries.
+set start_year=2009
+set start_month=9
+set start_day=1
+
+set end_year=2009
+set end_month=9
+set end_day=3
+
+
+# for each day: download the data or not, convert to daily obs_seq files 
+# or not, and delete the data files after conversion or not.
+set do_download = 'yes'
+set do_convert  = 'yes'
+set do_delete   = 'no'
+
+
+# set the list of satellite data to convert.
+# - in the comments below, 'now*' is the current date minus 3-4 months 
+#   since the reprocessed datasets lag the realtime data.  'realtime' 
+#   is data from up to today's date but with less quality control.
+# - dates below are YYYY.DDD  where DDD is day number in the year.
+# - only select one of reprocessed or realtime for a particular
+#   satellite or you will get duplicate observations.
+
+rm -fr satlist
+echo cosmic      >>! satlist  # all 6 COSMIC : 2006.194 - now*
+## echo cosmicrt >>! satlist  # COSMIC : realtime
+echo sacc        >>! satlist  # Argentinan SAC-C : 2006.068 - now*
+## echo saccrt   >>! satlist  # SAC-C : realtime
+echo ncofs       >>! satlist  # new Air Force C/NOFS : 2010.335 - now*
+## echo ncofsrt  >>! satlist  # C/NOFS : realtime
+echo grace       >>! satlist  # Grace-A : 2007.059 - now*
+echo tsx         >>! satlist  # German TerraSAR-X : 2008.041 - now*
+echo metopa      >>! satlist  # Metop-A/GRAS : 2008.061 - now*
+echo champ       >>! satlist  # CHAMP : 2001.139 - 2008.274
+
+
+# where to download the data and do the conversions, relative to
+# this shell_scripts directory.
+set datadir = ../gpsro
 
 # end of things you should have to set in this script
+
+# -------------------
 
 # convert the start and stop times to gregorian days, so we can
 # compute total number of days including rolling over month and
@@ -73,11 +110,10 @@ while ( $d <= $totaldays )
   # use $year, $month, $day, and $greg as needed.
   # month, day have leading 0s if needed so they are always 2 digits
 
-  # THE WORK HAPPENS HERE
-  # call the convert script.  in this case the 3 yes's are to
-  # download, convert, delete in one go - each day at a time.
+  # THE WORK HAPPENS HERE:  call the convert script for each day.
 
-  ./cosmic_to_obsseq.csh ${year}${month}${day} ../cosmic yes yes yes
+  ./gpsro_to_obsseq.csh ${year}${month}${day} $datadir \
+                         $do_download $do_convert $do_delete ./satlist
 
 
   # advance the day; the output is YYYYMMDD00

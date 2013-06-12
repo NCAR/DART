@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module model_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use        types_mod, only : r8, PI
 use time_manager_mod, only : time_type, set_time, get_time
@@ -48,10 +44,10 @@ public :: get_model_size, &
           ens_mean_for_model
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! Simplest 1D advection model with spatially-constant wind
 
@@ -184,6 +180,13 @@ source_random_amp = source_random_amp_frac * mean_source
 
 ! Compute the width of the domain in meters
 domain_width_meters = num_grid_points * grid_spacing_meters
+
+! For any routines that want to use the random number
+! generator later on, initialize it.
+if(.not. random_seq_init) then
+   call init_random_seq(random_seq, 1)
+   random_seq_init = .true.
+endif
 
 end subroutine static_init_model
 
@@ -989,11 +992,6 @@ real(r8) :: avg_wind
 interf_provided = .true.
 
 write(*, *) 'in pert_model_state'
-! Initialize my random number sequence
-if(.not. random_seq_init) then
-   call init_random_seq(random_seq, 1)
-   random_seq_init = .true.
-endif
 
 ! Need to make sure perturbed states are not centered on true value
 ! This model is too forgiving in such circumstances
@@ -1048,3 +1046,9 @@ end subroutine ens_mean_for_model
 ! End of model_mod
 !===================================================================
 end module model_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

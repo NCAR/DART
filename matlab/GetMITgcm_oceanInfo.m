@@ -7,31 +7,36 @@ function pinfo = GetMITgcm_oceanInfo(pstruct,fname,routine);
 % fname     Name of the DART netcdf file
 % routine   name of subsequent plot routine.
 
-%% DART software - Copyright © 2004 - 2010 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
-model = nc_attget(fname, nc_global, 'model');
-
-if strcmp(lower(model),'mitgcm_ocean') ~= 1
+if strcmp(lower(pstruct.model),'mitgcm_ocean') ~= 1
    error('Not so fast, this is not an MITgcm_ocean model.')
 end
 
 copy   = nc_varget(fname,'copy');
-times  = nc_varget(fname,'time');
 levels = nc_varget(fname,  'ZG');
 XG     = nc_varget(fname,  'XG');
 XC     = nc_varget(fname,  'XC');
 YG     = nc_varget(fname,  'YG');
 YC     = nc_varget(fname,  'YC');
+
+times      = nc_varget(fname,'time');
+timeunits  = nc_attget(fname,'time','units');
+timebase   = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
+timeorigin = datenum(timebase(1),timebase(2),timebase(3));
+dates      = times + timeorigin;
+num_times  = length(dates);
+
+disp('GetMITgcm_oceanInfo: pstruct should have time/dates already ...')
+
+clear times timeunits timebase timeorigin
+
 
 % A more robust way would be to use the netcdf low-level ops:
 % bob = var(f);     % bob is a cell array of ncvars
@@ -54,7 +59,6 @@ switch lower(deblank(routine))
       [lat  , latind] = GetLatitude( pgvar,YG,YC);
       [lon  , lonind] = GetLongitude(pgvar,XG,XC);
 
-      pinfo.model      = model;
       pinfo.fname      = fname;
       pinfo.var        = pgvar;
       pinfo.level      = level;
@@ -77,7 +81,7 @@ switch lower(deblank(routine))
        comp_var               = GetVar(prognostic_vars,          base_var);
       [comp_lvl, comp_lvlind] = GetLevel(    comp_var,levels,    base_lvl);
 
-      pinfo.model     = model    ; pinfo.fname       = fname      ;
+      pinfo.fname     = fname      ;
       pinfo.base_var  = base_var ; pinfo.comp_var    = comp_var   ;
       pinfo.base_time = base_time; pinfo.base_tmeind = base_tmeind;
       pinfo.base_lvl  = base_lvl ; pinfo.base_lvlind = base_lvlind;
@@ -100,7 +104,7 @@ switch lower(deblank(routine))
       [comp_lat, comp_latind] = GetLatitude( comp_var,YG,YC);
       [comp_lon, comp_lonind] = GetLongitude(comp_var,XG,XC);
 
-      pinfo.model     = model    ; pinfo.fname       = fname      ;
+      pinfo.fname     = fname      ;
       pinfo.base_var  = base_var ; pinfo.comp_var    = comp_var   ;
       pinfo.base_time = base_time; pinfo.base_tmeind = base_tmeind;
       pinfo.base_lvl  = base_lvl ; pinfo.base_lvlind = base_lvlind;
@@ -119,7 +123,6 @@ switch lower(deblank(routine))
       copyindices     = SetCopyID(fname);
       copy            = length(copyindices);
 
-      pinfo.model          = model;
       pinfo.var_names      = pgvar;
       pinfo.truth_file     = [];
       pinfo.prior_file     = pstruct.prior_file;
@@ -161,7 +164,6 @@ switch lower(deblank(routine))
       s1 = input('Input line type string. <cr> for ''k-''  ','s');
       if isempty(s1), ltype = 'k-'; else ltype = s1; end
 
-      pinfo.model    =model;
       pinfo.fname    =fname;
       pinfo.var1name = var1;
       pinfo.var2name = var2;
@@ -189,11 +191,11 @@ str = sprintf(' %s ',prognostic_vars{1});
 for i = 2:length(prognostic_vars),
    str = sprintf(' %s %s ',str,prognostic_vars{i});
 end
-fprintf('Default variable is ''%s'', if this is OK, <cr>;\n',pgvar)  
+fprintf('Default variable is ''%s'', if this is OK, <cr>;\n',pgvar)
 fprintf('If not, please enter one of: %s\n',str)
 varstring = input('(no syntax required)\n','s');
 
-if ~isempty(varstring), pgvar = strtrim(varstring); end 
+if ~isempty(varstring), pgvar = strtrim(varstring); end
 inds        = strfind(pgvar,',');
 pgvar(inds) = '';
 a           = strread(pgvar,'%s','delimiter',' ');
@@ -208,10 +210,10 @@ fprintf('If not, enter a time between %.4f and %.4f, we use the closest.\n', ...
                          min(times),max(times))
 varstring = input('(no syntax required)\n','s');
 
-if ~isempty(varstring), time  = str2num(varstring); end 
+if ~isempty(varstring), time  = str2num(varstring); end
 
 d       = abs(time - times);    % crude distance
-ind     = find(min(d) == d);  % multiple minima possible 
+ind     = find(min(d) == d);  % multiple minima possible
 timeind = ind(1);             % use the first one
 time    = times(timeind);
 
@@ -226,7 +228,7 @@ else
     lvlind = 1;
 end
 
-if strcmp(lower(pgvar),'ssh') ==1 
+if strcmp(lower(pgvar),'ssh') ==1
    disp('''SSH'' only has one level, using it.')
    level  = 1;
    lvlind = 1;
@@ -236,10 +238,10 @@ else
                          1,length(levels))
    varstring = input('we''ll use the closest (no syntax required)\n','s');
 
-   if ~isempty(varstring), lvlind = str2num(varstring); end 
+   if ~isempty(varstring), lvlind = str2num(varstring); end
 
    % d      = abs(level - levels);  % crude distance
-   % ind    = find(min(d) == d);    % multiple minima possible 
+   % ind    = find(min(d) == d);    % multiple minima possible
    % lvlind = ind(1);               % use the first one
    level  = levels(lvlind);
 end
@@ -262,10 +264,10 @@ fprintf('If not, enter a longitude between %.2f and %.2f, we use the closest.\n'
                          min(lons),max(lons))
 varstring = input('(no syntax required)\n','s');
 
-if ~isempty(varstring), lon  = str2num(varstring); end 
+if ~isempty(varstring), lon  = str2num(varstring); end
 
 d      = abs(lon - lons);    % crude distance
-ind    = find(min(d) == d);  % multiple minima possible 
+ind    = find(min(d) == d);  % multiple minima possible
 lonind = ind(1);             % use the first one
 lon    = lons(lonind);
 
@@ -287,10 +289,17 @@ fprintf('If not, enter a latitude between %.2f and %.2f, we use the closest.\n',
                          min(lats),max(lats))
 varstring = input('(no syntax required)\n','s');
 
-if ~isempty(varstring), lat = str2num(varstring); end 
+if ~isempty(varstring), lat = str2num(varstring); end
 
 d      = abs(lat - lats);    % crude distance
-ind    = find(min(d) == d);  % multiple minima possible 
+ind    = find(min(d) == d);  % multiple minima possible
 latind = ind(1);             % use the first one
 lat    = lats(latind);
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

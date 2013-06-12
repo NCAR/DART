@@ -173,12 +173,13 @@ This namelist is read in a file called <em class=file>input.nml</em>
      the obs_def directory in files such as 
       <em class="file">obs_def_reanalysis_bufr_mod.f90</em>.</TD></TR>
 
-<TR><!--contents--><TD valign=top>force           </TD>
+<TR><!--contents--><TD valign=top>overwrite_output </TD>
     <!--  type  --><TD valign=top>logical<BR>
-          <em class="unit">[default: .false.]</em></TD>
+          <em class="unit">[default: .true.]</em></TD>
     <!--descript--><TD> If set to .true., will allow preprocess to overwrite
      existing obs_kind_mod.f90 and obs_def_mod.f90 files without complaint.  
-     The default setting prevents you from overwriting existing files. </TD></TR>
+     The default setting has changed from .FALSE. to .TRUE., so by default it
+     will not complain about existing files but will silently update them in place. </TD></TR>
 
 </TABLE>
 

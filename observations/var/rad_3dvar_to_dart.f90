@@ -1,19 +1,16 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
  
 PROGRAM rad_3dvar_to_dart
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use         types_mod, only : r8, missing_r8, missing_data, DEG2RAD, earth_radius
 use     utilities_mod, only : open_file, close_file, initialize_utilities, &
                               register_module, logfileunit, nmlfileunit, E_MSG, timestamp, &
-                              error_handler, find_namelist_in_file, check_namelist_read
+                              error_handler, find_namelist_in_file, check_namelist_read, &
+                              finalize_utilities
 use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, insert_obs_in_seq, &
                               set_copy_meta_data, set_qc_meta_data, write_obs_seq, assignment(=), &
                               init_obs, static_init_obs_sequence, set_obs_def, set_obs_values, set_qc
@@ -28,10 +25,10 @@ use obs_def_radar_mod, only : set_radial_vel
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
 type(obs_type)          :: obs, prev_obs
@@ -286,18 +283,20 @@ ENDDO reports
 
 call close_file(iunit)                                                        
 
-!  PRINT OUT
-!  =============
- 
-write(unit=*, fmt='(5x,a,i6,a)') &
-     'Read:  ', num_Radar, ' Radar reports,'
+write(unit=*, fmt='(5x,a,i6,a)') 'Read:  ', num_Radar, ' Radar reports,'
 
-! Write out the sequence
 call write_obs_seq(seq, obs_seq_out_file_name)
 
-write(logfileunit,*)'FINISHED rad_3dvar_to_dart.'
-write(logfileunit,*)
+call error_handler(E_MSG, 'rad_3dvar_to_dart', 'FINISHED rad_3dvar_to_dart.')
+call error_handler(E_MSG, 'rad_3dvar_to_dart', 'Finished successfully.', &
+                   source,revision,revdate)
+call finalize_utilities()
 
-call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
  
 END PROGRAM rad_3dvar_to_dart
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

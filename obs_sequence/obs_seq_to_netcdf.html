@@ -226,6 +226,7 @@
 <H3 class=indent1>Discussion</H3>
 
 <P>This namelist is read in a file called <em class=file>input.nml</em>.
+   The default values specify one giant 'bin'.
    <br />
    <br />
    If the <em class="code">print_table</em> variable is 'true', a summary
@@ -255,14 +256,14 @@
     <!--descript--><TD>the first time of the first assimilation period.
             The six integers are: year, month, day, hour, hour, minute, 
             second -- in that order.<br>
-            Default: 2008, 9, 7, 0, 0, 0</TD></TR>
+            Default: 1601, 1, 1, 0, 0, 0</TD></TR>
 
 <TR><!--contents--><TD valign=top> first_bin_end  </TD>
     <!--  type  --><TD valign=top> integer, dimension(6) </TD>
     <!--descript--><TD>the end of the first assimilation period.
             The six integers are: year, month, day, hour, hour, minute,
             second -- in that order.<br>
-            Default: 2008, 9, 7, 2, 0, 0</TD></TR>
+            Default: 2999, 1, 1, 0, 0, 0</TD></TR>
 
 <TR><!--contents--><TD valign=top> last_bin_end  </TD>
     <!--  type  --><TD valign=top> integer, dimension(6) </TD>
@@ -276,7 +277,7 @@
             will stop on or before the time defined by
             <em class=code>last_bin_end</em>. 
             See also <em class=code>max_num_bins</em>.<BR>
-            Default: 2008, 9, 11, 0, 0, 0</TD></TR>
+            Default: 2999, 1, 1, 0, 0, 0</TD></TR>
 
 <TR><!--contents--><TD valign=top> bin_interval_days, bin_interval_seconds </TD>
     <!--  type  --><TD valign=top> integer </TD>
@@ -286,8 +287,8 @@
             not possible to define a bin_interval such that there are 
 	    overlapping bins (i.e. you can't use the same observations 
 	    more than once). The default is 6 hours. <BR>
-            Default: <em class=code>bin_interval_days</em> == 0, and <br />
-            <em class=code>bin_interval_seconds</em> == 21600 <br /></TD></TR>
+            Default: <em class=code>bin_interval_days</em> == 1000000, and <br />
+            <em class=code>bin_interval_seconds</em> == 0 <br /></TD></TR>
 
 <TR><!--contents--><TD valign=top> max_num_bins </TD>
     <!--  type  --><TD valign=top> integer </TD>
@@ -614,7 +615,7 @@ types and not only the observation types in the netCDF file.
    /
 </pre>
 
-> cat olist<br />
+&gt; <em class=input>cat olist</em><br />
 /users/thoar/temp/obs_0001/obs_seq.final<br />
 /users/thoar/temp/obs_0002/obs_seq.final<br />
 /users/thoar/temp/obs_0003/obs_seq.final<br />

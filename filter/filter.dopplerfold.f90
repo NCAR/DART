@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program filter
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !------------------------------------------------------------------------------
 use types_mod,            only : r8, missing_r8, metadatalength
@@ -21,8 +17,9 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  set_qc_meta_data, get_expected_obs, get_first_obs,          &
                                  get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
                                  delete_seq_tail, replace_obs_values, replace_qc,            &
-                                 destroy_obs_sequence, get_qc_meta_data
-use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
+                                 destroy_obs_sequence, get_qc_meta_data, add_qc
+use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
+                                 get_obs_kind
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                  operator(-), print_time
 use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
@@ -40,7 +37,10 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  read_ensemble_restart, write_ensemble_restart,              &
                                  compute_copy_mean, compute_copy_mean_sd,                    &
                                  compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
-                                 get_ensemble_time, set_ensemble_time
+                                 get_ensemble_time, set_ensemble_time, broadcast_copy,       &
+                                 prepare_to_read_from_vars, prepare_to_write_to_vars, prepare_to_read_from_copies,    &
+                                 prepare_to_write_to_copies, get_ensemble_time, set_ensemble_time,    &
+                                 map_task_to_pe,  map_pe_to_task, prepare_to_update_copies
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
                                  do_obs_inflate, adaptive_inflate_type,                      &
@@ -60,10 +60,10 @@ use smoother_mod,         only : smoother_read_restart, advance_smoother,       
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! Some convenient global storage items
 character(len=129)      :: msgstring
@@ -101,6 +101,7 @@ integer  :: num_output_obs_members   = 0
 integer  :: output_interval     = 1
 integer  :: num_groups          = 1
 real(r8) :: outlier_threshold   = -1.0_r8
+logical  :: enable_special_outlier_code = .false.
 real(r8) :: input_qc_threshold  = 3.0_r8
 logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
@@ -137,7 +138,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    start_from_restart, output_restart, obs_sequence_in_name, obs_sequence_out_name, &
    restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds,  &
    first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds,              &
-   obs_window_days, obs_window_seconds,                                             &
+   obs_window_days, obs_window_seconds, enable_special_outlier_code,                &
    num_output_state_members, num_output_obs_members, output_restart_mean,           &
    output_interval, num_groups, outlier_threshold, trace_execution,                 &
    input_qc_threshold, output_forward_op_errors, output_timestamps,                 &
@@ -215,6 +216,10 @@ if(ens_size < 2) then
    call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
 endif
 
+! informational message to log
+write(msgstring, '(A,I5)') 'running with an ensemble size of ', ens_size
+call error_handler(E_MSG,'filter:', msgstring, source, revision, revdate)
+
 ! See if smoothing is turned on
 ds = do_smoothing()
 
@@ -229,6 +234,12 @@ do i = 1, 2
       call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
    endif
 end do
+
+! if doing something special with outlier threshold, say so
+if (enable_special_outlier_code) then
+   call error_handler(E_MSG,'filter:', 'special outlier threshold handling enabled', &
+      source, revision, revdate)
+endif
 
 ! Observation space inflation for posterior not currently supported
 if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
@@ -264,6 +275,7 @@ call timestamp_message('After  setting up space for observations')
 call     trace_message('After  setting up space for observations')
 
 call trace_message('Before setting up space for ensembles')
+
 ! Allocate model size storage and ens_size storage for metadata for outputting ensembles
 model_size = get_model_size()
 
@@ -307,6 +319,17 @@ call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart
    inf_in_file_name(2), inf_out_file_name(2), inf_diag_file_name(2), inf_initial(2),  &
    inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2), inf_sd_lower_bound(2),  &
    ens_handle, POST_INF_COPY, POST_INF_SD_COPY, 'Posterior')
+
+if (do_output()) then
+   if (inf_flavor(1) > 0 .and. inf_damping(1) < 1.0_r8) then
+      write(msgstring, '(A,F12.6,A)') 'Prior inflation damping of ', inf_damping(1), ' will be used'
+      call error_handler(E_MSG,'filter:', msgstring)
+   endif
+   if (inf_flavor(2) > 0 .and. inf_damping(2) < 1.0_r8) then
+      write(msgstring, '(A,F12.6,A)') 'Posterior inflation damping of ', inf_damping(2), ' will be used'
+      call error_handler(E_MSG,'filter:', msgstring)
+   endif
+endif
 
 call trace_message('After  initializing inflation')
 
@@ -410,12 +433,12 @@ AdvanceTime : do
 
    call trace_message('After  move_ahead checks time of data and next obs')
 
-   ! Only processes with an ensemble copy know to exit; 
+   ! Only processes with an ensemble copy know to exit;
    ! For now, let process 0 broadcast its value of key_bounds
    ! This will synch the loop here and allow everybody to exit
    ! Need to clean up and have a broadcast that just sends a single integer???
    ! PAR For now, can only broadcast real arrays
-   call filter_sync_keys_time(key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
+   call filter_sync_keys_time(ens_handle, key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
    if(key_bounds(1) < 0) then 
       call trace_message('No more obs to assimilate, exiting main loop', 'filter:', -1)
       exit AdvanceTime
@@ -486,6 +509,7 @@ AdvanceTime : do
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
       call trace_message('Before prior inflation damping and prep')
       if (inf_damping(1) /= 1.0_r8) then
+         call prepare_to_update_copies(ens_handle)
          ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
             inf_damping(1) * (ens_handle%copies(PRIOR_INF_COPY, :) - 1.0_r8) 
       endif
@@ -508,27 +532,27 @@ AdvanceTime : do
    ! and obs_values. ens_size is the number of regular ensemble members, 
    ! not the number of copies
    call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, &
-      seq, keys, obs_val_index, num_obs_in_set, &
-      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY)
+      seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
+      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+      isprior=.true.)
 
    ! Although they are integer, keys are one 'copy' of obs ensemble 
    ! (the last one?)
-   call put_copy(0, obs_ens_handle, OBS_KEY_COPY, keys * 1.0_r8)
+   call put_copy(map_task_to_pe(obs_ens_handle, 0), obs_ens_handle, OBS_KEY_COPY, keys * 1.0_r8)  
 
-   ! Ship the ensemble mean to the model; some models need this for 
-   ! computing distances.  find out who stores the ensemble mean copy.
+   ! While we're here, make sure the timestamp on the actual ensemble copy
+   ! for the mean has the current time.  If the user requests it be written
+   ! out, it needs a valid timestamp.
    call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
-   ! Broadcast it to everybody else
-   if(my_task_id() == mean_owner) then
+   if(ens_handle%my_pe == mean_owner) then
       ! Make sure the timestamp for the mean is the current time.
       call set_ensemble_time(ens_handle, mean_owners_index, curr_ens_time)
-      ens_mean = ens_handle%vars(:, mean_owners_index)
-      call broadcast_send(mean_owner, ens_mean)
-   else
-      call broadcast_recv(mean_owner, ens_mean)
    endif
 
-   ! Now send the mean to the model in case it's needed
+   ! Make sure all tasks have a copy of the ensemble mean.
+   call broadcast_copy(ens_handle, ENS_MEAN_COPY, ens_mean)
+
+   ! Now send the mean to the model_mod in case it's needed
    call ens_mean_for_model(ens_mean)
 
    call timestamp_message('After  computing prior observation values')
@@ -539,11 +563,13 @@ AdvanceTime : do
    if ((output_interval > 0) .and. &
        (time_step_number / output_interval * output_interval == time_step_number)) then
       call trace_message('Before prior state space diagnostics')
-      call filter_state_space_diagnostics(PriorStateUnit, ens_handle, &
+      call timestamp_message('Before prior state space diagnostics')
+      call filter_state_space_diagnostics(curr_ens_time, PriorStateUnit, ens_handle, &
          model_size, num_output_state_members, &
          output_state_mean_index, output_state_spread_index, &
          output_inflation, ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
          prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+      call timestamp_message('After  prior state space diagnostics')
       call trace_message('After  prior state space diagnostics')
    endif
   
@@ -557,8 +583,9 @@ AdvanceTime : do
       OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
    call trace_message('After  observation space diagnostics')
   
-   ! Need obs to be copy complete for assimilation
-   call all_vars_to_all_copies(obs_ens_handle)
+   ! FIXME:  i believe both copies and vars are equal at the end
+   ! of the obs_space diags, so we can skip this. 
+   !call all_vars_to_all_copies(obs_ens_handle)
 
    write(msgstring, '(A,I8,A)') 'Ready to assimilate up to', size(keys), ' observations'
    call trace_message(msgstring, 'filter:', -1)
@@ -602,6 +629,7 @@ AdvanceTime : do
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
       call trace_message('Before posterior inflation damping and prep')
       if (inf_damping(2) /= 1.0_r8) then
+         call prepare_to_update_copies(ens_handle)
          ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
             inf_damping(2) * (ens_handle%copies(POST_INF_COPY, :) - 1.0_r8) 
       endif
@@ -626,8 +654,9 @@ AdvanceTime : do
    ! and obs_values.  ens_size is the number of regular ensemble members, 
    ! not the number of copies
    call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, &
-      seq, keys, obs_val_index, num_obs_in_set, &
-      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY)
+      seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
+      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+      isprior=.false.)
 
    call timestamp_message('After  computing posterior observation values')
    call     trace_message('After  computing posterior observation values')
@@ -642,18 +671,22 @@ AdvanceTime : do
    if ((output_interval > 0) .and. &
        (time_step_number / output_interval * output_interval == time_step_number)) then
       call trace_message('Before posterior state space diagnostics')
-      call filter_state_space_diagnostics(PosteriorStateUnit, ens_handle, &
+      call timestamp_message('Before posterior state space diagnostics')
+      call filter_state_space_diagnostics(curr_ens_time, PosteriorStateUnit, ens_handle, &
          model_size, num_output_state_members, output_state_mean_index, &
          output_state_spread_index, &
          output_inflation, ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
          post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
       ! Cyclic storage for lags with most recent pointed to by smoother_head
       ! ens_mean is passed to avoid extra temp storage in diagnostics
+
       call smoother_ss_diagnostics(model_size, num_output_state_members, &
          output_inflation, ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
          POST_INF_COPY, POST_INF_SD_COPY)
+      call timestamp_message('After  posterior state space diagnostics')
       call trace_message('After  posterior state space diagnostics')
    endif
+
 
    call trace_message('Before posterior obs space diagnostics')
 
@@ -679,15 +712,7 @@ AdvanceTime : do
          call timestamp_message('Before computing posterior state space inflation')
 
          ! Ship the ensemble mean to the model; some models need this for computing distances
-         ! Who stores the ensemble mean copy
-         call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
-         ! Broadcast it to everybody else
-         if(my_task_id() == mean_owner) then
-            ens_mean = ens_handle%vars(:, mean_owners_index)
-            call broadcast_send(mean_owner, ens_mean)
-         else
-            call broadcast_recv(mean_owner, ens_mean)
-         endif
+         call broadcast_copy(ens_handle, ENS_MEAN_COPY, ens_mean)
 
          ! Now send the mean to the model in case it's needed
          call ens_mean_for_model(ens_mean)
@@ -709,11 +734,12 @@ AdvanceTime : do
       endif  ! sd >= 0 or sd from restart file
    endif  ! if doing state space posterior inflate
 
+
 !-------- End of posterior  inflate ----------------
 
    ! If observation space inflation, output the diagnostics
-   if(do_obs_inflate(prior_inflate) .and. my_task_id() == 0) & 
-      call output_inflate_diagnostics(prior_inflate, ens_handle%time(1))
+   if(do_obs_inflate(prior_inflate) .and. my_task_id() == 0) &
+      call output_inflate_diagnostics(prior_inflate, curr_ens_time)
 
    call trace_message('Near bottom of main loop, cleaning up obs space')
    ! Deallocate storage used for keys for each set
@@ -761,12 +787,10 @@ if(output_restart_mean) &
 if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')
 
-! The code *should* do this, but it is a change that isn't absolutely
-! required to fix any reported bugs, so i'm leaving it commented out
-! in the interests of not breaking anything that isn't expecting to
-! have the cleanup routine called.  next release of dart will certainly
-! call this to match the call to static_init_assim_model().
-!call end_assim_model()
+! Give the model_mod code a chance to clean up. 
+call trace_message('Before end_model call')
+call end_assim_model()
+call trace_message('After  end_model call')
 
 call trace_message('Before ensemble and obs memory cleanup')
 call end_ensemble_manager(ens_handle)
@@ -927,7 +951,9 @@ call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 
 ! Initialize the model class data now that obs_sequence is all set up
+call trace_message('Before init_model call')
 call static_init_assim_model()
+call trace_message('After  init_model call')
 
 end subroutine filter_initialize_modules_used
 
@@ -940,8 +966,8 @@ type(obs_sequence_type), intent(inout) :: seq
 integer,                 intent(out)   :: in_obs_copy, obs_val_index
 integer,                 intent(out)   :: input_qc_index, DART_qc_index
 
-character(len = metadatalength) :: qc_meta_data = 'DART quality control'
 character(len = metadatalength) :: no_qc_meta_data = 'No incoming data QC'
+character(len = metadatalength) :: dqc_meta_data   = 'DART quality control'
 character(len = 129) :: obs_seq_read_format
 integer              :: obs_seq_file_id, num_obs_copies
 integer              :: tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, qc_num_inc, num_qc
@@ -952,31 +978,61 @@ logical              :: pre_I_format
 ! Prior and posterior values for all selected fields (so times 2)
 num_obs_copies = 2 * num_output_obs_members + 4
 
-! Input file can have one qc field or none, not prepared to have more
-! The one that exists would be the NCEP and perfect_model_obs generated values in general
+! Input file can have one qc field, none, or more.  note that read_obs_seq_header
+! does NOT return the actual metadata values, which would be helpful in trying
+! to decide if we need to add copies or qcs.
 call read_obs_seq_header(obs_sequence_in_name, tnum_copies, tnum_qc, tnum_obs, tmax_num_obs, &
    obs_seq_file_id, obs_seq_read_format, pre_I_format, close_the_file = .true.)
 
-if(tnum_qc == 0) then
-   input_qc_index = 1
-   DART_qc_index = 2
-   ! Need 2 new qc fields, for dummy incoming qc and for the DART qc
-   qc_num_inc = 2
-   ! original code
-   !input_qc_index = 0
-   !DART_qc_index = 1
-else if(tnum_qc == 1) then
-   input_qc_index = 1
-   DART_qc_index = 2
-   ! Need 1 new qc field for the DART quality control
-   qc_num_inc = 1
+
+! if there are less than 2 incoming qc fields, we will need
+! to make at least 2 (one for the dummy data qc and one for
+! the dart qc).
+if (tnum_qc < 2) then
+   qc_num_inc = 2 - tnum_qc
 else
-   write(msgstring, *) 'input obs_seq file has ', tnum_qc, ' qc fields; must be < 2'
-   call error_handler(E_ERR,'filter_setup_obs_sequence', msgstring, source, revision, revdate)
+   qc_num_inc = 0
 endif
 
-! Read in with enough space for diagnostic output values and add'l qc field
+! Read in with enough space for diagnostic output values and add'l qc field(s)
 call read_obs_seq(obs_sequence_in_name, num_obs_copies, qc_num_inc, 0, seq)
+
+! check to be sure that we have an incoming qc field.  if not, look for
+! a blank qc field
+input_qc_index = get_obs_qc_index(seq)
+if (input_qc_index < 0) then
+   input_qc_index = get_blank_qc_index(seq)
+   if (input_qc_index < 0) then
+      ! Need 1 new qc field for dummy incoming qc
+      call add_qc(seq, 1)
+      input_qc_index = get_blank_qc_index(seq)
+      if (input_qc_index < 0) then
+         call error_handler(E_ERR,'filter_setup_obs_sequence', &
+           'error adding blank qc field to sequence; should not happen', &
+            source, revision, revdate)
+      endif
+   endif
+   ! Since we are constructing a dummy QC, label it as such
+   call set_qc_meta_data(seq, input_qc_index, no_qc_meta_data)
+endif
+
+! check to be sure we either find an existing dart qc field and
+! reuse it, or we add a new one.
+DART_qc_index = get_obs_dartqc_index(seq)
+if (DART_qc_index < 0) then
+   DART_qc_index = get_blank_qc_index(seq)
+   if (DART_qc_index < 0) then
+      ! Need 1 new qc field for the DART quality control
+      call add_qc(seq, 1)
+      DART_qc_index = get_blank_qc_index(seq)
+      if (DART_qc_index < 0) then
+         call error_handler(E_ERR,'filter_setup_obs_sequence', &
+           'error adding blank qc field to sequence; should not happen', &
+            source, revision, revdate)
+      endif
+   endif
+   call set_qc_meta_data(seq, DART_qc_index, dqc_meta_data)
+endif
 
 ! Get num of obs copies and num_qc
 num_qc = get_num_qc(seq)
@@ -985,12 +1041,9 @@ in_obs_copy = get_num_copies(seq) - num_obs_copies
 ! Create an observation type temporary for use in filter
 call init_obs(observation, get_num_copies(seq), num_qc)
 
-! Set initial DART quality control to 0 for all observations
-! Leaving them uninitialized, obs_space_diagnostics should set them all without reading them
-call set_qc_meta_data(seq, DART_qc_index, qc_meta_data)
-
-! If we are constructing a dummy QC, label it as such
-if (tnum_qc == 0) call set_qc_meta_data(seq, input_qc_index, no_qc_meta_data)
+! Set initial DART quality control to 0 for all observations?
+! Or leave them uninitialized, since
+! obs_space_diagnostics should set them all without reading them
 
 ! Determine which copy has actual obs
 obs_val_index = get_obs_copy_index(seq)
@@ -1007,7 +1060,7 @@ integer                             :: get_obs_copy_index
 integer :: i
 
 ! Determine which copy in sequence has actual obs
-!--------
+
 do i = 1, get_num_copies(seq)
    get_obs_copy_index = i
    ! Need to look for 'observation'
@@ -1030,7 +1083,7 @@ integer                             :: get_obs_prior_index
 integer :: i
 
 ! Determine which copy in sequence has prior mean, if any.
-!--------
+
 do i = 1, get_num_copies(seq)
    get_obs_prior_index = i
    ! Need to look for 'prior mean'
@@ -1056,9 +1109,13 @@ integer :: i
 ! the metadata has to have.  look for 'qc' or 'QC' and the
 ! first metadata that matches (much like 'observation' above)
 ! is the winner.
-!--------
+
 do i = 1, get_num_qc(seq)
    get_obs_qc_index = i
+
+   ! Need to avoid 'QC metadata not initialized'
+   if(index(get_qc_meta_data(seq, i), 'QC metadata not initialized') > 0) cycle
+  
    ! Need to look for 'QC' or 'qc'
    if(index(get_qc_meta_data(seq, i), 'QC') > 0) return
    if(index(get_qc_meta_data(seq, i), 'qc') > 0) return
@@ -1081,7 +1138,7 @@ integer                             :: get_obs_dartqc_index
 integer :: i
 
 ! Determine which qc, if any, has the DART qc
-!--------
+
 do i = 1, get_num_qc(seq)
    get_obs_dartqc_index = i
    ! Need to look for 'DART quality control'
@@ -1092,6 +1149,28 @@ end do
 get_obs_dartqc_index = -1
 
 end function get_obs_dartqc_index
+
+!-------------------------------------------------------------------------
+
+function get_blank_qc_index(seq)
+
+type(obs_sequence_type), intent(in) :: seq
+integer                             :: get_blank_qc_index
+
+integer :: i
+
+! Determine which qc, if any, is blank
+
+do i = 1, get_num_qc(seq)
+   get_blank_qc_index = i
+   ! Need to look for 'QC metadata not initialized'
+   if(index(get_qc_meta_data(seq, i), 'QC metadata not initialized') > 0) return
+end do
+! Falling off end means unused slot not found; not fatal!
+
+get_blank_qc_index = -1
+
+end function get_blank_qc_index
 
 !-------------------------------------------------------------------------
 
@@ -1171,7 +1250,8 @@ else
 endif
 
 ! Temporary print of initial model time
-if(my_task_id() == 0) then
+if(ens_handle%my_pe == 0) then
+   ! FIXME for the future: if pe 0 is not task 0, pe 0 can not print debug messages
    call get_time(time, secs, days)
    write(msgstring, *) 'initial model time of 1st ensemble member (days,seconds) ',days,secs
    call error_handler(E_DBG,'filter_read_restart',msgstring,source,revision,revdate)
@@ -1190,6 +1270,7 @@ type(adaptive_inflate_type), intent(inout) :: inflate
 integer :: j, group, grp_bot, grp_top, grp_size
 
 ! Assumes that the ensemble is copy complete
+call prepare_to_update_copies(ens_handle)
 
 ! Inflate each group separately;  Divide ensemble into num_groups groups
 grp_size = ens_size / num_groups
@@ -1211,7 +1292,8 @@ end subroutine filter_ensemble_inflate
 !-------------------------------------------------------------------------
 
 subroutine get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, keys, &
-   obs_val_index, num_obs_in_set, OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY)
+   obs_val_index, input_qc_index, num_obs_in_set, &
+   OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, isprior)
 
 ! Computes forward observation operators and related quality control indicators.
 
@@ -1219,9 +1301,10 @@ type(ensemble_type),     intent(in)    :: ens_handle
 type(ensemble_type),     intent(inout) :: obs_ens_handle, forward_op_ens_handle 
 type(obs_sequence_type), intent(in)    :: seq
 integer,                 intent(in)    :: keys(:)
-integer,                 intent(in)    :: obs_val_index, num_obs_in_set
+integer,                 intent(in)    :: obs_val_index, input_qc_index, num_obs_in_set
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
+logical,                 intent(in)    :: isprior
 
 real(r8)           :: input_qc(1), obs_value(1), obs_err_var, thisvar(1)
 integer            :: j, k, my_num_copies, istatus , global_ens_index, thiskey(1)
@@ -1231,9 +1314,15 @@ type(obs_def_type) :: obs_def
 ! Assumed that both ensembles are var complete
 ! Each PE must loop to compute its copies of the forward operators
 ! IMPORTANT, IT IS ASSUMED THAT ACTUAL ENSEMBLES COME FIRST
+! HK: I think it is also assumed that the ensemble members are in the same order in
+! each of the handles
 
 ! Loop through my copies and compute expected value
 my_num_copies = get_my_num_copies(obs_ens_handle)
+
+call prepare_to_write_to_vars(obs_ens_handle)
+call prepare_to_write_to_vars(forward_op_ens_handle)
+call prepare_to_read_from_vars(ens_handle)
 
 ! Loop through all observations in the set
 ALL_OBSERVATIONS: do j = 1, num_obs_in_set
@@ -1241,12 +1330,11 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
    call get_obs_from_key(seq, keys(j), observation)
    call get_obs_def(observation, obs_def)
    ! Check to see if this observation fails input qc test
-!!!PAR WARNING: WHAT IF THERE IS NO INPUT QC FIELD??? NEED TO BE PREPARED FOR THIS
-   call get_qc(observation, input_qc, qc_indx = 1)
+   call get_qc(observation, input_qc, input_qc_index)
    ! If it is bad, set forward operator status value to -99 and return missing_r8 for obs_value
 
    ! PAR THIS SUBROUTINE SHOULD EVENTUALLY GO IN THE QUALITY CONTROL MODULE
-   if(.not. input_qc_ok(input_qc(1))) then
+   if(.not. input_qc_ok(input_qc(1), input_qc_threshold)) then
       ! The forward operator value is set to -99 if prior qc was failed
       forward_op_ens_handle%vars(j, :) = -99
       do k=1, my_num_copies
@@ -1258,9 +1346,6 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
             obs_ens_handle%vars(j, k) = missing_r8
         endif
       enddo
-      ! previous code was at various times one of these equivalent lines:
-      !obs_ens_handle%vars(j, 1:my_num_copies) = missing_r8
-      !obs_ens_handle%vars(j, :) = missing_r8 
       ! No need to do anything else for a failed observation
       cycle ALL_OBSERVATIONS
    endif
@@ -1272,25 +1357,19 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
    ! Loop through all copies stored by this process and set values as needed
    do k = 1, my_num_copies
       global_ens_index = obs_ens_handle%my_copies(k)
+
       ! If I have a copy that is a standard ensemble member, compute expected value
       if(global_ens_index <= ens_size) then
-         ! Compute the expected observation value; direct access to storage
-         ! Debug: The PGI 6.1.3 compiler was making internal copies of the array sections
-         ! very slowly, causing the filter process to take > 12 hours (vs minutes).
-         ! Try making local copies/non-sections to convince the compiler to run fast.
-         ! The original code was:
-         !    call get_expected_obs(seq, keys(j:j), ens_handle%vars(:, k), &
-         !       obs_ens_handle%vars(j:j, k), istatus, assimilate_this_ob, evaluate_this_ob)
-         ! and keys is intent in only, vars intent out only.
+         ! temporaries to avoid passing array sections which was slow on PGI compiler
          thiskey(1) = keys(j)
          call get_expected_obs(seq, thiskey, &
-            global_ens_index, ens_handle%vars(:, k), ens_handle%time(1), &
+            global_ens_index, ens_handle%vars(:, k), ens_handle%time(1), isprior, &
             thisvar, istatus, assimilate_this_ob, evaluate_this_ob)
          obs_ens_handle%vars(j, k) = thisvar(1)
+
          ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
          ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
          ! in the forward operator evaluation field
-!!!WATCH ASSUMPTIONS ABOUT INDEXING
          if(istatus == 0) then
             if ((assimilate_this_ob .or. evaluate_this_ob) .and. (thisvar(1) == missing_r8)) then
                write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
@@ -1309,10 +1388,12 @@ ALL_OBSERVATIONS: do j = 1, num_obs_in_set
          else
             forward_op_ens_handle%vars(j, k) = istatus
          endif
+
       ! Otherwise, see if this is the copy for error variance or observed value         
       else if(global_ens_index == OBS_ERR_VAR_COPY) then
          ! This copy is the instrument observation error variance; read and store
          obs_ens_handle%vars(j, k) = obs_err_var
+
       else if(global_ens_index == OBS_VAL_COPY) then
          ! This copy is the observation from the instrument; read and store
          obs_ens_handle%vars(j, k) = obs_value(1)
@@ -1347,12 +1428,12 @@ integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
 
 integer               :: j, k, ens_offset, forward_min, forward_max
-integer               :: forward_unit, ivalue, low_qc_limit, high_qc_limit
+integer               :: forward_unit, ivalue
 real(r8)              :: error, diff_sd, ratio
 real(r8), allocatable :: obs_temp(:), forward_temp(:)
 real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
 real(r8)              :: rvalue(1)
-logical               :: do_outlier, good_forward_op
+logical               :: do_outlier, good_forward_op, failed
 
 
 ! Assume that mean and spread have been computed if needed???
@@ -1381,9 +1462,15 @@ if(output_forward_op_errors) then
  
    allocate(forward_temp(num_obs_in_set))
 
+! This is two loops: around ens_size and around observations
+! If task 0 has an ensemble copy, everyone else has to wait for zero to finish for all_vars_to_all_copies
+! If task zero does not have a copy, all_vars_to_all_copies is still a synchonization point because task zero
+! has to recieve some variables from the tasks with copies.
+! Q. What if task zero (or multiple writers ) did not take part the all_vars all all_copies?
+
    do k = 1, ens_size
       ! Get this copy to PE 0
-      call get_copy(0, forward_op_ens_handle, k, forward_temp)
+      call get_copy(map_task_to_pe(forward_op_ens_handle, 0), forward_op_ens_handle, k, forward_temp)
 
       ! Loop through each observation in set for this copy
       ! Forward temp is a real representing an integer; values /= 0 get written out
@@ -1403,6 +1490,9 @@ if(output_forward_op_errors) then
 endif
 
 !PAR DO THESE ALWAYS NEED TO BE DONE? SEE REVERSE ONES AT END, TOO
+! SYNC: This is a synchronization problem.  It would be better to have task 0 to not have any
+! copys/vars and do the writing independent of computation ( if there are lots of tasks)
+
 call all_vars_to_all_copies(obs_ens_handle)
 call all_vars_to_all_copies(forward_op_ens_handle)
 
@@ -1421,6 +1511,8 @@ if (observations_updateable) then
     OBS_ERR_VAR_COPY, DART_qc_index, PRIOR_DIAG)
 endif
 
+call prepare_to_read_from_copies(forward_op_ens_handle)
+call prepare_to_update_copies(obs_ens_handle)
 
 ! At this point can compute outlier test and consolidate forward operator qc
 do j = 1, obs_ens_handle%my_num_vars
@@ -1470,16 +1562,24 @@ do j = 1, obs_ens_handle%my_num_vars
          obs_err_var = obs_ens_handle%copies(OBS_ERR_VAR_COPY, j)
          error = obs_prior_mean - obs_val
          diff_sd = sqrt(obs_prior_var + obs_err_var)
-         ratio = abs(error / diff_sd)
-         if(ratio > outlier_threshold) then
-            ! FIXME: proposed enhancement to dart qc values - differentiate
-            ! between obs thrown out for being outlier - assim vs eval.
-            !if(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) == 0) then 
-               obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 7    ! would have been assim
-            !else
-            !   obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 8    ! was eval only
-            !endif
+         if (diff_sd /= 0.0_r8) then
+            ratio = abs(error / diff_sd)
+         else
+            ratio = 0.0_r8
          endif
+
+         ! if special handling requested, pass in the outlier ratio for this obs,
+         ! the default outlier threshold value, and enough info to extract the specific 
+         ! obs type for this obs.
+         ! the function should return .true. if this is an outlier, .false. if it is ok.
+         if (enable_special_outlier_code) then
+            failed = failed_outlier(ratio, outlier_threshold, obs_ens_handle, &
+                                    OBS_KEY_COPY, j, seq)
+         else 
+            failed = (ratio > outlier_threshold)
+         endif
+
+         if (failed) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 7 
       endif
 
    else
@@ -1521,7 +1621,7 @@ enddo
 ! OR FAILED OUTLIER, ETC. NEEDS TO BE DONE BY PE 0 ONLY. PUT IT HERE FOR FIRST
 ! BUT IN QC MOD FOR THE SECOND???  
 
-! Is this next call really needed, or does it already exist on input???
+! Make var complete for get_copy() calls below.
 call all_copies_to_all_vars(obs_ens_handle)
 
 ! allocate temp space for sending data
@@ -1529,7 +1629,7 @@ allocate(obs_temp(num_obs_in_set))
 
 ! Update the ensemble mean
 ! Get this copy to process 0
-call get_copy(0, obs_ens_handle, OBS_MEAN_START, obs_temp)
+call get_copy(map_task_to_pe(obs_ens_handle, 0), obs_ens_handle, OBS_MEAN_START, obs_temp) 
 ! Only pe 0 gets to write the sequence
 if(my_task_id() == 0) then
      ! Loop through the observations for this time
@@ -1541,7 +1641,7 @@ if(my_task_id() == 0) then
 
 ! Update the ensemble spread
 ! Get this copy to process 0
-call get_copy(0, obs_ens_handle, OBS_VAR_START, obs_temp)
+call get_copy(map_task_to_pe(obs_ens_handle, 0), obs_ens_handle, OBS_VAR_START, obs_temp)
 ! Only pe 0 gets to write the sequence
 if(my_task_id() == 0) then
    ! Loop through the observations for this time
@@ -1562,8 +1662,8 @@ ens_offset = members_index + 4
 ! Update all of these ensembles that are required to sequence file
 do k = 1, num_output_members
    ! Get this copy on pe 0
-   call get_copy(0, obs_ens_handle, k, obs_temp)
-   ! Only pe 0 gets to write the sequence
+   call get_copy(map_task_to_pe(obs_ens_handle, 0), obs_ens_handle, k, obs_temp)
+   ! Only task 0 gets to write the sequence
    if(my_task_id() == 0) then
       ! Loop through the observations for this time
       do j = 1, obs_ens_handle%num_vars
@@ -1576,8 +1676,8 @@ do k = 1, num_output_members
 end do
 
 ! Update the qc global value
-call get_copy(0, obs_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
-! Only pe 0 gets to write the observations for this time
+call get_copy(map_task_to_pe(obs_ens_handle, 0), obs_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
+! Only task 0 gets to write the observations for this time
 if(my_task_id() == 0) then
    ! Loop through the observations for this time
    do j = 1, obs_ens_handle%num_vars
@@ -1593,10 +1693,10 @@ end subroutine obs_space_diagnostics
 
 !-------------------------------------------------------------------------
 
-function input_qc_ok(input_qc)
+function input_qc_ok(input_qc, threshold)
 
 logical              :: input_qc_ok
-real(r8), intent(in) :: input_qc
+real(r8), intent(in) :: input_qc, threshold
 
 ! Do checks on input_qc value with namelist control
 ! Should eventually go in qc module
@@ -1607,10 +1707,7 @@ real(r8), intent(in) :: input_qc
 ! e.g. to keep only obs with a data qc of 0, set the 
 ! threshold to 0.
 
-! To exclude negative qc values, comment in the following line instead
-! of the existing code.
-! if((nint(input_qc) <= nint(input_qc_threshold)) .and. (nint(input_qc) >= 0)) then
-if(nint(input_qc) <= nint(input_qc_threshold)) then
+if(nint(input_qc) <= nint(threshold)) then
    input_qc_ok = .true.
 else
    input_qc_ok = .false.
@@ -1620,21 +1717,24 @@ end function input_qc_ok
 
 !-------------------------------------------------------------------------
 
-subroutine filter_sync_keys_time(key_bounds, num_obs_in_set, time1, time2)
-integer, intent(inout)         :: key_bounds(2), num_obs_in_set
-type(time_type), intent(inout) :: time1, time2
+subroutine filter_sync_keys_time(ens_handle, key_bounds, num_obs_in_set, time1, time2)
 
-! Have task0 broadcast these values to all other tasks.
+integer,             intent(inout)  :: key_bounds(2), num_obs_in_set
+type(time_type),     intent(inout)  :: time1, time2
+type(ensemble_type), intent(in)     :: ens_handle
+
+! Have owner of copy 1 broadcast these values to all other tasks.
 ! Only tasks which contain copies have this info; doing it this way
 ! allows ntasks > nens to work.
 
 real(r8) :: rkey_bounds(2), rnum_obs_in_set(1)
 real(r8) :: rtime(4)
 integer  :: days, secs
+integer  :: copy1_owner, owner_index
 
-! this should be 'do i own member 1' and not assume that task 0 gets
-! member 1.
-if(my_task_id() == 0) then
+call get_copy_owner_index(1, copy1_owner, owner_index)
+
+if( ens_handle%my_pe == copy1_owner) then
    rkey_bounds = key_bounds
    rnum_obs_in_set(1) = num_obs_in_set
    call get_time(time1, secs, days)
@@ -1643,9 +1743,9 @@ if(my_task_id() == 0) then
    call get_time(time2, secs, days)
    rtime(3) = secs
    rtime(4) = days
-   call broadcast_send(0, rkey_bounds, rnum_obs_in_set, rtime)
+   call broadcast_send(map_pe_to_task(ens_handle, copy1_owner), rkey_bounds, rnum_obs_in_set, rtime)
 else
-   call broadcast_recv(0, rkey_bounds, rnum_obs_in_set, rtime)
+   call broadcast_recv(map_pe_to_task(ens_handle, copy1_owner), rkey_bounds, rnum_obs_in_set, rtime)
    key_bounds =     nint(rkey_bounds)
    num_obs_in_set = nint(rnum_obs_in_set(1))
    time1 = set_time(nint(rtime(1)), nint(rtime(2)))
@@ -1781,6 +1881,84 @@ end subroutine print_obs_time
 
 !-------------------------------------------------------------------------
 
+function failed_outlier(ratio, outlier_threshold, obs_ens_handle, OBS_KEY_COPY, j, seq)
+
+! return true if the observation value is too far away from the ensemble mean
+! and should be rejected and not assimilated.
+
+use obs_def_mod, only : get_obs_kind
+use obs_kind_mod         ! this allows you to use all the types available
+
+
+real(r8),                intent(in) :: ratio
+real(r8),                intent(in) :: outlier_threshold
+type(ensemble_type),     intent(in) :: obs_ens_handle
+integer,                 intent(in) :: OBS_KEY_COPY
+integer,                 intent(in) :: j
+type(obs_sequence_type), intent(in) :: seq
+logical                             :: failed_outlier
+
+! the default test is:  if (ratio > outlier_threshold) failed_outlier = .true.
+! but you can add code here to do different tests for different observation 
+! types.  this function is only called if this namelist item is set to true:
+!  enable_special_outlier_code = .true.
+! in the &filter_nml namelist.  it is intended to be customized by the user.
+
+integer :: this_obs_key, this_obs_type
+type(obs_def_type) :: obs_def
+type(obs_type) :: observation
+logical :: first_time = .true.
+
+! make sure there's space to hold the observation.   this is a memory
+! leak in that we never release this space, but we only allocate it
+! one time so it doesn't grow.  if you are going to access the values
+! of the observation or the qc values, you must change the 0, 0 below
+! to match what's in your obs_seq file.  the example code below uses
+! only things in the obs_def derived type and so doesn't need space
+! allocated for either copies or qcs.
+if (first_time) then
+   call init_obs(observation, 0, 0)
+   first_time = .false.
+endif
+
+call prepare_to_read_from_copies(obs_ens_handle)
+
+! if you want to do something different based on the observation specific type:
+
+this_obs_key = obs_ens_handle%copies(OBS_KEY_COPY, j)
+call get_obs_from_key(seq, this_obs_key, observation)
+call get_obs_def(observation, obs_def)
+this_obs_type = get_obs_kind(obs_def)
+
+! note that this example uses the specific type (e.g. RADIOSONDE_TEMPERATURE)
+! to make decisions.  you have the observation so any other part (e.g. the
+! time, the value, the error) is available to you as well.
+
+select case (this_obs_type)
+
+! example of specifying a different threshold value for one obs type:
+!   case (RADIOSONDE_TEMPERATURE)
+!      if (ratio > some_other_value) then
+!         failed_outlier = .true.
+!      else
+!         failed_outlier = .false.
+!      endif
+
+! accept all values of this observation type no matter how far
+! from the ensemble mean:
+!   case (AIRCRAFT_U_WIND_COMPONENT, AIRCRAFT_V_WIND_COMPONENT)
+!      failed_outlier = .false.
+
+   case default
+      if (ratio > outlier_threshold) then
+         failed_outlier = .true.
+      else
+         failed_outlier = .false.
+      endif
+
+end select
+
+end function failed_outlier
 
 !-------------------------------------------------------------------------
 !-------------------------------------------------------------------------
@@ -1799,8 +1977,8 @@ use obs_def_radar_mod, only    : get_obs_def_radial_vel
 use location_mod, only         : location_type
 use ensemble_manager_mod, only : ensemble_type, get_my_num_copies, &
                                  all_copies_to_all_vars, all_vars_to_all_copies, &
-                                 get_copy_owner_index
-use mpi_utilities_mod, only    : my_task_id, broadcast_send, broadcast_recv
+                                 get_copy_owner_index, broadcast_copy
+use mpi_utilities_mod, only    : my_task_id !, broadcast_send, broadcast_recv
 
 
 ! Do prior observation space diagnostics on the set of obs corresponding to keys
@@ -1846,6 +2024,8 @@ if (prior_post /= PRIOR_DIAG) return
 ! for quiet execution, set it to false.
 verbose = .true.
 
+call prepare_to_update_copies(obs_ens_handle)
+
 do j = 1, obs_ens_handle%my_num_vars
    ! get the key number associated with each of my subset of obs
    ! then get the obs and extract info from it.
@@ -1889,13 +2069,7 @@ call all_copies_to_all_vars(obs_ens_handle)
 
 ! Figure out which PE has all the obs values and broadcast
 ! them into a temporary array on the other PEs.
-call get_copy_owner_index(OBS_VAL_COPY, owner, owners_index)
-if(my_task_id() == owner) then
-   updated_obs = obs_ens_handle%vars(:, owners_index)
-   call broadcast_send(owner, updated_obs)
-else
-   call broadcast_recv(owner, updated_obs)
-endif
+call broadcast_copy(obs_ens_handle, OBS_VAL_COPY, updated_obs)
 
 ! Each PE has an independent copy of the observation
 ! sequence.  These values must be updated.  Rather than
@@ -1930,3 +2104,9 @@ end subroutine update_observations_radar
 !-------------------------------------------------------------------------
 
 end program filter
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

@@ -1,5 +1,12 @@
 #!/usr/bin/perl
 #
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
+#
 # SCRIPT:   create_sounding_obs_sequence.pl
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
@@ -101,4 +108,8 @@ print OUT "set_def.out\n";
 # Clean up
 print "Done creating sounding sequence.\n";
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

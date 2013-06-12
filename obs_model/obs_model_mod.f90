@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module obs_model_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use types_mod,            only : r8
 use utilities_mod,        only : register_module, error_handler,     &
@@ -27,9 +23,10 @@ use time_manager_mod,     only : time_type, set_time, get_time, print_time,   &
                                  operator(/=), operator(>), operator(-),      &
                                  operator(/), operator(+), operator(<), operator(==), &
                                  operator(<=), operator(>=)
-use ensemble_manager_mod, only : get_ensemble_time, ensemble_type
+use ensemble_manager_mod, only : get_ensemble_time, ensemble_type, map_task_to_pe, map_pe_to_task, &
+                                 prepare_to_update_vars
 use mpi_utilities_mod,    only : my_task_id, task_sync, task_count, block_task, &
-                                 sum_across_tasks, shell_execute
+                                 sum_across_tasks, shell_execute, send_to, receive_from, my_task_id
 
 implicit none
 private
@@ -37,10 +34,10 @@ private
 public :: move_ahead, advance_state, set_obs_model_trace, have_members
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 logical :: module_initialized  = .false.
 integer :: print_timestamps    = 0
@@ -132,6 +129,15 @@ if (.not. have_members(ens_handle, ens_size)) return
 ! it is possible we are at the end of the observations and there in fact
 ! is no need to advance.  if so, can return.
 
+! ens_handle%my_pe 0 does the output.
+! Don't want two pes outputing if task 0 also has a copy
+! FIMXE Commment 
+if ( map_task_to_pe(ens_handle, 0) >= ens_handle%num_copies .and. &
+   ens_handle%my_pe == 0 .and. my_task_id() /= 0) then
+  call set_output(.true.)
+endif
+
+
 ! Initialize a temporary observation type to use
 ! after here, must delete observation before returning.
 call init_obs(observation, get_num_copies(seq), get_num_qc(seq))
@@ -149,6 +155,11 @@ endif
 if (leaving_early) then
    ! need to destroy obs here before returning
    call destroy_obs(observation)
+
+   if (ens_handle%my_pe == 0 .and. my_task_id() /= 0) then
+    call set_output(.false.)
+   endif
+
    return
 endif
 
@@ -170,10 +181,10 @@ if (print_trace_details > 0) then
       start_time = ens_time - delta_time / 2 + set_time(1, 0)
    endif
    end_time = ens_time + delta_time / 2
-   call timechat(ens_time,    'move_ahead', .false.,  'Current model data time:               ')
-   call timechat(start_time,  'move_ahead', .false.,  'Current assimilation window starts at: ')
-   call timechat(end_time,    'move_ahead', .false.,  'Current assimilation window ends at:   ')
-   !call timechat(delta_time,  'move_ahead', .false., 'Width of assimilation window:          ')
+   call timechat(ens_time,    'move_ahead', .false.,        'Current model data time            is: ')
+   call timechat(start_time,  'move_ahead', .false.,        'Current assimilation window starts at: ')
+   call timechat(end_time,    'move_ahead', .false.,        'Current assimilation window ends   at: ')
+  !call timechat(delta_time,  'move_ahead', .false.,        'Width of assimilation window       is: ')
 endif
 
 ! now recompute for the next window, so the code below can remain unchanged.
@@ -193,54 +204,58 @@ end_time = time2 + delta_time / 2
 
 ! Output very brief current start and end time at the message level
 if (print_trace_details == 0) then
-   call timechat(start_time,  'move_ahead', .false.,  'Next assimilation window starts at: ')
-   call timechat(end_time,    'move_ahead', .false.,  'Next assimilation window ends   at: ')
+   call timechat(start_time,  'move_ahead', .false.,        'Next assimilation window starts    at: ')
+   call timechat(end_time,    'move_ahead', .false.,        'Next assimilation window ends      at: ')
 endif
 
-! If the next observation is not in the window, then have an error
+! This block of code gets called either if the next obs is not in the current window,
+! or if you're asking for the details of the assimilation window and obs times.
 if(next_time < start_time .or. next_time > end_time .or. print_trace_details > 0) then
-   ! Is this test still really needed?  If you comment out that test, you can
-   ! simply skip early obs, but for now, leave the code alone and print out a
-   ! better set of error messages.
-
-   if (next_time < start_time .or. next_time > end_time) then
-      call error_handler(E_MSG, ' ', ' ')
-      call error_handler(E_MSG, 'move_ahead', 'Inconsistent model state/observation times: ')
-   endif
-
 
    if (time2 /= ens_time) then
-      call timechat(next_time,   'move_ahead', .false., 'Next available observation time:       ')
-      call timechat(time2,       'move_ahead', .false., 'Next data time should be:              ', &
+      call timechat(next_time,   'move_ahead', .false.,     'Next available observation time    is: ')
+      call timechat(time2,       'move_ahead', .false.,     'Next data time should be           at: ', &
          'Not within current window, model will be called to advance state.')
-      call timechat(start_time,  'move_ahead', .false., 'Next assimilation window starts at:    ')
-      call timechat(end_time,    'move_ahead', .false., 'Next assimilation window ends   at:    ')
+      call timechat(start_time,  'move_ahead', .false.,     'Next assimilation window starts    at: ')
+      call timechat(end_time,    'move_ahead', .false.,     'Next assimilation window ends      at: ')
    else 
       if (next_time >= start_time .and. next_time <= end_time) then
-         call timechat(next_time,   'move_ahead', .false.,  'Next available observation time:       ', &
+         call timechat(next_time,   'move_ahead', .false.,  'Next available observation time    is: ', &
             'Within current assimilation window, model does not need advance.')
       else 
-         call timechat(next_time,   'move_ahead', .false.,  'Next available observation time:       ', &
+         call timechat(next_time,   'move_ahead', .false.,  'Next available observation time    is: ', &
             'Next obs outside current assimilation window.')
       endif
    endif
-   !call error_handler(E_MSG, ' ', ' ')
 
+   ! if different mpi tasks have different times, the default is only process 0
+   ! will print messages.  in this case we're headed towards a fatal error and
+   ! just trying to give the most info possible before exiting.  so make all
+   ! mpi tasks which get into this block output.  in the worst case you'll get
+   ! N sets of these messages which is messy, but probably better than having
+   ! the case where process 0 works but some other tasks fail and you get no
+   ! helpful info from them.
    if (next_time < start_time .or. next_time > end_time) then
+      call set_output(.true.) 
+      call error_handler(E_MSG, ' ', ' ')
+      call error_handler(E_MSG, 'move_ahead', 'Inconsistent model state/observation times. ')
+
       if (next_time < start_time) then
          call error_handler(E_MSG, 'move_ahead', &
             'Next observation cannot be earlier than start of new time window')
-         call timechat(next_time,   'move_ahead', .false., 'Next available observation      at:    ')
-         call timechat(start_time,  'move_ahead', .false., 'Next assimilation window starts at:    ')
-         call timechat(ens_time,    'move_ahead', .false., 'Current model data time:               ')
+         call error_handler(E_MSG, ' ', ' ')
+         call timechat(next_time,   'move_ahead', .false.,  'Next available observation         at: ')
+         call timechat(start_time,  'move_ahead', .false.,  'Next assimilation window starts    at: ')
+         call timechat(ens_time,    'move_ahead', .false.,  'Current model data time            is: ')
          errstring1 = 'If this is the start of the obs_seq file, '
-         errstring2 = 'use filter namelist to set first obs or data init time.'
+         errstring2 = 'can use filter namelist to set first obs or initial data time.'
       else
          call error_handler(E_MSG, 'move_ahead', &
             'Next observation is later than end of new time window')
-         call timechat(next_time,   'move_ahead', .false., 'Next available observation      at:    ')
-         call timechat(end_time,    'move_ahead', .false., 'Next assimilation window ends   at:    ')
-         call timechat(ens_time,    'move_ahead', .false., 'Current model data time:               ')
+         call error_handler(E_MSG, ' ', ' ')
+         call timechat(next_time,   'move_ahead', .false.,  'Next available observation         at: ')
+         call timechat(end_time,    'move_ahead', .false.,  'Next assimilation window ends      at: ')
+         call timechat(ens_time,    'move_ahead', .false.,  'Current model data time            is: ')
          errstring1 = 'should not happen; code has miscomputed how far to advance'
          errstring2 = ''
       endif
@@ -271,6 +286,9 @@ next_ens_time = time2
 ! Release the storage associated with the observation temp variable
 call destroy_obs(observation)
 
+if (ens_handle%my_pe == 0 .and. my_task_id() /= 0) then
+  call set_output(.false.)
+endif
 
 end subroutine move_ahead
 
@@ -341,6 +359,8 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
 
    ! Ok, this task does need to advance something. 
    need_advance = 1
+
+   call prepare_to_update_vars(ens_handle)
 
    ! Increment number of ensemble member copies I have.
    my_num_state_copies = my_num_state_copies + 1
@@ -666,3 +686,9 @@ end function have_members
 !--------------------------------------------------------------------
 
 end module obs_model_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

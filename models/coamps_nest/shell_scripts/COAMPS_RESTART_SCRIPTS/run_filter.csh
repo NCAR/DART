@@ -1,26 +1,22 @@
 #!/bin/tcsh 
 #
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+#
+######
+#
 # SCRIPT:	run_filter.csh
 # AUTHOR:	DART Folks
 #
 # N.B. I have adjusted this to use the advance_wrapper script instead
 #      of the advance_model script as was originally done.  Otherwise,
 #      I haven't messed with anything here.
+#
 ######
-
-
-
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2006, Data Assimilation Research Section, 
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
 #
-# $Id$
-#
-# start at a generic run script for the mpi version.  this should probably
-# end up in the shell scripts directory - but it is here for now.  nsc.
-
-
 # Modified for PBS queue on ACESGrid by TRW
 ##=============================================================================
 ## This block of directives constitutes the preamble for the PBS queuing system
@@ -140,4 +136,11 @@ else
     rm -f ${LOGFILE}
     if ( -d $filterhome) rmdir $filterhome
 endif
-   
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

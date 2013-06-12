@@ -1,6 +1,8 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! RAW_STATE_VARIABLE,    KIND_RAW_STATE_VARIABLE, COMMON_CODE
@@ -35,12 +37,6 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_1d_state_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
 ! This code currently does not require a namelist, but to add one search for
 ! the string 'NML' and comment in the code lines in the 4 marked sections.
 
@@ -58,7 +54,8 @@ implicit none
 
 ! These are the required interfaces for an obs_def module.  
 public :: write_1d_integral, read_1d_integral, &
-          interactive_1d_integral, get_expected_1d_integral
+          interactive_1d_integral, get_expected_1d_integral, &
+          set_1d_integral
 
 ! Storage for the special information required for observations of this type
 integer               :: num_1d_integral_obs = 0     ! current count of obs
@@ -72,11 +69,11 @@ integer,  allocatable :: localization_type(:)  ! ditto
 logical :: debug = .false.
 
 
-! Version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
@@ -324,6 +321,55 @@ end subroutine get_expected_1d_integral
 
 !----------------------------------------------------------------------
 
+subroutine set_1d_integral(integral_half_width, num_eval_pts, localize_type, igrkey, istatus)
+
+! inputs are: half width of integral 
+!             the number of evaluation points (5-20 recommended) 
+!             localization type: 1=Gaspari-Cohn; 2=Boxcar; 3=Ramped Boxcar
+
+ real(r8), intent(in)  :: integral_half_width
+ integer,  intent(in)  :: num_eval_pts
+ integer,  intent(in)  :: localize_type
+ integer,  intent(out) :: igrkey
+ integer,  intent(out) :: istatus
+
+! Available to be called by a program creating these types of observations.
+! Notice that igrkey is intent(out) here, not (in) as in some other routines.
+! Sets the additional metadata for this obs, increments the key, and returns
+! the new value.  This key value should be set in the obs_def derived type by
+! calling set_obs_def_key().   Notice that this is different from the main
+! observation key, which all observation entries have.  This key is specific
+! to this observation type and is used to index into the metadata for only
+! this type of obs.
+
+if ( .not. module_initialized ) call initialize_module
+
+! Increment the counter so all key values are unique
+num_1d_integral_obs = num_1d_integral_obs + 1
+
+! Set the return value for the key, and use it as the index below
+igrkey = num_1d_integral_obs
+
+! Make sure key is within valid range
+call check_valid_key(igrkey, 'GENERATED', 'set_1d_integral')
+
+! Set the corresponding values in the module global arrays
+half_width(igrkey) = integral_half_width
+num_points(igrkey) = num_eval_pts
+localization_type(igrkey) = localize_type
+
+istatus = 0
+
+if(debug) print*, 'setting metadata for 1D integral obs ', igrkey
+if(debug) print*, 'metadata values are: ', half_width(igrkey), num_points(igrkey), localization_type(igrkey)
+
+if(debug) print*, 'return key set to ', igrkey
+if(debug) print*, 'return status (0 good; >0 error; <0 reserved for system use) is ', istatus
+
+end subroutine set_1d_integral
+
+!----------------------------------------------------------------------
+
 subroutine check_valid_key(igrkey, what, fromwhere)
  integer, intent(in)          :: igrkey
  character(len=*), intent(in) :: what, fromwhere
@@ -358,4 +404,11 @@ end subroutine
 !----------------------------------------------------------------------
 
 end module obs_def_1d_state_mod
+
 ! END DART PREPROCESS MODULE CODE
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

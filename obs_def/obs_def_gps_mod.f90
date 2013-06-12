@@ -1,6 +1,8 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 ! Note:  This version has a namelist item for the max number of
 ! gps observations that can be read in, but it is currently commented out.
@@ -50,12 +52,6 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_gps_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
 use        types_mod, only : r8, missing_r8, RAD2DEG, DEG2RAD, PI
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              file_exist, open_file, close_file, nmlfileunit, &
@@ -81,10 +77,10 @@ public :: set_gpsro_ref, get_gpsro_ref, write_gpsro_ref, read_gpsro_ref, &
           get_expected_gpsro_ref, interactive_gpsro_ref
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
@@ -114,7 +110,7 @@ type(gps_nonlocal_type), allocatable :: gps_data(:)
 
 namelist /obs_def_gps_nml/ max_gpsro_obs
 
-character(len=129) :: msgstring
+character(len=129) :: string1, string2
 integer  :: ii
 integer  :: keycount 
 
@@ -148,9 +144,9 @@ if (do_nml_term()) write(     *     , nml=obs_def_gps_nml)
 ! find max number of gps obs which can be stored, and initialize type
 allocate(gps_data(max_gpsro_obs), stat = rc)
 if (rc /= 0) then
-   write(msgstring, *) 'initial allocation failed for gps observation data,', &
+   write(string1, *) 'initial allocation failed for gps observation data,', &
                        'itemcount = ', max_gpsro_obs
-   call error_handler(E_ERR,'initialize_module', msgstring, &
+   call error_handler(E_ERR,'initialize_module', string1, &
                       source, revision, revdate)
 endif
 
@@ -173,9 +169,10 @@ keycount = keycount + 1
 gpskey = keycount
 
 if(gpskey > max_gpsro_obs) then
-   write(msgstring, *) 'key (',gpskey,') exceeds max_gpsro_obs (',max_gpsro_obs,')'
-   call error_handler(E_ERR,'read_gpsro_ref', msgstring, &
-                      source, revision, revdate)
+   write(string1, *) 'key (',gpskey,') exceeds max_gpsro_obs (',max_gpsro_obs,')'
+   string2 = 'Increase max_gpsro_obs in input.nml &obs_def_gps_nml namelist.'
+   call error_handler(E_ERR,'read_gpsro_ref', string1, &
+                      source, revision, revdate, text2=string2)
 endif
 
 gps_data(gpskey)%ray_direction(1) = nx
@@ -202,8 +199,8 @@ character(len=6), intent(out) :: subset0
 if ( .not. module_initialized ) call initialize_module
 
 if (gpskey < 1 .or. gpskey > keycount) then
-   write(msgstring, *) 'key (',gpskey,') out of valid range (1<=key<=',keycount,')'
-   call error_handler(E_ERR,'get_gpsro_ref', msgstring, &
+   write(string1, *) 'key (',gpskey,') out of valid range (1<=key<=',keycount,')'
+   call error_handler(E_ERR,'get_gpsro_ref', string1, &
                       source, revision, revdate)
 endif
 
@@ -417,8 +414,8 @@ real(r8) :: lon, lat, height, obsloc(3)
 if ( .not. module_initialized ) call initialize_module
 
 if ( .not. vert_is_height(location)) then
-   write(msgstring, *) 'vertical location must be height; gps obs key ', gpskey
-   call error_handler(E_ERR,'get_expected_gpsro_ref', msgstring, &
+   write(string1, *) 'vertical location must be height; gps obs key ', gpskey
+   call error_handler(E_ERR,'get_expected_gpsro_ref', string1, &
                       source, revision, revdate)
 endif
 
@@ -685,3 +682,9 @@ end  subroutine carte2geo
 end module obs_def_gps_mod
 
 ! END DART PREPROCESS MODULE CODE
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

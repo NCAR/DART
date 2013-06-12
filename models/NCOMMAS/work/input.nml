@@ -81,7 +81,7 @@
 &assim_tools_nml
    filter_kind                     = 1,
    cutoff                          = 0.20,
-   sort_obs_inc                    = .true.,
+   sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
@@ -124,7 +124,7 @@
    input_files              = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
                               '../../../obs_def/obs_def_radar_mod.f90',
                               '../../../obs_def/obs_def_metar_mod.f90',
-   /
+  /
 
    
 &obs_kind_nml
@@ -134,7 +134,7 @@
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
    evaluate_these_obs_types   = 'RADIOSONDE_SPECIFIC_HUMIDITY',
-   /
+  /
 
 
 &assim_model_nml
@@ -190,7 +190,7 @@
 
 &mpi_utilities_nml
    reverse_task_layout = .true.,
-   /
+  /
 
 
 # Gregorian: 12 Z 1 January 1996 <==> DART: 144270 days 43200 seconds
@@ -242,7 +242,6 @@
    latlim2    =  20.0,  50.0,  50.0,  50,
    reg_names  = 'Indian Ocean', 'Pacific', 'Atlantic', 'North Atlantic',
    print_mismatched_locs = .false.,
-   print_obs_locations   = .false.,
    verbose               = .true.,
    hlevel =  10.0,  20.0,   30.0,   40.0,  100.0,  
             200.0, 500.0, 1000.0, 2000.0, 
@@ -251,10 +250,10 @@
 
 &schedule_nml
    calendar        = 'Gregorian',
-   first_bin_start =  1997, 12, 31, 12, 0, 0 ,
-   first_bin_end   =  1998,  1,  7, 12, 0, 0 ,
-   last_bin_end    =  1998,  2,  1, 12, 0, 0 ,
-   bin_interval_days    = 7,
+   first_bin_start =  1601,  1,  1,  0,  0,  0,
+   first_bin_end   =  2999,  1,  1,  0,  0,  0,
+   last_bin_end    =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,
    bin_interval_seconds = 0,
    max_num_bins         = 1000,
    print_table          = .true.

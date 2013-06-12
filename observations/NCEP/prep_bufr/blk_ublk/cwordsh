@@ -1,3 +1,4 @@
+#! This code is not protected by the DART copyright agreement.
 #  DART $Id: cwordsh 4225 2010-01-22 23:24:16Z thoar $ 
 #  ------------------------------------------------------------------------
 #  This script will FORTRAN block or unblock BUFR files on a number of

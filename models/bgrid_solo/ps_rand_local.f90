@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program ps_rand_local
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use      types_mod, only : r8, PI
 use  utilities_mod, only : get_unit, error_handler, E_ERR
@@ -18,10 +14,10 @@ use   location_mod, only : VERTISSURFACE
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 integer  :: num_sets, level, num, num_done, iunit
 real(r8) :: err_var, bot_lat, top_lat, bot_lon, top_lon
@@ -99,3 +95,9 @@ end do
 write(iunit, *) 'set_def.out'
 
 end program ps_rand_local
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

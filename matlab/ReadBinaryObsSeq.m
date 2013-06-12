@@ -1,11 +1,11 @@
 function a = ReadBinaryObsSeq(fname,machineformat)
 %% ReadBinaryObsSeq       reads the diagnostic output observation sequence file.
-% 
+%
 % machineformat = 'n';
 % a = ReadBinaryObsSeq('obs_seq.final',machineformat)
 %
 %    MACHINEFORMAT is one of the following strings:
-% 
+%
 %    'native'      or 'n' - local machine format - the default
 %    'ieee-le'     or 'l' - IEEE floating point with little-endian
 %                           byte ordering
@@ -20,15 +20,11 @@ function a = ReadBinaryObsSeq(fname,machineformat)
 %    'ieee-be.l64' or 's' - IEEE floating point with big-endian byte
 %                           ordering and 64 bit long data type.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if (nargin <= 1 )
    fname = 'obs_seq.final';
@@ -57,14 +53,14 @@ bogus1 = fread(fid,1,'int32');       % Finish reading the first record
 
 
 switch lower(values)
-   case 'obs_sequence'      % pre-I or newer format 
+   case 'obs_sequence'      % pre-I or newer format
 
       bogus1 = fread(fid,1,'int32');       % Read the first record of write_obs_kind
       string = deblank(char(fread(fid,[1 bogus1],'char')));   % Read the first record
       bogus1 = fread(fid,1,'int32');       % Finish reading the first record
 
       bogus1  = fread(fid,1,'int32');
-      numdefs = fread(fid,1,'int32') 
+      numdefs = fread(fid,1,'int32')
       bogus1  = fread(fid,1,'int32');
 
       obskindnumber = zeros(1,numdefs);
@@ -121,7 +117,7 @@ for i = 1:num_copies,
    reclen = fread(fid,1,'int32');
    metadata{i} = deblank(char(fread(fid,[1 reclen],'char')));
    recend = fread(fid,1,'int32');
-   if ( recend ~= reclen ) 
+   if ( recend ~= reclen )
       str = sprintf('copy metadata read for copy %d failed %d %d', ...
                     i,reclen,recend);
       error(str)
@@ -137,7 +133,7 @@ for i = 1:num_qc,
    qcdata{i} = deblank(char(fread(fid,[1 reclen],'char')));
    recend = fread(fid,1,'int32');
 
-   if ( recend ~= reclen ) 
+   if ( recend ~= reclen )
       str = sprintf('qc metadata read for copy %d failed %d %d', ...
                     i,reclen,recend);
       error(str)
@@ -146,7 +142,7 @@ for i = 1:num_qc,
    end
 end
 
-% Read first/last time 
+% Read first/last time
 bogus1 = fread(fid,1,'int32');
 first_time = fread(fid,1,'int32');    % the indices of the adjacent obs
  last_time = fread(fid,1,'int32');    % the indices of the adjacent obs
@@ -205,14 +201,14 @@ for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
       qc(j,i)  = fread(fid,1,'float64');
       bogus2   = fread(fid,1,'int32');
    end
-    
+
    bogus1   = fread(fid,1,'int32');
    prev_time(i) = fread(fid,1,'int32');   % obs_type%prev_time
    next_time(i) = fread(fid,1,'int32');   % obs_type%next_time
    cov_group(i) = fread(fid,1,'int32');   % obs_type%cov_group
    bogus2   = fread(fid,1,'int32');
 
-   if ( mod(i,1000) == 0 ) 
+   if ( mod(i,1000) == 0 )
       fprintf('obs %d prev_time = %d next_time = %d cov_group = %d\n', ...
                     i,     prev_time(i),  next_time(i),  cov_group(i))
    end
@@ -229,7 +225,7 @@ for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
 
    %------------------------------------------------------------
    % Specific kinds of observations have additional metadata.
-   % Basically, we have to troll through the obs_def* files to 
+   % Basically, we have to troll through the obs_def* files to
    % see what types need special attention.
    %------------------------------------------------------------
 
@@ -237,7 +233,7 @@ for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
 
       [radloc(i,:) radwhich_vert(i)] = read_location(fid,i);
 
-      dir3d(i,:) = read_orientation(fid,i);   
+      dir3d(i,:) = read_orientation(fid,i);
 
       bogus1  = fread(fid,1,'int32');
       key     = fread(fid,1,'int32');
@@ -260,7 +256,7 @@ for i = 1:num_obs, % Read what was written by obs_sequence_mod:write_obs
             num_points         = fread(fid,1,'int32');   % integer
             localization_type  = fread(fid,1,'int32');   % integer
             bogus2  = fread(fid,1,'int32');
-            if (bogus1 ~= bogus2) 
+            if (bogus1 ~= bogus2)
                error('RAW_STATE_1D_INTEGRAL: off track at %d %d',i,i1d)
             end
          end
@@ -316,7 +312,7 @@ fclose(fid);
 
 function [locs, which_vert] = read_location(fid,i)
 % Read what was written by ANY location_mod:write_location
-% Different location mods have different numbers of components to read. 
+% Different location mods have different numbers of components to read.
 % Must query the Fortran record information ...
 %
 % oned                 write(ifile)loc%x
@@ -345,7 +341,7 @@ else
 end
 recend  = fread(fid,1,'int32');
 
-if ( reclen ~= recend ) 
+if ( reclen ~= recend )
       error('off track at %d read_location %d ~= %d',i,reclen,recend)
 end
 
@@ -359,7 +355,7 @@ reclen  = fread(fid,1,'int32');
 locs    = fread(fid,3,'float64');
 recend  = fread(fid,1,'int32');
 
-if ( reclen ~= recend ) 
+if ( reclen ~= recend )
       error('off track at %d read_orientation %d ~= %d',i,reclen,recend)
 end
 
@@ -393,3 +389,11 @@ string         = fread(fid,6,'char');
 recend  = fread(fid,1,'int32');
 
 gpsro_ref_form = char(string');  % convert binary to ascii string
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

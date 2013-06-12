@@ -1,3 +1,7 @@
+/* This code is not protected by the DART copyright agreement.
+ * DART $Id$
+ */
+
 /*******************************
  * MODULE:       coamps_util_mod        
  * AUTHOR:       T. R. Whitcomb
@@ -120,3 +124,10 @@ INLINE void swap_bytes( INOUT unsigned char *value1,
 /******************************
  * END ROUTINES
  ******************************/
+
+/* <next few lines under version control, do not edit>
+ * $URL$
+ * $Id$
+ * $Revision$ 
+ * $Date$
+ */

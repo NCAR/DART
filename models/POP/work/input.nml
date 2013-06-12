@@ -78,7 +78,7 @@
 &assim_tools_nml
    filter_kind                     = 1,
    cutoff                          = 0.20,
-   sort_obs_inc                    = .true.,
+   sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
@@ -153,11 +153,11 @@
   /
 
 &pop_to_dart_nml
-   pop_to_dart_output_file  = 'dart.ud',
+   pop_to_dart_output_file  = 'dart_ics',
   /
 
 &dart_to_pop_nml
-   dart_to_pop_input_file   = 'dart.ic',
+   dart_to_pop_input_file   = 'dart_restart',
    advance_time_present     = .false.
   /
 
@@ -283,7 +283,6 @@
    latlim2    =  20.0,  50.0,  50.0,  50,
    reg_names  = 'Indian Ocean', 'Pacific', 'Atlantic', 'North Atlantic',
    print_mismatched_locs = .false.,
-   print_obs_locations   = .false.,
    verbose               = .true.,
    hlevel =  10.0,  20.0,   30.0,   40.0,  100.0,  
             200.0, 500.0, 1000.0, 2000.0, 
@@ -291,10 +290,10 @@
 
 &schedule_nml
    calendar        = 'Gregorian',
-   first_bin_start =  1997, 12, 31, 12, 0, 0 ,
-   first_bin_end   =  1998,  1,  7, 12, 0, 0 ,
-   last_bin_end    =  1998,  2,  1, 12, 0, 0 ,
-   bin_interval_days    = 7,
+   first_bin_start =  1601,  1,  1,  0,  0,  0,
+   first_bin_end   =  2999,  1,  1,  0,  0,  0,
+   last_bin_end    =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,
    bin_interval_seconds = 0,
    max_num_bins         = 1000,
    print_table          = .true.

@@ -1,0 +1,33 @@
+# The assimilation period information here is pure fiction.
+# As is the model_perturbation_amplitude.
+
+&model_nml
+   model_analysis_filename      = 'mpas_analysis.nc'
+   grid_definition_filename     = 'mpas_analysis.nc'
+   output_state_vector          = .true., 
+   vert_localization_coord      = 3,
+   assimilation_period_days     = 0,
+   assimilation_period_seconds  = 60,
+   model_perturbation_amplitude = 0.2,
+   calendar                     = 'Gregorian',
+   use_u_for_wind               = .false.,
+   use_rbf_option               = 2,
+   update_u_from_reconstruct    = .true.,
+   use_increments_for_u_update  = .true.,
+   debug                        = 0,
+   xyzdebug                     = 0,
+   /
+
+# The following mpas_vars_nml is just for demonstration purposes.
+# You application may likely involve a different DART state vector.
+# NOTE: since h(nVertLevels,nCells,Time) ... it is not really KIND_SEA_SURFACE_HEIGHT
+
+&mpas_vars_nml
+   mpas_state_variables = 'temperature',  'KIND_TEMPERATURE',
+                          'salinity',     'KIND_SALINITY',
+                          'rho',          'KIND_DENSITY',
+                          'u',            'KIND_EDGE_NORMAL_SPEED',
+                          'h',            'KIND_SEA_SURFACE_HEIGHT'
+                          'tracer1',      'KIND_TRACER_CONCENTRATION'
+   /
+

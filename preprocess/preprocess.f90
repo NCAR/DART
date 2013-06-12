@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program preprocess
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! Takes a list of observation type module path names. These modules contain
 ! multiple fragments of standard F90 that may be required to implement forward
@@ -24,7 +20,7 @@ program preprocess
 
 use     types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,   &
-                          file_exist, open_file, logfileunit, timestamp,  &
+                          file_exist, open_file, logfileunit, &
                           initialize_utilities, do_nml_file, do_nml_term, &
                           find_namelist_in_file, check_namelist_read,     &
                           finalize_utilities
@@ -32,10 +28,10 @@ use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,   &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! Pick something ridiculously large and forget about it (lazy)
 integer, parameter   :: max_types = 5000, max_kinds = 5000
@@ -124,11 +120,11 @@ character(len = 129) :: output_obs_kind_mod_file = &
                         '../../../obs_kind/obs_kind_mod.f90'
 character(len = 129) :: input_files(max_input_files) = 'null'
 character(len = 129) :: model_files(max_model_files) = 'null'
-logical              :: force = .false.
+logical              :: overwrite_output = .true.
 
 namelist /preprocess_nml/ input_obs_def_mod_file, input_obs_kind_mod_file,   &
                           output_obs_def_mod_file, output_obs_kind_mod_file, &
-                          input_files, model_files, force
+                          input_files, model_files, overwrite_output
 
 !---------------------------------------------------------------------------
 ! start of program code
@@ -201,7 +197,7 @@ end do
 ! DEFAULT files must exist or else an error
 if(file_exist(trim(input_obs_def_mod_file))) then
    ! Open the file for reading
-   obs_def_in_unit = open_file(input_obs_def_mod_file)
+   obs_def_in_unit = open_file(input_obs_def_mod_file, action='read')
 else
    ! If file does not exist it is an error
    write(err_string, *) 'file ', trim(input_obs_def_mod_file), &
@@ -212,7 +208,7 @@ endif
 
 if(file_exist(trim(input_obs_kind_mod_file))) then
    ! Open the file for reading
-   obs_kind_in_unit = open_file(input_obs_kind_mod_file)
+   obs_kind_in_unit = open_file(input_obs_kind_mod_file, action='read')
 else
    ! If file does not exist it is an error
    write(err_string, *) 'file ', trim(input_obs_kind_mod_file), &
@@ -221,23 +217,23 @@ else
       source, revision, revdate)
 endif
 
-! Output files must NOT EXIST or else an error
-if(.not. file_exist(trim(output_obs_def_mod_file)) .or. force) then
+! Error if Output files EXIST, unless 'overwrite_output' is TRUE
+if(.not. file_exist(trim(output_obs_def_mod_file)) .or. overwrite_output) then
    ! Open (create) the file for writing
-   obs_def_out_unit = open_file(output_obs_def_mod_file)
+   obs_def_out_unit = open_file(output_obs_def_mod_file, action='write')
 else
-   ! If file *does* exist it is an error
+   ! If file *does* exist and we haven't said ok to overwrite, error
    write(err_string, *) 'file ', trim(output_obs_def_mod_file), &
       ' exists and will not be overwritten: Please remove or rename'
    call error_handler(E_ERR, 'preprocess', err_string, &
       source, revision, revdate)
 endif
 
-if(.not. file_exist(trim(output_obs_kind_mod_file)) .or. force) then
+if(.not. file_exist(trim(output_obs_kind_mod_file)) .or. overwrite_output) then
    ! Open (create) the file for writing
-   obs_kind_out_unit = open_file(output_obs_kind_mod_file)
+   obs_kind_out_unit = open_file(output_obs_kind_mod_file, action='write')
 else
-   ! If file *does* exist it is an error
+   ! If file *does* exist and we haven't said ok to overwrite, error
    write(err_string, *) 'file ', trim(output_obs_kind_mod_file), &
       ' exists and will not be overwritten: Please remove or rename'
    call error_handler(E_ERR, 'preprocess', err_string, &
@@ -257,7 +253,7 @@ num_kinds_found = 0
 SEARCH_INPUT_FILES: do j = 1, num_input_files
    if(file_exist(trim(input_files(j)))) then
       ! Open the file for reading
-         in_unit = open_file(input_files(j))
+         in_unit = open_file(input_files(j), action='read')
    else
       ! If file does not exist it is an error
       write(err_string, *) 'input_files ', trim(input_files(j)), &
@@ -601,7 +597,7 @@ ITEMS: do i = 1, 8
       ! open and close them each time needed
       if(file_exist(trim(input_files(j)))) then
          ! Open the file for reading
-         in_unit = open_file(input_files(j))
+         in_unit = open_file(input_files(j), action='read')
       else
          ! If file does not exist it is an error
          write(err_string, *) 'input_files ', trim(input_files(j)), &
@@ -704,10 +700,11 @@ ITEMS: do i = 1, 8
 end do ITEMS
 
 close(obs_def_out_unit)
-!______________________________________________________________________________
 
-
+call error_handler(E_MSG,'preprocess','Finished successfully.',source,revision,revdate)
 call finalize_utilities('preprocess')
+
+!------------------------------------------------------------------------------
 
 contains
 
@@ -729,3 +726,9 @@ call error_handler(E_ERR, 'preprocess', err_string, source, revision, revdate)
 end subroutine typekind_error
 
 end program preprocess
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

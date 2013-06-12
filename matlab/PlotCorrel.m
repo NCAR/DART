@@ -22,89 +22,76 @@ function PlotCorrel( pinfo )
 % pinfo.base_time      = 238;        % ditto
 % PlotCorrel(pinfo)                  % generates a plot
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if (exist(pinfo.fname,'file') ~= 2), error('%s does not exist.',pinfo.fname), end
 
-% Get some file-specific information.
-model      = nc_attget(pinfo.fname,nc_global,'model');
-varinfo    = nc_getvarinfo(pinfo.fname, pinfo.base_var);
+contourlevels = [-1:0.2:-0.2 0.2:0.2:1.0];  % no contour at zero, please
 
-for i = 1:length(varinfo.Dimension)
-   switch( lower(varinfo.Dimension{i}) )
-      case 'time'
-         num_times = varinfo.Size(i);
-      case 'copy'
-         num_copies = varinfo.Size(i);
-      otherwise
-         num_vars = varinfo.Size(i);
-   end
-end
-
-switch(lower(model))
+switch(lower(pinfo.model))
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
 	 'lorenz_04','forced_lorenz_96','ikeda','simple_advection'}
 
-      base_var_index = pinfo.base_var_index;
-      base_time      = pinfo.base_time;
-      
       % The Base Variable Index must be a valid state variable
-      if ( base_var_index > num_vars )
-         fprintf('%s only has %d state variables\n', pinfo.fname, num_vars)
-         error('you wanted variable # %d ', base_var_index)
+      if ( pinfo.base_var_index > pinfo.num_state_vars )
+         fprintf('%s only has %d state variables\n', pinfo.fname, pinfo.num_state_vars)
+         error('you wanted variable # %d ', pinfo.base_var_index)
       end
-      
+
       % The Time must be within range also.
-      if ( base_time > num_times )
-         fprintf('%s only has %d output times\n', pinfo.fname, num_times)
-         error('you wanted time # %d ', base_time)
+      if ( pinfo.base_time > pinfo.time_series_length )
+         fprintf('%s only has %d output times\n', pinfo.fname, pinfo.time_series_length)
+         error('you wanted time # %d ', pinfo.base_time)
       end
-      
-      % Get 'standard' ensemble series 
-      base = get_ens_series(pinfo.fname, pinfo.base_var, base_var_index);
-      
-      % It is efficient to preallocate correl storage ... 
-      correl = zeros(num_vars,num_times);
-      
+
+      % Get 'standard' ensemble series
+      base = get_hyperslab('fname',pinfo.fname, 'varname',pinfo.base_var, ...
+                  'copy1',pinfo.ensemble_indices(1),'copycount',pinfo.num_ens_members, ...
+                  'stateindex',pinfo.base_var_index);
+
+      % Get (potentially large) state.
+      state_var = get_hyperslab('fname',pinfo.fname, 'varname',pinfo.base_var, ...
+                  'copy1',pinfo.ensemble_indices(1),'copycount',pinfo.num_ens_members, ...
+                  'state1',pinfo.min_state_var,'statecount',pinfo.num_state_vars);
+
+      % It is efficient to preallocate correl storage ...
+      correl = zeros(pinfo.num_state_vars,pinfo.time_series_length);
+
       % Need to loop through all variables in the ensemble
-      for i = 1:num_vars,
-         state_var = get_ens_series(pinfo.fname, pinfo.base_var, i);
-         correl(i, :) = ens_correl(base, base_time, state_var);
+      for i = 1:pinfo.num_state_vars,
+         correl(i, :) = ens_correl(base, pinfo.base_time, state_var(:,:,i));
       end
-     
+
       % Now for the plotting part ...
       disp('Please be patient ... this usually takes a bit ...')
       clf;
-      
-      contour(correl,-1:0.2:1);
-      s1 = sprintf('%s Correlation of variable %s index %d, T = %d', ...
-               model, pinfo.base_var, base_var_index, base_time);
-      s2 = sprintf('against all variables, all times, %d ensemble members', ...
-               size(state_var,2)); 
-      title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
-      xlabel('time (timestep #)')
-      ylabel('state variable (index)')
-      set(gca,'YTick',1:num_vars)
-      colorbar
-      
-      % highlight the reference state variable and time
-      
-      hold on;
-      plot(base_time,base_var_index,'kh','MarkerSize',12,'MarkerFaceColor','k')
 
-   case 'fms_bgrid'
+      [~,h] = contour(pinfo.time, 1:pinfo.num_state_vars, correl, contourlevels);
+ %    clabel(cs,h,'FontSize',12,'Color','k','Rotation',0);
+      set(gca,'Clim',[-1 1])
+      hold on; % highlight the reference state variable and time
+      plot(pinfo.time(pinfo.base_time), pinfo.base_var_index,'kh','MarkerSize',12,'MarkerFaceColor','k')
+
+      s1 = sprintf('%s Correlation of variable %s index %d, timestep = %d', ...
+               pinfo.model, pinfo.base_var, pinfo.base_var_index, pinfo.base_time);
+      s2 = sprintf('against all variables, all times, %d ensemble members', ...
+               size(state_var,2));
+      title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
+      xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
+      ylabel('state variable (index)')
+      set(gca,'YTick',1:pinfo.num_state_vars)
+      colorbar
+
+
+   case {'fms_bgrid'}
 
       % We are going to correlate one var/time/lvl/lat/lon  with
-      % all other lats/lons for a var/time/lvl   
+      % all other lats/lons for a var/time/lvl
 
       clf;
 
@@ -123,45 +110,48 @@ switch(lower(model))
 
       nxny = nx*ny;
 
-      base_mem = Get1Ens( pinfo.fname, pinfo.base_var, pinfo.base_tmeind, ... 
-                    pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
+      base_mem = get_hyperslab('fname', pinfo.fname, 'varname', pinfo.base_var, ...
+                    'copy1', pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members, ...
+                    'timeindex', pinfo.base_tmeind, 'levelindex',pinfo.base_lvlind, ...
+                    'latindex',  pinfo.base_latind, 'lonindex',  pinfo.base_lonind );
 
-      comp_ens = GetEnsLevel( pinfo.fname,       pinfo.comp_var, ...
-                              pinfo.base_tmeind, pinfo.comp_lvlind);
+      bob      = get_hyperslab('fname', pinfo.fname, 'varname', pinfo.comp_var, ...
+                    'copy1', pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members, ...
+                    'timeindex', pinfo.base_tmeind, 'levelindex', pinfo.comp_lvlind);
 
-      nmembers = size(comp_ens,1);
-
-      corr = zeros(nxny,1);
+      comp_ens = reshape(bob,[pinfo.num_ens_members, nxny]);
+      corr     = zeros(nxny,1);
 
       for i = 1:nxny,
          x = corrcoef(base_mem, comp_ens(:, i));
          corr(i) = x(1, 2);
-      end 
+      end
 
       correl = reshape(corr,[ny nx]);
 
-      contour(lons,lats,correl,-1:0.2:1); hold on;
+      [cs, h] = contour(lons,lats,correl,contourlevels);
+      clabel(cs,h,'FontSize',12,'Color','k','Rotation',0);
+      set(gca,'Clim',[-1 1])
+      hold on;
       plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
                  'MarkerSize',12,'MarkerFaceColor','k');
       s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f', ...
-           model, pinfo.base_var, pinfo.base_lvl, ...
+           pinfo.model, pinfo.base_var, pinfo.base_lvl, ...
              pinfo.base_lat, pinfo.base_lon, pinfo.base_time);
 
       s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
-               pinfo.comp_var, pinfo.comp_lvl, nmembers); 
+               pinfo.comp_var, pinfo.comp_lvl, pinfo.num_ens_members);
       title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
       xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
       ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
-      worldmap;
+      continents;
       axis image
-      h = colorbar; 
-      ax = get(h,'Position');
-     %set(h,'Position',[ax(1) ax(2) ax(3)/2 ax(4)]);
+      colorbar;
 
-   case 'wrf'
+   case {'wrf'}
 
       % We are going to correlate one var/time/lvl/lat/lon  with
-      % all other lats/lons for a var/time/lvl   
+      % all other lats/lons for a var/time/lvl
 
       clf;
 
@@ -186,69 +176,73 @@ switch(lower(model))
       lonmat   = nc_varget(pinfo.fname,coordinates{loncoord});
       latunits = nc_attget(pinfo.fname,coordinates{latcoord},'units');
       lonunits = nc_attget(pinfo.fname,coordinates{latcoord},'units');
-      
+
       inds = (lonmat < 0); % Convert to 0,360 to minimize dateline probs.
       lonmat(inds) = lonmat(inds) + 360.0;
+      if (pinfo.base_lon < 0), pinfo.base_lon = pinfo.base_lon + 360.0; end
 
       % Get the actual goods ... and perform the correlation
 
-      base_mem = Get1Ens( pinfo.fname, pinfo.base_var, pinfo.base_tmeind, ... 
-                    pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
-      if (std(base_mem) == 0.0) 
+      base_mem = get_hyperslab('fname', pinfo.fname, 'varname', pinfo.base_var, ...
+                    'copy1', pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members, ...
+                    'timeindex', pinfo.base_tmeind, 'levelindex',pinfo.base_lvlind, ...
+                    'latindex',  pinfo.base_latind, 'lonindex',  pinfo.base_lonind );
+
+      if (std(base_mem) == 0.0)
           warning('%s at level %d lat %d lon %d time %s is a constant\n',pinfo.base_var,...
              pinfo.base_lvlind,pinfo.base_latind,pinfo.base_lonind,datestr(pinfo.base_time))
           error('Cannot calculate correlation coefficient with a constant.')
       end
-      
-      comp_ens = GetEnsLevel( pinfo.fname,       pinfo.comp_var, ...
-                              pinfo.base_tmeind, pinfo.comp_lvlind);
-      if (std(comp_ens(:)) == 0.0) 
+
+      bob      = get_hyperslab('fname', pinfo.fname, 'varname', pinfo.comp_var, ...
+                    'copy1', pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members, ...
+                    'timeindex', pinfo.base_tmeind, 'levelindex', pinfo.comp_lvlind);
+
+      if (std(bob(:)) == 0.0)
           warning('%s at level %d time %s is a constant\n',pinfo.comp_var,...
              pinfo.comp_lvlind, datestr(pinfo.base_time))
           error('Cannot calculate correlation coefficient with a constant.')
       end
-      
-      nmembers = size(comp_ens,1);
 
-      corr = zeros(nxny,1);
+      comp_ens = reshape(bob,[pinfo.num_ens_members, nxny]);
+      corr     = zeros(nxny,1);
 
       % Really should check to see if each comp_ens is a constant value as
       % well - this is slow enough already.
-      
+
       fprintf('Performing correlations at %d locations ...\n',nxny)
       for i = 1:nxny,
          x = corrcoef(base_mem, comp_ens(:, i));
          corr(i) = x(1, 2);
-      end 
+      end
 
       correl = reshape(corr,[ny nx]);
 
       % Plot it up ...
 
-      [cs,h] = contour(lonmat,latmat,correl,-1:0.2:1);
+      [cs,h] = contour(lonmat,latmat,correl,contourlevels);
       clabel(cs,h,'FontSize',12,'Color','k','Rotation',0);
+      set(gca,'Clim',[-1 1])
       hold on;
       plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
                  'MarkerSize',12,'MarkerFaceColor','k');
       s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %s', ...
-           model, pinfo.base_var, pinfo.base_lvl, ...
+           pinfo.model, pinfo.base_var, pinfo.base_lvl, ...
              pinfo.base_lat, pinfo.base_lon, datestr(pinfo.base_time));
 
       s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
-               pinfo.comp_var, pinfo.comp_lvl, nmembers); 
+               pinfo.comp_var, pinfo.comp_lvl, pinfo.num_ens_members);
       title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
       xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
       ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
-      worldmap;
+      continents;
       axis image
-      h = colorbar; 
-      ax = get(h,'Position');
-     %set(h,'Position',[ax(1) ax(2) ax(3)/2 ax(4)]);
+      colorbar;
 
-   case 'mitgcm_ocean'
+   case {'mitgcm_ocean'}
 
       % We are going to correlate one var/time/lvl/lat/lon  with
-      % all other lats/lons for a var/time/lvl   
+      % all other lats/lons for a var/time/lvl
 
       clf;
 
@@ -272,43 +266,48 @@ switch(lower(model))
 
       nxny = nx*ny;
 
-      base_mem = Get1Ens( pinfo.fname, pinfo.base_var, pinfo.base_tmeind, ... 
-                    pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
-      comp_ens = GetEnsLevel( pinfo.fname,       pinfo.comp_var, ...
-                              pinfo.base_tmeind, pinfo.comp_lvlind);
-      nmembers = size(comp_ens,1);
+      base_mem = get_hyperslab('fname', pinfo.fname, 'varname', pinfo.base_var, ...
+                    'copy1', pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members, ...
+                    'timeindex', pinfo.base_tmeind, 'levelindex',pinfo.base_lvlind, ...
+                    'latindex',  pinfo.base_latind, 'lonindex',  pinfo.base_lonind );
 
-      corr = zeros(nxny,1);
+      bob      = get_hyperslab('fname', pinfo.fname, 'varname', pinfo.comp_var, ...
+                    'copy1', pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members, ...
+                    'timeindex', pinfo.base_tmeind, 'levelindex', pinfo.comp_lvlind);
+
+      comp_ens = reshape(bob,[pinfo.num_ens_members, nxny]);
+      corr     = zeros(nxny,1);
 
       for i = 1:nxny,
          x = corrcoef(base_mem, comp_ens(:, i));
          corr(i) = x(1, 2);
-      end 
+      end
 
       correl = reshape(corr,[ny nx]);
 
-      contour(lons,lats,correl,-1:0.2:1); hold on;
+      [cs,h] = contour(lons,lats,correl,contourlevels);
+      clabel(cs,h,'FontSize',12,'Color','k','Rotation',0);
+      set(gca,'Clim',[-1 1])
+      hold on;
       plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
                  'MarkerSize',12,'MarkerFaceColor','k');
       s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f', ...
-           model, pinfo.base_var, pinfo.base_lvl, ...
+           pinfo.model, pinfo.base_var, pinfo.base_lvl, ...
              pinfo.base_lat, pinfo.base_lon, pinfo.base_time);
 
       s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
-               pinfo.comp_var, pinfo.comp_lvl, nmembers); 
+               pinfo.comp_var, pinfo.comp_lvl, pinfo.num_ens_members);
       title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
       xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
       ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
-      worldmap;
+      continents;
       axis image
-      h = colorbar; 
-      ax = get(h,'Position');
-     %set(h,'Position',[ax(1) ax(2) ax(3)/2 ax(4)]);
+      colorbar;
 
-   case {'pe2lyr','cam'}
+   case {'pe2lyr','cam','sqg'}
 
       % We are going to correlate one var/time/lvl/lat/lon  with
-      % all other lats/lons for a var/time/lvl   
+      % all other lats/lons for a var/time/lvl
 
       clf;
 
@@ -316,44 +315,50 @@ switch(lower(model))
       lons     = nc_varget(pinfo.fname,'lon'); nx = length(lons);
       latunits = nc_attget(pinfo.fname,'lat','units');
       lonunits = nc_attget(pinfo.fname,'lon','units');
-
       nxny     = nx*ny;
 
-      base_mem = Get1Ens( pinfo.fname, pinfo.base_var,    pinfo.base_tmeind, ... 
-                    pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
-      comp_ens = GetEnsLevel( pinfo.fname,       pinfo.comp_var, ...
-                              pinfo.base_tmeind, pinfo.comp_lvlind);
-      nmembers = size(comp_ens,1);
+      base_mem = get_hyperslab('fname', pinfo.fname, 'varname', pinfo.base_var, ...
+                    'copy1', pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members, ...
+                    'timeindex', pinfo.base_tmeind, 'levelindex',pinfo.base_lvlind, ...
+                    'latindex',  pinfo.base_latind, 'lonindex',  pinfo.base_lonind );
 
-      corr = zeros(nxny,1);
+      bob      = get_hyperslab( 'fname', pinfo.fname, 'varname', pinfo.comp_var, ...
+                    'copy1', pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members, ...
+                    'timeindex', pinfo.base_tmeind, 'levelindex', pinfo.comp_lvlind);
+
+      comp_ens = reshape(bob,[pinfo.num_ens_members, nxny]);
+      corr     = zeros(nxny,1);
 
       for i = 1:nxny,
          x = corrcoef(base_mem, comp_ens(:, i));
          corr(i) = x(1, 2);
-      end 
+      end
 
       correl = reshape(corr,[ny nx]);
 
-      contour(lons,lats,correl,[-1:0.2:-0.2 0.2:0.2:1.0]); hold on;
+      [cs,h] = contour(lons,lats,correl,contourlevels);
+      clabel(cs,h,'FontSize',12,'Color','k','Rotation',0);
+      set(gca,'Clim',[-1 1])
+      hold on;
       plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
                  'MarkerSize',12,'MarkerFaceColor','k');
       s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f', ...
-           model, pinfo.base_var, pinfo.base_lvl, ...
+           pinfo.model, pinfo.base_var, pinfo.base_lvl, ...
              pinfo.base_lat, pinfo.base_lon, pinfo.base_time);
 
       s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
-               pinfo.comp_var, pinfo.comp_lvl, nmembers); 
+               pinfo.comp_var, pinfo.comp_lvl, pinfo.num_ens_members);
       title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
       xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
       ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
-      worldmap;
+      continents;
       axis image
-      h = colorbar; 
+      colorbar;
 
    case {'tiegcm'}
 
       % We are going to correlate one var/time/lvl/lat/lon  with
-      % all other lats/lons for a var/time/lvl   
+      % all other lats/lons for a var/time/lvl
 
       clf;
 
@@ -363,17 +368,21 @@ switch(lower(model))
       lonunits = nc_attget(pinfo.fname,'lon','units');
 
       inds = find(lons >= 180);
-      lons(inds) = lons(inds) - 360.0; 
+      lons(inds) = lons(inds) - 360.0;
 
       nxny     = nx*ny;
 
-      base_mem = Get1Ens( pinfo.fname, pinfo.base_var,    pinfo.base_tmeind, ... 
-                    pinfo.base_lvlind, pinfo.base_latind, pinfo.base_lonind );
-      comp_ens = GetEnsLevel( pinfo.fname,       pinfo.comp_var, ...
-                              pinfo.base_tmeind, pinfo.comp_lvlind);
-      nmembers = size(comp_ens,1);
+      base_mem = get_hyperslab('fname', pinfo.fname, 'varname', pinfo.base_var, ...
+                    'copy1', pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members, ...
+                    'timeindex', pinfo.base_tmeind, 'levelindex',pinfo.base_lvlind, ...
+                    'latindex',  pinfo.base_latind, 'lonindex',  pinfo.base_lonind );
 
-      corr = zeros(nxny,1);
+      bob      = get_hyperslab('fname', pinfo.fname, 'varname', pinfo.comp_var, ...
+                    'copy1', pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members, ...
+                    'timeindex', pinfo.base_tmeind, 'levelindex', pinfo.comp_lvlind);
+
+      comp_ens = reshape(bob,[pinfo.num_ens_members, nxny]);
+      corr     = zeros(nxny,1);
 
       for i = 1:nxny,
          x = corrcoef(base_mem, comp_ens(:, i));
@@ -382,8 +391,124 @@ switch(lower(model))
 
       correl = reshape(corr,[ny nx]);
 
-      contour(lons,lats,correl,[-1:0.2:-0.2 0.2:0.2:1.0]); hold on;
 %     imagesc(lons,lats,correl); set(gca,'YDir','normal'); hold on;
+      [cs,h] = contour(lons,lats,correl,contourlevels);
+      clabel(cs,h,'FontSize',12,'Color','k','Rotation',0);
+      set(gca,'Clim',[-1 1])
+      hold on;
+      plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
+                 'MarkerSize',12,'MarkerFaceColor','k');
+      s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f', ...
+           pinfo.model, pinfo.base_var, pinfo.base_lvl, ...
+             pinfo.base_lat, pinfo.base_lon, pinfo.base_time);
+
+      s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
+               pinfo.comp_var, pinfo.comp_lvl, pinfo.num_ens_members);
+      title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
+      xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
+      ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
+      continents('hollow','dateline');
+      axis image
+      colorbar;
+
+   case {'mpas_atm'}
+
+      %% We are going to correlate one var/time/lvl/location  with
+      %  all other locations for a var/time/lvl
+
+      clf;
+
+      base_mem = get_hyperslab('fname',pinfo.fname, 'varname',pinfo.base_var, ...
+                    'copy1', pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members, ...
+                    'timeindex', pinfo.base_tmeind, 'levelindex',pinfo.base_lvlind, ...
+                    'cellindex', pinfo.base_cellindex );
+
+      comp_ens = get_hyperslab('fname',pinfo.fname, 'varname',pinfo.comp_var, ...
+                    'copy1', pinfo.ensemble_indices(1), 'copycount',pinfo.num_ens_members, ...
+                    'timeindex', pinfo.base_tmeind, 'levelindex', pinfo.comp_lvlind);
+
+      [~, nxny] = size(comp_ens);
+      corr      = zeros(nxny,1);
+
+      for i = 1:nxny,
+         x = corrcoef(base_mem, comp_ens(:, i));
+         corr(i) = x(1, 2);
+      end
+
+      %% here's the tricky part ... plotting the unstructured grid
+
+      PlotMPAScells(pinfo.fname, corr)
+      hold on
+      plot(pinfo.lonCell(pinfo.base_cellindex), pinfo.latCell(pinfo.base_cellindex),'pb','MarkerSize',20);
+      hold off
+
+      s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %s', ...
+           pinfo.model, pinfo.base_var, pinfo.base_lvl, ...
+           pinfo.latCell(pinfo.base_cellindex), pinfo.lonCell(pinfo.base_cellindex), ...
+           datestr(pinfo.base_time));
+
+      s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
+               pinfo.comp_var, pinfo.comp_lvl, pinfo.num_ens_members);
+      title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
+      xlabel(sprintf('longitude (%s)',pinfo.lonunits),'interpreter','none')
+      ylabel(sprintf('latitude (%s)',pinfo.latunits),'interpreter','none')
+      continents('hollow');
+      axis image
+      set(gca,'Clim',[-1 1])
+      axis([-10 370 -Inf Inf])
+      colorbar;
+
+   case {'clm'}
+
+      % We are going to correlate one var/time/lvl/lat/lon  with
+      % all other lats/lons for a var/time/lvl
+
+      clf;
+
+      lats     = nc_varget(pinfo.fname,'lat'); ny = length(lats);
+      lons     = nc_varget(pinfo.fname,'lon'); nx = length(lons);
+      latunits = nc_attget(pinfo.fname,'lat','units');
+      lonunits = nc_attget(pinfo.fname,'lon','units');
+
+      nxny     = nx*ny;
+
+      %% CLM variables must be reconstituted into grid cell values for
+      %  each ensemble member.
+      %  Need all copies  ... base_mem has shape [1,nmembers]
+      %  Need all copies  ... comp_ens has shape [nmembers,nxny]
+
+      metadata    = nc_varget(pinfo.fname,'CopyMetaData');      % get all the metadata
+      copyindices = strmatch('ensemble member',metadata); % find all 'member's
+      nmembers    = length(copyindices);
+
+      base_mem = zeros(1,nmembers);
+      comp_ens = zeros(nmembers,nxny);
+      corr     = zeros(nxny,1);
+
+      for imem = 1:nmembers,
+
+         copystring = sprintf('ensemble member %d',imem);
+         base  = clm_get_var(pinfo.fname, pinfo.base_var, copystring, ...
+                                    pinfo.base_lvlind, pinfo.base_tmeind);
+         base_mem(imem) = base.datmat(pinfo.base_latind, pinfo.base_lonind);
+
+         comp  = clm_get_var(pinfo.fname, pinfo.comp_var, copystring, ...
+                                  pinfo.comp_lvlind, pinfo.base_tmeind);
+         comp_ens(imem,:) = comp.datmat(:);
+
+      end
+
+      for i = 1:nxny,
+         x = corrcoef(base_mem, comp_ens(:, i));
+         corr(i) = x(1, 2);
+      end
+
+      correl = reshape(corr,[ny nx]);
+
+%     contour(lons,lats,correl,[-1:0.2:-0.2 0.2:0.2:1.0]); hold on;
+      h3 = imagesc(lons,lats,correl); set(gca,'YDir','normal');
+      set(h3,'AlphaData',~isnan(correl))
+      hold on;
       plot(pinfo.base_lon, pinfo.base_lat, 'pk', ...
                  'MarkerSize',12,'MarkerFaceColor','k');
       s1 = sprintf('%s Correlation of ''%s'', level %d, (%.2f,%.2f) T = %f', ...
@@ -391,17 +516,17 @@ switch(lower(model))
              pinfo.base_lat, pinfo.base_lon, pinfo.base_time);
 
       s2 = sprintf('against ''%s'', entire level %d, same time, %d ensemble members', ...
-               pinfo.comp_var, pinfo.comp_lvl, nmembers); 
+               pinfo.comp_var, pinfo.comp_lvl, nmembers);
       title({s1,s2,pinfo.fname},'interpreter','none','fontweight','bold')
       xlabel(sprintf('longitude (%s)',lonunits),'interpreter','none')
       ylabel(sprintf('latitude (%s)',latunits),'interpreter','none')
-      worldmap('hollow','dateline');
+      worldmap('hollow');
       axis image
-      h = colorbar; 
+      h = colorbar;
 
    otherwise
 
-      error('model %s not implemented yet', model)
+      error('model %s not implemented yet', pinfo.model)
 
 end
 
@@ -410,76 +535,61 @@ end
 % helper functions
 %----------------------------------------------------------------------
 
-function slice = Get1Ens(fname, var, tmeind, lvlind, latind, lonind)
-% netcdf variable ordering is unimportant
-% Get1Ens retrieves all the ensemble members for a particular 4D 
-% location (time, level, lat, lon).
-% The ensemble members do not include the mean, spread, etc. 
 
-% find which are actual ensemble members
-metadata    = nc_varget(fname,'CopyMetaData');           % get all the metadata
-copyindices = strmatch('ensemble member',metadata); % find all 'member's
+function PlotMPAScells(fname,x)
 
-if ( length(copyindices) == 1 && copyindices == 1 )
-   fprintf('%s has no valid ensemble members\n',fname)
-   disp('To be a valid ensemble member, the CopyMetaData for the member')
-   disp('must start with the character string ''ensemble member''')
-   disp('None of them in do in your file.')
-   fprintf('%s claims to have %d copies\n',fname, num_copies)
-   error('netcdf file has no ensemble members.')
+%% Get the plotting arrays
+%  for some reason, the lonCell,latCell stuff is [0,360] and the
+%  latVertex,lonVertex is [-pi,pi] ... daffy.
+
+nEdgesOnCell   = nc_varget(fname,'nEdgesOnCell');
+verticesOnCell = nc_varget(fname,'verticesOnCell');
+latVertex      = nc_varget(fname,'latVertex') * 180/pi; % cvrt to [-90,90]
+lonVertex      = nc_varget(fname,'lonVertex') * 180/pi; % cvrt to [-180,180]
+
+inds = lonVertex < 0;
+lonVertex(inds) = lonVertex(inds) + 360.0;
+
+%% Each Cell has some number of vertices
+
+nrows  = max( nEdgesOnCell);
+nCells = size(nEdgesOnCell,1);
+xpoly  = NaN(nrows,nCells);
+ypoly  = NaN(nrows,nCells);
+
+for iCell=1:nCells
+
+   n = nEdgesOnCell(iCell);
+
+   for i = 1:n
+      xpoly(i,iCell) = lonVertex(verticesOnCell(iCell,i));
+      ypoly(i,iCell) = latVertex(verticesOnCell(iCell,i));
+      if (i > 1)
+         if (abs(xpoly(i,iCell) - xpoly(1,iCell)) > 180.0)
+            if (xpoly(i,iCell) > xpoly(1,iCell))
+                xpoly(i,iCell) = xpoly(i,iCell) - 360.0;
+            else
+                xpoly(i,iCell) = xpoly(i,iCell) + 360.0;
+            end
+         end
+      end
+   end
+
+   % patch the pentagons up to hexagons
+   if (n < nrows)
+      xpoly(n+1:nrows,iCell) = xpoly(n,iCell);
+      ypoly(n+1:nrows,iCell) = ypoly(n,iCell);
+   end
+
 end
 
-pinfo.diagn_file = fname;
-pinfo.timeindex  = tmeind;
-pinfo.levelindex = lvlind;
-pinfo.latindex   = latind;
-pinfo.lonindex   = lonind;
-[start, count]   = GetNCindices(pinfo,'diagn',var);
-
-% Get all the ensemble members and just subset the copies we want.
-
-bob   = nc_varget(fname, var, start, count);
-slice = bob(copyindices);
+h = patch(xpoly,ypoly,x');
+set(h,'LineStyle','none');
 
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 
-function slice = GetEnsLevel(fname, var, tmeind, lvlind)
-% netcdf variable ordering is unimportant, nominally [ time copy level lat lon ]
-% GetEnsLevel retrieves all the ensemble members for a particular time and level. 
-%
-% The ensemble members do not include the mean, spread, etc. 
-% The level is returned as a [Nmem -by- NspatialLocations] matrix;
-% each row is an observation and each column is a (spatial)variable. 
-% should vectorize better.
-
-% find which are actual ensemble members
-metadata    = nc_varget(fname,'CopyMetaData');           % get all the metadata
-copyindices = strmatch('ensemble member',metadata); % find all 'member's
-
-if ( isempty(copyindices) )
-   fprintf('%s has no valid ensemble members\n',fname)
-   disp('To be a valid ensemble member, the CopyMetaData for the member')
-   disp('must start with the character string ''ensemble member''')
-   disp('None of them in do in your file.')
-   fprintf('%s claims to have %d copies\n',fname, num_copies)
-   error('netcdf file has no ensemble members.')
-end
-
-pinfo.diagn_file = fname;
-pinfo.timeindex  = tmeind;
-pinfo.levelindex = lvlind;
-[start, count]   = GetNCindices(pinfo,'diagn',var);
-
-bob        = nc_varget(fname, var, start, count);
-ted        = bob(copyindices,:,:);
-[nm,ny,nx] = size(ted);
-slice      = reshape(ted,[nm ny*nx]);
-
-
-
-function PlotLocator(pinfo)
-   plot(pinfo.base_lon, pinfo.base_lat,'pb','MarkerSize',12,'MarkerFaceColor','b');
-   axis([0 360 -90 90])
-   worldmap
-   axis image
-   grid on

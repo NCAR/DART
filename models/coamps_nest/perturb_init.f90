@@ -1,10 +1,14 @@
-! perturb_init
-! --------------------
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
+program perturb_init
+
 ! This program pulls pieces out of the large COAMPS restart file,
 ! then assembles them into a state vector that can be used by DART.
 ! This includes two pieces of information - the current time and
 ! the actual state
-program perturb_init
 
   use coamps_nest_mod,      only : coamps_nest,                  &
                                    initialize_nest,              &
@@ -41,10 +45,11 @@ program perturb_init
 
   implicit none
 
-  character(len=128) :: &
-       source   = " ",  &
-       revision = " ",  &
-       revdate  = " "
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
   character(len=*), parameter :: routine = 'perturb_init'
   character(len=64)           :: coamps_file_name
@@ -355,3 +360,9 @@ program perturb_init
   deallocate(ipert_nums)
 
 end program perturb_init
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

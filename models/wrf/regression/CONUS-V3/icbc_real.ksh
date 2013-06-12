@@ -1,10 +1,10 @@
 #!/bin/ksh 
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 #
 # Purpose: run real.exe and generate perturbed IC/BC's using WRFVAR
 # and prepares the run directory by linking all of the needed files
@@ -47,7 +47,7 @@
 # ensemble members for running this script on bluefire.
 # ########
 # CAUTION - this script will remove the OUTPUT and ASSIM_DIR
-# dierctories during execution. Change to different paths to
+# directories during execution. Change to different paths to
 # avoid wiping out old directories.
 # ########
 #-----------------------------------------------------------------------
@@ -347,7 +347,6 @@ cat > input.nml.tmp << EOF
    latlim2                    =   55.0,
    reg_names                  = 'North America',
    print_mismatched_locs      = .false.,
-   print_obs_locations        = .false.,
    verbose                    = .false.  /
 
  &restart_file_utility_nml

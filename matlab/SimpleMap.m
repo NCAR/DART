@@ -22,15 +22,11 @@ function h = SimpleMap(fname, varname, time, copystring, level)
 % level   = 1;        % index into level array
 % h = SimpleMap(fname,varname,time,copy,level);
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if (exist(fname,'file') ~= 2), error('%s does not exist.',fname); end
 
@@ -45,7 +41,7 @@ timeorigin = datenum(timebase(1),timebase(2),timebase(3));
 timearr    = nc_varget(fname,'time');
 timestring = datestr(timearr(1) + timeorigin);
 
-% create the hyperslab indices ... 
+% create the hyperslab indices ...
 
 copyindex = get_copy_index(fname,copystring);
 
@@ -58,7 +54,7 @@ myinfo.timeindex  = time;
 datmat = nc_varget(fname, varname, start, count);
 
 % Create the plot.
-% The figure window is partitioned into two parts ... one has 
+% The figure window is partitioned into two parts ... one has
 % the actual graphic ... the other (the bottom part) is a text
 % table of all the attributes of interest for the graphic.
 
@@ -66,7 +62,7 @@ h0 = subplot('position',[0.1 0.3 0.8 0.6]); set(h0,'FontSize',14)
 h = imagesc(plotdat.lons,plotdat.lats,datmat);
 set(gca,'YDir','normal');
 axis image;
-worldmap;
+continents;
 h1 = colorbar;
 set(h1,'FontSize',14)
 set(get(h1,'Ylabel'),'String',plotdat.varunits,'FontSize',14)
@@ -171,7 +167,7 @@ function annotate(plotdat)
 
 nlevels = length(plotdat.levels);
 
-if (nlevels == 1) 
+if (nlevels == 1)
    return
 end
 
@@ -191,3 +187,11 @@ for i = 1:stride:nlevels
    set(h1,'FontSize',8,'HorizontalAlignment','right')
    set(h2,'FontSize',8,'HorizontalAlignment','right')
 end
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

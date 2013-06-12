@@ -1,5 +1,12 @@
 #!/bin/bash
 #
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
+#
 # SCRIPT:     create_coamps_intrinsic_mod.sh
 # AUTHOR:     T. R. Whitcomb
 #             Naval Research Laboratory
@@ -140,7 +147,8 @@ end module coamps_intrinsic_mod
 END_FOOTER
 
 
-
-
-
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

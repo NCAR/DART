@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program convert_cosmic_gps_cdf
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -47,10 +43,10 @@ use           netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
@@ -58,15 +54,14 @@ integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
 
 character (len=129) :: msgstring, next_infile
 character (len=80)  :: name
-character (len=19)  :: datestr
 character (len=6)   :: subset
-integer :: rcode, ncid, varid, nlevels, k, nfiles, num_new_obs, oday, osec, &
+integer :: ncid, varid, nlevels, k, nfiles, num_new_obs, oday, osec, &
            iyear, imonth, iday, ihour, imin, isec, glat, glon, zloc, obs_num, &
            io, iunit, nobs, filenum, dummy
 logical :: file_exist, first_obs, did_obs, from_list = .false.
 real(r8) :: hght_miss, refr_miss, azim_miss, oerr,               & 
             qc, lato, lono, hghto, refro, azimo, wght, nx, ny,   & 
-            nz, ds, htop, rfict, obsval, phs, obs_val(1), qc_val(1)
+            nz, rfict, obsval, phs, obs_val(1), qc_val(1)
 
 real(r8), allocatable :: lat(:), lon(:), hght(:), refr(:), azim(:), & 
                          hghtp(:), refrp(:)
@@ -74,7 +69,7 @@ real(r8), allocatable :: lat(:), lon(:), hght(:), refr(:), azim(:), &
 type(obs_def_type)      :: obs_def
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
-type(time_type)         :: time_obs, time_anal, prev_time
+type(time_type)         :: time_obs, prev_time
 
 !------------------------------------------------------------------------
 !  Declare namelist parameters
@@ -935,3 +930,9 @@ compute_lon_wrap = lono
 end function compute_lon_wrap
 
 end program
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

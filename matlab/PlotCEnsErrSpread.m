@@ -1,44 +1,32 @@
 function PlotCEnsErrSpread( pinfo )
 %% PlotCEnsErrSpread
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 % this sets start/stop time indices for both truth and diagn file now
 pinfo = CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
 
-model     = nc_attget(pinfo.truth_file, nc_global, 'model'); 
+model     = nc_attget(pinfo.truth_file, nc_global, 'model');
 timeunits = nc_attget(pinfo.truth_file,'time','units');
 
 nvars = 4;
 
 % Since the models are "compatible", get the info from either one.
-levels   = nc_varget(pinfo.truth_file, 'level'); num_levels = length(levels);
-ens_mems = nc_varget(pinfo.diagn_file,  'copy'); ens_size   = length(ens_mems);
-
-num_times     = pinfo.truth_time(2) - pinfo.truth_time(1) + 1;
-num_ens_times = pinfo.diagn_time(2) - pinfo.diagn_time(1) + 1;
-if num_ens_times ~= num_times
-   error('CheckModelCompatibility returned incompatible time indices')
-end
-
-times     = nc_varget(pinfo.truth_file, 'time', pinfo.truth_time(1)-1, num_times);
-ens_times = nc_varget(pinfo.diagn_file, 'time', pinfo.diagn_time(1)-1, num_times);
+levels    = nc_varget(pinfo.truth_file, 'level'); num_levels = length(levels);
+ens_mems  = nc_varget(pinfo.diagn_file,  'copy'); ens_size   = length(ens_mems);
+num_times = pinfo.time_series_length;
 
 % Initialize storage for error averaging
 rms      = zeros(num_times, nvars, num_levels);
 sd_final = zeros(num_times, nvars, num_levels);
 
-% Get the indices for the true state, ensemble mean and spread                  
-% The metadata is queried to determine which "copy" is appropriate.             
-truth_index      = get_copy_index(pinfo.truth_file, 'true state' ); 
+% Get the indices for the true state, ensemble mean and spread
+% The metadata is queried to determine which "copy" is appropriate.
+truth_index      = get_copy_index(pinfo.truth_file, 'true state' );
 ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
 
@@ -97,7 +85,7 @@ for ilevel = 1:num_levels,     % Loop through all levels
 
         rms(:, ivar, ilevel) = mean(abs(ens_err),2);
    sd_final(:, ivar, ilevel) = mean(sd,2);
-  
+
    %-------------------------------------------------------------------
    % u ...  num_times x num_levels x num_lats x num_lons
    %-------------------------------------------------------------------
@@ -116,7 +104,7 @@ for ilevel = 1:num_levels,     % Loop through all levels
 
         rms(:, ivar, ilevel) = mean(abs(ens_err),2);
    sd_final(:, ivar, ilevel) = mean(sd,2);
-  
+
    %-------------------------------------------------------------------
    % temperature ...  num_times x num_levels x num_lats x num_lons
    %-------------------------------------------------------------------
@@ -135,7 +123,7 @@ for ilevel = 1:num_levels,     % Loop through all levels
 
         rms(:, ivar, ilevel) = mean(abs(ens_err),2);
    sd_final(:, ivar, ilevel) = mean(sd,2);
-  
+
 end % End of level loop
 
 clear field ens sd ens_err
@@ -145,7 +133,7 @@ clear field ens sd ens_err
 %----------------------------------------------------------------------
 figure(1); clf;
       ivar = 1;
-      plot(times, rms(:, ivar, 1), '-', times, sd_final(:, ivar, 1), '--');
+      plot(pinfo.time, rms(:, ivar, 1), '-', pinfo.time, sd_final(:, ivar, 1), '--');
 
       s1 = sprintf('%s model ''ps'' Ensemble Mean for %s', model,pinfo.diagn_file);
       title(s1,'interpreter','none','fontweight','bold')
@@ -164,8 +152,8 @@ figure(2); clf;
       ivar = 2;
       plot_temp = reshape(rms(:, ivar, :), [num_times num_levels]);
 
-      h1 = plot(times, squeeze(     rms(:, ivar, :)),'-'); hold on;
-      h2 = plot(times, squeeze(sd_final(:, ivar, :)),'--');
+      h1 = plot(pinfo.time, squeeze(     rms(:, ivar, :)),'-'); hold on;
+      h2 = plot(pinfo.time, squeeze(sd_final(:, ivar, :)),'--');
       s1 = sprintf('%s model ''temperature'' Ensemble Mean for %s', model,pinfo.diagn_file);
       title(s1,'interpreter','none','fontweight','bold')
 
@@ -185,8 +173,8 @@ figure(3); clf;
       ivar = 3;
       plot_temp = reshape(rms(:, ivar, :), [num_times num_levels]);
 
-      h1 = plot(times, squeeze(     rms(:, ivar, :)),'-'); hold on;
-      h2 = plot(times, squeeze(sd_final(:, ivar, :)),'--');
+      h1 = plot(pinfo.time, squeeze(     rms(:, ivar, :)),'-'); hold on;
+      h2 = plot(pinfo.time, squeeze(sd_final(:, ivar, :)),'--');
       s1 = sprintf('%s model ''U'' Ensemble Mean for %s', model,pinfo.diagn_file);
       title(s1,'interpreter','none','fontweight','bold')
 
@@ -206,8 +194,8 @@ figure(4); clf;
       ivar = 4;
       plot_temp = reshape(rms(:, ivar, :), [num_times num_levels]);
 
-      h1 = plot(times, squeeze(     rms(:, ivar, :)),'-'); hold on;
-      h2 = plot(times, squeeze(sd_final(:, ivar, :)),'--');
+      h1 = plot(pinfo.time, squeeze(     rms(:, ivar, :)),'-'); hold on;
+      h2 = plot(pinfo.time, squeeze(sd_final(:, ivar, :)),'--');
       s1 = sprintf('%s model ''V'' Ensemble Mean for %s', model,pinfo.diagn_file);
       title(s1,'interpreter','none','fontweight','bold')
 
@@ -250,11 +238,11 @@ slice      = reshape(ted,[nt ny*nx]);
 
 
 function slice = GetLevel(fname,ivar,copyindex,ilevel,tstartind,tendind);
-if ivar == 2 
+if ivar == 2
    varstring = 't';
-elseif ivar == 3 
+elseif ivar == 3
    varstring = 'u';
-elseif ivar == 4 
+elseif ivar == 4
    varstring = 'v';
 else
    error(' variable id %d out of bounds',ivar)
@@ -284,4 +272,11 @@ end
 ted        = nc_varget(fname,varstring,start,count);
 [nt,ny,nx] = size(ted);
 slice      = reshape(ted,[nt ny*nx]);
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

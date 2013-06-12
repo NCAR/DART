@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program wod_to_obs
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -28,7 +24,7 @@ use    utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
                              check_namelist_read, nmlfileunit, do_output,    &
                              get_next_filename, error_handler, E_ERR, E_MSG, &
                              nc_check, find_textfile_dims, finalize_utilities, &
-                             timestamp, open_file, close_file
+                             open_file, close_file
 use     location_mod, only : VERTISHEIGHT, set_location
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
                              static_init_obs_sequence, init_obs, destroy_obs, &
@@ -93,31 +89,27 @@ use WOD_read_routines_mod, only : WODREADDART, depth, temp, ierror, iderror,  &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
 
 character (len=129) :: msgstring, next_infile, cdummy
-character (len=80)  :: name
-character (len=19)  :: datestr
-character (len=6)   :: subset
-integer :: rcode, ncid, varid, j, k, nfiles, num_new_obs, castid, l
-integer :: aday, asec, dday, dsec, oday, osec                   
-integer :: obsyear, obsmonth, obsday, obshour, obsmin, obssec
-integer :: zloc, obs_num, io, iunit, filenum, dummy, i_qc, nc_rc
+integer :: j, k, nfiles, num_new_obs, castid, l
+integer :: oday, osec                   
+integer :: obsyear, obsmonth, obsday, obssec
+integer :: obs_num, io, iunit, filenum, dummy
 integer :: funit, levels, istdlev, nvar, nsecond, ieof
 integer :: ip2(0:maxlevel), cast, itype
 logical :: file_exist, did_obs, from_list = .false.
 logical :: have_temp, have_salt
-real(r8) :: hght_miss, refr_miss, azim_miss, terr, serr,         & 
-            qc, hghto, refro, azimo, wght, nx, ny,   & 
-            nz, ds, htop, rfict, obsval, phs, obs_val(1), qc_val(1),  &
-            glat, glon, d_qc(1)
+real(r8) :: terr, serr,         & 
+            phs, obs_val(1),  &
+            d_qc(1)
 real :: dtime, lato, lono
 real(r8) :: obslat, obslon, obsdepth
 
@@ -141,8 +133,6 @@ integer :: ptype(2, 16) = reshape( (/  &
    MBT_TEMPERATURE,     MBT_SALINITY  /),  &   ! ptype(16) = microBT
    (/ 2, 16 /)  )  ! reshape 1d array into (2,16)
 
-
-real(r8), allocatable :: lat(:), lon(:), dep(:), err(:) !, d_qc(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
@@ -500,8 +490,9 @@ if (timedebug) then
    enddo
 endif
 
-call timestamp(source,revision,revdate,'end')
+call error_handler(E_MSG,'wod_to_obs','Finished successfully.',source,revision,revdate)
 call finalize_utilities()
+
 
 ! END OF MAIN ROUTINE
 
@@ -542,6 +533,8 @@ end subroutine fill_obs
 ! add an obs to the sequence.  if prev_time same or earlier
 ! than obs time, insert with search starting from prev obs.
 subroutine add_obs(seq, obs, obs_time, prev_obs, prev_time)
+
+! FIXME ... 'seq' in argument list never used ... 
  type(obs_sequence_type),   intent(inout) :: seq
  type(obs_type),            intent(inout) :: obs, prev_obs
  type(time_type),           intent(in)    :: obs_time
@@ -709,4 +702,10 @@ return
 
 end function date_ok
 
-end program
+end program wod_to_obs
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

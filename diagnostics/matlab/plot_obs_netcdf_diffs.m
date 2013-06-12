@@ -31,8 +31,6 @@ function obsstruct = plot_obs_netcdf_diffs(fname, ObsTypeString, region,  ...
 % ncdump -v CopyMetaData,ObsTypesMetaData,QCMetaData obs_epoch_001.nc
 % is a useful endeavor.
 %
-% $Id$
-%
 %--------------------------------------------------
 % EXAMPLE : plot the difference between the ensemble mean of the prior 
 % and the actual observation value - while rejecting any obs that had
@@ -51,16 +49,11 @@ function obsstruct = plot_obs_netcdf_diffs(fname, ObsTypeString, region,  ...
 % bob = plot_obs_netcdf_diffs(fname, ObsTypeString, region, CopyString1, CopyString2, ...
 %                             QCString, maxQC, verbose, twoup);
 
-% record the user input
-
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
-% $Revision$
-% $Date$
+% $Id$
 
 if (exist(fname,'file') ~= 2)
    error('%s does not exist.',fname)
@@ -421,3 +414,11 @@ set(gca,'CLim',clim)
 h = colorbar;
 set(get(h,'YLabel'),'String',pstruct.colorbarstring,'Interpreter','none')
 hold off
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

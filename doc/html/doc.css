@@ -54,14 +54,12 @@ div.routineIndent1 {
 table.indent1 {
     border: 0;
     border-width: thin;
-    cellpadding: 1;
     margin-left: 4%;
     width: 96%;}
 
 table.indent2 {
     border: 0;
     border-width: thin;
-    cellpadding: 1;
     margin-left: 8%;
     width: 92%;}
 
@@ -86,7 +84,7 @@ div.color {
 
 div.unix {
     background-color: rgb(204,204,204);
-    font-style: typewriter;
+    font-family: monospace;
     padding: 1.0em;
     border: none;
     margin-left: 4%;
@@ -94,7 +92,7 @@ div.unix {
 
 div.disclaimer {
     background-color: rgb(240,240,240);
-    font-style: typewriter;
+    font-family: monospace;
     font-size:0.75em;
     padding: 1.0em;
     border: none;
@@ -146,8 +144,8 @@ p.head{
 
 li{ font-size: 1.0em; }
 
-a.optionalcode{ color:red;  font-style:typewriter; }
-a.code    {     color:blue; font-style:typewriter; }
+a.optionalcode{ color:red;  font-family:monospace; }
+a.code    {     color:blue; font-family:monospace; }
 a.link    { color: rgb(  0,   0, 153) } /* for unvisited links */
 a.visited { color: rgb(153,   0, 153) } /* for visited links */
 a.active  { color: rgb(255,   0, 102) } /* when link is clicked */
@@ -164,83 +162,92 @@ pre.indent1{
 
 em.units{
     color:crimson; 
-    font-style:normal;}
+    font-style:normal;
+    font-family:"Lucida Console", monospace;}
 
 em.code{
     color:blue;
-    font-style:typewriter;}
+    font-style:normal;
+    font-family:"Lucida Console", monospace;}
 
 em.changed{
     color:blue; 
-    font-style:typewriter; 
+    font-style:oblique;
+    font-family:"Courier", monospace; 
     background-color: #FFCCFF;}
 
 em.removed{
     color:blue; 
-    font-style:typewriter; 
+    font-style:oblique;
     text-decoration:line-through;}
 
 em.call{
     color:blue; 
-    font-style:typewriter; 
+    font-style:normal;
+    font-family:"Courier", monospace; 
     font-size:1.5em;}
 
 em.input{
     color:magenta; 
+    font-style:normal;
+    font-family:"Lucida Console", monospace;
     font-weight:bold;}
 
 em.option{
     color:blue; 
-    font-style:italic;}
+    font-family:oblique;}
 
 em.optionalcode{
     color:red; 
-    font-style:typewriter;}
+    font-style:oblique;
+    font-family:"Lucida Console",monospace;}
 
 em.program{
     color:green; 
-    font-style:italic;}
+    font-style:oblique;
+    font-family:"Lucida Console",monospace;}
 
 em.file{
     color:green; 
-    font-style:typewriter;}
+    font-style:normal;
+    font-family:"Lucida Console",monospace;}
 
 em.nav{
-    font-style:normal;
+    font-family:sans-serif;
     color:white;}
 
 em.sub{
     color:peru;
-    font-style:normal;
+    font-family:sans-serif;
     font-size:1.2em;}
 
 em.head{
     color:white; 
-    font-style:normal; 
+    font-family:sans-serif; 
     font-size:1.2em;}
 
 em.italic{
     color:black; 
-    font-style:italic;}
+    font-family:italic;}
 
 em.red{
     color:crimson; 
-    font-style:normal;}
+    font-family:sans-serif;}
 
 em.green{
     color:green; 
-    font-style:normal;}
+    font-family:sans-serif;}
 
 em.Navy{
     color:Navy; 
-    font-style:normal;}
+    font-family:sans-serif;}
 
 em.teal{
     color:cornflowerblue; 
-    font-style:normal;}
+    font-family:sans-serif;}
 
 em{
-    font-style:normal;
+    font-family:sans-serif;
     color:red;}
 
 .top {

@@ -66,10 +66,15 @@ as a data user.
 </P>
 
 <P>
+There are two products this converter can be used on: AIRX2RET, which is the
+L2 standard retrieval product using AIRS IR and AMSU (without-HSB); and
+AIRS2RET, which is the L2 standard retrieval product using AIRS IR-only.
 More detailed information on the 
+<a href="http://disc.sci.gsfc.nasa.gov/AIRS/data-holdings/by-data-product-v5/airsL2_Std_AIRS_only.shtml">
+AIRS2RET data product </a> and the
 <a href="http://disc.sci.gsfc.nasa.gov/AIRS/data-holdings/by-data-product/airsL2_Std.shtml">
-Level 2 standard product (AIRX2RET) data</a>
-is available.
+AIRX2RET data product</a>
+is available from the nasa web pages.
 </P>
 
 <P>
@@ -81,6 +86,15 @@ There is a basic library for accessing data in hdf files,
 and a variety of
 <a href="http://www.hdfgroup.org/products/index.html">generic tools</a>
 that work with hdf files.
+The specific libraries we use are the
+<a href="http://hdfeos.org/software/library.php#HDF-EOS2">HDF-EOS2</a>
+library built on HDF4.  The web page has a link to specific build
+instructions.  Also, see <a href="#build">below</a> on this web page
+for very specific instructions for getting the required software
+and building it.  If you find more recent instructions online, use those.
+But in the absence of anything else, it's someplace to start.
+</P>
+<P>
 Besides the programs in this directory, a variety of
 <a href="http://disc.sci.gsfc.nasa.gov/AIRS/tools.shtml">specific tools</a>
 targeted at AIRS data are available to help read and browse the data.
@@ -123,8 +137,8 @@ sets.
 
 <P>
 The converter in this directory processes level 2 (L2) data files, using
-data set <tt>AIRS_DP</tt> and data product <tt>AIRX2RET</tt> without
-<tt>HSB</tt> (the instrument measuring humidity which failed).
+data set <tt>AIRS_DP</tt> and data product <tt>AIRX2RET</tt> or <tt>AIRS2RET</tt>
+without <tt>HSB</tt> (the instrument measuring humidity which failed).
 </P>
 
 <P>
@@ -147,7 +161,8 @@ while moisture profile is reported at 14 atmospheric layers between 1100
 mb and 50 mb. The horizontal resolution is 50 km. An AIRS granule has been
 set as 6 minutes of data, 30 footprints cross track by 45 lines along track.
 
-(The Shortname for this product is AIRX2RET).
+The Shortname for this product is AIRX2RET.  (AIRS2RET is the same product
+but without the AMSU data.)
 </P>
 
 <P>
@@ -219,6 +234,110 @@ into daily files, and remove the
 original data files and repeat the process for any specified
 time period.  (See <tt>oneday_down.sh</tt>)
 </P>
+
+<A NAME="build"></A>
+<P>
+Here is a very specific script I used to build the required libraries
+on a Linux cluster.  If you find more up-to-date instructions, use
+those.  But in the absence of anything else, here's a place to start:
+</P>
+
+<blockquote>
+<pre>
+ 
+ftp edhs1.gsfc.nasa.gov
+# (log in as 'anonymous' and your email as the password)
+cd /edhs/hdfeos/latest_release
+mget *
+quit
+ 
+# mar 2013, the dir contents:
+# 
+# hdf-4.2.6.tar.gz
+# HDF-EOS2.18v1.00.tar.Z
+# HDF-EOS2.18v1.00_TestDriver.tar.Z
+# HDF_EOS_REF.pdf
+# HDF_EOS_UG.pdf
+# jpegsrc.v6b.tar.gz
+# zlib-1.2.5.tar.gz
+# 
+# (i skipped a 'windows' dir).
+# 
+
+for i in *.tar.gz
+do
+  tar -zxvf $i
+done
+
+# 
+# start with smaller libs, work up to HDF-EOS.
+# 
+# 
+
+echo zlib:
+
+cd zlib-1.2.5
+./configure --prefix=/glade/p/work/nancy
+make
+make test 
+make install
+
+echo jpeg:
+
+cd jpeg-6b
+./configure --prefix=/glade/p/work/nancy
+make
+make test 
+mkdir /glade/p/work/nancy/{bin,man,man/man1} 
+make install
+
+# (make install wouldn't create the dirs if they didn't exist.
+# lib was there from the zlib install, the others weren't.)
+
+echo hdf:
+
+cd hdf-4.2.6
+./configure --prefix=/glade/p/work/nancy
+# (it found zlib and jpeg, from the install prefix i guess)
+make
+# (there is apparently no 'make test')
+make install
+
+echo hdf-eos:
+
+cd hdfeos
+./configure CC='/glade/p/work/nancy/bin/h4cc -Df2cFortran' --prefix=/glade/p/work/nancy
+# (the CC= is crucial)
+make
+# (i didn't build the test drivers so i didn't do make test)
+make install
+
+
+echo AIRS converter:
+
+cd $DART/observations/AIRS/work
+
+echo edit mkmf_convert_airs_L2 to have all the base paths
+echo be /glade/p/work/nancy instead of whatever.  make it look like:
+echo ' '
+echo 'set JPGDIR = /glade/p/work/nancy'
+echo 'set JPGLIB = ${JPGDIR}/lib'
+echo 'set JPGINC = ${JPGDIR}/include'
+echo ' '
+echo 'set HDFDIR = /glade/p/work/nancy'
+echo 'set HDFLIB = ${HDFDIR}/lib'
+echo 'set HDFINC = ${HDFDIR}/include'
+echo ' '
+echo 'set EOSDIR = /glade/p/work/nancy'
+echo 'set EOSLIB = ${EOSDIR}/lib'
+echo 'set EOSINC = ${EOSDIR}/include'
+echo ' '
+
+./quickbuild.csh
+
+exit 0
+</pre>
+</blockquote>
 
 <!--==================================================================-->
 <!-- Describe the bugs.                                               -->

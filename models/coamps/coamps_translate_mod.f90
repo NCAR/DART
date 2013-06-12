@@ -1,14 +1,9 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
-! http://www.image.ucar.edu/DAReS/DART/DART_download
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
 
 module coamps_translate_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !------------------------------
 ! MODULE:       coamps_translate_mod
@@ -142,10 +137,10 @@ module coamps_translate_mod
   !------------------------------
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source = "$URL$", &
-   revision = "$Revision$", &
-   revdate = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
   ! Namelist containing the date time group and lead time information
   ! Also include information about the domain decomposition: number
@@ -1118,5 +1113,8 @@ contains
 
 end module coamps_translate_mod
 
-
-  
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

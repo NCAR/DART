@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program convert_madis_mesonet
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -261,6 +257,15 @@ obsloop: do n = 1, nobs
   if ( tair(n) /= tair_miss .and. qc_tair(n) == 0 .and. &
        tdew(n) /= tdew_miss .and. qc_tdew(n) == 0  ) then
 
+    ! before we start computing things based on the dewpoint,
+    ! make sure it isn't larger than the air temp.  if it is
+    ! more than a degree larger, skip it completely.  if it is
+    ! less, set them equal and continue.
+    if (tdew(n) > tair(n)) then
+       if (tdew(n) > tair(n) + 1.0_r8) goto 100
+       tdew(n) = tair(n)
+    endif
+
     ! add specific humidity to obs_seq
     if ( include_specific_humidity .and. &
          alti(n) /= alti_miss .and. qc_alti(n) == 0 ) then
@@ -327,6 +332,8 @@ obsloop: do n = 1, nobs
 
   endif  ! quality control/missing check on tair, tdew
 
+100 continue
+
   nused = nused + 1
   latu(nused) =  lat(n)
   lonu(nused) =  lon(n)
@@ -341,3 +348,9 @@ if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, surface_out_file)
 call finalize_utilities()
 
 end program convert_madis_mesonet
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

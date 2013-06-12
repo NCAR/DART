@@ -95,7 +95,7 @@ structure of individual observations, and general background information.
         edit_qc_metadata, new_qc_metadata,
         edit_copies, new_copy_index, new_copy_data,
         edit_qcs, new_qc_index, new_qc_data,
-        synonym_copy_list, synonym_qc_list,
+        synonymous_copy_list, synonymous_qc_list,
         print_only, 
         gregorian_cal,
 </pre>
@@ -325,7 +325,7 @@ the <em class=file>input.nml</em> file.
                        in the new_qc_index list, and will be the data value for the new
                        QCs.  This value will be constant for all observations.
                        Default: none</TD></TR>
-<TR><!--contents--><TD valign=top>synonym_copy_list</TD>
+<TR><!--contents--><TD valign=top>synonymous_copy_list</TD>
     <!--  type  --><TD>character(len=*)(:)</TD>
     <!--descript--><TD>An array of strings which are to be considered synonyms in the copy
                        metadata strings for all the input obs seq files.
@@ -334,7 +334,7 @@ the <em class=file>input.nml</em> file.
                        observations to the output file will set the actual values used,
                        unless they are explicitly overridden by edit_copy_metadata.
                        Default: none</TD></TR>
-<TR><!--contents--><TD valign=top>synonym_qc_list</TD>
+<TR><!--contents--><TD valign=top>synonymous_qc_list</TD>
     <!--  type  --><TD>character(len=*)(:)</TD>
     <!--descript--><TD>An array of strings which are to be considered synonyms in the qc
                        metadata strings for all the input obs seq files.

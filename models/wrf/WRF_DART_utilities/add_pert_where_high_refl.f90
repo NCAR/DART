@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 PROGRAM add_pert_where_high_refl
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! Add 3D random but smooth perturbations to WRF fields in/near where the observations
 ! indicate high reflectivity values.  The technique is somewhat like that of
@@ -33,18 +29,17 @@ PROGRAM add_pert_where_high_refl
 
 use        types_mod, only : r8, gravity, t_kelvin, ps0, gas_constant, gas_constant_v
 use    utilities_mod, only : error_handler, E_ERR
-use    random_nr_mod, only : random_seq_type, init_ran1
-use   random_seq_mod, only : random_gaussian
+use   random_seq_mod, only : random_gaussian, random_seq_type, init_random_seq
 use    netcdf
 use    f2kcli
 
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   =  "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! command-line parameters
 character(len=129) :: refl_ob_file
@@ -290,7 +285,7 @@ enddo
 ! portion of the current time.
 
 call date_and_time(crdate,crtime,crzone,values)
-call init_ran1(rs, -int(values(8)))
+call init_random_seq(rs, -int(values(8)))
 
 
 ! Add perturbations.
@@ -681,3 +676,9 @@ contains
 
 
 END PROGRAM add_pert_where_high_refl
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

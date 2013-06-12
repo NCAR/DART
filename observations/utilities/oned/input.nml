@@ -25,7 +25,8 @@
    /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+   /
 
 &utilities_nml
    TERMLEVEL = 1,
@@ -53,18 +54,22 @@
    lonlim2    =  360.0,
    latlim1    =  -90.0,
    latlim2    =   90.0,
-   verbose    = .false.  /
+   verbose    = .false.
+   /
 
 # The low-order models do not technically use a calendar ...
 # If you specify 'Gregorian' 1601 1 1 0 0 0 ... that will
 # correspond to a DART time of 0 days, 0 seconds.
+# The default will create one gigantic bin.
+
 &schedule_nml
    calendar       = 'Gregorian',
-   first_bin_start =  1601, 1, 1, 0, 0, 0 ,
-   first_bin_end   =  1601, 1, 1, 1, 0, 0 ,
-   last_bin_end    =  1601, 1,11, 0, 0, 0 ,
-   bin_interval_days    = 0,
-   bin_interval_seconds = 3600,
+   first_bin_start =  1601,  1,  1,  0,  0,  0,
+   first_bin_end   =  2999,  1,  1,  0,  0,  0,
+   last_bin_end    =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,
+   bin_interval_seconds = 0,
    max_num_bins         = 1000,
-   print_table          = .true.  /
+   print_table          = .true.
+   /
 

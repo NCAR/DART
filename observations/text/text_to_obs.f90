@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program text_to_obs
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -43,7 +39,7 @@ logical, parameter :: debug = .false.  ! set to .true. to print info
 
 character (len=129) :: input_line
 
-integer :: n, i, oday, osec, rcio, iunit, otype
+integer :: oday, osec, rcio, iunit, otype
 integer :: year, month, day, hour, minute, second
 integer :: num_copies, num_qc, max_obs
            
@@ -345,3 +341,9 @@ prev_time = obs_time
 end subroutine add_obs_to_seq
 
 end program text_to_obs
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

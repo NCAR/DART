@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program column_rand
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! Allows creation of input file for generating a set of randomly located
 ! observation stations with full column of obs for CAM model. 
@@ -20,10 +16,10 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_uniform
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 integer, allocatable :: levels(:)
 integer  :: level, num_cols, num_levs, i, iunit
@@ -154,6 +150,12 @@ end do
 write(iunit, *) 'set_def.out'
 
 ! Shut down the utilities cleanly
-call finalize_utilities()
+call finalize_utilities('column_rand')
 
 end program column_rand
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

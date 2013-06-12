@@ -1,23 +1,19 @@
 function h = GetCalendarDate(seconds,days,calendartype)
 %% h = GetCalendarDate(seconds,days [,calendartype] )
 %
-% seconds, days are the DART times 
+% seconds, days are the DART times
 %
 % EXAMPLE:
 %
 % mydate = GetCalendarDate(82761,148520);
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
-if (nargin < 2) 
+if (nargin < 2)
    error('Must supply at least two arguments, seconds and days')
 elseif (nargin ==2)
    calendartype = 'Gregorian';
@@ -41,4 +37,11 @@ switch lower(calendartype)
       error('gregorian_mars not supported yet')
    otherwise
 end
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

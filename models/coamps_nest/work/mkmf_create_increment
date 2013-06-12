@@ -1,10 +1,10 @@
 #!/bin/csh
 #
-# Data Assimilation Research Testbed -- DART
-# Copyright 2004-2007, Data Assimilation Research Section
-# University Corporation for Atmospheric Research
-# Licensed under the GPL -- www.gpl.org/licenses/gpl.html
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
 #
+# DART $Id$
 
 # usage: mkmf_create_increment [ -mpi | -nompi ]
 #  without any args, builds filter without mpi libraries, and it will run
@@ -52,6 +52,13 @@ endif
 # remove temp file and now really call mkmf to generate makefile
 rm -f ${path_name}.back
 
-../../../mkmf/mkmf -p create_increment -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+../../../mkmf/mkmf -p create_increment -t ../../../mkmf/mkmf.template   \
         -a "../../.." ${wrapper_arg} ${path_name}
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

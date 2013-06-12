@@ -48,6 +48,24 @@ the first job step.
 The program reads 2 real values from the console and always
 writes out a file called "inflate_ics", which can be renamed
 to match the input inflation restart file in the filter namelist.
+</P><P>
+Note that if the model you're working with requires any files
+to be present in the current directory at assimilation time
+(e.g. CAM and WRF require netcdf file(s) that define the size 
+of the grid) or if the contents of the state vector are 
+settable by namelist, then all these things must be set 
+and files must be present in the current directory when
+you run this tool.  The size of the inflation restart file
+must match exactly the size of the state vector that will
+be used in the assimilation run.
+</P><P>
+Also note that the output is a binary file and should be created
+on the same platform type as your assimilation run will be done.
+You can't move binary files between processors with different
+processor types if one uses little-endian byte order and the
+other uses big-endian.  The most common incompatible pairing these
+days is between IBM Power chips that are big-endian and Intel chips 
+that are little-endian.
 </P>
 
 <!--==================================================================-->

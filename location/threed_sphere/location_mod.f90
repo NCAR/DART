@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module location_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! Implements location interfaces for a three dimensional spherical shell 
 ! with a pressure vertical coordinate plus
@@ -49,10 +45,10 @@ public :: location_type, get_location, set_location, &
           VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type, horiz_dist_only
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! The possible values for the location_type%which_vert component.
 ! These are intended to be PRIVATE to this module. Do not make public.
@@ -248,7 +244,7 @@ end subroutine initialize_module
 
 !----------------------------------------------------------------------------
 
-function get_dist(loc1, loc2, kind1, kind2, no_vert)
+function get_dist(loc1, loc2, type1, kind2, no_vert)
 
 ! returns the distance between 2 locations in units of radians.
 ! Distance depends on only horizontal distance or both horizontal and 
@@ -263,8 +259,9 @@ function get_dist(loc1, loc2, kind1, kind2, no_vert)
 ! distance computation for incompatible vertical location types results 
 ! in a fatal error unless one of the vertical types is UNDEFINED.
 
-! In spite of the names, the 3rd and 4th argument are actually specific types
-! (e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_TEMPERATURE).  The types are part of
+! The 3rd argument is actually a specific type, (e.g. RADIOSONDE_TEMPERATURE, 
+! AIRCRAFT_TEMPERATURE).  The 4th argument is a generic kind (e.g. KIND_TEMPERATURE).
+! The types/kinds are part of
 ! the interface in case user-code wants to do a more sophisticated distance
 ! calculation based on the base or target types.  In the usual case this
 ! code still doesn't use the types, but there's an undocumented feature that
@@ -274,7 +271,7 @@ function get_dist(loc1, loc2, kind1, kind2, no_vert)
 ! 
 
 type(location_type), intent(in) :: loc1, loc2
-integer, optional,   intent(in) :: kind1, kind2
+integer, optional,   intent(in) :: type1, kind2
 logical, optional,   intent(in) :: no_vert
 real(r8)                        :: get_dist
 
@@ -357,7 +354,7 @@ if(.not. comp_h_only) then
    ! note that per-type vertical conversion factors are a global here, and were set
    ! by the last call to gc_init that specified per/type cutoffs.
    if (allocated(special_vert_norm)) then 
-      vert_dist = abs(loc1%vloc - loc2%vloc) / special_vert_norm(loc1%which_vert, kind1)
+      vert_dist = abs(loc1%vloc - loc2%vloc) / special_vert_norm(loc1%which_vert, type1)
    else
       vert_dist = abs(loc1%vloc - loc2%vloc) / vert_normalization(loc1%which_vert)
    endif
@@ -1210,7 +1207,7 @@ end subroutine get_close_maxdist_init
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
+subroutine get_close_obs(gc, base_obs_loc, base_obs_type, obs, obs_kind, &
    num_close, close_ind, dist)
 
 ! In spite of the names, the specific types are available to do a more
@@ -1218,7 +1215,7 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
 
 type(get_close_type), intent(in)  :: gc
 type(location_type),  intent(in)  :: base_obs_loc, obs(:)
-integer,              intent(in)  :: base_obs_kind, obs_kind(:)
+integer,              intent(in)  :: base_obs_type, obs_kind(:)
 integer,              intent(out) :: num_close, close_ind(:)
 real(r8), optional,   intent(out) :: dist(:)
 
@@ -1254,7 +1251,7 @@ if (gc%num == 0) return
 ! set a local variable for what the maxdist is in this particular case.
 ! if per-type distances are set, use those.  otherwise, use the global val.
 if (gc%num_types > 0) then
-   this_maxdist = gc%special_maxdist(base_obs_kind)
+   this_maxdist = gc%special_maxdist(base_obs_type)
 else
    this_maxdist = gc%maxdist
 endif
@@ -1265,7 +1262,7 @@ endif
 if(COMPARE_TO_CORRECT) then
    cnum_close = 0
    do i = 1, gc%num 
-   this_dist = get_dist(base_obs_loc, obs(i), base_obs_kind, obs_kind(i))
+   this_dist = get_dist(base_obs_loc, obs(i), base_obs_type, obs_kind(i))
       if(this_dist <= this_maxdist) then
          ! Add this obs to correct list
          cnum_close = cnum_close + 1
@@ -1312,10 +1309,10 @@ do j = 1, nlat
             ! Only compute distance if dist is present
             if(present(dist)) then
                if(base_obs_loc%which_vert == obs(t_ind)%which_vert) then
-                  this_dist = get_dist(base_obs_loc, obs(t_ind), base_obs_kind, obs_kind(t_ind))
+                  this_dist = get_dist(base_obs_loc, obs(t_ind), base_obs_type, obs_kind(t_ind))
                else
                ! Otherwise can just get horizontal distance
-                  this_dist = get_dist(base_obs_loc, obs(t_ind), base_obs_kind, obs_kind(t_ind), &
+                  this_dist = get_dist(base_obs_loc, obs(t_ind), base_obs_type, obs_kind(t_ind), &
                      no_vert = .true.)
                endif
             else
@@ -2245,3 +2242,9 @@ end function has_vertical_localization
 !----------------------------------------------------------------------------
 
 end module location_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

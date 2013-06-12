@@ -1,6 +1,7 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
-! http://www.image.ucar.edu/DAReS/DART/DART_download
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
 
 module model_mod
 
@@ -187,11 +188,11 @@ module model_mod
     ! BEGIN MODULE VARIABLES
     !------------------------------
 
-    ! Modified automatically by Subversion 
-    character(len=128) :: &
-        source   = '$URL$', & 
-        revision = '$Revision$', &
-        revdate  = '$Date$'
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
     ! Main model_mod namelist - not too much here as we read most of
     ! the data we need in from the COAMPS files themselves
@@ -614,11 +615,12 @@ contains
     !  PARAMETERS
     ! INOUT gc                get_close_type structure to initialize
     !   IN  maxdist           the maximum distance to process  
-    subroutine get_close_maxdist_init (gc, maxdist)
+    subroutine get_close_maxdist_init (gc, maxdist, maxdist_array)
         type(get_close_type), intent(inout) :: gc
         real(r8), intent(in)                :: maxdist
+        real(r8), intent(in), optional      :: maxdist_array(:)
 
-        call loc_get_close_maxdist_init(gc, maxdist)
+        call loc_get_close_maxdist_init(gc, maxdist, maxdist_array)
     end subroutine get_close_maxdist_init
 
     ! get_close_obs_init
@@ -1020,3 +1022,9 @@ contains
     !------------------------------
 
 end module model_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

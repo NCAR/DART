@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program convert_madis_rawin
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -28,11 +24,19 @@ program convert_madis_rawin
 !     
 !     keep original obs times, make source for all converters as similar
 !     as possbile.   nancy collins,  ncar/image   26 march 2010
+! 
+!     add code to use the (new?) pressure levels for vertical coord in the
+!     significant wind obs.  also make an optional namelist section; if
+!     enabled, the selection of mandatory/significant/both and height/pressure
+!     can be from a namelist and avoid the prompts and reads from the console.
+!     nancy collins, ncar/image, 23 mar 2012
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 use         types_mod, only : r8, missing_r8
-use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities
+use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities, &
+                              find_namelist_in_file, check_namelist_read,         &
+                              do_nml_file, do_nml_term, logfileunit, nmlfileunit
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
                                   increment_time, get_time, operator(-), GREGORIAN
 use      location_mod, only : VERTISSURFACE, VERTISPRESSURE, VERTISHEIGHT
@@ -65,28 +69,20 @@ implicit none
 character(len=19),  parameter :: rawin_in_file  = 'rawin_input.nc'
 character(len=129), parameter :: rawin_out_file = 'obs_seq.rawin'
 
-! the following logical parameters control which water-vapor variables appear in the output file,
-! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and if the
-! input file has data quality control fields, whether to use or ignore them.
-logical, parameter :: LH_err                    = .false.
-logical, parameter :: include_specific_humidity = .true.
-logical, parameter :: include_relative_humidity = .false.
-logical, parameter :: include_dewpoint          = .false.
-logical, parameter :: use_input_qc              = .true. 
-
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
 
-integer :: oday, osec, nman, nsig, nsound, nused, & 
+integer :: oday, osec, nman, nsig, nsound, nused, io, iunit, & 
            nmaxml, nmaxsw, nmaxst, maxobs, nvars_man, nvars_sigt, k, n, i, ncid
 
 integer, allocatable :: obscnt(:)
 
-logical :: fexist, sigwnd, sigtmp, first_obs
+logical :: fexist, first_obs
 
 real(r8) :: otime, lat, lon, elev, uwnd, vwnd, qobs, qsat, dptk, oerr, &
             pres_miss, wdir_miss, wspd_miss, tair_miss, tdew_miss, prespa, & 
-            qc, altim, rh, qerr, hght_miss, HGHT_THRESHOLD  ! , time_miss
+            qc, altim, rh, qerr, hght_miss
+real(r8), parameter   :: HGHT_THRESHOLD = 40000.0_r8   
 real(r8), allocatable :: latu(:), lonu(:)
 
 real(r8), allocatable :: pres(:), wdir(:), wspd(:), tair(:), tdew(:), hght(:)
@@ -97,11 +93,54 @@ type(obs_type)          :: obs, prev_obs
 type(time_type)         :: comp_day0, time_obs, prev_time
 
 
+! the following logical parameters control which water-vapor variables appear in the output file,
+! whether to use the NCEP error or Lin and Hubbard (2004) moisture error model, and if the
+! input file has data quality control fields, whether to use or ignore them.  more recent
+! MADIS files contain the significant winds in both height and pressure vertical coordinates
+! and the last variable controls which one is used.
+! if you are using the namelist (see 'use_namelist' below) you can change these at runtime.
+! if not, they are compile-time settings.
+logical :: LH_err                    = .false.
+logical :: include_specific_humidity = .true.
+logical :: include_relative_humidity = .false.
+logical :: include_dewpoint          = .false.
+logical :: use_input_qc              = .true. 
+logical :: wind_use_vert_pressure    = .true.
+
+! mandatory levels are always converted.  significant levels are controlled
+! by these vars.  if you are using the namelist they are set by the
+! namelist in input.nml.  if not, you are prompted at runtime for T/F responses.
+logical :: do_significant_level_temps = .true.
+logical :: do_significant_level_winds = .true.
+
+logical :: use_namelist = .false.
+
+! THIS WILL NOT BE READ IN UNLESS use_namelist IS SET TO .true.
+! if true, the code will NOT prompt for input from the console.
+
+namelist /convert_madis_rawin_nml/ &
+   do_significant_level_temps, do_significant_level_winds,  &
+   wind_use_vert_pressure, LH_err, include_specific_humidity, &
+   include_relative_humidity, include_dewpoint, use_input_qc
+
+!-------- start of executable code -----------
+
 call initialize_utilities('convert_madis_rawin')
 
-! prompt for optional significant level values
-print*,'Include significant level winds, temperature?: '
-read*, sigwnd, sigtmp
+if (use_namelist) then
+   ! Read the namelist entry
+   call find_namelist_in_file("input.nml", "convert_madis_rawin_nml", iunit)
+   read(iunit, nml = convert_madis_rawin_nml, iostat = io)
+   call check_namelist_read(iunit, io, "convert_madis_rawin_nml")
+   
+   ! Record the namelist values used for the run ...
+   if (do_nml_file()) write(nmlfileunit, nml=convert_madis_rawin_nml)
+   if (do_nml_term()) write(     *     , nml=convert_madis_rawin_nml)
+else
+   ! prompt for optional significant level values
+   print*,'Include significant level winds, temperature?: '
+   read*, do_significant_level_winds, do_significant_level_temps
+endif
 
 ! shouldn't need to do this now - the nf90 open will catch it below
 inquire(file=trim(rawin_in_file), exist=fexist) ! check for drop file 
@@ -132,14 +171,18 @@ do n = 1, nsound
   if ( obscnt(n) > nmaxml .and. obscnt(n) < 25 )  nmaxml = obscnt(n)
 end do
 
-if ( sigwnd ) then
-  call getvar_int(ncid, "numSigW", obscnt)
+if ( do_significant_level_winds ) then
+  if ( wind_use_vert_pressure ) then
+     call getvar_int(ncid, "numSigPresW", obscnt)
+  else
+     call getvar_int(ncid, "numSigW", obscnt)
+  endif
   do n = 1, nsound
     if ( obscnt(n) > nmaxsw .and. obscnt(n) < 150 )  nmaxsw = obscnt(n)
   end do
 endif
 
-if ( sigtmp ) then
+if ( do_significant_level_temps ) then
   call getvar_int(ncid, "numSigT", obscnt)
   do n = 1, nsound
     if ( obscnt(n) > nmaxst .and. obscnt(n) < 150 )  nmaxst = obscnt(n)
@@ -253,7 +296,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
        qc_wdir = 0 ;  qc_wspd = 0
     endif
   
-    if ( pres(1) /= pres_miss .and. qc_pres(1) == 0 ) then
+    if ( pres(1) /= pres_miss .and. qc_pres(1) == 0 .and. elev < 9999.0) then
   
       altim = compute_altimeter(pres(1), elev)
       oerr  = rawin_pres_error(pres_alt_to_pres(elev) * 0.01_r8)
@@ -314,9 +357,9 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
         ! make sure it isn't larger than the air temp.  if it is
         ! more than a degree larger, skip it completely.  if it is
         ! less, set them equal and continue.
-        if (tdew(n) > tair(n)) then
-           if (tdew(n) > tair(n) + 1.0_r8) goto 100
-           tdew(n) = tair(n)
+        if (tdew(k) > tair(k)) then
+           if (tdew(k) > tair(k) + 1.0_r8) goto 100
+           tdew(k) = tair(k)
         endif
 
         ! tdew is the dewpoint depression
@@ -381,16 +424,18 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   
       endif  ! quality control/missing check on tair, tdew
   
+100 continue
+
     end do
+
     deallocate(pres, wdir, wspd, tair, tdew, qc_pres, qc_wdir, qc_wspd, qc_tair, qc_tdew)
   endif
 
-100 continue
 
   !  If desired, read the significant-level temperature data, write to obs_seq
   call getvar_int_1d_1val(ncid, "numSigT", n, nsig )
 
-  if ( sigtmp .and. nsig <= nmaxst ) then
+  if ( do_significant_level_temps .and. nsig <= nmaxst .and. nsig > 0) then
 
     allocate(pres(nsig))     ;  allocate(tair(nsig))     ;  allocate(tdew(nsig))
     allocate(qc_pres(nsig))  ;  allocate(qc_tair(nsig))  ;  allocate(qc_tdew(nsig))
@@ -437,9 +482,9 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
         ! make sure it isn't larger than the air temp.  if it is
         ! more than a degree larger, skip it completely.  if it is
         ! less, set them equal and continue.
-        if (tdew(n) > tair(n)) then
-           if (tdew(n) > tair(n) + 1.0_r8) goto 200
-           tdew(n) = tair(n)
+        if (tdew(k) > tair(k)) then
+           if (tdew(k) > tair(k) + 1.0_r8) goto 200
+           tdew(k) = tair(k)
         endif
 
         ! tdew is the dewpoint depression
@@ -504,17 +549,83 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
       endif  ! quality control/missing check on tair and tdew
 
+200 continue
+
     end do
     deallocate(pres, tair, tdew, qc_pres, qc_tair, qc_tdew)
 
   endif
 
-200 continue
+  !  If desired, read the pressure significant-level wind data, write to obs_seq
+  if ( wind_use_vert_pressure ) then
+      call getvar_int_1d_1val(ncid, "numSigPresW", n, nsig )
+  else
+      nsig = 0
+  endif
 
-  !  If desired, read the significant-level wind data, write to obs_seq
-  call getvar_int_1d_1val(ncid, "numSigW", n, nsig )
-  
-  if ( sigwnd .and. nsig <= nmaxsw ) then
+  if ( do_significant_level_winds .and. nsig > 0 .and. nsig <= nmaxsw) then
+
+    allocate(pres(nsig))     ;  allocate(wdir(nsig))     ;  allocate(wspd(nsig))
+    allocate(qc_pres(nsig))  ;  allocate(qc_wdir(nsig))  ;  allocate(qc_wspd(nsig))
+
+    !  read significant level data
+    call getvar_real_2d(ncid, "prSigW", n, nsig, pres, pres_miss)
+    call getvar_real_2d(ncid, "wdSigPrW", n, nsig, wdir, wdir_miss)
+    call getvar_real_2d(ncid, "wsSigPrW", n, nsig, wspd, wspd_miss)
+
+    if (use_input_qc) then
+       call get_or_fill_QC_2d(ncid, "prSigWQCR", n, nsig, qc_pres)
+       call get_or_fill_QC_2d(ncid, "wdSigPrWQCR", n, nsig, qc_wdir)
+       call get_or_fill_QC_2d(ncid, "wsSigPrWQCR", n, nsig, qc_wspd)
+    else
+       qc_pres = 0
+       qc_wdir = 0
+       qc_wspd = 0
+    endif
+    
+    do k = 1, nsig
+
+      prespa = pres(k) * 100.0_r8
+ 
+      !  add data to the observation sequence here.
+      if ( wdir(k) /= wdir_miss .and. qc_wdir(k) == 0 .and. &
+           wspd(k) /= wspd_miss .and. qc_wspd(k) == 0 .and. &
+           pres(k) /= pres_miss .and. qc_pres(k) == 0 ) then
+
+
+        call wind_dirspd_to_uv(wdir(k), wspd(k), uwnd, vwnd)
+
+        ! expects press in hPa, which is what we already have
+        oerr = rawin_wind_error(pres(k))
+        if ( abs(uwnd) <= 150.0_r8 .and. &
+             abs(vwnd) <= 150.0_r8 .and. oerr /= missing_r8 ) then
+
+          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, uwnd, &
+                             RADIOSONDE_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+
+          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, vwnd, &
+                             RADIOSONDE_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
+          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
+
+        endif
+
+      endif
+
+    end do
+
+    deallocate(pres, wdir, wspd, qc_pres, qc_wdir, qc_wspd)
+
+  endif
+
+  !  If desired, read the height significant-level wind data, write to obs_seq
+  if (.not. wind_use_vert_pressure ) then
+      call getvar_int_1d_1val(ncid, "numSigW", n, nsig )
+  else
+      nsig = 0
+  endif
+
+  if ( do_significant_level_winds .and. nsig > 0 .and. nsig <= nmaxsw) then
 
     allocate(hght(nsig))     ;  allocate(wdir(nsig))     ;  allocate(wspd(nsig))
     allocate(qc_hght(nsig))  ;  allocate(qc_wdir(nsig))  ;  allocate(qc_wspd(nsig))
@@ -525,6 +636,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     call getvar_real_2d(ncid, "wsSigW", n, nsig, wspd, wspd_miss)
 
     if (use_input_qc) then
+       call get_or_fill_QC_2d(ncid, "htSigWQCR", n, nsig, qc_wdir)
        call get_or_fill_QC_2d(ncid, "wdSigWQCR", n, nsig, qc_wdir)
        call get_or_fill_QC_2d(ncid, "wsSigWQCR", n, nsig, qc_wspd)
     else
@@ -537,12 +649,19 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
       !  add data to the observation sequence here.
       if ( wdir(k) /= wdir_miss .and. qc_wdir(k) == 0 .and. &
            wspd(k) /= wspd_miss .and. qc_wspd(k) == 0 .and. &
-           hght(k) /= hght_miss ) then
+           hght(k) /= hght_miss .and. qc_hght(k) == 0) then
+
+         ! make sure elevation is a reasonable value if height comes
+         ! in as zero and use it instead of 0.0
+         if (hght(k) == 0.0 .and. elev < 9999.0) then
+            hght(k) = elev
+         else
+            cycle
+         endif
 
         call wind_dirspd_to_uv(wdir(k), wspd(k), uwnd, vwnd)
         ! the pres_alt_to_pres() fails above 44km, so give any obs above
         ! this height the same wind error value as 40km.
-        HGHT_THRESHOLD = 40000.0_r8   
         oerr = rawin_wind_error(pres_alt_to_pres(min(hght(k),HGHT_THRESHOLD)) * 0.01_r8)
         if ( abs(uwnd) <= 150.0_r8 .and. & 
              abs(vwnd) <= 150.0_r8 .and. oerr /= missing_r8 ) then
@@ -743,3 +862,9 @@ endif
 end subroutine get_or_fill_QC_2d
 
 end program convert_madis_rawin
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

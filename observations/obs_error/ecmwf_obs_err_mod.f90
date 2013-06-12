@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module obs_err_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use        types_mod, only : r8, missing_r8
 
@@ -18,9 +14,11 @@ private
 integer, parameter :: nobs_level = 15
 real(r8)           :: obs_prs(nobs_level)
 
+! this array is ordered from top of atm down to surface
 data obs_prs/ 10.0_r8,  20.0_r8,  30.0_r8,  50.0_r8,  70.0_r8, & 
              100.0_r8, 150.0_r8, 200.0_r8, 250.0_r8, 300.0_r8, & 
              400.0_r8, 500.0_r8, 700.0_r8, 850.0_r8, 1050.0_r8/
+
 
 public :: fixed_marine_pres_error,      &
           fixed_marine_rel_hum_error,   &
@@ -52,6 +50,8 @@ public :: drop_pres_error,              &
           drop_rel_hum_error,           &
           drop_temp_error,              &
           drop_wind_error
+
+public :: prof_wind_error        
 
 contains
 
@@ -455,6 +455,18 @@ return
 end function drop_wind_error
 
 
+function prof_wind_error(pres)
+
+real(r8), intent(in) :: pres  !  (mb)
+
+prof_wind_error = missing_r8
+
+return
+end function prof_wind_error
+
+
+! uses global obs_prs() array.  assumes order of pressure values in
+! the array starts at the top and ends at the surface.
 subroutine find_pressure_level_weight(pres, zloc, wght)
 
 real(r8), intent(in)  :: pres
@@ -468,7 +480,7 @@ if ( pres < obs_prs(1) .or. pres > obs_prs(nobs_level) ) then
   stop
 end if
 
-do k = 1, nobs_level
+do k = 2, nobs_level
 
   if ( pres <= obs_prs(k) )  then
     zloc = k - 1
@@ -482,5 +494,10 @@ end do
 return
 end subroutine find_pressure_level_weight
 
-
 end module obs_err_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

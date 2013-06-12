@@ -51,11 +51,20 @@ available. Several papers on the NCAR
 <a href="http://www.image.ucar.edu/DAReS">IMAGe/DAReS</a> web page document 
 the algorithms in detail. The <em class=file>DART/tutorial/section12</em> 
 chapter has more information. 
-<BR>
-<BR>
+</P> <P>
 Details on controlling the inflation options are contained in the 
 documentation for the filter. The filter_nml controls what inflation
 options are used.
+</P> <P>
+Inflation flavor 3 (spatially-constant state space) reads and writes
+a restart file that is the full size of the state vector, however it
+takes the first value in the array and replicates that throughout the
+array.  This allows one to switch between flavors 2 and 3.  Going from
+inflation flavor 3 to 2 the initial value for all items in the state
+vector will be a constant value and will then start to adapt.  
+Going from inflation flavor 2 to 3 whatever value is in the array at
+index 1 will be replicated and used for the entire rest of the state
+vector items.
 </P>
 
 <!--==================================================================-->

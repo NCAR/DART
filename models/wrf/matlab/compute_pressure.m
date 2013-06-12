@@ -20,18 +20,20 @@ function pres = compute_pressure( mu, dnw, phi, theta, qv, Rd, Rv, gamma, p0 )
 %
 % See wrf subroutine calc_p_rho_phi.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 phi_eta = (phi(2:end,:,:) - phi(1:end-1,:,:)) ./ repmat(dnw(:), [1 size(mu)]);
 alpha   = -phi_eta ./ repmat( reshape( mu, [1 size(mu)] ), [ length(dnw) 1 1 ] );
 
 %% Gas law: 
 pres = p0 * ( Rd * theta .* (1 + (Rv/Rd)*qv ) ./ ( p0 * alpha ) ).^gamma ;
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

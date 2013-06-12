@@ -1,18 +1,14 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
  
 PROGRAM gts_to_dart
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
 use         types_mod, only : r8, missing_r8, missing_data, DEG2RAD, earth_radius
 use     utilities_mod, only : open_file, close_file, initialize_utilities, &
-                              register_module, logfileunit, E_MSG, timestamp, &
+                              register_module, logfileunit, E_MSG, finalize_utilities, &
                               error_handler, find_namelist_in_file, check_namelist_read
 use  obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, insert_obs_in_seq, &
                               set_copy_meta_data, set_qc_meta_data, write_obs_seq, assignment(=), &
@@ -24,7 +20,7 @@ use      obs_kind_mod, only : SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT, &
                               QKSWND_U_WIND_COMPONENT, QKSWND_V_WIND_COMPONENT, &
                               RADIOSONDE_U_WIND_COMPONENT, RADIOSONDE_V_WIND_COMPONENT, &
                               RADIOSONDE_TEMPERATURE, RADIOSONDE_SPECIFIC_HUMIDITY, &
-                              DEWPOINT, &
+                              RADIOSONDE_DEWPOINT, METAR_DEWPOINT_2_METER, &
                               METAR_U_10_METER_WIND, METAR_V_10_METER_WIND, METAR_TEMPERATURE_2_METER, &
                               METAR_SPECIFIC_HUMIDITY_2_METER, METAR_SURFACE_PRESSURE, METAR_POT_TEMP_2_METER, &
                               BUOY_U_WIND_COMPONENT, BUOY_V_WIND_COMPONENT, BUOY_SURFACE_PRESSURE, &
@@ -57,10 +53,10 @@ use gts_dart_mod
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$Source: /home/thoar/CVS.REPOS/DART/converters/gts_to_dart.f90,v $", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
 type(obs_type)          :: obs
@@ -228,7 +224,7 @@ if (Use_SoundObs .eqv. .TRUE.) then
                           u_wind_type      = RADIOSONDE_U_WIND_COMPONENT, &
                           v_wind_type      = RADIOSONDE_V_WIND_COMPONENT, &
                           temperature_type = RADIOSONDE_TEMPERATURE, &
-                          dew_point_type   = DEWPOINT, &
+                          dew_point_type   = RADIOSONDE_DEWPOINT, &
                           which_vert=VERTISPRESSURE, num_obs=num_obs, obs=obs, seq=seq)
    enddo
    write(*,101) 'Processed  OBS_TYPE    VAR#   DART#  Total_DART#'  
@@ -304,7 +300,7 @@ if (Use_MetarObs .eqv. .TRUE.) then
                           u_wind_type      = METAR_U_10_METER_WIND, &
                           v_wind_type      = METAR_V_10_METER_WIND, &
                           temperature_type = METAR_TEMPERATURE_2_METER, &
-                          dew_point_type   = DEWPOINT, &
+                          dew_point_type   = METAR_DEWPOINT_2_METER, &
                           which_vert=VERTISSURFACE, num_obs=num_obs, obs=obs, seq=seq)
    enddo
 !  print*,'Processed ', ob%num_metar, ' METAR,  total obs # ', num_obs
@@ -442,16 +438,18 @@ endif
 
 call close_file(iunit)
 
-
-!  PRINT OUT
-!  =============
- 
-! Write out the sequence
 call write_obs_seq(seq, obs_seq_out_file_name)
 
-write(logfileunit,*)'FINISHED gts_to_dart.'
-write(logfileunit,*)
+call error_handler(E_MSG, 'gts_to_dart', 'FINISHED gts_to_dart.')
+call error_handler(E_MSG, 'gts_to_dart', 'Finished successfully.',&
+                   source,revision,revdate)
+call finalize_utilities()
 
-call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
  
 END PROGRAM gts_to_dart
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

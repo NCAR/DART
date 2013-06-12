@@ -120,8 +120,9 @@ must have in order to use the public interfaces provided by this special
 obs_def module.  This section is optional if there are no external interfaces.
 <pre>
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE 
-!   use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral, 
-!                                    interactive_1d_integral, get_expected_1d_integral 
+!   use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral,  &amp;
+!                                    interactive_1d_integral, get_expected_1d_integral, &amp;
+!                                    set_1d_integral
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE 
 </pre>
 <br /><br />
@@ -247,6 +248,7 @@ cov_cutoff_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_1d_integral">read_1d_integral</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#interactive_1d_integral">interactive_1d_integral</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_expected_1d_integral">get_expected_1d_integral</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_1d_integral">set_1d_integral</A></TD></TR>
 </TABLE>
 
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
@@ -399,6 +401,59 @@ compiled with.
     <TD>Returns 0 if forward operator was successfully computed, 
         else returns a positive value.  (Negative values are
         reserved for system use.)</TD></TR>
+</TABLE>
+
+</div>
+<br />
+
+<!--============= DESCRIPTION OF A SUBROUTINE =======================-->
+
+<A NAME="set_1d_integral"></A>
+<br />
+<div class=routine>
+<em class=call>call set_1d_integral(integral_half_width, num_eval_pts, localize_type, igrkey, istatus) </em>
+<pre>
+real(r8), intent(in)  :: <em class=code>integral_half_width</em>
+integer,  intent(in)  :: <em class=code>num_eval_pts</em>
+integer,  intent(in)  :: <em class=code>localize_type</em>
+integer,  intent(out) :: <em class=code>igrkey</em>
+integer,  intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Available for use by programs that create observations to set
+the additional metadata for these observation types.  This 
+information includes the integral half-width, localization type and 
+number of quadrature points for this observation.
+The key that is returned is uniquely associated with the definition
+that has been created and should be set in the obs_def structure
+by calling <em class=code>set_obs_def_key()</em>.
+This key is different from the main observation key which all
+observation types have.  This key is unique to this observation
+type and is used when reading in the observation sequence to
+match the corresponding metadata with each observation of
+this type.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>integral_half_width&nbsp;&nbsp;</em></TD>
+    <TD>Real value setting the half-width of the integral.
+    </TD></TR>
+<TR><TD valign=top><em class=code>num_eval_pts&nbsp;&nbsp;</em></TD>
+    <TD>Integer, number of evaluation points.  5-20 recommended.
+    </TD></TR>
+<TR><TD valign=top><em class=code>localize_type&nbsp;&nbsp;</em></TD>
+    <TD>Integer localization type: 1=Gaspari-Cohn; 2=Boxcar; 3=Ramped Boxcar
+    </TD></TR>
+<TR><TD valign=top><em class=code>igrkey&nbsp;&nbsp;</em></TD>
+    <TD>Unique integer key associated with the observation being 
+       processed.</TD></TR>
+<TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
+    <TD>Return code.  0 means success, any other value is an error</TD></TR>
 </TABLE>
 
 </div>

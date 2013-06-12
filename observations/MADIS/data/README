@@ -16,8 +16,25 @@ and uses them if present.  There is a compile-time variable
 that can be set to ignore all QC information.  See the
 logical parameters near the top of the source files.
 
-Unlike previous versions of these converters, they no longer
-require input arguments, except for the rawinsonde converter,
-which needs two logical values to select whether standard level
-observations are to be output or not.
+Unlike previous versions of these converters they no longer
+require input arguments, except for the rawinsonde converter.
+The rawinsonde converter always converts mandatory level
+wind and temperature observations, and then prompts for two
+logical inputs (T or F) to select whether to convert and
+output significant level wind obs, and significant level 
+temperature obs.
+
+Each converter has a hardcoded input filename.  The intent
+is that the calling script will copy, rename, or make a 
+symbolic link to the actual input data file before executing 
+the program.  Input filenames must be:
+
+convert_madis_acars:    'acars_input.nc'
+convert_madis_marine:   'marine_input.nc'
+convert_madis_mesonet:  'mesonet_input.nc'
+convert_madis_metar:    'metar_input.nc'
+convert_madis_profiler: 'profiler_input.nc'
+convert_madis_rawin:    'rawin_input.nc'
+convert_madis_satwnd:   'satwnd_input.nc'
+
 

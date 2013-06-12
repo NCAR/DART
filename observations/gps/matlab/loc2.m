@@ -1,14 +1,10 @@
 %% loc2
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 load radi_obs.dat;
 err = radi_obs(:, 1);
@@ -32,3 +28,9 @@ title('Radiosonde locations, Jan 6, 2007', 'fontsize', 14)
  text(0.15, 0.15, 'Fig. 1b')
 print -dpsc radi_obs.ps
 print -dpng radi_obs.png
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

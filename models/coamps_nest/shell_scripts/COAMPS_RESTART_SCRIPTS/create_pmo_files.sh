@@ -1,5 +1,12 @@
 #!/bin/bash
 #
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
+#
 # SCRIPT:   create_pmo_files.sh
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
@@ -86,3 +93,9 @@ echo "  Editing perfect model data directory..."
 ${PERL} "s/(MEMBER_DIR)=.*/\1=${PERF_MEMBER_DIR}/" initialize_perfect_model.sh
 echo "  Editing diagnostic output..."
 ${PERL} "s/ensemble member .*\"/perfect model\"/" initialize_perfect_model.sh
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

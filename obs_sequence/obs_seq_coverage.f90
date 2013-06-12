@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program obs_seq_coverage
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !-----------------------------------------------------------------------
 ! This program queries a bunch of obs_seq.xxxx files and tries to
@@ -65,7 +61,7 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, &
                              operator(>=), operator(*)
 use    utilities_mod, only : get_unit, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
-                             initialize_utilities, nmlfileunit, timestamp, &
+                             initialize_utilities, nmlfileunit, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, nc_check, &
                              next_file, get_next_filename, find_textfile_dims, &
                              file_to_text, do_nml_file, do_nml_term
@@ -76,10 +72,10 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = '$URL$', &
-   revision = '$Revision$', &
-   revdate  = '$Date$'
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
@@ -222,7 +218,7 @@ if (do_nml_term()) write(    *      , nml=obs_seq_coverage_nml)
 if (temporal_coverage_percent < 100.0_r8) then
    write(string1,*)'namelist: temporal_coverage_percent (',temporal_coverage_percent,&
                    ') must be == 100.0 for now.)' 
-   call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, revdate)
+!  call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, revdate)
 endif
 
 if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
@@ -267,12 +263,22 @@ call set_required_times(first_analysis, last_analysis, &
           verification_interval_seconds, temporal_coverage_percent)
 
 if (verbose) then
+
    write(*,*) ! whitespace
-   write(*,*)'At least',nT_minimum,' observations times are required at:'
+   write(*,*)'The analysis times (the start of the forecasts) are:'
+   do i=1,size(verification_times,1)
+      write(string1,*)'analysis # ',i,' at '
+      call print_date(verification_times(i,1),trim(string1))
+   enddo
+
+   write(*,*) ! whitespace
+   write(*,*)'At least',nT_minimum,' observations times are required during:'
    do i=1,num_verification_times
       write(string1,*)'verification # ',i,' at '
       call print_date(all_verif_times(i),trim(string1))
    enddo
+
+
    write(*,*) ! whitespace
 endif
 
@@ -493,7 +499,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
             station_id = add_new_station(flavor, obs_loc, stations)
       endif
 
-      if ( is_time_wanted( obs_time, station_id, stations, timeindex) ) &
+      if ( time_is_wanted( obs_time, station_id, stations, timeindex) ) &
          call update_time( obs_time, station_id, stations, timeindex)
 
  100  continue
@@ -530,6 +536,8 @@ do i = 1,num_stations
       num_out_stat  = num_out_stat + 1
       num_out_total = num_out_total + stations(i)%ntimes
    endif
+
+   if (debug) write(*,*) 'Station ID ',i,' has ',stations(i)%ntimes, ' reports.'
 
 enddo
 
@@ -573,7 +581,9 @@ if (allocated(module_qc_copy_names )) deallocate(module_qc_copy_names )
 if (allocated(obs_seq_filenames))     deallocate(obs_seq_filenames)
 if (allocated(DesiredStations))       deallocate(DesiredStations)
 
-call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
+call error_handler(E_MSG,'obs_seq_coverage','Finished successfully.',source,revision,revdate)
+call finalize_utilities()
+
 
 !======================================================================
 CONTAINS
@@ -717,7 +727,7 @@ end function add_new_station
 !============================================================================
 
 
-function is_time_wanted(ObsTime, stationid, stationlist, timeindex)
+function time_is_wanted(ObsTime, stationid, stationlist, timeindex)
 
 ! The station has a list of the observation times closest to the
 ! verification times. Determine if the observation time is closer to
@@ -727,13 +737,13 @@ type(time_type),             intent(in)  :: ObsTime
 integer,                     intent(in)  :: stationid
 type(station), dimension(:), intent(in)  :: stationlist
 integer,                     intent(out) :: timeindex
-logical                                  :: is_time_wanted
+logical                                  :: time_is_wanted
 
 type(time_type) :: stndelta, obdelta
 integer :: i
 
 timeindex = 0
-is_time_wanted = .FALSE.
+time_is_wanted = .FALSE.
 
 ! the time_minus function always returns a positive difference
 
@@ -742,9 +752,10 @@ TimeLoop : do i = 1,num_verification_times
    obdelta = ObsTime - all_verif_times(i)
 
    ! If observation is not within half a verification step,
-   ! try the next one. 
+   ! try the next verification time. 
    if (obdelta >= half_stride) cycle TimeLoop 
 
+   ! we must be close now ...
    stndelta = stationlist(stationid)%times(i) - all_verif_times(i)
 
    ! Check to see if the observation is closer to the verification time
@@ -752,14 +763,14 @@ TimeLoop : do i = 1,num_verification_times
    if (obdelta < stndelta) then
       if (debug) call print_time(stationlist(stationid)%times(i),'replacing ')
       if (debug) call print_time(ObsTime,'with this observation time')
-      timeindex = i
-      is_time_wanted = .TRUE.
+      timeindex      = i
+      time_is_wanted = .TRUE.
       exit TimeLoop
    endif
 
 enddo TimeLoop
 
-end function is_time_wanted
+end function time_is_wanted
 
 
 !============================================================================
@@ -793,7 +804,7 @@ if (debug) write(*,*)'Stuffing time into station ',stationid,' at timestep ', ti
 ! as long as ntimes /= 0 we are OK.
 ! When the stations get written to the netCDF file, count the
 ! number of non-zero times in the times array for a real count.
-stationlist(stationid)%ntimes = timeindex
+stationlist(stationid)%ntimes = stationlist(stationid)%ntimes + 1 
 
 ! Stuff the time in the appropriate slot ... finally.
 stationlist(stationid)%times(timeindex) = ObsTime
@@ -1183,7 +1194,7 @@ integer :: StationVarID, TimeVarID, NTimesVarID, &
            LocationVarID, WhichVertVarID
 
 real(digits12), allocatable, dimension(:) :: mytimes
-integer, dimension(size(DesiredStations)) :: gooduns
+integer, dimension(num_stations) :: gooduns    ! Cray compiler likes this better
 
 character(len=obstypelength) :: string32(1) ! MUST BE A '2D' ARRAY
 
@@ -1226,7 +1237,6 @@ allocate(mytimes(ntimes))
 
 WriteObs : do stationindex = 1,num_stations
 
-   ntimes    = stations(stationindex)%ntimes
    istart(1) = stationindex
    icount(1) = 1
 
@@ -1254,14 +1264,14 @@ WriteObs : do stationindex = 1,num_stations
                 start=(/ stationindex /), count=(/ 1 /) ), &
                 'WriteNetCDF', 'put_var:last_time')
 
-   call nc_check(nf90_put_var(ncid, NTimesVarId, (/ ntimes /), &
+   call nc_check(nf90_put_var(ncid, NTimesVarId, (/ stations(stationindex)%ntimes /), &
                 start=istart, count=icount), 'WriteNetCDF', 'put_var:ntimes')
 
    !----------------------------------------------------------------------------
    ! time : fill, write
    !----------------------------------------------------------------------------
    mytimes = 0.0_digits12
-   do i = 1,stations(stationindex)%ntimes
+   do i = 1,ntimes
       call get_time(stations(stationindex)%times(i), secs, days)
       mytimes(i) = days + secs/(60.0_digits12 * 60.0_digits12 * 24.0_digits12)
    enddo
@@ -1405,9 +1415,12 @@ Summary : do i = 1,num_stations
 
    call set_obs_def_kind(    obs_def, stations(i)%obs_type)
    call set_obs_def_location(obs_def, stations(i)%location)
-   TimeLoop : do j = 1,stations(i)%ntimes
-      call set_obs_def_time( obs_def, stations(i)%times(j))
-      call write_obs_def(iunit, obs_def, i, 'formatted')
+
+   TimeLoop : do j = 1,num_verification_times
+      if (stations(i)%times(j) /= no_time) then
+         call set_obs_def_time( obs_def, stations(i)%times(j))
+         call write_obs_def(iunit, obs_def, i, 'formatted')
+      endif
    enddo TimeLoop
 
    if (verbose) then
@@ -1656,3 +1669,8 @@ end subroutine find_our_copies
 
 end program obs_seq_coverage
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

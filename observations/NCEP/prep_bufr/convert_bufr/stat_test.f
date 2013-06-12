@@ -1,4 +1,11 @@
+C DART software - Copyright 2004 - 2013 UCAR. This open source software is
+C provided by UCAR, "as is", without charge, subject to all terms of use at
+C http://www.image.ucar.edu/DAReS/DART/DART_download
+C
+C $Id$
+
       program stat_test
+
 C$$$  MAIN PROGRAM DOCUMENTATION BLOCK
 C
 C MAIN PROGRAM:  stat_test
@@ -46,7 +53,7 @@ C
 C$$$
       CHARACTER(len=80) :: infile
       INTEGER(4)        :: narg,iargc,JSTAT(100)
-      integer           :: i, KBYTES
+      integer           :: i, KBYTES, rc
 
 C
 c liu 03/16/2005
@@ -74,7 +81,13 @@ c liu 03/16/2005
 C
 C  Use STAT function to get size of input BUFR file
 C
-      IF (STAT(infile,JSTAT).NE.0) THEN
+c  this used to be a oneliner, but the function test failed
+c  on recent intel compilers.  splitting the call and test into
+c  two separate lines with an explicit integer variable seems
+c  to have fixed it.  also, for all the recent compilers i have
+c  tested the right offset seems to be 8
+      rc = STAT(infile,JSTAT)
+      IF (rc.NE.0) THEN
          PRINT *,'ERROR IN FUNCTION STAT GETTING FILE INFO'
          CALL EXIT(99)
       ELSE
@@ -95,3 +108,8 @@ c        it matches the value of INDEXVAL in grabbufr.f
       stop
       end
 
+c <next few lines under version control, do not edit>
+c $URL$
+c $Id$
+c $Revision$
+c $Date$

@@ -7,7 +7,7 @@ function inds = locations_in_region(locations, region)
 % locations is N-by-3 array of locations - [lon; lat; lvl]
 % region is an N-by-1 array of region boundaries:
 %        [leftlon rightlon minlat maxlat [minz maxz]]
-%        If leftlon is numerically larger than rightlon, 
+%        If leftlon is numerically larger than rightlon,
 %        the region will span the Prime Meridian.
 %
 % EXAMPLE: simple case
@@ -18,16 +18,12 @@ function inds = locations_in_region(locations, region)
 %
 % EXAMPLE: vertical subsetting
 % inds = locations_in_region(locations,[0 360 -90 90 0 1000]); % Everything  between 0,1000
- 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if (length(region) == 6)
    zmin = min(region(5:6));
@@ -50,7 +46,7 @@ lvllogical = ((locations(:,3) >= zmin) & (locations(:,3) <= zmax));
 
 % find the ones in the right longitudes ... including wrapping
 
-if ( xmin == xmax ) 
+if ( xmin == xmax )
    lonlogical = ones(size(latlogical));   % everybody plays
 else
 
@@ -67,3 +63,11 @@ end
 inds = find( (lonlogical .* latlogical .* lvllogical) > 0 );
 
 function a = ReadObsSeq(fname)
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

@@ -448,6 +448,8 @@ valid values: real numbers, usually 1.0 or slightly larger
 <dd>
 If inflation is time-evolving (see inf_sd_initial namelist item above),
 then this sets the lowest value the inflation can evolve to.
+Setting a number less than one allows for deflation but generally
+in a well-observed system the ensemble needs more spread and not less.
 We recommend a setting of 1.0.
 <br /> <br />
 <dt>
@@ -642,6 +644,7 @@ The namelist declaration is:
   num_groups,
   input_qc_threshold,
   outlier_threshold,
+  enable_special_outlier_code,
   output_forward_op_errors,
   output_restart_mean,
   output_timestamps,
@@ -816,6 +819,21 @@ being for the posterior inflation.
     <!--descript--><TD>Reject observation if prior mean is more than this many 
                        sd's from observation. Negative means no check. 
                        Default: -1.0_r8</TD></TR>
+
+<TR><!--contents--><TD valign=top>enable_special_outlier_code</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD>If true call a subroutine which can be customized by the
+                       user to do more elaborate outlier thresholding tests.
+                       See <em class=code>failed_outlier()</em> near the bottom
+                       of <em class=file>filter.f90</em> for where to add the
+                       custom code, and for commented out examples of possible tests.
+                       Turning this flag on and off allows comparisons to be 
+                       made between the default outlier threshold code and any
+                       custom settings without having to recompile the code. 
+                       To change the outlier behavior code has to be changed
+                       in filter.f90.  As distributed, turning this flag on
+                       and off will make no difference in the results.
+                       Default: .false.</TD></TR>
 
 <TR><!--contents--><TD valign=top>input_qc_threshold</TD>
     <!--  type  --><TD valign=top>real(r8)</TD>

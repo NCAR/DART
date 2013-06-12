@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module dewpoint_obs_err_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use        types_mod, only : r8
 use       meteor_mod, only : rh_and_temp_to_dewpoint, temp_and_dewpoint_to_rh
@@ -105,7 +101,7 @@ real(r8)             :: rh_deriv_t
 
 
 if ( ( dewpt > tmpk ) ) then
-  print*,'dewpt_error_from_rh_and_temp:  bad dewpt ',dewpt, tmpk
+  print*,'rh_error_from_dewpt_and_temp:  bad dewpt ',dewpt, tmpk
   stop
 end if
 
@@ -124,3 +120,9 @@ return
 end function rh_error_from_dewpt_and_temp
 
 end module dewpoint_obs_err_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

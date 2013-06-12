@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program pert_wrf_bc
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! program to update BC file from 3dvar or filter output.
 ! current version reads only wrf-netcdf file format.
@@ -20,7 +16,7 @@ program pert_wrf_bc
 use               types_mod, only : r8
 use           utilities_mod, only : file_exist, open_file, close_file, &
                                     initialize_utilities, finalize_utilities, &
-                                    register_module, error_handler, E_ERR, &
+                                    register_module, error_handler, E_ERR, E_MSG, &
                                     logfileunit, timestamp
 use module_netcdf_interface, only : get_dims_cdf, get_gl_att_real_cdf, put_gl_att_real_cdf, &
                                     get_var_3d_real_cdf, get_var_2d_real_cdf, &
@@ -32,10 +28,10 @@ use         module_timediff, only : time_diff, find_time_index
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 !-----------------------------------------------------------------------
 
@@ -597,12 +593,17 @@ endif
    deallocate(v_next)
    deallocate(w_next)
 
-   write(logfileunit,*)'FINISHED pert_wrf_bc.'
-   write(logfileunit,*)
 
-   call timestamp(source, revision, revdate, 'none')
-   call finalize_utilities ! closes the log file.
+   call error_handler(E_MSG,'pert_wrf_bc','pert_wrf_bc terminated normally.')
+   call error_handler(E_MSG,'pert_wrf_bc','FINISHED pert_wrf_bc.')
+   call error_handler(E_MSG,'pert_wrf_bc','Finished successfully.',source,revision,revdate)
+   call finalize_utilities()
  
-   write(*,*) 'pert_wrf_bc terminated normally.'
 
 end program pert_wrf_bc
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

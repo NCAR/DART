@@ -7,7 +7,7 @@ function h = worldmap(ifill,lonorg,level)
 %
 % USAGE: worldmap([fill],[lonorigin],[level])
 %
-% fill == 'hollow' 		=> outline of landmasses (DEFAULT) 
+% fill == 'hollow' 		=> outline of landmasses (DEFAULT)
 % fill == 'solid' 		=> solid black landmasses
 % fill == 'light' 		=> solid grey landmasses
 % lonorigin == 'greenwich'	=> Greenwich Meridian  [   0,360]
@@ -17,7 +17,7 @@ function h = worldmap(ifill,lonorg,level)
 % The order of the arguments is immaterial. They are all optional.
 %
 % This basically gets 1degree elevation data and then contours it
-% around zero ... It tries to be intelligent about whether you are 
+% around zero ... It tries to be intelligent about whether you are
 % plotting [-180,180] or [0,360], but you can override that with "lonorigin".
 %
 % EXAMPLE:
@@ -33,15 +33,11 @@ function h = worldmap(ifill,lonorg,level)
 % worldmap('solid');			% SOLID LANDMASSES
 %
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 filltype  = 'hollow';
 lonorigin = 'greenwich';
@@ -80,7 +76,7 @@ if (nargin >= 2)
    end
 
 end
-   
+
 if (nargin >= 3)
 
    if (isa(level,'char'))
@@ -97,7 +93,7 @@ if (nargin >= 3)
    end
 
 end
-   
+
 if (nargin >= 4)
 
    disp(' ')
@@ -117,7 +113,7 @@ lons = [0.5:359.5];                     % CREATE LON ARRAY FOR TOPO MATRIX
 nlon = length(lons);
 nlat = length(lats);
 
-topo = topo + zlevel;       % optional shift of vertical level 
+topo = topo + zlevel;       % optional shift of vertical level
 
 %---------------------------------------------------------------------------
 % IF WE NEED TO SWAP HEMISPHERES, DO SO NOW.
@@ -129,10 +125,10 @@ ax   = axis;
 if strcmp(lonorigin,'dateline')
    lons = lons - 180.0;
    topo = [ topo(:,nlon/2+1:nlon) topo(:,1:nlon/2) ];
-elseif strcmp(lonorigin,'greenwich') 
+elseif strcmp(lonorigin,'greenwich')
 %   disp('Greenwich on left')
 %   do nothing.
-elseif (ax(1) < -2) 
+elseif (ax(1) < -2)
    lons = lons - 180.0;
    topo = [ topo(:,nlon/2+1:nlon) topo(:,1:nlon/2) ];
 end
@@ -145,12 +141,12 @@ lon_ind1 = min(find(ax(1) <= lons));
 lon_ind2 = min(find(ax(2) <= lons));
 lat_ind1 = min(find(ax(3) <= lats));
 lat_ind2 = min(find(ax(4) <= lats));
- 
+
 if (isempty(lon_ind1)) lon_ind1 = 1;    end;
 if (isempty(lon_ind2)) lon_ind2 = nlon; end;
 if (isempty(lat_ind1)) lat_ind1 = 1;    end;
 if (isempty(lat_ind2)) lat_ind2 = nlat; end;
- 
+
 elev = topo(lat_ind1:lat_ind2,lon_ind1:lon_ind2);
 x    = lons(lon_ind1:lon_ind2);
 y    = lats(lat_ind1:lat_ind2);
@@ -183,7 +179,7 @@ else
 
    % give them the requested color
    if (length(h) == 1)    % matlab v 7.0 and above
-      kids = get(h,'Children'); 
+      kids = get(h,'Children');
       set(kids,'FaceColor',fcolor);
    else                   % matlab 6.5 and below
       set(h   ,'FaceColor',fcolor);
@@ -191,9 +187,9 @@ else
 
    % if not in the 2d plane, add z coordinates at the right level
    % (contourf is 2D only; no filled contour3() option exists.)
-   if (zlevel ~= 0.0)  
+   if (zlevel ~= 0.0)
       if (length(h) == 1)    % matlab v 7.0 and above
-         kids = get(h,'Children'); 
+         kids = get(h,'Children');
          for i=1:length(kids)
            mz = get(kids(i), 'XData');
            z = zeros(length(mz), 1) + zlevel;
@@ -213,4 +209,11 @@ end
 if (orgholdstate == 0) hold off; end;
 
 axis(ax);				% MAINTAIN ORIGINAL LIMITS
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

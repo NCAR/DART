@@ -314,7 +314,7 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
       plevel, hlevel, mlevel, 
       rat_cri, input_qc_threshold, 
       Nregions, lonlim1, lonlim2, latlim1, latlim2, 
-      reg_names, print_mismatched_locs, print_obs_locations, verbose,
+      reg_names, print_mismatched_locs, <em class=removed>print_obs_locations,</em> verbose,
       outliers_in_histogram
 </pre>
 </div>
@@ -522,9 +522,9 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 	    same location.<br />
 	    Default: .false. </TD></TR>  
 
-<TR><!--contents--><TD valign=top>   print_obs_locations </TD>
-    <!--  type  --><TD valign=top>   logical             </TD>
-    <!--descript--><TD>Create additional output files with the lat/lon
+<TR><!--contents--><TD valign=top><em class=removed>print_obs_locations</em> </TD>
+    <!--  type  --><TD valign=top><em class=removed>logical            </em> </TD>
+    <!--descript--><TD><em class=removed>Create additional output files with the lat/lon
             location of each observation, obs type, and QC value. These
 	    files are named <em
 	    class="file">observation_locations.xxx.dat</em> and may be
@@ -534,7 +534,12 @@ The namelist declaration (i.e. what follows) has a different syntax, naturally.
 	    For pathological reasons, these files cannot exist prior to execution.
 	    If they do, an error will result, and execution halts..
 	    <br />
-	    Default: .false. </TD></TR>  
+	    Default: .false.</em> <strong>To plot the locations of observations,</strong>
+            please convert your observation sequence file to netCDF with
+            <a href="../../obs_sequence/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a> and then
+            plot with 
+            <a href="../../diagnostics/matlab/plot_obs_netcdf.m">plot_obs_netcdf</a> 
+ </TD></TR>  
 
 <TR><!--contents--><TD valign=top>   verbose   </TD>
     <!--  type  --><TD valign=top>   logical   </TD>
@@ -591,11 +596,10 @@ sort_mod
         from the obs_diag.</LI>
     <LI><em class="file">LargeInnov.txt</em> contains the distance ratio 
 	histogram -- useful for estimating rat_cri.</LI>
-    <LI><em class="file">observation_locations.xxx.dat</em> contains the
+    <LI><em class=removed>observation_locations.xxx.dat contains the
     locations for all the observation in temporal bin "xxx". These are 
     only created if the namelist variable 
-    <em class="code">print_obs_locations</em> is set to 
-    <em class="code">.true.</em> 
+    print_obs_locations is set to .true.</em> 
 	</LI>
 </UL>
 
@@ -851,7 +855,7 @@ Then, the namelist settings for 2008 07 31 12Z through 2008 08 30 12Z are:
    latlim2    = <em class="input"> 90.0,</em>
    reg_names  = <em class="input">'Entire Domain',</em>
    print_mismatched_locs = .false.,
-   print_obs_locations   = .false.,
+   <em class=removed>print_obs_locations   = .false.,</em>
    verbose               = <em class="input">.true.,</em>
    outliers_in_histogram = <em class="input">.false.</em>,
    /

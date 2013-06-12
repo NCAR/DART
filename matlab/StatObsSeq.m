@@ -2,15 +2,11 @@
 %
 %
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 KIND_U = 1;
 KIND_V = 2;
@@ -57,7 +53,7 @@ for i = 1:a.num_obs,
    if ( a.kind(i) == KIND_U )
 
      if (a.obs(1,i) == -888888.0)
-        
+
         bu(2*itime-1) = bu(2*itime-1) + 1;
         bu(2*itime)   = bu(2*itime)   + 1;
 
@@ -82,7 +78,7 @@ for i = 1:a.num_obs,
    elseif ( a.kind(i) == KIND_V )
 
      if (a.obs(1,i) == -888888.0)
-        
+
         bv(2*itime-1) = bv(2*itime-1) + 1;
         bv(2*itime)   = bv(2*itime)   + 1;
 
@@ -107,7 +103,7 @@ for i = 1:a.num_obs,
    elseif ( a.kind(i) == KIND_T )
 
      if (a.obs(1,i) == -888888.0)
-        
+
         bt(2*itime-1) = bt(2*itime-1) + 1;
         bt(2*itime)   = bt(2*itime  ) + 1;
 
@@ -200,3 +196,11 @@ xlim([(x(1)-0.5) (max(x)+0.5)])
 xlabel(time_unit,'Fontsize',12)
 
 legend('U','V','T')
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

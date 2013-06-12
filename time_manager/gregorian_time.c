@@ -1,9 +1,11 @@
-/*
- * DART software - Copyright 2004 - 2011 UCAR. This open source software is
+/* DART software - Copyright 2004 - 2013 UCAR. This open source software is
  * provided by UCAR, "as is", without charge, subject to all terms of use at
  * http://www.image.ucar.edu/DAReS/DART/DART_download
  *
- * convert gregorian days/seconds to and from year/month/day/hr/min/sec
+ * $Id$
+ */
+
+/* convert gregorian days/seconds to and from year/month/day/hr/min/sec
  *
  * usage:  gregorian_time  days  seconds
  *    or:  gregorian_time  year month day hour minute seconds
@@ -11,12 +13,6 @@
  * nsc 12sep2007
  *     17oct2007
  *     20nov2007
- *
- * <next few lines under version control, do not edit>
- * $URL$
- * $Id$
- * $Revision$
- * $Date$
  */
 
 #include <stdio.h>
@@ -247,4 +243,10 @@ convert(int direction, int *days, int *secs, int *year, int *month, int *day,
     return;
 }
 
-
+/*
+ * <next few lines under version control, do not edit>
+ * $URL$
+ * $Id$
+ * $Revision$
+ * $Date$
+ */

@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program integrate_model
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! Program to integrate assimilation model forward for asynchronous filter
 ! execution.
@@ -16,16 +12,15 @@ program integrate_model
 use types_mod,           only : r8
 use time_manager_mod,    only : time_type, operator(<), print_time
 use utilities_mod,       only : initialize_utilities, register_module,              &
-                                error_handler, E_MSG, E_ERR, timestamp
-                                
+                                error_handler, E_MSG, E_ERR, timestamp,             &
+                                nmlfileunit, do_output, do_nml_file, do_nml_term,  &
+                                find_namelist_in_file, check_namelist_read
 use assim_model_mod,     only : static_init_assim_model, get_model_size,              &
                                 open_restart_read, open_restart_write, close_restart, &
                                 awrite_state_restart, aread_state_restart
-
 use obs_model_mod,        only : advance_state
-
-use ensemble_manager_mod, only : init_ensemble_manager, put_copy, ensemble_type, get_copy
-
+use ensemble_manager_mod, only : init_ensemble_manager, put_copy, ensemble_type, get_copy, &
+                                 prepare_to_write_to_vars
 use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities, &
                                  task_count, iam_task0
 
@@ -33,38 +28,54 @@ use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilitie
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
-type(time_type)         :: target_time
-integer                 :: iunit, model_size
-type(ensemble_type)     :: ens_handle
+type(ensemble_type) :: ens_handle
+type(time_type)     :: target_time
+integer             :: iunit, model_size, rc
+
+! to overwrite the target time, set these to something >= 0
+integer :: target_days = -1, target_seconds = -1
 
 ! dummy args for the advance_state call.  presumably this 
 ! executable was invoked by a script that was originally 
 ! called by advance_state() in filter, so no need to get 
-! recursive here.
-!character (len=129)     :: adv_ens_command = ''
-!integer                 :: async = 0
+! recursive here.  but if you want to use this outside of
+! the dart advance, you could comment these in and add
+! them to the namelist below.
+!character (len=129) :: adv_ens_command = ''
+!integer             :: async = 0
+!integer             :: tasks_per_model_advance = 1
 
-! for debugging
-logical                 :: trace_execution = .false.
+! for use outside dart, or to call after dart finishes and
+! writes a restart file (without a target time), set this
+! to .false. and supply a target time with target_days, secs
+logical :: is_model_advance_file = .true.
 
-! for speed, accuracy write model_advance files in binary
+! for debugging, status
+logical             :: trace_execution = .false.
+character(len=128)  :: errstring
+
+! for speed, accuracy - write model_advance files in binary
 ! both ways.  for debugging make this 'formatted' instead
 ! of 'unformatted' and you can see what's in the ud file.
 character(len = 32) :: advance_restart_format = 'unformatted'
 
 ! Input and output filenames are hardcoded at this point.
-character(len = 7) :: ic_file_name = "temp_ic", ud_file_name = 'temp_ud'
+character(len = 132) :: ic_file_name = "temp_ic", ud_file_name = "temp_ud"
 
-! NO ONE READS THIS IN RIGHT NOW - it's just a suggested start.
-!namelist /integrate_model_nml/ ic_file_name, ud_file_name, &
-!                               advance_restart_format,     &
-!                               async, adv_ens_command,     &
-!                               target_time, trace_execution
+! to enable the use of the namelist, change this to .true. and recompile.
+logical :: use_namelist = .false.
+
+! only read in if use_namelist is .true. -- ignored otherwise.
+namelist /integrate_model_nml/ &
+   ic_file_name, ud_file_name, advance_restart_format, &
+   trace_execution, is_model_advance_file, target_days, target_seconds
+
+
 !----------------------------------------------------------------
 
 ! This program should only be run with a single process
@@ -81,6 +92,24 @@ if(task_count() > 1) &
 
 call register_module(source,revision,revdate)
 
+! this must come AFTER the standard utils are initialized.
+! Read the integrate_model_nml namelist from input.nml if 'use_namelist' true.
+if (use_namelist) then
+   call find_namelist_in_file('input.nml', 'integrate_model_nml', iunit)
+   read(iunit, nml = integrate_model_nml, iostat = rc)
+   call check_namelist_read(iunit, rc, "integrate_model_nml")
+else
+   errstring = ' !must edit integrate_model/integrate_model.f90 to enable this namelist'
+   if (do_nml_file()) write(nmlfileunit, '(A)') trim(errstring)
+   if (do_nml_term()) write(     *     , '(A)') trim(errstring)
+endif
+
+! Record the namelist values used for the run ...
+if (do_nml_file()) write(nmlfileunit, nml=integrate_model_nml)
+if (do_nml_term()) write(     *     , nml=integrate_model_nml)
+
+
+
 if (trace_execution) write(*,*) 'inside integrate_model executable'
 
 ! Initialize the model class data
@@ -89,6 +118,7 @@ model_size = get_model_size()
 
 ! Initialize an ensemble manager type with a single copy
 call init_ensemble_manager(ens_handle, num_copies=1, num_vars=model_size)
+call prepare_to_write_to_vars(ens_handle)
 
 if (iam_task0()) then
    !------------------- Read restart from file ----------------------
@@ -136,3 +166,9 @@ if (trace_execution) write(*,*) 'end of integrate_model executable'
 call finalize_mpi_utilities()
 
 end program integrate_model
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

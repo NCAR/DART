@@ -56,7 +56,7 @@ the observation sequence file. Wouldn't that be nice ...
 </P>
 <div class=namelist>
 <pre>
-<em class=call>namelist / schedule_mod_nml / </em>
+<em class=call>namelist / schedule_nml / </em>
    first_bin_start, first_bin_end, last_bin_end, &amp;
    bin_interval_days, bin_interval_seconds, &amp;
    max_num_bins, calendar, print_table
@@ -72,7 +72,9 @@ dimensioned 2, the first value being for the prior inflation and the second
 being for the posterior inflation.
 <br>
 <br>
-This namelist is read in a file called <em class=file>input.nml</em>
+This namelist is read in a file called <em class=file>input.nml</em>.
+The default values will cause (pretty much) all possible observations to
+be put into one output file.
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
@@ -84,32 +86,32 @@ This namelist is read in a file called <em class=file>input.nml</em>
     <!--  type  --><TD valign=top>integer, dimension(6)</TD>
     <!--descript--><TD>Date/time specification for starting time
                        of first bin.
-                       Default: 2008, 9, 7, 0, 0, 0</TD></TR>
+                       Default: 1601, 1, 1, 0, 0, 0</TD></TR>
 
 <TR><!--contents--><TD valign=top>first_bin_end</TD>
     <!--  type  --><TD valign=top>integer, dimension(6)</TD>
     <!--descript--><TD>Date/time specification for ending time
                        of first bin.  Sets the bin width.
-                       Default: 2008, 9, 7, 2, 0, 0</TD></TR>
+                       Default: 2999, 1, 1, 0, 0, 0</TD></TR>
 
 <TR><!--contents--><TD valign=top>last_bin_end</TD>
     <!--  type  --><TD valign=top>integer, dimension(6)</TD>
     <!--descript--><TD>Date/time specification for ending time
                        of last bin.  Sets the length of the overall
                        time of the schedule.
-                       Default: 2008, 9, 11, 0, 0, 0</TD></TR>
+                       Default: 2999, 1, 1, 0, 0, 0</TD></TR>
 
 <TR><!--contents--><TD valign=top>bin_interval_days</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD>Sets the time between bins.  Must be larger or
                        equal to the bin width.
-                       Default: 0</TD></TR>
+                       Default: 1000000</TD></TR>
 
 <TR><!--contents--><TD valign=top>bin_interval_seconds</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD>Sets the time between bins.  Must be larger or
                        equal to the bin width.
-                       Default: 21600</TD></TR>
+                       Default: 0</TD></TR>
 
 <TR><!--contents--><TD valign=top>max_num_bins</TD>
     <!--  type  --><TD valign=top>integer</TD>

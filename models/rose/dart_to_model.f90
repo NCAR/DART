@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program dart_to_model
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !----------------------------------------------------------------------
 ! purpose: interface between ROSE and DART
@@ -29,7 +25,7 @@ program dart_to_model
 
 use        types_mod, only : r8
 use    utilities_mod, only : get_unit, initialize_utilities, E_ERR, &
-                             error_handler, timestamp
+                             error_handler, finalize_utilities, E_MSG
 use        model_mod, only : model_type, get_model_size, init_model_instance, &
                              vector_to_prog_var, update_ROSE_restart, &
                              update_ROSE_namelist, static_init_model
@@ -40,10 +36,10 @@ use time_manager_mod, only : time_type, read_time
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type(model_type)       :: var
 type(time_type)        :: model_time, adv_to_time
@@ -89,9 +85,13 @@ deallocate(x_state)
 call update_ROSE_restart(file_name, var)
 call update_ROSE_namelist('rose.nml', model_time, adv_to_time, ens_member)
 
-!----------------------------------------------------------------------
-! When called with 'end', timestamp will also call finalize_utilities()
-!----------------------------------------------------------------------
-call timestamp(string1=source, pos='end')
+call error_handler(E_MSG,'dart_to_model','Finished successfully.',source,revision,revdate)
+call finalize_utilities()
 
 end program dart_to_model
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

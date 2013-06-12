@@ -1,11 +1,14 @@
-! scale_nogaps_perts
-! --------------------
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
+program scale_nogaps_perts
+
 ! This program pulls pieces out of the large COAMPS restart file,
 ! then assembles them into a state vector that can be used by DART.
 ! This includes two pieces of information - the current time and
 ! the actual state
-program scale_nogaps_perts
-
 
   use coamps_util_mod,      only : check_alloc_status,           &
                                    check_dealloc_status,         &
@@ -27,10 +30,11 @@ program scale_nogaps_perts
 
   implicit none
 
-  character(len=128) :: &
-       source   = " ",  &
-       revision = " ",  &
-       revdate  = " "
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
   character(len=*), parameter :: routine = 'scale_nogaps_perts'
   character(len=64)           :: nogaps_file_name
@@ -186,3 +190,9 @@ program scale_nogaps_perts
   call finalize_mpi_utilities()
 
 end program scale_nogaps_perts
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

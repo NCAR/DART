@@ -2,15 +2,11 @@ function [post_mean post_sd weight] = ...
    product_of_gaussians(prior_mean, prior_sd, obs, obs_err_sd) 
 %% product_of_gaussians Computes mean, variance and weight of the product of two unit gaussians given the mean and standard deviation of each.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 % Get the prior and observational error variance
 prior_var = prior_sd^2;
@@ -27,3 +23,8 @@ post_mean = post_var * (prior_mean / prior_var + obs / obs_err_var);
 weight = (1. / (sqrt(2. * pi) * sqrt(prior_var + obs_err_var))) *...
    exp(-0.5 * (obs - prior_mean).^2 ./ (prior_var + obs_err_var));
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

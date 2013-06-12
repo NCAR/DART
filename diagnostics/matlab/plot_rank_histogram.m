@@ -45,15 +45,11 @@ function plotdat = plot_rank_histogram(fname, timeindex, varargin)
 % timeindex = -1;                   % use ALL available timesteps
 % plotdat   = plot_rank_histogram(fname, timeindex, 'RADIOSONDE_TEMPERATURE');
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if nargin == 2
    nvars = 0;
@@ -84,40 +80,38 @@ end
 plotdat.fname         = fname;
 plotdat.timecenters   = nc_varget(fname,'time');
 plotdat.timeedges     = nc_varget(fname,'time_bounds');
-plotdat.mlevel        = nc_varget(fname,'mlevel');
-plotdat.plevel        = nc_varget(fname,'plevel');
-plotdat.plevel_edges  = nc_varget(fname,'plevel_edges');
-plotdat.hlevel        = nc_varget(fname,'hlevel');
-plotdat.hlevel_edges  = nc_varget(fname,'hlevel_edges');
+plotdat.mlevel        = local_nc_varget(fname,'mlevel');
+plotdat.plevel        = local_nc_varget(fname,'plevel');
+plotdat.plevel_edges  = local_nc_varget(fname,'plevel_edges');
+plotdat.hlevel        = local_nc_varget(fname,'hlevel');
+plotdat.hlevel_edges  = local_nc_varget(fname,'hlevel_edges');
 plotdat.Nrhbins       = length(nc_varget(fname,'rank_bins'));
 plotdat.ncopies       = length(nc_varget(fname,'copy'));
 plotdat.nregions      = length(nc_varget(fname,'region'));
 plotdat.region_names  = strtrim(nc_varget(fname,'region_names'));
 
+% Matlab does a crazy thing with the strings for 1 region
+if (plotdat.nregions == 1 && (size(plotdat.region_names,2) == 1) )
+   plotdat.region_names = deblank(plotdat.region_names');
+end
+
+dimensionality             = nc_attget(fname, nc_global, 'LocationRank');
 plotdat.timeseparation     = nc_attget(fname, nc_global, 'bin_separation');
 plotdat.timewidth          = nc_attget(fname, nc_global, 'bin_width');
-time_to_skip               = nc_attget(fname, nc_global, 'time_to_skip');
-plotdat.rat_cri            = nc_attget(fname, nc_global, 'rat_cri');
-plotdat.input_qc_threshold = nc_attget(fname, nc_global, 'input_qc_threshold');
-plotdat.lonlim1            = nc_attget(fname, nc_global, 'lonlim1');
-plotdat.lonlim2            = nc_attget(fname, nc_global, 'lonlim2');
-plotdat.latlim1            = nc_attget(fname, nc_global, 'latlim1');
-plotdat.latlim2            = nc_attget(fname, nc_global, 'latlim2');
 plotdat.biasconv           = nc_attget(fname, nc_global, 'bias_convention');
+time_to_skip               = nc_attget(fname, nc_global, 'time_to_skip');
 plotdat.outlierstring      = nc_attget(fname, nc_global, 'outliers_in_histogram');
 plotdat.QCsusedstring      = nc_attget(fname, nc_global, 'DART_QCs_in_histogram');
+plotdat.lonlim1            = nc_attget(fname, nc_global, 'lonlim1');
+plotdat.lonlim2            = nc_attget(fname, nc_global, 'lonlim2');
+plotdat.latlim1            = local_nc_attget(fname, nc_global, 'latlim1');
+plotdat.latlim2            = local_nc_attget(fname, nc_global, 'latlim2');
 
 % Make sure the time index makes sense.
 
 if (timeindex > length(plotdat.timecenters))
    error('There are only %d time indices in the file, you asked for # %d', ...
          length(plotdat.timecenters), timeindex)
-end
-
-% Matlab does a crazy thing with the strings for 1 region
-
-if (plotdat.nregions == 1 && (size(plotdat.region_names,2) == 1) )
-   plotdat.region_names = deblank(plotdat.region_names');
 end
 
 % Coordinate between time types and dates
@@ -198,10 +192,13 @@ for ivar = 1:plotdat.nvars
    guessdims = nc_var_dims(fname, plotdat.guessvar);
    rhistdims = nc_var_dims(fname, plotdat.rhistvar);
 
-   if ( findstr('surface',guessdims{3}) > 0 )
+   if ( dimensionality == 1 ) % observations on a unit circle, no level
+      plotdat.level = 1;
+      plotdat.level_units = [];
+   elseif ( strfind(guessdims{3},'surface') > 0 )
       plotdat.level       = 1;
       plotdat.level_units = 'surface';
-   elseif ( findstr('undef',guessdims{3}) > 0 )
+   elseif ( strfind(guessdims{3},'undef') > 0 )
       plotdat.level       = 1;
       plotdat.level_units = 'undefined';
    else
@@ -270,10 +267,14 @@ for ivar = 1:plotdat.nvars
 
          plotdat.region   = iregion;  
          plotdat.myregion = deblank(plotdat.region_names(iregion,:));
-         plotdat.title    = sprintf('%s @ %d %s',    ...
-                              plotdat.myvarname,     ...
-                              plotdat.level(ilevel), ...
-                              plotdat.level_units);
+         if ( isempty(plotdat.level_units) )
+            plotdat.title    = plotdat.myvarname;
+         else
+            plotdat.title    = sprintf('%s @ %d %s',    ...
+               plotdat.myvarname,     ...
+               plotdat.level(ilevel), ...
+               plotdat.level_units);
+         end
                           
          plotdat.rank_hist = squeeze(rhist(plotdat.timeindex, :, ilevel,iregion));
          
@@ -377,7 +378,7 @@ end
 j = 0;
 
 for i = 1:length(x.allvarnames)
-   indx = findstr('time',x.allvardims{i});
+   indx = strfind(x.allvardims{i},'time');
    if (indx > 0) 
       j = j + 1;
 
@@ -386,7 +387,7 @@ for i = 1:length(x.allvarnames)
    end
 end
 
-[b,i,j] = unique(basenames);
+[~,i,j] = unique(basenames);
 y     = cell(length(i),1);
 ydims = cell(length(i),1);
 for k = 1:length(i)
@@ -398,22 +399,22 @@ end
 
 
 function s = ReturnBase(string1)
-inds = findstr('_guess',string1);
+inds = strfind(string1,'_guess');
 if (inds > 0 )
    s = string1(1:inds-1);
 end
 
-inds = findstr('_analy',string1);
+inds = strfind(string1,'_analy');
 if (inds > 0 )
    s = string1(1:inds-1);
 end
 
-inds = findstr('_VPguess',string1);
+inds = strfind(string1,'_VPguess');
 if (inds > 0 )
    s = string1(1:inds-1);
 end
 
-inds = findstr('_VPanaly',string1);
+inds = strfind(string1,'_VPanaly');
 if (inds > 0 )
    s = string1(1:inds-1);
 end
@@ -430,3 +431,45 @@ if (length(rankvar) > 40 )
 else
    s = rankvar;
 end
+
+
+
+function value = local_nc_varget(fname,varname)
+%% If the variable exists in the file, return the contents of the variable.
+% if the variable does not exist, return empty value instead of error-ing
+% out.
+
+[variable_present, varid] = nc_var_exists(fname,varname);
+if (variable_present)
+   ncid  = netcdf.open(fname);
+   value = netcdf.getVar(ncid, varid);
+else
+   value = [];
+end
+
+
+
+function value = local_nc_attget(fname,varid,varname)
+%% If the (global) attribute exists, return the value.
+% If it does not, do not throw a hissy-fit.
+
+value = [];
+if (varid == nc_global)
+   finfo = ncinfo(fname);
+   for iatt = 1:length(finfo.Attributes)
+      if (strcmp(finfo.Attributes(iatt).Name, deblank(varname)))
+         value = finfo.Attributes(iatt).Value;
+         return
+      end
+   end
+else
+   fprintf('function not supported for local variables, only global atts.\n')
+end
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

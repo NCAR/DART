@@ -1,6 +1,8 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! RADIOSONDE_SURFACE_ALTIMETER, KIND_SURFACE_PRESSURE
@@ -16,36 +18,30 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
-               LAND_SFC_ALTIMETER, METAR_ALTIMETER)
+!              LAND_SFC_ALTIMETER, METAR_ALTIMETER)
 !            call get_expected_altimeter(state, location, obs_val, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
 !         case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
-               LAND_SFC_ALTIMETER, METAR_ALTIMETER)
+!              LAND_SFC_ALTIMETER, METAR_ALTIMETER)
 !            continue
 ! END DART PREPROCESS READ_OBS_DEF
 
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
 !         case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
-               LAND_SFC_ALTIMETER, METAR_ALTIMETER)
+!              LAND_SFC_ALTIMETER, METAR_ALTIMETER)
 !            continue
 ! END DART PREPROCESS WRITE_OBS_DEF
 
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
 !         case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
-               LAND_SFC_ALTIMETER, METAR_ALTIMETER)
+!              LAND_SFC_ALTIMETER, METAR_ALTIMETER)
 !            continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_altimeter_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use        types_mod, only : r8, missing_r8, t_kelvin
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
@@ -59,11 +55,11 @@ private
 
 public :: get_expected_altimeter, compute_altimeter
 
-! <next few lines under version control, do not edit>
-character(len=128) :: &
-source   = "$URL$", &
-revision = "$Revision$", &
-revdate  = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
@@ -136,4 +132,11 @@ end function compute_altimeter
 !----------------------------------------------------------------------------
 
 end module obs_def_altimeter_mod
+
 ! END DART PREPROCESS MODULE CODE
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

@@ -6,15 +6,11 @@ function TimeScatter( ObsTypeInd )
 %		these can be changed however - the allowable set is defined
 %		by the CopyMetaData variable in the netCDF file.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 ObsTypes = { 'GPSRO_REFRACTIVITY', ...
              'RADIOSONDE_U_WIND_COMPONENT', ...
@@ -129,3 +125,8 @@ for i = 1:length(fnames)
 
 end
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

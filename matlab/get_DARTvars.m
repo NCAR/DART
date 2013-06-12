@@ -11,15 +11,11 @@ function bob = get_DARTvars(fname)
 % nvars = length(DARTvars);
 % disp(sprintf('first atmospheric variable (of %d) is %s',nvars,DARTvars{1}))
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 fileinfo  = nc_info(fname);
 nvars     = length(fileinfo.Dataset);
@@ -31,21 +27,21 @@ for i = 1:nvars
 
    dimnames = fileinfo.Dataset(i).Dimension;
 
-   if (any(strcmp(dimnames,'copy'))), isDARTvar(i) = 1; end 
+   if (any(strcmp(dimnames,'copy'))), isDARTvar(i) = 1; end
 
-   % Reject the obvious coordinate variables and some metadata ones 
+   % Reject the obvious coordinate variables and some metadata ones
 
    varname    = fileinfo.Dataset(i).Name;
-   if (         nc_iscoordvar(fname,varname)), isDARTvar(i) = 0; end 
+   if (         nc_iscoordvar(fname,varname)), isDARTvar(i) = 0; end
    if (strcmp( varname ,     'CopyMetaData')), isDARTvar(i) = 0; end
-   
+
 end
 
 if (sum(isDARTvar) == 0)
    error('No DART state variables in %s',fname)
 end
 
-% coerce just the names into a cell array 
+% coerce just the names into a cell array
 
 varind = 0;
 for i = 1:nvars
@@ -54,3 +50,10 @@ for i = 1:nvars
       bob{varind} = fileinfo.Dataset(i).Name;
    end
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

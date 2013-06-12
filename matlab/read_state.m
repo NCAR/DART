@@ -4,15 +4,11 @@ function state = read_state( file_name )
 % USAGE: state = read_state( file_name )
 %
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if (exist(file_name,'file') ~= 2), error('%s does not exist.',file_name); end
 
@@ -53,7 +49,7 @@ state = zeros(num_times, copies_per_time, model_size);
 
 for j = 1:num_times,
 % Start reading the output for each copy at current time
-   for i = 1:copies_per_time, 
+   for i = 1:copies_per_time,
       time = fscanf(fid, '%d', 2);
       header = fgetl(fid);
 
@@ -70,4 +66,11 @@ for j = 1:num_times,
    end
 
 end
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

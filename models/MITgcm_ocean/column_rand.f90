@@ -1,15 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
-
+!
+! $Id$
  
 program column_rand
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! Allows creation of input file for generating a set of randomly located
 ! observation stations with full column of obs.
@@ -22,10 +17,10 @@ use   location_mod, only : VERTISSURFACE, VERTISLEVEL
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 integer  :: level, num_cols, num_levs, i, iunit
 real(r8) :: lat, lon, t_err_var, uv_err_var, ps_err_var
@@ -127,3 +122,10 @@ end do
 write(iunit, *) 'set_def.out'
 
 end program column_rand
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+

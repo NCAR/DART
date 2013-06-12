@@ -1,3 +1,6 @@
+C This code is not protected by the DART copyright agreement.
+C DART $Id$
+
 C$$$  MAIN PROGRAM DOCUMENTATION BLOCK
 C  
 C MAIN PROGRAM:  CWORDSH
@@ -118,3 +121,9 @@ c     Close the input and output files.
  
       stop
       end
+
+C <next few lines under version control, do not edit>
+C $URL$
+C $Id$
+C $Revision$
+C $Date$

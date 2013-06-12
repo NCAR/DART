@@ -1,16 +1,12 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module time_manager_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
-use     types_mod, only : missing_i, digits12
+use     types_mod, only : missing_i, digits12, i8
 use utilities_mod, only : error_handler, E_DBG, E_MSG, E_WARN, E_ERR, &
                           register_module, dump_unit_attributes, to_upper, &
                           ascii_file_format
@@ -50,7 +46,7 @@ public :: operator(+),  operator(-),   operator(*),   operator(/),  &
 
 ! Subroutines and functions operating on time_type
 public :: set_time, set_time_missing, increment_time, decrement_time, get_time
-public :: interval_alarm, repeat_alarm
+public :: interval_alarm, repeat_alarm, generate_seed, time_index_sort
 
 ! List of available calendar types
 public :: THIRTY_DAY_MONTHS,    JULIAN,    GREGORIAN,  NOLEAP,   NO_CALENDAR, &
@@ -92,10 +88,10 @@ public :: time_manager_init, print_time, print_date
 public :: write_time, read_time, interactive_time
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! Global data to define calendar type
 integer, parameter :: THIRTY_DAY_MONTHS = 1,      JULIAN = 2, &
@@ -157,8 +153,6 @@ function set_time(seconds, days)
 ! Returns a time interval corresponding to this number of days and seconds.
 ! The arguments must not be negative but are otherwise unrestricted.
 
-implicit none
-
 integer, intent(in)           :: seconds
 integer, intent(in), optional :: days
 type(time_type)               :: set_time
@@ -214,8 +208,6 @@ subroutine get_time(time, seconds, days)
 ! If the optional 'days' argument is not given, the days are converted
 ! to seconds and the total time is returned as seconds.
 
-implicit none
-
 type(time_type), intent(in)            :: time
 integer,         intent(out)           :: seconds
 integer,         intent(out), optional :: days
@@ -244,8 +236,6 @@ function increment_time(time, seconds, days)
 !-------------------------------------------------------------------------
 !
 ! Increments a time by seconds and days; increments cannot be negative.
-
-implicit none
 
 type(time_type), intent(in)           :: time
 integer,         intent(in)           :: seconds
@@ -287,8 +277,6 @@ function decrement_time(time, seconds, days)
 !--------------------------------------------------------------------------
 !
 ! Decrements a time by seconds and days; decrements cannot be negative.
-
-implicit none
 
 type(time_type), intent(in)           :: time
 integer,         intent(in)           :: seconds
@@ -337,8 +325,6 @@ function time_gt(time1, time2)
 !
 ! Returns true if time1 > time2
 
-implicit none
-
 type(time_type), intent(in) :: time1, time2
 logical                     :: time_gt
 
@@ -357,8 +343,6 @@ function time_ge(time1, time2)
 !
 ! Returns true if time1 >= time2
 
-implicit none
-
 type(time_type), intent(in) :: time1, time2
 logical                     :: time_ge
 
@@ -374,8 +358,6 @@ function time_lt(time1, time2)
 !--------------------------------------------------------------------------
 !
 ! Returns true if time1 < time2
-
-implicit none
 
 type(time_type), intent(in) :: time1, time2
 logical                     :: time_lt
@@ -394,8 +376,6 @@ function time_le(time1, time2)
 !
 ! Returns true if time1 <= time2
 
-implicit none
-
 type(time_type), intent(in) :: time1, time2
 logical                     :: time_le
 
@@ -411,8 +391,6 @@ function time_eq(time1, time2)
 !--------------------------------------------------------------------------
 !
 ! Returns true if time1 == time2
-
-implicit none
 
 type(time_type), intent(in) :: time1, time2
 logical                     :: time_eq
@@ -430,8 +408,6 @@ function time_ne(time1, time2)
 !
 ! Returns true if time1 /= time2
 
-implicit none
-
 type(time_type), intent(in) :: time1, time2
 logical                     :: time_ne
 
@@ -447,8 +423,6 @@ function time_plus(time1, time2)
 !-------------------------------------------------------------------------
 !
 ! Returns sum of two time_types
-
-implicit none
 
 type(time_type), intent(in) :: time1, time2
 type(time_type)             :: time_plus
@@ -466,8 +440,6 @@ function time_minus(time1, time2)
 !
 ! Returns difference of two time_types. WARNING: a time type is positive 
 ! so by definition time1 - time2  is the same as time2 - time1.
-
-implicit none
 
 type(time_type), intent(in) :: time1, time2
 type(time_type)             :: time_minus
@@ -488,8 +460,6 @@ function time_scalar_mult(time, n)
 !--------------------------------------------------------------------------
 !
 ! Returns time multiplied by integer factor n
-
-implicit none
 
 type(time_type), intent(in) :: time
 integer,         intent(in) :: n
@@ -530,8 +500,6 @@ function scalar_time_mult(n, time)
 !
 ! Returns time multipled by integer factor n
 
-implicit none
-
 integer,         intent(in) :: n
 type(time_type), intent(in) :: time
 type(time_type)             :: scalar_time_mult
@@ -548,8 +516,6 @@ function time_divide(time1, time2)
 !-------------------------------------------------------------------------
 !
 ! Returns the largest integer, n, for which time1 >= time2 * n.
-
-implicit none
 
 type(time_type), intent(in) :: time1, time2
 integer                     :: time_divide
@@ -583,8 +549,6 @@ function time_real_divide(time1, time2)
 !
 ! Returns the double precision quotient of two times
 
-implicit none
-
 type(time_type), intent(in) :: time1, time2
 real(digits12)              :: time_real_divide
 
@@ -607,8 +571,6 @@ function time_scalar_divide(time, n)
 !-------------------------------------------------------------------------
 !
 ! Returns the largest time, t, for which n * t <= time
-
-implicit none
 
 integer,         intent(in) :: n
 type(time_type), intent(in) :: time
@@ -653,8 +615,6 @@ function interval_alarm(time, time_interval, alarm, alarm_interval)
 ! returns true and the alarm is incremented by the alarm_interval.  Watch
 ! for problems if the new alarm time is less than time + time_interval
 
-implicit none
-
 type(time_type), intent(in)    :: time, time_interval, alarm_interval
 type(time_type), intent(inout) :: alarm
 logical                        :: interval_alarm
@@ -681,8 +641,6 @@ function repeat_alarm(time, alarm_frequency, alarm_length)
 ! is true.  For instance, if the alarm_frequency is 1 day, and the 
 ! alarm_length is 2 hours, then repeat_alarm is true from time 2300 on 
 ! day n to time 0100 on day n + 1 for all n.
-
-implicit none
 
 type(time_type), intent(in) :: time, alarm_frequency, alarm_length
 logical                     :: repeat_alarm
@@ -808,8 +766,6 @@ function get_calendar_type()
 !
 ! Returns default calendar type for mapping from time to date.
 
-implicit none
-
 integer :: get_calendar_type
 
 if ( .not. module_initialized ) call time_manager_init
@@ -862,8 +818,6 @@ subroutine get_date(time, year, month, day, hour, minute, second)
 !
 ! Given a time, computes the corresponding date given the selected calendar
 
-implicit none
-
 type(time_type), intent(in)  :: time
 integer,         intent(out) :: second, minute, hour, day, month, year
 
@@ -897,9 +851,6 @@ subroutine get_date_gregorian(time, year, month, day, hour, minute, second)
 !------------------------------------------------------------------------
 !
 ! Computes date corresponding to time for gregorian calendar
-
-implicit none
-
 
 type(time_type), intent(in)  :: time
 integer,         intent(out) :: second, minute, hour, day, month, year
@@ -971,8 +922,6 @@ subroutine get_date_julian(time, year, month, day, hour, minute, second)
 ! Base date for Julian calendar is year 1 with all multiples of 4 
 ! years being leap years.
 
-implicit none
-
 type(time_type), intent(in)  :: time
 integer,         intent(out) :: second, minute, hour, day, month, year
 
@@ -1027,8 +976,6 @@ subroutine get_date_thirty(time, year, month, day, hour, minute, second)
 ! Computes date corresponding to time interval for 30 day months, 12
 ! month years.
 
-implicit none
-
 type(time_type), intent(in)  :: time
 integer,         intent(out) :: second, minute, hour, day, month, year
 
@@ -1058,8 +1005,6 @@ subroutine get_date_no_leap(time, year, month, day, hour, minute, second)
 !------------------------------------------------------------------------
 !
 ! Base date for no_leap calendar is year 1.
-
-implicit none
 
 type(time_type), intent(in)  :: time
 integer,         intent(out) :: second, minute, hour, day, month, year
@@ -1104,8 +1049,6 @@ subroutine get_date_gregorian_mars(time, year, month, day, hour, minute, second)
 ! To be clear, the first Mars year is:
 !   According to MarsWRF         :: 0001-00001_00:00:00  thru  0001-00669_23:59:59
 !   According to DART time_type  :: days=0, secs=0       thru  days=668, secs=86399
-
-implicit none
 
 type(time_type), intent(in)  :: time
 integer,         intent(out) :: second, minute, hour, day, month, year
@@ -1170,13 +1113,11 @@ subroutine get_date_solar_mars(time, year, month, day, hour, minute, second)
 ! The year still starts on day 1
 ! year is always 1
 
-implicit none
-
 type(time_type), intent(in)  :: time
 integer,         intent(out) :: second, minute, hour, day, month, year
 
 integer :: t
-integer :: num_days, iyear, days_this_year
+integer :: num_days
 
 ! "base_year" for Mars will be defined as 1 (earliest wrfout file has year = 1)
 integer, parameter :: base_year= 1
@@ -1228,8 +1169,6 @@ function set_date(year, month, day, hours, minutes, seconds)
 ! any number of illegal dates; these should be checked for and generate
 ! errors as appropriate.
 
-implicit none
-
 integer, intent(in)           :: day, month, year
 integer, intent(in), optional :: seconds, minutes, hours
 type(time_type)               :: set_date
@@ -1269,8 +1208,6 @@ function set_date_gregorian(year, month, day, hours, minutes, seconds)
 !------------------------------------------------------------------------
 !
 ! Computes time corresponding to date for gregorian calendar.
-
-implicit none
 
 integer, intent(in)           :: year, month, day 
 integer, intent(in), optional :: hours, minutes, seconds
@@ -1346,8 +1283,6 @@ function set_date_julian(year, month, day, hours, minutes, seconds)
 !
 ! Returns time corresponding to date for julian calendar.
 
-implicit none
-
 integer, intent(in)           :: year, month, day
 integer, intent(in), optional :: hours, minutes, seconds
 type(time_type)               :: set_date_julian
@@ -1413,8 +1348,6 @@ function set_date_thirty(year, month, day, hours, minutes, seconds)
 !
 ! Computes time corresponding to date for thirty day months.
 
-implicit none
-
 integer, intent(in)           :: year, month, day
 integer, intent(in), optional :: hours, minutes, seconds
 type(time_type)               :: set_date_thirty
@@ -1453,8 +1386,6 @@ function set_date_no_leap(year, month, day, hours, minutes, seconds)
 !------------------------------------------------------------------------
 !
 ! Computes time corresponding to date for fixed 365 day year calendar.
-
-implicit none
 
 integer, intent(in)           :: year, month, day
 integer, intent(in), optional :: hours, minutes, seconds
@@ -1512,8 +1443,6 @@ function set_date_gregorian_mars(year, month, day, hours, minutes, seconds)
 !   According to MarsWRF         :: 0001-00001_00:00:00  thru  0001-00669_23:59:59
 !   According to DART time_type  :: days=0, secs=0       thru  days=668, secs=86399
 
-implicit none
-
 integer, intent(in)           :: year, month, day
 integer, intent(in), optional :: hours, minutes, seconds
 type(time_type)               :: set_date_gregorian_mars
@@ -1565,8 +1494,6 @@ function set_date_solar_mars(year, month, day, hours, minutes, seconds)
 !
 !cl number of days in year is now 100000, and there can only be 1 year.
 !cl valid until 2050 Earth date, by which time WRF will not be used.
-
-implicit none
 
 integer, intent(in)           :: year, month, day
 integer, intent(in), optional :: hours, minutes, seconds
@@ -1629,8 +1556,6 @@ function increment_date(time, years, months, days, hours, minutes, seconds)
 ! a Julian calendar, it matters which order these operations are done and
 ! we don't want to deal with stuff like that, make it an error).
 
-implicit none
-
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
 type(time_type)                       :: increment_date
@@ -1680,8 +1605,6 @@ function increment_gregorian(time, years, months, days, hours, minutes, seconds)
 !-------------------------------------------------------------------------
 !
 ! Given time and some date increment, computes new time for gregorian calendar.
-
-implicit none
 
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: years, months, days, hours, minutes, seconds
@@ -1738,8 +1661,6 @@ function increment_julian(time, years, months, days, hours, minutes, seconds)
 !-------------------------------------------------------------------------
 !
 ! Given time and some date increment, computes new time for julian calendar.
-
-implicit none
 
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
@@ -1823,8 +1744,6 @@ function increment_thirty(time, years, months, days, hours, minutes, seconds)
 !
 ! Given a time and some date increment, computes new time for thirty-day months.
 
-implicit none
-
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
 type(time_type)                       :: increment_thirty
@@ -1867,8 +1786,6 @@ function increment_no_leap(time, years, months, days, hours, minutes, seconds)
 !-------------------------------------------------------------------------
 !
 ! Given time and some date increment, computes new time for julian calendar.
-
-implicit none
 
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
@@ -1947,8 +1864,6 @@ function increment_gregorian_mars(time, years, months, days, hours, minutes, sec
 !
 ! Given time and some date increment, computes new time for gregorian MARS calendar.
 
-implicit none
-
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
 type(time_type)                       :: increment_gregorian_mars
@@ -1972,8 +1887,6 @@ function increment_solar_mars(time, years, months, days, hours, minutes, seconds
 !-------------------------------------------------------------------------
 !
 ! Given time and some date increment, computes new time for gregorian MARS calendar.
-
-implicit none
 
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
@@ -2008,8 +1921,6 @@ function decrement_date(time, years, months, days, hours, minutes, seconds)
 ! undefined decrements (i.e. if one decrements by 68 days and 3 months in
 ! a Julian calendar, it matters which order these operations are done and
 ! we don't want to deal with stuff like that, make it an error).
-
-implicit none
 
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
@@ -2060,8 +1971,6 @@ function decrement_gregorian(time, years, months, days, hours, minutes, seconds)
 !-------------------------------------------------------------------------
 !
 ! Given time and some date decrement, computes new time for gregorian calendar.
-
-implicit none
 
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
@@ -2119,8 +2028,6 @@ function decrement_julian(time, years, months, days, hours, minutes, seconds)
 !-------------------------------------------------------------------------
 !
 ! Given time and some date decrement, computes new time for julian calendar.
-
-implicit none
 
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
@@ -2200,8 +2107,6 @@ function decrement_thirty(time, years, months, days, hours, minutes, seconds)
 !
 ! Given a time and some date decrement, computes new time for thirty day months.
 
-implicit none
-
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
 type(time_type)                       :: decrement_thirty
@@ -2240,8 +2145,6 @@ function decrement_no_leap(time, years, months, days, hours, minutes, seconds)
 !-------------------------------------------------------------------------
 !
 ! Given time and some date decrement, computes new time for julian calendar.
-
-implicit none
 
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
@@ -2322,8 +2225,6 @@ function decrement_gregorian_mars(time, years, months, days, hours, minutes, sec
 !
 ! Given time and some date decrement, computes new time for gregorian MARS calendar.
 
-implicit none
-
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
 type(time_type)                       :: decrement_gregorian_mars
@@ -2347,8 +2248,6 @@ function decrement_solar_mars(time, years, months, days, hours, minutes, seconds
 !-------------------------------------------------------------------------
 !
 ! Given time and some date decrement, computes new time for gregorian MARS calendar.
-
-implicit none
 
 type(time_type), intent(in)           :: time
 integer,         intent(in), optional :: seconds, minutes, hours, days, months, years
@@ -2380,8 +2279,6 @@ function days_in_month(time)
 !
 ! Given a time, computes the corresponding date given the selected
 ! date time mapping algorithm
-
-implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_month
@@ -2415,8 +2312,6 @@ function days_in_month_gregorian(time)
 !
 ! Returns the number of days in a gregorian month.
 
-implicit none
-
 type(time_type), intent(in) :: time
 integer                     :: days_in_month_gregorian
 
@@ -2433,8 +2328,6 @@ function days_in_month_julian(time)
 !--------------------------------------------------------------------------
 !
 ! Returns the number of days in a julian month.
-
-implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_month_julian
@@ -2456,8 +2349,6 @@ function days_in_month_thirty(time)
 ! Returns the number of days in a thirty day month (needed for transparent
 ! changes to calendar type).
 
-implicit none
-
 type(time_type), intent(in) :: time
 integer                     :: days_in_month_thirty
 
@@ -2472,8 +2363,6 @@ end function days_in_month_thirty
 function days_in_month_no_leap(time)
 !--------------------------------------------------------------------------
 ! Returns the number of days in a 365 day year month.
-
-implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_month_no_leap
@@ -2493,8 +2382,6 @@ function days_in_month_gregorian_mars(time)
 !
 ! Returns the number of days in a gregorian MARS month.
 
-implicit none
-
 type(time_type), intent(in) :: time
 integer                     :: days_in_month_gregorian_mars
 
@@ -2511,8 +2398,6 @@ function days_in_month_solar_mars(time)
 !--------------------------------------------------------------------------
 !
 ! Returns the number of days in a gregorian MARS month.
-
-implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_month_solar_mars
@@ -2537,8 +2422,6 @@ end function days_in_month_solar_mars
 function leap_year(time)
 !--------------------------------------------------------------------------
 ! Is this date in a leap year for default calendar?
-
-implicit none
 
 type(time_type), intent(in) :: time
 logical                     :: leap_year
@@ -2571,8 +2454,6 @@ function leap_year_gregorian(time)
 !
 ! Is this a leap year for gregorian calendar?
 
-implicit none
-
 type(time_type), intent(in) :: time
 logical                     :: leap_year_gregorian
 
@@ -2592,8 +2473,6 @@ function leap_year_julian(time)
 !--------------------------------------------------------------------------
 !
 ! Is this a leap year for julian calendar?
-
-implicit none
 
 type(time_type), intent(in) :: time
 logical                     :: leap_year_julian
@@ -2616,8 +2495,6 @@ function leap_year_thirty(time)
 !
 ! No leap years in thirty day months, included for transparency. 
 
-implicit none
-
 type(time_type), intent(in) :: time
 logical                     :: leap_year_thirty
 
@@ -2634,8 +2511,6 @@ function leap_year_no_leap(time)
 !
 ! Another tough one; no leap year returns false for leap year inquiry.
 
-implicit none
-
 type(time_type), intent(in) :: time
 logical                     :: leap_year_no_leap
 
@@ -2651,8 +2526,6 @@ function leap_year_gregorian_mars(time)
 !
 ! Is this a leap year for gregorian calendar?
 ! trick question: answer is always no.
-
-implicit none
 
 type(time_type), intent(in) :: time
 logical                     :: leap_year_gregorian_mars
@@ -2672,8 +2545,6 @@ function leap_year_solar_mars(time)
 !
 ! Is this a leap year for gregorian calendar?
 ! trick question: answer is always no.
-
-implicit none
 
 type(time_type), intent(in) :: time
 logical                     :: leap_year_solar_mars
@@ -2700,8 +2571,6 @@ function length_of_year()
 !--------------------------------------------------------------------------
 !
 ! What is the length of the year for the default calendar type
-
-implicit none
 
 type(time_type) :: length_of_year
 
@@ -2732,8 +2601,6 @@ function length_of_year_thirty()
 !--------------------------------------------------------------------------
 !
 
-implicit none
-
 type(time_type) :: length_of_year_thirty
 
 if ( .not. module_initialized ) call time_manager_init
@@ -2746,8 +2613,6 @@ end function length_of_year_thirty
 
 function length_of_year_gregorian()
 !---------------------------------------------------------------------------
-
-implicit none
 
 type(time_type) :: length_of_year_gregorian
 
@@ -2765,8 +2630,6 @@ end function length_of_year_gregorian
 function length_of_year_julian()
 !--------------------------------------------------------------------------
 
-implicit none
-
 type(time_type) :: length_of_year_julian
 
 if ( .not. module_initialized ) call time_manager_init
@@ -2779,8 +2642,6 @@ end function length_of_year_julian
 
 function length_of_year_no_leap()
 !--------------------------------------------------------------------------
-
-implicit none
 
 type(time_type) :: length_of_year_no_leap
 
@@ -2795,8 +2656,6 @@ end function length_of_year_no_leap
 function length_of_year_gregorian_mars()
 !---------------------------------------------------------------------------
 
-implicit none
-
 type(time_type) :: length_of_year_gregorian_mars
 
 if ( .not. module_initialized ) call time_manager_init
@@ -2807,8 +2666,6 @@ end function length_of_year_gregorian_mars
 
 function length_of_year_solar_mars()
 !---------------------------------------------------------------------------
-
-implicit none
 
 type(time_type) :: length_of_year_solar_mars
 
@@ -2829,8 +2686,6 @@ function days_in_year(time)
 !--------------------------------------------------------------------------
 !
 ! What is the number of days in this year for the default calendar type
-
-implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_year
@@ -2861,8 +2716,6 @@ end function days_in_year
 function days_in_year_thirty(time)
 !--------------------------------------------------------------------------
 
-implicit none
-
 type(time_type), intent(in) :: time
 integer                     :: days_in_year_thirty
 
@@ -2876,8 +2729,6 @@ end function days_in_year_thirty
 
 function days_in_year_gregorian(time)
 !---------------------------------------------------------------------------
-
-implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_year_gregorian
@@ -2897,8 +2748,6 @@ end function days_in_year_gregorian
 function days_in_year_julian(time)
 !--------------------------------------------------------------------------
 
-implicit none
-
 type(time_type), intent(in) :: time
 integer                     :: days_in_year_julian
 
@@ -2917,8 +2766,6 @@ end function days_in_year_julian
 function days_in_year_no_leap(time)
 !--------------------------------------------------------------------------
 
-implicit none
-
 type(time_type), intent(in) :: time
 integer                     :: days_in_year_no_leap
 
@@ -2933,8 +2780,6 @@ end function days_in_year_no_leap
 function days_in_year_gregorian_mars(time)
 !---------------------------------------------------------------------------
 
-implicit none
-
 type(time_type), intent(in) :: time
 integer                     :: days_in_year_gregorian_mars
 
@@ -2946,8 +2791,6 @@ end function days_in_year_gregorian_mars
 
 function days_in_year_solar_mars(time)
 !---------------------------------------------------------------------------
-
-implicit none
 
 type(time_type), intent(in) :: time
 integer                     :: days_in_year_solar_mars
@@ -3015,8 +2858,6 @@ end function greg_leap
 function julian_day(year, month, day)
 
 ! Given a date, computes the day from the beginning of the year.
-
-implicit none
 
 integer, intent(in) :: day, month, year
 integer             :: julian_day
@@ -3160,8 +3001,6 @@ function read_time(file_unit, form, ios_out)
 !--------------------------------------------------------------------------------
 !
 
-implicit none
-
 integer,          intent(in)            :: file_unit
 character(len=*), intent(in),  optional :: form
 integer,          intent(out), optional :: ios_out
@@ -3215,8 +3054,6 @@ subroutine write_time(file_unit, time, form, ios_out)
 ! If ios_out is specified, do not call error handler here, 
 ! but return so a better context message can be generated.
 
-implicit none
-
 integer,          intent(in)            :: file_unit
 type(time_type),  intent(in)            :: time
 character(len=*), intent(in),  optional :: form
@@ -3263,8 +3100,6 @@ end subroutine write_time
 subroutine interactive_time(time)
 !------------------------------------------------------------------------
 
-implicit none
-
 type(time_type), intent(inout) :: time
 integer                        :: second, minute, hour, day, month, year
 
@@ -3294,6 +3129,108 @@ endif
 
 end subroutine interactive_time
 
+!-------------------------------------------------------------------------
+
+function generate_seed(timestamp)
+
+! given a time type, turn it into as unique an integer as possible.
+! expected to be used to seed a random number generator in a way
+! that you can reproduce the same sequence if seeded again from
+! the same time value.
+
+type(time_type), intent(in) :: timestamp
+integer                     :: generate_seed
+
+integer                :: days,seconds
+integer(i8), parameter :: secs_day = 86400_i8
+
+if ( .not. module_initialized ) call time_manager_init
+
+call get_time(timestamp, seconds, days)
+
+generate_seed = iand((secs_day * days) + seconds, z'FFFFFFFF')
+
+end function generate_seed
+
+!-------------------------------------------------------------------------
+
+subroutine time_index_sort(t, index, num)
+
+! Uses a heap sort alogrithm on t, returns array of sorted indices
+! Sorts from earliest (smallest value) time to latest (largest value);
+! uses time > and < operators to do the compare.  When index = 1
+! that's the earliest time. 
+
+integer,  intent(in)         :: num
+type(time_type), intent(in)  :: t(num)
+integer,  intent(out)        :: index(num)
+
+integer :: ind, i, j, l_val_index, level 
+type(time_type) :: l_val
+
+
+if ( .not. module_initialized ) call time_manager_init
+
+!  INITIALIZE THE INDEX ARRAY TO INPUT ORDER
+do i = 1, num
+   index(i) = i
+end do
+
+! Only one element, just send it back
+if(num <= 1) return
+
+level = num / 2 + 1
+ind = num
+
+! Keep looping until finished
+do
+   ! Keep going down levels until bottom
+   if(level > 1) then
+      level = level - 1
+      l_val = t(index(level))
+      l_val_index = index(level)
+   else
+      l_val = t(index(ind))
+      l_val_index = index(ind)
+
+
+      index(ind) = index(1)
+      ind = ind - 1
+      if(ind == 1) then
+         index(1) = l_val_index
+         return
+      endif
+   endif
+
+   i = level
+   j = 2 * level
+
+   do while(j <= ind)
+      if(j < ind) then
+         if(t(index(j)) < t(index(j + 1))) j = j + 1
+      endif
+      if(l_val < t(index(j))) then
+         index(i) = index(j)
+         i = j
+         j = 2 * j
+      else
+         j = ind + 1
+      endif
+      
+   end do
+   index(i) = l_val_index
+
+end do
+
+end subroutine time_index_sort
+
+
+!-------------------------------------------------------------------------
 
 end module time_manager_mod
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

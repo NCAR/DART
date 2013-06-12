@@ -1,10 +1,11 @@
 #!/usr/bin/perl
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
 #
-# $Id$
+# DART $Id$
+#
+########################################################################
 #
 # AUTHOR:   T. R. Whitcomb 
 #           Naval Research Laboratory
@@ -134,8 +135,6 @@ foreach(@AllData)
 print "-"x50 . "\n";
 close(DAT_FILE);
 close(VAR_FILE)
-
-#exit 0
 
 # <next few lines under version control, do not edit>
 # $URL$

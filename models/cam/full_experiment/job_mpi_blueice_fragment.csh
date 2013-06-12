@@ -1,8 +1,8 @@
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 
 # For the IBM/blueice machine. This fragment can be dropped into the job_mpi.csh script
 # to specifically schedule which mpi tasks run on which nodes. Since cores on the same

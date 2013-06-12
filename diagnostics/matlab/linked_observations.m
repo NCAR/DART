@@ -2,15 +2,11 @@ function linked_observations(obs)
 %% linked_observations(obs) is a helper function for link_obs.m
 % linked_observations is never meant to be called directly.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 % obs has components (for example):
 %            fname: '/ptmp/thoar/POP/CAM/POP8/obs_sequence_001.nc'
@@ -316,4 +312,10 @@ end
 
 if (orgholdstate == 0), hold off; end;
 
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program sys_sim102
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! MAKE SURE THAT RATIO IS ALL THAT MATTERS
 
@@ -30,10 +26,10 @@ use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type (random_seq_type) :: r
 integer, parameter :: num_tries = 1001
@@ -151,3 +147,9 @@ mean = sx / n
 var = (s_x2 - sx**2 / n) / (n - 1)
 
 end subroutine sample_mean_var
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

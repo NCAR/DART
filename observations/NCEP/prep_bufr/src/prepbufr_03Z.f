@@ -1,3 +1,6 @@
+c    This code is not protected by the DART copyright agreement.
+c    DART $Id$
+
 c    Almost identical to the prepbufr.f program - adds 24 hours to obs
 c    after midnight and before 3Z of the second day.  intended to be
 c    run on 6Z input files only, where it outputs only obs at 3Z exactly.
@@ -24,10 +27,7 @@ c    the READPB() routine currently has a select for obs types based on
 c    name; this should be removed and completely under namelist control.
 c    the previously encountered problem was fixed and not related to this.
 c    See the prepdecode/docs directory for the key to all the bufr codes.
-c
-c
-c    DART $Id$
-c
+
       REAL*8     R8BFMS
       PARAMETER ( R8BFMS = 10.0E10 )
 C                                      "Missing" value for BUFR data
@@ -1002,3 +1002,9 @@ C       normal search code, look for match in list
 
         RETURN
         END
+
+C <next few lines under version control, do not edit>
+C $URL$
+C $Id$
+C $Revision$
+C $Date$

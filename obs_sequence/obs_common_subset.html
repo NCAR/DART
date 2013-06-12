@@ -36,18 +36,20 @@
 <H2>Overview</H2>
 
 <P>
-This specialized tool takes a list of pairs of input observation sequence 
-files and outputs a new set of pairs of observation sequence files in 
-which only the observations which were successfully assimilated in both 
-files are kept.
+This specialized tool takes a list of up to 4 sets of observation sequence 
+files and outputs a new set of observation sequence files in which only the 
+observations which were successfully assimilated in all sets are retained.
+It is helpful to visualize that each set of observation sequence files is 
+from an experiment, and that all the experiments are somehow related - 
+at least in the fact they used the same observation sequence files for input.
 The expected use of this tool is for comparing different assimilation
 runs which use the same input observation sequence file as input.
-If different numbers of observations are assimilated in two different
+If different numbers of observations are assimilated in the different
 experiments they will cause differences in the diagnostic plots
 which are not directly relatable to the differences in the quality
-of the assimilation.  After a pair of experimental runs, if this tool is
-run on the obs_seq.final files and then the diagnostics are generated
-only the observations which were assimilated in both experiments will
+of the assimilation.  If this tool is run on the obs_seq.final files from 
+all the experiments and then the diagnostics are generated --
+<strong>only</strong> the observations which were assimilated in both experiments will
 contribute to the summary statistics.  A more direct comparison can be
 made and improvements attributed to the differences in the experimental 
 parameters.
@@ -55,7 +57,7 @@ parameters.
 See the <a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#obs_diagnostics">
 two experiment diagnostic plot</a> documentation for Matlab scripts
 supplied with DART to directly compare the observation diagnostic output
-from two experiments.
+from multiple experiments (more than two, the script has a poor name).
 </P><P>
 The actions of the <em class=code>obs_common_subset</em> program
 are controlled by a Fortran namelist, read from a file named
@@ -82,7 +84,10 @@ For a more general purpose tool, see the
 <div class=namelist>
 <pre>
 <em class=call>namelist / obs_common_subset_nml / </em> 
- filename_seq1, filename_seq_list1, filename_seq2, filename_seq_list2,
+ filename_seq1, filename_seq_list1, 
+ filename_seq2, filename_seq_list2,
+ filename_seq3, filename_seq_list3, 
+ filename_seq4, filename_seq_list4,
  filename_out_suffix, print_only, calendar
 </pre>
 </div>
@@ -128,6 +133,31 @@ the <em class=file>input.nml</em> file.
                        You can only specify one of filename_seq2 OR 
                        filename_seq_list2, not both.
                        Default: ''</TD></TR>
+<TR><!--contents--><TD valign=top>filename_seq3</TD>
+    <!--  type  --><TD>character(len=129), dimension(500)</TD>
+    <!--descript--><TD>The array of names of the corresponding to a possible third set
+                       observation sequence files to process.  
+                       Default: ''</TD></TR>
+<TR><!--contents--><TD valign=top>filename_seq_list3</TD>
+    <!--  type  --><TD>character(len=129)</TD>
+    <!--descript--><TD>An alternative way to specify one or more input
+                       observation sequence files, same constraints as filename_seq_list2. 
+                       filename_seq3 and filename_seq_list3 may be ''.
+                       <strong>NOTE</strong>: if they are both '', it is illegal to specify
+                       either filename_seq4 or filename_seq_list4.
+                       Default: ''</TD></TR>
+<TR><!--contents--><TD valign=top>filename_seq4</TD>
+    <!--  type  --><TD>character(len=129), dimension(500)</TD>
+    <!--descript--><TD>The array of names of the corresponding to a possible fourth set
+                       observation sequence files to process.  
+                       Default: ''</TD></TR>
+<TR><!--contents--><TD valign=top>filename_seq_list4</TD>
+    <!--  type  --><TD>character(len=129)</TD>
+    <!--descript--><TD>An alternative way to specify one or more input
+                       observation sequence files, same constraints as filename_seq_list2. 
+                       filename_seq4 and filename_seq_list4 may be ''.
+                       Default: ''</TD></TR>
+
 <TR><!--contents--><TD valign=top>filename_out_suffix</TD>
     <!--  type  --><TD>character(len=32)</TD>
     <!--descript--><TD>A string to be appended to each of the input observation
@@ -239,6 +269,19 @@ obs_sequence_mod
     <!-- comment --><TD VALIGN=top>The number of filenames does not match
                         the filename count.</TD>
 </TR>
+
+<TR><!-- routine --><TD VALIGN=top>handle_filenames</TD>
+    <!-- message --><TD VALIGN=top>cannot specify both filename_seq and filename_seq_list'</TD>
+    <!-- comment --><TD VALIGN=top>For any 'set' of files, you can either specify a list
+                        <strong>OR</strong> a filename, but not both.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>handle_filenames</TD>
+    <!-- message --><TD VALIGN=top>cannot specify filename4 without specifying filename3</TD>
+    <!-- comment --><TD VALIGN=top>The logic just gets too crazy. If you want to compare 3 
+                        sets of files, don't use filename_seq4 or filename_seq_list4.</TD>
+</TR>
+
 </TABLE>
 </div>
 

@@ -1,5 +1,12 @@
 #!/usr/bin/perl
 #
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
+#
 # SCRIPT:   generate_get_name_function.pl
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
@@ -111,3 +118,9 @@ print ROUTINE_FILE <<END_FOOTER;
 end subroutine get_name_info
 END_FOOTER
 close(ROUTINE_FILE);
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

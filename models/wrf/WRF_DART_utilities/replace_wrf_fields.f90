@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program replace_wrf_fields
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use     types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,       &
@@ -23,10 +19,9 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-! split into separate lines; getting too long for the absoft compiler
-character(len=128), parameter :: source = &
- "$URL$"
-character(len=128), parameter :: revision = "$Revision$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 ! variables used to read the netcdf info
@@ -303,7 +298,7 @@ fieldloop : do i=1, 10000
          call nc_check(nf90_put_var(ncoutid, outvarid, sixd), 'nf90_put_var', 'outfile')
          deallocate(sixd)
       case (7)
-         allocate(sevend(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(4),dimlen(6),dimlen(7)))
+         allocate(sevend(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6),dimlen(7)))
          call nc_check(nf90_get_var( ncinid,  invarid, sevend), 'nf90_get_var',  'infile')
          call nc_check(nf90_put_var(ncoutid, outvarid, sevend), 'nf90_put_var', 'outfile')
          deallocate(sevend)
@@ -344,3 +339,9 @@ end subroutine initialize_module
 !----------------------------------------------------------------------
 
 end program
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

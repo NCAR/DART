@@ -1,0 +1,381 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program level4_to_obs</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link href="../../doc/html/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>level4_to_obs</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#Decisions">DECISIONS</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> / 
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H1>Overview</H1>
+
+<H4>AmeriFlux Level 4 data to DART Observation Sequence Converter</H4>
+
+<P>This routine is designed to convert the flux tower Level 4 data 
+from the <a href="http://public.ornl.gov/ameriflux/">AmeriFlux</a> 
+network of observations from micrometeorological tower sites. 
+AmeriFlux is part of <a href="http://daac.ornl.gov/FLUXNET/fluxnet.shtml">FLUXNET</a>
+and the converter is hoped to be a suitable starting point for the conversion
+of observations from FLUXNET. As of May 2012, I have not yet tried to work with
+any other observations from FLUXNET.
+<br />
+<br />
+The AmeriFlux Level 4 products are recorded using the local time. 
+DART observation sequence files use GMT.  For more information about
+AmeriFlux data products, go to 
+<a href=" http://public.ornl.gov/ameriflux/dataproducts.shtml">
+http://public.ornl.gov/ameriflux/dataproducts.shtml</a>.
+</P>
+
+<P>
+The workflow is usually: 
+</P>
+<ol>
+<li>download the Level 4 data for the towers and years in question 
+    (<a href="#DataSources">see DATA SOURCES below</a>)
+<li>record the TIME ZONE, latitude, longitude, and elevation for each tower
+<li>build the DART executables with support for the tower observations.
+    This is done by running <em class=program>preprocess</em> with 
+    <em class=file>obs_def_tower_mod.f90</em> in the list of <em class=code>input_files</em>
+    for <em class=code>preprocess_nml</em>.
+<li>provide basic tower information via the <em class=program>level4_to_obs_nml</em> namelist 
+    since this information is not contained in the Level 4 data file</li>
+<li>convert each Level 4 data file individually using <em class=program>level4_to_obs</em></li>
+<li>combine all output files for the region and timeframe of interest into one file 
+    using <a href="../../obs_sequence/obs_sequence_tool.html ">obs_sequence_tool</a></li>
+</ol>
+
+<P>
+For some models (CLM, for example), it is required to reorganize the observation sequence
+files into a series of files that contains ONLY the observations for each assimilation.
+This can be achieved with the <a href="makedaily.sh">makedaily.sh</a> script. 
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<HR>
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+</P>
+<div class=namelist>
+<pre>
+<em class=call>namelist /level4_to_obs_nml/ </em> text_input_file, obs_out_file, year, &amp;
+             timezoneoffset, latitude, longitude, elevation, inst_height, maxgoodqc, verbose
+</pre>
+</div>
+
+<H3 class=indent1>Discussion</H3>
+
+<P>This namelist is read in a file called <em class=file>input.nml</em>.
+</P>
+
+<TABLE border=0 cellspacing=10 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+
+<TR><!--contents--><TD valign=top> text_input_file  </TD>
+    <!--  type  --><TD valign=top> character(len=128) </TD>
+    <!--descript--><TD>Name of the Level 4 ASCII file of comma-separated values.
+            This may be a relative or absolute filename.<br />
+            Default: 'textdata.input'</TD></TR>
+
+<TR><!--contents--><TD valign=top> obs_out_file  </TD>
+    <!--  type  --><TD valign=top> character(len=128) </TD>
+    <!--descript--><TD>Name of the output observation sequence file.<br />
+            Default: 'obs_seq.out'</TD></TR>
+
+<TR><!--contents--><TD valign=top> year   </TD>
+    <!--  type  --><TD valign=top> integer   </TD>
+    <!--descript--><TD>The year of the observations in the Level 4 text file.<br />
+            Default: none </TD></TR>
+
+<TR><!--contents--><TD valign=top> timezoneoffset   </TD>
+    <!--  type  --><TD valign=top> real      </TD>
+    <!--descript--><TD>the time zone offset (in hours) of the station.
+            The tower observation times are local time, we need to convert them
+            to GMT.<br />
+            Default: none </TD></TR>
+
+<TR><!--contents--><TD valign=top> latitude  </TD>
+    <!--  type  --><TD valign=top> real      </TD>
+    <!--descript--><TD>Latitude (in degrees N) of the tower.<br />
+            Default: none</TD></TR>
+
+<TR><!--contents--><TD valign=top> longitude  </TD>
+    <!--  type  --><TD valign=top> real       </TD>
+    <!--descript--><TD>Longitude (in degrees E) of the tower.
+            For internal consistency, DART uses longitudes in the range [0,360].
+            An input value of -90 will be converted to 270, for example.<br />
+            Default: none</TD></TR>
+
+<TR><!--contents--><TD valign=top> elevation  </TD>
+    <!--  type  --><TD valign=top> real       </TD>
+    <!--descript--><TD>surface elevation (in meters) of the tower.<br />
+            Default: none</TD></TR>
+
+<TR><!--contents--><TD valign=top> flux_height </TD>
+    <!--  type  --><TD valign=top> real        </TD>
+    <!--descript--><TD>height (in meters) of the flux instrument on the tower.<br />
+            Default: none</TD></TR>
+
+<TR><!--contents--><TD valign=top> maxgoodqc  </TD>
+    <!--  type  --><TD valign=top> real       </TD>
+    <!--descript--><TD>maximum value of any observation quality control flag to
+            pass through to the output observation sequence. Keep in mind that 
+            <em class=program>filter</em> has the ability to discriminate on the
+            value, so there is really little to be gained by rejecting them 
+            during the conversion.<br />
+            Default: 3</TD></TR>
+
+<TR><!--contents--><TD valign=top> verbose   </TD>
+    <!--  type  --><TD valign=top> logical   </TD>
+    <!--descript--><TD>Print extra information during the <em class=program>level4_to_obs</em> 
+            execution.<br />
+            Default: .false. </TD></TR>
+
+</TABLE>
+
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<HR />
+<H2>DATA SOURCES</H2>
+
+<P>
+The data was acquired from 
+<a href="http://public.ornl.gov/ameriflux/dataproducts.shtm">
+http://public.ornl.gov/ameriflux/dataproducts.shtm</a><br />
+<br />
+The Level 4 products in question are ASCII files of comma-separated values taken
+every 30 minutes for an entire year. The first line is a comma-separated list of
+column descriptors, all subsequent lines are comma-separated numerical values.
+The converter presently searches for the columns pertaining to <em>NEE_or_fMDS</em>,
+<em>H_f</em>, <em>LE_f</em>, their corresponding quality control fields, 
+and those columns pertaining to the time of the observation.
+These values are mapped as follows: 
+</P>
+
+<table width=100% cellpadding=10>
+<tr><th align=left>Level 4 units   </th>
+    <th align=left>Level 4 variable</th>
+    <th align=left>description     </th>
+    <th align=left>DART type       </th>
+    <th align=left>DART kind       </th>
+    <th align=left>DART units      </th></tr>
+<tr><td colspan=6><hr></td></tr>
+
+<tr><!-- >Level 4 units   <--><td> W/m^2 </td>
+    <!-- >Level 4 variable<--><td> LE_f </td>
+    <!-- >description     <--><td> Latent Heat Flux </td>
+    <!-- >DART type       <--><td> TOWER_LATENT_HEAT_FLUX </td>
+    <!-- >DART kind       <--><td> KIND_LATENT_HEAT_FLUX </td>
+    <!-- >DART units      <--><td> W/m^2 </td></tr>
+
+<tr><!-- >Level 4 units   <--><td> [0-3] </td>
+    <!-- >Level 4 variable<--><td> LE_fqc </td>
+    <!-- >description     <--><td> QC for LE_f </td>
+    <!-- >DART type       <--><td> N/A </td>
+    <!-- >DART kind       <--><td> N/A </td>
+    <!-- >DART units      <--><td> same </td></tr>
+<tr><td colspan=6><hr></td></tr>
+
+<tr><!-- >Level 4 units   <--><td> W/m^2 </td>
+    <!-- >Level 4 variable<--><td> H_f </td>
+    <!-- >description     <--><td> Sensible Heat Flux </td>
+    <!-- >DART type       <--><td> TOWER_SENSIBLE_HEAT_FLUX</td>
+    <!-- >DART kind       <--><td> KIND_SENSIBLE_HEAT_FLUX </td>
+    <!-- >DART units      <--><td> W/m^2 </td></tr>
+
+<tr><!-- >Level 4 units   <--><td> [0-3] </td>
+    <!-- >Level 4 variable<--><td> H_fqc </td>
+    <!-- >description     <--><td> QC for H_f</td>
+    <!-- >DART type       <--><td> N/A </td>
+    <!-- >DART kind       <--><td> N/A </td>
+    <!-- >DART units      <--><td> same </td></tr>
+<tr><td colspan=6><hr></td></tr>
+
+<tr><!-- >Level 4 units   <--><td> umolCO2/m^2/s</td>
+    <!-- >Level 4 variable<--><td> NEE_or_fMDS </td>
+    <!-- >description     <--><td> Net Ecosystem Production </td>
+    <!-- >DART type       <--><td> TOWER_NETC_ECO_EXCHANGE </td>
+    <!-- >DART kind       <--><td> KIND_NET_CARBON_PRODUCTION</td>
+    <!-- >DART units      <--><td> gC/m^2/s </td></tr>
+
+<tr><!-- >Level 4 units   <--><td> [0-3] </td>
+    <!-- >Level 4 variable<--><td> NEE_or_fMDSqc </td>
+    <!-- >description     <--><td> QC for NEE_or_fMDS</td>
+    <!-- >DART type       <--><td> N/A </td>
+    <!-- >DART kind       <--><td> N/A </td>
+    <!-- >DART units      <--><td> same </td></tr>
+</table>
+
+<P>The <em class=code>LE_fqc</em>, <em class=code>H_fqc</em>, and <em class=code>NEE_or_fMDSqc</em> variables use the following convention:<br />
+<blockquote>
+0 = original, 1 = category A (most reliable), 2 = category B (medium), 3 = category C (least reliable). (Refer to Reichstein et al. 2005 Global Change Biology for more information)</blockquote>
+<br />
+<br />
+I am repeating the AmeriFlux <a href="http://public.ornl.gov/ameriflux/data-fair-use.shtml">
+Data Fair-Use Policy</a> because I believe it is important to be a good scientific citizen:
+
+<blockquote>
+The AmeriFlux data ... are freely available and were furnished by 
+individual AmeriFlux scientists who encourage their use. Please kindly inform in 
+writing (or e-mail) the appropriate AmeriFlux scientist(s) of how you intend to use 
+the data and of any publication plans. It is also important to contact the AmeriFlux 
+investigator to assure you are downloading the latest revision of the data and to 
+prevent potential misuse or misinterpretation of the data. Please acknowledge the 
+data source as a citation or in the acknowledgments if no citation is available. 
+If the AmeriFlux Principal Investigators (PIs) feel that they should be 
+acknowledged or offered participation as authors, they will let you know and we 
+assume that an agreement on such matters will be reached before publishing and/or 
+use of the data for publication. If your work directly competes with the PI's 
+analysis they may ask that they have the opportunity to submit a manuscript before 
+you submit one that uses unpublished data. In addition, when publishing please 
+acknowledge the agency that supported the research. Lastly, we kindly request that 
+those publishing papers using AmeriFlux data provide reprints to the PIs providing 
+the data and to the data archive at the Carbon Dioxide Information Analysis Center 
+(CDIAC).</blockquote>
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<HR />
+<H2>PROGRAMS</H2>
+<P>
+The <em class=file>level4_to_obs.f90</em> file is the source
+for the main converter program.
+Look at the source code where it reads the example data file.  You will
+almost certainly need to change the "read" statement to match your data
+format.  The example code 
+reads each text line into a character buffer
+and then reads from that buffer to parse up the data items.
+</P> <P>
+To compile and test,
+go into the work subdirectory and run the <em class=file>quickbuild.csh</em>
+script to build the converter and a couple of general purpose utilities.
+<em class=file>advance_time</em> helps with calendar and time computations,
+and the
+<em class=file>obs_sequence_tool</em> manipulates DART observation files
+once they have been created.
+</P>
+<P>
+To change the observation types, look in the 
+<em class=file>DART/obs_def</em> directory.  If you can
+find an obs_def_XXX_mod.f90 file with an appropriate set
+of observation types, change the 'use' lines in the converter
+source to include those types.  Then add that filename in the 
+<em class=file>input.nml</em> namelist file
+to the &amp;preprocess_nml namelist, the 'input_files' variable.
+Multiple files can be listed.  Then run quickbuild.csh again.
+It remakes the table of supported observation types before 
+trying to recompile the source code.
+</P>
+<P>
+An example script for converting batches of files is
+in the <em class=file>shell_scripts</em> directory. A tiny example
+data file is in the <em class=file>data</em> directory.
+These are <em>NOT</em> intended to be turnkey scripts; they will
+certainly need to be customized for your use.  There are comments
+at the top of the script saying what options they include, and
+should be commented enough to indicate where changes will be
+likely to need to be made.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Decisions"></A>
+<HR />
+<H2>DECISIONS YOU MIGHT NEED TO MAKE</H2>
+
+<P>
+See the discussion in the
+<a href="../observations.html#Decisions">observations introduction</a> 
+page about what options are available for the things you need to
+specify.  These include setting a time, specifying an expected error,
+setting a location, and an observation type.
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<HR />
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<HR />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2011 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

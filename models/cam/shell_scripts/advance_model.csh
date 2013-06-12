@@ -1,10 +1,10 @@
 #!/bin/csh
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 #
 # Script to advance one ensemble member one filter "time step"
 # when the model advance is executed as a separate process.
@@ -91,7 +91,7 @@ while($state_copy <= $num_states)
    echo "starting ${myname} for ens member $element at "`date` >> cam_out_temp
 
    # get model state initial conditions for this ensemble member
-   ${LINK} ${CENTRALDIR}/$input_file temp_ic
+   ${LINK} ${CENTRALDIR}/$input_file dart_restart
 
    # get filter namelists for use by cam
    ${COPY} ${CENTRALDIR}/input.nml input.nml
@@ -146,14 +146,14 @@ while($state_copy <= $num_states)
    # translate DART state vector into a CAM caminput.nc file, and create an
    # ascii 'times' file, which will be used to set the namelist for cam to tell
    # it how far to advance the model.
-   if (-e temp_ic && -e ${CENTRALDIR}/dart_to_cam) then
+   if (-e dart_restart && -e ${CENTRALDIR}/dart_to_cam) then
       echo ' '                                           >> cam_out_temp
       echo 'advance_model: executing dart_to_cam '`date` >> cam_out_temp
       ${CENTRALDIR}/dart_to_cam                          >> cam_out_temp
       ls -lt                                             >> cam_out_temp
       ${COPY} times ${CENTRALDIR}
    else
-      echo "ERROR: either temp_ic file for $element or dart_to_cam not available" >> cam_out_temp
+      echo "ERROR: either dart_restart file for $element or dart_to_cam not available" >> cam_out_temp
       exit -${element}
    endif
    

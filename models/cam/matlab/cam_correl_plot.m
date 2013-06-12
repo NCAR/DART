@@ -5,15 +5,11 @@
 % with this routine.  if you change the input files, you must rerun 
 % cam_correl_read_and_plot.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 % Construct a colormap with white for points near 0 and colors only when
 % the differences become 'significant' (use range to set that width)
@@ -142,3 +138,9 @@ for lag = 1:num_lags
    end
 
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

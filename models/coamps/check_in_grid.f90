@@ -1,14 +1,9 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
-! http://www.image.ucar.edu/DAReS/DART/DART_download
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
 
 program check_in_grid
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! Program wrapper for ll2ij that takes its input from the file
 ! domain.dat - this allows us to quickly cal ll2ij many times for a
@@ -50,4 +45,11 @@ program check_in_grid
   if (grid_i < 1)        in_grid = .false.
   if (grid_j < 1)        in_grid = .false.
   print *, in_grid
+
 end program check_in_grid
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

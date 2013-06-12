@@ -13,7 +13,8 @@
    restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
-   adv_ens_command       = "./advance_perfect.sh"  /
+   adv_ens_command       = "./advance_perfect.sh"
+   /
 
 &filter_nml
    async                    = 4,
@@ -55,36 +56,41 @@
    inf_lower_bound             = 1.00,                    1.0,
    inf_upper_bound             = 10000,                   1.15,
    inf_sd_lower_bound          = 0.6,                     0.075
-/
+   /
 
 &smoother_nml
    num_lags              = 0,
    start_from_restart    = .false.,
    output_restart        = .false.,
    restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart'  /
+   restart_out_file_name = 'smoother_restart'
+   /
 
 &assim_tools_nml
    filter_kind                     =  1,
    cutoff                          =  0.125,
-   sort_obs_inc                    = .true.,
+   sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
-   print_every_nth_obs             = 500,  /
+   print_every_nth_obs             = 500,
+   /
 
 &cov_cutoff_nml
-   select_localization = 1  /
+   select_localization = 1
+   /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+   /
 
 &preprocess_nml
    input_obs_kind_mod_file  = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
    output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
    input_obs_def_mod_file   = '../../../obs_def/DEFAULT_obs_def_mod.F90',
    output_obs_def_mod_file  = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_navdas_mod.f90' /
+   input_files              = '../../../obs_def/obs_def_navdas_mod.f90'
+   /
 
 &obs_kind_nml
    assimilate_these_obs_types =  'U_RAOB', 'V_RAOB', 'T_RAOB',
@@ -100,13 +106,13 @@
                                  'U_GOES', 'V_GOES',
                                  'T_TOVS_T',
                                  'VORTEX_LAT', 'VORTEX_LON',
-								 'P_SFC_SHIP', 'P_SFC_LAND',
-								 'U_SFC_SHIP', 'V_SFC_SHIP',
-								 'U_WSAT_WIND','V_WSAT_WIND',
-								 'U_ASCAT_WIND','V_ASCAT_WIND',
+                                 'P_SFC_SHIP', 'P_SFC_LAND',
+                                 'U_SFC_SHIP', 'V_SFC_SHIP',
+                                 'U_WSAT_WIND', 'V_WSAT_WIND',
+                                 'U_ASCAT_WIND', 'V_ASCAT_WIND',
    evaluate_these_obs_types   =  'Z_TC_SYNTH','U_TC_SYNTH','V_TC_SYNTH','T_TC_SYNTH',
-								 'TPPW_SSMI','TPPW_WSAT',
-								 /
+                                 'TPPW_SSMI','TPPW_WSAT',
+   /
 
 # Notes for obs_def_radar_mod_nml:
 # (1) Reflectivity limit can be applied to observations and/or state (forward operator).
@@ -124,10 +130,12 @@
    lowest_reflectivity_obs   =     0.0 ,
    apply_ref_limit_to_state  = .false. ,
    reflectivity_limit_state  =     0.0 ,
-   lowest_reflectivity_state =     0.0 /
+   lowest_reflectivity_state =     0.0
+   /
 
 &assim_model_nml
-   write_binary_restart_files = .true. /  
+   write_binary_restart_files = .true.
+   /  
 
 # Notes for model_nml:
 # (1) vert_localization_coord must be one of:
@@ -143,40 +151,47 @@
    approximate_distance        = .false.,
    nlon                        = 71,
    nlat                        = 36,
-   output_box_info             = .false.  /
+   output_box_info             = .false.
+   /
 
 &utilities_nml
    TERMLEVEL = 1,
    module_details = .false.,
    logfilename = './dart_log.out',
-   nmlfilename = './dart_log.nml'  /
+   nmlfilename = './dart_log.nml'
+   /
 
 &reg_factor_nml
    select_regression    = 1,
    input_reg_file       = "time_mean_reg",
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = "reg_diagnostics"  /
+   reg_diagnostics_file = "reg_diagnostics"
+   /
 
 &model_nml
- cdtg = '2007012506',
- x_bound_skip = 4,
- y_bound_skip = 4,
- output_interpolation = .false./
+   cdtg = '2007012506',
+   x_bound_skip = 4,
+   y_bound_skip = 4,
+   output_interpolation = .false.
+   /
 
 &navdas_innov_nml
- innov_file_name = 'innov.out',
- ngt_file_name   = 'ngt.out',
- obs_seq_in_name = 'obs_seq.out', /
+   innov_file_name = 'innov.out',
+   ngt_file_name   = 'ngt.out',
+   obs_seq_in_name = 'obs_seq.out'
+   /
 
 &ensemble_manager_nml
    single_restart_file_in  = .false.,
    single_restart_file_out = .false.,
-   perturbation_amplitude  = 0.2  /
+   perturbation_amplitude  = 0.2
+   /
 
 &merge_obs_seq_nml
    num_input_files = 2,
    filename_seq    = 'obs_seq.one', 'obs_seq.two',
-   filename_out    = 'obs_seq.merged'   /
+   filename_out    = 'obs_seq.merged'
+   /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
@@ -206,18 +221,19 @@
    latlim2    =  80.0,
    reg_names  = 'Europe',
    print_mismatched_locs = .false.,
-   print_obs_locations   = .false.,
-   verbose               = .false.  /
+   verbose               = .false.
+   /
 
 &schedule_nml
    calendar        = 'Gregorian',
-   first_bin_start =  2007,11,05,17, 0, 0 ,
-   first_bin_end   =  2007,11,05,18, 0, 0 ,
-   last_bin_end    =  2007,11,05,18, 0, 0 ,
-   bin_interval_days    = 0,
-   bin_interval_seconds = 21600,
+   first_bin_start =  1601,  1,  1,  0,  0,  0,
+   first_bin_end   =  2999,  1,  1,  0,  0,  0,
+   last_bin_end    =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,
+   bin_interval_seconds = 0,
    max_num_bins         = 1000,
-   print_table          = .true.  /
+   print_table          = .true.
+   /
 
 &obs_seq_to_netcdf_nml
    obs_sequence_name = 'obs_seq.final',
@@ -227,4 +243,6 @@
    lonlim2    =  360.0,
    latlim1    =  -90.0,
    latlim2    =   90.0,
-   verbose    = .true.  /
+   verbose    = .true.
+   /
+

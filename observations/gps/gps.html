@@ -85,10 +85,18 @@ the string 'atmPrf').
 
 <P>
 Currently each vertical profile is stored in a separate file,
-and there are between 1000-2000 profiles/day, so converting a day's
+and there are between 1000-3000 profiles/day, so converting a day's
 worth of observations involves downloading many individual files.
 There are plans in place by the data providers to bundle these 
 profiles together in a tar file to make it simpler to download the raw data.
+</P>
+
+<P>
+The scripts in the <em class=file>shell_scripts</em> directory now
+by default try to download profiles from any of the available
+satellites that return GPS RO data to the CDAAC web site.  See the
+<em class=file>do_convert.csh</em> script for a list of what 
+satellites are checked by default.
 </P>
 
 <!--==================================================================-->
@@ -111,8 +119,8 @@ The shell_scripts directory contains several example scripts, including one
 which downloads the raw data files a day at a time (download_script.csh), 
 and one which executes the conversion program (convert_script.csh).  
 These scripts make 6 hour files by default, but have options for other times.  
-Each profile is stored in a separate netcdf file and there
-are between 1000-2000 files/day, so the download process can be
+Each profile is stored in a separate netcdf file and there are usually
+between 1000-3000 files/day, so the download process can be
 lengthy.  You probably want to download as a separate preprocess step
 and do not use the script options to automatically delete the input files.
 Keep the files around until you are sure you are satisified with the
@@ -142,10 +150,10 @@ compute the expected observation value.
 The namelist also lets you specify at what heights you want
 observations to be extracted.  The raw data is very dense in
 the vertical; using all values would not results in a set of
-independent observations.  The current source code interpolates
-the vertical profile into 200 bins, and then reinterpolates
-again onto the requested vertical heights.  There are plans to
-revise the code to avoid the initial vertical binning step.
+independent observations.  The current source code no longer
+does an intermediate interpolation; the original profiles
+appear to be smooth enough that this is not needed.  The requested
+vertical output heights are interpolated directly from the full profile.
 </P>
 
 <!--==================================================================-->

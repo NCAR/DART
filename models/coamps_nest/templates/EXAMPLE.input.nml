@@ -179,6 +179,5 @@
    latlim2    =  80.0, -20.0,  20.0,  55.0,
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
-   print_obs_locations   = .false.,
    verbose               = .false.  /
 

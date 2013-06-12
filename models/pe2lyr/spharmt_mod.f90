@@ -1,11 +1,7 @@
+! This code is not protected by the DART copyright agreement.
+! DART $Id$
 
  module spharmt_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! fortran95 spherical harmonic module.
 ! For gaussian grids and triangular truncation only.
@@ -2026,3 +2022,9 @@
     end subroutine vpassm
 
  end module spharmt_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

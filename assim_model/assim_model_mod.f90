@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module assim_model_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! This module is used to wrap around the basic portions of existing dynamical models to
 ! add capabilities needed by the standard assimilation methods.
@@ -26,7 +22,7 @@ use utilities_mod, only : get_unit, close_file, register_module, error_handler, 
                           do_output, dump_unit_attributes, find_namelist_in_file,  &
                           check_namelist_read, nc_check, do_nml_file, do_nml_term, &
                           find_textfile_dims, file_to_text, timestamp, set_output, &
-                          ascii_file_format
+                          ascii_file_format, set_output
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
                           get_model_time_step, model_interpolate, init_conditions, &
                           init_time, adv_1step, end_model, nc_write_model_atts,    &
@@ -51,10 +47,10 @@ public :: static_init_assim_model, init_diag_output, get_model_size,            
           get_close_obs_init, get_close_obs, ens_mean_for_model
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 
 ! Type to keep model state and time together
@@ -602,7 +598,7 @@ subroutine get_initial_condition(x)
 
 implicit none
 
-type(assim_model_type), intent(out) :: x
+type(assim_model_type), intent(inout) :: x
 
 call aget_initial_condition(x%time, x%state_vector)
 
@@ -623,7 +619,7 @@ subroutine aget_initial_condition(time, x)
 implicit none
 
 type(time_type), intent(out) :: time
-real(r8), intent(out) :: x(:)
+real(r8),        intent(out) :: x(:)
 
 call init_conditions(x)
 
@@ -640,7 +636,7 @@ function get_model_time(assim_model)
 
 implicit none
 
-type(time_type) :: get_model_time
+type(time_type)                    :: get_model_time
 type(assim_model_type), intent(in) :: assim_model
 
 get_model_time = assim_model%time
@@ -660,8 +656,8 @@ subroutine copy_assim_model(model_out, model_in)
 
 implicit none
 
-type(assim_model_type), intent(out) :: model_out
-type(assim_model_type), intent(in)  :: model_in
+type(assim_model_type), intent(inout) :: model_out
+type(assim_model_type), intent(in)    :: model_in
 
 integer :: i
 
@@ -839,8 +835,8 @@ subroutine read_state_restart(assim_model, funit, target_time)
 
 implicit none
 
-type(assim_model_type), intent(out)          :: assim_model
-integer,                intent(in)           :: funit
+type(assim_model_type), intent(inout)         :: assim_model
+integer,                intent(in)            :: funit
 type(time_type),        optional, intent(out) :: target_time
 
 if ( .not. module_initialized ) call static_init_assim_model()
@@ -890,6 +886,12 @@ endif
 
 ! If the model_state read fails ... dump diagnostics.
 if ( ios /= 0 ) then
+   ! messages are being used as error lines below.  in an MPI filter,
+   ! all messages are suppressed that aren't from PE0.  if an error
+   ! happens in another task, these lines won't be printed unless we
+   ! turn on output.
+   call set_output(.true.)
+
    write(msgstring,*)'dimension of model state is ',size(model_state)
    call error_handler(E_MSG,'aread_state_restart',msgstring,source,revision,revdate)
 
@@ -1581,3 +1583,9 @@ end function nc_write_calendar_atts
 !===================================================================
 !
 end module assim_model_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

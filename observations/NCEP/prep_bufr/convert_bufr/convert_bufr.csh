@@ -1,6 +1,7 @@
 #!/bin/csh
 #
-# $Id$
+# This file is not protected by the DART copyright agreement.
+# DART $Id$
 
  set FC = ifort
  # or pgf90, gfortran, xlf90, g95, etc

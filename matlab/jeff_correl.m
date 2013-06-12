@@ -1,37 +1,37 @@
-function corr = ens_correl(base_var, base_time, state_var)
-%% ens_correl  Computes correlation of a variable at a time to a time series of
-% another variable (could be the same one)
+function corr = jeff_correl(base_ens, comp_ens)
+%% jeff_correl  Computes time-evolution of the correlation of a variable to another.
+%
+%  base_ens    is the ensemble state at many times for a given location
+%  comp_ens   is another ensemble state at many times and a location.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
+% $Id$
+
+[base_nT, base_ens_size] = size(base_ens);
+[comp_nT, comp_ens_size] = size(comp_ens);
+
+if (base_ens_size ~= comp_ens_size)
+   error('base ensemble size (%s) is not same as the comparison ensemble size (%s)',base_ens_size, comp_ens_size)
+end
+if (base_nT ~= comp_nT)
+   error('base time series length (%s) is not same as the comparison time series length (%s)',base_nT, comp_nT)
+end
+
+corr    = zeros(base_nT,1);
+corr(:) = NaN;
+
+for i = 1:base_nT
+   x = corrcoef(base_ens(i,:), comp_ens(i, :));
+   corr(i) = x(1, 2);
+end 
+
+
 % <next few lines under version control, do not edit>
 % $URL$
 % $Id$
 % $Revision$
 % $Date$
 
-%Extract sample of base at base time
-%base_ens = base_var(base_time, :);
-
-% size(base_var)
-% size(base_time)
-% size(state_var)
-% size(base_ens)
-
-% Loop through time to correlate with the other ensemble series
-figure(9);
-hold on;
-num_times = size(state_var, 1);
-for i = 1:num_times
-   x = corrcoef(base_var(i, :), state_var(i, :));
-   corr(i) = x(1, 2);
-%   plot(base_var(i, 1), state_var(i, 1), 'x');
-%   plot(base_var(i, :), state_var(i, :), 'x');
-%   plot(2, corr(i), 'x');
-end 
-
-plot(base_var(:, 1), state_var(:, 1));
-
-figure(1);

@@ -1,6 +1,6 @@
 #!/bin/csh
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
@@ -9,7 +9,7 @@
 # this script runs the location test code for each of the
 # possible location modules.
 
-set LIST = 'annulus column oned threed_sphere twod twod_sphere'
+set LIST = 'annulus column oned threed_sphere twod twod_sphere threed threed_cartesian'
 
 # clean up from before
 foreach i ( $LIST )
@@ -26,7 +26,7 @@ foreach i ( $LIST )
  echo start $i test
  echo start $i test
  echo start $i test
- mkmf_location_test
+ ./mkmf_location_test
  make
  ls -l location_test
  ./location_test  < test.in
@@ -36,3 +36,11 @@ foreach i ( $LIST )
  echo end $i test
  echo ""
 end
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

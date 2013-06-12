@@ -4,6 +4,10 @@
 % one per time epoch, from data output from the obs_diag program if
 % the 'print_obs_locations' namelist item in the &obs_diag list is .true.
 %
+% WARNING: obs_diag no longer creates the observation_locations.NNN.dat file.
+% WARNING: Convert your observation sequence files to netCDF using 'obs_seq_to_netcdf'
+% WARNING: and then use 'plot_obs_netcdf.m'
+%
 % There are lots of user settable options.  This script prompts you
 % interactively for the most common ones.  Then it calls PlotObsLocs()
 % with the proper argument list to pass in your selections.
@@ -11,18 +15,20 @@
 % See the documentation for PlotObsLocs() -- it has a lot of arguments in the
 % calling sequence.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 % setup all args to be the string 'default', which will be interpreted by 
 % the PlotObsLocs routine to use the default values.   
+
+disp(' ')
+disp('WARNING: obs_diag no longer creates the observation_locations.NNN.dat file.')
+disp('WARNING: Convert your observation sequence files to netCDF using ''obs_seq_to_netcdf''')
+disp('WARNING: and then use ''plot_obs_netcdf.m''')
+disp(' ')
  
 ncfname     = 'default';
 plotd       = 'default';
@@ -181,4 +187,11 @@ while done == 0
    end
   
 end
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

@@ -1,4 +1,8 @@
+C This code is not protected by the DART copyright agreement.
+C DART $Id$
+
       program grabbufr
+
 C$$$  MAIN PROGRAM DOCUMENTATION BLOCK
 C
 C MAIN PROGRAM:  grabbufr
@@ -48,7 +52,7 @@ C$$$
       CHARACTER(len=80) :: infile,outfile
       character(len=4) :: bufr='BUFR',ctemp,csec0
       INTEGER(4)       narg,iargc,JSTAT(100)
-      integer findbufr, i, INDEXVAL
+      integer findbufr, i, INDEXVAL, rc
       character*1 byte(8)
  
       data i1/11/,i2/51/,newed/2/
@@ -85,7 +89,13 @@ C
 C
 C  Use STAT function to get size of input BUFR file
 C
-      IF (STAT(infile,JSTAT).NE.0) THEN
+c  the original code was:
+c      IF (STAT(infile,JSTAT).NE.0) THEN
+c  but this failed on the linux systems, at least with intel
+c  as the compiler. but changing it so the return code was assigned to 
+c  an integer variable before being tested seemed to fix the problem.
+      rc = STAT(infile,JSTAT)
+      IF (rc.NE.0) THEN
          PRINT *,'ERROR IN FUNCTION STAT GETTING FILE STATS'
          CALL EXIT(99)
       ELSE
@@ -97,9 +107,9 @@ c
 c        The following line may need to be changed for different machines
 c        and compilers (and sometimes even between 32 and 64 bit versions of
 c        the same compiler).
-         INDEXVAL = 8       ! for gfortran on Macs, 32 bit ifort on linux
-c        INDEXVAL = 12      ! for pgf90 32 bytes, (ifort 64 bit?)
-c        INDEXVAL = 13      ! for pgf90 64 bytes
+         INDEXVAL = 8       ! seems to be right for most current compilers
+c        INDEXVAL = 12      ! for old versions of pgf90 32 bytes
+c        INDEXVAL = 13      ! for old versions of pgf90 64 bytes
 
          KBYTES = JSTAT(INDEXVAL)
          PRINT *,'NUMBER OF BYTES IN INPUT FILE = ',KBYTES
@@ -401,3 +411,9 @@ C-----------------------------------------------------------------------
  
       RETURN
       END
+
+C <next few lines under version control, do not edit>
+C $URL$
+C $Id$
+C $Revision$
+C $Date$

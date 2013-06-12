@@ -1,15 +1,11 @@
 function [obs_increments, err] =  obs_increment_eakf(ensemble, observation, obs_error_var)
 %% obs_increment_eakf Computes increments for an ensemble adjustment filter
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 % Set error return to default successful
 err = 0;
@@ -53,4 +49,8 @@ updated_ensemble = sqrt(var_ratio) * (updated_ensemble - post_mean) + post_mean;
 obs_increments = updated_ensemble - ensemble;
 
 
-
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

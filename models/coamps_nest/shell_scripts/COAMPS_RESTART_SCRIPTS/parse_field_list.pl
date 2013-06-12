@@ -1,5 +1,12 @@
 #!/usr/bin/perl
 #
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
+#
 # SCRIPT:   parse_field_list.pl
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
@@ -61,4 +68,9 @@ while (<FIELD_LIST>)
 }
 
 close(FIELD_LIST)
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

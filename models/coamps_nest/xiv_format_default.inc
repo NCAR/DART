@@ -1,11 +1,12 @@
-!
+! This code is not protected by the DART copyright agreement.
+! DART $Id$
+
 !     innovation vector flat file format
 ! 
-! rcs keywords: $RCSfile$ 
-!               $Revision$ $Date$ 
+! rcs keywords: &RCSfile& 
+!               &Revision: 2479 & &Date: 2006-08-21 00:41:09 +0000 (Mon, 21 Aug 2006) & 
 ! SCCS IDENTIFICATION:  %W% %G% 
 !                       %U% %P% 
-!
 !
 !     innovation file headers:
 !
@@ -132,4 +133,9 @@
       character (len=91), parameter :: fmt_xiv =  & 
        '(i7,5(1x,f8.2),3(1x,f9.2),1x,f8.2,2(1x,i4)'// &
        ',1x,i5,1x,i4,1x,i7,1x,a17,1x,a11,1x,i4,1x,f8.2)'
-!
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

@@ -37,14 +37,16 @@
 <H2>Overview</H2>
 
 <P>
-This module provides subroutines that implement the 'parallel' versions
+This module provides subroutines that implement the parallel versions
 of the sequential scalar filter algorithms. These include the standard 
-sequential filter as described in Anderson (2003) along with systematic 
+sequential filter as described in
+<a href="#References"> Anderson 2001, 2003 </a> along with systematic 
 correction algorithms for both mean and spread. In addition, algorithms 
 to do a variety of flavors of filters including the EAKF, ENKF, particle 
 filter, and kernel filters are included. The parallel implementation 
 that allows each observation to update all state variables that are close
-to it at the same time is described in Anderson and Collins (2007).
+to it at the same time is described in 
+<a href="#References">Anderson and Collins, 2007</a>.
 </P>
 
 <A NAME="FilterTypes"></A>
@@ -53,17 +55,24 @@ to it at the same time is described in Anderson and Collins (2007).
 Available observation space filter types include:
 </P>
 <ul>
-<li> 1 = EAKF (Ensemble Adjustment Kalman Filter)
+<li> 1 = EAKF (Ensemble Adjustment Kalman Filter, see 
+<a href="#References"> Anderson 2001</a>)
 <li> 2 = ENKF (Ensemble Kalman Filter)
 <li> 3 = Kernel filter
 <li> 4 = Particle filter
 <li> 5 = Random draw from posterior  (talk to Jeff before using)
 <li> 6 = Deterministic draw from posterior with fixed kurtosis (ditto)
 <li> 7 = Boxcar kernel filter
-<li> 8 = Rank histogram filter (see Anderson 2010)
+<li> 8 = Rank histogram filter (see 
+<a href="#References"> Anderson 2010</a>)
 </ul>
 <P>
-Most users use type 1, the EAKF.
+We recommend using type=1, the EAKF.
+Note that although the algorithm
+is expressed in a slightly different form, 
+the EAKF is identical to the
+EnSRF (Ensemble Square Root Filter) 
+described by Whitaker and Hamill in 2002.
 </P>
 
 
@@ -109,25 +118,20 @@ computed increment as the distance increases between the obs
 and the state vector item.
 Most users use type 1 localization.
 <table border=0 summary="" cellpadding=0>
-<tr>
-<td>
-<ul>
-<li>Type 1 (Gaspari-Cohn) has a value of 1 at 0 distance, 0 at 2*cutoff, and
-decreases in an approximation of a gaussian in between.
-<br /> <br />
-<li>Type 2 (Boxcar) is 1 from 0 to 2*cutoff, and then 0 beyond.  
-<br /> <br />
-<li>Type 3 (Ramped Boxcar) is 1 to cutoff and then ramps linearly down to 0 at 2*cutoff.
-</ul>   
-</td>
-<td>
-<a href="../doc/images/cutoff_fig.png">
-<img src="../doc/images/cutoff_fig.png" alt="Shapes of Cutoff curves" height=240 border=0 />
-</a>
+<tr><td><ul>
+        <li>Type 1 (Gaspari-Cohn) has a value of 1 at 0 distance, 0 at 2*cutoff, and
+            decreases in an approximation of a gaussian in between.
+            <br /> <br />
+        <li>Type 2 (Boxcar) is 1 from 0 to 2*cutoff, and then 0 beyond.  
+        <br /> <br />
+        <li>Type 3 (Ramped Boxcar) is 1 to cutoff and then ramps linearly down to 0 at 2*cutoff.
+        </ul>   
+    </td>
+    <td><a href="../doc/images/cutoff_fig.png">
+<img src="../doc/images/cutoff_fig.png" alt="Shapes of Cutoff curves" height=240 border=0 /></a>
+     <br />Click image for larger version.
 </tr>
 </table>
-Click image for larger version.
-<br /> <br />
 <dt>
 <em>&amp;location_nml :: horiz_dist_only</em><br />
 valid values:  .true., .false.
@@ -286,7 +290,8 @@ filter_kind, cutoff, sort_obs_inc, print_every_nth_obs, &amp;
 spread_restoration, sampling_error_correction, &amp;
 adaptive_localization_threshold, adaptive_cutoff_floor, &amp;
 output_localization_diagnostics, localization_diagnostics_file, &amp;
-special_localization_obs_types, special_localization_cutoffs
+special_localization_obs_types, special_localization_cutoffs, &amp;
+close_obs_caching
 </pre>
 </div>
 
@@ -307,7 +312,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
     <!--descript--><TD>Selects the variant of filter 
         to be used. 1=EAKF, 2=ENKF, 3=Kernel filter, 
         4=particle filter,  7=Boxcar kernel filter,
-        8=Rank Histogram Filter. 
+        8=Rank Histogram Filter.
         Default: 1.</TD></TR>
 
 <TR><!--contents--><TD valign=top>cutoff     </TD>
@@ -319,17 +324,20 @@ This namelist is read in a file called <em class=file>input.nml</em>
 
 <TR><!--contents--><TD valign=top>sort_obs_inc </TD>
     <!--  type  --><TD valign=top>logical      </TD>
-    <!--descript--><TD> If true, the final increments from obs_increment are
-                        sorted so that the mean increment value is as small
-                        as possible. This minimizes regression errors when
-                        non-deterministic filter or error correction algorithms
-                        are applied. Default: false.</TD></TR>
+    <!--descript--><TD> If .TRUE., the final increments from obs_increment are
+    sorted so that the mean increment value is as small as possible. This minimizes 
+    regression errors when non-deterministic filters or error correction algorithms 
+    are applied. HOWEVER, when using deterministic filters (filter_kind == 1 or 8) 
+    with no inflation or a combination of a determinstic filter and deterministic 
+    inflation (filter_nml:inf_deterministic = .TRUE.) sorting the increments is 
+    both unnecessary and expensive. A warning is printed to stdout and the log and
+    the sorting is skipped. Default: .FALSE.</TD></TR>
  
 <TR><!--contents--><TD valign=top>spread_restoration </TD>
     <!--  type  --><TD valign=top>logical            </TD>
     <!--descript--><TD> True turns on algorithm to restore amount of spread that would be
              expected to be lost if underlying obs/state variable correlation were really
-             0.  Default: false </TD></TR>
+             0.  Default: .FALSE. </TD></TR>
 
 <TR><!--contents--><TD valign=top>sampling_error_correction</TD>
     <!--  type  --><TD valign=top>logical                  </TD>
@@ -341,7 +349,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
      There is no dependence on which model is being used, only on the number of
      ensemble members.  The input file must exist in the directory where the filter
      program is executing.
-               Default: false </TD></TR>
+               Default: .FALSE. </TD></TR>
 
 <TR><!--contents--><TD valign=top>adaptive_localization_threshold</TD>
     <!--  type  --><TD valign=top>integer</TD>
@@ -373,7 +381,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
      so this file could get very large.  With adaptive localization enabled,
      there will only be one line per observation where the radius is changed,
      so the size of the file will depend on the number of changed cutoffs.
-               Default: .false. </TD></TR>
+               Default: .FALSE. </TD></TR>
 
 <TR><!--contents--><TD valign=top>localization_diagnostics_file</TD>
     <!--  type  --><TD valign=top>character(len=129)</TD>
@@ -409,6 +417,15 @@ This namelist is read in a file called <em class=file>input.nml</em>
                         estimate the expected run time for a large observation file, 
                         or to verify progress is being made in cases with suspected problems.
              Default: 0 </TD></TR>
+
+<TR><!--contents--><TD valign=top>close_obs_caching </TD>
+    <!--  type  --><TD valign=top>logical             </TD>
+    <!--descript--><TD> Leave this set to the default of .TRUE. unless you are using
+                        specialized_localization_cutoffs.  In that case to get accurate
+                        results, set it to .FALSE..  This also needs to be .FALSE. if
+                        you have a get_close_obs() routine that uses the types/kinds of
+                        the obs to adjust the distances. 
+             Default: .TRUE. </TD></TR>
 
 </TABLE>
 
@@ -588,7 +605,7 @@ An Ensemble Adjustment Kalman Filter for Data Assimilation.
 <a href="http://dx.doi.org/10.1175/1520-0493%282001%29129%3C2884%3AAEAKFF%3E2.0.CO%3B2"
 target="_blank" >
 doi: 10.1175/1520-0493(2001)129&lt;2884:AEAKFF&gt;2.0.CO;2</a> 
-<br />
+<br /> <br />
 </li>
 <li>Anderson, J. L., 2003:
 A Local Least Squares Framework for Ensemble Filtering.
@@ -597,7 +614,7 @@ A Local Least Squares Framework for Ensemble Filtering.
 <a href="http://dx.doi.org/10.1175/1520-0493%282003%29131%3C0634%3AALLSFF%3E2.0.CO%3B2"
 target="_blank" >
 doi: 10.1175/1520-0493(2003)131&lt;0634:ALLSFF&gt;2.0.CO;2</a>
-<br />
+<br /> <br />
 </li>
 <li>Anderson, J., Collins, N., 2007:
 Scalable Implementations of Ensemble Filter Algorithms for Data Assimilation.
@@ -605,7 +622,7 @@ Scalable Implementations of Ensemble Filter Algorithms for Data Assimilation.
 <span style="font-weight: bold;">24</span>, 1452-1463.<br />
 <a href="http://dx.doi.org/10.1175/JTECH2049.1"
 target="_blank" >doi: 10.1175/JTECH2049.1</a>
-<br />
+<br /> <br />
 </li>
 <li>Anderson, J. L., 2010:
 A Non-Gaussian Ensemble Filter Update for Data Assimilation.
@@ -614,7 +631,7 @@ A Non-Gaussian Ensemble Filter Update for Data Assimilation.
 <a href="http://dx.doi.org/10.1175/2010MWR3253.1"
 target="_blank" >
 doi: 10.1175/2010MWR3253.1</a>
-<br />
+<br /> <br />
 </li>
 <li>Anderson, J. L., 2011:,
 Localization and Sampling Error Correction

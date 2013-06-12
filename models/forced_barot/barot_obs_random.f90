@@ -1,20 +1,16 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
  
 program barot_obs_random
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
 use    types_mod, only : r8
-use nag_wrap_mod, only : g05ddf_wrap
+use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
-! Currently uses NAG, must be modified to use available random sequence
-! generators.
+! this routine used to call a special NAG subroutine but we have a
+! replacement one in the system now.
 
 ! Places a given number of observations randomly uniformly on the sphere
 ! Used to test barotropic model ability to deal with increasingly sparse
@@ -23,15 +19,18 @@ use nag_wrap_mod, only : g05ddf_wrap
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 integer :: num_obs
 real(r8), parameter :: variance = (1e6)**2_r8
 real(r8) :: x, y, z, lon, length, lat
 integer :: i
+type(random_seq_type) :: s
+
+call init_random_sequence(s)
 
 write(*, *) 'input the number of observations'
 read(*, *) num_obs
@@ -39,9 +38,9 @@ read(*, *) num_obs
 write(*, *) num_obs
 do i = 1, num_obs
 ! Compute a random point in a volume and then compute direction to surface
- 11   x = g05ddf_wrap(0.0_r8, 1.0_r8)
-   y = g05ddf_wrap(0.0_r8, 1.0_r8)
-   z = g05ddf_wrap(0.0_r8, 1.0_r8)
+11 x = random_gaussian(0.0_r8, 1.0_r8)
+   y = random_gaussian(0.0_r8, 1.0_r8)
+   z = random_gaussian(0.0_r8, 1.0_r8)
 ! Begin by computing longitude in degrees
    lon = atan2(y, x) * 360.0 / (2.0 * 3.14159) + 180.0
    if(lon < 0.0 .or. lon > 360.0) then
@@ -71,3 +70,9 @@ do i = 1, num_obs
 end do
 
 end program barot_obs_random
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

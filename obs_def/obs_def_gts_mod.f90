@@ -1,6 +1,8 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 ! BEGIN DART PREPROCESS KIND LIST
 !BUOY_U_WIND_COMPONENT,        KIND_U_WIND_COMPONENT,      COMMON_CODE
@@ -65,12 +67,6 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_gts_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
 use        types_mod, only : r8, missing_r8, gravity, gas_constant, gas_constant_v
 use    utilities_mod, only : register_module
 use     location_mod, only : location_type, set_location, get_location , &
@@ -84,10 +80,10 @@ private
 public :: get_expected_thickness
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
@@ -219,3 +215,9 @@ end subroutine get_expected_thickness
 
 end module obs_def_gts_mod
 ! END DART PREPROCESS MODULE CODE
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

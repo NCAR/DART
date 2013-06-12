@@ -1,6 +1,6 @@
 function DiffnetCDFstate(file1,file2,outfile)
-%% DiffnetCDFstate  checks to see if the netcdf pieces are available. 
-% 
+%% DiffnetCDFstate  checks to see if the netcdf pieces are available.
+%
 % DiffnetCDFstate(nc1, nc2, outfile);
 %
 % fname ... a filename that contains diagnostic information.
@@ -16,15 +16,11 @@ function DiffnetCDFstate(file1,file2,outfile)
 % outfile = 'test1_2.diff';
 % DiffnetCDFstate(file1,file2,outfile)
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 %----------------------------------------------------------------------
 % Check for the existence of the two input files.
@@ -57,7 +53,7 @@ c = b(:) - a(:);
 
 a = min(c);
 b = max(c);
-clear c 
+clear c
 
 % Write the min and max of the differences to a file
 
@@ -74,4 +70,11 @@ else
 end
 
 fclose(fid);
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

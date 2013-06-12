@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program convert_madis_acars
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -244,6 +240,15 @@ obsloop: do n = 1, nobs
        tdew(n) /= tdew_miss .and. qc_tdew(n) == 0 .and. &
        relh(n) /= relh_miss .and. qc_relh(n) == 0  ) then
 
+       ! before we start computing things based on the dewpoint,
+       ! make sure it isn't larger than the air temp.  if it is
+       ! more than a degree larger, skip it completely.  if it is
+       ! less, set them equal and continue.
+       if (tdew(n) > tair(n)) then
+          if (tdew(n) > tair(n) + 1.0_r8) goto 100
+          tdew(n) = tair(n)
+       endif
+
       ! add specific humidity to obs_seq
       if ( include_specific_humidity ) then
 
@@ -305,7 +310,9 @@ obsloop: do n = 1, nobs
          endif
       endif
   
-  endif  ! quality control/missing check on tair, tdew, and relh
+  endif     ! quality control/missing check on tair, tdew, and relh
+
+100 continue
 
   nused = nused + 1
   latu(nused) =  lat(n)
@@ -323,3 +330,9 @@ call finalize_utilities()
 
 
 end program convert_madis_acars
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

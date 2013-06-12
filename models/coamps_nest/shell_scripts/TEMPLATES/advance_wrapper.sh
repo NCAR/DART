@@ -1,12 +1,15 @@
 #!/bin/bash
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+###############################################################################
 #
 # AUTHOR:   P. A. Reinecke
 #           Naval Research Laboratory
-######
+#
 #
 usage="Usage: `basename $0` [-d dtg -i icycle -n init_ens -c cycle_da]" 
 while getopts ":d:i:n:m:W:c:" option
@@ -371,3 +374,9 @@ rm -f ${fcst_group}
 echo "#################### END advance_wrapper.sh ####################"
 
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

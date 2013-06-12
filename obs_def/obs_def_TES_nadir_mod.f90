@@ -1,6 +1,8 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 ! BEGIN DART PREPROCESS KIND LIST
 ! TEMPERATURE,          KIND_TEMPERATURE,         COMMON_CODE
@@ -43,12 +45,6 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_TES_nadir_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
 use        types_mod, only : r8, missing_r8, PI, DEG2RAD
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN, E_MSG, &
                              check_namelist_read, find_namelist_in_file, &
@@ -74,10 +70,10 @@ public :: set_TES_nadir, get_TES_nadir, write_TES_nadir_obs, read_TES_nadir_obs,
           interactive_TES_nadir_obs, get_expected_TES_nadir_obs
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$ /export/scratch01/wglawson/dart_080723/obs_def/obs_def_TES_nadir_mod.f90 $", &
-   revision = "$NOT committed yet $", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
@@ -313,7 +309,8 @@ k_unit = get_unit()
 open( UNIT=k_unit, FILE=trim(fn), STATUS='old', IOSTAT=istat )
 if ( istat > 0 ) then
    write(msgstr,*)'istat > 0 for opening fn_corrk :: istat = ',istat
-   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr)
+   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr, &
+                      source, revision, revdate)
 end if
 
 ! 4. Begin reading process
@@ -322,39 +319,45 @@ end if
 read( UNIT=k_unit, FMT=*, IOSTAT=istat ) iflag
 if ( istat > 0 ) then
    write(msgstr,*)'istat > 0 for reading iflag :: istat = ',istat
-   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr)
+   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr, &
+                      source, revision, revdate)
 end if
 if ( iflag /= 1 ) then
    write(msgstr,*)'iflag .ne. 1 in fn_corrk :: iflag = ',iflag
-   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr)
+   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr, &
+                      source, revision, revdate)
 end if
 
 ! 4. b. nv -- number of wavenumbers
 read( UNIT=k_unit, FMT=*, IOSTAT=istat ) nv
 if ( istat > 0 ) then
    write(msgstr,*)'istat > 0 for reading nv :: istat = ',istat
-   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr)
+   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr, &
+                      source, revision, revdate)
 end if
 
 ! 4. c. np -- number of pressures
 read( UNIT=k_unit, FMT=*, IOSTAT=istat ) np
 if ( istat > 0 ) then
    write(msgstr,*)'istat > 0 for reading np :: istat = ',istat
-   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr)
+   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr, &
+                      source, revision, revdate)
 end if
 
 ! 4. d. nt -- number of temperatures  
 read( UNIT=k_unit, FMT=*, IOSTAT=istat ) nt
 if ( istat > 0 ) then
    write(msgstr,*)'istat > 0 for reading nt :: istat = ',istat
-   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr)
+   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr, &
+                      source, revision, revdate)
 end if
 
 ! 4. e. ng -- number of gaussian abscissae
 read( UNIT=k_unit, FMT=*, IOSTAT=istat ) ng
 if ( istat > 0 ) then
    write(msgstr,*)'istat > 0 for reading ng :: istat = ',istat
-   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr)
+   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr, &
+                      source, revision, revdate)
 end if
 
 ! 5. Allocate array sizes based on what we just read in
@@ -369,21 +372,24 @@ allocate( values( ng,nt,np,nv ) )
 read( UNIT=k_unit, FMT=*, IOSTAT=istat ) ( ck_v(k), k=1,nv )
 if ( istat > 0 ) then
    write(msgstr,*)'istat > 0 for reading ck_v :: istat = ',istat
-   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr)
+   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr, &
+                      source, revision, revdate)
 end if
 
 ! 6. b. ck_p -- array of pressures included in k-tables
 read( UNIT=k_unit, FMT=*, IOSTAT=istat ) ( ck_p(k), k=1,np )
 if ( istat > 0 ) then
    write(msgstr,*)'istat > 0 for reading ck_p :: istat = ',istat
-   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr)
+   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr, &
+                      source, revision, revdate)
 end if
 
 ! 6. c. ck_t -- array of temperatures included in k-tables
 read( UNIT=k_unit, FMT=*, IOSTAT=istat ) ( ck_t(k), k=1,nt )
 if ( istat > 0 ) then
    write(msgstr,*)'istat > 0 for reading ck_t :: istat = ',istat
-   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr)
+   call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr, &
+                      source, revision, revdate)
 end if
 
 ! 7. Close the lattice file
@@ -399,13 +405,15 @@ do iv = 1, nv
    open( UNIT=k_unit, FILE=trim(fn), STATUS='old', IOSTAT=istat )
    if ( istat > 0 ) then
       write(msgstr,*)'istat > 0 for opening k-table file ',iv,' :: istat = ',istat
-      call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr)
+      call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr, &
+                      source, revision, revdate)
    end if
    ! Read in the k-table data into the array "values"
    read( UNIT=k_unit, FMT=*, IOSTAT=istat ) (((values(ig,it,ip,iv), ig=1,ng), it=1,nt), ip=1,np)
    if ( istat > 0 ) then
       write(msgstr,*)'istat > 0 for reading k-table file ',iv,' :: istat = ',istat
-      call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr)
+      call error_handler(E_ERR, 'obs_def_TES_nadir_mod:init_corrk', msgstr, &
+                      source, revision, revdate)
    end if
    ! Close the file
    close( UNIT=k_unit )
@@ -1294,5 +1302,8 @@ end module obs_def_TES_nadir_mod
 
 ! END DART PREPROCESS MODULE CODE
 
-
-
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

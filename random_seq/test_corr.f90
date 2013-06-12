@@ -1,24 +1,20 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program test_random
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 use random_seq_mod, only : random_seq_type, init_random_seq, twod_gaussians
 
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type (random_seq_type) :: r
 double precision, allocatable :: rnum(:, :)
@@ -98,3 +94,9 @@ correl = (n * sum_xy - sum_x * sum_y) / &
    sqrt((n * sum_x2 - sum_x**2) * (n * sum_y2 - sum_y**2))
  
 end subroutine comp_correl
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

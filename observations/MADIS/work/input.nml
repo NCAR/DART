@@ -8,7 +8,19 @@
                               '../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
                               '../../../obs_def/obs_def_metar_mod.f90',
                               '../../../obs_def/obs_def_dew_point_mod.f90',
+                              '../../../obs_def/obs_def_gts_mod.f90',
                               '../../../obs_def/obs_def_rel_humidity_mod.f90',
+ /
+
+&convert_madis_rawin_nml
+   do_significant_level_temps = .true.
+   do_significant_level_winds = .true.
+   wind_use_vert_pressure     = .true.
+   LH_err                     = .false.
+   include_specific_humidity  = .true.
+   include_relative_humidity  = .false.
+   include_dewpoint           = .false.
+   use_input_qc               = .true.
  /
 
 &obs_kind_nml

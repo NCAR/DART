@@ -148,7 +148,6 @@
    latlim2    =  89.0, 
    reg_names  = 'Full Domain',
    print_mismatched_locs = .false.,
-   print_obs_locations = .false.,
    verbose = .false.  /
 
 &restart_file_tool_nml

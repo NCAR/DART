@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program gtspp_to_obs
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -20,28 +16,27 @@ program gtspp_to_obs
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use        types_mod, only : r8
-use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,&
-                             increment_time, get_time, set_date, operator(-),  &
+use        types_mod, only : r8, MISSING_R8
+use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time, &
+                             increment_time, get_time, set_date, operator(-),   &
                              print_date, operator(+)
-use    utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
-                             check_namelist_read, nmlfileunit, do_output,    &
-                             get_next_filename, error_handler, E_ERR, E_MSG, &
-                             nc_check, find_textfile_dims, finalize_utilities, &
-                             timestamp
+use    utilities_mod, only : initialize_utilities, find_namelist_in_file,       &
+                             check_namelist_read, nmlfileunit, do_output,       &
+                             get_next_filename, error_handler, E_ERR, E_MSG,    &
+                             nc_check, find_textfile_dims, finalize_utilities
 use     location_mod, only : VERTISHEIGHT, set_location
-use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
-                             static_init_obs_sequence, init_obs, destroy_obs, &
-                             write_obs_seq, init_obs_sequence, get_num_obs,   &
-                             insert_obs_in_seq, destroy_obs_sequence,         &
-                             set_copy_meta_data, set_qc_meta_data, set_qc,    & 
+use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,         &
+                             static_init_obs_sequence, init_obs, destroy_obs,   &
+                             write_obs_seq, init_obs_sequence, get_num_obs,     &
+                             insert_obs_in_seq, destroy_obs_sequence,           &
+                             set_copy_meta_data, set_qc_meta_data, set_qc,      & 
                              set_obs_values, set_obs_def, insert_obs_in_seq
-use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
-                             set_obs_def_error_variance, set_obs_def_location, &
+use      obs_def_mod, only : obs_def_type, set_obs_def_time, set_obs_def_kind,  &
+                             set_obs_def_error_variance, set_obs_def_location,  &
                              set_obs_def_key
 ! FIXME: what actual instrument took these readings? FLOAT_xx is a placeholder
 ! for now.  must have obs_def_ocean_mod.f90 in the preprocess input list.
-use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, &
+use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY,                   &
                              FLOAT_TEMPERATURE, FLOAT_SALINITY
 
 use           netcdf
@@ -49,31 +44,27 @@ use           netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
 
-character (len=129) :: msgstring, next_infile
+character (len=129) :: next_infile
 character (len=80)  :: name
-character (len=19)  :: datestr
 character (len=6)   :: subset
-integer :: rcode, ncid, varid, ndepths, k, nfiles, num_new_obs,  &
-           aday, asec, dday, dsec, oday, osec,                   &
-           iyear, imonth, iday, ihour, imin, isec,               &
-           zloc, obs_num, io, iunit, filenum, dummy, i_qc, nc_rc
+integer :: ncid, varid, ndepths, k, nfiles, num_new_obs,  &
+           oday, osec,                   &
+           iday, isec,               &
+           obs_num, io, iunit, filenum, dummy, i_qc, nc_rc
 logical :: file_exist, first_obs, did_obs, from_list = .false.
 logical :: have_temp, have_salt
-real(r8) :: hght_miss, refr_miss, azim_miss, terr, serr,         & 
-            qc, lato, lono, hghto, refro, azimo, wght, nx, ny,   & 
-            nz, ds, htop, rfict, obsval, phs, obs_val(1), qc_val(1),  &
+real(r8) :: terr, serr,         & 
+            obs_val(1), qc_val(1),  &
             dtime, glat, glon, d_qc(1)
-
-real(r8), allocatable :: lat(:), lon(:), dep(:), err(:) !, d_qc(:)
 
 type(obs_def_type)      :: obs_def
 type(obs_sequence_type) :: obs_seq
@@ -83,8 +74,8 @@ type(time_type)         :: obs_time, base_time, delta_time
 ! initialize some values
 integer, parameter :: nmaxdepths = 5000   !  max number of observation depths
 real(r8) :: obs_depth(nmaxdepths)   = -1.0_r8
-real(r8) :: temperature(nmaxdepths) = -888888.0_r8
-real(r8) :: salinity(nmaxdepths)    = -888888.0_r8
+real(r8) :: temperature(nmaxdepths) = MISSING_R8
+real(r8) :: salinity(nmaxdepths)    = MISSING_R8
 character(len=nmaxdepths) :: t_qc = '', s_qc = ''
 
 !------------------------------------------------------------------------
@@ -370,7 +361,7 @@ print *, 'ready to write, nobs = ', get_num_obs(obs_seq)
    if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
 endif
 
-call timestamp(source,revision,revdate,'end')
+call error_handler(E_MSG,'gtspp_to_obs','Finished successfully.',source,revision,revdate)
 call finalize_utilities()
 
 ! END OF MAIN ROUTINE
@@ -383,4 +374,10 @@ call finalize_utilities()
 
 ! subroutine to fill an obs?
 
-end program
+end program gtspp_to_obs
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

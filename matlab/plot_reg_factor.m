@@ -1,30 +1,26 @@
 %% plot_reg_factor
 %
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if (exist('fname','var') ~= 1)
-   fname = input('Input name of reg diagnostics file; <cr> for reg_diagnostics\n','s');
+   fname = input('Input name of reg diagnostics file:\n<cr> for reg_diagnostics\n','s');
    if isempty(fname)
       fname = 'reg_diagnostics';
    end
 else
-   s1 = input(sprintf('Input name of reg_diagnostics file. <cr> for  %s ',fname),'s');
+   s1 = input(sprintf('Input name of reg_diagnostics file:\n<cr> for  %s ',fname),'s');
    if ~isempty(s1), fname = deblank(s1); end
 end
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
 
-obs_index = input('Input observation index \n');
+obs_index = input('Input observation index: \n');
 
 disp('loading usually takes a while ... please be patient ...')
 load(fname)
@@ -56,7 +52,7 @@ unique_states = state_ind_mat(:,1);   % matrix of state indices
 
 plotdat.data = reshape(reg_diagnostics(:,5),[num_state num_obs num_times]);
 
-subset = squeeze(plotdat.data(:,obs_index,:)); 
+subset = squeeze(plotdat.data(:,obs_index,:));
 
 plotdat.shapes = {'states','observations','times'};
 plotdat.x      = unique_states;
@@ -68,4 +64,11 @@ xlabel('state variable index')
 
 legend('mean','median')
 legend boxoff
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

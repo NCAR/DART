@@ -9,8 +9,8 @@ CHAMP GPS radio occultation data.
 
 Summary of workflow:  
 1) cd to the ../work directory and run ./quickbuild.csh to compile everything.  
-2) Edit ./cosmic_to_obsseq.csh once to set the directory where the DART
-    code is installed, and your COSMIC web site user name and password.
+2) Edit ./gpsro_to_obsseq.csh once to set the directory where the DART
+    code is installed, and your CDAAC web site user name and password.
 3) Edit ./do_convert.csh to set the days of data to download/convert/remove.
 4) Run ./do_convert.csh
 5) For additional days repeat steps 3 and 4.
@@ -28,13 +28,13 @@ Run quickbuild.csh and it should compile all the executables needed
 to do the GPS conversion into DART obs_sequence files.
 
 
-2) cosmic_to_obsseq.csh:
+2) gpsro_to_obsseq.csh:
 
-Edit cosmic_to_obsseq.csh once to set the DART_DIR to where you have
+Edit gpsro_to_obsseq.csh once to set the DART_DIR to where you have
 downloaded the DART distribution.  (There are a few additional options
 in this script, but the distribution version should be good for most users.)
-If you are downloading data from the COSMIC web site, set your
-web page user name and password.  After this you should be able to 
+If you are downloading data from the CDAAC web site, set your
+web site user name and password.  After this you should be able to 
 ignore this script.
 
 

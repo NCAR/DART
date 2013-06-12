@@ -1,18 +1,14 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module obs_utilities_mod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
 
 use        types_mod, only : r8, MISSING_R8, MISSING_I
-use    utilities_mod, only : nc_check
+use    utilities_mod, only : nc_check, E_MSG, E_ERR, error_handler
 use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
                              set_obs_def_error_variance, set_obs_def_location, &
                              get_obs_def_time, get_obs_def_location,           &
@@ -38,11 +34,24 @@ public :: create_3d_obs,    &
           get_or_fill_real, &
           get_or_fill_int,  &
           get_or_fill_QC,   &
+          getvar_real_2d,   &
+          getvar_int_2d,    &
+          getvar_real_1d_1val,     &
+          getvar_int_1d_1val,      &
+          getvar_real_2d_slice,    &
+          get_or_fill_QC_2d_slice, &
+          query_varname,    &
           set_missing_name
 
 
 ! module global storage
 character(len=NF90_MAX_NAME) :: missing_name = ''
+
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 contains
 
@@ -230,14 +239,11 @@ end subroutine getdimlen
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   set_missing_name - subroutine that inquires, gets the variable, and fills 
-!            in the missing value attribute if that arg is present.
-!            gets the entire array, no start or count specified.
+!   set_missing_name - subroutine that sets the name of the attribute
+!            that describes missing values.  in some cases it is _FillValue
+!            but in others it is something nonstandard like 'missing_value'.
 !
-!      ncid - open netcdf file handle
-!      varname - string name of netcdf variable
-!      darray - output array.  real(r8)
-!      dmiss - value that signals a missing value   real(r8), optional
+!      name - string name of attribute that holds the missing value
 !
 !     created 11 Mar 2010,  nancy collins,  ncar/image
 !
@@ -531,5 +537,378 @@ if (did_fill) &
 end subroutine get_or_fill_QC
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   getvar_real_2d - subroutine that inquires, gets the variable, and fills 
+!            in the missing value attribute if that arg is present.
+!            gets the entire array, no start or count specified.
+!            this version assumes you are reading an entire 2d array.
+!            see the slice versions for reading 1d from a 2d array.
+!
+!      ncid - open netcdf file handle
+!      varname - string name of netcdf variable
+!      darray - 2d output array.  real(r8)
+!      dmiss - value that signals a missing value   real(r8), optional
+!
+!     created 11 Mar 2010,  nancy collins,  ncar/image
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine getvar_real_2d(ncid, varname, darray, dmiss)
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ real(r8),           intent(out)  :: darray(:,:)
+ real(r8), optional, intent(out)  :: dmiss
+
+integer  :: varid, nfrc
+real(r8) :: fill, miss
+logical  :: found_miss
+
+! read the data for the requested array, and optionally get the fill value
+call nc_check( nf90_inq_varid(ncid, varname, varid), &
+               'getvar_real_2d', 'inquire var '// trim(varname))
+call nc_check( nf90_get_var(ncid, varid, darray), &
+               'getvar_real_2d', 'getting var '// trim(varname))
+
+! the logic here is: 
+!  if the user hasn't asked about the fill value, don't look for any of
+!  these attributes and just return.
+
+!  if the user has told us another attribute name to look for, try that first.
+!  it's currently NOT an error if it's not there.   then second, look for the
+!  official '_FillValue' attr.  if it's found, return it as the missing value.
+! 
+!  if there are both, overwrite the missing value with the fill value and return
+!  the fill value as the 'dmiss' argument.
+!
+!  if neither are there, set dmiss to the DART missing value.  this could also
+!  be an error, but default to being permissive for now.
+
+if (present(dmiss)) then
+   dmiss = MISSING_R8
+   found_miss = .false.
+
+   ! if user defined another attribute name for missing vals
+   ! look for it first, and make it an error if it's not there?
+   if (missing_name /= '') then
+      nfrc = nf90_get_att(ncid, varid, missing_name, miss)
+      if (nfrc == NF90_NOERR) then 
+         found_miss = .true.
+         dmiss = miss
+      endif
+   endif
+
+      ! this would make it a fatal error if not found
+      !call nc_check( nf90_get_att(ncid, varid, missing_name', miss), &
+      !   'getvar_real_2d', 'getting attr "//trim(missing_name)//" for '//trim(varname))
+
+   ! the predefined netcdf fill value.
+   nfrc = nf90_get_att(ncid, varid, '_FillValue', fill)
+   if (nfrc == NF90_NOERR) then
+      if (.not. found_miss) then  
+         found_miss = .true.
+         dmiss = fill
+      else
+         ! found both, set all to fill value
+         where(darray .eq. miss) darray = fill 
+         dmiss = fill
+      endif
+   endif
+
+   ! if you wanted an error if you specified dmiss and neither attr are
+   ! there, you'd test found_miss here.  if it's still false, none were there.
+
+endif
+  
+end subroutine getvar_real_2d
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   getvar_int_2d - subroutine that inquires, gets the variable, and fills 
+!            in the missing value attribute if that arg is present.
+!            gets the entire array, no start or count specified.
+!            this version assumes you are reading an entire 2d array.
+!            see the slice versions for reading 1d from a 2d array.
+!
+!      ncid - open netcdf file handle
+!      varname - string name of netcdf variable
+!      darray - 2d output array.  integer
+!      dmiss - value that signals a missing value   integer, optional
+!
+!     created 11 Mar 2010,  nancy collins,  ncar/image
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine getvar_int_2d(ncid, varname, darray, dmiss)
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ integer,            intent(out)  :: darray(:,:)
+ integer,  optional, intent(out)  :: dmiss
+
+integer  :: varid, nfrc
+real(r8) :: fill, miss
+logical  :: found_miss
+
+! read the data for the requested array, and get the fill value
+call nc_check( nf90_inq_varid(ncid, varname, varid), &
+               'getvar_int_2d', 'inquire var '// trim(varname))
+call nc_check( nf90_get_var(ncid, varid, darray), &
+               'getvar_int_2d', 'getting var '// trim(varname))
+
+! see long comment in getvar_real() about the logic here.
+if (present(dmiss)) then
+   dmiss = MISSING_I
+   found_miss = .false.
+
+   ! if user defined another attribute name for missing vals
+   ! look for it first, and make it an error if it's not there?
+   if (missing_name /= '') then
+      nfrc = nf90_get_att(ncid, varid, missing_name, miss)
+      if (nfrc == NF90_NOERR) then 
+         found_miss = .true.
+         dmiss = miss
+      endif
+   endif
+
+      ! this would make it a fatal error if not found
+      !call nc_check( nf90_get_att(ncid, varid, missing_name', miss), &
+      !         'getvar_int_2d', 'getting attr "//trim(missing_name)//" for '//trim(varname))
+
+   ! the predefined netcdf fill value.
+   nfrc = nf90_get_att(ncid, varid, '_FillValue', fill)
+   if (nfrc == NF90_NOERR) then
+      if (.not. found_miss) then  
+         found_miss = .true.
+         dmiss = fill
+      else
+         ! found both, set all to fill value
+         where(darray .eq. miss) darray = fill 
+         dmiss = fill
+      endif
+   endif
+
+   ! if you wanted an error if you specified dmiss and neither attr are
+   ! there, you'd test found_miss here.  if it's still false, none were there.
+
+endif
+  
+end subroutine getvar_int_2d
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   getvar_real_1d_1val - subroutine that inquires, gets the variable, and fills 
+!            in the missing value attribute if that arg is present.
+!            takes a single start, uses count=1, returns a scalar
+!
+!      ncid - open netcdf file handle
+!      varname - string name of netcdf variable
+!      start - starting index in the 1d array
+!      dout - output value.  real(r8)
+!      dmiss - value that signals a missing value   real(r8), optional
+!
+!     created 11 Mar 2010,  nancy collins,  ncar/image
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine getvar_real_1d_1val(ncid, varname, start, dout, dmiss)
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ integer,            intent(in)   :: start
+ real(r8),           intent(out)  :: dout
+ real(r8), optional, intent(out)  :: dmiss
+
+integer :: varid
+
+! read the data for the requested array, and get the fill value
+call nc_check( nf90_inq_varid(ncid, varname, varid), &
+               'getvar_real_1d_val', 'inquire var '// trim(varname))
+call nc_check( nf90_get_var(ncid, varid, dout, start = (/ start /) ), &
+               'getvar_real_1d_val', 'getting var '// trim(varname))
+
+if (present(dmiss)) &
+   call nc_check( nf90_get_att(ncid, varid, '_FillValue', dmiss), &
+               'getvar_real_1d_val', 'getting attr "_FillValue" for '//trim(varname))
+
+end subroutine getvar_real_1d_1val
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   getvar_int_1d_1val - subroutine that inquires, gets the variable, and fills 
+!            in the missing value attribute if that arg is present.
+!            takes a single start, uses count=1, returns a scalar
+!
+!      ncid - open netcdf file handle
+!      varname - string name of netcdf variable
+!      start - starting index in the 1d array
+!      dout - output value.  int
+!      dmiss - value that signals a missing value   int, optional
+!
+!     created 11 Mar 2010,  nancy collins,  ncar/image
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine getvar_int_1d_1val(ncid, varname, start, dout, dmiss)
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ integer,            intent(in)   :: start
+ integer,            intent(out)  :: dout
+ integer,  optional, intent(out)  :: dmiss
+
+integer :: varid
+
+! read the data for the requested array, and get the fill value
+call nc_check( nf90_inq_varid(ncid, varname, varid), &
+               'getvar_int_1d_1val', 'inquire var '// trim(varname))
+call nc_check( nf90_get_var(ncid, varid, dout, start = (/ start /) ), &
+               'getvar_int_1d_1val', 'getting var '// trim(varname))
+
+if (present(dmiss)) &
+   call nc_check( nf90_get_att(ncid, varid, '_FillValue', dmiss), &
+               'getvar_int_1d_1val', 'getting attr "_FillValue" for '//trim(varname))
+
+end subroutine getvar_int_1d_1val
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   getvar_real_2d_slice - subroutine that inquires, gets the variable, 
+!           and fills in the missing value attribute if that arg is present.
+!           assumes start = (/ 1, n /) and count = (/ m, 1 /)
+!           so takes a scalar start, count, returns a 1d_array
+!
+!      ncid - open netcdf file handle
+!      varname - string name of 2d netcdf variable
+!      start - starting index in the 2d array.  integer
+!      count - nitems to get. integer
+!      darray - 1d output array.  real(r8)
+!      dmiss - value that signals a missing value   real(r8), optional
+!
+!     created 11 Mar 2010,  nancy collins,  ncar/image
+!     updated 14 Jul 2011,  nancy collins,  ncar/image
+!         routine renamed and moved to the utilities module
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine getvar_real_2d_slice(ncid, varname, start, count, darray, dmiss)
+ integer,            intent(in)   :: ncid
+ character(len = *), intent(in)   :: varname
+ integer,            intent(in)   :: start
+ integer,            intent(in)   :: count
+ real(r8),           intent(out)  :: darray(:)
+ real(r8), optional, intent(out)  :: dmiss
+
+integer :: varid
+
+! read the data for the requested array, and get the fill value
+call nc_check( nf90_inq_varid(ncid, varname, varid), &
+               'getvar_real_2d_slice', 'inquire var '// trim(varname))
+call nc_check( nf90_get_var(ncid, varid, darray, &
+                start=(/ 1, start /), count=(/ count, 1 /) ), &
+               'getvar_real_2d_slice', 'getting var '// trim(varname))
+
+if (present(dmiss)) &
+   call nc_check( nf90_get_att(ncid, varid, '_FillValue', dmiss), &
+               'getvar_real_2d_slice', 'getting attr "_FillValue" for '//trim(varname))
+
+end subroutine getvar_real_2d_slice
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   get_or_fill_QC_2d_slice - subroutine which gets the requested netcdf variable
+!           but if it isn't there, it fills the array with 0s.  not an
+!           error if it's not present.  assumes integer data array
+!           assumes start = (/ 1, n /) and count = (/ m, 1 /)
+!           so takes a scalar start, count, returns a 1d_array
+!           also prints out a message if fill used.
+!
+!      ncid - open netcdf file handle
+!      varname - string name of 2d netcdf variable
+!      start - starting index in the 2d array.  integer
+!      count - nitems to get. integer
+!      darray - output array.  integer
+!
+!     created Mar 8, 2010    nancy collins, ncar/image
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine get_or_fill_QC_2d_slice(ncid, varname, start, count, darray)
+ integer,            intent(in)    :: ncid
+ character(len = *), intent(in)    :: varname
+ integer,            intent(in)    :: start
+ integer,            intent(in)    :: count
+ integer,            intent(inout) :: darray(:)
+
+integer :: varid, nfrc
+
+! test to see if variable is present.  if yes, read it in.
+! otherwise, set to fill value, or 0 if none given.
+
+nfrc = nf90_inq_varid(ncid, varname, varid)
+if (nfrc == NF90_NOERR) then
+   call nc_check( nf90_get_var(ncid, varid, darray, &
+                  start=(/ 1, start /), count=(/ count, 1 /) ), &
+                  'get_or_fill_int_2d_slice', 'reading '//trim(varname) )
+else
+   darray = 0
+   if (start == 1) & 
+     print *, 'QC field named ' // trim(varname) // ' was not found in input, 0 used instead'
+endif
+
+end subroutine get_or_fill_QC_2d_slice
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+!   query_varname - given a list of variable names, check the netcdf file
+!           for their existence.  if none of the given names are in the
+!           file, return -1 for index.  otherwise return the index of
+!           the first name found. an optional arg can be used to force
+!           it to fail if a match is not found. 
+!
+!      ncid - open netcdf file handle
+!      nname - number of names in the namelist array
+!      namelist - string array of netcdf variable names to test
+!      index - index of first name which matched an array.  -1 if none.
+!      force - if true, one of the names must match or it is a fatal error.
+!
+!     created Mar 15, 2012    nancy collins, ncar/image
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine query_varname(ncid, nnames, namelist, index, force)
+ integer,             intent(in)    :: ncid, nnames
+ character(len = *),  intent(in)    :: namelist(:)
+ integer,             intent(out)   :: index
+ logical, optional,   intent(in)    :: force
+
+integer :: varid, nfrc, i
+character(128) :: msgstring
+
+! test to see if variable is present.  if yes, read it in.
+! otherwise, set to fill value, or 0 if none given.
+
+index = -1
+do i=1, nnames
+   nfrc = nf90_inq_varid(ncid, namelist(i), varid) 
+   if (nfrc == NF90_NOERR) then
+      index = i
+      return
+   endif
+enddo
+   
+if (present(force)) then
+   if (index == -1 .and. force) then
+      msgstring = 'trying to find one of the following arrays in the input netcdf file'
+      call error_handler(E_MSG, 'query_varname', msgstring)
+      do i=1, nnames
+         call error_handler(E_MSG, 'query_varname', namelist(i))
+      enddo
+      call error_handler(E_ERR, 'query_varname', 'fatal error, none are present', &
+                         source, revision, revdate)
+   
+   endif
+endif
+
+end subroutine query_varname
+
 
 end module obs_utilities_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

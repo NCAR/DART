@@ -1,23 +1,19 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program model_mod_check
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !----------------------------------------------------------------------
 ! purpose: test routines
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8, digits12, metadatalength
-use    utilities_mod, only : initialize_utilities, timestamp, nc_check, &
+use    utilities_mod, only : initialize_utilities, finalize_utilities, nc_check, &
                              open_file, close_file, find_namelist_in_file, &
-                             check_namelist_read
+                             check_namelist_read, error_handler, E_MSG
 use     location_mod, only : location_type, set_location, write_location, get_dist, &
                              query_location, LocationDims, get_location
 use     obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index
@@ -36,10 +32,10 @@ use        model_mod, only : static_init_model, get_model_size, get_state_meta_d
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 !------------------------------------------------------------------
 ! The namelist variables
@@ -187,11 +183,11 @@ if ( x_ind > 0 .and. x_ind <= x_size ) call check_meta_data( x_ind )
 
 if ( loc_of_interest(1) > 0.0_r8 ) call find_closest_gridpoint( loc_of_interest )
 
-!----------------------------------------------------------------------
-! When called with 'end', timestamp will call finalize_utilities()
-! This must be the last few lines of the main program.
-!----------------------------------------------------------------------
-call timestamp(string1=source, pos='end')
+
+call error_handler(E_MSG, 'model_mod_check', 'FINISHED successfully.',&
+                   source,revision,revdate)
+call finalize_utilities()
+
 
 contains
 
@@ -311,3 +307,9 @@ end subroutine find_closest_gridpoint
 
 
 end program model_mod_check
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

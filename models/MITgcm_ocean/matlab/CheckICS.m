@@ -3,15 +3,11 @@ function CheckICS()
 % 
 %
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 %-------------------------------------------------------------------------------
 dsize   = [256 225 40];
@@ -183,3 +179,10 @@ end
 
 y.data = reshape(x, dsize);
 y.time = t;
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

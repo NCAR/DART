@@ -1,24 +1,21 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$ 
 
 module adaptive_inflate_mod
 
-! <next few lines under version control, do not edit>
-! $URL$ 
-! $Id$ 
-! $Revision$ 
-! $Date$ 
-!
 ! Operations and storage required for various adaptive inflation algorithms
 
-use types_mod,            only : r8, PI
+use types_mod,            only : r8, PI, missing_r8
 use time_manager_mod,     only : time_type, get_time, set_time
-use utilities_mod,        only : file_exist, get_unit, register_module, &
+use utilities_mod,        only : register_module, open_file, close_file, &
                                  error_handler, E_ERR, E_MSG
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq
-use ensemble_manager_mod, only : ensemble_type, all_vars_to_all_copies, all_copies_to_all_vars, &
-                                 read_ensemble_restart, write_ensemble_restart, get_copy_owner_index
+use ensemble_manager_mod, only : ensemble_type, read_ensemble_restart, write_ensemble_restart,  &
+                                 get_copy_owner_index, prepare_to_write_to_vars,                &
+                                 prepare_to_read_from_vars, prepare_to_update_vars, map_pe_to_task
 use mpi_utilities_mod,    only : my_task_id, send_to, receive_from
 
 implicit none
@@ -32,10 +29,10 @@ public :: update_inflation,           adaptive_inflate_end,          do_obs_infl
 
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! Manages both observation space and state space inflation
 ! Handles initial values and restarts, diagnostic output, and computations
@@ -57,7 +54,7 @@ type adaptive_inflate_type
 end type adaptive_inflate_type
 
 ! Module storage for writing error messages
-character(len = 129) :: errstring
+character(len = 255) :: msgstring
 
 ! Flag indicating whether module has been initialized
 logical :: initialized = .false.
@@ -99,11 +96,13 @@ real(r8) :: minmax_mean(2), minmax_sd(2)
 if(.not. initialized) then
    initialized = .true.
    call register_module(source, revision, revdate)
+endif
 
-   ! If non-deterministic inflation is being done, need to initialize random sequence.
-   ! use the task id number (plus 1 since they start at 0) to set the initial seed.
-   ! NOTE: non-deterministic inflation does NOT reproduce as process count is varied!
-   if(.not. deterministic) call init_random_seq(inflate_handle%ran_seq, my_task_id()+1)
+! If non-deterministic inflation is being done, need to initialize random sequence.
+! use the task id number (plus 1 since they start at 0) to set the initial seed.
+! NOTE: non-deterministic inflation does NOT reproduce as process count is varied!
+if(.not. deterministic) then
+   call init_random_seq(inflate_handle%ran_seq, my_task_id()+1)
 endif
 
 ! more information for users to document what they selected in the nml:
@@ -155,14 +154,14 @@ inflate_handle%obs_diag_unit = -1
 
 ! Cannot support non-determistic inflation and an inf_lower_bound < 1
 if(.not. deterministic .and. inf_lower_bound < 1.0_r8) then
-   write(errstring, *) 'Cannot have non-deterministic inflation and inf_lower_bound < 1'
-   call error_handler(E_ERR, 'adaptive_inflate_init', errstring, source, revision, revdate)
+   write(msgstring, *) 'Cannot have non-deterministic inflation and inf_lower_bound < 1'
+   call error_handler(E_ERR, 'adaptive_inflate_init', msgstring, source, revision, revdate)
 endif
 
-! give this an initial value which defaults to time-constant inflation
-! change it below if the value(s) are > 0
-minmax_mean(:) = 0.0_r8
-minmax_sd(:)   = 0.0_r8
+! give these distinctive values; if inflation is being used
+! (e.g. inf_flavor > 0) then they should be set in all cases.
+minmax_mean(:) = missing_r8
+minmax_sd(:)   = missing_r8
 
 !------ Block for state space inflation initialization ------
 
@@ -173,15 +172,11 @@ if(inf_flavor >= 2) then
 
    ! Verify that indices are contiguous
    if(ss_inflate_sd_index /= ss_inflate_index + 1) then
-      write(errstring, *) 'ss_inflate_index = ', ss_inflate_index, &
+      write(msgstring, *) 'ss_inflate_index = ', ss_inflate_index, &
          ' and ss_inflate_sd_index = ', ss_inflate_sd_index, ' must be continguous'
       call error_handler(E_ERR, 'adaptive_inflate_init', &
-         errstring, source, revision, revdate)
+         msgstring, source, revision, revdate)
    endif
-
-   ! set this, and then below if sd values are from a file, compute them
-   ! and send the value to PE0 if not already there.
-   minmax_sd = sd_initial
 
    ! Read in initial values from file OR get from namelist arguments
 
@@ -205,11 +200,36 @@ if(inf_flavor >= 2) then
       ! a transpose.
       if (.not. mean_from_restart) then
          call get_copy_owner_index(ss_inflate_index, owner, owners_index)
-         if (owner == my_task_id()) ens_handle%vars(:, owners_index) = inf_initial
+         if (owner == ens_handle%my_pe) then
+            call prepare_to_write_to_vars(ens_handle)
+            ens_handle%vars(:, owners_index) = inf_initial
+         endif
       endif
       if (.not. sd_from_restart) then
          call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
-         if (owner == my_task_id()) ens_handle%vars(:, owners_index) = sd_initial
+         if (owner == ens_handle%my_pe)  then
+            call prepare_to_write_to_vars(ens_handle)
+            ens_handle%vars(:, owners_index) = sd_initial
+         endif
+      endif
+   endif
+
+   ! Inflation type 3 is spatially-constant.  Make sure the entire array is set to that
+   ! value. the computation only uses index 1, but the diagnostics write out the entire
+   ! array and it will be misleading if not constant.  the inf values were set above.  
+   ! if they were set by namelist, this code changes nothing.  but if they were read in
+   ! from a file, then it is possible the values vary across the array.  these lines
+   ! ensure the entire array contains a single constant value to match what the code uses.
+   if(inf_flavor == 3) then
+      call get_copy_owner_index(ss_inflate_index, owner, owners_index)
+      if (owner == ens_handle%my_pe) then
+         call prepare_to_update_vars(ens_handle)
+         ens_handle%vars(:, owners_index) = ens_handle%vars(1, owners_index)
+      endif
+      call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
+      if (owner == ens_handle%my_pe) then
+         call prepare_to_update_vars(ens_handle)
+         ens_handle%vars(:, owners_index) = ens_handle%vars(1, owners_index)
       endif
    endif
 
@@ -224,18 +244,20 @@ if(inf_flavor >= 2) then
       ! if inflation array is already on PE0, just figure out the
       ! largest value in the array and we're done.
       if (owner == 0) then
+         call prepare_to_read_from_vars(ens_handle)
          minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
          minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
       else
          ! someone else has the inf array.  have the owner send the min/max
          ! values to PE0.  after this point only PE0 has the right value
          ! in minmax_mean, but it is the only one who is going to print below.
-         if (my_task_id() == 0) then
-            call receive_from(owner, minmax_mean)
-         else if (my_task_id() == owner) then
+         if (ens_handle%my_pe == 0) then
+            call receive_from(map_pe_to_task(ens_handle, owner), minmax_mean)
+         else if (ens_handle%my_pe == owner) then
+            call prepare_to_read_from_vars(ens_handle)
             minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
             minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
-            call send_to(0, minmax_mean)
+            call send_to(map_pe_to_task(ens_handle, 0), minmax_mean)
          endif
       endif
    endif
@@ -244,34 +266,24 @@ if(inf_flavor >= 2) then
       ! if inflation sd array is already on PE0, just figure out the
       ! largest value in the array and we're done.
       if (owner == 0) then
+         call prepare_to_read_from_vars(ens_handle)
          minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
          minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
       else
          ! someone else has the sd array.  have the owner send the min/max
          ! values to PE0.  after this point only PE0 has the right value
          ! in minmax_sd, but it is the only one who is going to print below.
-         if (my_task_id() == 0) then
-            call receive_from(owner, minmax_sd)
-         else if (my_task_id() == owner) then
+         if (ens_handle%my_pe == 0) then
+            call receive_from(map_pe_to_task(ens_handle, owner), minmax_sd)
+         else if (ens_handle%my_pe == owner) then 
+            call prepare_to_read_from_vars(ens_handle)
             minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
             minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
-            call send_to(0, minmax_sd)
+            call send_to(map_pe_to_task(ens_handle, 0), minmax_sd)
          endif
       endif
    endif
    
-   ! Inflation type 3 is spatially-constant.  Make sure the entire array is set to that
-   ! value. the computation only uses index 1, but the diagnostics write out the entire
-   ! array and it will be misleading if not constant.  the inf values were set above.  
-   ! if they were set by namelist, this code changes nothing.  but if they were read in
-   ! from a file, then it is possible the values vary across the array.  these lines
-   ! ensure the entire array contains a single constant value to match what the code uses.
-   if(inf_flavor == 3) then
-      call get_copy_owner_index(ss_inflate_index, owner, owners_index)
-      if (owner == my_task_id()) ens_handle%vars(:, owners_index) = ens_handle%vars(1, owners_index)
-      call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
-      if (owner == my_task_id()) ens_handle%vars(:, owners_index) = ens_handle%vars(1, owners_index)
-   endif
 
 !------ Block for obs. space inflation initialization ------
 
@@ -282,28 +294,22 @@ else if(inf_flavor == 1) then
    ! Only single values for inflation, inflation_sd (not arrays)
    if(mean_from_restart .or. sd_from_restart) then
       ! Open the file
-      restart_unit = get_unit()
-      open(unit = restart_unit, file = in_file_name, action = 'read', &
-           form = 'formatted', iostat = io)
-      if (io /= 0) then
-         write(errstring, *) 'unable to open inflation restart file ', &
-                              trim(in_file_name), ' for reading'
-         call error_handler(E_ERR, 'adaptive_inflate_init', &
-            errstring, source, revision, revdate)
-      endif
+      restart_unit = open_file(in_file_name, form='formatted', action='read')
       read(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
       if (io /= 0) then
-         write(errstring, *) 'unable to read inflation restart values from ', &
+         write(msgstring, *) 'unable to read inflation restart values from ', &
                               trim(in_file_name)
          call error_handler(E_ERR, 'adaptive_inflate_init', &
-            errstring, source, revision, revdate)
+            msgstring, source, revision, revdate)
       endif
-      close(restart_unit)
+      call close_file(restart_unit)
    endif
    ! If using the namelist values, set (or overwrite) them here.
    if (.not. mean_from_restart) inflate_handle%inflate = inf_initial
    if (.not.   sd_from_restart) inflate_handle%sd      = sd_initial
 
+   minmax_mean(:) = inflate_handle%inflate
+   minmax_sd(:)   = inflate_handle%sd
 endif
 
 ! Write to log file what kind of inflation is being used.
@@ -342,25 +348,40 @@ select case(inf_flavor)
       sadapt = ' spatially-constant,'
       akind = ' state-space'
    case default
-      write(errstring, *) 'Illegal inflation value for ', label
-      call error_handler(E_ERR, 'adaptive_inflate_init', errstring, source, revision, revdate)
+      write(msgstring, *) 'Illegal inflation value for ', label
+      call error_handler(E_ERR, 'adaptive_inflate_init', msgstring, source, revision, revdate)
 end select
 
 ! say in plain english what kind of inflation was selected.
-write(errstring, '(4A)') &
+write(msgstring, '(4A)') &
    trim(det), trim(tadapt), trim(sadapt), trim(akind)
-call error_handler(E_MSG, trim(label) // ' inflation:', errstring, source, revision, revdate)
+call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revision, revdate)
 
+! if inflation was set from a namelist, that message has already been
+! printed (further up in this routine).  for values set from a restart
+! file, if the inflation flavor is 2, the values printed are the min and
+! max from the entire array.  for flavors 1 and 3 there is only a single
+! value to print out.
 if (inf_flavor > 0) then
    if (mean_from_restart) then
-      write(errstring, '(A, F8.3, A, F8.3)') &
-         'inf mean   from restart file: min value: ', minmax_mean(1), ' max value: ', minmax_mean(2)
-      call error_handler(E_MSG, trim(label) // ' inflation:', errstring, source, revision, revdate)
+      if (inf_flavor == 2) then
+         write(msgstring, '(A, F8.3, A, F8.3)') &
+            'inf mean   from restart file: min value: ', minmax_mean(1), ' max value: ', minmax_mean(2)
+      else
+         write(msgstring, '(A, F8.3, A, F8.3)') &
+            'inf mean   from restart file: value: ', minmax_mean(1)
+      endif
+      call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revision, revdate)
    endif
    if (sd_from_restart) then
-      write(errstring, '(A, F8.3, A, F8.3)') &
-         'inf stddev from restart file: min value: ', minmax_sd(1), ' max value: ', minmax_sd(2)
-      call error_handler(E_MSG, trim(label) // ' inflation:', errstring, source, revision, revdate)
+      if (inf_flavor == 2) then
+         write(msgstring, '(A, F8.3, A, F8.3)') &
+            'inf stddev from restart file: min value: ', minmax_sd(1), ' max value: ', minmax_sd(2)
+      else
+         write(msgstring, '(A, F8.3, A, F8.3)') &
+            'inf stddev from restart file: value: ', minmax_sd(1)
+      endif
+      call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revision, revdate)
    endif
 endif
 
@@ -382,10 +403,10 @@ if(inflate_handle%output_restart) then
    if(do_varying_ss_inflate(inflate_handle) .or. do_single_ss_inflate(inflate_handle)) then
       ! Verify that indices are contiguous
       if(ss_inflate_sd_index /= ss_inflate_index + 1) then
-         write(errstring, *) 'ss_inflate_index = ', ss_inflate_index, &
+         write(msgstring, *) 'ss_inflate_index = ', ss_inflate_index, &
             ' and ss_inflate_sd_index = ', ss_inflate_sd_index, ' must be continguous'
          call error_handler(E_ERR, 'adaptive_inflate_end', &
-            errstring, source, revision, revdate)
+            msgstring, source, revision, revdate)
       endif
 
       ! Write the inflate and inflate_sd as two copies for a restart
@@ -395,28 +416,21 @@ if(inflate_handle%output_restart) then
    ! Flavor 1 is observation space, write its restart directly
    else if(do_obs_inflate(inflate_handle)) then
       ! Open the restart file
-      restart_unit = get_unit()
-      open(unit = restart_unit, file = inflate_handle%out_file_name, &
-         action = 'write', form = 'formatted', iostat = io)
-      if (io /= 0) then
-         write(errstring, *) 'unable to open inflation restart file ', &
-                              trim(inflate_handle%out_file_name), ' for writing'
-         call error_handler(E_ERR, 'adaptive_inflate_end', &
-            errstring, source, revision, revdate)
-      endif
+      restart_unit = open_file(inflate_handle%out_file_name, &
+                               form = 'formatted', action='write')
       write(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
       if (io /= 0) then
-         write(errstring, *) 'unable to write into inflation restart file ', &
+         write(msgstring, *) 'unable to write into inflation restart file ', &
                               trim(inflate_handle%out_file_name)
          call error_handler(E_ERR, 'adaptive_inflate_end', &
-            errstring, source, revision, revdate)
+            msgstring, source, revision, revdate)
       endif
-      close(unit = restart_unit)
+      call close_file(restart_unit)
    endif
 endif
 
 ! Need to close diagnostic files for observation space if in use
-if(inflate_handle%obs_diag_unit > -1) close(inflate_handle%obs_diag_unit)
+if(inflate_handle%obs_diag_unit > -1) call close_file(inflate_handle%obs_diag_unit)
    
 end subroutine adaptive_inflate_end
 
@@ -484,7 +498,12 @@ function get_inflate(inflate_handle)
 real(r8)                                :: get_inflate
 type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-get_inflate = inflate_handle%inflate
+if(do_obs_inflate(inflate_handle)) then
+   get_inflate = inflate_handle%inflate
+else
+   write(msgstring, *) 'This routine can only be used with obs_space inflation'
+   call error_handler(E_ERR, 'get_inflate', msgstring, source, revision, revdate)
+endif
 
 end function get_inflate
 
@@ -498,7 +517,12 @@ function get_sd(inflate_handle)
 real(r8)                                :: get_sd
 type(adaptive_inflate_type), intent(in) :: inflate_handle
 
-get_sd = inflate_handle%sd
+if(do_obs_inflate(inflate_handle)) then
+   get_sd = inflate_handle%sd
+else
+   write(msgstring, *) 'This routine can only be used with obs_space inflation'
+   call error_handler(E_ERR, 'get_sd', msgstring, source, revision, revdate)
+endif
 
 end function get_sd
 
@@ -506,12 +530,18 @@ end function get_sd
 
 subroutine set_inflate(inflate_handle, inflate)
 
-! Sets the single inflation value in the type
+! The single real value inflate contains the obs_space inflation value
+! when obs_space inflation is in use and this sets it.
 
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
 real(r8),                    intent(in)    :: inflate
 
-inflate_handle%inflate = inflate
+if(do_obs_inflate(inflate_handle)) then
+   inflate_handle%inflate = inflate
+else
+   write(msgstring, *) 'This routine can only be used with obs_space inflation'
+   call error_handler(E_ERR, 'set_inflate', msgstring, source, revision, revdate)
+endif
 
 end subroutine set_inflate
 
@@ -519,12 +549,18 @@ end subroutine set_inflate
 
 subroutine set_sd(inflate_handle, sd)
 
-! Sets the single sd value in the type
+! The single real value inflate_sd contains the obs_space inflate_sd value
+! when obs_space inflation is in use and this sets it.
 
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
 real(r8),                    intent(in)    :: sd
 
-inflate_handle%sd = sd
+if(do_obs_inflate(inflate_handle)) then
+   inflate_handle%sd = sd
+else
+   write(msgstring, *) 'This routine can only be used with obs_space inflation'
+   call error_handler(E_ERR, 'set_sd', msgstring, source, revision, revdate)
+endif
 
 end subroutine set_sd
 
@@ -546,9 +582,8 @@ if(do_obs_inflate(inflate_handle)) then
    ! If unit is -1, it hasn't been opened yet, do it.
    if(inflate_handle%obs_diag_unit == -1) then
       ! Open the file
-      inflate_handle%obs_diag_unit = get_unit()
-      open(unit = inflate_handle%obs_diag_unit, file = inflate_handle%diag_file_name, &
-         action = 'write', form = 'formatted')
+      inflate_handle%obs_diag_unit = open_file(inflate_handle%diag_file_name, &
+                                               form='formatted', action='write')
    endif
 
    ! Get the time in days and seconds
@@ -556,6 +591,10 @@ if(do_obs_inflate(inflate_handle)) then
    ! Write out the time followed by the values
    write(inflate_handle%obs_diag_unit, *) days, seconds, inflate_handle%inflate, &
       inflate_handle%sd
+
+   ! This code intentionally does not close the file handle because
+   ! this routine will be called multiple times.  It is closed in the
+   ! adaptive_inflate_end routine.
 endif
 
 end subroutine output_inflate_diagnostics
@@ -599,17 +638,19 @@ else
    ! on the final prior/posterior increment pairs to avoid large regression
    ! error as per stochastic filter algorithms. This might help to avoid
    ! problems with generating gravity waves in the Bgrid model, for instance.
+
+   ! The following code does not do the sort.
    
-    ! Figure out required sd for random noise being added
-    ! Don't allow covariance deflation in this version
-    if(inflate > 1.0_r8) then
-       rand_sd = sqrt(inflate*var - var)
-       ! Add random sample from this noise into the ensemble
-       do i = 1, ens_size
-          ens(i) = random_gaussian(inflate_handle%ran_seq, ens(i), rand_sd)
-       end do
-       ! Adjust the mean back to the original value
-       ens = ens - (sum(ens) / ens_size - mean)
+   ! Figure out required sd for random noise being added
+   ! Don't allow covariance deflation in this version
+   if(inflate > 1.0_r8) then
+      rand_sd = sqrt(inflate*var - var)
+      ! Add random sample from this noise into the ensemble
+      do i = 1, ens_size
+         ens(i) = random_gaussian(inflate_handle%ran_seq, ens(i), rand_sd)
+      end do
+      ! Adjust the mean back to the original value
+      ens = ens - (sum(ens) / ens_size - mean)
    endif
 endif
 
@@ -634,8 +675,8 @@ real(r8),                    intent(in)    :: prior_mean, prior_var, obs, obs_va
 
 real(r8) :: new_inflate, new_inflate_sd
 
-! If the inflate_sd is negative, just keep everything the same
-if(inflate_sd < 0.0_r8) return
+! If the inflate_sd not positive, keep everything the same
+if(inflate_sd <= 0.0_r8) return
 
 ! A lower bound on the updated inflation sd and an upper bound
 ! on the inflation itself are provided in the inflate_handle. 
@@ -688,6 +729,10 @@ dist_2 = (x_p - y_o)**2
 ! unstable for extreme cases. Should look at this later.
 !!!if(gamma > 0.99_r8) then
 if(gamma > 1.01_r8) then
+
+! FIXME: rectify the comment in the following line (about gamma
+! and 1.0) and the test above, which clearly used to be true for 
+! 1.0 but is not anymore.
 
 ! The solution of the cubic below only works if gamma is 1.0
 ! Can analytically find the maximum of the product: d/dlambda is a
@@ -754,6 +799,15 @@ else
 ! Find value at a point one OLD sd above new mean value
    new_1_sd = compute_new_density(dist_2, sigma_p_2, sigma_o_2, lambda_mean, lambda_sd, gamma, &
       new_cov_inflate + lambda_sd)
+
+   ! If either the numerator or denominator of the following computation 
+   ! of 'ratio' is going to be zero (or almost so), return the original incoming
+   ! inflation value.  The computation would have resulted in either Inf or NaN.
+   if (abs(new_max) <= TINY(0.0_r8) .or. abs(new_1_sd) <= TINY(0.0_r8)) then
+      new_cov_inflate_sd = lambda_sd
+      return
+   endif
+
    ratio = new_1_sd / new_max 
 
    ! Another error for numerical issues; if ratio is larger than 0.99, bail out
@@ -921,3 +975,9 @@ end subroutine solve_quadratic
 !========================================================================
 
 end module adaptive_inflate_mod
+
+! <next few lines under version control, do not edit>
+! $URL$ 
+! $Id$ 
+! $Revision$ 
+! $Date$ 

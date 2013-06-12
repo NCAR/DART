@@ -1,3 +1,6 @@
+c    This code is not protected by the DART copyright agreement.
+c    DART $Id$
+
 c    Yet another revision of the BUFR preparation program.  It has options
 c    to output specific humidity, relative humidity, or dewpoint obs, under
 c    namelist control.  New code added by Ryan Torn.  14 Jan 2011
@@ -20,9 +23,6 @@ c    the READPB() routine currently has a select for obs types based on
 c    name; this should be removed and completely under namelist control.
 c    the previously encountered problem was fixed and not related to this.
 c    See the prepdecode/docs directory for the key to all the bufr codes.
-c
-c
-c    DART $Id$
 c
       REAL*8     R8BFMS
       PARAMETER ( R8BFMS = 10.0E10 )
@@ -983,3 +983,9 @@ C       normal search code, look for match in list
 
         RETURN
         END
+
+C <next few lines under version control, do not edit>
+C $URL$
+C $Id$
+C $Revision$
+C $Date$

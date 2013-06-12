@@ -1,14 +1,10 @@
 %% err_summary
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 % Assumes two copies are ensemble mean followed by ensemble spread
 % Should be automated and checked at some point
@@ -142,3 +138,9 @@ u_sd = num2str(mean(sd_final(bint:tint, 3, :), 1))
 % Output v rms and spread
 v_rms = num2str(mean(rms(bint:tint, 4, :), 1))
 v_sd = num2str(mean(sd_final(bint:tint, 4, :), 1))
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

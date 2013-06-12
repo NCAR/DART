@@ -24,15 +24,11 @@ function varargout = run_lorenz_96(varargin)
 % See also: gaussian_product, oned_model, oned_ensemble, twod_ensemble, 
 %           run_lorenz_63
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -757,3 +753,8 @@ function ens_mean_rms = rms_error(truth, ens)
 ens_mean = mean(squeeze(ens)');
 ens_mean_rms = sqrt(sum((truth - ens_mean).^2) / size(truth, 2));
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

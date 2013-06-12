@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 #
 # merge the files into "daily" files which start at 03:01Z
 # and end at 03:00Z the following day.  (the name of the file

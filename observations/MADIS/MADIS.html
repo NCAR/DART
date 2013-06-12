@@ -44,7 +44,9 @@ and integration of data from a variety of sources.
 </P>
 
 <P>
-The overall flow is:
+To convert a series of MADIS data files (where different types of
+observations are distributed in separate files), one high level
+view of the workflow is:
 </P>
 <ol>
 <li>convert each madis file, by platform type, into an obs_seq file.
@@ -75,7 +77,7 @@ The overall flow is:
 <a href="http://madis.noaa.gov/">http://madis.noaa.gov</a>
 </P>
 
-<P>There are two satellite wind convert programs; the one in
+<P>There are two satellite wind converter programs; the one in
 this directory and one in the
 <a href="../SSEC/SSEC.html">SSEC</a> directory.
 The observations distributed here come from
@@ -91,9 +93,10 @@ will differ from the observations converted here.
 <H2>PROGRAMS</H2>
 <P>
 The programs in the <em class=file>DART/observations/MADIS/</em> 
-directory help to extract the data from the distribution files 
-and put them into DART observation sequence (obs_seq) file format.
-Build them in the <em class=file>work</em> directory.  In addition
+directory extract data from the distribution files 
+and create DART observation sequence (obs_seq) files.
+Build them in the <em class=file>work</em> directory by running
+the <em class=program>./quickbuild.csh</em> script.  In addition
 to the converters, the <em class=file>advance_time</em> and
 <em class=file>obs_sequence_tool</em> utilities will be built.
 </P>
@@ -101,25 +104,48 @@ to the converters, the <em class=file>advance_time</em> and
 There are currently converters for these data types:</P>
 <TABLE border=0 cellpadding=3 summary="">
 <TBODY valign=top>
-<TR> <TD>convert_madis_acars.f90</TD><TD> ACARS aircraft T,U,V,Q data</TD>
-<TR> <TD>convert_madis_marine.f90</TD><TD> Marine surface data</TD>
-<TR> <TD>convert_madis_mesonet.f90</TD><TD> Mesonet surface data</TD>
-<TR> <TD>convert_madis_metar.f90</TD><TD> Metar data</TD>
-<TR> <TD>convert_madis_rawin.f90</TD><TD> Rawinsonde/Radiosonde data</TD>
-<TR> <TD>convert_madis_satwnd.f90</TD><TD> Satellite Wind data</TD>
+<TR> <TD> ACARS aircraft T,U,V,Q data </TD>  <TD> convert_madis_acars    </TD>
+<TR> <TD> Marine surface data         </TD>  <TD> convert_madis_marine   </TD>
+<TR> <TD> Mesonet surface data        </TD>  <TD> convert_madis_mesonet  </TD>
+<TR> <TD> Metar data                  </TD>  <TD> convert_madis_metar    </TD>
+<TR> <TD> Wind Profiler data          </TD>  <TD> convert_madis_profiler </TD>
+<TR> <TD> Rawinsonde/Radiosonde data  </TD>  <TD> convert_madis_rawin    </TD>
+<TR> <TD> Satellite Wind data         </TD>  <TD> convert_madis_satwnd   </TD>
 </TABLE>
 <P>
+Example data files are in the <em class=file>data</em> directory.
 Example scripts for converting batches of these files are
-in the <em class=file>shell_scripts</em> directory.  Example
-data files are in the <em class=file>data</em> directory.
+in the <em class=file>shell_scripts</em> directory.  
 These are <em>NOT</em> intended to be turnkey scripts; they will
 certainly need to be customized for your use.  There are comments
 at the top of the scripts saying what options they include, and
 should be commented enough to indicate where changes will be
 likely to need to be made.
 </P>
-<P>The converter source code files have compile-time choices
+<P>The converters have compile-time choices
 for outputting various types of moist variables.
+Check the source code for more details.
+</P>
+<P>Each converter has hard-coded input and output filenames:</P>
+<TABLE border=0 cellpadding=5 summary="input/output filenames">
+<TBODY valign=top>
+<TR> <TD>convert_madis_acars:   </TD> <TD> acars_input.nc    </TD> <TD> obs_seq.acars    </TD>
+<TR> <TD>convert_madis_marine:  </TD> <TD> marine_input.nc   </TD> <TD> obs_seq.marine   </TD>
+<TR> <TD>convert_madis_mesonet: </TD> <TD> mesonet_input.nc  </TD> <TD> obs_seq.mesonet  </TD>
+<TR> <TD>convert_madis_metar:   </TD> <TD> metar_input.nc    </TD> <TD> obs_seq.metar    </TD>
+<TR> <TD>convert_madis_profiler:</TD> <TD> profiler_input.nc </TD> <TD> obs_seq.profiler </TD>
+<TR> <TD>convert_madis_rawin:   </TD> <TD> rawin_input.nc    </TD> <TD> obs_seq.rawin    </TD>
+<TR> <TD>convert_madis_satwnd:  </TD> <TD> satwnd_input.nc   </TD> <TD> obs_seq.satwnd   </TD>
+</TABLE>
+
+<P>The expected usage pattern is that a script will copy,
+rename, or make a symbolic link from the actual input file
+(which often contains a timestamp in the name) to the fixed input 
+name before conversion, and move the output file to an
+appropriate filename before the next invocation of the converter.  
+If an existing observation sequence file of the same output name is 
+found when the converter is run again, it will open that file and append
+the next set of observations to it.
 </P>
 
 <!--==================================================================-->

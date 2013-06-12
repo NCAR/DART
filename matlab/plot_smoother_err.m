@@ -5,26 +5,22 @@
 % num_lags   = 10;
 % plot_total_err
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 lag_file   = 'Lag_%05d_Diag.nc'; % pattern for lag file names
 
 if (exist('num_lags','var')   ~= 1), num_lags = 10000; end
-if (exist('truth_file','var') == 1), 
+if (exist('truth_file','var') == 1),
    def_true = truth_file;
 else
    def_true = 'True_State.nc';
 end
 
-disp('Input name of True State file;')
+disp('Input name of True State file:')
 truth_file = input(sprintf('<cr> for %s\n',def_true),'s');
 if isempty(truth_file)
    truth_file = def_true;
@@ -32,14 +28,14 @@ end
 
 if ( exist(truth_file,'file') ~= 2 ), error('%s does not exist.',truth_file); end
 
-% Loop over all possible lags, if the corresponding etCDF file 
+% Loop over all possible lags, if the corresponding etCDF file
 % does not exist, we automatically terminate.
 
 for lag=1:num_lags
 
   def_diag = sprintf(lag_file, lag);
-  
-  disp('Input name of smoother lag diagnostics file;')
+
+  disp('Input name of smoother lag diagnostics file:')
   diagn_file = input(sprintf('<cr> for %s\n', def_diag),'s');
   if isempty(diagn_file)
      diagn_file = def_diag;
@@ -62,7 +58,7 @@ for lag=1:num_lags
 
   fprintf('Comparing %s and \n          %s\n', ...
                 pinfo.truth_file, pinfo.diagn_file)
-  
+
   PlotTotalErr( pinfo );
 
   disp(' ')
@@ -70,3 +66,11 @@ for lag=1:num_lags
 end
 
 clear pinfo
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

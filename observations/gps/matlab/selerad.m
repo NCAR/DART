@@ -1,14 +1,10 @@
 %% selerad
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 load sele_obs.jan1-10;
 err = sele_obs(:, 1);
@@ -63,3 +59,9 @@ xlabel('Locations of radiosondes used for verification, June 18-27, 2003', 'font
 
  print -dpsc selerad_jun.ps
  print -dpng selerad_jun.png
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

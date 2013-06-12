@@ -1,8 +1,8 @@
 %% DART:plot_sawtooth - time series of a state variable including updates.
-%                                                                               
+%
 % plot_sawtooth    interactively queries for the needed information.
-%              Since different models potentially need different pieces of 
-%              information ... the model types are determined and additional 
+%              Since different models potentially need different pieces of
+%              information ... the model types are determined and additional
 %              user input may be queried.
 %
 % Both the prior and posterior estimates are plotted as a single
@@ -15,26 +15,23 @@
 %
 % All the heavy lifting is done by PlotSawtooth.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if (exist('truth_file','var') ~= 1)
    disp('If the True_State.nc exists, it will be plotted. If not, don''t worry.')
-   truth_file = input('Input name of True State file; <cr> for True_State.nc\n','s');
+   disp('Input name of True State file:')
+   truth_file = input('<cr> for True_State.nc\n','s');
    if isempty(truth_file)
       truth_file = 'True_State.nc';
    end
 end
 
 if (exist('posterior_file','var') ~=1)
-   disp('Input name of posterior diagnostics file;')
+   disp('Input name of posterior diagnostics file:')
    posterior_file = input('<cr> for Posterior_Diag.nc\n','s');
    if isempty(posterior_file)
       posterior_file = 'Posterior_Diag.nc';
@@ -42,67 +39,84 @@ if (exist('posterior_file','var') ~=1)
 end
 
 if (exist('prior_file','var') ~=1)
-   disp('Input name of prior diagnostics file;')
+   disp('Input name of prior diagnostics file:')
    prior_file = input('<cr> for Prior_Diag.nc\n','s');
    if isempty(prior_file)
       prior_file = 'Prior_Diag.nc';
    end
 end
 
-CheckModelCompatibility(prior_file, posterior_file);
-pstruct                = CheckModel(posterior_file);   % also gets default values
-pstruct.prior_file     = prior_file;
-pstruct.posterior_file = posterior_file;
-pstruct.diagn_file     = prior_file;
-pstruct.diagn_time     = [1 -1];
-pstruct.truth_file     = truth_file;
-pstruct.truth_time     = [1 -1];
+% CheckModelCompatibility assumes first file is 'truth', so the
+% components must be renamed in this context.
+vars     = CheckModel(prior_file);
+pinfo    = CheckModelCompatibility(prior_file, posterior_file);
+pinfo.prior_time     = pinfo.truth_time;
+pinfo.posterior_time = pinfo.diagn_time;
+pinfo.truth_file     = truth_file;
+pinfo.prior_file     = prior_file;
+pinfo.posterior_file = posterior_file;
+pinfo = rmfield(pinfo,{'diagn_file','truth_time','diagn_time'});
+[pinfo.num_ens_members, pinfo.ensemble_indices] = get_ensemble_indices(prior_file);
+pinfo = CombineStructs(vars, pinfo);
 
-switch lower(pstruct.model)
+switch lower(pinfo.model)
 
    case {'9var','lorenz_63','lorenz_84','lorenz_96','lorenz_96_2scale', ...
-	 'lorenz_04','forced_lorenz_96','ikeda','simple_advection'} 
+	 'lorenz_04','forced_lorenz_96','ikeda','simple_advection'}
 
       % determine which variable ['state','X','Y' ...] and
       % determine which variable IDs (locations), as well as
       % determine which ensemble members to plot.
 
-      pinfo               = SetVariableID(pstruct);
-      pstruct.var         = pinfo.var;
-      pstruct.var_inds    = pinfo.var_inds;
-      pstruct.copyindices = SetCopyID(prior_file);
+      pinfo                = SetVariableID(pinfo);
+      pinfo.copyindices    = SetCopyID(prior_file);
 
-   case 'fms_bgrid'
+   case {'fms_bgrid'}
 
-      pstruct = GetBgridInfo(pstruct, prior_file, 'PlotSawtooth');
+      pinfo = GetBgridInfo(pinfo, prior_file, 'PlotSawtooth');
 
-   case 'pe2lyr'
+   case {'pe2lyr'}
 
-      pstruct = GetPe2lyrInfo(pstruct, prior_file, 'PlotSawtooth');
+      pinfo = GetPe2lyrInfo(pinfo, prior_file, 'PlotSawtooth');
 
-   case 'wrf'
+   case {'wrf'}
 
-      pstruct = GetWRFInfo(pstruct, prior_file, 'PlotSawtooth');
+      pinfo = GetWRFInfo(pinfo, prior_file, 'PlotSawtooth');
 
-   case 'cam'
+   case {'cam'}
 
-      pstruct = GetCamInfo(pstruct, prior_file, 'PlotSawtooth');
-      pstruct.copyindices = SetCopyID2(pstruct.prior_file);
-      pstruct.copies      = length(pstruct.copyindices);
+      pinfo = GetCamInfo(pinfo, prior_file, 'PlotSawtooth');
+      pinfo.copyindices = SetCopyID2(pinfo.prior_file);
+      pinfo.copies      = length(pinfo.copyindices);
 
-   case 'mitgcm_ocean'
+   case {'mitgcm_ocean'}
 
-      pstruct = GetMITgcm_oceanInfo(pstruct, prior_file, 'PlotSawtooth');
-      pstruct.copyindices = SetCopyID2(pstruct.prior_file);
-      pstruct.copies      = length(pstruct.copyindices);
+      pinfo = GetMITgcm_oceanInfo(pinfo, prior_file, 'PlotSawtooth');
+      pinfo.copyindices = SetCopyID2(pinfo.prior_file);
+      pinfo.copies      = length(pinfo.copyindices);
+
+   case {'mpas_atm'}
+
+      pinfo = GetMPAS_ATMInfo(pinfo, prior_file, 'PlotSawtooth');
+
+   case {'sqg'}
+
+      pinfo = GetSqgInfo(pinfo, prior_file, 'PlotSawtooth');
 
    otherwise
 
-      error('model %s not implemented yet', pstruct.model)
+      error('model %s not implemented yet', pinfo.model)
 
 end
 
-pstruct
+pinfo
 
-PlotSawtooth( pstruct )
-clear pstruct pinfo
+PlotSawtooth( pinfo )
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

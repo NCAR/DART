@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module location_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! Implements location interfaces for a three dimensional annulus
 ! with a vertical coordinate based on the models native set of
@@ -40,10 +36,10 @@ public :: location_type, get_location, set_location, &
           VERTISLEVEL, VERTISHEIGHT
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type location_type
    private
@@ -127,14 +123,14 @@ end subroutine initialize_module
 
 !----------------------------------------------------------------------------
 
-function get_dist(loc1, loc2, kind1, kind2)
+function get_dist(loc1, loc2, type1, kind2)
 
 ! Compute distance between 2 locations.  Right now the distance only
 ! depends on the horizontal.  A namelist option might need to be added
 ! that supports computing a true 3d distance.
 
 type(location_type), intent(in) :: loc1, loc2
-integer, optional,   intent(in) :: kind1, kind2
+integer, optional,   intent(in) :: type1, kind2
 real(r8)                        :: get_dist
 
 real(r8) :: x1, y1, x2, y2
@@ -729,7 +725,7 @@ end subroutine get_close_maxdist_init
 
 !----------------------------------------------------------------------------
 
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
+subroutine get_close_obs(gc, base_obs_loc, base_obs_type, obs, obs_kind, &
    num_close, close_ind, dist)
 
 ! Return how many locations are closer than cutoff distance, along with a
@@ -738,7 +734,7 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
 
 type(get_close_type), intent(in)  :: gc
 type(location_type),  intent(in)  :: base_obs_loc, obs(:)
-integer,              intent(in)  :: base_obs_kind, obs_kind(:)
+integer,              intent(in)  :: base_obs_type, obs_kind(:)
 integer,              intent(out) :: num_close, close_ind(:)
 real(r8), optional,   intent(out) :: dist(:)
 
@@ -757,7 +753,7 @@ endif
 ! Return list of obs that are within maxdist and their distances
 num_close = 0
 do i = 1, gc%num
-   this_dist = get_dist(base_obs_loc, obs(i), base_obs_kind, obs_kind(i))
+   this_dist = get_dist(base_obs_loc, obs(i), base_obs_type, obs_kind(i))
    if(this_dist <= gc%maxdist) then
       ! Add this ob to the list
       num_close = num_close + 1
@@ -902,3 +898,9 @@ end function has_vertical_localization
 !----------------------------------------------------------------------------
 
 end module location_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module model_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! This is a template showing the interfaces required for a model to be compliant
 ! with the DART data assimilation infrastructure. The public interfaces listed
@@ -30,6 +26,9 @@ use    utilities_mod, only : register_module, error_handler, nc_check, &
 implicit none
 private
 
+! required by DART code - will be called from filter and other
+! DART executables.  interfaces to these routines are fixed and
+! cannot be changed in any way.
 public :: get_model_size,         &
           adv_1step,              &
           get_state_meta_data,    &
@@ -47,12 +46,18 @@ public :: get_model_size,         &
           get_close_obs,          &
           ens_mean_for_model
 
+! not required by DART but for larger models can be useful for
+! utility programs that are tightly tied to the other parts of
+! the model_mod code.
+public :: model_file_to_dart_vector, &
+          dart_vector_to_model_file
+
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! EXAMPLE: define model parameters here
 integer, parameter               :: model_size = 3
@@ -599,8 +604,49 @@ real(r8), intent(in) :: ens_mean(:)
 end subroutine ens_mean_for_model
 
 
+!==================================================================
+! PUBLIC interfaces that aren't required by the DART code but are
+! generally useful for other related utility programs.
+! (less necessary for small models; generally used for larger models
+! with predefined file formats and control structures.)
+!==================================================================
+
+
+subroutine model_file_to_dart_vector(filename, state_vector, model_time)
+!------------------------------------------------------------------
+! Reads the current time and state variables from a model data
+! file and packs them into a dart state vector.
+
+character(len=*), intent(in)    :: filename
+real(r8),         intent(inout) :: state_vector(:)
+type(time_type),  intent(out)   :: model_time
+
+! code goes here
+
+end subroutine model_file_to_dart_vector
+
+
+subroutine dart_vector_to_model_file(state_vector, filename, statedate)
+!------------------------------------------------------------------
+! Writes the current time and state variables from a dart state
+! vector (1d array) into a ncommas netcdf restart file.
+!
+real(r8),         intent(in) :: state_vector(:)
+character(len=*), intent(in) :: filename
+type(time_type),  intent(in) :: statedate
+
+! code goes here
+
+end subroutine dart_vector_to_model_file
+
 
 !===================================================================
 ! End of model_mod
 !===================================================================
 end module model_mod
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

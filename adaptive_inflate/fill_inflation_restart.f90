@@ -1,27 +1,23 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$ 
 
 program fill_inflation_restart
 
-! <next few lines under version control, do not edit>
-! $URL$ 
-! $Id$ 
-! $Revision$ 
-! $Date$ 
-!
 ! Write an inflation restart file with the right number of entries,
 ! based on a single inflate and standard deviation value read from the console.
 ! (alternatively we could read them from a namelist, but it seems like overkill.)
-
 
 use types_mod,            only : r8, PI
 
 use utilities_mod,        only : error_handler, E_ERR, E_MSG,       &
                                  initialize_utilities, finalize_utilities
 
-use ensemble_manager_mod, only : ensemble_type, write_ensemble_restart, &
-                                 init_ensemble_manager, end_ensemble_manager
+use ensemble_manager_mod, only : ensemble_type, write_ensemble_restart,       &
+                                 init_ensemble_manager, end_ensemble_manager, &
+                                 prepare_to_write_to_vars
 
 use assim_model_mod,      only : static_init_assim_model
 
@@ -30,10 +26,10 @@ use            model_mod, only : get_model_size, static_init_model
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! Read 2 floating point values from the console - the initial inflation value
 ! and the inflation standard deviation.  Will write an output file named
@@ -75,6 +71,7 @@ write(msgstring, *) 'Model size/restart data length = ', model_size
 call error_handler(E_MSG,'',msgstring)
 
 call init_ensemble_manager(ens_handle, 2, model_size)
+call prepare_to_write_to_vars(ens_handle)
 
 ens_handle%vars(:, ss_inflate_index   ) = inf_initial
 ens_handle%vars(:, ss_inflate_sd_index) =  sd_initial
@@ -89,3 +86,9 @@ call finalize_utilities()
 !========================================================================
 
 end program fill_inflation_restart
+
+! <next few lines under version control, do not edit>
+! $URL$ 
+! $Id$ 
+! $Revision$ 
+! $Date$ 

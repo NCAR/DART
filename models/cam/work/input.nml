@@ -1,13 +1,13 @@
 &filter_nml
-   async                    = 2,
-   adv_ens_command          = "./advance_model.csh",
+   async                    = 0,
+   adv_ens_command          = "no_advance_script",
    ens_size                 = 20, 
    start_from_restart       = .true.,
    output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.in",
+   obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ic_old",
-   restart_out_file_name    = "filter_ic_new", 
+   restart_in_file_name     = "filter_ics",
+   restart_out_file_name    = "filter_restart", 
    init_time_days           = -1,
    init_time_seconds        = -1,
    first_obs_days           = -1,
@@ -23,24 +23,24 @@
    output_forward_op_errors = .false.,
    output_inflation         = .true.,
    trace_execution          = .true.,
-   output_timestamps        = .false.,
+   output_timestamps        = .true.,
    silence                  = .false.,
 
-   inf_flavor                  = 0,                       0,
-   inf_initial_from_restart    = .false.,                 .false.,
-   inf_sd_initial_from_restart = .false.,                 .false.,
+   inf_flavor                  = 2,                       0,
+   inf_initial_from_restart    = .true.,                 .false.,
+   inf_sd_initial_from_restart = .true.,                 .false.,
    inf_output_restart          = .true.,                  .true.,
    inf_deterministic           = .true.,                  .true.,
    inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics',
    inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
    inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.1,                     0.1,
-   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.6,                     0.6,
+   inf_damping                 = 0.9,                     0.9,
    inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
-/
+   inf_upper_bound             = 1000.0,               1000.0,
+   inf_sd_lower_bound          = 0.6,                     0.6
+   /
 ! ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
 
 &perfect_model_obs_nml
@@ -51,12 +51,14 @@
    start_from_restart    = .false.
    output_restart        = .false.
    restart_in_file_name  = 'smoother_ics'
-   restart_out_file_name = 'smoother_restart' /
+   restart_out_file_name = 'smoother_restart'
+   /
 
 &ensemble_manager_nml
    single_restart_file_in  = .false.,
    single_restart_file_out = .false.,
-   perturbation_amplitude  = 0.2 /
+   perturbation_amplitude  = 0.2
+   /
 
 &assim_tools_nml
    filter_kind                     = 1,
@@ -67,20 +69,23 @@
    adaptive_localization_threshold = -1,
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
-   print_every_nth_obs             = 0,
-/
+   print_every_nth_obs             = 10000,
+   /
 
 &cov_cutoff_nml
-   select_localization = 1  /
+   select_localization = 1
+   /
 
 &reg_factor_nml
    select_regression    = 1,
    input_reg_file       = "time_mean_reg",
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = 'reg_diagnostics' /
+   reg_diagnostics_file = 'reg_diagnostics'
+   /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+   /
 
 &assim_model_nml
    write_binary_restart_files = .true.,
@@ -93,9 +98,9 @@
    /
 
 &dart_to_cam_nml
-  dart_to_cam_input_file  = 'temp_ic',
+  dart_to_cam_input_file  = 'dart_restart',
   dart_to_cam_output_file = 'caminput.nc',
-  advance_time_present    = .true.,
+  advance_time_present    = .false.,
    /
 
 # common setups:
@@ -141,7 +146,7 @@
 !   will be reset to the values in pert_base_vals.  
 
 &location_nml
-   horiz_dist_only             = .true.,
+   horiz_dist_only             = .false.,
    vert_normalization_pressure = 100000.0, 
    vert_normalization_height   = 10000.0,
    vert_normalization_level    = 20.0,
@@ -150,7 +155,7 @@
    nlat                        = 36,
    output_box_info             = .false.,
    print_box_level             = 0,
-  /
+   /
 
 
 &preprocess_nml
@@ -176,7 +181,7 @@
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
                                 'GPSRO_REFRACTIVITY', 
-  /
+   /
 
 !   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE'
 
@@ -186,14 +191,15 @@
    module_details = .false.,
    logfilename = 'dart_log.out',
    nmlfilename = 'dart_log.nml',
-   write_nml   = 'file'  /
+   write_nml   = 'file'
+   /
 
 &mpi_utilities_nml
    /
 
 &obs_def_gps_nml
-  max_gpsro_obs = 100000,
-  / 
+   max_gpsro_obs = 1000000
+   / 
 
 &restart_file_tool_nml
    input_file_name              = "filter_restart",
@@ -210,7 +216,8 @@
    overwrite_advance_time       = .false.,
    new_advance_days             =  -1,
    new_advance_secs             =  -1,
-   gregorian_cal                = .true.   /
+   gregorian_cal                = .true.
+   /
 
 &obs_sequence_tool_nml
    filename_seq       = 'obs_seq.one', 'obs_seq.two',
@@ -225,7 +232,7 @@
    max_lon            =  360.0,
    gregorian_cal      = .true.
    print_only         =  .false.,
-/
+   /
 
 # other possible obs tool namelist items:
 #
@@ -279,16 +286,16 @@
    latlim2    =  80.0, -20.0,  20.0,  55.0,
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
-   print_obs_locations = .false.,
-   verbose = .false.  /
+   verbose = .false.
+   /
 
 &schedule_nml
    calendar        = 'Gregorian',
-   first_bin_start =  2007, 1, 01, 3, 0, 0 ,
-   first_bin_end   =  2007, 1, 01, 9, 0, 0 ,
-   last_bin_end    =  2007, 1, 15, 0, 0, 0 ,
-   bin_interval_days    = 0,
-   bin_interval_seconds = 21600,
+   first_bin_start =  1601,  1,  1,  0,  0,  0,
+   first_bin_end   =  2999,  1,  1,  0,  0,  0,
+   last_bin_end    =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,
+   bin_interval_seconds = 0,
    max_num_bins         = 1000,
    print_table          = .true.
    /
@@ -302,9 +309,6 @@
    latlim1    =  -90.0,
    latlim2    =   90.0,
    verbose    = .false.
-   /
-
-&obs_def_gps_nml
    /
 
 &obs_common_subset_nml
@@ -330,5 +334,5 @@
    ens_size               = 20,
    single_restart_file_in = .true.,
    difference_method      = 4,
- /
+   /
 

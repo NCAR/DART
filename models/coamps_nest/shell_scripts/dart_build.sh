@@ -1,5 +1,12 @@
 #!/bin/bash
 #
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
+#
 # Function to check the command return status 
 function check_return
 {
@@ -104,3 +111,9 @@ ${DART_SCRIPTS}/quickbuild.csh | tee ${DART_WORK}/make.out
 check_return $? quickbuild.csh
 
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

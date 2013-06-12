@@ -21,12 +21,12 @@ function two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind
 %
 % two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind)
 % print -dpdf myplot.pdf
- 
-% <next few lines under version control, do not edit>
-% $URL$
+
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
+% provided by UCAR, "as is", without charge, subject to all terms of use at
+% http://www.image.ucar.edu/DAReS/DART/DART_download
+%
 % $Id$
-% $Revision$
-% $Date$
 
 %%--------------------------------------------------------------------
 % Decode,Parse,Check the input
@@ -153,8 +153,8 @@ for i = 1:nexp
    commondata{i}.copyindex = get_copy_index(filenames{i},copystring);
    commondata{i}.lonlim1   = nc_attget(filenames{i},nc_global,'lonlim1');
    commondata{i}.lonlim2   = nc_attget(filenames{i},nc_global,'lonlim2');
-   commondata{i}.latlim1   = nc_attget(filenames{i},nc_global,'latlim1');
-   commondata{i}.latlim2   = nc_attget(filenames{i},nc_global,'latlim2');
+   commondata{i}.latlim1   = local_nc_attget(filenames{i},nc_global,'latlim1');
+   commondata{i}.latlim2   = local_nc_attget(filenames{i},nc_global,'latlim2');
 
    commondata{i}.region_names = nc_varget(filenames{i},'region_names');
 
@@ -215,22 +215,21 @@ plotdat.region        = regionindex;
 plotdat.levelindex    = levelindex;
 plotdat.bincenters    = nc_varget(fname,'time');
 plotdat.binedges      = nc_varget(fname,'time_bounds');
-plotdat.mlevel        = nc_varget(fname,'mlevel');
-plotdat.plevel        = nc_varget(fname,'plevel');
-plotdat.plevel_edges  = nc_varget(fname,'plevel_edges');
-plotdat.hlevel        = nc_varget(fname,'hlevel');
-plotdat.hlevel_edges  = nc_varget(fname,'hlevel_edges');
+plotdat.mlevel        = local_nc_varget(fname,'mlevel');
+plotdat.plevel        = local_nc_varget(fname,'plevel');
+plotdat.plevel_edges  = local_nc_varget(fname,'plevel_edges');
+plotdat.hlevel        = local_nc_varget(fname,'hlevel');
+plotdat.hlevel_edges  = local_nc_varget(fname,'hlevel_edges');
 plotdat.ncopies       = length(nc_varget(fname,'copy'));
 
+dimensionality             = nc_attget(fname, nc_global, 'LocationRank');
+plotdat.biasconv           = nc_attget(fname, nc_global, 'bias_convention');
 plotdat.binseparation      = nc_attget(fname, nc_global, 'bin_separation');
 plotdat.binwidth           = nc_attget(fname, nc_global, 'bin_width');
-plotdat.rat_cri            = nc_attget(fname, nc_global, 'rat_cri');
-plotdat.input_qc_threshold = nc_attget(fname, nc_global, 'input_qc_threshold');
 plotdat.lonlim1            = nc_attget(fname, nc_global, 'lonlim1');
 plotdat.lonlim2            = nc_attget(fname, nc_global, 'lonlim2');
-plotdat.latlim1            = nc_attget(fname, nc_global, 'latlim1');
-plotdat.latlim2            = nc_attget(fname, nc_global, 'latlim2');
-plotdat.biasconv           = nc_attget(fname, nc_global, 'bias_convention');
+plotdat.latlim1            = local_nc_attget(fname, nc_global, 'latlim1');
+plotdat.latlim2            = local_nc_attget(fname, nc_global, 'latlim2');
 
 % Coordinate between time types and dates
 
@@ -271,7 +270,10 @@ myinfo.levelindex     = plotdat.levelindex;
 guessdims = nc_var_dims(fname, plotdat.priorvar);
 analydims = nc_var_dims(fname, plotdat.postevar);
 
-if ( findstr('surface',guessdims{3}) > 0 )
+if ( dimensionality == 1 ) % observations on a unit circle, no level
+   plotdat.level = 1;
+   plotdat.level_units = [];
+elseif ( findstr('surface',guessdims{3}) > 0 )
    plotdat.level       = 1;
    plotdat.level_units = 'surface';
    plotdat.level_edges = [];
@@ -453,7 +455,7 @@ set(ax2,'YTick', yticks, 'YTicklabel', newticklabels)
 annotate( ax1, ax2, plotobj{1}, figdata)
 
 lh = legend(hd,legstr);
-legend(lh,'boxoff');
+legend(lh,'boxoff','Interpreter','none');
 
 % The legend linesizes should match - 2 is hardwired - suprises me.
 
@@ -478,10 +480,14 @@ end
 
 set(get(ax1,'Ylabel'),'String',ylabel,'Interpreter','none','FontSize',figdata.fontsize)
 
-th = title({deblank(plotobj.region_names(plotobj.region,:)), ...
+if ( isempty(plotobj.level_units) )
+   th = title(plotobj.varname)
+else
+   th = title({deblank(plotobj.region_names(plotobj.region,:)), ...
        sprintf('%s @ %d %s', plotobj.varname, ...
                              plotobj.level(plotobj.levelindex), ...
                              plotobj.level_units)});
+end
 set(th,'Interpreter','none','FontSize',figdata.fontsize);
 
 
@@ -600,3 +606,45 @@ figdata = struct('expcolors',  {{'k','r','g','m','b','c','y'}}, ...
                  'fontsize',fontsize, 'orientation',orientation);
 
 clf; orient(gcf, orientation)
+
+
+
+function value = local_nc_varget(fname,varname)
+%% If the variable exists in the file, return the contents of the variable.
+% if the variable does not exist, return empty value instead of error-ing
+% out.
+
+[variable_present, varid] = nc_var_exists(fname,varname);
+if (variable_present)
+   ncid  = netcdf.open(fname);
+   value = netcdf.getVar(ncid, varid);
+else
+   value = [];
+end
+
+
+
+function value = local_nc_attget(fname,varid,varname)
+%% If the (global) attribute exists, return the value.
+% If it does not, do not throw a hissy-fit.
+
+value = [];
+if (varid == nc_global)
+   finfo = ncinfo(fname);
+   for iatt = 1:length(finfo.Attributes)
+      if (strcmp(finfo.Attributes(iatt).Name, deblank(varname)))
+         value = finfo.Attributes(iatt).Value;
+         return
+      end
+   end
+else
+   fprintf('function not supported for local variables, only global atts.\n')
+end
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

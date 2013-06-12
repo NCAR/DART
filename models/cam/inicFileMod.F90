@@ -1,19 +1,15 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
-! provided by UCAR, "as is", without charge, subject to all terms of use at
-! http://www.image.ucar.edu/DAReS/DART/DART_download
+! This code may (or may not) be part of the CESM distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
 
 #include <misc.h>
 #include <preproc.h>
 
 module inicFileMod
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-
 !----------------------------------------------------------------------- 
+! 
 ! Purpose: 
 ! read and writes initial data netCDF history files
 !
@@ -21,8 +17,6 @@ module inicFileMod
 ! 
 ! Author: Mariana Vertenstein
 ! 
-!-----------------------------------------------------------------------
-! $Id$
 !-----------------------------------------------------------------------
 
   use shr_kind_mod, only: r8 => shr_kind_r8
@@ -44,10 +38,10 @@ module inicFileMod
   implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! netcdf data
 
@@ -1201,9 +1195,8 @@ CONTAINS
 
 end module inicFileMod
 
-
-
-
-
-
-
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

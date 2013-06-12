@@ -102,6 +102,7 @@
    /
 
 &preprocess_nml
+           overwrite_output = .true.,
     input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
    output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
      input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
@@ -114,6 +115,7 @@
                               '../../../obs_def/obs_def_altimeter_mod.f90',
                               '../../../obs_def/obs_def_gps_mod.f90',
                               '../../../obs_def/obs_def_vortex_mod.f90',
+                              '../../../obs_def/obs_def_gts_mod.f90',
    /
 
 &obs_kind_nml
@@ -167,6 +169,8 @@
 # otherwise it uses a hardcoded default list: U, V, W, PH, T, MU, QV only.
 # see ../wrf_state_variables_table for a full list of what wrf fields are
 # supported in the DART state vector, and what settings should be used here.
+# 'UPDATE' and 'NO_COPY_BACK' are supported in the 4th column; 'NO_UPDATE' is
+# not yet supported.
 
 &model_nml
    default_state_variables = .true.,
@@ -232,6 +236,9 @@
    write_nml   = 'file',
    /
 
+&mpi_utilities_nml
+   /
+
 &reg_factor_nml
    select_regression    = 1,
    input_reg_file       = "time_mean_reg",
@@ -276,18 +283,17 @@
    latlim2    =  80.0, -20.0,  20.0,  55.0,
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
-   print_obs_locations   = .false.,
    verbose               = .false.,
    outliers_in_histogram = .false.,
    /
 
 &schedule_nml
    calendar        = 'Gregorian',  
-   first_bin_start =  2008, 9, 4, 3, 0, 0 ,
-   first_bin_end   =  2008, 9, 4, 9, 0, 0 ,
-   last_bin_end    =  2008, 9, 15, 0, 0, 0 ,
-   bin_interval_days    = 0,
-   bin_interval_seconds = 21600,   
+   first_bin_start =  1601,  1,  1,  0,  0,  0,
+   first_bin_end   =  2999,  1,  1,  0,  0,  0,
+   last_bin_end    =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,
+   bin_interval_seconds = 0,   
    max_num_bins         = 1000,
    print_table          = .true.,
    /
@@ -395,5 +401,19 @@
                 "SNOWH",
                 "SNOW",
    fieldlist_file = '',
+   /
+
+&obs_common_subset_nml
+   filename_seq1       = '',
+   filename_seq2       = '',
+   filename_seq3       = '',
+   filename_seq4       = '',
+   filename_seq_list1  = 'obs_list1.txt',
+   filename_seq_list2  = 'obs_list2.txt',
+   filename_seq_list3  = 'obs_list3.txt',
+   filename_seq_list4  = '',
+   filename_out_suffix = '.common'
+   print_only          = .false.,
+   calendar            = 'Gregorian'
    /
 

@@ -1,8 +1,15 @@
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
+module coamps_grid_mod
+
 !------------------------------
 ! MODULE:       coamps_flatfile_mod
 ! AUTHOR:       T. R. Whitcomb and P. A. Reinecke
 !               Naval Research Laboratory
-! DART VERSION: ?????
+! DART VERSION: Jamaica
 !
 ! Module containing the data structure and routines for dealing with
 ! COAMPS flat files.
@@ -19,7 +26,6 @@ module coamps_flat_file_mod
                                    lowercase
 
   implicit none
-
   private
 
   !------------------------------
@@ -54,14 +60,12 @@ module coamps_flat_file_mod
   !------------------------------
   ! BEGIN MODULE VARIABLES
   !------------------------------
-  character(len=128) :: &
-       source = "models/coamps/coamps_flat_file_mod.f90 $", &
-       revision = "$Revision$", &
-       revdate = "$Date$"
 
-!       source = "$URL$", &
-!       revision = "$Revision$", &
-!       revdate = "$Date$"
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "Revision: 4371"
+character(len=128), parameter :: revdate = "Date: 2010-05-21 16:23:38 -0600 (Fri, 21 May 2010) "
 
   logical :: module_initialized = .false.
   !------------------------------
@@ -207,3 +211,9 @@ contains
   ! END PRIVATE ROUTINES
   !------------------------------
 end module
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

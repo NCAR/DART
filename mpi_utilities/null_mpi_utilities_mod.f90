@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module mpi_utilities_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !-----------------------------------------------------------------------------
 !
@@ -189,10 +185,10 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           sum_across_tasks
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 logical, save :: module_initialized = .false.
 
@@ -516,9 +512,8 @@ if (from /= myrank) then
    call error_handler(E_ERR,'broadcast_send', errstring, source, revision, revdate)
 endif
 
-! this must be paired with broadcast_recv() on all other tasks. 
-! it will not return until all tasks in the communications group have
-! made the call.
+! this does nothing, because the array already has the data.
+! the subroutine does validate 'from' to be sure it's a valid task id.
 call array_broadcast(array1, from)
 
 end subroutine broadcast_send
@@ -546,9 +541,8 @@ if (from == myrank) then
    call error_handler(E_ERR,'broadcast_recv', errstring, source, revision, revdate)
 endif
 
-! this must be paired with a single broadcast_send() on the 'from' task.
-! it will not return until all tasks in the communications group have
-! made the call.
+! this does nothing, because the array already has the data.
+! the subroutine does validate 'from' to be sure it's a valid task id.
 call array_broadcast(array1, from)
 
 end subroutine broadcast_recv
@@ -799,3 +793,9 @@ subroutine exit_all(exit_code)
    call exit(exit_code)
 
 end subroutine exit_all
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

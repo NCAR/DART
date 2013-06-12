@@ -1,11 +1,14 @@
-! recntr_bndyperts
-! --------------------
+! This code may (or may not) be part of the COAMPS distribution,
+! So it is not protected by the DART copyright agreement.
+!
+! DART $Id$
+
+program recntr_bndyperts
+
 ! This program pulls pieces out of the large COAMPS restart file,
 ! then assembles them into a state vector that can be used by DART.
 ! This includes two pieces of information - the current time and
 ! the actual state
-program recntr_bndyperts
-
 
   use coamps_util_mod,      only : check_alloc_status,           &
                                    check_dealloc_status,         &
@@ -27,10 +30,11 @@ program recntr_bndyperts
 
   implicit none
 
-  character(len=128) :: &
-       source   = " ",  &
-       revision = " ",  &
-       revdate  = " "
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
   character(len=*), parameter :: routine = 'recntr_bndyperts'
   character(len=64)           :: coamps_file_name
@@ -206,3 +210,9 @@ program recntr_bndyperts
   call finalize_mpi_utilities()
 
 end program recntr_bndyperts
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

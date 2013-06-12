@@ -8,17 +8,12 @@
 % without waiting to reread the data (assuming the data files and which
 % variable being plotted doesn't change.)
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
-%
 % global parms - set once here.   none of these have semicolons so they
 %                echo their values as they print.
 %
@@ -91,3 +86,8 @@ notitle  = 0     % no title
 
 cam_correl_read_and_plot
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

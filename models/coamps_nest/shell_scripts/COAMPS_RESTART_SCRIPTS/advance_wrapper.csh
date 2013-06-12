@@ -1,5 +1,12 @@
 #!/bin/tcsh
 #
+# This code may (or may not) be part of the COAMPS distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
+#
+########################################################################
+#
 # SCRIPT:   advance_wrapper.csh
 # AUTHOR:   T. R. Whitcomb
 #           Naval Research Laboratory
@@ -82,4 +89,11 @@ while (-e ${LOCKFILE})
     sleep 5
 end
 echo "advance_wrapper done!"
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

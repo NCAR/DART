@@ -1,15 +1,11 @@
 %% ObsTimeCheck - This is a function to explore the spatio-temporal distribution
 %                 of the observations in a netCDF file created by obs_seq_to_netcdf.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 region        = [80 175 -10 60 -Inf Inf];
 CopyString    = 'NCEP BUFR observation';
@@ -38,3 +34,9 @@ for i = 1:168
    pause
 
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$

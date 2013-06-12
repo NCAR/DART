@@ -19,7 +19,7 @@
    output_forward_op_errors = .false.,
    print_every_nth_obs   = -1,
    silence               = .false.,
- /
+   /
 
 &filter_nml
    async                    = 2,
@@ -62,47 +62,52 @@
    inf_lower_bound          = 1.0,                    1.0,
    inf_upper_bound          = 1000000.0,              1000000.0,
    inf_sd_lower_bound       = 0.0,                    0.0
-/
-! ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
+   /
 
 &smoother_nml
    num_lags              = 0
    start_from_restart    = .false.
    output_restart        = .false.
    restart_in_file_name  = 'smoother_ics'
-   restart_out_file_name = 'smoother_restart' /
+   restart_out_file_name = 'smoother_restart'
+   /
 
 &ensemble_manager_nml
    single_restart_file_in = .false.,
-   single_restart_file_out = .false. /
+   single_restart_file_out = .false.
+   /
 
 &assim_tools_nml
    filter_kind                     = 1,
    cutoff                          = 0.2,
-   sort_obs_inc                    = .true.,
+   sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
-   print_every_nth_obs             = 0 /
+   print_every_nth_obs             = 0
+   /
 
 &cov_cutoff_nml
-   select_localization = 1  /
+   select_localization = 1
+   /
 
 &reg_factor_nml
    select_regression = 1,
    input_reg_file = "time_mean_reg" 
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = 'reg_diagnostics' /
+   reg_diagnostics_file = 'reg_diagnostics'
+   /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+   /
 
 &assim_model_nml
    write_binary_restart_files = .true.,
    netCDF_large_file_support  = .true.
-  /
+   /
 
 &model_nml
    model_config_file  = 'fv_rst.res.nc', 
@@ -125,7 +130,21 @@
    highest_state_pressure_mb = 150.0,
    max_obs_lat_degree        = 85.0,
    Time_step_seconds         = 21600,
-   Time_step_days            = 0  /
+   Time_step_days            = 0
+   /
+
+&am2_to_dart_nml
+   restart_file            = 'fv_rst.res.nc',
+   tracer_file             = 'atmos_tracers.res.nc',
+   am2_to_dart_output_file = 'dart_ics'
+   /
+
+&dart_to_am2_nml
+   dart_to_am2_input_file  = 'dart_restart',
+   restart_file            = 'fv_rst.res.nc',
+   tracer_file             = 'atmos_tracers.res.nc',
+   advance_time_present    = .false.
+   /
 
 &location_nml
    horiz_dist_only = .false.,
@@ -134,9 +153,11 @@
    vert_normalization_level = 20.0,
    approximate_distance = .true.,
    nlon = 71, 
-   nlat = 36  /
+   nlat = 36
+   /
 
 &preprocess_nml
+           overwrite_output = .true.,
     input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
    output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
      input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
@@ -145,8 +166,8 @@
                               '../../../obs_def/obs_def_gps_mod.f90',
                               '../../../obs_def/obs_def_QuikSCAT_mod.f90',
                               '../../../obs_def/obs_def_AIRS_mod.f90',
-                              '../../../obs_def/obs_def_cloud_mod.f90' /
-                             
+                              '../../../obs_def/obs_def_cloud_mod.f90'
+   /
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
@@ -162,17 +183,18 @@
                                 'SAT_V_WIND_COMPONENT',
                                 'CLOUD_LIQUID_WATER', 
                                 'CLOUD_ICE', 
-                                'CLOUD_FRACTION' /
+                                'CLOUD_FRACTION'
+   /
 
 !   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE' /
-
 
 &utilities_nml
    TERMLEVEL = 1,
    module_details = .false.,
    logfilename = 'dart_log.out',
    nmlfilename = 'dart_log.nml',
-   write_nml   = 'file'  /
+   write_nml   = 'file'
+   /
 
 &mpi_utilities_nml
    /
@@ -237,7 +259,7 @@
    new_advance_days             = -1,
    new_advance_secs             = -1,
    gregorian_cal                = .true.
-/
+   /
 
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
@@ -266,6 +288,7 @@
    latlim2    =  80.0, -20.0,  20.0,  55.0,
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
-   verbose = .false.  /
+   verbose = .false.
+   /
 
 

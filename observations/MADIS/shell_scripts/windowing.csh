@@ -1,10 +1,10 @@
-#!/bin/csh 
+#!/bin/csh
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id$
+# DART $Id$
 #
 # madis data window program -- reads hourly or daily obs_seq files
 # by type, and outputs a single obs_seq file with all obs for that

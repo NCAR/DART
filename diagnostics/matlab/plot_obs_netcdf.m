@@ -33,15 +33,11 @@ function obsstruct = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, .
 %
 % bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxgoodQC, verbose, twoup);
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if (exist(fname,'file') ~= 2)
    error('%s does not exist.',fname)
@@ -412,4 +408,11 @@ set(gca,'CLim',clim)
 hb = colorbar;
 set(get(hb,'YLabel'),'String',pstruct.colorbarstring,'Interpreter','none')
 view(0,90)
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

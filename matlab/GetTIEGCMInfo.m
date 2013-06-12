@@ -7,15 +7,11 @@ function pinfo = GetTIEGCMInfo(pstruct,fname,routine);
 % pstruct   structure containing the names of the truth_file and the diagn_file of the DART netcdf file
 % routine   name of subsequent plot routine.
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if (exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
@@ -28,29 +24,19 @@ end
 
 %% Get the domain-independent information.
 
-varexist(fname, {'copy','time'})
+varexist(fname, {'copy','ilev','lev','lon','lat'})
 
 copy   = nc_varget(fname,'copy');
-times  = nc_varget(fname,'time');
-
-% Coordinate between time types and dates
-
-timeunits  = nc_attget(fname,'time','units');
-timebase   = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
-timeorigin = datenum(timebase(1),timebase(2),timebase(3));
-dates      = times + timeorigin;
-
 ilevel = nc_varget(fname,'ilev');    % interfaces
 levels = nc_varget(fname, 'lev');    % midpoints
 lon    = nc_varget(fname, 'lon');
 lat    = nc_varget(fname, 'lat');
 
-
-inds = find(lon >= 180);
+inds      = find(lon >= 180);
 lon(inds) = lon(inds) - 360.0;
 
 prognostic_vars = get_DARTvars(fname);
-num_vars = length(prognostic_vars);
+num_vars        = length(prognostic_vars);
 
 switch lower(deblank(routine))
 
@@ -62,7 +48,6 @@ switch lower(deblank(routine))
       [lon  , lonind] = GetLongitude(pgvar,lon);
 
       pinfo.model      = model;
-      pinfo.times      = dates;
       pinfo.var        = pgvar;
       pinfo.level      = level;
       pinfo.levelindex = lvlind;
@@ -76,7 +61,7 @@ switch lower(deblank(routine))
 
       disp('Getting information for the ''base'' variable.')
        base_var                = GetVar(prognostic_vars);
-      [base_time, base_tmeind] = GetTime(dates);
+      [base_time, base_tmeind] = GetTime(pinfo.time);
       [base_lvl,  base_lvlind] = GetLevel(    base_var,levels);
       [base_lat,  base_latind] = GetLatitude( base_var,lat);
       [base_lon,  base_lonind] = GetLongitude(base_var,lon);
@@ -85,8 +70,7 @@ switch lower(deblank(routine))
        comp_var               = GetVar(prognostic_vars,          base_var);
       [comp_lvl, comp_lvlind] = GetLevel(    comp_var,levels,    base_lvlind);
 
-      pinfo.model       = model; 
-      pinfo.times       = dates;
+      pinfo.model       = model;
       pinfo.base_var    = base_var;
       pinfo.comp_var    = comp_var;
       pinfo.base_time   = base_time;
@@ -105,7 +89,7 @@ switch lower(deblank(routine))
 
       disp('Getting information for the ''base'' variable.')
        base_var                = GetVar(prognostic_vars);
-      [base_time, base_tmeind] = GetTime(dates);
+      [base_time, base_tmeind] = GetTime(pinfo.time);
       [base_lvl , base_lvlind] = GetLevel(    base_var,levels);
       [base_lat , base_latind] = GetLatitude( base_var,lat);
       [base_lon , base_lonind] = GetLongitude(base_var,lon);
@@ -117,7 +101,6 @@ switch lower(deblank(routine))
       [comp_lon, comp_lonind] = GetLongitude(comp_var,lon,base_lon);
 
       pinfo.model       = model;
-      pinfo.times       = dates;
       pinfo.base_var    = base_var;
       pinfo.comp_var    = comp_var;
       pinfo.base_time   = base_time;
@@ -145,7 +128,6 @@ switch lower(deblank(routine))
  %    [  lon, lonind] = GetCopies(pgvar,xxx);
 
       pinfo.model          = model;
-      pinfo.times          = dates;
       pinfo.var_names      = pgvar;
       pinfo.truth_file     = [];
       pinfo.prior_file     = pstruct.prior_file;
@@ -162,7 +144,7 @@ switch lower(deblank(routine))
       if ( exist(pstruct.truth_file,'file') )
          pinfo.truth_file = pstruct.truth_file;
       end
-       
+
 
    case 'plotphasespace'
 
@@ -193,7 +175,6 @@ switch lower(deblank(routine))
       if isempty(s1), ltype = 'k-'; else ltype = s1; end
 
       pinfo.model       = model;
-      pinfo.times       = dates;
       pinfo.var1name    = var1;
       pinfo.var2name    = var2;
       pinfo.var3name    = var3;
@@ -231,11 +212,11 @@ str = sprintf(' %s ',prognostic_vars{1});
 for i = 2:length(prognostic_vars),
    str = sprintf(' %s %s ',str,prognostic_vars{i});
 end
-fprintf('Default variable is ''%s'', if this is OK, <cr>;\n',pgvar)  
+fprintf('Default variable is ''%s'', if this is OK, <cr>;\n',pgvar)
 fprintf('If not, please enter one of: %s\n',str)
 varstring = input('(no syntax required)\n','s');
 
-if ~isempty(varstring), pgvar = strtrim(varstring); end 
+if ~isempty(varstring), pgvar = strtrim(varstring); end
 inds        = strfind(pgvar,',');
 pgvar(inds) = '';
 
@@ -269,7 +250,7 @@ if ~isempty(varstring), tindex = str2num(varstring); end
 
 timeinds = 1:ntimes;
 d        = abs(tindex - timeinds); % crude distance
-ind      = find(min(d) == d);      % multiple minima possible 
+ind      = find(min(d) == d);      % multiple minima possible
 timeind  = ind(1);                 % use the first one
 time     = times(timeind);
 
@@ -286,7 +267,7 @@ fprintf('If not, enter a level between %d and %d, inclusive ...\n', ...
                          1,length(levels))
 varstring = input('we''ll use the closest (no syntax required)\n','s');
 
-if ~isempty(varstring), lvlind = str2num(varstring); end 
+if ~isempty(varstring), lvlind = str2num(varstring); end
 
 level  = levels(lvlind);
 
@@ -296,15 +277,15 @@ function [lon, lonind] = GetLongitude(pgvar, lons, deflon)
 %----------------------------------------------------------------------
 if (nargin == 3), lon = deflon; else lon = 255.0-360.0; end
 
-fprintf('Default longitude is %f, if this is OK, <cr>;\n',lon)  
+fprintf('Default longitude is %f, if this is OK, <cr>;\n',lon)
 fprintf('If not, enter a longitude between %.2f and %.2f, we use the closest.\n', ...
                          min(lons),max(lons))
 varstring = input('(no syntax required)\n','s');
 
-if ~isempty(varstring), lon  = str2num(varstring); end 
+if ~isempty(varstring), lon  = str2num(varstring); end
 
 d      = abs(lon - lons);    % crude distance
-ind    = find(min(d) == d);  % multiple minima possible 
+ind    = find(min(d) == d);  % multiple minima possible
 lonind = ind(1);             % use the first one
 lon    = lons(lonind);
 
@@ -319,10 +300,10 @@ fprintf('If not, enter a latitude between %.2f and %.2f, we use the closest.\n',
                          min(lats),max(lats))
 varstring = input('(no syntax required)\n','s');
 
-if ~isempty(varstring), lat = str2num(varstring); end 
+if ~isempty(varstring), lat = str2num(varstring); end
 
 d      = abs(lat - lats);    % crude distance
-ind    = find(min(d) == d);  % multiple minima possible 
+ind    = find(min(d) == d);  % multiple minima possible
 latind = ind(1);             % use the first one
 lat    = lats(latind);
 
@@ -346,4 +327,11 @@ end
 if ~ all(gotone)
    error('missing required variable ... exiting')
 end
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

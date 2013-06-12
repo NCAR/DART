@@ -1,0 +1,8 @@
+
+processed snow cover file.
+
+this is a text file, 90 lines, one for each latitude
+in the northern hemisphere.  360 values per line, one
+for each longitude.  -20 is missing value.
+
+

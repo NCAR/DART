@@ -20,6 +20,7 @@
    num_groups               = 1,
    input_qc_threshold       =  3.0,
    outlier_threshold        = -1.0,
+   enable_special_outlier_code = .false.,
    output_forward_op_errors = .false.,
    output_restart_mean      = .false.,
    output_timestamps        = .false.,

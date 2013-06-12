@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program rms_diag
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! Sample diagnostic program that computes rms error as function 
 ! of time between a truth found in one file, priors found in 
@@ -23,10 +19,10 @@ use assim_model_mod, only : init_diag_input, get_diag_input_copy_meta_data, &
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 integer :: prior_unit, posterior_unit, truth_unit, ens_size, model_size, copies
 type(location_type), allocatable :: location(:)
@@ -123,3 +119,9 @@ write(*, *) 'posterior mean rms is ', sum_posterior_mean_rms / num_samples
 write(*, *) 'normalized ratio is ', (sum_posterior_rms / sum_posterior_mean_rms) / desired
 
 end program rms_diag
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

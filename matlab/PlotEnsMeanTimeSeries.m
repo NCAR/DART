@@ -16,14 +16,13 @@ function PlotEnsMeanTimeSeries( pinfo )
 %                 plotted on its own axis.
 %
 %
-% Example 1  (9variable model)
+% Example 1 ( 9var model )
 %-------------------------------------------------------------
 % pinfo.truth_file  = 'True_State.nc';
 % pinfo.diagn_file  = 'Prior_Diag.nc';
 % pinfo.model       = '9var';
 % pinfo.var         = 'state';
-% pinfo.var_inds    = [ 4 5 6 ]; 
-
+% pinfo.var_inds    = [ 4 5 6 ];
 % PlotEnsMeanTimeSeries( pinfo )
 %
 % Example 2 (FMS BGrid model)
@@ -36,46 +35,32 @@ function PlotEnsMeanTimeSeries( pinfo )
 % pinfo.longitude  = 45.67;
 % PlotEnsMeanTimeSeries( pinfo )
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if ( exist(pinfo.diagn_file,'file') ~= 2 ), error('%s does not exist.',pinfo.diagn_file); end
 
-% Get the indices for the ensemble mean and spread.
+% Get the indices for the ensemble mean.
 % The metadata is queried to determine which "copy" is appropriate.
-ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
-ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
+ens_mean_index = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 
 % If the truth is known, great.
 if ( exist(pinfo.truth_file,'file') == 2)
    have_truth  = 1;
    truth_index = get_copy_index(pinfo.truth_file, 'true state');
-   vars        = CheckModelCompatibility(pinfo);
-   pinfo       = CombineStructs(pinfo,vars);
 else
    have_truth  = 0;
-   diminfo = nc_getdiminfo(pinfo.diagn_file,'time');
-   pinfo.diagn_time = [1 diminfo.Length];
-   pinfo.model = nc_attget(pinfo.diagn_file, nc_global, 'model');
+   pinfo.diagn_time = [1 pinfo.time_series_length];
 end
-
-% Get some useful plotting arrays
-
-num_times = pinfo.diagn_time(2) - pinfo.diagn_time(1) + 1;
-times     = nc_varget(pinfo.diagn_file,'time', pinfo.diagn_time(1)-1, num_times); 
 
 switch lower(pinfo.model)
 
    case '9var'
 
-      % Use three different figures with three subplots each
+      %% Use three different figures with three subplots each
       for i = 1:3
          figure(i); clf
          for j = 1:3
@@ -85,15 +70,17 @@ switch lower(pinfo.model)
 
             % If the truth is known ...
             if ( have_truth )
-               truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
-                                      pinfo.truth_time(1), pinfo.truth_time(2));
-               plot(times,truth,'b','LineWidth',1.0); hold on;
+               truth = get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.var, ...
+                           'copyindex',truth_index, 'stateindex',ivar, ...
+                           'tindex1', pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
+               plot(pinfo.time,truth,'b','LineWidth',1.0); hold on;
                legendstr = 'True State';
             end
 
-            ens_mean = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
-                                      pinfo.diagn_time(1), pinfo.diagn_time(2));
-            plot(times,ens_mean,'r','LineWidth',1.0)
+            ens_mean = get_hyperslab('fname',pinfo.diagn_file, 'varname',pinfo.var, ...
+                           'copyindex',ens_mean_index, 'stateindex',ivar, ...
+                           'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
+            plot(pinfo.time,ens_mean,'r','LineWidth',1.0)
 
             if (exist('legendstr','var'))
                legend(legendstr,'Ensemble Mean',0)
@@ -103,7 +90,7 @@ switch lower(pinfo.model)
 
             title(sprintf('%s Variable %d of %s',pinfo.model,ivar,pinfo.diagn_file), ...
                      'interpreter','none','fontweight','bold')
-            xlabel(sprintf('model time (%d timesteps)',num_times))
+            xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
             legend boxoff
             hold off;
          end
@@ -111,94 +98,101 @@ switch lower(pinfo.model)
 
    case {'lorenz_63','lorenz_84'}
 
-      % Use one figure with three(usually) subplots
+      %% Use one figure with three(usually) subplots
       figure(1); clf; iplot = 0;
       for ivar = pinfo.var_inds,
 
             iplot = iplot + 1;
             subplot(length(pinfo.var_inds), 1, iplot);
 
-            ens_mean    = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
-                                         pinfo.diagn_time(1), pinfo.diagn_time(2));
-            plot(times,ens_mean,'r');
+            ens_mean    = get_hyperslab('fname',pinfo.diagn_file, 'varname',pinfo.var, ...
+                              'copyindex',ens_mean_index, 'stateindex', ivar, ...
+                              'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
+            plot(pinfo.time, ens_mean, 'r');
             legend('Ensemble Mean',0);
 
-            % If the truth is known ...
             if ( have_truth )
-               truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
-                                      pinfo.truth_time(1), pinfo.truth_time(2));
-               hold on; plot(times,truth,'b'); hold off;
+               truth = get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.var, ...
+                           'copyindex',truth_index, 'stateindex',ivar, ...
+                           'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
+               hold on; plot(pinfo.time,truth,'b'); hold off;
                legend('Ensemble Mean','True State',0);
             end
 
             s1 = sprintf('%s Variable %d',pinfo.model,ivar);
             title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
-            xlabel(sprintf('model time (%d timesteps)',num_times))
+            xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
             legend boxoff
       end
+
       % as a bonus, plot the mean attractors.
       figure(2); clf
-      ens  = get_state_copy(pinfo.diagn_file,pinfo.var, ens_mean_index, ...
-                            pinfo.diagn_time(1), pinfo.diagn_time(2));
+      ens  = get_hyperslab('fname',pinfo.diagn_file, 'varname',pinfo.var, ...
+                       'copyindex',ens_mean_index, ...
+                       'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
       plot3(ens(:,1), ens(:,2), ens(:,3), 'r')
       legend('Ensemble Mean',0)
 
       if (have_truth)
-         ts= get_state_copy(pinfo.truth_file,pinfo.var, truth_index, ...
-                            pinfo.truth_time(1), pinfo.truth_time(2));
+         ts= get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.var, ...
+                       'copyindex',truth_index, ...
+                       'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
          hold on; plot3(  ts(:,1),  ts(:,2),  ts(:,3), 'b'); hold off;
          legend('Ensemble Mean','True State',0)
       end
 
       title(sprintf('%s Attractors for %s', ...
-              pinfo.model, pinfo.diagn_file), ...    
+              pinfo.model, pinfo.diagn_file), ...
               'interpreter','none','fontweight','bold')
       xlabel('state variable 1')
       ylabel('state variable 2')
       zlabel('state variable 3')
       legend boxoff
 
-   case {'lorenz_96', 'lorenz_96_2scale', 'lorenz_04', 'forced_lorenz_96', ...
-         'ikeda', 'simple_advection'} 
+   case {'lorenz_96', 'lorenz_96_2scale', 'forced_lorenz_96', 'lorenz_04', ...
+         'ikeda', 'simple_advection'}
 
-      % Plot all variables in own subplot ... might get cluttered.
+      %% Plot all variables in own subplot ... might get cluttered.
       figure(1); clf; iplot = 0;
       for ivar = pinfo.var_inds,
             iplot = iplot + 1;
             subplot(length(pinfo.var_inds), 1, iplot);
-            ens_mean = get_var_series(pinfo.diagn_file, pinfo.var, ens_mean_index, ivar, ...
-                                         pinfo.diagn_time(1), pinfo.diagn_time(2));
-            plot(times,ens_mean,'r')
+            ens_mean = get_hyperslab('fname',pinfo.diagn_file, 'varname',pinfo.var, ...
+                           'copyindex',ens_mean_index, 'stateindex',ivar, ...
+                           'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
+            plot(pinfo.time, ens_mean, 'r')
             legend('Ensemble Mean',0)
 
             % Get the truth for this variable
             if (have_truth)
-               truth = get_var_series(pinfo.truth_file, pinfo.var, truth_index, ivar, ...
-                                      pinfo.truth_time(1), pinfo.truth_time(2));
-               hold on; plot(times,truth,'b'); hold off;
+               truth = get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.var, ...
+                           'copyindex',truth_index, 'stateindex',ivar, ...
+                           'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
+               hold on; plot(pinfo.time,truth,'b'); hold off;
                legend('Ensemble Mean','True State',0)
             end
             s1 = sprintf('%s Variable %d',pinfo.model,ivar);
             title({s1,pinfo.diagn_file},'interpreter','none','fontweight','bold')
-            xlabel(sprintf('model time (%d timesteps)',num_times))
+            xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
             legend boxoff
       end
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf','cam'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf','cam','sqg'}
 
       clf;
 
-      timeunits = nc_attget(pinfo.fname, 'time',    'units');
-      varunits  = nc_attget(pinfo.fname, pinfo.var, 'units');
+      varunits  = nc_attget(pinfo.diagn_file, pinfo.var, 'units');
 
       subplot(2,1,1)
          PlotLocator(pinfo)
 
-      ens_mean    = GetCopy(pinfo.diagn_file, ens_mean_index,   pinfo , ...
-                            pinfo.diagn_time(1), pinfo.diagn_time(2)) ;
+      ens_mean  = get_hyperslab('fname',pinfo.diagn_file, 'varname',pinfo.var, ...
+                      'copyindex',ens_mean_index, 'levelindex',pinfo.levelindex, ...
+                      'latindex',pinfo.latindex, 'lonindex',pinfo.lonindex, ...
+                      'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
 
       subplot(2,1,2)
-         plot(times,ens_mean,'r');
+         plot(pinfo.time, ens_mean, 'r');
          legend('Ensemble Mean',0)
 
          s1 = sprintf('%s ''%s'' -- %s Ensemble Mean', ...
@@ -208,18 +202,67 @@ switch lower(pinfo.model)
          title({s1,s2,pinfo.diagn_file},'interpreter','none','fontweight','bold')
 
          if (have_truth)
-            truth = GetCopy(pinfo.truth_file, truth_index,      pinfo , ...
-                            pinfo.truth_time(1), pinfo.truth_time(2)) ;
-            hold on; plot(times,truth,'b'); hold off;
+
+            truth = get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.var, ...
+                      'copyindex',truth_index, 'levelindex',pinfo.levelindex, ...
+                      'latindex',pinfo.latindex, 'lonindex',pinfo.lonindex, ...
+                      'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
+
+            hold on; plot(pinfo.time, truth,'b'); hold off;
             legend('Ensemble Mean','True State',0)
          end
 
          legend boxoff
-         xlabel(sprintf('time (%s) %d timesteps',timeunits, num_times))
+         xdates(pinfo.time)
          ylabel(varunits)
 
+   case {'mpas_atm'}
+
+      clf;
+
+      varunits  = nc_attget(pinfo.diagn_file, pinfo.var, 'units');
+
+      subplot(2,1,1)
+         PlotLocator(pinfo)
+
+      subplot(2,1,2)
+
+         ens_mean = get_hyperslab('fname',pinfo.diagn_file, ...
+                       'varname',pinfo.var, 'levelindex',pinfo.levelindex, ...
+                       'copyindex',ens_mean_index, ...
+                       'cellindex',pinfo.cellindex, ...
+                       'tindex1',pinfo.diagn_time(1), 'tcount',pinfo.diagn_time(2));
+
+         hmean = plot(pinfo.time, ens_mean, 'r','LineWidth',2);
+         legendstr = {'Ensemble mean'};
+
+         h = hmean;
+
+         if ( have_truth )
+            truth    = get_hyperslab('fname',pinfo.truth_file, ...
+                       'varname',pinfo.var, 'levelindex',pinfo.levelindex, ...
+                       'copyindex',truth_index, ...
+                       'cellindex',pinfo.cellindex, ...
+                       'tindex1',pinfo.truth_time(1), 'tcount',pinfo.truth_time(2));
+            hold on;
+            ht = plot(pinfo.time, truth, 'b-','LineWidth',2);
+            hold off;
+            h = [h ht];
+            legendstr(length(legendstr)+1) = {'True State'};
+         end
+
+         s1 = sprintf('%s ''%s'' -- %s Ensemble Mean', ...
+                    pinfo.model, pinfo.var, pinfo.diagn_file);
+         s2 = sprintf('level %d lat %.2f lon %.2f', ...
+                    pinfo.level, pinfo.latitude, pinfo.longitude);
+         title({s1,s2,pinfo.diagn_file},'interpreter','none','fontweight','bold')
+         xdates(pinfo.time)
+         ylabel(varunits);
+         legend(h,legendstr);
+         legend boxoff
 
    otherwise
+
       error('model %s unknown.',pinfo.model)
 
 end
@@ -228,30 +271,6 @@ end
 %======================================================================
 % Subfunctions
 %======================================================================
-
-function var = GetCopy(fname, copyindex, pinfo, tstartind, tendind)
-% Gets a time-series of a single specified copy of a prognostic variable 
-% at a particular 3D location (level, lat, lon)
-myinfo.diagn_file = fname;
-myinfo.copyindex  = copyindex;
-myinfo.levelindex = pinfo.levelindex;
-myinfo.latindex   = pinfo.latindex;
-myinfo.lonindex   = pinfo.lonindex;
-[start, count]    = GetNCindices(myinfo,'diagn',pinfo.var);
-
-varinfo = nc_getvarinfo(fname,pinfo.var);
-
-for i = 1:length(varinfo.Dimension)
-   switch( lower(varinfo.Dimension{i}))
-      case{'time'}
-         start(i) = tstartind - 1;
-         count(i) = tendind - tstartind + 1;
-         break
-      otherwise
-   end
-end
-var = nc_varget(fname, pinfo.var, start, count);
-
 
 
 function PlotLocator(pinfo)
@@ -262,8 +281,27 @@ function PlotLocator(pinfo)
    axis image
    axis(axlims)
    if (axlims(2) < 0)
-       worldmap('hollow','dateline');
+       continents('hollow','dateline');
    else
-       worldmap('hollow','greenwich');
+       continents('hollow','greenwich');
    end
+
+
+
+function xdates(dates)
+if (length(dates) < 5)
+   set(gca,'XTick',dates);
+   datetick('x',31,'keepticks','keeplimits');
+   xlabel('Model date (YYYY-MM-DD HH:MM:SS)')
+else
+   datetick('x','mm.dd.HH','keeplimits'); % 'mm/dd'
+   monstr = datestr(dates(1),31);
+   xlabel(sprintf('month.day.HH - %s start',monstr))
+end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
 

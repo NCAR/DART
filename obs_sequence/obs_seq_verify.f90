@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program obs_seq_verify
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 !-----------------------------------------------------------------------
 !
@@ -29,26 +25,26 @@ program obs_seq_verify
 !   +--------------------------------------------- obs value, prior, obs_err.
 !
 ! I think the logic of the program should be as follows:
-! 1) The list of 'stations' is read from a netCDF file -- the product of obs_seq_coverage.f90 
+! 1) The list of 'stations' is read from a netCDF file -- the product of obs_seq_coverage.f90
 ! 2) The set of forecast lead times must be determined. Having 8 might not be
 !    specific enough ... we want 8 separated by 3 hours ... for example.
 ! 3) A series of obs_seq.fcst files (each from one analysisT and containing multiple
 !    forecast lead times) is read and stuffed into an appropriate structure.
 ! 4) The structure is written into the netCDF file.
 ! 5) On to the next obs_seq.fcst file ... (step 3)
-! 6) wrap up ... 
-! 
+! 6) wrap up ...
+!
 ! Soyoung's wish list:
 ! Now I'm done running filter for 24-hr forecast with 3-hrly observations as an
 ! evaluation mode only, and am ready to hand obs_seq.final over to you for the final
 ! conversion process.
-! 
+!
 ! be1005en.ucar.edu:/ptmp/syha/wrfruns/ENS_FCST/Verify>
 ! -rw-r--r--    1 syha     ncar     1006513852 Nov 19 12:24 Prior_Diag.nc
 ! -rw-r--r--    1 syha     ncar     1006513856 Nov 19 12:24 Posterior_Diag.nc
 ! -rw-r--r--    1 syha     ncar      111484368 Nov 19 12:24 prior_inflate_restart
 ! -rw-r--r--    1 syha     ncar      126848308 Nov 19 12:24 obs_seq.final
-! 
+!
 ! Ideally, in obs_seq_fcst.nc (if I can name it on my own), I would like to have a
 ! data structure of (copy, station, level, ensemble, date, time) for each variable
 ! and each obs type, where copy is (observation value, prior observation value
@@ -88,7 +84,7 @@ use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time
                              operator(<=), operator(-), operator(+), operator(/=)
 use    utilities_mod, only : get_unit, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
-                             initialize_utilities, nmlfileunit, timestamp, &
+                             initialize_utilities, finalize_utilities, nmlfileunit, &
                              find_namelist_in_file, check_namelist_read, nc_check, &
                              next_file, get_next_filename, find_textfile_dims, &
                              file_to_text, do_nml_file, do_nml_term
@@ -100,10 +96,10 @@ use netcdf
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = '$URL$', &
-   revision = '$Revision$', &
-   revdate  = '$Date$'
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 !---------------------------------------------------------------------
 ! An array of these structures will be filled for each obs sequence file.
@@ -130,8 +126,9 @@ end type station
 
 logical,       allocatable, dimension(:) :: DesiredStations
 type(station), allocatable, dimension(:) :: stations
-integer :: ensemble_size ! the # of ensemble members in the obs_seq file 
+integer :: ensemble_size ! the # of ensemble members in the obs_seq file
 integer :: num_stations  ! This is the current number of unique locations
+integer :: num_verif_times ! number of all possible verification times.
 
 !---------------------------------------------------------------------
 ! variables associated with the observation
@@ -184,8 +181,8 @@ integer ::       qc_index   ! copy index of the original qc value
 integer ::  dart_qc_index   ! copy index of the DART qc value
 integer :: obs_copy_index   ! copy index of the observation
 integer :: station_id
-integer :: time_index       ! verification time/forecast lead time index
-integer :: AnalysisIndex    ! index of the forecast experiment 
+integer :: fcst_T_index     ! verification time/forecast lead time index
+integer :: AnalysisIndex    ! index of the forecast experiment
 character(len=metadatalength), dimension(:), allocatable :: module_obs_copy_names
 integer,                       dimension(:), allocatable :: copy_indices
 integer,                       dimension(:), allocatable :: forecast_leads
@@ -200,11 +197,11 @@ integer  :: ifile, nread, ngood
 integer  :: i, io, ncunit
 
 type(time_type) :: obs_time
-type(time_type) :: analysisT ! valid time of analysis at start of forecast 
+type(time_type) :: analysisT ! valid time of analysis at start of forecast
 
 character(len = 129) :: ncName, string1, string2
 
-! ~# of degrees for 1/2 meter at Earth equator 
+! ~# of degrees for 1/2 meter at Earth equator
 ! 360 deg-earth/(40000 km-earth * 1000m-km)
 real(r8), parameter :: HALF_METER = 180.0_r8 / (40000.0_r8 * 1000.0_r8)
 
@@ -213,8 +210,8 @@ real(r8), parameter :: HALF_METER = 180.0_r8 / (40000.0_r8 * 1000.0_r8)
 !=======================================================================
 
 call initialize_utilities('obs_seq_verify')
-call register_module(source,revision,revdate) 
-call static_init_obs_sequence()  ! Initialize the obs sequence module 
+call register_module(source,revision,revdate)
+call static_init_obs_sequence()  ! Initialize the obs sequence module
 
 call init_obs(obs1, 0, 0)
 call init_obs(obs2, 0, 0)
@@ -287,7 +284,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    if (allocated( qc_copy_names)) deallocate( qc_copy_names)
    if (allocated(obs_copy_names)) deallocate(obs_copy_names)
 
-   ! Determine the next input filename ... 
+   ! Determine the next input filename ...
 
    if (obs_sequence_list == '') then
       obs_seq_in_file_name = trim(next_file(obs_sequence_name,ifile))
@@ -297,6 +294,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    endif
 
    if ( file_exist(trim(obs_seq_in_file_name)) ) then
+      write(*,*) ! whitespace
       write(*,*) ! whitespace
       write(string1,*)'opening ', trim(obs_seq_in_file_name)
       call error_handler(E_MSG,'obs_seq_verify:',string1,source,revision,revdate)
@@ -376,12 +374,12 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          qc_copy_names(i) = adjustl(string1)
    enddo
 
-   ! Determine which qc copy is original qc and dart qc 
+   ! Determine which qc copy is original qc and dart qc
 
    call find_our_copies(seq, obs_copy_index, copy_indices, qc_index, dart_qc_index )
 
    ! The first trip through sets the module_obs_copy_names so we can
-   ! be sure we are stuffing compatible objects into the same slots 
+   ! be sure we are stuffing compatible objects into the same slots
    if ( ifile == 1 ) then
       module_obs_copy_names = obs_copy_names(copy_indices(1:ensemble_size))
    else
@@ -403,9 +401,9 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
    ngood = 0
 
-   if ( .not. get_first_obs(seq, obs1) )              &
-      call error_handler(E_ERR,'obs_seq_verify', &
-              'No first observation in sequence.',    &
+   if ( .not. get_first_obs(seq, obs1) )           &
+      call error_handler(E_ERR,'obs_seq_verify',   &
+              'No first observation in sequence.', &
               source,revision,revdate)
 
    !--------------------------------------------------------------------
@@ -420,6 +418,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
       obs_time = get_obs_def_time(    obs_def)
       obs_loc  = get_obs_def_location(obs_def)
 
+   !  if (debug .and. any(nread == (/1, 295, 1908, 6265/) )) then
       if (debug .and. (nread == 1)) then
          call print_time(obs_time,'First observation time')
          call print_date(obs_time,'First observation date')
@@ -428,7 +427,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          write(*,*)'looking for observation kinds of ',obtype_integer, &
                                      get_obs_kind_name(obtype_integer)
 
-         write(*,*)'first observation "kind" is ',flavor, &
+         write(*,*)'First observation "kind" is ',flavor, &
                                 get_obs_kind_name(flavor)
          write(*,*)'observation values are:'
          do i = 1,size(copy_values)
@@ -460,28 +459,28 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
       station_id = find_station_location(flavor, obs_loc, stations)
       if ( station_id < 1 ) goto 100
 
-      if ( is_time_unwanted( obs_time, station_id, stations, time_index) ) &
-             goto 100
+      if ( .not. time_wanted( obs_time, station_id, fcst_T_index)) goto 100
 
-      if (debug) write(*,*)'obs ',nread,' is station ',station_id,' at time ',time_index
+      if (debug) write(*,*)'obs ',nread,' is station ',station_id,' at fcst index ',fcst_T_index
 
       call get_qc(        obs1,   qc_values)
       call get_obs_values(obs1, copy_values)
 
-      if (     qc_index > 0) stations(station_id)%orgqc( time_index) = qc_values(     qc_index)
-      if (dart_qc_index > 0) stations(station_id)%dartqc(time_index) = qc_values(dart_qc_index)
+      if (     qc_index > 0) stations(station_id)%orgqc( fcst_T_index) = qc_values(     qc_index)
+      if (dart_qc_index > 0) stations(station_id)%dartqc(fcst_T_index) = qc_values(dart_qc_index)
 
-      stations(station_id)%obserror(   time_index) = get_obs_def_error_variance(obs_def)
-      stations(station_id)%observation(time_index) = copy_values(obs_copy_index)
-      stations(station_id)%forecast(:, time_index) = copy_values(copy_indices)
+      stations(station_id)%obserror(   fcst_T_index) = get_obs_def_error_variance(obs_def)
+      stations(station_id)%observation(fcst_T_index) = copy_values(obs_copy_index)
+      stations(station_id)%forecast(:, fcst_T_index) = copy_values(copy_indices)
 
-      if (debug) then   ! GIGANTIC OUTPUT - BE CAREFUL
+   !  if (debug) then ! GIGANTIC OUTPUT - BE CAREFUL
+      if (debug .and. (station_id == 1)) then ! LESS GIGANTIC OUTPUT
          do i = 1,size(copy_indices)
-            write(*,'(''ob'',3(1x,i6),4(1x,e15.5))') &
-            nread, time_index, copy_indices(i), &
-            stations(station_id)%obserror(   time_index),&
-            stations(station_id)%observation(time_index),&
-            stations(station_id)%forecast(i, time_index),&
+            write(*,'(''ob'',3(1x,i6),4(1x,f14.7))') &
+            nread, fcst_T_index, copy_indices(i), &
+            stations(station_id)%obserror(   fcst_T_index),&
+            stations(station_id)%observation(fcst_T_index),&
+            stations(station_id)%forecast(i, fcst_T_index),&
             copy_values(copy_indices(i))
          enddo
          write(*,*) ! a little whitespace
@@ -496,11 +495,13 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    enddo ObservationLoop
    !--------------------------------------------------------------------
    ! So by now, all the observations have been stuffed into the 'station'
-   ! array - not that we know if the station array is complete ... 
+   ! array - not that we know if the station array is complete ...
    ! Take what we have (i.e. for one analysis time) and push it into
    ! the output forecast netcdf file.
 
-   call WriteNetCDF(ncunit, trim(ncName), stations)
+   call WriteNetCDF(ncunit, trim(ncName), ifile)
+
+   call reset_stations()
 
 enddo ObsFileLoop
 
@@ -522,11 +523,30 @@ if (allocated(obs_copy_names))        deallocate(obs_copy_names)
 if (allocated(obs_seq_filenames))     deallocate(obs_seq_filenames)
 if (allocated(DesiredStations))       deallocate(DesiredStations)
 
-call timestamp(source,revision,revdate,'end') ! That closes the log file, too.
+call error_handler(E_MSG,'obs_seq_verify','Finished successfully.',source,revision,revdate)
+call finalize_utilities()
+
 
 !======================================================================
 CONTAINS
 !======================================================================
+
+
+
+subroutine reset_stations()
+
+integer :: i
+
+do i = 1,size(stations)
+   stations(i)%orgqc       = MISSING_I
+   stations(i)%dartqc      = MISSING_I
+   stations(i)%obserror    = MISSING_R8
+   stations(i)%observation = MISSING_R8
+   stations(i)%forecast    = MISSING_R8
+enddo
+
+end subroutine reset_stations
+
 
 
 function find_station_location(ObsType, ObsLocation, stationlist) result(station_id)
@@ -553,8 +573,8 @@ FindLoop : do i = 1,num_stations
    obslocarray = get_location(ObsLocation)  ! returns degrees
    stnlocarray = get_location(stationlist(i)%location)
 
-   londiff = abs(obslocarray(1) - stnlocarray(1)) 
-   latdiff = abs(obslocarray(2) - stnlocarray(2)) 
+   londiff = abs(obslocarray(1) - stnlocarray(1))
+   latdiff = abs(obslocarray(2) - stnlocarray(2))
 
    if ( (londiff <= HALF_METER) .and. &
         (latdiff <= HALF_METER) .and. &
@@ -584,11 +604,10 @@ integer,          intent(in) :: nensemble
 integer                      :: nstations
 
 integer :: DimID, VarID
-integer ::  nmax, ntimes, nforecasts, nverify, locNdim, strlen
+integer ::  nmax, nanalyses, nforecasts, locNdim, strlen
 integer :: ncid, i, j, istation, ndims, mylen
 integer :: my_type
 integer :: seconds, days
-type(time_type)     :: mytime
 type(location_type) :: myloc
 
 integer, dimension(nf90_max_var_dims) :: dimIDs
@@ -611,7 +630,7 @@ call nc_check(nf90_open(trim(filename), NF90_NOWRITE, &
 
 !-----------------------------------------------------------------------
 ! Determine the maximum number of stations from the station dimension,
-! the number of times, and the number of dimensions in the location 
+! the number of times, and the number of dimensions in the location
 
 ! used for integer array indicating yes/no - do we want the station
 call nc_check(nf90_inq_dimid(ncid, 'station', dimid=DimID), &
@@ -622,19 +641,19 @@ call nc_check(nf90_inquire_dimension(ncid, DimID, len=nmax), &
 ! used for array of all possible verification times needed
 call nc_check(nf90_inq_dimid(ncid, 'time', dimid=DimID), &
            'fill_stations', 'inquire time dimid '//trim(filename))
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=ntimes), &
+call nc_check(nf90_inquire_dimension(ncid, DimID, len=num_verif_times), &
            'fill_stations', 'inquire time len '//trim(filename))
 
-! used for array of the analysis times / 'zero-length' forecast times  
+! used for array of the analysis times / 'zero-length' forecast times
 call nc_check(nf90_inq_dimid(ncid, 'analysisT', dimid=DimID), &
            'fill_stations', 'inquire analysisT dimid '//trim(filename))
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=nforecasts), &
+call nc_check(nf90_inquire_dimension(ncid, DimID, len=nanalyses), &
            'fill_stations', 'inquire analysisT len '//trim(filename))
 
-! used for array of the verification times 
+! used for array of the verification times
 call nc_check(nf90_inq_dimid(ncid, 'forecast_lead', dimid=DimID), &
            'fill_stations', 'inquire forecast_lead dimid '//trim(filename))
-call nc_check(nf90_inquire_dimension(ncid, DimID, len=nverify), &
+call nc_check(nf90_inquire_dimension(ncid, DimID, len=nforecasts), &
            'fill_stations', 'inquire forecast_lead len '//trim(filename))
 
 call nc_check(nf90_inq_dimid(ncid, 'stringlength', dimid=DimID), &
@@ -670,12 +689,12 @@ if (mylen /= nmax) then
 endif
 
 allocate(allstations(nmax),  obs_types(nmax), which_vert(nmax), &
-          ntimearray(nmax), first_time(nmax),  last_time(nmax)) 
+          ntimearray(nmax), first_time(nmax),  last_time(nmax))
 allocate(locations(locNdim,nmax))
-allocate(forecast_leads(nverify))       ! how far into the forecast (seconds)
-allocate(ReportTimes(nverify,nmax))    ! observation times that are closest
-allocate(ExperimentTimes(nverify,nforecasts)) ! verification times of interest 
-allocate(VerifyTimes(nforecasts,nverify))     ! verification times of interest 
+allocate(forecast_leads(nforecasts))       ! how far into the forecast (seconds)
+allocate(ReportTimes(num_verif_times,nmax))    ! observation times that are closest
+allocate(ExperimentTimes(nforecasts,nanalyses)) ! verification times of interest
+allocate(VerifyTimes(nanalyses,nforecasts))     ! verification times of interest
 
 !-----------------------------------------------------------------------
 ! Read all the information from the station list netCDF file.
@@ -735,21 +754,26 @@ call nc_check(nf90_close(ncid), &
 ! Convert all the Experiment Times to DART time types.
 ! While we're at it, let's reshape them to our liking:
 
-if (debug) write(*,*)'size(VerifyTimes,1) is ',size(VerifyTimes,1),'nforecasts is ',nforecasts
-if (debug) write(*,*)'size(VerifyTimes,2) is ',size(VerifyTimes,2),'nverify is',nverify
+if (debug) then
+   write(*,*)'nanalyses/nforecasts  are :',nanalyses,nforecasts
+   write(*,*)'shape of VerifyTimes   is :',shape(VerifyTimes)
+   write(*,*)'shape of ReportTimes   is :',shape(ReportTimes)
+   write(*,*)'                 expected :',num_verif_times,nmax
+   write(*,*)'ReportTimes for station 1 :',ReportTimes(:,1)
+endif
 
-do j = 1,nforecasts
-do i = 1,nverify
+do j = 1,nanalyses
+do i = 1,nforecasts
 
    days    = floor(ExperimentTimes(i,j))
    seconds = nint((ExperimentTimes(i,j) - days) * 86400.0_digits12)
    VerifyTimes(j,i) = set_time(seconds, days)
-   
+
 enddo
 enddo
 
 !-----------------------------------------------------------------------
-! Allocate the desired number of stations. 
+! Allocate the desired number of stations.
 ! The 'allstations' array contains either 0 (unwanted) or 1 (desired)
 ! from the temporal coverage standpoint. Combine that with namelist input
 ! to generate subset of stations we want.
@@ -786,57 +810,60 @@ StationLoop : do istation = 1,nmax
       call error_handler(E_ERR,'fill_stations',string1,source,revision,revdate)
    endif
 
-   stations(i)%obs_type = get_obs_kind_index(obs_types(istation))
+   allocate(stations(i)%times( num_verif_times))
+   allocate(stations(i)%orgqc(      nforecasts))
+   allocate(stations(i)%dartqc(     nforecasts))
+   allocate(stations(i)%obserror(   nforecasts))
+   allocate(stations(i)%observation(nforecasts))
+   allocate(stations(i)%forecast(nensemble,nforecasts))
 
-   myloc = set_location(locations(1,istation),  locations(2,istation), &
-                        locations(3,istation), which_vert(istation) ) 
-   stations(i)%location   = myloc
+   stations(i)%orgqc       = MISSING_I            ! RESET EVERY ANALYSIS
+   stations(i)%dartqc      = MISSING_I            ! RESET EVERY ANALYSIS
+   stations(i)%obserror    = MISSING_R8           ! RESET EVERY ANALYSIS
+   stations(i)%observation = MISSING_R8           ! RESET EVERY ANALYSIS
+   stations(i)%forecast    = MISSING_R8           ! RESET EVERY ANALYSIS
+   stations(i)%times       = set_time(0,0)        ! SET ONE TIME ONLY
+   stations(i)%ntimes      = ntimearray(istation) ! SET ONE TIME ONLY
+   stations(i)%obs_type    = get_obs_kind_index(obs_types(istation))
+
+   myloc = set_location(locations(1,istation), &
+                        locations(2,istation), &
+                        locations(3,istation), which_vert(istation) )
+   stations(i)%location    = myloc
 
    days    = floor(first_time(istation))
    seconds = nint((first_time(istation) - days) * 86400.0_digits12)
-   mytime  = set_time(seconds, days)
-   stations(i)%first_time = mytime
+   stations(i)%first_time  = set_time(seconds, days)
 
    days    = floor(last_time(istation))
    seconds = nint((last_time(istation) - days) * 86400.0_digits12)
-   mytime  = set_time(seconds, days)
-   stations(i)%last_time  = mytime
+   stations(i)%last_time   = set_time(seconds, days)
 
-   stations(i)%ntimes     = nverify
-
-   allocate(stations(i)%times(      nverify))
-   allocate(stations(i)%orgqc(      nverify))
-   allocate(stations(i)%dartqc(     nverify))
-   allocate(stations(i)%obserror(   nverify))
-   allocate(stations(i)%observation(nverify))
-   allocate(stations(i)%forecast(nensemble,nverify))
-
-   do j = 1,nverify
+   do j = 1,num_verif_times
       days    = floor(ReportTimes(j,istation))
       seconds = nint((ReportTimes(j,istation) - days) * 86400.0_digits12)
-      mytime  = set_time(seconds, days)
-      stations(i)%times(j) = mytime
+      stations(i)%times(j) = set_time(seconds, days)
    enddo
-   
-   stations(i)%orgqc       = MISSING_I
-   stations(i)%dartqc      = MISSING_I
-   stations(i)%obserror    = MISSING_R8
-   stations(i)%observation = MISSING_R8
-   stations(i)%forecast    = MISSING_R8
+
+   if (verbose .and. (istation == 1)) then
+      write(*,*)
+      write(*,*)'station 1 ReportTimes is ',ReportTimes(:,1)
+   endif
+
    ! The only thing left to fill is the analaysisT ... which
-   ! comes from the obs_seq.fcst directory name or something. 
+   ! comes from the obs_seq.fcst directory name or something.
    ! It surely does not come from the station list netcdf file.
 
 enddo StationLoop
 
 !-----------------------------------------------------------------------
 ! Print a summary of all the station information if so desired.
-! FIXME can think of lots of other things to check ... 
+! FIXME can think of lots of other things to check ...
 
 if (verbose) then
    write(*,*) ! whitespace
-   write(string1,*)'There are ',nstations,' stations of interest,'
-   write(string2,*)'and   ',nverify,  ' times    of interest.'
+   write(string1,*)'There are ',nstations,' stations/locations of interest,'
+   write(string2,*)'and   ',nforecasts,  ' times    of interest.'
    call error_handler(E_MSG,'fill_stations:',string1,text2=string2)
 endif
 
@@ -851,7 +878,7 @@ end function fill_stations
 !============================================================================
 
 
-function is_time_unwanted(ObsTime, stationid, stationlist, timeindex)
+function time_wanted(ObsTime, stationid, timeindex)
 !----------------------------------------------------------------------------
 ! Determine if the observation time is one
 ! of the times for the particular station.
@@ -859,37 +886,35 @@ function is_time_unwanted(ObsTime, stationid, stationlist, timeindex)
 
 type(time_type),             intent(in)  :: ObsTime
 integer,                     intent(in)  :: stationid
-type(station), dimension(:), intent(in)  :: stationlist
 integer,                     intent(out) :: timeindex
-logical                                  :: is_time_unwanted
+logical                                  :: time_wanted
 
 integer :: i
-type(time_type) :: one_second, dt
 
+timeindex   = 0
+time_wanted = .FALSE.
 
-one_second = set_time(1,0)
+if ( stations(stationid)%ntimes == 0 ) return
 
-timeindex        = 0
-is_time_unwanted = .TRUE.
+TimeLoop : do i = 1,num_verif_times
 
-if ( stationlist(stationid)%ntimes == 0 ) return
+   if ( ObsTime == stations(stationid)%times(i) ) then
 
-TimeLoop : do i = 1,stationlist(stationid)%ntimes
+      timeindex   = i - AnalysisIndex + 1
+      time_wanted = .TRUE.
 
-   dt = stationlist(stationid)%times(i) - ObsTime
+      if (debug) then
+         write(string1,*)'desired ob at station ',stationid,' timeindex ',i
+         call print_time(ObsTime,trim(string1))
+         write(*,*)'analysis index ',AnalysisIndex,' implies forecast index ',timeindex
+      endif
 
-   if (dt <= one_second) then
-      if (debug) write(string1,*)'desired ob at station ',stationid,' time ',i
-      if (debug) call print_time(ObsTime,trim(string1))
-
-      timeindex        = i
-      is_time_unwanted = .FALSE.
       exit TimeLoop
    endif
 
 enddo TimeLoop
 
-end function is_time_unwanted
+end function time_wanted
 
 
 !============================================================================
@@ -920,7 +945,7 @@ character(len=metadatalength), dimension(ncopies) :: copy_metadata = &
      (/ 'observation               ', &
         'forecast                  ', &
         'observation error variance' /)
- 
+
 if(.not. byteSizesOK()) then
     call error_handler(E_ERR,'InitNetCDF', &
    'Compiler does not support required kinds of variables.',source,revision,revdate)
@@ -976,7 +1001,7 @@ call nc_check(nf90_def_dim(ncid=ncid, name='level',    len=nlevels, &
 call nc_check(nf90_def_dim(ncid=ncid, name='ensemble',  len=ensemble_size, &
                dimid = NmembersDimID), 'InitNetCDF', 'def_dim:ensemble '//trim(fname))
 
-call nc_check(nf90_def_dim(ncid=ncid, name='forecast_lead',  len=stations(1)%ntimes, &
+call nc_check(nf90_def_dim(ncid=ncid, name='forecast_lead',  len=size(forecast_leads), &
                dimid = ForecastDimID), 'InitNetCDF', 'def_dim:forecast_lead '//trim(fname))
 
 ! namelist quantities
@@ -1195,7 +1220,7 @@ enddo
 ! Finish up ...
 !----------------------------------------------------------------------------
 
-call nc_check(nf90_sync( ncid), 'InitNetCDF', 'sync '//trim(fname))  
+call nc_check(nf90_sync( ncid), 'InitNetCDF', 'sync '//trim(fname))
 
 InitNetCDF = ncid
 
@@ -1205,17 +1230,18 @@ end function InitNetCDF
 !============================================================================
 
 
-subroutine WriteNetCDF(ncid, fname, stations)
+subroutine WriteNetCDF(ncid, fname, ifile)
 !----------------------------------------------------------------------------
 integer,                     intent(in) :: ncid
 character(len=*),            intent(in) :: fname
-type(station), dimension(:), intent(in) :: stations
+integer,                     intent(in) :: ifile
 
 integer, dimension(1) :: istart, icount
 
 integer :: ilev, obscopyindex, priorcopyindex, errorcopyindex, ensmem
 integer :: stationindex, i, seconds, days
 
+character(len=nf90_max_name) :: dimName
 integer, dimension(nf90_max_var_dims) :: dimIDs, dimLengths
 integer ::  TimeVarID, VarID, ndims
 integer ::  QCVarID, DARTQCVarID
@@ -1235,7 +1261,6 @@ integer :: NmembersDimlen
 integer :: ForecastDimlen
 
 real(digits12) :: fdays
-real(digits12), allocatable, dimension(:) :: mytimes
 real(r8), allocatable, dimension(:,:,:,:) :: datmat
 
 if (debug) write(*,*)'DEBUG --- entering WriteNetCDF'
@@ -1283,9 +1308,13 @@ call nc_check(nf90_inq_varid(ncid, 'original_qc', varid=QCVarID), &
 call nc_check(nf90_inq_varid(ncid, 'dart_qc', varid=DARTQCVarID), &
           'WriteNetCDF', 'inq_varid:dart_qc '//trim(fname))
 
-! Increase the record dimension 
+! FIXME Check to see if the record dimension (the analysis dimension) matches
+! the information from the input filename. Each input file corresponds
+! to a new Analysis Time ...
 
-istart(1) = AnalysisDimlen + 1
+! Increase the record dimension ... once for each input/analysis file
+
+istart(1) = ifile
 icount(1) = 1
 
 call get_time(analysisT,seconds,days)
@@ -1305,13 +1334,12 @@ if (verbose) then
    write(*,*)   ! a little whitespace
    do i = 1,ndims
       write(string1,*)'dimlen ',i,' of ',trim(obtype_string),trim(fname)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimLengths(i)), &
+      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), name=dimName, len=dimLengths(i)), &
               'WriteNetCDF', string1)
 
-      ! FIXME check the dimlength agains that expected ...  
-      write(*,*)trim(obtype_string),' dimlen ',i,' is ',dimLengths(i)
+      ! FIXME check the dimlength against that expected ...
+      write(*,*)trim(obtype_string),' dimID ',i,' length/name ',dimLengths(i),trim(dimName)
    enddo
-   write(*,*)   ! a little whitespace
 endif
 
 !----------------------------------------------------------------------------
@@ -1319,34 +1347,48 @@ endif
 !----------------------------------------------------------------------------
 ! This routine gets called for every analysis time
 
-allocate(mytimes(AnalysisDimlen))
 allocate(datmat(ForecastDimlen, NmembersDimlen, CopyDimlen, LevelsDimlen))
 
 ! FIXME These are hardwired for now ... kills me
 ilev           = 1
-  obscopyindex = 1 
-priorcopyindex = 2 
-errorcopyindex = 3 
+  obscopyindex = 1
+priorcopyindex = 2
+errorcopyindex = 3
 
 WriteObs : do stationindex = 1,num_stations
 
-   if (debug) write(*,*)'writing station ',stationindex,' to output.'
+   ! if (debug) write(*,*)'writing station ',stationindex,' to output.'
 
    ! FIXME - some sort of error check on making sure the time of the station
-   ! matches the time of the forecast verification 
+   ! matches the time of the forecast verification
+
+   datmat = MISSING_R8
 
    do ensmem = 1,NmembersDimlen
    do i = 1,ForecastDimlen
 
       ! observation value
-      datmat(i,ensmem,  obscopyindex,ilev) = stations(stationindex)%observation(i) 
+      datmat(i,ensmem,  obscopyindex,ilev) = stations(stationindex)%observation(i)
       ! ensemble prior observation value
-      datmat(i,ensmem,priorcopyindex,ilev) = stations(stationindex)%forecast(ensmem,i) 
+      datmat(i,ensmem,priorcopyindex,ilev) = stations(stationindex)%forecast(ensmem,i)
       ! observation error variance
-      datmat(i,ensmem,errorcopyindex,ilev) = stations(stationindex)%obserror(i) 
+      datmat(i,ensmem,errorcopyindex,ilev) = stations(stationindex)%obserror(i)
 
    enddo
    enddo
+
+   if (verbose .and. (stationindex == 1)) then
+      write(*,*)
+      write(*,*)'station 1/ens 1 summary before being written @ analysis T index ',istart(1),':'
+      write(*,*)'observation ',datmat(:,1,obscopyindex,1)
+      write(*,*)'prior       ',datmat(:,1,priorcopyindex,1)
+      write(*,*)'error       ',datmat(:,1,errorcopyindex,1)
+   !  write(*,*)
+   !  write(*,*)'station 1/ens 1 summary from stations structure.'
+   !  write(*,*)'observation ',stations(1)%observation
+   !  write(*,*)'prior       ',stations(1)%forecast(1,:)
+   !  write(*,*)'error       ',stations(1)%obserror
+   endif
 
    call nc_check(nf90_put_var(ncid, VarId, datmat, &
         start=(/ 1, 1, 1, ilev, stationindex, istart(1) /), &
@@ -1365,14 +1407,13 @@ WriteObs : do stationindex = 1,num_stations
 
 enddo WriteObs
 
-deallocate(mytimes)
 deallocate(datmat)
 
 !----------------------------------------------------------------------------
 ! finished ...
 !----------------------------------------------------------------------------
 
-call nc_check(nf90_sync( ncid), 'WriteNetCDF', 'sync '//trim(fname))  
+call nc_check(nf90_sync( ncid), 'WriteNetCDF', 'sync '//trim(fname))
 
 if (debug) write(*,*)'DEBUG --- leaving WriteNetCDF'
 
@@ -1395,7 +1436,7 @@ if ( debug ) write(*,*)'DEBUG --- Closing ',trim(fname)
 ! files used. For expediency, should learn how to allocate some
 ! extra space for this ... possible FIXME
 
-call nc_check(nf90_redef(ncid), 'CloseNetCDF', 'redef '//trim(fname))  
+call nc_check(nf90_redef(ncid), 'CloseNetCDF', 'redef '//trim(fname))
 
 ! write all observation sequence files used
 FILEloop : do i = 1,SIZE(obs_seq_filenames)
@@ -1411,9 +1452,9 @@ FILEloop : do i = 1,SIZE(obs_seq_filenames)
 
 enddo FILEloop
 
-call nc_check(nf90_enddef(ncid), 'CloseNetCDF', 'enddef '//trim(fname))  
-call nc_check(nf90_sync(  ncid), 'CloseNetCDF', 'sync   '//trim(fname))  
-call nc_check(nf90_close( ncid), 'CloseNetCDF', 'close  '//trim(fname))  
+call nc_check(nf90_enddef(ncid), 'CloseNetCDF', 'enddef '//trim(fname))
+call nc_check(nf90_sync(  ncid), 'CloseNetCDF', 'sync   '//trim(fname))
+call nc_check(nf90_close( ncid), 'CloseNetCDF', 'close  '//trim(fname))
 
 end subroutine CloseNetCDF
 
@@ -1447,8 +1488,8 @@ end subroutine destroy_stations
 function find_ensemble_size()
 !----------------------------------------------------------------------------
 ! The only way I know of to determine the ensemble size is to read the
-! copy metadata from one of the obs_seq.xxx files. I'm just going to 
-! open the first file, read the entire damn sequence, and count them up. 
+! copy metadata from one of the obs_seq.xxx files. I'm just going to
+! open the first file, read the entire damn sequence, and count them up.
 !
 ! Then, I need to preserve all the indices for the observation value
 ! as well as the indices for the ensemble members. The observation error
@@ -1475,7 +1516,7 @@ endif
 
 !-----------------------------------------------------------------------
 ! Read the entire observation sequence - allocates 'seq' internally
-! And then cruise throught the metadata 
+! And then cruise throught the metadata
 !-----------------------------------------------------------------------
 
 call read_obs_seq(obs_seq_in_file_name, 0, 0, 0, seq)
@@ -1492,7 +1533,20 @@ if (verbose) call error_handler(E_MSG,'find_ensemble_size:',string1,source,revis
 
 if (find_ensemble_size < 1) then
    write(string1,*)'no ensemble member info in ', trim(obs_seq_in_file_name)
-   write(string2,*)'Unable to continue.'
+   write(string2,*)'looking for a prior ensemble mean'
+   call error_handler(E_MSG,'find_ensemble_size', string1, &
+                 source, revision, revdate, text2=string2)
+
+   ! could be a 'deterministic' forecast from the ensemble mean
+   do i=1, get_num_copies(seq)
+      if( index(get_copy_meta_data(seq,i), 'prior ensemble mean') > 0) &
+         find_ensemble_size = find_ensemble_size + 1
+   enddo
+endif
+
+if (find_ensemble_size < 1) then
+   write(string1,*)'no ensemble member info in ', trim(obs_seq_in_file_name)
+   write(string2,*)'cannot continue'
    call error_handler(E_ERR,'find_ensemble_size', string1, &
                  source, revision, revdate, text2=string2)
 endif
@@ -1507,7 +1561,7 @@ end function find_ensemble_size
 
 subroutine find_analysis_time(filename, ExpIndex, analysis_time)
 !----------------------------------------------------------------------------
-! Parse the filename into an integer string that defines the 
+! Parse the filename into an integer string that defines the
 ! analysis time.
 !
 
@@ -1574,7 +1628,7 @@ mytime = set_date(iyear, imonth, iday, hours=ihour)
 
 TimeLoop : do j = 1,size(VerifyTimes,1)
    if ( mytime == VerifyTimes(j,1) ) then
-      analysis_time = mytime 
+      analysis_time = mytime
       ExpIndex      = j
       exit TimeLoop
    endif
@@ -1584,7 +1638,7 @@ if ( ExpIndex == 0 ) then
    write(string1,*)'Cannot find an analysis time that matches '//lj_filename(indx+0:indx+9)
    call error_handler(E_ERR,'find_analysis_time',string1,source,revision,revdate)
 endif
- 
+
 end subroutine find_analysis_time
 
 
@@ -1609,7 +1663,7 @@ character(len=obstypelength) :: metadata
 dart_qcindex = -1
 indices      = -1
 
-! Find the observation copy 
+! Find the observation copy
 ObsDataLoop : do i=1, get_num_copies(myseq)
 
    metadata = get_copy_meta_data(myseq,i)
@@ -1633,12 +1687,22 @@ MetaDataLoop : do i=1, get_num_copies(myseq)
 
    if( index(metadata, 'prior ensemble member') > 0) then
       myindex = myindex + 1
-
       if ( myindex > size(indices) ) then
          write(string1,*)'Found too many prior copies in metadata.'
          call error_handler(E_ERR,'find_our_copies',string1,source,revision,revdate)
       endif
       indices(myindex) = i
+   endif
+
+   ! Check for deterministic forecast, apparently
+   if ( (ensemble_size == 1) .and. (index(metadata, 'prior ensemble mean') > 0) ) then 
+      myindex = myindex + 1
+      if ( myindex > size(indices) ) then
+         write(string1,*)'Found too many prior copies in metadata.'
+         call error_handler(E_ERR,'find_our_copies',string1,source,revision,revdate)
+      endif
+      indices(myindex) = i
+      exit MetaDataLoop
    endif
 
 enddo MetaDataLoop
@@ -1651,7 +1715,7 @@ endif
 ! Here is the sanity check to make sure the indices pick off just the
 ! prior ensemble members.
 
-if (verbose) then
+if (debug) then
    write(*,*)   ! just a little whitespace
    do i = 1,size(indices)
       metadata = get_copy_meta_data(myseq,indices(i))
@@ -1669,18 +1733,18 @@ QCMetaDataLoop : do i=1, get_num_qc(myseq)
    if(index(get_qc_meta_data(myseq,i),'DART quality control') > 0) dart_qcindex = i
 enddo QCMetaDataLoop
 
-if (      qcindex < 0 ) then 
-   write(string1,*)'metadata:Quality Control copyindex not found' 
+if (      qcindex < 0 ) then
+   write(string1,*)'metadata:Quality Control copyindex not found'
    call error_handler(E_MSG,'find_qc_indices:',string1,source,revision,revdate)
 endif
-if ( dart_qcindex < 0 ) then 
-   write(string1,*)'metadata:DART quality control copyindex not found' 
+if ( dart_qcindex < 0 ) then
+   write(string1,*)'metadata:DART quality control copyindex not found'
    call error_handler(E_MSG,'find_qc_indices:',string1,source,revision,revdate)
 endif
 
 ! Just echo what we know
 
-if (verbose) then
+if (debug) then
    write(*,*)'QC index',     qcindex,' ',trim(get_qc_meta_data(myseq,     qcindex))
    write(*,*)'QC index',dart_qcindex,' ',trim(get_qc_meta_data(myseq,dart_qcindex))
    write(*,*)
@@ -1694,3 +1758,8 @@ end subroutine find_our_copies
 
 end program obs_seq_verify
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

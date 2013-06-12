@@ -1,14 +1,10 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module model_mod
-
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
 
 ! This is the interface between the POP ocean model and DART.
 
@@ -29,11 +25,11 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              nc_check, do_output, to_upper,                    &
                              find_namelist_in_file, check_namelist_read,       &
                              open_file, file_exist, find_textfile_dims,        &
-                             file_to_text
+                             file_to_text, do_output
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_DRY_LAND,   &
                              KIND_U_CURRENT_COMPONENT,                         &
                              KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT, &
-                             KIND_SEA_SURFACE_PRESSURE
+                             KIND_SEA_SURFACE_PRESSURE, KIND_POTENTIAL_TEMPERATURE
 use mpi_utilities_mod, only: my_task_id
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use      dart_pop_mod, only: set_model_time_step,                              &
@@ -72,10 +68,10 @@ public :: get_gridsize, restart_file_to_sv, sv_to_restart_file, &
           get_pop_restart_filename, test_interpolation
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = '$URL$', &
-   revision = '$Revision$', &
-   revdate  = '$Date$'
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 character(len=256) :: msgstring
 logical, save :: module_initialized = .false.
@@ -157,6 +153,9 @@ integer, allocatable  :: KMT(:, :), KMU(:, :)
 ! real, depth of lowest valid cell (0 = land).  use only if KMT/KMU not avail.
 real(r8), allocatable :: HT(:,:), HU(:,:)
 
+! compute pressure based on depth - can do once upfront.
+real(r8), allocatable :: pressure(:)
+
 real(r8)        :: endTime
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 integer         :: timestepcount = 0
@@ -216,13 +215,11 @@ logical :: dipole_grid
 
 contains
 
-!==================================================================
-
-
+!------------------------------------------------------------------
+!------------------------------------------------------------------
 
 subroutine static_init_model()
-!------------------------------------------------------------------
-!
+
 ! Called to do one time initialization of the model. In this case,
 ! it reads in the grid information.
 
@@ -262,7 +259,7 @@ call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
 if (do_output()) write(logfileunit, nml=model_nml)
 if (do_output()) write(     *     , nml=model_nml)
 
-!---------------------------------------------------------------
+
 ! Set the time step ... causes POP namelists to be read.
 ! Ensures model_timestep is multiple of 'ocean_dynamics_timestep'
 
@@ -273,7 +270,7 @@ call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 write(msgstring,*)'assimilation period is ',dd,' days ',ss,' seconds'
 call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
 
-!---------------------------------------------------------------
+
 ! get data dimensions, then allocate space, then open the files
 ! and actually fill in the arrays.
 
@@ -286,6 +283,7 @@ allocate( KMT(Nx,Ny),  KMU(Nx,Ny))
 allocate(  HT(Nx,Ny),   HU(Nx,Ny))
 allocate(     ZC(Nz),      ZG(Nz))
 
+
 ! Fill them in.
 ! horiz grid initializes ULAT/LON, TLAT/LON as well.
 ! kmt initializes HT/HU if present in input file.
@@ -293,10 +291,10 @@ call read_horiz_grid(Nx, Ny, ULAT, ULON, TLAT, TLON)
 call read_topography(Nx, Ny,  KMT,  KMU)
 call read_vert_grid( Nz, ZC, ZG)
 
-if (debug > 0) call write_grid_netcdf() ! DEBUG only
-if (debug > 0) call write_grid_interptest() ! DEBUG only
+if (debug > 2) call write_grid_netcdf() ! DEBUG only
+if (debug > 2) call write_grid_interptest() ! DEBUG only
 
-!---------------------------------------------------------------
+
 ! compute the offsets into the state vector for the start of each
 ! different variable type.
 
@@ -322,12 +320,14 @@ if (do_output()) write(     *     , *) 'Using grid : Nx, Ny, Nz = ', &
 model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
 if (do_output()) write(*,*) 'model_size = ', model_size
 
+! initialize the pressure array - pressure in bars
+allocate(pressure(Nz))
+call dpth2pres(Nz, ZC, pressure)
+
 ! Initialize the interpolation routines
 call init_interp()
 
 end subroutine static_init_model
-
-
 
 !------------------------------------------------------------
 
@@ -355,9 +355,7 @@ enddo
 
 end subroutine init_interp
 
-
 !------------------------------------------------------------
-
 
 subroutine init_dipole_interp()
 
@@ -489,12 +487,11 @@ end subroutine init_dipole_interp
 !------------------------------------------------------------
 
 subroutine get_reg_box_indices(lon, lat, x_ind, y_ind)
+ real(r8), intent(in)  :: lon, lat
+ integer,  intent(out) :: x_ind, y_ind
 
 ! Given a longitude and latitude in degrees returns the index of the regular
 ! lon-lat box that contains the point.
-
-real(r8), intent(in)  :: lon, lat
-integer,  intent(out) :: x_ind, y_ind
 
 call get_reg_lon_box(lon, x_ind)
 call get_reg_lat_box(lat, y_ind)
@@ -504,11 +501,10 @@ end subroutine get_reg_box_indices
 !------------------------------------------------------------
 
 subroutine get_reg_lon_box(lon, x_ind)
+ real(r8), intent(in)  :: lon
+ integer,  intent(out) :: x_ind
 
 ! Determine which regular longitude box a longitude is in.
-
-real(r8), intent(in)  :: lon
-integer,  intent(out) :: x_ind
 
 x_ind = int(num_reg_x * lon / 360.0_r8) + 1
 
@@ -520,11 +516,10 @@ end subroutine get_reg_lon_box
 !------------------------------------------------------------
 
 subroutine get_reg_lat_box(lat, y_ind)
+ real(r8), intent(in)  :: lat
+ integer,  intent(out) :: y_ind
 
 ! Determine which regular latitude box a latitude is in.
-
-real(r8), intent(in)  :: lat
-integer,  intent(out) :: y_ind
 
 y_ind = int(num_reg_y * (lat + 90.0_r8) / 180.0_r8) + 1
 
@@ -536,10 +531,9 @@ end subroutine get_reg_lat_box
 !------------------------------------------------------------
 
 subroutine reg_box_overlap(x_corners, y_corners, is_pole, reg_lon_ind, reg_lat_ind)
-
-real(r8), intent(in)  :: x_corners(4), y_corners(4)
-logical,  intent(in)  :: is_pole
-integer,  intent(out) :: reg_lon_ind(2), reg_lat_ind(2)
+ real(r8), intent(in)  :: x_corners(4), y_corners(4)
+ logical,  intent(in)  :: is_pole
+ integer,  intent(out) :: reg_lon_ind(2), reg_lat_ind(2)
 
 ! Find a set of regular lat lon boxes that covers all of the area covered by 
 ! a dipole grid qaud whose corners are given by the dimension four x_corners 
@@ -609,10 +603,9 @@ end subroutine reg_box_overlap
 !------------------------------------------------------------
 
 subroutine get_quad_corners(x, i, j, corners)
-
-real(r8), intent(in)  :: x(:, :)
-integer,  intent(in)  :: i, j
-real(r8), intent(out) :: corners(4)
+ real(r8), intent(in)  :: x(:, :)
+ integer,  intent(in)  :: i, j
+ real(r8), intent(out) :: corners(4)
 
 ! Grabs the corners for a given quadrilateral from the global array of lower
 ! right corners. Note that corners go counterclockwise around the quad.
@@ -633,11 +626,11 @@ end subroutine get_quad_corners
 !------------------------------------------------------------
 
 subroutine update_reg_list(reg_list_num, reg_list_lon, reg_list_lat, &
-   reg_lon_ind, reg_lat_ind, dipole_lon_index, dipole_lat_index)
+                           reg_lon_ind, reg_lat_ind, dipole_lon_index, dipole_lat_index)
 
-integer, intent(inout) :: reg_list_num(:, :), reg_list_lon(:, :, :), reg_list_lat(:, :, :)
-integer, intent(inout) :: reg_lon_ind(2), reg_lat_ind(2)
-integer, intent(in)    :: dipole_lon_index, dipole_lat_index
+ integer, intent(inout) :: reg_list_num(:, :), reg_list_lon(:, :, :), reg_list_lat(:, :, :)
+ integer, intent(inout) :: reg_lon_ind(2), reg_lat_ind(2)
+ integer, intent(in)    :: dipole_lon_index, dipole_lat_index
  
 ! Updates the data structure listing dipole quads that are in a given regular box
 integer :: ind_x, index_x, ind_y
@@ -670,68 +663,53 @@ end subroutine update_reg_list
 
 !------------------------------------------------------------
 
-
-
-
-
-
 subroutine init_conditions(x)
-!------------------------------------------------------------------
-!
+ real(r8), intent(out) :: x(:)
+
 ! Returns a model state vector, x, that is some sort of appropriate
 ! initial condition for starting up a long integration of the model.
 ! At present, this is only used if the namelist parameter 
 ! start_from_restart is set to .false. in the program perfect_model_obs.
-! If this option is not to be used in perfect_model_obs, or if no 
-! synthetic data experiments using perfect_model_obs are planned, 
-! this can be a NULL INTERFACE.
 
-real(r8), intent(out) :: x(:)
+character(len=128) :: msgstring2, msgstring3
 
-if ( .not. module_initialized ) call static_init_model
- 
+msgstring2 = "cannot run perfect_model_obs with 'start_from_restart = .false.' "
+msgstring3 = 'use pop_to_dart to generate an initial state'
+call error_handler(E_ERR,'init_conditions', &
+                  'WARNING!!  POP model has no built-in default state', &
+                  source, revision, revdate, &
+                  text2=msgstring2, text3=msgstring3)
+
+! this code never reached - just here to avoid compiler warnings
+! about an intent(out) variable not being set to a value.
 x = 0.0_r8
 
 end subroutine init_conditions
 
-
+!------------------------------------------------------------------
 
 subroutine adv_1step(x, time)
-!------------------------------------------------------------------
-!
-! Does a single timestep advance of the model. The input value of
-! the vector x is the starting condition and x is updated to reflect
-! the changed state after a timestep. The time argument is intent
-! in and is used for models that need to know the date/time to 
-! compute a timestep, for instance for radiation computations.
-! This interface is only called IF the namelist parameter
-! async is set to 0 in perfect_model_obs or filter -OR- if the 
-! program integrate_model is to be used to advance the model
-! state as a separate executable. If none of these options
-! are used (the model will only be advanced as a separate 
-! model-specific executable), this can be a NULL INTERFACE.
+ real(r8),        intent(inout) :: x(:)
+ type(time_type), intent(in)    :: time
 
-real(r8),        intent(inout) :: x(:)
-type(time_type), intent(in)    :: time
+! If the model could be called as a subroutine, does a single
+! timestep advance.  POP cannot be called this way, so fatal error
+! if this routine is called.
 
-if ( .not. module_initialized ) call static_init_model
-
-if (do_output()) then
-   call print_time(time,'NULL interface adv_1step (no advance) DART time is')
-   call print_time(time,'NULL interface adv_1step (no advance) DART time is',logfileunit)
-endif
+call error_handler(E_ERR,'adv_1step', &
+                  'POP model cannot be called as a subroutine; async cannot = 0', &
+                  source, revision, revdate)
 
 end subroutine adv_1step
 
-
+!------------------------------------------------------------------
 
 function get_model_size()
-!------------------------------------------------------------------
-!
+ integer :: get_model_size
+
 ! Returns the size of the model as an integer. Required for all
 ! applications.
 
-integer :: get_model_size
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -739,39 +717,39 @@ get_model_size = model_size
 
 end function get_model_size
 
-
+!------------------------------------------------------------------
 
 subroutine init_time(time)
-!------------------------------------------------------------------
-!
-! Companion interface to init_conditions. Returns a time that is somehow 
+ type(time_type), intent(out) :: time
+
+! Companion interface to init_conditions. Returns a time that is
 ! appropriate for starting up a long integration of the model.
 ! At present, this is only used if the namelist parameter 
 ! start_from_restart is set to .false. in the program perfect_model_obs.
-! If this option is not to be used in perfect_model_obs, or if no 
-! synthetic data experiments using perfect_model_obs are planned, 
-! this can be a NULL INTERFACE.
 
-type(time_type), intent(out) :: time
+character(len=128) :: msgstring2, msgstring3
 
-if ( .not. module_initialized ) call static_init_model
+msgstring2 = "cannot run perfect_model_obs with 'start_from_restart = .false.' "
+msgstring3 = 'use pop_to_dart to generate an initial state which contains a timestamp'
+call error_handler(E_ERR,'init_time', &
+                  'WARNING!!  POP model has no built-in default time', &
+                  source, revision, revdate, &
+                  text2=msgstring2, text3=msgstring3)
 
-! for now, just set to 0
+! this code never reached - just here to avoid compiler warnings
+! about an intent(out) variable not being set to a value.
 time = set_time(0,0)
 
 end subroutine init_time
 
-
+!------------------------------------------------------------------
 
 subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
-!=======================================================================
-!
-
-real(r8),            intent(in) :: x(:)
-type(location_type), intent(in) :: location
-integer,             intent(in) :: obs_type
-real(r8),           intent(out) :: interp_val
-integer,            intent(out) :: istatus
+ real(r8),            intent(in) :: x(:)
+ type(location_type), intent(in) :: location
+ integer,             intent(in) :: obs_type
+ real(r8),           intent(out) :: interp_val
+ integer,            intent(out) :: istatus
 
 ! Model interpolate will interpolate any state variable (S, T, U, V, PSURF) to
 ! the given location given a state vector. The type of the variable being
@@ -790,6 +768,9 @@ logical        :: convert_to_ssh
 
 if ( .not. module_initialized ) call static_init_model
 
+! print data min/max values
+if (debug > 2) call print_ranges(x)
+
 ! Let's assume failure.  Set return val to missing, then the code can
 ! just set istatus to something indicating why it failed, and return.
 ! If the interpolation is good, the interp_val will be set to the 
@@ -805,7 +786,7 @@ llon    = loc_array(1)
 llat    = loc_array(2)
 lheight = loc_array(3)
 
-if (debug > 1) print *, 'requesting interpolation at ', llon, llat, lheight
+if (debug > 1) print *, 'requesting interpolation of ', obs_type, ' at ', llon, llat, lheight
 
 if( vert_is_height(location) ) then
    ! Nothing to do 
@@ -825,23 +806,37 @@ else   ! if pressure or undefined, we don't know what to do
    return
 endif
 
-! Do horizontal interpolations for the appropriate levels
-! Find the basic offset of this field
+! kind (in-situ) temperature is a combination of potential temp,
+! salinity, and pressure based on depth.  call a routine that
+! interpolates all three, does the conversion, and returns the
+! sensible/in-situ temperature.
+if(obs_type == KIND_TEMPERATURE) then
+   ! we know how to interpolate this from potential temp,
+   ! salinity, and pressure based on depth.
+   call compute_temperature(x, llon, llat, lheight, interp_val, istatus)
+   if (debug > 1) print *, 'interp val, istatus = ', interp_val, istatus
+   return
+endif
+
+
+! The following kinds are either in the state vector (so you
+! can simply interpolate to find the value) or they are a simple
+! transformation of something in the state vector.
 
 convert_to_ssh = .FALSE.
 
 if(obs_type == KIND_SALINITY) then
-   base_offset = start_index(1)
-else if(obs_type == KIND_TEMPERATURE) then
-   base_offset = start_index(2)
+   base_offset = start_index(S_index)
+else if(obs_type == KIND_POTENTIAL_TEMPERATURE) then
+   base_offset = start_index(T_index)
 else if(obs_type == KIND_U_CURRENT_COMPONENT) then
-   base_offset = start_index(3)
+   base_offset = start_index(U_index)
 else if(obs_type == KIND_V_CURRENT_COMPONENT) then
-   base_offset = start_index(4)
+   base_offset = start_index(V_index)
 else if(obs_type == KIND_SEA_SURFACE_PRESSURE) then
-   base_offset = start_index(5)
+   base_offset = start_index(PSURF_index)
 else if(obs_type == KIND_SEA_SURFACE_HEIGHT) then
-   base_offset = start_index(5) ! simple linear transform of PSURF
+   base_offset = start_index(PSURF_index) ! simple linear transform of PSURF
    convert_to_ssh = .TRUE.
 else
    ! Not a legal type for interpolation, return istatus error
@@ -849,54 +844,34 @@ else
    return
 endif
 
-if (debug > 1) print *, 'base offset now ', base_offset
-
-! For Sea Surface Height,Pressure don't need the vertical coordinate
+! For Sea Surface Height or Pressure don't need the vertical coordinate
 ! SSP needs to be converted to a SSH if height is required.
 if( vert_is_surface(location) ) then
    call lon_lat_interpolate(x(base_offset:), llon, llat, obs_type, 1, interp_val, istatus)
    if (convert_to_ssh .and. (istatus == 0)) then
       interp_val = interp_val / 980.6_r8   ! POP uses CGS units
    endif
+   if (debug > 1) print *, 'interp val, istatus = ', interp_val, istatus
    return
 endif
 
 ! Get the bounding vertical levels and the fraction between bottom and top
-call height_bounds(lheight, nz, zc, hgt_bot, hgt_top, hgt_fract, hstatus)
+call height_bounds(lheight, Nz, ZC, hgt_bot, hgt_top, hgt_fract, hstatus)
 if(hstatus /= 0) then
    istatus = 12
    return
 endif
 
-! Find the base location for the bottom height and interpolate horizontally 
-!  on this level.  Do bottom first in case it is below the ocean floor; can
-!  avoid the second horizontal interpolation.
-offset = base_offset + (hgt_bot - 1) * nx * ny
-if (debug > 1) print *, 'relative bot height offset = ', offset - base_offset
-if (debug > 1) print *, 'absolute bot height offset = ', offset
-call lon_lat_interpolate(x(offset:), llon, llat, obs_type, hgt_bot, bot_val, istatus)
-! Failed istatus from interpolate means give up
-if(istatus /= 0) return
-
-! Find the base location for the top height and interpolate horizontally 
-!  on this level.
-offset = base_offset + (hgt_top - 1) * nx * ny
-if (debug > 1) print *, 'relative top height offset = ', offset - base_offset
-if (debug > 1) print *, 'absolute top height offset = ', offset
-call lon_lat_interpolate(x(offset:), llon, llat, obs_type, hgt_top, top_val, istatus)
-! Failed istatus from interpolate means give up
-if(istatus /= 0) return
-
-
-! Then weight them by the vertical fraction and return
-interp_val = bot_val + hgt_fract * (top_val - bot_val)
-if (debug > 1) print *, 'model_interp: interp val = ',interp_val
-
-! All good.
-istatus = 0
+! do a 2d interpolation for the value at the bottom level, then again for
+! the top level, then do a linear interpolation in the vertical to get the
+! final value.  this sets both interp_val and istatus.
+call do_interp(x, base_offset, hgt_bot, hgt_top, hgt_fract, &
+               llon, llat, obs_type, interp_val, istatus)
+if (debug > 1) print *, 'interp val, istatus = ', interp_val, istatus
 
 end subroutine model_interpolate
 
+!------------------------------------------------------------------
 
 ! Three different types of grids are used here. The POP dipole 
 ! grid is referred to as a dipole grid and each region is
@@ -916,10 +891,14 @@ end subroutine model_interpolate
 ! The irregular grid is also assumed to be global east
 ! west for all applications.
 
+!------------------------------------------------------------------
 
 subroutine lon_lat_interpolate(x, lon, lat, var_type, height, interp_val, istatus)
-!=======================================================================
-!
+ real(r8), intent(in) :: x(:)
+ real(r8), intent(in) :: lon, lat
+ integer,  intent(in) :: var_type, height
+ real(r8), intent(out) :: interp_val
+ integer,  intent(out) :: istatus
 
 ! Subroutine to interpolate to a lon lat location given the state vector 
 ! for that level, x. This works just on one horizontal slice.
@@ -928,12 +907,6 @@ subroutine lon_lat_interpolate(x, lon, lat, var_type, height, interp_val, istatu
 ! offset value instead of the section if this is an issue.
 ! This routine works for either the dipole or a regular lat-lon grid.
 ! Successful interpolation returns istatus=0.
-
-real(r8),            intent(in) :: x(:)
-real(r8),            intent(in) :: lon, lat
-integer,             intent(in) :: var_type, height
-real(r8),           intent(out) :: interp_val
-integer,            intent(out) :: istatus
 
 ! Local storage
 integer  :: lat_bot, lat_top, lon_bot, lon_top, num_inds, start_ind
@@ -1073,18 +1046,15 @@ end subroutine lon_lat_interpolate
 
 !------------------------------------------------------------
 
-
 function get_val(lon_index, lat_index, nlon, x, var_type, height, masked)
-!=======================================================================
-!
+ integer,     intent(in) :: lon_index, lat_index, nlon, var_type, height
+ real(r8),    intent(in) :: x(:)
+ logical,    intent(out) :: masked
+ real(r8)                :: get_val
+
 ! Returns the value from a single level array given the lat and lon indices
 ! 'masked' returns true if this is NOT a valid grid location (e.g. land, or
 ! below the ocean floor in shallower areas).
-
-integer,     intent(in) :: lon_index, lat_index, nlon, var_type, height
-real(r8),    intent(in) :: x(:)
-logical,    intent(out) :: masked
-real(r8)                :: get_val
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1103,21 +1073,20 @@ masked = .false.
 
 end function get_val
 
-
 !------------------------------------------------------------
 
 subroutine get_irreg_box(lon, lat, lon_array, lat_array, &
-   found_x, found_y, lon_fract, lat_fract, istatus)
-!
+                         found_x, found_y, lon_fract, lat_fract, istatus)
+
+ real(r8),   intent(in) :: lon, lat
+ real(r8),   intent(in) :: lon_array(nx, ny), lat_array(nx, ny)
+ real(r8),  intent(out) :: lon_fract, lat_fract
+ integer,   intent(out) :: found_x, found_y, istatus
+
 ! Given a longitude and latitude of a point (lon and lat) and the
 ! longitudes and latitudes of the lower left corner of the regular grid
 ! boxes, gets the indices of the grid box that contains the point and
 ! the fractions along each directrion for interpolation.
-
-real(r8),            intent(in) :: lon, lat
-real(r8),            intent(in) :: lon_array(nx, ny), lat_array(nx, ny)
-real(r8),           intent(out) :: lon_fract, lat_fract
-integer,            intent(out) :: found_x, found_y, istatus
 
 ! Local storage
 integer  :: lat_status, lon_top, lat_top
@@ -1141,11 +1110,12 @@ end subroutine get_irreg_box
 
 !------------------------------------------------------------
 
-
 subroutine lon_bounds(lon, nlons, lon_array, bot, top, fract)
-
-!=======================================================================
-!
+ real(r8),    intent(in) :: lon
+ integer,     intent(in) :: nlons
+ real(r8),    intent(in) :: lon_array(:, :)
+ integer,    intent(out) :: bot, top
+ real(r8),   intent(out) :: fract
 
 ! Given a longitude lon, the array of longitudes for grid boundaries, and the
 ! number of longitudes in the grid, returns the indices of the longitude
@@ -1153,12 +1123,6 @@ subroutine lon_bounds(lon, nlons, lon_array, bot, top, fract)
 ! between. It is assumed that the longitude wraps around for a global grid. 
 ! Since longitude grids are going to be regularly spaced, this could be made more efficient.
 ! Algorithm fails for a silly grid that has only two longitudes separated by 180 degrees.
-
-real(r8),          intent(in) :: lon
-integer,           intent(in) :: nlons
-real(r8),          intent(in) :: lon_array(:, :)
-integer,          intent(out) :: bot, top
-real(r8),         intent(out) :: fract
 
 ! Local storage
 integer  :: i
@@ -1188,13 +1152,15 @@ fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
 
 end subroutine lon_bounds
 
-
 !-------------------------------------------------------------
 
 subroutine lat_bounds(lat, nlats, lat_array, bot, top, fract, istatus)
-
-!=======================================================================
-!
+ real(r8),   intent(in) :: lat
+ integer,    intent(in) :: nlats
+ real(r8),   intent(in) :: lat_array(:, :)
+ integer,   intent(out) :: bot, top
+ real(r8),  intent(out) :: fract
+ integer,   intent(out) :: istatus
 
 ! Given a latitude lat, the array of latitudes for grid boundaries, and the
 ! number of latitudes in the grid, returns the indices of the latitude
@@ -1203,13 +1169,6 @@ subroutine lat_bounds(lat, nlats, lat_array, bot, top, fract, istatus)
 ! south of the southernmost grid point (1 returned) or north of the 
 ! northernmost (2 returned). If one really had lots of polar obs would 
 ! want to worry about interpolating around poles.
-
-real(r8),          intent(in) :: lat
-integer,           intent(in) :: nlats
-real(r8),          intent(in) :: lat_array(:, :)
-integer,          intent(out) :: bot, top
-real(r8),         intent(out) :: fract
-integer,          intent(out) :: istatus
 
 ! Local storage
 integer :: i
@@ -1243,18 +1202,15 @@ istatus = 40
 
 end subroutine lat_bounds
 
-
+!------------------------------------------------------------------
 
 function lon_dist(lon1, lon2)
-!=======================================================================
-!
+ real(r8), intent(in) :: lon1, lon2
+ real(r8)             :: lon_dist
 
 ! Returns the smallest signed distance between lon1 and lon2 on the sphere
 ! If lon1 is less than 180 degrees east of lon2 the distance is negative
 ! If lon1 is less than 180 degrees west of lon2 the distance is positive
-
-real(r8), intent(in) :: lon1, lon2
-real(r8)             :: lon_dist
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1269,16 +1225,14 @@ endif
 
 end function lon_dist
 
-
 !------------------------------------------------------------
 
-
 subroutine get_dipole_quad(lon, lat, qlons, qlats, num_inds, start_ind, &
-   x_inds, y_inds, found_x, found_y, istatus)
+                           x_inds, y_inds, found_x, found_y, istatus)
 
-real(r8), intent(in)  :: lon, lat, qlons(:, :), qlats(:, :)
-integer,  intent(in)  :: num_inds, start_ind, x_inds(:), y_inds(:)
-integer,  intent(out) :: found_x, found_y, istatus
+ real(r8), intent(in)  :: lon, lat, qlons(:, :), qlats(:, :)
+ integer,  intent(in)  :: num_inds, start_ind, x_inds(:), y_inds(:)
+ integer,  intent(out) :: found_x, found_y, istatus
 
 ! Given the lon and lat of a point, and a list of the
 ! indices of the quads that might contain a point at (lon, lat), determines
@@ -1309,12 +1263,11 @@ istatus = 1
 
 end subroutine get_dipole_quad
 
-
 !------------------------------------------------------------
-function in_quad(lon, lat, x_corners, y_corners)
 
-real(r8), intent(in)  :: lon, lat, x_corners(4), y_corners(4)
-logical               :: in_quad
+function in_quad(lon, lat, x_corners, y_corners)
+ real(r8), intent(in)  :: lon, lat, x_corners(4), y_corners(4)
+ logical               :: in_quad
 
 ! Return in_quad true if the point (lon, lat) is in the quad with 
 ! the given corners.
@@ -1371,15 +1324,14 @@ endif
 
 end function in_quad
 
-
 !------------------------------------------------------------
 
 subroutine line_intercept(side_x_in, side_y, x_point_in, y_point, &
-   cant_be_in_box, in_box, intercept_above, intercept_below)
+                          cant_be_in_box, in_box, intercept_above, intercept_below)
 
-real(r8), intent(in)  :: side_x_in(2), side_y(2), x_point_in, y_point
-logical,  intent(out) :: cant_be_in_box, in_box
-integer,  intent(out) :: intercept_above, intercept_below
+ real(r8), intent(in)  :: side_x_in(2), side_y(2), x_point_in, y_point
+ logical,  intent(out) :: cant_be_in_box, in_box
+ integer,  intent(out) :: intercept_above, intercept_below
 
 ! Find the intercept of a vertical line from point (x_point, y_point) and
 ! a line segment with endpoints side_x and side_y.
@@ -1466,10 +1418,10 @@ end subroutine line_intercept
 !------------------------------------------------------------
 
 subroutine quad_bilinear_interp(lon_in, lat, x_corners_in, y_corners, &
-   p, interp_val)
+                                p, interp_val)
 
-real(r8), intent(in)  :: lon_in, lat, x_corners_in(4), y_corners(4), p(4)
-real(r8), intent(out) :: interp_val
+ real(r8),  intent(in) :: lon_in, lat, x_corners_in(4), y_corners(4), p(4)
+ real(r8), intent(out) :: interp_val
 
 ! Given a longitude and latitude (lon_in, lat), the longitude and
 ! latitude of the 4 corners of a quadrilateral and the values at the
@@ -1566,9 +1518,8 @@ end subroutine quad_bilinear_interp
 !------------------------------------------------------------
 
 subroutine mat3x3(m, v, r)
-
-real(r8), intent(in)  :: m(3, 3), v(3)
-real(r8), intent(out) :: r(3)
+ real(r8),  intent(in) :: m(3, 3), v(3)
+ real(r8), intent(out) :: r(3)
 
 ! Solves rank 3 linear system mr = v for r
 ! using Cramer's rule. This isn't the best choice
@@ -1592,10 +1543,10 @@ enddo
 end subroutine mat3x3
 
 !------------------------------------------------------------
-function deter3(m)
 
-real(r8) :: deter3
-real(r8), intent(in) :: m(3, 3)
+function deter3(m)
+ real(r8), intent(in) :: m(3, 3)
+ real(r8)             :: deter3
 
 ! Computes determinant of 3x3 matrix m
 
@@ -1604,19 +1555,16 @@ deter3 = m(1,1)*m(2,2)*m(3,3) + m(1,2)*m(2,3)*m(3,1) + &
          m(1,1)*m(2,3)*m(3,2) - m(3,3)*m(2,1)*m(1,2)
 
 end function deter3
+
 !------------------------------------------------------------
 
-
-
 subroutine height_bounds(lheight, nheights, hgt_array, bot, top, fract, istatus)
-!=======================================================================
-!
-real(r8),             intent(in) :: lheight
-integer,              intent(in) :: nheights
-real(r8),             intent(in) :: hgt_array(nheights)
-integer,             intent(out) :: bot, top
-real(r8),            intent(out) :: fract
-integer,             intent(out) :: istatus
+ real(r8),    intent(in) :: lheight
+ integer,     intent(in) :: nheights
+ real(r8),    intent(in) :: hgt_array(nheights)
+ integer,    intent(out) :: bot, top
+ real(r8),   intent(out) :: fract
+ integer,    intent(out) :: istatus
 
 ! Local variables
 integer   :: i
@@ -1641,8 +1589,8 @@ if(lheight <= hgt_array(1)) then
    bot = 2
    ! NOTE: the fract definition is the relative distance from bottom to top
    fract = 1.0_r8 
-if (debug > 1) print *, 'above first level in height'
-if (debug > 1) print *, 'hgt_array, top, bot, fract=', hgt_array(1), top, bot, fract
+if (debug > 7) print *, 'above first level in height'
+if (debug > 7) print *, 'hgt_array, top, bot, fract=', hgt_array(1), top, bot, fract
    return
 endif
 
@@ -1653,7 +1601,7 @@ do i = 2, nheights
       top = i -1
       bot = i
       fract = (hgt_array(bot) - lheight) / (hgt_array(bot) - hgt_array(top))
-if (debug > 1) print *, 'i, hgt_array, top, bot, fract=', i, hgt_array(i), top, bot, fract
+if (debug > 7) print *, 'i, hgt_array, top, bot, fract=', i, hgt_array(i), top, bot, fract
       return
    endif
 enddo
@@ -1663,16 +1611,14 @@ istatus = 20
 
 end subroutine height_bounds
 
-
+!------------------------------------------------------------------
 
 function get_model_time_step()
-!------------------------------------------------------------------
-!
+ type(time_type) :: get_model_time_step
+
 ! Returns the the time step of the model; the smallest increment
 ! in time that the model is capable of advancing the state in a given
 ! implementation. This interface is required for all applications.
-
-type(time_type) :: get_model_time_step
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1680,21 +1626,19 @@ get_model_time_step = model_timestep
 
 end function get_model_time_step
 
-
+!------------------------------------------------------------------
 
 subroutine get_state_meta_data(index_in, location, var_type)
-!------------------------------------------------------------------
-!
+ integer,             intent(in)  :: index_in
+ type(location_type), intent(out) :: location
+ integer,             intent(out), optional :: var_type
+
 ! Given an integer index into the state vector structure, returns the
 ! associated location. A second intent(out) optional argument kind
 ! can be returned if the model has more than one type of field (for
 ! instance temperature and zonal wind component). This interface is
 ! required for all filter applications as it is required for computing
 ! the distance between observations and state variables.
-
-integer,             intent(in)  :: index_in
-type(location_type), intent(out) :: location
-integer,             intent(out), optional :: var_type
 
 real(r8) :: lat, lon, depth
 integer :: lon_index, lat_index, depth_index, local_var
@@ -1728,16 +1672,15 @@ endif
 
 end subroutine get_state_meta_data
 
+!------------------------------------------------------------------
 
 subroutine get_state_indices(index_in, lat_index, lon_index, depth_index, var_type)
-!------------------------------------------------------------------
-!
+ integer, intent(in)  :: index_in
+ integer, intent(out) :: lat_index, lon_index, depth_index
+ integer, intent(out) :: var_type
+
 ! Given an integer index into the state vector structure, returns the
 ! associated array indices for lat, lon, and depth, as well as the type.
-
-integer, intent(in)  :: index_in
-integer, intent(out) :: lat_index, lon_index, depth_index
-integer, intent(out) :: var_type
 
 integer :: startind, offset
 
@@ -1760,17 +1703,15 @@ if (debug > 5) print *, 'lon, lat, depth index = ', lon_index, lat_index, depth_
 
 end subroutine get_state_indices
 
+!------------------------------------------------------------------
 
 subroutine get_state_kind(index_in, var_type, startind, offset)
-!------------------------------------------------------------------
-!
+ integer, intent(in)  :: index_in
+ integer, intent(out) :: var_type, startind, offset
+
 ! Given an integer index into the state vector structure, returns the kind,
 ! and both the starting offset for this kind, as well as the offset into
 ! the block of this kind.
-
-integer, intent(in)  :: index_in
-integer, intent(out) :: var_type, startind, offset
-
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1780,7 +1721,7 @@ if (index_in < start_index(S_index+1)) then
    var_type = KIND_SALINITY  
    startind = start_index(S_index)
 else if (index_in < start_index(T_index+1)) then
-   var_type = KIND_TEMPERATURE  
+   var_type = KIND_POTENTIAL_TEMPERATURE  
    startind = start_index(T_index)
 else if (index_in < start_index(U_index+1)) then
    var_type = KIND_U_CURRENT_COMPONENT
@@ -1802,16 +1743,14 @@ if (debug > 5) print *, 'offset = ', offset
 
 end subroutine get_state_kind
 
-
+!------------------------------------------------------------------
 
 subroutine get_state_kind_inc_dry(index_in, var_type)
-!------------------------------------------------------------------
-!
+ integer, intent(in)  :: index_in
+ integer, intent(out) :: var_type
+
 ! Given an integer index into the state vector structure, returns the
 ! type, taking into account the ocean bottom and dry land.
-
-integer, intent(in)  :: index_in
-integer, intent(out) :: var_type
 
 integer :: lon_index, lat_index, depth_index, startind, offset
 
@@ -1835,24 +1774,26 @@ endif
 
 end subroutine get_state_kind_inc_dry
 
+!------------------------------------------------------------------
 
 subroutine end_model()
-!------------------------------------------------------------------
-!
-! Does any shutdown and clean-up needed for model. Can be a NULL
-! INTERFACE if the model has no need to clean up storage, etc.
 
-! if ( .not. module_initialized ) call static_init_model
+! Shutdown and clean-up.
 
-deallocate(ULAT, ULON, TLAT, TLON, KMT, KMU, HT, HU)
-deallocate(ZC, ZG)
+! assume if one is allocated, they all were.  if no one ever
+! called the init routine, don't try to dealloc something that
+! was never alloc'd.
+if (allocated(ULAT)) deallocate(ULAT, ULON, TLAT, TLON, KMT, KMU, HT, HU)
+if (allocated(ZC))   deallocate(ZC, ZG, pressure)
 
 end subroutine end_model
 
-
+!------------------------------------------------------------------
 
 function nc_write_model_atts( ncFileID ) result (ierr)
-!------------------------------------------------------------------
+ integer, intent(in)  :: ncFileID      ! netCDF file identifier
+ integer              :: ierr          ! return value of function
+
 ! TJH -- Writes the model-specific attributes to a netCDF file.
 !     This includes coordinate variables and some metadata, but NOT
 !     the model state vector.
@@ -1870,9 +1811,6 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 ! NF90_ENDDEF           ! end definitions: leave define mode
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
-
-integer, intent(in)  :: ncFileID      ! netCDF file identifier
-integer              :: ierr          ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
@@ -2311,10 +2249,15 @@ ierr = 0 ! If we got here, things went well.
 
 end function nc_write_model_atts
 
-
+!------------------------------------------------------------------
 
 function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
-!------------------------------------------------------------------
+ integer,                intent(in) :: ncFileID      ! netCDF file identifier
+ real(r8), dimension(:), intent(in) :: statevec
+ integer,                intent(in) :: copyindex
+ integer,                intent(in) :: timeindex
+ integer                            :: ierr          ! return value of function
+
 ! TJH 24 Oct 2006 -- Writes the model variables to a netCDF file.
 !
 ! TJH 29 Jul 2003 -- for the moment, all errors are fatal, so the
@@ -2336,12 +2279,6 @@ function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result 
 ! NF90_ENDDEF           ! end definitions: leave define mode
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
-
-integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: statevec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr          ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: VarID
@@ -2432,11 +2369,13 @@ ierr = 0 ! If we got here, things went well.
 
 end function nc_write_model_vars
 
-
+!------------------------------------------------------------------
 
 subroutine pert_model_state(state, pert_state, interf_provided)
-!------------------------------------------------------------------
-!
+ real(r8), intent(in)  :: state(:)
+ real(r8), intent(out) :: pert_state(:)
+ logical,  intent(out) :: interf_provided
+
 ! Perturbs a model state for generating initial ensembles.
 ! The perturbed state is returned in pert_state.
 ! A model may choose to provide a NULL INTERFACE by returning
@@ -2446,10 +2385,6 @@ subroutine pert_model_state(state, pert_state, interf_provided)
 ! variable independently. The interf_provided argument
 ! should be returned as .true. if the model wants to do its own
 ! perturbing of states.
-
-real(r8), intent(in)  :: state(:)
-real(r8), intent(out) :: pert_state(:)
-logical,  intent(out) :: interf_provided
 
 integer :: i, var_type
 logical, save :: random_seq_init = .false.
@@ -2479,33 +2414,74 @@ enddo
 
 end subroutine pert_model_state
 
-
-
+!------------------------------------------------------------------
 
 subroutine ens_mean_for_model(ens_mean)
-!------------------------------------------------------------------
+ real(r8), intent(in) :: ens_mean(:)
+
 ! If needed by the model interface, this is the current mean
 ! for all state vector items across all ensembles. It is up to this
 ! code to allocate space and save a copy if it is going to be used
 ! later on.  For now, we are ignoring it.
 
-real(r8), intent(in) :: ens_mean(:)
-
 if ( .not. module_initialized ) call static_init_model
+
 
 end subroutine ens_mean_for_model
 
+!------------------------------------------------------------------
 
+subroutine print_ranges(x)
+ real(r8), intent(in) :: x(:)
 
+! intended for debugging use = print out the data min/max for each
+! field in the state vector, along with the starting and ending 
+! indices for each field.
+
+integer :: s, e
+
+!  S_index     = 1
+!  T_index     = 2
+!  U_index     = 3
+!  V_index     = 4
+!  PSURF_index = 5
+
+s = 1
+e = start_index(T_index)-1
+print *, 'min/max  salinity: ', minval(x(s:e)), maxval(x(s:e))
+print *, 's/e      salinity: ', s, e
+
+s = start_index(T_index)
+e = start_index(U_index)-1
+print *, 'min/max  pot temp: ', minval(x(s:e)), maxval(x(s:e))
+print *, 's/e      pot temp: ', s, e
+
+s = start_index(U_index)
+e = start_index(V_index)-1
+print *, 'min/max U current: ', minval(x(s:e)), maxval(x(s:e))
+print *, 's/e     U current: ', s, e
+
+s = start_index(V_index)
+e = start_index(PSURF_index)-1
+print *, 'min/max V current: ', minval(x(s:e)), maxval(x(s:e))
+print *, 's/e     V current: ', s, e
+
+s = start_index(PSURF_index)
+e = size(x)
+print *, 'min/max Surf Pres: ', minval(x(s:e)), maxval(x(s:e))
+print *, 's/e     Surf Pres: ', s, e
+
+end subroutine print_ranges
+
+!------------------------------------------------------------------
 
 subroutine restart_file_to_sv(filename, state_vector, model_time)
-!------------------------------------------------------------------
+ character(len=*), intent(in)    :: filename 
+ real(r8),         intent(inout) :: state_vector(:)
+ type(time_type),  intent(out)   :: model_time
+
 ! Reads the current time and state variables from a POP restart
 ! file and packs them into a dart state vector.
-
-character(len=*), intent(in)    :: filename 
-real(r8),         intent(inout) :: state_vector(:)
-type(time_type),  intent(out)   :: model_time
 
 ! temp space to hold data while we are reading it
 real(r8) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
@@ -2676,16 +2652,15 @@ enddo
 
 end subroutine restart_file_to_sv
 
-
+!------------------------------------------------------------------
 
 subroutine sv_to_restart_file(state_vector, filename, statedate)
-!------------------------------------------------------------------
+ real(r8),         intent(in) :: state_vector(:)
+ character(len=*), intent(in) :: filename 
+ type(time_type),  intent(in) :: statedate
+
 ! Writes the current time and state variables from a dart state
 ! vector (1d fortran array) into a POP netcdf restart file.
-!
-real(r8),         intent(in) :: state_vector(:)
-character(len=*), intent(in) :: filename 
-type(time_type),  intent(in) :: statedate
 
 integer :: iyear, imonth, iday, ihour, iminute, isecond
 type(time_type) :: pop_time
@@ -2823,16 +2798,15 @@ call nc_check(nf90_close(ncid), 'sv_to_restart_file', 'close '//trim(filename))
 
 end subroutine sv_to_restart_file
 
-
+!------------------------------------------------------------------
 
 subroutine vector_to_2d_prog_var(x, varindex, data_2d_array)
-!------------------------------------------------------------------
+ real(r8), dimension(:),   intent(in)  :: x
+ integer,                  intent(in)  :: varindex
+ real(r8), dimension(:,:), intent(out) :: data_2d_array
+
 ! convert the values from a 1d fortran array, starting at an offset,
 ! into a 2d fortran array.  the 2 dims are taken from the array size.
-!
-real(r8), dimension(:),   intent(in)  :: x
-integer,                  intent(in)  :: varindex
-real(r8), dimension(:,:), intent(out) :: data_2d_array
 
 integer :: i,j,ii
 integer :: dim1,dim2
@@ -2865,16 +2839,15 @@ enddo
 
 end subroutine vector_to_2d_prog_var
 
-
+!------------------------------------------------------------------
 
 subroutine vector_to_3d_prog_var(x, varindex, data_3d_array)
-!------------------------------------------------------------------
+ real(r8), dimension(:),     intent(in)  :: x
+ integer,                    intent(in)  :: varindex
+ real(r8), dimension(:,:,:), intent(out) :: data_3d_array
+
 ! convert the values from a 1d fortran array, starting at an offset,
 ! into a 3d fortran array.  the 3 dims are taken from the array size.
-!
-real(r8), dimension(:),     intent(in)  :: x
-integer,                    intent(in)  :: varindex
-real(r8), dimension(:,:,:), intent(out) :: data_3d_array
 
 integer :: i,j,k,ii
 integer :: dim1,dim2,dim3
@@ -2914,11 +2887,11 @@ enddo
 
 end subroutine vector_to_3d_prog_var
 
-
+!------------------------------------------------------------------
 
 subroutine get_gridsize(num_x, num_y, num_z)
  integer, intent(out) :: num_x, num_y, num_z
-!------------------------------------------------------------------
+
 ! public utility routine.
 
 if ( .not. module_initialized ) call static_init_model
@@ -2929,15 +2902,15 @@ if ( .not. module_initialized ) call static_init_model
 
 end subroutine get_gridsize
 
-
-
-  function is_dry_land(obs_type, lon_index, lat_index, hgt_index)
 !------------------------------------------------------------------
+
+function is_dry_land(obs_type, lon_index, lat_index, hgt_index)
+ integer, intent(in)  :: obs_type
+ integer, intent(in)  :: lon_index, lat_index, hgt_index
+ logical              :: is_dry_land
+
 ! returns true if this point is below the ocean floor or if it is
 ! on land.
-integer, intent(in)  :: obs_type
-integer, intent(in)  :: lon_index, lat_index, hgt_index
-logical              :: is_dry_land
 
 logical :: is_ugrid
 
@@ -2952,14 +2925,15 @@ if ((      is_ugrid .and. hgt_index > KMU(lon_index, lat_index)) .or. &
    return
 endif
 
-end function
+end function is_dry_land
 
-
-  function is_on_ugrid(obs_type)
 !------------------------------------------------------------------
+
+function is_on_ugrid(obs_type)
+ integer, intent(in) :: obs_type
+ logical             :: is_on_ugrid
+
 !  returns true if U, V -- everything else is on T grid
-integer, intent(in) :: obs_type
-logical             :: is_on_ugrid
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2968,12 +2942,12 @@ is_on_ugrid = .FALSE.
 if ((obs_type == KIND_U_CURRENT_COMPONENT)  .or.  &
     (obs_type == KIND_V_CURRENT_COMPONENT)) is_on_ugrid = .TRUE.
 
-end function
+end function is_on_ugrid
 
-
-  subroutine write_grid_netcdf()
 !------------------------------------------------------------------
-!
+
+subroutine write_grid_netcdf()
+
 ! Write the grid to a netcdf file for checking.
 
 integer :: ncid, NlonDimID, NlatDimID, NzDimID
@@ -3046,11 +3020,19 @@ call nc_check(nf90_close(ncid),'write_grid_netcdf')
 
 end subroutine write_grid_netcdf
 
-
+!------------------------------------------------------------------
 
 subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
                          obs, obs_kind, num_close, close_ind, dist)
-!------------------------------------------------------------------
+
+ type(get_close_type),              intent(in) :: gc
+ type(location_type),               intent(in) :: base_obs_loc
+ integer,                           intent(in) :: base_obs_kind
+ type(location_type), dimension(:), intent(in) :: obs
+ integer,             dimension(:), intent(in) :: obs_kind
+ integer,                           intent(out):: num_close
+ integer,             dimension(:), intent(out):: close_ind
+ real(r8),  optional, dimension(:), intent(out):: dist
 
 ! Given a DART location (referred to as "base") and a set of candidate
 ! locations & kinds (obs, obs_kind), returns the subset close to the
@@ -3059,15 +3041,6 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
 ! For vertical distance computations, general philosophy is to convert all
 ! vertical coordinates to a common coordinate. This coordinate type is defined
 ! in the namelist with the variable "vert_localization_coord".
-
-type(get_close_type),              intent(in) :: gc
-type(location_type),               intent(in) :: base_obs_loc
-integer,                           intent(in) :: base_obs_kind
-type(location_type), dimension(:), intent(in) :: obs
-integer,             dimension(:), intent(in) :: obs_kind
-integer,                           intent(out):: num_close
-integer,             dimension(:), intent(out):: close_ind
-real(r8),  optional, dimension(:), intent(out):: dist
 
 integer :: t_ind, k
 
@@ -3103,9 +3076,10 @@ endif
 
 end subroutine get_close_obs
 
-
-  subroutine write_grid_interptest()
 !------------------------------------------------------------------
+
+subroutine write_grid_interptest()
+
 ! Write the grid to an ascii file - in a format suitable for
 ! subsequent use in the 'test_interpolation()' code.
 ! write_grid_interptest is only possible after reading a real POP grid,
@@ -3185,15 +3159,12 @@ close(unit=15)
 
 end subroutine write_grid_interptest
 
-
-
- subroutine test_interpolation(test_casenum)
 !------------------------------------------------------------------
-!subroutine test_interpolation(test_casenum)
-!
-! rigorous test of the intepolation routine.
 
-integer, intent(in) :: test_casenum
+subroutine test_interpolation(test_casenum)
+ integer, intent(in) :: test_casenum
+
+! rigorous test of the interpolation routine.
 
 ! This is storage just used for temporary test driver
 integer :: imain, jmain, index, istatus, nx_temp, ny_temp
@@ -3355,7 +3326,7 @@ do imain = 1, dnx
       ! Interpolate U from the first grid to the second grid
 
       call lon_lat_interpolate(reg_t_x, dtlon(imain, jmain), dtlat(imain, jmain), &
-         KIND_TEMPERATURE, height, dipole_t(imain, jmain), istatus)
+         KIND_POTENTIAL_TEMPERATURE, height, dipole_t(imain, jmain), istatus)
 
       if ( istatus /= 0 ) then
          write(msgstring,'(''cell'',i4,i4,1x,f12.8,1x,f12.8,'' T interp failed - code '',i4)') &
@@ -3370,10 +3341,289 @@ enddo
 
 end subroutine test_interpolation
 
+!------------------------------------------------------------------
 
-!===================================================================
+subroutine compute_temperature(x, llon, llat, lheight, interp_val, istatus)
+ real(r8), intent(in)  :: x(:), llon, llat, lheight
+ real(r8), intent(out) :: interp_val
+ integer,  intent(out) :: istatus
+
+! use potential temp, depth, and salinity to compute a sensible (in-situ)
+! temperature
+
+integer  :: hstatus, hgt_bot, hgt_top
+real(r8) :: hgt_fract, salinity_val, potential_temp, pres_val
+real(r8) :: pres_bot, pres_top
+
+interp_val = MISSING_R8
+istatus = 99
+
+! Get the bounding vertical levels and the fraction between bottom and top
+call height_bounds(lheight, Nz, ZC, hgt_bot, hgt_top, hgt_fract, hstatus)
+if(hstatus /= 0) then
+   istatus = 12
+   return
+endif
+
+
+! salinity - in msu (kg/kg).  converter will want psu (g/kg).
+call do_interp(x, start_index(S_index), hgt_bot, hgt_top, hgt_fract, llon, llat, &
+               KIND_SALINITY, salinity_val, istatus)
+if(istatus /= 0) return
+if (debug > 8) print *, 'salinity: ', salinity_val
+
+! potential temperature - degrees C.
+call do_interp(x, start_index(T_index), hgt_bot, hgt_top, hgt_fract, llon, llat, &
+               KIND_POTENTIAL_TEMPERATURE, potential_temp, istatus)
+if(istatus /= 0) return
+if (debug > 8) print *, 'potential temp: ', potential_temp
+
+! compute pressure at location between given levels.  these values are in bars;
+! the convert routine wants decibars as pressure input.  hgt_fract is 0 at bottom, 1 at top
+pres_val = pressure(hgt_bot) + hgt_fract * (pressure(hgt_top) - pressure(hgt_bot))
+if (debug > 8) then
+   print *, 'local pressure: ', pres_val
+   print *, 'bot, top, press: ', hgt_bot, pressure(hgt_bot), &
+                                 hgt_top, pressure(hgt_top), pres_val
+endif
+
+! and finally, convert to sensible (in-situ) temperature.
+! potential temp in degrees C, pressure in decibars, salinity in psu or pss (g/kg).
+call insitu_temp(potential_temp, salinity_val*1000.0_r8, pres_val*10.0_r8, interp_val)
+if (debug > 2) print *, 's,pt,pres,t: ', salinity_val, potential_temp, pres_val, interp_val
+
+end subroutine compute_temperature
+
+!------------------------------------------------------------------
+
+subroutine do_interp(x, base_offset, hgt_bot, hgt_top, hgt_fract, &
+                     llon, llat, obs_type, interp_val, istatus)
+ real(r8),  intent(in) :: x(:)
+ integer,   intent(in) :: base_offset, hgt_bot, hgt_top
+ real(r8),  intent(in) :: hgt_fract, llon, llat
+ integer,   intent(in) :: obs_type
+ real(r8), intent(out) :: interp_val
+ integer,  intent(out) :: istatus
+ 
+! do a 2d horizontal interpolation for the value at the bottom level, 
+! then again for the top level, then do a linear interpolation in the 
+! vertical to get the final value.
+
+integer  :: offset
+real(r8) :: bot_val, top_val
+
+! Find the base location for the bottom height and interpolate horizontally 
+!  on this level.  Do bottom first in case it is below the ocean floor; can
+!  avoid the second horizontal interpolation.
+offset = base_offset + (hgt_bot - 1) * nx * ny
+if (debug > 6) &
+   print *, 'bot, field, abs offset: ', hgt_bot, base_offset, offset
+
+call lon_lat_interpolate(x(offset:), llon, llat, obs_type, hgt_bot, bot_val, istatus)
+! Failed istatus from interpolate means give up
+if(istatus /= 0) return
+if (debug > 6) &
+   print *, 'bot_val = ', bot_val
+
+! Find the base location for the top height and interpolate horizontally 
+!  on this level.
+offset = base_offset + (hgt_top - 1) * nx * ny
+if (debug > 6) &
+   print *, 'top, field, abs offset: ', hgt_top, base_offset, offset
+
+call lon_lat_interpolate(x(offset:), llon, llat, obs_type, hgt_top, top_val, istatus)
+! Failed istatus from interpolate means give up
+if(istatus /= 0) return
+if (debug > 6) &
+   print *, 'top_val = ', top_val
+
+! Then weight them by the vertical fraction and return
+interp_val = bot_val + hgt_fract * (top_val - bot_val)
+if (debug > 2) print *, 'do_interp: interp val = ',interp_val
+
+end subroutine do_interp
+
+!------------------------------------------------------------------
+
+subroutine insitu_temp(potemp, s, lpres, insitu_t)
+ real(r8), intent(in)  :: potemp, s, lpres
+ real(r8), intent(out) :: insitu_t
+
+! CODE FROM POP MODEL -
+! nsc 1 nov 2012:  i have taken the original subroutine with call:
+!  subroutine dpotmp(press,temp,s,rp,potemp)
+! and removed the original 'press' argument (setting it to 0.0 below)
+! and renamed temp -> potemp, and potemp -> insitu_t
+! i also reordered the args to be a bit more logical.  now you specify:
+! potential temp, salinity, local pressure in decibars, and you get
+! back in-situ temperature (called sensible temperature in the atmosphere;
+! what a thermometer would measure).  the original (F77 fixed format) code
+! had a computed goto which is deprecated/obsolete.  i replaced it with 
+! a set of 'if() then else if()' lines.  i did try to not alter the original
+! code so much it wasn't recognizable anymore.
+!
+!  aliciak note: rp = 0 and press = local pressure as function of depth
+!  will return potemp given temp.
+!  the trick here that if you make rp = local pressure and press = 0.0, 
+!  and put potemp in the "temp" variable , it will return insitu temp in the 
+!  potemp variable.
+
+! an example figure of the relationship of potential temp and in-situ temp
+! at depth:  http://oceanworld.tamu.edu/resources/ocng_textbook/chapter06/chapter06_05.htm
+! see the 'potential temperature' section (note graph starts at -1000m)
+
+!     title:
+!     *****
+
+!       insitu_temp  -- calculate sensible (in-situ) temperature from 
+!                       local pressure, salinity, and potential temperature
+
+!     purpose:
+!     *******
+
+!       to calculate sensible temperature, taken from a converter that
+!       went from sensible/insitu temperature to potential temperature
+!
+!       ref: N.P. Fofonoff
+!            Deep Sea Research
+!            in press Nov 1976
+
+!     arguments:
+!     **********
+
+!       potemp     -> potential temperature in celsius degrees
+!       s          -> salinity pss 78
+!       lpres      -> local pressure in decibars
+!       insitu_t   <- in-situ (sensible) temperature (deg c)
+
+
+!     local variables:
+!     *********
+
+integer  :: i,j,n
+real(r8) :: dp,p,q,r1,r2,r3,r4,r5,s1,t,x
+
+!     code:
+!     ****
+
+      s1 = s - 35.0_r8
+      p  = 0.0_r8
+      t  = potemp
+
+      dp = lpres - p
+      n  = int (abs(dp)/1000.0_r8) + 1
+      dp = dp/n
+
+      do i=1,n
+         do j=1,4
+
+            r1 = ((-2.1687e-16_r8 * t + 1.8676e-14_r8) * t - 4.6206e-13_r8) * p
+            r2 = (2.7759e-12_r8*t - 1.1351e-10_r8) * s1
+            r3 = ((-5.4481e-14_r8 * t + 8.733e-12_r8) * t - 6.7795e-10_r8) * t
+            r4 = (r1 + (r2 + r3 + 1.8741e-8_r8)) * p + (-4.2393e-8_r8 * t+1.8932e-6_r8) * s1
+            r5 = r4 + ((6.6228e-10_r8 * t-6.836e-8_r8) * t + 8.5258e-6_r8) * t + 3.5803e-5_r8
+
+            x  = dp*r5
+
+            if (j == 1) then
+               t = t + 0.5_r8 * x
+               q = x
+               p = p + 0.5_r8 * dp
+          
+            else if (j == 2) then
+               t = t + 0.29298322_r8 * (x-q)
+               q = 0.58578644_r8 * x + 0.121320344_r8 * q
+   
+            else if (j == 3) then
+               t = t + 1.707106781_r8 * (x-q)
+               q = 3.414213562_r8*x - 4.121320344_r8*q
+               p = p + 0.5_r8*dp
+
+            else ! j must == 4
+               t = t + (x - 2.0_r8 * q) / 6.0_r8
+
+            endif
+   
+         enddo ! j loop
+      enddo ! i loop
+
+      insitu_t = t
+
+if (debug > 2) print *, 'potential temp, salinity, local pressure -> sensible temp'
+if (debug > 2) print *, potemp, s, lpres, insitu_t
+
+!       potemp     -> potential temperature in celsius degrees
+!       s          -> salinity pss 78
+!       lpres      -> local pressure in decibars
+!       insitu_t   <- in-situ (sensible) temperature (deg c)
+
+end subroutine insitu_temp
+
+!------------------------------------------------------------------
+
+subroutine dpth2pres(nd, depth, pressure)
+ integer,  intent(in)  :: nd
+ real(r8), intent(in)  :: depth(nd)
+ real(r8), intent(out) :: pressure(nd)
+
+!  description:
+!  this function computes pressure in bars from depth in meters
+!  using a mean density derived from depth-dependent global 
+!  average temperatures and salinities from levitus 1994, and 
+!  integrating using hydrostatic balance.
+! 
+!  references:
+! 
+!  levitus, s., r. burgett, and t.p. boyer, world ocean atlas 
+!  volume 3: salinity, noaa atlas nesdis 3, us dept. of commerce, 1994.
+! 
+!  levitus, s. and t.p. boyer, world ocean atlas 1994, volume 4:
+!  temperature, noaa atlas nesdis 4, us dept. of commerce, 1994.
+! 
+!  dukowicz, j. k., 2000: reduction of pressure and pressure
+!  gradient errors in ocean simulations, j. phys. oceanogr., submitted.
+
+!  input parameters:
+!  nd     - size of arrays
+!  depth  - depth in meters. no units check is made
+
+!  output parameters:
+!  pressure - pressure in bars 
+
+!  local variables & parameters:
+integer :: n
+real(r8), parameter :: c1 = 1.0_r8
+
+! -----------------------------------------------------------------------
+!  convert depth in meters to pressure in bars
+! -----------------------------------------------------------------------
+
+      do n=1,nd
+         pressure(n) = 0.059808_r8*(exp(-0.025_r8*depth(n)) - c1)  &
+                     + 0.100766_r8*depth(n) + 2.28405e-7_r8*depth(n)**2
+      end do
+
+if (debug > 2 .and. do_output()) then
+   print *, 'depth->pressure conversion table.  cols are: N, depth(m), pressure(bars)'
+   do n=1,nd
+      print *, n, depth(n), pressure(n)
+   enddo
+endif
+
+end subroutine dpth2pres
+
+!------------------------------------------------------------------
+!------------------------------------------------------------------
+
+
+!------------------------------------------------------------------
 ! End of model_mod
-!===================================================================
+!------------------------------------------------------------------
+
 end module model_mod
 
-
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

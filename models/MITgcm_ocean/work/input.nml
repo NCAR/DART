@@ -63,43 +63,49 @@
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
    inf_sd_lower_bound          = 0.0,                     0.0
-/
+  /
 
 &smoother_nml
    num_lags              = 0,
    start_from_restart    = .false.,
    output_restart        = .false.,
    restart_in_file_name  = 'smoother_ics',
-   restart_out_file_name = 'smoother_restart'  /
+   restart_out_file_name = 'smoother_restart'
+   /
 
 # cutoff of 0.03 (radians) is about 200km
 &assim_tools_nml
    filter_kind                     = 1,
    cutoff                          = 0.03,
-   sort_obs_inc                    = .true.,
+   sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
    output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
-   print_every_nth_obs             = 0  /
+   print_every_nth_obs             = 0
+   /
 
 &ensemble_manager_nml
    single_restart_file_in  = .true.,
    single_restart_file_out = .false.,
-   perturbation_amplitude  = 0.2  /
+   perturbation_amplitude  = 0.2
+   /
 
 &cov_cutoff_nml
-   select_localization = 1  /
+   select_localization = 1
+   /
 
 &reg_factor_nml
    select_regression    = 1,
    input_reg_file       = "time_mean_reg",
    save_reg_diagnostics = .false.,
-   reg_diagnostics_file = "reg_diagnostics"  /
+   reg_diagnostics_file = "reg_diagnostics"
+   /
 
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+   /
 
 &obs_kind_nml
    assimilate_these_obs_types = 'SALINITY',
@@ -133,19 +139,21 @@
                                 'SATELLITE_INFRARED_SST',
                                 'SATELLITE_SSH',
                                 'SATELLITE_SSS',
-                                'HFRADAR_RADIAL_VELOCITY'  /
+                                'HFRADAR_RADIAL_VELOCITY'
+   /
 
 &preprocess_nml
     input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
    output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
      input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
     output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_ocean_mod.f90'  /
+   input_files              = '../../../obs_def/obs_def_ocean_mod.f90'
+   /
 
 &assim_model_nml
    write_binary_restart_files = .true.,
    netCDF_large_file_support  = .false.
-  /
+   /
 
 # model specific namelist info
 
@@ -153,7 +161,8 @@
    assimilation_period_days     = 1,
    assimilation_period_seconds  = 0, 
    model_perturbation_amplitude = 0.2, 
-   output_state_vector          = .false. /
+   output_state_vector          = .false.
+   /
 
 &location_nml
    horiz_dist_only             = .true.,
@@ -163,13 +172,15 @@
    approximate_distance        = .false.,
    nlon                        = 71,
    nlat                        = 36,
-   output_box_info             = .true.  /
+   output_box_info             = .true.
+   /
 
 &utilities_nml
    TERMLEVEL = 1,
    module_details = .true.,
    logfilename = 'dart_log.out',
-   nmlfilename = 'dart_log.nml'  /
+   nmlfilename = 'dart_log.nml'
+   /
 
 &restart_file_tool_nml
    input_file_name              = "filter_restart",
@@ -186,7 +197,8 @@
    overwrite_advance_time       = .false.,
    new_advance_days             = -1,
    new_advance_secs             = -1,
-   gregorian_cal                = .true.  /
+   gregorian_cal                = .true.
+   /
 
 &obs_sequence_tool_nml
    num_input_files = 8,
@@ -199,7 +211,8 @@
                      '../observations/tmi_pseudo.obs_seq.out',
                      '../observations/hfr_pseudo.obs_seq.out',
    filename_out    = 'obs_seq.out',
-   gregorian_cal   = .true.  /
+   gregorian_cal   = .true.
+   /
 
 # other possible obs tool namelist items:
 #
@@ -267,7 +280,6 @@
    latlim2    =  40.0,  20.0,  40.0,
    reg_names  = 'Gulf & Caribbean', 'Caribbean', 'Gulf of Mexico',
    print_mismatched_locs = .false.,
-   print_obs_locations   = .false.,
    verbose               = .true.,
    hlevel =  -2.50185,   -7.7967, -13.72595, -20.40305,  -27.9614, 
             -36.55765,  -46.3757,  -57.6311, -70.57615,  -85.5057,
@@ -276,7 +288,8 @@
             -530.2654, -618.0071, -718.9376, -834.6679, -966.8794, 
             -1117.289, -1287.607, -1479.480, -1694.436, -1933.820, 
             -2198.734, -2489.986, -2808.042, -3153.009, -3524.622, 
-            -3922.264, -4344.997, -4791.606, -5260.660, -5750.303   /
+            -3922.264, -4344.997, -4791.606, -5260.660, -5750.303
+   /
 
 # These are Ibrahims synthetic observations - isolated by platform.
 #  fname    = '../observations/adcp_u_pseudo.txt',
@@ -301,12 +314,12 @@
    lat1     = -90.0,
    lat2     =  90.0,
    hfradar  = .true.
- /
+   /
 
 # Maximum number of HFRADAR observations in one observation sequence.
 &obs_def_ocean_nml
    max_radial_vel_obs = 80000,
- /
+   /
 
 # The obs_seq_to_netcdf_nml and schedule_nml are used to convert 
 # observation sequence files to netCDF files.
@@ -326,11 +339,11 @@
 
 &schedule_nml
    calendar       = 'Gregorian',
-   first_bin_start =  2008,  6,  1,  0,  0,  0,
-   first_bin_end   =  2008,  6,  2,  0,  0,  0,
-   last_bin_end    =  2008,  6, 30,  0,  0,  0,
-   bin_interval_days    = 0,
-   bin_interval_seconds = 86400,
+   first_bin_start =  1601,  1,  1,  0,  0,  0,
+   first_bin_end   =  2999,  1,  1,  0,  0,  0,
+   last_bin_end    =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,
+   bin_interval_seconds = 0,
    max_num_bins         = 1000,
    print_table          = .true.
    /

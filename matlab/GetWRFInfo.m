@@ -11,38 +11,26 @@ function pinfo = GetWRFInfo(pinfo_in,fname,routine)
 % fname = '/glade/proj2/image/romine/dart/work_Radar/rad_regression/geom/Prior_Diag.nc';
 %
 
-%% DART software - Copyright 2004 - 2011 UCAR. This open source software is
+%% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% <next few lines under version control, do not edit>
-% $URL$
 % $Id$
-% $Revision$
-% $Date$
 
 if ( exist(fname,'file') ~= 2 ), error('%s does not exist.',fname); end
 
 pinfo = pinfo_in;
-model = nc_attget(fname, nc_global, 'model');
 
-if strcmpi(model,'wrf') ~= 1
+if strcmpi(pinfo.model,'wrf') ~= 1
    error('Not so fast, this is not a WRF model.')
 end
 
 %% Get the domain-independent information.
 
-varexist(fname, {'copy','time'})
-
+varexist(fname, {'copy'});
 copy       = nc_varget(fname,'copy');
-times      = nc_varget(fname,'time');
 
-% Coordinate between time types and dates
-
-timeunits  = nc_attget(fname,'time','units');
-timebase   = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
-timeorigin = datenum(timebase(1),timebase(2),timebase(3));
-dates      = times + timeorigin;
+%% Get 'optional' variables.
 
 dx         = varget(fname,        'DX');
 dy         = varget(fname,        'DY');
@@ -56,14 +44,14 @@ periodic_x = varget(fname,'PERIODIC_X');
 polar      = varget(fname,     'POLAR');
 
 %% Get the global metadata from a WRF DART diagnostic netCDF file.
-% If there is only one domain, we know what to do. 
+% If there is only one domain, we know what to do.
 % otherwise, ask which domain is of interest.
 
 dinfo       = nc_getdiminfo(fname,'domain');  % no graceful error
 num_domains = dinfo.Length;
 
 dID    = 1;
-if (num_domains > 1) 
+if (num_domains > 1)
    dID = GetDomain(num_domains);
 end
 
@@ -91,9 +79,7 @@ switch lower(deblank(routine))
       [level, lvlind] = GetLevel(fname,pgvar);           % Determine level and index
       [lat, lon, latind, lonind] = GetLatLon(fname, pgvar);
 
-      pinfo.model      = model;
       pinfo.fname      = fname;
-      pinfo.times      = dates;
       pinfo.var        = pgvar;
       pinfo.level      = level;
       pinfo.levelindex = lvlind;
@@ -106,7 +92,7 @@ switch lower(deblank(routine))
 
       disp('Getting information for the ''base'' variable.')
        base_var                  = GetVarString(pinfo_in.vars);
-      [base_time, base_tmeind]   = GetTime(dates);
+      [base_time, base_tmeind]   = GetTime(pinfo.time);
       [base_lvl,  base_lvlind]   = GetLevel(fname, base_var);
       [base_lat, base_lon, base_latind, base_lonind] = GetLatLon(fname, base_var);
 
@@ -114,9 +100,7 @@ switch lower(deblank(routine))
        comp_var               = GetVarString(pinfo_in.vars, base_var);
       [comp_lvl, comp_lvlind] = GetLevel(fname, comp_var, base_lvl);
 
-      pinfo.model       = model;
       pinfo.fname       = fname;
-      pinfo.times       = dates;
       pinfo.base_var    = base_var;
       pinfo.comp_var    = comp_var;
       pinfo.base_time   = base_time;
@@ -134,7 +118,7 @@ switch lower(deblank(routine))
 
       disp('Getting information for the ''base'' variable.')
        base_var                = GetVarString(pinfo_in.vars);
-      [base_time, base_tmeind] = GetTime(dates);
+      [base_time, base_tmeind] = GetTime(pinfo.time);
       [base_lvl , base_lvlind] = GetLevel(fname, base_var);
       [base_lat, base_lon, base_latind, base_lonind] = GetLatLon(fname, base_var);
 
@@ -143,9 +127,7 @@ switch lower(deblank(routine))
       [comp_lvl, comp_lvlind] = GetLevel(fname, comp_var, base_lvl);
       [comp_lat, comp_lon, comp_latind, comp_lonind] = GetLatLon(fname, comp_var, base_latind, base_lonind);
 
-      pinfo.model       = model;
       pinfo.fname       = fname;
-      pinfo.times       = dates;
       pinfo.base_var    = base_var;
       pinfo.comp_var    = comp_var;
       pinfo.base_time   = base_time;
@@ -171,11 +153,9 @@ switch lower(deblank(routine))
       [copyindices, copymetadata]= SetCopyID2(pinfo_in.prior_file);
       copy            = length(copyindices);
 
-      pinfo.model          = model;
       pinfo.truth_file     = pinfo_in.truth_file;
       pinfo.prior_file     = pinfo_in.prior_file;
       pinfo.posterior_file = pinfo_in.posterior_file;
-      pinfo.times          = dates;
       pinfo.var_names      = pgvar;
       pinfo.level          = level;
       pinfo.levelindex     = lvlind;
@@ -191,7 +171,7 @@ switch lower(deblank(routine))
       % So now I have to figure out if the posterior and prior copy metadata match.
 
       for i = 1:copy,
-         copyi = get_copy_index(pinfo_in.posterior_file,copymetadata{i}); 
+         copyi = get_copy_index(pinfo_in.posterior_file,copymetadata{i});
          pstruct.postcopyindices = copyi;
       end
 
@@ -229,9 +209,7 @@ switch lower(deblank(routine))
       s1 = input('Input line type string. <cr> for ''k-''  ','s');
       if isempty(s1), ltype = 'k-'; else ltype = s1; end
 
-      pinfo.model       = model;
       pinfo.fname       = fname;
-      pinfo.times       = dates;
       pinfo.var1name    = var1;
       pinfo.var2name    = var2;
       pinfo.var3name    = var3;
@@ -256,20 +234,20 @@ switch lower(deblank(routine))
       pinfo.ens_mem     = ens_mem;
       pinfo.ltype       = ltype;
 
-   otherwise
+    otherwise
 
 end
 
 function domainid = GetDomainID(ndomains)
 %----------------------------------------------------------------------
 
-fprintf('There are %d domains. Default is to use domain %d.\n.',ndomains,ndomains)  
+fprintf('There are %d domains. Default is to use domain %d.\n.',ndomains,ndomains)
 fprintf('If this is OK, <cr>; If not, enter domain of interest:\n')
 domainid = input('(no syntax required)\n');
 
-if ~isempty(domainid), domainid = ndomains; end 
+if ~isempty(domainid), domainid = ndomains; end
 
-if ( (domainid > 0) && (domainid <= ndomains)) 
+if ( (domainid > 0) && (domainid <= ndomains))
    error('domain must be between 1 and %d, you entered %d',ndomains,domainid)
 end
 
@@ -283,11 +261,11 @@ str = sprintf(' %s ',prognostic_vars{1});
 for i = 2:length(prognostic_vars),
    str = sprintf(' %s %s ',str,prognostic_vars{i});
 end
-fprintf('Default variable is ''%s'', if this is OK, <cr>;\n',pgvar)  
+fprintf('Default variable is ''%s'', if this is OK, <cr>;\n',pgvar)
 fprintf('If not, please enter one of: %s\n',str)
 varstring = input('(no syntax required)\n','s');
 
-if ~isempty(varstring), pgvar = deblank(varstring); end 
+if ~isempty(varstring), pgvar = deblank(varstring); end
 
 
 
@@ -302,7 +280,7 @@ if (nargin == 2),
    time = deftime;
    tindex = find(times == deftime);
 else
-   if (ntimes < 2) 
+   if (ntimes < 2)
       tindex = round(ntimes/2);
    else
       tindex = 1;
@@ -315,11 +293,11 @@ fprintf('If not, enter an index between %d and %d \n',1,ntimes)
 fprintf('Pertaining to %s and %s \n',datestr(times(1)),datestr(times(ntimes)))
 varstring = input('(no syntax required)\n','s');
 
-if ~isempty(varstring), tindex = str2num(varstring); end 
+if ~isempty(varstring), tindex = str2num(varstring); end
 
 timeinds = 1:ntimes;
 d        = abs(tindex - timeinds); % crude distance
-ind      = find(min(d) == d);      % multiple minima possible 
+ind      = find(min(d) == d);      % multiple minima possible
 timeind  = ind(1);                 % use the first one
 time     = times(timeind);
 
@@ -342,7 +320,7 @@ if (isempty(leveldim))
 else
 
    levelvar = varinfo.Dimension{leveldim};
-   dinfo    = nc_getdiminfo(fname,levelvar); 
+   dinfo    = nc_getdiminfo(fname,levelvar);
    levels   = 1:dinfo.Length;
 
    if (isempty(level)), level = levels(1); end
@@ -352,10 +330,10 @@ else
                          min(levels),max(levels))
    varstring = input('we''ll use the closest (no syntax required)\n','s');
 
-   if ~isempty(varstring), level = str2num(varstring); end 
+   if ~isempty(varstring), level = str2num(varstring); end
 
    d      = abs(level - levels);  % crude distance
-   ind    = find(min(d) == d);    % multiple minima possible 
+   ind    = find(min(d) == d);    % multiple minima possible
    lvlind = ind(1);               % use the first one
    level  = levels(lvlind);
 
@@ -427,7 +405,7 @@ varstring = input('we''ll use the closest (no syntax required)\n','s');
 
 if ~isempty(varstring)
    nums = str2num(varstring);
-   if (length(nums) ~= 2) 
+   if (length(nums) ~= 2)
       error('Did not get two indices for the lat lon pair.')
    end
    latind = nums(1);
@@ -449,11 +427,11 @@ latinds = 1:nlat;
 loninds = 1:nlon;
 
 d      = abs(latind - latinds);  % crude distance
-ind    = find(min(d) == d);   % multiple minima possible 
+ind    = find(min(d) == d);   % multiple minima possible
 latind = ind(1);              % use the first one
 
 d      = abs(lonind - loninds);  % crude distance
-ind    = find(min(d) == d);   % multiple minima possible 
+ind    = find(min(d) == d);   % multiple minima possible
 lonind = ind(1);              % use the first one
 
 lat    = latmat(latind,lonind);
@@ -466,10 +444,10 @@ function dist = arcdist(lat,lon,lat2,lon2)
 %
 % function dist = arcdist(lat,lon,latvec,lonvec)
 %
-% lat,lon    MUST be scalars 
+% lat,lon    MUST be scalars
 % lat1,lon1  lat1,lon1 can be any shape (but must match each other)
 %
-% enter: 
+% enter:
 %       lat1,lon1 = lat, lon (in degrees)
 %       lat2,lon2 = lat, lon (for loc 2)
 % returns:
@@ -477,7 +455,7 @@ function dist = arcdist(lat,lon,lat2,lon2)
 %
 % Assumes a spherical earth and fractional lat/lon coords
 %
-% Example (1 degree at the equator):  
+% Example (1 degree at the equator):
 % dist = arcdist(0.0,0.0,0.0,1.0)	% 1 degree longitude
 % dist = arcdist(0.0,0.0,1.0,0.0)       % 1 degree latitude
 % dist = arcdist(60.0,0.0,60.0,1.0)     % 1 degree longitude at a high latitude
@@ -498,7 +476,7 @@ colat2 =    (90   - lat)*pi/180;
 ang1   = cos(colat2).*cos(colat1);
 ang2   = sin(colat2).*sin(colat1).*cos(alpha);
 
-if ( prod(Dlat1) == 1 ) 
+if ( prod(Dlat1) == 1 )
    dist   = acos(ang1 + ang2)*r;
 else
    dist   = reshape(acos(ang1 + ang2)*r,Dlat2);
@@ -527,7 +505,7 @@ end
 
 
 function x = varget(filename,varname)
-%% get a varible from the netcdf file, if it does not exist, 
+%% get a varible from the netcdf file, if it does not exist,
 % do not die such a theatrical death ... return an empty.
 
 if ( nc_isvar(filename,varname) )
@@ -535,3 +513,11 @@ if ( nc_isvar(filename,varname) )
 else
    x = [];
 end
+
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Id$
+% $Revision$
+% $Date$
+

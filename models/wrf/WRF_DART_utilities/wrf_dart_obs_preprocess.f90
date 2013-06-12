@@ -1,15 +1,11 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program wrf_dart_obs_preprocess
 
-! <next few lines under version control, do not edit>
-! $URL$
-! $Id$
-! $Revision$
-! $Date$
-!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !   wrf_dart_obs_preprocess - WRF-DART utility program that at a
@@ -40,7 +36,7 @@ use    utilities_mod, only : find_namelist_in_file, check_namelist_read, nc_chec
 use     obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT, &
                              MARINE_SFC_U_WIND_COMPONENT, LAND_SFC_U_WIND_COMPONENT, &
                              METAR_U_10_METER_WIND, GPSRO_REFRACTIVITY, &
-                             SAT_U_WIND_COMPONENT, VORTEX_LAT
+                             SAT_U_WIND_COMPONENT, PROFILER_U_WIND_COMPONENT, VORTEX_LAT
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time
 use        model_mod, only : static_init_model
 use           netcdf
@@ -60,6 +56,7 @@ character(len=129) :: file_name_input    = 'obs_seq.old',        &
                       metar_extra        = 'obs_seq.metar',      &
                       marine_sfc_extra   = 'obs_seq.marine',     &
                       sat_wind_extra     = 'obs_seq.satwnd',     &
+                      profiler_extra     = 'obs_seq.profiler',   &
                       gpsro_extra        = 'obs_seq.gpsro',      &
                       trop_cyclone_extra = 'obs_seq.tc'
 integer            :: max_num_obs              = 100000   ! Largest number of obs in one sequence
@@ -100,7 +97,7 @@ namelist /wrf_obs_preproc_nml/file_name_input, file_name_output,      &
          sfc_elevation_check, overwrite_ncep_sfc_qc, overwrite_ncep_satwnd_qc, &
          aircraft_pres_int, sat_wind_pres_int, sfc_elevation_tol,   & 
          obs_pressure_top, obs_height_top, obs_boundary, sonde_extra, metar_extra,   &
-         acars_extra, land_sfc_extra, marine_sfc_extra, sat_wind_extra, &
+         acars_extra, land_sfc_extra, marine_sfc_extra, sat_wind_extra, profiler_extra, &
          trop_cyclone_extra, gpsro_extra, tc_sonde_radii, increase_bdy_error,      &
          maxobsfac, obsdistbdy, sat_wind_horiz_int, aircraft_horiz_int, &
          overwrite_obs_time
@@ -120,7 +117,7 @@ real(r8)                :: real_nx, real_ny
 logical                 :: file_exist, pre_I_format
 
 type(obs_sequence_type) :: seq_all, seq_rawin, seq_sfc, seq_acars, seq_satwnd, &
-                           seq_tc, seq_gpsro, seq_other
+                           seq_prof, seq_tc, seq_gpsro, seq_other
 
 type(time_type)         :: anal_time
 
@@ -177,6 +174,7 @@ call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_rawin)
 call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_sfc)
 call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_acars)
 call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_satwnd)
+call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_prof)
 call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_gpsro)
 call create_new_obs_seq(num_copies, num_qc, 100,         seq_tc)
 call create_new_obs_seq(num_copies, num_qc, max_num_obs, seq_other)
@@ -224,6 +222,12 @@ SAT_U_WIND_COMPONENT, nx, ny, obs_boundary, include_sig_data, &
 obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
 overwrite_obs_time, anal_time)
 
+!  add supplimental profiler observations from file
+call add_supplimental_obs(profiler_extra, seq_prof, max_obs_seq, &
+PROFILER_U_WIND_COMPONENT, nx, ny, obs_boundary, include_sig_data, &
+obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
+overwrite_obs_time, anal_time)
+
 !  add supplimental GPSRO observations from file
 call add_supplimental_obs(gpsro_extra, seq_gpsro, max_obs_seq, &
 GPSRO_REFRACTIVITY, nx, ny, obs_boundary, include_sig_data, &
@@ -250,8 +254,8 @@ if ( superob_sat_winds ) call superob_sat_wind_data(seq_satwnd, anal_time, &
 
 max_obs_seq = get_num_obs(seq_tc)     + get_num_obs(seq_rawin) + &
               get_num_obs(seq_sfc)    + get_num_obs(seq_acars) + &
-              get_num_obs(seq_satwnd) + get_num_obs(seq_gpsro) + &
-              get_num_obs(seq_other)
+              get_num_obs(seq_satwnd) + get_num_obs(seq_prof)  + &
+              get_num_obs(seq_gpsro)  +  get_num_obs(seq_other)
 
 call create_new_obs_seq(num_copies, num_qc, max_obs_seq, seq_all)
 
@@ -272,6 +276,9 @@ call destroy_obs_sequence(seq_gpsro)
 
 call build_master_sequence(seq_satwnd, seq_all)
 call destroy_obs_sequence(seq_satwnd)
+
+call build_master_sequence(seq_prof, seq_all)
+call destroy_obs_sequence(seq_prof)
 
 call build_master_sequence(seq_other, seq_all)
 call destroy_obs_sequence(seq_other)
@@ -1967,3 +1974,8 @@ end if
 return
 end function surface_obs_check
 
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
