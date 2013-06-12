@@ -90,9 +90,9 @@ write(nmlfileunit, nml=model_nml)
 write(     *     , nml=model_nml)
 
 
-call error_handler(E_MSG,'trans_dart_to_MITgcm',                     &
-                  'Converting a dart state vector to an MITgcm &
-                   restart file', source, revision, revdate)
+call error_handler(E_MSG,'trans_dart_to_MITgcm',               &
+   'Converting a dart state vector to an MITgcm restart file', &
+   source, revision, revdate)
 
 ! allocate space for dart vector
 allocate(dart(model_size))
