@@ -155,8 +155,6 @@ real(r8), allocatable                 :: ens_mean(:)
                                       !  read in from "tiegcm_s.nc")
 !integer                              :: vert_localization_coord = VERTISHEIGHT
 
-namelist /model_nml/ output_state_vector, state_num_3d, state_num_1d
-
 logical                               :: output_state_vector = .false.
                                       ! .true.  results in a "state-vector" netCDF file
                                       ! .false. results in a "prognostic-var" netCDF file
@@ -166,6 +164,8 @@ type(random_seq_type)                 :: random_seq
 
 character(len = 129) :: msgstring, msgstring2, msgstring3
 logical, save :: module_initialized = .false.
+
+namelist /model_nml/ output_state_vector, state_num_3d, state_num_1d
 
 contains
 
