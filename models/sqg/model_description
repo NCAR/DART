@@ -1,42 +1,11 @@
+DART $Id$
 
 This is a uniform PV two-surface QG+1 spectral model contributed
 by Rahul Majahan. 
 
 The underlying model is described in:
 Hakim, Gregory J., 2000: Role of Nonmodal Growth and Nonlinearity in 
-Cyclogenesis Initial-Value Problems. J. Atmos. Sci., 57, 2951–2967.
+Cyclogenesis Initial-Value Problems. J. Atmos. Sci., 57, 2951-2967.
+doi: 10.1175/1520-0469(2000)057<2951:RONGAN>2.0.CO;2
 
-
-NOTE:
-
-This model counts on a non-standard interface to the obs_model_mod.f90
-code in DART/obs_model.  To compile and run this model, make the
-following (non-backwards-compatible) two changes:
-
-
-1:
-
-   !------------- Block for subroutine callable adv_1step interface -----------
-   if(async == 0) then
-
-      do while(ens_handle%time(i) < target_time)
-         call adv_1step(ens_handle%vars(:, i), ens_handle%time(i))
-         ens_handle%time(i) = ens_handle%time(i) + time_step
-      end do
-
-! start of new section
-   else if(async == 1) then
-
-      call adv_1step(ens_handle%vars(:, i), ens_handle%time(i), target_time)
-      ens_handle%time(i) = target_time
-! end of new section
-
-   !-------------- End single subroutine callable adv_1step interface ---------
-
-and 2:
-
-! Following is for async options that use shell to advance model
-SHELL_ADVANCE_METHODS: if(async > 1) then
-
-! changed from: if(async /= 0) then
 
