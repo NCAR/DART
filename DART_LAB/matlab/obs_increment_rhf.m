@@ -7,7 +7,7 @@ function [obs_increments, err] =  obs_increment_rhf(ensemble, observation, obs_e
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Set error return to default successful
 err = 0;
@@ -172,6 +172,6 @@ x = mean + x * sd;
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

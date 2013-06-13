@@ -4,7 +4,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Plot the ratio of the new linear variance
 % update factor for filter to the old linear in sd case.
@@ -38,6 +38,6 @@ title('ratio of linear sd to linear variance updates');
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

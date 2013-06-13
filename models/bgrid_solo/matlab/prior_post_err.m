@@ -4,7 +4,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 fname = 'True_State.nc';
 tlon = getnc(fname, 'TmpI');
@@ -163,6 +163,6 @@ plot(1:num_times, plot_temp, ':');
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

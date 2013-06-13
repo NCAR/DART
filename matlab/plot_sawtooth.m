@@ -19,7 +19,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if (exist('truth_file','var') ~= 1)
    disp('If the True_State.nc exists, it will be plotted. If not, don''t worry.')
@@ -116,7 +116,6 @@ PlotSawtooth( pinfo )
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

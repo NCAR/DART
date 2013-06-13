@@ -14,7 +14,7 @@ function bob = get_varnames(fname)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 fileinfo    = nc_info(fname);
 Nvarnames   = length(fileinfo.Dataset);
@@ -54,7 +54,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

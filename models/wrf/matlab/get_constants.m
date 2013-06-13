@@ -7,7 +7,7 @@ function [ Cp, Rd, gamma, Rv, L_c, g, T0, p0] = get_constants()
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 %% Useful constants
 
@@ -22,6 +22,6 @@ p0    = 1000.e2;
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

@@ -12,7 +12,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if (exist('diagn_file','var') ~=1)
    disp('Input name of prior or posterior diagnostics file;')
@@ -141,7 +141,6 @@ clear inputstring inds str1 vrbl vrbl_inds diminfo
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

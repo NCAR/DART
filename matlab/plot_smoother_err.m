@@ -9,7 +9,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 lag_file   = 'Lag_%05d_Diag.nc'; % pattern for lag file names
 
@@ -70,7 +70,6 @@ clear pinfo
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

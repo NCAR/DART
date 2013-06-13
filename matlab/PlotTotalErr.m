@@ -26,7 +26,7 @@ function PlotTotalErr( pinfo )
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Get the netcdf variable indices for desired "copies"
 % The metadata is queried to determine which "copy" is appropriate.
@@ -923,7 +923,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

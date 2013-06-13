@@ -6,7 +6,7 @@ function [state_incs] = get_state_increments(state_ens, obs_ens, obs_incs)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Compute state variance and covariance
 covar = cov(state_ens, obs_ens);
@@ -16,6 +16,6 @@ state_incs = obs_incs * covar(1, 2) / covar(2, 2);
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

@@ -9,7 +9,7 @@ function plot_grid(fname)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 lat = nc_varget(fname,'latCell') * 180/pi;;
 lon = nc_varget(fname,'lonCell') * 180/pi;;
@@ -34,6 +34,6 @@ figure(2); clf; orient landscape
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

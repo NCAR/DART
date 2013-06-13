@@ -37,7 +37,7 @@ function varargout = run_lorenz_63(varargin)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -445,6 +445,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

@@ -5,7 +5,7 @@ function[plot_handle] = plot_gaussian(mean, sd, weight)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 x_min = mean - 5*sd;
 x_max = mean + 5*sd;
@@ -21,6 +21,6 @@ plot_handle = plot(x, y);
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

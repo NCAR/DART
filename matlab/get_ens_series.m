@@ -13,7 +13,7 @@ function ens = get_ens_series(fname, varname, state_var_index, tstartind, tendin
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 disp('get_ens_series() is deprecated, use get_hyperslab() instead.')
 
@@ -61,7 +61,6 @@ fprintf('Read %d ensemble members for variable %d in %s\n', ...
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

@@ -46,7 +46,7 @@ function PlotPhaseSpace( pinfo )
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if ( exist(pinfo.fname,'file') ~= 2 ), error('file %s does not exist.',pinfo.fname), end
 
@@ -340,7 +340,7 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
+% DART $Id$
 % $Revision$
 % $Date$
 

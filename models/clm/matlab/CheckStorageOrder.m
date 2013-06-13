@@ -9,7 +9,7 @@ function bob = CheckStorageOrder(fname,varname)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 sparselat = nc_varget(fname,'cols1d_lat');
 sparselon = nc_varget(fname,'cols1d_lon');
@@ -28,6 +28,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

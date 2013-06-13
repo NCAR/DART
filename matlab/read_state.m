@@ -8,7 +8,7 @@ function state = read_state( file_name )
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if (exist(file_name,'file') ~= 2), error('%s does not exist.',file_name); end
 
@@ -70,7 +70,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

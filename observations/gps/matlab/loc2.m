@@ -4,7 +4,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 load radi_obs.dat;
 err = radi_obs(:, 1);
@@ -31,6 +31,6 @@ print -dpng radi_obs.png
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

@@ -30,7 +30,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if (exist('fname','var') ~=1)
    fname = input('Input name of netCDF file:\n<cr> for True_State.nc\n','s');
@@ -294,7 +294,6 @@ clear s1
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

@@ -18,7 +18,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % error_checking ...
 % exist('bob') == 1   means the variable exists.
@@ -102,7 +102,6 @@ PlotBins(pinfo);
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

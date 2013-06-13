@@ -13,7 +13,7 @@ function PlotRegFactor(fname,obsnum)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if ( exist(fname,'file') ~=2 ), error('%s does not exist on the Matlab search path',fname); end
 
@@ -52,7 +52,6 @@ xlabel({'state variable (indexical)', ...
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

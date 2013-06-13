@@ -20,7 +20,7 @@ function DiffnetCDFstate(file1,file2,outfile)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 %----------------------------------------------------------------------
 % Check for the existence of the two input files.
@@ -74,7 +74,6 @@ fclose(fid);
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

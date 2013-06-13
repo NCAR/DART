@@ -12,7 +12,7 @@ function copy_index = get_qc_index(fname, copystring)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Need to get the QC MetaData (strings with the names)
 % We then search the metadata for each copy for the appropriate copies.
@@ -63,7 +63,6 @@ str2 = str1(i);
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

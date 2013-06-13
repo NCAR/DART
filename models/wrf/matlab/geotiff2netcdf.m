@@ -15,7 +15,7 @@ function geotiff2netcdf(fname,ofname)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if (exist(fname,'file') ~= 2)
    fprintf('\n')
@@ -303,6 +303,6 @@ netcdf.close(ncid)
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

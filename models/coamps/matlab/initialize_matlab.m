@@ -4,7 +4,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 %addpath /home/timw/tools/netcdf_toolbox/netcdf/ncfiles -begin
 addpath /home/timw/tools/netcdf_toolbox/netcdf/nctype -begin
@@ -14,6 +14,6 @@ addpath /home/timw/tools/mexnc -begin
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

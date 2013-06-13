@@ -5,7 +5,7 @@ function h = plot_polar(y, x, mean_dist, string, model_size)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Y includes a wraparound point, x does not
 x_t(model_size + 1) = x(1);
@@ -16,6 +16,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

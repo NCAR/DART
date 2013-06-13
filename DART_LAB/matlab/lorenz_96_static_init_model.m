@@ -5,7 +5,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Lorenz-96 model parameters
 global FORCING
@@ -31,6 +31,6 @@ STATE_LOC = (0:MODEL_SIZE - 1) / MODEL_SIZE;
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

@@ -29,7 +29,7 @@ function hop_test_check(file0, file1, file2, varname)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if ( (exist(file0,'file') ~= 2) || ...
      (exist(file1,'file') ~= 2) || ...
@@ -282,6 +282,6 @@ x = minmax(1) + [1:nedges]*(minmax(2)-minmax(1))/(nedges-1);
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

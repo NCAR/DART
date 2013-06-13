@@ -4,7 +4,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Assumes two copies are ensemble mean followed by ensemble spread
 % Should be automated and checked at some point
@@ -141,6 +141,6 @@ v_sd = num2str(mean(sd_final(bint:tint, 4, :), 1))
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

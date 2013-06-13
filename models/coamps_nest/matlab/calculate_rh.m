@@ -4,7 +4,7 @@ function rh = calculate_rh(th, p, exbm, qv)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
   R  = 287;        % Gas constant for dry air
   Rv = 462;        % Gas constant for water vapor
@@ -37,6 +37,6 @@ function rh = calculate_rh(th, p, exbm, qv)
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

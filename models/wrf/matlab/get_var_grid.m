@@ -18,7 +18,7 @@ function output = get_var_grid(fname, varname)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 %% Copy the global attributes of interest
 filename    = fname;
@@ -177,6 +177,6 @@ function zinfo = get_z_info(fname, varname, chunk);
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

@@ -107,7 +107,7 @@ function phandle = PlotObsLocs(in_dartqc, in_box, in_typelist, in_epochlist, ...
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % data subset selections:
 %  dart QC values - whether assimilated or not
@@ -616,7 +616,6 @@ end % function list = pickme(R, N)
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

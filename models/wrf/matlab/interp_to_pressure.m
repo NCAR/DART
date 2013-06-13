@@ -7,7 +7,7 @@ function var_interp = interp_to_pressure( var_in, pressure, p_level)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 [Nk Nj Ni] = size(pressure) ; 
 below      = zeros(Nj,Ni);
@@ -37,6 +37,6 @@ var_interp( p_level > pressure(1,:,:) ) = NaN ;
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
+% DART $Id$
 % $Revision$
 % $Date$

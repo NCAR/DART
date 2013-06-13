@@ -8,7 +8,7 @@ function corr = jeff_correl(base_ens, comp_ens)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 [base_nT, base_ens_size] = size(base_ens);
 [comp_nT, comp_ens_size] = size(comp_ens);
@@ -31,7 +31,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

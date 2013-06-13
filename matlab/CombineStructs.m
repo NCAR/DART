@@ -9,7 +9,7 @@ function ostruct = CombineStructs(struct1,struct2);
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if ~( isstruct(struct1) & isstruct(struct2) )
    error('both arguments must be structures')
@@ -31,7 +31,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

@@ -5,7 +5,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 clear all;
 close all;
@@ -78,6 +78,6 @@ saveas(analerr_fig,sprintf('anal_error_%s_%d',var_name,sigma_level),'png');
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

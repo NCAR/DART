@@ -11,7 +11,7 @@ function h = GetCalendarDate(seconds,days,calendartype)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if (nargin < 2)
    error('Must supply at least two arguments, seconds and days')
@@ -41,7 +41,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

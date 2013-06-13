@@ -20,7 +20,7 @@ function CompareObsDiag(file1,file2)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 fid = fopen('CompareObsDiag_results.txt','a+');
 fprintf(fid,'\n---\n');
@@ -118,7 +118,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

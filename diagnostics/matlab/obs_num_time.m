@@ -21,7 +21,7 @@ function obs_num_time(ddir)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Ensures the specified directory is searched first.
 if ( nargin > 0 )
@@ -249,7 +249,6 @@ set(h,'HorizontalAlignment','center', ...
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

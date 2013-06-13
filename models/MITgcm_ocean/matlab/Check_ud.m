@@ -23,7 +23,7 @@ function chunk = Check_ud(fname,dsize)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 modelsize = prod(dsize);
 
@@ -66,7 +66,6 @@ chunk.days    = days;
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

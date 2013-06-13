@@ -6,7 +6,7 @@ function corr = ens_correl(base_var, base_time, state_var)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Extract sample of base at base time
 
@@ -27,7 +27,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

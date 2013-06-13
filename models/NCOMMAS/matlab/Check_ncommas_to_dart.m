@@ -10,7 +10,7 @@ function [dart modl] = Check_ncommas_to_dart(modlfile, dartfile )
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Read the original NCOMMAS file values.
 if (exist(modlfile,'file') ~= 2)
@@ -62,6 +62,6 @@ QSdiffs = modl.QS(:,:,:,2) - dart.QS; [min(QSdiffs(:)) max(QSdiffs(:))]
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

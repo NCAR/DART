@@ -11,7 +11,7 @@ function var_interp = interp_to_height( var_in, heights, level)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 [Nk Nj Ni] = size(heights); 
 below      = zeros(Nj,Ni);
@@ -42,6 +42,6 @@ var_interp( level < heights(1,:,:) ) = NaN ;
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

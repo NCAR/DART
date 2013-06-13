@@ -353,3 +353,8 @@ for k=1:size(allfiles,1);
  iters(k)=str2num( hh(end-14-ioff:end-5-ioff) );
 end
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$
+

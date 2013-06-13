@@ -28,7 +28,7 @@ function varargout = run_lorenz_96(varargin)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -755,6 +755,6 @@ ens_mean_rms = sqrt(sum((truth - ens_mean).^2) / size(truth, 2));
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

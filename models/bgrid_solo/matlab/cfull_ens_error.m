@@ -4,7 +4,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Plots ensemble errors for all fields and levels, assumes
 % that first copy of data is ensemble mean. Should test and
@@ -131,6 +131,6 @@ title 'Errors for V'
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

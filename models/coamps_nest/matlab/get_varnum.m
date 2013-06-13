@@ -7,7 +7,7 @@ function varnum=get_varnum(restart_info_file,varname,level)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
   % format string for the restart.vars file
   % u2 01 NOPERTS 1.0 M KIND_U_WIND UPDATE FALSE NOPOSDEF
@@ -39,6 +39,6 @@ function varnum=get_varnum(restart_info_file,varname,level)
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

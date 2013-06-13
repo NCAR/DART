@@ -24,7 +24,7 @@ function pres = compute_pressure( mu, dnw, phi, theta, qv, Rd, Rv, gamma, p0 )
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 phi_eta = (phi(2:end,:,:) - phi(1:end-1,:,:)) ./ repmat(dnw(:), [1 size(mu)]);
 alpha   = -phi_eta ./ repmat( reshape( mu, [1 size(mu)] ), [ length(dnw) 1 1 ] );
@@ -34,6 +34,6 @@ pres = p0 * ( Rd * theta .* (1 + (Rv/Rd)*qv ) ./ ( p0 * alpha ) ).^gamma ;
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

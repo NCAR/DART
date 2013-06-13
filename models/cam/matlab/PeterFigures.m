@@ -6,7 +6,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % the figures Peter has in his noise paper are:
 %
@@ -153,6 +153,6 @@ set(3,'renderer','OpenGL'); print(3,'-dpdf','undamped-damped');
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

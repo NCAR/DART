@@ -33,7 +33,7 @@ function PlotBins(pinfo)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if isempty(pinfo.num_ens_members)
     error('no ensemble members in %s, cannot create rank histogram.',pinfo.diagn_file)
@@ -199,7 +199,6 @@ function PlotLocator(pinfo)
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

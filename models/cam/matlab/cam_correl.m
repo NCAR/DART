@@ -12,7 +12,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % global parms - set once here.   none of these have semicolons so they
 %                echo their values as they print.
@@ -88,6 +88,6 @@ cam_correl_read_and_plot
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

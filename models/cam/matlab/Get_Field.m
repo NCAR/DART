@@ -9,7 +9,7 @@ function bob = Get_Field(filename,basevar,timeind,level,enssize)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % use some of the infinite numbers of options on getnc() to get only a
 % hyperslab of the data in the first place rather than squeeze afterwards.
@@ -29,6 +29,6 @@ bob = getnc(filename, basevar, bl_corner, ur_corner, -1,-1,-1,-1, squeeze_it);
  
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

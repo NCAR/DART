@@ -9,7 +9,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % doc for Get_Field, Get_Point funcs syntax
 % x[nlat,nlon,nens] = Get_Field(filename,basevar,timeind,level,ens_size);  
@@ -91,6 +91,6 @@ cam_correl_plot
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

@@ -23,7 +23,7 @@ function inds = locations_in_region(locations, region)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if (length(region) == 6)
    zmin = min(region(5:6));
@@ -67,7 +67,6 @@ function a = ReadObsSeq(fname)
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

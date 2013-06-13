@@ -38,7 +38,7 @@ function h = map_wrf(fname, varname, levelindx, timeindx, copystring )
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if ( nargin == 3 )
    levelindx = 1;
@@ -195,6 +195,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

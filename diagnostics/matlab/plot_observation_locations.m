@@ -19,7 +19,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % setup all args to be the string 'default', which will be interpreted by 
 % the PlotObsLocs routine to use the default values.   
@@ -191,7 +191,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

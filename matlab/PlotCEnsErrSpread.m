@@ -5,7 +5,7 @@ function PlotCEnsErrSpread( pinfo )
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % this sets start/stop time indices for both truth and diagn file now
 pinfo = CheckModelCompatibility(pinfo.truth_file, pinfo.diagn_file)
@@ -276,7 +276,6 @@ slice      = reshape(ted,[nt ny*nx]);
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

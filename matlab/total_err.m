@@ -5,7 +5,7 @@ function err = total_err(pred, verif, w)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Pred and verif are time_series_length x number of variables
 num_times = size(pred, 1);
@@ -41,7 +41,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

@@ -9,7 +9,7 @@ function plot_grid(fname)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 ulat = nc_varget(fname,'ULAT') * 180/pi;;
 ulon = nc_varget(fname,'ULON') * 180/pi;;
@@ -107,6 +107,6 @@ function myplot(i1,iN,j1,jN,ulon,ulat,tlon,tlat)
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

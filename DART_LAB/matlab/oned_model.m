@@ -42,7 +42,7 @@ function varargout = oned_model(varargin)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Last Modified by GUIDE v2.5 27-Aug-2009 08:54:05
 
@@ -1019,6 +1019,6 @@ set(handles.popupmenu1,       'Enable', 'On');
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

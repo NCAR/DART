@@ -6,7 +6,7 @@ function [post_mean post_sd weight] = ...
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Get the prior and observational error variance
 prior_var = prior_sd^2;
@@ -25,6 +25,6 @@ weight = (1. / (sqrt(2. * pi) * sqrt(prior_var + obs_err_var))) *...
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

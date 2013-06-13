@@ -21,7 +21,7 @@ function vdims = nc_var_dims(ncfname,varname);
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if ( nc_isvar(ncfname, varname) )
    varinfo = nc_getvarinfo(ncfname,varname);
@@ -36,7 +36,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

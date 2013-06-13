@@ -6,7 +6,7 @@ function linked_observations(obs)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % obs has components (for example):
 %            fname: '/ptmp/thoar/POP/CAM/POP8/obs_sequence_001.nc'
@@ -315,7 +315,6 @@ if (orgholdstate == 0), hold off; end;
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

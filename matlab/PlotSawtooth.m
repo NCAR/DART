@@ -44,7 +44,7 @@ function PlotSawtooth( pinfo )
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Get some information from the truth_file, if it exists.
 if ( exist(pinfo.truth_file,'file') == 2 )
@@ -283,7 +283,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

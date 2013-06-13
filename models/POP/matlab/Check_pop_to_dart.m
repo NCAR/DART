@@ -13,7 +13,7 @@ function [dart pop] = Check_pop_to_dart(popfile,dartfile)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Read the original POP file values.
 if (exist(popfile,'file') ~= 2)
@@ -156,6 +156,6 @@ B = reshape(A, shape);
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

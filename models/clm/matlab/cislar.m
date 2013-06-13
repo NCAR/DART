@@ -6,7 +6,7 @@ function cislar(timeindex)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 priorfname = '/glade/user/thoar/CLM_leafc/Prior_Diag.nc';
 postefname = '/glade/user/thoar/CLM_leafc/Posterior_Diag.nc';
@@ -61,7 +61,6 @@ function h3 = myplot(x)
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

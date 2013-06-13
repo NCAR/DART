@@ -13,7 +13,7 @@ function [dart pop] = Check_ud(popfile,dartfile)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Read the original POP file values.
 if (exist(popfile,'file') ~= 2)
@@ -161,6 +161,6 @@ C = permute(B, [2 1]);
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

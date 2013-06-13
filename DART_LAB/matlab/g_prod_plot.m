@@ -5,7 +5,7 @@ function [prior_mean, prior_sd, obs_mean, obs_err_sd, is_err] = g_prod_plot(h)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 % Successful return as default
 is_err = false;
@@ -103,6 +103,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

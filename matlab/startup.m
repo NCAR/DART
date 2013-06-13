@@ -9,7 +9,7 @@
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 %% Adds the netCDF operators if possible
 
@@ -93,7 +93,6 @@ disp('To change your defaults, set ''truth_file'' and/or ''diagn_file'' accordin
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

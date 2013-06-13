@@ -6,7 +6,7 @@ function Check_trans_sv_pv
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 %time for timestep 0 day=128565, sec=21600
 %time for timestep 0 1953 Jan 01 06:00:00
@@ -66,7 +66,6 @@ fclose(fid);
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

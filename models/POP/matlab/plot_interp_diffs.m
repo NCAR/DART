@@ -24,7 +24,7 @@ function plot_interp_diffs(ugrid_file, tgrid_file)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 u_org = read_file(ugrid_file);
 t_org = read_file(tgrid_file);
@@ -71,6 +71,6 @@ chunk.string = sprintf('min/max is %f %f',min(chunk.vals), max(chunk.vals));
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
+

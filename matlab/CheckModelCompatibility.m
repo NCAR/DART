@@ -12,7 +12,7 @@ function pinfo_out = CheckModelCompatibility(arg1, arg2)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if (nargin == 1)      % better be a pinfo struct with at least these fields
   file1 = arg1.truth_file;  % string
@@ -302,7 +302,6 @@ end
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 

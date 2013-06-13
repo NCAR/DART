@@ -14,7 +14,7 @@ function a = ReadASCIIObsSeq(fname)
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
-% $Id$
+% DART $Id$
 
 if (nargin < 1 )
    fname = 'obs_seq.final';
@@ -399,7 +399,6 @@ ray_direction = values(4:6);
 
 % <next few lines under version control, do not edit>
 % $URL$
-% $Id$
 % $Revision$
 % $Date$
 
