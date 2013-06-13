@@ -1,21 +1,15 @@
-# ----------------------------------------------------------------------------
 # DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
-# $Id$
-# $Revision$
-# $Date$
-#
+# DART $Id$
+
 # Makefile for various mpi test and timing programs
 #
 # This Makefile directly 'include's the mkmf.template file used by the 
 #  mkmf system.  If the mkmf.template is set wrong for this system, 
 #  these builds will fail.  See ../../mkmf/mkmf.template.* for various
 #  compiler and platform settings.
-#
 
 include ../../mkmf/mkmf.template
 
@@ -154,4 +148,8 @@ tar:
 untar:
 	tar -zxvf ~/comm.tar.gz
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

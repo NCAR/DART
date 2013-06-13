@@ -2,11 +2,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# <next few lines under version control, do not edit>
-# $URL$
-# $Id$
-# $Revision$
-# $Date$
+# DART $Id$
 
 # get the flag settings from the mkmf template directly
 
@@ -42,4 +38,9 @@ time_manager_mod.o: ../time_manager_mod.f90 utilities_mod.o types_mod.o
 
 timetest.o: timetest.f90 time_manager_mod.o
 	ifort -c timetest.f90 $(FFLAGS)
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

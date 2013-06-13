@@ -3,6 +3,8 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
+#
+#----------------------------------------------------------------------
 
 see restart-trace for sources of restart variable definitions
 
@@ -338,3 +340,9 @@ XXX
 		prog low
 		expanded high
 ------------
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

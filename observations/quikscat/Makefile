@@ -1,7 +1,8 @@
+# This code is not protected by the DART copyright agreement.
+# DART $Id$
+
 # Makefile for Fortran QuikSCAT HDF readers
 # Ted Lungu
-#
-# DART $Id$
 #
 # HDF libraries used to link the sample program
 HDFDIR= /usr/local/hdf
@@ -51,4 +52,9 @@ read_qscat2b.o: read_qscat2b.f
 
 clean:
 	rm -f *.o
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

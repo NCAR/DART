@@ -3,6 +3,8 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
+#
+#----------------------------------------------------------------------
 
 ~/DAI/cam2.0.1/models/atm/cam/src/control/restart.F90
 
@@ -325,3 +327,9 @@ written on a timestep when one or more history file time samples are not
 written. A separate restart dataset is written for each
 history file. Each history buffer restart file contains the portion of the 
 history buffers pertaining to that history file. "
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

@@ -3,6 +3,8 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
+#
+#----------------------------------------------------------------------
 
 This file has most recent entries first.
 Entries are separated by ==========
@@ -186,4 +188,8 @@ www.ccsm.ucar.edu/models/atm-cam/UsersGuide/UG-45.html
 Table of all output variables w/ characteristics.
 Instructions for changing output lists.
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 
