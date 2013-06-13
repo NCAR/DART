@@ -1,4 +1,4 @@
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
@@ -49,8 +49,10 @@ Quick-start for the impatient:
 Go into the 'mkmf' directory and copy over the closest
 mkmf.template.compiler.system file into 'mkmf.template'.
 
-Edit it to set the NETCDF directory location if not in /usr/local
-or comment it out and set $NETCDF in your environment.
+Edit it to set the NETCDF directory location if not in /usr/local,
+or comment it out and set $NETCDF in your environment.  
+*This NetCDF library must have been compiled with the same compiler
+that you use to compile DART, and must include the F90 interfaces.*
 
 If you are using gfortran, go into the 'mpi_utilities' directory and run
 the './fixsystem' shell script.
@@ -63,6 +65,13 @@ your system, add '$DART/matlab' to your matlab search path and run the
 'plot_total_err' diagnostic script while in the 'models/lorenz_63/work'
 directory.  If the output plots and looks reasonable (error level stays
 around 2 and doesn't grow unbounded), you're great!  Congrats.
+
+If you are planning to run one of the larger models and want to
+test the MPI version of DART, run './quickbuild.csh -mpi'.  It will
+recompile the Lorenz 63 model without MPI and then try to build
+filter with MPI.  *The 'mpif90' command you use must have been built
+with the same version of the compiler as you are using.*
+
 
 
 If any of these steps fail or you don't know how to do them, go to the
