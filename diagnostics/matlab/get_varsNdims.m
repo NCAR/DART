@@ -1,4 +1,4 @@
-function [y, ydims] = get_varsNdims(fname);
+function [y, ydims] = get_varsNdims(fname)
 %% Get the dimension (strings) for each atmospheric variable.
 % [y, ydims] = get_vars_dims(fname);
 %
@@ -12,11 +12,11 @@ function [y, ydims] = get_varsNdims(fname);
 % fname      = 'obs_seq.final.nc';
 % [y, ydims] = get_varsNdims(fname);
 %
-% >> plotdat.allvarnames{20}  
+% >> y{20}  
 %
 %    AIRCRAFT_U_WIND_COMPONENT_guess
 %
-% >> plotdat.allvardims{20}
+% >> ydims{20}
 %    region plevel copy time
 
 %% DART software - Copyright 2004 - 2013 UCAR. This open source software is
@@ -27,6 +27,9 @@ function [y, ydims] = get_varsNdims(fname);
 
 ALLvarnames = get_varnames(fname);
 Nvarnames   = length(ALLvarnames);
+
+y     = cell(Nvarnames,1);
+ydims = cell(Nvarnames,1);
 
 for i = 1:Nvarnames
 
