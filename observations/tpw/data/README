@@ -6,10 +6,10 @@
 
 11 June 2013
 
-The input data files for the MODIS converter are too large to include
-in the DART distribution. A set of example data files may be downloaded from:
+The input data files for the TPW converter are too large to include
+in the DART distribution. An example data file may be downloaded from:
 
-http://www.image.ucar.edu/pub/DART/Obs_sets/MODIS
+http://www.image.ucar.edu/pub/DART/Obs_sets/tpw
 
 Thanks for your patience,
 The DART Development Group

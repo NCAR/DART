@@ -26,7 +26,6 @@
 
 <A HREF="#DataSources">DATA SOURCES</A> /
 <A HREF="#Programs">PROGRAMS</A> / 
-<A HREF="#Modules">MODULES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">FUTURE PLANS</A> /
@@ -226,6 +225,15 @@ The resulting obs_seq files can be merged with the
 into larger time periods.
 </P>
 <P>
+It is possible to restrict the output observation sequence to contain
+data from a region of interest throught the use of the namelist
+parameters. If you need a region that spans the Prime Meridian
+lon1 can be a larger number than lon2,
+for example, a region from 300 E to 40 E and 60 S to 30 S (some of 
+the South Atlantic), would be <em class="input">lon1 = 300, lon2 =
+40, lat1 = -60, lat2 = -30</em>.
+</P>
+<P>
 The scripts directory here includes some shell scripts that
 make use of the fact that the AIRS data is also archived on the NCAR
 HPSS (tape library) in daily tar files.  The script has options 
@@ -340,6 +348,135 @@ exit 0
 </blockquote>
 
 <!--==================================================================-->
+<!-- Namelist                                                         -->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<HR />
+<H2>NAMELIST</H2>
+<P>This namelist is read in a file called <em class=file>input.nml</em>.
+We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+</P>
+<div class=namelist>
+<pre>
+&amp;convert_airs_L2_nml
+   l2_files           = 'input.hdf',
+   l2_file_list       = '',
+   datadir            = '.',
+   outputdir          = '.',
+   lon1               =   0.0,
+   lon2               = 360.0,
+   lat1               = -90.0,
+   lat2               =  90.0,
+   min_MMR_threshold  = 1.0e-30,
+   top_pressure_level = 0.0001,
+   cross_track_thin   = 0,
+   along_track_thin   = 0,
+/
+</pre>
+</div>
+
+<P> </P>
+
+<div>
+<TABLE border=0 cellpadding=3 width=100%>
+<THEAD align=left>
+<TR><TH>Contents    </TH>
+    <TH>Type        </TH>
+    <TH>Description </TH>
+    <TH>Default     </TH></TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR>
+ <TD> l2_files </TD>
+ <TD> character(len=128) (:) </TD>
+ <TD> A list of one or more names of the HDF file(s) to 
+read, NOT including the directory. If multiple files
+are listed, each will be read and the results will
+be placed in a separate file with an output filename
+constructed based on the input filename.
+</TD></TR>
+
+<TR>
+ <TD> l2_file_list </TD>
+ <TD> character(len=128) </TD>
+ <TD> The name of an ascii text file which contains one filename
+per line, NOT including the directory.  Each file will be read
+and the observations converted into an output file where the
+output filename is based on the input filename.  Only one
+of 'l2_files' and 'l2_file_list' can be specified.  The other
+must be ' ' (empty). 
+</TD></TR>
+
+<TR>
+ <TD> datadir </TD>
+ <TD> character(len=128) </TD>
+ <TD> The directory containing the HDF files
+</TD></TR>
+
+<TR>
+ <TD> outputdir </TD>
+ <TD> character(len=128) </TD>
+ <TD> The directory for the output observation sequence files.
+</TD></TR>
+
+<TR>
+ <TD> lon1 </TD>
+ <TD> real(r4) </TD>
+ <TD> the West-most longitude of interest in degrees. [0.0, 360]
+</TD></TR>
+
+<TR>
+ <TD> lon2 </TD>
+ <TD> real(r4) </TD>
+ <TD> the East-most longitude of interest in degrees. [0.0, 360]
+</TD></TR>
+
+<TR>
+ <TD> lat1 </TD>
+ <TD> real(r4) </TD>
+ <TD> the South-most latitude of interest in degrees. [-90.0, 90.0]
+</TD></TR>
+
+<TR>
+ <TD> lat2 </TD>
+ <TD> real(r8) </TD>
+ <TD> the North-most latitude of interest in degrees. [-90.0, 90.0]
+</TD></TR>
+
+<TR>
+ <TD> min_MMR_threshold </TD>
+ <TD> real(r8) </TD>
+ <TD> The data files contains 'Retrieved Water Vapor Mass Mixing Ratio'.
+This is the minimum threshold, in gm/kg, that will be converted into a
+specific humidity observation.
+</TD></TR>
+
+<TR>
+ <TD>cross_track_thin     </TD>
+ <TD>integer              </TD>
+ <TD>provides ability to thin the data by keeping only 
+every Nth data value in a particular row.  e.g. 3 == keep every third value.
+</TD></TR>
+
+<TR> 
+ <TD>along_track_thin     </TD>
+ <TD>integer              </TD>
+ <TD>provides ability to thin the data by keeping only 
+every Nth row. e.g. 4 == keep only every 4th row.
+</TD></TR>
+
+</TBODY>
+</TABLE>
+
+</div>
+<br />
+
+<!--==================================================================-->
 <!-- Describe the bugs.                                               -->
 <!--==================================================================-->
 
@@ -347,7 +484,13 @@ exit 0
 <BR /><HR /><BR />
 <H2>KNOWN BUGS</H2>
 <P>
-none
+Earlier versions of this converter mistakenly put the moisture obs
+at level heights, in the same location as the temperature observations.
+The moisture observations are in fact an integrated value across the
+distance between two levels.
+This means the location was shifted 1/2 level in the vertical from 
+the center of the layer.  The fixed converter outputs the location
+at the center, in log space, of each layer.
 </P>
 
 <!--==================================================================-->
@@ -358,7 +501,9 @@ none
 <BR /><HR /><BR />
 <H2>FUTURE PLANS</H2>
 <P>
-none
+If a more accurate moisture observation was needed, the observation value
+could be computed by actually integrating multiple values between the levels.
+At this point it doesn't seem necessary.
 </P>
 
 <!--==================================================================-->
