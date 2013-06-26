@@ -1632,17 +1632,22 @@ end function get_next_filename
 
 !#######################################################################
 
-function is_longitude_between (lon, minlon, maxlon, doradians)
+function is_longitude_between (lon, minlon, maxlon, doradians, newlon)
 
 !  uniform way to treat longitude ranges, in degrees, on a globe.
 !  returns true if lon is between min and max, starting at min
 !  and going EAST until reaching max.  wraps across 0 longitude.
 !  if min == max, all points are inside.  includes edges.
 !  if optional arg doradians is true, do computation in radians 
-!  between 0 and 2*PI instead of 360.
+!  between 0 and 2*PI instead of 360.   if given, return the
+!  'lon' value possibly + 360 (or 2PI) which can be used for averaging
+!  or computing on a consistent set of longitude values.  after the
+!  computation is done if the answer is > 360 (or 2PI), subtract that
+!  value to get back into the 0 to 360 (or 2PI) range.
 
-real(r8), intent(in)           :: lon, minlon, maxlon
-logical,  intent(in), optional :: doradians
+real(r8), intent(in)            :: lon, minlon, maxlon
+logical,  intent(in),  optional :: doradians
+real(r8), intent(out), optional :: newlon
 logical :: is_longitude_between
 
 real(r8) :: minl, maxl, lon2, circumf
@@ -1652,15 +1657,33 @@ if (present(doradians)) then
   if (doradians) circumf = TWOPI
 endif
 
+! ensure the valid region boundaries are between 0 and one circumference
 minl = modulo(minlon, circumf)
 maxl = modulo(maxlon, circumf)
 
+! boundary points are included in the valid region so if min=max 
+! the 'region' is the entire globe and you can return early.
 if (minl == maxl) then
-   is_longitude_between = .true.  ! entire globe
+   is_longitude_between = .true. 
+   if (present(newlon)) newlon = lon
    return
 endif
 
+! ensure the test point is between 0 and one circumference
 lon2  = modulo(lon, circumf)
+
+! (here's where the magic happens.)
+! minl will be less than maxl if the region of interest crosses the prime 
+! meridian (longitude = 0).  in this case add one circumference to the 
+! eastern boundary so maxl is guarenteed to be larger than minl (and valid 
+! values are now between 0 and 2 circumferences).  
+!
+! if the test point longitude is east of the minl boundary add one circumference
+! to it as well before testing against the bounds.  values that were east of 
+! longitude 0 but west of maxl will now be shifted so they are again correctly 
+! within the new range; values that were west of the prime meridian but east 
+! of minl will stay in range; values east of minl and west of maxl will be 
+! correctly shifted out of range.
 
 if (minl > maxl) then
    maxl = maxl + circumf
@@ -1669,6 +1692,18 @@ endif
 
 is_longitude_between = ((lon2 >= minl) .and. (lon2 <= maxl))
 
+! if requested, return the value that was tested against the bounds, which 
+! will always be between 0 and 2 circumferences and monotonically increasing
+! from minl to maxl.  if the region of interest doesn't cross longitude 0
+! this value will be the same as the input value.  if the region does
+! cross longitude 0 this value will be between 0 and 2 circumferences.
+! it's appropriate for averaging values together or comparing them against
+! other values returned from this routine with a simple greater than or less
+! than without further computation for longitude 0.  to convert the values
+! back into the range from 0 to one circumference, compare it to the
+! circumference and if larger, subtract one circumference from the value.
+
+if (present(newlon)) newlon = lon2
 
 end function is_longitude_between 
 
