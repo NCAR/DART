@@ -93,7 +93,7 @@ setenv exeroot      /glade/scratch/${USER}/${case}/bld
 setenv rundir       /glade/scratch/${USER}/${case}/run
 setenv archdir      /glade/scratch/${USER}/archive/${case}
 
-setenv DARTroot     /glade/u/home/${USER}/svn/DART/dev
+setenv DARTroot     /glade/u/home/${USER}/svn/DART/trunk
 
 # ==============================================================================
 # The initial ensemble can be set by specifying the 'finidat' variable in the
@@ -731,6 +731,17 @@ ${COPY} ${DARTroot}/models/clm/shell_scripts/st_archive.sh   Tools/
 ${COPY} ${DARTroot}/models/clm/shell_scripts/assimilate.csh  .
 ${COPY} ${DARTroot}/models/clm/work/input.nml                .
 ${COPY} ${DARTroot}/shell_scripts/shell_exit.sh              .
+
+# Ensure that the input.nml ensemble size matches the number of instances.
+# WARNING: the output files contain ALL ensemble members ==> BIG
+
+ex input.nml <<ex_end
+g;ens_size ;s;= .*;= $num_instances;
+g;num_output_state_members ;s;= .*;= $num_instances;
+g;num_output_obs_members ;s;= .*;= $num_instances;
+g;casename ;s;= .*;= "../$case",;
+wq
+ex_end
 
 # ==============================================================================
 # Stage the DART executables in the CESM execution root directory: EXEROOT

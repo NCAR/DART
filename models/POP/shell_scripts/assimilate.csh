@@ -26,8 +26,8 @@ switch ("`hostname`")
       set REMOVE = '/usr/local/bin/rm -fr'
 
       set BASEOBSDIR = /glade/proj3/image/Observations/WOD09
-      set DARTDIR    = ${HOME}/svn/DART/dev
-      set LAUNCHCMD  = mpirun.lsf
+      set    DARTDIR = ${HOME}/svn/DART/trunk
+      set  LAUNCHCMD = mpirun.lsf
    breaksw
 
    case ys*:
@@ -38,8 +38,8 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /glade/p/image/Observations/WOD09
-      set DARTDIR    = ${HOME}/svn/DART/dev
-      set LAUNCHCMD  = mpirun.lsf
+      set    DARTDIR = ${HOME}/svn/DART/trunk
+      set  LAUNCHCMD = mpirun.lsf
    breaksw
 
    default:
@@ -50,24 +50,12 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /scratch/scratchdirs/nscollin/ACARS
-      set DARTDIR    = ${HOME}/devel
-      set LAUNCHCMD  = "aprun -n $NTASKS"
+      set    DARTDIR = ${HOME}/trunk
+      set  LAUNCHCMD = "aprun -n $NTASKS"
    breaksw
 endsw
 
 set ensemble_size = ${NINST_OCN}
-
-# Create temporary working directory for the assimilation
-set temp_dir = assimilate_pop
-echo "temp_dir is $temp_dir"
-
-# Create a clean temporary directory and go there
-if ( -d $temp_dir ) then
-   ${REMOVE} $temp_dir/*
-else
-   mkdir -p $temp_dir
-endif
-cd $temp_dir
 
 #-------------------------------------------------------------------------
 # Determine time of model state ... from file name of first member
@@ -76,7 +64,7 @@ cd $temp_dir
 # Piping stuff through 'bc' strips off any preceeding zeros.
 #-------------------------------------------------------------------------
 
-set FILE = `head -n 1 ../rpointer.ocn_0001.restart`
+set FILE = `head -n 1 rpointer.ocn_0001.restart`
 set FILE = $FILE:t
 set FILE = $FILE:r
 set MYCASE = `echo $FILE | sed -e "s#\..*##"`
@@ -90,6 +78,20 @@ set OCN_HOUR     = `echo $OCN_DATE[4] / 3600 | bc`
 
 echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_SECONDS (seconds)"
 echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_HOUR (hours)"
+
+#-------------------------------------------------------------------------
+# Create temporary working directory for the assimilation and go there
+#-------------------------------------------------------------------------
+
+set temp_dir = assimilate_pop
+echo "temp_dir is $temp_dir"
+
+if ( -d $temp_dir ) then
+   ${REMOVE} $temp_dir/*
+else
+   mkdir -p $temp_dir
+endif
+cd $temp_dir
 
 #-----------------------------------------------------------------------------
 # Get observation sequence file ... or die right away.
@@ -123,19 +125,6 @@ else
    exit -2
 endif
 
-# Modify the DART input.nml such that
-# the DART ensemble size matches the CESM number of instances
-# WARNING: the output files contain ALL enemble members ==> BIG
-
-ex input.nml <<ex_end
-g;ens_size ;s;= .*;= $ensemble_size;
-g;num_output_obs_members ;s;= .*;= $ensemble_size;
-wq
-ex_end
-
-# COULD also  ERROR OUT if the important setting is not the same.
-# problem is ... there are multiple instances of 'ens_size' in input.nml
-#
 echo "`date` -- END COPY BLOCK"
 
 #=========================================================================

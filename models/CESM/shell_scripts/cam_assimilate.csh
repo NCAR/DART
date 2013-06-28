@@ -27,8 +27,8 @@ switch ("`hostname`")
       set REMOVE = '/usr/local/bin/rm -fr'
 
       set BASEOBSDIR = /glade/proj3/image/Observations/ACARS
-      set DARTDIR    = ${HOME}/svn/DART/dev
-      set LAUNCHCMD  = mpirun.lsf
+      set    DARTDIR = ${HOME}/svn/DART/trunk
+      set  LAUNCHCMD = mpirun.lsf
    breaksw
 
    case ys*:
@@ -39,8 +39,8 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /glade/p/image/Observations/ACARS
-      set DARTDIR    = ${HOME}/svn/DART/dev
-      set LAUNCHCMD  = mpirun.lsf
+      set    DARTDIR = ${HOME}/svn/DART/trunk
+      set  LAUNCHCMD = mpirun.lsf
    breaksw
 
    default:
@@ -51,10 +51,12 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /scratch/scratchdirs/nscollin/ACARS
-      set DARTDIR    = ${HOME}/devel
-      set LAUNCHCMD  = "aprun -n $NTASKS"
+      set    DARTDIR = ${HOME}/trunk
+      set  LAUNCHCMD = "aprun -n $NTASKS"
    breaksw
 endsw
+
+set ensemble_size = ${NINST_ATM}
 
 #-------------------------------------------------------------------------
 # Determine time of model state ... from file name of first member
@@ -63,7 +65,7 @@ endsw
 # Piping stuff through 'bc' strips off any preceeding zeros.
 #-------------------------------------------------------------------------
 
-set FILE = `head -n 1 ./rpointer.atm_0001`
+set FILE = `head -n 1 rpointer.atm_0001`
 set FILE = $FILE:t
 set FILE = $FILE:r
 set MYCASE = `echo $FILE | sed -e "s#\..*##"`
@@ -92,16 +94,12 @@ else
 endif
 
 #-------------------------------------------------------------------------
-# we are going to assimilate, so carry on.
+# Create temporary working directory for the assimilation and go there
 #-------------------------------------------------------------------------
 
-set ensemble_size = ${NINST_ATM}
-
-# Create temporary working directory for the assimilation
 set temp_dir = assimilate_cam
 echo "temp_dir is $temp_dir"
 
-# Create a clean temporary directory and go there
 if ( -d $temp_dir ) then
    ${REMOVE} $temp_dir/*
 else
@@ -139,17 +137,6 @@ else
    echo "ERROR ... DART required file ${CASEROOT}/cam_input.nml not found ... ERROR"
    exit -2
 endif
-
-# Modify the DART input.nml such that
-# the DART ensemble size matches the CESM number of instances
-# WARNING: the output files contain ALL enemble members ==> BIG
-
-ex input.nml <<ex_end
-g;ens_size ;s;= .*;= $ensemble_size;
-g;num_output_state_members ;s;= .*;= $ensemble_size;
-g;num_output_obs_members ;s;= .*;= $ensemble_size;
-wq
-ex_end
 
 echo "`date` -- END COPY BLOCK"
 
@@ -200,14 +187,24 @@ endif
 # files to be as listed above. When being archived, the filenames get a
 # unique extension (describing the assimilation time) appended to them.
 #
-# The inflation file is essentially a duplicate of the model state ...
-# it is slaved to a specific geometry. The initial files are created
-# offline with values of unity. For the purpose of this script, they are
-# thought to be the output of a previous assimilation, so they should be
-# named something like prior_inflate_restart.YYYY-MM-DD-SSSSS
+# The inflation file is essentially a duplicate of the DART model state ...  
+# For the purpose of this script, they are the output of a previous assimilation, 
+# so they should be named something like prior_inflate_restart.YYYY-MM-DD-SSSSS
 #
-# The first inflation file can be created with 'fill_inflation_restart'
-# which can be built in the usual DART manner.
+# NOTICE: inf_initial_from_restart and inf_sd_initial_from_restart are somewhat
+# problematic. During the bulk of an experiment, these should be FALSE, since
+# we want to read existing inflation files. However, the first assimilation
+# might need these to be TRUE and then subsequently be set to FALSE.
+# There are two ways to handle this.
+# 1) Create the initial files offline with values of unity by using  
+#    'fill_inflation_restart' and stage them with the appropriate names
+#    in the RUNDIR.
+# 2) create a cookie file called RUNDIR/make_cam_inflation_cookie
+#    The existence of this file will cause this script to set the
+#    namelist appropriately. This script will 'eat' the cookie file
+#    to prevent this from happening for subsequent executions. If the
+#    inflation file does not exist for them, and it needs to, this script
+#    should die.
 #
 # The strategy is to use the LATEST inflation file from the CESM 'rundir'.
 # After an assimilation, the new inflation values/files will be moved to
@@ -251,8 +248,25 @@ set  POSTE_INF_DIAG = $MYSTRING[3]
 if ( $PRIOR_INF > 0 ) then
 
    if ($PRIOR_TF == false) then
+      # we are not using an existing inflation file.
       echo "inf_flavor(1) = $PRIOR_INF, using namelist values."
-   else
+
+   else if ( -e ../make_cam_inflation_cookie ) then
+      # We want to use an existing inflation file, but this is
+      # the first assimilation so there is no existing inflation
+      # file. This is the signal we need to to coerce the namelist 
+      # to have different values for this execution ONLY.
+      # Since the local namelist comes from CASEROOT each time, we're golden.
+
+      set PRIOR_TF = FALSE    
+
+ex input.nml <<ex_end
+g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+wq
+ex_end
+
+   else 
       # Look for the output from the previous assimilation
       (ls -rt1 ../cam_${PRIOR_INF_OFNAME}.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
@@ -277,9 +291,25 @@ endif
 if ( $POSTE_INF > 0 ) then
 
    if ($POSTE_TF == false) then
+      # we are not using an existing inflation file.
       echo "inf_flavor(2) = $POSTE_INF, using namelist values."
-   else
 
+   else if ( -e ../make_cam_inflation_cookie ) then
+      # We want to use an existing inflation file, but this is
+      # the first assimilation so there is no existing inflation
+      # file. This is the signal we need to to coerce the namelist 
+      # to have different values for this execution ONLY.
+      # Since the local namelist comes from CASEROOT each time, we're golden.
+
+      set POSTE_TF = FALSE    
+
+ex input.nml <<ex_end
+g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+wq
+ex_end
+
+   else
       # Look for the output from the previous assimilation
       (ls -rt1 ../cam_${POSTE_INF_OFNAME}.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
@@ -297,6 +327,9 @@ if ( $POSTE_INF > 0 ) then
 else
    echo "Posterior Inflation       not requested for this assimilation."
 endif
+
+# Eat the cookie regardless
+${REMOVE} ../make_cam_inflation_cookie
 
 #=========================================================================
 # Block 4: Convert N CAM restart files to DART initial condition files.
@@ -489,18 +522,6 @@ while ( ${member} <= ${ensemble_size} )
    @ member++
 
 end
-
-#-------------------------------------------------------------------------
-# We have to communicate the current model time to the env_run.xml script
-# CAM is running in a 'perpetual startup' mode, so it constantly needs new
-# start time information. The other models are running 'restart', so they
-# keep track of it internally.
-#-------------------------------------------------------------------------
-
-cd ${CASEROOT}
-
-set YYYYMMDD = `printf %04d-%02d-%02d ${ATM_YEAR} ${ATM_MONTH} ${ATM_DAY}`
-set    SSSSS = `printf %05d ${ATM_SECONDS}`
 
 #-------------------------------------------------------------------------
 # Cleanup

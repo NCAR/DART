@@ -26,7 +26,7 @@ switch ("`hostname`")
       set REMOVE = '/usr/local/bin/rm -fr'
 
       set BASEOBSDIR = /glade/proj3/image/Observations/FluxTower
-      set    DARTDIR = ${HOME}/svn/DART/dev
+      set    DARTDIR = ${HOME}/svn/DART/trunk
       set  LAUNCHCMD = mpirun.lsf
    breaksw
 
@@ -38,7 +38,7 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /glade/p/image/Observations/land
-      set    DARTDIR = ${HOME}/svn/DART/dev
+      set    DARTDIR = ${HOME}/svn/DART/trunk
       set  LAUNCHCMD = mpirun.lsf
    breaksw
 
@@ -62,7 +62,7 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /your/observation/directory/here
-      set    DARTDIR = ${HOME}/devel
+      set    DARTDIR = ${HOME}/trunk
       set  LAUNCHCMD = "mpiexec -n $NTASKS"
    breaksw
 
@@ -74,24 +74,12 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /scratch/scratchdirs/nscollin/ACARS
-      set    DARTDIR = ${HOME}/devel
+      set    DARTDIR = ${HOME}/trunk
       set  LAUNCHCMD = "aprun -n $NTASKS"
    breaksw
 endsw
 
 set ensemble_size = ${NINST_LND}
-
-# Create temporary working directory for the assimilation
-set temp_dir = assimilate_clm
-echo "temp_dir is $temp_dir"
-
-# Create a clean temporary directory and go there
-if ( -d $temp_dir ) then
-   ${REMOVE} $temp_dir/*
-else
-   mkdir -p $temp_dir
-endif
-cd $temp_dir
 
 #-------------------------------------------------------------------------
 # Determine time of model state ... from file name of first member
@@ -100,7 +88,7 @@ cd $temp_dir
 # Piping stuff through 'bc' strips off any preceeding zeros.
 #-------------------------------------------------------------------------
 
-set FILE = `head -n 1 ./rpointer.lnd_0001`
+set FILE = `head -n 1 rpointer.lnd_0001`
 set FILE = $FILE:t
 set FILE = $FILE:r
 set MYCASE = `echo $FILE | sed -e "s#\..*##"`
@@ -114,6 +102,20 @@ set LND_HOUR     = `echo $LND_DATE[4] / 3600 | bc`
 
 echo "valid time of model is $LND_YEAR $LND_MONTH $LND_DAY $LND_SECONDS (seconds)"
 echo "valid time of model is $LND_YEAR $LND_MONTH $LND_DAY $LND_HOUR (hours)"
+
+#-------------------------------------------------------------------------
+# Create temporary working directory for the assimilation and go there
+#-------------------------------------------------------------------------
+
+set temp_dir = assimilate_clm
+echo "temp_dir is $temp_dir"
+
+if ( -d $temp_dir ) then
+   ${REMOVE} $temp_dir/*
+else
+   mkdir -p $temp_dir
+endif
+cd $temp_dir
 
 #-----------------------------------------------------------------------------
 # Get observation sequence file ... or die right away.
@@ -150,19 +152,6 @@ else
    exit -2
 endif
 
-# Modify the DART input.nml such that
-# the DART ensemble size matches the CESM number of instances
-# WARNING: the output files contain ALL enemble members ==> BIG
-
-ex input.nml <<ex_end
-g;ens_size ;s;= .*;= $ensemble_size;
-g;num_output_state_members ;s;= .*;= $ensemble_size;
-g;num_output_obs_members ;s;= .*;= $ensemble_size;
-g;casename ;s;= .*;= "../$MYCASE",;
-wq
-ex_end
-
-#
 echo "`date` -- END COPY BLOCK"
 
 #=========================================================================

@@ -106,8 +106,7 @@ setenv exeroot      /glade/scratch/${USER}/${case}/bld
 setenv rundir       /glade/scratch/${USER}/${case}/run
 setenv archdir      /glade/scratch/${USER}/archive/${case}
 
-setenv DARTroot     /glade/u/home/${USER}/DART/
-
+setenv DARTroot     /glade/u/home/${USER}/DART
 
 # start a hybrid run off of tim's existing run
 set stagedir = /glade/scratch/thoar/archive/cesm_hybrid/rest/2004-01-10-00000
@@ -162,7 +161,7 @@ set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
 # The FORCE options are not optional.
 # The VERBOSE options are useful for debugging though
-# some systems don't like the -v option to any of the following 
+# some systems don't like the -v option to any of the following
 switch ("`hostname`")
    case be*:
       # NCAR "bluefire"
@@ -210,7 +209,7 @@ end
 
 # make sure there is a filter in these dirs.   try to build
 # them if we can't find filter already built for each model.
-set musthavefiles = "cam POP clm"
+set musthavefiles = "cam POP clm CESM"
 foreach MODEL ( $musthavefiles )
    set targetdir = $DARTroot/models/$MODEL/work
    if ( ! -x $targetdir/filter ) then
@@ -346,7 +345,7 @@ echo ""
 ./xmlchange RESUBMIT=0
 ./xmlchange PIO_TYPENAME=pnetcdf
 
-# this is to set the ocean coupling time to 6 hours.  
+# this is to set the ocean coupling time to 6 hours.
 # it should set all other related namelists based on
 # this setting.
 ./xmlchange OCN_NCPL=4
@@ -410,7 +409,7 @@ while ($inst <= $num_instances)
    set fname = "user_nl_cam${instance}"
    # ===========================================================================
    # For a HOP TEST ... empty_htapes = .false.
-   # For a HOP TEST ... use a default fincl1 
+   # For a HOP TEST ... use a default fincl1
 
    echo " inithist      = '6-HOURLY'"                   >> $fname
    echo " ncdata        = 'cam_initial${instance}.nc'"  >> $fname
@@ -437,20 +436,20 @@ while ($inst <= $num_instances)
    set fname = "user_nl_cice${instance}"
    # ===========================================================================
    # CICE Namelists
-   
+
    echo "ice_ic = '${refcase}.cice${instance}.r.${run_refdate}-${run_reftod}.nc'" >> $fname
 
    # ===========================================================================
    set fname = "user_nl_clm${instance}"
    # ===========================================================================
-   
+
    # Customize the land namelists
    # The history tapes are a work in progress. If you write out the instantaneous
    # flux variables every 30 minutes to the .h1. file, the forward observation
    # operators for these fluxes should just read them from the .h1. file rather
    # than trying to create them from the (incomplete DART) CLM state.
    # For a HOP TEST ... hist_empty_htapes = .false.
-   # For a HOP TEST ... use a default hist_fincl1 
+   # For a HOP TEST ... use a default hist_fincl1
    #
    @ thirtymin = $assim_n * 2
 
@@ -458,7 +457,7 @@ while ($inst <= $num_instances)
    echo "hist_empty_htapes = .true."                 >> $fname
    echo "hist_fincl1 = 'NEP'"                        >> $fname
    echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R'"  >> $fname
-   echo "hist_nhtfrq = -$assim_n,-$assim_n,"         >> $fname
+   echo "hist_nhtfrq = -$assim_n,1,"                 >> $fname
    echo "hist_mfilt  = 1,$thirtymin"                 >> $fname
    echo "hist_avgflag_pertape = 'A','A'"             >> $fname
 
@@ -525,7 +524,7 @@ echo "Copying the restart files from the staging directories"
 echo 'into the CESM run directory and creating the pointer files.'
 echo ''
 
-# TJH FIXME ... simply put full path in the pointer file? traceability? 
+# TJH FIXME ... simply put full path in the pointer file? traceability?
 # TJH FIXME ... what do we do with the *.hdr file
 # After a run completes, the 'normal' pointer files created are:
 # rpointer.drv
@@ -705,7 +704,7 @@ ${COPY} ${DARTroot}/models/CESM/shell_scripts/clm_assimilate.csh      .
 #  1) resetting the xml files to run (or rerun) the first step of the experiment
 #  2) the xml changes you need to make between steps 1 and 2
 #  3) restage initial case files to start over
-#  4) restore the files from the last successful cesm advance to restart 
+#  4) restore the files from the last successful cesm advance to restart
 #      in the middle of a run
 #  5) restage the dart executables from the dartroot directory to the
 #      CESM bld directory
@@ -856,7 +855,6 @@ cat << EndOfText >! refresh_dart_files.sh
 ${COPY} ${DARTroot}/models/cam/work/cam_to_dart   ${exeroot}/.
 ${COPY} ${DARTroot}/models/cam/work/dart_to_cam   ${exeroot}/.
 ${COPY} ${DARTroot}/models/cam/work/filter        ${exeroot}/filter_cam
-#${COPY} ${DARTroot}/models/cam/work/filter        ${exeroot}/filter
 ${COPY} ${DARTroot}/models/cam/work/input.nml                cam_input.nml
 
 ${COPY} ${DARTroot}/models/clm/work/clm_to_dart   ${exeroot}/.
