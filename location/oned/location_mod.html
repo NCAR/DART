@@ -75,6 +75,7 @@ have to provide any additional code.
 However, if the model interface code wants to intercept and alter
 the default behavior of the get_close routines, they are able to.
 The correct usage of the <em class=code>get_close</em> routines is as follows:
+</P>
 <pre>
 <em class=code>
 call get_close_maxdist_init()  ! must be called before get_close_obs_init()
@@ -85,6 +86,7 @@ call get_close_obs()           ! many, many times
 call get_close_obs_destroy()
 </em>
 </pre>
+<P>
 Regardless of the fact that the names include the string 'obs', they are
 intended for use with any group of locations in the system, frequently
 state vector items or observations, but any location is acceptable.

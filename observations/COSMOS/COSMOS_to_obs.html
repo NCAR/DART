@@ -304,7 +304,7 @@ kind
 </pre>
 </div>
 </div><!-- end of block indent -->
-<P></P><!-- needed to make 'top' align correctly -->
+<P>&nbsp;</P><!-- needed to make 'top' align correctly -->
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
@@ -313,72 +313,81 @@ kind
 <A NAME="Namelist"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from
+prematurely terminating the namelist.
 </P>
-<div class=namelist><pre>
-<em class=call>namelist /COSMOS_to_obs_nml/ </em> site_metadata_file, &amp;
-          text_input_file, obs_out_file, sitename, maxgoodqc, verbose
+
+
+<div class=namelist>
+<pre>
+&amp;COSMOS_to_obs_nml
+   site_metadata_file = 'COSMIC_parlist.nc'
+   text_input_file    = 'textdata.input',
+   obs_out_file       = 'obs_seq.out',
+   sitename           = 'missing',
+   maxgoodqc          =  3,
+   verbose            = .false.
+   /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<div>
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>.
-</P>
+<TABLE border=0 cellpadding=3 width=100% summary='Cosmos namelist description'>
+<THEAD align=left>
+<TR><TH>Contents    </TH>
+    <TH>Type        </TH>
+    <TH>Description </TH></TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<TBODY valign=top>
+<TR>
+ <TD>site_metadata_file</TD>
+ <TD>character(len=256)</TD>
+ <TD>The netCDF file containing the parameter values for each site.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>site_metadata_file</TD>
-    <!--  type  --><TD valign=top>character(len=256)</TD>
-    <!--descript--><TD valign=top>The netCDF file containing the 
-                       parameter values for each site.<br \>
-                       <em class=units>[default:&nbsp;'COSMIC_parlist.nc']</em>
-                       </TD></TR>
+<TR>
+ <TD>text_input_file</TD>
+ <TD>character(len=128)</TD>
+ <TD>The text file containing the raw observations for each site.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>text_input_file</TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD valign=top>The text file containing the 
-                       raw observations for each site.<br \>
-                       <em class=units>[default:&nbsp;'corcounts.txt']</em>
-                       </TD></TR>
+<TR>
+ <TD>obs_out_file</TD>
+ <TD>character(len=128)</TD>
+ <TD>The output observation sequence file for DART.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>obs_out_file</TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD valign=top>The observation sequence file 
-                       for DART.<br \>
-                       <em class=units>[default:&nbsp;'obs_seq.out']</em>
-                       </TD></TR>
+<TR>
+ <TD>sitename</TD>
+ <TD>character(len=128)</TD>
+ <TD>The name of the site. Must match one of the site names in 
+the <em class=code>site_metadata_file</em>.  Case-insensitive match, 
+trailing blanks ignored.
+Use <em class=input>ncdump&nbsp;-v&nbsp;sitenames&nbsp;COSMIC_parlist.nc</em>
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>sitename</TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD valign=top>The name of the site. Must match one of the 
-                       site names in <em class=code>site_metadata_file</em>.
-                       Case-insensitive match, trailing blanks ignored.<br />Use
-                       <em class=input>ncdump&nbsp;-v&nbsp;sitenames&nbsp;COSMIC_parlist.nc</em><br \>
-                       <em class=units>[default:&nbsp;'missing']</em>
-                       </TD></TR>
+<TR>
+ <TD>maxgoodqc</TD>
+ <TD>integer</TD>
+ <TD>left for future implementation.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>maxgoodqc</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD valign=top>left for future implementation.
-                       <em class=units>[default: 3]</em>
-                       </TD></TR>
+<TR>
+ <TD>verbose</TD>
+ <TD>logical</TD>
+ <TD>A switch to specify the amount of run-time output.
+<em class=code>.true.</em> the most amount of output.
+<em class=code>.false.</em> the least amount of output.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>verbose</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD valign=top>The switch to specify the run-time output.
-                       <em class=code>.true.</em> the most amount of output.
-                       <em class=code>.false.</em> the least amount of output.
-                       <em class=units>[default:&nbsp;.false.]</em>
-                       </TD></TR>
-
+</TBODY>
 </TABLE>
 
 <H3 class=indent1>Example</H3>
@@ -391,7 +400,7 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
    sitename           = 'Santa_Rita_Creosote',
 </pre>
 
-</div><!-- end of indent1 -->
+</div>
 
 <!--==================================================================-->
 <!-- References.                                                      -->
@@ -442,8 +451,6 @@ the columns of interest.</li>
 <li>Implement a QC encoding that reflects the uncertainty of the measurement. 
 Presently, all Level 2 data have an incoming QC of 1.</li>
 </ul>
-<P>
-</P>
 
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->

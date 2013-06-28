@@ -35,14 +35,18 @@
 <H1>MODULE model_mod (GITM)</H1>
 
 <P>The <strong>GITM </strong> interface for 
-   <strong>Data Assimilation Research Testbed (DART)</strong> is under development.
-   <br />
-   <br />
-   Since GITM uses binary files for their restart mechanisms, it was really difficult to
-   make a namelist-controlled set of variables to be included in the DART state vector.
-   Each variable must also correspond to a DART "KIND"; required for the DART
-   interpolate routines. For example, this is nowhere close to being correct:
+<strong>Data Assimilation Research Testbed (DART)</strong> is under development.
+</P>
+<br />
+<br />
 <P>
+GITM uses binary files for their restart mechanisms, so no metadata is available
+to confirm the number and order of fields in the file. Care must be used
+to make sure the namelist-controlled set of variables to be included in the
+DART state vector is consistent with the restart files.
+Each variable must also correspond to a DART "KIND"; required for the DART
+interpolate routines. For example, this is nowhere close to being correct:
+</P>
    <pre>&amp;gitm_vars_nml
    gitm_state_variables = 'Temperature',      'KIND_TEMPERATURE',
                           'eTemperature',     'KIND_TEMPERATURE',
@@ -59,8 +63,10 @@
    Since DART is an ensemble algorithm, there are multiple restart files for a 
    single restart time: one for each ensemble member. Creating the initial ensemble
    of states is an area of active research.
+</P>
    <br />
    <br />
+<P>
    DART reads grid information for GITM from several sources. The <em class=file>UAM.in</em>
    file specifies the number of latitudes/longitudes per block, and the number of blocks comes
    from the <em class=file>GITM2/src/ModSize.f90</em> module. 
@@ -113,12 +119,12 @@
 <a name="conversions"></a>
 <div class=indent1>
    <h3>Converting between DART files and GITM restart files</h3>
-   <P>is not quite straighforward. Given the namelist mechanism for
-      determining the state variables and the fact that GITM netCDF
-      files do not exist, - everything that is needed
-      is not readily determined.
+   <P>The binary GITM files contain no metadata, so care is needed when
+      converting between DART state variables and GITM files.
+   </P>
       <br />
       <br />
+   <P>
       There are two programs - both require the list of GITM variables to use in
       the DART state vector: the
        <em class="code">gitm_vars_nml</em> namelist in the 
@@ -152,9 +158,9 @@
 </div>
 
 
-<H1>Everything below here is complete fiction</H1>
-<H1>Everything below here is complete fiction</H1>
-<H1>Everything below here is complete fiction</H1>
+<H1>Everything below here has not been reviewed yet for GITM</H1>
+<H1>Everything below here has not been reviewed yet for GITM</H1>
+<H1>Everything below here has not been reviewed yet for GITM</H1>
 
 
 <a name="InitialEnsemble"></a>

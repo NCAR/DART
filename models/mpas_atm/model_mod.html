@@ -36,13 +36,15 @@
 
 <P>The <strong>MPAS ATM </strong> interface for 
    <strong>Data Assimilation Research Testbed (DART)</strong> is under development.
+</P>
    <br />
    <br />
+<P>
    Since MPAS ATM uses netcdf files for their restart mechanism, 
    a namelist-controlled set of variables is used to build the DART state vector.
    Each variable must also correspond to a DART "KIND"; required for the DART
    interpolate routines. For example:
-<P>
+</P>
 <pre>&amp;mpas_vars_nml
    mpas_state_variables = 'uReconstructZonal',      'KIND_U_WIND_COMPONENT',
                           'uReconstructMeridional', 'KIND_V_WIND_COMPONENT',
@@ -153,7 +155,7 @@ type(progvartype), dimension(max_state_variables) :: progvar
 <a name="conversions"></a>
 <div class=indent1>
    <h3>Converting between DART files and MPAS analysis files</h3>
-   <P>is relatively straighforward. Given the namelist mechanism for
+   <P>is relatively straightforward. Given the namelist mechanism for
       determining the state variables and the MPAS history netCDF
       files exist, - everything that is needed is readily determined.
       <br />

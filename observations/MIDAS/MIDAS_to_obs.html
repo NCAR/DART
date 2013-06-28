@@ -38,6 +38,7 @@
 <H4>MIDAS netCDF File to DART observation converter</H4>
 
 <P>Alex Chartier (University of Bath, UK) is the point-of-contact for this effort.
+</P>
 <blockquote>
 "MIDAS runs in Matlab.
 The raw observations come from GPS receivers as RINEX files,
@@ -45,7 +46,6 @@ but we can't use them directly just yet ...
 Currently, the 'slant' (satellite-to-receiver path) observations are inverted 
 by MIDAS to make vertical, column-integrated 'observations' of plasma density."
 </blockquote>
-</P>
 
 <!--==================================================================-->
 
@@ -129,7 +129,7 @@ It rebuilds the table of supported observation types before
 compiling the source code.
 </P>
 
-<P></P><!-- needed to make 'top' align correctly -->
+<P>&nbsp;</P><!-- needed to make 'top' align correctly -->
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
@@ -138,51 +138,56 @@ compiling the source code.
 <A NAME="Namelist"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
-<div class=namelist><pre>
-<em class=call>namelist /MIDAS_to_obs_nml/ </em> input_file, &amp;
-          obs_out_file, verbose
+
+<div class=namelist>
+<pre>
+&amp;MIDAS_to_obs_nml
+   input_file    = 'infile.nc'
+   obs_out_file  = 'obs_seq.out',
+   verbose       = .false.
+   /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>.
-</P>
+<TBODY valign=top>
+<TR>
+ <TD> input_file </TD>
+ <TD> character(len=256) </TD>
+ <TD> Name of the input netCDF MIDAS file to read.
+ </TD> </TR>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<TR>
+ <TD> obs_out_file </TD>
+ <TD> character(len=256) </TD>
+ <TD> Name of the output observation sequence file that is created.
+ </TD> </TR>
 
-<TR><!--contents--><TD valign=top>input_file</TD>
-    <!--  type  --><TD valign=top>character(len=256)</TD>
-    <!--descript--><TD valign=top>The netCDF file containing the 
-                       MIDAS values.<br \>
-                       <em class=units>[default:&nbsp;'../data/Test.nc']</em>
-                       </TD></TR>
+<TR>
+ <TD> verbose </TD>
+ <TD> logical </TD>
+ <TD> Controls how much informational output is printed during a conversion.
+<em class=code>.true.</em> the most amount of output.
+<em class=code>.false.</em> the least amount of output.
+ </TD> </TR>
 
-<TR><!--contents--><TD valign=top>obs_out_file</TD>
-    <!--  type  --><TD valign=top>character(len=256)</TD>
-    <!--descript--><TD valign=top>The observation sequence file 
-                       for DART.<br \>
-                       <em class=units>[default:&nbsp;'obs_seq.out']</em>
-                       </TD></TR>
-
-<TR><!--contents--><TD valign=top>verbose</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD valign=top>The switch to specify the run-time output.
-                       <em class=code>.true.</em> the most amount of output.
-                       <em class=code>.false.</em> the least amount of output.
-                       <em class=units>[default:&nbsp;.false.]</em>
-                       </TD></TR>
-
+</TBODY> 
 </TABLE>
+
 
 <H3 class=indent1>Example</H3>
 
@@ -192,8 +197,6 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
    obs_out_file  = 'obs_seq.out',
    verbose       = .TRUE.,
 </pre>
-
-</div><!-- end of indent1 -->
 
 <!--==================================================================-->
 <!-- References.                                                      -->
@@ -225,10 +228,8 @@ none
 <A NAME="FuturePlans"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
-<ul>
-<li>none</li>
-</ul>
 <P>
+none
 </P>
 
 <!--==================================================================-->

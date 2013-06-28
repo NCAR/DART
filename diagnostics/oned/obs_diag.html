@@ -226,8 +226,10 @@ The allowable ranges for the region boundaries are: lon [0.0, 1.0).
 The 1D locations are conceived as the distance around a unit sphere.
 An observation with a location exactly ON a region boundary cannot 
 'count' for both regions. The logic used to resolve this is:
+</P>
 <blockquote>if((lon &ge; lon1) .and. (lon &lt; lon2)) keeper = .true.</blockquote>
 <br />
+<P>
    Consequently, if you want to include an observation precisely AT 1.0, (for example),    you need to specify something a little larger than 1.0.<br /><br />
    You can only specify <strong>either</strong>
    <em class="code">obs_sequence_name</em>
