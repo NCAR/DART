@@ -54,13 +54,13 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 character(len=128) :: text_input_file = 'textdata.input'
 character(len=128) :: obs_out_file    = 'obs_seq.out'
-integer            :: year
-real(r8)           :: timezoneoffset
-real(r8)           :: latitude
-real(r8)           :: longitude
-real(r8)           :: elevation
-real(r8)           :: flux_height
-real(r8)           :: maxgoodqc       = 3
+integer            :: year            = -1
+real(r8)           :: timezoneoffset  = -1.0_r8
+real(r8)           :: latitude        = -1.0_r8
+real(r8)           :: longitude       = -1.0_r8
+real(r8)           :: elevation       = -1.0_r8
+real(r8)           :: flux_height     = -1.0_r8
+real(r8)           :: maxgoodqc       = 3.0_r8
 logical            :: verbose         = .false.
 
 namelist /level4_to_obs_nml/ text_input_file, obs_out_file, year, &

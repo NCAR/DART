@@ -51,7 +51,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! Namelist with default values
 !-----------------------------------------------------------------------
 
-character(len=256) :: input_file    = '../data/Test.nc'
+character(len=256) :: input_file    = 'infile.nc'
 character(len=256) :: obs_out_file  = 'obs_seq.out'
 logical            :: verbose       = .false.
 

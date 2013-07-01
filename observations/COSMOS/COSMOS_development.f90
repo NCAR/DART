@@ -72,8 +72,8 @@ character(len=256) :: site_metadata_file = 'COSMIC_parlist.nc'
 character(len=128) :: text_input_file = 'textdata.input'
 character(len=128) :: obs_out_file    = 'obs_seq.out'
 character(len=128) :: sitename        = 'missing'
-integer            :: year
-real(r8)           :: maxgoodqc       = 3
+integer            :: year            = -1
+real(r8)           :: maxgoodqc       = 3.0_r8
 logical            :: verbose         = .false.
 
 namelist /COSMOS_development_nml/ site_metadata_file, text_input_file, &

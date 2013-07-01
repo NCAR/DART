@@ -1,9 +1,9 @@
 &COSMOS_to_obs_nml
-   site_metadata_file = '../data/COSMIC_parlist.nc'
-   text_input_file    = '../data/SantaRita.corcounts.txt'
-   obs_out_file       = 'SantaRita.obs_seq.out',
-   sitename           = 'Santa_Rita_Creosote',
-   maxgoodqc          =    1,
-   verbose            = .TRUE.
+   site_metadata_file = 'COSMIC_parlist.nc'
+   text_input_file    = 'corcounts.txt'
+   obs_out_file       = 'obs_seq.out',
+   sitename           = 'missing',
+   maxgoodqc          =    3,
+   verbose            = .false.
    /
 

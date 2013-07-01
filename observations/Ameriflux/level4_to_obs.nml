@@ -1,13 +1,13 @@
 &level4_to_obs_nml
-   text_input_file = '../data/AMF_USHa1_2003_L4_h_V002.txt',
+   text_input_file = 'textdata.input',
    obs_out_file    = 'obs_seq.out',
-   year            = 2003,
-   timezoneoffset  = -5,
-   latitude        =  42.5378,
-   longitude       = -72.1715,
-   elevation       = 340,
-   flux_height     = 29,
+   year            = -1,
+   timezoneoffset  = -1,
+   latitude        = -1.0,
+   longitude       = -1.0,
+   elevation       = -1.0,
+   flux_height     = -1.0,
    maxgoodqc       = 3,
-   verbose         = .TRUE.
+   verbose         = .false.
    /
 

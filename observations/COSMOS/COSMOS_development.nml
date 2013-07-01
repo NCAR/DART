@@ -1,10 +1,10 @@
 &COSMOS_development_nml
-   site_metadata_file = '../data/COSMIC_parlist.nc'
-   text_input_file    = '../data/COSMOS_SantaRita_2011.dat'
-   obs_out_file       = 'SantaRita.obs_seq.out',
-   sitename           = 'Santa_Rita_Creosote',
-   year               = 2011,
-   maxgoodqc          =    1,
-   verbose            = .TRUE.
+   site_metadata_file = 'COSMIC_parlist.nc'
+   text_input_file    = 'textdata.input',
+   obs_out_file       = 'obs_seq.out',
+   sitename           = 'missing',
+   year               = -1,
+   maxgoodqc          =  3,
+   verbose            = .false.
    /
 
