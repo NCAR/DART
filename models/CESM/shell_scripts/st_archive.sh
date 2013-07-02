@@ -1,4 +1,4 @@
-#!/bin/sh
+!/bin/sh
 #
 # This code is part of the CESM distribution,
 # So it is not protected by the DART copyright agreement.
@@ -66,7 +66,7 @@ sta=${DOUT_S_ROOT}/.sta-$$-`date +%Y%m%d%H%M%S%N`
 mkdir -p ${sta} 2> /dev/null
 
 if [ $? -ne 0 ]; then
-    echo "st_archive.sh: error, unable to create short-term archive directory"
+    echo "st_archive.sh: error, unable to create short-term archive directory .sta"
     echo "st_archive.sh: exiting"
     exit 1
 fi
@@ -305,9 +305,58 @@ do
     IDX=`expr $IDX + 1`
 done
 
-#copy back the required files for next restart
+# changes for DART assimilation runs.  stopping the model every day
+# (or every 6 hours) results in too much output to be archived.
+# keep every Nth restart, as well as the previous restart until
+# we know the next step has completed successfully.
+
+sta2=${DOUT_S_ROOT}/.sta2
+mkdir -p ${sta2} 2> /dev/null
+
+if [ $? -ne 0 ]; then
+    echo "st_archive.sh: error, unable to create short-term archive directory .sta2"
+    echo "st_archive.sh: exiting"
+    exit 1
+fi
+
+# delete previous contents, save last successful step for possible restart
+rm -fr ${sta2}/*
+mkdir -p ${sta2}/${dname} 2> /dev/null
+cp ${sta}/rest/${dname}/* ${sta2}/${dname}
+echo "st_archive.sh: copied last successful step into ${sta2}/${dname} for safekeeping"
+
+# copy back the required files for next restart
 cp ${sta}/rest/${dname}/* .
 
+
+# now possibly delete the current contents of the rest dir so 
+# it won't be picked up by the long term archiver.  save every Nth day.
+
+year=`echo $dname | cut -b1-4`
+month=`echo $dname | cut -b6-7`
+day=`echo $dname | cut -b9-10`
+secs=`echo $dname | cut -b12-16`
+
+
+# if you want to save more often (or less) alter the test here.
+# using the time variables immediately above.
+
+if [[ $day == 01 || $day == 10 || $day == 20 ]]; then
+  echo "st_archive: PRESERVING contents of restart ${dname}"
+else
+  echo "st_archive: DELETING contents of restart ${dname}"
+  rm -rf ${sta}/rest/${dname}/* .
+fi
+
+#ALICIA... rm the .hv files because they have no unique time stamp.
+rm -rf ${sta}/ocn/hist/${CASE}.pop.*.hv.nc
+
+
+# end of DART changes
+
+
+# make files visible again in the archive directory so they
+# are eligible again for the long term archiver to save.
 mv ${sta}/* ${DOUT_S_ROOT}
 rm -fr ${sta}
 

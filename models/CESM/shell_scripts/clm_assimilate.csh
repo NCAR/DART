@@ -27,7 +27,6 @@ switch ("`hostname`")
       set REMOVE = '/usr/local/bin/rm -fr'
 
       set BASEOBSDIR = /glade/proj3/image/Observations/FluxTower
-      set    DARTDIR = ${HOME}/svn/DART/trunk
       set  LAUNCHCMD = mpirun.lsf
    breaksw
 
@@ -39,7 +38,6 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /glade/p/image/Observations/land
-      set    DARTDIR = ${HOME}/svn/DART/trunk
       set  LAUNCHCMD = mpirun.lsf
    breaksw
 
@@ -51,7 +49,6 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /scratch/scratchdirs/nscollin/ACARS
-      set    DARTDIR = ${HOME}/trunk
       set  LAUNCHCMD = "aprun -n $NTASKS"
    breaksw
 endsw
@@ -156,7 +153,8 @@ echo "`date` -- END COPY BLOCK"
 # Block 2: Stage the files needed for SAMPLING ERROR CORRECTION
 #
 # The sampling error correction is a lookup table.
-# The tables are stored in the DART distribution.
+# The tables were originally in the DART distribution, but should
+# have been staged to $CASEROOT at setup time.
 # Each ensemble size has its own (static) file.
 # It is only needed if
 # input.nml:&assim_tools_nml:sampling_error_correction = .true.,
@@ -168,7 +166,7 @@ set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
 set SECSTRING = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
 
 if ( $SECSTRING == true ) then
-   set SAMP_ERR_FILE = ${DARTDIR}/system_simulation/final_full_precomputed_tables/final_full.${ensemble_size}
+   set SAMP_ERR_FILE = ${CASEROOT}/final_full.${ensemble_size}
    if (  -e   ${SAMP_ERR_FILE} ) then
       ${COPY} ${SAMP_ERR_FILE} .
    else
