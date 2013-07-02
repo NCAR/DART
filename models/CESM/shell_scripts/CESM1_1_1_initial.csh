@@ -73,11 +73,11 @@
 #    script names; so consider it's length and information content.
 # num_instances:  Number of ensemble members
 
-setenv case                 cesm_hybrid
+setenv case                 cesm_testme
 setenv compset              B_2000_CAM5
 setenv resolution           0.9x1.25_gx1v6
 setenv cesmtag              cesm1_1_1
-setenv num_instances        30
+setenv num_instances        3
 
 # ==============================================================================
 # define machines and directories
@@ -106,7 +106,7 @@ setenv exeroot      /glade/scratch/${USER}/${case}/bld
 setenv rundir       /glade/scratch/${USER}/${case}/run
 setenv archdir      /glade/scratch/${USER}/archive/${case}
 
-setenv DARTroot     /glade/u/home/${USER}/svn/DART/trunk
+setenv DARTroot     /glade/p/work/nancy/subversion/newtrunk/
 
 set RTM_stagedir = /glade/scratch/thoar/DART_POP_RESTARTS/2004-01-01-00000
 set CLM_stagedir = /glade/scratch/thoar/DART_POP_RESTARTS/CLM_2004-01-01-00000/cesm_test
@@ -138,7 +138,7 @@ setenv stop_option   nhours
 setenv stop_n        72
 setenv assim_n       24
 setenv short_term_archiver on
-setenv long_term_archiver  off
+setenv long_term_archiver  on
 
 # ==============================================================================
 # job settings
@@ -149,7 +149,7 @@ setenv long_term_archiver  off
 # TJH: How many T62_gx1v6 CESM instances can fit on 1 node?
 # ==============================================================================
 
-setenv ACCOUNT      P8685nnnn
+setenv ACCOUNT      P86850054
 setenv timewall     0:50
 setenv queue        economy
 setenv ptile        15
@@ -825,9 +825,9 @@ cat << EndOfText >! reset_last_successful_step.sh
 # using the variables set in that script
 
 lastarchivedir=\`ls -1dt ${archdir}/.sta2/* | head -n 1\`
-if [[ ! -d $lastarchivedir ]]; then
+if [[ ! -d \$lastarchivedir ]]; then
   lastarchivedir=\`ls -1dt ${archdir}/rest/* | head -n 1\`
-  if [[ ! -d $lastarchivedir ]]; then
+  if [[ ! -d \$lastarchivedir ]]; then
     echo cannot find last archive directory in ${archdir}/.sta2 
     echo or in ${archdir}/rest.  exiting.
     exit -1
@@ -1011,7 +1011,9 @@ echo ""
 echo "cd into ${caseroot}"
 echo "1) edit ${caseroot}/Buildconf/clm.buildnml.csh ... remove 'hybrid' portion of line 86"
 echo "2) edit ${caseroot}/Buildconf/rtm.buildnml.csh ... comment out line 36"
-echo ""
+echo "3) If the ${case}.run script still contains:"
+echo '     #BSUB -R "select[scratch_ok > 0]" '
+echo "   around line 9, delete it."
 echo ""
 echo "Check the streams listed in the streams text files.  If more or different"
 echo 'dates need to be added, then do this in the $CASEROOT/user_*files*'

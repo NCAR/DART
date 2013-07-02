@@ -979,6 +979,10 @@ echo 'dates need to be added, then do this in the $CASEROOT/user_*files*'
 echo "then invoke 'preview_namelists' so you can check the information in the"
 echo "CaseDocs or ${rundir} directories."
 echo ""
+echo "If the ${case}.run script still contains:"
+echo '  #BSUB -R "select[scratch_ok > 0]" '
+echo "around line 9, delete it."
+echo ""
 echo "Modify what you like in xxx_input.nml, make sure the observation directory"
 echo "names set in xxx_assimilate.csh match those on your system, and submit"
 echo "the CESM job by running:"
