@@ -11,7 +11,7 @@
 
 <H1>PROGRAM <em class=program>filter</em></H1>
 
-<table border=0 summary="" cellpadding=5>
+<table border=0 summary="dart header" cellpadding=5>
 <tr>
     <td valign=middle>
     <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
@@ -306,7 +306,7 @@ See Anderson (2011).
    values:
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
+<TABLE border=0 cellpadding=3 width=100% summary='dart quality control flags'>
    <TR><TD>0:</TD><TD> Observation is okay </TD></TR>
    <TR><TD>1:</TD><TD> Observation was evaluated only but not
       used in the assimilation </TD></TR>
@@ -395,7 +395,7 @@ valid values: 0, 1, 2, 3
 <dd>
 Set the type of Prior and Posterior inflation applied
 to the state vector.  Values mean:
-<table border=0 cellpadding=3 width=100%>
+<table border=0 cellpadding=3 width=100% summary='types of inflation'>
    <tr><td>0:</td><td> No inflation </td></tr>
    <tr><td>1:</td><td> Observation space inflation </td></tr>
    <tr><td>2:</td><td> Spatially-varying state space inflation </td></tr>
@@ -598,84 +598,78 @@ The detailed execution flow inside the filter program is:
 <li>Release memory for state vector and observation ensemble members. </li>
 </ul>
   
-<P>
-Namelist
-<A HREF="#Namelist"> <em class=code>&amp;filter_nml</em> </A>
-is always read from file <em class=file>input.nml</em>.
-</P>
+<br />
+<br />
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST ====================-->
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration is:
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / filter_nml / </em>
-  async,
-  adv_ens_command,
-  tasks_per_model_advance,
-  ens_size,
-  start_from_restart,
-  output_restart,
-  obs_sequence_in_name,
-  obs_sequence_out_name,
-  restart_in_file_name,
-  restart_out_file_name,
-  init_time_days,
-  init_time_seconds,
-  first_obs_days,
-  first_obs_seconds,
-  last_obs_days,
-  last_obs_seconds,
-  obs_window_days,
-  obs_window_seconds,
-  num_output_state_members,
-  num_output_obs_members,
-  output_interval,
-  num_groups,
-  input_qc_threshold,
-  outlier_threshold,
-  enable_special_outlier_code,
-  output_forward_op_errors,
-  output_restart_mean,
-  output_timestamps,
-  output_inflation,
-  trace_execution,
-  silence,
-    
-  inf_flavor,
-  inf_initial_from_restart,
-  inf_sd_initial_from_restart,
-  inf_output_restart,
-  inf_deterministic,
-  inf_in_file_name,
-  inf_out_file_name,
-  inf_diag_file_name,
-  inf_initial,
-  inf_sd_initial,
-  inf_damping,
-  inf_lower_bound,
-  inf_upper_bound,
-  inf_sd_lower_bound
+&amp;filter_nml
+   async                    = 0,
+   adv_ens_command          = "./advance_model.csh",
+   ens_size                 = 20,
+   start_from_restart       = .false.,
+   output_restart           = .false.,
+   obs_sequence_in_name     = "obs_seq.out",
+   obs_sequence_out_name    = "obs_seq.final",
+   restart_in_file_name     = "filter_ics",
+   restart_out_file_name    = "filter_restart",
+   init_time_days           = 0,
+   init_time_seconds        = 0,
+   first_obs_days           = -1,
+   first_obs_seconds        = -1,
+   last_obs_days            = -1,
+   last_obs_seconds         = -1,
+   num_output_state_members = 0,
+   num_output_obs_members   = 0,
+   output_interval          = 1,
+   num_groups               = 1,
+   input_qc_threshold       =  3.0,
+   outlier_threshold        = -1.0,
+   enable_special_outlier_code = .false.,
+   output_forward_op_errors = .false.,
+   output_restart_mean      = .false.,
+   output_timestamps        = .false.,
+   output_inflation         = .true.,
+   trace_execution          = .false.,
+   silence                  = .false.,
+
+   inf_flavor                  = 0,                       0,
+   inf_initial_from_restart    = .false.,                 .false.,
+   inf_sd_initial_from_restart = .false.,                 .false.,
+   inf_output_restart          = .false.,                 .false.,
+   inf_deterministic           = .true.,                  .true.,
+   inf_in_file_name            = 'not_initialized',       'not_initialized',
+   inf_out_file_name           = 'not_initialized',       'not_initialized',
+   inf_diag_file_name          = 'not_initialized',       'not_initialized',
+   inf_initial                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
+   inf_damping                 = 1.0,                     1.0,
+   inf_lower_bound             = 1.0,                     1.0,
+   inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_sd_lower_bound          = 0.0,                     0.0
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is always read from a file called <em class=file>input.nml</em>.
-It controls various aspects of filter. 
-</P>
 <P>
 Particular options to be aware of are:
 async, ens_size, cutoff (localization radius), inflation flavor, outlier_threshold,
@@ -690,352 +684,359 @@ dimensioned 2, the first value being for the prior inflation and the second
 being for the posterior inflation.
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<br />
 
-<TR><!--contents--><TD valign=top>async</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>Controls method for advancing model: 
-                       0 is subroutine call, 
-                       2 is shell command, 
-                       4 is mpi-job script. 
-                       Default: 0</TD></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top>adv_ens_command</TD>
-    <!--  type  --><TD valign=top>character(len=129)</TD>
-    <!--descript--><TD>Command sent to shell if async is 2. 
-                       Default: ./advance_model.csh</TD></TR>
+<TBODY valign=top>
+<TR><TD>async</TD>
+    <TD>integer</TD>
+    <TD>Controls method for advancing model:
+         <UL>
+          <LI>0 is subroutine call</LI>
+          <LI>2 is shell command</LI>
+          <LI>4 is mpi-job script</LI>
+         </UL>
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>tasks_per_model_advance</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>Reserved for future use.
-                       Default: 1</TD></TR>
+<TR><TD>adv_ens_command</TD>
+    <TD>character(len=129)</TD>
+    <TD>Command sent to shell if async is 2. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>ens_size</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>Size of ensemble.
-                       Default: 20</TD></TR>
+<TR><TD>ens_size</TD>
+    <TD>integer</TD>
+    <TD>Size of ensemble.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>start_from_restart</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True means start from a restart file, false means 
-                       perturb a single state vector in restart file. 
-                       Default: .false.</TD></TR>
+<TR><TD>start_from_restart</TD>
+    <TD>logical</TD>
+    <TD>True means start from a restart file, false means 
+        perturb a single state vector in restart file. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>output_restart</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True means output a restart file. 
-                       Default: .false.</TD></TR>
+<TR><TD>output_restart</TD>
+    <TD>logical</TD>
+    <TD>True means output a restart file. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>obs_sequence_in_name</TD>
-    <!--  type  --><TD valign=top>character(len=129)</TD>
-    <!--descript--><TD>File name from which to read an observation sequence. 
-                       Default: obs_seq.out</TD></TR>
+<TR><TD>obs_sequence_in_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>File name from which to read an observation sequence. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>obs_sequence_out_name</TD>
-    <!--  type  --><TD valign=top>character(len=129)</TD>
-    <!--descript--><TD>File name to which to write output observation sequence. 
-                       Default: obs_seq.final</TD></TR>
+<TR><TD>obs_sequence_out_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>File name to which to write output observation sequence. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>restart_in_file_name</TD>
-    <!--  type  --><TD valign=top>character(len=129)</TD>
-    <!--descript--><TD>File containing state restart vectors. 
-                       Default: filter_ics</TD></TR>
+<TR><TD>restart_in_file_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>File containing state restart vectors. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>restart_out_file_name</TD>
-    <!--  type  --><TD valign=top>character(len=129)</TD>
-    <!--descript--><TD>File to which to write restart state vectors. 
-                       Default: filter_restart</TD></TR>
+<TR><TD>restart_out_file_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>File to which to write restart state vectors. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>init_time_days</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>If negative, don't use. If non-negative, override the initial 
-                       days read from state data restart file. 
-                       Default: 0</TD></TR>
+<TR><TD>init_time_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use. If non-negative, override the initial 
+        days read from state data restart file. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>init_time_seconds</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>If negative don't use. If non-negative, override the initial
-                       seconds read from state data restart file. 
-                       Default: 0</TD></TR>
+<TR><TD>init_time_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative don't use. If non-negative, override the initial
+        seconds read from state data restart file. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>first_obs_days</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>If negative, don't use. If non-negative, ignore all observations
-                       before this time.
-                       Default: -1</TD></TR>
+<TR><TD>first_obs_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use. If non-negative, ignore all observations
+        before this time.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>first_obs_seconds</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>If negative, don't use. If non-negative, ignore all observations
-                       before this time.
-                       Default: -1</TD></TR>
+<TR><TD>first_obs_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use. If non-negative, ignore all observations
+        before this time.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>last_obs_days</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>If negative, don't use. If non-negative, ignore all observations
-                       after this time.
-                       Default: -1</TD></TR>
+<TR><TD>last_obs_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use. If non-negative, ignore all observations
+        after this time.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>last_obs_seconds</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>If negative, don't use. If non-negative, ignore all observations
-                       after this time.
-                       Default: -1</TD></TR>
+<TR><TD>last_obs_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use. If non-negative, ignore all observations
+        after this time.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>obs_window_days</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>If negative, don't use. If non-negative, reserved for future use.
-                       Default: -1</TD></TR>
+<TR><TD>num_output_state_members</TD>
+    <TD>integer</TD>
+    <TD>Number of ensemble members to be included in the state 
+        diagnostic output.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>obs_window_seconds</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>If negative, don't use. If non-negative, reserved for future use.
-                       Default: -1</TD></TR>
+<TR><TD>num_output_obs_members</TD>
+    <TD>integer</TD>
+    <TD>Number of ensemble members to be included in the 
+        output observation sequence file.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>num_output_state_members</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>Number of ensemble members to be included in the state 
-                       diagnostic output. Default: 0</TD></TR>
+<TR><TD>output_interval</TD>
+    <TD>integer</TD>
+    <TD>Output state and observation diagnostics every 'N'th 
+        assimilation time, N is output_interval.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>num_output_obs_members</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>Number of ensemble members to be included in the 
-                       output observation sequence file. Default: 0</TD></TR>
+<TR><TD>num_groups</TD>
+    <TD>integer</TD>
+    <TD>Number of groups for hierarchical filter.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>output_interval</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>Output state and observation diagnostics every 'N'th 
-                       assimilation time, N is output_interval. Default: 1</TD></TR>
+<TR><TD>outlier_threshold</TD>
+    <TD>real(r8)</TD>
+    <TD>Reject observation if prior mean is more than this many 
+        standard deviations from observation. Negative means no check. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>num_groups</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>Number of groups for hierarchical filter. Default: 1</TD></TR>
+<TR><TD>enable_special_outlier_code</TD>
+    <TD>logical</TD>
+    <TD>If true call a subroutine which can be customized by the user to do 
+more elaborate outlier thresholding tests.  See <em class=code>failed_outlier()
+</em> near the bottom of <em class=file>filter.f90</em> for where to add the 
+custom code, and for commented out examples of possible tests.  Turning this
+flag on and off allows comparisons to be made between the default outlier
+threshold code and any custom settings without having to recompile the code.
+To change the outlier behavior you will have to add code in
+<em class=file>DART/filter/filter.f90</em> and recompile your executables.
+As distributed, turning this flag on and off will make no difference in the
+results.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>outlier_threshold</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>Reject observation if prior mean is more than this many 
-                       sd's from observation. Negative means no check. 
-                       Default: -1.0_r8</TD></TR>
+<TR><TD>input_qc_threshold</TD>
+    <TD>real(r8)</TD>
+    <TD>Reject observation if incoming QC value exceeds this value.
+        Incoming observations usually have a QC value provided with
+        the dataset, e.g. NCEP obs include an incoming data QC.  
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>enable_special_outlier_code</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>If true call a subroutine which can be customized by the
-                       user to do more elaborate outlier thresholding tests.
-                       See <em class=code>failed_outlier()</em> near the bottom
-                       of <em class=file>filter.f90</em> for where to add the
-                       custom code, and for commented out examples of possible tests.
-                       Turning this flag on and off allows comparisons to be 
-                       made between the default outlier threshold code and any
-                       custom settings without having to recompile the code. 
-                       To change the outlier behavior code has to be changed
-                       in filter.f90.  As distributed, turning this flag on
-                       and off will make no difference in the results.
-                       Default: .false.</TD></TR>
+<TR><TD>output_forward_op_errors</TD>
+    <TD>logical</TD>
+    <TD> True means output errors from forward observation operators.  This is 
+the 'istatus' error return code from the model interpolate routine.  An ascii
+text file 
+<em class=file>prior_forward_op_errors</em> and/or 
+<em class=file>post_forward_op_errors</em> will be
+created in the current directory.  For each ensemble member which returns a
+non-zero return code, a line will be written to this file.  Each line will
+have three values listed: the observation number, the ensemble member number,
+and the istatus return code.  Be cautious when turning this option on.  The
+number of lines in this file can be up to the number of observations times
+the number of ensemble members times the number of assimilation cycles
+performed.  This option is generally most useful when run with a small
+observation sequence file and a small number of ensemble members to diagnose
+forward operator problems.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>input_qc_threshold</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>Reject observation if incoming QC value exceeds
-                       'input_qc_threshold' value. Incoming observations usually have a
-                       QC value set by the data provider, e.g. NCEP. 
-                       Default: 3.0_r8</TD></TR>
+<TR><TD>output_restart_mean</TD>
+    <TD>logical</TD>
+    <TD>True means output a restart file which contains the ensemble mean.  
+The file name will be the value of the namelist item
+<em class=code>&amp;filter_nml::restart_out_file_name</em>
+with the string <em class=code>.mean</em> appended.  Even if 
+<em class=code>&amp;ensemble_manager_nml::single_restart_file_out</em>
+is true the mean data will be written to a separate file.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>output_forward_op_errors</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True means output errors from forward observation operators.
-                       This is the 'istatus' error return code from the model
-                       interpolate routine.  An ascii text file 'prior_forward_op_errors'
-                       and/or 'post_forward_op_errors' will be created in the
-                       current directory.  For each ensemble member which returns a
-                       non-zero return code, a line will be written to this file.
-                       Each line will have three values listed: 
-                       the observation number, the ensemble member number, and 
-                       the istatus return code.  Be cautious when turning this option
-                       on.  The number of lines in this file can be up to 
-                       the number of observations times the number of ensemble members
-                       times the number of assimilation cycles performed.
-                       This option is generally most useful when run with a 
-                       small observation sequence file and a small number of 
-                       ensemble members to diagnose forward operator problems.
-                       Default: .false.</TD></TR>
+<TR><TD>output_timestamps</TD>
+    <TD>logical</TD>
+    <TD>True means write timing information to the log before and after 
+        the model advance and the observation assimilation phases.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>output_restart_mean</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True means output a restart file which contains
-                       the ensemble mean.  The file name will use the value
-                       of the namelist item
-                       '&amp;filter_nml::restart_out_file_name' 
-                       as the base, with the string '.mean' appended.
-                       Even if '&amp;ensemble_manager_nml::single_restart_file_out' 
-                       is .true., the mean data will be written to a separate file.
-                       Default: .false.</TD></TR>
+<TR><TD>output_inflation</TD>
+    <TD>logical</TD>
+    <TD>True means output inflation values in the prior and posterior
+        diagnostic files.  False omits them.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>output_timestamps</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True means output timestamps before and after the model advance
-                       and the observation assimilation phases.
-                       Default: .false.</TD></TR>
+<TR><TD>trace_execution</TD>
+    <TD>logical</TD>
+    <TD>True means output very detailed messages about what routines
+        are being called in the main filter loop.  Useful if a job
+        hangs or otherwise doesn't execute as expected.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>output_inflation</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True means output inflation values in the prior and posterior
-                       diagnostic files.  False omits them.
-                       Default: .true.</TD></TR>
-
-<TR><!--contents--><TD valign=top>trace_execution</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True means output very detailed messages about what routines
-                       are being called in the main filter loop.  Useful if a job
-                       hangs or otherwise doesn't execute as expected.
-                       Default: .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>silence</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True means output almost no runtime messages.  Not recommended
-                       for general use, but can speed test programs if the execution
-                       time becomes dominated by the volume of output. 
-                       Default: .false.</TD></TR>
+<TR><TD>silence</TD>
+    <TD>logical</TD>
+    <TD>True means output almost no runtime messages.  Not recommended
+        for general use, but can speed long runs of the lower order models
+        if the execution time becomes dominated by the volume of output. 
+ </TD></TR>
 
 <TR><TD colspan=3>All subsequent variables are arrays of length 2.<br />
                   The first element is for the prior, the second element is 
-                  for the posterior</TD></TR>
+                  for the posterior.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_flavor</TD>
-    <!--  type  --><TD valign=top>integer array (len=2)</TD>
-    <!--descript--><TD>Inflation flavor for [prior, posterior]<br />
-                       0&nbsp;=&nbsp;none,
-                       1&nbsp;=&nbsp;obs_space, 
-                       2&nbsp;=&nbsp;spatially-varying&nbsp;state&nbsp;space,
-                       3&nbsp;=&nbsp;spatially-fixed&nbsp;state&nbsp;space. 
-                       (See sd_initial below for how to set the time
-                       evolution options.)
-                       Default: (/0, 0/)</TD></TR>
+<TR><TD>inf_flavor</TD>
+    <TD>integer array dimension(2)</TD>
+    <TD>Inflation flavor for [prior, posterior]
+        <UL>
+         <LI>0 = none</LI>
+         <LI>1 = obs_space</LI>
+         <LI>2 = spatially-varying state space</LI>
+         <LI>3 = spatially-fixed state space </LI>
+        </UL>
+        (See sd_initial below for how to set the time evolution options.)
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_initial_from_restart</TD>
-    <!--  type  --><TD valign=top>logical array (len=2)</TD>
-    <!--descript--><TD>If true, get initial mean values for inflation from restart file.
-                       (Replaces inf_start_from_restart, which applied to
-                       both mean and standard deviation.  
-                       They are now individually controllable)
-                       If false, use the corresponding namelist value inf_initial.
-                       Default: (/.false., .false /)</TD></TR>
+<TR><TD>inf_initial_from_restart</TD>
+    <TD>logical array dimension(2)</TD>
+    <TD>If true, get initial mean values for inflation from restart file.
+        If false, use the corresponding namelist value 
+        <em class=code>inf_initial</em>.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_sd_initial_from_restart</TD>
-    <!--  type  --><TD valign=top>logical array (len=2)</TD>
-    <!--descript--><TD>If true, get initial standard deviation values for 
-                       inflation from restart file.
-                       (Replaces inf_start_from_restart, which applied to
-                       both mean and standard deviation.  
-                       They are now individually controllable.)
-                       If false, use the corresponding namelist value inf_sd_initial.
-                       Default: (/.false., .false /)</TD></TR>
+<TR><TD>inf_sd_initial_from_restart</TD>
+    <TD>logical array dimension(2)</TD>
+    <TD>If true, get initial standard deviation values for 
+        inflation from restart file.
+        If false, use the corresponding namelist value 
+        <em class=code>inf_sd_initial</em>.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_output_restart</TD>
-    <!--  type  --><TD valign=top>logical array (len=2)</TD>
-    <!--descript--><TD>Output an inflation restart file if true. 
-                       Default: (/.false., .false./)</TD></TR>
+<TR><TD>inf_deterministic</TD>
+    <TD>logical array dimension(2)</TD>
+    <TD>True means deterministic inflation, false means stochastic. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_deterministic</TD>
-    <!--  type  --><TD valign=top>logical array (len=2)</TD>
-    <!--descript--><TD>True means deterministic inflation, false means stochastic. 
-                       Default: (/.true., .true./)</TD></TR>
+<TR><TD>inf_output_restart</TD>
+    <TD>logical array dimension(2)</TD>
+    <TD>Output an inflation restart file if true. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_in_file_name</TD>
-    <!--  type  --><TD valign=top>character(len=129) by two</TD>
-    <!--descript--><TD>Name from which to read inflation restart. 
-                       Default: (/'not_initialized', 'not_initialized'/)</TD></TR>
+<TR><TD>inf_in_file_name</TD>
+    <TD>character(len=129) dimension(2)</TD>
+    <TD>Filename to read inflation restart values from. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_out_file_name</TD>
-    <!--  type  --><TD valign=top>character(len=129) by two</TD>
-    <!--descript--><TD>File to which to write inflation restart file. 
-                       Default: (/'not_initialized', 'not_initialized'/)</TD></TR>
+<TR><TD>inf_out_file_name</TD>
+    <TD>character(len=129) dimension(2)</TD>
+    <TD>Filename to write inflation restart values into.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_diag_file_name</TD>
-    <!--  type  --><TD valign=top>character(len=129) by two</TD>
-    <!--descript--><TD>File to which to write output diagnostics for observation 
-                       space inflation. 
-                       Default: (/'not_initialized', 'not_initialized'/)</TD></TR>
+<TR><TD>inf_diag_file_name</TD>
+    <TD>character(len=129) dimension(2)</TD>
+    <TD>Filename to write output diagnostics for observation 
+        space inflation into. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_initial</TD>
-    <!--  type  --><TD valign=top>real(r8) (len=2)</TD>
-    <!--descript--><TD>Initial value of inflation if not read from restart file. 
-                       Default: (/1.0_r8, 1.0_r8/)</TD></TR>
+<TR><TD>inf_initial</TD>
+    <TD>real(r8) dimension(2)</TD>
+    <TD>Initial value of inflation if not read from restart file. 
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_sd_initial</TD>
-    <!--  type  --><TD valign=top>real(r8) (len=2)</TD>
-    <!--descript--><TD>Initial value of inflation standard deviation if not read 
-                       from restart file.  If negative, do not update the inflation
-                       values, so they are time-constant.  If positive, the inflation
-                       values will adapt through time, so they are time-varying.
-                       Default: (/0.0_r8, 0.0_r8/)</TD></TR>
+<TR><TD>inf_sd_initial</TD>
+    <TD>real(r8) dimension(2)</TD>
+    <TD>Initial value of inflation standard deviation if not read 
+        from restart file.  If negative, do not update the inflation
+        values, so they are time-constant.  If positive, the inflation
+        values will adapt through time, so they are time-varying.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_damping</TD>
-    <!--  type  --><TD valign=top>real(r8) (len=2)</TD>
-    <!--descript--><TD>Damping factor for inflation mean values.
-                       The difference between the current inflation value and 1.0
-                       is multiplied by this factor before the next assimilation cycle.
-                       The value should be between 0.0 and 1.0.
-                       0.0 turns all inflation off (by clamping the inflation value to 1.0).
-                       1.0 turns inflation damping off (leaving the original inflation
-                       value unchanged).
-                       Default: (/1.0_r8, 1.0_r8/)</TD></TR>
+<TR><TD>inf_damping</TD>
+    <TD>real(r8) dimension(2)</TD>
+    <TD>Damping factor for inflation mean values.  
+The difference between the current inflation value and 1.0 is multiplied by
+this factor before the next assimilation cycle.  The value should be between
+0.0 and 1.0.  Setting a value of 0.0 is full damping, which in fact
+turns all inflation off by fixing the inflation value at 1.0.   A value
+of 1.0 turns inflation damping off leaving the original inflation value
+unchanged.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_lower_bound</TD>
-    <!--  type  --><TD valign=top>real(r8) (len=2)</TD>
-    <!--descript--><TD>Lower bound for inflation value.
-                       Default: (/1.0_r8, 1.0_r8/)</TD></TR>
+<TR><TD>inf_lower_bound</TD>
+    <TD>real(r8) dimension(2)</TD>
+    <TD>Lower bound for inflation value.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_upper_bound</TD>
-    <!--  type  --><TD valign=top>real(r8) (len=2)</TD>
-    <!--descript--><TD>Upper bound on inflation value.
-                       Default: (/1000000.0_r8, 1000000.0_r8/)</TD></TR>
+<TR><TD>inf_upper_bound</TD>
+    <TD>real(r8) dimension(2)</TD>
+    <TD>Upper bound for inflation value.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_sd_lower_bound</TD>
-    <!--  type  --><TD valign=top>real(r8) (len=2)</TD>
-    <!--descript--><TD>Lower bound for inflation standard deviation. 
-                       If using a negative value for sd_initial, this should also
-                       be negative to preserve the setting.
-                       Default: (/0.0_r8, 0.0_r8/)</TD></TR>
+<TR><TD>inf_sd_lower_bound</TD>
+    <TD>real(r8) dimension(2)</TD>
+    <TD>Lower bound for inflation standard deviation. 
+        If using a negative value for <em class=code>sd_initial</em> 
+        this should also be negative to preserve the setting.
+ </TD></TR>
+
+</TBODY> 
 </TABLE>
+</div>
 
-<H4 class=indent1>Deprecated or Defunct namelist variables</H4>
-<P>The following table contains the deprecated or defunct namelist variables.
-   It is a FATAL ERROR to have these in the filter namelist.
+<br />
+<br />
+
+<H4 class=indent1>Deprecated or Obsolete namelist variables</H4>
+<P>The following table contains the deprecated or obsolete namelist variables.
+   If only deprecated, the values will have no effect.  If obsolete,
+   it is a FATAL ERROR to have these in the namelist.
 </P>
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
 
-<TR><!--contents--><TD valign=top>output_state_ens_mean</TD>
-    <!--  type  --><TD><b>defunct</b></TD>
-    <!--descript--><TD>The ensemble mean is now always in the 
-                       state diagnostic output.</TD></TR>
+<div>
+<TABLE border=0 cellpadding=3 width=100% summary='deprecated namelist items'>
+<THEAD align=left>
+<TR><TH>Contents    </TH>
+    <TH>Type        </TH>
+    <TH>Description </TH></TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top>output_state_ens_spread</TD>
-    <!--  type  --><TD><b>defunct</b></TD>
-    <!--descript--><TD>The ensemble spread is now always in the
-                       state diagnostic output.</TD></TR>
+<TBODY valign=top>
+<TR><TD>output_state_ens_mean</TD>
+    <TD><b>obsolete</b></TD>
+    <TD>The ensemble mean is now always in the state diagnostic output.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>output_obs_ens_mean</TD>
-    <!--  type  --><TD><b>defunct</b></TD>
-    <!--descript--><TD>The ensemble mean is now always in the 
-                       output observation sequence file.</TD></TR>
+<TR><TD>output_state_ens_spread</TD>
+    <TD><b>obsolete</b></TD>
+    <TD>The ensemble spread is now always in the state diagnostic output.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>output_obs_ens_spread</TD>
-    <!--  type  --><TD><b>defunct</b></TD>
-    <!--descript--><TD>The ensemble spread is now always in the 
-                       output observation sequence file.</TD></TR>
+<TR><TD>output_obs_ens_mean</TD>
+    <TD><b>obsolete</b></TD>
+    <TD>The ensemble mean is now always in the output observation sequence file.
+ </TD></TR>
 
-<TR><!--contents--><TD valign=top>inf_start_from_restart</TD>
-    <!--  type  --><TD><b>defunct</b></TD>
-    <!--descript--><TD>The mean and standard deviation now have separate
-                       namelist controls.</TD></TR>
+<TR><TD>output_obs_ens_spread</TD>
+    <TD><b>obsolete</b></TD>
+    <TD>The ensemble spread is now always in the output observation sequence file.
+ </TD></TR>
+
+<TR><TD>inf_start_from_restart</TD>
+    <TD><b>obsolete</b></TD>
+    <TD>The mean and standard deviation now have separate namelist controls.
+ </TD></TR>
+</TBODY>
 </TABLE>
 
 </div>
+
+<br />
 <br />
 
 <!--==================================================================-->
@@ -1043,7 +1044,7 @@ being for the posterior inflation.
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -1060,26 +1061,37 @@ mpi_utilities_mod
 smoother_mod
 </PRE>
 
+<br />
+<br />
+
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
-<UL><LI>observation sequence input file; from obs_sequence_in_name</LI>
-    <LI>output state space prior diagnostics file; Prior_Diag.nc</LI>
-    <LI>output state space posterior diagnostics file; Posterior_Diag.nc</LI>
-    <LI>output observation space diagnostic file; from obs_sequence_out_name</LI>
-    <LI>filter.nml in input.nml</LI>
+<UL>
+ <LI>input ensemble member data; from restart_in_file_name</LI>
+ <LI>output ensemble member data; from restart_out_file_name</LI>
+ <LI>input observation sequence file; from obs_sequence_in_name</LI>
+ <LI>output observation space diagnostic file; from obs_sequence_out_name</LI>
+ <LI>output state space prior diagnostics file; Prior_Diag.nc</LI>
+ <LI>output state space posterior diagnostics file; Posterior_Diag.nc</LI>
+ <LI>input state space inflation data (if enabled); from inf_in_file_name</LI>
+ <LI>output state space inflation data (if enabled); from inf_out_file_name</LI>
+ <LI>input.nml, to read &amp;filter_nml</LI>
 </UL>
+
+<br />
+<br />
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li>Anderson, J. L., 2001: 
@@ -1163,6 +1175,8 @@ Submitted for publication, Jan 2011.
 Contact author.</li>
 
 </ul>
+
+<br />
 <br />
 
 <!--==================================================================-->
@@ -1170,10 +1184,10 @@ Contact author.</li>
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100% summary='error table'>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>filter_main</TD>
@@ -1216,24 +1230,33 @@ Contact author.</li>
 none
 </P>
 
+<br />
+<br />
+
 <!--==================================================================-->
 <!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
-Further development to better support observations that can only be
-computed once is needed.
+Many.  New assimilation algorithms, support for new observation
+types, support for additional models, better performance on higher
+numbers of MPI tasks...   The list is long.  Send email to
+<a href="mailto:dart@ucar.edu">dart@ucar.edu</a> if you are
+interested in additional functionality in DART.
 </P>
+
+<br />
+<br />
 
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>
