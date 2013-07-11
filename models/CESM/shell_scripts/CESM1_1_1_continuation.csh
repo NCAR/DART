@@ -80,7 +80,7 @@ setenv compset              B_2000_CAM5
 setenv resolution           0.9x1.25_gx1v6
 setenv cesmtag              cesm1_1_1
 setenv num_instances        30
-setenv refcase              cesm_hybrid
+setenv refcase              cesm_assim
 
 # ==============================================================================
 # define machines and directories
