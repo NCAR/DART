@@ -383,9 +383,9 @@ character(len = 4)                  :: extension
 logical                             :: single_file_forced
 
 if (present(force_single_file) ) then
-        single_file_forced = force_single_file
+   single_file_forced = force_single_file
 else
-        single_file_forced = .FALSE.
+   single_file_forced = .FALSE.
 endif
 
 ! Error checking
@@ -556,9 +556,9 @@ if(copy < 1 .or. copy > ens_handle%num_copies) then
    call error_handler(E_ERR,'put_copy', msgstring, source, revision, revdate)
 endif
 
-! Make sure that vars has enough space to handle the answer
-if(size(vars) < ens_handle%num_vars) then
-   write(msgstring, *) 'Size of vars: ', size(vars), ' Must be at least ', ens_handle%num_vars
+! Make sure that num_vars has enough space to handle the answer
+if(ens_handle%num_vars < size(vars)) then
+   write(msgstring, *) 'Size of vars: ', size(vars), ' Cannot be more than ', ens_handle%num_vars
    call error_handler(E_ERR,'put_copy', msgstring, source, revision, revdate)
 endif
 
@@ -589,6 +589,8 @@ if(ens_handle%my_pe == owner) then
       call receive_from(map_pe_to_task(ens_handle, sending_pe), ens_handle%vars(:, owners_index))
    endif
 endif
+
+ens_handle%valid = VALID_VARS
 
 end subroutine put_copy
 
@@ -1484,6 +1486,8 @@ MYLOOP : do i = 1, ens_handle%my_num_vars
    endif
 end do MYLOOP
 
+ens_handle%valid = VALID_COPIES
+
 end subroutine compute_copy_mean
 
 !--------------------------------------------------------------------------------
@@ -1521,6 +1525,8 @@ MYLOOP : do i = 1, ens_handle%my_num_vars
 
 end do MYLOOP
 
+ens_handle%valid = VALID_COPIES
+
 end subroutine compute_copy_mean_sd
 
 !--------------------------------------------------------------------------------
@@ -1556,6 +1562,8 @@ MYLOOP : do i = 1, ens_handle%my_num_vars
          ens_handle%copies(mean_copy, i))**2) / (num_copies - 1))
    endif
 end do MYLOOP
+
+ens_handle%valid = VALID_COPIES
 
 end subroutine compute_copy_mean_var
 
@@ -1650,6 +1658,7 @@ end subroutine print_ens_handle
 !--------------------------------------------------------------------------------
 
 subroutine assign_tasks_to_pes(ens_handle, nEns_members, layout_type)
+
 ! Calulate the task layout based on the tasks per node and the total number of tasks.
 ! Allows the user to spread out the ensemble members as much as possible to balance 
 ! memory usage between nodes.
@@ -1684,7 +1693,9 @@ endif
 end subroutine assign_tasks_to_pes
 
 !------------------------------------------------------------------------------
+
 subroutine round_robin(ens_handle)
+
 ! Round-robin MPI task layout starting at the first node.  
 ! Starting on the first node forces pe 0 = task 0. 
 ! The smoother code assumes task 0 has an ensemble member.
@@ -1730,8 +1741,11 @@ deallocate(count)
 call create_pe_to_task_list(ens_handle)
 
 end subroutine round_robin
+
 !-------------------------------------------------------------------------------
+
 subroutine create_pe_to_task_list(ens_handle)
+
 ! Creates the ens_handle%pe_to_task_list
 ! ens_handle%task_to_pe_list must have been assigned first, otherwise this 
 ! routine will just return nonsense. 
@@ -1754,6 +1768,7 @@ end subroutine create_pe_to_task_list
 !-------------------------------------------------------------------------------
 
 subroutine calc_tasks_on_each_node(nodes, last_node_task_number)
+
 ! Finds the of number nodes and how many tasks are on the last node, given the 
 ! number of tasks and the tasks_per_node (ptile).
 ! The total number of tasks is num_pes = task_count()
@@ -1773,7 +1788,9 @@ endif
 end subroutine calc_tasks_on_each_node
 
 !-----------------------------------------------------------------------------
+
 subroutine simple_layout(ens_handle, n)
+
 ! assigns the arrays task_to_pe_list and pe_to_task list for the simple layout
 ! where my_pe = my_task_id()
 
@@ -1790,7 +1807,9 @@ ens_handle%pe_to_task_list = ens_handle%task_to_pe_list
 end subroutine simple_layout
 
 !------------------------------------------------------------------------------
+
 subroutine sort_task_list(x, idx, n)
+
 ! sorts an array and returns the sorted array, and the index of the original
 ! array
 
@@ -1811,7 +1830,9 @@ enddo
 end subroutine sort_task_list
 
 !--------------------------------------------------------------------------------
+
 function map_pe_to_task(ens_handle, p)
+
 ! Return the physical task for my_pe
 
 type(ensemble_type), intent(in) :: ens_handle
@@ -1823,7 +1844,9 @@ map_pe_to_task = ens_handle%pe_to_task_list(p + 1)
 end function map_pe_to_task
 
 !--------------------------------------------------------------------------------
+
 function map_task_to_pe(ens_handle, t)
+
 ! Return my_pe corresponding to the physical task
 
 type(ensemble_type), intent(in) :: ens_handle
