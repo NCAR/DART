@@ -976,7 +976,7 @@ foreach N ( $nmls )
   set SECSTRING = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
   
   if ( $SECSTRING == true ) then
-     set SAMP_ERR_FILE = ${DARTroot}/system_simulation/final_full_precomputed_tables/final_full.${ensemble_size}
+     set SAMP_ERR_FILE = ${DARTroot}/system_simulation/final_full_precomputed_tables/final_full.${num_instances}
      if (  -e   ${SAMP_ERR_FILE} ) then
       ${COPY} ${SAMP_ERR_FILE} .
       break   # we only need to copy it once if anyone has SEC on.
@@ -996,18 +996,18 @@ end
 # (i'm thinking that if they don't intend to use it, they shouldn't
 # have to generate one, but if they turn this option on, we should have
 # a copy of the file here where it's expected.)
-if ( !  -e   ./final_full.${ensemble_size} ) then
+if ( !  -e   ./final_full.${num_instances} ) then
   # SEC is false, but go ahead and try to copy one over
-  set SAMP_ERR_FILE = ${DARTroot}/system_simulation/final_full_precomputed_tables/final_full.${ensemble_size}
+  set SAMP_ERR_FILE = ${DARTroot}/system_simulation/final_full_precomputed_tables/final_full.${num_instances}
   if (  -e   ${SAMP_ERR_FILE} ) then
     ${COPY} ${SAMP_ERR_FILE} .
   else
-    echo "WARNING: no final_full.xx file found for an ensemble size of ${ensemble_size}"
+    echo "WARNING: no final_full.xx file found for an ensemble size of ${num_instances}"
     echo "WARNING: this file is NOT needed unless you want to turn on the"
     echo "WARNING: sampling_error_correction feature in any of the models."
     echo "WARNING: to use it, in addition to setting the namelist to .true., cd to:"
     echo "WARNING:  ${DARTroot}/system_simulation"
-    echo "WARNING: and create a final_full.${ensemble_size} file"
+    echo "WARNING: and create a final_full.${num_instances} file"
     echo "WARNING: one can be generated for any ensemble size; see docs"
     echo "WARNING: Copy it into ${caseroot} before running."
   endif
