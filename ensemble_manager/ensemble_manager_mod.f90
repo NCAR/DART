@@ -1120,15 +1120,16 @@ if (present(label)) then
    call timestamp_message('vars_to_copies start: '//label, alltasks=.true.)
 endif
 
-! Error checking, and early return if possible.
+! Error checking, but can't return early in case only some of the
+! MPI tasks need to transpose.  Only if all N tasks say this is an
+! unneeded transpose can we skip it.
 if (ens_handle%valid == VALID_BOTH) then
    if (flag_unneeded_transposes) then
-      write(msgstring, *) 'ens_handle ', ens_handle%id_num
+      write(msgstring, *) 'task ', my_task_id(), ' ens_handle ', ens_handle%id_num
       call error_handler(E_MSG, 'all_vars_to_all_copies', &
-           'vars & copies both valid, transpose not needed', source, revision, revdate, &
-            text2=msgstring)
+           'vars & copies both valid, transpose not needed for this task', &
+            source, revision, revdate, text2=msgstring)
    endif
-   return
 else if (ens_handle%valid /= VALID_VARS) then
    write(msgstring, *) 'ens_handle ', ens_handle%id_num
    call error_handler(E_ERR, 'all_vars_to_all_copies', &
@@ -1292,15 +1293,16 @@ if (present(label)) then
    call timestamp_message('copies_to_vars start: '//label, alltasks=.true.)
 endif
 
-! Error checking, and early return if possible
+! Error checking, but can't return early in case only some of the
+! MPI tasks need to transpose.  Only if all N tasks say this is an
+! unneeded transpose can we skip it.
 if (ens_handle%valid == VALID_BOTH) then
    if (flag_unneeded_transposes) then
-      write(msgstring, *) 'ens_handle ', ens_handle%id_num
+      write(msgstring, *) 'task ', my_task_id(), ' ens_handle ', ens_handle%id_num
       call error_handler(E_MSG, 'all_copies_to_all_vars', &
-           'vars & copies both valid, transpose not needed', source, revision, revdate, &
-            text2=msgstring)
+           'vars & copies both valid, transpose not needed for this task', &
+            source, revision, revdate, text2=msgstring)
    endif
-   return
 else if (ens_handle%valid /= VALID_COPIES) then
    write(msgstring, *) 'ens_handle ', ens_handle%id_num
    call error_handler(E_ERR, 'all_copies_to_all_vars', &
