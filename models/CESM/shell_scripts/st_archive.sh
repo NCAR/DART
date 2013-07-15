@@ -1,4 +1,4 @@
-!/bin/sh
+#!/bin/sh
 #
 # This code is part of the CESM distribution,
 # So it is not protected by the DART copyright agreement.
