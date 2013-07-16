@@ -341,11 +341,12 @@ secs=`echo $dname | cut -b12-16`
 # if you want to save more often (or less) alter the test here.
 # using the time variables immediately above.
 
-if [[ $day == 01 || $day == 10 || $day == 20 ]]; then
+if [[ $secs == 00000 && ($day == 01 || $day == 10 || $day == 20) ]]; then
   echo "st_archive: PRESERVING contents of restart ${dname}"
 else
   echo "st_archive: DELETING contents of restart ${dname}"
-  rm -rf ${sta}/rest/${dname}/* .
+  rm -rf ${sta}/rest/${dname} 
+  touch ${sta}/rest/${dname}_removed
 fi
 
 #ALICIA... rm the .hv files because they have no unique time stamp.
