@@ -7,7 +7,7 @@ ensemble_manager/ensemble_manager_mod.f90
 filter/filter.f90
 location/threed_sphere/location_mod.f90
 models/tiegcm/model_mod.f90
-mpi_utilities/mpi_utilities_mod.f90
+mpi_utilities/null_mpi_utilities_mod.f90
 obs_def/obs_def_mod.f90
 obs_kind/obs_kind_mod.f90
 obs_model/obs_model_mod.f90
