@@ -53,7 +53,7 @@ character(len=256) :: string1, string2
 ! The namelist variables
 !------------------------------------------------------------------
 
-character (len = 129)  :: dart_input_file      = 'dart.ics'
+character (len = 129)  :: dart_input_file      = 'dart_ics'
 character (len = 129)  :: output_file          = 'check_me'
 logical                :: advance_time_present = .FALSE.
 logical                :: verbose              = .FALSE.

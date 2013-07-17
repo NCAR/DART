@@ -44,7 +44,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! The namelist variables
 !------------------------------------------------------------------
 
-character (len = 128) :: dart_to_pop_input_file   = 'dart.ic'
+character (len = 128) :: dart_to_pop_input_file   = 'dart_restart'
 logical               :: advance_time_present     = .false.
 
 namelist /dart_to_pop_nml/ dart_to_pop_input_file, &

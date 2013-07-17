@@ -193,7 +193,7 @@
    <table width="100%" cellpadding="10">
    <tr><td valign="top"><a href="pop_to_dart.html">pop_to_dart.f90</a></td>
        <td>converts the POP restart file <em class=file>pop.r.nc</em> into a 
-       DART-compatible file normally called <em class=file>dart.ud</em>&nbsp;.
+       DART-compatible file normally called <em class=file>dart_ics</em>&nbsp;.
        There must also be a <em class=file>pop_in</em> namelist for POP
        (since this specifies the names of the grid files). 
        We usually wind up linking the dereferenced
@@ -235,54 +235,7 @@
 <a name="InitialEnsemble"></a>
 <div class=indent1>
    <h3>Generating the initial ensemble.</h3>
-   <P>
-      Creating the initial ensemble of ocean states is an area of active research.
-      The POP model cannot take one single model state and generate its own 
-      ensemble (typically done with <a href="#pert_model_state">pert_model_state</a>).
-      <br />
-      <br />
-      The ensemble has to come from 'somewhere else'. 
-      At present, it may be sufficient to use a climatological ensemble; e.g., 
-      using the POP restarts for '1 January 00Z' from 50 consecutive years 
-      from a hindcast experiment.
-      <br />
-      <br />
-      There is a <em class=program>shell_scripts/MakeInitialEnsemble.csh</em> 
-      script that is intended to demonstrate how to convert a set of POP netCDF 
-      restart files into a set of DART files that have a consistent timestamp. 
-      If you simply convert each POP file to a DART file using 
-      <em class=program>dart_to_pop</em>, each DART file will have a 'valid&nbsp;time'
-      that reflects the POP time of that state - instead of an ensemble of states
-      reflecting one single time. The
-      <a href="../../../utilities/restart_file_utility.f90">restart_file_utility</a> 
-      can be used to overwrite the timestep in the header of each DART initial 
-      conditions file. The namelist for this program must look something like:
-   </P>
-   <pre>
-   &amp;restart_file_tool_nml
-     input_file_name              = "<em class=changed>dart.ics</em>",
-     output_file_name             = "filter_updated_restart",
-     ens_size                     = 1,
-     single_restart_file_in       = .true.,
-     single_restart_file_out      = .true.,
-     write_binary_restart_files   = .true.,
-     overwrite_data_time          = <em class=changed>.true.</em>,
-     new_data_days                = <em class=changed>145731</em>,
-     new_data_secs                = <em class=changed>0</em>,
-     input_is_model_advance_file  = .false.,
-     output_is_model_advance_file = .false.,
-     overwrite_advance_time       = .false.,
-     new_advance_days             = -1,
-     new_advance_secs             = -1,
-     gregorian_cal                = .true.  /</pre>
-   <P>
-      The time of days&nbsp;=&nbsp;<em class=changed>145731</em> 
-      seconds&nbsp;=&nbsp;<em class=changed>0</em> relates to 00Z&nbsp;1&nbsp;Jan&nbsp;2000 in the DART world.
-      <br />
-      <br />
-      BTW - Experience has shown that having a paired (unique) atmospheric forcing 
-      maintains the ensemble spread better than simply forcing all the ocean 
-      ensemble members with one single atmospheric state.
+   <P> Under development ...
    </P>
 </div>
 

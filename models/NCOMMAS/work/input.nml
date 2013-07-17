@@ -158,12 +158,12 @@
 # called "ncommas_vars_nml".
 
 &ncommas_to_dart_nml
-   ncommas_to_dart_output_file  = 'dart.ud'
+   ncommas_to_dart_output_file  = 'dart_ics'
   /
 
 
 &dart_to_ncommas_nml
-   dart_to_ncommas_input_file   = 'dart.ic',
+   dart_to_ncommas_input_file   = 'dart_restart',
    advance_time_present         = .false.
   /
 

@@ -1,4 +1,4 @@
 &dart_to_pop_nml
-   dart_to_pop_input_file = 'dart.ic',
+   dart_to_pop_input_file = 'dart_restart',
    advance_time_present   = .false.  /
 

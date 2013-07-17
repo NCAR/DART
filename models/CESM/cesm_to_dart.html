@@ -50,10 +50,8 @@ on the details of each converter:
 </UL>
 
 <P>
-Since this program is called repeatedly for every ensemble member,
-we have found it convenient to link the DART output file
-to the default output filename, e.g. (<em class=file>dart_ics</em>). 
-The same thing is true for the model input filenames.
+Since this program is invoked from a unique directory for every ensemble member,
+we have found it convenient to link to default filenames, e.g. (<em class=file>dart_ics</em>). 
 </P>
 
 <!--==================================================================-->
@@ -81,7 +79,7 @@ prematurely terminating the namelist.
    /
 
 &amp;pop_to_dart_nml
-   pop_to_dart_output_file = 'dart.ud'  
+   pop_to_dart_output_file = 'dart_ics'  
    /
 
 &amp;clm_to_dart_nml

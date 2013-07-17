@@ -219,7 +219,7 @@ cat pop_in.part1 pop_in.part2 >! pop_in
 
 ./pop_to_dart || exit 1
 
-${MOVE} dart.ud perfect_ics
+${MOVE} dart_ics perfect_ics
 
 #-----------------------------------------------------------------------------
 # Run perfect_model_obs ... harvest the observations to populate obs_seq.out

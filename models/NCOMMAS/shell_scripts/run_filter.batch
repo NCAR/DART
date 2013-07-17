@@ -250,7 +250,7 @@ endif
 # DART namelist settings appropriate/required:
 # &filter_nml:           restart_in_file_name    = 'filter_ics'
 # &ensemble_manager_nml: single_restart_file_in  = '.false.'
-# &ncommas_to_dart_nml:      ncommas_to_dart_output_file = 'dart.ud',
+# &ncommas_to_dart_nml:      ncommas_to_dart_output_file = 'dart_ics',
 #
 # &restart_file_tool_nml: <see list that follows>
 #  input_file_name              = "filter_restart",
@@ -293,7 +293,7 @@ cat ncommas_in.part1 ncommas_in.part2 >! ncommas_in
 set member = 1
 while ($member <= $ensemble_size)
 
-   # grap the ncommas pointer file and dereference it 
+   # grab the ncommas pointer file and dereference it 
    # Copy the ncommas restart file ... we will be updating it.
    # then link the ncommas restart file to the name for 'ncommas_to_dart'
    ${COPY} ${ncommasDIR}/rpointer.ocn.$member.restart .
@@ -306,7 +306,7 @@ while ($member <= $ensemble_size)
 
    ./ncommas_to_dart || exit 1
 
-   ${MOVE} dart.ud filter_restart
+   ${MOVE} dart_ics filter_restart
 
    ./restart_file_tool || exit 1
 

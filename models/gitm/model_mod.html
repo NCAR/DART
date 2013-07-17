@@ -132,9 +132,10 @@ interpolate routines. For example, this is nowhere close to being correct:
    </P>
    <table width="100%" cellpadding="10">
    <tr><td valign="top"><a href="gitm_to_dart.html">gitm_to_dart.f90</a></td>
-       <td>converts a set of GITM restart files (there is one restart file per block) <em class=file>gitm_restart.nc</em> into a 
-       DART-compatible file normally called <em class=file>dart.ud</em>&nbsp;.
-       We usually wind up linking the restart file to a static name that is used by DART.
+       <td>converts a set of GITM restart files (there is one restart file per block) 
+       <em class=file>gitm_restart.nc</em> into a 
+       DART-compatible file normally called <em class=file>dart_ics</em>&nbsp;.
+       We usually wind up linking to this static filename.
        </td>
    </tr>
    <tr><td valign="top"><a href="dart_to_gitm.html">dart_to_gitm.f90</a></td>
@@ -191,8 +192,8 @@ interpolate routines. For example, this is nowhere close to being correct:
    </P>
    <pre>
    &amp;restart_file_tool_nml
-     input_file_name              = "<em class=changed>dart.ics</em>",
-     output_file_name             = "filter_updated_restart",
+     input_file_name              = "dart_input",
+     output_file_name             = "dart_output",
      ens_size                     = 1,
      single_restart_file_in       = .true.,
      single_restart_file_out      = .true.,

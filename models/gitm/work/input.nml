@@ -230,13 +230,13 @@
 
 
 &gitm_to_dart_nml
-   gitm_to_dart_output_file = 'temp_ud',
+   gitm_to_dart_output_file = 'dart_ics',
    gitm_restart_dirname     = 'advance_temp_e1/UA/restartOUT'
    /
 
 
 &dart_to_gitm_nml
-   dart_to_gitm_input_file  = 'temp_ic',
+   dart_to_gitm_input_file  = 'dart_restart',
    advance_time_present     = .true.,
    gitm_restart_dirname     = 'advance_temp_e1/UA/restartOUT'
    /
@@ -275,8 +275,8 @@
 # Gregorian: 12 Z 1 January 2000 <==> DART: 145731 days 43200 seconds
 
 &restart_file_tool_nml
-   input_file_name              = "filter_restart",
-   output_file_name             = "filter_updated_restart",
+   input_file_name              = "dart_input",
+   output_file_name             = "dart_output",
    ens_size                     = 1,
    single_restart_file_in       = .true.,
    single_restart_file_out      = .true.,
@@ -349,7 +349,7 @@
 
 
 &model_mod_check_nml
-   input_file           = "dart.ud",
+   input_file           = "dart_ics",
    output_file          = "check_me_out",
    advance_time_present = .FALSE.,
    verbose              = .TRUE.,

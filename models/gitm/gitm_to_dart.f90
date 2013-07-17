@@ -41,7 +41,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character(len=128) :: gitm_to_dart_output_file  = 'dart.ud'
+character(len=128) :: gitm_to_dart_output_file  = 'dart_ics'
 character(len=256) :: gitm_restart_dirname = 'gitm_restartdir'
 
 namelist /gitm_to_dart_nml/    &

@@ -88,10 +88,10 @@ while($state_copy <= $num_states)
    # time - which must be communicated to the model ...
    #----------------------------------------------------------------------
 
-   # The EXPECTED input DART 'initial conditions' file name is 'dart.ic'
+   # The EXPECTED DART filter restart_out_file_name is 'dart_restart'
    # The dart_to_pop_nml:advance_time_present = .TRUE. must be set
 
-   ln -sfv ../$input_file dart.ic || exit 2
+   ln -sfv ../$input_file dart_restart || exit 2
 
    # CENTRALDIR will always contain a pointer file containing the name
    # of the most recent POP restart file for this ensemble member.
@@ -169,9 +169,9 @@ while($state_copy <= $num_states)
 
    ../pop_to_dart || exit 4
 
-   # The (new,updated) DART restart file name is called 'dart.ud'
+   # The (new,updated) DART restart file name is called 'dart_ics'
    # Move the updated files back to 'centraldir'
-   mv -v dart.ud ../$output_file || exit 4
+   mv -v dart_ics ../$output_file || exit 4
    mv -v rpointer.ocn.restart ../rpointer.ocn.${ensemble_member}.restart || exit 4
    mv -v ${NEWFILE} ../${NEWFILE} || exit 4
 

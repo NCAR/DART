@@ -37,7 +37,7 @@
 <P>
    <em class=program>model_to_dart</em> is the program that reads an MPAS ATM
    analysis file (nominally named <em class=file>mpas_restart.nc</em>) and 
-   creates a DART output/restart file 
+   creates a DART state vector file 
    (e.g. <em class=file>perfect_ics, filter_ics, ... </em>). The MPAS analysis
    files have a <strong>Time</strong> UNLIMITED Dimension, which indicates
    there may (at some point) be more than one timestep in the file. The DART
@@ -81,13 +81,8 @@
 Since this program is called repeatedly for every ensemble member,
 we have found it convenient to link the MPAS ATM analysis files
 to a static input filename (e.g. <em class=file>mpas_analysis.nc</em>).
-The default DART output filename is <em class=file>dart.ud</em> -
-this may be moved or linked as necessary. The 'ud' extension is preferred
-as this represents a model state that has been 'updated' by MPAS. The vast
-majority of the time this routine is being called to convert a model state
-that has been updated by MPAS for use by DART in a 'cycling' context.
-There is no difference between these files and ones used to start a DART
-experiment - an 'ics' file.
+The default DART filename is <em class=file>dart_ics</em> -
+this may be moved or linked as necessary. 
 </P>
 
 <!--==================================================================-->
@@ -105,7 +100,7 @@ The namelist declaration is:
 </P>
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_to_dart_nml / </em> model_to_dart_output_file = 'dart.ud'
+<em class=call>namelist / model_to_dart_nml / </em> model_to_dart_output_file = 'dart_ics'
 </pre>
 </div>
 
@@ -125,7 +120,7 @@ This namelist is always read from a file called <em class=file>input.nml</em>.
     <!--  type  --><TD valign=top>character(len=128)&nbsp;&nbsp;&nbsp;</TD>
     <!--descript--><TD>The name of the DART file containing the model state
                        derived from the MPAS analysis file.
-                       <em class=units>[default: 'dart.ud']</em></TD></TR>
+                       <em class=units>[default: 'dart_ics']</em></TD></TR>
 
 </TABLE>
 
@@ -170,7 +165,7 @@ utilities_mod.f90
 </UL>
 
 <H2>FILES Written</H2>
-<UL><LI>DART initial conditions/restart file; e.g. <em class=file>dart.ud</em></LI>
+<UL><LI>DART initial conditions/restart file; e.g. <em class=file>dart_ics</em></LI>
 </UL>
 
 <!--==================================================================-->

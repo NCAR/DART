@@ -44,7 +44,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! The namelist variables
 !------------------------------------------------------------------
 
-character (len = 128) :: dart_to_gitm_input_file = 'dart.ic'
+character (len = 128) :: dart_to_gitm_input_file = 'dart_restart'
 logical               :: advance_time_present    = .false.
 character(len=256)    :: gitm_restart_dirname    = 'gitm_restartdir'
 

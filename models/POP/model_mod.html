@@ -193,7 +193,7 @@
    <table width="100%" cellpadding="10">
    <tr><td valign="top"><a href="pop_to_dart.html">pop_to_dart.f90</a></td>
        <td>converts the POP restart file <em class=file>pop.r.nc</em> into a 
-       DART-compatible file normally called <em class=file>dart.ud</em>&nbsp;.
+       DART-compatible file normally called <em class=file>dart_ics</em>&nbsp;.
        There must also be a <em class=file>pop_in</em> namelist for POP
        (since this specifies the names of the grid files). 
        We usually wind up linking the dereferenced
@@ -260,8 +260,8 @@
    </P>
    <pre>
    &amp;restart_file_tool_nml
-     input_file_name              = "<em class=changed>dart.ics</em>",
-     output_file_name             = "filter_updated_restart",
+     input_file_name              = "dart_input",
+     output_file_name             = "dart_output",
      ens_size                     = 1,
      single_restart_file_in       = .true.,
      single_restart_file_out      = .true.,
