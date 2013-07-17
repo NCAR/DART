@@ -4,6 +4,13 @@
 !
 ! $Id$
 
+!> @mainpage Remote Memory Access version of forward operator
+!> Initially working with identity obs
+!> @author dart@ucar.edu
+
+!> \dir filter  Main program contained here
+!> \file filter.f90 Main program
+
 program filter
 
 !------------------------------------------------------------------------------
@@ -17,7 +24,8 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  set_qc_meta_data, get_expected_obs, get_first_obs,          &
                                  get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
                                  delete_seq_tail, replace_obs_values, replace_qc,            &
-                                 destroy_obs_sequence, get_qc_meta_data, add_qc
+                                 destroy_obs_sequence, get_qc_meta_data, add_qc,             &
+                                 get_expected_obs_distrib_state !HK
 use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                                  get_obs_kind
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
@@ -40,7 +48,8 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  get_ensemble_time, set_ensemble_time, broadcast_copy,       &
                                  prepare_to_read_from_vars, prepare_to_write_to_vars, prepare_to_read_from_copies,    &
                                  prepare_to_write_to_copies, get_ensemble_time, set_ensemble_time,    &
-                                 map_task_to_pe,  map_pe_to_task, prepare_to_update_copies
+                                 map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
+                                 get_my_num_vars !HK
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
                                  do_obs_inflate, adaptive_inflate_type,                      &
@@ -53,6 +62,7 @@ use smoother_mod,         only : smoother_read_restart, advance_smoother,       
                                  init_smoother, do_smoothing, smoother_mean_spread,          &
                                  smoother_assim, filter_state_space_diagnostics,             &
                                  smoother_ss_diagnostics, smoother_end, set_smoother_trace
+use mpi
 
 
 !------------------------------------------------------------------------------
@@ -189,6 +199,8 @@ real(r8), allocatable   :: ens_mean(:)
 
 logical                 :: ds, all_gone
 
+! HK
+real(r8), allocatable   :: results(:,:)
 
 call filter_initialize_modules_used()
 
@@ -524,13 +536,33 @@ AdvanceTime : do
    call     trace_message('Before computing prior observation values')
    call timestamp_message('Before computing prior observation values')
 
-   ! Compute the ensemble of prior observations, load up the obs_err_var 
+   ! Compute the ensemble of prior observations, load up the obs_err_var
    ! and obs_values. ens_size is the number of regular ensemble members, 
    ! not the number of copies
    call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, &
       seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       isprior=.true.)
+
+   call timestamp_message('Transposing all ens_handles to copy complete before get_obs_ens_distrib_state')
+   call all_vars_to_all_copies(ens_handle)
+   call all_vars_to_all_copies(forward_op_ens_handle)
+   call all_vars_to_all_copies(obs_ens_handle)
+
+   allocate(results(obs_ens_handle%num_copies, obs_ens_handle%my_num_vars))
+
+      call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
+      seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
+      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+      results, isprior=.true.)
+
+    if ( my_task_id() == 0 ) then
+      print*, 'results'
+      !print*, size(results), obs_ens_handle%my_num_vars, obs_ens_handle%num_copies
+       print*, results
+       print*, 'obs_ens_handle%copies'
+       print*, obs_ens_handle%copies
+    endif
 
    ! Although they are integer, keys are one 'copy' of obs ensemble 
    ! (the last one?)
@@ -646,6 +678,9 @@ AdvanceTime : do
    call     trace_message('Before computing posterior observation values')
    call timestamp_message('Before computing posterior observation values')
 
+  call timestamp_message('Transposing ens_handle to copy complete before get_obs_ens')
+   call all_vars_to_all_copies(ens_handle)
+
    ! Compute the ensemble of posterior observations, load up the obs_err_var 
    ! and obs_values.  ens_size is the number of regular ensemble members, 
    ! not the number of copies
@@ -653,6 +688,9 @@ AdvanceTime : do
       seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       isprior=.false.)
+
+    call timestamp_message('Transposing ens_handle back to var complete after get_obs_ens')
+    call all_copies_to_all_vars(ens_handle)
 
    call timestamp_message('After  computing posterior observation values')
    call     trace_message('After  computing posterior observation values')
@@ -1284,6 +1322,171 @@ do group = 1, num_groups
 end do
 
 end subroutine filter_ensemble_inflate
+
+!-------------------------------------------------------------------------
+
+
+!> Computes forward observation operators and related quality control indicators.
+!> @brief
+!> Helen is working on this to use a distributed forward operator using MPI remote memeory
+!> access
+subroutine get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, keys, &
+   obs_val_index, input_qc_index, num_obs_in_set, &
+   OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, results, isprior)
+
+
+type(ensemble_type),     intent(in)    :: ens_handle
+type(ensemble_type),     intent(inout) :: obs_ens_handle, forward_op_ens_handle 
+type(obs_sequence_type), intent(in)    :: seq
+integer,                 intent(in)    :: keys(:)
+integer,                 intent(in)    :: obs_val_index, input_qc_index, num_obs_in_set
+integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY
+integer,                 intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
+logical,                 intent(in)    :: isprior
+
+real(r8)           :: input_qc(1), obs_value(1), obs_err_var, thisvar(1)
+integer            :: j, k, my_num_copies, istatus , global_ens_index, thiskey(1)
+logical            :: evaluate_this_ob, assimilate_this_ob
+type(obs_def_type) :: obs_def
+
+! Assumed that both ensembles are var complete
+! Each PE must loop to compute its copies of the forward operators
+! IMPORTANT, IT IS ASSUMED THAT ACTUAL ENSEMBLES COME FIRST
+! HK: I think it is also assumed that the ensemble members are in the same order in
+! each of the handles
+
+! HK Remote memory access
+integer :: ierr, sizedouble, count, win, ii, jj
+integer(KIND=MPI_ADDRESS_KIND) :: window_size ! These must be mpi_address_kind to avoid a segmentation fault on some systems
+integer status(MPI_STATUS_SIZE)
+real(r8) duplicate_copies(*)
+pointer (p, duplicate_copies)
+
+!HK 
+real(r8), dimension(:,:), intent(inout) :: results
+real(r8), allocatable                   :: states_for_identity_obs(:)
+
+! Loop through my copies and compute expected value
+my_num_copies = get_my_num_copies(obs_ens_handle)
+
+call prepare_to_write_to_vars(obs_ens_handle)
+call prepare_to_write_to_vars(forward_op_ens_handle)
+call prepare_to_read_from_vars(ens_handle)
+
+! allocate some RDMA accessible memory
+! using MPI_ALLOC_MEM because the MPI standard allows vendors to require MPI_ALLOC_MEM for remote memory access
+call mpi_type_size(MPI_DOUBLE_PRECISION, sizedouble, ierr)
+window_size = ens_handle%num_copies*ens_handle%my_num_vars*sizedouble
+p = malloc(ens_handle%num_copies*ens_handle%my_num_vars)
+call MPI_ALLOC_MEM(window_size, MPI_INFO_NULL, p, ierr)
+
+! expose local memory to RMA operation by other process in a communicator.
+call mpi_win_create(duplicate_copies, window_size, sizedouble, MPI_INFO_NULL, mpi_comm_world, win, ierr)
+
+! create a duplicate copies array for remote memory access
+! Doing this because you cannot use a cray pointer with an allocatable array
+count = 1
+do ii = 1, ens_handle%my_num_vars
+   do jj = 1, ens_handle%num_copies
+      duplicate_copies(count) = ens_handle%copies(jj, ii) ! can't use vector assignment with a cray pointer
+      count = count + 1
+   enddo
+enddo
+
+! make some room for state vectors
+allocate(states_for_identity_obs(ens_handle%num_copies))
+
+! Loop through all observations in the set
+ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars 
+
+   ! Get the information on this observation by placing it in temporary
+   call get_obs_from_key(seq, keys(j), observation)
+   call get_obs_def(observation, obs_def)
+   ! Check to see if this observation fails input qc test
+   call get_qc(observation, input_qc, input_qc_index)
+   ! If it is bad, set forward operator status value to -99 and return missing_r8 for obs_value
+
+   ! PAR THIS SUBROUTINE SHOULD EVENTUALLY GO IN THE QUALITY CONTROL MODULE
+   if(.not. input_qc_ok(input_qc(1), input_qc_threshold)) then
+      ! The forward operator value is set to -99 if prior qc was failed
+      forward_op_ens_handle%vars(j, :) = -99
+
+      !> @todo remove this loop
+      do k=1, my_num_copies
+        global_ens_index = obs_ens_handle%my_copies(k)
+        ! Update prior/post obs values, mean, etc - but leave the key copy
+        ! and the QC copy alone.
+        if ((global_ens_index /= OBS_KEY_COPY) .and. &
+            (global_ens_index /= OBS_GLOBAL_QC_COPY)) then 
+            obs_ens_handle%vars(j, k) = missing_r8
+        endif
+
+
+      enddo
+      ! No need to do anything else for a failed observation
+      cycle ALL_OBSERVATIONS
+   endif
+
+   ! Get the observation value and error variance
+   call get_obs_values(observation, obs_value(1:1), obs_val_index)
+   obs_err_var = get_obs_def_error_variance(obs_def)
+
+   ! Loop through all copies stored by this process and set values as needed
+   ! HK removed the loop k = 1, my_num_copies
+   k = 1  ! HK dummy k for now
+   global_ens_index = obs_ens_handle%my_copies(k)
+
+   ! If I have a copy that is a standard ensemble member, compute expected value
+   ! HK FORWARD OPERATOR
+   if(global_ens_index <= ens_size) then
+      ! temporaries to avoid passing array sections which was slow on PGI compiler
+      thiskey(1) = keys(j)
+      call get_expected_obs_distrib_state(seq, thiskey, &
+         global_ens_index, ens_handle%vars(:, k), ens_handle%time(1), isprior, &
+         thisvar, istatus, assimilate_this_ob, evaluate_this_ob, ens_handle, win, states_for_identity_obs)
+      obs_ens_handle%vars(j, k) = thisvar(1)
+
+      ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
+      ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
+      ! in the forward operator evaluation field
+      if(istatus == 0) then
+         if ((assimilate_this_ob .or. evaluate_this_ob) .and. (thisvar(1) == missing_r8)) then
+            write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
+            call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+         endif
+         if(assimilate_this_ob) then
+            forward_op_ens_handle%vars(j, k) = 0
+         else if(evaluate_this_ob) then
+            forward_op_ens_handle%vars(j, k) = -1
+         else
+            forward_op_ens_handle%vars(j, k) = -2
+         endif
+      else if (istatus < 0) then
+         write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
+         call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+      else
+         forward_op_ens_handle%vars(j, k) = istatus
+      endif
+
+   ! Otherwise, see if this is the copy for error variance or observed value
+   else if(global_ens_index == OBS_ERR_VAR_COPY) then
+      ! This copy is the instrument observation error variance; read and store
+      obs_ens_handle%vars(j, k) = obs_err_var
+
+   else if(global_ens_index == OBS_VAL_COPY) then
+      ! This copy is the observation from the instrument; read and store
+      obs_ens_handle%vars(j, k) = obs_value(1)
+   endif
+
+    results(:, j) = states_for_identity_obs
+
+end do ALL_OBSERVATIONS
+
+call mpi_win_free(win, ierr)
+call MPI_FREE_MEM(duplicate_copies, ierr) ! not p 
+deallocate(states_for_identity_obs)
+
+end subroutine get_obs_ens_distrib_state
 
 !-------------------------------------------------------------------------
 

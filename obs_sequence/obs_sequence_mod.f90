@@ -4,6 +4,11 @@
 !
 ! $Id$
 
+!> \file obs_sequence_mod.f90  modifing this to have distributed identity obs
+!> \dir obs_sequence modifing obs_sequence to have distributed identity obs
+
+!> @brief For observations sequence stuff
+!> get expected obs is in here
 module obs_sequence_mod
 
 ! WARNING OPERATOR OVERLOAD FOR EQUIVALENCE???
@@ -34,6 +39,12 @@ use    utilities_mod, only : get_unit, close_file,                       &
                              find_namelist_in_file, check_namelist_read,   &
                              E_ERR, E_WARN, E_MSG, nmlfileunit, do_output, &
                              do_nml_file, do_nml_term
+!HK
+use mpi_utilities_mod, only : task_count, my_task_id
+use ensemble_manager_mod, only: get_owner_of_element_of_state_vector, map_pe_to_task, &
+                                ensemble_type, get_element_index
+
+use mpi
 
 implicit none
 private
@@ -54,7 +65,8 @@ public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header, &
    get_expected_obs, delete_seq_head, delete_seq_tail, &
    get_next_obs_from_key, get_prev_obs_from_key, delete_obs_by_typelist, &
-   select_obs_by_location, delete_obs_by_qc, delete_obs_by_copy
+   select_obs_by_location, delete_obs_by_qc, delete_obs_by_copy,         &
+   get_expected_obs_distrib_state !HK
 
 ! Public interfaces for obs
 public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
@@ -318,6 +330,95 @@ end function interactive_obs_sequence
 
 !---------------------------------------------------------
 
+!> @brief Compute forward operator for set of obs in sequence for distributed state vector. 
+!> @todo does this need to be for a set of obs?
+subroutine get_expected_obs_distrib_state(seq, keys, ens_index, state, state_time, isprior, &
+   obs_vals, istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, win, states_for_identity_obs)
+
+type(obs_sequence_type), intent(in)    :: seq
+integer,                 intent(in)    :: keys(:)
+integer,                 intent(in)    :: ens_index
+real(r8),                intent(in)    :: state(:)
+type(time_type),         intent(in)    :: state_time
+logical,                 intent(in)    :: isprior
+real(r8),                intent(out)   :: obs_vals(:)
+integer,                 intent(out)   :: istatus
+logical,                 intent(out)   :: assimilate_this_ob, evaluate_this_ob
+!HK
+type(ensemble_type),     intent(in)    :: state_ens_handle
+real(r8), dimension(:),  intent(inout) :: states_for_identity_obs !> @todo needs to be 2d for a set of obs
+integer, intent(in)                    :: win !> window for mpi remote memory access
+
+integer              :: num_obs, i
+!type(location_type) :: location
+type(obs_type)       :: obs
+type(obs_def_type)   :: obs_def
+integer              :: obs_kind_ind
+
+! HK
+integer                        :: ierr
+integer(KIND=MPI_ADDRESS_KIND) :: target_disp ! must be mpi_address_kind to avoid seg faults on some systems
+integer owner_of_state
+
+num_obs = size(keys)
+
+! NEED to initialize istatus to okay value
+istatus = 0
+
+! Initialize the observation type
+!!! Can actually init with the correct size here if wanted
+call init_obs(obs, 0, 0)
+
+do i = 1, num_obs !> @todo do you ever use this with more than one obs?
+   call get_obs_from_key(seq, keys(i), obs)
+   call get_obs_def(obs, obs_def)
+   !location = get_obs_def_location(obs_def)
+   obs_kind_ind = get_obs_kind(obs_def)
+
+   ! Check in kind for negative for identity obs
+   if(obs_kind_ind < 0) then
+      if ( -obs_kind_ind > size(state) ) call error_handler(E_ERR, &
+         'get_expected_obs', &
+         'identity obs is outside of state vector ', &
+         source, revision, revdate)
+
+      obs_vals(i) = state(-1 * obs_kind_ind) ! assumes that task has the whole state vector
+
+      ! Find which task has the element of state vector
+      owner_of_state = map_pe_to_task(state_ens_handle, get_owner_of_element_of_state_vector(-1 * obs_kind_ind, task_count() ))
+      
+      if (my_task_id() == owner_of_state) then
+         !> @todo check this is correct column
+         states_for_identity_obs = state_ens_handle%copies(get_element_index(-1 * obs_kind_ind, task_count()), :)
+
+      else
+         !> @todo check target disp is correct column
+         target_disp = ( get_element_index(-1 * obs_kind_ind, task_count()) - 1) * state_ens_handle%num_copies
+
+         call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0 , win, ierr)
+         call mpi_get(states_for_identity_obs, state_ens_handle%num_copies, MPI_DOUBLE_PRECISION, owner_of_state, target_disp, state_ens_handle%num_copies, MPI_DOUBLE_PRECISION, win, ierr)
+         call mpi_win_unlock(owner_of_state, win, ierr)
+
+      endif
+
+      assimilate_this_ob = .true.; evaluate_this_ob = .false.
+   
+   else ! do forward operator for this kind
+      !> @todo can't do this yet
+      call get_expected_obs_from_def(keys(i), obs_def, obs_kind_ind, &
+         ens_index, state, state_time, isprior, obs_vals(i), istatus, &
+         assimilate_this_ob, evaluate_this_ob)
+   endif
+end do
+
+! need to free any observation specific storage that
+! might have been allocated.
+call destroy_obs(obs)
+
+end subroutine get_expected_obs_distrib_state
+
+!---------------------------------------------------------
+
 subroutine get_expected_obs(seq, keys, ens_index, state, state_time, isprior, &
    obs_vals, istatus, assimilate_this_ob, evaluate_this_ob)
 
@@ -374,7 +475,6 @@ end do
 call destroy_obs(obs)
 
 end subroutine get_expected_obs
-
 
 !---------------------------------------------------------
 

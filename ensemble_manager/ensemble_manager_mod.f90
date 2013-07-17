@@ -51,7 +51,8 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
           prepare_to_update_copies,   print_ens_handle,                                 &
-          map_task_to_pe,             map_pe_to_task
+          map_task_to_pe,             map_pe_to_task,                                   &
+          get_owner_of_element_of_state_vector, get_element_index !HK
 
 type ensemble_type
    !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
@@ -1859,6 +1860,38 @@ map_task_to_pe = ens_handle%task_to_pe_list(t + 1)
 
 end function map_task_to_pe
 
+!---------------------------------------------------------------------------------
+
+!> Returns which pe has a given element of state vector.
+!> For use with a distributed forward operator
+function get_owner_of_element_of_state_vector(element, n)
+
+integer, intent(in) :: element !> index into state vector
+integer, intent(in) :: n !> number of processors involved in copy complete
+integer get_owner_of_element_of_state_vector
+
+! I think this is as simple as modulo 
+get_owner_of_element_of_state_vector = mod(element, n)
+if (get_owner_of_element_of_state_vector == 0 ) get_owner_of_element_of_state_vector = n
+
+! pe numbering starts at zero
+get_owner_of_element_of_state_vector = get_owner_of_element_of_state_vector - 1
+
+end function get_owner_of_element_of_state_vector
+
+!---------------------------------------------------------------------------------
+!> Returns the column index for a state vector element when copy complete.
+!> For use with a distributed forward operator
+function get_element_index(element, n)
+
+integer, intent(in) :: element !> index into state vector
+integer, intent(in) :: n !> number of processors involved in copy complete
+integer get_element_index
+
+!> @todo what happens when there is no remainder?
+get_element_index = ceiling(real(element) / real(n))
+
+end function get_element_index
 !---------------------------------------------------------------------------------
 
 end module ensemble_manager_mod
