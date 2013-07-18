@@ -145,7 +145,7 @@ real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
 logical              :: output_inflation          = .true.
 
 !HK 
-integer j
+character*20 task_str, file_obscopies, file_results
 
 namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,    &
    start_from_restart, output_restart, obs_sequence_in_name, obs_sequence_out_name, &
@@ -553,24 +553,31 @@ AdvanceTime : do
    call all_vars_to_all_copies(obs_ens_handle)
 
    allocate(results(obs_ens_handle%num_copies, obs_ens_handle%my_num_vars))
-   results = -1111
 
       call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
       seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       results, isprior=.true.)
 
-   if ( my_task_id() == 0 ) then
-       print*, 'my_task = ', my_task_id()
-       do j = 1, obs_ens_handle%my_num_vars
-          print*, ' Column', j, ' results | ', 'obs_ens_handle%copies'
-          do i = 1, 20
-             print*, results(i,j), obs_ens_handle%copies(i,j)
-          enddo
-          print*, ' '
-       enddo
+    print*, 'my rank', my_task_id(), 'diff', (results(1:obs_ens_handle%num_vars - 3, :) - obs_ens_handle%copies(1:obs_ens_handle%num_vars - 3, :))
 
-   endif
+   ! HK do these results need to be recorded to file? 
+    write(task_str, '(i10)') ens_handle%my_pe
+
+    file_obscopies = TRIM('obscopies' // TRIM(ADJUSTL(task_str)))
+    file_results = TRIM('results' // TRIM(ADJUSTL(task_str)))
+
+    open(15, file=file_obscopies, status ='new')
+    open(20, file=file_results, status ='new') ! error if you already have results files
+
+    do i = 1, obs_ens_handle%num_copies - 6
+       write(15, *) obs_ens_handle%copies(i,:)
+       write(20, *) results(i,:)
+    enddo
+
+    close(15)
+    close(20)
+
 
    ! Although they are integer, keys are one 'copy' of obs ensemble 
    ! (the last one?)
@@ -1410,8 +1417,6 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
 
    !j needs to be converted to a global observation number
    global_obs_num = get_global_from_local(j, ens_handle%my_pe, task_count())
-   print*, 'rank', my_task_id(), 'j', j, 'global', global_obs_num
-
 
    ! Get the information on this observation by placing it in temporary
    call get_obs_from_key(seq, keys(global_obs_num), observation) !HK
