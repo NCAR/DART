@@ -52,7 +52,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
           prepare_to_update_copies,   print_ens_handle,                                 &
           map_task_to_pe,             map_pe_to_task,                                   &
-          get_owner_of_element_of_state_vector, get_element_index !HK
+          get_owner_of_element_of_state_vector, get_element_index, get_global_from_local !HK
 
 type ensemble_type
    !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
@@ -1893,6 +1893,29 @@ get_element_index = ceiling(real(element) / real(n))
 
 end function get_element_index
 !---------------------------------------------------------------------------------
+
+!> Returns the global index for a given local index
+!> @fixme does this functinonallity already exist?
+function get_global_from_local(local, pe, n)
+
+integer, intent(in) :: local !> local element number
+integer, intent(in) :: pe !> pe number
+integer, intent(in) :: n !> number of tasks
+integer get_global_from_local
+
+if ( local == 1) then
+
+  get_global_from_local = pe + local
+
+else
+
+  get_global_from_local = (local -1)*n + pe + 1
+
+endif
+
+end function get_global_from_local
+!---------------------------------------------------------------------------------
+
 
 end module ensemble_manager_mod
 

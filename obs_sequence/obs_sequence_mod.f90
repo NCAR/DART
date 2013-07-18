@@ -359,6 +359,9 @@ integer              :: obs_kind_ind
 integer                        :: ierr
 integer(KIND=MPI_ADDRESS_KIND) :: target_disp ! must be mpi_address_kind to avoid seg faults on some systems
 integer owner_of_state
+integer element_index
+
+states_for_identity_obs = -222
 
 num_obs = size(keys)
 
@@ -389,11 +392,20 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
       
       if (my_task_id() == owner_of_state) then
          !> @todo check this is correct column
-         states_for_identity_obs = state_ens_handle%copies(get_element_index(-1 * obs_kind_ind, task_count()), :)
+
+         states_for_identity_obs = state_ens_handle%copies(:, get_element_index(-1 * obs_kind_ind, task_count()))
+         print*, 'same processor rank', my_task_id(), 'element', get_element_index(-1 * obs_kind_ind, task_count()), 'obs_kind_index', obs_kind_ind
 
       else
          !> @todo check target disp is correct column
-         target_disp = ( get_element_index(-1 * obs_kind_ind, task_count()) - 1) * state_ens_handle%num_copies
+         element_index = get_element_index(-1 * obs_kind_ind, task_count())
+         target_disp = ( element_index - 1) * state_ens_handle%num_copies
+         !if (my_task_id() == 2) then
+         !   print*, 'rank ', my_task_id(), 'index', obs_kind_ind
+         !   print*, 'rank ', my_task_id(), 'owner of state', owner_of_state
+         !   print*, 'rank ', my_task_id(), 'element index', element_index, state_ens_handle%num_copies
+         !   print*, 'rank ', my_task_id(), 'target_disp', target_disp
+         !endif
 
          call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0 , win, ierr)
          call mpi_get(states_for_identity_obs, state_ens_handle%num_copies, MPI_DOUBLE_PRECISION, owner_of_state, target_disp, state_ens_handle%num_copies, MPI_DOUBLE_PRECISION, win, ierr)

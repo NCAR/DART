@@ -49,7 +49,7 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  prepare_to_read_from_vars, prepare_to_write_to_vars, prepare_to_read_from_copies,    &
                                  prepare_to_write_to_copies, get_ensemble_time, set_ensemble_time,    &
                                  map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
-                                 get_my_num_vars !HK
+                                 get_my_num_vars, get_global_from_local !HK
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
                                  do_obs_inflate, adaptive_inflate_type,                      &
@@ -143,6 +143,9 @@ real(r8)             :: inf_lower_bound(2)        = 1.0_r8
 real(r8)             :: inf_upper_bound(2)        = 1000000.0_r8
 real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
 logical              :: output_inflation          = .true.
+
+!HK 
+integer j
 
 namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,    &
    start_from_restart, output_restart, obs_sequence_in_name, obs_sequence_out_name, &
@@ -550,19 +553,24 @@ AdvanceTime : do
    call all_vars_to_all_copies(obs_ens_handle)
 
    allocate(results(obs_ens_handle%num_copies, obs_ens_handle%my_num_vars))
+   results = -1111
 
       call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
       seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       results, isprior=.true.)
 
-    if ( my_task_id() == 0 ) then
-      print*, 'results'
-      !print*, size(results), obs_ens_handle%my_num_vars, obs_ens_handle%num_copies
-       print*, results
-       print*, 'obs_ens_handle%copies'
-       print*, obs_ens_handle%copies
-    endif
+   if ( my_task_id() == 0 ) then
+       print*, 'my_task = ', my_task_id()
+       do j = 1, obs_ens_handle%my_num_vars
+          print*, ' Column', j, ' results | ', 'obs_ens_handle%copies'
+          do i = 1, 20
+             print*, results(i,j), obs_ens_handle%copies(i,j)
+          enddo
+          print*, ' '
+       enddo
+
+   endif
 
    ! Although they are integer, keys are one 'copy' of obs ensemble 
    ! (the last one?)
@@ -1365,6 +1373,7 @@ pointer (p, duplicate_copies)
 !HK 
 real(r8), dimension(:,:), intent(inout) :: results
 real(r8), allocatable                   :: states_for_identity_obs(:)
+integer global_obs_num
 
 ! Loop through my copies and compute expected value
 my_num_copies = get_my_num_copies(obs_ens_handle)
@@ -1397,10 +1406,15 @@ enddo
 allocate(states_for_identity_obs(ens_handle%num_copies))
 
 ! Loop through all observations in the set
-ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars 
+ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
+
+   !j needs to be converted to a global observation number
+   global_obs_num = get_global_from_local(j, ens_handle%my_pe, task_count())
+   print*, 'rank', my_task_id(), 'j', j, 'global', global_obs_num
+
 
    ! Get the information on this observation by placing it in temporary
-   call get_obs_from_key(seq, keys(j), observation)
+   call get_obs_from_key(seq, keys(global_obs_num), observation) !HK
    call get_obs_def(observation, obs_def)
    ! Check to see if this observation fails input qc test
    call get_qc(observation, input_qc, input_qc_index)
@@ -1440,11 +1454,11 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
    ! HK FORWARD OPERATOR
    if(global_ens_index <= ens_size) then
       ! temporaries to avoid passing array sections which was slow on PGI compiler
-      thiskey(1) = keys(j)
+      thiskey(1) = keys(global_obs_num)
       call get_expected_obs_distrib_state(seq, thiskey, &
          global_ens_index, ens_handle%vars(:, k), ens_handle%time(1), isprior, &
          thisvar, istatus, assimilate_this_ob, evaluate_this_ob, ens_handle, win, states_for_identity_obs)
-      obs_ens_handle%vars(j, k) = thisvar(1)
+      obs_ens_handle%vars(j, k) = thisvar(1) !> @todo No longer j
 
       ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
       ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
