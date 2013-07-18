@@ -146,6 +146,7 @@ logical              :: output_inflation          = .true.
 
 !HK 
 character*20 task_str, file_obscopies, file_results
+real*8 start, finish
 
 namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,    &
    start_from_restart, output_restart, obs_sequence_in_name, obs_sequence_out_name, &
@@ -540,12 +541,19 @@ AdvanceTime : do
    call timestamp_message('Before computing prior observation values')
 
    ! Compute the ensemble of prior observations, load up the obs_err_var
-   ! and obs_values. ens_size is the number of regular ensemble members, 
+   ! and obs_values. ens_size is the number of regular ensemble members,
    ! not the number of copies
+
+   start = MPI_WTIME()
+
    call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, &
       seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       isprior=.true.)
+
+   finish = MPI_WTIME()
+
+   if (my_task_id() == 0) print*, 'get_obs_ens ', finish-start !> do we need all tasks
 
    call timestamp_message('Transposing all ens_handles to copy complete before get_obs_ens_distrib_state')
    call all_vars_to_all_copies(ens_handle)
@@ -554,12 +562,16 @@ AdvanceTime : do
 
    allocate(results(obs_ens_handle%num_copies, obs_ens_handle%my_num_vars))
 
+    start = MPI_WTIME()
+
       call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
       seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       results, isprior=.true.)
 
-    print*, 'my rank', my_task_id(), 'diff', (results(1:obs_ens_handle%num_vars - 3, :) - obs_ens_handle%copies(1:obs_ens_handle%num_vars - 3, :))
+    finish = MPI_WTIME()
+
+    if (my_task_id() == 0) print*, 'get_obs_ens_distrib_state ', finish-start
 
    ! HK do these results need to be recorded to file? 
     write(task_str, '(i10)') ens_handle%my_pe
@@ -578,6 +590,7 @@ AdvanceTime : do
     close(15)
     close(20)
 
+    deallocate(results)
 
    ! Although they are integer, keys are one 'copy' of obs ensemble 
    ! (the last one?)
