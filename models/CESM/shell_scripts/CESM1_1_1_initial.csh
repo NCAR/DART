@@ -857,7 +857,6 @@ do
 
    let inst=inst+1
 done
-exit 0
 
 # reset the env_run options for a continue run
 ./xml_changes_for_stepN.sh
@@ -865,6 +864,8 @@ exit 0
 # you may want to reset the RESUBMIT value, depending on how many
 # runs worked before failing.
 # ./xmlchange RESUBMIT=$resubmit
+
+exit 0
 
 EndOfText
 chmod 0775 reset_last_successful_step.sh
