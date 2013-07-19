@@ -573,14 +573,14 @@ AdvanceTime : do
 
     if (my_task_id() == 0) print*, 'get_obs_ens_distrib_state ', finish-start
 
-   ! HK do these results need to be recorded to file? 
+   ! HK do these results need to be recorded to file?
     write(task_str, '(i10)') ens_handle%my_pe
 
     file_obscopies = TRIM('obscopies' // TRIM(ADJUSTL(task_str)))
     file_results = TRIM('results' // TRIM(ADJUSTL(task_str)))
 
-    open(15, file=file_obscopies, status ='new')
-    open(20, file=file_results, status ='new') ! error if you already have results files
+    open(15, file=file_obscopies, status ='unknown')
+    open(20, file=file_results, status ='unknown') ! error if you already have results files
 
     do i = 1, obs_ens_handle%num_copies - 6
        write(15, *) obs_ens_handle%copies(i,:)
@@ -1377,7 +1377,7 @@ integer            :: j, k, my_num_copies, istatus , global_ens_index, thiskey(1
 logical            :: evaluate_this_ob, assimilate_this_ob
 type(obs_def_type) :: obs_def
 
-! Assumed that both ensembles are var complete
+! Assumed that both ensembles are var complete and copy complete
 ! Each PE must loop to compute its copies of the forward operators
 ! IMPORTANT, IT IS ASSUMED THAT ACTUAL ENSEMBLES COME FIRST
 ! HK: I think it is also assumed that the ensemble members are in the same order in
@@ -1444,17 +1444,17 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
       forward_op_ens_handle%vars(j, :) = -99
 
       !> @todo remove this loop
-      do k=1, my_num_copies
-        global_ens_index = obs_ens_handle%my_copies(k)
-        ! Update prior/post obs values, mean, etc - but leave the key copy
-        ! and the QC copy alone.
-        if ((global_ens_index /= OBS_KEY_COPY) .and. &
-            (global_ens_index /= OBS_GLOBAL_QC_COPY)) then 
-            obs_ens_handle%vars(j, k) = missing_r8
-        endif
+      !do k=1, my_num_copies
+      !  global_ens_index = obs_ens_handle%my_copies(k)
+      !  ! Update prior/post obs values, mean, etc - but leave the key copy
+      !  ! and the QC copy alone.
+      !  if ((global_ens_index /= OBS_KEY_COPY) .and. &
+      !      (global_ens_index /= OBS_GLOBAL_QC_COPY)) then
+      !      obs_ens_handle%vars(j, k) = missing_r8
+      !  endif
 
 
-      enddo
+      !enddo
       ! No need to do anything else for a failed observation
       cycle ALL_OBSERVATIONS
    endif
@@ -1470,45 +1470,45 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
 
    ! If I have a copy that is a standard ensemble member, compute expected value
    ! HK FORWARD OPERATOR
-   if(global_ens_index <= ens_size) then
       ! temporaries to avoid passing array sections which was slow on PGI compiler
       thiskey(1) = keys(global_obs_num)
       call get_expected_obs_distrib_state(seq, thiskey, &
          global_ens_index, ens_handle%vars(:, k), ens_handle%time(1), isprior, &
          thisvar, istatus, assimilate_this_ob, evaluate_this_ob, ens_handle, win, states_for_identity_obs)
-      obs_ens_handle%vars(j, k) = thisvar(1) !> @todo No longer j
+      !obs_ens_handle%vars(j, k) = thisvar(1) !> @todo No longer j
 
       ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
       ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
       ! in the forward operator evaluation field
       if(istatus == 0) then
          if ((assimilate_this_ob .or. evaluate_this_ob) .and. (thisvar(1) == missing_r8)) then
+            print*, 'rank', my_task_id(), thisvar(1)
             write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
             call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
          endif
          if(assimilate_this_ob) then
-            forward_op_ens_handle%vars(j, k) = 0
+         !   forward_op_ens_handle%vars(j, k) = 0
          else if(evaluate_this_ob) then
-            forward_op_ens_handle%vars(j, k) = -1
+          !  forward_op_ens_handle%vars(j, k) = -1
          else
-            forward_op_ens_handle%vars(j, k) = -2
+          !  forward_op_ens_handle%vars(j, k) = -2
          endif
       else if (istatus < 0) then
          write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
          call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
       else
-         forward_op_ens_handle%vars(j, k) = istatus
+         !forward_op_ens_handle%vars(j, k) = istatus
       endif
 
    ! Otherwise, see if this is the copy for error variance or observed value
-   else if(global_ens_index == OBS_ERR_VAR_COPY) then
+   !> @todo fix these
+   !else if(global_ens_index == OBS_ERR_VAR_COPY) then
       ! This copy is the instrument observation error variance; read and store
-      obs_ens_handle%vars(j, k) = obs_err_var
+      !obs_ens_handle%vars(j, k) = obs_err_var
 
-   else if(global_ens_index == OBS_VAL_COPY) then
+   !else if(global_ens_index == OBS_VAL_COPY) then
       ! This copy is the observation from the instrument; read and store
-      obs_ens_handle%vars(j, k) = obs_value(1)
-   endif
+      !obs_ens_handle%vars(j, k) = obs_value(1)
 
     results(:, j) = states_for_identity_obs
 

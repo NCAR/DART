@@ -383,7 +383,9 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
          'identity obs is outside of state vector ', &
          source, revision, revdate)
 
-      obs_vals(i) = state(-1 * obs_kind_ind) ! assumes that task has the whole state vector
+      !obs_vals(i) = state(-1 * obs_kind_ind) ! assumes that task has the whole state vector
+                                              ! Not true if you have more tasks than copies
+      obs_vals(i) = 27 ! HK dummy
 
       ! Find which task has the element of state vector
       owner_of_state = map_pe_to_task(state_ens_handle, get_owner_of_element_of_state_vector(-1 * obs_kind_ind, task_count() ))
@@ -391,7 +393,8 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
       if (my_task_id() == owner_of_state) then
          !> @todo check this is correct column
 
-         states_for_identity_obs = state_ens_handle%copies(:, get_element_index(-1 * obs_kind_ind, task_count()))
+         element_index = get_element_index(-1 * obs_kind_ind, task_count())
+         states_for_identity_obs = state_ens_handle%copies(:, element_index)
 
       else
          !> @todo check target disp is correct column
