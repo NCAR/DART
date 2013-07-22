@@ -220,7 +220,7 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
-          sum_across_tasks, get_dart_mpi_comm
+          sum_across_tasks, get_dart_mpi_comm, datasize !HK
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &

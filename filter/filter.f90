@@ -1362,6 +1362,7 @@ subroutine get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_
    obs_val_index, input_qc_index, num_obs_in_set, &
    OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, results, isprior)
 
+use mpi_utilities_mod, only : datasize
 
 type(ensemble_type),     intent(in)    :: ens_handle
 type(ensemble_type),     intent(inout) :: obs_ens_handle, forward_op_ens_handle 
@@ -1404,7 +1405,7 @@ call prepare_to_read_from_vars(ens_handle)
 
 ! allocate some RDMA accessible memory
 ! using MPI_ALLOC_MEM because the MPI standard allows vendors to require MPI_ALLOC_MEM for remote memory access
-call mpi_type_size(MPI_DOUBLE_PRECISION, sizedouble, ierr)
+call mpi_type_size(datasize, sizedouble, ierr)
 window_size = ens_handle%num_copies*ens_handle%my_num_vars*sizedouble
 p = malloc(ens_handle%num_copies*ens_handle%my_num_vars)
 call MPI_ALLOC_MEM(window_size, MPI_INFO_NULL, p, ierr)
@@ -1466,7 +1467,8 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
    ! Loop through all copies stored by this process and set values as needed
    ! HK removed the loop k = 1, my_num_copies
    k = 1  ! HK dummy k for now
-   global_ens_index = obs_ens_handle%my_copies(k)
+   !global_ens_index = obs_ens_handle%my_copies(k)
+    global_ens_index = 1
 
    ! If I have a copy that is a standard ensemble member, compute expected value
    ! HK FORWARD OPERATOR
@@ -1482,7 +1484,6 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
       ! in the forward operator evaluation field
       if(istatus == 0) then
          if ((assimilate_this_ob .or. evaluate_this_ob) .and. (thisvar(1) == missing_r8)) then
-            print*, 'rank', my_task_id(), thisvar(1)
             write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
             call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
          endif

@@ -335,6 +335,8 @@ end function interactive_obs_sequence
 subroutine get_expected_obs_distrib_state(seq, keys, ens_index, state, state_time, isprior, &
    obs_vals, istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, win, states_for_identity_obs)
 
+use mpi_utilities_mod, only : datasize
+
 type(obs_sequence_type), intent(in)    :: seq
 integer,                 intent(in)    :: keys(:)
 integer,                 intent(in)    :: ens_index
@@ -402,7 +404,7 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
          target_disp = ( element_index - 1) * state_ens_handle%num_copies
 
          call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0 , win, ierr)
-         call mpi_get(states_for_identity_obs, state_ens_handle%num_copies, MPI_DOUBLE_PRECISION, owner_of_state, target_disp, state_ens_handle%num_copies, MPI_DOUBLE_PRECISION, win, ierr)
+         call mpi_get(states_for_identity_obs, state_ens_handle%num_copies, datasize, owner_of_state, target_disp, state_ens_handle%num_copies, datasize, win, ierr)
          call mpi_win_unlock(owner_of_state, win, ierr)
 
       endif
