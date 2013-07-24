@@ -573,6 +573,18 @@ AdvanceTime : do
 
     if (my_task_id() == 0) print*, 'get_obs_ens_distrib_state ', finish-start
 
+    start = MPI_WTIME()
+
+      call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
+      seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
+      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+      results, isprior=.true.)
+
+    finish = MPI_WTIME()
+
+    if (my_task_id() == 0) print*, 'get_obs_ens_distrib_state ', finish-start
+
+
    ! HK do these results need to be recorded to file?
     write(task_str, '(i10)') ens_handle%my_pe
 

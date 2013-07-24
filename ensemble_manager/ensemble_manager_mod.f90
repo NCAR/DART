@@ -1888,8 +1888,8 @@ integer, intent(in) :: element !> index into state vector
 integer, intent(in) :: n !> number of processors involved in copy complete
 integer get_element_index
 
-!> @todo what happens when there is no remainder?
-get_element_index = ceiling(real(element) / real(n))
+!Double precision is necessary in this division
+get_element_index = ceiling(real(element, 8) / real(n, 8))
 
 end function get_element_index
 !---------------------------------------------------------------------------------
