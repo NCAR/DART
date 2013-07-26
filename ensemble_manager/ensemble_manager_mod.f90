@@ -959,9 +959,10 @@ end subroutine set_up_ens_distribution
 
 subroutine get_copy_owner_index(copy_number, owner, owners_index)
 
-! Given the copy number, returns which PE stores it when copy complete
+! Given the copy number, returns which PE stores it when var complete
 ! and its index in that pes local storage. Depends on distribution_type
 ! with only option 1 currently implemented.
+
 
 integer, intent(in)  :: copy_number
 integer, intent(out) :: owner, owners_index
@@ -979,9 +980,11 @@ end subroutine get_copy_owner_index
 
 subroutine get_var_owner_index(var_number, owner, owners_index)
 
-! Given the var number, returns which PE stores it when var complete
+! Given the var number, returns which PE stores it when copy complete
 ! and its index in that pes local storage. Depends on distribution_type
 ! with only option 1 currently implemented.
+
+! Assumes that all tasks are used in the ensemble
 
 integer, intent(in)  :: var_number
 integer, intent(out) :: owner, owners_index
@@ -1862,40 +1865,8 @@ end function map_task_to_pe
 
 !---------------------------------------------------------------------------------
 
-!> Returns which pe has a given element of state vector.
-!> For use with a distributed forward operator
-function get_owner_of_element_of_state_vector(element, n)
-
-integer, intent(in) :: element !> index into state vector
-integer, intent(in) :: n !> number of processors involved in copy complete
-integer get_owner_of_element_of_state_vector
-
-! I think this is as simple as modulo 
-get_owner_of_element_of_state_vector = mod(element, n)
-if (get_owner_of_element_of_state_vector == 0 ) get_owner_of_element_of_state_vector = n
-
-! pe numbering starts at zero
-get_owner_of_element_of_state_vector = get_owner_of_element_of_state_vector - 1
-
-end function get_owner_of_element_of_state_vector
-
-!---------------------------------------------------------------------------------
-!> Returns the column index for a state vector element when copy complete.
-!> For use with a distributed forward operator
-function get_element_index(element, n)
-
-integer, intent(in) :: element !> index into state vector
-integer, intent(in) :: n !> number of processors involved in copy complete
-integer get_element_index
-
-!Double precision is necessary in this division
-get_element_index = ceiling(real(element, 8) / real(n, 8))
-
-end function get_element_index
-!---------------------------------------------------------------------------------
-
 !> Returns the global index for a given local index
-!> @fixme does this functinonallity already exist?
+!> @todo does this functinonallity already exist?
 function get_global_from_local(local, pe, n)
 
 integer, intent(in) :: local !> local element number

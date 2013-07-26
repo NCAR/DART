@@ -41,8 +41,8 @@ use    utilities_mod, only : get_unit, close_file,                       &
                              do_nml_file, do_nml_term
 !HK
 use mpi_utilities_mod, only : task_count, my_task_id
-use ensemble_manager_mod, only: get_owner_of_element_of_state_vector, map_pe_to_task, &
-                                ensemble_type, get_element_index
+use ensemble_manager_mod, only: get_var_owner_index, map_pe_to_task, &
+                                ensemble_type
 
 use mpi
 
@@ -390,17 +390,15 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
       obs_vals(i) = 27 ! HK dummy
 
       ! Find which task has the element of state vector
-      owner_of_state = map_pe_to_task(state_ens_handle, get_owner_of_element_of_state_vector(-1 * obs_kind_ind, task_count() ))
-      
-      if (my_task_id() == owner_of_state) then
-         !> @todo check this is correct column
+      call get_var_owner_index(-1*obs_kind_ind, owner_of_state, element_index) ! pe
+      owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
 
-         element_index = get_element_index(-1 * obs_kind_ind, task_count())
+      if (my_task_id() == owner_of_state) then
+
          states_for_identity_obs = state_ens_handle%copies(:, element_index)
 
       else
-         !> @todo check target disp is correct column
-         element_index = get_element_index(-1 * obs_kind_ind, task_count())
+
          target_disp = ( element_index - 1) * state_ens_handle%num_copies
 
          call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0 , win, ierr)
