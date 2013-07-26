@@ -49,7 +49,7 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  prepare_to_read_from_vars, prepare_to_write_to_vars, prepare_to_read_from_copies,    &
                                  prepare_to_write_to_copies, get_ensemble_time, set_ensemble_time,    &
                                  map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
-                                 get_my_num_vars, get_global_from_local !HK
+                                 get_my_num_vars 
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
                                  do_obs_inflate, adaptive_inflate_type,                      &
@@ -1442,7 +1442,7 @@ allocate(states_for_identity_obs(ens_handle%num_copies))
 ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
 
    !j needs to be converted to a global observation number
-   global_obs_num = get_global_from_local(j, ens_handle%my_pe, task_count())
+   global_obs_num = obs_ens_handle%my_vars(j)
 
    ! Get the information on this observation by placing it in temporary
    call get_obs_from_key(seq, keys(global_obs_num), observation) !HK

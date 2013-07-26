@@ -51,8 +51,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
           prepare_to_update_copies,   print_ens_handle,                                 &
-          map_task_to_pe,             map_pe_to_task,                                   &
-          get_owner_of_element_of_state_vector, get_element_index, get_global_from_local !HK
+          map_task_to_pe,             map_pe_to_task                                   
 
 type ensemble_type
    !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
@@ -1864,29 +1863,6 @@ map_task_to_pe = ens_handle%task_to_pe_list(t + 1)
 end function map_task_to_pe
 
 !---------------------------------------------------------------------------------
-
-!> Returns the global index for a given local index
-!> @todo does this functinonallity already exist?
-function get_global_from_local(local, pe, n)
-
-integer, intent(in) :: local !> local element number
-integer, intent(in) :: pe !> pe number
-integer, intent(in) :: n !> number of tasks
-integer get_global_from_local
-
-if ( local == 1) then
-
-  get_global_from_local = pe + local
-
-else
-
-  get_global_from_local = (local -1)*n + pe + 1
-
-endif
-
-end function get_global_from_local
-!---------------------------------------------------------------------------------
-
 
 end module ensemble_manager_mod
 
