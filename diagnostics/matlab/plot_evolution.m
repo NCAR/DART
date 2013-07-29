@@ -27,6 +27,7 @@ function plotdat = plot_evolution(fname, copystring, varargin)
 %         about how many observations were assimilated, how many were available, etc.
 %         Both of these filenames contain the observation type as part of the name.
 %
+%
 % EXAMPLE 1 - plot the evolution of the bias for all observation types, all levels
 %
 % fname      = 'obs_diag_output.nc';   % netcdf file produced by 'obs_diag'
@@ -77,19 +78,20 @@ plotdat.nregions      = length(nc_varget(fname,'region'));
 plotdat.region_names  = nc_varget(fname,'region_names');
 
 % Matlab wants character matrices to be Nx1 instead of 1xN.
+
 if (plotdat.nregions == 1 && (size(plotdat.region_names,2) == 1) )
    plotdat.region_names = deblank(plotdat.region_names');
 end
 
-dimensionality             = nc_attget(fname, nc_global, 'LocationRank');
-plotdat.biasconv           = nc_attget(fname, nc_global, 'bias_convention');
-plotdat.binseparation      = nc_attget(fname, nc_global, 'bin_separation');
-plotdat.binwidth           = nc_attget(fname, nc_global, 'bin_width');
-time_to_skip               = nc_attget(fname, nc_global, 'time_to_skip');
-plotdat.lonlim1            = nc_attget(fname, nc_global, 'lonlim1');
-plotdat.lonlim2            = nc_attget(fname, nc_global, 'lonlim2');
-plotdat.latlim1            = local_nc_attget(fname, nc_global, 'latlim1');
-plotdat.latlim2            = local_nc_attget(fname, nc_global, 'latlim2');
+dimensionality        = local_nc_attget(fname, nc_global, 'LocationRank');
+plotdat.binseparation = local_nc_attget(fname, nc_global, 'bin_separation');
+plotdat.binwidth      = local_nc_attget(fname, nc_global, 'bin_width');
+time_to_skip          = local_nc_attget(fname, nc_global, 'time_to_skip');
+plotdat.lonlim1       = local_nc_attget(fname, nc_global, 'lonlim1');
+plotdat.lonlim2       = local_nc_attget(fname, nc_global, 'lonlim2');
+plotdat.latlim1       = local_nc_attget(fname, nc_global, 'latlim1');
+plotdat.latlim2       = local_nc_attget(fname, nc_global, 'latlim2');
+plotdat.biasconv      = local_nc_attget(fname, nc_global, 'bias_convention');
 
 % Coordinate between time types and dates
 
@@ -97,8 +99,14 @@ calendar     = nc_attget(fname,'time','calendar');
 timeunits    = nc_attget(fname,'time','units');
 timebase     = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin   = datenum(timebase(1),timebase(2),timebase(3));
-skip_seconds = time_to_skip(4)*3600 + time_to_skip(5)*60 + time_to_skip(6);
-iskip        = time_to_skip(3) + skip_seconds/86400;
+if ( isempty(time_to_skip) == 1)
+   iskip = 0;
+elseif ( numel(time_to_skip) == 6)
+   skip_seconds = time_to_skip(4)*3600 + time_to_skip(5)*60 + time_to_skip(6);
+   iskip        = time_to_skip(3) + skip_seconds/86400;
+else
+   error('time_to_skip variable has unusual length. Should be either 0 or 6.')
+end
 
 plotdat.bincenters = plotdat.bincenters + timeorigin;
 plotdat.binedges   = plotdat.binedges   + timeorigin;
@@ -117,7 +125,6 @@ else
    plotdat.varnames{1} = varname;
    plotdat.nvars       = nvars;
 end
-
 
 plotdat.copyindex   = get_copy_index(fname,copystring);
 plotdat.Npossindex  = get_copy_index(fname,'Nposs');
@@ -186,6 +193,7 @@ for ivar = 1:plotdat.nvars
       plotdat.nlevels, plotdat.nregions);
 
    % check to see if there is anything to plot
+   
    nposs = sum(guess(:,plotdat.Npossindex,:,:));
 
    if ( sum(nposs(:)) < 1 )
@@ -234,9 +242,9 @@ for ivar = 1:plotdat.nvars
       % plot by region
 
       if (plotdat.nregions > 2)
-         clf; orient tall
+         clf; orient tall; wysiwyg
       else
-         clf; orient landscape
+         clf; orient landscape; wysiwyg
       end
 
       for iregion = 1:plotdat.nregions
@@ -265,13 +273,14 @@ for ivar = 1:plotdat.nvars
    end
 end
 
-%----------------------------------------------------------------------
+%=====================================================================
 % 'Helper' functions
-%----------------------------------------------------------------------
+%=====================================================================
+
 
 function myplot(plotdat)
 
-% Interlace the [ges,anl] to make a sawtooth plot.
+%% The prior and posterior are plotted as separate items.
 % By this point, the middle two dimensions are singletons.
 cg = plotdat.ges_copy(:,:,:,plotdat.region);
 ca = plotdat.anl_copy(:,:,:,plotdat.region);
@@ -311,8 +320,12 @@ plotdat.subtitle = sprintf('%s     %s     %s',plotdat.myregion, string_guess, st
 ax1 = subplot(plotdat.nregions,1,plotdat.region);
 
 h1 = plot(tg,cg,'k+-',ta,ca,'ro-','LineWidth',plotdat.linewidth);
-h = legend('forecast', 'analysis');
+h  = legend('forecast', 'analysis');
 legend(h,'boxoff','Interpreter','none')
+
+% get the range of the existing axis and replace with
+% replace y axis values
+% reset the axes limits
 
 axlims = axis;
 axlims = [axlims(1:2) plotdat.Yrange];
@@ -322,8 +335,8 @@ plotdat.ylabel{1} = plotdat.myregion;
 switch lower(plotdat.copystring)
    case 'bias'
       % plot a zero-bias line
-      h4 = line(axlims(1:2),[0 0], 'Color','r','Parent',ax1);
-      set(h4,'LineWidth',1.5,'LineSTyle',':')
+      zeroline = line(axlims(1:2),[0 0], 'Color','r','Parent',ax1);
+      set(zeroline,'LineWidth',1.5,'LineSTyle',':')
       plotdat.ylabel{2} = sprintf('%s (%s)',plotdat.copystring,plotdat.biasconv);
    otherwise
       plotdat.ylabel{2} = sprintf('%s',plotdat.copystring);
@@ -350,14 +363,13 @@ if (plotdat.region == plotdat.nregions)
 end
 
 % more annotation ...
-
 if (plotdat.region == 1)
    title({plotdat.title, plotdat.subtitle}, ...
       'Interpreter', 'none', 'Fontsize', 12, 'FontWeight', 'bold')
    BottomAnnotation(plotdat.fname)
 else
-   title(plotdat.subtitle, 'Interpreter', 'none', ...
-      'Fontsize', 12, 'FontWeight', 'bold')
+   title(plotdat.subtitle, ...
+      'Interpreter', 'none', 'Fontsize', 12, 'FontWeight', 'bold')
 end
 
 % create a separate scale for the number of observations
@@ -375,19 +387,18 @@ set(h3,'LineStyle','none','Marker','+');
 set(ax2,'XTick',get(ax1,'XTick'),'XTickLabel',[])
 
 % use the same Y ticks, but find the right label values
-[yticks, newticklabels] = matchingYticks(ax1,ax2);
-set(ax2,'YTick', yticks, 'YTickLabel', newticklabels)
+% Make sure that values at ticks are whole numbers.
+matchingYticks(ax1,ax2);
 
 set(get(ax2,'Ylabel'),'String','# of obs : o=poss, +=used')
 set(get(ax1,'Ylabel'),'String',plotdat.ylabel,'Interpreter','none')
-set(ax1,'Position',get(ax2,'Position'))
-grid
 
 
+%=====================================================================
 
 
 function BottomAnnotation(main)
-% annotates the directory containing the data being plotted
+%% annotates the full path of the file being plotted
 subplot('position',[0.48 0.01 0.04 0.04])
 axis off
 fullname = which(main);   % Could be in MatlabPath
@@ -406,12 +417,14 @@ h = text(0.0, 0.5, string1);
 set(h,'HorizontalAlignment','center', ...
    'VerticalAlignment','middle',...
    'Interpreter','none',...
-   'FontSize',10)
+   'FontSize',8)
 
+
+%=====================================================================
 
 
 function [y,ydims] = FindTemporalVars(x)
-% Returns UNIQUE (i.e. base) temporal variable names
+%% Returns UNIQUE (i.e. base) temporal variable names
 if ( ~(isfield(x,'allvarnames') && isfield(x,'allvardims')))
    error('Doh! no ''allvarnames'' and ''allvardims'' components')
 end
@@ -424,7 +437,7 @@ for i = 1:length(x.allvarnames)
       j = j + 1;
 
       basenames{j} = ReturnBase(x.allvarnames{i});
-      basedims{j}  = x.allvardims{i};
+      basedims{ j} = x.allvardims{i};
    end
 end
 
@@ -433,37 +446,43 @@ y     = cell(length(i),1);
 ydims = cell(length(i),1);
 for k = 1:length(i)
    fprintf('%2d is %s\n',k,basenames{i(k)})
-   y{k} = basenames{i(k)};
-   ydims{k} = basedims{i(k)};
+   y{k}     = basenames{i(k)};
+   ydims{k} = basedims{ i(k)};
 end
 
+
+%=====================================================================
 
 
 function s = ReturnBase(string1)
+%% Pick off the variable name.
 inds = strfind(string1,'_guess');
 if (inds > 0 )
    s = string1(1:inds-1);
+   return
 end
-
 inds = strfind(string1,'_analy');
 if (inds > 0 )
    s = string1(1:inds-1);
+   return
 end
-
 inds = strfind(string1,'_VPguess');
 if (inds > 0 )
    s = string1(1:inds-1);
+   return
 end
-
 inds = strfind(string1,'_VPanaly');
 if (inds > 0 )
    s = string1(1:inds-1);
+   return
 end
 
 
+%=====================================================================
+
 
 function x = FindRange(y)
-% Trying to pick 'nice' limits for plotting.
+%% Trying to pick 'nice' limits for plotting.
 % Completely ad hoc ... and not well posed.
 %
 % In this scope, y is bounded from below by 0.0
@@ -471,7 +490,7 @@ function x = FindRange(y)
 % If the numbers are very small ...
 
 bob  = [y.ges_copy(:) ; ...
-   y.anl_copy(:)];
+        y.anl_copy(:)];
 inds = find(isfinite(bob));
 
 if ( isempty(inds) )
@@ -494,23 +513,7 @@ else
 end
 
 
-
-function [yticks newticklabels] = matchingYticks(ax1, ax2)
-%% This takes the existing Y ticks from ax1 (presumed nice)
-% and determines the matching labels for ax2 so we can keep
-% at least one of the axes looking nice.
-
-Dlimits = get(ax1,'YLim');
-DYticks = get(ax1,'YTick');
-nYticks = length(DYticks);
-ylimits = get(ax2,'YLim');
-
-slope   = (ylimits(2) - ylimits(1))/(Dlimits(2) - Dlimits(1));
-xtrcpt  = ylimits(2) - slope*Dlimits(2);
-
-yticks        = slope*DYticks + xtrcpt;
-newticklabels = num2str(round(10*yticks')/10);
-
+%=====================================================================
 
 
 function value = local_nc_varget(fname,varname)
@@ -522,10 +525,13 @@ function value = local_nc_varget(fname,varname)
 if (variable_present)
    ncid  = netcdf.open(fname);
    value = netcdf.getVar(ncid, varid);
+   netcdf.close(ncid)
 else
    value = [];
 end
 
+
+%=====================================================================
 
 
 function value = local_nc_attget(fname,varid,varname)
@@ -544,6 +550,7 @@ if (varid == nc_global)
 else
    fprintf('function not supported for local variables, only global atts.\n')
 end
+
 
 
 % <next few lines under version control, do not edit>
