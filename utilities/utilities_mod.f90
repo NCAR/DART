@@ -1658,6 +1658,7 @@ if (present(doradians)) then
 endif
 
 ! ensure the valid region boundaries are between 0 and one circumference
+! (must use modulo() and not mod() so negative vals are handled ok)
 minl = modulo(minlon, circumf)
 maxl = modulo(maxlon, circumf)
 
@@ -1672,17 +1673,17 @@ endif
 ! ensure the test point is between 0 and one circumference
 lon2  = modulo(lon, circumf)
 
-! (here's where the magic happens.)
-! minl will be less than maxl if the region of interest crosses the prime 
+! here's where the magic happens:
+! minl will be bigger than maxl if the region of interest crosses the prime 
 ! meridian (longitude = 0).  in this case add one circumference to the 
 ! eastern boundary so maxl is guarenteed to be larger than minl (and valid 
 ! values are now between 0 and 2 circumferences).  
 !
-! if the test point longitude is east of the minl boundary add one circumference
+! if the test point longitude is west of the minl boundary add one circumference
 ! to it as well before testing against the bounds.  values that were east of 
 ! longitude 0 but west of maxl will now be shifted so they are again correctly 
 ! within the new range; values that were west of the prime meridian but east 
-! of minl will stay in range; values east of minl and west of maxl will be 
+! of minl will stay in range; values west of minl and east of maxl will be 
 ! correctly shifted out of range.
 
 if (minl > maxl) then
