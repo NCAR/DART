@@ -4,16 +4,17 @@
 <HEAD>
 <TITLE>module model_mod (POP)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<H1>MODULE model_mod (POP)</H1>
+<H1>MODULE model_mod (CESM)</H1>
 
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -35,37 +36,42 @@
 
 <H2>Overview</H2>
 
-<P>The <strong>Parallel Ocean Program (POP)</strong> may now be used with the 
-   <strong>Data Assimilation Research Testbed (DART)</strong>.
-   Both main variants - <a href="http://climate.lanl.gov/Models/POP/">LANL POP</a> and
-   <a href="http://www.cesm.ucar.edu/models/cesm1.0/pop2/">CESM1.0 POP2</a> have been 
-   tested. At present (July 2010), we are assimilating salinity and temperature 
-   observations from the World Ocean Database (2005) with the intention of switching
-   to the World Ocean Database (2009) as needed.
-   <br />
-   <br />
-   The following POP variables are extracted from the POP netCDF restart files and
-   are conveyed to DART:
-   <em class=code>SALT_CUR</em>,
-   <em class=code>TEMP_CUR</em>,
-   <em class=code>UVEL_CUR</em>,
-   <em class=code>VVEL_CUR</em>, and 
-   <em class=code>PSURF_CUR</em>. These variables are then adjusted to be consistent
-   with real observations and stuffed back into the same netCDF restart files.
-   Since DART is an ensemble algorithm, there are multiple restart files for a 
-   single restart time: one for each ensemble member. Creating the initial ensemble
-   of ocean states is an area of active research. At present, it may be sufficient
-   to use a climatological ensemble; e.g., using the restarts for '1 January 00Z' 
-   from 50 consecutive years. Experience has shown that having a paired (unique)
-   atmospheric forcing maintains the ensemble spread better than simply forcing
-   all the ocean ensemble members with one single atmospheric state.
-   <br />
-   <br />
-   DART reads the grid information for POP from the files specified in 
-   POP's <em class=code>&amp;grid_nml</em>.
-   When DART is responsible for starting/stopping POP, the information is 
-   conveyed through POP's <em class=code>&amp;time_manager_nml</em>. 
+<P>
+The current interface to the CESM climate modeling system does assimilation
+into CAM, POP, and CLM separately.  Therefore at this point there is NOT
+a single CESM model_mod that is compiled into a single filter.  However, there 
+exists a beta version of a unified model_mod that redirects forward operator
+calls to the proper component-specific model_mod, and works around the
+conflicts between the naming of the model_mod at the module level.  It would
+require a single state vector to fit into the memory space of one process,
+which means it would be limited in resolution.  cesm_to_dart and dart_to_cesm
+converter prototypes also exist, which pack the data from each model
+end-to-end in the state vector.
 </P>
+
+<P>
+For now, see each of the component specific model_mod documentation for information
+on the namelists and requirements:
+</P>
+<UL>
+<LI><a href="../cam/model_mod.html">CAM</a>
+<LI><a href="../POP/model_mod.html">POP</a>
+<LI><a href="../clm/model_mod.html">CLM</a>
+</UL>
+
+<P>
+There are scripts in the CESM/shell_scripts directory which are intended to
+build the 3 filter programs for each of the components, copy the right files
+into the CESM caseroot directory, build CESM, and stage files to run an experiment.
+</P>
+
+<pre>
+FIXME: add info about
+byte swap flag
+-fp-model precise
+</pre>
+
+
 
 <div class=indent1>
    <h2><a href="http://www.cesm.ucar.edu/models/cesm1.0/pop2/">CESM1.0 POP2</a></h2>
@@ -1652,7 +1658,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->

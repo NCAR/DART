@@ -121,36 +121,42 @@ thing is true for the NOAH restart files (<em class=file>noah_restart.nc</em>).
 <A NAME="Namelist"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
+enclosed in quotes to prevent them from
+prematurely terminating the namelist.
 </P>
 
 <div class=namelist>
 <pre>
-<em class=call>namelist / dart_to_noah_nml / </em> dart_to_noah_input_file, &amp;
-                                              skip_variables, &amp;
-                                              advance_time_present
+&amp;dart_to_noah_nml
+   dart_to_noah_input_file = 'dart_restart',
+   skip_variables          = ' '
+   advance_time_present    = .true.,
+  /
 </pre>
 </div>
-<P>The <em class=code>dart_to_noah_nml</em> namelist is read from
-       <em class=file>input.nml</em></P>
-<div class=indent1>
-<!-- Description -->
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
 
-<TR><!--contents--><TD valign=top>dart_to_noah_input_file&nbsp;&nbsp;&nbsp;</TD>
+<div>
+<!-- Description -->
+<TABLE border=0 cellpadding=3 width=100% summary='dart_to_noah namelist description'>
+<THEAD align=left>
+<TR><TH>Contents    </TH>
+    <TH>Type        </TH>
+    <TH>Description </TH></TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><!--contents--><TD valign=top>dart_to_noah_input_file   </TD>
     <!--  type  --><TD valign=top>character(len=128)</TD>
     <!--descript--><TD>The name of the DART file containing the model state
                        to insert into the NOAH restart file.
-                       <em class=units>[default:&nbsp;'dart_restart']</em>
                        </TD></TR>
 
-<TR><!--contents--><TD valign=top>skip_variables&nbsp;&nbsp;&nbsp;</TD>
+<TR><!--contents--><TD valign=top>skip_variables   </TD>
     <!--  type  --><TD valign=top>character(len=32)::<br />
                               dimension(40)</TD>
     <!--descript--><TD>The list of NOAH variables that <strong>must not</strong> be
@@ -158,7 +164,6 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
                        create the DART state vector. Be aware that these variables WILL
                        be modified in <em class=file>Posterior_Diag.nc</em> so you can see
                        the assimilated state. 
-                       <em class=units>[default:&nbsp;<em>see&nbsp;example&nbsp;below</em>]</em>
                        </TD></TR>
 
 <TR><!--contents--><TD valign=top>advance_time_present</TD>
@@ -179,8 +184,8 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
 		       <em class=code>&amp;time_manager_nml</em> settings
 		       appropriate to advance NOAH to the time
 		       requested by DART.
-                       <em class=units>[default:&nbsp;.true.]</em>
                        </TD></TR>
+</TBODY>
 </TABLE>
 
 </div>
@@ -190,38 +195,54 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
 
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml / </em>noah_netcdf_filename, &amp;
-                                   noah_state_variables
+&amp;model_nml
+     noah_netcdf_filename         = 'restart.nc',
+     assimilation_period_days     =    0,
+     assimilation_period_seconds  = 3600,
+     model_perturbation_amplitude = 0.0,
+     output_state_vector          = .false.
+     debug                        = 1,
+     noah_state_variables         = 'SOIL_T',   'KIND_SOIL_TEMPERATURE',
+                                    'SOIL_M',   'KIND_SOIL_MOISTURE',
+                                    'SOIL_W',   'KIND_SOIL_LIQUID_WATER',
+                                    'SKINTEMP', 'KIND_SKIN_TEMPERATURE',
+                                    'SNODEP',   'KIND_SNOW_THICKNESS',
+                                    'WEASD',    'KIND_SNOW_WATER',
+                                    'CANWAT',   'KIND_CANOPY_WATER',
+                                    'QFX',      'KIND_LATENT_HEAT_FLUX',
+  /
 </pre>
 </div>
 <P>
-The <em class=code>model_nml</em> namelist is read from <em class=file>input.nml</em> .
 The full description of the <em class=code>model_nml</em> namelist is documented
 in the <a href="model_mod.html#Namelist">noah model_mod</a>, but the most important
 variables for <em class=program>noah_to_dart</em> are repeated here.
 </P>
-<div class=indent1>
+<div>
 <!-- Description -->
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<TABLE border=0 cellpadding=3 width=100% summary='partial model_mod namelist description'>
+<THEAD align=left>
+<TR><TH>Contents    </TH>
+    <TH>Type        </TH>
+    <TH>Description </TH></TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top>noah_netcdf_filename&nbsp;&nbsp;&nbsp;</TD>
-    <!--  type  --><TD valign=top>character(len=128)&nbsp;&nbsp;&nbsp;</TD>
+<TBODY valign=top>
+<TR><!--contents--><TD valign=top>noah_netcdf_filename   </TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
     <!--descript--><TD>The name of the NOAH RESTART file to use to
                        create the DART state vector. For convenience, the
                        <em class=program>advance_model.csh</em> script usually
                        links the most recent restart file to a static name.
-                       <em class=units>[default:&nbsp;'restart.nc']</em></TD></TR>
+                       </TD></TR>
 
-<TR><!--contents--><TD valign=top>noah_state_variables&nbsp;&nbsp;&nbsp;</TD>
+<TR><!--contents--><TD valign=top>noah_state_variables   </TD>
     <!--  type  --><TD valign=top>character(len=32)::<br />
-                              dimension(2,40)&nbsp;&nbsp;&nbsp;</TD>
+                              dimension(2,40)   </TD>
     <!--descript--><TD>The list of variable names in the NOAH restart file to use to
                        create the DART state vector and their corresponding DART kinds.
-                       <em class=units>[default:&nbsp;<em>see&nbsp;example&nbsp;below</em>]</em>
                        </TD></TR>
+</TBODY>
 </TABLE>
 </div>
 <br />
@@ -249,7 +270,7 @@ variables for <em class=program>noah_to_dart</em> are repeated here.
   /
 </pre>
 
-<!--  ------------------------------------------------  -->
+<!--  ================================================  -->
 
 <div class=namelist>
 <pre>
@@ -271,6 +292,7 @@ Change these at your own risk!
 </P>
 
 <H3 class=indent1>Example of namelist from <em class=file>namelist.hrldas</em></H3>
+<div>
 <pre>
 &amp;NOAHLSM_OFFLINE
    ...
@@ -284,7 +306,7 @@ Change these at your own risk!
   /
 </pre>
 </div>
-<P></P>
+<br />
 
 <!--==================================================================-->
 
@@ -302,7 +324,7 @@ time_manager_mod
 types_mod
 utilities_mod
 </PRE>
-<P></P>
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -322,7 +344,7 @@ utilities_mod
     <LI><em class=file>noah_advance_information.txt</em> - which contains a
         list of "LDASIN" files needed to advance the model.</LI>
 </UL>
-<P></P>
+<br />
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
@@ -336,8 +358,6 @@ utilities_mod
 can be found at <a href="http://www.ral.ucar.edu/research/land/technology/lsm.php">
 http://www.ral.ucar.edu/research/land/technology/lsm.php</a>
 </ul>
-<P>
-</P>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
@@ -387,7 +407,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Change history: </TD><TD> try "svn log" or "svn diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
