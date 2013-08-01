@@ -65,13 +65,156 @@ build the 3 filter programs for each of the components, copy the right files
 into the CESM caseroot directory, build CESM, and stage files to run an experiment.
 </P>
 
+<H2>Quickstart for CESM/DART</H2>
+
+<P>
+If you are going to run CESM/DART on the NCAR "yellowstone" machine,
+here are some canned instructions to get you started:
+</P>
+
+<H3> Get CESM </H3>
+
+<P>
+Check out CESM1.1.1 which is one release back
+from the very most current version (they updated versions
+right before the Breckenridge User's meeting).
+We will soon have a chance to test the code with
+the latest release, but for now we know this setup
+works with 1.1.1.
+</P>
+<P>
+Here's the user's guide for CESM version 1.1.1:<br />
+<a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html">
+<pre>http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html</pre>
+</a>
+</P>
+<P>
+Here's the page that explains how to download the release code:<br />
+<a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x388.html">
+<pre>http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x388.html</pre>
+</a>
+</P>
+<P>
+You will want "cesm1_1_1" as the model version.  You will have 
+to register as a user to check out the source code.  There is a
+default username and password to access the subversion website.
+</P>
+<P>
+This web page shows the names of the 'compsets' which are the
+configurations of the various models:<br />
+<a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/modelnl/compsets.html">
+<pre>http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/modelnl/compsets.html</pre>
+</a>
+</P>
+<P>
+This page has pointers to the recent CESM versions:<br />
+<a href="http://www2.cesm.ucar.edu/models/current">
+<pre>http://www2.cesm.ucar.edu/models/current</pre>
+</a>
+</P>
+<P>
+If you want to try to build CESM separately from DART
+to learn about it, that's fine.  But our scripts will need
+to rebuild it again with the DART configuration so you can
+wait on building it if you want.
+</P>
+
+<H3>Required patches to CESM1.1.1</H3>
+
+<P>
+There are a few CESM files that we still need to modify to make
+things work with DART.  In this dir on yellowstone is a tar file:<br />
 <pre>
-FIXME: add info about
-byte swap flag
--fp-model precise
+   ~nancy/cesm1_1_1_mods.tar
 </pre>
+Copy that to your home dir and untar it.  Our setup script will look
+for this subdirectory in your home directory and incorporate these 
+patches when it builds CESM.
+</P>
 
 
+<H3>DART</H3>
+
+<P>
+Go to the DART web pages:  <a href="http://www.image.ucar.edu/DARES/">
+http://www.image.ucar.edu/DARES/</a>
+and register as a DART user.  It's important for us to be able
+to show as large a user base as possible and everyone who
+registers helps us out.
+</P>
+<P>
+Check out the "trunk" version.  The following instructions
+assume you've checked it out into a subdirectory "DART".
+</P>
+<P>
+In the DART/mkmf directory copy the 
+<em class=file>mkmf.template.intel.linux</em> to 
+<em class=file>mkmf.template</em> . That should work 
+for yellowstone with the default set of modules that are loaded 
+on that machine.   <strong>**IMPORTANT**</strong> if you
+are ever thinking of running with an active ocean, you must add:<br />
+<pre>
+  -convert big_endian
+</pre>
+to the list of FFLAGS in the mkmf.template file.  POP uses some binary
+restart files that are still in the byte order for bluefire.  If all
+your restart files for CAM, CAM-CHEM, CLM, etc are netcdf files, 
+then you can leave that flag off so yellowstone writes data in 
+the normal little-endian byte order.
+</P>
+<P> 
+If you want to be able to reproduce runs exactly, you need to make
+sure this flag is part of the FFLAGS line:<br />
+<pre>
+  -fp-model precise
+</pre>
+in your mkmf.template file.
+It has a slight performance penalty at runtime, but it ensures
+that floating point operations are executed in the same order
+inside the processor chip and the results should match bit for bit.
+</P>
+<P>
+The DART scripts for CESM are in:<br />
+<pre>
+   DART/models/CESM/shell_scripts
+</pre>
+Look at CESM1_1_1_initial.csh. 
+</P>
+<P>
+There are some things you can customize at the top, including the compset,
+your project number for running, how many ensemble members, etc. make
+any changes you want there.
+</P>
+<P>
+Run the script.  It will build the CAM, POP, and CLM filters first, and then
+build and configure CESM.  When the script is done you should have
+files in several directories:<br />
+<UL>
+<LI>
+The 'cases' dir has the scripts that start and configure runtime vars
+for CESM.  It also has the <em class=file>input.nml</em>s for the various components.
+Typically we set this to /glade/p/work/${USER}/cases
+</LI>
+<LI>
+The actual execution directory is usually<br />
+<pre>/glade/scratch/${USER}/$casename/run</pre>
+and the executable files themselves are<br />
+<pre>/glade/scratch/${USER}/$casename/bld</pre>
+</LI>
+<LI>
+When you've successfully run a model advance, the output files are saved in<br />
+<pre>/glade/scratch/${USER}/archive/$casename</pre>
+with a subdir for each component.  Our output files will be in the
+'dart' subdir, and under that directory will be
+'hist', 'logs', and 'rest'.  You'll find your diag files and
+obs_seq.final files in the 'hist' subdir.
+</LI>
+</UL>
+
+
+<H3>EVERYTHING BELOW HERE PERTAINS ONLY TO POP AND NEEDS UPDATING</H3>
+<H3>EVERYTHING BELOW HERE PERTAINS ONLY TO POP AND NEEDS UPDATING</H3>
+<H3>EVERYTHING BELOW HERE PERTAINS ONLY TO POP AND NEEDS UPDATING</H3>
 
 <div class=indent1>
    <h2><a href="http://www.cesm.ucar.edu/models/cesm1.0/pop2/">CESM1.0 POP2</a></h2>
