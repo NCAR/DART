@@ -63,14 +63,16 @@ To get started, look here:
 </P>
 <ul>
 <li>Our extensive <a href="http://www.image.ucar.edu/DAReS/">web pages</a></li>
+<li>The <a href="doc/html/Lanai_release.html">release notes</a> which include
+installation hints, a walk-through of building and running a model, and an
+overview of the diagnostics.</li>
 <li>Documentation for the 
 main assimilation program <a href="filter/filter.html">filter</a></li>
 <li>Documentation for the other related 
 <a href="#Programs">programs</a> that come with DART</li>
 <li>Documentation for <a href="observations/observations.html">observation 
 types</a> supported by DART</li>
-<li>Documentation for the Matlab <a href="#Diagnostics">diagnostic tools
-types</a></li>
+<li>Documentation for the Matlab <a href="#Diagnostics">diagnostic tools</a></li>
 <li>Discussion of <a href="assim_tools/assim_tools_mod.html">localization</a>,
 <a href="filter/filter.html#Inflation">inflation</a></li>
 <li>The web pages specific to <a href="#Models">each model</a></li>
@@ -83,27 +85,32 @@ reading the tutorial documents in the <em class="file">DART_LAB</em>
 and then the <em class="file">DART/tutorial</em> directory.
 </P>
 <P>
+The latest official release is named "Lanai".  
+See the extensive release notes 
+<a href="doc/html/Lanai_release.html">Lanai_release</a>
+which include installation help, a walk-through of building and
+running a model, and then examples of how to use the diagnostics
+to evaluate the success of the assimilation.
+See <a href="doc/html/Lanai_diffs_from_Kodiak.html">Lanai_diffs_from_Kodiak</a>
+for a summary of changes since Kodiak, including new functionality,
+new models and tools, and any non-backwards-compatible changes 
+since the Kodiak release.
+</P>
+<P>
+Future releases of DART are expected to have substantial changes 
+and will be less backwards compatible than has been historically 
+true with DART releases.
+New development will continue on a separate subversion branch.
+</P>
+<P>
+Every source file in the DART system has a corresponding .html file that 
+contains specifics for public interfaces in each of the DART modules, 
+for the executable programs which come with DART, and for
+how to interface new models into the DART system.
+</P>
+<P>
 The remainder of this page
 contains links to all the documentation for this DART release.
-</P>
-<P>
-The latest official release is named "Lanai".  Future releases are
-expected to have substantial changes and will be less backwards
-compatible than has been historically true with DART releases.
-(New development will continue on a separate branch.)
-The "Kodiak" release was a while ago and so the change
-document is extensive.  If you have been using the development branch
-of the subversion repository there are very few new differences.
-See the overview
-<a href="doc/html/Lanai_release.html">doc/html/Lanai_release.html</a>.
-This page lists any non-backwards-compatible changes from Kodiak
-and briefly summarizes new functions, models, tools since the Kodiak release.
-</P>
-<P>
-Every source file has a corresponding .html file that contains 
-specifics for public interfaces in each of the DART
-modules, for the executable programs which come with DART, and for
-how to interface new models into the DART system.
 </P>
 
 <!--==================================================================-->
@@ -118,6 +125,11 @@ if you are looking for DART User-level HTML documentation.
 DART comes with an extensive set of documentation
 including release notes for each version, a walk-through on-line 
 tutorial, and a full set of pdf and framemaker tutorial materials.
+</P>
+
+<P>The <a href="doc/html/Lanai_release.html">release notes</a> include
+installation hints, a walk-through of building and running a model, 
+and an overview of the diagnostics.
 </P>
 
 <P>
@@ -150,7 +162,7 @@ part of DART.  For introductory materials, see the links above.
 
 <P>
 DART contains many library functions and separate executable programs.
-The main DART executable is the filter program.  Other programs
+The main DART executable is the <em class=file>filter</em> program.  Other programs
 generate data or format the diagnostic information.
 </P>
 
@@ -538,48 +550,82 @@ all model_mod source files in the DART distribution tree:
 <A href="location/threed_cartesian/location_mod.html">location/threed_cartesian/location_mod</A>
 <A href="location/threed_sphere/location_mod.html">location/threed_sphere/location_mod</A>
 <A href="mkmf/mkmf.html">mkmf/mkmf</A>
-<A href="models/9var/model_mod.html">models/9var/model_mod</A>
+<A href="models/9var/model_mod.f90">models/9var/model_mod (source)</A>
+<A href="models/9var/model_mod.html">models/9var/model_mod (html)</A>
+<A href="models/CESM/cesm_to_dart.html">models/CESM/cesm_to_dart</A>
+<A href="models/CESM/dart_to_cesm.html">models/CESM/dart_to_cesm</A>
+<A href="models/CESM/model_mod.f90">models/CESM/model_mod (source)</A>
+<A href="models/CESM/model_mod.html">models/CESM/model_mod (html)</A>
+<A href="models/MITgcm_annulus/model_mod.f90">models/MITgcm_annulus/model_mod (source)</A>
+<A href="models/MITgcm_ocean/create_ocean_obs.html">models/MITgcm_ocean/create_ocean_obs</A>
+<A href="models/MITgcm_ocean/model_mod.f90">models/MITgcm_ocean/model_mod (source)</A>
+<A href="models/MITgcm_ocean/model_mod.html">models/MITgcm_ocean/model_mod (html)</A>
+<A href="models/MITgcm_ocean/trans_pv_sv.html">models/MITgcm_ocean/trans_pv_sv</A>
+<A href="models/MITgcm_ocean/trans_sv_pv.html">models/MITgcm_ocean/trans_sv_pv</A>
+<A href="models/NAAPS/model_mod.f90">models/NAAPS/model_mod (source)</A>
+<A href="models/NCOMMAS/dart_to_ncommas.html">models/NCOMMAS/dart_to_ncommas</A>
+<A href="models/NCOMMAS/model_mod.f90">models/NCOMMAS/model_mod (source)</A>
+<A href="models/NCOMMAS/model_mod.html">models/NCOMMAS/model_mod (html)</A>
+<A href="models/NCOMMAS/ncommas_to_dart.html">models/NCOMMAS/ncommas_to_dart</A>
+<A href="models/POP/dart_pop_mod.html">models/POP/dart_pop_mod (html)</A>
+<A href="models/POP/dart_to_pop.html">models/POP/dart_to_pop</A>
+<A href="models/POP/model_mod.f90">models/POP/model_mod (source)</A>
+<A href="models/POP/model_mod.html">models/POP/model_mod (html)</A>
+<A href="models/POP/pop_to_dart.html">models/POP/pop_to_dart</A>
+<A href="models/am2/model_mod.f90">models/am2/model_mod (source)</A>
+<A href="models/bgrid_solo/model_mod.f90">models/bgrid_solo/model_mod (source)</A>
 <A href="models/cam/cam_to_dart.html">models/cam/cam_to_dart</A>
 <A href="models/cam/dart_to_cam.html">models/cam/dart_to_cam</A>
 <A href="models/cam/doc/cam_guidelines.html">models/cam/doc/cam_guidelines</A>
 <A href="models/cam/doc/script_doc.html">models/cam/doc/script_doc</A>
-<A href="models/cam/model_mod.html">models/cam/model_mod</A>
-<A href="models/CESM/cesm_to_dart.html">models/CESM/cesm_to_dart</A>
-<A href="models/CESM/dart_to_cesm.html">models/CESM/dart_to_cesm</A>
-<A href="models/CESM/model_mod.html">models/CESM/model_mod</A>
+<A href="models/cam/model_mod.f90">models/cam/model_mod (source)</A>
+<A href="models/cam/model_mod.html">models/cam/model_mod (html)</A>
 <A href="models/clm/clm_to_dart.html">models/clm/clm_to_dart</A>
 <A href="models/clm/dart_to_clm.html">models/clm/dart_to_clm</A>
-<A href="models/coamps/model_mod.html">models/coamps/model_mod</A>
-<A href="models/forced_lorenz_96/model_mod.html">models/forced_lorenz_96/model_mod</A>
-<A href="models/gitm/model_mod.html">models/gitm/model_mod</A>
-<A href="models/ikeda/model_mod.html">models/ikeda/model_mod</A>
-<A href="models/lorenz_04/model_mod.html">models/lorenz_04/model_mod</A>
-<A href="models/lorenz_63/model_mod.html">models/lorenz_63/model_mod</A>
-<A href="models/lorenz_84/model_mod.html">models/lorenz_84/model_mod</A>
-<A href="models/lorenz_96/model_mod.html">models/lorenz_96/model_mod</A>
-<A href="models/MITgcm_ocean/create_ocean_obs.html">models/MITgcm_ocean/create_ocean_obs</A>
-<A href="models/MITgcm_ocean/model_mod.html">models/MITgcm_ocean/model_mod</A>
-<A href="models/MITgcm_ocean/trans_pv_sv.html">models/MITgcm_ocean/trans_pv_sv</A>
-<A href="models/MITgcm_ocean/trans_sv_pv.html">models/MITgcm_ocean/trans_sv_pv</A>
-<A href="models/model_mod.html">models/model_mod</A>
-<A href="models/mpas_atm/model_mod.html">models/mpas_atm/model_mod</A>
+<A href="models/clm/model_mod.f90">models/clm/model_mod (source)</A>
+<A href="models/coamps/model_mod.f90">models/coamps/model_mod (source)</A>
+<A href="models/coamps/model_mod.html">models/coamps/model_mod (html)</A>
+<A href="models/coamps_nest/model_mod.f90">models/coamps_nest/model_mod (source)</A>
+<A href="models/dynamo/model_mod.f90">models/dynamo/model_mod (source)</A>
+<A href="models/forced_barot/model_mod.f90">models/forced_barot/model_mod (source)</A>
+<A href="models/forced_lorenz_96/model_mod.f90">models/forced_lorenz_96/model_mod (source)</A>
+<A href="models/forced_lorenz_96/model_mod.html">models/forced_lorenz_96/model_mod (html)</A>
+<A href="models/gitm/model_mod.f90">models/gitm/model_mod (source)</A>
+<A href="models/gitm/model_mod.html">models/gitm/model_mod (html)</A>
+<A href="models/ikeda/model_mod.f90">models/ikeda/model_mod (source)</A>
+<A href="models/ikeda/model_mod.html">models/ikeda/model_mod (html)</A>
+<A href="models/lorenz_04/model_mod.f90">models/lorenz_04/model_mod (source)</A>
+<A href="models/lorenz_04/model_mod.html">models/lorenz_04/model_mod (html)</A>
+<A href="models/lorenz_63/model_mod.f90">models/lorenz_63/model_mod (source)</A>
+<A href="models/lorenz_63/model_mod.html">models/lorenz_63/model_mod (html)</A>
+<A href="models/lorenz_84/model_mod.f90">models/lorenz_84/model_mod (source)</A>
+<A href="models/lorenz_84/model_mod.html">models/lorenz_84/model_mod (html)</A>
+<A href="models/lorenz_96/model_mod.f90">models/lorenz_96/model_mod (source)</A>
+<A href="models/lorenz_96/model_mod.html">models/lorenz_96/model_mod (html)</A>
+<A href="models/lorenz_96_2scale/model_mod.f90">models/lorenz_96_2scale/model_mod (source)</A>
+<A href="models/model_mod.html">models/model_mod (html)</A>
+<A href="models/mpas_atm/model_mod.f90">models/mpas_atm/model_mod (source)</A>
+<A href="models/mpas_atm/model_mod.html">models/mpas_atm/model_mod (html)</A>
 <A href="models/mpas_atm/model_to_dart.html">models/mpas_atm/model_to_dart</A>
-<A href="models/mpas_ocn/model_mod.html">models/mpas_ocn/model_mod</A>
+<A href="models/mpas_ocn/model_mod.f90">models/mpas_ocn/model_mod (source)</A>
+<A href="models/mpas_ocn/model_mod.html">models/mpas_ocn/model_mod (html)</A>
 <A href="models/mpas_ocn/model_to_dart.html">models/mpas_ocn/model_to_dart</A>
-<A href="models/NCOMMAS/dart_to_ncommas.html">models/NCOMMAS/dart_to_ncommas</A>
-<A href="models/NCOMMAS/model_mod.html">models/NCOMMAS/model_mod</A>
-<A href="models/NCOMMAS/ncommas_to_dart.html">models/NCOMMAS/ncommas_to_dart</A>
 <A href="models/noah/dart_to_noah.html">models/noah/dart_to_noah</A>
-<A href="models/noah/model_mod.html">models/noah/model_mod</A>
+<A href="models/noah/model_mod.f90">models/noah/model_mod (source)</A>
+<A href="models/noah/model_mod.html">models/noah/model_mod (html)</A>
 <A href="models/noah/noah_to_dart.html">models/noah/noah_to_dart</A>
-<A href="models/null_model/model_mod.html">models/null_model/model_mod</A>
-<A href="models/pe2lyr/model_mod.html">models/pe2lyr/model_mod</A>
-<A href="models/POP/dart_pop_mod.html">models/POP/dart_pop_mod</A>
-<A href="models/POP/dart_to_pop.html">models/POP/dart_to_pop</A>
-<A href="models/POP/model_mod.html">models/POP/model_mod</A>
-<A href="models/POP/pop_to_dart.html">models/POP/pop_to_dart</A>
-<A href="models/simple_advection/model_mod.html">models/simple_advection/model_mod</A>
-<A href="models/wrf/model_mod.html">models/wrf/model_mod</A>
+<A href="models/null_model/model_mod.f90">models/null_model/model_mod (source)</A>
+<A href="models/null_model/model_mod.html">models/null_model/model_mod (html)</A>
+<A href="models/pe2lyr/model_mod.f90">models/pe2lyr/model_mod (source)</A>
+<A href="models/pe2lyr/model_mod.html">models/pe2lyr/model_mod (html)</A>
+<A href="models/rose/model_mod.f90">models/rose/model_mod (source)</A>
+<A href="models/simple_advection/model_mod.f90">models/simple_advection/model_mod (source)</A>
+<A href="models/simple_advection/model_mod.html">models/simple_advection/model_mod (html)</A>
+<A href="models/sqg/model_mod.f90">models/sqg/model_mod (source)</A>
+<A href="models/template/model_mod.f90">models/template/model_mod (source)</A>
+<A href="models/tiegcm/model_mod.f90">models/tiegcm/model_mod (source)</A>
+<A href="models/wrf/model_mod.f90">models/wrf/model_mod (source)</A>
+<A href="models/wrf/model_mod.html">models/wrf/model_mod (html)</A>
 <A href="models/wrf/shell_scripts/advance_model.html">models/wrf/shell_scripts/advance_model</A>
 <A href="models/wrf/WRF_DART_utilities/dart_to_wrf.html">models/wrf/WRF_DART_utilities/dart_to_wrf</A>
 <A href="models/wrf/WRF_DART_utilities/replace_wrf_fields.html">models/wrf/WRF_DART_utilities/replace_wrf_fields</A>
