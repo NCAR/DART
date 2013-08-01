@@ -6,58 +6,106 @@
 #
 # $Id$
 
+# usage: fixsystem [ -gfortran | -not_gfortran ]
+#
+# in two DART source code files in this directory we depend on using 
+# the system() function to run a shell script and wait for the shell 
+# exit code, e.g.:  rc = system("/bin/date")
+#
+# for all compilers, except gfortran, an interface block is required
+# to define the integer return from the system function.  however
+# the gfortran compiler gives an error if this block is defined.
+# this script tries to comment in and out this interface block by
+# looking for a pair of specially formatted comment lines and
+# commenting in (or out) all the lines between those comment 
+# delimiter lines.
+#
+# the original usage of this script was without any arguments. 
+# it swapped the state of the comment block; if it was commented out
+# it removed the comment characters, or if the code was enabled
+# it added comment chars.  it still has this backwards-compatible
+# behavior but now it also takes a single optional argument
+# which must be one of:  -gfortran   or -not_gfortran
+# it ensures the interface block is in the correct configuration
+# for the given compiler.
+
 for f in mpi_utilities_mod.f90 null_mpi_utilities_mod.f90
 do
 
-# save original copy for backup.  should this test first and if the orig
-# is still there, not do the copy?
-if [[ ! -f ${f}.orig ]]; then
- cp -p ${f} ${f}.orig
-fi
+  # figure out what state the source file is in before we start
+  export bline=`fgrep SYSTEM_BLOCK_EDIT ${f} | grep START | head -n 1`
+  if [[ "`echo $bline | grep COMMENTED_OUT`" != ""  ]]; then
+    #echo Is no interface block for system in ${f}
+    export before=out
+  elif [[ "`echo $bline | grep COMMENTED_IN`" != ""  ]]; then
+    #echo Interface block is present in ${f}
+    export before=in
+  else
+    echo ${f} not found, or does not have the right comment string to
+    echo automatically change the system interface block via script.
+    echo Please restore original file from the subversion repository
+    echo and try again.
+    exit 1
+  fi
 
-# door 1: flip flop back and forth between commented in and out
-# door 2: give this an argument to ask for it in or out explicitly
-# door 3: look at an env var for what to set.  (could be in mkmf.template)
+  if [[ $# == 0 ]]; then
+    # no args given, swap to the other configuration
+    if [[ $before == out ]]; then
+      export todo=in
+    elif [[ $before == in ]]; then
+      export todo=out
+    else
+      echo Internal error; should not happen.  Contact DART support.
+      exit 1
+    fi
 
-# door 1:
-export bline=`fgrep SYSTEM_BLOCK_EDIT ${f} | grep START`
+  elif [[ $# == 1 ]]; then
+    # single arg: must be either -gfortran or -not_gfortran
+    if [[ "$1" == -gfortran ]]; then
+      export todo=out
+    elif [[ "$1" == -not_gfortran ]]; then
+      export todo=in
+    else
+      echo unrecognized argument \"$1\" given to $0
+      echo valid args are either \"-gfortran\" or \"-not_gfortran\"
+      exit 1
+    fi
 
-if [[ "`echo $bline | grep COMMENTED_OUT`" != ""  ]]; then
-  echo Was no interface block for system in ${f}
-  export do=in
-elif [[ "`echo $bline | grep COMMENTED_IN`" != ""  ]]; then
-  echo Interface block was present in ${f}
-  export do=out
-else
-  echo ${f} not found, or does not have the right comment string to
-  echo automatically change the system interface block via script.
-  echo Please restore original file from the subversion repository
-  echo and try again.
-fi
+  else
+    # too many arguments, give an error message and exit
+    echo invalid usage, more than 1 argument given to $0
+    echo only one of either \"-gfortran\" or \"-not_gfortran\" can be specified
+    exit 1
+  fi
+  
+  # if we are already in the right state, loop to next file
+  if [[ $before == out && $todo == out ]]; then continue; fi
+  if [[ $before == in  && $todo == in  ]]; then continue; fi
+  
+  # we do have something do to
 
-# in any case, here are the 4 possible command lines to use.
+  # save original copy for backup if one does not already exist.
+  if [[ ! -f ${f}.orig ]]; then
+    cp -p ${f} ${f}.orig
+  fi
+  
+  # removing comment chars, enabling interface block code
+  if [[ $todo == in ]]; then
+   echo Setting for a non-gfortran compiler in ${f}
+   mv ${f} tempfile
+   sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_OUT/,/SYSTEM_BLOCK_EDIT END COMMENTED_OUT/s/^!//' \
+       -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_OUT/s//\1 COMMENTED_IN/' tempfile > ${f}
+  fi
+  
+  # adding comment chars, disabling interface block code
+  if [[ $todo == out ]]; then
+   echo Setting for gfortran compiler in ${f}
+   mv ${f} tempfile
+   sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_IN/,/SYSTEM_BLOCK_EDIT END COMMENTED_IN/s/^/!/' \
+       -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' tempfile > ${f}
+  fi
 
-# removing comments, code enabled
-if [[ $do == in ]]; then
- echo removing comments, enabling interface block in ${f}
- mv ${f} tempfile
- sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_OUT/,/SYSTEM_BLOCK_EDIT END COMMENTED_OUT/s/^!//' -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_OUT/s//\1 COMMENTED_IN/' tempfile > ${f}
-fi
-
-# adding comments, code disabled
-if [[ $do == out ]]; then
- echo adding comment chars, disabling interface block in ${f}
- mv ${f} tempfile
- sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_IN/,/SYSTEM_BLOCK_EDIT END COMMENTED_IN/s/^/!/' -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' tempfile > ${f}
-fi
-
-# for testing only
-## trying to remove comments not there; should be noop
-#sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_OUT/,/SYSTEM_BLOCK_EDIT END COMMENTED_OUT/s/^!//' -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_OUT/s//\1 COMMENTED_IN/' new > new3
-#
-## trying to add comments already there; should be noop
-#sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_IN/,/SYSTEM_BLOCK_EDIT END COMMENTED_IN/s/^/!/' -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' new2 > new4
-#
+  \rm -f tempfile
 
 done
 
