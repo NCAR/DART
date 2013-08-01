@@ -28,7 +28,8 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, copy_obs_def, &
                              interactive_obs_def, get_obs_def_location, &
                              get_expected_obs_from_def, get_obs_kind, &
-                             get_obs_def_key
+                             get_obs_def_key, &
+                             get_expected_obs_from_def_distrib_state !HK
 use     obs_kind_mod, only : write_obs_kind, read_obs_kind, max_obs_kinds, &
                              get_obs_kind_index
 use time_manager_mod, only : time_type, operator(>), operator(<), &
@@ -335,7 +336,7 @@ end function interactive_obs_sequence
 subroutine get_expected_obs_distrib_state(seq, keys, ens_index, state, state_time, isprior, &
    obs_vals, istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, win, states_for_identity_obs)
 
-use mpi_utilities_mod, only : datasize
+use mpi_utilities_mod, only : datasize ! This is here rather than at the top because the mpi_get calls will most likely get wraped up inside mpi_utilities
 
 type(obs_sequence_type), intent(in)    :: seq
 integer,                 intent(in)    :: keys(:)
@@ -349,7 +350,7 @@ logical,                 intent(out)   :: assimilate_this_ob, evaluate_this_ob
 !HK
 type(ensemble_type),     intent(in)    :: state_ens_handle
 real(r8), dimension(:),  intent(inout) :: states_for_identity_obs !> @todo needs to be 2d for a set of obs
-integer, intent(in)                    :: win !> window for mpi remote memory access
+integer, intent(in)                    :: win !< window for mpi remote memory access
 
 integer              :: num_obs, i
 !type(location_type) :: location
@@ -411,9 +412,15 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
    
    else ! do forward operator for this kind
       !> @todo can't do this yet
-      call get_expected_obs_from_def(keys(i), obs_def, obs_kind_ind, &
+      !> Q. Do we loop around copies here? This would mean ens_size*times the comumication
+      !> The alternative is to alter the code in model_mod.f90 to work on arrays of ensemble size.
+
+
+      call get_expected_obs_from_def_distrib_state(keys(i), obs_def, obs_kind_ind, &
          ens_index, state, state_time, isprior, obs_vals(i), istatus, &
-         assimilate_this_ob, evaluate_this_ob)
+         assimilate_this_ob, evaluate_this_ob, states_for_identity_obs, state_ens_handle, win)
+
+
    endif
 end do
 

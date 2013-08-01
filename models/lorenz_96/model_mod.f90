@@ -17,6 +17,10 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              nmlfileunit, find_namelist_in_file,           &
                              check_namelist_read, nc_check, do_output,     &
                              do_nml_file, do_nml_term
+!HK
+use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
+use mpi
+use mpi_utilities_mod, only : my_task_id
 
 implicit none
 private
@@ -33,7 +37,8 @@ public :: get_model_size, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_state, &
-          get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
+          get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model, &
+          model_interpolate_distrib ! HK
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -290,6 +295,145 @@ end do
 
 end subroutine model_interpolate
 
+!> distributed version of model interpolate
+subroutine model_interpolate_distrib(x, state_ens_handle, win, location, itype, obs_val, istatus, states_for_identity_obs)
+!------------------------------------------------------------------
+!
+! Interpolates from state vector x to the location. It's not particularly
+! happy dumping all of this straight into the model. Eventually some
+! concept of a grid underlying models but above locations is going to
+! be more general. May want to wait on external infrastructure projects
+! for this?
+
+! Argument itype is not used here because there is only one type of variable.
+! Type is needed to allow swap consistency with more complex models.
+
+use mpi_utilities_mod, only : datasize ! This is here rather than at the top because the mpi_get calls will most likely get wraped up inside mpi_utilities
+
+
+real(r8),                intent(in) :: x(:)
+type(location_type),     intent(in) :: location
+integer,                 intent(in) :: itype
+real(r8),                intent(out) :: obs_val !< needs to be an assumed array?
+integer,                intent(out) :: istatus
+!HK
+type(ensemble_type),     intent(in) :: state_ens_handle
+integer, intent(in)                 :: win !< window for mpi remote memory access
+real(r8), intent(out)               :: states_for_identity_obs(:)
+
+integer :: lower_index, upper_index, i
+real(r8) :: lctn, lctnfrac
+
+!HK 
+real(r8), allocatable :: x_lower(:) !< the lower piece of state vector
+real(r8), allocatable :: x_upper(:) !< the upper piece of state vector
+integer                        :: ierr !< mpi error
+integer(KIND=MPI_ADDRESS_KIND) :: target_disp !< must be mpi_address_kind to avoid seg faults on some systems
+integer :: owner_of_state !< which pe has the piece of state vector
+integer :: element_index  !< local element index
+integer :: ii
+
+allocate(x_lower(state_ens_handle%num_copies), x_upper(state_ens_handle%num_copies))
+
+! All forward operators supported
+istatus = 0
+
+! Convert location to real
+lctn = get_location(location)
+! Multiply by model size assuming domain is [0, 1] cyclic
+lctn = model_size * lctn
+
+lower_index = int(lctn) + 1
+upper_index = lower_index + 1
+if(lower_index > model_size) lower_index = lower_index - model_size
+if(upper_index > model_size) upper_index = upper_index - model_size
+
+lctnfrac = lctn - int(lctn)
+
+! Need to grab the correct pieces of state vector
+
+! Lower index
+! Find out which task has the element of the state vector
+call get_var_owner_index(lower_index, owner_of_state, element_index)  ! pe
+owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)     ! task
+
+if (my_task_id() == owner_of_state) then
+
+    x_lower = state_ens_handle%copies(:, element_index)
+
+else
+
+   target_disp = (element_index - 1) * state_ens_handle%num_copies
+
+   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+   call mpi_get(x_lower, state_ens_handle%num_copies, datasize, owner_of_state, target_disp, state_ens_handle%num_copies, datasize, win, ierr)
+   call mpi_win_unlock(owner_of_state, win, ierr)
+
+endif
+
+! Upper index
+call get_var_owner_index(upper_index, owner_of_state, element_index)  ! pe
+owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)     ! task
+
+if (my_task_id() == owner_of_state) then
+
+   x_upper = state_ens_handle%copies(:, element_index)
+
+else
+
+   target_disp = (element_index - 1) * state_ens_handle%num_copies
+
+   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+   call mpi_get(x_upper, state_ens_handle%num_copies, datasize, owner_of_state, target_disp, state_ens_handle%num_copies, datasize, win, ierr)
+   call mpi_win_unlock(owner_of_state, win, ierr)
+
+endif
+
+! calculate the obs value
+! Loop around the ensemble copies
+
+do ii = 1, state_ens_handle%num_copies
+
+   states_for_identity_obs(ii) = (1.0_r8 - lctnfrac) * x_lower(ii) + lctnfrac * x_upper(ii)
+
+enddo
+
+deallocate(x_lower, x_upper)
+
+! if(1 == 1) return
+
+! Helen Kershaw Commented out this on Jeff's advice. It is a relic from a paper.
+
+!!!!obs_val = obs_val ** 2
+!!!!if(1 == 1) return
+
+!! Temporarily add on an observation from the other side of the domain, too
+!lower_index = lower_index + model_size / 2
+!if(lower_index > model_size) lower_index = lower_index - model_size
+!upper_index = upper_index + model_size / 2
+!if(upper_index > model_size) upper_index = upper_index - model_size
+!obs_val = obs_val + &
+!   lctnfrac * x(lower_index) + (1.0_r8 - lctnfrac) * x(upper_index)
+!if(1 == 1) return
+!
+!
+!! Next one does an average over a range of points
+!obs_val = 0.0_r8
+!lower_index = lower_index - 7
+!upper_index = upper_index - 7
+!if(lower_index < 1) lower_index = lower_index + model_size
+!if(upper_index < 1) upper_index = upper_index + model_size
+!
+!do i = 1, 15
+!   if(lower_index > model_size) lower_index = lower_index - model_size
+!   if(upper_index > model_size) upper_index = upper_index - model_size
+!   obs_val = obs_val + &
+!      (1.0_r8 - lctnfrac) * x(lower_index) + lctnfrac * x(upper_index)
+!   lower_index = lower_index + 1
+!   upper_index = upper_index + 1
+!end do
+
+end subroutine model_interpolate_distrib
 
 
 function get_model_time_step()

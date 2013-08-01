@@ -1405,7 +1405,7 @@ pointer (p, duplicate_copies)
 
 !HK 
 real(r8), dimension(:,:), intent(inout) :: results
-real(r8), allocatable                   :: states_for_identity_obs(:)
+real(r8), allocatable                   :: states_for_identity_obs(:) !Also regular obs now?
 integer global_obs_num
 
 ! Loop through my copies and compute expected value

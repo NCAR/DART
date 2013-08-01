@@ -28,7 +28,10 @@ use     model_mod, only : get_model_size, static_init_model, get_state_meta_data
                           init_time, adv_1step, end_model, nc_write_model_atts,    &
                           nc_write_model_vars, pert_model_state,                   &
                           get_close_maxdist_init, get_close_obs_init,              &
-                          get_close_obs, ens_mean_for_model
+                          get_close_obs, ens_mean_for_model, &
+                          model_interpolate_distrib !HK
+
+use data_structure_mod, only : ensemble_type
 
 implicit none
 private
@@ -44,7 +47,8 @@ public :: static_init_assim_model, init_diag_output, get_model_size,            
           pert_model_state, netcdf_file_type, nc_append_time, nc_write_calendar_atts,      &
           nc_get_tindex, get_model_time_step, open_restart_read, open_restart_write,       &
           close_restart, adv_1step, aget_initial_condition, get_close_maxdist_init,        &
-          get_close_obs_init, get_close_obs, ens_mean_for_model
+          get_close_obs_init, get_close_obs, ens_mean_for_model, &
+          interpolate_distrib ! HK
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -671,7 +675,36 @@ end do
 
 end subroutine copy_assim_model
 
+!> Pass through routine to model interpolate
+subroutine interpolate_distrib(x, location, loctype, obs_vals, istatus, states_for_identity_obs, state_ens_handle, win)
+!---------------------------------------------------------------------
+!
+! Interpolates from the state vector in an assim_model_type to the
+! location. Will need to be generalized for more complex state vector
+! types. It might be better to be passing an assim_model_type with
+! the associated time through here, but that requires changing the
+! entire observation side of the class tree. Reconsider this at a 
+! later date (JLA, 15 July, 2002). loctype for now is an integer that
+! specifies what sort of variable from the model should be interpolated.
 
+implicit none
+
+real(r8),            intent(in) :: x(:)
+type(location_type), intent(in) :: location
+integer,             intent(in) :: loctype
+real(r8),           intent(out) :: obs_vals
+integer,            intent(out) :: istatus
+real(r8),            intent(out) :: states_for_identity_obs(:)
+integer,             intent(in)  :: win
+
+
+type(ensemble_type) :: state_ens_handle
+
+istatus = 0
+
+call model_interpolate_distrib(x, state_ens_handle, win, location, loctype, obs_vals, istatus, states_for_identity_obs)
+
+end subroutine interpolate_distrib
 
 
 

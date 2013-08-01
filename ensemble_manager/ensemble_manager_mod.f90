@@ -28,6 +28,8 @@ use mpi_utilities_mod, only : task_count, my_task_id, send_to, receive_from, &
                               task_sync, broadcast_send, broadcast_recv
 use sort_mod,          only : index_sort
 
+use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
+
 implicit none
 private
 
@@ -53,26 +55,26 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           prepare_to_update_copies,   print_ens_handle,                                 &
           map_task_to_pe,             map_pe_to_task                                   
 
-type ensemble_type
-   !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
-   !!!private
-   integer                  :: num_copies, num_vars, my_num_copies, my_num_vars
-   integer,         pointer :: my_copies(:), my_vars(:)
-   ! Storage in next line is to be used when each pe has all copies of subset of vars
-   real(r8),        pointer :: copies(:, :)         ! Dimensioned (num_copies, my_num_vars)
-   ! Storage on next line is used when each pe has subset of copies of all vars
-   real(r8),        pointer :: vars(:, :)           ! Dimensioned (num_vars, my_num_copies)
-   ! Time is only related to var complete
-   type(time_type), pointer :: time(:)
-   integer                  :: distribution_type
-   integer                  :: valid     ! copies modified last, vars modified last, both same
-   integer                  :: id_num
-   integer, allocatable     :: task_to_pe_list(:), pe_to_task_list(:) ! List of tasks
-   ! Flexible my_pe, layout_type which allows different task layouts for different ensemble handles
-   integer                  :: my_pe    
-   integer                  :: layout_type           
-
-end type ensemble_type
+!type ensemble_type
+!   !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
+!   !!!private
+!   integer                  :: num_copies, num_vars, my_num_copies, my_num_vars
+!   integer,         pointer :: my_copies(:), my_vars(:)
+!   ! Storage in next line is to be used when each pe has all copies of subset of vars
+!   real(r8),        pointer :: copies(:, :)         ! Dimensioned (num_copies, my_num_vars)
+!   ! Storage on next line is used when each pe has subset of copies of all vars
+!   real(r8),        pointer :: vars(:, :)           ! Dimensioned (num_vars, my_num_copies)
+!   ! Time is only related to var complete
+!   type(time_type), pointer :: time(:)
+!   integer                  :: distribution_type
+!   integer                  :: valid     ! copies modified last, vars modified last, both same
+!   integer                  :: id_num
+!   integer, allocatable     :: task_to_pe_list(:), pe_to_task_list(:) ! List of tasks
+!   ! Flexible my_pe, layout_type which allows different task layouts for different ensemble handles
+!   integer                  :: my_pe
+!   integer                  :: layout_type
+!
+!end type ensemble_type
 
 ! track if copies modified last, vars modified last, both are in sync
 ! (and therefore both valid to be used r/o), or unknown.
@@ -975,27 +977,27 @@ owners_index = div + 1
 
 end subroutine get_copy_owner_index
 
-!-----------------------------------------------------------------
-
-subroutine get_var_owner_index(var_number, owner, owners_index)
-
-! Given the var number, returns which PE stores it when copy complete
-! and its index in that pes local storage. Depends on distribution_type
-! with only option 1 currently implemented.
-
-! Assumes that all tasks are used in the ensemble
-
-integer, intent(in)  :: var_number
-integer, intent(out) :: owner, owners_index
-
-integer :: div
-
-! Asummes distribution type 1
-div = (var_number - 1) / num_pes
-owner = var_number - div * num_pes - 1
-owners_index = div + 1
-
-end subroutine get_var_owner_index
+!!-----------------------------------------------------------------
+!
+!subroutine get_var_owner_index(var_number, owner, owners_index)
+!
+!! Given the var number, returns which PE stores it when copy complete
+!! and its index in that pes local storage. Depends on distribution_type
+!! with only option 1 currently implemented.
+!
+!! Assumes that all tasks are used in the ensemble
+!
+!integer, intent(in)  :: var_number
+!integer, intent(out) :: owner, owners_index
+!
+!integer :: div
+!
+!! Asummes distribution type 1
+!div = (var_number - 1) / num_pes
+!owner = var_number - div * num_pes - 1
+!owners_index = div + 1
+!
+!end subroutine get_var_owner_index
 
 !-----------------------------------------------------------------
 
@@ -1834,19 +1836,19 @@ enddo
 
 end subroutine sort_task_list
 
-!--------------------------------------------------------------------------------
-
-function map_pe_to_task(ens_handle, p)
-
-! Return the physical task for my_pe
-
-type(ensemble_type), intent(in) :: ens_handle
-integer,             intent(in)    :: p
-integer                            :: map_pe_to_task
-
-map_pe_to_task = ens_handle%pe_to_task_list(p + 1)
-
-end function map_pe_to_task
+!!--------------------------------------------------------------------------------
+!
+!function map_pe_to_task(ens_handle, p)
+!
+!! Return the physical task for my_pe
+!
+!type(ensemble_type), intent(in) :: ens_handle
+!integer,             intent(in)    :: p
+!integer                            :: map_pe_to_task
+!
+!map_pe_to_task = ens_handle%pe_to_task_list(p + 1)
+!
+!end function map_pe_to_task
 
 !--------------------------------------------------------------------------------
 
