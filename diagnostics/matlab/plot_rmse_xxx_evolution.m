@@ -149,7 +149,7 @@ for ivar = 1:plotdat.nvars
    % remove any existing postscript file - will simply append each
    % level as another 'page' in the .ps file.
 
-   psfname = sprintf('%s_%s_evolution.ps',plotdat.varnames{ivar},plotdat.copystring);
+   psfname = sprintf('%s_rmse_%s_evolution.ps',plotdat.varnames{ivar},plotdat.copystring);
    fprintf('Removing %s from the current directory.\n',psfname)
    system(sprintf('rm %s',psfname));
 
