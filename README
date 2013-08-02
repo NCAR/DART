@@ -54,9 +54,6 @@ or comment it out and set $NETCDF in your environment.
 *This NetCDF library must have been compiled with the same compiler
 that you use to compile DART, and must include the F90 interfaces.*
 
-If you are using gfortran, go into the 'mpi_utilities' directory and run
-the './fixsystem' shell script.
-
 Go into 'models/lorenz_63/work' and run './quickbuild.csh'.
 
 If it compiles, hooray.  Run './perfect_model_obs' and then './filter'.
@@ -68,7 +65,7 @@ around 2 and doesn't grow unbounded), you're great!  Congrats.
 
 If you are planning to run one of the larger models and want to
 test the MPI version of DART, run './quickbuild.csh -mpi'.  It will
-recompile the Lorenz 63 model without MPI and then try to build
+first compile the Lorenz 63 model without MPI and then try to build
 filter with MPI.  *The 'mpif90' command you use must have been built
 with the same version of the compiler as you are using.*
 
